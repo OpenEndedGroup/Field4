@@ -1,4 +1,5 @@
 import { aiChatMarkdownToHtml } from "./afield.mjs";
+import { typesetAiChatMath } from "./aiChatMath.js";
 import { classifyGuideLink, docsPageUrl, guideAssetUrl, headingSlug } from "./documentGuideModel.js";
 
 export const safeMarkdownUrl = (url, allowImageData = false) => {
@@ -223,6 +224,7 @@ export function renderFieldMarkdown(root, markdown, options = {}) {
     root.innerHTML = aiChatMarkdownToHtml(markdown);
     sanitizeNotesMarkdown(root);
     highlightNotesMarkdown(root);
+    typesetAiChatMath(root);
     const used = new Map();
     const headings = [...root.querySelectorAll('h1,h2,h3,h4,h5,h6')].map(node => {
         const base = headingSlug(node.textContent), count = used.get(base) || 0;

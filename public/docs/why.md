@@ -36,6 +36,12 @@ inherit all three: `var Box.speed by Inheritance<Double>()`, `val Once.speed by 
 the card above; `.h2` is the explorer, with the whole answer under `json`; `print(why.speed)` prints
 the sentence.
 
+The walk goes one generation at a time, the box itself, then all its parents, then all of theirs,
+and stops at the first generation with an answer; that is why Settings, two edges up, never reaches
+Mover. Within a generation the earlier connection wins. Disconnect Mover from Fast and connect it
+again, and Fast is now the later connection: Slow answers from then on. A tie between different
+values also writes a warning on the `context` log channel.
+
 ## Names no `prop` declared
 
 A plain variable has no accessor in the preamble, so there is no `why.gear`. Ask
@@ -53,6 +59,35 @@ The answer is `ContextResolution.explain`'s JSON, which `.json` returns unchange
 `supplier`, `matchKind` (`PROPERTY`, `VARIABLE` or `SELF`), `matchedName`, `depth`, `path`, `value`,
 `valueType`, `ambiguous`, `competing`, `shadowed` (the first 24, with `shadowedCount`), the
 `declaration` and its `from:` tag, `stalePreambleLines`, `preambleConflicts`, and `summary`.
+
+## Found by type or by name
+
+`fromContext<T>()` finds the nearest value of a type, and `fromContextWithNameOrNull<T>("name")` the
+nearest value with a name. Both see the plain top-level variables of the boxes above, so a parent
+needs no `prop` at all. **Studio** has two variables:
+
+```diffstatic {data-lang=kotlin}
+val ink = java.awt.Color(200, 40, 40)
+val title = "Spring"
+```
+
+**Sketch**, beneath it, asks for the first `Color`, for `title`, and for `subtitle`, which nothing
+defines:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/why/context.png" capture="box" open-outputs="true" wait="1.5" timeout="180" embed=true name="why-fromcontext" macro-file="../../dev_docs/agents/transcripts/docs_capture/context_why_fromcontext.yaml" capture-box="bgc_sketch" w="620" h="80" alt="Sketch's main output, one line: ink = (200, 40, 40), title = Spring, subtitle = null"}
+val ink = fromContext<java.awt.Color>()
+val title = fromContextWithNameOrNull<String>("title")
+val missing = fromContextWithNameOrNull<String>("subtitle")
+markdown("ink = (${ink.red}, ${ink.green}, ${ink.blue}), title = $title, subtitle = $missing")
+```
+
+`fromContext<T>()` looks at the box itself, if it is a `T`; then the box's own properties; then each
+generation of ancestors, nearest first, at each box's properties and then its top-level variables.
+The asking box's own top-level variables are left out on purpose: Sketch's `val ink = fromContext<Color>()`
+leaves a `Color` among Sketch's variables, and if Sketch searched those it would find its own previous
+answer on every later run and never see Studio's again. Pass `includeLocalVariables = true` when a
+box does want a value it made itself. `fromContextWithNameOrNull` never matches the box itself, and
+returns `null` (or the `defaultValue` you pass) when nothing has the name.
 
 ## From outside the box
 

@@ -101,7 +101,7 @@ structure, so the same net always draws the same way.
 <!-- field-box id="petri_tala_status" index="2" -->
 
 ```edn [field-box id="petri_tala_status" role="properties"]
-{"id" "petri_tala_status" "index" 2 "name" "3 — which engine drew it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — which engine drew it" "_tombstone" false "frame" #afield/rect [60.0 700.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_tala_status_code_.kt" "lines" 90 "characters" 3508 "sha256" "8b529f548efd3d2051f1411cdd5bc20cc074f0b5d136af25b19fb872a7d8d76b"}]}
+{"id" "petri_tala_status" "index" 2 "name" "3 — which engine drew it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — which engine drew it" "_tombstone" false "frame" #afield/rect [60.0 700.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_tala_status_code_.kt" "lines" 92 "characters" 3761 "sha256" "adfbd4aca179023e8d4ed2d7344f716c7b96211cd90c89389f97b26fdc287230"}]}
 ```
 
 ```kotlin [field-property box="petri_tala_status" name="code" path="petri_tala_status_code_.kt"]
@@ -152,7 +152,9 @@ fun best(layout: PetriLayout): Long {
 }
 
 val forceMs = best(PetriLayout.FORCE)
-val talaMs = best(PetriLayout.TALA)
+// Without the helper TALA runs FORCE again; reuse its measured fallback instead of
+// blocking the frame thread for a second identical benchmark.
+val talaMs = if (D2Layout.available) best(PetriLayout.TALA) else forceMs
 
 val force = net.frame(PetriLayout.FORCE)
 val tala = net.frame(PetriLayout.TALA)
@@ -183,7 +185,7 @@ display(
           <td style="padding-left:14px;color:#8a8a8a">48 seeded restarts, scored</td></tr>
       <tr><td style="padding:2px 18px 2px 0;color:#8a8a8a">TALA</td>
           <td style="text-align:right">${talaMs} ms</td>
-          <td style="padding-left:14px;color:#8a8a8a">subprocess, 3 seeds, best kept</td></tr>
+          <td style="padding-left:14px;color:#8a8a8a">${if (D2Layout.available) "subprocess, 3 seeds, best kept" else "FORCE fallback; same measurement"}</td></tr>
     </table>
     <div style="margin-top:10px;color:#8a8a8a">best of 3, both warmed first —
       timing them once each in order flatters whichever runs second</div>

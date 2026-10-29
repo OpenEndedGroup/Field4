@@ -39,7 +39,7 @@ class DanceExperiments {
         val po = VariableMarkovOracle.build(phrases)
         for (policy in Policy.entries) {
             val p = Improviser(po, seed = 1, policy = policy, jumpProbability = 0.15).take(180.0)
-            rows += "phrases\t$policy\treuse %.2f coverage %.2f outputRepetition %.2f".format(p.reuse(), p.coverage(phrases.length), p.outputRepetition())
+            rows += "phrases\t$policy\treuse %.2f coverage %.2f outputRepetition %.2f".format(p.sourceReuse(), p.coverage(phrases.length), p.outputRepetition())
         }
 
         // 2. dance: six takes, all joints in the dancer's frame, 30 Hz
@@ -62,7 +62,7 @@ class DanceExperiments {
             rows += "dance\t$policy rw$rw mem$mem\tper-take coverage $perTake"
             rows += "dance\t$policy rw$rw mem$mem\treasons ${p.segments.groupingBy { it.reason }.eachCount()}"
             rows += "dance\t$policy rw$rw mem$mem\tsegments %d reuse %.2f coverage %.2f outputRepetition %.2f joinRough %.2f maxCorr %.2f holds %d".format(
-                p.segments.size, p.reuse(), p.coverage(dance.length), p.outputRepetition(channels = key), p.joinRoughness(dance), p.correction.max(),
+                p.segments.size, p.sourceReuse(), p.coverage(dance.length), p.outputRepetition(channels = key), p.joinRoughness(dance), p.correction.max(),
                 p.segments.count { it.reason == afield.math.oracle.Reason.Hold })
         }
         val models = System.getenv("AFIELD_TEMPORAL_MODELS")?.split(",")?.filter { it.isNotBlank() }.orEmpty()
@@ -72,7 +72,7 @@ class DanceExperiments {
                 val imp = Improviser(o, seed = 1, jumpProbability = 0.1, judge = judge, judgeMode = mode)
                 val p = imp.take(180.0)
                 rows += "dance\t${m.substringAfterLast('-')} $label\tsegments %d reuse %.2f coverage %.2f outputRepetition %.2f joinRough %.2f judged %d changed %d p95 %.0f ms".format(
-                    p.segments.size, p.reuse(), p.coverage(dance.length), p.outputRepetition(channels = key), p.joinRoughness(dance),
+                    p.segments.size, p.sourceReuse(), p.coverage(dance.length), p.outputRepetition(channels = key), p.joinRoughness(dance),
                     imp.judgedDecisions, imp.judgeChanged, judge.latencies.sorted().let { if (it.isEmpty()) Double.NaN else it[(it.size * 0.95).toInt().coerceAtMost(it.size - 1)] * 1000 })
             }
         }

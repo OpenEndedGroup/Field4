@@ -1,0 +1,139 @@
+{
+  "renderer": "Field Kotlin scenes in the existing Three viewer, captured by the Field docs runner",
+  "poseProcessing": "Recorded poses only. Comparison lanes remove horizontal root travel as described in their Kotlin code.",
+  "scoreSourceSha256": "a8ea7ae32254693c5d8b027312b0a11a31ad9a6e1a9caa045c8937c0e168608d",
+  "generatedAt": "2026-10-20T16:12:58.349512+00:00",
+  "movies": [
+    {
+      "movie": "resistance-follow.mp4",
+      "video": {
+        "width": 1616,
+        "height": 1170,
+        "r_frame_rate": "20/1",
+        "duration": "9.000000",
+        "nb_frames": "180",
+        "side_data_list": [
+          {}
+        ]
+      },
+      "sha256": "245086d738755a8ed223b4bf00f8b6a543a36d50066e9d3004122e75dcecd748",
+      "recordings": [
+        "closd-resistance.f4motion"
+      ],
+      "replayExample": "optional/motion/examples/resistance_replay.kt"
+    },
+    {
+      "movie": "movement-score.mp4",
+      "video": {
+        "width": 1600,
+        "height": 1290,
+        "r_frame_rate": "15/1",
+        "duration": "7.000000",
+        "nb_frames": "105",
+        "side_data_list": [
+          {}
+        ]
+      },
+      "sha256": "8375b49da0cd6e86c036321de2e0a9edcab44434e30c250fa0800b028f73f53c",
+      "recordings": [
+        "closd-movement-score.f4motion"
+      ],
+      "canonicalFenceSha256": "e77276d449f2c0e5bfb9dc324f4ce9970ca50fd68621aa6e424072c46a21cb2a"
+    },
+    {
+      "movie": "camera-follow.mp4",
+      "video": {
+        "width": 1600,
+        "height": 1080,
+        "r_frame_rate": "15/1",
+        "duration": "9.000000",
+        "nb_frames": "135",
+        "side_data_list": [
+          {}
+        ]
+      },
+      "sha256": "d7bedf52df5a163d422d5d9912b956072a1f24c97836edebc01634977b25b59f",
+      "recordings": [
+        "closd-resistance.f4motion"
+      ],
+      "canonicalFenceSha256": "f1dc52c3baf7b1e334a2cebdd332467d20ca2c6b73beccb85625694ec6b96f85"
+    },
+    {
+      "movie": "ardy-live-skipping.mp4",
+      "video": {
+        "width": 1600,
+        "height": 1290,
+        "r_frame_rate": "15/1",
+        "duration": "6.000000",
+        "nb_frames": "90",
+        "side_data_list": [
+          {}
+        ]
+      },
+      "sha256": "b9f74c28d5f36a714b52745ce07bd0c9fe384a906c9b6e9a3c9d1ba008cbfbfc",
+      "recordings": [
+        "ardy-live-skip.f4motion"
+      ],
+      "canonicalFenceSha256": "292f9eb273b4f63df76c234db94c0c64b45cd607d8e3e142a86879ac47ed4015"
+    },
+    {
+      "movie": "ardy-field-review.mp4",
+      "video": {
+        "width": 2000,
+        "height": 1214,
+        "r_frame_rate": "15/1",
+        "duration": "6.000000",
+        "nb_frames": "90",
+        "side_data_list": [
+          {}
+        ]
+      },
+      "sha256": "82b308aef312a423e50f2bb68c74f8f689e727759dcf5d24bf09dfbdbab8fa0c",
+      "recordings": [
+        "ardy-run-seed0.f4motion",
+        "ardy-jump-seed0.f4motion",
+        "ardy-somersault-seed0.f4motion"
+      ],
+      "canonicalFenceSha256": "d22d0bd04c72086a5298082d56ce79a9d22171622bb7eb369077bed3a6b4df8f"
+    },
+    {
+      "movie": "closd-field-review.mp4",
+      "video": {
+        "width": 2000,
+        "height": 1250,
+        "r_frame_rate": "15/1",
+        "duration": "6.000000",
+        "nb_frames": "90",
+        "side_data_list": [
+          {}
+        ]
+      },
+      "sha256": "8ab2530243659fec9fab1b87c46b21bfe37cd717b4eb064baf6c2b6864177c94",
+      "recordings": [
+        "closd-baseline-seed0.f4motion",
+        "closd-weak-seed0.f4motion",
+        "closd-capped-seed0.f4motion"
+      ],
+      "canonicalFenceSha256": "4f1473ac0dc61ae4326d5aad7dd9bbe530edc026bfc25d08383035e97d8fcd53"
+    },
+    {
+      "movie": "ardy-route-comparison.mp4",
+      "video": {
+        "width": 2000,
+        "height": 1214,
+        "r_frame_rate": "15/1",
+        "duration": "6.000000",
+        "nb_frames": "90",
+        "side_data_list": [
+          {}
+        ]
+      },
+      "sha256": "4938787de0de944a565fe5020fa52cba1fe37bbc3bb7c57d3b8bc75dfa6d6ab3",
+      "recordings": [
+        "ardy-path.f4motion",
+        "ardy-path-10steps.f4motion"
+      ],
+      "canonicalFenceSha256": "91b87bacc8bb33a0c505ae160e711fb9bf7cf1b87c564a2fa92975e8ef52bb61"
+    }
+  ]
+}

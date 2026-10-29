@@ -22,6 +22,21 @@ import afield.ui.output.controlGroup
 import afield.ui.output.displayOpen
 
 /**
+ * The splat-shader box: a cloud of Gaussian splats uploaded once, a few lines of GLSL that
+ * rewrite every splat each frame, and Field's Vulkan splat renderer drawing the result.
+ *
+ * [SplatShader] does the work. It uploads the parametric splats, binds them to the box's compute
+ * module as `splatsIn` and the renderer's cloud as `splatsOut`, dispatches the insert once per
+ * splat before the sort runs, and installs the cloud in an accumulation target, so a trail is a
+ * setting rather than a second code path. [SplatShaderSettings] is everything a viewer can change
+ * while it runs, from the camera and the turn rate to the opacity and gamma the splats are
+ * blended with, and `showControls` puts the demo's sliders in the box's `controls` output.
+ *
+ * The clouds come from [SplatSet] and [ProceduralSplats]; the sort, the packed covariance form
+ * and the splat shaders themselves are [GaussianSplatRenderer]'s.
+ */
+
+/**
  * A Gaussian-splat cloud whose splats are rewritten every frame by a few lines of GLSL in a box:
  * the madp splat-shader demo's "insert", on Field's Vulkan splat renderer.
  *

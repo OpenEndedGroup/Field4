@@ -12,6 +12,21 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
+ * Six Gaussian-splat clouds built from code, for a splat shader to deform: a shell, a fern, a
+ * nautilus, coral, a bloom and a braid.
+ *
+ * Each builder returns a [SplatSet] of a few thousand flat, oriented splats and uses a fixed hash
+ * where it needs variation, so a call gives the same cloud every time and `index` in an insert
+ * means the same splat on every run. `all` maps the six under the demo's names, in its order.
+ *
+ * The helpers below them are ports rather than conveniences. `hsl` is three.js's `Color.setHSL`
+ * down to the sRGB-to-linear conversion its colour management applies by default,
+ * `quaternionFromUnitVectors` is its `Quaternion.setFromUnitVectors` down to the axis it chooses
+ * when the two vectors are opposite, and `previewHash` is the `fract(sin(x) * 43758.5453)` hash
+ * the builders draw their variation from.
+ */
+
+/**
  * The six procedural clouds of the madp splat-shader demo, as [SplatSet]s: built from code,
  * deterministic, and the same splat for splat as the demo's (same order, so `index` in an insert
  * means the same splat in both).

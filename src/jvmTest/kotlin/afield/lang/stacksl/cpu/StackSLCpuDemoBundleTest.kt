@@ -94,7 +94,7 @@ class StackSLCpuDemoBundleTest {
     @Test
     fun `both demo programs render on the CPU backend`() {
         val still = File(demo, "stacksl-cpu-still_code_.kt").readText()
-        val stillProgram = Regex("""val program = ""\"(.*?)""\"""", RegexOption.DOT_MATCHES_ALL)
+        val stillProgram = Regex("""val program =\s*""\"(.*?)""\"""", RegexOption.DOT_MATCHES_ALL)
             .find(still)!!.groupValues[1].trimIndent().trim()
         val raster = StackSLCpu.renderStill(stillProgram, dim = 48, parallel = false)
         assertTrue(raster.rgba.all { it.isFinite() })

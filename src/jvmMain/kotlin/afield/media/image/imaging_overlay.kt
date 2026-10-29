@@ -86,11 +86,9 @@ private fun FLine.polylines(): List<List<Vec3>> {
                     cur.add(Vec3(b0 * p0.x + b1 * c1.x + b2 * c2.x + b3 * p3.x, b0 * p0.y + b1 * c1.y + b2 * c2.y + b3 * p3.y, 0f))
                 }
             }
-            else -> {
-                val p = n.toOrNull
-                val cur = out.lastOrNull() ?: mutableListOf<Vec3>().also { out.add(it) }
-                if (p != null) cur.add(p) else cur.firstOrNull()?.let { cur.add(it) }
-            }
+            is FLine.LineTo -> (out.lastOrNull() ?: mutableListOf<Vec3>().also { out.add(it) }).add(n.to)
+            // back to the subpath's first point; an interior Close keeps the same list, as drawing does
+            is FLine.Close -> out.lastOrNull()?.let { cur -> cur.firstOrNull()?.let { cur.add(it) } }
         }
     }
     return out

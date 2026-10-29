@@ -1,6 +1,8 @@
-// A box that cuts itself to somewhere else in the score: on the way in, and five times on the
-// way across, it jumps near the playhead and leaves a fading ghost of where it was. The box
-// really moves on the canvas; its frame is part of the instrument.
+/*
+A box that cuts itself to somewhere else in the score: on the way in, and five times on the
+way across, it jumps near the playhead and leaves a fading ghost of where it was. The box
+really moves on the canvas; its frame is part of the instrument.
+*/
 class Ghost(val x: Double, val y: Double, val w: Double, val h: Double, var life: Double = 1.0)
 
 val ghosts = mutableListOf<Ghost>()
@@ -24,7 +26,11 @@ score {
         )
         flash = 1.0
         jumps++
-        sound("/dough/play/note/${55 + (jumps % 5) * 2}/duration/0.06/s/pulse/pw/0.22/gain/0.13/lpf/${700 + (jumps % 7) * 220}/release/0.04/pan/0.18", key = "jump", minInterval = 0.03)
+        sound(
+            "/dough/play/note/${55 + (jumps % 5) * 2}/duration/0.06/s/pulse/pw/0.22/gain/0.13/lpf/${700 + (jumps % 7) * 220}/release/0.04/pan/0.18",
+            key = "jump",
+            minInterval = 0.03,
+        )
     }
 
     if (justEntered) jump()
@@ -34,7 +40,13 @@ score {
     ghosts.removeAll { it.life < 0.06 }
     for (g in ghosts) {
         val p = fromScore(g.x, g.y)
-        draw.rect(p.x - g.w * scaleX / 2, p.y - g.h * scaleY / 2, g.w * scaleX, g.h * scaleY, stroke = "rgba(255,255,255,${g.life * 0.28})")
+        draw.rect(
+            p.x - g.w * scaleX / 2,
+            p.y - g.h * scaleY / 2,
+            g.w * scaleX,
+            g.h * scaleY,
+            stroke = "rgba(255,255,255,${g.life * 0.28})",
+        )
     }
 
     flash *= 0.82

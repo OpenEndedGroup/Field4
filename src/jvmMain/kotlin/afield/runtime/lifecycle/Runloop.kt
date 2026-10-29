@@ -167,6 +167,8 @@ class Runloop {
             get() = mainThread == Thread.currentThread()
     }
 
+    /** Volatile: the stall watchdog and [BoxInterrupt.poll] read it from other threads / later frames. */
+    @Volatile
     var frame = 0L
 
     val main = Framer()
@@ -188,6 +190,7 @@ class Runloop {
         }
         schedulingState.install(Thread.currentThread())
         lprintln("info,startup", "entering run loop")
+        BoxInterrupt.Watchdog.start()
         while (true) {
             val frameStartNs = System.nanoTime()
             preRun.update()

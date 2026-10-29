@@ -196,6 +196,10 @@ SIDECAR_START_DEADLINE_SEC = float(os.environ.get("AFIELD_DOCS_SIDECAR_START_TIM
 # serving (`(AA→K1: <why>)`) -- only the latter is a defect in a capture.
 COMPLETION_AA_FALLBACK_RE = re.compile(r"^.*completion backend=K1.*\(AA→K1:.*$", re.MULTILINE)
 COMPLETION_BACKEND_RE = re.compile(r"completion backend=(\w+)")
+# How long a completion capture waits for Field's `completion backend=` line to reach the log file.
+COMPLETION_LOG_SETTLE_SEC = 5.0
+# The docs build's runloop-watchdog interrupt (BoxInterrupt.Watchdog), 5 minutes; Field's default is 30 s.
+DOCS_RUNLOOP_WATCHDOG_INTERRUPT_MS = 300_000
 ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*m")
 RUNNER_MODE_ALIASES = {
     "incremental": "incremental",
@@ -756,6 +760,7 @@ RUNNER_DIGEST_SOURCE_FILES = (
     "src/jvmMain/kotlin/afield/graphics/someSkiko.kt",
     "src/commonMain/resources/outputareas2.js",
     "tools/field_backdoor.py",
+    "tools/lighting/capture_background.js",
     "tools/capture_transaction.py",
     "tools/run_field_tests.py",
 )
@@ -938,6 +943,29 @@ def sidecar_workspace_status(url: str, repo_root: Path) -> str:
 class CacheEntry:
     digest: str
     metadata: dict[str, Any] | None = None
+
+
+def asset_fingerprint(path: Path, previous: dict[str, Any] | None = None) -> dict[str, Any] | None:
+    """Size, mtime and sha256 of a cached asset, or None when it is gone.
+
+    A cache entry certifies the bytes its capture published. Recording them lets a later run tell
+    that the file at that path is no longer those bytes (a `git stash`, a checkout of `main`'s
+    copy, a hand edit) and capture again, instead of passing the stale file as a cache hit. The
+    hash is reused while size and mtime are unchanged, so saving the cache does not reread 1 GB.
+    """
+    try:
+        stat = path.stat()
+    except OSError:
+        return None
+    if not path.is_file():
+        return None
+    if previous and previous.get("size") == stat.st_size and previous.get("mtime_ns") == stat.st_mtime_ns:
+        return dict(previous)
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(chunk)
+    return {"size": stat.st_size, "mtime_ns": stat.st_mtime_ns, "sha256": digest.hexdigest()}
 
 
 class RunnerState:
@@ -1260,8 +1288,16 @@ class RunnerState:
 
         Only an `AA→K1` fallback fails. A build that deliberately selects K1
         (`-Dafield.kotlin.completion=k1`) logs `(backend=k1)` and is left alone.
+
+        The backend line can reach the log file after the drive has returned -- in a full build it
+        landed behind the next drive's code -- so the slice is re-read for up to
+        COMPLETION_LOG_SETTLE_SEC before concluding no completion was requested.
         """
         slice_text = self._shared_log_since(log_offset)
+        deadline = time.monotonic() + COMPLETION_LOG_SETTLE_SEC
+        while not COMPLETION_BACKEND_RE.search(slice_text) and time.monotonic() < deadline:
+            time.sleep(0.2)
+            slice_text = self._shared_log_since(log_offset)
         fallbacks = COMPLETION_AA_FALLBACK_RE.findall(slice_text)
         if fallbacks:
             # Field's log is written for a terminal, so the channel tag arrives wrapped in ANSI. Strip it:
@@ -1656,14 +1692,26 @@ class RunnerState:
         # The general automation notebook also holds draft review notes made by other test
         # runners. The notes-panel capture must see only notes from this docs runner, while
         # still staying isolated from the user's real notebook.
-        server_env = automation_server_environment(
-            self.backdoor_port,
-            extra={
-                "AFIELD_DOCS_ANNOTATIONS_STORE": str(
-                    self.repo_root / "build" / "field-docs-runner-annotations.json"
-                )
-            },
-        )
+        # The KDoc drafts the ai_doc_polish captures count and import would otherwise be whatever
+        # completion cached in this checkout's .field/filestore: nothing in a fresh clone, and on
+        # one machine a draft whose file the package cutover had moved. A fresh copy of a committed
+        # cache gives every build the same real draft (test_docs_runner_inputs keeps it importable).
+        extra_env = {
+            "AFIELD_DOCS_ANNOTATIONS_STORE": str(
+                self.repo_root / "build" / "field-docs-runner-annotations.json"
+            ),
+            # The runloop watchdog interrupts box code that holds the runloop this long. Docs examples
+            # may compute for a while in their body, and each capture already has its own timeout.
+            "AFIELD_RUNLOOP_WATCHDOG_INTERRUPT_MS": str(DOCS_RUNLOOP_WATCHDOG_INTERRUPT_MS),
+        }
+        committed_drafts = self.repo_root / "tools" / "docs_runner_inputs" / "generated_completion_docs.json"
+        if committed_drafts.is_file():
+            drafts = self.repo_root / "build" / "field-docs-runner-completion-drafts" / committed_drafts.name
+            shutil.rmtree(drafts.parent, ignore_errors=True)
+            drafts.parent.mkdir(parents=True)
+            shutil.copyfile(committed_drafts, drafts)
+            extra_env["AFIELD_COMPLETION_DRAFTS_FILE"] = str(drafts)
+        server_env = automation_server_environment(self.backdoor_port, extra=extra_env)
         sidecar_url = self._ensure_semantic_sidecar()
         if sidecar_url:
             server_env[SIDECAR_URL_ENV] = sidecar_url
@@ -2181,6 +2229,8 @@ class RunnerState:
 
         cache: dict[str, str] = {}
         metadata: dict[str, dict[str, Any]] = {}
+        fingerprints: dict[str, dict[str, Any]] = {}
+        dropped = 0
         for key, value in entries.items():
             cache_key = str(key)
             if isinstance(value, str):
@@ -2191,10 +2241,20 @@ class RunnerState:
             digest = value.get("digest")
             if not isinstance(digest, str):
                 continue
+            recorded = value.get("asset")
+            if isinstance(recorded, dict):
+                current = asset_fingerprint(Path(cache_key), recorded)
+                if current is None or current.get("sha256") != recorded.get("sha256"):
+                    dropped += 1
+                    continue
+                fingerprints[cache_key] = current
             cache[cache_key] = digest
             entry_metadata = value.get("metadata")
             if isinstance(entry_metadata, dict):
                 metadata[cache_key] = entry_metadata
+        if dropped:
+            LOG.info("Field docs runner cache: %d entries dropped, their asset is no longer the bytes they certified", dropped)
+        self._asset_fingerprints = fingerprints
         return cache, metadata
 
     def save(self) -> None:
@@ -2203,15 +2263,19 @@ class RunnerState:
         if not self.dirty:
             return
         entries: dict[str, Any] = {}
+        fingerprints = getattr(self, "_asset_fingerprints", {})
         for cache_key, digest in self.cache.items():
             metadata = self.cache_metadata.get(cache_key)
-            if metadata is None:
+            asset = asset_fingerprint(Path(cache_key), fingerprints.get(cache_key))
+            if metadata is None and asset is None:
                 entries[cache_key] = digest
             else:
-                entries[cache_key] = {
-                    "digest": digest,
-                    "metadata": metadata,
-                }
+                entries[cache_key] = {"digest": digest}
+                if metadata is not None:
+                    entries[cache_key]["metadata"] = metadata
+                if asset is not None:
+                    entries[cache_key]["asset"] = fingerprints[cache_key] = asset
+        self._asset_fingerprints = fingerprints
         payload = {
             "version": SCRIPT_VERSION,
             "mode": self.runner_mode,
@@ -5525,7 +5589,25 @@ def build_backdoor_command(
         if options.source_box_wait > 0:
             backdoor_commands.append(shlex.join(["sleep", str(options.source_box_wait)]))
     if options.macro_file:
-        pass
+        # A macro builds the document; `run-box` then names a box to run after it. An editor
+        # capture opens that box's editor first, so the inline output of the run lands in an
+        # editor that is already showing (output that arrives before the editor opens is not
+        # drawn beside its line).
+        if options.run_box:
+            if capture_mode == "editor":
+                backdoor_commands.append(shlex.join([
+                    "editor-open",
+                    options.run_box,
+                    "--property", options.property_name,
+                    "--padding", str(options.padding),
+                    "--timeout", str(options.timeout),
+                ]))
+            backdoor_commands.append(shlex.join([
+                "launch" if options.execution == "launch" else "run",
+                options.run_box,
+                "--property", options.property_name,
+                "--timeout", str(options.timeout),
+            ]))
     elif options.run_box is None and capture_mode == "editor":
         # Target the box explicitly rather than "@last": under graphics-context the
         # box is created via a macro (so "@last" is stale) and must match the box

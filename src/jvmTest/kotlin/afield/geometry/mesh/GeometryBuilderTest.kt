@@ -128,7 +128,7 @@ class GeometryBuilderTest {
         assertEquals(0.65f, m.metalness)
         assertEquals(srgbToLinear(0xf4 / 255f), m.color[0], 1e-6f)
         assertNotNull(payload.studio)
-        assertEquals(-1.25, payload.studio!!.groundY)
+        assertEquals(-1.25, payload.studio.groundY)
         assertEquals("#060807", payload.background)
         assertEquals(false, payload.helpers)
     }

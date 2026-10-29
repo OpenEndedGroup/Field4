@@ -171,7 +171,7 @@ class ScriptedLlmBridge(
     }
 
     private fun substitute(template: String, latest: Map<String, String>): String =
-        Regex("""\$\{([A-Za-z0-9_]+)\.([A-Za-z0-9_]+)}""").replace(template) { m ->
+        PLACEHOLDER.replace(template) { m ->
             val (tool, field) = m.destructured
             val node = latest[tool]?.let { runCatching { aiToolMapper.readTree(it) }.getOrNull() }
                 ?: throw IllegalStateException("Script refers to \${$tool.$field} before any $tool result.")
@@ -181,6 +181,12 @@ class ScriptedLlmBridge(
         }
 
     companion object {
+        /**
+         * A placeholder names a tool, and every tool's simple name ends in `Request`; anything else in `${a.b}` form is
+         * left alone, so box code written with Kotlin string templates (`"${it.name}"`) survives a script unchanged.
+         */
+        private val PLACEHOLDER = Regex("""\$\{([A-Z][A-Za-z0-9_]*Request)\.([A-Za-z0-9_]+)}""")
+
         /**
          * Parse a script from JSON: `[{"tool":"NewBoxRequest","arguments":{...}}, {"final":"done"}]`.
          * This is the form `agent-task --script` and the HTTP route accept.

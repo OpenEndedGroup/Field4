@@ -32,7 +32,7 @@ operations:
       w: 300.0
       h: 100.0
     properties:
-      code: |-
+      code: |
         import afield.graphics.vulkan.device.CommandBuffer
         import afield.graphics.vulkan.device.Fence
         import afield.media.vision.opticalFlow
@@ -196,7 +196,7 @@ operations:
     property: code
     type: code
     strand: scene
-    code: |-
+    code: |
       import afield.graphics.vulkan.device.CommandBuffer
       import afield.graphics.vulkan.device.Fence
       import afield.media.vision.opticalFlow

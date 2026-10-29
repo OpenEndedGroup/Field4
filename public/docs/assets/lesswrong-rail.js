@@ -219,11 +219,32 @@
     });
   }
 
+  function updateRailClearance() {
+    const content = document.querySelector(CONTENT_SELECTOR);
+    if (!railRoot || !content) return;
+    const rect = railRoot.getBoundingClientRect();
+    const hitWidth = parseFloat(getComputedStyle(railRoot, "::before").width) || 32;
+    let right = rect.left + hitWidth;
+    railRoot.querySelectorAll(".field-reading-rail__link").forEach(link => {
+      if (parseFloat(getComputedStyle(link).opacity) > 0) {
+        right = Math.max(right, link.getBoundingClientRect().right);
+      }
+    });
+    // Finish fading with room left between the article and the visible navigation.
+    const opacity = clamp((content.getBoundingClientRect().left - right - 24) / 64, 0, 1);
+    railRoot.style.opacity = String(opacity);
+    railRoot.inert = opacity === 0;
+    railRoot.classList.toggle("is-obscured", opacity === 0);
+    if (opacity === 0) railRoot.setAttribute("aria-hidden", "true");
+    else railRoot.removeAttribute("aria-hidden");
+  }
+
   function refreshState() {
     updateArticleBounds();
     refreshHeadingPositions();
     updateProgress();
     updateActiveHeading();
+    updateRailClearance();
   }
 
   function buildRail() {

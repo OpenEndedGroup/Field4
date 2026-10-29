@@ -121,8 +121,7 @@ data class OrcaOsc(val path: String, val args: List<Int>, val text: String, val 
  * An ORCA: what it is doing, what it plays, and how to change it. [Box.orca] makes one in a box's output;
  * [OrcaHeadless] makes one in the JVM with no page, for rendering and tests.
  */
-class Orca
-internal constructor(
+class Orca internal constructor(
     /** The box whose output holds it; null for an [OrcaHeadless]. */
     private val box: Box?,
     val channel: String,

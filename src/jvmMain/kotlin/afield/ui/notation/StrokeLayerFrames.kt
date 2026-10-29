@@ -9,6 +9,23 @@ import afield.math.linalg.Vec4
 import kotlin.math.hypot
 
 /**
+ * What a window is sent to draw the stroke layer: every living stroke's lines as compact JSON, and
+ * the point index the strokes use to find each other.
+ *
+ * [StrokeSketch] calls both. [StrokeLayerFrames.indexedPositions] runs once per stroke per physics
+ * step, over the lines that stroke has just drawn, and the flat x, y array it returns is what
+ * [Stroke.closestOutput] searches on the step after. [StrokeLayerFrames.encode] runs once per
+ * published frame, and its JSON reaches every window showing the document as `stroke-layer-frame`;
+ * `strokeLayer.kt` in the frontend draws it.
+ *
+ * Only what a canvas needs crosses the wire. Coordinates are world units rounded to a tenth, colours
+ * arrive as CSS rather than as vectors, and a per-node colour or dot radius is sent only when some
+ * node sets one. Overshoot ticks ([FLine.overshoot]) are worked out here and sent as finished
+ * segments. `StrokeVerbsTest` asserts the paths, colours, dots and ticks of a frame, and that an
+ * ignored line stays out of the index.
+ */
+
+/**
  * One frame of the stroke layer, as the JSON the page draws (`strokeLayer.kt` in the frontend).
  *
  * ```
@@ -84,7 +101,6 @@ object StrokeLayerFrames {
             is FLine.LineTo -> op(1, node.to)
             is FLine.CubicTo -> op(2, node.c1, node.c2, node.to)
             is FLine.Close -> op(3)
-            else -> node.toOrNull?.let { op(1, it) }
         }
         out.append(']')
 

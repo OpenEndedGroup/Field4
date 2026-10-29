@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T21:02:53.171Z",
+  "documentName": "confluence_grid",
+  "outputs": [
+    {
+      "uid": "confluence_grid",
+      "channel": "confluence3d",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 1468,
+      "height": 848,
+      "path": "outputs/0.html"
+    }
+  ]
+}

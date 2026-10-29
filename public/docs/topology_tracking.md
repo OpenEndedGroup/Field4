@@ -114,12 +114,6 @@ val tracks = lasting.map { track ->
         thickness = 1.5
     }
 }
-val tracks = lasting.map { track ->
-    track.toFLine().apply {
-        color = FeatureTracker.colourOf(track.id)
-        thickness = 1.5
-    }
-}
 val dark = Img(print.width, print.height, 3, FloatArray(print.width * print.height * 3))
 showImgGrid(
     "photograph" to print,

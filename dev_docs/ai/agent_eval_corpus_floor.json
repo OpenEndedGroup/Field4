@@ -1,0 +1,2790 @@
+{
+ "what": "agent-eval --corpus all --mode scripted (the corpus's scripted floor) on a live Field, port 9631",
+ "command": "uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9631 --command 'agent-eval --corpus all'",
+ "date": "2026-10-27",
+ "commit": "bd401d9b0 + recalibrated agent_eval_corpus.json",
+ "passed": 132,
+ "population": 132,
+ "elapsedMs": 114402,
+ "documentsBefore": 1,
+ "documentsAfter": 1,
+ "capturePagesOpenAfter": 0,
+ "results": [
+  {
+   "taskId": "alife_walls/hit_a_wall",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 5466
+  },
+  {
+   "taskId": "alife_walls/route_vs_seek",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 1224
+  },
+  {
+   "taskId": "alife_walls/cling_and_climb",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 965
+  },
+  {
+   "taskId": "audio_ai_gesture_board/draw_the_gesture",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 594
+  },
+  {
+   "taskId": "box_graph_demo/bgdemo_sibling",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "connected",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 1408
+  },
+  {
+   "taskId": "box_graph_demo/bgdemo_bloom",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "connected",
+     true
+    ],
+    [
+     "connected",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 2199
+  },
+  {
+   "taskId": "box_graph_demo/bgdemo_sketch",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "connected",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 1041
+  },
+  {
+   "taskId": "certified_envelope/range",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 693
+  },
+  {
+   "taskId": "certified_envelope/limits",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 659
+  },
+  {
+   "taskId": "chart_clip/clip_on",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 2128
+  },
+  {
+   "taskId": "chart_clip/clip_off",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 1364
+  },
+  {
+   "taskId": "chart_clip/note_wrap",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 1344
+  },
+  {
+   "taskId": "chart_clip/clip_marks",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 1482
+  },
+  {
+   "taskId": "chart_primitive/chart_one_call",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 1374
+  },
+  {
+   "taskId": "chart_primitive/chart_pick",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 1293
+  },
+  {
+   "taskId": "clojure_box_parity/cparity_root",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 365
+  },
+  {
+   "taskId": "control_surface_laws/control_surface_button",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 434
+  },
+  {
+   "taskId": "csound_demo/cs_root",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 436
+  },
+  {
+   "taskId": "demo_document/demo_palette",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 452
+  },
+  {
+   "taskId": "demo_document/demo_swatch",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "connected",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 870
+  },
+  {
+   "taskId": "demo_document/demo_rosette",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "connected",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 938
+  },
+  {
+   "taskId": "demo_document/demo_sketch",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "connected",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 754
+  },
+  {
+   "taskId": "demo_document/demo_flower",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 352
+  },
+  {
+   "taskId": "drawing_notation/dn_projection",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 413
+  },
+  {
+   "taskId": "drawing_notation/dn_crescendo",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 422
+  },
+  {
+   "taskId": "drawn_morph/dm_shapes",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 415
+  },
+  {
+   "taskId": "drawn_paint/dp_strokes",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 402
+  },
+  {
+   "taskId": "drawn_paint/dp_paint",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 427
+  },
+  {
+   "taskId": "drawn_paint/dp_crossings",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 448
+  },
+  {
+   "taskId": "drawn_paint/dp_drying",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 472
+  },
+  {
+   "taskId": "drawn_paint/dp_pencil",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 396
+  },
+  {
+   "taskId": "drawn_score/ds_score",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 413
+  },
+  {
+   "taskId": "drawn_score/ds_listen",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 882
+  },
+  {
+   "taskId": "dynamic_graph_systems_examples/dgs_hysteresis",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 874
+  },
+  {
+   "taskId": "faust_polyphony/faust_polyphony_refusal",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 4985
+  },
+  {
+   "taskId": "faust_voice/faust_voice_diagram",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 2164
+  },
+  {
+   "taskId": "faust_voice/faust_voice_waveform",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 631
+  },
+  {
+   "taskId": "faust_voice/faust_voice_interface",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 1090
+  },
+  {
+   "taskId": "frames_lifecycle/frames_lifecycle_forever",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 1326
+  },
+  {
+   "taskId": "frames_lifecycle/frames_lifecycle_stops",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 1306
+  },
+  {
+   "taskId": "gesture_paint_replay/gpr_pad",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 494
+  },
+  {
+   "taskId": "gesture_paint_replay/gpr_dimensions",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 545
+  },
+  {
+   "taskId": "imaging_cv_examples/imaging_filters",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 2898
+  },
+  {
+   "taskId": "imaging_vector_kernels/imaging_perf_pyrdown",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 728
+  },
+  {
+   "taskId": "imaging_vector_kernels/imaging_perf_bilateral",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 1137
+  },
+  {
+   "taskId": "interaction_nets_lambda/lambda_normalise",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 514
+  },
+  {
+   "taskId": "interaction_nets_lambda/lambda_reduction",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 673
+  },
+  {
+   "taskId": "interaction_nets_lambda/lambda_oracle",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 931
+  },
+  {
+   "taskId": "keyframe_code_blend/kfb_breakdown",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 422
+  },
+  {
+   "taskId": "keyframe_code_blend/kfb_static",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 453
+  },
+  {
+   "taskId": "keyframe_code_blend/kfb_kotlin",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 441
+  },
+  {
+   "taskId": "keyframe_key_discovery/kf_before_after",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 671
+  },
+  {
+   "taskId": "keyframe_key_discovery/kf_orphaned_slots",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 513
+  },
+  {
+   "taskId": "keyframer_worked_example/keyframe_targets",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 487
+  },
+  {
+   "taskId": "keyframer_worked_example/keyframe_persist",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 533
+  },
+  {
+   "taskId": "keyframer_worked_example/keyframe_updatecode",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 440
+  },
+  {
+   "taskId": "logging_layer/log_channels",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 405
+  },
+  {
+   "taskId": "logging_layer/log_mute",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 414
+  },
+  {
+   "taskId": "logging_layer/log_mute_is_console_only",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 623
+  },
+  {
+   "taskId": "logging_layer/log_blocks",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 488
+  },
+  {
+   "taskId": "logging_layer/log_stats",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 426
+  },
+  {
+   "taskId": "macro_recorder_stamp/mr_stamp",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 484
+  },
+  {
+   "taskId": "madp_chargrid/madp_chargrid_plasma",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 1310
+  },
+  {
+   "taskId": "marf_demo/marf_path",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 646
+  },
+  {
+   "taskId": "marf_demo/marf_vector",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 531
+  },
+  {
+   "taskId": "mesh_geometry_examples/mesh_primitives",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 627
+  },
+  {
+   "taskId": "mesh_geometry_examples/mesh_marching",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 1493
+  },
+  {
+   "taskId": "mesh_geometry_examples/mesh_modelling",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 1403
+  },
+  {
+   "taskId": "mesh_geometry_examples/mesh_process",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 731
+  },
+  {
+   "taskId": "mesh_geometry_examples/mesh_measure",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 630
+  },
+  {
+   "taskId": "mesh_geometry_examples/mesh_inline_view",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 482
+  },
+  {
+   "taskId": "offline_viewer_demo/995d4515-cba7-425d-a369-cc80dd953245",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 526
+  },
+  {
+   "taskId": "offline_viewer_demo/b4fffaa4-cf67-48c0-8108-2cd3b969a7df",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 389
+  },
+  {
+   "taskId": "paint_canvas/paint_first_strokes",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 399
+  },
+  {
+   "taskId": "paint_canvas/paint_flow_field",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 378
+  },
+  {
+   "taskId": "paint_canvas/paint_pencil_drawing",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 384
+  },
+  {
+   "taskId": "pattern_condense/condense_invents_nothing",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 1688
+  },
+  {
+   "taskId": "petri_state_space/petri_ss_unbounded",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 385
+  },
+  {
+   "taskId": "photo_to_solid_chain/photo_plaque",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 2695
+  },
+  {
+   "taskId": "photo_to_solid_chain/photo_boolean",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 999
+  },
+  {
+   "taskId": "photo_to_solid_chain/photo_levelset",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 826
+  },
+  {
+   "taskId": "point_matching/match_hello",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 509
+  },
+  {
+   "taskId": "polytope_canonical_gallery/polytope_canonical_gallery",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 716
+  },
+  {
+   "taskId": "polytope_conway_gallery/polytope_expression_gallery",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 526
+  },
+  {
+   "taskId": "polytope_conway_gallery/polytope_abstract_dual",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 405
+  },
+  {
+   "taskId": "polytope_conway_gallery/polytope_parameter_field",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 518
+  },
+  {
+   "taskId": "polytope_conway_gallery/polytope_realization_relax",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 432
+  },
+  {
+   "taskId": "polytope_holes_and_chains/polytope_plate_with_and_without",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 429
+  },
+  {
+   "taskId": "polytope_holes_and_chains/polytope_chained_vocabulary",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 672
+  },
+  {
+   "taskId": "popup_prior_inspect/agent_popup_prior_inspect",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 372
+  },
+  {
+   "taskId": "profiling_timeline/profile_capture",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 593
+  },
+  {
+   "taskId": "pure_data_demo/pd_root",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 382
+  },
+  {
+   "taskId": "python_box_parity/parity_root",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 381
+  },
+  {
+   "taskId": "python_cells/python_root",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 358
+  },
+  {
+   "taskId": "read_only_session/a_saved_counter",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 356
+  },
+  {
+   "taskId": "read_only_session/how_to_see_read_only_mode",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 351
+  },
+  {
+   "taskId": "skinned_characters/rig_facts",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 622
+  },
+  {
+   "taskId": "skinned_characters/path_trace",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 587
+  },
+  {
+   "taskId": "smpte_timecode/tc_arithmetic",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 408
+  },
+  {
+   "taskId": "smpte_timecode/tc_ltc_roundtrip",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 448
+  },
+  {
+   "taskId": "solidsl_gallery/refusals",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 2852
+  },
+  {
+   "taskId": "solidsl_inverse/inverse",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 1784
+  },
+  {
+   "taskId": "solidsl_inverse/refusals",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 1294
+  },
+  {
+   "taskId": "solidsl_notation/solidsl_part",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 844
+  },
+  {
+   "taskId": "solidsl_notation/solidsl_shader",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 386
+  },
+  {
+   "taskId": "sorting_networks/sorting_topology",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 1325
+  },
+  {
+   "taskId": "sorting_networks/sorting_disorder",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 1320
+  },
+  {
+   "taskId": "spatial_geometry_examples/spatial_delaunay",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 485
+  },
+  {
+   "taskId": "spatial_geometry_examples/spatial_apollonius",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 459
+  },
+  {
+   "taskId": "spatial_geometry_examples/spatial_contours",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 521
+  },
+  {
+   "taskId": "spatial_geometry_examples/spatial_marching",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 408
+  },
+  {
+   "taskId": "spatial_geometry_examples/spatial_iso_sweep",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 390
+  },
+  {
+   "taskId": "spectral_examples/spectral_one_spectrum",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 417
+  },
+  {
+   "taskId": "spectral_examples/spectral_spectrogram",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 474
+  },
+  {
+   "taskId": "spectral_examples/spectral_mel",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 493
+  },
+  {
+   "taskId": "spectral_examples/spectral_resonator",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 520
+  },
+  {
+   "taskId": "spectral_examples/spectral_streaming",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 375
+  },
+  {
+   "taskId": "stacksl_evolve_studio/stacksl_evolve_studio",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 362
+  },
+  {
+   "taskId": "statistics_examples/stats_summary",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 407
+  },
+  {
+   "taskId": "stippling/stipple_hello",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 726
+  },
+  {
+   "taskId": "studies_rings/rings_study",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 515
+  },
+  {
+   "taskId": "studies_rings/rings_change",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "connected",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 1204
+  },
+  {
+   "taskId": "studies_rings/rings_try",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "connected",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 817
+  },
+  {
+   "taskId": "syphon_bridge/syphon_servers",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 336
+  },
+  {
+   "taskId": "three_inspector_wall/three-inspector-wall",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 1380
+  },
+  {
+   "taskId": "tone_synth_sequence/agent_tone_head",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 310
+  },
+  {
+   "taskId": "typography_worked_example/typo_winding",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 598
+  },
+  {
+   "taskId": "typography_worked_example/typo_mesh",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 466
+  },
+  {
+   "taskId": "typography_worked_example/typo_sdf",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 1639
+  },
+  {
+   "taskId": "typography_worked_example/typo_points",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 366
+  },
+  {
+   "taskId": "vision_geometry_desk_preview/agent_vision_geometry_desk_preview",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 3484
+  },
+  {
+   "taskId": "vision_geometry_desk_preview/agent_vision_geometry_desk_preview_inverted",
+   "verdict": "pass",
+   "checks": [
+    [
+     "box-exists",
+     true
+    ],
+    [
+     "last-run-ok",
+     true
+    ],
+    [
+     "output-contains",
+     true
+    ]
+   ],
+   "elapsedMs": 1885
+  }
+ ]
+}

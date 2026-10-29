@@ -16,6 +16,9 @@ Load it on an Android phone, on a headset, or in a second browser window on the 
 
 There is no external key, hosted scene, or platform-specific page to set up.
 
+To sketch in a browser tab on your desktop, with no headset involved, start with [Javascript in a
+browser tab](remotejs.md); this page is the reference for the head itself and for WebXR.
+
 This is the *browser* head. Field's other head is native and does not go through WebXR at all. See
 [Apple Vision Pro](vision.md) for the visionOS front end, its RealityKit and Live Metal surfaces,
 and the pose channel that lets the desktop renderer draw from the wearer's own viewpoint.
@@ -117,7 +120,7 @@ launch(function () {
 }, "move-triangle", false)
 ```
 
-The optional third argument controls one-shot behavior. `false` keeps the function in the runloop. `over(seconds, name, callback)` supplies a value from 0 to 1 over a duration. Field's stop action removes tasks launched by that box. Animation mixers for loaded glTF assets advance on this same scene tick; there is no second `requestAnimationFrame` loop.
+The optional third argument controls one-shot behavior. `false` keeps the function in the runloop. `over(seconds, name, callback)` supplies a value from 0 to 1 over a duration. Stop removes every task the box started, both its own `_r` task and each `launch(...)`. Animation mixers for loaded glTF assets advance on this same scene tick; there is no second `requestAnimationFrame` loop.
 
 ## Pointer and XR interaction
 
@@ -155,11 +158,17 @@ var latest = xrHit()
 
 The head requests `local-floor`, `viewer`, and `hit-test` through standard WebXR. Android browsers provide these directly. Endrun supplies the same `navigator.xr` surface from ARKit on iOS.
 
+## Printing, display and controls
+
+A RemoteJS box prints beside its lines, marks errors where they happen, and draws `display`
+channels, sliders and checkboxes the way a Kotlin box does. [Javascript in a browser
+tab](remotejs.md) covers all of it, with the box on a desktop rather than a headset.
+
 ## Completion and errors
 
 Completion is generated in the connected head from live globals, sandbox variables, prototypes, Three.js, and the documented helper functions. It does not evaluate arbitrary function calls while completing a member expression.
 
-Every execution carries a stable `box_NAME|UUID` source name. Runtime failures and callback failures are returned to the originating Field box with the browser's message, stack, filename, line, and column. Printed values can arrive before terminal `OK`; the return channel remains open for those values and closes on the terminal response.
+Every execution carries a stable `box_NAME|UUID` source name. Runtime failures and callback failures are returned to the originating Field box with the browser's message, stack, filename, line, and column. An error is marked on the line that raised it, including a line inside a function the box defined.
 
 ## Testing the head
 

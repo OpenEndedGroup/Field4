@@ -64,8 +64,8 @@ import afield.audio.synth.tri
  *
  * RectSL.kt is already 4.6k lines, and this layer is the only part of the language that depends
  * on `afield.audio.synth`. Keeping the dependency in one file means the rest of RectSL still
- * compiles and reads without knowing the pattern language exists. The seams it needs from
- * RectSL.kt are deliberately small and marked `internal`: [RectLangVm.word]/[RectLangVm.mutator]
+ * compiles and reads without knowing the pattern language exists. What it reaches back into
+ * RectSL.kt for is a short list: [RectLangVm.word]/[RectLangVm.mutator]
  * (so the musical words register through the same one path as every other word),
  * [RectLangVm.loopStack] and [LoopFrame.pat] (so `i`/`n`/`f` keep working inside a `pat` body),
  * [SceneBuilder.mapScalarTracks], and [SceneBuilder.cps].
@@ -104,7 +104,7 @@ data class VSig(val signal: PatPattern<Double>) : Value
  * [SAMPLE_DENOM], which is a microcycle: far below a frame at any sane tempo, and small enough
  * that a continuous signal's arc-midpoint convention returns essentially the value at `t`.
  *
- * Two behaviours worth knowing:
+ * Two behaviours of the sampled result:
  * - **A rest is a zero, not a hold.** `"1 ~ 1"` returns [fallback] in the middle third, because
  *   the pattern genuinely has no event there. Holding would require remembering the previous
  *   sample, which is state, which would break the purity the rest of this bridge depends on.

@@ -1,5 +1,15 @@
 package afield.graphics.scene.fabricated
 
+/**
+ * The ordering primitive the Fabricate renderer's pass collections are built on.
+ *
+ * Both [FabricatePostStack] and [FabricateFrameGraph] hold a [FabricatePassGraph], so what a pass
+ * name means, and where a new pass may go relative to one already there, is settled once here
+ * rather than once per collection. The same file carries the rule that decides where a
+ * replacement chain picks up its input: the output of the pass before the first one it replaces,
+ * or the chain's original input when that pass comes first.
+ */
+
 /** New chains append; replacements keep the input before their first existing pass. */
 internal fun <T> inputBeforeReplacement(
     entries: List<Pair<String, T>>,

@@ -48,6 +48,9 @@ class PolyvectorTest {
     fun capabilityIsReported() {
         assertTrue("polyvector" in NativeGeometry.names)
         assertEquals(PolyvectorLibrary.isAvailable, NativeGeometry.available("polyvector"))
+        for (dependency in listOf("OpenCV", "Boost", "Eigen", "buildPolyvectorNative")) {
+            assertTrue(dependency in PolyvectorLibrary.HOW_TO_BUILD, "missing prerequisite: $dependency")
+        }
         if (!PolyvectorLibrary.isAvailable) assertTrue(PolyvectorLibrary.describe().contains("brew install"))
     }
 

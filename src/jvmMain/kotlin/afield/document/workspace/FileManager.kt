@@ -39,6 +39,7 @@ import afield.geometry.mesh.contains
 import afield.graphics.vulkan.buffers.add
 import afield.document.graph.Box
 import afield.app.server.SessionInformation
+import afield.app.server.ReadOnlyDocuments
 import afield.document.workspace.listWorkspaceProjects
 import afield.document.workspace.projectsDir
 import afield.app.server.thisSessionInfo
@@ -50,6 +51,7 @@ import java.util.Collections
 import java.util.WeakHashMap
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.stream.Stream
 
 /**
@@ -102,6 +104,7 @@ const val FILE_MANAGER_ACCESS_HISTORY_PROPERTY = "fileManagerAccessHistory"
 class FieldFileManager internal constructor(private val session: SessionInformation) {
     private val resolved = ConcurrentHashMap<String, FileResolution>()
     private val sequence = AtomicLong(0)
+    private val reportedReadOnlyDirectory = AtomicBoolean(false)
     private var seenGlobalVersion = FileManager.globalVersion()
 
     init {
@@ -115,16 +118,27 @@ class FieldFileManager internal constructor(private val session: SessionInformat
     /**
      * This document's own `files/` directory, the first place a relative name is looked for.
      *
-     * **Created on read** if it does not exist, so merely asking for it has a side effect on disk.
+     * Created on read if it does not exist, except in a read-only session, which returns the path
+     * without creating it. Merely asking for it can therefore have a side effect on disk.
      */
     val documentFilesDirectory: Path
-        get() = documentDirectory.resolve("files").normalize().also { Files.createDirectories(it) }
+        get() = documentDirectory.resolve("files").normalize().also {
+            if (!Files.isDirectory(it)) {
+                if (session.readOnly || ReadOnlyDocuments.global) {
+                    if (reportedReadOnlyDirectory.compareAndSet(false, true)) {
+                        ReadOnlyDocuments.refuseWrite("FileManager.documentFilesDirectory", it.toString())
+                    }
+                } else {
+                    Files.createDirectories(it)
+                }
+            }
+        }
 
     /**
      * The `files/` directory of every workspace project this document belongs to — where a name not found in the
      * document itself is looked for next. Empty when the document is in no project.
      *
-     * Like [documentFilesDirectory], reading this **creates** the directories.
+     * Reading this creates the project directories, which live outside the document.
      */
     val projectFilesDirectories: List<Path>
         get() = currentProjectFilesDirectories(create = true)
@@ -186,12 +200,12 @@ class FieldFileManager internal constructor(private val session: SessionInformat
     private fun resolveMappedPath(spec: String): FileResolution {
         val (name, rest) = splitMappedPath(spec)
         return when (name) {
-            "document" -> resolveInRoot(documentFilesDirectory, rest, spec, createRoot = true)
+            "document" -> resolveInRoot(documentFilesDirectory, rest, spec)
             "project" -> resolveProjectPath(rest, spec)
             else -> {
                 val root = FileManager.namedDirectory(name)
                     ?: error("No FileManager directory named '%$name'")
-                resolveInRoot(root, rest, spec, createRoot = false, source = "%$name")
+                resolveInRoot(root, rest, spec, source = "%$name")
             }
         }
     }
@@ -236,10 +250,8 @@ class FieldFileManager internal constructor(private val session: SessionInformat
         root: Path,
         rest: String,
         originalSpec: String,
-        createRoot: Boolean,
         source: String = "document"
     ): FileResolution {
-        if (createRoot) Files.createDirectories(root)
         if (rest.isBlank()) return FileResolution(root, source)
         if (hasGlob(rest)) {
             return searchFirst(listOf(FileSearchRoot(source, root)), rest)
@@ -251,6 +263,7 @@ class FieldFileManager internal constructor(private val session: SessionInformat
     private fun searchRoots(): List<FileSearchRoot> {
         return listOf(FileSearchRoot("document", documentFilesDirectory)) +
             currentProjectFileRoots(create = false) +
+            listOfNotNull(KitInstances.sharedResources(documentDirectory.toFile())?.let { FileSearchRoot("kit", it.toPath()) }) +
             FileManager.searchDirectories().map { (name, path) -> FileSearchRoot("search:$name", path) }
     }
 

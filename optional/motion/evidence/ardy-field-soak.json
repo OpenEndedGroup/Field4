@@ -1,0 +1,12 @@
+{
+  "bufferDropped": 11996,
+  "wallSeconds": 600.0022984839743,
+  "edits": 29,
+  "queued": 0,
+  "frameCount": 12004,
+  "workerMemoryMinMiB": 1364,
+  "workerMemoryMaxMiB": 1376,
+  "display": "Field existing Three viewer, headless Chromium; native Vulkan not measured",
+  "bufferDropsAreHistoryEvictions": true,
+  "displayUnderrunsMeasured": false
+}

@@ -11,6 +11,31 @@ import afield.graphics.vulkan.device.UpdatesDescriptorSet
 import afield.app.diagnostics.logging.lprintln
 import org.lwjgl.system.MemoryUtil
 
+/**
+ * What survives when a module compiles a new shader and swaps it in: which uniform buffers keep
+ * their contents, which are reallocated, which are retired, and which of the values already written
+ * into them are re-applied.
+ *
+ * Every module pointer finishes a reload through `ReloadCarryOver.finishAndNotify`, which runs this
+ * generic policy first and the [ModuleRebuild] hooks second, so a hook only fills in what the policy
+ * left. The policy reads the [ShaderInterfaceTransition] between the old and new introspections. A
+ * uniform block whose layout is unchanged keeps its buffer and its bytes, including across a rename,
+ * since the same members at the same offsets still mean what they meant. A block that was resized or
+ * retyped gets a fresh buffer, zeroed before anything writes it, and the values set on the old one
+ * are re-applied wherever they still fit the new reflection. A buffer the old module allocated and
+ * the new one does not use goes through the renderer's retirement queue rather than being freed under
+ * a frame that may still be reading it.
+ *
+ * Only a buffer the module allocated for itself is zeroed, carried by layout or retired. One that
+ * came from the surrounding context, or that a resolver the box supplied handed back, is resolved
+ * again the way it was the first time and is never freed here. Zeroing applies to uniform blocks
+ * only: a storage buffer has its values carried and is retired the same way, but its contents are
+ * left as they are.
+ *
+ * [ModuleReloadReport] is what the box side reads back: the transition, and one note per value that
+ * could not be carried, so a reload that silently dropped a uniform says which one.
+ */
+
 /** Point a module's uniform structure's refused writes ([Structure.reportTo]) at the module's error handler. */
 internal fun Structure.reportingTo(parameters: Parameters): Structure {
     reportTo = { message -> parameters.errorHandler(message, null) }

@@ -2355,10 +2355,15 @@ try {
   const selectedBefore = getComputedStyle(target, "::before");
   const beforeBorderWidthPx = Number.parseFloat(selectedBefore.borderTopWidth || selectedBefore.borderWidth || "0") || 0;
   const boxStyle = getComputedStyle(target);
+  const head = target.querySelector(".file-proxy-path-head");
+  const tail = target.querySelector(".file-proxy-path-tail");
   const result = {
     selected: target.classList.contains("selected"),
     fileProxyBox: target.classList.contains("file-proxy-box"),
     pathText,
+    tailText: tail?.textContent || "",
+    headTruncated: !!head && head.scrollWidth > head.clientWidth,
+    tailWhole: !!tail && tail.clientWidth > 0 && tail.scrollWidth <= tail.clientWidth,
     beforeBorderColor: selectedBefore.borderColor,
     beforeBorderWidth: selectedBefore.borderWidth,
     beforeBorderWidthPx,
@@ -2370,6 +2375,9 @@ try {
   result.ok = result.selected &&
     result.fileProxyBox &&
     !!result.pathText &&
+    result.tailText === "/scenes/regression.txt" &&
+    result.headTruncated &&
+    result.tailWhole &&
     result.boxIsSelectedColor &&
     !result.beforeIsSelectedColor &&
     result.beforeBorderWidthPx >= 4 &&
@@ -4474,11 +4482,11 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
         ),
         UiRegression(
             id="selection-highlight-file-proxy",
-            description="Selected file-proxy boxes keep the visible selection ring on the box outline even with a subtitle.",
+            description="Selected file-proxy boxes keep the visible selection ring on the box outline even with a subtitle, whose long path truncates in the middle.",
             commands=[
                 "new-box --name SelectionSubtitleRegression --w 260 --h 110",
                 shell_join(["set", "@last", "file_proxy_mode", "absolute"]),
-                shell_join(["set", "@last", "file_proxy_path", "/tmp/selection-subtitle-regression.txt"]),
+                shell_join(["set", "@last", "file_proxy_path", "/private/tmp/selection-subtitle-regression/src/scenes/regression.txt"]),
                 "sleep 0.5",
                 shell_join(["page-eval", "--body", "--file", str(files["selection_subtitle_box_js"]), "--timeout", pw_timeout]),
             ],
@@ -4558,7 +4566,7 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
         ),
         UiRegression(
             id="ai-chat-fence-renderers",
-            description="AI4 chat renders registered fences, loads Mermaid, and keeps source visible when a diagram fails.",
+            description="AI4 chat renders registered fences, loads Mermaid and KaTeX math, and keeps source visible when a diagram or equation fails.",
             document=f"ui-regression-chat-fences-{int(time.time())}",
             commands=[
                 "new-box --name FenceRenderers --x 40 --y 40",
@@ -4612,7 +4620,7 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
         ),
         UiRegression(
             id="canvas-flight",
-            description="A filmed canvas flight through three bookmarks has one frame per 1/fps, reaches each bookmark exactly where restoring it does, turns the three.js sheet at 8 degrees a second, and gives the sheet its camera back.",
+            description="A filmed canvas flight through three bookmarks has one frame per 1/fps, reaches each bookmark exactly where restoring it does, turns the three.js sheet at 8 degrees a second, and gives the sheet its camera back; a sheet whose panel opens mid-flight joins it there and turns from that moment.",
             document=f"ui-regression-canvas-flight-{int(time.time())}",
             commands=[
                 "viewport 1280x720",
@@ -4629,6 +4637,7 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
                     "--record", str(BUILD_ROOT / "scratch" / "canvas-flight.mp4"),
                 ]),
                 shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/canvas-flight-check.js"), "--timeout", pw_timeout]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/canvas-flight-late-view.js"), "--timeout", pw_timeout]),
                 "viewport default",
             ],
             screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),

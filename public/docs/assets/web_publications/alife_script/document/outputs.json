@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T17:41:45.370Z",
+  "documentName": "alife_script",
+  "outputs": [
+    {
+      "uid": "patrol",
+      "channel": "breadth",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "plotly"
+      ],
+      "width": 712,
+      "height": 458,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "regime",
+      "channel": "order",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "plotly"
+      ],
+      "width": 712,
+      "height": 458,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "one_agent",
+      "channel": "orbit",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/2.html"
+    }
+  ]
+}

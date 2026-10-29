@@ -2,9 +2,9 @@
 
 Press `alt/option-D` and the canvas becomes a drawing surface. Press it again and you are back with the boxes.
 
-The drawing surface is [Excalidraw](https://excalidraw.com), the open-source whiteboard ([source on GitHub](https://github.com/excalidraw/excalidraw)), running inside Field and laid over your boxes. It is the whole thing, not a sketch pad built to look like it: pens, shapes, arrows and text in its hand-drawn style, its toolbar and its keyboard shortcuts. What you draw stays where you put it, pans and zooms with the canvas, and is saved with the document.
+The drawing surface is [Excalidraw](https://excalidraw.com), the open-source whiteboard ([source on GitHub](https://github.com/excalidraw/excalidraw)), running inside Field and laid over your boxes. It is the whole thing, not a sketch pad built to look like it: pens, shapes, arrows and text in a plain style (Iosevka text, crisp lines and square corners; the "sloppiness" and font controls bring back the hand-drawn look), its toolbar and its keyboard shortcuts. What you draw stays where you put it, pans and zooms with the canvas, and is saved with the document.
 
-A whiteboard inside your document is already unusual. What makes it Field's is that your code can read the drawing and write to it. Every stroke is data a box can ask about, and every box can draw.
+Your code can read the drawing and write to it. Every stroke is data a box can ask about, and every box can draw.
 
 ![Field with the drawing layer switched on: Excalidraw's toolbar across the top of the window, over a score drawn by a box's code, blue rectangles, a red pen-stroke glissando, a green level line and an orange playhead, with the box that drew them to the left](assets/chain_drawn_score/hero.png)
 
@@ -45,20 +45,27 @@ notation {
 Run both, press `alt/option-D`, pick the pen and draw. Below, the stroke was drawn with the mouse, and the green copy is the box's answer:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1400x560" clip="0,0,1400,380" hide-toasts=true screenshot="assets/drawing_and_notation/listen.png" transcript="assets/transcripts/notation_listen_setup.yaml" padding="0" wait="0" timeout="120" embed=true hidden=true name="notation-listen" alt="The drawing layer switched on over two boxes, 'listen' and 'tell', joined by a blue arrow labelled 'tells'. A pale wave drawn with the pen runs across the canvas below them, a green copy of it runs alongside, and the listen box's output reports the stroke's point count and length."}
-// The boxes come from the setup transcript. Switch the drawing layer on, as Alt-D does, take
-// the pen, and draw a wave with the mouse: a real stroke, which the listen box hears once it is
-// finished.
+/*
+The boxes come from the setup transcript. Switch the drawing layer on, as Alt-D does, take
+the pen, and draw a wave with the mouse: a real stroke, which the listen box hears once it is
+finished.
+*/
 ui.eval("window.toggleDrawingLayer(); return window.drawingLayerState()")
 ui.waitForSelector("#field-drawing-layer .excalidraw", 15000.0)
 var ready = ""
 for (i in 0 until 60) {
     ui.pause(250)
-    ready = ui.eval("""
+    ready =
+        ui.eval(
+                """
         const s = window.drawingLayerState()
         const tools = document.querySelector("#field-drawing-layer .App-toolbar")
         const shown = !!tools && tools.getBoundingClientRect().width > 0
         return (s && s.active && shown) ? "ready" : "waiting"
-    """.trimIndent()).toString()
+    """
+                    .trimIndent(),
+            )
+            .toString()
     if (ready.contains("ready")) break
 }
 check(ready.contains("ready")) { "the drawing layer's toolbar never showed" }
@@ -76,10 +83,15 @@ ui.mouseUp()
 var echoed = ""
 for (i in 0 until 80) {
     ui.pause(250)
-    echoed = ui.eval("""
+    echoed =
+        ui.eval(
+                """
         const els = window.drawingLayerScene()
         return els.some(e => !e.isDeleted && e.customData && e.customData.fieldKey === "echo") ? "echoed" : "waiting"
-    """.trimIndent()).toString()
+    """
+                    .trimIndent(),
+            )
+            .toString()
     if (echoed.contains("echoed")) break
 }
 check(echoed.contains("echoed")) { "the listen box never answered the stroke" }
@@ -279,7 +291,7 @@ Draw two hairpins, or a diminuendo after the crescendo, and the same reading cod
 
 ## The starting point
 
-Open [drawing_notation](agent_transcripts.md#drawing_notation) from the welcome screen's starting points. It has the ideas on this page as six boxes you run and then draw against: `draw`, `read`, `listen`, `projection 1`, `fontana mix` and `crescendo`. Or [browse it in the offline viewer](offline.html?file=assets/agent_transcripts/drawing_notation/metadata.edn).
+Open [drawing_notation](agent_transcripts.md#drawing_notation) from the welcome screen's starting points. It has the ideas on this page as six boxes you run and then draw against: `draw`, `read`, `listen`, `projection 1`, `fontana mix` and `crescendo`. Or [browse it in the offline viewer](offline.html?file=assets/agent_transcripts/drawing_notation/metadata.edn). The offline viewer draws the drawing layer under the boxes too: [this small document](offline.html?file=assets/offline_viewer_demo/metadata.edn) has a drawing written by its `sketch` box, and notes on every box.
 
 [notation_elements](agent_transcripts.md#notation_elements) draws every kind of mark from code, reads a score, and calls each part of the API once in a box called `audit`, which prints one line per call.
 

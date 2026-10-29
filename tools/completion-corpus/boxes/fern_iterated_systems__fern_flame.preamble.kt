@@ -1,12 +1,12 @@
-import afield.graphics.vulkan.Renderer
-import afield.graphics.vulkan.util.Window
-import arrow.core.right
-import arrow.core.left
-import afield.graphics.shader.*
-import afield.graphics.scene.*
-import afield.graphics.render.*
-import afield.document.context.*
 import afield.graphics.vulkan.buffers.*
+import afield.document.context.*
+import afield.graphics.render.*
+import afield.graphics.scene.*
+import afield.graphics.shader.*
+import arrow.core.left
+import arrow.core.right
+import afield.graphics.vulkan.util.Window
+import afield.graphics.vulkan.Renderer
 /*compute-pc-structure:particles*/ var Structure.particles by Structure.FromStructure<Any>()
 /*compute-pc-binding:particles*/ var ComputeMesh.particles by ComputeMesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
 /*compute-pc-binding-group:particles*/ var ComputeMeshGroup.particles by ComputeMeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()

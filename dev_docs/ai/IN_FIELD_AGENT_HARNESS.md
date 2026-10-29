@@ -270,11 +270,180 @@ nightly agent brought up a Field on this night's assigned port 9611, so the caus
 port collision is the leading suspect. It cost one live task (primes, abandoned mid-turn). The rest
 ran on port 9637 and over HTTP.
 
+## Mined corpus (2026-10-26)
+
+`AgentEvalCorpus` (`ai/agent/AgentEvalCorpus.kt`) mines tasks from the operation transcripts in
+`dev_docs/agents/transcripts/`, so the suite stops being seventeen hand-written tasks. Each mined task has
+four parts. The goal gives the box's name, its parents, the first two sentences of its leading comment and
+the text its output must include. The setup is the box's ancestors, created with their code and run. The
+solution is the box's real code. The checks are `box-exists`, `last-run-ok`, `connected` per parent, and
+`output-contains` on output that came out the same in two scripted runs. No new check kind was added. The
+calibrated corpus is checked in as `src/jvmMain/resources/ai4/agent_eval_corpus.json`. The split is fixed by
+id hash, with about a third `heldout`.
+
+```bash
+B="uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9631 --command"
+$B 'agent-eval --calibrate'                       # re-mine + rewrite the corpus (~4 min)
+$B 'agent-eval --corpus all'                      # scripted floor
+$B 'agent-eval --corpus heldout --sample 20 --seed 1 --mode live --lessons on --sealed'
+```
+
+`--sealed` withholds the four repository-search tools: a mined task's answer is in the repository (below).
+Corpus live runs are capped at **25** sampled tasks. The hand suite's cap stays at 17. Demo:
+`dev_docs/agents/transcripts/agent_eval_corpus.yaml`, two boxes that print the corpus summary and one task.
+
+**Yield** (267 transcripts, 978 code boxes): 177 static candidates, **116 tasks** (89 checked on printed
+lines, 18 on a displayed text node, 9 only on a tag such as `<svg`; 35 heldout). The dropped boxes, by reason:
+
+| reason | boxes | stage |
+| --- | --- | --- |
+| not executed whole by its transcript (fragment runs, never run) | 366 | static |
+| renderer / Mesh / Vulkan (incl. 5 via an ancestor) | 210 | static |
+| no output call | 99 | static |
+| ran, but said nothing the tool result carries (mostly `lines(...)`/drawing helpers) | 51 | calibration |
+| audio, files, clock, camera, python, threads, `loop {}`/`start {}`, shader, unseeded random | 113 | static |
+| solution fails in a scratch document (NPE, "another document is recording", source-backed block) | 7 | calibration |
+| output differs between two runs | 3 | calibration |
+| other (too long, unknown ancestor, self-reference) | 13 | static |
+
+**What mines well**: CPU boxes that `println` a computed summary (`hysteresis on: 553 edges created, ...`).
+These are 89 of 116 tasks and every live failure but one infrastructure error. **What mines badly**: drawing
+boxes, whose output never reaches the tool result as text (51 dropped, and 9 kept only with a tag check that
+any SVG passes). Graphics are a third of the transcripts and cannot be mined without a renderer parent.
+**What is brittle**: 18 tasks check floating-point layout to four or more decimals (`plotRect:
+Rect(x=73.71484375, ...)`). The one task that failed in both sealed arms (`chart_clip/clip_on`) is of
+this kind. 32 tasks have no leading comment, so their goal is a name and a target text.
+
+Two harness bugs turned up and were fixed:
+- `ScriptedLlmBridge` treated every `${a.b}` as a placeholder. Any box code with a Kotlin template such as
+  `"${it.name}"` threw, which cost 70 of 177 candidates. Placeholders must now name a tool
+  (`${XxxRequest.field}`).
+- One check quoted the calibrating worktree's absolute path. Lines with absolute paths, uids or identity
+  hashes are no longer checks.
+
+### Results (2026-10-26): scripted floor and live before/after
+
+Scripted floor on live Field (port 9631): **116/116** in 93 s, documents 1 → 1 (118/118 on the corpus
+before the path filter). Live runs used openai gpt-6.1-sol (`AFIELD_AI_PROVIDER=openai`), because the
+configured local endpoint did not answer. Each arm is 20 seeded tasks, one run per arm:
+
+| arm | population | lessons | search | pass | rounds | input tokens | misuse |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| A | train, seed 1 | off (v5), then `--distil` → v6 | on | 20/20 | 148 | 2,834,827 | 15 |
+| B | heldout, seed 1 (corpus of 118) | off | on | 19/20 | 201 | 3,975,333 | 28 |
+| C | same 20 as B | on (v6, from A) | on | 20/20 | 159 | 3,133,460 | 5 |
+| D | heldout, seed 1 (corpus of 116) | off | sealed | 17/20 | 174 | 3,317,309 | 14 |
+| E | same 20 as D | on (v6) | sealed | 19/20 | 150 | 3,471,504 | 10 |
+
+Arm A's distil wrote three lessons: `DescribeToolsRequest` asked for a non-existent `AttachmentRequest`,
+`WorkspaceSearchRequest` was called with an empty query, and `EvaluateKotlinExpressionRequest` was given a
+blank target. On held-out tasks the lessons cut misuse 28 → 5 with search on and 14 → 10 sealed, and cut
+rounds 201 → 159 and 174 → 150. Pass rate is near ceiling (B 19, C 20, D 17, E 19), so on this population
+it does not separate the arms. One run per arm: read the misuse difference as a direction, not an effect
+size. D's three misses are two layout-float tasks the model renamed or abandoned and one provider outage
+(`provider remained temporarily unavailable`). Arm B's miss is the absolute-path check, since removed.
+The distilled v6 lessons were **not** kept. `agent_lessons.md` is unchanged in this branch, because
+replacing the hand-suite lessons is a separate decision. The v6 text is in the nightly worklog.
+
+**Contamination.** The solutions are in the repository, and the model looks for them. Some non-box tool
+result held a line of the task's own solution in 3, 5 and 4 of 20 tasks (A, B, C), through
+`SemanticRetrievalSearchRequest` and `EvaluateKotlinExpressionRequest` reading the transcript. Truncated
+results make this a lower bound. Sealed, it fell to 1 and 2 of 20, all through
+`EvaluateKotlinExpressionRequest`, which can read files and is not withheld. Use `--sealed` for corpus
+numbers. A clean seal needs either the corpus solutions kept out of the agent's reachable tree or file
+reads denied for that path.
+### Continue pass (2026-10-27): runaways, a real seal, the floor on disk
+
+- **Runaway code.** The `forever` deny list now also matches `while (true)` and `do { } while (true)`, and
+  `markdown(...)` counts as output. Runaway code the deny list cannot see, such as recursion with no base
+  case, hits a 20 s calibration timeout (`CALIBRATION_TIMEOUT_SECONDS`). It is rejected as `timeout`, or as
+  `interrupted` once the Runloop watchdog (`BoxInterruptedError`) stops it. It is not counted as
+  `solution-fails`. Re-calibrated: 194 candidates, **132 tasks** (92 stdout, 31 display, 9 display-shape;
+  42 heldout), with one `timeout` rejection.
+- **Sealing.** `--sealed` also withholds `EvaluateKotlinExpressionRequest` and `CodeUseQueryRequest`
+  (`SEALED_TOOLS`), the two tools through which the 10-26 sealed arms still read their solution. Box code
+  can still open the transcript files, so withholding tools proves nothing on its own.
+  `AgentEvalCorpus.leak` searches every non-echoing tool result for the solution's five longest code
+  lines. Box output counts, so a box that printed the transcript file is caught. A sealed pass that saw
+  its solution scores `leaked`, and the report counts `leaked`.
+- **Floor on disk.** `dev_docs/ai/agent_eval_corpus_floor.json` holds the per-task result of the scripted
+  floor on live Field 9631: **132/132** in 114 s, documents 1 → 1.
+
+Held-out rerun (openai gpt-6.1-sol, sealed, heldout seed 2, 12 tasks per arm, the same 12 in both arms):
+
+| arm | lessons | pass | rounds | input tokens | misuse | leaked |
+| --- | --- | --- | --- | --- | --- | --- |
+| F | off (v5) | 12/12 | 90 | 1,716,618 | 4 | 0 |
+| G | on (v6, distilled from arm A) | 12/12 | 62 | 1,014,646 | 4 | 0 |
+
+With the wider seal, no task saw its own solution (0 of 24, against 1 and 2 of 20 before). The v6
+lessons cut rounds and tokens on this sample but not misuse, which is what they were distilled to cut.
+Arms D/E showed misuse 14 → 10. One run per arm, and the rerun does not reproduce the misuse effect, so
+**v6 is not committed**: `agent_lessons.md` stays at v5.
+
+## AI4 as the repo's third coding agent (2026-10-27)
+
+`FIELD_AGENT=field` (or `field` as the first word of `~/.afield/agent`) makes Field's own agent the one
+the repo's tools hand work to, beside `claude` and `codex`: the landing queue's `huh?`/`bouncy?` and
+fixer (`tools/land.py` through `field_agent.headless_argv`), `tools/docs_notes.py revise --agent field`,
+and the docs-pass page's terminals (`fieldAgent()` in `terminal.kt`). It is the existing headless task,
+not a new runner:
+
+- **The `repo` tools** (`afield/ai/tools/RepoFileTools.kt`): `RepoReadFileRequest` (numbered line
+  ranges), `RepoListFilesRequest`, `RepoSearchRequest` (literal or Java regex), `RepoPatchFileRequest`
+  (one exact passage, or `replaceAll`) and `RepoWriteFileRequest` (create; `overwrite` opt-in). They
+  work in one `RepoScope`: a root, readable globs and writable globs. A path that is absolute, has a
+  `..`/`.`/empty segment, starts at `.git`, passes through a symbolic link, resolves outside the root, or
+  matches no glob is refused with the reason. Patch and overwrite refuse a file whose first five lines
+  say `DO NOT EDIT`. The tools are gated on `ToolExecutionContext.repoFiles`, which only a task with a
+  `repoRoot` wires, so no chat sees them and `ai4_tools.md`'s catalogue (a box chat's) does not list
+  them. `RepoFileToolsTest` pins the confinement.
+- **The job**: `AgentTaskRequest.repoRoot`/`repoRead`/`repoWrite` (result: `repoWritten`); the prompt
+  gains one paragraph naming the root, both lists, and that there is no shell. Backdoor:
+  `agent-task --goal-file F --repo-root R --repo-read G --repo-write G`.
+- **The CLI**: `tools/field_repo_agent.py --root R [--read G] [--write G] [--prompt|--prompt-file|stdin]`
+  prints the final answer on stdout and one line per tool call plus model, rounds, wall time, tokens and
+  files written on stderr. `FIELD_AGENT_PORT`, `FIELD_AGENT_MODEL`, `FIELD_AGENT_MAX_ROUNDS` (40).
+  `headless_argv("field")` is it with `--root .`, plus `--write '**'` when the caller wants edits.
+- **docs_notes**: the `field` agent may write only the partition's own files, its outcomes file and
+  its handoff drafts. AI4 cannot run `docs_notes.py resolve/question/handoff`, so a preamble tells it to
+  write the outcomes JSON the harness already accepts, and to ask a question where it would file a handoff.
+
+### The live runs
+
+All on `openai/gpt-6.1-sol` (reasoning effort low), `AFIELD_AI_PROVIDER=openai` because this machine's
+configured `local` provider (qwen3.8-27b) was unreachable: the first try failed in 4.5 s with
+`OpenAIIoException: Request failed`. Every run's Field was the one the backdoor started on port 9631.
+
+| Job | Rounds | Wall | Tokens in / out (cache read) | Result |
+| --- | --- | --- | --- | --- |
+| Toy root: fix two typos, try to read an unlisted file | 4 / 8 | 29 s | 60,057 / 207 (47,846) | both fixed; `secret.txt` refused; it said so |
+| `docs_notes revise --agent field`, 3 `kdoc-draft` notes on `Vectors.kt` | 6 / 30 | 46 s (agent), 72 s (harness) | 187,974 / 1,013 (163,871) | harness: `exit 0, 3/3 resolved, 0 question(s), 0 handoff(s), 1 file(s) changed, 46s`, **but the file was generated** |
+| Same partition, after the `DO NOT EDIT` refusal | 6 / 30 | 50 s (agent), 75 s (harness) | 184,976 / 1,181 (161,402) | harness: `exit 0, 2/3 resolved, 1 question(s), 0 handoff(s), 0 file(s) changed, 50s` |
+| `land.py huh` (read-only, real queue) | not reported by `land.py` | 22 s | — | a correct "alive but idle" diagnosis with the next command |
+
+The store was a copy of `~/.afield/docs-annotations.json`; it had no open human notes (all 166
+resolved), so the three notes are completion's real KDoc drafts imported into the copy with
+`import-drafts --limit 3`. The first revise read `Vectors.kt` lines 850-1035, never line 1
+(`// DO NOT EDIT — generated by tools/linalg-generator`), added KDoc to the generated file and resolved
+the note; the harness has no check for that and called it a success. The patch was discarded. With the
+refusal in place the second run hit it, read the header, and turned the note into a question for the
+generator's owner: the right outcome. Both runs also declined the two `Vector3f.x` drafts as restating
+the name, which is what the prompt asks for.
+
+Failure modes seen or expected: a model that never reads a file's header (now refused for `DO NOT
+EDIT`, not for other generated-file conventions); no shell, so a prompt that says "run the docs build"
+or "run Gradle" cannot be obeyed (the fixer in `land.py` needs exactly that, and was not tried); a
+prompt as an argv element (`docs_notes` passes it so) is bounded by `ARG_MAX`; the backdoor's own
+timeout must cover a cold Field start; and AI4's turn goes through the box-chat instructions, which talk
+about boxes it does not need here.
+
 ## What is not done
 
 - ~~No native box screenshot tool~~: done 2026-09-30 (`ViewBoxOutputRequest`).
-- `RunBoxRequest` on code that never returns blocks the Runloop, just as a Run from the editor
-  does. The tool times out and says so, but it cannot unstick Field.
+- ~~`RunBoxRequest` on code that never returns blocks the Runloop~~: fixed 2026-10-26. On timeout
+  the tool interrupts box code that holds the Runloop and returns stage `interrupted`
+  (`dev_docs/RUNAWAY_BOX_INTERRUPT.md`).
 - ~~`CompileKotlinRequest` fileRefs cost the live model rounds~~: fixed 2026-09-30. The tool's
   description now says RunBox compiles by itself (live CompileKotlin calls 20 → 0), and the
   backdoor resolver accepts every spelling the model guessed.

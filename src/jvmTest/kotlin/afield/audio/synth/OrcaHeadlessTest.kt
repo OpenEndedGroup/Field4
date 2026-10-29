@@ -90,9 +90,11 @@ class OrcaHeadlessTest {
             "val x = 5 + seen % 8",
             "lead[4, 7] = if (lead[4, 4] in \"GA\") 'F' else 'C'",
         )
+        // Layout aside: the starting point may break a `{ a; b }` across lines that the renderer keeps on one.
+        fun squash(text: String) = text.replace(Regex("[\\s;]+"), "")
         for (line in exchange) {
-            assertTrue(line in duet, "orca_duet.yaml has `$line`")
-            assertTrue(line in source, "OrcaSoundDocs has `$line`")
+            assertTrue(squash(line) in squash(duet), "orca_duet.yaml has `$line`")
+            assertTrue(squash(line) in squash(source), "OrcaSoundDocs has `$line`")
         }
     }
 }

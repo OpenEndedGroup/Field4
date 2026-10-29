@@ -827,18 +827,15 @@ An unreadable manifest is reported on the `error,keyframer` log channel rather t
 the next `saveKey` moves it aside to `manifest.json.corrupt` instead of overwriting it. The notes in
 a half-written file are still there for you to read.
 
-??? aside "Agents: tests, and gaps in older version directories"
+??? aside "Agents: tests"
     One test covers each way the manifest can go
     wrong: `aCorruptManifestNeitherLosesHistoryNorReusesAVersionIndex`,
     `aCorruptManifestIsRecoveredFromTheFilesAndQuarantinedRatherThanOverwritten`,
     `aVersionFileTheManifestNeverRecordedIsNotOverwritten` and
     `aDeletedManifestStillLeavesTheFilesAsTheHistory`, and
     `theFloatOnDiskNarrowsBackToExactlyTheFloatThatWasSaved` pins the `Float` round trip against the
-    exact on-disk string.
-
-    A `.versions` directory written before 2026-08 can have gaps. An
-    unparseable manifest read as no history at all back then, so the next save called itself version 0
-    and wrote over `000000.json`. Whatever is on disk is still readable; what was overwritten is gone.
+    exact on-disk string. `theMarksOfAPre2026_08RenumberingAreNamed` pins the `error,keyframer`
+    report for a `.versions` directory damaged by a save from before 2026-08.
 
 ### Browsing saved keys
 
@@ -1036,10 +1033,7 @@ by an integer written into the text:
 gain * afield.animation.keyframes.kfMix(0.5f, 1.5f, afield.animation.keyframes.keyframeBlendAmount(7, 0))
 ```
 
-Fully qualified, so it resolves inside a `sourceBlock` body in a box that imported nothing. One
-thing to know before you call the result: a blended block compiles its generated source in the box
-the two keyframes came from, so invoke it from a frame loop, a control callback or another box, not
-from inside that box's own running code, which stops with an error saying so. The whole call is handed the endpoints
+Fully qualified, so it resolves inside a `sourceBlock` body in a box that imported nothing. The whole call is handed the endpoints
 rather than their components, which is what lets a `Quaternionf`
 site slerp and a `DualQuaternionf` site sclerp instead of drifting through the inside of the sphere
 component by component. A literal keeps its type: `0.5f` and `1.5f` blend to a `Float`, `1` and `3`

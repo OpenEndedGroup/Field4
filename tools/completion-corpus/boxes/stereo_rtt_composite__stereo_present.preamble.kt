@@ -1,13 +1,13 @@
-import afield.graphics.vulkan.Renderer
-import afield.graphics.vulkan.util.Window
-import java.nio.*
-import arrow.core.right
-import arrow.core.left
-import afield.graphics.shader.*
-import afield.graphics.scene.*
-import afield.graphics.render.*
-import afield.document.context.*
 import afield.graphics.vulkan.buffers.*
+import afield.document.context.*
+import afield.graphics.render.*
+import afield.graphics.scene.*
+import afield.graphics.shader.*
+import arrow.core.left
+import arrow.core.right
+import java.nio.*
+import afield.graphics.vulkan.util.Window
+import afield.graphics.vulkan.Renderer
 var Box.window by Inheritance<Window>() /*from:stereo_renderer*/ /**/
 val Once.window by Onceing<Window>() /*from:stereo_renderer*/ /**/
 val Why.window by Whying() /*from:stereo_renderer*/ /**/

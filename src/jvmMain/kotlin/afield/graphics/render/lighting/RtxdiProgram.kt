@@ -6,6 +6,27 @@ import org.json.JSONObject
 import java.io.File
 import java.security.MessageDigest
 
+/**
+ * Loads the optional RTXDI shaders, and refuses a binary whose interface disagrees with the host
+ * code written against it.
+ *
+ * Field does not ship NVIDIA's sampling SDK and loads nothing from it at startup. Running
+ * `tools/lighting/build_rtxdi.py --prepare` clones the SDK and fetches a shader compiler into
+ * ignored build storage, and the build leaves a manifest under
+ * `build/lighting-experiment/rtxdi-shaders/`. `load` reads that manifest; with no manifest there it
+ * fails with the command to run.
+ *
+ * What `load` then checks is the interface rather than the file. The manifest has to record the SDK
+ * commit this source was written against, the SPIR-V has to hash to what the manifest recorded, and
+ * the shader's own reflection has to still carry the workgroup size, the push-constant block's size
+ * and member offsets, the reservoir and offset array strides, and the surface and light struct
+ * layouts that the host side writes into. Shaders rebuilt from a different SDK revision therefore
+ * fail to load, instead of being handed the host's bytes at offsets that have moved.
+ *
+ * A loaded program is passed to [DirectLighting] through `enableRtxdi`, which builds the pass and
+ * leaves the current one in place if that fails.
+ */
+
 /** Optional compiled SDK shaders. Build with tools/lighting/build_rtxdi.py; no SDK is loaded at startup. */
 class RtxdiProgram private constructor(val manifest: JSONObject, internal val reflection: Introspection) {
     companion object {

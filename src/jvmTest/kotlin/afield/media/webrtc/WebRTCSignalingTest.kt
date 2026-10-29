@@ -76,10 +76,10 @@ class WebRTCSignalingTest {
         val id = LocalSignalingRelay.shared.connect(peer)
         LocalSignalingRelay.shared.receive(id, """{"type":"publish-start","suffix":"list-test"}""")
         val name = peer.next("publish-ready").str("username")
-        while (name !in assertNotNull(seen.poll(5, TimeUnit.SECONDS), "the list never showed $name")) Unit
+        while (name !in assertNotNull(seen.poll(5, TimeUnit.SECONDS), "the list never showed $name")) {}
         assertTrue(name in list.names)
         LocalSignalingRelay.shared.disconnect(id)
-        while (name in assertNotNull(seen.poll(5, TimeUnit.SECONDS), "the list never dropped $name")) Unit
+        while (name in assertNotNull(seen.poll(5, TimeUnit.SECONDS), "the list never dropped $name")) {}
         list.close()
     }
 

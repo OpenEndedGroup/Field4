@@ -1,0 +1,3 @@
+{"type":"generation","time":0.0,"revision":0,"generationMs":21.666092099621892,"encodingMs":461.5213139913976,"historyFrames":0,"horizonFrames":40,"postprocess":false}
+{"type":"generation","time":2.0,"revision":0,"generationMs":24.245897075161338,"encodingMs":0.08918601088225842,"historyFrames":40,"horizonFrames":40,"postprocess":false}
+{"type":"generation","time":4.0,"revision":0,"generationMs":22.653123014606535,"encodingMs":0.09009905625134706,"historyFrames":80,"horizonFrames":40,"postprocess":false}

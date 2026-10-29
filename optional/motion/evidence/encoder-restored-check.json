@@ -1,0 +1,13 @@
+{
+  "prompt": "A person takes two careful steps and pauses.",
+  "shape": [
+    1,
+    4096
+  ],
+  "finite": true,
+  "norm": 132.9899444580078,
+  "seconds": 3.259633784997277,
+  "encoderIdentity": "LLM2Vec:base=8afb486c1db24fe5011ec46dfbe5b5dccdb575c2:mntp=31474e395ada192e8ed1586db6be79fb3b70c9c0:supervised=baa8ebf04a1c2500e61288e7dad65e8ae42601a7:bf16",
+  "cache": "8dba2123db8b858762dc57b6d810298d215e5127b3318e3016741ef07dd1d7a6.npy",
+  "service": "http://127.0.0.1:9550/"
+}

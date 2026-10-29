@@ -49,11 +49,42 @@ import java.util.concurrent.ConcurrentHashMap
  * of the path.
  */
 fun interface Resolver {
+    /**
+     * Answers for [key], or returns `null` to pass the question to the next resolver in the chain.
+     *
+     * A `String` is the answer as it stands and any other non-null value answers through its
+     * `toString`, so returning a number or a vector is fine. Returning a [Resolver], a `Map` or a
+     * list of resolvers is structural instead: the rest of a dotted path is resolved against what
+     * came back. The key arrives whole, longest prefix first.
+     */
     fun resolve(key: String): Any?
 }
 
+/**
+ * A resolver written as a plain lambda, `(String) -> Any?`, which the template entrypoints accept
+ * anywhere a [Resolver] is wanted.
+ *
+ * The same contract: a value, or `null` for "ask the next one".
+ */
 typealias ResolverFn = (String) -> Any?
+
+/**
+ * Finds the source text for a `{% property "name" %}` tag, given the name and where the tag was
+ * written.
+ *
+ * A template that uses the tag without one of these stops with an error rather than expanding to
+ * nothing. Field supplies a resolver that reads the named shader property off the box being
+ * compiled; a test or a tool supplies its own.
+ */
 fun interface IncludeResolver {
+    /**
+     * Returns the text to splice in for the property [path], which was named by a tag at [line] and
+     * [col] of the template.
+     *
+     * The position is there for error messages, not for lookup. Throwing is how a missing property is
+     * reported: anything other than a [TemplateException] is wrapped in one naming the path and the
+     * position.
+     */
     fun include(path: String, line: Int, col: Int): String
 }
 
@@ -61,39 +92,84 @@ private val globalShaderTemplates = ConcurrentHashMap<String, Any>()
 
 private val globalShaderTemplateResolver = Resolver { key -> globalShaderTemplates[key] }
 
+/**
+ * Publishes [template] under [name] for every box in the process, as the last fallback behind each
+ * box's own `shaderTemplate` map.
+ *
+ * This is how a library ships GLSL that any shader can pull in by name: `fmchirp` registers its
+ * curve evaluator this way. [template] takes the same shapes a slot value does — a `String`, a
+ * nested `Map` addressed as `{{ a.b.c }}`, or a [Resolver] that computes the text when asked.
+ * Registering a name twice replaces it, and a box that defines the same slot shadows it.
+ */
 fun registerGlobalShaderTemplate(name: String, template: Any) {
     globalShaderTemplates[name] = template
 }
 
+/**
+ * Removes the global template registered under [name] and returns what was there, or `null` if
+ * nothing was.
+ */
 fun unregisterGlobalShaderTemplate(name: String): Any? =
     globalShaderTemplates.remove(name)
 
+/**
+ * The names currently in the global template registry, sorted.
+ *
+ * GLSL completion reads this to offer registered slots, so a library that registers a template at
+ * load time has its name appear in the editor without anything else being told about it.
+ */
 fun listGlobalShaderTemplateNames(): Set<String> =
     globalShaderTemplates.keys.toSortedSet()
 
+/**
+ * The resolver chain a box's shader templates are expanded against: that box's own slots first, then
+ * the process-global registry.
+ *
+ * The first resolver is a snapshot of `shaderTemplate` gathered up the box graph, with a child's
+ * entries overriding its parents', so a slot can be defined on an ancestor and used below it. Called
+ * once per shader compile, and the snapshot does not track later edits to the map.
+ */
 fun getShaderTemplateResolverForBox(b : Box): List<Resolver> =
     listOf(
         MapResolver(b.gather<MutableMap<String, Any>>("shaderTemplate")),
         globalShaderTemplateResolver
     )
 
+/**
+ * Expands [template] against a single [Resolver], and returns the result.
+ *
+ * No `#line` directives, so prefer [runShaderTemplate] for anything a shader compiler will see. A
+ * tag or expression that cannot be resolved throws a [TemplateException] rather than expanding to
+ * nothing.
+ */
 fun runTemplate(template: String, resolver: Resolver, includeResolver: IncludeResolver? = null): String =
     TemplateEngine().run(template, listOf(resolver), includeResolver)
 
+/** Expands [template] against a single lambda resolver, which is the same as the [Resolver] overload
+ * with the lambda wrapped. */
 fun runTemplate(template: String, resolver: ResolverFn, includeResolver: IncludeResolver? = null): String =
     TemplateEngine().run(template, listOf(FnResolver(resolver)), includeResolver)
 
 /**
- * Most permissive entrypoint.
- * Allows passing:
- *  - Resolver
- *  - (String) -> Any?
- *  - Iterable<*> of resolvers
- *  - Map<String, Any?> (will be wrapped with MapResolver)
+ * Expands [template], taking the resolver in whatever shape the caller has it.
+ *
+ * [resolver] may be a [Resolver], a [ResolverFn] lambda, a `Map` (wrapped as a [MapResolver]), or an
+ * iterable of any of those, which becomes a chain asked in order. `null` resolves nothing, so every
+ * expression in the template is an error. Anything else throws a [TemplateException] naming the type.
  */
 fun runTemplate(template: String, resolver: Any?, includeResolver: IncludeResolver? = null): String =
     TemplateEngine().run(template, TemplateEngine.asResolverList(resolver), includeResolver)
 
+/**
+ * Expands [template] the way a shader stage is expanded: as `runTemplate`, plus `#line` directives
+ * around any expansion that spans more than one line.
+ *
+ * Those directives are what keeps a compiler error after a multi-line slot pointing at the line the
+ * author wrote rather than the line it grew into. Use this for anything shaderc will see, and
+ * `runTemplate` for text where line numbers do not matter. [resolver] accepts a [Resolver], a
+ * [ResolverFn], a `Map` or an iterable of resolvers; [includeResolver] is needed only if the
+ * template uses `{% property %}`.
+ */
 fun runShaderTemplate(template: String, resolver: Any?, includeResolver: IncludeResolver? = null): String =
     TemplateEngine(insertLineDirectiveAfterMultilineExpr = true)
         .run(template, TemplateEngine.asResolverList(resolver), includeResolver)
@@ -627,6 +703,8 @@ private class FnResolver(private val fn: ResolverFn) : Resolver {
  * - If the stored value is already a Resolver or Iterable of resolvers, returns it as-is.
  */
 class MapResolver(private val map: Map<String, Any?>) : Resolver {
+    /** Looks [key] up in the map, wrapping a nested `Map` as another [MapResolver] so the rest of a
+     * dotted path resolves against it. An absent key is `null`, which hands the question on. */
     override fun resolve(key: String): Any? {
         val v = map[key]
         return when (v) {
@@ -637,11 +715,15 @@ class MapResolver(private val map: Map<String, Any?>) : Resolver {
 }
 
 /**
- * Composite resolver that tries children in order.
- * This is useful if you want a simple "first non-null wins" behavior
- * without relying on the engine's "return a List<Resolver>" feature.
+ * A resolver that asks each of its children in turn and takes the first non-null answer.
+ *
+ * The engine already chains resolvers — a resolver may answer with a list of them, and the
+ * entrypoints accept an iterable — so this is for presenting a fixed chain as one [Resolver], where
+ * something wants a single resolver and the order is known in advance.
  */
 class CompositeResolver(private val resolvers: List<Resolver>) : Resolver {
+    /** Asks each child in turn and returns the first non-null answer, or `null` if none of them
+     * answers. */
     override fun resolve(key: String): Any? {
         for (r in resolvers) {
             val v = r.resolve(key)
@@ -655,12 +737,30 @@ class CompositeResolver(private val resolvers: List<Resolver>) : Resolver {
 // Errors
 //////////////////////////////
 
+/**
+ * The one exception this engine throws, for every fault from an unclosed `{{` to a path that no
+ * resolver answered.
+ *
+ * Its message is written to be read on its own: a resolution failure names the expression, the line
+ * and column, prints the offending line with a caret under it, and lists every key tried against
+ * every resolver with what each returned. A shader whose slot is wrong therefore fails before
+ * shaderc sees it, with an explanation, rather than compiling to the wrong thing.
+ */
 class TemplateException(message: String) : RuntimeException(message)
 
 //////////////////////////////
 // Representative main()
 //////////////////////////////
 
+/**
+ * Expands a small template against two maps and a facade resolver, and prints the result to the
+ * `info,templating` log channel.
+ *
+ * Nothing in Field calls this. It is a runnable example of the three resolver shapes in one place:
+ * nested maps addressed as `{{ foo.bar.gux }}`, a fallback map consulted when the first has no
+ * answer, and the facade trick — a resolver that answers the empty key with a list of resolvers,
+ * which is how a chain is presented as a single one.
+ */
 fun main() {
     // A nested map example. MapResolver will auto-wrap nested maps into child resolvers.
     val data = mapOf(

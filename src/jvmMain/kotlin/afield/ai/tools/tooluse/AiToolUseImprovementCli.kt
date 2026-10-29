@@ -48,9 +48,10 @@ private val defaultToolLogDir: Path = Paths.get(
 private const val IMPROVEMENT_FILE_KEY = "cli://ai-tool-use-improvement"
 
 /**
- * Whether a tool I/O log is one of this task's own runs (its `session_start` names [IMPROVEMENT_FILE_KEY]). Such logs
- * are left out of review: the bridge used to write them beside the AI4 logs, and a small window of recent logs then
- * held mostly the reviewer's earlier runs, so it reviewed itself.
+ * Whether a tool I/O log is one of this task's own runs — its `session_start` carries the file key
+ * `cli://ai-tool-use-improvement`. A review leaves those out, so that a window of recent logs holds the
+ * agent work being reviewed rather than earlier passes of the reviewer. `main` also turns this run's own
+ * logging off, so this filter applies to logs already on disk.
  */
 fun isToolUseImprovementLog(path: Path): Boolean = runCatching {
     Files.newBufferedReader(path, StandardCharsets.UTF_8).use { it.readLine().orEmpty() }

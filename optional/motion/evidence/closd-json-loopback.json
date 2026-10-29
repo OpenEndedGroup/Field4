@@ -1,0 +1,11 @@
+{
+  "transport": "127.0.0.1 TCP, bounded length-framed JSON, echo round trip",
+  "skeletonHash": "7300143639acc0b4243dd56cf9e60400ab347847bcd65a446803fa4edd9bd971",
+  "batchFrames": 3,
+  "iterations": 300,
+  "jsonPayloadBytes": 16458,
+  "p50Ms": 0.8369170245714486,
+  "p95Ms": 1.0880309855565429,
+  "inferenceMeasured": false,
+  "displayMeasured": false
+}

@@ -44,7 +44,9 @@ import org.apache.lucene.search.IndexSearcher
 import org.apache.lucene.search.KnnFloatVectorQuery
 import org.apache.lucene.search.Query
 import org.apache.lucene.search.ScoreDoc
+import org.apache.lucene.search.TermInSetQuery
 import org.apache.lucene.search.TermQuery
+import org.apache.lucene.util.BytesRef
 import org.apache.lucene.store.FSDirectory
 import java.nio.charset.StandardCharsets
 import java.net.URI
@@ -147,7 +149,8 @@ data class SemanticRetrievalStatus(
     val corpusFingerprint: String = "",
     val currentCorpusFingerprint: String = "",
     val indexStale: Boolean = false,
-    // Documents added, removed or saved since the index was built (-1: the index predates this count).
+    // Workspace documents added, removed or saved since the index was built (-1: the index predates this count).
+    // Docs pages and source are not counted; [indexStale] covers them.
     val staleDocuments: Int = -1,
     val message: String = ""
 )
@@ -399,12 +402,24 @@ interface SemanticEmbedder : AutoCloseable {
 
 object SemanticRetrievalService {
     private const val INTENT_VECTOR = "intentVector"
+    /**
+     * Bumped when indexed vectors change meaning. 2: the first index with real vectors (2026-10-22); every
+     * index before it holds zero vectors (see [OnnxSemanticEmbedder]'s output read), so it is stale and
+     * its vectors are not searched.
+     */
+    internal const val VECTOR_FORMAT = "2"
+    /**
+     * The weight of the stemmed copy against the exact text; see [indexAnalyzer]. Measured 2026-10-22 over
+     * 0…3: every set improves to 1.0, anchor and `why` then plateau and tutorials keep rising slowly; 1.5–3.0 are
+     * within 0.004 MRR of each other weighted by cases, so this is the middle of a plateau, not a tuned peak.
+     */
+    private const val DEFAULT_STEM_BOOST = 2.0f
     private const val IMPLEMENTATION_VECTOR = "implementationVector"
     private const val META_FILE = "field-semantic-search.meta"
     // One `name:mtime:size` line per workspace document, as seen when the index was built.
     private const val DOCUMENTS_FILE = "field-semantic-search.documents"
     private const val SETTINGS_STATUS_TTL_MS = 15_000L
-    val availableCorpora: List<String> = listOf("field-internals", "workspace", "documentation")
+    val availableCorpora: List<String> = listOf("field-internals", "workspace", "documentation", "tutorials")
 
     private val cacheRoot: Path = Paths.get(
         System.getProperty("afield.semanticSearch.cacheRoot")
@@ -418,7 +433,46 @@ object SemanticRetrievalService {
             ?: System.getenv("AFIELD_SEMANTIC_SEARCH_INDEX_PATH")
         )?.trim()?.takeIf { it.isNotBlank() }?.let { Paths.get(it).toAbsolutePath().normalize() }
 
+    /**
+     * Measurement switches for [RetrievalEval], read on every call so one JVM can compare settings:
+     * `afield.semanticSearch.fusion` = hybrid (default) | lexical | dense; `afield.semanticSearch.chunker` =
+     * chunks (default, [MarkdownChunker]) | sections (the cut before 2026-10-22); `afield.semanticSearch.corpora`
+     * = a comma list a rebuild is limited to (a documentation-only index embeds in minutes, the whole one in hours).
+     */
+    private fun evalSetting(name: String): String? = System.getProperty("afield.semanticSearch.$name")?.trim()?.takeIf { it.isNotBlank() }
+
     private val analyzer: Analyzer = StandardAnalyzer()
+
+    /**
+     * The lexical text is indexed twice: as written (every field, [analyzer]) and in `allStem`, split and stemmed
+     * ([codeAwareAnalyzer]: `fline_measure` → fline_measure, fline, measure; `computeModuleHere` → compute, module,
+     * here; "FLines" → fline). Measured alone, the stemmed form raised top-5 recall everywhere and lost first
+     * place (anchor hit@1 56.1% → 50.9%); together, with `allStem` down-weighted by [stemBoost], exact matches
+     * keep first place and stemmed ones fill in.
+     */
+    private val indexAnalyzer: Analyzer by lazy {
+        org.apache.lucene.analysis.miscellaneous.PerFieldAnalyzerWrapper(analyzer, mapOf("allStem" to codeAwareAnalyzer()))
+    }
+    private val stemAnalyzer: Analyzer by lazy { codeAwareAnalyzer() }
+    private fun stemBoost(): Float = evalSetting("stemBoost")?.toFloatOrNull() ?: DEFAULT_STEM_BOOST
+
+    private fun codeAwareAnalyzer(): Analyzer = object : Analyzer() {
+        override fun createComponents(fieldName: String): TokenStreamComponents {
+            val source = org.apache.lucene.analysis.standard.StandardTokenizer()
+            var stream: org.apache.lucene.analysis.TokenStream = org.apache.lucene.analysis.miscellaneous.WordDelimiterGraphFilter(
+                source,
+                org.apache.lucene.analysis.miscellaneous.WordDelimiterGraphFilter.GENERATE_WORD_PARTS or
+                    org.apache.lucene.analysis.miscellaneous.WordDelimiterGraphFilter.SPLIT_ON_CASE_CHANGE or
+                    org.apache.lucene.analysis.miscellaneous.WordDelimiterGraphFilter.SPLIT_ON_NUMERICS or
+                    org.apache.lucene.analysis.miscellaneous.WordDelimiterGraphFilter.PRESERVE_ORIGINAL,
+                null)
+            stream = org.apache.lucene.analysis.core.FlattenGraphFilter(stream)
+            stream = org.apache.lucene.analysis.LowerCaseFilter(stream)
+            stream = org.apache.lucene.analysis.en.EnglishPossessiveFilter(stream)
+            stream = org.apache.lucene.analysis.en.PorterStemFilter(stream)
+            return TokenStreamComponents(source, stream)
+        }
+    }
     private val json = Json {
         encodeDefaults = true
         ignoreUnknownKeys = true
@@ -742,7 +796,7 @@ object SemanticRetrievalService {
             path.createDirectories()
 
             FSDirectory.open(path).use { directory ->
-                val config = IndexWriterConfig(analyzer)
+                val config = IndexWriterConfig(indexAnalyzer)
                     .setOpenMode(IndexWriterConfig.OpenMode.CREATE)
                     .setRAMBufferSizeMB(64.0)
                 IndexWriter(directory, config).use { writer ->
@@ -772,7 +826,14 @@ object SemanticRetrievalService {
                                 indexed
                             )
                             val intentVectors = currentEmbedder.encodeDocuments(batch.map { it.intentText() })
-                            val implementationVectors = currentEmbedder.encodeDocuments(batch.map { it.implementationText() })
+                            // A capsule with no source (every docs section) has implementationText == intentText:
+                            // embedding it twice doubled the rebuild for an identical vector.
+                            val distinct = batch.indices.filter { batch[it].source.isNotBlank() }
+                            val distinctVectors = if (distinct.isEmpty()) emptyList()
+                                else currentEmbedder.encodeDocuments(distinct.map { batch[it].implementationText() })
+                            val implementationVectors = batch.indices.map { i ->
+                                distinct.indexOf(i).takeIf { it >= 0 }?.let { distinctVectors[it] } ?: intentVectors[i]
+                            }
                             updateRebuildStatus(
                                 "writing",
                                 "Writing semantic search batch ${batchIndex + 1} (${indexed + 1}-${indexed + batch.size} of ${capsules.size})...",
@@ -797,6 +858,7 @@ object SemanticRetrievalService {
                 "capsules=${capsules.size}",
                 "embedder=${currentEmbedder?.backend ?: "disabled"}",
                 "dimension=${currentEmbedder?.dimension ?: 0}",
+                "vectorFormat=${if (currentEmbedder != null) VECTOR_FORMAT else ""}",
                 "capsuleBackend=source-index+workspace",
                 "workspaceDocuments=${build.workspaceDocuments}",
                 "workspaceSidecarFiles=${build.workspaceSidecarFiles}",
@@ -873,18 +935,28 @@ object SemanticRetrievalService {
                 DirectoryReader.open(directory).use { reader ->
                     val searcher = IndexSearcher(reader)
                     val candidateCount = (limit * 8).coerceAtLeast(80)
-                    val bm25 = searcher.search(buildBm25Query(safeQuery), candidateCount)
+                    // The corpus is filtered inside each query, not after it: filtered afterwards, a
+                    // documentation search kept only the documentation that happened to be in the global top
+                    // 80, which for "display" was none of it (2026-10-22). The other filters stay post-hoc.
+                    val corpusFilter = corpusFilterQuery(requestedCorpora)
+                    fun within(query: Query): Query = corpusFilter?.let {
+                        BooleanQuery.Builder().add(query, BooleanClause.Occur.MUST).add(it, BooleanClause.Occur.FILTER).build()
+                    } ?: query
+                    val fusion = evalSetting("fusion") ?: "hybrid"
+                    val bm25 = if (fusion == "dense") emptyList() else searcher.search(within(buildBm25Query(safeQuery)), candidateCount)
                         .scoreDocs
                         .toRanked(searcher, filter)
-                    val symbol = searcher.search(buildSymbolQuery(safeQuery), candidateCount)
+                    val symbol = if (fusion == "dense") emptyList() else searcher.search(within(buildSymbolQuery(safeQuery)), candidateCount)
                         .scoreDocs
                         .toRanked(searcher, filter)
-                    val vector = currentEmbedder?.encodeQueries(listOf(safeQuery))?.firstOrNull()?.let { queryVector ->
-                        val intentHits = searcher.search(KnnFloatVectorQuery(INTENT_VECTOR, queryVector, candidateCount), candidateCount)
+                    // Stale zero vectors would only add the same arbitrary neighbours to every query.
+                    val vectorsUsable = !vectorsOutdated(readMeta()) && fusion != "lexical"
+                    val vector = currentEmbedder?.takeIf { vectorsUsable }?.encodeQueries(listOf(safeQuery))?.firstOrNull()?.let { queryVector ->
+                        val intentHits = searcher.search(KnnFloatVectorQuery(INTENT_VECTOR, queryVector, candidateCount, corpusFilter), candidateCount)
                             .scoreDocs
                             .toRanked(searcher, filter)
                         val implementationHits = searcher.search(
-                            KnnFloatVectorQuery(IMPLEMENTATION_VECTOR, queryVector, candidateCount),
+                            KnnFloatVectorQuery(IMPLEMENTATION_VECTOR, queryVector, candidateCount, corpusFilter),
                             candidateCount
                         ).scoreDocs.toRanked(searcher, filter, scoreScale = 0.85f)
                         mergeVectorRanks(intentHits, implementationHits)
@@ -896,10 +968,14 @@ object SemanticRetrievalService {
                     } else {
                         requestedCorpora.joinToString(",")
                     }
+                    val currentStatus = status()
                     SemanticRetrievalQueryResult(
                         success = true,
-                        message = "Returned ${fused.size} semantic retrieval hit(s) from $scope. Vector backend=${currentEmbedder?.backend ?: "disabled"}; capsule backend=source-index-capsules.",
-                        status = status(),
+                        message = staleWarning(currentStatus) +
+                            "Returned ${fused.size} semantic retrieval hit(s) from $scope. Vector backend=${currentEmbedder?.backend ?: "disabled"}" +
+                            (if (!vectorsUsable) " (not used: the index's vectors predate the embedding fix; rebuild the index)" else "") +
+                            "; capsule backend=source-index-capsules.",
+                        status = currentStatus,
                         results = fused
                     )
                 }
@@ -954,13 +1030,26 @@ object SemanticRetrievalService {
             workspaceSidecarFiles = meta["workspaceSidecarFiles"]?.toIntOrNull() ?: 0,
             corpusFingerprint = indexedFingerprint,
             currentCorpusFingerprint = currentFingerprint,
-            indexStale = exists && currentFingerprint.isNotBlank() &&
-                    (indexedFingerprint.isBlank() || indexedFingerprint != currentFingerprint),
+            indexStale = exists && (vectorsOutdated(meta) || currentFingerprint.isNotBlank() &&
+                    (indexedFingerprint.isBlank() || indexedFingerprint != currentFingerprint)),
             staleDocuments = if (exists) staleDocumentCount() else -1,
             message = message.ifBlank { if (config.enabled) embedderMessage else "Semantic search is off." }
         )
         lastStatus = status
         return status
+    }
+
+    /**
+     * A stale index misses whatever changed since it was built, so a miss is not evidence of absence.
+     * This leads the message because a model reads the message and skips the status block; a local
+     * model searching for a docs page written that morning reported "zero hits anywhere" on 2026-10-28.
+     */
+    internal fun staleWarning(status: SemanticRetrievalStatus): String {
+        if (!status.indexStale) return ""
+        val built = if (status.lastBuildEpochMs > 0) " built ${java.time.Instant.ofEpochMilli(status.lastBuildEpochMs)}" else ""
+        return "WARNING: the index$built is stale, so pages, source and documents written or changed since then are missing " +
+            "from these results; a miss here is not evidence that something does not exist. Confirm with a literal " +
+            "WorkspaceSearchRequest (scope FIELD_DOCS for docs pages, FIELD_KOTLIN_SOURCE for source, WORKSPACE_FILES for documents). "
     }
 
     private fun staleDocumentCount(): Int {
@@ -1017,8 +1106,13 @@ object SemanticRetrievalService {
             .mapNotNull { it.substringBeforeLast(':').substringAfterLast(':').toLongOrNull() }
             .maxOrNull() ?: return false
         if (now - lastSave < IDLE_QUIET_MS) return false
-        return staleDocumentCount() != 0 && computeStatus("").indexStale
+        return (vectorsOutdated(meta) || staleDocumentCount() != 0) && computeStatus("").indexStale
     }
+
+    /** An index whose vectors predate [VECTOR_FORMAT] while an embedder is configured: its vectors are zero. */
+    private fun vectorsOutdated(meta: Map<String, String>): Boolean =
+        currentConfig().enabled && meta.isNotEmpty() && meta["embedder"].orEmpty().let { it.isNotBlank() && it != "disabled" } &&
+            meta["vectorFormat"] != VECTOR_FORMAT
 
     private fun indexExists(): Boolean =
         Files.exists(indexPath()) && runCatching {
@@ -1175,7 +1269,9 @@ object SemanticRetrievalService {
         val docsCapsules = docsCapsules(root)
         val workspaceRecords = workspaceSidecarRecords()
         val workspaceCapsules = workspaceSidecarCapsules(workspaceRecords)
-        val allLeafCapsules = kotlinCapsules + docsCapsules + workspaceCapsules
+        val tutorialCapsules = workspaceSidecarCapsules(sidecarRecords(root, tutorialDocumentDirs(root)), corpus = "tutorials") +
+            tutorialSummaryCapsules(root)
+        val allLeafCapsules = kotlinCapsules + docsCapsules + workspaceCapsules + tutorialCapsules
         val subsystemCapsules = subsystemCapsules(allLeafCapsules)
         val repositoryCapsule = SemanticCapsule(
             id = "repo:field4",
@@ -1188,15 +1284,16 @@ object SemanticRetrievalService {
             line = 1,
             metadata = "Indexed at ${Instant.now()}; declarations=${kotlinCapsules.size}; documentation_sections=${docsCapsules.size}; workspace_sidecars=${workspaceCapsules.size}."
         )
+        val onlyCorpora = evalSetting("corpora")?.split(',')?.map { normalizeCorpusName(it) }?.toSet()
         return CapsuleBuild(
-            capsules = allLeafCapsules + subsystemCapsules + repositoryCapsule,
+            capsules = (allLeafCapsules + subsystemCapsules + repositoryCapsule).filter { onlyCorpora == null || normalizeCorpusName(it.corpus) in onlyCorpora },
             workspaceDocuments = workspaceRecords.map { it.documentName }.toSet().size,
             workspaceSidecarFiles = workspaceRecords.size,
             corpusFingerprint = corpusFingerprint(workspaceRecords)
         )
     }
 
-    private fun workspaceSidecarCapsules(records: List<WorkspaceSidecarRecord>): List<SemanticCapsule> {
+    private fun workspaceSidecarCapsules(records: List<WorkspaceSidecarRecord>, corpus: String = "workspace"): List<SemanticCapsule> {
         return records.flatMap { record ->
             val source = runCatching { Files.readString(record.file, StandardCharsets.UTF_8) }.getOrNull()
                 ?.take(80_000)
@@ -1205,14 +1302,14 @@ object SemanticRetrievalService {
             val firstLine = source.lineSequence().firstOrNull { it.trim().isNotBlank() }?.trim().orEmpty()
             val hash = source.sha256Id()
             val lineCount = source.count { it == '\n' } + 1
-            val propertyId = "workspace:${record.documentName}:${record.boxId}:${record.property}:$hash".sha256Id()
+            val propertyId = "$corpus:${record.documentName}:${record.boxId}:${record.property}:$hash".sha256Id()
             val symbol = listOf(record.documentName, record.boxName.ifBlank { record.boxId }, record.property)
                 .filter { it.isNotBlank() }
                 .joinToString(" / ")
             val propertyCapsule = SemanticCapsule(
                 id = propertyId,
                 scale = "container",
-                corpus = "workspace",
+                corpus = corpus,
                 kind = "sidecar-${record.property}",
                 symbol = symbol,
                 title = "${record.boxName.ifBlank { record.boxId }}.${record.property}",
@@ -1243,7 +1340,7 @@ object SemanticRetrievalService {
                     SemanticCapsule(
                         id = "workspace-fragment:$propertyId:${fragment.kind}:${fragment.line}:${fragment.symbol}:$index".sha256Id(),
                         scale = fragment.scale,
-                        corpus = "workspace",
+                        corpus = corpus,
                         kind = fragment.kind,
                         symbol = fragment.symbol.ifBlank { symbol },
                         title = fragment.title.ifBlank { "${record.boxName.ifBlank { record.boxId }}.${record.property}" },
@@ -1471,10 +1568,65 @@ object SemanticRetrievalService {
     private fun workspaceSidecarRecords(): List<WorkspaceSidecarRecord> {
         val root = workspaceRootPath() ?: return emptyList()
         if (!Files.isDirectory(root)) return emptyList()
+        return sidecarRecords(root, workspaceDocumentDirs(root))
+    }
+
+    /**
+     * Field's tutorial documents: each materialized agent transcript (`public/docs/assets/agent_transcripts/<name>`)
+     * and the graphics curriculum (`public/docs/assets/canonical_graphics`). They are Field documents like a
+     * workspace's, so they are indexed the same way, box by box, with paths relative to the checkout so a hit can
+     * be read with AttachmentRequest. `TutorialCodeSearchRequest` is a query on this corpus.
+     */
+    internal fun tutorialDocumentDirs(checkout: Path): List<Path> {
+        val assets = checkout.resolve("public/docs/assets")
+        val transcripts = assets.resolve("agent_transcripts")
+        val dirs = runCatching { Files.list(transcripts).use { s -> s.filter { Files.isRegularFile(it.resolve(SavingContext.METADATA_EDN)) }.sorted().toList() } }
+            .getOrDefault(emptyList())
+        return dirs + listOf(assets.resolve("canonical_graphics")).filter { Files.isRegularFile(it.resolve(SavingContext.METADATA_EDN)) }
+    }
+
+    /**
+     * What each tutorial is for, beside its code: the transcript's description and box names for each materialized
+     * transcript, and for the graphics curriculum one capsule per lesson from its generated index (`LESSONS.md`:
+     * title, parent chain, the Field API it uses). Indexed only as code, "FLines" did not find `fline_measure`.
+     * The transcript's `docs` links are left out: they are what RetrievalEval's tutorial cases are made from.
+     */
+    private fun tutorialSummaryCapsules(checkout: Path): List<SemanticCapsule> {
+        val transcripts = checkout.resolve("dev_docs/agents/transcripts")
+        val out = mutableListOf<SemanticCapsule>()
+        tutorialDocumentDirs(checkout).forEach { dir ->
+            val name = dir.fileName.toString()
+            val rel = checkout.relativize(dir).toString().replace("\\", "/")
+            if (name == "canonical_graphics") {
+                RetrievalEval.graphicsLessons(dir.resolve("LESSONS.md").toFile()).forEach { lesson ->
+                    out += SemanticCapsule(
+                        id = "tutorial:$name:${lesson.title}".sha256Id(), scale = "container", corpus = "tutorials", kind = "tutorial",
+                        symbol = "graphics lesson ${lesson.title}", title = lesson.title,
+                        path = lesson.files.firstOrNull()?.let { "$rel/$it" } ?: "$rel/LESSONS.md", line = 1,
+                        documentName = name, boxName = lesson.title, boxId = lesson.files.firstOrNull()?.substringBefore('_').orEmpty(),
+                        documentation = lesson.summary)
+                }
+                return@forEach
+            }
+            val yaml = transcripts.resolve("$name.yaml").toFile().takeIf { it.isFile } ?: return@forEach
+            val parsed = runCatching { org.yaml.snakeyaml.Yaml().load<Any?>(yaml.readText()) as? Map<*, *> }.getOrNull().orEmpty()
+            val boxes = (parsed["operations"] as? List<*>).orEmpty().mapNotNull { op ->
+                ((op as? Map<*, *>)?.get("create") as? Map<*, *>)?.get("name")?.toString()
+            }
+            out += SemanticCapsule(
+                id = "tutorial:$name".sha256Id(), scale = "container", corpus = "tutorials", kind = "tutorial",
+                symbol = name.replace('_', ' '), title = name, path = "$rel/", line = 1, documentName = name,
+                documentation = parsed["description"]?.toString()?.trim().orEmpty() +
+                    if (boxes.isEmpty()) "" else "\n\nBoxes: " + boxes.joinToString(", "))
+        }
+        return out
+    }
+
+    private fun sidecarRecords(root: Path, documentDirs: List<Path>): List<WorkspaceSidecarRecord> {
         val context = SavingContext()
         val out = mutableListOf<WorkspaceSidecarRecord>()
 
-        workspaceDocumentDirs(root).forEach { documentDir ->
+        documentDirs.forEach { documentDir ->
             val metadataFile = documentDir.resolve(SavingContext.METADATA_EDN)
             val documentName = documentDir.fileName?.toString().orEmpty()
             val metadataMtime = runCatching { Files.getLastModifiedTime(metadataFile).toMillis() }.getOrDefault(0L)
@@ -1501,6 +1653,54 @@ object SemanticRetrievalService {
                         sizeBytes = runCatching { Files.size(sidecar) }.getOrDefault(0L),
                         modifiedEpochMs = runCatching { Files.getLastModifiedTime(sidecar).toMillis() }.getOrDefault(0L)
                     )
+                }
+                // File-proxy boxes keep their editable text in the linked file, not in a Field
+                // sidecar. Index that same file so a presentation attached to a document joins
+                // the normal workspace semantic-search corpus and stays fresh after edits.
+                val proxyMode = transfer.properties["file_proxy_mode"] as? String
+                val proxyPath = transfer.properties["file_proxy_path"] as? String
+                if (proxyMode != null && !proxyPath.isNullOrBlank()) {
+                    val source = runCatching {
+                        val candidate = when (proxyMode) {
+                            "absolute" -> Paths.get(proxyPath)
+                            "workspace" -> root.resolve(proxyPath)
+                            "document" -> documentDir.resolve(proxyPath)
+                            else -> return@runCatching null
+                        }.toRealPath()
+                        val boundary = when (proxyMode) {
+                            "workspace" -> root.toRealPath()
+                            "document" -> documentDir.toRealPath()
+                            else -> null
+                        }
+                        if (boundary != null && !candidate.startsWith(boundary)) null else candidate
+                    }.getOrNull()
+                    if (source != null && Files.isRegularFile(source)) {
+                        val size = runCatching { Files.size(source) }.getOrDefault(0L)
+                        if (size in 1..10_000_000) {
+                            val extension = source.fileName.toString().substringAfterLast('.', "").lowercase(Locale.ROOT)
+                            val language = (transfer.properties["contents_language"] as? String)
+                                ?.lowercase(Locale.ROOT)
+                                ?: when (extension) {
+                                    "ts", "tsx" -> "typescript"
+                                    "js", "jsx", "mjs" -> "javascript"
+                                    "md" -> "markdown"
+                                    else -> extension
+                                }
+                            out += WorkspaceSidecarRecord(
+                                documentName = documentName,
+                                documentDir = documentDir,
+                                metadataMtime = metadataMtime,
+                                boxId = transfer.id,
+                                boxName = boxName,
+                                property = "contents",
+                                language = language,
+                                file = source,
+                                relativePath = if (source.startsWith(root)) root.relativize(source).toString().replace("\\", "/") else source.toString(),
+                                sizeBytes = size,
+                                modifiedEpochMs = Files.getLastModifiedTime(source).toMillis()
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -1705,28 +1905,47 @@ object SemanticRetrievalService {
                 .forEach { file ->
                     val rel = root.relativize(file).toString().replace("\\", "/")
                     val lines = runCatching { Files.readAllLines(file, StandardCharsets.UTF_8) }.getOrDefault(emptyList())
-                    val sections = markdownSections(lines)
-                    sections.forEachIndexed { idx, section ->
-                        val title = section.title.ifBlank { rel.substringAfterLast('/') }
+                    // A redirect stub (`docs:` front matter, written beside each tutorial for its Guides panel) is a
+                    // pointer to a page that is indexed itself. Indexed, the stubs took first place for the very
+                    // sentences they quote: 196 of 231 misses in the first measured eval (2026-10-22).
+                    if (MarkdownChunker.isRedirectStub(lines)) return@forEach
+                    // A tutorial's files are indexed from its boxes in the `tutorials` corpus; its markdown mirror
+                    // (document.md, AGENTS.md) would be a second copy of the same code in the documentation corpus.
+                    if (rel.startsWith("public/docs/assets/agent_transcripts/") || rel.startsWith("public/docs/assets/canonical_graphics/") && !rel.endsWith("LESSONS.md")) return@forEach
+                    // See MarkdownChunker for what was wrong with cutting at every `#` line.
+                    val chunks = if (evalSetting("chunker") == "sections") markdownSections(lines).map {
+                        MarkdownChunker.Chunk(it.title, it.title, it.level, it.line, it.endLine, it.body.take(10_000))
+                    } else MarkdownChunker.chunks(lines)
+                    chunks.forEachIndexed { idx, chunk ->
+                        val title = chunk.title.ifBlank { rel.substringAfterLast('/') }
                         out += SemanticCapsule(
-                            id = "docs:$rel:${section.line}:$idx".sha256Id(),
+                            id = "docs:$rel:${chunk.line}:$idx".sha256Id(),
                             scale = "container",
                             corpus = "documentation",
-                            kind = "docs-section",
-                            symbol = title,
-                            title = title,
+                            // The generated API reference is half the corpus; its own kind lets a search ask for
+                            // it or leave it out. Measured, leaving it out by default was a net loss.
+                            kind = if ("/reference/" in rel) "docs-reference" else "docs-section",
+                            symbol = chunk.breadcrumb.ifBlank { title },
+                            title = if (chunk.part > 0) "$title (part ${chunk.part})" else title,
                             path = rel,
-                            line = section.line,
-                            endLine = section.endLine,
+                            line = chunk.line,
+                            endLine = chunk.endLine,
                             parentId = "subsystem:docs:${rel.substringBeforeLast('/', "")}",
-                            documentation = section.body.take(10_000),
-                            metadata = "markdown_heading_level: ${section.level}"
+                            documentation = chunk.body
                         )
                     }
                 }
         }
-        return out
+        return dedupeDocs(out)
     }
+
+    /**
+     * Identical text indexed once: each tutorial ships the same AGENTS.md (256 copies), and a copy outranks
+     * nothing but itself. The kept copy is the one outside `assets/`, then the shortest path.
+     */
+    private fun dedupeDocs(capsules: List<SemanticCapsule>): List<SemanticCapsule> =
+        capsules.groupBy { it.documentation.lowercase().replace(Regex("\\s+"), " ").trim().sha256Id() }
+            .values.map { copies -> copies.minWith(compareBy<SemanticCapsule>({ "/assets/" in it.path }, { it.path.length }, { it.path })) }
 
     private fun subsystemCapsules(capsules: List<SemanticCapsule>): List<SemanticCapsule> {
         val bySubsystem = capsules
@@ -1839,6 +2058,7 @@ object SemanticRetrievalService {
             doc.add(TextField("metadata", metadata, Field.Store.YES))
             doc.add(TextField("source", source.take(30_000), Field.Store.YES))
             doc.add(TextField("all", lexicalText().take(80_000), Field.Store.NO))
+            doc.add(TextField("allStem", lexicalText().take(80_000), Field.Store.NO))
             doc.add(StoredField("line", line))
             doc.add(StoredField("endLine", endLine))
             doc.add(StoredField("capsule", intentText().take(30_000)))
@@ -1847,6 +2067,19 @@ object SemanticRetrievalService {
         }
 
     private fun buildBm25Query(raw: String): Query {
+        val exact = buildExactBm25Query(raw)
+        val boost = stemBoost()
+        if (boost <= 0f) return exact
+        val stemmed = runCatching {
+            org.apache.lucene.queryparser.classic.QueryParser("allStem", stemAnalyzer).parse(MultiFieldQueryParser.escape(raw))
+        }.getOrNull() ?: return exact
+        return BooleanQuery.Builder()
+            .add(exact, BooleanClause.Occur.SHOULD)
+            .add(org.apache.lucene.search.BoostQuery(stemmed, boost), BooleanClause.Occur.SHOULD)
+            .build()
+    }
+
+    private fun buildExactBm25Query(raw: String): Query {
         val parser = MultiFieldQueryParser(
             arrayOf("all", "documentation", "metadata", "source", "signature", "title"),
             analyzer,
@@ -1858,7 +2091,8 @@ object SemanticRetrievalService {
 
     private fun buildSymbolQuery(raw: String): Query {
         val builder = BooleanQuery.Builder()
-        queryTokens(raw).forEach { token ->
+        // Through the index's own analyzer, so a stemmed or split index term is met by the same term.
+        analyzedTokens(splitIdentifier(raw)).forEach { token ->
             builder.add(TermQuery(Term("symbolText", token)), BooleanClause.Occur.SHOULD)
             builder.add(TermQuery(Term("titleText", token)), BooleanClause.Occur.SHOULD)
             builder.add(TermQuery(Term("boxNameText", token)), BooleanClause.Occur.SHOULD)
@@ -1978,8 +2212,16 @@ object SemanticRetrievalService {
             "field", "fields", "field4", "internals", "source", "src", "code", "field-internal", "field-internals" -> "field-internals"
             "workspace", "workspace-sidecar", "workspace-sidecars", "sidecar", "sidecars", "document", "documents", "current-document" -> "workspace"
             "doc", "docs", "documentation", "manual", "manuals" -> "documentation"
+            "tutorial", "tutorials", "tutorial-code", "examples", "starting-points", "starting-point" -> "tutorials"
             else -> raw.trim().lowercase(Locale.ROOT)
         }
+
+    /** The stored `corpus` terms for [corpora] (normalized names), or null for every corpus. */
+    private fun corpusFilterQuery(corpora: Set<String>): Query? {
+        if (corpora.isEmpty() || "all" in corpora) return null
+        val stored = corpora.flatMap { if (it == "workspace") listOf("workspace", "workspace-sidecars") else listOf(it) }
+        return TermInSetQuery("corpus", stored.map(::BytesRef))
+    }
 
     private fun displayCorpusName(raw: String): String =
         raw.replace("workspace-sidecars", "workspace")
@@ -2052,11 +2294,16 @@ object SemanticRetrievalService {
         return "$raw $spaced"
     }
 
-    private fun queryTokens(raw: String): List<String> =
-        splitIdentifier(raw).lowercase(Locale.ROOT)
-            .split(Regex("""[^a-z0-9_]+"""))
-            .filter { it.length >= 2 }
-            .distinct()
+    private fun analyzedTokens(text: String): List<String> {
+        val out = LinkedHashSet<String>()
+        analyzer.tokenStream("symbolText", text).use { stream ->
+            val term = stream.addAttribute(org.apache.lucene.analysis.tokenattributes.CharTermAttribute::class.java)
+            stream.reset()
+            while (stream.incrementToken()) term.toString().takeIf { it.length >= 2 }?.let(out::add)
+            stream.end()
+        }
+        return out.toList()
+    }
 
     private val kotlinKeywords = setOf(
         "if", "for", "while", "when", "return", "throw", "catch", "fun", "class", "object", "interface",
@@ -2117,8 +2364,18 @@ class OnnxSemanticEmbedder private constructor(
         addIfExpected("token_type_ids", typeIds)
         try {
             session.run(inputs).use { result ->
-                val raw = result.firstOrNull()?.value
-                return pooledVectors(raw, mask).map { it.normalized() }.take(requestedSize)
+                // `result.get(0)` is the OnnxValue; its `.value` is the array. Until 2026-10-22 this read
+                // `result.firstOrNull()?.value`, which is the Map.Entry's value (the OnnxTensor itself), so
+                // pooling fell through to zeros: every query and every indexed vector since 2026-07-06 was
+                // zero, and the dense half of semantic search matched nothing.
+                val raw = result.get(0).value
+                val vectors = pooledVectors(raw, mask).map { it.normalized() }.take(requestedSize)
+                vectors.forEachIndexed { i, vector ->
+                    check(texts[i].isBlank() || vector.any { it != 0f }) {
+                        "Embedder produced a zero vector for non-empty text (output ${raw?.javaClass?.name})"
+                    }
+                }
+                return vectors
             }
         } finally {
             inputs.values.forEach { it.close() }
@@ -2137,11 +2394,12 @@ class OnnxSemanticEmbedder private constructor(
                 when (first) {
                     is FloatArray -> raw.filterIsInstance<FloatArray>().map { it.copyOf(dimension) }
                     is Array<*> -> poolTokenEmbeddings(raw, mask)
-                    else -> mask.map { FloatArray(dimension) }
+                    else -> error("Unexpected embedding model output element ${first?.javaClass?.name}")
                 }
             }
             is FloatArray -> listOf(raw.copyOf(dimension))
-            else -> mask.map { FloatArray(dimension) }
+            // Silent zeros here hid a broken embedder for three months; a wrong output type is a failure.
+            else -> error("Unexpected embedding model output ${raw?.javaClass?.name}")
         }
     }
 

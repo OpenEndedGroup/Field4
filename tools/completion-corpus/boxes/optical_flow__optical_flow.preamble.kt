@@ -1,6 +1,6 @@
-import afield.graphics.vulkan.Renderer
-import afield.graphics.vulkan.util.Window
 import afield.media.vision.OpticalFlowDemo
+import afield.graphics.vulkan.util.Window
+import afield.graphics.vulkan.Renderer
 var Box.lab by Inheritance<OpticalFlowDemo>() /**/
 val Once.lab by Onceing<OpticalFlowDemo>() /**/
 val Why.lab by Whying() /**/

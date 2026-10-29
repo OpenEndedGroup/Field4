@@ -13,7 +13,7 @@ charGrid { } runs its block once a tick (24 a second), and inside it:
 charStream { } is the other time model: one long program in which every SET waits a tick (see
 the 10 PRINT box). `sounds` gives each glyph index a dough path, so every SET of it plays.
 */
-val sounds = listOf(
+val sounds = [
     "/dough/play/note/48/duration/0.12/s/tri/fm/2/fmd/0.1/lpf/600/lpe/3/lpd/0.08/release/0.06/verb/0.3",
     "/dough/play/note/50/duration/0.12/s/tri/fm/2/fmd/0.1/lpf/700/lpe/3/lpd/0.08/release/0.06/verb/0.3",
     "/dough/play/note/53/duration/0.12/s/tri/fm/3/fmd/0.1/lpf/800/lpe/3/lpd/0.08/release/0.06/verb/0.3",
@@ -24,7 +24,7 @@ val sounds = listOf(
     "/dough/play/note/64/duration/0.08/s/pulse/pw/0.3/lpf/500/lpe/2/lpd/0.06/release/0.04",
     "/dough/play/note/65/duration/0.06/s/saw/lpf/400/lpe/4/lpd/0.05/release/0.03",
     "/dough/play/note/67/duration/0.06/s/saw/lpf/400/lpe/4/lpd/0.05/release/0.03",
-)
+]
 
 charGrid(glyphs = "░▒▓█╔╗╚╝║═", sounds = sounds) {
     for (y in 0 until ROWS) {

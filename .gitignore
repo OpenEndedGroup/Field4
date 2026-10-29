@@ -188,6 +188,8 @@ public/zensical.generated.build.yml
 public/edn-parser.js
 public/examples-gallery.html
 public/offline-viewer.js
+public/offline-outputs.js
+public/offline-publications.json
 public/offline.html
 public/outputareas.css
 public/iosevka.css
@@ -198,6 +200,8 @@ public/metadata_store/
 dev_docs/edn-parser.js
 dev_docs/examples-gallery.html
 dev_docs/offline-viewer.js
+dev_docs/offline-outputs.js
+dev_docs/offline-publications.json
 dev_docs/offline.html
 dev_docs/outputareas.css
 dev_docs/iosevka.css
@@ -260,6 +264,8 @@ dev_docs/agents/demos/ai4_loop_verification/
 
 # Excalidraw bundle build inputs (output is committed under src/jsMain/resources/excalidraw/)
 tools/excalidraw-bundle/node_modules/
+tools/mermaid-bundle/node_modules/
+tools/katex-bundle/node_modules/
 
 # Nightly agents' per-tree scratch (downloads, build logs); never source.
 .nightly-tmp/

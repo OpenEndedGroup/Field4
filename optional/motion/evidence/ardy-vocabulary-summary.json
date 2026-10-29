@@ -1,0 +1,2281 @@
+{
+  "coldModelSeconds": 2.678193088970147,
+  "torchPeakAllocatedBytes": 931004416,
+  "results": [
+    {
+      "label": "walk",
+      "prompt": "A person walks forward.",
+      "seed": 0,
+      "path": "walk-seed0.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.28683410806115717,
+      "rootDisplacementM": [
+        -0.005855899304151535,
+        -0.0028219223022460938,
+        0.04769484559074044
+      ],
+      "minimumJointHeightM": 0.020296454429626465,
+      "heightRangeM": [
+        0.953329861164093,
+        0.9606010913848877
+      ],
+      "maximumBoneLengthErrorM": 3.139229911020003e-07,
+      "predictedContactFootSpeedMeanMps": 0.010171412322065976,
+      "generationMs": [
+        174.19652093667537,
+        52.620901027694345,
+        23.360113031230867
+      ],
+      "encodingMs": [
+        1.976428902707994,
+        0.12733798939734697,
+        0.13765704352408648
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "walk",
+      "prompt": "A person walks forward.",
+      "seed": 1,
+      "path": "walk-seed1.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.09222949401009828,
+      "rootDisplacementM": [
+        -0.12548379227519035,
+        -0.0014845728874206543,
+        1.3155690701096319
+      ],
+      "minimumJointHeightM": 0.014109790325164795,
+      "heightRangeM": [
+        0.9537761807441711,
+        0.9883925914764404
+      ],
+      "maximumBoneLengthErrorM": 3.454531635194158e-07,
+      "predictedContactFootSpeedMeanMps": 0.02785397760007327,
+      "generationMs": [
+        20.21799806971103,
+        22.327315993607044,
+        22.58317405357957
+      ],
+      "encodingMs": [
+        0.09363493882119656,
+        0.08295499719679356,
+        0.09263295214623213
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "walk",
+      "prompt": "A person walks forward.",
+      "seed": 2,
+      "path": "walk-seed2.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.09329126495867968,
+      "rootDisplacementM": [
+        0.07692920649424195,
+        -0.011379897594451904,
+        0.4974066065624356
+      ],
+      "minimumJointHeightM": 0.0058171749114990234,
+      "heightRangeM": [
+        0.9443427324295044,
+        0.9617804884910583
+      ],
+      "maximumBoneLengthErrorM": 3.4114066965740264e-07,
+      "predictedContactFootSpeedMeanMps": 0.015605292682209745,
+      "generationMs": [
+        20.60765598434955,
+        22.347943973727524,
+        22.43736106902361
+      ],
+      "encodingMs": [
+        0.08331506978720427,
+        0.08610100485384464,
+        0.0840270658954978
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "walk",
+      "prompt": "A person walks forward.",
+      "seed": 3,
+      "path": "walk-seed3.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.09376462898217142,
+      "rootDisplacementM": [
+        -0.25930358842015266,
+        -0.0030292272567749023,
+        1.4289601885247976
+      ],
+      "minimumJointHeightM": -0.0014362335205078125,
+      "heightRangeM": [
+        0.9349451065063477,
+        0.9488664269447327
+      ],
+      "maximumBoneLengthErrorM": 2.9976404941622903e-07,
+      "predictedContactFootSpeedMeanMps": 0.027512184928152973,
+      "generationMs": [
+        20.447515998966992,
+        23.206837009638548,
+        22.406202973797917
+      ],
+      "encodingMs": [
+        0.09338394738733768,
+        0.08818402420729399,
+        0.09505706839263439
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "walk",
+      "prompt": "A person walks forward.",
+      "seed": 4,
+      "path": "walk-seed4.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.0932997609488666,
+      "rootDisplacementM": [
+        -0.10143746086396277,
+        -0.006427466869354248,
+        2.3794882050715387
+      ],
+      "minimumJointHeightM": 0.02072352170944214,
+      "heightRangeM": [
+        0.9705365300178528,
+        0.9862272143363953
+      ],
+      "maximumBoneLengthErrorM": 2.9905352966208554e-07,
+      "predictedContactFootSpeedMeanMps": 0.029396365321151162,
+      "generationMs": [
+        20.057549001649022,
+        23.5199520830065,
+        22.23959204275161
+      ],
+      "encodingMs": [
+        0.08299504406750202,
+        0.09773299098014832,
+        0.09089999366551638
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "jog",
+      "prompt": "A person jogs forward.",
+      "seed": 0,
+      "path": "jog-seed0.f4motion",
+      "frames": 120,
+      "wallSeconds": 2.129975450108759,
+      "rootDisplacementM": [
+        0.35282954247668386,
+        0.07618510723114014,
+        1.0567340701381909
+      ],
+      "minimumJointHeightM": 0.006062984466552734,
+      "heightRangeM": [
+        0.8773825168609619,
+        1.0008631944656372
+      ],
+      "maximumBoneLengthErrorM": 3.7897972476885755e-07,
+      "predictedContactFootSpeedMeanMps": 0.06393504388713539,
+      "generationMs": [
+        21.917790989391506,
+        24.28030106239021,
+        23.048923001624644
+      ],
+      "encodingMs": [
+        2032.362237921916,
+        0.10409392416477203,
+        0.12195797171443701
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "jog",
+      "prompt": "A person jogs forward.",
+      "seed": 1,
+      "path": "jog-seed1.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.09631767496466637,
+      "rootDisplacementM": [
+        0.05127784423530102,
+        0.07282215356826782,
+        4.7970598324609455
+      ],
+      "minimumJointHeightM": 0.007649898529052734,
+      "heightRangeM": [
+        0.8882849812507629,
+        0.9947671890258789
+      ],
+      "maximumBoneLengthErrorM": 4.620717466707891e-07,
+      "predictedContactFootSpeedMeanMps": 0.015556588414532831,
+      "generationMs": [
+        20.64729994162917,
+        23.432418005540967,
+        23.177883005701005
+      ],
+      "encodingMs": [
+        0.10536692570894957,
+        0.10286201722919941,
+        0.1055269967764616
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "jog",
+      "prompt": "A person jogs forward.",
+      "seed": 2,
+      "path": "jog-seed2.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.09809894894715399,
+      "rootDisplacementM": [
+        0.4718492708634585,
+        0.051768958568573,
+        5.372818149626255
+      ],
+      "minimumJointHeightM": 0.01083993911743164,
+      "heightRangeM": [
+        0.8505406379699707,
+        0.9656246304512024
+      ],
+      "maximumBoneLengthErrorM": 4.737686822575693e-07,
+      "predictedContactFootSpeedMeanMps": 0.016348040383474958,
+      "generationMs": [
+        21.032758988440037,
+        24.277795921079814,
+        23.091320996172726
+      ],
+      "encodingMs": [
+        0.09784300345927477,
+        0.12621504720300436,
+        0.12020498979836702
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "jog",
+      "prompt": "A person jogs forward.",
+      "seed": 3,
+      "path": "jog-seed3.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.0951776560395956,
+      "rootDisplacementM": [
+        -0.4619304467923939,
+        0.05178368091583252,
+        4.477447530953214
+      ],
+      "minimumJointHeightM": 0.002383410930633545,
+      "heightRangeM": [
+        0.855798602104187,
+        0.9728481769561768
+      ],
+      "maximumBoneLengthErrorM": 4.205276727953233e-07,
+      "predictedContactFootSpeedMeanMps": 0.017437456829125623,
+      "generationMs": [
+        20.757094025611877,
+        22.96811097767204,
+        23.211374995298684
+      ],
+      "encodingMs": [
+        0.10412407573312521,
+        0.09897502604871988,
+        0.11208897922188044
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "jog",
+      "prompt": "A person jogs forward.",
+      "seed": 4,
+      "path": "jog-seed4.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.095582170994021,
+      "rootDisplacementM": [
+        -0.009014999959617853,
+        0.019106924533843994,
+        7.537395771709271
+      ],
+      "minimumJointHeightM": 0.007179558277130127,
+      "heightRangeM": [
+        0.885289192199707,
+        0.9763726592063904
+      ],
+      "maximumBoneLengthErrorM": 4.5832032941062195e-07,
+      "predictedContactFootSpeedMeanMps": 0.04298448767940525,
+      "generationMs": [
+        20.807068096473813,
+        22.953895037062466,
+        23.460511001758277
+      ],
+      "encodingMs": [
+        0.11053599882870913,
+        0.10199996177107096,
+        0.10973401367664337
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "run",
+      "prompt": "A person runs forward.",
+      "seed": 0,
+      "path": "run-seed0.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.0955136229749769,
+      "rootDisplacementM": [
+        0.3282676669768989,
+        0.02278965711593628,
+        5.523317156752455
+      ],
+      "minimumJointHeightM": 0.002169489860534668,
+      "heightRangeM": [
+        0.8092190027236938,
+        0.9378376007080078
+      ],
+      "maximumBoneLengthErrorM": 4.442271178406454e-07,
+      "predictedContactFootSpeedMeanMps": 0.013295951457648069,
+      "generationMs": [
+        21.452823071740568,
+        22.77273708023131,
+        22.85627298988402
+      ],
+      "encodingMs": [
+        0.33752003218978643,
+        0.10870292317122221,
+        0.10280194692313671
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "run",
+      "prompt": "A person runs forward.",
+      "seed": 1,
+      "path": "run-seed1.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.0955576760461554,
+      "rootDisplacementM": [
+        -0.22986595751717687,
+        0.03186750411987305,
+        4.956974837463349
+      ],
+      "minimumJointHeightM": 0.0005642175674438477,
+      "heightRangeM": [
+        0.8732975721359253,
+        0.9958630204200745
+      ],
+      "maximumBoneLengthErrorM": 4.676767339298338e-07,
+      "predictedContactFootSpeedMeanMps": 0.050946557086054306,
+      "generationMs": [
+        20.637952955439687,
+        23.09875504579395,
+        22.618079092353582
+      ],
+      "encodingMs": [
+        0.08914701174944639,
+        0.09770190808922052,
+        0.0997759634628892
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "run",
+      "prompt": "A person runs forward.",
+      "seed": 2,
+      "path": "run-seed2.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.09318975592032075,
+      "rootDisplacementM": [
+        0.5045627299696207,
+        -0.0053902268409729,
+        6.821844222489744
+      ],
+      "minimumJointHeightM": 0.000494837760925293,
+      "heightRangeM": [
+        0.8174005746841431,
+        0.9305844902992249
+      ],
+      "maximumBoneLengthErrorM": 4.970277430738079e-07,
+      "predictedContactFootSpeedMeanMps": 0.018886038011811022,
+      "generationMs": [
+        20.61806502752006,
+        22.388149052858353,
+        22.53460302017629
+      ],
+      "encodingMs": [
+        0.09166100062429905,
+        0.09010802023112774,
+        0.11204998008906841
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "run",
+      "prompt": "A person runs forward.",
+      "seed": 3,
+      "path": "run-seed3.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.0931289930595085,
+      "rootDisplacementM": [
+        -1.1590178930200636,
+        0.04721099138259888,
+        5.693174186162651
+      ],
+      "minimumJointHeightM": 0.010145366191864014,
+      "heightRangeM": [
+        0.8364025354385376,
+        0.9727823138237
+      ],
+      "maximumBoneLengthErrorM": 4.567472187133603e-07,
+      "predictedContactFootSpeedMeanMps": 0.016724061439188826,
+      "generationMs": [
+        20.495897042565048,
+        22.603349993005395,
+        22.436478990130126
+      ],
+      "encodingMs": [
+        0.09521795436739922,
+        0.09038904681801796,
+        0.0941550824791193
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "run",
+      "prompt": "A person runs forward.",
+      "seed": 4,
+      "path": "run-seed4.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.09339357609860599,
+      "rootDisplacementM": [
+        -0.13501093490049243,
+        0.04274529218673706,
+        5.688617559149861
+      ],
+      "minimumJointHeightM": 0.005040466785430908,
+      "heightRangeM": [
+        0.8514031171798706,
+        0.9767228960990906
+      ],
+      "maximumBoneLengthErrorM": 3.9783816851990395e-07,
+      "predictedContactFootSpeedMeanMps": 0.020277858042055598,
+      "generationMs": [
+        20.882619079202414,
+        22.596277063712478,
+        22.366177989169955
+      ],
+      "encodingMs": [
+        0.10526599362492561,
+        0.0991959823295474,
+        0.09519699960947037
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "jump_in_place",
+      "prompt": "A person jumps in place.",
+      "seed": 0,
+      "path": "jump_in_place-seed0.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.5582295079948381,
+      "rootDisplacementM": [
+        -0.006554101360961795,
+        0.005313277244567871,
+        0.009379360591992736
+      ],
+      "minimumJointHeightM": 0.005236208438873291,
+      "heightRangeM": [
+        0.750119149684906,
+        1.262187123298645
+      ],
+      "maximumBoneLengthErrorM": 3.1966549501882824e-07,
+      "predictedContactFootSpeedMeanMps": 0.014998000056295716,
+      "generationMs": [
+        21.666092099621892,
+        24.245897075161338,
+        22.653123014606535
+      ],
+      "encodingMs": [
+        461.5213139913976,
+        0.08918601088225842,
+        0.09009905625134706
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "jump_in_place",
+      "prompt": "A person jumps in place.",
+      "seed": 1,
+      "path": "jump_in_place-seed1.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.09250172099564224,
+      "rootDisplacementM": [
+        0.012278014328330755,
+        0.0013265013694763184,
+        0.023176762275397778
+      ],
+      "minimumJointHeightM": 0.004124641418457031,
+      "heightRangeM": [
+        0.784050703048706,
+        1.2481101751327515
+      ],
+      "maximumBoneLengthErrorM": 3.4987367814043324e-07,
+      "predictedContactFootSpeedMeanMps": 0.016337979917320233,
+      "generationMs": [
+        20.445211906917393,
+        22.435948019847274,
+        22.20338408369571
+      ],
+      "encodingMs": [
+        0.10767101775854826,
+        0.08105102460831404,
+        0.07985904812812805
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "jump_in_place",
+      "prompt": "A person jumps in place.",
+      "seed": 2,
+      "path": "jump_in_place-seed2.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.0918545430758968,
+      "rootDisplacementM": [
+        -0.011370474472641945,
+        0.000998079776763916,
+        0.004317841026932001
+      ],
+      "minimumJointHeightM": -0.009518444538116455,
+      "heightRangeM": [
+        0.8069015741348267,
+        1.1475839614868164
+      ],
+      "maximumBoneLengthErrorM": 3.48339599054448e-07,
+      "predictedContactFootSpeedMeanMps": 0.016702227891004326,
+      "generationMs": [
+        20.24371607694775,
+        22.204727050848305,
+        22.263386053964496
+      ],
+      "encodingMs": [
+        0.07390696555376053,
+        0.07834599819034338,
+        0.07809593807905912
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "jump_in_place",
+      "prompt": "A person jumps in place.",
+      "seed": 3,
+      "path": "jump_in_place-seed3.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.09192251099739224,
+      "rootDisplacementM": [
+        -0.02972244145348668,
+        0.01046299934387207,
+        0.04366750945337117
+      ],
+      "minimumJointHeightM": -0.002730071544647217,
+      "heightRangeM": [
+        0.7869985103607178,
+        1.1369893550872803
+      ],
+      "maximumBoneLengthErrorM": 2.760232531984208e-07,
+      "predictedContactFootSpeedMeanMps": 0.015076851668466514,
+      "generationMs": [
+        20.285535021685064,
+        22.170834010466933,
+        22.311696084216237
+      ],
+      "encodingMs": [
+        0.0777150271460414,
+        0.08437701035290956,
+        0.09176100138574839
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "jump_in_place",
+      "prompt": "A person jumps in place.",
+      "seed": 4,
+      "path": "jump_in_place-seed4.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.0921978740952909,
+      "rootDisplacementM": [
+        0.006158910691738129,
+        0.004805803298950195,
+        0.01732542645186186
+      ],
+      "minimumJointHeightM": 0.005215466022491455,
+      "heightRangeM": [
+        0.7483247518539429,
+        1.2212861776351929
+      ],
+      "maximumBoneLengthErrorM": 3.0483243129708626e-07,
+      "predictedContactFootSpeedMeanMps": 0.013850070564125,
+      "generationMs": [
+        20.22868802305311,
+        22.613320033997297,
+        22.216066950932145
+      ],
+      "encodingMs": [
+        0.07934798486530781,
+        0.07931806612759829,
+        0.08472800254821777
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "jump_forward",
+      "prompt": "A person jumps forward.",
+      "seed": 0,
+      "path": "jump_forward-seed0.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.5597730990266427,
+      "rootDisplacementM": [
+        -0.0555955208837986,
+        0.00184708833694458,
+        0.9553245382849127
+      ],
+      "minimumJointHeightM": 0.019615471363067627,
+      "heightRangeM": [
+        0.8451269268989563,
+        0.9886817336082458
+      ],
+      "maximumBoneLengthErrorM": 2.321066895905055e-07,
+      "predictedContactFootSpeedMeanMps": 0.008990508374691937,
+      "generationMs": [
+        22.05000794492662,
+        24.274590075947344,
+        23.307304945774376
+      ],
+      "encodingMs": [
+        460.56860603857785,
+        0.11233997065573931,
+        0.15302503015846014
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "jump_forward",
+      "prompt": "A person jumps forward.",
+      "seed": 1,
+      "path": "jump_forward-seed1.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.0928153870627284,
+      "rootDisplacementM": [
+        0.012260522926226258,
+        -0.0026088356971740723,
+        1.0111836646101438
+      ],
+      "minimumJointHeightM": 0.012531280517578125,
+      "heightRangeM": [
+        0.8524941802024841,
+        0.96612149477005
+      ],
+      "maximumBoneLengthErrorM": 3.899233324555773e-07,
+      "predictedContactFootSpeedMeanMps": 0.011365318711037551,
+      "generationMs": [
+        20.619989023543894,
+        22.363784024491906,
+        22.39096409175545
+      ],
+      "encodingMs": [
+        0.10507600381970406,
+        0.093253911472857,
+        0.080329948104918
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "jump_forward",
+      "prompt": "A person jumps forward.",
+      "seed": 2,
+      "path": "jump_forward-seed2.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.10036918590776622,
+      "rootDisplacementM": [
+        0.00994943967089057,
+        -0.00044041872024536133,
+        1.0024373075721087
+      ],
+      "minimumJointHeightM": -0.0012917518615722656,
+      "heightRangeM": [
+        0.8491042852401733,
+        0.9525706171989441
+      ],
+      "maximumBoneLengthErrorM": 3.8377318123394843e-07,
+      "predictedContactFootSpeedMeanMps": 0.011597782384789913,
+      "generationMs": [
+        21.56829903833568,
+        23.353801923803985,
+        25.427081040106714
+      ],
+      "encodingMs": [
+        0.08423696272075176,
+        0.11508504394441843,
+        0.09973603300750256
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "jump_forward",
+      "prompt": "A person jumps forward.",
+      "seed": 3,
+      "path": "jump_forward-seed3.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.10088759392965585,
+      "rootDisplacementM": [
+        -0.0785520386416465,
+        0.0029489994049072266,
+        0.7661772185820155
+      ],
+      "minimumJointHeightM": -0.004928648471832275,
+      "heightRangeM": [
+        0.8699950575828552,
+        0.95949387550354
+      ],
+      "maximumBoneLengthErrorM": 3.2913048736427086e-07,
+      "predictedContactFootSpeedMeanMps": 0.011393230708984082,
+      "generationMs": [
+        22.461425978690386,
+        25.56005003862083,
+        22.564769024029374
+      ],
+      "encodingMs": [
+        0.08929695468395948,
+        0.09022909216582775,
+        0.08757307659834623
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "jump_forward",
+      "prompt": "A person jumps forward.",
+      "seed": 4,
+      "path": "jump_forward-seed4.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.11038115504197776,
+      "rootDisplacementM": [
+        0.020587811479344964,
+        0.00141221284866333,
+        0.9408272070577368
+      ],
+      "minimumJointHeightM": 0.011213541030883789,
+      "heightRangeM": [
+        0.8632994890213013,
+        0.9844496250152588
+      ],
+      "maximumBoneLengthErrorM": 3.523215155176729e-07,
+      "predictedContactFootSpeedMeanMps": 0.009151021205495066,
+      "generationMs": [
+        26.277047931216657,
+        26.756832958199084,
+        25.517731090076268
+      ],
+      "encodingMs": [
+        0.1523350365459919,
+        0.14341797214001417,
+        0.15276495832949877
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "stealth",
+      "prompt": "A person walks stealthily.",
+      "seed": 0,
+      "path": "stealth-seed0.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.6086215380346403,
+      "rootDisplacementM": [
+        0.041929112281650305,
+        0.06445300579071045,
+        0.0739801744784927
+      ],
+      "minimumJointHeightM": 0.016447365283966064,
+      "heightRangeM": [
+        0.7272378206253052,
+        0.8679579496383667
+      ],
+      "maximumBoneLengthErrorM": 2.560066869050637e-07,
+      "predictedContactFootSpeedMeanMps": 0.013204023012187037,
+      "generationMs": [
+        21.57947001978755,
+        24.07329506240785,
+        22.605956066399813
+      ],
+      "encodingMs": [
+        511.7365549085662,
+        0.08838495705276728,
+        0.08505897130817175
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "stealth",
+      "prompt": "A person walks stealthily.",
+      "seed": 1,
+      "path": "stealth-seed1.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.09223681699950248,
+      "rootDisplacementM": [
+        0.07423764513805509,
+        -0.03395313024520874,
+        0.767099443502957
+      ],
+      "minimumJointHeightM": 0.01620006561279297,
+      "heightRangeM": [
+        0.7764729261398315,
+        0.8615472316741943
+      ],
+      "maximumBoneLengthErrorM": 2.934255043385292e-07,
+      "predictedContactFootSpeedMeanMps": 0.01744254140539752,
+      "generationMs": [
+        20.334735978394747,
+        22.337806061841547,
+        22.220997023396194
+      ],
+      "encodingMs": [
+        0.0812220387160778,
+        0.08476898074150085,
+        0.08244393393397331
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "stealth",
+      "prompt": "A person walks stealthily.",
+      "seed": 2,
+      "path": "stealth-seed2.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.09750666306354105,
+      "rootDisplacementM": [
+        -0.22940005781129003,
+        -0.02428382635116577,
+        0.8212064723484218
+      ],
+      "minimumJointHeightM": 0.009589731693267822,
+      "heightRangeM": [
+        0.7833342552185059,
+        0.8576256632804871
+      ],
+      "maximumBoneLengthErrorM": 2.566613014343133e-07,
+      "predictedContactFootSpeedMeanMps": 0.02539909719697651,
+      "generationMs": [
+        20.614898996427655,
+        24.4675709400326,
+        23.05018506012857
+      ],
+      "encodingMs": [
+        0.07971900049597025,
+        0.18480501603335142,
+        0.11157803237438202
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "stealth",
+      "prompt": "A person walks stealthily.",
+      "seed": 3,
+      "path": "stealth-seed3.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.09622991108335555,
+      "rootDisplacementM": [
+        -0.013063421472907066,
+        -0.0009261965751647949,
+        0.7861430619377643
+      ],
+      "minimumJointHeightM": 0.0006707310676574707,
+      "heightRangeM": [
+        0.8083178997039795,
+        0.8517807722091675
+      ],
+      "maximumBoneLengthErrorM": 3.023465727780561e-07,
+      "predictedContactFootSpeedMeanMps": 0.019034831859128232,
+      "generationMs": [
+        21.083072992041707,
+        23.745191982015967,
+        22.6973460521549
+      ],
+      "encodingMs": [
+        0.08050003089010715,
+        0.09059894364327192,
+        0.12736802455037832
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "stealth",
+      "prompt": "A person walks stealthily.",
+      "seed": 4,
+      "path": "stealth-seed4.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.09302555897738785,
+      "rootDisplacementM": [
+        -0.33944894047454,
+        -0.011426150798797607,
+        1.1099243017379194
+      ],
+      "minimumJointHeightM": 0.014965415000915527,
+      "heightRangeM": [
+        0.7740023136138916,
+        0.8880511522293091
+      ],
+      "maximumBoneLengthErrorM": 3.2275917621893413e-07,
+      "predictedContactFootSpeedMeanMps": 0.021213327129341788,
+      "generationMs": [
+        20.464848959818482,
+        22.4740500561893,
+        22.45310100261122
+      ],
+      "encodingMs": [
+        0.08181296288967133,
+        0.07909804116934538,
+        0.09025796316564083
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "crouch_creep",
+      "prompt": "A person crouches and creeps forward.",
+      "seed": 0,
+      "path": "crouch_creep-seed0.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.6084338480141014,
+      "rootDisplacementM": [
+        -0.7941222973167896,
+        0.15985292196273804,
+        2.393716341815889
+      ],
+      "minimumJointHeightM": 0.0010921061038970947,
+      "heightRangeM": [
+        0.34200000762939453,
+        0.5594251155853271
+      ],
+      "maximumBoneLengthErrorM": 2.947091621019471e-07,
+      "predictedContactFootSpeedMeanMps": 0.04779465225345179,
+      "generationMs": [
+        21.401017089374363,
+        25.25787497870624,
+        22.46412099339068
+      ],
+      "encodingMs": [
+        511.0219909111038,
+        0.09511795360594988,
+        0.10066793765872717
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "crouch_creep",
+      "prompt": "A person crouches and creeps forward.",
+      "seed": 1,
+      "path": "crouch_creep-seed1.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.09346941800322384,
+      "rootDisplacementM": [
+        -0.01412901422008872,
+        0.19629433751106262,
+        2.9520432464778423
+      ],
+      "minimumJointHeightM": 0.012230336666107178,
+      "heightRangeM": [
+        0.4222143888473511,
+        0.6556859612464905
+      ],
+      "maximumBoneLengthErrorM": 2.5940210787722684e-07,
+      "predictedContactFootSpeedMeanMps": 0.04504921071575178,
+      "generationMs": [
+        20.607355050742626,
+        22.54037302918732,
+        22.424024995416403
+      ],
+      "encodingMs": [
+        0.08267408702522516,
+        0.09076891001313925,
+        0.09325402788817883
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "crouch_creep",
+      "prompt": "A person crouches and creeps forward.",
+      "seed": 2,
+      "path": "crouch_creep-seed2.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.09392933605704457,
+      "rootDisplacementM": [
+        -0.21815072605386376,
+        0.06908366084098816,
+        1.9126522564329207
+      ],
+      "minimumJointHeightM": 0.00023677945137023926,
+      "heightRangeM": [
+        0.32541531324386597,
+        0.5458314418792725
+      ],
+      "maximumBoneLengthErrorM": 2.409520414858868e-07,
+      "predictedContactFootSpeedMeanMps": 0.06066811382691549,
+      "generationMs": [
+        20.70586895570159,
+        22.562965052202344,
+        22.506660083308816
+      ],
+      "encodingMs": [
+        0.08783407974988222,
+        0.09191199205815792,
+        0.09955500718206167
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "crouch_creep",
+      "prompt": "A person crouches and creeps forward.",
+      "seed": 3,
+      "path": "crouch_creep-seed3.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.09237574599683285,
+      "rootDisplacementM": [
+        0.03393693594262004,
+        0.1383170485496521,
+        2.190773965790868
+      ],
+      "minimumJointHeightM": -0.005234360694885254,
+      "heightRangeM": [
+        0.3646284341812134,
+        0.6381312608718872
+      ],
+      "maximumBoneLengthErrorM": 2.796663186588333e-07,
+      "predictedContactFootSpeedMeanMps": 0.04412801854090497,
+      "generationMs": [
+        20.355754997581244,
+        22.252035094425082,
+        22.31607399880886
+      ],
+      "encodingMs": [
+        0.0839669955894351,
+        0.08277397137135267,
+        0.0829050550237298
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "crouch_creep",
+      "prompt": "A person crouches and creeps forward.",
+      "seed": 4,
+      "path": "crouch_creep-seed4.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.09503354807384312,
+      "rootDisplacementM": [
+        -0.17480010958388448,
+        0.18106478452682495,
+        1.8158239983022213
+      ],
+      "minimumJointHeightM": 0.0016429424285888672,
+      "heightRangeM": [
+        0.32760709524154663,
+        0.5127271413803101
+      ],
+      "maximumBoneLengthErrorM": 2.458220968448721e-07,
+      "predictedContactFootSpeedMeanMps": 0.04947352472860091,
+      "generationMs": [
+        20.683376933448017,
+        22.64051092788577,
+        23.099786951206625
+      ],
+      "encodingMs": [
+        0.08766306564211845,
+        0.09679107461124659,
+        0.10850292164832354
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "sideways_roll",
+      "prompt": "A person rolls sideways on the ground.",
+      "seed": 0,
+      "path": "sideways_roll-seed0.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.6210119860479608,
+      "rootDisplacementM": [
+        0.13685653591528535,
+        -0.018751561641693115,
+        -0.02936176408547908
+      ],
+      "minimumJointHeightM": -0.05778312683105469,
+      "heightRangeM": [
+        0.1513766646385193,
+        0.9191794395446777
+      ],
+      "maximumBoneLengthErrorM": 2.633644435867666e-07,
+      "predictedContactFootSpeedMeanMps": 0.044739768504215266,
+      "generationMs": [
+        22.151337005198002,
+        25.68727801553905,
+        28.431809972971678
+      ],
+      "encodingMs": [
+        510.8325280016288,
+        0.12157706078141928,
+        0.15400804113596678
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "sideways_roll",
+      "prompt": "A person rolls sideways on the ground.",
+      "seed": 1,
+      "path": "sideways_roll-seed1.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.10739856702275574,
+      "rootDisplacementM": [
+        -2.2460236893966794,
+        -0.05822145938873291,
+        0.1960665883962065
+      ],
+      "minimumJointHeightM": -0.06374168395996094,
+      "heightRangeM": [
+        0.18732035160064697,
+        0.963009238243103
+      ],
+      "maximumBoneLengthErrorM": 2.966437906426478e-07,
+      "predictedContactFootSpeedMeanMps": 0.05324368802110167,
+      "generationMs": [
+        24.94897902943194,
+        25.879736058413982,
+        23.777041002176702
+      ],
+      "encodingMs": [
+        0.1368549419566989,
+        0.14572194777429104,
+        0.12324994895607233
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "sideways_roll",
+      "prompt": "A person rolls sideways on the ground.",
+      "seed": 2,
+      "path": "sideways_roll-seed2.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.10815263504628092,
+      "rootDisplacementM": [
+        1.9901857865042984,
+        -0.040005505084991455,
+        -0.2730289660394192
+      ],
+      "minimumJointHeightM": -0.06265062093734741,
+      "heightRangeM": [
+        0.2094671130180359,
+        0.9279390573501587
+      ],
+      "maximumBoneLengthErrorM": 2.700948385503388e-07,
+      "predictedContactFootSpeedMeanMps": 0.04031507225617736,
+      "generationMs": [
+        22.913669934496284,
+        25.36041708663106,
+        23.813979933038354
+      ],
+      "encodingMs": [
+        0.13001298066228628,
+        0.1251039793714881,
+        0.14428910799324512
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "sideways_roll",
+      "prompt": "A person rolls sideways on the ground.",
+      "seed": 3,
+      "path": "sideways_roll-seed3.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.1098890861030668,
+      "rootDisplacementM": [
+        -2.103707743808627,
+        -0.02044767141342163,
+        0.47351903817616403
+      ],
+      "minimumJointHeightM": -0.05221223831176758,
+      "heightRangeM": [
+        0.21299755573272705,
+        0.8525204062461853
+      ],
+      "maximumBoneLengthErrorM": 2.762620684992889e-07,
+      "predictedContactFootSpeedMeanMps": 0.035915551638831505,
+      "generationMs": [
+        22.057723021134734,
+        25.62038297764957,
+        25.491131003946066
+      ],
+      "encodingMs": [
+        0.1369750825688243,
+        0.1600090181455016,
+        0.17974607180804014
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "sideways_roll",
+      "prompt": "A person rolls sideways on the ground.",
+      "seed": 4,
+      "path": "sideways_roll-seed4.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.097939561936073,
+      "rootDisplacementM": [
+        1.616565665230155,
+        0.012984395027160645,
+        -0.0468638907186687
+      ],
+      "minimumJointHeightM": -0.1217062771320343,
+      "heightRangeM": [
+        0.14934170246124268,
+        0.8986469507217407
+      ],
+      "maximumBoneLengthErrorM": 2.4175666663017736e-07,
+      "predictedContactFootSpeedMeanMps": 0.04985129809219135,
+      "generationMs": [
+        20.585244055837393,
+        23.28775799833238,
+        24.205430992878973
+      ],
+      "encodingMs": [
+        0.10874297004193068,
+        0.10105909314006567,
+        0.1449999399483204
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "somersault",
+      "prompt": "A person performs a forward somersault.",
+      "seed": 0,
+      "path": "somersault-seed0.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.6101266669575125,
+      "rootDisplacementM": [
+        0.24981013708747923,
+        0.020869553089141846,
+        2.2746459979680367
+      ],
+      "minimumJointHeightM": -0.03109002113342285,
+      "heightRangeM": [
+        0.14520221948623657,
+        0.9113517999649048
+      ],
+      "maximumBoneLengthErrorM": 3.017972208252395e-07,
+      "predictedContactFootSpeedMeanMps": 0.034984265579087494,
+      "generationMs": [
+        22.284846985712647,
+        24.66948702931404,
+        22.569728083908558
+      ],
+      "encodingMs": [
+        511.0719649819657,
+        0.12001395225524902,
+        0.10466494131833315
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "somersault",
+      "prompt": "A person performs a forward somersault.",
+      "seed": 1,
+      "path": "somersault-seed1.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.09499633801169693,
+      "rootDisplacementM": [
+        -0.6506231944076717,
+        -0.0030672550201416016,
+        2.4450545387808233
+      ],
+      "minimumJointHeightM": -0.011291027069091797,
+      "heightRangeM": [
+        0.15731441974639893,
+        0.9186813235282898
+      ],
+      "maximumBoneLengthErrorM": 2.905991289547938e-07,
+      "predictedContactFootSpeedMeanMps": 0.0348616413249551,
+      "generationMs": [
+        20.6551740411669,
+        22.98157603945583,
+        22.7445550262928
+      ],
+      "encodingMs": [
+        0.08890603203326464,
+        0.09075994603335857,
+        0.08694198913872242
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "somersault",
+      "prompt": "A person performs a forward somersault.",
+      "seed": 2,
+      "path": "somersault-seed2.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.09448650607373565,
+      "rootDisplacementM": [
+        0.3970955382101238,
+        -0.0016011595726013184,
+        2.3239500558702275
+      ],
+      "minimumJointHeightM": -0.0005587935447692871,
+      "heightRangeM": [
+        0.18248188495635986,
+        0.9385861158370972
+      ],
+      "maximumBoneLengthErrorM": 3.180347979969689e-07,
+      "predictedContactFootSpeedMeanMps": 0.029861541884173073,
+      "generationMs": [
+        20.552012021653354,
+        22.536025033332407,
+        22.91983098257333
+      ],
+      "encodingMs": [
+        0.08263392373919487,
+        0.08662103209644556,
+        0.09698106441646814
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "somersault",
+      "prompt": "A person performs a forward somersault.",
+      "seed": 3,
+      "path": "somersault-seed3.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.09548186406027526,
+      "rootDisplacementM": [
+        -1.1574572033714503,
+        -0.046189963817596436,
+        2.6473491749493405
+      ],
+      "minimumJointHeightM": -0.004154860973358154,
+      "heightRangeM": [
+        0.18734705448150635,
+        0.9032739996910095
+      ],
+      "maximumBoneLengthErrorM": 2.994635427966408e-07,
+      "predictedContactFootSpeedMeanMps": 0.023723079180096144,
+      "generationMs": [
+        20.575425936840475,
+        22.355407942086458,
+        23.85953499469906
+      ],
+      "encodingMs": [
+        0.08481799159199,
+        0.0827049370855093,
+        0.10693003423511982
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "somersault",
+      "prompt": "A person performs a forward somersault.",
+      "seed": 4,
+      "path": "somersault-seed4.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.09468309301882982,
+      "rootDisplacementM": [
+        0.3464455408975482,
+        0.0005846619606018066,
+        2.8225144137395546
+      ],
+      "minimumJointHeightM": 0.0061217546463012695,
+      "heightRangeM": [
+        0.14602673053741455,
+        0.8812271356582642
+      ],
+      "maximumBoneLengthErrorM": 3.3484586542398276e-07,
+      "predictedContactFootSpeedMeanMps": 0.026825448555977988,
+      "generationMs": [
+        20.836722920648754,
+        22.600164986215532,
+        22.996886051259935
+      ],
+      "encodingMs": [
+        0.11050701141357422,
+        0.10643899440765381,
+        0.09469699580222368
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "recoil",
+      "prompt": "A person recoils.",
+      "seed": 0,
+      "path": "recoil-seed0.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.6157352769514546,
+      "rootDisplacementM": [
+        0.008078835206106305,
+        0.002347111701965332,
+        -0.010556577923125587
+      ],
+      "minimumJointHeightM": 0.00591278076171875,
+      "heightRangeM": [
+        0.9211543202400208,
+        0.9452929496765137
+      ],
+      "maximumBoneLengthErrorM": 2.9071412666059615e-07,
+      "predictedContactFootSpeedMeanMps": 0.006060018902664371,
+      "generationMs": [
+        22.908760933205485,
+        26.70470590237528,
+        23.680782062001526
+      ],
+      "encodingMs": [
+        511.13148604054004,
+        0.12087507639080286,
+        0.14442997053265572
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "recoil",
+      "prompt": "A person recoils.",
+      "seed": 1,
+      "path": "recoil-seed1.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.10647406196221709,
+      "rootDisplacementM": [
+        -0.007689090678468347,
+        0.001328885555267334,
+        -0.010696744808228686
+      ],
+      "minimumJointHeightM": 0.009172797203063965,
+      "heightRangeM": [
+        0.9415163993835449,
+        0.952879011631012
+      ],
+      "maximumBoneLengthErrorM": 3.376984955005824e-07,
+      "predictedContactFootSpeedMeanMps": 0.007414327613449445,
+      "generationMs": [
+        24.73928697872907,
+        25.719005963765085,
+        23.930288036353886
+      ],
+      "encodingMs": [
+        0.12311001773923635,
+        0.1210260670632124,
+        0.1449009869247675
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "recoil",
+      "prompt": "A person recoils.",
+      "seed": 2,
+      "path": "recoil-seed2.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.10095755499787629,
+      "rootDisplacementM": [
+        -0.0010265866294503212,
+        0.00015652179718017578,
+        -0.013904121529776603
+      ],
+      "minimumJointHeightM": -0.001728653907775879,
+      "heightRangeM": [
+        0.943193793296814,
+        0.9461818933486938
+      ],
+      "maximumBoneLengthErrorM": 3.454721734796884e-07,
+      "predictedContactFootSpeedMeanMps": 0.0048573786119552416,
+      "generationMs": [
+        22.17440097592771,
+        23.58210796955973,
+        23.909790092147887
+      ],
+      "encodingMs": [
+        0.10035699233412743,
+        0.11617701966315508,
+        0.1280490541830659
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "recoil",
+      "prompt": "A person recoils.",
+      "seed": 3,
+      "path": "recoil-seed3.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.10915164998732507,
+      "rootDisplacementM": [
+        -0.006699966266751289,
+        0.0015164613723754883,
+        -0.01416922511998564
+      ],
+      "minimumJointHeightM": -0.007802128791809082,
+      "heightRangeM": [
+        0.9319394826889038,
+        0.9391304850578308
+      ],
+      "maximumBoneLengthErrorM": 3.2725541632139254e-07,
+      "predictedContactFootSpeedMeanMps": 0.0069586608575188435,
+      "generationMs": [
+        25.45777801424265,
+        26.023734943009913,
+        24.692731094546616
+      ],
+      "encodingMs": [
+        0.12642599176615477,
+        0.14816701877862215,
+        0.14017208013683558
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "recoil",
+      "prompt": "A person recoils.",
+      "seed": 4,
+      "path": "recoil-seed4.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.09974066307768226,
+      "rootDisplacementM": [
+        -0.014048289973288774,
+        0.0012303590774536133,
+        -0.00346801575506106
+      ],
+      "minimumJointHeightM": 0.007396697998046875,
+      "heightRangeM": [
+        0.9471038579940796,
+        0.9539868831634521
+      ],
+      "maximumBoneLengthErrorM": 3.2468881361324975e-07,
+      "predictedContactFootSpeedMeanMps": 0.007831337853788577,
+      "generationMs": [
+        21.60112001001835,
+        23.596846032887697,
+        25.226306985132396
+      ],
+      "encodingMs": [
+        0.1172489719465375,
+        0.11755002196878195,
+        0.14440994709730148
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "backwards",
+      "prompt": "A person steps backwards.",
+      "seed": 0,
+      "path": "backwards-seed0.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.6168092120205984,
+      "rootDisplacementM": [
+        -0.4662732819560915,
+        0.008884131908416748,
+        -2.2136621044483036
+      ],
+      "minimumJointHeightM": 0.009580850601196289,
+      "heightRangeM": [
+        0.9115678668022156,
+        0.9343051314353943
+      ],
+      "maximumBoneLengthErrorM": 3.899951175334593e-07,
+      "predictedContactFootSpeedMeanMps": 0.025767788215434788,
+      "generationMs": [
+        22.020763950422406,
+        28.68331002537161,
+        22.990182973444462
+      ],
+      "encodingMs": [
+        511.6056399419904,
+        0.14553091023117304,
+        0.1215270021930337
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "backwards",
+      "prompt": "A person steps backwards.",
+      "seed": 1,
+      "path": "backwards-seed1.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.09351483301725239,
+      "rootDisplacementM": [
+        -0.11956040048971772,
+        -0.0231969952583313,
+        -1.7963705278234556
+      ],
+      "minimumJointHeightM": 0.010255753993988037,
+      "heightRangeM": [
+        0.9254845976829529,
+        0.9560080766677856
+      ],
+      "maximumBoneLengthErrorM": 2.765281165162392e-07,
+      "predictedContactFootSpeedMeanMps": 0.03078360536396695,
+      "generationMs": [
+        20.44955105520785,
+        22.44597696699202,
+        22.84116402734071
+      ],
+      "encodingMs": [
+        0.08764408994466066,
+        0.09851402137428522,
+        0.08285499643534422
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "backwards",
+      "prompt": "A person steps backwards.",
+      "seed": 2,
+      "path": "backwards-seed2.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.09473165404051542,
+      "rootDisplacementM": [
+        -0.1779025960713625,
+        -0.01637279987335205,
+        -1.8048160874168389
+      ],
+      "minimumJointHeightM": 0.0020714998245239258,
+      "heightRangeM": [
+        0.9198275804519653,
+        0.9491968154907227
+      ],
+      "maximumBoneLengthErrorM": 2.753270466615554e-07,
+      "predictedContactFootSpeedMeanMps": 0.02456504252417539,
+      "generationMs": [
+        20.542775047942996,
+        22.70400896668434,
+        22.960438043810427
+      ],
+      "encodingMs": [
+        0.08330598939210176,
+        0.08250400424003601,
+        0.08856493514031172
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "backwards",
+      "prompt": "A person steps backwards.",
+      "seed": 3,
+      "path": "backwards-seed3.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.09315318695735186,
+      "rootDisplacementM": [
+        -0.09926672745496035,
+        0.004536330699920654,
+        -1.6853504879400134
+      ],
+      "minimumJointHeightM": -0.01228177547454834,
+      "heightRangeM": [
+        0.9069544672966003,
+        0.9269258379936218
+      ],
+      "maximumBoneLengthErrorM": 2.7294336846228617e-07,
+      "predictedContactFootSpeedMeanMps": 0.027314384395000897,
+      "generationMs": [
+        20.408103009685874,
+        22.310964995995164,
+        22.576611023396254
+      ],
+      "encodingMs": [
+        0.0789581099525094,
+        0.0792680075392127,
+        0.08357595652341843
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "backwards",
+      "prompt": "A person steps backwards.",
+      "seed": 4,
+      "path": "backwards-seed4.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.10090269206557423,
+      "rootDisplacementM": [
+        0.06579189002513885,
+        0.014942646026611328,
+        -2.8833909178792965
+      ],
+      "minimumJointHeightM": 0.006851911544799805,
+      "heightRangeM": [
+        0.9355114102363586,
+        0.9603513479232788
+      ],
+      "maximumBoneLengthErrorM": 3.831208382210072e-07,
+      "predictedContactFootSpeedMeanMps": 0.03148477265774574,
+      "generationMs": [
+        21.673946059308946,
+        24.093172047287226,
+        24.419862078502774
+      ],
+      "encodingMs": [
+        0.11813105084002018,
+        0.13612397015094757,
+        0.09501702152192593
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "hands_up",
+      "prompt": "A person raises both hands.",
+      "seed": 0,
+      "path": "hands_up-seed0.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.6093221049522981,
+      "rootDisplacementM": [
+        -0.002013769466429949,
+        0.0010366439819335938,
+        -0.00904639984946698
+      ],
+      "minimumJointHeightM": 0.004858136177062988,
+      "heightRangeM": [
+        0.9424704313278198,
+        0.951208233833313
+      ],
+      "maximumBoneLengthErrorM": 3.4069568799477423e-07,
+      "predictedContactFootSpeedMeanMps": 0.005866821201142861,
+      "generationMs": [
+        23.065293091349304,
+        24.2385029559955,
+        22.712544072419405
+      ],
+      "encodingMs": [
+        510.68960095290095,
+        0.12443203013390303,
+        0.09758200030773878
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "hands_up",
+      "prompt": "A person raises both hands.",
+      "seed": 1,
+      "path": "hands_up-seed1.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.09802394895814359,
+      "rootDisplacementM": [
+        -0.009903287515044212,
+        0.0008966922760009766,
+        -0.016200824815314263
+      ],
+      "minimumJointHeightM": 0.004515707492828369,
+      "heightRangeM": [
+        0.9537786245346069,
+        0.9559459686279297
+      ],
+      "maximumBoneLengthErrorM": 3.56596376760443e-07,
+      "predictedContactFootSpeedMeanMps": 0.006788496687036834,
+      "generationMs": [
+        20.531043061055243,
+        22.48206501826644,
+        26.3307080604136
+      ],
+      "encodingMs": [
+        0.08720299229025841,
+        0.08345593232661486,
+        0.08537992835044861
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "hands_up",
+      "prompt": "A person raises both hands.",
+      "seed": 2,
+      "path": "hands_up-seed2.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.09563150303438306,
+      "rootDisplacementM": [
+        -0.0005688481032848358,
+        0.00014609098434448242,
+        -0.009089546743780375
+      ],
+      "minimumJointHeightM": -0.010984063148498535,
+      "heightRangeM": [
+        0.9378483295440674,
+        0.9399234056472778
+      ],
+      "maximumBoneLengthErrorM": 3.468294647590575e-07,
+      "predictedContactFootSpeedMeanMps": 0.006021482047937496,
+      "generationMs": [
+        22.008360014297068,
+        22.651019971817732,
+        22.365416982211173
+      ],
+      "encodingMs": [
+        0.12310000602155924,
+        0.10182010009884834,
+        0.08247396908700466
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "hands_up",
+      "prompt": "A person raises both hands.",
+      "seed": 3,
+      "path": "hands_up-seed3.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.09425235900562257,
+      "rootDisplacementM": [
+        -0.010905554983764887,
+        -0.00017458200454711914,
+        0.005354124354198575
+      ],
+      "minimumJointHeightM": -0.012825429439544678,
+      "heightRangeM": [
+        0.9335415959358215,
+        0.9351754188537598
+      ],
+      "maximumBoneLengthErrorM": 3.489371414033826e-07,
+      "predictedContactFootSpeedMeanMps": 0.006957360475330637,
+      "generationMs": [
+        22.035801084712148,
+        22.39598403684795,
+        22.365606972016394
+      ],
+      "encodingMs": [
+        0.07634307257831097,
+        0.0792680075392127,
+        0.080890953540802
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "hands_up",
+      "prompt": "A person raises both hands.",
+      "seed": 4,
+      "path": "hands_up-seed4.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.09262131503783166,
+      "rootDisplacementM": [
+        -0.005293465219438076,
+        -2.580881118774414e-05,
+        -0.005730184871936217
+      ],
+      "minimumJointHeightM": 5.906820297241211e-05,
+      "heightRangeM": [
+        0.9474484324455261,
+        0.9490675330162048
+      ],
+      "maximumBoneLengthErrorM": 3.145700991358247e-07,
+      "predictedContactFootSpeedMeanMps": 0.006135179081695815,
+      "generationMs": [
+        20.511325914412737,
+        22.344527998939157,
+        22.3708669655025
+      ],
+      "encodingMs": [
+        0.08064100984483957,
+        0.080329948104918,
+        0.07882702630013227
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "freeze",
+      "prompt": "A person freezes and stands still.",
+      "seed": 0,
+      "path": "freeze-seed0.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.6080200760625303,
+      "rootDisplacementM": [
+        0.001771315699443221,
+        0.0005872249603271484,
+        -0.004305133013986051
+      ],
+      "minimumJointHeightM": 0.01058286428451538,
+      "heightRangeM": [
+        0.9525526165962219,
+        0.9537880420684814
+      ],
+      "maximumBoneLengthErrorM": 3.910555585462383e-07,
+      "predictedContactFootSpeedMeanMps": 0.0038091987454907535,
+      "generationMs": [
+        21.50614303536713,
+        24.144598050042987,
+        22.528741974383593
+      ],
+      "encodingMs": [
+        510.9594939276576,
+        0.09144097566604614,
+        0.08854595944285393
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "freeze",
+      "prompt": "A person freezes and stands still.",
+      "seed": 1,
+      "path": "freeze-seed1.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.09365472395438701,
+      "rootDisplacementM": [
+        -0.004841803573071957,
+        -0.0010973215103149414,
+        0.0003454540856182575
+      ],
+      "minimumJointHeightM": 0.011213183403015137,
+      "heightRangeM": [
+        0.956761360168457,
+        0.958067774772644
+      ],
+      "maximumBoneLengthErrorM": 3.2065396854408235e-07,
+      "predictedContactFootSpeedMeanMps": 0.0034625762275952636,
+      "generationMs": [
+        20.43293009046465,
+        22.500569000840187,
+        22.471294971182942
+      ],
+      "encodingMs": [
+        0.08202309254556894,
+        0.09055901318788528,
+        0.08408701978623867
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "freeze",
+      "prompt": "A person freezes and stands still.",
+      "seed": 2,
+      "path": "freeze-seed2.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.09620250901207328,
+      "rootDisplacementM": [
+        -0.0026788092218339443,
+        -0.0006951093673706055,
+        -0.004366314853541553
+      ],
+      "minimumJointHeightM": 0.0027130842208862305,
+      "heightRangeM": [
+        0.9502767324447632,
+        0.9516520500183105
+      ],
+      "maximumBoneLengthErrorM": 3.4666750753364894e-07,
+      "predictedContactFootSpeedMeanMps": 0.003923108189402889,
+      "generationMs": [
+        20.993106067180634,
+        23.088856949470937,
+        23.376114084385335
+      ],
+      "encodingMs": [
+        0.09145098738372326,
+        0.08907599840313196,
+        0.08610100485384464
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "freeze",
+      "prompt": "A person freezes and stands still.",
+      "seed": 3,
+      "path": "freeze-seed3.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.09661490900907665,
+      "rootDisplacementM": [
+        -0.0036521642468869686,
+        -0.000613868236541748,
+        0.008612286124844104
+      ],
+      "minimumJointHeightM": -0.001643061637878418,
+      "heightRangeM": [
+        0.9445490837097168,
+        0.9455708861351013
+      ],
+      "maximumBoneLengthErrorM": 3.6377541801080326e-07,
+      "predictedContactFootSpeedMeanMps": 0.0041577695085991935,
+      "generationMs": [
+        20.974679966457188,
+        23.053510929457843,
+        22.911395062692463
+      ],
+      "encodingMs": [
+        0.11540600098669529,
+        0.09806302841752768,
+        0.09193201549351215
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    },
+    {
+      "label": "freeze",
+      "prompt": "A person freezes and stands still.",
+      "seed": 4,
+      "path": "freeze-seed4.f4motion",
+      "frames": 120,
+      "wallSeconds": 0.10391934309154749,
+      "rootDisplacementM": [
+        0.010980219580233097,
+        -0.00017398595809936523,
+        0.02868655347265303
+      ],
+      "minimumJointHeightM": 0.010841190814971924,
+      "heightRangeM": [
+        0.9568841457366943,
+        0.9589232206344604
+      ],
+      "maximumBoneLengthErrorM": 2.834495939629811e-07,
+      "predictedContactFootSpeedMeanMps": 0.004489438077259147,
+      "generationMs": [
+        22.91969198267907,
+        24.643528973683715,
+        25.104970089159906
+      ],
+      "encodingMs": [
+        0.12280908413231373,
+        0.13633398339152336,
+        0.12516300193965435
+      ],
+      "completed": true,
+      "recognizable": null,
+      "variation": null,
+      "continuity": null,
+      "artifacts": null
+    }
+  ]
+}

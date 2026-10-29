@@ -190,13 +190,16 @@ class AstraBridgeContractTest {
         val failure = assertFails { bridge.send(state, "CURRENT_TASK") }
         assertTrue(failure.message.orEmpty().contains("after two history reductions"))
         assertEquals(11, requests.size, "One request plus at most two context retries")
+        // The failed turn learned the window from the error, so the next request may be fitted to it;
+        // what must survive is the saved history the fitting draws from.
+        assertTrue(bridge.savedHistory(state).toString().contains("OLDER_0"), "Failed recovery must not discard saved history")
         rejecting = false
         bridge.send(state, "Continue")
-        assertTrue(requests.last()["input"].toString().contains("OLDER_0"), "Failed recovery must not discard saved history")
+        assertTrue(requests.last()["input"].toString().contains("Continue"))
     }
 
     @Test
-    fun unrelatedBadRequestsAndHostedContextErrorsAreNotRetried() {
+    fun unrelatedBadRequestsAreNotRetriedAndHostedOverflowGetsOneFittedRetry() {
         for (provider in listOf("local", "openrouter")) withServer(provider) { server, requests, bridge ->
             server.createContext("/v1/responses") { exchange ->
                 requests.add(mapper.readTree(exchange.requestBody))
@@ -206,7 +209,14 @@ class AstraBridgeContractTest {
             val state = bridge.startThread("no-retry.kt", "", "Keep instructions")
             bridge.send(state, "OLD_TASK " + "x".repeat(8_000))
             assertFails { bridge.send(state, "CURRENT_TASK") }
-            assertEquals(2, requests.size)
+            if (provider == "local") {
+                assertEquals(2, requests.size, "An unrelated bad request is not retried")
+            } else {
+                // A hosted stateless provider's overflow is fitted to the window the error names and
+                // retried once (createFittedResponse), not shortened and retried twice like a local one.
+                assertEquals(3, requests.size, "A hosted overflow gets exactly one fitted retry")
+                assertTrue(requests[2]["input"].toString().contains("CURRENT_TASK"), "The retry still carries the current prompt")
+            }
         }
     }
 

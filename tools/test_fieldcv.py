@@ -192,7 +192,12 @@ class Landmarks(unittest.TestCase):
 
     @unittest.skipUnless(_cached("hand") if not MISSING else False, "hand model not cached")
     def test_no_hands_is_an_empty_but_shaped_array(self):
-        out = cv4.Hands()(frames([blank()])[0])
+        # Close it here: a landmarker left to the garbage collector runs mediapipe's close() from
+        # __del__ on whatever thread collects it, and that close can wait forever on its own
+        # dispatcher — it hung checkPythonTools inside tools.test_refactor on 2026-10-21.
+        h = cv4.Hands()
+        self.addCleanup(h.close)
+        out = h(frames([blank()])[0])
         self.assertEqual(out["hands"].shape, (0, 21, 3))
         self.assertEqual(out["handedness"], [])
 

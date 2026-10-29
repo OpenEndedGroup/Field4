@@ -1,0 +1,221 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T20:57:52.470Z",
+  "documentName": "petri_sound",
+  "outputs": [
+    {
+      "uid": "petri_demo_tokens",
+      "channel": "petri",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "petri_demo_tokens",
+      "channel": "petri-summary",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 467,
+      "height": 153,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "petri_demo_tokens",
+      "channel": "sound",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "petri_demo_structure",
+      "channel": "petri",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "petri_demo_structure",
+      "channel": "petri-summary",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 467,
+      "height": 153,
+      "path": "outputs/4.html"
+    },
+    {
+      "uid": "petri_demo_structure",
+      "channel": "sound",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/5.html"
+    },
+    {
+      "uid": "petri_demo_live",
+      "channel": "petri",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/6.html"
+    },
+    {
+      "uid": "petri_demo_live",
+      "channel": "petri-summary",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 467,
+      "height": 153,
+      "path": "outputs/7.html"
+    },
+    {
+      "uid": "petri_demo_playground",
+      "channel": "petri",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/8.html"
+    },
+    {
+      "uid": "petri_demo_playground",
+      "channel": "petri-summary",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 467,
+      "height": 153,
+      "path": "outputs/9.html"
+    },
+    {
+      "uid": "petri_demo_playground",
+      "channel": "sound",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/10.html"
+    },
+    {
+      "uid": "petri_demo_philosophers",
+      "channel": "petri",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/11.html"
+    },
+    {
+      "uid": "petri_demo_philosophers",
+      "channel": "petri-summary",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 467,
+      "height": 219,
+      "path": "outputs/12.html"
+    },
+    {
+      "uid": "petri_demo_polyrhythm",
+      "channel": "petri",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/13.html"
+    },
+    {
+      "uid": "petri_demo_polyrhythm",
+      "channel": "petri-summary",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 467,
+      "height": 153,
+      "path": "outputs/14.html"
+    },
+    {
+      "uid": "petri_demo_polyrhythm",
+      "channel": "sound",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/15.html"
+    },
+    {
+      "uid": "petri_demo_loop",
+      "channel": "petri",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/16.html"
+    },
+    {
+      "uid": "petri_demo_loop",
+      "channel": "petri-summary",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 467,
+      "height": 153,
+      "path": "outputs/17.html"
+    },
+    {
+      "uid": "petri_demo_loop",
+      "channel": "sound",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/18.html"
+    }
+  ]
+}

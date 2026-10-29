@@ -1,0 +1,61 @@
+{
+  "date": "2026-10-20",
+  "optedInHome": true,
+  "realGpuInference": true,
+  "nativeVulkanPresentationMeasured": false,
+  "runs": [
+    {
+      "ok": true,
+      "command": "run-jvm-main afield.animation.mocap.ArdySmoke",
+      "data": {
+        "ok": true,
+        "entrypoint": "afield.animation.mocap.ArdySmoke",
+        "exitCode": 0,
+        "stdout": "ARDY motion smoke passed: real GPU, 27 joints, 20 frames, prompt/path/sparse foot target, reset and exact replay\n",
+        "stderr": "WARNING: Using incubator modules: jdk.incubator.vector\n",
+        "durationMs": 7843,
+        "commandOmitted": true,
+        "commandOmittedReason": "Use run-jvm-main --include-command to include the full JVM command/classpath."
+      },
+      "events": [],
+      "timedOut": false
+    },
+    {
+      "ok": true,
+      "command": "run-jvm-main afield.animation.mocap.CLoSDSmoke",
+      "data": {
+        "ok": true,
+        "entrypoint": "afield.animation.mocap.CLoSDSmoke",
+        "exitCode": 0,
+        "stdout": "CLoSD motion smoke passed: real GPU, 24 joints, 30 frames, positions-only reference, tether/release/one-shot impulse, exact replay\n",
+        "stderr": "WARNING: Using incubator modules: jdk.incubator.vector\n",
+        "durationMs": 19065,
+        "commandOmitted": true,
+        "commandOmittedReason": "Use run-jvm-main --include-command to include the full JVM command/classpath."
+      },
+      "events": [],
+      "timedOut": false
+    },
+    {
+      "ok": true,
+      "command": "run-jvm-main afield.animation.mocap.MotionInteropSmoke",
+      "data": {
+        "ok": true,
+        "entrypoint": "afield.animation.mocap.MotionInteropSmoke",
+        "exitCode": 0,
+        "stdout": "Motion recording interoperability passed: 81 frames, two episodes, identical float payloads\n",
+        "stderr": "WARNING: Using incubator modules: jdk.incubator.vector\n",
+        "durationMs": 1716,
+        "commandOmitted": true,
+        "commandOmittedReason": "Use run-jvm-main --include-command to include the full JVM command/classpath."
+      },
+      "events": [],
+      "timedOut": false
+    }
+  ],
+  "sourceHashes": {
+    "optional/motion/worker.py": "f40426b071e4bd525454d9fdc6249bd8f51aa88007be0139c3cc323548f11aa0",
+    "optional/motion/python/field_motion/backends/ardy.py": "becfb62c884b72050fc62070e74bc71e162fe037dc717ebf225ad71abaa2fb11",
+    "optional/motion/python/field_motion/backends/closd.py": "c19c576ff9d13cdcd8e3f61e33023189842683256431c68d564b31c81c5b2384"
+  }
+}

@@ -22,6 +22,9 @@
 # SavingContext's canonical transcript mirror deliberately ends its final fenced block with a blank line.
 public/docs/assets/agent_transcripts/**/document.md whitespace=-blank-at-eof
 
+# Captured DOM retains whitespace from real output text and upstream scripts.
+public/docs/assets/web_publications/**/*.html whitespace=-blank-at-eol linguist-generated=true
+
 libs/kotlin-compiler-embeddable-2.5.255-SNAPSHOT.jar filter=lfs diff=lfs merge=lfs -text
 # Kotlin/JS stdlib klib for the Kotlin->JS RemoteJS spike (must match the compiler fork version)
 libs/kotlin-stdlib-js-2.5.255-SNAPSHOT.klib filter=lfs diff=lfs merge=lfs -text
@@ -33,6 +36,7 @@ src/jvmMain/java/afield/audio/spatial/steamaudio/raw/** linguist-generated=true
 
 # Mermaid's generated bundle includes upstream template strings with significant trailing spaces.
 src/jsMain/resources/mermaid/* whitespace=-blank-at-eol linguist-generated=true
+src/jsMain/resources/katex/* linguist-generated=true
 
 # Upstream Steam Audio, verbatim. `-text` disables eol normalisation: these ship with CRLF and are
 # checksum-verified against native/steamaudio/checksums.txt, so rewriting their line endings would
@@ -61,5 +65,6 @@ dev_docs/**/*.md merge=field-counts
 public/docs/reference/** merge=field-generated
 dev_docs/kdoc_worklist.md merge=field-generated
 public/docs/assets/agent_transcripts/** merge=field-generated
+public/docs/assets/web_publications/** merge=field-generated
 tools/completion-corpus/boxes/** merge=field-generated
 dev_docs/GUARD_CORPORA.md merge=field-generated

@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T20:59:53.614Z",
+  "documentName": "audio_ai_speech_embeddings",
+  "outputs": [
+    {
+      "uid": "speech_embedding_guide",
+      "channel": "guide",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 458,
+      "height": 348,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "speech_embedding_guide",
+      "channel": "all durable jobs",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 768,
+      "height": 438,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "speech_embedding_visualizer_gallery",
+      "channel": "speech spaces",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "canvas-image"
+      ],
+      "width": 1052,
+      "height": 865,
+      "path": "outputs/2.html"
+    }
+  ]
+}

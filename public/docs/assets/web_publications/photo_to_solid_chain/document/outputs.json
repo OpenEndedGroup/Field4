@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T20:56:06.746Z",
+  "documentName": "photo_to_solid_chain",
+  "outputs": [
+    {
+      "uid": "photo_levelset",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 776,
+      "height": 53,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "photo_plaque",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 912,
+      "height": 249,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "photo_boolean",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 912,
+      "height": 249,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "photo_depth",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 912,
+      "height": 290,
+      "path": "outputs/3.html"
+    }
+  ]
+}

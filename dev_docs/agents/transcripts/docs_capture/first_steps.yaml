@@ -10,7 +10,7 @@ operations:
       w: 350.0
       h: 100.0
     properties:
-      code: |-
+      code: |
         // Launch: Alt+Up. Stop: Alt+Down. On a Mac, Alt is Option.
         var petals = 5 // Change this 5 to 8, then press Alt+Enter on this line while the drawing runs.
         println(petals) // Field shows this value beside the code.

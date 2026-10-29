@@ -263,8 +263,8 @@ class FieldApiCorsExposureTest {
         // wholesale update of the map above.
         val unguarded = found.count { it.value == "none" }
         assertEquals(
-            48, unguarded,
-            "The complete census has 48 state-changing routes with no route-specific access control, out " +
+            56, unguarded,
+            "The complete census has 56 state-changing routes with no route-specific access control, out " +
                 "of ${found.size}. If this went down, say so in dev_docs/DOCS_IMPROVEMENT_AGENT.md — it is " +
                 "the headline number in that page. If it went up, you added an unauthenticated write.",
         )
@@ -549,6 +549,15 @@ class FieldApiCorsExposureTest {
             // The one route whose openness is a feature: the offline viewer POSTs here from
             // whatever origin its bundle was served from, which is why anyHost() stands.
             "POST /api/import-offline-doc" to "none",
+            // Welcome kit management uses Field's application-wide browser-origin guard and bind policy.
+            "POST /api/kits/activate" to "none",
+            "POST /api/kits/create" to "none",
+            "POST /api/kits/inspect" to "none",
+            "POST /api/kits/install" to "none",
+            "POST /api/kits/migrate" to "none",
+            "POST /api/kits/open-host" to "none",
+            "POST /api/kits/remove" to "none",
+            "POST /api/kits/restart" to "none",
             "POST /api/maven-dependencies" to "none",
             "POST /api/maven-repositories" to "none",
             "POST /api/maven-resolve" to "none",
@@ -573,6 +582,9 @@ class FieldApiCorsExposureTest {
             // Nested inside `route("/vision")`, and published as `POST /stream` until
             // 2026-08-22 because path resolution returned early on a leading slash.
             "POST /vision/stream" to "none",
+            // The three viewer's Export GLB through the optional gltfpack binary (2026-10): bytes in,
+            // compressed bytes out, no document state; guarded because it runs a local process.
+            "POST /three-gltfpack" to "loopback + same-site",
             "POST /three-review-note" to "loopback + same-site",
             "PUT /api/docs-annotations/{id}/resolve" to "loopback + same-site",
             "PUT /api/document-tags" to "none",
@@ -585,6 +597,9 @@ class FieldApiCorsExposureTest {
             // Keystrokes into a pty (terminal.kt): the revision pass's boundary, hatches shut.
             "/pty/{id}" to "terminal input; loopback + same-site",
             "/welcome-events" to "server notifications; none",
+            // WebRTC signaling (WebRTCRoutes.kt): relays SDP/ICE between Field's own pages and
+            // touches no document, so the heuristic's "server notifications" is the right role.
+            "/ws/webrtc-signaling" to "server notifications; same-site",
             "/ws" to "commands; same-site",
         )
     }

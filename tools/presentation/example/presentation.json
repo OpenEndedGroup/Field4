@@ -1,0 +1,23 @@
+{
+  "title": "Field / Present",
+  "transitionMs": 450,
+  "slides": {
+    "browser:web": {
+      "type": "webpage",
+      "url": "https://example.org/",
+      "rect": [0.08, 0.18, 0.84, 0.72]
+    },
+    "video:video": {
+      "type": "youtube",
+      "videoId": "M7lc1UVf-VE",
+      "rect": [0.08, 0.18, 0.84, 0.72]
+    },
+    "field:field": {
+      "type": "field-document",
+      "document": "field-demo",
+      "interactiveGuide": true,
+      "rect": [0.04, 0.16, 0.92, 0.80],
+      "macro": {"name": "reveal_wave", "scope": "document"}
+    }
+  }
+}

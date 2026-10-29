@@ -490,8 +490,7 @@ internal fun attachDocumentSession(
         scheduleStartupActionDocumentResync(found)
         found.topologyGeneration++
         found.scheduleAutorunBoxes()
-        // Study cards are drawn by library code, not by a run this page could see; give it the last of each.
-        afield.study.source.BoxStudies.replayTo(session, found)
+        // Study cards and other retained panels reach this page through its own replay-output-areas request.
         return found
     }
 
@@ -536,6 +535,8 @@ internal fun attachDocumentSession(
 
             info.root.children.removeIf { it.getPropertyRaw("_tombstone").isTrue() }
             attachRootToMetaroot(info.root)
+            // What disk holds; anything box code changes from here, while still loading, differs from it.
+            afield.document.persistence.PersistedFingerprint.record(info, runCatching { afield.document.persistence.PersistedFingerprint.entries(info) }.getOrNull())
 
             // Phase 2: Tell the frontend how many boxes to expect BEFORE the
             // slow initialization work begins.
@@ -1560,9 +1561,13 @@ fun installAgentBackdoorHandlers() {
     // provider is not wired for the backdoor context. Surfaced over MCP by field_mcp.py.
     handlers["agent-ai-tools-list"] = mutableSetOf({ message, reply ->
         val info = thisSessionInfo.get()
-        val focusBox = (message.payload as? kotlinx.serialization.json.JsonObject)?.get("focusBox")
+        val payload = message.payload as? kotlinx.serialization.json.JsonObject
+        val focusBox = payload?.get("focusBox")
             ?.let { (it as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull }
-        val ctx = Ai4BackdoorTools.buildContext(info, focusBox)
+        // `suspendable` lists what the box chat's general turn is offered: the tools that end the turn to
+        // wait. Listing only — agent-ai-tool-call never suspends, so those tools stay uncallable here.
+        val suspendable = (payload?.get("suspendable") as? kotlinx.serialization.json.JsonPrimitive)?.booleanOrNull == true
+        val ctx = Ai4BackdoorTools.buildContext(info, focusBox).copy(suspendable = suspendable)
         val tools = Ai4BackdoorTools.registry.describe(ctx, afield.ai.tools.ToolFace.MCP)
         reply(Message("agent-ai-tools-list").payload(AgentAiToolsListResponse(tools = tools)))
         Handled.yes
@@ -2116,7 +2121,13 @@ fun installAgentBackdoorHandlers() {
 @OptIn(kotlinx.coroutines.DelicateCoroutinesApi::class)
 internal fun installKitFirstOpen() {
     documentReadyHooks += { info ->
-        val roles = afield.document.workspace.KitFirstOpen.rolesToLaunch(java.io.File(info.filename), info.boxes.values)
+        val packageMarker = java.io.File(info.filename, afield.document.workspace.KitInstances.FIRST_OPEN)
+        val roles = if (java.io.File(info.filename, afield.document.workspace.KitInstances.RECORD).isFile) {
+            val ordered = afield.document.workspace.KitRuntime.launchBoxes(info).orEmpty()
+            packageMarker.delete()
+            java.io.File(info.filename, afield.document.workspace.KitFirstOpen.MARKER).delete()
+            ordered
+        } else afield.document.workspace.KitFirstOpen.rolesToLaunch(java.io.File(info.filename), info.boxes.values)
         if (roles.isNotEmpty()) kotlinx.coroutines.GlobalScope.launch {
             // As autorun does: wait for the boxes to come online first.
             var attempts = 0

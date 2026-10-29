@@ -1,0 +1,40 @@
+{
+  "ok": true,
+  "method": "browser pointer event to first viewer draw carrying a newer command revision, 10 ms polling plus one animation frame",
+  "nativeVulkanMeasured": false,
+  "results": [
+    {
+      "control": "Attach at current body position",
+      "delayMs": 309.60000002384186,
+      "revision": 2
+    },
+    {
+      "control": "Update tether parameters",
+      "delayMs": 888,
+      "revision": 3
+    },
+    {
+      "control": "Move anchor +X 0.1 m",
+      "delayMs": 235.60000002384186,
+      "revision": 4
+    },
+    {
+      "control": "Release",
+      "delayMs": 226.70000004768372,
+      "revision": 5
+    },
+    {
+      "control": "Torso impulse +X, 10 N s",
+      "delayMs": 179.69999992847443,
+      "revision": 6
+    },
+    {
+      "control": "Reset character",
+      "delayMs": 230.60000002384186,
+      "revision": 7
+    }
+  ],
+  "percentileMethod": "nearest rank",
+  "p50Ms": 233.10000002384186,
+  "p95Ms": 888
+}

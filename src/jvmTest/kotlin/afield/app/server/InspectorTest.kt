@@ -265,5 +265,43 @@ class InspectorTest {
         assertTrue(html.contains("src='/tree?root=abc&maxh=300'"), html)
         assertTrue(html.contains("width:100%"))
         assertTrue(html.trim().endsWith("</iframe>"))
+        assertTrue(inspectorIframe("/browse?root=abc", 300, width = 900).contains("width:900px"))
+    }
+
+    @Test
+    fun `renderer adapters are registered and render graphics values as cards`() {
+        registerRendererBrowsingAdapters()
+        registerRendererBrowsingAdapters() // idempotent
+        val r = root(afield.graphics.vulkan.device.ProfilingOptions(enabled = true, perfCounters = false))
+        val text = r.toString()
+        assertEquals("leaf", r.str("type"), text)
+        assertTrue(text.contains("ProfilingOptions"), text)
+        assertTrue(text.contains("perfCounters"), text)
+        assertTrue(text.contains("false"), text)
+    }
+
+    @Test
+    fun `a graphics node with children shows its card as the first summary row`() {
+        val node = object : Browsable {
+            override fun heading() = "Target"
+            override fun dir() = linkedMapOf<String, Any?>("modules" to listOf(1, 2))
+            override fun html() = "<div>card body</div>"
+        }
+        val wrapped = withSummaryRow(node)
+        val r = root(wrapped)
+        assertEquals("dir", r.str("type"))
+        val entries = rows(open(r.str("id")))
+        assertEquals(listOf("summary", "modules"), entries.map { it.name })
+        val summary = open(entries.first().id)
+        assertEquals("leaf", summary.str("type"))
+        assertTrue(summary.toString().contains("card body"), summary.toString())
+    }
+
+    @Test
+    fun `renderer adapters leave plain maps to the paged directory`() {
+        registerRendererBrowsingAdapters()
+        val r = root(linkedMapOf("a" to 1, "b" to 2))
+        assertEquals("dir", r.str("type"))
+        assertEquals(listOf("a", "b"), rows(open(r.str("id"))).map { it.name })
     }
 }

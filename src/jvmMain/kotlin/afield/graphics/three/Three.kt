@@ -72,6 +72,7 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
     internal var autoFrame: Boolean = true
     internal var inspector: ThreeInspector? = null
     internal var cameraLink: ThreeCameraLinkSpec? = null
+    internal var cameraFollow: ThreeCameraFollowSpec? = null
     internal var turntable: ThreeTurntableSpec? = null
     internal var shot: ThreeShotSpec? = null
     internal var studio: ThreeStudioSpec? = null
@@ -224,6 +225,16 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
     fun camera(view: MeshView, padding: Double = 1.06) {
         camera = view.toThreeCameraSpec(padding)
         autoFrame = false
+    }
+
+    /** Ease along a world point. Half the remaining distance is covered in [halfLifeSeconds].
+     * Changing [epoch] translates immediately across a reset; orbit, pan and zoom remain yours.
+     * [horizontalOnly] ignores travel along the camera's up axis, keeping jumps from bobbing the view.
+     */
+    fun followCamera(point: afield.math.linalg.Vec3, halfLifeSeconds: Double = .4,
+        epoch: String = "default", horizontalOnly: Boolean = true) {
+        cameraFollow = ThreeCameraFollowSpec(listOf(point.x.toDouble(), point.y.toDouble(), point.z.toDouble()),
+            halfLifeSeconds, epoch, horizontalOnly)
     }
 
     /**
@@ -509,6 +520,7 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
         // The HUD's counts are the whole scene's, so the drawables' triangles are added to whatever
         // the FLine half contributed rather than replacing it.
         val drawableTriangles = drawables.sumOf { (it.geometry.index?.array?.size ?: 0) / 3 }
+        require(cameraFollow == null || panels.size <= 1) { "Camera follow requires a single view" }
         require(cameraLink == null || panels.size <= 1) {
             "linkCamera() needs a single-view scene; a contact sheet of ${panels.size} panels keeps its own cameras"
         }
@@ -537,6 +549,7 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
             frameHeight = frameHeight,
             inspector = inspector,
             cameraLink = cameraLink,
+            cameraFollow = cameraFollow,
             turntable = turntable,
             shot = shot,
             studio = studio,

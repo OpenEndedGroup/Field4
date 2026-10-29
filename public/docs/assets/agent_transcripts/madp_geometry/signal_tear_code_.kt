@@ -3,7 +3,14 @@ animateGeometry {
     view(background = "#050608", ground = true, grid = false)
 
     mesh("signal tear")
-    mat(color = "#ffffff", roughness = 0.52, metalness = 0.18, emissive = "#07121c", emissiveIntensity = 0.55, flat = true)
+    mat(
+        color = "#ffffff",
+        roughness = 0.52,
+        metalness = 0.18,
+        emissive = "#07121c",
+        emissiveIntensity = 0.55,
+        flat = true,
+    )
 
     surface(72, 36) { u, v ->
         val row = floor(v * 36)

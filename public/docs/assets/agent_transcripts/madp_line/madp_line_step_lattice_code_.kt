@@ -1,10 +1,12 @@
-// Step Lattice: left to right is time (twelve steps a bar), up is pitch (fourteen lanes of a
-// C major scale). The stroke is snapped onto that grid once, when it is drawn, into a melody
-// and a bass line; the grid, the snapped notes and the cursor on the sounding step are drawn
-// over it. cycle is the sound clock, so the cursor is the note you hear.
+/*
+Step Lattice: left to right is time (twelve steps a bar), up is pitch (fourteen lanes of a
+C major scale). The stroke is snapped onto that grid once, when it is drawn, into a melody
+and a bass line; the grid, the snapped notes and the cursor on the sounding step are drawn
+over it. cycle is the sound clock, so the cursor is the note you hear.
+*/
 eachStroke(trail = 0.12) {
-    val noteRows = listOf("c4", "d4", "e4", "f4", "g4", "a4", "b4", "c5", "d5", "e5", "f5", "g5", "a5", "c6")
-    val bassRows = listOf("c3", "d3", "e3", "f3", "g3", "a3", "b3", "c4", "d4", "e4", "f4", "g4", "a4", "c5")
+    val noteRows = ["c4", "d4", "e4", "f4", "g4", "a4", "b4", "c5", "d5", "e5", "f5", "g5", "a5", "c6"]
+    val bassRows = ["c3", "d3", "e3", "f3", "g3", "a3", "b3", "c4", "d4", "e4", "f4", "g4", "a4", "c5"]
     val steps = 12
     val rows = noteRows.size
     val minX = points.minOf { it.x } - 24
@@ -34,11 +36,19 @@ eachStroke(trail = 0.12) {
 
     var cursorRow = 0.4
     var pulse = 0.2
-    val melody = pat(row.joinToString(" ") { if (it < 0) "~" else noteRows[it] }) with s("triangle") with
-        gain(signal { 0.02 + density * 0.05 + pulse * 0.08 }) with lpf(signal { 200 + cursorRow * 2600 + pulse * 600 }) with
-        pan(toPan(panSigned * 0.7)) with room(0.38)
-    val bass = pat(row.joinToString(" ") { if (it < 0) "~" else bassRows[max(0, it - 3)] }) with s("sine") with
-        gain(0.01 + density * 0.06) with lpf(signal { 150 + cursorRow * 800 }) with pan(toPan(panSigned * -0.35))
+    val melody =
+        pat(row.joinToString(" ") { if (it < 0) "~" else noteRows[it] }) with
+            s("triangle") with
+            gain(signal { 0.02 + density * 0.05 + pulse * 0.08 }) with
+            lpf(signal { 200 + cursorRow * 2600 + pulse * 600 }) with
+            pan(toPan(panSigned * 0.7)) with
+            room(0.38)
+    val bass =
+        pat(row.joinToString(" ") { if (it < 0) "~" else bassRows[max(0, it - 3)] }) with
+            s("sine") with
+            gain(0.01 + density * 0.06) with
+            lpf(signal { 150 + cursorRow * 800 }) with
+            pan(toPan(panSigned * -0.35))
     sound(stack(melody, bass))
 
     draw { t ->
@@ -49,14 +59,29 @@ eachStroke(trail = 0.12) {
 
         val guides = FLine()
         guides.ignore = true
-        for (r in 0 until rows) guides.segment(minX, gy(r), maxX, gy(r), if (r == row[step]) rgba(120, 190, 255, 0.18) else rgba(255, 255, 255, 0.05))
-        for (s in 0 until steps) guides.segment(gx(s), minY, gx(s), maxY, if (s == step) rgba(255, 235, 120, 0.32) else rgba(255, 255, 255, 0.06))
+        for (r in 0 until rows) guides.segment(
+            minX,
+            gy(r),
+            maxX,
+            gy(r),
+            if (r == row[step]) rgba(120, 190, 255, 0.18) else rgba(255, 255, 255, 0.05),
+        )
+        for (s in 0 until steps) guides.segment(
+            gx(s),
+            minY,
+            gx(s),
+            maxY,
+            if (s == step) rgba(255, 235, 120, 0.32) else rgba(255, 255, 255, 0.06),
+        )
 
         val connectors = FLine()
         connectors.ignore = true
         connectors.color = rgba(255, 215, 120, 0.18)
         val snapped = ArrayList<Vec2>()
-        val beads = FLine().apply { pointed = true; stroked = false }
+        val beads = FLine().apply {
+            pointed = true
+            stroked = false
+        }
         for (s in 0 until steps) {
             if (row[s] < 0) continue
             connectors.segment(rawX[s] / count[s], rawY[s] / count[s], gx(s), gy(row[s]))
@@ -66,6 +91,6 @@ eachStroke(trail = 0.12) {
         }
         val melodyLine = smooth(snapped)
         melodyLine.color = rgba(120, 220, 255, 0.75)
-        listOf(guides, connectors, melodyLine, beads)
+        [guides, connectors, melodyLine, beads]
     }
 }

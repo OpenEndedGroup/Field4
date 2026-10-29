@@ -1,0 +1,51 @@
+{
+  "passed": true,
+  "capturedAt": "2026-10-26T16:31:38.165Z",
+  "checks": [
+    "fade waits for crossfade",
+    "fade has intermediate opacity",
+    "retained image loaded at 0.25 opacity",
+    "retained layer inert",
+    "Back restores base",
+    "Back to completed build",
+    "Refresh completed build",
+    "reduced motion",
+    "three standalone themes"
+  ],
+  "inputs": {
+    "src/jvmMain/kotlin/afield/ui/slides/Presentation.kt": "ee0b6f17f7b3aea216cf850f479d534f136b74d1af683f38dac291ef9cbedcc6",
+    "src/jvmMain/kotlin/afield/ui/slides/AudienceBuilder.kt": "5ea2aa9654d129f59b04258e32fa4751a58345dd48203da49a7e99fdecf0e7b7",
+    "src/commonMain/resources/presentation-audience.js": "630aa5de4cf469635fd461e8fcc3f15e623f77985b360130bdf57fb15ac8032f",
+    "electron/presentation.js": "a87afe0db3ca90c0d49124df267daa8ddf2f3895d690b79cca423d9d60069165",
+    "templates/presentation/present_talk_code_.kt": "4fe6d42ee3be10ad36904bd937aa14d6e78fd7e07e3f3648c548dd633ad41254",
+    "templates/presentation/files/themes/black.css": "cac93d97780e6bb8ac96e8dfcf9de794b62f8bbbd20c2c4aac0f079fcc66e4f7",
+    "templates/presentation/files/themes/paper.css": "968f14e19a42c87dd9148c57e5719c060849899b1baca73ee1fd7fd294dfda9e",
+    "templates/presentation/files/themes/slate.css": "41c9d8db39c0a623fa394037a7ce72ddb67b0d2bd1d4b076fa4f0c64f155c0ad"
+  },
+  "pictures": [
+    {
+      "file": "layered-build.png",
+      "width": 1280,
+      "height": 720,
+      "sha256": "8e64b30f4f8d51d0ec295f54f0064409ede785e308f996aa3098b4b20177f873"
+    },
+    {
+      "file": "theme-black.png",
+      "width": 1280,
+      "height": 720,
+      "sha256": "294edef5de7063608b86e0dfb38cfa742e1881cd9fd738d2b5aac2c5fb566f42"
+    },
+    {
+      "file": "theme-paper.png",
+      "width": 1280,
+      "height": 720,
+      "sha256": "e33ce29b88c28361dd0ffae4cb5744df3d50c7de99820284a9c59c3a6fc2970b"
+    },
+    {
+      "file": "theme-slate.png",
+      "width": 1280,
+      "height": 720,
+      "sha256": "9b4aa66a328ca95af80d7f93720398212300936d6566aa73da03a52f515d03fc"
+    }
+  ]
+}

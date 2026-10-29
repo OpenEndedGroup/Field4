@@ -1,0 +1,141 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T21:05:40.079Z",
+  "documentName": "typography_worked_example",
+  "outputs": [
+    {
+      "uid": "typo_layout",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 862,
+      "height": 602,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "typo_layout",
+      "channel": "alignment",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 912,
+      "height": 195,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "typo_sdf",
+      "channel": "sdf",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 348,
+      "height": 236,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "typo_sdf",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 808,
+      "height": 608,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "typo_points",
+      "channel": "main",
+      "open": false,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 874,
+      "height": 337,
+      "path": "outputs/4.html"
+    },
+    {
+      "uid": "typo_curve",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 902,
+      "height": 480,
+      "path": "outputs/5.html"
+    },
+    {
+      "uid": "typo_curve",
+      "channel": "paths",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 454,
+      "height": 480,
+      "path": "outputs/6.html"
+    },
+    {
+      "uid": "typo_mesh",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 808,
+      "height": 308,
+      "path": "outputs/7.html"
+    },
+    {
+      "uid": "typo_mesh",
+      "channel": "word",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 828,
+      "height": 348,
+      "path": "outputs/8.html"
+    },
+    {
+      "uid": "typo_winding",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 912,
+      "height": 186,
+      "path": "outputs/9.html"
+    },
+    {
+      "uid": "typo_values",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 892,
+      "height": 254,
+      "path": "outputs/10.html"
+    },
+    {
+      "uid": "typo_values",
+      "channel": "vectors",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 745,
+      "height": 280,
+      "path": "outputs/11.html"
+    }
+  ]
+}

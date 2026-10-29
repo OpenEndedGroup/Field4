@@ -10,8 +10,17 @@
  *
  * The world is not in here. A [ContactModel] says what a foot receives from its surroundings, and
  * [CreatureSimulationConfig.fitness] says what counts as doing well, so a water strider, a crawler on a
- * floor and a swimmer differ only in box code. The `evolving_water_bugs` starting point writes two.
+ * floor and a swimmer differ only in box code. The `evolving_water_bugs` starting point writes two of
+ * those contact models.
+ *
+ * One thing to know before writing a [CreatureSimulationConfig.fitness]: during selection it is handed an
+ * evaluation with no frames. Evolution scores its whole population with recording off and re-simulates
+ * only each generation's best under the configured recording, so a score read out of
+ * [CreatureEvaluation.frames] is zero for every creature that is actually being chosen between. Score
+ * from the measured totals instead — [CreatureEvaluation.sustainedTravel],
+ * [CreatureEvaluation.displacement] and the means beside them.
  */
+
 package afield.simulation.creatures
 
 import afield.simulation.physics.SimdVerlet
@@ -48,6 +57,14 @@ private const val DEFAULT_MAX_MEAN_STRETCH_ERROR = 2.0f
 private const val DEFAULT_MAX_PEAK_STRETCH_ERROR = 3.0f
 private const val DEFAULT_MAX_CENTER_SPEED = 4.0f
 
+/**
+ * A 2D point or vector of `Float`s, with the arithmetic the creature model needs. Every operation
+ * returns a new value; nothing here mutates.
+ *
+ * [perpDot] is the 2D cross product, positive when the argument turns counter-clockwise from the
+ * receiver, which is how edge crossings and lateral drift are measured. [normalizedOr] returns its
+ * fallback rather than a non-finite vector when the length is near zero.
+ */
 data class Float2(val x: Float, val y: Float) {
     operator fun plus(other: Float2) = Float2(x + other.x, y + other.y)
     operator fun minus(other: Float2) = Float2(x - other.x, y - other.y)
@@ -67,11 +84,29 @@ data class Float2(val x: Float, val y: Float) {
     fun lerp(other: Float2, t: Float): Float2 = this * (1f - t) + other * t
 }
 
+/**
+ * One spring of the body, as the indices of the two points it joins. Its rest length is whatever the
+ * distance between those points is in [CreatureGenome.points], so the rest shape and the springs are
+ * the same piece of genome.
+ *
+ * [normalized] puts the lower index first, which is how [CreatureGenome.normalized] can recognise the
+ * same edge written either way around and drop the duplicate.
+ */
 data class EdgeGene(val a: Int, val b: Int) {
     fun normalized(): EdgeGene =
         if (a <= b) this else EdgeGene(b, a)
 }
 
+/**
+ * One foot's gait, as a window on the body's phase clock: the foot is down over [duty] of each cycle,
+ * centred on [phase], pressing with [strength]. Every point of a creature carries one of these, and
+ * [CreatureGenome.feet] is parallel to [CreatureGenome.points].
+ *
+ * [smooth] is the fraction of the window's half-width spent ramping in and out, as a smoothstep, so near
+ * 0.02 the foot snaps down and near 0.95 it swells and fades. [sample] reads the window at a phase and
+ * returns a value between zero and [strength]; a program with no duty or no strength returns zero
+ * everywhere, which is how a point that never touches down is written.
+ */
 data class ContactProgram(
     val phase: Float,
     val duty: Float = 0.35f,
@@ -92,6 +127,18 @@ data class ContactProgram(
     }
 }
 
+/**
+ * An angle motor at [pivot], pulling the angle between its two neighbours [a] and [b] toward a target
+ * that cycles with the phase clock. A joint is only valid where two actual edges meet at its pivot.
+ *
+ * The target curve is four knots read as a wrapped Catmull-Rom spline, so a joint's entire gait is four
+ * numbers. A knot is a signal clamped to ±0.9, which the run turns into an angle by scaling it with
+ * [CreatureSimulationConfig.jointTargetAngleScale] and adding it to the joint's rest angle, meaning the
+ * angle between its two arms in the genome's rest shape rather than zero.
+ * [normalized] orders [a] and [b] and negates the targets when it has to swap them, so the two ways of
+ * writing one joint drive the same motion; [shifted] rotates the knots, moving the joint in phase
+ * without changing the shape of its curve.
+ */
 data class JointProgram(
     val pivot: Int,
     val a: Int,
@@ -136,6 +183,22 @@ data class JointProgram(
     }
 }
 
+/**
+ * Everything evolution can change about one creature: its rest shape as [points] and [edges], its gait as
+ * [feet] and [joints], and the handful of physical gains below them that decide how heavy it is, how
+ * stiff its springs are and how hard its feet can hold.
+ *
+ * Two methods police it, and they are not the same check. [normalized] is total: it orders and
+ * de-duplicates the edges and joints, resizes [feet] to one program per point, and clamps every gain
+ * into the range the solver tolerates. [validationIssues] can still find faults [normalized] cannot
+ * repair, and returns them as sentences meant to be read; [CreatureEvolution.simulate] refuses a genome
+ * for which it returns anything.
+ *
+ * Two of those faults constrain what a body can be rather than how it is written, and so matter to
+ * anyone assembling a genome by hand. A point may carry at most four edges, since [SimdVerlet] holds
+ * four constraint slots per particle; and no two edges may cross, which keeps a body from being threaded
+ * through itself.
+ */
 data class CreatureGenome(
     val points: List<Float2>,
     val edges: List<EdgeGene>,
@@ -246,6 +309,21 @@ data class CreatureGenome(
     }
 }
 
+/**
+ * How one creature is run and scored: for how long, in what surroundings, against what measure of doing
+ * well, and inside what limits.
+ *
+ * The clock is shared between this and the genome. [CreatureGenome.clockPeriod] sets how long one gait
+ * cycle lasts and [stepsPerCycle] sets how finely it is divided, so the physics step is one divided by
+ * the other. A run lasts [warmupCycles] plus [measuredCycles] of them, and measurement starts at the end
+ * of the warm-up, which keeps a creature's initial settle out of its score.
+ *
+ * A run ends early and scores [explodedFitness] when a coordinate stops being finite or leaves
+ * [maxAbsCoordinate], or when centre speed, mean stretch or peak stretch pass [maxCenterSpeed],
+ * [maxMeanStretchError] or [maxPeakStretchError]. These are stability limits, not taste: a body that
+ * passes one is being torn apart by its own springs, and whatever it scored on the way is an artefact of
+ * the solver rather than a gait.
+ */
 data class CreatureSimulationConfig(
     val warmupCycles: Int = 1,
     val measuredCycles: Int = 5,
@@ -328,11 +406,31 @@ interface ContactModel {
     }
 }
 
+/**
+ * Which built-in measure [CreatureSimulationConfig.fitnessObjective] scores with, when
+ * [CreatureSimulationConfig.fitness] has not replaced it.
+ *
+ * `DIRECTIONAL_PROGRESS` rewards distance along [CreatureSimulationConfig.targetDirection] and charges
+ * for drift across it, so it asks a creature to go somewhere in particular.
+ * `NET_CENTROID_DISPLACEMENT` rewards distance from where measurement began in any direction, which
+ * suits a creature with no heading to keep. Both then subtract the body's mean stretch error and the
+ * actuation and slew penalties, so neither will pay for a gait that works by shaking itself apart.
+ */
 enum class FitnessObjective {
     DIRECTIONAL_PROGRESS,
     NET_CENTROID_DISPLACEMENT
 }
 
+/**
+ * One recorded physics step: where every point was, which feet were holding, and what each joint was
+ * doing. A run keeps one of these every [CreatureSimulationConfig.recordEvery] steps, and they are what
+ * [CreatureEvaluation]'s playback draws.
+ *
+ * [down] is a foot whose grip, as its [ContactModel] reported it that step, passed 0.35, the same
+ * threshold the playback lines use to draw it as planted. [anchors] holds a position for each foot that
+ * is held to a point and null for the rest, so a contact model that only ever pushes fills it with
+ * nulls.
+ */
 data class CreatureSnapshot(
     val step: Int,
     val phase: Float,
@@ -344,6 +442,22 @@ data class CreatureSnapshot(
     val jointTargets: List<Float>
 )
 
+/**
+ * What one run of one creature came to: the score it earned, how far it actually travelled, what the
+ * gait cost it, and the frames of it that were recorded.
+ *
+ * Every measurement is reported beside the score rather than folded into it, so a custom
+ * [CreatureSimulationConfig.fitness] can weigh them differently without re-running anything.
+ * [forwardTravel] and [lateralDrift] are the components of [displacement] along and across the target
+ * direction; [forwardProgress] adds up only the forward part of each step, so it stays high for a
+ * creature that goes back and forth; and [meanStretchError], [meanActuationEffort] and [meanTargetSlew]
+ * are what the built-in objectives charge for.
+ *
+ * [frameLines] draws one frame flat, [frameLines3d] draws it as a strider on a water surface, and
+ * [notationLines] draws the gait itself as a score with one row per foot. [playback] and its siblings
+ * are those as endless sequences, one frame at a time. All of them return an empty list when [frames]
+ * is empty, which is how an evaluation produced during selection arrives.
+ */
 data class CreatureEvaluation(
     val genome: CreatureGenome,
     val fitness: Float,
@@ -731,6 +845,21 @@ private data class MotionAlignmentTransform(
 
 private data class PhaseInterval(val start: Float, val end: Float)
 
+/**
+ * The genetic algorithm's settings: how big a population, for how many generations, how parents are
+ * chosen, how hard children are mutated, and the [simulation] each of them is scored by.
+ *
+ * Selection is a tournament of [tournamentSize] drawn with replacement, with the fittest
+ * [eliteCount] copied forward untouched. The rest of each generation is bred from tournament winners,
+ * crossed over with probability [crossoverRate] and then mutated between [mutationSteps] times.
+ *
+ * Fresh random genomes are added every generation as well, and the two knobs for them are both floors
+ * rather than a count and an override: whichever of [immigrantsPerGeneration] and [immigrantFraction]
+ * of the population is larger wins. The stagnation knobs raise both that fraction and the mutation
+ * range once [stagnationGenerations] have passed without the champion improving, which with the default
+ * 80 against the default 12 [generations] cannot happen; it is a setting for the long runs a box leaves
+ * going, and lowering it is how you reach it.
+ */
 data class EvolutionConfig(
     val populationSize: Int = 28,
     val generations: Int = 12,
@@ -753,6 +882,14 @@ data class EvolutionConfig(
     val randomSeed: Int = 1
 )
 
+/**
+ * The fitness spread of one finished generation, over the genomes that survived repair. A genome no
+ * repair could make valid is dropped rather than scored, so these are computed over a population that
+ * can be smaller than [EvolutionConfig.populationSize].
+ *
+ * [EvolutionResult.history] is a list of these, one per generation, which is what a convergence plot is
+ * drawn from.
+ */
 data class EvolutionGeneration(
     val generation: Int,
     val bestFitness: Float,
@@ -760,11 +897,30 @@ data class EvolutionGeneration(
     val medianFitness: Float
 )
 
+/**
+ * What a finished evolution returns: the [best] creature it ever scored, and a [history] entry per
+ * generation.
+ *
+ * [best] is re-simulated under the full [EvolutionConfig.simulation], so it carries frames and can be
+ * played back even though the population around it was scored without them. A run stopped by its
+ * [EvolutionController] before any generation completed has no champion to report, and answers with the
+ * first genome of its starting population instead.
+ */
 data class EvolutionResult(
     val best: CreatureEvaluation,
     val history: List<EvolutionGeneration>
 )
 
+/**
+ * One generation, as it finishes: handed to [CreatureEvolution.evolve]'s callback and emitted by
+ * [CreatureEvolution.evolveFlow]. This is what a box watches to draw an evolution as it happens.
+ *
+ * [generationBest] is this generation's fittest creature and [champion] is the best of every generation
+ * so far, so the two are the same object until the run stops improving and then diverge.
+ * [generationsSinceImprovement] counts that gap and [stagnating] is it having passed
+ * [EvolutionConfig.stagnationGenerations]. Both of these evaluations are re-simulated under the full
+ * [EvolutionConfig.simulation], so unlike the population they were chosen from they can be played back.
+ */
 data class EvolutionUpdate(
     val generation: EvolutionGeneration,
     val generationBest: CreatureEvaluation,
@@ -773,18 +929,30 @@ data class EvolutionUpdate(
     val stagnating: Boolean
 )
 
+/**
+ * A stop button for a running evolution, safe to call from a thread other than the one evolving.
+ *
+ * Evolution checks it between genomes, between generations and between children, so a stop takes effect
+ * within about one creature's simulation rather than at the end of the generation. It is a clean finish
+ * and not a cancellation: the run returns the best creature it has found so far, with the history it has
+ * accumulated, exactly as if that had been its last generation. [reset] clears the flag so the same
+ * controller can start another run.
+ */
 class EvolutionController {
     @Volatile
     private var stopRequested: Boolean = false
 
+    /** Asks the evolution reading this controller to finish early and return what it has. */
     fun requestStop() {
         stopRequested = true
     }
 
+    /** Clears a previous [requestStop], so this controller can be handed to another run. */
     fun reset() {
         stopRequested = false
     }
 
+    /** Whether [requestStop] has been called and not yet [reset]. */
     fun isStopRequested(): Boolean = stopRequested
 }
 
@@ -811,7 +979,36 @@ private data class JointMotorPose(
     val pivotCoeffY: Float
 )
 
+/**
+ * The genetic algorithm itself: where a creature comes from, how one is scored, and how a population is
+ * bred.
+ *
+ * [randomGenome] grows a body by attaching points one at a time, which is how both the starting
+ * population and every later immigrant is made. [simulate] repairs and validates a single genome and
+ * runs it, returning a [CreatureEvaluation]. [evolve] runs a whole evolution and blocks until it is
+ * done, [evolveSuspend] is the same thing for a coroutine, and [evolveFlow] is the shape a box usually
+ * wants: a `kotlinx.coroutines.flow.Flow` of [EvolutionUpdate] it can collect and draw from as the
+ * generations arrive.
+ *
+ * Mutation and repair are not public. A genome mutates by a few small edits drawn from a set of sixteen,
+ * three of which are weighted to come up twice as often, and whatever comes out is put back through
+ * repair before it is scored. What the next generation breeds from is therefore the repaired creature
+ * that earned the score, not the child as it was written.
+ */
 object CreatureEvolution {
+    /**
+     * A random starting body: points attached one at a time to a parent with a spare edge slot, then
+     * given feet, joints and gains drawn from the ranges that tend to produce a creature that moves.
+     *
+     * The result is already normalised, repaired and inside its actuation budget, so it is valid to
+     * [simulate] as it stands.
+     *
+     * The two foot fractions shape the gait before evolution ever sees it, and they are not symmetric.
+     * [alwaysUpFootFraction] silences that share of the body outright, taking the feet that were
+     * pressing least. [cyclingFootFraction] is a floor instead of a share: if fewer than that many feet
+     * already both land and lift within a cycle, the strongest of the remaining feet are rewritten until
+     * enough do, and a body that already clears the floor is left alone.
+     */
     fun randomGenome(
         random: Random = Random.Default,
         minPoints: Int = 4,
@@ -912,6 +1109,14 @@ object CreatureEvolution {
             .repairActuationBudget(maxActuationBudgetPerCycle)
     }
 
+    /**
+     * Runs one creature and scores it.
+     *
+     * The genome is repaired first, and the [CreatureEvaluation] reports the repaired genome rather than
+     * the one passed in, so a creature can always be rebuilt from what came back. A genome that repair
+     * cannot make valid throws, with [CreatureGenome.validationIssues]' sentences as the message; inside
+     * an evolution that genome is dropped instead, and the run carries on.
+     */
     fun simulate(
         genome: CreatureGenome,
         config: CreatureSimulationConfig = CreatureSimulationConfig()
@@ -946,6 +1151,13 @@ object CreatureEvolution {
             evolveSuspend(config, controller) { onGeneration(it) }
         }
 
+    /**
+     * [evolve] for a coroutine: the same run, suspending instead of blocking, with a suspending
+     * [onGeneration].
+     *
+     * It suspends at every point it checks [controller], so cancelling the coroutine stops the evolution
+     * there rather than at the end of the generation.
+     */
     suspend fun evolveSuspend(
         config: EvolutionConfig = EvolutionConfig(),
         controller: EvolutionController? = null,
@@ -957,6 +1169,14 @@ object CreatureEvolution {
             onGeneration = onGeneration
         )
 
+    /**
+     * The evolution as a cold `kotlinx.coroutines.flow.Flow` of [EvolutionUpdate], one per generation,
+     * which is usually what a box wants: collect it and redraw the champion as the generations arrive.
+     *
+     * Nothing runs until the flow is collected, and the work happens in the collector's context. Unlike
+     * the other two entry points this one makes its own [EvolutionController] by default; keep a
+     * reference to it if you want a stop button, or cancel the collecting coroutine instead.
+     */
     fun evolveFlow(
         config: EvolutionConfig = EvolutionConfig(),
         controller: EvolutionController = EvolutionController()
@@ -1036,7 +1256,7 @@ object CreatureEvolution {
             val bestFull = simulate(bestFast.genome, config.simulation)
             val previous = champion
             val improved = previous == null || bestFull.fitness > previous.fitness
-            val currentChampion = if (improved) bestFull else previous!!
+            val currentChampion = if (improved) bestFull else previous
             champion = currentChampion
             if (improved) {
                 generationsSinceImprovement = 0
@@ -2170,10 +2390,9 @@ private class CreatureRuntime(
     )
 
     private val sim = SimdVerlet(state, null)
-    private lateinit var masses: FloatArray
+    private val masses = pointMasses(genome.points, edgeRests, genome.massPerLength, genome.basePointMass)
 
     init {
-        masses = pointMasses(genome.points, edgeRests, genome.massPerLength, genome.basePointMass)
         config.contact.place(genome.points).forEachIndexed { index, point ->
             val invMass = 1f / max(0.05f, masses[index])
             sim.addParticle(

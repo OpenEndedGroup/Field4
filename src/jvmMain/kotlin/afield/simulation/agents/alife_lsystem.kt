@@ -456,6 +456,9 @@ fun turtleDraw(
  * val tree = drawLSystem(LSYSTEM_BUSH, 5, TurtleParams(angle = Math.toRadians(25.0), scaleOnBranch = true))
  * lines(tree.lines)
  * ```
+ *
+ * A system whose axiom and rules use letters but none of [TurtleParams.drawSymbols] throws, naming
+ * the letters, rather than returning an empty drawing: its drawing symbols are somewhere else.
  */
 fun drawLSystem(
     system: LSystem,
@@ -468,7 +471,17 @@ fun drawLSystem(
 ): TurtleResult {
     val rng = kotlin.random.Random(seed)
     val s = system.derive(generations, rng)
-    return turtleDraw(s, p, startX, startY, startHeading, rng)
+    val result = turtleDraw(s, p, startX, startY, startHeading, rng)
+    // a system none of whose strings can ever draw, not one that has not grown a drawing symbol yet
+    val everything = system.axiom + system.productions.joinToString("") { it.replacement }
+    if (result.drawnSegments == 0 && everything.none { it in p.drawSymbols }) {
+        val letters = everything.filter { it.isLetter() && it != 'f' }.toSet().sorted().joinToString("")
+        require(letters.isEmpty()) {
+            "this L-system draws nothing: its string uses \"$letters\" but only \"${p.drawSymbols}\" draw. " +
+                "Pass TurtleParams(drawSymbols = \"$letters\") (or the subset that should draw)."
+        }
+    }
+    return result
 }
 
 /**

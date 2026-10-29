@@ -20,7 +20,7 @@ import kotlin.math.tanh
  * switched on it replaces **only local partials** and never a primal value. The measurements —
  * including the two that argue against enabling it globally — are `dev_docs/STACKSL_SURROGATE.md`.
  *
- * What is deliberately *not* here is `GlslAdScalars`' mask tracking, which is what stops a nested
+ * What is *not* here is `GlslAdScalars`' mask tracking, which is what stops a nested
  * predicate being charged a second kernel. That is a property of the AD path rather than of the
  * surrogate, so it sits in `GlslAd.kt` beside the jump sites it corrects.
  */
@@ -41,7 +41,7 @@ import kotlin.math.tanh
  * So the surrogate is not a smoothing of an operation. It is a **mollification of a delta train**.
  * Each of these operations is piecewise constant with jumps at known places, and its distributional
  * derivative is exactly `Σ (jump height) · δ(x − jump)`. Convolve each delta with a bump of width
- * `t` and you have a finite, smooth, honest object: the derivative of the operation *as seen at
+ * `t` and you have a finite, smooth object: the derivative of the operation *as seen at
  * scale `t`*. [kernel] is that bump, and every site in [GlslAdScalars] that used to push a zero
  * partial now pushes `jumpHeight × kernel(distance to the nearest jump)`.
  *
@@ -131,8 +131,7 @@ class AdSurrogate private constructor(
     /**
      * The fraction of a unit-period jump this kernel actually carries: `tanh(1 / 4t)`.
      *
-     * Reported rather than hidden because it is the surrogate's most load-bearing number. At
-     * `t = 0.5` it is 0.462, so half the signal has leaked into the neighbouring jumps and the
+     * At `t = 0.5` it is 0.462, so half the signal has leaked into the neighbouring jumps and the
      * surrogate is measuring a blur of the staircase rather than one step of it.
      */
     val unitPeriodMass: Double get() = if (enabled) tanh(1.0 / (4.0 * temperature)) else 0.0
@@ -209,7 +208,7 @@ enum class AdSurrogateFamily {
      * through, so the chain carries the inner jump's kernel once instead of multiplying it by
      * `K_t(0.5)` — which decayed like `exp(−1/2t)` and used to switch `select` off as a schedule
      * cooled. `and` and `or` come along, since they reduce two masks with `min`/`max`. `not` does
-     * not: it is `1.0 − mask`, which the tracking deliberately does not follow.
+     * not: it is `1.0 − mask`, which the tracking does not follow.
      */
     STEP,
 

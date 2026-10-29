@@ -1,13 +1,13 @@
-import afield.graphics.vulkan.Renderer
-import afield.graphics.vulkan.util.Window
-import afield.graphics.vulkan.buffers.FrameBufferGroup
-import arrow.core.right
-import arrow.core.left
-import afield.graphics.shader.*
-import afield.graphics.scene.*
-import afield.graphics.render.*
-import afield.document.context.*
 import afield.graphics.vulkan.buffers.*
+import afield.document.context.*
+import afield.graphics.render.*
+import afield.graphics.scene.*
+import afield.graphics.shader.*
+import arrow.core.left
+import arrow.core.right
+import afield.graphics.vulkan.buffers.FrameBufferGroup
+import afield.graphics.vulkan.util.Window
+import afield.graphics.vulkan.Renderer
 /*start*/
 /*compute-structure-type:State:State*/
 class State(

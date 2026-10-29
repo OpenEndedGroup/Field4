@@ -27,6 +27,17 @@ class AiChatFenceCatalogTest {
     }
 
     @Test
+    fun mathFenceTeachesTheInlineDelimitersToo() {
+        val math = AiChatFenceCatalog.entries.single { it.language == "math" }
+        assertEquals("/katex/field-katex.js", math.modulePath)
+        assertEquals("renderMathFence", math.exportName)
+        val guidance = AiChatFenceCatalog.instructionText()
+        assertContains(guidance, "\\( ... \\)")
+        assertContains(guidance, "$$ ... $$")
+        assertContains(guidance, "```math\n")
+    }
+
+    @Test
     fun aSecondEntryIsAdvertisedWithoutEditingThePrompt() {
         val second = AiChatFenceCatalog.Entry("fixture", "Fixture", "Test relationships", "Write nodes and links",
             "a --> b", "/fixture.js", "renderFixture")

@@ -7,6 +7,7 @@ import afield.app.protocol.Output
 import afield.app.canvas.CanvasCamera
 import afield.app.canvas.invoke
 import afield.app.canvas.path
+import afield.app.canvas.moveSelectionToLayer
 import afield.app.canvas.showLayersPanel
 import afield.app.editor.reloadUserKeybindings
 import afield.app.notifications.notify
@@ -2610,18 +2611,7 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
                     detail:${jsStringLiteral("Assign selected box"+(if (boxes.size>1) "es" else "")+" to the current active layer")},
                     run: () => {
                         const layer = ${jsStringLiteral(layerLabel)};
-                        if (!layer) return;
-                        import("./afield.mjs").then((afield) => {
-                            const ids = (typeof getSelectedIds === 'function') ? getSelectedIds() : [];
-                            ids.forEach((id) => {
-                                afield.send("set-string", { uid: id, property: "layers", value: layer });
-                                const el = document.querySelector('.box[uid="' + id + '"]');
-                                if (Entities.el) { Entities.el.box_layers = layer; }
-                            });
-                            if (typeof updateAllBoxVisibility === 'function') {
-                                updateAllBoxVisibility(true, 300);
-                            }
-                        });
+                        if (layer) window.moveSelectionToLayer(layer);
                     }
                 })
             """.trimIndent()
@@ -2754,6 +2744,8 @@ fun registerBuiltinCommands() {
     w.recordSelectedBoxEditorMp4 = ::recordSelectedBoxEditorMp4
     w.recordWindowMp4 = ::recordWindowMp4
     w.soloNextLayer = ::soloNextLayer
+    // The palette's "Move N boxes to active layer" calls this; it is the layers panel's own button.
+    w.moveSelectionToLayer = ::moveSelectionToLayer
     w.soloPreviousLayer = ::soloPreviousLayer
     w.refreshLayerShortcutActions = ::refreshLayerShortcutActions
     w.openUserThemeProxyBox = ::openUserThemeProxyBox
@@ -2870,6 +2862,13 @@ fun registerBuiltinCommands() {
             detail:"Download a self-contained .edn file of the whole document",
             run: () => {
                 exportDocumentToDownload()
+            }
+        },{
+            id:'publish-document-web',
+            label:"Publish document for the web (.zip)",
+            detail:"Download code, notes and captured output areas as a static website",
+            run: () => {
+                window.fieldPublishDocument()
             }
         },{
             id:'export-ipynb',

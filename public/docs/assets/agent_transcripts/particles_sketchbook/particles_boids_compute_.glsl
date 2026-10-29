@@ -25,8 +25,8 @@ void update() {
     int neighbours = flock(82.0, 2.2, 0.82, 0.52, 125.0);
 
     float flow = noise2D(
-        p.pos.x * 0.004 + t * 0.18 + float(p.group) * 7.3,
-        p.pos.y * 0.004 - t * 0.14 + p.seed * 0.002
+    p.pos.x * 0.004 + t * 0.18 + float(p.group) * 7.3,
+    p.pos.y * 0.004 - t * 0.14 + p.seed * 0.002
     );
     float flowAngle = flow * TAU + float(p.group) * 1.4;
     vec2 along = vec2(cos(flowAngle), sin(flowAngle));

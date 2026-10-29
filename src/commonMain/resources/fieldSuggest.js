@@ -45,6 +45,7 @@ const CATEGORY_WEIGHT = new Map([
   // 12 / 8 / 4 is variant R2 of dev_docs/completion_rank_at_scale.md: +0.051 bare contested recall,
   // +0.120 recall on receivers this tree cannot annotate, owned recall unchanged.
   ["execution", 12],
+  ["output", 12],
   ["math", 12],
   ["audio", 12],
   ["audio ai", 12],
@@ -1261,7 +1262,8 @@ class FieldSuggestController {
 
   isSupported() {
     const model = this.editor.getModel && this.editor.getModel();
-    return !!(model && this.languages.has(getLanguageId(model)));
+    return !!(model && (this.languages.has(getLanguageId(model)) ||
+      window.fieldPresentationTypeScriptCompletion?.supports(this.editor, model)));
   }
 
   isVisible() {
@@ -1414,6 +1416,12 @@ class FieldSuggestController {
   }
 
   remoteItems(model, position, target, languageId, generation) {
+    const projectProvider = window.fieldPresentationTypeScriptCompletion;
+    if (projectProvider?.supports(this.editor, model)) {
+      return Promise.resolve(projectProvider.provide(this.editor, model, position)).then(items =>
+        items.map((item, index) => normalizeLocalSuggestion(
+          this.monaco, item, index, model, position, languageId)));
+    }
     const payload = completionPayloadFor(this.editor, model, position, target);
     return requestWithReply("complete", payload, "complete-me").then(
       (completion) =>

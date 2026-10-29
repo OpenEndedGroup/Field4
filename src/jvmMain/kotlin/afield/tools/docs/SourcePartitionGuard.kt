@@ -23,11 +23,10 @@ expect:
  * ### The failure this exists to stop
  *
  * A source page that lifts KDoc into prose, turns declarations into headers and numbers the code
- * fences from their real source lines is only honest if the partition it was rendered from accounts
+ * fences from their real source lines is correct only if the partition it was rendered from accounts
  * for the whole file. Lose three lines and every fence below them is numbered wrong — on a published
  * page, in a way that looks completely normal, and that a reader can only catch by opening the source
- * they came here to avoid opening. There is no plausible review habit that catches it either, because
- * the wrong page is well-formed.
+ * they came here to avoid opening. The wrong page is well-formed, so review does not catch it either.
  *
  * So the partition is checked against the file it came from, over the whole repository, before any
  * page exists. [KotlinSourcePartition.verify] holds the invariants; this walks the corpus, adds the
@@ -45,19 +44,25 @@ expect:
  * - **The unattributed census, as a ratchet** — every line the partition could not attribute to a
  *   declaration, a comment or a header lands in `FILLER`. That is a *correctness-preserving* fallback:
  *   the tiling still holds, no line is lost. It is not free, though — a `FILLER` line is a line a page
- *   can only show as anonymous code — so the total is pinned by [MAX_FILLER_LINES] and can go down
- *   without ceremony and up only deliberately.
+ *   can only show as anonymous code — so the `FILLER` lines that carry code are counted and pinned,
+ *   and the pin falls whenever the scanner learns a shape and rises only with a reason. Blank lines
+ *   land in `FILLER` too and are not counted: there is nothing for a page to lose.
+ * - **Locals reported as API** — a second ratchet counts the declarations
+ *   [KotlinSourceIndex] reports from *inside a function body*, each of which the reference pages and
+ *   the completion panel would otherwise publish as though it were public.
  *
  * ### Running it
  *
  * ```
- * ./gradlew checkSourcePartition                        # also part of `check` and `docsGates`
+ * ./gradlew checkSourcePartition                        # also part of check and docsGates
  * ./gradlew checkSourcePartition --args=--verbose       # …and the per-file and per-shape breakdowns
  * ```
  * Needs no Field server, no GPU and no network: it reads source text. Sibling of
  * [KDocAttachmentGuard], which guards the other half of the same pipeline — that a KDoc block reaches
  * the declaration its author meant.
  */
+
+/** Checks every Kotlin file in the repository against the span partition a source page renders. */
 object SourcePartitionGuard {
 
     /**

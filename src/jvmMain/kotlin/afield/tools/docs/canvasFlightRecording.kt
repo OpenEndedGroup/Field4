@@ -100,7 +100,7 @@ suspend fun recordCanvasFlight(info: SessionInformation, request: AgentCanvasFli
         val fps = request.fps
         if (fps !in 1..120) return@withContext failed(info, request, "fps must be 1 to 120, got $fps")
         val sized = request.width != null && request.height != null
-        if (sized && (request.width!! !in 64..7680 || request.height!! !in 64..4320))
+        if (sized && (request.width !in 64..7680 || request.height !in 64..4320))
             return@withContext failed(info, request, "a film is 64x64 to 7680x4320 pixels, got ${request.width}x${request.height}")
         if (!request.pixelRatio.isFinite() || request.pixelRatio !in 0.5..4.0)
             return@withContext failed(info, request, "pixelRatio must be 0.5 to 4, got ${request.pixelRatio}")

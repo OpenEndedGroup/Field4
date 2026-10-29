@@ -496,7 +496,7 @@ two endpoints' weights. A capsule has one radius for its whole length and so can
 comes from the union of densely sampled discs, and taking the minimum keeps a capsule from bulging
 out past the thin end it feeds into.
 
-### Two decisions inside the marcher, and one rough edge
+### Two decisions inside the marcher
 
 Marching squares makes two decisions, and a plausible implementation can get either one silently
 wrong. The figures below show how Field's marcher makes them.
@@ -789,10 +789,6 @@ In the bottom row the decider has nothing to go on. The numerators in the captio
 meeting at a point, and both pairings are equally correct. Left to the numerator's sign, the pairing
 would depend on which way a multiplication rounded, and could change with grid resolution. The two
 panels agree because the marcher settles the tie with `SADDLE_TIE_RELATIVE_EPSILON` instead.
-
-**The rough edge:** the segment stitcher joins crossings by proximity and is O(*m*²) in the
-number of segments, so a very high grid resolution gets expensive. `marchingCubes` avoids this
-by keying shared vertices on grid-edge identity; the 2D marcher does not yet.
 
 ### Sweep the level through the saddle
 

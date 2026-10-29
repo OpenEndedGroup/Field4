@@ -16,7 +16,9 @@ val sim = BoidSketch(module) {
     fade = 1.0
     kind("starling") {
         count = 800
-        maxSpeed = 3.2; minSpeed = 1.6; maxForce = 0.07
+        maxSpeed = 3.2
+        minSpeed = 1.6
+        maxForce = 0.07
         fov = 280.0 // degrees; boids can't see directly behind
         rules(
             separate(12, 1.7),
@@ -25,7 +27,8 @@ val sim = BoidSketch(module) {
             wander(0.15),
             mouse(-3, 110), // negative weight: flee the pointer
         )
-        shape = BoidShape.ARROW; size = 3.2
+        shape = BoidShape.ARROW
+        size = 3.2
         trailAlpha = 0.45
     }
 }

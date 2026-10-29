@@ -494,8 +494,8 @@ versions before preparing paint. Build it once:
 
 The crate is alice's [claude-paint](https://github.com/aliceisjustplaying/claude-paint) `paint`
 crate, kept in the repository at [native/field-paint/vendor/paint](https://github.com/OpenEndedGroup/Field4/blob/main/native/field-paint/vendor/paint) under its MIT licence, with the
-upstream commit it was taken from in [VENDORED.md](https://github.com/OpenEndedGroup/Field4/blob/main/native/field-paint/vendor/paint/VENDORED.md). Field's additions to it are in its
-`src/field/` and are Field's, not alice's. The first build downloads the crate's dependencies from
+upstream commit it was taken from in [VENDORED.md](https://github.com/OpenEndedGroup/Field4/blob/main/native/field-paint/vendor/paint/VENDORED.md). Field's additions to it are in
+`native/field-paint/vendor/paint/src/field/` and are Field's, not alice's. The first build downloads the crate's dependencies from
 crates.io and takes a few minutes.
 Later builds take seconds. The library goes in `build/field-paint/release`, where Field finds it
 without restarting. To use a copy somewhere else, set `AFIELD_PAINT_LIBRARY` or

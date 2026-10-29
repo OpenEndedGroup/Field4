@@ -17,6 +17,25 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 /**
+ * The exit from [GeometryBuilder] to a file every other tool can open.
+ *
+ * A [GeometryScene] becomes one `.glb` with a node per part; a recipe whose vertices move becomes an
+ * animated one. [toGlb] returns the bytes and [writeGlb] puts them in a file; [geometryAnimationGlb]
+ * and [writeGlbAnimation] do the same for a run of frames. Both writers compress by default, through
+ * [Gltfpack] when it is installed.
+ *
+ * The animation is stored as morph targets rather than a skeleton: one target per frame after the
+ * first, played by a weights animation. That needs no rig, which is what makes it open anywhere, and
+ * it is why every frame must emit the same parts with the same vertex counts. A morph target is a
+ * vertex-for-vertex delta against frame 0, so there is nowhere to put a triangle that appeared
+ * halfway through.
+ *
+ * A part carries its positions, face normals, linear vertex colours and a metallic-roughness material
+ * built from its [GeometryMaterial]. `KHR_materials_emissive_strength` is declared only when some
+ * channel of a part's emissive colour, times its intensity, exceeds 1.
+ */
+
+/**
  * A [GeometryScene] as a binary glTF (`.glb`): one node per part, each with its positions, face normals,
  * linear vertex colours and a metallic-roughness material made from its [GeometryMaterial].
  *
@@ -27,14 +46,14 @@ import java.nio.ByteOrder
 fun GeometryScene.toGlb(): ByteArray = encodeGlb(listOf(this), fps = 30.0)
 
 /**
- * Write [toGlb] to [file], returning it. With [compress], the GLB goes through [Gltfpack] when it is
+ * Write [toGlb] to `file`, returning it. With `compress`, the GLB goes through [Gltfpack] when it is
  * installed and makes the file smaller, as the toolbox's export does; otherwise it is written as it is.
  */
 fun GeometryScene.writeGlb(file: File, compress: Boolean = true): File =
     file.also { it.writeBytes(if (compress) Gltfpack.compressIfSmaller(toGlb()) else toGlb()) }
 
 /**
- * Record a [GeometryBuilder] recipe as an animated glTF: [frames] frames at [fps], from `t = 0`, stored
+ * Record a [GeometryBuilder] recipe as an animated glTF: `frames` frames at `fps`, from `t = 0`, stored
  * as morph targets (one per frame after the first, positions and normals) played by a weights
  * animation — what three.js, Blender and every glTF viewer play back.
  *
@@ -60,7 +79,7 @@ fun geometryAnimationGlb(frames: Int = 90, fps: Double = 30.0, block: GeometryBu
     return encodeGlb(scenes, fps)
 }
 
-/** Write [geometryAnimationGlb] to [file], returning it; [compress] as in [writeGlb]. */
+/** Write [geometryAnimationGlb] to `file`, returning it; `compress` as in [writeGlb]. */
 fun writeGlbAnimation(
     file: File, frames: Int = 90, fps: Double = 30.0, compress: Boolean = true, block: GeometryBuilder.() -> Unit,
 ): File = file.also {
@@ -116,7 +135,7 @@ private fun encodeGlb(scenes: List<GeometryScene>, fps: Double): ByteArray {
         val targets = if (!animated) emptyList() else (1 until scenes.size).map { f ->
             val later = scenes[f].parts[i].mesh
             val dp = FloatArray(m.positions.size) { later.positions[it] - m.positions[it] }
-            val dn = FloatArray(m.positions.size) { later.normals!![it] - m.normals!![it] }
+            val dn = FloatArray(m.positions.size) { later.normals!![it] - m.normals[it] }
             bin.floats(dp, "VEC3", minMax = true) to bin.floats(dn, "VEC3", minMax = false)
         }
 

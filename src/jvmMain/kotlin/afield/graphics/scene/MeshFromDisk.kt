@@ -18,11 +18,9 @@ import org.lwjgl.system.MemoryUtil.memFree
 import java.io.File
 
 /**
- * The two missing edges between the loaders that read geometry off disk and the CPU renderer that can
- * *look* at it.
+ * Connects the loaders that read geometry off disk to the CPU renderer that can *look* at it.
  *
- * Field has four things that read geometry from a file, and until this file, one of them fed the CPU
- * preview:
+ * Field has four things that read geometry from a file, and one of them feeds the CPU preview:
  *
  *  - `afield.geometry.mesh.mesh_io.kt` reads OBJ and STL straight into [TriMesh] — the type
  *    [afield.geometry.mesh.showMesh], [TriMesh.renderPng] and the inline `toHTML()` card all render.
@@ -43,8 +41,8 @@ import java.io.File
  * println(m.summary())
  * ```
  *
- * They live here rather than in `afield.stdlib` on purpose: `mesh_io.kt` is deliberately
- * dependency-free, and these need LWJGL. `afield.graphics.scene.*` is in every box's default imports
+ * They live here rather than in `afield.stdlib` because `mesh_io.kt` carries no LWJGL dependency and
+ * these need one. `afield.graphics.scene.*` is in every box's default imports
  * (see `afield.document.graph.intro`), so a box can call them without an import anyway.
  *
  * What is *not* here, because nothing in the tree can read it: **STEP / IGES / BREP**. There is no CAD

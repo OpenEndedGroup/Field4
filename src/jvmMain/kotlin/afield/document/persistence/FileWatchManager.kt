@@ -405,9 +405,9 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
 
                     val isDelete = kind == StandardWatchEventKinds.ENTRY_DELETE
 
-                    // Handle metadata.edn changes (its deletion is ignored)
+                    // Handle metadata.edn changes; a deletion is reported, and the next save writes it back
                     if (file.name == SavingContext.METADATA_EDN) {
-                        if (!isDelete) handleMetadataChange(file)
+                        if (!isDelete) handleMetadataChange(file) else handleMetadataDeletion(file)
                     } else if (isSidecarFile(file)) {
                         if (isDelete) handleSidecarDeletion(file)
                         else if (file.isFile) handleFileChange(file)
@@ -428,6 +428,20 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
                 lprintln("error,file-watch", "Error in watch loop: ${e.message}")
                 delay(1000.milliseconds)
             }
+        }
+    }
+
+    /**
+     * `metadata.edn` deleted under an open document. Deleting it does not delete the document: the
+     * boxes stay, and the next save writes the file back. A save that replaces the file can raise a
+     * delete event too, so this only speaks if the file is still gone a moment later.
+     */
+    private fun handleMetadataDeletion(file: File) {
+        watchScope.launch {
+            delay(2000.milliseconds)
+            if (file.exists()) return@launch
+            lprintln("warning,file-watch", "${file.absolutePath} was deleted while the document is open; its boxes are kept and the next save writes it back")
+            notify("metadata.edn was deleted on disk; the open document keeps its boxes, and Field's next save writes the file back", "file-watch")
         }
     }
 
@@ -833,8 +847,8 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
      * Apply to boxes already in the session the properties an external edit changed: a value in the
      * new file that differs from the same box's value in [previousText], the last `metadata.edn` Field
      * wrote or read. Comparing against that file rather than against the live box is what keeps a
-     * value the session changed since its last save. Topology and `_tombstone` are left to the
-     * add/remove passes; a property deleted from the file is not removed from the box (the next save
+     * value the session changed since its last save. A changed `children` or `parents` connects and
+     * disconnects the boxes it names (`nested` and `_tombstone` are left to the add/remove passes); a property deleted from the file is not removed from the box (the next save
      * writes it back), and that is reported. With no usable baseline nothing is applied, and the
      * notice says so, rather than the next save silently overwriting the edit.
      */
@@ -862,9 +876,26 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
         val applied = mutableListOf<String>()
         val notRemoved = mutableListOf<String>()
         val unchanged = mutableListOf<String>()
+        val rewired = mutableListOf<String>()
         for (transfer in existing) {
             val before = baseline[transfer.id] ?: continue
             val box = sessionInfo.boxes[transfer.id] ?: continue
+            // Connections: compare the ids the file names now with the ids it named before, and make
+            // the difference with connect/disconnect, which keep both ends of an edge in step.
+            for (name in listOf("children", "parents")) {
+                if (name !in transfer.properties && name !in before.properties) continue
+                val now = savingContext.storedBoxRefIds(transfer.properties[name]) ?: continue
+                val was = savingContext.storedBoxRefIds(before.properties[name]) ?: continue
+                fun live(id: String) = sessionInfo.boxes[id]?.takeIf { it.id !in tombstonedIds && !it.getPropertyRaw("_tombstone").isTrue() }
+                for (id in now - was) live(id)?.let { other ->
+                    if (name == "children") box.connect(other) else other.connect(box)
+                    rewired += if (name == "children") "${box.id}->$id" else "$id->${box.id}"
+                }
+                for (id in was - now) live(id)?.let { other ->
+                    if (name == "children") box.disconnect(other) else other.disconnect(box)
+                    rewired += if (name == "children") "${box.id}-/->$id" else "$id-/->${box.id}"
+                }
+            }
             for ((name, value) in transfer.properties) {
                 if (name in TOPOLOGY_KEYS || name == "_tombstone") continue
                 val previous = before.properties[name]
@@ -885,6 +916,11 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
             for (name in before.properties.keys - transfer.properties.keys) {
                 if (name !in TOPOLOGY_KEYS) notRemoved += "${transfer.id}.$name"
             }
+        }
+        if (rewired.isNotEmpty()) {
+            SaveReloadLog.log("metadata-applied-connections", "doc=${sessionInfo.filename} count=${rewired.size} [${rewired.joinToString(",")}]")
+            lprintln("info,file-watch", "applied ${rewired.size} external connection edit(s) from metadata.edn: $rewired")
+            notify("Applied ${rewired.size} connection edit(s) from metadata.edn", "file-watch")
         }
         if (applied.isNotEmpty()) {
             SaveReloadLog.log("metadata-applied-properties", "doc=${sessionInfo.filename} count=${applied.size} [${applied.joinToString(",")}]")

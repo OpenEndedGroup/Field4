@@ -1,5 +1,6 @@
 package afield.graphics.vulkan
 
+import afield.app.diagnostics.LatencySpans
 import afield.graphics.scene.*
 import afield.graphics.vulkan.device.vkLayout
 import afield.app.diagnostics.Named
@@ -168,6 +169,8 @@ class Renderer(
     private val mainWindow: Window,
     additionalWindows: List<Window> = emptyList()
 ) {
+    // First, so it precedes every other initializer: [run] measures construction to first frame from it.
+    private val constructedAtNanos = System.nanoTime()
 
     data class VertexUploadFrameStats(
         val frameId: Long,
@@ -1998,8 +2001,13 @@ class Renderer(
         var frame = 0
         while (running && runInvocation.get() == invocation && windows.any { !it.shouldClose() }) {
             logTime("pollEvents") { windows.forEach { it.pollEvents() } }
+            val renderStart = System.nanoTime()
             logTime("render") { render() }
             frame++
+            if (frame == 1) {
+                LatencySpans.record("renderer.firstRender", renderStart, detail = "invocation=$invocation")
+                if (invocation == 1L) LatencySpans.record("renderer.toFirstFrame", constructedAtNanos)
+            }
             afield.app.diagnostics.logging.PinnedConsole.beat("render")
             val now = System.nanoTime()
             if (lastRunFpsLogNs == 0L) {

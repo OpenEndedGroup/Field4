@@ -97,6 +97,11 @@ class LuaBoxTest {
         val err = assertIs<LuaState.Result.Err>(lua.run("local x = 1\nbox.children = {}\n"))
         assertEquals(2, err.line, "$err")
         assertTrue("can't be set from Lua" in err.message, err.message)
+        // Caught with pcall, the message names the box's line, not the prelude's metamethod.
+        val caught = ok(lua.run("local ok, e = pcall(function()\n  box.id = 'x'\nend)\nreturn ok, e"))
+        assertEquals(false, caught[0])
+        val message = caught[1].toString()
+        assertTrue("can't be set from Lua" in message && !message.startsWith("field:"), message)
     }
 
     @Test

@@ -7,7 +7,7 @@
  * [FfmCeresBackend] loads the library, binds its `ken_ceres_*` entry points as downcall handles and
  * reports [FfmCeresBackend.abiVersion]; [FfmCeresBackend.compile] turns a seed [PointCloud] and a
  * [CeresProgram] into a reusable compiled solver whose input, output and prior buffers are allocated
- * once in a confined arena and reused across solves. [CeresNativeLibrary] says where the library is
+ * once in a shared arena and reused across solves. [CeresNativeLibrary] says where the library is
  * expected and how to build it.
  */
 
@@ -21,6 +21,7 @@ import java.lang.foreign.SymbolLookup
 import java.lang.foreign.ValueLayout
 import java.lang.invoke.MethodHandle
 import java.nio.file.Path
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.io.path.absolute
 
 /**
@@ -154,7 +155,11 @@ class FfmCeresBackend(
         override val reusableMetricCapacity: Int = this@FfmCeresBackend.reusableMetricCapacity
 
         private val handle: MemorySegment
-        private val solveArena: Arena = Arena.ofConfined()
+        // Shared, not confined: a session is often built on one thread and solved, rebuilt or released on another
+        // (the house sketch builds on its executor and rebuilds from the runloop). A confined arena made those
+        // solves throw, and made close() free the native problem and then throw before it was marked closed, so
+        // the caller's retry freed it a second time and the JVM died in ceres::Problem::~Problem().
+        private val solveArena: Arena = Arena.ofShared()
         private val pointValueCount: Int = pointCount * 3
         private val reusablePointsIn: MemorySegment = solveArena.allocate(ValueLayout.JAVA_DOUBLE, pointValueCount.toLong())
         private val reusablePointsOut: MemorySegment = solveArena.allocate(ValueLayout.JAVA_DOUBLE, pointValueCount.toLong())
@@ -163,7 +168,7 @@ class FfmCeresBackend(
         private val reusableGroups: MemorySegment =
             if (reusableMetricCapacity > 0) solveArena.allocate(ValueLayout.JAVA_DOUBLE, reusableMetricCapacity.toLong()) else MemorySegment.NULL
         private val reusableGroupCount: MemorySegment = solveArena.allocate(ValueLayout.JAVA_INT)
-        private var closed = false
+        private val closed = AtomicBoolean(false)
 
         init {
             require(pointCount >= 0) { "point count must be non-negative" }
@@ -190,7 +195,7 @@ class FfmCeresBackend(
                     .reinterpret(512)
                     .getString(0)
                 if (message.isNotEmpty()) {
-                    destroyHandle.invokeWithArguments(handle)
+                    close()
                     throw IllegalArgumentException("Ceres program was not fully built: $message")
                 }
             }
@@ -203,7 +208,7 @@ class FfmCeresBackend(
             if (program.constraints.none { it is RawProgramFragment }) {
                 val nativeCount = variablesHandle.invokeWithArguments(handle, MemorySegment.NULL, 0) as Int
                 if (nativeCount != program.variableComponentCount) {
-                    destroyHandle.invokeWithArguments(handle)
+                    close()
                     throw IllegalStateException(
                         "free-variable layout disagrees: this program declares " +
                             "${program.variableComponentCount} component(s), the compiled problem holds " +
@@ -218,7 +223,7 @@ class FfmCeresBackend(
             dynamicPriorWeights: DynamicPriorWeights?,
             options: SolveOptions,
         ): SolveResult {
-            check(!closed) { "compiled Ceres solver is closed" }
+            check(!closed.get()) { "compiled Ceres solver is closed" }
             require(points.pointCount == pointCount) { "point count changed from $pointCount to ${points.pointCount}" }
             dynamicPriorWeights?.let {
                 require(it.pointCount == pointCount) { "dynamic prior point count must match points" }
@@ -312,7 +317,7 @@ class FfmCeresBackend(
             options: SolveOptions,
             report: MutableSolveReport?,
         ): Boolean {
-            check(!closed) { "compiled Ceres solver is closed" }
+            check(!closed.get()) { "compiled Ceres solver is closed" }
             require(points.pointCount == pointCount) { "point count changed from $pointCount to ${points.pointCount}" }
             // The allocation-free path deliberately stays on the fixed-configuration entry point:
             // its whole purpose is a steady per-frame solve with no arena churn, and the options
@@ -397,11 +402,13 @@ class FfmCeresBackend(
             return CeresVariableValues.of(program, flat)
         }
 
+        // Once, from any thread: marked closed before anything that can throw, so no retry frees the handle again.
         override fun close() {
-            if (!closed) {
+            if (!closed.compareAndSet(false, true)) return
+            try {
                 destroyHandle.invokeWithArguments(handle)
+            } finally {
                 solveArena.close()
-                closed = true
             }
         }
 

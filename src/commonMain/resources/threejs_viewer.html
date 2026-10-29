@@ -325,6 +325,12 @@
         #hud-left { flex: 1; min-width: 0; flex-wrap: wrap; }
         #hud-right { flex-shrink: 1; }
         @media (max-width: 760px) { #hud { flex-wrap: wrap; } #hud-left, #hud-right { flex-basis: 100%; max-width: 100%; } }
+        /* Published views have fewer tools, so both sides fit on the top row in a box. */
+        @media (min-width: 440px) {
+            body.publication #hud { flex-wrap: nowrap; }
+            body.publication #hud-left, body.publication #hud-right { flex-basis: auto; }
+            body.publication #hud-right { max-width: calc(100% - 70px); }
+        }
         #inspector-group { flex-wrap: wrap; }
         .viewer-tool select {
             appearance: none; max-width: 110px; height: 28px; padding: 4px 30px 4px 10px;
@@ -462,7 +468,7 @@ import { mountReviewInbox } from '/geometry_review_inbox.js';
 import { mountReviewControls } from '/geometry_review_controls.js';
 const reviewControls = mountReviewControls(document.getElementById('feature-tools'), document.getElementById('feature-review'));
 import { createViewerTools } from '/threejs_tools.js';
-import { createCameraLink, createTurntable } from '/threejs_camera_link.js';
+import { createCameraLink, createTurntable, createCameraFollow } from '/threejs_camera_link.js';
 import { createShot, explodePositions, xrayOpacity as shotOpacity } from '/threejs_shot.js';
 
 const container = document.getElementById('canvas-wrap');
@@ -472,6 +478,14 @@ const selectionStatusEl = document.getElementById('selection-status');
 const modeGroupEl = document.getElementById('mode-group');
 const maskGroupEl = document.getElementById('mask-group');
 const urlParams = new URLSearchParams(window.location.search);
+const publicationSnapshot = window.__fieldThreePublication || null;
+const isPublication = publicationSnapshot !== null;
+if (isPublication) {
+    document.body.classList.add('publication');
+    const style = document.createElement('style');
+    style.textContent = '#camera-link,#feature-tools,#feature-review,#review-inbox,#viewer-tools,#mode-group,#mask-group{display:none!important}';
+    document.head.append(style);
+}
 const xrayState = { enabled: urlParams.get('xray') === '1', opacity: .12 };
 const xrayToggle = document.getElementById('xray-toggle');
 const xrayOpacity = document.getElementById('xray-opacity');
@@ -530,7 +544,11 @@ const viewerTools = createViewerTools({
     }
 });
 let captureState = {ready:false, error:null, revision:null};
-window.FieldViewer = Object.freeze({renderStats: () => renderScheduler.stats(), exportGLB, tools:viewerTools,
+window.FieldViewer = Object.freeze({followStatus: () => cameraFollow.status(),
+    cameraPose: () => ({eye:camera.position.toArray(), target:controls.target.toArray(), zoom:camera.zoom}),
+    renderStats: () => renderScheduler.stats(), exportGLB, tools:viewerTools,
+    snapshotImage: () => { render(); return renderer.domElement.toDataURL('image/png'); },
+    snapshotForPublication,
     turntable: () => turntable.status(), cameraLink: () => cameraLink.status(), shot: () => shot.status(),
     film: Object.freeze({begin: filmBegin, at: filmAt, end: filmEnd, status: filmStatus}),
     captureStatus: () => {
@@ -555,7 +573,7 @@ async function gltfpackGLB(data) {
         return packed.byteLength > 0 && packed.byteLength < data.byteLength ? packed : null;
     } catch (_) { return null; }
 }
-async function exportGLB({download=true, compress=download} = {}) {
+async function exportGLB({download=true, compress=download && !isPublication} = {}) {
     if (glbExporting) throw new Error('An export is already in progress.');
     glbExporting = true;
     const button = document.getElementById('export-glb'), status = document.getElementById('glb-status');
@@ -643,6 +661,10 @@ const turntable = createTurntable({key: `${urlParams.get('uid') || ''} ${Math.ra
 // and goes see-through, on the wall clock, held by the same interactions as the turntable. `shotDistance`
 // is this frame's dolly, read by the panel cameras; `shotAppliedDistance` is what the single camera has.
 const shot = createShot({now: () => filmClockMs ?? Date.now(), wake: ms => setTimeout(requestRender, ms)});
+const cameraFollow = createCameraFollow({
+    readTarget: () => controls.target.toArray(), visible: () => onScreen && document.visibilityState !== 'hidden', up: () => camera.up.toArray(),
+    translate: delta => { const d = new THREE.Vector3(...delta); camera.position.add(d); controls.target.add(d); }
+});
 let shotDistance = 1, shotAppliedDistance = 1;
 // About the target and the view's up axis. Positive turns the model anticlockwise seen from above.
 // `cameraTurned` lets a resize refit an untouched view without undoing the turn.
@@ -6339,6 +6361,7 @@ function applyGeometry(payload) {
         cameraViewport = [container.clientWidth, container.clientHeight];
         followCenter = null;
     }
+    cameraFollow.configure(payload.cameraFollow || null);
     followBounds(payload);
     // Last, because it reads the geometry the steps above created and because framing the camera first
     // means the first dimension is offset across the view the user is actually going to see.
@@ -6348,7 +6371,7 @@ function applyGeometry(payload) {
         if (payloadState !== payload) return;
         const review = payload.inspector?.review;
         if (review) inspectorRestore({...review, xray:review.xray ?? xrayState.enabled, xrayOpacity:review.xrayOpacity ?? xrayState.opacity});
-        cameraLink.configure(panelState.cameras.length>1?null:{scope:payload.cameraLinkScope,group:payload.cameraLink?.group,
+        cameraLink.configure(isPublication || panelState.cameras.length>1?null:{scope:payload.cameraLinkScope,group:payload.cameraLink?.group,
             origin:payload.inspector?.renderOrigin,upAxis:payload.inspector?.renderUpAxis,units:payload.inspector?.units});
         // The turn first, so a view that is about to join the link waits for its alignment pose.
         turntable.configure(payload.turntable);
@@ -6359,6 +6382,10 @@ function applyGeometry(payload) {
         if (studioAo.wanted) await loadStudioAo();
         requestRender();
         await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        if (isPublication) {
+            inspectorRestore(publicationSnapshot.view);
+            document.documentElement.dataset.captureReady = 'true';
+        }
         if (payloadState === payload || (settleKey !== null && captureState.settleKey === settleKey)) captureState.ready = true;
     }).catch(error => {
         if (payloadState !== payload) return;
@@ -6386,6 +6413,7 @@ const clientUid = (urlParams.get('uid') || '').trim() || `three-${Math.random().
 const wsState = { ws: null, reconnectTimer: null };
 
 function sendMessage(payload) {
+    if (isPublication) return;
     if (!wsState.ws || wsState.ws.readyState !== WebSocket.OPEN) return;
     const message = { channel: '__threejs__', debug_uid: clientUid, ...payload };
     wsState.ws.send(JSON.stringify(message));
@@ -7159,6 +7187,7 @@ function applyShotLook(look) {
 }
 
 function render() {
+    if (cameraFollow.step()) requestRender();
     const turn = film ? null : turntable.step();
     if (turn !== null) { turnCamera(turn); requestRender(); }
     // A shot draws continuously, but only while the view is on screen and the page is showing.
@@ -7212,7 +7241,24 @@ renderer.domElement.addEventListener('pointerleave', () => {
     requestRender();
 });
 
-connectWs();
+function snapshotForPublication() {
+    if (!captureState.ready || captureState.error) throw new Error('Three.js view is not ready');
+    if (viewerTools.ids().length || shot.active()) throw new Error('This view uses custom tools or an animated shot');
+    const snapshot = JSON.parse(JSON.stringify({version:1,payload:payloadState,view:inspectorSnapshot()},
+        (_key,value) => ArrayBuffer.isView(value) ? Array.from(value) : value));
+    const payload = snapshot.payload;
+    // Transient plain-line views also need a stable identity for the local inspector restore.
+    payload.revision = payload.revision || payload.inspector?.artifactDigest || 'published-geometry';
+    snapshot.view.artifactDigest = payload.revision;
+    snapshot.view.tools = {}; snapshot.view.selection = null;
+    snapshot.view.selectedPart = null; snapshot.view.selectedTriangle = null;
+    payload.toolModules = []; payload.turntable = null; payload.shot = null;
+    payload.cameraLink = null; payload.cameraLinkScope = null; payload.editableEnabled = false;
+    if (payload.inspector) delete payload.inspector.review;
+    return snapshot;
+}
+if (isPublication) applyGeometry(publicationSnapshot.payload);
+else connectWs();
 requestRender();
 </script>
 </body>

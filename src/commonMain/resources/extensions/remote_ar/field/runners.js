@@ -342,7 +342,6 @@ class Task {
     }
 
     stop() {
-        console.log(" setting state to 2")
         this.state = 2
     }
 

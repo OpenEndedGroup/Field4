@@ -263,7 +263,7 @@ Without the watchmaker, these are the five built-in targets' best programs at 1,
 
 ![five rows on black, one per built-in target: the target, then the best picture from evolveStackSLTowards (GP), from wide() without a model, and from the search with the watchmaker (both), each with its layout agreement. GP draws a white disc on blue for the disc, wavy lines for the rings, too many bands, a smear for the checkerboard and quadrants in the wrong colours; wide draws grey rings, fine wavy stripes, very fine stripes, a blurred cross and the same wrong quadrants; both draws all five almost exactly](assets/stacksl_evolve/watchmaker-original.png)
 
-??? aside "Agents: the smoke test that pins this"
+??? aside "The smoke test that pins this"
     `StackSLEvolveGallery` (the `stacksl.evolve.gallery` smoke test) runs `evolveStackSLTowards` across three targets and two metrics at 700 renders each, and fails if LPIPS with lexicase stops beating its control or stops out-drawing pixel error on `quadrants`. The watchmaker is not in it, since it needs a model.
 
 ??? aside "How the watchmaker's figures and numbers were made"

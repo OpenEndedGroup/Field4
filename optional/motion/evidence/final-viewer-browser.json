@@ -1,0 +1,26 @@
+{
+  "url": "https://100.110.104.26:9498/index.html?file=Motion-ARDY-Recording",
+  "found": true,
+  "before": 1,
+  "after": 98,
+  "follow": {
+    "enabled": true,
+    "epoch": "73:8",
+    "current": [
+      -0.10916243764640512,
+      0.9891210747761758,
+      4.703979498965411
+    ],
+    "target": [
+      -0.09033393859863281,
+      0.8708232641220093,
+      5.393285274505615
+    ]
+  },
+  "capture": {
+    "ready": true,
+    "error": null,
+    "revision": "38a7d34c7e7628b91f3e27d126d210598c54a77fc8f0c05f9c37766248a4b047",
+    "settleKey": "[[],\"b0da68f5-718f-3ac3-8b96-76e06d5a50c6\",null,null,null,false]"
+  }
+}

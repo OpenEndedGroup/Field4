@@ -1,0 +1,46 @@
+{
+  "backend": "ardy",
+  "inferenceValidated": false,
+  "timestamp": "2026-10-20T12:32:11.358748+00:00",
+  "platform": "Linux-7.1.3-1-cachyos-x86_64-with-glibc2.43",
+  "pins": {
+    "repository": "https://github.com/nv-tlabs/ardy.git",
+    "commit": "e706e27acc88070918308a10922b8f7174d0825e",
+    "python": "3.11",
+    "checkpoint": "nvidia/ARDY-Core-RP-20FPS-Horizon40",
+    "checkpointRevision": "fe1f897459605c98d5418d036bfcfe73bc244fd8",
+    "checkpointBytes": 765105065,
+    "gatedModel": "meta-llama/Meta-Llama-3-8B-Instruct",
+    "textEncoderBaseRevision": "8afb486c1db24fe5011ec46dfbe5b5dccdb575c2",
+    "textEncoderAdapters": {
+      "McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp-supervised": "baa8ebf04a1c2500e61288e7dad65e8ae42601a7",
+      "McGill-NLP/LLM2Vec-Meta-Llama-3-8B-Instruct-mntp": "31474e395ada192e8ed1586db6be79fb3b70c9c0"
+    }
+  },
+  "source": "/home/marc/temp/mocap/upstream/ardy",
+  "sourceCommit": {
+    "exitCode": 0,
+    "stdout": "e706e27acc88070918308a10922b8f7174d0825e\n",
+    "stderr": ""
+  },
+  "interpreter": "/home/marc/temp/mocap/environments/ardy/bin/python",
+  "interpreterExists": true,
+  "freeBytes": 2062098432,
+  "gpu": {
+    "exitCode": 0,
+    "stdout": "name, driver_version, memory.total [MiB], memory.used [MiB]\nNVIDIA GeForce RTX 4090, 610.43.02, 24564 MiB, 22357 MiB\n",
+    "stderr": ""
+  },
+  "textEncoderAccess": {
+    "repository": "meta-llama/Meta-Llama-3-8B-Instruct",
+    "status": 200,
+    "credentialPresent": true
+  },
+  "imports": {
+    "exitCode": 0,
+    "stdout": "2.14.1+cu130 True\n",
+    "stderr": ""
+  },
+  "blockers": [],
+  "prerequisitesReady": true
+}

@@ -6,6 +6,13 @@ import afield.ai.conversation.isAiTurnCancellation
 import com.openai.errors.OpenAIServiceException
 import com.openai.models.responses.ResponseInputItem
 
+/**
+ * The local model still failed after [createResponse]'s two history reductions. A distinct type so
+ * that context fitting above it (`createFittedResponse`) can learn the window from the error without
+ * starting a third round of retries.
+ */
+internal class LocalContextRecoveryExhausted(message: String, cause: Throwable) : IllegalStateException(message, cause)
+
 internal fun isLocalEmptyAnswer(failure: Throwable): Boolean =
     generateSequence(failure) { it.cause }.take(12).any { it is ModelResponseFailure && it.reason == "local_empty_answer" }
 

@@ -72,8 +72,9 @@ val dir = "%document".path // the files/ directory itself
 already holds the name. In a document that is in no project it throws; in a document that is in two
 and where the file is in neither, it throws as ambiguous.
 
-Asking for `%document/...` creates the document's `files/` directory if it is missing, as does
-reading `files.documentFilesDirectory`.
+In a writable document, asking for `%document/...` or reading `files.documentFilesDirectory`
+creates the document's `files/` directory if it is missing. In a read-only document, these lookups
+return the path without creating the directory. Existing files can still be read.
 
 Field also registers `%docs` when the loaded installation contains `public/docs/`. This points
 to the bundled documentation, not to the current document or working directory. For example,

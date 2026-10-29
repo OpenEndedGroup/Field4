@@ -1,5 +1,9 @@
 package afield.ui.slides
 
+import afield.app.protocol.AudienceContent
+import afield.app.protocol.PresentationState
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import afield.app.protocol.Execute
 import afield.app.protocol.put
 import afield.app.server.documents
@@ -112,17 +116,28 @@ fun Box.slideShow(init: SlideShowBuilder.() -> Unit): SlideShowInstance {
 /**
  * Builder for creating slideshows
  */
-class SlideShowBuilder(val hostBox: Box) {
+class SlideShowBuilder(val hostBox: Box, private val presentationOptions: PresentationOptions? = null) {
     private val steps = mutableListOf<SlideStep>()
     private var slideshowId: String? = null
+    private val sectionPath = mutableListOf<String>()
 
     /**
      * Defines a step in the slideshow
      */
-    fun step(title: String, init: SlideStepBuilder.() -> Unit) {
+    fun step(title: String, id: String? = null, init: SlideStepBuilder.() -> Unit) {
         val builder = SlideStepBuilder(title, hostBox)
         builder.init()
-        steps.add(builder.build())
+        val key = id ?: "step-${steps.size + 1}"
+        require(key.isNotBlank() && key.length <= 256 && steps.none { it.id == key }) { "Step IDs must be nonempty and unique: $key" }
+        steps.add(builder.build().copy(sectionPath = sectionPath.toList(), id = key))
+    }
+
+    /** Group steps in the presenter outline. Sections may nest; playback stays in source order. */
+    fun section(title: String, init: SlideShowBuilder.() -> Unit) {
+        require(title.isNotBlank() && title.length <= 4096) { "A section needs a title" }
+        require(sectionPath.size < 16) { "Sections may nest up to 16 levels" }
+        sectionPath.add(title)
+        try { init() } finally { sectionPath.removeAt(sectionPath.lastIndex) }
     }
 
     /**
@@ -133,7 +148,7 @@ class SlideShowBuilder(val hostBox: Box) {
     }
 
     fun build(): SlideShowInstance {
-        return SlideShowInstance(hostBox, steps, slideshowId)
+        return SlideShowInstance(hostBox, steps, slideshowId, presentationOptions)
     }
 }
 
@@ -141,6 +156,26 @@ class SlideShowBuilder(val hostBox: Box) {
  * Builder for individual slide steps
  */
 class SlideStepBuilder(val title: String, val hostBox: Box) {
+    internal var audienceContent: AudienceContent? = null
+    internal var audienceProvider: (() -> AudienceContent)? = null
+    private val cues = mutableListOf<SlideStep>()
+    private var checkpointTitle: String = ""
+    private var checkpointReset: (suspend () -> Unit)? = null
+
+    /** A reveal within this slide. onEnter runs once on forward entry; Back only changes the view. */
+    fun cue(title: String, init: SlideStepBuilder.() -> Unit) {
+        require(title.isNotBlank() && title.length <= 4096 && cues.size < 100) { "Use at most 100 cues with short nonempty titles" }
+        val cue = SlideStepBuilder(title, hostBox).apply(init).build()
+        require(cue.cues.isEmpty() && cue.reset == null && cue.onExit == null) { "Cues cannot nest or declare checkpoints/onExit" }
+        cues += cue
+    }
+
+    /** Explicit presenter reset. Restoring declared state is separate from navigation. */
+    fun checkpoint(title: String, reset: suspend () -> Unit) {
+        require(title.isNotBlank() && title.length <= 4096) { "A checkpoint needs a short nonempty title" }
+        checkpointTitle = title
+        checkpointReset = reset
+    }
     private var noteHtml: String? = null
     private var noteAnchorBox: Box? = null
     private var targetBox: Box? = null
@@ -312,7 +347,10 @@ class SlideStepBuilder(val title: String, val hostBox: Box) {
             annotations = annotations.toList(),
             onEnter = onEnter,
             onExit = onExit,
-            linkCallbacks = linkCallbacks.toMap()
+            linkCallbacks = linkCallbacks.toMap(),
+            audience = audienceContent,
+            audienceProvider = audienceProvider,
+            cues = cues.toList(), checkpoint = checkpointTitle, reset = checkpointReset
         )
     }
 }
@@ -343,7 +381,14 @@ data class SlideStep(
     val annotations: List<SlideAnnotation>,
     val onEnter: (suspend () -> Unit)?,
     val onExit: (suspend () -> Unit)?,
-    val linkCallbacks: Map<String, suspend LinkCallbackContext.() -> Unit> = emptyMap()
+    val linkCallbacks: Map<String, suspend LinkCallbackContext.() -> Unit> = emptyMap(),
+    val audience: AudienceContent? = null,
+    val sectionPath: List<String> = emptyList(),
+    val id: String = "",
+    val cues: List<SlideStep> = emptyList(),
+    val checkpoint: String = "",
+    val reset: (suspend () -> Unit)? = null,
+    val audienceProvider: (() -> AudienceContent)? = null
 )
 
 /**
@@ -396,8 +441,17 @@ object SlideMarkdown {
 class SlideShowInstance(
     val hostBox: Box,
     val steps: List<SlideStep>,
-    customId: String? = null
+    customId: String? = null,
+    var presentationOptions: PresentationOptions? = null
 ) {
+    internal var resumeStep: Int = -1
+    internal var resumeStepId: String? = null
+    internal var resumeCue: Int = 0
+    var currentCueIndex: Int = 0
+        private set
+    private val completedCueActions = mutableSetOf<Pair<Int, Int>>()
+    private val commandMutex = Mutex()
+    private var searchTextsCache: List<String>? = null
     // Generate unique slideshow ID (use custom ID if provided, otherwise generate based on host box)
     val slideshowId: String = customId ?: "slideshow_${hostBox.id}_${System.currentTimeMillis()}"
     
@@ -436,7 +490,7 @@ class SlideShowInstance(
     /**
      * Goes to a specific step
      */
-    suspend fun goToStep(index: Int) {
+    suspend fun goToStep(index: Int, cueIndex: Int = 0) {
         if (index < 0 || index >= steps.size) {
             lprintln("warning,slideshow", "Step $index out of bounds (0..${steps.size - 1})")
             return
@@ -446,11 +500,25 @@ class SlideShowInstance(
         currentStep?.onExit?.invoke()
 
         currentStepIndex = index
+        currentCueIndex = cueIndex.coerceIn(0, steps[index].cues.size)
         markActive(true)
         val step = steps[index]
 
         // Execute onEnter
         step.onEnter?.invoke()
+
+        renderCurrent()
+    }
+
+    private fun visibleStep(): SlideStep? = currentStep?.let { step -> step.cues.getOrNull(currentCueIndex - 1) ?: step }
+
+    private fun renderCurrent() {
+        val base = currentStep ?: return
+        val visible = visibleStep() ?: return
+        val step = visible.copy(noteHtml = visible.noteHtml ?: base.noteHtml,
+            targetBox = visible.targetBox ?: base.targetBox)
+        val index = currentStepIndex
+        publishPresentation()
 
         // Show note if present
         if (step.noteHtml != null) {
@@ -504,7 +572,7 @@ class SlideShowInstance(
      * Execute a custom link callback by name
      */
     suspend fun executeCallback(callbackName: String): Boolean {
-        val callback = currentStep?.linkCallbacks?.get(callbackName)
+        val callback = visibleStep()?.linkCallbacks?.get(callbackName) ?: currentStep?.linkCallbacks?.get(callbackName)
         if (callback != null) {
             val context = LinkCallbackContext(hostBox, this)
             callback.invoke(context)
@@ -517,15 +585,28 @@ class SlideShowInstance(
      * Goes to the next step
      */
     suspend fun next() {
-        goToStep(currentStepIndex + 1)
+        val step = currentStep
+        if (step != null && currentCueIndex < step.cues.size) {
+            val next = currentCueIndex + 1
+            val key = currentStepIndex to next
+            if (key !in completedCueActions) {
+                step.cues[next - 1].onEnter?.invoke()
+                completedCueActions += key
+            }
+            currentCueIndex = next
+            renderCurrent()
+        } else goToStep(currentStepIndex + 1)
     }
 
     /**
      * Goes to the previous step
      */
     suspend fun previous() {
-        if (currentStepIndex > 0) {
-            goToStep(currentStepIndex - 1)
+        if (currentCueIndex > 0) {
+            currentCueIndex--
+            renderCurrent()
+        } else if (currentStepIndex > 0) {
+            goToStep(currentStepIndex - 1, steps[currentStepIndex - 1].cues.size)
         }
     }
 
@@ -549,19 +630,75 @@ class SlideShowInstance(
     suspend fun stop() {
         currentStep?.onExit?.invoke()
         currentStepIndex = -1
+        currentCueIndex = 0
+        completedCueActions.clear()
         markActive(false)
+        publishPresentation()
         sendToHostDocument(hostBox, Message("hide-slide-note").payload(HideSlideNote()))
+    }
+
+    /** Execute a navigation request in order; callbacks may navigate within the same command. */
+    suspend fun command(command: String) = Box.withBoxContext(hostBox) {
+        commandMutex.withLock {
+            when {
+                command == "next" -> if (hasNext()) next()
+                command == "previous" -> previous()
+                command == "start" || command == "home" -> home()
+                command == "stop" -> stop()
+                command == "present" -> present()
+                command == "refresh" -> if (currentStepIndex >= 0) {
+                    searchTextsCache = null
+                    renderCurrent()
+                }
+                command == "reset-checkpoint" -> {
+                    val step = currentStep
+                    step?.reset?.invoke()
+                    if (step?.reset != null) {
+                        completedCueActions.removeAll { it.first == currentStepIndex }
+                        currentCueIndex = 0
+                        renderCurrent()
+                    }
+                }
+                command == "run-cue" -> {
+                    visibleStep()?.takeIf { currentCueIndex > 0 }?.onEnter?.invoke()
+                    if (currentCueIndex > 0) completedCueActions += currentStepIndex to currentCueIndex
+                    renderCurrent()
+                }
+                command.startsWith("callback:") -> { executeCallback(command.substringAfter("callback:")); Unit }
+                else -> command.toIntOrNull()?.let { goToStep(it) } ?: Unit
+            }
+        }
+    }
+
+    internal fun presentationState(includeSearchText: Boolean = true): PresentationState? {
+        val options = presentationOptions ?: return null
+        val step = currentStep
+        val visible = visibleStep()
+        val content = visible?.audienceProvider?.invoke() ?: visible?.audience ?: step?.audienceProvider?.invoke() ?: step?.audience ?: (visible?.noteHtml ?: step?.noteHtml)?.let { AudienceContent(html = processTemplates(it)) }
+            ?: step?.let { AudienceContent() }
+        return PresentationState(slideshowId, hostBox.id, options.title, currentStepIndex,
+            steps.map { it.title }, content, options.transitionMs, steps.map { it.sectionPath },
+            steps.map { it.id }, currentCueIndex, step?.cues?.map { it.title }.orEmpty(),
+            currentCueIndex > 0 && visible?.onEnter != null, step?.checkpoint.orEmpty(),
+            if (!includeSearchText || currentStepIndex < 0) emptyList() else searchTextsCache ?: steps.map {
+                PresentationSearch.text(it)
+            }.also { searchTextsCache = it })
+    }
+
+    private fun publishPresentation() {
+        val state = presentationState() ?: return
+        sendToHostDocument(hostBox, Message("presentation-state").payload(state))
     }
 
     /**
      * Returns true if there is a next step
      */
-    fun hasNext(): Boolean = currentStepIndex < steps.size - 1
+    fun hasNext(): Boolean = currentCueIndex < (currentStep?.cues?.size ?: 0) || currentStepIndex < steps.size - 1
 
     /**
      * Returns true if there is a previous step
      */
-    fun hasPrevious(): Boolean = currentStepIndex > 0
+    fun hasPrevious(): Boolean = currentCueIndex > 0 || currentStepIndex > 0
 }
 
 /**

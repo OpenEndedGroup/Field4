@@ -44,4 +44,15 @@ class WorkspaceLookupLoopTest {
             assertSame(hints, catalog.forPath("src/jvmMain/kotlin/afield/document/workspace/FileManager.kt"))
         } finally { root.toFile().deleteRecursively() }
     }
+
+    /** One search returned 17k characters of bodies to a 64k-token local model (2026-10-22). */
+    @Test
+    fun bodiesShareOneBudgetAndALeftOutBodySaysWhereItIs() {
+        val big = "x".repeat(4_000)
+        val matches = (1..3).map { WorkspaceSymbolMatch("A.f$it", "fun", "a.kt:$it", filePath = "a.kt", definitionBody = big) }
+        val kept = withBodyBudget(matches)
+        assertEquals(big, kept[0].definitionBody)
+        assertTrue(kept.drop(1).all { it.definitionBody.orEmpty().startsWith("(body of 4000 chars omitted") })
+        assertTrue("AttachmentRequest(file=\"a.kt\", find=\"f2\")" in kept[1].definitionBody.orEmpty())
+    }
 }

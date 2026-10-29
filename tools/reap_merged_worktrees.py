@@ -221,6 +221,21 @@ class Verdict:
     family: RetentionFamily | None
 
 
+# Refusals said out loud as "keeping <path>: <why>". Only live and in-flight used to be, so a clean,
+# merged worktree refused for ignored work, dirt, a submodule or a missing date dropped out of the
+# dry run with no reason given (2026-10-22: two agent checkouts holding plan notes and captures in
+# .afield-local/). "unmerged" stays quiet: it is the normal state of somebody's ongoing branch, and
+# the disk report already counts those. "prunable" has its own line.
+ANNOUNCED_REFUSALS = frozenset({"live", "in-flight", "dirty", "ignored-work", "submodule", "undatable", "kept"})
+
+
+def refusal_line(path: Path, verdict: Verdict) -> str | None:
+    """The "keeping ..." line for a refused worktree, or None for one the run should pass over quietly."""
+    if verdict.removable or verdict.reason not in ANNOUNCED_REFUSALS:
+        return None
+    return f"keeping {path}: {verdict.text}"
+
+
 @dataclass(frozen=True)
 class DiskRow:
     path: Path
@@ -1110,9 +1125,9 @@ def main() -> int:
         if not verdict.removable:
             if path in completed:
                 parser.error(f"--completed worktree is not removable: {path} — {verdict.text}")
-            # Worth saying out loud: these two mean something is alive, not merely uninteresting.
-            if verdict.reason in ("live", "in-flight"):
-                print(f"keeping {path}: {verdict.text}")
+            line = refusal_line(path, verdict)
+            if line:
+                print(line)
             continue
         candidates.append((tree, tree_size_kib(path), verdict.family))
 

@@ -84,6 +84,11 @@ class Premise(unittest.TestCase):
 class Pattern(unittest.TestCase):
     """The regex has to match malformed references, or the lint selects nothing."""
 
+    def test_file_value_excludes_other_viewer_options(self) -> None:
+        for separator in ('&', '&amp;'):
+            match = OFFLINE_REF.search(f'<iframe src="offline.html?file={GOOD_FILE}{separator}focus=outputs">')
+            self.assertEqual(match.group('file'), GOOD_FILE)
+
     def test_matches_the_old_server_absolute_shape(self) -> None:
         text = f"[Open ↗](/offline.html?file=/field4/{GOOD_FILE})"
         match = OFFLINE_REF.search(text)

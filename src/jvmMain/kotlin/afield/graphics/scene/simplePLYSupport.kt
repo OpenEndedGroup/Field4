@@ -40,15 +40,41 @@ import java.io.FileReader
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
+/**
+ * Loads a PLY mesh or point cloud into a live Vulkan module, shaders included.
+ *
+ * In a box, `plyModelHere("model.ply")` is the whole of it: the macro builds a module wired to the
+ * bundled shaders, loads the file, and returns both the module and the loaded model. Point clouds
+ * take `plyPointCloudHere`, which draws every point as a screen-aligned quad that the fragment
+ * shader rounds off into a dot. Underneath, [PlySupport] is a plain reader, ASCII or binary PLY in
+ * either endianness, and it will load a file with no renderer in sight.
+ *
+ * For a `TriMesh` to compute with rather than a module to draw, `meshFromAnyFile` reads the same
+ * files; see [Geometry from disk](../geometry_from_disk.md). Gaussian splats are the other
+ * direction: their PLY carries a rotation and a scale per splat rather than faces, and
+ * `readPlyAsFloatTable` is what reads it.
+ */
+
 // the idea here is that this module can be customized for the (first?) model inside the PLY
+
+/**
+ * What a box writes to draw a PLY mesh: `plyModelHere("model.ply") { }`, returning the module and
+ * the loaded model.
+ *
+ * The call is rewritten to `_plyModelHere` before it runs, which is where the filename argument
+ * goes and where the bundled shaders are attached, so this body only reports that the rewrite did
+ * not happen.
+ */
 fun Box.plyModelHere(p: Parameters.() -> Unit): Pair<ModulePointer, PlySupport.PlyModel> {
     throw MacroRegistry.MacroNotExpandedException("plyModelHere should not be callable directly, but should be expanded as a macro")
 }
 
+/** The same for a point cloud, drawing each point as a rounded quad. Rewritten to `_plyPointCloudHere`. */
 fun Box.plyPointCloudHere(p: Parameters.() -> Unit): Pair<ModulePointer, PlySupport.PlyModel> {
     throw MacroRegistry.MacroNotExpandedException("plyPointCloudHere should not be callable directly, but should be expanded as a macro")
 }
 
+/** Expands a `plyModelHere` call, attaching the bundled mesh shaders to the module it creates. */
 @OptIn(DelicateCoroutinesApi::class)
 fun Box.macro_plyModelHere(args: List<String>): Insert? {
     return macro_moduleHereWithDefaultShaders(
@@ -56,6 +82,7 @@ fun Box.macro_plyModelHere(args: List<String>): Insert? {
     )
 }
 
+/** Expands a `plyPointCloudHere` call, attaching the bundled point-cloud shaders instead. */
 @OptIn(DelicateCoroutinesApi::class)
 fun Box.macro_plyPointCloudHere(args: List<String>): Insert? {
     return macro_moduleHereWithDefaultShaders(
@@ -63,6 +90,7 @@ fun Box.macro_plyPointCloudHere(args: List<String>): Insert? {
     )
 }
 
+/** What `plyModelHere` becomes: a module from `p`, plus `filename` loaded through `PlySupport.loadPly`. */
 fun Box._plyModelHere(
     filename: String, p: Parameters.() -> Unit = {}
 ): Pair<ModulePointer, PlySupport.PlyModel> {
@@ -72,6 +100,10 @@ fun Box._plyModelHere(
     return module to loader
 }
 
+/**
+ * What `plyPointCloudHere` becomes. The module draws triangles rather than points, because the
+ * point-cloud vertex shader pulls six vertices per point to make a screen-aligned quad.
+ */
 fun Box._plyPointCloudHere(
     filename: String, pointSize: Float = 8.0f, p: Parameters.() -> Unit = {}
 ): Pair<ModulePointer, PlySupport.PlyModel> {
@@ -84,6 +116,7 @@ fun Box._plyPointCloudHere(
     return module to loader
 }
 
+/** Registers both call rewrites with the macro registry at startup. */
 @RunsAt(macroRegistration)
 fun registerPLYLoader() {
     callRewrite["plyModelHere"] = { box, id, args ->

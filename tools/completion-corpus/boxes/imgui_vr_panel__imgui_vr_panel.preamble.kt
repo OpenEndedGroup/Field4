@@ -1,5 +1,5 @@
-import afield.graphics.vulkan.Renderer
 import afield.graphics.vulkan.util.Window
+import afield.graphics.vulkan.Renderer
 var Box.window by Inheritance<Window>() /*from:imgui_vr_renderer*/ /**/
 val Once.window by Onceing<Window>() /*from:imgui_vr_renderer*/ /**/
 val Why.window by Whying() /*from:imgui_vr_renderer*/ /**/

@@ -791,7 +791,15 @@ object CanvasCamera {
         if (!isSplit) mainCanvas.style.transform = main.canvasTransform()
         // Drag canvases sit at the window's corner, so their translation is the pane's own.
         dragCanvases.forEach { (pane, canvas) -> canvas.style.transform = "translate(${pane.tx}px, ${pane.ty}px) scale($zoom)" }
+        // For screen-constant sizes inside the scaled canvas (field.css `.box-resize-halo`). Only on a
+        // zoom change: a custom property restyles everything under it, which a pan must not pay for.
+        if (zoom != styledZoom) {
+            styledZoom = zoom
+            mainViewport.style.setProperty("--canvas-zoom", zoom.toString())
+        }
     }
+
+    private var styledZoom = 1.0
 
     // ---- Dragging boxes across dividers ----
 

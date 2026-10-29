@@ -45,7 +45,9 @@ fun best(layout: PetriLayout): Long {
 }
 
 val forceMs = best(PetriLayout.FORCE)
-val talaMs = best(PetriLayout.TALA)
+// Without the helper TALA runs FORCE again; reuse its measured fallback instead of
+// blocking the frame thread for a second identical benchmark.
+val talaMs = if (D2Layout.available) best(PetriLayout.TALA) else forceMs
 
 val force = net.frame(PetriLayout.FORCE)
 val tala = net.frame(PetriLayout.TALA)
@@ -76,7 +78,7 @@ display(
           <td style="padding-left:14px;color:#8a8a8a">48 seeded restarts, scored</td></tr>
       <tr><td style="padding:2px 18px 2px 0;color:#8a8a8a">TALA</td>
           <td style="text-align:right">${talaMs} ms</td>
-          <td style="padding-left:14px;color:#8a8a8a">subprocess, 3 seeds, best kept</td></tr>
+          <td style="padding-left:14px;color:#8a8a8a">${if (D2Layout.available) "subprocess, 3 seeds, best kept" else "FORCE fallback; same measurement"}</td></tr>
     </table>
     <div style="margin-top:10px;color:#8a8a8a">best of 3, both warmed first —
       timing them once each in order flatters whichever runs second</div>

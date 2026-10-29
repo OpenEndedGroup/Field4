@@ -549,35 +549,32 @@ fun capsuleMesh(segments: Int = 32, rings: Int = 8, radius: Number = 0.4, height
 }
 
 /**
- * A lathe: a 2D [profile] of `(radius, y)` points swept around the **`y` axis**.
+ * A lathe: a 2D [profile] of `(radius, height)` points swept around [axis].
  *
  * Profile points with radius `0` collapse to a single pole vertex rather than [segments] coincident
  * ones, so a profile that starts and ends on the axis produces a watertight solid — that is how
- * `revolveMesh(listOf(vec(0,1), vec(1,0), vec(0,-1)), 48)` gives a closed lens with `χ = 2`.
+ * `revolveMesh(listOf(vec(0,1), vec(1,0), vec(0,-1)), RevolveAxis.Y, 48)` gives a closed lens with `χ = 2`.
  *
- * # Field has two lathes and they are 90° apart
+ * # Which axis
  *
- * This one sweeps around **Y**: the profile's `x` is a radius in the XZ plane and its `y` stays `y`.
- * [afield.geometry.solid.manifold.Section.revolved], the Manifold-backed one, sweeps around **Z**: the profile's `x`
- * is a radius in the XY plane and its `y` becomes `z`. Measured on the same profile, this one gives
- * bounds `(-1.6, 0, -1.6)…(1.6, 0.8, 1.6)` where that one gives `(-1.6, -1.6, 0.2)…(1.6, 1.6, 1.0)`.
- *
- * Neither convention is wrong, but a profile carried between them lands on its side, so pass
- * `axis = RevolveAxis.Z` to sweep this one the Manifold way: the profile's `y` becomes `z`, and the
- * same profile gives the same solid down both paths.
+ * There is no default. [RevolveAxis.Y] suits a Y-up scene (three.js, Field's mesh viewers): the
+ * profile's `x` is a radius in the XZ plane and its `y` stays `y`. [RevolveAxis.Z] is how
+ * [afield.geometry.solid.manifold.Section.revolved] and SolidSL's `Profile.revolved` sweep: the
+ * profile's `x` is a radius in the XY plane and its `y` becomes `z`, so the same profile gives the
+ * same solid down both paths.
  *
  * @param profile `(x = radius >= 0, y)`, in order along the surface. At least 2 points.
  * @param segments divisions around the axis (>= 3).
  * @param turns fraction of a full revolution. `1.0` closes the sweep; anything less leaves it open
  *   (and open sweeps are surfaces, not solids — no caps are added).
- * @param axis the axis to sweep around: [RevolveAxis.Y] (the default), or [RevolveAxis.Z] to match
+ * @param axis the axis to sweep around: [RevolveAxis.Y] for a Y-up scene, or [RevolveAxis.Z] to match
  *   `Section.revolved` / SolidSL's `Profile.revolved`, which sweep from +x toward +y.
  */
 fun revolveMesh(
     profile: List<Vec2>,
+    axis: RevolveAxis,
     segments: Int = 48,
     turns: Double = 1.0,
-    axis: RevolveAxis = RevolveAxis.Y,
 ): TriMesh {
     require(profile.size >= 2) { "revolveMesh needs >= 2 profile points, got ${profile.size}" }
     require(segments >= 3) { "revolveMesh needs >= 3 segments, got $segments" }
@@ -621,7 +618,7 @@ fun revolveMesh(
 
 /** Which axis [revolveMesh] sweeps a `(radius, height)` profile around. */
 enum class RevolveAxis {
-    /** Height along Y, radius in the XZ plane: [revolveMesh]'s own convention. */
+    /** Height along Y, radius in the XZ plane: for a Y-up scene. */
     Y,
     /** Height along Z, radius in the XY plane: Manifold's, so `Section.revolved` and SolidSL's `Profile.revolved`. */
     Z,
