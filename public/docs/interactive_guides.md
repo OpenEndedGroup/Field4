@@ -73,6 +73,35 @@ it all at once. `selectBox(box)` selects a box, and with `property`, `line` and 
 opens the editor on that property, scrolls to a line and marks it. Use `selectBoxByName("name")`
 for a box you do not have in a variable; it searches the whole document.
 
+## A tour of your own document
+
+To guide someone through boxes you already have, add one more box for the guide and name the
+boxes it visits. Each step selects the box it talks about, so the editor follows the reader:
+
+```diffstatic {data-lang=kotlin}
+val show = slideShow {
+    step("Data") {
+        markdownNote("## `numbers` makes the data\n[[next]]")
+        selectBoxByName("numbers")
+    }
+    step("The work") {
+        markdownNote("## Line 3 squares each number\n[[back]] [[next]]")
+        selectBoxByName("squares", line = 3, highlight = 3)
+    }
+    step("Done") {
+        markdownNote("## Run `squares` to see the result\n[[home:Start again]] [[finish]]")
+    }
+}
+
+runBlocking { show.start() }
+```
+
+Replace `numbers` and `squares` with the names of your own boxes. The note stays beside the guide
+box; `anchorNoteTo(box)` in a step moves it beside the box being described instead. A name that
+no box has is skipped without an error: the note still opens but the selection does not move, so
+check the names if the editor stays put. The [slideshow_guide](#a-guide-to-open) starting point at
+the end of this page is this tour with callout lines and a counter added.
+
 ## Moving between steps
 
 The reader moves through a guide with links in its notes. A `[[...]]` shortcut in a Markdown note
