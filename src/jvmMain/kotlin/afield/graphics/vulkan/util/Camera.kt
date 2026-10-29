@@ -20,8 +20,23 @@ import afield.math.linalg.Vector3f
 import kotlin.math.abs
 
 class Camera(val renderer: Renderer = fromContext()) {
+    /**
+     * Where the camera is, in world space. Every movement helper writes through this vector rather
+     * than replacing it, so a reference taken once keeps following the camera.
+     */
     var at = vec(0, 0, -10)
+
+    /**
+     * Which way is up, in world space. It need not be perpendicular to the view direction: [forward]
+     * and [right] cope with an oblique one, and [reorthogonalizeUp] squares it up again — which the
+     * rotation helpers do by default, and [roll] does not.
+     */
     var up = vec(0, 1, 0)
+
+    /**
+     * The point the camera looks at. [distanceToTarget] measures to it, [rotateAroundTarget] orbits
+     * about it, and the default projection takes its focus distance from it.
+     */
     var target = vec(0, 0, 0)
 
     /**
@@ -57,6 +72,17 @@ class Camera(val renderer: Renderer = fromContext()) {
             return r.normalize()
         }
 
+    /**
+     * The projection, built against the renderer's window and told to read its
+     * [SuperProjection.matchDepth] from [distanceToTarget]. That is installed as
+     * [SuperProjection.auto], which also re-sizes the projection to the window on every evaluation,
+     * so a one-off [setAspect] or `p.resize(w, h)` is overwritten on the next frame: to render into
+     * an offscreen target whose aspect differs from the window's, replace [SuperProjection.auto]
+     * rather than calling `resize` once.
+     *
+     * The focus distance is why an orthographic blend holds still on whatever the camera is looking
+     * at while [SuperProjection.orthoness] is turned.
+     */
     var p = SuperProjection(renderer = renderer, autoMatchDistance = { distanceToTarget().d})
 
     /** Manually set projection aspect ratio (width/height). */
