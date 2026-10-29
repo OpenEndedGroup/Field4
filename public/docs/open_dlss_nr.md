@@ -33,7 +33,6 @@ native download cache when you run `clean`. Once cached, `./gradlew --offline bu
 Install CMake, Ninja, a C/C++ compiler, Python and `patch` before running preparation. The Vulkan
 loader/driver must be installed to render. Device creation checks the required cooperative-matrix,
 FP8, CUDA-launch and related features. Unsupported devices keep normal Field rendering available.
-Build before starting the renderer; an already-created Vulkan device cannot gain these features.
 
 Overrides: `FIELD_OPEN_DLSS_NR_LIBRARY`, `FIELD_OPEN_DLSS_NR_MODEL`, `FIELD_OPEN_DLSS_NR_SHADERS`.
 Set `FIELD_OPEN_DLSS_NR_DISABLE=1` to disable the optional backend.
@@ -253,8 +252,6 @@ void main() {
 
 The fragment shader writes linear LDR color, which is also what the SOURCE panel displays.
 The vertex stage passes its current world-space camera position to the fragment for lighting.
-Keep both stages together when changing their interface; adding or removing a varying needs
-a full box rerun rather than the shader reload button.
 
 ```diffstatic {data-lang=glsl}
 #version 460
@@ -625,9 +622,8 @@ with top-left origin. Alpha is preserved by default. Unpremultiply premultiplied
 premultiply its result afterwards.
 
 `pass.postEffect("nr", inputs={...}, frame={...})` exposes the same target to Fabricate. Insert it
-before grading and tone mapping; reattach the graph when changing its order, and detach it before
-closing the pass. It uses Vulkan compute shaders and NVIDIA PTX kernel launches in the same command
-buffer. It has no fragment module of its own.
+before grading and tone mapping. It uses Vulkan compute shaders and NVIDIA PTX kernel launches in
+the same command buffer. It has no fragment module of its own.
 
 The default controls are style 1, tone/structure 1, skin −1, automatic masking off, intensity 1,
 seed 1 and temporal off; the study explicitly changes tone to 0 and structure to 10. With automatic
