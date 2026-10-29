@@ -69,7 +69,7 @@ data class ThreeDrawStyle(
     val wireframe: Boolean = false,
     /** Wireframe colour as `[r, g, b, a]` in `[0, 1]`, or `null` for the viewer's default. */
     val wireframeColor: FloatArray? = null,
-    /** Shade per triangle rather than per vertex — a faceted look, and honest about a coarse mesh. */
+    /** Shade per triangle rather than per vertex — a faceted look that shows a coarse mesh instead of smoothing it over. */
     val flatShading: Boolean = false,
     /** Multiplied into the per-vertex alpha. */
     val opacity: Float = 1f,
