@@ -31,12 +31,19 @@ internal class OpenDlssNrNative(path: Path) {
     fun required(): Set<String> =(extensions.invokeWithArguments() as MemorySegment).reinterpret(4096).getString(0).lineSequence().filter { it.isNotBlank() }.toSet()
     companion object {
         internal fun root(): Path = Path.of(System.getProperty("afield.opendlssnr.root", "build/native/field-opendlssnr")).toAbsolutePath()
-        val loaded: Result<OpenDlssNrNative> by lazy { runCatching {
-            check(System.getProperty("os.name").lowercase().contains("linux") && System.getProperty("os.arch") in setOf("amd64","x86_64")) { "NR adapter supports Linux x86_64" }
-            check(System.getenv("FIELD_OPEN_DLSS_NR_DISABLE")!="1" && !java.lang.Boolean.getBoolean("afield.opendlssnr.disabled")) { "NR explicitly disabled" }
-            val path=Path.of(System.getenv("FIELD_OPEN_DLSS_NR_LIBRARY") ?: root().resolve("libfield_opendlssnr.so").toString())
-            check(path.isRegularFile()) { "Optional NR adapter absent; run ./gradlew buildOpenDlssNr" }
-            OpenDlssNrNative(path)
-        } }
+        internal const val ABSENT="Optional NR adapter absent; run ./gradlew buildOpenDlssNr"
+        internal fun libraryPath(): Path=Path.of(System.getenv("FIELD_OPEN_DLSS_NR_LIBRARY") ?: root().resolve("libfield_opendlssnr.so").toString())
+        private var cached: Result<OpenDlssNrNative>?=null
+        /** The loaded adapter. A missing-library failure is retried once the library appears, so building
+         * it while Field runs takes effect at the next device creation (a renderer restart). */
+        val loaded: Result<OpenDlssNrNative> get()=synchronized(this) {
+            cached?.takeUnless { it.exceptionOrNull()?.message==ABSENT && libraryPath().isRegularFile() } ?: runCatching {
+                check(System.getProperty("os.name").lowercase().contains("linux") && System.getProperty("os.arch") in setOf("amd64","x86_64")) { "NR adapter supports Linux x86_64" }
+                check(System.getenv("FIELD_OPEN_DLSS_NR_DISABLE")!="1" && !java.lang.Boolean.getBoolean("afield.opendlssnr.disabled")) { "NR explicitly disabled" }
+                val path=libraryPath()
+                check(path.isRegularFile()) { ABSENT }
+                OpenDlssNrNative(path)
+            }.also { cached=it }
+        }
     }
 }

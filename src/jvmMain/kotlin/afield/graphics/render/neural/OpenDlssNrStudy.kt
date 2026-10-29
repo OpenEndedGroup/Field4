@@ -55,7 +55,7 @@ class OpenDlssNrStudy(
         override fun prepareSampledImagesFor(command: CommandBuffer)=texture.prepareSampledImagesFor(command)
     } }
     private val sampler=TextureSampler(renderer,1,false,VK_FILTER_LINEAR)
-    private val sourceModule = Module(parameters(renderer) {
+    private fun buildSourceModule(vertex: String,fragment: String) = Module(parameters(renderer) {
         this.name="$name-source"; +source; depthTest=geometry; depthWrite=geometry; blend=false
         textureResolver={ if(it.name=="image" && imageProvider!=null)imageProvider to sampler else null }
         this.vertex=vertex
@@ -72,7 +72,10 @@ class OpenDlssNrStudy(
             }
         """.trimIndent()
     })
-    private val sourceMesh = triangle(sourceModule, if(geometry)3+39*36 else 3)
+    private var sourceModule = buildSourceModule(vertex,fragment)
+    private var sourceMesh = triangle(sourceModule, if(geometry)3+39*36 else 3)
+    /** A rebuilt source (new stage interface) waiting for the next frame boundary. */
+    @Volatile private var pendingSource: Pair<Module,Mesh>?=null
     val pass = if(availability.ready)OpenDlssNrPass(renderer,size,size) else null
     val output = RenderToTexture(renderer) {
         width=size*3; height=size+64; useDepth=false; format=VK_FORMAT_R16G16B16A16_SFLOAT
@@ -116,7 +119,9 @@ class OpenDlssNrStudy(
         screen=output.blitToScreen(name=name)
         return this
     }
-    /** A compatible shader edit replaces the source at a frame boundary. Invalid edits retain it. */
+    /** A shader edit replaces the source at a frame boundary. An edit that keeps the stage interface
+     * swaps the pipeline in place; one that changes it (adding or removing a varying, a push-constant
+     * member, a binding) rebuilds the source module and mesh. Invalid edits retain the current source. */
     fun reload(vertex: String=if(geometry)resource("cubes.vert") else defaultVertex,
         fragment: String=if(geometry)resource("cubes.frag") else defaultFragment): Result<Unit> = runCatching {
         check(!closed && image==null) { "Shader reload requires the procedural source" }
@@ -124,11 +129,20 @@ class OpenDlssNrStudy(
         val v=Introspection(vertex,ShaderKind.VERTEX_SHADER,errorHandler={message,_ -> errors+=message})
         val f=Introspection(fragment,ShaderKind.FRAGMENT_SHADER,errorHandler={message,_ -> errors+=message})
         check(v.valid && f.valid) {errors.joinToString("\n")}
-        val abi=graphicsShaderAbiCheck(sourceModule.vi,sourceModule.fi,v,f)
-        check(abi.compatible) {abi.message}
-        sourceModule.installPipelineUpdate(sourceModule.buildPipelineUpdate(v,f))
+        val current=pendingSource?.first ?: sourceModule
+        if(graphicsShaderAbiCheck(current.vi,current.fi,v,f).compatible) {
+            current.installPipelineUpdate(current.buildPipelineUpdate(v,f))
+        } else {
+            val module=buildSourceModule(vertex,fragment)
+            if(!module.valid) { renderer.cleanup+=Runnable { module.cleanup() }; error("NR study shader compilation failed") }
+            val mesh=triangle(module,if(geometry)3+39*36 else 3)
+            pendingSource?.let { (old,_) -> renderer.cleanup+=Runnable { old.cleanup() } }
+            pendingSource=module to mesh
+        }
         pass?.reset("source shader edit")
     }
+    /** Whether the last interface-changing [reload] has reached the GPU. */
+    val reloadPending: Boolean get()=pendingSource!=null
     /** Queue the next comparison frame for a lossless PNG after its GPU fence completes. */
     fun saveFrame(path: Path): CompletableFuture<Path> {
         check(!closed)
@@ -141,6 +155,13 @@ class OpenDlssNrStudy(
     }
     override fun render(command: CommandBuffer,index: Int) {
         if(closed)return
+        pendingSource?.let { (module,mesh) ->
+            pendingSource=null
+            val old=sourceModule
+            sourceModule=module; sourceMesh=mesh
+            source.modules["source"]=module.pointer()
+            renderer.cleanup+=Runnable { old.cleanup() }
+        }
         if(geometry) {
             sourceMesh.push["sizeJitter"]=Vector4f(size.toFloat(),size.toFloat(),0f,0f)
             sourceMesh.push["times"]=Vector4f(time,time,0f,0f)
@@ -166,7 +187,7 @@ class OpenDlssNrStudy(
         screen?.let { renderer.renderList.modules.remove(name,it) }
         pass?.close()
         renderer.cleanup+=Runnable {
-            screen?.current?.cleanup(); sourceModule.cleanup(); compareModule.cleanup()
+            screen?.current?.cleanup(); sourceModule.cleanup(); pendingSource?.first?.cleanup(); compareModule.cleanup()
             for(target in listOf(source,output)) {
                 target.imageViewArray.forEach {it.imageView.cleanup()}
                 target.colorImageRefs.forEach {it?.cleanup()}

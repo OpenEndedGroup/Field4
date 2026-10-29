@@ -10,3 +10,5 @@ Rule 25 sharp edge in `public/docs/open_dlss_nr.md` ("The cube study code"):
 > Keep both stages together when changing their interface; adding or removing a varying needs a full box rerun rather than the shader reload button.
 
 Workaround paragraph. Fix in code: make `OpenDlssNrStudy.reload(vertex, fragment)` rebuild the pipeline (or the whole target) when the stage interface changes, instead of requiring a box rerun. Delete the sentence in the same change.
+
+Done 2026-10-29: OpenDlssNrStudy.reload swaps the pipeline in place for a compatible edit and otherwise rebuilds the source module and mesh, installed at the next frame boundary (smoke four.open-dlss-nr.live-edit adds a varying and reads it back from the source texture). Doc sentence deleted.

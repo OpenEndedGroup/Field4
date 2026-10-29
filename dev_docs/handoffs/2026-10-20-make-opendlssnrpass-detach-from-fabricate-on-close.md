@@ -10,3 +10,5 @@ Rule 25 sharp edge in `public/docs/open_dlss_nr.md` ("Put the pass in your own p
 > Insert it before grading and tone mapping; reattach the graph when changing its order, and detach it before closing the pass.
 
 Ordering trap with Fabricate `pass.postEffect(...)`. Fix in code: let `OpenDlssNrPass.close()` detach itself from any Fabricate graph, and have reordering re-attach automatically. Delete the clause in the same change.
+
+Done 2026-10-29: OpenDlssNrPass.close() removes its effect from every FabricatePostStack it was added to (FabricatePostStack.retire), which re-attaches each attached bundle; a frame graph still naming the closed target skips it. Reordering a bundle post stack already re-attached automatically. Verified in four.open-dlss-nr.live-edit. Doc clause deleted.

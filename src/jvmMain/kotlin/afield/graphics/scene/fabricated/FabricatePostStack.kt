@@ -32,7 +32,10 @@ class FabricatePostStack(
     /** Called after every edit, so whatever has the stack attached can re-attach it. */
     internal val changeListeners = java.util.concurrent.CopyOnWriteArrayList<() -> Unit>()
 
-    private fun changed() = changeListeners.forEach { it() }
+    private fun changed() {
+        effects().forEach { register(it.target, this) }
+        changeListeners.forEach { it() }
+    }
 
     init {
         initial.forEach { effect -> append(effect) }
@@ -72,6 +75,27 @@ class FabricatePostStack(
     fun remove(name: String): FabricatePostEffect? = graph.remove(name)?.also { changed() }
 
     fun output(): RenderToTexture = effects().lastOrNull()?.target ?: input
+
+    companion object {
+        /** Stacks that have held each target, weakly, so a pass that is closing can leave them. */
+        private val holders = java.util.WeakHashMap<RenderToTexture, MutableSet<FabricatePostStack>>()
+
+        private fun register(target: RenderToTexture, stack: FabricatePostStack) = synchronized(holders) {
+            holders.getOrPut(target) { java.util.Collections.newSetFromMap(java.util.WeakHashMap()) }.add(stack)
+        }
+
+        /**
+         * Remove every effect rendering into [target] from each stack it was added to. Each stack then
+         * re-attaches to the windows it is attached to, so the closed pass leaves their frame graphs.
+         * Returns how many effects were removed.
+         */
+        internal fun retire(target: RenderToTexture): Int {
+            val stacks = synchronized(holders) { holders.remove(target)?.toList().orEmpty() }
+            return stacks.sumOf { stack ->
+                stack.effects().filter { it.target === target }.count { stack.remove(it.name) != null }
+            }
+        }
+    }
 }
 
 /**
