@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import shutil
 from pathlib import Path
 
@@ -19,6 +20,8 @@ OFFLINE_FILES = (
     "offline.html",
     "edn-parser.js",
     "offline-viewer.js",
+    "offline-outputs.js",
+    "offline-publications.json",
     "examples-gallery.html",
 )
 
@@ -144,6 +147,63 @@ def write_manifest(target: Path) -> None:
     (target / "manifest.json").write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
 
+GALLERY_INDEX = "offline-gallery.json"
+_EDN_DRAWING = re.compile(r'"drawing" "((?:[^"\\]|\\.)*)"')
+
+
+def drawing_elements(text: str) -> int:
+    """Live elements in the root `drawing` (an Excalidraw scene stored as an EDN string)."""
+    for match in _EDN_DRAWING.finditer(text):
+        try:
+            scene = json.loads(json.loads('"' + match.group(1) + '"'))
+        except (ValueError, TypeError):
+            continue
+        if isinstance(scene, dict) and isinstance(scene.get("elements"), list):
+            return sum(1 for e in scene["elements"] if isinstance(e, dict) and not e.get("isDeleted"))
+    return 0
+
+
+def document_summary(metadata: Path, target: Path) -> dict | None:
+    """What `examples-gallery.html` lists for one document: counts read from its metadata.edn text."""
+    try:
+        text = metadata.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return None
+    if '"boxes"' not in text and ":boxes" not in text:
+        return None
+    boxes = max(0, len(re.findall(r'\{(?:"id"|:id) "', text)) - (1 if '{"id" "root"' in text else 0))
+    tombstones = text.count('"_tombstone" true')
+    folder = metadata.parent
+    name = folder.name
+    shots = sorted(
+        p for p in (target / "assets" / "agent_transcripts_gallery").glob(f"{name}*.png")
+        if p.stem == name or p.stem.startswith(name + "_")
+    ) if (target / "assets" / "agent_transcripts_gallery").is_dir() else []
+    return {
+        "name": name,
+        "file": metadata.relative_to(target).as_posix(),
+        "boxes": max(0, boxes - tombstones),
+        "notes": len(re.findall(r'"notes" #afield/file', text)),
+        "drawing": drawing_elements(text),
+        "image": shots[0].relative_to(target).as_posix() if shots else None,
+    }
+
+
+def write_gallery_index(target: Path) -> int:
+    """Write `offline-gallery.json`: every document under `target/assets`, for the gallery page."""
+    assets = target / "assets"
+    docs = []
+    if assets.is_dir():
+        for metadata in sorted(assets.glob("**/metadata.edn")):
+            if "backups" in metadata.parts:
+                continue
+            summary = document_summary(metadata, target)
+            if summary:
+                docs.append(summary)
+    (target / GALLERY_INDEX).write_text(json.dumps({"version": 1, "documents": docs}, indent=1) + "\n", encoding="utf-8")
+    return len(docs)
+
+
 def sync_target(target: Path, *, metadata: bool, docs: bool) -> None:
     target = target if target.is_absolute() else REPO_ROOT / target
     target.mkdir(parents=True, exist_ok=True)
@@ -166,6 +226,7 @@ def sync_target(target: Path, *, metadata: bool, docs: bool) -> None:
             shutil.rmtree(legacy)
 
     remove_stale_root_fonts(target)
+    write_gallery_index(target)
 
     if docs:
         write_readme(target)

@@ -33,13 +33,12 @@ start(renderer::run)
 <!-- field-box id="flow_resources" index="1" -->
 
 ```edn [field-box id="flow_resources" role="properties"]
-{"id" "flow_resources" "index" 1 "name" "2. Resident tiles and resources" "parents" ["root" "flow_renderer"] "children" ["flow_inputs" "flow_helpers" "flow_advect" "flow_divergence" "flow_pressure" "flow_project" "flow_particles" "flow_grain" "flow_resolve" "flow_strokes" "flow_controls" "flow_reset" "flow_profile"] "properties" {"children" #{#afield/box "flow_inputs" #afield/box "flow_helpers" #afield/box "flow_advect" #afield/box "flow_divergence" #afield/box "flow_pressure" #afield/box "flow_project" #afield/box "flow_particles" #afield/box "flow_grain" #afield/box "flow_resolve" #afield/box "flow_strokes" #afield/box "flow_controls" #afield/box "flow_reset" #afield/box "flow_profile"} "parents" #{#afield/box "root" #afield/box "flow_renderer"} "name" "2. Resident tiles and resources" "_tombstone" false "frame" #afield/rect [80.0 230.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_resources_code_.kt" "lines" 96 "characters" 3360 "sha256" "9d970ac3f25f386c75fdee167dd909d20e1b16e3c64abc16cbea1bc5aab4f919"}]}
+{"id" "flow_resources" "index" 1 "name" "2. Resident tiles and resources" "parents" ["root" "flow_renderer"] "children" ["flow_inputs" "flow_helpers" "flow_advect" "flow_divergence" "flow_pressure" "flow_project" "flow_particles" "flow_grain" "flow_resolve" "flow_strokes" "flow_controls" "flow_reset" "flow_profile"] "properties" {"children" #{#afield/box "flow_inputs" #afield/box "flow_helpers" #afield/box "flow_advect" #afield/box "flow_divergence" #afield/box "flow_pressure" #afield/box "flow_project" #afield/box "flow_particles" #afield/box "flow_grain" #afield/box "flow_resolve" #afield/box "flow_strokes" #afield/box "flow_controls" #afield/box "flow_reset" #afield/box "flow_profile"} "parents" #{#afield/box "root" #afield/box "flow_renderer"} "name" "2. Resident tiles and resources" "_tombstone" false "frame" #afield/rect [80.0 230.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_resources_code_.kt" "lines" 96 "characters" 3341 "sha256" "9cdbee28bfa2d3a3989e6572a0cd93323ae242f947c19bb6e40b743032eb7766"}]}
 ```
 
 ```kotlin [field-property box="flow_resources" name="code" path="flow_resources_code_.kt"]
 import afield.simulation.flow.*
 
-val render: Renderer = fromContext()
 fun grid() = defaultBuffer {
     size = 14400.vec4s
     zeroInit()
@@ -102,7 +101,7 @@ flowClock = vec(0, 1.0 / 60, 0, 0) // Time, fixed step, reset generation, reserv
 propDown<afield.math.linalg.Vec4>(flowEmitter)
 flowEmitter = vec(0, 0, 2.5, 0) // World position and force strength.
 propDown<ComputeTarget>(flowSimulation)
-flowSimulation = ComputeTarget(render)
+flowSimulation = ComputeTarget(renderer)
 propDown<java.util.concurrent.atomic.AtomicLong>(flowStep)
 flowStep = java.util.concurrent.atomic.AtomicLong()
 propDown<java.util.concurrent.atomic.AtomicBoolean>(travel)
@@ -121,17 +120,18 @@ flowSurface = RenderToTexture {
     colorFormats =
         [org.lwjgl.vulkan.VK10.VK_FORMAT_R16G16B16A16_SFLOAT, org.lwjgl.vulkan.VK10.VK_FORMAT_R32G32B32A32_SFLOAT]
     useDepth = false
-    clearFirst = true
     clearColor = vec(0, 0, 0, 0)
     debugName = "flow-correspondence"
 }
-val targets = render.renderList.preTargets
-targets["flow-simulation"] = flowSimulation
-targets["flow-surface"] = flowSurface
-loop { true }
+val simulation = flowSimulation
+val surface = flowSurface
+val targets = renderer.renderList.preTargets
+targets["flow-simulation"] = simulation
+targets["flow-surface"] = surface
+loop {}
     .end {
-        if (targets["flow-simulation"] === flowSimulation) targets.remove("flow-simulation")
-        if (targets["flow-surface"] === flowSurface) targets.remove("flow-surface")
+        if (targets["flow-simulation"] === simulation) targets.remove("flow-simulation")
+        if (targets["flow-surface"] === surface) targets.remove("flow-surface")
     }
 ```
 
@@ -422,14 +422,14 @@ From `code`
 Dependencies are explicit graph exports; resources stay in their parent box.
 
 ```edn [field-box id="flow_grain" role="properties"]
-{"id" "flow_grain" "index" 7 "name" "9. Grain and correspondence RTT" "parents" ["root" "flow_resources"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "flow_resources"} "name" "9. Grain and correspondence RTT" "_tombstone" false "frame" #afield/rect [510.0 530.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_grain_code_.kt" "lines" 20 "characters" 710 "sha256" "054f91f5eb896a4b590d387b22d6798544c23a222268f62b5a93ffef10df07a1"} {"name" "vertex" "language" "glsl" "path" "flow_grain_vertex_.glsl" "lines" 7 "characters" 202 "sha256" "093ff9c35c7d0656fa9929963897d03e432d20bb26c591aafde0c25275d29caa"} {"name" "fragment" "language" "glsl" "path" "flow_grain_fragment_.glsl" "lines" 85 "characters" 3650 "sha256" "cb2b0663e2e4aac4903cbd18808c21a2a2196c4b4b9b67515c361da81a293550"}]}
+{"id" "flow_grain" "index" 7 "name" "9. Grain and correspondence RTT" "parents" ["root" "flow_resources"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "flow_resources"} "name" "9. Grain and correspondence RTT" "_tombstone" false "frame" #afield/rect [510.0 530.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_grain_code_.kt" "lines" 20 "characters" 703 "sha256" "7d4fd3cc3b6074608c6fbb8a66582eb7e903aeeb4d2b82fc946af4f4000e7c56"} {"name" "vertex" "language" "glsl" "path" "flow_grain_vertex_.glsl" "lines" 7 "characters" 202 "sha256" "093ff9c35c7d0656fa9929963897d03e432d20bb26c591aafde0c25275d29caa"} {"name" "fragment" "language" "glsl" "path" "flow_grain_fragment_.glsl" "lines" 85 "characters" 3650 "sha256" "cb2b0663e2e4aac4903cbd18808c21a2a2196c4b4b9b67515c361da81a293550"}]}
 ```
 
 ```kotlin [field-property box="flow_grain" name="code" path="flow_grain_code_.kt"]
 // Dependencies are explicit graph exports; resources stay in their parent box.
 
 var module = moduleHere {
-    flowSurface.apply()
+    +flowSurface
     primitiveType = triangles
     blend = false // Correspondence is a coordinate, never alpha-blended.
     depthTest = false
@@ -759,7 +759,7 @@ From `code`
 Dependencies are explicit graph exports; resources stay in their parent box.
 
 ```edn [field-box id="flow_advect" role="properties"]
-{"id" "flow_advect" "index" 11 "name" "4. Advect and inject" "parents" ["root" "flow_resources"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "flow_resources"} "name" "4. Advect and inject" "_tombstone" false "frame" #afield/rect [80.0 680.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_advect_code_.kt" "lines" 20 "characters" 654 "sha256" "a9ed2e20a13609b9673317d3739ee1b73532c2753564a267a0cf9a00ccbea7d4"} {"name" "compute" "language" "glsl" "path" "flow_advect_compute_.glsl" "lines" 23 "characters" 823 "sha256" "51bb8e1f545e82db59e1f5c9847226a7f93a64662c0ecc4fd9a840b172009f29"}]}
+{"id" "flow_advect" "index" 11 "name" "4. Advect and inject" "parents" ["root" "flow_resources"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "flow_resources"} "name" "4. Advect and inject" "_tombstone" false "frame" #afield/rect [80.0 680.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_advect_code_.kt" "lines" 21 "characters" 668 "sha256" "3b9979cefcdb0a877df57e5faced3c9994a3a1c2dea6ed3f2554aed23ea8ca68"} {"name" "compute" "language" "glsl" "path" "flow_advect_compute_.glsl" "lines" 23 "characters" 823 "sha256" "51bb8e1f545e82db59e1f5c9847226a7f93a64662c0ecc4fd9a840b172009f29"}]}
 ```
 
 ```kotlin [field-property box="flow_advect" name="code" path="flow_advect_code_.kt"]
@@ -778,10 +778,11 @@ mesh.tiles = { tileHeaders }
 mesh.clock = { flowClock }
 mesh.emitter = { flowEmitter }
 module += "barrier" to computeBarrier(graphics = true)
-flowSimulation += "advect" to module
-loop { true }
+val simulation = flowSimulation
+simulation += "advect" to module
+loop {}
     .end {
-        if (flowSimulation.modules["advect"] === module) flowSimulation.modules.remove("advect")
+        if (simulation.modules["advect"] === module) simulation.modules.remove("advect")
     }
 ```
 

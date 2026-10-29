@@ -1,13 +1,13 @@
-import afield.graphics.vulkan.Renderer
-import afield.graphics.vulkan.util.Window
-import afield.graphics.vulkan.buffers.FrameBufferGroup
-import arrow.core.right
-import arrow.core.left
-import afield.graphics.shader.*
-import afield.graphics.scene.*
-import afield.graphics.render.*
-import afield.document.context.*
 import afield.graphics.vulkan.buffers.*
+import afield.document.context.*
+import afield.graphics.render.*
+import afield.graphics.scene.*
+import afield.graphics.shader.*
+import arrow.core.left
+import arrow.core.right
+import afield.graphics.vulkan.buffers.FrameBufferGroup
+import afield.graphics.vulkan.util.Window
+import afield.graphics.vulkan.Renderer
 /*start*/
 /*compute-structure-type:inData:InData*/
 class InData(
@@ -118,8 +118,8 @@ fun BufferParameters.asFieldProbeBuffer(): FieldProbeBuffer =
 /*compute-pc-binding:outData*/ var ComputeMesh.outData by ComputeMesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
 /*compute-pc-binding-group:outData*/ var ComputeMeshGroup.outData by ComputeMeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
 /*compute-pc-structure:something*/ var Structure.something by Structure.FromStructure<Any>()
-/*compute-pc-binding:something*/ var ComputeMesh.something by ComputeMesh.BoundFromStructure<Float>()
-/*compute-pc-binding-group:something*/ var ComputeMeshGroup.something by ComputeMeshGroup.BoundFromStructure<Float>()
+/*compute-pc-binding:something*/ var ComputeMesh.something by ComputeMesh.BoundFromStructure<Number>()
+/*compute-pc-binding-group:something*/ var ComputeMeshGroup.something by ComputeMeshGroup.BoundFromStructure<Number>()
 /*compute-pc-structure:particleCount*/ var Structure.particleCount by Structure.FromStructure<Any>()
 /*compute-pc-binding:particleCount*/ var ComputeMesh.particleCount by ComputeMesh.BoundFromStructure<Any>()
 /*compute-pc-binding-group:particleCount*/ var ComputeMeshGroup.particleCount by ComputeMeshGroup.BoundFromStructure<Any>()

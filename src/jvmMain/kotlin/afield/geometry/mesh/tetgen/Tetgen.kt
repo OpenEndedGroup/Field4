@@ -2,6 +2,10 @@
 package afield.geometry.mesh.tetgen
 
 import afield.geometry.mesh.TriMesh
+import afield.geometry.mesh.diagnose
+import afield.geometry.mesh.volume
+import kotlin.math.abs
+import kotlin.math.max
 import java.lang.foreign.Arena
 import java.lang.foreign.FunctionDescriptor
 import java.lang.foreign.Linker
@@ -98,8 +102,43 @@ object Tetgen {
                 )
             }
         }
+        warnAboutSeams(surface)
         val linear = TetgenNative.tetrahedralize(surface, quality, maxVolume, preserveSurface)
+        val surfaceVolume = surface.volume()
+        val tetVolume = linear.volume()
+        if (abs(tetVolume - surfaceVolume) > 1e-4 * max(surfaceVolume, 1e-12)) {
+            afield.app.diagnostics.logging.lprintln(
+                "warning,tetgen",
+                "Tetgen.tetrahedralize: the tetrahedra hold ${"%.6g".format(tetVolume)} but the surface encloses " +
+                    "${"%.6g".format(surfaceVolume)}; the surface is probably not one closed body.",
+            )
+        }
         return if (order == 2) linear.quadratic() else linear
+    }
+
+    /**
+     * A mesh off disk with an unwelded seam (coincident vertices kept separate) or an over-welded
+     * one (a corner collapsed onto its neighbour) tetrahedralizes to a plausible solid of the wrong
+     * size. Neither shows in the volumes afterwards, so look at the surface first and say so on
+     * `warning,tetgen`.
+     */
+    internal fun seamProblems(surface: TriMesh): List<String> {
+        val d = surface.diagnose()
+        return buildList {
+            if (d.weldableVertices > 0) add("${d.weldableVertices} vertices coincide with another but are not welded to it")
+            if (d.boundaryLoops.isNotEmpty()) add("${d.boundaryLoops.size} open boundary loop(s)")
+            if (d.degenerateFaces.isNotEmpty()) add("${d.degenerateFaces.size} degenerate triangle(s), as an over-welded seam leaves")
+        }
+    }
+
+    private fun warnAboutSeams(surface: TriMesh) {
+        val problems = seamProblems(surface)
+        if (problems.isEmpty()) return
+        afield.app.diagnostics.logging.lprintln(
+            "warning,tetgen",
+            "Tetgen.tetrahedralize: this surface has ${problems.joinToString("; ")}. The solid TetGen makes from it " +
+                "can have the wrong volume; weld or repair the mesh first (TriMesh.diagnose() lists the defects).",
+        )
     }
 
     /** The median edge length of [surface]'s triangles, each edge counted once per triangle. */
@@ -339,12 +378,17 @@ internal object TetgenNative {
         .reinterpret(Long.MAX_VALUE).getString(0)
 
     fun tetrahedralize(surface: TriMesh, quality: Double, maxVolume: Double,
+                       preserveSurface: Boolean): TetMesh =
+        tetrahedralize(DoubleArray(surface.positions.size) { surface.positions[it].toDouble() }, surface.indices,
+            quality, maxVolume, preserveSurface)
+
+    /** The same, from `double` xyz [positions] and triangle [indices], which reach TetGen unnarrowed. */
+    fun tetrahedralize(positions: DoubleArray, indices: IntArray, quality: Double, maxVolume: Double,
                        preserveSurface: Boolean): TetMesh = Arena.ofConfined().use { arena ->
-        val pointCount = surface.vertexCount
-        val triangleCount = surface.indices.size / 3
-        val points = arena.allocate(JAVA_DOUBLE, (3L * pointCount))
-        for (i in 0 until 3 * pointCount) points.setAtIndex(JAVA_DOUBLE, i.toLong(), surface.positions[i].toDouble())
-        val triangles = arena.allocateFrom(JAVA_INT, *surface.indices)
+        val pointCount = positions.size / 3
+        val triangleCount = indices.size / 3
+        val points = arena.allocateFrom(JAVA_DOUBLE, *positions)
+        val triangles = arena.allocateFrom(JAVA_INT, *indices)
 
         val nodeCount = arena.allocate(JAVA_INT)
         val cellCount = arena.allocate(JAVA_INT)

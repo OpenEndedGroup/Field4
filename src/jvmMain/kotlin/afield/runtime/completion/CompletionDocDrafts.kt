@@ -20,7 +20,7 @@ import afield.media.video.*
 import afield.runtime.lifecycle.map
 import afield.ui.output.templates.filter
 import afield.ai.completion.Ai4CompletionDoc
-import afield.ai.completion.GENERATED_COMPLETION_DOCS_FILE
+import afield.ai.completion.generatedCompletionDocsPath
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
@@ -36,11 +36,13 @@ import kotlin.io.path.absolutePathString
  * `kdoc-draft` note on its declaration, and the docs revision pass (/docs-pass.html) handles them
  * like the human's own notes. See dev_docs/agents/COMPLETION_DOC_POLISH_DESIGN.md.
  */
+
+/** Counts the cached KDoc drafts that belong to declarations under `src/`, for the welcome page. */
 object CompletionDocDrafts {
     private val json = Json { ignoreUnknownKeys = true }
 
     fun summary(): CompletionDocDraftSummary {
-        val cachePath = afield.ai.knowledge.FilestoreDir.resolve(GENERATED_COMPLETION_DOCS_FILE)
+        val cachePath = generatedCompletionDocsPath()
         if (!Files.exists(cachePath)) {
             return CompletionDocDraftSummary(cachePath.absolutePathString(), message = "No KDoc drafts yet.")
         }

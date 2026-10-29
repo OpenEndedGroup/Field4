@@ -32,7 +32,7 @@ package afield.tools.docs
  *
  * The end of a declaration is easy when it has a brace body and awkward when it does not — an
  * expression body can run over as many lines as it likes, and Kotlin's continuation rules are
- * genuinely ambiguous without a real parser. This deliberately does **not** guess: anything the
+ * genuinely ambiguous without a real parser. The scanner does **not** guess: anything the
  * scanner cannot attribute to a declaration becomes [Kind.FILLER], which is a span like any other and
  * keeps the tiling total. So a heuristic that gives up early costs *precision* (lines in FILLER) and
  * never *correctness* (lines lost, or attributed to the wrong declaration). [SourcePartitionGuard]
@@ -44,10 +44,12 @@ package afield.tools.docs
  * Bodies are not descended into: a `fun` is one span, whatever is inside it. Only container
  * declarations — `class`, `interface`, `object`, `enum class`, `companion object` — recurse, because
  * only their contents are declarations a page would want headers for. A local class inside a function
- * body is therefore invisible here, on purpose.
+ * body is therefore invisible here.
  *
  * Enum entries are not recognised as declarations and land in FILLER; see the census.
  */
+
+/** Cuts Kotlin source into a verified tiling of declaration, KDoc and filler spans; see the file overview. */
 object KotlinSourcePartition {
 
     /** What a span of lines *is*, for a renderer deciding between prose and a code fence. */
@@ -694,10 +696,15 @@ object KotlinSourcePartition {
             return last + 1
         }
 
-        /** A non-blank line carrying only annotations and/or modifiers — no declaration keyword. */
+        /**
+         * A non-blank line carrying only annotations and/or modifiers — no declaration keyword. A
+         * context-parameter list on its own line (`context(context: CheckerContext, reporter: …)` above
+         * an `override fun`, as FIR checkers are written) is a prefix of the same kind.
+         */
         fun isPrefixOnlyLine(index: Int): Boolean {
             val text = masked.code[index].trim()
             if (text.isEmpty()) return false
+            if (text.startsWith("context(") && text.endsWith(")") && text.count { it == '(' } == text.count { it == ')' }) return true
             val stripped = stripAnnotations(text)
             if (stripped.isEmpty()) return true
             val tokens = stripped.split(WHITESPACE).filter { it.isNotEmpty() }
@@ -833,7 +840,16 @@ object KotlinSourcePartition {
                         }
                         return Extent(line, bodyOpen, bodyClose)
                     }
-                    if (!needsBranch && !continues(line, hi, inEnum)) return Extent(line, bodyOpen, bodyClose)
+                    // A primary constructor may start below `class Name`. It is part of this
+                    // header, even though `constructor` normally opens a separate declaration.
+                    // Once the class body opens, constructors inside it stay separate children.
+                    val next = nextCodeLine(line + 1, hi)
+                    val primaryConstructor = head.decl.kind in setOf("class", "enum class") &&
+                        bodyOpen < 0 && !sawEquals && next != null &&
+                        headAt(next, hi)?.decl?.kind == "constructor"
+                    if (!needsBranch && !primaryConstructor && !continues(line, hi, inEnum)) {
+                        return Extent(line, bodyOpen, bodyClose)
+                    }
                 }
                 line++
             }

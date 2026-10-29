@@ -179,6 +179,7 @@ class SolidSLConventionProbe {
         // a sentence in both KDocs, not only a correction in one.
         val lathe = afield.geometry.mesh.revolveMesh(
             listOf(afield.math.linalg.Vec2(1.0f, 0.0f), afield.math.linalg.Vec2(1.6f, 0.0f), afield.math.linalg.Vec2(1.6f, 0.8f)),
+            afield.geometry.mesh.RevolveAxis.Y,
             256,
         )
         val lb = lathe.bounds()

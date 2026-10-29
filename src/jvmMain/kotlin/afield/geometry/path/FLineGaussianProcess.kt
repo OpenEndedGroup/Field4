@@ -1,3 +1,13 @@
+/**
+ * Gaussian-process curves: fit a GP to an [FLine] or to points, then draw its mean, samples and uncertainty as lines.
+ *
+ * [FLine.gaussianProcess] and [gpCurve] return an [FLineGaussianProcess], which gives the mean,
+ * covariance, velocity and moving frames along the curve; [FLineGaussianProcess.posterior] gives an
+ * [FLineGpJoint] for coherent samples. For scalar GPs, [meanFLine], [sampleFLine] and
+ * [intervalFLines] turn a joint into plottable lines. Tests: `FLineGaussianProcessTest`,
+ * `FLineGpGeometryTest`.
+ */
+
 package afield.geometry.path
 
 import afield.math.gp.*
@@ -184,7 +194,10 @@ class FLineGpJoint internal constructor(private val ts: DoubleArray, val distrib
     fun meanLine(): FLine = line(meanPoints)
     fun samplePoints(seed: Long): List<Vec3> = distribution.sample(seed).map { point(it) }
     fun sampleLine(seed: Long): FLine = line(samplePoints(seed))
-    /** [spread] 0 is the mean line, 1 an honest draw, above 1 an exaggerated one. */
+    /**
+     * [spread] scales each vertex's departure from the mean: 0 is the mean line, 1 a draw at the
+     * fitted scale, above 1 an exaggerated one.
+     */
     fun sampleLine(seed: Long, spread: Double): FLine = line(distribution.sample(seed, spread).map { point(it) })
     fun covarianceAt(index: Int, other: Int = index): Array<DoubleArray> {
         val c = distribution.covarianceAt(index, other)

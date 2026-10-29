@@ -9,18 +9,39 @@ lays the frames out as a map you can play through.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/audio_ai_spectral_embeddings/spectral_spaces.png" capture="box" open-outputs="true" wait="4" padding="16" timeout="180" w="1120" h="1100" hidden=true embed=true name="elsewhere-spectral" alt="Three real Field t-SNE projections of librosa mel, log-mel and MFCC frames"}
 :::static
-import afield.audio.engine.WavFloatArrayLoader
 import java.io.File
-import java.nio.file.Path
+
 val json = FieldAudioClient.json
 val folder = File("public/docs/assets/audio_ai_spectral_embeddings")
 val preview = json.decodeFromString<AnalysisPreview>(File(folder, "result-preview.json").readText())
-val frames = decodeSpectralEmbeddingMessagePack(File(folder, "frames.msgpack").readBytes(), maxFrames = 600, durationSeconds = 10.0, poolMillis = 200.0, hopMillis = 40.0)
-val previews = [SpectralEmbeddingDistance.MEL_WASSERSTEIN, SpectralEmbeddingDistance.LOG_MEL_COSINE, SpectralEmbeddingDistance.MFCC_EUCLIDEAN].mapIndexed { index, distance ->
-    preview.withSpectralProjection(frames.tsne(dimensions = 4, distance = distance, perplexity = 30.0, maxIterations = 750, seed = 184921L + index))
-}
-display("spectral spaces", spectralEmbeddingPreviewDashboardHtml(previews, width = 1040, phaseHeight = 210))
-
+val frames = decodeSpectralEmbeddingMessagePack(
+    File(folder, "frames.msgpack").readBytes(),
+    maxFrames = 600,
+    durationSeconds = 10.0,
+    poolMillis = 200.0,
+    hopMillis = 40.0,
+)
+val previews =
+    [
+            SpectralEmbeddingDistance.MEL_WASSERSTEIN,
+            SpectralEmbeddingDistance.LOG_MEL_COSINE,
+            SpectralEmbeddingDistance.MFCC_EUCLIDEAN,
+        ]
+        .mapIndexed { index, distance ->
+            preview.withSpectralProjection(
+                frames.tsne(
+                    dimensions = 4,
+                    distance = distance,
+                    perplexity = 30.0,
+                    maxIterations = 750,
+                    seed = 184921L + index,
+                ),
+            )
+        }
+display(
+    "spectral spaces",
+    spectralEmbeddingPreviewDashboardHtml(previews, width = 1040, phaseHeight = 210),
+)
 ```
 
 Three distances give three views of the first ten seconds of `near_drowning.wav`: mel transport,
@@ -62,77 +83,142 @@ the first ten seconds. Every panel shares the source player's cursor in both dir
 
 ```diffstatic {data-lang=kotlin}
 :::fold imports
-import afield.document.graph.Box
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.concurrent.CancellationException
 import java.util.concurrent.CompletableFuture
+
 :::endfold
 
 val client = FieldAudioClient()
-val local = Path.of(System.getProperty("user.home"), "Downloads", "near_drowning.wav")
-val sync = "near-drowning-spectral"
+val localPath = Path.of(System.getProperty("user.home"), "Downloads", "near_drowning.wav")
+val timeSync = "near-drowning-spectral-spaces"
+val poolMillis = 200.0
+val hopMillis = 40.0
+val perplexity = 30.0
+val iterations = 750
+val seed = 184921L
+
 display("all jobs", fieldAudioJobMonitor(heightPixels = 340))
-
-:::fold durable job tracking
-fun Box.trackedSpectral(request: ModelOperation): CompletableFuture<AnalysisResult> =
-    client.submit(request).thenCompose { accepted ->
-        display("spectral job", fieldAudioJobStatusHtml(accepted))
-        client.watch(accepted.jobId) { event ->
-            display("spectral job", fieldAudioJobStatusHtml(accepted, event))
-        }
-        client.awaitAnalysis(accepted)
-    }
-:::endfold
-
-client.assetsByFilename("near_drowning.wav").thenCompose { matches ->
-    :::fold find or import the recording
-    when {
-        matches.size == 1 -> CompletableFuture.completedFuture(matches.single())
-        matches.isEmpty() && Files.isRegularFile(local) -> client.importWav(local)
-        else -> CompletableFuture.failedFuture(IllegalStateException("cannot resolve $local"))
+runAsync(
+    onResult = { previews: List<AnalysisPreview> ->
+        display("projection", "complete · one cached job · ${previews.size} Field-owned spaces")
+        display(
+            "spectral spaces",
+            spectralEmbeddingPreviewDashboardHtml(
+                previews,
+                width = 1100,
+                phaseHeight = 270,
+                syncGroup = timeSync,
+            ),
+        )
+    },
+    onError = { failure ->
+        markdown("spectral error", "Analysis failed: ${(failure.message ?: failure.toString()).md}")
+    },
+) {
+    val showSource = progress<String> { display("source", it) }
+    val showProjection = progress<String> { display("projection", it) }
+    // HTTP continuations run on other threads. New tracked legs still belong to this run.
+    val run = RunScope.current()
+    :::fold durable job tracking
+    val tracked: (ModelOperation) -> CompletableFuture<AnalysisResult> = { request ->
+        RunScope.withCurrent(run) {
+                client.trackAnalysis(
+                    request,
+                    onAccepted = { display("spectral job", fieldAudioJobStatusHtml(it)) },
+                    onProgress = { job, event -> display("spectral job", fieldAudioJobStatusHtml(job, event)) },
+                    onCompleted = { display("spectral job", fieldAudioJobStatusHtml(it)) },
+                    onError = {}, // The outer operation reports failure once.
+                )
+            }
+            .also { pending -> onCancel { pending.cancel(true) } }
     }
     :::endfold
-}.thenCompose { source ->
-    val audio = source.representations.firstOrNull { it.role == "canonical_project" }
-        ?: source.representations.first { it.mediaType in setOf("audio/wav", "audio/x-wav") }
-    val duration = requireNotNull(audio.durationSeconds)
-    val region = AssetRegion(source.id, 0.0, duration)
-    display("source", audio.audioVisualizerHtml(
-        options = AudioVisualizerOptions(
-            width = 1100, waveformHeight = 150,
-            initialDurationSeconds = minOf(10.0, duration), syncGroup = sync,
-        ),
-    ))
-    trackedSpectral(spectralEmbeddingAnalysis(
-        region, requestedBy = "field:spectral-embeddings/near-drowning",
-    ))
-}.thenCompose { result ->
-    display("projection", "decoding once, then fitting three Field Smile t-SNE views…")
-    client.analysisPreview(result.id, 1800).thenCombineAsync(
-        client.spectralEmbeddingFrames(
-            result, maxFrames = 600, startSeconds = 0.0, durationSeconds = 10.0,
-            poolMillis = 200.0, hopMillis = 40.0,
-        )
-    ) { preview, frames ->
-        [
-            SpectralEmbeddingDistance.MEL_WASSERSTEIN,
-            SpectralEmbeddingDistance.LOG_MEL_COSINE,
-            SpectralEmbeddingDistance.MFCC_EUCLIDEAN,
-        ].mapIndexed { index, distance ->
-            preview.withSpectralProjection(frames.tsne(
-                dimensions = 4, distance = distance, perplexity = 30.0,
-                maxIterations = 750, seed = 184921L + index,
-            ))
+    val lookup = client.assetsByFilename("near_drowning.wav")
+    onCancel { lookup.cancel(true) }
+    lookup
+        .thenCompose { matches ->
+            if (future.isDone) throw CancellationException("run ended")
+            :::fold find or import the recording
+            when {
+                matches.size == 1 -> CompletableFuture.completedFuture(matches.single())
+                matches.isEmpty() && Files.isRegularFile(localPath) ->
+                    client.importWav(localPath).also { pending -> onCancel { pending.cancel(true) } }
+                matches.isEmpty() ->
+                    CompletableFuture.failedFuture(
+                        IllegalStateException("near_drowning.wav is neither imported nor present at $localPath"),
+                    )
+                else ->
+                    CompletableFuture.failedFuture(
+                        IllegalStateException("near_drowning.wav matched ${matches.size} assets"),
+                    )
+            }
+            :::endfold
         }
-    }
-}.thenAccept { previews ->
-    display("projection", "complete · one cached job · three Field-owned distance spaces")
-    display("spectral spaces", spectralEmbeddingPreviewDashboardHtml(
-        previews, width = 1100, phaseHeight = 270, syncGroup = sync,
-    ))
-}.exceptionally { error ->
-    display("spectral error", error.cause?.message ?: error.message ?: error.toString())
-    null
+        .thenCompose { source ->
+            if (future.isDone) throw CancellationException("run ended")
+            val audio =
+                source.representations.firstOrNull { it.role == "canonical_project" }
+                    ?: source.representations.first { it.mediaType in ["audio/wav", "audio/x-wav"] }
+            val duration = requireNotNull(audio.durationSeconds) { "source audio has no duration" }
+            showSource(
+                audio.audioVisualizerHtml(
+                    label = "near_drowning.wav · ${duration.f2} s · ${audio.sampleRate} Hz",
+                    options = AudioVisualizerOptions(
+                        width = 1100,
+                        waveformHeight = 150,
+                        initialDurationSeconds = minOf(10.0, duration),
+                        syncGroup = timeSync,
+                    ),
+                ),
+            )
+            tracked(
+                spectralEmbeddingAnalysis(
+                    AssetRegion(source.id, 0.0, duration),
+                    requestedBy = "field:spectral-embeddings/near-drowning",
+                ),
+            )
+        }
+        .thenCompose { result ->
+            if (future.isDone) throw CancellationException("run ended")
+            showProjection(
+                "decoding one artifact · ${poolMillis.f0} ms pool · ${hopMillis.f0} ms hop · fitting three t-SNE spaces…",
+            )
+            val preview = client.analysisPreview(result.id, 1800)
+            val frames = client.spectralEmbeddingFrames(
+                result,
+                maxFrames = 600,
+                startSeconds = 0.0,
+                durationSeconds = 10.0,
+                poolMillis = poolMillis,
+                hopMillis = hopMillis,
+            )
+            onCancel {
+                preview.cancel(true)
+                frames.cancel(true)
+            }
+            preview.thenCombineAsync(frames) { summary, samples ->
+                [
+                        SpectralEmbeddingDistance.MEL_WASSERSTEIN,
+                        SpectralEmbeddingDistance.LOG_MEL_COSINE,
+                        SpectralEmbeddingDistance.MFCC_EUCLIDEAN,
+                    ]
+                    .mapIndexed { index, distance ->
+                        // The fitter has no interrupt hook; stop suppresses output and skips later fits.
+                        if (future.isDone) throw CancellationException("run ended")
+                        summary.withSpectralProjection(
+                            samples.tsne(
+                                dimensions = 4,
+                                distance = distance,
+                                perplexity = perplexity,
+                                maxIterations = iterations,
+                                seed = seed + index,
+                            ),
+                        )
+                    }
+            }
+        }
 }
 ```
 

@@ -1,5 +1,5 @@
-import afield.graphics.vulkan.Renderer
 import afield.graphics.vulkan.util.Window
+import afield.graphics.vulkan.Renderer
 var Box.browserControl by Inheritance<afield.media.browser.PuppetBrowser>() /**/
 val Once.browserControl by Onceing<afield.media.browser.PuppetBrowser>() /**/
 val Why.browserControl by Whying() /**/

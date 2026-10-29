@@ -1,5 +1,19 @@
 package afield.ai.completion
 
+/**
+ * Drafts documentation, with a language model, for a completion item whose declaration has no KDoc.
+ *
+ * [Ai4CompletionDoc.resolveDoc] finds the item's definition through the Kotlin source index and
+ * returns nothing when that definition already carries a KDoc. Otherwise it sends the declaration's
+ * source to a fast model and caches the draft in [GENERATED_COMPLETION_DOCS_FILE], keyed by symbol,
+ * file, line and a hash of the declaration source, so an edited declaration gets a fresh draft.
+ * [Ai4CompletionDoc.dropStaleGeneratedDocs] evicts drafts whose source has changed or gone; it is
+ * covered by `GeneratedCompletionDocSweepTest`. Drafts the docs revision pass declined, listed in
+ * [GENERATED_COMPLETION_DOCS_DECLINED_FILE], are neither shown nor regenerated.
+ *
+ * The model is `AFIELD_COMPLETION_DOC_MODEL`, defaulting to the fast model.
+ */
+
 import afield.ai.knowledge.FilestoreDir
 import afield.runtime.completion.KotlinDefinitionRecord
 import afield.runtime.completion.KotlinSourceIndex
@@ -728,7 +742,7 @@ internal data class GeneratedCompletionDocCacheDb(
  * against a broken [cacheKey].
  */
 internal class GeneratedCompletionDocCache(
-    private val dbPath: Path = FilestoreDir.resolve(GENERATED_COMPLETION_DOCS_FILE)
+    private val dbPath: Path = generatedCompletionDocsPath()
 ) {
     private val mapper = OpenAiFileStoreCache.defaultMapper()
     private val lock = ReentrantReadWriteLock()
@@ -886,3 +900,15 @@ internal class GeneratedCompletionDocCache(
         }
     }
 }
+
+/**
+ * Points the drafts cache at one file, leaving the rest of the filestore where it is. The docs runner
+ * sets it to a fresh copy of a committed cache, so its captures of the drafts read the same input on
+ * every machine; `tools/docs_notes.py` (`DRAFT_CACHE_ENV`) honours it too.
+ */
+const val GENERATED_COMPLETION_DOCS_ENV = "AFIELD_COMPLETION_DRAFTS_FILE"
+
+/** The drafts cache: [GENERATED_COMPLETION_DOCS_ENV] when set, else [GENERATED_COMPLETION_DOCS_FILE] in the filestore. */
+fun generatedCompletionDocsPath(): Path =
+    System.getenv(GENERATED_COMPLETION_DOCS_ENV)?.trim()?.takeIf { it.isNotEmpty() }?.let { Paths.get(it) }
+        ?: FilestoreDir.resolve(GENERATED_COMPLETION_DOCS_FILE)

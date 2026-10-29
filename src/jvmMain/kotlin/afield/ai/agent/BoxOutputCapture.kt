@@ -34,6 +34,13 @@ import javax.imageio.ImageIO
 import javax.imageio.ImageWriteParam
 
 /**
+ * Pictures of a box's output area for the agent, taken from a headless Playwright page on the box's document, with simple statistics about what the picture contains.
+ *
+ * [BoxOutputCapture] owns the pages and their release; [BoxOutputShot] is one capture, and
+ * [PictureStats] summarises its pixels: how much differs from the background, and the dominant colours.
+ */
+
+/**
  * One captured picture of a box's output area, or the reason there is none.
  *
  * [image] is the decoded capture (device pixels). [path] is where the PNG was kept as evidence, or

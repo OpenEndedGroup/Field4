@@ -1,0 +1,106 @@
+{
+  "baseline": "86007a0f85e117ed20fcd647d66d54898c4fbd06",
+  "paths": [
+    "public/docs/contour_trees.md",
+    "public/docs/editing_from_outside.md",
+    "public/docs/evolving_creatures.md",
+    "public/docs/geometry_chains.md",
+    "public/docs/lp_curves.md",
+    "public/docs/mapper.md",
+    "public/docs/matrix_profile.md",
+    "public/docs/morse_smale.md",
+    "public/docs/optimal_transport.md",
+    "public/docs/polyvector.md",
+    "public/docs/principal_curves.md",
+    "public/docs/topology_tracking.md",
+    "public/docs/vector_field_topology.md",
+    "public/docs/temporal_memory.md",
+    "public/docs/filming_the_canvas.md",
+    "dev_docs/agents/transcripts/mapper_explorer.yaml",
+    "dev_docs/agents/transcripts/principal_curves_explorer.yaml",
+    "dev_docs/agents/transcripts/contour_trees_explorer.yaml",
+    "dev_docs/agents/transcripts/polyvector_explorer.yaml",
+    "dev_docs/agents/transcripts/morse_smale_explorer.yaml",
+    "dev_docs/agents/transcripts/matrix_profile.yaml",
+    "dev_docs/agents/transcripts/lp_curves.yaml",
+    "dev_docs/agents/transcripts/lp_curves_3d.yaml",
+    "dev_docs/agents/transcripts/docs_capture/canvas_flight.yaml",
+    "dev_docs/agents/transcripts/evolving_water_bugs.yaml",
+    "public/docs/drawing_and_notation.md",
+    "dev_docs/agents/transcripts/notation_elements.yaml"
+  ],
+  "sourceChanges": [
+    {
+      "path": "public/docs/contour_trees.md",
+      "beforeSha256": "2153f63f68ec91f057a07eac0393d4e1b04007ec2cb20af3ff3f29e512dcab71"
+    },
+    {
+      "path": "public/docs/evolving_creatures.md",
+      "beforeSha256": "1daebce2a006283b5ea9dc55f729b24b490560bb773ac3c95a427bcfe5f7ab5e"
+    },
+    {
+      "path": "public/docs/geometry_chains.md",
+      "beforeSha256": "3b38265a8bde2f09aca4f2e2f72c7359025ec1948b0a4a14ff1f5d7f5fbd453e"
+    },
+    {
+      "path": "public/docs/lp_curves.md",
+      "beforeSha256": "fdd72832b6d133d37cc0f217904b1545b7d41089477b8bba4b1f9a62dd308fb6"
+    },
+    {
+      "path": "public/docs/matrix_profile.md",
+      "beforeSha256": "8c7b7c9fe2f1df6fce64c704dc0b9677fe6a58006bb560771418b1190dc8968b"
+    },
+    {
+      "path": "public/docs/morse_smale.md",
+      "beforeSha256": "9cb487c1ca334efc9b7cccabd6d0b1cff94df9c1803cd02e7b2150fa30de8a0f"
+    },
+    {
+      "path": "public/docs/optimal_transport.md",
+      "beforeSha256": "e7a2404834d30ce918af4fca9d2d555d2f1c9003296ac14bd8b61a4bd09ce387"
+    },
+    {
+      "path": "public/docs/polyvector.md",
+      "beforeSha256": "fecfda0189c413ad43c05cae66828c0dbae11f70171f4da83827c00e52e34360"
+    },
+    {
+      "path": "public/docs/principal_curves.md",
+      "beforeSha256": "807d0cb28a0e8fa4ea7091037cf9fd82902c0ffbb800fd7cea7ea0c7e844c439"
+    },
+    {
+      "path": "public/docs/topology_tracking.md",
+      "beforeSha256": "95036bd66f4eda94f17b15d0a7e19fab4a5df65d82ab142174e73b2b435444af"
+    },
+    {
+      "path": "public/docs/temporal_memory.md",
+      "beforeSha256": "e173ec3e3785bfe583782d908285711fda973e96da361bbd1ea465ca3ea27139"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/principal_curves_explorer.yaml",
+      "beforeSha256": "74f227bd773ba6cf711d5f04bcb1e4c4a0e1e77567d4a1835852d9c26ef45c01"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/contour_trees_explorer.yaml",
+      "beforeSha256": "93b30a992758ef5479a9b3fbdd16e7ffd7535a5d14ce3fcc44adf2a5d533486d"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/polyvector_explorer.yaml",
+      "beforeSha256": "7d39852ffcd84c7ae49ab963c59b53ceeb25e3c9170a876bd140337cd2cae916"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/morse_smale_explorer.yaml",
+      "beforeSha256": "a713fa766fb659e3fc6a3b842889868aa2a0b1238306ff1c869f22da430d8fbc"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/matrix_profile.yaml",
+      "beforeSha256": "543b43ea4a43ad88ad1cc9512c5392c71dda384021c7a7074d93e782a9bfd7d7"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/lp_curves.yaml",
+      "beforeSha256": "910d76d4e3d8a8dc413ed320302bc7eb76c3cc4a142f24f1f346e2c30b236f41"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/lp_curves_3d.yaml",
+      "beforeSha256": "4b49b082b8e763823ba6d249783b7074b98c39d4b4fd3e115a3cbd5bd3b53165"
+    }
+  ]
+}

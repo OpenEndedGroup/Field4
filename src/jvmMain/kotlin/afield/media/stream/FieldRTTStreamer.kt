@@ -1,61 +1,66 @@
 package afield.media.stream
 
-import afield.graphics.vulkan.Renderer
-import afield.graphics.vulkan.Target
-import afield.graphics.vulkan.device.CommandBuffer
-import afield.graphics.vulkan.targets.RenderToTexture
+import afield.app.diagnostics.logging.lprintln
 import afield.graphics.texture.IOSurfaceHostBuffer
 import afield.graphics.texture.MetalIOSurface
 import afield.graphics.texture.UnixFdPass
 import afield.graphics.texture.VulkanExternalMemory
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.Target
+import afield.graphics.vulkan.device.CommandBuffer
+import afield.graphics.vulkan.targets.RenderToTexture
 import afield.graphics.vulkan.util.OS
 import afield.graphics.vulkan.util.OSType
-import afield.app.diagnostics.logging.lprintln
-import org.json.JSONObject
-import org.lwjgl.vulkan.VK10.VK_FORMAT_B8G8R8A8_UNORM
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
+import org.json.JSONObject
+import org.lwjgl.vulkan.VK10.VK_FORMAT_B8G8R8A8_UNORM
 
 /**
- * Streams an IOSurface-backed RTT off the GPU to the visionOS receiver via the `field-encode`
- * co-process (the *producer* seam from `dev_docs/vision_frontend.md`).
+ * Streams a Field 4 render target to the visionOS app as video (HEVC by default), through the `field-encode` helper.
+ *
+ * [FieldRTTStreamer] owns a ring of shared surfaces that a box renders into; each frame is handed to the encoder once
+ * the GPU has finished it. Works on macOS (VideoToolbox) and Linux (NVENC).
+ */
+
+/**
+ * Streams an IOSurface-backed RTT off the GPU to the visionOS receiver via the `field-encode` co-process (the
+ * *producer* seam from `dev_docs/vision_frontend.md`).
  *
  * ### Why the helper allocates the surfaces
- * MoltenVK's *export* path (`VkExportMetalObjectCreateInfoEXT`) produces IOSurfaces with
- * `pixelFormat = 0`, which CoreVideo/VideoToolbox refuse to wrap (`CVPixelBufferCreateWithIOSurface`
- * → -6661). A surface born via `IOSurfaceCreate` with a real pixelFormat *is* wrappable, and
- * IOSurface is cross-process — so on [start] we ask the helper to `alloc` a ring, look the surfaces
- * up by global ID here, and *import* them as the RTT backing (`RTTParameters.importMetalIOSurface`).
+ * MoltenVK's *export* path (`VkExportMetalObjectCreateInfoEXT`) produces IOSurfaces with `pixelFormat = 0`, which
+ * CoreVideo/VideoToolbox refuse to wrap (`CVPixelBufferCreateWithIOSurface` → -6661). A surface born via
+ * `IOSurfaceCreate` with a real pixelFormat *is* wrappable, and IOSurface is cross-process — so on [start] we ask the
+ * helper to `alloc` a ring, look the surfaces up by global ID here, and *import* them as the RTT backing
+ * (`RTTParameters.importMetalIOSurface`).
  *
  * ### Usage (from a Field box)
- * Attach your content module to **every** ring surface; the streamer self-registers and renders
- * exactly the active surface each tick, so do **not** add the surfaces to `renderer.renderList`:
+ * Attach your content module to **every** ring surface; the streamer self-registers and renders exactly the active
+ * surface each tick, so do **not** add the surfaces to `renderer.renderList`:
  * ```
  * val streamer = FieldRTTStreamer(renderer, dest = "127.0.0.1:9001", width = 1280, height = 720, ringSize = 3)
  * val surfaces = streamer.start()
- * val module = moduleHere { surfaces.first().apply() }; module += "mesh" to m
+ * val module = moduleHere { +surfaces.first() }; module += "mesh" to m
  * surfaces.forEach { it += "content" to module }
  * // stop later: streamer.stop()
  * ```
- * With `ringSize > 1` the streamer round-robins which surface it renders+encodes, giving the encoder
- * a full ring of tick-intervals to read each frame (render-ahead). `ringSize = 1` is fine at the
- * throttled rate; a ring adds headroom at high fps/resolution.
  *
- * The per-frame `frame` tick is deferred with [Renderer.afterCurrentGraphicsFrameComplete] — the
- * fence-first correctness gate, so the encoder never reads a half-written frame.
+ * With `ringSize > 1` the streamer round-robins which surface it renders+encodes, giving the encoder a full ring of
+ * tick-intervals to read each frame (render-ahead). `ringSize = 1` is fine at the throttled rate; a ring adds headroom
+ * at high fps/resolution.
  *
- * The **receiver** end of this stream is the visionOS shell at `native/field-visionos`
- * (`Field4Vision/RTT/`: UDP reassembly → VideoToolbox decode → RealityKit). The wire contract is
- * `native/field-encode/WIRE_FORMAT.md`.
+ * The per-frame `frame` tick is deferred with [Renderer.afterCurrentGraphicsFrameComplete] — the fence-first
+ * correctness gate, so the encoder never reads a half-written frame.
  *
- * macOS (MoltenVK/VideoToolbox) and Linux (NVIDIA/NVENC) — same API either side; [start] branches
- * internally on [OS]. The ownership of surface allocation is reversed between the two (see
- * WIRE_FORMAT.md's Linux addendum): Mac's helper allocates+returns IOSurface ring IDs for this
- * JVM to import (`alloc`, [MetalIOSurface]); Linux has no such round-trip because a helper
- * process can't allocate a Vulkan image — this JVM allocates the ring directly
- * (`exportOpaqueFd = true`) and hands the helper {pid,fd,size,rowPitch} handles instead
- * ([VulkanExternalMemory]).
+ * The **receiver** end of this stream is the visionOS shell at `native/field-visionos` (`Field4Vision/RTT/`: UDP
+ * reassembly → VideoToolbox decode → RealityKit). The wire contract is `native/field-encode/WIRE_FORMAT.md`.
+ *
+ * macOS (MoltenVK/VideoToolbox) and Linux (NVIDIA/NVENC) — same API either side; [start] branches internally on [OS].
+ * The ownership of surface allocation is reversed between the two (see WIRE_FORMAT.md's Linux addendum): Mac's helper
+ * allocates+returns IOSurface ring IDs for this JVM to import (`alloc`, [MetalIOSurface]); Linux has no such round-trip
+ * because a helper process can't allocate a Vulkan image — this JVM allocates the ring directly (`exportOpaqueFd =
+ * true`) and hands the helper {pid,fd,size,rowPitch} handles instead ([VulkanExternalMemory]).
  */
 class FieldRTTStreamer(
     private val renderer: Renderer,
@@ -67,9 +72,11 @@ class FieldRTTStreamer(
     private val bitrateKbps: Int = 20_000,
     private val codec: String = "hevc",
     private val idrIntervalMs: Int = 1000,
-    // Mark the stream as side-by-side stereo (left|right in each double-wide frame). Sets the wire
-    // STEREO_SBS flag so the receiver presents it per-eye. Producing actual SBS content into the RTT
-    // is the caller's job — a wider RTT (width already covers both eyes) with the two views drawn.
+    /*
+    Mark the stream as side-by-side stereo (left|right in each double-wide frame). Sets the wire
+    STEREO_SBS flag so the receiver presents it per-eye. Producing actual SBS content into the RTT
+    is the caller's job — a wider RTT (width already covers both eyes) with the two views drawn.
+    */
     private val stereo: Boolean = false,
     private val colorFormat: Int = VK_FORMAT_B8G8R8A8_UNORM,
     private val name: String = "field-stream",
@@ -83,7 +90,8 @@ class FieldRTTStreamer(
     private val hostBuffers = mutableListOf<IOSurfaceHostBuffer?>()
 
     /** macOS: the global `IOSurfaceID`s of the helper's ring, in slot order. Empty until [start]. */
-    val ioSurfaceIds: List<Long> get() = allocatedIds.get()
+    val ioSurfaceIds: List<Long>
+        get() = allocatedIds.get()
 
     /** Frames the helper reported encoded. */
     @Volatile
@@ -100,9 +108,9 @@ class FieldRTTStreamer(
     /**
      * The head pose the frame about to be submitted was rendered from, or null when there isn't one.
      *
-     * Queried once per submitted frame and sent down the wire's version-2 pose tail, so the head can
-     * reproject the image to where it actually is rather than assume the pose is current. Null is the
-     * normal case for the desktop and OpenXR paths, and the wire says so explicitly.
+     * Queried once per submitted frame and sent down the wire's version-2 pose tail, so the head can reproject the
+     * image to where it actually is rather than assume the pose is current. Null is the normal case for the desktop and
+     * OpenXR paths, and the wire says so explicitly.
      *
      * Set it yourself for an unusual source, or call [tagPosesFrom] for the common one.
      */
@@ -111,15 +119,14 @@ class FieldRTTStreamer(
     /**
      * Tag each submitted frame with the pose [target] last latched.
      *
-     * This is the whole point of the latch in [afield.graphics.vulkan.targets.SideBySideStereoTarget]: the pose
-     * the eye passes drew from is still recorded when the encoded frame is handed over, so the two
-     * travel together instead of the head having to guess how old the image is.
+     * The latch in [afield.graphics.vulkan.targets.SideBySideStereoTarget] is what makes this possible: the pose the
+     * eye passes drew from is still recorded when the encoded frame is handed over, so the two travel together
+     * instead of the head having to guess how old the image is.
      */
     fun tagPosesFrom(target: afield.graphics.vulkan.targets.SideBySideStereoTarget) {
         poseTag = {
             val id = target.renderedPoseFrameId
-            if (id < 0) null
-            else StreamPose(id, (target.renderedPoseDisplayTime * 1_000_000_000.0).toLong())
+            if (id < 0) null else StreamPose(id, (target.renderedPoseDisplayTime * 1_000_000_000.0).toLong())
         }
     }
 
@@ -127,12 +134,13 @@ class FieldRTTStreamer(
     private val allocatedIds = AtomicReference<List<Long>>(emptyList())
 
     /** The ring slot the *next* rendered frame will be encoded from (render into this one). */
-    val activeSlot: Int get() = (seq % maxOf(1, surfaces.size)).toInt()
+    val activeSlot: Int
+        get() = (seq % maxOf(1, surfaces.size)).toInt()
 
     /**
-     * Launch the helper, allocate + import the surface ring, open the stream, and register the
-     * per-frame tick. Returns the ring RTTs to render into (empty on failure). Call from the render
-     * thread (a box). Blocks briefly for the alloc round-trip.
+     * Launch the helper, allocate + import the surface ring, open the stream, and register the per-frame tick. Returns
+     * the ring RTTs to render into (empty on failure). Call from the render thread (a box). Blocks briefly for the
+     * alloc round-trip.
      */
     fun start(): List<RenderToTexture> {
         if (streaming) return surfaces
@@ -140,7 +148,8 @@ class FieldRTTStreamer(
         encoder.onEvent = { ev -> onEncoderEvent(ev) }
         encoder.onExit = { code -> lprintln("info,field-stream", "field-encode exited ($code)") }
         if (!encoder.start()) {
-            lprintln("error,field-stream", "field-encode failed to launch"); return emptyList()
+            lprintln("error,field-stream", "field-encode failed to launch")
+            return emptyList()
         }
 
         val opened = if (OS == OSType.LINUX) startLinux() else startMac()
@@ -149,8 +158,10 @@ class FieldRTTStreamer(
         renderer.renderList.others[name] = this // not `+=`: the streamer removes itself, and no box run owns it
         seq = 0
         streaming = true
-        lprintln("info,field-stream",
-            "streaming ${width}x${height} @${fps}fps ($codec) -> $dest, ${surfaces.size} surface(s)")
+        lprintln(
+            "info,field-stream",
+            "streaming ${width}x${height} @${fps}fps ($codec) -> $dest, ${surfaces.size} surface(s)",
+        )
         return surfaces
     }
 
@@ -159,21 +170,26 @@ class FieldRTTStreamer(
         // 1. helper allocates a ring of properly-formatted IOSurfaces and returns their global ids.
         encoder.alloc(width = width, height = height, count = maxOf(1, ringSize))
         if (!allocLatch.await(5, TimeUnit.SECONDS)) {
-            lprintln("error,field-stream", "timed out waiting for surface allocation"); return false
+            lprintln("error,field-stream", "timed out waiting for surface allocation")
+            return false
         }
         val ids = allocatedIds.get()
         if (ids.size != maxOf(1, ringSize)) {
-            lprintln("error,field-stream", "expected ${maxOf(1, ringSize)} surfaces, got ${ids.size}"); return false
+            lprintln("error,field-stream", "expected ${maxOf(1, ringSize)} surfaces, got ${ids.size}")
+            return false
         }
 
-        // 2. import each surface (looked up by id) as the backing of its own RTT — or, on KosmicKrisp,
-        // which cannot back an image with an IOSurface, give each an ordinary RTT and the surface's
-        // pages as a buffer that [render] copies the finished frame into (see IOSurfaceHostBuffer).
+        /*
+        2. import each surface (looked up by id) as the backing of its own RTT — or, on KosmicKrisp,
+        which cannot back an image with an IOSurface, give each an ordinary RTT and the surface's
+        pages as a buffer that [render] copies the finished frame into (see IOSurfaceHostBuffer).
+        */
         val viaHostBuffer = !renderer.device.supportsMetalObjects && renderer.device.supportsExternalMemoryHost
         for (id in ids) {
             val ref = MetalIOSurface.lookup(id)
             if (ref == 0L) {
-                lprintln("error,field-stream", "IOSurfaceLookup failed for id $id"); return false
+                lprintln("error,field-stream", "IOSurfaceLookup failed for id $id")
+                return false
             }
             val rtt = RenderToTexture(renderer) {
                 if (!viaHostBuffer) importMetalIOSurface = ref
@@ -181,24 +197,36 @@ class FieldRTTStreamer(
                 this.height = this@FieldRTTStreamer.height
                 format = colorFormat
                 useDepth = false
-                colorSampled = true       // so the box can also sample it to screen if it wants
+                colorSampled = true // so the box can also sample it to screen if it wants
                 colorTransferSrc = true
             }
             surfaces += rtt
             hostBuffers += if (viaHostBuffer) IOSurfaceHostBuffer(renderer.device, ref, readOnly = false) else null
         }
-        if (viaHostBuffer) lprintln("info,field-stream", "IOSurface ring via host-pointer buffers (${renderer.device.physicalDevice.driverName})")
+        if (viaHostBuffer)
+            lprintln(
+                "info,field-stream",
+                "IOSurface ring via host-pointer buffers (${renderer.device.physicalDevice.driverName})",
+            )
 
         // 3. open the stream (surfaces already live in the helper from alloc).
-        encoder.open(width = width, height = height, fps = fps, bitrateKbps = bitrateKbps,
-                     dest = dest, codec = codec, idrIntervalMs = idrIntervalMs, stereo = stereo)
+        encoder.open(
+            width = width,
+            height = height,
+            fps = fps,
+            bitrateKbps = bitrateKbps,
+            dest = dest,
+            codec = codec,
+            idrIntervalMs = idrIntervalMs,
+            stereo = stereo,
+        )
         return true
     }
 
     /**
-     * Linux/NVIDIA: no helper-side `alloc` — this JVM allocates the ring itself
-     * (`exportOpaqueFd = true`) and hands the helper {pid,fd,size,rowPitch} handles so it can
-     * duplicate each fd out of this process's /proc/<pid>/fd (WIRE_FORMAT.md's Linux addendum).
+     * Linux/NVIDIA: no helper-side `alloc` — this JVM allocates the ring itself (`exportOpaqueFd = true`) and hands the
+     * helper {pid,fd,size,rowPitch} handles so it can duplicate each fd out of this process's /proc/<pid>/fd
+     * (WIRE_FORMAT.md's Linux addendum).
      */
     private fun startLinux(): Boolean {
         for (i in 0 until maxOf(1, ringSize)) {
@@ -213,19 +241,34 @@ class FieldRTTStreamer(
             surfaces += rtt
         }
         val handles = surfaces.map { rtt ->
-            val image = rtt.colorImageRefs.getOrNull(0)
-                ?: run { lprintln("error,field-stream", "ring surface has no color image to export"); return false }
+            val image =
+                rtt.colorImageRefs.getOrNull(0)
+                    ?: run {
+                        lprintln("error,field-stream", "ring surface has no color image to export")
+                        return false
+                    }
             VulkanExternalMemory.handle(image)
         }
 
-        // A raw fd number means nothing to another process by value alone (unlike a Mac
-        // IOSurfaceID) — hand the real kernel objects to the helper via SCM_RIGHTS on a fresh
-        // Unix socket, right after telling it (over the JSON channel) to expect them there.
+        /*
+        A raw fd number means nothing to another process by value alone (unlike a Mac
+        IOSurfaceID) — hand the real kernel objects to the helper via SCM_RIGHTS on a fresh
+        Unix socket, right after telling it (over the JSON channel) to expect them there.
+        */
         val fdSocket = java.nio.file.Files.createTempFile("field-encode-", ".sock").toString()
         java.io.File(fdSocket).delete() // bind() requires the path not exist yet
-        encoder.open(width = width, height = height, fps = fps, bitrateKbps = bitrateKbps,
-                     dest = dest, codec = codec, idrIntervalMs = idrIntervalMs,
-                     fdSurfaces = handles, fdSocket = fdSocket, stereo = stereo)
+        encoder.open(
+            width = width,
+            height = height,
+            fps = fps,
+            bitrateKbps = bitrateKbps,
+            dest = dest,
+            codec = codec,
+            idrIntervalMs = idrIntervalMs,
+            fdSurfaces = handles,
+            fdSocket = fdSocket,
+            stereo = stereo,
+        )
 
         // The helper only starts listening once it processes the `open` line above; retry the
         // connect+send briefly to absorb that race rather than assume perfect ordering.
@@ -237,7 +280,8 @@ class FieldRTTStreamer(
             if (!sent) Thread.sleep(20)
         }
         if (!sent) {
-            lprintln("error,field-stream", "failed to hand fds to field-encode-linux over $fdSocket"); return false
+            lprintln("error,field-stream", "failed to hand fds to field-encode-linux over $fdSocket")
+            return false
         }
         return true
     }
@@ -247,28 +291,34 @@ class FieldRTTStreamer(
     fun stop() {
         if (!streaming) return
         streaming = false
-        renderer.renderList.others.remove(name)
+        renderer.renderList.others.remove(name, this)
         encoder.close()
         // After in-flight frames retire: a submitted frame may still be copying into one.
         val buffers = hostBuffers.filterNotNull()
         hostBuffers.clear()
-        if (buffers.isNotEmpty()) renderer.cleanup.add {
-            buffers.forEach { it.close(); MetalIOSurface.release(it.ioSurfaceRef) }
-        }
+        if (buffers.isNotEmpty())
+            renderer.cleanup.add {
+                buffers.forEach {
+                    it.close()
+                    MetalIOSurface.release(it.ioSurfaceRef)
+                }
+            }
         lprintln("info,field-stream", "stopped after $seq frames")
     }
 
     /**
-     * Called during graphics recording each frame (this is a render-list [Target]). Defers the
-     * encoder's per-frame ready tick until this frame's fence signals — the correctness gate.
+     * Called during graphics recording each frame (this is a render-list [Target]). Defers the encoder's per-frame
+     * ready tick until this frame's fence signals — the correctness gate.
      */
     override fun render(command: CommandBuffer, index: Int) {
         if (!streaming || surfaces.isEmpty()) return
 
-        // Emit at the configured `fps`, NOT at the renderer's rate. Field renders ~60-90fps; ticking
-        // every frame floods the transport, and a receiver that can't keep up (e.g. the sim's
-        // software decoder) drops fragments → P-frames decode against missing references → garbage
-        // until the next IDR.
+        /*
+        Emit at the configured `fps`, NOT at the renderer's rate. Field renders ~60-90fps; ticking
+        every frame floods the transport, and a receiver that can't keep up (e.g. the sim's
+        software decoder) drops fragments → P-frames decode against missing references → garbage
+        until the next IDR.
+        */
         val now = System.nanoTime()
         val intervalNanos = 1_000_000_000L / maxOf(1, fps)
         if (lastSentNanos == 0L) {
@@ -276,65 +326,81 @@ class FieldRTTStreamer(
         } else {
             val due = lastSentNanos + intervalNanos
             if (now < due) return
-            // Advance on the IDEAL grid, not to `now`. We can only emit on a renderer tick, so
-            // `now` is always a little past `due`; assigning `now` carries that rounding error
-            // forward and re-rounds it every frame. The result beats against the render rate —
-            // at 30fps target on a ~64fps renderer the gate alternates between 2 and 3 ticks
-            // (31ms / 47ms), averaging ~27fps with visible judder even though nothing is lost.
-            // Advancing by exactly one interval keeps the long-run rate on target and bounds the
-            // jitter to a single render tick. If we've fallen more than a whole interval behind
-            // (a real stall — GPU hitch, encoder backpressure), resync to `now` rather than
-            // bursting several frames to catch up.
-            // Advance along the grid in WHOLE intervals, never to `now`. Snapping to `now` on a late
-            // tick silently discards the remainder, which is why the long-run rate measured 29.56fps
-            // against a 30fps target. That 0.44fps deficit is fatal downstream: the headset displays
-            // at 90Hz, so a frame occupies a whole number of refreshes and 30.00fps is exactly 3.
-            // At 29.56fps each frame wants 33.83ms — 0.5ms more than 3 refreshes — so the error
-            // accumulates until one frame is held for 4 refreshes instead of 3, roughly every 22
-            // frames (~0.7s). No amount of receiver buffering can fix that; the rate has to be
-            // exact. Skipping whole intervals keeps both the phase and the long-run rate correct.
+            /*
+            Advance on the IDEAL grid, not to `now`. We can only emit on a renderer tick, so
+            `now` is always a little past `due`; assigning `now` carries that rounding error
+            forward and re-rounds it every frame. The result beats against the render rate —
+            at 30fps target on a ~64fps renderer the gate alternates between 2 and 3 ticks
+            (31ms / 47ms), averaging ~27fps with visible judder even though nothing is lost.
+            Advancing by exactly one interval keeps the long-run rate on target and bounds the
+            jitter to a single render tick. If we've fallen more than a whole interval behind
+            (a real stall — GPU hitch, encoder backpressure), resync to `now` rather than
+            bursting several frames to catch up.
+            Advance along the grid in WHOLE intervals, never to `now`. Snapping to `now` on a late
+            tick silently discards the remainder, which is why the long-run rate measured 29.56fps
+            against a 30fps target. That 0.44fps deficit is fatal downstream: the headset displays
+            at 90Hz, so a frame occupies a whole number of refreshes and 30.00fps is exactly 3.
+            At 29.56fps each frame wants 33.83ms — 0.5ms more than 3 refreshes — so the error
+            accumulates until one frame is held for 4 refreshes instead of 3, roughly every 22
+            frames (~0.7s). No amount of receiver buffering can fix that; the rate has to be
+            exact. Skipping whole intervals keeps both the phase and the long-run rate correct.
+            */
             lastSentNanos = if (now - due > intervalNanos) {
                 due + ((now - due) / intervalNanos) * intervalNanos
             } else due
         }
 
-        // Render the box's content into exactly the active ring surface, then encode it. Rendering
-        // only this one (not all N) is what makes the ring real: while the encoder reads slot N, the
-        // next tick renders slot N+1, so a surface isn't overwritten for `ringSize` tick-intervals.
-        // This target lives in `others` (rendered outside the main pass), so driving the RTT's own
-        // render pass here is the same call path as registering it in the render list.
+        /*
+        Render the box's content into exactly the active ring surface, then encode it. Rendering
+        only this one (not all N) is what makes the ring real: while the encoder reads slot N, the
+        next tick renders slot N+1, so a surface isn't overwritten for `ringSize` tick-intervals.
+        This target lives in `others` (rendered outside the main pass), so driving the RTT's own
+        render pass here is the same call path as registering it in the render list.
+        */
         val slot = (seq % surfaces.size).toInt()
         surfaces[slot].render(command, index)
         // KosmicKrisp: the RTT is not the surface, so copy the frame into it on this same command
         // buffer; the fence-gated `frame` tick below then covers the copy too.
         hostBuffers.getOrNull(slot)?.let { host ->
-            surfaces[slot].recordColorTransferSource(command) { image -> host.copyFromImage(command.vkCommandBuffer, image, 4) }
+            surfaces[slot].recordColorTransferSource(command) { image ->
+                host.copyFromImage(command.vkCommandBuffer, image, 4)
+            }
         }
 
         val s = seq
-        // Presentation timestamp on the IDEAL grid, derived from the frame index — NOT from `now`.
-        //
-        // `now` is when a render tick happened to fire, and we can only emit on a tick (~8.3ms at
-        // Field's ~120fps loop), so a wall-clock pts bakes the quantisation error into the stream:
-        // a 30fps target lands 4 ticks apart most of the time but 3 (25ms) or 5 (41.7ms) whenever
-        // phase drifts — measured on loopback as ~190 of 2530 frames off-nominal, one every 0.45s.
-        // A receiver scheduling against those timestamps faithfully REPRODUCES the irregularity, so
-        // its jitter buffer can absorb delivery jitter but not this. Stamping `seq * interval` makes
-        // the timeline describe the cadence we intended; the receiver's buffer then has something
-        // regular to schedule against, and delivery jitter is what it soaks up.
+        /*
+        Presentation timestamp on the IDEAL grid, derived from the frame index — NOT from `now`.
+
+        `now` is when a render tick happened to fire, and we can only emit on a tick (~8.3ms at
+        Field's ~120fps loop), so a wall-clock pts bakes the quantisation error into the stream:
+        a 30fps target lands 4 ticks apart most of the time but 3 (25ms) or 5 (41.7ms) whenever
+        phase drifts — measured on loopback as ~190 of 2530 frames off-nominal, one every 0.45s.
+        A receiver scheduling against those timestamps faithfully REPRODUCES the irregularity, so
+        its jitter buffer can absorb delivery jitter but not this. Stamping `seq * interval` makes
+        the timeline describe the cadence we intended; the receiver's buffer then has something
+        regular to schedule against, and delivery jitter is what it soaks up.
+        */
         val pts = s * 1_000_000L / maxOf(1, fps)
         val forceIdr = s == 0L
-        // Read the pose here, not in the deferred block: this is the tick that rendered the surface,
-        // so this is the pose it was drawn from. Reading it after the graphics frame completes would
-        // pick up whatever had arrived by then — a different pose, silently.
+        /*
+        Read the pose here, not in the deferred block: this is the tick that rendered the surface,
+        so this is the pose it was drawn from. Reading it after the graphics frame completes would
+        pick up whatever had arrived by then — a different pose, silently.
+        */
         val pose = poseTag?.invoke()
         // Time the host's own stages. Recorded here rather than inside the deferred block for the
         // same reason the pose is read here: this is the tick that rendered the surface.
         afield.graphics.visionos.visionPoseLatest()?.let { afield.graphics.visionos.VisionPoseLatency.latched(s, it) }
         renderer.afterCurrentGraphicsFrameComplete {
             afield.graphics.visionos.VisionPoseLatency.submitted(s)
-            encoder.frame(surface = slot, seq = s, ptsMicros = pts, forceIdr = forceIdr,
-                          poseFrameId = pose?.frameId, poseDisplayTimeNanos = pose?.displayTimeNanos)
+            encoder.frame(
+                surface = slot,
+                seq = s,
+                ptsMicros = pts,
+                forceIdr = forceIdr,
+                poseFrameId = pose?.frameId,
+                poseDisplayTimeNanos = pose?.displayTimeNanos,
+            )
         }
         seq++
     }
@@ -349,7 +415,7 @@ class FieldRTTStreamer(
             }
             "error" -> {
                 lprintln("error,field-stream", "encoder: ${ev.optString("msg")}")
-                allocLatch.countDown()   // unblock start() so it fails fast
+                allocLatch.countDown() // unblock start() so it fails fast
             }
             "opened" -> lprintln("info,field-stream", "encoder opened")
             // Closes the host's last span: submit (which waits the render fence) to encode complete.
@@ -365,9 +431,8 @@ class FieldRTTStreamer(
 /**
  * The head pose a streamed frame was rendered from, as the media wire carries it.
  *
- * [displayTimeNanos] is the **head's own** clock, because that is the only clock the receiver can use
- * it in: it hands the value straight to `queryDeviceAnchor(atTimestamp:)`. It is deliberately not the
- * same quantity as the wire's `ptsMicros`, which the producer stamps on an ideal cadence grid so the
- * receiver has something regular to schedule against.
+ * [displayTimeNanos] is the **head's own** clock, because that is the only clock the receiver can use it in: it hands
+ * the value straight to `queryDeviceAnchor(atTimestamp:)`. It is a different quantity from the wire's `ptsMicros`,
+ * which the producer stamps on an ideal cadence grid so the receiver has something regular to schedule against.
  */
 data class StreamPose(val frameId: Long, val displayTimeNanos: Long)

@@ -1,15 +1,15 @@
-import afield.graphics.vulkan.Renderer
-import afield.graphics.vulkan.util.Window
-import afield.simulation.petri.PetriRun
-import afield.simulation.petri.PetriNet
-import java.nio.*
-import arrow.core.right
-import arrow.core.left
-import afield.graphics.shader.*
-import afield.graphics.scene.*
-import afield.graphics.render.*
-import afield.document.context.*
 import afield.graphics.vulkan.buffers.*
+import afield.document.context.*
+import afield.graphics.render.*
+import afield.graphics.scene.*
+import afield.graphics.shader.*
+import arrow.core.left
+import arrow.core.right
+import java.nio.*
+import afield.simulation.petri.PetriNet
+import afield.simulation.petri.PetriRun
+import afield.graphics.vulkan.util.Window
+import afield.graphics.vulkan.Renderer
 /*supermap*/ class MappedStructure {;     lateinit var tri : IntBuffer; ; }; fun Mesh.set(numVert : Int, numTriangle : Int = 0, builder : MappedStructure.() -> Unit = {}) {;     this.resize(numVert, numTriangle);     val mesh = this;     MappedStructure().apply {;          mesh.t?.mapAndWrite_ints { tri = this ; builder() } ;    }; }
 /*start*/
 /*graphics-structure-type:Bursts:Bursts*/
@@ -36,20 +36,20 @@ fun BufferParameters.asBursts(): Bursts =
 /*graphics-pc-binding:bursts*/ var Mesh.bursts by Mesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
 /*graphics-pc-binding-group:bursts*/ var MeshGroup.bursts by MeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
 /*graphics-pc-structure:aspectRatio*/ var Structure.aspectRatio by Structure.FromStructure<Any>()
-/*graphics-pc-binding:aspectRatio*/ var Mesh.aspectRatio by Mesh.BoundFromStructure<Float>()
-/*graphics-pc-binding-group:aspectRatio*/ var MeshGroup.aspectRatio by MeshGroup.BoundFromStructure<Float>()
+/*graphics-pc-binding:aspectRatio*/ var Mesh.aspectRatio by Mesh.BoundFromStructure<Number>()
+/*graphics-pc-binding-group:aspectRatio*/ var MeshGroup.aspectRatio by MeshGroup.BoundFromStructure<Number>()
 /*graphics-pc-structure:charge*/ var Structure.charge by Structure.FromStructure<Any>()
-/*graphics-pc-binding:charge*/ var Mesh.charge by Mesh.BoundFromStructure<Float>()
-/*graphics-pc-binding-group:charge*/ var MeshGroup.charge by MeshGroup.BoundFromStructure<Float>()
+/*graphics-pc-binding:charge*/ var Mesh.charge by Mesh.BoundFromStructure<Number>()
+/*graphics-pc-binding-group:charge*/ var MeshGroup.charge by MeshGroup.BoundFromStructure<Number>()
 /*graphics-pc-structure:token0*/ var Structure.token0 by Structure.FromStructure<Any>()
-/*graphics-pc-binding:token0*/ var Mesh.token0 by Mesh.BoundFromStructure<Float>()
-/*graphics-pc-binding-group:token0*/ var MeshGroup.token0 by MeshGroup.BoundFromStructure<Float>()
+/*graphics-pc-binding:token0*/ var Mesh.token0 by Mesh.BoundFromStructure<Number>()
+/*graphics-pc-binding-group:token0*/ var MeshGroup.token0 by MeshGroup.BoundFromStructure<Number>()
 /*graphics-pc-structure:token1*/ var Structure.token1 by Structure.FromStructure<Any>()
-/*graphics-pc-binding:token1*/ var Mesh.token1 by Mesh.BoundFromStructure<Float>()
-/*graphics-pc-binding-group:token1*/ var MeshGroup.token1 by MeshGroup.BoundFromStructure<Float>()
+/*graphics-pc-binding:token1*/ var Mesh.token1 by Mesh.BoundFromStructure<Number>()
+/*graphics-pc-binding-group:token1*/ var MeshGroup.token1 by MeshGroup.BoundFromStructure<Number>()
 /*graphics-pc-structure:token2*/ var Structure.token2 by Structure.FromStructure<Any>()
-/*graphics-pc-binding:token2*/ var Mesh.token2 by Mesh.BoundFromStructure<Float>()
-/*graphics-pc-binding-group:token2*/ var MeshGroup.token2 by MeshGroup.BoundFromStructure<Float>()
+/*graphics-pc-binding:token2*/ var Mesh.token2 by Mesh.BoundFromStructure<Number>()
+/*graphics-pc-binding-group:token2*/ var MeshGroup.token2 by MeshGroup.BoundFromStructure<Number>()
 var Box.sparkNet by Inheritance<PetriNet>() /*from:ps_net*/ /**/
 val Once.sparkNet by Onceing<PetriNet>() /*from:ps_net*/ /**/
 val Why.sparkNet by Whying() /*from:ps_net*/ /**/

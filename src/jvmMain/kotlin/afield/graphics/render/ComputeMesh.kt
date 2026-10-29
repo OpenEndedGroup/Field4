@@ -22,6 +22,17 @@ import org.lwjgl.vulkan.VkMemoryBarrier2
 import java.nio.ByteBuffer
 import kotlin.reflect.KProperty
 
+/**
+ * [ComputeMesh] is a compute dispatch with its own push constants inside a [ComputeModule]; the
+ * rest of the file is the barriers that order compute work against transfers, graphics and host
+ * reads.
+ *
+ * Any [ComputeTask] can be added to a module, and [computeTask] wraps a lambda as one.
+ * [computeBarrier] and [zeroBuffer] are ready-made tasks; [computeMemoryBarrier],
+ * [graphicsMemoryBarrier], [transferMemoryBarrier], [hostReadBarrier] and
+ * [graphicsHostReadBarrier] record a Vulkan synchronization-2 barrier into a command buffer.
+ */
+
 interface ComputeTask {
     fun compute(inside: ComputeModule, cmd: CommandBuffer, pushConstantBuffer: ByteBuffer)
 }

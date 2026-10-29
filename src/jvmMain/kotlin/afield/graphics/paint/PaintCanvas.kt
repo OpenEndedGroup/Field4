@@ -10,6 +10,14 @@ import afield.media.image.util.PngEncoder
 import java.lang.foreign.MemorySegment
 import kotlin.math.abs
 
+/**
+ * [PaintCanvas], a simulated oil-painting canvas that [FLine]s are painted and drawn onto, with
+ * its statistics ([PaintStats], [PaperInfo]) and [pngRow] for showing several canvases side by side.
+ *
+ * The canvas runs on the optional native wrapper `native/field-paint`; see [PaintCanvas] for
+ * building it. Tests: `PaintCanvasTest`, `GesturePaintReplayTest`, `StereoTest`.
+ */
+
 /** A turn of the path sharper than this, degrees, is a reversal: the hand pushes the brush back instead of turning it ([PaintCanvas.gesture]). */
 private const val REVERSAL_DEGREES = 120.0
 
@@ -1041,7 +1049,6 @@ internal fun polylines3d(line: FLine, spacing: Double): List<List<Vec3>> {
                         (p0.z * w0 + c1.z * w1 + c2.z * w2 + p.z * w3).toFloat())
                 }
             }
-            else -> start?.let { if (out.isNotEmpty()) to(it) }
         }
     }
     return out

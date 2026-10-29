@@ -40,6 +40,22 @@ import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CopyOnWriteArraySet
 import java.util.concurrent.atomic.AtomicInteger
 
+/**
+ * Live Metal: the channel that pushes a box's Metal program down to a visionOS head, which compiles
+ * and renders it there.
+ *
+ * A `// {{ visionmetal }}` box is sent as a [VisionMetalProgramPayload] carrying any of four independently
+ * revisioned parts — shader ([VisionMetalShaderPart]), script ([VisionMetalScriptPart]), uniform
+ * names ([VisionMetalUniformsPart]) and geometry ([VisionMetalGeometryPart]) — so reloading one part
+ * leaves the others resident on the head. [VisionMetalProgramState] holds one program's current
+ * parts on this side; [Box.visionMetalProgramOrCreate] finds or makes the one for a box, and
+ * [installVisionMetalHandler] registers the `/ws` handler that heads subscribe through and report
+ * [VisionMetalStatus] back on.
+ *
+ * Offline checks of the same program live in [VisionMetalProgramCheck] (uniform names) and
+ * [VisionGeometryPreview] (the geometry part).
+ */
+
 private const val VISION_METAL_CHANNEL = "__visionmetal__"
 
 /**
@@ -147,10 +163,9 @@ data class VisionMetalStatus(
 )
 
 /**
- * The wire encoder. `encodeDefaults` is load-bearing twice over: it puts `channel`/`type`/`version`
- * on every message, and it spells absent parts as explicit nulls, which is how the head tells
- * "unchanged" from "cleared". Public so tests can assert against the real bytes rather than a
- * lookalike configuration.
+ * The wire encoder. `encodeDefaults` puts `channel`/`type`/`version` on every message, and spells
+ * absent parts as explicit nulls, which is how the head tells "unchanged" from "cleared". Public so
+ * tests can assert against the real bytes rather than a lookalike configuration.
  */
 val visionMetalWireJson = Json { encodeDefaults = true; ignoreUnknownKeys = true }
 private val knownVisionMetalPrograms = ConcurrentHashMap<String, VisionMetalProgramState>()

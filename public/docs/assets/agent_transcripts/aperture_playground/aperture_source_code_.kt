@@ -6,23 +6,22 @@ Alpha is the fourth light band, so every intermediate filter must use blend=fals
 propDown: re-running this box with new dimensions re-runs the passes that read paintSource.
 */
 propDown<RenderToTexture>(paintSource)
-thisBox.paintSource = RenderToTexture {
+paintSource = RenderToTexture {
     width = window.width
     height = window.height
     format = VK_FORMAT_R16G16B16A16_SFLOAT
     useDepth = false
-    clearFirst = true
     clearColor = vec(0, 0, 0, 0)
     debugName = "paint-source"
 }
-thisBox.paintSource.setDefaultSampler(anisotropyEnable = false)
-renderer.renderList.preTargets["paint-source"] = thisBox.paintSource
+paintSource.setDefaultSampler(anisotropyEnable = false)
+renderer.renderList.preTargets["paint-source"] = paintSource
 prop<afield.math.linalg.Vec4>(apertureControl)
-thisBox.apertureControl = vec(1.5, 0, 0, 0)
-println("paint source RTT ready: ${thisBox.paintSource.width}x${thisBox.paintSource.height}")
+apertureControl = vec(1.5, 0, 0, 0)
+println("paint source RTT ready: ${paintSource.width}x${paintSource.height}")
 
 var module = moduleHere {
-    paintSource.apply()
+    +paintSource
     blend = false
     depthTest = false
     depthWrite = false
@@ -36,8 +35,8 @@ mesh.look = { vec(24.0, 1.0, 0.0, 0.0) }
 mesh.size = { vec(paintSource.width, paintSource.height, 0, 0) }
 
 // Nest the two editable reduction helpers without hiding their shaders.
-thisBox.frame = Rect(360.0, 70.0, 260.0, 270.0)
-thisBox.inside.boxes.getValue("aperture_half").nestedIn = thisBox
-thisBox.inside.boxes.getValue("aperture_half").frame = Rect(15.0, 70.0, 240.0, 55.0)
-thisBox.inside.boxes.getValue("aperture_quarter").nestedIn = thisBox
-thisBox.inside.boxes.getValue("aperture_quarter").frame = Rect(15.0, 150.0, 240.0, 55.0)
+frame = Rect(360.0, 70.0, 260.0, 270.0)
+inside.boxes.getValue("aperture_half").nestedIn = thisBox
+inside.boxes.getValue("aperture_half").frame = Rect(15.0, 70.0, 240.0, 55.0)
+inside.boxes.getValue("aperture_quarter").nestedIn = thisBox
+inside.boxes.getValue("aperture_quarter").frame = Rect(15.0, 150.0, 240.0, 55.0)

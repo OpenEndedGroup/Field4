@@ -1,13 +1,13 @@
-import afield.graphics.vulkan.Renderer
-import afield.graphics.vulkan.util.Window
-import arrow.core.right
-import arrow.core.left
-import afield.graphics.shader.*
-import afield.graphics.scene.*
-import afield.graphics.render.*
-import afield.document.context.*
-import afield.graphics.vulkan.buffers.*
 import afield.graphics.render.ClusterGeometryDemo
+import afield.graphics.vulkan.buffers.*
+import afield.document.context.*
+import afield.graphics.render.*
+import afield.graphics.scene.*
+import afield.graphics.shader.*
+import arrow.core.left
+import arrow.core.right
+import afield.graphics.vulkan.util.Window
+import afield.graphics.vulkan.Renderer
 var Box.lab by Inheritance<ClusterGeometryDemo>() /**/
 val Once.lab by Onceing<ClusterGeometryDemo>() /**/
 val Why.lab by Whying() /**/
@@ -113,8 +113,8 @@ fun BufferParameters.asClusters(): Clusters =
 /*compute-pc-binding:rows*/ var ComputeMesh.rows by ComputeMesh.BoundFromStructure<Any>()
 /*compute-pc-binding-group:rows*/ var ComputeMeshGroup.rows by ComputeMeshGroup.BoundFromStructure<Any>()
 /*compute-pc-structure:time*/ var Structure.time by Structure.FromStructure<Any>()
-/*compute-pc-binding:time*/ var ComputeMesh.time by ComputeMesh.BoundFromStructure<Float>()
-/*compute-pc-binding-group:time*/ var ComputeMeshGroup.time by ComputeMeshGroup.BoundFromStructure<Float>()
+/*compute-pc-binding:time*/ var ComputeMesh.time by ComputeMesh.BoundFromStructure<Number>()
+/*compute-pc-binding-group:time*/ var ComputeMeshGroup.time by ComputeMeshGroup.BoundFromStructure<Number>()
 /*compute-pc-structure:topology*/ var Structure.topology by Structure.FromStructure<Any>()
 /*compute-pc-binding:topology*/ var ComputeMesh.topology by ComputeMesh.BoundFromStructure<Any>()
 /*compute-pc-binding-group:topology*/ var ComputeMeshGroup.topology by ComputeMeshGroup.BoundFromStructure<Any>()

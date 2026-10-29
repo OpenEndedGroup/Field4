@@ -67,4 +67,22 @@ class CanonicalGraphicsStartingPointTest {
             temp.deleteRecursively()
         }
     }
+
+    @Test fun stackSLConversationsOpenWithTheirChatAndStudies() {
+        val workspace = Files.createTempDirectory("stacksl-starting-point-").toFile()
+        try {
+            val names = listOf("stacksl_conversation_ink", "stacksl_conversation_tiles", "stacksl_conversation_aurora")
+            assertTrue(startingPoints().map { it.filename }.containsAll(names))
+            for (name in names) {
+                val copy = File(workspace, openStartingPointIntoWorkspace(workspace.absolutePath, name).filename)
+                val source = File("dev_docs/agents/demos/$name")
+                assertContentEquals(File(source, "stacksl_source_ai4_chat_history_.md").readBytes(),
+                    File(copy, "stacksl_source_ai4_chat_history_.md").readBytes(), name)
+                assertTrue(File(copy, "studies/stacksl_source").listFiles().orEmpty().isNotEmpty(), name)
+                assertTrue(File(copy, "conversations").isDirectory, name)
+            }
+        } finally {
+            workspace.deleteRecursively()
+        }
+    }
 }

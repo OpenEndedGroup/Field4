@@ -1,5 +1,6 @@
 package afield.app.server
 
+// No imports: tools/first-run compiles this file on its own, with nothing of Field's on its classpath.
 var asciiWelcome = """  
           _____                    _____                    _____                    _____            _____          
          /\    \                  /\    \                  /\    \                  /\    \          /\    \         

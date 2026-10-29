@@ -1,5 +1,10 @@
 package afield.audio.spatial.steamaudio
 
+/**
+ * HRTF-based binaural rendering of a mono source: [BinauralEffect] and the native-memory
+ * [BinauralEffectParams] it reads each block.
+ */
+
 import afield.audio.spatial.steamaudio.raw.IPLBinauralEffectParams
 import afield.audio.spatial.steamaudio.raw.IPLBinauralEffectSettings
 import afield.audio.spatial.steamaudio.raw.IPLVector3

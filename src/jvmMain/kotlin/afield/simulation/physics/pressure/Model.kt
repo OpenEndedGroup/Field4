@@ -2,6 +2,15 @@ package afield.simulation.physics.pressure
 
 import kotlin.math.*
 
+/**
+ * The input model for the pressure-membrane solver: a closed triangulated [Envelope] whose
+ * triangles each carry a [Film], with [Tape] reinforcements, [Tether] and [Anchor] supports, all in SI units.
+ *
+ * Positions are a flat `DoubleArray` of x, y, z per node, read with [point]. [SurfacePoint]
+ * attaches a tape or tether to fixed barycentric weights on the material, so an attachment moves
+ * with the deformed skin. [volume] gives the enclosed volume that the gas load acts on.
+ */
+
 /** Double precision mechanical coordinates; metres throughout. */
 data class P3(val x: Double, val y: Double, val z: Double) {
     operator fun plus(b: P3) = P3(x+b.x,y+b.y,z+b.z)

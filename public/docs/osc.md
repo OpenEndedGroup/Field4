@@ -406,10 +406,10 @@ port, so calling `oscClient(...)` inside a loop costs a map lookup rather than a
 
 ```diffstatic {data-lang=kotlin}
 :::static
-val sc = oscClient("127.0.0.1", 57120)      // SuperCollider's language, on its default port
+val sc = oscClient("127.0.0.1", 57120) // SuperCollider's language, on its default port
 sc.send("/field/hello", 1, 0.5f, "text")
 
-val phone = oscClient("192.168.1.40", 9000)  // a tablet running a control surface
+val phone = oscClient("192.168.1.40", 9000) // a tablet running a control surface
 phone.send("/1/fader1", 0.25f)
 ```
 
@@ -589,8 +589,8 @@ numeric argument and, after a short pause, runs the box being edited again, so a
 scrub a constant in your code. The *launch* and *stop* addresses (`/field/launch`, `/field/stop`)
 launch and stop the box being edited. It listens on 9001 by default, one up from `osc()`'s 9000.
 
-See also: [Mobile controllers](mobile_controllers.md) for building a control surface in Field
-itself, [OSCQuery](oscquery.md), and [Sonic Pi](sonic_pi.md).
+See also: [Field from your phone](mobile_controllers.md), whose [Pad](mobile_controllers.md#the-pad-scrubs-a-number-in-your-code) drives this same number-under-the-cursor editing from a browser, plus
+[OSCQuery](oscquery.md) and [Sonic Pi](sonic_pi.md).
 
 ??? aside "Which peers were run while writing this page"
     The Field side of every exchange here was run against python-osc 1.10.2, an OSC implementation

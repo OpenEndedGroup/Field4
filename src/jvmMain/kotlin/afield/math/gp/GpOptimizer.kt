@@ -3,6 +3,20 @@ package afield.math.gp
 
 import kotlin.math.*
 
+/**
+ * Bayesian optimisation over named, bounded parameters: a GP surrogate proposes the next point to try, and you report what it scored.
+ *
+ * ```kotlin
+ * val opt = GpOptimizer(listOf(GpRange("x", -2.0, 2.0)))
+ * val best = opt.run(20) { p -> val d = p["x"]!! - 0.5; -d * d }
+ * ```
+ *
+ * [GpRange] declares a parameter, [GpAcquisition] chooses how untried points are scored (expected
+ * improvement, upper confidence bound, probability of improvement), and [GpTrial] is one evaluated
+ * point. Drive [GpOptimizer] either with `run`/`step` and an objective, or by hand with `suggest` and
+ * `observe` when the score comes from somewhere else, such as a person. Covered by `GpOptimizerTest`.
+ */
+
 /** One named, bounded parameter an optimiser or preference model searches over. */
 data class GpRange(val name: String, val lower: Double, val upper: Double) {
     init {

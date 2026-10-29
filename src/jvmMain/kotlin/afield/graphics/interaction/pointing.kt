@@ -122,7 +122,7 @@ import kotlin.math.sqrt
  * # Typical use
  *
  * ```kotlin
- * val mesh = icosphere(2)
+ * val mesh = icosphereMesh(2)
  * val view = MeshView(yawDegrees = 30.0, pitchDegrees = 20.0)
  * val camera = view.rayCamera(mesh)
  * val hit = mesh.bvh().raycast(camera.rayThroughPixel(360, 270))

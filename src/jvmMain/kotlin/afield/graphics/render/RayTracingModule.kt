@@ -1,3 +1,15 @@
+/**
+ * The ray-tracing counterpart of [Module]: a Vulkan ray-tracing pipeline built from raygen,
+ * miss, hit-group and callable shaders, with its shader binding table and bound resources.
+ *
+ * [RayTracingGroups] lists the stages; [RayTracingGroups.fromParameters] builds it from the
+ * single-stage sources on [Parameters]. A [RayTracingModulePointer] lets a box swap a recompiled
+ * module in place, as [ModulePointer] does for rasterising modules. Work is recorded as
+ * [RayTracingTask]s: [RayTracingDispatch] traces a width × height × depth grid of rays, and
+ * [rayTracingTask] wraps an arbitrary command-buffer callback. [rayTracingHostReadBarrier]
+ * makes ray-tracing shader writes visible to a host read.
+ */
+
 package afield.graphics.render
 
 import afield.graphics.scene.main
@@ -47,6 +59,7 @@ import java.nio.ByteBuffer
 import kotlin.math.min
 import kotlin.reflect.KProperty
 
+/** One ray-tracing shader: its name, stage kind and GLSL source. */
 data class RayTracingShaderStage(
     val name: String,
     val kind: ShaderKind,

@@ -15,11 +15,12 @@ import java.io.File
  * run-jvm-main afield.graphics.render.SplatToolsKt frame ~/Downloads/shot/frame_000060.compressed.ply out/
  * ```
  *
- * This exists because the first question anyone has about a fresh 126-frame capture — is it any
- * good, and which frames are worth looking at — should not require a GPU, a window and a scrub. It
- * is also the second consumer of [SplatRaster] after [SplatContactSheet], which is the point: a
- * rasterizer with exactly one caller is a rasterizer whose interface has never been tested.
+ * `sheet` draws a contact sheet of frames spread across a capture directory; `frame` rasterizes one
+ * compressed PLY. Both run on the CPU through [SplatRaster], so judging a fresh capture (is it any
+ * good, which frames are worth looking at) needs no GPU, window or scrubbing.
  */
+
+/** The `sheet` and `frame` commands behind this file's `main`. */
 object SplatTools {
 
     /** What [sheet] and [frame] wrote, so a caller can report it without re-reading the files. */

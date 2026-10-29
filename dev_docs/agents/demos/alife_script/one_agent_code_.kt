@@ -12,13 +12,19 @@ w.spawn(100.0, 60.0, maxSpeed = 50.0) {
     forever { moveFor(4.0) { orbit(centre, distance = 40.0) } }
 }
 w.run(480)
-lines(*w.trailFLines().toTypedArray(), channel = "orbit", w = 440.0, h = 240.0, fitToSize = true)
+lines(
+    *w.trailFLines().toTypedArray(),
+    channel = "orbit",
+    w = 440.0,
+    h = 240.0,
+    fitToSize = true,
+)
 
 /*
-Try this: change `distance = 40.0` to 20.0 and re-run — the circle tightens.
-Then swap `orbit(centre, ...)` for `wander(turn = 30.0)` and the same lines draw a random walk
-instead. The program is the agent's, so changing it changes one agent and nobody else.
+ Try this: change `distance = 40.0` to 20.0 and re-run — the circle tightens.
+ Then swap `orbit(centre, ...)` for `wander(turn = 30.0)` and the same lines draw a random walk
+ instead. The program is the agent's, so changing it changes one agent and nobody else.
 
-Keep the target outside the repeating block so its position is easy to edit.
-Steering blocks also accept point(...); here every step reuses the same target.
-*/
+ Keep the target outside the repeating block so its position is easy to edit.
+ Steering blocks also accept point(...); here every step reuses the same target.
+ */

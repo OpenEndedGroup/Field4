@@ -3,6 +3,7 @@
 package afield.app.client
 
 import afield.app.protocol.GoJobs
+import afield.app.protocol.StopPending
 
 import afield.ai.conversation.images
 import afield.app.canvas.animate
@@ -12,7 +13,9 @@ import afield.app.canvas.CanvasCamera
 import afield.app.canvas.CanvasPane
 import afield.app.canvas.CanvasSplitPreview
 import afield.app.canvas.Point
+import afield.app.canvas.BoxLayout
 import afield.app.canvas.boxSnappingSystem
+import afield.app.canvas.registerBoxLayoutActions
 import afield.app.canvas.drawingLayerViewportChanged
 import afield.app.canvas.initializeBookmarkSystem
 import afield.app.canvas.initializeDependencyLayer
@@ -1428,6 +1431,19 @@ private fun visibleMonacoContainer(): HTMLElement? {
     return if (isOverlayVisible(container)) container else null
 }
 
+/**
+ * The rendered Markdown preview a `notes` (or Markdown `contents`) property shows in place of
+ * Monaco (`bootstrapMonaco.js`, `syncNotesMarkdownPreview`), when that is what the editor pane is
+ * showing; null otherwise. Monaco is hidden then, so a check for a visible `.monaco-editor` alone
+ * can never pass for notes.
+ */
+private fun visibleNotesPreview(): HTMLElement? {
+    val container = visibleMonacoContainer() ?: return null
+    if (!container.classList.contains("afield-notes-preview-active")) return null
+    val preview = container.querySelector(".afield-notes-preview") as? HTMLElement ?: return null
+    return if (isOverlayVisible(preview)) preview else null
+}
+
 private fun currentViewportRect() = Rect(
     window.scrollX,
     window.scrollY,
@@ -1687,6 +1703,20 @@ private fun declaresIframeHeight(frame: HTMLElement): Boolean {
     return dataAttributePixelsOrZero(frame, "data-afield-intrinsic-height") > 0.0
 }
 
+/**
+ * The pixel width an iframe that opted out of self-measurement (`data-afield-autosize="off"`) states
+ * inline, or 0. The live panel adopts that width (`adoptDeclaredSizeForFixedPanel`), but the capture
+ * measured the iframe's rect, which `width:100% !important` makes the panel's pre-capture width, so a
+ * sheet's figure came out a column and a half wide while the panel in Field showed all four.
+ */
+private fun declaredFixedIframeWidth(element: HTMLElement): Double {
+    if (element.tagName.uppercase() != "IFRAME") return 0.0
+    if (element.getAttribute("data-afield-autosize")?.trim()?.lowercase() != "off") return 0.0
+    val inline = element.style.width.trim().lowercase()
+    if (!inline.endsWith("px")) return 0.0
+    return inline.removeSuffix("px").toDoubleOrNull()?.coerceAtLeast(0.0) ?: 0.0
+}
+
 private fun fitOutputDisclosuresForScreenshot(outputArea: HTMLElement) {
     outputArea.style.maxHeight = "none"
     val maxDisclosureHeight = max(680.0, min(1400.0, window.innerHeight.toDouble() * 0.82))
@@ -1730,11 +1760,30 @@ private fun fitOutputDisclosuresForScreenshot(outputArea: HTMLElement) {
                 content.querySelector("svg") != null -> 260.0
                 else -> 120.0
             }
-            val targetHeight = max(minimumHeight, naturalHeight + 36.0)
+            // Iframes that state a pixel height (`terminal`, `keyframeBrowser`) are the size they asked
+            // for in the live panel. The floor and slack below would stretch them, since a panel's
+            // iframe is `height:100%`, and the figure would show a panel nobody sees.
+            val declaredIframeHeight = declaredIframeHeightOrNull(content)
+            val targetHeight = if (declaredIframeHeight != null) {
+                val style = window.getComputedStyle(content)
+                declaredIframeHeight + parsePixelsOrZero(style.paddingTop) + parsePixelsOrZero(style.paddingBottom)
+            } else max(minimumHeight, naturalHeight + 36.0)
                 .coerceAtMost(maxDisclosureHeight)
             content.style.height = "${targetHeight}px"
         }
 }
+
+/** The tallest declared pixel height, when every element in [content] is an iframe that declares one. */
+private fun declaredIframeHeightOrNull(content: HTMLElement): Double? {
+    val children = content.children.asList().mapNotNull { it as? HTMLElement }
+    if (children.isEmpty() || children.any { it.tagName.uppercase() != "IFRAME" }) return null
+    val heights = children.map { child ->
+        child.style.height.trim().takeIf { it.endsWith("px") }?.removeSuffix("px")?.toDoubleOrNull() ?: return null
+    }
+    return heights.maxOrNull()?.takeIf { it > 0.0 }
+}
+
+private fun parsePixelsOrZero(value: String): Double = value.trim().removeSuffix("px").toDoubleOrNull() ?: 0.0
 
 // A `data-afield-autosize="off"` frame that declares no width of its own has no width to report and
 // none to contribute here. `outputareas2.js` (`fillWidthForDisclosure`) deliberately gives such a
@@ -1788,8 +1837,10 @@ private fun fitBoxWidthToOutputsForScreenshot(box: HTMLElement, outputArea: HTML
                     if (containsFillWidthIframe(element)) return@mapNotNull null
                     val edgeW = element.getBoundingClientRect().right - contentRect.left
                     val html = element as? HTMLElement
-                    val intrinsicWidth =
-                        html?.let { dataAttributePixelsOrZero(it, "data-afield-intrinsic-width") } ?: 0.0
+                    val intrinsicWidth = max(
+                        html?.let { dataAttributePixelsOrZero(it, "data-afield-intrinsic-width") } ?: 0.0,
+                        html?.let(::declaredFixedIframeWidth) ?: 0.0
+                    )
                     max(
                         edgeW,
                         max(
@@ -2409,6 +2460,15 @@ fun moveCanvasCamera(nextX: Double, nextY: Double, zoom: Double = mainZoom) {
     applyViewportTranslation(nextX, nextY, zoom = zoom.coerceIn(MIN_CANVAS_ZOOM, MAX_CANVAS_ZOOM))
 }
 
+/**
+ * Moves the main pane's camera for a canvas flight ([afield.app.canvas.CanvasFlightClient]). Unlike
+ * [moveCanvasCamera] it stops no flight, and it never dims the editor or brightens the grid as a pan
+ * does, so a filmed frame depends on the flight's clock alone. The server hears of it when [settled].
+ */
+internal fun flyCanvasCamera(nextX: Double, nextY: Double, zoom: Double, settled: Boolean) {
+    applyViewportTranslation(nextX, nextY, syncServer = settled, zoom = zoom.coerceIn(MIN_CANVAS_ZOOM, MAX_CANVAS_ZOOM))
+}
+
 /** Pans the pane under the pointer by a screen delta (wheel and middle-drag). */
 private fun panCanvasBy(dx: Double, dy: Double, pane: CanvasPane) {
     cancelNavigationPanAnimation()
@@ -2464,6 +2524,12 @@ private fun registerCanvasZoomActions() {
     reset.run = { resetCanvasZoom() }
     val builtin = allActions.builtin ?: js("[]")
     builtin.push(reset)
+    val interrupt: dynamic = js("({})")
+    interrupt.id = "interrupt-box"
+    interrupt.label = "Interrupt Running Box"
+    interrupt.detail = "Throw out of box code that never returns (a runaway loop or recursion), so Field runs again"
+    interrupt.run = { send("interrupt-box", js("({})")) }
+    builtin.push(interrupt)
     val frame: dynamic = js("({})")
     frame.id = "frame-selected"
     frame.label = "Frame Selected"
@@ -2477,6 +2543,7 @@ private fun registerCanvasZoomActions() {
     snapping.detail = "Snap boxes to each other while dragging and resizing, as Caps Lock does"
     snapping.run = { boxSnappingSystem.toggleFromCommand() }
     builtin.push(snapping)
+    registerBoxLayoutActions(builtin)
     // Each split command's palette preview is a live thumbnail of what it will do (canvasSplitPreview.kt).
     val splitDocs = mutableMapOf<String, Pair<String, String>>()
     window.asDynamic().canvasSplitPreview = { id: String ->
@@ -2552,6 +2619,7 @@ private fun registerCanvasZoomActions() {
     window.asDynamic().frameSelected = ::frameSelected
     window.asDynamic().setCanvasZoom = ::setCanvasZoom
     window.asDynamic().resetCanvasZoom = ::resetCanvasZoom
+    window.asDynamic().moveCanvasCamera = { x: Double, y: Double, zoom: Double -> moveCanvasCamera(x, y, zoom) }
     window.asDynamic().canvasZoom = { mainZoom }
     window.asDynamic().splitCanvasAt = { cx: Double?, cy: Double? -> CanvasCamera.splitAt(cx, cy) }
     // For tests: what the palette commands do, at an explicit position or pane.
@@ -2685,6 +2753,8 @@ fun frameSelected() {
 }
 
 private fun cancelNavigationPanAnimation() {
+    // Any other move of the camera (a pan, a zoom, a bookmark, Frame Selected) ends a live flight.
+    afield.app.canvas.CanvasFlightClient.stopLive("the canvas was moved")
     navigationPanAnimationGeneration += 1
     navigationPanAnimationHandle?.let { window.cancelAnimationFrame(it) }
     navigationPanAnimationHandle = null
@@ -3114,7 +3184,8 @@ private fun prepareWindowScreenshot(req: WindowScreenshotRequest): WindowScreens
         )
     }
 
-    if (req.showEditor && !isOverlayVisible(visibleMonacoContainer()?.querySelector(".monaco-editor"))) {
+    val notesPreview = if (req.showEditor) visibleNotesPreview() else null
+    if (req.showEditor && notesPreview == null && !isOverlayVisible(visibleMonacoContainer()?.querySelector(".monaco-editor"))) {
         return WindowScreenshotResponse(uid = req.uid, success = false, message = "editor not visible yet")
     }
 
@@ -3130,8 +3201,9 @@ private fun prepareWindowScreenshot(req: WindowScreenshotRequest): WindowScreens
     if (req.editorOnly) {
         val editor = visibleMonacoContainer()
             ?: return WindowScreenshotResponse(uid = req.uid, success = false, message = "editor not visible yet")
-        fitEditorPaneToContentAndNote(editor)
-        val clip = clipForRenderedEditorContent(req.padding)
+        // a notes preview is laid out by the page, not Monaco: clip to the pane it fills
+        if (notesPreview == null) fitEditorPaneToContentAndNote(editor)
+        val clip = (if (notesPreview != null) clipForVisibleElement(editor, req.padding) else clipForRenderedEditorContent(req.padding))
             ?: return WindowScreenshotResponse(uid = req.uid, success = false, message = "invalid editor clip")
         return WindowScreenshotResponse(
             uid = req.uid,
@@ -4221,7 +4293,7 @@ private fun renderInitialBoxPlaceholders(frames: List<InitialBoxFrame>) {
     publishInitialPlaceholderCount(frames.size)
 }
 
-private fun applyFrameToBox(box: HTMLElement, frame: Rect) {
+internal fun applyFrameToBox(box: HTMLElement, frame: Rect) {
     box.style.transform = "translate(${frame.x}px, ${frame.y}px)"
     box.style.width = "${frame.w}px"
     box.style.height = "${frame.h}px"
@@ -5413,8 +5485,25 @@ private fun applyFileProxyPresentation(box: HTMLElement) {
         titleStack.appendChild(created)
         created
     }
-    path.textContent = pathText
+    // Truncate in the middle: the head ellipsizes, the tail (the last two segments) stays visible.
+    val split = fileProxyPathTailStart(pathText)
+    val head = document.createElement("span") as HTMLElement
+    head.classList.add("file-proxy-path-head")
+    head.textContent = pathText.substring(0, split)
+    val tail = document.createElement("span") as HTMLElement
+    tail.classList.add("file-proxy-path-tail")
+    tail.textContent = pathText.substring(split)
+    path.textContent = ""
+    path.appendChild(head)
+    path.appendChild(tail)
     path.title = pathText
+}
+
+private fun fileProxyPathTailStart(path: String): Int {
+    val last = path.trimEnd('/').lastIndexOf('/')
+    if (last <= 0) return 0
+    val previous = path.lastIndexOf('/', last - 1)
+    return if (previous > 0) previous else last
 }
 
 private fun applyAi4AutoNameStyle(box: HTMLElement, generated: Boolean) {
@@ -5813,6 +5902,7 @@ suspend fun main() {
         } else {
             val box = found as HTMLElement
             val wasRenderable = hasRenderableFrame(box)
+            BoxLayout.noteIncomingFrame(u, set.value.y)
             applyFrameToBox(box, set.value)
             applyBoxVisibilityImmediate(box)
             if (!wasRenderable && hasRenderableFrame(box)) {
@@ -5898,10 +5988,11 @@ suspend fun main() {
     }
 
     handlers.put("set-visibility-animated") { message, _ ->
-        val payload = message.payload?.let { Json.decodeFromJsonElement<Map<String, Any>>(it) } ?: return@put Handled.no
-        val uid = payload["uid"] as? String ?: return@put Handled.no
-        val visible = payload["visible"] as? Boolean ?: return@put Handled.no
-        val duration = (payload["duration"] as? Double) ?: 300.0
+        // Read as a JsonObject: there is no serializer for Map<String, Any>.
+        val payload = message.payload?.jsonObject ?: return@put Handled.no
+        val uid = payload["uid"]?.jsonPrimitive?.contentOrNull ?: return@put Handled.no
+        val visible = payload["visible"]?.jsonPrimitive?.contentOrNull?.toBooleanStrictOrNull() ?: return@put Handled.no
+        val duration = payload["duration"]?.jsonPrimitive?.contentOrNull?.toDoubleOrNull() ?: 300.0
         layerDebugLog(
             "recv set-visibility-animated",
             json(
@@ -6063,6 +6154,12 @@ suspend fun main() {
         val isRunning = Json.decodeFromJsonElement<IsRunning>(message.payload!!)
         setBoxRunning(isRunning.uid, isRunning.isRunning, isRunning.watermark, isRunning.strand, isRunning.mode)
 
+        Handled.yes
+    }
+    handlers.put("stop-pending") { message, _ ->
+        val stop = Json.decodeFromJsonElement<StopPending>(message.payload!!)
+        val setStopPending = window.asDynamic().setStopPending
+        if (setStopPending != null) setStopPending(stop.uid, stop.pending)
         Handled.yes
     }
     handlers.put("go-jobs") { message, _ ->
@@ -6660,6 +6757,10 @@ suspend fun main() {
                     handleCustomizationRequest(found, set)
                 }
 
+                "tint" -> {
+                    applyBoxTint(found, set.value)
+                }
+
                 "layers" -> {
                     layerDebugLog(
                         "recv set-string layers",
@@ -6734,6 +6835,16 @@ suspend fun main() {
         val req = Json.decodeFromJsonElement<DocumentBoxNavigation>(message.payload!!)
         navigateDocumentBox(req) { result ->
             message.replyTo?.let { reply(Message(it).payload(result)) }
+        }
+        Handled.yes
+    }
+
+    // Only a Field tab in Electron can open a native audience window. Browser clients keep guides local.
+    handlers.put("presentation-state") { message, _ ->
+        val bridge = window.asDynamic().fieldElectron
+        if (bridge != null && bridge.presentGuide != null) {
+            val state = JSON.parse<dynamic>(message.payload.toString())
+            bridge.presentGuide(state)
         }
         Handled.yes
     }
@@ -7463,9 +7574,12 @@ suspend fun main() {
         }
         selected.copy().forEach { CanvasCamera.place(it) }
         canvasGestures.requestConnectionGroupRebuild()
+        BoxLayout.dragging = false
+        BoxLayout.noteDropped(selected)
     }
 
     interactable.on("dragstart") { event ->
+        BoxLayout.dragging = true
         if (pendingShiftToggleBox != null) {
             pendingShiftToggleHadDrag = true
         }
@@ -7786,6 +7900,8 @@ suspend fun main() {
         initMenuSupport()
         registerBuiltinCommands()
         initializeBookmarkSystem()
+        afield.app.canvas.CanvasFlightClient.install()
+        afield.app.canvas.StrokeLayer.install()
         initializeDrawingLayer()
         initializeDependencyLayer()
         registerCanvasZoomActions()
@@ -7888,6 +8004,8 @@ fun TagConsumer<HTMLElement>.createBox(
             div(classes = "disclosure-group") {
             }
         }
+        // Lets a press just outside the box (on its border ring) start interact.js's edge resize.
+        div(classes = "box-resize-halo") {}
     }
     d1.style.transform = "translate(${frame.x}px, ${frame.y}px)"
     d1.asDynamic().offline = true
@@ -7903,6 +8021,7 @@ fun TagConsumer<HTMLElement>.createBox(
     d1d.server_visible = true
 
     oa = d1.getElementsByClassName("outputArea").asList()[0] as HTMLElement
+    BoxLayout.watch(d1)
     applyBoxVisibilityImmediate(d1)
     if (!sendInitialSync) {
         animateOfflineBoxArrival(d1)
@@ -8001,4 +8120,18 @@ private fun setGoJobsBadge(uid: String, count: Int, strands: List<String>) {
             box.appendChild(badge)
         }
     }, GO_JOBS_BADGE_DELAY_MS)
+}
+
+/**
+ * Show a box's `tint` (Box.tint on the JVM): a CSS colour washed over the box with a bright edge, or
+ * none for a blank value. The look is `.box.tinted` in field.css.
+ */
+fun applyBoxTint(box: HTMLElement, value: String?) {
+    if (value.isNullOrBlank()) {
+        box.classList.remove("tinted")
+        box.style.removeProperty("--box-tint")
+    } else {
+        box.style.setProperty("--box-tint", value)
+        box.classList.add("tinted")
+    }
 }

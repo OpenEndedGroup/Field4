@@ -75,6 +75,14 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
+ * Drawing [FLine]s into a box's output as SVG: [Box.lines] and [Box.l] display them, [linesToHTML]
+ * and [drawToSVG] return the markup, and [outputTo] draws one line onto a Skia `Canvas`.
+ *
+ * Lines carrying [FLine.onClick] or [FLine.hoverColor] are drawn as interactive SVG with click
+ * callbacks; everything else goes through Skia's SVG canvas.
+ */
+
+/**
  * The exact HTML a non-editable [Box.lines] would display, without displaying it.
  *
  * Every `lines(...)` overload builds this and hands it to `display`, and the branch it takes is not
@@ -121,7 +129,11 @@ fun linesToHTML(
  * @param w Output SVG width in pixels.
  * @param h Output SVG height in pixels.
  * @param fitToSize If true, uniformly scales and offsets the lines to fit inside [w]x[h] with padding.
+ * @param editable If true, points can be dragged; the returned state's `currentLines()` reads them.
+ * @param onEditCommitted With [editable], receives detached copies of the lines each time a drag
+ *   finishes. Keep it short; it runs on the server's message thread.
  */
+@JvmOverloads
 fun Box.lines(
     vararg m: FLine,
     channel: String = "lines",
@@ -130,13 +142,14 @@ fun Box.lines(
     fitToSize: Boolean = false,
     editable: Boolean = false,
     drawing: Boolean = false,
-    liveDrawing: Boolean = false
+    liveDrawing: Boolean = false,
+    onEditCommitted: ((List<FLine>) -> Unit)? = null,
 ): EditableFLineViewState? {
     val lines = m.asList().renderableLines()
     if (editable) {
         val fit = computeFitTransform(lines, w, h, fitToSize)
         val pairs = lines.map { it to it.applyFit(fit) }
-        val widget = buildEditableSVGWidget(pairs, fit, w, h, drawingEnabled = drawing, liveDrawingEnabled = liveDrawing)
+        val widget = buildEditableSVGWidget(pairs, fit, w, h, drawingEnabled = drawing, liveDrawingEnabled = liveDrawing, onEditCommitted = onEditCommitted)
         display(channel, widget.html)
         return widget.viewState
     }
@@ -153,7 +166,11 @@ fun Box.lines(
  * @param w Output SVG width in pixels.
  * @param h Output SVG height in pixels.
  * @param fitToSize If true, uniformly scales and offsets the lines to fit inside [w]x[h] with padding.
+ * @param editable If true, points can be dragged; the returned state's `currentLines()` reads them.
+ * @param onEditCommitted With [editable], receives detached copies of the lines each time a drag
+ *   finishes. Keep it short; it runs on the server's message thread.
  */
+@JvmOverloads
 fun Box.lines(
     m: List<FLine>,
     channel: String = "lines",
@@ -162,13 +179,14 @@ fun Box.lines(
     fitToSize: Boolean = false,
     editable: Boolean = false,
     drawing: Boolean = false,
-    liveDrawing: Boolean = false
+    liveDrawing: Boolean = false,
+    onEditCommitted: ((List<FLine>) -> Unit)? = null,
 ): EditableFLineViewState? {
     val lines = m.renderableLines()
     if (editable) {
         val fit = computeFitTransform(lines, w, h, fitToSize)
         val pairs = lines.map { it to it.applyFit(fit) }
-        val widget = buildEditableSVGWidget(pairs, fit, w, h, drawingEnabled = drawing, liveDrawingEnabled = liveDrawing)
+        val widget = buildEditableSVGWidget(pairs, fit, w, h, drawingEnabled = drawing, liveDrawingEnabled = liveDrawing, onEditCommitted = onEditCommitted)
         display(channel, widget.html)
         return widget.viewState
     }
@@ -187,6 +205,7 @@ fun Box.lines(
  * @param splitByChannel If true, each map entry is displayed in its own channel key.
  * @param channel When [splitByChannel] is false, all lines are combined and displayed here.
  */
+@JvmOverloads
 fun Box.lines(
     linesByChannel: Map<String, List<FLine>>,
     w: Double = -1.0,
@@ -196,7 +215,8 @@ fun Box.lines(
     channel: String = "lines",
     editable: Boolean = false,
     drawing: Boolean = false,
-    liveDrawing: Boolean = false
+    liveDrawing: Boolean = false,
+    onEditCommitted: ((List<FLine>) -> Unit)? = null,
 ): Map<String, EditableFLineViewState> {
     val filteredLinesByChannel = linesByChannel.mapValues { (_, lines) -> lines.renderableLines() }
     val allLines = filteredLinesByChannel.values.flatten()
@@ -207,7 +227,7 @@ fun Box.lines(
             val hasInteractive = lines.any { it.onClick != null || it.hoverColor != null }
             if (editable) {
                 val pairs = lines.map { it to it.applyFit(fit) }
-                val widget = buildEditableSVGWidget(pairs, fit, w, h, drawingEnabled = drawing, liveDrawingEnabled = liveDrawing)
+                val widget = buildEditableSVGWidget(pairs, fit, w, h, drawingEnabled = drawing, liveDrawingEnabled = liveDrawing, onEditCommitted = onEditCommitted)
                 display(channelName, widget.html)
                 states[channelName] = widget.viewState
             } else if (hasInteractive) {
@@ -222,7 +242,7 @@ fun Box.lines(
         val hasInteractive = allLines.any { it.onClick != null || it.hoverColor != null }
         if (editable) {
             val pairs = allLines.map { it to it.applyFit(fit) }
-            val widget = buildEditableSVGWidget(pairs, fit, w, h, drawingEnabled = drawing, liveDrawingEnabled = liveDrawing)
+            val widget = buildEditableSVGWidget(pairs, fit, w, h, drawingEnabled = drawing, liveDrawingEnabled = liveDrawing, onEditCommitted = onEditCommitted)
             display(channel, widget.html)
             states[channel] = widget.viewState
         } else if (hasInteractive) {

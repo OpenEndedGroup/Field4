@@ -52,6 +52,7 @@ import afield.ui.visualization.typed
 import afield.ai.tools.AiToolUseImprovementMonitor
 import afield.app.diagnostics.CodeUseSemanticAnalyzeRequest
 import afield.app.diagnostics.CodeUseTelemetryService
+import afield.app.diagnostics.LatencySpans
 import afield.app.notifications.notify
 import afield.app.protocol.AgentOpenPlaywrightResponse
 import afield.app.protocol.AllLayersResult
@@ -157,6 +158,7 @@ import afield.document.properties.PropertyDependencies
 import afield.document.workspace.AgentWorktreeActionRequest
 import afield.document.workspace.AgentWorktreeActionResponse
 import afield.document.workspace.AiProviderModelSettings
+import afield.document.workspace.LocalAiConnectionRequest
 import afield.document.workspace.AiSettingsStatus
 import afield.document.workspace.AiSettingsUpdateRequest
 import afield.document.workspace.AiSettingsUpdateResponse
@@ -269,6 +271,10 @@ import afield.ai.completion.AI4_AUTO_NAME_PROPERTY
 import afield.ai.completion.AI4_AUTO_NAME_SIGNATURE_PROPERTY
 import afield.ai.models.AiSettingsSaveRequest
 import afield.ai.models.aiProviderStatus
+import afield.ai.models.checkLocalAiConnection
+import afield.ai.models.localAiFeedback
+import afield.ai.models.aiSettingsEnvironmentOverrides
+import afield.ai.models.readLocalAiCredential
 import afield.ai.models.configuredAiBaseUrl
 import afield.ai.models.configuredAiModelSettings
 import afield.ai.models.saveAiSettings
@@ -295,6 +301,7 @@ import afield.app.server.installFieldAudioProxyRoutes
 import afield.app.server.installSignalViewerRoutes
 import afield.app.server.installDocsAnnotationRoutes
 import afield.app.server.installTerminalRoutes
+import afield.media.webrtc.installWebRTCSignalingRoutes
 import afield.app.server.docsAccessPolicy
 import afield.app.server.SEC_FETCH_SITE_HEADER
 import afield.app.server.DocsAccessPolicy
@@ -363,6 +370,18 @@ import kotlin.concurrent.thread
 import kotlin.system.exitProcess
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
+
+/**
+ * The Field server: the Ktor HTTPS and WebSocket application that holds open documents, runs box
+ * code and answers the browser's RPC messages.
+ *
+ * [Server] starts the HTTPS listener (and the loopback HTTP mirror), mounts the `/ws` socket and
+ * the static and iframe routes such as `/browse`, `/inspect` and `/logs`, and installs the message
+ * handlers. Each connected browser has a [SessionInformation] for the document it shows;
+ * [sessions] maps sockets to those, and [documents] maps document names to them.
+ * [OutputBackPressure] limits how much box output is in flight to a client at once. Command-line
+ * options such as `--workspace` and `--document` are read here as [home] and [documentArgument].
+ */
 
 
 /***
@@ -638,6 +657,18 @@ class SessionInformation(
 
     // Track sidecar-bearing properties that need to be written to disk on next save.
     val pendingSidecarSaves = ConcurrentHashMap.newKeySet<Pair<String, String>>()
+
+    /**
+     * [afield.document.persistence.PersistedFingerprint] of this document when it last matched disk:
+     * set when the loader has read it and at every save; null for a document never read or saved.
+     * A save is due when the current fingerprint differs, even with nothing in [pendingSidecarSaves].
+     */
+    @Volatile
+    var savedFingerprint: Long? = null
+
+    /** The per-property hashes behind [savedFingerprint], for the unmarked-edit tripwire. */
+    @Volatile
+    var savedFingerprintEntries: Map<Pair<String, String>, Long>? = null
     private val pendingSidecarSaveVersions = ConcurrentHashMap<Pair<String, String>, Long>()
     private val propertySyncSequences = ConcurrentHashMap<Pair<String, String>, AtomicLong>()
     private val pendingPropertySyncOrigins = ConcurrentHashMap<Pair<String, String>, PropertySyncOrigin>()
@@ -718,9 +749,16 @@ class SessionInformation(
      * as its KDoc says. Called, this always tears down.
      */
     fun cleanup() {
+        afield.document.workspace.KitRuntime.deactivate(this)
+        if (File(filename, afield.document.workspace.KitInstances.RECORD).isFile) autorunTriggered = false
         _fileWatchManager?.stop()
         _fileWatchManager = null
         retireBoxes(boxes.values.toList(), "session-cleanup")
+        // A closed document leaves no reactive bookkeeping behind: write its dependency record
+        // (so the next open still remembers it), then drop the in-memory copies.
+        runCatching { PropertyDependencies.flush(this, force = true) }
+        PropertyDependencies.forget(filename)
+        afield.runtime.lifecycle.ReactiveRuns.forgetDocument(filename)
     }
 }
 
@@ -788,8 +826,10 @@ val documentReadyHooks = java.util.concurrent.CopyOnWriteArrayList<(SessionInfor
 
 fun SessionInformation.scheduleAutorunBoxes(delayMs: Long = 500L) {
     if (autorunTriggered) return
+    afield.document.workspace.KitRuntime.activate(this)
     autorunTriggered = true
-    autorunBoxes(boxes.values, delayMs)
+    val ordered = afield.document.workspace.KitRuntime.launchBoxes(this).orEmpty()
+    autorunBoxes(boxes.values.filterNot { it in ordered }, delayMs)
     documentReadyHooks.forEach { hook ->
         runCatching { hook(this) }.onFailure { lprintln("warning,server", "document-ready hook failed for $documentName: ${it.message}") }
     }
@@ -1133,13 +1173,17 @@ private fun currentAiSettingsStatus(): AiSettingsStatus {
         openRouterConfigPath = status.openRouterConfigPath,
         baseUrl = status.baseUrl,
         openRouterBaseUrl = configuredAiBaseUrl("openrouter"),
+        localBaseUrl = configuredAiBaseUrl("local"),
+        hasLocalApiKey = readLocalAiCredential() != null,
+        environmentOverrides = aiSettingsEnvironmentOverrides(),
         flagshipModel = status.modelSettings.flagshipModel,
         fastModel = status.modelSettings.fastModel,
         fallbackModel = status.modelSettings.fallbackModel,
         modelsByProvider = mapOf(
             "openai" to models("openai"),
             "openrouter" to models("openrouter"),
-            "anthropic" to models("anthropic")
+            "anthropic" to models("anthropic"),
+            "local" to models("local")
         )
     )
 }
@@ -1195,6 +1239,7 @@ private fun normalizeFieldPreferences(preferences: FieldPreferences): FieldPrefe
 private fun applyFieldPreferences(preferences: FieldPreferences) {
     val framePresentationLogWasEnabled = Options.framePresentationLog
     CodeUseTelemetryService.configureQuietMode(preferences.quietMode)
+    afield.runtime.lifecycle.BoxInterrupt.applyPreference(preferences.boxInterrupt)
     Options.profiling = if (Options.captureCompatibility) false else preferences.profiling
     Options.framePresentationLog = preferences.framePresentationLog
     Options.logShadercSource = preferences.logShadercSource
@@ -1366,6 +1411,33 @@ private fun relaunchWithWorkspace(workspace: String) {
         .redirectError(ProcessBuilder.Redirect.appendTo(logFile))
         .start()
     lprintln("info,server", "relaunching Field via current Java command; restart log: ${logFile.absolutePath}")
+}
+
+/** Save the current workspace and restart through its launcher so kit build inputs take effect. */
+private fun restartForKits() {
+    afield.document.workspace.KitRestarts.prepare(File(app).canonicalFile, ::restartPreparedKitHost)
+}
+
+private fun restartPreparedKitHost() {
+    val directory = File(app).canonicalFile
+    val windows = System.getProperty("os.name").startsWith("Windows")
+    val launcher = File(directory, if (windows) "field.ps1" else "field.sh")
+    require(launcher.isFile) { "This Field installation has no launcher for rebuilding kit runtimes" }
+    val log = workspaceRestartLogFile().also { it.parentFile.mkdirs() }
+    thread(name = "field-kit-restart", isDaemon = false) {
+        Thread.sleep(300)
+        afield.document.persistence.DocumentShutdownFlush.flushPendingDocumentSaves()
+        persistWorkspacePath(home)
+        runCatching { Server.ourServer.stop(500, 2000) }
+        // Keep existing Electron/browser windows: they reconnect to the same host after the build.
+        val command = if (windows) listOf("powershell.exe", "-ExecutionPolicy", "Bypass", "-File", launcher.path,
+            "--server-only", "--workspace", home) else listOf("bash", launcher.path, "--server-only", "--workspace", home)
+        val builder = ProcessBuilder(command).directory(directory).redirectOutput(ProcessBuilder.Redirect.appendTo(log))
+            .redirectError(ProcessBuilder.Redirect.appendTo(log))
+        builder.environment()["AFIELD_SKIP_BUILD"] = "1"
+        builder.start()
+        exitProcess(0)
+    }
 }
 
 private fun launchFieldDesktopFromProject(projectDir: File, reason: String) {
@@ -2505,24 +2577,8 @@ class Server {
                             refreshFileProxyBoxes(info, notifyMissing = false)
                             // Box-to-box reads recorded since the last tick, beside metadata.edn.
                             PropertyDependencies.flush(info)
-                            // Only persist when we know sidecar-bearing properties changed.
-                            if (info.pendingSidecarSaves.isNotEmpty()) {
-//                            lblock(" saving to ${info.filename}")
-                                run {
-                                    try {
-                                        // Include root box in saved boxes to persist root properties like bookmarks
-                                        val allBoxes = info.boxes.values.toMutableSet()
-                                        allBoxes.add(info.root)
-                                        val pendingSnapshot = info.pendingSidecarSnapshot()
-                                        SavingContext().save(info.filename, allBoxes, onComplete = {
-                                            info.clearSavedSidecars(pendingSnapshot)
-                                        })
-                                    } catch (ex: Exception) {
-                                        lprintln("error,server", "trouble saving")
-                                        ex.printStackTrace()
-                                    }
-                                }
-                            }
+                            // Persist marked edits, and unmarked ones the fingerprint sees (in-place mutation, writes during load).
+                            DocumentShutdownFlush.saveIfPending(info, inline = false, reason = "autosave", log = false)
                         }
                     } catch (t: Throwable) {
                         lprintln("error,server", "exception inside saving / resync loop -- will retry")
@@ -2638,14 +2694,33 @@ class Server {
                             scope = request.scope,
                             projectName = request.projectName
                         )
-                    "run" -> {
+                    "rename" -> OperationTranscript.renameMacro(
+                        documentPath,
+                        request.name,
+                        request.newName,
+                        request.scope,
+                        request.projectName
+                    )
+                    "delete", "remove" -> OperationTranscript.deleteMacro(
+                        documentPath,
+                        request.name,
+                        request.scope,
+                        request.projectName
+                    )
+                    "run", "step" -> {
                         val run = OperationTranscript.runMacro(
                             documentPath = documentPath,
                             name = request.name,
                             targetBoxes = request.selection,
                             direction = "do",
                             scope = request.scope,
-                            projectName = request.projectName
+                            projectName = request.projectName,
+                            replay = OperationTranscript.MacroReplayOptions(
+                                asCopy = request.asCopy,
+                                offsetX = request.offsetX,
+                                offsetY = request.offsetY,
+                                step = if (command == "step") request.step.coerceAtLeast(0) else -1
+                            )
                         )
                         OperationTranscript.MacroResult(
                             success = run.success,
@@ -2796,7 +2871,12 @@ class Server {
 
                 val set = Json.decodeFromJsonElement<Set_string>(message.payload!!)
                 val isEditorStateProperty = set.property.endsWith("_editorState")
-                val targetBox = box(set.uid)
+                // A uid the server has never seen is a box the canvas just made (`createBox` sends
+                // its name first): record it as a `create`, not as an edit from nothing.
+                // A uid the server has never seen is a box the canvas just made (`createBox` sends its
+                // name, frame and code at once): the macro recorder records its `create` the moment
+                // it exists, and the values that follow fold into it.
+                val targetBox = box(set.uid, onCreated = { OperationTranscript.recordCreate(it) })
                 thisSessionInfo.get().recordPropertySyncOrigin(
                     set.uid,
                     set.property,
@@ -2847,10 +2927,10 @@ class Server {
                         oldValue,
                         targetBox.getPropertyRaw(set.property)?.toString().orEmpty()
                     )
-                    // Proactively warm the K1 completion delegate as the user edits Kotlin code, so
-                    // the intelligent-error path (and completion) is warm by run time instead of
-                    // paying the ~1s bootstrap on the first compile error. Self-de-duplicating.
-                    if (set.property == "code") {
+                    // Warm the K1 completion delegate as the user edits a Kotlin box, so error suggestions
+                    // and completion are warm by run time. Kotlin boxes only: `ki` builds a Kotlin engine on
+                    // first touch, which in a Clojure box ran on the runloop ahead of its own completion.
+                    if (set.property == "code" && targetBox.ke is KotlinExecution) {
                         targetBox.ki.warmCompletionAsync()
                     }
                 }
@@ -2917,7 +2997,7 @@ class Server {
 
                 // Updates box frame or property; resyncs on main thread
                 if (set.property == "frame") {
-                    val b = box(set.uid)
+                    val b = box(set.uid, onCreated = { OperationTranscript.recordCreate(it) })
                     val oldFrame = b.frame
                     b.frame = set.value
                     OperationTranscript.recordMove(b, oldFrame, b.frame)
@@ -2952,7 +3032,7 @@ class Server {
 
                 set.values.forEach { update ->
                     if (update.property == "frame") {
-                        val b = box(update.uid)
+                        val b = box(update.uid, onCreated = { OperationTranscript.recordCreate(it) })
                         val oldFrame = b.frame
                         b.frame = update.value
                         OperationTranscript.recordMove(b, oldFrame, b.frame)
@@ -3375,6 +3455,13 @@ class Server {
                 Handled.yes
             })
 
+            handlers["export-web-document"] = mutableSetOf({ _, reply ->
+                reply(Message("export-web-document").payload(
+                    afield.document.workspace.exportWebDocument(thisSessionInfo.get())
+                ))
+                Handled.yes
+            })
+
             handlers["paste-boxes"] = mutableSetOf({ message, reply ->
                 val req = Json.decodeFromJsonElement<PasteBoxes>(message.payload!!)
                 val info = thisSessionInfo.get()
@@ -3421,37 +3508,11 @@ class Server {
 
                 // The slideshow whose step is on screen in this document; before any step has been
                 // shown, fall back to the first box holding one (a document may hold several guides).
-                val slideShow = SlideShowInstance.activeIn(info.root)
-                    ?: info.boxes.values.firstNotNullOfOrNull { it.getPropertyRaw("slideShow") as? SlideShowInstance }
-                run {
-                    if (slideShow != null) {
-                        GlobalScope.launch {
-                            when {
-                                cmd.command == "next" -> slideShow.next()
-                                cmd.command == "previous" -> slideShow.previous()
-                                cmd.command == "start" -> slideShow.start()
-                                cmd.command == "home" -> slideShow.home()
-                                cmd.command == "stop" -> slideShow.stop()
-                                cmd.command.startsWith("callback:") -> {
-                                    // Handle custom link callbacks
-                                    val callbackName = cmd.command.substring(9) // Remove "callback:" prefix
-                                    val executed = slideShow.executeCallback(callbackName)
-                                    if (!executed) {
-                                        lprintln("warning,slideshow", "No callback registered for: $callbackName")
-                                    }
-                                }
-
-                                else -> {
-                                    // Try to parse as a step number
-                                    val stepNum = cmd.command.toIntOrNull()
-                                    if (stepNum != null) {
-                                        slideShow.goToStep(stepNum)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                val candidates = info.boxes.values.mapNotNull { it.getPropertyRaw("slideShow") as? SlideShowInstance }
+                    .filter { !cmd.guideOnly || it.presentationOptions == null }
+                val slideShow = if (cmd.slideshowId.isNotBlank()) candidates.firstOrNull { it.slideshowId == cmd.slideshowId }
+                    else SlideShowInstance.activeIn(info.root)?.takeIf { it in candidates } ?: candidates.firstOrNull()
+                if (slideShow != null) GlobalScope.launch { slideShow.command(cmd.command) }
                 Handled.yes
             })
 
@@ -3610,15 +3671,23 @@ class Server {
                     return@mutableSetOf Handled.yes
                 }
 
-                GlobalScope.launch {
-                    try {
-                        session.translate(update)
-                    } catch (e: Exception) {
-                        lprintln("error,fline", "Error applying FLine edit translation: ${e.message}")
-                        e.printStackTrace()
-                    }
+                // Applied in websocket order, so the fline-edit-commit that follows a drag sees every delta.
+                try {
+                    session.translate(update)
+                } catch (e: Exception) {
+                    lprintln("error,fline", "Error applying FLine edit translation: ${e.message}")
+                    e.printStackTrace()
                 }
 
+                Handled.yes
+            })
+
+            handlers["fline-edit-commit"] = mutableSetOf({ message, reply ->
+                val id = (message.payload as? kotlinx.serialization.json.JsonObject)?.get("sessionId")
+                    ?.let { (it as? kotlinx.serialization.json.JsonPrimitive)?.content }
+                val session = id?.let { getFLineEditSession(it) } ?: return@mutableSetOf Handled.yes
+                // As threeLines does: the snapshot and the callback both happen here, in websocket order.
+                runCatching { session.commit() }.onFailure { lprintln("error,fline", "onEditCommitted failed: ${it.message}") }
                 Handled.yes
             })
 
@@ -3826,11 +3895,15 @@ class Server {
                 // If animated, send custom visibility change messages
                 if (update.animated) {
                     thisSessionInfo.get().boxes.values.forEach { box ->
+                        // A JsonObject, not a Map<String, Any>: kotlinx.serialization has no serializer
+                        // for Any, so the map threw here and no box faded (docs/layers.md capture).
                         val visibilityMessage = Message("set-visibility-animated").payload(
-                            mapOf(
-                                "uid" to box.id,
-                                "visible" to box.visible,
-                                "duration" to update.duration
+                            kotlinx.serialization.json.JsonObject(
+                                mapOf(
+                                    "uid" to kotlinx.serialization.json.JsonPrimitive(box.id),
+                                    "visible" to kotlinx.serialization.json.JsonPrimitive(box.visible),
+                                    "duration" to kotlinx.serialization.json.JsonPrimitive(update.duration),
+                                )
                             )
                         )
                         box.inside.sessions.forEach { _send(it, visibilityMessage) }
@@ -3867,6 +3940,8 @@ class Server {
                             val boxLayers = parseLayersList(box.layers)
                             if (boxLayers.contains(oldActiveLayer)) {
                                 box.layerFrames[oldActiveLayer] = box.frame
+                                // An in-place write to the map: no property set, so mark it.
+                                box.notePersistentChange("layerFrames")
                                 lprintln(
                                     "debug,layers",
                                     "Saved frame for box ${box.id} in layer $oldActiveLayer: ${box.frame}"
@@ -3932,6 +4007,7 @@ class Server {
 
             registerTemplate(home)
             persistWorkspacePath(home)
+            afield.document.workspace.KitRuntime.start()
             installKitFirstOpen()
 
             val preferredPort = System.getenv("PORT")?.trim()?.toIntOrNull() ?: 9092
@@ -4094,6 +4170,7 @@ class Server {
                         installSignalViewerRoutes()
                         installDocsAnnotationRoutes()
                         installDocumentGuideRoutes()
+                        installKitRoutes(::restartForKits)
                         installChatlogRoutes()
 
                         installControllerRoutes(::currentFieldPreferences)
@@ -4388,6 +4465,11 @@ class Server {
                             call.respond(response)
                         }
 
+                        get("/api/perf/spans") {
+                            val after = call.request.queryParameters["since"]?.toLongOrNull() ?: 0L
+                            call.respond(LatencySpans.since(after))
+                        }
+
                         get("/api/code-use/summary") {
                             call.respond(CodeUseTelemetryService.summary())
                         }
@@ -4626,6 +4708,28 @@ class Server {
                             }
                         }
 
+                        get("/api/ai-local-feedback") {
+                            call.response.header("Cache-Control", "no-store")
+                            call.respondText(withContext(Dispatchers.IO) { localAiFeedback() }, ContentType.Application.Json)
+                        }
+
+                        post("/api/ai-local-connection") {
+                            if (!isSameSiteRequest(call.request.header("Sec-Fetch-Site"),
+                                    call.request.header("Origin"), call.request.header("Host"))) {
+                                call.respond(HttpStatusCode.Forbidden, mapOf("error" to "Open local AI settings from Field's welcome page."))
+                                return@post
+                            }
+                            try {
+                                val request = call.receive<LocalAiConnectionRequest>()
+                                call.respond(withContext(Dispatchers.IO) { checkLocalAiConnection(request) })
+                            } catch (e: Exception) {
+                                call.respond(HttpStatusCode.BadRequest, mapOf("error" to when (e) {
+                                    is IllegalArgumentException -> (e.message ?: "Invalid local endpoint.")
+                                    else -> "Could not reach the model server from Field. Check its address, port, firewall and whether it is running."
+                                }))
+                            }
+                        }
+
                         post("/api/ai-settings") {
                             try {
                                 val request = call.receive<AiSettingsUpdateRequest>()
@@ -4637,7 +4741,9 @@ class Server {
                                         openRouterBaseUrl = request.openRouterBaseUrl,
                                         flagshipModel = request.flagshipModel,
                                         fastModel = request.fastModel,
-                                        fallbackModel = request.fallbackModel
+                                        fallbackModel = request.fallbackModel,
+                                        localBaseUrl = request.localBaseUrl,
+                                        localApiKey = request.localApiKey
                                     )
                                 )
                                 call.respond(
@@ -4652,7 +4758,11 @@ class Server {
                                         flagshipModel = status.modelSettings.flagshipModel,
                                         fastModel = status.modelSettings.fastModel,
                                         fallbackModel = status.modelSettings.fallbackModel,
-                                        message = "AI settings saved; the next AI request will use ${status.provider}."
+                                        message = if (aiSettingsEnvironmentOverrides().isEmpty()) "AI settings saved; the next AI request will use ${status.provider}."
+                                            else "Saved. Environment overrides are active; remove them and restart Field to use these settings.",
+                                        localBaseUrl = configuredAiBaseUrl("local"),
+                                        hasLocalApiKey = readLocalAiCredential() != null,
+                                        environmentOverrides = aiSettingsEnvironmentOverrides()
                                     )
                                 )
                             } catch (e: IllegalArgumentException) {
@@ -4681,6 +4791,14 @@ class Server {
                             if (call.refuseUnlessSameSiteDocsClient(afield.app.server.docsAccessPolicy)) return@get
                             val refresh = call.request.queryParameters["refresh"] == "1"
                             call.respond(withContext(Dispatchers.IO) { afield.graphics.vulkan.util.VulkanProbe.status(refresh) })
+                        }
+
+                        // The optional native geometry libraries (Morse–Smale, principal curves,
+                        // polyvector): present or not, and how to install each, for the welcome page.
+                        // Library objects only look for files, so this loads no native code.
+                        get("/api/native-geometry-status") {
+                            if (call.refuseUnlessSameSiteDocsClient(afield.app.server.docsAccessPolicy)) return@get
+                            call.respond(withContext(Dispatchers.IO) { afield.geometry.network.NativeGeometry.status() })
                         }
 
                         // Field's own agent, headless: POST an AgentTaskRequest, get an AgentTaskResult.
@@ -5326,6 +5444,9 @@ class Server {
                         // the docs-route test apps install no WebSockets plugin.
                         installTerminalRoutes(docsAccessPolicy)
 
+                        // WebRTC sources and sinks: the pages' signalling relay and aaaframe bridge.
+                        installWebRTCSignalingRoutes()
+
                         webSocket("/welcome-events") {
                             welcomeEventSessions.add(this)
                             runCatching { send("""{"type":"welcome-refresh","reason":"connected"}""") }
@@ -5523,6 +5644,22 @@ class Server {
                                     call.respondOutputStream(ContentType.parse(afield.graphics.three.THREE_BUFFERS_CONTENT_TYPE),
                                         HttpStatusCode.OK, buffers.bytes) { buffers.writeTo(this) }
                                 }
+                            }
+                        }
+                        route("/three-gltfpack") {
+                            post {
+                                // The three viewer's Export GLB, compressed by Field's optional gltfpack
+                                // (afield.geometry.mesh.Gltfpack). 404 when none is installed: the viewer
+                                // then keeps its uncompressed GLB.
+                                if (call.refuseUnlessSameSiteDocsClient(DocsAccessPolicy())) return@post
+                                if (!afield.geometry.mesh.Gltfpack.available) { call.respond(HttpStatusCode.NotFound, "gltfpack is not installed"); return@post }
+                                val glb = call.receive<ByteArray>()
+                                if (glb.size > 512 * 1024 * 1024) { call.respond(HttpStatusCode.PayloadTooLarge); return@post }
+                                val packed = withContext(Dispatchers.IO) { runCatching { afield.geometry.mesh.Gltfpack.compress(glb) } }
+                                packed.fold(
+                                    { call.respondBytes(it, ContentType.parse("model/gltf-binary")) },
+                                    { call.respond(HttpStatusCode.UnprocessableEntity, it.message ?: "gltfpack failed") },
+                                )
                             }
                         }
                         route("/three-review") {
@@ -5919,6 +6056,8 @@ class Server {
          */
         fun stop(box: Box, entrypoint: String = "server.stop") {
             FlightRecorder.recordStopEntrypoint(entrypoint, box)
+            // If the runloop is blocked, this stop waits for it; the box's marker says so.
+            StopWatch.watch(box)
             box.ke.stop(box)
             // If this box owns a Field 4 Renderer (e.g. the agent graphics-context box),
             // cancelling its jobs never disposes the native window/surface. Do that now — before the

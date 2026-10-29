@@ -1,19 +1,16 @@
+import afield.geometry.solid.manifold.ManifoldLibrary
+import afield.geometry.solid.manifold.Solid
 import afield.graphics.scene.fabricated.PathTraceEnvironment
 import afield.graphics.scene.fabricated.PathTraceMaterial
 import afield.graphics.scene.fabricated.PathTraceScene
 import afield.graphics.scene.fabricated.PathTracingRenderer
 import afield.graphics.scene.fabricated.importTriMesh
+import afield.graphics.vulkan.util.Camera
 import afield.simulation.physics.PlaneCollider
 import afield.simulation.physics.SimdVerlet
 import afield.simulation.physics.SphereCollider
 import afield.simulation.physics.addCloth
 import afield.simulation.physics.addColliders
-import afield.graphics.vulkan.util.Camera
-import afield.geometry.solid.manifold.ManifoldLibrary
-import afield.geometry.solid.manifold.Solid
-import afield.geometry.mesh.genus
-import afield.geometry.mesh.isWatertight
-import afield.math.linalg.Vector3f
 import java.io.File
 
 prop<PathTracingRenderer>(tracer)
@@ -23,15 +20,17 @@ require(ManifoldLibrary.isAvailable) {
 }
 
 // ---- the knobs ------------------------------------------------------------------
-val side = 14           // particles per side; struts go as 2*side*(side-1)
-val spacing = 0.17f     // rest length between neighbours
-val rod = 0.035         // radius of the rod each strut becomes
-val settleFrames = 300  // physics frames before the geometry is taken
+val side = 14 // particles per side; struts go as 2*side*(side-1)
+val spacing = 0.17f // rest length between neighbours
+val rod = 0.035 // radius of the rod each strut becomes
+val settleFrames = 300 // physics frames before the geometry is taken
 // ---------------------------------------------------------------------------------
 
-// ---- stage one: the physics ----------------------------------------------------
-// +y is up, as in the path tracer: gravity is negative, the sphere sits below the sheet,
-// and the floor is a plane whose normal is +y.
+/*
+---- stage one: the physics ----------------------------------------------------
++y is up, as in the path tracer: gravity is negative, the sphere sits below the sheet,
+and the floor is a plane whose normal is +y.
+*/
 val sim = SimdVerlet(SimdVerlet.State3.empty())
 val cloth = sim.addCloth(
     width = side,
@@ -43,7 +42,10 @@ val cloth = sim.addCloth(
     pinned = { _, _ -> false },
 )
 val world = sim.addColliders(
-    SphereCollider(0f, -0.78f, 0f, radius = 0.52f).also { it.friction = 0.8f; it.margin = 0.01f },
+    SphereCollider(0f, -0.78f, 0f, radius = 0.52f).also {
+        it.friction = 0.8f
+        it.margin = 0.01f
+    },
     PlaneCollider(0f, 1f, 0f, offset = -1.28f).also { it.friction = 0.9f },
 )
 repeat(settleFrames) {
@@ -66,10 +68,13 @@ val struts = buildList {
 val quads = (side - 1) * (side - 1)
 println("${struts.size} struts, ${quads} quads")
 
-val (net, netGenus) = Solid.scope {
-    // A capsule is the convex hull of two balls, so `hullOf` does the orientation and
-    // there is no basis to build. `segments = 10` keeps the triangle count of 364 of these
-    // in six figures rather than seven.
+// Copy both meshes before the scope releases the union and all intermediate rods.
+val (shaded, plain, netGenus) = Solid.scope {
+    /*
+    A capsule is the convex hull of two balls, so `hullOf` does the orientation and
+    there is no basis to build. `segments = 10` keeps the triangle count of 364 of these
+    in six figures rather than seven.
+    */
     val rods = struts.map { (a, b) ->
         Solid.hullOf(
             Solid.sphere(rod, segments = 10).translated(a.first, a.second, a.third),
@@ -79,16 +84,21 @@ val (net, netGenus) = Solid.scope {
     // One batched union rather than 363 nested ones: Manifold plans the whole set.
     val start = System.nanoTime()
     val welded = Solid.union(rods).checked("cloth net")
-    println("union of ${rods.size} rods: ${"%.0f".format((System.nanoTime() - start) / 1e6)} ms, " +
-        "${welded.triangleCount} triangles, volume ${"%.5f".format(welded.volume)}")
-    // A Pair's Solid is exempted from the scope's release, same as a bare one.
-    welded to welded.genus
+    println(
+        "union of ${rods.size} rods: ${"%.0f".format((System.nanoTime() - start) / 1e6)} ms, " +
+            "${welded.triangleCount} triangles, volume ${"%.5f".format(welded.volume)}",
+    )
+    Triple(
+        welded.toTriMesh(normals = true, minSharpAngle = 30.0),
+        welded.toTriMesh(),
+        welded.genus,
+    )
 }
-val shaded = net.toTriMesh(normals = true, minSharpAngle = 30.0)
-val plain = net.toTriMesh()
-println("genus $netGenus against $quads quads in the sheet; " +
-    if (netGenus == quads) "they agree, so no two rods have been welded by contact"
-    else "they differ by ${quads - netGenus}, so that many cycles have been closed by folds touching")
+println(
+    "genus $netGenus against $quads quads in the sheet; " +
+        if (netGenus == quads) "they agree, so no two rods have been welded by contact"
+        else "they differ by ${quads - netGenus}, so that many cycles have been closed by folds touching",
+)
 println("Field's own reckoning: watertight ${plain.isWatertight()}, genus ${plain.genus()}")
 
 // ---- stage three: the render ---------------------------------------------------
@@ -100,8 +110,10 @@ println("scene: ${added.triangleCount} triangles appended, ${added.degenerateCou
 
 val reach = 6f
 scene.quad(
-    Vector3f(-reach, -1.30f, -reach), Vector3f(reach, -1.30f, -reach),
-    Vector3f(reach, -1.30f, reach), Vector3f(-reach, -1.30f, reach),
+    Vector3f(-reach, -1.30f, -reach),
+    Vector3f(reach, -1.30f, -reach),
+    Vector3f(reach, -1.30f, reach),
+    Vector3f(-reach, -1.30f, reach),
     floor,
 )
 
@@ -121,8 +133,9 @@ tracer.environmentRotation = 2.1f
 tracer.indirectClamp = 10f
 tracer.blitToScreen()
 println("${tracer.backend}: ${tracer.triangleCount} triangles")
-net.close()
 frames {
-    while (tracer.samples < 700) { frame() }
+    while (tracer.samples < 700) {
+        frame()
+    }
     println("cloth study converged: ${tracer.samples} samples")
 }

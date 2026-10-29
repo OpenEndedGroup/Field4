@@ -17,6 +17,14 @@ import java.nio.FloatBuffer
 import java.nio.IntBuffer
 
 /**
+ * VertexBuffer is a classic vertex buffer with a host-side staging copy that is transferred to device-local memory before drawing.
+ *
+ * Most Field geometry instead pulls vertices in the shader through device addresses set in push
+ * constants, which needs no staging step; [VertexBuffer] remains for code that binds vertex buffers
+ * directly.
+ */
+
+/**
  * this is, as far as I can tell, completely decoy — with resizable BAR (or unified memory on Apple Silicon) this staging buffer thing is just excess engineering _and_ writing shaders that do their own pulling is better _and_ device pointers set through push constants is faster and architecturally skips all of the descriptor nonsense
  */
 class VertexBuffer(

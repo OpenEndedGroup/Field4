@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T20:54:44.724Z",
+  "documentName": "gesture_paint_replay",
+  "outputs": [
+    {
+      "uid": "gpr_dimensions",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 912,
+      "height": 226,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "gpr_dimensions",
+      "channel": "ways",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 245,
+      "height": 87,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "gpr_pad",
+      "channel": "lanes/x",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 576,
+      "height": 240,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "gpr_pad",
+      "channel": "lanes/y",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 576,
+      "height": 240,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "gpr_pad",
+      "channel": "lanes/pressure",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 576,
+      "height": 240,
+      "path": "outputs/4.html"
+    },
+    {
+      "uid": "gpr_pad",
+      "channel": "gesture",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 536,
+      "height": 484,
+      "path": "outputs/5.html"
+    },
+    {
+      "uid": "gpr_pad",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 612,
+      "height": 608,
+      "path": "outputs/6.html"
+    }
+  ]
+}

@@ -1,10 +1,12 @@
-// A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-// slot; this box's `stackSL` property fills it. Edit the stackSL live and the
-// shader re-binds in place.
-//
-// [[property stackSL]]
+/*
+A fullscreen StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+slot; this box's `stackSL` property fills it. Edit the stackSL live and the
+shader re-binds in place.
 
-val module = moduleHere { }
+[[property stackSL]]
+*/
+
+val module = moduleHere {}
 val m = Mesh()
 module += m named "fullscreen"
 m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle

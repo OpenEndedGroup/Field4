@@ -1,4 +1,5 @@
-prop<LoadedTexture>(bbc) = LoadedTexture("/Users/marc/Desktop/bbc.jpg")
+// Bundled textures make this lesson runnable; change these paths to try your own images.
+prop<LoadedTexture>(bbc) = LoadedTexture("public/docs/assets/afield_four_graphics/docs-checker-texture.png")
 bbc.transferNow()
 
 var module = moduleHere {}
@@ -9,24 +10,39 @@ renderer += "boo" to module
 
 // just trying to see if the history thing is working?
 val camera = Camera()
-m.p = camera.p 
-m.m = camera.m 
+m.p = camera.p
+m.m = camera.m
 
-var kc by keyCamera(camera=camera)
+var kc by keyCamera(camera = camera)
 m.set(4, 2) {
-    val z = 0.0 
+    val z = 0.0
 
-pos.add(0,0,0+z, 
-            1.0,0.1,z, 
-            1,1,z,
-            0,1,z)
+    pos.add(
+        0,
+        0,
+        0 + z,
+        1.0,
+        0.1,
+        z,
+        1,
+        1,
+        z,
+        0,
+        1,
+        z,
+    )
 
-    tc.add(0,0,
-           1,0,
-           1,1,
-           0,1)
+    tc.add(
+        0,
+        0,
+        1,
+        0,
+        1,
+        1,
+        0,
+        1,
+    )
 
-    tri.add(0,1,2)
-    tri.add(0,2,3)
+    tri.add(0, 1, 2)
+    tri.add(0, 2, 3)
 }
-

@@ -53,13 +53,21 @@ class StackAutoConversationExampleTest {
         val mapper = com.fasterxml.jackson.module.kotlin.jacksonObjectMapper()
         mapOf("explode" to "explode-01-burst", "face_decay" to "decay-01-embers").forEach { (slot, turn) ->
             val first = revisions(slot).listFiles().orEmpty().single { it.name.startsWith("r1-") && it.extension == "stacksl" }.readText()
-            assertTrue("module.$slot = \"\"\"$first\"\"\"" in code, "the starter should hold stack.auto.$slot's r1")
+            assertTrue(Regex("module\\.$slot =\\s*\"\"\"" + Regex.escape(first) + "\"\"\"").containsMatchIn(code), "the starter should hold stack.auto.$slot's r1")
             val host = mapper.readTree(File(folder, "conversations/$turn.json"))["before"]["facts"]["host"].map { it.asText() }
             assertTrue(host.size >= 2, "$turn should record the host lines it read")
-            host.forEach { line ->
+            // The host may have gained lines above the slot since the recording (ac1bd079c's typed push
+            // block added four), so the lines it read must appear in order, all shifted by one offset.
+            val read = host.map { line ->
                 val (property, number, text) = Regex("""^(\w+):(\d+): (.*)$""").find(line)!!.destructured
-                val shader = File(starter, "polytope_source_${property}_.glsl").readLines()
-                assertEquals(text, shader[number.toInt() - 1].trim(), "starter $property line $number")
+                Triple(property, number.toInt(), text)
+            }
+            val shader = File(starter, "polytope_source_${read.first().first}_.glsl").readLines()
+            val shift = shader.indexOfFirst { it.trim() == read.first().third } - (read.first().second - 1)
+            assertTrue(shift >= 0, "starter ${read.first().first} no longer holds `${read.first().third}`")
+            read.forEach { (property, number, text) ->
+                val lines = File(starter, "polytope_source_${property}_.glsl").readLines()
+                assertEquals(text, lines.getOrNull(number - 1 + shift)?.trim(), "starter $property line $number (+$shift)")
             }
         }
     }

@@ -10,6 +10,10 @@ import tempfile
 import time
 import unittest
 from pathlib import Path
+from tools.git_isolation import scrub_process_env  # noqa: E402
+
+# This module builds scratch git repositories; an inherited GIT_DIR would redirect them.
+scrub_process_env()
 
 LAND = Path(__file__).resolve().parent / "land.py"
 
@@ -27,6 +31,13 @@ if pathlib.Path("HANGS").exists():
     import time; time.sleep(600)
 if pathlib.Path("SLOW").exists():
     import time; time.sleep(1.5)
+if pathlib.Path("WAIT_FOR_CAFFEINATE").exists():
+    import time
+    awake = pathlib.Path(__file__).resolve().parents[2] / "CAFFEINATE"
+    deadline = time.monotonic() + 20
+    while not awake.exists() and time.monotonic() < deadline:
+        time.sleep(0.05)
+    assert awake.exists(), "the awake helper never started"
 if pathlib.Path("COUNT").exists() and pathlib.Path("COUNT").read_text().strip() == "wrong":
     print("merge_regen: CountTest > count matches FAILED", file=sys.stderr)
     sys.exit(1)
@@ -154,6 +165,37 @@ class LandQueueTest(unittest.TestCase):
         self.assertEqual(self.land(self.primary, "wait", doc_id).returncode, 1)
         self.assertIn("docs build failed deliberately", self.land(self.primary, "status", doc_id).stdout)
         self.assertIn("Land beta", self.git(self.primary, "log", "-1", "--format=%s", "main"))
+
+    def test_doc_item_refuses_uncommitted_build_inputs_and_leaves_them_alone(self) -> None:
+        # The source mirror reads the working tree while the committed reference pages cite HEAD, so a
+        # build over uncommitted src/ edits fails the link check on links that are fine on main.
+        (self.primary / "src").mkdir()
+        (self.primary / "src/Tracked.kt").write_text("val a = 1\n")
+        self.git(self.primary, "add", "-A")
+        self.git(self.primary, "commit", "-qm", "add source")
+        (self.primary / "src/Tracked.kt").write_text("val a = 1\nval b = 2\n")
+        (self.primary / "src/Untracked.kt").write_text("val c = 3\n")
+        request = self.land(self.primary, "doc")
+        self.assertEqual(request.returncode, 0, request.stdout + request.stderr)
+        self.assertIn("src/Tracked.kt", request.stderr, "enqueue should warn about the dirty tree")
+        doc_id = request.stdout.split("queued docs build ", 1)[1].split(" ", 1)[0]
+        result = self.run_lander()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertFalse((Path(self._tmp.name) / "DOC_RUNS").exists(), "the docs build ran over a dirty tree")
+        self.assertEqual(self.land(self.primary, "wait", doc_id).returncode, 1)
+        status = self.land(self.primary, "status", doc_id).stdout
+        self.assertIn("src/Tracked.kt", status)
+        self.assertIn("src/Untracked.kt", status)
+        self.assertEqual((self.primary / "src/Tracked.kt").read_text(), "val a = 1\nval b = 2\n")
+        self.assertTrue((self.primary / "src/Untracked.kt").exists())
+
+        # Committed, the same tree builds.
+        self.git(self.primary, "add", "-A")
+        self.git(self.primary, "commit", "-qm", "commit the edits")
+        retry = self.land(self.primary, "doc")
+        self.assertNotIn("warning", retry.stderr)
+        self.assertEqual(self.run_lander().returncode, 0)
+        self.assertTrue((Path(self._tmp.name) / "DOC_RUNS").exists())
 
     def test_doc_item_waits_for_an_earlier_blocked_landing(self) -> None:
         wt = self.branch_with("alpha", "alpha.txt")
@@ -471,7 +513,9 @@ while kill -0 "$pid" 2>/dev/null; do sleep 0.1; done
 """)
         fake.chmod(0o755)
         self.env["FIELD_LAND_CAFFEINATE"] = str(fake)
-        self.land(self.branch_with("awake", "SLOW"), "enqueue")
+        # Let the real child report that the build is alive before ending it. A fixed sleep
+        # races process startup on a loaded machine and can kill the helper before it runs.
+        self.land(self.branch_with("awake", "WAIT_FOR_CAFFEINATE"), "enqueue")
         self.run_lander()
         self.assertEqual(self.states(), {"awake": "landed"})
         self.assertEqual(record.read_text().split(), ["-i", "-w", "alive"])
@@ -544,6 +588,35 @@ while kill -0 "$pid" 2>/dev/null; do sleep 0.1; done
         self.assertNotIn("branch: sigma", context)
         self.assertIn("a guard failed", context)
 
+    def test_a_bounce_whose_changes_landed_another_way_leaves_status_and_bouncy(self) -> None:
+        # The bounced branch's commit reaches main as a copy with a new SHA (cherry-picked onto a
+        # branch that landed). Its changes are on main, so the bounce is history.
+        tau = self.branch_with("tau", "BREAKS")
+        self.land(tau, "enqueue")
+        self.run_lander()
+        self.assertEqual(self.states(), {"tau": "bounced"})
+        self.assertIn("tau", self.land(self.primary, "status").stdout, "a live bounce must show")
+        (self.primary / "other.txt").write_text("main moves first\n")
+        self.git(self.primary, "add", "-A")
+        self.git(self.primary, "commit", "-qm", "main moves")
+        self.git(self.primary, "cherry-pick", self.git(tau, "rev-parse", "HEAD"))
+        self.assertNotEqual(self.git(self.primary, "rev-parse", "main"), self.git(tau, "rev-parse", "HEAD"))
+        status = self.land(self.primary, "status").stdout
+        self.assertIn("resolved", status)
+        self.assertNotIn("a guard failed", status)
+        self.assertNotIn("branch: tau", self.land(self.primary, "bouncy", "--context").stdout)
+
+    def test_a_bounce_whose_branch_was_deleted_is_resolved(self) -> None:
+        upsilon = self.branch_with("upsilon", "BREAKS")
+        self.land(upsilon, "enqueue")
+        self.run_lander()
+        self.assertIn("a guard failed", self.land(self.primary, "status").stdout)
+        self.git(self.primary, "worktree", "remove", "--force", str(upsilon))
+        self.git(self.primary, "branch", "-D", "upsilon")
+        status = self.land(self.primary, "status").stdout
+        self.assertIn("its branch was deleted", status)
+        self.assertNotIn("a guard failed", status)
+        self.assertNotIn("branch: upsilon", self.land(self.primary, "bouncy", "--context").stdout)
 
 if __name__ == "__main__":
     unittest.main()

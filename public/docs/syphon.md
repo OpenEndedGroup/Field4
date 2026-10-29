@@ -44,7 +44,7 @@ To publish what a Vulkan render target draws, have the server follow the target:
 
 ```diffstatic {data-lang=kotlin}
 val out = syphonServer("Field render")
-out.follow(target)          // every frame target renders, until out.stopFollowing()
+out.follow(target) // every frame target renders, until out.stopFollowing()
 ```
 
 `follow` reads each frame back from the GPU once its work has finished and passes it to Syphon,

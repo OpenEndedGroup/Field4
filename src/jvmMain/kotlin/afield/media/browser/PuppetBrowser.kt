@@ -1,18 +1,26 @@
 package afield.media.browser
 
+import java.util.concurrent.CompletableFuture
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
-import java.util.concurrent.CompletableFuture
+
+/**
+ * The control vocabulary for an offscreen Chromium tab driven from Field: its state, events, and the pointer, key,
+ * touch and JavaScript requests a box sends it.
+ *
+ * [PuppetBrowserControl] is the command plane (navigation, input, JavaScript in the main or isolated world, raw CDP);
+ * [PuppetBrowser] adds an [ExternalBrowserSurface], so the same tab can be sampled as a texture.
+ * [HeadlessPuppetBrowser] implements only the control plane and [FieldUiBrowserTexture] implements both. The wire
+ * encoding is covered by `PuppetBrowserProtocolTest`.
+ */
 
 /** Current observable state of an offscreen Chromium tab. */
 data class PuppetBrowserState(
@@ -29,15 +37,21 @@ data class PuppetBrowserState(
     val navigationGeneration: Long = 0,
 )
 
-/** One browser or protocol event. Payloads deliberately retain Electron/CDP fields verbatim. */
+/** One browser or protocol event; its payload carries Electron's or CDP's own fields verbatim, unrenamed. */
 data class PuppetBrowserEvent(
     val sequence: Long,
     val name: String,
     val payload: JsonObject,
 )
 
-enum class BrowserJavascriptWorld { MAIN, ISOLATED }
-enum class BrowserJavascriptReturnMode { VALUE, HANDLE }
+enum class BrowserJavascriptWorld {
+    MAIN,
+    ISOLATED,
+}
+enum class BrowserJavascriptReturnMode {
+    VALUE,
+    HANDLE,
+}
 
 /** A JavaScript result, either copied by value or retained in Chromium as [objectId]. */
 data class BrowserJavascriptResult(
@@ -70,8 +84,16 @@ enum class BrowserMouseButton(val cdpName: String, val cdpBit: Int) {
     FORWARD("forward", 16),
 }
 
-enum class BrowserPointerType(val cdpName: String) { MOUSE("mouse"), PEN("pen") }
-enum class BrowserPointerEventType { MOVE, DOWN, UP, WHEEL }
+enum class BrowserPointerType(val cdpName: String) {
+    MOUSE("mouse"),
+    PEN("pen"),
+}
+enum class BrowserPointerEventType {
+    MOVE,
+    DOWN,
+    UP,
+    WHEEL,
+}
 
 /** Browser pointer coordinates are CSS pixels, origin at the viewport's top-left. */
 data class BrowserPointerEvent(
@@ -129,15 +151,15 @@ data class BrowserTouchPoint(
 )
 
 /**
- * High-level control surface for a Chromium tab: navigation, input, JavaScript, the Chrome
- * DevTools Protocol and the page→Field request bridge. Fire-and-forget input methods retain TCP
- * order; commands return futures completed by Electron.
+ * High-level control surface for a Chromium tab: navigation, input, JavaScript, the Chrome DevTools Protocol and the
+ * page→Field request bridge. Fire-and-forget input methods retain TCP order; commands return futures completed by
+ * Electron.
  *
- * It deliberately says nothing about pixels. A tab that is only being *driven* — by a test, by a
- * docs build, by a box that wants the DOM rather than the picture — needs no texture, and until
- * this interface was split out the type system insisted on one: [PuppetBrowser] extends
- * [ExternalBrowserSurface], so naming the control plane obliged you to own a Vulkan image view and
- * therefore a [afield.graphics.vulkan.Renderer]. [HeadlessPuppetBrowser] implements this and nothing else.
+ * It says nothing about pixels. A tab that is only being *driven* (by a test, by a docs build, by a box that wants
+ * the DOM rather than the picture) needs no texture, and this is the type to name for that. The texture comes with
+ * [PuppetBrowser], which is this interface and [ExternalBrowserSurface] together, so naming *that* one obliges you to
+ * own a Vulkan image view and therefore a [afield.graphics.vulkan.Renderer]. [HeadlessPuppetBrowser] implements this
+ * interface and nothing else.
  */
 interface PuppetBrowserControl : AutoCloseable {
     val state: PuppetBrowserState
@@ -145,16 +167,25 @@ interface PuppetBrowserControl : AutoCloseable {
     fun addEventListener(listener: (PuppetBrowserEvent) -> Unit): () -> Unit
 
     fun navigate(url: String): CompletableFuture<PuppetBrowserState>
+
     fun goBack(): CompletableFuture<PuppetBrowserState>
+
     fun goForward(): CompletableFuture<PuppetBrowserState>
+
     fun reload(ignoreCache: Boolean = false): CompletableFuture<PuppetBrowserState>
+
     fun stop(): CompletableFuture<PuppetBrowserState>
+
     fun focus(): CompletableFuture<PuppetBrowserState>
+
     fun blur(): CompletableFuture<PuppetBrowserState>
 
     fun pointer(event: BrowserPointerEvent)
+
     fun key(event: BrowserKeyEvent)
+
     fun insertText(text: String)
+
     fun setComposition(
         text: String,
         selectionStart: Int = text.length,
@@ -162,7 +193,13 @@ interface PuppetBrowserControl : AutoCloseable {
         replacementStart: Int? = null,
         replacementEnd: Int? = null,
     )
-    fun touch(type: BrowserTouchEventType, points: List<BrowserTouchPoint>, modifiers: Set<BrowserModifier> = emptySet())
+
+    fun touch(
+        type: BrowserTouchEventType,
+        points: List<BrowserTouchPoint>,
+        modifiers: Set<BrowserModifier> = emptySet(),
+    )
+
     /** Completes after every previously posted pointer, keyboard, IME, and touch event was dispatched. */
     fun flushInput(): CompletableFuture<Unit>
 
@@ -175,11 +212,13 @@ interface PuppetBrowserControl : AutoCloseable {
     ): CompletableFuture<BrowserJavascriptResult>
 
     fun releaseJavascriptObject(objectId: String): CompletableFuture<Unit>
+
     fun cdp(
         method: String,
         params: JsonObject = JsonObject(emptyMap()),
         sessionId: String? = null,
     ): CompletableFuture<JsonObject>
+
     fun forwardCdpEvents(enabled: Boolean): CompletableFuture<Unit>
 
     /** Register an allowlisted request callable as `window.fieldPuppet.request(name, value)`. */
@@ -190,8 +229,8 @@ interface PuppetBrowserControl : AutoCloseable {
 }
 
 /**
- * A [PuppetBrowserControl] whose pixels are also a stable Field texture — the same Chromium tab,
- * seen from the render loop as well as from the keyboard.
+ * A [PuppetBrowserControl] whose pixels are also a stable Field texture — the same Chromium tab, seen from the render
+ * loop as well as from the keyboard.
  */
 interface PuppetBrowser : PuppetBrowserControl, ExternalBrowserSurface
 
@@ -205,7 +244,7 @@ internal fun BrowserPointerEvent.toCdpJson(): JsonObject = buildJsonObject {
             BrowserPointerEventType.DOWN -> "mousePressed"
             BrowserPointerEventType.UP -> "mouseReleased"
             BrowserPointerEventType.WHEEL -> "mouseWheel"
-        }
+        },
     )
     put("x", x)
     put("y", y)
@@ -244,19 +283,24 @@ internal fun touchToCdpJson(
 ): JsonObject = buildJsonObject {
     put("type", type.cdpName)
     put("modifiers", modifiers.cdpBits())
-    put("touchPoints", buildJsonArray {
-        points.forEach { point ->
-            add(buildJsonObject {
-                put("id", point.id)
-                put("x", point.x)
-                put("y", point.y)
-                put("radiusX", point.radiusX)
-                put("radiusY", point.radiusY)
-                put("rotationAngle", point.rotationAngle)
-                put("force", point.force)
-            })
-        }
-    })
+    put(
+        "touchPoints",
+        buildJsonArray {
+            points.forEach { point ->
+                add(
+                    buildJsonObject {
+                        put("id", point.id)
+                        put("x", point.x)
+                        put("y", point.y)
+                        put("radiusX", point.radiusX)
+                        put("radiusY", point.radiusY)
+                        put("rotationAngle", point.rotationAngle)
+                        put("force", point.force)
+                    },
+                )
+            }
+        },
+    )
 }
 
 internal fun puppetBrowserState(json: JsonObject): PuppetBrowserState = PuppetBrowserState(
@@ -285,8 +329,13 @@ internal fun JsonObject.objectOrNull(name: String): JsonObject? = this[name]?.le
     if (it is JsonObject) it else null
 }
 
-internal fun JsonObject.stringOrNull(name: String): String? =
-    this[name]?.jsonPrimitive?.contentOrNull
+internal fun JsonObject.stringOrNull(name: String): String? = this[name]?.jsonPrimitive?.contentOrNull
 
-internal fun JsonObject.boolean(name: String): Boolean =
-    this[name]?.jsonPrimitive?.booleanOrNull ?: false
+internal fun JsonObject.boolean(name: String): Boolean = this[name]?.jsonPrimitive?.booleanOrNull ?: false
+
+/**
+ * Replace the event listener under [name] on this browser. Stop or rerun of the registering box removes it; callbacks
+ * retain that box's context. The returned function removes this listener only.
+ */
+fun PuppetBrowserControl.addEventListener(name: String, listener: (PuppetBrowserEvent) -> Unit): () -> Unit =
+    afield.runtime.lifecycle.runOwnedListener(this, "puppet:$name", { addEventListener(it) }, listener)

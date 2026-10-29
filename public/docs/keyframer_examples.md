@@ -117,8 +117,8 @@ create it, because the write goes through the target's bind function, which was 
 `@`-stripped property name. The qualifier exists purely so one key can address two structures that
 use the same uniform name.
 
-Panel 4 is the round trip closing: re-applying the original snapshot and re-capturing gives
-`No key differences.` A `Key` really is a complete description of what the scope watches.
+In panel 4, re-applying the original snapshot and re-capturing gives
+`No key differences.` A `Key` is a complete description of what the scope watches.
 
 Objects that are not shader `Structure`s can join the same system through an explicit getter and
 setter. The low-level form remains `target(name, get, set)`, but ordinary locals should use the typed
@@ -789,7 +789,7 @@ ${java.nio.file.Files.readString(dir.resolve("look.json.versions").resolve("0000
 **`missingKey` is how a scope outgrows its own files.** Version 0 was written before `wet` existed;
 loading it into a scope that declares `missingKey("wet", 0.5f)` fills the gap. The schema-qualified
 form, `missingKey(1, "mode", …)`, applies only to files stamped with that `schemaVersion`, and it
-is applied *after* the version-agnostic defaults — for a matching file it wins. Nothing ever
+is applied *after* the version-agnostic defaults, so for a matching file it wins. Nothing ever
 *rejects* a file for having a different schema version; the stamp only selects defaults.
 
 **A name present in the file always beats a default**, even when its value is null.
@@ -827,18 +827,15 @@ An unreadable manifest is reported on the `error,keyframer` log channel rather t
 the next `saveKey` moves it aside to `manifest.json.corrupt` instead of overwriting it. The notes in
 a half-written file are still there for you to read.
 
-??? aside "Agents: tests, and gaps in older version directories"
+??? aside "Agents: tests"
     One test covers each way the manifest can go
     wrong: `aCorruptManifestNeitherLosesHistoryNorReusesAVersionIndex`,
     `aCorruptManifestIsRecoveredFromTheFilesAndQuarantinedRatherThanOverwritten`,
     `aVersionFileTheManifestNeverRecordedIsNotOverwritten` and
     `aDeletedManifestStillLeavesTheFilesAsTheHistory`, and
     `theFloatOnDiskNarrowsBackToExactlyTheFloatThatWasSaved` pins the `Float` round trip against the
-    exact on-disk string.
-
-    A `.versions` directory written before 2026-08 can have gaps. An
-    unparseable manifest read as no history at all back then, so the next save called itself version 0
-    and wrote over `000000.json`. Whatever is on disk is still readable; what was overwritten is gone.
+    exact on-disk string. `theMarksOfAPre2026_08RenumberingAreNamed` pins the `error,keyframer`
+    report for a `.versions` directory damaged by a save from before 2026-08.
 
 ### Browsing saved keys
 
@@ -853,12 +850,10 @@ through. Without it the browser only reads.
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/browser.png" wait="4.0" capture="box" open-outputs="true" w="960" h="560" padding="16"}
 :::static
 import java.nio.file.Files
-import java.nio.file.Path
 
-// A fixed directory rather than a fresh temp one, so the browser's header names the same folder
-// every run; cleared first so only these four keys are in it.
-val dir = Path.of(System.getProperty("java.io.tmpdir"), "keyframer-docs", "glow-looks")
-if (Files.exists(dir)) dir.toFile().deleteRecursively()
+// A fresh private parent keeps this lesson's four keys separate from other boxes and checkouts.
+// The leaf name stays readable in the browser header.
+val dir = Files.createTempDirectory("keyframer-docs-").resolve("glow-looks")
 Files.createDirectories(dir)
 
 // One pass with three uniforms, and a scope that watches them.
@@ -955,7 +950,7 @@ A key can hold a `stack.auto` slot's *numbers* without its code: `stackAutoNumbe
 one lane per number, which a key turns on the GPU with no recompile (see [its numbers,
 live](stacksl_examples.md#its-numbers-live)).
 
-A key can hold code — a `stack.auto` StackSL program registered with `stackAuto`, or a Kotlin
+A key can hold code: a `stack.auto` StackSL program registered with `stackAuto`, or a Kotlin
 expression captured by the `sourceBlock { }` macro. By default `interpolate` **steps** those: the
 left source until `t` reaches 1, then the right one. There is no midpoint between two arbitrary
 programs, and a program assembled out of halves of two others is not one either.
@@ -1025,8 +1020,8 @@ scope.codeBlend = CodeBlendOptions(mode = CodeBlendMode.RUNTIME)
 ```
 
 `interpolate` fills that lane with `keyframeBlendVector(t)` on every blend, and only when a target of
-that name is registered. The four components are the same `t` in four shapes — `x` raw and
-unclamped, `y` clamped, `z` smoothstepped, `w` the complement of `y` — so a program can read a
+that name is registered. The four components are the same `t` in four shapes (`x` raw and
+unclamped, `y` clamped, `z` smoothstepped, `w` the complement of `y`), so a program can read a
 different one per number by setting `CodeBlendOptions.lane`. A block instance called something other
 than `pc` is handled by `stackSLRead`.
 
@@ -1038,10 +1033,7 @@ by an integer written into the text:
 gain * afield.animation.keyframes.kfMix(0.5f, 1.5f, afield.animation.keyframes.keyframeBlendAmount(7, 0))
 ```
 
-Fully qualified, so it resolves inside a `sourceBlock` body in a box that imported nothing. One
-thing to know before you call the result: a blended block compiles its generated source in the box
-the two keyframes came from, so invoke it from a frame loop, a control callback or another box — not
-from inside that box's own running code, which stops with an error saying so. The whole call is handed the endpoints
+Fully qualified, so it resolves inside a `sourceBlock` body in a box that imported nothing. The whole call is handed the endpoints
 rather than their components, which is what lets a `Quaternionf`
 site slerp and a `DualQuaternionf` site sclerp instead of drifting through the inside of the sphere
 component by component. A literal keeps its type: `0.5f` and `1.5f` blend to a `Float`, `1` and `3`

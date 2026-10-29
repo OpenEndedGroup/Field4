@@ -9,6 +9,9 @@ description: >
   night's bars/heat/scatter family. Edit the `rectsl` string and re-run the box to
   change it live. Replay this file into a fresh Field with the agent backdoor
   (field_run_transcript) to see the whole figure on screen with no other setup.
+docs:
+  - page: rectsl_cheatsheet.md
+    why: "Lists the RectSL vocabulary, including plotting forms."
 operations:
   # 1. renderer box — owns the on-screen Window + Renderer and pumps the loop.
   - create:
@@ -18,17 +21,17 @@ operations:
       properties:
         code: |
           import afield.graphics.vulkan.util.Options
-          
+
           prop<Window>(window)
           prop<Renderer>(renderer)
-          
+
           Options.enableHDR = false
-          
+
           once.renderer {
               window = Window("RectSL — plotting layer")
               Renderer(window)
           }
-          
+
           println("plot renderer ready")
           start(renderer::run)
   # 2. figure box — compiles the snippet and draws it live. This is the box you hack on.
@@ -38,51 +41,56 @@ operations:
       frame: { x: 300.0, y: 140.0, w: 300.0, h: 100.0 }
       properties:
         code: |
-          // RectSL plotting-layer demo.
-          //
-          // The #rectsl program sets ONE shared domain (`->domain` + `->frame`), draws
-          // `axes` (rules, nice-number ticks, numeric rect-numeral labels, gridlines),
-          // then overlays three series in that domain (`area`, `line`, `points`) and
-          // finishes with a `colorbar` and a discrete swatch `legend`. Edit `rectsl`
-          // and re-run to change it live. See rectsl_cheatsheet.md ("Plotting layer")
-          // / rectsl_examples.md ("A plotted figure").
+          /*
+          RectSL plotting-layer demo.
+
+          The #rectsl program sets ONE shared domain (`->domain` + `->frame`), draws
+          `axes` (rules, nice-number ticks, numeric rect-numeral labels, gridlines),
+          then overlays three series in that domain (`area`, `line`, `points`) and
+          finishes with a `colorbar` and a discrete swatch `legend`. Edit `rectsl`
+          and re-run to change it live. See rectsl_cheatsheet.md ("Plotting layer")
+          / rectsl_examples.md ("A plotted figure").
+          */
+          import afield.lang.rectsl.RECT_ANIMATION_VERTEX_SHADER
           import afield.lang.rectsl.RectAnimationOracle
           import afield.lang.rectsl.rectMaterialShaderCode
           import afield.lang.rectsl.writeFrameToMesh
-          import afield.lang.rectsl.RECT_ANIMATION_VERTEX_SHADER
-          
-          val rectsl = """
+
+          val rectsl =
+              """
           #rectsl
           ->wall 16 10 abstract
           ->duration 3
           ->fps 30
-          
+
           # shared coordinate frame: explicit ->domain + auto ->margins, then axes underneath
           0 10  0 1  ->domain
           ->frame
           axes
-          
+
           # three series overlaid in the ONE shared domain
           0 10 40 linspace  dup '( 0.7 * sin 1 + 2 / ) data-map   "viridis" area
           0 10 40 linspace  dup '( 0.55 * cos 1 + 2 / ) data-map  "plasma"  line
           0 10 12 linspace  dup '( 0.9 * sin 1 + 2 / ) data-map   "turbo"   points
-          
+
           # a colour-bar legend (numeric labels) and a discrete swatch key
           "viridis" colorbar
           5 "turbo" legend
           """
-          
+
           val program = RectAnimationOracle.compile(rectsl).program!!
-          val shader  = rectMaterialShaderCode(program)
-          
-          // Seed this box's shader-source properties before `moduleHere {}` runs; the
-          // `//%-` fragment break makes this fragment execute first (see the playground
-          // transcript for the why).
+          val shader = rectMaterialShaderCode(program)
+
+          /*
+          Refresh the generated fragment on every run before `moduleHere {}`; the
+          `//%-` fragment break makes this fragment execute first (see the playground
+          transcript for the why).
+          */
           once.vertex { RECT_ANIMATION_VERTEX_SHADER }
-          once.fragment { shader.exampleFragmentShader!! }
-          
+          fragment = shader.exampleFragmentShader!!
+
           //%-
-          
+
           val module = moduleHere {
               blend = true
               depthTest = false
@@ -91,13 +99,13 @@ operations:
           val m = Mesh()
           module += "scene" to m
           renderer += "rectsl-plot-axes" to module
-          
+
           val ww = program.wall.width.toFloat()
           val wh = program.wall.height.toFloat()
           m.push["worldToClip"] = afield.math.linalg.Matrix4f().ortho(-ww / 2f, ww / 2f, -wh / 2f, wh / 2f, -1f, 1f)
           m.push["wallWidth"] = ww
           m.push["wallHeight"] = wh
-          
+
           val duration = program.duration.toDouble()
           var t = 0.0
           loop {

@@ -19,38 +19,46 @@ the dark bands, and warmth 0..1. Run this box first. It gives the document's AI4
 tools (InspectRingsStudy ... RestoreRingsRevision); the two boxes below drive the same verbs
 from code. See public/docs/studies.md.
 
-A property is saved with the document only if its name is in Box.ioPersistentProperties,
-and `rings` is not by default: add it, and give it its starting text the first time.
+
+sourceFramesStudy saves the source property. Keep a person's edited text on rerun.
 
 ```edn [field-box id="rings_study" role="properties"]
-{"id" "rings_study" "index" 0 "name" "rings" "parents" ["root"] "children" ["rings_change" "rings_try"] "properties" {"children" #{#afield/box "rings_change" #afield/box "rings_try"} "parents" #{#afield/box "root"} "name" "rings" "_tombstone" false "frame" #afield/rect [40.0 40.0 240.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rings_study_code_.kt" "lines" 24 "characters" 1546 "sha256" "f24f9bf3369954a675ab383943bd89ee9437a1b2117b51c0e03515c6a998dabb"}]}
+{"id" "rings_study" "index" 0 "name" "rings" "parents" ["root"] "children" ["rings_change" "rings_try"] "properties" {"children" #{#afield/box "rings_change" #afield/box "rings_try"} "parents" #{#afield/box "root"} "name" "rings" "_tombstone" false "frame" #afield/rect [40.0 40.0 240.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rings_study_code_.kt" "lines" 32 "characters" 1469 "sha256" "aa7188ba74a17dfe720d55361a6e858e6000be9a819933e349b140d6852c1052"}]}
 ```
 
 ```kotlin [field-property box="rings_study" name="code" path="rings_study_code_.kt"]
-// A study of this box's `rings` property: three numbers, a ring count, the brightness of
-// the dark bands, and warmth 0..1. Run this box first. It gives the document's AI4 chat ten
-// tools (InspectRingsStudy ... RestoreRingsRevision); the two boxes below drive the same verbs
-// from code. See public/docs/studies.md.
+/*
+A study of this box's `rings` property: three numbers, a ring count, the brightness of
+the dark bands, and warmth 0..1. Run this box first. It gives the document's AI4 chat ten
+tools (InspectRingsStudy ... RestoreRingsRevision); the two boxes below drive the same verbs
+from code. See public/docs/studies.md.
+*/
 
-// A property is saved with the document only if its name is in Box.ioPersistentProperties,
-// and `rings` is not by default: add it, and give it its starting text the first time.
-Box.ioPersistentProperties.add("rings")
-if ((thisBox.getPropertyRaw("rings", "") as? String).isNullOrBlank()) thisBox.setPropertyRaw("rings", "7 rings 0.05 ink 0.8 warmth")
+// sourceFramesStudy saves the source property. Keep a person's edited text on rerun.
+prop<String>(rings)
+once.rings { "7 rings 0.05 ink 0.8 warmth" }
+prop<SourceFramesStudy>(ringsStudy)
 
-val rings = sourceFramesStudy("rings", studyFrames("rings, drawn on the CPU") { source: String, w: Int, h: Int, t: Double ->
-    val (count, ink, warmth) = StudyKnobs.plainNumbers(source).map { it.value.toFloat() }
-    val px = FloatArray(w * h * 4)
-    for (y in 0 until h) for (x in 0 until w) {
-        val d = Math.hypot(x + 0.5 - w / 2.0, y + 0.5 - h / 2.0) / w
-        val v = (0.5 + 0.5 * Math.cos(d * count * 12.0 - t * 2.0)).toFloat()
-        val i = (y * w + x) * 4
-        px[i] = v * warmth + ink * (1 - v); px[i + 1] = v * 0.5f + ink * (1 - v); px[i + 2] = v * (1 - warmth) + ink * (1 - v); px[i + 3] = 1f
-    }
-    afield.lang.stacksl.cpu.CpuRaster(w, h, px)
-})
+ringsStudy = sourceFramesStudy(
+    "rings",
+    studyFrames("rings, drawn on the CPU") { source: String, w: Int, h: Int, t: Double ->
+        val (count, ink, warmth) = StudyKnobs.plainNumbers(source).map { it.value.toFloat() }
+        val px = FloatArray(w * h * 4)
+        for (y in 0 until h) for (x in 0 until w) {
+            val d = Math.hypot(x + 0.5 - w / 2.0, y + 0.5 - h / 2.0) / w
+            val v = (0.5 + 0.5 * Math.cos(d * count * 12.0 - t * 2.0)).toFloat()
+            val i = (y * w + x) * 4
+            px[i] = v * warmth + ink * (1 - v)
+            px[i + 1] = v * 0.5f + ink * (1 - v)
+            px[i + 2] = v * (1 - warmth) + ink * (1 - v)
+            px[i + 3] = 1f
+        }
+        afield.lang.stacksl.cpu.CpuRaster(w, h, px)
+    },
+)
 
-registerStudyTools("Rings", rings, about = "The source is three numbers: ring count, ink brightness, warmth 0..1.")
-println("rings study ready: " + rings.inspect(StudyCall.Inspect()).revision)
+registerStudyTools("Rings", ringsStudy, about = "The source is three numbers: ring count, ink brightness, warmth 0..1.")
+println("rings study ready: " + ringsStudy.inspect(StudyCall.Inspect()).revision)
 ```
 
 ## 2. change it
@@ -66,25 +74,39 @@ then flip warmth (knob 2) between warm and cool. Each run publishes one revision
 it beside its parent with their difference. Run "rings" first.
 
 ```edn [field-box id="rings_change" role="properties"]
-{"id" "rings_change" "index" 1 "name" "change it" "parents" ["root" "rings_study"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "rings_study"} "name" "change it" "_tombstone" false "frame" #afield/rect [40.0 200.0 240.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rings_change_code_.kt" "lines" 16 "characters" 1018 "sha256" "4072fb63a51fa4396a407d3c1e902d7a391e830c43b02db34acf20c05291e2f2"}]}
+{"id" "rings_change" "index" 1 "name" "change it" "parents" ["root" "rings_study"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "rings_study"} "name" "change it" "_tombstone" false "frame" #afield/rect [40.0 200.0 240.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rings_change_code_.kt" "lines" 30 "characters" 1087 "sha256" "f512268adfeccb7954f9ebcc0b95b3755d1ebf1dcea4d1769d144091159bbafd"}]}
 ```
 
 ```kotlin [field-property box="rings_change" name="code" path="rings_change_code_.kt"]
-// Change the study: check the box's text in as the first revision if there is none yet,
-// then flip warmth (knob 2) between warm and cool. Each run publishes one revision and shows
-// it beside its parent with their difference. Run "rings" first.
-val rings = fromContextWithNameOrNull<SourceFramesStudy>("rings")!!
+/*
+Change the study: check the box's text in as the first revision if there is none yet,
+then flip warmth (knob 2) between warm and cool. Each run publishes one revision and shows
+it beside its parent with their difference. Run "rings" first.
+*/
 
-var now = rings.inspect(StudyCall.Inspect())
+var now = ringsStudy.inspect(StudyCall.Inspect())
 if (now.revision == "empty") {
-    rings.edit(StudyCall.Edit("empty", now.facts["liveSourceHash"] as String, rings.revisions.liveSource(), "the starting rings"))
-    now = rings.inspect(StudyCall.Inspect())
+    ringsStudy.edit(
+        StudyCall.Edit(
+            "empty",
+            now.facts["liveSourceHash"] as String,
+            ringsStudy.revisions.liveSource(),
+            "the starting rings",
+        ),
+    )
+    now = ringsStudy.inspect(StudyCall.Inspect())
 }
 val warmth = StudyKnobs.plainNumbers(now.facts["source"] as String)[2].value
-val changed = rings.setNumbers(StudyCall.SetNumbers(now.revision, now.facts["liveSourceHash"] as String,
-    listOf(StudyCall.Number(2, if (warmth > 0.5) 0.2 else 0.8)), if (warmth > 0.5) "cooler" else "warmer"))
+val changed = ringsStudy.setNumbers(
+    StudyCall.SetNumbers(
+        now.revision,
+        now.facts["liveSourceHash"] as String,
+        [StudyCall.Number(2, if (warmth > 0.5) 0.2 else 0.8)],
+        if (warmth > 0.5) "cooler" else "warmer",
+    ),
+)
 
-println(changed.revision + ": " + rings.revisions.liveSource())
+println(changed.revision + ": " + ringsStudy.revisions.liveSource())
 display("main", "<img src='${changed.toolImages.single().dataUrl}' style='width:340px'/>")
 ```
 
@@ -98,26 +120,44 @@ From `code`
 
 Speculate without publishing: sweep the ring count, and try two candidates beside the
 current revision. Nothing here changes the study; adopt a candidate from AI4 chat
-(AdoptRingsVariant) or with rings.adoptVariant(...). Run "rings" first.
+(AdoptRingsVariant) or with ringsStudy.adoptVariant(...). Run "rings" first.
 
 ```edn [field-box id="rings_try" role="properties"]
-{"id" "rings_try" "index" 2 "name" "try things" "parents" ["root" "rings_study"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "rings_study"} "name" "try things" "_tombstone" false "frame" #afield/rect [460.0 200.0 240.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rings_try_code_.kt" "lines" 14 "characters" 1115 "sha256" "0c95be09b61c6813b4a2e51e4a1abfd810f689f824e300ef158a1befcb8fa505"}]}
+{"id" "rings_try" "index" 2 "name" "try things" "parents" ["root" "rings_study"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "rings_study"} "name" "try things" "_tombstone" false "frame" #afield/rect [460.0 200.0 240.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rings_try_code_.kt" "lines" 32 "characters" 1310 "sha256" "186c66080a56feae10f6ff39da277cb3e5a1c21e6c8ba6a79e26f703ba5b0aa1"}]}
 ```
 
 ```kotlin [field-property box="rings_try" name="code" path="rings_try_code_.kt"]
-// Speculate without publishing: sweep the ring count, and try two candidates beside the
-// current revision. Nothing here changes the study; adopt a candidate from AI4 chat
-// (AdoptRingsVariant) or with rings.adoptVariant(...). Run "rings" first.
-val rings = fromContextWithNameOrNull<SourceFramesStudy>("rings")!!
-if (rings.inspect(StudyCall.Inspect()).revision == "empty") println("no revision yet: run \"change it\" first") else {
-    val source = rings.revisions.liveSource()
-    val swept = rings.sweep(StudyCall.Sweep(knob = 0, values = listOf(3.0, 5.0, 7.0, 11.0, 15.0)))
-    val tried = rings.tryVariants(StudyCall.TryVariants(listOf(
-        StudyCall.Variant("tight", source = StudyKnobs.withPlainNumbers(source, mapOf(0 to 15.0)), note = "15 rings"),
-        StudyCall.Variant("bright", source = StudyKnobs.withPlainNumbers(source, mapOf(1 to 0.4)), note = "lighter dark bands"))))
+/*
+Speculate without publishing: sweep the ring count, and try two candidates beside the
+current revision. Nothing here changes the study; adopt a candidate from AI4 chat
+(AdoptRingsVariant) or with ringsStudy.adoptVariant(...). Run "rings" first.
+*/
+if (ringsStudy.inspect(StudyCall.Inspect()).revision == "empty") println("no revision yet: run \"change it\" first")
+else {
+    val source = ringsStudy.revisions.liveSource()
+    val swept = ringsStudy.sweep(StudyCall.Sweep(knob = 0, values = [3.0, 5.0, 7.0, 11.0, 15.0]))
+    val tried = ringsStudy.tryVariants(
+        StudyCall.TryVariants(
+            [
+                StudyCall.Variant(
+                    "tight",
+                    source = StudyKnobs.withPlainNumbers(source, mapOf(0 to 15.0)),
+                    note = "15 rings",
+                ),
+                StudyCall.Variant(
+                    "bright",
+                    source = StudyKnobs.withPlainNumbers(source, mapOf(1 to 0.4)),
+                    note = "lighter dark bands",
+                ),
+            ],
+        ),
+    )
     println("held: " + tried.facts["held"])
-    display("main", "<img src='${swept.toolImages.single().dataUrl}' style='width:100%'/>" +
-        "<img src='${tried.toolImages.single().dataUrl}' style='width:340px'/>")
+    display(
+        "main",
+        "<img src='${swept.toolImages.single().dataUrl}' style='width:100%'/>" +
+            "<img src='${tried.toolImages.single().dataUrl}' style='width:340px'/>",
+    )
 }
 ```
 

@@ -38,10 +38,11 @@ import afield.math.linalg.Matrix4f
 const val GBUFFER_MOTION_ATTACHMENT = 3
 
 /**
- * Plan [passes] against the current post-stack output and append the whole chain to it.
+ * Materialize [passes] as a new chain or replace their existing named passes.
  *
- * The chain input is `postStack.output()` at the moment of the call, so a chain appended after
- * `addBloom` sees the bloomed image, and a chain appended to a fresh bundle sees the lit scene.
+ * A new chain reads the current post-stack output, so a chain appended after `addBloom` sees the
+ * bloomed image. Replacing named passes keeps the input immediately before their first existing
+ * pass. Reading the final output on a rerun would feed the chain its own reused output target.
  *
  * Remember to `attachTo(renderer)` afterwards, exactly as with [StandardRenderer.Bundle.addShaderEffect]
  * — the frame graph has to re-sync before the new passes are scheduled.
@@ -55,7 +56,11 @@ fun StandardRenderer.Bundle.addPassChain(
     renderer: Renderer = fromContext(),
     printReport: Boolean = false
 ): FabricateBuiltChain {
-    val chainInput = postStack.output()
+    val chainInput = inputBeforeReplacement(
+        entries = postStack.effects().map { it.name to it.target },
+        replacing = passes.map { it.name }.toSet(),
+        initialInput = postStack.input
+    )
     val plan = FabricatePassChain.plan(
         passes = passes,
         inputWidth = chainInput.width,

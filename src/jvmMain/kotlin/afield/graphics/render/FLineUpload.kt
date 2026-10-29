@@ -63,6 +63,13 @@ import afield.ui.output.*
 import afield.ui.visualization.*
 
 /**
+ * Writes [FLine]s into GPU vertex streams: [pointsOut], [linesOut] and [trianglesOut] sample lines into [DynamicallyWriteable] position and colour buffers.
+ *
+ * [FLineMap] is a named, ordered collection of lines with a revision hash for change detection.
+ */
+
+
+/**
  * Ordered map of named [FLine]s with a lightweight revision hash.
  *
  * Handy for GPU uploads where stable keys and change detection matter.

@@ -2,7 +2,7 @@
 
 A Field document is usually bigger than the window. You can pan and zoom with the mouse or trackpad; split the canvas so headings or labels stay in view while the rest
 scrolls; step from box to box with the keyboard, by tapping `Cmd` twice and holding it; bring the
-selection into view with `alt/option-F`; or jump to one of nine views you have saved. All of them change
+selection into view with `alt/option-F`; hide layers you are not working on; or jump to one of nine views you have saved. All of them change
 what you are looking at and never the document itself.
 
 ## Panning and zooming
@@ -340,8 +340,9 @@ if (!report.contains("overlay-settled")) {
 `alt/option-F` (**Frame Selected** in the command palette, rebindable as `frame-selected`) brings the
 selected boxes, and their open output panels, into view. It puts them in the largest part of the
 window that the editor, the docs panel and Field's own panels leave uncovered. If they do not fit
-there it zooms out until they do, and if the canvas was zoomed further out than that it zooms back
-in, up to 100%. It never zooms in past that.
+there it zooms out until they do. If the canvas was zoomed further out than it needs to be, it
+zooms back in, but not past 100%; a canvas already zoomed in past 100% keeps its zoom when the
+selection fits.
 
 If none of the uncovered space could show the selection at even half the size the whole window
 could, it uses the whole window instead and lets the editor cover part of it. A narrow strip beside
@@ -423,9 +424,24 @@ While the navigation overlay is up, every box on screen that a slot points at we
 with that slot's number: `F3` is the view saved in slot 3, reached with `shift-F3`. A box wears
 more than one chip if several slots were saved on it.
 
+**Fly Through Bookmarks** in the command palette flies the canvas smoothly through the saved slots
+in order, and box code can film the same flight to an MP4. See [Filming the canvas](filming_the_canvas.md).
+
 Bookmarks live on the root box as the `bookmarks` property and are saved with the rest of the
 document state. They survive a reload, and they travel with the document rather than with your
 browser session.
+
+## Showing and hiding layers
+
+A box can be on one or more layers, and hiding a layer takes its boxes off the canvas, which is the
+quickest way to clear a crowded document down to the part you are working on. `alt/option-L`
+(**Show Layers Panel** in the command palette) opens a panel listing every layer with its box
+count. Click a layer's eye to show or hide it (shift-click to show only that one), and pick the
+active layer with its radio button. **Solo** shows only that layer and makes it active, **Show all**
+brings every layer back, and **Move selection to active layer** puts the selected boxes on the
+active layer. The last visible layer cannot be hidden. If the document has a drawing, it has a
+`drawing` row of its own, whose eye shows or hides it. [Layers](layers.md) covers how a box names
+its layers, and how each layer keeps its own layout.
 
 ## How the neighbours are chosen
 
@@ -448,5 +464,7 @@ are hidden, deleted, or drawn at zero size are not candidates.
 ## Related features
 
 - [Keyboard Shortcuts](keybindings.md) covers rebinding, and lists both commands for all nine slots.
+- [Filming the canvas](filming_the_canvas.md) flies through the bookmarks, and films the flight.
+- [Layers](layers.md) decides which boxes are on the canvas, and where, per layer.
 - [Snapping](snapping.md) is the other half of arranging a document you intend to navigate this way.
 - [Document History](document_history.md) saves the document's content rather than your view of it.

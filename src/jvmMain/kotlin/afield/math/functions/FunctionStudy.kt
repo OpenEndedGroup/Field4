@@ -82,6 +82,16 @@ import javax.imageio.ImageIO
 import kotlin.math.*
 import kotlin.script.experimental.api.ResultValue
 
+/**
+ * A function study: a set of [Functions.Fn] channels written as Kotlin in a box, kept as
+ * checked revisions an AI conversation can inspect, edit, observe and export.
+ *
+ * The box's source returns a [StudyComposition]: the channels, their names, declared [StudyEvent]
+ * landmarks and the [StudyChoice]s behind them. [FunctionStudy] compiles each candidate, validates
+ * it, and only then publishes it as a new [StudyRevision]; the tools that drive it are in
+ * `FunctionStudyTools.kt`.
+ */
+
 /** Stable, declared event landmarks in seconds. These are metadata, not a second function language. */
 data class StudyEvent(val id: String, val start: Double, val rise: Double, val hold: Double = 30.0, val fall: Double = 60.0) {
     val plateauStart get() = start + rise

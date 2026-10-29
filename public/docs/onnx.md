@@ -13,9 +13,10 @@ webcam frame in one box.
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/onnx/overview.png" wait="30" capture="box" open-outputs="true" padding="20"}
 :::static
 import afield.ai.inference.onnx.*
-:::fold load a photograph that ships with Field, and pack it as the RGBA8 bytes both models read
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+
+:::fold load a photograph that ships with Field, and pack it as the RGBA8 bytes both models read
 
 val photo = imgFromFile("public/docs/assets/vision/fline-viewer.jpg", 3).scaleBy(0.45)
 
@@ -37,11 +38,12 @@ val rgbaBytes = toRgba8(photo)
 // How far away is everything? — one image in, one single-channel map out.
 val depth = DepthAnything.forSource(photo.width, photo.height)
 depth.infer(rgbaBytes, photo.width, photo.height)
-depth.depthFp16                       // ready to upload as VK_FORMAT_R16_SFLOAT
+depth.depthFp16 // ready to upload as VK_FORMAT_R16_SFLOAT
 
 // What is this a picture of? — no training, no labels, just prompts.
 val prompts = ClipText.encodeAll(["an empty room", "a person at a desk"])
-val best = ClipImage().encode(rgbaBytes, photo.width, photo.height).best(prompts)!!   // the better-matching label, and its share
+val best =
+    ClipImage().encode(rgbaBytes, photo.width, photo.height).best(prompts)!! // the better-matching label, and its share
 :::fold show both answers
 val depthMap = Img(depth.width, depth.height, 1, FloatArray(depth.width * depth.height) { depth.depthRaw.get(it) })
 showImgGrid(
@@ -121,9 +123,11 @@ fun toRgba8(img: Img): ByteBuffer {
 
 val rgba = toRgba8(photo)
 
-// Run the same frame at two sizes. sizeFor snaps to multiples of 14 (the backbone is ViT-S/14) and
-// preserves aspect. adaptation = 1f means "normalise against this frame's own range", which is what
-// a single still wants; a video stream wants the default 0.1f so the picture does not flicker.
+/*
+Run the same frame at two sizes. sizeFor snaps to multiples of 14 (the backbone is ViT-S/14) and
+preserves aspect. adaptation = 1f means "normalise against this frame's own range", which is what
+a single still wants; a video stream wants the default 0.1f so the picture does not flicker.
+*/
 fun runAt(longestSide: Int): Triple<DepthAnything, DepthStats, Img> {
     val (w, h) = DepthAnything.sizeFor(photo.width, photo.height, longestSide)
     val d = DepthAnything(w, h, adaptation = 1f)
@@ -145,9 +149,11 @@ println("${caption("@266", big, bigStats)}  ${big.lastInferenceMs}ms on ${big.ac
 println("${caption("@126", small, smallStats)}  ${small.lastInferenceMs}ms on ${small.activeProvider}")
 println("window settled=${bigStats.settled}; larger raw value = NEARER; the units are arbitrary")
 
-// Both maps are upscaled to the source size so the panels are comparable by eye, and each is
-// colour-mapped against its OWN range — which is exactly why the two look similarly bright despite
-// the ranges in their captions being completely different.
+/*
+Both maps are upscaled to the source size so the panels are comparable by eye, and each is
+colour-mapped against its OWN range — which is exactly why the two look similarly bright despite
+the ranges in their captions being completely different.
+*/
 showImgGrid(
     "source ${photo.width}x${photo.height} (bright = near, below)" to photo,
     caption("@266", big, bigStats) to bigMap.colormap("inferno").resize(photo.width, photo.height),
@@ -207,12 +213,16 @@ inference on its own thread. The renderer never waits; it draws the most recent 
 is a few frames old. The sketch below sets one up and feeds it webcam frames:
 
 ```diffstatic {data-lang=kotlin}
-// once
+// Construct once per box run; Stop or rerun closes its worker thread.
 val depth = DepthAnythingWorker(width = 266, height = 266)
-val tex = StreamingTexture(depth.depthFp16, depth.width, depth.height,
-                           imageFormat = VK10.VK_FORMAT_R16_SFLOAT)
+val tex = StreamingTexture(
+    depth.depthFp16,
+    depth.width,
+    depth.height,
+    imageFormat = VK10.VK_FORMAT_R16_SFLOAT,
+)
 // per frame
-depth.submit(webcam.frameBuffer, 640, 480)   // returns immediately
+depth.submit(webcam.frameBuffer, 640, 480) // returns immediately
 if (depth.consume()) tex.recordUpload(commandBuffer)
 ```
 
@@ -276,9 +286,11 @@ val carVec = encoder.encode(toRgba8(car), car.width, car.height)
 // A text-text cosine for scale, so the modality gap below is visible rather than asserted.
 val textText = clipEncode("storm").cosine(clipEncode("calm"))
 
-// A semantic axis: the unit direction from one prompt towards another. Projecting an image onto it
-// is a continuous knob whose units are meaning rather than pixels. What matters is not the absolute
-// value — same modality gap — but that the two images order correctly along it.
+/*
+A semantic axis: the unit direction from one prompt towards another. Projecting an image onto it
+is a continuous knob whose units are meaning rather than pixels. What matters is not the absolute
+value — same modality gap — but that the two images order correctly along it.
+*/
 val axis = text.getValue("an empty living room") axisTo text.getValue("a car")
 val roomOnAxis = roomVec.project(axis)
 val carOnAxis = carVec.project(axis)

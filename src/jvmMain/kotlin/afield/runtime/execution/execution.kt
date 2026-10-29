@@ -1,5 +1,17 @@
 package afield.runtime.execution
 
+/**
+ * How a Kotlin box runs: [KotlinExecution] compiles and evaluates a box's code, launches what it
+ * returns, and routes its printed output, errors and completions back to the editor.
+ *
+ * [BoxExecution] is the contract a language engine implements: run a fragment or the whole box,
+ * launch it on a strand, continue, stop, and answer completion and hover requests.
+ * [KotlinExecution] is the Kotlin implementation. [configureOutputProxies] connects a box's
+ * `print`, error and `display(...)` output to the client that ran it. [improveMessage] and
+ * [suggestionsFor] turn compiler diagnostics into the inline hints shown under an error.
+ */
+
+
 import afield.runtime.mainLanguage
 import afield.app.protocol.handle
 import afield.app.server.Server
@@ -205,6 +217,7 @@ import kotlin.script.experimental.api.ResultValue
 import kotlin.script.experimental.api.ScriptDiagnostic
 import kotlin.script.experimental.api.SourceCodeCompletionVariant
 
+/** Adds the "Reset Kotlin Environment for Box" action to a new root: it stops the boxes it is run on and gives each a fresh Kotlin engine. */
 @RunsAt(newRoot)
 fun installKEActions(root: Box) {
     root.actions["reset"] = Action(
@@ -1329,6 +1342,34 @@ private fun terminalTextForOutputHtml(html: String): String {
         .joinToString("\n") { it.trimEnd() }
 }
 
+/**
+ * The [DefaultOutput.warningProxy] for a run: a compiler warning ([afield.runtime.kotlin.ShadowedSnippetNameDiagnostics])
+ * sent to the editor as a `warning` output on its line. [lineOffset] is where the compiled text starts in
+ * the property, for a selection run.
+ */
+internal fun warningProxyFor(
+    box: Box,
+    reply: ((Message) -> Unit)?,
+    originSession: WebSocketSession?,
+    lineOffset: Int = 0
+): (String, Int, Int, Int, Int) -> Unit = { message, line, startColumn, endLine, endColumn ->
+    dispatchExecutionOutput(
+        box,
+        reply,
+        Output(
+            uid = box.id,
+            line = line + lineOffset,
+            startColumn = startColumn,
+            endLine = if (endLine > 0) endLine + lineOffset else endLine,
+            endColumn = endColumn,
+            kind = "warning",
+            html = escapeForHtml(message),
+            frame = Runloop.runLoop.frame.toInt()
+        ),
+        originSession = originSession
+    )
+}
+
 fun configureOutputProxies(box: Box, reply: (Message) -> Unit, originSession: WebSocketSession? = thisSession.get()) {
     box.output.proxy = { content, nl, line ->
         val n = renderPrintedOutput(content)
@@ -1364,6 +1405,8 @@ fun configureOutputProxies(box: Box, reply: (Message) -> Unit, originSession: We
             originSession = originSession
         )
     }
+
+    box.output.warningProxy = warningProxyFor(box, reply, originSession)
 
     box.output.displayProxy = { channel, content ->
         sendBoxOutput(box, Message("set-output").payload(Set_output(box.id, "outputarea", channel, retainedDisplayContent(box, channel, content))))
@@ -1624,6 +1667,7 @@ class KotlinExecution : BoxExecution {
                             originSession = request.originSession
                         )
                     }
+                    box.output.warningProxy = warningProxyFor(box, trace.reply, request.originSession)
                     box.output.errorProxy = { content, property, line ->
                         hasError = hasError || content != null
                         dispatchExecutionOutput(
@@ -2697,6 +2741,7 @@ class KotlinExecution : BoxExecution {
                     )
 
                 }
+                box.output.warningProxy = warningProxyFor(box, trace.reply, originSession, ln.i)
                 box.output.errorProxy = { content, property, line ->
                     hasError = hasError || content != null
                     dispatchExecutionOutput(

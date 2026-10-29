@@ -37,7 +37,7 @@ connected DAW does not drop while you edit.
 A box that only needs the current value of a knob can read it without a callback:
 
 ```diffstatic {data-lang=kotlin}
-val cutoff = 200.0 + 8000.0 * midi.knob(74)      // 0..1, 0 until the knob first moves
+val cutoff = 200.0 + 8000.0 * midi.knob(74) // 0..1, 0 until the knob first moves
 val held = midi.held.keys.map { (_, pitch) -> pitch }
 ```
 
@@ -47,17 +47,23 @@ on this machine.
 
 ## Sending
 
-Whatever a box sends goes to every connected peer:
+Whatever a box sends goes to every connected peer. **Launch** this sequence; Stop or rerun
+cancels its wait and releases the current note:
 
 ```diffstatic {data-lang=kotlin}
-for (pitch in [60, 64, 67, 72]) {
-    midi.noteOn(pitch, 90)
-    Thread.sleep(150)
-    midi.noteOff(pitch)
+frames {
+    for (pitch in [60, 64, 67, 72]) {
+        midi.noteOn(pitch, 90)
+        try {
+            delay(150) // Milliseconds; yields to Field while the note sounds.
+        } finally {
+            midi.noteOff(pitch) // Stop or rerun also releases the current note.
+        }
+    }
+    midi.controlChange(74, 100)
+    midi.pitchBend(-2000)
+    midi.sysex(byteArrayOf(0x7D, 1, 2, 3)) // The F0 ... F7 framing is added.
 }
-midi.controlChange(74, 100)
-midi.pitchBend(-2000)
-midi.sysex(byteArrayOf(0x7D, 1, 2, 3))   // the F0 ... F7 framing is added
 ```
 
 `programChange`, `send(midiMessage)` and `allNotesOff()` are there as well. Channels count from 0.
@@ -76,9 +82,11 @@ and once a peer is connected the two ends exchange clock readings, so each `Peer
 network round trip:
 
 ```diffstatic {data-lang=kotlin}
-markdown(midi.peers.joinToString("\n") { p ->
-    "- **${p.name}** ${p.state}, round trip ${p.roundTripMs} ms, ${p.received} received"
-})
+markdown(
+    midi.peers.joinToString("\n") { p ->
+        "- **${p.name}** ${p.state}, round trip ${p.roundTripMs} ms, ${p.received} received"
+    },
+)
 ```
 
 `roundTripStatsMs` gives the minimum, mean and maximum over the last 32 exchanges. On a wired
@@ -88,8 +96,7 @@ maximum shows how far it spikes.
 To find sessions on the network rather than typing an address:
 
 ```diffstatic {data-lang=kotlin}
-for (s in rtpMidiDiscover())
-    markdown("- **${s.instance}** at `${s.address}:${s.port}`")
+for (s in rtpMidiDiscover()) markdown("- **${s.instance}** at `${s.address}:${s.port}`")
 ```
 
 ## Ports and the network

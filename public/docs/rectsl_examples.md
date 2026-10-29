@@ -590,18 +590,18 @@ with `compileRectSL(source, curves)`, the Functions→RectSL half of the bridge:
 
 ```diffstatic {data-lang=kotlin}
 import afield.lang.rectsl.compileRectSL
-import afield.math.functions.Functions
-import afield.math.functions.fitBest
 
 with(Functions) {
     val target = gaussian(0.30, 0.11) + gaussian(0.72, 0.13) * 0.80
-    val seed   = gaussian(0.45, 0.20) + gaussian(0.60, 0.20) * 0.50
-    val run    = fitBest(target, seed, restarts = 12)   // RMSE collapses toward ~0
+    val seed = gaussian(0.45, 0.20) + gaussian(0.60, 0.20) * 0.50
+    val run = fitBest(target, seed, restarts = 12) // RMSE collapses toward ~0
 
-    val program = compileRectSL(
-        source,
-        mapOf("target" to target, "seed" to seed, "fit" to run.fitted)
-    ).program!!
+    val program =
+        compileRectSL(
+                source,
+                mapOf("target" to target, "seed" to seed, "fit" to run.fitted),
+            )
+            .program!!
     // ... render program like any other scene ...
 }
 ```
@@ -819,8 +819,14 @@ The two languages fit together with very little glue, because a RectSL track is 
 of time, and so is a pattern:
 
 ```diffstatic {data-lang=kotlin}
-RectSL   interface Track<out T> { fun sample(t: Double): T }
-Pattern  class PatPattern<A>    { fun events(arc: PatArc): List<PatEvent<A>> }
+RectSL
+interface Track<out T> {
+    fun sample(t: Double): T
+}
+Pattern
+class PatPattern<A> {
+    fun events(arc: PatArc): List<PatEvent<A>>
+}
 ```
 
 Neither simulates, and both answer any time in any order with the same value. That gives two
@@ -1657,8 +1663,8 @@ program is equally a data structure. From normal Field Kotlin:
 import afield.lang.rectsl.*
 
 val program = RectAnimationOracle.compile(rectsl).program!!
-val mid  = program.sample(2.0)        // exact rect transforms/colours at t = 2s
-val mesh = lowerSampledScene(mid)     // lowered to a CPU triangle mesh — no GPU
+val mid = program.sample(2.0) // exact rect transforms/colours at t = 2s
+val mesh = lowerSampledScene(mid) // lowered to a CPU triangle mesh — no GPU
 ```
 
 `sample` returns the concrete `SampledRect`s (centre, size, rotation, alpha,
@@ -2095,7 +2101,7 @@ val settings = RectSLRenderSettings(
     renderer = renderer,
     jpegQuality = 92,
     includeFinalFrame = false,
-    driveRendererWhileWaiting = false
+    driveRendererWhileWaiting = false,
 )
 
 frames {

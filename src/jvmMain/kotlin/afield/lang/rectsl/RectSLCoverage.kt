@@ -56,8 +56,8 @@ import kotlin.math.sin
  *
  * Area coverage is defined for **opaque** geometry. A rect at alpha 0.4 has no area interpretation —
  * the exact answer to "what fraction of this pixel is covered" is still 1 if the rect fills it — so
- * [exactRaster] treats every visible rect as opaque and [measureCoverageBias] refuses a scene whose
- * rects are translucent rather than quietly comparing two different quantities.
+ * [exactRaster] treats every visible rect as opaque and [measureCoverageBias] throws on a scene
+ * whose rects are translucent, instead of returning a number that compares two different quantities.
  */
 
 /**
@@ -100,9 +100,9 @@ data class CoverageRect(
      * The exact signed distance from `(x, y)` to this rect in plain arithmetic — positive outside,
      * negative inside.
      *
-     * The untracked twin of [AdShapeFrame.distanceAt], and deliberately the *only* one: a test pins
-     * the two bit-for-bit over thousands of points, which turns what would be a duplicated formula
-     * into a checked pair. Nothing here samples or approximates.
+     * The untracked twin of [AdShapeFrame.distanceAt], and the *only* one: a test pins the two
+     * bit-for-bit over thousands of points, which turns what would be a duplicated formula into a
+     * checked pair. Nothing here samples or approximates.
      */
     fun signedDistance(x: Double, y: Double): Double {
         val qx = x - centreX
@@ -459,9 +459,9 @@ fun CoverageKernel.reachInPixels(
  * `d(coverage)/d(distance)` for this kernel, in closed form — the number
  * [CoverageBiasRow.gradientReach] thresholds.
  *
- * Exposed rather than hidden because it is the honest statement of what a kernel *costs*: the two
- * kernels with the least bias are exactly zero outside `beta/2`, and a pixel where this is zero
- * cannot move a fit no matter how wrong the picture is there. A test checks it against a central
+ * This is what a kernel *costs*: the two kernels with the least bias are exactly zero outside
+ * `beta/2`, and a pixel where this is zero cannot move a fit no matter how wrong the picture is
+ * there. A test checks it against a central
  * difference of [CoverageKernel.coverage], since a slope transcribed by hand beside a value is the
  * classic place for the two to drift apart.
  */

@@ -32,6 +32,10 @@ import kotlin.math.pow
  * physically right on linear values, and an LED's PWM is linear in light; so a rig driven from a
  * linear frame at gamma 1 and a rig driven from an as-typed frame at `withGamma(2.2)` both show
  * roughly the right brightness, but only the first averages a thin line to the right energy.
+ */
+
+/**
+ * A compiled RectSL scene that renders [Img] frames at any time and size.
  *
  * @property source the RectSL program, with or without the `#rectsl` first line.
  */

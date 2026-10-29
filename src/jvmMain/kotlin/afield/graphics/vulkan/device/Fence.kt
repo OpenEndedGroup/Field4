@@ -6,6 +6,14 @@ import org.lwjgl.vulkan.VkFenceCreateInfo
 import afield.graphics.vulkan.util.vkCheck
 import afield.graphics.vulkan.util.AutoDisposer
 
+/**
+ * A Vulkan fence the CPU waits on to learn that submitted GPU work has finished.
+ *
+ * [Fence] creates the fence, optionally already signalled, and registers it with `AutoDisposer`
+ * under its [Device], so a fence that is never cleaned up is still destroyed. `fenceWait` blocks
+ * without a timeout, `reset` re-arms it, and `isSignaled` polls it.
+ */
+
 class Fence(private val device: afield.graphics.vulkan.device.Device, signaled: Boolean) {
     @JvmField
     var vkFence: Long = 0

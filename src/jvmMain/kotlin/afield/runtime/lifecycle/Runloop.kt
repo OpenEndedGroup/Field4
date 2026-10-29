@@ -38,9 +38,20 @@ import kotlin.math.max
 import kotlin.coroutines.CoroutineContext
 
 
+/**
+ * The main Field loop: [Runloop] ticks `preRun`, the [Framer] dispatcher and `postRun` once per frame on one thread.
+ *
+ * [Runloop.runLoop] is the single instance and [Runloop.frame] its frame counter. [inMain] launches a
+ * coroutine onto that loop, [Runloop.miscPool] is the shared pool for background work, and
+ * [AnimationClock] is the time source that frame-based code reads, which becomes frame-indexed during
+ * a frame-synchronous video capture. [RateLimiter] coalesces bursts of work to a fixed rate. The
+ * Runloop is not the audio thread; see `FieldAudioEngine` for that.
+ */
+
 //@OptIn(DelicateCoroutinesApi::class, ExperimentalAtomicApi::class)
 //fun inMain(block: suspend CoroutineScope.() -> Unit) = GlobalScope.launch(Runloop.runLoop.main, start = if (isMain.load()) CoroutineStart.UNDISPATCHED else CoroutineStart.DEFAULT, block = block)
 
+/** Launch [block] as a coroutine on the Runloop's [Framer] dispatcher. */
 @OptIn(DelicateCoroutinesApi::class, ExperimentalAtomicApi::class)
 fun inMain(block: suspend CoroutineScope.() -> Unit) = GlobalScope.launch(
     Runloop.runLoop.main,
@@ -156,6 +167,8 @@ class Runloop {
             get() = mainThread == Thread.currentThread()
     }
 
+    /** Volatile: the stall watchdog and [BoxInterrupt.poll] read it from other threads / later frames. */
+    @Volatile
     var frame = 0L
 
     val main = Framer()
@@ -177,6 +190,7 @@ class Runloop {
         }
         schedulingState.install(Thread.currentThread())
         lprintln("info,startup", "entering run loop")
+        BoxInterrupt.Watchdog.start()
         while (true) {
             val frameStartNs = System.nanoTime()
             preRun.update()

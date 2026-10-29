@@ -1,6 +1,23 @@
 package afield.graphics.scene.fabricated
 
 /**
+ * The ordering primitive the Fabricate renderer's pass collections are built on.
+ *
+ * Both [FabricatePostStack] and [FabricateFrameGraph] hold a [FabricatePassGraph], so what a pass
+ * name means, and where a new pass may go relative to one already there, is settled once here
+ * rather than once per collection. The same file carries the rule that decides where a
+ * replacement chain picks up its input: the output of the pass before the first one it replaces,
+ * or the chain's original input when that pass comes first.
+ */
+
+/** New chains append; replacements keep the input before their first existing pass. */
+internal fun <T> inputBeforeReplacement(
+    entries: List<Pair<String, T>>,
+    replacing: Set<String>,
+    initialInput: T
+): T = entries.takeWhile { (name, _) -> name !in replacing }.lastOrNull()?.second ?: initialInput
+
+/**
  * The ordered, name-keyed map both of this package's pass collections are built on.
  *
  * [FabricatePassGraph] is a `LinkedHashMap` with an API that makes the ordering part of the
@@ -19,11 +36,6 @@ package afield.graphics.scene.fabricated
  * plain strings, which is what `FabricatePassGraphTestMain.kt` does.
  */
 
-/**
- * Small ordered map for renderer passes. Kotlin's default mutableMapOf currently preserves
- * insertion order, but this wrapper makes that contract explicit and gives tests a pure data
- * structure to exercise before we touch Vulkan objects.
- */
 class FabricatePassGraph<T>(initial: Iterable<Pair<String, T>> = emptyList()) {
     private val ordered = LinkedHashMap<String, T>()
 

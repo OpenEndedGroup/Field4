@@ -26,16 +26,18 @@ operations:
       frame: { x: 80.0, y: 80.0, w: 340.0, h: 80.0 }
       properties:
         code: |
-          // Hands a goal to Field's own agent. The answer appears in this box's AI4 chat panel.
-          // mode = "scripted": replays a canned solution through the agent's real tools and real Field
-          // execution, with no model. Change it to "live" to ask the configured provider instead.
+          /*
+          Hands a goal to Field's own agent. The answer appears in this box's AI4 chat panel.
+          mode = "scripted": replays a canned solution through the agent's real tools and real Field
+          execution, with no model. Change it to "live" to ask the configured provider instead.
+          */
           askFieldAgent(
               goal = "Make a box named Primes that prints the first 10 prime numbers, and run it.",
-              checks = listOf(
+              checks = [
                   "box-exists:Primes",
                   "last-run-ok:Primes",
                   "output-ints-include:Primes:2,3,5,7,11,13,17,19,23,29",
-              ),
+              ],
               mode = "scripted",
               script = fieldAgentEvalScript("primes"),
           )
@@ -45,20 +47,23 @@ operations:
       frame: { x: 620.0, y: 80.0, w: 340.0, h: 80.0 }
       properties:
         code: |
-          // Edit the goal and the checks, then run this box. The turn is an ordinary AI4 chat turn in
-          // this box's panel, so you can keep talking to it there. Pass chatBox = "Other" to use
-          // another box's panel. The checks decide the verdict appended at the end.
-          // Check spellings: box-exists:B  last-run-ok:B  output-contains:B:text  connected:A:B
-          //                  output-ints-include:B:1,2,3  running:B  not-running:B  property-lacks:B:code:text
+          /*
+          Edit the goal and the checks, then run this box. The turn is an ordinary AI4 chat turn in
+          this box's panel, so you can keep talking to it there. Pass chatBox = "Other" to use
+          another box's panel. The checks decide the verdict appended at the end.
+          Check spellings: box-exists:B  last-run-ok:B  output-contains:B:text  connected:A:B
+                           output-ints-include:B:1,2,3  running:B  not-running:B  property-lacks:B:code:text
+          */
           askFieldAgent(
-              goal = "Launch a box named Table that uses display to show an HTML <table> in the output " +
-                  "channel \"main\", with one row for each n in 1..5 holding n and n*n.",
-              checks = listOf(
+              goal =
+                  "Launch a box named Table that uses display to show an HTML <table> in the output " +
+                      "channel \"main\", with one row for each n in 1..5 holding n and n*n.",
+              checks = [
                   "box-exists:Table",
                   "last-run-ok:Table",
                   "output-contains:Table:<table",
                   "output-ints-include:Table:1,1,2,4,3,9,4,16,5,25",
-              ),
+              ],
               mode = "live",
               maxToolRounds = 16,
           )

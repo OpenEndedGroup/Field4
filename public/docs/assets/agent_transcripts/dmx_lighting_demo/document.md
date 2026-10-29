@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="dmx-sacn-matrix" index="0" -->
 
 ```edn [field-box id="dmx-sacn-matrix" role="properties"]
-{"id" "dmx-sacn-matrix" "index" 0 "name" "4. sACN: an image on an RGBW matrix (launch)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4. sACN: an image on an RGBW matrix (launch)" "_tombstone" false "frame" #afield/rect [1200.0 60.0 380.0 70.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dmx-sacn-matrix_code_.kt" "lines" 35 "characters" 1414 "sha256" "20528880aa64a679daa52484bc498fd454107fc480c43f84ca8d098aada3439f"}]}
+{"id" "dmx-sacn-matrix" "index" 0 "name" "4. sACN: an image on an RGBW matrix (launch)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4. sACN: an image on an RGBW matrix (launch)" "_tombstone" false "frame" #afield/rect [1200.0 60.0 380.0 70.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dmx-sacn-matrix_code_.kt" "lines" 40 "characters" 1450 "sha256" "946832ffd02cab9186292cda86d532bb4257b93ce6b20aa5f568085dbbe7bc2f"}]}
 ```
 
 ```kotlin [field-property box="dmx-sacn-matrix" name="code" path="dmx-sacn-matrix_code_.kt"]
@@ -23,18 +23,23 @@ val patch = Patch(startUniverse = 10)
 patch.grid(16, 8, spacing = 10.0, profile = FixtureProfile.RGBW, serpentine = true)
 
 // Any Img will do (imgFromFile("...") for a file); here a small gradient made in place.
-val img = Img(64, 32, 3, FloatArray(64 * 32 * 3) { i ->
-    val x = (i / 3) % 64 / 63f
-    val y = (i / 3) / 64 / 31f
-    when (i % 3) {
-        0 -> x
-        1 -> y
-        else -> 1f - x
-    }
-})
+val img = Img(
+    64,
+    32,
+    3,
+    FloatArray(64 * 32 * 3) { i ->
+        val x = (i / 3) % 64 / 63f
+        val y = (i / 3) / 64 / 31f
+        when (i % 3) {
+            0 -> x
+            1 -> y
+            else -> 1f - x
+        }
+    },
+)
 
-val out = sacnOut("127.0.0.1")   // host = null sends to multicast 239.255.0.10 instead
-val node = sacnIn()              // Field as an sACN receiver on UDP 5568
+val out = sacnOut("127.0.0.1") // host = null sends to multicast 239.255.0.10 instead
+val node = sacnIn() // Field as an sACN receiver on UDP 5568
 
 // On the sender's clock: sample the image, then sweep a wave of brightness across it.
 patch.animate(out) { t ->
@@ -100,7 +105,7 @@ loop {
 <!-- field-box id="dmx-sender" index="3" -->
 
 ```edn [field-box id="dmx-sender" role="properties"]
-{"id" "dmx-sender" "index" 3 "name" "2. Pixel mapper: 200 px on a curve (launch)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2. Pixel mapper: 200 px on a curve (launch)" "_tombstone" false "frame" #afield/rect [580.0 60.0 380.0 70.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dmx-sender_code_.kt" "lines" 24 "characters" 867 "sha256" "14c11139b6150fac4acf541a8af3d354d4247685979770797a2fd25587d94011"}]}
+{"id" "dmx-sender" "index" 3 "name" "2. Pixel mapper: 200 px on a curve (launch)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2. Pixel mapper: 200 px on a curve (launch)" "_tombstone" false "frame" #afield/rect [580.0 60.0 380.0 70.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dmx-sender_code_.kt" "lines" 26 "characters" 890 "sha256" "3418455d3cf2a0d7435023eee3a5046aca8cc46ff385851fb1b62e896decfc95"}]}
 ```
 
 ```kotlin [field-property box="dmx-sender" name="code" path="dmx-sender_code_.kt"]
@@ -118,9 +123,11 @@ val out = artnetOut("127.0.0.1")
 // A colour field over (x, y, t), evaluated on the DMX sender's own 44 Hz clock.
 patch.animate(out) { t ->
     map(t) { x, y, time ->
-        vec(0.5 + 0.5 * sin(x * 0.03 - time * 2.0),
+        vec(
+            0.5 + 0.5 * sin(x * 0.03 - time * 2.0),
             0.5 + 0.5 * sin(x * 0.03 - time * 2.0 + 2.1),
-            0.5 + 0.5 * sin(y * 0.03 + time))
+            0.5 + 0.5 * sin(y * 0.03 + time),
+        )
     }
 }
 

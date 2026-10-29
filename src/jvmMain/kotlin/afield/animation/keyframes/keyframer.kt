@@ -1415,6 +1415,40 @@ class KeyframeScope(val schemaVersion: Int = 0) {
         val dir = keyVersionsDir(path)
         if (!dir.exists()) return emptyList()
         return reconcileKeyVersions(dir, parseKeyVersionManifest(keyVersionsManifest(path)) ?: emptyList())
+            .also { reportKeyVersionDamage(dir, it) }
+    }
+
+    private val reportedKeyVersionDamage = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+
+    /**
+     * The marks a save made before 2026-08 can have left: an unparseable manifest then read as no
+     * history, so the next save renumbered from 0 and wrote over the oldest files. That shows up as
+     * missing indices, or as a version whose timestamp is earlier than the one before it. Reported
+     * once per directory and content on `error,keyframer`; what was overwritten cannot be recovered.
+     */
+    internal fun keyVersionDamage(versions: List<KeyVersionInfo>): List<String> {
+        val problems = ArrayList<String>()
+        val indices = versions.map { it.index }.toSet()
+        val missing = (0..(indices.maxOrNull() ?: -1)).filter { it !in indices }
+        if (missing.isNotEmpty()) problems += "versions ${missing.joinToString()} are missing"
+        versions.sortedBy { it.index }.zipWithNext().forEach { (a, b) ->
+            val ta = runCatching { Instant.parse(a.timestamp) }.getOrNull()
+            val tb = runCatching { Instant.parse(b.timestamp) }.getOrNull()
+            if (ta != null && tb != null && tb.isBefore(ta))
+                problems += "version ${b.index} (${b.timestamp}) is older than version ${a.index} (${a.timestamp})"
+        }
+        return problems
+    }
+
+    private fun reportKeyVersionDamage(dir: Path, versions: List<KeyVersionInfo>) {
+        val problems = keyVersionDamage(versions)
+        if (problems.isEmpty() || !reportedKeyVersionDamage.add("$dir|$problems")) return
+        lprintln(
+            "error,keyframer",
+            "key version history $dir has gaps: ${problems.joinToString("; ")}. A save before 2026-08 " +
+                "renumbered from 0 after an unreadable manifest and overwrote the oldest files; the versions " +
+                "listed are what survives"
+        )
     }
 
     /**

@@ -29,6 +29,15 @@ import java.util.concurrent.TimeUnit
 import kotlin.math.abs
 
 /**
+ * The revisioned study behind every StackSL program: checked edits, history on disk, and the
+ * measurements a model and a person work from.
+ *
+ * [StackSLStudy] holds one program's revisions and renders them through the CPU reference, so
+ * observing, tracing, sweeping a knob and comparing two revisions give the same pixels in a test, a
+ * headless run and a live session.
+ */
+
+/**
  * Talking a shader into existence: the StackSL study a document's AI4 tools, and the person beside
  * them, work on together.
  *

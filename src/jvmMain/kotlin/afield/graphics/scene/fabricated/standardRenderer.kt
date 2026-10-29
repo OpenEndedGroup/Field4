@@ -35,19 +35,18 @@ import kotlin.math.abs
  * The deferred renderer the rest of Fabricate is arranged around: the pass bundle, its shaders, and
  * the configuration that sizes them.
  *
- * This is the largest file in the package and the one to read first, because the objects it returns
- * are what almost everything else here consumes. `StandardRenderer.build(...)` builds the five
- * passes — g-buffer, shadow map, ambient occlusion, lighting composite, transparent composite —
- * and hands back a `Bundle` holding each as an ordinary Field 4 `Target`, along with the
- * scene defaults, the scene graph and the post stack. Nothing is hidden
- * behind that: `FabricateFrameGraph` wraps the same targets to give them names and an order,
- * `FabricatePostStack` appends to them, and a box that wants to reach past all of it and
- * manipulate a `RenderToTexture` directly still can. The design decision throughout is to compose
- * the existing primitives rather than replace them.
+ * This is the file to read first, because the objects it returns are what almost everything else
+ * here consumes. `StandardRenderer.build(...)` builds seven passes (g-buffer, shadow map, ambient
+ * occlusion, lighting composite, transparent composite, motion blur, anti-aliasing) and hands back
+ * a `Bundle` holding each as a `RenderToTexture`, along with the scene defaults, the scene graph
+ * and the post stack. Nothing is hidden behind that: `FabricateFrameGraph` wraps the same targets
+ * to give them names and an order, `FabricatePostStack` appends to them, and a box that wants to
+ * reach past all of it and manipulate a `RenderToTexture` directly still can. Throughout, the
+ * existing Field 4 primitives are composed rather than replaced.
  *
  * Deferred is the choice that explains the pass list. Geometry is rasterized once into a g-buffer
  * of positions, normals and material parameters, and lighting is then evaluated per screen pixel,
- * so cost scales with lights rather than with lights times triangles — which is what lets
+ * so cost scales with lights rather than with lights times triangles, which is what lets
  * `FabricateScene`'s light list be arbitrary. It is also why transparency needs a separate pass at
  * the end: a g-buffer holds one surface per pixel, and a blended surface is a second one.
  *
@@ -579,7 +578,7 @@ object StandardRenderer {
 			}
 			val texturedModule = Module(parameters(renderer) {
 				this.name = "prefab-gbuffer-textured-$name"
-				gBuffer.apply()
+				+gBuffer
 				blend = false
 				vertex = gBufferTexturedVertex
 				fragment = gBufferTexturedFragment
@@ -754,7 +753,7 @@ object StandardRenderer {
 			val viewSampler = if (extraViews.isEmpty() && sourceView == null) null else TextureSampler(renderer, 1, false)
 			val moduleParameters = parameters(renderer) {
 				this.name = "prefab-post-$name"
-				target.apply()
+				+target
 				blend = false
 				vertex = fullscreenVertex
 				this.fragment = fragment
@@ -1098,7 +1097,7 @@ object StandardRenderer {
 
 		val gBufferModule = Module(parameters {
 			name = "prefab-gbuffer"
-			gBuffer.apply()
+			+gBuffer
 			blend = false
 			vertex = gBufferVertex
 			fragment = gBufferFragment
@@ -1107,7 +1106,7 @@ object StandardRenderer {
 
 		val shadowModule = Module(parameters {
 			name = "prefab-shadow"
-			shadow.apply()
+			+shadow
 			blend = false
 			vertex = shadowVertex
 			fragment = shadowFragment
@@ -1125,7 +1124,7 @@ object StandardRenderer {
 
 		val aoModule = Module(parameters {
 			name = "prefab-ao"
-			ao.apply()
+			+ao
 			blend = false
 			vertex = fullscreenVertex
 			fragment = aoFragment
@@ -1145,7 +1144,7 @@ object StandardRenderer {
 
 		val lightingModule = Module(parameters {
 			name = "prefab-lighting"
-			lighting.apply()
+			+lighting
 			blend = false
 			vertex = fullscreenVertex
 			fragment = lightingFragment
@@ -1192,7 +1191,7 @@ object StandardRenderer {
 
 				val transparentCopyModule = Module(parameters {
 					name = "prefab-transparent-copy"
-					transparentComposite.apply()
+					+transparentComposite
 					blend = false
 					vertex = fullscreenVertex
 					fragment = copyFragment
@@ -1210,7 +1209,7 @@ object StandardRenderer {
 
 				val transparentModule = Module(parameters {
 					name = "prefab-transparent"
-					transparentComposite.apply()
+					+transparentComposite
 					blend = true
 					srcColor = VK_BLEND_FACTOR_SRC_ALPHA
 					dstColor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA
@@ -1232,7 +1231,7 @@ object StandardRenderer {
 
 				val motionBlurModule = Module(parameters {
 					name = "prefab-motion-blur"
-					motionBlur.apply()
+					+motionBlur
 					blend = false
 					vertex = fullscreenVertex
 					fragment = motionBlurFragment
@@ -1253,7 +1252,7 @@ object StandardRenderer {
 
 				val antiAliasModule = Module(parameters {
 					name = "prefab-anti-alias"
-					antiAlias.apply()
+					+antiAlias
 					blend = false
 					vertex = fullscreenVertex
 				fragment = fxaaFragment

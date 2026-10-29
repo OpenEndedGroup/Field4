@@ -19,6 +19,12 @@ import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.VK13.*
 import org.lwjgl.vulkan.NVOpticalFlow.*
 
+/**
+ * The hardware optical-flow backend, which drives the VK_NV_optical_flow engine on NVIDIA Ada and later GPUs.
+ *
+ * [HardwareOpticalFlow] is what [OpticalFlowBackend.AUTO] picks when the device has that extension enabled.
+ */
+
 /** Dedicated hardware image correspondence. Call [evaluate] between Field frames, after producers
  * have submitted. Images stay on the GPU. This first implementation waits for one final fence;
  * it does not overlap pairs, and includes conversion/synchronization in [milliseconds].
@@ -75,12 +81,12 @@ class HardwareOpticalFlow(override val renderer: Renderer,override val first: Ha
     override val output=RenderToTexture(renderer) { width=flowWidth;height=flowHeight;format=VK_FORMAT_R32G32B32A32_SFLOAT;useDepth=false;debugName="motion field and cost" }
     private val sampler=TextureSampler(renderer,1,false,filter=VK_FILTER_NEAREST)
     private val convert=Module(parameters(renderer) {
-        name="optical input conversion";conversion.apply();vertex=VERTEX;fragment=CONVERT;depthTest=false;depthWrite=false;blend=false
+        name="optical input conversion";+conversion;vertex=VERTEX;fragment=CONVERT;depthTest=false;depthWrite=false;blend=false
         textureResolver={ t -> fromViews(listOf(if(t.name=="firstImage")first else second),t.name,sampler) }
     })
     private val packed=VulkanBuffer(renderer,flowWidth.toLong()*flowHeight*4,VK_BUFFER_USAGE_TRANSFER_DST_BIT or VK_BUFFER_USAGE_STORAGE_BUFFER_BIT or VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,needsDeviceAddress=true)
     private val costs=VulkanBuffer(renderer,flowWidth.toLong()*flowHeight*4,VK_BUFFER_USAGE_TRANSFER_DST_BIT or VK_BUFFER_USAGE_STORAGE_BUFFER_BIT or VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,needsDeviceAddress=true)
-    private val resolve=Module(parameters(renderer) {name="optical unpack";output.apply();vertex=VERTEX;fragment=UNPACK;depthTest=false;depthWrite=false;blend=false})
+    private val resolve=Module(parameters(renderer) {name="optical unpack";+output;vertex=VERTEX;fragment=UNPACK;depthTest=false;depthWrite=false;blend=false})
     private var closed=false
     private var firstPair=true
     override val milliseconds=ArrayDeque<Double>()

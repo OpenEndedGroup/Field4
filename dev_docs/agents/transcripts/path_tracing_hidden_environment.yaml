@@ -1,5 +1,8 @@
 name: path_tracing_hidden_environment
 description: Progressive compute path tracer with an OpenEXR environment, three PBR materials, and optional KHR ray queries.
+docs:
+  - page: path_tracing.md#environment-lighting-without-a-visible-sky
+    why: "Explains environment lighting with the sky hidden from camera."
 operations:
   - create:
       box: path_trace_renderer
@@ -8,6 +11,7 @@ operations:
       properties:
         code: |
           import afield.graphics.vulkan.util.Options
+
           prop<Window>(window)
           prop<Renderer>(renderer)
           Options.enableHDR = false
@@ -25,9 +29,14 @@ operations:
           import afield.graphics.scene.fabricated.PathTraceDemo
           import afield.graphics.scene.fabricated.PathTracingRenderer
           import java.io.File
+
           prop<PathTracingRenderer>(tracer)
-          tracer = PathTraceDemo.install(renderer, width=1280, height=720,
-              environmentPath=File("public/docs/assets/fabricate_demo/venice_sunset_1k.exr").absolutePath)
+          tracer = PathTraceDemo.install(
+              renderer,
+              width = 1280,
+              height = 720,
+              environmentPath = File("public/docs/assets/fabricate_demo/venice_sunset_1k.exr").absolutePath,
+          )
           tracer.samplesPerFrame = 1
           tracer.maxBounces = 5
           tracer.indirectClamp = 10f // Optional biased suppression of indirect fireflies.
@@ -37,7 +46,9 @@ operations:
           tracer.blitToScreen()
           // This coroutine only announces capture readiness; the named scene owns the tracer.
           frames {
-              while (tracer.samples < 1024) { frame() }
+              while (tracer.samples < 1024) {
+                  frame()
+              }
               println("hidden environment study converged: ${tracer.samples} samples")
           }
   - connect: { parent: path_trace_renderer, child: path_trace_hidden_environment }

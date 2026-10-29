@@ -1,0 +1,207 @@
+name: webrtc_shader_jam
+description: |
+  The classroom shader jam from Field: one box publishes a fragment shader as a WebRTC stream, and
+  another samples a published stream as a texture in the renderer window. After
+  WebRTCNetwork.join("https://<your aaaframe>") once, in any box, both use that class's
+  ShaderTrinket network: Field opens aaaframe's GitHub sign-in in a window the first time, remembers
+  the class and login for this user, and a browser ShaderTrinket can Receive "@you/field-shader"
+  while Field shows any student's Publish. Before joining they use Field's own relay, and the
+  receiving box shows its neighbour's stream until you pick another publisher from its list.
+
+  The sink is an ElectronRTTView, so it needs the Field Electron app; the source is a hidden
+  Electron page whose paints are the texture. Chromium does all of the WebRTC. See
+  dev_docs/WEBRTC_SOURCES_SINKS.md and public/docs/webrtc.md.
+operations:
+  - create:
+      box: webrtc_renderer
+      name: WebRTC window + renderer
+      frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.graphics.vulkan.util.Options
+
+          prop<Window>(window)
+          prop<Renderer>(renderer)
+
+          Options.enableHDR = false
+          Options.enableVR = false
+
+          once.renderer {
+              window = Window("WebRTC shader jam", initialDimensions = Rect(80.0, 80.0, 960.0, 540.0))
+              Renderer(window)
+          }
+
+          println("WebRTC renderer ready")
+          start(renderer::run)
+        notes: |
+          The renderer and its window. The other two boxes sit beneath it.
+  - create:
+      box: webrtc_publish_shader
+      name: publish a shader
+      frame: { x: 40.0, y: 200.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.media.webrtc.webrtcSink
+
+          /*
+          Published as login/field-shader: your aaaframe login, or this computer's user name on
+          Field's own relay. A browser ShaderTrinket receives it by that name. To join a class,
+          run WebRTCNetwork.join("https://<your aaaframe>") once; Field asks you to sign in.
+          */
+          @exported val sink = webrtcSink("field-shader", 640, 360)
+
+          val module = moduleHere { +sink }
+          val quad = Mesh()
+          module += "quad" to quad
+          sink += "content" to module
+
+          quad.clock = { vec(System.nanoTime() / 1e9, 0.0, 0.0, 0.0) }
+          quad.set(4, 2) {
+              pos.add(-1, -1, 0)
+              pos.add(1, -1, 0)
+              pos.add(1, 1, 0)
+              pos.add(-1, 1, 0)
+              tri.add(0, 1, 2)
+              tri.add(0, 2, 3)
+          }
+
+          display("main", sink.html())
+        notes: |
+          # WebRTC shader jam
+
+          The classroom shader jam, from Field. This box draws a fragment shader (its `fragment`
+          tab) into a 640×360 view and publishes the view as a live video stream named
+          `@you/field-shader`. The box beside it lists everyone who is publishing and shows the
+          one you pick, as a texture, in the renderer's window.
+
+          ## Joining a class
+
+          Run this once, in any box, with your class's aaaframe address:
+
+          ```diffstatic {data-lang=kotlin}
+          WebRTCNetwork.join("https://aaaframe.example.edu")
+          ```
+
+          The first time, a small Field window opens on aaaframe's GitHub sign-in. Sign in as you
+          would in the browser; the window closes by itself and the panels connect as `@you`.
+          Field remembers the class and your login (in `~/.afield/webrtc/aaaframe-sign-ins.json`,
+          readable only by you), so later sessions need nothing. When the login expires, the
+          window opens again.
+
+          Then, in a browser ShaderTrinket, type `you/field-shader` into Receive to pull this
+          stream into an `iChannel`; and pick any classmate's name in the receiving box's list
+          to sample their Publish in Field.
+
+          Before you join a class, both boxes use Field's own relay, and the receiving box shows
+          this box's stream.
+
+          ## On the aaaframe side
+
+          Nothing new: an aaaframe server with ShaderTrinket's signalling, as the class already
+          runs. A server in local mode (`AAAFRAME_LOCAL_AUTH=1`) needs no sign-in at all.
+
+          ## Known gaps
+
+          - Field's Electron app only, for publishing and for signing in.
+          - Video only; no sound.
+          - No TURN server: two machines on networks that both block direct connections cannot
+            see each other.
+          - A ShaderTrinket whose shader does not animate publishes no frames.
+          - On Linux the received stream is copied through the CPU.
+
+          More: the WebRTC Streams page in Field's docs.
+        vertex: |
+          #version 450
+          layout(location = 0) in vec3 pos;
+
+          void main() {
+              gl_Position = vec4(pos.xy, 0.0, 1.0);
+          }
+        fragment: |
+          #version 450
+          layout(location = 0) out vec4 color;
+
+          layout(push_constant) uniform constants {
+              vec4 clock;
+          } pc;
+
+          // Falling masks invert an increasing smoothstep; reversed edges are undefined in GLSL.
+          void main() {
+              vec2 uv = (gl_FragCoord.xy - vec2(320.0, 180.0)) / 180.0;
+              float t = pc.clock.x;
+              float r = length(uv);
+              float a = atan(uv.y, uv.x);
+              float rings = 0.5 + 0.5 * sin(10.0 * r - 3.0 * t + 4.0 * sin(3.0 * a + t));
+              vec3 tint = 0.5 + 0.5 * cos(vec3(0.0, 2.1, 4.2) + t + 2.0 * r);
+              color = vec4(tint * rings * (1.0 - smoothstep(0.2, 1.6, r)), 1.0);
+          }
+  - create:
+      box: webrtc_receive_stream
+      name: receive a stream as a texture
+      frame: { x: 640.0, y: 200.0, w: 340.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.media.webrtc.webrtcPublishers
+          import afield.media.webrtc.webrtcSource
+
+          // Until you pick someone, show the first publisher on the network (on Field's own relay,
+          // that is the box beside this one).
+          val publishers = webrtcPublishers()
+          val source = webrtcSource(publishers.names.firstOrNull() ?: "nobody", 640, 360)
+          publishers.onChange { names ->
+              if (source.target == "nobody" && names.isNotEmpty()) source.watch(names.first())
+          }
+          publishers.onPick { name -> source.watch(name) }
+          display("publishers", publishers.html { source.target })
+
+          val material = moduleHere { textures("remote" to source) }
+          val screen = Mesh()
+          material += "screen" to screen
+          renderer += "webrtc-remote" to material
+
+          screen.set(4, 2) {
+              pos.add(-0.9, -0.9, 0.0)
+              pos.add(0.9, -0.9, 0.0)
+              pos.add(0.9, 0.9, 0.0)
+              pos.add(-0.9, 0.9, 0.0)
+              tc.add(0, 0, 1, 0, 1, 1, 0, 1)
+              tri.add(0, 1, 2, 0, 2, 3)
+          }
+
+          var said = ""
+          loop {
+              val line = "@${source.target}: ${source.status}"
+              if (line != said) println(line)
+              said = line
+              frame()
+          }
+        notes: |
+          Lists who is publishing (buttons under `publishers`) and draws the stream you click on
+          a quad in the renderer's window. Until you pick, it shows the first publisher it sees.
+          In the shader the stream is `uniform sampler2D remote`. Re-running keeps the stream
+          connected; `source.status` says what it is waiting for.
+        vertex: |
+          #version 450
+          layout(location = 0) in vec3 pos;
+          layout(location = 1) in vec2 tc;
+          layout(location = 1) out vec2 ftc;
+
+          void main() {
+              gl_Position = vec4(pos, 1.0);
+              ftc = tc;
+          }
+        fragment: |
+          #version 450
+          layout(location = 0) out vec4 color;
+          layout(location = 1) in vec2 ftc;
+          layout(set = 0, binding = 0) uniform sampler2D remote;
+
+          void main() {
+              color = vec4(texture(remote, vec2(ftc.x, 1.0 - ftc.y)).rgb, 1.0);
+          }
+  - connect: { parent: webrtc_renderer, child: webrtc_publish_shader }
+  - connect: { parent: webrtc_renderer, child: webrtc_receive_stream }
+  - launch: { box: webrtc_renderer, property: code }
+  - wait: { frames: 3 }
+  - launch: { box: webrtc_publish_shader, property: code }
+  - launch: { box: webrtc_receive_stream, property: code }

@@ -40,6 +40,15 @@ import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 /**
+ * Server handlers that import boxes from a dropped `metadata.edn` or Jupyter notebook, and export Python cells back to `.ipynb`.
+ *
+ * [importing] installs four message handlers: `import-metadata-edn` and `import-metadata-edn-nested`
+ * add another document's boxes to the current one with fresh ids, `import-ipynb` turns notebook
+ * cells into boxes ([importNotebookCells]), and `export-ipynb` writes a Python root's cells out as a
+ * notebook ([exportNotebookCells]).
+ */
+
+/**
  * Handler for importing metadata.edn files from the frontend.
  *
  * This allows users to drag and drop metadata.edn files into the web UI,

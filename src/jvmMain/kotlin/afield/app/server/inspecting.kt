@@ -46,6 +46,17 @@ import kotlin.reflect.KMutableProperty1
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.jvm.isAccessible
 
+/**
+ * A two-way debug inspector for a box: [Box.inspect] shows a set of objects in an iframe at
+ * `/inspect` and lets the page edit their fields.
+ *
+ * The shape of what is shown is described by a list of [TypeDef]s. [extractMappedData] walks the
+ * roots against those definitions and records a setter for each editable path, and
+ * [DebugSocketBridge] sends the extract to the page and applies the edits it sends back.
+ * [initInspecting] installs the raw socket handler that routes inspector messages to the right
+ * bridge.
+ */
+
 // Type definition model mirroring the frontend expectations
 data class TypeDef(
     val path: String,

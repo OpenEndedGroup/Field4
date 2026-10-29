@@ -1,0 +1,15 @@
+{
+  "actualNativeRecipes": [
+    0,
+    6,
+    2,
+    4,
+    7
+  ],
+  "typedAnalyzedPropertyWorksInFollowOn": true,
+  "realNativeProcessObservedBeforeStop": [
+    "87365 15457 /Users/marc/.codex/worktrees/box-code-revision-pilot/field4/build/field-loris/build/field_loris"
+  ],
+  "nativeFutureCancelledAndProcessExited": true,
+  "limits": "Actual committed dialogue input and actual native Loris executable. Stop uses a generated sixty-second tonal input to keep native analysis pending; no model output or public capture is substituted."
+}

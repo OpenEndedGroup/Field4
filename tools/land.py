@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """The landing queue: agents enqueue a branch and stop; one lander puts it on `main`.
 
+    uv run python tools/land.py precheck [--plan]                 # first: the guards this diff can trip
     uv run python tools/land.py enqueue [branch] [--note "..."]   # agents: this, then stop
     uv run python tools/land.py status [id] [--watch]             # what is queued, landed, bounced
     uv run python tools/land.py wait <id>                         # block until it lands or bounces
@@ -46,7 +47,9 @@ bounce. Every attempt is in `field-land-queue/fixer.jsonl`. FIELD_LAND_FIXER=off
 
 `doc` is a queue barrier: preceding landings finish before it builds `public/field4/` in the
 checkout holding `main`; later landings wait until the build finishes. It reuses committed captures
-and reports its own failure without undoing a landing. The running lander must be restarted after
+and reports its own failure without undoing a landing. It refuses to build while that checkout has
+uncommitted changes under src/ or public/docs, because the site would mix them with pages generated
+from HEAD. The running lander must be restarted after
 changes to this script are landed, because Python does not reload it while running.
 
 The queue is plain JSON files in the clone's common git dir (`field-land-queue/`), so every worktree
@@ -235,6 +238,8 @@ def cmd_doc(args: argparse.Namespace) -> int:
         item["id"] = f"{base}-{n}"
     _move(queue, item, PENDING)
     print(f"land: queued docs build {item['id']} for {holder}; {len(_items(queue, PENDING)) - 1} ahead of it.")
+    if dirty := _dirty_doc_inputs(holder):
+        print(f"land: warning: it will be refused unless this changes by its turn: {_dirty_doc_reason(holder, dirty)}", file=sys.stderr)
     print(f"Progress: uv run python tools/land.py status {item['id']}")
     print(f"Outcome: uv run python tools/land.py wait {item['id']}")
     return 0
@@ -348,6 +353,38 @@ def _superseded_by(queue: Path, item: dict) -> dict | None:
     return later[0] if later else None
 
 
+def _content_on_main(item: dict) -> bool:
+    """The bounced commit's changes are already on `main`: merging it now would change nothing.
+    True when it was merged into a branch that landed, and also when its changes were copied onto
+    one with new SHAs (cherry-picked, or a subset of a bigger branch). Such a bounce needs nobody."""
+    sha = item.get("sha")
+    if not sha:
+        return False
+    repo = _primary(Path.cwd())
+    if _ok(repo, "merge-base", "--is-ancestor", sha, "refs/heads/main"):
+        return True
+    if not _ok(repo, "cat-file", "-e", f"{sha}^{{commit}}"):
+        return False
+    merged = subprocess.run(["git", "merge-tree", "--write-tree", "refs/heads/main", sha], cwd=repo,
+                            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+    return merged.returncode == 0 and merged.stdout.split("\n", 1)[0] == _git(repo, "rev-parse", "refs/heads/main^{tree}")
+
+
+def _branch_gone(item: dict) -> bool:
+    """Its branch has been deleted, so nobody is going to fix and re-enqueue it: abandoned on purpose."""
+    branch = item.get("branch")
+    return bool(branch) and not _ok(_primary(Path.cwd()), "show-ref", "--verify", "--quiet", f"refs/heads/{branch}")
+
+
+def _settled(item: dict) -> str | None:
+    """Why a bounce with no later landing of its own branch still needs nobody, or None if it does."""
+    if _content_on_main(item):
+        return "its changes reached main another way"
+    if _branch_gone(item):
+        return "its branch was deleted"
+    return None
+
+
 def _describe(state: str, item: dict, queue: Path | None = None) -> str:
     if _is_doc(item):
         head = f"{item['id']}  docs for {item['checkout']}  by {item['by']}"
@@ -418,6 +455,10 @@ def _describe(state: str, item: dict, queue: Path | None = None) -> str:
             lines[0] = f"resolved {head}"
             lines.append(f"         bounced {_span(_since(item.get('finished')))} ago, then landed as {fixed['id']} "
                          f"-> main {fixed.get('landed_as', '')[:9]}")
+            return "\n".join(lines)
+        if why := _settled(item):
+            lines[0] = f"resolved {head}"
+            lines.append(f"         bounced {_span(_since(item.get('finished')))} ago; {why}")
             return "\n".join(lines)
         lines.append(f"         {_span(_since(item.get('finished')))} ago: {' '.join(str(item.get('reason', '?')).split())}")
         lines.append(f"         log: {item.get('log', '')}")
@@ -557,8 +598,8 @@ def _stranded_bounces(queue: Path, hours: float) -> list[dict]:
             continue
         if _superseded_by(queue, item) or item.get("branch") in queued:
             continue
-        # Landed some other way (merged into another branch that landed): not stranded.
-        if _ok(_primary(Path.cwd()), "merge-base", "--is-ancestor", item["sha"], "refs/heads/main"):
+        # Landed some other way, or its branch was deleted: not stranded.
+        if _settled(item):
             continue
         out.append(item)
     # One per branch: the newest attempt is the one that matters.
@@ -689,6 +730,9 @@ class _Style:
             "push": "\uf062" if nerd else "^", "pull": "\uf063" if nerd else "v",
             "fix": "\uf0ad" if nerd else "%",
         }
+        if nerd:
+            # Nerd Font icons draw wider than the one cell the terminal gives them; pad so they don't touch the text.
+            self.g = {k: v + " " for k, v in self.g.items()}
 
     def c(self, code: str, text: str) -> str:
         return f"\033[{code}m{text}\033[0m" if self.color else text
@@ -839,8 +883,8 @@ def _pretty_status(queue: Path, recent: int) -> None:
                   f"  {st.dim(ago + ' ago')}" + (st.dim(f" \u00b7 took {_span(took)} \u00b7 {how}") if took is not None else ""))
             if item.get("fixup"):
                 print(f"      {fixed_line(item)}")
-        elif _superseded_by(queue, item):
-            continue  # bounced, then landed: history, not news
+        elif _superseded_by(queue, item) or _settled(item):
+            continue  # bounced, then landed (or landed another way, or abandoned): history, not news
         else:
             reason = " ".join(str(item.get("reason", "?")).split())
             print(f"  {st.red(g['bounce'])} {who(item)}  {st.dim(ago + ' ago')}")
@@ -1232,7 +1276,9 @@ def _run_watched(cmd: list[str], cwd: Path, env: dict, log: Path, out) -> int | 
     # Its own session, so the watchdog can stop the whole build: which also means stopping the lander
     # no longer stops it. Record it, so a SIGTERM'd lander stops it and a new lander finds an orphan.
     record = log.parent.parent / "build.json"
-    record.write_text(json.dumps({"pgid": proc.pid, "lander": os.getpid(), "started": _now(), "log": str(log)}) + "\n")
+    pending = record.with_suffix(".json.tmp")
+    pending.write_text(json.dumps({"pgid": proc.pid, "lander": os.getpid(), "started": _now(), "log": str(log)}) + "\n")
+    pending.replace(record)
     _CURRENT_BUILD["pgid"] = proc.pid
     try:
         return _watch(proc, cwd, env, log, out)
@@ -1325,9 +1371,11 @@ def _is_pull(item: dict) -> bool:
 def _collect_failures(wt: Path, since: float, log: Path) -> str | None:
     """Gradle prints a failing test as "AssertionError at Foo.kt:769"; the message itself is only in
     the JUnit XML inside the lander's worktree, which the next round overwrites. Copy every failure
-    written during this round next to the log, and return a one-line summary of the first."""
+    written during this round next to the log, and return a one-line summary of the first.
+    `checkPythonTools` writes the same XML (build/test-results/pythonTools), message = exception
+    line, body = traceback; both are kept."""
     import xml.etree.ElementTree as ET
-    found: list[tuple[str, str]] = []
+    found: list[tuple[str, str, str]] = []
     for xml in sorted((wt / "build" / "test-results").glob("*/TEST-*.xml")):
         if xml.stat().st_mtime < since:
             continue
@@ -1338,12 +1386,15 @@ def _collect_failures(wt: Path, since: float, log: Path) -> str | None:
         for case in root.iter("testcase"):
             for failure in list(case.findall("failure")) + list(case.findall("error")):
                 name = f"{case.get('classname', '').rsplit('.', 1)[-1]}.{case.get('name')}"
-                found.append((name, (failure.get("message") or failure.text or "").strip()))
+                message = (failure.get("message") or "").strip()
+                body = (failure.text or "").strip()
+                found.append((name, message or body, body if body != message else ""))
     if not found:
         return None
     path = log.with_suffix(".failures.txt")
-    path.write_text("".join(f"## {name}\n{message}\n\n" for name, message in found))
-    first_name, first_message = found[0]
+    path.write_text("".join(f"## {name}\n{message}\n" + (f"{body}\n" if body else "") + "\n"
+                            for name, message, body in found))
+    first_name, first_message, _ = found[0]
     first_line = next((line.strip() for line in first_message.splitlines() if line.strip()), "")
     more = f" (+{len(found) - 1} more)" if len(found) > 1 else ""
     return f"{first_name}: {first_line[:220]}{more}; full messages: {path}"
@@ -1716,6 +1767,28 @@ def _land_batch(items: list[dict], primary: Path, wt: Path, queue: Path, bisecti
     return "green"
 
 
+# What the docs build reads from the working tree rather than from a commit: the source mirror
+# (`generateSourcePages`) walks every `.kt` under src/, tracked or not, and the site is built from
+# public/docs. The committed reference pages cite source lines as of HEAD, so a build over uncommitted
+# edits installs source pages whose line anchors no longer match those citations, and the link check
+# fails on links that are fine on main (20261022-111619-doc: 116 `#L` anchors, all into files edited
+# but not committed).
+DOC_BUILD_INPUTS = ("src", "public/docs")
+
+
+def _dirty_doc_inputs(checkout: Path) -> list[str]:
+    """Paths under DOC_BUILD_INPUTS that differ from HEAD: modified, staged, or untracked and not ignored."""
+    changed = _git(checkout, "diff", "--name-only", "HEAD", "--", *DOC_BUILD_INPUTS, check=False).splitlines()
+    untracked = _git(checkout, "ls-files", "--others", "--exclude-standard", "--", *DOC_BUILD_INPUTS, check=False).splitlines()
+    return sorted({p for p in changed + untracked if p})
+
+
+def _dirty_doc_reason(checkout: Path, dirty: list[str]) -> str:
+    shown = ", ".join(dirty[:5]) + (f" and {len(dirty) - 5} more" if len(dirty) > 5 else "")
+    return (f"{checkout} has {len(dirty)} uncommitted change(s) under {' or '.join(DOC_BUILD_INPUTS)} that the docs "
+            f"build would read ({shown}); commit or set them aside, then queue `land.py doc` again")
+
+
 def _run_doc(item: dict, primary: Path, queue: Path) -> None:
     """Build the served checkout after earlier queue items, without changing Git history."""
     checkout = Path(item["checkout"])
@@ -1730,6 +1803,12 @@ def _run_doc(item: dict, primary: Path, queue: Path) -> None:
     script = checkout / "tools" / "build_zensical_docs.py"
     if not script.is_file():
         item.update(reason=f"docs builder missing in {checkout}", finished=_now())
+        _move(queue, item, BOUNCED)
+        return
+    # Refuse rather than build a site that is neither main nor the working tree. Checked here, at the
+    # item's turn, because the tree it would build is the one on disk now, not at enqueue time.
+    if dirty := _dirty_doc_inputs(checkout):
+        item.update(reason=_dirty_doc_reason(checkout, dirty), finished=_now())
         _move(queue, item, BOUNCED)
         return
     item["built_from"] = _git(checkout, "rev-parse", "HEAD")
@@ -1845,9 +1924,22 @@ def cmd_run(args: argparse.Namespace) -> int:
         lock_file.close()
 
 
+def cmd_precheck(argv: list[str]) -> int:
+    # Imported here: it pulls in the guard selection, which the queue commands never need (and which a
+    # copy of this script used on its own, as tools/test_docs_notes.py makes, does not have).
+    import land_precheck  # noqa: PLC0415
+
+    return land_precheck.main(argv)
+
+
 def main(argv: list[str] | None = None) -> int:
+    argv = sys.argv[1:] if argv is None else argv
+    if argv[:1] == ["precheck"]:
+        return cmd_precheck(argv[1:])
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
+    # Dispatched above, before parsing; listed here so `land.py --help` names it.
+    sub.add_parser("precheck", help="before enqueue: merge main, run only the guards this diff can trip (minutes)")
     p = sub.add_parser("enqueue", help="queue a branch for landing, then stop")
     p.add_argument("branch", nargs="?", help="default: the current branch")
     p.add_argument("--note", help="one line for the landing commit, e.g. what to look at if it bounces")

@@ -7,6 +7,17 @@ import afield.ai.tools.ToolRegistry
 import java.security.MessageDigest
 
 /**
+ * The parts an AI4 turn's prompt is built from, tagged with how long each is kept and whether it changes between turns.
+ *
+ * A [TurnContext] holds a turn's [ContextFragment]s and the request that follows them; each fragment
+ * carries a [FragmentRetention] (stored with the message, or sent for this turn only) and a [Stability]
+ * (cacheable across turns, or not). The provider bridges decide where each kind goes, and
+ * [TurnContext.legacyPrompt] rebuilds the single-string prompt for bridges that send one.
+ * [ContextReport] is what `/context` shows about a turn, and [ContextPipeline.enabledByDefault] reads the
+ * `afield.ai4.ephemeralInstructions` switch.
+ */
+
+/**
  * # What a turn tells the model, as parts rather than one string
  *
  * Every AI4 turn used to prepend the whole of [buildDynamicInstructions] — fifteen to twenty thousand

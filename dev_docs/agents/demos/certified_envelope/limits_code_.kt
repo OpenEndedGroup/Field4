@@ -1,11 +1,8 @@
-import afield.math.functions.Functions
-import afield.math.functions.certifiedEquals
-import afield.math.functions.certifiedNeverExceeds
-import afield.math.functions.enclose
-
-// What refuses. The function workbench's channels are fn(0.0..3600.0, name) { seconds -> ... }
-// lambdas: one opaque node each, so there is nothing for an interval walk to read. It refuses by
-// name rather than guess.
+/*
+What refuses. The function workbench's channels are fn(0.0..3600.0, name) { seconds -> ... }
+lambdas: one opaque node each, so there is nothing for an interval walk to read. It refuses by
+name rather than guess.
+*/
 val lambdaChannel = with(Functions) { fn(0.0..3600.0, "x") { t -> 0.45 + 0.2 * kotlin.math.sin(t) } }
 val refused = lambdaChannel.enclose(0.0, 3600.0)
 
@@ -14,16 +11,19 @@ val refused = lambdaChannel.enclose(0.0, 3600.0)
 val held = with(Functions) {
     val one = c(1.0, Functions.Domain.ALL)
     val background = sin(1.0 / 40.0, amplitude = 0.2, offset = 0.45)
-    val envelope = smoothStep(185.0, 285.0, Functions.Domain.ALL) *
-        (one - smoothStep(315.0, 415.0, Functions.Domain.ALL))
+    val envelope =
+        smoothStep(185.0, 285.0, Functions.Domain.ALL) * (one - smoothStep(315.0, 415.0, Functions.Domain.ALL))
     one - (one - background) * (one - envelope)
 }
-val checks = listOf(
+val checks = [
     held.certifiedEquals(1.0, 285.0, 315.0),
     held.certifiedEquals(1.0, 284.0, 315.0),
     held.certifiedNeverExceeds(1.0, 0.0, 3600.0, slack = 1e-12),
+]
+display(
+    "limits",
+    Table(["question", "answer"], title = "refusals and exact holds")
+        .row("enclose the lambda channel", "certified = ${refused.certified}: ${refused.refusal}")
+        .rows(checks.map { [it.claim, it.kind.name + (it.witness?.let { w -> " at x = $w" } ?: "")] })
+        .role("answer", CellRole.ACCENT),
 )
-display("limits", Table(listOf("question", "answer"), title = "refusals and exact holds")
-    .row("enclose the lambda channel", "certified = ${refused.certified}: ${refused.refusal}")
-    .rows(checks.map { listOf(it.claim, it.kind.name + (it.witness?.let { w -> " at x = $w" } ?: "")) })
-    .role("answer", CellRole.ACCENT))

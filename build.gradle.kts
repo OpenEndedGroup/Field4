@@ -21,8 +21,10 @@ import java.nio.file.Files
 import java.nio.file.Paths
 import java.nio.file.StandardCopyOption
 import java.security.SecureRandom
+import java.security.MessageDigest
 import java.security.cert.X509Certificate
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.Properties
 import javax.imageio.ImageIO
 import javax.net.ssl.*
 
@@ -470,16 +472,39 @@ fun fieldAotBuildFingerprint(
 // The path is announced to the app via a system property rather than the classpath.
 // Optional project-owned extensions share the existing isolated personal compilation.
 // Never add these roots to core: the dependency direction remains extension -> Field.
-val externalExtensionRoots = (providers.gradleProperty("fieldExtensionDirs").orNull
+// Welcome writes an immutable package profile for the next launch. Gradle reads data, never kit build scripts.
+val kitDirectory = file(providers.gradleProperty("fieldKitsDir").orNull
+    ?: System.getenv("AFIELD_KITS_DIR") ?: "${System.getProperty("user.home")}/.afield/kits")
+val kitProfile = Properties().apply {
+    val profile = File(kitDirectory, "runtime.properties")
+    if (profile.isFile) profile.inputStream().use { load(it) }
+}
+val kitCount = kitProfile.getProperty("count", "0").toInt()
+fun kitValues(name: String): List<String> = (0 until kitCount).flatMap { k ->
+    val prefix = "kit.$k.$name"
+    (0 until kitProfile.getProperty("$prefix.count", "0").toInt()).map { kitProfile.getProperty("$prefix.$it") }
+}
+val kitCoordinates = kitValues("dependencies").distinct()
+val kitJars = files(kitValues("jars"))
+val kitDependencies = configurations.create("kitRuntime") {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+    resolutionStrategy.failOnVersionConflict()
+    resolutionStrategy.failOnDynamicVersions()
+    resolutionStrategy.failOnChangingVersions()
+}
+kitCoordinates.forEach { coordinate -> dependencies.add(kitDependencies.name, coordinate) }
+val kitClasspath = kitJars + kitDependencies
+val externalExtensionRoots = ((providers.gradleProperty("fieldExtensionDirs").orNull
     ?: providers.environmentVariable("AFIELD_EXTENSION_DIRS").orNull).orEmpty()
-    .split(File.pathSeparatorChar).filter { it.isNotBlank() }.map { file(it.trim()).canonicalFile }
-    .distinct().onEach { root ->
+    .split(File.pathSeparatorChar).filter { it.isNotBlank() } + kitValues("extensions"))
+    .map { file(it.trim()).canonicalFile }.distinct().onEach { root ->
         require(root.isDirectory && (File(root, "kotlin").isDirectory || File(root, "resources").isDirectory)) {
             "Field extension root must contain kotlin/ or resources/: $root"
         }
     }
 val personalSourceRoots = (listOf(file("src/personal")) + externalExtensionRoots).distinctBy { it.canonicalPath }
-val hasPersonalLayer = personalSourceRoots.any { File(it, "kotlin").isDirectory || File(it, "resources").isDirectory }
+val hasPersonalLayer = personalSourceRoots.any { File(it, "kotlin").isDirectory || File(it, "resources").isDirectory } || kitCoordinates.isNotEmpty() || !kitJars.isEmpty
 val personalLayerJar: File = layout.buildDirectory.file("personal/afield-personal.jar").get().asFile
 /** Must match `afield.app.settings.PersonalLayer.CLASSPATH_PROPERTY`. */
 val personalLayerProperty = "afield.personal.classpath"
@@ -525,7 +550,20 @@ fun requiredRunJvmArgs(): List<String> {
         add("-Dafield.ceres.library=${ceresNative.asFile.absolutePath}")
         add("-Dafield.opendlssnr.root=${layout.buildDirectory.dir("native/field-opendlssnr").get().asFile.absolutePath}")
         add(steamAudioJvmArg())
-        if (hasPersonalLayer) add("-D$personalLayerProperty=${personalLayerJar.absolutePath}")
+        if (hasPersonalLayer) add("-D$personalLayerProperty=" + (files(personalLayerJar) + kitClasspath).asPath)
+        add("-Dafield.kits.dir=${kitDirectory.absolutePath}")
+        add("-Dafield.kit.revisions=" + (0 until kitCount).joinToString(",") {
+            kitProfile.getProperty("kit.$it.id") + "@" + kitProfile.getProperty("kit.$it.revision")
+        })
+        add("-Dafield.kit.sources=" + kitValues("extensions").map { File(it, "kotlin").path }.joinToString(File.pathSeparator))
+        add("-Dafield.kit.packages=" + (0 until kitCount).joinToString(File.pathSeparator) { kitProfile.getProperty("kit.$it.directory") })
+        val nativeDirs = kitValues("natives")
+        if (nativeDirs.isNotEmpty()) add("-Djava.library.path=" + (nativeDirs + System.getProperty("java.library.path").split(File.pathSeparator)).distinct().joinToString(File.pathSeparator))
+        (0 until kitCount).forEach { k ->
+            (0 until kitProfile.getProperty("kit.$k.properties.count", "0").toInt()).forEach { i ->
+                add("-D" + kitProfile.getProperty("kit.$k.properties.$i.key") + "=" + kitProfile.getProperty("kit.$k.properties.$i.value"))
+            }
+        }
         if (!onWindowsOrLinux) {
             add("-XstartOnFirstThread")
             add("-Xdock:name=Field4")
@@ -887,6 +925,7 @@ kotlin {
             val jvmMainCompilation = compilations.getByName("main")
             compilations.create("personal") {
                 associateWith(jvmMainCompilation)
+                compileDependencyFiles += kitClasspath
                 defaultSourceSet {
                     kotlin.setSrcDirs(personalSourceRoots.map { File(it, "kotlin") })
                     resources.setSrcDirs(personalSourceRoots.map { File(it, "resources") })
@@ -1336,6 +1375,12 @@ tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
     // JVM can render too — see the longer note there for why the original test-only scoping was
     // reversed. Both copies are needed and neither is redundant.
     jvmArgs("--add-exports=java.desktop/com.sun.media.sound=ALL-UNNAMED")
+
+    // A test that compiles Kotlin the way a box does (`KotlinInterface2`, e.g. `SpreadsheetTest`
+    // evaluating formulas) attaches resolved Maven jars to the app class loader through
+    // `URLClassLoader.addURL`, which needs `java.net` opened, as `requiredRunJvmArgs()` opens it for
+    // Field. Without it the engine's constructor throws InaccessibleObjectException.
+    jvmArgs("--add-opens=java.base/java.net=ALL-UNNAMED")
 
     // Where libphonon is, for the Steam Audio tests. Passed unconditionally and harmlessly: the
     // property only says where to look, and nothing loads until a test touches the bindings. On a
@@ -2317,6 +2362,13 @@ val checkRefactorEngine = tasks.register<Exec>("checkRefactorEngine") {
     commandLine(wrapper + listOf("--no-daemon", "--console=plain", "-p", "tools/refactor-engine", "test", "installDist"))
 }
 
+tasks.register<Exec>("checkDocsPublications") {
+    group = "verification"
+    description = "Checks captured docs against their sources and accounts for every supported publication recipe, without launching Field."
+    workingDir = rootDir
+    commandLine("uv", "run", "--project", ".", "--group", "backdoor", "--frozen", "python", "tools/docs_publications.py", "check")
+}
+
 tasks.register<Exec>("checkPythonTools") {
     dependsOn(checkRefactorEngine)
     group = "verification"
@@ -2462,6 +2514,7 @@ tasks.named("check") {
     dependsOn("checkPythonTools")
     dependsOn("checkAgentTranscripts")
     dependsOn("checkAgentTranscriptIndex")
+    dependsOn("checkDocsPublications")
     dependsOn("checkAgentTranscriptLayouts")
     dependsOn("checkBoxOutputChannels")
     dependsOn("checkCompletionCorpusFixtures")
@@ -2506,6 +2559,7 @@ tasks.register("docsGates") {
     dependsOn("checkSourcePages")
     dependsOn("checkAgentTranscripts")
     dependsOn("checkAgentTranscriptIndex")
+    dependsOn("checkDocsPublications")
     dependsOn("checkAgentTranscriptLayouts")
     dependsOn("checkBoxOutputChannels")
     dependsOn("checkCompletionCorpusFixtures")
@@ -3071,13 +3125,57 @@ fun javaArgfileToken(value: String): String =
     "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"")
         .replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t") + "\""
 
+val verifyKitDependencies = tasks.register("verifyKitDependencies") {
+    group = "verification"
+    doLast {
+        (0 until kitCount).forEach { k ->
+            val directory = file(kitProfile.getProperty("kit.$k.directory")).canonicalFile
+            val expected = (0 until kitProfile.getProperty("kit.$k.files.count", "0").toInt()).map { kitProfile.getProperty("kit.$k.files.$it.path") }.toSet()
+            directory.walkTopDown().onEnter { folder ->
+                require(!Files.isSymbolicLink(folder.toPath())) { "Kit snapshot contains a directory symlink: $folder" }
+                true
+            }.filter { it.isFile && it.name != ".DS_Store" }.forEach { path ->
+                require(path.relativeTo(directory).invariantSeparatorsPath in expected) { "Kit snapshot has an unregistered file: $path" }
+            }
+            (0 until kitProfile.getProperty("kit.$k.files.count", "0").toInt()).forEach { i ->
+                val path = File(directory, kitProfile.getProperty("kit.$k.files.$i.path")).canonicalFile
+                require(path.toPath().startsWith(directory.toPath()) && path.isFile) { "Kit snapshot file is missing: $path" }
+                val digest = MessageDigest.getInstance("SHA-256")
+                path.inputStream().use { input -> val buffer = ByteArray(65536); while (true) { val n = input.read(buffer); if (n < 0) break; digest.update(buffer, 0, n) } }
+                val actual = digest.digest().joinToString("") { "%02x".format(it) }
+                require(actual == kitProfile.getProperty("kit.$k.files.$i.hash")) { "Kit snapshot changed: $path. Reinstall from its source folder." }
+            }
+        }
+        if (kitCoordinates.isNotEmpty()) {
+            val core = configurations.getByName("jvmRuntimeClasspath").resolvedConfiguration.resolvedArtifacts
+                .associate { "${it.moduleVersion.id.group}:${it.name}" to it.moduleVersion.id.version }
+            kitDependencies.resolvedConfiguration.resolvedArtifacts.forEach { artifact ->
+                val id = artifact.moduleVersion.id
+                val existing = core["${id.group}:${artifact.name}"]
+                require(existing == null || existing == id.version) {
+                    "Kit dependency ${id.group}:${artifact.name}:${id.version} conflicts with Field's $existing. Use the host version."
+                }
+            }
+        }
+    }
+}
+tasks.matching { it.name == "compilePersonalKotlinJvm" }.configureEach { dependsOn(verifyKitDependencies) }
+if (kitValues("extensions").isNotEmpty()) {
+    tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().matching { it.name == "compilePersonalKotlinJvm" }.configureEach {
+        // Every kit revision moves its sources to a new immutable path. K2 incremental compilation
+        // can retain the previous path's package declarations and report false conflicting overloads.
+        // Rebuild this optional extension layer as a unit; core compilation stays incremental.
+        incremental = false
+    }
+}
+
 val fieldServerOnly = providers.gradleProperty("fieldServerOnly").map(String::toBoolean).orElse(false)
 
 tasks.register("dumpFieldLaunch") {
     group = "application"
     description = "Writes build/field-launch/{java,args} so ./field.sh and .\\field.ps1 can launch " +
         "afield.app.server.Server directly in a terminal (stdout stays a TTY, so the pinned console renders)."
-    dependsOn(tasks.named("jvmJar"), prepareSmileNative)
+    dependsOn(tasks.named("jvmJar"), prepareSmileNative, verifyKitDependencies)
     dependsOn(tasks.named("generateLocalKeystore"))
     if (!fieldServerOnly.get()) dependsOn(electronInstall)
     personalJar?.let { dependsOn(it) }
@@ -3627,6 +3725,20 @@ tasks.register<Exec>("prepareSlangCompiler") {
     if (gradle.startParameter.isOffline) environment("UV_OFFLINE", "1")
 }
 
+// gltfpack (meshoptimizer), for compressed GLB export: a pinned, checksummed release binary recorded in
+// build/gltfpack.path. First-run setup offers it as the "gltfpack" extra; without it GLBs are written plain.
+tasks.register<Exec>("prepareGltfpack") {
+    group = "build"
+    description = "Fetches the pinned gltfpack and records it in build/gltfpack.path for compressed GLB export."
+    inputs.file("tools/prepare_gltfpack.py")
+    inputs.file("tools/native_download_cache.py")
+    inputs.file("optional/gltfpack/pin.json")
+    outputs.file(layout.buildDirectory.file("gltfpack.path"))
+    outputs.upToDateWhen { false }
+    commandLine(rootPythonCommand + listOf("tools/prepare_gltfpack.py") +
+        if (gradle.startParameter.isOffline) listOf("--offline") else emptyList())
+}
+
 // Native preparation scripts use the platform Python command, like the source launcher.
 val nativeBuildPython = if (System.getProperty("os.name").startsWith("Windows")) "python" else "python3"
 
@@ -3686,6 +3798,41 @@ val buildTetgenNative = tasks.register("buildTetgenNative") {
         logger.lifecycle(result.standardOutput.asText.get().trim())
     }
 }
+
+// Build one optional native geometry library (native/field-<module>): plain CMake, no downloads,
+// no third-party packages, and its native test runs as part of the build. Field compiles and runs
+// without any of them; afield.geometry.network.NativeGeometry reports which are present.
+//
+//     ./gradlew buildMorseSmaleNative
+//     ./gradlew jvmTest --tests 'afield.geometry.topology.morsesmale.*'
+fun registerNativeGeometryBuild(taskName: String, module: String) = tasks.register(taskName) {
+    group = "build"
+    description = "Builds native/field-$module into build/field-$module and runs its native test (needs cmake)."
+    val sourceDir = layout.projectDirectory.dir("native/field-$module")
+    val script = layout.projectDirectory.file("tools/build_native_geometry.py")
+    inputs.dir(sourceDir)
+    inputs.file(script)
+    outputs.dir(layout.buildDirectory.dir("field-$module/build"))
+    doLast {
+        val command = listOf(nativeBuildPython, script.asFile.absolutePath, module)
+        val result = providers.exec {
+            commandLine(command)
+            isIgnoreExitValue = true
+        }
+        val code = result.result.get().exitValue
+        if (code != 0) {
+            throw GradleException(
+                "${command.joinToString(" ")} failed with exit code $code:\n" +
+                    result.standardOutput.asText.get() + result.standardError.asText.get(),
+            )
+        }
+        logger.lifecycle(result.standardOutput.asText.get().trim().lines().last())
+    }
+}
+
+val buildMorseSmaleNative = registerNativeGeometryBuild("buildMorseSmaleNative", "morse-smale")
+val buildPrincipalCurvesNative = registerNativeGeometryBuild("buildPrincipalCurvesNative", "principal-curves")
+val buildPolyvectorNative = registerNativeGeometryBuild("buildPolyvectorNative", "polyvector")
 
 // Build native/field-slug, the helper afield.graphics.text.slug.SlugPath shells out to. Explicit opt-in
 // like Loris: build.sh fetches the pinned Slughorn revision from GitHub on first run.
@@ -4009,7 +4156,7 @@ val buildCeresRedistributable = tasks.register("buildCeresRedistributable") {
 }
 
 // One callable preparation gate for every native dependency declared by a documentation fence.
-// Ceres, TetGen, libpd, the native browser bridge and the Electron runtime are built here, and the
+// Ceres, TetGen, SolidCraft, libpd, the native browser bridge and the Electron runtime are built here, and the
 // pinned Dirt-Samples subset is fetched; Manifold and
 // JEP remain system/interpreter dependencies and the checker reports their exact resolved paths
 // and remedies. The source archives used by the downloaded builds live in the shared per-user
@@ -4026,7 +4173,8 @@ val buildCeresRedistributable = tasks.register("buildCeresRedistributable") {
 tasks.register<Exec>("buildDocsNativePrerequisites") {
     group = "documentation"
     description = "Builds and verifies all native dependencies required by documentation captures."
-    dependsOn(buildCeresRedistributable, buildTetgenNative, buildPaintNative, buildLibpdNative, buildCsoundNative, buildFieldBrowserBridge, electronInstall, fetchDocsDirtSamples, fetchSteamAudioNatives, "buildLorisNative", buildD2LayoutHelper)
+    dependsOn(buildCeresRedistributable, buildTetgenNative, buildMorseSmaleNative, buildPrincipalCurvesNative, buildPolyvectorNative, buildPaintNative, buildLibpdNative, buildCsoundNative, buildFieldBrowserBridge, electronInstall, fetchDocsDirtSamples, fetchSteamAudioNatives, "buildLorisNative", buildD2LayoutHelper)
+    dependsOn("buildSolidCraftNative")
     commandLine(rootPythonCommand + listOf("tools/check_docs_native_prerequisites.py"))
 }
 
@@ -4048,6 +4196,14 @@ val smokeCeresInteractionExamples = tasks.register<JavaExec>("smokeCeresInteract
     configureCeresSmokeTask(
         "afield.examples.ceres.CeresInteractionExamplesKt",
         "Runs the Ceres interaction examples smoke suite.",
+    )
+}
+
+// A session built on one thread and solved and closed on another, closed twice: the house sketch's runloop rebuild.
+val smokeCeresCrossThreadClose = tasks.register<JavaExec>("smokeCeresCrossThreadClose") {
+    configureCeresSmokeTask(
+        "afield.examples.ceres.CeresCrossThreadCloseSmokeKt",
+        "Runs the Ceres smoke that solves and closes a native session off the thread that built it.",
     )
 }
 
@@ -4151,6 +4307,7 @@ tasks.register("smokeCeres") {
         smokeCeresGeometryPrimitives,
         smokeCeresArchitecturalDsl,
         smokeCeresInteractionExamples,
+        smokeCeresCrossThreadClose,
         smokeCeresSolverOptions,
         smokeCeresCanonical,
         smokeCeresExpression,
@@ -4190,7 +4347,7 @@ val buildSolidCraftNative = tasks.register<Exec>("buildSolidCraftNative") {
 tasks.register<JavaExec>("smokeSolidCraft") {
     javaLauncher.set(javaToolchains.fieldLauncher())
     group = "verification"
-    description = "Builds the optional SolidCraft bridge and checks parameter editing, mesh and STEP export."
+    description = "Builds the optional SolidCraft bridge and checks parameter editing, mesh, STEP export and built sketches, sweeps and surfaces."
     dependsOn(buildSolidCraftNative)
     classpath = sourceSets["jvmMain"].runtimeClasspath
     mainClass.set("afield.geometry.solid.solidcraft.SolidCraftSmokeTest")

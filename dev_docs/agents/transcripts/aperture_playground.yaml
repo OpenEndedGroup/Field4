@@ -3,6 +3,9 @@ description: 'Editable lines and point defocus: a source RTT, two reductions, ci
   aperture filters, and a composite. One shader pair and one optional resource per
   box; no personal code. Run the macro to wire the graph, then edit individual shaders
   and re-execute their boxes.'
+docs:
+  - page: aperture_playground.md
+    why: "Walks through the source, reductions, aperture filters and composite in this document."
 operations:
 - create:
     box: agent_graphics_context
@@ -42,23 +45,22 @@ operations:
         propDown: re-running this box with new dimensions re-runs the passes that read paintSource.
         */
         propDown<RenderToTexture>(paintSource)
-        thisBox.paintSource = RenderToTexture {
+        paintSource = RenderToTexture {
             width = window.width
             height = window.height
             format = VK_FORMAT_R16G16B16A16_SFLOAT
             useDepth = false
-            clearFirst = true
             clearColor = vec(0, 0, 0, 0)
             debugName = "paint-source"
         }
-        thisBox.paintSource.setDefaultSampler(anisotropyEnable = false)
-        renderer.renderList.preTargets["paint-source"] = thisBox.paintSource
+        paintSource.setDefaultSampler(anisotropyEnable = false)
+        renderer.renderList.preTargets["paint-source"] = paintSource
         prop<afield.math.linalg.Vec4>(apertureControl)
-        thisBox.apertureControl = vec(1.5, 0, 0, 0)
-        println("paint source RTT ready: ${thisBox.paintSource.width}x${thisBox.paintSource.height}")
+        apertureControl = vec(1.5, 0, 0, 0)
+        println("paint source RTT ready: ${paintSource.width}x${paintSource.height}")
 
         var module = moduleHere {
-            paintSource.apply()
+            +paintSource
             blend = false
             depthTest = false
             depthWrite = false
@@ -72,11 +74,11 @@ operations:
         mesh.size = { vec(paintSource.width, paintSource.height, 0, 0) }
 
         // Nest the two editable reduction helpers without hiding their shaders.
-        thisBox.frame = Rect(360.0, 70.0, 260.0, 270.0)
-        thisBox.inside.boxes.getValue("aperture_half").nestedIn = thisBox
-        thisBox.inside.boxes.getValue("aperture_half").frame = Rect(15.0, 70.0, 240.0, 55.0)
-        thisBox.inside.boxes.getValue("aperture_quarter").nestedIn = thisBox
-        thisBox.inside.boxes.getValue("aperture_quarter").frame = Rect(15.0, 150.0, 240.0, 55.0)
+        frame = Rect(360.0, 70.0, 260.0, 270.0)
+        inside.boxes.getValue("aperture_half").nestedIn = thisBox
+        inside.boxes.getValue("aperture_half").frame = Rect(15.0, 70.0, 240.0, 55.0)
+        inside.boxes.getValue("aperture_quarter").nestedIn = thisBox
+        inside.boxes.getValue("aperture_quarter").frame = Rect(15.0, 150.0, 240.0, 55.0)
       vertex: |
         #version 450
         layout(location=0) out vec2 uv;
@@ -125,21 +127,18 @@ operations:
       code: |
         import org.lwjgl.vulkan.VK10.*
 
-        val source = paintSource
         propDown<RenderToTexture>(paintHalf) = RenderToTexture {
-            width = (source.width / 2).coerceAtLeast(1)
-            height = (source.height / 2).coerceAtLeast(1)
+            width = (paintSource.width / 2).coerceAtLeast(1)
+            height = (paintSource.height / 2).coerceAtLeast(1)
             format = VK_FORMAT_R16G16B16A16_SFLOAT
             useDepth = false
-            clearFirst = true
             clearColor = vec(0, 0, 0, 0)
             debugName = "paintHalf"
         }
         paintHalf.setDefaultSampler(anisotropyEnable = false)
-        val input = paintSource
         var module = moduleHere {
-            textures("paintSource" to input)
-            paintHalf.apply()
+            textures("paintSource" to paintSource)
+            +paintHalf
             blend = false
             depthTest = false
             depthWrite = false
@@ -183,21 +182,18 @@ operations:
       code: |
         import org.lwjgl.vulkan.VK10.*
 
-        val source = paintSource
         propDown<RenderToTexture>(paintQuarter) = RenderToTexture {
-            width = (source.width / 4).coerceAtLeast(1)
-            height = (source.height / 4).coerceAtLeast(1)
+            width = (paintSource.width / 4).coerceAtLeast(1)
+            height = (paintSource.height / 4).coerceAtLeast(1)
             format = VK_FORMAT_R16G16B16A16_SFLOAT
             useDepth = false
-            clearFirst = true
             clearColor = vec(0, 0, 0, 0)
             debugName = "paintQuarter"
         }
         paintQuarter.setDefaultSampler(anisotropyEnable = false)
-        val input = paintHalf
         var module = moduleHere {
-            textures("paintHalf" to input)
-            paintQuarter.apply()
+            textures("paintHalf" to paintHalf)
+            +paintQuarter
             blend = false
             depthTest = false
             depthWrite = false
@@ -241,21 +237,18 @@ operations:
       code: |
         import org.lwjgl.vulkan.VK10.*
 
-        val source = paintSource
         propDown<RenderToTexture>(paintMedium) = RenderToTexture {
-            width = (source.width / 2).coerceAtLeast(1)
-            height = (source.height / 2).coerceAtLeast(1)
+            width = (paintSource.width / 2).coerceAtLeast(1)
+            height = (paintSource.height / 2).coerceAtLeast(1)
             format = VK_FORMAT_R16G16B16A16_SFLOAT
             useDepth = false
-            clearFirst = true
             clearColor = vec(0, 0, 0, 0)
             debugName = "paintMedium"
         }
         paintMedium.setDefaultSampler(anisotropyEnable = false)
-        val input = paintHalf
         var module = moduleHere {
-            textures("paintHalf" to input)
-            paintMedium.apply()
+            textures("paintHalf" to paintHalf)
+            +paintMedium
             blend = false
             depthTest = false
             depthWrite = false
@@ -320,21 +313,18 @@ operations:
       code: |
         import org.lwjgl.vulkan.VK10.*
 
-        val source = paintSource
         propDown<RenderToTexture>(paintBroad) = RenderToTexture {
-            width = (source.width / 4).coerceAtLeast(1)
-            height = (source.height / 4).coerceAtLeast(1)
+            width = (paintSource.width / 4).coerceAtLeast(1)
+            height = (paintSource.height / 4).coerceAtLeast(1)
             format = VK_FORMAT_R16G16B16A16_SFLOAT
             useDepth = false
-            clearFirst = true
             clearColor = vec(0, 0, 0, 0)
             debugName = "paintBroad"
         }
         paintBroad.setDefaultSampler(anisotropyEnable = false)
-        val input = paintQuarter
         var module = moduleHere {
-            textures("paintQuarter" to input)
-            paintBroad.apply()
+            textures("paintQuarter" to paintQuarter)
+            +paintBroad
             blend = false
             depthTest = false
             depthWrite = false
@@ -398,13 +388,9 @@ operations:
         import org.lwjgl.vulkan.VK10.*
 
         // Screen composite: apertureControl.x is gain; y selects the display mode.
-        // Edit and rerun controls.set below to update the vector read by the push supplier.
-        val controls = fromContextWithNameOrNull<afield.math.linalg.Vec4>("apertureControl")!!
-        val source = paintSource
-        val medium = paintMedium
-        val broad = paintBroad
+        // Edit and rerun apertureControl.set below to update the vector read by the push supplier.
         var module = moduleHere {
-            textures("paintSource" to source, "paintMedium" to medium, "paintBroad" to broad)
+            textures("paintSource" to paintSource, "paintMedium" to paintMedium, "paintBroad" to paintBroad)
             depthTest = false
             depthWrite = false
             blend = true
@@ -416,12 +402,12 @@ operations:
         var mesh = Mesh()
         module += "composite" to mesh
         mesh.resize(3)
-        mesh.displayControl = { controls }
+        mesh.displayControl = { apertureControl }
         renderer.renderList += "paint-composite" to module
         println("paint composite ready")
 
         // y: 0 aperture, 1 sharp, 2 radius guide. Edit here and re-execute.
-        controls.set(1.0f, 0.0f, 0.0f, 0.0f)
+        apertureControl.set(1.0f, 0.0f, 0.0f, 0.0f)
       vertex: |
         #version 450
         layout(location=0) out vec2 uv;

@@ -25,6 +25,10 @@ expect:
     - "SonicPi protocol smoke tests passed"
 */
 /**
+ * Smoke tests for Field's Sonic Pi v5 bridge: a protocol test that runs without Sonic Pi installed (`synth.sonic-pi.protocol`), and a live test that boots a real Sonic Pi when one is present (`synth.sonic-pi.live`).
+ */
+
+/**
  * Everything about the Sonic Pi v5 control protocol that can be checked without Sonic Pi installed:
  * the daemon's port line, and the OSC encoding of an authenticated message.
  *

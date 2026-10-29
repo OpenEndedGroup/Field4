@@ -31,7 +31,8 @@ check, so its replay has to fail. The replay function evaluates a candidate's so
 returns the placement function it defines.
 
 ```diffstatic {data-lang=kotlin}
-val rule = """
+val rule =
+    """
 // Loot for a room, from how many doors it is from the spawn.
 fun loot(doors: Int) = when {
     doors >= 4 -> "epic"
@@ -51,18 +52,36 @@ fun place(level: String): Map<String, String> {
     return placed
 }
 ::place
-""".trimStart()
+"""
+        .trimStart()
 
-val loot = qualifiedSource("loot", rule, label = "Loot rule",
+val loot = qualifiedSource(
+    "loot",
+    rule,
+    label = "Loot rule",
     frozen = [FrozenRegion.after("// Checks: everything below this line stays as it is.")],
     control = QualifiedControl("shallow", "hall 1, store 2", "no room has epic loot"),
     fixtures = mapOf(
-        "keep" to QualifiedFixture("gate 1, yard 2, keep 4", mapOf("gate" to "common", "keep" to "epic", "yard" to "rare")),
-        "crypt" to QualifiedFixture("stairs 1, ossuary 3, tomb 5", mapOf("ossuary" to "rare", "stairs" to "common", "tomb" to "epic")),
-        "mill" to QualifiedFixture("door 1, loft 2, well 4", mapOf("door" to "common", "loft" to "rare", "well" to "epic"))),
-    replayVersion = "loot-replay-1") { replay ->
-    QualifiedSource.evaluateKotlin(replay.source) as (String) -> Map<String, String>
-}
+        "keep" to
+            QualifiedFixture(
+                "gate 1, yard 2, keep 4",
+                mapOf("gate" to "common", "keep" to "epic", "yard" to "rare"),
+            ),
+        "crypt" to
+            QualifiedFixture(
+                "stairs 1, ossuary 3, tomb 5",
+                mapOf("ossuary" to "rare", "stairs" to "common", "tomb" to "epic"),
+            ),
+        "mill" to
+            QualifiedFixture(
+                "door 1, loft 2, well 4",
+                mapOf("door" to "common", "loft" to "rare", "well" to "epic"),
+            ),
+    ),
+    replayVersion = "loot-replay-1",
+) { replay ->
+        QualifiedSource.evaluateKotlin(replay.source) as (String) -> Map<String, String>
+    }
 ```
 
 The rule lives in the box's `lootRule` property and the fixtures in `lootFixtures`. Builds that use
@@ -100,7 +119,8 @@ expect:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/qualified_sources/held.png" alt="The loot output channel: a card titled Loot rule, rule r1, 3 fixtures, must fail: shallow. Candidate 'A legendary tier for the deepest rooms' is marked Held in red. Its table lists crypt as held because tomb got legendary, which is not a loot tier; keep and mill as same; and the control shallow (must fail) as failed, as it must, with the message no room has epic loot." wait="1.0" wait-output=true wait-output-kind=display wait-output-channel="loot" wait-output-contains="tomb got legendary" capture="box" embed=true timeout="180" name="qualified-sources-held" w="760" h="120"}
 :::static
 :::fold the loot rule and its fixtures, as above
-val rule = """
+val rule =
+    """
 // Loot for a room, from how many doors it is from the spawn.
 fun loot(doors: Int) = when {
     doors >= 4 -> "epic"
@@ -120,22 +140,44 @@ fun place(level: String): Map<String, String> {
     return placed
 }
 ::place
-""".trimStart()
+"""
+        .trimStart()
 
-val loot = qualifiedSource("loot", rule, label = "Loot rule",
+val loot = qualifiedSource(
+    "loot",
+    rule,
+    label = "Loot rule",
     frozen = [FrozenRegion.after("// Checks: everything below this line stays as it is.")],
     control = QualifiedControl("shallow", "hall 1, store 2", "no room has epic loot"),
     fixtures = mapOf(
-        "keep" to QualifiedFixture("gate 1, yard 2, keep 4", mapOf("gate" to "common", "keep" to "epic", "yard" to "rare")),
-        "crypt" to QualifiedFixture("stairs 1, ossuary 3, tomb 5", mapOf("ossuary" to "rare", "stairs" to "common", "tomb" to "epic")),
-        "mill" to QualifiedFixture("door 1, loft 2, well 4", mapOf("door" to "common", "loft" to "rare", "well" to "epic"))),
-    replayVersion = "loot-replay-1") { replay ->
-    QualifiedSource.evaluateKotlin(replay.source) as (String) -> Map<String, String>
-}
+        "keep" to
+            QualifiedFixture(
+                "gate 1, yard 2, keep 4",
+                mapOf("gate" to "common", "keep" to "epic", "yard" to "rare"),
+            ),
+        "crypt" to
+            QualifiedFixture(
+                "stairs 1, ossuary 3, tomb 5",
+                mapOf("ossuary" to "rare", "stairs" to "common", "tomb" to "epic"),
+            ),
+        "mill" to
+            QualifiedFixture(
+                "door 1, loft 2, well 4",
+                mapOf("door" to "common", "loft" to "rare", "well" to "epic"),
+            ),
+    ),
+    replayVersion = "loot-replay-1",
+) { replay ->
+        QualifiedSource.evaluateKotlin(replay.source) as (String) -> Map<String, String>
+    }
 :::endfold
 val legendary = QualifiedEdit("doors >= 4 -> \"epic\"", "doors >= 5 -> \"legendary\"\n    doors >= 4 -> \"epic\"")
-val first = loot.candidate(loot.rule.currentId(), SourceStudy.hash(loot.rule.liveSource()),
-    "A legendary tier for the deepest rooms", [legendary])
+val first = loot.candidate(
+    loot.rule.currentId(),
+    SourceStudy.hash(loot.rule.liveSource()),
+    "A legendary tier for the deepest rooms",
+    [legendary],
+)
 loot.test(first.id)
 ```
 
@@ -177,9 +219,12 @@ expect:
     - "Approve the new outcome of crypt"
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/qualified_sources/proposal.png" alt="Two output channels. The loot card shows candidate 'Epic loot from three doors in' with the amber status Outcomes changed, needs a person: crypt changed, ossuary rare to epic; keep and mill the same; the control shallow failed, as it must. Below it the loot-approval channel, titled New outcomes for Loot rule, says that every other fixture kept its outcome, lists crypt with a row ossuary, recorded rare, proposed epic, and shows a blue button, Approve the new outcome of crypt." wait="1.0" wait-output=true wait-output-kind=display wait-output-channel="loot-approval" wait-output-contains="Approve the new outcome of crypt" capture="box" embed=true timeout="180" name="qualified-sources-proposal" w="760" h="120"}
+import kotlinx.coroutines.*
+
 :::static
 :::fold the loot rule and its fixtures, as above
-val rule = """
+val rule =
+    """
 // Loot for a room, from how many doors it is from the spawn.
 fun loot(doors: Int) = when {
     doors >= 4 -> "epic"
@@ -199,24 +244,47 @@ fun place(level: String): Map<String, String> {
     return placed
 }
 ::place
-""".trimStart()
+"""
+        .trimStart()
 
-val loot = qualifiedSource("loot", rule, label = "Loot rule",
+val loot = qualifiedSource(
+    "loot",
+    rule,
+    label = "Loot rule",
     frozen = [FrozenRegion.after("// Checks: everything below this line stays as it is.")],
     control = QualifiedControl("shallow", "hall 1, store 2", "no room has epic loot"),
     fixtures = mapOf(
-        "keep" to QualifiedFixture("gate 1, yard 2, keep 4", mapOf("gate" to "common", "keep" to "epic", "yard" to "rare")),
-        "crypt" to QualifiedFixture("stairs 1, ossuary 3, tomb 5", mapOf("ossuary" to "rare", "stairs" to "common", "tomb" to "epic")),
-        "mill" to QualifiedFixture("door 1, loft 2, well 4", mapOf("door" to "common", "loft" to "rare", "well" to "epic"))),
-    replayVersion = "loot-replay-1") { replay ->
-    QualifiedSource.evaluateKotlin(replay.source) as (String) -> Map<String, String>
-}
+        "keep" to
+            QualifiedFixture(
+                "gate 1, yard 2, keep 4",
+                mapOf("gate" to "common", "keep" to "epic", "yard" to "rare"),
+            ),
+        "crypt" to
+            QualifiedFixture(
+                "stairs 1, ossuary 3, tomb 5",
+                mapOf("ossuary" to "rare", "stairs" to "common", "tomb" to "epic"),
+            ),
+        "mill" to
+            QualifiedFixture(
+                "door 1, loft 2, well 4",
+                mapOf("door" to "common", "loft" to "rare", "well" to "epic"),
+            ),
+    ),
+    replayVersion = "loot-replay-1",
+) { replay ->
+        QualifiedSource.evaluateKotlin(replay.source) as (String) -> Map<String, String>
+    }
 :::endfold
-val second = loot.candidate(loot.rule.currentId(), SourceStudy.hash(loot.rule.liveSource()),
-    "Epic loot from three doors in", [QualifiedEdit("doors >= 4", "doors >= 3")])
+val second = loot.candidate(
+    loot.rule.currentId(),
+    SourceStudy.hash(loot.rule.liveSource()),
+    "Epic loot from three doors in",
+    [QualifiedEdit("doors >= 4", "doors >= 3")],
+)
 val job = loot.test(second.id)
-kotlin.concurrent.thread {
-    loot.replays.await(job.id)
+go {
+    runInterruptible(Dispatchers.IO) { loot.replays.await(job.id) }
+    ensureActive()
     loot.proposeRebaseline(job.id)
 }
 ```
@@ -236,10 +304,18 @@ The candidate was made with the old outcome, so it is now out of date. The agent
 against the new fixtures, replays that, and applies it. In box code those three steps are:
 
 ```diffstatic {data-lang=kotlin}
-val third = loot.candidate(loot.rule.currentId(), SourceStudy.hash(loot.rule.liveSource()),
-    second.description, fromCandidate = second.id)
-loot.replays.await(loot.test(third.id).id)
-loot.apply(third.id, third.baseRevision, third.baseSourceHash)
+go {
+    val third = loot.candidate(
+        loot.rule.currentId(),
+        SourceStudy.hash(loot.rule.liveSource()),
+        second.description,
+        fromCandidate = second.id,
+    )
+    val replay = loot.test(third.id)
+    runInterruptible(Dispatchers.IO) { loot.replays.await(replay.id) }
+    ensureActive()
+    loot.apply(third.id, third.baseRevision, third.baseSourceHash)
+}
 ```
 
 The agent makes the same three calls as tools: `loot.candidate` with `fromCandidateId`, then
@@ -289,7 +365,9 @@ document, pass a `retain` function that reads a finished attempt of that build a
 input and outcome:
 
 ```diffstatic {data-lang=kotlin}
-retain = { attempt -> QualifiedFixture(attempt.file("level.txt").readText(), attempt.record.facts["placed"]) }
+retain = { attempt ->
+    QualifiedFixture(attempt.file("level.txt").readText(), attempt.record.facts["placed"])
+}
 ```
 
 The agent then calls `loot.retainFixture` with the build runner's name, the attempt's job id, a name

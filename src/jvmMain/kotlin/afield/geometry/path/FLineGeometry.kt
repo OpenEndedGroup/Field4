@@ -68,7 +68,6 @@ import afield.math.linalg.plus
 import smile.data.DataFrame
 import smile.data.formula.Formula
 import smile.regression.OLS
-import java.awt.geom.Area
 import kotlin.math.*
 
 /**
@@ -846,6 +845,23 @@ fun FLine.byConvexHull2D(): FLine {
     // subpath it closes, already in the list, so it adds nothing to the hull — but it must not
     // throw either.
     val points = this.nodes.indices.map { val p = endPointOf(it); Vec2(p.x, p.y) }.toMutableList()
+    // A cubic bulges past its end points: sample inside each one so the hull wraps the curve.
+    val cubicSamples = 24
+    for (i in 1 until nodes.size) {
+        val n = nodes[i]
+        if (n is FLine.CubicTo) {
+            val a = endPointOf(i - 1)
+            for (k in 1 until cubicSamples) {
+                val t = k / cubicSamples.toFloat()
+                val u = 1 - t
+                val w0 = u * u * u; val w1 = 3 * u * u * t; val w2 = 3 * u * t * t; val w3 = t * t * t
+                points.add(Vec2(
+                    w0 * a.x + w1 * n.c1.x + w2 * n.c2.x + w3 * n.to.x,
+                    w0 * a.y + w1 * n.c1.y + w2 * n.c2.y + w3 * n.to.y,
+                ))
+            }
+        }
+    }
 
     if (points.size < 3) return this.copy()
 
@@ -1015,61 +1031,37 @@ fun FLine.byCreatingOsculatingCircles(samples: Int = 20, circleSegments: Int = 3
 
 // ==================== BOOLEAN OPERATIONS ====================
 
+
 /**
  * Union of two curves (using Java2D Area).
+ *
+ * Both operands are read as filled regions, whatever their `thickness` or `thicken`; pass
+ * `stroke = true` to read a styled operand as the outline of its stroke instead.
  *
  * With `exact = true` the four boolean ops go through [booleanExact] instead: the result keeps the
  * operands' cubic pieces, cut exactly at the crossings, and falls back to this Area path only when
  * the exact engine cannot verify its answer.
  */
-fun FLine.byUnionWith(other: FLine, exact: Boolean = false): FLine {
-    if (exact) return booleanExact(other, FLineBooleanOp.Union).line
-    val shape1 = FLinesAndJavaShapes.flineToJavaShape(this)
-    val shape2 = FLinesAndJavaShapes.flineToJavaShape(other)
-    val area1 = Area(shape1)
-    val area2 = Area(shape2)
-    area1.add(area2)
-    return FLinesAndJavaShapes.javaShapeToFLine(area1)
-}
+fun FLine.byUnionWith(other: FLine, exact: Boolean = false, stroke: Boolean = false): FLine =
+    if (exact) booleanExact(other, FLineBooleanOp.Union, stroke).line else FLineExact.awt(this, other, FLineBooleanOp.Union, stroke)
 
 /**
  * Difference of two curves (line1 - line2).
  */
-fun FLine.byDifferenceWith(other: FLine, exact: Boolean = false): FLine {
-    if (exact) return booleanExact(other, FLineBooleanOp.Subtract).line
-    val shape1 = FLinesAndJavaShapes.flineToJavaShape(this)
-    val shape2 = FLinesAndJavaShapes.flineToJavaShape(other)
-    val area1 = Area(shape1)
-    val area2 = Area(shape2)
-    area1.subtract(area2)
-    return FLinesAndJavaShapes.javaShapeToFLine(area1)
-}
+fun FLine.byDifferenceWith(other: FLine, exact: Boolean = false, stroke: Boolean = false): FLine =
+    if (exact) booleanExact(other, FLineBooleanOp.Subtract, stroke).line else FLineExact.awt(this, other, FLineBooleanOp.Subtract, stroke)
 
 /**
  * Intersection of two curves.
  */
-fun FLine.byIntersectionWith(other: FLine, exact: Boolean = false): FLine {
-    if (exact) return booleanExact(other, FLineBooleanOp.Intersect).line
-    val shape1 = FLinesAndJavaShapes.flineToJavaShape(this)
-    val shape2 = FLinesAndJavaShapes.flineToJavaShape(other)
-    val area1 = Area(shape1)
-    val area2 = Area(shape2)
-    area1.intersect(area2)
-    return FLinesAndJavaShapes.javaShapeToFLine(area1)
-}
+fun FLine.byIntersectionWith(other: FLine, exact: Boolean = false, stroke: Boolean = false): FLine =
+    if (exact) booleanExact(other, FLineBooleanOp.Intersect, stroke).line else FLineExact.awt(this, other, FLineBooleanOp.Intersect, stroke)
 
 /**
  * XOR (exclusive or) of two curves.
  */
-fun FLine.byExclusiveOrWith(other: FLine, exact: Boolean = false): FLine {
-    if (exact) return booleanExact(other, FLineBooleanOp.Xor).line
-    val shape1 = FLinesAndJavaShapes.flineToJavaShape(this)
-    val shape2 = FLinesAndJavaShapes.flineToJavaShape(other)
-    val area1 = Area(shape1)
-    val area2 = Area(shape2)
-    area1.exclusiveOr(area2)
-    return FLinesAndJavaShapes.javaShapeToFLine(area1)
-}
+fun FLine.byExclusiveOrWith(other: FLine, exact: Boolean = false, stroke: Boolean = false): FLine =
+    if (exact) booleanExact(other, FLineBooleanOp.Xor, stroke).line else FLineExact.awt(this, other, FLineBooleanOp.Xor, stroke)
 
 // ==================== GEOMETRIC QUERIES ====================
 
@@ -1270,7 +1262,8 @@ fun FLine.byBlendingWith(
     sampler: FLineSampler? = null,
     otherSampler: FLineSampler? = sampler
 ): FLine {
-    val samples = maxOf(this.nodes.size, other.nodes.size)
+    // At least 64 samples: one per node would collapse a single cubic to two points.
+    val samples = maxOf(64, this.nodes.size, other.nodes.size)
     val points1 = this.samplePoints(samples, sampler = sampler)
     val points2 = other.samplePoints(samples, sampler = otherSampler)
     if (points1.isEmpty() || points2.isEmpty()) return FLine()
@@ -2154,7 +2147,9 @@ fun FLine.byDashing(dashLength: Float, gapLength: Float, resolution: Float = 2f)
 /**
  * Create a wave pattern along the curve.
  * @param amplitude wave amplitude
- * @param frequency wave frequency
+ * @param frequency waves per node interval, not per unit of length: a line of two nodes makes
+ *   `frequency` waves end to end, one of eleven makes ten times as many. For waves of a fixed
+ *   wavelength, divide the length by the wavelength and by `nodes.size - 1`.
  * @param samples number of samples
  */
 fun FLine.byWaving(amplitude: Float, frequency: Float, samples: Int = 100): FLine {
@@ -2866,6 +2861,25 @@ fun FLine.biarcTo(
         byAppendingArcByTangent(endPoint, startTan, endTan, segments.coerceAtLeast(2))
         return this
     }
+    // Default parameters: the classic biarc, which meets startTan and endTan exactly. Control
+    // points q0 = start + d·startTan and q1 = end - d·endTan with |q1 - q0| = 2d; the join is their midpoint.
+    if (j == 0.5f && joinTangentMix == 0.5f && bulge == 0f && joinTangent == null) {
+        val tt = Vec3(startTan).add(endTan)
+        val qa = 2f * (1f - startTan.dot(endTan))
+        val qb = chord.dot(tt)
+        val qc = -chord.lengthSquared()
+        val dArm = if (abs(qa) < 1e-6f) (if (abs(qb) > 1e-9f) -qc / (2 * qb) else -1f)
+        else (-qb + sqrt(max(0f, qb * qb - 4 * qa * qc))) / (2 * qa)
+        if (dArm > 0f) {
+            val q0 = Vec3(start).add(Vec3(startTan).mul(dArm))
+            val q1 = Vec3(endPoint).sub(Vec3(endTan).mul(dArm))
+            val joinPt = Vec3(q0).add(q1).mul(0.5f)
+            val totalSegs = segments.coerceAtLeast(2)
+            byAppendingArcByTangent(joinPt, startTan, endTan, totalSegs / 2)
+            byAppendingArcByTangent(endPoint, arcEndTangent(start, startTan, joinPt), endTan, totalSegs - totalSegs / 2)
+            return this
+        }
+    }
     var mid = Vec3(start).add(Vec3(chord).mul(j))
     if (bulge != 0f) {
         val n = planeNormal?.let { Vec3(it) }
@@ -2898,8 +2912,10 @@ fun FLine.biarcTo(
         return lineTo(endPoint)
     }
 
+    // Each arc is fixed by its start point, start tangent and end point; the second starts along
+    // the first's end tangent so the join is smooth (the requested join tangent only shapes `mid`).
     byAppendingArcByTangent(mid, startTan, jt, segA)
-    byAppendingArcByTangent(endPoint, jt, endTan, segB)
+    byAppendingArcByTangent(endPoint, arcEndTangent(start, startTan, mid), endTan, segB)
     return this
 }
 
@@ -3046,8 +3062,10 @@ fun arcThrough3Points(p1: Vec3, p2: Vec3, p3: Vec3, segments: Int = 32): FLine {
         return line
     }
 
-    val s = a * (b - v1.dot(v2)) / (2 * c)
-    val t = b * (a - v1.dot(v2)) / (2 * c)
+    // (center - p1) = s v1 + t v2 with (center - p1)·v1 = a/2 and (center - p1)·v2 = b/2
+    val d = v1.dot(v2)
+    val s = b * (a - d) / (2 * c)
+    val t = a * (b - d) / (2 * c)
 
     val center = Vec3(p1)
         .add(Vec3(v1).mul(s))
@@ -3055,41 +3073,36 @@ fun arcThrough3Points(p1: Vec3, p2: Vec3, p3: Vec3, segments: Int = 32): FLine {
 
     val radius = Vec3(p1).sub(center).length()
 
-    // Calculate angles for the arc
-    val toP1 = Vec3(p1).sub(center)
-    val toP2 = Vec3(p2).sub(center)
-    val toP3 = Vec3(p3).sub(center)
-
-    // Create orthonormal basis
-    val u = Vec3(toP1).normalize()
+    // Angles measured from p1, positive about `normal`; p2 and p3 sit at angles in (0, 2π).
+    val u = Vec3(p1).sub(center).normalize()
     val v = Vec3(normal).cross(u).normalize()
-
-    // Calculate angles in the plane
-    fun getAngle(vec: Vec3): Float {
-        val projected = Vec3(vec).sub(center)
-        val x = projected.dot(u)
-        val y = projected.dot(v)
-        return atan2(y, x)
+    fun angleOf(p: Vec3): Float {
+        val q = Vec3(p).sub(center)
+        val ang = atan2(q.dot(v), q.dot(u))
+        return if (ang < 0f) ang + 2 * PI.toFloat() else ang
     }
+    // Sweep positively if p2 comes before p3 that way, otherwise go the other way round.
+    val a2 = angleOf(p2)
+    val a3 = angleOf(p3)
+    val sweep = if (a2 <= a3) a3 else a3 - 2 * PI.toFloat()
 
-    val angle1 = getAngle(p1)
-    val angle2 = getAngle(p2)
-    val angle3 = getAngle(p3)
-
-    // Determine arc direction and range
-    var startAngle = angle1
-    var endAngle = angle3
-
-    // Check if we need to go the long way
-    val mid = (angle1 + angle3) / 2
-    if (abs(angle2 - mid) > PI.toFloat() / 2) {
-        endAngle += 2 * PI.toFloat()
-    }
-
-    // Generate the arc
     val result = FLine()
-    result.byAppendingArc3D(center, radius, startAngle, endAngle, normal, segments)
+    result.moveTo(p1)
+    result.appendArcPoints(center, u, v, radius, sweep, segments)
     return result
+}
+
+/** Appends `lineTo`s along the circle `center + r (cos θ u + sin θ v)` for θ in (0, sweep]. */
+private fun FLine.appendArcPoints(center: Vec3, u: Vec3, v: Vec3, radius: Float, sweep: Float, segments: Int) {
+    val n = segments.coerceAtLeast(1)
+    for (i in 1..n) {
+        val ang = sweep * i / n
+        lineTo(
+            Vec3(center)
+                .add(Vec3(u).mul(radius * cos(ang)))
+                .add(Vec3(v).mul(radius * sin(ang)))
+        )
+    }
 }
 
 /**
@@ -3132,36 +3145,35 @@ fun FLine.byAppendingArcByTangent(
     }
 
     val start = currentPoint ?: return moveTo(endPoint)
+    val chord = Vec3(endPoint).sub(start)
+    // One circle leaves `start` along a tangent and passes through `endPoint`. Use the start
+    // tangent; fall back to the end tangent (reflected through the chord) if that is degenerate.
+    val tan = if (startTangent.lengthSquared() > 1e-12f) Vec3(startTangent).normalize() else {
+        val e = Vec3(endTangent).normalize()
+        val cn = Vec3(chord).normalize()
+        Vec3(cn).mul(2 * e.dot(cn)).sub(e)
+    }
+    val normal = Vec3(tan).cross(chord)
+    if (normal.lengthSquared() < 1e-12f * max(1f, chord.lengthSquared())) return lineTo(endPoint)
+    normal.normalize()
+    // Toward the center, in the plane of the tangent and the chord.
+    val inward = Vec3(normal).cross(tan).normalize()
+    val radius = chord.lengthSquared() / (2 * chord.dot(inward))
+    val center = Vec3(start).add(Vec3(inward).mul(radius))
 
-    // Find center as intersection of perpendiculars to tangents
-    val startPerp = Vec3(startTangent).normalize()
-    val endPerp = Vec3(endTangent).normalize()
-
-    // Use midpoint and tangents to estimate center
-    val mid = Vec3(start).add(endPoint).mul(0.5f)
-    val toMid = Vec3(mid).sub(start)
-
-    // Estimate radius from distance and tangent
-    val distance = Vec3(endPoint).sub(start).length()
-    val radius = distance * 0.5f / sin(atan2(toMid.cross(startPerp, Vec3()).length(), toMid.dot(startPerp)))
-
-    // Calculate center
-    val perpToStart = Vec3(startPerp).cross(toMid).normalize()
-    val center = Vec3(start).add(perpToStart.mul(radius))
-
-    // Generate arc
-    val normal = Vec3(startPerp).cross(endPerp).normalize()
-    val startAngle = atan2(
-        Vec3(start).sub(center).dot(perpToStart),
-        Vec3(start).sub(center).dot(startPerp)
-    )
-    val endAngle = atan2(
-        Vec3(endPoint).sub(center).dot(perpToStart),
-        Vec3(endPoint).sub(center).dot(startPerp)
-    )
-
-    this.byAppendingArc3D(center, radius, startAngle, endAngle, normal, segments)
+    val u = Vec3(start).sub(center).normalize()
+    val q = Vec3(endPoint).sub(center)
+    var sweep = atan2(q.dot(tan), q.dot(u))
+    if (sweep < 0f) sweep += 2 * PI.toFloat()
+    appendArcPoints(center, u, tan, radius, sweep, segments)
     return this
+}
+
+/** The unit tangent at the end of the arc [byAppendingArcByTangent] draws from `start` along `tan`. */
+private fun arcEndTangent(start: Vec3, tan: Vec3, end: Vec3): Vec3 {
+    // A circular arc's end tangent is its start tangent reflected through the chord.
+    val cn = Vec3(end).sub(start).normalize()
+    return Vec3(cn).mul(2 * tan.dot(cn)).sub(tan).normalize()
 }
 
 // ==================== NOISE UTILITIES ====================
@@ -4025,6 +4037,73 @@ private fun signedAngleOnPlane(from: Vec3, to: Vec3, normal: Vec3): Float {
     return atan2(cross.dot(normal), dot)
 }
 
+/**
+ * Generalised Fresnel integral `∫₀¹ exp(i(a/2·t² + b·t + c)) dt`, returned as (real, imaginary).
+ * Composite Simpson in doubles; the fit below keeps |a| small enough that 1024 panels are exact
+ * to well under a float ulp.
+ */
+private fun generalizedFresnel(a: Double, b: Double, c: Double): Pair<Double, Double> {
+    val n = 1024
+    val h = 1.0 / n
+    var re = 0.0
+    var im = 0.0
+    for (k in 0..n) {
+        val t = k * h
+        val w = if (k == 0 || k == n) 1.0 else if (k % 2 == 1) 4.0 else 2.0
+        val phase = 0.5 * a * t * t + b * t + c
+        re += w * cos(phase)
+        im += w * sin(phase)
+    }
+    return Pair(re * h / 3.0, im * h / 3.0)
+}
+
+private fun wrapToPi(a: Double): Double {
+    var x = a
+    while (x > PI) x -= 2 * PI
+    while (x <= -PI) x += 2 * PI
+    return x
+}
+
+/**
+ * Planar G1 Hermite clothoid (Bertolazzi & Frego, "G1 fitting with clothoids", 2015).
+ *
+ * Finds the curve with heading `θ(s) = θ0 + κ·s + ½κ'·s²` that leaves the origin at [theta0]
+ * and reaches ([dx], [dy]) heading [theta0] + `(φ1 − φ0)`. Returns (κ, κ', L), or null when the
+ * Newton solve for the single unknown `A` does not converge.
+ */
+private fun fitClothoidG1(dx: Double, dy: Double, phi0: Double, phi1: Double, maxIterations: Int): Triple<Double, Double, Double>? {
+    val r = hypot(dx, dy)
+    if (r < 1e-12) return null
+    val delta = phi1 - phi0
+    fun g(A: Double) = generalizedFresnel(2 * A, delta - A, phi0).second
+
+    var A = 3.0 * (phi0 + phi1)
+    var converged = false
+    for (i in 0 until maxIterations) {
+        val gA = g(A)
+        if (abs(gA) < 1e-12) { converged = true; break }
+        val h = 1e-6 * max(1.0, abs(A))
+        val dg = (g(A + h) - g(A - h)) / (2 * h)
+        if (abs(dg) < 1e-14) break
+        A -= gA / dg
+    }
+    if (!converged && abs(g(A)) > 1e-9) return null
+
+    val x = generalizedFresnel(2 * A, delta - A, phi0).first
+    if (x <= 1e-12) return null
+    val length = r / x
+    return Triple((delta - A) / length, 2 * A / (length * length), length)
+}
+
+/**
+ * Euler spiral (clothoid) between two points, solved exactly in a plane.
+ *
+ * The plane is the one spanned by the two directions (or the chord, when they are parallel).
+ * Within it the curve meets both endpoints and both projected directions exactly; there is
+ * no residual correction. Any part of `end − start` that leaves that plane is added as a
+ * linear lift along the curve, so in 3D the curve is "planar clothoid plus a ramp" and its
+ * tangents tilt out of the plane by `atan(lift / L)`.
+ */
 private fun eulerSpiralCore3D(
     start: Vec3,
     startDir: Vec3,
@@ -4032,76 +4111,82 @@ private fun eulerSpiralCore3D(
     endDir: Vec3,
     samples: Int,
     iterations: Int,
-    lengthScale: Float,
     headingScale: Float,
     turn: Float
 ): List<Vec3> {
     val frame = buildSpiralFrame(start, end, startDir, endDir)
     val targetVec = Vec3(end).sub(start)
-    val normalOffset = targetVec.dot(frame.n)
-    val baseLength = targetVec.length().coerceAtLeast(1e-5f) * lengthScale
-
-    val startForward = projectOntoPlane(startDir, frame.n).let { d ->
-        if (d.lengthSquared() > 1e-10f) Vec3(d).normalize() else Vec3(frame.u)
-    }
-    val endForward = projectOntoPlane(endDir, frame.n).let { d ->
-        if (d.lengthSquared() > 1e-10f) Vec3(d).normalize() else Vec3(frame.u)
-    }
-
-    val totalTurn = signedAngleOnPlane(startForward, endForward, frame.n) * headingScale + turn
+    val normalOffset = targetVec.dot(frame.n).toDouble()
+    val dx = targetVec.dot(frame.u).toDouble()
+    val dy = targetVec.dot(frame.v).toDouble()
     val sampleCount = max(samples, 2)
 
-    fun integrate(L: Float): List<Vec3> {
-        val pts = ArrayList<Vec3>(sampleCount)
-        val ds = L / (sampleCount - 1).toFloat()
-        val curvatureRate = 2f * totalTurn / (L * L).coerceAtLeast(1e-6f)
-        var orientation = Quaternionf().rotationToField(frame.u, startForward)
-        var posPlane = vec(0f, 0f, 0f)
-        pts.add(Vec3(start))
-        var sAcc = 0f
+    fun headingOf(d: Vec3, fallback: Double): Double {
+        val a = d.dot(frame.u).toDouble()
+        val b = d.dot(frame.v).toDouble()
+        return if (a * a + b * b > 1e-20) atan2(b, a) else fallback
+    }
 
-        for (i in 1 until sampleCount) {
-            val curvature = curvatureRate * sAcc
-            val deltaQuat = Quaternionf().setAngleAxis(curvature * ds, frame.n.x, frame.n.y, frame.n.z)
-            orientation = Quaternionf(deltaQuat).mul(orientation)
-            val forward = frame.u * orientation
-            posPlane = Vec3(posPlane).add(Vec3(forward).mul(ds))
+    val chordAngle = atan2(dy, dx)
+    val theta0 = headingOf(startDir, chordAngle)
+    val theta1 = headingOf(endDir, chordAngle)
+    val phi0 = wrapToPi(theta0 - chordAngle)
+    val phi1 = wrapToPi(phi0 + wrapToPi(theta1 - theta0) * headingScale) + turn
 
-            val t = i.toFloat() / (sampleCount - 1)
-            val normalDelta = Vec3(frame.n).mul(normalOffset * t)
-            pts.add(Vec3(start).add(posPlane).add(normalDelta))
-            sAcc += ds
+    val fit = fitClothoidG1(dx, dy, phi0, phi1, max(iterations, 40))
+        ?: return List(sampleCount) { i ->
+            Vec3(start).add(Vec3(targetVec).mul(i.toFloat() / (sampleCount - 1)))
         }
-        return pts
+    val (kappa, kappaPrime, length) = fit
+
+    fun heading(s: Double) = theta0 + kappa * s + 0.5 * kappaPrime * s * s
+
+    val pts = ArrayList<Vec3>(sampleCount)
+    pts.add(Vec3(start))
+    val ds = length / (sampleCount - 1)
+    var x = 0.0
+    var y = 0.0
+    for (i in 1 until sampleCount) {
+        // Simpson over [s0, s0 + ds] with 8 panels.
+        val s0 = (i - 1) * ds
+        val panels = 8
+        val hh = ds / panels
+        var cx = 0.0
+        var cy = 0.0
+        for (k in 0..panels) {
+            val w = if (k == 0 || k == panels) 1.0 else if (k % 2 == 1) 4.0 else 2.0
+            val th = heading(s0 + k * hh)
+            cx += w * cos(th)
+            cy += w * sin(th)
+        }
+        x += cx * hh / 3.0
+        y += cy * hh / 3.0
+        val t = i.toDouble() / (sampleCount - 1)
+        val p = Vec3(start)
+            .add(Vec3(frame.u).mul(x.toFloat()))
+            .add(Vec3(frame.v).mul(y.toFloat()))
+            .add(Vec3(frame.n).mul((normalOffset * t).toFloat()))
+        pts.add(p)
     }
-
-    fun endpoint(L: Float): Vec3 = integrate(L).last()
-
-    var length = baseLength
-    var pts = integrate(length)
-    repeat(iterations) {
-        val err = Vec3(pts.last()).sub(end)
-        if (err.lengthSquared() < 1e-10f) return@repeat
-
-        val eps = (length * 1e-3f).coerceAtLeast(1e-4f)
-        val endNext = endpoint(length + eps)
-        val deriv = Vec3(endNext).sub(pts.last()).mul(1f / eps)
-        val denom = deriv.lengthSquared().coerceAtLeast(1e-12f)
-        val step = err.dot(deriv) / denom
-
-        length = (length - step).coerceAtLeast(1e-4f)
-        pts = integrate(length)
-    }
-
-    val residual = Vec3(end).sub(pts.last())
-    return pts.mapIndexed { i, p ->
-        val t = if (pts.size <= 1) 0f else i.toFloat() / (pts.size - 1)
-        Vec3(p).add(Vec3(residual).mul(t))
-    }
+    // Float rounding only: the integration is exact to ~1e-9 of the chord.
+    pts[pts.lastIndex] = Vec3(end)
+    return pts
 }
 
 /**
- * Build a 3D Euler spiral between two points with specified directions.
+ * Build an Euler spiral (clothoid) from [start] to [end] that leaves along [startDirection]
+ * and arrives along [endDirection].
+ *
+ * The curve is solved exactly in the plane of the two directions: both endpoints and both
+ * directions (projected into that plane) are met, and curvature changes linearly with arc
+ * length. If [end] is out of that plane, the difference is added as a linear lift, so the
+ * 3D tangents tilt by the lift's slope.
+ *
+ * @param samples number of points in the returned polyline
+ * @param iterations maximum Newton iterations for the fit (at least 40 are always used)
+ * @param lengthScale ignored: a clothoid meeting both ends is unique; kept for source compatibility
+ * @param headingScale scales the turn from start to end direction (1 meets [endDirection])
+ * @param turn extra heading, in radians, added at the end (2π adds a loop)
  */
 fun eulerSpiralBetween3D(
     start: Vec3,
@@ -4121,7 +4206,6 @@ fun eulerSpiralBetween3D(
         endDir = endDirection,
         samples = samples,
         iterations = iterations,
-        lengthScale = lengthScale,
         headingScale = headingScale,
         turn = turn
     )
@@ -4700,3 +4784,175 @@ fun FLine.byOneDollarFiltering(
     return blended.toFLine()
 }
 
+
+// ==================== SKETCH VERBS: CENTRIPETAL SPLINES, WIGGLE, ATOMIZE, TRANSFORM-TO ====================
+
+/**
+ * A smooth curve through every point of [points]: a centripetal Catmull-Rom spline, as cubic segments.
+ *
+ * [catmullRomToBezier] is the *uniform* spline, which overshoots and can loop where neighbouring
+ * points are unevenly spaced, as they are in anything drawn by hand. The centripetal parameterisation
+ * ([alpha] = 0.5, the default; 0 is uniform and 1 chordal) weights each tangent by the distance to the
+ * neighbours, so the curve stays close to the hand's path and never forms a cusp or a self-loop within
+ * a segment. The ends are clamped: the first and last points stand in for their missing neighbours.
+ *
+ * ```
+ * val curve = catmullRomCentripetal(listOf(vec(0, 0), vec(40, 10), vec(60, 60), vec(140, 70)))
+ * ```
+ *
+ * Fewer than three points give a polyline (one point gives a single `moveTo`).
+ */
+fun catmullRomCentripetal(points: List<Vec2>, alpha: Double = 0.5): FLine {
+    val out = FLine()
+    if (points.isEmpty()) return out
+    out.moveTo(points[0].x, points[0].y)
+    if (points.size < 3) {
+        for (i in 1 until points.size) out.lineTo(points[i].x, points[i].y)
+        return out
+    }
+    fun d(a: Vec2, b: Vec2): Double {
+        val dx = (b.x - a.x).toDouble()
+        val dy = (b.y - a.y).toDouble()
+        val v = (dx * dx + dy * dy).pow(alpha * 0.5)
+        return if (v < 1e-6) 1.0 else v
+    }
+    val n = points.size
+    for (j in 0 until n - 1) {
+        val p0 = points[max(0, j - 1)]
+        val p1 = points[j]
+        val p2 = points[min(n - 1, j + 1)]
+        val p3 = points[min(n - 1, j + 2)]
+        val d1 = d(p0, p1)
+        val d2 = d(p1, p2)
+        val d3 = d(p2, p3)
+        val b1x = (d1 * d1 * p2.x - d2 * d2 * p0.x + (2 * d1 * d1 + 3 * d1 * d2 + d2 * d2) * p1.x) / (3 * d1 * (d1 + d2))
+        val b1y = (d1 * d1 * p2.y - d2 * d2 * p0.y + (2 * d1 * d1 + 3 * d1 * d2 + d2 * d2) * p1.y) / (3 * d1 * (d1 + d2))
+        val b2x = (d3 * d3 * p1.x - d2 * d2 * p3.x + (2 * d3 * d3 + 3 * d3 * d2 + d2 * d2) * p2.x) / (3 * d3 * (d3 + d2))
+        val b2y = (d3 * d3 * p1.y - d2 * d2 * p3.y + (2 * d3 * d3 + 3 * d3 * d2 + d2 * d2) * p2.y) / (3 * d3 * (d3 + d2))
+        out.cubicTo(b1x, b1y, 0, b2x, b2y, 0, p2.x, p2.y, 0)
+    }
+    return out
+}
+
+/**
+ * Classic 2D Perlin noise with a fixed permutation table, in about -1..1, zero at integer lattice
+ * points.
+ *
+ * The table is the one the madp sketch demos shuffle (`(i * 16807 + 37) % (i + 1)`), so a noise
+ * field ported from them, and [byWiggling], moves exactly as it did there.
+ */
+object ClassicPerlin2D {
+    private val perm: IntArray = run {
+        val p = IntArray(256) { it }
+        for (i in 255 downTo 1) {
+            val j = (i * 16807 + 37) % (i + 1)
+            val tmp = p[i]; p[i] = p[j]; p[j] = tmp
+        }
+        IntArray(512) { p[it and 255] }
+    }
+
+    private fun fade(t: Double) = t * t * t * (t * (t * 6 - 15) + 10)
+    private fun lerp(a: Double, b: Double, t: Double) = a + t * (b - a)
+    private fun grad(hash: Int, x: Double, y: Double): Double {
+        val h = hash and 3
+        val u = if (h < 2) x else y
+        val v = if (h < 2) y else x
+        return (if (h and 1 != 0) -u else u) + (if (h and 2 != 0) -v else v)
+    }
+
+    /** The noise at ([x], [y]). */
+    fun noise(x: Double, y: Double): Double {
+        val fx = floor(x)
+        val fy = floor(y)
+        val xi = fx.toInt() and 255
+        val yi = fy.toInt() and 255
+        val xf = x - fx
+        val yf = y - fy
+        val u = fade(xf)
+        val v = fade(yf)
+        val aa = perm[perm[xi] + yi]
+        val ab = perm[perm[xi] + yi + 1]
+        val ba = perm[perm[xi + 1] + yi]
+        val bb = perm[perm[xi + 1] + yi + 1]
+        return lerp(
+            lerp(grad(aa, xf, yf), grad(ba, xf - 1, yf), u),
+            lerp(grad(ab, xf, yf - 1), grad(bb, xf - 1, yf - 1), u),
+            v,
+        )
+    }
+}
+
+/**
+ * Every node of this line (and every cubic's control points) pushed about by 2D Perlin noise
+ * ([ClassicPerlin2D]): [amplitude] in the line's own units, [frequency] in noise cycles per unit, and
+ * [phase] sliding the noise field, so `phase = t` makes the wiggle move.
+ *
+ * The x displacement is read first and the y displacement is read at the already-moved x, as the madp
+ * line demo's `wiggle` does. Node properties (colour, point size, overshoot) are kept.
+ */
+fun FLine.byWiggling(amplitude: Double = 10.0, frequency: Double = 0.05, phase: Double = 0.0): FLine {
+    val a = amplitude
+    val f = frequency
+    return transform { p ->
+        val x = p.x + ClassicPerlin2D.noise(p.x * f + phase, p.y * f + phase + 100) * a
+        val y = p.y + ClassicPerlin2D.noise(x * f + phase + 200, p.y * f + phase + 300) * a
+        vec(x, y, p.z)
+    }
+}
+
+/**
+ * This line broken into separate segments: every drawn piece of it becomes its own `moveTo`/`lineTo`
+ * subpath, between the same end points (a cubic is replaced by its chord). Each segment carries the
+ * properties of the node that ended it.
+ *
+ * A line of separate pieces draws the same until something treats subpaths one by one: per-subpath
+ * overshoot, [byWiggling] (which then moves the two ends of a join apart), or a dot at each end.
+ */
+fun FLine.byAtomizing(): FLine {
+    val out = FLine()
+    out.properties.putAll(properties)
+    var at: Vec3? = null
+    for (node in nodes) {
+        when (node) {
+            is FLine.MoveTo -> at = Vec3(node.to)
+            is FLine.Close -> at = null
+            else -> {
+                val from = at
+                val to = Vec3(node.to)
+                if (from != null) {
+                    out.moveTo(from)
+                    out.lineTo(to)
+                    out.here.properties.putAll(node.properties)
+                }
+                at = to
+            }
+        }
+    }
+    return out
+}
+
+/**
+ * This line rotated, scaled and moved as one rigid shape so that its first node lands on [start] and
+ * its last on [end]. A line whose two ends coincide is returned unchanged, since no rotation would be
+ * defined.
+ */
+fun FLine.byTransformingTo(start: Vec2, end: Vec2): FLine {
+    if (nodes.isEmpty()) return copy()
+    val a = endPointOf(0)
+    val b = endPointOf(nodes.size - 1)
+    val sdx = (b.x - a.x).toDouble()
+    val sdy = (b.y - a.y).toDouble()
+    val sLen = hypot(sdx, sdy)
+    if (sLen < 1e-6) return copy()
+    val tdx = (end.x - start.x).toDouble()
+    val tdy = (end.y - start.y).toDouble()
+    val scale = hypot(tdx, tdy) / sLen
+    val rot = atan2(tdy, tdx) - atan2(sdy, sdx)
+    val c = cos(rot)
+    val s = sin(rot)
+    return transform { p ->
+        val dx = (p.x - a.x).toDouble()
+        val dy = (p.y - a.y).toDouble()
+        vec(start.x + (dx * c - dy * s) * scale, start.y + (dx * s + dy * c) * scale, p.z)
+    }
+}

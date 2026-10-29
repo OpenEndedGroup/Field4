@@ -126,9 +126,9 @@ class SolidSamples(
  * Sample this shape's field at [count] pseudo-random points in its own bounds, expanded by [margin]
  * as a fraction of the longest axis.
  *
- * Uniform in the box rather than concentrated near the surface, on purpose: a near-surface sampling
- * is a better *surface* objective but it has to know where the surface is, which for a target that is
- * being recovered is circular. Uniform-in-a-box needs only the bounds, and [SolidFitOptions.band]
+ * Uniform in the box rather than concentrated near the surface: a near-surface sampling is a better
+ * *surface* objective but it has to know where the surface is, which for a target that is being
+ * recovered is circular. Uniform-in-a-box needs only the bounds, and [SolidFitOptions.band]
  * recovers the near-surface behaviour by clamping the residual instead of by moving the points.
  *
  * The sequence is a plain [Random] seeded by [seed], so a fit is reproducible to the last bit and a
@@ -181,7 +181,7 @@ fun SolidExpr.sampleField(
  * It is a *separate* measurement from [crossCheck] rather than a fourth set of fields on
  * [SolidAgreement], and the reason is that they measure different objects. `crossCheck` compares
  * **surfaces** — volume, area, genus, Hausdorff deviation — and lowering (c) does not produce a
- * surface; it produces a field, exactly as lowering (a) does. So the honest comparison is
+ * surface; it produces a field, exactly as lowering (a) does. So the comparison is
  * field-against-field, pointwise, and folding it into a surface report would have meant inventing a
  * "volume" for something that has none. What the two measurements share is the *argument*, and this
  * KDoc and `SolidAgreement`'s cross-reference each other so a reader finds both.
@@ -291,12 +291,11 @@ data class SolidGradientCheck(
     /**
      * Which components the numerical oracle is prepared to have an opinion about.
      *
-     * A statement about the **oracle only**. It deliberately says nothing about whether the analytic
-     * side produced a number, and that separation was bought the hard way: while this predicate also
-     * required `analytic[i].isFinite()`, a `NaN` from the thing under test was silently filed as "no
-     * verdict here" — the same bucket as a genuine singularity — and a census reported 95.9%
-     * coverage over a derivative that was `NaN` throughout the interior of every box. See
-     * [nonFiniteAnalytic], and `adBox3`'s KDoc for the bug it was hiding.
+     * A statement about the **oracle only**. It says nothing about whether the analytic side
+     * produced a number, and keeping those two apart is what makes a census readable: a predicate
+     * that also required `analytic[i].isFinite()` would file a `NaN` from the thing under test as
+     * "no verdict here", in the same bucket as a genuine singularity, and report high coverage over
+     * a derivative that was `NaN` throughout. See [nonFiniteAnalytic], and `adBox3`'s KDoc.
      */
     val usableComponents: BooleanArray = BooleanArray(analytic.size) { i ->
         numerical[i].isFinite() && numericalHalfStep[i].isFinite() &&
@@ -325,10 +324,10 @@ data class SolidGradientCheck(
      * The disagreement over the usable components, measured against a **floored** scale —
      * `max(1, |analytic|, |numerical|)`.
      *
-     * The floor is the point. A relative error against a derivative that happens to be `1e-9` is
-     * meaningless and fails any tolerance; a floor of 1 makes it an absolute test exactly where an
-     * absolute test is the right one, and a relative one where the derivative is large (a `Scale`
-     * factor's `1/s²` reaches the thousands).
+     * A relative error against a derivative that happens to be `1e-9` is meaningless and fails any
+     * tolerance; a floor of 1 makes it an absolute test exactly where an absolute test is the right
+     * one, and a relative one where the derivative is large (a `Scale` factor's `1/s²` reaches the
+     * thousands).
      *
      * `0.0` when nothing is usable — which is why a caller must consult [usableCount] and not read a
      * zero here as a pass.
@@ -405,10 +404,10 @@ fun SolidTemplate.checkPositionGradient(
 /**
  * One component of the central difference.
  *
- * The tree is rebuilt and re-lowered per probe, which is `O(nodes)` and looks wasteful. It is the
- * honest way: substituting into a [SolidExpr] and lowering it afresh is exactly what the *analytic*
- * side is being compared against, so a shared cache between the two would be a shared assumption,
- * and a shared assumption is the one thing a second opinion must not have.
+ * The tree is rebuilt and re-lowered per probe, which is `O(nodes)` and looks wasteful. The waste
+ * is the method: substituting into a [SolidExpr] and lowering it afresh is exactly what the
+ * *analytic* side is being compared against, so a shared cache between the two would be a shared
+ * assumption, and a shared assumption is the one thing a second opinion must not have.
  */
 private fun SolidTemplate.central(
     x: Double,
@@ -481,7 +480,7 @@ data class SolidFitOptions(
 }
 
 /**
- * What a fit did — including, deliberately, what it started from.
+ * What a fit did, and what it started from.
  *
  * [initialLoss] is not decoration. "The fit improved things" is unfalsifiable without the
  * counterfactual in the same object, measured in the same run, by the same code: a remembered

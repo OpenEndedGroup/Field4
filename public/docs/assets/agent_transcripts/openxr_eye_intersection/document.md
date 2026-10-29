@@ -11,12 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="eye_ray_renderer" index="0" -->
 
 ```edn [field-box id="eye_ray_renderer" role="properties"]
-{"id" "eye_ray_renderer" "index" 0 "name" "1 · OpenXR renderer" "parents" ["root"] "children" ["eye_ray_scene"] "properties" {"children" #{#afield/box "eye_ray_scene"} "parents" #{#afield/box "root"} "name" "1 · OpenXR renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 340.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "eye_ray_renderer_code_.kt" "lines" 19 "characters" 612 "sha256" "ba13be9b5cfea2b85b0ba77d5913141104bb03c6cd8c4c64f1d19fe1369f1ca5"}]}
+{"id" "eye_ray_renderer" "index" 0 "name" "1 · OpenXR renderer" "parents" ["root"] "children" ["eye_ray_scene"] "properties" {"children" #{#afield/box "eye_ray_scene"} "parents" #{#afield/box "root"} "name" "1 · OpenXR renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 340.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "eye_ray_renderer_code_.kt" "lines" 18 "characters" 558 "sha256" "fb041f2c325113fc57200f24bd2d483b98d22f58b49e5e705f87630379bbb68e"}]}
 ```
 
 ```kotlin [field-property box="eye_ray_renderer" name="code" path="eye_ray_renderer_code_.kt"]
 import afield.graphics.vulkan.util.Options
-import afield.graphics.vulkan.targets.OpenXRHmdTarget
 
 prop<Window>(window)
 prop<Renderer>(renderer)
@@ -41,7 +40,7 @@ start(renderer::run)
 <!-- field-box id="eye_ray_scene" index="1" -->
 
 ```edn [field-box id="eye_ray_scene" role="properties"]
-{"id" "eye_ray_scene" "index" 1 "name" "2 · eye rays + world marker" "parents" ["root" "eye_ray_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "eye_ray_renderer"} "name" "2 · eye rays + world marker" "_tombstone" false "frame" #afield/rect [340.0 150.0 390.0 120.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "eye_ray_scene_vertex_.glsl" "lines" 10 "characters" 308 "sha256" "ab8d89542e81627a4cd4d5eae892c294c4d5e28440d4866eac4a68ecafc34a1f"} {"name" "fragment" "language" "glsl" "path" "eye_ray_scene_fragment_.glsl" "lines" 4 "characters" 117 "sha256" "7acd5011fc495b0df8f0099cfebc8ddff5e6b6c270376fdd89d4f941e313b8f9"} {"name" "code" "language" "kotlin" "path" "eye_ray_scene_code_.kt" "lines" 173 "characters" 8088 "sha256" "6ff3a32c49aea059392dbcc0ddf04b34817510606eade7641923540561fa417d"}]}
+{"id" "eye_ray_scene" "index" 1 "name" "2 · eye rays + world marker" "parents" ["root" "eye_ray_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "eye_ray_renderer"} "name" "2 · eye rays + world marker" "_tombstone" false "frame" #afield/rect [340.0 150.0 390.0 120.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "eye_ray_scene_vertex_.glsl" "lines" 13 "characters" 316 "sha256" "3ed65e56090d366813d8ebf73081fd80067692f4086282c4263593eee1af03c6"} {"name" "fragment" "language" "glsl" "path" "eye_ray_scene_fragment_.glsl" "lines" 6 "characters" 121 "sha256" "09f2d517b9f20511becdbad44a079ab2444e197c15df7f90141a8a45c10d42de"} {"name" "code" "language" "kotlin" "path" "eye_ray_scene_code_.kt" "lines" 205 "characters" 8784 "sha256" "6b12961b58eaadc67849a25d774964da809ba6f419268e4457cfe6af71695fdd"}]}
 ```
 
 ```glsl [field-property box="eye_ray_scene" name="vertex" path="eye_ray_scene_vertex_.glsl"]
@@ -49,7 +48,10 @@ start(renderer::run)
 layout(location=0) in vec3 pos;
 layout(location=1) in vec4 col;
 layout(location=0) out vec4 fcol;
-layout(push_constant) uniform Matrices { mat4 p; mat4 m; } pc;
+layout(push_constant) uniform Matrices {
+    mat4 p;
+    mat4 m;
+} pc;
 void main() {
     // m = eyeViewLocal * localFromWorld * modelWorld
     gl_Position = pc.p * pc.m * vec4(pos, 1.0);
@@ -61,14 +63,12 @@ void main() {
 #version 450
 layout(location=0) in vec4 fcol;
 layout(location=0) out vec4 outColor;
-void main() { outColor = fcol; }
+void main() {
+    outColor = fcol;
+}
 ```
 
 ```kotlin [field-property box="eye_ray_scene" name="code" path="eye_ray_scene_code_.kt"]
-
-import afield.graphics.vulkan.targets.BinocularGazeIntersection
-import afield.math.linalg.Matrix4f
-import afield.math.linalg.Quaternionf
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.delay
@@ -77,18 +77,22 @@ val xr = renderer.openXRHmdTarget
 if (xr != null) {
     check(xr.hasEyeViews) { "OpenXR views are not ready; check the headset/runtime, then re-launch this box" }
 }
-val xrFormats = if (xr == null) emptyList<Int>() else renderer.runOnQueueThread {
-    listOf(xr.sideBySideRTTParameters().format)
-}
+val xrFormats =
+    if (xr == null) emptyList<Int>()
+    else
+        renderer.runOnQueueThread {
+            [xr.sideBySideRTTParameters().format]
+        }
 
 // Change this and re-launch this box to exercise a different world origin.
 // It is deliberately non-identity: +0.35m X, +0.10m Y, -0.20m Z, +30 degrees yaw.
-val worldFromLocal = Matrix4f().translate(0.35f, 0.10f, -0.20f)
-    .rotate(Quaternionf(0f, 0.25881904f, 0f, 0.9659258f))
+val worldFromLocal = Matrix4f().translate(0.35f, 0.10f, -0.20f).rotate(Quaternionf(0f, 0.25881904f, 0f, 0.9659258f))
 val localFromWorld = Matrix4f(worldFromLocal).invert()
 val solve = BinocularGazeIntersection(
-    minimumAngleDegrees = 0.25, maximumSeparation = 0.03,
-    minimumDistance = 0.05, maximumDistance = 8.0
+    minimumAngleDegrees = 0.25,
+    maximumSeparation = 0.03,
+    minimumDistance = 0.05,
+    maximumDistance = 8.0,
 )
 val holdMarker = AtomicBoolean(false)
 val report = AtomicReference("Waiting for the first render callback")
@@ -112,7 +116,9 @@ fun lineMesh(name: String, vertices: List<Vec3>, color: Vec4, modelWorld: () -> 
     module += name to m
     m.set(vertices.size, vertices.size / 2) {
         for ((i, v) in vertices.withIndex()) {
-            pos.add(v.x, v.y, v.z); col.add(color.x, color.y, color.z, color.w); tri.add(i)
+            pos.add(v.x, v.y, v.z)
+            col.add(color.x, color.y, color.z, color.w)
+            tri.add(i)
         }
     }
     m.p = { xr?.currentEyeProjectionMatrix() ?: previewProjection }
@@ -123,13 +129,18 @@ fun lineMesh(name: String, vertices: List<Vec3>, color: Vec4, modelWorld: () -> 
     return m
 }
 fun cubeLines(radius: Float): List<Vec3> {
-    val corners = (0..7).map { i -> Vec3(
-        if (i and 1 == 0) -radius else radius,
-        if (i and 2 == 0) -radius else radius,
-        if (i and 4 == 0) -radius else radius) }
+    val corners =
+        (0..7).map { i ->
+            Vec3(
+                if (i and 1 == 0) -radius else radius,
+                if (i and 2 == 0) -radius else radius,
+                if (i and 4 == 0) -radius else radius,
+            )
+        }
     val result = mutableListOf<Vec3>()
-    for (i in 0..7) for (bit in listOf(1, 2, 4)) if (i and bit == 0) {
-        result.add(corners[i]); result.add(corners[i or bit])
+    for (i in 0..7) for (bit in [1, 2, 4]) if (i and bit == 0) {
+        result.add(corners[i])
+        result.add(corners[i or bit])
     }
     return result
 }
@@ -137,20 +148,24 @@ fun cubeLines(radius: Float): List<Vec3> {
 val grid = mutableListOf<Vec3>()
 for (i in -4..4) {
     val x = i * 0.5f
-    grid.add(Vec3(x, -0.5f, 0f)); grid.add(Vec3(x, -0.5f, -5f))
+    grid.add(Vec3(x, -0.5f, 0f))
+    grid.add(Vec3(x, -0.5f, -5f))
 }
 for (i in 0..10) {
     val z = -i * 0.5f
-    grid.add(Vec3(-2f, -0.5f, z)); grid.add(Vec3(2f, -0.5f, z))
+    grid.add(Vec3(-2f, -0.5f, z))
+    grid.add(Vec3(2f, -0.5f, z))
 }
 lineMesh("world grid", grid, vec(0.25, 0.25, 0.25, 1)) { Matrix4f() }
-for ((name, end, color) in listOf(
-    Triple("world +X", vec(0.5, 0, 0), vec(1, 0.3, 0.3, 1)),
-    Triple("world +Y", vec(0, 0.5, 0), vec(0.3, 1, 0.3, 1)),
-    Triple("world -Z", vec(0, 0, -0.5), vec(0.3, 0.5, 1, 1)))) {
-    lineMesh(name, listOf(Vec3(), end), color) { Matrix4f() }
+for ((name, end, color) in
+    [
+        Triple("world +X", vec(0.5, 0, 0), vec(1, 0.3, 0.3, 1)),
+        Triple("world +Y", vec(0, 0.5, 0), vec(0.3, 1, 0.3, 1)),
+        Triple("world -Z", vec(0, 0, -0.5), vec(0.3, 0.5, 1, 1)),
+    ]) {
+    lineMesh(name, [Vec3(), end], color) { Matrix4f() }
 }
-for (distance in listOf(1f, 2f, 4f)) {
+for (distance in [1f, 2f, 4f]) {
     lineMesh("reference at $distance m", cubeLines(0.08f), vec(0.45, 0.45, 0.45, 1)) {
         Matrix4f().translate(0f, 0f, -distance)
     }
@@ -160,54 +175,72 @@ val leftModel = Matrix4f()
 val rightModel = Matrix4f()
 val combinedModel = Matrix4f()
 val gapModel = Matrix4f()
-val unitRay = listOf(Vec3(), Vec3(0f, 0f, -1f))
+val unitRay = [Vec3(), Vec3(0f, 0f, -1f)]
 val leftRay = lineMesh("HTC left ray", unitRay, vec(0.3, 0.85, 1, 1)) { leftModel }
 val rightRay = lineMesh("HTC right ray", unitRay, vec(1, 0.55, 0.2, 1)) { rightModel }
-val dashes = (0..19).flatMap { i -> listOf(Vec3(0f, 0f, -i / 20f), Vec3(0f, 0f, -(i + 0.5f) / 20f)) }
+val dashes = (0..19).flatMap { i -> [Vec3(0f, 0f, -i / 20f), Vec3(0f, 0f, -(i + 0.5f) / 20f)] }
 val combinedRay = lineMesh("EXT combined ray (no depth)", dashes, vec(0.6, 0.6, 0.6, 1)) { combinedModel }
-val gap = lineMesh("closest-point gap", listOf(Vec3(), Vec3(1f, 1f, 1f)), vec(1, 0.2, 0.5, 1)) { gapModel }
+val gap = lineMesh("closest-point gap", [Vec3(), Vec3(1f, 1f, 1f)], vec(1, 0.2, 0.5, 1)) { gapModel }
 val marker = lineMesh("binocular world marker", cubeLines(0.025f), vec(1, 1, 1, 1)) {
     Matrix4f().translate(markerWorld)
 }
-leftRay.instanceCount = 0; rightRay.instanceCount = 0
-combinedRay.instanceCount = 0; gap.instanceCount = 0; marker.instanceCount = 0
+leftRay.instanceCount = 0
+rightRay.instanceCount = 0
+combinedRay.instanceCount = 0
+gap.instanceCount = 0
+marker.instanceCount = 0
 
 fun point(v: Vec3) = "(%.3f, %.3f, %.3f)".format(v.x, v.y, v.z)
-module += "sample eyes once before left-eye drawing" to before { _, _ ->
-    // The XR target updates tracking before this callback. Both rendered eyes use one solve.
-    if (xr == null || xr.currentEyeIndex == 0) {
-        val eyes = xr?.htcEyeState()
-        val combined = xr?.eyeGazeState()
-        solve.update(eyes)
-        held = holdMarker.get() && hasPlacement
-        if (!held && solve.valid) {
-            worldFromLocal.transformPosition(solve.position, markerWorld)
-            hasPlacement = true
-        }
-        held = holdMarker.get() && hasPlacement
-        marker.instanceCount = if ((held && hasPlacement) || solve.valid) 1 else 0
-        leftRay.instanceCount = if (eyes?.left?.gazeValid == true) 1 else 0
-        rightRay.instanceCount = if (eyes?.right?.gazeValid == true) 1 else 0
-        if (eyes != null) {
-            val ld = if (solve.valid) solve.leftDistance.toFloat() else 2f
-            val rd = if (solve.valid) solve.rightDistance.toFloat() else 2f
-            leftModel.set(worldFromLocal).translate(eyes.left.position).rotate(eyes.left.orientation).scale(1f, 1f, ld)
-            rightModel.set(worldFromLocal).translate(eyes.right.position).rotate(eyes.right.orientation).scale(1f, 1f, rd)
-        }
-        combinedRay.instanceCount = if (combined?.poseValid == true) 1 else 0
-        if (combined?.poseValid == true) {
-            combinedModel.set(worldFromLocal).translate(combined.position).rotate(combined.orientation).scale(1f, 1f, 2f)
-        }
-        gap.instanceCount = if (solve.valid) 1 else 0
-        if (solve.valid) {
-            val a = worldFromLocal.transformPosition(Vec3(solve.leftPoint))
-            val b = worldFromLocal.transformPosition(Vec3(solve.rightPoint))
-            gapModel.identity().translate(a).scale(b.sub(a))
-        }
-        if (renderer.frameCounter % 30L == 0L) {
-            val mode = if (xr == null) "DESKTOP REFERENCE PREVIEW — no simulated tracking" else "LIVE OPENXR"
-            val state = if (held) "HELD WORLD POSITION" else solve.status.toString()
-            report.set("""
+module +=
+    "sample eyes once before left-eye drawing" to
+        before { _, _ ->
+            // The XR target updates tracking before this callback. Both rendered eyes use one solve.
+            if (xr == null || xr.currentEyeIndex == 0) {
+                val eyes = xr?.htcEyeState()
+                val combined = xr?.eyeGazeState()
+                solve.update(eyes)
+                held = holdMarker.get() && hasPlacement
+                if (!held && solve.valid) {
+                    worldFromLocal.transformPosition(solve.position, markerWorld)
+                    hasPlacement = true
+                }
+                held = holdMarker.get() && hasPlacement
+                marker.instanceCount = if ((held && hasPlacement) || solve.valid) 1 else 0
+                leftRay.instanceCount = if (eyes?.left?.gazeValid == true) 1 else 0
+                rightRay.instanceCount = if (eyes?.right?.gazeValid == true) 1 else 0
+                if (eyes != null) {
+                    val ld = if (solve.valid) solve.leftDistance.toFloat() else 2f
+                    val rd = if (solve.valid) solve.rightDistance.toFloat() else 2f
+                    leftModel
+                        .set(worldFromLocal)
+                        .translate(eyes.left.position)
+                        .rotate(eyes.left.orientation)
+                        .scale(1f, 1f, ld)
+                    rightModel
+                        .set(worldFromLocal)
+                        .translate(eyes.right.position)
+                        .rotate(eyes.right.orientation)
+                        .scale(1f, 1f, rd)
+                }
+                combinedRay.instanceCount = if (combined?.poseValid == true) 1 else 0
+                if (combined?.poseValid == true) {
+                    combinedModel
+                        .set(worldFromLocal)
+                        .translate(combined.position)
+                        .rotate(combined.orientation)
+                        .scale(1f, 1f, 2f)
+                }
+                gap.instanceCount = if (solve.valid) 1 else 0
+                if (solve.valid) {
+                    val a = worldFromLocal.transformPosition(Vec3(solve.leftPoint))
+                    val b = worldFromLocal.transformPosition(Vec3(solve.rightPoint))
+                    gapModel.identity().translate(a).scale(b.sub(a))
+                }
+                if (renderer.frameCounter % 30L == 0L) {
+                    val mode = if (xr == null) "DESKTOP REFERENCE PREVIEW — no simulated tracking" else "LIVE OPENXR"
+                    val state = if (held) "HELD WORLD POSITION" else solve.status.toString()
+                    report.set(
+                        """
                 <div style="font-family:Iosevka,monospace;background:#080808;color:#ddd;padding:20px;min-width:520px">
                 <b>$mode</b><p>$state</p>
                 <pre>HTC stereo: ${eyes != null}    EXT combined: ${combined != null}
@@ -221,12 +254,14 @@ module += "sample eyes once before left-eye drawing" to before { _, _ ->
                 <p>world = worldFromLocal * LOCAL<br>clip = eyeProjection * eyeViewLocal * inverse(worldFromLocal) * world</p>
                 <p>Hold a valid placement, then move your head: the cube must stay fixed.<br>
                 Edit worldFromLocal above and relaunch to test another world origin.</p></div>
-            """.trimIndent().format(solve.separation, solve.angleDegrees))
+            """
+                            .trimIndent()
+                            .format(solve.separation, solve.angleDegrees),
+                    )
+                }
+            }
         }
-    }
-}
-if (xr != null) xr += "eye intersection scene" to module
-else renderer += "eye intersection scene" to module
+if (xr != null) xr += "eye intersection scene" to module else renderer += "eye intersection scene" to module
 module.enable()
 
 checkbox("Hold the last valid marker in world space", false, "hold") { holdMarker.set(it) }
@@ -235,8 +270,9 @@ loop {
     display("eye rays", report.get())
     delay(250)
     true
-}.end {
-    module.disable()
 }
+    .end {
+        module.disable()
+    }
 ```
 

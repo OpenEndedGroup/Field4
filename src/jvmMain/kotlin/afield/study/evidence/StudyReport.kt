@@ -2,6 +2,13 @@
 
 package afield.study.evidence
 
+/**
+ * The common result type of Field's study tools: a revision, a map of measured facts, and the images
+ * that accompany them.
+ *
+ * [StudyReport] is what the function, StackSL, RectSL, stack.auto and source-frames studies return to a model.
+ */
+
 import afield.data.collections.get
 import afield.data.collections.invoke
 import afield.data.collections.s

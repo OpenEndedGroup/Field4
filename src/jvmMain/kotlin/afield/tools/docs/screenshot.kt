@@ -1,3 +1,18 @@
+/**
+ * Screenshot and video capture of Field's browser UI, used by the backdoor and the docs runner.
+ *
+ * Captures go through the server's shared Playwright page. [captureBoxScreenshot] and
+ * [captureWindowScreenshot] answer the agent capture requests for one box's output or the whole
+ * window, [openEditorForCapture] opens a box's editor first so inline visualizers are on screen, and
+ * [captureBoxVideo] and [captureWindowVideo] record frames over CDP and encode them to MP4 with
+ * ffmpeg. Before each capture a preparation script waits for the page to settle, with every wait
+ * bounded so that a page that never paints fails with a message naming what was pending.
+ * [trimUniformEdgePixels] crops uniform borders from the result.
+ *
+ * [DocsUiDriver] is the object a docs `drive` script uses to act on the page during a recording,
+ * and [DocsUiRecorder] runs the recording beside it. [Box.screenshot] is the box-code entry point.
+ */
+
 package afield.tools.docs
 
 import afield.ai.conversation.images
@@ -61,6 +76,7 @@ import afield.audio.synth.*
 import afield.data.table.cell
 import afield.data.table.get
 import afield.document.graph.Box
+import afield.document.graph.RunningState
 import afield.document.graph.captureLaunchEpoch
 import afield.graphics.vulkan.*
 import afield.media.stream.*
@@ -79,6 +95,7 @@ import com.microsoft.playwright.options.ScreenshotType
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -477,6 +494,18 @@ private fun postProcessScreenshot(path: Path) {
         }
       }
       "mouseUp" -> page.mouse().up()
+      // The capture page's size in CSS px (dx by dy); zero puts back the shared page's own size. For a
+      // test that must see Field in a window shaped like a person's, such as one saving canvas
+      // bookmarks for a 16:9 flight.
+      "setViewport" -> {
+        if (request.dx <= 0.0 || request.dy <= 0.0) {
+          page.setViewportSize(afield.app.server.PLAYWRIGHT_VIEWPORT_WIDTH, afield.app.server.PLAYWRIGHT_VIEWPORT_HEIGHT)
+        } else {
+          require(request.dx in 200.0..8000.0 && request.dy in 200.0..8000.0) { "setViewport takes 200 to 8000 CSS px a side" }
+          page.setViewportSize(request.dx.toInt(), request.dy.toInt())
+        }
+        page.evaluate("() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))")
+      }
       "showHistory" -> {
         val raw = page.evaluate(
           """
@@ -2213,6 +2242,26 @@ internal fun awaitPaintedFrames(page: Page, what: String, timeoutMs: Int = VIDEO
 }
 
 /**
+ * Has a relaunched docs-video target reached the point the movie may start?
+ *
+ * Either it is running past its launch phase, or the relaunch already ran to completion: its
+ * generation moved past [stoppedGeneration] and it left no running state and no jobs. The second
+ * case is a box that only *executes* — a `three { turntable(...) }` scene, say, whose motion lives
+ * in the browser. Requiring a running state there could never be satisfied: the relaunch went
+ * `launching` then finished, and every such capture timed out "waiting for relaunched video target
+ * to reach its first active frame".
+ */
+internal fun relaunchedVideoTargetReady(
+    stoppedGeneration: Int,
+    runGeneration: Int,
+    state: RunningState?,
+    jobs: Int,
+): Boolean {
+    if (state != null) return state.watermark > stoppedGeneration && state.mode != "launching"
+    return runGeneration > stoppedGeneration && jobs == 0
+}
+
+/**
  * Return a callback that starts (or simply admits) frame-synchronous capture.
  *
  * Docs captures prepare their clip against the already-running box, then restart the
@@ -2275,8 +2324,12 @@ private fun videoCapturePreparation(
 
         val launchedAtEpoch = target.captureLaunchEpoch()
         val ready: () -> Boolean = {
-            val state = target.currentRunningStates["default"]
-            state != null && state.watermark > stoppedGeneration && state.mode != "launching"
+            relaunchedVideoTargetReady(
+                stoppedGeneration = stoppedGeneration,
+                runGeneration = target.runGeneration["default"] ?: -1,
+                state = target.currentRunningStates["default"],
+                jobs = target.jobs.size,
+            )
         }
         FrameCaptureGate(
             ready = ready,
@@ -2802,6 +2855,19 @@ class DocsUiRecorder(
     }
 
     val frameCount: Int get() = frames.size
+
+    /** True once the drive's script has filmed its own video ([DocsUiDriver.filmCanvasFlight]): nothing to encode. */
+    @Volatile
+    var discarded: Boolean = false
+        private set
+
+    /** Stop the loop and drop its frames: the drive's video is being written another way. */
+    suspend fun discard() {
+        discarded = true
+        running = false
+        job?.join()
+        frames.clear()
+    }
 }
 
 /**
@@ -2817,8 +2883,43 @@ class DocsUiDriver internal constructor(
     /** Set by the drive op when it records; [scriptStarted] tells it the script is running. */
     internal var recorder: DocsUiRecorder? = null
 
+    /** The document the drive runs in; set by the drive op. */
+    internal var session: SessionInformation? = null
+
     /** Called by the drive op's prelude, the script's first statement. */
     fun scriptStarted() { recorder?.markScriptStart() }
+
+    /**
+     * Films a canvas flight through [stops] to [path] (the drive's video, `vid` in the script) with the
+     * recorder box code's `canvasFlight(record = ...)` uses, frame by frame, instead of recording the
+     * drive in real time. [width] and [height] null keep the window's size; the call returns once
+     * the film is written, and fails if the film came out short or missed a stop.
+     */
+    fun filmCanvasFlight(
+        path: String,
+        stops: List<String>,
+        legSeconds: Double = 6.0,
+        holdSeconds: Double = 2.0,
+        orbitDegreesPerSecond: Double = 8.0,
+        fps: Int = 30,
+        width: Int? = null,
+        height: Int? = null,
+        pixelRatio: Double = 2.0
+    ): afield.app.protocol.AgentCanvasFlightResponse {
+        val info = session ?: error("filmCanvasFlight: this driver has no document")
+        recorder?.let { runBlocking { it.discard() } }
+        val request = afield.app.protocol.AgentCanvasFlight(
+            afield.app.canvas.CanvasFlightSpec(stops.map { afield.app.canvas.CanvasFlightStop(it) }, legSeconds, holdSeconds, orbitDegreesPerSecond),
+            path, fps, width, height, pixelRatio
+        )
+        val film = playwrightScope.async { recordCanvasFlight(info, request) }
+        // Keep the runloop turning while the film is made, as [pause] does.
+        while (!film.isCompleted) idle(20L)
+        val reply = runBlocking { film.await() }
+        check(reply.ok) { "filmCanvasFlight: ${reply.message}" }
+        lprintln("info,docs", "drive filmed a canvas flight: ${reply.frameCount} frames -> $path")
+        return reply
+    }
 
     private fun run(request: AgentPlaywrightInputRequest): JsonElement? =
         runBlocking(playwrightDispatcher) {
@@ -2952,7 +3053,7 @@ class DocsUiDriver internal constructor(
 
     /** Open (and pan to) a box's code editor, reusing the screenshot editor-prep path. */
     fun openEditor(uid: String, property: String = "code") {
-        val response = runBlocking(playwrightDispatcher) {
+        awaitBoxOnPage(pageProvider, uid, ::idle); val response = runBlocking(playwrightDispatcher) {
             requestWindowScreenshot(
                 pageProvider(),
                 WindowScreenshotRequest(uid = uid, property = property, showEditor = true, panIntoView = true)
@@ -3052,5 +3153,28 @@ class DocsUiDriver internal constructor(
         } else {
             Thread.sleep(ms)
         }
+    }
+}
+
+/**
+ * Wait, pumping the Runloop through [pump], until the page shows box [uid].
+ *
+ * A drive fragment runs *on* the Runloop, and a box it has just made (often its own,
+ * `__docs_drive__`) reaches the page only when the Runloop flushes. [DocsUiDriver.openEditor]
+ * used to ask the page for the box at once, without yielding, so the page could poll for the
+ * whole preparation window for a box whose creation was queued behind the very drive that
+ * wanted it (completion_ranking's popup-decides-fline-dot, 2026-10-27). Gives up after
+ * [timeoutMs] and lets the caller report the box as missing.
+ */
+private fun awaitBoxOnPage(page: () -> Page, uid: String, pump: (Long) -> Unit, timeoutMs: Long = 15_000L) {
+    val script = "uid => Array.from(document.getElementsByClassName('box'))" +
+        ".some(e => (e.uid || e.getAttribute('uid') || e.getAttribute('data-uid')) === uid)"
+    val deadline = System.currentTimeMillis() + timeoutMs
+    while (System.currentTimeMillis() < deadline) {
+        val present = runCatching {
+            runBlocking(playwrightDispatcher) { page().evaluate(script, uid) == true }
+        }.getOrDefault(false)
+        if (present) return
+        pump(120L)
     }
 }

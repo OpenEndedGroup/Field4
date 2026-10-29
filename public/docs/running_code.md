@@ -162,7 +162,8 @@ They are intercepted before the compiler sees them. Most have a bare declaration
 ```diffstatic {data-lang=kotlin}
 fun <T> Box.prop(name: String) {
     throw MacroRegistry.MacroNotExpandedException(
-        "prop should not be callable directly, but should be expanded as a macro")
+        "prop should not be callable directly, but should be expanded as a macro",
+    )
 }
 ```
 
@@ -186,8 +187,8 @@ compiled again later, so the code still works when the box that wrote it has not
 
 ```diffstatic {data-lang=kotlin}
 val answer = sourceBlock { 6 * 7 }
-println(answer())          // 42
-println(answer.source)     // 6 * 7
+println(answer()) // 42
+println(answer.source) // 6 * 7
 ```
 
 The keyframer and code blends save blocks this way. A block loaded back from a saved file has no
@@ -253,7 +254,7 @@ window and renderer to its children:
 prop<Window>(window)
 prop<Renderer>(renderer)
 
-once.renderer {                       // runs on the first run only
+once.renderer { // runs on the first run only
     window = Window("My sketch")
     Renderer(window)
 }
@@ -357,8 +358,8 @@ Two things have to be true for a child to use a parent's value:
 1. **The typed accessor must exist in the child's compilation scope.** Accessors travel through the preamble. When a box is about to run, its *effective* preamble is regathered from its own preamble plus, from each ancestor, the `import` lines and any line ending in the ` /**/` marker:
 
     ```diffstatic {data-lang=kotlin}
-    // in the child's gathered preamble, pulled down from the parent:
-    var Box.savemarker by Inheritance<Int>() /**/
+// in the child's gathered preamble, pulled down from the parent:
+var Box.savemarker by Inheritance<Int>() /**/
     ```
 
     That ` /**/` suffix is exactly why `prop` (and `@exported`) tag their generated lines with it: it is the "inherit me into descendants" marker.
@@ -381,6 +382,58 @@ Both the preamble gather and the value walk follow `parents`. Connecting a child
 This is the commonest graphics mistake: a freshly created box whose only parent is the document root is a **sibling** of the renderer box, not a descendant. It will *not* inherit `renderer`: the accessor never gathers into it, and the value walk never reaches it. Only after you connect it **beneath the renderer box** does the next run gather the accessor and resolve the live `Renderer`. (The [RectSL examples](rectsl_examples.md) are built this way: one `window + renderer` box, with every example connected beneath it.)
 
 When a value comes from a box you did not expect, [Why does this value resolve here?](why.md) shows how to ask Field which box supplied it, by what path, and which other boxes it shadowed.
+
+### Disconnecting a running box
+
+A box reads an inherited value at the moment its code reads the name. Disconnecting it does not stop
+it or change the code it compiled; the next read just walks a graph that no longer has the parent in
+it. **Ticker** runs a `go` block that reads Garden's `petals` every 300 ms, and partway through its
+connection to Garden was cut:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/running_code/disconnect.png" capture="box" open-outputs="true" wait="0.2" timeout="180" embed=true name="running-code-disconnect" macro-file="../../dev_docs/agents/transcripts/docs_capture/running_code_disconnect.yaml" capture-box="bgx_ticker" w="760" h="100" alt="Ticker's main output after its connection to Garden was cut: read 10: Can't find a value for inherited property 'petals' in 'Ticker' or any of its 2 parent boxes. Are you sure the parent boxes that define 'petals' have been executed?"}
+go {
+    repeat(40) { n ->
+        val seen = try {
+            "petals = $petals"
+        } catch (e: Exception) {
+                e.message
+            }
+        markdown("read $n: $seen")
+        delay(300)
+    }
+}
+```
+
+Before the cut each read found Garden's 5; the capture is a read after it. Ticker keeps running, but
+every read now fails. A long-running box that must survive being rewired reads the value once, before
+it starts, and keeps it. The same holds for `renderer`: read it before `start { }` or `go { }` and
+pass it in, rather than looking it up inside a block that may run after the box has moved.
+
+### When a lookup fails
+
+Three different failures, and the message says which one you have.
+
+**`Unresolved reference 'petals'`** is a compile error: no box above this one declares `petals`.
+The box is not connected where you think it is, or the declaring box uses another name.
+
+**`Can't find a value for inherited property ...`** means the accessor was gathered but no box up the
+graph has a value yet. Usually the parent has not run, or it failed. Here Garden declares `petals`
+but was never run, and Flower, beneath it, reports:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/running_code/missing.png" capture="box" open-outputs="true" wait="1.5" timeout="180" embed=true name="running-code-missing" macro-file="../../dev_docs/agents/transcripts/docs_capture/running_code_missing.yaml" capture-box="bgm_flower" w="760" h="100" alt="Flower's main output: Can't find a value for inherited property 'petals' in 'Flower' or any of its 3 parent boxes. Are you sure the parent boxes that define 'petals' have been executed?"}
+val seen = try {
+    "petals = $petals"
+} catch (e: Exception) {
+        e.message
+    }
+markdown("$seen")
+```
+
+**`must pass in a value for context parameter ...`** comes from `fromContext<T>()` when nothing up
+the graph is a `T`; for a renderer it names `afield.graphics.vulkan.Renderer`. Pass
+`fromContext(defaultValue = ...)` if the box should run without one.
+
+Waiting longer fixes none of these; the connection or the parent's run does.
 
 A child sees a changed value the next time it runs. To have Field rerun the readers when the value changes, or run the supplier when a read finds nothing, declare it with `propDown`, `propUp` or `propUpDown`: [Properties that re-run boxes](reactive_properties.md).
 
@@ -421,7 +474,7 @@ That makes `@rootExported`/`@metarootExported` the tidy way to define a helper o
 
 ## Generated GLSL accessors: `moduleHere { }`
 
-A shader box's GLSL is also the **contract that shapes the box's Kotlin API**. `moduleHere { }` is a macro: at expansion it introspects the box's vertex/fragment (or compute) shaders and generates typed Kotlin accessors into the preamble, then rewrites itself to the real runtime builder. (The [Field 4 Graphics](afield_four_graphics.md) page covers using these from a user's point of view; here we show what is actually generated.)
+A shader box's GLSL also decides what Kotlin you can write against it. `moduleHere { }` is a macro: at expansion it reads the box's vertex and fragment (or compute) shaders, writes typed Kotlin accessors into the preamble, then replaces itself with the real runtime builder. (The [Field 4 Graphics](afield_four_graphics.md) page covers using these from a user's point of view; here we show what is actually generated.)
 
 For a vertex shader with `layout(location = 0) in vec3 pos;` and a push-constant block, expansion generates lines like:
 
@@ -434,6 +487,7 @@ val Mesh.pos by FromInput()
 
 // per push-constant / UBO member — typed, two ways to reach it:
 var Mesh.worldToClip by Mesh.BoundFromStructure<afield.math.linalg.Matrix4f>()
+
 // ...or the untyped map form, which needs no generated accessor:
 //   m.push["worldToClip"] = ...
 ```
@@ -441,9 +495,10 @@ var Mesh.worldToClip by Mesh.BoundFromStructure<afield.math.linalg.Matrix4f>()
 A GLSL `struct` (or a `buffer_reference` buffer) becomes a generated Kotlin class mirroring its layout, with nested structs emitted recursively:
 
 ```diffstatic {data-lang=kotlin}
-class Params(/* layout members */) : Structure(/* ... */) {
+class Params(/* layout members */ ) : Structure(/* ... */ ) {
     var resolution_time_samples by Structure.FromStructure<afield.math.linalg.Vector4f>()
-    val P: Params get() = childStructure("P") { m, b, p, r -> Params(m, b, p, r) }   // nested
+    val P: Params
+        get() = childStructure("P") { m, b, p, r -> Params(m, b, p, r) } // nested
 }
 fun ParamsByteSize(): Long = 464L
 fun HasBuffer.asParams(): Params = asStructure(Params(), ParamsLayoutMembers())
@@ -484,6 +539,32 @@ A single Kotlin box launched through the transcript/multi-box path is also await
 The preamble and setup blocks also re-run between fragments, so a fragment that *writes* to the box's preamble at runtime has published a real source declaration by the time the next fragment is compiled. That is how `DataFrame.typed("People")` makes typed columns survive into the second half of the same execution; see [DataFrames in a Box](dataframe.md#fragment-marker).
 
 ---
+
+## Code that never returns
+
+Box code runs on Field's main loop, so a box that never finishes stops every other box and the
+canvas with it:
+
+```diffstatic {data-lang=kotlin}
+var i = 0L
+while (true) {
+    i++
+}
+```
+
+Field notices. After about a second and a half with no frame, the log names the box that is
+running and where it is. After five seconds Field throws out of that box's code: the run ends with
+the error `Box interrupted: ...`, and everything else carries on. To get out sooner, run
+**Interrupt Running Box** from the command palette.
+
+The interruption lands at the next loop iteration or function call in the box's own code, so it
+also stops runaway recursion, and a `catch (e: Exception)` inside the loop does not swallow it.
+It cannot reach into a library call that never returns on its own. A `Thread.sleep` or a wait
+inside the loop is woken, though.
+
+Two environment variables change the timings: `AFIELD_RUNLOOP_WATCHDOG_INTERRUPT_MS` sets the
+delay before the automatic interrupt (`0` turns it off and leaves only the command), and
+`AFIELD_RUNLOOP_WATCHDOG_REPORT_MS` sets the delay before the report.
 
 ## Putting it together
 

@@ -7,6 +7,16 @@ package afield.graphics.scene.fabricated
 object FabricatePassGraphTestMain {
     @JvmStatic
     fun main(args: Array<String>) {
+        val stack = listOf("scene" to "S", "taa" to "T", "display" to "D", "bloom" to "B")
+        val chainNames = setOf("taa", "display")
+        check(inputBeforeReplacement(emptyList(), chainNames, "input") == "input")
+        check(inputBeforeReplacement(stack, setOf("new"), "input") == "B")
+        check(inputBeforeReplacement(stack, chainNames, "input") == "S")
+        check(inputBeforeReplacement(stack, setOf("scene"), "input") == "input")
+        check(inputBeforeReplacement(stack, setOf("display"), "input") == "T")
+        val replaced = stack.map { (name, value) -> name to if (name in chainNames) "new-$value" else value }
+        check(inputBeforeReplacement(replaced, chainNames, "input") == "S")
+
         val graph = FabricatePassGraph<String>(
             listOf(
                 "gbuffer" to "G",

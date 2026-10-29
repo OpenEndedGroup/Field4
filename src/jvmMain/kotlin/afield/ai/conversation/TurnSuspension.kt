@@ -3,6 +3,14 @@ package afield.ai.conversation
 import afield.ai.models.OpenAiIdeCodexBridge
 
 /**
+ * How a tool result ends a model's turn early so the conversation can wait for study builds without spending model calls.
+ *
+ * A tool result implementing [SuspendsTurn] carries a [TurnSuspension]: the [AwaitedBuild] jobs and a
+ * deadline. The bridge stops after the current round and keeps that round's tool outputs as a
+ * [SuspendedRound], which the resuming turn sends ahead of its own prompt.
+ */
+
+/**
  * A tool result that ends the model's turn when [suspension] is set: the bridge finishes the round it is
  * in, makes no further model request, and returns the suspension in [OpenAiIdeCodexBridge.SendResult].
  * Someone else resumes the conversation later (`StudyBuildAwaits` for `AwaitStudyBuildsRequest`), so the
@@ -15,21 +23,35 @@ interface SuspendsTurn {
     val suspension: TurnSuspension?
 }
 
-/** The study-build jobs a suspended turn waits for, and how long it may wait. */
+/**
+ * What a suspended turn waits for: study-build [jobs] and how long it may wait for them, or the person's answer
+ * to a [question] (`AskUserQuestionRequest`), which has no deadline: their next message is the answer.
+ */
 data class TurnSuspension(
-    val jobs: List<AwaitedBuild>,
-    /** Epoch milliseconds after which the conversation resumes whatever the jobs' state. */
-    val deadlineMs: Long,
+    val jobs: List<AwaitedBuild> = emptyList(),
+    /** Epoch milliseconds after which the conversation resumes whatever the jobs' state; 0 with no jobs. */
+    val deadlineMs: Long = 0L,
+    val question: AskedQuestion? = null,
 ) {
-    /** One round may await more than once (two runners): wait for every job, until the later deadline. */
+    /** One round may await more than once (two runners): wait for every job, until the later deadline. The first question stands. */
     fun merge(other: TurnSuspension): TurnSuspension =
-        TurnSuspension((jobs + other.jobs).distinctBy { Triple(it.boxId, it.name, it.jobId) }, maxOf(deadlineMs, other.deadlineMs))
+        TurnSuspension((jobs + other.jobs).distinctBy { Triple(it.boxId, it.name, it.jobId) }, maxOf(deadlineMs, other.deadlineMs),
+            question ?: other.question)
+
+    /** For logs: what the turn waits for. */
+    fun describe(): String = listOfNotNull(
+        jobs.takeIf { it.isNotEmpty() }?.let { "${it.size} build job(s)" },
+        question?.let { "the person's answer" },
+    ).joinToString(" and ")
 
     companion object {
         fun of(results: List<Any?>): TurnSuspension? =
             results.mapNotNull { (it as? SuspendsTurn)?.suspension }.reduceOrNull(TurnSuspension::merge)
     }
 }
+
+/** A question the agent asked the person, and the answers it suggests (possibly none). */
+data class AskedQuestion(val question: String, val choices: List<String> = emptyList())
 
 /** One awaited attempt: the runner (its box and name), the job, and what to call it in the chat. */
 data class AwaitedBuild(

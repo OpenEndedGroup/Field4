@@ -20,6 +20,13 @@ expect:
 */
 
 /**
+ * The audio figures on `sound.md`, each declaring which voice made it.
+ *
+ * [SoundRenderPathDocs] renders one pattern through [patVoice] and through the Tidal Dirt-Samples,
+ * and `SoundProvenanceGuardTest` checks every committed `.wav` against its declared voice.
+ */
+
+/**
  * The figures behind `public/docs/sound.md`, and the reason that page can be trusted.
  *
  * Field has two offline voices for the same **pattern** and they sound nothing alike.

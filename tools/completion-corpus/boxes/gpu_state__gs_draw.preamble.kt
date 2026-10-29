@@ -1,14 +1,14 @@
-import afield.graphics.vulkan.Renderer
-import afield.graphics.vulkan.util.Window
-import afield.graphics.vulkan.buffers.FrameBufferGroup
-import arrow.core.right
-import arrow.core.left
-import afield.graphics.shader.*
-import afield.graphics.scene.*
-import afield.graphics.render.*
-import afield.document.context.*
 import afield.graphics.vulkan.buffers.*
+import afield.document.context.*
+import afield.graphics.render.*
+import afield.graphics.scene.*
+import afield.graphics.shader.*
+import arrow.core.left
+import arrow.core.right
 import java.nio.*
+import afield.graphics.vulkan.buffers.FrameBufferGroup
+import afield.graphics.vulkan.util.Window
+import afield.graphics.vulkan.Renderer
 /*supermap*/ class MappedStructure {;     lateinit var tri : IntBuffer; ; }; fun Mesh.set(numVert : Int, numTriangle : Int = 0, builder : MappedStructure.() -> Unit = {}) {;     this.resize(numVert, numTriangle);     val mesh = this;     MappedStructure().apply {;          mesh.t?.mapAndWrite_ints { tri = this ; builder() } ;    }; }
 /*start*/
 /*graphics-structure-type:State:State*/
@@ -59,8 +59,8 @@ fun BufferParameters.asHeat(): Heat =
 /*graphics-pc-binding:heat*/ var Mesh.heat by Mesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
 /*graphics-pc-binding-group:heat*/ var MeshGroup.heat by MeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
 /*graphics-pc-structure:aspectRatio*/ var Structure.aspectRatio by Structure.FromStructure<Any>()
-/*graphics-pc-binding:aspectRatio*/ var Mesh.aspectRatio by Mesh.BoundFromStructure<Float>()
-/*graphics-pc-binding-group:aspectRatio*/ var MeshGroup.aspectRatio by MeshGroup.BoundFromStructure<Float>()
+/*graphics-pc-binding:aspectRatio*/ var Mesh.aspectRatio by Mesh.BoundFromStructure<Number>()
+/*graphics-pc-binding-group:aspectRatio*/ var MeshGroup.aspectRatio by MeshGroup.BoundFromStructure<Number>()
 var Box.gsStateA by Inheritance<FrameBufferGroup>() /*from:gs_sim*/ /**/
 val Once.gsStateA by Onceing<FrameBufferGroup>() /*from:gs_sim*/ /**/
 val Why.gsStateA by Whying() /*from:gs_sim*/ /**/

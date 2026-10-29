@@ -2,6 +2,9 @@ name: flow_grain
 description: Bounded scrolling fluid tiles, world-space grain, velocity strokes and
   motion correspondence. Normal launch/stop; frame-boundary reset; existing profiling
   timeline.
+docs:
+  - page: flow_grain.md
+    why: "Explains fluid tiles, grain, velocity strokes and motion correspondence."
 operations:
 - create:
     box: flow_renderer
@@ -36,7 +39,6 @@ operations:
       code: |
         import afield.simulation.flow.*
 
-        val render: Renderer = fromContext()
         fun grid() = defaultBuffer {
             size = 14400.vec4s
             zeroInit()
@@ -99,7 +101,7 @@ operations:
         propDown<afield.math.linalg.Vec4>(flowEmitter)
         flowEmitter = vec(0, 0, 2.5, 0) // World position and force strength.
         propDown<ComputeTarget>(flowSimulation)
-        flowSimulation = ComputeTarget(render)
+        flowSimulation = ComputeTarget(renderer)
         propDown<java.util.concurrent.atomic.AtomicLong>(flowStep)
         flowStep = java.util.concurrent.atomic.AtomicLong()
         propDown<java.util.concurrent.atomic.AtomicBoolean>(travel)
@@ -118,17 +120,18 @@ operations:
             colorFormats =
                 [org.lwjgl.vulkan.VK10.VK_FORMAT_R16G16B16A16_SFLOAT, org.lwjgl.vulkan.VK10.VK_FORMAT_R32G32B32A32_SFLOAT]
             useDepth = false
-            clearFirst = true
             clearColor = vec(0, 0, 0, 0)
             debugName = "flow-correspondence"
         }
-        val targets = render.renderList.preTargets
-        targets["flow-simulation"] = flowSimulation
-        targets["flow-surface"] = flowSurface
-        loop { true }
+        val simulation = flowSimulation
+        val surface = flowSurface
+        val targets = renderer.renderList.preTargets
+        targets["flow-simulation"] = simulation
+        targets["flow-surface"] = surface
+        loop {}
             .end {
-                if (targets["flow-simulation"] === flowSimulation) targets.remove("flow-simulation")
-                if (targets["flow-surface"] === flowSurface) targets.remove("flow-surface")
+                if (targets["flow-simulation"] === simulation) targets.remove("flow-simulation")
+                if (targets["flow-surface"] === surface) targets.remove("flow-surface")
             }
 - create:
     box: flow_inputs
@@ -344,10 +347,11 @@ operations:
         mesh.clock = { flowClock }
         mesh.emitter = { flowEmitter }
         module += "barrier" to computeBarrier(graphics = true)
-        flowSimulation += "advect" to module
-        loop { true }
+        val simulation = flowSimulation
+        simulation += "advect" to module
+        loop {}
             .end {
-                if (flowSimulation.modules["advect"] === module) flowSimulation.modules.remove("advect")
+                if (simulation.modules["advect"] === module) simulation.modules.remove("advect")
             }
       compute: |
         #version 450
@@ -596,7 +600,7 @@ operations:
         // Dependencies are explicit graph exports; resources stay in their parent box.
 
         var module = moduleHere {
-            flowSurface.apply()
+            +flowSurface
             primitiveType = triangles
             blend = false // Correspondence is a coordinate, never alpha-blended.
             depthTest = false

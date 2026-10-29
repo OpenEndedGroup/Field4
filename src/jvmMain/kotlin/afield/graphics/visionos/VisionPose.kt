@@ -40,7 +40,7 @@ import java.util.concurrent.atomic.AtomicLong
  * Field process, so that the Vulkan renderer on this machine can draw the frame the headset is about
  * to display.
  *
- * This is the reverse of every other visionOS channel in Field. [VisionMetal] pushes a program down
+ * This runs opposite to Field's other visionOS channels. Live Metal ([VisionMetalProgramState]) pushes a program down
  * to the head and the head renders it; the RTT stream pushes encoded pixels down
  * (`native/field-encode/WIRE_FORMAT.md`). Neither tells this process where the wearer is looking, so
  * the streamed image can only ever be a world-locked surface — a plane in space. Head-locked,
@@ -77,17 +77,18 @@ import java.util.concurrent.atomic.AtomicLong
  * `LayerRenderer.Clock`), so differences *within* one head are meaningful and comparisons against
  * this machine's clock are not — see [VisionPoseFrame.receivedAtNanos].
  *
- * ## Deliberately not solved here
+ * ## Not solved here
  *
  * - **Prediction.** `predictedDisplayTime` is when the *head's own* next frame displays, which is
  *   earlier than when a frame rendered here could arrive. Shifting the query forward by the measured
- *   render→encode→network→decode latency is the third milestone's job; this file only has to carry
- *   the timestamp faithfully so that shift is a one-line change on the head.
+ *   render→encode→network→decode latency is left to the head; this file carries the timestamp
+ *   unchanged so that shift is a one-line change there.
  * - **Transport.** JSON over the WebSocket reuses the bus, the dev-certificate trust and the
  *   reconnect logic the other native clients already have, at the cost of TCP in the tracking path.
- *   A pose is ~700 bytes; at 90 Hz that is ~60 kB/s, which is not the reason to move it to UDP. The
- *   reason will be latency, measured, not assumed.
+ *   A pose is ~700 bytes; at 90 Hz that is ~60 kB/s, which is not a reason to move it to UDP; a
+ *   measured latency would be.
  */
+
 const val VISION_POSE_CHANNEL = "__visionpose__"
 
 /**

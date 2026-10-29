@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T17:38:15.814Z",
+  "documentName": "sound_path_map",
+  "outputs": [
+    {
+      "uid": "sound_map_compare",
+      "channel": "path0",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [
+        "plotly",
+        "svg"
+      ],
+      "width": 1008,
+      "height": 333,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "sound_map_compare",
+      "channel": "path1",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [
+        "plotly",
+        "svg"
+      ],
+      "width": 1008,
+      "height": 333,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "sound_map_compare",
+      "channel": "path2",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [
+        "plotly",
+        "svg"
+      ],
+      "width": 1008,
+      "height": 333,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "sound_map_compare",
+      "channel": "plot",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "plotly"
+      ],
+      "width": 712,
+      "height": 458,
+      "path": "outputs/3.html"
+    }
+  ]
+}

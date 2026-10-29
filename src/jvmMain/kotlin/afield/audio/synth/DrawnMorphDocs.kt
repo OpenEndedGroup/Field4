@@ -34,6 +34,14 @@ expect:
 */
 
 /**
+ * The harness that renders the sound on `chain_drawn_morph.md` from two strokes in a document's
+ * drawing.
+ *
+ * [DrawnMorphDocs] reads a circle and a heart back through `notation`, pairs their points and plays
+ * the in-between cloud's size as pitch. It runs as the `synth.drawn.morph` FIELD_TEST.
+ */
+
+/**
  * A drawn morph, heard — the harness behind `public/docs/chain_drawn_morph.md`.
  *
  * Two strokes in the document's drawing ([morphShapes]: a circle named "from" and a heart named

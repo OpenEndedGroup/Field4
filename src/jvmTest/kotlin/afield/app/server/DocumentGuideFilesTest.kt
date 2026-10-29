@@ -29,6 +29,28 @@ class DocumentGuideFilesTest {
         } finally { root.deleteRecursively() }
     }
 
+    @Test fun frontMatterNamingADocsPageListsTheFileAsADocsRedirect() {
+        val root = createTempDirectory("field-guides-docs").toFile()
+        try {
+            root.resolve("guides").mkdir()
+            root.resolve("guides/notation.md").writeText(
+                "---\ndocs: drawing_and_notation.md#reading-a-region\n---\n# Drawing and notation\n\nReads the drawing\nfrom box code.\n\nMore.")
+            root.resolve("guides/upstream.md").writeText("---\ndocs: https://openendedgroup.com/field4/first_steps/\n---\n")
+            root.resolve("guides/bad.md").writeText("---\ndocs: javascript:alert(1)\n---\n# Bad")
+            root.resolve("guides/plain.md").writeText("---\ntitle: no docs key\n---\n# Plain")
+            val byPath = DocumentGuideFiles(root).list().associateBy { it.path }
+            val notation = byPath.getValue("guides/notation.md")
+            assertEquals("docs", notation.kind)
+            assertEquals("drawing_and_notation/#reading-a-region", notation.docs)
+            assertEquals("Drawing and notation", notation.title)
+            assertEquals("Reads the drawing from box code.", notation.summary)
+            assertEquals("first_steps/", byPath.getValue("guides/upstream.md").docs)
+            assertEquals("guide", byPath.getValue("guides/bad.md").kind)
+            assertEquals("guide", byPath.getValue("guides/plain.md").kind)
+            for (bad in listOf("../x", "a/./b", "mailto:x", "a b", "")) assertNull(docsPage(bad), bad)
+        } finally { root.deleteRecursively() }
+    }
+
     @Test fun seededWorkspaceReadmeIsNotListedAsAGuide() {
         val root = createTempDirectory("field-guides-seeded").toFile()
         try {

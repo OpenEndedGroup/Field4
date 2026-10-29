@@ -17,11 +17,51 @@ private fun escapeHtml(text: String): String {
         .replace("'", "&#39;")
 }
 
+/**
+ * A code span, or math: `$$…$$` and `\[…\]` display, `\(…\)` inline, and `$…$` inline only when the dollars
+ * hug their content and the closing one is not followed by a digit (Pandoc's rule), so "$5 and $10" stays
+ * prose. The first match wins, so a `$` inside a code span is code and a backtick inside math is TeX.
+ */
+private val literalSpan = Regex(
+    "`([^`]+)`" +
+        "|\\$\\$(.+?)\\$\\$" +
+        "|\\\\\\[(.+?)\\\\\\]" +
+        "|\\\\\\((.+?)\\\\\\)" +
+        "|(?<![\\\\$])\\$([^\\s$](?:[^$]*[^\\s\\\\$])?)\\$(?![$0-9])"
+)
+
+/**
+ * Code spans, math, emphasis, images and links. A code span is literal: the `*` in `` `sin(r * 3.6)` `` is
+ * multiplication, so emphasis and links are only looked for between code spans, never inside or across one.
+ * Math is literal the same way. It leaves here as `<span class="ai-math">` holding its source, delimiters and
+ * all, with the TeX in `data-tex`; the browser typesets it (aiChatMath.js), and anywhere that does not still
+ * reads the source.
+ */
 private fun inlineFormat(text: String): String {
+    val out = StringBuilder(text.length + 16)
+    var index = 0
+    for (span in literalSpan.findAll(text)) {
+        out.append(formatProse(text.substring(index, span.range.first)))
+        val groups = span.groupValues
+        if (groups[1].isNotEmpty()) {
+            out.append("<code>").append(groups[1]).append("</code>")
+        } else {
+            val display = groups[2].isNotEmpty() || groups[3].isNotEmpty()
+            val tex = (2..5).map { groups[it] }.first { it.isNotEmpty() }.trim()
+            val kind = if (display) "ai-math ai-math-display" else "ai-math"
+            out.append("<span class=\"").append(kind).append("\" data-tex=\"").append(tex).append("\">")
+                .append(span.value).append("</span>")
+        }
+        index = span.range.last + 1
+    }
+    out.append(formatProse(text.substring(index)))
+    return out.toString()
+}
+
+private fun formatProse(text: String): String {
     var out = text
-    out = out.replace(Regex("`([^`]+)`"), "<code>$1</code>")
     out = out.replace(Regex("\\*\\*([^*]+)\\*\\*"), "<strong>$1</strong>")
-    out = out.replace(Regex("\\*([^*]+)\\*"), "<em>$1</em>")
+    out = out.replace(Regex("\\*([^*\\s][^*]*)\\*"), "<em>$1</em>")
     out = replaceImages(out)
     out = replaceLinks(out)
     return out
@@ -111,10 +151,20 @@ private fun replaceLinks(text: String): String {
     return sb.toString()
 }
 
+private val bulletMarker = Regex("^[-*]\\s+")
+private val numberMarker = Regex("^\\d+[.)]\\s+")
+
+/**
+ * Paragraphs, headings, tables and lists, for the chat panel and for box notes. A list is `-` or `*`
+ * items (`<ul>`) or `1.` / `1)` items (`<ol>`); an indented line after an item continues that item,
+ * so a list item may wrap over several source lines as Markdown allows.
+ */
 private fun renderTextBlock(text: String): String {
     val lines = text.split("\n")
     val html = StringBuilder()
-    var inList = false
+    // "ul", "ol", or null when not in a list
+    var listTag: String? = null
+    val item = mutableListOf<String>()
     val paragraph = mutableListOf<String>()
 
     fun flushParagraph() {
@@ -125,10 +175,19 @@ private fun renderTextBlock(text: String): String {
         paragraph.clear()
     }
 
+    fun flushItem() {
+        if (item.isEmpty()) return
+        html.append("<li>")
+        html.append(inlineFormat(item.joinToString(" ")))
+        html.append("</li>")
+        item.clear()
+    }
+
     fun closeList() {
-        if (inList) {
-            html.append("</ul>")
-            inList = false
+        flushItem()
+        if (listTag != null) {
+            html.append("</").append(listTag).append(">")
+            listTag = null
         }
     }
 
@@ -174,25 +233,35 @@ private fun renderTextBlock(text: String): String {
             continue
         }
 
-        if (Regex("^[-*]\\s+").containsMatchIn(line)) {
+        val marker = bulletMarker.find(line) ?: numberMarker.find(line)
+        if (marker != null) {
             flushParagraph()
-            if (!inList) {
-                html.append("<ul>")
-                inList = true
+            val tag = if (bulletMarker.containsMatchIn(line)) "ul" else "ol"
+            if (listTag != tag) {
+                closeList()
+                html.append("<").append(tag).append(">")
+                listTag = tag
             }
-            html.append("<li>")
-            html.append(inlineFormat(line.replaceFirst(Regex("^[-*]\\s+"), "")))
-            html.append("</li>")
+            flushItem()
+            item.add(line.substring(marker.range.last + 1))
             lineIndex++
             continue
         }
 
+        // an indented line straight after an item is more of that item
+        if (listTag != null && item.isNotEmpty() && raw.firstOrNull()?.isWhitespace() == true) {
+            item.add(line)
+            lineIndex++
+            continue
+        }
+
+        closeList()
         paragraph.add(line)
         lineIndex++
     }
 
     flushParagraph()
-    if (inList) html.append("</ul>")
+    closeList()
     return html.toString()
 }
 
@@ -335,7 +404,13 @@ fun aiChatHistoryHtml(history: String?, toolFamilies: AiChatToolFamilies?): Stri
                 i++
                 continue
             }
-            val end = (i until turns.size).firstOrNull { !turns[it].isProgress || turns[it].isBuildWait } ?: turns.size
+            // So does a question; only the last one in the chat is still waiting for its answer.
+            if (turn.isQuestion) {
+                html.append(renderQuestion(turn, open = turns.subList(i + 1, turns.size).none { it.role == "you" }))
+                i++
+                continue
+            }
+            val end = (i until turns.size).firstOrNull { !turns[it].isProgress || turns[it].isBuildWait || turns[it].isQuestion } ?: turns.size
             val run = turns.subList(i, end)
             html.append(if (AiChatRound.folds(run)) renderRound(run, roundOrdinal++, toolFamilies) else renderProgressRun(run))
             i = end
@@ -455,6 +530,21 @@ private fun renderProgressTurn(turn: AiChatBlock): String {
         "<summary><span>${shimmerIfLive(turn, escapeHtml(summaryTitle))}</span>$fileHtml</summary>" +
         aiChatMarkdownHtml(body) +
         "</details>"
+}
+
+/**
+ * A question the agent asked: the question, and a button per suggested answer while it is [open] (no message
+ * from the person after it). A button sends its answer as the person's message (outputareas2.js); typing in
+ * the chat box answers too.
+ */
+private fun renderQuestion(turn: AiChatBlock, open: Boolean): String {
+    val choices = turn.questionChoices
+    val buttons = if (choices.isEmpty()) "" else "<div class=\"ai-chat-question-choices\">" + choices.joinToString("") {
+        "<button type=\"button\" class=\"ai-chat-question-choice\" data-ai-answer=\"${escapeHtml(it)}\"${if (open) "" else " disabled"}>${escapeHtml(it)}</button>"
+    } + "</div>"
+    val hint = if (open) "<div class=\"ai-chat-question-hint\">${if (choices.isEmpty()) "Type your answer below." else "Pick one, or type your own answer below."}</div>" else ""
+    return "<div class=\"ai-chat-question${if (open) " open" else ""}\"${addressAttr(turn)}>" +
+        "<div class=\"ai-chat-model\">Question</div>" + aiChatMarkdownHtml(turn.questionText) + buttons + hint + "</div>"
 }
 
 /** Where a block sits in the chat it came from (`<<at:…>>`), for the lens viewer's lines; nothing for an ordinary chat. */

@@ -2,6 +2,23 @@
 
 package afield.runtime.execution
 
+/**
+ * Typed messages between boxes: a box registers a handler with [onMessage], and other code delivers
+ * to it with [send] (fire-and-forget) or [sendAndAwait] (suspend for a reply).
+ *
+ * Messages are queued per box and delivered on the next RunLoop frame. Handlers run as coroutines
+ * on the RunLoop's dispatcher, so one can call [MessageScope.frame] to wait a frame or
+ * [MessageScope.reply] to answer. A box with no handler for a payload type passes it to its
+ * ancestors. [go] launches a suspendable block owned by a box, so stopping the box cancels it and
+ * its errors appear in the box's editor.
+ *
+ * ```kotlin
+ * onMessage<String> { reply(payload.length) }
+ * go { println(thisBox.sendAndAwait<String, Int>("hello")) }
+ * ```
+ */
+
+
 import afield.data.collections.invoke
 import afield.data.collections.s
 import afield.data.collections.times

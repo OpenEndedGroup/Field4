@@ -14,11 +14,11 @@ operations:
       frame: { x: 40.0, y: 30.0, w: 300.0, h: 60.0 }
       properties:
         code: |
-          val x = keyframes(name = "x", defaults = listOf(vec(0.0, -0.6), vec(1.0, 0.6), vec(2.0, 0.3), vec(3.0, -0.6)))
-          val y = keyframes(name = "y", defaults = listOf(vec(0.0, -0.4), vec(1.5, 0.7), vec(3.0, -0.4)))
+          val x = keyframes(name = "x", defaults = [vec(0.0, -0.6), vec(1.0, 0.6), vec(2.0, 0.3), vec(3.0, -0.6)])
+          val y = keyframes(name = "y", defaults = [vec(0.0, -0.4), vec(1.5, 0.7), vec(3.0, -0.4)])
 
           lateinit var spot: ControlValueHandle<Vector2f>
-          controlGroup("spot") { spot = vec2Control("spot") { } }
+          controlGroup("spot") { spot = vec2Control("spot") {} }
           displayOpen("spot")
 
           val start = System.nanoTime()

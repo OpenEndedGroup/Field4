@@ -49,7 +49,7 @@ oscQuery("Field demo").controls("/surface") {
 <!-- field-box id="oscq-remote" index="2" -->
 
 ```edn [field-box id="oscq-remote" role="properties"]
-{"id" "oscq-remote" "index" 2 "name" "3. Read it back as a remote (run)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3. Read it back as a remote (run)" "_tombstone" false "frame" #afield/rect [980.0 60.0 380.0 70.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "oscq-remote_code_.kt" "lines" 10 "characters" 602 "sha256" "dbb7810727fd03be4366aa17f0f62c1fff7a609436cf0b241fd9d86a431798bc"}]}
+{"id" "oscq-remote" "index" 2 "name" "3. Read it back as a remote (run)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3. Read it back as a remote (run)" "_tombstone" false "frame" #afield/rect [980.0 60.0 380.0 70.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "oscq-remote_code_.kt" "lines" 12 "characters" 611 "sha256" "14384a8abec77e3192e8ba3bd81bece52721943b161713259483307ff0c66594"}]}
 ```
 
 ```kotlin [field-property box="oscq-remote" name="code" path="oscq-remote_code_.kt"]
@@ -58,11 +58,13 @@ import afield.io.osc.query.*
 // The other direction: read an OSCQuery service as a remote. Here it is this Field's own,
 // so run box 1 first; point it at TouchDesigner or Chataigne by changing the host and port.
 val remote = oscQueryRemote("127.0.0.1", 9020).refresh()
-remote["/demo/cutoff"].set(2500.0)   // sent as OSC over UDP to the service's OSC_PORT
+remote["/demo/cutoff"].set(2500.0) // sent as OSC over UDP to the service's OSC_PORT
 remote["/demo/scene"].set("night")
 
-markdown("**${remote.name}** — OSC on port ${remote.oscPort}, LISTEN: ${remote.supportsListen}\n\n" +
-    remote.params.joinToString("\n") { "- `${it.path}` ${it.type} ${it.range} ${it.description ?: ""}" })
+markdown(
+    "**${remote.name}** — OSC on port ${remote.oscPort}, LISTEN: ${remote.supportsListen}\n\n" +
+        remote.params.joinToString("\n") { "- `${it.path}` ${it.type} ${it.range} ${it.description ?: ""}" },
+)
 ```
 
 ## 4. 5. Animate /demo/lfo (launch)
@@ -91,25 +93,31 @@ loop {
 <!-- field-box id="oscq-publish" index="4" -->
 
 ```edn [field-box id="oscq-publish" role="properties"]
-{"id" "oscq-publish" "index" 4 "name" "1. Publish parameters (run first)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1. Publish parameters (run first)" "_tombstone" false "frame" #afield/rect [60.0 60.0 380.0 70.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "oscq-publish_code_.kt" "lines" 18 "characters" 974 "sha256" "23eb0baf1e958d9cedc348a12bc5a5813ba867d718bdfa2a9910e66350e2dc89"}]}
+{"id" "oscq-publish" "index" 4 "name" "1. Publish parameters (run first)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1. Publish parameters (run first)" "_tombstone" false "frame" #afield/rect [60.0 60.0 380.0 70.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "oscq-publish_code_.kt" "lines" 24 "characters" 983 "sha256" "739df92b719db1fb79b378cd510f925944e24153e46c19c2bc43a8909a16e2f0"}]}
 ```
 
 ```kotlin [field-property box="oscq-publish" name="code" path="oscq-publish_code_.kt"]
 import afield.io.osc.query.*
 
-// Publish four parameters as an OSCQuery service on http port 9020 (OSC UDP on 9021),
-// advertised over DNS-SD so TouchDesigner, Max, Chataigne and VDMX list it as "Field demo".
-// The callbacks run here, on Field's main loop, whenever one of them sets a value.
+/*
+Publish four parameters as an OSCQuery service on http port 9020 (OSC UDP on 9021),
+advertised over DNS-SD so TouchDesigner, Max, Chataigne and VDMX list it as "Field demo".
+The callbacks run here, on Field's main loop, whenever one of them sets a value.
+*/
 val q = oscQuery("Field demo")
 q.describe("/demo", "parameters published by the OSCQuery demo document")
 
-fun show() = markdown("values", q.server.all.values.sortedBy { it.path }
-    .joinToString("\n") { "- `${it.path}` (${it.type}) = **${it.value.joinToString(", ")}**" })
+fun show() = markdown(
+    "values",
+    q.server.all.values
+        .sortedBy { it.path }
+        .joinToString("\n") { "- `${it.path}` (${it.type}) = **${it.value.joinToString(", ")}**" },
+)
 
 q.float("/demo/cutoff", 20.0..20000.0, 1000.0, "filter cutoff in Hz") { show() }
 q.bool("/demo/on", true, "sound on") { show() }
-q.menu("/demo/scene", listOf("dawn", "dusk", "night"), "dusk") { show() }
-q.vector("/demo/xy", listOf(0.5, 0.5), description = "a point on a pad") { show() }
+q.menu("/demo/scene", ["dawn", "dusk", "night"], "dusk") { show() }
+q.vector("/demo/xy", [0.5, 0.5], description = "a point on a pad") { show() }
 
 show()
 markdown("Browse **http://localhost:${q.httpPort}/** for the namespace, or **?HOST_INFO** for the service.")
@@ -120,7 +128,7 @@ markdown("Browse **http://localhost:${q.httpPort}/** for the namespace, or **?HO
 <!-- field-box id="oscq-discover" index="5" -->
 
 ```edn [field-box id="oscq-discover" role="properties"]
-{"id" "oscq-discover" "index" 5 "name" "6. Discover on the network (run)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6. Discover on the network (run)" "_tombstone" false "frame" #afield/rect [980.0 220.0 380.0 70.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "oscq-discover_code_.kt" "lines" 7 "characters" 407 "sha256" "64f9dd547eb0ca310a06c959e333fa9a3dfd387e50479e665937062706ffb121"}]}
+{"id" "oscq-discover" "index" 5 "name" "6. Discover on the network (run)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6. Discover on the network (run)" "_tombstone" false "frame" #afield/rect [980.0 220.0 380.0 70.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "oscq-discover_code_.kt" "lines" 9 "characters" 414 "sha256" "7cf351987021563789981564c0f56077dd817a42be936c5cf27d8336f0385391"}]}
 ```
 
 ```kotlin [field-property box="oscq-discover" name="code" path="oscq-discover_code_.kt"]
@@ -129,7 +137,9 @@ import afield.io.osc.query.*
 // OSCQuery services announcing themselves on this network (DNS-SD _oscjson._tcp), this Field's
 // included once box 1 has run. Each one can be opened with oscQueryRemote(address, port).
 val found = oscQueryDiscover(2000)
-markdown(if (found.isEmpty()) "No OSCQuery services answered." else
-    found.joinToString("\n") { "- **${it.instance}** at `${it.address}:${it.port}`" })
+markdown(
+    if (found.isEmpty()) "No OSCQuery services answered."
+    else found.joinToString("\n") { "- **${it.instance}** at `${it.address}:${it.port}`" },
+)
 ```
 

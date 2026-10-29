@@ -1,5 +1,11 @@
 package afield.audio.spatial.steamaudio
 
+/**
+ * Puts a 2D game's walls, sources and listener into Steam Audio's 3D simulation: [World2D] fixes
+ * the axis mapping and wall height, and [WallSegment], [WallSet], [MovableWall] and [SharedWalls]
+ * turn line segments into scene geometry.
+ */
+
 import kotlin.math.atan2
 import kotlin.math.hypot
 

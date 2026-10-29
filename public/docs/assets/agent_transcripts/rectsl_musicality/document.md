@@ -52,27 +52,30 @@ Nothing below is written in seconds. Edit `rectsl` and re-run to change the
 groove live. See rectsl_cheatsheet.md ("Musicality") / rectsl_examples.md.
 
 ```edn [field-box id="music_groove" role="properties"]
-{"id" "music_groove" "index" 1 "name" "rectsl musicality" "parents" ["root" "music_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "music_renderer"} "name" "rectsl musicality" "_tombstone" false "frame" #afield/rect [300.0 140.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "music_groove_code_.kt" "lines" 107 "characters" 3313 "sha256" "1c232dcacda019c58604166e442e492ac6ccd086eac0dd4dc06b92a073f720c8"}]}
+{"id" "music_groove" "index" 1 "name" "rectsl musicality" "parents" ["root" "music_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "music_renderer"} "name" "rectsl musicality" "_tombstone" false "frame" #afield/rect [300.0 140.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "music_groove_code_.kt" "lines" 112 "characters" 3279 "sha256" "13adbd0a1c2a8bb5c4321341894c267e95abef9acf791d34528f62816e0258a9"}]}
 ```
 
 ```kotlin [field-property box="music_groove" name="code" path="music_groove_code_.kt"]
-// RectSL's musical layer: the pattern language as scene structure.
-//
-// Two facts do all the work. A RectSL track is `sample(t)` and a pattern is
-// `events(arc)` — both pure functions of time — so (1) a pattern IS a track,
-// which is why `saw ->rotate` needs no conversion word, and (2) a pattern
-// event carries an onset and a real duration, which is exactly what
-// `->live birth life` wants, so an event IS a life window. `pat` is `array`
-// indexed by rhythm instead of by ordinal.
-//
-// Nothing below is written in seconds. Edit `rectsl` and re-run to change the
-// groove live. See rectsl_cheatsheet.md ("Musicality") / rectsl_examples.md.
+/*
+RectSL's musical layer: the pattern language as scene structure.
+
+Two facts do all the work. A RectSL track is `sample(t)` and a pattern is
+`events(arc)` — both pure functions of time — so (1) a pattern IS a track,
+which is why `saw ->rotate` needs no conversion word, and (2) a pattern
+event carries an onset and a real duration, which is exactly what
+`->live birth life` wants, so an event IS a life window. `pat` is `array`
+indexed by rhythm instead of by ordinal.
+
+Nothing below is written in seconds. Edit `rectsl` and re-run to change the
+groove live. See rectsl_cheatsheet.md ("Musicality") / rectsl_examples.md.
+*/
+import afield.lang.rectsl.RECT_ANIMATION_VERTEX_SHADER
 import afield.lang.rectsl.RectAnimationOracle
 import afield.lang.rectsl.rectMaterialShaderCode
 import afield.lang.rectsl.writeFrameToMesh
-import afield.lang.rectsl.RECT_ANIMATION_VERTEX_SHADER
 
-val rectsl = """
+val rectsl =
+    """
 #rectsl
 ->wall 16 9 abstract
 ->tempo 120
@@ -130,13 +133,15 @@ end
 """
 
 val program = RectAnimationOracle.compile(rectsl).program!!
-val shader  = rectMaterialShaderCode(program)
+val shader = rectMaterialShaderCode(program)
 
-// Seed this box's shader-source properties before `moduleHere {}` runs; the
-// `//%-` fragment break makes this fragment execute first (see the playground
-// transcript for the why).
+/*
+Refresh the generated fragment on every run before `moduleHere {}`; the
+`//%-` fragment break makes this fragment execute first (see the playground
+transcript for the why).
+*/
 once.vertex { RECT_ANIMATION_VERTEX_SHADER }
-once.fragment { shader.exampleFragmentShader!! }
+fragment = shader.exampleFragmentShader!!
 
 //%-
 

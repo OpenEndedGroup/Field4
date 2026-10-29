@@ -1,0 +1,13 @@
+# Use the projected camera for cube lighting and explain shader spaces
+
+Frozen findings: `a0a84eb67e15-03`, `a0a84eb67e15-04`.
+
+The cube shader names its camera position, forward/right/up basis, view offset and positive depth. Comments identify Scene push-member units, flags and Vulkan's near-Z=0/far-Z=W mapping, plus background/object/projection phases. World-space camera position now passes flat from the vertex stage to fragment lighting, replacing the fixed (5,3.7,5) view direction. The documentation, authored transcript, downloadable transcript/shader pair and default runtime pair agree. Push members remain the same three vec4s; the new stage varying is documented as requiring a full box rerun.
+
+Actual source-mode Vulkan comparisons freeze object and light animation while orbiting the camera at 0, 3 and 6 seconds. Projection-only restructuring changes only three isolated raster-edge pixels at time zero and none at the other sampled times; these are floating-point rasterization differences, not a claim of bit-identical projection. At zero, lighting pixels match the layout-only version exactly; at later times specular highlights change with the actual orbiting eye. An independent fragment-side calculation matches exactly at zero; at 3 seconds seven pixels differ by one 8-bit level, and at 6 seconds one pixel differs by one level. All other pixels match. These bounded rounding differences are retained explicitly. No NVIDIA NR inference or public-capture replacement is claimed.
+
+Diagnostic history is retained: the initial harness blocked the Runloop on Future.get; its thread trace led to nonblocking completion/file checks and an owned-host restart. Clock changes are settled on real native frames before requesting readback. Shader ABI checks correctly refused adding a varying through an in-place reload, so the fixture uses a full study recreation for that interface change. A later external Gradle daemon stop interrupted the reference check; completed real captures were retained and the remaining check resumed on a fresh single-use Gradle host. No unchanged full guard was rerun locally.
+
+Actual editor formatting covered the changed GLSL, both transcript containers and the page's Kotlin states. A small follow-up preserves readable GLSL continuation indentation; parsed tokens, containers and unchanged Kotlin/prose were checked after that adjustment. Full guards remain with the lander.
+
+Checkpoint: 354/405 addressed, 51 open. Mechanical coverage: Full corpus receipts in batch 56 and history repair in batch 57; batch 63 GLSL and containers formatted and checked, with explicit continuation indentation. Full guards are delegated to the lander.

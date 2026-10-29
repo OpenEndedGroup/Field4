@@ -30,6 +30,16 @@ import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.reflect.KClass
 import kotlin.reflect.full.superclasses
 
+/**
+ * The object inspector behind `/browse`: a live, clickable tree of any value, reached from a box
+ * with [Inspector.linkFor].
+ *
+ * A value takes part by implementing [Browsable] (a heading, a directory of named children,
+ * optional HTML) or [HasBrowsable]. Other values fall back to [BrowsableAdapters] and to the HTML
+ * renderers registered with [LeafRenderers]. [installInspectorHandler] installs the socket handler
+ * the browser's inspector page talks to.
+ */
+
 // -------------------------------------------------------------------------------------------------
 // Public surface
 // -------------------------------------------------------------------------------------------------
@@ -759,6 +769,7 @@ internal object InspectorValues {
 fun installInspectorHandler() {
     registerExampleRoots()
     registerExampleAdapters()
+    registerRendererBrowsingAdapters()
     rawHandlers.getOrPut("__browsing__") { mutableSetOf() }.add { text ->
         val s = thisSession.get()
         inMain {

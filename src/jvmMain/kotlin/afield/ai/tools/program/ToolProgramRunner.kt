@@ -36,17 +36,18 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 
 /**
- * Runs one [RunToolProgramRequest] in a fresh, locked-down GraalJS context. See [RunToolProgramRequest]'s
- * file overview for what a program is for; this is how it is kept to its tools.
+ * The sandbox a tool program runs in: one [RunToolProgramRequest]'s JavaScript, in a fresh GraalJS
+ * context that can reach the conversation's tools and nothing else. [RunToolProgramRequest]'s own
+ * file overview says what a program is for; this file is how it is kept to its tools.
  *
  * ## The boundary
  *
  * Only strings cross it. The guest gets six host functions (`__call`, `__out`, `__progress`, `__show`,
- * `__describe`, `__settle`) and one JSON string of tool names; the [PRELUDE] builds the friendly
+ * `__describe`, `__settle`) and one JSON string of tool names; a prelude builds the friendly
  * `tools.X(...)`, `tools.X.raw(...)`, `check(...)`, `progress(...)`, `text(...)` and `show(...)` surface from
- * those in JS. The context denies host access, IO, threads,
- * processes, native access, polyglot access and the environment, under [SandboxPolicy.CONSTRAINED], with
- * a statement limit — so a program cannot reach a Java object even by accident.
+ * those in JS. The context runs under `SandboxPolicy.CONSTRAINED` with no IO, no threads, no processes,
+ * no native access, no polyglot access, no environment and no host class lookup, and carries a statement
+ * limit, so a program cannot reach a Java object even by accident.
  *
  * ## Ending a program
  *
@@ -54,16 +55,18 @@ import java.util.concurrent.atomic.AtomicReference
  * `check-failed` for an uncaught `check`, `runtime` for any other error), by a syntax error, by running out
  * of statements, calls or time, or because its turn was cancelled. Time and cancellation are a watchdog's job:
  * it closes the context from its own thread, which Graal honours the next time the program thread is in
- * guest code — so a tool call already running is allowed to finish. A cancellation is rethrown as a
- * [CancellationException] so the turn ends rather than reporting a tool error, matching every bridge's
+ * guest code, so a tool call already running is allowed to finish. A cancellation is rethrown as a
+ * `CancellationException` so the turn ends rather than reporting a tool error, matching every bridge's
  * `isAiTurnCancellation` handling.
  *
  * ## Threads
  *
  * The program runs on the calling thread, which is the agent loop's: an IO thread for a panel turn, a
  * daemon for an agent task, the backdoor's scope for MCP. Never the Runloop — the graph tools a program
- * calls hop onto the Runloop and wait for it, which would deadlock there, so [run] refuses.
+ * calls hop onto the Runloop and wait for it, which would deadlock there, so `run` refuses.
  */
+
+/** Runs one tool program to its end and reports how it ended. */
 internal class ToolProgramRunner(private val registry: ToolRegistry) {
 
     fun run(ctx: ToolExecutionContext, request: RunToolProgramRequest): RunToolProgramResult {

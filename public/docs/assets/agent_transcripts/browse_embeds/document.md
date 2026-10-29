@@ -17,7 +17,7 @@ From `code`
 The same kind of value as Finder-style columns: choosing a row opens it in the next column.
 
 ```edn [field-box id="column_box" role="properties"]
-{"id" "column_box" "index" 0 "name" "2 - column(): Finder columns" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - column(): Finder columns" "_tombstone" false "frame" #afield/rect [620.0 60.0 440.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "column_box_code_.kt" "lines" 9 "characters" 445 "sha256" "502b65fd072a6e4599ce2ba91dd5fb2fcbc1b7926b2606ec80ab6e2a8a046c6b"}]}
+{"id" "column_box" "index" 0 "name" "2 - column(): Finder columns" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - column(): Finder columns" "_tombstone" false "frame" #afield/rect [620.0 60.0 440.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "column_box_code_.kt" "lines" 9 "characters" 439 "sha256" "ed64119db421dc6b553ab059ae4fa793f15e2f6e2fd13364de00859f799b5de5"}]}
 ```
 
 ```kotlin [field-property box="column_box" name="code" path="column_box_code_.kt"]
@@ -25,7 +25,7 @@ The same kind of value as Finder-style columns: choosing a row opens it in the n
 data class Layer(val name: String, val visible: Boolean, val points: IntArray)
 
 val document = linkedMapOf(
-    "layers" to listOf(Layer("dots", true, intArrayOf(2, 4, 8, 16)), Layer("lines", false, intArrayOf())),
+    "layers" to [Layer("dots", true, intArrayOf(2, 4, 8, 16)), Layer("lines", false, intArrayOf())],
     "camera" to mapOf("x" to 10, "y" to 20, "zoom" to 1.5),
     "title" to "a document\nwith two lines",
 )
@@ -44,7 +44,7 @@ logs(...) streams Field's log into a panel; this one only shows the "demo" chann
 Type in its find box (or press /) to narrow it; scroll up and new rows wait behind "↓ N new".
 
 ```edn [field-box id="logs_box" role="properties"]
-{"id" "logs_box" "index" 1 "name" "4 - logs(): one channel, with find" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - logs(): one channel, with find" "_tombstone" false "frame" #afield/rect [620.0 760.0 440.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "logs_box_code_.kt" "lines" 9 "characters" 720 "sha256" "4fd9cda0a92c77f217ce139c35f9caf239b13888e77c1e13a4ba68dcc638d440"}]}
+{"id" "logs_box" "index" 1 "name" "4 - logs(): one channel, with find" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - logs(): one channel, with find" "_tombstone" false "frame" #afield/rect [620.0 760.0 440.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "logs_box_code_.kt" "lines" 23 "characters" 812 "sha256" "f34dc88a75f06f3173778dee67413f04b90ccbba913a8e108b7512fce8e5357e"}]}
 ```
 
 ```kotlin [field-property box="logs_box" name="code" path="logs_box_code_.kt"]
@@ -53,9 +53,23 @@ Type in its find box (or press /) to narrow it; scroll up and new rows wait behi
 logs("logs") { channel("demo") }
 
 val log = afield.ai.diagnostics.LogDispatcher
-log.log(afield.ai.diagnostics.LogEvent("demo", "starting a job", blockId = "job (1)", boundary = afield.ai.diagnostics.BlockBoundary.BEGIN))
+log.log(
+    afield.ai.diagnostics.LogEvent(
+        "demo",
+        "starting a job",
+        blockId = "job (1)",
+        boundary = afield.ai.diagnostics.BlockBoundary.BEGIN,
+    ),
+)
 for (i in 1..3) log.log(afield.ai.diagnostics.LogEvent("demo", "step $i of 3", blockId = "job (1)"))
-log.log(afield.ai.diagnostics.LogEvent("demo", "done", blockId = "job (1)", boundary = afield.ai.diagnostics.BlockBoundary.END))
+log.log(
+    afield.ai.diagnostics.LogEvent(
+        "demo",
+        "done",
+        blockId = "job (1)",
+        boundary = afield.ai.diagnostics.BlockBoundary.END,
+    ),
+)
 log.log(afield.ai.diagnostics.LogEvent("demo warning", "a warning row is coloured"))
 ```
 
@@ -107,7 +121,7 @@ Type **/tag into the filter: it runs scene.graphPaths("**/tag") and lists the ma
 Press p on a row to copy its path, e.g. particle/age, then scene.graphPath("particle/age") reads it.
 
 ```edn [field-box id="tree_box" role="properties"]
-{"id" "tree_box" "index" 3 "name" "1 - tree(): any value, lazily" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - tree(): any value, lazily" "_tombstone" false "frame" #afield/rect [60.0 60.0 440.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tree_box_code_.kt" "lines" 18 "characters" 1056 "sha256" "5daa11a09bcd999c0789c5efb9dc2f69e761a0dd2b0c7fde249ad30ed9c5c5e5"}]}
+{"id" "tree_box" "index" 3 "name" "1 - tree(): any value, lazily" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - tree(): any value, lazily" "_tombstone" false "frame" #afield/rect [60.0 60.0 440.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tree_box_code_.kt" "lines" 28 "characters" 1077 "sha256" "0537a44a726dedba1226ce4f0730a3e45e61e7dcfd138bff6ebd023f1f480d9c"}]}
 ```
 
 ```kotlin [field-property box="tree_box" name="code" path="tree_box_code_.kt"]
@@ -116,15 +130,25 @@ Press p on a row to copy its path, e.g. particle/age, then scene.graphPath("part
 // Type **/tag into the filter: it runs scene.graphPaths("**/tag") and lists the matching paths.
 // Press p on a row to copy its path, e.g. particle/age, then scene.graphPath("particle/age") reads it.
 data class Particle(val position: Vec3, val age: Double, val tag: String)
-class Node(val name: String) { var next: Node? = null }
+class Node(val name: String) {
+    var next: Node? = null
+}
 
-val a = Node("a"); val b = Node("b"); a.next = b; b.next = a      // a loop: shown with ↺, not opened forever
+val a = Node("a")
+val b = Node("b")
+a.next = b
+b.next = a // a loop: shown with ↺, not opened forever
 
 val scene = linkedMapOf(
     "particle" to Particle(Vec3(1f, 2f, 0.5f), 0.25, "spark"),
     "weights" to doubleArrayOf(0.1, 0.4, 0.5),
-    "many" to List(5000) { it * it },                               // arrives 200 rows at a time
-    "byKey" to mapOf(Particle(Vec3(0f, 0f, 0f), 0.0, "origin") to "an object as a key", 1 to "one", "1" to "the string one"),
+    "many" to List(5000) { it * it }, // arrives 200 rows at a time
+    "byKey" to
+        mapOf(
+            Particle(Vec3(0f, 0f, 0f), 0.0, "origin") to "an object as a key",
+            1 to "one",
+            "1" to "the string one",
+        ),
     "ring" to a,
     "missing" to null,
 )

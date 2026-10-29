@@ -146,31 +146,42 @@ This example puts two frames in one box. Their content is identical, and only th
 declares differs. Both carry `data-afield-autosize="off"`, so neither reports a size of its own.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/output_panel_sizing/fill-vs-fixed.png" capture="box" open-outputs="true" wait="3.0" w="1040" h="160" padding="18" timeout="120" embed=true name="output-panel-sizing-fill-vs-fixed" alt="A Field box roughly 1040 points wide holding two open output panels, one above the other. The upper panel, titled 'no width of its own', spans the full width of the box and its dark blue frame fills it edge to edge. The lower panel, titled '640 pixels wide', is visibly narrower — a little under two thirds of the box — and stops well short of the box's right edge. Both frames are the 66 pixels their markup declares."}
-// Two frames whose ONLY difference is the width each declares. Both are
-// data-afield-autosize="off", so iframe_autosize.js returns early in both and
-// neither will ever dispatch afield-iframe-size.
+/*
+Two frames whose ONLY difference is the width each declares. Both are
+data-afield-autosize="off", so iframe_autosize.js returns early in both and
+neither will ever dispatch afield-iframe-size.
+*/
 fun card(note: String) =
     "<body style=\"margin:0;background:#12202b;color:#8fd6ff;" +
         "font:12px/1.5 -apple-system,system-ui,sans-serif\">" +
-        "<div style=\"padding:10px 12px\">" + note + "</div></body>"
+        "<div style=\"padding:10px 12px\">" +
+        note +
+        "</div></body>"
 
 fun frame(widthDecl: String, note: String) =
-    "<iframe data-afield-autosize=\"off\" srcdoc='" + card(note) + "' " +
-        "style=\"display:block;" + widthDecl + ";height:66px;" +
+    "<iframe data-afield-autosize=\"off\" srcdoc='" +
+        card(note) +
+        "' " +
+        "style=\"display:block;" +
+        widthDecl +
+        ";height:66px;" +
         "border:1px solid #2d4456;background:#12202b\"></iframe>"
 
 // isFillWidthIframe says yes: autosize off, nothing reported, no concrete inline
 // width. fillWidthForDisclosure gives the panel box.right - wrap.left.
 display(
     "no width of its own",
-    frame("width:100%", "width:100% + autosize off -> a fill frame. The panel takes the room the box gives it.")
+    frame("width:100%", "width:100% + autosize off -> a fill frame. The panel takes the room the box gives it."),
 )
 
 // isFillWidthIframe says no: 640px is a concrete inline width, so iframeIntrinsicSize
 // reads it straight off style.width and the fill-width fallback never applies.
 display(
     "640 pixels wide",
-    frame("width:640px", "width:640px -> a concrete intrinsic width. The panel is 640 plus padding, whatever the box is.")
+    frame(
+        "width:640px",
+        "width:640px -> a concrete intrinsic width. The panel is 640 plus padding, whatever the box is.",
+    ),
 )
 
 displayOpen("no width of its own")

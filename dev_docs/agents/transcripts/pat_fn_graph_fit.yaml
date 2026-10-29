@@ -11,6 +11,9 @@ description: >
   initial error, because reaching the answer needs a permutation and there is no downhill path
   through one — tuning numbers is fitGradient's job, choosing which atom holds which number is
   evolve's. Open/replay this into a fresh Field4 and run the boxes top to bottom.
+docs:
+  - page: pattern_language.md#a-rhythm-as-a-curve-and-as-a-graph-you-can-fit
+    why: "Shows patFn turning a pattern into a function graph you can fit."
 operations:
   - create:
       box: pat_fn_inspect

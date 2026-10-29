@@ -1,5 +1,23 @@
+/**
+ * The rasterising [Module]: one graphics pipeline built from vertex/fragment (or task/mesh)
+ * GLSL, the [Mesh]es it draws, and the uniforms, textures and push constants bound to it.
+ *
+ * [Parameters] carries the shader sources and pipeline settings, and [parameters] builds one
+ * against the renderer found by `fromContext()`. A [ModulePointer] stands in front of a module so
+ * a box can recompile its shaders and swap in the new [Module] without the renderer losing its
+ * reference; [Module.pointer] makes one. [before] wraps a command-buffer callback as a target
+ * that runs ahead of the module's draws, and [parseCompilerException] splits a shader compiler
+ * error into file, line and message.
+ *
+ * Box code usually reaches this through `moduleHere` rather than constructing a [Module]
+ * directly; the graphics lessons in `public/docs/assets/canonical_graphics/LESSONS.md` show
+ * that shape.
+ */
+
 package afield.graphics.render
 
+import afield.app.diagnostics.LatencySpans
+import afield.graphics.vulkan.targets.HasRenderToTexture
 import afield.graphics.scene.main
 
 import afield.document.context.fromContext
@@ -46,6 +64,7 @@ import org.lwjgl.vulkan.VK13.*
 import java.nio.ByteBuffer
 import kotlin.reflect.KProperty
 
+/** Shader sources and pipeline settings shared by [Module] and [RayTracingModule]. */
 data class Parameters(
     val renderer: Renderer,
     var vertex: String = "",
@@ -187,7 +206,12 @@ data class Parameters(
     val depth_always = VK_COMPARE_OP_ALWAYS
 
 
-    fun RenderToTexture.apply() {
+    /**
+     * Inside `moduleHere { }`: this module draws into this target. `+target` gives the module the
+     * target's colour formats, depth and viewports, which it needs before it can be attached with
+     * `target += module`.
+     */
+    operator fun RenderToTexture.unaryPlus() {
         this@Parameters.color = colorFormats.size
         this@Parameters.colorFormats = colorFormats
         this@Parameters.depth = if (parameters.useDepth) 1 else 0
@@ -196,7 +220,11 @@ data class Parameters(
         this@Parameters.viewMask = parameters.multiviewViewMask
     }
 
-    fun MultiPingPongRenderToTexture.apply() {
+    /** Inside `moduleHere { }`: this module draws into the target this object owns, e.g. `+view` for an `ElectronRTTView`. */
+    operator fun HasRenderToTexture.unaryPlus() = +rtt
+
+    /** Inside `moduleHere { }`: this module draws into this ping-pong target, as `+target` does for a [RenderToTexture]. */
+    operator fun MultiPingPongRenderToTexture.unaryPlus() {
         val resolvedColorFormat = if (this.parameters.colorFormats.isNotEmpty()) this.parameters.colorFormats.first() else this.parameters.format
         this@Parameters.color = 1
         this@Parameters.colorFormats = listOf(resolvedColorFormat)
@@ -1001,15 +1029,17 @@ class Module(val parameters: Parameters) : Renderable {
 
                 ds?.let { gp.pDepthStencilState(it) }
 
-                vkCheck(
-                    vkCreateGraphicsPipelines(
-                        parameters.renderer.device.vkDevice,
-                        parameters.renderer.pipelineCache.vkPipelineCache,
-                        gp,
-                        null,
-                        lp
-                    ), "Error creating graphics pipeline"
-                )
+                LatencySpans.time("pipeline.create", detail = "graphics") {
+                    vkCheck(
+                        vkCreateGraphicsPipelines(
+                            parameters.renderer.device.vkDevice,
+                            parameters.renderer.pipelineCache.vkPipelineCache,
+                            gp,
+                            null,
+                            lp
+                        ), "Error creating graphics pipeline"
+                    )
+                }
                 this.pipeline = lp[0]
                 pipelineDisposeToken.updateCleanup(snapshotPipelineCleanup())
 
@@ -1144,15 +1174,17 @@ class Module(val parameters: Parameters) : Renderable {
 
                 val lp = stack.mallocLong(1)
                 synchronized(parameters.renderer.pipelineCache) {
-                    vkCheck(
-                        vkCreateGraphicsPipelines(
-                            parameters.renderer.device.vkDevice,
-                            parameters.renderer.pipelineCache.vkPipelineCache,
-                            gp,
-                            null,
-                            lp
-                        ), "Error creating graphics pipeline update"
-                    )
+                    LatencySpans.time("pipeline.update", detail = "graphics") {
+                        vkCheck(
+                            vkCreateGraphicsPipelines(
+                                parameters.renderer.device.vkDevice,
+                                parameters.renderer.pipelineCache.vkPipelineCache,
+                                gp,
+                                null,
+                                lp
+                            ), "Error creating graphics pipeline update"
+                        )
+                    }
                 }
                 newPipeline = lp[0]
                 parameters.renderer.device.nameObject(

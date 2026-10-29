@@ -1,5 +1,11 @@
 package afield.graphics.vulkan.util
 
+/**
+ * A stable GPU radix sort of `uint` keys in storage buffers, with an optional `uint` payload carried along.
+ *
+ * [GpuRadixSort] owns its scratch buffers and compute shaders. [asFrameBufferGroup] wraps a single [VulkanBuffer] so it can be passed where a per-frame buffer group is expected.
+ */
+
 import afield.graphics.vulkan.Renderer
 import afield.graphics.vulkan.Target
 import afield.graphics.vulkan.buffers.BufferParameters
@@ -180,6 +186,17 @@ class GpuRadixSort(
         target.others[name] = Target { command, _ ->
             onSorted(sort(command, keys, count, values, signedKeys))
         }
+    }
+
+    /**
+     * Allocates scratch for sorting up to [count] keys now, rather than on the first [sort] that
+     * needs it. A sort whose count grows a little every frame (particles being painted in) would
+     * otherwise reallocate its scratch on every one of those frames, and the old scratch is only
+     * freed with the renderer.
+     */
+    fun reserve(count: Int, withValues: Boolean = true) {
+        require(count >= 0) { "count must be >= 0" }
+        ensureScratch(count.coerceAtLeast(2), withValues)
     }
 
     fun cleanup() {

@@ -682,7 +682,7 @@ object FieldMLRuntimePrelude {
      */
     private fun missingPropMessage(target: Box, name: String): String =
         "No value for inherited property '$name' in '${target.name.ifBlank { target.id }}' or any of its " +
-            "${target.parents.size} parent boxes. Has the box that writes it run yet? " +
+            "${target.parents.count { !afield.document.context.ContextResolution.isStructuralAncestor(it) }} parent boxes. Has the box that writes it run yet? " +
             "`propOr \"$name\" fallback` reads it without failing."
 
     /**
@@ -965,7 +965,10 @@ object FieldMLRuntimePrelude {
                 }
                 usedInput = true
             } else {
-                out += parameter.defaultValue ?: return null
+                // A default this parser cannot evaluate (an expression, a constructor call) rules the
+                // candidate out, but a literal `= null` is a value like any other and is passed through.
+                if (!parameter.defaultIsLiteral) return null
+                out += parameter.defaultValue
             }
         }
         if (remaining.isNotEmpty()) return null
@@ -1047,6 +1050,8 @@ object FieldMLRuntimePrelude {
                 isVararg = isVararg,
                 hasDefault = defaultSource != null,
                 defaultValue = defaultSource?.let(::parseHostDefaultLiteral),
+                defaultIsLiteral = defaultSource != null &&
+                    (defaultSource.removeSuffix(",").trim() == "null" || parseHostDefaultLiteral(defaultSource) != null),
             )
         }
 
@@ -1155,6 +1160,7 @@ object FieldMLRuntimePrelude {
         val isVararg: Boolean,
         val hasDefault: Boolean,
         val defaultValue: Any?,
+        val defaultIsLiteral: Boolean,
     )
 
     private object HostInputPlaceholder {

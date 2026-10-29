@@ -54,52 +54,22 @@ import kotlin.math.abs
 import kotlin.math.sqrt
 
 /**
- * Turning a place a person is looking at back into a place in the world.
+ * Pointing a [Ray] at a mesh and asking what it hits.
  *
- * This file does one step of that: **pixel → ray**, the unprojection that gets you from a mouse
- * position, a controller pose or a headset's aim to a line in the scene. [PickScene] is the next
- * step, ray → named part, and [Pointer] the step before, person → pixel-or-pose. Once you have the
- * ray, [MeshBvh.raycast], `intersectRayTriangle` and `intersectRayPlane` answer what it hits.
+ * One extension lives here, because the two halves of this question are in different packages.
+ * Rays are made in `afield.graphics.interaction`: [Pointer] is what a person points with, and the
+ * unprojection behind [RayCamera] turns the pixel or the pose it reports into a [Ray]. The
+ * structure that answers which triangle a ray meets is [MeshBvh], which belongs with the meshes and
+ * takes an origin and a direction as two separate [Vec3] arguments. The overload below unpacks a
+ * [Ray] into them.
  *
- * # The two camera models
+ * Two things follow from that hop and are easier to state here than at the call site. A [Ray]
+ * normalises its direction when it is constructed, so the distance in the [RayHit] that comes back
+ * is in world units however the caller built the ray. And a [Ray] holds its origin and direction in
+ * double precision while [Vec3] is float, so both narrow at this call before the intersection test
+ * widens them again and runs in double.
  *
- * Field has two unrelated camera models, and confusing them is the main hazard here:
- *
- *  - **[MeshView]** — the orbital camera behind [TriMesh.renderPng], Field's CPU rasterizer. Yaw,
- *    pitch, a distance *in multiples of the mesh's own bounding-sphere radius*, and a field of view.
- *    This is the one that makes pixels with no GPU, no window and no AWT, so it is the one a headless
- *    test or a docs capture can prove things with. [MeshView.rayCamera] inverts it, and does so by
- *    calling straight into [VisionGeometryPreview.ViewFrame] — *the same object the rasterizer
- *    projects with*, so the unprojection is the renderer's inverse by construction rather than by
- *    transcription.
- *  - **[afield.graphics.vulkan.util.Camera]** — the live Vulkan scene's camera: a `lookAt` model-view and a
- *    [afield.graphics.vulkan.util.SuperProjection], which can be a perspective frustum, an off-centre one, an
- *    orthographic prism, or a Lie-group interpolation *between* perspective and ortho. There is no
- *    closed-form frustum to re-derive for that last case, so [rayCameraFor] handles all of them the
- *    same way: it inverts the clip matrix numerically, in double precision.
- *
- * # Conventions
- *
- *  - **Pixel coordinates run from the top-left of the frame, y downward**, which is what GLFW's
- *    cursor reports (`Window.cursor` is `glfwGetCursorPos`) and what an image's rows are indexed by.
- *    Pixel *centres* are at half-integers: pixel `(0, 0)` covers `[0,1) x [0,1)` and its centre is
- *    `(0.5, 0.5)`. All the `rayThroughPixel` overloads take the pixel *index* and aim at its centre.
- *  - **Field's clip space is Vulkan's depth range, `z` in `0..1`**, and `y` is *up* in NDC despite
- *    Vulkan's default being down — [afield.graphics.vulkan.Renderer] flips it with a negative-height viewport
- *    (`setViewportAndScissor` sets `y = rect.y + rect.h` and `height = -rect.h`), precisely so that
- *    the familiar GL-style projection matrices keep working. So NDC `y = +1` is the **top** row.
- *  - **A ray's direction is unit length**, so [RayCamera] hit distances are in world units and
- *    comparable between pointers.
- *
- * # Typical use
- *
- * ```kotlin
- * val mesh = icosphere(2)
- * val view = MeshView(yawDegrees = 30.0, pitchDegrees = 20.0)
- * val camera = view.rayCamera(mesh)
- * val hit = mesh.bvh().raycast(camera.rayThroughPixel(360, 270))
- * println(hit)                                  // the triangle under the middle of the picture
- * ```
+ * For ray to *named part* rather than ray to triangle, see [PickScene].
  */
 
 // ==============================================================================================

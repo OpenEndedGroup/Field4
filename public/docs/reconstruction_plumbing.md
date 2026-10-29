@@ -47,21 +47,22 @@ val source = RenderToTexture(renderer) {
     colorAttachments = 3
     colorFormats = [
         VK_FORMAT_R16G16B16A16_SFLOAT, // opaque linear HDR color
-        VK_FORMAT_R32_SFLOAT,         // sampled projected depth
-        VK_FORMAT_R32G32_SFLOAT       // current → previous motion, input pixels
+        VK_FORMAT_R32_SFLOAT, // sampled projected depth
+        VK_FORMAT_R32G32_SFLOAT, // current → previous motion, input pixels
     ]
 }
 val sceneModule = moduleHere {
-    source.apply()
+    +source
     depthTest = true
     depthWrite = true
     blend = false
 }
 source += "scene" to sceneModule
+
 // Add your meshes to sceneModule as usual.
 ```
 
-`renderer` is inherited from the parent renderer box. `source.apply()` configures the module's attachments and render pass. The corresponding fragment outputs are:
+`renderer` is inherited from the parent renderer box. `+source` configures the module's attachments and render pass. The corresponding fragment outputs are:
 
 ```diffstatic {data-lang=glsl}
 layout(location=0) out vec4 color;
@@ -92,13 +93,13 @@ The sample's vertex shader projects each point at the current and previous camer
 ```diffstatic {data-lang=glsl}
 gl_Position = nowClip;
 gl_Position.xy += vec2(2*jitter.x/inputWidth, -2*jitter.y/inputHeight)
-                  * gl_Position.w;
+* gl_Position.w;
 ```
 
 The Y sign here follows Field's Vulkan viewport convention. The fragment shader converts the unjittered positions into top-left-origin UVs, then input-pixel displacement:
 
 ```diffstatic {data-lang=glsl}
-vec2 nowUV  = nowClip.xy / nowClip.w * vec2(.5, -.5) + .5;
+vec2 nowUV = nowClip.xy / nowClip.w * vec2(.5, -.5) + .5;
 vec2 prevUV = oldClip.xy / oldClip.w * vec2(.5, -.5) + .5;
 motion = (prevUV - nowUV) * inputSize;
 depth = gl_FragCoord.z;
@@ -113,13 +114,16 @@ A shader can change color without moving a surface. Motion vectors cannot descri
 The starting point installs one `Target` in `renderer.renderList.preTargets`. Its `render` method owns the sequence:
 
 ```diffstatic {data-lang=kotlin}
-neural.evaluate(command, index, source,
+neural.evaluate(
+    command,
+    index,
+    source,
     ReconstructionInputs(
         source.imageViewArray[0],
         source.imageViewArray[1],
-        source.imageViewArray[2]
+        source.imageViewArray[2],
     ),
-    ReconstructionFrame(frameIndex, jitter, revision = sceneRevision)
+    ReconstructionFrame(frameIndex, jitter, revision = sceneRevision),
 )
 ```
 
@@ -154,15 +158,21 @@ The source is the **raw** RTXDI output. The conversion module samples surface da
 scene.bundle.gBuffer.render(command, index)
 scene.lighting.render(command, index)
 guides.render(command, index)
-rr.evaluate(command,
-    ReconstructionInputs(scene.lighting.output,
-        guides.imageViewArray[0], guides.imageViewArray[1]),
+rr.evaluate(
+    command,
+    ReconstructionInputs(
+        scene.lighting.output,
+        guides.imageViewArray[0],
+        guides.imageViewArray[1],
+    ),
     ReconstructionFrame(frameIndex, jitter, revision = sceneRevision),
     RayReconstructionGuides(
-        guides.imageViewArray[2], guides.imageViewArray[3], guides.imageViewArray[4],
+        guides.imageViewArray[2],
+        guides.imageViewArray[3],
+        guides.imageViewArray[4],
         scene.bundle.scene.camera.modelView(),
-        scene.bundle.scene.projection.evaluateUniform()
-    )
+        scene.bundle.scene.projection.evaluateUniform(),
+    ),
 )
 ```
 

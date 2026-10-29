@@ -11,20 +11,19 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="rectsl_heading_solve" index="0" -->
 
 ```edn [field-box id="rectsl_heading_solve" role="properties"]
-{"id" "rectsl_heading_solve" "index" 0 "name" "solve for where it points" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "solve for where it points" "_tombstone" false "frame" #afield/rect [80.0 900.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_heading_solve_code_.kt" "lines" 36 "characters" 1527 "sha256" "f0afad30560a270633670a23cb22fc6d79704b982988f411a52ac3ffa3bc54a3"}]}
+{"id" "rectsl_heading_solve" "index" 0 "name" "solve for where it points" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "solve for where it points" "_tombstone" false "frame" #afield/rect [80.0 900.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_heading_solve_code_.kt" "lines" 37 "characters" 1458 "sha256" "9482eef4089f34ecbbc902e49622334b42c7ce0f34def4584035a17c5adbbe5e"}]}
 ```
 
 ```kotlin [field-property box="rectsl_heading_solve" name="code" path="rectsl_heading_solve_code_.kt"]
 import afield.lang.rectsl.*
-import afield.math.functions.Functions
-import kotlin.math.PI
 
-// A dart running right at unit speed while climbing at an unknown rate. Its heading is
-// atan2(rise, 1), so asking for 45 degrees is asking for rise = 1 — an answer you can
-// check by hand, which is the point of choosing it.
+/*
+A dart running right at unit speed while climbing at an unknown rate. Its heading is
+atan2(rise, 1), so asking for 45 degrees is asking for rise = 1 — an answer you can
+check by hand, which is the point of choosing it.
+*/
 val duration = 4.0
-fun clock(): Track<Double> =
-    LinearScalarTrack(listOf(TcbKey(0.0, 0.0), TcbKey(duration, duration)))
+fun clock(): Track<Double> = LinearScalarTrack([TcbKey(0.0, 0.0), TcbKey(duration, duration)])
 
 val rise = FreeParamTrack("rise", 0.15)
 val heading = HeadingTrack(clock(), BinaryDoubleTrack(clock(), rise, TrackOp2.MUL))
@@ -35,13 +34,14 @@ val graph = heading.toFn(Functions.Domain(0.0, duration)).orThrow()
 val slots = freeParameterSlots(graph)
 
 val fit = heading.fitParameters(
-    listOf(TrackFitTarget(1.0, PI / 4.0), TrackFitTarget(3.0, PI / 4.0)),
+    [TrackFitTarget(1.0, PI / 4.0), TrackFitTarget(3.0, PI / 4.0)],
     over = Functions.Domain(0.0, duration),
-    iterations = 600
+    iterations = 600,
 )
 
 val agreement = heading.gradientAgreement(
-    (1..8).map { 0.4 * it }, over = Functions.Domain(0.0, duration)
+    (1..8).map { 0.4 * it },
+    over = Functions.Domain(0.0, duration),
 )
 
 """IR:            ${heading.describe()}
@@ -50,7 +50,8 @@ val agreement = heading.gradientAgreement(
 |solved:        ${fit.parameters}   (pi/4 wants rise = 1)
 |residual:      ${fit.initialResidual} -> ${fit.finalResidual}
 |heading(2.0):  ${fit.fitted.sample(2.0)}  vs  ${PI / 4.0}
-|exact gradient vs central difference: $agreement""".trimMargin()
+|exact gradient vs central difference: $agreement"""
+    .trimMargin()
 ```
 
 ## 2. a heading, and the half turn it avoids
@@ -58,27 +59,23 @@ val agreement = heading.gradientAgreement(
 <!-- field-box id="rectsl_heading_lowering" index="1" -->
 
 ```edn [field-box id="rectsl_heading_lowering" role="properties"]
-{"id" "rectsl_heading_lowering" "index" 1 "name" "a heading, and the half turn it avoids" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a heading, and the half turn it avoids" "_tombstone" false "frame" #afield/rect [80.0 60.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_heading_lowering_code_.kt" "lines" 68 "characters" 2525 "sha256" "f28779eba2e7fd6a7bddc7eb20e0271c6a9999225bd9dd9677f3c097c35e3cb7"}]}
+{"id" "rectsl_heading_lowering" "index" 1 "name" "a heading, and the half turn it avoids" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a heading, and the half turn it avoids" "_tombstone" false "frame" #afield/rect [80.0 60.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_heading_lowering_code_.kt" "lines" 77 "characters" 2522 "sha256" "46b4885640ca1bd2c49202f849e0f1b4c15cbd507a9398e9f08f6f75056daec3"}]}
 ```
 
 ```kotlin [field-property box="rectsl_heading_lowering" name="code" path="rectsl_heading_lowering_code_.kt"]
 import afield.lang.rectsl.*
-import afield.math.functions.Functions
-import afield.math.functions.extractParameters
 import java.util.Base64
-import kotlin.math.PI
-import kotlin.math.atan
 
 val duration = 4.0
-fun clock(): Track<Double> =
-    LinearScalarTrack(listOf(TcbKey(0.0, 0.0), TcbKey(duration, duration)))
-fun wave(rate: Double, amplitude: Double): Track<Double> =
-    BinaryDoubleTrack(
-        MappedDoubleTrack(
-            BinaryDoubleTrack(clock(), constantTrack(rate), TrackOp2.MUL), TrackOp1.SIN
-        ),
-        constantTrack(amplitude), TrackOp2.MUL
-    )
+fun clock(): Track<Double> = LinearScalarTrack([TcbKey(0.0, 0.0), TcbKey(duration, duration)])
+fun wave(rate: Double, amplitude: Double): Track<Double> = BinaryDoubleTrack(
+    MappedDoubleTrack(
+        BinaryDoubleTrack(clock(), constantTrack(rate), TrackOp2.MUL),
+        TrackOp1.SIN,
+    ),
+    constantTrack(amplitude),
+    TrackOp2.MUL,
+)
 
 // A figure of eight: wide, and travelling leftwards for half its length, which is where
 // atan2's branch cut is and therefore where a lost quadrant shows.
@@ -101,34 +98,47 @@ val halfTurns = strobe.count {
 }
 
 val png = RectSLFitFigure.render(
-    bands = listOf(
+    bands = [
         RectSLFitFigure.Band(
-            "sampler", x, y, afield.graphics.color.Color4(0.86, 0.88, 0.91),
-            note = "headingtrack.sample", rotation = heading::sample
+            "sampler",
+            x,
+            y,
+            afield.graphics.color.Color4(0.86, 0.88, 0.91),
+            note = "headingtrack.sample",
+            rotation = heading::sample,
         ),
         RectSLFitFigure.Band(
-            "lowered", x, y, afield.graphics.color.Color4(0.29, 0.83, 0.7),
-            note = "fn err %.0e".format(worst), rotation = lowered::eval
+            "lowered",
+            x,
+            y,
+            afield.graphics.color.Color4(0.29, 0.83, 0.7),
+            note = "fn err %.0e".format(worst),
+            rotation = lowered::eval,
         ),
         RectSLFitFigure.Band(
-            "atan only", x, y, afield.graphics.color.Color4(1.0, 0.42, 0.28),
-            note = "$halfTurns half turns", rotation = quadrantLess
-        )
-    ),
+            "atan only",
+            x,
+            y,
+            afield.graphics.color.Color4(1.0, 0.42, 0.28),
+            note = "$halfTurns half turns",
+            rotation = quadrantLess,
+        ),
+    ],
     markers = emptyList(),
     wall = WallSpec(19.0, 7.0, UnitKind.Meters),
     rectSize = Vec2d(1.35, 0.4),
     times = strobe,
-    bandHeight = 230
+    bandHeight = 230,
 )
 display(
     "figure",
     "<img src='data:image/png;base64,${Base64.getEncoder().encodeToString(png)}' " +
-        "style='width:100%;border-radius:5px;display:block'/>"
+        "style='width:100%;border-radius:5px;display:block'/>",
 )
 
 """worst |sampler - lowered| over ${strobe.size} strobes: $worst
 |the quadrant-less form is a half turn out at $halfTurns of them
-|lowered graph: ${lowered.extractParameters().size} numeric leaves""".trimMargin()
+|lowered graph: ${lowered.extractParameters().size} numeric leaves"""
+    .trimMargin()
 ```
 

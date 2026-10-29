@@ -5,6 +5,16 @@ import java.util.Random
 import java.util.concurrent.CancellationException
 import kotlin.math.*
 
+/**
+ * A sampled check of whether a solved membrane sits at an energy minimum: [MinimumSearch] estimates
+ * the lowest curvature with a finite-difference Lanczos iteration and tries displacements along it and along eight smoothed random directions.
+ *
+ * The result is a [MinimumAudit], which also folds in a [ShapeAudit] of the deformed skin. A
+ * positive Ritz value is not a stability certificate; the audit reports whether a lower-energy
+ * direction was found in the directions it sampled.
+ */
+
+/** The outcome of [MinimumSearch]: sampled curvature, the best energy drop found, and the shape checks. */
 data class MinimumAudit(val energy: Double,val curvature: Double,val curvatureAtDoubleStep: Double,
                         val ritzResidual: Double,val directions: Int,val testedDisplacements: Int,
                         val bestEnergyDrop: Double,val escape: DoubleArray?,val shape: ShapeAudit,

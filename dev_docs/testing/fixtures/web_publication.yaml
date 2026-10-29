@@ -1,0 +1,84 @@
+name: web_publication
+description: Mixed live outputs used to verify publication without a Field server.
+operations:
+  - create:
+      box: published_lines
+      name: FLine drawing
+      frame: {x: 40, y: 40, w: 360, h: 60}
+      properties:
+        notes: "# FLine\nA vector drawing captured from the live SVG output."
+        code: |
+          val curve = fline {
+              color = vec(0.9, 0.9, 0.9, 1.0)
+              thickness = 2.0
+              for (i in 0..120) {
+                  val p = vec(i * 2.5, 70.0 + 55.0 * sin(i * 0.09), 0.0)
+                  if (i == 0) moveTo(p) else lineTo(p)
+              }
+          }
+          lines(curve, w = 360.0, h = 200.0, fitToSize = true)
+          displayOpen("lines")
+  - create:
+      box: published_value
+      name: Frozen value
+      frame: {x: 600, y: 40, w: 360, h: 60}
+      properties:
+        notes: "# Values\nThe browser renders the value before publication."
+        code: |
+          val readings = linkedMapOf("gain" to 0.75, "samples" to listOf(2, 4, 8, 16), "label" to "captured in Field")
+          display("value", readings.h)
+          displayOpen("value")
+  - create:
+      box: published_plot
+      name: Plotly chart
+      frame: {x: 1180, y: 40, w: 420, h: 60}
+      properties:
+        notes: "# Plotly\nHover and zoom work with the frozen trace data."
+        code: |
+          val samples = (0..48).map { sin(it * 0.15) }
+          display("plot", linePlot(samples).toHtml())
+          displayOpen("plot")
+          val page = "<html><head><script src='/plotly-2.24.1.min.js'></script></head><body style='margin:0;background:#000'>" + linePlot(samples).toHtml() + "</body></html>"
+          val quoted = page.replace("&", "&amp;").replace("\"", "&quot;")
+          display("iframe plot", "<iframe srcdoc=\"$quoted\" style='width:680px;height:480px;border:0'></iframe>")
+          displayOpen("iframe plot")
+  - create:
+      box: published_inspector
+      name: Lazy inspector
+      frame: {x: 40, y: 630, w: 400, h: 60}
+      properties:
+        notes: "# Inspector\nThe captured view contains only materialized rows."
+        code: |
+          val samples = List(64) { linkedMapOf("sample" to it, "amplitude" to sin(it * 0.2)) }
+          display("inspector", samples.h2)
+          displayOpen("inspector")
+  - create:
+      box: published_three
+      name: Three.js helix
+      frame: {x: 600, y: 630, w: 480, h: 60}
+      properties:
+        notes: "# Three.js\nOrbit and inspect frozen geometry without Field."
+        code: |
+          val helix = fline {
+              color = vec(0.9, 0.9, 0.9, 1.0)
+              thickness = 2.0
+              for (i in 0..240) {
+                  val t = i * 0.07
+                  val p = vec(80.0 * cos(t), i * 0.7 - 84.0, 80.0 * sin(t))
+                  if (i == 0) moveTo(p) else lineTo(p)
+              }
+          }
+          threeLines(listOf(helix), channel = "model", width = 480, height = 320)
+          displayOpen("model")
+          three(channel = "parts", name = "publication-parts", width = 480, height = 360) {
+              mesh(boxMesh(2, 2, 2), label = "Outer shell", id = "outer", wireframe = false, edges = true)
+              mesh(boxMesh(0.8, 0.8, 0.8), label = "Inner block", id = "inner", wireframe = false, edges = true)
+          }
+          displayOpen("parts")
+  - execute: {box: published_lines, property: code}
+  - execute: {box: published_value, property: code}
+  - execute: {box: published_plot, property: code}
+  - execute: {box: published_inspector, property: code}
+  - execute: {box: published_three, property: code}
+  - await: {wait: pending}
+  - wait: {millis: 1500}

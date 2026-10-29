@@ -1,5 +1,8 @@
 # Generated from mqtt_demo/metadata.edn by afield.examples.DocumentToTranscript.
 name: "mqtt_demo"
+docs:
+  - page: mqtt.md
+    why: "Explains MQTT brokers, topics and devices in Field."
 operations:
   - create:
       box: "mqtt-sensors"
@@ -9,10 +12,12 @@ operations:
         "autorun": false
         "code": |
           import afield.io.mqtt.*
-          
-          // Three pretend sensors publishing to the embedded broker ten times a second.
-          // The kitchen and hall send plain numbers; the garden sends JSON, as many ESP32 sketches do.
-          // Point real devices at this machine's broker instead and delete this box.
+
+          /*
+          Three pretend sensors publishing to the embedded broker ten times a second.
+          The kitchen and hall send plain numbers; the garden sends JSON, as many ESP32 sketches do.
+          Point real devices at this machine's broker instead and delete this box.
+          */
           val start = AnimationClock.nowSeconds()
           loop {
               val t = AnimationClock.nowSeconds() - start
@@ -29,10 +34,12 @@ operations:
         "autorun": false
         "code": |
           import afield.io.mqtt.*
-          
-          // Every temperature, whichever room it comes from: `+` stands for one level of the topic.
-          // The callback runs on Field's main loop, so it can update outputs directly.
-          // Re-running this box replaces the callback rather than adding a second one.
+
+          /*
+          Every temperature, whichever room it comes from: `+` stands for one level of the topic.
+          The callback runs on Field's main loop, so it can update outputs directly.
+          Re-running this box replaces the callback rather than adding a second one.
+          */
           var count = 0
           mqtt.subscribe("sensors/+/temp") { topic, message ->
               count++
@@ -46,7 +53,7 @@ operations:
         "autorun": false
         "code": |
           import afield.io.mqtt.*
-          
+
           // Keep the latest value and recent history of everything under sensors/, and plot it twice a second.
           // `series` holds the last 512 numbers per topic; `number(topic, "temp")` reads a field out of JSON.
           mqtt.track("sensors/#")
@@ -57,8 +64,14 @@ operations:
                   "garden" to mqtt.series("sensors/garden/env", "temp"),
                   title = "Temperatures (°C)",
               )
-              markdown("info", "garden: %.1f °C, %.0f %% humidity".format(
-                  mqtt.number("sensors/garden/env", "temp"), mqtt.number("sensors/garden/env", "humidity")))
+              markdown(
+                  "info",
+                  "garden: %.1f °C, %.0f %% humidity"
+                      .format(
+                          mqtt.number("sensors/garden/env", "temp"),
+                          mqtt.number("sensors/garden/env", "humidity"),
+                      ),
+              )
               delay(500)
           }
   - create:
@@ -69,12 +82,14 @@ operations:
         "autorun": false
         "code": |
           import afield.io.mqtt.*
-          
+
           // A retained message stays on the broker: anything that subscribes later gets it straight away.
           // This is how a device learns the current scene when it boots.
           mqtt.publish("installation/scene", mapOf("name" to "dusk", "brightness" to 0.4), qos = 1, retain = true)
-          
+
           mqtt.subscribe("installation/#") { topic, message ->
-              markdown("`$topic`: **${message.string("name")}** at ${message.number("brightness")} (retained: ${message.retained})")
+              markdown(
+                  "`$topic`: **${message.string("name")}** at ${message.number("brightness")} (retained: ${message.retained})",
+              )
           }
           mqtt

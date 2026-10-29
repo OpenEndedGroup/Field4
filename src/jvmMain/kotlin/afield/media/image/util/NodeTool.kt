@@ -3,31 +3,31 @@ package afield.media.image.util
 import java.io.File
 
 /**
- * Finding a `node` binary that is actually new enough to run the JavaScript this repository
- * generates.
+ * Locates a `node` binary new enough to run the JavaScript this repository generates, for the tests
+ * and tools that shell out to Node.
  *
- * Eight call sites used to resolve Node themselves, each with a private copy of "first match on
- * `PATH`", and none with a version floor. That combination has a specific failure mode which cost
- * two wrong diagnoses before it was understood: this machine's non-interactive shell inherits every
- * `nvm` bin directory concatenated, with **v10.8.0 first**, so `node` resolved to a binary from
- * 2018 while v22 sat three entries further along the same `PATH`. Generated Kotlin/JS uses
- * `globalThis` (Node 12+) and optional chaining (Node 14+), so the tests failed inside a temp `.js`
- * file with a `SyntaxError` that pointed nowhere near the real cause.
- *
- * So the floor is the point, not the deduplication: [resolveNode] scans `PATH` for a candidate that
- * **meets** [minMajor] rather than taking the first one that merely exists, which fixes the
- * v10-first environment outright instead of only reporting it.
+ * Generated Kotlin/JS uses `globalThis` (Node 12+) and optional chaining (Node 14+). A shell that
+ * inherits several `nvm` bin directories can put an old Node first on `PATH`, and taking the first
+ * match then fails inside a temporary `.js` file with a `SyntaxError` that says nothing about the
+ * binary. [NodeTool.resolveNode] therefore scans `PATH` for a candidate that meets the version floor
+ * rather than the first one that exists.
  *
  * Resolution order, first match wins:
- *  1. `AFIELD_NODE` / `NODE`, if set and executable — an explicit override always wins, and is
- *     honoured even if it fails the floor, because someone asking for a specific binary by path
- *     deserves to get it (and a clear failure if it is too old) rather than to be second-guessed.
- *  2. Every `PATH` entry, in order, whose `node` reports a major version >= [minMajor].
- *  3. The repository-local Node that Gradle installs under the `.gradle/nodejs` directory, which
- *     makes the JS-backed tests work under a deliberately minimal `PATH`.
  *
- * Returns `null` when nothing qualifies. Call sites decide whether that is a skip or a failure —
- * they legitimately differ, and [unavailableMessage] renders the reason either way.
+ * 1. `AFIELD_NODE` / `NODE`, if set and executable. An explicit override is honoured even below the
+ *    floor, so asking for a binary by path gets that binary, and a clear failure if it is too old.
+ * 2. Every `PATH` entry, in order, whose `node` reports a major version at or above the floor
+ *    ([NodeTool.DEFAULT_MIN_MAJOR] unless the caller passes one).
+ * 3. The repository-local Node that Gradle installs under `.gradle/nodejs`, so JS-backed tests work
+ *    under a minimal `PATH`.
+ *
+ * Nothing qualifying gives `null`. Call sites decide whether that is a skip or a failure, and
+ * [NodeTool.unavailableMessage] renders the reason either way.
+ */
+
+/**
+ * Resolves and caches a `node` binary that meets a major-version floor; see the file overview for the
+ * resolution order.
  */
 object NodeTool {
 
@@ -52,8 +52,7 @@ object NodeTool {
 
     /**
      * Why [resolveNode] came back `null`, phrased for a test's skip/failure message: what was
-     * found, what version it reported, and what was needed. The 2026-07-27 incident was expensive
-     * precisely because the failure said nothing about the binary it had picked.
+     * found, what version it reported, and what was needed.
      */
     @Synchronized
     fun unavailableMessage(minMajor: Int = DEFAULT_MIN_MAJOR): String {

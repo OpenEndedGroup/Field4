@@ -14,6 +14,26 @@ import kotlin.math.min
 import kotlin.math.sin
 
 /**
+ * The SolidSL algebra: 3D solids and 2D profiles as immutable data values, with the builder
+ * functions that write them and the bounds that enclose them.
+ *
+ * A [SolidExpr] is a tree of primitives ([sphere], [cuboid], [cylinder], [cone], [torus],
+ * [gyroid]), transforms ([at], [turned], [sized], [mirrored]), booleans (`+`, `-`, [unionOf],
+ * [differenceOf], [intersectionOf], [smoothUnion], [smoothDifference]) and modifiers ([rounded],
+ * [shelled]). A [Profile] is the 2D counterpart, turned into a solid by [extruded] or [revolved].
+ *
+ * ```kotlin
+ * val bracket = cuboid(60, 40, 8) - Profile.rect(26, 9).offset(4.5).extruded(30).at(0, 0, -15)
+ * val field = bracket.toScalarField()
+ * val exact = bracket.exactSolid()
+ * ```
+ *
+ * This file only builds and measures the tree. Reading it is done elsewhere in the package:
+ * [toScalarField] lowers it to a sampled distance field, [exactSolid] to Manifold's exact CSG,
+ * [toGlsl] to a shader function, and [buildSolid] mixes the first two.
+ */
+
+/**
  * A 3D solid written down as a **value** instead of as a closure — the symbolic notation that
  * `afield.geometry.mesh`'s signed-distance family and `afield.geometry.solid.manifold`'s exact CSG kernel can *both*
  * evaluate.

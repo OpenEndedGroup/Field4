@@ -1,3 +1,10 @@
+/**
+ * An [LlmBridge] that replays a fixed script of tool calls instead of asking a model.
+ *
+ * Tests and the no-credentials mode of agent tasks use it to drive the real tool dispatch;
+ * [ScriptedLlmBridge] documents the script format.
+ */
+
 package afield.ai.models
 
 import afield.ai.conversation.AiTurnInbox
@@ -6,7 +13,8 @@ import afield.ai.conversation.SuspendedRound
 import afield.ai.conversation.SuspendsTurn
 import afield.ai.conversation.TurnContext
 import afield.ai.conversation.TurnSuspension
-import afield.ai.conversation.isAiTurnCancellation
+import afield.ai.conversation.aiToolFailureEndsTurn
+import afield.ai.conversation.aiToolFailureMessage
 import afield.ai.tools.ToolExecutionContext
 import afield.ai.tools.ToolRegistry
 import afield.ai.tools.aiToolMapper
@@ -122,9 +130,9 @@ class ScriptedLlmBridge(
                     val started = System.nanoTime()
                     val result: Any = try {
                         tools.executeByName(callCtx, step.tool, args)
-                    } catch (e: Exception) {
-                        if (isAiTurnCancellation(e)) throw e
-                        mapOf("error" to true, "tool" to step.tool, "message" to (e.message ?: e::class.java.name))
+                    } catch (e: Throwable) {
+                        if (aiToolFailureEndsTurn(e)) throw e
+                        mapOf("error" to true, "tool" to step.tool, "message" to aiToolFailureMessage(e))
                     }
                     val elapsedMs = (System.nanoTime() - started) / 1_000_000
                     val json = runCatching { aiToolMapper.writeValueAsString(result) }.getOrElse { result.toString() }
@@ -163,7 +171,7 @@ class ScriptedLlmBridge(
     }
 
     private fun substitute(template: String, latest: Map<String, String>): String =
-        Regex("""\$\{([A-Za-z0-9_]+)\.([A-Za-z0-9_]+)}""").replace(template) { m ->
+        PLACEHOLDER.replace(template) { m ->
             val (tool, field) = m.destructured
             val node = latest[tool]?.let { runCatching { aiToolMapper.readTree(it) }.getOrNull() }
                 ?: throw IllegalStateException("Script refers to \${$tool.$field} before any $tool result.")
@@ -173,6 +181,12 @@ class ScriptedLlmBridge(
         }
 
     companion object {
+        /**
+         * A placeholder names a tool, and every tool's simple name ends in `Request`; anything else in `${a.b}` form is
+         * left alone, so box code written with Kotlin string templates (`"${it.name}"`) survives a script unchanged.
+         */
+        private val PLACEHOLDER = Regex("""\$\{([A-Z][A-Za-z0-9_]*Request)\.([A-Za-z0-9_]+)}""")
+
         /**
          * Parse a script from JSON: `[{"tool":"NewBoxRequest","arguments":{...}}, {"final":"done"}]`.
          * This is the form `agent-task --script` and the HTTP route accept.

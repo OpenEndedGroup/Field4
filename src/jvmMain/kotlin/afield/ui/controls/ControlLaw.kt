@@ -1,5 +1,14 @@
 package afield.ui.controls
 
+/**
+ * The mapping between a slider's travel and its value: linear, logarithmic, power-taper or bipolar.
+ *
+ * [ControlLaw] names the law and its wire spelling, [ControlLawSpec] pairs it with a range and maps
+ * travel to value and back, and [controlLawDecimals] picks how many decimals a readout shows. The
+ * `slider(...)` builder in the output controls takes a `law` argument of this type.
+ */
+
+
 import afield.app.protocol.ControllerControl
 import afield.app.protocol.handle
 import afield.app.protocol.put

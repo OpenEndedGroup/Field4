@@ -11,12 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="world_tear" index="0" -->
 
 ```edn [field-box id="world_tear" role="properties"]
-{"id" "world_tear" "index" 0 "name" "2 - A sphere tearing through a pinned sheet" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - A sphere tearing through a pinned sheet" "_tombstone" false "frame" #afield/rect [500.0 40.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "world_tear_code_.kt" "lines" 55 "characters" 2225 "sha256" "a7ab296a7afa6cac1cd35454c9e6a4685a26d0c8d18b33e8e7a59fbea12f84b0"}]}
+{"id" "world_tear" "index" 0 "name" "2 - A sphere tearing through a pinned sheet" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - A sphere tearing through a pinned sheet" "_tombstone" false "frame" #afield/rect [500.0 40.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "world_tear_code_.kt" "lines" 54 "characters" 2195 "sha256" "5c78eb0843f7433023490954a5f81913e37649e03794e9f253ba6e472f12861d"}]}
 ```
 
 ```kotlin [field-property box="world_tear" name="code" path="world_tear_code_.kt"]
 import afield.simulation.physics.*
-import afield.math.linalg.vec
 
 /*
 Tearing, with something doing the tearing: a sphere pushed through a sheet that is pinned
@@ -77,12 +76,11 @@ loop {
 <!-- field-box id="world_all" index="1" -->
 
 ```edn [field-box id="world_all" role="properties"]
-{"id" "world_all" "index" 1 "name" "4 - Everything at once, and one knob" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - Everything at once, and one knob" "_tombstone" false "frame" #afield/rect [500.0 190.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "world_all_code_.kt" "lines" 104 "characters" 4760 "sha256" "7ae7cb8281ccb3974288bacc40f077b7edc30d37a06955a696d877cdf17f87e8"}]}
+{"id" "world_all" "index" 1 "name" "4 - Everything at once, and one knob" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - Everything at once, and one knob" "_tombstone" false "frame" #afield/rect [500.0 190.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "world_all_code_.kt" "lines" 103 "characters" 4730 "sha256" "0982de6b3e2e091f85dbb67c1f1d6befc09389591ea0234ddd93074a98bd94f2"}]}
 ```
 
 ```kotlin [field-property box="world_all" name="code" path="world_all_code_.kt"]
 import afield.simulation.physics.*
-import afield.math.linalg.vec
 
 /*
 Everything at once, and one knob.
@@ -192,13 +190,11 @@ loop {
 <!-- field-box id="world_wind" index="2" -->
 
 ```edn [field-box id="world_wind" role="properties"]
-{"id" "world_wind" "index" 2 "name" "3 - A flag in gusty wind, seen from above" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - A flag in gusty wind, seen from above" "_tombstone" false "frame" #afield/rect [40.0 190.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "world_wind_code_.kt" "lines" 59 "characters" 2272 "sha256" "a4c983de27a92b459696f5a5e4d49d0ab6b98e7cb10b264c34f0521822f38182"}]}
+{"id" "world_wind" "index" 2 "name" "3 - A flag in gusty wind, seen from above" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - A flag in gusty wind, seen from above" "_tombstone" false "frame" #afield/rect [40.0 190.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "world_wind_code_.kt" "lines" 57 "characters" 2208 "sha256" "6dc905d05bd52698a8c8fce4c18f5e32637745001a900f2bbf58773e0e1eeee6"}]}
 ```
 
 ```kotlin [field-property box="world_wind" name="code" path="world_wind_code_.kt"]
 import afield.simulation.physics.*
-import afield.geometry.path.FLine
-import afield.math.linalg.vec
 
 // A flag. It lies in the x/y plane and flaps in z, which is why the view at the bottom is
 // from ABOVE: seen from the front this is a rectangle standing perfectly still.
@@ -262,12 +258,11 @@ loop {
 <!-- field-box id="world_drape" index="3" -->
 
 ```edn [field-box id="world_drape" role="properties"]
-{"id" "world_drape" "index" 3 "name" "1 - A cloth draping over a sphere" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - A cloth draping over a sphere" "_tombstone" false "frame" #afield/rect [40.0 40.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "world_drape_code_.kt" "lines" 58 "characters" 2296 "sha256" "87230901c830f2f31ea84403be397a57bc1a01bb41ce2e4c4868d0a82c89cbe7"}]}
+{"id" "world_drape" "index" 3 "name" "1 - A cloth draping over a sphere" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - A cloth draping over a sphere" "_tombstone" false "frame" #afield/rect [40.0 40.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "world_drape_code_.kt" "lines" 57 "characters" 2266 "sha256" "2db475a5f5bfb3f8ef014ce09072c5d7a481753e1ae6f708b87d8fe237f639d4"}]}
 ```
 
 ```kotlin [field-property box="world_drape" name="code" path="world_drape_code_.kt"]
 import afield.simulation.physics.*
-import afield.math.linalg.vec
 
 /*
 A cloth, and something for it to land on.

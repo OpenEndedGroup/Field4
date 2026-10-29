@@ -302,4 +302,27 @@ class ClojureHostTest {
         run.ok
         kotlin.test.assertEquals(listOf("a" to 1, "b" to 2), run.out.filter { it.first.isNotEmpty() }, run.out.toString())
     }
+
+    @Test
+    fun `a runtime throw inside a defn is reported on the line that raised it`() {
+        val run = Run(
+            host(),
+            """
+            (def xs [])
+
+            (defn mean [v]
+              (/ (reduce + v) (count v)))
+
+            (mean xs)
+            """.trimIndent()
+        )
+        assertEquals(4, run.error.line, "the division on line 4, not the call on line 6: ${run.error}")
+        assertTrue("Divide by zero" in run.error.message, run.error.message)
+    }
+
+    @Test
+    fun `a throw from outside the box keeps the calling form's line, and compile errors keep theirs`() {
+        assertEquals(2, Run(host(), "(def n 1)\n(Integer/parseInt \"x\")").error.line)
+        assertEquals(3, Run(host(), "(def n 1)\n\n(undefined-thing n)").error.line)
+    }
 }

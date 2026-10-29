@@ -39,10 +39,13 @@ A rule is a `rewrite { … }` whose lambda parameters declare the
 one `to { }` (the replacement):
 
 ```diffstatic {data-lang=kotlin}
-rewrite { x: Expr -> from { neg(x) }; to { -x } }
+rewrite { x: Expr ->
+    from { neg(x) }
+    to { -x }
+}
 
-neg(10)          // →  -10
-neg(a)           // →  -a
+neg(10) // →  -10
+neg(a) // →  -a
 ```
 
 `x: Expr` says "`x` is a hole that binds any expression." Inside `from` and
@@ -78,11 +81,14 @@ When a captured subtree is spliced into a new context, the rewriter adds
 parentheses where they are needed, so splicing never changes precedence:
 
 ```diffstatic {data-lang=kotlin}
-rewrite { x: Expr -> from { twice(x) }; to { x * 2 } }
+rewrite { x: Expr ->
+    from { twice(x) }
+    to { x * 2 }
+}
 
-twice(a)         // →  a * 2          (atomic capture, not wrapped)
-twice(3)         // →  3 * 2
-twice(a + b)     // →  (a + b) * 2    (non-atomic, wrapped — never a + b * 2)
+twice(a) // →  a * 2          (atomic capture, not wrapped)
+twice(3) // →  3 * 2
+twice(a + b) // →  (a + b) * 2    (non-atomic, wrapped — never a + b * 2)
 ```
 
 Atomic captures (names, literals, calls, `a.b`, `a[i]`) are left unwrapped;
@@ -107,8 +113,8 @@ rewrite { x: Expr, y: Expr ->
     to { swapped(y, x) }
 }
 
-swap(a, b)       // →  swapped(b, a)   (distinct holds)
-swap(c, c)       // →  swap(c, c)      (guard fails; left untouched)
+swap(a, b) // →  swapped(b, a)   (distinct holds)
+swap(c, c) // →  swap(c, c)      (guard fails; left untouched)
 ```
 
 The vocabulary:
@@ -137,8 +143,8 @@ rewrite { x: Expr ->
     to { f(coerce(::f, SomeType::class, x)) }
 }
 
-f(a)             // →  f(coerce(::f, SomeType::class, a))
-f(b + 1)         // →  f(coerce(::f, SomeType::class, (b + 1)))
+f(a) // →  f(coerce(::f, SomeType::class, a))
+f(b + 1) // →  f(coerce(::f, SomeType::class, (b + 1)))
 ```
 
 On the second pass the argument is now `coerce(…)`, so `!isCallTo(x, "coerce")`
@@ -155,12 +161,15 @@ re-executes when its content actually changes:
 ```diffstatic {data-lang=kotlin}
 rewrite { n: Ident ->
     from { counter(n) }
-    provide { var Box.n by Counting() }
+    provide {
+        var Box.n by Counting()
+    }
     to { n }
 }
 
-counter(hits)    // →  hits
-                 //    + preamble:  var Box.hits by Counting()
+counter(hits) // →  hits
+
+//    + preamble:  var Box.hits by Counting()
 ```
 
 The metavariable is substituted in the declaration name (`n` → `hits`). Firing
@@ -183,7 +192,7 @@ rewrite { x: Ident ->
     to { unquote { "\"" + x.reversed() + "\"" } }
 }
 
-rev(hello)       // →  "olleh"     (a String literal)
+rev(hello) // →  "olleh"     (a String literal)
 ```
 
 Because the result is spliced as *code*, you must produce valid Kotlin. Here the
@@ -208,8 +217,8 @@ rewrite { first: Expr, rest: Vararg ->
     to { logger(first, rest) }
 }
 
-log(tag, a, b, c)    // →  logger(tag, a, b, c)
-log(tag)             // →  logger(tag)          (the run may be empty)
+log(tag, a, b, c) // →  logger(tag, a, b, c)
+log(tag) // →  logger(tag)          (the run may be empty)
 ```
 
 ## Ambient rules: rules descend the box graph
@@ -221,10 +230,13 @@ this to take effect, because the layer reads each box's stored source directly.
 
 ```diffstatic {data-lang=kotlin}
 // in a PARENT box:
-rewrite { x: Expr -> from { boom(x) }; to { BANG(x) } }
+rewrite { x: Expr ->
+    from { boom(x) }
+    to { BANG(x) }
+}
 
 // in a CHILD box, with no rule of its own:
-boom(hello)          // →  BANG(hello)
+boom(hello) // →  BANG(hello)
 ```
 
 When a child declares a rule with the same pattern as an inherited one, the
@@ -241,8 +253,14 @@ coercion rule above gets there because its guard stops the recursion. Two rules
 that undo each other never do:
 
 ```diffstatic {data-lang=kotlin}
-rewrite { -> from { a }; to { b } }
-rewrite { -> from { b }; to { a } }
+rewrite { ->
+    from { a }
+    to { b }
+}
+rewrite { ->
+    from { b }
+    to { a }
+}
 ```
 
 Rather than hang your box, the rewriter stops after a bounded number of
@@ -280,10 +298,13 @@ anonymous `rewrite { … }`. Everything else about the rule (`from`, `to`,
 no strategy, a named rule fires everywhere, like an anonymous one:
 
 ```diffstatic {data-lang=kotlin}
-rule("neg") { x: Expr -> from { neg(x) }; to { -x } }
+rule("neg") { x: Expr ->
+    from { neg(x) }
+    to { -x }
+}
 
-neg(a)           // →  -a      (no strategy: every site, as before)
-neg(b)           // →  -b
+neg(a) // →  -a      (no strategy: every site, as before)
+neg(b) // →  -b
 ```
 
 Anonymous `rewrite { }` rules carry no name, so a `strategy { }` can never fire
@@ -300,21 +321,27 @@ or *fails* because it does not apply; `choice` and `then` act on that outcome.
 sites; `once` stops after the first:
 
 ```diffstatic {data-lang=kotlin}
-rule("neg") { x: Expr -> from { neg(x) }; to { -x } }
+rule("neg") { x: Expr ->
+    from { neg(x) }
+    to { -x }
+}
 strategy { once("neg") }
 
-neg(a)           // →  -a         (first site fires)
-neg(b)           // →  neg(b)     (left untouched — the observable difference)
+neg(a) // →  -a         (first site fires)
+neg(b) // →  neg(b)     (left untouched — the observable difference)
 ```
 
 For nested forms, `topdown` and `bottomup` pick opposite ends. Given `f(f(a))`
 and a rule `f(x) → g(x)`:
 
 ```diffstatic {data-lang=kotlin}
-rule("fg") { x: Expr -> from { f(x) }; to { g(x) } }
+rule("fg") { x: Expr ->
+    from { f(x) }
+    to { g(x) }
+}
 
-strategy { topdown("fg") }    //  f(f(a))  →  g(f(a))   (outer call only)
-strategy { bottomup("fg") }   //  f(f(a))  →  f(g(a))   (inner call only)
+strategy { topdown("fg") } //  f(f(a))  →  g(f(a))   (outer call only)
+strategy { bottomup("fg") } //  f(f(a))  →  f(g(a))   (inner call only)
 ```
 
 Each fires once: `topdown` does not go on to rewrite the inner `f`. To drive it to a fixed point, wrap it in `repeat`.
@@ -323,12 +350,18 @@ Each fires once: `topdown` does not go on to rewrite the inner `f`. To drive it 
 another would have matched too:
 
 ```diffstatic {data-lang=kotlin}
-rule("p2a") { x: Expr -> from { p(x) }; to { A(x) } }
-rule("q2b") { x: Expr -> from { q(x) }; to { B(x) } }
+rule("p2a") { x: Expr ->
+    from { p(x) }
+    to { A(x) }
+}
+rule("q2b") { x: Expr ->
+    from { q(x) }
+    to { B(x) }
+}
 strategy { "p2a" }
 
-p(1)             // →  A(1)
-q(2)             // →  q(2)      (q2b is not named, so it never fires)
+p(1) // →  A(1)
+q(2) // →  q(2)      (q2b is not named, so it never fires)
 ```
 
 A bare rule name is itself the simplest strategy (fire that rule wherever it
@@ -338,11 +371,17 @@ applies).
 and fails as soon as either step fails:
 
 ```diffstatic {data-lang=kotlin}
-rule("p2q") { x: Expr -> from { p(x) }; to { q(x) } }
-rule("q2r") { x: Expr -> from { q(x) }; to { r(x) } }
+rule("p2q") { x: Expr ->
+    from { p(x) }
+    to { q(x) }
+}
+rule("q2r") { x: Expr ->
+    from { q(x) }
+    to { r(x) }
+}
 
-strategy { "p2q" then "q2r" }   //  p(1)  →  q(1)  →  r(1)
-strategy { "q2r" then "p2q" }   //  p(1)  →  p(1)  (q2r fails first ⇒ whole sequence aborts)
+strategy { "p2q" then "q2r" } //  p(1)  →  q(1)  →  r(1)
+strategy { "q2r" then "p2q" } //  p(1)  →  p(1)  (q2r fails first ⇒ whole sequence aborts)
 ```
 
 **Choose with `choice`.** `choice(a, b, …)` runs the first alternative that
@@ -350,11 +389,17 @@ applies, in the order you list them rather than the order the rules are
 declared:
 
 ```diffstatic {data-lang=kotlin}
-rule("toX") { x: Expr -> from { pick(x) }; to { X(x) } }
-rule("toY") { x: Expr -> from { pick(x) }; to { Y(x) } }
+rule("toX") { x: Expr ->
+    from { pick(x) }
+    to { X(x) }
+}
+rule("toY") { x: Expr ->
+    from { pick(x) }
+    to { Y(x) }
+}
 strategy { choice("toY", "toX") }
 
-pick(1)          // →  Y(1)      (prefers its first alternative, though toX is declared first)
+pick(1) // →  Y(1)      (prefers its first alternative, though toX is declared first)
 ```
 
 A non-matching alternative falls through to the next; `choice` fails only if
@@ -365,13 +410,19 @@ none apply.
 identity on failure, so a following step can still run:
 
 ```diffstatic {data-lang=kotlin}
-rule("fg") { x: Expr -> from { f(x) }; to { g(x) } }
+rule("fg") { x: Expr ->
+    from { f(x) }
+    to { g(x) }
+}
 
-strategy { repeat(topdown("fg"), 1) }   //  f(f(f(a)))  →  g(f(f(a)))   (exactly one step)
-strategy { repeat(topdown("fg")) }      //  f(f(a))     →  g(g(a))      (to a fixpoint)
+strategy { repeat(topdown("fg"), 1) } //  f(f(f(a)))  →  g(f(f(a)))   (exactly one step)
+strategy { repeat(topdown("fg")) } //  f(f(a))     →  g(g(a))      (to a fixpoint)
 
-rule("zzz") { x: Expr -> from { zzz(x) }; to { Z(x) } }
-strategy { attempt("zzz") then "fg" }   //  f(a)  →  g(a)   (the missing zzz is rescued, fg still runs)
+rule("zzz") { x: Expr ->
+    from { zzz(x) }
+    to { Z(x) }
+}
+strategy { attempt("zzz") then "fg" } //  f(a)  →  g(a)   (the missing zzz is rescued, fg still runs)
 ```
 
 **Nested patterns.** A pattern can be more than one level deep. `from { f(f(x)) }`
@@ -379,10 +430,13 @@ matches a pair of nested calls and binds `x` to whatever they wrap, so each
 `topdown` step below removes two levels:
 
 ```diffstatic {data-lang=kotlin}
-rule("fg") { x: Expr -> from { f(f(x)) }; to { g(x) } }
+rule("fg") { x: Expr ->
+    from { f(f(x)) }
+    to { g(x) }
+}
 strategy { repeat(topdown("fg"), 2) }
 
-f(f(f(f(a))))    // →  g(g(a))    (step 1 collapses the outer pair, step 2 the inner)
+f(f(f(f(a)))) // →  g(g(a))    (step 1 collapses the outer pair, step 2 the inner)
 ```
 
 With real definitions behind those names — `fun f(v: Int) = v * 2` and
@@ -415,9 +469,12 @@ A strategy that names an unknown rule, or that is malformed, rewrites nothing
 and reports a diagnostic.
 
 ```diffstatic {data-lang=kotlin}
-rule("fg") { x: Expr -> from { f(x) }; to { g(x) } }
-strategy { once("nope") }   //  f(a)  →  f(a)   + "unknown rule name" diagnostic
-strategy { 1 + 2 }          //  f(a)  →  f(a)   + malformed-strategy diagnostic
+rule("fg") { x: Expr ->
+    from { f(x) }
+    to { g(x) }
+}
+strategy { once("nope") } //  f(a)  →  f(a)   + "unknown rule name" diagnostic
+strategy { 1 + 2 } //  f(a)  →  f(a)   + malformed-strategy diagnostic
 ```
 
 A strategy belongs to one box. Rules declared in an ancestor box are inherited

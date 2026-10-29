@@ -20,7 +20,7 @@ import kotlin.math.sqrt
  * separate ONNX graphs — `text_model.onnx` and `vision_model.onnx` — each emit an already-projected
  * 512-vector, so no head has to be reimplemented here.
  *
- * Three things fall out, and the third is the one nothing else offers:
+ * That gives three uses:
  *
  *  1. **Zero-shot classification with no training.** Encode a handful of prompts once, cosine them
  *     against the live frame, take the best. See [ClipVector.classify].
@@ -29,13 +29,11 @@ import kotlin.math.sqrt
  *     projecting the current frame onto it is a continuous parameter that tracks a semantic axis
  *     rather than a pixel statistic. See [ClipVector.axisTo].
  *
- * Encode prompts once, into a `val`, and the text tower is simply not in the per-frame path — there is
- * nothing cleverer to do about it than that.
+ * Encode prompts once, into a `val`, and the text tower stays out of the per-frame path.
  *
  * ## Cosine values are not comparable across modalities
  *
- * The single most misread property of CLIP, and the reason [classify] exists rather than a bare
- * `cosine` threshold. Measured on this checkpoint:
+ * This is why [ClipVector.classify] ranks prompts rather than thresholding a bare cosine. Measured on this checkpoint:
  *
  *  * **text against text** sits in a narrow high cone — `cos("storm","calm") = 0.881`,
  *    `cos("a photo of a cat","a photo of a dog") = 0.931`. Nothing is ever near 0.
@@ -44,17 +42,17 @@ import kotlin.math.sqrt
  *
  * So `0.21` does not mean "unrelated" and `0.88` does not mean "the same". Only *rank* and
  * *difference* carry information: compare one image against several prompts, or track how a
- * projection moves over time. An absolute threshold on a raw cosine will not survive contact.
+ * projection moves over time. An absolute threshold on a raw cosine does not transfer between prompts or scenes.
  *
  * ## Cost
  *
  * Text is ≈5ms per prompt, after the one-off cost of loading the encoder. Vision is ≈36ms at
- * 224x224 on a CPU provider —
- * far cheaper than [DepthAnything], but still not free, so drive it from a worker if it is per-frame.
+ * 224x224 on a CPU provider, far cheaper than [DepthAnything], but still not free, so drive it from a worker if it is per-frame.
  *
- * @see ClipText for the text tower
- * @see ClipImage for the vision tower
+ * The text tower is [ClipText] and the vision tower is [ClipImage].
  */
+
+/** Shared constants and helpers for the two CLIP towers, [ClipText] and [ClipImage]. */
 object Clip {
 
     /** The dimensionality of the shared embedding space for this checkpoint. */
@@ -459,3 +457,43 @@ class ClipImage(
  * because nothing about a fixed prompt changes between frames.
  */
 fun clipEncode(text: String): ClipVector = ClipText.encode(text)
+
+/** The one [ClipImage] behind [clipEncodeImage]; its buffers are reused, so encodes take turns on it. */
+private val sharedClipImage by lazy { ClipImage() }
+
+/**
+ * Encode a picture to a unit-length 512-vector, in the same space as [clipEncode]'s prompts.
+ *
+ * The picture's shorter edge is scaled to 224 and the centre cropped, as [ClipImage.encode] does; alpha
+ * is ignored. One [ClipImage] is shared by every caller and encodes take turns on it, so two boxes
+ * encoding at once queue rather than corrupt each other's input. The first call loads the 335 MB vision
+ * tower, a second or two; after that an encode is about 36 ms on a CPU.
+ *
+ * ```kotlin
+ * val cat = clipEncodeImage(File("public/docs/assets/madp_tetra/tabby_cat.jpg"))
+ * cat.cosine(clipEncode("a photo of a cat"))     // low, as every image–text cosine is: see Clip
+ * ```
+ */
+fun clipEncodeImage(image: java.awt.image.BufferedImage): ClipVector {
+    val w = image.width
+    val h = image.height
+    val argb = image.getRGB(0, 0, w, h, null, 0, w)
+    val rgba = ByteBuffer.allocateDirect(w * h * 4)
+    for (p in argb) {
+        rgba.put((p shr 16 and 0xff).toByte()).put((p shr 8 and 0xff).toByte()).put((p and 0xff).toByte()).put(-1)
+    }
+    rgba.rewind()
+    val encoder = sharedClipImage
+    return synchronized(encoder) { encoder.encode(rgba, w, h) }
+}
+
+/**
+ * [clipEncodeImage] for an image file: anything `javax.imageio` reads (JPEG, PNG, BMP, GIF).
+ *
+ * EXIF orientation is not applied, so a phone photo stored sideways is encoded sideways; CLIP is
+ * mostly indifferent to that, but rotate the file if it matters.
+ */
+fun clipEncodeImage(file: java.io.File): ClipVector {
+    val image = javax.imageio.ImageIO.read(file) ?: error("clipEncodeImage: cannot read an image from $file")
+    return clipEncodeImage(image)
+}

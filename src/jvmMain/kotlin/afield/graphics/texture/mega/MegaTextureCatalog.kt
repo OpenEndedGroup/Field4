@@ -12,6 +12,14 @@ import java.security.MessageDigest
 import kotlin.io.path.extension
 
 /**
+ * The stable image-to-index catalog behind a [MegaTexture], and the on-disk pyramid cache keyed to it.
+ *
+ * [MegaTextureCatalog] assigns each source file an append-only index and detects files that changed
+ * since the last run; [MegaTexturePyramidCache] stores decoded pages so a later run can skip
+ * decoding them.
+ */
+
+/**
  * The set of source images a [MegaTexture] can show, and the index each one answers to.
  *
  * An index is the only name the GPU ever knows: the feedback buffer, the page table and every

@@ -3,6 +3,8 @@ package afield.document.graph
 import afield.app.protocol.GoJobs
 
 import afield.app.diagnostics.BoxOutputLog
+import afield.app.diagnostics.LatencySpans
+import afield.runtime.kotlin.SpareEngines
 import afield.app.diagnostics.ProfileOrigin
 import afield.app.diagnostics.logTime
 import afield.app.notifications.notify
@@ -82,6 +84,20 @@ import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.script.experimental.api.KotlinType
 
+/**
+ * The [Box] model: a box's properties, its `children`/`parents` graph, and the property sets that
+ * decide what is saved and what is sent to the browser.
+ *
+ * [Box] holds its properties in a property bag and implements [HasProperties] and [HasHierarchy].
+ * [Box.connect] and [Box.disconnect] edit the edge sets (`children` by default). The companion's
+ * `ioPersistentProperties` lists what is written to `metadata.edn`, `ioSeparateProperties` maps the
+ * properties written as sidecar files to their extensions (`code` to `kt`, shader stages to `glsl`),
+ * and `uiResyncProperties` lists what is pushed to connected clients when it changes.
+ */
+
+/**
+ * Pending (box, property name) pairs that [doResync] will send to the box's connected clients.
+ */
 var needsResync = ConcurrentSet<Pair<Box, String>>()
 
 /**
@@ -195,8 +211,80 @@ fun textPropertyValue(box: Box, property: String, value: String): Any {
 /** Comma-separated membership used by the frontend and server visibility intersection. */
 var Box.layers by Delegation<String>(defaultValue = { "default" })
 
-/** Persisted frame overrides keyed by layer; updated when the session leaves an active layer. */
-var Box.layerFrames by Delegation<MutableMap<String, Rect>>(defaultValue = { mutableMapOf() })
+/**
+ * Persisted frame overrides keyed by layer; updated when the session leaves an active layer.
+ *
+ * Reads return a view that marks the document dirty on every write through it, so box code's
+ * `layerFrames[layer] = rect` saves like any other edit; the stored value stays a plain map. The
+ * fingerprint tripwire (`DocumentShutdownFlush`, channel `warning,persistence`) caught that
+ * in-place write in a live session on 2026-10-23 (N1022-2).
+ */
+var Box.layerFrames: MutableMap<String, Rect>
+    get() {
+        @Suppress("UNCHECKED_CAST")
+        val stored = getPropertyRaw("layerFrames") as? MutableMap<String, Rect>
+            ?: (mutableMapOf<String, Rect>().also { setPropertyRaw("layerFrames", it) })
+        return PersistentMapView(this, "layerFrames", stored)
+    }
+    set(value) {
+        setPropertyRaw("layerFrames", if (value is PersistentMapView<String, Rect>) value.backing else value)
+    }
+
+/** A [MutableMap] over [backing] that tells [box] its persistent property [property] changed on each write. */
+internal class PersistentMapView<K, V>(
+    private val box: Box,
+    private val property: String,
+    val backing: MutableMap<K, V>,
+) : MutableMap<K, V> by backing {
+    private fun changed() = box.notePersistentChange(property)
+    override fun put(key: K, value: V): V? = backing.put(key, value).also { if (it != value) changed() }
+    override fun putAll(from: Map<out K, V>) { backing.putAll(from); if (from.isNotEmpty()) changed() }
+    override fun remove(key: K): V? = backing.remove(key).also { if (it != null) changed() }
+    override fun clear() { if (backing.isNotEmpty()) { backing.clear(); changed() } }
+    // Writes through the entry, key and value views mark too (N1023-5): `entries.removeIf { ... }`,
+    // `keys.retainAll(...)`, an iterator's `remove()`, `entry.setValue(...)`.
+    override val entries: MutableSet<MutableMap.MutableEntry<K, V>>
+        get() = MarkingSet(backing.entries, ::changed) { MarkingEntry(it, ::changed) }
+    override val keys: MutableSet<K> get() = MarkingSet(backing.keys, ::changed) { it }
+    override val values: MutableCollection<V> get() = MarkingCollection(backing.values, ::changed) { it }
+    override fun equals(other: Any?): Boolean = backing == other
+    override fun hashCode(): Int = backing.hashCode()
+    override fun toString(): String = backing.toString()
+}
+/** A view of a map's entry, key or value collection that calls [changed] after each removal through it. */
+internal open class MarkingCollection<T>(
+    private val backing: MutableCollection<T>,
+    protected val changed: () -> Unit,
+    private val wrap: (T) -> T,
+) : MutableCollection<T> by backing {
+    override fun iterator(): MutableIterator<T> = object : MutableIterator<T> {
+        val inner = backing.iterator()
+        override fun hasNext() = inner.hasNext()
+        override fun next(): T = wrap(inner.next())
+        override fun remove() { inner.remove(); changed() }
+    }
+    override fun remove(element: T): Boolean = backing.remove(element).also { if (it) changed() }
+    override fun removeAll(elements: Collection<T>): Boolean = backing.removeAll(elements.toSet()).also { if (it) changed() }
+    override fun retainAll(elements: Collection<T>): Boolean = backing.retainAll(elements.toSet()).also { if (it) changed() }
+    override fun removeIf(filter: java.util.function.Predicate<in T>): Boolean = backing.removeIf(filter).also { if (it) changed() }
+    override fun clear() { if (backing.isNotEmpty()) { backing.clear(); changed() } }
+    override fun equals(other: Any?): Boolean = backing == other
+    override fun hashCode(): Int = backing.hashCode()
+    override fun toString(): String = backing.toString()
+}
+
+internal class MarkingSet<T>(backing: MutableSet<T>, changed: () -> Unit, wrap: (T) -> T) :
+    MarkingCollection<T>(backing, changed, wrap), MutableSet<T>
+
+/** A map entry whose [setValue] calls [changed] when the value differs. */
+internal class MarkingEntry<K, V>(private val inner: MutableMap.MutableEntry<K, V>, private val changed: () -> Unit) :
+    MutableMap.MutableEntry<K, V> by inner {
+    override fun setValue(newValue: V): V = inner.setValue(newValue).also { if (it != newValue) changed() }
+    override fun equals(other: Any?): Boolean = inner == other
+    override fun hashCode(): Int = inner.hashCode()
+    override fun toString(): String = inner.toString()
+}
+
 var Box.templateId by Delegation<String?>(defaultValue = { null }) // tracks which template this box was created from
 
 const val METAROOT_ID = "metaroot"
@@ -218,27 +306,28 @@ val metaroot: Box by lazy {
     root
 }
 
+/** Attach a document under its workspace projects, with the global metaroot above those scopes. */
 fun attachRootToMetaroot(root: Box) {
     if (root == metaroot) return
-    val meta = metaroot
-    if (!root.parents.contains(meta)) {
-        root.parents.add(meta)
-        needsResync.add(root to "parents")
+    val scopes = if (root.inside.ephemeral) emptyList() else
+        afield.document.workspace.WorkspaceProjectScopes.forDocument(java.io.File(root.inside.filename))
+    val parents = scopes.map { it.root }.ifEmpty { listOf(metaroot) }
+    val old = root.parents.filter { it === metaroot || afield.document.workspace.WorkspaceProjectScopes.isProjectRoot(it) }
+    old.filter { it !in parents }.forEach {
+        it.children.remove(root); root.parents.remove(it)
+        needsResync.add(root to "parents"); needsResync.add(it to "children")
     }
-    if (!meta.children.contains(root)) {
-        meta.children.add(root)
-        needsResync.add(meta to "children")
+    parents.forEach { parent ->
+        if (root.parents.add(parent)) needsResync.add(root to "parents")
+        if (parent.children.add(root)) needsResync.add(parent to "children")
     }
 }
 
 fun detachRootFromMetaroot(root: Box) {
     if (root == metaroot) return
-    val meta = metaroot
-    if (root.parents.remove(meta)) {
-        needsResync.add(root to "parents")
-    }
-    if (meta.children.remove(root)) {
-        needsResync.add(meta to "children")
+    root.parents.filter { it === metaroot || afield.document.workspace.WorkspaceProjectScopes.isProjectRoot(it) }.forEach { parent ->
+        if (root.parents.remove(parent)) needsResync.add(root to "parents")
+        if (parent.children.remove(root)) needsResync.add(parent to "children")
     }
 }
 
@@ -378,6 +467,8 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
         // released them through the run scopes (DocumentToolRegistry); this covers an engine
         // recycled without a retire, whose compiled tool bodies go with it.
         runCatching { afield.ai.tools.DocumentToolRegistry.clearBox(this) }
+        // A spare engine for this box's next run was built for the engine being retired here.
+        SpareEngines.discard(this)
         // Disposes the engine through releaseDiscardedKi, and leaves a later `ki` able to rebuild.
         if (!kiDelegate.discard()) return
         // The engine that ran this preamble no longer exists; see the KDoc above for the race this
@@ -419,6 +510,22 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
     }
 
     var frame by Delegation<Rect>(defaultValue = { Rect(0.0, 0.0, 0.0, 0.0) }, hook = ::onFrameChange)
+
+    /**
+     * A colour the canvas lays over this box, to show some state of it at a glance: a CSS colour
+     * such as `"hsla(28, 80%, 56%, 0.2)"` or `"rgba(255, 184, 108, 0.15)"`, or `""` for none.
+     *
+     * The colour, at its own alpha, washes the box, over the running stripes and under its title;
+     * the same colour made nearly opaque edges it and glows faintly. Change it as often as you
+     * like: it is sent to the canvas like `frame`, but never saved, so a reopened document starts
+     * untinted. `playScore` tints the boxes its playhead is over this way.
+     *
+     * ```
+     * tint = "hsla(140, 70%, 50%, 0.18)" // lit
+     * tint = ""                          // back to normal
+     * ```
+     */
+    var tint by Delegation<String>(defaultValue = { "" })
     private val viewportDelegation = Delegation<Rect>(defaultValue = { Rect(0.0, 0.0, 0.0, 0.0) }, hook = ::onViewportChange)
 
     /**
@@ -531,6 +638,9 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
                     needsResync.add(to to counterName)
 
                 (if (::inside.isInitialized) inside else thisSessionInfo.get()).topologyGeneration++
+                // The edge sets are mutated in place, so setPropertyRaw never sees this change.
+                notePersistentChange(property)
+                if (counterName != null) to.notePersistentChange(counterName)
 
                 if (property == "children") {
                     onTopologyChange(this, true, to)
@@ -560,6 +670,8 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
                 needsResync.add(to to counterName)
 
             (if (::inside.isInitialized) inside else thisSessionInfo.get()).topologyGeneration++
+            notePersistentChange(property)
+            if (counterName != null) to.notePersistentChange(counterName)
             if (property == "children") {
                 onTopologyChange(this, false, to)
             }
@@ -624,6 +736,8 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "compute",
             "compute_s",
             "customization",
+            // Box.tint: a transient canvas colour; resynced like frame, deliberately not persisted.
+            "tint",
             "_tombstone",
             // Set by reloadPersonal when a box's Kotlin environment is dropped out from under it.
             // Has to reach the client or the mark is invisible and the box looks fine while holding
@@ -848,6 +962,28 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             Regex(""".*_editorState""")
         )
 
+        /** The pattern entries of [ioPersistentProperties], rebuilt when that set changes size. */
+        @Volatile
+        private var persistentPatterns: Pair<Int, List<Regex>> = -1 to emptyList()
+
+        /**
+         * True when [name] is written to `metadata.edn` by every document: listed in
+         * [ioPersistentProperties] (names or patterns) and not [isNeverPersisted]. A document's own
+         * header additions are not consulted; this is the cheap check [Box.notePersistentChange]
+         * makes on every property write.
+         */
+        fun isPersistentName(name: String): Boolean {
+            if (isNeverPersisted(name)) return false
+            val names = ioPersistentProperties
+            if (name in names) return true
+            var cached = persistentPatterns
+            if (cached.first != names.size) {
+                cached = names.size to names.filter { p -> p.any { it in ".*[(+?|" } }.map { it.toRegex() }
+                persistentPatterns = cached
+            }
+            return cached.second.any { it.matches(name) }
+        }
+
         /** True when [name] must not be serialised to disk. See [ioNeverPersistedProperties]. */
         fun isNeverPersisted(name: String): Boolean =
             ioNeverPersistedProperties.any { it.matches(name) }
@@ -884,7 +1020,9 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
                 val a = boxes[0]
                 var names = ""
                 boxes.drop(1).forEach {
+                    val already = it in a.children
                     a.connect(it)
+                    if (!already) afield.tools.automation.OperationTranscript.recordConnect(a, it, connected = true)
                     names += it.name + ", "
                 }
                 notify("Connected ${a.name} -> ${names.trim(' ', ',')}")
@@ -903,7 +1041,9 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
                 val a = boxes[0]
                 var names = ""
                 boxes.drop(1).forEach {
+                    val was = it in a.children
                     a.disconnect(it)
+                    if (was) afield.tools.automation.OperationTranscript.recordConnect(a, it, connected = false)
                     names += it.name + ", "
                 }
                 notify("Disconnected ${a.name} from ${names.trim(' ', ',')}")
@@ -991,6 +1131,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
                     notify("Deleted 0 boxes")
                 } else {
                     val root = thisSessionInfo.get().root
+                    targets.forEach { target -> afield.tools.automation.OperationTranscript.recordDelete(target) }
                     targets.forEach { target ->
                         // Ensure live parents don't retain stale nested links to deleted boxes.
                         if (target.nestedIn != null) {
@@ -1053,6 +1194,8 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             properties[name] = incoming
         }
 
+        // A Delegation default materialising an empty collection on first read is not an edit.
+        if (oldValue != incoming && !(oldValue == null && isEmptyContainer(incoming))) notePersistentChange(name)
         FlightRecorder.recordTrackedPropertyChange(this, name, oldValue, incoming)
         // A raw write to a property declared `propDown` reruns its readers, exactly as assigning it does.
         afield.runtime.lifecycle.ReactiveRuns.noteRawWrite(this, name, oldValue, incoming)
@@ -1070,7 +1213,32 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
         if (doResync && uiResyncProperties.any { it.matches(name) }) {
             if (oldValue != null) needsResync.add(this to name)
         }
+        if (oldValue != null) notePersistentChange(name)
         FlightRecorder.recordTrackedPropertyChange(this, name, oldValue, null)
+    }
+
+    /**
+     * Tells this box's document that [name], a property written to `metadata.edn`, changed, so the
+     * autosave loop and the shutdown flush save it.
+     *
+     * Both used to save only when a *sidecar* property (`code`, shaders, ...) was pending, through
+     * explicit `markSidecarPending` calls at a handful of handlers. Every other persistent change —
+     * a new box with no code, a move, a rename, a delete (`_tombstone`), a connection, `autorun` —
+     * marked nothing, so it reached disk only if some sidecar edit happened to follow it, and was
+     * lost if Field stopped first. Measured 2026-10-20 (`dev_docs/SIGINT_SHUTDOWN.md`, "Which edits
+     * reached disk"). This is the one place all of those pass through. Nothing is marked while the
+     * document loads, for a scratch or read-only document, or for a property that is never written.
+     */
+    private fun isEmptyContainer(value: Any?): Boolean =
+        (value is Collection<*> && value.isEmpty()) || (value is Map<*, *> && value.isEmpty())
+
+    internal fun notePersistentChange(name: String) {
+        if (!::inside.isInitialized) return
+        val info = inside
+        if (info.loading || !info.writesToDisk) return
+        if (info.boxes[id] !== this && info.root !== this) return
+        if (!isPersistentName(name)) return
+        info.markSidecarPending(id, name)
     }
 
     override fun toString(): String {
@@ -1524,8 +1692,12 @@ internal fun Box.publishGoJobs() {
     send(Message("go-jobs").payload(GoJobs(id, live.size, live.values.distinct())))
 }
 
+// Concurrent writers can remove the last entry after size was observed. Map.toMap()'s
+// singleton shortcut assumes that entry still exists; HashMap copies through the iterator.
+internal fun snapshotRunningStates(states: Map<String, RunningState>): Map<String, RunningState> = HashMap(states)
+
 internal fun Box.clearRunningStates() {
-    val states = currentRunningStates.toMap()
+    val states = snapshotRunningStates(currentRunningStates)
     currentRunningStates.clear()
     if (!isInsideInitialized()) return
     states.forEach { (strand, state) ->
@@ -1690,7 +1862,7 @@ fun syncExecutionStatus() {
             if (box.properties.get("_tombstone").isTrue()) return@forEach
 
             box.syncJobRunningState()
-            val activeStates = box.currentRunningStates.toMap()
+            val activeStates = snapshotRunningStates(box.currentRunningStates)
             activeStates.forEach { (strand, state) ->
                 val message = Message("is-running").payload(
                     IsRunning(
@@ -1721,7 +1893,11 @@ fun box(
     u: String,
     createIfMissing: Boolean = true,
     initIfCreated: Boolean = true,
-    root: SessionInformation = thisSessionInfo.get()
+    root: SessionInformation = thisSessionInfo.get(),
+    // Called with the box when this call is the one that made it. Message handlers run
+    // concurrently, so "was it there before I looked?" is only answered race-free here: the canvas
+    // sends a new box's name, frame and code at once, and the macro recorder must see one create.
+    onCreated: ((Box) -> Unit)? = null,
 ): Box {
     if (u == METAROOT_ID) return metaroot
     if (u == "root") return root.root
@@ -1742,6 +1918,8 @@ fun box(
         // cleaned up with no boxes to retire, and the new box's engine outlived its document and
         // ran its bootstrap. Visible, the box is retired, and [Box.disposeKi] disposes the engine
         // the build returns.
+        // Before the engine: building it can take a second, and other handlers already see the box.
+        if (created === b) onCreated?.invoke(b)
         if (initIfCreated && created === b) b.ki
         return b
     } else return root.boxes[u]!!
@@ -1814,6 +1992,7 @@ import afield.lang.python.*
 import afield.lang.rectsl.registerRectslStudioTools
 import afield.lang.rectsl.renderRectslToImages
 import afield.lang.remotejs.*
+import afield.lang.rpn.*
 import afield.lang.stacksl.*
 import afield.lang.stacksl.evolution.*
 import afield.math.autodiff.*
@@ -1856,6 +2035,7 @@ import afield.study.ui.*
 import afield.tools.automation.*
 import afield.tools.docs.*
 import afield.ui.controls.*
+import afield.ui.film.*
 import afield.ui.layout.*
 import afield.ui.notation.*
 import afield.ui.output.*
@@ -1915,10 +2095,22 @@ private fun KotlinScriptEngine.kotlinStartupEngineLabel(): String {
  * the engine is disposed only once this function returns, which can be after the runloop picks the
  * bootstrap up.
  */
-fun makeKI(box: Box, reason: String = "makeKI call", superseded: () -> Boolean = { false }): KotlinScriptEngine {
+fun makeKI(box: Box, reason: String = "makeKI call", superseded: () -> Boolean = { false }): KotlinScriptEngine =
+    buildKI(box, reason, superseded, spare = false)
+
+/**
+ * [makeKI] for [afield.runtime.kotlin.SpareEngines]: an engine for [box]'s next run, built while its
+ * current engine is still the box's. So it leaves that engine's bookkeeping alone: the `_preamble`
+ * record, `offline` and the topology generation all describe the engine in use, and [adoptKI]
+ * brings the box up to date when the spare is installed.
+ */
+internal fun makeSpareKI(box: Box, superseded: () -> Boolean): KotlinScriptEngine =
+    buildKI(box, "spare for the next run", superseded, spare = true)
+
+private fun buildKI(box: Box, reason: String, superseded: () -> Boolean, spare: Boolean): KotlinScriptEngine {
 
     // force resync of actions per box
-    box.actions
+    if (!spare) box.actions
 
     logTime("ki_standardlib") {
         val startupId = kotlinStartupLogIds.incrementAndGet()
@@ -1927,7 +2119,9 @@ fun makeKI(box: Box, reason: String = "makeKI call", superseded: () -> Boolean =
             "info,ki,startup",
             "request #$startupId async reason=$reason box=${box.kotlinStartupLabel()} caller=$requestedFrom"
         )
-        val ki = createKotlinScriptEngine(implicitReceivers = listOf(KotlinType(Box::class)), filePrefix = box.id)
+        val ki = LatencySpans.time("engine.create", box = box.id, detail = "async") {
+            createKotlinScriptEngine(implicitReceivers = listOf(KotlinType(Box::class)), filePrefix = box.id)
+        }
         ki.associatedBox = box  // Set the box reference for @exported support
         // Close the engine's readiness gate now (synchronously, before returning `ki`) so any
         // exec/evaluate that follows waits for the async intro below, which opens it again.
@@ -1968,17 +2162,23 @@ fun makeKI(box: Box, reason: String = "makeKI call", superseded: () -> Boolean =
                             "info,ki,startup",
                             "begin imports #$startupId box=${box.kotlinStartupLabel()} introLength=${intro.length}"
                         )
-                        ki.bootstrap(
-                            intro, implicits = listOf(box)
-                        )
-                        lprintln("info,ki,startup", "reset preamble cache #$startupId box=${box.kotlinStartupLabel()}")
-                        box.properties.remove("_preamble")
-                        lprintln(
-                            "info,ki,startup",
-                            "complete #$startupId box=${box.kotlinStartupLabel()} box is no longer offline"
-                        )
-                        box.offline = false
-                        si?.topologyGeneration++
+                        LatencySpans.time("engine.bootstrap", box = box.id, detail = "async") {
+                            ki.bootstrap(
+                                intro, implicits = listOf(box)
+                            )
+                        }
+                        if (spare) {
+                            lprintln("info,ki,startup", "complete #$startupId spare box=${box.kotlinStartupLabel()}")
+                        } else {
+                            lprintln("info,ki,startup", "reset preamble cache #$startupId box=${box.kotlinStartupLabel()}")
+                            box.properties.remove("_preamble")
+                            lprintln(
+                                "info,ki,startup",
+                                "complete #$startupId box=${box.kotlinStartupLabel()} box is no longer offline"
+                            )
+                            box.offline = false
+                            si?.topologyGeneration++
+                        }
                     }
                 }
             } finally {
@@ -1992,14 +2192,23 @@ fun makeKI(box: Box, reason: String = "makeKI call", superseded: () -> Boolean =
     }
 }
 
+/**
+ * A fresh engine for [box], ready for its code: the box's spare from
+ * [afield.runtime.kotlin.SpareEngines] when it has one, otherwise one built and bootstrapped here.
+ */
 suspend fun makeKIHere(box: Box, reason: String = "makeKIHere call"): KotlinScriptEngine {
+    if (!box.properties["_tombstone"].isTrue()) {
+        SpareEngines.take(box)?.let { return adoptKI(box, it, reason) }
+    }
     val startupId = kotlinStartupLogIds.incrementAndGet()
     val requestedFrom = kotlinStartupStack()
     lprintln(
         "info,ki,startup",
         "request #$startupId sync reason=$reason box=${box.kotlinStartupLabel()} caller=$requestedFrom"
     )
-    val ki = createKotlinScriptEngine(implicitReceivers = listOf(KotlinType(Box::class)), filePrefix = box.id)
+    val ki = LatencySpans.time("engine.create", box = box.id, detail = "sync") {
+        createKotlinScriptEngine(implicitReceivers = listOf(KotlinType(Box::class)), filePrefix = box.id)
+    }
     ki.associatedBox = box  // Set the box reference for @exported support
     val si = thisSessionInfo.get()
     if (box.properties["_tombstone"].isTrue()) {
@@ -2016,9 +2225,11 @@ suspend fun makeKIHere(box: Box, reason: String = "makeKIHere call"): KotlinScri
                 "info,ki,startup",
                 "begin imports #$startupId box=${box.kotlinStartupLabel()} introLength=${intro.length}"
             )
-            ki.bootstrap(
-                intro, implicits = listOf(box)
-            )
+            LatencySpans.time("engine.bootstrap", box = box.id, detail = "sync") {
+                ki.bootstrap(
+                    intro, implicits = listOf(box)
+                )
+            }
             val preamble = box.preamble
             if (preamble.isNotBlank()) {
                 lprintln(
@@ -2029,6 +2240,27 @@ suspend fun makeKIHere(box: Box, reason: String = "makeKIHere call"): KotlinScri
             preamble.let { ki.exec(it, implicits = listOf(box)) }
             lprintln("info,ki,startup", "complete #$startupId box=${box.kotlinStartupLabel()}")
         }
+    }
+    si?.topologyGeneration++
+    box.offline = false
+    return ki
+}
+
+/**
+ * Finish a spare engine from [makeSpareKI] as [makeKIHere] finishes one it built: run the box's
+ * preamble in it (after its bootstrap, which `exec` waits for) and bring the box's bookkeeping up to
+ * date.
+ */
+private suspend fun adoptKI(box: Box, ki: KotlinScriptEngine, reason: String): KotlinScriptEngine {
+    val si = thisSessionInfo.get()
+    lprintln("info,ki,startup", "adopt spare engine reason=$reason box=${box.kotlinStartupLabel()} engine=${ki.kotlinStartupEngineLabel()}")
+    box.actions
+    Box.withBoxContext(box) {
+        val preamble = box.preamble
+        if (preamble.isNotBlank()) {
+            lprintln("info,ki,startup", "begin preamble spare box=${box.kotlinStartupLabel()} preambleLength=${preamble.length}")
+        }
+        ki.exec(preamble, implicits = listOf(box))
     }
     si?.topologyGeneration++
     box.offline = false

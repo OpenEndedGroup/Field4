@@ -11,11 +11,12 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="path_trace_renderer" index="0" -->
 
 ```edn [field-box id="path_trace_renderer" role="properties"]
-{"id" "path_trace_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["path_trace_hidden_environment"] "properties" {"children" #{#afield/box "path_trace_hidden_environment"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 320.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "path_trace_renderer_code_.kt" "lines" 9 "characters" 219 "sha256" "9c1f4775efdc0df7175c2b6ee2bcf7bda2d78cce64864e565119faeac51ef21f"}]}
+{"id" "path_trace_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["path_trace_hidden_environment"] "properties" {"children" #{#afield/box "path_trace_hidden_environment"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 320.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "path_trace_renderer_code_.kt" "lines" 10 "characters" 220 "sha256" "d9a523d21baae9bd403e31097aeb6360849ac2629258b04f0145cc3d54c4d2a9"}]}
 ```
 
 ```kotlin [field-property box="path_trace_renderer" name="code" path="path_trace_renderer_code_.kt"]
 import afield.graphics.vulkan.util.Options
+
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableHDR = false
@@ -31,16 +32,21 @@ start(renderer::run)
 <!-- field-box id="path_trace_hidden_environment" index="1" -->
 
 ```edn [field-box id="path_trace_hidden_environment" role="properties"]
-{"id" "path_trace_hidden_environment" "index" 1 "name" "environment lighting without a visible sky" "parents" ["root" "path_trace_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "path_trace_renderer"} "name" "environment lighting without a visible sky" "_tombstone" false "frame" #afield/rect [320.0 180.0 350.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "path_trace_hidden_environment_code_.kt" "lines" 18 "characters" 855 "sha256" "bead5ac54cd5b8e8ab2b9c6a6842aa958222165aea0c3c7d8c7340de01b6eeeb"}]}
+{"id" "path_trace_hidden_environment" "index" 1 "name" "environment lighting without a visible sky" "parents" ["root" "path_trace_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "path_trace_renderer"} "name" "environment lighting without a visible sky" "_tombstone" false "frame" #afield/rect [320.0 180.0 350.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "path_trace_hidden_environment_code_.kt" "lines" 25 "characters" 889 "sha256" "9803893402681c2315563f5cc5824e6dd72b7a3aee4da57acdebdd592c8d13bb"}]}
 ```
 
 ```kotlin [field-property box="path_trace_hidden_environment" name="code" path="path_trace_hidden_environment_code_.kt"]
 import afield.graphics.scene.fabricated.PathTraceDemo
 import afield.graphics.scene.fabricated.PathTracingRenderer
 import java.io.File
+
 prop<PathTracingRenderer>(tracer)
-tracer = PathTraceDemo.install(renderer, width=1280, height=720,
-    environmentPath=File("public/docs/assets/fabricate_demo/venice_sunset_1k.exr").absolutePath)
+tracer = PathTraceDemo.install(
+    renderer,
+    width = 1280,
+    height = 720,
+    environmentPath = File("public/docs/assets/fabricate_demo/venice_sunset_1k.exr").absolutePath,
+)
 tracer.samplesPerFrame = 1
 tracer.maxBounces = 5
 tracer.indirectClamp = 10f // Optional biased suppression of indirect fireflies.
@@ -50,7 +56,9 @@ tracer.showEnvironment = false
 tracer.blitToScreen()
 // This coroutine only announces capture readiness; the named scene owns the tracer.
 frames {
-    while (tracer.samples < 1024) { frame() }
+    while (tracer.samples < 1024) {
+        frame()
+    }
     println("hidden environment study converged: ${tracer.samples} samples")
 }
 ```

@@ -1,0 +1,29 @@
+{
+  "baseline": "5e02bad8c",
+  "sources": [
+    {
+      "path": "public/docs/audio_ai_analysis.md",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/audio_ai_analysis.yaml",
+      "kotlinBodies": 3,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/audio_ai_corpus_microscope.md",
+      "kotlinBodies": 5,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "public/docs/audio_ai_spectral_embeddings.md",
+      "kotlinBodies": 2,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    }
+  ]
+}

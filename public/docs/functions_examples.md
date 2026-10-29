@@ -32,11 +32,7 @@ with(Functions) {
     }
 
     fun frame(color: Vec4 = vec(1.0, 1.0, 1.0, 0.28), thickness: Double = 1.6): FLine = fline {
-        moveTo(x0, y0)
-        lineTo(x1, y0)
-        lineTo(x1, y1)
-        lineTo(x0, y1)
-        lineTo(x0, y0)
+        rect(x0, y0, x1 - x0, y1 - y0)
         this.color = color
         this.thickness = thickness
     }
@@ -102,11 +98,7 @@ with(Functions) {
     val c = asLine(held, vec(0.66, 0.82, 1.0, 1.0), 2.0)
 
     val frame = fline {
-        moveTo(x0, y0)
-        lineTo(x1, y0)
-        lineTo(x1, y1)
-        lineTo(x0, y1)
-        lineTo(x0, y0)
+        rect(x0, y0, x1 - x0, y1 - y0)
         color = vec(1.0, 1.0, 1.0, 0.22)
         thickness = 1.4
     }
@@ -118,7 +110,7 @@ with(Functions) {
         thickness = 1.0
     }
 
-    lines([frame, center, a, b, c], channel = "pulse-stack", w = 980.0, h = 400.0, fitToSize = false)
+    lines(frame, center, a, b, c, channel = "pulse-stack", w = 980.0, h = 400.0, fitToSize = false)
     markdown("notes", "**Pulse stack**\n\npulseTrain → clip → blur → sampleHold")
 }
 ```
@@ -168,11 +160,7 @@ with(Functions) {
         this.thickness = thickness
     }
     val frame = fline {
-        moveTo(x0, y0)
-        lineTo(x1, y0)
-        lineTo(x1, y1)
-        lineTo(x0, y1)
-        lineTo(x0, y0)
+        rect(x0, y0, x1 - x0, y1 - y0)
         color = vec(1.0, 1.0, 1.0, 0.28)
         thickness = 1.6
     }
@@ -228,11 +216,7 @@ with(Functions) {
     }
     val guides = [
         fline {
-            moveTo(x0, y0)
-            lineTo(x1, y0)
-            lineTo(x1, y1)
-            lineTo(x0, y1)
-            lineTo(x0, y0)
+            rect(x0, y0, x1 - x0, y1 - y0)
             color = vec(1.0, 1.0, 1.0, 0.28)
             thickness = 1.6
         },
@@ -305,11 +289,7 @@ loop {
         }
         val guides = [
             fline {
-                moveTo(x0, y0)
-                lineTo(x1, y0)
-                lineTo(x1, y1)
-                lineTo(x0, y1)
-                lineTo(x0, y0)
+                rect(x0, y0, x1 - x0, y1 - y0)
                 color = vec(1.0, 1.0, 1.0, 0.28)
                 thickness = 1.6
             },
@@ -371,21 +351,18 @@ with(Functions) {
 
     fun parametric(xf: Functions.Fn, yf: Functions.Fn, samples: Int = 1400): FLine {
         val f = FLine()
+        f.breakNext()
         for (i in 0 until samples) {
             val t = tDomain.lerp(i.toDouble() / (samples - 1).coerceAtLeast(1).toDouble())
             val x = cx + xf.eval(t) * 290.0
             val y = cy + yf.eval(t) * 190.0
-            if (i == 0) f.moveTo(x, y) else f.lineTo(x, y)
+            f.lineTo(x, y)
         }
         return f
     }
 
     val frame = fline {
-        moveTo(120.0, 60.0)
-        lineTo(880.0, 60.0)
-        lineTo(880.0, 440.0)
-        lineTo(120.0, 440.0)
-        lineTo(120.0, 60.0)
+        rect(120.0, 60.0, 760.0, 380.0)
         color = vec(1.0, 1.0, 1.0, 0.24)
         thickness = 1.4
     }
@@ -440,11 +417,9 @@ with(Functions) {
 
     val theta = ramp(start = 0.0, end = 1.0, domain = tDomain) * Math.PI * 2.0 * 6.0
 
-    val xFn =
-        (radial * cos(frequency = 0.0, phase = 0.0, amplitude = 1.0, offset = 0.0, domain = tDomain)).mapY { _ -> 0.0 }
-
     // Explicit x/y from radial + theta, sampled directly for clarity.
     val line = FLine()
+    line.breakNext()
     val samples = 1800
     for (i in 0 until samples) {
         val t = tDomain.lerp(i.toDouble() / (samples - 1).coerceAtLeast(1).toDouble())
@@ -452,35 +427,25 @@ with(Functions) {
         val ang = theta.eval(t)
         val x = cx + kotlin.math.cos(ang) * r * 280.0
         val y = cy + kotlin.math.sin(ang) * r * 210.0
-        if (i == 0) line.moveTo(x, y) else line.lineTo(x, y)
+        line.lineTo(x, y)
     }
 
     line.color = vec(0.62, 0.95, 1.0, 0.95)
     line.thickness = 2.0
 
     val frame = fline {
-        moveTo(120.0, 60.0)
-        lineTo(880.0, 60.0)
-        lineTo(880.0, 440.0)
-        lineTo(120.0, 440.0)
-        lineTo(120.0, 60.0)
+        rect(120.0, 60.0, 760.0, 380.0)
         color = vec(1.0, 1.0, 1.0, 0.22)
         thickness = 1.4
     }
 
     val ringGuide = fline {
-        val n = 220
-        for (i in 0..n) {
-            val a = i.toDouble() / n.toDouble() * Math.PI * 2.0
-            val x = cx + kotlin.math.cos(a) * 210.0
-            val y = cy + kotlin.math.sin(a) * 210.0
-            if (i == 0) moveTo(x, y) else lineTo(x, y)
-        }
+        circle(cx, cy, 210.0, segments = 220)
         color = vec(1.0, 1.0, 1.0, 0.1)
         thickness = 1.0
     }
 
-    lines([frame, ringGuide, line], channel = "xy-rosette", w = 1000.0, h = 500.0, fitToSize = false)
+    lines(frame, ringGuide, line, channel = "xy-rosette", w = 1000.0, h = 500.0, fitToSize = false)
     markdown("notes", "**2D rosette**\n\nradial(t) + angle(t) stack mapped into x/y.")
 }
 ```
@@ -508,16 +473,12 @@ with(Functions) {
     }
 
     val frame = fline {
-        moveTo(40.0, 50.0)
-        lineTo(940.0, 50.0)
-        lineTo(940.0, 390.0)
-        lineTo(40.0, 390.0)
-        lineTo(40.0, 50.0)
+        rect(40.0, 50.0, 900.0, 340.0)
         color = vec(1.0, 1.0, 1.0, 0.22)
         thickness = 1.3
     }
 
-    lines([frame, line], channel = "edited-stack", w = 980.0, h = 420.0, fitToSize = false)
+    lines(frame, line, channel = "edited-stack", w = 980.0, h = 420.0, fitToSize = false)
     markdown("notes", "**Before**: simple sin + pulse stack.")
 }
 :::after
@@ -533,11 +494,7 @@ with(Functions) {
     }
 
     val frame = fline {
-        moveTo(40.0, 50.0)
-        lineTo(940.0, 50.0)
-        lineTo(940.0, 390.0)
-        lineTo(40.0, 390.0)
-        lineTo(40.0, 50.0)
+        rect(40.0, 50.0, 900.0, 340.0)
         color = vec(1.0, 1.0, 1.0, 0.24)
         thickness = 1.4
     }
@@ -549,7 +506,7 @@ with(Functions) {
         thickness = 1.0
     }
 
-    lines([frame, center, line], channel = "edited-stack", w = 980.0, h = 420.0, fitToSize = false)
+    lines(frame, center, line, channel = "edited-stack", w = 980.0, h = 420.0, fitToSize = false)
     markdown("notes", "**After**: shaped pulse + fbm detail + stronger soft clip.")
 }
 ```
@@ -781,11 +738,7 @@ with(Functions) {
     }
     val guides = [
         fline {
-            moveTo(x0, y0)
-            lineTo(x1, y0)
-            lineTo(x1, y1)
-            lineTo(x0, y1)
-            lineTo(x0, y0)
+            rect(x0, y0, x1 - x0, y1 - y0)
             color = vec(1.0, 1.0, 1.0, 0.28)
             thickness = 1.6
         },
@@ -858,11 +811,7 @@ with(Functions) {
     }
     val guides = [
         fline {
-            moveTo(x0, y0)
-            lineTo(x1, y0)
-            lineTo(x1, y1)
-            lineTo(x0, y1)
-            lineTo(x0, y0)
+            rect(x0, y0, x1 - x0, y1 - y0)
             color = vec(1.0, 1.0, 1.0, 0.28)
             thickness = 1.6
         },
@@ -982,11 +931,7 @@ with(Functions) {
     }
     val guides = [
         fline {
-            moveTo(x0, y0)
-            lineTo(x1, y0)
-            lineTo(x1, y1)
-            lineTo(x0, y1)
-            lineTo(x0, y0)
+            rect(x0, y0, x1 - x0, y1 - y0)
             color = vec(1.0, 1.0, 1.0, 0.28)
             thickness = 1.6
         },
@@ -2080,7 +2025,19 @@ val ys = sin(2.0).sampleAt(doubleArrayOf(0.0, 0.25, 0.5))
 with(Functions) {
     val f = fbmPerlin(8, 2.0, 1.0)
     val pts = f.samplesAt(DoubleArray(32) { it / 31.0 })
-    f.withName("samplesAt source").plot()
+    // Screen y grows downward; negate the scale so larger values appear higher.
+    val curve = f.toFLine(samples = 600, xScale = 980.0, yScale = -170.0, xOffset = 30.0, yOffset = 220.0)
+    curve.color = vec(0.62, 0.95, 1.0, 0.7)
+    val markers = pts.map { sample ->
+        fline {
+            circle(30.0 + sample.x * 980.0, 220.0 - sample.y * 170.0, 4.0)
+            color = vec(1.0, 0.75, 0.4, 1.0)
+            filled = true
+            stroked = false
+        }
+    }
+    lines(curve, *markers.toTypedArray(), channel = "samples", w = 1040.0, h = 440.0, fitToSize = false)
+    markdown("notes", "${pts.size} samples at the requested coordinates are marked on the source curve.")
 }
 ```
 
@@ -2170,8 +2127,11 @@ val line = sin(2.0).toFLine(samples = 600)
 :::static
 with(Functions) {
     val f = sin(2.0) + fbm(5, 6.0, 0.2)
-    val line = f.toFLine(samples = 1400, xScale = 980.0, yScale = 170.0, xOffset = 30.0, yOffset = 220.0)
-    f.withName("toFLine source").plot()
+    // Screen y grows downward; negate the scale so larger values appear higher.
+    val line = f.toFLine(samples = 1400, xScale = 980.0, yScale = -170.0, xOffset = 30.0, yOffset = 220.0)
+    line.color = vec(0.62, 0.95, 1.0, 1.0)
+    line.thickness = 2.0
+    lines(line, channel = "converted", w = 1040.0, h = 440.0, fitToSize = false)
 }
 ```
 
@@ -2308,7 +2268,19 @@ val zc = sin(6.0).sampleZeroCrossings()
 with(Functions) {
     val source = sin(3.0) + fbm(1, 7.0, 0.25)
     val peaks = source.samplePeaks(20)
-    source.withName("samplePeaks source").plot()
+    // Screen y grows downward; negate the scale so larger values appear higher.
+    val curve = source.toFLine(samples = 600, xScale = 980.0, yScale = -170.0, xOffset = 30.0, yOffset = 220.0)
+    curve.color = vec(0.62, 0.95, 1.0, 0.7)
+    val markers = peaks.map { sample ->
+        fline {
+            circle(30.0 + sample.x * 980.0, 220.0 - sample.y * 170.0, 4.0)
+            color = vec(1.0, 0.75, 0.4, 1.0)
+            filled = true
+            stroked = false
+        }
+    }
+    lines(curve, *markers.toTypedArray(), channel = "peaks", w = 1040.0, h = 440.0, fitToSize = false)
+    markdown("notes", "${peaks.size} local maxima, ranked by absolute value are marked on the source curve.")
 }
 ```
 
@@ -2561,16 +2533,29 @@ val field = rbfField(samples)
 
 // how well each sample is predicted by the other 59: the way to compare kernels
 println("leave-one-out RMSE, thin plate: " + "%.4f".format(field.leaveOneOutRmse()))
-println("leave-one-out RMSE, gaussian(2): " + "%.4f".format(rbfField(samples, RbfKernels.gaussian(2.0)).leaveOneOutRmse()))
+println(
+    "leave-one-out RMSE, gaussian(2): " + "%.4f".format(rbfField(samples, RbfKernels.gaussian(2.0)).leaveOneOutRmse()),
+)
 
-fun image(g: (Double, Double) -> Double) = Img(200, 200, 1, FloatArray(200 * 200) {
-    g((it % 200) / 100.0, (it / 200) / 100.0).toFloat()
-})
-showImg(montage([
-    "the function" to image(::f).colormap("coolwarm", -1.4f, 1.4f),
-    "the fit" to image { x, y -> field(x, y) }.colormap("coolwarm", -1.4f, 1.4f),
-    "error x 10" to image { x, y -> 10 * (field(x, y) - f(x, y)) }.colormap("coolwarm", -1.4f, 1.4f)
-], columns = 3, cellSide = 260))
+fun image(g: (Double, Double) -> Double) = Img(
+    200,
+    200,
+    1,
+    FloatArray(200 * 200) {
+        g((it % 200) / 100.0, (it / 200) / 100.0).toFloat()
+    },
+)
+showImg(
+    montage(
+        [
+            "the function" to image(::f).colormap("coolwarm", -1.4f, 1.4f),
+            "the fit" to image { x, y -> field(x, y) }.colormap("coolwarm", -1.4f, 1.4f),
+            "error x 10" to image { x, y -> 10 * (field(x, y) - f(x, y)) }.colormap("coolwarm", -1.4f, 1.4f),
+        ],
+        columns = 3,
+        cellSide = 260,
+    ),
+)
 ```
 
 The thin-plate kernel is the default because it has no shape parameter to get wrong. With it the field
@@ -4152,11 +4137,7 @@ with(Functions) {
         this.thickness = thickness
     }
     val frame = fline {
-        moveTo(x0, y0)
-        lineTo(x1, y0)
-        lineTo(x1, y1)
-        lineTo(x0, y1)
-        lineTo(x0, y0)
+        rect(x0, y0, x1 - x0, y1 - y0)
         color = vec(1.0, 1.0, 1.0, 0.28)
         thickness = 1.6
     }
@@ -4298,22 +4279,26 @@ This example rewrites a nested graph in two ways: it changes a descendant `saw` 
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/reference/fn-rewrite-language-plot.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" name="functions-ref-fn-rewrite-language-plot"}
 :::static
-with(Functions) {
-    val base = (sin(sin(saw(0.18))) * 0.45) over (0.0..3.0)
-    val changed =
-        base.rewriteKotlin(
-            """
+// A rewrite with @{...} blocks compiles them in this box, so it runs after the box's code has
+// finished: go { } starts once this run returns.
+go {
+    with(Functions) {
+        val base = (sin(sin(saw(0.18))) * 0.45) over (0.0..3.0)
+        val changed =
+            base.rewriteKotlin(
+                """
 #fnrewrite
 sin/*/saw => op=triangle
 sin/**/[tag=number][value>0.15] => *= @{1.0 + depth * 0.08}
 **/[role=amplitude] => *= @{if (parentOp == "sin") 0.75 else 1.0}
 """,
-        )
-    base.withName("before rewrite").plot(0.0..3.0, channel = "before", heightPx = 240, title = "before rewrite")
-    changed.withName("after rewrite").plot(0.0..3.0, channel = "after", heightPx = 240, title = "after rewrite")
-    (changed - base)
-        .withName("rewrite delta")
-        .plot(0.0..3.0, channel = "delta", heightPx = 220, title = "after - before")
+            )
+        base.withName("before rewrite").plot(0.0..3.0, channel = "before", heightPx = 240, title = "before rewrite")
+        changed.withName("after rewrite").plot(0.0..3.0, channel = "after", heightPx = 240, title = "after rewrite")
+        (changed - base)
+            .withName("rewrite delta")
+            .plot(0.0..3.0, channel = "delta", heightPx = 220, title = "after - before")
+    }
 }
 ```
 

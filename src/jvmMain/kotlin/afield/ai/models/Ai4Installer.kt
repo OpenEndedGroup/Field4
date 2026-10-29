@@ -1,3 +1,14 @@
+/**
+ * Installs Field's AI assistant: the websocket handlers behind the box and document chat, and the code tools the model calls.
+ *
+ * [installAi4] registers the `ai-assist`, `ai-chat-*` and related message handlers, picks an
+ * [LlmBridge] for the configured provider, and keeps one conversation thread per chat key.
+ * [Ai4CodeToolProviders] implements the tools that read, edit, compile and evaluate box code,
+ * shared by the chat and the MCP backdoor. The top-level helpers ([uniqueBoxOrRefuse],
+ * [setupSnapshot], [clipToolText], [primitiveToolValue]) turn boxes and runtime values into
+ * tool results.
+ */
+
 package afield.ai.models
 
 import afield.ai.conversation.AiBoxConversation
@@ -477,7 +488,7 @@ class Ai4CodeToolProviders(
                                     onEvalException = { throwable ->
                                         diagnostics += CompileDiagnostic(
                                             severity = "ERROR",
-                                            message = throwable.message ?: throwable::class.java.name
+                                            message = evaluationFailureMessage(throwable)
                                         )
                                     }
                                 )
@@ -488,7 +499,7 @@ class Ai4CodeToolProviders(
             }.onFailure { throwable ->
                 diagnostics += CompileDiagnostic(
                     severity = "ERROR",
-                    message = throwable.message ?: throwable::class.java.name
+                    message = evaluationFailureMessage(throwable)
                 )
             }
 
@@ -569,7 +580,10 @@ class Ai4CodeToolProviders(
                     expression = expression,
                     valueKind = "error",
                     diagnostics = diagnostics,
-                    message = if (diagnostics.isEmpty()) "Expression did not produce a result." else "Expression failed."
+                    // The reason goes in the message: it is what the chat's tool disclosure shows (2026-10-22, the
+                    // disclosure said only "Expression failed." for a NoClassDefFoundError).
+                    message = if (diagnostics.isEmpty()) "Expression did not produce a result."
+                        else "Expression failed: " + diagnostics.joinToString("; ") { it.message }.take(400)
                 )
             }
         }
@@ -597,7 +611,10 @@ class Ai4CodeToolProviders(
                 file = fileRefFor(docName, ref.uid, ref.property),
                 message = "Unknown box '${ref.uid}'. Give `file` as the box's name or uid, or as afield://$docName/<box uid>/code."
             )
-        val source = stagedOrCurrentSource(target, ref.property, req.source)
+        // A blank `source` means "the box's code", not "compile nothing": on 2026-10-28 a local model passed
+        // source="" and got success with no diagnostics for a box that did not compile, then believed it.
+        val explicit = req.source?.takeIf { it.isNotBlank() }
+        val source = stagedOrCurrentSource(target, ref.property, explicit)
             ?: return@compileKotlin CompileKotlinResult(
                 success = false,
                 file = fileRefFor(docName, target.id, ref.property),
@@ -685,7 +702,7 @@ class Ai4CodeToolProviders(
         val changedNames = changed.filter { it.changed || it.cacheChanged }.joinToString(", ") { it.property }
         val message = buildString {
             append(if (success) "Kotlin compiled successfully" else "Kotlin compile failed")
-            append(" for ${target.id}; snippets=$snippetsCompiled")
+            append(" for ${target.id}: ${source.length} chars of ${if (explicit != null) "the given source" else "the box's code"}; snippets=$snippetsCompiled")
             if (changedNames.isNotBlank()) append("; setup changed: $changedNames")
         }
         lprintln("info,ai4", message)
@@ -1518,7 +1535,7 @@ fun installAi4() {
             ListDefinitionsResult(definitions = currentDefs + otherDefs)
         }
 
-        val listFileContents = {
+        val listFileContents = listFileContents@{
             val relatedBoxes = graphNeighborBoxes(box)
             val entries = buildList {
                 addAll(contentEntriesForBox(box, "current box (${boxLabel(box)})"))
@@ -1526,8 +1543,16 @@ fun installAi4() {
                     addAll(contentEntriesForBox(related.box, related.relation))
                 }
             }
+            // An empty box is an answer, not a failure: the first thing asked of a new box is often
+            // "put it in this box", and an exception there cost a local model a round (2026-10-22).
             if (entries.isEmpty()) {
-                throw IllegalStateException("No text content available for box '${box.id}'.")
+                return@listFileContents ListContentsResult(
+                    fileRef = fileRefFor(docName, box.id, exec.property),
+                    content = "",
+                    language = languageNameForBoxProperty(box, exec.property),
+                    message = "Box '${boxLabel(box)}' (${box.id}) has no text yet, and no connected box has any. " +
+                        "Write its ${exec.property} with SetBoxPropertyRequest, then run it with RunBoxRequest."
+                )
             }
             val hints = buildList {
                 addAll(preambleHintsForBox(box, "current box (${boxLabel(box)})"))
@@ -1880,7 +1905,8 @@ fun installAi4() {
                 success = result.success,
                 message = result.message,
                 status = result.status,
-                model = SemanticRetrievalService.modelInfo(),
+                // Searches leave the embedder description to SemanticRetrievalStatusRequest: it was ~1k chars per call.
+                model = null,
                 availableCorpora = SemanticRetrievalService.availableCorpora,
                 results = result.results
             )
@@ -2363,13 +2389,22 @@ fun installAi4() {
                         editResult = null
                     }
                 }
-            } catch (e: Exception) {
-                val outcome = if (isAiTurnCancellation(e)) "cancelled" else "failed"
-                AiBoxConversation.failed(box, "AI ${exec.kind} $outcome: ${e.message ?: e::class.java.simpleName}")
+            } catch (e: Throwable) {
                 // A failed tool round can leave a provider thread awaiting an unsent result.
                 // Continue from saved text next time instead of reusing that incomplete chain.
-                threadByKey.remove(conversationKey)
-                chatThreadByKey.remove(conversationKey)
+                // That holds for an Error too: one that escaped this catch (a box tool's StackOverflowError,
+                // 2026-10-18) kept the chain, and every later turn in the chat was refused.
+                // A stateless provider (local, OpenRouter) is the exception: the bridge holds its whole history and
+                // answers any open calls itself, so the thread is consistent after a failed request, and dropping it
+                // reseeded the next turn from the prose transcript without a single tool result (2026-10-22).
+                if (!(e is Exception && activeAiProviderRuntimeConfig().usesStatelessResponses)) {
+                    threadByKey.remove(conversationKey)
+                    chatThreadByKey.remove(conversationKey)
+                }
+                // An OutOfMemoryError or the like still ends the turn the way it did; invokeOnCompletion records it.
+                if (e is VirtualMachineError && e !is StackOverflowError) throw e
+                val outcome = if (isAiTurnCancellation(e)) "cancelled" else "failed"
+                AiBoxConversation.failed(box, "AI ${exec.kind} $outcome: ${e.message ?: e::class.java.simpleName}")
                 if (livePrefix != null) {
                     sendFinalVisibleAiPanel(
                         "_AI ${exec.kind} $outcome: ${e.message ?: e::class.java.simpleName}_"
@@ -2449,9 +2484,14 @@ fun installAi4() {
                         latestProgressOpen = false,
                         additions = additions
                     )
-                    // It ends with the waiting row, saved with the wait itself; StudyBuildAwaits resumes the chat.
-                    val next = if (suspension == null) rendered else
-                        rendered.trimEnd() + "\n" + awaits.suspend(sessionInfo, box, suspension, exec.property, exec.maxToolRounds).row
+                    // It ends with the waiting row, saved with the wait itself; StudyBuildAwaits resumes the chat. A
+                    // question needs no one to resume it: its row asks, and the person's next message is the answer.
+                    val next = if (suspension == null) rendered else buildString {
+                        append(rendered.trimEnd())
+                        if (suspension.jobs.isNotEmpty())
+                            append("\n").append(awaits.suspend(sessionInfo, box, suspension, exec.property, exec.maxToolRounds).row)
+                        suspension.question?.let { append("\n").append(afield.ai.conversation.AiChatBlock.questionRow(it.question, it.choices)) }
+                    }
                     saveHistory(next)
                     sendToPanel(next)
                     val changedEntries = provisionalDelta(provisionalBeforeAi, provisionalEntries(docPath))
@@ -2472,7 +2512,8 @@ fun installAi4() {
                             )
                         )
                     }
-                    notify(if (suspension != null) "Waiting for builds without the model; the chat carries on when they finish."
+                    notify(if (suspension?.question != null) "The AI has a question for you in the chat."
+                        else if (suspension != null) "Waiting for builds without the model; the chat carries on when they finish."
                         else "Reply ready in the chat.", "AI4")
                 } else if (editResult != null) {
                     threadByKey[conversationKey] = editResult.threadState
@@ -2755,7 +2796,8 @@ fun installAi4() {
                         success = result.success,
                         message = result.message,
                         status = result.status,
-                        model = SemanticRetrievalService.modelInfo(),
+                        // Searches leave the embedder description to SemanticRetrievalStatusRequest: it was ~1k chars per call.
+                        model = null,
                         availableCorpora = SemanticRetrievalService.availableCorpora,
                         results = result.results
                     )
@@ -2858,3 +2900,16 @@ private fun formatMarkdown(text: String): String {
     return result
 }
 
+/**
+ * An evaluation failure as the model and the person should read it: the exception's type as well as its
+ * message. A NoClassDefFoundError's message is only a class name, which read as an error in the expression;
+ * it means Field's own classes were rewritten under the running JVM (a rebuild), and the JVM keeps failing
+ * that call until Field restarts.
+ */
+internal fun evaluationFailureMessage(throwable: Throwable): String {
+    val text = "${throwable::class.java.simpleName}: ${throwable.message ?: ""}".trimEnd(':', ' ')
+    return if (throwable is LinkageError)
+        "$text. Field's own classes changed on disk while it was running (a rebuild); this is not the expression's fault, " +
+            "and every evaluation will fail the same way until Field is restarted. Check values with RunBoxRequest and println instead."
+    else text
+}

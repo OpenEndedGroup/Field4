@@ -1,5 +1,11 @@
 val gammaEvents = GammaEventDetector(windowSize = 64, tailProbabilityThreshold = 0.03f, influence = 0.15f)
-val betaEvents = BetaEventDetector(windowSize = 64, supportMin = -1f, supportMax = 1f, lowerTailThreshold = 0.04f, upperTailThreshold = 0.04f)
+val betaEvents = BetaEventDetector(
+    windowSize = 64,
+    supportMin = -1f,
+    supportMax = 1f,
+    lowerTailThreshold = 0.04f,
+    upperTailThreshold = 0.04f,
+)
 
 val raw = mutableListOf<Float>()
 val eg = mutableListOf<Float>()

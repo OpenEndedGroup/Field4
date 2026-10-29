@@ -30,13 +30,16 @@ easier way to write a caption or a table.
 This box writes into two channels:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/box_output/two_channels.png" capture="box" wait="3" padding="16" timeout="180" embed=true open-outputs="false" name="box-output-two-channels" w="560" h="80" alt="A Field box with two output panels under it. The first, titled 'summary', is open and shows a short Markdown table of three readings: tempo 122, voices 4, key D minor. The second, titled 'raw', is open below it and shows the same readings as one line of plain text."}
-markdown("summary", """
+markdown(
+    "summary",
+    """
     | reading | value |
     |---|---|
     | tempo | 122 |
     | voices | 4 |
     | key | D minor |
-""")
+""",
+)
 
 display("raw", "<pre>tempo=122 voices=4 key=Dm</pre>")
 displayOpen("raw")
@@ -84,9 +87,12 @@ and `chart` are left:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/box_output/open_and_clear.png" capture="box" wait="3" padding="16" timeout="180" embed=true open-outputs="false" name="box-output-open-and-clear" w="560" h="80" alt="A Field box with two open output panels. 'notes' holds one line of text, 'three passes, no retries'. 'chart' shows a row of five blue bars of increasing height drawn as inline SVG. There is no third panel."}
 display("notes", "<p>three passes, no retries</p>")
-display("chart", (1..5).joinToString("", "<svg width='220' height='90'>", "</svg>") {
-    "<rect x='${it * 40 - 30}' y='${90 - it * 16}' width='28' height='${it * 16}' fill='#4a90d9'/>"
-})
+display(
+    "chart",
+    (1..5).joinToString("", "<svg width='220' height='90'>", "</svg>") {
+        "<rect x='${it * 40 - 30}' y='${90 - it * 16}' width='28' height='${it * 16}' fill='#4a90d9'/>"
+    },
+)
 display("scratch", "temporary")
 
 displayOpen("notes")
@@ -146,6 +152,35 @@ running anything. That memory keeps the most recent 128 panels per box.
 A few channel names belong to Field: `nested` holds a box's nested child boxes (the display
 functions never remove it), `ai-chat` is the box's AI chat, `layers` is the layers palette, and
 `editor:<property>` is an embedded editor for one property. Pick other names for your own output.
+
+## Publishing a document
+
+Run the boxes whose outputs you want to share, then choose **Publish document for the web (.zip)**
+from the command palette. The publication panel reports how many output channels were captured
+and lists any capture warnings. Download the archive, unzip it, and serve the folder with any
+static web host. Open its `index.html` to browse the boxes, notes, code and captured outputs.
+The published document works without Field or an internet connection once served locally.
+
+| Output | Published form |
+| --- | --- |
+| FLine and SVG drawings | Vector markup at the captured view |
+| HTML and `.h` values | Rendered contents, styles and images |
+| Plotly, including charts inside local iframes | Frozen trace data with browser zoom and hover |
+| `.h2`, tree and column inspectors | Current view and materialized rows |
+| Three.js | Frozen geometry with orbit, zoom, parts visibility, X-ray and local GLB download |
+
+Plots that depend on external image or map data are captured as still images and listed with a
+capture warning.
+
+Published Three.js views use the same renderer as Field. Drag to rotate, scroll to zoom, expand
+**Parts** to hide or restore geometry, or enable **X-ray** and adjust its opacity. Camera linking,
+review notes and editing controls are hidden because they need Field. A view with custom viewer
+tools or an animated shot falls back to a still image with its controls removed.
+
+Controls that call back into Field are disabled. Inspector rows that have not been loaded are
+outside the snapshot. A channel that cannot be captured is listed with its reason in the
+publication panel and in the published document. Cross-origin frames and live audio/video need
+their own exported media.
 
 ## See also
 

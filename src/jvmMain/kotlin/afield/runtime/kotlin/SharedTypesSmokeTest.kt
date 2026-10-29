@@ -1,5 +1,7 @@
 package afield.runtime.kotlin
 
+import afield.app.server.SessionInformation
+import afield.document.graph.Box
 import afield.app.diagnostics.named
 import afield.data.table.div
 import afield.data.table.get
@@ -42,18 +44,19 @@ expect:
  *
  * The assertions cover the whole arc the feature exists for:
  *
- *  - [testPublishProducesLoadableClasses] — publish compiles and lands on the shared loader.
- *  - [testPublishedTypeIsExportable] — the payoff for `@exported`. A published type passes
+ *  - `testPublishProducesLoadableClasses` — publish compiles and lands on the shared loader.
+ *  - `testPublishedTypeIsExportable` — the payoff for `@exported`. A published type passes
  *    [ExportedTypeNames], so it crosses between boxes with its real type where a box-declared class
  *    can only ever cross as `Any?`. This is the join between the two halves of the work.
- *  - [testFreshEngineGetsFullFidelity] — named arguments, `copy`, destructuring and the data-class
+ *  - `testFreshEngineGetsFullFidelity` — named arguments, `copy`, destructuring and the data-class
  *    `toString` all survive, which only happens because these are real compiled classes.
  *
- * [measureRepublish] is a measurement rather than an assertion, in the style of
+ * `measureRepublish` is a measurement rather than an assertion, in the style of
  * `SharedTypesClasspathSpike`: it reports whether a *second* publish of the same class name actually
  * takes effect. It may well not — `gen-1` was added to the classloader before `gen-2`, and URL
  * search order is first-wins — and if so that is a real constraint on the feature, not a test bug.
  */
+
 object SharedTypesSmokeTest {
 
     private const val SOURCE_V1 = """
@@ -86,6 +89,7 @@ data class Foo(val a: Double, val b: Double) {
             )
 
             val first = testPublishProducesLoadableClasses()
+            testReadOnlyPublication()
             testPublishedTypeIsExportable()
             testFreshEngineGetsFullFidelity()
             measureRepublish(first)
@@ -123,6 +127,29 @@ data class Foo(val a: Double, val b: Double) {
         require(loaded.name == "shared.Foo") { "unexpected class: ${loaded.name}" }
         println("  published gen-${published.generation} -> ${published.classFiles}, loadable as ${loaded.name}")
         return published
+    }
+
+    private fun testReadOnlyPublication() {
+        val document = Files.createTempDirectory("shared-types-readonly-smoke").toFile()
+        val metadata = File(document, "metadata.edn").apply { writeText("{}\n") }
+        val before = metadata.readBytes()
+        val root = Box("root")
+        val session = SessionInformation(document.absolutePath, document.name, root = root, readOnly = true)
+        root.inside = session
+        val published = SharedTypes.publish(
+            "package readonlyshared; data class Sample(val value: Int)", document,
+            refreshOthers = false, session = session
+        )
+        require(published.ok) { "read-only publish failed: ${published.log}" }
+        val output = requireNotNull(published.dir)
+        require(!output.toPath().startsWith(document.toPath())) { "classes were written into the document" }
+        require(document.list()!!.toList() == listOf("metadata.edn") && metadata.readBytes().contentEquals(before)) {
+            "read-only publication changed the document"
+        }
+        val type = KotlinInterface2.sharedClassLoader!!.loadClass("readonlyshared.Sample")
+        require(type.getConstructor(Int::class.javaPrimitiveType).newInstance(7).toString() == "Sample(value=7)")
+        println("  read-only publication: real classes load from temporary storage; document unchanged")
+        document.deleteRecursively()
     }
 
     /**

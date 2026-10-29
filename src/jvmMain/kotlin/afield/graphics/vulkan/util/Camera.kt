@@ -1,5 +1,11 @@
 package afield.graphics.vulkan.util
 
+/**
+ * The Vulkan renderer's look-at camera: a position, a target and an up vector, with a [SuperProjection] for its projection.
+ *
+ * [Camera] supplies the model-view matrix as a uniform and moves in world or camera-local terms: dolly, pan, yaw, pitch, roll, and rotation around either the camera position or the target. [OrbitControls] drives it from the mouse, and `CameraPose.kt` converts it to and from a rigid pose.
+ */
+
 import afield.graphics.vulkan.Renderer
 import afield.graphics.vulkan.buffers.HasUniform
 import afield.document.context.fromContext

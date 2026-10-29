@@ -43,6 +43,10 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.coroutines.CoroutineContext
 
 /**
+ * JSON request bindings that let a box's output iframe, or Kotlin code, call a handler on that box over Field's WebSocket.
+ */
+
+/**
  * Bind an output iframe's JSON requests to this box, using Field's existing WebSocket server.
  * Import `/output_requests.js` in the iframe and call `outputRequests(binding.id).request(data)`.
  * Kotlin tools call the same binding's suspend [OutputRequestBinding.request] directly.

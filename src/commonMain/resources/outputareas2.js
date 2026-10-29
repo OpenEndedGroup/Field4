@@ -1,7 +1,9 @@
 import { mountStateTreeBrowser } from "./stateTreeBrowser.js";
 import { aiChatMarkdownToHtml, aiChatHistoryToHtml, aiChatSetToolFamilies, send, sendWithReply } from "./afield.mjs";
 import { renderAiChatFences } from "./aiChatFenceRenderers.js";
+import { typesetAiChatMath } from "./aiChatMath.js";
 import { installAiChatFenceCatalog } from "./aiChatFenceCatalog.js";
+import { mountLocalAiFeedback } from "./localAiFeedback.js";
 
 // Rebuild every open chat once, for a catalog that arrived after it first rendered.
 function rerenderOpenChats() {
@@ -1894,10 +1896,12 @@ function renderChatMessages(messages, markdown, options) {
         });
         decorateAfieldLinks(messages);
         applyCodeHighlight(messages);
-        let pendingFenceRenders = renderAiChatFences(messages, (event) => {
+        const onRenderLayout = (event) => {
                 if (event === "settled") pendingFenceRenders--;
                 finish();
-        });
+        };
+        let pendingFenceRenders = renderAiChatFences(messages, onRenderLayout);
+        pendingFenceRenders += typesetAiChatMath(messages, onRenderLayout);
         const images = Array.from(messages.querySelectorAll("img"));
         images.forEach(img => {
                 const size = dimensions.get(img.getAttribute("src"));
@@ -1985,6 +1989,16 @@ function ensureAiChat(container, uid, property) {
                         event.preventDefault();
                         event.stopPropagation();
                         rewindConversation(Number(turn.dataset.aiTurn), turn.dataset.aiText || "", turnAction.dataset.aiAction === "edit");
+                        return;
+                }
+                const answer = target.closest(".ai-chat-question-choice");
+                if (answer) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        if (answer.disabled) return;
+                        // The agent's question is answered by the person's next message: send the choice as one.
+                        textarea.value = answer.dataset.aiAnswer || answer.textContent || "";
+                        submitPrompt();
                         return;
                 }
                 const button = target.closest(".ai-chat-copy");
@@ -2465,6 +2479,7 @@ function ensureAiChat(container, uid, property) {
                         textarea.focus();
                 }
         });
+        mountLocalAiFeedback(root);
         root.appendChild(messages);
         root.appendChild(inputWrap);
         container.innerHTML = "";

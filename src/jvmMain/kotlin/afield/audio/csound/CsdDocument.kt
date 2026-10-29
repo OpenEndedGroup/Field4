@@ -1,4 +1,9 @@
 package afield.audio.csound
+/**
+ * Reads a Csound box's text as a `.csd` document and maps box lines to its options, orchestra,
+ * score and instruments.
+ */
+
 
 /**
  * A Csound box's text, read as a `.csd` — the unified file format Csound has used since the late

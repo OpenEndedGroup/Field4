@@ -585,3 +585,13 @@ Six files, 60 tests. Four of them start a real Ktor application; two read source
 
 **If you change a guard, revert it and watch the suite before trusting the green.** Every
 count in those files was observed, not predicted.
+
+### Kit library routes (2026-10-22)
+
+Welcome adds eight state-changing kit routes and four read routes, inventoried in
+`server_surface_inventory.md` and `FieldApiCorsExposureTest`. These use the same application-wide
+browser-origin policy and loopback bind default as Welcome's Maven and project controls. They add
+no route-specific access policy: the current mutating census is **56 of 64** without one. Registering
+a package only snapshots it; runtime preparation and restart, document activation and the optional
+existing-project launcher are explicit actions. The existing-project adapter verifies the dedicated
+host's workspace before reusing its port. Older measurements and counts above remain historical.

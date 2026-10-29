@@ -14,18 +14,18 @@ operations:
       properties:
         code: |
           import afield.graphics.vulkan.util.Options
-          
+
           prop<Window>(window)
           prop<Renderer>(renderer)
-          
+
           Options.enableHDR = false
           Options.profiling = false
-          
+
           once.renderer {
               window = Window("External browser surface macOS smoke")
               Renderer(window)
           }
-          
+
           println("external browser surface renderer ready")
           start(renderer::run)
   - create:
@@ -35,94 +35,102 @@ operations:
       properties:
         code: |
           import afield.graphics.vulkan.Target
-          import afield.graphics.render.TexturePreviewCache
           import afield.media.browser.*
-          import afield.graphics.vulkan.targets.RenderToTexture
-          import afield.graphics.texture.MetalIOSurface
-          import afield.math.linalg.vec
-          import org.lwjgl.vulkan.VK10.*
           import java.io.ByteArrayInputStream
           import java.util.Base64
           import java.util.concurrent.CopyOnWriteArrayList
           import javax.imageio.ImageIO
-          
-          val releases = CopyOnWriteArrayList<BrowserFrameRelease>()
-          val source = RenderToTexture(renderer) {
-              width = 64
-              height = 64
-              format = VK_FORMAT_B8G8R8A8_UNORM
-              useDepth = false
-              colorSampled = true
-              exportMetalIOSurface = true
-              clearColor = vec(0.125, 0.5, 0.875, 1.0)
-              debugName = "external-browser-macos-smoke-source"
-          }
-          val surface = MacExternalBrowserSurface(
-              renderer,
-              ExternalBrowserSurfaceSpec(64, 64, BrowserSurfacePixelFormat.BGRA8_UNORM, slotCount = 2)
-          ) { releases.add(it) }
-          
-          val ioSurfaceRef = source.colorImageRefs.first()!!.exportMetalIOSurfaceRef()
-          val ioSurfaceId = MetalIOSurface.ioSurfaceId(ioSurfaceRef)
-          require(ioSurfaceId != 0L) { "MoltenVK did not export an IOSurface" }
-          val ioSurfacePort = MetalIOSurface.createMachPort(ioSurfaceRef)
-          require(ioSurfacePort != 0) { "could not create an IOSurface Mach port" }
-          require(
-              surface.offerFrame(
-                  ExternalBrowserFrame(
-                      streamId = 1,
-                      frameId = 1,
-                      slot = 0,
-                      width = 64,
-                      height = 64,
-                      pixelFormat = BrowserSurfacePixelFormat.BGRA8_UNORM,
-                      handle = ExternalBrowserImageHandle.MacIOSurfaceMachPort(ioSurfacePort)
-                  )
-              ) == BrowserFrameOfferResult.ACCEPTED
-          )
-          
-          renderer.renderList.others["external-browser-macos-smoke-source"] = source
-          renderer.renderList.others["external-browser-macos-smoke-copy"] =
-              Target { command, _ -> surface.prepareSampledImagesFor(command) }
-          
-          var ticks = 0
-          loop {
-              ticks++
-              val release = releases.firstOrNull()
-              if (release == null && ticks < 600) {
-                  frame()
-              } else {
-                  require(release != null) { "no browser release after $ticks ticks" }
-                  require(release.reason == BrowserFrameReleaseReason.PRESENTED) {
-                      "browser frame release failed: $release"
-                  }
-                  val html: String = TexturePreviewCache.capture(
-                      renderer,
-                      surface.imageView.image,
-                      VK_FORMAT_B8G8R8A8_UNORM,
-                      64,
-                      64,
-                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                      64
-                  ) ?: throw IllegalStateException("resident texture readback failed")
-                  val encoded = Regex("base64,([^']+)").find(html)?.groupValues?.get(1)
-                      ?: throw IllegalStateException("PNG payload missing")
-                  val image = ImageIO.read(ByteArrayInputStream(Base64.getDecoder().decode(encoded)))
-                  val argb = image.getRGB(32, 32)
-                  val red = (argb ushr 16) and 255
-                  val green = (argb ushr 8) and 255
-                  val blue = argb and 255
-                  println("external-browser-macos id=$ioSurfaceId rgb=$red,$green,$blue release=$release")
-                  require(red in 28..36 && green in 124..132 && blue in 219..227) {
-                      "unexpected copied pixel $red,$green,$blue"
-                  }
-                  println("external-browser-macos PASS")
-                  end()
+          import org.lwjgl.vulkan.VK10.*
+
+          // Capture the renderer before the frame coroutine starts.
+          val owner = renderer
+          frames {
+              val releases = CopyOnWriteArrayList<BrowserFrameRelease>()
+              val source = RenderToTexture(owner) {
+                  width = 64
+                  height = 64
+                  format = VK_FORMAT_B8G8R8A8_UNORM
+                  useDepth = false
+                  colorSampled = true
+                  exportMetalIOSurface = true
+                  clearColor = vec(0.125, 0.5, 0.875, 1.0)
+                  debugName = "external-browser-macos-smoke-source"
               }
-          }.end {
-              renderer.renderList.others.remove("external-browser-macos-smoke-copy")
-              renderer.renderList.others.remove("external-browser-macos-smoke-source")
-              surface.close()
+              MacExternalBrowserSurface(
+                      owner,
+                      ExternalBrowserSurfaceSpec(64, 64, BrowserSurfacePixelFormat.BGRA8_UNORM, slotCount = 2),
+                  ) {
+                      releases.add(it)
+                  }
+                  .use { surface ->
+                      val copyTarget = Target { command, _ ->
+                          surface.prepareSampledImagesFor(command)
+                      }
+                      try {
+                          val ioSurfaceRef = source.colorImageRefs.first()!!.exportMetalIOSurfaceRef()
+                          val ioSurfaceId = MetalIOSurface.ioSurfaceId(ioSurfaceRef)
+                          require(ioSurfaceId != 0L) { "MoltenVK did not export an IOSurface" }
+                          val ioSurfacePort = MetalIOSurface.createMachPort(ioSurfaceRef)
+                          require(ioSurfacePort != 0) { "could not create an IOSurface Mach port" }
+                          require(
+                              surface.offerFrame(
+                                  ExternalBrowserFrame(
+                                      streamId = 1,
+                                      frameId = 1,
+                                      slot = 0,
+                                      width = 64,
+                                      height = 64,
+                                      pixelFormat = BrowserSurfacePixelFormat.BGRA8_UNORM,
+                                      handle = ExternalBrowserImageHandle.MacIOSurfaceMachPort(ioSurfacePort),
+                                  ),
+                              ) == BrowserFrameOfferResult.ACCEPTED,
+                          )
+
+                          owner.renderList.others["external-browser-macos-smoke-source"] = source
+                          owner.renderList.others["external-browser-macos-smoke-copy"] = copyTarget
+
+                          var ticks = 0
+                          while (true) {
+                              ticks++
+                              val release = releases.firstOrNull()
+                              if (release == null && ticks < 600) {
+                                  frame()
+                              } else {
+                                  require(release != null) { "no browser release after $ticks ticks" }
+                                  require(release.reason == BrowserFrameReleaseReason.PRESENTED) {
+                                      "browser frame release failed: $release"
+                                  }
+                                  val html: String = TexturePreviewCache.capture(
+                                      owner,
+                                      surface.imageView.image,
+                                      VK_FORMAT_B8G8R8A8_UNORM,
+                                      64,
+                                      64,
+                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                      64,
+                                  ) ?: throw IllegalStateException("resident texture readback failed")
+                                  val encoded =
+                                      Regex("base64,([^']+)").find(html)?.groupValues?.get(1)
+                                          ?: throw IllegalStateException("PNG payload missing")
+                                  val image = ImageIO.read(ByteArrayInputStream(Base64.getDecoder().decode(encoded)))
+                                  val argb = image.getRGB(32, 32)
+                                  val red = (argb ushr 16) and 255
+                                  val green = (argb ushr 8) and 255
+                                  val blue = argb and 255
+                                  println("external-browser-macos id=$ioSurfaceId rgb=$red,$green,$blue release=$release")
+                                  require(red in 28..36 && green in 124..132 && blue in 219..227) {
+                                      "unexpected copied pixel $red,$green,$blue"
+                                  }
+                                  println("external-browser-macos PASS")
+                                  break
+                              }
+                              frame()
+                          }
+                      } finally {
+                          owner.renderList.others.remove("external-browser-macos-smoke-copy", copyTarget)
+                          owner.renderList.others.remove("external-browser-macos-smoke-source", source)
+                      }
+                  }
           }
   - connect: { parent: external_browser_surface_renderer, child: external_browser_surface_smoke }
   - launch: { box: external_browser_surface_renderer, property: code, strand: renderer }

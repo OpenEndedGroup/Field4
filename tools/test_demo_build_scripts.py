@@ -137,6 +137,10 @@ CORPUS = {
     "path_tracing_emitters",
     "path_tracing_medium",
     "pattern_condense",
+    # 2026-10-18: the Clojure counterpart of python_box_parity.
+    "clojure_box_parity",
+    # 2026-10-24: the RemoteJS counterpart.
+    "remotejs_box_parity",
     "python_box_parity",
     "python_cells",
     "read_only_session",

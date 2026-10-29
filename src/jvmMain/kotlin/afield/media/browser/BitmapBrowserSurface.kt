@@ -18,14 +18,18 @@ import org.lwjgl.vulkan.VkMemoryRequirements
 import org.lwjgl.vulkan.VkPhysicalDeviceMemoryProperties
 
 /**
- * The deliberately non-zero-copy browser receiver: frames arrive as CPU pixels and are uploaded,
- * instead of arriving as a shared GPU allocation and being imported.
+ * A browser-frame receiver that uploads CPU pixels to the GPU, as a fallback where Chromium's shared-texture export delivers an empty frame.
+ */
+
+/**
+ * The non-zero-copy browser receiver: frames arrive as CPU pixels and are uploaded, rather than
+ * arriving as a shared GPU allocation and being imported.
  *
  * This exists because Chromium's Linux offscreen shared-texture export hands over a dma-buf it
  * never fills (electron#53271), which leaves the accelerated path with a correct handle and a black
- * picture. Everything above the seam — conflation, the stable resident texture, the fence-delayed
- * release, stream resets — is shared with the accelerated backends; only the way pixels reach the
- * GPU differs, which is the whole point of [CopiedExternalBrowserSurface.recordPreCopy].
+ * picture. Conflation, the stable resident texture, the fence-delayed release and stream resets are
+ * all shared with the accelerated backends; only the way pixels reach the GPU differs, and
+ * [CopiedExternalBrowserSurface.recordPreCopy] is where that difference is recorded.
  *
  * It is opt-in and should stay that way. A 1280x720 BGRA frame is 3.7 MB, so 30 fps is about
  * 110 MB/s crossing the process boundary and the PCIe bus that the accelerated path does not spend.

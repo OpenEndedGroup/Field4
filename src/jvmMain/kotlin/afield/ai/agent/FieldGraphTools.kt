@@ -35,18 +35,21 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 
-// =============================================================================================
-// Field graph + execution tools for Field's own agent.
-//
-// These are the operations an external agent reaches through tools/field_backdoor.py — new-box,
-// set, connect, run, launch, stop, wait-output — as native tools in the AI4 registry. Each one calls
-// the same server function the websocket/backdoor handler calls (createAgentBox, executeAllRequest,
-// launchAllRequest, stopBoxRequest, the actionTable's -connect/-disconnect/-delete-box), so nothing
-// about box execution is reimplemented here.
-//
-// The rule the results keep (AGENTS.md, 2026-09-14): a box that fails to compile or throws comes
-// back as `success: false` with its diagnostics. Never a silent ok.
-// =============================================================================================
+/**
+ * The box graph and execution tools of Field's own agent: list, create, delete, edit, connect,
+ * run, launch, stop and read the output of boxes in the current document.
+ *
+ * These are the operations an external agent reaches through `tools/field_backdoor.py` (new-box,
+ * set, connect, run, launch, stop, wait-output), registered as native tools in the AI4 registry.
+ * Each one calls the same server function the websocket and backdoor handlers call
+ * (`createAgentBox`, `executeAllRequest`, `launchAllRequest`, `stopBoxRequest`, and the action
+ * table's `-connect`, `-disconnect` and `-delete-box`), so box execution is not reimplemented here.
+ *
+ * A box that fails to compile or throws comes back as `success: false` with its diagnostics,
+ * never as a silent success. [FieldGraphHost] is how these tools reach the server:
+ * [LiveFieldGraphHost] is the real one, and tests such as `InFieldAgentHarnessTest` supply a
+ * scripted host.
+ */
 
 @JsonClassDescription("List every box in this Field document. Returns, per box: uid, name, parents, children, whether it is running, the length of its code, and the verdict of its last run. Use it when a box the task names is not one you know; other tools accept the names it lists (e.g. box = `Sun`). It takes no arguments and does not fail; an empty list means no boxes yet.")
 @afield.ai.tools.AgentToolMeta("graph", effects = [afield.ai.tools.ToolEffect.READ_DOCUMENT])
@@ -214,13 +217,28 @@ data class BoxOutputView(
     @get:com.fasterxml.jackson.annotation.JsonIgnore
     override val toolImages: List<afield.ai.tools.ToolImage>
         get() = if (dataUrl.isBlank()) emptyList() else listOf(afield.ai.tools.ToolImage(dataUrl,
-            "Output of box '$name' (${channels.joinToString()}), ${width}x$height, captured in an independent browser" +
-                (if (note.isNotBlank()) " — looking for: $note" else "") +
-                ". Describe what you actually see, then say whether it matches what was asked for."))
+            "Output of box '$name' (${channels.joinToString()}), ${width}x$height, captured in an independent browser. " +
+                captureReadingInstruction(note)))
 
     override fun toolLogSummary(): String =
         "success=$success images=${toolImages.size} box=$name ${width}x$height ink=${"%.3f".format(inkFraction)} " +
             "colours=${dominantColours.take(3)} path=$path" + (if (!success) " message=${message.take(160)}" else "")
+}
+
+/**
+ * How a capture's caption asks to be read. The expectation comes *after* the request to describe, and is
+ * labelled as the model's own: on 2026-10-22 a local model's note said "diagonal lines", and it reported
+ * "the signature diagonal lines" of a picture whose strongest feature was a horizontal and vertical cross
+ * (its code had placed only odd numbers). Models also copy the instruction into the note, which then
+ * appeared twice; it is stripped here.
+ */
+internal fun captureReadingInstruction(note: String): String {
+    val instruction = "Describe what you actually see, then say whether it matches what was asked for."
+    val expectation = note.replace(instruction, "").trim().trimEnd('.', ' ')
+    return "First describe what the picture shows in your own words — shapes, lines and their directions, where colour falls, " +
+        "what is empty — then compare it with what was asked for" +
+        (if (expectation.isNotBlank()) " and with your own expectation, written before you saw it (\"$expectation\")" else "") +
+        ". Say plainly where they differ; a picture confirms what was drawn, not that the code computed the right thing."
 }
 
 // ---- host seam ---------------------------------------------------------------------------------
@@ -564,9 +582,26 @@ class FieldGraphTools(
             property = "code", requestId = requestId)
         if (launch) host.launch(info, box, exec, reply) else host.run(info, box, exec, reply)
 
-        val report = try {
+        var report = try {
             verdict.get((timeoutSeconds.coerceIn(0.5, 600.0) * 1000).toLong(), TimeUnit.MILLISECONDS)
         } catch (_: TimeoutException) { null }
+        // No verdict: if the box's code is what holds the Runloop, throw out of it (BoxInterrupt) and
+        // give the interrupted run a moment to report, so the agent gets a verdict and Field moves again.
+        var interrupted = false
+        // The timeout may fall while the box is still compiling, so watch a little longer for its code
+        // to reach the Runloop before giving up.
+        if (report == null && !launch) {
+            val main = afield.runtime.lifecycle.Runloop.mainThread
+            val deadline = System.currentTimeMillis() + 8000
+            while (main != null && report == null && System.currentTimeMillis() < deadline) {
+                if (!interrupted && afield.runtime.lifecycle.BoxInterrupt.culprit(main.stackTrace) != null) {
+                    afield.runtime.lifecycle.BoxInterrupt.request("RunBox timeout after ${timeoutSeconds}s", main)
+                    interrupted = true
+                }
+                report = try { verdict.get(50, TimeUnit.MILLISECONDS) } catch (_: TimeoutException) { null }
+            }
+        }
+        if (report?.let { !it.success && "Box interrupted:" in it.error } == true) interrupted = true
         if (settleSeconds > 0) Thread.sleep((settleSeconds.coerceAtMost(10.0) * 1000).toLong())
 
         val page = BoxOutputLog.since(box, marker)
@@ -580,6 +615,12 @@ class FieldGraphTools(
             displays = displays, outputMarker = page.marker
         )
         return when {
+            interrupted -> common.copy(
+                stage = "interrupted", timedOut = true, error = report?.error?.take(4000) ?: "",
+                message = "The $verb of '${box.name}' did not return within ${timeoutSeconds}s, so Field interrupted it " +
+                    (if (report != null) "and it stopped. " else "but has no verdict yet. ") +
+                    "Look for a loop or recursion that never ends."
+            )
             report == null -> common.copy(
                 stage = "timeout", timedOut = true,
                 message = "No verdict for the $verb of '${box.name}' within ${timeoutSeconds}s. " +

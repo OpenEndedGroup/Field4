@@ -1,3 +1,11 @@
+/**
+ * A direct-lighting scene lit by RTXDI whose output can be switched between raw, spatially denoised and DLSS Ray Reconstruction paths.
+ *
+ * [RayReconstructionDemo] reuses `DirectLightingDemo` for the G-buffer and lighting, builds the
+ * guide images ray reconstruction needs, and runs two [DlssReconstruction] instances at native
+ * resolution. Setting `path` resets history and changes which image is shown.
+ */
+
 package afield.media.reconstruction
 
 import afield.graphics.vulkan.Renderer
@@ -44,7 +52,7 @@ class RayReconstructionDemo(val renderer: Renderer,val size: ReconstructionSize=
     val normalRoughness get()=guides.imageViewArray[4]
     private val sampler=TextureSampler(renderer,1,false,filter=VK_FILTER_NEAREST)
     private val convert=Module(parameters(renderer) {
-        this.name="$name-guides";guides.apply();depthTest=false;depthWrite=false;blend=false
+        this.name="$name-guides";+guides;depthTest=false;depthWrite=false;blend=false
         vertex=VERTEX;fragment=FRAGMENT
         val sources=mapOf("positions" to scene.lighting.surfaces.position,"normals" to scene.lighting.surfaces.normal,
             "albedo" to scene.lighting.surfaces.albedo,"velocity" to scene.lighting.surfaces.motion)

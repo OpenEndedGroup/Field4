@@ -31,6 +31,18 @@ import org.lwjgl.vulkan.VK13.*
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicInteger
 
+/**
+ * Offscreen rendering: [RenderToTexture] draws modules into its own color (and optional depth)
+ * images, which other modules then sample as textures.
+ *
+ * A box beneath the renderer builds one with a configuration block over [RTTParameters] (size,
+ * formats, attachment count, mip levels, clearing, depth), registers modules to draw into it, and
+ * hands its image views to whatever samples the result. The same target can be blitted to the
+ * window, read back to the CPU, or saved as a JPEG. [PingPongRenderToTexture] and
+ * [MultiPingPongRenderToTexture] build feedback and multi-pass chains from it.
+ */
+
+/** Configuration for a [RenderToTexture]: size, formats, attachments, clearing and depth, set in its constructor block. */
 data class RTTParameters(
     var width: Int = 1024,
     var height: Int = 1024,
@@ -1615,14 +1627,14 @@ open class RenderToTexture(
             "RenderToTexture expects ${colorImageHandles.size} color attachments, but module '${module.parameters.name}' declares ${moduleColorCount}"
         }
         require(moduleFormats == colorFormats) {
-            "RenderToTexture color format mismatch for module '${module.parameters.name}': module=$moduleFormats target=$colorFormats. Call target.apply() inside module parameters."
+            "RenderToTexture color format mismatch for module '${module.parameters.name}': module=$moduleFormats target=$colorFormats. Add +target inside the module's parameters."
         }
         require(module.parameters.viewMask == parameters.multiviewViewMask) {
-            "RenderToTexture viewMask mismatch for module '${module.parameters.name}': module=0x${module.parameters.viewMask.toString(16)} target=0x${parameters.multiviewViewMask.toString(16)}. Call target.apply() inside module parameters."
+            "RenderToTexture viewMask mismatch for module '${module.parameters.name}': module=0x${module.parameters.viewMask.toString(16)} target=0x${parameters.multiviewViewMask.toString(16)}. Add +target inside the module's parameters."
         }
         val expectedViewportCount = parameters.viewports.size.coerceAtLeast(1)
         require(module.parameters.viewportCount >= expectedViewportCount) {
-            "RenderToTexture viewport count mismatch for module '${module.parameters.name}': module=${module.parameters.viewportCount} target=$expectedViewportCount. Call target.apply() inside module parameters."
+            "RenderToTexture viewport count mismatch for module '${module.parameters.name}': module=${module.parameters.viewportCount} target=$expectedViewportCount. Add +target inside the module's parameters."
         }
     }
 

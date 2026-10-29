@@ -1,0 +1,29 @@
+{
+  "baseline": "6da129f4fb4fe52d21d5fbc480f29490f680cbd1",
+  "sources": [
+    {
+      "path": "dev_docs/agents/transcripts/external_browser_surface_macos_smoke.yaml",
+      "kotlinBodies": 2,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/iosurface_ring_roundtrip_smoke.yaml",
+      "kotlinBodies": 2,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/syphon_zero_copy_receive_smoke.yaml",
+      "kotlinBodies": 2,
+      "collectionConversions": 8,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/splat_sequence_streaming.yaml",
+      "kotlinBodies": 1,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    }
+  ]
+}

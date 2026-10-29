@@ -61,6 +61,7 @@ expect:
  * `install()` is called explicitly because `Server.main` — which calls it in the app — does not run
  * in a bare jvm-main harness.
  */
+
 object DataFrameVisualizerSmokeTest {
 
     private const val ROWS = 5_000

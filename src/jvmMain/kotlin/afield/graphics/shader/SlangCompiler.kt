@@ -2,6 +2,7 @@ package afield.graphics.shader
 
 import afield.graphics.render.pointer
 
+import afield.app.diagnostics.LatencySpans
 import afield.app.diagnostics.logging.lprintln
 import org.json.JSONObject
 import java.io.IOException
@@ -12,6 +13,14 @@ import java.util.Comparator
 import kotlin.io.path.deleteIfExists
 import kotlin.io.path.readText
 import kotlin.io.path.writeText
+
+/**
+ * Compiles Slang shaders by running an external `slangc`, to GLSL, SPIR-V and reflection JSON.
+ *
+ * [SlangCompiler] looks for the executable in `AFIELD_SLANGC`, then `-Dafield.slangc`, then the pinned
+ * download, the Vulkan SDK and `PATH`. `compileVertexFragment` and `compileSharedStage` return one
+ * [SlangStageArtifacts] per stage, ready for [Introspection].
+ */
 
 private data class SlangTargetOptions(
     val stage: String,
@@ -318,12 +327,12 @@ object SlangCompiler {
     private fun runSlangc(candidate: SlangExecutableCandidate, arguments: List<String>): String {
         val command = mutableListOf(candidate.command)
         command.addAll(arguments)
-        val process = ProcessBuilder(command)
-            .redirectErrorStream(true)
-            .start()
-
-        val output = process.inputStream.bufferedReader(StandardCharsets.UTF_8).use { it.readText() }
-        val exitCode = process.waitFor()
+        val (output, exitCode) = LatencySpans.time("shader.slangc", detail = arguments.lastOrNull()) {
+            val process = ProcessBuilder(command)
+                .redirectErrorStream(true)
+                .start()
+            process.inputStream.bufferedReader(StandardCharsets.UTF_8).use { it.readText() } to process.waitFor()
+        }
         if (exitCode != 0) {
             val message = output.trim().ifBlank { "slangc exited with code $exitCode" }
             throw CompilerError(message)

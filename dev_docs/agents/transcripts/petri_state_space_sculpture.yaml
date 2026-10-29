@@ -7,6 +7,9 @@ description: >
   drawn in an emissive tube that lights the rest. The stubborn-set reduced graph of the same net
   stands beside it as a second, sparser sculpture with its own deadlock route lit. Needs a live
   renderer parent.
+docs:
+  - page: chain_petri_sculpture.md
+    why: "Walks through this state-space-to-sculpture chain."
 operations:
   - create:
       box: chain_renderer
@@ -15,6 +18,7 @@ operations:
       properties:
         code: |
           import afield.graphics.vulkan.util.Options
+
           prop<Window>(window)
           prop<Renderer>(renderer)
           Options.enableHDR = false
@@ -37,48 +41,61 @@ operations:
           import afield.graphics.vulkan.util.Camera
           import afield.simulation.petri.*
           import java.io.File
-          import kotlin.math.PI
-          import kotlin.math.cos
-          import kotlin.math.sin
-          
+
           prop<PathTracingRenderer>(tracer)
-          
+
           // ---- the net: five philosophers, everyone reaching left first ------------------
           fun table(seats: Int) = petri {
               for (i in 0 until seats) place("fork.$i", tokens = 1)
               for (i in 0 until seats) {
                   val left = i
                   val right = (i + 1) % seats
-                  t("grab.$i") { from("fork.$left"); to("holding.$i") }
-                  t("eat.$i") { from("holding.$i"); from("fork.$right"); to("eating.$i") }
-                  t("done.$i") { from("eating.$i"); to("fork.$left"); to("fork.$right") }
+                  t("grab.$i") {
+                      from("fork.$left")
+                      to("holding.$i")
+                  }
+                  t("eat.$i") {
+                      from("holding.$i")
+                      from("fork.$right")
+                      to("eating.$i")
+                  }
+                  t("done.$i") {
+                      from("eating.$i")
+                      to("fork.$left")
+                      to("fork.$right")
+                  }
               }
           }
           val seats = 5
           val full = table(seats).stateSpace()
           val reduced = table(seats).stateSpace(reduction = PetriReduction.STUBBORN)
-          
-          // ---- layout: depth is height, the marking decides where on the floor plan ------
-          // Each philosopher has a seat on a circle. Holding one fork pulls a marking halfway
-          // towards that seat, eating pulls it all the way, and the pulls add.
+
+          /*
+          ---- layout: depth is height, the marking decides where on the floor plan ------
+          Each philosopher has a seat on a circle. Holding one fork pulls a marking halfway
+          towards that seat, eating pulls it all the way, and the pulls add.
+          */
           fun seat(i: Int) = Vec3(cos(2 * PI * i / seats).toFloat(), 0f, sin(2 * PI * i / seats).toFloat())
           val layer = 0.62f
-          
+
           fun layout(graph: PetriStateGraph, offsetX: Float): List<Vec3> {
-              val raw = graph.states.indices.map { id ->
-                  val m = graph.states[id]
-                  val p = Vec3(offsetX, -layer * graph.depth(id), 0f)
-                  for (i in 0 until seats) {
-                      val pull = 0.5f * m.count("holding.$i") + 1.0f * m.count("eating.$i")
-                      p.add(Vec3(seat(i)).mul(pull))
+              val raw =
+                  graph.states.indices.map { id ->
+                      val m = graph.states[id]
+                      val p = Vec3(offsetX, -layer * graph.depth(id), 0f)
+                      for (i in 0 until seats) {
+                          val pull = 0.5f * m.count("holding.$i") + 1.0f * m.count("eating.$i")
+                          p.add(Vec3(seat(i)).mul(pull))
+                      }
+                      p
                   }
-                  p
-              }
               // Markings that land on the same spot (the pulls can cancel) are fanned out on a
               // small ring, so every marking stays its own bead.
               val placed = raw.map { Vec3(it) }
-              raw.indices.groupBy { "%.3f %.3f %.3f".format(raw[it].x, raw[it].y, raw[it].z) }
-                  .values.filter { it.size > 1 }
+              raw.indices
+                  .groupBy { "%.3f %.3f %.3f".format(raw[it].x, raw[it].y, raw[it].z) }
+                  .values
+                  .filter { it.size > 1 }
                   .forEach { group ->
                       group.forEachIndexed { k, id ->
                           val a = 2 * PI * k / group.size + 0.4
@@ -87,7 +104,7 @@ operations:
                   }
               return placed
           }
-          
+
           // The route to the deadlock as edges of the graph: fire the trace's transitions in turn.
           fun traceEdges(graph: PetriStateGraph): Set<PetriStateEdge> {
               val trace = graph.deadlockTrace() ?: return emptySet()
@@ -96,7 +113,7 @@ operations:
                   graph.edges.first { it.from == at && it.transition == name }.also { at = it.to }
               }
           }
-          
+
           // A firing is a gentle arc rather than a straight rod: it bows away from the axis of its
           // sculpture, which keeps the many firings between two layers from lying on top of each other.
           fun arc(a: Vec3, b: Vec3, axis: Vec3): List<Vec3> {
@@ -109,7 +126,7 @@ operations:
                   Vec3(a).mul(1f - t).add(Vec3(b).mul(t)).add(Vec3(bow).mul(lift))
               }
           }
-          
+
           // ---- the scene ------------------------------------------------------------------
           val scene = PathTraceScene()
           val grabbing = scene.material(PathTraceMaterial.metal(0.35f, 0.55f, 1.0f, 0.18f))
@@ -120,10 +137,10 @@ operations:
           val route = scene.material(PathTraceMaterial.emissive(4.5f, 1.5f, 0.3f))
           val stuck = scene.material(PathTraceMaterial.emissive(16.0f, 1.2f, 0.4f))
           val floor = scene.material(PathTraceMaterial.plastic(0.05f, 0.05f, 0.06f, 0.12f))
-          
+
           val lo = Vec3(Float.MAX_VALUE, Float.MAX_VALUE, Float.MAX_VALUE)
           val hi = Vec3(-Float.MAX_VALUE, -Float.MAX_VALUE, -Float.MAX_VALUE)
-          
+
           fun sculpt(graph: PetriStateGraph, offsetX: Float) {
               val at = layout(graph, offsetX)
               val lit = traceEdges(graph)
@@ -139,9 +156,13 @@ operations:
                   val radius = if (edge in lit) 0.026 else 0.011
                   val added = scene.importTriMesh(
                       tubeMesh(arc(at[edge.from], at[edge.to], axis), radius = radius, sides = 10),
-                      material, warning = {},
+                      material,
+                      warning = {},
                   )
-                  if (added.triangleCount > 0) { lo.min(added.boundsMin); hi.max(added.boundsMax) }
+                  if (added.triangleCount > 0) {
+                      lo.min(added.boundsMin)
+                      hi.max(added.boundsMax)
+                  }
               }
               at.forEachIndexed { id, p ->
                   when {
@@ -151,15 +172,19 @@ operations:
                   }
               }
           }
-          
+
           sculpt(full, offsetX = 0f)
           sculpt(reduced, offsetX = 3.4f)
-          
-          println("full graph: ${full.stateCount} markings, ${full.edgeCount} firings, " +
-              "deadlock after ${full.deadlockTrace()!!.length}: ${full.deadlockTrace()!!.transitions}")
-          println("stubborn-set graph: ${reduced.stateCount} markings, ${reduced.edgeCount} firings, " +
-              "deadlock after ${reduced.deadlockTrace()!!.length}: ${reduced.deadlockTrace()!!.transitions}")
-          
+
+          println(
+              "full graph: ${full.stateCount} markings, ${full.edgeCount} firings, " +
+                  "deadlock after ${full.deadlockTrace()!!.length}: ${full.deadlockTrace()!!.transitions}",
+          )
+          println(
+              "stubborn-set graph: ${reduced.stateCount} markings, ${reduced.edgeCount} firings, " +
+                  "deadlock after ${reduced.deadlockTrace()!!.length}: ${reduced.deadlockTrace()!!.transitions}",
+          )
+
           // ---- floor, camera, tracer -----------------------------------------------------
           val middle = Vec3(lo).add(hi).mul(0.5f)
           val span = maxOf(hi.x - lo.x, hi.y - lo.y, hi.z - lo.z)
@@ -172,7 +197,7 @@ operations:
               Vec3(middle.x - reach, floorY, middle.z + reach),
               floor,
           )
-          
+
           val environment = PathTraceEnvironment.fromFile(
               File("public/docs/assets/fabricate_demo/venice_sunset_1k.exr").absolutePath,
           )
@@ -198,7 +223,9 @@ operations:
           tracer.blitToScreen()
           println("${tracer.backend}: ${tracer.triangleCount} triangles")
           frames {
-              while (tracer.samples < 900) { frame() }
+              while (tracer.samples < 900) {
+                  frame()
+              }
               println("petri sculpture converged: ${tracer.samples} samples")
           }
   - connect: { parent: chain_renderer, child: petri_sculpture_trace }

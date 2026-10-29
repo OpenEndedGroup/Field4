@@ -17,6 +17,7 @@ import afield.app.protocol.HistoryBoxActivity
 import afield.app.protocol.HistoryDiffStats
 import afield.app.protocol.HistoryScreenshotRef
 import afield.app.protocol.payload
+import afield.app.server.ReadOnlyDocuments
 import afield.audio.synth.*
 import afield.data.table.ref
 import afield.document.graph.box
@@ -37,6 +38,20 @@ import afield.app.diagnostics.logging.lprintln
 import java.io.File
 import java.util.Base64
 
+/**
+ * Per-version activity and screenshot records for a document, stored in its
+ * `history_metrics.edn` beside `metadata.edn`.
+ *
+ * Each record is keyed by version index. A save adds the activity the flight recorder saw since the
+ * previous save (per-box counts included), a diff adds its edit statistics, and a captured
+ * screenshot adds a reference to its image file. The history browser reads these back through
+ * [HistoryMetrics.activityByVersion] to annotate its timeline.
+ */
+
+/**
+ * Reads and writes a document's `history_metrics.edn`: activity per save, edit statistics per
+ * version, and screenshot references.
+ */
 object HistoryMetrics {
     private const val METRICS_EDN = "history_metrics.edn"
     private val metricsLock = Any()
@@ -232,6 +247,7 @@ object HistoryMetrics {
         height: Int = 0,
         timestamp: Long = System.currentTimeMillis()
     ): HistoryScreenshotRef? {
+        if (refuseReadOnlyWrite(documentPath, "storeScreenshotDataUrl")) return null
         val startedAt = System.nanoTime()
         var decodeMs = 0L
         var writeMs = 0L
@@ -317,6 +333,7 @@ object HistoryMetrics {
         height: Int = 0,
         extension: String = "png"
     ): Pair<File, HistoryScreenshotRef>? {
+        if (refuseReadOnlyWrite(documentPath, "reserveScreenshotFile")) return null
         if (versionIndex < 0) return null
         val safeChannel = sanitizeChannel(channel)
         val safeExtension = sanitizeScreenshotExtension(extension)
@@ -444,6 +461,7 @@ object HistoryMetrics {
     }
 
     private fun saveRecords(documentPath: String, records: List<MetricRecord>) {
+        if (refuseReadOnlyWrite(documentPath, "saveRecords")) return
         val payload = linkedMapOf<String, Any?>(
             "version" to 1,
             "records" to records.map(::recordToMap)
@@ -451,6 +469,12 @@ object HistoryMetrics {
         val file = metricsFile(documentPath)
         file.parentFile?.mkdirs()
         file.safeSave(Edn.write(payload, Edn.CustomTypes()), maxBackups = 10)
+    }
+
+    private fun refuseReadOnlyWrite(documentPath: String, producer: String): Boolean {
+        if (!ReadOnlyDocuments.blocksWritesTo(documentPath)) return false
+        ReadOnlyDocuments.refuseWrite("HistoryMetrics.$producer", documentPath)
+        return true
     }
 
     private fun recordFromAny(value: Any?): MetricRecord? {

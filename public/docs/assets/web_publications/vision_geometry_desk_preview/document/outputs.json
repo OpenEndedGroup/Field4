@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T20:56:39.614Z",
+  "documentName": "vision_geometry_desk_preview",
+  "outputs": [
+    {
+      "uid": "agent_vision_geometry_desk_preview",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 732,
+      "height": 622,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "agent_vision_geometry_desk_preview_inverted",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 732,
+      "height": 640,
+      "path": "outputs/1.html"
+    }
+  ]
+}

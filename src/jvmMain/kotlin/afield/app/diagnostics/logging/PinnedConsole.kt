@@ -1,6 +1,7 @@
 package afield.app.diagnostics.logging
 
 import afield.ai.diagnostics.BlockBoundary
+import afield.app.diagnostics.LatencySpans
 import afield.ai.diagnostics.ConsoleMute
 import afield.ai.diagnostics.LogDispatcher
 import afield.ai.diagnostics.LogEvent
@@ -10,6 +11,7 @@ import com.github.ajalt.mordant.rendering.AnsiLevel
 import com.github.ajalt.mordant.rendering.TextColors
 import com.github.ajalt.mordant.rendering.TextStyle
 import com.github.ajalt.mordant.terminal.Terminal
+import java.lang.management.ManagementFactory
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.locks.ReentrantLock
@@ -100,6 +102,7 @@ object PinnedConsole {
         if (!startupFinished.compareAndSet(false, true)) return
         val started = startedAtNanos
         val ms = if (started != null) (System.nanoTime() - started) / 1_000_000 else -1
+        LatencySpans.readyMillis = ManagementFactory.getRuntimeMXBean().uptime
         lprintln("info,startup", if (ms >= 0) "✓ Field ready in $ms ms" else "✓ Field ready")
         val sink = activeSink ?: return
         thread(isDaemon = true, name = "pinned-startup-collapse") {

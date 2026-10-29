@@ -2,6 +2,16 @@
 
 package afield.ui.controls
 
+/**
+ * A bounded scalar parameter that keeps the value it was asked for apart from the value it uses.
+ *
+ * [EffectiveParameter] stores the requested value as written and reports [EffectiveParameter.effective]
+ * as that value coerced into `minimum..maximum`, with [EffectiveParameter.clamped] saying whether the
+ * two differ. [EffectiveParameter.snapshot] reads both at once into a [ParameterValue]. Nothing in
+ * `src/jvmMain` constructs one yet; `EffectiveParameterTest` covers the behaviour.
+ */
+
+
 import afield.data.collections.get
 import afield.data.collections.invoke
 import afield.data.collections.times

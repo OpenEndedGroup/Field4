@@ -36,7 +36,8 @@ import afield.math.functions.sin
  * [Functions.Fn] cannot be that: it is a `(Double) -> Double`, one input and one output, and every
  * existing consumer of a lowered track — [freeParameterSlots], [Track.substituteParameters],
  * [Track.fitParameters] — reads its θ-vector as *the track's own leaves*. Smuggling x and y in as two
- * more θ leaves would make all of them quietly wrong about what they are solving for.
+ * more θ leaves would make all of them wrong about what they are solving for, and nothing would
+ * report it.
  *
  * So the differentiable layer here is not `Fn`, it is [AD] on an [ADTape] — which is what `Fn`'s own
  * gradient is built out of anyway. [FnAutoDiff.interpret] already re-reads an `Fn` graph in `AD`
@@ -214,9 +215,9 @@ class SceneAdFrame internal constructor(
 /**
  * A whole scene, lowered: its shapes, its concatenated θ, and what it had to leave out.
  *
- * Partial by design. A few percent of the gallery's tracks still refuse to lower (`atan2`, and the
- * pattern queries, which are an interpreter rather than a formula), and a scene containing one is
- * still worth differentiating everywhere else. What is *not* acceptable is doing that silently, so
+ * The lowering is partial. A few percent of the gallery's tracks still refuse to lower (`atan2`,
+ * and the pattern queries, which are an interpreter rather than a formula), and a scene containing
+ * one is still worth differentiating everywhere else. What is *not* acceptable is doing that silently, so
  * [skipped] carries the rect ids and the reasons out, exactly as [TrackFitResult.stuckParameters]
  * does for a partly stuck fit.
  */
@@ -415,9 +416,9 @@ enum class CoverageComposite {
  *
  * The grid is **wall-centred**, matching [RectSLFitFigure] and [SceneProgram.sample]'s own
  * coordinates: x runs left to right over `-width/2 .. width/2` and y runs *up*, so image row 0 is
- * the top of the wall. [WallSpec.origin] is deliberately not consulted — it is a layout hint for the
- * GPU path, and honouring it here would put this raster in a different space from the sampler this
- * is differentially checked against.
+ * the top of the wall. [WallSpec.origin] is not consulted: it is a layout hint for the GPU path, and
+ * honouring it here would put this raster in a different space from the sampler this is
+ * differentially checked against.
  *
  * [beta] is in **wall units**, not pixels, because that is the space the SDF speaks. The conversion
  * a reader wants is [betaInPixels], and every finding in `dev_docs/RECTSL_SOFT_RASTER.md` is stated

@@ -267,6 +267,15 @@ prints its own JSON object**, concatenated with no enclosing array. `json.load` 
 whole stream raises `Extra data`. Decode it as a sequence with
 `json.JSONDecoder().raw_decode` in a loop, or pass one `--command` per invocation.
 
+## Web publication
+
+`publish-document <path.zip> [--timeout 180]` captures the current browser's rendered output
+channels and packages them with the document, notes, code and offline viewer. Open Playwright
+before running the boxes. The command uses the same publisher as the palette's
+**Publish document for the web (.zip)**, refuses an existing destination, and reports capture
+warnings per channel. It never re-runs boxes. See [Offline output publication](../OFFLINE_PUBLICATION.md)
+for the format and the independent browser verification.
+
 ## Session and execution contracts
 
 - Scratch is the default and is scoped to one `field_backdoor.py` process.
@@ -314,6 +323,17 @@ EOF
 
 The process reads stdin once and reuses it if multiple commands name
 `--file -`.
+
+A `--value` (and `set`'s literal value) is sent as written: `\n` stays a backslash and an `n`,
+which is what keeps `println(\"a\nb\")` working. For a short multi-line snippet on one line,
+add `--value-escapes`, which decodes `\n`, `\t`, `\r` and `\\` first (write `\\\\n` in a
+double-quoted command for a Kotlin string's own `\n`):
+
+```bash
+uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9477 \
+  --command 'new-box --name Lines' \
+  --command 'run @last --value-escapes --value "val a = 2\nprintln(a * 21)"'
+```
 
 An empty `output`/`peer-output` packet with `kind=error` and `line=-1` is Field's
 wire representation for *clearing* an editor error. The backdoor tracks it as state
@@ -368,6 +388,8 @@ asymmetry is the other easy mistake: the `-window` commands take the box through
 | `record-window` | `path` | `--uid --property --with-editor --open-outputs --expect-outputs --no-pan --duration --fps --frame-synchronous --restart-target --timeout` |
 | `record-editor` | `uid path` | `--property --padding --open-outputs --expect-outputs --no-pan --duration --fps --frame-synchronous --restart-target --timeout` |
 | `record-box` | `uid path` | `--property --padding --no-pan --duration --fps --frame-synchronous --restart-target --timeout` |
+| `canvas-flight` | `stops` | `--leg --hold --orbit --record --fps --size --pixel-ratio --expect-frames --timeout` |
+| `film-page` | `url path` | `--duration --fps --size --pixel-ratio --setup-file --frame-file --settle-ms --load-timeout-ms --drag --drag-from --preroll-frames --expect-frames --timeout` |
 <!-- END CAPTURE SIGNATURES -->
 
 ```bash
@@ -387,9 +409,30 @@ What each family actually captures:
   Chromium's `Page.captureScreenshot`; the docs fence attribute is `scale="3"`.
 - `native-screenshot`: the native renderer window rather than browser DOM. Needs a
   live native renderer, so `wait-native-renderer <uid> --frames 3` first.
-- `page-eval`: JSON-serializable DOM probes. Use `--file` for anything with
-  meaningful quoting; `--body` needs an explicit JavaScript `return` (without one the
-  result carries a `warnings` entry and a stderr line, since it will be null).
+- `page-eval`: run JavaScript in the Field page and get a JSON-serializable result back
+  (`data.result`). This is how to drive frontend UI that has no backdoor verb: dispatch a
+  `KeyboardEvent` on `window` for a shortcut, click a button, read `getBoundingClientRect()`.
+  Use `--file` for anything with meaningful quoting. A file is still an *expression* unless
+  you add `--body`, so a multi-statement file needs `page-eval --body --file <path>`
+  ("Illegal return statement" means `--body` is missing). `--body` needs an explicit
+  JavaScript `return` (without one the result carries a `warnings` entry and a stderr line,
+  since it will be null). The body is not async: to `await`, write
+  `return (async () => { ...; return {...}; })();` and the promise is awaited for you.
+  Example: `page-eval --body --file probe.js` then `screenshot-window out.png`.
+  `@JsExport` functions are module exports, not `window` globals, so reach them through
+  their key chord or palette action rather than calling them by name.
+
+- `canvas-flight`: flies the canvas through bookmarks (names or slots), live in the document's
+  windows, or with `--record <mp4>` filmed frame by frame: the flight's clock is set per frame and
+  each painted frame goes to ffmpeg, so nothing drops under load (`public/docs/filming_the_canvas.md`).
+  The reply lists each stop's arrival frame and the camera filmed there; `--expect-frames N` fails
+  unless ffprobe counts `N` frames in the file.
+- `film-page`: films any URL the same way, in a capture context of its own: `--setup-file` holds an
+  `async () => ...` run once, `--frame-file` a `(t, i, n) => ...` run before every frame, and
+  `--drag DX,DY` drags the real mouse that far per frame (orbits a three.js page);
+  `--preroll-frames` runs frames before the first one filmed, so clips can continue one another.
+- `viewport WxH` sizes the capture page (`default` restores it), for saving bookmarks in a window
+  shaped like the film.
 
 `record-window`, `record-editor`, and `record-box` accept `--frame-synchronous`.
 In that mode the recorder captures one painted browser image per completed Field

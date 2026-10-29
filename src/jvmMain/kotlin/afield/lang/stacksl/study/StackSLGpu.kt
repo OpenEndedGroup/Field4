@@ -24,6 +24,15 @@ import java.nio.ByteOrder
 import java.util.concurrent.TimeUnit
 
 /**
+ * Where a StackSL study's frames come from: the GPU when a window is running, the CPU reference
+ * otherwise.
+ *
+ * Both sides implement [StackSLRasterizer] and hand back raw-output rasters with rows top to bottom
+ * and `uv.y` upwards, so every measurement a study makes is independent of the renderer:
+ * [StackSLGpuRasterizer] and [CpuStackSLRasterizer].
+ */
+
+/**
  * Where a StackSL study's frames come from.
  *
  * Everything a study measures and lays out works on [CpuRaster]s of the program's raw output, so the
@@ -164,7 +173,7 @@ class StackSLGpuRasterizer(
                     this.fragment = fragment
                     blend = false
                     depthTest = false
-                    t.apply()
+                    +t
                     errorHandler = { message, _ -> error = message }
                 }).pointer()
                 if (!built.current.valid) throw Unavailable("the GPU shader did not build: ${error ?: "unknown error"}")

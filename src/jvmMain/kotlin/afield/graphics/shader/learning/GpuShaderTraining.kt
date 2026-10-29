@@ -26,6 +26,12 @@ import org.json.JSONObject
 import kotlin.math.sqrt
 import kotlin.random.Random
 
+/**
+ * On-GPU training of the learned RGB function, with no CPU image or weight readback.
+ *
+ * [GpuShaderTraining] is the in-renderer alternative to the offline [ShaderTraining] path. It needs a device with cooperative-vector training enabled and the prebuilt training shaders under `build/lighting/learned-shader/`; otherwise its constructor refuses and the offline path remains.
+ */
+
 /** A small reusable learned RGB function, trained directly from Field images on the graphics queue.
  * Architecture matches LearnedShader: 16 positional features -> 32 ReLU -> 32 ReLU -> RGB.
  * Slang differentiates the network; cooperative-vector outer products accumulate its gradients.
@@ -123,7 +129,7 @@ class GpuShaderTraining(val renderer: Renderer,val width: Int,val height: Int,va
         check(gather.valid);val g=gather.pointer();gatherTask=ComputeMesh(renderer,g);g+="samples" to gatherTask
         gatherTask.x=(batchSize+63)/64;gatherTask.push.setMembers(gather.ci.pushConstants.single().members)
         gatherTask.push["samples"]=samples;gatherTask.push["count"]=batchSize
-        resolve=Module(parameters(renderer){name="learning-resolve";output.apply();vertex=VERTEX;fragment=FRAGMENT;depthTest=false;depthWrite=false;blend=false})
+        resolve=Module(parameters(renderer){name="learning-resolve";+output;vertex=VERTEX;fragment=FRAGMENT;depthTest=false;depthWrite=false;blend=false})
         check(resolve.valid);val p=resolve.pointer();val quad=Mesh(renderer,p);quad.resize(3,0,p);quad.push.setMembers(resolve.fi.pushConstants.single().members)
         quad.push["pixels"]=pixels;quad.push["width"]=width;resolve.meshes["quad"]=quad;output.modules["resolve"]=p
     }

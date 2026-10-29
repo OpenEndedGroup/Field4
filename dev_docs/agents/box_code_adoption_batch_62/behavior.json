@@ -1,0 +1,29 @@
+{
+  "examples": [
+    {
+      "example": "recstl_playground",
+      "beforeAfterPixelsEqual": true,
+      "installedShaderMatchesGenerated": true,
+      "materialEditChangesNativePixels": true
+    },
+    {
+      "example": "rectsl_dataviz",
+      "beforeAfterPixelsEqual": true,
+      "installedShaderMatchesGenerated": true,
+      "materialEditChangesNativePixels": true
+    },
+    {
+      "example": "rectsl_musicality",
+      "beforeAfterPixelsEqual": true,
+      "installedShaderMatchesGenerated": true,
+      "materialEditChangesNativePixels": "not separately edited"
+    },
+    {
+      "example": "rectsl_plot_axes",
+      "beforeAfterPixelsEqual": true,
+      "installedShaderMatchesGenerated": true,
+      "materialEditChangesNativePixels": "not separately edited"
+    }
+  ],
+  "limits": "Actual authored fragment boundaries, RectSL compiler and Vulkan rendering. Fixture freezes the authored clock at 1.5 seconds for deterministic comparison and reuses the existing private renderer. No public media replaced."
+}

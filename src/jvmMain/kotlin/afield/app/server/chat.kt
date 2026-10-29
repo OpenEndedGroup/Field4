@@ -53,6 +53,25 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
 
 /**
+ * The server side of the Discussion thread that a slideshow step or a box can show: two RPC
+ * handlers that carry messages between Field's clients and an outside chat service.
+ *
+ * A thread is addressed by an id and a number, and the pair is a name rather than a location:
+ * `withChat(id)` on a step can hand it a template id, so that every document made from the same
+ * template shares one thread, and `Box.withChat` passes the box's own id. `load-chat-messages`
+ * fetches a thread and replies only to the client that asked for it; `post-chat-message` sends one
+ * and then broadcasts `chat-message-posted` to every client of the session, so any open widget
+ * reloads the thread. Field's browser never calls the service itself.
+ *
+ * Field ships no such service. The Python one was removed from the repository in October 2026, so
+ * unless something compatible is listening on `CHAT_SERVER_URL` the Discussion UI appears, loads an
+ * empty thread and drops what is posted into it. The rest of a slideshow is unaffected by that: the
+ * requests run outside slideshow execution, a failed load is answered as an empty list, and a
+ * failed post is logged and not answered at all. `dev_docs/GUIDE_CHAT_QUICKSTART.md` lists what a
+ * replacement backend would have to serve.
+ */
+
+/**
  * Install Field's guide-chat RPC bridge.
  *
  * `load-chat-messages` and `post-chat-message` proxy to the Flask service selected by

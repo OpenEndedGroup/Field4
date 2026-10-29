@@ -429,7 +429,6 @@ class ShaderForestFireSystem(
         format = settings.format
         colorFormats = listOf(settings.format)
         clearColor = settings.clearColor
-        clearFirst = true
         colorStoreOp = VK_ATTACHMENT_STORE_OP_STORE
         colorSampled = true
         useDepth = false
@@ -453,7 +452,7 @@ class ShaderForestFireSystem(
         resolver: (Introspected.Texture) -> Pair<HasImageViewArray, TextureSampler>?
     ): ModulePointer = Module(
         parameters(renderer) {
-            target.apply()
+            +target
             name = "${settings.name}-$suffix"
             depthTest = false
             if (blend) additive() else this.blend = false
@@ -469,7 +468,7 @@ class ShaderForestFireSystem(
         configure: Parameters.() -> Unit,
         resolver: (Introspected.Texture) -> Pair<HasImageViewArray, TextureSampler>?
     ): Parameters = parameters(renderer) {
-        target.apply()
+        +target
         this.name = name
         depthTest = false
         additive()

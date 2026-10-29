@@ -1,3 +1,12 @@
+/**
+ * An editable source image fed through the native neural-rendering (NR) pass, with a graded comparison.
+ *
+ * [OpenDlssNrStudy] renders a source, either a fragment shader, a loaded image or a small geometry
+ * scene, into a texture, runs it through [OpenDlssNrPass] when [OpenDlssNrSupport] reports the
+ * native library ready, and displays a graded comparison. Without the library it still shows the
+ * source. [OpenDlssNrStudy.reload] swaps shaders live and [OpenDlssNrStudy.saveFrame] captures a frame.
+ */
+
 package afield.graphics.render.neural
 
 import afield.graphics.vulkan.Renderer
@@ -47,7 +56,7 @@ class OpenDlssNrStudy(
     } }
     private val sampler=TextureSampler(renderer,1,false,VK_FILTER_LINEAR)
     private val sourceModule = Module(parameters(renderer) {
-        this.name="$name-source"; source.apply(); depthTest=geometry; depthWrite=geometry; blend=false
+        this.name="$name-source"; +source; depthTest=geometry; depthWrite=geometry; blend=false
         textureResolver={ if(it.name=="image" && imageProvider!=null)imageProvider to sampler else null }
         this.vertex=vertex
         this.fragment=if(image==null)fragment else """
@@ -70,7 +79,7 @@ class OpenDlssNrStudy(
         colorTransferSrc=true; debugName="$name-comparison"
     }
     private val compareModule = Module(parameters(renderer) {
-        this.name="$name-comparison"; output.apply(); depthTest=false; depthWrite=false; blend=false
+        this.name="$name-comparison"; +output; depthTest=false; depthWrite=false; blend=false
         this.vertex=defaultVertex; this.fragment=resource("compare.frag")
         textureResolver={ when(it.name) { "source" -> source to sampler; "neural" -> (pass?.output ?: source) to sampler; else -> null } }
     })

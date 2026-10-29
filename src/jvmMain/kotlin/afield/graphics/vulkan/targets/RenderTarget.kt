@@ -21,6 +21,15 @@ import org.lwjgl.vulkan.KHRSwapchain.VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
 import org.lwjgl.vulkan.VK10.*
 import org.lwjgl.vulkan.VK13.*
 
+/**
+ * The render pass that draws a window's swapchain image: an ordered collection of modules, mesh
+ * modules and other targets recorded into one frame.
+ *
+ * Add passes with `+=` on a [RenderTarget]; a [RendersAfter] pass is moved behind the target it
+ * depends on before the list is recorded.
+ */
+
+/** Records a window's frame from its named modules, mesh modules and other [Target]s, in insertion order. */
 class RenderTarget(
     val renderer: Renderer,
     private val contextProvider: () -> Renderer.WindowContext = { renderer.windowContext(0) },

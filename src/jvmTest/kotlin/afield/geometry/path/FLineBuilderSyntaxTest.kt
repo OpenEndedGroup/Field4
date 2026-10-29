@@ -53,8 +53,8 @@ class FLineBuilderSyntaxTest {
     }
 
     @Test
-    fun collectionLiteralFromVectors() {
-        val tri: FLine = [vec(0, 0, 0), vec(1, 0, 0), vec(0.5, 1, 0)]
+    fun ofFromVectors() {
+        val tri = FLine.of(vec(0, 0, 0), vec(1, 0, 0), vec(0.5, 1, 0))
 
         assertEquals(3, tri.nodes.size)
         assertIs<FLine.MoveTo>(tri.nodes[0])
@@ -64,8 +64,8 @@ class FLineBuilderSyntaxTest {
     }
 
     @Test
-    fun collectionLiteralFromScalars() {
-        val square: FLine = [0f, 0f, 1f, 0f, 1f, 1f, 0f, 1f]
+    fun ofFromScalars() {
+        val square = FLine.of(0f, 0f, 1f, 0f, 1f, 1f, 0f, 1f)
 
         assertEquals(4, square.nodes.size)
         assertIs<FLine.MoveTo>(square.nodes[0])

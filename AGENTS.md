@@ -103,6 +103,8 @@ The crib:
 | One smoke test | `... tools/run_field_tests.py --id <catalog-id>` (also `--tag`, `--runner jvm-main`) |
 | Browser UI regressions | `uv run --project . --group backdoor python tools/run_ui_regressions.py` (`--id <regression>` for one) |
 | One browser screenshot | `uv run --project . --group backdoor python tools/field_backdoor.py --json --with-playwright --command 'new-box --name Visual' --command 'run @last --value "display(\"main\", \"<div>hello</div>\")"' --command 'screenshot-box @last /tmp/field-smoke.png'` |
+| Drive or probe frontend UI (panels, shortcuts, DOM rects) | `... tools/field_backdoor.py --json --with-playwright --command 'page-eval --body --file probe.js' --command 'screenshot-window /tmp/out.png'` |
+| Feel benchmark (first run, reruns, edits, shader compiles; `dev_docs/testing/FEEL_BENCHMARKS.md`) | `uv run --project . --group backdoor python tools/feel_bench.py run` (then `... compare`) |
 | Docs native prerequisites | `./gradlew buildDocsNativePrerequisites` (Ceres, TetGen, the pinned Dirt-Samples subset; checks Manifold and JEP; checksummed downloads shared across worktrees) |
 | Docs HTML only | `FIELD_DOCS_RUNNER_MODE=never uv run --project . --group docs python tools/build_zensical_docs.py --clean` |
 | Docs author loop | `FIELD_DOCS_RUNNER_MODE=incremental uv run --project . --group docs python tools/build_zensical_docs.py` |
@@ -142,9 +144,12 @@ landings finish first, then the lander refreshes `public/field4/` in the checkou
 using existing captures, before later landings proceed. Use the printed `status`/`wait` id to see
 whether that build finished; a doc failure reports its own error and does not undo a landing.
 Never `git pull` or push `main` by hand.
-The hooks only report which guards a commit affects, so commits take seconds; do not use
-`--no-verify`, and do not run or track guards as "owed" before landing. Bring `main` into your
-branch with `tools/merge_regen.py main`, which regenerates rather than hand-merging generated files.
+Before `enqueue`, run `uv run python tools/land.py precheck`: it names any conflict with `main`,
+merges `main` in uncommitted, runs only the guards your diff can trip (`CHECKS` in
+`tools/land_precheck.py` maps each to the bounce it catches), and undoes the merge; minutes, not the
+full guard, which only the lander runs. The hooks only report; do not use `--no-verify`. Bring
+`main` into your branch with `tools/merge_regen.py main`, which regenerates rather than
+hand-merging generated files.
 
 ### Gradle hygiene
 
@@ -339,8 +344,10 @@ Field has more than one main loop, and conflating them makes bugs hard fast.
   `vertex`, `compute`, `task`, `mesh`) are built this way (`afield/stdlib/shaders.kt`), which is
   why shader graphs compose through box connections.
 - `fromContext<T>()` (in `afield.document.context`, `src/jvmMain/kotlin/afield/document/context/Mesh_context.kt`)
-  finds the nearest `T` by searching the executing `Box` (`Box.context`), its `properties`, its
-  script variables (`box.ki.context.vars`), then each parent in turn. Use
+  finds the nearest `T` by searching the executing `Box` (`Box.context`), its `properties`, then
+  each ancestor generation in turn (properties, then script variables `box.ki.context.vars`). The
+  asking box's own script variables are skipped unless `includeLocalVariables = true`, or
+  `val r = fromContext<R>()` would find its own previous answer on every later run. Use
   `fromContextWithNameOrNull<T>("name")` for a specific named value. A missing `Renderer` is
   usually topology, not timing: the renderer parent was not launched, the box is not connected
   beneath it, or the lookup happened after an async boundary. Fix the graph or capture the
@@ -409,8 +416,8 @@ Field has more than one main loop, and conflating them makes bugs hard fast.
 
 Floating panels over the canvas are built on `FieldPanel` (`src/jsMain/kotlin/afield/fieldPanel.kt`,
 `.field-panel` in `field.css`): title, status line, close, Escape, and keys/mouse-downs kept off the
-canvas. The bookmarks panel (`alt+b`, `bookmarks.kt`) and the layers panel (`alt+l`,
-`layersPanel.kt`) use it; build the next one on it rather than copying the macro recorder's CSS.
+canvas. The bookmarks panel (`alt+b`, `bookmarks.kt`), the layers panel (`alt+l`, `layersPanel.kt`) and
+the Macro Recorder (`commands.kt`) use it; build the next one on it.
 
 ### FLine
 

@@ -12,18 +12,20 @@ import kotlin.test.assertTrue
  */
 class DrawnScorePageTest {
     private val page = File("public/docs/chain_drawn_score.md").readLines()
-    private val source = File("src/jvmMain/kotlin/afield/audio/synth/DrawnScoreDocs.kt").readLines().map { it.trim() }
+    private val source = File("src/jvmMain/kotlin/afield/audio/synth/DrawnScoreDocs.kt").readLines().map { it.trim().replace(Regex("\\s+"), " ") }
 
     /** The page's lines from the one starting with [first] to the next line that is exactly `}`. */
     private fun block(first: String): List<String> {
         val start = page.indexOfFirst { it.startsWith(first) }
         assertTrue(start >= 0, "the page no longer has a line starting '$first'")
         val end = (start until page.size).first { page[it] == "}" }
-        return page.subList(start, end + 1).map { it.trim() }.filter { it.isNotEmpty() }
+        return page.subList(start, end + 1).map { it.trim().replace(Regex("\\s+"), " ") }.filter { it.isNotEmpty() }
     }
 
     private fun assertInSource(block: List<String>, what: String) {
-        val found = (0..source.size - block.size).any { i -> source.subList(i, i + block.size) == block }
+        // Layout aside: the page may wrap or unalign what the source keeps on one line.
+        val flat = { lines: List<String> -> lines.filter { it.isNotEmpty() }.joinToString(" ") }
+        val found = flat(block) in flat(source)
         assertTrue(found, "$what on the page differs from DrawnScoreDocs.kt; the page's block is:\n${block.joinToString("\n")}")
     }
 

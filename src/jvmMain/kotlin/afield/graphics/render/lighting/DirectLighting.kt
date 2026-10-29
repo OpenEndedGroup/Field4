@@ -1,3 +1,16 @@
+/**
+ * Direct lighting from one-sided rectangular area emitters, shaded over a raster G-buffer.
+ *
+ * [DirectLighting] is a render target that [DirectLighting.attach] adds to a render list's pre-targets.
+ * It reads [DirectLightSurfaces]: world position and depth, normal, albedo, the unlit source image
+ * and motion.
+ * It lights those surfaces from an [AreaEmitter], tracing shadow rays against an [OpaqueRayScene]
+ * when the device supports ray queries; otherwise its mode defaults to passing the source image
+ * through, with an unshadowed mode available.
+ * [DirectLighting.enableRtxdi] adds optional RTXDI reservoir resampling, configured by [RtxdiSettings].
+ * The `view` setting switches the output to debug images such as normals, depth or light id.
+ */
+
 package afield.graphics.render.lighting
 
 import afield.graphics.vulkan.Renderer
@@ -92,7 +105,7 @@ class DirectLighting(val renderer: Renderer, val surfaces: DirectLightSurfaces, 
         output = RenderToTexture(renderer) { this.width=this@DirectLighting.width; this.height=this@DirectLighting.height
             format=VK_FORMAT_R32G32B32A32_SFLOAT; useDepth=false; debugName="$name-output" }
         resolve = Module(parameters(renderer) {
-            this.name="${this@DirectLighting.name}-resolve"; output.apply()
+            this.name="${this@DirectLighting.name}-resolve"; +output
             vertex=VERTEX; fragment=RESOLVE; depthTest=false; depthWrite=false; blend=false
         })
         check(resolve.valid) { "Direct-light resolve shader failed" }

@@ -11,48 +11,46 @@ import afield.audio.synth.bjorklund
 import afield.audio.synth.signalOf
 import afield.audio.synth.squeezeJoin
 
-/*
- Where a Petri net stops being a graph and becomes music.
-
- The whole file rests on one claim, and it is worth stating plainly because everything else follows
- from it: **a net is a pure function of time**, so a net can be a `PatPattern`.
-
- `PatPattern` is not a list of notes. It is a function from a time arc to the events inside it, and
- the language's combinators are free to call it with any arc, in any order, as many times as they
- like — `rev()` reads a cycle backwards, `every(4)` re-queries under a transform, the scheduler
- walks forward one cycle at a time. A stateful sequencer cannot satisfy that contract. A Petri net
- with a deterministic conflict policy can, because [PetriRun] memoises an append-only trajectory:
- the answer for cycle 3 is the same object whether you ask before or after asking about cycle 9.
-
- The payoff is that nothing here has to reimplement anything:
-
-     val net = petri {
-         place("kick", tokens = 1)
-         t("hit",  dur = cyc(1, 16), emit = "bd") { from("kick"); to("hats") }
-         t("back", dur = cyc(1, 16), emit = "sd") { from("hats"); to("kick") }
-     }
-
-     net.emits()                                  // PatPattern<String>
-        .every(4) { it.fast(2) }                  // …and the entire language applies
-        .jux { it.rev() }
-        .respond(cps = 2.0) { println(it) }
-
- Three doors from a net into the language
- ----------------------------------------
-
- 1. **Firings are events.** [pattern] gives you `PatPattern<PetriFiring>`; [emits] narrows it to
-    what each firing sounds. This is the short-term rhythm layer, and it is where a net behaves
-    like a drum machine.
-
- 2. **Tokens are patterns.** A token's colour can be a whole `PatPattern`, so a place is a section
-    and a transition is an edit. [unfold] plays whatever pattern a firing consumed across that
-    firing's arc, which makes a slow net a *song structure* over the fast nets it schedules. One
-    mechanism, both timescales.
-
- 3. **Markings are control signals.** [signal] turns a place's token count into a continuous
-    `PatPattern<Double>`, optionally interpolated, so tension accumulating in a place can drive a
-    filter cutoff: `with cutoff(net.signal("tension").rangex(200, 8000))`.
-*/
+/**
+ * Turns a Petri net into a `PatPattern`, so the whole pattern language applies to it.
+ *
+ * A net is a pure function of time, and that is what lets it be a pattern. `PatPattern` is not a list
+ * of notes: it is a function from a time arc to the events inside it, and the combinators may call it
+ * with any arc, in any order, as many times as they like. `rev()` reads a cycle backwards, `every(4)`
+ * re-queries under a transform, and the scheduler walks forward one cycle at a time. A stateful
+ * sequencer cannot satisfy that contract. A Petri net with a deterministic conflict policy can,
+ * because [PetriRun] memoises an append-only trajectory: the answer for cycle 3 is the same object
+ * whether you ask before or after asking about cycle 9.
+ *
+ * So nothing here reimplements a combinator:
+ *
+ * ```
+ * val net = petri {
+ *     place("kick", tokens = 1)
+ *     t("hit",  dur = cyc(1, 16), emit = "bd") { from("kick"); to("hats") }
+ *     t("back", dur = cyc(1, 16), emit = "sd") { from("hats"); to("kick") }
+ * }
+ *
+ * net.emits()                                  // PatPattern<String>
+ *    .every(4) { it.fast(2) }                  // the rest of the language applies
+ *    .jux { it.rev() }
+ *    .respond(cps = 2.0) { println(it) }
+ * ```
+ *
+ * #### Three ways from a net into the language
+ *
+ * 1. **Firings are events.** [pattern] gives you `PatPattern<PetriFiring>`; [emits] narrows it to
+ *    what each firing sounds. This is the short-term rhythm layer, where a net behaves like a drum
+ *    machine.
+ *
+ * 2. **Tokens are patterns.** A token's colour can be a whole `PatPattern`, so a place is a section
+ *    and a transition is an edit. [unfold] plays whatever pattern a firing consumed across that
+ *    firing's arc, which makes a slow net a song structure over the fast nets it schedules.
+ *
+ * 3. **Markings are control signals.** [signal] turns a place's token count into a continuous
+ *    `PatPattern<Double>`, optionally interpolated, so tension accumulating in a place can drive a
+ *    filter cutoff: `with cutoff(net.signal("tension").rangex(200, 8000))`.
+ */
 
 // ── firings as events ──────────────────────────────────────────────────────────────────────
 

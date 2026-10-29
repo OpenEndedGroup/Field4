@@ -3,6 +3,9 @@ description: >
   The four examples of public/docs/sorting_networks_examples.md, one box each: two networks drawn,
   disorder removed layer by layer, one annealing run, and annealing across starting networks,
   schedules and seeds. Pure CPU. Box code is the page's runner fences with the fold markers removed.
+docs:
+  - page: sorting_networks_examples.md
+    why: "The page these four boxes come from, with explanations."
 operations:
   - create:
       box: "sorting_topology"

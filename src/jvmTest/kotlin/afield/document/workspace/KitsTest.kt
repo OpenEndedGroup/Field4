@@ -84,6 +84,16 @@ class KitsTest {
 
     private fun state(i: KitInspection, label: String) = i.items.single { it.label == label }.state
 
+    @Test fun aPortableDocumentCanCarryItsOwnKitWithoutAMachineSpecificDirectory() {
+        val (doc, kitDir) = onKit()
+        val manifest = File(kitDir, "kit.json").readText()
+        File(doc.dir, "kit.json").writeText(manifest)
+        File(doc.dir, Kits.RECORD).writeText(manifest)
+        val inspection = Kits.inspect(doc.boxes, doc.dir)
+        assertTrue(inspection.items.all { it.state == KitItemState.CURRENT })
+        assertEquals(doc.dir.absolutePath, inspection.kitDirectory)
+    }
+
     @Test fun aDocumentHoldingItsKitsCopyIsCurrentAndSaysWhichKitItRuns() {
         val (doc, _) = onKit()
         val inspection = Kits.inspect(doc.boxes, doc.dir)

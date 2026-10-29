@@ -66,6 +66,13 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
+ * The AI4 chat surface for a [StackSLEvolution]: [stackSLEvolveStudio] registers the `evolve_*`
+ * tools on a box and ties the population to the conversation's branches.
+ *
+ * [stackSLEvolution] keeps one search on the box, so re-running the box keeps its population.
+ */
+
+/**
  * The StackSL search as a world the AI4 chat works in, the way `ai4_paint_studio` makes a canvas
  * one: the chat runs generations, looks at the leaders, proposes programs of its own, asks the
  * cheap model for a round, takes a gradient step on a literal, and breeds with populations it left

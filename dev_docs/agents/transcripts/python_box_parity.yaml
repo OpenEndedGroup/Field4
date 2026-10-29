@@ -11,6 +11,9 @@ description: |
 
   Same prerequisite as `python_cells`: Field must have found a Python with JEP before it started
   (`public/docs/python.md`, "Setting Python up").
+docs:
+  - page: python.md
+    why: "Explains Python boxes, their error markers and output."
 operations:
   - create:
       box: parity_root

@@ -54,15 +54,17 @@ import afield.io.mqtt.*
 mqtt.publish("installation/scene", mapOf("name" to "dusk", "brightness" to 0.4), qos = 1, retain = true)
 
 mqtt.subscribe("installation/#") { topic, message ->
-    markdown("`$topic`: **${message.string("name")}** at ${message.number("brightness")} (retained: ${message.retained})")
+    markdown(
+        "`$topic`: **${message.string("name")}** at ${message.number("brightness")} (retained: ${message.retained})",
+    )
 }
 ```
 
 ## Reading values without a callback
 
 Often you only want the latest value. `track` subscribes without a callback, and then `number`,
-`text` and `series` read what has arrived. Here the same box also plays two sensors, so there is
-something to plot:
+`text` and `series` read what has arrived. Here the same box also plays two sensors for four
+seconds, so there is something to plot:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/mqtt/track_series.png" execution="launch" wait="6.0" wait-output="true" wait-output-kind="display" capture="box" open-outputs="true" w="900" timeout="120" embed=true name="mqtt-track-series" alt="A dark line plot titled Temperatures with two traces, kitchen in cyan oscillating around 21 and garden in orange drifting around 12, built from MQTT messages received over the last few seconds"}
 import afield.io.mqtt.*
@@ -74,6 +76,7 @@ fun sensors() {
     mqtt.publish("sensors/kitchen/temp", 21.0 + sin(t * 3.0) * 1.5)
     mqtt.publish("sensors/garden/env", mapOf("temp" to 12.0 + sin(t * 0.8) * 3.0, "humidity" to 70))
 }
+
 :::endfold
 
 mqtt.track("sensors/#")
@@ -84,6 +87,7 @@ loop {
         "garden" to mqtt.series("sensors/garden/env", "temp"),
         title = "Temperatures (°C)",
     )
+    if (AnimationClock.nowSeconds() - start > 4.0) end()
     delay(100)
 }
 ```

@@ -1,5 +1,6 @@
 package afield.graphics.render
 
+import afield.app.diagnostics.LatencySpans
 import afield.graphics.scene.main
 
 import afield.graphics.shader.Introspection
@@ -25,6 +26,14 @@ import org.lwjgl.vulkan.EXTMeshShader.VK_SHADER_STAGE_MESH_BIT_EXT
 import org.lwjgl.vulkan.EXTMeshShader.VK_SHADER_STAGE_TASK_BIT_EXT
 import org.lwjgl.vulkan.VK13.*
 import java.nio.ByteBuffer
+
+/**
+ * A task/mesh-shader pipeline as a renderable module: [MeshModule] compiles and introspects task and
+ * mesh shaders and owns their descriptor sets.
+ *
+ * Boxes hold it through a [MeshModulePointer], which swaps in a rebuilt module when a shader is
+ * reloaded and carries live values across the interface change.
+ */
 
 class MeshModulePointer(var current: MeshModule) : Renderable {
     /** What the last successful [reload] did to the interface and which values it could not carry. */
@@ -633,14 +642,16 @@ class MeshModule(val parameters: Parameters) : Renderable {
 
                 ds?.let { gp.pDepthStencilState(it) }
 
-                vkCheck(
-                    vkCreateGraphicsPipelines(
-                        parameters.renderer.device.vkDevice,
-                        parameters.renderer.pipelineCache.vkPipelineCache,
-                        gp, null, lp
-                    ),
-                    "Error creating graphics pipeline"
-                )
+                LatencySpans.time("pipeline.create", detail = "graphics") {
+                    vkCheck(
+                        vkCreateGraphicsPipelines(
+                            parameters.renderer.device.vkDevice,
+                            parameters.renderer.pipelineCache.vkPipelineCache,
+                            gp, null, lp
+                        ),
+                        "Error creating graphics pipeline"
+                    )
+                }
                 this.pipeline = lp[0]
                 pipelineDisposeToken.updateCleanup(snapshotPipelineCleanup())
                 parameters.renderer.device.nameObject(

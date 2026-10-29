@@ -29,8 +29,8 @@ different type:
 There is a spelled-out form too, for when the name is in a variable rather than a literal:
 
 ```diffstatic {data-lang=kotlin}
-val a = files.file("data.csv")          // `files` is the current session's file manager
-val b = fileManager.file(name)          // `fileManager` is the same object under a longer name
+val a = files.file("data.csv") // `files` is the current session's file manager
+val b = fileManager.file(name) // `fileManager` is the same object under a longer name
 val c = files.path("data.csv")
 ```
 
@@ -63,17 +63,18 @@ pin the wrong answer for the rest of the session.
 Two roots have built-in names, and a leading `%` asks for one of them by hand rather than searching:
 
 ```diffstatic {data-lang=kotlin}
-val mine   = "%document/data.csv".file   // this document's files/ only, skipping the projects
+val mine = "%document/data.csv".file // this document's files/ only, skipping the projects
 val shared = "%project/palette.json".file // the project files/ only, skipping the document
-val dir    = "%document".path             // the files/ directory itself
+val dir = "%document".path // the files/ directory itself
 ```
 
 `%project` needs the document to be in exactly one workspace project, or in one whose `files/`
 already holds the name. In a document that is in no project it throws; in a document that is in two
 and where the file is in neither, it throws as ambiguous.
 
-Asking for `%document/...` creates the document's `files/` directory if it is missing, as does
-reading `files.documentFilesDirectory`.
+In a writable document, asking for `%document/...` or reading `files.documentFilesDirectory`
+creates the document's `files/` directory if it is missing. In a read-only document, these lookups
+return the path without creating the directory. Existing files can still be read.
 
 Field also registers `%docs` when the loaded installation contains `public/docs/`. This points
 to the bundled documentation, not to the current document or working directory. For example,
@@ -103,8 +104,8 @@ already unless you ask for it:
 
 ```diffstatic {data-lang=kotlin}
 FileManager.add("renders", "~/Desktop/field-renders", create = true)
-FileManager["renders"]                   // the absolute Path stored, or null
-FileManager.remove("renders")            // unregisters; nothing on disk is touched
+FileManager["renders"] // the absolute Path stored, or null
+FileManager.remove("renders") // unregisters; nothing on disk is touched
 ```
 
 A name has to look like an identifier: letters, digits, `_` and `-`, not starting with a digit. A
@@ -139,7 +140,7 @@ A spec containing `*`, `?`, `[` or `{` is matched by walking each search root re
 the first match in sorted path order:
 
 ```diffstatic {data-lang=kotlin}
-val anyScan = "**/*.ply".file            // first .ply under the document, then under the projects
+val anyScan = "**/*.ply".file // first .ply under the document, then under the projects
 val inFolder = "scans/*.ply".file
 ```
 

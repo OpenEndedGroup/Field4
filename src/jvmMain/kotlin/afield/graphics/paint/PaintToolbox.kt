@@ -1,6 +1,11 @@
 @file:afield.runtime.completion.CompletionCategory("Graphics")
 package afield.graphics.paint
 
+/**
+ * Named painting tools that keep their state between strokes, and can be saved to a file and
+ * loaded back: [PaintToolbox].
+ */
+
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.File

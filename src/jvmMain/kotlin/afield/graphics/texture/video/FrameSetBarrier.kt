@@ -1,3 +1,11 @@
+/**
+ * Holds back presentation of a frame set until every member is ready, so several textures switch
+ * frames together.
+ *
+ * Ordinary clock ticks cannot replace an unfinished set; a new seek or reconfiguration revision
+ * can. `FrameSetBarrierTest` covers it.
+ */
+
 package afield.graphics.texture.video
 
 /**

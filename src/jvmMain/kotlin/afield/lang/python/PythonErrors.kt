@@ -1,3 +1,10 @@
+/**
+ * Error locations for Python boxes: the cell line that raised, read from the exception's traceback.
+ *
+ * [PythonErrors] holds the Python helper spliced into the interpreter and the Kotlin arithmetic that
+ * maps its answer onto a box line. `PythonErrorsTest` runs the helper under a plain `python3`.
+ */
+
 package afield.lang.python
 
 /**

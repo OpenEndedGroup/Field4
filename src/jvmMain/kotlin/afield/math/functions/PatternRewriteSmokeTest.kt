@@ -57,20 +57,18 @@ expect:
     - "Pattern-rewrite smoke passed"
 */
 /**
- * Smoke for the pattern-rewrite layer ([afield.runtime.macros.PatternRewrite]) — a structural
- * source-to-source rewriter that lets a live box author its own `rewrite { … }` rules on top of the
- * existing PSI macro pass.
+ * Smoke for the pattern-rewrite layer ([PatternRewrite]), a structural source-to-source rewriter
+ * that lets a box author its own `rewrite { ... }` rules on top of the PSI macro pass.
  *
- * Most cases are pure and black-box: they feed a source string (rule + code) through
+ * Most cases are black-box: they feed a source string (rule plus code) through
  * [PatternRewrite.expand] with the standalone [FieldKtParser] as the PSI environment and assert on
- * the emitted text — no REPL needed. One end-to-end case drives a real [KotlinInterface2] to prove
- * the rule blocks are deleted, the wiring in `applyMacros` fires, and the result actually compiles
- * and evaluates.
- *
- * Covers proposal §9: match/no-match, non-linearity, paren-modulo, the precedence hazard, the quote
- * barrier, declaration-order first-match-wins, block deletion + compile, and non-convergence
- * termination.
+ * the emitted text, with no REPL. The unquote and fragment-rule cases drive a real
+ * [KotlinInterface2] through `applyMacros`. The cases cover match and no-match, non-linearity,
+ * paren-modulo, the precedence hazard, the quote barrier, first-match-wins declaration order,
+ * guards, variadic holes, unquote, ambient and local rules, and termination of a non-converging
+ * rule.
  */
+
 object PatternRewriteSmokeTest {
 
     fun runTests(): Boolean {

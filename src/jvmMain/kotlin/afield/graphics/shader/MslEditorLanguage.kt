@@ -10,6 +10,10 @@ import afield.lang.remotejs.JsFun
 import java.io.File
 
 /**
+ * The Monaco editor language for Metal Shading Language, used by the `msl` box property.
+ */
+
+/**
  * The Monaco language for Field's `msl` box property — Metal Shading Language for a visionOS head.
  *
  * The single source of truth is the static resource `src/commonMain/resources/msl.js`, served to the

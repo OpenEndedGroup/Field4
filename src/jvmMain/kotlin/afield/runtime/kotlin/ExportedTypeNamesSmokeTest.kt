@@ -35,26 +35,27 @@ expect:
   stdoutContains:
     - "ExportedTypeNames smoke passed"
 */
+
 /**
  * Smoke for [ExportedTypeNames], which decides the type text `@exported` splices into another box's
  * preamble.
  *
- * Two properties are load-bearing and pull in opposite directions, so both are asserted here:
+ * Two properties pull in opposite directions, and both are asserted here:
  *
- *  - **Precision.** Library and `afield.` types must survive with their generic arguments intact.
- *    The whole point of the change is that they used to be flattened to `Any?` by a prefix
- *    whitelist that no real type matched.
- *  - **Safety.** A type the consuming box cannot name must degrade to `Any?`, never be emitted
- *    hopefully. A preamble line that fails to compile poisons every later compile in that box, so
- *    a false accept is far more expensive than a false reject.
+ *  - **Precision.** Library and `afield.` types survive with their generic arguments intact, so
+ *    `List<Double>` reaches the consuming box as `List<Double>` rather than as `Any?`.
+ *  - **Safety.** A type the consuming box cannot name degrades to `Any?` rather than being emitted
+ *    and hoped for. A preamble line that fails to compile breaks every later compile in that box,
+ *    so a false accept costs more than a false reject.
  *
- * [testUnnameableArgumentIsErasedNotEmitted] is the regression that motivated the rewrite: the old
- * implementation accepted any name starting with `kotlin.` and returned it *whole*, so a
- * `List<SomeBoxLocalClass>` was emitted verbatim with an unresolvable argument inside it.
+ * `testUnnameableArgumentIsErasedNotEmitted` is where the two meet: an argument the consuming box
+ * cannot name collapses to a star projection, leaving `List<*>`, so the outer type still lands and
+ * no unresolvable name reaches the preamble.
  *
- * Pure renderer assertions — no REPL, no engine, so this stays fast. Runnable-object test style,
+ * Pure renderer assertions: no REPL and no engine, so this stays fast. Runnable-object test style,
  * matching [WitherSmokeTest].
  */
+
 object ExportedTypeNamesSmokeTest {
 
     /** The loader every box's engine actually derives its classpath from, in this process. */

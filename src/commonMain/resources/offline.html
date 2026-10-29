@@ -9,6 +9,17 @@
     <link rel="stylesheet" href="iosevka.css">
     <link rel="stylesheet" href="outputareas.css">
     <style>
+        .published-outputs { position:absolute; left:0; top:100%; padding-top:8px; cursor:auto; text-align:left; }
+        .published-output { background:transparent; border:0; margin-bottom:6px; color:#ddd; }
+        .published-output summary { position:relative; display:block; width:max-content; padding:4px 8px; min-height:24px; background:#000; cursor:pointer; font:italic 12px "Iosevka Web",monospace; }
+        .published-output summary::-webkit-details-marker { display:none; }
+        .published-output summary::before { content:''; position:absolute; left:-18px; top:8px; width:0; height:0; border-top:5px solid transparent; border-bottom:5px solid transparent; border-left:7px solid #000; }
+        .published-output[open] > summary::before { transform:rotate(90deg); }
+        .published-output summary:hover { background:#191919; }
+        .published-output summary:hover::before { border-left-color:#ddd; }
+        .published-output:focus, .published-output summary:focus { outline:none; box-shadow:none; }
+        .published-output iframe { display:block; width:100%; border:0; background:#000; }
+        .published-output-warning { padding:6px 10px; max-width:640px; color:#aaa; font-size:12px; user-select:text; }
         body {
             font-family: "Iosevka Web", system-ui, Avenir, Helvetica, Arial, sans-serif;
             font-weight: 300;
@@ -37,7 +48,7 @@
             position: absolute;
             width: 100vw;
             height: 100vh;
-            overflow: auto;
+            overflow: hidden;
         }
 
         #canvas {
@@ -50,6 +61,7 @@
 
         #connections {
             position: absolute;
+            transform-origin: 0 0;
             inset: 0;
             width: 100%;
             height: 100%;
@@ -104,9 +116,11 @@
             padding: 8px;
             display: block;
             text-align: center;
-            white-space: nowrap;
-            overflow: visible;
-            word-break: normal;
+            max-width: 100%;
+            max-height: 100%;
+            white-space: normal;
+            overflow: hidden;
+            overflow-wrap: anywhere;
             hyphens: manual;
         }
 
@@ -115,11 +129,12 @@
             top: 5px;
             right: 5px;
             height: calc(100vh - 10px);
-            width: calc(70vw - 10px);
+            width: min(calc(70vw - 10px), 900px);
+            max-width: calc(100vw - 10px);
             border: 5px solid black;
             border-radius: 5px;
             padding: 5px;
-            background: #1e1e1e;
+            background: #000;
             z-index: 19;
             display: none;
             opacity: 0;
@@ -128,21 +143,56 @@
         }
 
         .monaco-editor-container.visible {
-            display: block;
+            display: flex;
+            flex-direction: column;
             opacity: 1;
             transform: translateX(0);
         }
 
-        .monaco-editor {
+        #editor {
             width: 100%;
-            height: calc(100% - 40px);
+            flex: 1 1 auto;
+            min-height: 0;
             font-family: "Iosevka Web", system-ui, Avenir, Helvetica, Arial, sans-serif !important;
         }
+
+        #editor .monaco-editor { outline: none !important; }
+
+        .editor-resize-handle {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: -5px;
+            width: 14px;
+            z-index: 22;
+            cursor: ew-resize;
+            touch-action: none;
+            outline: none;
+        }
+
+        .editor-resize-handle::after {
+            content: '';
+            position: absolute;
+            left: 3px;
+            top: 16px;
+            bottom: 16px;
+            width: 4px;
+            border-radius: 3px;
+            background: #aaa;
+            opacity: 0;
+            transition: opacity 120ms ease;
+        }
+
+        .editor-resize-handle:hover::after,
+        .editor-resize-handle:focus-visible::after,
+        html.editor-resizing .editor-resize-handle::after { opacity: 1; }
+        html.editor-resizing, html.editor-resizing * { cursor: ew-resize !important; user-select: none !important; }
 
         .literate-view {
             display: none;
             width: 100%;
-            height: calc(100% - 40px);
+            flex: 1 1 auto;
+            min-height: 0;
             overflow: auto;
             font-family: "Iosevka Web", system-ui, Avenir, Helvetica, Arial, sans-serif;
             padding: 4px 6px;
@@ -167,21 +217,24 @@
         }
 
         .view-toggle button {
-            padding: 3px 8px;
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 3px;
+            background: transparent;
+            border: 0;
             border-radius: 3px;
-            color: var(--field-text);
+            color: #aaa;
             cursor: pointer;
-            font-size: 10px;
-            line-height: 1.1;
             height: 23px;
-            min-width: 64px;
+            width: 24px;
         }
 
-        .view-toggle button:hover {
-            background: rgba(255, 255, 255, 0.14);
+        .view-toggle button:hover, .view-toggle button[aria-pressed="true"] {
+            color: #eee;
+            background: rgba(255, 255, 255, 0.08);
         }
+        .view-toggle button:focus-visible { outline: 1px solid #777; outline-offset: 2px; }
 
         .property-tab {
             padding: 4px 8px;
@@ -204,16 +257,19 @@
             border-color: var(--field-cyan);
         }
 
-        /* Make Monaco line numbers lighter and smaller */
+        #editor .margin { background:#000 !important; border-right:8px solid #1e1e1e; }
+        #editor .margin-view-overlays { font-size:70% !important; }
+        /* Small folio numbers, centred inside Monaco's own full-height line boxes. */
         .monaco-editor .margin-view-overlays .line-numbers {
-            color: rgba(255, 255, 255, 0.3) !important;
-            font-size: 10px !important;
-            line-height: 1.2;
-            transform: translateY(-1px);
+            color: rgba(255, 255, 255, 0.63) !important;
+            font-size:70% !important;
+            display:flex;
+            align-items:center;
+            justify-content:flex-end;
         }
 
         .monaco-editor .margin-view-overlays .line-numbers.active-line-number {
-            color: rgba(var(--field-cyan-rgb), 0.6) !important;
+            color: rgba(255, 255, 255, 0.9) !important;
         }
 
         .lit-code-block {
@@ -297,6 +353,155 @@
             z-index: 100;
             max-width: 80%;
         }
+
+        /* The drawing layer: the root box's Excalidraw scene, in world coordinates under the boxes.
+           Field shows the scene through Excalidraw's dark theme filter; so does the viewer. */
+        .drawing-layer {
+            position: absolute;
+            overflow: visible;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .drawing-theme {
+            filter: invert(93%) hue-rotate(180deg);
+        }
+
+        .box {
+            z-index: 1;
+        }
+
+        .box-notes-badge {
+            position: absolute;
+            top: 3px;
+            right: 6px;
+            font-size: 12px;
+            color: var(--field-text-soft);
+            opacity: 0.75;
+            pointer-events: none;
+        }
+
+        .property-tabs {
+            flex: 0 0 auto;
+            flex-wrap: wrap;
+            padding-right: 30px;
+        }
+
+        /* A box's notes, as Markdown, above its code. */
+        .notes-view {
+            display: none;
+            flex: 0 1 auto;
+            max-height: 48%;
+            overflow: auto;
+            margin: 0 0 8px 0;
+            padding: 4px 14px 8px 12px;
+            border-left: 2px solid var(--field-cyan-muted);
+            color: #dbe8f5;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .monaco-editor-container.no-code .notes-view {
+            max-height: none;
+            flex: 1 1 auto;
+        }
+
+        .notes-view h1, .notes-view h2, .notes-view h3, .notes-view h4 {
+            color: var(--field-text);
+            font-weight: 400;
+            margin: 10px 0 6px 0;
+            line-height: 1.25;
+        }
+
+        .notes-view h1 { font-size: 19px; }
+        .notes-view h2 { font-size: 16px; }
+        .notes-view h3, .notes-view h4 { font-size: 14px; }
+        .notes-view p { margin: 6px 0; }
+        .notes-view a { color: var(--field-cyan); }
+        .notes-view img { max-width: 100%; border-radius: 4px; }
+        .notes-view code {
+            font-family: "Iosevka Web", monospace;
+            background: rgba(255, 255, 255, 0.07);
+            padding: 0 3px;
+            border-radius: 3px;
+            color: #f0d9a0;
+        }
+
+        .notes-view pre.md-code {
+            background: #11161c;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 6px;
+            padding: 6px 8px;
+            overflow-x: auto;
+            font-size: 12px;
+            line-height: 1.35;
+        }
+
+        .notes-view pre.md-code code { background: none; padding: 0; color: inherit; }
+        .notes-view blockquote { margin: 6px 0; padding-left: 10px; border-left: 2px solid rgba(255,255,255,0.2); opacity: 0.85; }
+        .notes-view ul, .notes-view ol { margin: 6px 0; padding-left: 22px; }
+        .notes-view table { border-collapse: collapse; margin: 8px 0; font-size: 12px; }
+        .notes-view th, .notes-view td { border: 1px solid rgba(255, 255, 255, 0.12); padding: 3px 7px; vertical-align: top; }
+        .notes-view th { color: var(--field-text); font-weight: 400; background: rgba(255,255,255,0.04); }
+        .notes-view hr { border: none; border-top: 1px solid rgba(255,255,255,0.15); }
+
+        /* Zoom, drawing, layers and bookmarks. */
+        .document-panel {
+            position: fixed;
+            top: 50px; /* tucked under "Open in Field·4" */
+            left: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            z-index: 20;
+            max-width: calc(30vw - 160px);
+            min-width: 260px;
+            font-size: 11px;
+            color: var(--field-text);
+        }
+
+        .document-panel { min-width: 0; align-items: flex-start; }
+        .doc-toggle {
+            font: inherit;
+            color: var(--field-text);
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid var(--field-cyan-muted);
+            border-radius: 8px;
+            padding: 4px 9px;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+        }
+        .doc-toggle:hover { background: rgba(var(--field-cyan-rgb), 0.2); }
+        .doc-body { display: none; flex-direction: column; gap: 4px; min-width: 260px; }
+        .document-panel.open .doc-body { display: flex; }
+
+        .doc-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 6px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid var(--field-cyan-muted);
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+        }
+
+        .doc-row button {
+            font: inherit;
+            color: var(--field-text);
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(var(--field-cyan-rgb), 0.3);
+            border-radius: 5px;
+            padding: 1px 7px;
+            cursor: pointer;
+        }
+
+        .doc-row button:hover { background: rgba(var(--field-cyan-rgb), 0.2); }
+        .doc-row button.active { background: var(--field-cyan); color: #000; }
+        .doc-row label { cursor: pointer; margin-left: 4px; }
+        .doc-label { opacity: 0.6; margin-right: 2px; }
+        #zoom-readout { min-width: 38px; text-align: center; }
     </style>
 </head>
 <body>
@@ -313,11 +518,15 @@
     </div>
 
     <div class="monaco-editor-container" id="editor-container">
+        <div class="editor-resize-handle" id="editor-resize-handle" role="separator" aria-label="Resize editor" aria-orientation="vertical" aria-controls="editor-container" tabindex="0"></div>
         <div class="property-tabs" id="property-tabs"></div>
-        <div class="view-toggle"><button id="literate-toggle">reader</button></div>
-        <div class="monaco-editor" id="editor"></div>
+        <div class="view-toggle"><button id="literate-toggle" type="button" aria-label="Toggle reader view" aria-pressed="false" title="Show reader view"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 7c-2-2-6-2-9-1v14c3-1 7-1 9 1 2-2 6-2 9-1V6c-3-1-7-1-9 1Z"/><path d="M12 7v14"/></svg></button></div>
+        <div class="notes-view" id="notes-view"></div>
+        <div id="editor"></div>
         <div class="literate-view" id="literate-view"></div>
     </div>
+
+    <div class="document-panel" id="document-panel"></div>
 
     <a class="open-local-button" id="open-local" style="display: none;">
         Open in Field·4
@@ -325,6 +534,7 @@
 
     <script type="text/javascript" src="./min/vs/loader.js"></script>
     <script src="edn-parser.js"></script>
+    <script src="offline-outputs.js"></script>
     <script src="offline-viewer.js"></script>
 </body>
 </html>

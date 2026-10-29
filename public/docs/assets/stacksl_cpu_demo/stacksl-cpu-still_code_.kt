@@ -1,26 +1,29 @@
-// StackSL, running on the CPU. No GPU, no window, no graphics context, no AWT.
-//
-// Until this backend existed, a StackSL program could only be RUN on a GPU — so every claim about
-// what a word does was checked either by eye against a screenshot, or against a hand-written
-// Kotlin twin of the emitted GLSL. This box is the third option: the real compiler's real output,
-// interpreted.
-//
-// Note what is printed below the picture. That GLSL is not a description of what the CPU is about
-// to do — it IS what the CPU is about to do, and it is byte for byte what a GPU would be handed.
-// The CPU backend has no opinion about any StackSL word; it only knows GLSL.
+/*
+StackSL, running on the CPU. No GPU, no window, no graphics context, no AWT.
+
+Until this backend existed, a StackSL program could only be RUN on a GPU — so every claim about
+what a word does was checked either by eye against a screenshot, or against a hand-written
+Kotlin twin of the emitted GLSL. This box is the third option: the real compiler's real output,
+interpreted.
+
+Note what is printed below the picture. That GLSL is not a description of what the CPU is about
+to do — it IS what the CPU is about to do, and it is byte for byte what a GPU would be handed.
+The CPU backend has no opinion about any StackSL word; it only knows GLSL.
+*/
 
 import afield.lang.stacksl.cpu.StackSLCpu
 
 run {
-
-    val program = """
+    val program =
+        """
         p 6 kaleido
         1.7 twist
         3.0 *
         fbm
         palette
         saturate
-    """.trimIndent()
+    """
+            .trimIndent()
 
     // `StackSLCpu.compile` is the ordinary `stack.auto` compile: same options, same emitter.
     val glsl = StackSLCpu.compile(program).glsl

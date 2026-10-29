@@ -1,5 +1,13 @@
 package afield.document.properties
 
+/**
+ * Records which boxes read values held by other boxes, per document, and saves that record as
+ * `dependencies.edn` beside `metadata.edn`.
+ *
+ * [PropertyDependencies] below describes what is recorded and when it is written; the tests are
+ * `PropertyDependenciesTest`.
+ */
+
 import afield.app.diagnostics.named
 import afield.app.server.documents
 import afield.data.table.div
@@ -131,6 +139,13 @@ object PropertyDependencies {
         /** [clock] at the last access; 0 for an edge only remembered from disk. Not persisted. */
         @Volatile
         var lastSeq = 0L
+
+        /**
+         * The reader has finished a full run since this access without repeating it ([retireReadsBefore]):
+         * kept to explain what happened, but it no longer reruns the reader. The next access revives it.
+         */
+        @Volatile
+        var historical = false
     }
 
     class Store(val documentPath: String) {
@@ -233,6 +248,10 @@ object PropertyDependencies {
             existing.lastSeq = clock.incrementAndGet()
             if (matchKind != null) existing.matchKind = matchKind
             if (matchedName != null) existing.matchedName = matchedName
+            if (existing.historical) {
+                existing.historical = false
+                store.structuralChange = true
+            }
             store.countChange = true
             return
         }
@@ -242,6 +261,22 @@ object PropertyDependencies {
         edge.lastSeen = now
         edge.lastSeq = clock.incrementAndGet()
         store.structuralChange = true
+    }
+
+    /**
+     * [box] has just finished a full run (not a fragment) that began at [runStartSeq]: every access it
+     * made before then and did not repeat during the run is now historical. A completed run replaces
+     * the box's live dependencies; reads its `frames {}` loops and callbacks make later revive theirs.
+     */
+    fun retireReadsBefore(box: Box, runStartSeq: Long) {
+        val store = storeFor(box) ?: return
+        var changed = false
+        for (e in store.edges.values) {
+            if (e.key.reader != box.id || e.historical || e.lastSeq >= runStartSeq) continue
+            e.historical = true
+            changed = true
+        }
+        if (changed) store.structuralChange = true
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -261,18 +296,23 @@ object PropertyDependencies {
         val count: Long,
         val sessionCount: Long,
         val lastSeen: Long,
+        /** Every edge behind this arrow is historical. */
+        val historical: Boolean = false,
     )
 
-    /** Every producer → consumer flow in [store], merged per pair. */
-    fun flows(store: Store, rootId: String? = null): List<Flow> {
-        val edges = store.edges.values.toList()
+    /**
+     * Every producer → consumer flow in [store], merged per pair. Historical edges are left out
+     * unless [includeHistorical]; then an arrow made only of them is marked [Flow.historical].
+     */
+    fun flows(store: Store, rootId: String? = null, includeHistorical: Boolean = false): List<Flow> {
+        val edges = store.edges.values.filter { includeHistorical || !it.historical }
         // (holder, name) -> writers
         val writers = HashMap<Pair<String, String>, MutableList<Edge>>()
         for (e in edges) if (e.key.access == Access.WRITE) {
             writers.getOrPut(e.key.supplier to e.key.name) { ArrayList(1) } += e
         }
 
-        class Acc(var count: Long = 0, var session: Long = 0, var lastSeen: Long = 0, val names: LinkedHashSet<String> = LinkedHashSet())
+        class Acc(var count: Long = 0, var session: Long = 0, var lastSeen: Long = 0, val names: LinkedHashSet<String> = LinkedHashSet(), var live: Boolean = false)
 
         val merged = LinkedHashMap<Pair<String, String>, Acc>()
         fun add(from: String, to: String, name: String, e: Edge) {
@@ -282,6 +322,7 @@ object PropertyDependencies {
             acc.session += e.sessionCount.get()
             acc.lastSeen = maxOf(acc.lastSeen, e.lastSeen)
             acc.names += name
+            if (!e.historical) acc.live = true
         }
         for (e in edges) {
             if (e.key.access != Access.READ) continue
@@ -290,7 +331,7 @@ object PropertyDependencies {
             if (holder != rootId && holder != METAROOT_ID) add(holder, e.key.reader, name, e)
             writers[holder to e.key.name]?.forEach { w -> add(w.key.reader, e.key.reader, name, e) }
         }
-        return merged.map { (k, a) -> Flow(k.first, k.second, a.names.toList(), a.count, a.session, a.lastSeen) }
+        return merged.map { (k, a) -> Flow(k.first, k.second, a.names.toList(), a.count, a.session, a.lastSeen, historical = !a.live) }
     }
 
     /** The boxes that supplied [box]'s inherited values, as far as this document has seen. */
@@ -302,11 +343,11 @@ object PropertyDependencies {
 
     /**
      * The boxes that supplied [name] to [reader] on any earlier read — what an upstream auto-run would
-     * execute when [reader] misses [name].
+     * execute when [reader] misses [name]. Suppliers of live reads come first, historical ones last.
      */
     fun rememberedSuppliers(store: Store, reader: String, name: String, rootId: String?): List<String> {
         val out = LinkedHashSet<String>()
-        for (e in store.edges.values) {
+        for (e in store.edges.values.sortedBy { it.historical }) {
             if (e.key.access != Access.READ || e.key.reader != reader || e.key.name != name) continue
             val holder = e.key.supplier
             if (holder != rootId && holder != METAROOT_ID) out += holder
@@ -325,8 +366,8 @@ object PropertyDependencies {
     fun graph(info: SessionInformation): DependencyGraph {
         val store = storeFor(info.filename)
         val rootId = info.root.id
-        val flows = flows(store, rootId).map {
-            DependencyFlow(it.from, it.to, it.names, it.count, it.sessionCount, it.lastSeen)
+        val flows = flows(store, rootId, includeHistorical = true).map {
+            DependencyFlow(it.from, it.to, it.names, it.count, it.sessionCount, it.lastSeen, historical = it.historical)
         }
         // A miss that a later read of the same name answered is history, not a hole.
         val lastRead = HashMap<Pair<String, String>, Long>()
@@ -334,7 +375,7 @@ object PropertyDependencies {
             lastRead.merge(e.key.reader to e.key.name, e.lastSeen, ::maxOf)
         }
         val misses = store.edges.values.filter {
-            it.key.access == Access.MISS && (lastRead[it.key.reader to it.key.name] ?: -1L) < it.lastSeen
+            it.key.access == Access.MISS && !it.historical && (lastRead[it.key.reader to it.key.name] ?: -1L) < it.lastSeen
         }.map {
             DependencyMiss(
                 box = it.key.reader,
@@ -417,6 +458,7 @@ object PropertyDependencies {
                     "lastSeen" to e.lastSeen,
                     "matchKind" to e.matchKind,
                     "matchedName" to e.matchedName,
+                    "historical" to (if (e.historical) true else null),
                 ).filterValues { it != null }
             },
         )
@@ -452,7 +494,7 @@ object PropertyDependencies {
                     initialCount = (m["count"] as? Number)?.toLong() ?: 0L,
                     matchKind = m["matchKind"] as? String,
                     matchedName = m["matchedName"] as? String,
-                )
+                ).also { it.historical = m["historical"] == true }
             }
         } catch (t: Throwable) {
             lprintln("warning,context", "could not read ${file.path}: ${t.message}")
@@ -463,4 +505,7 @@ object PropertyDependencies {
     fun forget(documentPath: String) {
         stores.remove(documentPath)
     }
+
+    /** Whether an in-memory record for [documentPath] is held (tests of document close). */
+    internal fun holds(documentPath: String): Boolean = stores.containsKey(documentPath)
 }

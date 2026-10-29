@@ -77,6 +77,14 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
 
+/**
+ * [FLine] is Field's drawn path: a list of move, line and cubic segments with per-node
+ * and per-line properties, built with `moveTo` / `lineTo` / `cubicTo` and drawn by `Box.lines(...)`.
+ *
+ * Also here are the operators that translate, scale and rotate a `List<FLine>` (or a map of
+ * them) as a group.
+ */
+
 var _flineSequenceNumber = 0L
 
 /**
@@ -179,6 +187,33 @@ internal fun FLine.planePoint(x: Number, y: Number, z: Number = 0): Vec3 {
  * Use [moveTo], [lineTo], [cubicTo], and [close] to build geometry. Builders return
  * [FLine] for chaining; use [here] to access the most recently added [Node] when you
  * need per-instruction properties (for example, `color` or `pointSize`).
+ *
+ * # Drawing attributes
+ *
+ * How a line is drawn is not on this class: each attribute is an extension property declared in
+ * `afield/graphics/render/StandardDrawing.kt`, imported one by one from `afield.graphics.render`
+ * (`import afield.graphics.render.color`).
+ *
+ * | property | type, default | what it does |
+ * | --- | --- | --- |
+ * | `color` | `Vector4f`, opaque white | RGBA in `0..1` for stroke, fill and dots; set with `vec(r, g, b, a)` |
+ * | `thickness` | `Double?`, unset (1.0) | stroke width in the line's own units (pixels in 2D) |
+ * | `stroked` | `Boolean`, `true` | draw the outline at `thickness` |
+ * | `filled` | `Boolean`, `false` | flood closed subpaths with `color` |
+ * | `pointed` | `Boolean`, `false` | draw a dot at every node |
+ * | `pointSize` | `Double`, `1.0` | dot size; `Node.pointSize` overrides it per node |
+ * | `thicken` | `Stroke?`, unset | an AWT stroke (dashes, tapers); only the Java2D shape path honours it, so for dashes on screen use `byDashing` |
+ *
+ * `Node.color` sets one node's colour, for gradients. A box draws lines with `lines(listOf(a, b), w = 400.0, h = 300.0)`.
+ *
+ * ```kotlin
+ * import afield.graphics.render.color
+ * import afield.graphics.render.thickness
+ *
+ * val f = FLine().moveTo(0, 0).lineTo(100, 50)
+ * f.color = vec(1.0, 1.0, 1.0, 0.5)   // translucent white
+ * f.thickness = 2.0
+ * ```
  */
 @Serializable(with = FLineSerializer::class)
 // The paragraph above already tells a reader which members matter; this tells the completion popup the
@@ -1229,18 +1264,20 @@ class FLine : HasProperties {
 
     companion object {
         /**
-         * Collection-literal constructor. The first point becomes a [moveTo], the rest [lineTo] —
-         * a polyline. Kotlin resolves a `[...]` literal in a typed context to this `operator fun of`
-         * (only one `of` overload may be `vararg`); it also works as an ordinary `FLine.of(...)` call.
+         * A polyline through the given points: the first becomes a [moveTo], the rest [lineTo].
          *
          * Elements may be any mix of [Number] runs, [Vec2] and [Vec3], packed into points by the
          * same rules as [data]'s parameter handling:
          * ```
-         * val tri:    FLine = [vec(0, 0), vec(1, 0), vec(0.5, 1)]
-         * val square: FLine = [0, 0, 1, 0, 1, 1, 0, 1]
+         * val tri = FLine.of(vec(0, 0), vec(1, 0), vec(0.5, 1))
+         * val square = FLine.of(0, 0, 1, 0, 1, 1, 0, 1)
          * ```
+         *
+         * Not an `operator`, so a `[...]` literal is never an FLine. Its elements are `Any`, so as a
+         * collection-literal constructor it accepted every literal, `[line1, line2]` included, and
+         * made `lines([line1, line2])` ambiguous between `lines(vararg FLine)` and `lines(List<FLine>)`.
          */
-        operator fun of(vararg params: Any): FLine = FLine().apply {
+        fun of(vararg params: Any): FLine = FLine().apply {
             parametersToPoints(params.asList()).forEachIndexed { i, p -> if (i == 0) moveTo(p) else lineTo(p) }
         }
     }

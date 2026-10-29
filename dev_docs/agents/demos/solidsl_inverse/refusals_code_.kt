@@ -2,28 +2,37 @@ import afield.lang.solidsl.*
 
 val body = cuboid(1.0, 1.0, 0.4) - cylinder(1.2, 0.3).at(0.3, 0.0, 0.0)
 
-// The differentiable reading is TOTAL on the algebra — every node with a field form has a
-// differentiable form, because AD is closed over everything Field3 uses. So the refusals
-// are not in the lowering. They are in the *parameterisation*, and there are seven.
+/*
+The differentiable reading is TOTAL on the algebra — every node with a field form has a
+differentiable form, because AD is closed over everything Field3 uses. So the refusals
+are not in the lowering. They are in the *parameterisation*, and there are seven.
+*/
 println("---- seven ways a binding can refuse, each with a reason ----")
 listOf<Pair<String, SolidLowering<*>>>(
-    "a path that does not exist" to body.parameterize { param("r", "Difference/0/Cuboid.w") },
-    "a predicate that matches nothing" to body.parameterize { param("r") { it.node == "Torus" } },
-    "one name declared twice" to body.parameterize {
-        param("r", "Difference/0/Cuboid.x"); param("r", "Difference/0/Cuboid.y")
-    },
-    "two names for one number" to body.parameterize {
-        param("a", "Difference/0/Cuboid.x"); param("b", "Difference/0/Cuboid.x")
-    },
-    "tied slots with different seeds" to body.parameterize { param("size") { it.node == "Cuboid" } },
-    "a Scale factor at zero" to sphere(0.5).sized(1.0, 1.0, 1.0)
-        .parameterize { param("s", "Scale.x", seed = 1e-9) },
-    "a blend radius at zero" to smoothUnion(sphere(0.4), sphere(0.4).at(0.5, 0.0, 0.0), 0.2)
-        .parameterize { param("k", "SmoothUnion.k", seed = 0.0) },
-).forEach { (what, l) ->
-    println("  $what:")
-    println("    ${l.refusalOrNull()}")
-}
+        "a path that does not exist" to body.parameterize { param("r", "Difference/0/Cuboid.w") },
+        "a predicate that matches nothing" to body.parameterize { param("r") { it.node == "Torus" } },
+        "one name declared twice" to
+            body.parameterize {
+                param("r", "Difference/0/Cuboid.x")
+                param("r", "Difference/0/Cuboid.y")
+            },
+        "two names for one number" to
+            body.parameterize {
+                param("a", "Difference/0/Cuboid.x")
+                param("b", "Difference/0/Cuboid.x")
+            },
+        "tied slots with different seeds" to body.parameterize { param("size") { it.node == "Cuboid" } },
+        "a Scale factor at zero" to
+            sphere(0.5).sized(1.0, 1.0, 1.0).parameterize { param("s", "Scale.x", seed = 1e-9) },
+        "a blend radius at zero" to
+            smoothUnion(sphere(0.4), sphere(0.4).at(0.5, 0.0, 0.0), 0.2).parameterize {
+                param("k", "SmoothUnion.k", seed = 0.0)
+            },
+    )
+    .forEach { (what, l) ->
+        println("  $what:")
+        println("    ${l.refusalOrNull()}")
+    }
 println()
 println("A SolidLowering.Refused rather than a thrown exception, for SolidExact.kt's own")
 println("reason: a null invites a caller to substitute something plausible, and an exception")
@@ -31,11 +40,13 @@ println("loses the reason at the first runCatching. A mis-bound parameter is exa
 println("failure that presents as 'the optimiser ran and nothing happened'.")
 println()
 
-// ---- and now the failure mode that is NOT a refusal -----------------------------------
-// A parameter can be perfectly legal and still have a gradient of exactly zero, which
-// presents as a CONVERGED optimisation. This is the thing to know about inverse design.
+/*
+---- and now the failure mode that is NOT a refusal -----------------------------------
+A parameter can be perfectly legal and still have a gradient of exactly zero, which
+presents as a CONVERGED optimisation. This is the thing to know about inverse design.
+*/
 val outer = sphere(1.0)
-val inner = sphere(0.25)                 // entirely swallowed by `outer`
+val inner = sphere(0.25) // entirely swallowed by `outer`
 val samples = outer.sampleField(count = 800, seed = 3)
 
 fun deadUnder(expr: SolidExpr, path: String): SolidFit {
@@ -44,7 +55,7 @@ fun deadUnder(expr: SolidExpr, path: String): SolidFit {
 }
 
 println("---- a swallowed child, under two kinds of union ----")
-val hard = deadUnder(unionOf(listOf(outer, inner)), "Union/1/Sphere.radius")
+val hard = deadUnder(unionOf([outer, inner]), "Union/1/Sphere.radius")
 val soft = deadUnder(smoothUnion(outer, inner, 0.9), "SmoothUnion/b/Sphere.radius")
 println("  hard Union      dead: ${hard.deadParameters}")
 println("  smoothUnion     dead: ${soft.deadParameters}")

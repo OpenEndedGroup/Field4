@@ -1,7 +1,3 @@
-import afield.ai.learning.DeepSetsOptions
-import afield.ai.learning.InteractionExample
-import afield.ai.learning.trainEquivariant
-
 prop<afield.ai.learning.EquivariantWeights>(learnedRule)
 
 val radius = 2f / 64f

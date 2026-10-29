@@ -1,14 +1,14 @@
-import afield.graphics.vulkan.Renderer
-import afield.graphics.vulkan.util.Window
-import arrow.core.right
-import arrow.core.left
-import afield.graphics.shader.*
-import afield.graphics.scene.*
-import afield.graphics.render.*
-import afield.document.context.*
 import afield.graphics.vulkan.buffers.*
-import afield.graphics.vulkan.buffers.FrameBufferGroup
+import afield.document.context.*
+import afield.graphics.render.*
+import afield.graphics.scene.*
+import afield.graphics.shader.*
+import arrow.core.left
+import arrow.core.right
 import java.nio.*
+import afield.graphics.vulkan.buffers.FrameBufferGroup
+import afield.graphics.vulkan.util.Window
+import afield.graphics.vulkan.Renderer
 /*supermap*/ class MappedStructure {;     lateinit var tri : IntBuffer; ; }; fun Mesh.set(numVert : Int, numTriangle : Int = 0, builder : MappedStructure.() -> Unit = {}) {;     this.resize(numVert, numTriangle);     val mesh = this;     MappedStructure().apply {;          mesh.t?.mapAndWrite_ints { tri = this ; builder() } ;    }; }
 /*start*/
 /*graphics-structure-type:Spins:Spins*/
@@ -65,8 +65,8 @@ fun BufferParameters.asBonds(): Bonds =
 /*graphics-pc-binding:L*/ var Mesh.L by Mesh.BoundFromStructure<Any>()
 /*graphics-pc-binding-group:L*/ var MeshGroup.L by MeshGroup.BoundFromStructure<Any>()
 /*graphics-pc-structure:aspect*/ var Structure.aspect by Structure.FromStructure<Any>()
-/*graphics-pc-binding:aspect*/ var Mesh.aspect by Mesh.BoundFromStructure<Float>()
-/*graphics-pc-binding-group:aspect*/ var MeshGroup.aspect by MeshGroup.BoundFromStructure<Float>()
+/*graphics-pc-binding:aspect*/ var Mesh.aspect by Mesh.BoundFromStructure<Number>()
+/*graphics-pc-binding-group:aspect*/ var MeshGroup.aspect by MeshGroup.BoundFromStructure<Number>()
 /*graphics-pc-structure:showFrustration*/ var Structure.showFrustration by Structure.FromStructure<Any>()
 /*graphics-pc-binding:showFrustration*/ var Mesh.showFrustration by Mesh.BoundFromStructure<Any>()
 /*graphics-pc-binding-group:showFrustration*/ var MeshGroup.showFrustration by MeshGroup.BoundFromStructure<Any>()

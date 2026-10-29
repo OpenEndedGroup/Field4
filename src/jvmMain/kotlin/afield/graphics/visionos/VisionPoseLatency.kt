@@ -15,10 +15,10 @@ import java.util.concurrent.atomic.AtomicLong
 /**
  * Where the time goes between a head moving and the resulting image reaching it.
  *
- * The plan asks for this before any optimisation, on the grounds that latency debugging becomes
- * archaeology otherwise. The point is not one number — it is **attribution**, because the plausible
- * explanations for "it feels laggy" are spread across five machines' worth of stages and at least two
- * of them are deliberate.
+ * This attributes latency to stages rather than reporting one number, because the plausible
+ * explanations for "it feels laggy" are spread across five machines' worth of stages, and two of
+ * those stages hold frames back in order to do their job: the receiver's jitter buffer and the
+ * producer's render fence.
  *
  * ## Two clocks, and why the headline number needs neither reconciled
  *
@@ -34,14 +34,14 @@ import java.util.concurrent.atomic.AtomicLong
  * trip rather than an average: the minimum is the one least polluted by queuing in either direction,
  * and averaging RTTs on a contended Wi-Fi link estimates the contention, not the offset.
  *
- * ## What is deliberate, and must not be read as a fault
+ * ## The two stages that hold frames back
  *
- * The receiver runs a jitter buffer (`RTTStream.bufferFrames`) that holds frames on purpose so that
+ * The receiver runs a jitter buffer (`RTTStream.bufferFrames`) that holds frames so that
  * network jitter does not become dropped frames. It is reported as its own span. Without that split,
  * the buffer doing exactly its job looks like the network being slow, and the obvious "fix" —
  * shrinking it — trades smoothness for a better number.
  *
- * Likewise `HOST_SUBMIT_TO_ENCODED` includes the render fence: the producer only signals a surface
+ * Likewise `SUBMIT_TO_ENCODED` includes the render fence: the producer only signals a surface
  * once its GPU work has completed, so scene complexity lands in that span rather than anywhere else.
  *
  * ## What this cannot see
@@ -52,6 +52,7 @@ import java.util.concurrent.atomic.AtomicLong
  * compositor frame. That closes when the present path moves to Compositor Services, which is also
  * what makes reprojection possible; it is not worth faking before then.
  */
+
 object VisionPoseLatency {
 
     const val PING = "visionpose/ping"

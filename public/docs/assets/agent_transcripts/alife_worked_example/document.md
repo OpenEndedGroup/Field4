@@ -322,36 +322,15 @@ showImg(
 )
 ```
 
-## 6. 5 — Lenia: exact in its discrete limit
+## 6. 5 — Lenia: exact in its discrete limit, and Orbium across mu
 
 <!-- field-box id="alife_lenia" index="5" -->
 
-### Narrative
-
-From `code`
-
-Lenia is a CONTINUOUS cellular automaton: one field in 0..1, one convolution kernel, one growth
-mapping, and A <- clamp(A + dt * G(K * A)).
-
-The claim worth making about an implementation of it is a cross-check. With a uniform Moore ring
-kernel, dt = 1 and a three-valued step growth mapping, Lenia reduces EXACTLY to an
-outer-totalistic B/S rule -- so this float convolution and the integer Life stepper in
-`alife_ca.kt` must agree bit for bit. `leniaFromLifeRule` builds that limit.
-
 ```edn [field-box id="alife_lenia" role="properties"]
-{"id" "alife_lenia" "index" 5 "name" "5 — Lenia: exact in its discrete limit" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 — Lenia: exact in its discrete limit" "_tombstone" false "frame" #afield/rect [520.0 260.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_lenia_code_.kt" "lines" 61 "characters" 2688 "sha256" "4b5dab4e6b063a595944012a7c1ccec6b8f1ccc74fe754d250b7c0e78c0f2a08"}]}
+{"id" "alife_lenia" "index" 5 "name" "5 — Lenia: exact in its discrete limit, and Orbium across mu" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 — Lenia: exact in its discrete limit, and Orbium across mu" "_tombstone" false "frame" #afield/rect [520.0 260.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_lenia_code_.kt" "lines" 54 "characters" 2118 "sha256" "29425a474ad3381bd7e9beba2614b8e05111069387a9e47e6ad9e5ac3090e206"}]}
 ```
 
 ```kotlin [field-property box="alife_lenia" name="code" path="alife_lenia_code_.kt"]
-/*
-Lenia is a CONTINUOUS cellular automaton: one field in 0..1, one convolution kernel, one growth
-mapping, and A <- clamp(A + dt * G(K * A)).
-
-The claim worth making about an implementation of it is a cross-check. With a uniform Moore ring
-kernel, dt = 1 and a three-valued step growth mapping, Lenia reduces EXACTLY to an
-outer-totalistic B/S rule -- so this float convolution and the integer Life stepper in
-`alife_ca.kt` must agree bit for bit. `leniaFromLifeRule` builds that limit.
-*/
 val discrete = leniaFromLifeRule(LIFE)
 println("discrete-limit kernel: " + discrete.taps.size + " taps summing to " + discrete.taps.weight.sum())
 
@@ -378,31 +357,33 @@ println(
         ),
 )
 
-// The continuous regime, reported as a measured phase trichotomy rather than as a named creature:
-// this file ships no published Lenia initial pattern, so it claims none.
-val runs =
-    [0.06, 0.14].map { mu ->
-        val r = LeniaPresets.ring(mu, sigma = 0.017, radius = 8, dt = 0.12)
-        mu to leniaRun(leniaSeed(96, 96, r, blobRadii = 1.6, seed = 9L), r, steps = 240)
-    }
-for ((mu, run) in runs) println("mu = " + mu + " -> " + run)
-val wide = LeniaPresets.ring(0.60, sigma = 0.60, radius = 8, dt = 0.12)
-val sat = leniaRun(leniaSeed(96, 96, wide, blobRadii = 1.6, seed = 9L), wide, steps = 240)
-println("a growth bell positive over the whole unit interval -> " + sat)
+// The continuous regime: Orbium, from Bert Chan's catalogue: its cells shuffled, then only mu moved.
+val orbium = LeniaPresets.orbium()
+for (seed in 1L..6L) {
+    println(
+        "shuffled cells, seed " + seed + ": " + leniaRun(orbium.shuffled(seed).seed(64, 64), orbium.rule, steps = 300),
+    )
+}
+for (mu in [0.11, 0.12, 0.13, 0.16, 0.17, 0.18]) {
+    val rule = leniaRuleFromCatalogue(radius = 13, t = 10.0, mu = mu, sigma = 0.015)
+    println("mu = " + mu + ": " + leniaRun(orbium.seed(64, 64), rule, steps = 300))
+}
 
+val moments = [0, 5, 10, 20, 250]
+val panels =
+    [0.12, 0.15, 0.18].flatMap { mu ->
+        val rule = leniaRuleFromCatalogue(radius = 13, t = 10.0, mu = mu, sigma = 0.015)
+        var current = orbium.seed(64, 64)
+        var done = 0
+        moments.map { step ->
+            current = current.leniaTimes(rule, step - done)
+            done = step
+            (if (step == 0) "mu " + mu else "step " + step) to current.colormap("inferno", 0f, 1f).upscaleNearest(3)
+        }
+    }
 showImg(
-    montage(
-        [
-            "discrete limit == Life" to field.upscaleNearest(8),
-            "ring kernel R=8" to LeniaPresets.ring(0.15, radius = 8).kernelImg().normalized().upscaleNearest(10),
-        ] +
-            runs.map { (mu, run) ->
-                "mu=" + mu + " " + run.phase.name.lowercase() to run.field.colormap("inferno", 0f, 1f).upscaleNearest(3)
-            } +
-            ("wide sigma: saturation" to sat.field.colormap("inferno", 0f, 1f).upscaleNearest(3)),
-        columns = 3,
-        cellSide = 280,
-    ),
+    montage(panels, columns = 5, cellSide = 192),
+    caption = "rows: mu = 0.12, 0.15, 0.18; columns: steps 0, 5, 10, 20 and 250",
 )
 ```
 
@@ -935,7 +916,7 @@ showImg(
 )
 ```
 
-## 15. 5 — Lenia: two growth windows, running — launch me
+## 15. 5 — Lenia: Orbium gliding, beside the same cells at mu 0.12 — launch me
 
 <!-- field-box id="alife_lenia_moving" index="14" -->
 
@@ -944,49 +925,42 @@ showImg(
 From `code`
 
 LAUNCH this box rather than merely running it (undo stops it). The last expression is a
-`Frames`, and a `Frames` that is only built never runs -- run this box and it prints nothing and
-animates nothing. Launched, it steps the system on the schedule below and pushes a montage PNG to
-the box's output every displayed frame, then holds the final frame forever.
-inferno on a FIXED 0..1 scale, and the mean field recomputed every frame so the phase verdict
-is measured while you watch. See the note below this clip: an auto-ranged SATURATION field
-renders black and becomes indistinguishable from death, which cost this family a figure once.
+Frames, and a Frames that is only built never runs.
+
+Orbium, a Lenia lifeform from Bert Chan's catalogue, gliding beside the same cells with the
+growth curve's centre mu moved from 0.15 to 0.12, where they burst and fill the torus.
 
 ```edn [field-box id="alife_lenia_moving" role="properties"]
-{"id" "alife_lenia_moving" "index" 14 "name" "5 — Lenia: two growth windows, running — launch me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 — Lenia: two growth windows, running — launch me" "_tombstone" false "frame" #afield/rect [520.0 960.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_lenia_moving_code_.kt" "lines" 32 "characters" 1718 "sha256" "d456c3ba30484aef421290ffa7220c4d15b90245c731daea135ff92e827e00ee"}]}
+{"id" "alife_lenia_moving" "index" 14 "name" "5 — Lenia: Orbium gliding, beside the same cells at mu 0.12 — launch me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 — Lenia: Orbium gliding, beside the same cells at mu 0.12 — launch me" "_tombstone" false "frame" #afield/rect [520.0 960.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_lenia_moving_code_.kt" "lines" 27 "characters" 1126 "sha256" "5b2fd6b5a1c9295316c57b1d288b742058ea9e17e0fa7187ddee803adc5e0dcb"}]}
 ```
 
 ```kotlin [field-property box="alife_lenia_moving" name="code" path="alife_lenia_moving_code_.kt"]
 /*
 LAUNCH this box rather than merely running it (undo stops it). The last expression is a
-`Frames`, and a `Frames` that is only built never runs -- run this box and it prints nothing and
-animates nothing. Launched, it steps the system on the schedule below and pushes a montage PNG to
-the box's output every displayed frame, then holds the final frame forever.
-inferno on a FIXED 0..1 scale, and the mean field recomputed every frame so the phase verdict
-is measured while you watch. See the note below this clip: an auto-ranged SATURATION field
-renders black and becomes indistinguishable from death, which cost this family a figure once.
+Frames, and a Frames that is only built never runs.
+
+Orbium, a Lenia lifeform from Bert Chan's catalogue, gliding beside the same cells with the
+growth curve's centre mu moved from 0.15 to 0.12, where they burst and fill the torus.
 */
-fun fields(x: Img, y: Img, n: Int) = [
-    "mu=0.06 " + n + " mean " + "%.3f".format(x.mean()) to x.colormap("inferno", 0f, 1f).upscaleNearest(4),
-    "mu=0.14 " + n + " mean " + "%.3f".format(y.mean()) to y.colormap("inferno", 0f, 1f).upscaleNearest(4),
+val orbium = LeniaPresets.orbium()
+
+fun fields(a: Img, b: Img, n: Int) = [
+    "Orbium, step %d: mass %.4f".format(n, a.mean()) to a.colormap("inferno", 0f, 1f).upscaleNearest(6),
+    "mu 0.12, step %d: mass %.4f".format(n, b.mean()) to b.colormap("inferno", 0f, 1f).upscaleNearest(6),
 ]
 
-/*
-Same seed, same ring kernel, one number different: where the growth window is centred.
-240 Lenia steps over 140 displayed frames -- but geometrically, not two per frame: `ramp = 25`
-spends the first half of the clip on the first 40 steps, because that is where the blob decides
-what it is going to be. Everything after is maintenance.
-*/
-val a = LeniaPresets.ring(0.06, sigma = 0.017, radius = 8, dt = 0.12)
-val b = LeniaPresets.ring(0.14, sigma = 0.017, radius = 8, dt = 0.12)
+// The same cells, with the growth curve centred at 0.12 instead of 0.15.
+val lowMu = leniaRuleFromCatalogue(radius = 13, t = 10.0, mu = 0.12, sigma = 0.015)
+
+// At Orbium's 0.62 cells per step, 200 steps is about two laps of the 64-cell torus.
 animateEvolution(
-    leniaSeed(96, 96, a, blobRadii = 1.6, seed = 9L) to leniaSeed(96, 96, b, blobRadii = 1.6, seed = 9L),
-    totalSteps = 240,
+    orbium.seed(64, 64) to orbium.seed(64, 64),
+    totalSteps = 200,
     seconds = 7.0,
-    ramp = 25.0,
     columns = 2,
     cellSide = 384,
-    step = { (x, y) -> x.leniaTimes(a, 1) to y.leniaTimes(b, 1) },
-    panels = { (x, y), n -> fields(x, y, n) },
+    step = { (a, b) -> a.leniaStep(orbium.rule) to b.leniaStep(lowMu) },
+    panels = { (a, b), n -> fields(a, b, n) },
 )
 ```
 

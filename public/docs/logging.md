@@ -14,9 +14,9 @@ lprintln("info,mypage", "something happened")
 
 `"info,mypage"` is a **channel**: a comma-separated list of *tags*, which every consumer
 downstream selects on. A channel is neither a level nor a logger name. There
-are **1040**<!--count:lprintlnChannelCallSites--> places in `src/jvmMain` that call
+are **1094**<!--count:lprintlnChannelCallSites--> places in `src/jvmMain` that call
 `lprintln` with the channel written out as a literal, spelling
-**243**<!--count:logChannelStrings--> distinct channel strings between them.
+**254**<!--count:logChannelStrings--> distinct channel strings between them.
 
 By convention the first tag is a severity, drawn from six the console knows how to colour
 (`PinnedConsole.kt:1024#val LEVELS = listOf("error", "warning", "warn", "info", "debug", "trace")`),
@@ -64,19 +64,24 @@ import afield.app.diagnostics.logging.lprintln
 val seen = mutableListOf<LogEvent>()
 val probe = LogSink { e -> if ("mypage" in e.channel) seen += e }
 
-// withSink brackets the pair for you. Doing it by hand is a leak waiting for the first
-// early return: the sink list outlives your box, and LogDispatcher.log wraps every sink
-// in runCatching, so a leaked sink that throws fails silently and forever.
+/*
+withSink brackets the pair for you. Doing it by hand is a leak waiting for the first
+early return: the sink list outlives your box, and LogDispatcher.log wraps every sink
+in runCatching, so a leaked sink that throws fails silently and forever.
+*/
 LogDispatcher.withSink(probe) {
     lprintln("info,mypage", "a plain line")
     lprintln("warning,mypage", "something to look at")
     lprintln("error,mypage,disk", "three tags, and no hierarchy among them")
 }
 
-display("main", Table(["channel", "tags", "message"], title = "what one sink saw")
-    .rows(seen.map { [it.channel, it.channel.split(",").size, it.message] })
-    .role("channel", CellRole.ACCENT)
-    .expect("tags", because = "a channel is a flat tag list, so every line has at least one") { (it as Int) >= 1 })
+display(
+    "main",
+    Table(["channel", "tags", "message"], title = "what one sink saw")
+        .rows(seen.map { [it.channel, it.channel.split(",").size, it.message] })
+        .role("channel", CellRole.ACCENT)
+        .expect("tags", because = "a channel is a flat tag list, so every line has at least one") { (it as Int) >= 1 },
+)
 ```
 
 Use `withSink` rather than a bare `addSink` from a box. The dispatcher is global, so a sink
@@ -111,15 +116,18 @@ import afield.ai.diagnostics.ConsoleMute
 // The default mute set holds the selector "info,boxes": a channel is muted when it carries both tags.
 val spellings = ["info,boxes", "boxes,info", "info,boxes,extra", "info,Boxes", "boxes"]
 
-display("main", Table(
-    ["channel string", "isMuted"],
-    title = "ConsoleMute matches tags",
-    note = "the set this JVM booted with: " + ConsoleMute.channels.sorted().joinToString(", ")
+display(
+    "main",
+    Table(
+            ["channel string", "isMuted"],
+            title = "ConsoleMute matches tags",
+            note = "the set this JVM booted with: " + ConsoleMute.channels.sorted().joinToString(", "),
+        )
+        .rows(spellings.map { [it, ConsoleMute.isMuted(it)] })
+        .role("channel string", CellRole.ACCENT)
+        .roleBy("isMuted") { if (it == true) CellRole.WARN else CellRole.OK }
+        .expect("isMuted", because = "a channel carrying both tags of a selector is muted") { it is Boolean },
 )
-    .rows(spellings.map { [it, ConsoleMute.isMuted(it)] })
-    .role("channel string", CellRole.ACCENT)
-    .roleBy("isMuted") { if (it == true) CellRole.WARN else CellRole.OK }
-    .expect("isMuted", because = "a channel carrying both tags of a selector is muted") { it is Boolean })
 ```
 
 Reordering the tags or adding one still matches; `info,Boxes` has a different tag, and `boxes`
@@ -145,7 +153,6 @@ expect:
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/logging/filter-matches-tags.png" capture="box" w="900" h="240" wait="2.0" timeout="120" embed=true name="logging-filter-matches-tags" alt="A Field box output panel labelled main, holding a two-column table titled 'a LogStream filter of [kotlin] against three channels', headed channel emitted and pushed to the subscriber. Three rows: info,kotlin is true; info,kotlinjs is false; info,graphics is false. A footnote records that one of the three lines matched."}
 :::static
 import afield.app.diagnostics.logging.lprintln
-import afield.app.server.LogStream
 
 // Subscribe with the real filter the log widget uses. sinceEpochMs keeps the existing
 // 20,000-record archive out of the replay, so what arrives is only what I emit below.
@@ -156,9 +163,11 @@ LogStream.addSubscription(
         channels = ["kotlin"],
         sinceEpochMs = System.currentTimeMillis(),
         limit = 50,
-        tail = true
-    )
-) { json -> pushed += json }
+        tail = true,
+    ),
+) { json ->
+    pushed += json
+}
 
 val emitted = ["info,kotlin", "info,kotlinjs", "info,graphics"]
 try {
@@ -167,18 +176,20 @@ try {
     LogStream.unsubscribe("logdoc-tags")
 }
 
-val matched = pushed.filter { "«logdoc»" in it }
-    .map { it.substringAfter("\"channel\":\"").substringBefore("\"") }
-    .toSet()
+val matched =
+    pushed.filter { "«logdoc»" in it }.map { it.substringAfter("\"channel\":\"").substringBefore("\"") }.toSet()
 
-display("main", Table(
-    ["channel emitted", "pushed to the subscriber"],
-    title = "a LogStream filter of [\"kotlin\"] against three channels",
-    note = "${matched.size} of ${emitted.size} matched: only the first carries the tag kotlin."
+display(
+    "main",
+    Table(
+            ["channel emitted", "pushed to the subscriber"],
+            title = "a LogStream filter of [\"kotlin\"] against three channels",
+            note = "${matched.size} of ${emitted.size} matched: only the first carries the tag kotlin.",
+        )
+        .rows(emitted.map { [it, it in matched] })
+        .role("channel emitted", CellRole.ACCENT)
+        .roleBy("pushed to the subscriber") { if (it == true) CellRole.OK else CellRole.DIM },
 )
-    .rows(emitted.map { [it, it in matched] })
-    .role("channel emitted", CellRole.ACCENT)
-    .roleBy("pushed to the subscriber") { if (it == true) CellRole.OK else CellRole.DIM })
 ```
 
 ## Muting only affects the console
@@ -217,17 +228,21 @@ LogDispatcher.withSink(probe) {
     channels.forEach { lprintln(it, "«logdoc» a line on $it") }
 }
 
-display("main", Table(
-    ["channel", "muted on the console", "reached my sink"],
-    title = "muting keeps a line off the console, not out of the layer",
-    note = "${arrived.size} of ${channels.size} arrived. Mute is for a channel too chatty " +
-        "for a terminal, not for one you want gone."
+display(
+    "main",
+    Table(
+            ["channel", "muted on the console", "reached my sink"],
+            title = "muting keeps a line off the console, not out of the layer",
+            note =
+                "${arrived.size} of ${channels.size} arrived. Mute is for a channel too chatty " +
+                    "for a terminal, not for one you want gone.",
+        )
+        .rows(channels.map { [it, ConsoleMute.isMuted(it), it in arrived] })
+        .role("channel", CellRole.ACCENT)
+        .roleBy("muted on the console") { if (it == true) CellRole.WARN else CellRole.DIM }
+        .roleBy("reached my sink") { if (it == true) CellRole.OK else CellRole.BAD }
+        .expect("reached my sink", because = "muting is a console policy, so every line still arrives") { it == true },
 )
-    .rows(channels.map { [it, ConsoleMute.isMuted(it), it in arrived] })
-    .role("channel", CellRole.ACCENT)
-    .roleBy("muted on the console") { if (it == true) CellRole.WARN else CellRole.DIM }
-    .roleBy("reached my sink") { if (it == true) CellRole.OK else CellRole.BAD }
-    .expect("reached my sink", because = "muting is a console policy, so every line still arrives") { it == true })
 ```
 
 The muted line was still delivered. Four<!--count:consoleMuteDefaults--> channels are muted
@@ -277,23 +292,29 @@ val mineIds = all.filter { "«logdoc»" in it.message }.mapNotNull { it.blockId 
 val mine = all.filter { "«logdoc»" in it.message || it.blockId in mineIds }
 val deepest = mine.filter { it.boundary == null }.maxByOrNull { it.indent.length }
 
-display("main", Table(
-    ["depth", "boundary", "block", "message"],
-    title = "two nested lblocks, as the dispatcher saw them",
-    note = "the deepest line's raw indent: '" +
-        (deepest?.indent?.replace("\t", "\\t") ?: "") +
-        "' — block ids and tabs, not spaces"
+display(
+    "main",
+    Table(
+            ["depth", "boundary", "block", "message"],
+            title = "two nested lblocks, as the dispatcher saw them",
+            note =
+                "the deepest line's raw indent: '" +
+                    (deepest?.indent?.replace("\t", "\\t") ?: "") +
+                    "' — block ids and tabs, not spaces",
+        )
+        .rows(
+            mine.map { e ->
+                [
+                    e.indent.split("\t").count { it.isNotEmpty() },
+                    e.boundary?.name ?: "—",
+                    e.blockId?.take(8) ?: "—",
+                    e.message.substringBefore(" - '"),
+                ]
+            },
+        )
+        .role("message", CellRole.ACCENT)
+        .expect("depth", because = "two nested blocks cannot nest deeper than two") { (it as Int) <= 2 },
 )
-    .rows(mine.map { e ->
-        [
-            e.indent.split("\t").count { it.isNotEmpty() },
-            e.boundary?.name ?: "—",
-            e.blockId?.take(8) ?: "—",
-            e.message.substringBefore(" - '")
-        ]
-    })
-    .role("message", CellRole.ACCENT)
-    .expect("depth", because = "two nested blocks cannot nest deeper than two") { (it as Int) <= 2 })
 ```
 
 The footnote shows how nesting is stored: it is carried in an `indent` string kept separately for each
@@ -333,34 +354,43 @@ import afield.app.diagnostics.logging.StatsHeatmap
 import afield.app.diagnostics.logging.formatMillis
 
 val durations = [120_000L, 3_400_000L, 47_000_000L, 250_000_000L, 1_630_000_000L, 12_400_000_000L]
-val ladder = Table(
-    ["nanoseconds", "formatted"],
-    title = "formatMillis keeps digits where they matter",
-    note = "more digits below a millisecond, plain integers past 100ms, decimal seconds past a second"
-)
-    .rows(durations.map { [it, formatMillis(it)] })
-    .role("formatted", CellRole.ACCENT)
-    .expect("formatted", because = "the unit is part of the returned string") {
-        (it as String).endsWith("ms") || it.endsWith("s")
-    }
+val ladder =
+    Table(
+            ["nanoseconds", "formatted"],
+            title = "formatMillis keeps digits where they matter",
+            note = "more digits below a millisecond, plain integers past 100ms, decimal seconds past a second",
+        )
+        .rows(durations.map { [it, formatMillis(it)] })
+        .role("formatted", CellRole.ACCENT)
+        .expect("formatted", because = "the unit is part of the returned string") {
+            (it as String).endsWith("ms") || it.endsWith("s")
+        }
 
 val line = "fps=61.2 upload=3.4MB net:102% dropped=0"
-val torn = Table(
-    ["fragment", "treated as"],
-    title = "how a stats line is torn into colourable tokens",
-    note = "history is kept per channel and per key, so two unrelated metrics sharing one " +
-        "channel do not colour each other"
-)
-    .rows(StatsHeatmap.fragments("logdoc-demo", line).map {
-        ["'${it.text}'", if (it.style == null) "plain text" else "number"]
-    })
-    .roleBy("treated as") { if (it == "number") CellRole.ACCENT else CellRole.DIM }
+val torn =
+    Table(
+            ["fragment", "treated as"],
+            title = "how a stats line is torn into colourable tokens",
+            note =
+                "history is kept per channel and per key, so two unrelated metrics sharing one " +
+                    "channel do not colour each other",
+        )
+        .rows(
+            StatsHeatmap.fragments("logdoc-demo", line).map {
+                ["'${it.text}'", if (it.style == null) "plain text" else "number"]
+            },
+        )
+        .roleBy("treated as") { if (it == "number") CellRole.ACCENT else CellRole.DIM }
 
-markdown("main", """
+markdown(
+    "main",
+    """
     ${ladder.h}
 
     ${torn.h}
-""".trimIndent())
+"""
+        .trimIndent(),
+)
 ```
 
 Each numeric token is styled and everything between them is left alone.
@@ -422,11 +452,11 @@ So when something has gone wrong and the terminal is no help, that file is where
 | `NotifyLog` | stdout, plus a desktop notification, deduped within a second | via `StdoutLog` |
 | `SilentLog` | nowhere, on purpose | n/a |
 
-Two loggers sit outside this layer. `SaveReloadLog` writes save and reload
-timings straight to `~/.afield/logs/save_reload.log` without touching the dispatcher, so it
-is invisible to every sink above. `TraceLogger` and `AiToolIoLogger` write AI request traces
-under `~/.afield/logs/` when their environment variables are set, and are wired to a
-`LogSink` only for the one line that announces the file.
+`SaveReloadLog` and `TraceLogger` keep their own files under `~/.afield/logs/` and send a line for
+each entry through the dispatcher too: save and reload timings on `info,persist,savereload` (muted
+on the console with the rest of `info,persist`, and shown in the log widget), and one line per AI
+request trace on `info,ai.trace` when tracing is on. `AiToolIoLogger` writes its tool records to
+files and sends one `info,ai.toolio` line naming each file.
 
 ## Reference
 

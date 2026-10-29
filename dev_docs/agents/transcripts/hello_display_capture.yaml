@@ -4,6 +4,9 @@ description: >-
   capture commands (wait-output / output / screenshot-box) to collect its output events and a
   cropped screenshot — capture is a transport concern, so it lives in backdoor commands, not
   in the macro. See transcripts/README.md "Capturing output and screenshots".
+docs:
+  - page: automating_field.md
+    why: "Explains driving Field and capturing output from outside."
 operations:
   - create:
       box: agent_hello_display_capture

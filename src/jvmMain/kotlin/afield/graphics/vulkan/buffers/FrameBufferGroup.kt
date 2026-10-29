@@ -15,6 +15,20 @@ import java.nio.ByteBuffer
 import java.nio.FloatBuffer
 import java.nio.IntBuffer
 
+/**
+ * FrameBufferGroup holds one Vulkan buffer per swapchain image, so data written for the current frame never overwrites a buffer an in-flight frame is still reading.
+ *
+ * The [BufferAccessPattern] chosen at construction decides where the buffers live: host-visible
+ * memory written directly, device-local memory fed through staging buffers (once or every frame), or
+ * device-local memory with a host-visible copy for reading results back, host-cached memory read
+ * every frame, or device-local memory zero-filled when built. Writes go to the current
+ * image's buffer and are recorded with [FrameBufferGroup.markAsWritten];
+ * [FrameBufferGroup.getLastWritten] returns the most recently written one.
+ */
+
+/**
+ * Where a [FrameBufferGroup]'s buffers live and how data moves between host and device.
+ */
 enum class BufferAccessPattern {
     HOST_VISIBLE,
     STAGED_WRITE_ONCE,

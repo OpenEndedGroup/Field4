@@ -37,14 +37,11 @@ start(renderer::run)
 <!-- field-box id="diffusion_curves" index="1" -->
 
 ```edn [field-box id="diffusion_curves" role="properties"]
-{"id" "diffusion_curves" "index" 1 "name" "3 · spinning curves" "parents" ["root" "diffusion_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "diffusion_renderer"} "name" "3 · spinning curves" "_tombstone" false "frame" #afield/rect [440.0 160.0 360.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "diffusion_curves_code_.kt" "lines" 91 "characters" 4638 "sha256" "ffe0cde4cf8066ad5f59157f8031dfabfaccea9dbcff624c8841f8670eb076eb"}]}
+{"id" "diffusion_curves" "index" 1 "name" "3 · spinning curves" "parents" ["root" "diffusion_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "diffusion_renderer"} "name" "3 · spinning curves" "_tombstone" false "frame" #afield/rect [440.0 160.0 360.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "diffusion_curves_code_.kt" "lines" 108 "characters" 4734 "sha256" "ea557ba7b1037b4b3251144beb84571f1c6b4d1cbf6e305c87ac6c5dc7520072"}]}
 ```
 
 ```kotlin [field-property box="diffusion_curves" name="code" path="diffusion_curves_code_.kt"]
-import afield.ui.output.controlGroup
-import afield.ui.output.displayOpen
 import afield.media.video.diffusion.*
-import afield.document.context.fromContextWithNameOrNull
 
 // Connect this box beneath a running renderer box before launching it.
 val owner: Renderer = fromContext()
@@ -55,18 +52,23 @@ fromContextWithNameOrNull<SpinningDiffusionDemo>("diffusionDemo")?.close()
 val backend = "diffusion"
 val whiteOnBlack = false
 val root = StreamDiffusionSupport.configuredRoot()
-val config = root?.let { StreamDiffusionConfig(it, backend = backend, displayReprojection = true, historyBlend = .35, noiseAdvection = .8) }
+val config = root?.let {
+    StreamDiffusionConfig(it, backend = backend, displayReprojection = true, historyBlend = .35, noiseAdvection = .8)
+}
 val support = StreamDiffusionSupport.probe(owner, config)
 if (!support.available) {
     print("Streaming diffusion unavailable: ${support.reason}")
-    markdown("""
+    markdown(
+        """
         ## Streaming diffusion is unavailable here
 
         ${support.reason}
 
         See [Streaming diffusion](https://openendedgroup.com/Field4/streaming_diffusion/).
         The model environment is optional; you can keep editing this document.
-    """.trimIndent())
+    """
+            .trimIndent(),
+    )
 } else {
     var material = 1 // 0 ink, 1 charcoal, 2 barbed wire
     var promptOverride = "" // Any text prompt; blank selects the material preset.
@@ -75,29 +77,39 @@ if (!support.available) {
     var adaptPrompt = whiteOnBlack
     var pendingReset = false
     var animate = true
-    fun selectedPrompt(): String = promptOverride.trim().ifEmpty { when {
-        material == 2 && adaptPrompt -> StreamDiffusionPresets.WHITE_WIRE
-        material == 2 -> StreamDiffusionPresets.WIRE
-        material == 1 && adaptPrompt -> StreamDiffusionPresets.WHITE_CHARCOAL
-        material == 1 -> StreamDiffusionPresets.CHARCOAL
-        adaptPrompt -> StreamDiffusionPresets.WHITE_INK
-        else -> StreamDiffusionPresets.INK
-    } }
-    diffusionDemo = SpinningDiffusionDemo(owner,
+    fun selectedPrompt(): String = promptOverride.trim().ifEmpty {
+        when {
+            material == 2 && adaptPrompt -> StreamDiffusionPresets.WHITE_WIRE
+            material == 2 -> StreamDiffusionPresets.WIRE
+            material == 1 && adaptPrompt -> StreamDiffusionPresets.WHITE_CHARCOAL
+            material == 1 -> StreamDiffusionPresets.CHARCOAL
+            adaptPrompt -> StreamDiffusionPresets.WHITE_INK
+            else -> StreamDiffusionPresets.INK
+        }
+    }
+    diffusionDemo = SpinningDiffusionDemo(
+        owner,
         checkNotNull(config).copy(prompt = selectedPrompt(), strength = strength),
-        whiteOnBlack = whiteOnBlack)
+        whiteOnBlack = whiteOnBlack,
+    )
     val demo = diffusionDemo
     controlGroup("diffusion") {
         slider("0: ink / 1: charcoal / 2: wire", min = 0.0, max = 2.0, step = 1.0, initialValue = material.toDouble()) {
-            material = it.toInt(); pendingReset = true
+            material = it.toInt()
+            pendingReset = true
         }
         text("Prompt override (blank uses preset)", initialValue = promptOverride) {
-            promptOverride = it; pendingReset = true
+            promptOverride = it
+            pendingReset = true
         }
         slider("Strength", min = .2, max = .9, step = .05, initialValue = strength) {
-            strength = it; pendingReset = true
+            strength = it
+            pendingReset = true
         }
-        checkbox("Adapt prompt for white marks on black", initialValue = adaptPrompt) { adaptPrompt = it; pendingReset = true }
+        checkbox("Adapt prompt for white marks on black", initialValue = adaptPrompt) {
+            adaptPrompt = it
+            pendingReset = true
+        }
         checkbox("Reproject output to current geometry", initialValue = demo.view.displayReprojection) {
             demo.view.displayReprojection = it
         }
@@ -105,7 +117,8 @@ if (!support.available) {
             demo.view.historyBlend = it
         }
         slider("Noise advection (experimental)", min = 0.0, max = 1.0, step = .05, initialValue = noiseAdvection) {
-            noiseAdvection = it; pendingReset = true
+            noiseAdvection = it
+            pendingReset = true
         }
         checkbox("Animate", initialValue = true) { animate = it }
         button("Reset causal state / seed") { if (it) pendingReset = true }
@@ -125,12 +138,16 @@ if (!support.available) {
                 demo.view.reset(selectedPrompt(), strength, 0, noiseAdvection)
                 pendingReset = false
             }
-            if (count++ % 120 == 0) print("${demo.view.session.status}; captured=${demo.view.capturedFrames}, shown=${demo.view.presentedFrames}, skipped=${demo.view.skippedCaptures}, displayWarps=${demo.view.displayReprojectionRequests}, historyWarps=${demo.view.historyBlendRequests}, noiseMaps=${demo.view.noiseMotionFrames}; ${demo.view.session.capabilities}")
+            if (count++ % 120 == 0)
+                print(
+                    "${demo.view.session.status}; captured=${demo.view.capturedFrames}, shown=${demo.view.presentedFrames}, skipped=${demo.view.skippedCaptures}, displayWarps=${demo.view.displayReprojectionRequests}, historyWarps=${demo.view.historyBlendRequests}, noiseMaps=${demo.view.noiseMotionFrames}; ${demo.view.session.capabilities}",
+                )
             if (count % 120 == 1 && demo.view.session.capabilities.optBoolean("tensorrt_active"))
                 print("Active TAEHV TensorRT; shown=${demo.view.presentedFrames}")
             frame()
         }
-    }.end { demo.close() }
+    }
+        .end { demo.close() }
 }
 ```
 
@@ -139,11 +156,12 @@ if (!support.available) {
 <!-- field-box id="diffusion_guide" index="2" -->
 
 ```edn [field-box id="diffusion_guide" role="properties"]
-{"id" "diffusion_guide" "index" 2 "name" "1 · streaming diffusion" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · streaming diffusion" "_tombstone" false "frame" #afield/rect [40.0 40.0 360.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "diffusion_guide_code_.kt" "lines" 15 "characters" 717 "sha256" "6d726150f158af93271a1f73a1d6aaeb918de715a861e722bad442e1444cfa0e"}]}
+{"id" "diffusion_guide" "index" 2 "name" "1 · streaming diffusion" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · streaming diffusion" "_tombstone" false "frame" #afield/rect [40.0 40.0 360.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "diffusion_guide_code_.kt" "lines" 18 "characters" 734 "sha256" "a83899629cce2fb37e04bee59e38dc955e4781320d3e2c56c573d14c6e998c5e"}]}
 ```
 
 ```kotlin [field-property box="diffusion_guide" name="code" path="diffusion_guide_code_.kt"]
-markdown("""
+markdown(
+    """
     # Streaming diffusion
 
     Run **2 · renderer**, then **3 · spinning curves**.
@@ -157,6 +175,8 @@ markdown("""
     Set `FIELD_STREAMDIFFUSION_ROOT` before starting Field after completing the setup.
 
     [Setup and RTT integration](https://openendedgroup.com/Field4/streaming_diffusion/)
-""".trimIndent())
+"""
+        .trimIndent(),
+)
 ```
 

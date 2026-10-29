@@ -58,12 +58,14 @@ From `code`
 A Field sawtooth through a Pd lowpass: `input` feeds the patch's [adc~]. Launch it.
 
 ```edn [field-box id="pd_effect" role="properties"]
-{"id" "pd_effect" "index" 2 "name" "as an effect" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "as an effect" "_tombstone" false "frame" #afield/rect [230.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pd_effect_code_.kt" "lines" 20 "characters" 568 "sha256" "b850d27111e1f8c97cb74efdf8036e16ea8cac630e5d9f54e3d02a761e785679"}]}
+{"id" "pd_effect" "index" 2 "name" "as an effect" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "as an effect" "_tombstone" false "frame" #afield/rect [230.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pd_effect_code_.kt" "lines" 25 "characters" 603 "sha256" "afd8dbaeec5697bd936ecd63f5330c9a2b115a4f538d57c365210aa1a6cadda2"}]}
 ```
 
 ```kotlin [field-property box="pd_effect" name="code" path="pd_effect_code_.kt"]
 // A Field sawtooth through a Pd lowpass: `input` feeds the patch's [adc~]. Launch it.
-val fx = pd("""
+val fx =
+    pd(
+        """
 #X obj 20 20 adc~;
 #X obj 20 60 lop~ 600;
 #X obj 20 100 *~ 0.15;
@@ -76,10 +78,13 @@ val fx = pd("""
 #X connect 2 0 3 1;
 #X connect 2 0 4 0;
 #X connect 4 0 5 0;
-""", input = SawOsc(Param(110f)).pan())
+""",
+        input = SawOsc(Param(110f)).pan(),
+    )
 var n = 0
 fx.receive("level") { m ->
-    if (n++ % 10 == 0) display("level", "<div style='padding:8px'>after the lowpass: ${"%.1f".format(m.float ?: 0f)} dB</div>")
+    if (n++ % 10 == 0)
+        display("level", "<div style='padding:8px'>after the lowpass: ${"%.1f".format(m.float ?: 0f)} dB</div>")
 }
 fx
 ```
@@ -95,12 +100,14 @@ From `code`
 A Pd patch as a Kotlin value. Launch it; move the Pitch slider.
 
 ```edn [field-box id="pd_kotlin" role="properties"]
-{"id" "pd_kotlin" "index" 3 "name" "from Kotlin" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "from Kotlin" "_tombstone" false "frame" #afield/rect [40.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pd_kotlin_code_.kt" "lines" 40 "characters" 1300 "sha256" "0d553236aebbeed65616b8f226c0e843e282a7fe9a634e6023e7d6c41b8a70c0"}]}
+{"id" "pd_kotlin" "index" 3 "name" "from Kotlin" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "from Kotlin" "_tombstone" false "frame" #afield/rect [40.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pd_kotlin_code_.kt" "lines" 44 "characters" 1320 "sha256" "2410a88fe22ceec5906162aae113eabb40db7b2b68c8e3198ae3fbd05f5585d1"}]}
 ```
 
 ```kotlin [field-property box="pd_kotlin" name="code" path="pd_kotlin_code_.kt"]
 // A Pd patch as a Kotlin value. Launch it; move the Pitch slider.
-val patch = pd("""
+val patch =
+    pd(
+        """
 #N canvas 0 0 520 300 12;
 #X obj 20 20 hsl 128 15 55 440 0 0 empty pitch Pitch -2 -8 0 10 #fcfcfc #000000 #000000 0 1;
 #X msg 20 50 \$1 40;
@@ -119,18 +126,20 @@ val patch = pd("""
 #X connect 4 0 5 1;
 #X connect 4 0 7 0;
 #X connect 7 0 8 0;
-""")
+""",
+    )
 
 // tabosc4~ wants 2^n + 3 points: one guard point before, two after.
-val partials = listOf(1.0, 0.5, 0.33, 0.25, 0.2, 0.16)
-val wave = FloatArray(2051) { i ->
-    val phase = 2 * PI * (i - 1) / 2048
-    (partials.withIndex().sumOf { (k, a) -> a * sin((k + 1) * phase) } * 0.4).toFloat()
-}
+val partials = [1.0, 0.5, 0.33, 0.25, 0.2, 0.16]
+val wave =
+    FloatArray(2051) { i ->
+        val phase = 2 * PI * (i - 1) / 2048
+        (partials.withIndex().sumOf { (k, a) -> a * sin((k + 1) * phase) } * 0.4).toFloat()
+    }
 patch.writeArray("wave", wave)
 println("wrote ${patch.arraySize("wave")} points into [table wave]")
 
-pdControls(patch)          // one slider, from the patch's own hsl
+pdControls(patch) // one slider, from the patch's own hsl
 patch.send("pitch", 110)
 
 var n = 0
@@ -152,12 +161,13 @@ From `code`
 No audio device: render one second, measure it, read back what Pd recorded.
 
 ```edn [field-box id="pd_offline" role="properties"]
-{"id" "pd_offline" "index" 4 "name" "offline" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "offline" "_tombstone" false "frame" #afield/rect [610.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pd_offline_code_.kt" "lines" 27 "characters" 1089 "sha256" "8e2c9361d01f6fd2ddc0140e938d230469fdb4a250aa141abddc23d1c76b0351"}]}
+{"id" "pd_offline" "index" 4 "name" "offline" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "offline" "_tombstone" false "frame" #afield/rect [610.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pd_offline_code_.kt" "lines" 28 "characters" 1093 "sha256" "c4e5b4c3608d937c12301e3680c94ff6b9ccbe1914caea6975305aa527b64635"}]}
 ```
 
 ```kotlin [field-property box="pd_offline" name="code" path="pd_offline_code_.kt"]
 // No audio device: render one second, measure it, read back what Pd recorded.
-val text = """
+val text =
+    """
 #N canvas 0 0 400 260 12;
 #X obj 20 20 osc~ 440;
 #X obj 20 60 *~ 0.25;
@@ -270,7 +280,7 @@ Send numbers to a [r] in another Pd box, found by its name. Launch "drone" first
 Run one of these lines on its own:
 
 ```edn [field-box id="pd_send" role="properties"]
-{"id" "pd_send" "index" 7 "name" "to drone, from Kotlin" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "to drone, from Kotlin" "_tombstone" false "frame" #afield/rect [420.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pd_send_code_.kt" "lines" 14 "characters" 497 "sha256" "77768ef56e4451f8e47c283525a728a9d22e06e7ffc5eb3212924929b23f081b"}]}
+{"id" "pd_send" "index" 7 "name" "to drone, from Kotlin" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "to drone, from Kotlin" "_tombstone" false "frame" #afield/rect [420.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pd_send_code_.kt" "lines" 14 "characters" 491 "sha256" "33e1e21aaff5e9d3e04930e3977f6f538e81073fa4abada26822d85fda0c2fbd"}]}
 ```
 
 ```kotlin [field-property box="pd_send" name="code" path="pd_send_code_.kt"]
@@ -282,7 +292,7 @@ pdBox("drone").pdSend("cutoff", 3000)
 
 // Or launch this box: an arpeggio into [r freq], one Int a quarter second, until you stop it.
 val drone = pdBox("drone")
-val notes = listOf(110, 165, 220, 330, 440, 330, 220, 165)
+val notes = [110, 165, 220, 330, 440, 330, 220, 165]
 var i = 0
 loop {
     drone.pdSend("freq", notes[i++ % notes.size])

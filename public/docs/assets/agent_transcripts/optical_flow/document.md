@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="agent_graphics_context" index="0" -->
 
 ```edn [field-box id="agent_graphics_context" role="properties"]
-{"id" "agent_graphics_context" "index" 0 "name" "renderer" "parents" ["root"] "children" ["optical_flow"] "properties" {"children" #{#afield/box "optical_flow"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_graphics_context_code_.kt" "lines" 16 "characters" 300 "sha256" "ed9c90e9909e15814bcf04d30e27c778e23b8bdb27e200771a092e766fb4a29b"}]}
+{"id" "agent_graphics_context" "index" 0 "name" "renderer" "parents" ["root"] "children" ["optical_flow"] "properties" {"children" #{#afield/box "optical_flow"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_graphics_context_code_.kt" "lines" 16 "characters" 299 "sha256" "db2fbe76f4bfbd4a9afe212fe7ab2ca48a7e6d35fea5cf93ca547a065409ecb3"}]}
 ```
 
 ```kotlin [field-property box="agent_graphics_context" name="code" path="agent_graphics_context_code_.kt"]
@@ -38,42 +38,62 @@ start(renderer::run)
 <!-- field-box id="optical_flow" index="1" -->
 
 ```edn [field-box id="optical_flow" role="properties"]
-{"id" "optical_flow" "index" 1 "name" "optical flow" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "optical flow" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "optical_flow_code_.kt" "lines" 33 "characters" 1671 "sha256" "22b070ca4faf380dbfd4131e88c00faa9f400c544ea0fe02ce9872860f29d838"}]}
+{"id" "optical_flow" "index" 1 "name" "optical flow" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "optical flow" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "optical_flow_code_.kt" "lines" 53 "characters" 1918 "sha256" "0aedc1dca9c02f813d5e0251fbea5efb9a1dc1b29ee3e4de9cfb1555ffcdcfd6"}]}
 ```
 
 ```kotlin [field-property box="optical_flow" name="code" path="optical_flow_code_.kt"]
-import afield.ui.output.controlGroup
-import afield.ui.output.displayOpen
 import afield.media.vision.*
-import afield.document.context.fromContextWithNameOrNull
 
 prop<OpticalFlowDemo>(lab)
-fromContextWithNameOrNull<OpticalFlowDemo>("lab")?.close()
+val runScope = requireNotNull(RunScope.current()) { "Run this example in a Field box." }
 // AUTO: the VK_NV_optical_flow engine where the device has one, portable pyramidal Lucas–Kanade everywhere else.
-lab=OpticalFlowDemo(renderer,backend=OpticalFlowBackend.AUTO)
-println("Optical flow backend: ${lab.flow.backend}")
-var gain=1f
-var damping=.98f
-// The two backends report cost on different scales, so the rejection threshold starts at the demo's per-backend default.
-var cost=lab.costThreshold
-var deform=true
-var reset=false
+val ownedLab = runScope.own(OpticalFlowDemo(renderer, backend = OpticalFlowBackend.AUTO))
+lab = ownedLab
+println("Optical flow backend: ${ownedLab.flow.backend}")
+var gain = 1f
+var damping = .98f
+// The two backends report cost on different scales, so the rejection threshold starts at the demo's per-backend
+// default.
+var cost = ownedLab.costThreshold
+var deform = true
+var reset = false
 controlGroup("optical flow") {
-    slider("Advection gain",min=0.0,max=3.0,initialValue=1.0) { gain=it.toFloat() }
-    slider("Feedback retention",min=0.0,max=.995,initialValue=.98) { damping=it.toFloat() }
-    slider("Reject cost above",min=0.0,max=6.0*lab.costDisplayRange,initialValue=lab.costThreshold.toDouble()) { cost=it.toFloat() }
-    checkbox("Consecutive-frame wiggle",initialValue=true) { deform=it;reset=true }
-    button("Reset feedback and motion hints") { if(it)reset=true }
+    slider("Advection gain", min = 0.0, max = 3.0, initialValue = 1.0) { gain = it.toFloat() }
+    slider("Feedback retention", min = 0.0, max = .995, initialValue = .98) { damping = it.toFloat() }
+    slider(
+        "Reject cost above",
+        min = 0.0,
+        max = 6.0 * ownedLab.costDisplayRange,
+        initialValue = ownedLab.costThreshold.toDouble(),
+    ) {
+        cost = it.toFloat()
+    }
+    checkbox("Consecutive-frame wiggle", initialValue = true) {
+        deform = it
+        reset = true
+    }
+    button("Reset feedback and motion hints") { if (it) reset = true }
 }
 displayOpen("optical flow")
-println("Top: consecutive frames. Below: motion/cost and advected feedback. Turn off wiggle for the (+12, -8) translation check.")
+println(
+    "Top: consecutive frames. Below: motion/cost and advected feedback. Turn off wiggle for the (+12, -8) translation check.",
+)
 frames {
-    var time=0f
-    while(true) {
-        lab.dx=if(deform)0f else 12f;lab.dy=if(deform)0f else -8f;lab.displayRange=if(deform)3f else 20f;lab.gain=gain;lab.damping=damping;lab.costThreshold=cost;lab.deformation=deform
-        lab.update(time,reset);reset=false;time+=lab.pairStep
+    var time = 0f
+    while (true) {
+        ownedLab.dx = if (deform) 0f else 12f
+        ownedLab.dy = if (deform) 0f else -8f
+        ownedLab.displayRange = if (deform) 3f else 20f
+        ownedLab.gain = gain
+        ownedLab.damping = damping
+        ownedLab.costThreshold = cost
+        ownedLab.deformation = deform
+        ownedLab.update(time, reset)
+        reset = false
+        time += ownedLab.pairStep
         frame()
     }
-}.end { lab.close() }
+}
+    .end { ownedLab.close() }
 ```
 

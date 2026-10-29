@@ -1,5 +1,8 @@
 # Generated from fieldml_afield_four_demo/metadata.edn by afield.examples.DocumentToTranscript.
 name: "fieldml_afield_four_demo"
+docs:
+  - page: fieldml_host_bridge.md#reaching-field-4
+    why: "Explains how FieldML reaches Field 4 graphics through the JVM bridge."
 operations:
   - create:
       box: "fieldml-four-renderer"
@@ -7,15 +10,17 @@ operations:
       frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
       properties:
         "code": |
-          // Scaffolding, and it is Kotlin for two reasons worth naming.
-          //
-          // `prop` and `once` are SOURCE MACROS -- mechanism A of dev_docs/FIELDML_HOST_BRIDGE.md.
-          // They rewrite Kotlin source before it is compiled, so there is no JVM member for a
-          // reflective bridge to reach. And `Renderer.run` is a `suspend` member: on the JVM it is
-          // `run(Continuation)`, and FieldML can now *satisfy* a suspend function type but still
-          // cannot *call into* one, because it has no continuation to pass and nowhere to resume.
-          //
-          // Everything that actually draws, and everything that moves, is in the FieldML box.
+          /*
+          Scaffolding, and it is Kotlin for two reasons worth naming.
+
+          `prop` and `once` are SOURCE MACROS -- mechanism A of dev_docs/FIELDML_HOST_BRIDGE.md.
+          They rewrite Kotlin source before it is compiled, so there is no JVM member for a
+          reflective bridge to reach. And `Renderer.run` is a `suspend` member: on the JVM it is
+          `run(Continuation)`, and FieldML can now *satisfy* a suspend function type but still
+          cannot *call into* one, because it has no continuation to pass and nowhere to resume.
+
+          Everything that actually draws, and everything that moves, is in the FieldML box.
+          */
           prop<Window>(window)
           prop<Renderer>(renderer)
           once.renderer {

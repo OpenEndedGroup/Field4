@@ -1,5 +1,10 @@
 name: path_traced_reconstruction
 description: Compare raw multi-bounce path tracing, progressive accumulation and Ray Reconstruction.
+docs:
+  - page: path_traced_reconstruction.md
+    why: "Explains reconstructing a noisy path-traced image."
+  - page: path_tracing.md
+    why: "Reference for the path tracer feeding the reconstruction."
 operations:
 - create:
     box: agent_graphics_context
@@ -10,13 +15,47 @@ operations:
       w: 300.0
       h: 100.0
     properties:
-      code: "import afield.graphics.vulkan.util.Options\n\nprop<Window>(window)\nprop<Renderer>(renderer)\n\nOptions.enableRayTracing = true\nOptions.enableVR = false\nOptions.enableHDR = false\nOptions.profiling = false\n\nonce.renderer {\n    window = Window(\"Field\")\n    Renderer(window)\n}\n\nprintln(\"agent graphics renderer ready\")\nstart(renderer::run)\n"
+      code: |-
+        import afield.graphics.vulkan.util.Options
+
+        prop<Window>(window)
+        prop<Renderer>(renderer)
+
+        Options.enableRayTracing = true
+        Options.enableVR = false
+        Options.enableHDR = false
+        Options.profiling = false
+
+        once.renderer {
+            window = Window("Field")
+            Renderer(window)
+        }
+
+        println("agent graphics renderer ready")
+        start(renderer::run)
 - launch:
     box: agent_graphics_context
     property: code
     type: code
     strand: renderer
-    code: "import afield.graphics.vulkan.util.Options\n\nprop<Window>(window)\nprop<Renderer>(renderer)\n\nOptions.enableRayTracing = true\nOptions.enableVR = false\nOptions.enableHDR = false\nOptions.profiling = false\n\nonce.renderer {\n    window = Window(\"Field\")\n    Renderer(window)\n}\n\nprintln(\"agent graphics renderer ready\")\nstart(renderer::run)\n"
+    code: |-
+      import afield.graphics.vulkan.util.Options
+
+      prop<Window>(window)
+      prop<Renderer>(renderer)
+
+      Options.enableRayTracing = true
+      Options.enableVR = false
+      Options.enableHDR = false
+      Options.profiling = false
+
+      once.renderer {
+          window = Window("Field")
+          Renderer(window)
+      }
+
+      println("agent graphics renderer ready")
+      start(renderer::run)
 - wait:
     frames: 3
 - create:
@@ -28,7 +67,68 @@ operations:
       w: 420.0
       h: 100.0
     properties:
-      code: "import afield.ui.output.controlGroup\nimport afield.ui.output.displayOpen\nimport afield.graphics.scene.fabricated.*\nimport afield.media.reconstruction.*\nimport afield.document.context.fromContextWithNameOrNull\nimport afield.math.linalg.Vector3f\n\nprop<PathTracedReconstruction>(lab)\nfromContextWithNameOrNull<PathTracedReconstruction>(\"lab\")?.close()\nNgxSupport.rayReconstructionAvailability(renderer.device).getOrThrow()\nval scene=PathTraceScene().apply {\n    val floor=material(PathTraceMaterial.diffuse(.45f,.5f,.55f))\n    val red=material(PathTraceMaterial.plastic(.65f,.055f,.025f,.22f))\n    val gold=material(PathTraceMaterial.metal(.95f,.7f,.3f,.12f))\n    val blue=material(PathTraceMaterial.metal(.3f,.5f,.8f,.5f))\n    val light=material(PathTraceMaterial.emissive(12f,8f,5f))\n    quad(Vector3f(-15f,0f,-15f),Vector3f(-15f,0f,15f),Vector3f(15f,0f,15f),Vector3f(15f,0f,-15f),floor)\n    sphere(Vector3f(-1.7f,.8f,0f),.8f,red,48,24)\n    sphere(Vector3f(0f,.8f,0f),.8f,gold,48,24)\n    sphere(Vector3f(1.7f,.8f,0f),.8f,blue,48,24)\n    quad(Vector3f(-2f,4f,-1f),Vector3f(0f,4f,-1f),Vector3f(0f,4f,1f),Vector3f(-2f,4f,1f),light)\n}\nval camera=Camera(renderer).also {\n    it.at.set(3.5f,2.4f,7.5f);it.target.set(0f,.65f,0f);it.p.fov=.62\n}\n// Keep the tracer uninstalled: lab records trace -> raw guides -> NGX in one ordered pass.\nval tracer=PathTracingRenderer(renderer,scene,PathTraceEnvironment.constant(.08f,.1f,.15f),1920,1080,camera)\nlab=PathTracedReconstruction(tracer).install()\nvar view=2\nvar move=false\nvar cut=false\nvar samples=1\ncontrolGroup(\"path-traced reconstruction\") {\n    slider(\"0: Raw · 1: Progressive · 2: RR\",min=0.0,max=2.0,step=1.0,initialValue=2.0) { view=it.toInt() }\n    slider(\"Samples per frame\",min=1.0,max=8.0,step=1.0,initialValue=1.0) { samples=it.toInt() }\n    checkbox(\"Move camera\",initialValue=false) { move=it }\n    button(\"Cut camera and reset\") { if(it)cut=true }\n}\ndisplayOpen(\"path-traced reconstruction\")\nprintln(\"1920 × 1080. RR receives each frame's raw multi-bounce lighting and measured surface guides. Opaque surfaces; pinhole camera.\")\nframes {\n    var phase=0.0\n    while(true) {\n        lab.view=PathTracedReconstruction.View.entries[view];tracer.samplesPerFrame=samples\n        if(move) { phase+=.015;camera.at.x=(3.5+kotlin.math.sin(phase)*1.2).toFloat() }\n        if(cut) { camera.at.z=if(camera.at.z>7)6f else 7.5f;lab.reset(\"camera cut\");cut=false }\n        frame()\n    }\n}.end { lab.close() }\n"
+      code: |
+        import afield.graphics.scene.fabricated.*
+        import afield.media.reconstruction.*
+
+        prop<PathTracedReconstruction>(lab)
+        val runScope = requireNotNull(RunScope.current()) { "Run this example in a Field box." }
+        NgxSupport.rayReconstructionAvailability(renderer.device).getOrThrow()
+        val scene = PathTraceScene().apply {
+            val floor = material(PathTraceMaterial.diffuse(.45f, .5f, .55f))
+            val red = material(PathTraceMaterial.plastic(.65f, .055f, .025f, .22f))
+            val gold = material(PathTraceMaterial.metal(.95f, .7f, .3f, .12f))
+            val blue = material(PathTraceMaterial.metal(.3f, .5f, .8f, .5f))
+            val light = material(PathTraceMaterial.emissive(12f, 8f, 5f))
+            quad(Vector3f(-15f, 0f, -15f), Vector3f(-15f, 0f, 15f), Vector3f(15f, 0f, 15f), Vector3f(15f, 0f, -15f), floor)
+            sphere(Vector3f(-1.7f, .8f, 0f), .8f, red, 48, 24)
+            sphere(Vector3f(0f, .8f, 0f), .8f, gold, 48, 24)
+            sphere(Vector3f(1.7f, .8f, 0f), .8f, blue, 48, 24)
+            quad(Vector3f(-2f, 4f, -1f), Vector3f(0f, 4f, -1f), Vector3f(0f, 4f, 1f), Vector3f(-2f, 4f, 1f), light)
+        }
+        val camera = Camera(renderer).also {
+            it.at.set(3.5f, 2.4f, 7.5f)
+            it.target.set(0f, .65f, 0f)
+            it.p.fov = .62
+        }
+        // Keep the tracer uninstalled: lab records trace -> raw guides -> NGX in one ordered pass.
+        val tracer = PathTracingRenderer(renderer, scene, PathTraceEnvironment.constant(.08f, .1f, .15f), 1920, 1080, camera)
+        val ownedLab = runScope.own(PathTracedReconstruction(tracer).install())
+        lab = ownedLab
+        var view = 2
+        var move = false
+        var cut = false
+        var samples = 1
+        controlGroup("path-traced reconstruction") {
+            slider("0: Raw · 1: Progressive · 2: RR", min = 0.0, max = 2.0, step = 1.0, initialValue = 2.0) {
+                view = it.toInt()
+            }
+            slider("Samples per frame", min = 1.0, max = 8.0, step = 1.0, initialValue = 1.0) { samples = it.toInt() }
+            checkbox("Move camera", initialValue = false) { move = it }
+            button("Cut camera and reset") { if (it) cut = true }
+        }
+        displayOpen("path-traced reconstruction")
+        println(
+            "1920 × 1080. RR receives each frame's raw multi-bounce lighting and measured surface guides. Opaque surfaces; pinhole camera.",
+        )
+        frames {
+            var phase = 0.0
+            while (true) {
+                ownedLab.view = PathTracedReconstruction.View.entries[view]
+                tracer.samplesPerFrame = samples
+                if (move) {
+                    phase += .015
+                    camera.at.x = (3.5 + kotlin.math.sin(phase) * 1.2).toFloat()
+                }
+                if (cut) {
+                    camera.at.z = if (camera.at.z > 7) 6f else 7.5f
+                    ownedLab.reset("camera cut")
+                    cut = false
+                }
+                frame()
+            }
+        }
+            .end { ownedLab.close() }
 - connect:
     parent: agent_graphics_context
     child: path_traced_reconstruction
@@ -37,6 +137,67 @@ operations:
     property: code
     type: code
     strand: scene
-    code: "import afield.ui.output.controlGroup\nimport afield.ui.output.displayOpen\nimport afield.graphics.scene.fabricated.*\nimport afield.media.reconstruction.*\nimport afield.document.context.fromContextWithNameOrNull\nimport afield.math.linalg.Vector3f\n\nprop<PathTracedReconstruction>(lab)\nfromContextWithNameOrNull<PathTracedReconstruction>(\"lab\")?.close()\nNgxSupport.rayReconstructionAvailability(renderer.device).getOrThrow()\nval scene=PathTraceScene().apply {\n    val floor=material(PathTraceMaterial.diffuse(.45f,.5f,.55f))\n    val red=material(PathTraceMaterial.plastic(.65f,.055f,.025f,.22f))\n    val gold=material(PathTraceMaterial.metal(.95f,.7f,.3f,.12f))\n    val blue=material(PathTraceMaterial.metal(.3f,.5f,.8f,.5f))\n    val light=material(PathTraceMaterial.emissive(12f,8f,5f))\n    quad(Vector3f(-15f,0f,-15f),Vector3f(-15f,0f,15f),Vector3f(15f,0f,15f),Vector3f(15f,0f,-15f),floor)\n    sphere(Vector3f(-1.7f,.8f,0f),.8f,red,48,24)\n    sphere(Vector3f(0f,.8f,0f),.8f,gold,48,24)\n    sphere(Vector3f(1.7f,.8f,0f),.8f,blue,48,24)\n    quad(Vector3f(-2f,4f,-1f),Vector3f(0f,4f,-1f),Vector3f(0f,4f,1f),Vector3f(-2f,4f,1f),light)\n}\nval camera=Camera(renderer).also {\n    it.at.set(3.5f,2.4f,7.5f);it.target.set(0f,.65f,0f);it.p.fov=.62\n}\n// Keep the tracer uninstalled: lab records trace -> raw guides -> NGX in one ordered pass.\nval tracer=PathTracingRenderer(renderer,scene,PathTraceEnvironment.constant(.08f,.1f,.15f),1920,1080,camera)\nlab=PathTracedReconstruction(tracer).install()\nvar view=2\nvar move=false\nvar cut=false\nvar samples=1\ncontrolGroup(\"path-traced reconstruction\") {\n    slider(\"0: Raw · 1: Progressive · 2: RR\",min=0.0,max=2.0,step=1.0,initialValue=2.0) { view=it.toInt() }\n    slider(\"Samples per frame\",min=1.0,max=8.0,step=1.0,initialValue=1.0) { samples=it.toInt() }\n    checkbox(\"Move camera\",initialValue=false) { move=it }\n    button(\"Cut camera and reset\") { if(it)cut=true }\n}\ndisplayOpen(\"path-traced reconstruction\")\nprintln(\"1920 × 1080. RR receives each frame's raw multi-bounce lighting and measured surface guides. Opaque surfaces; pinhole camera.\")\nframes {\n    var phase=0.0\n    while(true) {\n        lab.view=PathTracedReconstruction.View.entries[view];tracer.samplesPerFrame=samples\n        if(move) { phase+=.015;camera.at.x=(3.5+kotlin.math.sin(phase)*1.2).toFloat() }\n        if(cut) { camera.at.z=if(camera.at.z>7)6f else 7.5f;lab.reset(\"camera cut\");cut=false }\n        frame()\n    }\n}.end { lab.close() }\n"
+    code: |
+      import afield.graphics.scene.fabricated.*
+      import afield.media.reconstruction.*
+
+      prop<PathTracedReconstruction>(lab)
+      val runScope = requireNotNull(RunScope.current()) { "Run this example in a Field box." }
+      NgxSupport.rayReconstructionAvailability(renderer.device).getOrThrow()
+      val scene = PathTraceScene().apply {
+          val floor = material(PathTraceMaterial.diffuse(.45f, .5f, .55f))
+          val red = material(PathTraceMaterial.plastic(.65f, .055f, .025f, .22f))
+          val gold = material(PathTraceMaterial.metal(.95f, .7f, .3f, .12f))
+          val blue = material(PathTraceMaterial.metal(.3f, .5f, .8f, .5f))
+          val light = material(PathTraceMaterial.emissive(12f, 8f, 5f))
+          quad(Vector3f(-15f, 0f, -15f), Vector3f(-15f, 0f, 15f), Vector3f(15f, 0f, 15f), Vector3f(15f, 0f, -15f), floor)
+          sphere(Vector3f(-1.7f, .8f, 0f), .8f, red, 48, 24)
+          sphere(Vector3f(0f, .8f, 0f), .8f, gold, 48, 24)
+          sphere(Vector3f(1.7f, .8f, 0f), .8f, blue, 48, 24)
+          quad(Vector3f(-2f, 4f, -1f), Vector3f(0f, 4f, -1f), Vector3f(0f, 4f, 1f), Vector3f(-2f, 4f, 1f), light)
+      }
+      val camera = Camera(renderer).also {
+          it.at.set(3.5f, 2.4f, 7.5f)
+          it.target.set(0f, .65f, 0f)
+          it.p.fov = .62
+      }
+      // Keep the tracer uninstalled: lab records trace -> raw guides -> NGX in one ordered pass.
+      val tracer = PathTracingRenderer(renderer, scene, PathTraceEnvironment.constant(.08f, .1f, .15f), 1920, 1080, camera)
+      val ownedLab = runScope.own(PathTracedReconstruction(tracer).install())
+      lab = ownedLab
+      var view = 2
+      var move = false
+      var cut = false
+      var samples = 1
+      controlGroup("path-traced reconstruction") {
+          slider("0: Raw · 1: Progressive · 2: RR", min = 0.0, max = 2.0, step = 1.0, initialValue = 2.0) {
+              view = it.toInt()
+          }
+          slider("Samples per frame", min = 1.0, max = 8.0, step = 1.0, initialValue = 1.0) { samples = it.toInt() }
+          checkbox("Move camera", initialValue = false) { move = it }
+          button("Cut camera and reset") { if (it) cut = true }
+      }
+      displayOpen("path-traced reconstruction")
+      println(
+          "1920 × 1080. RR receives each frame's raw multi-bounce lighting and measured surface guides. Opaque surfaces; pinhole camera.",
+      )
+      frames {
+          var phase = 0.0
+          while (true) {
+              ownedLab.view = PathTracedReconstruction.View.entries[view]
+              tracer.samplesPerFrame = samples
+              if (move) {
+                  phase += .015
+                  camera.at.x = (3.5 + kotlin.math.sin(phase) * 1.2).toFloat()
+              }
+              if (cut) {
+                  camera.at.z = if (camera.at.z > 7) 6f else 7.5f
+                  ownedLab.reset("camera cut")
+                  cut = false
+              }
+              frame()
+          }
+      }
+          .end { ownedLab.close() }
 - wait:
     frames: 12

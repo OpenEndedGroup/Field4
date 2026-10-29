@@ -43,5 +43,6 @@ object SolidCraftSmokeTest {
             check(abs(retainedVolume - editedVolume) < 1e-6) { "failed edit changed the live model" }
             println("SolidCraft FFM smoke passed: volume $initialVolume -> $editedVolume, ${initialMesh.faceIds.size} triangles, ${step.size} STEP bytes")
         }
+        SolidCraftBuilderSmokeTest.main(args)
     }
 }

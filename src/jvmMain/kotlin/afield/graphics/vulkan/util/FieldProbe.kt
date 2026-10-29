@@ -1,5 +1,16 @@
 @file:OptIn(ExperimentalUnsignedTypes::class)
 
+/**
+ * Samples values out of a running shader into a GPU buffer and shows them in a box's output as a histogram and summary statistics.
+ *
+ * A shader includes `fieldProbe` and writes scalar or vector samples into a buffer bound at
+ * [FIELD_PROBE_DEFAULT_BINDING]; [ShaderFieldProbe] reads that buffer back off the render thread,
+ * builds a [FieldProbeSnapshot] (counts of NaN, infinite and non-zero samples, ranges, summaries)
+ * and, with [ShaderFieldProbe.display], publishes it to an output channel at most
+ * [ShaderFieldProbe.maxDisplayHz] times a second. [ShaderFieldProbe.ordinalRange] limits which
+ * invocations record, and [ShaderFieldProbe.onSnapshot] hands each snapshot to box code.
+ */
+
 package afield.graphics.vulkan.util
 
 import afield.document.graph.Box
@@ -42,11 +53,36 @@ import kotlin.math.min
 import afield.ui.visualization.Table
 import afield.ui.output.FieldMarkdown
 
+/** The name of the probe's buffer, which matches the shader's declaration to the buffer the host
+ * allocates. */
 const val FIELD_PROBE_BUFFER_NAME = "FieldProbeBuffer"
+
+/**
+ * The name a shader includes to get the probe GLSL: `#include "fieldProbe"`.
+ *
+ * What it brings in is an overloaded `fieldProbe(…)` taking a float, an int, a uint or any 2-, 3- or
+ * 4-component vector of those, so instrumenting a line is a matter of wrapping the value in a call.
+ */
 const val FIELD_PROBE_INCLUDE_NAME = "fieldProbe"
+
+/** How many samples a probe keeps unless told otherwise, 1024, enough for a histogram to have a
+ * shape, small enough to read back every frame. */
 const val FIELD_PROBE_DEFAULT_SAMPLES = 1024
+
+/**
+ * The ceiling on [ShaderFieldProbe.sampleCapacity], 262144. A larger capacity is clamped to it rather
+ * than rejected.
+ *
+ * The buffer is always allocated at this size — about 4 MB per frame in flight — and the shader
+ * always declares its sample array at it, so a smaller [ShaderFieldProbe.sampleCapacity] buys a
+ * shorter read-back rather than a smaller allocation.
+ */
 const val FIELD_PROBE_MAX_SAMPLES = 1024 * 256
+
+/** Default binding for the probe buffer, 63, just above the statistics buffers at 61 and 62. */
 const val FIELD_PROBE_DEFAULT_BINDING = 63
+
+/** Default descriptor set for the probe buffer, 0. */
 const val FIELD_PROBE_DEFAULT_SET = 0
 
 private const val FIELD_PROBE_HEADER_INTS = 20
@@ -104,18 +140,62 @@ private fun formatNumber(value: Double, decimals: Int): String {
 
 private fun ByteBuffer.nativeOrder(): ByteBuffer = order(ByteOrder.nativeOrder())
 
+/**
+ * One frame's worth of probe data: how many times the shader called `fieldProbe`, what it was
+ * holding, and a bounded sample of the values themselves.
+ *
+ * The counts and the exact ranges cover every call the probe accepted; [samples] is a reservoir of at
+ * most [ShaderFieldProbe.sampleCapacity] of them, which is what the histogram and the summary
+ * statistics are computed from. So a mean read off [scalarSummary] is the sample mean, while
+ * [exactMin] and [exactMax] are the true extremes over everything — a distinction worth keeping
+ * straight when a probe reports a range no sample in it reaches.
+ *
+ * The derived values are computed on first use and cached, so asking for a summary or a histogram
+ * twice costs once.
+ */
 data class FieldProbeSnapshot(
+    /** How many components each recorded value had: 1 for a scalar, 2, 3 or 4 for a vector, and 0 if
+     * nothing was recorded. The first call of a frame fixes this, and later calls of a different
+     * width are counted as [typeMismatchCount] instead. */
     val dimensions: Int,
+    /** How many times the shader called `fieldProbe` while the probe was enabled, before any
+     * filtering: the denominator for how much of the work was looked at. Each call's position in
+     * this count is its ordinal. */
     val invocationCount: Long,
+    /** How many of those calls got past the ordinal range and the width check, and so contributed to
+     * everything below. */
     val acceptedCount: Long,
+    /** How many accepted values were finite in every component. Also the index space the reservoir
+     * fills, so `min(finiteCount, capacity)` is [sampleCount]. */
     val finiteCount: Long,
+    /** How many values are actually in [samples]: [finiteCount] capped at the configured capacity. */
     val sampleCount: Int,
+    /** How many accepted values had a NaN component. These are counted and dropped, so they do not
+     * reach the ranges or the samples; [anyNaN] is the quick test. */
     val nanCount: Long,
+    /** How many accepted values had an infinite component — counted and dropped like the NaNs, and
+     * checked after them, so a value that is both is counted only as NaN. */
     val infCount: Long,
+    /** How many finite values had at least one non-zero component, counting only the components
+     * [dimensions] says are real. A probe whose output should not be zero and whose count here is
+     * zero has found something. */
     val nonZeroCount: Long,
+    /** How many in-range calls were rejected for recording a different number of components than the
+     * first call of the frame did. Normally zero; non-zero means two probes of different widths are
+     * sharing one buffer, and only the first width is being measured. */
     val typeMismatchCount: Long,
+    /** The true minimum of each component over every accepted finite value, one entry per recorded
+     * component. Computed with integer atomics across the whole frame, so these are not limited to
+     * the sampled values. When nothing finite was recorded every entry is NaN, and there is one of
+     * them. */
     val exactMin: DoubleArray,
+    /** The true maximum of each component, on the same terms as [exactMin]. */
     val exactMax: DoubleArray,
+    /** The retained values, always as `Vec4` whatever [dimensions] is, with the unused components
+     * zero. Up to the capacity they are every finite value in order; past it the shader replaces a
+     * hashed slot, which keeps the retained set spread across the frame rather than stopping at the
+     * first thousand. Read them through [scalarValues] and the vector forms, which narrow them to the
+     * recorded width. */
     val samples: List<Vec4>
 ) {
     private val smallChangePivot = 0.08
@@ -195,31 +275,58 @@ data class FieldProbeSnapshot(
     private fun deltaStyle(current: Long, previous: Long?, fallback: String = "#0af"): String =
         deltaStyle(current.toDouble(), previous?.toDouble(), fallback)
 
+    /** Whether any accepted value had a NaN component this frame. The first thing to check when a
+     * render goes black. */
     val anyNaN: Boolean
         get() = nanCount > 0
 
+    /** Whether any accepted value had an infinite component this frame. */
     val anyInf: Boolean
         get() = infCount > 0
 
+    /** Whether any finite value was not all zeros: the test for "did this code path run and produce
+     * anything". */
     val anyNonZero: Boolean
         get() = nonZeroCount > 0
 
+    /** The retained values as plain numbers, or `null` if this frame recorded vectors rather than
+     * scalars. Checking for `null` is how you find out what the shader was probing. */
     fun scalarValues(): List<Double>? = cachedScalarValues
 
+    /** The retained values as two-component vectors, or `null` if [dimensions] is not 2. */
     fun vec2Values(): List<Vec2>? = cachedVec2Values
 
+    /** The retained values as three-component vectors, or `null` if [dimensions] is not 3. */
     fun vec3Values(): List<Vec3>? = cachedVec3Values
 
+    /** The retained values as four-component vectors, or `null` if [dimensions] is not 4. Note that
+     * [samples] is `Vec4` whatever the width, while this is `null` unless the width really was 4. */
     fun vec4Values(): List<Vec4>? = cachedVec4Values
 
+    /** Count, mean, spread and quartiles over the retained scalar values, or `null` if this frame was
+     * not scalar. Computed from the sample rather than from every call, so compare it against
+     * [exactMin] and [exactMax] rather than treating it as the whole story. */
     fun scalarSummary(): SummaryStats? = cachedScalarSummary
 
+    /** Per-component summary statistics over the retained two-component values, or `null` if
+     * [dimensions] is not 2. */
     fun vec2Summary(): Vec2SummaryStats? = cachedVec2Summary
 
+    /** Per-component summary statistics over the retained three-component values, or `null` if
+     * [dimensions] is not 3. */
     fun vec3Summary(): Vec3SummaryStats? = cachedVec3Summary
 
+    /** Per-component summary statistics over the retained four-component values, or `null` if
+     * [dimensions] is not 4. */
     fun vec4Summary(): Vec4SummaryStats? = cachedVec4Summary
 
+    /**
+     * The value at fraction [alpha] through the sorted scalar samples, interpolating between the two
+     * neighbouring samples, with `alpha` clamped to 0..1.
+     *
+     * Returns NaN for a frame that recorded vectors or recorded nothing. This reads the retained
+     * sample, so `percentile(1.0)` is the largest *sampled* value and not [exactMax].
+     */
     fun percentile(alpha: Double): Double {
         val values = cachedSortedScalarValues ?: return Double.NaN
         if (values.isEmpty()) return Double.NaN
@@ -232,6 +339,17 @@ data class FieldProbeSnapshot(
         return values[lo] * (1.0 - frac) + values[hi] * frac
     }
 
+    /**
+     * Renders this snapshot as the HTML card a probe shows in a box's output: the counts, then a
+     * histogram and summary for a scalar frame, or a per-component table and a vector-length
+     * histogram for a vector one.
+     *
+     * Pass the snapshot before this one as [previous] and each number is tinted by how far it moved —
+     * unchanged in the base colour, through orange for a small change, to green for a rise and red
+     * for a fall. A steady probe then reads as a still card, and a number that has begun to move
+     * shows up without being read. The remaining parameters set the card's width, chart height,
+     * decimal places and the three colours.
+     */
     fun summaryHtml(
         previous: FieldProbeSnapshot? = null,
         widthPx: Int = 520,
@@ -464,11 +582,33 @@ data class FieldProbeSnapshot(
     }
 }
 
+/**
+ * A probe's scalar samples packaged for a controller, with the snapshot they came from kept
+ * alongside.
+ *
+ * The controller wants an array and a clip rate; the snapshot is retained so the caller can still
+ * reach the counts and exact ranges that the batch leaves out.
+ */
 data class FieldProbeScalarBatch(
+    /** The snapshot these samples were taken from, with the counts and exact ranges the batch does
+     * not carry. */
     val snapshot: FieldProbeSnapshot,
+    /** The samples and clip rate, in the form a controller consumes. */
     val batch: ScalarSampleBatch
 )
 
+/**
+ * Packages this snapshot's scalar samples for a controller, returning `null` when there is not enough
+ * to act on.
+ *
+ * `null` comes back for a frame that recorded vectors rather than scalars, and for one with fewer than
+ * [minSamples] retained — which is how a controller is kept from reacting to the first partial frame
+ * after a shader reload. Give [clipLower] and [clipUpper] the bounds the value is expected to stay
+ * inside and the fraction of samples sitting at either of them is measured as the batch's clip rate,
+ * a controller's signal that it is asking for more than the shader can deliver. [clipEpsilon] is the
+ * tolerance for counting a sample as resting on a bound, since a clamped float rarely compares equal
+ * to the bound exactly. With neither bound given the clip rate is zero.
+ */
 fun FieldProbeSnapshot.scalarBatch(
     minSamples: Int = 1,
     clipLower: Double? = null,
@@ -498,7 +638,23 @@ fun FieldProbeSnapshot.scalarBatch(
     )
 }
 
+/**
+ * A box's shader probe: the buffer a running shader writes samples into, the read-back that brings
+ * them off the render thread, and the output card they are shown on.
+ *
+ * Reached through `Box.fieldProbeHere` rather than constructed, since the probe has to be registered
+ * before `#include "fieldProbe"` can resolve. The configuration methods return the probe, so the
+ * usual shape is one chained expression — pick the invocations to watch with [ordinalRange], send the
+ * card somewhere with [display], and take each frame's numbers with [onSnapshot].
+ *
+ * Reading never blocks on the GPU, and what that costs is currency: a graphics shader's samples are
+ * read on a later frame's pass over the same swapchain image, and a compute shader's on a background
+ * thread once the frame's fence has signalled. Either way [latestSnapshot] trails the picture on
+ * screen.
+ */
 class ShaderFieldProbe(
+    /** The box that owns this probe: whose output channel the card goes to, and whose name a failed
+     * read-back is reported against. */
     val box: Box
 ) {
     private data class DisplayWork(
@@ -507,14 +663,40 @@ class ShaderFieldProbe(
         val generation: Long
     )
 
+    /**
+     * How many samples are kept and read back each frame, clamped to 1..[FIELD_PROBE_MAX_SAMPLES].
+     *
+     * This bounds the read-back and the histogram, not the allocation, which is always at the
+     * maximum. Raising it costs a longer copy every frame; the counts and exact ranges do not depend
+     * on it.
+     */
     var sampleCapacity: Int = FIELD_PROBE_DEFAULT_SAMPLES
         set(value) {
             field = value.coerceIn(1, FIELD_PROBE_MAX_SAMPLES)
         }
 
+    /** The buffer binding the probe's GLSL declares. Change it if the shader's own bindings reach
+     * 63. */
     var binding: Int = FIELD_PROBE_DEFAULT_BINDING
+
+    /** The descriptor set the probe's buffer is bound in. */
     var descriptorSet: Int = FIELD_PROBE_DEFAULT_SET
+
+    /**
+     * Whether the shader records at all. True by default.
+     *
+     * The shader checks this in the buffer header, so turning it off costs a branch per call rather
+     * than a recompile, and leaves the probe's instrumentation in place to be turned back on.
+     */
     var enabled: Boolean = true
+
+    /**
+     * How often the output card may be redrawn, in times a second. Low by default, since building and
+     * sending the card is the expensive part of a probe.
+     *
+     * It also sets the read-back rate for a probe that only displays, which is what [maxReadHz] is for
+     * overriding; a probe with a callback reads every frame regardless.
+     */
     var maxDisplayHz: Double = 5.0
 
     /**
@@ -524,11 +706,22 @@ class ShaderFieldProbe(
      */
     var maxReadHz: Double? = null
 
+    /** The first invocation ordinal that records, set through [ordinalRange] or [configure]. */
     var ordinalStart: UInt = 0u
         private set
+
+    /** One past the last invocation ordinal that records. Read-only; set it through [ordinalRange] or
+     * [configure]. */
     var ordinalEndExclusive: UInt = UInt.MAX_VALUE
         private set
 
+    /**
+     * The most recent completed read-back, or `null` before the first one lands.
+     *
+     * Written from whichever thread completed the read and declared volatile, so box code may read it
+     * from anywhere. It is replaced wholesale rather than mutated, so a snapshot taken out of it stays
+     * coherent for as long as it is held.
+     */
     @Volatile
     var latestSnapshot: FieldProbeSnapshot? = null
         private set
@@ -550,6 +743,13 @@ class ShaderFieldProbe(
     @Volatile
     private var displayGeneration: Long = 0L
 
+    /**
+     * Sets several of the probe's settings at once and returns the probe, for configuring it in one
+     * named-argument call.
+     *
+     * Every parameter defaults to the current value, so naming one changes one. This is the only way
+     * to set [ordinalStart] and [ordinalEndExclusive] other than [ordinalRange].
+     */
     fun configure(
         samples: Int = sampleCapacity,
         binding: Int = this.binding,
@@ -567,12 +767,32 @@ class ShaderFieldProbe(
         return this
     }
 
+    /**
+     * Records only the calls whose ordinal falls in `[start, endExclusive)`, and returns the probe for
+     * chaining.
+     *
+     * A call's ordinal is its position in the frame's sequence of `fieldProbe` calls, handed out by an
+     * atomic counter — so it is not the invocation id and the mapping from ordinal to pixel or
+     * work-item is not stable between frames. What a narrow range does buy is volume: a probe inside a
+     * fragment shader over a full window is called millions of times a frame, and `ordinalRange(0u,
+     * 4096u)` cuts that to the first few thousand. Filtered calls still count toward
+     * [FieldProbeSnapshot.invocationCount] and nothing else.
+     *
+     * To look at a specific invocation, branch on `gl_GlobalInvocationID` in the shader instead.
+     */
     fun ordinalRange(start: UInt = 0u, endExclusive: UInt = UInt.MAX_VALUE): ShaderFieldProbe {
         ordinalStart = start
         ordinalEndExclusive = endExclusive
         return this
     }
 
+    /**
+     * The same as the two-argument [ordinalRange], written as a Kotlin range, so `0u..4095u` says what
+     * `0u, 4096u` does.
+     *
+     * The range is inclusive of its end, and is converted. An empty range turns the probe into one
+     * that records nothing.
+     */
     fun ordinalRange(range: UIntRange): ShaderFieldProbe {
         if (range.isEmpty()) {
             ordinalStart = 1u
@@ -584,6 +804,16 @@ class ShaderFieldProbe(
         return this
     }
 
+    /**
+     * Hands every completed read-back to [callback], and returns the probe for chaining.
+     *
+     * Registering one makes the probe read every frame instead of at the display rate, which is what
+     * a controller driven from probe values needs. The callback runs on whichever thread completed the
+     * read — the render thread for a graphics shader, a read-back thread for a compute one — and never
+     * on box code's own, so anything it touches has to tolerate that. An exception from it is logged
+     * and swallowed rather than taking the frame down. One callback at a time: a second call replaces
+     * the first.
+     */
     fun onSnapshot(callback: (FieldProbeSnapshot) -> Unit): ShaderFieldProbe {
         snapshotCallback = callback
         return this
@@ -595,6 +825,15 @@ class ShaderFieldProbe(
         return this
     }
 
+    /**
+     * Turns the probe off and takes down what it registered: the display channel, the callback, the
+     * last snapshot and any read-back still queued.
+     *
+     * This is what a box calls when it stops, so a probe does not keep drawing to a channel after the
+     * code that made it is gone. [closeOutput] closes the output panel, and [clearOutput] empties it
+     * first, which is the difference between the card disappearing and the card going blank. The
+     * buffer is not released; re-enabling the probe starts it recording again.
+     */
     fun deregister(closeOutput: Boolean = true, clearOutput: Boolean = false): ShaderFieldProbe {
         enabled = false
         pendingPerImage.fill(false)
@@ -967,8 +1206,16 @@ class ShaderFieldProbe(
         return ensureBufferParameters(renderer)
     }
 
+    /** The most recent completed read-back, or `null` before the first one. The same value as
+     * [latestSnapshot], as a call for code that reads better that way. */
     fun readLatest(): FieldProbeSnapshot? = latestSnapshot
 
+    /**
+     * [readLatest] put through [scalarBatch], so a controller can take the latest samples in one call.
+     *
+     * `null` when there is no snapshot yet, when the frame recorded vectors, or when fewer than
+     * [minSamples] were retained. The clip arguments mean what they do on [scalarBatch].
+     */
     fun readLatestScalarBatch(
         minSamples: Int = 1,
         clipLower: Double? = null,
@@ -982,6 +1229,15 @@ class ShaderFieldProbe(
             clipEpsilon = clipEpsilon
         )
 
+    /**
+     * Reads the probe buffer for one swapchain image and builds a snapshot from it, without waiting
+     * for the GPU.
+     *
+     * The read-back paths call this themselves at a point where that image's work is known to have
+     * finished; calling it directly means choosing [imageIndex] and knowing that, which is why
+     * [latestSnapshot] is what box code wants. Only the first [sampleCapacity] samples are copied,
+     * whatever the buffer holds.
+     */
     fun readSnapshot(renderer: Renderer, imageIndex: Int): FieldProbeSnapshot {
         ensureRenderer(renderer)
         val target = ensureBufferParameters(renderer).toBuffer(renderer).getAt(imageIndex, write = false)

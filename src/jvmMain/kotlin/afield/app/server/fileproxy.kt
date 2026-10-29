@@ -29,6 +29,16 @@ import java.util.Base64
 import java.util.UUID
 import kotlin.io.path.pathString
 
+/**
+ * File proxy boxes: a box whose `contents` mirror a text file, given by an absolute path or by a
+ * path under the workspace or the document folder.
+ *
+ * [refreshFileProxyBox] and [refreshFileProxyBoxes] reload a proxy from disk, and
+ * [writeFileProxyContents] writes an edit back, reporting the outcome as a [FileProxyWriteResult].
+ * A workspace or document proxy's path is checked to stay inside that folder; an absolute one is not. [fileProxyHandlers]
+ * installs the `create-file-proxy-box` handler the editor uses to make one.
+ */
+
 private const val FILE_PROXY_DEFAULT_WIDTH = 240.0
 private const val FILE_PROXY_DEFAULT_HEIGHT = 90.0
 private const val MAX_TEXT_PROXY_BYTES = 10L * 1024L * 1024L
@@ -302,6 +312,21 @@ internal fun createProxyTarget(request: CreateFileProxyBox): CreatedProxy {
 internal fun createFileProxyBox(request: CreateFileProxyBox): CreateFileProxyBoxResponse {
     val createdProxy = createProxyTarget(request)
     val info = thisSessionInfo.get()
+    val existing = info.boxes.values.firstOrNull { box ->
+        box.getPropertyRaw("file_proxy_mode") == createdProxy.mode &&
+            box.getPropertyRaw("file_proxy_path") == createdProxy.storedPath &&
+            box.getPropertyRaw("_tombstone") != true
+    }
+    if (existing != null) {
+        refreshFileProxyBox(existing, notifyMissing = true)
+        return CreateFileProxyBoxResponse(
+            ok = true,
+            uid = existing.id,
+            message = "Reused file proxy for ${createdProxy.target.path}",
+            mode = createdProxy.mode,
+            path = createdProxy.storedPath
+        )
+    }
     val uid = UUID.randomUUID().toString()
     val created = box(uid, createIfMissing = true, initIfCreated = true, root = info)
 

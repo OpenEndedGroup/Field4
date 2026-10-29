@@ -1,0 +1,281 @@
+{
+  "source_commit": "75071082a40db358424c27f992ee4316317b18c1",
+  "groups": 567,
+  "sourceOccurrences": 3541,
+  "states": 3548,
+  "uniqueBodies": 2953,
+  "languages": {
+    "kotlin": 2706,
+    "glsl": 235,
+    "kotlinjs": 12
+  },
+  "missingFrozenGroups": [
+    "public/docs/capture_limits.md"
+  ],
+  "inventoryFindings": [
+    {
+      "path": "public/docs/assets/fline_examples/metadata.edn",
+      "box": "36523055-c4e9-49fe-a196-2ea6df5ba362",
+      "kind": "inline-only-source",
+      "target": "public/docs/assets/fline_examples/36523055-c4e9-49fe-a196-2ea6df5ba362_code_.kt"
+    },
+    {
+      "path": "public/docs/assets/fline_examples/metadata.edn",
+      "box": "c0f13166-25d5-4b3e-a848-b70921085b77",
+      "kind": "inline-only-source",
+      "target": "public/docs/assets/fline_examples/c0f13166-25d5-4b3e-a848-b70921085b77_code_.kt"
+    },
+    {
+      "path": "public/docs/assets/fline_examples/metadata.edn",
+      "box": "21a1c4ed-9f07-4ea5-a61e-fbb59c8008f4",
+      "kind": "inline-only-source",
+      "target": "public/docs/assets/fline_examples/21a1c4ed-9f07-4ea5-a61e-fbb59c8008f4_code_.kt"
+    },
+    {
+      "path": "public/docs/assets/fline_examples/metadata.edn",
+      "box": "bb72544f-7ff6-47b5-975f-176c0b4cd98c",
+      "kind": "inline-only-source",
+      "target": "public/docs/assets/fline_examples/bb72544f-7ff6-47b5-975f-176c0b4cd98c_code_.kt"
+    },
+    {
+      "path": "public/docs/assets/fline_examples/metadata.edn",
+      "box": "b0e73159-c126-4839-88da-5481baf4b66d",
+      "kind": "inline-only-source",
+      "target": "public/docs/assets/fline_examples/b0e73159-c126-4839-88da-5481baf4b66d_code_.kt"
+    },
+    {
+      "path": "public/docs/assets/fline_examples/metadata.edn",
+      "box": "f26dab9f-8c81-4c2a-b26c-6229a8f5c37c",
+      "kind": "inline-only-source",
+      "target": "public/docs/assets/fline_examples/f26dab9f-8c81-4c2a-b26c-6229a8f5c37c_code_.kt"
+    },
+    {
+      "path": "public/docs/assets/fline_examples/metadata.edn",
+      "box": "271752b1-edaf-408e-8d27-584a8eed6853",
+      "kind": "inline-only-source",
+      "target": "public/docs/assets/fline_examples/271752b1-edaf-408e-8d27-584a8eed6853_code_.kt"
+    },
+    {
+      "path": "public/docs/assets/fline_examples/metadata.edn",
+      "box": "9b57e542-e11d-43bb-add7-1cdbe25e3c5d",
+      "kind": "inline-only-source",
+      "target": "public/docs/assets/fline_examples/9b57e542-e11d-43bb-add7-1cdbe25e3c5d_code_.kt"
+    },
+    {
+      "path": "public/docs/assets/fline_examples/metadata.edn",
+      "box": "c60751ef-ea01-4abf-b88c-458655b799ab",
+      "kind": "inline-only-source",
+      "target": "public/docs/assets/fline_examples/c60751ef-ea01-4abf-b88c-458655b799ab_code_.kt"
+    },
+    {
+      "path": "public/docs/assets/fline_examples/metadata.edn",
+      "box": "35d2ed3b-05ea-4e2f-8a4b-c3355c349e9d",
+      "kind": "inline-only-source",
+      "target": "public/docs/assets/fline_examples/35d2ed3b-05ea-4e2f-8a4b-c3355c349e9d_code_.kt"
+    },
+    {
+      "path": "public/docs/assets/fline_examples/metadata.edn",
+      "box": "d26a4b52-468b-4ca2-81cc-f34467d4876a",
+      "kind": "inline-only-source",
+      "target": "public/docs/assets/fline_examples/d26a4b52-468b-4ca2-81cc-f34467d4876a_code_.kt"
+    },
+    {
+      "path": "public/docs/assets/fline_examples/metadata.edn",
+      "box": "cdc1801b-80e0-45a6-bf55-dac757fffa3f",
+      "kind": "inline-only-source",
+      "target": "public/docs/assets/fline_examples/cdc1801b-80e0-45a6-bf55-dac757fffa3f_code_.kt"
+    },
+    {
+      "path": "public/docs/assets/fline_examples/metadata.edn",
+      "box": "2dab2a80-c55f-4a59-ab55-135188ca1725",
+      "kind": "inline-only-source",
+      "target": "public/docs/assets/fline_examples/2dab2a80-c55f-4a59-ab55-135188ca1725_code_.kt"
+    },
+    {
+      "path": "public/docs/assets/fline_examples/metadata.edn",
+      "box": "93b50206-4d92-47f0-8472-3590bd197ec3",
+      "kind": "inline-only-source",
+      "target": "public/docs/assets/fline_examples/93b50206-4d92-47f0-8472-3590bd197ec3_code_.kt"
+    },
+    {
+      "path": "public/docs/assets/fline_examples/metadata.edn",
+      "box": "e1876604-8538-4ac4-83d4-9a35fe7a63cc",
+      "kind": "inline-only-source",
+      "target": "public/docs/assets/fline_examples/e1876604-8538-4ac4-83d4-9a35fe7a63cc_code_.kt"
+    },
+    {
+      "path": "public/docs/assets/fline_examples/metadata.edn",
+      "box": "cab0dcc3-7c5c-4f17-b67c-f3ac48b5532c",
+      "kind": "inline-only-source",
+      "target": "public/docs/assets/fline_examples/cab0dcc3-7c5c-4f17-b67c-f3ac48b5532c_code_.kt"
+    },
+    {
+      "path": "public/docs/assets/fline_examples/metadata.edn",
+      "box": "3d6713ff-def5-4d2d-8e89-79da96712006",
+      "kind": "inline-only-source",
+      "target": "public/docs/assets/fline_examples/3d6713ff-def5-4d2d-8e89-79da96712006_code_.kt"
+    },
+    {
+      "path": "public/docs/assets/fline_examples/metadata.edn",
+      "box": "f2cb5655-5fa1-4609-aef3-3ffa1f394e09",
+      "kind": "inline-only-source",
+      "target": "public/docs/assets/fline_examples/f2cb5655-5fa1-4609-aef3-3ffa1f394e09_code_.kt"
+    },
+    {
+      "path": "public/docs/assets/fline_examples/metadata.edn",
+      "box": "6038e077-f438-4705-be8a-249b18126927",
+      "kind": "inline-only-source",
+      "target": "public/docs/assets/fline_examples/6038e077-f438-4705-be8a-249b18126927_code_.kt"
+    },
+    {
+      "path": "public/docs/assets/fline_examples/metadata.edn",
+      "box": "c7f4ae60-28b2-4558-80f8-b0621734c6c7",
+      "kind": "inline-only-source",
+      "target": "public/docs/assets/fline_examples/c7f4ae60-28b2-4558-80f8-b0621734c6c7_code_.kt"
+    },
+    {
+      "path": "public/docs/assets/fline_examples/metadata.edn",
+      "box": "7cae7ad4-ee76-421e-9887-5bee130d1c17",
+      "kind": "inline-only-source",
+      "target": "public/docs/assets/fline_examples/7cae7ad4-ee76-421e-9887-5bee130d1c17_code_.kt"
+    },
+    {
+      "path": "public/docs/assets/fline_examples/metadata.edn",
+      "box": "9afe6869-e344-4bc5-81c2-32ab5c4c4df1",
+      "kind": "inline-only-source",
+      "target": "public/docs/assets/fline_examples/9afe6869-e344-4bc5-81c2-32ab5c4c4df1_code_.kt"
+    },
+    {
+      "path": "public/docs/assets/fline_examples/metadata.edn",
+      "box": "b7b2a632-b17f-4d1e-8e2f-bee2eddf789a",
+      "kind": "inline-only-source",
+      "target": "public/docs/assets/fline_examples/b7b2a632-b17f-4d1e-8e2f-bee2eddf789a_code_.kt"
+    },
+    {
+      "path": "public/docs/assets/fline_examples/metadata.edn",
+      "box": "d6323243-b174-468e-a2d7-aba36a117e31",
+      "kind": "inline-only-source",
+      "target": "public/docs/assets/fline_examples/d6323243-b174-468e-a2d7-aba36a117e31_code_.kt"
+    },
+    {
+      "path": "public/docs/assets/fline_examples/metadata.edn",
+      "box": "d72a941b-a30e-49ce-8ce6-afb0227461f5",
+      "kind": "inline-only-source",
+      "target": "public/docs/assets/fline_examples/d72a941b-a30e-49ce-8ce6-afb0227461f5_code_.kt"
+    },
+    {
+      "path": "public/docs/assets/fline_examples/metadata.edn",
+      "box": "206e22be-19aa-48c9-b8bd-ecd43bdf5a46",
+      "kind": "inline-only-source",
+      "target": "public/docs/assets/fline_examples/206e22be-19aa-48c9-b8bd-ecd43bdf5a46_code_.kt"
+    },
+    {
+      "path": "public/docs/assets/fline_examples/metadata.edn",
+      "box": "20703fea-65a5-4bae-8152-8e4dc9c3f020",
+      "kind": "inline-only-source",
+      "target": "public/docs/assets/fline_examples/20703fea-65a5-4bae-8152-8e4dc9c3f020_code_.kt"
+    },
+    {
+      "path": "public/docs/assets/fline_examples/metadata.edn",
+      "box": "1caf3711-be4e-45b0-989f-b3d9c44e6057",
+      "kind": "inline-only-source",
+      "target": "public/docs/assets/fline_examples/1caf3711-be4e-45b0-989f-b3d9c44e6057_code_.kt"
+    },
+    {
+      "path": "public/docs/assets/fline_examples/metadata.edn",
+      "box": "9f21cb7e-3673-4528-ac60-79ca60610ddd",
+      "kind": "inline-only-source",
+      "target": "public/docs/assets/fline_examples/9f21cb7e-3673-4528-ac60-79ca60610ddd_code_.kt"
+    },
+    {
+      "path": "public/docs/assets/fline_examples/metadata.edn",
+      "box": "b3260ddd-5379-438b-9e95-f5dbc8cdad7c",
+      "kind": "inline-only-source",
+      "target": "public/docs/assets/fline_examples/b3260ddd-5379-438b-9e95-f5dbc8cdad7c_code_.kt"
+    },
+    {
+      "path": "public/docs/assets/fline_examples/metadata.edn",
+      "box": "c6452942-fe18-4766-8d1d-d07250303499",
+      "kind": "inline-only-source",
+      "target": "public/docs/assets/fline_examples/c6452942-fe18-4766-8d1d-d07250303499_code_.kt"
+    },
+    {
+      "path": "public/docs/assets/fline_examples/metadata.edn",
+      "box": "d54a156c-993e-4eb8-a797-7814142db0d4",
+      "kind": "inline-only-source",
+      "target": "public/docs/assets/fline_examples/d54a156c-993e-4eb8-a797-7814142db0d4_code_.kt"
+    },
+    {
+      "path": "public/docs/assets/fline_examples/metadata.edn",
+      "box": "f1fc1b70-6752-4189-bac9-99047f95fe99",
+      "kind": "inline-only-source",
+      "target": "public/docs/assets/fline_examples/f1fc1b70-6752-4189-bac9-99047f95fe99_code_.kt"
+    },
+    {
+      "path": "public/docs/assets/fline_examples/metadata.edn",
+      "box": "e1733c81-8ee8-4257-a970-732084fa83b4",
+      "kind": "inline-only-source",
+      "target": "public/docs/assets/fline_examples/e1733c81-8ee8-4257-a970-732084fa83b4_code_.kt"
+    },
+    {
+      "path": "public/docs/assets/fline_examples/metadata.edn",
+      "box": "f827a539-c082-48fa-8143-09745d1a6fb8",
+      "kind": "inline-only-source",
+      "target": "public/docs/assets/fline_examples/f827a539-c082-48fa-8143-09745d1a6fb8_code_.kt"
+    },
+    {
+      "path": "public/docs/assets/fline_examples/metadata.edn",
+      "box": "daaee237-69e1-4577-896b-0097092cb1b2",
+      "kind": "inline-only-source",
+      "target": "public/docs/assets/fline_examples/daaee237-69e1-4577-896b-0097092cb1b2_code_.kt"
+    },
+    {
+      "path": "public/docs/assets/fline_examples/metadata.edn",
+      "box": "4885b180-eee7-470c-bd55-b1ba18ad2ecc",
+      "kind": "inline-only-source",
+      "target": "public/docs/assets/fline_examples/4885b180-eee7-470c-bd55-b1ba18ad2ecc_code_.kt"
+    },
+    {
+      "path": "public/docs/assets/fline_examples/metadata.edn",
+      "box": "de5bdc43-4b57-4f3d-bea3-9b61ab079bcf",
+      "kind": "inline-only-source",
+      "target": "public/docs/assets/fline_examples/de5bdc43-4b57-4f3d-bea3-9b61ab079bcf_code_.kt"
+    },
+    {
+      "path": "public/docs/assets/three_output_gallery/metadata.edn",
+      "box": "three-output-scene",
+      "kind": "inline-only-source",
+      "target": "public/docs/assets/three_output_gallery/three-output-scene_code_.kt"
+    },
+    {
+      "path": "public/docs/assets/three_output_gallery/metadata.edn",
+      "box": "three-output-grid",
+      "kind": "inline-only-source",
+      "target": "public/docs/assets/three_output_gallery/three-output-grid_code_.kt"
+    },
+    {
+      "path": "public/docs/assets/three_output_gallery/metadata.edn",
+      "box": "three-output-turntable",
+      "kind": "inline-only-source",
+      "target": "public/docs/assets/three_output_gallery/three-output-turntable_code_.kt"
+    },
+    {
+      "path": "public/docs/assets/three_output_gallery/metadata.edn",
+      "box": "three-output-renderers",
+      "kind": "inline-only-source",
+      "target": "public/docs/assets/three_output_gallery/three-output-renderers_code_.kt"
+    },
+    {
+      "path": "public/docs/assets/three_output_gallery/metadata.edn",
+      "box": "three-output-winding",
+      "kind": "inline-only-source",
+      "target": "public/docs/assets/three_output_gallery/three-output-winding_code_.kt"
+    },
+    {
+      "path": "public/docs/how_field_is_built.md",
+      "line": 196,
+      "kind": "partial-yaml-fence",
+      "detail": "mapping values are not allowed here"
+    }
+  ]
+}

@@ -24,6 +24,14 @@ import kotlin.reflect.KProperty
 import kotlin.reflect.full.isSubclassOf
 
 
+/**
+ * [Mesh] is the vertex-buffer draw call of a graphics module: it holds the vertex inputs and push
+ * constants the module's shaders declare, and draws them on the [Renderer] found from context.
+ *
+ * Its layout has to agree with the vertex-buffer structure the module's pipeline was built with.
+ * [fullscreenTriangle] makes the one-triangle mesh used for full-screen passes.
+ */
+
 class FromInput {
     operator fun getValue(inside: Mesh, property: KProperty<*>): VertexBuffer {
         return inside.input(property.name)

@@ -19,6 +19,9 @@ description: >
   (field_run_transcript) to see all four on screen, then edit a signal or swap the window
   (WindowType.HANN / HAMMING / BLACKMAN) and re-run a box to change it live. Each `execute` op omits
   inline code, so it runs the box's stored `code` property. See public/docs/spectral_examples.md.
+docs:
+  - page: spectral_examples.md
+    why: "Explains each spectral example in this document."
 operations:
   - create:
       box: spectral_one_spectrum
@@ -29,15 +32,17 @@ operations:
           // Synthesise a rising linear chirp + two steady tones, FFT it, draw the one-sided spectrum.
           val sampleRate = 8000.0
           val n = 2048
-          val f0 = 300.0; val f1 = 3000.0
+          val f0 = 300.0
+          val f1 = 3000.0
           val dur = n / sampleRate
           val k = (f1 - f0) / dur
-          val signal = DoubleArray(n) { i ->
-              val t = i / sampleRate
-              0.9 * sin(2.0 * PI * (f0 * t + 0.5 * k * t * t)) +
-                  0.4 * sin(2.0 * PI * 700.0 * t) +
-                  0.3 * sin(2.0 * PI * 1800.0 * t)
-          }
+          val signal =
+              DoubleArray(n) { i ->
+                  val t = i / sampleRate
+                  0.9 * sin(2.0 * PI * (f0 * t + 0.5 * k * t * t)) +
+                      0.4 * sin(2.0 * PI * 700.0 * t) +
+                      0.3 * sin(2.0 * PI * 1800.0 * t)
+              }
 
           val spec = fft(signal, WindowType.HANN, sampleRate)
           val mag = spec.magnitudeOneSided()
@@ -51,13 +56,16 @@ operations:
               "magnitude" to mag.toList(),
               x = freqs.toList(),
               channel = "main",
-              xTitle = "frequency (Hz)", yTitle = "magnitude",
-              marks = listOf(
+              xTitle = "frequency (Hz)",
+              yTitle = "magnitude",
+              marks = [
                   "centroid ${"%.0f".format(centroid)} Hz" to centroid,
                   "85% rolloff ${"%.0f".format(rolloff)} Hz" to rolloff,
-              ),
+              ],
           )
-          println("peak=${"%.0f".format(peak)}Hz centroid=${"%.0f".format(centroid)}Hz rolloff=${"%.0f".format(rolloff)}Hz bins=${mag.size}")
+          println(
+              "peak=${"%.0f".format(peak)}Hz centroid=${"%.0f".format(centroid)}Hz rolloff=${"%.0f".format(rolloff)}Hz bins=${mag.size}",
+          )
   - create:
       box: spectral_spectrogram
       name: spectrogram of a chirp
@@ -66,15 +74,17 @@ operations:
         code: |
           val sampleRate = 8000.0
           val n = 24000
-          val f0 = 300.0; val f1 = 3000.0
+          val f0 = 300.0
+          val f1 = 3000.0
           val dur = n / sampleRate
           val k = (f1 - f0) / dur
-          val signal = DoubleArray(n) { i ->
-              val t = i / sampleRate
-              0.9 * sin(2.0 * PI * (f0 * t + 0.5 * k * t * t)) +
-                  0.35 * sin(2.0 * PI * 700.0 * t) +
-                  0.30 * sin(2.0 * PI * 1800.0 * t)
-          }
+          val signal =
+              DoubleArray(n) { i ->
+                  val t = i / sampleRate
+                  0.9 * sin(2.0 * PI * (f0 * t + 0.5 * k * t * t)) +
+                      0.35 * sin(2.0 * PI * 700.0 * t) +
+                      0.30 * sin(2.0 * PI * 1800.0 * t)
+              }
 
           val spec = stft(signal, fftSize = 1024, hopSize = 256, window = WindowType.HANN, sampleRate = sampleRate)
           val mags = spec.magnitudes()
@@ -83,17 +93,31 @@ operations:
           val nyquist = sampleRate / 2.0
 
           // dB relative to the peak, as a [frame][bin] matrix.
-          val dB = Array(spec.numFrames) { f ->
-              DoubleArray(spec.numBins) { b -> 20.0 * log10((mags[f][b] / maxMag).coerceAtLeast(1e-4)) }
-          }
+          val dB =
+              Array(spec.numFrames) { f ->
+                  DoubleArray(spec.numBins) { b -> 20.0 * log10((mags[f][b] / maxMag).coerceAtLeast(1e-4)) }
+              }
           // Spectral centroid as a normalized (x, y) overlay: x = time fraction, y = fraction of Nyquist.
-          val trace = centroid.indices.map { f ->
-              (f.toDouble() / (spec.numFrames - 1).coerceAtLeast(1)) to (centroid[f] / nyquist).coerceIn(0.0, 1.0)
-          }
+          val trace =
+              centroid.indices.map { f ->
+                  (f.toDouble() / (spec.numFrames - 1).coerceAtLeast(1)) to (centroid[f] / nyquist).coerceIn(0.0, 1.0)
+              }
 
-          println("frames=${spec.numFrames} bins=${spec.numBins} centroid ${"%.0f".format(centroid.first())} -> ${"%.0f".format(centroid.last())} Hz")
-          showHeatmap(dB, colormap = "cyanorange", width = 1800, height = 840, vmin = -80.0, vmax = 0.0,
-              transpose = true, flipY = true, overlay = trace, overlayThickness = 3)
+          println(
+              "frames=${spec.numFrames} bins=${spec.numBins} centroid ${"%.0f".format(centroid.first())} -> ${"%.0f".format(centroid.last())} Hz",
+          )
+          showHeatmap(
+              dB,
+              colormap = "cyanorange",
+              width = 1800,
+              height = 840,
+              vmin = -80.0,
+              vmax = 0.0,
+              transpose = true,
+              flipY = true,
+              overlay = trace,
+              overlayThickness = 3,
+          )
   - create:
       box: spectral_mel
       name: mel spectrogram (crossing chirps)
@@ -102,16 +126,18 @@ operations:
         code: |
           val sampleRate = 8000.0
           val n = 24000
-          val up0 = 200.0; val up1 = 3200.0
-          val dn0 = 3200.0; val dn1 = 200.0
+          val up0 = 200.0
+          val up1 = 3200.0
+          val dn0 = 3200.0
+          val dn1 = 200.0
           val dur = n / sampleRate
           val ku = (up1 - up0) / dur
           val kd = (dn1 - dn0) / dur
-          val signal = DoubleArray(n) { i ->
-              val t = i / sampleRate
-              0.7 * sin(2.0 * PI * (up0 * t + 0.5 * ku * t * t)) +
-                  0.7 * sin(2.0 * PI * (dn0 * t + 0.5 * kd * t * t))
-          }
+          val signal =
+              DoubleArray(n) { i ->
+                  val t = i / sampleRate
+                  0.7 * sin(2.0 * PI * (up0 * t + 0.5 * ku * t * t)) + 0.7 * sin(2.0 * PI * (dn0 * t + 0.5 * kd * t * t))
+              }
 
           val spec = stft(signal, fftSize = 1024, hopSize = 256, window = WindowType.HANN, sampleRate = sampleRate)
           val numBands = 48
@@ -120,13 +146,22 @@ operations:
           for (row in mel) for (v in row) if (v > maxMel) maxMel = v
 
           // dB relative to the peak, as a [frame][band] matrix.
-          val dB = Array(spec.numFrames) { f ->
-              DoubleArray(numBands) { b -> 20.0 * log10((mel[f][b] / maxMel).coerceAtLeast(1e-4)) }
-          }
+          val dB =
+              Array(spec.numFrames) { f ->
+                  DoubleArray(numBands) { b -> 20.0 * log10((mel[f][b] / maxMel).coerceAtLeast(1e-4)) }
+              }
 
           println("frames=${spec.numFrames} bands=$numBands")
-          showHeatmap(dB, colormap = "cyanorange", width = 1800, height = 720, vmin = -80.0, vmax = 0.0,
-              transpose = true, flipY = true)
+          showHeatmap(
+              dB,
+              colormap = "cyanorange",
+              width = 1800,
+              height = 720,
+              vmin = -80.0,
+              vmax = 0.0,
+              transpose = true,
+              flipY = true,
+          )
   - create:
       box: spectral_resonator
       name: resonator bank (no transform)
@@ -135,45 +170,63 @@ operations:
         code: |
           import afield.audio.engine.resonate
           import afield.audio.engine.resonatorAlphaHeuristics
-          
+
           val sampleRate = 8000f
           val n = 24000
-          val f0 = 300.0; val f1 = 3000.0
+          val f0 = 300.0
+          val f1 = 3000.0
           val durS = n / sampleRate.toDouble()
           val k = (f1 - f0) / durS
-          val signal = FloatArray(n) { i ->
-              val t = i / sampleRate.toDouble()
-              (0.9 * sin(2.0 * PI * (f0 * t + 0.5 * k * t * t)) +
-                  0.35 * sin(2.0 * PI * 700.0 * t) +
-                  0.30 * sin(2.0 * PI * 1800.0 * t)).toFloat()
-          }
-          
+          val signal =
+              FloatArray(n) { i ->
+                  val t = i / sampleRate.toDouble()
+                  (0.9 * sin(2.0 * PI * (f0 * t + 0.5 * k * t * t)) +
+                          0.35 * sin(2.0 * PI * 700.0 * t) +
+                          0.30 * sin(2.0 * PI * 1800.0 * t))
+                      .toFloat()
+              }
+
           val numRes = 96
-          val minHz = 120.0; val maxHz = 3900.0
-          val freqs = FloatArray(numRes) { i ->
-              kotlin.math.exp(ln(minHz) + (ln(maxHz) - ln(minHz)) * i / (numRes - 1)).toFloat()
-          }
+          val minHz = 120.0
+          val maxHz = 3900.0
+          val freqs =
+              FloatArray(numRes) { i ->
+                  kotlin.math.exp(ln(minHz) + (ln(maxHz) - ln(minHz)) * i / (numRes - 1)).toFloat()
+              }
           val alphas = resonatorAlphaHeuristics(freqs, sampleRate)
           val hop = 256
-          
+
           val flat = resonate(signal, sampleRate, freqs, alphas, betas = alphas, hopLength = hop)
           val slices = flat.size / (2 * numRes)
           fun ampAt(s: Int, kk: Int): Float {
               val base = s * 2 * numRes
-              val re = flat[base + kk]; val im = flat[base + numRes + kk]
+              val re = flat[base + kk]
+              val im = flat[base + numRes + kk]
               return kotlin.math.sqrt(re * re + im * im)
           }
           var maxA = 1e-9f
-          for (s in 0 until slices) for (kk in 0 until numRes) { val a = ampAt(s, kk); if (a > maxA) maxA = a }
-          
-          // dB relative to the peak, as a [slice][resonator] matrix.
-          val dB = Array(slices) { s ->
-              DoubleArray(numRes) { kk -> 20.0 * log10((ampAt(s, kk).toDouble() / maxA).coerceAtLeast(1e-4)) }
+          for (s in 0 until slices) for (kk in 0 until numRes) {
+              val a = ampAt(s, kk)
+              if (a > maxA) maxA = a
           }
-          
+
+          // dB relative to the peak, as a [slice][resonator] matrix.
+          val dB =
+              Array(slices) { s ->
+                  DoubleArray(numRes) { kk -> 20.0 * log10((ampAt(s, kk).toDouble() / maxA).coerceAtLeast(1e-4)) }
+              }
+
           println("resonators=$numRes slices=$slices freq ${freqs.first().toInt()} -> ${freqs.last().toInt()} Hz")
-          showHeatmap(dB, colormap = "cyanorange", width = 1800, height = 720, vmin = -80.0, vmax = 0.0,
-              transpose = true, flipY = true)
+          showHeatmap(
+              dB,
+              colormap = "cyanorange",
+              width = 1800,
+              height = 720,
+              vmin = -80.0,
+              vmax = 0.0,
+              transpose = true,
+              flipY = true,
+          )
   - create:
       box: spectral_streaming
       name: streaming spectral features
@@ -182,19 +235,22 @@ operations:
         code: |
           val sampleRate = 8000f
           val n = 8000
-          val stream = FloatArray(n) { i ->
-              val t = i / sampleRate
-              val f = 200f + 1800f * (i.toFloat() / n)
-              var s = 0.6f * sin(2.0 * PI * f * t).toFloat() + 0.25f * sin(2.0 * PI * 900.0 * t).toFloat()
-              if (i == n / 3 || i == 2 * n / 3) s += 2.0f
-              s
-          }
+          val stream =
+              FloatArray(n) { i ->
+                  val t = i / sampleRate
+                  val f = 200f + 1800f * (i.toFloat() / n)
+                  var s = 0.6f * sin(2.0 * PI * f * t).toFloat() + 0.25f * sin(2.0 * PI * 900.0 * t).toFloat()
+                  if (i == n / 3 || i == 2 * n / 3) s += 2.0f
+                  s
+              }
 
           val brightness = EMAFilter(0.1f) then SpectralCentroidFilter(fftSize = 1024, hopSize = 256, sampleRate = sampleRate)
           val onset = SpectralFluxFilter(fftSize = 1024, hopSize = 256, sampleRate = sampleRate)
           val level = RmsFilter(windowSize = 512)
 
-          val cTrace = FloatArray(n); val fTrace = FloatArray(n); val rTrace = FloatArray(n)
+          val cTrace = FloatArray(n)
+          val fTrace = FloatArray(n)
+          val rTrace = FloatArray(n)
           for (i in 0 until n) {
               cTrace[i] = brightness(stream[i])
               fTrace[i] = onset(stream[i])
@@ -207,9 +263,12 @@ operations:
               "spectral flux (onset novelty)" to fTrace.toList(),
               "rolling RMS (level)" to rTrace.toList(),
               channel = "main",
-              xTitle = "sample", normalize = true,
+              xTitle = "sample",
+              normalize = true,
           )
-          println("centroid ${"%.0f".format(cTrace[3000])} -> ${"%.0f".format(cTrace[n - 200])} Hz, flux peak ${"%.3f".format(fTrace.maxOrNull() ?: 0f)}")
+          println(
+              "centroid ${"%.0f".format(cTrace[3000])} -> ${"%.0f".format(cTrace[n - 200])} Hz, flux peak ${"%.3f".format(fTrace.maxOrNull() ?: 0f)}",
+          )
   - create:
       box: spectral_filter_chains
       name: filter chains as layered curves
@@ -226,11 +285,10 @@ operations:
 
           for (i in 0 until 420) {
               val t = i / 120f
-              val signal = (
-                  sin(2.0 * PI * 1.2 * t).toFloat() * 0.7f +
-                  sin(2.0 * PI * 4.7 * t + 0.3).toFloat() * 0.22f +
-                  (-0.12f + random().toFloat() * 0.24f)
-              )
+              val signal =
+                  (sin(2.0 * PI * 1.2 * t).toFloat() * 0.7f +
+                      sin(2.0 * PI * 4.7 * t + 0.3).toFloat() * 0.22f +
+                      (-0.12f + random().toFloat() * 0.24f))
               raw += signal
               val s = oneEuro(ema(signal))
               smooth += s
@@ -253,7 +311,13 @@ operations:
       properties:
         code: |
           val gammaEvents = GammaEventDetector(windowSize = 64, tailProbabilityThreshold = 0.03f, influence = 0.15f)
-          val betaEvents = BetaEventDetector(windowSize = 64, supportMin = -1f, supportMax = 1f, lowerTailThreshold = 0.04f, upperTailThreshold = 0.04f)
+          val betaEvents = BetaEventDetector(
+              windowSize = 64,
+              supportMin = -1f,
+              supportMax = 1f,
+              lowerTailThreshold = 0.04f,
+              upperTailThreshold = 0.04f,
+          )
 
           val raw = mutableListOf<Float>()
           val eg = mutableListOf<Float>()

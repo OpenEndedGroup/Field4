@@ -1,5 +1,6 @@
 package afield.tools.docs
 
+import afield.document.workspace.BUNDLED_DOCUMENT_STARTING_POINTS
 import afield.examples.DemoTranscriptExecSmokeTest
 import java.io.File
 import java.nio.file.Files
@@ -141,6 +142,10 @@ class AgentDemoRegistrationTest {
             "path_tracing_emitters",
             "path_tracing_medium",
             "pattern_condense",
+            // 2026-10-18: the Clojure counterpart of python_box_parity.
+            "clojure_box_parity",
+            // 2026-10-24: the RemoteJS counterpart (Javascript boxes running in a browser head).
+            "remotejs_box_parity",
             "python_box_parity",
             "python_cells",
             "read_only_session",
@@ -280,7 +285,6 @@ class AgentDemoRegistrationTest {
      */
     private val ASSET_DOCUMENTS_NOT_YET_STARTING_POINTS = setOf(
         "brief_house_demo",
-        "canonical_graphics",
         "fline_examples",
         "nano_examples",
         "rectsl_gallery",
@@ -471,7 +475,7 @@ class AgentDemoRegistrationTest {
             .sorted()
 
     private fun isStartingPoint(name: String): Boolean =
-        File("$TRANSCRIPTS/$name.yaml").isFile && name in registry() &&
+        name in BUNDLED_DOCUMENT_STARTING_POINTS || File("$TRANSCRIPTS/$name.yaml").isFile && name in registry() &&
             File("$DOCS_ASSETS/agent_transcripts/$name/metadata.edn").isFile
 
     /**

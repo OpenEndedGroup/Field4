@@ -1,3 +1,7 @@
+/**
+ * [TextureSampler] wraps a `VkSampler`: filtering, mipmap mode, anisotropy and per-axis address modes for sampling a texture in a shader.
+ */
+
 package afield.graphics.texture
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10

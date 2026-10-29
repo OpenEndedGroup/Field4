@@ -35,8 +35,8 @@ import kotlin.random.Random
  * you trust, no correspondence to anything, some noise, and — nearly always — only the part of the
  * surface that faced the sensor.
  *
- * The loss is the obvious one, and worth stating exactly, because the three failure modes below all
- * follow from what it does *not* contain:
+ * The loss is the obvious one, and the three failure modes below all follow from what it does
+ * *not* contain:
  *
  * ```
  * L(θ) = (1/N) · Σ f(pᵢ; θ)²
@@ -85,9 +85,9 @@ import kotlin.random.Random
 /**
  * Unoriented points on a surface — the target [SolidTemplate.fitToPointCloud] takes.
  *
- * Three parallel [DoubleArray]s and nothing else. Deliberately **not** a `List<Vec3>` and
- * deliberately carrying no normals: a type that could hold normals is a type somebody will assume
- * has them, and the whole point of this file is what can be recovered without them.
+ * Three parallel [DoubleArray]s and nothing else — **not** a `List<Vec3>`, and no normals: a type
+ * that could hold normals is a type somebody will assume has them, and this file is about what can
+ * be recovered without them.
  */
 class SolidPointCloud(
     val xs: DoubleArray,
@@ -136,8 +136,8 @@ class SolidPointCloud(
  * against an independent implementation of the same shape.
  *
  * @param noise standard deviation of isotropic Gaussian jitter added to each point, in model units.
- *   `0.0` for a clean cloud. Real clouds are not clean, and a fit that only works on a clean one is
- *   worth knowing about.
+ *   `0.0` for a clean cloud. Real clouds are not clean, and this is how to find out whether a fit
+ *   survives one that is not.
  * @param resolution the march resolution. Higher costs time and buys a surface whose triangles are
  *   closer to the true one; the sampling is uniform over the *marched* surface either way, which is
  *   itself an approximation and is one of the error terms in any recovery below.
@@ -214,7 +214,7 @@ private fun Random.nextGaussian(): Double {
     return sqrt(-2.0 * kotlin.math.ln(u1)) * kotlin.math.cos(2.0 * Math.PI * u2)
 }
 
-/** What a point-cloud fit did, and — as importantly — what the cloud could not tell it. */
+/** What a point-cloud fit did, and what the cloud could not tell it. */
 data class SolidCloudFit(
     val template: SolidTemplate,
     val start: DoubleArray,
@@ -277,13 +277,13 @@ data class SolidCloudFit(
  * fit.unconstrainedParameters        // what this cloud could not tell it — read this first
  * ```
  *
- * [OptimizeMethod.LBFGS] by default, like [fitParameters]. This used to default to Adam, on the theory
- * that a squared field residual over surface points has long shallow valleys a line search gives up
- * in. Re-measured after `adBox3`'s interior `NaN` was fixed (`SolidSLOptimizerComparisonTest`: full,
- * noisy and one-sided clouds of the three-lobe shape, four seeds each), LBFGS reached the same
- * parameters as Adam to every printed digit, in 6 to 11 iterations against Adam's ~400, and 20 to
- * 50 times faster. Pass `SolidFitOptions(method = OptimizeMethod.ADAM, iterations = 1200,
- * learningRate = 0.01)` for the old behaviour.
+ * [OptimizeMethod.LBFGS] by default, like [fitParameters]. Adam is the other plausible choice here,
+ * since a squared field residual over surface points has long shallow valleys a line search can
+ * give up in. `SolidSLOptimizerComparisonTest` runs both over the three-lobe shape's full, noisy
+ * and one-sided clouds at four seeds each, and asserts three things: LBFGS's residual is never more
+ * than 1% above Adam's, it takes fewer iterations on every cloud, and it recovers a clean full
+ * cloud to better than `1e-3` per parameter. Pass `SolidFitOptions(method = OptimizeMethod.ADAM,
+ * iterations = 1200, learningRate = 0.01)` to use Adam instead.
  *
  * @param start where to begin. There is no `seed` default worth having here: a point cloud arrives
  *   without a prior, and the caller has to say what they think the shape is.

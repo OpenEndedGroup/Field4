@@ -1,5 +1,8 @@
 name: hello_display
 description: Minimal blank-canvas macro that creates one runnable output box.
+docs:
+  - page: box_output.md
+    why: "Explains display(), print and output channels."
 operations:
   - create:
       box: agent_hello_display

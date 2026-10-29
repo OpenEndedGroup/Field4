@@ -40,6 +40,15 @@ expect:
     - "K1 DUMP DONE"
 */
 /**
+ * A probe that dumps the K1 completer's raw candidates over the shared completion fixtures, for
+ * diffing against the K2 Analysis-API sidecar's output.
+ *
+ * Run as the `kotlin.completion-diffdump.probe` smoke test; it writes
+ * `build/completion-corpus/k1-candidates.json`, which `tools/completion_diff.py` compares with the
+ * sidecar's dump fixture by fixture.
+ */
+
+/**
  * STAGE B (K1 side of the differential). Runs the REAL production K1 completion path
  * (`KotlinInterface2.complete` → K1 delegate, intro-warmed) over the shared TSV corpora and dumps the
  * raw candidates per fixture to `build/completion-corpus/k1-candidates.json`. The AA side is dumped
@@ -68,6 +77,7 @@ object CompletionDiffK1Probe {
         val member: String,
         val isDot: Boolean,
         val prefix: String,
+        val source: String,
         val candidates: List<K1DumpCandidate>,
     )
 
@@ -100,7 +110,7 @@ object CompletionDiffK1Probe {
                     else -> emptyList()
                 }
                 val hit = meta.any { it.text == member || it.displayText.startsWith("$member(") || it.displayText.startsWith("$member ") }
-                dump += K1DumpFixture(label, member, isDot, prefix,
+                dump += K1DumpFixture(label, member, isDot, prefix, code,
                     meta.map { K1DumpCandidate(it.text, it.displayText, it.tail, it.icon) })
                 println("[$label] ${if (isDot) "DOT" else "NAME"} prefix='$prefix' intended .$member ${if (hit) "✓" else "✗"} (${meta.size} cands)")
             }

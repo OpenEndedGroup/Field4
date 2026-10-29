@@ -1,0 +1,9 @@
+{
+  "actualGeometryToolsAndCpuImage": true,
+  "existingRootsPreserved": true,
+  "duplicateRootDeduplicated": true,
+  "actualFLineLessons": 38,
+  "absoluteScreenshotWrites": 0,
+  "circleManualRetained": "Actual helper comparison demonstrates a changed downstream node-index noise result; construction is retained deliberately, not mechanically replaced.",
+  "noPublicCapturesReplaced": true
+}

@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="agent_graphics_context" index="0" -->
 
 ```edn [field-box id="agent_graphics_context" role="properties"]
-{"id" "agent_graphics_context" "index" 0 "name" "renderer" "parents" ["root"] "children" ["gpu_shader_learning"] "properties" {"children" #{#afield/box "gpu_shader_learning"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_graphics_context_code_.kt" "lines" 17 "characters" 332 "sha256" "f6d44c51bceafe38b76c3155a6a00e129dbebbff1c01db27a846eea5bd4da524"}]}
+{"id" "agent_graphics_context" "index" 0 "name" "renderer" "parents" ["root"] "children" ["gpu_shader_learning"] "properties" {"children" #{#afield/box "gpu_shader_learning"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_graphics_context_code_.kt" "lines" 17 "characters" 331 "sha256" "0925cc7e55ed8f4619c46cce4c8106e5e68b88f1ffcd20f5957115422d43b653"}]}
 ```
 
 ```kotlin [field-property box="agent_graphics_context" name="code" path="agent_graphics_context_code_.kt"]
@@ -39,73 +39,102 @@ start(renderer::run)
 <!-- field-box id="gpu_shader_learning" index="1" -->
 
 ```edn [field-box id="gpu_shader_learning" role="properties"]
-{"id" "gpu_shader_learning" "index" 1 "name" "gpu shader learning" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "gpu shader learning" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gpu_shader_learning_code_.kt" "lines" 63 "characters" 2955 "sha256" "e8cc54477181772e9b48df0354dcd9b6c0f8c7bc27d4142fcdc7f43bc37e12a4"} {"name" "vertex" "language" "glsl" "path" "gpu_shader_learning_vertex_.glsl" "lines" 5 "characters" 119 "sha256" "f5f928935456f7b96462d2257491aa9db6746aea0bb37e84df323e8399a26dc9"} {"name" "fragment" "language" "glsl" "path" "gpu_shader_learning_fragment_.glsl" "lines" 16 "characters" 687 "sha256" "a0e56c4a78f4ac918a03ff4647fec40d26360c47d3b31a881190e1305d02d860"}]}
+{"id" "gpu_shader_learning" "index" 1 "name" "gpu shader learning" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "gpu shader learning" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gpu_shader_learning_code_.kt" "lines" 92 "characters" 3259 "sha256" "026bd1bef602f5ba5cf2af85334e0ddb7299432625556cf122559b91a60a86e8"} {"name" "vertex" "language" "glsl" "path" "gpu_shader_learning_vertex_.glsl" "lines" 5 "characters" 118 "sha256" "2c4898fc058df3cf38956a49514876c2d2a6f58ae15647ab35962039df25c828"} {"name" "fragment" "language" "glsl" "path" "gpu_shader_learning_fragment_.glsl" "lines" 18 "characters" 690 "sha256" "cb2424db2082218243876ffaa2f8d764aceb600141e527320ee3fbb1afefba4d"}]}
 ```
 
 ```kotlin [field-property box="gpu_shader_learning" name="code" path="gpu_shader_learning_code_.kt"]
-import afield.ui.output.controlGroup
-import afield.ui.output.displayOpen
 import afield.graphics.shader.learning.*
-import afield.document.context.fromContextWithNameOrNull
-import org.lwjgl.vulkan.VK13.*
 import java.io.File
+import org.lwjgl.vulkan.VK13.*
 
 prop<GpuShaderLearningView>(lab)
-fromContextWithNameOrNull<GpuShaderLearningView>("lab")?.close()
+val runScope = requireNotNull(RunScope.current()) { "Run this example in a Field box." }
 check(renderer.device.supportsCooperativeVectorTraining) {
     "GPU learning needs enabled cooperative-vector training. learned_from_module provides offline training."
 }
-val source=RenderToTexture(renderer) {
-    width=1920;height=1080;useDepth=false;format=VK_FORMAT_R32G32B32A32_SFLOAT
+val source = RenderToTexture(renderer) {
+    width = 1920
+    height = 1080
+    useDepth = false
+    format = VK_FORMAT_R32G32B32A32_SFLOAT
 }
-val teacher=moduleHere { source.apply();depthTest=false;depthWrite=false;blend=false }
-val mesh=Mesh(renderer,teacher)
-mesh.resize(3,0,teacher)
-mesh.push.setMembers(teacher.current.fi.pushConstants.single().members)
+val teacher = moduleHere {
+    +source
+    depthTest = false
+    depthWrite = false
+    blend = false
+}
+val mesh = fullscreenTriangle(teacher)
 teacher += "fullscreen" to mesh
 source += "teacher" to teacher
-lab=GpuShaderLearningView(renderer,source) { t -> mesh.push["state"]=vec(source.width,source.height,t,0) }.install()
-var learn=true
-var view=2
-var reset=false
-var save=false
-var iterations=8
+val ownedLab = runScope.own(
+    GpuShaderLearningView(renderer, source) { t -> mesh.state = { vec(source.width, source.height, t, 0) } }
+        .install(),
+)
+lab = ownedLab
+var learn = true
+var view = 2
+var reset = false
+var save = false
+var iterations = 8
 controlGroup("GPU shader learning") {
-    checkbox("Learn on GPU",initialValue=true) { learn=it }
-    slider("Updates per frame",min=1.0,max=32.0,step=1.0,initialValue=8.0) { iterations=it.toInt() }
-    slider("0: Source · 1: Learned · 2: Compare",min=0.0,max=2.0,step=1.0,initialValue=2.0) { view=it.toInt() }
-    button("Reset model and optimizer") { if(it)reset=true }
-    button("Save frozen weights") { if(it)save=true }
+    checkbox("Learn on GPU", initialValue = true) { learn = it }
+    slider("Updates per frame", min = 1.0, max = 32.0, step = 1.0, initialValue = 8.0) { iterations = it.toInt() }
+    slider("0: Source · 1: Learned · 2: Compare", min = 0.0, max = 2.0, step = 1.0, initialValue = 2.0) {
+        view = it.toInt()
+    }
+    button("Reset model and optimizer") { if (it) reset = true }
+    button("Save frozen weights") { if (it) save = true }
 }
 displayOpen("GPU shader learning")
-println("Edit fragment; training samples actual linear RGB. Freeze learning and choose Learned to stop the teacher pass. Compare is source / learned / error × 8.")
-val owner=renderer
+println(
+    "Edit fragment; training samples actual linear RGB. Freeze learning and choose Learned to stop the teacher pass. Compare is source / learned / error × 8.",
+)
+val owner = renderer
 frames {
-    var phase=0
-    var sourceHash=ShaderTraining.sourceDigest(source)
-    while(true) {
-        val hash=ShaderTraining.sourceDigest(source)
-        if(hash!=sourceHash) { sourceHash=hash;reset=true;println("Teacher changed; restarting the fit.") }
-        if(reset){lab.model.reset();reset=false}
-        lab.learning=learn;lab.iterationsPerFrame=iterations;lab.view=view
-        lab.parameter=if(learn)(phase%13)/6f-1 else kotlin.math.sin(phase*.018f)
-        if(save) {
-            save=false
-            runCatching {
-                val directory=File("build/shader-learning/gpu-${System.currentTimeMillis()}")
-                lab.model.save(directory,sourceHash,"Fullscreen module; camera, textures and other controls fixed; normalized time varies")
-                println("FROZEN MODEL SAVED: $directory — load weights.f16 and weights.json with LearnedShader.")
-            }.onFailure { println("Save failed: ${it.message}") }
+    var phase = 0
+    var sourceHash = ShaderTraining.sourceDigest(source)
+    while (true) {
+        val hash = ShaderTraining.sourceDigest(source)
+        if (hash != sourceHash) {
+            sourceHash = hash
+            reset = true
+            println("Teacher changed; restarting the fit.")
         }
-        phase++;frame()
-    }
-}.end {
-    lab.close()
-    owner.cleanup+=Runnable {
-        teacher.current.cleanup();source.imageViewArray.forEach { it.imageView.cleanup() }
-        source.colorImageRefs.forEach { it?.cleanup() };source.defaultSampler?.cleanup()
+        if (reset) {
+            ownedLab.model.reset()
+            reset = false
+        }
+        ownedLab.learning = learn
+        ownedLab.iterationsPerFrame = iterations
+        ownedLab.view = view
+        ownedLab.parameter = if (learn) (phase % 13) / 6f - 1 else kotlin.math.sin(phase * .018f)
+        if (save) {
+            save = false
+            runCatching {
+                val directory = File("build/shader-learning/gpu-${System.currentTimeMillis()}")
+                ownedLab.model.save(
+                    directory,
+                    sourceHash,
+                    "Fullscreen module; camera, textures and other controls fixed; normalized time varies",
+                )
+                println("FROZEN MODEL SAVED: $directory — load weights.f16 and weights.json with LearnedShader.")
+            }
+                .onFailure { println("Save failed: ${it.message}") }
+        }
+        phase++
+        frame()
     }
 }
+    .end {
+        ownedLab.close()
+        owner.cleanup += Runnable {
+            teacher.current.cleanup()
+            source.imageViewArray.forEach { it.imageView.cleanup() }
+            source.colorImageRefs.forEach { it?.cleanup() }
+            source.defaultSampler?.cleanup()
+        }
+    }
 ```
 
 ```glsl [field-property box="gpu_shader_learning" name="vertex" path="gpu_shader_learning_vertex_.glsl"]
@@ -118,7 +147,9 @@ void main() {
 
 ```glsl [field-property box="gpu_shader_learning" name="fragment" path="gpu_shader_learning_fragment_.glsl"]
 #version 460
-layout(push_constant) uniform P { vec4 state; } p;
+layout(push_constant) uniform P {
+    vec4 state;
+} p;
 layout(location=0) out vec4 color;
 void main() {
     // This is the teacher. Edit it here; there is no Python version to keep in sync.

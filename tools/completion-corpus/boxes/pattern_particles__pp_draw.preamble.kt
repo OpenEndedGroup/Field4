@@ -1,15 +1,15 @@
-import afield.graphics.vulkan.Renderer
-import afield.graphics.vulkan.util.Window
-import afield.audio.synth.PatSynthLaunch
-import afield.graphics.vulkan.buffers.FrameBufferGroup
-import arrow.core.right
-import arrow.core.left
-import afield.graphics.shader.*
-import afield.graphics.scene.*
-import afield.graphics.render.*
-import afield.document.context.*
 import afield.graphics.vulkan.buffers.*
+import afield.document.context.*
+import afield.graphics.render.*
+import afield.graphics.scene.*
+import afield.graphics.shader.*
+import arrow.core.left
+import arrow.core.right
 import java.nio.*
+import afield.graphics.vulkan.buffers.FrameBufferGroup
+import afield.audio.synth.PatSynthLaunch
+import afield.graphics.vulkan.util.Window
+import afield.graphics.vulkan.Renderer
 /*supermap*/ class MappedStructure {;     lateinit var tri : IntBuffer; ; }; fun Mesh.set(numVert : Int, numTriangle : Int = 0, builder : MappedStructure.() -> Unit = {}) {;     this.resize(numVert, numTriangle);     val mesh = this;     MappedStructure().apply {;          mesh.t?.mapAndWrite_ints { tri = this ; builder() } ;    }; }
 /*start*/
 /*graphics-structure-type:Positions:Positions*/
@@ -36,8 +36,8 @@ fun BufferParameters.asPositions(): Positions =
 /*graphics-pc-binding:inData*/ var Mesh.inData by Mesh.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
 /*graphics-pc-binding-group:inData*/ var MeshGroup.inData by MeshGroup.BoundFromStructure<afield.graphics.vulkan.buffers.HasBuffer>()
 /*graphics-pc-structure:aspectRatio*/ var Structure.aspectRatio by Structure.FromStructure<Any>()
-/*graphics-pc-binding:aspectRatio*/ var Mesh.aspectRatio by Mesh.BoundFromStructure<Float>()
-/*graphics-pc-binding-group:aspectRatio*/ var MeshGroup.aspectRatio by MeshGroup.BoundFromStructure<Float>()
+/*graphics-pc-binding:aspectRatio*/ var Mesh.aspectRatio by Mesh.BoundFromStructure<Number>()
+/*graphics-pc-binding-group:aspectRatio*/ var MeshGroup.aspectRatio by MeshGroup.BoundFromStructure<Number>()
 var Box.outputPositions by Inheritance<FrameBufferGroup>() /*from:pp_compute*/ /**/
 val Once.outputPositions by Onceing<FrameBufferGroup>() /*from:pp_compute*/ /**/
 val Why.outputPositions by Whying() /*from:pp_compute*/ /**/

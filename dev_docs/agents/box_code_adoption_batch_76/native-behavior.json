@@ -1,0 +1,18 @@
+{
+  "actualOldStopRetainsReplacement": [
+    "learning",
+    "reconstruction",
+    "flow"
+  ],
+  "actualNewStopDetachesOwnView": [
+    "learning",
+    "reconstruction",
+    "flow"
+  ],
+  "reconstructionConstructorOwnsRunImmediately": true,
+  "authoredReconstructionReloadPersistsAcrossViewRecreation": true,
+  "actualNativeCapture": "runtime/reconstruction.png",
+  "limits": "Actual Vulkan via KosmicKrisp, source-only shader-learning view, portable optical flow and Source reconstruction at 96\u00d764. The LearnedShader runtime also requires unavailable optional precompiled shaders (the actual constructor failure is retained). NVIDIA DLSS/NR/cluster/cooperative training paths are not available and are not claimed. Administrative reflection reads the actual active compiled fragment only in this verification rig.",
+  "actualRejectedReplacementRetainsWorkingViewAndModule": true,
+  "driver": "KosmicKrisp"
+}

@@ -37,6 +37,7 @@ expect:
  * Needs no Sonic Pi install: the vocabulary is a committed resource. The parts that need a real
  * engine are in `afield.examples.sonicpi.SonicPiPatternProbe` (`sonicpi.pattern.timing`).
  */
+
 object SonicPiPatternsSmokeTest {
 
     /**

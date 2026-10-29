@@ -1,3 +1,12 @@
+/**
+ * Plays a video file into Vulkan textures that a shader can sample, with [VideoTexture.load],
+ * [VideoTexture.play], [VideoTexture.pause], [VideoTexture.seek] and [VideoTexture.unload].
+ *
+ * Frames come from [VideoDecoder] as P010 (luma and chroma planes) for display video, or as RGBA8
+ * for movies whose channels carry data. Timing comes from a [PlaybackClock]: an internal
+ * [SystemClock] by default, or an [AudioClock] for audio-locked playback.
+ */
+
 package afield.graphics.texture.video
 
 import afield.graphics.vulkan.device.vkLayout

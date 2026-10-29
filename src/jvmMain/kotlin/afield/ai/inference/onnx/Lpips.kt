@@ -44,22 +44,23 @@ import java.util.concurrent.TimeUnit
  *
  * ## Where the model comes from
  *
- * No prebuilt AlexNet LPIPS ONNX file was found from a source worth trusting, so Field exports its
- * own: `tools/export_lpips_onnx.py` builds it from the `lpips` package on PyPI (0.1.4, which ships
+ * Field exports its own AlexNet LPIPS ONNX file: `tools/export_lpips_onnx.py` builds it from the `lpips` package on PyPI (0.1.4, which ships
  * the trained linear weights) and torchvision's ImageNet AlexNet, checks the ONNX graph against the
  * PyTorch module (agreement 1.2e-7 on twelve pairs), and installs a 9.9MB file in the
- * [OnnxModel] cache. [ensureModel] runs that script through `uv` the first time it is needed — a
+ * [OnnxModel] cache. [Lpips.ensureModel] runs that script through `uv` the first time it is needed — a
  * one-off of about a minute that downloads PyTorch if `uv` has not cached it — and checks the result
- * against [MODEL]'s pinned sha256, which two exports with the pinned package versions reproduced
+ * against [Lpips.MODEL]'s pinned sha256, which two exports with the pinned package versions reproduced
  * byte for byte.
  *
  * ## Its gradient
  *
- * [distanceAndGradientPlanar] also returns d distance / d candidate pixel, from a second exported
- * graph ([GRAD_MODEL]) that the same script builds and checks against PyTorch's autograd. That is
+ * [Lpips.distanceAndGradientPlanar] also returns d distance / d candidate pixel, from a second exported
+ * graph ([Lpips.GRAD_MODEL]) that the same script builds and checks against PyTorch's autograd. That is
  * what lets a fit descend on LPIPS: `afield.lang.stacksl.cpu.StackSLFit` seeds its per-pixel tapes with
  * it.
  */
+
+/** LPIPS perceptual distance between images, with an optional gradient, from an exported ONNX model. */
 object Lpips {
 
     /** The exported model: `candidate [N,3,H,W]`, `reference [N or 1,3,H,W]` in, `distance [N]` out. */

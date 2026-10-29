@@ -10,6 +10,14 @@ import org.jetbrains.kotlin.psi.KtStringTemplateExpression
 import org.jetbrains.kotlin.psi.psiUtil.collectDescendantsOfType
 
 /**
+ * A macro that labels a function's positional arguments with their own source text, so
+ * `showMeshGrid(cube, ring)` compiles as `showMeshGrid("cube" to cube, "ring" to ring)`.
+ *
+ * Annotate a function with [LabelsArgumentsFromSource] to opt it in; `LabelledArgumentsTest` covers
+ * the rewrite.
+ */
+
+/**
  * Labels a function's positional arguments with their own source text, before the box compiles.
  *
  * A function whose last parameter is `vararg panels: Pair<String, T>` wants a label for every value,

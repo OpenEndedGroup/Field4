@@ -5,6 +5,14 @@ import java.lang.foreign.Arena
 import java.lang.foreign.ValueLayout
 
 /**
+ * A double-precision export of a [Solid]'s boundary that keeps Manifold's planar-face provenance.
+ *
+ * [Solid.toPlanarMesh] produces a [SolidPlanarMesh]; each [SolidPlanarFace] groups the triangles of one planar
+ * face. [SolidPlanarMesh.toSolid] rebuilds a [Solid] from it, and [SolidPlanarMesh.toTriMesh] is the lossy
+ * float conversion for rendering.
+ */
+
+/**
  * One polygonal face in Manifold's full-precision mesh export.
  *
  * [faceId] is only meaningful inside [runIndex]. All triangles in this group are one planar face

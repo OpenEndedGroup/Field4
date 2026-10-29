@@ -25,7 +25,7 @@ expect:
     - "splat raster tests PASSED"
 */
 /**
- * Holds [SplatRaster] to the pixels.
+ * Tests [SplatRaster] at the level of pixels.
  *
  * `SplatFusedPackTest` checks that the two pack paths produce the same *floats*, and every assertion
  * in it would still hold if the shader drew the cloud mirrored, upside down, or with red and blue
@@ -38,14 +38,16 @@ expect:
  *   noticed rather than absorbed.
  * - **Slot sensitivity** — the differential oracle. Each of the sixteen floats in
  *   [GaussianSplatRenderer]'s layout is perturbed in turn, and the image is required to move for the
- *   thirteen the shader reads and to *not* move for the three it does not. This is what makes "the
- *   CPU and the GPU are looking at the same cloud" a tested claim rather than a hopeful comment.
+ *   thirteen the shader reads and to *not* move for the three it does not, which tests that the CPU
+ *   and the GPU read the same cloud.
  * - **Pixel agreement between the two pack paths**, which is `SplatFusedPackTest`'s float claim
  *   carried through to what a person actually sees.
- * - **That the poison detector detects poison.** A cloud is deliberately broken with NaNs and the
+ * - **That the poison detector detects poison.** A cloud is broken with NaNs and the
  *   non-finite count is required to find exactly them — and required to be zero on good data, so the
  *   detector cannot be passing by always firing.
  */
+
+/** The cases behind the `four.splat-raster.smoke` test; `main` runs them all. */
 object SplatRasterTest {
 
     private val testDir = File(System.getProperty("java.io.tmpdir"), "splat_raster_test")

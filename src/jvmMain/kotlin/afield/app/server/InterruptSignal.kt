@@ -27,6 +27,10 @@ import sun.misc.Signal
 import sun.misc.SignalHandler
 
 /**
+ * Restores SIGINT handling so `kill -INT` and Ctrl-C shut Field down cleanly even when the JVM inherited SIGINT as ignored.
+ */
+
+/**
  * Makes `kill -INT` (and Ctrl-C) stop Field even when Field was started with SIGINT ignored.
  *
  * `field.sh` runs the backend as `java … &` from a non-interactive `/bin/sh`. POSIX gives an

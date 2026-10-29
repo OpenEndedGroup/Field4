@@ -1,32 +1,27 @@
 /*
 LAUNCH this box rather than merely running it (undo stops it). The last expression is a
-`Frames`, and a `Frames` that is only built never runs -- run this box and it prints nothing and
-animates nothing. Launched, it steps the system on the schedule below and pushes a montage PNG to
-the box's output every displayed frame, then holds the final frame forever.
-inferno on a FIXED 0..1 scale, and the mean field recomputed every frame so the phase verdict
-is measured while you watch. See the note below this clip: an auto-ranged SATURATION field
-renders black and becomes indistinguishable from death, which cost this family a figure once.
+Frames, and a Frames that is only built never runs.
+
+Orbium, a Lenia lifeform from Bert Chan's catalogue, gliding beside the same cells with the
+growth curve's centre mu moved from 0.15 to 0.12, where they burst and fill the torus.
 */
-fun fields(x: Img, y: Img, n: Int) = [
-    "mu=0.06 " + n + " mean " + "%.3f".format(x.mean()) to x.colormap("inferno", 0f, 1f).upscaleNearest(4),
-    "mu=0.14 " + n + " mean " + "%.3f".format(y.mean()) to y.colormap("inferno", 0f, 1f).upscaleNearest(4),
+val orbium = LeniaPresets.orbium()
+
+fun fields(a: Img, b: Img, n: Int) = [
+    "Orbium, step %d: mass %.4f".format(n, a.mean()) to a.colormap("inferno", 0f, 1f).upscaleNearest(6),
+    "mu 0.12, step %d: mass %.4f".format(n, b.mean()) to b.colormap("inferno", 0f, 1f).upscaleNearest(6),
 ]
 
-/*
-Same seed, same ring kernel, one number different: where the growth window is centred.
-240 Lenia steps over 140 displayed frames -- but geometrically, not two per frame: `ramp = 25`
-spends the first half of the clip on the first 40 steps, because that is where the blob decides
-what it is going to be. Everything after is maintenance.
-*/
-val a = LeniaPresets.ring(0.06, sigma = 0.017, radius = 8, dt = 0.12)
-val b = LeniaPresets.ring(0.14, sigma = 0.017, radius = 8, dt = 0.12)
+// The same cells, with the growth curve centred at 0.12 instead of 0.15.
+val lowMu = leniaRuleFromCatalogue(radius = 13, t = 10.0, mu = 0.12, sigma = 0.015)
+
+// At Orbium's 0.62 cells per step, 200 steps is about two laps of the 64-cell torus.
 animateEvolution(
-    leniaSeed(96, 96, a, blobRadii = 1.6, seed = 9L) to leniaSeed(96, 96, b, blobRadii = 1.6, seed = 9L),
-    totalSteps = 240,
+    orbium.seed(64, 64) to orbium.seed(64, 64),
+    totalSteps = 200,
     seconds = 7.0,
-    ramp = 25.0,
     columns = 2,
     cellSide = 384,
-    step = { (x, y) -> x.leniaTimes(a, 1) to y.leniaTimes(b, 1) },
-    panels = { (x, y), n -> fields(x, y, n) },
+    step = { (a, b) -> a.leniaStep(orbium.rule) to b.leniaStep(lowMu) },
+    panels = { (a, b), n -> fields(a, b, n) },
 )

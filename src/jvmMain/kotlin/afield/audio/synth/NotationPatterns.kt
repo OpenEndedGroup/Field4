@@ -11,6 +11,10 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
+ * Turns a region of the drawing layer into a pattern: rectangles, level strokes and moving strokes become notes, with x as time and y as MIDI pitch.
+ */
+
+/**
  * A drawn score, as a pattern: the bridge from `notation.space(...)` to everything that plays a
  * [PatPattern] — [patRenderStereo] offline, a `PatSynth` live.
  *

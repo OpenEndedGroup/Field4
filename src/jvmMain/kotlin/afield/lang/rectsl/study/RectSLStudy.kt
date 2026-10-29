@@ -61,6 +61,14 @@ import kotlin.math.min
 import kotlin.math.sin
 
 /**
+ * The RectSL study: checked revisions of a box's `rectSL` scene, and the frames, timelines, traces,
+ * knob sweeps, variants and comparisons that an AI4 chat and a person use to look at it.
+ *
+ * The file holds [RectSLStudy] itself, the [RectSLCheck] and [RectSLLineReport] results it returns,
+ * and [RectSLEscapes].
+ */
+
+/**
  * Talking a scene into existence: the RectSL study a box's AI4 chat, and the person beside it, work
  * on together.
  *

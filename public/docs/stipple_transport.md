@@ -129,8 +129,6 @@ transport if working in ordinary Field coordinates. A point's z coordinate is pr
 
 ```diffstatic {data-lang=kotlin}
 :::static
-import afield.geometry.spatial.loadStippleTransport
-
 val field = loadStippleTransport("public/docs/assets/stipple_transport/two-images.json")
 val canonical = field.sourceParticles(400, seed = 44) // retain once
 val formed = field.transport(canonical, transportTime = .65, movieTime = .35, steps = 32)
@@ -139,8 +137,13 @@ val point = field.flowMap(vec(.2, -.1, 0), transportTime = .65, movieTime = .35)
 val trails = field.pathsFrom(canonical.take(40), movieTime = .35)
 
 // Reverse integration at a fixed movie condition.
-val back = field.transport(formed, transportTime = 0.0, movieTime = .35,
-                          fromTransportTime = .65, steps = 32)
+val back = field.transport(
+    formed,
+    transportTime = 0.0,
+    movieTime = .35,
+    fromTransportTime = .65,
+    steps = 32,
+)
 ```
 
 The stipple sheet does this live. Open **stipple_sheet** from Starting points on the welcome screen,

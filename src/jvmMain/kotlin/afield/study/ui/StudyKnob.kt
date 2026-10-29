@@ -30,6 +30,18 @@ import afield.audio.synth.*
 import afield.study.source.SourceRevision
 import afield.study.source.SourceStudy
 import afield.study.source.StudyRejection
+
+/**
+ * The language-neutral view of the numbers in a study's source: [StudyKnob] describes one typed
+ * number, and [setNumbers] applies a batch of new values, keyed by knob index, as a new
+ * [SourceRevision].
+ *
+ * Each study language finds its own knobs and maps them to [StudyKnob]; slider naming (`KnobNames`)
+ * and saved card keys (`StudyKeys`) work from that shared shape. [setNumbers] refuses an empty
+ * request, a stale revision or source hash, and any value the language's rewriter rejects, each as a
+ * [StudyRejection].
+ */
+
 /**
  * One number a person typed in a study's source — a *knob* — as everything language-neutral sees it:
  * the fast model that names sliders ([KnobNames]), the keys a card saves ([StudyKeys]), a study's

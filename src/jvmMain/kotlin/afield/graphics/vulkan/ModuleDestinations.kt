@@ -23,7 +23,13 @@ import java.util.concurrent.TimeUnit
  * draws when something reaches it (usually the renderer's `preTargets`). Walking the windows' passes,
  * everything their `others` and `preTargets` reach, and the headset target finds every place that draws
  * the module, compared by identity. A target drawn by some other path is not found.
+ *
+ * [ModuleDestinations.capture] reads one of those places back as PNG bytes, and
+ * [ModuleDestinations.renderDisposable] draws a module alone into a temporary render target and returns
+ * that picture. StackSL's auto-study uses both to show what a module drew.
  */
+
+/** Finds where a module draws, and captures it there. */
 object ModuleDestinations {
     /** A place that draws a module. */
     sealed class Destination {
@@ -109,7 +115,7 @@ object ModuleDestinations {
      *
      * This covers what [of] cannot find or [capture] cannot read: a ping-pong or stereo target, one drawn
      * by some other path, a module that is drawn nowhere yet. The target matches the module's pipeline
-     * (its colour formats and depth, as `target.apply()` sets them) at [width] × [height], is readable,
+     * (its colour formats and depth, as `+target` sets them) at [width] × [height], is readable,
      * and is kept for the next capture of that shape rather than freed while the GPU may still use it;
      * it is drawn only for the frame of the capture. A module with several viewports or a multiview mask
      * is refused. Anything the module writes besides its colour — a storage buffer, say — it writes once

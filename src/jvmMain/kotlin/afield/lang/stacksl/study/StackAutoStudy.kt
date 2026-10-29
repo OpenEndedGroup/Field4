@@ -29,6 +29,14 @@ import java.util.Base64
 import java.util.concurrent.ConcurrentHashMap
 
 /**
+ * Studies of the `stack.auto` slots in a box's own shaders: checked edits to a slot's StackSL, and
+ * pictures of it in its host shader and alone.
+ *
+ * [StackAutoStudies] finds or makes the [StackAutoSlotStudy] for a slot, and [StackAutoView] draws the
+ * two pictures: where the slot's module is drawn, and the slot's program by itself on the study frame.
+ */
+
+/**
  * Pictures of a `stack.auto` slot: [inShader] the end result — wherever its module is drawn, found by
  * walking what the renderer draws, else the module drawn alone into a target of its own
  * ([ModuleDestinations]) — and [alone], the slot's program by itself on the StackSL study's frame. The

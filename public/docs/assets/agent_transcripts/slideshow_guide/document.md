@@ -17,7 +17,7 @@ From `code`
 A four-step guide to this document. Run it, then follow the links in the note.
 
 ```edn [field-box id="sg_tour" role="properties"]
-{"id" "sg_tour" "index" 0 "name" "tour" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "tour" "_tombstone" false "frame" #afield/rect [60.0 140.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sg_tour_code_.kt" "lines" 71 "characters" 2074 "sha256" "1b194b181f6e563d1e0698e97cb6d8ddb966ec63c268aa96313e9a0b5f434943"}]}
+{"id" "sg_tour" "index" 0 "name" "tour" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "tour" "_tombstone" false "frame" #afield/rect [60.0 140.0 150.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sg_tour_code_.kt" "lines" 83 "characters" 2239 "sha256" "efe4049d4553f884fd4303dbc71b1a22b99c22d82fcca6f2401a252fd2767dd8"}]}
 ```
 
 ```kotlin [field-property box="sg_tour" name="code" path="sg_tour_code_.kt"]
@@ -25,8 +25,12 @@ A four-step guide to this document. Run it, then follow the links in the note.
 val guide = thisBox
 val numbersBox = inside.boxes.values.first { it.name == "numbers" }
 val squaresBox = inside.boxes.values.first { it.name == "squares" }
-var visits = 0
-var stars = 0
+prop<Int>(visits)
+prop<Int>(stars)
+// These reset lines can be rerun independently while the guide is active.
+visits = 0
+stars = 0
+
 //%-
 
 val show = slideShow {
@@ -37,15 +41,15 @@ val show = slideShow {
             This guide has four steps. Each one selects the box it is about.
 
             [[next:Start →]]
-            """.trimIndent(),
-            animated = true
+            """
+                .trimIndent(),
+            animated = true,
         )
         selectBox(guide)
     }
     step("numbers") {
         onEnter {
-            visits += 1
-            guide.properties["visits"] = visits
+            guide.visits += 1
         }
         markdownNote(
             """
@@ -53,8 +57,9 @@ val show = slideShow {
             The green line points at it. Visits to this step: **{{visits}}**.
 
             [[back]] [[next]]
-            """.trimIndent(),
-            animated = true
+            """
+                .trimIndent(),
+            animated = true,
         )
         selectBox(numbersBox)
         annotate(id = "numbers", targetBox = numbersBox, color = "rgba(128, 255, 164, 0.8)", dashed = false)
@@ -66,11 +71,18 @@ val show = slideShow {
             `squares` maps each number to its square.
 
             [[back]] [[next]]
-            """.trimIndent(),
-            animated = true
+            """
+                .trimIndent(),
+            animated = true,
         )
         selectBox(squaresBox, property = "code", line = 3, highlight = 3)
-        annotateToLine(id = "line3", targetBox = squaresBox, line = 3, color = "rgba(255, 180, 100, 0.8)", dashed = true)
+        annotateToLine(
+            id = "line3",
+            targetBox = squaresBox,
+            line = 3,
+            color = "rgba(255, 180, 100, 0.8)",
+            dashed = true,
+        )
     }
     step("Your turn") {
         markdownNote(
@@ -79,12 +91,12 @@ val show = slideShow {
             [Give this guide a star](#custom:star). Stars so far: **{{stars}}**.
 
             [[home:Start again]] [[finish]]
-            """.trimIndent(),
-            animated = true
+            """
+                .trimIndent(),
+            animated = true,
         )
         linkCallback("star") {
-            stars += 1
-            here.properties["stars"] = stars
+            guide.stars += 1
             show.goToStep(show.currentStepIndex)
         }
         selectBox(guide)

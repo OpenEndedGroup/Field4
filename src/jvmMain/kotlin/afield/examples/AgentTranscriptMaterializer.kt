@@ -232,9 +232,7 @@ object AgentTranscriptMaterializer {
         // Persist through the exact codepath the `save` transcript op uses (operation_transcript.kt),
         // but invoked here so the transcript yaml never needs a `save` op of its own.
         val info = thisSessionInfo.get()
-        val boxes = info.boxes.values
-            .filter { it.id != "root" && it.id != METAROOT_ID && !it.getPropertyRaw("_tombstone").isTrue() }
-            .toSet()
+        val boxes = boxesForSave(info)
         // This standalone harness does not run the normal @RunsAt startup registry. Add the
         // language-root properties (main language, KotlinJS, FieldML) only while saving documents that actually use them; leaving the
         // global persistence set enlarged would rewrite every unrelated generated starting point.
@@ -266,10 +264,84 @@ object AgentTranscriptMaterializer {
             // content is left intact.
             stripEmptyPreamble(File(target, SavingContext.METADATA_EDN))
             stripEmptyPreamble(File(target, "document.md"))
+            writeDocsGuides(docsEntries(yaml), docsRoot(), target)
         } finally {
             Box.ioPersistentProperties.removeAll(addedLanguageProperties)
         }
-        return boxes.size
+        return boxes.count { it.id != "root" }
+    }
+
+    /** Preserve a transcript's saved drawing and viewport state without adding empty roots elsewhere. */
+    internal fun boxesForSave(info: SessionInformation): Set<Box> {
+        val boxes = info.boxes.values
+            .filter { it.id != "root" && it.id != METAROOT_ID && !it.getPropertyRaw("_tombstone").isTrue() }
+            .toMutableSet()
+        if (listOf("drawing", "panes", "bookmarks").any { info.root.getPropertyRaw(it) != null }) {
+            boxes.add(info.root)
+        }
+        return boxes
+    }
+
+    /** One documentation page a starting point points its reader to: `page.md[#anchor]` and why it matters here. */
+    internal data class DocsEntry(val page: String, val why: String = "")
+
+    /**
+     * The transcript's top-level `docs:` list. Each item is a page (`drawing_and_notation.md#reading-a-region`,
+     * relative to `public/docs/`) or a map with `page` and an optional one-sentence `why`.
+     */
+    internal fun docsEntries(yaml: File): List<DocsEntry> {
+        val loaded = Yaml().load<Any?>(yaml.readText()) as? Map<*, *> ?: return emptyList()
+        val raw = loaded["docs"] ?: return emptyList()
+        require(raw is List<*>) { "${yaml.name}: docs must be a list" }
+        return raw.map { item ->
+            when (item) {
+                is String -> DocsEntry(item.trim())
+                is Map<*, *> -> DocsEntry(
+                    (item["page"] as? String)?.trim() ?: error("${yaml.name}: a docs entry needs a page"),
+                    (item["why"] as? String)?.trim().orEmpty()
+                )
+                else -> error("${yaml.name}: a docs entry is a page or {page, why}, not $item")
+            }
+        }
+    }
+
+    internal fun docsRoot(): File = File(locateTranscriptsDir().parentFile.parentFile.parentFile, "public/docs")
+
+    /**
+     * Write each entry as a docs-redirect guide (`guides/<page>.md` with `docs:` front matter, see
+     * `afield.app.server.docsRedirect`), titled by the page's own first heading so the Guides panel
+     * names it the way the site does. A page that does not exist fails the materialization: a renamed
+     * page must take its starting-point links with it.
+     */
+    internal fun writeDocsGuides(entries: List<DocsEntry>, docsRoot: File, target: File) {
+        if (entries.isEmpty()) return
+        val guides = File(target, "guides").also { it.mkdirs() }
+        val used = mutableSetOf<String>()
+        for (entry in entries) {
+            val pagePath = entry.page.substringBefore('#')
+            require(pagePath.endsWith(".md") && !pagePath.split('/').any { it == ".." }) {
+                "docs page '${entry.page}' must be a .md path under public/docs"
+            }
+            val source = File(docsRoot, pagePath)
+            require(source.isFile) { "docs page '${entry.page}' does not exist under ${docsRoot.path}" }
+            val anchor = entry.page.substringAfter('#', "")
+            val headings = source.readLines().filter { Regex("^#{1,6} ").containsMatchIn(it) }
+                .map { it.trimStart('#').trim() }
+            val pageTitle = source.readLines().firstOrNull { it.startsWith("# ") }?.removePrefix("# ")?.trim()
+                ?: pagePath.substringAfterLast('/').removeSuffix(".md").replace('_', ' ')
+            // The site's heading ids: lowercase, punctuation dropped, spaces to hyphens.
+            fun slug(heading: String) = heading.lowercase().replace(Regex("[^\\p{L}\\p{N}\\s_-]"), "").trim().replace(Regex("\\s+"), "-")
+            val section = if (anchor.isEmpty()) null else headings.firstOrNull { slug(it) == anchor }
+                ?: throw IllegalArgumentException("docs page '${entry.page}' has no heading with id '$anchor'")
+            val title = if (section == null) pageTitle else "$pageTitle · $section"
+            var file = pagePath.removeSuffix(".md").replace('/', '-') + if (anchor.isEmpty()) "" else "-$anchor"
+            while (!used.add(file)) file += "-2"
+            val href = pagePath.removeSuffix(".md") + "/" + if (anchor.isEmpty()) "" else "#$anchor"
+            File(guides, "$file.md").writeText(buildString {
+                append("---\ndocs: ").append(href).append("\n---\n# ").append(title).append('\n')
+                if (entry.why.isNotEmpty()) append('\n').append(entry.why).append('\n')
+            })
+        }
     }
 
     /**

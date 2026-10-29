@@ -11,6 +11,14 @@ import java.util.concurrent.Executors
 import java.util.concurrent.FutureTask
 
 /**
+ * A future-backed operation whose callbacks stop firing once the box run that started it ends.
+ *
+ * [AsyncOperation] wraps a [java.util.concurrent.CompletableFuture] so that progress, result and error
+ * callbacks run in the starting box's context and are suppressed after that run is stopped, re-run
+ * or retired. Closing it cancels the source future and runs any registered cancellation hooks.
+ */
+
+/**
  * One asynchronous operation owned by the run that started it. [progress] and the result/error
  * callbacks run only while that run is alive, in its box context, on the completing thread.
  * Keep these callbacks short and non-blocking. Shared clients and cached results are not owned here.

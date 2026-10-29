@@ -21,7 +21,7 @@ Each keeps its own record, for its own length of time. The tools:
 
 The AI-facing history tools are launched and monitored from the **welcome page**, Field's landing page. The server opens `https://localhost:<port>/welcome` on startup, and in the desktop app it is the first tab (the `+` button opens a fresh one).
 
-![The welcome page in a fresh workspace: documents and starting points on the left, the Changelog and the collapsed panel stack, AI among them, on the right](assets/welcome/welcome-page.png)
+![The welcome page in a fresh workspace: documents and the Starting points, Templates and Kits disclosures on the left, the Changelog and the collapsed panel stack, AI among them, on the right](assets/welcome/welcome-page.png)
 
 You can also reach it at any time from the hero buttons of a running instance, or by navigating straight to `/welcome`.
 

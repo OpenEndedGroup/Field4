@@ -1,10 +1,10 @@
-import afield.graphics.visionos.VisionGeometryPreview
-import afield.graphics.visionos.previewVisionGeometry
-
-// A ring of quads whose corners are given in the other order. Every normal still points
-// outward; only the winding changed. The head culls back faces, so on the device this is a
-// ring you can only see from the inside — and from any normal viewing position, nothing.
-val inverted = """
+/*
+A ring of quads whose corners are given in the other order. Every normal still points
+outward; only the winding changed. The head culls back faces, so on the device this is a
+ring you can only see from the inside — and from any normal viewing position, nothing.
+*/
+val inverted =
+    """
     // {{ visionmetal }}
     import kotlin.math.cos
     import kotlin.math.sin
@@ -27,18 +27,22 @@ val inverted = """
             }
         }
     }
-""".trimIndent()
+"""
+        .trimIndent()
 
 val capture = try {
     previewVisionGeometry(source = inverted)
 } catch (missing: VisionGeometryPreview.NodeUnavailable) {
-    println("geometry preview needs node on PATH: " + missing.message)
-    null
-}
+        println("geometry preview needs node on PATH: " + missing.message)
+        null
+    }
 
 capture?.mesh()?.let { mesh ->
     val agreement = mesh.windingAgreement()
-    println("winding agreement " + "%.0f".format(agreement * 100) + "% — " +
-        (if (agreement < 0.5) "wound inside-out; the head would cull this away"
-         else "consistent"))
+    println(
+        "winding agreement " +
+            "%.0f".format(agreement * 100) +
+            "% — " +
+            (if (agreement < 0.5) "wound inside-out; the head would cull this away" else "consistent"),
+    )
 }

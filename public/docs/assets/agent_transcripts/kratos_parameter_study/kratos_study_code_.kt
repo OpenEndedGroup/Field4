@@ -55,6 +55,7 @@ fun status(text: String) {
 class StudyOutcome(
     val landscape: StudyLandscape?,
     val optimisation: StudyOptimisation<KratosStudyDemo.Design>?,
+    val winningField: SimulationResult?,
 )
 
 status("Starting the optional worker…")
@@ -84,7 +85,7 @@ frames {
             done.incrementAndGet()
             // Throwing from the progress callback aborts the sweep — that is what
             // Cancel does, rather than poisoning one point with a null result.
-            if (cancelling.get()) error("cancelled")
+            if (cancelling.get()) throw java.util.concurrent.CancellationException("cancelled")
         }
         var running: CompletableFuture<StudyOutcome>? = null
         var expected = 0
@@ -101,7 +102,7 @@ frames {
                 target = values[1]
                 study = KratosStudyDemo.study(worker, target) {
                     done.incrementAndGet()
-                    if (cancelling.get()) error("cancelled")
+                    if (cancelling.get()) throw java.util.concurrent.CancellationException("cancelled")
                 }
             }
 
@@ -118,8 +119,15 @@ frames {
                 progress?.update(0L, expected.toLong())
                 val active = study
                 running = CompletableFuture.supplyAsync<StudyOutcome> {
-                    if (command == "grid") StudyOutcome(active.grid(n, n), null)
-                    else StudyOutcome(null, active.optimise((n * n / 2).coerceAtLeast(4), seed = 7L))
+                    val landscape = if (command == "grid") active.grid(n, n) else null
+                    val optimisation =
+                        if (command == "search") active.optimise((n * n / 2).coerceAtLeast(4), seed = 7L) else null
+                    if (cancelling.get()) throw java.util.concurrent.CancellationException("cancelled")
+                    val winner = landscape?.best ?: optimisation?.best
+                    // Re-solving the winner also belongs on this worker, never on the Runloop.
+                    val field = winner?.let { active.resultAt(it.coordinates) }
+                    if (cancelling.get()) throw java.util.concurrent.CancellationException("cancelled")
+                    StudyOutcome(landscape, optimisation, field)
                 }
                 resultText = "Solving $expected designs on one background grid…"
             }
@@ -152,7 +160,7 @@ frames {
                         val design = study.designAt(winner.coordinates)
                         // The other half of what a study owes: not only "this design is
                         // best" but here it is, and here is what it does.
-                        val field = study.resultAt(winner.coordinates)
+                        val field = requireNotNull(outcome.winningField)
                         showMeshGrid(
                             "Winning body · drag to orbit" to KratosDemo.body(design.armEnd).surface(),
                             channel = "geometry",
@@ -195,6 +203,9 @@ frames {
                             "Cancelled after ${done.get()} solves. Nothing solved was lost — " +
                                 "press Sweep again and the cache serves it."
                         else "Sweep failed: ${mdEscape(why)}"
+                } finally {
+                    progress?.finish()
+                    progress = null
                 }
                 cancelling.set(false)
             }
@@ -217,6 +228,8 @@ frames {
             }
             frame()
         }
+    } catch (cancelled: java.util.concurrent.CancellationException) {
+        throw cancelled
     } catch (failure: Exception) {
         status(
             """
@@ -227,6 +240,7 @@ frames {
         """,
         )
     } finally {
+        cancelling.set(true)
         progress?.finish()
         if (session != null) session!!.close() else opening.thenAccept { it.close() }
     }

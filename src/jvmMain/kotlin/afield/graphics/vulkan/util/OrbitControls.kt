@@ -1,5 +1,9 @@
 package afield.graphics.vulkan.util
 
+/**
+ * Mouse orbit controls for a [Camera] in a Vulkan window: rotate, pan and dolly around the camera's target, after Three.js's OrbitControls.
+ */
+
 import afield.document.graph.Box
 import afield.graphics.vulkan.Renderer
 import afield.document.context.fromContext

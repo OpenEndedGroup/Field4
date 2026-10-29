@@ -43,7 +43,7 @@ object ReconstructionMotionGpuSmoke {
                 }
                 val sampler=TextureSampler(renderer,1,false,VK_FILTER_NEAREST)
                 val module=Module(parameters(renderer) {
-                    converted.apply();depthTest=false;depthWrite=false;blend=false
+                    +converted;depthTest=false;depthWrite=false;blend=false
                     vertex="""
                         #version 460
                         void main() {

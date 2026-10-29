@@ -74,6 +74,8 @@ import java.util.concurrent.TimeUnit
  *
  * One clip is transcribed at a time, on a dedicated thread: a second press queues behind the first.
  */
+
+/** The push-to-talk transcriber: owns the Whisper worker process and the thread clips queue on. */
 object VoiceTranscriber {
     private val executor = Executors.newSingleThreadExecutor { r ->
         Thread(r, "field-voice-transcriber").apply { isDaemon = true }
@@ -96,6 +98,7 @@ object VoiceTranscriber {
     private fun envMillis(name: String, default: Long) =
         System.getenv(name)?.toLongOrNull()?.takeIf { it > 0 } ?: default
 
+    /** Registers the `ai-transcribe` and `ai-transcribe-warm` handlers the browser's recorder calls. */
     fun install() {
         handlers["ai-transcribe"] = mutableSetOf({ message, reply ->
             val request = Json.decodeFromJsonElement<AiTranscribeRequest>(message.payload!!)

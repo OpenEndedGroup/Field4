@@ -45,18 +45,29 @@ fun table(seats: Int) = petri {
     for (i in 0 until seats) {
         val left = i
         val right = (i + 1) % seats
-        t("grab.$i") { from("fork.$left"); to("holding.$i") }
-        t("eat.$i") { from("holding.$i"); from("fork.$right"); to("eating.$i") }
-        t("done.$i") { from("eating.$i"); to("fork.$left"); to("fork.$right") }
+        t("grab.$i") {
+            from("fork.$left")
+            to("holding.$i")
+        }
+        t("eat.$i") {
+            from("holding.$i")
+            from("fork.$right")
+            to("eating.$i")
+        }
+        t("done.$i") {
+            from("eating.$i")
+            to("fork.$left")
+            to("fork.$right")
+        }
     }
 }
+
 :::endfold
 
 val full = table(5).stateSpace()
 val reduced = table(5).stateSpace(reduction = PetriReduction.STUBBORN)
 
-fun layers(graph: PetriStateGraph) =
-    graph.states.indices.groupingBy { graph.depth(it) }.eachCount().toSortedMap()
+fun layers(graph: PetriStateGraph) = graph.states.indices.groupingBy { graph.depth(it) }.eachCount().toSortedMap()
 
 fun row(name: String, graph: PetriStateGraph): String {
     val trace = graph.deadlockTrace()!!
@@ -67,7 +78,9 @@ fun row(name: String, graph: PetriStateGraph): String {
 val fullLayers = layers(full)
 val reducedLayers = layers(reduced)
 
-markdown("main", """
+markdown(
+    "main",
+    """
 #### Five philosophers, searched two ways
 
 | | markings | firings | deepest layer | route to the deadlock | checked |
@@ -81,7 +94,9 @@ ${row("stubborn sets", reduced)}
 |---|${fullLayers.keys.joinToString("") { "---|" }}
 | full | ${fullLayers.values.joinToString(" | ")} |
 | stubborn sets | ${fullLayers.keys.joinToString(" | ") { "${reducedLayers[it] ?: ""}" }} |
-""", width = 1040)
+""",
+    width = 1040,
+)
 ```
 
 Both searches find the deadlock, and `verify()` replays each route through the net to confirm it.

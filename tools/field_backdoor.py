@@ -1741,6 +1741,42 @@ class FieldBackdoor:
         self.logger.log("wait_native_renderer_timeout", **result)
         return result
 
+    async def canvas_flight(
+        self,
+        *,
+        stops: list[str],
+        leg: float,
+        hold: float,
+        orbit: float,
+        record: str | None,
+        fps: int,
+        size: tuple[int, int] | None,
+        pixel_ratio: float,
+        timeout: float,
+    ) -> dict[str, Any]:
+        """Fly the canvas through bookmarks live, or film the flight to an MP4 (`AgentCanvasFlight`)."""
+        path = str(Path(record).expanduser().resolve()) if record else None
+        payload: dict[str, Any] = {
+            "spec": {
+                "stops": [{"bookmark": stop} for stop in stops],
+                "legSeconds": leg,
+                "holdSeconds": hold,
+                "orbitDegreesPerSecond": orbit,
+            },
+            "path": path,
+            "fps": fps,
+            "width": size[0] if size else None,
+            "height": size[1] if size else None,
+            "pixelRatio": pixel_ratio,
+        }
+        self.logger.log("canvas_flight_start", **payload, timeout=timeout)
+        event = await self.call_for_single_reply("agent-canvas-flight", payload, timeout=timeout)
+        reply = event["payload"]
+        if not isinstance(reply, dict):
+            raise BackdoorError("agent-canvas-flight returned an invalid payload")
+        self.logger.log("canvas_flight_complete", payload=reply)
+        return reply
+
     async def record_window(
         self,
         *,
@@ -2378,6 +2414,11 @@ class FieldBackdoor:
         limit: int = 80,
         indices: list[int] | None = None,
         mode: str = "",
+        new_name: str = "",
+        as_copy: bool = False,
+        offset_x: float = 0.0,
+        offset_y: float = 0.0,
+        step: int = -1,
         fail_on_error: bool = True,
         timeout: float,
     ) -> dict[str, Any]:
@@ -2395,6 +2436,11 @@ class FieldBackdoor:
                 "limit": limit,
                 "indices": indices or [],
                 "mode": mode,
+                "newName": new_name,
+                "asCopy": as_copy,
+                "offsetX": offset_x,
+                "offsetY": offset_y,
+                "step": step,
             },
             timeout=timeout,
         )
@@ -2406,9 +2452,9 @@ class FieldBackdoor:
         # local box index. Refresh from source of truth before the next command resolves a uid;
         # otherwise a successful create followed immediately by `set <new-box> ...` races and
         # reports "Unknown box uid" even though the box appears milliseconds later.
-        if command.strip().lower() in {"run", "undo"} and payload.get("success") is True:
+        if command.strip().lower() in {"run", "step", "undo"} and payload.get("success") is True:
             await self.refresh_snapshot(timeout=timeout)
-        if command.strip().lower() in {"run", "undo"}:
+        if command.strip().lower() in {"run", "step", "undo"}:
             # The server's success counts applied operations. A launch operation can apply
             # successfully while its box fails; MacroOutputLine carries that diagnostic.
             output = payload.get("output") or []
@@ -2616,13 +2662,19 @@ class FieldBackdoor:
         # stale cached preview. Explicit inline source is handled by the callers.
         return await self.get_property(uid=resolved, property_name=property_name, timeout=timeout)
 
-    async def ai_tools_list(self, *, timeout: float, focus_box: str | None = None) -> list[dict[str, Any]]:
+    async def ai_tools_list(
+        self, *, timeout: float, focus_box: str | None = None, suspendable: bool = False
+    ) -> list[dict[str, Any]]:
         """List the ai4 agent tools available for the attached document.
 
         ``focus_box`` (a uid or unique name) stands in for the box whose chat is open, so tools that
         scope themselves to the focused box are listed as that box's chat would see them.
+        ``suspendable`` also lists the tools only a box chat's turn is offered, the ones that end the
+        turn to wait; ``ai_tool_call`` cannot call those.
         """
-        event = await self.call_for_single_reply("agent-ai-tools-list", {"focusBox": focus_box}, timeout=timeout)
+        event = await self.call_for_single_reply(
+            "agent-ai-tools-list", {"focusBox": focus_box, "suspendable": suspendable}, timeout=timeout
+        )
         payload = event.get("payload")
         tools = payload.get("tools") if isinstance(payload, dict) else None
         return tools if isinstance(tools, list) else []
@@ -3511,6 +3563,39 @@ def build_command_parser() -> argparse.ArgumentParser:
     wait_native_renderer.add_argument("--frames", type=int, default=3)
     wait_native_renderer.add_argument("--timeout", type=float)
 
+    film_page = subparsers.add_parser("film-page", add_help=False)
+    film_page.add_argument("url")
+    film_page.add_argument("path")
+    film_page.add_argument("--duration", type=float, default=10.0)
+    film_page.add_argument("--fps", type=int, default=30)
+    film_page.add_argument("--size", default="1920x1080", help="WxH pixels of film")
+    film_page.add_argument("--pixel-ratio", type=float, default=1.0)
+    film_page.add_argument("--setup-file", help="JavaScript: an `async () => ...` run once after load")
+    film_page.add_argument("--frame-file", help="JavaScript: a `(t, i, n) => ...` run before every frame")
+    film_page.add_argument("--settle-ms", type=int, default=0)
+    film_page.add_argument("--load-timeout-ms", type=int, default=60000, help="how long loading and the setup script may take")
+    film_page.add_argument("--drag", help="DX,DY: drag the mouse this many CSS px per frame through the film (orbits a three.js view)")
+    film_page.add_argument("--drag-from", help="X,Y in CSS px where the drag starts; the middle of the page by default")
+    film_page.add_argument("--preroll-frames", type=int, default=0, help="frames run (script and drag) before the first one filmed")
+    film_page.add_argument("--expect-frames", type=int)
+    film_page.add_argument("--timeout", type=float)
+
+    viewport_parser = subparsers.add_parser("viewport", add_help=False)
+    viewport_parser.add_argument("size", help="WxH in CSS px, or 'default' for the capture page's own size")
+    viewport_parser.add_argument("--timeout", type=float)
+
+    canvas_flight = subparsers.add_parser("canvas-flight", add_help=False)
+    canvas_flight.add_argument("stops", nargs="+", help="bookmark names or slots, in flight order")
+    canvas_flight.add_argument("--leg", type=float, default=6.0)
+    canvas_flight.add_argument("--hold", type=float, default=2.0)
+    canvas_flight.add_argument("--orbit", type=float, default=8.0, help="three.js turn, degrees per second; 0 for none")
+    canvas_flight.add_argument("--record", help="film the flight to this .mp4 instead of flying it live")
+    canvas_flight.add_argument("--fps", type=int, default=30)
+    canvas_flight.add_argument("--size", default="1920x1080", help="WxH pixels, or 'window' for the capture window's own size")
+    canvas_flight.add_argument("--pixel-ratio", type=float, default=1.5)
+    canvas_flight.add_argument("--expect-frames", type=int, help="fail unless ffprobe counts exactly this many frames in the film")
+    canvas_flight.add_argument("--timeout", type=float)
+
     record_window = subparsers.add_parser("record-window", add_help=False)
     record_window.add_argument("path")
     record_window.add_argument("--uid")
@@ -3606,6 +3691,10 @@ def build_command_parser() -> argparse.ArgumentParser:
     page_eval.add_argument("--wait-ms", type=float, default=0.0)
     page_eval.add_argument("--timeout", type=float)
 
+    publication = subparsers.add_parser("publish-document", add_help=False)
+    publication.add_argument("path", help="New .zip file for a static web publication of the current document")
+    publication.add_argument("--timeout", type=float, default=180.0)
+
     click_box = subparsers.add_parser("click-box", add_help=False)
     click_box.add_argument("uid")
     click_box.add_argument("--wait-ms", type=float, default=0.0)
@@ -3653,6 +3742,7 @@ def build_command_parser() -> argparse.ArgumentParser:
     set_parser.add_argument("property")
     set_parser.add_argument("value", nargs="?")
     set_parser.add_argument("--file")
+    set_parser.add_argument("--value-escapes", action="store_true", help=VALUE_ESCAPES_HELP)
     set_parser.add_argument("--timeout", type=float)
 
     for command_name in ("macro", "transcript"):
@@ -3670,6 +3760,12 @@ def build_command_parser() -> argparse.ArgumentParser:
         macro_parser.add_argument("--index", dest="index_values", action="append", default=[])
         macro_parser.add_argument("--indices", dest="index_values", action="append", default=[])
         macro_parser.add_argument("--mode", default="")
+        # rename / run / step (see OPERATION_TRANSCRIPT.md, "Replaying a recording")
+        macro_parser.add_argument("--new-name", default="")
+        macro_parser.add_argument("--as-copy", action="store_true")
+        macro_parser.add_argument("--offset-x", type=float, default=0.0)
+        macro_parser.add_argument("--offset-y", type=float, default=0.0)
+        macro_parser.add_argument("--step", type=int, default=-1)
         macro_parser.add_argument("--timeout", type=float)
         macro_parser.add_argument("--no-fail-on-error", action="store_true")
 
@@ -3679,6 +3775,7 @@ def build_command_parser() -> argparse.ArgumentParser:
         # None: the box's own default_property (a StackSL program box runs its stackSL), else code.
         exec_parser.add_argument("--property", default=None)
         exec_parser.add_argument("--value")
+        exec_parser.add_argument("--value-escapes", action="store_true", help=VALUE_ESCAPES_HELP)
         exec_parser.add_argument("--file")
         exec_parser.add_argument("--timeout", type=float)
         exec_parser.add_argument(
@@ -3747,7 +3844,11 @@ def build_command_parser() -> argparse.ArgumentParser:
     )
 
     agent_task_parser = subparsers.add_parser("agent-task", add_help=False)
-    agent_task_parser.add_argument("--goal", required=True)
+    agent_task_parser.add_argument("--goal", default="")
+    agent_task_parser.add_argument("--goal-file", default="", help="Path (or - for stdin) to the goal, for a long prompt")
+    agent_task_parser.add_argument("--repo-root", default="", help="A checkout the repo tools work in (blank: no repo tools)")
+    agent_task_parser.add_argument("--repo-read", action="append", default=[], help="Readable glob under --repo-root; repeatable (default **)")
+    agent_task_parser.add_argument("--repo-write", action="append", default=[], help="Writable glob under --repo-root; repeatable (default none)")
     agent_task_parser.add_argument("--check", dest="checks", action="append", default=[])
     agent_task_parser.add_argument("--mode", choices=("live", "scripted"), default="live")
     agent_task_parser.add_argument("--script", help="Path (or - for stdin) to a JSON script for --mode scripted")
@@ -3779,6 +3880,14 @@ def build_command_parser() -> argparse.ArgumentParser:
                                    help="off withholds RunToolProgramRequest from every task (the tool-program A/B arm)")
     agent_eval_parser.add_argument("--context", choices=("", "legacy"), default="",
                                    help="legacy sends every task's instructions inside the stored message (the context-pipeline A/B arm)")
+    agent_eval_parser.add_argument("--corpus", nargs="?", const="all", default="", choices=("", "all", "train", "heldout"),
+                                   help="Run the tasks mined from dev_docs/agents/transcripts (AgentEvalCorpus) instead of the hand suite")
+    agent_eval_parser.add_argument("--sample", type=int, default=0, help="With --corpus/--calibrate: a seeded sample of N tasks")
+    agent_eval_parser.add_argument("--seed", type=int, default=0)
+    agent_eval_parser.add_argument("--sealed", action="store_true",
+                                   help="Withhold the tools that read the repository (a mined task's answer is in it); a pass that still saw its solution scores leaked")
+    agent_eval_parser.add_argument("--calibrate", action="store_true",
+                                   help="Re-mine the corpus: run every candidate's solution twice and derive its checks")
     agent_eval_parser.add_argument("--timeout", type=float)
 
     ai_chat_parser = subparsers.add_parser("ai-chat", add_help=False)
@@ -3815,6 +3924,72 @@ def default_property_of(client: "FieldBackdoor", uid: str | None) -> str:
     except BackdoorError:
         return "code"
     return target.get("default_property") or "code"
+
+
+VALUE_ESCAPES_HELP = (
+    "Decode \\n, \\t, \\r and \\\\ in the value before sending it, so multi-line box code fits "
+    "on one command line. Off by default: a value is sent as written, which keeps a Kotlin "
+    "string's own \\n escape intact. For anything long, --file <path> (or --file - for stdin) "
+    "avoids quoting altogether."
+)
+
+_VALUE_ESCAPES = {"n": "\n", "t": "\t", "r": "\r", "\\": "\\"}
+
+
+def decode_value_escapes(text: str) -> str:
+    """`\\n`, `\\t`, `\\r` and `\\\\` in [text] decoded; any other backslash is kept as written."""
+    out: list[str] = []
+    i = 0
+    while i < len(text):
+        ch = text[i]
+        if ch == "\\" and i + 1 < len(text) and text[i + 1] in _VALUE_ESCAPES:
+            out.append(_VALUE_ESCAPES[text[i + 1]])
+            i += 2
+            continue
+        out.append(ch)
+        i += 1
+    return "".join(out)
+
+
+def literal_newline_warning(text: str | None) -> str | None:
+    """A warning when [text] holds a literal backslash-n outside any quoted string and no real newline.
+
+    That shape is almost always a multi-line value typed on one command line without
+    `--value-escapes`, which sends one line of code with `\\n` in it. A `\\n` inside "..." or
+    '...' is a string's own escape and stays silent, as does any value that already has a newline.
+    """
+    if not text or "\n" in text:
+        return None
+    quote: str | None = None
+    i = 0
+    while i < len(text):
+        ch = text[i]
+        if ch == "\\":
+            if quote is None and i + 1 < len(text) and text[i + 1] == "n":
+                return (
+                    "--value contains a literal \\n outside a string and was sent as written; "
+                    "pass --value-escapes to decode it into a newline, or use --file"
+                )
+            i += 2
+            continue
+        if quote is None and ch in "\"'":
+            quote = ch
+        elif ch == quote:
+            quote = None
+        i += 1
+    return None
+
+
+def warn_literal_newline(data: Any, value: str | None, escapes: bool) -> Any:
+    """Attach `valueWarnings` to [data] (and print it) when [literal_newline_warning] fires."""
+    warning = None if escapes else literal_newline_warning(value)
+    if warning is None:
+        return data
+    print(f"field_backdoor.py: warning: {warning}", file=sys.stderr, flush=True)
+    if isinstance(data, dict):
+        data = dict(data)
+        data["valueWarnings"] = [warning]
+    return data
 
 
 def parse_command(command_line: str) -> argparse.Namespace:
@@ -4230,6 +4405,107 @@ async def dispatch_command(
         client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"])
         return result
 
+    if args.command == "film-page":
+        match = re.fullmatch(r"(\d+)x(\d+)", args.size)
+        if not match:
+            raise BackdoorError(f"film-page --size takes WxH, got {args.size!r}")
+        payload: dict[str, Any] = {
+            "url": args.url,
+            "path": str(Path(args.path).expanduser().resolve()),
+            "durationSec": args.duration,
+            "fps": args.fps,
+            "width": int(match.group(1)),
+            "height": int(match.group(2)),
+            "pixelRatio": args.pixel_ratio,
+            "settleMs": args.settle_ms,
+            "loadTimeoutMs": args.load_timeout_ms,
+            "setup": Path(args.setup_file).read_text() if args.setup_file else None,
+            "frame": Path(args.frame_file).read_text() if args.frame_file else None,
+        }
+        payload["prerollFrames"] = args.preroll_frames
+        if args.drag:
+            dx, dy = (float(v) for v in args.drag.split(","))
+            payload.update(dragDx=dx, dragDy=dy)
+        if args.drag_from:
+            x, y = (float(v) for v in args.drag_from.split(","))
+            payload.update(dragX=x, dragY=y)
+        timeout = max(command_timeout(args.timeout, client.default_timeout), 90.0 + args.duration * args.fps * 0.75)
+        timeout += args.preroll_frames * 0.2
+        client.logger.log("film_page_start", url=args.url, path=payload["path"], timeout=timeout)
+        event = await client.call_for_single_reply("agent-film-page", payload, timeout=timeout)
+        data = event["payload"] if isinstance(event.get("payload"), dict) else {"ok": False, "message": "invalid reply"}
+        ok = bool(data.get("ok"))
+        if args.expect_frames is not None and data.get("encodedFrames") != args.expect_frames:
+            ok = False
+            data = dict(data)
+            data["error"] = f"expected {args.expect_frames} frames in the film, ffprobe counted {data.get('encodedFrames')}"
+        result = command_result(command_line, ok, data=data, events=[])
+        client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"])
+        return result
+
+    if args.command == "viewport":
+        if args.size == "default":
+            width, height = 0, 0
+        else:
+            match = re.fullmatch(r"(\d+)x(\d+)", args.size)
+            if not match:
+                raise BackdoorError(f"viewport takes WxH or 'default', got {args.size!r}")
+            width, height = int(match.group(1)), int(match.group(2))
+        if auto_playwright:
+            await ensure_playwright_attached(
+                client,
+                timeout=auto_playwright_timeout or command_timeout(args.timeout, client.default_timeout),
+                reason="command:viewport",
+            )
+        data = await client.playwright_input(
+            action="setViewport",
+            dx=float(width),
+            dy=float(height),
+            timeout=command_timeout(args.timeout, client.default_timeout),
+        )
+        ok = bool(data.get("ok"))
+        result = command_result(command_line, ok, data=data, events=[])
+        client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"])
+        return result
+
+    if args.command == "canvas-flight":
+        size: tuple[int, int] | None = None
+        if args.size != "window":
+            match = re.fullmatch(r"(\d+)x(\d+)", args.size)
+            if not match:
+                raise BackdoorError(f"canvas-flight --size takes WxH or 'window', got {args.size!r}")
+            size = (int(match.group(1)), int(match.group(2)))
+        if args.record and auto_playwright:
+            await ensure_playwright_attached(
+                client,
+                timeout=auto_playwright_timeout or command_timeout(args.timeout, client.default_timeout),
+                reason="command:canvas-flight",
+            )
+        timeout = command_timeout(args.timeout, client.default_timeout)
+        if args.record:
+            # Filming takes a frame's paint and capture per frame, not the flight's own length.
+            flight = args.hold + (len(args.stops) - 1) * (args.leg + args.hold)
+            timeout = max(timeout, 60.0 + flight * args.fps * 0.75)
+        data = await client.canvas_flight(
+            stops=list(args.stops),
+            leg=args.leg,
+            hold=args.hold,
+            orbit=args.orbit,
+            record=args.record,
+            fps=args.fps,
+            size=size,
+            pixel_ratio=args.pixel_ratio,
+            timeout=timeout,
+        )
+        ok = bool(data.get("ok"))
+        if args.expect_frames is not None and data.get("encodedFrames") != args.expect_frames:
+            ok = False
+            data = dict(data)
+            data["error"] = f"expected {args.expect_frames} frames in the film, ffprobe counted {data.get('encodedFrames')}"
+        result = command_result(command_line, ok, data=data, events=[])
+        client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"])
+        return result
+
     if args.command == "record-window":
         if auto_playwright:
             await ensure_playwright_attached(
@@ -4372,10 +4648,12 @@ async def dispatch_command(
     if args.command == "set":
         if (args.value is None) == (args.file is None):
             raise BackdoorError("set requires exactly one of a literal value or --file")
+        if args.value_escapes and args.file:
+            raise BackdoorError("set: --value-escapes decodes a literal value; a --file is sent as written")
         if args.file:
             value = client.read_text_source(args.file, command_line=command_line)
         else:
-            value = args.value
+            value = decode_value_escapes(args.value) if args.value_escapes else args.value
         timeout = args.timeout or client.default_timeout
         data = await client.set_property(
             uid=args.uid,
@@ -4383,6 +4661,8 @@ async def dispatch_command(
             value=value,
             timeout=timeout,
         )
+        if not args.file:
+            data = warn_literal_newline(data, args.value, args.value_escapes)
         result = command_result(command_line, True, data=data, events=[])
         client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"])
         return result
@@ -4408,6 +4688,11 @@ async def dispatch_command(
             limit=args.limit,
             indices=parse_repeated_int_values(args.index_values),
             mode=args.mode,
+            new_name=args.new_name,
+            as_copy=args.as_copy,
+            offset_x=args.offset_x,
+            offset_y=args.offset_y,
+            step=args.step,
             fail_on_error=not args.no_fail_on_error,
             timeout=timeout,
         )
@@ -4432,7 +4717,15 @@ async def dispatch_command(
             )
         if args.value is not None and args.file is not None:
             raise BackdoorError(f"{args.command} accepts --value or --file, not both")
+        if args.value_escapes and args.value is None:
+            raise BackdoorError(f"{args.command}: --value-escapes decodes --value; a --file is sent as written")
         value = args.value
+        if value is not None and not args.value_escapes:
+            literal_newline_warning_text = literal_newline_warning(value)
+            if literal_newline_warning_text:
+                print(f"field_backdoor.py: warning: {literal_newline_warning_text}", file=sys.stderr, flush=True)
+        if value is not None and args.value_escapes:
+            value = decode_value_escapes(value)
         if args.file:
             value = client.read_text_source(args.file, command_line=command_line)
         timeout = args.timeout or client.default_timeout
@@ -4709,6 +5002,11 @@ async def dispatch_command(
             Path(args.save).write_text(json.dumps(data.get("result"), indent=2))
         return command_result(command_line, bool(data.get("ok")), data=data, events=[])
 
+    if args.command == "publish-document":
+        from field_publication import publish_document
+        data = await publish_document(client, args.path, timeout=args.timeout)
+        return command_result(command_line, True, data=data, events=[])
+
     if args.command == "page-eval":
         if (args.script is None) == (args.file is None):
             raise BackdoorError("page-eval requires exactly one of a literal script or --file")
@@ -4783,8 +5081,11 @@ async def dispatch_command(
         checks = []
         for spec in args.checks:
             checks.append(parse_agent_check(spec))
+        goal = client.read_text_source(args.goal_file, command_line=command_line) if args.goal_file else args.goal
+        if not goal.strip():
+            raise BackdoorError("agent-task needs --goal or --goal-file")
         payload: dict[str, Any] = {
-            "goal": args.goal,
+            "goal": goal,
             "checks": checks,
             "mode": args.mode,
             "maxToolRounds": args.max_rounds,
@@ -4795,6 +5096,10 @@ async def dispatch_command(
             "context": args.context,
             "followUps": list(args.follow_ups),
         }
+        if args.repo_root:
+            payload["repoRoot"] = str(Path(args.repo_root).expanduser().resolve())
+            payload["repoRead"] = list(args.repo_read)
+            payload["repoWrite"] = list(args.repo_write)
         if args.script:
             payload["script"] = client.read_text_source(args.script, command_line=command_line)
         if args.setup:
@@ -4822,11 +5127,18 @@ async def dispatch_command(
             "blind": bool(args.blind),
             "programs": args.programs,
             "context": args.context,
+            "corpus": args.corpus,
+            "sample": args.sample,
+            "seed": args.seed,
+            "calibrate": bool(args.calibrate),
+            "sealed": bool(args.sealed),
         }
-        timeout = args.timeout or max(client.default_timeout, 3600.0)
+        timeout = args.timeout or max(client.default_timeout, 3600.0 * (4 if args.calibrate else 1))
         event = await client.call_for_single_reply("agent-eval", payload, timeout=timeout)
         data = event.get("payload") if isinstance(event.get("payload"), dict) else {}
-        ok = bool(data) and data.get("passed") == data.get("population")
+        # A calibration's verdict is that it produced a corpus; rejected candidates are its normal output.
+        ok = bool(data) and not data.get("error") and (bool(data.get("passed")) if args.calibrate
+                                                       else data.get("passed") == data.get("population"))
         result = command_result(command_line, ok, data=data, events=[])
         client.logger.log("command_dispatch_complete", commandLine=command_line, ok=ok)
         return result
@@ -4942,7 +5254,7 @@ async def repl(
             return 0
         if line == "help":
             client.logger.log("repl_help")
-            print("Commands: open, status, snapshot, lifecycle-census, why, boxes, sleep, playwright-open, editor-open, inspect-view, review-note, reply-note, page-eval, screenshot-window, screenshot-editor, screenshot-box, native-screenshot, wait-native-renderer, record-window, record-editor, record-box, new-box, delete-box, connect, disconnect, set, macro, transcript, run, launch, launch-batch, continue, wait-running, action, stop, wait-file, output, wait-output, agent-task, ai-chat, raw-send, run-jvm-main, exit")
+            print("Commands: open, status, snapshot, lifecycle-census, why, boxes, sleep, playwright-open, editor-open, inspect-view, review-note, reply-note, page-eval, screenshot-window, screenshot-editor, screenshot-box, native-screenshot, wait-native-renderer, viewport, canvas-flight, film-page, record-window, record-editor, record-box, new-box, delete-box, connect, disconnect, set, macro, transcript, run, launch, launch-batch, continue, wait-running, action, stop, wait-file, output, wait-output, agent-task, ai-chat, raw-send, run-jvm-main, exit")
             continue
         try:
             parsed = parse_command(line)

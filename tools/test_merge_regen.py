@@ -7,7 +7,12 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
+from tools.git_isolation import scrub_process_env  # noqa: E402
+
+# This module builds scratch git repositories; an inherited GIT_DIR would redirect them.
+scrub_process_env()
 
 SCRIPT = Path(__file__).resolve().parent / "merge_regen.py"
 ATTRIBUTES = (Path(__file__).resolve().parents[1] / ".gitattributes").read_text()
@@ -18,6 +23,20 @@ def git(repo: Path, *args: str) -> str:
 
 
 class MergeRegenTest(unittest.TestCase):
+    def test_publications_refresh_outside_gradle_and_are_staged(self) -> None:
+        sys.path.insert(0, str(SCRIPT.parent))
+        import merge_regen
+        guards = merge_regen.guards_for_paths({'public/docs/assets/web_publications/catalog.json'})
+        with mock.patch.object(merge_regen, '_git', return_value='') as git_call, \
+             mock.patch.object(merge_regen, 'guards_for_paths', return_value=guards), \
+             mock.patch.object(merge_regen.subprocess, 'run', return_value=mock.Mock(returncode=0)) as run, \
+             mock.patch('conversation_packagers.repackage_stale', return_value=(0, [])):
+            code, _ = merge_regen.regenerate(self.repo, {'public/docs/assets/web_publications/catalog.json'})
+        self.assertEqual(code, 0)
+        self.assertTrue(any(call.args[0][-2:] == [str(self.repo/'tools/docs_publications.py'), 'sync']
+                            for call in run.call_args_list))
+        git_call.assert_any_call(self.repo, 'add', '-A', '--', 'public/docs/assets/web_publications')
+
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
         self.repo = Path(self._tmp.name)
@@ -67,6 +86,32 @@ class MergeRegenTest(unittest.TestCase):
         self.assertIn("notes.txt", result.stderr)
         self.assertNotIn("kdoc_worklist", result.stderr)
         self.assertEqual(self.generated.read_text(), "ours\n")
+
+    def test_continue_skips_only_the_drift_checks_just_regenerated(self) -> None:
+        sys.path.insert(0, str(SCRIPT.parent))
+        import merge_regen
+
+        git(self.repo, "config", "merge.field-generated.driver", "true")
+        git(self.repo, "config", "merge.field-counts.driver", COUNTS_DRIVER)
+        self._commit_both("ours", source=False)
+        git(self.repo, "merge", "--no-ff", "--no-commit", "other")
+        real_run = subprocess.run
+        guards = []
+
+        def run(command, **kwargs):
+            if any(str(arg).endswith("check_staged_generated_artifacts.py") for arg in command):
+                guards.append(command)
+                return subprocess.CompletedProcess(command, 0)
+            return real_run(command, **kwargs)
+
+        with mock.patch.object(merge_regen, "regenerate", return_value=(0, {"checkCodebaseReference"})), \
+                mock.patch.object(Path, "cwd", return_value=self.repo), \
+                mock.patch.object(merge_regen.subprocess, "run", side_effect=run):
+            self.assertEqual(merge_regen.main(["--continue", "--no-commit"]), 0)
+        self.assertEqual(len(guards), 1)
+        self.assertIn("--skip", guards[0])
+        self.assertEqual(guards[0][guards[0].index("--skip") + 1], "checkCodebaseReference")
+        self.assertNotIn("citationGates", guards[0])
 
 
 COUNTS_SCRIPT = SCRIPT.parent / "merge_derived_counts.py"

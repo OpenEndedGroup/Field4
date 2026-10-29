@@ -875,30 +875,33 @@ saturate
 The compiler turns a program into one GLSL function named by a prefix you choose:
 
 ```diffstatic {data-lang=glsl}
-vec4 prefix(vec4 prefix_in) { ... }
+vec4 prefix(vec4 prefix_in) {
+    ...
+}
 ```
 
 Named StackSL definitions become GLSL functions whose names start with the same prefix, which keeps them out of the rest of your shader's names:
 
 ```diffstatic {data-lang=glsl}
-vec4 prefix_warp(vec4 prefix_in) { ... }
-vec4 prefix_paletteMist(vec4 prefix_in) { ... }
+vec4 prefix_warp(vec4 prefix_in) {
+    ...
+}
+vec4 prefix_paletteMist(vec4 prefix_in) {
+    ...
+}
 ```
 
 The low-level compiler is in `afield.lang.stacksl`:
 
 ```diffstatic {data-lang=kotlin}
-import afield.lang.stacksl.StackSLCompileOptions
-import afield.lang.stacksl.StackSLCompiler
-
 val result = StackSLCompiler.compile(
     source = stackSL ?: "",
     options = StackSLCompileOptions(
         prefix = "ping",
         entrypoint = "main",
         sampleTextures = ["state"],
-        externalizeConstants = true
-    )
+        externalizeConstants = true,
+    ),
 )
 
 if (!result.ok) {
@@ -916,7 +919,7 @@ From a box, the stdlib helper is shorter:
 val glsl = stackSLToGlsl(
     prefix = "ping",
     sampleTextures = ["otherView"],
-    declareSamplers = false
+    declareSamplers = false,
 )
 ```
 
@@ -989,13 +992,13 @@ module from those two properties and binds the slot. Connect the box beneath
 the renderer box that opened the window; `renderer` is then in scope:
 
 ```diffstatic {data-lang=kotlin}
-val module = moduleHere { }
+val module = moduleHere {}
 val mesh = Mesh()
 module += mesh named "fullscreen"
-mesh.resize(3)   // three vertices and no attributes: the vertex shader makes the triangle
+mesh.resize(3) // three vertices and no attributes: the vertex shader makes the triangle
 renderer += module
 
-module.program = "uv 4.0 * fbm palette saturate"   // binds and hot-reloads
+module.program = "uv 4.0 * fbm palette saturate" // binds and hot-reloads
 ```
 
 !!! note "Put the GLSL in the box's properties"
@@ -1089,11 +1092,11 @@ reads your push constants cannot be drawn alone, and the card says so.
 From Kotlin, the block is an ordinary uniform of the module:
 
 ```diffstatic {data-lang=kotlin}
-module.program_numbers["program_wire_2"] = 9f   // taking hold of the block makes the slot live
+module.program_numbers["program_wire_2"] = 9f // taking hold of the block makes the slot live
 
 val scope = KeyframeScope()
-scope.stackAuto(module, "program")          // the slot's text, which recompiles when a key applies
-scope.stackAutoNumbers(module, "program")   // its numbers, as lanes program.k0, program.k1, …
+scope.stackAuto(module, "program") // the slot's text, which recompiles when a key applies
+scope.stackAutoNumbers(module, "program") // its numbers, as lanes program.k0, program.k1, …
 ```
 
 `stackAutoNumbers` registers one lane per typed number, numbered as the card
@@ -1148,7 +1151,7 @@ the cursor on a line and the note beside it shows that line's stage, drawn alone
 as **Render this function alone** draws it, which the caption says. Both kinds of
 string are coloured as StackSL.
 
-```diffstatic_runner {data-lang=kotlin capture="ui" graphics-context=true region="window" clip-selector=".afield-suggest" screenshot="assets/stacksl/stackauto-in-string-completion.png" transcript="assets/transcripts/stackauto_numbers_setup.yaml" capture-box="stackauto_numbers" padding="6" wait="0" timeout="300" warm-completion=true embed=true hidden=true name="stackauto-in-string-completion" alt="The completion popup opened inside the slot's string, after the pal of palette. On the left, under WORDS, one row: palette, with its stack effect t a b c d — color. On the right, a square of blue, white, orange and violet cloud captioned line 7 · stack.auto.program, what it leaves on the stack, at t = 1.75 s · GPU (Apple M1 Max), drawn alone — not with your shader's input; under it the cheatsheet entry: cosine palette a + bcos(tc + d), and source StackSL cheatsheet."}
+```diffstatic_runner {data-lang=kotlin capture="ui" graphics-context=true region="window" clip-selector=".afield-suggest" screenshot="assets/stacksl/stackauto-in-string-completion.png" transcript="assets/transcripts/stackauto_numbers_setup.yaml" capture-box="stackauto_numbers" padding="6" wait="0" timeout="300" embed=true hidden=true name="stackauto-in-string-completion" alt="The completion popup opened inside the slot's string, after the pal of palette. On the left, under WORDS, one row: palette, with its stack effect t a b c d — color. On the right, a square of blue, white, orange and violet cloud captioned line 7 · stack.auto.program, what it leaves on the stack, at t = 1.75 s · GPU (Apple M1 Max), drawn alone — not with your shader's input; under it the cheatsheet entry: cosine palette a + bcos(tc + d), and source StackSL cheatsheet."}
 // In the slot's one-line string, with the caret after the `pal` of `palette`: ask for completion there.
 ui.eval("window.localStorage.removeItem('field.suggest.recency.v1'); return 'setup';")
 ui.openEditor("stackauto_numbers")
@@ -1290,7 +1293,7 @@ val template = StackSLCpu.stillTemplate()
 val target = StackSLCpu.renderProgram(targetProgram, template, 64, 64)
 val result = StackSLFit.fit(seedProgram, target, template, dim = 64, iterations = 80)
 
-println(result.fittedProgram)      // StackSL source, with the fitted numbers in place
+println(result.fittedProgram) // StackSL source, with the fitted numbers in place
 result.report().forEach(::println) // wire #1  '0.5' at 2:1  0.5 -> 0.59025836
 ```
 

@@ -35,6 +35,10 @@ import kotlinx.coroutines.yield
 import java.io.Closeable
 
 /**
+ * Pd as a box Main Language: [PdExecution] runs a child's `code` as a patch and a selected line as a Pd message, and [installPdLanguage] registers it.
+ */
+
+/**
  * Pure Data as a box language: set a box's Main Language to Pd and its children hold patches.
  *
  * A child's `code` is the text of a `.pd` file. **Run** (or launch) opens it in a Pd of the box's own

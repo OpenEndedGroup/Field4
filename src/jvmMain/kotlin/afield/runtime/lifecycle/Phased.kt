@@ -36,6 +36,15 @@ import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.coroutines.*
 
 /**
+ * Frame-by-frame animation for box code: return a [Frames] and Field runs it once per Runloop frame.
+ *
+ * [frames], [eachFrame], [loop] and [forever] build a [Frames] from a suspending body that calls
+ * `frame()` to wait for the next frame; [Box.launchFrames] runs one on the [Framer] dispatcher. The
+ * file also holds [Generator], a small coroutine-based generator built with [generator] or
+ * [generator2].
+ */
+
+/**
  * A frame-based animation. Returning a [Frames] from launched box code makes Field
  * run its [body] once per frame on the Runloop (see [Box.launchFrames] and the
  * `Frames` return-value handler in `ReturnValueRegistry.registerFramesReturnValue`).

@@ -44,7 +44,8 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import java.io.File
 
 /**
- * Kits: one machine, many documents. A kit is what every document of one kind receives: the code of the boxes that play its roles
+ * Kits package the shared parts of one kind of document so many documents can be installed from, and
+ * migrated to, the same source. A kit is what every document of one kind receives: the code of the boxes that play its roles
  * (providers), the sources those boxes hold in other properties (a rule set, a recipe), and the
  * asset files they read from the document's `files/` folder. It is a directory with a `kit.json`
  * beside those files; `tools/field_kit.py` makes one from a document, rehashes it, installs it in
@@ -72,7 +73,7 @@ import java.io.File
  *
  * **The document owns a copy.** A document on a kit records the manifest it was last installed from in `files/kit.json` (its
  * *record*), with the kit's directory. Nothing changes a document's copy behind its back: a newer
- * kit is only a difference [inspect] reports, until a migration installs it. [inspect] compares
+ * kit is only a difference [Kits.inspect] reports, until a migration installs it. [Kits.inspect] compares
  * three hashes for every property and asset: the record's, the document's, and the kit's.
  * The document matching the kit is current; matching the record (and not the kit) means the kit
  * changed it, which a migration installs; matching neither means the document's own edit, which
@@ -80,6 +81,8 @@ import java.io.File
  * such as the baseline an audit checks candidates against; a migration replaces it whenever it
  * differs from the kit, and says so.
  */
+
+/** Reads kit manifests and document records, and compares a document's role boxes and assets against them. */
 object Kits {
     /** The record's path inside a document folder: `files/kit.json`, readable from a box as `"kit.json".file`. */
     const val RECORD = "files/kit.json"
@@ -131,6 +134,7 @@ object Kits {
         val recorded = record(documentDir)
         val kitDirectory = kit?.let { if (it.name == "kit.json" && it.isFile) it.parentFile else it }?.absoluteFile
             ?: recorded?.directory?.let(::File)
+            ?: documentDir.takeIf { recorded != null && File(it, "kit.json").isFile }
         val current = kitDirectory?.takeIf { File(it, "kit.json").isFile }?.let(::read)
         val problems = mutableListOf<String>()
         if (recorded == null && current == null) {
@@ -261,7 +265,9 @@ data class KitItem(val role: String?, val property: String?, val asset: String?,
  */
 data class KitInspection(val kit: String?, val recordedRevision: String?, val kitRevision: String?, val kitDirectory: String?,
     val kitFound: Boolean, val items: List<KitItem>, val problems: List<String>,
-    val roleProperty: String = Kits.DEFAULT_ROLE_PROPERTY, val launchOrder: List<String> = emptyList()) {
+    val roleProperty: String = Kits.DEFAULT_ROLE_PROPERTY, val launchOrder: List<String> = emptyList(),
+    /** The document's kit package, when it was created from one; [Box.showKit] fills it in. */
+    val packageInstance: KitInstanceInspection? = null) {
     /** Items in [state]. */
     fun inState(state: KitItemState): List<KitItem> = items.filter { it.state == state }
 
@@ -304,11 +310,32 @@ data class KitInspection(val kit: String?, val recordedRevision: String?, val ki
  * Show which kit this document runs, and every property and asset that differs from it, in a box
  * output ([channel], by default `kit`). [kit] is a kit directory to compare against; by default,
  * the one the document's record names.
+ *
+ * A document created from a kit package (one with a `.field-kit-instance.json`) also gets the
+ * package's line on the card: the package, the revision this document was made from, the installed
+ * revision, and what an update would change. [KitInspection.packageInstance] carries it.
  */
 fun Box.showKit(kit: File? = null, channel: String = "kit"): KitInspection {
-    val inspection = Kits.inspect(inside.boxes.values, File(inside.filename), kit)
+    val document = File(inside.filename)
+    val packageInstance = runCatching { KitInstances.record(document)?.let { KitInstances.inspect(document) } }.getOrNull()
+    val inspection = Kits.inspect(inside.boxes.values, document, kit).copy(packageInstance = packageInstance)
     BoxStudies.show(this, channel, kitCardHtml(inspection))
     return inspection
+}
+
+/** One line for a document's kit package: revision, installed revision, and what an update would do. */
+internal fun packageSummary(p: KitInstanceInspection): String {
+    val made = "Made from package '${p.record.kit}' at revision ${KitInspection.short(p.record.revision)}"
+    if (p.availableRevision.isEmpty()) return "$made; " + p.conflicts.joinToString("; ").ifBlank { "it is not installed" } + "."
+    val installed = if (p.availableRevision == p.record.revision) "; that revision is installed"
+        else "; revision ${KitInspection.short(p.availableRevision)} is installed"
+    val changes = p.changes.groupBy { it.state }.entries.joinToString(", ") { (state, list) -> "${list.size} ${state.replace('-', ' ')}" }
+    val update = when {
+        p.conflicts.isNotEmpty() -> ". An update would conflict on ${p.conflicts.joinToString()}"
+        changes.isNotEmpty() -> ". Files differ: $changes"
+        else -> ". No file differs from it"
+    }
+    return made + installed + update + "."
 }
 
 internal fun kitCardHtml(inspection: KitInspection): String {
@@ -334,7 +361,7 @@ internal fun kitCardHtml(inspection: KitInspection): String {
 .$prefix p{margin:8px 0 0;user-select:text;white-space:pre-wrap;overflow-wrap:anywhere}
 .$prefix table{border-collapse:collapse;margin-top:12px;width:100%}.$prefix td{padding:3px 12px 3px 0;vertical-align:top}.$prefix td+td{text-align:right;padding-right:0}
 </style><div class="$prefix" data-kit="${kitEscape(inspection.kit.orEmpty())}" data-afield-intrinsic-width="640">
-<div class="kit-title">$title<span>${kitEscape(revision)}</span></div><p>${kitEscape(inspection.summary())}</p>
+<div class="kit-title">$title<span>${kitEscape(revision)}</span></div><p>${kitEscape(inspection.summary())}</p>${inspection.packageInstance?.let { "<p class=\"kit-package\">${kitEscape(packageSummary(it))}</p>" }.orEmpty()}
 <table>$rows</table></div>
 """.trimIndent()
 }

@@ -1,5 +1,4 @@
 import afield.simulation.physics.*
-import afield.math.linalg.vec
 
 /*
 Everything at once, and one knob.

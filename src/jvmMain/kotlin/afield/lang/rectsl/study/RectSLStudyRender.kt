@@ -41,6 +41,12 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 
 /**
+ * Drawing a RectSL scene for a study, on the GPU in a running window ([RectSLGpuRasterizer]) or by the
+ * CPU reference ([CpuRectSLRasterizer]), through the one shader setup in [RectSLStudyShader] so that
+ * both give the same frames.
+ */
+
+/**
  * How a RectSL scene is drawn for a study, in the window and in every piece of evidence — the one
  * place those two are made to agree.
  *
@@ -428,7 +434,7 @@ class RectSLGpuRasterizer(
                     blend = true
                     depthTest = false
                     primitiveType = triangles
-                    t.apply()
+                    +t
                     errorHandler = { message, _ -> error = message }
                 }).pointer()
                 if (!built.current.valid) throw Unavailable("the GPU shader did not build: ${error ?: "unknown error"}")

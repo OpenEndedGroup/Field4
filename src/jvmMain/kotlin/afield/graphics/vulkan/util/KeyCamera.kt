@@ -1,5 +1,11 @@
 package afield.graphics.vulkan.util
 
+/**
+ * Keyboard camera controls for a Vulkan window.
+ *
+ * [KeyCamera] registers a poll callback on the renderer that moves a [Camera] from held keys; [keyCamera] and [KeyCameraDelegateProvider] create one named after the property it is assigned to, so re-running a box replaces its controls rather than adding more.
+ */
+
 import afield.document.graph.Box
 import afield.graphics.vulkan.Renderer
 import afield.document.context.fromContext

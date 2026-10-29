@@ -4,7 +4,11 @@ import afield.simulation.petri.*
 // forever and the state space is infinite.
 val leak = petri {
     place("run", tokens = 1)
-    t("make") { from("run"); to("run"); to("queue") }
+    t("make") {
+        from("run")
+        to("run")
+        to("queue")
+    }
 }
 
 // The exhaustive search cannot finish, and does not pretend to. Every accessor that would
@@ -23,14 +27,20 @@ println(cover.report())
 println("bound('queue') = ${cover.bound("queue")}   (null here means omega, not unknown)")
 println("bound('run')   = ${cover.bound("run")}")
 
-// The trade, stated: coverability terminates on everything and is only *valid* for plain
-// place/transition nets. Add a capacity and it says so rather than guessing — even here,
-// where it happens to get the right answer anyway, because a capped place is bounded by
-// its capacity whatever the pumping argument says and so is never given an ω.
+/*
+The trade, stated: coverability terminates on everything and is only *valid* for plain
+place/transition nets. Add a capacity and it says so rather than guessing — even here,
+where it happens to get the right answer anyway, because a capped place is bounded by
+its capacity whatever the pumping argument says and so is never given an ω.
+*/
 val capped = petri {
     place("run", tokens = 1)
     place("queue", capacity = 3)
-    t("make") { from("run"); to("run"); to("queue") }
+    t("make") {
+        from("run")
+        to("run")
+        to("queue")
+    }
 }
 println()
 println(capped.coverability().report())

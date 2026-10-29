@@ -21,6 +21,13 @@ import java.nio.file.Path
 import kotlin.io.path.exists
 
 /**
+ * The FFM binding to `libmanifoldc` that [Solid] and [Section] are built on, plus the small public enums they take.
+ *
+ * Box code needs only [ManifoldLibrary], to ask whether the native library is installed, and the
+ * option enums [BooleanOp], [JoinType] and [FillRule]; the native entry points themselves are internal.
+ */
+
+/**
  * The Panama/FFM plumbing under [Solid] and [Section]: where `libmanifoldc` is, the function
  * descriptors for the C entry points Field uses, and the two upcall stubs that let a Kotlin lambda
  * be a Manifold callback.
@@ -135,7 +142,11 @@ internal object ManifoldNative {
     // Handles
     // ==========================================================================================
 
+    /** Every descriptor a handle was bound with, by symbol, for [ManifoldHeaderCheck]. */
+    internal val boundDescriptors = java.util.concurrent.ConcurrentHashMap<String, FunctionDescriptor>()
+
     private fun handle(name: String, descriptor: FunctionDescriptor): MethodHandle {
+        boundDescriptors[name] = descriptor
         val symbol = lookup.find(name).orElseThrow {
             UnsatisfiedLinkError(
                 "libmanifoldc has no symbol $name — this is Manifold " +

@@ -41,6 +41,7 @@ import afield.app.server.PLAYWRIGHT_VIEWPORT_HEIGHT
 import afield.app.server.PLAYWRIGHT_VIEWPORT_WIDTH
 import afield.app.server.Server
 import afield.app.server.SessionInformation
+import afield.app.server.ReadOnlyDocuments
 import afield.app.server.documents
 import afield.app.server.ensurePlaywrightForSessionIfNeeded
 import afield.app.server.globalPlaywriteContext
@@ -99,6 +100,17 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.system.measureTimeMillis
 
+/**
+ * Records the operations a person or agent performs on a document and replays them as named macros.
+ *
+ * [OperationTranscript] logs edits, moves, executions, launches and stops as they happen
+ * (`recordEdit`, `recordMove`, `recordExecuteFragment`, `recordLaunch`, `recordStop`), and stores
+ * macros as YAML files in a `macros/` folder at document, project or workspace scope
+ * (`listMacros`, `writeMacro`, `runMacro`). The backdoor's `macro write` and `macro run` commands
+ * use this; the YAML format and examples are in `dev_docs/agents/OPERATION_TRANSCRIPT.md`.
+ */
+
+/** Runs one operation per key at a time; a caller arriving while it runs waits for the same result. */
 internal class InFlightOperationCoalescer<K, V> {
     private val active = ConcurrentHashMap<K, CompletableFuture<V>>()
 
@@ -200,6 +212,14 @@ object OperationTranscript {
         val dir: File
     )
 
+    private fun macroWriteRefusal(documentPath: String, location: MacroLocation, name: String = ""): MacroResult? {
+        if (location.scope != "document" || !ReadOnlyDocuments.blocksWritesTo(normalizeDocumentPath(documentPath))) return null
+        val target = if (name.isBlank()) location.dir else macroFile(location, name)
+        ReadOnlyDocuments.refuseWrite("OperationTranscript.macro", target.absolutePath)
+        return MacroResult(false, "The document is read-only; its macros cannot be changed.",
+            name = name, path = target.absolutePath, scope = location.scope, projectName = location.projectName)
+    }
+
     private data class MacroReplayContext(
         val macroName: String = "",
         val operationIndex: Int = -1,
@@ -215,6 +235,19 @@ object OperationTranscript {
         val direction: String,
         val strict: Boolean,
         val initializeCreatedBoxes: Boolean,
+        val replay: MacroReplayOptions = MacroReplayOptions(),
+    )
+
+    /**
+     * How a run places what it replays. [asCopy] gives the boxes the macro creates fresh uids, so a
+     * second run makes a second set; [offsetX]/[offsetY] shift their frames; [step] replays one
+     * operation (0-based) of the macro and nothing else, which is how the panel steps through one.
+     */
+    data class MacroReplayOptions(
+        val asCopy: Boolean = false,
+        val offsetX: Double = 0.0,
+        val offsetY: Double = 0.0,
+        val step: Int = -1,
     )
 
     private val activeMacroRuns = InFlightOperationCoalescer<MacroRunKey, MacroRunResult>()
@@ -247,6 +280,10 @@ object OperationTranscript {
         val cleanName = sanitizeMacroName(name)
         if (cleanName.isBlank()) return MacroResult(false, "Macro name cannot be empty.")
 
+        val location = macroLocation(documentPath, scope, projectName)
+            ?: return MacroResult(false, "No project macro scope is available for this document.")
+        macroWriteRefusal(documentPath, location, cleanName)?.let { return it }
+
         val state = stateFor(documentPath)
         val frame = Runloop.runLoop.frame
         val endId = UUID.randomUUID().toString()
@@ -269,15 +306,13 @@ object OperationTranscript {
                 .subList(startIndex + 1, endIndex)
                 .filterNot { it.containsKey("marker") }
                 .map { deepLinkedMap(it) }
-            coalesceOperationRuns(slice) to startSelection
+            withoutIdleWaits(coalesceOperationRuns(slice)) to startSelection
         } ?: run {
             checkpoint(documentPath)
             return MacroResult(false, "No macro start marker found.")
         }
 
         val (slice, sourceSelection) = sliceAndSelection
-        val location = macroLocation(documentPath, scope, projectName)
-            ?: return MacroResult(false, "No project macro scope is available for this document.")
         val macroPath = macroFile(location, cleanName)
         val text = writeMacroYaml(cleanName, documentPath, slice, sourceSelection)
         macroPath.parentFile?.mkdirs()
@@ -342,12 +377,14 @@ object OperationTranscript {
         if (cleanName.isBlank()) return MacroResult(false, "Macro name cannot be empty.")
         val location = macroLocation(documentPath, scope, projectName)
             ?: return MacroResult(false, "No project macro scope is available for this document.", name = cleanName)
+        macroWriteRefusal(documentPath, location, cleanName)?.let { return it }
         val file = macroFile(location, cleanName)
         file.parentFile?.mkdirs()
         val wrote = file.safeSave(contents.trimEnd() + "\n", createBackup = true, maxBackups = 10, atomic = true)
         val count = runCatching { loadMacroOperations(file).size }.getOrDefault(0)
         return MacroResult(
-            success = wrote,
+            // safeSave returns false when the requested contents are already on disk.
+            success = true,
             message = if (wrote) "Wrote macro '$cleanName'." else "Macro '$cleanName' was unchanged.",
             name = cleanName,
             path = file.absolutePath,
@@ -432,6 +469,89 @@ object OperationTranscript {
         )
     }
 
+    /**
+     * Rename a saved macro within its scope. The YAML's own `name:` line follows the file name, so
+     * the panel and the palette never disagree about what the macro is called. Refuses to replace
+     * an existing macro of the new name.
+     */
+    fun renameMacro(
+        documentPath: String,
+        name: String,
+        newName: String,
+        scope: String = "document",
+        projectName: String = ""
+    ): MacroResult {
+        val cleanName = sanitizeMacroName(name)
+        val cleanNew = sanitizeMacroName(newName)
+        if (cleanName.isBlank() || cleanNew.isBlank()) return MacroResult(false, "Macro names cannot be empty.")
+        val location = macroLocation(documentPath, scope, projectName)
+            ?: return MacroResult(false, "No $scope macro scope is available for this document.", name = cleanName)
+        macroWriteRefusal(documentPath, location, cleanName)?.let { return it }
+        val source = macroFile(location, cleanName)
+        if (!source.exists()) return MacroResult(false, "No macro named '$cleanName'.", name = cleanName, scope = location.scope)
+        if (cleanNew == cleanName) return MacroResult(true, "Macro '$cleanName' already has that name.", name = cleanName, scope = location.scope)
+        val target = macroFile(location, cleanNew)
+        if (target.exists()) return MacroResult(false, "A macro named '$cleanNew' already exists.", name = cleanName, scope = location.scope)
+        val text = renameMacroYaml(source.readText(), cleanNew)
+        val wrote = target.safeSave(text, createBackup = false, atomic = true)
+        if (!wrote && !target.exists()) return MacroResult(false, "Could not write '$cleanNew'.", name = cleanName, scope = location.scope)
+        source.delete()
+        return MacroResult(
+            true,
+            "Renamed macro '$cleanName' to '$cleanNew'.",
+            name = cleanNew,
+            path = target.absolutePath,
+            content = target.readText(),
+            operationCount = runCatching { loadMacroOperations(target).size }.getOrDefault(0),
+            scope = location.scope,
+            projectName = location.projectName
+        )
+    }
+
+    /** The YAML of a macro with its top-level `name:` set to [name] (added when it has none). */
+    internal fun renameMacroYaml(text: String, name: String): String {
+        val lines = text.lines().toMutableList()
+        val index = lines.indexOfFirst { it.startsWith("name:") }
+        val line = "name: ${formatScalar(name)}"
+        if (index >= 0) lines[index] = line else lines.add(0, line)
+        return lines.joinToString("\n").trimEnd() + "\n"
+    }
+
+    /**
+     * Delete a saved macro. The file is moved to the scope's `.deleted/` folder with a timestamp,
+     * not erased, so a deletion from the panel can be recovered by hand; the macro lists only read
+     * the scope folder itself.
+     */
+    fun deleteMacro(
+        documentPath: String,
+        name: String,
+        scope: String = "document",
+        projectName: String = ""
+    ): MacroResult {
+        val cleanName = sanitizeMacroName(name)
+        if (cleanName.isBlank()) return MacroResult(false, "Choose a macro to delete.")
+        val location = macroLocation(documentPath, scope, projectName)
+            ?: return MacroResult(false, "No $scope macro scope is available for this document.", name = cleanName)
+        macroWriteRefusal(documentPath, location, cleanName)?.let { return it }
+        val source = macroFile(location, cleanName)
+        if (!source.exists()) return MacroResult(false, "No macro named '$cleanName'.", name = cleanName, scope = location.scope)
+        val trash = File(location.dir, ".deleted").also { it.mkdirs() }
+        val stamp = Instant.now().toString().replace(":", "-")
+        val target = File(trash, "$cleanName-$stamp.yaml")
+        val moved = source.renameTo(target) || run {
+            target.writeText(source.readText())
+            source.delete()
+        }
+        return MacroResult(
+            moved,
+            if (moved) "Deleted macro '$cleanName' (kept in ${trash.name}/${target.name})." else "Could not delete '$cleanName'.",
+            name = cleanName,
+            path = target.absolutePath,
+            scope = location.scope,
+            projectName = location.projectName
+        )
+    }
+
     fun saveTranscriptSelectionAsMacro(
         documentPath: String,
         name: String,
@@ -460,6 +580,7 @@ object OperationTranscript {
         val coalesced = coalesceOperationRuns(operations)
         val location = macroLocation(documentPath, scope, projectName)
             ?: return MacroResult(false, "No project macro scope is available for this document.", name = cleanName)
+        macroWriteRefusal(documentPath, location, cleanName)?.let { return it }
         val file = macroFile(location, cleanName)
         val sourceSelection = selectionEntries(selection)
         val text = writeMacroYaml(cleanName, documentPath, coalesced, sourceSelection)
@@ -486,6 +607,7 @@ object OperationTranscript {
         if (documentPath.isBlank()) return MacroResult(false, "No document path available.")
         val location = macroLocation(documentPath, scope, projectName)
             ?: return MacroResult(false, "No macro scope is available for this document.")
+        if (!location.dir.isDirectory) macroWriteRefusal(documentPath, location)?.let { return it }
         location.dir.mkdirs()
         return MacroResult(
             true,
@@ -505,6 +627,7 @@ object OperationTranscript {
         scope: String = "document",
         projectName: String = "",
         initializeCreatedBoxes: Boolean = true,
+        replay: MacroReplayOptions = MacroReplayOptions(),
     ): MacroRunResult {
         val cleanName = sanitizeMacroName(name)
         val location = macroLocation(documentPath, scope, projectName)
@@ -523,18 +646,33 @@ object OperationTranscript {
             direction = normalizedDirection,
             strict = strict,
             initializeCreatedBoxes = initializeCreatedBoxes,
+            replay = replay,
         )
-        return activeMacroRuns.run(key) {
-            runMacroOnce(
-                documentPath = documentPath,
-                name = cleanName,
-                targetBoxes = normalizedTargets,
-                direction = normalizedDirection,
-                strict = strict,
-                scope = scope,
-                projectName = projectName,
-                initializeCreatedBoxes = initializeCreatedBoxes,
-            )
+        // Box code calling this (a box that replays a macro) runs on a thread with no session
+        // bound; the document's own session is the one the macro's operations act on.
+        val bound = runCatching { thisSessionInfo.get() }.getOrNull()
+        val session = if (bound != null) null else documents.values.firstOrNull {
+            normalizeDocumentPath(it.filename) == normalizeDocumentPath(documentPath)
+        }
+        if (session != null) thisSessionInfo.set(session)
+        try {
+            return activeMacroRuns.run(key) {
+                afield.app.diagnostics.LatencySpans.time("transcript.run", detail = cleanName) {
+                    runMacroOnce(
+                        documentPath = documentPath,
+                        name = cleanName,
+                        targetBoxes = normalizedTargets,
+                        direction = normalizedDirection,
+                        strict = strict,
+                        scope = scope,
+                        projectName = projectName,
+                        initializeCreatedBoxes = initializeCreatedBoxes,
+                        replay = replay,
+                    )
+                }
+            }
+        } finally {
+            if (session != null) thisSessionInfo.remove()
         }
     }
 
@@ -547,6 +685,7 @@ object OperationTranscript {
         scope: String,
         projectName: String,
         initializeCreatedBoxes: Boolean,
+        replay: MacroReplayOptions = MacroReplayOptions(),
     ): MacroRunResult {
         val cleanName = sanitizeMacroName(name)
         val location = macroLocation(documentPath, scope, projectName)
@@ -557,7 +696,19 @@ object OperationTranscript {
         if (!file.exists()) {
             return MacroRunResult(false, "No macro named '$cleanName'.", cleanName, direction, targetBoxes, 0, 0)
         }
-        val operations = loadMacroOperations(file)
+        val loaded = loadMacroOperations(file)
+        val relocated = if (replay.asCopy || replay.offsetX != 0.0 || replay.offsetY != 0.0) {
+            relocateOperations(loaded, replay.asCopy, replay.offsetX, replay.offsetY)
+        } else loaded
+        val operations = if (replay.step >= 0) {
+            val one = relocated.getOrNull(replay.step)
+                ?: return MacroRunResult(
+                    false,
+                    "Macro '$cleanName' has no step ${replay.step + 1} (it has ${relocated.size}).",
+                    cleanName, direction, targetBoxes, 0, 0
+                )
+            listOf(one)
+        } else relocated
         val normalizedDirection = if (direction.equals("undo", ignoreCase = true)) "undo" else "do"
         val ordered = if (normalizedDirection == "undo") operations.asReversed() else operations
         val targets = targetBoxes.filter { it.isNotBlank() }.ifEmpty { listOf("") }
@@ -591,7 +742,7 @@ object OperationTranscript {
                 skipped += ordered.size
                 return@forEach
             }
-            val primarySource = firstOperationBox(operations)
+            val primarySource = firstOperationBox(relocated)
             val boxMap = if (target.isNotBlank() && primarySource != null) mapOf(primarySource to target) else emptyMap()
             var launchIndex = 0
             var index = 0
@@ -611,8 +762,11 @@ object OperationTranscript {
                         index++
                     }
                     val groupDiagnostics = mutableListOf<String>()
+                    val groupBoxes = launchGroup.joinToString(",") { (op, _) -> operationBoxName(op).orEmpty() }
                     val result = runCatching {
-                        applyMacroLaunchGroup(launchGroup, boxMap, collect, groupDiagnostics)
+                        afield.app.diagnostics.LatencySpans.time("transcript.launchGroup", detail = "$cleanName: $groupBoxes") {
+                            applyMacroLaunchGroup(launchGroup, boxMap, collect, groupDiagnostics)
+                        }
                     }
                     if (result.isSuccess) {
                         val (groupApplied, groupSkipped) = result.getOrThrow()
@@ -643,7 +797,9 @@ object OperationTranscript {
                     initializeCreatedBoxes = initializeCreatedBoxes,
                 )
                 val result = runCatching {
-                    applyMacroOperation(op, boxMap, normalizedDirection, strict, context, collect)
+                    afield.app.diagnostics.LatencySpans.time("transcript.op", box = operationBoxName(op), detail = "$cleanName: $verb") {
+                        applyMacroOperation(op, boxMap, normalizedDirection, strict, context, collect)
+                    }
                 }
                 if (result.isSuccess) {
                     if (result.getOrDefault(false)) applied++ else skipped++
@@ -923,6 +1079,11 @@ object OperationTranscript {
         synchronized(state.lock) {
             ensureLoaded(state)
             flushPendingEdit(state)
+            if (foldIntoPreviousCreate(state.entries, box.id, "frame", rectMap(to))) {
+                state.lastRecordedFrame = frame
+                state.dirty = true
+                return
+            }
             if (mergeMoveIntoPrevious(state, box.id, to)) {
                 state.lastRecordedFrame = frame
                 state.dirty = true
@@ -940,15 +1101,19 @@ object OperationTranscript {
         }
     }
 
+    // Recorded executions name the box and where in it, not a copy of its code: a replay runs the
+    // box as it is then (MacroReplayCode). A fragment keeps its text as `recordedCode`, which the
+    // replay looks for in the box's current code; a whole-box launch keeps one only when what ran
+    // was not the box's stored code.
     fun recordExecuteFragment(box: Box, execute: Execute) {
         recordExecutionEvent(
             box,
             "execute",
-            linkedMapOf(
+            linkedMapOf<String, Any?>(
                 "box" to box.id,
                 "property" to execute.property,
                 "line" to execute.line,
-                "code" to execute.code,
+                "recordedCode" to execute.code,
                 "singleLine" to execute.singleLine,
                 "type" to execute.type
             )
@@ -956,19 +1121,17 @@ object OperationTranscript {
     }
 
     fun recordLaunch(box: Box, execute: Execute, strand: String = execute.strand) {
-        recordExecutionEvent(
-            box,
-            "launch",
-            linkedMapOf(
-                "box" to box.id,
-                "property" to execute.property,
-                "line" to execute.line,
-                "code" to execute.code,
-                "singleLine" to execute.singleLine,
-                "type" to execute.type,
-                "strand" to strand.ifBlank { "default" }
-            )
+        val payload = linkedMapOf<String, Any?>(
+            "box" to box.id,
+            "property" to execute.property,
+            "line" to execute.line
         )
+        val stored = box.getPropertyRaw(execute.property) as? String
+        if (execute.type == "fragment" || stored?.trim() != execute.code.trim()) payload["recordedCode"] = execute.code
+        payload["singleLine"] = execute.singleLine
+        payload["type"] = execute.type
+        payload["strand"] = strand.ifBlank { "default" }
+        recordExecutionEvent(box, "launch", payload)
     }
 
     fun recordStop(box: Box) {
@@ -981,6 +1144,138 @@ object OperationTranscript {
         )
     }
 
+    /**
+     * A box the person just made on the canvas. The frontend creates a box by sending its name and
+     * then its frame (`createBox` in Main.kt), so the box's first property message is where the
+     * server learns of it; the handlers call this once the value is applied. The entry carries the
+     * box's name and frame, and the frame / first-value edits that follow are folded into it (see
+     * [foldIntoPreviousCreate]), so a recording reads `create {box, name, frame, properties}` rather
+     * than an edit from nothing. Without it a recording replayed into a fresh document edited boxes
+     * that did not exist (audit, 2026-10-20: `applied=2 skipped=5`, no boxes).
+     */
+    fun recordCreate(box: Box) {
+        if (box.id == "root" || box.id == METAROOT_ID) return
+        val documentPath = documentPathFor(box) ?: return
+        val frame = Runloop.runLoop.frame
+        val state = stateFor(documentPath)
+        synchronized(state.lock) {
+            ensureLoaded(state)
+            // The handlers for one new box run concurrently, so its frame, code or even a
+            // connection can be recorded a moment before its create. The create goes where the box
+            // is first named in this recording (it existed by then), and the moves and first
+            // values of it that follow fold into it. A pending edit of this box stays pending and
+            // folds once flushed.
+            if (state.pendingEdit?.box != box.id) flushPendingEdit(state)
+            val payload = linkedMapOf<String, Any?>("box" to box.id, "name" to box.name)
+            val rect = runCatching { box.frame }.getOrNull()
+            if (rect != null && !(rect.w == 0.0 && rect.h == 0.0)) payload["frame"] = rectMap(rect)
+            val createEntry = linkedMapOf<String, Any?>("create" to payload)
+            val since = state.entries.indexOfLast { it.containsKey("marker") } + 1
+            val firstMention = (since until state.entries.size).firstOrNull { entryNames(state.entries[it], box.id) }
+            if (firstMention == null) {
+                appendWaitIfNeeded(state, frame)
+                state.entries += createEntry
+            } else {
+                state.entries.add(firstMention, createEntry)
+                var index = firstMention + 1
+                while (index < state.entries.size) {
+                    val entry = state.entries[index]
+                    val verb = entry.keys.firstOrNull()?.lowercase().orEmpty()
+                    if (verb in launchVerbs || verb == "execute" || verb == "execute-fragment") break
+                    if (!entryNames(entry, box.id)) { index++; continue }
+                    val move = entry["move"] as? Map<*, *>
+                    val edit = entry["edit"] as? Map<*, *>
+                    when {
+                        move != null -> { payload["frame"] = move["to"]; state.entries.removeAt(index) }
+                        edit != null && edit["origin"] == null &&
+                            (edit["from"]?.toString().isNullOrEmpty() || edit["property"] == "name") -> {
+                            val property = edit["property"]?.toString().orEmpty()
+                            if (property == "name") payload["name"] = edit["to"]
+                            else {
+                                @Suppress("UNCHECKED_CAST")
+                                val properties = (payload["properties"] as? MutableMap<String, Any?>)
+                                    ?: linkedMapOf<String, Any?>().also { payload["properties"] = it }
+                                properties[property] = edit["to"]
+                            }
+                            state.entries.removeAt(index)
+                        }
+                        else -> index++
+                    }
+                }
+                // The box's current name and frame are the latest of all of these.
+                payload["name"] = box.name
+                if (rect != null && !(rect.w == 0.0 && rect.h == 0.0)) payload["frame"] = rectMap(rect)
+            }
+            state.lastRecordedFrame = frame
+            state.dirty = true
+        }
+    }
+
+    /** Whether [entry] names box [uid] (as its subject, or as either end of a connection). */
+    private fun entryNames(entry: Map<String, Any?>, uid: String): Boolean {
+        val payload = entry.values.firstOrNull() as? Map<*, *> ?: return false
+        return listOf("box", "uid", "id", "target", "parent", "child").any { payload[it]?.toString() == uid }
+    }
+
+    /** A box the person deleted (the `-delete-box` action). Replays as a tombstone; undoes as a restore. */
+    fun recordDelete(box: Box) {
+        if (box.id == "root" || box.id == METAROOT_ID) return
+        recordExecutionEvent(box, "delete", linkedMapOf("box" to box.id, "name" to box.name))
+    }
+
+    /** A connection the person made or removed (the `-connect` / `-disconnect` actions, the `g` key). */
+    fun recordConnect(parent: Box, child: Box, connected: Boolean) {
+        if (child.id == "root" || child.id == METAROOT_ID) return
+        recordExecutionEvent(
+            child,
+            if (connected) "connect" else "disconnect",
+            linkedMapOf("parent" to parent.id, "child" to child.id)
+        )
+    }
+
+    /**
+     * Fold a value into the `create` entry of [box]: `frame` sets the create's frame, `name` its
+     * name, anything else lands in its `properties`. True when folded. The search walks back over
+     * waits and over entries that do not name [box] (another box made in the same burst — the
+     * canvas makes boxes faster than their messages arrive), and stops at the first entry that
+     * names it (connections aside), which must be its create, or at any execute / launch, whose code might read the
+     * box as it was. So an edit made after anything else happened to the box stays an edit.
+     */
+    private fun foldIntoPreviousCreate(
+        entries: MutableList<LinkedHashMap<String, Any?>>,
+        box: String,
+        property: String,
+        value: Any?
+    ): Boolean {
+        var index = entries.lastIndex
+        while (index >= 0) {
+            val entry = entries[index]
+            val verb = entry.keys.firstOrNull()?.lowercase().orEmpty()
+            if (verb == "wait") { index--; continue }
+            if (verb in launchVerbs || verb == "execute" || verb == "execute-fragment" || verb == "marker") return false
+            val payload = entry.values.firstOrNull() as? Map<*, *> ?: return false
+            val names = listOf("box", "uid", "id", "target", "parent", "child").mapNotNull { payload[it]?.toString() }
+            // A connection does not read a box's name, frame or code, so a value can fold past it.
+            if (box !in names || verb == "connect" || verb == "disconnect") { index--; continue }
+            if (verb != "create") return false
+            break
+        }
+        if (index < 0) return false
+        @Suppress("UNCHECKED_CAST")
+        val payload = entries[index]["create"] as? MutableMap<String, Any?> ?: return false
+        when (property) {
+            "frame", "name" -> payload[property] = value
+            else -> {
+                @Suppress("UNCHECKED_CAST")
+                val properties = (payload["properties"] as? MutableMap<String, Any?>)
+                    ?: linkedMapOf<String, Any?>().also { payload["properties"] = it }
+                properties[property] = value
+            }
+        }
+        removeTrailingWaitsAfter(entries, index)
+        return true
+    }
+
     fun checkpoint(documentPath: String): Boolean {
         val state = states[normalizeDocumentPath(documentPath)] ?: return false
         val snapshot = synchronized(state.lock) {
@@ -988,6 +1283,10 @@ object OperationTranscript {
             flushPendingEdit(state)
             if (!state.dirty) return false
             state.entries.map { LinkedHashMap(it) }
+        }
+        if (ReadOnlyDocuments.blocksWritesTo(normalizeDocumentPath(documentPath))) {
+            ReadOnlyDocuments.refuseWrite("OperationTranscript.checkpoint", operationTranscriptFile(documentPath).absolutePath)
+            return false
         }
         return try {
             val file = operationTranscriptFile(documentPath)
@@ -1022,6 +1321,13 @@ object OperationTranscript {
         val pending = state.pendingEdit ?: return
         state.pendingEdit = null
         if (pending.from == pending.to) return
+        if (pending.origin.isBlank() && (pending.from.isEmpty() || pending.property == "name") &&
+            foldIntoPreviousCreate(state.entries, pending.box, pending.property, pending.to)
+        ) {
+            state.lastRecordedFrame = pending.lastFrame
+            state.dirty = true
+            return
+        }
         if (mergePendingEditIntoPrevious(state, pending)) {
             state.lastRecordedFrame = pending.lastFrame
             state.dirty = true
@@ -1181,6 +1487,20 @@ object OperationTranscript {
         return out
     }
 
+    /**
+     * A recording's waits, less the ones that are only the person's pauses. A wait right after an
+     * execute or launch is kept — what the code started may need the time — and every other wait
+     * goes, so a macro replays at once instead of at the speed it was performed (the 2026-10-20
+     * audit recording opened with 784 frames, thirteen seconds, of nothing).
+     */
+    internal fun withoutIdleWaits(entries: List<LinkedHashMap<String, Any?>>): List<LinkedHashMap<String, Any?>> =
+        entries.filterIndexed { index, entry ->
+            if (!entry.containsKey("wait")) return@filterIndexed true
+            val previous = entries.getOrNull(index - 1)?.keys?.firstOrNull()?.lowercase()
+            val next = entries.getOrNull(index + 1)
+            next != null && previous != null && (previous in launchVerbs || previous in setOf("execute", "execute-fragment"))
+        }
+
     private fun appendWaitIfNeeded(state: DocumentState, frame: Long) {
         val previous = state.lastRecordedFrame ?: return
         val delta = frame - previous
@@ -1210,8 +1530,9 @@ object OperationTranscript {
             (payload["box"] ?: payload["uid"] ?: payload["id"] ?: payload["target"])?.toString().orEmpty()
         }
         val property = (payload["property"] ?: payload["prop"])?.toString().orEmpty()
-        val from = payload["from"]?.toString().orEmpty()
-        val to = payload["to"]?.toString().orEmpty()
+        // A connection's two ends travel as from/to, so the panel can name both boxes.
+        val from = (payload["from"] ?: payload["parent"])?.toString().orEmpty()
+        val to = (payload["to"] ?: payload["child"])?.toString().orEmpty()
         val frame = when {
             verb == "wait" -> payload["frames"]?.toString().orEmpty()
             verb == "marker" -> payload["runloopFrame"]?.toString().orEmpty()
@@ -1509,18 +1830,90 @@ object OperationTranscript {
         return rawOps.mapNotNull { mapOfStringAny(it) }
     }
 
-    private fun firstOperationBox(operations: List<Map<String, Any?>>): String? =
-        operations.asSequence()
+    /**
+     * The box a macro "is about", which a run on a selection maps to the selected box. A box the
+     * macro creates itself is never that box: mapping a `create` onto the selection would rename
+     * and move the selected box instead of making a new one.
+     */
+    private fun firstOperationBox(operations: List<Map<String, Any?>>): String? {
+        val created = createdBoxes(operations)
+        return operations.asSequence()
+            .filter { operationVerb(it) !in createVerbs }
             .mapNotNull { op ->
                 val payload = op.values.firstOrNull() as? Map<*, *> ?: return@mapNotNull null
                 (payload["box"] ?: payload["uid"] ?: payload["id"] ?: payload["target"])?.toString()
             }
-            .firstOrNull()
+            .firstOrNull { it !in created }
+    }
+
+    private val createVerbs = setOf("create", "new-box", "box")
+
+    /** The uids a macro's own `create` operations make. */
+    internal fun createdBoxes(operations: List<Map<String, Any?>>): Set<String> =
+        operations.asSequence()
+            .filter { operationVerb(it) in createVerbs }
+            .mapNotNull { op ->
+                val payload = op.values.firstOrNull() as? Map<*, *> ?: return@mapNotNull null
+                (payload["box"] ?: payload["uid"] ?: payload["id"] ?: payload["target"])?.toString()
+            }
+            .toSet()
+
+    /**
+     * The operations of a macro rewritten for a replay "as a copy": every box the macro creates
+     * gets a fresh uid (consistently, wherever the macro names it), and every frame those boxes
+     * are given — at creation or by a later move — is shifted by ([dx], [dy]). Boxes the macro
+     * did not create keep their uids and frames. Replaying the result twice makes two copies side
+     * by side instead of re-editing one; replaying it with `fresh = false` and no offset is the
+     * macro as recorded.
+     */
+    internal fun relocateOperations(
+        operations: List<Map<String, Any?>>,
+        fresh: Boolean,
+        dx: Double,
+        dy: Double,
+        newUid: () -> String = { UUID.randomUUID().toString() },
+    ): List<LinkedHashMap<String, Any?>> {
+        val created = createdBoxes(operations)
+        val renames = if (fresh) created.associateWith { newUid() } else emptyMap()
+        fun shifted(rect: Any?): Any? {
+            val map = rect as? Map<*, *> ?: return rect
+            if (dx == 0.0 && dy == 0.0) return deepLinkedMap(map)
+            return deepLinkedMap(map).also {
+                it["x"] = (it["x"].asDoubleOrNull() ?: 0.0) + dx
+                it["y"] = (it["y"].asDoubleOrNull() ?: 0.0) + dy
+            }
+        }
+        val boxKeys = setOf("box", "uid", "id", "target", "parent", "child", "from", "to", "source")
+        return operations.map { op ->
+            val verb = op.keys.firstOrNull() ?: return@map deepLinkedMap(op)
+            val payload = deepLinkedMap(op.values.firstOrNull())
+            val subject = (payload["box"] ?: payload["uid"] ?: payload["id"] ?: payload["target"])?.toString()
+            val lowered = verb.lowercase()
+            if (lowered in createVerbs) {
+                payload["frame"]?.let { payload["frame"] = shifted(it) }
+                payload["rect"]?.let { payload["rect"] = shifted(it) }
+            } else if (lowered in setOf("move", "frame", "set-rect") && subject in created) {
+                listOf("from", "to", "frame", "value").forEach { key -> payload[key]?.let { payload[key] = shifted(it) } }
+            }
+            val keys = if (lowered == "connect" || lowered == "disconnect") boxKeys else boxKeys - setOf("from", "to")
+            keys.forEach { key ->
+                val value = payload[key]
+                if (value is String) renames[value]?.let { payload[key] = it }
+            }
+            linkedMapOf<String, Any?>(verb to payload)
+        }
+    }
 
     private val launchVerbs = setOf("launch", "launch-all", "launch-fragment")
 
     private fun operationVerb(operation: Map<String, Any?>): String =
         operation.keys.firstOrNull()?.lowercase().orEmpty()
+
+    /** The box an operation names (a `connect`'s child), for its latency span; null for `wait`, `await`, `save`. */
+    private fun operationBoxName(operation: Map<String, Any?>): String? {
+        val payload = operation.values.firstOrNull() as? Map<*, *> ?: return null
+        return (payload["box"] ?: payload["uid"] ?: payload["id"] ?: payload["target"] ?: payload["child"])?.toString()
+    }
 
     private fun applyMacroOperation(
         operation: Map<String, Any?>,
@@ -1631,7 +2024,7 @@ object OperationTranscript {
                 if (direction == "undo") return false
                 refreshMainLanguageRuntimes(thisSessionInfo.get().boxes.values)
                 val target = mappedBox() ?: return false
-                val exec = executeFromPayload(target.id, payload, fallbackType = "fragment")
+                val exec = executeFromPayload(verb, target.id, payload, fallbackType = "fragment")
                 // Await completion (like the launch path) so the fragment's output is
                 // captured into the run result — fire-and-forget stalls headlessly.
                 checkedMacroExecution(target, exec, collect) { reply ->
@@ -1659,6 +2052,7 @@ object OperationTranscript {
                 val target = mappedBox()
                     ?: box("__docs_drive__", createIfMissing = true, initIfCreated = true, root = info)
                 val driver = DocsUiDriver { globalPlaywriteContext ?: error("Playwright page unavailable") }
+                driver.session = info
                 target.properties["__docsUiDriver"] = driver
 
                 // Completion/autocomplete captures trigger a real Ctrl+Space against this freshly
@@ -1798,7 +2192,8 @@ object OperationTranscript {
                             driver.clipFailures.joinToString(", ")
                     }
                 } finally {
-                    if (recorder != null && videoPath != null) {
+                    // A script that filmed its own video (ui.filmCanvasFlight) has written videoPath already.
+                    if (recorder != null && videoPath != null && !recorder.discarded) {
                         val frames = runBlocking { recorder.stopAndEncode(java.nio.file.Path.of(videoPath)) }
                         lprintln("info,docs", "drive recorded $frames frames -> $videoPath")
                     }
@@ -2010,7 +2405,7 @@ object OperationTranscript {
             ?: return LaunchResolution.Failed(
                 "`$verb` target box `$mapped` is not present in the document${describePresentBoxes(info)}"
             )
-        val exec = executeFromPayload(target.id, payload, fallbackType = payload["type"]?.toString() ?: "launch")
+        val exec = executeFromPayload(verb, target.id, payload, fallbackType = payload["type"]?.toString() ?: "launch")
         if (exec.code.isBlank()) {
             return LaunchResolution.Failed(
                 "`$verb` target box `$mapped` has no code to run: neither the op nor the box's " +
@@ -2170,23 +2565,18 @@ object OperationTranscript {
         )
     }
 
-    private fun executeFromPayload(uid: String, payload: Map<*, *>, fallbackType: String): Execute {
+    private fun executeFromPayload(verb: String, uid: String, payload: Map<*, *>, fallbackType: String): Execute {
         val property = (payload["property"] ?: payload["prop"] ?: "code").toString()
-        // Fall back to the box's stored property when the op carries no code, so a
-        // `create` (which sets e.g. `code`) followed by a bare `execute`/`launch`
-        // runs that stored code instead of an empty string (which silently no-ops).
-        val explicitCode = payload["code"]?.toString()
-        val code = if (!explicitCode.isNullOrEmpty()) {
-            explicitCode
-        } else {
-            runCatching { box(uid, createIfMissing = false).getPropertyRaw(property) as? String }
-                .getOrNull().orEmpty()
-        }
+        // A macro replays against the box as it is now: whole-box launches run the box's current
+        // code, recorded fragments are found again in it (MacroReplayCode has the rules).
+        val live = runCatching { box(uid, createIfMissing = false).getPropertyRaw(property) as? String }.getOrNull()
+        val resolved = MacroReplayCode.resolve(verb, payload, live)
+        resolved.note?.let { lprintln("info,operation-transcript", "macro `$verb` of `$uid`: $it") }
         return Execute(
             uid = uid,
             type = (payload["type"] ?: fallbackType).toString(),
-            line = payload["line"].asIntOrDefault(0),
-            code = code,
+            line = resolved.line,
+            code = resolved.code,
             singleLine = payload["singleLine"].asBooleanOrDefault(false),
             property = property,
             strand = (payload["strand"] ?: "default").toString().ifBlank { "default" }

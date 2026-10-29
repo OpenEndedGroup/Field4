@@ -1,7 +1,7 @@
 name: qualified_sources_approval_setup
 description: >
   Setup for the approval capture on qualified_sources.md: the page's loot rule box, which makes the
-  second candidate, replays it and proposes the crypt's new outcome. A thread then waits for a person
+  second candidate, replays it and proposes the crypt's new outcome. A run-owned coroutine then waits for a person
   to approve it (the capture's drive script presses the Approve button) and makes the agent's next
   three calls: a copy of the candidate against the new fixtures, its replay, and apply.
 operations:
@@ -11,7 +11,10 @@ operations:
       frame: { x: 80, y: 60, w: 760, h: 120 }
       properties:
         code: |
-          val rule = """
+          import kotlinx.coroutines.*
+
+          val rule =
+              """
           // Loot for a room, from how many doors it is from the spawn.
           fun loot(doors: Int) = when {
               doors >= 4 -> "epic"
@@ -31,29 +34,58 @@ operations:
               return placed
           }
           ::place
-          """.trimStart()
+          """
+                  .trimStart()
 
-          val loot = qualifiedSource("loot", rule, label = "Loot rule",
-              frozen = listOf(FrozenRegion.after("// Checks: everything below this line stays as it is.")),
+          val loot = qualifiedSource(
+              "loot",
+              rule,
+              label = "Loot rule",
+              frozen = [FrozenRegion.after("// Checks: everything below this line stays as it is.")],
               control = QualifiedControl("shallow", "hall 1, store 2", "no room has epic loot"),
               fixtures = mapOf(
-                  "keep" to QualifiedFixture("gate 1, yard 2, keep 4", mapOf("gate" to "common", "keep" to "epic", "yard" to "rare")),
-                  "crypt" to QualifiedFixture("stairs 1, ossuary 3, tomb 5", mapOf("ossuary" to "rare", "stairs" to "common", "tomb" to "epic")),
-                  "mill" to QualifiedFixture("door 1, loft 2, well 4", mapOf("door" to "common", "loft" to "rare", "well" to "epic"))),
-              replayVersion = "loot-replay-1") { replay ->
-              QualifiedSource.evaluateKotlin(replay.source) as (String) -> Map<String, String>
-          }
+                  "keep" to
+                      QualifiedFixture(
+                          "gate 1, yard 2, keep 4",
+                          mapOf("gate" to "common", "keep" to "epic", "yard" to "rare"),
+                      ),
+                  "crypt" to
+                      QualifiedFixture(
+                          "stairs 1, ossuary 3, tomb 5",
+                          mapOf("ossuary" to "rare", "stairs" to "common", "tomb" to "epic"),
+                      ),
+                  "mill" to
+                      QualifiedFixture(
+                          "door 1, loft 2, well 4",
+                          mapOf("door" to "common", "loft" to "rare", "well" to "epic"),
+                      ),
+              ),
+              replayVersion = "loot-replay-1",
+          ) { replay ->
+                  QualifiedSource.evaluateKotlin(replay.source) as (String) -> Map<String, String>
+              }
 
-          val second = loot.candidate(loot.rule.currentId(), SourceStudy.hash(loot.rule.liveSource()),
-              "Epic loot from three doors in", listOf(QualifiedEdit("doors >= 4", "doors >= 3")))
+          val second = loot.candidate(
+              loot.rule.currentId(),
+              SourceStudy.hash(loot.rule.liveSource()),
+              "Epic loot from three doors in",
+              [QualifiedEdit("doors >= 4", "doors >= 3")],
+          )
           val job = loot.test(second.id)
-          kotlin.concurrent.thread {
-              loot.replays.await(job.id)
+          go {
+              runInterruptible(Dispatchers.IO) { loot.replays.await(job.id) }
+              ensureActive()
               loot.proposeRebaseline(job.id)
-              while (loot.pendingProposals().isNotEmpty()) Thread.sleep(200)
-              val third = loot.candidate(loot.rule.currentId(), SourceStudy.hash(loot.rule.liveSource()),
-                  second.description, fromCandidate = second.id)
-              loot.replays.await(loot.test(third.id).id)
+              while (loot.pendingProposals().isNotEmpty()) delay(200)
+              val third = loot.candidate(
+                  loot.rule.currentId(),
+                  SourceStudy.hash(loot.rule.liveSource()),
+                  second.description,
+                  fromCandidate = second.id,
+              )
+              val thirdJob = loot.test(third.id)
+              runInterruptible(Dispatchers.IO) { loot.replays.await(thirdJob.id) }
+              ensureActive()
               loot.apply(third.id, third.baseRevision, third.baseSourceHash)
           }
   - execute: { box: qualified_approval, property: code }

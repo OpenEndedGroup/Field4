@@ -7,14 +7,14 @@ val x = DoubleArray(n) { it / (n - 1.0) * 2.0 - 1.0 }
 // are built out of.
 val noise = DoubleArray(n) { rng.nextGaussian() }
 
-val cases = listOf(
+val cases = [
     "linear" to DoubleArray(n) { 0.8 * x[it] + 0.25 * noise[it] },
     "monotone, curved" to DoubleArray(n) { exp(3.0 * x[it]) },
     "parabola" to DoubleArray(n) { x[it] * x[it] },
-    "sine, 1.5 cycles" to DoubleArray(n) { sin(3.0 * PI * x[it]) },
+    "sine, 3 cycles over x = -1..1" to DoubleArray(n) { sin(3.0 * PI * x[it]) },
     "same mean, growing spread" to DoubleArray(n) { (0.05 + abs(x[it])) * noise[it] },
     "independent" to DoubleArray(n) { noise[it] },
-)
+]
 
 println("shape                        r      rho     tau      xi     dCor    MIC~")
 val panels = cases.map { (label, y) ->
@@ -85,7 +85,7 @@ println(
 val window = Rect(0.0, 0.0, 1.0, 1.0)
 val frame = window.toFLine(color = vec(0.35, 0.44, 0.56, 0.5), thickness = 1.0)
 showPlaneGrid(
-    *panels.map { (label, cloud) -> label to listOf(frame, cloud) }.toTypedArray(),
+    *panels.map { (label, cloud) -> label to [frame, cloud] }.toTypedArray(),
     columns = 2,
     cellWidth = 380,
     cellHeight = 240,

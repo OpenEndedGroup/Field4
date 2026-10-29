@@ -1,0 +1,254 @@
+{
+  "passed": true,
+  "capturedAt": "2026-10-27T10:52:58.268Z",
+  "checks": [
+    "four native layouts",
+    "images ready",
+    "credits and content stay in frame",
+    "right-aligned tagline",
+    "crossfade holds entry motion",
+    "incoming content stays visible",
+    "intermediate opacity",
+    "staggered list delays",
+    "Back complete",
+    "Refresh complete",
+    "reduced motion"
+  ],
+  "inputs": {
+    "src/commonMain/resources/presentation-audience.js": "630aa5de4cf469635fd461e8fcc3f15e623f77985b360130bdf57fb15ac8032f",
+    "electron/presentation.js": "25a14632393c2aa3119199ebf3097ad821c35a9aa0a50a01c3abb187c2770055",
+    "templates/presentation/files/themes/lecture.css": "a666a09d220b6317917766dc8b224ed5cbcb27da2a1c475c91258f86424c148d",
+    "templates/presentation/files/examples/lecture.kt": "d8dfc32a56e9f48605192cafd1a398274d21a78761fe2b95034fda34c7ebdfd7",
+    "templates/presentation/files/examples/lecture-lines.svg": "276d1b03af5ecddc66afc1abddd49700f424efeb91d682c07d8f925f2628ffc1",
+    "templates/presentation/files/examples/lecture-comparison.svg": "57ced801af9483c452e8c374a3a773ccae774d5928ad39c2d1c27ce19f55d52d"
+  },
+  "samples": [
+    {
+      "title": "A figure and some text",
+      "waiting": [
+        {
+          "opacity": 0.94,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)",
+          "delay": "0s",
+          "name": "none"
+        },
+        {
+          "opacity": 0.78,
+          "transform": "matrix(1, 0, 0, 1, 0, 4)",
+          "delay": "0s",
+          "name": "none"
+        },
+        {
+          "opacity": 0.78,
+          "transform": "matrix(1, 0, 0, 1, 0, 4)",
+          "delay": "0s",
+          "name": "none"
+        },
+        {
+          "opacity": 0.78,
+          "transform": "matrix(1, 0, 0, 1, 0, 4)",
+          "delay": "0s",
+          "name": "none"
+        },
+        {
+          "opacity": 0.78,
+          "transform": "matrix(1, 0, 0, 1, 0, 4)",
+          "delay": "0s",
+          "name": "none"
+        }
+      ],
+      "active": [
+        {
+          "opacity": 0.969955,
+          "transform": "matrix(1, 0, 0, 1, 0, 0)",
+          "delay": "0s",
+          "name": "lecture-settle"
+        },
+        {
+          "opacity": 0.78,
+          "transform": "matrix(1, 0, 0, 1, 0, 4)",
+          "delay": "0.18s",
+          "name": "lecture-settle"
+        },
+        {
+          "opacity": 0.807578,
+          "transform": "matrix(1, 0, 0, 1, 0, 3.49858)",
+          "delay": "0.045s",
+          "name": "lecture-settle"
+        },
+        {
+          "opacity": 0.78,
+          "transform": "matrix(1, 0, 0, 1, 0, 4)",
+          "delay": "0.09s",
+          "name": "lecture-settle"
+        },
+        {
+          "opacity": 0.78,
+          "transform": "matrix(1, 0, 0, 1, 0, 4)",
+          "delay": "0.135s",
+          "name": "lecture-settle"
+        }
+      ]
+    },
+    {
+      "title": "Mapping",
+      "waiting": [
+        {
+          "opacity": 0.78,
+          "transform": "matrix(1, 0, 0, 1, 0, 4)",
+          "delay": "0s",
+          "name": "none"
+        },
+        {
+          "opacity": 0.78,
+          "transform": "matrix(1, 0, 0, 1, 0, 4)",
+          "delay": "0s",
+          "name": "none"
+        }
+      ],
+      "active": [
+        {
+          "opacity": 0.831624,
+          "transform": "matrix(1, 0, 0, 1, 0, 3.06138)",
+          "delay": "0s",
+          "name": "lecture-settle"
+        },
+        {
+          "opacity": 0.78,
+          "transform": "matrix(1, 0, 0, 1, 0, 4)",
+          "delay": "0.09s",
+          "name": "lecture-settle"
+        }
+      ]
+    },
+    {
+      "title": "Media art and design",
+      "waiting": [
+        {
+          "opacity": 0.78,
+          "transform": "matrix(1, 0, 0, 1, 0, 4)",
+          "delay": "0s",
+          "name": "none"
+        },
+        {
+          "opacity": 0.78,
+          "transform": "matrix(1, 0, 0, 1, 0, 4)",
+          "delay": "0s",
+          "name": "none"
+        },
+        {
+          "opacity": 0.78,
+          "transform": "matrix(1, 0, 0, 1, 0, 4)",
+          "delay": "0s",
+          "name": "none"
+        },
+        {
+          "opacity": 0.78,
+          "transform": "matrix(1, 0, 0, 1, 0, 4)",
+          "delay": "0s",
+          "name": "none"
+        },
+        {
+          "opacity": 0.78,
+          "transform": "matrix(1, 0, 0, 1, 0, 4)",
+          "delay": "0s",
+          "name": "none"
+        },
+        {
+          "opacity": 0.78,
+          "transform": "matrix(1, 0, 0, 1, 0, 4)",
+          "delay": "0s",
+          "name": "none"
+        },
+        {
+          "opacity": 0.78,
+          "transform": "matrix(1, 0, 0, 1, 0, 4)",
+          "delay": "0s",
+          "name": "none"
+        },
+        {
+          "opacity": 0.78,
+          "transform": "matrix(1, 0, 0, 1, 0, 4)",
+          "delay": "0s",
+          "name": "none"
+        }
+      ],
+      "active": [
+        {
+          "opacity": 0.863178,
+          "transform": "matrix(1, 0, 0, 1, 0, 2.48768)",
+          "delay": "0s",
+          "name": "lecture-settle"
+        },
+        {
+          "opacity": 0.78,
+          "transform": "matrix(1, 0, 0, 1, 0, 4)",
+          "delay": "0.045s",
+          "name": "lecture-settle"
+        },
+        {
+          "opacity": 0.78,
+          "transform": "matrix(1, 0, 0, 1, 0, 4)",
+          "delay": "0.09s",
+          "name": "lecture-settle"
+        },
+        {
+          "opacity": 0.78,
+          "transform": "matrix(1, 0, 0, 1, 0, 4)",
+          "delay": "0.135s",
+          "name": "lecture-settle"
+        },
+        {
+          "opacity": 0.78,
+          "transform": "matrix(1, 0, 0, 1, 0, 4)",
+          "delay": "0.18s",
+          "name": "lecture-settle"
+        },
+        {
+          "opacity": 0.78,
+          "transform": "matrix(1, 0, 0, 1, 0, 4)",
+          "delay": "0.225s",
+          "name": "lecture-settle"
+        },
+        {
+          "opacity": 0.78,
+          "transform": "matrix(1, 0, 0, 1, 0, 4)",
+          "delay": "0.27s",
+          "name": "lecture-settle"
+        },
+        {
+          "opacity": 0.78,
+          "transform": "matrix(1, 0, 0, 1, 0, 4)",
+          "delay": "0.315s",
+          "name": "lecture-settle"
+        }
+      ]
+    }
+  ],
+  "pictures": [
+    {
+      "file": "lecture-image.png",
+      "width": 1280,
+      "height": 720,
+      "sha256": "875f4de20fdac3ea7eb11780907839338210fd6f454ea175777f854b5a834f6a"
+    },
+    {
+      "file": "lecture-split.png",
+      "width": 1280,
+      "height": 720,
+      "sha256": "b96e4420351020071ffa28ed4d852d6a1049cc79830bd7c60856043f70aaa36f"
+    },
+    {
+      "file": "lecture-banner.png",
+      "width": 1280,
+      "height": 720,
+      "sha256": "94e61b9c4105a7509c06f25b4ccf2edfac5518f48d30790d7836172686ce35cd"
+    },
+    {
+      "file": "lecture-list.png",
+      "width": 1280,
+      "height": 720,
+      "sha256": "c9e3bfb3e8fe99a0ea003db5b5f5c3fd41a89c469047e5c1a73a00f105910989"
+    }
+  ]
+}

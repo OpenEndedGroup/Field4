@@ -1,0 +1,67 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T21:00:15.471Z",
+  "documentName": "spatial_geometry_examples",
+  "outputs": [
+    {
+      "uid": "spatial_marching",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 938,
+      "height": 727,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "spatial_contours",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 938,
+      "height": 727,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "spatial_delaunay",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 938,
+      "height": 727,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "spatial_apollonius",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 938,
+      "height": 727,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "spatial_clustering",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 938,
+      "height": 871,
+      "path": "outputs/4.html"
+    }
+  ]
+}

@@ -434,11 +434,7 @@ inData.write {
 }
 ```
 
-`prop<FrameBufferGroup>(outputPositions) = outData
-prop<Int>(particleCount) = N
-
-// uint push members accept Int lambdas; the shader checks the tail group.
-m.count = { N }` is the publication. `m.something = { ... }` is a reflected push-constant member fed by a Kotlin lambda re-evaluated every dispatch, which is how the animation clock reaches the shader.
+The two `prop<…>` lines are the publication: `outputPositions` is the buffer and `particleCount` is how many particles it holds, and any box beneath this one inherits both. The dispatch is `(N + 63) / 64` groups of 64, rounded up so no particle is left out; the extra lanes in the last group are why `m.count = { N }` passes the count to the shader, which returns early for any index at or past it. Because `N` sets the buffer sizes, changing it is a rebuild rather than a live edit: stop the draw child first, so it is not reading a buffer that is about to be replaced, then rerun this box and then the draw box. `m.something = { ... }` is a reflected push-constant member fed by a Kotlin lambda re-evaluated every dispatch, which is how the animation clock reaches the shader.
 
 The compute shader takes both buffers as buffer references through its push-constant block, and calls `fieldProbe` to sample a value for the probe display:
 
@@ -501,7 +497,7 @@ m.set(N * 2 * 3, 0) {}
 m
 ```
 
-`m.inData = { outputPositions }` reads the parent's published property by name and binds it to this shader's `inData` buffer reference. No buffer is copied and nothing round-trips through the CPU: both boxes point at the same GPU allocation. `m.set(N*2*3, 0) {}` allocates six vertices per particle with an empty writer block, because the vertex shader synthesizes each quad's corners from `gl_VertexIndex` instead of reading vertex attributes:
+`m.inData = { outputPositions }` reads the parent's published property by name and binds it to this shader's `inData` buffer reference, and `particleCount` comes from the same parent, so the draw always sizes itself to the buffer it reads. No buffer is copied and nothing round-trips through the CPU: both boxes point at the same GPU allocation. `m.set(N*2*3, 0) {}` allocates six vertices per particle with an empty writer block, because the vertex shader synthesizes each quad's corners from `gl_VertexIndex` instead of reading vertex attributes:
 
 ```diffstatic {data-lang=glsl}
 #version 450
@@ -800,7 +796,7 @@ void main()
 
 It also shows how to place a primitive using the file's own transform: `camera.m() * meshes[0].meshes[2].bindPose.m` composes the view matrix with the primitive's bind pose. That is the hand-written form of the `model` default `applyToMesh` supplies, and the fix for any loop that assigns `modelView` itself.
 
-Neither carries a figure: both need a glTF file on disk, and the repository ships none. The paths above point at the [glTF Sample Models](https://github.com/KhronosGroup/glTF-Sample-Models) collection, which the saved lessons were written against. Their paths are relative to the directory Field runs from, so clone that collection into your Field checkout or point the paths at your own copy. If you want geometry from disk with assets that *are* in the tree, see [Geometry from disk](geometry_from_disk.md).
+Neither carries a figure: these saved lessons use an external glTF file on disk. The paths above point at the [glTF Sample Models](https://github.com/KhronosGroup/glTF-Sample-Models) collection, which the saved lessons were written against. Their paths are relative to the directory Field runs from, so clone that collection into your Field checkout or point the paths at your own copy. If you want geometry from disk with assets that *are* in the tree, see [Geometry from disk](geometry_from_disk.md).
 
 ## Render to texture
 
@@ -919,7 +915,7 @@ prop<HasImageView>(otherView) = target.otherImageView
 renderer.renderList += "target" to target
 
 var module = moduleHere {
-    target.apply()
+    +target
 }
 var m = Mesh()
 
@@ -947,7 +943,7 @@ Reading `otherView` at a slightly offset coordinate and writing the channels bac
 prop<HasImageView>(bbc) = target.thisImageView
 ```
 
-Note the property type here is `HasImageView`, not `RenderToTexture`. A ping-pong target is not one image, so the two halves are handed out individually, and `HasImageView` is the interface that any bindable image satisfies. `module { target.apply() }` inside the module builder is what matches the module's pipeline state (format, sample count, attachment layout) to the target it draws into; without it the pipeline and the target disagree.
+Note the property type here is `HasImageView`, not `RenderToTexture`. A ping-pong target is not one image, so the two halves are handed out individually, and `HasImageView` is the interface that any bindable image satisfies. `module { +target }` inside the module builder is what matches the module's pipeline state (format, sample count, attachment layout) to the target it draws into; without it the pipeline and the target disagree.
 
 ## A blur kernel across three boxes
 
@@ -968,7 +964,6 @@ void main()
 prop<RenderToTexture>(b0) = target
 
 prop<RenderToTexture>(b1) = RenderToTexture {
-    clearFirst = true
     useDepth = false
     mipLevels = 10
     colorLayerCount = 2
@@ -980,7 +975,7 @@ renderer.renderList += "b1" to b1
 var module = moduleHere {
     primitiveType = triangle_strip
     depth = 0
-    b1.apply()
+    +b1
 }
 
 var m = Mesh()
@@ -1132,7 +1127,7 @@ Beyond includes, a shader property is a template with values supplied from Kotli
 // we can define this first
 shaderTemplate["col"] = mapOf("fixedColor" to Resolver { "vec4(1,0.75,0,1)" })
 
-// then there's an execution break here
+// Run the declarations above first; rerun the module fragment to compile its generated shader interface.
 //%-
 var module = moduleHere {
     primitiveType = triangle_strip
@@ -1182,7 +1177,7 @@ shaderTemplate["pc"] = mapOf("dec" to Resolver { pc.glsl() })
 pc.a.x = 0.3f
 pc.otherDeclarations = "layout(offset=${pc.nextFreeOffset(16)}) uint foo;"
 
-// then there's an execution break here
+// Run the declarations above first; rerun the module fragment to compile its generated shader interface.
 //%-
 var module = moduleHere {
     primitiveType = triangle_strip
@@ -1369,13 +1364,13 @@ prop<RenderToTexture>(target) = streamer.start().first()
 
 renderer.renderList += "target" to target
 
-var module = moduleHere { target.apply() }
+var module = moduleHere { +target }
 var m = Mesh()
 module += "mainMesh" to m
 target += "boo" to module
 ```
 
-The shape is exactly the `RenderToTexture` producer from earlier (`renderList +=`, `target +=`, `target.apply()`) with the target supplied by the streamer instead of constructed directly. `once.streamer { … }` is the live-coding guard: re-running the box re-runs everything except the block that allocated the stream, so you can edit the drawing without tearing down the connection. `@exported` publishes `target` for child boxes.
+The shape is exactly the `RenderToTexture` producer from earlier (`renderList +=`, `target +=`, `+target`) with the target supplied by the streamer instead of constructed directly. `once.streamer { … }` is the live-coding guard: re-running the box re-runs everything except the block that allocated the stream, so you can edit the drawing without tearing down the connection. `prop<RenderToTexture>(target) = …` publishes the target as a typed property, so child boxes inherit it as `target` the same way the particle draw box inherits `outputPositions`.
 
 The picture this produces arrives at a receiver on `127.0.0.1:9001` rather than in a window.
 

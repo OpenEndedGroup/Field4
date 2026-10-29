@@ -11,12 +11,11 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="petri_tala_tala" index="0" -->
 
 ```edn [field-box id="petri_tala_tala" role="properties"]
-{"id" "petri_tala_tala" "index" 0 "name" "2 — TALA, via native/field-d2-layout" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — TALA, via native/field-d2-layout" "_tombstone" false "frame" #afield/rect [780.0 60.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_tala_tala_code_.kt" "lines" 26 "characters" 962 "sha256" "3d79b25ffd546378ed91752f6f072a85f52cf49fd1835f137644b9bed12e83e7"}]}
+{"id" "petri_tala_tala" "index" 0 "name" "2 — TALA, via native/field-d2-layout" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — TALA, via native/field-d2-layout" "_tombstone" false "frame" #afield/rect [780.0 60.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_tala_tala_code_.kt" "lines" 29 "characters" 987 "sha256" "8bfb5305ba1e24bb163b30b13656f22a08e75c71f023cf15afb264e02dd7adf7"}]}
 ```
 
 ```kotlin [field-property box="petri_tala_tala" name="code" path="petri_tala_tala_code_.kt"]
 import afield.simulation.petri.*
-import afield.ui.layout.D2Layout
 
 fun philosophers(count: Int = 5): PetriNet = petri {
     for (index in 0 until count) place("fork.$index", tokens = 1)
@@ -25,10 +24,16 @@ fun philosophers(count: Int = 5): PetriNet = petri {
         place("think.$index", tokens = 1)
         place("eat.$index")
         t("take.$index") {
-            from("think.$index"); from("fork.$index"); from("fork.$right"); to("eat.$index")
+            from("think.$index")
+            from("fork.$index")
+            from("fork.$right")
+            to("eat.$index")
         }
         t("drop.$index") {
-            from("eat.$index"); to("think.$index"); to("fork.$index"); to("fork.$right")
+            from("eat.$index")
+            to("think.$index")
+            to("fork.$index")
+            to("fork.$right")
         }
     }
 }
@@ -37,10 +42,8 @@ val net = philosophers()
 // Asking for TALA is safe whether or not the helper exists — that is the whole contract.
 showPetriNet(net, layout = PetriLayout.TALA, w = 620.0, h = 520.0)
 
-if (D2Layout.available)
-    "TALA: d2 ${D2Layout.version}, places sized as real boxes and arcs routed"
-else
-    "helper absent — this is FORCE's drawing. Box 3 says how to build it."
+if (D2Layout.available) "TALA: d2 ${D2Layout.version}, places sized as real boxes and arcs routed"
+else "helper absent — this is FORCE's drawing. Box 3 says how to build it."
 ```
 
 ## 2. 1 — FORCE, the spring model
@@ -48,15 +51,17 @@ else
 <!-- field-box id="petri_tala_force" index="1" -->
 
 ```edn [field-box id="petri_tala_force" role="properties"]
-{"id" "petri_tala_force" "index" 1 "name" "1 — FORCE, the spring model" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — FORCE, the spring model" "_tombstone" false "frame" #afield/rect [60.0 60.0 360.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_tala_force_code_.kt" "lines" 29 "characters" 1354 "sha256" "90bd7364ef5e79fbb61c695f901f51e38420814aba29ed2a284f080d3cee97ae"}]}
+{"id" "petri_tala_force" "index" 1 "name" "1 — FORCE, the spring model" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — FORCE, the spring model" "_tombstone" false "frame" #afield/rect [60.0 60.0 360.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_tala_force_code_.kt" "lines" 39 "characters" 1408 "sha256" "abba907ee7bac65e16804eb6ca73fbb30d1ac5524249b631a45d02620e4a3400"}]}
 ```
 
 ```kotlin [field-property box="petri_tala_force" name="code" path="petri_tala_force_code_.kt"]
 import afield.simulation.petri.*
 
-// Five philosophers, five forks. Every philosopher needs both neighbouring forks to eat,
-// which is what makes this dense rather than deep: 25 nodes and 40 arcs, all in one
-// strongly connected lump with no layering to find.
+/*
+Five philosophers, five forks. Every philosopher needs both neighbouring forks to eat,
+which is what makes this dense rather than deep: 25 nodes and 40 arcs, all in one
+strongly connected lump with no layering to find.
+*/
 fun philosophers(count: Int = 5): PetriNet = petri {
     for (index in 0 until count) place("fork.$index", tokens = 1)
     for (index in 0 until count) {
@@ -64,10 +69,16 @@ fun philosophers(count: Int = 5): PetriNet = petri {
         place("think.$index", tokens = 1)
         place("eat.$index")
         t("take.$index") {
-            from("think.$index"); from("fork.$index"); from("fork.$right"); to("eat.$index")
+            from("think.$index")
+            from("fork.$index")
+            from("fork.$right")
+            to("eat.$index")
         }
         t("drop.$index") {
-            from("eat.$index"); to("think.$index"); to("fork.$index"); to("fork.$right")
+            from("eat.$index")
+            to("think.$index")
+            to("fork.$index")
+            to("fork.$right")
         }
     }
 }
@@ -75,11 +86,13 @@ fun philosophers(count: Int = 5): PetriNet = petri {
 val net = philosophers()
 showPetriNet(net, layout = PetriLayout.FORCE, w = 620.0, h = 520.0)
 
-// PetriLayoutSolver does not trust the physics: a spring model finds *a* minimum of its
-// own energy, which is not the same as a drawing you can read. So it relaxes from 48
-// different random starts and scores each result on crossings, overlaps and edges
-// passing under unrelated nodes, then keeps the best. Seeded from the net's own
-// structure, so the same net always draws the same way.
+/*
+PetriLayoutSolver does not trust the physics: a spring model finds *a* minimum of its
+own energy, which is not the same as a drawing you can read. So it relaxes from 48
+different random starts and scores each result on crossings, overlaps and edges
+passing under unrelated nodes, then keeps the best. Seeded from the net's own
+structure, so the same net always draws the same way.
+*/
 "FORCE: 48 seeded restarts, scored on crossings and overlaps, best kept"
 ```
 
@@ -88,12 +101,11 @@ showPetriNet(net, layout = PetriLayout.FORCE, w = 620.0, h = 520.0)
 <!-- field-box id="petri_tala_status" index="2" -->
 
 ```edn [field-box id="petri_tala_status" role="properties"]
-{"id" "petri_tala_status" "index" 2 "name" "3 — which engine drew it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — which engine drew it" "_tombstone" false "frame" #afield/rect [60.0 700.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_tala_status_code_.kt" "lines" 80 "characters" 3437 "sha256" "c7700a7683157f6cbb290d440bdf060c446534fc5061547b7449d6d0b423e4cc"}]}
+{"id" "petri_tala_status" "index" 2 "name" "3 — which engine drew it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — which engine drew it" "_tombstone" false "frame" #afield/rect [60.0 700.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_tala_status_code_.kt" "lines" 92 "characters" 3761 "sha256" "adfbd4aca179023e8d4ed2d7344f716c7b96211cd90c89389f97b26fdc287230"}]}
 ```
 
 ```kotlin [field-property box="petri_tala_status" name="code" path="petri_tala_status_code_.kt"]
 import afield.simulation.petri.*
-import afield.ui.layout.D2Layout
 
 fun philosophers(count: Int = 5): PetriNet = petri {
     for (index in 0 until count) place("fork.$index", tokens = 1)
@@ -102,20 +114,28 @@ fun philosophers(count: Int = 5): PetriNet = petri {
         place("think.$index", tokens = 1)
         place("eat.$index")
         t("take.$index") {
-            from("think.$index"); from("fork.$index"); from("fork.$right"); to("eat.$index")
+            from("think.$index")
+            from("fork.$index")
+            from("fork.$right")
+            to("eat.$index")
         }
         t("drop.$index") {
-            from("eat.$index"); to("think.$index"); to("fork.$index"); to("fork.$right")
+            from("eat.$index")
+            to("think.$index")
+            to("fork.$index")
+            to("fork.$right")
         }
     }
 }
 
 val net = philosophers()
 
-// Timing each layout once, in order, is the obvious thing and it lies: the first one pays
-// for JVM warmup and the second does not. Both are warmed, then measured three times from
-// a cleared cache, and the minimum kept — the reading least polluted by whatever else the
-// machine is doing.
+/*
+Timing each layout once, in order, is the obvious thing and it lies: the first one pays
+for JVM warmup and the second does not. Both are warmed, then measured three times from
+a cleared cache, and the minimum kept — the reading least polluted by whatever else the
+machine is doing.
+*/
 fun best(layout: PetriLayout): Long {
     net.frame(layout)
     var bestNs = Long.MAX_VALUE
@@ -132,26 +152,29 @@ fun best(layout: PetriLayout): Long {
 }
 
 val forceMs = best(PetriLayout.FORCE)
-val talaMs = best(PetriLayout.TALA)
+// Without the helper TALA runs FORCE again; reuse its measured fallback instead of
+// blocking the frame thread for a second identical benchmark.
+val talaMs = if (D2Layout.available) best(PetriLayout.TALA) else forceMs
 
 val force = net.frame(PetriLayout.FORCE)
 val tala = net.frame(PetriLayout.TALA)
 val differ = net.placeNames.any { force.position(it) != tala.position(it) }
 
-val headline = if (D2Layout.available)
-    "helper present — d2 ${D2Layout.version}"
-else
-    "helper absent — boxes 1 and 2 are the same drawing"
+val headline =
+    if (D2Layout.available) "helper present — d2 ${D2Layout.version}"
+    else "helper absent — boxes 1 and 2 are the same drawing"
 
-val detail = if (D2Layout.available)
-    "The two drawings differ: <b>$differ</b>. False here would mean TALA fell back silently."
-else
-    "differ = <b>$differ</b>, which is the fallback working. Build it with " +
-    "<code>(cd native/field-d2-layout &amp;&amp; go build -o build/field-d2-layout .)</code> — " +
-    "Field prints that line itself, with an install hint when <code>go</code> is not on PATH."
+val detail =
+    if (D2Layout.available) "The two drawings differ: <b>$differ</b>. False here would mean TALA fell back silently."
+    else
+        "differ = <b>$differ</b>, which is the fallback working. Build it with " +
+            "<code>(cd native/field-d2-layout &amp;&amp; go build -o build/field-d2-layout .)</code> — " +
+            "Field prints that line itself, with an install hint when <code>go</code> is not on PATH."
 
 // Rendered rather than returned as a string, so the demo is something to look at.
-display("main", """
+display(
+    "main",
+    """
   <div style="font:13px/1.55 ui-monospace,SFMono-Regular,monospace;background:#0d0d0d;
               color:#dcdcdc;border:1px solid #2b2b2b;padding:14px 16px;max-width:720px">
     <div style="font-size:15px;color:#7fd7c4;margin-bottom:8px">$headline</div>
@@ -162,14 +185,16 @@ display("main", """
           <td style="padding-left:14px;color:#8a8a8a">48 seeded restarts, scored</td></tr>
       <tr><td style="padding:2px 18px 2px 0;color:#8a8a8a">TALA</td>
           <td style="text-align:right">${talaMs} ms</td>
-          <td style="padding-left:14px;color:#8a8a8a">subprocess, 3 seeds, best kept</td></tr>
+          <td style="padding-left:14px;color:#8a8a8a">${if (D2Layout.available) "subprocess, 3 seeds, best kept" else "FORCE fallback; same measurement"}</td></tr>
     </table>
     <div style="margin-top:10px;color:#8a8a8a">best of 3, both warmed first —
       timing them once each in order flatters whichever runs second</div>
     <div style="margin-top:8px;color:#8a8a8a">TALA is never chosen by
       <code>PetriLayout.AUTO</code>, so nothing already drawn changes.</div>
   </div>
-""".trimIndent())
+"""
+        .trimIndent(),
+)
 
 headline
 ```

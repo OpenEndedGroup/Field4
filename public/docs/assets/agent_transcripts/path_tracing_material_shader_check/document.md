@@ -11,11 +11,12 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="path_trace_renderer" index="0" -->
 
 ```edn [field-box id="path_trace_renderer" role="properties"]
-{"id" "path_trace_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["path_trace_material_check"] "properties" {"children" #{#afield/box "path_trace_material_check"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 320.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "path_trace_renderer_code_.kt" "lines" 9 "characters" 219 "sha256" "9c1f4775efdc0df7175c2b6ee2bcf7bda2d78cce64864e565119faeac51ef21f"}]}
+{"id" "path_trace_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["path_trace_material_check"] "properties" {"children" #{#afield/box "path_trace_material_check"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 320.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "path_trace_renderer_code_.kt" "lines" 10 "characters" 220 "sha256" "d9a523d21baae9bd403e31097aeb6360849ac2629258b04f0145cc3d54c4d2a9"}]}
 ```
 
 ```kotlin [field-property box="path_trace_renderer" name="code" path="path_trace_renderer_code_.kt"]
 import afield.graphics.vulkan.util.Options
+
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableHDR = false
@@ -31,7 +32,7 @@ start(renderer::run)
 <!-- field-box id="path_trace_material_check" index="1" -->
 
 ```edn [field-box id="path_trace_material_check" role="properties"]
-{"id" "path_trace_material_check" "index" 1 "name" "editable-material-check" "parents" ["root" "path_trace_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "path_trace_renderer"} "name" "editable-material-check" "_tombstone" false "frame" #afield/rect [320.0 180.0 360.0 120.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "path_trace_material_check_compute_.glsl" "lines" 3 "characters" 112 "sha256" "f84237973383a2b88ee8701b1b0aa3f83cdad1cc9729d6e3bc29e03819860561"} {"name" "code" "language" "kotlin" "path" "path_trace_material_check_code_.kt" "lines" 47 "characters" 2317 "sha256" "980eea3f84a2283c633b00a6d5608fbcea0ff11519701ada92b3609a31a589ea"}]}
+{"id" "path_trace_material_check" "index" 1 "name" "editable-material-check" "parents" ["root" "path_trace_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "path_trace_renderer"} "name" "editable-material-check" "_tombstone" false "frame" #afield/rect [320.0 180.0 360.0 120.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "path_trace_material_check_compute_.glsl" "lines" 3 "characters" 112 "sha256" "f84237973383a2b88ee8701b1b0aa3f83cdad1cc9729d6e3bc29e03819860561"} {"name" "code" "language" "kotlin" "path" "path_trace_material_check_code_.kt" "lines" 63 "characters" 2361 "sha256" "7c570daa29a3a625619f236e6e9a325c0182a369f39f485d8cea2e4cb852ac21"}]}
 ```
 
 ```glsl [field-property box="path_trace_material_check" name="compute" path="path_trace_material_check_compute_.glsl"]
@@ -43,17 +44,25 @@ start(renderer::run)
 ```kotlin [field-property box="path_trace_material_check" name="code" path="path_trace_material_check_code_.kt"]
 import afield.graphics.scene.fabricated.*
 import afield.graphics.vulkan.util.Camera
-import afield.math.linalg.Vector3f
-import afield.graphics.shader.reloadComputeShader
 import kotlinx.coroutines.delay
 
 val scene = PathTraceScene().apply {
-    val m = material(PathTraceMaterial.emissive(0f,0f,0f))
-    quad(Vector3f(-20f,-20f,0f),Vector3f(20f,-20f,0f),Vector3f(20f,20f,0f),Vector3f(-20f,20f,0f),m)
+    val m = material(PathTraceMaterial.emissive(0f, 0f, 0f))
+    quad(Vector3f(-20f, -20f, 0f), Vector3f(20f, -20f, 0f), Vector3f(20f, 20f, 0f), Vector3f(-20f, 20f, 0f), m)
 }
-val camera = Camera(renderer).also { it.at.set(0f,0f,3f); it.target.set(0f,0f,0f) }
+val camera = Camera(renderer).also {
+    it.at.set(0f, 0f, 3f)
+    it.target.set(0f, 0f, 0f)
+}
 prop<PathTracingRenderer>(tracer)
-tracer = pathTracingHere(scene, PathTraceEnvironment.constant(0f), width=32, height=24, camera=camera, name="editable-study")
+tracer = pathTracingHere(
+    scene,
+    PathTraceEnvironment.constant(0f),
+    width = 32,
+    height = 24,
+    camera = camera,
+    name = "editable-study",
+)
 tracer.materialMesh.gain = { 2f }
 tracer.maxBounces = 1
 tracer.blitToScreen()
@@ -62,29 +71,37 @@ val owner = ownerForTest()
 val verify: suspend () -> Unit = {
     PathTraceGpuSmoke.awaitSamples(tracer, 8)
     tracer.paused = true
-    check(kotlin.math.abs(tracer.readLinear()[0]-2f)<1e-5) { "Initial box material hook was not evaluated" }
+    check(kotlin.math.abs(tracer.readLinear()[0] - 2f) < 1e-5) { "Initial box material hook was not evaluated" }
     val original = tracer.materialModule.current
     owner.setPropertyRaw("pathTracePaint", "invalid GLSL")
     check(!reloadComputeShader(owner))
     check(tracer.materialModule.current === original) { "Failed reload replaced the working pipeline" }
-    owner.setPropertyRaw("pathTracePaint", """
+    owner.setPropertyRaw(
+        "pathTracePaint",
+        """
         layout(push_constant) uniform PaintPC { float gain; float bias; } pc;
         Material shadeMaterial(Material material, PathTraceSurface surface) {
             material.base.rgb = vec3(0);
             material.emission.rgb = vec3(pc.gain + pc.bias, 0, 0);
             return material;
         }
-    """.trimIndent())
+        """
+            .trimIndent(),
+    )
     check(reloadComputeShader(owner))
     check(tracer.materialModule.current !== original)
-    check(tracer.materialModule.current.ci.pushConstants.single().members.map { it.name } == listOf("gain", "bias"))
+    check(tracer.materialModule.current.ci.pushConstants.single().members.map { it.name } == ["gain", "bias"])
     tracer.materialMesh.push["bias"] = 1f
     tracer.paused = false
     delay(100)
     PathTraceGpuSmoke.awaitSamples(tracer, 4)
     tracer.paused = true
-    check(kotlin.math.abs(tracer.readLinear()[0]-3f)<1e-5) { "Reload retained old accumulation or failed to preserve push values" }
-    println("PASS EDITABLE MATERIAL BOX: seeded templates, includes, reflected push constants, changed ABI, last-valid reload, accumulation reset")
+    check(kotlin.math.abs(tracer.readLinear()[0] - 3f) < 1e-5) {
+        "Reload retained old accumulation or failed to preserve push values"
+    }
+    println(
+        "PASS EDITABLE MATERIAL BOX: seeded templates, includes, reflected push constants, changed ABI, last-valid reload, accumulation reset",
+    )
     tracer.close()
 }
 start(verify)

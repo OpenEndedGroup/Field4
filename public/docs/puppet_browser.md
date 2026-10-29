@@ -25,7 +25,7 @@ val browser = FieldUiBrowserTexture(
     width = 1280,
     height = 720,
     // Linux: Chromium's shared-texture export never fills the buffer (electron#53271).
-    cpuBitmapFallback = FieldUiBrowserTexture.cpuBitmapFallbackRequired
+    cpuBitmapFallback = FieldUiBrowserTexture.cpuBitmapFallbackRequired,
 )
 
 val screen = PuppetBrowserWindowPanel(renderer, browser)
@@ -84,23 +84,27 @@ remote object in Chromium for later CDP work, or report the page's actual except
 silently returning `undefined`:
 
 ```diffstatic {data-lang=kotlin}
-browserControl.evaluate(
-    "document.querySelector('video')?.play()",
-    userGesture = true,
-    timeoutMillis = 15_000
-).whenComplete { result, error ->
-    if (error != null) println("page rejected playback: ${error.message}")
-    else println("Chromium returned ${result.value}")
-}
+browserControl
+    .evaluate(
+        "document.querySelector('video')?.play()",
+        userGesture = true,
+        timeoutMillis = 15_000,
+    )
+    .whenComplete { result, error ->
+        if (error != null) println("page rejected playback: ${error.message}")
+        else println("Chromium returned ${result.value}")
+    }
 
-browserControl.evaluate(
-    "window.applicationState",
-    world = BrowserJavascriptWorld.ISOLATED,
-    returnMode = BrowserJavascriptReturnMode.HANDLE
-).thenAccept { remote ->
-    println("remote object: ${remote.objectId}")
-    remote.objectId?.let(browserControl::releaseJavascriptObject)
-}
+browserControl
+    .evaluate(
+        "window.applicationState",
+        world = BrowserJavascriptWorld.ISOLATED,
+        returnMode = BrowserJavascriptReturnMode.HANDLE,
+    )
+    .thenAccept { remote ->
+        println("remote object: ${remote.objectId}")
+        remote.objectId?.let(browserControl::releaseJavascriptObject)
+    }
 ```
 
 `userGesture = true` matters for the same things it matters for in an ordinary browser: media
@@ -113,18 +117,19 @@ A docked DevTools window is not required to get at the useful machinery undernea
 available directly:
 
 ```diffstatic {data-lang=kotlin}
-browserControl.addEventListener { event ->
-    if (event.name == "console" || event.name == "javascript-exception")
-        println("${event.name}: ${event.payload}")
+browserControl.addEventListener("console diagnostics") { event ->
+    if (event.name == "console" || event.name == "javascript-exception") println("${event.name}: ${event.payload}")
 }
 
 browserControl.cdp("Network.enable")
 browserControl.cdp("Performance.enable")
-browserControl.cdp("Performance.getMetrics")
-    .thenAccept { println(it) }
+browserControl.cdp("Performance.getMetrics").thenAccept { println(it) }
 
 browserControl.forwardCdpEvents(true)
 ```
+
+The named listener replaces its predecessor on this browser; Stop or rerun of the registering
+box removes it.
 
 The normal event stream already includes state changes, navigation, load failures, page titles,
 console messages, cursor changes, context menus, audio state, pop-up attempts, permission requests,
@@ -140,12 +145,14 @@ The preload exposes only two JSON-cloning operations—`window.fieldPuppet.emit`
 request names it will accept:
 
 ```diffstatic {data-lang=kotlin}
-val removeBridge = browserControl.onPageRequest("selected-point") { payload ->
-    println("page selected $payload")
-    CompletableFuture.completedFuture(
-        buildJsonObject { put("accepted", true) }
-    )
-}
+val removeBridge =
+    browserControl.onPageRequest("selected-point") { payload ->
+        println("page selected $payload")
+        CompletableFuture.completedFuture(
+            buildJsonObject { put("accepted", true) },
+        )
+    }
+requireNotNull(RunScope.current()).own { removeBridge() }
 ```
 
 ```diffstatic {data-lang=javascript}
@@ -197,14 +204,14 @@ equally on a headless browser and on a `FieldUiBrowserTexture` already in your s
 ```diffstatic {data-lang=kotlin}
 val readings = browser.table("#readings").get(10, TimeUnit.SECONDS)
 
-readings.header                       // [station, depth, count]
-readings.column("station")            // [alpha, beta, gamma]
-readings.numbers("depth")             // [12.0, 48.0, 93.0]
+readings.header // [station, depth, count]
+readings.column("station") // [alpha, beta, gamma]
+readings.numbers("depth") // [12.0, 48.0, 93.0]
 
-browser.text("h1")                    // the first heading, or null
-browser.texts("p.note")               // every match, in document order
-browser.attribute("#link", "href")    // the markup's value, not the resolved URL
-browser.count("#readings tbody tr")   // 3
+browser.text("h1") // the first heading, or null
+browser.texts("p.note") // every match, in document order
+browser.attribute("#link", "href") // the markup's value, not the resolved URL
+browser.count("#readings tbody tr") // 3
 browser.waitFor("document.readyState === 'complete'")
 ```
 
@@ -246,7 +253,7 @@ val panel = PuppetBrowserVrPanel(
     stereo = stereo,
     browser = browser,
     widthMeters = 1.6f,
-    distanceMeters = 1.7f
+    distanceMeters = 1.7f,
 )
 panel.build()
 panel.enableDesktopInteraction()
@@ -281,7 +288,7 @@ val browser = FieldUiBrowserTexture(
     width = 1280,
     height = 720,
     // Linux: Chromium's shared-texture export never fills the buffer (electron#53271).
-    cpuBitmapFallback = FieldUiBrowserTexture.cpuBitmapFallbackRequired
+    cpuBitmapFallback = FieldUiBrowserTexture.cpuBitmapFallbackRequired,
 )
 ```
 
@@ -300,7 +307,7 @@ val shards = PuppetBrowserKaleidoscope(
     renderer = renderer,
     browser = browser,
     columns = 14,
-    rows = 8
+    rows = 8,
 )
 shards.motion = 1.0f
 shards.facets = 5.0f

@@ -42,28 +42,32 @@ expect:
     - "Shared-types classpath spike complete"
 */
 /**
- * Measures whether a *shared declarations directory* can carry user-defined types between boxes.
+ * Spike that measures whether a shared declarations directory can carry user-defined types
+ * between boxes.
  *
- * Background: each box has its own [KotlinInterface2], so a type declared in one box's snippet is
- * invisible to every other box — see [ExportedTypeNames]. The proposed fix is to compile such types
- * as ordinary Kotlin into a directory hung off the process-wide shared classloader, which every
- * engine derives its compile classpath from. Runtime identity is free that way (snippet loaders are
- * children of the shared loader). The open question is compile-time visibility, because
- * `dependenciesFromClassloader` *snapshots* the classpath into a `JvmDependency(files)` rather than
- * holding a live view of the loader.
+ * Each box has its own [KotlinInterface2], so a type declared in one box's snippet is invisible to
+ * every other box (see [ExportedTypeNames]). The proposed fix compiles such types as ordinary Kotlin
+ * into a directory hung off the process-wide shared classloader, from which every engine derives its
+ * compile classpath. Runtime identity follows, since snippet loaders are children of the shared
+ * loader. Compile-time visibility is the open question, because `dependenciesFromClassloader`
+ * snapshots the classpath into a `JvmDependency(files)` rather than holding a live view of the
+ * loader.
  *
- * Hence the one thing worth measuring, [probeA]: a directory that was on the classpath snapshot but
- * *empty* at the time — does a class file appearing in it later become resolvable to an engine that
- * already exists? If yes, publishing a shared type is just writing a file. If no, publishing has to
- * rebuild the consuming engines, which is a much bigger hammer and changes the feature's cost.
+ * The spike runs three probes:
  *
- * [probeB] is the invariant rather than the measurement: a *fresh* engine must see the directory,
- * since that is the fallback the whole design rests on. [probeC] checks the payoff actually
- * survives the trip — named arguments and a `data class` `toString`, which only work if real Kotlin
- * metadata made it across, not merely a loadable JVM class.
+ * - **A**, the measurement: a directory that was on the classpath snapshot but empty at the time.
+ *   Does a class file that appears in it later resolve in an engine that already exists? If it
+ *   does, publishing a shared type is writing a file; if not, publishing has to rebuild the
+ *   consuming engines.
+ * - **B**, an invariant: a fresh engine sees the directory, the fallback the design rests on.
+ * - **C**, an invariant: named arguments, `toString`, `copy` and destructuring of a `data class`
+ *   work across the trip, which
+ *   needs real Kotlin metadata rather than only a loadable JVM class.
  *
- * This is a spike: it fails on B or C, and *reports* A either way.
+ * It fails on B or C and reports A either way.
  */
+
+/** Runs probes A, B and C and prints the outcome of A. */
 object SharedTypesClasspathSpike {
 
     private const val SHARED_SOURCE = """

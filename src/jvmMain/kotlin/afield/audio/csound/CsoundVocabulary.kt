@@ -1,4 +1,9 @@
 package afield.audio.csound
+/**
+ * The opcode list a Csound box completes against, generated from libcsound and joined with the
+ * Csound Reference Manual's descriptions.
+ */
+
 
 import java.io.File
 import java.lang.foreign.Arena

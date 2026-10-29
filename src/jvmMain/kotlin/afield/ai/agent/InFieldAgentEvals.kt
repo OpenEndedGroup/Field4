@@ -10,12 +10,14 @@ import kotlinx.serialization.Serializable
  *
  * The scripted solutions are real Kotlin for real Field. Replayed through [ScriptedLlmBridge] against
  * a live Field (`agent-eval --mode scripted`) they test the tools, the execution path and the checkers
- * end to end with no model — and a scripted pass is the floor any model run should reach. Replayed in
+ * end to end with no model, and a scripted pass is the floor any model run should reach. Replayed in
  * jvmTest against a fake host, they test the harness logic. A `live` run hands the same goals and
  * checks to the configured provider and ignores the solutions.
  *
  * Box names are fixed, so run each task in a fresh document ([AgentEvalRunner] does).
  */
+
+/** The eval tasks, their scripted solutions, and the helpers that build them. */
 object InFieldAgentEvals {
 
     data class EvalTask(val id: String, val request: AgentTaskRequest, val solution: String)
@@ -70,9 +72,9 @@ object InFieldAgentEvals {
      * stylesheet that makes `.bars` `flex-direction: row-reverse` — output panels share one page, so a
      * style in one panel reaches every other. The bars therefore appear in the reverse of the list's
      * order, and sorting the list ascending, the obvious first move, draws them tallest-first. Chart's
-     * own code does not say so; the picture does. (The first version put row-reverse in Chart's own
-     * code; the live model read it and got it right first time, twice, so it tested nothing.) The
-     * scripted solution makes the mistake on purpose, sees it, and fixes it.
+     * own code does not say so; the picture does. The stylesheet lives in Theme for that reason: in
+     * Chart's own code, reading it would stand in for looking at the output. The scripted solution
+     * makes the mistake first, sees it, and fixes it.
      */
     val THEME_CODE = "display(\"main\", \"<style>.bars { flex-direction: row-reverse; justify-content: flex-end; }</style>" +
         "<div style='font: 12px monospace'>theme loaded</div>\")"
@@ -469,6 +471,26 @@ data class AgentEvalRequest(
     val programs: String = "",
     /** `legacy` puts every task's instructions back inside the stored message; see [AgentTaskRequest.context]. */
     val context: String = "",
+    /**
+     * Run the mined corpus ([AgentEvalCorpus]) instead of the hand suite: `all`, `train` or `heldout`.
+     * Blank = the hand suite. [ids] then filter corpus ids (`<transcript>/<box>`).
+     */
+    val corpus: String = "",
+    /** With [corpus]: run a seeded sample of this many tasks (0 = every task in the split). */
+    val sample: Int = 0,
+    val seed: Long = 0,
+    /**
+     * Re-mine the corpus: mine the transcripts, run every candidate's solution twice (scripted), derive checks from
+     * the output that matched, and rewrite [AgentEvalCorpus.CHECKOUT_PATH]. [sample] > 0 calibrates only that many
+     * candidates (and does not write).
+     */
+    val calibrate: Boolean = false,
+    /**
+     * Withhold the tools that read the repository ([AgentEvalCorpus.SEALED_TOOLS]) from every task. A mined task's solution
+     * is checked in — the transcript it came from — so with search on, a model can find the answer instead of
+     * writing it; the first live corpus runs did, in at least 3 and 5 of 20 tasks.
+     */
+    val sealed: Boolean = false,
 )
 
 @Serializable
@@ -510,6 +532,16 @@ data class AgentEvalReport(
     val nestedCalls: Int = 0,
     /** `legacy` when the run put instructions inside the stored message, else blank. */
     val context: String = "",
+    /** The corpus split run (`all` / `train` / `heldout`), or blank for the hand suite; `calibrate` for a re-mine. */
+    val corpus: String = "",
+    /** A calibration's summary: what was mined, accepted and written. */
+    val corpusMessage: String = "",
+    /** A calibration's rejections, counted by reason (static and calibration stages together). */
+    val rejections: Map<String, Int> = emptyMap(),
+    /** Whether the repository search tools were withheld ([AgentEvalRequest.sealed]). */
+    val sealed: Boolean = false,
+    /** Corpus live runs: tasks whose tool results held a line of their own solution ([AgentEvalCorpus.leak]). */
+    val leaked: Int = 0,
 )
 
 object AgentEvalRunner {
@@ -527,10 +559,17 @@ object AgentEvalRunner {
             val outcome = AgentLessons.distilAndWrite(saved)
             return saved.copy(distilled = outcome.lessons.map { it.bullet() }, distilMessage = outcome.message)
         }
+        if (request.calibrate) return calibrate(request, runTask)
         val started = System.nanoTime()
-        val chosen = if (request.ids.isEmpty()) InFieldAgentEvals.tasks else request.ids.map(InFieldAgentEvals::byId)
+        val chosen = if (request.corpus.isNotBlank()) {
+            val corpus = AgentEvalCorpus.load()
+            require(corpus.tasks.isNotEmpty()) { "No mined corpus at ${AgentEvalCorpus.CHECKOUT_PATH}; run agent-eval --calibrate first." }
+            AgentEvalCorpus.select(corpus, request.corpus, request.sample, request.seed, request.ids)
+                .map { InFieldAgentEvals.EvalTask(it.id, it.request, it.solution) }
+        } else if (request.ids.isEmpty()) InFieldAgentEvals.tasks else request.ids.map(InFieldAgentEvals::byId)
         val live = request.mode == "live"
-        require(!live || chosen.size <= MAX_LIVE_TASKS) { "A live eval is capped at $MAX_LIVE_TASKS tasks." }
+        val cap = if (request.corpus.isNotBlank()) AgentEvalCorpus.MAX_LIVE_SAMPLE else MAX_LIVE_TASKS
+        require(!live || chosen.size <= cap) { "A live eval is capped at $cap tasks (use --sample)." }
         val rounds = if (live) request.maxToolRounds.coerceAtMost(MAX_LIVE_ROUNDS) else request.maxToolRounds
         val lessonsOn = AgentLessons.resolve(request.lessons)
         val lessonsPin = if (lessonsOn) "on" else "off"
@@ -545,7 +584,16 @@ object AgentEvalRunner {
                 blind = request.blind,
                 programs = request.programs,
                 context = request.context,
-            ))
+                withhold = if (request.sealed) AgentEvalCorpus.SEALED_TOOLS else emptyList(),
+            )).let { result ->
+                // A corpus solution is checked in; a turn that read it has not shown it can write it.
+                val leakedVia = if (request.corpus.isNotBlank() && live) AgentEvalCorpus.leak(task.solution, result) else null
+                when {
+                    leakedVia == null -> result
+                    request.sealed && result.verdict == "pass" -> result.copy(verdict = "leaked", leakedVia = leakedVia)
+                    else -> result.copy(leakedVia = leakedVia)
+                }
+            }
         }
         fun sum(f: (AgentTaskResult) -> Long?): Long? = results.mapNotNull(f).takeIf { it.isNotEmpty() }?.sum()
         val report = AgentEvalReport(
@@ -569,9 +617,50 @@ object AgentEvalRunner {
             context = request.context,
             programCalls = results.sumOf { it.programCalls },
             nestedCalls = results.sumOf { it.nestedCalls },
+            corpus = request.corpus,
+            sealed = request.sealed,
+            leaked = results.count { it.leakedVia.isNotBlank() },
         )
         if (!request.distil) return report
         val outcome = AgentLessons.distilAndWrite(report)
         return report.copy(distilled = outcome.lessons.map { it.bullet() }, distilMessage = outcome.message)
+    }
+
+    /**
+     * Re-mine the corpus ([AgentEvalCorpus]): every statically mined candidate's solution runs twice, scripted, with
+     * no checks; the runs' output decides its checks. The report's results are the second runs, `passed` the tasks accepted.
+     */
+    fun calibrate(request: AgentEvalRequest, runTask: (AgentTaskRequest) -> AgentTaskResult): AgentEvalReport {
+        val started = System.nanoTime()
+        val mined = AgentEvalCorpus.mine()
+        val candidates = mined.candidates.let { all ->
+            if (request.ids.isNotEmpty()) all.filter { it.id in request.ids }
+            else if (request.sample > 0) all.shuffled(java.util.Random(request.seed)).take(request.sample) else all
+        }
+        val tasks = ArrayList<AgentEvalCorpus.CorpusTask>()
+        val rejections = ArrayList(mined.rejections)
+        val results = ArrayList<AgentTaskResult>()
+        for (c in candidates) {
+            val first = runTask(AgentEvalCorpus.calibrationRequest(c))
+            val second = runTask(AgentEvalCorpus.calibrationRequest(c))
+            results += second
+            when (val outcome = AgentEvalCorpus.calibrate(c, first, second)) {
+                is AgentEvalCorpus.Accepted -> tasks += outcome.task
+                is AgentEvalCorpus.Refused -> rejections += outcome.rejection
+            }
+        }
+        val corpus = AgentEvalCorpus.Corpus(transcripts = mined.transcripts, codeBoxes = mined.codeBoxes, tasks = tasks, rejections = rejections)
+        val whole = request.ids.isEmpty() && request.sample <= 0
+        if (whole) AgentEvalCorpus.write(corpus)
+        val message = "${mined.transcripts} transcripts, ${mined.codeBoxes} code boxes, ${mined.candidates.size} candidates; " +
+            "calibrated ${candidates.size}, accepted ${tasks.size} (" +
+            tasks.groupingBy { it.kind }.eachCount().entries.joinToString { "${it.key} ${it.value}" } + "; " +
+            tasks.count { it.split == "heldout" } + " heldout)" +
+            (if (whole) ", wrote ${AgentEvalCorpus.CHECKOUT_PATH}" else ", partial: not written")
+        return AgentEvalReport(
+            mode = "scripted", provider = "", model = "", population = candidates.size, passed = tasks.size,
+            results = results, elapsedMs = (System.nanoTime() - started) / 1_000_000, inputTokens = null, outputTokens = null,
+            corpus = "calibrate", corpusMessage = message, rejections = corpus.rejectionCounts(),
+        )
     }
 }

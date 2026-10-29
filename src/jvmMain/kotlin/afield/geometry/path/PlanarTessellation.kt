@@ -10,6 +10,15 @@ import kotlin.math.min
 import kotlin.math.sqrt
 
 /**
+ * Fills sets of 3D rings, holes included, by grouping them into planes and handing each plane to
+ * [FloatEarcut].
+ *
+ * [PlanarTessellation.tessellate] returns [PlanarTessellation.Polygon]s whose triangles refer back
+ * into the input rings, and [Coplanarity] sets how close two rings must be to share a plane.
+ * Tessellation commutes with rigid rotation, which `TessellationOrientationOracleTest` checks.
+ */
+
+/**
  * How close two rings have to be before [PlanarTessellation] treats them as lying in the same plane.
  *
  * Both numbers are dimensionless, and neither is an absolute epsilon — that is deliberate, because

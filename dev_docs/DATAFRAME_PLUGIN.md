@@ -60,16 +60,16 @@ computes the schema, and rewrites `call()` into
 `run { class Token; class Scope; call() as DataFrame<Token> }`, with **local** classes, because the
 extension runs at body-resolve and cannot create top-level declarations. The accessors are not
 declarations anywhere: a per-call-site local type plus an implicit extension receiver injected by
-`ReturnTypeBasedReceiverInjector` — `DataFramePluginSpike.kt:27#ReturnTypeBasedReceiverInjector`.
+`ReturnTypeBasedReceiverInjector` — `DataFramePluginSpike.kt:53#receiver injected by the plugin`.
 
 That is the whole boundary. A local class cannot appear in the type of a snippet's property, so the
 inferred type cannot outlive the expression that produced it. Two mechanisms were candidates for
 making it work anyway and are worth naming because they are the reason this was *measured* rather than
 asserted: `addReceiversFromExtensions` bails unless the enclosing container is a `FirCallableSymbol` or
 `FirCodeFragmentSymbol`, and `FirReplSnippetSymbol` is neither
-(`DataFramePluginSpike.kt:37#is neither, so the injected receiver`); but the schema state rides on the FIR
+(`DataFramePluginSpike.kt:64#neither, so the injected receiver`); but the schema state rides on the FIR
 declaration via `FirDeclarationDataRegistry` rather than a session component, which could have carried
-it across (`DataFramePluginSpike.kt:39#FirDeclarationDataRegistry`).
+it across (`DataFramePluginSpike.kt:65#declaration itself, which is the mechanism`).
 
 ### The spike, and its five probes
 

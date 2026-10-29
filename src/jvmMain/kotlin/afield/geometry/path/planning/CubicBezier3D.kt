@@ -5,6 +5,16 @@ package afield.geometry.path.planning
 import kotlin.math.*
 
 /**
+ * A double-precision 3D cubic Bézier for planning paths with a minimum turning radius.
+ *
+ * [CubicBezier3D] evaluates positions and tangents, gives a conservative lower bound on the
+ * curve's radius with [CubicBezier3D.minimumRadiusBound], and turns the curve into a polyline
+ * within a caller-chosen deviation with [CubicBezier3D.flatten]. Degenerate curves, cusps and
+ * invalid requests throw rather than return a guess. `CubicBezier3DTest` covers these cases,
+ * including invariance under translation, rotation and change of units.
+ */
+
+/**
  * An immutable double-precision cubic in caller-chosen units. [start] and [end] are
  * endpoints; [control1] and [control2] are the inner controls. The caller supplies
  * all approximation tolerances and curvature thresholds.

@@ -1,0 +1,1 @@
+**lathe vessel**: a profile of 36 points, radius and height, turned round the y axis by `revolve`. A second `mesh` and `mat` give the rim its own metallic material. Change `waist` or `ripple` to throw another pot.

@@ -15,6 +15,15 @@ import java.lang.ref.Cleaner
 import kotlin.math.abs
 
 /**
+ * Closed 3D volumes from the Manifold library: primitives, transforms, union, difference and intersection,
+ * with results that stay closed manifolds.
+ *
+ * [Solid] is the type a box uses; [TriMesh.toSolid] brings an existing mesh in, and [Solid.toTriMesh]
+ * hands the result to Field's mesh display. The native library is optional: [ManifoldLibrary] reports
+ * whether it is installed.
+ */
+
+/**
  * [Solid] — a **guaranteed-closed** 3D volume you can subtract, union and intersect without thinking
  * about whether the answer is still a surface. Field's binding to
  * [Manifold](https://github.com/elalish/manifold), through Panama/FFM.
@@ -30,8 +39,8 @@ import kotlin.math.abs
  * # Why this exists beside [TriMesh]
  *
  * Field already has a full CPU mesh family ([TriMesh] and friends) and it already marches SDFs into
- * surfaces. What it does **not** have — and what is genuinely hard — is a robust mesh Boolean. The
- * honest division of labour:
+ * surfaces. What it does **not** have — and what is genuinely hard — is a robust mesh Boolean, which
+ * is what this package adds:
  *
  * | | `afield.geometry.mesh` mesh family | `afield.geometry.solid.manifold` |
  * |---|---|---|
@@ -53,7 +62,8 @@ import kotlin.math.abs
  * not. It does not throw and does not return null: a failure comes back as a [Solid] whose [status]
  * is not [ManifoldStatus.NO_ERROR] and whose [volume] is `0.0`. That keeps a twenty-step boolean
  * chain from needing twenty checks — but it does mean **an unchecked pipeline can end in silence**.
- * [checked] is the one-line answer, and worth reaching for at the end of anything load-bearing:
+ * [checked] is the one-line answer, and belongs at the end of any chain whose result something else
+ * depends on:
  *
  * ```kotlin
  * val part = (body - bore).checked()      // throws, naming the status, rather than yielding 0 mm³
@@ -555,7 +565,8 @@ class Solid internal constructor(handle: MemorySegment) : AutoCloseable, ToHTML 
     }
 
     /**
-     * Throw if this solid is not valid, naming the [status]. The end of a load-bearing pipeline.
+     * Throw if this solid is not valid, naming the [status]. Put it at the end of a boolean chain,
+     * where an invalid result would otherwise travel on as a `0.0` volume.
      *
      * @param what a name for the thing being built, so the message says which step of a box failed.
      */

@@ -1,5 +1,12 @@
 package afield.audio.spatial.steamaudio
 
+/**
+ * The four Ambisonics effects, each with its per-block parameter view: [AmbisonicsEncodeEffect]
+ * places a mono source in an Ambisonic field, [AmbisonicsRotationEffect] turns the field with the
+ * listener, and [AmbisonicsDecodeEffect] and [AmbisonicsBinauralEffect] render it to speakers or
+ * headphones.
+ */
+
 import afield.audio.spatial.steamaudio.raw.IPLAmbisonicsBinauralEffectParams
 import afield.audio.spatial.steamaudio.raw.IPLAmbisonicsBinauralEffectSettings
 import afield.audio.spatial.steamaudio.raw.IPLAmbisonicsDecodeEffectParams

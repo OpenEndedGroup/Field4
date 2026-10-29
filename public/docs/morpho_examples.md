@@ -29,29 +29,44 @@ circuit's own logic depth. Blue dots are input ports, orange are outputs.
 :::static
 import afield.lang.morpho.*
 
-// Each panel gets its OWN window: these are four different circuits at four different sizes, and a
-// shared frame would shrink the shifter to a speck to fit the multiplier. Where a shared frame IS
-// required -- the two adders below, the three projections further down -- it is used and said so.
+/*
+Each panel gets its OWN window: these are four different circuits at four different sizes, and a
+shared frame would shrink the shifter to a speck to fit the multiplier. Where a shared frame IS
+required -- the two adders below, the three projections further down -- it is used and said so.
+*/
 val designs = [
     Triple("ripple_adder", intArrayOf(16, 16, 1), "carry chain"),
     Triple("brent_kung_adder", intArrayOf(16, 16, 1), "prefix tree"),
     Triple("right_shifter", intArrayOf(32, 5, 1), "mux cascade"),
-    Triple("wallace_multiplier", intArrayOf(8, 8), "compression tree")
+    Triple("wallace_multiplier", intArrayOf(8, 8), "compression tree"),
 ]
 
 val panels = designs.map { (design, sig, kind) ->
     val c = morphoCircuit(design, *sig)
     c.growFully(relaxSteps = 220)
-    println("%-20s %4d gates  depth %2d  z/xy %.2f  (%s)".format(
-        design, c.netlist.gateCount, c.depth.toInt(), c.layout.flatness(), kind))
+    println(
+        "%-20s %4d gates  depth %2d  z/xy %.2f  (%s)"
+            .format(
+                design,
+                c.netlist.gateCount,
+                c.depth.toInt(),
+                c.layout.flatness(),
+                kind,
+            ),
+    )
     "%s(%s) — %d gates, depth %d".format(design, sig.joinToString(","), c.netlist.gateCount, c.depth.toInt()) to
         c.flines(fit = true)
 }
 
 // fit = true normalises each panel into the unit square, which is the only way showPlaneGrid can
 // frame four differently-sized circuits independently: it takes one window for the whole grid.
-showPlaneGrid(*panels.toTypedArray(), columns = 2, cellWidth = 430, cellHeight = 430,
-    window = morphoUnitWindow())
+showPlaneGrid(
+    *panels.toTypedArray(),
+    columns = 2,
+    cellWidth = 430,
+    cellHeight = 430,
+    window = morphoUnitWindow(),
+)
 ```
 
 ![four MorphoHDL circuits drawn as vector line figures: a ripple adder as a long thin carry chain, a Brent-Kung adder as a symmetrical prefix tree, a right shifter as a cascade of multiplexer stages, and a Wallace multiplier as a dense compression tree](assets/morpho_examples/family.png)
@@ -139,9 +154,13 @@ val product = c.evaluateOne(a, b)[0]
 val check = "%d x %d = %d %s".format(a, b, product, if (product == a * b) "(Kotlin agrees)" else "WRONG")
 
 // Put the check in the panel's title, next to the circuit it is about.
-showPlaneGrid("${c.summary()}  |  $check" to c.flines(),
-    columns = 1, cellWidth = 620, cellHeight = 620,
-    window = morphoPlaneWindow(c.planeBounds()))
+showPlaneGrid(
+    "${c.summary()}  |  $check" to c.flines(),
+    columns = 1,
+    cellWidth = 620,
+    cellHeight = 620,
+    window = morphoPlaneWindow(c.planeBounds()),
+)
 ```
 
 ![a 16 by 16 bit Wallace multiplier drawn as a dense compression tree, titled with its cell and gate counts and a multiplication checked against Kotlin's own arithmetic](assets/morpho_examples/from-kotlin.png)
@@ -226,22 +245,34 @@ together), the difference stops being a table:
 :::static
 import afield.lang.morpho.*
 
-// Same width, same colormap, same window, same everything except the algorithm. Colour is arrival
-// time normalised PER PANEL, so each shows its own critical path end to end -- the comparison is the
-// shape of the gradient, not its absolute value, which the depth numbers in the titles carry.
+/*
+Same width, same colormap, same window, same everything except the algorithm. Colour is arrival
+time normalised PER PANEL, so each shows its own critical path end to end -- the comparison is the
+shape of the gradient, not its absolute value, which the depth numbers in the titles carry.
+*/
 val ripple = morphoCircuit("ripple_adder", 32, 32, 1)
 val bk = morphoCircuit("brent_kung_adder", 32, 32, 1)
 [ripple, bk].forEach { it.growFully(relaxSteps = 260) }
 
 ["ripple_adder" to ripple, "brent_kung_adder" to bk].forEach { (name, c) ->
-    println("%-18s %3d gates  depth %2d  %d nets".format(
-        name, c.netlist.gateCount, c.depth.toInt(), c.netlist.nNets))
+    println(
+        "%-18s %3d gates  depth %2d  %d nets"
+            .format(
+                name,
+                c.netlist.gateCount,
+                c.depth.toInt(),
+                c.netlist.nNets,
+            ),
+    )
 }
 
 showPlaneGrid(
     "ripple_adder(32,32,1) — 64 gates, depth ${ripple.depth.toInt()}" to ripple.flines(fit = true),
     "brent_kung_adder(32,32,1) — 190 gates, depth ${bk.depth.toInt()}" to bk.flines(fit = true),
-    columns = 2, cellWidth = 470, cellHeight = 470, window = morphoUnitWindow()
+    columns = 2,
+    cellWidth = 470,
+    cellHeight = 470,
+    window = morphoUnitWindow(),
 )
 ```
 
@@ -273,24 +304,22 @@ import afield.lang.morpho.*
 val adder = morphoCircuit("brent_kung_adder", 32, 32, 1)
 val shell = morphoCircuit("triangle", 32)
 
-// The frame only ever grows (morphoWindowUnion), because a window recomputed per frame around an
-// expanding circuit jitters on every single step. New cells are seeded at their parent's position,
-// so a subtree unfolds from where it came from rather than teleporting in.
-var wAdder: DoubleArray? = null
-var wShell: DoubleArray? = null
+// Each panel fits its current geometry into the unit square. As the circuit grows, its scale
+// changes too. New cells start at their parent's position before layout relaxation separates them.
 
 loop {
     adder.step(grow = 2, relax = 5)
     shell.step(grow = 12, relax = 5)
-    wAdder = morphoWindowUnion(wAdder, adder.planeBounds(padFraction = 0.10))
-    wShell = morphoWindowUnion(wShell, shell.planeBounds(padFraction = 0.10))
 
     showPlaneGrid(
         "brent_kung_adder — %d gates, %d expansions".format(adder.netlist.gateCount, adder.expansions) to
             adder.flines(fit = true),
         "triangle(32) — %d gates, %d expansions".format(shell.netlist.gateCount, shell.expansions) to
             shell.flines(fit = true),
-        columns = 2, cellWidth = 470, cellHeight = 470, window = morphoUnitWindow()
+        columns = 2,
+        cellWidth = 470,
+        cellHeight = 470,
+        window = morphoUnitWindow(),
     )
     frame()
 }
@@ -335,9 +364,11 @@ where the camera is:
 :::static
 import afield.lang.morpho.*
 
-// One circuit, one layout, three cameras. XY is the view morpho's own renderer is restricted to,
-// because force_layout.js pins z. XZ looks straight down the axis XY drops: if the layout really
-// were planar, THAT panel would be a horizontal line and nothing else.
+/*
+One circuit, one layout, three cameras. XY is the view morpho's own renderer is restricted to,
+because force_layout.js pins z. XZ looks straight down the axis XY drops: if the layout really
+were planar, THAT panel would be a horizontal line and nothing else.
+*/
 val c = morphoCircuit("brent_kung_adder", 32, 32, 1)
 c.growFully(relaxSteps = 300)
 
@@ -349,7 +380,10 @@ showPlaneGrid(
     "XY — what morpho's own renderer sees" to c.flines(projection = MorphoProjection.XY, fit = true),
     "XZ — down the axis XY discards" to c.flines(projection = MorphoProjection.XZ, fit = true),
     "isometric" to c.flines(projection = MorphoProjection.ISOMETRIC, fit = true),
-    columns = 3, cellWidth = 340, cellHeight = 340, window = morphoUnitWindow()
+    columns = 3,
+    cellWidth = 340,
+    cellHeight = 340,
+    window = morphoUnitWindow(),
 )
 ```
 
@@ -382,10 +416,15 @@ var azimuth = 0.0
 loop {
     azimuth += 0.026
     showPlaneGrid(
-        "brent_kung_adder(32,32,1) — %d gates, azimuth %3d°".format(
-            c.netlist.gateCount, Math.round(Math.toDegrees(azimuth)) % 360) to
-            c.flines(projection = morphoOrbit(azimuth)),
-        columns = 1, cellWidth = 700, cellHeight = 700, window = viewWindow
+        "brent_kung_adder(32,32,1) — %d gates, azimuth %3d°"
+            .format(
+                c.netlist.gateCount,
+                Math.round(Math.toDegrees(azimuth)) % 360,
+            ) to c.flines(projection = morphoOrbit(azimuth)),
+        columns = 1,
+        cellWidth = 700,
+        cellHeight = 700,
+        window = viewWindow,
     )
     frame()
 }

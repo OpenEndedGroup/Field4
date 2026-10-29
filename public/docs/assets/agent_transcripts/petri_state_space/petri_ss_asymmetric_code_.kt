@@ -8,9 +8,20 @@ fun table(reverseLast: Boolean) = petri {
         val left = i
         val right = (i + 1) % 5
         val reversed = reverseLast && i == 4
-        t("grab.$i") { from("fork.${if (reversed) right else left}"); to("holding.$i") }
-        t("eat.$i") { from("holding.$i"); from("fork.${if (reversed) left else right}"); to("eating.$i") }
-        t("done.$i") { from("eating.$i"); to("fork.$left"); to("fork.$right") }
+        t("grab.$i") {
+            from("fork.${if (reversed) right else left}")
+            to("holding.$i")
+        }
+        t("eat.$i") {
+            from("holding.$i")
+            from("fork.${if (reversed) left else right}")
+            to("eating.$i")
+        }
+        t("done.$i") {
+            from("eating.$i")
+            to("fork.$left")
+            to("fork.$right")
+        }
     }
 }
 

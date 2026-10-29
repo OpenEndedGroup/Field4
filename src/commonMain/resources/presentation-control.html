@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Field presenter</title><link rel="stylesheet" href="/iosevka.css"><link rel="stylesheet" href="/field.css"><style>
+/* Use Field's shared palette; keep this standalone window's layout local. */
+body {
+  margin: 0;
+  padding: 20px;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  background: var(--field-surface);
+  color: var(--field-fg);
+  font-family: var(--field-font);
+  font-size: 15px;
+  font-weight: var(--field-font-weight);
+}
+h1 { font-size: 18px; font-weight: 400; margin: 0 0 5px; }
+#status { color: var(--field-fg-muted); margin: 0 0 18px; font-size: 14px; }
+[hidden] { display: none !important; }
+button, input {
+  font: inherit;
+  color: var(--field-fg);
+  background: var(--field-editor-bg);
+  border: 1px solid var(--field-border-medium);
+  border-radius: 6px;
+  padding: 9px 12px;
+  min-height: 38px;
+}
+button { cursor: pointer; }
+button:hover:not(:disabled), summary:hover { background: var(--field-hover); color: var(--field-fg-strong); }
+button:disabled { opacity: .38; cursor: default; }
+button:focus-visible, input:focus-visible, summary:focus-visible {
+  outline: 1px solid var(--field-accent);
+  outline-offset: 2px;
+}
+.row { display: flex; flex-wrap: wrap; gap: 6px; flex-shrink: 0; }
+#previous, #next { color: var(--field-fg-bright); border-color: var(--field-border-strong); }
+#field-actions, #interactive-guide, #lesson-actions { margin-top: 8px; }
+#error { color: var(--field-danger); white-space: pre-wrap; margin: 8px 0; flex-shrink: 0; }
+#error:empty { margin: 0; }
+.picker {
+  margin-top: 20px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  min-height: 180px;
+  flex: 1;
+  background: var(--field-editor-bg);
+  border: 1px solid var(--field-border-soft);
+  border-radius: 5px;
+}
+.search-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; flex-shrink: 0; }
+.search-row label { color: var(--field-fg-soft); font-size: 14px; }
+.search-row input { flex: 1; min-width: 120px; background: var(--field-bg); }
+.search-row input::placeholder { color: var(--field-fg-dim); }
+.search-row input::-webkit-search-cancel-button { filter: grayscale(1); }
+#slide-matches { color: var(--field-fg-dim); white-space: nowrap; font-size: 13px; font-variant-numeric: tabular-nums; }
+#slides { overflow: auto; min-height: 0; padding: 2px 4px 2px 2px; scrollbar-color: var(--field-scrollbar-thumb) transparent; }
+#slides::-webkit-scrollbar-thumb { background: var(--field-scrollbar-thumb); border-radius: 6px; }
+#slides details { border-left: 1px solid var(--field-border-medium); margin-left: 10px; padding-left: 12px; }
+#slides > details { margin-left: 0; }
+#slides summary { padding: 9px 8px; border-radius: 6px; cursor: pointer; color: var(--field-fg-muted); }
+#slides summary.contains-current { color: var(--field-fg-bright); }
+#slides summary span:first-child { margin-left: 6px; }
+.section-range { float: right; color: var(--field-fg-dim); font-size: 13px; font-variant-numeric: tabular-nums; }
+#slides button.slide {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  width: 100%;
+  text-align: left;
+  border: 1px solid transparent;
+  background: transparent;
+  padding: 8px 12px;
+  margin: 3px 0;
+  color: var(--field-fg-soft);
+}
+#slides button.slide:hover { background: var(--field-bg); color: var(--field-fg-bright); }
+#slides button.slide.active { background: var(--field-surface); border-color: var(--field-accent-muted); color: var(--field-accent); }
+#slides button.slide.search-choice { outline: 1px solid var(--field-fg-muted); outline-offset: -1px; }
+#slides button.slide:focus-visible { outline: 1px solid var(--field-accent); outline-offset: 1px; }
+.slide-number { font-size: 13px; color: var(--field-fg-dim); min-width: 3ch; font-variant-numeric: tabular-nums; }
+#slides button.active .slide-number { color: var(--field-accent); }
+.slide-description { min-width: 0; flex: 1; }
+.slide-excerpt { display: block; font-size: 13px; line-height: 1.5; color: var(--field-fg-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 540px) {
+  body { padding: 12px; }
+  .picker { padding: 10px; }
+  .search-row label { flex-basis: 100%; }
+}
+</style></head><body><h1 id="title">FIELD / PRESENT</h1><div id="status" role="status">Opening guide…</div><div class="row"><button id="previous">← Previous</button><button id="next">Next →</button><button id="reload">Refresh slide</button><button id="show-audience">Show audience</button><button id="fullscreen">Fullscreen audience</button></div><div id="field-actions" class="row" hidden><button id="show-guide">Document notes</button><button id="run-macro" disabled>Run cue macro</button></div><div id="interactive-guide" class="row" hidden><button id="start-guide">Start document guide</button><button id="guide-previous">← Guide back</button><button id="guide-next">Guide next →</button><button id="stop-guide">Close document guide</button></div><div id="lesson-actions" class="row" hidden><button id="reset-checkpoint" hidden>Reset experiment</button><button id="run-cue" hidden>Run cue again</button></div><p id="error" role="alert"></p><nav class="picker" aria-label="Slide outline"><div class="search-row"><label for="slide-search">Find slide</label><input id="slide-search" type="search" placeholder="Slide text, title, section or number" autocomplete="off" maxlength="512" aria-controls="slides" title="/ or ⌘/Ctrl+F to search · ↑↓ choose · Enter visit · Esc close" aria-description="/ or ⌘/Ctrl+F to search. Up and Down choose a slide; Enter visits it; Escape closes search."><span id="slide-matches" role="status"></span></div><div id="slides"></div></nav><script src="/presentation-search.js"></script><script src="/presentation-control.js"></script></body></html>

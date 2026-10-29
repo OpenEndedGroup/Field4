@@ -8,11 +8,10 @@ val band = BandPassFilter(frequency = 5f, sampleRate = 120f, q = 0.8f)
 
 for (i in 0 until 420) {
     val t = i / 120f
-    val signal = (
-        sin(2.0 * PI * 1.2 * t).toFloat() * 0.7f +
-        sin(2.0 * PI * 4.7 * t + 0.3).toFloat() * 0.22f +
-        (-0.12f + random().toFloat() * 0.24f)
-    )
+    val signal =
+        (sin(2.0 * PI * 1.2 * t).toFloat() * 0.7f +
+            sin(2.0 * PI * 4.7 * t + 0.3).toFloat() * 0.22f +
+            (-0.12f + random().toFloat() * 0.24f))
     raw += signal
     val s = oneEuro(ema(signal))
     smooth += s

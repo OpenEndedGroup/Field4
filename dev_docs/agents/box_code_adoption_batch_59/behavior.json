@@ -1,0 +1,17 @@
+{
+  "lateOldStudyClosePreservesNewTargetAndScreen": true,
+  "actualGpuPixelsUnchangedByOldClose": true,
+  "downloadedStudyAlreadyUsesSameIdentityGuard": true,
+  "actualImageModeControls": {
+    "reload": false,
+    "animate": false
+  },
+  "actualProceduralModeControls": {
+    "reload": true,
+    "animate": true
+  },
+  "actualProceduralShaderReload": true,
+  "recordedRealGpuFrames": 3,
+  "recordSuccessAndStopRestoreTimeAndAnimate": true,
+  "limits": "Source-mode Vulkan rendering only; no optional NVIDIA NR inference. Demo size reduced to 96 and record target to 64. Recording fixture removes only the NR readiness guard and uses three frames; Stop fixture delays before capture. No public media replaced."
+}

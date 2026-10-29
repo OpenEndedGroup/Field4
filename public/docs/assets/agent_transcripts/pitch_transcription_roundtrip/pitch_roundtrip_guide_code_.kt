@@ -1,6 +1,6 @@
-import afield.audio.synth.*
-
-display("guide", """
+display(
+    "guide",
+    """
 <section style="width:1040px;max-width:100%;box-sizing:border-box;background:#151a20;color:#dbe3e9;padding:18px;border:1px solid #303c46;border-radius:8px;font:13px/1.55 system-ui,sans-serif">
   <h2 style="margin:0 0 8px;color:#7fcbd7">notation → sound → notation</h2>
   <p>Field already rendered notation to sound exactly, and already heard <b>rhythm</b> back
@@ -19,12 +19,18 @@ display("guide", """
   names. One of the corpus cases is exactly 50 cents from equal temperament, where the correct
   note name genuinely does not exist — a measurement 0.1 cents out flips it a semitone.</p>
 </section>
-""".trimIndent())
+"""
+        .trimIndent(),
+)
 
-display("resolution", """
+display(
+    "resolution",
+    """
     the analysis window is 2·(sampleRate/minHz) of frame plus one longest lag,
     so the register you admit sets the shortest note you can resolve:
       minHz  65 Hz (the wide default) → ${patPitchFrameSpan(PatSoundDocs.SR, 65.0)} samples = ${"%.1f".format(1000.0 * patPitchFrameSpan(PatSoundDocs.SR, 65.0) / PatSoundDocs.SR)} ms
       minHz 261 Hz (a treble line)    → ${patPitchFrameSpan(PatSoundDocs.SR, 261.0)} samples = ${"%.1f".format(1000.0 * patPitchFrameSpan(PatSoundDocs.SR, 261.0) / PatSoundDocs.SR)} ms
     That ratio is what box 4 is about.
-""".trimIndent())
+"""
+        .trimIndent(),
+)

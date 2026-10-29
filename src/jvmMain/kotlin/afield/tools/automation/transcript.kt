@@ -45,6 +45,16 @@ import java.nio.charset.StandardCharsets
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
 
+/**
+ * Keeps a per-document log of what ran in each box, for activity summaries and the transcript view.
+ *
+ * [FlightRecorder] appends an entry for every execute, launch and stop, and for changes to tracked
+ * box properties, then reports per-box execution and launch counts (`activitySummaryForDocument`,
+ * stamped with the current Field launch id), per-line activity (`lineActivityForDocument`) and an HTML
+ * rendering of the log (`htmlForDocument`). Older logs are kept as `transcript_backup_*.edn`
+ * files in the document's `backups/` folder.
+ */
+
 private val launchSnapshotProperties = listOf(
     "code",
     "vertex",

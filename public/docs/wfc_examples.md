@@ -82,7 +82,7 @@ fun WfcRulesBuilder.mayTouch(a: Int, b: Int) {
 }
 
 val rules = wfcRules(tileCount = 3) {
-    weights(3.0, 1.0, 3.0)      // sea and grass equally likely; sand rare, so it stays an interface
+    weights(3.0, 1.0, 3.0) // sea and grass equally likely; sand rare, so it stays an interface
     mayTouch(SEA, SEA)
     mayTouch(SEA, SAND)
     mayTouch(SAND, SAND)
@@ -93,9 +93,11 @@ val rules = wfcRules(tileCount = 3) {
 
 val solver = WfcSolver(width = 22, height = 14, rules = rules, seed = 12L)
 
-// Seed both phases: sea pinned down the left edge, grass down the right. Without this the field
-// simply phase-separates — with only a one-cell-wide legal interface between them, whichever of
-// the two nucleates first tends to fill the whole grid. (The scalar field below shows that happening.)
+/*
+Seed both phases: sea pinned down the left edge, grass down the right. Without this the field
+simply phase-separates — with only a one-cell-wide legal interface between them, whichever of
+the two nucleates first tends to fill the whole grid. (The scalar field below shows that happening.)
+*/
 val outcome = solver.solveWithRetries {
     for (row in 0 until 14) {
         forceTile(0, row, SEA)
@@ -105,26 +107,31 @@ val outcome = solver.solveWithRetries {
 val grid = solver.resolvedTileGridOrNull()!!
 
 // Read the table back out of the model rather than restating it from the source above.
-val table = (0..2).joinToString("<br>") { a ->
-    "may sit east of <b>${names[a]}</b>: " +
-        (0..2).filter { rules.allows(WFC_EAST, a, it) }.joinToString(", ") { names[it] }
-}
+val table =
+    (0..2).joinToString("<br>") { a ->
+        "may sit east of <b>${names[a]}</b>: " +
+            (0..2).filter { rules.allows(WFC_EAST, a, it) }.joinToString(", ") { names[it] }
+    }
 :::fold render the rule table and the tallies
 // One display() per channel: a second display() on the same channel REPLACES the first.
-markdown("rules", """
+markdown(
+    "rules",
+    """
     $table
 
     solved in ${outcome.attempts} attempt(s) · symmetric: ${rules.findAsymmetry() ?: "yes"}
 
     ${grid.count { it == SEA }} sea, ${grid.count { it == SAND }} sand, ${grid.count { it == GRASS }} grass of ${grid.size} cells
-""")
+""",
+)
+
 :::endfold
 
 :::fold render one flat colour per cell, big enough to count them
 val palette = [
     Triple(0.07f, 0.20f, 0.33f),
     Triple(0.85f, 0.78f, 0.55f),
-    Triple(0.28f, 0.52f, 0.22f)
+    Triple(0.28f, 0.52f, 0.22f),
 ]
 val img = Img.generateRGB(22, 14) { x, y -> palette[grid[x + y * 22]] }
 showImgGrid("22x14 cells, seed 12" to img.upscaleNearest(26), columns = 1, cellSide = 700)
@@ -166,11 +173,11 @@ fun bump(u: Double, v: Double, cx: Double, cy: Double, r: Double): Double {
 }
 
 val palette = [
-    Triple(0.08f, 0.20f, 0.31f),   // deep water
-    Triple(0.18f, 0.48f, 0.66f),   // shallow water
-    Triple(0.85f, 0.78f, 0.55f),   // sand
-    Triple(0.31f, 0.55f, 0.24f),   // grass
-    Triple(0.12f, 0.29f, 0.14f)    // forest
+    Triple(0.08f, 0.20f, 0.31f), // deep water
+    Triple(0.18f, 0.48f, 0.66f), // shallow water
+    Triple(0.85f, 0.78f, 0.55f), // sand
+    Triple(0.31f, 0.55f, 0.24f), // grass
+    Triple(0.12f, 0.29f, 0.14f), // forest
 ]
 
 val sw = 26
@@ -182,10 +189,9 @@ val bands = IntArray(sw * sh)
 for (cy in 0 until sh) for (cx in 0 until sw) {
     val u = cx / (sw - 1.0)
     val v = cy / (sh - 1.0)
-    val e = bump(u, v, 0.30, 0.40, 0.25) +
-        0.90 * bump(u, v, 0.70, 0.62, 0.21) +
-        0.55 * bump(u, v, 0.82, 0.22, 0.13) -
-        0.62 * bump(u, v, 0.34, 0.44, 0.085)
+    val e =
+        bump(u, v, 0.30, 0.40, 0.25) + 0.90 * bump(u, v, 0.70, 0.62, 0.21) + 0.55 * bump(u, v, 0.82, 0.22, 0.13) -
+            0.62 * bump(u, v, 0.34, 0.44, 0.085)
     bands[cx + cy * sw] = if (e < 0.16) 0 else if (e < 0.32) 1 else if (e < 0.44) 2 else if (e < 0.74) 3 else 4
 }
 val source = Img.generateRGB(sw, sh) { x, y -> palette[bands[x + y * sw]] }
@@ -219,9 +225,9 @@ val learned = solveWith(rules)
 // The learned weights are just a DoubleArray, and the solver reads it live — so a learned model is
 // editable. Boost the rare bands, and above all the *interface* band, sand.
 val reweighted = tiles.toRules()
-reweighted.weights[tileOfBand[0]] *= 2.0     // deep water
-reweighted.weights[tileOfBand[1]] *= 1.5     // shallow water
-reweighted.weights[tileOfBand[2]] *= 10.0    // sand, the only band that may touch both sides
+reweighted.weights[tileOfBand[0]] *= 2.0 // deep water
+reweighted.weights[tileOfBand[1]] *= 1.5 // shallow water
+reweighted.weights[tileOfBand[2]] *= 10.0 // sand, the only band that may touch both sides
 val boosted = solveWith(reweighted)
 
 val bandNames = ["deep", "shallow", "sand", "grass", "forest"]
@@ -233,13 +239,17 @@ fun histogram(cells: IntArray, bandOf: (Int) -> Int): String =
 :::fold render the three band histograms as text
 val bandReport =
     "source    ${histogram(bands) { it }}\n" +
-    "learned   ${histogram(learned) { bandOfTile[it] }}\n" +
-    "boosted   ${histogram(boosted) { bandOfTile[it] }}"
-markdown("bands", """
+        "learned   ${histogram(learned) { bandOfTile[it] }}\n" +
+        "boosted   ${histogram(boosted) { bandOfTile[it] }}"
+markdown(
+    "bands",
+    """
     ~~~
 $bandReport
     ~~~
-""")
+""",
+)
+
 :::endfold
 
 // Scale factors chosen so every panel is 360px tall: montage gives each cell the height of the
@@ -249,7 +259,7 @@ showImgGrid(
     "learned weights" to tiles.toImg(learned, outW, outH).upscaleNearest(14),
     "sand boosted x10" to tiles.toImg(boosted, outW, outH).upscaleNearest(14),
     columns = 1,
-    cellSide = 620
+    cellSide = 620,
 )
 ```
 
@@ -299,11 +309,11 @@ fun bump(u: Double, v: Double, cx: Double, cy: Double, r: Double): Double {
 }
 
 val palette = [
-    Triple(0.08f, 0.20f, 0.31f),   // deep water
-    Triple(0.18f, 0.48f, 0.66f),   // shallow water
-    Triple(0.85f, 0.78f, 0.55f),   // sand
-    Triple(0.31f, 0.55f, 0.24f),   // grass
-    Triple(0.12f, 0.29f, 0.14f)    // forest
+    Triple(0.08f, 0.20f, 0.31f), // deep water
+    Triple(0.18f, 0.48f, 0.66f), // shallow water
+    Triple(0.85f, 0.78f, 0.55f), // sand
+    Triple(0.31f, 0.55f, 0.24f), // grass
+    Triple(0.12f, 0.29f, 0.14f), // forest
 ]
 
 val sw = 26
@@ -312,10 +322,9 @@ val bands = IntArray(sw * sh)
 for (cy in 0 until sh) for (cx in 0 until sw) {
     val u = cx / (sw - 1.0)
     val v = cy / (sh - 1.0)
-    val e = bump(u, v, 0.30, 0.40, 0.25) +
-        0.90 * bump(u, v, 0.70, 0.62, 0.21) +
-        0.55 * bump(u, v, 0.82, 0.22, 0.13) -
-        0.62 * bump(u, v, 0.34, 0.44, 0.085)
+    val e =
+        bump(u, v, 0.30, 0.40, 0.25) + 0.90 * bump(u, v, 0.70, 0.62, 0.21) + 0.55 * bump(u, v, 0.82, 0.22, 0.13) -
+            0.62 * bump(u, v, 0.34, 0.44, 0.085)
     bands[cx + cy * sw] = if (e < 0.16) 0 else if (e < 0.32) 1 else if (e < 0.44) 2 else if (e < 0.74) 3 else 4
 }
 val source = Img.generateRGB(sw, sh) { x, y -> palette[bands[x + y * sw]] }
@@ -342,12 +351,14 @@ for (seed in seeds) {
     panels.add("seed $seed" to patterns.toImg(grid, outW, outH).upscaleNearest(6))
 }
 
-// Why this figure has no ground constraint, read out of the model rather than asserted. The source's
-// corner is deep water, so that pixel identifies the band without re-deriving the palette's rounding.
-//
-// An explicit loop with a typed `px`, not `.first { ... .all { it == deepArgb } }`: a box's scope is
-// crowded enough that `all` inside a nested lambda whose receiver has no written-down type resolves
-// to something else entirely, and the error surfaces on a later line.
+/*
+Why this figure has no ground constraint, read out of the model rather than asserted. The source's
+corner is deep water, so that pixel identifies the band without re-deriving the palette's rounding.
+
+An explicit loop with a typed `px`, not `.first { ... .all { it == deepArgb } }`: a box's scope is
+crowded enough that `all` inside a nested lambda whose receiver has no written-down type resolves
+to something else entirely, and the error surfaces on a later line.
+*/
 val deepArgb: Int = source.toBufferedImage().getRGB(0, 0)
 var uniformDeep: Int = -1
 for (id in 0 until patterns.tileCount) {
@@ -362,13 +373,18 @@ val successors: String = (0..3).joinToString("  ") { d -> "dir " + d + " " + rul
 :::fold render the model summary
 val modelReport =
     "${patterns.tileCount} distinct 3x3 windows · ${panels.size}/${seeds.size} seeds solved, " +
-    "$firstAttempt on the first attempt\n" +
-    "the all-deep window may be followed by: " + successors
-markdown("model", """
+        "$firstAttempt on the first attempt\n" +
+        "the all-deep window may be followed by: " +
+        successors
+markdown(
+    "model",
+    """
     ~~~
 $modelReport
     ~~~
-""")
+""",
+)
+
 :::endfold
 
 display("main", montage(panels, columns = 4, cellSide = 300).toPngBytes())
@@ -441,14 +457,14 @@ the original "simple tiled model", and it is about ten lines once the sockets ar
 :::static
 // Sockets per tile, in WFC_NORTH, WFC_EAST, WFC_SOUTH, WFC_WEST order. 1 = a trace leaves this edge.
 val sockets = [
-    intArrayOf(0, 0, 0, 0),   // blank
-    intArrayOf(0, 1, 0, 1),   // horizontal
-    intArrayOf(1, 0, 1, 0),   // vertical
-    intArrayOf(1, 1, 0, 0),   // elbow N-E
-    intArrayOf(0, 1, 1, 0),   // elbow E-S
-    intArrayOf(0, 0, 1, 1),   // elbow S-W
-    intArrayOf(1, 0, 0, 1),   // elbow W-N
-    intArrayOf(1, 1, 1, 1)    // cross
+    intArrayOf(0, 0, 0, 0), // blank
+    intArrayOf(0, 1, 0, 1), // horizontal
+    intArrayOf(1, 0, 1, 0), // vertical
+    intArrayOf(1, 1, 0, 0), // elbow N-E
+    intArrayOf(0, 1, 1, 0), // elbow E-S
+    intArrayOf(0, 0, 1, 1), // elbow S-W
+    intArrayOf(1, 0, 0, 1), // elbow W-N
+    intArrayOf(1, 1, 1, 1), // cross
 ]
 
 // Edge matching, stated once. Everything else about the picture follows from it.
@@ -471,17 +487,40 @@ val pad = 0xFFB8FFDA.toInt()
 // a lambda in a Field box trips a K2 codegen assertion ("has no callableId").
 fun traceArt(s: IntArray): IntArray {
     val px = IntArray(side * side) { bg }
-    if (s[WFC_NORTH] == 1) for (y in 0..c) { px[c + y * side] = trace; px[(c - 1) + y * side] = trace }
-    if (s[WFC_SOUTH] == 1) for (y in c until side) { px[c + y * side] = trace; px[(c - 1) + y * side] = trace }
-    if (s[WFC_WEST] == 1) for (x in 0..c) { px[x + c * side] = trace; px[x + (c - 1) * side] = trace }
-    if (s[WFC_EAST] == 1) for (x in c until side) { px[x + c * side] = trace; px[x + (c - 1) * side] = trace }
+    if (s[WFC_NORTH] == 1)
+        for (y in 0..c) {
+            px[c + y * side] = trace
+            px[(c - 1) + y * side] = trace
+        }
+    if (s[WFC_SOUTH] == 1)
+        for (y in c until side) {
+            px[c + y * side] = trace
+            px[(c - 1) + y * side] = trace
+        }
+    if (s[WFC_WEST] == 1)
+        for (x in 0..c) {
+            px[x + c * side] = trace
+            px[x + (c - 1) * side] = trace
+        }
+    if (s[WFC_EAST] == 1)
+        for (x in c until side) {
+            px[x + c * side] = trace
+            px[x + (c - 1) * side] = trace
+        }
     if (s.any { it == 1 }) for (y in (c - 1)..c) for (x in (c - 1)..c) px[x + y * side] = pad
     return px
 }
 
 // A PngTileSet can be assembled from hand-drawn art; sampleIds is just the atlas row here,
 // because nothing is being learned from it.
-val tiles = PngTileSet(side, side, Array(sockets.size) { traceArt(sockets[it]) }, IntArray(sockets.size) { it }, sockets.size, 1)
+val tiles = PngTileSet(
+    side,
+    side,
+    Array(sockets.size) { traceArt(sockets[it]) },
+    IntArray(sockets.size) { it },
+    sockets.size,
+    1,
+)
 :::endfold
 
 val solver = WfcSolver(34, 22, rules, seed = 20260728L)
@@ -493,9 +532,11 @@ val grid = solver.resolvedTileGridOrNull()!!
 display("tiles", tiles.sampleToImg().upscaleNearest(6).toPngBytes())
 display("main", tiles.toImg(grid, 34, 22).upscaleNearest(2).toPngBytes())
 :::fold render the cell tallies
-markdown("counts",
+markdown(
+    "counts",
     "${outcome.attempts} attempt(s) · ${grid.count { it == 7 }} crossings · " +
-        "${grid.count { it == 0 }} blank of ${grid.size} cells")
+        "${grid.count { it == 0 }} blank of ${grid.size} cells",
+)
 :::endfold
 ```
 
@@ -538,17 +579,18 @@ val BLOSSOM = Triple(0.88f, 0.34f, 0.42f)
 val sw = 26
 val sh = 18
 val soilTop = 13
-val flowers = [3 to 4, 8 to 6, 13 to 3, 18 to 5, 22 to 4]   // column to stem height
+val flowers = [3 to 4, 8 to 6, 13 to 3, 18 to 5, 22 to 4] // column to stem height
 
-val source = Img.generateRGB(sw, sh) { x, y ->
-    val flower = flowers.firstOrNull { it.first == x }
-    when {
-        y >= soilTop -> SOIL
-        flower != null && y == soilTop - flower.second - 1 -> BLOSSOM
-        flower != null && y >= soilTop - flower.second -> STEM
-        else -> SKY
+val source =
+    Img.generateRGB(sw, sh) { x, y ->
+        val flower = flowers.firstOrNull { it.first == x }
+        when {
+            y >= soilTop -> SOIL
+            flower != null && y == soilTop - flower.second - 1 -> BLOSSOM
+            flower != null && y >= soilTop - flower.second -> STEM
+            else -> SKY
+        }
     }
-}
 
 // Every 3x3 window, deduped. wrapY = false: wrapping vertically would teach it that soil sits
 // above sky, which is the one thing this source is trying to say is untrue.
@@ -566,10 +608,12 @@ val free = WfcSolver(outW, outH, rules, seed = 9L)
 free.solveWithRetries(maxAttempts = 30)
 val freeOut = patterns.toImg(free.resolvedTileGridOrNull()!!, outW, outH)
 
-// So pin the boundary: the classic WFC "ground" constraint. Note that reset() clears forced cells
-// too, so the pinning goes in solveWithRetries' prepare block to be re-applied on every attempt.
-// (Named groundPattern/skyPattern because a bare `sky` is already taken in a Field box's scope.)
-// The all-soil and all-sky 3x3 patterns, found by looking for a flat window and testing its blue.
+/*
+So pin the boundary: the classic WFC "ground" constraint. Note that reset() clears forced cells
+too, so the pinning goes in solveWithRetries' prepare block to be re-applied on every attempt.
+(Named groundPattern/skyPattern because a bare `sky` is already taken in a Field box's scope.)
+The all-soil and all-sky 3x3 patterns, found by looking for a flat window and testing its blue.
+*/
 var groundPattern: Int = -1
 var skyPattern: Int = -1
 for (id in 0 until patterns.tileCount) {
@@ -590,16 +634,18 @@ val outcome = solver.solveWithRetries(maxAttempts = 30) {
 val out = patterns.toImg(solver.resolvedTileGridOrNull()!!, outW, outH)
 
 :::fold render the pattern summary
-markdown("model",
+markdown(
+    "model",
     "${patterns.tileCount} distinct 3x3 patterns · ground pattern \\#$groundPattern, " +
-        "sky pattern \\#$skyPattern · solved in ${outcome.attempts} attempt(s)")
+        "sky pattern \\#$skyPattern · solved in ${outcome.attempts} attempt(s)",
+)
 :::endfold
 showImgGrid(
     "source 26x18" to source.upscaleNearest(9),
     "no ground constraint" to freeOut.upscaleNearest(9),
     "ground + sky pinned" to out.upscaleNearest(9),
     columns = 1,
-    cellSide = 620
+    cellSide = 620,
 )
 ```
 
@@ -657,16 +703,17 @@ val (vn, vnBreaks) = solveStripes(WfcNeighborhood.VonNeumann)
 val (moore, mooreBreaks) = solveStripes(WfcNeighborhood.Moore)
 
 :::fold render the break counts
-markdown("breaks",
-    "anti-diagonal breaks out of 39 x 25 pairs — " +
-        "von Neumann: **$vnBreaks** · Moore: **$mooreBreaks**")
+markdown(
+    "breaks",
+    "anti-diagonal breaks out of 39 x 25 pairs — " + "von Neumann: **$vnBreaks** · Moore: **$mooreBreaks**",
+)
 :::endfold
 showImgGrid(
     "source 24x16" to source.upscaleNearest(12),
     "von Neumann (4)" to vn.upscaleNearest(7),
     "Moore (8)" to moore.upscaleNearest(7),
     columns = 3,
-    cellSide = 340
+    cellSide = 340,
 )
 ```
 
@@ -711,16 +758,15 @@ val palette = [
     Triple(0.18f, 0.48f, 0.66f),
     Triple(0.85f, 0.78f, 0.55f),
     Triple(0.31f, 0.55f, 0.24f),
-    Triple(0.12f, 0.29f, 0.14f)
+    Triple(0.12f, 0.29f, 0.14f),
 ]
 val bands = IntArray(26 * 18)
 for (cy in 0 until 18) for (cx in 0 until 26) {
     val u = cx / 25.0
     val v = cy / 17.0
-    val e = bump(u, v, 0.30, 0.40, 0.25) +
-        0.90 * bump(u, v, 0.70, 0.62, 0.21) +
-        0.55 * bump(u, v, 0.82, 0.22, 0.13) -
-        0.62 * bump(u, v, 0.34, 0.44, 0.085)
+    val e =
+        bump(u, v, 0.30, 0.40, 0.25) + 0.90 * bump(u, v, 0.70, 0.62, 0.21) + 0.55 * bump(u, v, 0.82, 0.22, 0.13) -
+            0.62 * bump(u, v, 0.34, 0.44, 0.085)
     bands[cx + cy * 26] = if (e < 0.16) 0 else if (e < 0.32) 1 else if (e < 0.44) 2 else if (e < 0.74) 3 else 4
 }
 val source = Img.generateRGB(26, 18) { x, y -> palette[bands[x + y * 26]] }
@@ -733,6 +779,7 @@ for (i in bands.indices) tileOfBand[bands[i]] = tiles.sampleIds[i]
 rules.weights[tileOfBand[0]] *= 2.0
 rules.weights[tileOfBand[1]] *= 1.5
 rules.weights[tileOfBand[2]] *= 10.0
+
 :::endfold
 
 val solver = WfcSolver(40, 28, rules, seed = 3L)
@@ -744,8 +791,9 @@ val entropy = mutableListOf<Pair<String, Img>>()
 fun sample() {
     val pct = (solver.resolvedFraction() * 100).toInt()
     waves += "$pct% decided" to tiles.waveToImg(solver).upscaleNearest(6)
-    entropy += "$pct% decided" to
-        solver.possibilityCountImg().colormap("magma", lo = 0f, hi = rules.tileCount.toFloat()).upscaleNearest(6)
+    entropy +=
+        "$pct% decided" to
+            solver.possibilityCountImg().colormap("magma", lo = 0f, hi = rules.tileCount.toFloat()).upscaleNearest(6)
 }
 
 sample()
@@ -760,11 +808,15 @@ markdown("steps", "$steps steps · ${waves.size} sampled frames · ended ${solve
 
 // display() the raster directly rather than via showImg: showImg clamps to maxSide with an
 // area-averaging resize, and area-averaging a pixel grid is exactly what upscaleNearest avoided.
-display("main", vstack(
-    montage(waves, columns = 4, cellSide = 260),
-    montage(entropy, columns = 4, cellSide = 260),
-    gap = 14
-).toPngBytes())
+display(
+    "main",
+    vstack(
+            montage(waves, columns = 4, cellSide = 260),
+            montage(entropy, columns = 4, cellSide = 260),
+            gap = 14,
+        )
+        .toPngBytes(),
+)
 ```
 
 ![seven frames of the wave collapsing from flat grey haze to a finished map, above the same frames as a possibility-count heatmap showing the propagating frontier](assets/wfc_examples/collapse-frames.png)
@@ -797,16 +849,15 @@ val palette = [
     Triple(0.18f, 0.48f, 0.66f),
     Triple(0.85f, 0.78f, 0.55f),
     Triple(0.31f, 0.55f, 0.24f),
-    Triple(0.12f, 0.29f, 0.14f)
+    Triple(0.12f, 0.29f, 0.14f),
 ]
 val bands = IntArray(26 * 18)
 for (cy in 0 until 18) for (cx in 0 until 26) {
     val u = cx / 25.0
     val v = cy / 17.0
-    val e = bump(u, v, 0.30, 0.40, 0.25) +
-        0.90 * bump(u, v, 0.70, 0.62, 0.21) +
-        0.55 * bump(u, v, 0.82, 0.22, 0.13) -
-        0.62 * bump(u, v, 0.34, 0.44, 0.085)
+    val e =
+        bump(u, v, 0.30, 0.40, 0.25) + 0.90 * bump(u, v, 0.70, 0.62, 0.21) + 0.55 * bump(u, v, 0.82, 0.22, 0.13) -
+            0.62 * bump(u, v, 0.34, 0.44, 0.085)
     bands[cx + cy * 26] = if (e < 0.16) 0 else if (e < 0.32) 1 else if (e < 0.44) 2 else if (e < 0.74) 3 else 4
 }
 val source = Img.generateRGB(26, 18) { x, y -> palette[bands[x + y * 26]] }
@@ -819,25 +870,40 @@ for (i in bands.indices) tileOfBand[bands[i]] = tiles.sampleIds[i]
 rules.weights[tileOfBand[0]] *= 2.0
 rules.weights[tileOfBand[1]] *= 1.5
 rules.weights[tileOfBand[2]] *= 10.0
+
 :::endfold
 
 val solver = WfcSolver(44, 30, rules, seed = 3L)
+val displayFps = 20
+val stepsPerDisplay = 12
 println("wfc collapse animation ready")
 
-// A few step()s per displayed frame, then push the wave to the box's output channel.
-//
-// One display() per frame, with the label drawn INTO the raster by montage(). showImg(caption = …)
-// would also be a single payload, but it is an HTML figure the browser re-parses every frame; baked
-// pixels keep a 20fps recording cheap, and the label cannot lag the picture it describes.
-loop {
-    if (solver.status == WfcStatus.Running) solver.step()   // one WFC iteration per displayed frame
-    val label = "${(solver.resolvedFraction() * 100).toInt()}% decided — ${solver.status}"
-    display("main", montage(
-        [label to tiles.waveToImg(solver).upscaleNearest(8)],
-        columns = 1,
-        cellSide = 460
-    ).toPngBytes())
-    frame()
+/*
+Take stepsPerDisplay solver steps per output update, at no more than displayFps updates per second.
+
+One display() per update, with the label drawn INTO the raster by montage(). showImg(caption = …)
+would also be a single payload, but it is an HTML figure the browser re-parses every frame; baked
+pixels keep a 20fps recording cheap, and the label cannot lag the picture it describes.
+*/
+frames {
+    while (true) {
+        repeat(stepsPerDisplay) {
+            if (solver.status == WfcStatus.Running) solver.step()
+        }
+        val label = "${(solver.resolvedFraction() * 100).toInt()}% decided — ${solver.status}"
+        display(
+            "main",
+            montage(
+                    [label to tiles.waveToImg(solver).upscaleNearest(8)],
+                    columns = 1,
+                    cellSide = 460,
+                )
+                .toPngBytes(),
+        )
+        // Leave the final solved (or contradicted) wave visible without rebuilding it.
+        if (solver.status != WfcStatus.Running) break
+        delay(1000 / displayFps)
+    }
 }
 ```
 
@@ -889,16 +955,15 @@ val palette = [
     Triple(0.18f, 0.48f, 0.66f),
     Triple(0.85f, 0.78f, 0.55f),
     Triple(0.31f, 0.55f, 0.24f),
-    Triple(0.12f, 0.29f, 0.14f)
+    Triple(0.12f, 0.29f, 0.14f),
 ]
 val bands = IntArray(26 * 18)
 for (cy in 0 until 18) for (cx in 0 until 26) {
     val u = cx / 25.0
     val v = cy / 17.0
-    val e = bump(u, v, 0.30, 0.40, 0.25) +
-        0.90 * bump(u, v, 0.70, 0.62, 0.21) +
-        0.55 * bump(u, v, 0.82, 0.22, 0.13) -
-        0.62 * bump(u, v, 0.34, 0.44, 0.085)
+    val e =
+        bump(u, v, 0.30, 0.40, 0.25) + 0.90 * bump(u, v, 0.70, 0.62, 0.21) + 0.55 * bump(u, v, 0.82, 0.22, 0.13) -
+            0.62 * bump(u, v, 0.34, 0.44, 0.085)
     bands[cx + cy * 26] = if (e < 0.16) 0 else if (e < 0.32) 1 else if (e < 0.44) 2 else if (e < 0.74) 3 else 4
 }
 val source = Img.generateRGB(26, 18) { x, y -> palette[bands[x + y * 26]] }
@@ -909,16 +974,20 @@ for (i in bands.indices) tileOfBand[bands[i]] = tiles.sampleIds[i]
 rules.weights[tileOfBand[0]] *= 2.0
 rules.weights[tileOfBand[1]] *= 1.5
 rules.weights[tileOfBand[2]] *= 10.0
+
 :::endfold
 
 // Halfway through a collapse. `.h` is the fragment ToHTML returns, so this is exactly what the box
 // shows when its last expression is `solver` — nothing here is a special-purpose figure.
 val solver = WfcSolver(34, 24, rules, seed = 5L)
-while (solver.resolvedFraction() < 0.45 && solver.step() == WfcStatus.Running) { }
+while (solver.resolvedFraction() < 0.45 && solver.step() == WfcStatus.Running) {}
 display("a. mid-collapse", solver.h)
 
-// The same view of a failure. The over-constrained chain from the contradictions section: nothing may sit east of tile 2, so
-// a 6x6 grid cannot be filled, and propagation empties a cell.
+/*
+The same view of a failure. The over-constrained chain from the contradictions section: nothing may sit east of tile
+2, so
+a 6x6 grid cannot be filled, and propagation empties a cell.
+*/
 val strict = wfcRules(tileCount = 3) {
     allow(WFC_EAST, 0, 1)
     allow(WFC_EAST, 1, 2)
@@ -933,15 +1002,18 @@ display("b. contradicted", stuck.h)
 // And the numbers the panels are drawn from, so the picture can be checked against them.
 val readBack =
     "mid-collapse: ${solver}\n" +
-    "  entropy range drawn: 0 .. ${"%.3f".format(rules.fullSetEntropy())} nats" +
-    " (${solver.entropyHeatmap().nonFiniteCount} cells undefined)\n" +
-    "contradicted: ${stuck}\n" +
-    "  cells with no possibilities left: ${stuck.possibilityCountGrid().count { it == 0 }}"
-markdown("c. read back", """
+        "  entropy range drawn: 0 .. ${"%.3f".format(rules.fullSetEntropy())} nats" +
+        " (${solver.entropyHeatmap().nonFiniteCount} cells undefined)\n" +
+        "contradicted: ${stuck}\n" +
+        "  cells with no possibilities left: ${stuck.possibilityCountGrid().count { it == 0 }}"
+markdown(
+    "c. read back",
+    """
     ~~~
 $readBack
     ~~~
-""")
+""",
+)
 :::endfold
 ```
 
@@ -974,8 +1046,6 @@ would yield one unique tile per distinct value. Quantise first. At the six level
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/wfc_examples/scalar-field.png" wait="2.0" timeout="180" capture="box" open-outputs="true" w="1200" name="wfc-scalar-field"}
 :::static
-import afield.geometry.path.FLine
-
 :::fold build the source field: a sum of bumps quantised to six levels
 fun bump(u: Double, v: Double, cx: Double, cy: Double, r: Double): Double {
     val dx = u - cx
@@ -990,17 +1060,20 @@ val source = FloatArray(sw * sh)
 for (cy in 0 until sh) for (cx in 0 until sw) {
     val u = cx / (sw - 1.0)
     val v = cy / (sh - 1.0)
-    val e = (bump(u, v, 0.32, 0.42, 0.26) +
-        0.85 * bump(u, v, 0.70, 0.60, 0.22) +
-        0.50 * bump(u, v, 0.80, 0.24, 0.14)).coerceIn(0.0, 1.0)
+    val e =
+        (bump(u, v, 0.32, 0.42, 0.26) + 0.85 * bump(u, v, 0.70, 0.60, 0.22) + 0.50 * bump(u, v, 0.80, 0.24, 0.14))
+            .coerceIn(0.0, 1.0)
     // Quantise, or exact-float dedup gives one tile per distinct value instead of six.
     source[cx + cy * sw] = (Math.round(e * (levels - 1)).toDouble() / (levels - 1)).toFloat()
 }
+
 :::endfold
 
-// Both float paths, on the same source. sliceIntoUniqueTiles2D is the FloatArray counterpart of
-// sliceIntoUniqueTiles(1, 1): one value per tile. sliceIntoOverlappingPatterns2D takes 3x3 windows
-// of *values* instead of colours.
+/*
+Both float paths, on the same source. sliceIntoUniqueTiles2D is the FloatArray counterpart of
+sliceIntoUniqueTiles(1, 1): one value per tile. sliceIntoOverlappingPatterns2D takes 3x3 windows
+of *values* instead of colours.
+*/
 val tiles = source.sliceIntoUniqueTiles2D(sw, sh, tileWidth = 1, tileHeight = 1)
 val patterns = source.sliceIntoOverlappingPatterns2D(sw, sh, 3, 3, wrapX = false, wrapY = false)
 
@@ -1026,46 +1099,62 @@ for (id in 0 until patterns.tileCount) {
         lowestPattern = id
     }
 }
+
 :::endfold
 
-// Pin the border to the lowest level in both. Without it the field settles on whichever level
-// nucleates first, for exactly the reason the terrain did; with it, the field has to rise
-// inward through the chain.
+/*
+Pin the border to the lowest level in both. Without it the field settles on whichever level
+nucleates first, for exactly the reason the terrain did; with it, the field has to rise
+inward through the chain.
+*/
 val tiledSolver = WfcSolver(outW, outH, tiles.toRules(), seed = 5L)
 val tiledOutcome = tiledSolver.solveWithRetries(maxAttempts = 30) {
-    for (x in 0 until outW) { forceTile(x, 0, lowestTile); forceTile(x, outH - 1, lowestTile) }
-    for (y in 0 until outH) { forceTile(0, y, lowestTile); forceTile(outW - 1, y, lowestTile) }
+    for (x in 0 until outW) {
+        forceTile(x, 0, lowestTile)
+        forceTile(x, outH - 1, lowestTile)
+    }
+    for (y in 0 until outH) {
+        forceTile(0, y, lowestTile)
+        forceTile(outW - 1, y, lowestTile)
+    }
 }
-// render() on a FloatTileSet gives back a FloatArray, not an image.
-// `throw`, not `error(...)`: a Field box has its own `error` in scope, and it does not return
-// Nothing, so the elvis would widen this to Any.
-val tiledGrid: IntArray = tiledSolver.resolvedTileGridOrNull()
-    ?: throw IllegalStateException("tiled model ended " + tiledSolver.status)
+/*
+render() on a FloatTileSet gives back a FloatArray, not an image.
+`throw`, not `error(...)`: a Field box has its own `error` in scope, and it does not return
+Nothing, so the elvis would widen this to Any.
+*/
+val tiledGrid: IntArray =
+    tiledSolver.resolvedTileGridOrNull() ?: throw IllegalStateException("tiled model ended " + tiledSolver.status)
 val tiledHeights: FloatArray = tiles.render(tiledGrid, outW, outH)
 
-// The pattern model gets no pinning at all. Pinning the whole border to one window over-constrains
-// it into a contradiction (a corner has to satisfy the ring in both directions at once) -- and it
-// does not need the help: a 3x3 window of values already encodes what a slope looks like.
+/*
+The pattern model gets no pinning at all. Pinning the whole border to one window over-constrains
+it into a contradiction (a corner has to satisfy the ring in both directions at once) -- and it
+does not need the help: a 3x3 window of values already encodes what a slope looks like.
+*/
 val patternSolver = WfcSolver(outW, outH, patterns.toRules(), seed = 5L)
 val patternOutcome = patternSolver.solveWithRetries(maxAttempts = 30)
-val patternGrid: IntArray = patternSolver.resolvedTileGridOrNull()
-    ?: throw IllegalStateException("pattern model ended " + patternSolver.status)
+val patternGrid: IntArray =
+    patternSolver.resolvedTileGridOrNull() ?: throw IllegalStateException("pattern model ended " + patternSolver.status)
 val patternHeights: FloatArray = patterns.render(patternGrid, outW, outH)
 
-// And the same pattern set closed under the symmetries of the square. A heightfield has no up, so
-// a rotated legal arrangement is also legal -- expandSymmetry says exactly that, and it is the one
-// line that turns the banded result below into terrain.
-//
-// Three seeds rather than one, because the claim is about the ensemble: each field keeps a grain,
-// and what symmetry closure removes is every field having the SAME grain. One panel cannot show that.
+/*
+And the same pattern set closed under the symmetries of the square. A heightfield has no up, so
+a rotated legal arrangement is also legal -- expandSymmetry says exactly that, and it is the one
+line that turns the banded result below into terrain.
+
+Three seeds rather than one, because the claim is about the ensemble: each field keeps a grain,
+and what symmetry closure removes is every field having the SAME grain. One panel cannot show that.
+*/
 val symmetric = patterns.expandSymmetry(WfcSymmetry.All)
 val symSeeds = [5L, 23L, 42L]
 val symFields = mutableListOf<Pair<Long, FloatArray>>()
 for (seed in symSeeds) {
     val solver = WfcSolver(outW, outH, symmetric.toRules(), seed = seed)
     solver.solveWithRetries(maxAttempts = 30)
-    val grid: IntArray = solver.resolvedTileGridOrNull()
-        ?: throw IllegalStateException("symmetric model, seed " + seed + ", ended " + solver.status)
+    val grid: IntArray =
+        solver.resolvedTileGridOrNull()
+            ?: throw IllegalStateException("symmetric model, seed " + seed + ", ended " + solver.status)
     symFields.add(seed to symmetric.render(grid, outW, outH))
 }
 val symHeights: FloatArray = symFields[0].second
@@ -1084,42 +1173,56 @@ fun grain(v: FloatArray, w: Int, h: Int): Pair<Double, Double> {
     var hn = 0
     var vn = 0
     for (y in 0 until h) for (x in 0 until w) {
-        if (x + 1 < w) { hs += kotlin.math.abs(v[x + y * w] - v[x + 1 + y * w]); hn++ }
-        if (y + 1 < h) { vs += kotlin.math.abs(v[x + y * w] - v[x + (y + 1) * w]); vn++ }
+        if (x + 1 < w) {
+            hs += kotlin.math.abs(v[x + y * w] - v[x + 1 + y * w])
+            hn++
+        }
+        if (y + 1 < h) {
+            vs += kotlin.math.abs(v[x + y * w] - v[x + (y + 1) * w])
+            vn++
+        }
     }
     return (hs / hn) to (vs / vn)
 }
 
 val plainGrain = grain(patternHeights, outW, outH)
-val symLines = symFields.joinToString("\n") { entry ->
-    val g = grain(entry.second, outW, outH)
-    "3x3 + D4 seed " + entry.first.toString().padEnd(3) +
-        " grain along rows ${"%.3f".format(g.first)} / down columns ${"%.3f".format(g.second)}" +
-        ", ratio ${"%.1f".format(maxOf(g.first, g.second) / maxOf(1e-6, minOf(g.first, g.second)))}x"
-}
+val symLines =
+    symFields.joinToString("\n") { entry ->
+        val g = grain(entry.second, outW, outH)
+        "3x3 + D4 seed " +
+            entry.first.toString().padEnd(3) +
+            " grain along rows ${"%.3f".format(g.first)} / down columns ${"%.3f".format(g.second)}" +
+            ", ratio ${"%.1f".format(maxOf(g.first, g.second) / maxOf(1e-6, minOf(g.first, g.second)))}x"
+    }
 :::endfold
 
 :::fold render the grain statistics
 val statsReport =
     "${tiles.tileCount} levels; ${patterns.tileCount} distinct 3x3 windows -> " +
-    "${symmetric.tileCount} once closed under D4\n" +
-    "1x1 tiles          mean ${"%.2f".format(tiledHeights.average())}, " +
-    "${tiledOutcome.attempts} attempt(s)\n" +
-    "3x3 patterns       grain along rows ${"%.3f".format(plainGrain.first)} / down columns " +
-    "${"%.3f".format(plainGrain.second)}" +
-    ", ratio ${"%.1f".format(maxOf(plainGrain.first, plainGrain.second) / maxOf(1e-6, minOf(plainGrain.first, plainGrain.second)))}x\n" +
-    symLines
-markdown("stats", """
+        "${symmetric.tileCount} once closed under D4\n" +
+        "1x1 tiles          mean ${"%.2f".format(tiledHeights.average())}, " +
+        "${tiledOutcome.attempts} attempt(s)\n" +
+        "3x3 patterns       grain along rows ${"%.3f".format(plainGrain.first)} / down columns " +
+        "${"%.3f".format(plainGrain.second)}" +
+        ", ratio ${"%.1f".format(maxOf(plainGrain.first, plainGrain.second) / maxOf(1e-6, minOf(plainGrain.first, plainGrain.second)))}x\n" +
+        symLines
+markdown(
+    "stats",
+    """
     ~~~
 $statsReport
     ~~~
-""")
+""",
+)
+
 :::endfold
 
 :::fold contour the smoothed D4 field, and lay out the six panels
-// Terraced levels contour into blocky steps, so smooth before extracting geometry. This is the whole
-// point of ending up in a FloatArray rather than in pixels: iso-contours are FLines. Contour the D4
-// field -- the banded one has nothing worth contouring.
+/*
+Terraced levels contour into blocky steps, so smooth before extracting geometry. This is the whole
+point of ending up in a FloatArray rather than in pixels: iso-contours are FLines. Contour the D4
+field -- the banded one has nothing worth contouring.
+*/
 val smooth = symField.gaussianBlur(1.2)
 val contours = ArrayList<FLine>()
 for (iso in [0.15, 0.35, 0.55, 0.75]) {
@@ -1131,13 +1234,16 @@ for (iso in [0.15, 0.35, 0.55, 0.75]) {
 }
 
 val panels = mutableListOf(
-    "source 26x18, 6 levels" to floatsToImg(source, sw, sh).colormap("viridis", lo = 0f, hi = 1f).upscaleNearest(14),
+    "source 26x18, 6 levels" to
+        floatsToImg(source, sw, sh).colormap("viridis", lo = 0f, hi = 1f).upscaleNearest(14),
     "1x1 tiles, border pinned" to tiledField.colormap("viridis", lo = 0f, hi = 1f).upscaleNearest(9),
-    "3x3 patterns, as learned" to patternField.colormap("viridis", lo = 0f, hi = 1f).upscaleNearest(9)
+    "3x3 patterns, as learned" to patternField.colormap("viridis", lo = 0f, hi = 1f).upscaleNearest(9),
 )
 for (entry in symFields) {
-    panels.add("3x3 + D4, seed ${entry.first}" to
-        floatsToImg(entry.second, outW, outH).colormap("viridis", lo = 0f, hi = 1f).upscaleNearest(9))
+    panels.add(
+        "3x3 + D4, seed ${entry.first}" to
+            floatsToImg(entry.second, outW, outH).colormap("viridis", lo = 0f, hi = 1f).upscaleNearest(9),
+    )
 }
 :::endfold
 showImgGrid(*panels.toTypedArray(), columns = 3, cellSide = 400)
@@ -1246,9 +1352,11 @@ two contradictions is not the same as a fresh solver's first attempt.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/wfc_examples/contradiction.png" wait="1.5" capture="box" open-outputs="true" w="1200" name="wfc-contradiction"}
 :::static
-// Over-constrained: a strict 0 -> 1 -> 2 chain and nothing else. Hand-authored rules do
-// NOT get the widening that fromSampleGrid applies, so "nothing may sit east of tile 2" stands.
-// The longest fillable row is therefore three cells, and a 6x6 grid cannot be filled at all.
+/*
+Over-constrained: a strict 0 -> 1 -> 2 chain and nothing else. Hand-authored rules do
+NOT get the widening that fromSampleGrid applies, so "nothing may sit east of tile 2" stands.
+The longest fillable row is therefore three cells, and a 6x6 grid cannot be filled at all.
+*/
 val strict = wfcRules(tileCount = 3) {
     allow(WFC_EAST, 0, 1)
     allow(WFC_EAST, 1, 2)
@@ -1268,28 +1376,38 @@ val relaxed = wfcRules(tileCount = 3) {
 }
 val relaxedOutcome = WfcSolver(6, 6, relaxed, seed = 1L).solveWithRetries()
 
-val report = [
-    "strict rules:   ${stuckOutcome.status} after ${stuckOutcome.attempts} attempt(s)",
-    "  east of 2:    ${(0..2).filter { strict.allows(WFC_EAST, 2, it) }} (nothing may follow it)",
-    "  symmetric?    ${strict.findAsymmetry() ?: "yes"}",
-    "relaxed rules:  ${relaxedOutcome.status} after ${relaxedOutcome.attempts} attempt(s)",
-    "  east of 2:    ${(0..2).filter { relaxed.allows(WFC_EAST, 2, it) }}",
-    "  symmetric?    ${relaxed.findAsymmetry() ?: "yes"}"
-].joinToString("<br>")
+val report =
+    [
+            "strict rules:   ${stuckOutcome.status} after ${stuckOutcome.attempts} attempt(s)",
+            "  east of 2:    ${(0..2).filter { strict.allows(WFC_EAST, 2, it) }} (nothing may follow it)",
+            "  symmetric?    ${strict.findAsymmetry() ?: "yes"}",
+            "relaxed rules:  ${relaxedOutcome.status} after ${relaxedOutcome.attempts} attempt(s)",
+            "  east of 2:    ${(0..2).filter { relaxed.allows(WFC_EAST, 2, it) }}",
+            "  symmetric?    ${relaxed.findAsymmetry() ?: "yes"}",
+        ]
+        .joinToString("\n")
 :::fold render the deadlock report
-markdown("deadlock", """
+markdown(
+    "deadlock",
+    """
     ~~~
 $report
     ~~~
-""")
+""",
+)
+
 :::endfold
 
 :::fold same rules, two seeds, side by side
 val chain = wfcRules(tileCount = 3) {
     weights(3.0, 1.0, 4.0)
     for (d in [WFC_EAST, WFC_SOUTH]) {
-        allow(d, 0, 0); allow(d, 0, 1); allow(d, 1, 0)
-        allow(d, 1, 1); allow(d, 1, 2); allow(d, 2, 1)
+        allow(d, 0, 0)
+        allow(d, 0, 1)
+        allow(d, 1, 0)
+        allow(d, 1, 1)
+        allow(d, 1, 2)
+        allow(d, 2, 1)
         allow(d, 2, 2)
     }
 }
@@ -1305,7 +1423,7 @@ showImgGrid(
     "seed 42 again" to draw(42L),
     "seed 43" to draw(43L),
     columns = 3,
-    cellSide = 300
+    cellSide = 300,
 )
 :::endfold
 ```
@@ -1369,13 +1487,17 @@ val learned = WfcRules.fromSampleGrid(
     sampleWidth = 4,
     sampleHeight = 1,
     tileCount = 3,
-    wrapX = true
+    wrapX = true,
 )
 display("c. learned, with an unused tile", learned.h)
 
 println("strict:  " + strict)
-println("relaxed: " + relaxed + ", empty masks: " +
-    (0 until 4).sumOf { d -> (0 until 3).count { relaxed.allowedCount(d, it) == 0 } })
+println(
+    "relaxed: " +
+        relaxed +
+        ", empty masks: " +
+        (0 until 4).sumOf { d -> (0 until 3).count { relaxed.allowedCount(d, it) == 0 } },
+)
 println("learned: " + learned + ", weights " + learned.weights.toList())
 ```
 
@@ -1458,12 +1580,12 @@ filter, and whose first casualty is the pixel-scale structure the whole exercise
 of room, and `possibilityCountImg` shows you which cells were over-constrained from the start.
 Magenta in a wave frame is a cell whose possibility set has been emptied.
 
-**Names and shapes that bite inside a Field box.** Every snippet on this page runs in one, and none
-of these two is WFC-specific:
+**Names and shapes that bite inside a Field box.** Every snippet on this page runs in one, and neither
+of these is WFC-specific:
 
-- **A box's scope is crowded.** `h`, `sky` and `error` all resolve to something Field already defines
-  ahead of a script-local `val` of the same name once you are inside a lambda with its own receiver.
-  `outW`/`outH`/`skyPattern` are not paranoia, and `throw` beats `error(...)`.
+- **`error(...)` in a box shows a message and does not throw.** It is the box's own `error`, which
+  marks the box, so `?: error("...")` leaves the expression nullable. Write
+  `?: throw IllegalStateException("...")` to stop.
 - **`display(channel, x)` replaces that channel's contents; it does not append.** Text and a picture
   need two channels, or one payload that contains both. `showImg(img, caption = …)` is the latter
   (a single `<figure>`), but in an *animation* prefer drawing the label into the raster with `montage`

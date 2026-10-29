@@ -37,6 +37,10 @@ from tools.check_doc_offline_links import (
     read_config,
     tracked_docs_markdown,
 )
+from tools.git_isolation import scrub_process_env  # noqa: E402
+
+# This module builds scratch git repositories; an inherited GIT_DIR would redirect them.
+scrub_process_env()
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CHECKER = REPO_ROOT / "tools" / "check_doc_offline_links.py"
@@ -79,6 +83,11 @@ class Premise(unittest.TestCase):
 
 class Pattern(unittest.TestCase):
     """The regex has to match malformed references, or the lint selects nothing."""
+
+    def test_file_value_excludes_other_viewer_options(self) -> None:
+        for separator in ('&', '&amp;'):
+            match = OFFLINE_REF.search(f'<iframe src="offline.html?file={GOOD_FILE}{separator}focus=outputs">')
+            self.assertEqual(match.group('file'), GOOD_FILE)
 
     def test_matches_the_old_server_absolute_shape(self) -> None:
         text = f"[Open ↗](/offline.html?file=/field4/{GOOD_FILE})"

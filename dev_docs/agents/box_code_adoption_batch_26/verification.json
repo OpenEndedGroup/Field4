@@ -1,0 +1,35 @@
+{
+  "baseline": "dcc0dd98f",
+  "sources": [
+    {
+      "path": "dev_docs/agents/transcripts/ceres_free_variables.yaml",
+      "kotlinBodies": 2,
+      "collectionConversions": 3,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/completion_rank_at_scale.yaml",
+      "kotlinBodies": 3,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/letter_interpolation_panels.yaml",
+      "kotlinBodies": 3,
+      "collectionConversions": 2,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/logging_layer.yaml",
+      "kotlinBodies": 6,
+      "collectionConversions": 19,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/slideshow_guide.yaml",
+      "kotlinBodies": 3,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    }
+  ]
+}

@@ -1,3 +1,12 @@
+/**
+ * Global switches for the Vulkan renderer, mostly read from system properties at startup, and the code that locates the Vulkan loader and driver.
+ *
+ * [Options] holds the platform flags, profiling and frame-presentation logging toggles, debug
+ * naming and labels, and VR. On macOS, [Options.doVulkanSDK] uses the loader named by
+ * `AFIELD_VULKAN_LIBRARY`, else `VULKAN_SDK`, else the newest `~/VulkanSDK` version, falls back to
+ * LWJGL's bundled MoltenVK when none exists, and pins the driver chosen by [Options.macVulkanDriver].
+ */
+
 package afield.graphics.vulkan.util
 
 import afield.app.diagnostics.logging.lprintln

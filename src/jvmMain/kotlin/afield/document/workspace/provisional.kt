@@ -89,12 +89,26 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import java.util.concurrent.ConcurrentHashMap
 
+/**
+ * Provisional edits: proposed text for a box property, typically from AI4, held per document until someone
+ * accepts or rejects it. Entries are kept in memory, keyed by document, box uid and property, and every
+ * change to the entries sends the document's whole [ProvisionalSet] to its browsers as `set-provisional`.
+ *
+ * [acceptProvisional] writes the proposed text into the box, records the acceptance (with any
+ * [AiProvisionalArchive] markdown attached by [setProvisionalArchive]) in the flight recorder, and drops the
+ * entry; [rejectProvisional] only drops it. [acceptAllProvisional] and [rejectAllProvisional] do the same for
+ * a whole document. When the decided property is a shader source (GLSL, Slang or `stackSL`) and the box already has the
+ * matching live shader module, that module is rebuilt afterwards, once per box and shader kind, on the
+ * runloop; rejecting reloads it too.
+ */
+
 private val provisionalByDocument =
     ConcurrentHashMap<String, ConcurrentHashMap<String, ConcurrentHashMap<String, String>>>()
 
 private val provisionalArchiveByDocument =
     ConcurrentHashMap<String, ConcurrentHashMap<String, ConcurrentHashMap<String, AiProvisionalArchive>>>()
 
+/** Markdown kept beside a provisional entry and recorded with it when the entry is accepted. */
 data class AiProvisionalArchive(
     val markdown: String,
     val source: String = "AI4"

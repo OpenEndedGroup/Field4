@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T21:08:48.423Z",
+  "documentName": "rectsl_heading_fit",
+  "outputs": [
+    {
+      "uid": "rectsl_heading_lowering",
+      "channel": "figure",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 200,
+      "height": 155,
+      "path": "outputs/0.html"
+    }
+  ]
+}

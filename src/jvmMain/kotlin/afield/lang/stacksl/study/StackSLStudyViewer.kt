@@ -14,6 +14,14 @@ import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
+ * The output card a person uses on a StackSL study: a live WebGL2 preview, sliders for the typed
+ * numbers, per-line stages, variants and history.
+ *
+ * [StackSLStudyViewer] makes the same transactions on the study as the model's tools, so a knob kept
+ * on the card becomes a checked revision like any other edit.
+ */
+
+/**
  * The person's side of a StackSL study: one output card that shows the program running, lets them
  * turn its numbers, and lets them keep, adopt, restore or check in — the same transactions the model's
  * tools make, from the same study.

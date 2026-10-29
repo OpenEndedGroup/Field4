@@ -11,11 +11,12 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="path_trace_renderer" index="0" -->
 
 ```edn [field-box id="path_trace_renderer" role="properties"]
-{"id" "path_trace_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["path_trace_glass"] "properties" {"children" #{#afield/box "path_trace_glass"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 320.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "path_trace_renderer_code_.kt" "lines" 9 "characters" 219 "sha256" "9c1f4775efdc0df7175c2b6ee2bcf7bda2d78cce64864e565119faeac51ef21f"}]}
+{"id" "path_trace_renderer" "index" 0 "name" "path tracing renderer" "parents" ["root"] "children" ["path_trace_glass"] "properties" {"children" #{#afield/box "path_trace_glass"} "parents" #{#afield/box "root"} "name" "path tracing renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 320.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "path_trace_renderer_code_.kt" "lines" 10 "characters" 220 "sha256" "d9a523d21baae9bd403e31097aeb6360849ac2629258b04f0145cc3d54c4d2a9"}]}
 ```
 
 ```kotlin [field-property box="path_trace_renderer" name="code" path="path_trace_renderer_code_.kt"]
 import afield.graphics.vulkan.util.Options
+
 prop<Window>(window)
 prop<Renderer>(renderer)
 Options.enableHDR = false
@@ -31,16 +32,21 @@ start(renderer::run)
 <!-- field-box id="path_trace_glass" index="1" -->
 
 ```edn [field-box id="path_trace_glass" role="properties"]
-{"id" "path_trace_glass" "index" 1 "name" "glass material study" "parents" ["root" "path_trace_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "path_trace_renderer"} "name" "glass material study" "_tombstone" false "frame" #afield/rect [320.0 180.0 350.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "path_trace_glass_code_.kt" "lines" 16 "characters" 741 "sha256" "6061ea22be75eefa26cd0361220f6a99a9128484bcef2eb185ebc3b0016b5fa3"}]}
+{"id" "path_trace_glass" "index" 1 "name" "glass material study" "parents" ["root" "path_trace_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "path_trace_renderer"} "name" "glass material study" "_tombstone" false "frame" #afield/rect [320.0 180.0 350.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "path_trace_glass_code_.kt" "lines" 23 "characters" 775 "sha256" "5d766ed17986573226a0406b6120e31ee11b6ed1da9dc5e97d841f543361de1a"}]}
 ```
 
 ```kotlin [field-property box="path_trace_glass" name="code" path="path_trace_glass_code_.kt"]
 import afield.graphics.scene.fabricated.PathTraceGlassDemo
 import afield.graphics.scene.fabricated.PathTracingRenderer
 import java.io.File
+
 prop<PathTracingRenderer>(tracer)
-tracer = PathTraceGlassDemo.install(renderer, width=1280, height=720,
-    environmentPath=File("public/docs/assets/fabricate_demo/venice_sunset_1k.exr").absolutePath)
+tracer = PathTraceGlassDemo.install(
+    renderer,
+    width = 1280,
+    height = 720,
+    environmentPath = File("public/docs/assets/fabricate_demo/venice_sunset_1k.exr").absolutePath,
+)
 tracer.samplesPerFrame = 1
 tracer.maxBounces = 10
 tracer.exposure = 1.5f
@@ -48,7 +54,9 @@ println("${tracer.backend}: ${tracer.triangleCount} triangles, ${tracer.width} x
 tracer.blitToScreen()
 // This coroutine only announces capture readiness; the named scene owns the tracer.
 frames {
-    while (tracer.samples < 2048) { frame() }
+    while (tracer.samples < 2048) {
+        frame()
+    }
     println("glass study converged: ${tracer.samples} samples")
 }
 ```

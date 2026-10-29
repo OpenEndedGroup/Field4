@@ -84,6 +84,17 @@ import java.util.function.Predicate
 import kotlin.math.*
 
 /**
+ * Converts [FLine]s to and from `java.awt.geom` shapes, and walks them by distance with
+ * [FLinesAndJavaShapes.Cursor].
+ *
+ * The round trip through `java.awt.geom` (geometry only, not attributes) gives 2D FLines
+ * Java2D's flattening, stroking, insetting and outsetting. `Cursor` moves along a
+ * line by arc length or by node parameter, reports the position, tangent and curvature there, and
+ * splits the line. `CubicSegment2` and `CubicSegment3` hold the per-segment cubic maths: roots,
+ * inflections, bounding boxes and intersections.
+ */
+
+/**
  * Utility classes for manipulating and traversing FLines.
  *
  *
@@ -1282,22 +1293,23 @@ class FLinesAndJavaShapes {
             val cz: Float = -3 * a.z + 3 * b.z
             val dz: Float = a.z
 
-            val cuspxy = -(ay * cx - ax * cy) / (2 * (ay * bx - ax * by))
-            val disxy = cuspxy * cuspxy - (by * cx - bx * cy) / (3 * (ay * bx - ax * by))
+            // Inflections are the roots of P'(t) x P''(t) = 0 inside the segment. With A x B ~ 0
+            // that quadratic degenerates to a linear equation.
+            val axb = ay * bx - ax * by
+            val inside = { t: Float -> t > 1e-4f && t < 1f - 1e-4f }
+            if (abs(axb) < 1e-9f * max(1f, abs(ay * cx - ax * cy) + abs(by * cx - bx * cy))) {
+                val lin = ay * cx - ax * cy
+                if (abs(lin) < 1e-12f) return emptyList()
+                val t = -(by * cx - bx * cy) / (3 * lin)
+                return listOf(t).filter(inside)
+            }
+            val cuspxy = -(ay * cx - ax * cy) / (2 * axb)
+            val disxy = cuspxy * cuspxy - (by * cx - bx * cy) / (3 * axb)
 
-
-            if (disxy < 0) {
-                return emptyList()
-            } else if (disxy == 0.0f) {
-                return listOf(cuspxy)
-            } else {
-                val d0 = cuspxy + sqrt(disxy)
-                val d1 = cuspxy - sqrt(disxy)
-
-                val dd: MutableList<Float> = ArrayList()
-                dd.add(d0)
-                dd.add(d1)
-                return dd
+            return when {
+                disxy < 0 -> emptyList()
+                disxy == 0.0f -> listOf(cuspxy).filter(inside)
+                else -> listOf(cuspxy - sqrt(disxy), cuspxy + sqrt(disxy)).filter(inside)
             }
         }
 
@@ -1316,22 +1328,23 @@ class FLinesAndJavaShapes {
             val cy: Float = -3 * a.z + 3 * b.z
             val dy: Float = a.z
 
-            val cuspxy = -(ay * cx - ax * cy) / (2 * (ay * bx - ax * by))
-            val disxy = cuspxy * cuspxy - (by * cx - bx * cy) / (3 * (ay * bx - ax * by))
+            // Inflections are the roots of P'(t) x P''(t) = 0 inside the segment. With A x B ~ 0
+            // that quadratic degenerates to a linear equation.
+            val axb = ay * bx - ax * by
+            val inside = { t: Float -> t > 1e-4f && t < 1f - 1e-4f }
+            if (abs(axb) < 1e-9f * max(1f, abs(ay * cx - ax * cy) + abs(by * cx - bx * cy))) {
+                val lin = ay * cx - ax * cy
+                if (abs(lin) < 1e-12f) return emptyList()
+                val t = -(by * cx - bx * cy) / (3 * lin)
+                return listOf(t).filter(inside)
+            }
+            val cuspxy = -(ay * cx - ax * cy) / (2 * axb)
+            val disxy = cuspxy * cuspxy - (by * cx - bx * cy) / (3 * axb)
 
-
-            if (disxy < 0) {
-                return emptyList()
-            } else if (disxy == 0.0f) {
-                return listOf(cuspxy)
-            } else {
-                val d0 = cuspxy + sqrt(disxy)
-                val d1 = cuspxy - sqrt(disxy)
-
-                val dd: MutableList<Float> = ArrayList()
-                dd.add(d0)
-                dd.add(d1)
-                return dd
+            return when {
+                disxy < 0 -> emptyList()
+                disxy == 0.0f -> listOf(cuspxy).filter(inside)
+                else -> listOf(cuspxy - sqrt(disxy), cuspxy + sqrt(disxy)).filter(inside)
             }
         }
 
@@ -1351,22 +1364,23 @@ class FLinesAndJavaShapes {
             val cx: Float = -3 * a.z + 3 * b.z
             val dx: Float = a.z
 
-            val cuspxy = -(ay * cx - ax * cy) / (2 * (ay * bx - ax * by))
-            val disxy = cuspxy * cuspxy - (by * cx - bx * cy) / (3 * (ay * bx - ax * by))
+            // Inflections are the roots of P'(t) x P''(t) = 0 inside the segment. With A x B ~ 0
+            // that quadratic degenerates to a linear equation.
+            val axb = ay * bx - ax * by
+            val inside = { t: Float -> t > 1e-4f && t < 1f - 1e-4f }
+            if (abs(axb) < 1e-9f * max(1f, abs(ay * cx - ax * cy) + abs(by * cx - bx * cy))) {
+                val lin = ay * cx - ax * cy
+                if (abs(lin) < 1e-12f) return emptyList()
+                val t = -(by * cx - bx * cy) / (3 * lin)
+                return listOf(t).filter(inside)
+            }
+            val cuspxy = -(ay * cx - ax * cy) / (2 * axb)
+            val disxy = cuspxy * cuspxy - (by * cx - bx * cy) / (3 * axb)
 
-
-            if (disxy < 0) {
-                return emptyList()
-            } else if (disxy == 0.0f) {
-                return listOf(cuspxy)
-            } else {
-                val d0 = cuspxy + sqrt(disxy)
-                val d1 = cuspxy - sqrt(disxy)
-
-                val dd: MutableList<Float> = ArrayList()
-                dd.add(d0)
-                dd.add(d1)
-                return dd
+            return when {
+                disxy < 0 -> emptyList()
+                disxy == 0.0f -> listOf(cuspxy).filter(inside)
+                else -> listOf(cuspxy - sqrt(disxy), cuspxy + sqrt(disxy)).filter(inside)
             }
         }
 

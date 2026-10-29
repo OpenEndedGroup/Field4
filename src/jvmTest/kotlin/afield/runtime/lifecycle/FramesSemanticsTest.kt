@@ -851,4 +851,72 @@ class FramesSemanticsTest {
         assertEquals(null, two.next(Unit))
         assertTrue(two.isCompleted)
     }
+    @Test
+    fun supersedingARunCancelsAFramesWaitBeforeItsNextFrameBoundary() {
+        val box = Box("frames-supersede-wait")
+        val runloop = Runloop.runLoop.main
+        val firstRun = box.runScopes.begin("default", "launch")
+        var started = false
+        var released = false
+        try {
+            RunScope.withCurrent(firstRun) {
+                val handled = ReturnValueRegistry.launch(box, frames {
+                    started = true
+                    try {
+                        kotlinx.coroutines.awaitCancellation()
+                    } finally {
+                        released = true
+                    }
+                }, "default") { _, _, _ -> }
+                assertTrue(handled)
+            }
+            repeat(3) { runloop.frame() }
+            assertTrue(started)
+            assertFalse(released)
+
+            val nextRun = box.runScopes.begin("default", "launch")
+            box.runScopes.supersede(nextRun)
+            repeat(3) { runloop.frame() }
+            assertTrue(released, "replacement must release a waiting body without another frame() call")
+            assertTrue(box.jobs.none { it.isActive })
+        } finally {
+            KotlinExecution().stop(box)
+            repeat(3) { runloop.frame() }
+        }
+    }
+    @Test
+    fun replacementFramesStartsAfterTheCancelledBodyReleasesSharedState() {
+        val box = Box("frames-replacement-cleanup-order")
+        val runloop = Runloop.runLoop.main
+        val order = mutableListOf<String>()
+        val firstRun = box.runScopes.begin("default", "launch")
+        try {
+            RunScope.withCurrent(firstRun) {
+                ReturnValueRegistry.launch(box, frames {
+                    order.add("old acquired")
+                    try {
+                        kotlinx.coroutines.awaitCancellation()
+                    } finally {
+                        order.add("old released")
+                    }
+                }, "default") { _, _, _ -> }
+            }
+            repeat(3) { runloop.frame() }
+            assertEquals(listOf("old acquired"), order)
+
+            val nextRun = box.runScopes.begin("default", "launch")
+            RunScope.withCurrent(nextRun) {
+                ReturnValueRegistry.launch(box, frames {
+                    order.add("new acquired")
+                }, "default") { _, _, _ -> }
+            }
+            // The evaluator schedules the replacement return value, then supersedes its old run.
+            box.runScopes.supersede(nextRun)
+            repeat(4) { runloop.frame() }
+            assertEquals(listOf("old acquired", "old released", "new acquired"), order)
+        } finally {
+            KotlinExecution().stop(box)
+            repeat(3) { runloop.frame() }
+        }
+    }
 }

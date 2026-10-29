@@ -9,6 +9,9 @@ description: >
   curve (channel "2 fitted"), and returns the FnFitRun — Field renders it as a compact RMSE
   before->after summary with a loss-trajectory sparkline. Open/replay this into a fresh Field4 and
   look at the box: the fitted plot should sit right on top of the target.
+docs:
+  - page: functions_examples.md
+    why: "Covers Functions.Fn and fitting, including fitBest."
 operations:
   - create:
       box: fn_fit_demo
@@ -16,41 +19,35 @@ operations:
       frame: { x: 80.0, y: 60.0, w: 300.0, h: 100.0 }
       properties:
         code: |
-          import afield.math.functions.Functions
-          import afield.math.functions.fitBest
-          
           with(Functions) {
               val target = cos(2) * sin(1.5, amplitude = 0.8, offset = 0.2)
-              val seed   = cos(3.4) * sin(1.0, amplitude = 2.0)
-          
+              val seed = cos(3.4) * sin(1.0, amplitude = 2.0)
+
               // fitBest = jittered restarts; escapes the frequency local-minimum a single
               // fitGradient would stall in. domain defaults to 0..1; no Functions.Domain(...) needed.
               val run = fitBest(target, seed, restarts = 16)
-          
-              plot(target,     channel = "1 target", title = "target  cos·sin")
+
+              plot(target, channel = "1 target", title = "target  cos·sin")
               plot(run.fitted, channel = "2 fitted", title = "gradient-fitted (best of 16 restarts)")
-          
-              run   // Field renders the FnFitRun: RMSE before -> after + a loss sparkline
+
+              run // Field renders the FnFitRun: RMSE before -> after + a loss sparkline
           }
   - execute:
       box: fn_fit_demo
       property: code
       type: fragment
       code: |
-          import afield.math.functions.Functions
-          import afield.math.functions.fitBest
-          
-          with(Functions) {
-              val target = cos(2) * sin(1.5, amplitude = 0.8, offset = 0.2)
-              val seed   = cos(3.4) * sin(1.0, amplitude = 2.0)
-          
-              val run = fitBest(target, seed, restarts = 16)
-          
-              plot(target,     channel = "1 target", title = "target  cos·sin")
-              plot(run.fitted, channel = "2 fitted", title = "gradient-fitted (best of 16 restarts)")
-          
-              run
-          }
+        with(Functions) {
+            val target = cos(2) * sin(1.5, amplitude = 0.8, offset = 0.2)
+            val seed = cos(3.4) * sin(1.0, amplitude = 2.0)
+
+            val run = fitBest(target, seed, restarts = 16)
+
+            plot(target, channel = "1 target", title = "target  cos·sin")
+            plot(run.fitted, channel = "2 fitted", title = "gradient-fitted (best of 16 restarts)")
+
+            run
+        }
   - await:
       wait: pending
   - wait:

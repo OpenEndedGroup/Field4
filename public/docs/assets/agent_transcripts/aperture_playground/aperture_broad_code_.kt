@@ -1,20 +1,17 @@
 import org.lwjgl.vulkan.VK10.*
 
-val source = paintSource
 propDown<RenderToTexture>(paintBroad) = RenderToTexture {
-    width = (source.width / 4).coerceAtLeast(1)
-    height = (source.height / 4).coerceAtLeast(1)
+    width = (paintSource.width / 4).coerceAtLeast(1)
+    height = (paintSource.height / 4).coerceAtLeast(1)
     format = VK_FORMAT_R16G16B16A16_SFLOAT
     useDepth = false
-    clearFirst = true
     clearColor = vec(0, 0, 0, 0)
     debugName = "paintBroad"
 }
 paintBroad.setDefaultSampler(anisotropyEnable = false)
-val input = paintQuarter
 var module = moduleHere {
-    textures("paintQuarter" to input)
-    paintBroad.apply()
+    textures("paintQuarter" to paintQuarter)
+    +paintBroad
     blend = false
     depthTest = false
     depthWrite = false

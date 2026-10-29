@@ -14,6 +14,10 @@ import org.graalvm.polyglot.io.IOAccess
 import java.io.OutputStream
 
 /**
+ * Runs ORCA's own operators in the JVM without a browser page, one frame per step, so an ORCA program can be tested or rendered offline.
+ */
+
+/**
  * ORCA with no page: its own operators, from the same vendored scripts `orca()` loads in a box's
  * output, run in the JVM through GraalJS one frame at a time, as fast as you step it.
  *

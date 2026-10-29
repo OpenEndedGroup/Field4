@@ -6,6 +6,10 @@ import tempfile
 import unittest
 from tools.refactoring.core import KotlinEngine, RefactorError, affected_pattern, save_json, load_recipe, make_plan
 from tools.refactoring.symbols import inventory, generate
+from tools.git_isolation import scrub_process_env  # noqa: E402
+
+# This module builds scratch git repositories; an inherited GIT_DIR would redirect them.
+scrub_process_env()
 
 ENGINE = Path(__file__).parent / 'refactor-engine/build/install/field-refactor-engine/bin/field-refactor-engine'
 

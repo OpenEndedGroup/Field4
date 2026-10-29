@@ -37,6 +37,7 @@ import afield.ui.output.prettySummary
  * The view matrix, by contrast, is forwarded untouched: the wire already carries world→eye, composed
  * on arrival the same way the head composes its own, so there is nothing to reinterpret.
  */
+
 class VisionPoseStereoSource(
     /** Where a fresh pose comes from. Injectable so the arithmetic can be tested without a head. */
     private val newest: () -> VisionPoseFrame? = { VisionPoseStream.latest },

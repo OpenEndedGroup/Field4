@@ -22,7 +22,7 @@ expect:
  *
  * ### Why this exists, and why it is not Dokka
  *
- * `20e64da5` removed Dokka on purpose: the durable facts belong in KDoc beside the code, and a
+ * Dokka was removed in `20e64da5`, because the durable facts belong in KDoc beside the code and a
  * generated wall of one-page-per-symbol HTML is not documentation anyone reads. Field already has
  * two *interactive* ways into that KDoc — the completion panel's recursive code browser
  * (`public/docs/completion_doc_browser.md`) and the semantic index — but both need you to already
@@ -37,11 +37,11 @@ expect:
  * panel can resolve. Only the signature text is re-read from source here (the index stores names
  * and lines, not signatures); see [signatureAt].
  *
- * ### Honesty rules
+ * ### What it will not invent
  *
- * - Nothing is invented. Every summary is the first paragraph of a real KDoc comment; a symbol
- *   with no KDoc is listed with an empty summary rather than a guessed one.
- * - `[Symbol]` KDoc references are linkified only when the target is a type this reference
+ * - Every summary is the first paragraph of a real KDoc comment; a symbol with no KDoc is listed
+ *   with an empty summary rather than a guessed one.
+ * - A KDoc reference in square brackets is linkified only when the target is a type this reference
  *   actually emits — the same "links only appear when they resolve" rule the completion panel
  *   follows. Everything else degrades to plain inline code.
  * - The "see also" links from a reference section to a worked-example page are *evidence-based*:
@@ -52,10 +52,9 @@ expect:
  *
  * The first KDoc block in a file is treated as the *file's* overview when it ends before the first
  * declaration **and** is separated from that declaration by at least one blank or comment line —
- * and it is then not also shown as that declaration's own summary. Verified against the corpus:
- * `spectral.kt`, `voronoi.kt` and `wfc.kt` have genuine file-level blocks and are picked up;
- * `booleannetworks.kt`'s opening KDoc sits flush against `data class BoolNode` and is correctly
- * left attached to it.
+ * and it is then not also shown as that declaration's own summary. A block written flush against
+ * its declaration stays that declaration's own KDoc, of which only the first paragraph is
+ * published; the file's "what it is" cell on the index then has nothing to fill it with.
  *
  * ### Running it
  *
@@ -73,6 +72,8 @@ expect:
  * JVM step, and a generated reference is only trustworthy if an API change shows up as a reviewable
  * diff.
  */
+
+/** Emits `public/docs/reference/` from the KDoc in `src/`, or drift-checks the committed pages. */
 object StdlibReferenceGenerator {
 
     /** Repo-relative home of the committed reference pages. */
@@ -705,7 +706,7 @@ object StdlibReferenceGenerator {
     /** Docs pages that are not worked examples and would only add noise as "see also" targets. */
     private val EVIDENCE_PAGE_BLOCKLIST = setOf(
         "index.md", "installation.md", "survivalGuide.md", "funFeatures.md", "aiFeatures.md",
-        "staging.md", "building_and_testing.md", "sketch1.md", "sketch2.md",
+        "staging.md", "building_and_testing.md",
     )
 
     @JvmStatic
@@ -858,6 +859,10 @@ object StdlibReferenceGenerator {
          * line, the source page renders them as one signature, so only the class itself has an anchor.
          */
         val sourceAnchors: Set<Int>,
+        /** The file's `package`, empty for the default package. */
+        val packageName: String = "",
+        /** The file's `import` targets, as written (`a.b.C`, `a.b.*`); aliased imports are dropped. */
+        val imports: List<String> = emptyList(),
     ) {
         fun allSymbols(): List<Symbol> =
             types.map { it.symbol } + types.flatMap { it.members } + topLevelFunctions + topLevelValues
@@ -1014,6 +1019,8 @@ object StdlibReferenceGenerator {
             topLevelFunctions = functions,
             topLevelValues = values,
             sourceAnchors = sourceAnchors,
+            packageName = Regex("""(?m)^\s*package\s+([\w.]+)""").find(text)?.groupValues?.get(1).orEmpty(),
+            imports = Regex("""(?m)^\s*import\s+([\w.]+(?:\.\*)?)\s*$""").findAll(text).map { it.groupValues[1] }.toList(),
         )
     }
 
@@ -1238,7 +1245,9 @@ object StdlibReferenceGenerator {
             if (depth <= 0) {
                 val next = lines.getOrNull(index)?.trim().orEmpty()
                 val continues = next.startsWith(":") || next.startsWith(",") ||
-                    next.startsWith("where ") || builder.trim().endsWith("=")
+                    next.startsWith("where ") || builder.trim().endsWith("=") ||
+                    (kind == "class" && Regex("""^(?:(?:public|private|protected|internal)\s+)?constructor\b""")
+                        .containsMatchIn(next))
                 if (!continues) break
             }
         }
@@ -1575,8 +1584,34 @@ object StdlibReferenceGenerator {
         } ?: emptyList()
 
     /**
+     * The parameter names of one signature, as a KDoc written above it refers to them.
+     *
+     * `vararg`, `crossinline`, an annotation and a constructor's `val`/`var` are all stripped, so
+     * `fun f(vararg xs: Int)` gives `xs`; a backticked name is unwrapped. See
+     * [TypeAnchors.resolveReference] for what the set is for.
+     *
+     * Only a segment carrying its own `:` counts, which is what keeps a function *type* out. On
+     * `val handler: (Box) -> Unit` the first `(` [splitSignature] finds belongs to the type, so its
+     * one segment is the bare `Box`; reading that as a parameter would take `Box` out of scope for
+     * the whole summary.
+     */
+    internal fun parameterNames(signature: String): Set<String> =
+        splitSignature(signature)?.second.orEmpty().mapNotNull { param ->
+            if (':' !in param) return@mapNotNull null
+            param.substringBefore(':')
+                .trim().substringAfterLast(' ').trim('`')
+                .takeIf { it.matches(Regex("""[A-Za-z_]\w*""")) }
+        }.toSet()
+
+    /**
      * A signature split into everything before the parameter list, the top-level parameters, and
      * everything after — respecting nesting, so `(Fn) -> Double` and `Map<String, Int>` survive.
+     *
+     * The `>` of an arrow closes nothing, which has to be said explicitly because the same scan
+     * counts the `>` of a generic argument. Reading an arrow as a closing bracket brings the depth
+     * to zero at the first function-typed parameter and cuts the list off there:
+     * `keyframeSlider(…, get: () -> Double, set: (Double) -> Unit)` reported `get` as its last
+     * parameter and `tryAll` reported three of its eight.
      */
     private fun splitSignature(signature: String): Triple<String, List<String>, String>? {
         val open = signature.indexOf('(')
@@ -1589,12 +1624,15 @@ object StdlibReferenceGenerator {
             when (ch) {
                 '(', '[', '<' -> { depth++; if (depth > 1) current.append(ch) }
                 ')', ']', '>' -> {
-                    depth--
-                    if (depth == 0) {
-                        if (current.isNotBlank()) params += current.toString()
-                        return Triple(signature.substring(0, open), params, signature.substring(i + 1))
+                    if (ch == '>' && i > open && signature[i - 1] == '-') current.append(ch)
+                    else {
+                        depth--
+                        if (depth == 0) {
+                            if (current.isNotBlank()) params += current.toString()
+                            return Triple(signature.substring(0, open), params, signature.substring(i + 1))
+                        }
+                        current.append(ch)
                     }
-                    current.append(ch)
                 }
                 ',' -> if (depth == 1) { params += current.toString(); current.setLength(0) } else current.append(ch)
                 else -> current.append(ch)
@@ -1604,6 +1642,28 @@ object StdlibReferenceGenerator {
     }
 
     // ── cross-references ────────────────────────────────────────────────────────────────────────
+
+    /**
+     * One published declaration as [TypeAnchors] sees it: where it lives, what a KDoc reference
+     * may call it, and the `page.md#anchor` its row carries.
+     *
+     * @param owner the type a member is declared in (`Owner` of `Owner.member`), null at top level
+     * @param receiver an extension's receiver type, simple name, null for anything else
+     * @param isType a type heading rather than a table row; only these resolve through an unknown
+     *   capitalised qualifier, see [TypeAnchors.resolveReference]
+     */
+    internal data class AnchorEntry(
+        val file: String,
+        val name: String,
+        val owner: String?,
+        val receiver: String?,
+        val isType: Boolean,
+        val target: String,
+        val pkg: String = "",
+    )
+
+    /** What a file can see without qualifying: its own package and its imports. */
+    internal data class FileScope(val pkg: String, val imports: List<String>)
 
     /**
      * Where a KDoc `[Symbol]` reference is allowed to point, resolved in two steps.
@@ -1624,8 +1684,8 @@ object StdlibReferenceGenerator {
      *
      * ### Why a *qualified* reference is checked against its qualifier
      *
-     * Only top-level types get an anchor here, so a KDoc reference to a nested one — `[Outer.Nested]`
-     * — has nothing to resolve to, and [linkify] used to fall back to the last segment alone. That is
+     * Before every row had an anchor only top-level types did, so a KDoc reference to a nested one —
+     * `[Outer.Nested]` — had nothing to resolve to, and [linkify] used to fall back to the last segment alone. That is
      * a false link waiting for a name collision, and adding the simulation roots supplied one:
      * `afield.stdlib/tuio.kt` documents `[TuioReceiver.Frame]`, `TuioReceiver.Frame` is a nested
      * `data class` with no anchor, and `afield.simulation.physics/CSVReader.kt` declares a top-level
@@ -1639,58 +1699,178 @@ object StdlibReferenceGenerator {
      * package name, a JDK type — still falls back to the last segment, so `[java.nio.ByteBuffer]`
      * behaves exactly as before.
      */
-    private class TypeAnchors(
-        private val corpus: Map<String, String>,
-        private val corpusOwner: Map<String, String>,
-        private val byFile: Map<String, Map<String, String>>,
-    ) {
-        /** [name]'s anchor as seen from [doc], or null when it resolves nowhere this reference emits. */
-        fun resolve(name: String, doc: SourceDocument?): String? =
-            doc?.let { byFile[it.relativePath]?.get(name) } ?: corpus[name]
+    internal class TypeAnchors(entries: List<AnchorEntry>, private val scopes: Map<String, FileScope> = emptyMap()) {
+        /** Every top-level declaration of an ambiguous bare name, for [scoped]. */
+        private val candidates = mutableMapOf<String, MutableList<AnchorEntry>>()
+        private val corpus = mutableMapOf<String, AnchorEntry>()
+        private val byFile = mutableMapOf<String, MutableMap<String, AnchorEntry>>()
+        private val qualifiedCorpus = mutableMapOf<String, AnchorEntry>()
+        private val qualifiedByFile = mutableMapOf<String, MutableMap<String, AnchorEntry>>()
 
-        /** The source file [resolve] would have taken [name]'s anchor from, by the same two steps. */
-        private fun owner(name: String, doc: SourceDocument?): String? =
-            doc?.takeIf { byFile[it.relativePath]?.containsKey(name) == true }?.relativePath
-                ?: corpusOwner[name]
+        init {
+            val ambiguous = mutableSetOf<String>()
+            val ambiguousQualified = mutableSetOf<String>()
+            val fileMembers = mutableMapOf<String, MutableMap<String, MutableSet<String>>>()
+            // Types first, then top level, then members, so within one file a type outranks the
+            // factory function sharing its name and a top-level name outranks a member's.
+            val ordered = entries.filter { it.isType } +
+                entries.filter { !it.isType && it.owner == null } +
+                entries.filter { !it.isType && it.owner != null }
+            ordered.forEach { e ->
+                val local = byFile.getOrPut(e.file) { mutableMapOf() }
+                if (e.owner == null) {
+                    // A bare name resolves corpus-wide only for top-level declarations: Kotlin never
+                    // resolves `[member]` from outside the member's own scope.
+                    val prior = corpus.putIfAbsent(e.name, e)
+                    if (prior != null && prior.file != e.file) ambiguous += e.name
+                    local.putIfAbsent(e.name, e)
+                    val list = candidates.getOrPut(e.name) { mutableListOf() }
+                    if (list.none { it.file == e.file }) list += e
+                } else {
+                    fileMembers.getOrPut(e.file) { mutableMapOf() }
+                        .getOrPut(e.name) { mutableSetOf() } += e.owner
+                    local.putIfAbsent(e.name, e)
+                }
+                val qualifier = e.owner ?: e.receiver
+                if (qualifier != null) {
+                    val key = "${qualifier.substringAfterLast('.')}.${e.name}"
+                    val prior = qualifiedCorpus.putIfAbsent(key, e)
+                    if (prior != null && prior.file != e.file) ambiguousQualified += key
+                    qualifiedByFile.getOrPut(e.file) { mutableMapOf() }.putIfAbsent(key, e)
+                }
+            }
+            // A bare member name two types of one file share is ambiguous inside that file too.
+            fileMembers.forEach { (file, names) ->
+                names.filterValues { it.size > 1 }.keys.forEach { name ->
+                    val local = byFile[file] ?: return@forEach
+                    if (local[name]?.owner != null) local.remove(name)
+                }
+            }
+            // A name that two files both define cannot be linked unambiguously from a third, so from
+            // a third it is not linked at all. From either of the two it still resolves.
+            ambiguous.forEach { corpus.remove(it) }
+            candidates.keys.retainAll(ambiguous)
+            ambiguousQualified.forEach { qualifiedCorpus.remove(it) }
+        }
+
+        private fun lookup(name: String, file: String?): AnchorEntry? =
+            file?.let { byFile[it]?.get(name) } ?: corpus[name] ?: scoped(name, file)
 
         /**
-         * A whole KDoc reference — `Symbol`, `Outer.Nested` or `some.package.Symbol` — resolved.
+         * An ambiguous bare name, settled the way Kotlin would settle it from [file]: a declaration in
+         * the file's own package, else an explicit import of it, else a star import of its package.
+         * Each step links only when it picks exactly one; otherwise the name stays unlinked.
+         */
+        private fun scoped(name: String, file: String?): AnchorEntry? {
+            val scope = file?.let { scopes[it] } ?: return null
+            val all = candidates[name] ?: return null
+            val steps = listOf<(AnchorEntry) -> Boolean>(
+                { it.pkg == scope.pkg },
+                { "${it.pkg}.$name" in scope.imports },
+                { "${it.pkg}.*" in scope.imports },
+            )
+            for (step in steps) {
+                val hits = all.filter(step)
+                if (hits.size == 1) return hits.single()
+                if (hits.size > 1) return null
+            }
+            return null
+        }
+
+        /**
+         * A whole KDoc reference — `Symbol`, `Owner.member`, `Receiver.extension`, `Outer.Nested` or
+         * `some.package.Symbol` — resolved to its `page.md#anchor`, or null.
          *
          * Null both when nothing matches and when the qualifier contradicts the match; the caller
-         * renders inline code either way, which is the honest answer for a nested type this
-         * reference does not emit an anchor for.
+         * renders inline code either way.
+         *
+         * [locals] are the names the referring KDoc settles in its own scope before any index is
+         * consulted — in practice the parameter names of the declaration it sits above. Kotlin
+         * resolves a parameter name to the parameter, so a name in this set resolves to nothing and
+         * publishes as plain code.
+         *
+         * Without it a `[param]` reference reaches the index at all, because a parameter is not a
+         * declaration in any file: it misses [byFile] and [corpus] answers with whatever top-level
+         * symbol happens to share the name. `leniaFromLifeRule(rule: LifeRule)` in
+         * `alife_continuous.kt` names its own parameter in its summary, and the row published on the
+         * alife page sent that name to `rewritedsl.kt`'s rewrite-rule builder on the workspace page.
+         * 885 published links across 25 pages pointed off their own page this way.
+         *
+         * The set applies to a bare reference only: `[Owner.name]` still names a member, whatever
+         * the row's parameters are called.
          */
-        fun resolveReference(raw: String, doc: SourceDocument?): String? {
+        fun resolveReference(raw: String, file: String?, locals: Set<String> = emptySet()): String? {
             val simple = raw.substringAfterLast('.')
-            val target = resolve(simple, doc) ?: return null
-            if (simple == raw) return target
+            if (simple == raw) return if (raw in locals) null else lookup(simple, file)?.target
             val qualifier = raw.substringBeforeLast('.').substringAfterLast('.')
-            val qualifierOwner = owner(qualifier, doc) ?: return target
-            return target.takeIf { qualifierOwner == owner(simple, doc) }
+            val key = "$qualifier.$simple"
+            (file?.let { qualifiedByFile[it]?.get(key) } ?: qualifiedCorpus[key])?.let { return it.target }
+            val target = lookup(simple, file)?.takeIf { it.owner == null } ?: return null
+            val qualifierOwner = lookup(qualifier, file)?.takeIf { it.isType }?.file
+            if (qualifierOwner != null) return target.target.takeIf { qualifierOwner == target.file }
+            // An unknown qualifier. A package (`afield.foo.bar`) is lowercase and falls back to the
+            // last segment as it always has; an unknown *type* (`List.add`, `ByteBuffer.flip`) names
+            // a member of something this reference does not emit, so only a type may match it.
+            return target.target.takeIf { target.isType || qualifier.first().isLowerCase() }
         }
     }
 
-    /** Type simple name -> the `page.md#anchor` that documents it, for KDoc `[Symbol]` linkification. */
+    /**
+     * An extension's receiver type, simple name, from its signature, or null for a non-extension.
+     * `fun <T> List<T>.foo(` gives `List`; `val Box.bar` gives `Box`.
+     */
+    internal fun receiverOf(signature: String, name: String): String? {
+        val m = Regex("""\b(?:fun|va[lr])\s+(?:<[^=(]*?>\s+)?([\w.<>?,* ]+?)\.`?""" + Regex.escape(name) + """`?\s*[(:=<]?""")
+            .find(signature) ?: return null
+        val receiver = m.groupValues[1].trim().removeSuffix("?").replace(Regex("<.*>"), "").trim()
+        return receiver.substringAfterLast('.').takeIf { it.matches(Regex("""[A-Za-z_]\w*""")) }
+    }
+
+    /**
+     * Every row anchor of one file, keyed by `owner to name`: the first row of an overload family
+     * carries it, so `[name]` lands on the family. A slug collision (case, `_` vs `-`) is resolved by
+     * a `-2`, `-3` suffix in source order, so an anchor changes only when its own colliding twin moves.
+     */
+    private fun rowAnchors(doc: SourceDocument): Map<Pair<String?, String>, String> =
+        rowAnchorCache.getOrPut(doc.relativePath) {
+            val taken = doc.types.map { typeAnchor(doc, it.symbol) }.toMutableSet()
+            val out = LinkedHashMap<Pair<String?, String>, String>()
+            (doc.topLevelFunctions + doc.topLevelValues + doc.types.flatMap { it.members }).forEach { s ->
+                val key = s.owner to s.simpleName
+                if (key in out) return@forEach
+                val base = if (s.owner == null) "${fileAnchor(doc)}--${slug(s.simpleName)}"
+                    else "${fileAnchor(doc)}--${slug(s.owner)}--${slug(s.simpleName)}"
+                var anchor = base
+                var n = 2
+                while (!taken.add(anchor)) anchor = "$base-${n++}"
+                out[key] = anchor
+            }
+            out
+        }
+
+    private val rowAnchorCache = mutableMapOf<String, Map<Pair<String?, String>, String>>()
+
+    private val emittedRowAnchors = mutableMapOf<String, MutableSet<Pair<String?, String>>>()
+
+    /** Every published declaration -> the `page.md#anchor` that documents it, for KDoc `[Symbol]` linkification. */
     private fun buildTypeAnchorIndex(documents: List<SourceDocument>): TypeAnchors {
-        val corpus = mutableMapOf<String, String>()
-        val corpusOwner = mutableMapOf<String, String>()
-        val ambiguous = mutableSetOf<String>()
-        val byFile = mutableMapOf<String, MutableMap<String, String>>()
+        val entries = mutableListOf<AnchorEntry>()
         documents.forEach { doc ->
+            val page = "${slug(doc.category)}.md#"
             doc.types.forEach { type ->
-                val name = type.symbol.simpleName
-                val target = "${slug(doc.category)}.md#${typeAnchor(doc, type.symbol)}"
-                if (corpus.putIfAbsent(name, target) != null) ambiguous += name
-                corpusOwner.putIfAbsent(name, doc.relativePath)
-                // Two types with one simple name in one file does not compile, so first-wins here is a
-                // formality rather than a policy.
-                byFile.getOrPut(doc.relativePath) { mutableMapOf() }.putIfAbsent(name, target)
+                entries += AnchorEntry(doc.relativePath, type.symbol.simpleName, null, null, true,
+                    page + typeAnchor(doc, type.symbol), doc.packageName)
+            }
+            val anchors = rowAnchors(doc)
+            (doc.topLevelFunctions + doc.topLevelValues + doc.types.flatMap { it.members }).forEach { s ->
+                val anchor = anchors[s.owner to s.simpleName] ?: return@forEach
+                // A nested type listed as a member keeps its member row: `[Outer.Nested]` lands there.
+                entries += AnchorEntry(doc.relativePath, s.simpleName, s.owner,
+                    if (s.owner == null) receiverOf(s.signature, s.simpleName) else null, false, page + anchor,
+                    doc.packageName)
             }
         }
-        // A name that two files both define cannot be linked unambiguously from a third, so from a
-        // third it is not linked at all. From either of the two it still resolves — see [TypeAnchors].
-        ambiguous.forEach { corpus.remove(it); corpusOwner.remove(it) }
-        return TypeAnchors(corpus, corpusOwner, byFile)
+        return TypeAnchors(entries, documents.associate { it.relativePath to FileScope(it.packageName, it.imports) })
     }
 
     /**
@@ -1730,7 +1910,6 @@ object StdlibReferenceGenerator {
         return documents.associate { doc ->
             val kept = doc.evidenceTokens().filter { tokenOwners[it]?.size == 1 }
             val patterns = kept.associateWith { (kind, name) ->
-                val escaped = Regex.escape(name)
                 // Two tightenings, each fixing a measured false claim:
                 //  - `\b` on the call form. Unanchored, `ply(` matched `apply(`, `run(` matched
                 //    `rerun(`, `range(` matched `arrange(`, `cosine(` matched `cosineInterp(` and
@@ -1740,7 +1919,7 @@ object StdlibReferenceGenerator {
                 //    are code text as far as this index is concerned, and English prose inside them
                 //    ("seed cosine (grey) → target sine", "full range (chebyshev clamps)") was
                 //    matching. Kotlin allows `f (x)`; this corpus never writes it.
-                if (kind == "call") Regex("\\b$escaped\\(") else Regex("\\b$escaped\\b")
+                EvidenceTokenMatcher(kind, name)
             }
             if (debugFor != null && doc.relativePath.endsWith(debugFor)) {
                 println("EVIDENCE-DEBUG ${doc.relativePath} unique tokens: $kept")
@@ -1756,6 +1935,15 @@ object StdlibReferenceGenerator {
                 .take(MAX_EVIDENCE_LINKS)
             doc.relativePath to hits
         }
+    }
+
+    /** Exact evidence matching, with a cheap necessary condition before scanning with a regex. */
+    internal class EvidenceTokenMatcher(kind: String, private val name: String) {
+        private val pattern = Regex.escape(name).let { escaped ->
+            if (kind == "call") Regex("\\b$escaped\\(") else Regex("\\b$escaped\\b")
+        }
+
+        fun containsMatchIn(code: String): Boolean = name in code && pattern.containsMatchIn(code)
     }
 
     private val FENCED_BLOCK = Regex("(?s)```.*?```")
@@ -1882,12 +2070,17 @@ object StdlibReferenceGenerator {
     ): String = buildString {
         appendLine("| Declaration | Summary |")
         appendLine("| --- | --- |")
+        val anchors = rowAnchors(doc)
+        // Per file, not per table: a `fun pulse` and a `val pulse` share one key and one anchor.
+        val emitted = emittedRowAnchors.getOrPut(doc.relativePath) { mutableSetOf() }
         coalesce(symbols).forEach { row ->
             val signature = row.symbol.signature.ifBlank { row.symbol.simpleName }
             val declaration = linkToSource(doc, row.symbol.line, highlightSignature(signature))
+            val key = row.symbol.owner to row.symbol.simpleName
+            val anchor = anchors[key]?.takeIf { emitted.add(key) }?.let { "<a id=\"$it\"></a>" }.orEmpty()
             appendLine(
-                "| $declaration${overloadBadge(row)} | " +
-                    "${escapeCell(linkify(row.summary, typeAnchors, doc))} |"
+                "| $anchor$declaration${overloadBadge(row)} | " +
+                    "${escapeCell(linkify(row.summary, typeAnchors, doc, parameterNames(signature)))} |"
             )
         }
         appendLine()
@@ -2463,18 +2656,26 @@ object StdlibReferenceGenerator {
      * An ordinary markdown link written in a KDoc is left alone: the lookahead for `(` is what stops
      * `[Lygia](https://lygia.xyz)` becoming `` `Lygia` ``(https://lygia.xyz) with the URL dangling as
      * prose. `SourcePageGenerator.linkifySymbols` draws the same line for the same reason.
+     *
+     * [locals] names what this text resolves for itself — the parameters of the row it summarises.
+     * See [TypeAnchors.resolveReference].
      */
-    private fun linkify(text: String, typeAnchors: TypeAnchors, doc: SourceDocument?): String {
+    private fun linkify(
+        text: String,
+        typeAnchors: TypeAnchors,
+        doc: SourceDocument?,
+        locals: Set<String> = emptySet(),
+    ): String {
         if (text.isBlank()) return text
         val alternate = Regex("""\[([^\]\[]+)]\[([A-Za-z_][\w.]*)]""")
         val simple = Regex("""\[([A-Za-z_][\w.]*)](?!\()""")
         var out = alternate.replace(text) { m ->
-            val target = typeAnchors.resolveReference(m.groupValues[2], doc)
+            val target = typeAnchors.resolveReference(m.groupValues[2], doc?.relativePath, locals)
             if (target != null) "[${m.groupValues[1]}]($target)" else "`${m.groupValues[1]}`"
         }
         out = simple.replace(out) { m ->
             val raw = m.groupValues[1]
-            val target = typeAnchors.resolveReference(raw, doc)
+            val target = typeAnchors.resolveReference(raw, doc?.relativePath, locals)
             if (target != null) "[`$raw`]($target)" else "`$raw`"
         }
         return out

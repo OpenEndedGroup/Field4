@@ -10,31 +10,46 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 
 <!-- field-box id="kolakoski_tree" index="0" -->
 
+### Narrative
+
+From `code`
+
+2 - Kolakoski branches, Euclid places, and the levels are pulse levels.
+
+Every pulse asks the word how many children it has. bjorklund puts those children on the
+parent's own `slots` grid as evenly as it can, and each child runs until the next one - so
+a level always tiles the bar, and a count of 1 is a pulse that simply holds. The level
+sizes are the word's own partial sums: 1, 1, 2, 3, 4, 7, 11, ...
+
+POKE THIS: `slots` is where the Euclid lives - on 3 slots two children split the parent
+2:1, not down the middle. `a`/`b` is the alphabet: {2,3} on 4 slots never leaves a lone
+hit. `depth` is how far down the tree the music goes.
+
 ```edn [field-box id="kolakoski_tree" role="properties"]
-{"id" "kolakoski_tree" "index" 0 "name" "2 - the branching tree" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - the branching tree" "_tombstone" false "frame" #afield/rect [60.0 226.0 381.8 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kolakoski_tree_code_.kt" "lines" 90 "characters" 3929 "sha256" "b2b92735190f4d3c36df24f2884c1dc823ca759fc0c8c04bdbabaa06428d20ef"}]}
+{"id" "kolakoski_tree" "index" 0 "name" "2 - the branching tree" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - the branching tree" "_tombstone" false "frame" #afield/rect [60.0 226.0 381.8 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kolakoski_tree_code_.kt" "lines" 102 "characters" 3928 "sha256" "53a738ae4a91e7cbbdeb5a29fd54ba9310f66d0257936feb94fbecafe4e286a1"}]}
 ```
 
 ```kotlin [field-property box="kolakoski_tree" name="code" path="kolakoski_tree_code_.kt"]
-import afield.audio.synth.*
+/*
+2 - Kolakoski branches, Euclid places, and the levels are pulse levels.
 
-// 2 - Kolakoski branches, Euclid places, and the levels are pulse levels.
-//
-// Every pulse asks the word how many children it has. bjorklund puts those children on the
-// parent's own `slots` grid as evenly as it can, and each child runs until the next one - so
-// a level always tiles the bar, and a count of 1 is a pulse that simply holds. The level
-// sizes are the word's own partial sums: 1, 1, 2, 3, 4, 7, 11, ...
-//
-// POKE THIS: `slots` is where the Euclid lives - on 3 slots two children split the parent
-// 2:1, not down the middle. `a`/`b` is the alphabet: {2,3} on 4 slots never leaves a lone
-// hit. `depth` is how far down the tree the music goes.
+Every pulse asks the word how many children it has. bjorklund puts those children on the
+parent's own `slots` grid as evenly as it can, and each child runs until the next one - so
+a level always tiles the bar, and a count of 1 is a pulse that simply holds. The level
+sizes are the word's own partial sums: 1, 1, 2, 3, 4, 7, 11, ...
+
+POKE THIS: `slots` is where the Euclid lives - on 3 slots two children split the parent
+2:1, not down the middle. `a`/`b` is the alphabet: {2,3} on 4 slots never leaves a lone
+hit. `depth` is how far down the tree the music goes.
+*/
 val depth = 5
 val slots = 3
 val a = 1
 val b = 2
 
 fun tile(depth: Int, slots: Int, a: Int, b: Int): List<List<PatArc>> {
-    val word = kolakoskiWord(4 shl depth, a, b)   // more terms than the tree can eat
-    var level = listOf(PatArc(PatQ.ZERO, PatQ.ONE))
+    val word = kolakoskiWord(4 shl depth, a, b) // more terms than the tree can eat
+    var level = [PatArc(PatQ.ZERO, PatQ.ONE)]
     var cursor = 0
     val levels = mutableListOf(level)
     repeat(depth) {
@@ -64,42 +79,54 @@ val t = tile(depth, slots, a, b)
 // The word starts on a 1, so R1 is R0 held - the first branch that splits anything is R2.
 showPatRollOf(
     *t.mapIndexed { n, level -> "R$n (${level.size})" to asPat(level) }.toTypedArray(),
-    title = "each pulse subdivides into ${a} or ${b} on a ${slots}-slot grid", cycles = 1,
-    channel = "tree"
+    title = "each pulse subdivides into ${a} or ${b} on a ${slots}-slot grid",
+    cycles = 1,
+    channel = "tree",
 )
 
-// The rings as hierarchical pulse levels: one voice per level, so every hit of a fine level
-// sits inside exactly one hit of the level above it.
-// Coarse loud, fine quiet. Every coarse onset is also a fine onset - that is what a tree means -
-// so at equal gain all four voices land together on the strong hits and the hierarchy turns into
-// a pile. The gain ramp makes it foreground and background instead. Short samples for the same
-// reason: sd:2 and click decay before the next level arrives.
-val voices = listOf("bd" to 1.0, "sd:2" to 0.7, "hh:2" to 0.45, "click" to 0.35)
+/*
+The rings as hierarchical pulse levels: one voice per level, so every hit of a fine level
+sits inside exactly one hit of the level above it.
+Coarse loud, fine quiet. Every coarse onset is also a fine onset - that is what a tree means -
+so at equal gain all four voices land together on the strong hits and the hierarchy turns into
+a pile. The gain ramp makes it foreground and background instead. Short samples for the same
+reason: sd:2 and click decay before the next level arrives.
+*/
+val voices = ["bd" to 1.0, "sd:2" to 0.7, "hh:2" to 0.45, "click" to 0.35]
 val played = t.takeLast(voices.size)
 val music = stack(
-    *played.mapIndexed { i, level ->
-        asPat(level, voices[i].first) with gain(voices[i].second)
-    }.toTypedArray()
+    *played
+        .mapIndexed { i, level ->
+            asPat(level, voices[i].first) with gain(voices[i].second)
+        }
+        .toTypedArray(),
 )
 
 showPatRollOf(
-    *played.mapIndexed { i, level ->
-        "${voices[i].first} (${level.size})" to asPat(level, voices[i].first)
-    }.toTypedArray(),
-    title = "the last four levels, one voice each", cycles = 2, channel = "levels"
+    *played
+        .mapIndexed { i, level ->
+            "${voices[i].first} (${level.size})" to asPat(level, voices[i].first)
+        }
+        .toTypedArray(),
+    title = "the last four levels, one voice each",
+    cycles = 2,
+    channel = "levels",
 )
-val dirt = showDirtAudio(music, cycles = 8, cps = 1.0, channel = "audio")   // real samples, not patVoice
+val dirt = showDirtAudio(music, cycles = 8, cps = 1.0, channel = "audio") // real samples, not patVoice
 val audio = dirt.audio
 val wav = "kolakoski-tree-${slots}-${a}${b}-d$depth.wav".file
 afield.audio.engine.WavFloatArrayWriter.writeStereo16(wav, audio.left, audio.right, PatSoundDocs.SR, 0.9f)
 println("wrote $wav — samples: ${dirt.usedSamples}, matched ${dirt.matched}, synth fallback ${dirt.unmatched}")
 
-markdown("main", """
+markdown(
+    "main",
+    """
 ### Level sizes: ${t.joinToString(", ") { it.size.toString() }}
 
 Those are the partial sums of the Kolakoski word - each level eats as many terms as the level
 above it has pulses, and the sum of those terms is the next level's size.
-""")
+""",
+)
 
 displayOpen("tree")
 displayOpen("audio")
@@ -111,41 +138,62 @@ displayOpen("main")
 
 <!-- field-box id="kolakoski_x_euclid" index="1" -->
 
+### Narrative
+
+From `code`
+
+1 - Kolakoski counts, Euclid places.
+
+The Kolakoski word is the only sequence over {1,2} that is its own run-length encoding.
+Here its terms are read as DENSITIES rather than durations: each one says how many hits
+go into the next group of three slots, and `bd(c,3)` spreads those hits as evenly as the
+group allows. Locally maximally even; globally self-describing.
+
+POKE THIS: the 3 in "[bd($it,3)]" is the group size, and kolakoskiWord(8) is how many
+groups. Try `kolakoskiWord(8, a = 2, b = 3)` with a group of 4 - no group is ever empty
+and none is ever full, so the bar keeps moving without ever locking to the grid.
+
 ```edn [field-box id="kolakoski_x_euclid" role="properties"]
-{"id" "kolakoski_x_euclid" "index" 1 "name" "1 - counts and placement" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - counts and placement" "_tombstone" false "frame" #afield/rect [60.0 60.0 405.3 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kolakoski_x_euclid_code_.kt" "lines" 58 "characters" 3154 "sha256" "627a5b8d5e33822c5b24ed812831d453a3b4924e31a668ff7715f6070fd2526d"}]}
+{"id" "kolakoski_x_euclid" "index" 1 "name" "1 - counts and placement" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - counts and placement" "_tombstone" false "frame" #afield/rect [60.0 60.0 405.3 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kolakoski_x_euclid_code_.kt" "lines" 71 "characters" 3083 "sha256" "c1bc8a383f6934e5af201316c785cae6b50f8a7a693ba98e97e5015ca5440baa"}]}
 ```
 
 ```kotlin [field-property box="kolakoski_x_euclid" name="code" path="kolakoski_x_euclid_code_.kt"]
-import afield.audio.synth.*
+/*
+1 - Kolakoski counts, Euclid places.
 
-// 1 - Kolakoski counts, Euclid places.
-//
-// The Kolakoski word is the only sequence over {1,2} that is its own run-length encoding.
-// Here its terms are read as DENSITIES rather than durations: each one says how many hits
-// go into the next group of three slots, and `bd(c,3)` spreads those hits as evenly as the
-// group allows. Locally maximally even; globally self-describing.
-//
-// POKE THIS: the 3 in "[bd($it,3)]" is the group size, and kolakoskiWord(8) is how many
-// groups. Try `kolakoskiWord(8, a = 2, b = 3)` with a group of 4 - no group is ever empty
-// and none is ever full, so the bar keeps moving without ever locking to the grid.
-val counts = kolakoskiWord(8)                                  // 1 2 2 1 1 2 1 2 - sums to 12
-val hybrid = pat(counts.joinToString(" ") { "[bd($it,3)]" })   // [bd(1,3)] [bd(2,3)] ...
+The Kolakoski word is the only sequence over {1,2} that is its own run-length encoding.
+Here its terms are read as DENSITIES rather than durations: each one says how many hits
+go into the next group of three slots, and `bd(c,3)` spreads those hits as evenly as the
+group allows. Locally maximally even; globally self-describing.
+
+POKE THIS: the 3 in "[bd($it,3)]" is the group size, and kolakoskiWord(8) is how many
+groups. Try `kolakoskiWord(8, a = 2, b = 3)` with a group of 4 - no group is ever empty
+and none is ever full, so the bar keeps moving without ever locking to the grid.
+*/
+val counts = kolakoskiWord(8) // 1 2 2 1 1 2 1 2 - sums to 12
+val hybrid = pat(counts.joinToString(" ") { "[bd($it,3)]" }) // [bd(1,3)] [bd(2,3)] ...
 
 showPatRollOf(
     "kolakoski x euclid" to hybrid,
     "euclid(12,24)" to struct(euclid(12, 24), pat("bd")),
     "kolakoski(24)" to struct(kolakoski(24), pat("bd")),
-    title = "12 onsets in 24 slots, three ways", cycles = 2, channel = "roll"
+    title = "12 onsets in 24 slots, three ways",
+    cycles = 2,
+    channel = "roll",
 )
-// TEMPO. This bar is 24 slots, not 4, so cps means something very different here than it does
-// in `pat("bd sd hh sd")`: a slot lasts 1/(24*cps) seconds and the figure plays 12*cps hits per
-// second. At the usual docs tempo of cps = 2 that is 24 kicks a second - a 24Hz pulse train,
-// which the ear hears as a low growl rather than as a rhythm. 0.35 puts it at 4.2 hits/s.
+/*
+TEMPO. This bar is 24 slots, not 4, so cps means something very different here than it does
+in `pat("bd sd hh sd")`: a slot lasts 1/(24*cps) seconds and the figure plays 12*cps hits per
+second. At the usual docs tempo of cps = 2 that is 24 kicks a second - a 24Hz pulse train,
+which the ear hears as a low growl rather than as a rhythm. 0.35 puts it at 4.2 hits/s.
+*/
 val cps = 0.35
 
-// showDirtAudio, not showPatAudio: the same call shape, but it mixes the real Dirt-Samples
-// offline instead of patVoice's 62Hz sine. A player in the output AND a real file on disk -
-// `"name.wav".file` resolves into this document's own files/ folder.
+/*
+showDirtAudio, not showPatAudio: the same call shape, but it mixes the real Dirt-Samples
+offline instead of patVoice's 62Hz sine. A player in the output AND a real file on disk -
+`"name.wav".file` resolves into this document's own files/ folder.
+*/
 val dirt = showDirtAudio(hybrid, cycles = 3, cps = cps, channel = "audio")
 
 // The same density, maximally even, at the same tempo - the thing the hybrid is NOT.
@@ -154,9 +202,13 @@ showDirtAudio(struct(euclid(12, 24), pat("bd")), cycles = 3, cps = cps, channel 
 val audio = dirt.audio
 val wav = "kolakoski-flat.wav".file
 afield.audio.engine.WavFloatArrayWriter.writeStereo16(wav, audio.left, audio.right, PatSoundDocs.SR, 0.9f)
-println("wrote $wav — ${"%.1f".format(12 * cps)} hits/s, samples: ${dirt.usedSamples}, matched ${dirt.matched}, synth fallback ${dirt.unmatched}")
+println(
+    "wrote $wav — ${"%.1f".format(12 * cps)} hits/s, samples: ${dirt.usedSamples}, matched ${dirt.matched}, synth fallback ${dirt.unmatched}",
+)
 
-markdown("main", """
+markdown(
+    "main",
+    """
 ### The same density, distributed three ways
 
 - **kolakoski x euclid** - the hybrid. Counts from the word, placement from bjorklund.
@@ -165,11 +217,14 @@ markdown("main", """
 
 `patCondense(hybrid).notation` is `${patCondense(hybrid).notation}` - the language recognising
 the Kolakoski in it on its own.
-""")
+""",
+)
 
-// Two things an output has to get right to be visible at all. A channel that is never opened
-// is collapsed - the player is in the DOM at zero size - and a channel holds ONE thing, so a
-// markdown() into "main" would have replaced the player had it not been given its own channel.
+/*
+Two things an output has to get right to be visible at all. A channel that is never opened
+is collapsed - the player is in the DOM at zero size - and a channel holds ONE thing, so a
+markdown() into "main" would have replaced the player had it not been given its own channel.
+*/
 displayOpen("roll")
 displayOpen("audio")
 displayOpen("audio-even")
@@ -180,30 +235,48 @@ displayOpen("main")
 
 <!-- field-box id="wav_on_canvas" index="2" -->
 
+### Narrative
+
+From `code`
+
+3 - A player that lives on the canvas, not in an output.
+
+showPatAudio puts an <audio> in the box's OUTPUT, which is recomputed every run and is not
+saved with the document. `customization` is a box property - JS run against the box's own
+element on the canvas, and it IS saved - so an audio element appended there is part of the
+document: reopen it tomorrow, press play, no run needed.
+
+POKE THIS: change the pattern. Keep the clip short - it travels as base64 inside the document,
+so ~4s of stereo is ~700KB of property. cps is low because the bar is 24 slots wide: see the
+tempo note in kolakoski_x_euclid.
+
 ```edn [field-box id="wav_on_canvas" role="properties"]
-{"id" "wav_on_canvas" "index" 2 "name" "3 - a wav on the canvas" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - a wav on the canvas" "_tombstone" false "frame" #afield/rect [60.0 392.0 393.5 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "wav_on_canvas_code_.kt" "lines" 37 "characters" 1690 "sha256" "eaf3137329c3e51e1c37fc6ce6a4cf1a19c35948551373cbff1a49f88911b2d1"}]}
+{"id" "wav_on_canvas" "index" 2 "name" "3 - a wav on the canvas" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - a wav on the canvas" "_tombstone" false "frame" #afield/rect [60.0 392.0 393.5 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "wav_on_canvas_code_.kt" "lines" 41 "characters" 1655 "sha256" "f69ffe11b632adcb55beafdd5861b30757691eb1db3426eab408dfc15b92bece"}]}
 ```
 
 ```kotlin [field-property box="wav_on_canvas" name="code" path="wav_on_canvas_code_.kt"]
-import afield.audio.synth.*
+/*
+3 - A player that lives on the canvas, not in an output.
 
-// 3 - A player that lives on the canvas, not in an output.
-//
-// showPatAudio puts an <audio> in the box's OUTPUT, which is recomputed every run and is not
-// saved with the document. `customization` is a box property - JS run against the box's own
-// element on the canvas, and it IS saved - so an audio element appended there is part of the
-// document: reopen it tomorrow, press play, no run needed.
-//
-// POKE THIS: change the pattern. Keep the clip short - it travels as base64 inside the document,
-// so ~4s of stereo is ~700KB of property. cps is low because the bar is 24 slots wide: see the
-// tempo note in kolakoski_x_euclid.
+showPatAudio puts an <audio> in the box's OUTPUT, which is recomputed every run and is not
+saved with the document. `customization` is a box property - JS run against the box's own
+element on the canvas, and it IS saved - so an audio element appended there is part of the
+document: reopen it tomorrow, press play, no run needed.
+
+POKE THIS: change the pattern. Keep the clip short - it travels as base64 inside the document,
+so ~4s of stereo is ~700KB of property. cps is low because the bar is 24 slots wide: see the
+tempo note in kolakoski_x_euclid.
+*/
 val counts = kolakoskiWord(8)
 val hybrid = pat(counts.joinToString(" ") { "[bd($it,3)]" })
 
-val dirt = patRenderStereoDirt(hybrid, cycles = 2, cps = 0.35)  // 5.7s; 24-slot bar, so 4.2 hits/s
+val dirt = patRenderStereoDirt(hybrid, cycles = 2, cps = 0.35) // 5.7s; 24-slot bar, so 4.2 hits/s
 val rendered = dirt.audio
 val bytes = afield.audio.engine.WavFloatArrayWriter.encodeStereo16(
-    rendered.left, rendered.right, PatSoundDocs.SR, 0.9f
+    rendered.left,
+    rendered.right,
+    PatSoundDocs.SR,
+    0.9f,
 )
 
 // The file on disk, for dragging into an editor...
@@ -212,7 +285,8 @@ wav.writeBytes(bytes)
 
 // ...and the same bytes pinned into this box on the canvas.
 val b64 = java.util.Base64.getEncoder().encodeToString(bytes)
-customization = """
+customization =
+    """
     this.style.background = "var(--field-bg)"
     if (!this.querySelector("audio.field-wav")) {
         this.insertAdjacentHTML("beforeend",

@@ -32,6 +32,7 @@ expect:
  *
  * The timeout is generous: the first compile in a process pays 13–22s of Truffle warm-up.
  */
+
 object FaustSmokeTest {
 
     private const val SR = 48_000

@@ -1,3 +1,9 @@
+/**
+ * Defines [PlaybackClock], the time source [VideoTexture] reads to choose a frame, with two
+ * implementations: [SystemClock] (a monotonic clock with play, pause and seek) and [AudioClock]
+ * (time taken from an [AudioPlayer]).
+ */
+
 package afield.graphics.texture.video
 
 /** Time source consumed by [VideoTexture] when selecting the frame for the current update. */

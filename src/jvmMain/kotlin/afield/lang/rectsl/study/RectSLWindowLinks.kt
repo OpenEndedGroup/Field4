@@ -9,6 +9,11 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 /**
+ * Links between the editor and a RectSL scene's window: the cursor's line is outlined in the window,
+ * and clicking a rectangle in the window puts the editor on the line that made it ([RectSLWindowLinks]).
+ */
+
+/**
  * The editor and a scene's window, each pointing at the other.
  *
  *  - **The editor's line, in the window.** While a scene box is selected with its `rectSL` in the editor,

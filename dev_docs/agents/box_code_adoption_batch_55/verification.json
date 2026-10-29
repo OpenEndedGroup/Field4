@@ -1,0 +1,23 @@
+{
+  "baseline": "432d1ee41",
+  "sources": [
+    {
+      "path": "dev_docs/agents/transcripts/physics_manifold_path_trace.yaml",
+      "kotlinBodies": 2,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/polytope_manifold_path_trace.yaml",
+      "kotlinBodies": 2,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    },
+    {
+      "path": "dev_docs/agents/transcripts/life3d_manifold_path_trace.yaml",
+      "kotlinBodies": 2,
+      "collectionConversions": 0,
+      "reviewedBodyAndBoundariesPreserved": true
+    }
+  ]
+}

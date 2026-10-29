@@ -49,6 +49,8 @@ package afield.lang.stacksl
  * Phase is in **turns** throughout, like `phacelle`'s offset and unlike `rotate`'s radians:
  * `0.25` is a quarter cycle.
  */
+
+/** The fixed numbers of the phase noise construction, read by the emitted GLSL. */
 object PhaseNoiseConstants {
     /** Loop bound in the emitted GLSL, shared with the volumetric family. */
     const val MAX_OCTAVES = VolumetricNoiseConstants.MAX_OCTAVES

@@ -12,6 +12,14 @@ import afield.math.linalg.vec
 import org.lwjgl.vulkan.VK10.*
 import kotlin.math.*
 
+/**
+ * A complete demo: [SpinningDiffusionDemo] draws five rotating curves into a source texture,
+ * runs them through a [StreamDiffusionView], and shows source and stylized output side by side.
+ *
+ * It also supplies a renderer-derived motion provider for its ribbons, so it exercises display
+ * reprojection and history blending. Set `angle` to turn the curves.
+ */
+
 /** Native Field geometry for the video study's five curves. Left: live source; right: causal output. */
 class SpinningDiffusionDemo(val renderer: Renderer, config: StreamDiffusionConfig,
     val whiteOnBlack: Boolean = false, val name: String = "spinning-diffusion") : AutoCloseable {
@@ -22,7 +30,7 @@ class SpinningDiffusionDemo(val renderer: Renderer, config: StreamDiffusionConfi
         clearColor = vec(linear(background[0]), linear(background[1]), linear(background[2]), 1)
     }.also { it.setDefaultSampler(anisotropyEnable = false) }
     private val lines = Module(parameters(renderer) {
-        source.apply(); vertex = VERTEX; fragment = FRAGMENT
+        +source; vertex = VERTEX; fragment = FRAGMENT
         depthTest = false; depthWrite = false; blend = false
     })
     private val linePointer = lines.pointer()

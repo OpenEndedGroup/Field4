@@ -1,3 +1,11 @@
+/**
+ * Wiggling one line along another, and the moving frames that make it possible.
+ *
+ * [wiggledBy] reads a second line's coordinates in a frame travelling along this one, so a small wave
+ * becomes a decoration along a path. [sweptFrames] returns the [SweptFrames] (position, tangent,
+ * normal, binormal) it uses, for placing other things along a line. Tests: `FLineWiggleTest`.
+ */
+
 package afield.geometry.path
 
 import afield.lang.remotejs.JsFun

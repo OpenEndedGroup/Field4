@@ -49,6 +49,28 @@ expect:
   stdoutNotContains:
     - "DRIFT"
 */
+
+/**
+ * Builds the checked-in completion fixtures under `tools/completion-corpus/boxes`, and on a plain
+ * run guards them instead of rewriting them.
+ *
+ * The fixtures are real boxes, taken from the agent transcripts and templates in
+ * [CompletionCorpus.defaultDirs], each with the preamble its parents give it. That preamble is what
+ * makes a completion measurement about Field rather than about Kotlin, and recovering it means
+ * reading whole documents and expanding their macros, so the probes downstream read it from disk
+ * instead: [CompletionLoweringProbe] measures against these files rather than harvesting its own.
+ *
+ * This file's two jobs share one entrypoint, because a generator and the guard that watches for
+ * drift have to agree on what the fixtures should contain. `AFIELD_HARVEST_WRITE=1` writes;
+ * anything else compares, prints a `DRIFT` line per difference and fails. `AFIELD_LOWERING_CORPUS`
+ * and `AFIELD_HARVEST_DIR` move the input and output directories.
+ *
+ * A harvest resolves imports against the repository rather than against this machine, so a class
+ * in `src/personal` that shares a simple name with one in `src/` cannot change what a fixture says
+ * a box can see. Running with `AFIELD_IMPORT_HERMETIC=0` where that collision exists is refused
+ * rather than recorded; `dev_docs/HERMETIC_COMPLETION_INPUTS.md` has the history.
+ */
+
 /**
  * Harvests [CompletionCorpus] fixtures — and, run without `AFIELD_HARVEST_WRITE=1`, guards them.
  *

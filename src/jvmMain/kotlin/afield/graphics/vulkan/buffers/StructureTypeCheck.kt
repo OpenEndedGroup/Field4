@@ -15,6 +15,34 @@ import afield.math.linalg.Vector3f
 import afield.math.linalg.Vector4f
 
 /**
+ * Decides what a Kotlin value set on a shader's uniform member is written as, or why the shader
+ * cannot be given it.
+ *
+ * A [Structure] is set by member name, and the member that name refers to is whatever the shader's
+ * [Introspection] last reported. Value and slot can therefore disagree: a `Vector3f` on a member the
+ * shader now declares `float`, an `Int` on a `float`, a `Float` on a `float16_t`. Judged by the
+ * value's Kotlin type alone, each of those writes the wrong number of bytes, or the right number
+ * meaning something else.
+ *
+ * The rule is to convert what converts without loss and to refuse a different shape. Shape is
+ * checked first: a scalar belongs in a scalar, a vector in a vector of the same length, a matrix in
+ * a matrix of the same size, and nothing but a buffer-writing value in a struct. Within one shape
+ * the value is converted to the type the member declares whenever that type can hold it, which
+ * covers any integer into a wider one, a narrower or differently signed integer that is in range, an
+ * integer into `float` while it stays exactly representable, a whole float into an integer, and a
+ * `Double` into a `float`. A float set on a half is rounded to the half's precision, which is what
+ * the member asked for. Anything else is refused, naming the value that would not fit. Array
+ * members, device pointers and values whose width is not knowable here are written as given.
+ *
+ * Three callers ask this question. `Structure.set` asks it when the value arrives and declines to
+ * store a value it would not be able to write, so the answer reaches whoever is typing. Writing a
+ * block to its buffer asks it per member, and skips the member rather than writing nonsense into the
+ * slot. `Structure.carryValuesFrom` asks it of every value a shader reload is trying to keep, which
+ * is how a reload reports the uniforms it had to drop. Each distinct refusal is reported once, not
+ * once a frame.
+ */
+
+/**
  * What a value set on a uniform member becomes on its way into the buffer: [Written] the value to write
  * (converted to the member's reflected type when the conversion loses nothing), or [Refused] why not.
  */

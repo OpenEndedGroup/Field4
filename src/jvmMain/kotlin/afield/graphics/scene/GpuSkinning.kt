@@ -14,6 +14,24 @@ import afield.graphics.vulkan.util.Camera
 import afield.math.linalg.Matrix4f
 
 /**
+ * Skinning in the vertex shader: one mesh, one draw call, and a crowd of characters each posed
+ * differently.
+ *
+ * The bind-pose vertices are uploaded once and never touched again. Per frame the CPU writes only
+ * the joint palette, which is instances times bones matrices, and the GPU does the per-vertex
+ * blend, so a hundred characters cost a hundred palettes rather than a hundred deformations.
+ * [GpuSkinner] is the box-facing half: build one over a loaded `GltfSupport.MeshInstance`, hand it
+ * a palette per instance with `uploadPalettes`, then `bindTo` the mesh you are drawing.
+ * [GpuSkinning] holds the GLSL and the palette packing underneath it.
+ *
+ * The CPU path in [GltfSkinning] is the oracle. The same GLSL that draws also runs as a compute
+ * shader writing deformed positions to a buffer the CPU reads back, so a test that compares the two
+ * is checking the shader that renders rather than a second implementation written to pass it.
+ * Linear blending and dual quaternions can be mixed inside one draw call, chosen per instance,
+ * which is the clearest way to see what separates them.
+ */
+
+/**
  * Skinning in the **vertex shader**, with a joint-matrix palette on the GPU, and a crowd of
  * characters from one mesh and one draw call.
  *

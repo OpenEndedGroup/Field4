@@ -875,7 +875,7 @@ class KeyframerTest {
                 assertTrue(kv is KValue.Num, "$value is a Num")
                 assertEquals(kind, kv.kind)
             }
-            val back = kv!!.toAny()
+            val back = kv.toAny()
             assertEquals(value::class, back::class, "$value round-trips to its own type")
             assertEquals(value, back)
         }
@@ -1197,6 +1197,18 @@ class KeyframerTest {
         assertEquals(1.0, scope.loadKeyVersion(path, 0)["gain"])
         assertEquals(2.0, scope.loadKeyVersion(path, 1)["gain"])
         assertEquals(3.0, scope.loadKeyVersion(path, 2)["gain"])
+    }
+
+    @Test
+    fun theMarksOfAPre2026_08RenumberingAreNamed() {
+        val scope = KeyframeScope()
+        fun v(i: Int, t: String) = KeyVersionInfo(index = i, timestamp = t, note = null, file = "%06d.json".format(i))
+        assertEquals(emptyList(), scope.keyVersionDamage(listOf(v(0, "2026-07-01T00:00:00Z"), v(1, "2026-07-02T00:00:00Z"))))
+        val gap = scope.keyVersionDamage(listOf(v(0, "2026-07-01T00:00:00Z"), v(3, "2026-07-02T00:00:00Z")))
+        assertEquals(listOf("versions 1, 2 are missing"), gap)
+        // version 0 rewritten by the renumbering save, the old 1 left with its older timestamp
+        val renumbered = scope.keyVersionDamage(listOf(v(0, "2026-07-09T00:00:00Z"), v(1, "2026-07-02T00:00:00Z")))
+        assertTrue(renumbered.single().startsWith("version 1"), renumbered.toString())
     }
 
     @Test

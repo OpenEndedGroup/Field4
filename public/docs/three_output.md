@@ -176,8 +176,11 @@ three(name = "sheet", width = 900, height = 560) {
     columns(3)
     shapes.forEachIndexed { i, (label, shape) ->
         mesh(shape, label = label, panel = i)
-        panel(title = label, camera = ThreeCameraSpec(yawDegrees = 30.0, pitchDegrees = 20.0),
-            bounds = shape.toThreeBounds())
+        panel(
+            title = label,
+            camera = ThreeCameraSpec(yawDegrees = 30.0, pitchDegrees = 20.0),
+            bounds = shape.toThreeBounds(),
+        )
     }
     turntable(degreesPerSecond = 15.0)
 }
@@ -244,6 +247,36 @@ the receiving viewer. Inspector units `mm`, `cm`, `m`, `in` and `ft` convert to 
 An unspecified or other unit label leaves coordinates unchanged, with the label retained
 in the scene metadata.
 
+With gltfpack installed, **Export GLB** compresses the file before it downloads, and the status
+line shows both sizes. gltfpack quantizes the buffers and meshopt-compresses them, keeping node and
+material names. It is optional: pick **gltfpack** in `./field.sh --setup`, or run
+`./gradlew prepareGltfpack`, which fetches a pinned, checksummed build. Without it the export stays
+uncompressed. Box code can use the same tool through `Gltfpack.compress(bytes)`. A compressed file
+uses `EXT_meshopt_compression`, which three.js, Blender 4.2 and later, and most web viewers read.
+
+### A studio look
+
+`studio()` lights a scene for a model you look at, rather than for a technical figure. It adds ACES
+tone mapping, a key light that casts soft shadows, a sky fill and a cool rim, ambient occlusion in
+creases, and a dark ground with a faint grid. Give a mesh a material to go with it:
+
+```diffstatic {data-lang=kotlin}
+three {
+    mesh(
+        vase,
+        wireframe = false,
+        cullBackFaces = false,
+        material = ThreeSurfaceMaterial(roughness = 0.4f, metalness = 0.6f),
+    )
+    studio(groundY = -1.25)
+    background("#060807")
+}
+```
+
+`studio()` switches off the reference grid and axis tripod. Ambient occlusion draws in a single
+view. A contact sheet and X-ray draw without it, and `studio(ambientOcclusion = false)` turns it off.
+`geometry { }` uses this look for its models; see the `madp_geometry` starting point.
+
 ### One scene, two kinds of thing
 
 A gyroid marched inside a finite box is an **open** surface: it runs out of the sampling window
@@ -253,18 +286,21 @@ ring per hole, and this example draws those rings in the same scene as the solid
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/three_output/scene.png" wait="6.0" capture="box" open-outputs="true" padding="20"}
 :::static
-// A gyroid is a triply-periodic minimal surface. Marched inside a finite box it is OPEN: the
-// surface leaves the sampling window rather than closing inside it, and every place it does that
-// is a boundary loop. `open(20)` in the printed summary is the claim; the picture is the evidence.
+/*
+A gyroid is a triply-periodic minimal surface. Marched inside a finite box it is OPEN: the
+surface leaves the sampling window rather than closing inside it, and every place it does that
+is a boundary loop. `open(20)` in the printed summary is the claim; the picture is the evidence.
+*/
 val surface = marchingCubes(sdfGyroid(4.0, 0.3), boundsAround(radius = 1.0), 72)
 println(surface.summary())
 
 // The rim, as FLines, in the mesh's own coordinates. One closed ring per hole.
-val rims = surface.toFLines(MeshLines.BOUNDARY).map { ring ->
-    ring.color = vec(1.0, 0.45, 0.12, 1.0)
-    ring.thickness = 2.6
-    ring
-}
+val rims =
+    surface.toFLines(MeshLines.BOUNDARY).map { ring ->
+        ring.color = vec(1.0, 0.45, 0.12, 1.0)
+        ring.thickness = 2.6
+        ring
+    }
 println("open boundary loops: " + rims.size)
 
 three(channel = "gyroid", height = 470, width = 760) {
@@ -347,9 +383,11 @@ This example lays four unrelated shapes out in a two-by-two sheet, with a fact l
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/three_output/grid.png" wait="6.0" capture="box" open-outputs="true" padding="20"}
 :::static
-// Four unrelated shapes. Each panel frames its OWN bounds, so the small one is not lost beside the
-// large one — that is the difference between a grid and a turntable, and only the Kotlin side knows
-// which of the two it is building.
+/*
+Four unrelated shapes. Each panel frames its OWN bounds, so the small one is not lost beside the
+large one — that is the difference between a grid and a turntable, and only the Kotlin side knows
+which of the two it is building.
+*/
 val ball = marchingCubes(sdfSphere(1.0), boundsAround(radius = 1.3), 40)
 val drilled = marchingCubes(sdfSubtract(sdfSphere(1.0), sdfCylinder(0.34, 4.0)), boundsAround(radius = 1.3), 64)
 val twisted = marchingCubes(sdfBox(vec(1.2, 1.8, 0.4)).twisted(0.35), boundsAround(radius = 1.2), 72)
@@ -499,14 +537,26 @@ This example draws one marched solid twice, with the same `MeshView`, once on ea
 // to see with the two side by side.
 val solid = marchingCubes(
     sdfSmoothUnion(sdfSphere(0.78), sdfBox(vec(2.1, 0.32, 0.32)), k = 0.28),
-    boundsAround(radius = 1.35), 64,
+    boundsAround(radius = 1.35),
+    64,
 )
 val view = MeshView(width = 520, height = 400, wireframe = true)
 
-showMesh(solid, channel = "three.js — the default", view = view, height = view.height,
-         renderer = MeshRenderer.GPU, title = "MeshRenderer.GPU — MeshStandardMaterial, orbitable")
-showMesh(solid, channel = "the CPU rasterizer", view = view,
-         renderer = MeshRenderer.CPU, title = "MeshRenderer.CPU — two-light lambert, deterministic, still")
+showMesh(
+    solid,
+    channel = "three.js — the default",
+    view = view,
+    height = view.height,
+    renderer = MeshRenderer.GPU,
+    title = "MeshRenderer.GPU — MeshStandardMaterial, orbitable",
+)
+showMesh(
+    solid,
+    channel = "the CPU rasterizer",
+    view = view,
+    renderer = MeshRenderer.CPU,
+    title = "MeshRenderer.CPU — two-light lambert, deterministic, still",
+)
 ```
 
 ![The same marched solid — a ball with a bar smoothly unioned through it — drawn twice in one box. The upper output channel is the Three.js viewer: cool grey, soft falloff, fine wireframe, and the subject nearly fills the frame. The lower channel is the CPU rasterizer: warmer white, harder terminator, denser-looking wireframe, and the subject fills about half the frame. Both carry the identical fact line, 8494 verts, 16984 tris, chi=2 genus 0, watertight, volume 2.0857](assets/three_output/renderers.png)
@@ -539,7 +589,9 @@ var reversed = 0
 for (t in 0 until ball.triangleCount) {
     val cy = (ball.position(ball.ia(t)).y + ball.position(ball.ib(t)).y + ball.position(ball.ic(t)).y) / 3.0
     if (cy > 0.30) {
-        val b = idx[t * 3 + 1]; idx[t * 3 + 1] = idx[t * 3 + 2]; idx[t * 3 + 2] = b
+        val b = idx[t * 3 + 1]
+        idx[t * 3 + 1] = idx[t * 3 + 2]
+        idx[t * 3 + 2] = b
         reversed++
     }
 }
@@ -550,10 +602,21 @@ println("volume  %.4f  ->  %.4f".format(ball.signedVolume(), holed.signedVolume(
 println("consistently oriented: " + holed.topology().isConsistentlyOriented)
 
 val view = MeshView(width = 460, height = 380, yawDegrees = 18.0, pitchDegrees = 38.0, wireframe = true)
-showMesh(holed, channel = "three.js", view = view, height = view.height, renderer = MeshRenderer.GPU,
-         title = "the band is GONE, not dark")
-showMesh(holed, channel = "the CPU rasterizer", view = view,
-         renderer = MeshRenderer.CPU, title = "…and gone here too, which is the whole point")
+showMesh(
+    holed,
+    channel = "three.js",
+    view = view,
+    height = view.height,
+    renderer = MeshRenderer.GPU,
+    title = "the band is GONE, not dark",
+)
+showMesh(
+    holed,
+    channel = "the CPU rasterizer",
+    view = view,
+    renderer = MeshRenderer.CPU,
+    title = "…and gone here too, which is the whole point",
+)
 ```
 
 ![The same sphere with a reversed band drawn twice in one box. In both output channels a wide ragged band across the upper half of the sphere is simply absent — you look straight through the shell to the inside of its far side. In the upper, Three.js panel the wireframe of the missing triangles is still drawn across the hole; in the lower, CPU panel the hole is bare. Both carry the identical fact line, 642 verts, 1280 tris, chi=2 genus 0, watertight, volume 0.8112](assets/three_output/winding.png)
@@ -591,7 +654,8 @@ of the solid to an annotation beside it, as in this example:
 // A block with a bore drilled down through it, and a datum line standing beside it.
 val part = marchingCubes(
     sdfSubtract(sdfBox(vec(2.0, 1.2, 1.2)), sdfCylinder(0.35, 2.0)),
-    boundsAround(radius = 1.3), 72,
+    boundsAround(radius = 1.3),
+    72,
 )
 val datum = fline {
     moveTo(1.4, -0.6, 0.0)
@@ -612,9 +676,9 @@ three(name = "section", channel = "section", width = 760, height = 460) {
             ThreeMeasurement(
                 ThreeMeasureElement.point(1.0, 0.0, 0.0),
                 ThreeMeasureElement.segment(1.4, -0.6, 0.0, 1.4, 0.6, 0.0),
-                "clear "
-            )
-        ]
+                "clear ",
+            ),
+        ],
     )
 }
 ```
@@ -649,10 +713,12 @@ its part name. Folder labels do not change geometry IDs or invalidate annotation
 three(name = "vehicle") {
     mesh(boxMesh(120, 60, 40), id = "body", wireframe = false)
     mesh(boxMesh(20, 20, 20), id = "wheel", wireframe = false)
-    inspect(partPaths = mapOf(
-        "body" to ["Vehicle", "Bodywork"],
-        "wheel" to ["Vehicle", "Running gear"]
-    ))
+    inspect(
+        partPaths = mapOf(
+            "body" to ["Vehicle", "Bodywork"],
+            "wheel" to ["Vehicle", "Running gear"],
+        ),
+    )
 }
 ```
 
@@ -693,13 +759,13 @@ offline.
 
 ## Play with it
 
-[Open the gallery](offline.html?file=assets/three_output_gallery/metadata.edn), a loadable Field document with the five
-boxes on this page, laid out top to bottom. Open it in a fresh Field 4 and run the boxes; then orbit
-the gyroid, change `facts = true` to `false`, or set the grid's `columns` to `4` and watch the
-panels re-tile.
+[Open the gallery](offline.html?file=assets/three_output_gallery/metadata.edn), with the five boxes
+on this page and their captured outputs. Drag a 3D view to orbit it; use **Parts** and **X-ray**
+to explore its geometry. Click a box to read its code. To change `facts = true` to `false`, or
+set the grid's `columns` to `4`, use **Open in Field·4** and run the edited box.
 
 <iframe
-    src="offline.html?file=assets/three_output_gallery/metadata.edn"
+    src="offline.html?file=assets/three_output_gallery/metadata.edn&amp;focus=outputs"
     title="Field's 3D Output — offline viewer"
     style="width:100%; height:560px; border:1px solid #444; border-radius:8px; background:#111;"
     loading="lazy"
@@ -721,8 +787,13 @@ This small example adds a reference-axis toggle:
 :::static
 three(name = "tools-example") {
     tools("/threejs_tools_demo.js")
-    lines(fline { moveTo(0.0, 0.0, 0.0); lineTo(2.0, 1.0, 0.0) })
-    helpers(false)  // so the grid's own tripod is not mistaken for the tool's axes
+    lines(
+        fline {
+            moveTo(0.0, 0.0, 0.0)
+            lineTo(2.0, 1.0, 0.0)
+        },
+    )
+    helpers(false) // so the grid's own tripod is not mistaken for the tool's axes
 }
 ```
 

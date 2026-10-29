@@ -24,6 +24,9 @@ description: >
   boxes in order. The first is the slow one — about 1.4s to load 99MB of ONNX weights from
   ~/.afield/onnx/models, once per JVM; after that inference is about 130ms. Executed end-to-end by
   examples.demo-transcript.exec. The page is public/docs/chain_photo_to_solid.md.
+docs:
+  - page: chain_photo_to_solid.md
+    why: "Walks through this photo-to-solid chain step by step."
 operations:
   - create:
       box: photo_depth
@@ -37,9 +40,11 @@ operations:
           val photo = imgFromFile(PhotoToSolidChain.PHOTO, 3).scaleBy(0.45)
           val (depth, model) = PhotoToSolidChain.depthMapOf(photo)
 
-          // The output is inverse *relative* depth in arbitrary units, so it has to be normalised
-          // against a window; depthMapOf does that against this frame's own range and prints it.
-          // Larger means NEARER, which is why the near floor is the bright band at the bottom.
+          /*
+          The output is inverse *relative* depth in arbitrary units, so it has to be normalised
+          against a window; depthMapOf does that against this frame's own range and prints it.
+          Larger means NEARER, which is why the near floor is the bright band at the bottom.
+          */
           println("photo ${photo.width}x${photo.height} -> depth ${depth.width}x${depth.height}")
           println("${model.lastInferenceMs}ms on ${model.activeProvider}, input forced to a multiple of 14")
 
@@ -88,10 +93,10 @@ operations:
           import afield.examples.chain.PhotoToSolidChain
           import afield.geometry.solid.manifold.Solid
           import afield.geometry.solid.manifold.toSolid
-          
+
           val mount = PhotoToSolidChain.mount()
           println(mount.summary())
-          
+
           // Booleans, with the identities any two solids owe each other checked rather than trusted.
           Solid.scope {
               val plaque = mount.relief.toSolid() + mount.frame.toSolid()
@@ -102,19 +107,29 @@ operations:
               println("mounted genus ${union.genus} in ${union.decompose().size} part — the plaque plugs it")
               println("union %.9f + meet %.9f = %.9f".format(union.volume, meet.volume, union.volume + meet.volume))
               println("plaque %.9f + frame %.9f = %.9f".format(plaque.volume, frame.volume, plaque.volume + frame.volume))
-              println("inclusion-exclusion holds to ${"%.2e".format(kotlin.math.abs((union.volume + meet.volume) - (plaque.volume + frame.volume)))}")
+              println(
+                  "inclusion-exclusion holds to ${"%.2e".format(kotlin.math.abs((union.volume + meet.volume) - (plaque.volume + frame.volume)))}",
+              )
           }
-          
-          // mount()'s meshes carry NO normals on purpose — splitting a vertex at a crease is what a
-          // renderer wants and is exactly what stops toSolid() accepting the mesh back. renderPng
-          // adds them itself, so nothing here has to care.
+
+          /*
+          mount()'s meshes carry NO normals on purpose — splitting a vertex at a crease is what a
+          renderer wants and is exactly what stops toSolid() accepting the mesh back. renderPng
+          adds them itself, so nothing here has to care.
+          */
           fun draw(m: TriMesh, yaw: Double = 30.0, pitch: Double = 34.0) =
               imgFromBytes(m.renderPng(MeshView(yawDegrees = yaw, pitchDegrees = pitch, width = 760, height = 560)))
-          
+
           showImgGrid(
               "relief = plaque - frame" to draw(mount.relief),
               "the frame, genus 1" to draw(mount.frame),
-              "assembled, genus 0" to draw(triMesh { add(mount.relief); add(mount.frame) }),
+              "assembled, genus 0" to
+                  draw(
+                      triMesh {
+                          add(mount.relief)
+                          add(mount.frame)
+                      },
+                  ),
               columns = 3,
               cellSide = 460,
           )
@@ -126,8 +141,7 @@ operations:
         code: |
           import afield.examples.chain.PhotoToSolidChain
           import afield.geometry.solid.manifold.Solid
-          import afield.geometry.solid.manifold.toSolid
-          
+
           // Two independent constructions of the same object: the grid triangulation, and a marched
           // level set of the same depth field. Compared against EACH OTHER, not against a constant.
           val mount = PhotoToSolidChain.mount()
@@ -137,14 +151,18 @@ operations:
               // UNION the frame. Comparing against the wrong one of those reads as a 7% disagreement.
               val marched = PhotoToSolidChain.marchedPlaque(mount.depth, mount.footprintZ, edge)
               val apart = kotlin.math.abs(marched.volume - mount.plaqueVolume) / mount.plaqueVolume
-              markdown(buildString {
-                  appendLine("grid volume %.9f, marched %.9f — **%.3f%%** apart at edgeLength %.4f"
-                      .format(mount.plaqueVolume, marched.volume, apart * 100, edge))
-                  appendLine()
-                  appendLine("Two constructions that share no code, agreeing to about one marching cell.")
-              }, width = 760)
+              markdown(
+                  buildString {
+                      appendLine(
+                          "grid volume %.9f, marched %.9f — **%.3f%%** apart at edgeLength %.4f"
+                              .format(mount.plaqueVolume, marched.volume, apart * 100, edge),
+                      )
+                      appendLine()
+                      appendLine("Two constructions that share no code, agreeing to about one marching cell.")
+                  },
+                  width = 760,
+              )
           }
-
   - execute: { box: photo_depth, property: code }
   - execute: { box: photo_plaque, property: code }
   - execute: { box: photo_boolean, property: code }

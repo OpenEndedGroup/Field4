@@ -1,5 +1,8 @@
 # Generated from dmx_lighting_demo/metadata.edn by afield.examples.DocumentToTranscript.
 name: "dmx_lighting_demo"
+docs:
+  - page: dmx_lighting.md
+    why: "Explains driving lights over Art-Net and sACN as this document does."
 operations:
   - create:
       box: "dmx-receiver"
@@ -32,25 +35,27 @@ operations:
         "autorun": false
         "code": |
           import afield.io.dmx.*
-          
+
           // 200 RGB pixels of LED tape stuck along a curve. 170 fit in universe 1 (510 slots);
           // the patch rolls the other 30 into universe 2 by itself.
           val tape = FLine().moveTo(0, 0).cubicTo(x0 = 150, y0 = -160, x1 = 250, y1 = 160, x = 400, y = 0)
           val patch = Patch(startUniverse = 1)
           patch.stripAlong(tape, 200)
-          
+
           // Art-Net to this machine; use a node's IP (or a broadcast address) to drive real lights.
           val out = artnetOut("127.0.0.1")
-          
+
           // A colour field over (x, y, t), evaluated on the DMX sender's own 44 Hz clock.
           patch.animate(out) { t ->
               map(t) { x, y, time ->
-                  vec(0.5 + 0.5 * sin(x * 0.03 - time * 2.0),
+                  vec(
+                      0.5 + 0.5 * sin(x * 0.03 - time * 2.0),
                       0.5 + 0.5 * sin(x * 0.03 - time * 2.0 + 2.1),
-                      0.5 + 0.5 * sin(y * 0.03 + time))
+                      0.5 + 0.5 * sin(y * 0.03 + time),
+                  )
               }
           }
-          
+
           // Draw the virtual fixtures in their current colours.
           loop {
               if (frameNumber % 4 == 0) showPatch(patch)
@@ -75,32 +80,37 @@ operations:
         "autorun": false
         "code": |
           import afield.io.dmx.*
-          
+
           // sACN (E1.31) out and back in, in one box: an image shown on a 16 x 8 matrix of RGBW fixtures.
           // 128 RGBW fixtures x 4 slots fill universe 10 exactly; the matrix is wired serpentine, as most are.
           val patch = Patch(startUniverse = 10)
           patch.grid(16, 8, spacing = 10.0, profile = FixtureProfile.RGBW, serpentine = true)
-          
+
           // Any Img will do (imgFromFile("...") for a file); here a small gradient made in place.
-          val img = Img(64, 32, 3, FloatArray(64 * 32 * 3) { i ->
-              val x = (i / 3) % 64 / 63f
-              val y = (i / 3) / 64 / 31f
-              when (i % 3) {
-                  0 -> x
-                  1 -> y
-                  else -> 1f - x
-              }
-          })
-          
-          val out = sacnOut("127.0.0.1")   // host = null sends to multicast 239.255.0.10 instead
-          val node = sacnIn()              // Field as an sACN receiver on UDP 5568
-          
+          val img = Img(
+              64,
+              32,
+              3,
+              FloatArray(64 * 32 * 3) { i ->
+                  val x = (i / 3) % 64 / 63f
+                  val y = (i / 3) / 64 / 31f
+                  when (i % 3) {
+                      0 -> x
+                      1 -> y
+                      else -> 1f - x
+                  }
+              },
+          )
+
+          val out = sacnOut("127.0.0.1") // host = null sends to multicast 239.255.0.10 instead
+          val node = sacnIn() // Field as an sACN receiver on UDP 5568
+
           // On the sender's clock: sample the image, then sweep a wave of brightness across it.
           patch.animate(out) { t ->
               mapImage(img)
               fixtures.forEach { it.dimmer = 0.55 + 0.45 * sin(t * 3.0 - it.position.x * 0.05) }
           }
-          
+
           // What we patched, and universe 10 as it came back over the network, decoded as RGBW fixtures in
           // wire order — every other row runs backwards, because the matrix is wired serpentine.
           loop {

@@ -1,24 +1,23 @@
-import afield.math.functions.Functions
-import afield.math.functions.FnIntervals
-import afield.math.functions.StudyEvent
-import afield.math.functions.certifiedEquals
-import afield.math.functions.certifiedNeverBelow
-import afield.math.functions.certifiedNeverExceeds
-import afield.math.functions.certifiedRange
-import kotlin.math.PI
+/*
+The function workbench's worked example (public/docs/assets/function_conversation/final.kt),
+twice. `lambda` is its channel code, verbatim: one fn { } per channel, which the interval walk
+refuses. `formula` is the same function from formula-bearing ops. The only construct that needed
+a lambda was the piecewise event selection; here it is exact 0/1 `step` indicators, with every
+product and sum in the lambda's order, so the two agree bit for bit.
+*/
+val events = [
+    StudyEvent("e1", 185.0, 100.0, 30.0, 100.0),
+    StudyEvent("e2", 785.0, 100.0, 30.0, 100.0),
+    StudyEvent("e3", 1425.0, 200.0, 30.0, 100.0),
+    StudyEvent("e5", 2585.0, 100.0, 30.0, 100.0),
+    StudyEvent("e6", 3185.0, 100.0, 30.0, 100.0),
+]
+val names = ["x", "y", "z"]
 
-// The function workbench's worked example (public/docs/assets/function_conversation/final.kt),
-// twice. `lambda` is its channel code, verbatim: one fn { } per channel, which the interval walk
-// refuses. `formula` is the same function from formula-bearing ops. The only construct that needed
-// a lambda was the piecewise event selection; here it is exact 0/1 `step` indicators, with every
-// product and sum in the lambda's order, so the two agree bit for bit.
-val events = listOf(
-    StudyEvent("e1", 185.0, 100.0, 30.0, 100.0), StudyEvent("e2", 785.0, 100.0, 30.0, 100.0),
-    StudyEvent("e3", 1425.0, 200.0, 30.0, 100.0), StudyEvent("e5", 2585.0, 100.0, 30.0, 100.0),
-    StudyEvent("e6", 3185.0, 100.0, 30.0, 100.0))
-val names = listOf("x", "y", "z")
-
-fun smooth01(value: Double): Double { val u = value.coerceIn(0.0, 1.0); return u * u * u * (10.0 + u * (-15.0 + 6.0 * u)) }
+fun smooth01(value: Double): Double {
+    val u = value.coerceIn(0.0, 1.0)
+    return u * u * u * (10.0 + u * (-15.0 + 6.0 * u))
+}
 fun backgroundOf(seconds: Double, channel: Int): Double {
     val drift = 2.0 * PI / 3.0 * kotlin.math.sin(2.0 * PI * seconds / 100.0)
     val phase = 2.0 * PI * seconds / 40.0 + (channel - 1) * drift
@@ -42,7 +41,9 @@ fun lambda(index: Int, name: String) = with(Functions) {
             seconds < event.plateauStart -> {
                 val age = seconds - event.start
                 val lag = if (event.id == "e3" && name == "y" && age < 180.0) {
-                    val u = age / 180.0; val v = 1.0 - u; 6.0 * 64.0 * u * u * u * v * v * v
+                    val u = age / 180.0
+                    val v = 1.0 - u
+                    6.0 * 64.0 * u * u * u * v * v * v
                 } else 0.0
                 shoulderOf(base, age - lag, event.rise)
             }
@@ -59,10 +60,15 @@ fun formula(index: Int, name: String) = with(Functions) {
     val one = k(1.0)
     fun sinOf(p: Functions.Fn) = sin(frequency = k(0.0), phase = p) // sin(0*x + p) is sin(p), exactly
     fun cosOf(p: Functions.Fn) = cos(frequency = k(0.0), phase = p)
-    fun smooth(v: Functions.Fn): Functions.Fn { val u = v.clamp(0.0, 1.0); return u * u * u * (k(10.0) + u * (k(-15.0) + k(6.0) * u)) }
+    fun smooth(v: Functions.Fn): Functions.Fn {
+        val u = v.clamp(0.0, 1.0)
+        return u * u * u * (k(10.0) + u * (k(-15.0) + k(6.0) * u))
+    }
     val drift = k(2.0 * PI / 3.0) * sinOf(k(2.0 * PI) * t / k(100.0))
-    val base = k(0.45) + k(0.20) * sinOf(k(2.0 * PI) * t / k(40.0) + k((index - 1).toDouble()) * drift) +
-        k(0.04) * sinOf(k(2.0 * PI) * t / k(230.0))
+    val base =
+        k(0.45) +
+            k(0.20) * sinOf(k(2.0 * PI) * t / k(40.0) + k((index - 1).toDouble()) * drift) +
+            k(0.04) * sinOf(k(2.0 * PI) * t / k(230.0))
     fun shoulder(age: Functions.Fn, span: Double): Functions.Fn {
         val u = (age / k(span)).clamp(0.0, 1.0)
         val cycles = k(0.06) * age + k(0.5 * (0.80 - 0.06)) * age * age / k(span)
@@ -78,12 +84,15 @@ fun formula(index: Int, name: String) = with(Functions) {
     for (e in events) {
         val age = t - k(e.start)
         val local = if (e.id == "e3" && name == "y") {
-            val u = age / k(180.0); val v = one - u
+            val u = age / k(180.0)
+            val v = one - u
             age - (k(180.0) - age).sign().clamp(0.0, 1.0) * (k(6.0 * 64.0) * u * u * u * v * v * v)
         } else age
-        sum = sum + ((from(e.start) - from(e.plateauStart)) * shoulder(local, e.rise) +
-            (from(e.plateauStart) - from(Math.nextUp(e.plateauEnd))) * one +
-            (from(Math.nextUp(e.plateauEnd)) - from(Math.nextUp(e.end))) * shoulder(k(e.end) - t, e.fall))
+        sum =
+            sum +
+                ((from(e.start) - from(e.plateauStart)) * shoulder(local, e.rise) +
+                    (from(e.plateauStart) - from(Math.nextUp(e.plateauEnd))) * one +
+                    (from(Math.nextUp(e.plateauEnd)) - from(Math.nextUp(e.end))) * shoulder(k(e.end) - t, e.fall))
         inside = inside + (from(e.start) - from(Math.nextUp(e.end)))
     }
     sum + (one - inside) * base
@@ -98,19 +107,34 @@ for ((i, name) in names.withIndex()) {
     val holds = events.count { f.certifiedEquals(1.0, it.plateauStart, it.plateauEnd).proven }
     val above = f.certifiedNeverExceeds(1.0, 0.0, 3600.0)
     val witness = above.witness!!
-    rows += listOf(name, "${FnIntervals.unsupportedOps(l)} / ${FnIntervals.unsupportedOps(f)}",
-        "$mismatches of ${grid.size}", "$holds of ${events.size} PROVEN",
-        f.certifiedNeverBelow(0.0, 0.0, 3600.0).kind.name,
-        "${above.kind} at $witness: lambda ${l(witness)}")
+    rows +=
+        [
+            name,
+            "${FnIntervals.unsupportedOps(l)} / ${FnIntervals.unsupportedOps(f)}",
+            "$mismatches of ${grid.size}",
+            "$holds of ${events.size} PROVEN",
+            f.certifiedNeverBelow(0.0, 0.0, 3600.0).kind.name,
+            "${above.kind} at $witness: lambda ${l(witness)}",
+        ]
 }
-display("claims", Table(listOf("ch", "refused ops (lambda / formula)", "bit mismatches", "== 1 on plateau", ">= 0", "<= 1"),
-    title = "the worked example's claims, on its formula rewrite")
-    .rows(rows)
-    .role("<= 1", CellRole.WARN))
+display(
+    "claims",
+    Table(
+            ["ch", "refused ops (lambda / formula)", "bit mismatches", "== 1 on plateau", ">= 0", "<= 1"],
+            title = "the worked example's claims, on its formula rewrite",
+        )
+        .rows(rows)
+        .role("<= 1", CellRole.WARN),
+)
 
 // How far above 1: certifiedRange's proven bound is the certificate for <= 1 + 1e-9 (x only; ~11 s).
 val xMax = formula(0, "x").certifiedRange(0.0, 3600.0, tolerance = 9e-10).max!!
-display("max", Table(listOf("what", "value"), title = "channel x, the whole hour")
-    .row("max reached", xMax.value.toString()).row("at x", xMax.witness.toString())
-    .row("proven bound", xMax.bound.toString())
-    .row("enclosures", xMax.enclosures).role("value", CellRole.ACCENT))
+display(
+    "max",
+    Table(["what", "value"], title = "channel x, the whole hour")
+        .row("max reached", xMax.value.toString())
+        .row("at x", xMax.witness.toString())
+        .row("proven bound", xMax.bound.toString())
+        .row("enclosures", xMax.enclosures)
+        .role("value", CellRole.ACCENT),
+)

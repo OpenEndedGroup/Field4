@@ -22,6 +22,14 @@ import java.nio.ByteBuffer
 import kotlin.concurrent.thread
 
 /**
+ * Reads a rendered image back to the CPU a strip at a time, so a full-frame capture never stalls a
+ * frame.
+ *
+ * [RollingCapture] copies one horizontal strip per frame into a snapshot image, then copies the
+ * finished snapshot into a CPU-visible staging buffer.
+ */
+
+/**
  * Rolling capture that copies a horizontal strip from a source image into an internal snapshot image
  * each frame. Once a full frame has been copied, you can copy the snapshot to a CPU-visible buffer
  * (e.g., on a low-priority transfer queue) without stalling rendering.

@@ -10,6 +10,9 @@ description: >
   try `"bd*4"` -> `"bd(3,8)"`, or add `mini 4 iter` before the quote. Replay this file
   into a fresh Field with the agent backdoor (field_run_transcript) to see it on
   screen with no other setup.
+docs:
+  - page: rectsl_cheatsheet.md
+    why: "Lists the RectSL vocabulary, including its pattern forms."
 operations:
   # 1. renderer box — owns the on-screen Window + Renderer and pumps the loop.
   - create:
@@ -19,17 +22,17 @@ operations:
       properties:
         code: |
           import afield.graphics.vulkan.util.Options
-          
+
           prop<Window>(window)
           prop<Renderer>(renderer)
-          
+
           Options.enableHDR = false
-          
+
           once.renderer {
               window = Window("RectSL — musicality")
               Renderer(window)
           }
-          
+
           println("musicality renderer ready")
           start(renderer::run)
   # 2. groove box — compiles the snippet and draws it live. This is the box you hack on.
@@ -39,23 +42,26 @@ operations:
       frame: { x: 300.0, y: 140.0, w: 300.0, h: 100.0 }
       properties:
         code: |
-          // RectSL's musical layer: the pattern language as scene structure.
-          //
-          // Two facts do all the work. A RectSL track is `sample(t)` and a pattern is
-          // `events(arc)` — both pure functions of time — so (1) a pattern IS a track,
-          // which is why `saw ->rotate` needs no conversion word, and (2) a pattern
-          // event carries an onset and a real duration, which is exactly what
-          // `->live birth life` wants, so an event IS a life window. `pat` is `array`
-          // indexed by rhythm instead of by ordinal.
-          //
-          // Nothing below is written in seconds. Edit `rectsl` and re-run to change the
-          // groove live. See rectsl_cheatsheet.md ("Musicality") / rectsl_examples.md.
+          /*
+          RectSL's musical layer: the pattern language as scene structure.
+
+          Two facts do all the work. A RectSL track is `sample(t)` and a pattern is
+          `events(arc)` — both pure functions of time — so (1) a pattern IS a track,
+          which is why `saw ->rotate` needs no conversion word, and (2) a pattern
+          event carries an onset and a real duration, which is exactly what
+          `->live birth life` wants, so an event IS a life window. `pat` is `array`
+          indexed by rhythm instead of by ordinal.
+
+          Nothing below is written in seconds. Edit `rectsl` and re-run to change the
+          groove live. See rectsl_cheatsheet.md ("Musicality") / rectsl_examples.md.
+          */
+          import afield.lang.rectsl.RECT_ANIMATION_VERTEX_SHADER
           import afield.lang.rectsl.RectAnimationOracle
           import afield.lang.rectsl.rectMaterialShaderCode
           import afield.lang.rectsl.writeFrameToMesh
-          import afield.lang.rectsl.RECT_ANIMATION_VERTEX_SHADER
-          
-          val rectsl = """
+
+          val rectsl =
+              """
           #rectsl
           ->wall 16 9 abstract
           ->tempo 120
@@ -63,7 +69,7 @@ operations:
           ->duration-cycles 4
           ->fps 30
           ->background 0x0a0a12
-          
+
           # The accent: a full-wall flash, behind everything, on every fourth bar only.
           # This is the thing a loop cannot do and a groove must — `->every` keeps both
           # versions of every track and chooses between them per sample.
@@ -75,7 +81,7 @@ operations:
             ->back
             selected 4 '( 0.14 ->alpha ) ->every
           ;
-          
+
           # The ring: sixteen slots in space, five of them sounding, the whole figure
           # turning once a bar because `saw` is a pattern read as a rotation track.
           "ring" group
@@ -89,7 +95,7 @@ operations:
           "ring" ->select
             saw tau * ->rotate
           ;
-          
+
           # The kick: one copy per event, each ->live for exactly its own quarter and
           # authored in ITS OWN local time — so sixteen strikes, not a synchronised
           # chorus. `step` places each one across the wall, restarting at every bar line.
@@ -102,7 +108,7 @@ operations:
                 '( 0=0  0.10=1  0.5=0 ) linear ->alpha
             ) pat
           ;
-          
+
           # The score: the same kind of string, read as a ruler instead of as a rhythm.
           # `pat` spends the subdivision on WHEN, `strip` spends it on WHERE.
           "tick" rect
@@ -111,18 +117,20 @@ operations:
             "bd [sd sd] hh*4" '( -3.9 ->y  0.55 ->alpha ) strip
           ;
           """
-          
+
           val program = RectAnimationOracle.compile(rectsl).program!!
-          val shader  = rectMaterialShaderCode(program)
-          
-          // Seed this box's shader-source properties before `moduleHere {}` runs; the
-          // `//%-` fragment break makes this fragment execute first (see the playground
-          // transcript for the why).
+          val shader = rectMaterialShaderCode(program)
+
+          /*
+          Refresh the generated fragment on every run before `moduleHere {}`; the
+          `//%-` fragment break makes this fragment execute first (see the playground
+          transcript for the why).
+          */
           once.vertex { RECT_ANIMATION_VERTEX_SHADER }
-          once.fragment { shader.exampleFragmentShader!! }
-          
+          fragment = shader.exampleFragmentShader!!
+
           //%-
-          
+
           val module = moduleHere {
               blend = true
               depthTest = false
@@ -131,13 +139,13 @@ operations:
           val m = Mesh()
           module += "scene" to m
           renderer += "rectsl-musicality" to module
-          
+
           val ww = program.wall.width.toFloat()
           val wh = program.wall.height.toFloat()
           m.push["worldToClip"] = afield.math.linalg.Matrix4f().ortho(-ww / 2f, ww / 2f, -wh / 2f, wh / 2f, -1f, 1f)
           m.push["wallWidth"] = ww
           m.push["wallHeight"] = wh
-          
+
           val duration = program.duration.toDouble()
           var t = 0.0
           loop {

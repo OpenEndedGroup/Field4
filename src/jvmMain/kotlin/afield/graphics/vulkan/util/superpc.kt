@@ -86,6 +86,18 @@ import kotlin.reflect.full.memberProperties
 // Ordering annotation (optional)
 // ---------------------------
 
+/**
+ * Fixes where a push-constant member sits in the block, lowest [value] first.
+ *
+ * Members carrying this annotation are laid out in its order and come before every member that does
+ * not, which are laid out alphabetically after them. Numbering the whole class buys two things.
+ * Packing: each member is aligned to its own size, so a `vec3` followed by a `float` fills sixteen
+ * bytes exactly where the reverse order wastes twelve. And stability: under the alphabetical
+ * fallback a member named early in the alphabet shifts every offset after it, which silently moves
+ * where `nextFreeOffset` points and invalidates any `layout(offset = …)` written by hand into
+ * `otherDeclarations`. Values need not be contiguous; leaving a gap is how payload members take the
+ * high numbers.
+ */
 @Target(AnnotationTarget.PROPERTY)
 @Retention(AnnotationRetention.RUNTIME)
 annotation class PcOrder(val value: Int)
@@ -127,6 +139,18 @@ internal class Schema(
 // Base class
 // ---------------------------
 
+/**
+ * Base class for a push-constant block written as Kotlin properties, which generates its own matching
+ * GLSL declaration.
+ *
+ * Subclass it, declare each member as a `var` of a supported type, and the layout is derived by
+ * reflection on first use: `glsl()` emits the block and its accessors, `writeTo` serialises the
+ * current values at the same offsets, and `pcOffsetOf`/`regIndexOf` answer where a member landed. The
+ * two sides cannot disagree, because both read one cached schema.
+ *
+ * The type parameter is the subclass's own type and is not used by anything here; write
+ * `class MaterialPC : PushConstants<MaterialPC>()`.
+ */
 abstract class PushConstants<T : Any> : WritesToBuffer {
 
     companion object {
@@ -149,7 +173,21 @@ abstract class PushConstants<T : Any> : WritesToBuffer {
      */
     open var otherDeclarations: String = ""
 
+    /**
+     * How many bytes this block occupies, rounded up to a multiple of 16.
+     *
+     * This is the size to allocate for a buffer that [writeTo] will fill, and the size to declare as
+     * the push-constant range. The rounding means it is normally a little larger than the members
+     * add up to.
+     */
     fun pcSizeBytes(): Int = schema.pcTotalBytes
+
+    /**
+     * How many floats the generated register file holds: the `REG_COUNT` the emitted GLSL declares.
+     *
+     * One per scalar member and one per component of a vector member, counting only the members that
+     * get accessors; an underscore payload contributes nothing.
+     */
     fun regFloatCount(): Int = schema.regFloatCount
 
     /**
@@ -169,10 +207,24 @@ abstract class PushConstants<T : Any> : WritesToBuffer {
         return ((used + alignment - 1) / alignment) * alignment
     }
 
+    /**
+     * Where [name] starts in the generated register file: the value of the `REG_<name>` constant
+     * the emitted GLSL declares.
+     *
+     * Throws for an unknown member and for an underscore payload, since a payload is never loaded
+     * into the register file and so has no index there. Use [pcOffsetOf] for those.
+     */
     fun regIndexOf(name: String): Int =
         schema.regIndexByName[name]
             ?: error("No register-backed field named '$name'")
 
+    /**
+     * The byte offset of [name] within the push-constant block, which is the offset the generated
+     * `layout(offset = …)` carries.
+     *
+     * Answers for every member including underscore payloads, and throws for a name the class does
+     * not declare.
+     */
     fun pcOffsetOf(name: String): Int =
         schema.pcOffsetByName[name]
             ?: error("No field named '$name'")
@@ -209,10 +261,13 @@ abstract class PushConstants<T : Any> : WritesToBuffer {
     }
 
     /**
-     * Writes this push-constant object into [bb] at [baseOffset] without
-     * changing the buffer's position.
+     * Writes every member into [b] at [baseOffset] plus its own offset, leaving the buffer's position
+     * where it found it.
      *
-     * IMPORTANT: ensure bb.order(ByteOrder.LITTLE_ENDIAN)
+     * Each member is written with absolute puts, so this is safe to call on a shared buffer. The
+     * buffer has to be little-endian, and a `ByteBuffer` is big-endian until
+     * `order(ByteOrder.LITTLE_ENDIAN)` is called on it — get that wrong and every value arrives
+     * byte-reversed with no error anywhere.
      */
     override fun writeTo(b: ByteBuffer, baseOffset: Int) {
         val oldPos = b.position()
@@ -227,11 +282,18 @@ abstract class PushConstants<T : Any> : WritesToBuffer {
     }
 
     /**
-     * Generates GLSL glue:
-     * - push constant block with explicit offsets
-     * - PC member names prefixed with "_" for normal fields
-     * - regs[] + loadRegs()
-     * - scalar macros + vec accessors (no "get" prefix)
+     * Emits the GLSL side of this block: the push-constant declaration, a float register file, a
+     * `loadRegs()` that fills it, and an accessor per member under the member's own Kotlin name.
+     *
+     * The declaration gives every member an explicit `layout(offset = …)` and a leading underscore,
+     * which keeps the block's own names clear of the accessors. A scalar member's accessor is a
+     * `#define`, so `time` in Kotlin reads as `time`; a vector member's is a function of no
+     * arguments, so `baseColor` reads as `baseColor()`. Half-precision members get unpack helpers
+     * ahead of the block. Call `loadRegs()` once at the top of `main` before reading anything.
+     *
+     * [emitScalarLayoutQualifier] adds the `scalar` layout qualifier to the block, which a shader
+     * compiled with scalar block layout needs. [regsName] and [pcInstanceName] rename the register
+     * array and the block instance, for a shader that already has something called `regs` or `pc`.
      */
     fun glsl(
         emitScalarLayoutQualifier: Boolean = false,
@@ -456,6 +518,14 @@ private fun pcStorageLayout(kind: PcKind): Pair<Int, Int> = when (kind) {
 // GLSL generator
 // ---------------------------
 
+/**
+ * Builds the GLSL text for a push-constant block from a layout that reflection has already worked
+ * out.
+ *
+ * Reached through [PushConstants.glsl] rather than directly, since the layout it needs is internal, so
+ * there is no way to call it with a schema of your own. It is public because the generated text is
+ * worth reading when a shader disagrees with its Kotlin: print `pc.glsl()` and compare the offsets.
+ */
 object GlslGen {
 
     internal fun generate(
@@ -688,6 +758,14 @@ object GlslGen {
 // Smoke test
 // ---------------------------
 
+/**
+ * A worked example of a push-constant class, covering each supported member type and both payload
+ * conventions.
+ *
+ * Five ordered members that get accessors, then two underscore payloads given high [PcOrder] numbers
+ * so later members can be added in front of them. Nothing outside this file uses it; what reads it is
+ * the `main` below, which prints the layout, the generated GLSL and a word dump of the written bytes.
+ */
 class SmokePC : PushConstants<SmokePC>() {
 
     @PcOrder(0) var time: Float = 0f
@@ -711,6 +789,12 @@ private fun dumpU32(bb: ByteBuffer, bytes: Int) {
     }
 }
 
+/**
+ * Prints [SmokePC]'s layout, its generated GLSL and a word dump of the bytes it writes.
+ *
+ * Nothing in Field calls this; it is here to be run on its own when a block's offsets need checking
+ * against a shader, which it does without a device, a window or a renderer.
+ */
 fun main() {
     val pc = SmokePC().apply {
         time = 1.25f

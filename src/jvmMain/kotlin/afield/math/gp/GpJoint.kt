@@ -4,6 +4,14 @@ package afield.math.gp
 import java.util.Random
 import kotlin.math.*
 
+/**
+ * A finite joint Gaussian over a set of query points: mean, covariance, and correlated samples.
+ *
+ * [GpJoint] is what posterior queries return. It samples through a cached pivoted factor of its
+ * covariance (so rank-deficient covariances sample correctly; `samplingRank` reports the rank), and
+ * supports linear transforms and added observation noise. Getters return copies.
+ */
+
 /** A finite joint Gaussian. Defensive getters keep its cached sampling factor consistent. */
 class GpJoint internal constructor(
     private val mu: DoubleArray, private val cov: Array<DoubleArray>,

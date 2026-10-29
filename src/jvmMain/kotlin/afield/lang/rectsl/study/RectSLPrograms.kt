@@ -57,6 +57,15 @@ import kotlinx.coroutines.withContext
 import java.util.concurrent.Executors
 
 /**
+ * RectSL as a main language in Field: running a scene box compiles its `rectSL`, draws it live in the
+ * window above it, and checks it in to the box's study.
+ *
+ * [RectSLPrograms] holds the per-box studies, [RectSLLive] keeps a box's window following its edits,
+ * [RectSLExecution] is the box execution, and the `install...` functions register the language, its line
+ * notes, its topology watcher and its scene action.
+ */
+
+/**
  * RectSL as one of Field's main languages, and the home of every RectSL scene's study.
  *
  * Mark a box "Set Main Language: RectSL" and its children are RectSL scenes: each edits its `rectSL`
@@ -307,7 +316,7 @@ class RectSLLive internal constructor(private val box: Box) {
             blend = true
             depthTest = false
             primitiveType = triangles
-            t.apply()
+            +t
             errorHandler = { message, _ -> error = message }
         }).pointer()
         if (!fresh.current.valid) {

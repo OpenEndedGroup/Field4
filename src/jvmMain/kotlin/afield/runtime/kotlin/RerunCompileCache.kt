@@ -1,5 +1,6 @@
 package afield.runtime.kotlin
 
+import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.org.objectweb.asm.ClassReader
 import org.jetbrains.org.objectweb.asm.ClassVisitor
 import org.jetbrains.org.objectweb.asm.FieldVisitor
@@ -11,13 +12,14 @@ import kotlin.script.experimental.jvm.impl.KJvmCompiledScript
 import kotlin.script.experimental.util.LinkedSnippet
 
 /**
- * Compile once, re-evaluate on rerun: one K2 engine's record of the snippets it has compiled, so a
- * box that reruns with exactly the same expanded source (a `propDown` reader re-launched by its
+ * Compile once, re-evaluate on rerun: one K2 engine's record of the snippets it has compiled.
+ *
+ * A box that reruns with exactly the same expanded source (a `propDown` reader re-launched by its
  * writer, the regathered preamble in front of it) can evaluate the snippet it already has instead
  * of compiling it again.
  *
- * Measured on Kotlin 2.5.0-Beta1's `K2ReplEvaluator` (`afield.K2ReevalProbe`, 2026-10-14), re-evaluating an old
- * `LinkedSnippet` is NOT the same as recompiling its source in two ways, and the cache refuses both:
+ * On Kotlin 2.5.0-Beta1's `K2ReplEvaluator`, re-evaluating an old `LinkedSnippet` is *not* the same
+ * as recompiling its source, in two ways, and the cache refuses both:
  *
  *  1. **The body does not run** when the snippet is re-evaluated straight after its own previous
  *     evaluation: the evaluator reuses the class it already loaded, and a K2 snippet's body runs
@@ -30,18 +32,25 @@ import kotlin.script.experimental.util.LinkedSnippet
  *     every entry records which earlier snippet classes it references, and is refused once any
  *     name those classes declare has been redeclared by a later compile.
  *
+ * Mutable declarations and their readers also compile afresh: cached evaluation can reload
+ * historical backing classes, leaving captured mutable slots outside the evaluator's current
+ * history.
+ *
  * Also refused, conservatively: sources that carry `@file:` annotations (`DependsOn` refines the
  * compile configuration) — and a compiled `import` invalidates every entry, since imports may
  * change how already-compiled names would resolve now.
  *
  * Everything here runs under the engine's compile mutex.
  */
+
+/** One engine's record of compiled snippets, so an unchanged rerun evaluates instead of compiling. */
 internal class RerunCompileCache(private val maxEntries: Int = 64) {
 
     class Entry(
         val snippet: LinkedSnippet<CompiledScript>,
         val referencedSnippetClasses: Set<String>,
         val importGeneration: Int,
+        val requiresFreshEvaluation: Boolean,
     )
 
     /** Snippet class internal name -> names that snippet declares. */
@@ -52,6 +61,9 @@ internal class RerunCompileCache(private val maxEntries: Int = 64) {
 
     /** Snippet class internal names in compile order. */
     private val snippetClasses = ArrayList<String>()
+
+    /** Mutable declarations and snippets that depend on them cannot fork their backing classes. */
+    private val statefulSnippetClasses = HashSet<String>()
 
     private var importGeneration = 0
 
@@ -74,6 +86,7 @@ internal class RerunCompileCache(private val maxEntries: Int = 64) {
         val e = entries[key]
         val reason = when {
             e == null -> "not compiled before"
+            e.requiresFreshEvaluation -> "mutable bindings need their existing backing classes"
             e.importGeneration != importGeneration -> "an import was compiled since"
             else -> e.referencedSnippetClasses.firstNotNullOfOrNull { r ->
                 declaredBy[r]?.firstOrNull { latestDeclarer[it] != r }?.let { "'$it' was redeclared since" }
@@ -124,7 +137,21 @@ internal class RerunCompileCache(private val maxEntries: Int = 64) {
         snippetClasses += own
 
         if (source.lineSequence().any { it.trimStart().startsWith("import ") }) importGeneration++
-        if (key != null) entries[key] = Entry(snippet, refs, importGeneration)
+        val mutableState = declaresMutableState(source)
+        val requiresFreshEvaluation = mutableState || refs.any { it in statefulSnippetClasses }
+        if (requiresFreshEvaluation) statefulSnippetClasses += own
+        if (key != null) entries[key] = Entry(snippet, refs, importGeneration, requiresFreshEvaluation)
+    }
+
+    // Re-evaluating a cached declaration can clone historical classes in a new loader. Closures
+    // then point at slots absent from the current REPL history. Fresh compilation preserves the
+    // existing classes, so a declaration reset can reach every older captured mutable slot.
+    private fun declaresMutableState(source: String): Boolean = try {
+        val statements = FieldKtParser.parse(source).script?.blockExpression?.statements
+        statements == null || statements.filterIsInstance<KtProperty>().any { it.isVar }
+    } catch (_: Exception) {
+        // Unknown source shape: preserve evaluation semantics by compiling afresh.
+        true
     }
 
     private fun declaredNames(bytes: ByteArray): Set<String> {

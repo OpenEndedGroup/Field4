@@ -30,6 +30,14 @@ import java.net.URLClassLoader
 import java.util.IdentityHashMap
 
 /**
+ * Loads the gitignored `src/personal` jar in its own classloader between core Field and the REPL,
+ * so box code can use personal classes and the layer can be replaced without restarting.
+ *
+ * [PersonalLayer] owns the loader; `PersonalReload.kt` handles the objects an old layer leaves
+ * behind after a reload.
+ */
+
+/**
  * The classloader layer that holds `src/personal`.
  *
  * `src/personal` is gitignored, local-only code. It compiles as its own JVM compilation (see the
@@ -145,6 +153,10 @@ object PersonalLayer {
 
     private fun stage(): List<File> = roots.map { root ->
         if (root.isDirectory) return@map root
+        // Kit JARs already live at immutable, content-addressed paths. Staging beside them would
+        // write generations into the package snapshot and invalidate its integrity on the next build.
+        val packages = File(afield.document.workspace.KitPackages.directory, "packages").canonicalFile.toPath()
+        if (root.canonicalFile.toPath().startsWith(packages)) return@map root
         runCatching {
             runCatching { removeExitedStaging(File(root.parentFile, "generations")) }
             val staged = stagedPath(root, generation)

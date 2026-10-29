@@ -1,14 +1,14 @@
-// A feedback StackSL box. The fragment shader has a `{{ stack.auto.program }}`
-// slot, and the program in this box's `stackSL` property samples `source`: the
-// frame this box drew last time, so the picture feeds back into itself.
-//
-// A window cannot be read back like that, so this box draws into a ping-pong
-// target instead. It holds two images, draws into one while `source` reads the
-// other, and swaps them every frame; `blitToScreen` puts the newest in the window.
-//
-// [[property stackSL]]
+/*
+A feedback StackSL box. The fragment shader has a `{{ stack.auto.program }}`
+slot, and the program in this box's `stackSL` property samples `source`: the
+frame this box drew last time, so the picture feeds back into itself.
 
-import afield.graphics.vulkan.targets.PingPongRenderToTexture
+A window cannot be read back like that, so this box draws into a ping-pong
+target instead. It holds two images, draws into one while `source` reads the
+other, and swaps them every frame; `blitToScreen` puts the newest in the window.
+
+[[property stackSL]]
+*/
 
 prop<afield.graphics.vulkan.targets.PingPongRenderToTexture>(target)
 prop<afield.graphics.texture.HasImageView>(source)
@@ -19,15 +19,17 @@ once.target {
 }
 source = target.otherImageView
 
-val module = moduleHere { target.apply() }
+val module = moduleHere { +target }
 val m = Mesh()
 module += m named "fullscreen"
 m.resize(3) // three vertices, no attributes: the vertex shader makes the triangle
 target += "fullscreen" to module
 
-// The fragment reads the program's time from `pc.params.x`. It advances per frame
-// drawn, at the rate this box's docs clip is rendered at (1/24 s of clip time every
-// two frames), so the trails are as long as in the clip at any window frame rate.
+/*
+The fragment reads the program's time from `pc.params.x`. It advances per frame
+drawn, at the rate this box's docs clip is rendered at (1/24 s of clip time every
+two frames), so the trails are as long as in the clip at any window frame rate.
+*/
 val first = renderer.frameCounter
 m.params = { vec((renderer.frameCounter - first) * 1.667 / 48, 0.0, 0.0, 0.0) }
 

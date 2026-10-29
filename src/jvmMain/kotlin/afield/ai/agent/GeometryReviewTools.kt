@@ -18,6 +18,14 @@ import kotlinx.serialization.json.*
 import java.security.MessageDigest
 import java.util.Base64
 
+/**
+ * AI4 tools for the geometry review inbox: listing a document's Three.js and canvas review views, reading and answering their notes, reporting findings, styling parts and inspecting a view.
+ *
+ * Each request class here is one tool, described to the model by its `@JsonClassDescription`; every
+ * call returns a [GeometryToolResult], which can attach saved pictures as images. The tools read and
+ * write the same notes the viewer shows, scoped to the current document.
+ */
+
 @JsonClassDescription("List live Three.js and custom canvas review views owned by this document, with source boxes, geometry revisions and unresolved note counts. Returns success plus one entry per view. Use it when you need a viewId or the current expectedRevision and do not have them; views in other documents are excluded. A document with no views returns an empty list, not an error. e.g. an entry has viewId = `bracket-view`.")
 @AgentToolMeta("geometry", ToolExposure.DIRECT, effects = [ToolEffect.READ_DOCUMENT])
 data class ListGeometryViewsRequest(val unused: Int = 0)

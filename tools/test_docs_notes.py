@@ -21,6 +21,10 @@ from tempfile import TemporaryDirectory
 from unittest import mock
 
 from tools import docs_notes as dn
+from tools.git_isolation import scrub_process_env  # noqa: E402
+
+# This module builds scratch git repositories; an inherited GIT_DIR would redirect them.
+scrub_process_env()
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PAGE = "https://openendedgroup.com/field4/guide/"
@@ -1144,6 +1148,23 @@ class KDocDraftTest(unittest.TestCase):
         # The @JvmStatic between declaration and where KDoc would go is looked through.
         self.assertEqual(notes[dn.draft_note_id("k-shift")]["source"]["startLine"], 9)
         self.assertEqual(dn.import_drafts(self.store, self.git, self.cache)["known"], 2, "a second import adds nothing")
+
+    def test_a_draft_cached_before_its_file_moved_is_still_imported(self) -> None:
+        # The cache keeps the path completion saw; the package cutover moved src/afield/math/x.kt
+        # to src/afield/animation/x/x.kt and every such draft used to count as "outside".
+        cache = draft_cache(self.repo.root / "moved" / dn.DRAFT_CACHE_FILE, {
+            "k-moved": record("afield.scale", "src/jvmMain/kotlin/afield/old/Foo.kt", 6),
+        })
+        counts = dn.import_drafts(self.store, self.git, cache)
+        self.assertEqual((counts["imported"], counts["outside"]), (1, 0))
+        note = next(n for n in self.store.notes() if n["id"] == dn.draft_note_id("k-moved"))
+        self.assertEqual((note["source"]["path"], note["source"]["startLine"]), (KT, 6))
+
+    def test_a_draft_whose_file_is_gone_stays_outside(self) -> None:
+        cache = draft_cache(self.repo.root / "gone" / dn.DRAFT_CACHE_FILE, {
+            "k-gone": record("afield.scale", "src/jvmMain/kotlin/afield/old/Gone.kt", 6),
+        })
+        self.assertEqual(dn.import_drafts(self.store, self.git, cache)["outside"], 1)
 
     def test_a_draft_follows_its_declaration(self) -> None:
         dn.import_drafts(self.store, self.git, self.cache)

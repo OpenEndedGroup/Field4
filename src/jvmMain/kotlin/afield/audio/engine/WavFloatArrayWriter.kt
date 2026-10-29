@@ -1,5 +1,9 @@
 package afield.audio.engine
 
+/**
+ * Writes float signals as 16-bit PCM WAV: [WavFloatArrayWriter] writes mono or stereo files, optionally normalizing to a peak, and `encodeMono16` returns the WAV bytes for `display(...)` to play in a box.
+ */
+
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder

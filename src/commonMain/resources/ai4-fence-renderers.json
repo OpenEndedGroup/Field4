@@ -9,6 +9,15 @@
       "example": "flowchart LR\n  A[Hall] --> B[Living room]",
       "modulePath": "/mermaid/field-mermaid.js",
       "exportName": "renderMermaid"
+    },
+    {
+      "language": "math",
+      "name": "Math (KaTeX)",
+      "purpose": "Equations and formulas, typeset. Prose can also carry math: write \\( ... \\) inside a sentence and $$ ... $$ for an equation on its own line; both are typeset the same way.",
+      "syntaxGuidance": "LaTeX math-mode only (KaTeX): no document preamble, no \\begin{document}. Use aligned or cases environments for several lines. Prefer \\( ... \\) to $ ... $ for inline math; a single $ pair is read as math only when it hugs its content, as in $x^2$.",
+      "example": "\\begin{aligned}\n  Q(x, y) &= a x^2 + b x y + c y^2 \\\\\n  \\Delta &= b^2 - 4ac\n\\end{aligned}",
+      "modulePath": "/katex/field-katex.js",
+      "exportName": "renderMathFence"
     }
   ]
 }

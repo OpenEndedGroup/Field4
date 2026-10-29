@@ -33,6 +33,20 @@ import kotlin.concurrent.thread
 import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
 
+/**
+ * Property delegates that keep a single `String`, `Int` or `Double` value across Field restarts,
+ * one small file per property name under `.field/` in the working directory.
+ *
+ * Declare a property `by PersistentString { "default" }` (or [PersistentInt], [PersistentDouble]).
+ * The first read loads `.field/<propertyName>` through [PersistOnExit.load] and falls back to the
+ * default when the file is missing; a write records the value in
+ * [PersistOnExit.needingPersistance]. A daemon thread writes pending values about once a second,
+ * and a shutdown hook writes whatever is left on a graceful exit.
+ *
+ * The file is named by the Kotlin property name alone, so two persistent properties with the same
+ * name share one file.
+ */
+
 class PersistentString(val defaultValue: (() -> String?) = { null }) {
 
     var first = true

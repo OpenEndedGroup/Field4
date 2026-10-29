@@ -34,22 +34,22 @@ import kotlin.math.tan
  * reprojection that keeps an image usable while a camera moves.
  *
  * This is the device-facing half of the path tracing stack, and the only file in it that owns
- * Vulkan resources. The scene it traces is built elsewhere — `PathTraceScene.kt` holds the
- * geometry, materials and environment as plain arrays, `PathTraceGltf.kt` fills them from a glTF
- * file — and arrives here as an immutable snapshot that is packed into device buffers once. That
- * split is why editing a material means constructing a new tracer: there is no path from a changed
- * Kotlin value back into the buffers the shader reads.
+ * Vulkan resources. The scene it traces is built elsewhere, by `PathTraceScene.kt`, which holds
+ * the geometry, materials and environment as plain arrays, and `PathTraceGltf.kt`, which fills
+ * them from a glTF file. It arrives here as an immutable snapshot that is packed into device
+ * buffers once. That split is why editing a material means constructing a new tracer: there is no
+ * path from a changed Kotlin value back into the buffers the shader reads.
  *
  * Two traversal backends compile from the same source. `COMPUTE_BVH` walks a stackless software
  * BVH and runs on any Vulkan device Field supports, MoltenVK included; `RAY_QUERY` uses
  * `VK_KHR_ray_query` hardware traversal where the device advertises it. They share the lighting,
  * material evaluation and accumulation code, so an image should not depend on which one ran, and
- * `PathTraceGpuSmoke` exists to check that it does not.
+ * `PathTraceGpuSmoke` checks that it does not.
  *
  * The output is a fixed-resolution linear HDR render target rather than something presentable.
- * Exposure and Reinhard tone mapping happen in a separate `blitToScreen` pass, so that the
- * accumulated radiance stays readable — `readLinear` is what the smoke tests measure, and
- * a tone-mapped buffer would have nothing useful in it.
+ * Exposure and Reinhard tone mapping happen in a separate `blitToScreen` pass, which keeps the
+ * accumulated radiance readable: `readLinear` is what the smoke tests measure, and a tone-mapped
+ * buffer would have nothing useful in it.
  *
  * For the same material with pictures, see `public/docs/path_tracing.md`.
  */
@@ -302,6 +302,11 @@ class PathTracingRenderer(
     /** Optional unaccumulated radiance and matching primary guides. The tracer owns their lifetime. */
     var frameOutput: PathTraceFrameOutput? = null
         private set
+    /**
+     * Create this tracer's `frameOutput`, or return the one it already has; the first call resets
+     * accumulation. Reconstruction guides currently require opaque, non-transmissive materials, so
+     * a scene with glass or partial coverage has to stay on the progressive output.
+     */
     fun enableFrameOutput(): PathTraceFrameOutput {
         check(!closed)
         require(packed.materials.all { !it.transmission && it.alphaMode == PathTraceMaterial.AlphaMode.OPAQUE }) {
@@ -379,7 +384,7 @@ class PathTracingRenderer(
                 "emitterTable" to emitterTable, "emitterLookup" to emitterLookup))
             val display = own(Module(parameters(renderer) {
                 name = "${this@PathTracingRenderer.name}-resolve"
-                output.apply()
+                +output
                 vertex = DISPLAY_VERTEX; fragment = RESOLVE_FRAGMENT
                 depthTest = false; depthWrite = false; blend = false
                 errorHandler = { message, _ -> errors += message }

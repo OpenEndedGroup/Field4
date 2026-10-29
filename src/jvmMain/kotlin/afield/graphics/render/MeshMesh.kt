@@ -19,6 +19,13 @@ import org.lwjgl.vulkan.VK10
 import java.nio.ByteBuffer
 import kotlin.reflect.KProperty
 
+/**
+ * The [MeshTask] interface for issuing mesh-shader work, and [MeshMesh], a task whose push constants and uniforms are bound to Kotlin properties by name.
+ *
+ * [meshTask] wraps a lambda as a [MeshTask].
+ */
+
+
 
 interface MeshTask {
     fun compute(inside: MeshModule, cmd: CommandBuffer, pushConstantBuffer: ByteBuffer)

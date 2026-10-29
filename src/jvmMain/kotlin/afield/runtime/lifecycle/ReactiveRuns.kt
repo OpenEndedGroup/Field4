@@ -59,6 +59,14 @@ import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.locks.LockSupport
 
 /**
+ * Reactive properties: the runs that `propUp` pulls from upstream and `propDown` pushes downstream.
+ *
+ * A read that finds no value runs the box that supplies it before returning; a write that changes a
+ * value reruns the boxes that read the old one. [ReactiveRuns] holds both mechanisms and their
+ * guards.
+ */
+
+/**
  * The runs that `propUp` and `propDown` cause: pulling a missing value from upstream, and pushing a
  * changed one downstream.
  *
@@ -131,6 +139,13 @@ object ReactiveRuns {
 
     private fun label(b: Box?): String = b?.let { it.name.ifBlank { it.id } } ?: "?"
 
+    /**
+     * [box] in its document: the uid alone is not unique across open documents (a copied document
+     * keeps its uids), so every per-box record here is keyed by document file and uid.
+     */
+    internal fun docKey(box: Box): String =
+        (if (box.isInsideInitialized()) box.inside.filename else "") + "\u0000" + box.id
+
     // ---------------------------------------------------------------------------------------------
     // Run tracking (called by KotlinExecution.executeInBox)
 
@@ -143,6 +158,7 @@ object ReactiveRuns {
     }
 
     private val runs = ConcurrentHashMap<Box, RunState>()
+    private val FULL_RUN_MODES = setOf("run", "launch")
     private val lastRunStart = ConcurrentHashMap<String, Long>()
     /**
      * Boxes whose code is blocked in a pull, counted: a box's own animation frame can pull while
@@ -159,7 +175,7 @@ object ReactiveRuns {
                 st.startSeq = PropertyDependencies.clock.incrementAndGet()
                 st.pulled.clear()
                 st.changes.clear()
-                lastRunStart[box.id] = st.startSeq
+                lastRunStart[docKey(box)] = st.startSeq
             }
         }
         event("start ${label(box)} $mode")
@@ -169,15 +185,20 @@ object ReactiveRuns {
         val st = runs[box] ?: return
         val changes: List<Change>
         val waiters: List<CompletableDeferred<Boolean>>
+        val startSeq: Long
         synchronized(st) {
             st.depth = (st.depth - 1).coerceAtLeast(0)
             if (st.depth > 0) return
+            startSeq = st.startSeq
             changes = st.changes.toList()
             waiters = st.waiters.toList()
             st.changes.clear()
             st.waiters.clear()
         }
         event("end ${label(box)} ${if (ok) "ok" else "failed"}")
+        // A completed run of the whole code says what the box reads now; a fragment, or a failed or
+        // stopped run, says too little to forget anything.
+        if (ok && mode in FULL_RUN_MODES) PropertyDependencies.retireReadsBefore(box, startSeq)
         waiters.forEach { it.complete(ok) }
         if (changes.isNotEmpty()) {
             if (ok) Downstream.submit(changes)
@@ -252,7 +273,7 @@ object ReactiveRuns {
                 problems += "'${label(s)}' was already running for another read and did not set '$name' (${ok ?: "timeout"})"
                 continue
             }
-            val key = "${s.id}|$name"
+            val key = "${docKey(s)}|$name"
             val st = runs[reader]
             val readerInRun = st != null && synchronized(st) { st.depth > 0 }
             if (readerInRun) {
@@ -288,7 +309,7 @@ object ReactiveRuns {
     fun stamp(): Long = PropertyDependencies.clock.incrementAndGet()
 
     /** True when a pull ran [box] successfully, launched after [stamp]. */
-    fun pulledSince(box: Box, stamp: Long): Boolean = (pulledOk[box.id] ?: 0L) > stamp
+    fun pulledSince(box: Box, stamp: Long): Boolean = (pulledOk[docKey(box)] ?: 0L) > stamp
 
     /** Pulls under way, by supplier: completed with the supplier's verdict when its run finishes. */
     private val inFlight = ConcurrentHashMap<Box, CompletableDeferred<Boolean>>()
@@ -305,7 +326,7 @@ object ReactiveRuns {
                 launchNow(s)
             }
             val ok = waitFor(done, reader)
-            if (ok == true) pulledOk[s.id] = launchedAt
+            if (ok == true) pulledOk[docKey(s)] = launchedAt
             return ok
         } finally {
             inFlight.remove(s, done)
@@ -327,6 +348,18 @@ object ReactiveRuns {
             if (previousImmediate == null) launchImmediately.remove() else launchImmediately.set(previousImmediate)
             if (previousSession == null) thisSession.remove() else thisSession.set(previousSession)
         }
+    }
+
+    /**
+     * Relaunches [box]'s `code` on the strand it is running on (else `default`), recorded under
+     * [entrypoint]; for callers outside a cascade, such as the file watcher's `onExternalEdit`.
+     */
+    fun relaunch(box: Box, entrypoint: String) {
+        val source = box.getPropertyRaw("code") as? String ?: ""
+        val strand = box.currentRunningStates.keys.firstOrNull { !it.startsWith("__") } ?: "default"
+        val execute = Execute(box.id, "launch", 1, source, false, strand = strand)
+        FlightRecorder.recordLaunchEntrypoint(entrypoint, box, execute, strand = strand)
+        box.ke.launchAll(box, execute, source, strand, documentReply(box))
     }
 
     private fun documentReply(box: Box): (Message) -> Unit = { m ->
@@ -378,7 +411,7 @@ object ReactiveRuns {
         fun lookup(uid: String): Box? = info.boxes[uid] ?: asking.parents.firstOrNull { it.id == uid }
         val declaration = declarationOf.getOrPut(name) { Regex("""\b(?:val|var)\s+Box\.${Regex.escape(name)}\s+by\b""") }
         val propCall = propCallOf.getOrPut(name) {
-            Regex("""\b(?:prop|propUp|propDown|propUpDown)\s*<.*>\s*\(\s*${Regex.escape(name)}\s*\)|\bsetProp(?:Up|UpDown)\s+"${Regex.escape(name)}"""")
+            Regex("""\b(?:prop|propUp|propDown|propUpDown)\s*<.*>\s*\(\s*${Regex.escape(name)}\s*[,)]|\bsetProp(?:Up|UpDown)\s+"${Regex.escape(name)}"""")
         }
 
         fun declaresInOwnCodeOrPreamble(b: Box): Boolean {
@@ -386,7 +419,7 @@ object ReactiveRuns {
             val ownDeclares = own.lineSequence().any { line ->
                 declaration.containsMatchIn(line) && preambleSupplierTag(line).let { it == null || it == PREAMBLE_SELF_SUPPLIER }
             }
-            return ownDeclares || propCall.containsMatchIn((b.getPropertyRaw("code") as? String).orEmpty())
+            return ownDeclares || propCall.containsMatchIn(withoutComments((b.getPropertyRaw("code") as? String).orEmpty()))
         }
 
         // 0. the box being asked, when it is someone else's
@@ -396,7 +429,7 @@ object ReactiveRuns {
             val rootCall = Regex("""\brootPropUp(?:Down)?\s*<.*>\s*\(\s*${Regex.escape(name)}\s*[,)]""")
             info.boxes.values
                 .filter { it !== reader && !it.getPropertyRaw("_tombstone").isTrue() }
-                .filter { rootCall.containsMatchIn((it.getPropertyRaw("code") as? String).orEmpty()) }
+                .filter { rootCall.containsMatchIn(withoutComments((it.getPropertyRaw("code") as? String).orEmpty())) }
                 .forEach { out += it }
         }
         // 1. who the gathered preamble says declared it
@@ -437,7 +470,7 @@ object ReactiveRuns {
 
     private val downDeclared: MutableSet<String> = ConcurrentHashMap.newKeySet()
 
-    private fun downKey(box: Box, name: String) = box.id + "\u0000" + name
+    private fun downKey(box: Box, name: String) = docKey(box) + "\u0000" + name
 
     /** [box]'s code declared [name] with `propDown` / `propUpDown`; recorded when the macro expands. */
     fun declaredDown(box: Box, name: String) {
@@ -478,26 +511,130 @@ object ReactiveRuns {
             declarers.removeIf { id ->
                 val d = boxes[id]
                 d == null || d.getPropertyRaw("_tombstone").isTrue() ||
-                    !downMacroPattern(name).containsMatchIn((d.getPropertyRaw("code") as? String).orEmpty())
+                    !codeDeclaresDown((d.getPropertyRaw("code") as? String).orEmpty(), name)
             }
             if (declarers.isEmpty()) { rootDownDeclarers.remove(key); downDeclared.remove(key); return false }
             return true
         }
         val code = box.getPropertyRaw("code") as? String
         val stillThere = !box.getPropertyRaw("_tombstone").isTrue() &&
-            (code == null || downMacroPattern(name).containsMatchIn(code))
+            (code == null || codeDeclaresDown(code, name))
         if (!stillThere) downDeclared.remove(key)
         return stillThere
     }
 
-    /** Forgets every Down declaration of [box]; for box deletion. */
+    /** Whether any per-box record of [box] is still held; for tests. */
+    internal fun remembers(box: Box): Boolean {
+        val k = docKey(box)
+        return runs.containsKey(box) || lastRunStart.containsKey(k) || pulledOk.containsKey(k) ||
+            lastPull.keys.any { it.startsWith("$k|") } || downDeclared.any { it.startsWith(k + "\u0000") }
+    }
+
+    /**
+     * Forgets every Down declaration of [box], and its run records (which otherwise held the
+     * deleted Box for the life of the JVM); for box deletion. A run still in flight keeps its
+     * state so its end is still seen.
+     */
     fun forgetDown(box: Box) {
-        val prefix = box.id + "\u0000"
+        val key = docKey(box)
+        runs.computeIfPresent(box) { _, st -> if (synchronized(st) { st.depth > 0 || st.waiters.isNotEmpty() }) st else null }
+        lastRunStart.remove(key)
+        pulledOk.remove(key)
+        lastPull.keys.removeIf { it.startsWith("$key|") }
+        val prefix = key + "\u0000"
         downDeclared.removeIf { it.startsWith(prefix) }
+        rootDownDeclarers.values.forEach { it.remove(box.id) }
+    }
+
+    /**
+     * Forgets everything recorded for the document at [filename] — run records, pull stamps, Down
+     * declarations — so a closed document leaves no reactive state (or Box references) behind. Runs
+     * still in flight keep their state, as in [forgetDown]. Called from document cleanup.
+     */
+    fun forgetDocument(filename: String) {
+        val prefix = filename + "\u0000"
+        fun inDocument(box: Box) = box.isInsideInitialized() && box.inside.filename == filename
+        runs.keys.filter(::inDocument).forEach { box ->
+            runs.computeIfPresent(box) { _, st -> if (synchronized(st) { st.depth > 0 || st.waiters.isNotEmpty() }) st else null }
+        }
+        blockedCount.keys.removeIf(::inDocument)
+        lastRunStart.keys.removeIf { it.startsWith(prefix) }
+        pulledOk.keys.removeIf { it.startsWith(prefix) }
+        lastPull.keys.removeIf { it.startsWith(prefix) }
+        downDeclared.removeIf { it.startsWith(prefix) }
+        rootDownDeclarers.keys.removeIf { it.startsWith(prefix) }
+    }
+
+    /** Sizes of the per-document records, for tests that check [forgetDocument] leaves nothing. */
+    internal fun recordCountFor(filename: String): Int {
+        val prefix = filename + "\u0000"
+        return runs.keys.count { it.isInsideInitialized() && it.inside.filename == filename } +
+            lastRunStart.keys.count { it.startsWith(prefix) } + pulledOk.keys.count { it.startsWith(prefix) } +
+            lastPull.keys.count { it.startsWith(prefix) } + downDeclared.count { it.startsWith(prefix) } +
+            rootDownDeclarers.keys.count { it.startsWith(prefix) }
     }
 
     private fun downMacroPattern(name: String) =
-        Regex("""(?:prop|rootProp)U?p?Down\s*<[^\n]*>\s*\(\s*""" + Regex.escape(name) + """\b""")
+        Regex("""\b(?:propDown|propUpDown|rootPropDown|rootPropUpDown)\s*<[^\n]*>\s*\(\s*""" + Regex.escape(name) + """\s*[,)]""")
+
+    /** Whether [code], outside its comments, declares [name] Down. */
+    private fun codeDeclaresDown(code: String, name: String): Boolean =
+        downMacroPattern(name).containsMatchIn(withoutComments(code))
+
+    /**
+     * [code] with its `//` and (nesting) `/* */` comments blanked, so a declaration commented out
+     * is not one; a comment marker inside a string literal, a raw `"""` string (which may span lines)
+     * or a char literal such as `'"'` is left alone. Both Kotlin and FieldML comment with `//`,
+     * which is the case that matters (commenting out a line).
+     */
+    internal fun withoutComments(code: String): String {
+        if ("//" !in code && "/*" !in code) return code
+        val out = StringBuilder(code.length)
+        var i = 0
+        var inString = false
+        var inRaw = false
+        var depth = 0
+        while (i < code.length) {
+            val c = code[i]
+            val next = if (i + 1 < code.length) code[i + 1] else '\u0000'
+            when {
+                // A raw string spans lines, has no escapes, and may hold quotes and comment markers.
+                inRaw -> {
+                    if (code.startsWith("\"\"\"", i)) {
+                        var end = i + 3
+                        while (end < code.length && code[end] == '"') end++ // `""""` closes on the last three
+                        out.append(code, i, end); i = end; inRaw = false; continue
+                    }
+                    out.append(c)
+                }
+                depth > 0 -> {
+                    if (c == '*' && next == '/') { depth--; i += 2; out.append("  "); continue }
+                    if (c == '/' && next == '*') { depth++; i += 2; out.append("  "); continue }
+                    out.append(if (c == '\n') '\n' else ' ')
+                }
+                inString -> {
+                    out.append(c)
+                    if (c == '\\' && i + 1 < code.length) { out.append(next); i += 2; continue }
+                    if (c == '"' || c == '\n') inString = false
+                }
+                c == '"' && code.startsWith("\"\"\"", i) -> { inRaw = true; out.append("\"\"\""); i += 3; continue }
+                c == '"' -> { inString = true; out.append(c) }
+                // A char literal: `'"'` must not open a string, `'\''` must not end early.
+                c == '\'' && i + 2 < code.length && (code[i + 2] == '\'' || (next == '\\' && i + 3 < code.length && code[i + 3] == '\'')) -> {
+                    val len = if (next == '\\') 4 else 3
+                    out.append(code, i, i + len); i += len; continue
+                }
+                c == '/' && next == '/' -> {
+                    while (i < code.length && code[i] != '\n') { out.append(' '); i++ }
+                    continue
+                }
+                c == '/' && next == '*' -> { depth = 1; i += 2; out.append("  "); continue }
+                else -> out.append(c)
+            }
+            i++
+        }
+        return out.toString()
+    }
 
     /** A `propDown` value changed: hold it to the end of the writer's run, or send it on now. */
     fun noteChange(holder: Box, name: String) {
@@ -614,11 +751,11 @@ object ReactiveRuns {
                 val info = c.holder.inside
                 val store = PropertyDependencies.storeFor(info.filename)
                 for (e in store.edges.values) {
-                    if (e.key.access != PropertyDependencies.Access.READ) continue
+                    if (e.key.access != PropertyDependencies.Access.READ || e.historical) continue
                     if (e.key.supplier != c.holder.id || e.key.name != c.name) continue
                     val reader = info.boxes[e.key.reader] ?: continue
                     if (reader === c.writer || reader.getPropertyRaw("_tombstone").isTrue()) continue
-                    val seen = maxOf(e.lastSeq, lastRunStart[reader.id] ?: 0L)
+                    val seen = maxOf(e.lastSeq, lastRunStart[docKey(reader)] ?: 0L)
                     if (seen >= c.seq) continue
                     out.merge(reader, c.seq, ::minOf)
                 }
@@ -626,7 +763,7 @@ object ReactiveRuns {
             // Readers rerun in the order they last ran (pickNext still puts a reader after any waiting
             // box that feeds it): a set of passes launched in pipeline order, whose modules dispatch in
             // the order they were added, keeps that order. Then by the earliest change each missed.
-            return out.entries.sortedWith(compareBy({ lastRunStart[it.key.id] ?: Long.MAX_VALUE }, { it.value }))
+            return out.entries.sortedWith(compareBy({ lastRunStart[docKey(it.key)] ?: Long.MAX_VALUE }, { it.value }))
                 .associate { it.key to it.value }
         }
 

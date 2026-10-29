@@ -27,35 +27,23 @@ import afield.geometry.mesh.shadedNormals
 import kotlinx.serialization.Serializable
 
 /**
- * The intermediate representation the Three.js viewer draws.
+ * The intermediate representation the Three.js viewer draws: a [ThreeDrawable] is some geometry plus
+ * how to draw it.
  *
- * # Why this exists
+ * [FLine]s lower to drawables, [TriMesh]es lower to drawables, and anything with a `toTriMesh()`
+ * reaches the viewer that way, so a mesh can be orbited and share a scene with its FLine
+ * annotations. The viewer knows neither source type; it draws drawables.
  *
- * Field had two 3D renderers that shared no vocabulary. [FLine]s went to the Three.js viewer —
- * orbitable, pickable, editable, with the measure/section/explode inspector. [TriMesh]es went to the
- * CPU z-buffer rasterizer in [VisionGeometryPreview] and came back as a static PNG at a fixed camera.
- * A mesh could not be orbited, a mesh and its FLine annotations could not share a scene, and every
- * feature the viewer grew stopped at the FLine boundary.
+ * The geometry is a [ThreeGeometryData], a three.js `BufferGeometry` of named attributes and an
+ * index, and [TriMesh]'s positions, indices, normals and colours transcribe into it directly. What a
+ * drawable adds is per-drawable material state, [ThreeDrawStyle].
  *
- * A [ThreeDrawable] is the common currency: some geometry, plus how to draw it. FLines lower to one,
- * meshes lower to one, and anything with a `toTriMesh()` reaches the viewer for free. The viewer
- * gained no knowledge of either source type — it draws drawables.
- *
- * # What was already right
- *
- * Very little of this is new machinery. [ThreeGeometryData] was *already* a generic three.js
- * `BufferGeometry` — named attributes and an index, with nothing FLine-shaped about it — and
- * [TriMesh] is already `positions / indices / normals? / colors?`. The lowering below is mostly a
- * transcription. What was missing was the layer above: per-drawable **material state**, which the
- * payload had no way to express because every FLine fill wanted the same material.
- *
- * # Additive, deliberately
- *
- * [ThreeGeometryPayload]'s `lines` / `fills` / `points` are untouched, and a payload with an empty
- * [ThreeGeometryPayload.drawables] serialises byte for byte as it did before any of this existed.
- * That is what lets the editable path, the inspector and the twelve tests that pin the current
- * payload carry on without a second thought — and `ThreeScenePayloadCompatibilityTest` holds it there.
+ * [ThreeGeometryPayload]'s `lines`, `fills` and `points` are unchanged by drawables: a payload with
+ * an empty [ThreeGeometryPayload.drawables] serialises as a lines-only payload always has, which the
+ * editable path and the inspector rely on.
  */
+
+/** How one [ThreeDrawable] is drawn: which three.js object class, and its material settings. */
 @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
 @Serializable
 data class ThreeDrawStyle(
@@ -96,6 +84,13 @@ data class ThreeDrawStyle(
      */
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val solidOpacity: Float? = null,
+    /**
+     * A physically based material for a surface: base colour, roughness, metalness and emission.
+     * `null`, the default, is the viewer's fixed `roughness 0.6 / metalness 0.1` white, which every
+     * figure drawn before this existed still gets. [afield.geometry.mesh.GeometryBuilder.mat] sets it.
+     */
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val material: ThreeSurfaceMaterial? = null,
 ) {
     override fun toString(): String = prettySummary(
         "ThreeDrawStyle",
@@ -347,6 +342,18 @@ data class ThreeCameraSpec(
      * default `1.06` leaves a little air. The rasterizer ignores it.
      */
     val padding: Double = 1.06,
+    /**
+     * Which world axis is up. [ThreeUpAxis.Z] keeps the viewer's grid, which lies in the x–y plane, as the
+     * floor: yaw turns about `+z`, pitch lifts toward `+z`, and yaw 0 looks along `+y`. The yaw/pitch
+     * mapping is the y-up one, rotated rigidly, so [ThreeCameraPresetParityTest] still covers it.
+     */
+    val upAxis: ThreeUpAxis = ThreeUpAxis.Y,
+    /**
+     * Track the geometry: on every update the camera moves by however far the centre of the bounds
+     * moved, keeping whatever orbit and zoom the viewer has, and the grid shifts by whole cells so the
+     * floor reads as fixed while the subject crosses it.
+     */
+    val follow: Boolean = false,
 )
 
 /** Follow a world point by translating eye and orbit target together; the human keeps orbit and zoom. */
@@ -386,6 +393,88 @@ data class ThreeTurntableSpec(
     val degreesPerSecond: Double = 6.0,
     /** How long the turn stays paused after the last interaction. */
     val resumeAfterSeconds: Double = 2.0,
+)
+
+/**
+ * A surface's `MeshStandardMaterial` settings, sent with a [ThreeDrawStyle].
+ *
+ * Colours are **linear-light** RGB in `0..1`, the space three.js shades in; the vertex colours of the
+ * mesh multiply [color], as `vertexColors: true` always does.
+ */
+@Serializable
+data class ThreeSurfaceMaterial(
+    val color: FloatArray = floatArrayOf(1f, 1f, 1f),
+    val roughness: Float = 0.68f,
+    val metalness: Float = 0.04f,
+    val emissive: FloatArray = floatArrayOf(0f, 0f, 0f),
+    val emissiveIntensity: Float = 0f,
+) {
+    override fun equals(other: Any?): Boolean = other is ThreeSurfaceMaterial &&
+        color.contentEquals(other.color) && roughness == other.roughness && metalness == other.metalness &&
+        emissive.contentEquals(other.emissive) && emissiveIntensity == other.emissiveIntensity
+
+    override fun hashCode(): Int =
+        listOf(color.contentHashCode(), roughness, metalness, emissive.contentHashCode(), emissiveIntensity).hashCode()
+}
+
+/**
+ * The studio look: tone mapping, soft shadows, a dark ground and a faint grid, for a scene that is a
+ * sculpture on a plinth rather than a technical figure. See [ThreeSceneBuilder.studio].
+ *
+ * The lighting is a fixed rig — a sky/ground hemisphere, a shadow-casting key from above and in front,
+ * a cool rim from behind — placed relative to the scene's bounds, so a model a hundred units across is
+ * lit like one a metre across.
+ */
+@Serializable
+data class ThreeStudioSpec(
+    /** Draw a ground plane that receives the shadows. */
+    val ground: Boolean = true,
+    /** Draw a faint grid on the ground. */
+    val grid: Boolean = true,
+    /** Height of the ground, or `null` for a little below the scene's lowest point. */
+    val groundY: Double? = null,
+    /** The ground's colour as a CSS colour. */
+    val groundColor: String = "#08090a",
+    /** Cast soft shadows from the key light onto the ground and the model itself. */
+    val shadows: Boolean = true,
+    /** ACES filmic tone mapping exposure. */
+    val exposure: Double = 1.0,
+    /** Screen-space ambient occlusion: contact shadows in creases and under overhangs. Single views only. */
+    val ambientOcclusion: Boolean = true,
+)
+
+/**
+ * A piece of text pinned to a point in the scene: it follows the point as the view orbits, and is drawn
+ * over the canvas as ordinary page text, so it stays sharp at any size. See [ThreeSceneBuilder.label].
+ */
+@Serializable
+data class ThreeLabel(
+    /** The anchor, in scene coordinates: three numbers. */
+    val position: List<Double>,
+    /** What the label says; plain text. */
+    val text: String = "",
+    /**
+     * `"chip"` a boxed label (a point's name), `"tag"` small dim text (a length on an edge), or
+     * `"diamond"` a small filled marker with no text, coloured by [color].
+     */
+    val style: String = "tag",
+    /** Text colour, or for a `"diamond"` its fill, as a CSS colour; `null` keeps the style's own. */
+    val color: String? = null,
+    /** Background as a CSS colour; `null` keeps the style's own. */
+    val background: String? = null,
+    /** Border colour as a CSS colour; `null` keeps the style's own. */
+    val border: String? = null,
+    /** A tooltip; plain text. */
+    val title: String? = null,
+)
+
+/** An HTML block fixed to one corner of the view. See [ThreeSceneBuilder.overlay]. */
+@Serializable
+data class ThreeOverlay(
+    /** The block's HTML. It is inserted as is, so it is trusted as `display(...)` output is. */
+    val html: String,
+    /** `"top-right"`, `"top-left"`, `"bottom-right"` or `"bottom-left"`. */
+    val corner: String = "top-right",
 )
 
 /**

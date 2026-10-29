@@ -38,19 +38,13 @@ start(renderer::run)
 <!-- field-box id="optical_flow_pingpong" index="1" -->
 
 ```edn [field-box id="optical_flow_pingpong" role="properties"]
-{"id" "optical_flow_pingpong" "index" 1 "name" "optical_flow_pingpong" "parents" ["root" "agent_graphics_context"] "children" ["flow_texture"] "properties" {"children" #{#afield/box "flow_texture"} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "optical_flow_pingpong" "_tombstone" false "frame" #afield/rect [400.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "optical_flow_pingpong_code_.kt" "lines" 98 "characters" 4467 "sha256" "ebbe4a8a5e96ecd86956d7930f9b4cae6142b0251fa59bb4405bed251ff0d5f4"} {"name" "vertex" "language" "glsl" "path" "optical_flow_pingpong_vertex_.glsl" "lines" 6 "characters" 148 "sha256" "15ab8178d1aef2acf5d8bd95e36711503c7d8eb87f1698920f9a4e6c99275242"} {"name" "fragment" "language" "glsl" "path" "optical_flow_pingpong_fragment_.glsl" "lines" 30 "characters" 1327 "sha256" "ddc1d84de3d017302dbfe5eaf20e2f0e257f27e2a19a7f793b439dfe544b4e58"}]}
+{"id" "optical_flow_pingpong" "index" 1 "name" "optical_flow_pingpong" "parents" ["root" "agent_graphics_context"] "children" ["flow_texture"] "properties" {"children" #{#afield/box "flow_texture"} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "optical_flow_pingpong" "_tombstone" false "frame" #afield/rect [400.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "optical_flow_pingpong_code_.kt" "lines" 120 "characters" 4509 "sha256" "ff9d5217916761d6e94f30609d469f8a9553c1d42da1c00e7b6b0a87386a27e2"} {"name" "vertex" "language" "glsl" "path" "optical_flow_pingpong_vertex_.glsl" "lines" 6 "characters" 148 "sha256" "15ab8178d1aef2acf5d8bd95e36711503c7d8eb87f1698920f9a4e6c99275242"} {"name" "fragment" "language" "glsl" "path" "optical_flow_pingpong_fragment_.glsl" "lines" 32 "characters" 1320 "sha256" "609aec65ad7272e96f1a46cff071236778e9c84f858a16c0b02470b593e2ceba"}]}
 ```
 
 ```kotlin [field-property box="optical_flow_pingpong" name="code" path="optical_flow_pingpong_code_.kt"]
-import afield.ui.output.controlGroup
-import afield.ui.output.displayOpen
 import afield.graphics.vulkan.device.CommandBuffer
 import afield.graphics.vulkan.device.Fence
-import afield.document.context.fromContextWithNameOrNull
-import afield.graphics.vulkan.targets.PingPongRenderToTexture
-import afield.graphics.texture.HasImageView
 import afield.media.vision.opticalFlow
-import afield.math.linalg.Vector2f
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK13.*
 
@@ -59,11 +53,19 @@ fromContextWithNameOrNull<AutoCloseable>("flowSession")?.close()
 
 // One editable module, two retained frames. Rendering rotates the ring automatically.
 propDown<PingPongRenderToTexture>(history) = PingPongRenderToTexture(renderer) {
-    width=960; height=540; useDepth=false; format=VK_FORMAT_R16G16B16A16_SFLOAT
+    width = 960
+    height = 540
+    useDepth = false
+    format = VK_FORMAT_R16G16B16A16_SFLOAT
 }
-val scene = moduleHere { history.apply(); depthTest=false; depthWrite=false; blend=false }
-val triangle = Mesh(renderer,scene)
-triangle.resize(3,0,scene)
+val scene = moduleHere {
+    +history
+    depthTest = false
+    depthWrite = false
+    blend = false
+}
+val triangle = Mesh(renderer, scene)
+triangle.resize(3, 0, scene)
 triangle.push.setMembers(scene.current.fi.pushConstants.single().members)
 scene += "image" to triangle
 history += "image" to scene
@@ -73,73 +75,93 @@ propDown<HasImageView>(previousImage) = history.previousImageView
 propDown<HasImageView>(currentImage) = history.latestImageView
 // The NV hardware engine where the device has one; portable pyramidal Lucas–Kanade everywhere else.
 // Fully qualified: prop<T> finds T's import in a classpath index that lists classes, not interfaces.
-prop<afield.media.vision.OpticalFlowOperation>(flow) = opticalFlow(renderer,previousImage,currentImage,grid=4)
+prop<afield.media.vision.OpticalFlowOperation>(flow) = opticalFlow(renderer, previousImage, currentImage, grid = 4)
 println("Optical flow backend: ${flow.backend}")
 propDown<RenderToTexture>(motion) = flow.output
 
 // evaluate() submits (to the optical-flow queue, or the graphics queue) and waits, so run it between Field frames.
 // Submit the source first. The final fence makes the produced pair ready to sample.
-val owner=renderer
-val ownedHistory=history
-val ownedFlow=flow
-val command=CommandBuffer(owner.commandPool,true,false)
-val fence=Fence(owner.device,false)
+val owner = renderer
+val ownedHistory = history
+val ownedFlow = flow
+val command = CommandBuffer(owner.commandPool, true, false)
+val fence = Fence(owner.device, false)
 fun renderSource() {
-    vkResetCommandBuffer(command.vkCommandBuffer,0)
-    command.beginRecording(); ownedHistory.render(command,0); command.endRecording()
-    MemoryStack.stackPush().use { owner.graphQueue.submit(it.pointers(command.vkCommandBuffer),null,null,null,fence) }
-    fence.fenceWait(); fence.reset()
+    vkResetCommandBuffer(command.vkCommandBuffer, 0)
+    command.beginRecording()
+    ownedHistory.render(command, 0)
+    command.endRecording()
+    MemoryStack.stackPush().use {
+        owner.graphQueue.submit(it.pointers(command.vkCommandBuffer), null, null, null, fence)
+    }
+    fence.fenceWait()
+    fence.reset()
 }
-var animate=true
-var reset=true
-var time=0f
-var previousTime=0f
+var animate = true
+var reset = true
+var time = 0f
+var previousTime = 0f
 // Analytical displacement of this example, useful for checking the measured texture.
-prop<Vector2f>(expectedMotion)=Vector2f()
-var shaderVersion=scene.current.fi
-var closed=false
-flowSession=AutoCloseable {
-    if(!closed) {
-        closed=true
+prop<Vector2f>(expectedMotion) = Vector2f()
+var shaderVersion = scene.current.fi
+var closed = false
+flowSession = AutoCloseable {
+    if (!closed) {
+        closed = true
         // A consumer must stop sampling before its parent's resources retire.
         owner.renderList.modules.remove("pingpong flow texture")
-        if(!owner.isClosed) {
+        if (!owner.isClosed) {
             ownedFlow.close()
-            val views=ownedHistory.frameImageViews.imageViewArray.map { it.imageView }.distinctBy { it.vkImageView }
-            owner.cleanup+=Runnable {
-                scene.current.cleanup(); command.cleanup(); fence.cleanup()
-                views.forEach { it.cleanup(); it.underlyingImage?.cleanup() }
+            val views = ownedHistory.frameImageViews.imageViewArray.map { it.imageView }.distinctBy { it.vkImageView }
+            owner.cleanup += Runnable {
+                scene.current.cleanup()
+                command.cleanup()
+                fence.cleanup()
+                views.forEach {
+                    it.cleanup()
+                    it.underlyingImage?.cleanup()
+                }
                 ownedHistory.defaultSampler?.cleanup()
             }
         }
     }
 }
 controlGroup("pingpong motion") {
-    checkbox("Animate source",initialValue=true) { animate=it; reset=true }
-    button("Reset the pair") { if(it)reset=true }
+    checkbox("Animate source", initialValue = true) {
+        animate = it
+        reset = true
+    }
+    button("Reset the pair") { if (it) reset = true }
 }
 displayOpen("pingpong motion")
-println("Render source → previous/current pair → optical flow → motion texture. Edit fragment here; edit the child to sample motion.")
-val ownedSession=flowSession
+println(
+    "Render source → previous/current pair → optical flow → motion texture. Edit fragment here; edit the child to sample motion.",
+)
+val ownedSession = flowSession
 frames {
-    while(!closed && !owner.isClosed) {
-        if(shaderVersion!==scene.current.fi) { shaderVersion=scene.current.fi; reset=true }
-        triangle.push["time"]=time
-        if(reset)previousTime=time
-        expectedMotion=Vector2f(
-            (kotlin.math.sin(time)-kotlin.math.sin(previousTime))*180,
-            (kotlin.math.cos(time*1.3f)-kotlin.math.cos(previousTime*1.3f))*120)
+    while (!closed && !owner.isClosed) {
+        if (shaderVersion !== scene.current.fi) {
+            shaderVersion = scene.current.fi
+            reset = true
+        }
+        triangle.push["time"] = time
+        if (reset) previousTime = time
+        expectedMotion = Vector2f(
+            (kotlin.math.sin(time) - kotlin.math.sin(previousTime)) * 180,
+            (kotlin.math.cos(time * 1.3f) - kotlin.math.cos(previousTime * 1.3f)) * 120,
+        )
         // Seed both slots on the first frame, a cut, or a shader edit: no old/new comparison.
-        if(reset)renderSource()
+        if (reset) renderSource()
         renderSource()
         // A paused pair is repeated, not a new consecutive observation.
-        ownedFlow.evaluate(reset=reset || !animate)
-        reset=false
-        previousTime=time
-        if(animate)time+=1f/30f
+        ownedFlow.evaluate(reset = reset || !animate)
+        reset = false
+        previousTime = time
+        if (animate) time += 1f / 30f
         frame()
     }
-}.end { ownedSession.close() }
+}
+    .end { ownedSession.close() }
 ```
 
 ```glsl [field-property box="optical_flow_pingpong" name="vertex" path="optical_flow_pingpong_vertex_.glsl"]
@@ -154,7 +176,9 @@ void main() {
 ```glsl [field-property box="optical_flow_pingpong" name="fragment" path="optical_flow_pingpong_fragment_.glsl"]
 #version 460
 layout(location=0) out vec4 color;
-layout(push_constant) uniform Frame { float time; } frame;
+layout(push_constant) uniform Frame {
+    float time;
+} frame;
 // Optical flow follows brightness. Hue changes alone did not disambiguate the old
 // repeating checkerboard: neighboring cells could produce convincing wrong matches.
 float brightnessKey(ivec2 cell) {
@@ -169,7 +193,7 @@ float textureKey(vec2 p) {
     ivec2 c=ivec2(floor(q));
     f=f*f*(3.0-2.0*f);
     return mix(mix(brightnessKey(c),brightnessKey(c+ivec2(1,0)),f.x),
-               mix(brightnessKey(c+ivec2(0,1)),brightnessKey(c+ivec2(1,1)),f.x),f.y);
+    mix(brightnessKey(c+ivec2(0,1)),brightnessKey(c+ivec2(1,1)),f.x),f.y);
 }
 void main() {
     vec2 p=gl_FragCoord.xy-vec2(sin(frame.time)*180,cos(frame.time*1.3)*120);
@@ -196,22 +220,27 @@ The parent publishes these three props: previousImage, currentImage, motion.
 moduleHere() resolves the samplers by those names, just like any other texture.
 
 ```edn [field-box id="flow_texture" role="properties"]
-{"id" "flow_texture" "index" 2 "name" "flow_texture" "parents" ["root" "optical_flow_pingpong"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "optical_flow_pingpong"} "name" "flow_texture" "_tombstone" false "frame" #afield/rect [760.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_texture_code_.kt" "lines" 12 "characters" 593 "sha256" "c68d3eb4588337642d9f1e132bdc821930fe9a382c1604ba489b1d21ba53f5b0"} {"name" "vertex" "language" "glsl" "path" "flow_texture_vertex_.glsl" "lines" 6 "characters" 148 "sha256" "15ab8178d1aef2acf5d8bd95e36711503c7d8eb87f1698920f9a4e6c99275242"} {"name" "fragment" "language" "glsl" "path" "flow_texture_fragment_.glsl" "lines" 23 "characters" 1080 "sha256" "5f46665a6416948d2710a8cf37d47611243c67129e8ea92fc2f8f4cd0234eb3b"}]}
+{"id" "flow_texture" "index" 2 "name" "flow_texture" "parents" ["root" "optical_flow_pingpong"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "optical_flow_pingpong"} "name" "flow_texture" "_tombstone" false "frame" #afield/rect [760.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_texture_code_.kt" "lines" 17 "characters" 639 "sha256" "d75ec0846c25124226c38a653fbf305daa4f9055afc2a3a1bcdd2acfd4a2bfca"} {"name" "vertex" "language" "glsl" "path" "flow_texture_vertex_.glsl" "lines" 6 "characters" 148 "sha256" "15ab8178d1aef2acf5d8bd95e36711503c7d8eb87f1698920f9a4e6c99275242"} {"name" "fragment" "language" "glsl" "path" "flow_texture_fragment_.glsl" "lines" 23 "characters" 1080 "sha256" "5f46665a6416948d2710a8cf37d47611243c67129e8ea92fc2f8f4cd0234eb3b"}]}
 ```
 
 ```kotlin [field-property box="flow_texture" name="code" path="flow_texture_code_.kt"]
 // The parent publishes these three props: previousImage, currentImage, motion.
 // moduleHere() resolves the samplers by those names, just like any other texture.
-val view = moduleHere { depthTest=false; depthWrite=false; blend=false }
-val triangle = Mesh(renderer,view)
-triangle.resize(3,0,view)
-view += "display" to triangle
-renderer.renderList.modules["pingpong flow texture"]=view
-val owner=renderer
-frames { while(!owner.isClosed)frame() }.end {
-    owner.renderList.modules.remove("pingpong flow texture",view)
-    if(!owner.isClosed)owner.cleanup+=Runnable { view.current.cleanup() }
+val view = moduleHere {
+    depthTest = false
+    depthWrite = false
+    blend = false
 }
+val triangle = Mesh(renderer, view)
+triangle.resize(3, 0, view)
+view += "display" to triangle
+renderer.renderList.modules["pingpong flow texture"] = view
+val owner = renderer
+frames { while (!owner.isClosed) frame() }
+    .end {
+        owner.renderList.modules.remove("pingpong flow texture", view)
+        if (!owner.isClosed) owner.cleanup += Runnable { view.current.cleanup() }
+    }
 ```
 
 ```glsl [field-property box="flow_texture" name="vertex" path="flow_texture_vertex_.glsl"]

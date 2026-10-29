@@ -16,6 +16,9 @@ description: |
   machine. It is the same bank, the same feeder and the same scheduler either way; what changes is
   where the samples go. To hear it, return the launch from the box instead and let the engine pull —
   one or the other, never both, or every voice advances twice.
+docs:
+  - page: chain_pattern_particles.md
+    why: "Walks through this chain from pattern to particles."
 operations:
   - create:
       box: pp_renderer
@@ -138,7 +141,7 @@ operations:
         code: |
           val N = 24000
           // How hard each band energy pushes its ring (radius, thickness, particle size).
-          val gain = 2.4
+          var gain = 2.4 // Edit this value and Alt+Enter its declaration to change all four running bands.
 
           // One compute dispatch per frame, registered under a name so a rerun replaces it.
           var particles = computeModuleHere {}

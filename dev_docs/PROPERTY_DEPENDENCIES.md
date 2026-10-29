@@ -58,10 +58,30 @@ upstream execution asks.
 
 A MISS that a later READ of the same (reader, name) answered is left out of the graph.
 
+## Forgetting: a completed run replaces the reader's dependencies
+
+When a box finishes a successful full run (`run` or `launch`, not a selected fragment), every
+access it made before that run began and did not repeat during it becomes **historical**
+(`PropertyDependencies.retireReadsBefore`, called from `ReactiveRuns.runFinished`). An edit that
+removes a read therefore takes effect at the next run: changing the value no longer reruns the box.
+
+- Historical edges stay in the record and on the layer (grey, dashed), to explain what happened.
+  They do not rerun the reader, they do not order a cascade, a historical MISS is not drawn as a
+  hole, and they come last among a `propUp` pull's remembered suppliers.
+- Any later access revives an edge. A read made by a `frames {}` loop or a callback after the run
+  ends is therefore live, even though the run itself did not make it. The gap is accepted: if the
+  value changes between the rerun and the loop's next read, the box is not rerun, and the loop picks
+  the new value up itself.
+- A failed, stopped or cancelled run forgets nothing (its reads are incomplete), and neither does
+  stopping a box or running a fragment.
+- Scenarios: `down_dropped_read`, `down_read_in_frames_kept`, `dropped_read_after_restart`; unit
+  test `PropertyDependenciesTest.aCompletedFullRunRetiresTheReadsItDidNotRepeat`.
+
 ## Persistence
 
 `<document>/dependencies.edn`, version 1: `{:version 1 :edges [{"reader" .. "supplier" ..
-"name" .. "mechanism" .. "access" .. "count" .. "firstSeen" .. "lastSeen" ..}]}`. It is loaded on
+"name" .. "mechanism" .. "access" .. "count" .. "firstSeen" .. "lastSeen" ..}]}`, plus
+`"historical" true` on a retired edge (absent means live, so older files load unchanged). It is loaded on
 first use (the first read recorded, or the layer's first request). It is written from the autosave
 loop in `Server.server()`:
 
@@ -87,7 +107,7 @@ pan, zoom and drags. Encoding:
 
 - amber: read in the last 2 s;
 - blue: read this session;
-- grey and dashed: remembered from disk only;
+- grey and dashed: remembered from disk only, or historical (the reader no longer makes the read);
 - red `? name` beside a box: an unanswered read, with dashed red arrows from its remembered
   suppliers.
 
@@ -157,13 +177,30 @@ launch queue, one rerun at a time, each awaited:
   before the change. This uses the shared `PropertyDependencies.clock`, not milliseconds.
   - A box that has read the value since (the puller of a `propUpDown` value) is up to date and
     doesn't rerun.
-  - Only boxes that have *read* the value are rerun, which includes reads remembered in
+  - Only boxes whose read is live (not historical) are rerun, which includes reads remembered in
     `dependencies.edn`. A box that never read it is not.
 - **Order.** The next box is the first waiting one that no other waiting box can reach through
   the recorded flows, followed transitively (`ReactiveRuns.orderNext`). A diamond's bottom runs
   once, after both sides; D that reads x and B's y runs after B.
 - **Cycles.** A box reruns at most 3 times per cascade; at that point the cascade stops and logs
   on `warning,autorun`. A reader whose rerun fails is not retried in that cascade.
+
+### What counts as a declaration
+
+Two decisions read a box's code as text rather than through the macro: whether an ancestor
+supplies a name (`suppliersFor`), and whether a box still declares a name Down
+(`ReactiveRuns.isDeclaredDown`, which forgets a declaration once the code stops making it).
+Both match `propUp|propDown|propUpDown<T>(name` followed by `,` or `)` — a default value
+counts — as a whole word, after `ReactiveRuns.withoutComments` has blanked `//` and nesting
+`/* */` comments (a `//` inside a string literal is not a comment). So commenting a declaration
+out retires it, as it retires the macro expansion. A declaration always carries its type: the
+macro refuses `propDown(name)`, so no record is ever made for that spelling.
+
+Every per-box record in `ReactiveRuns` (Down declarations, the last run start, pull repeat
+windows, a successful pull's stamp) is keyed by document file *and* uid (`ReactiveRuns.docKey`).
+Two open documents can hold the same uid — a copied document keeps its uids — and keyed by uid
+alone, asking one document's box forgot the other's declaration, and a run in one made the
+other's reader look up to date.
 
 ### Testing
 
@@ -176,12 +213,20 @@ launch queue, one rerun at a time, each awaited:
 
 ### Known limits
 
-- The pump drains `main.frame()` only, not `Runloop.preRun` / `postRun`, which carry the Vulkan
-  renderer's per-frame work. During a pull, `frames {}` loops advance (measured:
-  `up_pump_keeps_others_alive`), but a native window shows no new frames until the pull returns.
-- A supplier that blocks the thread (`Thread.sleep`, a busy loop) blocks the pump. The pull's
-  timeout (`-Dafield.reactiveProps.pullTimeoutMs`, default 120 s) only catches a supplier that
-  never starts or finishes asynchronously.
+- The pump drains `main.frame()` only, not `Runloop.preRun` / `postRun`. During a pull, `frames {}`
+  loops advance (`up_pump_keeps_others_alive`). A native window keeps rendering too, because a
+  renderer launched with `start(renderer::run)` is a coroutine that `main.frame()` services. Measured
+  2026-10-12: `renderer.frameCounter` advanced 39 frames during a 321 ms pull of a freshly compiled
+  supplier. `Runloop.frame` does not advance inside the pump.
+- A supplier that blocks the thread (`Thread.sleep`, a busy loop) blocks the pump, and the window
+  freezes for as long as it blocks. Running that supplier directly freezes the window for just as
+  long. The pull's timeout (`-Dafield.reactiveProps.pullTimeoutMs`, default 120 s) only catches a
+  supplier that never starts or finishes asynchronously.
+- Stop during a pull of a blocking supplier (measured 2026-10-12, an 8 s supplier, Stop sent at
+  2.5 s through `stop-box`). Stopping the reader does not stop the supplier: both run to the end,
+  and the reader is then reported cancelled. Stopping the supplier lets it run to the end and
+  reports it failed ("pulled … failed"), yet the reader still reads the value the supplier wrote
+  and ends ok. Neither wait can be interrupted, as with any box that blocks the runloop.
 - Only Kotlin boxes can be pulled.
 - An explicit launch (with a request id) queued behind a pull of the same box still runs: a chord
   that includes both the reader and its supplier can set the supplier up twice.

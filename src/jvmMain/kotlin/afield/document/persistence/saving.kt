@@ -91,6 +91,16 @@ import kotlin.math.max
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
+/**
+ * Reads and writes a document as `metadata.edn` plus sidecar files, and keeps backups of what it replaces.
+ *
+ * [SavingContext] is the canonical reader and writer of the version 2 document format: it saves a set
+ * of boxes to `metadata.edn`, writing large text properties such as `code` or `fragment` to
+ * `<uid>_<property>_.<ext>` sidecars, and loads a document folder (or EDN text) back into boxes.
+ * [File.safeSave] is the file write underneath it, which keeps the previous version in a `backups/`
+ * directory and can write atomically through a temp file and a rename.
+ */
+
 @Serializable
 data class Box_transfer(val id: String, val properties: Map<String, Pair<String, JsonElement>>)
 
@@ -138,7 +148,7 @@ private fun referencingLargeSidecars(properties: Map<String, Any?>): Map<String,
     else properties.mapValuesTo(LinkedHashMap()) { (name, value) ->
         if (value is FileInline && referencesSidecar(name, value.inline)) FileRef(value.path) else value
     }
-private data class FileInline(val path: String, val inline: String)
+internal data class FileInline(val path: String, val inline: String)
 
 class SavingContext {
 
@@ -229,8 +239,8 @@ class SavingContext {
     private fun withoutMetarootTopology(name: String, value: Any?): Any? {
         if (name != "parents" && name != "children") return value
         return when (value) {
-            is Set<*> -> value.filterNot { it is Box && it.id == METAROOT_ID }.toCollection(LinkedHashSet())
-            is List<*> -> value.filterNot { it is Box && it.id == METAROOT_ID }
+            is Set<*> -> value.filterNot { it is Box && (it.id == METAROOT_ID || afield.document.workspace.WorkspaceProjectScopes.isProjectRoot(it)) }.toCollection(LinkedHashSet())
+            is List<*> -> value.filterNot { it is Box && (it.id == METAROOT_ID || afield.document.workspace.WorkspaceProjectScopes.isProjectRoot(it)) }
             else -> value
         }
     }
@@ -644,7 +654,8 @@ class SavingContext {
                     if (altered) {
                         // Notify history manager about the new version
                         val savedAt = System.currentTimeMillis()
-                        val boxIds = snapshot.transfers.map { it.id }.toSet()
+                        // Root is excluded, as HistoryManager.extractBoxIds does when it reads a version from disk.
+                        val boxIds = snapshot.transfers.map { it.id }.filterNot { it == "root" }.toSet()
                         val historyStartedAt = System.nanoTime()
                         HistoryManager.onVersionSaved(fn, boxIds, savedAt)
                         historyMs = SaveReloadLog.elapsedMillis(historyStartedAt)
@@ -1477,6 +1488,42 @@ class SavingContext {
         }
     }
 
+    /** The box ids a stored topology value (`children`, `parents`) names, or null when it names none. */
+    internal fun storedBoxRefIds(value: Any?): Set<String>? = when (value) {
+        null -> emptySet()
+        is BoxRef -> setOf(value.id)
+        is Collection<*> -> value.mapNotNullTo(LinkedHashSet()) { (it as? BoxRef)?.id }
+        else -> null
+    }
+
+    /**
+     * A sidecar's text at load, unless `metadata.edn` was written after it with a different inline
+     * copy: that is a hand edit of the inline text made while the document was closed, and it wins.
+     * The sidecar it replaces is copied into `backups/` first and the choice is logged, so neither
+     * edit is lost. Two seconds of slack keep a checkout, which writes both files at once, on the
+     * sidecar.
+     */
+    internal fun sidecarOrNewerInline(file: File, value: FileInline, directory: String): String {
+        val text = file.readText()
+        if (text == value.inline) return text
+        val metadata = File(directory, METADATA_EDN)
+        if (!metadata.isFile || metadata.lastModified() <= file.lastModified() + 2000) return text
+        runCatching {
+            val backup = File(directory, "backups/${file.name}.before-inline-${System.currentTimeMillis()}")
+            backup.parentFile.mkdirs()
+            file.copyTo(backup)
+            lprintln(
+                "warning,save",
+                "${value.path}: metadata.edn's inline copy is newer than the file and differs from it, so the inline " +
+                    "edit is loaded; the file's text is kept as backups/${backup.name}"
+            )
+        }.onFailure { e ->
+            lprintln("warning,save", "${value.path}: could not back up the file before loading the newer inline copy (${e.message}); keeping the file")
+            return text
+        }
+        return value.inline
+    }
+
     private fun resolveValue(
         value: Any?,
         directory: String,
@@ -1496,7 +1543,7 @@ class SavingContext {
         }
         is FileInline -> {
             val file = File(directory, value.path)
-            if (!preferInlineFiles && file.exists()) file.readText() else value.inline
+            if (!preferInlineFiles && file.exists()) sidecarOrNewerInline(file, value, directory) else value.inline
         }
 
         is BoxRef -> {

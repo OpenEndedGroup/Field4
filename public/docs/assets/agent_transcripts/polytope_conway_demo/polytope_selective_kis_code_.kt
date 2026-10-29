@@ -1,4 +1,3 @@
-
 // Topology is the source of truth. Coordinates and the FLine viewer only arrive after
 // selection and the abstract Conway operation have decided what the new faces are.
 var source = cube()
@@ -7,7 +6,7 @@ val sourceFaces = source.topology.elements(2)
 // The first pair are the cube's opposite z faces. Attributes do both jobs here: `raise`
 // selects the domain of kis, while `height` is deployed independently over that domain.
 val raisedFaces = sourceFaces.take(2)
-val raisedHeights = listOf(0.22, 0.68)
+val raisedHeights = [0.22, 0.68]
 for (i in raisedFaces.indices) {
     source = source.withAttributes(
         raisedFaces[i].id,
@@ -29,7 +28,8 @@ println(
     transform = ${result.summary()}
     triangles = ${triangles.summary()}
     orbit the view; hover and click a face to inspect its lineage
-    """.trimIndent(),
+    """
+        .trimIndent(),
 )
 
 val status: (String) -> Unit = { message -> markdown("face provenance", message) }
@@ -41,8 +41,7 @@ val faceLines = polyhedron.toFaceFLines { face, line ->
     val height = (attributes["height"] as? Number)?.toDouble()
     val lineage = result.lineage(face.id)
     val role = (lineage as? ElementLineage.Derived)?.role ?: "source"
-    val sources = result.sourceElements(face.id)
-        .joinToString { "rank ${it.rank} / id ${it.id.value}" }
+    val sources = result.sourceElements(face.id).joinToString { "rank ${it.rank} / id ${it.id.value}" }
 
     line.filled = true
     line.stroked = true
@@ -63,7 +62,8 @@ val faceLines = polyhedron.toFaceFLines { face, line ->
             - deployed height: `$deployed`
             - source: $sources
             - clicked at: `${hit.position}`
-            """.trimIndent(),
+            """
+                .trimIndent(),
         )
     }
 }
@@ -80,4 +80,4 @@ displayOpen("polytope")
 
 // These are registered polytope value printers. They reduce the larger immutable objects
 // to public data-class summaries, then use Field's normal nested data-class visualizer.
-viz("inspection", listOf(result, triangles))
+viz("inspection", [result, triangles])

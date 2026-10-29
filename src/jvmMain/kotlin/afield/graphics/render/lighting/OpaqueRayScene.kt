@@ -1,3 +1,13 @@
+/**
+ * Opaque triangle geometry for ray-query visibility, as used by [DirectLighting] for shadows.
+ *
+ * [OpaqueTriangles] is an immutable indexed mesh ([OpaqueTriangles.box] makes a box), and an
+ * [OpaqueInstance] places one with a stable id and transform. [OpaqueRayScene.commit] takes the
+ * instance list and builds one bottom-level acceleration structure per geometry and a new top-level
+ * structure for each edit, waiting for the build, so commit between frames on the render thread.
+ * [OpaqueRayScene.available] reports whether the device supports ray queries.
+ */
+
 package afield.graphics.render.lighting
 
 import afield.graphics.vulkan.Renderer

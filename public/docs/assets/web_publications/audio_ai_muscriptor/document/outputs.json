@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-28T17:38:27.035Z",
+  "documentName": "audio_ai_muscriptor",
+  "outputs": [
+    {
+      "uid": "muscriptor_guide",
+      "channel": "guide",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 455,
+      "height": 430,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "muscriptor_guide",
+      "channel": "all durable jobs",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 768,
+      "height": 438,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "muscriptor_visualizer_gallery",
+      "channel": "transcription",
+      "open": false,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [
+        "plotly",
+        "svg"
+      ],
+      "width": 1048,
+      "height": 816,
+      "path": "outputs/2.html"
+    }
+  ]
+}

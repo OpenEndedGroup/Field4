@@ -401,9 +401,9 @@ response, a pyramid, or a list of detections.
 !!! tip "Open the demo document"
     The [imaging_visualizers_demo](agent_transcripts.md#imaging_visualizers_demo)
     starting point has one box per visualizer on this page. Open it from the
-    welcome screen, run the boxes and look at each one's output area — every box evaluates one imaging value as its last expression, so
-    there is no `showImg`, no `display(...)` and no explicit call at all. Then
-    change a sigma or a threshold and re-run a box.
+    welcome screen, run the boxes and look at each one's output area. Each box
+    ends with one imaging value, and Field draws it; no `display(...)` call is
+    needed. Then change a sigma or a threshold and re-run a box.
 
 The rest of this page is the *instruments* built on top of this renderer: inline
 probes that live next to a line of code, display channels, control surfaces, and
@@ -868,6 +868,41 @@ ui.pause(300)
 ```
 
 Private properties are left out, as `graphPaths` leaves them out by default. Pass `includePrivate = true` to `tree` or `column` to list them; their paths then need `graphPaths(pattern, GraphWalkOptions(includePrivate = true))`. A row has no path when nothing reaches it by name: an element of a primitive array, a map key that is an object, the second of two map keys that print alike.
+
+#### Browsing the renderer
+
+A box beneath a renderer box can open the renderer itself. It answers "what am I drawing, in what order, and where does the frame time go?" without a debugger:
+
+```diffstatic {data-lang=kotlin}
+column("renderer", renderer, width = 1100)
+```
+
+`renderer` is already in scope beneath the renderer box. `width` gives the panel room for several columns side by side, and `open = "render/modules"` opens the columns down to that path when the browser loads (the **path** button on a row copies its path). The renderer opens to:
+
+- `render`: the window's render target. Its children are listed in the order the target records them each frame: `preTargets` (render-to-texture passes drawn first), `modules` (one per `moduleHere`, in the order they were added), `meshModules`, then `others`.
+- A module opens to its `parameters` (name, colour attachments and format, depth, primitive type, blend), its `uniforms` and texture bindings with their set and binding numbers, and its `meshes` with vertex, triangle and instance counts.
+- `compute`: the compute target and its modules, drawn before graphics.
+- `cpu`: the CPU spans of the frame loop (acquire, record, submit, present), with p1 to p99 times in milliseconds.
+- `windows`, `contexts`, `queues`, `device`: the swapchain, its format and size, and the Vulkan objects behind them.
+
+Every node with children starts with a `summary` row: choose it to see that node's card. The renderer's card has the frame number, module counts, the window and the p50/p90 of each CPU span. Cards follow the running renderer, refreshing about once a second. `tree("renderer", renderer)` shows the same nodes as an outline.
+
+Here the column browser is open on a running renderer that draws one triangle, down to the triangle's module and its card:
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1900x900" clip-selector="iframe.field-inspector" screenshot="assets/visualizers-renderer-column.png" transcript="../../dev_docs/agents/transcripts/docs_capture/renderer_column.yaml" graphics-context=true padding="6" wait="0" timeout="240" embed=true hidden=true name="renderer-column" alt="Six columns of a column browser over a running renderer. Renderer lists summary, render, compute, contexts, windows, queues, cpu (6 spans), device and pipelineCache; render lists summary, preTargets, modules, meshModules, others and preRecorded; modules holds the triangle box's module; the module lists summary, parameters, shaders (2 entries), uniforms, liveUniforms and meshes (1 entry); the last column is the module's card: valid true, enabled true, pipelines built, uniforms 0, meshes 1, shaders vertex and fragment, cut off at the right edge."}
+val frame = "document.querySelector('iframe.field-inspector')"
+ui.waitForSelector("iframe.field-inspector", 8000.0)
+ui.eval("document.body.classList.add('mode-no-editor'); return true")
+ui.pause(1500)
+fun inFrame(js: String) = ui.eval("const w = $frame.contentWindow, d = $frame.contentDocument; $js").toString()
+fun columns() = inFrame("return d.querySelectorAll('#columns .column').length").trim('"').toIntOrNull() ?: 0
+for (i in 0 until 40) {
+    if (columns() >= 6) break
+    ui.pause(250)
+}
+check(columns() >= 6) { inFrame("return d.body.innerText.slice(0, 600)") }
+check("shaders" in inFrame("return d.body.innerText")) { inFrame("return d.body.innerText") }
+```
 
 And while it is not a “visualizer” in the chart sense, `logs(...)` belongs in the same family. This box shows only the `demo` channel and logs a small job into it; rows that share a block id are grouped under the block's first line:
 
@@ -1595,7 +1630,7 @@ results and synchronizes zoom, pan, hover, seeking and playback time. `analysisP
 progress can replace a named output with `fieldAudioJobStatusHtml(accepted, event)`, while
 `fieldAudioJobMonitor()` embeds the complete durable queue.
 
-The public [beat and pitch analysis walkthrough](audio_ai_analysis.md) and loadable
+The [beat and pitch analysis walkthrough](audio_ai_analysis.md) and loadable
 `audio_ai_analysis` operation transcript contain the full source → submit → monitor → await →
 visualize path.
 

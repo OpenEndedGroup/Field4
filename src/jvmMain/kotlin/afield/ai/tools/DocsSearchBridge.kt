@@ -14,6 +14,13 @@ import afield.ai.retrieval.SemanticRetrievalService
 import java.util.UUID
 
 /**
+ * The search engine behind the documentation panel, which retrieves from Field's local index and answers through the selected language model.
+ *
+ * [DocsSearchBridge] holds the conversation state and runs each query; retrieval stays local, and
+ * only the synthesis step goes to the provider chosen on /welcome.
+ */
+
+/**
  * Docs-search engine for the documentation iframe.
  *
  * Retrieval is **local**: Field's native Lucene hybrid index (BM25 + symbol +

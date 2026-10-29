@@ -7,6 +7,14 @@ import java.io.EOFException
 import java.io.IOException
 import java.io.InputStream
 
+/**
+ * The MQTT 3.1.1 wire format: the [MqttPacket] types, [Mqtt.encode] and [Mqtt.read] to convert
+ * them to and from bytes, and [MqttTopic] for topic names and `+` / `#` filter matching.
+ *
+ * The client and the embedded broker both use this codec. `MqttCodecTest` and
+ * `MqttTopicSubsumesTest` cover it.
+ */
+
 /** A malformed MQTT packet, or one this implementation refuses. */
 class MqttProtocolException(message: String) : IOException(message)
 

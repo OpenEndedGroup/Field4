@@ -1,13 +1,13 @@
-import afield.graphics.vulkan.Renderer
-import afield.graphics.vulkan.util.Window
-import afield.graphics.vulkan.buffers.FrameBufferGroup
-import arrow.core.right
-import arrow.core.left
-import afield.graphics.shader.*
-import afield.graphics.scene.*
-import afield.graphics.render.*
-import afield.document.context.*
 import afield.graphics.vulkan.buffers.*
+import afield.document.context.*
+import afield.graphics.render.*
+import afield.graphics.scene.*
+import afield.graphics.shader.*
+import arrow.core.left
+import arrow.core.right
+import afield.graphics.vulkan.buffers.FrameBufferGroup
+import afield.graphics.vulkan.util.Window
+import afield.graphics.vulkan.Renderer
 /*start*/
 /*compute-structure-type:State:State*/
 class State(
@@ -163,8 +163,8 @@ var MeshModulePointer.force: String
 /*compute-pc-binding:count*/ var ComputeMesh.count by ComputeMesh.BoundFromStructure<Any>()
 /*compute-pc-binding-group:count*/ var ComputeMeshGroup.count by ComputeMeshGroup.BoundFromStructure<Any>()
 /*compute-pc-structure:dt*/ var Structure.dt by Structure.FromStructure<Any>()
-/*compute-pc-binding:dt*/ var ComputeMesh.dt by ComputeMesh.BoundFromStructure<Float>()
-/*compute-pc-binding-group:dt*/ var ComputeMeshGroup.dt by ComputeMeshGroup.BoundFromStructure<Float>()
+/*compute-pc-binding:dt*/ var ComputeMesh.dt by ComputeMesh.BoundFromStructure<Number>()
+/*compute-pc-binding-group:dt*/ var ComputeMeshGroup.dt by ComputeMeshGroup.BoundFromStructure<Number>()
 /*compute-ubo:force_numbers*/ val ComputeModulePointer.force_numbers by ComputeMesh.FromUniform()
 /*compute-ssbo:FieldProbeBuffer*/ val ComputeModulePointer.FieldProbeBuffer by ComputeMesh.FromUniform()
 var Box.gsStateA by Inheritance<FrameBufferGroup>() /**/

@@ -18,7 +18,14 @@ import afield.media.video.*
 import afield.app.server.Server
 import org.jetbrains.kotlin.util.capitalizeDecapitalize.toLowerCaseAsciiOnly
 
+/**
+ * Command-line option parsing for the server: [option] reads a typed `--name value` pair and [flag] tests for a bare `--name`.
+ */
 
+/**
+ * The value following `--name` on the command line, converted to `T` by [convertTo], or `def()`
+ * when the flag is absent. Throws when the flag is the last argument.
+ */
 inline fun <reified T> option(name: String, def: () -> T): T {
     val i = Server.args.indexOfFirst { it.equals("--" + name, true) }
     if (i == -1) {

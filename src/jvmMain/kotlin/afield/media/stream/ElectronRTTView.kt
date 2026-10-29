@@ -1,5 +1,6 @@
 package afield.media.stream
 
+import afield.graphics.vulkan.targets.HasRenderToTexture
 import afield.app.protocol.Handled
 import afield.app.protocol.Message
 import afield.runtime.lifecycle.ReleasePolicy
@@ -35,6 +36,15 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
+ * Shows a Field 4 render target live in a box's output area in the Field Electron app, sharing GPU
+ * surfaces with Electron instead of reading pixels back.
+ *
+ * [ElectronRTTView] is the entry point: render into its [ElectronRTTView.rtt] and `display` its
+ * [ElectronRTTView.html]. Works on macOS and on Linux under native Wayland; outside Electron the
+ * widget says it needs the app.
+ */
+
+/**
  * A Field 4 render target drawn straight into a box's output area in the Field Electron app.
  *
  * No readback and no encode: Electron allocates a ring of IOSurfaces, keeps each imported in
@@ -47,9 +57,9 @@ import java.util.concurrent.atomic.AtomicInteger
  *
  * ```
  * val view = ElectronRTTView(640, 360)
- * val module = moduleHere { view.rtt.apply() }
+ * val module = moduleHere { +view }
  * module += "mesh" to m
- * view.rtt += "content" to module
+ * view += "content" to module
  * display("main", view.html())
  * ```
  *
@@ -71,7 +81,7 @@ class ElectronRTTView(
     format: Int = VK_FORMAT_B8G8R8A8_SRGB,
     private val renderer: Renderer = fromContext(),
     val name: String = "electron-rtt-${counter.incrementAndGet()}",
-) : Target, AutoCloseable {
+) : Target, HasRenderToTexture, AutoCloseable {
 
     // Validate before allocating render targets or native transports.
     init {
@@ -89,8 +99,8 @@ class ElectronRTTView(
         }
     }
 
-    /** Render your content into this; it is drawn to the canvas as is. */
-    val rtt = RenderToTexture(renderer) {
+    /** Render your content into this; it is drawn to the canvas as is. `+view` and `view +=` reach it too. */
+    override val rtt = RenderToTexture(renderer) {
         this.width = this@ElectronRTTView.width
         this.height = this@ElectronRTTView.height
         this.format = format
@@ -251,11 +261,13 @@ class ElectronRTTView(
 
     private fun retire(old: List<Slot>) {
         if (old.isEmpty()) return
-        // Not from a recording context, so wait out a few frames rather than a specific fence.
-        Thread({
-            Thread.sleep(500)
-            old.forEach { it.host?.close(); if (it.ref != 0L) MetalIOSurface.release(it.ref) }
-        }, "electron-rtt-retire-$name").apply { isDaemon = true }.start()
+        // The renderer's deferred cleanup runs once the frames in flight retire, and on shutdown it
+        // drains before the device is destroyed. A detached sleeping thread raced that teardown and
+        // called vkDestroyBuffer on a dead device. Once the device is gone its buffers went with it.
+        fun release(destroyHost: Boolean) =
+            old.forEach { if (destroyHost) it.host?.close(); if (it.ref != 0L) MetalIOSurface.release(it.ref) }
+        if (renderer.isClosed) release(destroyHost = false)
+        else renderer.cleanup += Runnable { release(destroyHost = true) }
     }
 
     private fun released(slot: Int, gen: Int, sample: Sample) {

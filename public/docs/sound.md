@@ -1,11 +1,13 @@
 # Sound: from a pattern to something you can hear
 
-`pat("bd ~ sd ~")` is a schedule. It says *kick, rest, snare, rest* and it says exactly
-when — but a schedule makes no sound. Something has to turn each event into samples.
+Boxes make sound too. Write `pat("bd ~ sd ~")` in one and you have a beat: kick, rest, snare,
+rest, round and round. This stop follows that one line until you can hear it — first through a
+small synthesiser built into Field, then through real drum samples — and then runs the path
+backwards, from a recording to a pattern you can play again.
 
-This page follows one pattern through the two voices that render it without an audio device: a
-small built-in synthesiser, and the Tidal drum library if you have it installed. Every audio figure
-below says which of them produced it.
+A pattern on its own is only a schedule. It says what happens and exactly when, but it makes no
+sound; something has to turn each event into samples. Nothing on this page needs an audio device:
+every figure is rendered to a file you can play right here, and each one says which voice made it.
 
 Other pages cover the other voices. A pattern can play a
 [Faust program](faust.md#a-pattern-plays-it) as a polyphonic instrument, or be placed in space with
@@ -154,9 +156,11 @@ Dirt install and `zzzznotadrum` is in none. You can hear where the join falls: t
 drums and one square-wave blip, in one bar.
 
 ```diffstatic_runner {data-lang=kotlin audio="assets/sound_render_path/per-event-fallback.wav" audio-spec="per-event-fallback" audio-renderer="afield.audio.synth.SoundRenderPathDocs" embed=true hidden=true name="sound-doc-per-event-fallback"}
-// showDirtAudio(pat("bd zzzznotadrum bd hh") with gain(0.9),
-//               voice = patVoice(wave = PatWave.SQUARE, baseHz = 330.0, ...))
-// offline-rendered by SoundRenderPathDocs — listen below
+/*
+showDirtAudio(pat("bd zzzznotadrum bd hh") with gain(0.9),
+              voice = patVoice(wave = PatWave.SQUARE, baseHz = 330.0, ...))
+offline-rendered by SoundRenderPathDocs — listen below
+*/
 ```
 
 **Voice: real Dirt-Samples where the library had the token, the stand-in synth per event where it did not.**
@@ -206,7 +210,7 @@ showPatAudio(pat("bd ~ sd ~, hh*8") with gain(0.9))
 
 // the real thing — same shape, same annotations
 val played = showDirtAudio(pat("bd ~ sd ~, hh*8") with gain(0.9))
-println(played.describe())          // say which voice you actually got
+println(played.describe()) // say which voice you actually got
 ```
 
 Both put a player in the box's output. `showPatAudio` hands back the rendered

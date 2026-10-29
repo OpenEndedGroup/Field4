@@ -11,6 +11,16 @@ import org.lwjgl.system.SharedLibrary
 import org.lwjgl.system.windows.Kernel32
 import java.util.concurrent.atomic.AtomicBoolean
 
+/**
+ * The resident texture that browser paints arrive in: a fixed-size image Field samples like any
+ * other, refreshed from frames a producer offers between draws.
+ *
+ * [ExternalBrowserSurfaceSpec] fixes size, pixel format and slot count; a producer calls
+ * [ExternalBrowserSurface.offerFrame] with an [ExternalBrowserFrame], and the platform import or
+ * copy is recorded in `prepareSampledImagesFor` before the image is bound. [ExternalBrowserSurfaces.create]
+ * picks the macOS, Windows or Linux backend. Frame hand-off is covered by `ExternalBrowserFrameMailboxTest`.
+ */
+
 /** Fixed properties of the resident texture exposed to Field. */
 data class ExternalBrowserSurfaceSpec(
     val width: Int,
@@ -101,9 +111,9 @@ sealed interface ExternalBrowserImageHandle : AutoCloseable {
     }
 
     /**
-     * Pixels that have already been read back to the CPU, for the deliberately non-zero-copy
-     * fallback. Not a native handle at all: nothing is shared, and the bytes are owned by this
-     * value until [close] frees them.
+     * Pixels that have already been read back to the CPU, for the non-zero-copy fallback. Not a
+     * native handle at all: nothing is shared, and the bytes are owned by this value until [close]
+     * frees them.
      */
     class CpuBitmap(val pixels: java.nio.ByteBuffer, val stride: Int) : ExternalBrowserImageHandle {
         private val closed = AtomicBoolean(false)
@@ -220,9 +230,9 @@ enum class BrowserFrameOfferResult {
 }
 
 /**
- * A browser surface is deliberately a stable Field texture. Platform textures are copied on-GPU
- * before their producer lease is released, so Chromium may recycle them without changing or
- * corrupting what Field samples between browser paints.
+ * A browser surface is a stable Field texture: platform textures are copied on-GPU before their
+ * producer lease is released, so Chromium may recycle them without changing or corrupting what
+ * Field samples between browser paints.
  */
 interface ExternalBrowserSurface :
     HasImageView,

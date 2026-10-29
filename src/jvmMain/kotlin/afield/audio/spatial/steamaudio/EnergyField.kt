@@ -12,6 +12,13 @@ import java.lang.foreign.MemorySegment
 import java.lang.foreign.ValueLayout
 
 /**
+ * Simulated reflection data as energy, and its reconstruction into impulse responses.
+ *
+ * [EnergyField] bins arriving energy by time, direction and band; a [Reconstructor] turns it
+ * into an [ImpulseResponse] that can be convolved with a signal.
+ */
+
+/**
  * Acoustic energy arriving at a point, binned by time, direction and frequency band.
  *
  * This is the intermediate representation the reflection simulation actually produces: for each

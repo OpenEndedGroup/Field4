@@ -35,14 +35,10 @@ start(renderer::run)
 <!-- field-box id="lb_train" index="1" -->
 
 ```edn [field-box id="lb_train" role="properties"]
-{"id" "lb_train" "index" 1 "name" "train the rule" "parents" ["root" "lb_renderer"] "children" ["lb_written" "lb_learned"] "properties" {"children" #{#afield/box "lb_written" #afield/box "lb_learned"} "parents" #{#afield/box "root" #afield/box "lb_renderer"} "name" "train the rule" "_tombstone" false "frame" #afield/rect [380.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lb_train_code_.kt" "lines" 99 "characters" 3494 "sha256" "7f96047269d7789f37ae4d40aec1e58e78b08f2fa768cd79fe530cefe1c72ef8"}]}
+{"id" "lb_train" "index" 1 "name" "train the rule" "parents" ["root" "lb_renderer"] "children" ["lb_written" "lb_learned"] "properties" {"children" #{#afield/box "lb_written" #afield/box "lb_learned"} "parents" #{#afield/box "root" #afield/box "lb_renderer"} "name" "train the rule" "_tombstone" false "frame" #afield/rect [380.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lb_train_code_.kt" "lines" 95 "characters" 3363 "sha256" "a85956e4e2fbbc417faebc6296b7ed721b437cb277fd743d754604e70e53f4d9"}]}
 ```
 
 ```kotlin [field-property box="lb_train" name="code" path="lb_train_code_.kt"]
-import afield.ai.learning.DeepSetsOptions
-import afield.ai.learning.InteractionExample
-import afield.ai.learning.trainEquivariant
-
 prop<afield.ai.learning.EquivariantWeights>(learnedRule)
 
 val radius = 2f / 64f
@@ -145,13 +141,11 @@ println("trained ${learnedRule.parameterCount} parameters: ${learnedRule}")
 <!-- field-box id="lb_written" index="2" -->
 
 ```edn [field-box id="lb_written" role="properties"]
-{"id" "lb_written" "index" 2 "name" "written rule" "parents" ["root" "lb_train"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "lb_train"} "name" "written rule" "_tombstone" false "frame" #afield/rect [740.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lb_written_code_.kt" "lines" 79 "characters" 2883 "sha256" "de04b2ceea3417faa7cf5b3a0606131e702e0a2b952c67c9d9d43a9fbd041855"}]}
+{"id" "lb_written" "index" 2 "name" "written rule" "parents" ["root" "lb_train"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "lb_train"} "name" "written rule" "_tombstone" false "frame" #afield/rect [740.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lb_written_code_.kt" "lines" 77 "characters" 2796 "sha256" "70ec29e90ff0c85eb707fe97f5efca997c22927eca2397e64cb066f5392e6e51"}]}
 ```
 
 ```kotlin [field-property box="lb_written" name="code" path="lb_written_code_.kt"]
 import afield.simulation.physics.ShaderBoids
-import afield.graphics.vulkan.util.GpuNeighbourGrid
-import afield.math.linalg.Vector2f
 
 prop<afield.simulation.physics.ShaderBoids>(written)
 
@@ -235,19 +229,19 @@ println("written rule: ${written.count} boids")
 <!-- field-box id="lb_learned" index="3" -->
 
 ```edn [field-box id="lb_learned" role="properties"]
-{"id" "lb_learned" "index" 3 "name" "learned rule" "parents" ["root" "lb_train"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "lb_train"} "name" "learned rule" "_tombstone" false "frame" #afield/rect [1080.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lb_learned_code_.kt" "lines" 61 "characters" 2231 "sha256" "b8788c9f3224fd26af134393886df97ad3919e3094c0b7fa0fdb712f63c883ff"}]}
+{"id" "lb_learned" "index" 3 "name" "learned rule" "parents" ["root" "lb_train"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "lb_train"} "name" "learned rule" "_tombstone" false "frame" #afield/rect [1080.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lb_learned_code_.kt" "lines" 61 "characters" 2136 "sha256" "9e8b8d2a82b27fd62dfe42af63f5ecb7854de1af9a2f7fc26da48d6aea556792"}]}
 ```
 
 ```kotlin [field-property box="lb_learned" name="code" path="lb_learned_code_.kt"]
 import afield.simulation.physics.ShaderBoids
-import afield.graphics.vulkan.util.GpuNeighbourGrid
-import afield.math.linalg.Vector2f
 
-// `learnedRule` is the trained network from the parent box. The only difference from
-// the written flock is this argument.
-//
-// A flock compiles its rule into its shaders, so it is cached on the rule: retrain the
-// parent and the next run builds a new flock, releasing the old one.
+/*
+`learnedRule` is the trained network from the parent box. The only difference from
+the written flock is this argument.
+
+A flock compiles its rule into its shaders, so it is cached on the rule: retrain the
+parent and the next run builds a new flock, releasing the old one.
+*/
 val learned = cached<ShaderBoids>(learnedRule, renderer) {
     val grid = GpuNeighbourGrid(
         capacity = 12000,

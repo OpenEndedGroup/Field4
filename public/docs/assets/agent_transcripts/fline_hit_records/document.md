@@ -27,21 +27,23 @@ This is `Box.inspect`, which is `lines(...)` plus a hit record wide enough to
 build on: see FLineIntersection and dev_docs/fline_hit_records.md.
 
 ```edn [field-box id="fline-hit-records-wall" role="properties"]
-{"id" "fline-hit-records-wall" "index" 0 "name" "What a click on a figure returns" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "What a click on a figure returns" "_tombstone" false "frame" #afield/rect [60.0 60.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fline-hit-records-wall_code_.kt" "lines" 53 "characters" 2107 "sha256" "4fffa9000661d6d59be9ac03b797aeb2d67c46209e6d0ae378755d28ed1dd5e9"}]}
+{"id" "fline-hit-records-wall" "index" 0 "name" "What a click on a figure returns" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "What a click on a figure returns" "_tombstone" false "frame" #afield/rect [60.0 60.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fline-hit-records-wall_code_.kt" "lines" 57 "characters" 2079 "sha256" "07cdbe9c40145d8aa325882ba295017d0847327b6520292e74d45ce6629187ac"}]}
 ```
 
 ```kotlin [field-property box="fline-hit-records-wall" name="code" path="fline-hit-records-wall_code_.kt"]
-// A wall of panels, seen plan-oblique, that you can ASK questions of.
-//
-// Run this box, then click a panel. The "what you clicked" output names the
-// element under the pointer -- which panel, whether you hit its face, one of its
-// edges or a corner, and WHERE on it (u across the panel, v up it) -- in the
-// wall's own coordinates, with z the real distance along the wall. Hovering
-// highlights the panel the pointer is over. Clicking the amber ridge line names
-// that instead, with u along its length.
-//
-// This is `Box.inspect`, which is `lines(...)` plus a hit record wide enough to
-// build on: see FLineIntersection and dev_docs/fline_hit_records.md.
+/*
+A wall of panels, seen plan-oblique, that you can ASK questions of.
+
+Run this box, then click a panel. The "what you clicked" output names the
+element under the pointer -- which panel, whether you hit its face, one of its
+edges or a corner, and WHERE on it (u across the panel, v up it) -- in the
+wall's own coordinates, with z the real distance along the wall. Hovering
+highlights the panel the pointer is over. Clicking the amber ridge line names
+that instead, with u along its length.
+
+This is `Box.inspect`, which is `lines(...)` plus a hit record wide enough to
+build on: see FLineIntersection and dev_docs/fline_hit_records.md.
+*/
 
 val columns = 5
 val rows = 3
@@ -80,9 +82,11 @@ figure += fline {
     color = vec(1.0, 0.76, 0.36, 1.0)
 }
 
-// `inspect` sets hoverColor and onClick on every line and writes a card naming
-// whatever you click. The lambda is the extra thing to do with each hit -- here,
-// print it, so the box's text output becomes a log of what you asked the figure.
+/*
+`inspect` sets hoverColor and onClick on every line and writes a card naming
+whatever you click. The lambda is the extra thing to do with each hit -- here,
+print it, so the box's text output becomes a log of what you asked the figure.
+*/
 inspect(figure, w = 620.0, h = 420.0, onHit = { hit -> println(hit.describe()) })
 ```
 

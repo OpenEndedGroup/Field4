@@ -6,9 +6,9 @@ Field aims to be full of unexpectedly fun features that help you interact with c
 
 The first page of Field is the welcome page: the first tab in our desktop app, and at `https://localhost:9092/welcome` in any web browser:
 
-![The welcome page in a fresh workspace: a document list with a search box and the Starting points and Templates lists on the left, the Changelog and a stack of collapsible panels on the right](assets/welcome/welcome-page.png)
+![The welcome page in a fresh workspace: a document list with a search box and the Starting points, Templates and Kits disclosures on the left, the Changelog and a stack of collapsible panels on the right](assets/welcome/welcome-page.png)
 
-On the left you can make new documents or find that document you just _know_ you edited last week; below the list are **Starting points** and **Templates**, curated scenes and scaffolds that open as an editable copy in your workspace. On the right is a stack of collapsible panels for the rest of Field: the changelog, projects, Maven dependencies, the workspace, the runtime, Vulkan and Python status, AI settings, preferences, and the OSC editor. The search box does full text search over the whole workspace:
+On the left you can make new documents or find that document you just _know_ you edited last week; below the list are **Starting points** and **Templates**, curated scenes and scaffolds that open as an editable copy in your workspace. **Kits** adds [reusable packages and their starting points](kits.md#add-a-self-contained-kit-in-welcome) in another disclosure. On the right is a stack of collapsible panels for the rest of Field: the changelog, projects, Maven dependencies, the workspace, the runtime, Vulkan and Python status, AI settings, preferences, and the OSC editor. The search box does full text search over the whole workspace:
 
 <video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
 	<source src="assets/welcoming.mp4" type="video/mp4">
@@ -56,10 +56,10 @@ Often your code does something — draws a line, loads a model, makes a sound. B
 
 `print` (and `println`) always prints next to, or underneath, the line that the `print` is on. If what you print fits on a single line it sits beside that line; if it doesn't, you get a little block under the line instead. This is what the snippet below looks like in Field's editor, captured by the docs build running it:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/funFeatures-print-here.png" capture="editor" outputs="inline" wait="2" padding="10" timeout="90" embed=true name="funfeatures-print-here" w="900" h="300" alt="Field's editor holding the snippet. Beside the print(x+y) line sits 30; under the last println is a small block with six rows of squares."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/funFeatures-print-here.png" capture="editor" outputs="inline" wait="2" padding="10" timeout="90" embed=true name="funfeatures-print-here" w="900" h="300" alt="Field's editor holding the snippet. Beside the print(x+y) line sits 30; under the last println is a black block of six lines, row 1: 1 down to row 6: 36."}
 var x = 10
 var y = 20
-print(x+y)
+print(x + y)
 var z = 30
 println((1..6).joinToString("\n") { "row $it: ${it * it}" })
 ```
@@ -87,70 +87,80 @@ So, if you don't know what that variable is, drop in a `print()` and find out.
 
 ## Printing, but try harder
 
-Appending `.h` or even `.h2` to the thing that you are printing will cause Field to work much harder to make the thing that you are printing a pretty piece of `h`tml.
+Appending `.h` or even `.h2` to the thing that you are printing will cause Field to work much harder to make the thing that you are printing a pretty piece of `h`tml. Here a map holding a list goes to an output area with `.h`:
 
-![](assets/screenshot_31.png)
+```diffstatic_runner {data-lang=kotlin screenshot="assets/funfeatures/h-map.png" capture="box" open-outputs="true" wait="3" padding="16" timeout="120" embed=true name="funfeatures-h-map" w="700" h="200" alt="An output panel titled m under a Field box, holding one line: { a → b, c → [1, 2, 3, 4, 8, 7.2] (6) } with the keys in green, the numbers in blue and a small sparkline of the list beside it."}
+val l = [1.0, 2.0, 3.0, 4.0, 8.0, 7.2]
+val m = mapOf("a" to "b", "c" to l)
+display("m", m.h)
+```
 
-`.h2` is particularly suited to lists and maps with _lots_ of data in them, — Field, intelligently pages in and out just the parts of the data that you are actually looking at, so you can explore gigantic FloatBuffers for example.
+`.h2` is particularly suited to lists and maps with _lots_ of data in them, — Field, intelligently pages in and out just the parts of the data that you are actually looking at, so you can explore gigantic FloatBuffers for example:
 
-![](assets/screenshot_32.png)
+```diffstatic_runner {data-lang=kotlin screenshot="assets/funfeatures/h2-buffer.png" capture="box" open-outputs="true" wait="4" padding="16" timeout="120" embed=true name="funfeatures-h2-buffer" w="800" h="300" alt="An output panel titled buffer holding a paged view of a FloatBuffer of 100000 floats: a header with its position, limit and capacity and outliner and columns links, then a table with a stride box set to 4, columns c0 to c3 and rows 0 to 7 of rising values."}
+val buffer = java.nio.FloatBuffer.allocate(100_000)
+for (i in 0 until buffer.capacity()) buffer.put(i, (Math.sin(i * 0.01) * 10.0 + Math.random()).toFloat())
+display("buffer", buffer.h2)
+```
 
-The highlighted colors are showing you the 'unusually' low and high values at a glance — great for scrolling through something long to find the interesting values.
+[Visualizers](visualizers.md) covers `.h`, `.h2` and the rest.
 
 ## `display`ing things — print where everyone can see it
 
 We can also 'print' to the canvas using `display`. For example:
 
-```diffstatic {data-lang=kotlin}
-var l = [1,2,3,4, 8, 7.2]
-var m = mapOf("a" to "b", "c" to l)
+```diffstatic_runner {data-lang=kotlin screenshot="assets/funfeatures/display-map.png" capture="box" open-outputs="true" wait="3" padding="16" timeout="120" embed=true name="funfeatures-display-map" w="700" h="200" alt="An output panel titled m is equal to, holding the map on one line: { a → b, c → [1, 2, 3, 4, 8, 7.2] (6) } with a sparkline of the list."}
+val l = [1.0, 2.0, 3.0, 4.0, 8.0, 7.2]
+val m = mapOf("a" to "b", "c" to l)
 display("m is equal to ", m.h)
 ```
 
-Puts an annotation underneath the box we're writing code in
-
-![](assets/screenshot_33.png)
+puts an output panel, named by the first argument, underneath the box we're writing code in.
 
 Subsequent calls to `display` overwrites the previous one, giving you a way of 'animating' the output on the canvas.
 
 While the `.h` and `.h2` visualizers try hard to make things pretty, all they are really doing is making some complex HTML in response to what they are trying to visualize. You can make your own as well:
 
-```diffstatic {data-lang=kotlin}
-var l = [1,2,3,4, 8, 7.2]
-var m = mapOf("a" to "b", "c" to l)
+```diffstatic_runner {data-lang=kotlin screenshot="assets/funfeatures/display-html.png" capture="box" open-outputs="true" wait="3" padding="16" timeout="120" embed=true name="funfeatures-display-html" w="700" h="220" trim=true alt="Two output panels under a Field box: m is equal to, holding the map on one line with its sparkline, and just some html, holding the word foo! in heavy bold type."}
+val l = [1.0, 2.0, 3.0, 4.0, 8.0, 7.2]
+val m = mapOf("a" to "b", "c" to l)
 
 display("m is equal to ", m.h)
 
 display("just some html", "<div style='font-weight:900'>foo!</div>")
 ```
 
-![](assets/screenshot_34.png)
-
-That's also how a lot of this documentation gets made: the docs build runs the examples in a real Field, automatically, and captures what they display. This page is older than that machinery and many of its screenshots were taken by hand, but the `print` example above, the flower in the geometry section below and the layers palette further down all came out of boxes that the build ran.
+That's also how this documentation gets made: the docs build runs the examples in a real Field, automatically, and captures what they display. Every picture on this page that sits under a piece of code came out of that code, run by the build.
 
 ## Browsing things — print where I can interact with it
 
 There are a few more elaborate visualizers for more tangled structures. The "column" visualizer is loosely modelled after Smalltalk's browser:
 
-```diffstatic {data-lang=kotlin}
-var l = [1,2,3,4, 8, 7.2]
-var m2 = mapOf("foo" to "bar", "gux" to l)
-var m = mapOf("a" to "b", "c" to l, "m" to m2)
+```diffstatic_runner {data-lang=kotlin screenshot="assets/funfeatures/column.png" capture="box" open-outputs="true" wait="4" padding="16" timeout="120" embed=true name="funfeatures-column" w="900" h="300" alt="A column browser in an output panel titled m, headed LinkedHashMap 3 entries, listing a String \"b\", c ArrayList 6 items and m LinkedHashMap 2 entries; a is selected."}
+val l = [1.0, 2.0, 3.0, 4.0, 8.0, 7.2]
+val m2 = mapOf("foo" to "bar", "gux" to l)
+val m = mapOf("a" to "b", "c" to l, "m" to m2)
 
 column("m", m)
 ```
 
-![](assets/screenshot_35.png)
+This structure live updates if `m` changes. Similarly there is `tree`, the same values as an outline:
 
-This structure actually live updates if `m` changes.
+```diffstatic_runner {data-lang=kotlin screenshot="assets/funfeatures/tree.png" capture="box" open-outputs="true" wait="4" padding="16" timeout="120" embed=true name="funfeatures-tree" w="900" h="300" alt="A tree browser in an output panel titled m, headed LinkedHashMap 3 entries with a filter box: row a String \"b\" selected with path and copy buttons, and folded rows c ArrayList 6 items and m LinkedHashMap."}
+val l = [1.0, 2.0, 3.0, 4.0, 8.0, 7.2]
+val m2 = mapOf("foo" to "bar", "gux" to l)
+val m = mapOf("a" to "b", "c" to l, "m" to m2)
 
-Similarly there is also `tree` :
+tree("m", m)
+```
 
-![](assets/screenshot_36.png)
+and a viewer for Field's own log, `logs()`, which shows what the server is logging as it happens:
 
-Internally we also have a log viewer (`logs('log')`)
+```diffstatic_runner {data-lang=kotlin screenshot="assets/funfeatures/logs.png" capture="box" open-outputs="true" wait="4" padding="16" timeout="120" embed=true name="funfeatures-logs" w="900" h="300" alt="A log viewer in an output panel titled internal logging, with a find box and a clear button over timestamped entries tagged info,logstream and debug,logstream: the viewer's own subscribe and ready messages."}
+logs()
+```
 
-![](assets/screenshot_37.png)
+[Visualizers](visualizers.md#trees-and-columns) has more on `tree` and `column`.
 
 Some systems, like the Vulkan graphics system, expose interface that make them particularly clear when presented with these viewers — to help answer the question, just what exactly am I drawing here and in what order and why is my frame-rate so bad?
 
@@ -160,7 +170,6 @@ Field has _extensive_ support for generating 2d and 3d geometry and adding this 
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fline_examples/lines_editable2.png" embed=true}
 :::static
-
 val petal = fline {
     moveTo(0, -120)
     cubicTo(90, -100, 140, -20, 0, 120)
@@ -210,7 +219,7 @@ Additionally, we can write code that extends and decorates our text editor in a 
 
 ## Other output-area related things
 
-You can remove output areas you no longer want to see by `alt/option-click`ing their disclosure triangles:
+You can remove output areas you no longer want to see by `alt/option-click`ing their disclosure triangles; while `alt/option` is held over one, the triangle turns into a red ✕.
 
 ![](assets/screenshot_38.png)
 
@@ -230,7 +239,7 @@ And output areas without contents are handy — progress bars are useful for sho
 var z = 0
 loop {
     z += 1
-    progressBar("progress", (z%10000)/10000.0)
+    progressBar("progress", (z % 10000) / 10000.0)
 }
 ```
 
@@ -250,12 +259,17 @@ for (i in tqdm(0 until 10000)) {
 
 // For routines: report a fraction (with a tqdm-style rate + ETA)...
 withProgress("solving") { p ->
-    repeat(steps) { i -> /* ...work... */; p.update(i + 1L, steps.toLong()) }
+    repeat(steps) { i -> /* ...work... */
+        p.update(i + 1L, steps.toLong())
+    }
 }
 
 // ...or .pulse() when there's no known total (an indeterminate "still working" bar):
 val p = progressReporter("reducing")
-while (notDone()) { stepOnce(); p.pulse() }
+while (notDone()) {
+    stepOnce()
+    p.pulse()
+}
 p.finish()
 ```
 
@@ -286,9 +300,12 @@ To cure some of the challenges deploying Kotlin in a live-coding context we've g
 This isn't just internal gymnastics, you can write your own macros. A `rewrite { }` block in a box is a rule over the *shape* of your source:
 
 ```diffstatic {data-lang=kotlin}
-rewrite { x: Expr -> from { neg(x) }; to { -x } }
+rewrite { x: Expr ->
+    from { neg(x) }
+    to { -x }
+}
 
-neg(10)          // →  -10
+neg(10) // →  -10
 ```
 
 Rules can have guards, bind runs of arguments, run Kotlin at expansion time, and are inherited by child boxes; [Rewriting your own syntax](pattern_rewrite.md) is the whole story.
@@ -323,7 +340,15 @@ Because we'd like Field to be an alternative to Jupyter, the notebook loop goes 
 
 Clojure is another wonderful JVM language that we have a lot of respect for:
 
-![](assets/screenshot_54.png)
+```diffstatic_runner {data-lang=clojure screenshot="assets/funfeatures/clojure-output.png" capture="editor" outputs="inline" wait="4" padding="10" timeout="240" embed=true name="funfeatures-clojure-output" w="900" h="360" alt="A Clojure box in Field's editor. Beside the first println a chip reads clojure 1.11.3, and beside the last line a chip reads 4 edges. The parentheses are coloured by nesting depth."}
+:::static
+;; Each line of output lands beside the form that made it.
+(println "clojure" (clojure-version))
+
+(def modules {:app [:ui :store], :ui [:util], :store [:util]})
+
+(println (count (mapcat val modules)) "edges")
+```
 
 Same idea as Python, one runtime further in: Clojure 1.11 *is* a JVM language, so a Clojure box and
 a Kotlin box are two objects in one process with nothing between them. `(.getChildren (box))` walks
@@ -332,6 +357,19 @@ returning an animation launches it by the same rule a Kotlin box follows. Printe
 beside the form that printed it, and so does the exception when a form throws.
 
 And, yes: we have rainbow parens. [Clojure in a box](clojure.md) is the whole story.
+
+## Lua
+
+Lua, the scripting language inside norns, Renoise, Reaper and LÖVE, runs in a box through LuaJIT, loaded into Field's own process. A Lua box prints, draws lines, reads and writes box properties, makes sliders, and, launched, gets an `update(dt)` every frame. [Lua in a Box](lua.md) is the full account.
+
+## RemoteJS
+
+A Javascript box runs in a browser tab that Field keeps connected, which can sit right on the canvas
+beside your code. `print` and `console.log` land beside their lines, errors are marked where they
+happened, `launch` loops stop when you press Stop, and `display`, `slider` and `checkbox` fill the
+box's outputs the way they do in Kotlin. The tab is a Three.js scene, so an `FLine` assigned into
+`stage` is drawn there. [Javascript in a browser tab](remotejs.md) is the whole story, and the same
+head on a phone or headset is [RemoteJS and WebXR](ar_reference.md).
 
 ## ForthField & a-Nano
 
@@ -357,18 +395,20 @@ The most successful and most important programming paradigm of all time — the 
 
 Supported features include integration with other boxes' variables — changing a dependant variable inside a box magically causes an auto-update sweep of the spreadsheet (next animation frame). And a complete and understanding type system: while the expression language for the spreadsheet is Kotlin, there's a very carefully wrapped pseudo-numeric type that auto-promotes gleefully, understanding scalars, scalars with physical units, Field's linear algebra types, and even Field's FLine. If you ever wanted a spreadsheet that could do formulae with drawings, this is it.
 
+[Spreadsheets in a Box](spreadsheets.md) shows how to make one, what formulas can do, and the editing keys.
+
 ## Actors / Message-passing
 
 We can think about 'the box' as taking on the role of "an actor". This marries very well with animation in general (the choreography of things over time) and Kotlin's flexible coroutine system. Given two boxes:
 
-```diffstatic {data-lang=python}
+```diffstatic {data-lang=kotlin}
 :::static
 onMessage<Vec2> {
     reply(payload.lengthSquared())
 }
 ```
 
-```diffstatic {data-lang=python}
+```diffstatic {data-lang=kotlin}
 :::static
 onMessage<Vec3> {
     100.alphas {
@@ -406,7 +446,18 @@ In some weird inception move, Field has a documentation browser (`Browse Documen
 
 Press that cyan arrow to get back to the text editor.
 
+
 Beside the page is a **DOC NOTES** panel. Select a sentence, press `Ctrl+Shift+A` and say what's wrong with it; your note joins a queue that agents, one per page, work through: they revise the Markdown behind the note and leave a record of what they did, or a question for you. [Notes on the Documentation](docs_notes.md) explains the loop.
+
+## Presenting with Field
+
+Your talk can be a Field document too. Put Markdown, images, real webpages, YouTube and live Field documents on a separate audience display, with crossfades between slides and simple fade-in builds. When it's time to demonstrate something, run a saved macro or an interactive guide in the document on screen, and edit the code while the audience watches. Slides, CSS themes and shared media stay in ordinary files you can keep in Git.
+
+Long talks get a collapsible outline and incremental search over slide titles **and their text**, including reveals. Type a phrase, choose a match with the arrow keys, and press Enter to jump there; searching leaves the audience on the current slide until you're ready.
+
+![Field's presenter searching for propagation in a slide's reveal text, with a matching excerpt and a keyboard-selected result.](assets/presentation_studio/search.png)
+
+Start with the **Presentations** kit on Welcome. [Presenting with Field](presentation_studio.md#start-a-presentation) walks through making a talk, styling it and teaching from the live material.
 
 ## Navigating
 
@@ -537,12 +588,17 @@ Each row has:
 - the number of boxes on the layer
 - **Solo**, which shows only this layer and makes it active
 
+Once the [drawing](#drawing-on-the-canvas) has anything on it, it gets a row too, called
+`drawing`, with an eye to show or hide it and a count of its marks. It has no radio button or
+**Solo**, since boxes can't go on it. **Show all** brings it back with the rest.
+
 **Show all** brings every layer back, and **Move selection to active layer** puts the selected boxes
 on the active layer, and only on it. `alt-]` solos the next layer and `alt-[` the previous one; the
 command palette labels include the target layer names. **Show All Layers** in the command palette
 shows every layer and opens the panel.
 
-The panel floats over the canvas, so hiding a layer never hides it. `showLayers()` in a box puts the
+The panel floats over the canvas, so hiding a layer never hides it. [Layers](layers.md) has the
+whole story, including a different layout on each layer. `showLayers()` in a box puts the
 same controls in that box's output area instead:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".layers-palette" screenshot="assets/layers-panel.png" transcript="assets/transcripts/layers_setup.yaml" padding="18" wait="0" timeout="90" embed=true hidden=true name="layers-panel"}
@@ -573,12 +629,14 @@ There's a whole page on it: [Drawing and Notation](drawing_and_notation.md).
 One of the reason that Field even has a 2D infinite canvas for code is so that the space of the boxes can become meaningful. Traditionally, in 'time-goes-from-left-to-right' apps (Premier, AfterEffects, Davinci, Motion, etc) somewhere there's an idea of directly editing a function over time with the mouse. Field has a really _very_ fully featured keyframe editor available for boxes to use:
 
 ```diffstatic {data-lang=kotlin}
-keyframes(channel="k", name="keyframe", defaults=[vec(0.2, 0.5), vec(0.5, 2.0)])
+keyframes(channel = "k", name = "keyframe", defaults = [vec(0.2, 0.5), vec(0.5, 2.0)])
 ```
 
-Gets you started. With some mouse clicks you can get to here:
+gets you started. Run, that puts a keyframe editor in the box's output area holding the two default keys.
 
-<img src="assets/screenshot_42.png" alt="The keyframe editor, with a curve drawn through several keyframes" style="width: min(100%, 660px);">
+```diffstatic_runner {data-lang=kotlin screenshot="assets/funfeatures/keyframes.png" capture="box" open-outputs="true" wait="4" padding="16" timeout="120" embed=true name="funfeatures-keyframes" w="800" h="300" alt="A keyframe editor in an output panel titled k/keyframe: a grid with values 0 to 2 up the side and a blue line between two keys, one at time 0.2 and value 0.5, one at time 0.5 and value 2, and a small orange playhead marker at time 0."}
+keyframes(channel = "k", name = "keyframe", defaults = [vec(0.2, 0.5), vec(0.5, 2.0)])
+```
 
 Scroll with `scroll` gestures, zoom with `ctrl-scroll`, `double click` to add a keyframe, right click to change the keyframe type.
 
@@ -609,8 +667,8 @@ Once you have a keyframe, you can do a few things with it:
 val k = keyframes(channel = "k", name = "bob", [0.0, 1.0])
 
 k.setTime(0.5) // move the orange playhead
-val v : Double = k.evaluateValueAt(0.5)
-val dv : Double = k.evaluateDerivativeAt(0.5)
+val v: Double = k.evaluateValueAt(0.5)
+val dv: Double = k.evaluateDerivativeAt(0.5)
 ```
 
 Edited keyframes are stored inside the box — the `defaults` is just there in case the box is new. [The keyframe editor](keyframe_editor.md) has the rest: every gesture, the five key types, overlays, and a starting point to open.
@@ -629,16 +687,16 @@ For the extra curious, this slider is just a regular box with some customization
 // export this box so that any box can now write 'execution' to talk about this box
 rootProp<Box>(execution) = thisBox
 
-fun launchFrom(was : Double, now : Double) {
+fun launchFrom(was: Double, now: Double) {
 
     val all = root.children - thisBox // candidates for execution
     val a = all.filter { it.frame.intersects(was) }
     val b = all.filter { it.frame.intersects(was, now) }
     val c = all.filter { it.frame.intersects(now) }
 
-    val incoming = c-a
-    val outgoing = a-c
-    val onlyOnce = b-(a+c) // starting and stopping
+    val incoming = c - a
+    val outgoing = a - c
+    val onlyOnce = b - (a + c) // starting and stopping
 
     incoming.forEach(Box::begin)
     outgoing.forEach(Box::end)
@@ -653,21 +711,26 @@ fun launchFrom(was : Double, now : Double) {
 }
 
 // whenever the viewport changes run this to keep the line covering the view
-onViewportChange += "lock_x" to { inside, a, b ->
-    frame = frame.copy(y = -b.y-100, h = b.h*2-50, w = 40.0)
-}
+onViewportChange +=
+    "lock_x" to
+        { inside, a, b ->
+            frame = frame.copy(y = -b.y - 100, h = b.h * 2 - 50, w = 40.0)
+        }
 
 // whenever the frame of the box changes run this
-onFrameChange += "lock_x" to { inside, a, b ->
-    launchFrom(a.x, b.x)
-    b.copy(y = -inside.viewport.y-100, w = 40.0)
-}
+onFrameChange +=
+    "lock_x" to
+        { inside, a, b ->
+            launchFrom(a.x, b.x)
+            b.copy(y = -inside.viewport.y - 100, w = 40.0)
+        }
 
 // just set the width to be 40.0
-frame = frame.copy(w=40.0)
+frame = frame.copy(w = 40.0)
 
 // set a custom border, and lock the height
-customization = """
+customization =
+    """
     this.style.border = "0px solid transparent"
     this.style.borderLeft = "3px solid red"
     this.style.background = "transparent"
@@ -692,7 +755,9 @@ There are lots of other ways of customizing Field's front end from within Field.
 ```diffstatic {data-lang=kotlin}
 customMarking["N" to "bob"] = { print("North!") }
 customMarking["SE" to "something"] = { print("se!") }
-customMarking["W2" to "the end"] = { print("W!")}  // outer ring
+customMarking["W2" to "the end"] = {
+    print("W!")
+} // outer ring
 ```
 
 You can open and swipe around these callbacks with `alt/option-shift-click`:
@@ -750,7 +815,7 @@ prop<Vec2>(myVec)
 
 once.myVec {
     // `myVec` will stay the same for this whole session
-    vec(1,2).noise(10.0)
+    vec(1, 2).noise(10.0)
 }
 ```
 
@@ -821,7 +886,7 @@ ui.pause(750)
 
 This allows you to encapsulate boxes inside other boxes to work together to achieve a common aim.
 
-Nested parents can be referenced inside nesting children with `nestedIn` (`Box?`) and nesting parents can get a `Set<Box>` of their nest children with `nested`. If there are non-visible nesting children that are acting as children or parents to boxes that _are_ visible that is notated in the connections:
+Nested parents can be referenced inside nesting children with `nestedIn` (`Box?`) and nesting parents can get a `Set<Box>` of their nest children with `nested`. If there are non-visible nesting children that are acting as children or parents to boxes that _are_ visible that is notated in the connections: the connection is drawn to the nesting parent instead, ending in a short bar with a label.
 
 ![](assets/screenshot_45.png)
 

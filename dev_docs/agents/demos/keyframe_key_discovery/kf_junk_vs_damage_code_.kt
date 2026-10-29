@@ -1,20 +1,19 @@
-// Two files fail to decode. Only one of them is your problem.
-//
-// This directory holds four good keys, two files that were never keys, and one key that Field wrote
-// and that is now truncated. A `.DS_Store` — a file the operating system wrote without asking — is
-// not a corrupt key, and a list that files both under one red heading is a permanent false alarm.
-// A permanent false alarm teaches you to stop reading the alarm.
+/*
+Two files fail to decode. Only one of them is your problem.
 
-import afield.animation.keyframes.KeyframeCollection
-import afield.animation.keyframes.KeyframeScope
-import afield.animation.keyframes.everyKeyGlob
+This directory holds four good keys, two files that were never keys, and one key that Field wrote
+and that is now truncated. A `.DS_Store` — a file the operating system wrote without asking — is
+not a corrupt key, and a list that files both under one red heading is a permanent false alarm.
+A permanent false alarm teaches you to stop reading the alarm.
+*/
+
 import java.nio.file.Files
 
 val dir = Files.createTempDirectory("keyframe-junk-vs-damage")
 val kfs = KeyframeScope()
 
 // Four keys, saved properly.
-listOf("a" to 1f, "b" to 2f, "c" to 3f, "d" to 4f).forEach { (n, r) ->
+["a" to 1f, "b" to 2f, "c" to 3f, "d" to 4f].forEach { (n, r) ->
     kfs.saveKey(dir.resolve(n), kfs.Key(mutableMapOf("glow@radius" to r)), "look $n")
 }
 
@@ -34,13 +33,17 @@ println("problems: " + c.problems)
 println("ignored:  " + c.skipped.filter { it.kind.name == "NotAKey" }.map { it.relative })
 println("notice:   " + c.skipSummary())
 println()
-// The ownership test, spelled out. `e` is not valid JSON any more, so a content-only ladder would
-// have filed it as "not JSON, not a key": a damaged key reported as junk, which is the
-// misclassification that loses work. What proves Field wrote it
-// is the `.versions` directory still sitting beside it, which is also exactly what you now want.
-println("e is unparseable, and e.versions still holds " +
+/*
+The ownership test, spelled out. `e` is not valid JSON any more, so a content-only ladder would
+have filed it as "not JSON, not a key": a damaged key reported as junk, which is the
+misclassification that loses work. What proves Field wrote it
+is the `.versions` directory still sitting beside it, which is also exactly what you now want.
+*/
+println(
+    "e is unparseable, and e.versions still holds " +
         (dir.resolve("e.versions").toFile().list()?.count { it.endsWith(".json") } ?: 0) +
-        " file(s) — so the damage is recoverable, and the row says to open the version rail")
+        " file(s) — so the damage is recoverable, and the row says to open the version rail",
+)
 
 // One red row, two grey ones. Hover the notice to read the per-file reasons.
 keyframeBrowser(dir, channel = "junk is not damage", scope = kfs, height = 380)

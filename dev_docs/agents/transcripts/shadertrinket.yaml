@@ -1,0 +1,426 @@
+name: shadertrinket
+description: |
+  ShaderTrinket in Field: ShaderToy-style Image passes (void mainImage(out vec4 fragColor, in vec2
+  fragCoord)) live in boxes' fragment properties and draw into one canvas the renderer window shows.
+  The lead box is Flat Rings, ShaderTrinket's default program; the preset boxes are some of its
+  presets, verbatim, and launching one replaces the picture. iChannel0..3 take any Field texture with
+  textures("iChannel0" to t): the camera (webcam()), another canvas, or a classmate's WebRTC stream.
+  Ported from aaaframe's madp/shadertrinket.html; see dev_docs/madp/shadertrinket.md.
+operations:
+  - create:
+      box: shadertrinket_renderer
+      name: ShaderTrinket window + renderer
+      frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.graphics.vulkan.util.Options
+
+          prop<Window>(window)
+          prop<Renderer>(renderer)
+
+          Options.enableHDR = false
+          Options.enableVR = false
+
+          once.renderer {
+              window = Window("ShaderTrinket", initialDimensions = Rect(80.0, 80.0, 960.0, 540.0))
+              Renderer(window)
+          }
+
+          println("ShaderTrinket window ready")
+          start(renderer::run)
+        notes: |
+          The renderer and its 960 by 540 window. Every ShaderTrinket box sits beneath it, and the window
+          shows their shared canvas, letterboxed if you resize it. Launch this first.
+  - create:
+      box: shadertrinket_lead
+      name: Flat Rings (start here)
+      frame: { x: 40.0, y: 200.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          /*
+          ShaderTrinket in Field. This box's `fragment` property is a ShaderToy Image pass: mainImage
+          gets fragCoord in pixels (y up) and the ShaderToy uniforms (iResolution, iTime, iMouse, iDate,
+          iChannel0..3). Edit it and press Alt+Enter to recompile; a mistake is marked on its own line.
+
+          Every shader box below draws into the same canvas, so launching one replaces the picture, the
+          way choosing a preset does. Launch this box again to come back to Flat Rings.
+          */
+          val canvas = shadertoyCanvas()
+          canvas += shadertoyHere {
+              +canvas.rtt
+          }
+        fragment: |
+          {{ shadertoy.image }}
+
+          void mainImage(out vec4 fragColor, in vec2 fragCoord) {
+              vec2 uv = (2.0 * fragCoord - iResolution.xy) / iResolution.y;
+              float t = iTime * 0.7;
+              vec3 col = vec3(0.015, 0.018, 0.018);
+
+              float grid = mod(floor((uv.x + 2.0) * 9.0) + floor((uv.y + 2.0) * 9.0), 2.0);
+              if (grid < 0.5) col = vec3(0.025, 0.03, 0.03);
+
+              for (int i = 0; i < 8; i++) {
+                  float fi = float(i);
+                  vec2 c = vec2(cos(t + fi * 1.35), sin(t * 0.8 + fi * 1.1)) * 0.42;
+                  float r = 0.17 + 0.035 * step(0.5, mod(fi, 2.0));
+                  float ring = 1.0 - step(0.018, abs(length(uv - c) - r));
+                  float dotMask = 1.0 - step(0.035, length(uv - c));
+
+                  if (ring > 0.5) {
+                      if (mod(fi, 3.0) < 1.0) col = vec3(0.16, 0.72, 0.62);
+                      else if (mod(fi, 3.0) < 2.0) col = vec3(0.95, 0.74, 0.25);
+                      else col = vec3(0.35, 0.50, 0.95);
+                  }
+                  if (dotMask > 0.5) col = vec3(0.92, 0.96, 0.90);
+              }
+
+              fragColor = vec4(col, 1.0);
+          }
+        notes: |
+          ShaderTrinket, in Field. Launch the renderer above, then this box: the window shows Flat Rings,
+          ShaderTrinket's default program.
+
+          The program is this box's fragment property, a ShaderToy Image pass: you write
+          void mainImage(out vec4 fragColor, in vec2 fragCoord), where fragCoord is the pixel (y up, as in
+          ShaderToy) and fragColor the colour you want seen there. The ShaderToy uniforms are all bound:
+          iResolution (the canvas size), iTime, iTimeDelta, iFrame, iFrameRate, iDate, iMouse (the window
+          cursor in canvas pixels, zw the click while the button is down) and iChannel0..3 with
+          iChannelResolution. The {{ shadertoy.image }} line at the top brings them in; leave it there.
+
+          Edit the fragment and press alt-R to recompile. A mistake is marked on its own line and the last
+          good program keeps running. ShaderToy code pasted from the web works as is.
+
+          Every shader box here draws into one canvas, shadertoyCanvas(), so launching a box replaces the
+          picture, the way ShaderTrinket's preset menu does; launch this one again to come back. To read a
+          texture, add textures("iChannel0" to t) inside the shadertoyHere block: the camera (see the
+          Camera Input Demo), another canvas (shadertoyCanvas(name = "...", inWindow = false).rtt), or any
+          Field texture. Channels come out the right way up and in ShaderToy's colours.
+
+          Ported from aaaframe's madp/shadertrinket.html; dev_docs/madp/shadertrinket.md has the mapping.
+  - create:
+      box: shadertrinket_classic_plasma
+      name: Classic Plasma
+      frame: { x: 40.0, y: 360.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          // Classic Plasma: launch to show it in the window. mainImage is in this box's `fragment`.
+          val canvas = shadertoyCanvas()
+          canvas += shadertoyHere {
+              +canvas.rtt
+          }
+        fragment: |
+          {{ shadertoy.image }}
+
+          // Falling masks invert an increasing smoothstep; reversed edges are undefined in GLSL.
+          void mainImage(out vec4 fragColor, in vec2 fragCoord) {
+              vec2 uv = fragCoord / iResolution.xy;
+              vec2 p = (2.0 * fragCoord - iResolution.xy) / iResolution.y;
+              float t = iTime * 0.75;
+
+              float v = sin(p.x * 7.0 + t);
+              v += sin((p.y + sin(t * 0.7)) * 8.0);
+              v += sin((p.x + p.y) * 5.0 + t * 1.7);
+              v += sin(length(p + vec2(sin(t), cos(t * 0.6))) * 11.0 - t * 2.0);
+
+              vec3 col = 0.5 + 0.5 * cos(vec3(0.0, 1.7, 3.4) + v + t);
+              col *= 0.65 + 0.35 * (1.0 - smoothstep(0.0, 1.2, length(p)));
+              col += pow(max(0.0, 1.0 - length(uv - 0.5) * 1.35), 4.0) * vec3(0.35, 0.48, 0.65);
+              fragColor = vec4(col, 1.0);
+          }
+        notes: |
+          Classic Plasma: four sine waves summed and pushed through a cosine palette. The palette line,
+          0.5 + 0.5 * cos(vec3(0.0, 1.7, 3.4) + v + t), is the one to play with.
+  - create:
+      box: shadertrinket_star_tunnel
+      name: Star Tunnel
+      frame: { x: 380.0, y: 360.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          // Star Tunnel: launch to show it in the window. mainImage is in this box's `fragment`.
+          val canvas = shadertoyCanvas()
+          canvas += shadertoyHere {
+              +canvas.rtt
+          }
+        fragment: |
+          {{ shadertoy.image }}
+
+          float hash(vec2 p) {
+              p = fract(p * vec2(234.34, 435.35));
+              p += dot(p, p + 34.23);
+              return fract(p.x * p.y);
+          }
+
+          // Falling masks invert an increasing smoothstep; reversed edges are undefined in GLSL.
+          void mainImage(out vec4 fragColor, in vec2 fragCoord) {
+              vec2 uv = (2.0 * fragCoord - iResolution.xy) / iResolution.y;
+              float t = iTime * 0.55;
+              float a = atan(uv.y, uv.x);
+              float r = length(uv);
+              vec3 col = vec3(0.002, 0.004, 0.009);
+
+              for (int i = 0; i < 48; i++) {
+                  float fi = float(i);
+                  float lane = floor(fi / 6.0);
+                  float spoke = mod(fi, 6.0);
+                  float z = fract(t + fi * 0.071);
+                  float rr = mix(1.55, 0.05, z);
+                  float aa = spoke * 1.047 + lane * 0.38 + t * 1.7 + sin(lane) * 0.5;
+                  vec2 pos = vec2(cos(aa), sin(aa)) * rr;
+                  float star = pow(max(0.0, 1.0 - length(uv - pos) / (0.015 + z * 0.035)), 8.0);
+                  vec3 tint = 0.55 + 0.45 * cos(vec3(0.2, 1.8, 4.1) + fi * 0.7);
+                  col += star * tint * (0.25 + z * 2.2);
+              }
+
+              float warp = sin(a * 9.0 - r * 7.0 + t * 8.0);
+              col += vec3(0.03, 0.08, 0.15) * (1.0 - smoothstep(0.0, 0.95, abs(warp))) * (1.0 - smoothstep(0.2, 1.5, r));
+              col *= 1.0 - smoothstep(1.15, 1.75, r);
+              fragColor = vec4(col, 1.0);
+          }
+        notes: |
+          Star Tunnel: 48 stars in a loop, each placed by its index and the time, so a for loop draws many
+          things at once. Try changing 48, or the 0.071 that spaces them in depth.
+  - create:
+      box: shadertrinket_mandelbrot_glow
+      name: Mandelbrot Glow
+      frame: { x: 720.0, y: 360.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          // Mandelbrot Glow: launch to show it in the window. mainImage is in this box's `fragment`.
+          val canvas = shadertoyCanvas()
+          canvas += shadertoyHere {
+              +canvas.rtt
+          }
+        fragment: |
+          {{ shadertoy.image }}
+
+          void mainImage(out vec4 fragColor, in vec2 fragCoord) {
+              vec2 uv = (2.0 * fragCoord - iResolution.xy) / iResolution.y;
+              float zoom = 0.72 + 0.18 * sin(iTime * 0.18);
+              vec2 c = uv * zoom + vec2(-0.68, 0.0);
+              c += vec2(0.08 * sin(iTime * 0.21), 0.05 * cos(iTime * 0.17));
+              vec2 z = vec2(0.0);
+              float iter = 0.0;
+              float trap = 10.0;
+
+              for (int i = 0; i < 96; i++) {
+                  z = vec2(z.x * z.x - z.y * z.y, 2.0 * z.x * z.y) + c;
+                  trap = min(trap, abs(z.x * z.y));
+                  if (dot(z, z) > 16.0) {
+                      iter = float(i);
+                      break;
+                  }
+              }
+
+              float m = iter / 96.0;
+              vec3 col = 0.5 + 0.5 * cos(vec3(0.4, 2.2, 4.2) + m * 8.0 + iTime * 0.25);
+              col *= smoothstep(0.0, 0.04, m);
+              col += exp(-trap * 45.0) * vec3(0.25, 0.9, 1.15);
+              fragColor = vec4(col, 1.0);
+          }
+        notes: |
+          Mandelbrot Glow: z = z*z + c iterated 96 times, coloured by how fast it escapes, plus an orbit
+          trap (the closest z came to the axes) for the glow. The zoom and centre drift with iTime.
+  - create:
+      box: shadertrinket_sdf_sphere_trace
+      name: SDF Sphere Trace
+      frame: { x: 1060.0, y: 360.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          // SDF Sphere Trace: launch to show it in the window. mainImage is in this box's `fragment`.
+          val canvas = shadertoyCanvas()
+          canvas += shadertoyHere {
+              +canvas.rtt
+          }
+        fragment: |
+          {{ shadertoy.image }}
+
+          float sdSphere(vec3 p, float r) {
+              return length(p) - r;
+          }
+
+          float mapScene(vec3 p) {
+              float ca = cos(iTime * 0.7);
+              float sa = sin(iTime * 0.7);
+              p.xz = mat2(ca, -sa, sa, ca) * p.xz;
+              float s = sdSphere(p, 0.82);
+              float rings = abs(length(p.xz) - 0.98) - 0.025;
+              float band = abs(p.y + 0.08 * sin(atan(p.z, p.x) * 5.0 + iTime * 2.0)) - 0.035;
+              return min(s, max(rings, band));
+          }
+
+          vec3 calcNormal(vec3 p) {
+              vec2 e = vec2(0.001, 0.0);
+              return normalize(vec3(
+              mapScene(p + e.xyy) - mapScene(p - e.xyy),
+              mapScene(p + e.yxy) - mapScene(p - e.yxy),
+              mapScene(p + e.yyx) - mapScene(p - e.yyx)
+              ));
+          }
+
+          void mainImage(out vec4 fragColor, in vec2 fragCoord) {
+              vec2 uv = (2.0 * fragCoord - iResolution.xy) / iResolution.y;
+              vec3 ro = vec3(0.0, 0.0, 3.1);
+              vec3 rd = normalize(vec3(uv, -1.75));
+              vec3 col = vec3(0.005, 0.007, 0.01);
+              float t = 0.0;
+              float glow = 0.0;
+
+              for (int i = 0; i < 96; i++) {
+                  vec3 p = ro + rd * t;
+                  float d = mapScene(p);
+                  glow += 0.018 / (0.03 + abs(d));
+                  if (d < 0.001 || t > 8.0) break;
+                  t += d * 0.78;
+              }
+
+              if (t < 8.0) {
+                  vec3 p = ro + rd * t;
+                  vec3 n = calcNormal(p);
+                  vec3 l = normalize(vec3(-0.5, 0.7, 0.9));
+                  float diff = max(0.0, dot(n, l));
+                  float fres = pow(1.0 + dot(rd, n), 4.0);
+                  col = vec3(0.08, 0.16, 0.20) + diff * vec3(0.34, 0.88, 0.76) + fres * vec3(0.9, 0.35, 1.0);
+              }
+
+              col += glow * vec3(0.03, 0.22, 0.45);
+              fragColor = vec4(col, 1.0);
+          }
+        notes: |
+          SDF Sphere Trace: ray marching. mapScene returns the distance to the nearest surface, the loop
+          steps along each ray by that distance, and calcNormal reads the surface's slope from it. Change
+          mapScene to change the shape.
+  - create:
+      box: shadertrinket_camera
+      name: Camera Input Demo
+      frame: { x: 40.0, y: 520.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          // Camera Input Demo: launch to show it in the window. mainImage is in this box's `fragment`.
+          val canvas = shadertoyCanvas()
+          canvas += shadertoyHere {
+              +canvas.rtt
+              textures("iChannel0" to webcam())
+          }
+        fragment: |
+          {{ shadertoy.image }}
+
+          // Camera Input Demo: iChannel0 is the camera (ShaderTrinket's Camera button is the
+          // textures("iChannel0" to webcam()) line in this box's code). With no camera it samples black and
+          // you get a quiet prompt-like field.
+
+          void mainImage(out vec4 fragColor, in vec2 fragCoord) {
+              vec2 uv = fragCoord / iResolution.xy;
+
+              // Mirror the camera so it behaves like a familiar preview.
+              vec2 cameraUv = vec2(1.0 - uv.x, uv.y);
+              vec3 camera = texture(iChannel0, cameraUv).rgb;
+              float luma = dot(camera, vec3(0.299, 0.587, 0.114));
+
+              vec2 p = (2.0 * fragCoord - iResolution.xy) / iResolution.y;
+              float rings = 0.5 + 0.5 * sin(length(p) * 28.0 - iTime * 4.0 + luma * 5.0);
+              float scan = smoothstep(0.92, 1.0, sin(uv.y * iResolution.y * 0.75 + iTime * 12.0));
+              vec3 tint = mix(vec3(0.02, 0.16, 0.18), vec3(0.94, 0.72, 0.22), rings);
+
+              // If the camera is off, iChannel0 samples black and you get a quiet prompt-like field.
+              vec3 color = mix(camera, tint, 0.34);
+              color += scan * vec3(0.16, 0.55, 0.52) * (0.25 + luma);
+              color *= 0.78 + 0.55 * luma;
+              fragColor = vec4(color, 1.0);
+          }
+        notes: |
+          Camera Input Demo: iChannel0 is the camera, bound by textures("iChannel0" to webcam()) in this
+          box's code. webcam() opens the camera once and keeps it open across runs. The first time, macOS asks
+          for camera permission; with no camera, the channel is black and the box prints why.
+  - create:
+      box: shadertrinket_live_stream
+      name: Live Stream Input Demo (receive)
+      frame: { x: 380.0, y: 520.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.media.webrtc.webrtcPublishers
+          import afield.media.webrtc.webrtcSource
+
+          /*
+          Live Stream Input Demo: iChannel2 is a classmate's stream (ShaderTrinket's Receive into iChannel2).
+          Click a name in the list under this box. Until you do, it shows the first publisher on the
+          network; on Field's own relay that is this document's Publish box.
+          */
+          val publishers = webrtcPublishers()
+          val stream = webrtcSource(publishers.names.firstOrNull() ?: "nobody", 960, 540)
+          publishers.onChange { names ->
+              if (stream.target == "nobody" && names.isNotEmpty()) stream.watch(names.first())
+          }
+          publishers.onPick { name -> stream.watch(name) }
+          display("publishers", publishers.html { stream.target })
+
+          val canvas = shadertoyCanvas()
+          canvas += shadertoyHere {
+              +canvas.rtt
+              textures("iChannel2" to stream)
+          }
+        fragment: |
+          {{ shadertoy.image }}
+
+          // Live Stream Input Demo: iChannel2 is the stream picked in this box's list (ShaderTrinket's
+          // Receive). The Publish box shares this canvas as @you/field-shader for the class to pick.
+
+          float hash(vec2 p) {
+              p = fract(p * vec2(234.34, 435.35));
+              p += dot(p, p + 34.23);
+              return fract(p.x * p.y);
+          }
+
+          // Falling masks invert an increasing smoothstep; reversed edges are undefined in GLSL.
+          void mainImage(out vec4 fragColor, in vec2 fragCoord) {
+              vec2 uv = fragCoord / iResolution.xy;
+              vec2 p = (2.0 * fragCoord - iResolution.xy) / iResolution.y;
+
+              vec3 remote = texture(iChannel2, uv).rgb;
+              float signal = smoothstep(0.01, 0.16, dot(remote, vec3(0.333)));
+
+              float lane = floor(uv.y * 12.0);
+              float bars = step(0.82, hash(vec2(lane, floor(iTime * 5.0))));
+              float sweep = (1.0 - smoothstep(0.0, 0.02, abs(fract(uv.x * 5.0 - iTime * 0.35) - 0.5)));
+              vec3 fallback = mix(vec3(0.015, 0.018, 0.028), vec3(0.08, 0.36, 0.40), bars);
+              fallback += sweep * vec3(0.9, 0.62, 0.18) * (1.0 - smoothstep(0.0, 1.35, length(p)));
+
+              // The procedural field remains visible until a remote stream arrives.
+              vec3 color = mix(fallback, remote, signal);
+              color += signal * vec3(0.18, 0.75, 0.64) * sweep;
+              color *= 0.75 + 0.25 * sin(iTime + uv.x * 9.0);
+              fragColor = vec4(color, 1.0);
+          }
+        notes: |
+          Live Stream Input Demo, the receiving half of the classroom jam: a list of everyone publishing on
+          the network appears under this box, and the one you click arrives as iChannel2, from a browser
+          ShaderTrinket or another Field. Until a stream arrives the shader shows its own procedural field.
+          Needs the Field Electron app.
+  - create:
+      box: shadertrinket_publish
+      name: Publish (share the canvas)
+      frame: { x: 1060.0, y: 520.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          /*
+          Publish: the canvas, whichever shader is showing, streamed to the class as @you/field-shader
+          (your aaaframe login, or this computer's user name on Field's own relay). A browser ShaderTrinket
+          receives it by that name, and so does the Live Stream box. Needs the Field Electron app.
+          */
+          val sink = publishShadertoyCanvas("field-shader")
+        notes: |
+          Publish, the sending half of the jam: whatever the canvas shows is streamed as @you/field-shader,
+          your aaaframe login or this computer's user name on Field's own relay. Classmates receive it by
+          that name in a browser ShaderTrinket or in their own Live Stream box. Run
+          WebRTCNetwork.join("https://<your aaaframe>") once to join a class. Needs the Field Electron app.
+  - connect: { parent: shadertrinket_renderer, child: shadertrinket_lead }
+  - connect: { parent: shadertrinket_renderer, child: shadertrinket_classic_plasma }
+  - connect: { parent: shadertrinket_renderer, child: shadertrinket_star_tunnel }
+  - connect: { parent: shadertrinket_renderer, child: shadertrinket_mandelbrot_glow }
+  - connect: { parent: shadertrinket_renderer, child: shadertrinket_sdf_sphere_trace }
+  - connect: { parent: shadertrinket_renderer, child: shadertrinket_camera }
+  - connect: { parent: shadertrinket_renderer, child: shadertrinket_live_stream }
+  - connect: { parent: shadertrinket_renderer, child: shadertrinket_publish }
+  - launch: { box: shadertrinket_renderer, property: code }
+  - wait: { frames: 3 }
+  - launch: { box: shadertrinket_lead, property: code }

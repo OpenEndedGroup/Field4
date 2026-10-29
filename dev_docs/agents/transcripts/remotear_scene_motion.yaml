@@ -13,6 +13,11 @@ description: >
   Every name is bound by afield.lang.remotejs.RemoteArKotlinJs and grounded against
   extensions/remote_ar/*. Replay compiles the box Kotlin -> JS through the real KotlinToJsCompiler
   (examples.demo-transcript.exec).
+docs:
+  - page: kotlin_in_the_head.md
+    why: "Explains Kotlin/JS boxes running in a browser head."
+  - page: ar_reference.md
+    why: "Reference for the RemoteAR scene, motion and asset calls."
 operations:
   - create:
       box: agent_remotear_scene_motion

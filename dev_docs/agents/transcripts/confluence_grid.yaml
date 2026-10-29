@@ -1,7 +1,7 @@
 name: confluence_grid
 description: |
   **Twenty λ-term reductions running at once in 3D — five terms across, four schedulers down — and
-  every row lands on the same shape.** One box, pure CPU, no window and no setup: the 3D lives in a
+  every row lands on the same answer.** One box, pure CPU, no window and no setup: the 3D lives in a
   Three.js viewer in the box's own output panel.
 
   Interaction nets are *strongly* confluent, which is a stronger claim than Church-Rosser. It is not
@@ -12,21 +12,26 @@ description: |
 
   Rows are terms (`succ two`, `mul 2 3`, `pred 3`, `2^3`, `3^3`), columns are `ActivationOrder`s
   (`FIRST_FOUND`, `LEFTMOST_BY_ID`, `RIGHTMOST_BY_ID`, `HIGHEST_PAIR_ENERGY`). The box prints its own
-  verdict per row: `one answer: true` when all four de Bruijn keys agree *with each other and with the
-  oracle*, and `identical pose: true` when the four final layouts are point-for-point equal.
+  verdict per row in three parts: `one answer` when all four de Bruijn keys agree *with each other and
+  with the oracle*; `landed exactly` when every cell finished and snapped onto its target pose with
+  no residual velocity; and `matching positioned graph` when the four final drawings agree node for
+  node *and* edge for edge, ports included. The first two are true on every row. The third is
+  measured, not promised: in the current run it holds for `succ two` and `3^3` and not for the
+  other three, because the layout below is a heuristic and can break ties differently in each
+  column.
 
   **The picture has to get two things right before either verdict is visible in it.**
 
-    - *The layout must not invent difference.* `Net.relax` is 2D and path-dependent, so four
+    - *The layout should not invent difference.* `Net.relax` is 2D and path-dependent, so four
       isomorphic graphs draw four different ways and the picture claims the opposite of the theorem.
-      The final pose here is a three-round Weisfeiler-Leman refinement — a node's label is its type
-      folded with its neighbours' labels, **in port order** — so the ordering is a structural
-      invariant and nothing reads an id or an insertion order. A BFS-depth-only pose was tried and was
-      not enough: it agreed on four rows and broke on `3^3`, where ten `DUP`s leave sibling order
-      ambiguous.
+      The final pose here comes from three rounds of Weisfeiler-Leman refinement — a node's label is
+      its type folded with its neighbours' labels, **in port order** — plus BFS layers, and nothing
+      reads an id. That is a layout heuristic, not a canonical labelling: nodes with equal labels can
+      keep their own order, so equal answers do not guarantee equal drawings. That is why the box
+      compares positioned edges and not just sets of coordinates.
     - *The landing must be legible.* While a cell is still reducing it runs its own 3D spring-and-
-      repulsion physics; on reaching normal form it eases over 40 frames onto the canonical pose. Four
-      dances, one final shape.
+      repulsion physics; on reaching normal form it freezes and eases over 40 frames onto its target
+      pose, snapping exactly on the last frame.
 
   The correctness claim does not rest on the picture. Each row's answer is compared to
   `LambdaTerms.referenceNormalOrder` — a capture-avoiding normal-order substitution evaluator that
@@ -38,17 +43,15 @@ description: |
     - Add a term to the list at the top of the box and it joins the grid as a new row. A term with no
       normal form (`(\x. x x) (\x. x x)`) will simply never finish: the loop has a 2600-frame cap and
       the row stays unlanded, which is the honest answer.
-    - `stepEvery` (the `frame % 7` test) and the `Thread.sleep(34)` set the tempo. Drop the sleep and
-      the whole grid resolves as fast as the physics can be computed.
+    - `stepEvery` (the `frame % 7` test) and `frameMs` set the tempo. Set `frameMs` to 0 and the
+      whole grid resolves as fast as the Runloop ticks.
     - Orbit the viewer. The grid is a plane of constellations and the rows recede in depth; the colour
       of a point is its agent type, pushed apart from `interactionnets.kt`'s own hues because `ERASE`
       and `DUP` are only 20 degrees apart there and `VAR` and `APP` 18, which is not eye-discriminable.
 
-  **Two traps this box documents in place.** It does **not** use `frames { }`: a frames loop in a box
-  with no `Window`/`Renderer` gets *zero* ticks, because the frame clock is the render loop. It drives
-  its own clock with a sleep loop instead. And the output panel opens at 480 x 174 and ignores the
-  size the viewer asks for — a real defect, measured and written up in `dev_docs/OUTPUT_PANEL_SIZING.md`
-  with the seven hypotheses that were wrong about it. Drag the panel once and the size sticks.
+  **Running it.** Launch the box: the animation is a `frames { }` loop the Runloop steps once per
+  tick, so it needs no native `Window` or `Renderer` and streams each frame's geometry into the
+  Three.js viewer it opened. It ends when every cell has landed and prints the verdicts.
 
   `interaction_nets_lambda` is the companion scene that explains the reduction itself in 2D;
   `dev_docs/INTERACTION_NETS_LAMBDA.md` is the write-up and
@@ -81,7 +84,7 @@ operations:
           // Animation controls. Rerun setup after changing these values or the term/scheduler rows.
           val stepEvery = 7
           val displayEvery = 2
-          val displayDelayMs = 34L
+          val frameMs = 17L
           val landingFrames = 40
           val maxFrames = 2600
 
@@ -369,60 +372,63 @@ operations:
           println("cols: " + orders.joinToString(", ") { it.first })
 
           /*
-          This standalone lesson paces CPU reduction with a blocking sleep loop and finishes
-          when every cell lands or maxFrames is reached. It needs no native Window or Renderer.
+          The animation runs as a frames { } loop: launch the box and the Runloop steps the grid
+          one frame per tick, so nothing blocks and no native Window or Renderer is needed. The
+          wall-clock gate keeps the tempo the same whether the Runloop ticks at 60 Hz or faster.
           The Three.js viewer keeps its iframe while new geometry streams through its socket.
-          The dimensions below size the iframe; resize its output panel to frame the whole grid.
           */
           val panelW = 1460
           val panelH = 840
           three(channel = "confluence3d", name = "confluence", width = panelW, height = panelH) {
               lines(geometry())
           }
-          Thread.sleep(300)
 
-          var frame = 0
-          while (frame < maxFrames && !cells.all { it.done && it.landing >= landingFrames }) {
-              frame++
-              if (frame % stepEvery == 0)
-                  cells.forEach { it.step() } // One reaction per beat, independently of the display cadence.
-              cells.forEach {
-                  it.physics()
-                  it.land()
-              }
-              if (frame % displayEvery == 0) {
-                  three(channel = "confluence3d", name = "confluence", width = panelW, height = panelH) {
-                      lines(geometry())
+          frames {
+              var frame = 0
+              var next = System.nanoTime()
+              while (frame() && frame < maxFrames && !cells.all { it.done && it.landing >= landingFrames }) {
+                  if (System.nanoTime() < next) continue
+                  next += frameMs * 1_000_000
+                  frame++
+                  if (frame % stepEvery == 0)
+                      cells.forEach { it.step() } // One reaction per beat, independently of the display cadence.
+                  cells.forEach {
+                      it.physics()
+                      it.land()
                   }
-                  Thread.sleep(displayDelayMs)
+                  if (frame % displayEvery == 0) {
+                      three(channel = "confluence3d", name = "confluence", width = panelW, height = panelH) {
+                          lines(geometry())
+                      }
+                  }
               }
-          }
-          three(channel = "confluence3d", name = "confluence", width = panelW, height = panelH) {
-              lines(geometry())
-          }
-          println("frames $frame")
-          terms.forEachIndexed { r, (label, src2) ->
-              val row = cells.filter { it.row == r }
-              val keys = row.map { LambdaTerms.deBruijnKey(LambdaTerms.readback(it.compiled)) }.toSet()
-              val oracle = LambdaTerms.deBruijnKey(LambdaTerms.referenceNormalOrder(LambdaTerms.parse(src2)))
-              val placed = row.map { it.positionedGraph() }.toSet()
-              val landed = row.all { c ->
-                  c.done &&
-                      c.landing == landingFrames &&
-                      c.pose.all { (id, target) -> c.pos[id] == target && c.vel[id] == vec(0.0, 0.0, 0.0) }
+              three(channel = "confluence3d", name = "confluence", width = panelW, height = panelH) {
+                  lines(geometry())
               }
-              println(
-                  label.padEnd(10) +
-                      " steps " +
-                      row.joinToString("/") { it.steps.toString() }.padEnd(16) +
-                      " one answer: " +
-                      (keys.size == 1 && keys.first() == oracle) +
-                      "   landed exactly: " +
-                      landed +
-                      "   matching positioned graph: " +
-                      (landed && placed.size == 1),
-              )
+              println("frames $frame")
+              terms.forEachIndexed { r, (label, src2) ->
+                  val row = cells.filter { it.row == r }
+                  val keys = row.map { LambdaTerms.deBruijnKey(LambdaTerms.readback(it.compiled)) }.toSet()
+                  val oracle = LambdaTerms.deBruijnKey(LambdaTerms.referenceNormalOrder(LambdaTerms.parse(src2)))
+                  val placed = row.map { it.positionedGraph() }.toSet()
+                  val landed = row.all { c ->
+                      c.done &&
+                          c.landing == landingFrames &&
+                          c.pose.all { (id, target) -> c.pos[id] == target && c.vel[id] == vec(0.0, 0.0, 0.0) }
+                  }
+                  println(
+                      label.padEnd(10) +
+                          " steps " +
+                          row.joinToString("/") { it.steps.toString() }.padEnd(16) +
+                          " one answer: " +
+                          (keys.size == 1 && keys.first() == oracle) +
+                          "   landed exactly: " +
+                          landed +
+                          "   matching positioned graph: " +
+                          (landed && placed.size == 1),
+                  )
+              }
+              println("GRID3D DONE")
           }
-          println("GRID3D DONE")
-  - execute: { box: confluence_grid, property: code }
-  - await: {}
+  - launch: { box: confluence_grid, property: code }
+  - await: { wait: pending }

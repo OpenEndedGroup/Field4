@@ -87,13 +87,21 @@ val N = 40000
 
 // State is host-visible: written once below, then written by the compute shader every frame.
 // Staging it would be a lie about the access pattern.
-var stateA  = defaultBuffer { size = (N * 2).vec4s }.buffer
-var stateB  = defaultBuffer { size = (N * 2).vec4s }.buffer
+var stateA = defaultBuffer { size = (N * 2).vec4s }.buffer
+var stateB = defaultBuffer { size = (N * 2).vec4s }.buffer
 // Anchors are writeOnce(): written here, read by every invocation of every frame, which is
 // exactly what device-local memory is for.
-var anchors = defaultBuffer { size = N.vec4s; writeOnce() }.buffer
+var anchors = defaultBuffer {
+    size = N.vec4s
+    writeOnce()
+}
+    .buffer
 // Heat is zeroInit(): never uploaded at all. The device zeroes it and the shader owns it.
-var heat    = defaultBuffer { size = N.vec4s; zeroInit() }.buffer
+var heat = defaultBuffer {
+    size = N.vec4s
+    zeroInit()
+}
+    .buffer
 ```
 
 `(N * 2).vec4s` is the sizing idiom, and it reads as the layout it describes: two `vec4`s per
@@ -118,8 +126,8 @@ The trap is the second buffer's contents before the first frame.
 for (target in [stateA, stateB]) {
     target.write {
         for (h in home) {
-            put(vec(h.first, h.second, h.third, 0.0))   // position, age
-            put(vec(0.0, 0.0, 0.0, 0.0))                // velocity
+            put(vec(h.first, h.second, h.third, 0.0)) // position, age
+            put(vec(0.0, 0.0, 0.0, 0.0)) // velocity
         }
     }
 }
@@ -150,13 +158,13 @@ A `ComputeMesh` member holds a lambda, which Field evaluates once per dispatch r
 assignment:
 
 ```diffstatic {data-lang=kotlin}
-sim.state     = { if (renderer.frameCounter % 2L == 0L) stateA else stateB }
+sim.state = { if (renderer.frameCounter % 2L == 0L) stateA else stateB }
 sim.prevState = { if (renderer.frameCounter % 2L == 0L) stateB else stateA }
-sim.anchors   = { anchors }
-sim.heat      = { heat }
-sim.count     = { N.toUInt() }
-sim.dt        = { 1f / 60f }
-sim.knobs     = { vec(renderer.frameCounter / 60.0, 1.0, 0.0, 0.0) }
+sim.anchors = { anchors }
+sim.heat = { heat }
+sim.count = { N.toUInt() }
+sim.dt = { 1f / 60f }
+sim.knobs = { vec(renderer.frameCounter / 60.0, 1.0, 0.0, 0.0) }
 ```
 
 That is what makes the ping-pong work at all: nothing re-binds the buffers per frame, because the
@@ -185,7 +193,7 @@ The draw box is a *child* of the compute box, and it reads what the compute box 
 ```diffstatic {data-lang=kotlin}
 prop<FrameBufferGroup>(gsStateA) = stateA
 prop<FrameBufferGroup>(gsStateB) = stateB
-prop<FrameBufferGroup>(gsHeat)   = heat
+prop<FrameBufferGroup>(gsHeat) = heat
 ```
 
 Both halves, and not just the current one, because the draw box has to ask the same parity question
@@ -193,7 +201,7 @@ the compute box just asked:
 
 ```diffstatic {data-lang=kotlin}
 quads.state = { if (renderer.frameCounter % 2L == 0L) gsStateA else gsStateB }
-quads.heat  = { gsHeat }
+quads.heat = { gsHeat }
 ```
 
 Two boxes computing the same predicate is cheaper than sharing one. `renderer.frameCounter`
@@ -221,13 +229,13 @@ one.
 
 ```diffstatic {data-lang=glsl}
 layout(push_constant) uniform dat {
-    State   state;        // this frame's half of the ping-pong — written
-    State   prevState;    // last frame's half — read
-    Anchors anchors;      // written once, read every frame, device-local
-    Heat    heat;         // zero-initialised, device-local, shader-owned
-    vec4    knobs;        // .x seconds, .y force gain
-    uint    count;
-    float   dt;
+    State state; // this frame's half of the ping-pong — written
+    State prevState; // last frame's half — read
+    Anchors anchors; // written once, read every frame, device-local
+    Heat heat; // zero-initialised, device-local, shader-owned
+    vec4 knobs; // .x seconds, .y force gain
+    uint count;
+    float dt;
 } pc;
 
 // The live slot.
@@ -242,7 +250,8 @@ field simply sits still.
 Kotlin then assigns it **on the module, not the mesh**:
 
 ```diffstatic {data-lang=kotlin}
-simModule.force = """
+simModule.force =
+    """
     : vfield
       >c
       <c                     fbm4

@@ -1,13 +1,13 @@
-import afield.graphics.vulkan.Renderer
-import afield.graphics.vulkan.util.Window
-import arrow.core.right
-import arrow.core.left
-import afield.graphics.shader.*
-import afield.graphics.scene.*
-import afield.graphics.render.*
-import afield.document.context.*
-import afield.graphics.vulkan.buffers.*
 import afield.graphics.vulkan.buffers.FrameBufferGroup
+import afield.graphics.vulkan.buffers.*
+import afield.document.context.*
+import afield.graphics.render.*
+import afield.graphics.scene.*
+import afield.graphics.shader.*
+import arrow.core.left
+import arrow.core.right
+import afield.graphics.vulkan.util.Window
+import afield.graphics.vulkan.Renderer
 var Box.sgL by Inheritance<Int>() /**/
 val Once.sgL by Onceing<Int>() /**/
 val Why.sgL by Whying() /**/
@@ -102,11 +102,11 @@ fun BufferParameters.asBonds(): Bonds =
 /*compute-pc-binding:mode*/ var ComputeMesh.mode by ComputeMesh.BoundFromStructure<Any>()
 /*compute-pc-binding-group:mode*/ var ComputeMeshGroup.mode by ComputeMeshGroup.BoundFromStructure<Any>()
 /*compute-pc-structure:temperature*/ var Structure.temperature by Structure.FromStructure<Any>()
-/*compute-pc-binding:temperature*/ var ComputeMesh.temperature by ComputeMesh.BoundFromStructure<Float>()
-/*compute-pc-binding-group:temperature*/ var ComputeMeshGroup.temperature by ComputeMeshGroup.BoundFromStructure<Float>()
+/*compute-pc-binding:temperature*/ var ComputeMesh.temperature by ComputeMesh.BoundFromStructure<Number>()
+/*compute-pc-binding-group:temperature*/ var ComputeMeshGroup.temperature by ComputeMeshGroup.BoundFromStructure<Number>()
 /*compute-pc-structure:field*/ var Structure.field by Structure.FromStructure<Any>()
-/*compute-pc-binding:field*/ var ComputeMesh.field by ComputeMesh.BoundFromStructure<Float>()
-/*compute-pc-binding-group:field*/ var ComputeMeshGroup.field by ComputeMeshGroup.BoundFromStructure<Float>()
+/*compute-pc-binding:field*/ var ComputeMesh.field by ComputeMesh.BoundFromStructure<Number>()
+/*compute-pc-binding-group:field*/ var ComputeMeshGroup.field by ComputeMeshGroup.BoundFromStructure<Number>()
 var Box.window by Inheritance<Window>() /*from:sg_renderer*/ /**/
 val Once.window by Onceing<Window>() /*from:sg_renderer*/ /**/
 val Why.window by Whying() /*from:sg_renderer*/ /**/

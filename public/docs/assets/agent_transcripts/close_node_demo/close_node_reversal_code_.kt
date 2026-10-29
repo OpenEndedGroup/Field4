@@ -1,9 +1,15 @@
-// A square that relies on close() for its fourth side, and a two-contour outline whose
-// counter also relies on close(). Write those closing sides as an explicit lineTo back to
-// the start and the reversal below comes out right — the defect only shows on a shape
-// where the Close is carrying a segment nothing else draws.
+/*
+A square that relies on close() for its fourth side, and a two-contour outline whose
+counter also relies on close(). Write those closing sides as an explicit lineTo back to
+the start and the reversal below comes out right — the defect only shows on a shape
+where the Close is carrying a segment nothing else draws.
+*/
 val square = fline {
-    moveTo(0, 0); lineTo(200, 0); lineTo(200, 200); lineTo(0, 200); close()
+    moveTo(0, 0)
+    lineTo(200, 0)
+    lineTo(200, 200)
+    lineTo(0, 200)
+    close()
 }
 
 val glyph = fline {
@@ -17,12 +23,14 @@ val glyph = fline {
     close()
 }
 
-// The old implementation, written out here rather than remembered: one backwards walk
-// over the whole node list, emitting each instruction's reverse as it goes. The `.to`
-// reads are `endPointOf` so this runs at all — the crash is not what this box is about —
-// but the *structure* is the old one, and the structure is the defect: a Close met on the
-// way back is emitted right there, which in the reversed order is immediately after the
-// moveTo, where the subpath's first instruction belongs.
+/*
+The old implementation, written out here rather than remembered: one backwards walk
+over the whole node list, emitting each instruction's reverse as it goes. The `.to`
+reads are `endPointOf` so this runs at all — the crash is not what this box is about —
+but the *structure* is the old one, and the structure is the defect: a Close met on the
+way back is emitted right there, which in the reversed order is immediately after the
+moveTo, where the subpath's first instruction belongs.
+*/
 val oldByReversing = { line: FLine ->
     val out = FLine()
     if (line.nodes.isNotEmpty()) {
@@ -41,8 +49,18 @@ val oldByReversing = { line: FLine ->
     out
 }
 
-val ghost = { l: FLine -> l.copy { thickness = 9.0; color = vec(0.45, 0.5, 0.58, 0.55) } }
-val cyan = { l: FLine -> l.copy { thickness = 3.0; color = vec(0.35, 0.85, 1.0, 0.95) } }
+val ghost = { l: FLine ->
+    l.copy {
+        thickness = 9.0
+        color = vec(0.45, 0.5, 0.58, 0.55)
+    }
+}
+val cyan = { l: FLine ->
+    l.copy {
+        thickness = 3.0
+        color = vec(0.35, 0.85, 1.0, 0.95)
+    }
+}
 
 // How much of the shape the reversal actually retraces. A reversal that drops a segment
 // is shorter than what it reversed, and that is the whole story in one number.
@@ -58,10 +76,10 @@ val glyphOld = oldByReversing(glyph)
 val glyphNew = glyph.byReversing()
 
 showPlaneGrid(
-    "closed square, old reversal\n${coverage(square, squareOld)}" to listOf(ghost(square), cyan(squareOld)),
-    "closed square, byReversing today\n${coverage(square, squareNew)}" to listOf(ghost(square), cyan(squareNew)),
-    "two contours, old reversal\n${coverage(glyph, glyphOld)}" to listOf(ghost(glyph), cyan(glyphOld)),
-    "two contours, byReversing today\n${coverage(glyph, glyphNew)}" to listOf(ghost(glyph), cyan(glyphNew)),
+    "closed square, old reversal\n${coverage(square, squareOld)}" to [ghost(square), cyan(squareOld)],
+    "closed square, byReversing today\n${coverage(square, squareNew)}" to [ghost(square), cyan(squareNew)],
+    "two contours, old reversal\n${coverage(glyph, glyphOld)}" to [ghost(glyph), cyan(glyphOld)],
+    "two contours, byReversing today\n${coverage(glyph, glyphNew)}" to [ghost(glyph), cyan(glyphNew)],
     columns = 2,
     cellWidth = 420,
     cellHeight = 230,
@@ -75,8 +93,9 @@ val roundTrip = { l: FLine ->
     if (same) "identical" else "DIFFERENT: ${back.nodes.map { it::class.simpleName }}"
 }
 
-listOf(
-    "grey = the original, cyan = its reversal",
-    "square   reverse-twice: ${roundTrip(square)}",
-    "glyph    reverse-twice: ${roundTrip(glyph)}",
-).joinToString("\n")
+[
+        "grey = the original, cyan = its reversal",
+        "square   reverse-twice: ${roundTrip(square)}",
+        "glyph    reverse-twice: ${roundTrip(glyph)}",
+    ]
+    .joinToString("\n")

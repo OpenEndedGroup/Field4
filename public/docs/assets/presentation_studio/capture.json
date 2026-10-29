@@ -1,0 +1,49 @@
+{
+  "capturedAt": "2026-10-26T17:34:47.602Z",
+  "commit": "03e331359b1cbb143280547c08df0fd675870d13",
+  "inputs": {
+    "src/jsMain/resources/iosevka.css": "65b48da3af979fc722e0270b32da0a102adc3aac1e4733b28bad42cc49b0b82f",
+    "src/commonMain/resources/field.css": "284ebce72c33f7a000a2877befe6098bedf19c307be034dd7c7c8e282b80a505",
+    "src/commonMain/resources/presentation-control.js": "9c4a7ba231f2e13688642307d7a9502fee755e54d31020095de00d9ad280caed",
+    "src/commonMain/resources/presentation-control.html": "d4bffef7655b92eebb0a16d1c4ad3102a39b4f3c0b90ac45e2cdb6382eb86da7",
+    "src/commonMain/resources/presentation-search.js": "9d30dd003a610a6befa61f994404db2112f47e4dc1105524a3fe63ca717dd413",
+    "src/commonMain/resources/presentation-audience.js": "630aa5de4cf469635fd461e8fcc3f15e623f77985b360130bdf57fb15ac8032f",
+    "src/jvmMain/kotlin/afield/ui/slides/AudienceBuilder.kt": "5ea2aa9654d129f59b04258e32fa4751a58345dd48203da49a7e99fdecf0e7b7",
+    "templates/presentation/present_talk_code_.kt": "4fe6d42ee3be10ad36904bd937aa14d6e78fd7e07e3f3648c548dd633ad41254",
+    "templates/presentation/files/presentation.css": "5d2f7cef535bd560fe480b9caf308a919b37fcce7de0ce350d802d661e133601",
+    "templates/presentation/files/talk.slides.json": "52cf70b8fe492774b854d772e53653d1cd5ae142f760ff2d78fbc01caf3e32b4",
+    "templates/presentation/present_wave_experiment_code_.kt": "ee4a3ebe8a9f9defdfe43b8e300aafe3532cb95a0b30ff3cc7ba7db7f158f45b",
+    "templates/presentation/macros/run_wave.yaml": "383bd9215cffdefef42fdfe83479bbbf970c1dbfd972ef57bbe22c28808d58f5"
+  },
+  "targets": {
+    "source": "https://localhost:9493/index.html?file=style-capture",
+    "audience": "/presentation-audience.html",
+    "controller": "/presentation-control.html"
+  },
+  "pictures": [
+    {
+      "file": "image-fullscreen.png",
+      "width": 1280,
+      "height": 720,
+      "sha256": "dbbdc4608f11d5d925ce75ffb7b061df70ffb20f8c2245c5d6c377ef3f35be9a"
+    },
+    {
+      "file": "image-beside.png",
+      "width": 1280,
+      "height": 720,
+      "sha256": "5e420c884fff7363f7263c09c01f9d49ab2617c1479d0cc10e728a5946189486"
+    },
+    {
+      "file": "outline.png",
+      "width": 1000,
+      "height": 760,
+      "sha256": "abe58902361c71305e0abf27e646b8e0eac660b44bd5907cf45ef65d217fc2cc"
+    },
+    {
+      "file": "stylesheet.png",
+      "width": 1280,
+      "height": 820,
+      "sha256": "2265b0f22f578f4a51d9f0fda06d0247947f53278bb57998ebe1ecaa0ff42063"
+    }
+  ]
+}

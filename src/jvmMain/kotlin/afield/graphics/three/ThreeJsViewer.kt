@@ -107,6 +107,18 @@ import java.util.concurrent.CopyOnWriteArraySet
 import kotlin.math.max
 import kotlin.math.min
 
+/**
+ * The Three.js viewer's server side: the geometry payload it is sent, the live state of each view,
+ * and [Box.threeLines], which puts a viewer in a box's output area.
+ *
+ * A view is an iframe on `/threejs` that orbits, picks and edits the geometry it is given. The
+ * payload types ([ThreeGeometryPayload], [ThreeGeometryData], [ThreeAttribute], [ThreeIndex],
+ * [ThreeBounds]) mirror three.js `BufferGeometry`, plus the editable and interactive records a click
+ * or a drag reports back. Each view has one [ThreeGeometryViewState]: call its `update` to push new
+ * geometry to every connected viewer. [installThreeJsHandler] answers the viewers' websocket
+ * messages, and edits, surface clicks and review notes return to the box through it.
+ */
+
 private const val THREE_CHANNEL = "__threejs__"
 /** How many superseded generations a view keeps serving buffers for, so a viewer's in-flight fetch still lands. */
 private const val RECENT_GENERATIONS = 2
@@ -475,6 +487,9 @@ data class ThreeGeometryPayload(
     /** A looping dolly, explode and x-ray move. See [ThreeSceneBuilder.shot]. */
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     val shot: ThreeShotSpec? = null,
+    /** Tone mapping, soft shadows and a ground. See [ThreeSceneBuilder.studio]. */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val studio: ThreeStudioSpec? = null,
     /**
      * The view's stored part styles, by [ThreeDrawable.id], for the viewer to apply.
      *
@@ -484,6 +499,21 @@ data class ThreeGeometryPayload(
      */
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     val partAppearance: Map<String, ThreePartAppearance> = emptyMap(),
+    /** Text pinned to points in the scene. See [ThreeSceneBuilder.label]. */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val labels: List<ThreeLabel> = emptyList(),
+    /** HTML blocks in the corners of the view. See [ThreeSceneBuilder.overlay]. */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val overlays: List<ThreeOverlay> = emptyList(),
+    /** Grey the scene out, for a picture that is older than its inputs. See [ThreeSceneBuilder.dimmed]. */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val dimmed: Boolean = false,
+    /** A short line in the bottom-left corner. See [ThreeSceneBuilder.note]. */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val note: String? = null,
+    /** Show the viewer's tool buttons and counts; `false` for a picture. See [ThreeSceneBuilder.hud]. */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val hud: Boolean = true,
     /** Wire only: where a description's arrays are. See `ThreeWire.kt`. */
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     internal val buffers: ThreeWireBuffers? = null,
@@ -754,6 +784,42 @@ class ThreeGeometryViewState(val uid: String) {
         }
     }
 
+    private val pendingSnapshots = java.util.concurrent.ConcurrentHashMap<String, kotlinx.coroutines.CompletableDeferred<ByteArray>>()
+
+    /** Whether a browser viewer is attached, so [snapshot] has someone to ask. */
+    val hasViewer: Boolean get() = sessions.any { it in bufferSessions }
+
+    /**
+     * A PNG of the view as a person sees it — the viewer's own canvas, drawn with its camera where the
+     * person left it — or `null` when no viewer is attached or none answers within [timeoutMs].
+     *
+     * The first attached viewer to answer wins; the HUD is not in the picture. This is how an agent
+     * looks at a `three` scene ([afield.graphics.three.geometryAgent]'s `geometry.look`).
+     */
+    suspend fun snapshot(timeoutMs: Long = 8000): ByteArray? {
+        if (!hasViewer) return null
+        val id = java.util.UUID.randomUUID().toString()
+        val answer = kotlinx.coroutines.CompletableDeferred<ByteArray>()
+        pendingSnapshots[id] = answer
+        try {
+            val request = kotlinx.serialization.json.buildJsonObject {
+                put("type", kotlinx.serialization.json.JsonPrimitive("three/snapshot-request"))
+                put("id", kotlinx.serialization.json.JsonPrimitive(id))
+            }.toString().toByteArray(Charsets.UTF_8)
+            sessions.filter { it in bufferSessions }.forEach { sendTo(it, request) }
+            return kotlinx.coroutines.withTimeoutOrNull(timeoutMs) { answer.await() }
+        } finally {
+            pendingSnapshots.remove(id)
+        }
+    }
+
+    /** A viewer's answer to [snapshot]'s request [id]: a `data:image/png;base64,…` URL. */
+    internal fun receiveSnapshot(id: String, dataUrl: String) {
+        val answer = pendingSnapshots[id] ?: return
+        val b64 = dataUrl.substringAfter("base64,", "")
+        runCatching { java.util.Base64.getDecoder().decode(b64) }.getOrNull()?.takeIf { it.isNotEmpty() }?.let { answer.complete(it) }
+    }
+
     /** Send the last payload to a newly-attached global listener (replay on subscribe-all). */
     @Synchronized
     fun replayTo(session: WebSocketSession) {
@@ -774,7 +840,7 @@ private val knownThreeViews = ConcurrentHashMap<String, ThreeGeometryViewState>(
 
 // Document duplication preserves box IDs. They are local identities, not global viewer keys.
 // Canonical document paths match the existing custom-canvas review surface contract.
-private fun threeDocumentScope(box: Box): String = if (box.isInsideInitialized()) {
+internal fun threeDocumentScope(box: Box): String = if (box.isInsideInitialized()) {
     UUID.nameUUIDFromBytes(java.io.File(box.inside.filename).canonicalPath.toByteArray(Charsets.UTF_8)).toString()
 } else synchronized(box) {
     box.properties.getOrPut("_threeDocumentScope") { UUID.randomUUID().toString() }.toString()
@@ -847,6 +913,12 @@ fun installThreeJsHandler() {
                         runCatching { session.send(answer.toString()) }
                     }
                 }
+            }
+            "three-snapshot" -> {
+                val view = knownThreeViews[uid] ?: return@add Handled.no
+                val id = payload["id"]?.jsonPrimitive?.contentOrNull ?: return@add Handled.no
+                val dataUrl = payload["dataUrl"]?.jsonPrimitive?.contentOrNull ?: return@add Handled.no
+                view.receiveSnapshot(id, dataUrl)
             }
             "fline-click" -> {
                 // Same wire type and same mapping as the SVG output's handler in `Server.kt`, so the

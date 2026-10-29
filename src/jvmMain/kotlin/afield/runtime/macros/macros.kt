@@ -84,6 +84,19 @@ import kotlinx.coroutines.withContext
 import kotlin.script.experimental.api.ResultValue
 import kotlin.script.experimental.api.ScriptDiagnostic
 
+/**
+ * The call-rewriting macro pass that box code goes through before it compiles: a call such as
+ * `prop(...)`, `moduleHere(...)` or `_println(...)` is replaced by source text generated for the box
+ * that contains it.
+ *
+ * [MacroRegistry] maps a call name to its rewrite and returns an [Insert] describing the replacement.
+ * The rest of the file supports that pass: gathering the preamble a box inherits from its parents
+ * ([gatherPreambleUpwards], with conflicts reported by [gatherPreambleUpwardsReport]), tagging
+ * preamble lines with the uid of the box that supplied them, and splitting a box at `//%-` fragment
+ * breaks ([isFragmentBreak], [fragmentBreakIndices]) so that compiler diagnostics can be moved back
+ * to the right line ([rebaseFragmentDiagnostics]).
+ */
+
 /** Compiler locations are relative to the snippet after a `//%-` break. Editor locations are
  * relative to the whole box. Discard the snippet's absolute position, which may also have changed
  * during macro expansion; line and column remain useful in the original source. */
@@ -278,13 +291,18 @@ fun gatherPreambleUpwardsReport(startingAt: Box): GatheredPreamble {
 
     val stale = mutableListOf<String>()
     var total = ""
+    // In the order they are met, so gathering a box's own preamble gives its imports back unchanged.
+    // Prepending each one reversed them, and since the gathered text is written back into the box's
+    // preamble, the order flipped on every launch: the K1 completion delegate, fingerprinted on that
+    // text, was rebuilt on every edit.
+    val imports = mutableListOf<String>()
     val entries = mutableListOf<Pair<String, Int>>() // inheritable line to its supplier rank, in text order
     for ((box, d) in depthOf) {
         val preamble = box.getPropertyRaw("preamble") as String? ?: continue
         val isFirstBox = d == 0
         preamble.split("\n").forEach { line ->
             if (line.trim().startsWith("import")) {
-                total = line + "\n" + total
+                imports += line
                 return@forEach
             }
             val marked = line.trimEnd().endsWith("/**/")
@@ -327,7 +345,7 @@ fun gatherPreambleUpwardsReport(startingAt: Box): GatheredPreamble {
         if (d == 0) continue
         for (line in propDeclarationsFromCode(box)) {
             if (line.trim().startsWith("import")) {
-                if (line !in total) total = line + "\n" + total
+                if (line !in imports) imports += line
                 continue
             }
             val name = declaredExtensionName(line) ?: continue
@@ -360,6 +378,7 @@ fun gatherPreambleUpwardsReport(startingAt: Box): GatheredPreamble {
         total = total.split("\n").filterNot { it in losers }.joinToString("\n")
     }
 
+    total = imports.joinToString("") { it + "\n" } + total
     total = total.replace("var Mesh.dim by Mesh.BoundFromStructure<afield.math.linalg.Vector2f>()", "\n")
 
     return GatheredPreamble(total, stale, conflicts)

@@ -72,8 +72,9 @@ expect:
  *
  *  - [figureCa] evolves a life-like rule *table* — a fixed-length bit string with real uniform
  *    crossover — for high activity at moderate density, over two soups, with lexicase selection.
- *  - [figureLenia] evolves a continuous rule's growth window and kernel shape for a soliton: alive,
- *    localised and travelling, all three read off `leniaRun`.
+ *  - [figureLenia] evolves a continuous rule's growth window and kernel shape toward a soliton score:
+ *    alive, localised and travelling over 90 steps, all three read off `leniaRun`. What it finds is a
+ *    transient that fills the field by step 300, and the figure checks that too.
  *  - [figureLSystem] evolves a *grammar*, with single-point string crossover, toward a target
  *    mass–radius dimension.
  *  - [figureMapElites] illuminates the CA rule space rather than optimising it, and is the figure
@@ -405,6 +406,15 @@ object AlifeEvolveGallery {
                 "half of the run"
         )
         println("[alife-evolve]     best Lenia mu=${f(bestRule.mu, 4)} sigma=${f(bestRule.sigma, 4)} $bestRun")
+        // The objective scores 90 steps, and what it found is a transient: the same rule from the same
+        // seed fills the field with fragments by step 300. The page says so; this pins it.
+        val longRun = leniaRun(leniaSeed(48, 48, bestRule, seed = 5L), bestRule, steps = 300, sampleEvery = 8)
+        println("[alife-evolve]     the same rule at 300 steps: $longRun")
+        check(
+            bestRun.blobCount == 1 && longRun.blobCount > 5 && longRun.finalMass > 5 * bestRun.finalMass,
+            "Lenia: the evolved 'soliton' is one blob at 90 steps and a field of ${longRun.blobCount} " +
+                "fragments at mean ${f(longRun.finalMass, 2)} by 300 — a ring on its way to filling the board"
+        )
 
         val panels = ArrayList<Pair<String, Img>>()
         val controlRule = control.best!!.genome

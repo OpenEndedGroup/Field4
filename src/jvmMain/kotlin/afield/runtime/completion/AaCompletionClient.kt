@@ -46,11 +46,19 @@ import java.time.Duration
 import kotlin.script.experimental.api.SourceCodeCompletionVariant
 
 /**
+ * The HTTP bridge from Field's Kotlin completion to the out-of-process K2 Analysis-API completion
+ * sidecar.
+ *
+ * [AaCompletionClient] is consulted only when the AA completion backend is active, and returns null on
+ * any failure so the caller falls back to the in-process K1 completer.
+ */
+
+/**
  * Stage C client for the out-of-process K2 Analysis-API completion endpoint (`/complete` on the
  * code-use semantic sidecar). Used only when `KotlinEngineConfig.activeCompletionBackend == AA`;
  * [KotlinInterface2.complete] falls back to the K1 delegate whenever this returns null (no sidecar
- * URL configured, HTTP/timeout failure, or the sidecar reports failure). The AA classpath deliberately
- * stays out of the live runtime — this is a thin HTTP bridge, mirroring `CodeUseTelemetryService`.
+ * URL configured, HTTP/timeout failure, or the sidecar reports failure). The AA classpath stays out
+ * of the live runtime: this is a thin HTTP bridge, mirroring `CodeUseTelemetryService`.
  */
 object AaCompletionClient {
 
@@ -290,8 +298,9 @@ object AaCompletionClient {
 
     /**
      * Type-check the lowering for a request instead of completing it — the invariant behind
-     * `CompletionLoweringProbe`. Same arguments as [complete] deliberately: a lowering checked under a
-     * different request than the live one isn't checked. Null when there is no sidecar or the call failed.
+     * `CompletionLoweringProbe`. Takes the same arguments as [complete], because a lowering checked
+     * under a different request than the live one isn't checked. Null when there is no sidecar or
+     * the call failed.
      *
      * Blocks for as long as the sidecar needs to build its session (a corpus sweep must not silently
      * measure a warming session), so this is for probes and gates only — never a keystroke path.

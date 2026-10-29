@@ -1,0 +1,141 @@
+/* Lecture — a single editable stylesheet for images, banners and lists.
+   Use the standard image helpers; add lecture-banner / lecture-list to an HTML div.
+   Forward entry gently settles each part after the crossfade. Back stays complete. */
+:root {
+    --field-slide-bg: #0e1820;
+    --field-slide-fg: #ccc2a8;
+    --field-slide-muted: #a49f8d;
+    --lecture-frame: #323c42;
+    --lecture-beat: 45ms;
+    --lecture-settle: 360ms;
+    --lecture-banner-size: 320px;
+}
+body {
+    font-family: "Iosevka Web", Iosevka, monospace;
+    font-weight: 300;
+    padding: 80px 84px;
+    background: var(--field-slide-bg);
+    color: var(--field-slide-fg);
+}
+body::before {
+    content: "";
+    position: fixed;
+    inset: 28px;
+    border: 1px solid var(--lecture-frame);
+    pointer-events: none;
+}
+h1, h2 { font-weight: 400; letter-spacing: 0; }
+.muted { color: var(--field-slide-muted); }
+a { text-decoration-thickness: 1px; text-underline-offset: .2em; }
+
+/* The whole image remains visible, with a separate, quiet credit on the right. */
+.field-image-full {
+    inset: 68px 76px 48px;
+    background: transparent;
+    gap: 10px;
+}
+.field-image-full > img { min-height: 0; }
+.field-image-full > figcaption {
+    padding: 0;
+    background: transparent;
+    text-align: right;
+    font-size: 20px;
+    line-height: 1.3;
+    color: var(--field-slide-muted);
+    overflow-wrap: anywhere;
+}
+
+/* Image first or last: the helper's source order remains the reading order. */
+.field-image-beside { height: 884px; gap: 56px; align-items: center; }
+.field-image-beside > figure { flex: 1.2; height: 100%; min-width: 0; }
+.field-image-beside > figure > img { flex: 1; min-height: 0; max-height: 100%; }
+.field-image-beside figcaption {
+    margin-top: 12px;
+    font-size: 20px;
+    line-height: 1.3;
+    color: var(--field-slide-muted);
+    text-align: right;
+    overflow-wrap: anywhere;
+}
+.field-image-text { flex: 1; font-size: 34px; line-height: 1.5; }
+.field-image-text > :first-child { border-top: 1px solid var(--lecture-frame); padding-top: 12px; }
+.field-image-text h1, .field-image-text h2 { font-size: 42px; line-height: 1.2; margin: 0 0 28px; }
+.field-image-text p { margin: 22px 0; }
+
+/* A banner whose small italic aside lines up with the title's right edge. */
+.lecture-banner { width: fit-content; max-width: 100%; margin: auto; display: flex; flex-direction: column; }
+.lecture-banner h1 {
+    font-size: var(--lecture-banner-size);
+    font-stretch: normal;
+    font-style: italic;
+    font-weight: 500;
+    text-transform: uppercase;
+    line-height: 1;
+    letter-spacing: .045em;
+    margin: 0;
+}
+.lecture-tagline {
+    align-self: flex-end;
+    text-align: right;
+    font-size: 46px;
+    font-weight: 400;
+    font-style: italic;
+    text-transform: uppercase;
+    margin: 24px 0 0;
+}
+
+/* List items are light, italic and widely spaced; no bullet ornaments needed. */
+.lecture-list { position: fixed; inset: 124px 96px 92px; }
+.lecture-list h1, .lecture-list h2 { font-size: 48px; line-height: 1.2; margin: 0 0 72px; text-transform: uppercase; }
+.lecture-list ul, .lecture-list ol { list-style: none; margin: 0; padding: 0 0 0 88px; }
+.lecture-list li { font-size: 50px; line-height: 1.3; font-weight: 200; font-style: italic; text-transform: uppercase; margin: 0 0 22px; }
+
+/* Stay mostly visible during the crossfade, then make a small, staggered settle.
+   Animate parts rather than their layout containers: no fixed-position containing blocks. */
+:is(.field-image-full > img, .field-image-beside > figure > img) {
+    --lecture-rise: 0px;
+    --lecture-start: .94;
+}
+:is(.field-image-full > figcaption, .field-image-beside figcaption) { --lecture-order: 4; }
+.field-image-text > :nth-child(1) { --lecture-order: 1; }
+.field-image-text > :nth-child(2) { --lecture-order: 2; }
+.field-image-text > :nth-child(n+3) { --lecture-order: 3; }
+.lecture-tagline { --lecture-order: 2; }
+.lecture-list li:nth-child(1) { --lecture-order: 1; }
+.lecture-list li:nth-child(2) { --lecture-order: 2; }
+.lecture-list li:nth-child(3) { --lecture-order: 3; }
+.lecture-list li:nth-child(4) { --lecture-order: 4; }
+.lecture-list li:nth-child(5) { --lecture-order: 5; }
+.lecture-list li:nth-child(6) { --lecture-order: 6; }
+.lecture-list li:nth-child(7) { --lecture-order: 7; }
+.lecture-list li:nth-child(8) { --lecture-order: 8; }
+.lecture-list li:nth-child(n+9) { --lecture-order: 9; }
+[data-field-builds="waiting"] :is(.field-image-full > img, .field-image-full > figcaption,
+    .field-image-beside > figure > img, .field-image-beside figcaption, .field-image-text > *,
+    .lecture-banner > *, .lecture-list > h1, .lecture-list > h2, .lecture-list li) {
+    opacity: var(--lecture-start, .78);
+    transform: translateY(var(--lecture-rise, 4px));
+}
+[data-field-builds="active"] :is(.field-image-full > img, .field-image-full > figcaption,
+    .field-image-beside > figure > img, .field-image-beside figcaption, .field-image-text > *,
+    .lecture-banner > *, .lecture-list > h1, .lecture-list > h2, .lecture-list li) {
+    animation: lecture-settle var(--lecture-settle) cubic-bezier(.2,.7,.3,1)
+        calc(var(--lecture-order, 0) * var(--lecture-beat)) both;
+}
+@keyframes lecture-settle {
+    from { opacity: var(--lecture-start, .78); transform: translateY(var(--lecture-rise, 4px)); }
+    to { opacity: 1; transform: translateY(0); }
+}
+/* Retained layers and reduced motion show the final composition, including before release. */
+.field-retained :is(img, figcaption, .field-image-text > *, .lecture-banner > *, .lecture-list *) {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+    [data-field-builds] :is(img, figcaption, .field-image-text > *, .lecture-banner > *, .lecture-list *) {
+        animation: none !important;
+        opacity: 1 !important;
+        transform: none !important;
+    }
+}

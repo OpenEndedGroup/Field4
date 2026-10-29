@@ -8,6 +8,9 @@ description: >
   after a round trip through Syphon; change the name to bring in another application's video. macOS
   only; needs the optional library (`./gradlew buildSyphonNative`, Xcode), and without it the two
   Syphon boxes say how to build it and stop.
+docs:
+  - page: syphon.md
+    why: "Explains Syphon, including publishing from the Vulkan renderer."
 operations:
   - create:
       box: syphon_gpu_renderer
@@ -16,6 +19,7 @@ operations:
       properties:
         code: |
           import afield.graphics.vulkan.util.Options
+
           prop<Window>(window)
           prop<Renderer>(renderer)
           Options.enableHDR = false

@@ -24,7 +24,7 @@ source = RenderToTexture(renderer) {
     colorFormats = [VK_FORMAT_R16G16B16A16_SFLOAT, VK_FORMAT_R32_SFLOAT, VK_FORMAT_R32G32_SFLOAT]
 }
 val sceneModule = moduleHere {
-    source.apply()
+    +source
     depthTest = true
     depthWrite = true
     blend = false
@@ -61,8 +61,11 @@ val pass = object : Target {
 
         // Evaluation owns source rendering; bypass records just the source.
         if (bypass || neural == null) source.render(command, index)
-        else neural.evaluate(
-                command, index, source,
+        else
+            neural.evaluate(
+                command,
+                index,
+                source,
                 ReconstructionInputs(source.imageViewArray[0], source.imageViewArray[1], source.imageViewArray[2]),
                 ReconstructionFrame(frameIndex, jitter, revision = revision),
             )

@@ -1,5 +1,10 @@
 package afield.audio.spatial.steamaudio
 
+/**
+ * Saving and loading Steam Audio scenes, meshes and probe batches as bytes, through
+ * [SerializedObject].
+ */
+
 import afield.audio.spatial.steamaudio.raw.IPLSerializedObjectSettings
 import afield.audio.spatial.steamaudio.raw.Phonon
 import java.lang.foreign.Arena

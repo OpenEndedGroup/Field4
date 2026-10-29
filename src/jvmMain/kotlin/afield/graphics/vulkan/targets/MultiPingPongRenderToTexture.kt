@@ -18,6 +18,16 @@ import org.lwjgl.vulkan.VK10
 import kotlin.math.max
 
 /**
+ * Several passes per frame between two images: [MultiPingPongRenderToTexture] runs an optional
+ * init pass, a number of middle passes and an optional final pass, each reading what the last one
+ * wrote.
+ *
+ * It suits iterated kernels such as blurs or relaxation steps, where one frame needs many passes.
+ * Shaders can tell the passes apart through push constants the target fills in (pass index, pass
+ * count, and whether this is the init or final pass).
+ */
+
+/**
  * Multi-pass ping-pong render target.
  *
  * Executes in this order each frame:
@@ -555,7 +565,7 @@ class MultiPingPongRenderToTexture(
         val expectedFormat = if (parameters.colorFormats.isNotEmpty()) parameters.colorFormats.first() else parameters.format
         if (module.parameters.colorFormats.isNotEmpty()) {
             require(module.parameters.colorFormats.first() == expectedFormat) {
-                "MultiPingPongRenderToTexture color format mismatch for module '${module.parameters.name}': module=${module.parameters.colorFormats.first()} target=$expectedFormat. Call jfa.apply() inside module parameters."
+                "MultiPingPongRenderToTexture color format mismatch for module '${module.parameters.name}': module=${module.parameters.colorFormats.first()} target=$expectedFormat. Add +jfa inside the module's parameters."
             }
         }
     }

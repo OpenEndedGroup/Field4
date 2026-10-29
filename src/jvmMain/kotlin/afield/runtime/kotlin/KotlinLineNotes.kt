@@ -12,6 +12,8 @@ import afield.ui.output.LastRunNotes
  * declaration's value can be read back by name once the run is over. A statement that declares
  * nothing has no note: its value was never kept.
  */
+
+/** Reads a finished run's declarations out of the box's variable table and records them as notes. */
 object KotlinLineNotes {
     /** A top-level property declaration, modifiers and annotations allowed, at the start of a line. */
     private val declaration = Regex("""^(?:(?:@[\w.]+(?:\([^)]*\))?|private|internal|public|lateinit|const)\s+)*(?:val|var)\s+([A-Za-z_]\w*)\b""")
