@@ -187,7 +187,8 @@ private class NrOutput(renderer: Renderer,width: Int,height: Int) : RenderToText
     var evaluate: ((CommandBuffer)->Unit)?=null
     fun recordCaptures(command: CommandBuffer)=recordPendingFileSaves(command)
     /** Set by [OpenDlssNrPass.close]; a frame graph still naming this target then skips it. */
-    @Volatile var retired=false
+    @Volatile
+    var retired=false
     override fun render(command: CommandBuffer,index: Int) {if(retired)return;checkNotNull(evaluate) {"Configure the NR post effect before attaching it"}(command)}
     fun transition(command: CommandBuffer,layout: Int)=MemoryStack.stackPush().use { stack ->
         val image=colorImageRefs[0]!!;val old=image.getLastKnownLayout() ?: VK_IMAGE_LAYOUT_UNDEFINED

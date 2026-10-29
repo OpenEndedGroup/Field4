@@ -75,7 +75,8 @@ class OpenDlssNrStudy(
     private var sourceModule = buildSourceModule(vertex,fragment)
     private var sourceMesh = triangle(sourceModule, if(geometry)3+39*36 else 3)
     /** A rebuilt source (new stage interface) waiting for the next frame boundary. */
-    @Volatile private var pendingSource: Pair<Module,Mesh>?=null
+    @Volatile
+    private var pendingSource: Pair<Module,Mesh>?=null
     val pass = if(availability.ready)OpenDlssNrPass(renderer,size,size) else null
     val output = RenderToTexture(renderer) {
         width=size*3; height=size+64; useDepth=false; format=VK_FORMAT_R16G16B16A16_SFLOAT
