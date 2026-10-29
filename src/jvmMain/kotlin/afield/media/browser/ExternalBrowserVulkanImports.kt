@@ -12,6 +12,20 @@ import org.lwjgl.vulkan.VK10.*
 import org.lwjgl.vulkan.VK11.*
 import org.lwjgl.vulkan.*
 
+/**
+ * Turning a browser's own GPU allocation into a Vulkan image this process can read: the Windows
+ * D3D11 shared-handle import and the Linux dma-buf import.
+ *
+ * Both create a `VkImage` that declares its external handle type, allocate memory dedicated to that
+ * image which imports the handle, and bind the two. The image is only ever a transfer source and a
+ * sampled texture. The Linux side asks the driver whether it can import that format, DRM modifier
+ * and usage before building anything from it, passes each plane's stride and offset as an explicit
+ * layout, and requires the planes to share one allocation, which is what the first Linux backend
+ * supports. macOS does not come through this file: an IOSurface is imported by
+ * `MacExternalBrowserSurface`. What the receivers do with the result, and how far each platform has
+ * got, is in `dev_docs/external_browser_surfaces.md`.
+ */
+
 /** Raw Vulkan image/memory pair used only for external imports. */
 internal data class NativeExternalImage(val image: Long, val memory: Long, private val device: Device) {
     fun cleanup() {

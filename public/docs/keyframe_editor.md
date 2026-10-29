@@ -4,8 +4,9 @@
 
 Each editor holds one number over time. A box can have as many as it likes, one per parameter.
 
-!!! note "Not the Keyframer"
-    This page is about a single hand-drawn curve. [Keyframes: capturing, persisting and replaying live state](keyframer_examples.md) is something else: it snapshots a whole set of a box's values and blends between the snapshots.
+!!! note "Looking for the Keyframer?"
+    The curve editor shapes one value over time. The [Keyframer](keyframer_examples.md) captures a
+    whole set of a box's values and blends between snapshots.
 
 ## A curve that drives something
 
@@ -532,7 +533,7 @@ brightness.edit { replaceAll { it.copy(value = it.value * 0.5) } }
 
 ## Reacting to edits, and overlays
 
-An overlay is a second curve drawn on the graph for reference, that you cannot edit. `onChange` runs each time you finish an edit, with the new keys; if it returns a function of time, that function becomes the overlay. Here the overlay is a smoothed version of whatever you draw, worked out with `fromKeyframeEditor` and `gaussianSmooth` from [Functions](functions_examples.md):
+An overlay is a second, non-editable curve drawn on the graph for reference. `onChange` runs each time you finish an edit, with the new keys; if it returns a function of time, that function becomes the overlay. Here the overlay is a smoothed version of whatever you draw, worked out with `fromKeyframeEditor` and `gaussianSmooth` from [Functions](functions_examples.md):
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframe_editor/overlay.png" capture="box" open-outputs="true" wait="2.5" timeout="120" w="700" embed=true name="keyframe-overlay" alt="A jagged curve of five keys zig-zagging between 0.1 and 0.9 over two seconds, drawn dimmed, with a dashed orange overlay running smoothly through the middle of the zig-zag"}
 :::static

@@ -978,6 +978,7 @@ data class PaintStats(
 
 /** The make-up of the sheet under a canvas's water ([PaintCanvas.paper]). */
 data class PaperInfo(
+    /** The sheet's own colour, sRGB: what a wash is laid over and what shows through it. */
     val color: Vec4,
     /** Water it holds saturated, µm. */
     val capacityMicrons: Double,
@@ -987,9 +988,18 @@ data class PaperInfo(
     val wickMm2PerSecond: Double,
     /** Along the grain over across it. */
     val anisotropy: Double,
+    /** Fibre length, mm. It is xuan's long fibres that feather a drop out along the grain. */
     val fibreMm: Double,
     val formation: Double,
+    /**
+     * The tooth: how deep the paper's texture runs, µm. A full brush floods across all of it; a
+     * nearly dry one touches only the top, which is drybrush.
+     */
     val roughnessMicrons: Double,
+    /**
+     * How wide the texture's features are, mm. It is a real length on a real sheet, so the same
+     * strokes on a smaller sheet look coarser.
+     */
     val textureMm: Double,
     /** Depth of water needed to advance onto dry paper, µm. */
     val pinMicrons: Double,

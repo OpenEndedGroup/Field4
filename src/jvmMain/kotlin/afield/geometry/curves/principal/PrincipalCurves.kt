@@ -39,26 +39,37 @@ import kotlin.math.sqrt
 /**
  * The weights of the elastic energy and the solver's controls.
  *
- * [lambda] penalises stretching (the squared length of every edge) and so total length; [mu]
- * penalises bending (how far each node of degree two or more sits from the mean of its
- * neighbours). Larger values give shorter, smoother graphs that fit the points less closely.
- * Both are relative to the mean squared distance from the points to the graph, so they mean the
- * same thing at any scale only if the data's scale is similar; ElPiGraph's defaults (0.01, 0.1)
- * suit data whose spread is a few units to a few hundred.
- *
- * [trimmingRadius] makes the fit robust: points farther than this from every node stop pulling
- * (0 turns it off). [branchPenalty] is added per unit of excess degree at branch points when
- * choosing how to grow, so a branch must reduce the energy by more than it to be kept.
+ * Larger [lambda] and [mu] give shorter, smoother graphs that fit the points less closely. Both
+ * are relative to the mean squared distance from the points to the graph, so they mean the same
+ * thing at any scale only if the data's scale is similar; ElPiGraph's defaults (0.01, 0.1) suit
+ * data whose spread is a few units to a few hundred.
  */
 data class ElasticParameters(
+    /** Penalises stretching — the squared length of every edge, and so total length. */
     val lambda: Double = 0.01,
+    /**
+     * Penalises bending: how far each node of degree two or more sits from the mean of its
+     * neighbours.
+     */
     val mu: Double = 0.1,
+    /**
+     * Makes the fit robust: points farther than this from every node stop pulling. 0 turns it off.
+     */
     val trimmingRadius: Double = 0.0,
+    /**
+     * Added per unit of excess degree at branch points when choosing how to grow, so a branch must
+     * reduce the energy by more than this to be kept.
+     */
     val branchPenalty: Double = 0.0,
+    /** EM iterations per fit. */
     val maxIterations: Int = 30,
+    /** Convergence threshold, as a relative change of the node positions. */
     val eps: Double = 1e-3,
+    /** How many points are sampled to score growth candidates; 0 scores against all of them. */
     val candidateSample: Int = 5000,
+    /** Worker threads; 0 uses the hardware concurrency. */
     val threads: Int = 0,
+    /** Seed for the candidate sampling and the k-means initialisation. */
     val seed: Long = 1,
 )
 

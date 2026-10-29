@@ -1,12 +1,12 @@
 # EnCodec round trip
 
-*To run the examples on this page, open the [audio_ai_codec](agent_transcripts.md#audio_ai_codec) starting point.*
-
 EnCodec compresses audio into a few streams of tokens and decodes them back. Running a
 `codec.reconstruct` operation on a sound shows you both ends and the tokens in between: the input
 as the model hears it, the token streams (one per codebook), the reconstruction, and how far it
 differs from the input. Here the input is a four-second, eight-voice chord rendered by Field's
 Faust example.
+
+*To run the examples on this page, open the [audio_ai_codec](agent_transcripts.md#audio_ai_codec) starting point.*
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/audio_ai_codec/reconstruction_microscope.png" capture="box" open-outputs="true" wait="4" padding="16" timeout="180" w="1120" h="1100" hidden=true embed=true name="elsewhere-codec" alt="Real EnCodec input and reconstruction waveforms, spectra, measured errors and four codebook streams"}
 :::static

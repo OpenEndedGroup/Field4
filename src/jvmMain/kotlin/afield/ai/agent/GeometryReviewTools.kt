@@ -26,74 +26,175 @@ import java.util.Base64
  * write the same notes the viewer shows, scoped to the current document.
  */
 
+/**
+ * List the review views this document owns. This is where a `viewId` and the current `expectedRevision`
+ * come from, and the other tools here need both. Views belonging to other documents are not listed.
+ */
 @JsonClassDescription("List live Three.js and custom canvas review views owned by this document, with source boxes, geometry revisions and unresolved note counts. Returns success plus one entry per view. Use it when you need a viewId or the current expectedRevision and do not have them; views in other documents are excluded. A document with no views returns an empty list, not an error. e.g. an entry has viewId = `bracket-view`.")
 @AgentToolMeta("geometry", ToolExposure.DIRECT, effects = [ToolEffect.READ_DOCUMENT])
 data class ListGeometryViewsRequest(val unused: Int = 0)
 
+/**
+ * Colour, highlight or ghost named parts of a solid viewer. The style map is stored on the source box, so
+ * it survives a rebuild that keeps the same part IDs; the geometry, the camera, the selection, the notes
+ * and the build's currency are all left alone.
+ */
 @JsonClassDescription("Style named solid parts in an existing document-owned Three.js viewer. Returns success and the stored style map. Use it when a task asks to colour, highlight or ghost parts; it needs part IDs and the revision from InspectGeometryViewRequest. An unknown viewer, a stale revision or more than 10000 parts fails with success=false. e.g. parts = [{partId = `lid`, color = [1, 0, 0]}]. RGB colours are 0..1; unlit preserves colour without lighting; xrayOpacity=1 keeps a part legible when the surrounding surfaces fade. Stores presentation on the source box, surviving rebuilds with the same part IDs. Does not alter geometry, checks, camera, selection, notes or build currency. replace=true replaces this view's whole style map; an empty replacement restores defaults.")
 @AgentToolMeta("geometry", ToolExposure.DEFERRED, effects = [ToolEffect.MUTATE_DOCUMENT])
 data class StyleGeometryPartsRequest(val viewId: String, val expectedRevision: String,
-    val parts: List<GeometryPartColor>, val unlit: Boolean = false,
-    val xrayOpacity: Double? = null, val replace: Boolean = false)
+    /** The parts to restyle, at most 10000, each named once and each present in the view as it stands. */
+    val parts: List<GeometryPartColor>,
+    /** Draw them at their own colour, with neither shading nor tone mapping. */
+    val unlit: Boolean = false,
+    /** How solid these parts stay while the rest fades, from 0 to 1, or null to follow the viewer's slider. */
+    val xrayOpacity: Double? = null,
+    /** Replace the view's whole style map rather than adding to it; an empty replacement restores defaults. */
+    val replace: Boolean = false)
 
+/** One part's colour, as RGB from 0 to 1. */
 data class GeometryPartColor(val partId: String, val color: List<Double>)
 
 
+/**
+ * A page of a view's notes, as summaries rather than whole notes: id, kind, status and the revision each
+ * was made against. Reading leaves every status where it was. A note that came from a build attempt says
+ * whether that attempt ran against earlier inputs, in which case it may describe a design that is gone.
+ */
 @JsonClassDescription("Read a page of geometry annotation summaries, without opening a browser or acknowledging any note. Returns success, the page of note summaries (id, kind, status, revision) and the total. Use it when you need to know which notes a view has, or a noteId. Open notes are the default. An unknown view, or limit outside 1..30, fails with success=false. e.g. viewId = `bracket-view`, limit = 10. ReadGeometryNoteRequest returns a complete note and its saved pictures. Original annotation revisions can differ from the current geometry revision. A finding from a build attempt says fromEarlierInputs; true means that attempt ran against an earlier design, so the finding may no longer apply.")
 @AgentToolMeta("geometry", ToolExposure.DEFERRED, effects = [ToolEffect.READ_DOCUMENT, ToolEffect.FILESYSTEM_READ])
 data class ReadGeometryReviewsRequest(val viewId: String, val includeResolved: Boolean = false, val offset: Int = 0, val limit: Int = 10)
 
+/**
+ * One note whole: its text, the feature and view it points at, its replies and its resolution history,
+ * with the pictures saved when it was made attached as images. Those pictures are of the revision that was
+ * annotated, not of the geometry as it stands now; a picture whose bytes do not match its recorded hash
+ * is reported as a warning rather than attached.
+ */
 @JsonClassDescription("Read one geometry annotation including its original feature/view reference, replies and resolution history. Use it when you need one note's full text or pictures, e.g. noteId = `n7` from ReadGeometryReviewsRequest; an unknown note fails with success=false and points at that list. Returns the note and attaches the saved context and crop as actual images when available. These are historical pictures of the annotated revision, not freshly rendered current geometry. Reading does not resolve the note or change the user's selection. A finding from a build attempt says fromEarlierInputs, as in ReadGeometryReviewsRequest.")
 @AgentToolMeta("geometry", ToolExposure.DEFERRED, effects = [ToolEffect.READ_DOCUMENT, ToolEffect.FILESYSTEM_READ])
 data class ReadGeometryNoteRequest(val viewId: String, val noteId: String, val includeImages: Boolean = true)
 
+/**
+ * Add a reply to a note without closing it: what was checked, and against which revision. The note version
+ * from the latest read has to still be current, so two writers cannot answer the same note blind.
+ * [ReviewGeometryNoteRequest] is the one that changes a note's status.
+ */
 @JsonClassDescription("Append a durable finding, decision or verification reply to a geometry note without changing its open/resolved status. Returns success and the note's new version. Use it when you have checked something about a note and want to record it; to close the note use ReviewGeometryNoteRequest instead. Supply the current geometry revision actually checked and the note version from the latest read; stale writes fail with success=false. e.g. text = `the lid gap is 0.4 mm after the fix`, expectedVersion = 3.")
 @AgentToolMeta("geometry", ToolExposure.DEFERRED, effects = [ToolEffect.MUTATE_DOCUMENT, ToolEffect.FILESYSTEM_WRITE])
 data class ReplyGeometryNoteRequest(val viewId: String, val noteId: String, val text: String, val actor: String, val checkedRevision: String, val expectedVersion: Int)
 
+/**
+ * Resolve a note, or reopen one, with the revision the decision was checked against. The original note,
+ * its pictures, its replies and its history are kept either way. A note having been read, or the geometry
+ * having been rebuilt, is not a reason to resolve it.
+ */
 @JsonClassDescription("Explicitly resolve a verified geometry note, or reopen it (status: `resolved` or `open`). Returns success and the note's new version and status. Use it only when you have verified the current geometry against the note; a stale revision or note version fails with success=false. Supply an explanation, current geometry revision actually checked, and latest note version. Never resolve merely because a note was read or geometry rebuilt. Preserves the original note, pictures, replies and history.")
 @AgentToolMeta("geometry", ToolExposure.DEFERRED, effects = [ToolEffect.MUTATE_DOCUMENT, ToolEffect.FILESYSTEM_WRITE])
 data class ReviewGeometryNoteRequest(val viewId: String, val noteId: String, val status: String, val summary: String, val actor: String, val checkedRevision: String, val expectedVersion: Int)
 
+/**
+ * Put a finding in front of a person, as a note in the same inbox their own annotations go to. It captures
+ * its own pictures in a separate viewer, so it never moves the camera the person is looking through, and it
+ * checks the revision again on the document thread: a capture that finished late cannot become a finding
+ * against newer geometry. Every field below is required, and two reports agreeing on `key`, `stage`,
+ * `runId` and `producer` are the same occurrence and reuse one thread.
+ */
 @JsonClassDescription("Ask for review of a geometry finding in the existing annotation inbox. Returns success, the note id and the captured pictures. Use it when a check finds something a person should see; a missing selection, an empty text or a stale revision fails with success=false. e.g. kind = `warning`, key = `wall-thickness/lid`. Supply a complete stateJson from InspectGeometryViewRequest with an actual point/region selection. Captures fresh context/crop images in an independent viewer; never moves the user's camera or changes build acceptance. kind is error (a failed check), warning (a suspected problem), or question (a decision needed). key identifies the check and subject; runId identifies its build/diagnostic attempt. Repeated identical reports reuse the thread. State what happens if left unchanged in consequence, and what feedback is needed in prompt. A repair that can proceed autonomously should say so rather than unnecessarily requiring user approval.")
 @AgentToolMeta("geometry", ToolExposure.DEFERRED, effects = [ToolEffect.READ_DOCUMENT, ToolEffect.MUTATE_DOCUMENT, ToolEffect.CAPTURE_IMAGE, ToolEffect.FILESYSTEM_WRITE])
 data class ReportGeometryFindingRequest(
-    val viewId: String, val expectedRevision: String, val stateJson: String,
-    val key: String, val kind: String, val stage: String, val runId: String,
-    val producer: String, val text: String, val consequence: String, val prompt: String,
+    /** The view whose inbox the note goes to, from [ListGeometryViewsRequest]. */
+    val viewId: String,
+    /** The revision this finding is about, which has to still be the view's when the capture lands. */
+    val expectedRevision: String,
+    /** A complete state from [InspectGeometryViewRequest], and one with a point or region selected. */
+    val stateJson: String,
+    /** What was checked and on what, as something stable across runs: `wall-thickness/lid`. */
+    val key: String,
+    /** `error` for a failed check, `warning` for a suspected problem, `question` for a decision needed. */
+    val kind: String,
+    /** The build stage the check belongs to. */
+    val stage: String,
+    /** The build or diagnostic attempt it came from. */
+    val runId: String,
+    /** What made the finding. */
+    val producer: String,
+    /** The finding itself, 1 to 16000 characters. */
+    val text: String,
+    /** What happens if it is left as it is, to 4000 characters. */
+    val consequence: String,
+    /** What is wanted back, to 4000 characters; a repair that needs no permission should say so. */
+    val prompt: String,
 )
 
+/**
+ * Look at the geometry as it stands: a fresh picture from a capture browser of its own, a compact part
+ * hierarchy, and a state complete enough to frame the next inspection the same way. The person's camera and
+ * selection are untouched. Only a solid viewer can be inspected this way; a custom canvas is refused, with
+ * the output box to use `ViewBoxOutputRequest` on instead.
+ */
 @JsonClassDescription("Inspect current Three.js geometry in a separate capture browser. Returns a fresh picture, a compact part hierarchy and the complete restorable state. Use it when you need to see or measure current geometry; for a custom canvas use ViewBoxOutputRequest instead, and this tool fails saying so. A stale expectedRevision, or invalid camera, pick or section values, fails with success=false and the reason. e.g. camera = [2, 1.5, 3], target = [0, 0, 0]. Never moves the user's camera or publishes a manual selection. Get expectedRevision from ListGeometryViewsRequest. stateJson must be the COMPLETE state returned by a previous inspection, never a fabricated partial state. Use camera and target to change framing in viewer coordinates (Y up). Optionally adjust explode/visibility/x-ray/section or pick the nearest visible feature. includeMetadata adds full source provenance and redundant part-tree details; normally leave false. Historical notes remain readable with ReadGeometryNoteRequest.")
 @AgentToolMeta("geometry", ToolExposure.DEFERRED, effects = [ToolEffect.READ_DOCUMENT, ToolEffect.CAPTURE_IMAGE])
 data class InspectGeometryViewRequest(
+    /** The view to capture, which has to be a solid viewer rather than a custom canvas. */
     val viewId: String,
+    /** The revision from [ListGeometryViewsRequest]. Geometry that changed under it fails the call. */
     val expectedRevision: String,
+    /** A note to frame the view the way it was annotated, instead of `stateJson`, and never both. */
     val noteId: String = "",
+    /**
+     * The complete state a previous inspection returned, to 128000 characters, carrying at least its part
+     * IDs, camera and target. A partial or invented state is refused; to change only the framing, pass
+     * `camera` and `target` instead.
+     */
     val stateJson: String = "",
+    /** How far to pull the parts apart, as a finite distance of zero or more. */
     val explode: Double? = null,
+    /** Parts to leave out of the picture, at most 10000 of them. */
     val hidden: List<String>? = null,
+    /** Fade the surfaces that are not the subject. */
     val xray: Boolean? = null,
+    /** How solid the faded surfaces stay, from 0.03 to 1. */
     val xrayOpacity: Double? = null,
+    /** The normal of a cutting plane, as a finite 3-vector that is not all zeroes. */
     val sectionNormal: List<Double>? = null,
+    /** Where along that normal to cut, from 0 to 1 across the geometry. */
     val sectionFraction: Double = 0.5,
+    /** A point to pick the nearest visible feature at, instead of a region. */
     val pick: GeometryPick? = null,
+    /** A rectangle to select, instead of a point. */
     val region: GeometryRegion? = null,
+    /** Where to put the camera, as a finite 3-vector in viewer coordinates, Y up. */
     val camera: List<Double>? = null,
+    /** What to point it at, in the same coordinates; it has to differ from [camera]. */
     val target: List<Double>? = null,
+    /** Add the source provenance and the full part tree, which most inspections do not need. */
     val includeMetadata: Boolean = false,
 )
 
+/** A point to pick at, in normalized view coordinates, and what kind of feature to pick there. */
 data class GeometryPick(val x: Double, val y: Double, val kind: String = "face")
+
+/** A rectangle to select, centred at `cx`, `cy` in normalized view coordinates and rotated by `angle`. */
 data class GeometryRegion(val cx: Double, val cy: Double, val width: Double, val height: Double, val angle: Double = 0.0)
 
+/** What every geometry review tool answers with, pictures included. */
 data class GeometryToolResult(
+    /** False when the request was refused or the view was unavailable, with the reason in [message]. */
     val success: Boolean,
+    /** One sentence about what happened. */
     val message: String,
+    /** Whatever the tool reports: the views, a page of notes, a captured observation, a note's new version. */
     val details: Map<String, Any?> = emptyMap(),
+    /** Anything the reader should know about the answer, such as a picture that could not be verified. */
     val warnings: List<String> = emptyList(),
-    @get:JsonIgnore override val toolImages: List<ToolImage> = emptyList(),
+    /** The pictures themselves, kept out of the JSON the model reads as text. */
+    @get:JsonIgnore
+    override val toolImages: List<ToolImage> = emptyList(),
 ) : CarriesToolImages, SummarisesForToolLog {
+    /** How many pictures came back. */
     val imageCount: Int get() = toolImages.size
+
+    /** The verdict, the picture count and the message, which is what the tool log keeps. */
     override fun toolLogSummary(): String = "success=$success images=$imageCount $message"
 }
 

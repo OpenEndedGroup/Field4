@@ -1,8 +1,8 @@
 # Principal curves: smooth curves through point clouds
 
 A principal curve runs through the middle of a cloud of points, the way a pen line runs down the
-middle of a smudged stroke. Given enough points, it recovers the curve the points were scattered
-around, and it also reports how widely they were scattered along its length. A collection of
+middle of a smudged stroke. Fit one to a scatter and you can inspect the resulting curve and how
+widely the points spread along its length. A collection of
 such curves, some of them branching, is a *principal forest*.
 
 The points can come from anywhere: a photograph's dark pixels, a stipple, a particle system, a

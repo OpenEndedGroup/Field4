@@ -37,23 +37,24 @@ import kotlin.math.sin
 /**
  * One point of an [LpFanMap]: where `(theta, logMu)` lands in the polygon, and the map's Jacobian
  * there.
- *
- * @property theta the objective direction's angle, radians.
- * @property logMu the natural logarithm of the barrier weight μ.
- * @property x the barrier maximiser's x.
- * @property y the barrier maximiser's y.
- * @property dxdTheta `∂x/∂θ`, how the point moves as the direction turns: `M⁻¹ c'(θ)`.
- * @property dxdLogMu `∂x/∂log μ`, how it moves as μ grows: `−M⁻¹ c(θ)`. Its negative points
- *   along the central path toward the optimal vertex.
- * @property newtonSteps the Newton steps this point took from its starting guess.
  */
 class LpFanPoint(
+    /** The objective direction's angle, radians. */
     val theta: Double,
+    /** The natural logarithm of the barrier weight μ. */
     val logMu: Double,
+    /** The barrier maximiser's x. */
     val x: Double,
+    /** The barrier maximiser's y. */
     val y: Double,
+    /** `∂x/∂θ`, how the point moves as the direction turns: `M⁻¹ c'(θ)`. */
     val dxdTheta: Vec2,
+    /**
+     * `∂x/∂log μ`, how it moves as μ grows: `−M⁻¹ c(θ)`. Its negative points along the central
+     * path toward the optimal vertex.
+     */
     val dxdLogMu: Vec2,
+    /** The Newton steps this point took from its starting guess. */
     val newtonSteps: Int,
 ) {
     /** The point, for drawing. */
@@ -91,11 +92,13 @@ class LpFanPoint(
  * Uses: [grid] for the curvilinear coordinate lines (θ lines are central paths, μ lines closed
  * rings round the centre), [warp] to carry any [FLine] drawn in the parameter plane into the
  * polygon, and [at] for particles moved along `∂x/∂log μ` or shaded by [LpFanPoint.jacobianDeterminant].
- *
- * @property polygon the polygon the map lands in.
- * @property weights each edge's barrier weight, as for [centralPath].
  */
-class LpFanMap(val polygon: LpPolygon, weights: DoubleArray? = null) {
+class LpFanMap(
+    /** The polygon the map lands in. */
+    val polygon: LpPolygon,
+    weights: DoubleArray? = null,
+) {
+    /** Each edge's barrier weight, as for [centralPath]. */
     val weights: DoubleArray = polygon.checkedWeights(weights)
 
     /**

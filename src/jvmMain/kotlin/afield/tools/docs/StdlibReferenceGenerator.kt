@@ -2214,7 +2214,7 @@ object StdlibReferenceGenerator {
             // the resolved ones, because this column is a one-line gist sitting between two columns
             // that are already all links.
             val gist = doc.overview
-                ?.let { firstSentence(it) }
+                ?.let { overviewGist(it) }
                 ?.let { stripLinks(linkify(it, typeAnchors, doc)) }
                 .orEmpty()
             val examples = evidenceLinks(doc, evidence).orEmpty()
@@ -2690,6 +2690,21 @@ object StdlibReferenceGenerator {
         val stop = Regex("""[.!?](\s|$)""").find(flat) ?: return flat
         return flat.substring(0, stop.range.first + 1)
     }
+
+    /**
+     * The index's "What it is" cell for a file overview that opens with a Markdown heading.
+     *
+     * [firstSentence] takes the overview's first paragraph as written, so an overview whose first
+     * line is `#### What this file is` published its hashes into the table cell, markup and all.
+     * Dropping the marker keeps the heading's own words, which is what a one-line title already is;
+     * taking the paragraph below it instead would promote prose written as a body, and several of
+     * those read as a sentence fragment or open on a colon.
+     *
+     * The heading stays in the page body, where `demoteHeadings` re-levels it under the generated
+     * file heading.
+     */
+    private fun overviewGist(text: String): String =
+        firstSentence(text.replaceFirst(Regex("""^\s*#{1,6}\s+"""), ""))
 
     /** Escape markdown (links, inline code preserved) for a table cell. */
     private fun escapeCell(text: String): String = text.replace("|", "\\|").replace("\n", " ")

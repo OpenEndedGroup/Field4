@@ -95,13 +95,18 @@ import kotlin.math.sin
 /**
  * One production of an [LSystem]: replace [symbol] with [replacement], with relative [weight] when
  * several productions compete for the same symbol.
- *
- * @property symbol the single character this production rewrites
- * @property replacement what it becomes
- * @property weight relative probability among the productions sharing [symbol]; equal weights make a
- *   uniform choice, and a single production per symbol makes the system deterministic
  */
-data class LProduction(val symbol: Char, val replacement: String, val weight: Double = 1.0) {
+data class LProduction(
+    /** The single character this production rewrites. */
+    val symbol: Char,
+    /** What it becomes. */
+    val replacement: String,
+    /**
+     * Relative probability among the productions sharing [symbol]; equal weights make a uniform choice, and a
+     * single production per symbol makes the system deterministic.
+     */
+    val weight: Double = 1.0
+) {
     init { require(weight > 0.0) { "production weight must be > 0, got $weight" } }
 }
 
@@ -114,11 +119,13 @@ data class LProduction(val symbol: Char, val replacement: String, val weight: Do
  *
  * Symbols with no production are **constants** and pass through unchanged, which is how the turtle
  * commands (`+`, `-`, `[`, `]`) survive rewriting.
- *
- * @property axiom the generation-0 string
- * @property productions the rewrite rules
  */
-class LSystem(val axiom: String, val productions: List<LProduction>) {
+class LSystem(
+    /** The generation-0 string. */
+    val axiom: String,
+    /** The rewrite rules. */
+    val productions: List<LProduction>
+) {
 
     /** Productions grouped by the symbol they rewrite. */
     private val bySymbol: Map<Char, List<LProduction>> = productions.groupBy { it.symbol }
@@ -293,28 +300,31 @@ val LSYSTEM_STOCHASTIC_PLANT: LSystem = LSystem(
  * | `!` | multiply the line width by [widthScale] |
  * | `"` | multiply the step length by [stepScale] |
  * | anything else | ignored (it is a rewriting-only symbol like `X`) |
- *
- * @property angle turn per `+`/`-`, in radians
- * @property step initial forward distance
- * @property stepScale factor applied by `"` and, when [scaleOnBranch], on every `[`
- * @property widthScale factor applied by `!` and, when [scaleOnBranch], on every `[`
- * @property scaleOnBranch when `true`, entering a branch shortens and thins it automatically, which is
- *   what makes an unadorned `F -> F[+F]F[-F]F` look like a plant instead of a wire diagram
- * @property angleJitter random fraction of [angle] added to each turn; 0 is exactly reproducible
- * @property drawSymbols which characters mean "move forward drawing".
- *
- *   `F`/`G` covers most systems, but not all: the Sierpiński **arrowhead** curve is written
- *   `A -> B-A-B`, `B -> A+B+A` where `A` and `B` are *both* drawing symbols, and interpreting it with
- *   the default alphabet renders a blank image (which is how this parameter came to exist). A symbol
- *   that is neither here nor a turtle command is a rewriting-only non-terminal and is skipped.
  */
 data class TurtleParams(
+    /** Turn per `+`/`-`, in radians. */
     val angle: Double = PI / 8.0,
+    /** Initial forward distance. */
     val step: Double = 1.0,
+    /** Factor applied by `"` and, when [scaleOnBranch], on every `[`. */
     val stepScale: Double = 0.62,
+    /** Factor applied by `!` and, when [scaleOnBranch], on every `[`. */
     val widthScale: Double = 0.7,
+    /**
+     * When `true`, entering a branch shortens and thins it automatically, which is what makes an unadorned
+     * `F -> F[+F]F[-F]F` look like a plant instead of a wire diagram.
+     */
     val scaleOnBranch: Boolean = false,
+    /** Random fraction of [angle] added to each turn; 0 is exactly reproducible. */
     val angleJitter: Double = 0.0,
+    /**
+     * Which characters mean "move forward drawing".
+     *
+     * `F`/`G` covers most systems, but not all: the Sierpiński **arrowhead** curve is written `A -> B-A-B`,
+     * `B -> A+B+A` where `A` and `B` are *both* drawing symbols, and interpreting it with the default alphabet
+     * renders a blank image (which is how this parameter came to exist). A symbol that is neither here nor a
+     * turtle command is a rewriting-only non-terminal and is skipped.
+     */
     val drawSymbols: String = "FG"
 ) {
     init {
@@ -327,24 +337,29 @@ data class TurtleParams(
 
 /**
  * The result of interpreting an L-system string with a turtle.
- *
- * @property lines one [FLine] per unbroken drawn run — a branch, in plant terms. Bracketed side
- *   branches and pen-up jumps each start a new line, so the list *is* the branching structure.
- * @property widths the line width in force for each entry of [lines], parallel to it, so a renderer can
- *   taper a tree without re-walking the string
- * @property finalX/[finalY] where the pen ended up
- * @property startX/[startY] where it started
- * @property drawnSegments how many forward-drawing moves were made
- * @property maxDepth deepest bracket nesting reached
  */
 class TurtleResult(
+    /**
+     * One [FLine] per unbroken drawn run — a branch, in plant terms. Bracketed side branches and pen-up jumps
+     * each start a new line, so the list *is* the branching structure.
+     */
     val lines: List<FLine>,
+    /**
+     * The line width in force for each entry of [lines], parallel to it, so a renderer can taper a tree without
+     * re-walking the string.
+     */
     val widths: List<Double>,
+    /** Where the pen started, x. */
     val startX: Double,
+    /** Where the pen started, y. */
     val startY: Double,
+    /** Where the pen ended up, x. */
     val finalX: Double,
+    /** Where the pen ended up, y. */
     val finalY: Double,
+    /** How many forward-drawing moves were made. */
     val drawnSegments: Int,
+    /** Deepest bracket nesting reached. */
     val maxDepth: Int
 ) {
     /**
@@ -654,18 +669,17 @@ fun rasterizeFLines(lines: List<FLine>, width: Int, height: Int, margin: Int = 4
 
 /**
  * A branching structure grown by space colonization.
- *
- * @property x node x coordinates
- * @property y node y coordinates
- * @property parent parent index per node, `-1` for the root
- * @property consumedAttractors how many attractors were reached and removed
- * @property remainingAttractors attractors the structure never got close enough to
  */
 class ColonizationTree(
+    /** Node x coordinates. */
     val x: DoubleArray,
+    /** Node y coordinates. */
     val y: DoubleArray,
+    /** Parent index per node, `-1` for the root. */
     val parent: IntArray,
+    /** How many attractors were reached and removed. */
     val consumedAttractors: Int,
+    /** Attractors the structure never got close enough to. */
     val remainingAttractors: List<Vec2>
 ) {
     init {

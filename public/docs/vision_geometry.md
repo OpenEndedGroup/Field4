@@ -24,11 +24,10 @@ This page is about the middle one.
 
 ## Why the geometry runs in the headset
 
-The obvious design would be to build a mesh on your Mac and send it to the Vision Pro. That works for
-a mesh you build once, and Field can do it — but it puts a network hop between your code and the
-image, which is fatal for anything that changes shape.
+Field can build a mesh on your Mac and send it to the Vision Pro. For geometry that changes every
+frame, it can also run the builder on the headset, avoiding a network transfer for every update.
 
-So the Kotlin in a `// {{ visionmetal }}` box doesn't run on your Mac at all. It compiles to
+The Kotlin in a `// {{ visionmetal }}` box runs on the headset. It compiles to
 JavaScript and runs in a small JavaScriptCore context **on the headset's render thread**.
 `geometry { … }` assembles vertices there and hands the finished arrays to Metal in a single call. The
 network carries your *program*, once; it never carries vertices at frame rate.
@@ -362,8 +361,8 @@ wrong: a face wound the other way is simply not there.
 Worse, it can be *convincingly* not there. A closed shape wound inside-out still draws a plausible
 solid — you are looking at the inside of its far side. So the preview also measures the mesh against
 itself: for every triangle it compares the winding's implied direction with the `normal()` you
-declared, and reports the fraction that agree. A clean mesh reads 100%. Anything less will have holes
-in it on the device, and the number is printed on the frame.
+declared, and reports the fraction that agree. A clean mesh normally reads 100%; a lower number
+points you toward faces whose winding or normals need checking. The number is printed on the frame.
 
 Here is the pair. The same lantern built correctly (a sphere on a ring, 952 vertices, **winding 100%
 agrees with normals**), and then with the ring wound backwards, drawn with culling disabled so you can

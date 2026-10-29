@@ -60,6 +60,7 @@ open class PingPongRenderToTexture(
     parameters: RTTParameters.() -> Unit = {}
 ) : RenderToTexture(renderer, parameters) {
 
+    /** How many images the ring holds per color attachment, and so how far back [previousFrameImageViews] reaches: a frame writes one slot and the other `frameCount - 1` stay readable. Two or more, and two is the plain feedback case. */
     val frameCount: Int = frameCount.also {
         require(it >= 2) { "PingPongRenderToTexture requires frameCount >= 2" }
     }
@@ -81,10 +82,13 @@ open class PingPongRenderToTexture(
 
     open val thisImageView: HasImageView = thisImageViewFor(0)
 
+    /** Color attachment 0 of the slot the last completed frame wrote. The object is fixed and its view follows the ring, so a binding made once keeps reading the latest frame; while a pass records, that is the same image [otherImageView] gives. */
     val latestImageView: HasImageView = latestImageViewFor(0)
 
+    /** Color attachment 0 of the slot written one frame before [latestImageView]'s, which is two frames back from the one being written. */
     val previousImageView: HasImageView = previousImageViewFor(0)
 
+    /** How many color attachments the ring carries, each with its own [frameCount] images. [latestImageViewFor] and the other per-attachment accessors take a slot in `0 until colorAttachmentCount`. */
     val colorAttachmentCount: Int
         get() = pingAttachmentCount
 
@@ -310,6 +314,7 @@ open class PingPongRenderToTexture(
         }
     }
 
+    /** How many completed frames are readable while one is being written: [frameCount] less the slot in use, and the length of [previousFrameImageViews] — the array size a `sampler2D` history binding declares. */
     val previousFrameCount: Int
         get() = frameCount - 1
 
@@ -662,6 +667,7 @@ class FrameCadencedPingPongRenderToTexture(
 
     private var insidePingPongRender = false
 
+    /** How many render calls one ring slot is held for: 1 advances every frame, 4 renders once and shows that result for four. Writing a value below 1 stores 1, and shortening the period also pulls [framesSincePingPong] back inside it, so the next advance is not stranded. */
     var framesPerPingPong: Int = framesPerPingPong.coerceAtLeast(1)
         set(value) {
             val safeValue = value.coerceAtLeast(1)
@@ -669,12 +675,15 @@ class FrameCadencedPingPongRenderToTexture(
             framesSincePingPong = framesSincePingPong.coerceAtMost(safeValue - 1)
         }
 
+    /** Render calls since the last advance, counting 0 on the frame that advanced. It drives [crossfade] and [framePhase], and reaching [framesPerPingPong] less one is what makes the next call render. */
     var framesSincePingPong: Int = 0
         private set
 
+    /** How many times the ring has advanced, which is how many frames this target has actually rendered as against the render calls it was given. Zero until the first, which is why the first call always renders whatever the cadence says. */
     var pingPongCount: Long = 0
         private set
 
+    /** Render calls still to be held before the ring advances again: 0 means the next call renders. It is also 0 before the first advance, which is not waiting on the cadence. */
     val framesUntilPingPong: Int
         get() = if (pingPongCount == 0L) 0 else (framesPerPingPong - 1 - framesSincePingPong).coerceAtLeast(0)
 

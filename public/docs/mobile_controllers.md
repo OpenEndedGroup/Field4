@@ -8,7 +8,9 @@ The phone follows Field's current box selection, and a selection made on the pho
 
 ## Open it on your phone
 
-Start Field and open the document you want to control. From a device that can reach the Field machine, open:
+Start Field and open the document you want to control. Field listens only on the local machine by
+default; to connect over a LAN, configure access as described in [Field's server surface](server_surface.md).
+From a device that can reach the Field machine, open:
 
 ```diffstatic {data-lang=text}
 https://FIELD-HOST:9092/controllers?file=YOUR-DOCUMENT
@@ -367,3 +369,6 @@ Tap a result to select its box and property. The controller switches to **Edit**
 6. Use **Edit** for a small direct correction, then **Pad** to launch or stop the selected box.
 
 Landscape works, but the controller is laid out for portrait, and it stays usable with the keyboard raised.
+
+Next on the Tour, [Automating Field](automating_field.md) shows how a script or an agent can work
+with a document through the same kinds of operations.

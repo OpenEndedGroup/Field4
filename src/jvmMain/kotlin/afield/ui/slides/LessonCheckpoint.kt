@@ -4,6 +4,23 @@ import afield.app.server.ReadOnlyDocuments
 import afield.document.graph.Box
 import afield.document.graph.stopTrackedJobs
 
+/**
+ * A reset button for a lesson: capture a box's source before an audience changes it, and restore it
+ * from a later slide.
+ *
+ * `capture` records the named boxes' local text properties (`code` by default) in memory, and
+ * `restore` stops those boxes' tracked jobs and writes the text back. The scope is narrow: unlisted
+ * boxes, other properties, output, files and anything a run created outside a text property are
+ * untouched, so a slide that resets an experiment runs the setup again afterwards rather than
+ * waiting for the old output to reappear.
+ *
+ * A read-only document refuses the restore, and a captured box since removed from the document
+ * fails it rather than being recreated.
+ *
+ * `presentation_studio.md` pairs this with a `checkpoint(...)` step, which is how the
+ * `templates/presentation` document uses it.
+ */
+
 /** An in-memory baseline of explicitly named local text properties; never a snapshot of runtime objects. */
 class LessonCheckpoint private constructor(private val entries: List<Entry>) {
     private data class Entry(val box: Box, val property: String, val value: String)

@@ -11,14 +11,12 @@ import java.util.Base64
 import kotlin.math.roundToInt
 
 /**
- * # RectSL studio tools
+ * Two tools a document can hand to its AI4 agents: one syntax-checks a RectSL program, the other
+ * renders it in the document's live Field 4 window and returns the captured frames to the
+ * conversation.
  *
- * A batteries-included tool set a document can hand to its AI4 agents: syntax-check RectSL,
- * and render it in the document's live Field 4 window, returning captured frames to the
- * conversation. It is also the reference example of the [aiTool] DSL applied to a real,
- * multi-frame, GPU-backed task.
- *
- * A box registers the set by running this once in its `code` (idempotent — re-running replaces):
+ * Both are built with [aiTool]. A box registers the pair once in its `code`, and running that
+ * again replaces them:
  * ```kotlin
  * registerRectslStudioTools()
  * ```
@@ -26,6 +24,8 @@ import kotlin.math.roundToInt
  * compiled against *this box's* Kotlin engine, so they can read the box's live state (ki-vars,
  * `thisBox` members).
  */
+
+/** Registers `rectsl.check` and `rectsl.run` against this box, replacing either if it already has them. */
 fun Box.registerRectslStudioTools() {
     aiTool("rectsl.check") {
         describe("Compile a RectSL program and report syntax/compile diagnostics, without rendering.")

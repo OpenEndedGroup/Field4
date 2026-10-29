@@ -1,13 +1,12 @@
 # Three.js scenes with `three { … }`
 
-`Box.three { … }` draws meshes and `FLine`s together in one scene you can orbit, and lays several
-views out side by side when you ask for a contact sheet. It uses the same Three.js viewer as
-`threeLines(...)`, which you can orbit, click, section and explode, but takes solids as well as
-lines. For lines alone, see [FLine examples](fline_examples.md#3d-output-threelines).
+Put meshes and `FLine`s in a `three { … }` scene and you can orbit them together, pick features,
+measure them, or look inside with a section. You can also arrange several views as a contact sheet.
+The scene uses Field's Three.js viewer; for lines alone, see
+[FLine examples](fline_examples.md#3d-output-threelines).
 
-Field's other way of drawing a `TriMesh` is a CPU z-buffer rasterizer that hands back a **still
-picture at a fixed camera**. [Which renderer draws this](#which-renderer-draws-this) covers when you
-want each.
+To make a still image from a fixed camera, Field also has a CPU rasterizer. [Which renderer draws
+this](#which-renderer-draws-this) helps you choose.
 
 ## Your first `three` scene
 
@@ -55,9 +54,9 @@ one from a box ID and name.
 
 ## A scene, not a picture
 
-The block describes a scene rather than issuing draw calls, and `three` returns the live
-`ThreeGeometryViewState`, so you can keep changing the scene after it is on screen, as with
-`threeLines(...)`. These are the operations the block accepts:
+The block describes what belongs in the scene. `three` returns a live `ThreeGeometryViewState`,
+so you can keep changing the view after it appears. Here are the operations you can use in the
+block:
 
 | in the block | what it does |
 |---|---|
@@ -256,9 +255,9 @@ uses `EXT_meshopt_compression`, which three.js, Blender 4.2 and later, and most 
 
 ### A studio look
 
-`studio()` lights a scene for a model you look at, rather than for a technical figure. It adds ACES
-tone mapping, a key light that casts soft shadows, a sky fill and a cool rim, ambient occlusion in
-creases, and a dark ground with a faint grid. Give a mesh a material to go with it:
+`studio()` gives a model a more atmospheric presentation: ACES tone mapping, a soft-shadowed key
+light, sky fill, a cool rim light, ambient occlusion and a dark ground with a faint grid. Give the
+mesh a material to go with it:
 
 ```diffstatic {data-lang=kotlin}
 three {
@@ -279,10 +278,9 @@ view. A contact sheet and X-ray draw without it, and `studio(ambientOcclusion = 
 
 ### One scene, two kinds of thing
 
-A gyroid marched inside a finite box is an **open** surface: it runs out of the sampling window
-rather than closing inside it, and every place it does that is a boundary loop. A shaded surface hides
-those loops, since the rim reads as a silhouette. `toFLines(MeshLines.BOUNDARY)` returns one closed
-ring per hole, and this example draws those rings in the same scene as the solid.
+A gyroid marched inside a finite box is an **open** surface. Where it reaches the edge of the
+sampling window, it leaves boundary loops. Those loops can be hard to see on a shaded surface, so
+this example draws them as lines over the mesh using `toFLines(MeshLines.BOUNDARY)`.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/three_output/scene.png" wait="6.0" capture="box" open-outputs="true" padding="20"}
 :::static
@@ -332,7 +330,7 @@ position.
 
 ## The camera
 
-`ThreeCameraSpec` has the same four fields as `MeshView` and `VisionGeometryPreview.Camera`, the
+`ThreeCameraSpec` has the same fields as `MeshView` and `VisionGeometryPreview.Camera`, the
 CPU rasterizer's camera:
 
 - **`yawDegrees`** — orbit around `+y`. `0` looks straight down `−z`.
@@ -496,13 +494,10 @@ lists them all, and what each is for:
 
 Two entries in that table are commonly misread:
 
-**`Box.lines(...)` does not project.** It flattens. `computeFitTransform` is three numbers — a scale
-and two offsets — with no eye, no field of view and no near plane, and `applyFit` copies `z` through
-untouched. Every draw path then reads `x` and `y` only. A 3D FLine handed to `lines(...)` is an
-orthographic projection down `−z` with no depth sorting and no hidden-line removal. `z` survives only
-as *metadata for picking*, so a click can report the 3D coordinate of the thing you hit. If you want
-perspective, either project first with `FLine.byPerspectiveProjecting(...)` or reach for
-`threeLines`.
+**`Box.lines(...)` draws in 2D.** Given a 3D FLine, it uses `x` and `y` for an orthographic view
+down `−z`, with no depth sorting or hidden-line removal. The `z` coordinate is retained for
+picking, so a click can still report the 3D position. For perspective, project first with
+`FLine.byPerspectiveProjecting(...)` or use `threeLines`.
 
 **The ray tracer is not a separate renderer.** [Ray tracing examples](ray_tracing_examples.md) is
 `VK_KHR_ray_tracing_pipeline` inside Field 4, and Fabricate's `StandardRenderer` is a deferred
@@ -511,7 +506,7 @@ front ends.
 
 ### What the CPU rasterizer is for
 
-The rasterizer does three things the viewer cannot.
+The CPU rasterizer is useful in a few situations:
 
 **It is deterministic.** The same input gives the same pixels every time, whatever the GPU, driver
 or antialiasing. Use it when a test or a comparison needs the same number twice.

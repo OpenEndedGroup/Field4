@@ -44,7 +44,11 @@ class AudioPlayer(
         else -> throw IllegalArgumentException("Unsupported channel count: $channels")
     }
 
-    // Volume control
+    /**
+     * Gain on the OpenAL source: 0 for silence, 1 for the decoded level, and values outside that
+     * range clamped into it. Setting it before [initialize] is not lost, since [initialize]
+     * applies whatever it holds to the source it creates.
+     */
     var volume: Float = 1.0f
         set(value) {
             field = value.coerceIn(0.0f, 1.0f)

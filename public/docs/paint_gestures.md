@@ -7,9 +7,8 @@ and slides, splays when it is pressed and springs back when it is lifted. Where 
 they lay and pick up paint, oil or watercolour. A brush pressed hard and dragged sideways for long
 enough keeps a set, as a real one does.
 
-Because the hairs have mass and stiffness, it matters how the hand moves, not only where. A
-`TimedGesture` gives the brush's position over time, how hard it presses, and how the handle is
-tilted and turned. The same path drawn slowly, fast, with a pause, tilted or rolled gives different
+The hairs have mass and stiffness, so the way the hand moves affects the mark. A `TimedGesture`
+gives the brush's position over time, how hard it presses, and how the handle is tilted and turned. The same path drawn slowly, fast, with a pause, tilted or rolled gives different
 marks.
 
 Here is a round brush drawn along the same curve at 20, 80 and 300 mm/s, and then right to left.

@@ -25,27 +25,58 @@ import org.lwjgl.vulkan.VK13.*
  * With renderSource=false the caller renders source earlier in the same command buffer.
  */
 class StreamDiffusionView(
-    val renderer: Renderer, val source: RenderToTexture, val config: StreamDiffusionConfig,
-    val name: String = "stream-diffusion", val renderSource: Boolean = true,
+    /** The renderer whose graphics queue hands the frames over, and whose cleanup frees them. */
+    val renderer: Renderer,
+    /** What is stylized: a single-layer, single-sample, transfer-source RGBA8 or BGRA8 target,
+     * with both dimensions multiples of 32 for the diffusion backend. */
+    val source: RenderToTexture,
+    /** Where the backend is and how it draws. */
+    val config: StreamDiffusionConfig,
+    /** The view's key in the renderer's pre-target list; two views need two names. */
+    val name: String = "stream-diffusion",
+    /** Whether this view draws [StreamDiffusionView.source] itself. Pass false, and render it earlier in the same
+     * command buffer, when something else already schedules it. */
+    val renderSource: Boolean = true,
+    /** The clock stamped on each captured frame and returned with its result, for a caller whose
+     * source does not advance in real time. */
     val sourceTimeNanos: () -> Long = System::nanoTime,
+    /** Per-pixel correspondence from the renderer, which is what display reprojection, history
+     * blending and noise advection need; without one the worker's output is published as it is. */
     val motion: StreamDiffusionMotionProvider? = null
 ) : Target, AutoCloseable {
+    /** The texture to sample: an ordinary sampled target holding the newest stylized frame. */
     val output: RenderToTexture
+    /** The worker process behind this view, with its status, readiness and timings. */
     val session: StreamDiffusionSession
     private val rawOutput: RenderToTexture
     private val temporal: StreamDiffusionTemporalOutput?
-    @Volatile var displayReprojection = config.displayReprojection
-    @Volatile var historyBlend = config.historyBlend
+    /** Warp the newest result onto the current frame before showing it, so the picture follows the
+     * geometry while the worker is still behind. Needs [StreamDiffusionView.motion]. */
+    @Volatile
+    var displayReprojection = config.displayReprojection
+    /** How much of the previous result to carry into a new one along the correspondence, 0 to 1.
+     * Steadies the image between results; too much of it smears a fast-moving stroke. Needs [StreamDiffusionView.motion]. */
+    @Volatile
+    var historyBlend = config.historyBlend
         set(value) { require(value.isFinite() && value in 0.0..1.0); field = value }
     private var previousInput: StreamDiffusionFrame? = null
-    val displayReprojectionRequests get() = temporal?.displayRequests ?: 0L
-    val historyBlendRequests get() = temporal?.historyRequests ?: 0L
+    /** Display correspondences asked of [StreamDiffusionView.motion] so far; zero without one. */
+    val displayReprojectionRequests: Long get() = temporal?.displayRequests ?: 0L
+    /** History correspondences asked of [StreamDiffusionView.motion] so far; zero without one, or at zero blend. */
+    val historyBlendRequests: Long get() = temporal?.historyRequests ?: 0L
+    /** Captured frames that also carried a motion texture for the worker's noise. */
     var noiseMotionFrames = 0L; private set
+    /** Source frames sent to the worker, which is at most [StreamDiffusionConfig.fps] a second. */
     var capturedFrames = 0L; private set
+    /** Captures given up because every input slot was still with the worker. */
     var skippedCaptures = 0L; private set
+    /** Results copied into [StreamDiffusionView.output]. */
     var presentedFrames = 0L; private set
+    /** Results thrown away: from a generation before the last reset, or behind a backlog. */
     var droppedOutputs = 0L; private set
+    /** Which source frame the newest presented result came from, or -1 before the first one. */
     var lastSourceFrameId = -1L; private set
+    /** The [StreamDiffusionView.sourceTimeNanos] reading of that frame, so a caller can measure the round trip. */
     var lastSourceTimeNanos = 0L; private set
     private var frameId = 0L
     private var captureDue = 0L
@@ -83,6 +114,12 @@ class StreamDiffusionView(
         renderer.renderList.preTargets[name] = this
     }
 
+    /**
+     * One graphics frame of the exchange, called by the renderer rather than by box code: present a
+     * finished result if one is due, then capture the source again if the interval has passed and
+     * the worker has a free slot. Until the first result arrives, [StreamDiffusionView.output] carries a copy of the
+     * source, so there is a picture to draw from the moment the view is made.
+     */
     override fun render(command: CommandBuffer, index: Int) {
         if (closed) return
         if (renderSource) source.render(command, index)
@@ -200,6 +237,10 @@ class StreamDiffusionView(
             rawOutput.defaultSampler?.cleanup()
         }
     }
+    /**
+     * Unregisters the view, stops the worker and releases its targets. Call it between graphics
+     * frames: there is a command buffer open during one, and closing then is refused.
+     */
     override fun close() {
         check(renderer.currentCommandBuffer == null) { "Close diffusion between graphics frames" }
         if (closed) return

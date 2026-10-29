@@ -1,12 +1,9 @@
 # Field language extensions
 
-Write a few lines of your own language inside a triple-quoted string in a Kotlin
-box and the editor sees one long string, coloured all the way through. A language
-extension changes that. It is a small JavaScript object, registered in the
-browser, that gives your language syntax highlighting inside the string, its own
-error markers, completion, and decorations that show how values move through the
-code. You do not need to change Field's editor to add one, so a language can be
-useful long before it is built into Field. RectSL and StackSL both work this way.
+Write a little language inside a Kotlin string and you can give it an editor of its own: syntax
+highlighting, error markers, completion and decorations that show values as they move through the
+code. A language extension is a small JavaScript object registered in the browser; RectSL and
+StackSL both use this mechanism. You can add one without changing Field's editor.
 
 ## Loading
 

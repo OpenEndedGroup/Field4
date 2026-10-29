@@ -628,9 +628,8 @@ data class StackAutoReport(
     /** Worth seeing, not worth failing on — chiefly how much computed work nothing consumes. */
     val notes: List<String> = emptyList(),
     /**
-     * Why it did not compile: the compiler's ERROR diagnostics, empty when [compiled]. Until 2026-09-29
-     * a failed report carried none of them — [warnings] leaves errors out — so a slot study refusing a
-     * candidate said "does not compile into stack.auto.foo:" and then nothing.
+     * Why it did not compile: the compiler's ERROR diagnostics, empty when [compiled]. [warnings]
+     * leaves errors out, so a report that says why a candidate was refused has to read this list.
      */
     val errors: List<String> = emptyList()
 ) : ToHTML {

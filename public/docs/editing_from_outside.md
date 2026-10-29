@@ -23,8 +23,8 @@ sketch/
   backups/
 ```
 
-The name is `<box id>_<property>_.<extension>`. The id is the box's uid, not its name, so
-renaming a box does not rename its files. To find a box's file, search for its code with
+The name is `<box id>_<property>_.<extension>`. It uses the box's uid, which stays the same when
+you rename the box. To find a box's file, search for its code with
 `grep -l` or look the id up in `metadata.edn`, where each box's `"name"` sits beside its `"id"`.
 
 These properties get their own file:

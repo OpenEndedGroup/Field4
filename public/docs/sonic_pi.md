@@ -180,9 +180,9 @@ euclidean rhythms, polymeters and continuous control signals on top of it
 sample-accurate scheduler. You can write the pattern in Field and have Sonic Pi play it, without
 writing any Ruby.
 
-There are two ways to do it. `compile` turns the pattern into a Sonic Pi program, which keeps
-perfect time. `drive` sends Sonic Pi one note at a time from Field's clock, which lets you edit the
-pattern mid-bar.
+There are two ways to do it. `compile` turns the pattern into a Sonic Pi program, letting Sonic
+Pi schedule its notes. `drive` sends notes from Field's clock, which lets you edit the pattern
+mid-bar. The timing comparison below shows what each approach costs.
 
 ### compile: the pattern becomes a program
 
@@ -325,7 +325,8 @@ continuous signal is sampled at every note, which a compiled loop cannot do.
 
 The cost is timing. Each note travels as a network message and then waits for Sonic Pi's own
 scheduling, so notes arrive a roughly constant time late with a few milliseconds of jitter. The
-constant part sounds like latency; the jitter is what you hear. A compiled `live_loop` has neither.
+constant part sounds like latency; the jitter affects the rhythm. A compiled `live_loop` avoids
+the per-note trip from Field.
 
 ### Which one keeps time
 

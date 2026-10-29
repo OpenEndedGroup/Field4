@@ -2,9 +2,12 @@
 
 <div data-field-transcript-gallery hidden></div>
 
-An **operation transcript** is a short YAML macro that builds a whole Field document (boxes, code,
-graph wiring) from a blank canvas. Field ships a small, curated corpus of them, and they are the
-worked examples an agent copies, runs, and adapts when [automating Field](automating_field.md).
+These are documents built from a blank canvas by agents working in Field. Open one to see the
+result, try it in Field, or take it apart and make it your own.
+
+Each begins as an **operation transcript**: a YAML macro that makes the boxes, writes the code and
+connects the graph. The transcripts are also examples for agents to copy and adapt when
+[automating Field](automating_field.md).
 
 These are the same scenes offered as **Starting points** on the [welcome screen](history_overview.md):
 each transcript that is a self-contained scene is materialized into an openable document, so you can
@@ -1377,7 +1380,7 @@ search found.
 
 ### keyframe_editor
 
-The keyframe editor, `keyframes(...)`, as the three boxes of its page,
+The keyframe editor, `keyframes(...)`, as the four boxes of its page,
 [The keyframe editor](keyframe_editor.md). `brightness` plays a hand-drawn curve with a `loop`, moving
 the editor's playhead with `setTime` and sending `evaluateValueAt` to a meter, so you can edit the
 curve while it plays. `shape` starts a curve with one key of each type through
@@ -1429,8 +1432,7 @@ registers two uniform `Structure`s, captures them into a `Key`, edits it, invoke
 state back, and reads the live structures to prove it landed, including the fact that `capture()`
 reads a structure's *bindings* first and then its *set values*, so a property written by value
 snapshots too. *Persist* shows that every
-`saveKey` also appends to a `.versions` history, that a `Boolean` or a list is dropped from a saved
-key with no warning at all, and how `missingKey` lets a scope that has grown a parameter still load
+`saveKey` also appends to a `.versions` history, which values survive a saved key and how unsupported values are reported, and how `missingKey` lets a scope that has grown a parameter still load
 an older file. *Updatecode* turns a captured look back
 into pasteable Kotlin whose literals keep their *types*.
 
@@ -2140,6 +2142,14 @@ any genome with a picture; design notes in `dev_docs/madp/ga.md`.
 ```
 
 [Open →](offline.html?file=assets/agent_transcripts/madp_ga/metadata.edn)
+
+### assimp_browsing
+
+**A glTF file, as Assimp loads it, opened in `column(...)` and `tree(...)`**, in one box and with no
+renderer: the scene's root node and its transform, meshes, materials and animations. See
+[Browsing a glTF scene](visualizers.md#browsing-a-gltf-scene).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/assimp_browsing/metadata.edn)
 
 ## Service-backed composition scenes
 

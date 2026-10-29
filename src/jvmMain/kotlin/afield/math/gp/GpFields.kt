@@ -16,6 +16,7 @@ import afield.math.linalg.Vec3
 fun gp2D(points: List<Vec2>, values: DoubleArray, kernel: GpKernel = GpKernels.rbf(), noiseStd: Double = 0.0,
          mean: (DoubleArray) -> Double = { 0.0 }, numerics: GpNumerics = GpNumerics()): GaussianProcess =
     gp2D(points, values, DoubleArray(values.size) { noiseStd }, kernel, mean, numerics)
+/** One noise standard deviation per point, for a survey whose samples are not equally reliable. */
 fun gp2D(points: List<Vec2>, values: DoubleArray, noiseStd: DoubleArray, kernel: GpKernel = GpKernels.rbf(),
          mean: (DoubleArray) -> Double = { 0.0 }, numerics: GpNumerics = GpNumerics()): GaussianProcess =
     GaussianProcess.fit(Array(points.size) { doubleArrayOf(points[it].x.toDouble(), points[it].y.toDouble()) }, values, kernel, noiseStd, mean, numerics, 2)
@@ -23,8 +24,11 @@ fun gp2D(points: List<Vec2>, values: DoubleArray, noiseStd: DoubleArray, kernel:
 fun gp3D(points: List<Vec3>, values: DoubleArray, kernel: GpKernel = GpKernels.rbf(), noiseStd: Double = 0.0,
          mean: (DoubleArray) -> Double = { 0.0 }, numerics: GpNumerics = GpNumerics()): GaussianProcess =
     gp3D(points, values, DoubleArray(values.size) { noiseStd }, kernel, mean, numerics)
+/** One noise standard deviation per point, for a volume sampled at differing quality. */
 fun gp3D(points: List<Vec3>, values: DoubleArray, noiseStd: DoubleArray, kernel: GpKernel = GpKernels.rbf(),
          mean: (DoubleArray) -> Double = { 0.0 }, numerics: GpNumerics = GpNumerics()): GaussianProcess =
     GaussianProcess.fit(Array(points.size) { doubleArrayOf(points[it].x.toDouble(), points[it].y.toDouble(), points[it].z.toDouble()) }, values, kernel, noiseStd, mean, numerics, 3)
+/** Read the fitted field back at a point, without unpacking its coordinates first. */
 fun GaussianProcess.predict(point: Vec2): GpPrediction = predict(point.x.toDouble(), point.y.toDouble())
+/** Read the fitted field back at a point in space, without unpacking its coordinates first. */
 fun GaussianProcess.predict(point: Vec3): GpPrediction = predict(point.x.toDouble(), point.y.toDouble(), point.z.toDouble())

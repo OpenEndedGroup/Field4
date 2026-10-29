@@ -7,6 +7,17 @@ import java.util.concurrent.CancellationException
 import java.util.concurrent.CompletableFuture
 
 /**
+ * One explicit analysis request, followed from submission to durable result.
+ *
+ * [FieldAudioClient] has four separate verbs for the stages of that, each returning its own future:
+ * `submit`, `watch`, `awaitAnalysis` and `inspect`. [trackAnalysis] composes them into a single
+ * future owned by the calling run, with a callback at each stage, which is what a box asking one
+ * question of the service usually wants. Ownership divides along the way: the subscription and the
+ * polling belong to the run and are released when it stops, while the job belongs to the service and
+ * goes on, since another client may be waiting on the same result.
+ */
+
+/**
  * Submit one explicit analysis request, watch progress, await its result and inspect final job state.
  * Publication and resources belong to the calling run through [runAsync]. Stop/rerun cancels local
  * polling and closes the watch, including a handshake that finishes late. Durable service jobs and

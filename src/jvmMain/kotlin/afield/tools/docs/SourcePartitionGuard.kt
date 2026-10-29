@@ -43,8 +43,8 @@ expect:
  *   disagree.
  * - **The unattributed census, as a ratchet** — every line the partition could not attribute to a
  *   declaration, a comment or a header lands in `FILLER`. That is a *correctness-preserving* fallback:
- *   the tiling still holds, no line is lost. It is not free, though — a `FILLER` line is a line a page
- *   can only show as anonymous code — so the `FILLER` lines that carry code are counted and pinned,
+ *   the tiling still holds, no line is lost. It is not free, though: a `FILLER` line is a line a page
+ *   can only show as anonymous code, so the `FILLER` lines that carry code are counted and pinned,
  *   and the pin falls whenever the scanner learns a shape and rises only with a reason. Blank lines
  *   land in `FILLER` too and are not counted: there is nothing for a page to lose.
  * - **Locals reported as API** — a second ratchet counts the declarations
@@ -58,7 +58,7 @@ expect:
  * ./gradlew checkSourcePartition --args=--verbose       # …and the per-file and per-shape breakdowns
  * ```
  * Needs no Field server, no GPU and no network: it reads source text. Sibling of
- * [KDocAttachmentGuard], which guards the other half of the same pipeline — that a KDoc block reaches
+ * [KDocAttachmentGuard], which guards the other half of the same pipeline: that a KDoc block reaches
  * the declaration its author meant.
  */
 

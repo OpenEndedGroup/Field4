@@ -54,8 +54,11 @@ import kotlin.math.sqrt
  * carry warnings in [diagnostics].
  */
 class BriefProgram internal constructor(
+    /** The program text as compiled, kept so a diagnostic's line and column still mean something. */
     val source: String,
+    /** The parse this was resolved from, for a caller that wants the statements rather than a solve. */
     val syntax: BriefSyntax,
+    /** Everything the lexer, parser and resolver said. Errors are impossible here, because an error throws. */
     val diagnostics: List<BriefDiagnostic>,
     /** Every point, in the order they became parameters — declared first, then invented. */
     val pointNames: List<String>,
@@ -67,13 +70,16 @@ class BriefProgram internal constructor(
     /** A hidden point that turns `p.z = 3` into a relation between two points, which the solver has. */
     internal class AxisAnchor(val name: String, val at: Vec3, val axes: AxisSet)
 
+    /** How many statements the brief wrote, which is not how many residuals they lower to. */
     val constraintCount: Int get() = syntax.constraints.size
 
+    /** The subset of [diagnostics] worth showing a reader whose brief compiled. */
     val warnings: List<BriefDiagnostic> get() = diagnostics.filter { it.severity == BriefSeverity.WARNING }
 
     /** The statement labels, in source order — the names a residual report uses. */
     val statementLabels: List<String> get() = syntax.constraints.map { it.label }
 
+    /** Point count, statement count, and the invented names: what a box prints when it compiles one. */
     override fun toString(): String =
         "BriefProgram(${pointNames.size} point(s), $constraintCount constraint(s)" +
             if (inventedPoints.isEmpty()) ")" else ", invented ${inventedPoints.joinToString(", ")})"
@@ -899,8 +905,11 @@ private fun emitPredicate(scope: ConstraintScope, env: BriefEnv, predicate: Brie
 
 /** One statement's own residual, in its own units, measured from the solved geometry. */
 data class BriefResidual(
+    /** The statement, reconstructed from the parse, as in `insist distance(west, spine) = 6`. */
     val label: String,
+    /** The 1-based source line the statement was written on. */
     val line: Int,
+    /** The weight the statement was written with, the `strength` half of [cost]. */
     val strength: Double,
     /** The statement's residual in its natural units, or NaN where there is no independent one. */
     val residual: Double,
@@ -908,6 +917,7 @@ data class BriefResidual(
     /** What the statement contributes to the objective, `strength * residual²`. */
     val cost: Double get() = if (residual.isNaN()) Double.NaN else strength * residual * residual
 
+    /** One report line: the source line, the residual, and the statement it came from. */
     override fun toString(): String =
         "line $line  ${"%.6g".format(residual)}  (${label})"
 }
@@ -922,12 +932,16 @@ data class BriefResidual(
  * also means the report is a *check* on the solve rather than a restatement of it.
  */
 class BriefSolution internal constructor(
+    /** Whether the solve converged. The points are populated either way. */
     val ok: Boolean,
     /** Ceres's own final cost, or NaN when metrics were not requested. */
     val totalCost: Double,
+    /** Every point by the name the brief used, hidden axis anchors included. */
     val points: Map<String, Vec3>,
+    /** One entry per statement, in source order. [worst] and [report] sort them by cost. */
     val residuals: List<BriefResidual>,
 ) {
+    /** A point by name, which throws and lists the names it does have rather than returning null. */
     operator fun get(name: String): Vec3 =
         points[name] ?: error("no point '$name' in this solution; it has ${points.keys.sorted()}")
 
@@ -1274,6 +1288,7 @@ private fun spread(values: List<Double>): Double =
  * Owns native memory. Close it, or open it with `use`.
  */
 class BriefSession internal constructor(
+    /** The brief this session was opened over, for its statement labels and its point names. */
     val program: BriefProgram,
     private val session: GeometrySolveSession,
     private val refs: Map<String, PointRef>,
@@ -1308,6 +1323,7 @@ class BriefSession internal constructor(
     /** Hold a point where it is now, re-asserted before every solve — stronger than a heavy prior. */
     fun pin(name: String) = session.pin(ref(name))
 
+    /** Undo [pin]: the point goes back to being governed by the brief. */
     fun unpin(name: String) = session.unpin(ref(name))
 
     /** Re-solve from the current state. */
@@ -1319,6 +1335,7 @@ class BriefSession internal constructor(
     private fun hiddenPositions(): Map<String, Vec3> =
         refs.filterKeys { it.startsWith("_at:") }.mapValues { session.get(it.value) }
 
+    /** Release the native problem. Every accessor here is invalid afterwards. */
     override fun close() = session.close()
 }
 

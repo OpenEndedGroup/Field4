@@ -1,10 +1,11 @@
 # Profiling
 
-When a piece stops keeping up, start with the **Profiling Timeline** panel, described first
-below. [Simulation time](#simulation-time) covers a clock you advance yourself, so that delays in
-coroutine code follow simulation time instead of the wall clock.
-[Holding a frame budget](#holding-a-frame-budget) explains which of Field's profiling tools to
-use, what each one misses, and how to get from "it stutters" to a line of your own box code.
+When a piece starts to stutter, the **Profiling Timeline** can show you where its time and memory
+go. Record while your boxes run, then explore the capture to find expensive work.
+
+We'll start with the timeline and a demo you can open. Later, [Holding a frame
+budget](#holding-a-frame-budget) helps you choose between Field's profiling tools, and
+[Simulation time](#simulation-time) introduces a clock you advance yourself.
 
 Run **Show Profiling Timeline** from the command palette while your boxes are running.
 Choose a capture length, then **Record**. Field records each box-owned coroutine

@@ -296,8 +296,8 @@ the hand but not the job: on its own it wanders off after a pass or two. So for 
 steers.
 
 A **guide** chooses among the pen's proposals. At every point the pen proposes 32 next points,
-sampled from its own prediction, and a `FollowGuide` picks the one that stays a set gap from the
-ink beside it, does not cross any, and does not jump. The pen keeps its tremor, its rhythm and the
+sampled from its own prediction, and a `FollowGuide` favours the one that stays a set gap from the
+ink beside it while avoiding crossings and jumps. The pen keeps its tremor, its rhythm and the
 way it turns; the guide only decides which of its ideas to draw. `Hatcher` hands the pen each
 stroke of a drawing in turn, with everything else as surroundings, so every stroke gets its
 passes and they keep clear of each other:

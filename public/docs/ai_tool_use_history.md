@@ -1,17 +1,15 @@
 # AI tool-use history
 
-When AI4 calls a tool and the call fails, or the same unproductive call comes
-round again, or a conversation runs out of tool rounds, there is already a
-record of it on disk. Field can read the recent ones back and ask a model for a
-source change grounded in what they show.
+AI4 keeps a record of the tools it calls during a conversation. If a call fails, an agent repeats
+an unproductive action, or a conversation runs out of tool rounds, you can inspect that record to
+see what happened. Field can also read recent logs and ask a model to propose a source change based
+on them.
 
 ## What is logged
 
-Each AI4 send normally creates one JSONL file under `~/.afield/logs/ai4_tool_io/`, whichever
-provider runs it: `OpenAiIdeCodexBridge` (OpenAI, OpenRouter) and `AnthropicBridge`
-(`AFIELD_AI_PROVIDER=anthropic`) both write it through the same `AiToolIoLogger`. Records include session metadata and the prompt,
-response shape, tool calls, tool results, tool exceptions, and tool-round
-limits. Large string fields are clipped rather than written without bound.
+Each AI4 send normally creates a JSONL file under `~/.afield/logs/ai4_tool_io/`, whether you use
+OpenAI, OpenRouter or Anthropic. It records the prompt, response shape, tool calls and results, including exceptions and
+tool-round limits. Large text fields are clipped.
 
 Logging is enabled by default. Set `AFIELD_AI4_TOOL_IO_LOG=0` to disable it,
 `AFIELD_AI4_TOOL_IO_LOG_PATH` to choose another directory, or
@@ -38,9 +36,8 @@ The **Agent tool use** card on [`/welcome`](history_overview.md) offers:
 
 ![The AI tool-use improvement page](assets/ai-tool-use.png)
 
-The detail page at `/ai-tool-use-improvement.html` shows log counts and size,
-run state, report and patch paths, task output, and generated-worktree controls.
-Status changes are broadcast over `/welcome-events`.
+Open the detail page at `/ai-tool-use-improvement.html` to see the logs, run status, report and
+patch paths, and controls for generated worktrees.
 
 The review CLI summarizes tool-call counts, failed results, exceptions, and
 max-round events before asking the configured model for a small source-level

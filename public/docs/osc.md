@@ -234,8 +234,8 @@ server.on("/types") { m ->
 oscClient("127.0.0.1", 57303).send("/types", sent)
 ```
 
-Each Kotlin type has one OSC type tag, and comes back as the same type. A blob, sent as a
-`ByteArray`, arrives as a read-only `java.nio.ByteBuffer`. `m.event.message.info.argumentTypeTags`
+The values carry OSC type tags. Most of the types in this example come back as the same Kotlin
+type; a blob sent as a `ByteArray` arrives as a read-only `java.nio.ByteBuffer`. `m.event.message.info.argumentTypeTags`
 is the type tag string itself, which is the first thing to look at when a peer's numbers arrive as
 the wrong type.
 

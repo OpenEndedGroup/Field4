@@ -132,9 +132,8 @@ import kotlin.math.sqrt
  * The bridges out of a [TextLayout] and into the four families Field already has.
  *
  * `typography.kt` answers with *structure* — rings, depths, advances, handles — and structure is not
- * yet a drawing, a mesh, an image or a point cloud. This file is the missing hop, and it is the
- * reason the typography family is worth having at all: once a string is contours, letters get to be
- * inputs to machinery that never knew about text.
+ * yet a drawing, a mesh, an image or a point cloud. This file converts it: once a string is
+ * contours, letters are inputs to machinery that never knew about text.
  *
  * It is the typographic counterpart of `spatial_field.kt` (plane geometry → `FLine`) and
  * `mesh_field.kt` (`TriMesh` → `FLine`), and it is written to the same rule: every function here
@@ -149,8 +148,8 @@ import kotlin.math.sqrt
  *     Java2D both fill non-zero, so a counter is a hole precisely because its ring runs the other
  *     way. [TextLayout.toFLines] takes `honourHoles = false` to show you the blob you get without a
  *     convention, which is the control arm the docs figure uses.
- *  2. **→ [TriMesh]** ([TextLayout.toMesh]). Hole-aware extrusion: `extrudeMesh` in
- *     `mesh_generate.kt:619` and `triangulatePolygon` (`:547`) explicitly cannot do holes, so the
+ *  2. **→ [TriMesh]** ([TextLayout.toMesh]). Hole-aware extrusion: [extrudeMesh] and
+ *     [triangulatePolygon] each take a single ring and cannot do holes, so the
  *     caps here go through `FloatEarcut` with hole indices and the walls are emitted ring by ring
  *     from the *same* flattened vertices, which is what makes the result watertight — and makes an
  *     extruded `o` genus 1 and an extruded `l` genus 0.
@@ -158,9 +157,9 @@ import kotlin.math.sqrt
  *     in z, so letters compose with `sdfSphere`, `sdfSmoothUnion`, `.twisted()` and everything else
  *     in `mesh_sdf.kt`, and `marchingCubes` will mesh the result.
  *  4. **→ [Img]** ([rasterizeText]). An analytic even-odd scanline fill of the layout's own rings —
- *     *not* `Graphics2D.drawString`, both because AWT text rendering in-process is what
- *     `imaging_field.kt:417` forbids and because filling our own outlines means a legible PNG is
- *     evidence about *this* code rather than about AWT's rasteriser.
+ *     *not* `Graphics2D.drawString`, both because a stdlib call every box might make must not be
+ *     able to initialise AWT's font manager and because filling our own outlines means a legible PNG
+ *     is evidence about *this* code rather than about AWT's rasteriser.
  *  5. **→ points** ([TextLayout.samplePoints], [TextLayout.toPointFLine]). Even-by-arc-length
  *     samples along the outlines, which is what the alife agents, the clusterers and the
  *     contourers in `clustering.kt` / `alife_agents.kt` consume.
@@ -508,12 +507,19 @@ private fun addExtrudedRingGroup(
  * [GlyphContour.signedArea]'s. That is not an inconsistency to fix: an area's sign says which way a
  * ring runs, a distance's sign says which side of the ink you are on, and the two live in different
  * files for different consumers.
- *
- * @property bounds the region the grid covers, in text space.
  */
 class TextDistanceField internal constructor(
+    /**
+     * The region the grid covers, in text space: the layout's inked bounds grown by the margin the
+     * build asked for. Samples sit on its edges, not half a cell inside them.
+     */
     val bounds: Rect,
+    /** Samples across [TextDistanceField.bounds], at least 4. */
     val nx: Int,
+    /**
+     * Samples down [TextDistanceField.bounds], at least 4. Only the longer side of the grid gets
+     * the resolution that was asked for; the shorter one is scaled to keep the cells square.
+     */
     val ny: Int,
     internal val values: FloatArray,
 ) {
@@ -521,9 +527,9 @@ class TextDistanceField internal constructor(
     private val dy = bounds.h / (ny - 1).coerceAtLeast(1)
 
     /**
-     * Bilinear sample. Outside [bounds] the nearest edge value is used plus the distance to the
-     * box — which keeps the field monotone far away, so a marcher never finds a spurious surface out
-     * there.
+     * Bilinear sample. Outside [TextDistanceField.bounds] the nearest edge value is used plus the
+     * distance to the box — which keeps the field monotone far away, so a marcher never finds a
+     * spurious surface out there.
      */
     fun at(x: Double, y: Double): Double {
         val cx = x.coerceIn(bounds.x, bounds.x + bounds.w)
@@ -675,17 +681,21 @@ fun TextLayout.toSdf(
 
 /**
  * A layout's SDF plus the bounds it lives in — the pair `marchingCubes` wants.
- *
- * @property field negative inside the letters; safe to compose with any `ScalarField3D`.
- * @property bounds a box comfortably containing the surface, so [march] needs no arguments.
- * @property distanceField the 2D grid underneath, if you want to look at it or measure it.
- * @property scale text-space units per normalised unit's reciprocal — multiply a text-space length by
- *   this to get a normalised one.
  */
 class TextSdf internal constructor(
+    /**
+     * The field itself, negative inside the letters, in normalised y-up coordinates. Safe to
+     * compose with any `ScalarField3D`.
+     */
     val field: ScalarField3D,
+    /** A box comfortably containing the surface, so [march] needs no arguments. */
     val bounds: AxisAlignedBoundingBox3D,
+    /** The 2D grid underneath, if you want to look at it or measure it. */
     val distanceField: TextDistanceField,
+    /**
+     * Normalised units per text-space unit, which is one over the layout's ascent: multiply a
+     * text-space length by this to get a normalised one.
+     */
     val scale: Double,
 ) {
     /** March the field. `resolution` is cells along the longest axis, as in `marchingCubes`. */

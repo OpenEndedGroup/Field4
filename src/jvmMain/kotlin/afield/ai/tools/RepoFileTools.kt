@@ -13,8 +13,6 @@ import java.nio.file.PathMatcher
 import java.nio.file.StandardOpenOption
 
 /**
- * #### Repository files for a headless AI4 job
- *
  * The `repo` tools read, list, search, patch and create files in one checkout, for a job that hands
  * AI4 work a coding agent would otherwise do (a docs-notes revision, a landing question). A job
  * supplies a [RepoScope]: the root, the globs it may read and the globs it may write. Every path is

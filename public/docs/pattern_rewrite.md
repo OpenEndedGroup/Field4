@@ -1,12 +1,11 @@
 # Rewriting your own syntax
 
-Every `neg(x)` becomes `-x`. Every `f(x)` gets wrapped in a runtime coercion.
-Every `log(tag, …)` routes through your logger. Each of these is about the
-*shape* of your source, so none of them can be written as a function: a function
-sees the values, not the syntax that produced them.
+Suppose you want every `neg(x)` to become `-x`, or every `log(tag, …)` to go
+through your logger. With `rewrite { … }`, you can write rules that match the
+shape of your code and replace it before the compiler sees it.
 
-A `rewrite { … }` block in a box states rules like these in Kotlin syntax, and
-Field rewrites the box's source with them before the compiler sees it.
+The rules live in a box and use Kotlin syntax. They can match and rearrange the
+source itself, giving you access to details an ordinary function never sees.
 
 ## How rules work
 
@@ -48,11 +47,9 @@ neg(10) // →  -10
 neg(a) // →  -a
 ```
 
-`x: Expr` says "`x` is a hole that binds any expression." Inside `from` and
-`to`, a name is a hole exactly when it is one of those declared parameters.
-There is no `$x` or `unquote` escape to remember; the parameter list *is* the
-set of holes. `neg` is not a parameter, so it must match literally; `pos(a)`
-does not match this rule and is left untouched.
+`x: Expr` makes `x` a hole that can match any expression. Inside `from` and `to`, the declared
+parameters are the holes. Everything else matches literally: this rule looks for `neg`, so it
+leaves `pos(a)` alone.
 
 ## Metavariables, kinds, and precedence
 
@@ -71,11 +68,10 @@ bind:
 
 </div>
 
-Holes are matched structurally and modulo redundant parentheses, so `x + y`
-matches `(a) + (b)`. A repeated hole must bind structurally equal subtrees:
-`from { f(x, x) }` matches `f(a, a)` but not `f(a, b)`. Arity and leaf tokens
-are part of the shape too: `f(x, y)` matches only two-argument calls, and
-`x + y` will not match `a - b`.
+Matching looks at the structure and ignores redundant parentheses, so `x + y` matches
+`(a) + (b)`. A repeated hole must match the same structure each time: `from { f(x, x) }` matches
+`f(a, a)` but not `f(a, b)`. The number of arguments and the written operators matter too:
+`f(x, y)` matches two-argument calls, and `x + y` does not match `a - b`.
 
 When a captured subtree is spliced into a new context, the rewriter adds
 parentheses where they are needed, so splicing never changes precedence:

@@ -17,7 +17,9 @@ import kotlin.math.abs
 class GpVectorDerivativeObservation(point: DoubleArray, val axis: Int, value: DoubleArray, val noiseStd: Double = 0.0) {
     private val p = point.copyOf()
     private val v = value.copyOf()
+    /** Where the derivative was measured. A copy. */
     val point: DoubleArray get() = p.copyOf()
+    /** The measured derivative, one entry per output coordinate. A copy. */
     val value: DoubleArray get() = v.copyOf()
     init {
         require(axis in p.indices && v.all { it.isFinite() })
@@ -37,11 +39,21 @@ class GpVectorProcess private constructor(val inputDimensions: Int, val outputDi
         require(point.size == inputDimensions)
         return point.copyOf(inputDimensions + 1).also { it[inputDimensions] = axis.toDouble() }
     }
+    /** The posterior mean vector at [point], one entry per output coordinate. */
     fun mean(vararg point: Double): DoubleArray = DoubleArray(outputDimensions) { process.mean(*lift(point, it)) }
+    /**
+     * The marginal variance of each output coordinate at [point]. Coordinates may be
+     * correlated, which this does not say: for that, ask [covariance] or a posterior.
+     */
     fun variance(vararg point: Double): DoubleArray = DoubleArray(outputDimensions) { process.variance(*lift(point, it)) }
+    /** The output-by-output covariance between the vectors at [a] and [b]. */
     fun covariance(a: DoubleArray, b: DoubleArray): Array<DoubleArray> = Array(outputDimensions) { i ->
         DoubleArray(outputDimensions) { j -> process.covariance(lift(a, i), lift(b, j)) }
     }
+    /**
+     * The joint posterior over the vectors at [points] — means, covariances and correlated
+     * samples together. Limited by the scalar joint size divided by the output dimensions.
+     */
     fun posterior(points: Array<DoubleArray>): GpVectorJoint = joint(points, null)
     /** The vector derivative ∂f/∂x[axis] at every point, jointly (e.g. a curve's velocity). */
     fun derivativePosterior(points: Array<DoubleArray>, axis: Int = 0): GpVectorJoint {
@@ -107,14 +119,23 @@ class GpVectorProcess private constructor(val inputDimensions: Int, val outputDi
 
 /** Input-major joint: (point0-axis0, point0-axis1, ..., point1-axis0, ...). */
 class GpVectorJoint internal constructor(val dimensions: Int, val joint: GpJoint) {
+    /** How many input points this joint covers, each carrying [dimensions] outputs. */
     val size: Int get() = joint.size / dimensions
+    /** The mean vector at each point, outermost index the point. */
     val mean: Array<DoubleArray> get() { val m = joint.mean; return Array(size) { i -> m.copyOfRange(i * dimensions, (i + 1) * dimensions) } }
+    /** The marginal variance of each output coordinate at each point. */
     val variance: Array<DoubleArray> get() { val v = joint.variance; return Array(size) { i -> v.copyOfRange(i * dimensions, (i + 1) * dimensions) } }
+    /**
+     * The output-by-output covariance between points [i] and [j], which defaults to the
+     * block at one point: how that point's own coordinates covary.
+     */
     fun covarianceAt(i: Int, j: Int = i): Array<DoubleArray> {
         require(i in 0 until size && j in 0 until size)
         return Array(dimensions) { a -> DoubleArray(dimensions) { b -> joint.covarianceAt(i * dimensions + a, j * dimensions + b) } }
     }
+    /** One draw: a vector at every point, correlated across both points and coordinates. */
     fun sample(seed: Long): Array<DoubleArray> = split(joint.sample(seed))
+    /** The same draw, taking its randomness from [random]; call it repeatedly for independent draws. */
     fun sample(random: java.util.Random): Array<DoubleArray> = split(joint.sample(random))
     /** See [GpJoint.sample]: [spread] scales the departure from the mean. */
     fun sample(seed: Long, spread: Double): Array<DoubleArray> = split(joint.sample(seed, spread))

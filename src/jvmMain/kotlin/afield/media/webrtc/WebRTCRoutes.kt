@@ -20,11 +20,18 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * `/ws/webrtc-signaling?network=<id>` and `/api/webrtc-config?network=<id>`: what the sink and
- * source pages talk to. Installed beside Field's other WebSockets. Both answer only for networks
- * box code has registered (`WebRTCNetwork.aaaframe`/`join`, or the local relay), so a client cannot
- * make Field connect anywhere else; the guard decisions are in `dev_docs/server_surface_inventory.md`.
+ * The signalling a Field WebRTC sink or source gets from its own server: the
+ * `/ws/webrtc-signaling?network=<id>` WebSocket its page exchanges signalling over, and
+ * `/api/webrtc-config?network=<id>`, which answers with that network's login and ICE servers.
+ *
+ * Installed beside Field's other WebSockets. Both answer only for networks box code has registered
+ * (`WebRTCNetwork.aaaframe`/`join`, or the local relay), so a client cannot make Field connect
+ * anywhere else; the guard decisions are in `dev_docs/server_surface_inventory.md`. A local network
+ * is relayed inside this process and every other one is forwarded upstream to aaaframe;
+ * `WebRTCSignalingTest` drives the socket both ways.
  */
+
+/** Adds both signalling endpoints to a Ktor route. */
 fun Route.installWebRTCSignalingRoutes() {
     get("/api/webrtc-config") {
         val network = WebRTCNetwork.lookup(call.request.queryParameters["network"])

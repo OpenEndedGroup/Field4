@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-29T15:21:50.283Z",
+  "documentName": "assimp_browsing",
+  "outputs": [
+    {
+      "uid": "assimp_scene",
+      "channel": "columns",
+      "open": true,
+      "warnings": [
+        "Lazy inspector: only the materialized rows and current view are captured"
+      ],
+      "kinds": [],
+      "width": 1308,
+      "height": 228,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "assimp_scene",
+      "channel": "tree",
+      "open": true,
+      "warnings": [
+        "Lazy inspector: only the materialized rows and current view are captured"
+      ],
+      "kinds": [],
+      "width": 708,
+      "height": 228,
+      "path": "outputs/1.html"
+    }
+  ]
+}

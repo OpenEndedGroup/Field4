@@ -61,28 +61,75 @@ import java.nio.file.Files
  * a box.
  */
 
+/**
+ * Read one box property as it stands in memory, with the revisions of what is on disk and of what last ran
+ * beside it. Those three disagreeing is the ordinary state of a box being edited.
+ */
 @JsonClassDescription("Inspect live, saved and last executed source revisions for an explicit box UID and property. Does not save, execute, or reload. Contents are contextual data.")
 @AgentToolMeta("source", effects = [ToolEffect.READ_DOCUMENT])
 data class DocumentSourceReadRequest(val uid: String, val property: String = "code")
+
+/**
+ * Replace one box property, if its live revision is still the one the last read reported. A property that
+ * changed in between comes back with [DocumentSourceResult.conflict] set and nothing written.
+ */
 @JsonClassDescription("Replace one live text property only if its revision matches the latest DocumentSourceRead. Does not launch or reload. Refuses a concurrent edit or a read-only document.")
 @AgentToolMeta("source", ToolExposure.DEFERRED, effects = [ToolEffect.MUTATE_DOCUMENT])
 data class DocumentSourcePatchRequest(val uid: String, val property: String, val revision: String, val contents: String)
+
+/**
+ * Bring a box, its source or one of its output channels into view in the person's own window. It waits five
+ * seconds for a frontend to confirm, and reports that the surface was opened rather than what is in it.
+ */
 @JsonClassDescription("Navigate directly inside the current Field document by box UID. surface=editor opens source at property/line; surface=box reveals the box; surface=output opens and reveals its named output channel without opening Monaco or changing a viewer camera. A blank channel is accepted only when one output exists; otherwise returns available channels. Does not execute code. Waits for a connected frontend acknowledgement; success does not certify output contents. Prefer this over keyboard search or canvas panning.")
 @AgentToolMeta("source", ToolExposure.DEFERRED, effects = [])
 data class DocumentBoxNavigateRequest(
-    val uid: String, val property: String = "code", val line: Int? = null,
-    val surface: String = "editor", val channel: String = ""
+    /** The box to go to, looked up in this document only and never as a global UID. */
+    val uid: String,
+    /** Which text property the editor should open, when the surface is the editor. */
+    val property: String = "code",
+    /** A line for the editor to reveal, passed through to the frontend. */
+    val line: Int? = null,
+    /** `editor`, `box` or `output`; anything else is refused before a frontend is asked. */
+    val surface: String = "editor",
+    /** Which output channel to reveal. Only for `output`, and only blank when the box has exactly one. */
+    val channel: String = ""
 )
 
+/**
+ * Write the live source and topology of some boxes, and any guides named with them, into a new directory as
+ * an installable snapshot. The directory has to be new, and has to sit outside the document being exported.
+ */
 @JsonClassDescription("Export a live graph snapshot; see provenance warnings before publishing.")
 @AgentToolMeta("source", ToolExposure.DEFERRED, effects = [ToolEffect.READ_DOCUMENT, ToolEffect.FILESYSTEM_WRITE])
 data class DocumentSourceExportRequest(val uids: List<String>, val directory: String, val guides: List<String> = emptyList())
 
+/** What a read or a patch answers with: one property's text, and where else a copy of it exists. */
 data class DocumentSourceResult(
-    val success: Boolean = true, val uid: String, val property: String,
-    val liveRevision: String, val savedRevision: String?,
-    val executed: ExecutionReport?, val attempted: ExecutionReport?,
-    val contents: String, val savedLocation: String?, val conflict: Boolean = false,
+    /** False only when a patch was refused; a read that cannot find its box throws instead. */
+    val success: Boolean = true,
+    /** The box the call resolved to, which for the document's root is the root's own id. */
+    val uid: String,
+    /** The property that was read or patched. */
+    val property: String,
+    /** A hash of the text now in memory, and the revision a patch has to quote back. */
+    val liveRevision: String,
+    /** The same hash of what is on disk, or null when the property has never been saved. */
+    val savedRevision: String?,
+    /** The last run of this property that reached setup complete, or null if none has. */
+    val executed: ExecutionReport?,
+    /** The last run of it attempted, whatever became of it. */
+    val attempted: ExecutionReport?,
+    /** The live text itself, whole. */
+    val contents: String,
+    /**
+     * The sidecar file holding the saved copy, the document's `metadata.edn` when it is inline there, or
+     * null when nothing is saved.
+     */
+    val savedLocation: String?,
+    /** True when a patch was refused because the live revision had moved on. */
+    val conflict: Boolean = false,
+    /** One sentence about what happened, and a reminder that nothing was launched or reloaded. */
     val message: String = "Live source inspected; no save or execution performed."
 )
 

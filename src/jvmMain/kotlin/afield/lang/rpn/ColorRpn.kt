@@ -337,15 +337,16 @@ object ColorRpn {
 
 /**
  * A compiled [ColorRpn] program.
- *
- * @property source the text it was compiled from
- * @property tokens the tokens it kept, normalised (lower case, numbers as [ColorRpn.format] writes them);
- *   two programs with the same [normalized] draw the same picture
- * @property unknown the tokens it skipped
  */
 class ColorRpnProgram internal constructor(
+    /** The text it was compiled from. */
     val source: String,
+    /**
+     * The tokens it kept, normalised: lower case, numbers as [ColorRpn.format] writes them. Two
+     * programs with the same [normalized] draw the same picture.
+     */
     val tokens: List<String>,
+    /** The tokens it skipped, in the order they appeared. An unknown word is dropped, not an error. */
     val unknown: List<String>,
     private val ops: IntArray,
     private val data: DoubleArray,
@@ -394,6 +395,7 @@ class ColorRpnProgram internal constructor(
     /** [render] encoded as PNG bytes, which `display(...)` shows as an image. */
     fun png(size: Int): ByteArray = PngEncoder.encode(render(size), size, size)
 
+    /** The program as [normalized], which is what the demo's captions print. */
     override fun toString(): String = normalized
 
     private fun radius(x: Double, y: Double): Double {

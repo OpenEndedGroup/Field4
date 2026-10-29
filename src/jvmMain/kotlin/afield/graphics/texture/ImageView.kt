@@ -19,10 +19,12 @@ import afield.graphics.vulkan.util.AutoDisposer
 import afield.graphics.vulkan.util.vkCheck
 
 interface HasImageView {
+    /** The view to bind. Implementations that follow a ring or a ping-pong swap return a different view on each read, which is what lets a binding made once keep pointing at the current image. */
     val imageView: ImageView
 }
 
 interface HasImageViewArray {
+    /** The views to bind, in the order the shader's array takes them. Every one is written, so the list's length is the descriptor count the array binding receives; an empty list is refused. */
     val imageViewArray: List<HasImageView>
 }
 
@@ -31,14 +33,27 @@ interface PreparesSampledImages {
 }
 
 interface HasDefaultTextureSampler {
+    /** The sampler a texture binding uses when the module does not name one, or null to leave that to the binding. The ping-pong targets forward this to the target itself, so setting it once covers every view they hand out. */
     var defaultSampler: TextureSampler?
 }
 
-class ImageView(private val device: Device, val image: Long, val imageViewData: ImageViewData) : HasImageView {
+class ImageView(
+    private val device: Device,
+    /** The `VkImage` this is a view of. The constructor taking an [Image] passes its handle and records the image in [underlyingImage]; this one is for a handle whose owner is elsewhere, a swapchain image among them. */
+    val image: Long,
+    /** The view's format, aspect, layer range, mip count and debug name, read once here and kept for anything that needs to know what the view covers. */
+    val imageViewData: ImageViewData
+) : HasImageView {
+    /** Which aspects of the image the view covers, from [imageViewData] — colour, or depth with or without stencil. A combined depth+stencil view cannot be sampled, which is why a sampled depth attachment gets a second, depth-only view. */
     val aspectMask: Int
+
+    /** How many mip levels the view covers, starting at level 0. A view of one level over a mipped image is how a render pass writes a single level. */
     val mipLevels: Int
+
+    /** The `VkImageView` handle, 0 until the constructor has created it. */
     var vkImageView: Long = 0
 
+    /** The [Image] this views, when the view was made from one. It stays null for a view built over a bare handle, so a caller that needs the image's layout or memory has to hold it separately. */
     var underlyingImage : Image? = null
     private val autoDisposeToken = AutoDisposer.register(
         this,

@@ -51,16 +51,18 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 
 /**
  * The HTML shell of Field's one time-axis viewer, shared by [SignalViewer], `Fn.plot`,
- * [AudioVisualizer] and the Audio AI analysis views. It writes the chrome — title, status chip,
- * zoom/fit buttons, a rounded plot frame, a readout line and an overview strip — plus a JSON
- * config, and inlines `signal-viewer.js`, which draws with Field's bundled Plotly.
+ * [AudioVisualizer] and the Audio AI analysis views. It writes the chrome (title, status chip,
+ * zoom/fit buttons, a rounded plot frame, a readout line and an overview strip) plus a JSON config,
+ * and inlines `signal-viewer.js`, which draws with Field's bundled Plotly.
  *
- * Callers choose a `source` in [render]'s config: `range` (a `/signal-viewer/{id}` query per
+ * Callers choose a `source` in `render`'s config: `range` (a `/signal-viewer/{id}` query per
  * visible window), `embedded` (a static window in the page), `audio` (an `<audio>` element and
  * its envelope) or `analysis` (a Field Audio preview). Everything else is shared: the view window,
  * the time bus (`field-time-window`, `-cursor`, `-seek`, `-transport`), `viewKey` persistence and
  * the DOM-overlay playhead. See `dev_docs/SIGNAL_VIEWER.md`.
  */
+
+/** Builds the viewer's markup and the JSON payloads embedded in it. */
 internal object TimeViewerShell {
     private val mapper = jacksonObjectMapper()
     private val runtime: String by lazy {

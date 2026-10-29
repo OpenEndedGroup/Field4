@@ -161,11 +161,13 @@ fun Img.diffuseTimes(steps: Int, rate: Double = 0.2, border: Border = Border.WRA
  * `F` is the feed rate of fresh `u` and `k` is the kill rate of `v`. The entire zoo of morphologies —
  * spots, stripes, labyrinths, dividing blobs, travelling waves — is a function of those two numbers,
  * which is why the system is a canonical morphogenesis model rather than merely a pretty one.
- *
- * @property u substrate field, 1-channel; starts at 1 everywhere
- * @property v autocatalyst field, 1-channel; starts at 0 except where you seed it
  */
-class GrayScottState(val u: Img, val v: Img) : afield.ui.visualization.ToHTML {
+class GrayScottState(
+    /** Substrate field, 1-channel; starts at 1 everywhere. */
+    val u: Img,
+    /** Autocatalyst field, 1-channel; starts at 0 except where you seed it. */
+    val v: Img
+) : afield.ui.visualization.ToHTML {
     init {
         require(u.channels == 1 && v.channels == 1) { "Gray–Scott fields must be 1-channel" }
         require(u.sameShapeAs(v)) { "u and v must have the same shape" }
@@ -199,18 +201,17 @@ class GrayScottState(val u: Img, val v: Img) : afield.ui.visualization.ToHTML {
  * `AlifeGallery`), not by a label copied from a paper. The `(F, k)` values sit in the regions of
  * Pearson's phase diagram usually reported for those morphologies, but the label is earned by
  * measurement here rather than by citation — see `public/docs/alife_examples.md` for the numbers.
- *
- * @property feed `F`, the rate fresh substrate is supplied at
- * @property kill `k`, the extra rate the autocatalyst is removed at
- * @property du substrate diffusion coefficient
- * @property dv autocatalyst diffusion coefficient (must be smaller than [du] for a Turing instability)
- * @property dt timestep
  */
 data class GrayScottParams(
+    /** `F`, the rate fresh substrate is supplied at. */
     val feed: Double,
+    /** `k`, the extra rate the autocatalyst is removed at. */
     val kill: Double,
+    /** Substrate diffusion coefficient. */
     val du: Double = 0.16,
+    /** Autocatalyst diffusion coefficient (must be smaller than [du] for a Turing instability). */
     val dv: Double = 0.08,
+    /** Timestep. */
     val dt: Double = 1.0
 ) {
     init {
@@ -340,21 +341,22 @@ fun GrayScottState.filmstrip(p: GrayScottParams, steps: Int, every: Int): List<G
 /**
  * What the morphology of a reaction–diffusion field measures as — the numbers a claim about a *regime*
  * has to be made out of, rather than a look at a thumbnail.
- *
- * @property coverage fraction of the field above the threshold
- * @property blobCount how many connected features there are
- * @property meanArea mean feature area in cells
- * @property medianIsoperimetric median `P²/4πA` over the features: ~1 for round spots, large for worms
- * @property correlationLength the length scale from [Img.correlationLength]
- * @property largestShare share of the covered area held by the single largest feature — the number
- *   that separates "many separate spots" from "one connected labyrinth"
  */
 data class MorphologyReport(
+    /** Fraction of the field above the threshold. */
     val coverage: Double,
+    /** How many connected features there are. */
     val blobCount: Int,
+    /** Mean feature area in cells. */
     val meanArea: Double,
+    /** Median `P²/4πA` over the features: ~1 for round spots, large for worms. */
     val medianIsoperimetric: Double,
+    /** The length scale from [Img.correlationLength]. */
     val correlationLength: Double,
+    /**
+     * Share of the covered area held by the single largest feature — the number that separates "many separate
+     * spots" from "one connected labyrinth".
+     */
     val largestShare: Double
 ) {
     override fun toString(): String =
@@ -477,23 +479,24 @@ fun turingPattern(
  * `shellPeaks[b]`. A single peak gives one ring, `[1, 0.5]` gives a strong inner ring and a weak
  * outer one, and so on. The whole kernel is normalised to sum 1, so `K * A` is a weighted mean in
  * `0..1` and the growth mapping's domain is the unit interval whatever `R` is.
- *
- * @property radius `R`, kernel radius in cells
- * @property dt `1/T` in the usual notation — the integration step. Smaller is smoother and slower.
- * @property mu growth mapping centre: the neighbourhood mean that produces maximum growth
- * @property sigma growth mapping width
- * @property shellPeaks relative weights of the concentric kernel shells
- * @property shellWidth Gaussian cross-section width of each shell, as a fraction of the shell spacing
- * @property growth the growth mapping `G`, defaulting to the standard bell
- *   `2*exp(-(u-mu)²/(2σ²)) - 1`; overridden by [leniaFromLifeRule] to recover a discrete rule
  */
 class LeniaRule(
+    /** `R`, kernel radius in cells. */
     val radius: Int = 12,
+    /** `1/T` in the usual notation — the integration step. Smaller is smoother and slower. */
     val dt: Double = 0.1,
+    /** Growth mapping centre: the neighbourhood mean that produces maximum growth. */
     val mu: Double = 0.15,
+    /** Growth mapping width. */
     val sigma: Double = 0.017,
+    /** Relative weights of the concentric kernel shells. */
     val shellPeaks: DoubleArray = doubleArrayOf(1.0),
+    /** Gaussian cross-section width of each shell, as a fraction of the shell spacing. */
     val shellWidth: Double = 0.15,
+    /**
+     * The growth mapping `G`, defaulting to the standard bell `2*exp(-(u-mu)²/(2σ²)) - 1`; overridden by
+     * [leniaFromLifeRule] to recover a discrete rule.
+     */
     val growth: (Float) -> Float = { u ->
         val d = u - mu
         (2.0 * exp(-d * d / (2.0 * sigma * sigma)) - 1.0).toFloat()
@@ -564,12 +567,15 @@ class LeniaRule(
 
 /**
  * A Lenia kernel as parallel arrays of offsets and weights.
- *
- * @property dx x offsets
- * @property dy y offsets
- * @property weight normalised weights, summing to 1
  */
-class LeniaTaps(val dx: IntArray, val dy: IntArray, val weight: FloatArray) {
+class LeniaTaps(
+    /** X offsets. */
+    val dx: IntArray,
+    /** Y offsets. */
+    val dy: IntArray,
+    /** Normalised weights, summing to 1. */
+    val weight: FloatArray
+) {
     init {
         require(dx.size == dy.size && dx.size == weight.size) { "LeniaTaps arrays must be the same length" }
     }
@@ -718,12 +724,16 @@ object LeniaPresets {
 
 /**
  * A named Lenia lifeform: its [rule] and the initial [cells] that make it, as published.
- *
- * @property code the catalogue's short code (`O2u` for Orbium)
- * @property name the catalogue's name
- * @property cells the creature's own array, values in `0..1`, at the size the rule's radius expects
  */
-class LeniaCreature(val code: String, val name: String, val rule: LeniaRule, val cells: Img) {
+class LeniaCreature(
+    /** The catalogue's short code (`O2u` for Orbium). */
+    val code: String,
+    /** The catalogue's name. */
+    val name: String,
+    val rule: LeniaRule,
+    /** The creature's own array, values in `0..1`, at the size the rule's radius expects. */
+    val cells: Img
+) {
     /** [cells] placed with its centre at ([cx], [cy]) on an otherwise empty [width] × [height] field. */
     fun seed(width: Int, height: Int, cx: Int = width / 2, cy: Int = height / 2): Img {
         require(width >= cells.width && height >= cells.height) {
@@ -902,22 +912,25 @@ enum class LeniaPhase {
 
 /**
  * The outcome of a Lenia run, as measured rather than as looked at.
- *
- * @property phase which of [LeniaPhase] the run ended in
- * @property finalMass mean field value at the end (0 = empty, 1 = saturated)
- * @property massHistory mean field value at each recorded step, so the *shape* of the approach is
- *   inspectable and not only its endpoint
- * @property blobCount connected features at the end
- * @property centroidDrift distance the field's centre of mass moved over the last half of the run, in
- *   cells; a stationary pattern is ~0 and a travelling soliton is proportional to the run length
- * @property field the final field
  */
 class LeniaRun(
+    /** Which of [LeniaPhase] the run ended in. */
     val phase: LeniaPhase,
+    /** Mean field value at the end (0 = empty, 1 = saturated). */
     val finalMass: Double,
+    /**
+     * Mean field value at each recorded step, so the *shape* of the approach is inspectable and not only its
+     * endpoint.
+     */
     val massHistory: DoubleArray,
+    /** Connected features at the end. */
     val blobCount: Int,
+    /**
+     * Distance the field's centre of mass moved over the last half of the run, in cells; a stationary pattern
+     * is ~0 and a travelling soliton is proportional to the run length.
+     */
     val centroidDrift: Double,
+    /** The final field. */
     val field: Img
 ) : afield.ui.visualization.ToHTML {
     override fun toString(): String =

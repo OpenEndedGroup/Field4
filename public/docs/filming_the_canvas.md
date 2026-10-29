@@ -12,8 +12,8 @@ to `F9`), and name them in the bookmarks panel (`alt/option-B`). **Fly Through B
 command palette then flies through every saved slot in slot order. Press `Escape`, pan or zoom to
 stop the flight where it is, or choose **Stop Canvas Flight**.
 
-The flight opens on the first bookmark and holds there. It then flies to each next bookmark and
-holds again. Each leg starts slowly, speeds up and settles. The zoom changes at an even rate,
+The flight pauses at the first bookmark, then travels to each one in turn. Each leg starts
+slowly, speeds up and settles. The zoom changes at an even rate,
 whether the canvas is at 20% or 300%, and the middle of the window travels in a straight line
 across the canvas. When two bookmarks are far apart and the straight line between them crosses
 empty canvas, the leg zooms out on the way, far enough to keep both in sight. A leg over boxes the
@@ -125,9 +125,9 @@ These arguments control the film:
 | `width = 1920`, `height = 1080` | the film's size in pixels; `null` for both keeps the capture window's size |
 | `pixelRatio = 1.5` | pixels of film per CSS pixel of the window. At the defaults the window is 1280 by 720 CSS px, so text and box chrome read at a comfortable size in a 1080p film |
 
-The film is shot in Field's capture browser, sized for the film, not in your own window, so your
-window stays free while it records. A bookmark saved in a window of another size or shape still
-frames the same part of the canvas. The flight zooms so that everything the bookmark showed fits.
+Field records in a separate capture browser sized for the film, leaving your window free. If a
+bookmark was saved in a window of a different size or shape, the flight adjusts its zoom to fit
+everything the bookmark showed.
 
 ??? aside "Agents: filming the Electron app"
     To film Field's Electron app itself, open the capture page there first with the backdoor's

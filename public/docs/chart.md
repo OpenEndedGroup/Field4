@@ -1,6 +1,12 @@
 # Charts as FLines
 
-A `Chart` is a plot made of FLines. Use it when the plot has to sit in the same drawing as your other FLines, when you want to click on its marks, or when you want to draw an expected range and see which data falls outside it. For everything else, Plotly is better.
+A `Chart` is a plot made of FLines. Put one in the same drawing as your other FLines, click its
+marks, or draw an expected range and see which data falls outside it. For a general-purpose
+interactive chart, take a look at Plotly too.
+
+New to Field's ways of displaying data? [Looking at Data](tour_data.md) starts with values and
+plots in a box. If your data is already a table, [DataFrames in a Box](dataframe.md) shows how to
+work with its columns.
 
 You build a `Chart` up a call at a time and hand it to `showChart`. `showChart(c)`,
 `display(channel, c)`, `c.h`, and a box whose last expression is a `Chart` all render the same
@@ -121,7 +127,7 @@ Chart(title = "residual per iteration", xLabel = "iteration", yLabel = "|r|", no
 - Each datum is counted once. A `line` for the trend plus `points` to make it clickable is two
   marks over one datum, and the footnote counts that datum once.
 
-## Marks pick themselves up
+## Picking marks
 
 `Box.lines` switches to the interactive SVG renderer the moment any line carries `onClick` or
 `hoverColor`. Point and bar marks set both, plus a `label` naming the datum, so you can hover over a bar

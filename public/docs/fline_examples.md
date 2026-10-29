@@ -2,7 +2,14 @@
 
 `FLine` is Field’s core geometry container type: it’s basically an ordered list of drawing instructions (`moveTo`, `lineTo`, `cubicTo`, `close`) plus style properties (`color`, `thickness`, `filled`, `stroked`, `pointed`, and so on). This isn’t a new idea — it’s essentially a “path” like you’ll find in [SVG](https://en.wikipedia.org/wiki/Scalable_Vector_Graphics), [PDF](https://en.wikipedia.org/wiki/PDF), and [PostScript](https://en.wikipedia.org/wiki/PostScript). Unlike those formats, Field stores points in 3D when that makes sense.
 
-All of the code below runs inside a box in Field. Each snippet ends with a `lines(...)` so you can actually see what you've drawn.
+The examples below run inside a box in Field. Many use `lines(...)` to show what they've drawn;
+others use a 3D viewer or build on an earlier example.
+
+If you're new to FLines, start with [seeing one](#seeing-an-fline-static-and-editable-viewers),
+then try [building a path](#building-paths-moveto-lineto-cubicto-close) and changing its
+[style](#styling-color-stroked-filled-pointed). There is much more here to return to when you
+need it. To draw a stroke by hand and have code read it, continue to
+[Drawing and Notation](drawing_and_notation.md).
 
 The document below includes captured drawings. Pan and zoom to explore them, or click a box to
 read its code. **Open in Field·4** imports an editable copy into a running Field.
@@ -57,7 +64,7 @@ There are two main ways to inspect `FLine` geometry in Field:
 - `lines(...)` renders an SVG-style 2D view in an output area.
 - `threeLines(...)` renders the same geometry in the Three.js viewer.
 
-Both accept `editable = true`. With `editable = false` they are viewers. With `editable = true` they become lightweight editors for the underlying `FLine` data rather than just pictures of it.
+Both accept `editable = true`, which lets you change the underlying `FLine` in the view.
 
 ### 2D output: `lines(...)`
 
@@ -132,7 +139,8 @@ val stem = fline {
 lines(petal, stem, w = 420.0, h = 420.0, fitToSize = true, editable = true)
 ```
 
-This is not editing a copy of the SVG: it mutates the `FLine` you passed in, so it is useful as a geometry sketchpad, a control-shape editor, or a quick way to pull a hand-tuned curve back into your code.
+The editor changes the `FLine` you passed in. Use it as a geometry sketchpad, a control-shape
+editor, or a quick way to bring a hand-tuned curve back into your code.
 
 ### 3D output: `threeLines(...)`
 
@@ -215,16 +223,14 @@ threeLines(ribbons, channel = "editable3d", height = 430, editable = true)
 
 ![Editable Three.js FLine viewer](assets/fline_examples/three_lines_editable.png)
 
-That gives you a useful split of responsibilities:
-
-- `lines(...)` for direct 2D inspection and editing.
-- `threeLines(...)` for orbiting, spatial debugging, and editing geometry in depth.
-
-The two viewers are close in spirit: learn one and the other should feel familiar rather than like a separate subsystem.
+Use `lines(...)` for 2D inspection and editing, and `threeLines(...)` when you want to orbit or
+work with geometry in depth. The controls are similar across both views.
 
 ### The 3D output area as an instrument: `threeInspect(...)`
 
-Three questions come up about anything that is going to get *built*, and a picture answers none of them. How far apart are these two things? What does it look like in section? How does it come apart? `threeInspect(...)` is `threeLines(...)` with an answer to each, and the view it hands back stays live, so changing any of the three does not mean re-running the box.
+How far apart are two parts? What does the assembly look like in section, or with its pieces
+pulled apart? `threeInspect(...)` adds measurement, section and explode controls to the
+`threeLines(...)` view. You can adjust them live without rerunning the box.
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -366,7 +372,9 @@ view.explodeAlong(0.0, 0.0, 1.0, 600.0)
 
 `ThreeSection` cuts the figure at a **fraction of its own bounds** measured along the section normal, so `0.42` means the same thing on a 3 m wall and a 30 mm bracket and the slider is meaningful without knowing the model's scale.
 
-The cut *outline* is what makes it a section rather than a hidden half: the viewer computes where the plane crosses each triangle of the fill and each line segment, and draws those crossings brightly over the clipped figure. Hiding the front half shows you the inside of a shell; the outline shows you the cut, which on a fabrication drawing is the content of a section.
+The viewer draws the cut outline brightly over the clipped figure, finding where the plane
+crosses each filled triangle and line segment. Hiding the front half reveals the inside; the
+outline shows where the section passes through it.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fline_examples/three_inspect_section.png" wait="3.0" capture="box" open-outputs="true" w="1200"}
 :::static
@@ -898,7 +906,8 @@ lines(tri, w = 420.0, h = 300.0, fitToSize = true)
 
 ## Terser construction: pen operators, literals, and the `data` mini-language
 
-The four calls above are the foundation, but for quick sketches there’s a shorter vocabulary layered on top. None of it replaces `moveTo`/`lineTo`/`cubicTo` — it just desugars to them — so you can mix and match freely.
+For quick sketches, you can also use a shorter vocabulary. These forms build the same path
+instructions as `moveTo`, `lineTo` and `cubicTo`, so you can mix them freely.
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -1022,7 +1031,9 @@ A note on scope: the `+`/`-` pen operators and the `style`-lambda overloads only
 
 ## Multiple subpaths: `breakNext()` and `pieces()`
 
-One `FLine` can contain multiple disjoint strokes (multiple `moveTo`-initiated subpaths). This section shows how to force a new subpath while building (`breakNext`) and how to split an existing line into separate pieces (`pieces`).
+One `FLine` can contain several separate strokes, each beginning with a `moveTo`. Use `breakNext`
+to start another stroke while building a line, or `pieces` to split an existing line into separate
+FLines.
 
 ### `breakNext()`
 
@@ -1639,7 +1650,9 @@ lines(ortho, persp, w = 420.0, h = 260.0, fitToSize = true)
 
 ## Sampling and traversal
 
-Sampling turns a path into a list of points, which is the bridge to lots of procedural tricks: animation along a curve, particle emission, spacing markers by distance, and measurement. `Cursor` is the lower-level primitive; `sampleBy...` are the friendly wrappers.
+Sample a path to get points you can use for animation, particle emission, evenly spaced markers
+or measurement. `Cursor` lets you walk the path directly; `sampleBy...` provides shorter calls
+for common sampling jobs.
 
 ### Cursor: continuous traversal over segments
 
@@ -1651,7 +1664,8 @@ fun FLine.cursor(tol: Float = 0.01f): afield.geometry.path.java2d.FLinesAndJavaS
 fun FLine.cursor(closestTo: Vec3): afield.geometry.path.java2d.FLinesAndJavaShapes.Cursor
 ```
 
-In practice, you’ll reach for `Cursor` when you need **even spacing by distance** (`setD`) or when you want access to **differentials** (tangent / normal / curvature-ish things) while walking along a curve.
+Use `Cursor` to step by distance with `setD`, or to read the tangent, normal and curvature as
+you move along a curve.
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -2181,7 +2195,9 @@ val sweep3d =
 threeLines(sweep3d, channel = "driver3d", height = 430, editable = false)
 ```
 
-This is the same sweep idea as the 2D version, but the source curve itself bends through depth and the smoothed family stays genuinely 3D. The steering is quaternion-based internally, so the driver turns toward the lookahead target with bounded angular acceleration and bounded angular velocity in space rather than flattening down to XY first.
+Here the source curve bends through depth, and the smoothed curves follow it in 3D. The driver
+uses quaternions to turn towards its lookahead target, with bounds on angular acceleration and
+velocity.
 
 ### Offsetting / parallel curves
 
@@ -2695,7 +2711,9 @@ Left: the reversed line, starting at the dot. Middle: half way between the curve
 
 ### Contour-aware morphing: `FLineInterpolator`
 
-If `byBlendingWith(...)` is the “same control structure, just lerp it” tool, `FLineInterpolator` is the more serious morphing tool. It resamples, matches, and re-parameterizes one contour against another, so it copes much better when the two shapes have different point counts or start their outlines at different places. It works reliably on a single contour only: one `moveTo(...)`, with open contours as the safest default.
+`FLineInterpolator` resamples and matches two contours before morphing between them. This helps
+when the shapes have different point counts or their outlines start in different places. It works
+reliably on a single contour: one `moveTo(...)`, with open contours as the safest default.
 
 ```diffstatic {data-lang=kotlin}
 :::static
