@@ -630,7 +630,7 @@
   {"doc": "petri_state_space_sculpture", "box": "chain_renderer", "codeSha256": "70edf1ef40c03d23", "codeLines": 10, "receivers": ["afield.document.graph.Box"], "preamble": "petri_state_space_sculpture__chain_renderer.preamble.kt"},
   {"doc": "petri_state_space_sculpture", "box": "petri_sculpture_trace", "codeSha256": "df1723d7c25a34c5", "codeLines": 195, "receivers": ["afield.document.graph.Box"], "preamble": "petri_state_space_sculpture__petri_sculpture_trace.preamble.kt"},
   {"doc": "petri_tala_layout", "box": "petri_tala_force", "codeSha256": "2fdc7081ea202243", "codeLines": 39, "receivers": ["afield.document.graph.Box"], "preamble": ""},
-  {"doc": "petri_tala_layout", "box": "petri_tala_status", "codeSha256": "257d9ec4d0b3a9f2", "codeLines": 92, "receivers": ["afield.document.graph.Box"], "preamble": ""},
+  {"doc": "petri_tala_layout", "box": "petri_tala_status", "codeSha256": "966afc70c03c3ddd", "codeLines": 100, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "petri_tala_layout", "box": "petri_tala_tala", "codeSha256": "e6d3efab251ec924", "codeLines": 29, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "photo_mount_path_trace", "box": "chain_renderer", "codeSha256": "ede2f546f6f521aa", "codeLines": 10, "receivers": ["afield.document.graph.Box"], "preamble": "photo_mount_path_trace__chain_renderer.preamble.kt"},
   {"doc": "photo_mount_path_trace", "box": "photo_mount_trace", "codeSha256": "6af899c76e0deac6", "codeLines": 44, "receivers": ["afield.document.graph.Box"], "preamble": "photo_mount_path_trace__photo_mount_trace.preamble.kt"},

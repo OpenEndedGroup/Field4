@@ -101,11 +101,13 @@ structure, so the same net always draws the same way.
 <!-- field-box id="petri_tala_status" index="2" -->
 
 ```edn [field-box id="petri_tala_status" role="properties"]
-{"id" "petri_tala_status" "index" 2 "name" "3 — which engine drew it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — which engine drew it" "_tombstone" false "frame" #afield/rect [60.0 700.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_tala_status_code_.kt" "lines" 92 "characters" 3761 "sha256" "adfbd4aca179023e8d4ed2d7344f716c7b96211cd90c89389f97b26fdc287230"}]}
+{"id" "petri_tala_status" "index" 2 "name" "3 — which engine drew it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — which engine drew it" "_tombstone" false "frame" #afield/rect [60.0 700.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_tala_status_code_.kt" "lines" 100 "characters" 4354 "sha256" "f17609c48fd87eebacd591ebd482c085c4e1a819ab17ee0ed5cbf493aaee3424"}]}
 ```
 
 ```kotlin [field-property box="petri_tala_status" name="code" path="petri_tala_status_code_.kt"]
 import afield.simulation.petri.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 fun philosophers(count: Int = 5): PetriNet = petri {
     for (index in 0 until count) place("fork.$index", tokens = 1)
@@ -130,6 +132,10 @@ fun philosophers(count: Int = 5): PetriNet = petri {
 
 val net = philosophers()
 
+val headline =
+    if (D2Layout.available) "helper present — d2 ${D2Layout.version}"
+    else "helper absent — boxes 1 and 2 are the same drawing"
+
 /*
 Timing each layout once, in order, is the obvious thing and it lies: the first one pays
 for JVM warmup and the second does not. Both are warmed, then measured three times from
@@ -151,50 +157,52 @@ fun best(layout: PetriLayout): Long {
     return bestNs / 1_000_000
 }
 
-val forceMs = best(PetriLayout.FORCE)
-// Without the helper TALA runs FORCE again; reuse its measured fallback instead of
-// blocking the frame thread for a second identical benchmark.
-val talaMs = if (D2Layout.available) best(PetriLayout.TALA) else forceMs
+// Eight solves of a dense net is many seconds of work, too long to hold the canvas still for:
+// it runs on a worker, and the table appears when it is done.
+display("main", "<div style=\"font:13px ui-monospace,monospace;color:#8a8a8a\">timing FORCE and TALA…</div>")
+go {
+    val (forceMs, talaMs, differ) = withContext(Dispatchers.Default) {
+        val forceMs = best(PetriLayout.FORCE)
+        // Without the helper TALA runs FORCE again; reuse its measured fallback instead of
+        // running a second identical benchmark.
+        val talaMs = if (D2Layout.available) best(PetriLayout.TALA) else forceMs
+        val force = net.frame(PetriLayout.FORCE)
+        val tala = net.frame(PetriLayout.TALA)
+        Triple(forceMs, talaMs, net.placeNames.any { force.position(it) != tala.position(it) })
+    }
 
-val force = net.frame(PetriLayout.FORCE)
-val tala = net.frame(PetriLayout.TALA)
-val differ = net.placeNames.any { force.position(it) != tala.position(it) }
+    val detail =
+        if (D2Layout.available) "The two drawings differ: <b>$differ</b>. False here would mean TALA fell back silently."
+        else
+            "differ = <b>$differ</b>, which is the fallback working. Build it with " +
+                "<code>(cd native/field-d2-layout &amp;&amp; go build -o build/field-d2-layout .)</code> — " +
+                "Field prints that line itself, with an install hint when <code>go</code> is not on PATH."
 
-val headline =
-    if (D2Layout.available) "helper present — d2 ${D2Layout.version}"
-    else "helper absent — boxes 1 and 2 are the same drawing"
-
-val detail =
-    if (D2Layout.available) "The two drawings differ: <b>$differ</b>. False here would mean TALA fell back silently."
-    else
-        "differ = <b>$differ</b>, which is the fallback working. Build it with " +
-            "<code>(cd native/field-d2-layout &amp;&amp; go build -o build/field-d2-layout .)</code> — " +
-            "Field prints that line itself, with an install hint when <code>go</code> is not on PATH."
-
-// Rendered rather than returned as a string, so the demo is something to look at.
-display(
-    "main",
+    // Rendered rather than returned as a string, so the demo is something to look at.
+    display(
+        "main",
+        """
+      <div style="font:13px/1.55 ui-monospace,SFMono-Regular,monospace;background:#0d0d0d;
+                  color:#dcdcdc;border:1px solid #2b2b2b;padding:14px 16px;max-width:720px">
+        <div style="font-size:15px;color:#7fd7c4;margin-bottom:8px">$headline</div>
+        <div style="margin-bottom:10px">$detail</div>
+        <table style="border-collapse:collapse">
+          <tr><td style="padding:2px 18px 2px 0;color:#8a8a8a">FORCE</td>
+              <td style="text-align:right">${forceMs} ms</td>
+              <td style="padding-left:14px;color:#8a8a8a">48 seeded restarts, scored</td></tr>
+          <tr><td style="padding:2px 18px 2px 0;color:#8a8a8a">TALA</td>
+              <td style="text-align:right">${talaMs} ms</td>
+              <td style="padding-left:14px;color:#8a8a8a">${if (D2Layout.available) "subprocess, 3 seeds, best kept" else "FORCE fallback; same measurement"}</td></tr>
+        </table>
+        <div style="margin-top:10px;color:#8a8a8a">best of 3, both warmed first —
+          timing them once each in order flatters whichever runs second</div>
+        <div style="margin-top:8px;color:#8a8a8a">TALA is never chosen by
+          <code>PetriLayout.AUTO</code>, so nothing already drawn changes.</div>
+      </div>
     """
-  <div style="font:13px/1.55 ui-monospace,SFMono-Regular,monospace;background:#0d0d0d;
-              color:#dcdcdc;border:1px solid #2b2b2b;padding:14px 16px;max-width:720px">
-    <div style="font-size:15px;color:#7fd7c4;margin-bottom:8px">$headline</div>
-    <div style="margin-bottom:10px">$detail</div>
-    <table style="border-collapse:collapse">
-      <tr><td style="padding:2px 18px 2px 0;color:#8a8a8a">FORCE</td>
-          <td style="text-align:right">${forceMs} ms</td>
-          <td style="padding-left:14px;color:#8a8a8a">48 seeded restarts, scored</td></tr>
-      <tr><td style="padding:2px 18px 2px 0;color:#8a8a8a">TALA</td>
-          <td style="text-align:right">${talaMs} ms</td>
-          <td style="padding-left:14px;color:#8a8a8a">${if (D2Layout.available) "subprocess, 3 seeds, best kept" else "FORCE fallback; same measurement"}</td></tr>
-    </table>
-    <div style="margin-top:10px;color:#8a8a8a">best of 3, both warmed first —
-      timing them once each in order flatters whichever runs second</div>
-    <div style="margin-top:8px;color:#8a8a8a">TALA is never chosen by
-      <code>PetriLayout.AUTO</code>, so nothing already drawn changes.</div>
-  </div>
-"""
-        .trimIndent(),
-)
+            .trimIndent(),
+    )
+}
 
 headline
 ```

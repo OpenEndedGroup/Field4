@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-29T22:32:36.673Z",
+  "capturedAt": "2026-10-29T22:59:36.035Z",
   "documentName": "petri_tala_layout",
   "outputs": [
     {
@@ -53,8 +53,8 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 455,
-      "height": 330,
+      "width": 200,
+      "height": 40,
       "path": "outputs/4.html"
     }
   ]

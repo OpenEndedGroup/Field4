@@ -3,7 +3,7 @@
 
 Why this exists, and why reading the markdown could not find it
 ---------------------------------------------------------------
-``public/zensical.yml`` publishes to ``site_url: http://openendedgroup.com/Field4/`` — a path
+``public/zensical.yml`` publishes to ``site_url: https://openendedgroup.com/field4/`` — a path
 prefix, not a bare host. Under a prefix, a relative reference that climbs one level too far is
 a 404. Served at ``/`` the same reference *works*, because ``..`` clamps at the server root:
 ``/page/../../assets/x.png`` and ``/page/../assets/x.png`` both land on ``/assets/x.png``. So

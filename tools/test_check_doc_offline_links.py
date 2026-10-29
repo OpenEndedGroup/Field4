@@ -2,7 +2,7 @@
 
 Background, measured 2026-09-17 in this tree: 137 `offline.html?file=…` references on 17 of the
 513 tracked markdown files under `public/docs` were written `/offline.html?file=/field4/…`.
-Both halves are 404s on the published site — `site_url` is `http://openendedgroup.com/Field4/`,
+Both halves were 404s on the published site — `site_url` was `http://openendedgroup.com/Field4/`,
 so `/offline.html` resolves outside the prefix, and the viewer's own `?file=` candidate ladder
 (`offline-viewer.js:ednFileCandidates`) misses on all three candidates for a `/field4/…` value
 under a `/Field4/` mount. `check_doc_site_links.py` catches the first half once its grandfather
@@ -53,16 +53,15 @@ GOOD_FILE = "assets/agent_transcripts/hello_display/metadata.edn"
 class Premise(unittest.TestCase):
     """The facts the guard's conclusion rests on, asserted so an environment change fails loudly."""
 
-    def test_the_site_is_published_under_a_prefix_that_differs_from_site_dir(self) -> None:
+    def test_the_site_is_published_under_the_canonical_prefix(self) -> None:
         site_url, site_dir = read_config(CONFIG)
         prefix = prefix_from_site_url(site_url)
-        self.assertEqual(prefix, "/Field4/")
+        self.assertEqual(site_url, "https://openendedgroup.com/field4/")
+        self.assertEqual(prefix, "/field4/")
         self.assertEqual(site_dir, "field4")
-        # The whole failure mode is this pair differing, and differing only in case: every one of
-        # the 137 links worked in local preview and 404s on a case-sensitive host. If they are ever
-        # made to agree, this guard is measuring something else and should be re-read.
-        self.assertNotEqual(prefix.strip("/"), site_dir)
-        self.assertEqual(prefix.strip("/").lower(), site_dir.lower())
+        # The prefix and output directory now agree. Root-relative viewer URLs still escape the
+        # prefix, and a site-dir-prefixed file value is still wrong relative to the viewer.
+        self.assertEqual(prefix.strip("/"), site_dir)
 
     def test_the_scan_root_finds_top_level_pages(self) -> None:
         pages = tracked_docs_markdown(REPO_ROOT)
