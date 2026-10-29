@@ -1054,6 +1054,16 @@ The prelude as values: every name a FieldML program can call before it has decla
 
 ## FieldMLSourceIndex.kt { #fieldmlsourceindex-kt }
 
+FieldML's read of the shared Kotlin source index, and the staleness check that decides whether to
+trust it.
+
+[`KotlinSourceIndex`](workspace.md#kotlinsourceindex-kt-kotlinsourceindex) holds a database of every declaration in the checkout, which FieldML wants for
+three lookups: the host functions a FieldML program may call ([`FieldMLRuntimePrelude`](languages.md#fieldmlruntimeprelude-kt-fieldmlruntimeprelude)), and the
+Kotlin class names and function names its completion offers ([`FieldMLCompletionEngine`](languages.md#fieldmlcompletionengine-kt-fieldmlcompletionengine)). That
+database is a snapshot, so it is handed back only when every path it records still resolves to a
+file. When one does not, the host-function and function-name lookups walk `src/` themselves
+instead, and the class-name lookup goes quiet rather than offering stale names.
+
 `src/jvmMain/kotlin/afield/lang/fieldml/FieldMLSourceIndex.kt` — [read the source](source/jvmMain/afield/lang/fieldml/FieldMLSourceIndex/)
 
 ## Expr.kt { #expr-kt }
@@ -7332,13 +7342,26 @@ The RectSL word list and the completion it answers.
 
 ## RectslBoxTools.kt { #rectslboxtools-kt }
 
+Two tools a document can hand to its AI4 agents: one syntax-checks a RectSL program, the other
+renders it in the document's live Field 4 window and returns the captured frames to the
+conversation.
+
+Both are built with [`aiTool`](machine-learning.md#boxaitools-kt--aitool). A box registers the pair once in its `code`, and running that
+again replaces them:
+```diffstatic {data-lang=kotlin}
+registerRectslStudioTools()
+```
+The agent then sees `rectsl.check` and `rectsl.run`. `{{ … }}` escapes in the RectSL source are
+compiled against *this box's* Kotlin engine, so they can read the box's live state (ki-vars,
+`thisBox` members).
+
 `src/jvmMain/kotlin/afield/lang/rectsl/RectslBoxTools.kt` — [read the source](source/jvmMain/afield/lang/rectsl/RectslBoxTools/)
 
 ### Top-level functions { #rectslboxtools-kt-functions }
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="rectslboxtools-kt--registerrectslstudiotools"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">registerRectslStudioTools</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/lang/rectsl/RectslBoxTools/#L29) | # RectSL studio tools |
+| <a id="rectslboxtools-kt--registerrectslstudiotools"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">registerRectslStudioTools</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/lang/rectsl/RectslBoxTools/#L29) | Registers `rectsl.check` and `rectsl.run` against this box, replacing either if it already has them. |
 | <a id="rectslboxtools-kt--renderrectsltoimages"></a>[<code class="highlight"><span class="k">suspend</span> <span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">renderRectslToImages</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">pixelsPerMeter</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">100.0</span><span class="p">,</span> <span class="n">fps</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">8.0</span><span class="p">,</span> <span class="n">maxImages</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">6</span><span class="p">,</span> <span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span> <span class="o">=</span> <span class="nf">fromContext</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">configure</span><span class="p">:</span> <span class="nc">RectSLRenderSettings</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span> <span class="o">=</span> <span class="p">{</span><span class="p">}</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/lang/rectsl/RectslBoxTools/#L72) | Render `source` in `renderer` (the document's live renderer by default) and return the captured frames as `data:image/jpeg;base64,…` URLs, subsampled to at most `maxImages`. |
 
 ## EmbeddedRectSL.kt { #embeddedrectsl-kt }
