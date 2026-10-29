@@ -91,13 +91,19 @@ object Colormaps {
     private fun rgb255(vararg triples: Int): List<Color4> =
         triples.toList().chunked(3).map { Color4(it[0] / 255.0, it[1] / 255.0, it[2] / 255.0) }
 
-    // matplotlib family — viridisLite 9-class hex swatches (dark → bright).
+    /** matplotlib's default: dark purple through blue and green to yellow, nine stops from the viridisLite 9-class swatches. The safe first choice for a quantity with no natural midpoint. */
     val viridis: List<Color4> = hex(0x440154, 0x472D7B, 0x3B528B, 0x2C718E, 0x21908C, 0x28AE80, 0x5EC962, 0xADDC30, 0xFDE725)
+
+    /** Near-black through purple and red to pale cream, nine stops. Darker at the low end than [viridis], which suits a heatmap whose background should read as empty. */
     val magma: List<Color4> = hex(0x000004, 0x1C1044, 0x4F127B, 0x812581, 0xB5367A, 0xE55064, 0xFB8861, 0xFEC287, 0xFCFDBF)
+
+    /** magma's hotter sibling: the same near-black start, but through crimson and orange to pale yellow, nine stops. */
     val inferno: List<Color4> = hex(0x000004, 0x1B0C42, 0x4B0C6B, 0x781C6D, 0xA52C60, 0xCF4446, 0xED6925, 0xFB9A06, 0xFCFFA4)
+
+    /** Deep blue through magenta and orange to yellow, nine stops. Begins at a saturated blue rather than near-black, so the low end stays visible against a dark page. */
     val plasma: List<Color4> = hex(0x0D0887, 0x47039F, 0x7301A8, 0x9C179E, 0xBD3786, 0xD8576B, 0xED7953, 0xFA9E3B, 0xF0F921)
 
-    // Google turbo — turbo_srgb_floats sampled at indices 0,16,…,240,255.
+    /** Google's turbo, the rainbow redrawn to run smoothly: dark blue, cyan, green, yellow, orange, dark red, seventeen stops taken from `turbo_srgb_floats` every sixteenth entry plus the last. More steps are told apart than in a perceptually uniform ramp, at the cost of implying boundaries the data may not have. */
     val turbo: List<Color4> = listOf(
         Color4(0.18995, 0.07176, 0.23217), Color4(0.25107, 0.25237, 0.63374),
         Color4(0.27628, 0.42118, 0.89123), Color4(0.26592, 0.55979, 0.99583),
@@ -110,16 +116,16 @@ object Colormaps {
         Color4(0.47960, 0.01583, 0.01055)
     )
 
-    // Moreland's coolwarm — diverging blue → light grey → red (sampled every 1/8).
+    /** Kenneth Moreland's cool-to-warm: blue through light grey to red, nine stops sampled every eighth of the way along his table. The one to reach for when zero means something — a residual, a difference of two runs — since the middle of the ramp is the neutral grey, so map the data to put zero there. */
     val coolwarm: List<Color4> = rgb255(
         59, 76, 192, 98, 130, 234, 141, 176, 254, 184, 208, 249,
         221, 221, 221, 245, 196, 173, 244, 154, 123, 222, 96, 77, 180, 4, 38
     )
 
+    /** Black to white, two stops, so a sample is the parameter itself in all three channels. Matched by the names `gray` and `greys` as well. */
     val grayscale: List<Color4> = hex(0x000000, 0xFFFFFF)
 
-    // Field's house cyan→orange ramp (near-black → cyan mids → orange peaks), matching the
-    // showSignals cyan/orange signal palette; the default for the spectral heatmap docs.
+    /** Field's house ramp: near-black, cyan through the middle, orange at the peaks, three stops. The same cyan and orange the signal plots use, and the default for the spectral heatmaps in the documentation. Also matched as `cyan-orange`. */
     val cyanorange: List<Color4> = rgb255(10, 14, 20, 60, 190, 230, 255, 150, 50)
 
     private val maps: Map<String, List<Color4>> = linkedMapOf(
@@ -128,6 +134,7 @@ object Colormaps {
         "cyanorange" to cyanorange, "cyan-orange" to cyanorange
     )
 
+    /** The eight canonical names, in the order above, as [stops] quotes them when it is handed one it does not know. The three aliases `gray`, `greys` and `cyan-orange` are accepted by [stops] but are not among them. */
     val names: List<String> = listOf("viridis", "magma", "inferno", "plasma", "turbo", "coolwarm", "grayscale", "cyanorange")
 
     fun stops(name: String): List<Color4> =
