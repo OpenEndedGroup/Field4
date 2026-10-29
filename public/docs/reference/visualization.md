@@ -2983,6 +2983,17 @@ from [`f0`](visualization.md#numericformatting-kt--f0) to [`f9`](visualization.m
 
 ## OutputAreaReplay.kt { #outputareareplay-kt }
 
+The panels a live box has shown, kept so that a page attaching after the box ran still sees them.
+
+Every [`DefaultOutput`](visualization.md#outputs-kt-defaultoutput) holds one as `retainedAreas`: `display(...)` puts the rendered HTML in
+under its channel name, `displayOpen` and `displayClose` record whether a panel was open, and
+`snapshot` replays both as the `set-output` and `output-control` messages a client would have
+received live. A client asks for them with `replay-output-areas` on attaching, which is also what
+lets a capture run a box first and look at its output later.
+
+Only the latest HTML per channel is held, bounded at 128 channels and eight million characters
+with the earliest channel dropped first, and none of it is written to disk.
+
 `src/jvmMain/kotlin/afield/ui/output/OutputAreaReplay.kt` — [read the source](source/jvmMain/afield/ui/output/OutputAreaReplay/)
 
 ## callbacks.kt { #callbacks-kt }
@@ -3436,17 +3447,32 @@ Standard HTML slide content, with scoped Markdown, stylesheets and image layouts
 
 ## LessonCheckpoint.kt { #lessoncheckpoint-kt }
 
+A reset button for a lesson: capture a box's source before an audience changes it, and restore it
+from a later slide.
+
+`capture` records the named boxes' local text properties (`code` by default) in memory, and
+`restore` stops those boxes' tracked jobs and writes the text back. The scope is narrow: unlisted
+boxes, other properties, output, files and anything a run created outside a text property are
+untouched, so a slide that resets an experiment runs the setup again afterwards rather than
+waiting for the old output to reappear.
+
+A read-only document refuses the restore, and a captured box since removed from the document
+fails it rather than being recreated.
+
+`presentation_studio.md` pairs this with a `checkpoint(...)` step, which is how the
+`templates/presentation` document uses it.
+
 `src/jvmMain/kotlin/afield/ui/slides/LessonCheckpoint.kt` — [read the source](source/jvmMain/afield/ui/slides/LessonCheckpoint/)
 
 ### LessonCheckpoint { #lessoncheckpoint-kt-lessoncheckpoint }
 
-[<code class="highlight"><span class="k">class</span> <span class="nc">LessonCheckpoint</span> <span class="k">private</span> <span class="k">constructor</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">entries</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Entry</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/ui/slides/LessonCheckpoint/#L8)
+[<code class="highlight"><span class="k">class</span> <span class="nc">LessonCheckpoint</span> <span class="k">private</span> <span class="k">constructor</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">entries</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Entry</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/ui/slides/LessonCheckpoint/#L25)
 
 An in-memory baseline of explicitly named local text properties; never a snapshot of runtime objects.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="lessoncheckpoint-kt--lessoncheckpoint--restore"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">restore</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/ui/slides/LessonCheckpoint/#L24) | Stop the captured boxes and restore their text. Run setup explicitly afterwards to recreate output. |
+| <a id="lessoncheckpoint-kt--lessoncheckpoint--restore"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">restore</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/ui/slides/LessonCheckpoint/#L41) | Stop the captured boxes and restore their text. Run setup explicitly afterwards to recreate output. |
 
 ## Presentation.kt { #presentation-kt }
 
@@ -3501,9 +3527,38 @@ Options for showing a guide on a separate audience display.
 
 ## PresentationSearch.kt { #presentationsearch-kt }
 
+Reduces a slide to the plain text a presenter can search, by reading the audience HTML the talk
+would actually show.
+
+The slideshow calls `text` for every step when a client asks for search text, and caches the
+result for the built talk. It parses the HTML with the JDK's own parser, drops `<style>` and
+`<script>` subtrees, keeps image `alt` text, and adds the one identifying string of the other
+audience types: a document name, or a webpage or video URL. A step with no audience content at
+all falls back to its presenter note. The result is capped at 16 384 characters.
+
+Indexing stays on authored content. The presenter-note fallback is taken as written rather than
+with its template functions evaluated, because those can run user code, and a step whose audience
+provider throws (a slide file not written yet) is skipped so the rest of the talk still opens.
+
 `src/jvmMain/kotlin/afield/ui/slides/PresentationSearch.kt` — [read the source](source/jvmMain/afield/ui/slides/PresentationSearch/)
 
 ## PresentationSlides.kt { #presentationslides-kt }
+
+The on-disk format for a talk's editable slides, and the two `slides(...)` builders that read a
+deck into a slideshow.
+
+A deck is a `files/<name>.slides.json` inside the presentation document: a schema string, a
+stylesheet path, and a list of slides carrying Markdown for the audience, presenter notes, an
+optional section path and an optional list of reveals. `validated()` bounds every field of it (at
+most 1000 uniquely identified slides, 100 000 characters of Markdown each, 100 reveals), and both
+reading and writing run it.
+
+[`PresentationSlideFiles`](visualization.md#presentationslides-kt-presentationslidefiles) is the file side, shared by Kotlin box code and by AI4's slide tools in
+[`PresentationTools`](machine-learning.md#presentationtools-kt-presentationtools). A write names the revision it read, so a deck edited underneath a caller is
+refused rather than overwritten, and every path is checked to stay inside the document's `files/`
+directory.
+
+A deck carries Markdown and no code; a live action stays an explicit Kotlin guide step.
 
 `src/jvmMain/kotlin/afield/ui/slides/PresentationSlides.kt` — [read the source](source/jvmMain/afield/ui/slides/PresentationSlides/)
 
@@ -3511,12 +3566,12 @@ Options for showing a guide on a separate audience display.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="presentationslides-kt--slides"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">SlideShowBuilder</span><span class="p">.</span><span class="nf">slides</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/ui/slides/PresentationSlides/#L104) | Insert editable Markdown slides at this point in the talk. Refresh reloads existing slide bodies from disk. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">SlideShowBuilder</span><span class="p">.</span><span class="nf">slides</span><span class="p">(</span><span class="n">file</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span></code>](source/jvmMain/afield/ui/slides/PresentationSlides/#L107) | Load a specific slide file; relative media still resolves in the presentation document's files directory. |
+| <a id="presentationslides-kt--slides"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">SlideShowBuilder</span><span class="p">.</span><span class="nf">slides</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/ui/slides/PresentationSlides/#L122) | Insert editable Markdown slides at this point in the talk. Refresh reloads existing slide bodies from disk. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">SlideShowBuilder</span><span class="p">.</span><span class="nf">slides</span><span class="p">(</span><span class="n">file</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span></code>](source/jvmMain/afield/ui/slides/PresentationSlides/#L125) | Load a specific slide file; relative media still resolves in the presentation document's files directory. |
 
 ### PresentationSlides { #presentationslides-kt-presentationslides }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PresentationSlides</span><span class="p">(</span><span class="k">val</span> <span class="n">schema</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;field.presentation.slides.v1&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">stylesheet</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;presentation.css&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">slides</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PresentationSlide</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>](source/jvmMain/afield/ui/slides/PresentationSlides/#L16)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PresentationSlides</span><span class="p">(</span><span class="k">val</span> <span class="n">schema</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;field.presentation.slides.v1&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">stylesheet</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;presentation.css&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">slides</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PresentationSlide</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>](source/jvmMain/afield/ui/slides/PresentationSlides/#L34)
 
 Editable content for a talk. Live actions remain explicit Kotlin guide steps.
 
@@ -3525,11 +3580,11 @@ Editable content for a talk. Live actions remain explicit Kotlin guide steps.
 | <a id="presentationslides-kt--presentationslides--schema"></a><code class="highlight"><span class="k">val</span> <span class="n">schema</span><span class="p">:</span> <span class="nc">String</span></code> |  |
 | <a id="presentationslides-kt--presentationslides--stylesheet"></a><code class="highlight"><span class="k">val</span> <span class="n">stylesheet</span><span class="p">:</span> <span class="nc">String</span></code> |  |
 | <a id="presentationslides-kt--presentationslides--slides"></a><code class="highlight"><span class="k">val</span> <span class="n">slides</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PresentationSlide</span><span class="p">&gt;</span></code> |  |
-| <a id="presentationslides-kt--presentationslides--validated"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">validated</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">PresentationSlides</span></code>](source/jvmMain/afield/ui/slides/PresentationSlides/#L21) |  |
+| <a id="presentationslides-kt--presentationslides--validated"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">validated</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">PresentationSlides</span></code>](source/jvmMain/afield/ui/slides/PresentationSlides/#L39) |  |
 
 ### PresentationSlide { #presentationslides-kt-presentationslide }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PresentationSlide</span><span class="p">(</span><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">markdown</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">notes</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">section</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">cues</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PresentationReveal</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>](source/jvmMain/afield/ui/slides/PresentationSlides/#L36)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PresentationSlide</span><span class="p">(</span><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">markdown</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">notes</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">section</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">cues</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PresentationReveal</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>](source/jvmMain/afield/ui/slides/PresentationSlides/#L54)
 
 | Declaration | Summary |
 | --- | --- |
@@ -3537,7 +3592,7 @@ Editable content for a talk. Live actions remain explicit Kotlin guide steps.
 
 ### PresentationReveal { #presentationslides-kt-presentationreveal }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PresentationReveal</span><span class="p">(</span><span class="k">val</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">markdown</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">retainPrevious</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="k">val</span> <span class="n">previousOpacity</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.25</span><span class="p">,</span> <span class="k">val</span> <span class="n">fadeMs</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span></code>](source/jvmMain/afield/ui/slides/PresentationSlides/#L41)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PresentationReveal</span><span class="p">(</span><span class="k">val</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">markdown</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">retainPrevious</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="k">val</span> <span class="n">previousOpacity</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.25</span><span class="p">,</span> <span class="k">val</span> <span class="n">fadeMs</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span></code>](source/jvmMain/afield/ui/slides/PresentationSlides/#L59)
 
 A content-only reveal replaces or layers the slide body and never executes code.
 
@@ -3547,15 +3602,15 @@ A content-only reveal replaces or layers the slide body and never executes code.
 
 ### PresentationSlideFiles { #presentationslides-kt-presentationslidefiles }
 
-[<code class="highlight"><span class="k">class</span> <span class="nf">PresentationSlideFiles</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">documentDirectory</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span></code>](source/jvmMain/afield/ui/slides/PresentationSlides/#L45)
+[<code class="highlight"><span class="k">class</span> <span class="nf">PresentationSlideFiles</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">documentDirectory</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span></code>](source/jvmMain/afield/ui/slides/PresentationSlides/#L63)
 
 Document-local files shared by the Kotlin builder and AI4's revision-checked slide tools.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="presentationslides-kt--presentationslidefiles--snapshot"></a>[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Snapshot</span><span class="p">(</span><span class="k">val</span> <span class="n">revision</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">deck</span><span class="p">:</span> <span class="nc">PresentationSlides</span><span class="p">)</span></code>](source/jvmMain/afield/ui/slides/PresentationSlides/#L62) |  |
-| <a id="presentationslides-kt--presentationslidefiles--read"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">read</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Snapshot</span></code>](source/jvmMain/afield/ui/slides/PresentationSlides/#L63) |  |
-| <a id="presentationslides-kt--presentationslidefiles--write"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">write</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">revision</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">deck</span><span class="p">:</span> <span class="nc">PresentationSlides</span><span class="p">)</span><span class="p">:</span> <span class="nc">Snapshot</span></code>](source/jvmMain/afield/ui/slides/PresentationSlides/#L78) | Empty revision creates a new file; every replacement must name the exact revision just read. |
+| <a id="presentationslides-kt--presentationslidefiles--snapshot"></a>[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Snapshot</span><span class="p">(</span><span class="k">val</span> <span class="n">revision</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">deck</span><span class="p">:</span> <span class="nc">PresentationSlides</span><span class="p">)</span></code>](source/jvmMain/afield/ui/slides/PresentationSlides/#L80) |  |
+| <a id="presentationslides-kt--presentationslidefiles--read"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">read</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Snapshot</span></code>](source/jvmMain/afield/ui/slides/PresentationSlides/#L81) |  |
+| <a id="presentationslides-kt--presentationslidefiles--write"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">write</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">revision</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">deck</span><span class="p">:</span> <span class="nc">PresentationSlides</span><span class="p">)</span><span class="p">:</span> <span class="nc">Snapshot</span></code>](source/jvmMain/afield/ui/slides/PresentationSlides/#L96) | Empty revision creates a new file; every replacement must name the exact revision just read. |
 
 ## SlideShow.kt { #slideshow-kt }
 
@@ -4253,6 +4308,17 @@ A range-query source for the frontend signal viewer. Like AudioVisualizer, it se
 
 ## TimeViewer.kt { #timeviewer-kt }
 
+The HTML shell of Field's one time-axis viewer, shared by [`SignalViewer`](visualization.md#signalviewer-kt-signalviewer), `Fn.plot`,
+[`AudioVisualizer`](visualization.md#audiovisualizer-kt-audiovisualizer) and the Audio AI analysis views. It writes the chrome (title, status chip,
+zoom/fit buttons, a rounded plot frame, a readout line and an overview strip) plus a JSON config,
+and inlines `signal-viewer.js`, which draws with Field's bundled Plotly.
+
+Callers choose a `source` in `render`'s config: `range` (a `/signal-viewer/{id}` query per
+visible window), `embedded` (a static window in the page), `audio` (an `<audio>` element and
+its envelope) or `analysis` (a Field Audio preview). Everything else is shared: the view window,
+the time bus (`field-time-window`, `-cursor`, `-seek`, `-transport`), `viewKey` persistence and
+the DOM-overlay playhead. See `dev_docs/SIGNAL_VIEWER.md`.
+
 `src/jvmMain/kotlin/afield/ui/visualization/TimeViewer.kt` — [read the source](source/jvmMain/afield/ui/visualization/TimeViewer/)
 
 ## ValueVisualizer.kt { #valuevisualizer-kt }
@@ -4519,13 +4585,26 @@ Marks, axes, and the claims made about them.
 
 ## flipbox.kt { #flipbox-kt }
 
+A checkbox drawn in the editor that re-runs one block of a box without re-running the box.
+
+`flipbox` extends [`Marker`](workspace.md#stdlib-graph-kt-marker), so it is reached through a marker uid in the source
+(`__m("aVq3x-k2").flipbox(true) { … }`), and the checkbox is drawn at that call: over a bare
+`true` or `false` argument where there is one, and before the call otherwise.
+
+The rest of the file is that decoration. A [`RawDecoration`](visualization.md#decorations-kt-rawdecoration) carries the glyph, its hover colour
+and a click callback, and is rewritten after every evaluation and after every click, so the
+editor always shows the current state rather than the argument's.
+
+It belongs with the other marker decorations in `decorations.kt` (`toggle`, `beep`, `bop`,
+`liveNumber`), and is the one that owns a block rather than a value.
+
 `src/jvmMain/kotlin/afield/ui/visualization/flipbox.kt` — [read the source](source/jvmMain/afield/ui/visualization/flipbox/)
 
 ### Top-level functions { #flipbox-kt-functions }
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="flipbox-kt--flipbox"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Marker</span><span class="p">.</span><span class="nf">flipbox</span><span class="p">(</span><span class="n">initial</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">block</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/ui/visualization/flipbox/#L56) | A block with a checkbox drawn in the editor over its argument: it runs when the box evaluates with the box ticked, and you tick it to run the block again. Each evaluation unticks it. |
+| <a id="flipbox-kt--flipbox"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Marker</span><span class="p">.</span><span class="nf">flipbox</span><span class="p">(</span><span class="n">initial</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">block</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/ui/visualization/flipbox/#L71) | A block with a checkbox drawn in the editor over its argument: it runs when the box evaluates with the box ticked, and you tick it to run the block again. Each evaluation unticks it. |
 
 ## heatmap.kt { #heatmap-kt }
 
