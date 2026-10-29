@@ -19,13 +19,26 @@ import kotlin.math.*
  * static type, so `rbf() + matern(1.5)` still answers derivative queries.
  */
 fun interface GpKernel {
+    /**
+     * The prior covariance between the function's values at [a] and [b], in output-squared
+     * units. The one method an implementation supplies.
+     */
     fun covariance(a: DoubleArray, b: DoubleArray): Double
+    /**
+     * A kernel whose covariance is the sum of both: a model that is the sum of two independent
+     * functions, such as a slow trend plus fast detail. Differentiable when both sides are.
+     */
     operator fun plus(other: GpKernel): GpKernel =
         if (this is GpDifferentiableKernel && other is GpDifferentiableKernel) gpSum(this, other)
         else GpKernel { a, b -> covariance(a, b) + other.covariance(a, b) }
+    /**
+     * A kernel whose covariance is the product of both, which is how a periodic kernel is made
+     * to decay or a kernel is restricted to a region. Differentiable when both sides are.
+     */
     operator fun times(other: GpKernel): GpKernel =
         if (this is GpDifferentiableKernel && other is GpDifferentiableKernel) gpProduct(this, other)
         else GpKernel { a, b -> covariance(a, b) * other.covariance(a, b) }
+    /** This kernel with its covariance scaled by [variance], which must be nonnegative. */
     operator fun times(variance: Double): GpKernel {
         gpNonnegative(variance, "kernel multiplier")
         return if (this is GpDifferentiableKernel) gpScaled(this, variance) else GpKernel { a, b -> variance * covariance(a, b) }
@@ -43,8 +56,11 @@ interface GpDifferentiableKernel : GpKernel {
     /** ∂²k(a, b) / ∂a[i] ∂b[j]: the covariance between the slope along i at a and along j at b. */
     fun covarianceHessian(a: DoubleArray, b: DoubleArray, i: Int, j: Int): Double
 
+    /** The sum of two differentiable kernels, differentiable by linearity. */
     operator fun plus(other: GpDifferentiableKernel): GpDifferentiableKernel = gpSum(this, other)
+    /** The product of two differentiable kernels, differentiated by the product rule. */
     operator fun times(other: GpDifferentiableKernel): GpDifferentiableKernel = gpProduct(this, other)
+    /** This kernel scaled by [variance], gradients and Hessians scaled with it. */
     override operator fun times(variance: Double): GpDifferentiableKernel {
         gpNonnegative(variance, "kernel multiplier")
         return gpScaled(this, variance)
@@ -127,6 +143,10 @@ object GpKernels {
 
     /** Squared exponential: infinitely mean-square differentiable. */
     fun rbf(lengthScale: Double = 1.0, variance: Double = 1.0): GpDifferentiableKernel = rbf(doubleArrayOf(lengthScale), variance)
+    /**
+     * The squared exponential with one length scale per input axis, so each axis can vary at
+     * its own rate. A single length scale is applied to every axis.
+     */
     fun rbf(lengthScales: DoubleArray, variance: Double = 1.0): GpDifferentiableKernel =
         Radial(lengthScales, variance, { exp(-0.5 * it) }, { -0.5 * exp(-0.5 * it) }, { 0.25 * exp(-0.5 * it) })
 
@@ -136,6 +156,10 @@ object GpKernels {
      */
     fun matern(nu: Double = 1.5, lengthScale: Double = 1.0, variance: Double = 1.0): GpKernel =
         matern(nu, doubleArrayOf(lengthScale), variance)
+    /**
+     * Matérn with one length scale per input axis. [nu] must be 0.5, 1.5 or 2.5; anything else
+     * throws. A single length scale is applied to every axis.
+     */
     fun matern(nu: Double, lengthScales: DoubleArray, variance: Double = 1.0): GpKernel = when (nu) {
         0.5 -> {
             val radial = Radial(lengthScales, variance, { exp(-sqrt(it)) }, { 0.0 }, { 0.0 })
@@ -207,6 +231,11 @@ object GpKernels {
         return periodicMixture(periods, lengthScale = lengthScale, variance = variance)
     }
 
+    /**
+     * The same covariance between every pair of points: one unknown level, drawn once, shared
+     * by the whole function. Add it to another kernel so the process can settle away from its
+     * mean function instead of returning to it between observations.
+     */
     fun constant(variance: Double = 1.0): GpDifferentiableKernel {
         gpNonnegative(variance, "kernel variance")
         return object : GpDifferentiableKernel {
