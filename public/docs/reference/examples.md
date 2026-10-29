@@ -4,7 +4,7 @@
 
 Runnable examples, galleries and verification programs. Read these for usage patterns; their entry points are not a promise of a reusable box API.
 
-217 source file(s), 688 public symbol(s), 303 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+218 source file(s), 690 public symbol(s), 304 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -1856,6 +1856,20 @@ Step two of the neural-particle pilot: that a buffer of particles integrated on 
 | <a id="newmain8-writetoimage-kt--newmain8-writetoimage--cleanup"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">cleanup</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/NewMain8_writeToImage/#L192) |  |
 | <a id="newmain8-writetoimage-kt--newmain8-writetoimage--running"></a>[<code class="highlight"><span class="k">var</span> <span class="n">running</span></code>](source/jvmMain/afield/examples/four/NewMain8_writeToImage/#L196) |  |
 | <a id="newmain8-writetoimage-kt--newmain8-writetoimage--run"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">run</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/NewMain8_writeToImage/#L198) |  |
+
+## OpenDlssNrLiveEditSmoke.kt { #opendlssnrliveeditsmoke-kt }
+
+`src/jvmMain/kotlin/afield/examples/four/OpenDlssNrLiveEditSmoke.kt` — [read the source](source/jvmMain/afield/examples/four/OpenDlssNrLiveEditSmoke/)
+
+### OpenDlssNrLiveEditSmoke { #opendlssnrliveeditsmoke-kt-opendlssnrliveeditsmoke }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">OpenDlssNrLiveEditSmoke</span></code>](source/jvmMain/afield/examples/four/OpenDlssNrLiveEditSmoke/#L43)
+
+Live edits that used to need a box rerun. [`OpenDlssNrStudy.reload`](graphics.md#opendlssnrstudy-kt--opendlssnrstudy--reload) with a new varying between the stages rebuilds the source and the next frames draw with it; with the native library present, a pass added to a Fabricate post stack leaves that stack when it closes. Without the library the reload half still runs, in source mode.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="opendlssnrliveeditsmoke-kt--opendlssnrliveeditsmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/OpenDlssNrLiveEditSmoke/#L65) |  |
 
 ## OpenDlssNrTeardownSmoke.kt { #opendlssnrteardownsmoke-kt }
 

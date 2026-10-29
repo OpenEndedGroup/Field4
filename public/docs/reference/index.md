@@ -650,20 +650,20 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**35104 public symbols across 1602 source files**, 18386 of them (52%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**35107 public symbols across 1603 source files**, 18388 of them (52%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
 | Category | Files | Symbols | Documented | Covers |
 | --- | --- | --- | --- | --- |
-| [Examples](examples.md) | 217 | 688 | 303 (44%) | Runnable examples, galleries and verification programs. |
+| [Examples](examples.md) | 218 | 690 | 304 (44%) | Runnable examples, galleries and verification programs. |
 | [Internal](internal.md) | 16 | 156 | 55 (35%) | Implementation details explicitly marked Internal by their source. |
 | [Lighting](lighting.md) | 8 | 203 | 156 (76%) | Light sources, fixtures and control protocols for working with physical and rendered lighting. |
 | [Networking](networking.md) | 16 | 366 | 213 (58%) | OSC messages, discovery and query interfaces for connecting Field to other applications and devices. |
 | [Video](video.md) | 14 | 134 | 50 (37%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 47 | 2156 | 1522 (70%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 26 | 1061 | 463 (43%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 326 | 7978 | 4383 (54%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 326 | 7979 | 4384 (54%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 46 | 797 | 427 (53%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 586 | 431 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 766 | 331 (43%) | Nonlinear least squares, aimed at geometry. |
@@ -1610,10 +1610,11 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>render/<wbr>neural/<wbr></small> [OpenDlssNrDiagnostics.kt](internal.md#opendlssnrdiagnostics-kt) | Internal · internal | 0 | 0 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>render/<wbr>neural/<wbr></small> [OpenDlssNrGpuSmoke.kt](graphics.md#opendlssnrgpusmoke-kt) | Graphics · internal | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>render/<wbr>neural/<wbr></small> [OpenDlssNrImage.kt](graphics.md#opendlssnrimage-kt) | Graphics | 10 | 2 | Runs one image file through `OpenDlssNrPass` and shows the result on screen. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [OpenDlssNrLiveEditSmoke.kt](examples.md#opendlssnrliveeditsmoke-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>render/<wbr>neural/<wbr></small> [OpenDlssNrNative.kt](internal.md#opendlssnrnative-kt) | Internal · internal | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>render/<wbr>neural/<wbr></small> [OpenDlssNrPass.kt](graphics.md#opendlssnrpass-kt) | Graphics | 19 | 7 | The Vulkan pass that runs the native neural-rendering (NR) network over a sampled image. | [Neural image rendering with OpenDLSS-NR](../open_dlss_nr.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>render/<wbr>neural/<wbr></small> [OpenDlssNrSmokeTest.kt](graphics.md#opendlssnrsmoketest-kt) | Graphics · internal | 2 | 1 |  |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>render/<wbr>neural/<wbr></small> [OpenDlssNrStudy.kt](graphics.md#opendlssnrstudy-kt) | Graphics | 20 | 5 | An editable source image fed through the native neural-rendering (NR) pass, with a graded comparison. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>render/<wbr>neural/<wbr></small> [OpenDlssNrStudy.kt](graphics.md#opendlssnrstudy-kt) | Graphics | 21 | 6 | An editable source image fed through the native neural-rendering (NR) pass, with a graded comparison. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>render/<wbr>neural/<wbr></small> [OpenDlssNrSupport.kt](graphics.md#opendlssnrsupport-kt) | Graphics | 3 | 1 | Whether the native neural-rendering (NR) pass can run on this renderer. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [OpenDlssNrTeardownSmoke.kt](examples.md#opendlssnrteardownsmoke-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>render/<wbr>neural/<wbr></small> [OpenDlssNrTemporalSmoke.kt](internal.md#opendlssnrtemporalsmoke-kt) | Internal · internal | 0 | 0 |  |  |
