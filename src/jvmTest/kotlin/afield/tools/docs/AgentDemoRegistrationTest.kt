@@ -89,6 +89,8 @@ class AgentDemoRegistrationTest {
             "certified_envelope",
             "chart_clip",
             "chart_primitive",
+            // 2026-10-29: controls renewal surface and a self-rebuilding slider; registered EXECUTE.
+            "controls_surface",
             "completion_rank_at_scale",
             "confluence_grid",
             // Transcript sources, registered COMPILE_ONLY with separate Vulkan GPU checks.

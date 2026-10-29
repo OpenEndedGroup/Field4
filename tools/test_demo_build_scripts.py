@@ -79,6 +79,9 @@ CORPUS = {
     "certified_envelope",
     "chart_clip",
     "chart_primitive",
+    # 2026-10-29, controls renewal surface. Ships a `build.yaml`, so the count below moved
+    # 10 -> 11; its two boxes were replayed (applied=5 skipped=0 errors=0) and saved on arrival.
+    "controls_surface",
     "completion_rank_at_scale",
     "confluence_grid",
     # Lighting/neural examples use transcript sources and their separate GPU verification.
@@ -229,7 +232,7 @@ class DemoBuildScriptTest(unittest.TestCase):
             "dev_docs/DEMO_CORPUS_AUDIT.md together",
         )
         self.assertEqual(
-            10,
+            11,
             len(self.scripts),
             "the number of demos shipping a build.yaml has changed; a new one is unchecked "
             "until it is measured",

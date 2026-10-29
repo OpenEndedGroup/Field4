@@ -313,6 +313,9 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   started, which is why it is compile-only here.
 - `read_only_session.yaml`: **read-only mode from the inside** — a `saved{}` counter that cannot count,
   and what the flag refuses rather than silently drops. The reason every demo folder says `--read-only`.
+- `controls_surface.yaml`: **a performer's control surface** from the `controlGroup` DSL (log-law
+  slider, XY pad with keyboard nudges and reset, toggle, text, colour) feeding a live figure, and a
+  slider whose callback rebuilds its own group mid-drag without dropping the drag.
 - `certified_envelope.yaml`: **a bound no feature can slip between**. An hour-long signal with a
   10 ms glitch that the signal viewer's sampled envelope misses by 0.4956, the same viewer with its
   opt-in certified band (interval arithmetic over `FnFormulas`) catching it, `certifiedRange` with

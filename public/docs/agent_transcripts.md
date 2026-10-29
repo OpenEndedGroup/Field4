@@ -2058,6 +2058,17 @@ which is why every demo under `dev_docs/agents/demos/` tells you to pass the fla
 
 [Open →](offline.html?file=assets/agent_transcripts/read_only_session/metadata.edn)
 
+### controls_surface
+
+**A performer's control surface.** Two pure-CPU boxes built from the `controlGroup` DSL. The first
+puts a log-law cutoff slider, an XY pad, a toggle, a name and a colour beside a live figure drawn from
+whatever the box last received: click the pad, then use the arrow keys (shift for ten times the step),
+Backspace or a double-click to reset, and shift-drag to ease it into place; click a slider and turn
+the wheel. The second box's slider rebuilds its own group once dragged past 0.5, replacing the DOM
+under the pointer, and the drag carries on. `dev_docs/CONTROLS_RENEWAL.md` is the write-up.
+
+[Open →](offline.html?file=assets/agent_transcripts/controls_surface/metadata.edn)
+
 ### certified_envelope
 
 **A bound no feature can slip between.** Five pure-CPU boxes, no window and no setup. The signal is
