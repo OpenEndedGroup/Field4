@@ -1076,6 +1076,72 @@ ui.pause(100)
 | arrow keys (after a click) | one `step` per press; **shift** ×10, **alt** ÷10. A `law =` slider moves 1% of its travel instead |
 | **PageUp** / **PageDown**, **Home** / **End** | 10% of travel, or the ends |
 | **Backspace** | back to `initialValue` |
+| the mouse wheel (after a click) | one arrow press per notch, with the same **shift** and **alt**. A slider you have not clicked lets the wheel scroll the canvas |
+
+If the box re-renders the control while you are dragging it, because its callback rebuilt the
+`controlGroup` or the box re-ran, the drag carries on with the new control.
+
+#### Handling an XY pad
+
+A `vec2Control` takes the slider's gestures in two dimensions. This recording presses the pad to put
+the handle under the pointer, walks it left with the arrow keys, then holds **shift** and drags: the
+handle moves a tenth as far as the pointer, from where it was. The dots in the panel below are each
+value the callback received.
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="box" capture-box="vec2_gestures" open-outputs="true" screenshot="assets/visualizers-vec2-gestures.png" transcript="../../dev_docs/agents/transcripts/docs_capture/vec2_gestures.yaml" padding="16" wait="0" timeout="240" embed=true hidden=true name="vec2-gestures" alt="An ORBIT vec2 pad with its handle up and to the right of centre at (0.64, 0.77), theta 50 degrees. Below it, the panel of values the box received: the dots of the arrow-key steps and the shift-drag sit packed into one short hook, because the fine drag moved the handle a tenth as far as the pointer travelled."}
+ui.waitForSelector(".vec2-visual", 8000.0)
+ui.pause(300)
+fun at(fx: Double, fy: Double): Pair<Double, Double> {
+    val c = ui.eval(
+        """
+        const r = [...document.querySelectorAll('.vec2-visual')].find((s) => s.getBoundingClientRect().width > 0).getBoundingClientRect();
+        return [r.left + r.width * $fx, r.top + r.height * $fy].join(',');
+        """,
+    ).toString().trim('"').split(',').map { it.toDouble() }
+    return c[0] to c[1]
+}
+fun xy(): List<Double> =
+    ui.eval("const p = [...document.querySelectorAll('.field-vec2')].find((s) => s.getBoundingClientRect().width > 0); return p.dataset.x + ',' + p.dataset.y")
+        .toString().trim('"').split(',').map { it.toDouble() }
+
+val press = at(0.8, 0.2)
+ui.moveMouse(press.first, press.second, 10)
+ui.mouseDown()
+ui.mouseUp()
+ui.pause(200)
+val pressed = xy()
+check(pressed[0] > 0.4 && pressed[1] > 0.4) { "press did not move the handle: $pressed" }
+repeat(5) { ui.press("ArrowLeft"); ui.pause(120) }
+val nudged = xy()
+check(kotlin.math.abs(nudged[0] - (pressed[0] - 0.05)) < 0.006) { "arrows did not nudge: $pressed -> $nudged" }
+
+val start = at(0.3, 0.7)
+ui.moveMouse(start.first, start.second, 6)
+ui.down("Shift")
+ui.mouseDown()
+for (step in 1..30) {
+    val a = step / 30.0 * Math.PI
+    ui.moveMouse(start.first + 60 * kotlin.math.sin(a), start.second - 60 * (1 - kotlin.math.cos(a)) / 2, 1)
+    ui.pause(60)
+}
+ui.mouseUp()
+ui.up("Shift")
+ui.pause(600)
+val fine = xy()
+check(kotlin.math.abs(fine[0] - nudged[0]) < 0.12 && kotlin.math.abs(fine[1] - nudged[1]) < 0.12 && fine != nudged) {
+    "shift-drag was not fine and relative: $nudged -> $fine"
+}
+ui.moveMouse(900.0, 700.0, 4)
+```
+
+| Do this on a pad | To get |
+| --- | --- |
+| press and drag | the handle jumps to the pointer and follows it |
+| hold **shift** while dragging | a relative drag, ten times finer, from where the handle already is |
+| double-click the pad | its `initialValue` again |
+| arrow keys (after a click) | one `step` along that axis, up is +y; **shift** ×10 |
+| **Backspace** | back to `initialValue` |
+| **Enter** | type `(x, y)` |
 
 The other controls' readouts take typing too. On a `vec2Control`, click **X** or **Y** to set one coordinate, the `(x, y)` pair to set both, `|v|` to change the length and keep the direction, or `θ` (degrees) to turn it and keep the length. On a `colorPicker`, click the `rgba(...)` readout and type four numbers from 0 to 1, or a `#rrggbb` hex colour; click the alpha number to type the alpha alone. Typed values are clamped and snapped like a drag.
 

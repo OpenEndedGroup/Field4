@@ -405,6 +405,9 @@ object DemoTranscriptExecSmokeTest {
         // Certified envelopes for Fn (2026-09-23): a SignalViewer with and without its certified
         // band, certifiedRange, and the refusal of a lambda channel. Pure CPU, no window.
         "certified_envelope",
+        // Controls renewal (2026-10-29): a five-control surface feeding a live figure and a slider
+        // that re-renders itself mid-drag. Pure CPU, output-channel controls only.
+        "controls_surface",
         // Kolakoski counts crossed with Euclidean placement. Pure CPU: the figures are
         // `showPatRollOf` (SVG into an output channel) and the audio is `showDirtAudio` /
         // `patRenderStereoDirt`, which mixes samples into a buffer offline — no audio device, and

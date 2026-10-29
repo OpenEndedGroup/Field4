@@ -1456,8 +1456,12 @@ def run(args: argparse.Namespace) -> int:
 
     # Refresh before copying docs assets; unchanged publications need neither Field nor a browser.
     import docs_publications
-    docs_publications.sync_publications(
-        mode=docs_hooks.resolve_runner_mode(os.environ.get(docs_hooks.RUNNER_MODE_ENV)))
+    # `--page` recaptures only the named pages: publications are other pages' captures, so they are
+    # refreshed only where stale. `always --page x.md` used to recapture every publication too.
+    publication_mode = docs_hooks.resolve_runner_mode(os.environ.get(docs_hooks.RUNNER_MODE_ENV))
+    if args.page and publication_mode == 'always':
+        publication_mode = 'incremental'
+    docs_publications.sync_publications(mode=publication_mode)
     preprocess_docs(public_dir=public_dir, generated_docs=generated_docs, page_filters=tuple(args.page))
     generated_config = build_generated_config(
         public_dir=public_dir,

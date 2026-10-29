@@ -3688,7 +3688,9 @@ class Server {
 
                 val callback = getVec2Callback(update.controlId)
                 if (callback != null) {
-                    GlobalScope.launch {
+                    // In arrival order, as slider-update does: a plain launch let a burst of drag updates reach
+                    // the callback out of order, so it could end on a stale value.
+                    GlobalScope.launch(start = CoroutineStart.UNDISPATCHED) {
                         try {
                             callback(Vector2f(update.x.toFloat(), update.y.toFloat()))
                         } catch (e: Exception) {
@@ -3711,7 +3713,9 @@ class Server {
 
                 val callback = getCheckboxCallback(update.controlId)
                 if (callback != null) {
-                    GlobalScope.launch {
+                    // In arrival order, as slider-update does: a plain launch let a burst of drag updates reach
+                    // the callback out of order, so it could end on a stale value.
+                    GlobalScope.launch(start = CoroutineStart.UNDISPATCHED) {
                         try {
                             callback(update.value)
                         } catch (e: Exception) {
@@ -3911,7 +3915,9 @@ class Server {
 
                 val callback = getStringCallback(update.controlId)
                 if (callback != null) {
-                    GlobalScope.launch {
+                    // In arrival order, as slider-update does: a plain launch let a burst of drag updates reach
+                    // the callback out of order, so it could end on a stale value.
+                    GlobalScope.launch(start = CoroutineStart.UNDISPATCHED) {
                         try {
                             callback(update.value)
                         } catch (e: Exception) {
@@ -3971,7 +3977,9 @@ class Server {
 
                 val callback = getColorCallback(update.controlId)
                 if (callback != null) {
-                    GlobalScope.launch {
+                    // In arrival order, as slider-update does: a plain launch let a burst of drag updates reach
+                    // the callback out of order, so it could end on a stale value.
+                    GlobalScope.launch(start = CoroutineStart.UNDISPATCHED) {
                         try {
                             callback(
                                 Vector4f(
@@ -5629,7 +5637,7 @@ class Server {
                                                     t.printStackTrace()
                                                 }
                                             }
-                                            if (message.name == "slider-update" || message.name == "button-update" || message.name == "output-request")
+                                            if (message.name in ORDERED_CONTROL_MESSAGES)
                                                 orderedControls.send(dispatch)
                                             else launch(block = dispatch)
                                         }
@@ -6536,3 +6544,14 @@ internal fun Application.installFieldApiSameSiteGuard() {
         finish()
     }
 }
+
+/**
+ * Messages the `/ws` socket handles one at a time in arrival order. Every control's `*-update` is
+ * here, not only the slider's: a vec2 or colour drag sends a burst, and dispatching each in its own
+ * coroutine let them reach the callback (and the stored value other pages echo) out of order, so a
+ * drag could end on an earlier value than the one the performer let go at.
+ */
+internal val ORDERED_CONTROL_MESSAGES = setOf(
+    "slider-update", "button-update", "output-request",
+    "vec2-update", "checkbox-update", "string-update", "color-update", "array-update",
+)

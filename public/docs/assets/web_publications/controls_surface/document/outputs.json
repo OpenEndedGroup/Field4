@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-29T14:48:26.370Z",
+  "documentName": "controls_surface",
+  "outputs": [
+    {
+      "uid": "surface",
+      "channel": "controls",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 536,
+      "height": 466,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "surface",
+      "channel": "figure",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 308,
+      "height": 332,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "rerender",
+      "channel": "controls",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 536,
+      "height": 60,
+      "path": "outputs/2.html"
+    }
+  ]
+}
