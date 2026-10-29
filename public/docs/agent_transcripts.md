@@ -2078,6 +2078,18 @@ grid never looks. `dev_docs/FN_INTERVAL.md` is the write-up.
 
 [Open →](offline.html?file=assets/agent_transcripts/certified_envelope/metadata.edn)
 
+### slideshow_own_tour
+
+**A guide over boxes that are already there.** Two ordinary boxes, `numbers` and `squares`, and a
+third, `tour`, whose `slideShow` walks through them in three steps. Each step finds the box it
+describes by name with `selectBoxByName`, so the guide works on any document that has boxes with
+those names; the second step opens `squares` at line 3 and marks it, and the last offers Start
+again and Finish. Run `numbers` and `squares` (they print `[1, 2, …, 10]` and
+`[1, 4, 9, …, 100]`), then run `tour` and follow its links. This is the "tour of your own
+document" example on [Interactive guides](interactive_guides.md), as a document you can open.
+
+[Open →](offline.html?file=assets/agent_transcripts/slideshow_own_tour/metadata.edn)
+
 ### solidsl_inverse
 
 **A Solid you can differentiate — and therefore solve.** `afield.lang.solidsl` writes a 3D solid down as a

@@ -107,6 +107,8 @@ class AgentDemoRegistrationTest {
             "path_traced_reconstruction",
             "reconstruction_plumbing",
             "rr_plumbing",
+            // 2026-10-29: a slideshow tour over two existing boxes; registered EXECUTE.
+            "slideshow_own_tour",
             // Landed 2026-09-22 in `b5b9ad9e0`. Not a document — no `metadata.edn` — so it is named
             // here (this set is the directory listing) and is invisible to the two assertions that
             // range over `demoDocuments()`. It is verified: `flow_grain.yaml` under

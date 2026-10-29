@@ -98,6 +98,9 @@ CORPUS = {
     "gpu_shader_learning",
     "reconstruction_plumbing",
     "rr_plumbing",
+    # 2026-10-29, a slideshow tour over two existing boxes (interactive_guides.md). Ships a
+    # `build.yaml`, so the count below moved 10 -> 11.
+    "slideshow_own_tour",
     # Landed 2026-09-22 in `b5b9ad9e0`, the twenty-second directory and the only one that is not a
     # saved document: no `metadata.edn`, no `build.yaml` (so the nine below is unchanged), and no
     # `_code_.kt` sidecars. It is the *source* of a transcript — `tools/demos/build_flow_grain.py`
@@ -229,7 +232,7 @@ class DemoBuildScriptTest(unittest.TestCase):
             "dev_docs/DEMO_CORPUS_AUDIT.md together",
         )
         self.assertEqual(
-            10,
+            11,
             len(self.scripts),
             "the number of demos shipping a build.yaml has changed; a new one is unchecked "
             "until it is measured",
