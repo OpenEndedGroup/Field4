@@ -1,13 +1,12 @@
 # Physics: particles, constraints and cloth
 
-Field has a particle solver. `afield.simulation.physics.SimdVerlet` holds some thousands of particles in
-flat float arrays, pulls them toward each other with distance constraints, and integrates them with
-Verlet. `Cloth` wires a rectangular grid of those constraints for you. `SimdVerlet.debugLines()`
-draws the solver's own state so you can see when the wiring is wrong.
+Make a sheet of cloth, pin some of its particles, and watch it settle. Field's particle solver
+uses distance constraints to hold the sheet together; `Cloth` sets up the rectangular grid for you.
+`SimdVerlet.debugLines()` draws the solver's state, so you can see the particles and their
+connections as you adjust it.
 
-It is a **CPU** solver with **no renderer of its own**. It hands you `FLine`s, and where those go is
-your business: `showPlane` into a box output, `Box.lines` into the 3D view, a Field 4
-renderer. Nothing here needs a GPU.
+The solver runs on the CPU. Its debug drawing is made of `FLine`s: show them in a box with
+`showPlane`, use `Box.lines` for a 3D view, or send them to a Field 4 renderer.
 
 The API is in the [codebase reference](reference/simulation.md). This page covers the thing that
 surprises people: `stiffness` and `iterations` act as one knob.
@@ -772,8 +771,8 @@ that a sheet has begun to vibrate before it becomes visible as motion.
 
 - [Simulation, in the codebase reference](reference/simulation.md) — every public declaration in
   this package, with the KDoc that sits beside it, on one browsable page. It is also where the two
-  neighbours this page does not cover live: Kratos, which answers the same kind of question slowly
-  and correctly instead of quickly and approximately, and
+  neighbours this page does not cover live: Kratos, which solves structural and other physical problems with a different set of
+  numerical methods, and
   [tetrahedral meshing](reference/simulation.md#tetgen-kt), which is what stands between a solid and
   a solver that wants elements.
 - [Frames and the Animation Loop](animation_time_model.md#a-physics-system-in-the-loop) — the same

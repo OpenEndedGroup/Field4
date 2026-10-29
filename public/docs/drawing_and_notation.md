@@ -2,7 +2,12 @@
 
 Press `alt/option-D` and the canvas becomes a drawing surface. Press it again and you are back with the boxes.
 
-The drawing surface is [Excalidraw](https://excalidraw.com), the open-source whiteboard ([source on GitHub](https://github.com/excalidraw/excalidraw)), running inside Field and laid over your boxes. It is the whole thing, not a sketch pad built to look like it: pens, shapes, arrows and text in a plain style (Iosevka text, crisp lines and square corners; the "sloppiness" and font controls bring back the hand-drawn look), its toolbar and its keyboard shortcuts. What you draw stays where you put it, pans and zooms with the canvas, and is saved with the document.
+The drawing surface is [Excalidraw](https://excalidraw.com), the open-source whiteboard
+([source on GitHub](https://github.com/excalidraw/excalidraw)), running inside Field over your
+boxes. Its pens, shapes, arrows, text, toolbar and shortcuts are all there. Field starts with
+Iosevka text, crisp lines and square corners; use the sloppiness and font controls if you prefer
+the hand-drawn look. Your drawing stays where you put it, pans and zooms with the canvas, and is
+saved with the document.
 
 Your code can read the drawing and write to it. Every stroke is data a box can ask about, and every box can draw.
 
@@ -12,10 +17,12 @@ Your code can read the drawing and write to it. Every stroke is data a box can a
 
 `alt/option-D` switches the mouse and keyboard to the drawing; `alt/option-D` again gives them back to the boxes. While the drawing has them, Excalidraw's own keys work: `p` for the pen, `r` rectangle, `o` ellipse, `a` arrow, `l` line, `t` text, `e` eraser, and space-drag or two fingers to pan. Pinch to zoom, and the boxes zoom with you.
 
-When the drawing is off it is still visible, but it lets clicks through to the boxes. Two things tie it to them:
+When drawing mode is off, your marks remain visible and clicks reach the boxes underneath. You
+can also attach marks to boxes so they move together:
 
- * An arrow you draw from one box to another sticks to both. Drag either box and the arrow follows.
- * **Anchor Drawing to Boxes** in the command palette makes the selected marks (or, with nothing selected, every mark sitting on a box) follow the box underneath.
+ * Draw an arrow from one box to another and it follows both when you drag them.
+ * Use **Anchor Drawing to Boxes** in the command palette to attach selected marks to the boxes
+   underneath. With nothing selected, it anchors every mark sitting on a box.
 
 ## A box that listens
 
@@ -166,7 +173,7 @@ Each mark knows its `kind`, `bounds`, `points` (in canvas coordinates, the same 
 
 ## Listening to the drawing
 
-Strokes are one of the things a box can listen for. It can hear arrows, texts and any change at all:
+A box can listen for finished strokes, arrows, text, or any change to the drawing:
 
 ```diffstatic {data-lang=kotlin}
 notation.onStroke { s ->

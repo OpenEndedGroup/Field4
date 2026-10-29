@@ -1,0 +1,234 @@
+{
+ "taskId": "task-ea1cc809",
+ "mode": "live",
+ "provider": "openai",
+ "model": "gpt-6.1-sol",
+ "verdict": "unchecked",
+ "checks": [],
+ "toolCalls": [
+  {
+   "index": 1,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":220,\"path\":\"AGENTS.md\",\"startLine\":1}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 1-220 of 552\",\"path\":\"AGENTS.md\",\"text\":\"1\\t# AField / Field\u00b74 \u2014 Repo Guide for Agents\\n2\\t\\n3\\tA corrective paragraph in this file is a bug report against a tool, and it stays only until the\\n4\\ttool enforces it. When you add a \\\"do not\\\", name the tool change that would retire it. Histories\\n5\\tof rules that became code live in\\n6\\t[`dev_docs/agents/AGENT_SURFACE_TRUTHFULNESS.md`](dev_docs/agents/AGENT_SURFACE_TRUTHFULNESS.md).\\n7\\t\\n8\\t---\\n9\\t\\n10\\t## 1. What this is\\n11\\t\\n12\\t**Field\u00b74** is a Kotlin live-coding environment for graphics and exploratory dat... [921 more chars]"
+  },
+  {
+   "index": 2,
+   "tool": "RepoSearchRequest",
+   "arguments": "{\"glob\":\"src/**\",\"ignoreCase\":false,\"maxMatches\":30,\"query\":\"stacksl-regions\",\"regex\":false}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"3 match(es) in 2904 file(s)\",\"matches\":[{\"path\":\"src/commonMain/resources/bootstrapMonaco.js\",\"line\":446,\"text\":\"        sendWithReply(\\\"stacksl-regions\\\", { uid: selected[0].uid, code }, \\\"stacksl-regions\\\", (_message, payload) => {\"},{\"path\":\"src/jvmMain/kotlin/afield/app/server/Server.kt\",\"line\":3056,\"text\":\"            handlers[\\\"stacksl-regions\\\"] = mutableSetOf({ message, reply ->\"},{\"path\":\"src/jvmMain/kotlin/afield/app/server/Server.kt\",\"line\":3065,\"text\":\"                    reply(Message(\\\"stacksl-regions\\\").payload(StackSLRegionsResponse(regions)))\"}],\"com... [33 more chars]"
+  },
+  {
+   "index": 3,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":280,\"path\":\"dev_docs/server_surface_inventory.md\",\"startLine\":1}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 1-280 of 670\",\"path\":\"dev_docs/server_surface_inventory.md\",\"text\":\"1\\t# Field's server surface: the route and command inventory\\n2\\t\\n3\\tFresh installations bind HTTPS to `127.0.0.1` and enable the application-wide browser-origin\\n4\\tpolicy. This inventory records route-specific guards; `none` does not bypass those defaults.\\n5\\tLAN reachability requires `AFIELD_BIND_HOST=0.0.0.0`, and the older permissive browser policy\\n6\\trequires `AFIELD_API_REQUIRE_SAME_SITE=0`.\\n7\\t\\n8\\t\\n9\\tThe maintainer's companion to `public/docs/server_surface.md`. That page explain... [921 more chars]"
+  },
+  {
+   "index": 4,
+   "tool": "RepoListFilesRequest",
+   "arguments": "{\"glob\":\"**/*ServerSurface*\"}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"1 file(s)\",\"files\":[\"src/jvmTest/kotlin/afield/app/server/ServerSurfaceLedgerTest.kt\"],\"complete\":true}"
+  },
+  {
+   "index": 5,
+   "tool": "RepoSearchRequest",
+   "arguments": "{\"glob\":\"tools/*.py\",\"ignoreCase\":true,\"maxMatches\":40,\"query\":\"server_surface|ServerSurfaceLedger\",\"regex\":true}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"2 match(es) in 190 file(s)\",\"matches\":[{\"path\":\"tools/check_staged_generated_artifacts.py\",\"line\":230,\"text\":\"    \\\"src/jvmTest/kotlin/afield/app/server/ServerSurfaceLedgerTest.kt\\\",\"},{\"path\":\"tools/check_staged_generated_artifacts.py\",\"line\":353,\"text\":\"    # DocsFenceTreatmentTest checks every published Markdown page, ServerSurfaceLedgerTest\"}],\"complete\":true,\"filesSearched\":190}"
+  },
+  {
+   "index": 6,
+   "tool": "RepoRunCommandRequest",
+   "arguments": "{\"args\":[],\"command\":\"git-status\",\"timeoutSec\":10}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"exit 0\",\"command\":\"git --no-pager -c core.fsmonitor=false -c diff.external= status --short --branch\",\"exitCode\":0,\"timedOut\":false,\"elapsedMs\":88,\"output\":\"## HEAD (no branch)\\n\",\"outputBytes\":20,\"truncated\":false}"
+  },
+  {
+   "index": 7,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":552,\"path\":\"AGENTS.md\",\"startLine\":400}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 400-552 of 552\",\"path\":\"AGENTS.md\",\"text\":\"400\\t- Ctrl/pinch-wheel zooms the box canvas about the cursor (`setCanvasZoom`, 0.1\u00d7\u20134\u00d7); **Reset Canvas Zoom** in the palette returns to 100%. Translation stays in screen pixels, so pan deltas and centring are zoom-independent.\\n401\\t- Anything that turns a screen measurement into a world one goes through a pane: `CanvasCamera.paneAt(x, y)` for a pointer, `CanvasCamera.paneOf(element)` for a box, then `worldX`/`worldY`/`worldRect` (box drag/resize deltas still divide by `mainZoom`). Rectangles that mean \\\"the visible ... [921 more chars]"
+  },
+  {
+   "index": 8,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":505,\"path\":\"dev_docs/server_surface_inventory.md\",\"startLine\":275}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 275-505 of 670\",\"path\":\"dev_docs/server_surface_inventory.md\",\"text\":\"275\\t## The `/ws` command surface\\n276\\t\\n277\\t131 command names, in the `handlers` table. This is the real command API, it is roughly twice\\n278\\tthe size of the HTTP write surface, and until this page nothing enumerated it. It is not the\\n279\\tonly `/ws` dispatch table: ten more channels live in `rawHandlers` and are counted in\\n280\\t[their own section](#the-other-ws-dispatch-table-rawhandlers) below.\\n281\\t\\n282\\tThe `declared in` column is derived mechanically from where the `handlers[\u2026]`... [921 more chars]"
+  },
+  {
+   "index": 9,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":250,\"path\":\"src/jvmTest/kotlin/afield/app/server/ServerSurfaceLedgerTest.kt\",\"startLine\":1}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 1-250 of 814\",\"path\":\"src/jvmTest/kotlin/afield/app/server/ServerSurfaceLedgerTest.kt\",\"text\":\"1\\tpackage afield.app.server\\n2\\t\\n3\\timport java.io.File\\n4\\timport kotlin.test.Test\\n5\\timport kotlin.test.assertEquals\\n6\\timport kotlin.test.assertTrue\\n7\\t\\n8\\t/**\\n9\\t * A bidirectional ledger between Field's server surface and the page that documents it.\\n10\\t *\\n11\\t * ## What this covers, and why it is not what you would guess\\n12\\t *\\n13\\t * [FieldApiCorsExposureTest] has pinned the **state-changing HTTP routes** since 2026-08-12\\n14\\t * and the three WebSoc... [921 more chars]"
+  },
+  {
+   "index": 10,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":3098,\"path\":\"src/jvmMain/kotlin/afield/app/server/Server.kt\",\"startLine\":3000}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 3000-3098 of 6285\",\"path\":\"src/jvmMain/kotlin/afield/app/server/Server.kt\",\"text\":\"3000\\t            // What one line of a box's program shows (afield.ui.output.LineNotes), for the completion popup\\n3001\\t            // and the notes beside the cursor. Providers usually render a picture, so they run on a\\n3002\\t            // thread of their own, one at a time; the newest request for a box replaces any still waiting.\\n3003\\t            handlers[\\\"line-note\\\"] = mutableSetOf({ message, reply ->\\n3004\\t                val request = Json.decodeFromJsonElement<Line... [921 more chars]"
+  },
+  {
+   "index": 11,
+   "tool": "RepoListFilesRequest",
+   "arguments": "{\"glob\":\"tools/check_*.py\"}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"12 file(s)\",\"files\":[\"tools/check_box_idioms.py\",\"tools/check_doc_assets.py\",\"tools/check_doc_offline_links.py\",\"tools/check_doc_site_links.py\",\"tools/check_docs_native_prerequisites.py\",\"tools/check_expected_test_failures.py\",\"tools/check_module_imports.py\",\"tools/check_native_selfcontained.py\",\"tools/check_offline_assets.py\",\"tools/check_staged_generated_artifacts.py\",\"tools/check_study_tools.py\",\"tools/check_test_tree_writes.py\"],\"complete\":true}"
+  },
+  {
+   "index": 12,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":410,\"path\":\"src/jvmTest/kotlin/afield/app/server/ServerSurfaceLedgerTest.kt\",\"startLine\":250}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 250-410 of 814\",\"path\":\"src/jvmTest/kotlin/afield/app/server/ServerSurfaceLedgerTest.kt\",\"text\":\"250\\t            }\\n251\\t\\n252\\t            staticMount.findAll(text).forEach { match ->\\n253\\t                val remote = match.groupValues[1].ifEmpty { \\\"/\\\" }\\n254\\t                val directory = if (match.groupValues[3].isNotEmpty()) match.groupValues[3]\\n255\\t                    else \\\"File(${match.groupValues[2].trim()})\\\"\\n256\\t                mounts[directory] = remote to file.name\\n257\\t            }\\n258\\t            commandName.findAll(text).forEach { c... [921 more chars]"
+  },
+  {
+   "index": 13,
+   "tool": "RepoSearchRequest",
+   "arguments": "{\"glob\":\"src/jvmMain/kotlin/afield/lang/stacksl/study/EmbeddedStackSL.kt\",\"ignoreCase\":false,\"maxMatches\":30,\"query\":\"fun slots|fun regions\",\"regex\":true}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"2 match(es) in 1 file(s)\",\"matches\":[{\"path\":\"src/jvmMain/kotlin/afield/lang/stacksl/study/EmbeddedStackSL.kt\",\"line\":39,\"text\":\"    fun slots(box: Box): Set<String> =\"},{\"path\":\"src/jvmMain/kotlin/afield/lang/stacksl/study/EmbeddedStackSL.kt\",\"line\":45,\"text\":\"    fun regions(code: String, slots: Set<String>): List<Region> {\"}],\"complete\":true,\"filesSearched\":1}"
+  },
+  {
+   "index": 14,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":150,\"path\":\"src/jvmTest/kotlin/afield/app/server/KotlinRouteScan.kt\",\"startLine\":1}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 1-150 of 426\",\"path\":\"src/jvmTest/kotlin/afield/app/server/KotlinRouteScan.kt\",\"text\":\"1\\tpackage afield.app.server\\n2\\t\\n3\\timport java.io.File\\n4\\timport kotlin.test.Test\\n5\\timport kotlin.test.assertEquals\\n6\\timport kotlin.test.assertTrue\\n7\\t\\n8\\t/**\\n9\\t * The lexer-lite the two server-surface censuses share, and the reason they can now see a\\n10\\t * route that does not name its verb.\\n11\\t *\\n12\\t * ## What was wrong, and why a regex could not fix it\\n13\\t *\\n14\\t * [FieldApiCorsExposureTest] and [ServerSurfaceLedgerTest] both discovered routes with a\\n1... [921 more chars]"
+  },
+  {
+   "index": 15,
+   "tool": "RepoRunCommandRequest",
+   "arguments": "{\"args\":[\"e70ec3e7a0df50a915ddc6bf28121f930a719418\",\"dc4a4713c\",\"--\",\"src/jvmMain/kotlin/afield/app/server/Server.kt\"],\"command\":\"git-diff\",\"timeoutSec\":10}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"exit 0\",\"command\":\"git --no-pager -c core.fsmonitor=false -c diff.external= diff --no-color --no-ext-diff --no-textconv e70ec3e7a0df50a915ddc6bf28121f930a719418 dc4a4713c -- src/jvmMain/kotlin/afield/app/server/Server.kt\",\"exitCode\":0,\"timedOut\":false,\"elapsedMs\":23,\"output\":\"diff --git a/src/jvmMain/kotlin/afield/app/server/Server.kt b/src/jvmMain/kotlin/afield/app/server/Server.kt\\nindex ef18b8674..de0860dcb 100644\\n--- a/src/jvmMain/kotlin/afield/app/server/Server.kt\\n+++ b/src/jvmMain/kotlin/afield/app/server/Server.kt\\n@@ -113,6 +113,9 @@ import afield.app.proto... [920 more chars]"
+  },
+  {
+   "index": 16,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":400,\"path\":\"tools/check_staged_generated_artifacts.py\",\"startLine\":320}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 320-400 of 614\",\"path\":\"tools/check_staged_generated_artifacts.py\",\"text\":\"320\\t            f\\\"{_PERSONAL_BOUNDARY_REL} is missing \u2014 the private-boundary guard moved. Point \\\"\\n321\\t            \\\"_PERSONAL_BOUNDARY_REL at its new home; do not copy its corpus here.\\\"\\n322\\t        )\\n323\\t    source = guard.read_text()\\n324\\t    roots_match = _SCAN_ROOTS_DECL.search(source)\\n325\\t    extensions_match = _SCAN_EXTENSIONS_DECL.search(source)\\n326\\t    if roots_match is None or extensions_match is None:\\n327\\t        raise PersonalBoundaryCorpusUnreadable(\\n328\\t   ... [921 more chars]"
+  },
+  {
+   "index": 17,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":100,\"path\":\"src/jvmMain/kotlin/afield/lang/stacksl/study/EmbeddedStackSL.kt\",\"startLine\":1}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 1-100 of 107\",\"path\":\"src/jvmMain/kotlin/afield/lang/stacksl/study/EmbeddedStackSL.kt\",\"text\":\"1\\tpackage afield.lang.stacksl.study\\n2\\t\\n3\\timport afield.document.graph.Box\\n4\\timport afield.app.protocol.Completion\\n5\\timport afield.runtime.lifecycle.RunsAt\\n6\\timport afield.runtime.lifecycle.plugins\\n7\\timport afield.lang.stacksl.StackSLVocabulary\\n8\\timport afield.study.source.BoxStudies\\n9\\timport afield.ui.output.LineNotes\\n10\\timport afield.graphics.shader.stackAutoShaderSources\\n11\\timport java.io.File\\n12\\timport java.util.concurrent.ConcurrentHashMap\\n... [921 more chars]"
+  },
+  {
+   "index": 18,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":225,\"path\":\"src/jvmTest/kotlin/afield/app/server/KotlinRouteScan.kt\",\"startLine\":145}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 145-225 of 426\",\"path\":\"src/jvmTest/kotlin/afield/app/server/KotlinRouteScan.kt\",\"text\":\"145\\t        /**\\n146\\t         * Files that start a server of their own, on their own port, whose routes are not part of\\n147\\t         * Field's HTTP surface. Each is named with the reason; a file is never excluded by pattern.\\n148\\t         */\\n149\\t        val SEPARATE_SERVERS = mapOf(\\n150\\t            // The OSCQuery bridge's own embedded Netty server: the spec's tree at `{path...}` and its\\n151\\t            // LISTEN websocket at `/`, served on the port the bridge ad... [921 more chars]"
+  },
+  {
+   "index": 19,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":690,\"path\":\"src/jvmTest/kotlin/afield/app/server/ServerSurfaceLedgerTest.kt\",\"startLine\":585}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 585-690 of 814\",\"path\":\"src/jvmTest/kotlin/afield/app/server/ServerSurfaceLedgerTest.kt\",\"text\":\"585\\t     * A read route is the shape of route with the least covering it: not in the mutating\\n586\\t     * census, and not inspected by `installFieldApiWriteGuard`, whose interceptor runs on\\n587\\t     * mutating methods only. `none` in the guard column means precisely none, because there\\n588\\t     * is no `install(Authentication)` in the tree.\\n589\\t     */\\n590\\t    @Test\\n591\\t    fun everyHttpReadRouteIsInTheLedgerAndEveryLedgerRowIsAReadRoute() {\\n592\\t      ... [921 more chars]"
+  },
+  {
+   "index": 20,
+   "tool": "RunToolProgramRequest",
+   "arguments": "{\"code\":\"const hits=tools.RepoSearch({glob:'src/jvmMain/kotlin/afield/**/*.kt',ignoreCase:false,maxMatches:500,query:'(?<![A-Za-z0-9_])handlers\\\\\\\\[\\\\\\\\s*\\\"([A-Za-z0-9_.:-]+)\\\"\\\\\\\\s*]',regex:true}); check(hits.complete,'Incomplete source scan'); const page=tools.RepoReadFile({path:'dev_docs/server_surface_inventory.md',startLine:1,endLine:670}); const commands={}; for(const hit of hits.matches){ if(hit.path.endsWith('/afield/io/osc/query/OscQueryServer.kt')) continue; for(const m of hit.text.matchAll(/(?<![A-Za-z0-9_])handlers\\\\[\\\\s*\\\"([A-Za-z0-9_.:-]+)\\\"\\\\s*]/g))commands[m[1]]=hit.path.split(... [920 more chars]",
+   "ok": true,
+   "result": "{\"success\":true,\"stage\":\"ok\",\"message\":\"\",\"output\":\"\",\"returned\":{\"sourceCommands\":135,\"ledgerCommands\":134,\"missing\":[[\"stacksl-regions\",\"Server.kt\"]],\"extra\":[],\"countDifferences\":[[\"Server.kt\",53]],\"duplicateLedgerKeys\":0},\"calls\":[{\"n\":1,\"tool\":\"RepoSearchRequest\",\"args\":\"{\\\"glob\\\":\\\"src/jvmMain/kotlin/afield/**/*.kt\\\",\\\"ignoreCase\\\":false,\\\"maxMatches\\\":500,\\\"query\\\":\\\"(?<![A-Za-z0-9_])handlers\\\\\\\\[\\\\\\\\s*\\\\\\\"([A-Za-z0-9_.:-]+)\\\\\\\"\\\\\\\\s*]\\\",\\\"regex\\\":tr\",\"ok\":true,\"elapsedMs\":781,\"summary\":\"{\\\"success\\\":true,\\\"message\\\":\\\"136 match(es) in 1445 file(s)\\\",\\\"matches\\\":[{\\\"path\\\":\\\"src/jvmMain... [634 more chars]"
+  },
+  {
+   "index": 21,
+   "tool": "RepoSearchRequest",
+   "arguments": "{\"glob\":\"src/jvmMain/kotlin/afield/**/*.kt\",\"ignoreCase\":false,\"maxMatches\":500,\"query\":\"(?<![A-Za-z0-9_])handlers\\\\[\\\\s*\\\"([A-Za-z0-9_.:-]+)\\\"\\\\s*]\",\"regex\":true}",
+   "ok": true,
+   "result": "{\"clipped\":true,\"bytes\":21193,\"sha256\":\"fc5548f5d8e9df768b7be107539077cee8f7a9e562f7d5c93b700e8ba818de93\",\"evidence\":\"ai4ev:fc5548f5d8e9df768b7be107\",\"head\":\"{\\\"success\\\":true,\\\"message\\\":\\\"136 match(es) in 1445 file(s)\\\",\\\"matches\\\":[{\\\"path\\\":\\\"src/jvmMain/kotlin/afield/ai/models/Ai4Installer.kt\\\",\\\"line\\\":949,\\\"text\\\":\\\"    handlers[\\\\\\\"ai-chat-screenshot\\\\\\\"] = mutableSetOf({ message, reply ->\\\"},{\\\"path\\\":\\\"src/jvmMain/kotlin/afield/ai/models/Ai4Installer.kt\\\",\\\"line\\\":987,\\\"text\\\":\\\"    handlers[\\\\\\\"ai-chat-context\\\\\\\"] = mutableSetOf({ message, reply ->\\\"},{\\\"path\\\":\\\"src/jvmMain/kotlin... [655 more chars]",
+   "parent": "call_3HfHfzmg8o0qVqu0k5M4pSaR"
+  },
+  {
+   "index": 22,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"path\":\"dev_docs/server_surface_inventory.md\",\"startLine\":1,\"endLine\":670}",
+   "ok": true,
+   "result": "{\"clipped\":true,\"bytes\":46223,\"sha256\":\"03b137f180b0492621d494b8f349c939b9ca90c8bb5b69e985fa6bce316654cc\",\"evidence\":\"ai4ev:03b137f180b0492621d494b8\",\"head\":\"{\\\"success\\\":true,\\\"message\\\":\\\"lines 1-670 of 670\\\",\\\"path\\\":\\\"dev_docs/server_surface_inventory.md\\\",\\\"text\\\":\\\"1\\\\t# Field's server surface: the route and command inventory\\\\n2\\\\t\\\\n3\\\\tFresh installations bind HTTPS to `127.0.0.1` and enable the application-wide browser-origin\\\\n4\\\\tpolicy. This inventory records route-specific guards; `none` does not bypass those defaults.\\\\n5\\\\tLAN reachability requires `AFIELD_BIND_HOST=0.0.0.0`, a... [602 more chars]",
+   "parent": "call_3HfHfzmg8o0qVqu0k5M4pSaR"
+  },
+  {
+   "index": 23,
+   "tool": "RepoPatchFileRequest",
+   "arguments": "{\"newText\":\"| `Server.kt` | 53 |\",\"oldText\":\"| `Server.kt` | 52 |\",\"path\":\"dev_docs/server_surface_inventory.md\",\"replaceAll\":false}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"replaced 1 occurrence(s) in dev_docs/server_surface_inventory.md\",\"path\":\"dev_docs/server_surface_inventory.md\",\"text\":\"\",\"totalLines\":0,\"truncated\":false}"
+  },
+  {
+   "index": 24,
+   "tool": "RepoPatchFileRequest",
+   "arguments": "{\"newText\":\"| `slideshow-command` | `Server.kt` |\\n| `stacksl-regions` | `Server.kt` |\\n| `stop-all` | `executing.kt` |\",\"oldText\":\"| `slideshow-command` | `Server.kt` |\\n| `stop-all` | `executing.kt` |\",\"path\":\"dev_docs/server_surface_inventory.md\",\"replaceAll\":false}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"replaced 1 occurrence(s) in dev_docs/server_surface_inventory.md\",\"path\":\"dev_docs/server_surface_inventory.md\",\"text\":\"\",\"totalLines\":0,\"truncated\":false}"
+  },
+  {
+   "index": 25,
+   "tool": "RunToolProgramRequest",
+   "arguments": "{\"code\":\"const hits=tools.RepoSearch({glob:'src/jvmMain/kotlin/afield/**/*.kt',ignoreCase:false,maxMatches:500,query:'(?<![A-Za-z0-9_])handlers\\\\\\\\[\\\\\\\\s*\\\"([A-Za-z0-9_.:-]+)\\\"\\\\\\\\s*]',regex:true});check(hits.complete,'Incomplete source scan');const page=tools.RepoReadFile({path:'dev_docs/server_surface_inventory.md',startLine:1,endLine:671});const commands={};for(const hit of hits.matches){if(hit.path.endsWith('/afield/io/osc/query/OscQueryServer.kt'))continue;for(const m of hit.text.matchAll(/(?<![A-Za-z0-9_])handlers\\\\[\\\\s*\\\"([A-Za-z0-9_.:-]+)\\\"\\\\s*]/g))commands[m[1]]=hit.path.split('/').at... [920 more chars]",
+   "ok": true,
+   "result": "{\"success\":true,\"stage\":\"ok\",\"message\":\"\",\"output\":\"\",\"returned\":{\"staticComparison\":\"PASS (not a JVM test execution)\",\"commandRows\":135,\"declaringFiles\":20,\"ServerKtCount\":53},\"calls\":[{\"n\":1,\"tool\":\"RepoSearchRequest\",\"args\":\"{\\\"glob\\\":\\\"src/jvmMain/kotlin/afield/**/*.kt\\\",\\\"ignoreCase\\\":false,\\\"maxMatches\\\":500,\\\"query\\\":\\\"(?<![A-Za-z0-9_])handlers\\\\\\\\[\\\\\\\\s*\\\\\\\"([A-Za-z0-9_.:-]+)\\\\\\\"\\\\\\\\s*]\\\",\\\"regex\\\":tr\",\"ok\":true,\"elapsedMs\":786,\"summary\":\"{\\\"success\\\":true,\\\"message\\\":\\\"136 match(es) in 1445 file(s)\\\",\\\"matches\\\":[{\\\"path\\\":\\\"src/jvmMain/kotlin/afield/ai/models/Ai4Installer.kt\\\",\\\"line... [585 more chars]"
+  },
+  {
+   "index": 26,
+   "tool": "RepoSearchRequest",
+   "arguments": "{\"glob\":\"src/jvmMain/kotlin/afield/**/*.kt\",\"ignoreCase\":false,\"maxMatches\":500,\"query\":\"(?<![A-Za-z0-9_])handlers\\\\[\\\\s*\\\"([A-Za-z0-9_.:-]+)\\\"\\\\s*]\",\"regex\":true}",
+   "ok": true,
+   "result": "{\"clipped\":true,\"bytes\":21193,\"sha256\":\"fc5548f5d8e9df768b7be107539077cee8f7a9e562f7d5c93b700e8ba818de93\",\"evidence\":\"ai4ev:fc5548f5d8e9df768b7be107\",\"head\":\"{\\\"success\\\":true,\\\"message\\\":\\\"136 match(es) in 1445 file(s)\\\",\\\"matches\\\":[{\\\"path\\\":\\\"src/jvmMain/kotlin/afield/ai/models/Ai4Installer.kt\\\",\\\"line\\\":949,\\\"text\\\":\\\"    handlers[\\\\\\\"ai-chat-screenshot\\\\\\\"] = mutableSetOf({ message, reply ->\\\"},{\\\"path\\\":\\\"src/jvmMain/kotlin/afield/ai/models/Ai4Installer.kt\\\",\\\"line\\\":987,\\\"text\\\":\\\"    handlers[\\\\\\\"ai-chat-context\\\\\\\"] = mutableSetOf({ message, reply ->\\\"},{\\\"path\\\":\\\"src/jvmMain/kotlin... [655 more chars]",
+   "parent": "call_N0Do7HVJFHAYTay5Rmii195u"
+  },
+  {
+   "index": 27,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"path\":\"dev_docs/server_surface_inventory.md\",\"startLine\":1,\"endLine\":671}",
+   "ok": true,
+   "result": "{\"clipped\":true,\"bytes\":46265,\"sha256\":\"a97ffe0d54cd5dfd8ab7354145ea127186841002c05bd15fa78dc5a73a0abd4f\",\"evidence\":\"ai4ev:a97ffe0d54cd5dfd8ab73541\",\"head\":\"{\\\"success\\\":true,\\\"message\\\":\\\"lines 1-671 of 671\\\",\\\"path\\\":\\\"dev_docs/server_surface_inventory.md\\\",\\\"text\\\":\\\"1\\\\t# Field's server surface: the route and command inventory\\\\n2\\\\t\\\\n3\\\\tFresh installations bind HTTPS to `127.0.0.1` and enable the application-wide browser-origin\\\\n4\\\\tpolicy. This inventory records route-specific guards; `none` does not bypass those defaults.\\\\n5\\\\tLAN reachability requires `AFIELD_BIND_HOST=0.0.0.0`, a... [602 more chars]",
+   "parent": "call_N0Do7HVJFHAYTay5Rmii195u"
+  },
+  {
+   "index": 28,
+   "tool": "RepoRunCommandRequest",
+   "arguments": "{\"args\":[\"--\",\"dev_docs/server_surface_inventory.md\"],\"command\":\"git-diff\",\"timeoutSec\":10}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"exit 0\",\"command\":\"git --no-pager -c core.fsmonitor=false -c diff.external= diff --no-color --no-ext-diff --no-textconv -- dev_docs/server_surface_inventory.md\",\"exitCode\":0,\"timedOut\":false,\"elapsedMs\":41,\"output\":\"diff --git a/dev_docs/server_surface_inventory.md b/dev_docs/server_surface_inventory.md\\nindex 161c38c10..ee9ea2fef 100644\\n--- a/dev_docs/server_surface_inventory.md\\n+++ b/dev_docs/server_surface_inventory.md\\n@@ -290,7 +290,7 @@ the file, and the reach is described per file below in prose that a human checke\\n \\n | declaring file | commands |\\n | --- ... [506 more chars]"
+  }
+ ],
+ "finalText": "Added the missing `stacksl-regions` ledger row and updated `Server.kt`\u2019s count to 53. Static verification using the test\u2019s matching rules passes for all 135 commands and 20 file counts; JVM tests could not run because Gradle is unavailable.\n\nFIXER-VERDICT: {\"verdict\":\"fix\",\"culprit\":\"handoffs/code-20261016-1144\",\"reason\":\"The branch added stacksl-regions without its inventory row or updated per-file count, and the minimal ledger correction passes static comparison against the test's rules.\"}",
+ "rounds": 10,
+ "maxToolRounds": 40,
+ "hitToolRoundCap": false,
+ "elapsedMs": 65169,
+ "inputTokens": 503357,
+ "outputTokens": 2663,
+ "cacheReadTokens": 452225,
+ "documentName": "scratch",
+ "lessons": true,
+ "documentRef": "ac65d52d-93ed-42f8-9f80-9f5f79d45938",
+ "programs": true,
+ "programCalls": 2,
+ "nestedCalls": 4,
+ "contextPlacement": "developer-once+input",
+ "repoWritten": [
+  "dev_docs/server_surface_inventory.md",
+  "dev_docs/server_surface_inventory.md"
+ ],
+ "repoRuns": [
+  "git-status  -> 0",
+  "git-diff e70ec3e7a0df50a915ddc6bf28121f930a719418 dc4a4713c -- src/jvmMain/kotlin/afield/app/server/Server.kt -> 0",
+  "git-diff -- dev_docs/server_surface_inventory.md -> 0"
+ ]
+}

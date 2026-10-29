@@ -37,7 +37,17 @@ class FrameSetPacer(private val frameCount: Int) {
     private var lastPresentationDeadline = Long.MIN_VALUE
     private var nextGeneration = 0L
 
+    /**
+     * Counter incremented whenever the pacer throws away its pending demand: on a new revision, on
+     * a change of cadence, and on [reset]. Every [FrameSetPacer.Demand] carries the value current
+     * when it was made, so work begun for an older generation can be recognised and dropped.
+     */
     val generation: Long get() = nextGeneration
+
+    /**
+     * Index of the frame [select] is currently asking for, or null when nothing is outstanding.
+     * [markPresented] clears it.
+     */
     val pendingFrame: Int? get() = pending?.frame
 
     fun select(

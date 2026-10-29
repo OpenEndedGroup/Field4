@@ -1,0 +1,21 @@
+[field] ok  RepoReadFileRequest {"endLine":220,"path":"AGENTS.md","startLine":1}
+[field] ok  RepoSearchRequest {"glob":"**/*","ignoreCase":false,"maxMatches":60,"query":"checkKDocAttachment","regex":false}
+[field] ok  RepoRunCommandRequest {"args":["29a3f47e2996d62f684e5b647b3444fcbf24d787","--","src/jvmMain/kotlin/afield/audio/synth","src/jvmMain/kotlin/afield/geometry/polytope/Parameters.kt"],"c
+[field] ok  RepoListFilesRequest {"glob":"**/AGENTS.md"}
+[field] ok  RepoReadFileRequest {"endLine":300,"path":"src/jvmMain/kotlin/afield/tools/docs/KDocAttachmentGuard.kt","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":160,"path":"dev_docs/kdoc_reference_contract.md","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":635,"path":"src/jvmMain/kotlin/afield/audio/synth/SonicPiPatterns.kt","startLine":566}
+[field] ok  RepoListFilesRequest {"glob":"tools/*kdoc*"}
+[field] ok  RepoSearchRequest {"glob":"tools/*.py","ignoreCase":true,"maxMatches":40,"query":"kdoc","regex":false}
+[field] ok  RepoReadFileRequest {"endLine":552,"path":"AGENTS.md","startLine":440}
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-status","timeoutSec":20}
+[field] ok  RepoReadFileRequest {"endLine":355,"path":"src/jvmMain/kotlin/afield/tools/docs/KDocAttachmentGuard.kt","startLine":308}
+[field] ok  RepoSearchRequest {"glob":"tools/test_*.py","ignoreCase":true,"maxMatches":70,"query":"kdoc","regex":false}
+[field] ERR RepoRunCommandRequest {"args":["tools/test_check_staged_generated_artifacts.py"],"command":"python-test","timeoutSec":120}
+[field] ok  RepoPatchFileRequest {"newText":"/** How far [patternPeriod] looks: a pattern that has not repeated by then is treated as not repeating. */","oldText":"/**\n * The events of [patter
+[field] ok  RepoPatchFileRequest {"newText":"/**\n * The events of [pattern] over the first [cycles] cycles, in playing order.\n *\n * The single enumeration both the emitter and the piano roll
+[field] ok  RepoReadFileRequest {"endLine":615,"path":"src/jvmMain/kotlin/afield/audio/synth/SonicPiPatterns.kt","startLine":573}
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-diff","timeoutSec":20}
+[field] ok  RepoReadFileRequest {"endLine":100,"path":"tools/test_check_staged_generated_artifacts.py","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":580,"path":"tools/check_staged_generated_artifacts.py","startLine":490}
+[field] model=openai/gpt-6.1-sol rounds=9/40 wall=61s tokens in=401304 out=1752 cacheRead=355826 wrote=['src/jvmMain/kotlin/afield/audio/synth/SonicPiPatterns.kt', 'src/jvmMain/kotlin/afield/audio/synth/SonicPiPatterns.kt'] ran=['git-diff 29a3f47e2996d62f684e5b647b3444fcbf24d787 -- src/jvmMain/kotlin/afield/audio/synth src/jvmMain/kotlin/afield/geometry/polytope/Parameters.kt -> 0', 'git-status  -> 0', 'python-test tools/test_check_staged_generated_artifacts.py -> 1', 'git-diff  -> 0'] verdict=unchecked error=-

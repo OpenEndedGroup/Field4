@@ -7,11 +7,53 @@ import unittest
 import zipfile
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
+from types import SimpleNamespace
 
 import docs_publications as publications
 
 
 class DocsPublicationsTest(unittest.TestCase):
+    def test_capture_uses_shared_managed_node_when_path_node_cannot_start(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            node = root/'home/.gradle/nodejs/node-v24.0.0/bin/node'
+            node.parent.mkdir(parents=True)
+            node.write_text('managed runtime fixture')
+            with patch.multiple(publications, ROOT=root/'repo'), \
+                 patch.dict(publications.os.environ, {}, clear=True), \
+                 patch.object(Path, 'home', return_value=root/'home'), \
+                 patch.object(publications.shutil, 'which', return_value='/broken/node'), \
+                 patch.object(publications.subprocess, 'run', side_effect=[
+                     SimpleNamespace(returncode=1, stdout=''), SimpleNamespace(returncode=0, stdout='v24.0.0\n')]):
+                self.assertEqual(publications.publication_node(), str(node))
+
+    def test_native_recipes_reuse_real_docs_captures_without_executing_compile_only(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            source = root/'src/jvmMain/kotlin/afield/examples/DemoTranscriptExecSmokeTest.kt'
+            source.parent.mkdir(parents=True)
+            source.write_text('internal val EXECUTE = setOf()\ninternal val COMPILE_ONLY = setOf("gpu")')
+            docs = root/'public/docs'
+            document = docs/'assets/agent_transcripts/gpu/metadata.edn'
+            document.parent.mkdir(parents=True)
+            document.write_text('authored document')
+            transcript = root/'dev_docs/agents/transcripts/gpu.yaml'
+            transcript.parent.mkdir(parents=True)
+            transcript.write_text('operations: []')
+            image = docs/'assets/gpu.png'
+            image.write_bytes(b'real runner image fixture')
+            (docs/'graphics.md').write_text('```diffstatic_runner {capture="native-window" '
+                'capture-profile="linux-nvidia" screenshot="assets/gpu.png" '
+                'macro-file="../../dev_docs/agents/transcripts/gpu.yaml" capture-box="renderer"}\n```')
+            with patch.multiple(publications, ROOT=root, DOCS=docs):
+                recipe, = publications.recipes('gallery')
+                self.assertTrue(recipe['retainedNative'])
+                self.assertEqual(recipe['nativeCaptures'][0]['uid'], 'renderer')
+                before = publications.recipe_sources(recipe)
+                self.assertIn('public/docs/assets/gpu.png', before)
+                image.write_bytes(b'refreshed real capture fixture')
+                self.assertNotEqual(publications.recipe_sources(recipe), before)
+
     def test_classification_accepts_multiple_names_on_a_line_and_ignores_comments(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

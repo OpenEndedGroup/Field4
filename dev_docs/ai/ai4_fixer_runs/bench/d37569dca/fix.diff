@@ -1,0 +1,22 @@
+diff --git a/src/jvmMain/kotlin/afield/examples/visualization/ChartGallery.kt b/src/jvmMain/kotlin/afield/examples/visualization/ChartGallery.kt
+index 62ae64321..f5940e3de 100644
+--- a/src/jvmMain/kotlin/afield/examples/visualization/ChartGallery.kt
++++ b/src/jvmMain/kotlin/afield/examples/visualization/ChartGallery.kt
+@@ -822,8 +822,7 @@ object ChartGallery {
+ 
+     // ── rasterising ───────────────────────────────────────────────────────────────
+ 
+-    /** One rendered figure: its pixels, and the PNG bytes for the same. */
+-/**
++    /**
+      * The gallery figures in [dir] that no longer match what the chart code draws: missing, a
+      * different size, or more than one pixel in a thousand off by more than a few levels. The docs
+      * runner does not make these figures, so `ChartTest` asks this and fails until they are
+@@ -853,6 +852,7 @@ object ChartGallery {
+         }
+     }
+ 
++    /** One rendered figure: its pixels, and the PNG bytes for the same. */
+     private class Raster(val width: Int, val height: Int, val pixels: IntArray, val png: ByteArray)
+ 
+     /**

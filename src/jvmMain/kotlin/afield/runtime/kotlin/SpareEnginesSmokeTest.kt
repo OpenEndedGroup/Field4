@@ -8,6 +8,9 @@ import afield.app.server.createAgentBox
 import afield.app.server.executeAllRequest
 import afield.app.server.thisSessionInfo
 import afield.document.graph.Box
+import afield.document.graph.preamble
+import afield.document.graph.sparePreludeOf
+import kotlinx.coroutines.runBlocking
 import afield.document.persistence.SavingContext
 import afield.runtime.lifecycle.Runloop
 import java.io.File
@@ -44,6 +47,10 @@ expect:
  *  - **C.** The previous run's engine is disposed when the spare replaces it.
  *  - **D.** [Box.disposeKi] disposes a waiting spare.
  *  - **E.** A spare built before a jar joined the shared class loader is refused, and disposed.
+ *  - **F.** A box whose preamble is imports only gets a spare that has already run it, and its
+ *    next run sees those imports.
+ *  - **G.** A spare that ran an earlier preamble is refused once the box's preamble changes, and
+ *    its imports do not reach the run: they cannot be taken back out of an engine.
  */
 object SpareEnginesSmokeTest {
 
@@ -117,6 +124,26 @@ object SpareEnginesSmokeTest {
             check("E stale spare refused", stale != null && box.ki !== stale && stale.isDisposed,
                 "spare=$stale disposed=${stale?.isDisposed} ki=${box.ki}")
             check("E and the run still works", thirdOk, thirdError.ifBlank { "succeeded" })
+
+            // F
+            box.preamble = "import java.util.concurrent.TimeUnit.SECONDS"
+            run(info, box, "println(1)")
+            val prepared = awaitSpare(box)
+            val (piOk, piError) = run(info, box, "println(SECONDS)")
+            check("F spare with the preamble is used", prepared != null && box.ki === prepared, "spare=$prepared ki=${box.ki}")
+            check("F and the run sees its imports", piOk, piError.ifBlank { "succeeded" })
+
+            // G
+            val outdated = awaitSpare(box)
+            val ranInOutdated = outdated?.let { runBlocking { sparePreludeOf(it) } }
+            check("G the spare ran the preamble", ranInOutdated?.contains("SECONDS") == true, "ran=$ranInOutdated")
+            box.preamble = "import java.util.concurrent.TimeUnit.MINUTES"
+            val (eOk, eError) = run(info, box, "println(MINUTES)")
+            check("G spare with an older preamble refused", outdated != null && box.ki !== outdated && outdated.isDisposed,
+                "spare=$outdated disposed=${outdated?.isDisposed} ki=${box.ki}")
+            check("G and the run sees the new preamble", eOk, eError.ifBlank { "succeeded" })
+            val (oldOk, oldError) = run(info, box, "println(SECONDS)")
+            check("G and not the old one", !oldOk && "SECONDS" in oldError, "success=$oldOk error=${oldError.lineSequence().firstOrNull()}")
         } catch (t: Throwable) {
             failures += "harness threw ${t.javaClass.simpleName}: ${t.message}"
             t.printStackTrace(System.err)

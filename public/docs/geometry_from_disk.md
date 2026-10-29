@@ -2,8 +2,7 @@
 
 <!-- capture-sources: src/jvmMain/kotlin/afield/graphics/scene/MeshFromDisk.kt src/jvmMain/kotlin/afield/geometry/mesh/mesh_io.kt -->
 
-You have a mesh file, and you want to see it in Field and then compute with it. For every format,
-that is one line:
+Have a mesh file you want to explore? Load it into a Field box and show it in one line:
 
 ```diffstatic {data-lang=kotlin}
 showMesh("/path/to/thing.glb")
@@ -33,11 +32,10 @@ shoot a ray at it, write it back out as something else.
 `meshFromFile` is the pure-Kotlin reader with no native library behind it. Where each loader lives
 in the source is at the [end of the page](#internals-where-the-loaders-live).
 
-Two renderers put a mesh on screen, and both take a `TriMesh`. `showMesh` sends it to the Three.js
-viewer, where you can orbit it; it is the same viewer `threeLines(...)` draws FLines in, so a solid
-and its annotations can share one scene. Pass `renderer = MeshRenderer.CPU` for a still image drawn
-on the CPU instead, which needs no GPU; `TriMesh.renderPng` and the inline `toHTML()` card use the
-same renderer.
+`showMesh` opens the mesh in a Three.js viewer you can orbit. It uses the same viewer as
+`threeLines(...)`, so a mesh and its annotations can share a scene. For a still image drawn on the
+CPU, pass `renderer = MeshRenderer.CPU`; `TriMesh.renderPng` and the inline `toHTML()` card use
+that renderer too.
 
 ## A real GLB, in a real output area
 
@@ -506,9 +504,9 @@ started with.** Only a comparison against the shape you meant catches the differ
 
 ### What `repairToSolid` does
 
-Beyond what `repaired()` (weld → degenerate → unused → winding, in `mesh_topology.kt`) already
-does, `repairToSolid()` is responsible for exactly two families: **open boundaries**, and
-**non-manifold edges** from duplicated faces or dangling fins.
+`repairToSolid()` builds on `repaired()`, which welds vertices, removes degenerate faces and
+unused vertices, and fixes winding. It also closes open boundaries and handles non-manifold edges
+caused by duplicated faces or dangling fins.
 
 It refuses rather than guesses on two shapes: a `NaN` position, because repairing around it would
 silently delete the affected triangles and cap the gap, and two closed tetrahedra sharing a face.
@@ -529,10 +527,10 @@ be off by a third of its volume.
 traced loops) **repairs to a valid solid you can boolean**: 21,047 vertices welded, 84 holes closed
 with 3,668 triangles.
 
-There is no undamaged original to compare it against, so "valid solid" is all you can say about it.
-The volume it reports, `3.16e-5`, should not be trusted as is: nine of the 84 caps are flagged
-suspect, one of them a 335-edge centroid fan, a lid the size of a body panel. Look at
-`result.suspectFills` before trusting any measurement of a repaired model.
+A valid solid can still differ from the intended shape. Here nine of the 84 caps are flagged as
+suspect, including a 335-edge centroid fan the size of a body panel. There is no undamaged original
+to compare against, so check `result.suspectFills` before relying on the reported volume of
+`3.16e-5`.
 
 ### Seeing it
 
@@ -619,8 +617,8 @@ Most of the figure's cost is the caption: its `χ`, genus, watertightness and bo
 need a full topology pass over the whole mesh. If you are re-rendering in a loop and do not need the
 numbers, call `renderPng` and `display` the image yourself.
 
-The default `showMesh` uploads the mesh to the Three.js viewer once, and the browser redraws it for
-free after that. The caption's topology pass costs the same either way.
+The default `showMesh` uploads the mesh to the Three.js viewer once; the browser can then redraw
+it as you orbit. The caption still needs its topology pass.
 
 ## Writing back out
 

@@ -8,6 +8,44 @@ import afield.document.persistence.SavingContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
 import java.io.File
+import afield.app.protocol.NativePublicationImage
+import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.util.Window
+import afield.graphics.vulkan.util.openWindowsSnapshot
+import java.util.Base64
+import javax.imageio.ImageIO
+import afield.tools.docs.raiseAndScreenshot
+
+/** Resolve only this document's already running renderers, without creating a scripting engine. */
+internal fun nativePublicationTargets(info: SessionInformation): List<Pair<String, Window>> {
+    val open = openWindowsSnapshot().toSet()
+    return info.boxes.values.flatMap { box ->
+        (box.properties.values.toList() + box.liveKi?.context?.vars?.values.orEmpty().map { it.value })
+            .mapNotNull { value -> when (value) {
+                is Window -> value
+                is Renderer -> value.window
+                else -> null
+            } }.filter { it in open }.map { box.id to it }
+    }.distinctBy { it.second }
+}
+
+/** Uses the same native-window screenshot operation as docs/backdoor captures. Runs off Runloop. */
+internal suspend fun captureNativePublication(source: ExportWebDocumentResult, targets: List<Pair<String, Window>>): ExportWebDocumentResult {
+    val images = mutableListOf<NativePublicationImage>()
+    val warnings = source.warnings.toMutableList()
+    targets.forEach { (uid, window) ->
+        val file = kotlin.io.path.createTempFile("field-publication-", ".png").toFile()
+        try {
+            window.raiseAndScreenshot(3, file.absolutePath, captureTimeoutMs = 10000)
+            require(file.length() <= 32 * 1024 * 1024) { "Native image exceeds 32 MB" }
+            val image = ImageIO.read(file) ?: error("Native capture produced no image")
+            images.add(NativePublicationImage(uid, "data:image/png;base64," + Base64.getEncoder().encodeToString(file.readBytes()), image.width, image.height))
+        } catch (error: Exception) {
+            warnings.add("Native window for $uid could not be captured: ${error.message}")
+        } finally { file.delete() }
+    }
+    return source.copy(nativeImages = images, warnings = warnings)
+}
 
 /** Enumerate canonical assets so a publication includes Monaco's lazy modules and local fonts. */
 internal fun webPublicationAssets(): List<String> {

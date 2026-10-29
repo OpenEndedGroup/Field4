@@ -3,6 +3,10 @@
 To animate something from a box, end the box with a `loop { }`. The code above it runs once, when
 you run the box. The block runs again every frame, until you stop the box or run it again:
 
+Try launching this with **alt/option-Up**, then stop it with **alt/option-Down**. Open the `main`
+output panel to see it count while the box is running. The [first moving drawing](first_steps.md)
+uses the same idea to keep lines in motion.
+
 ```diffstatic {data-lang=kotlin}
 var n = 0 // runs once
 
@@ -21,11 +25,10 @@ loop { n++ } // not the last expression …
 println("set up") // … so this is the box's value, and nothing runs
 ```
 
-Here is a longer one, recorded frame by frame. The disc's position comes from
-`AnimationClock.nowSeconds()`; the tick row below it grows with `frameNumber`, one mark per four
-frames reached. At four and a half seconds the body calls `end()`, and the `.end { }` block redraws
-the last state in red. Nothing after that moves: the remaining three and a half seconds are the
-stopped animation, not the end of the recording.
+Here's a longer animation, recorded frame by frame. The disc moves according to
+`AnimationClock.nowSeconds()`, and the row below gains a tick every four frames. After four and a
+half seconds, `end()` stops the animation and its `.end { }` block redraws the last state in red.
+The recording continues for another three and a half seconds, so you can see it stay still.
 
 ```diffstatic_runner {data-lang=kotlin video="assets/animation_time_model/running_and_stopping.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="300" w="1000" h="140" embed=true name="animation-running-stopping" alt="a cyan disc travelling along a horizontal track above a row of tick marks that grows steadily longer as frames accumulate; four and a half seconds in the disc stops dead, the tick row stops growing, and everything redraws in red and stays frozen for the rest of the clip"}
 :::static
@@ -110,12 +113,12 @@ loop {
     }
 ```
 
-Two habits in that code are worth copying. Motion is a function of the clock, not of how many frames
-have gone by ([Time in seconds](#time-in-seconds) says why), and the wind-down goes in `.end { }`
-([What happens when you stop](#what-happens-when-you-stop)).
+Two useful habits appear here: use the clock to control motion, and put the wind-down in
+`.end { }`. We'll look at [time](#time-in-seconds) and [stopping](#what-happens-when-you-stop)
+in more detail below.
 
-Every animated thing in Field runs on this one mechanism: a `loop { }` in a box, the ALife evolution
-driver, a subprocess streaming its stdout into an output panel, the renderer's own
+This mechanism runs a great deal of Field's work: a `loop { }` in a box, the ALife evolution
+driver, a subprocess streaming its stdout into an output panel, and the renderer's own
 `start(renderer::run)`. Each of them is a `Frames`, and the same loop pumps all of them. The sections
 below cover the other ways to build one, how they stop, a physics solver in the loop, and the
 pull-based generator layer that sits beside it. [Inside the loop](#inside-the-loop), at the bottom,
@@ -472,9 +475,8 @@ in the middle of the `while (true)`, so `integral` and `previousError` are simpl
 
 ### Composing them
 
-The rest of the layer is combinators, which is how a generator stops being a one-off and starts
-being a pipeline. Here are three of them building one signal in four stages, each stage derived from
-the one before:
+You can combine generators into a pipeline. Here are three combinators building one signal in four
+stages, each stage derived from the one before:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/animation_time_model/generator_pipeline.png" wait="2.0" capture="box" open-outputs="true" wait-output="true" w="1100" name="animation-generator-pipeline"}
 /*

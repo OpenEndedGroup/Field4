@@ -1,9 +1,8 @@
 # Pressure membranes
 
-`afield.simulation.physics.pressure` relaxes a supplied closed triangular membrane with
-elastic reinforcement, tethers, and supports. It is a mesh mechanics library:
-it does not choose an architectural shape, infer tape connectivity, or generate
-sewing patterns. Those steps belong to the caller.
+Give Field a closed triangular mesh and you can relax it as a pressurized membrane, with elastic
+reinforcement, tethers and supports. The `afield.simulation.physics.pressure` library handles the
+mesh mechanics; you supply the shape and connections, and make any sewing patterns you need.
 
 Supply positions in metres and, for each triangle, its **unstretched material
 coordinates** in metres. Material coordinates determine strain independently of

@@ -1,0 +1,29 @@
+[field] ok  RepoReadFileRequest {"endLine":220,"path":"AGENTS.md","startLine":1}
+[field] ok  RepoSearchRequest {"glob":"src/**","ignoreCase":false,"maxMatches":30,"query":"stacksl-regions","regex":false}
+[field] ok  RepoReadFileRequest {"endLine":280,"path":"dev_docs/server_surface_inventory.md","startLine":1}
+[field] ok  RepoListFilesRequest {"glob":"**/*ServerSurface*"}
+[field] ok  RepoSearchRequest {"glob":"tools/*.py","ignoreCase":true,"maxMatches":40,"query":"server_surface|ServerSurfaceLedger","regex":true}
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-status","timeoutSec":10}
+[field] ok  RepoReadFileRequest {"endLine":552,"path":"AGENTS.md","startLine":400}
+[field] ok  RepoReadFileRequest {"endLine":505,"path":"dev_docs/server_surface_inventory.md","startLine":275}
+[field] ok  RepoReadFileRequest {"endLine":250,"path":"src/jvmTest/kotlin/afield/app/server/ServerSurfaceLedgerTest.kt","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":3098,"path":"src/jvmMain/kotlin/afield/app/server/Server.kt","startLine":3000}
+[field] ok  RepoListFilesRequest {"glob":"tools/check_*.py"}
+[field] ok  RepoReadFileRequest {"endLine":410,"path":"src/jvmTest/kotlin/afield/app/server/ServerSurfaceLedgerTest.kt","startLine":250}
+[field] ok  RepoSearchRequest {"glob":"src/jvmMain/kotlin/afield/lang/stacksl/study/EmbeddedStackSL.kt","ignoreCase":false,"maxMatches":30,"query":"fun slots|fun regions","regex":true}
+[field] ok  RepoReadFileRequest {"endLine":150,"path":"src/jvmTest/kotlin/afield/app/server/KotlinRouteScan.kt","startLine":1}
+[field] ok  RepoRunCommandRequest {"args":["e70ec3e7a0df50a915ddc6bf28121f930a719418","dc4a4713c","--","src/jvmMain/kotlin/afield/app/server/Server.kt"],"command":"git-diff","timeoutSec":10}
+[field] ok  RepoReadFileRequest {"endLine":400,"path":"tools/check_staged_generated_artifacts.py","startLine":320}
+[field] ok  RepoReadFileRequest {"endLine":100,"path":"src/jvmMain/kotlin/afield/lang/stacksl/study/EmbeddedStackSL.kt","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":225,"path":"src/jvmTest/kotlin/afield/app/server/KotlinRouteScan.kt","startLine":145}
+[field] ok  RepoReadFileRequest {"endLine":690,"path":"src/jvmTest/kotlin/afield/app/server/ServerSurfaceLedgerTest.kt","startLine":585}
+[field] ok  RunToolProgramRequest {"code":"const hits=tools.RepoSearch({glob:'src/jvmMain/kotlin/afield/**/*.kt',ignoreCase:false,maxMatches:500,query:'(?<![A-Za-z0-9_])handlers\\\\[\\\\s*\"([A-
+[field] ok  RepoSearchRequest {"glob":"src/jvmMain/kotlin/afield/**/*.kt","ignoreCase":false,"maxMatches":500,"query":"(?<![A-Za-z0-9_])handlers\\[\\s*\"([A-Za-z0-9_.:-]+)\"\\s*]","regex":tr
+[field] ok  RepoReadFileRequest {"path":"dev_docs/server_surface_inventory.md","startLine":1,"endLine":670}
+[field] ok  RepoPatchFileRequest {"newText":"| `Server.kt` | 53 |","oldText":"| `Server.kt` | 52 |","path":"dev_docs/server_surface_inventory.md","replaceAll":false}
+[field] ok  RepoPatchFileRequest {"newText":"| `slideshow-command` | `Server.kt` |\n| `stacksl-regions` | `Server.kt` |\n| `stop-all` | `executing.kt` |","oldText":"| `slideshow-command` | `Ser
+[field] ok  RunToolProgramRequest {"code":"const hits=tools.RepoSearch({glob:'src/jvmMain/kotlin/afield/**/*.kt',ignoreCase:false,maxMatches:500,query:'(?<![A-Za-z0-9_])handlers\\\\[\\\\s*\"([A-
+[field] ok  RepoSearchRequest {"glob":"src/jvmMain/kotlin/afield/**/*.kt","ignoreCase":false,"maxMatches":500,"query":"(?<![A-Za-z0-9_])handlers\\[\\s*\"([A-Za-z0-9_.:-]+)\"\\s*]","regex":tr
+[field] ok  RepoReadFileRequest {"path":"dev_docs/server_surface_inventory.md","startLine":1,"endLine":671}
+[field] ok  RepoRunCommandRequest {"args":["--","dev_docs/server_surface_inventory.md"],"command":"git-diff","timeoutSec":10}
+[field] model=openai/gpt-6.1-sol rounds=10/40 wall=66s tokens in=503357 out=2663 cacheRead=452225 wrote=['dev_docs/server_surface_inventory.md', 'dev_docs/server_surface_inventory.md'] ran=['git-status  -> 0', 'git-diff e70ec3e7a0df50a915ddc6bf28121f930a719418 dc4a4713c -- src/jvmMain/kotlin/afield/app/server/Server.kt -> 0', 'git-diff -- dev_docs/server_surface_inventory.md -> 0'] verdict=unchecked error=-

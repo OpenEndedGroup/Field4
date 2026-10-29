@@ -66,6 +66,7 @@ names the source records.
 | `engine.bootstrapWait` | an `exec` waiting on the engine's bootstrap gate (non-zero when a box runs before its async bootstrap finished) |
 | `engine.reset` | `execute-all`'s `makeKIHere`: the replacement engine, a spare's preamble or a whole create + bootstrap + preamble |
 | `engine.spare` | building a box's spare engine in the background after a run's verdict (`SpareEngines`; its bootstrap is a separate `engine.bootstrap`) |
+| `engine.sparePrelude` | a spare running the box's imports-only preamble and a warm-up compile, so the run skips both (`sparePreludes` in `Boxes.kt`) |
 | `kotlin.compile` | one K2 snippet compile (`detail` kind and length) |
 | `kotlin.compile.cacheHit` | an instant: the rerun compile cache served the snippet |
 | `kotlin.eval` | one snippet evaluation |
@@ -168,6 +169,75 @@ threads at once. Each box that runs gets its own engine, so 20 bootstraps in a c
 the first replay; the second replay pays ~250 ms per engine. Renderer, shader and pipeline work is
 under 1 s of the cold replay. `/api/perf/spans` has each `transcript.op` with its box, for the
 per-box split.
+
+## The ratchet, 2026-10-29
+
+Each machine that has run the benchmark enough has a committed baseline,
+`dev_docs/testing/feel_baselines/<host>.json`, shown in
+[FEEL_BENCHMARK_BASELINES.md](FEEL_BENCHMARK_BASELINES.md). `check` compares a run with it:
+
+```bash
+uv run --project . --group backdoor python tools/feel_bench.py run --reps 100 --cold-runs 10 --require-ac --max-load 4
+uv run --project . --group backdoor python tools/feel_bench.py noise R1.json R2.json R3.json    # each step's spread across runs
+uv run --project . --group backdoor python tools/feel_bench.py baseline R1.json R2.json R3.json # writes the baseline and the page
+uv run --project . --group backdoor python tools/feel_bench.py check [RESULT.json] [--page out.md]
+```
+
+A step's band is three times the largest deviation of one run's median (and p90) from the median
+of the runs, never under ±15% (median) / ±25% (p90). `check` calls a step **regressed** when it
+leaves the band by more than 5 ms, **faster** when its median leaves it downwards (re-baseline if
+that was deliberate), and fails on a step that failed or is missing. A step is baselined from the
+runs that measured it, so one that failed in one run keeps a baseline from the others; a step only
+one run measured gets the minimum band, marked "(1 run)" on the page. `--require-ac` and
+`--max-load` skip a run (exit 3) on battery or a busy machine. Ledger rows hold each run's summary,
+which is all `baseline` and `check` read, so a ledger line saved as a file stands in for a lost
+result file.
+
+The first baseline (mi2-2, M1 Max) is three 100-rep runs with 10 cold rounds, 2026-10-28 03:56 and
+04:31 at `112212f6c` and 2026-10-29 04:00 at `68cf3329a`. A load average under 4 was reached only
+after 03:50 on both nights. What the three runs showed:
+
+- **Kotlin steps repeat to a few percent.** Warm reruns, edits, cold first runs and launches move
+  2–5% run to run, so their bands sit at the minimum.
+- **The shader loop is noise in milliseconds.** Reload 5.8 / 12.1 / 6.8 ms and update 7.5 / 18.6 /
+  8.4 ms make ±200–360% bands; the 5 ms floor is what keeps them meaningful.
+- **Frame steps moved together in the third run.** Cold triangle frames 318 / 319 / 408 ms, cold
+  renderer first frames 366 / 368 / 428 ms. Between the two commits nothing but docs changed under
+  `graphics/vulkan` and `four`, so this is the machine or its display between nights; it widens
+  those bands to ±50–110% until more nights show which is normal.
+- **`demo-document` has one run.** The first two runs failed it because their worktree had not built
+  `libfield_browser_bridge.dylib` (`./gradlew buildFieldBrowserBridge`), so its band is the minimum.
+- **100 reps found a leak.** The first attempts died of OOM around edit 55 of `first-graphics`: every
+  Kotlin edit of a launched box rebuilt the K2 engine's K1 completion delegate (its preamble
+  fingerprint changed because gathered imports were reversed each launch) and the old one was never
+  released (IntelliJ's static `Disposer` held its compiler project). Fixed in `112212f6c`; the heap
+  now grows ~2.5 MB per edit, from K2 REPL snippet history.
+
+## Reruns: the preamble and the compiler's scopes in the spare, 2026-10-29
+
+A rerun (`execute-all`) of a one-line `println` spent 75–110 ms compiling. The server log split it:
+the preamble was compiled twice per run (`makeKIHere` ran `box.preamble`, then
+`checkPreambleAndExecute` ran all of it again after `_preamble` was cleared), and the first user
+compile in a fresh engine paid ~60 ms more than later ones. A probe of bare K2 engines put that on
+the bootstrap's star imports: the first compile after them fills the compiler's scopes for those
+packages (`println` after the intro: 88 ms first, then ~30 ms; after a no-effect warm-up snippet, 30
+ms first). Beside that, each run built a new K1 completion delegate, a ~130 ms K1 compile of the
+intro, because the delegate died with its engine.
+
+Now a spare runs the box's gathered preamble when it is imports only, then `if (false) listOf(0)`;
+`Box.replaceKi` records that preamble as run, and refuses the spare if the preamble has changed
+since; `makeKIHere` no longer runs the preamble; and `replaceKi` hands the delegate to the next
+engine. `kotlin-println`, 30 reps on mi2-2 the same evening: warm rerun 144 → 51 ms, edit + rerun
+111 → 47 ms, same code again 184 → 67 ms (p90s 174 → 62, 148 → 54).
+
+Where a warm compile goes now (JFR, 300 compiles of `println("hello N")` in one engine, median 37
+ms): ~37% resolution, most of it in `FirCachingCompositeSymbolProvider` filling per-package name
+sets (`computeTopLevelClassifierNames`, `addAll` alone 10% of samples) because every snippet's
+source session builds a fresh composite over the libraries and all earlier snippets; ~29% FIR → IR,
+mostly `Fir2IrLazyClass.getDeclarations` building lazy IR for a referenced class's members; ~22%
+lowering and codegen. Both of the first two are per-snippet rebuilds of things that do not change
+between snippets, in `K2ReplCompiler.compileImpl` / `FirJvmSessionFactory.createSourceSession` in
+the compiler fork.
 
 ## What the baseline says to fix next
 

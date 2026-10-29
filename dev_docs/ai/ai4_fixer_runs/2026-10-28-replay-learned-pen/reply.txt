@@ -1,0 +1,3 @@
+Changed only the four reported fence openers in `public/docs/learned_pen.md` to the exact `diffstatic` forms required by the test; file inspection and git diff confirm snippet contents are unchanged. Gradle is unavailable in this replay, so the test was not rerun.
+
+FIXER-VERDICT: {"verdict": "fix", "culprit": "claude/handwriting-pen", "reason": "Fixed four bare code fences introduced by this branch using the test's exact replacements, confirmed through files and git diff; Gradle was unavailable in this replay so test execution remains unverified."}

@@ -24,27 +24,46 @@ import org.lwjgl.vulkan.VK13.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2
 import org.lwjgl.vulkan.VK13.vkCmdPipelineBarrier2
 
 class Image(private val device: Device, val imageData: ImageData) {
+    /** The `VkFormat` the image was created with, copied from the [Image.ImageData] it was built from so it can be read back without that description to hand. */
     var format: Int = 0
+
+    /** How many mip levels the image has, copied from its [Image.ImageData]. The levels are allocated; filling them is the caller's own blit chain. */
     var mipLevels: Int = 0
+
+    /** The `VkImage` handle. Zero until the constructor has allocated, and zero again after cleanup. */
     var vkImage: Long = 0
+
+    /** The `VkDeviceMemory` allocated for [vkImage] and bound to it. Bound even when the pixels live in an imported IOSurface, where MoltenVK may not need it. */
     var vkMemory: Long = 0
 
-    // Set only when [ImageData.exportOpaqueFd] is true (Linux/NVENC path — see
-    // VulkanExternalMemory.kt). [memorySize] is the exact allocation size CUDA's
-    // cuImportExternalMemory requires; [linearRowPitch] is the row pitch NVENC's
-    // NV_ENC_REGISTER_RESOURCE.pitch needs, queried from the image's actual (possibly
-    // alignment-padded) linear layout rather than assumed as width*bytesPerPixel.
+    /**
+     * The size the driver asked for to back this image, which is the allocation size CUDA's
+     * `cuImportExternalMemory` has to be given when the image is exported as an opaque fd (the
+     * Linux NVENC path, see [VulkanExternalMemory]). Read from the image's memory requirements, so
+     * it is the real figure rather than a computed one, and it is set for every image.
+     */
     var memorySize: Long = 0
         private set
+
+    /**
+     * The row pitch of the image's linear layout, for NVENC's `NV_ENC_REGISTER_RESOURCE.pitch`.
+     * Queried from the image rather than computed as width times bytes per pixel, because the
+     * driver may pad a row out to an alignment. Set only for an image whose [Image.ImageData]
+     * asked for `exportOpaqueFd`, and zero otherwise.
+     */
     var linearRowPitch: Long = 0
         private set
 
-    // Set only when [ImageData.exportDmaBuf] is true (Linux/dma-buf path — see
-    // LinuxDmaBufExport.kt). The driver, not this code, chooses which of the offered DRM format
-    // modifiers to use, so the choice has to be read back before the handle can describe itself to
-    // an importer; [drmPlaneLayouts] is the memory-plane layout that modifier implies.
+    /**
+     * The DRM format modifier the driver chose, which is the tiling an importing process has to be
+     * told about before it can read the dma-buf. The driver picks from the modifiers Field offers,
+     * so the choice is read back rather than assumed. Set only for an image whose
+     * [Image.ImageData] asked for `exportDmaBuf` — see [LinuxDmaBufExport].
+     */
     var drmFormatModifier: Long = 0
         private set
+
+    /** The offset and pitch of each memory plane under the modifier the driver chose, read back alongside [drmFormatModifier] and sent with the handle so an importer can address the planes. */
     var drmPlaneLayouts: List<DmaBufPlaneLayout> = emptyList()
         private set
 
@@ -293,7 +312,7 @@ class Image(private val device: Device, val imageData: ImageData) {
 
     /**
      * Export the IOSurfaceRef backing this image's MTLTexture (MoltenVK, VK_EXT_metal_objects).
-     * Requires [ImageData.exportMetalIOSurface] = true at creation and the device to have enabled
+     * Requires `exportMetalIOSurface` set on the [Image.ImageData] it was created from, and the device to have enabled
      * VK_EXT_metal_objects. Returns the IOSurfaceRef pointer (pass to [afield.graphics.texture.MetalIOSurface.ioSurfaceId]),
      * or 0 if the surface could not be exported.
      */
@@ -314,12 +333,13 @@ class Image(private val device: Device, val imageData: ImageData) {
     private var cachedOpaqueFd: Int? = null
 
     /**
-     * Export this image's backing memory as an opaque POSIX fd (Linux, VK_KHR_external_memory_fd —
-     * see VulkanExternalMemory.kt). Requires [ImageData.exportOpaqueFd] = true at creation. Per the
+     * Export this image's backing memory as an opaque POSIX fd (Linux, VK_KHR_external_memory_fd,
+     * see [VulkanExternalMemory]). Requires `exportOpaqueFd` set on the [Image.ImageData] it was
+     * created from. Per the
      * spec each call to vkGetMemoryFdKHR transfers ownership of a *new* fd to the caller, so this
      * caches and returns the same fd on repeated calls — call [close] to release it, don't just
      * drop the value. The fd stays valid (and open in this JVM process) for the streamer's whole
-     * session; the helper process only ever gets a *duplicate* via /proc/<pid>/fd/<fd> (see
+     * session; the helper process only ever gets a *duplicate* via `/proc/<pid>/fd/<fd>` (see
      * WIRE_FORMAT.md's Linux addendum), never this one.
      */
     fun exportOpaqueFd(): Int {
@@ -337,8 +357,9 @@ class Image(private val device: Device, val imageData: ImageData) {
     }
 
     /**
-     * Export this image's backing memory as a POSIX dma-buf fd (Linux, VK_EXT_external_memory_dma_buf
-     * — see LinuxDmaBufExport.kt). Requires [ImageData.exportDmaBuf] = true at creation.
+     * Export this image's backing memory as a POSIX dma-buf fd (Linux, VK_EXT_external_memory_dma_buf,
+     * see [LinuxDmaBufExport]). Requires `exportDmaBuf` set on the [Image.ImageData] it was created
+     * from.
      *
      * Unlike [exportOpaqueFd] this deliberately does *not* cache. A dma-buf fd is normally handed
      * to an importer that consumes ownership of it, so one cached fd shared between two imports

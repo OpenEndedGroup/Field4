@@ -1,9 +1,8 @@
 # Building the Docs & Running the Tests
 
-Most pages in this site contain *live* examples. The code you see ran inside
-Field, the screenshots and videos are captures of its output, and rebuilding the
-docs means asking Field to re-execute all of it. The test suites drive Field
-end-to-end through the same machinery. This page covers running both locally.
+Many pages on this site contain examples run in Field, with screenshots or videos of their output.
+You can rebuild the site with existing captures, or ask Field to run examples again. The test suites
+also drive Field through this machinery. This page covers both workflows.
 
 For every flag and the internals, see `AGENTS.md` and
 `dev_docs/testing/TESTING_STRATEGY.md` in the

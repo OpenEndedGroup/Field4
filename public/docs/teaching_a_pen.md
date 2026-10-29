@@ -335,8 +335,7 @@ print("curliness: handwriting ${c0.f3}, rounder ${c1.f3}")
 ```
 
 The kept scribbles were about twice as curly as the pen's average, and the fine-tuned pen's are
-about a third curlier than the original's. It moved towards the taste, not all the way: three
-hundred examples are a nudge, not a new hand.
+about a third curlier than the original's. Three hundred examples nudged it towards that taste while leaving much of its original hand.
 
 ## A corpus of your own
 

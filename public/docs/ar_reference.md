@@ -1,6 +1,6 @@
 # RemoteJS and WebXR
 
-Field's browser graphics head is a page you open yourself, on whichever device you want the graphics to come out of:
+To run your Field graphics in a browser, open this page on the device where you want to see them:
 
 ```diffstatic {data-lang=text}
 https://FIELD_HOST:9092/extensions/remote_ar/index.html

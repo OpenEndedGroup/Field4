@@ -1,0 +1,212 @@
+{
+ "taskId": "task-af1e3325",
+ "mode": "live",
+ "provider": "openai",
+ "model": "gpt-6.1-sol",
+ "verdict": "unchecked",
+ "checks": [],
+ "toolCalls": [
+  {
+   "index": 1,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":200,\"path\":\"AGENTS.md\",\"startLine\":1}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 1-200 of 552\",\"path\":\"AGENTS.md\",\"text\":\"1\\t# AField / Field\u00b74 \u2014 Repo Guide for Agents\\n2\\t\\n3\\tA corrective paragraph in this file is a bug report against a tool, and it stays only until the\\n4\\ttool enforces it. When you add a \\\"do not\\\", name the tool change that would retire it. Histories\\n5\\tof rules that became code live in\\n6\\t[`dev_docs/agents/AGENT_SURFACE_TRUTHFULNESS.md`](dev_docs/agents/AGENT_SURFACE_TRUTHFULNESS.md).\\n7\\t\\n8\\t---\\n9\\t\\n10\\t## 1. What this is\\n11\\t\\n12\\t**Field\u00b74** is a Kotlin live-coding environment for graphics and exploratory dat... [921 more chars]"
+  },
+  {
+   "index": 2,
+   "tool": "RepoSearchRequest",
+   "arguments": "{\"glob\":\"**/*\",\"ignoreCase\":false,\"maxMatches\":70,\"query\":\"checkKDocAttachment\",\"regex\":false}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"31 match(es) in 8782 file(s)\",\"matches\":[{\"path\":\"dev_docs/BUILD_INFRASTRUCTURE.md\",\"line\":100,\"text\":\"| Drift checks and guards | `checkCodebaseReference`, `checkKDocAttachment`, `checkSourcePartition`, `checkSourcePages`, `checkAgentTranscripts`, `checkAgentTranscriptIndex`, `checkAgentTranscriptLayouts`, `checkAgentDemos`, `checkBoxOutputChannels`, `checkCompletionCorpusFixtures`, `checkGeneratedL\"},{\"path\":\"dev_docs/BUILD_INFRASTRUCTURE.md\",\"line\":144,\"text\":\"guards: `checkCodebaseReference`, `checkKDocAttachment`, `checkAgentTranscripts`,\"},{\"path\":\"dev_docs/GUA... [921 more chars]"
+  },
+  {
+   "index": 3,
+   "tool": "RepoRunCommandRequest",
+   "arguments": "{\"args\":[],\"command\":\"git-status\",\"timeoutSec\":10}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"exit 0\",\"command\":\"git --no-pager -c core.fsmonitor=false -c diff.external= status --short --branch\",\"exitCode\":0,\"timedOut\":false,\"elapsedMs\":91,\"output\":\"## HEAD (no branch)\\n\",\"outputBytes\":20,\"truncated\":false}"
+  },
+  {
+   "index": 4,
+   "tool": "RepoRunCommandRequest",
+   "arguments": "{\"args\":[\"61c617906850dbe73ff5c63fbdbba927baa28e4a\",\"--\",\"src/\"],\"command\":\"git-diff\",\"timeoutSec\":10}",
+   "ok": false,
+   "result": "{\"success\":false,\"message\":\"'src/': no '..', '.' or empty segments\",\"command\":\"git-diff\",\"exitCode\":null,\"timedOut\":false,\"elapsedMs\":0,\"output\":\"\",\"outputBytes\":0,\"truncated\":false}"
+  },
+  {
+   "index": 5,
+   "tool": "RepoRunCommandRequest",
+   "arguments": "{\"args\":[\"61c617906850dbe73ff5c63fbdbba927baa28e4a\",\"--\",\"src\"],\"command\":\"git-diff\",\"timeoutSec\":10}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"exit 0\",\"command\":\"git --no-pager -c core.fsmonitor=false -c diff.external= diff --no-color --no-ext-diff --no-textconv 61c617906850dbe73ff5c63fbdbba927baa28e4a -- src\",\"exitCode\":0,\"timedOut\":false,\"elapsedMs\":53,\"output\":\"diff --git a/src/commonMain/kotlin/afield/app/protocol/profiling.kt b/src/commonMain/kotlin/afield/app/protocol/profiling.kt\\nindex 4e13665bc..669221f2b 100644\\n--- a/src/commonMain/kotlin/afield/app/protocol/profiling.kt\\n+++ b/src/commonMain/kotlin/afield/app/protocol/profiling.kt\\n@@ -24,7 +24,11 @@ data class CoroutineProfileLane(\\n     val fi... [921 more chars]"
+  },
+  {
+   "index": 6,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":260,\"path\":\"src/jvmMain/kotlin/afield/tools/docs/KDocAttachmentGuard.kt\",\"startLine\":1}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 1-260 of 501\",\"path\":\"src/jvmMain/kotlin/afield/tools/docs/KDocAttachmentGuard.kt\",\"text\":\"1\\tpackage afield.tools.docs\\n2\\t\\n3\\timport afield.tools.docs.index.KDocExtractor\\n4\\timport afield.runtime.completion.KotlinSourceIndex\\n5\\timport java.io.File\\n6\\timport kotlin.system.exitProcess\\n7\\t\\n8\\t/*\\n9\\tFIELD_TEST\\n10\\tid: docs.kdoc-attachment.guard\\n11\\trunner: jvm-main\\n12\\tentrypoint: afield.tools.docs.KDocAttachmentGuard\\n13\\ttags: [smoke, docs, reference, kdoc, verification]\\n14\\ttimeoutSec: 180\\n15\\texpect:\\n16\\t  exitCode: 0\\n17\\t  stdoutContains:\\n18\\t... [921 more chars]"
+  },
+  {
+   "index": 7,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":140,\"path\":\"dev_docs/kdoc_reference_contract.md\",\"startLine\":1}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 1-140 of 503\",\"path\":\"dev_docs/kdoc_reference_contract.md\",\"text\":\"1\\t# The KDoc \u2192 reference contract\\n2\\t\\n3\\tEverything Field says about its own API in the editor and on the docs site comes from one place: the\\n4\\t`/** \u2026 */` blocks in `src/`. There is no second source, no hand-maintained API page, and no Dokka.\\n5\\tThat makes the pipeline cheap and honest \u2014 and it means a KDoc that fails to *attach* to the right\\n6\\tdeclaration is published as another symbol's description, silently.\\n7\\t\\n8\\tThis note is the contract: what the extractor can and cannot see, wh... [921 more chars]"
+  },
+  {
+   "index": 8,
+   "tool": "RepoListFilesRequest",
+   "arguments": "{\"glob\":\"tools/*kdoc*\"}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"0 file(s)\",\"files\":[],\"complete\":true}"
+  },
+  {
+   "index": 9,
+   "tool": "RepoRunCommandRequest",
+   "arguments": "{\"args\":[\"685a90e2f^\",\"685a90e2f\",\"--\",\"src/jvmMain/kotlin/afield/app/diagnostics\",\"src/jvmMain/kotlin/afield/graphics/paint/Klecks.kt\"],\"command\":\"git-diff\",\"timeoutSec\":10}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"exit 0\",\"command\":\"git --no-pager -c core.fsmonitor=false -c diff.external= diff --no-color --no-ext-diff --no-textconv 685a90e2f^ 685a90e2f -- src/jvmMain/kotlin/afield/app/diagnostics src/jvmMain/kotlin/afield/graphics/paint/Klecks.kt\",\"exitCode\":0,\"timedOut\":false,\"elapsedMs\":21,\"output\":\"\",\"outputBytes\":0,\"truncated\":false}"
+  },
+  {
+   "index": 10,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":501,\"path\":\"src/jvmMain/kotlin/afield/tools/docs/KDocAttachmentGuard.kt\",\"startLine\":260}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 260-501 of 501\",\"path\":\"src/jvmMain/kotlin/afield/tools/docs/KDocAttachmentGuard.kt\",\"text\":\"260\\t                continue\\n261\\t            }\\n262\\t\\n263\\t            val declarationPart = afterAnnotations(trimmed)\\n264\\t            if (isEnumConstant(lines, block, declarationPart)) {\\n265\\t                return Verdict.Benign(\\\"enum constant (StdlibReferenceGenerator reads these itself)\\\", i + 1)\\n266\\t            }\\n267\\t\\n268\\t            // The extractor skips any line beginning with `@`, so an annotation alone on its line is\\n269\\t            // transpar... [921 more chars]"
+  },
+  {
+   "index": 11,
+   "tool": "RepoSearchRequest",
+   "arguments": "{\"glob\":\"tools/*.py\",\"ignoreCase\":true,\"maxMatches\":40,\"query\":\"kdoc\",\"regex\":false}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"stopped at 40 matches\",\"matches\":[{\"path\":\"tools/check_box_idioms.py\",\"line\":97,\"text\":\"# reference pages are generated from KDoc. Widen this once the refactor lands.\"},{\"path\":\"tools/check_doc_site_links.py\",\"line\":222,\"text\":\"#                                          published as a paragraph because its KDoc indent was\"},{\"path\":\"tools/check_staged_generated_artifacts.py\",\"line\":390,\"text\":\"        \\\"codebase reference and KDoc worklist\\\",\"},{\"path\":\"tools/check_staged_generated_artifacts.py\",\"line\":392,\"text\":\"        (\\\"public/docs/reference\\\", \\\"dev_docs/kdoc_w... [921 more chars]"
+  },
+  {
+   "index": 12,
+   "tool": "RepoRunCommandRequest",
+   "arguments": "{\"args\":[\"61c617906850dbe73ff5c63fbdbba927baa28e4a\",\"--\",\"src/jvmMain/kotlin/afield/app/diagnostics/CoroutineProfiling.kt\",\"src/jvmMain/kotlin/afield/app/diagnostics/FrameProfile.kt\",\"src/jvmMain/kotlin/afield/graphics/paint/Klecks.kt\"],\"command\":\"git-diff\",\"timeoutSec\":10}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"exit 0\",\"command\":\"git --no-pager -c core.fsmonitor=false -c diff.external= diff --no-color --no-ext-diff --no-textconv 61c617906850dbe73ff5c63fbdbba927baa28e4a -- src/jvmMain/kotlin/afield/app/diagnostics/CoroutineProfiling.kt src/jvmMain/kotlin/afield/app/diagnostics/FrameProfile.kt src/jvmMain/kotlin/afield/graphics/paint/Klecks.kt\",\"exitCode\":0,\"timedOut\":false,\"elapsedMs\":26,\"output\":\"diff --git a/src/jvmMain/kotlin/afield/app/diagnostics/CoroutineProfiling.kt b/src/jvmMain/kotlin/afield/app/diagnostics/CoroutineProfiling.kt\\nindex 58d2f341d..c8560351d 100644\\n-... [921 more chars]"
+  },
+  {
+   "index": 13,
+   "tool": "RepoRunCommandRequest",
+   "arguments": "{\"args\":[\"-n\",\"4\"],\"command\":\"git-log\",\"timeoutSec\":10}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"exit 0\",\"command\":\"git --no-pager -c core.fsmonitor=false -c diff.external= log --oneline --no-color --no-ext-diff -n 4\",\"exitCode\":0,\"timedOut\":false,\"elapsedMs\":17,\"output\":\"685a90e2f Polar rangeSlider returns an ArcRange whose in follows the wrapped arc\\ndc624a62f Docs runner: a bare ::: is code unless it closes a fold\\n807716e22 profileScope/measure: non-inline blocks that cannot suspend; mark a scope that changes threads\\nd39126d3a Profiling lanes fingerprint the launched property and say when it changed since capture\\n\",\"outputBytes\":350,\"truncated\":false}"
+  },
+  {
+   "index": 14,
+   "tool": "RepoSearchRequest",
+   "arguments": "{\"glob\":\"tools/check_*.py\",\"ignoreCase\":true,\"maxMatches\":30,\"query\":\"attachment|parseDeclaration|mis-attached\",\"regex\":true}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"1 match(es) in 12 file(s)\",\"matches\":[{\"path\":\"tools/check_staged_generated_artifacts.py\",\"line\":394,\"text\":\"    Guard(\\\"checkKDocAttachment\\\", \\\"KDoc attachment\\\", _kotlin_source),\"}],\"complete\":true,\"filesSearched\":12}"
+  },
+  {
+   "index": 15,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":110,\"path\":\"tools/test_check_staged_generated_artifacts.py\",\"startLine\":1}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 1-110 of 484\",\"path\":\"tools/test_check_staged_generated_artifacts.py\",\"text\":\"1\\timport os\\n2\\timport shutil\\n3\\timport subprocess\\n4\\timport tempfile\\n5\\timport unittest\\n6\\timport unittest.mock\\n7\\tfrom pathlib import Path\\n8\\t\\n9\\tfrom tools.check_staged_generated_artifacts import (\\n10\\t    _PERSONAL_BOUNDARY_REL,\\n11\\t    _REFERENCE_GENERATOR_REL,\\n12\\t    _SOURCE_ROOTS_DECL,\\n13\\t    PersonalBoundaryCorpusUnreadable,\\n14\\t    ReferenceRootsUnreadable,\\n15\\t    _personal_boundary_corpus,\\n16\\t    _parse_reference_source_roots,\\n17\\t    _reference_input,\\n1... [921 more chars]"
+  },
+  {
+   "index": 16,
+   "tool": "RepoSearchRequest",
+   "arguments": "{\"glob\":\"src/jvmMain/kotlin/afield/tools/docs/index/KDocExtractor.kt\",\"ignoreCase\":false,\"maxMatches\":20,\"query\":\"parseDeclaration|startsWith\\\\(\\\"@\\\"\\\\)\",\"regex\":true}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"3 match(es) in 1 file(s)\",\"matches\":[{\"path\":\"src/jvmMain/kotlin/afield/tools/docs/index/KDocExtractor.kt\",\"line\":116,\"text\":\"                        if (declLineText.startsWith(\\\"@\\\")) {\"},{\"path\":\"src/jvmMain/kotlin/afield/tools/docs/index/KDocExtractor.kt\",\"line\":129,\"text\":\"                        declaration = parseDeclaration(declLineText)\"},{\"path\":\"src/jvmMain/kotlin/afield/tools/docs/index/KDocExtractor.kt\",\"line\":172,\"text\":\"    internal fun parseDeclaration(line: String): Pair<String, String>? {\"}],\"complete\":true,\"filesSearched\":1}"
+  },
+  {
+   "index": 17,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":300,\"path\":\"src/jvmMain/kotlin/afield/app/diagnostics/CoroutineProfiling.kt\",\"startLine\":264}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 264-300 of 362\",\"path\":\"src/jvmMain/kotlin/afield/app/diagnostics/CoroutineProfiling.kt\",\"text\":\"264\\t            val hash = ProfileOrigin.fingerprint(origin.source)\\n265\\t            lanes += CoroutineProfileLane(id, origin.box.id, origin.box.name, origin.strand, hash,\\n266\\t                \\\"observed\\\", (now-startNs)/1e6, (now-startNs)/1e6, name, kind, property = origin.property)\\n267\\t            laneBoxes[id] = origin.box\\n268\\t            lastEnds[id] = now\\n269\\t            id\\n270\\t        }\\n271\\t    }\\n272\\t\\n273\\t    /** Sets [lane]'s state, e.g. \\\"mo... [920 more chars]"
+  },
+  {
+   "index": 18,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":552,\"path\":\"AGENTS.md\",\"startLine\":470}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 470-552 of 552\",\"path\":\"AGENTS.md\",\"text\":\"470\\t  `<workspace>/<documentName>/metadata.edn` (current state), `backups/metadata_backup_00000.edn`\\n471\\t  ... (previous versions), `versions.edn` (history), and `<uid>_<property>_.<ext>` sidecars.\\n472\\t- `metadata.edn` v2 \u2014 canonical reader/writer `afield/saving.kt` (`SavingContext`) over\\n473\\t  `afield/edn.kt`: `:version 2`; `:boxes`, a list of `{ :id \\\"...\\\", :properties { ... } }`;\\n474\\t  optional `:persistentProperties`, merged into `Box.ioPersistentProperties` on load.\\n475\\t- Tagged values inside `:propert... [921 more chars]"
+  },
+  {
+   "index": 19,
+   "tool": "RepoRunCommandRequest",
+   "arguments": "{\"args\":[\"tools/test_check_staged_generated_artifacts.py\",\"GeneratedArtifactSelectionTests.test_stdlib_change_selects_reference_and_kdoc_guards\"],\"command\":\"python-test\",\"timeoutSec\":60}",
+   "ok": false,
+   "result": "{\"success\":false,\"message\":\"exit 1\",\"command\":\"uv run --project . --group backdoor python tools/test_check_staged_generated_artifacts.py GeneratedArtifactSelectionTests.test_stdlib_change_selects_reference_and_kdoc_guards\",\"exitCode\":1,\"timedOut\":false,\"elapsedMs\":106,\"output\":\"Traceback (most recent call last):\\n  File \\\"/Users/marc/field4-worktrees/2026-10-29-1-ai4-fixer-bench/.nightly-tmp/replay/tools/test_check_staged_generated_artifacts.py\\\", line 9, in <module>\\n    from tools.check_staged_generated_artifacts import (\\nModuleNotFoundError: No module named 'tools'\\n\",\"outputBytes\":292,\"tr... [15 more chars]"
+  },
+  {
+   "index": 20,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":650,\"path\":\"tools/check_staged_generated_artifacts.py\",\"startLine\":460}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 460-614 of 614\",\"path\":\"tools/check_staged_generated_artifacts.py\",\"text\":\"460\\t        metavar=\\\"REV\\\",\\n461\\t        help=(\\n462\\t            \\\"select from paths changed between REV and HEAD instead of from the index \\\"\\n463\\t            \\\"(the post-merge case: work that arrived by pull never passed a hook here)\\\"\\n464\\t        ),\\n465\\t    )\\n466\\t    parser.add_argument(\\n467\\t        \\\"--skip\\\",\\n468\\t        metavar=\\\"TASK,...\\\",\\n469\\t        default=\\\"\\\",\\n470\\t        help=(\\n471\\t            \\\"guard tasks not to run because the caller just regenerated... [921 more chars]"
+  },
+  {
+   "index": 21,
+   "tool": "RepoPatchFileRequest",
+   "arguments": "{\"newText\":\"    @Synchronized\\n    fun markLane(lane: Int, state: String) {\",\"oldText\":\"    @Synchronized fun markLane(lane: Int, state: String) {\",\"path\":\"src/jvmMain/kotlin/afield/app/diagnostics/CoroutineProfiling.kt\",\"replaceAll\":false}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"replaced 1 occurrence(s) in src/jvmMain/kotlin/afield/app/diagnostics/CoroutineProfiling.kt\",\"path\":\"src/jvmMain/kotlin/afield/app/diagnostics/CoroutineProfiling.kt\",\"text\":\"\",\"totalLines\":0,\"truncated\":false}"
+  },
+  {
+   "index": 22,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":205,\"path\":\"src/jvmMain/kotlin/afield/tools/docs/index/KDocExtractor.kt\",\"startLine\":100}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 100-205 of 308\",\"path\":\"src/jvmMain/kotlin/afield/tools/docs/index/KDocExtractor.kt\",\"text\":\"100\\t                    }\\n101\\t                    j++\\n102\\t                }\\n103\\t                \\n104\\t                if (foundEnd) {\\n105\\t                    // Look for the declaration after the KDoc\\n106\\t                    var declLine = j\\n107\\t                    var declaration: Pair<String, String>? = null\\n108\\t                    \\n109\\t                    // Skip blank lines and annotations\\n110\\t                    while (declLine < lines.size) {\\n... [921 more chars]"
+  },
+  {
+   "index": 23,
+   "tool": "RepoReadFileRequest",
+   "arguments": "{\"endLine\":281,\"path\":\"src/jvmMain/kotlin/afield/app/diagnostics/CoroutineProfiling.kt\",\"startLine\":270}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"lines 270-281 of 363\",\"path\":\"src/jvmMain/kotlin/afield/app/diagnostics/CoroutineProfiling.kt\",\"text\":\"270\\t        }\\n271\\t    }\\n272\\t\\n273\\t    /** Sets [lane]'s state, e.g. \\\"moved threads\\\" for a scope that ended on another thread. */\\n274\\t    @Synchronized\\n275\\t    fun markLane(lane: Int, state: String) {\\n276\\t        if (lane in lanes.indices) lanes[lane] = lanes[lane].copy(state = state)\\n277\\t    }\\n278\\t\\n279\\t    @Synchronized fun beginScope(origin: ProfileOrigin, name: String, now: Long): Int {\\n280\\t        val id = namedLane(origin, name, \\\"scope\\\", ... [79 more chars]"
+  },
+  {
+   "index": 24,
+   "tool": "RepoRunCommandRequest",
+   "arguments": "{\"args\":[],\"command\":\"git-diff\",\"timeoutSec\":10}",
+   "ok": true,
+   "result": "{\"success\":true,\"message\":\"exit 0\",\"command\":\"git --no-pager -c core.fsmonitor=false -c diff.external= diff --no-color --no-ext-diff --no-textconv\",\"exitCode\":0,\"timedOut\":false,\"elapsedMs\":39,\"output\":\"diff --git a/src/jvmMain/kotlin/afield/app/diagnostics/CoroutineProfiling.kt b/src/jvmMain/kotlin/afield/app/diagnostics/CoroutineProfiling.kt\\nindex c8560351d..2ff2dc13d 100644\\n--- a/src/jvmMain/kotlin/afield/app/diagnostics/CoroutineProfiling.kt\\n+++ b/src/jvmMain/kotlin/afield/app/diagnostics/CoroutineProfiling.kt\\n@@ -271,7 +271,8 @@ internal class CoroutineCapture(\\n     }\\n \\n     /** Se... [348 more chars]"
+  },
+  {
+   "index": 25,
+   "tool": "RepoRunCommandRequest",
+   "arguments": "{\"args\":[\"tools/test_check_staged_generated_artifacts.py\",\"GeneratedArtifactSelectionTests.test_stdlib_change_selects_reference_and_kdoc_guards\"],\"command\":\"python-test\",\"timeoutSec\":60}",
+   "ok": false,
+   "result": "{\"success\":false,\"message\":\"exit 1\",\"command\":\"uv run --project . --group backdoor python tools/test_check_staged_generated_artifacts.py GeneratedArtifactSelectionTests.test_stdlib_change_selects_reference_and_kdoc_guards\",\"exitCode\":1,\"timedOut\":false,\"elapsedMs\":95,\"output\":\"Traceback (most recent call last):\\n  File \\\"/Users/marc/field4-worktrees/2026-10-29-1-ai4-fixer-bench/.nightly-tmp/replay/tools/test_check_staged_generated_artifacts.py\\\", line 9, in <module>\\n    from tools.check_staged_generated_artifacts import (\\nModuleNotFoundError: No module named 'tools'\\n\",\"outputBytes\":292,\"tru... [14 more chars]"
+  }
+ ],
+ "finalText": "Moved `markLane`\u2019s `@Synchronized` annotation onto its own line so its KDoc attaches correctly, as confirmed by inspecting the guard and extractor logic. Gradle was unavailable; the Python test could not start because of `ModuleNotFoundError: tools`.\n\nFIXER-VERDICT: {\"verdict\": \"fix\", \"culprit\": \"handoffs/code-20261015-2234\", \"reason\": \"The branch placed documented markLane on an annotation-prefixed line that the extractor skips, fixed by separating the annotation from the declaration.\"}",
+ "rounds": 10,
+ "maxToolRounds": 40,
+ "hitToolRoundCap": false,
+ "elapsedMs": 65861,
+ "inputTokens": 503347,
+ "outputTokens": 1834,
+ "cacheReadTokens": 447930,
+ "documentName": "scratch",
+ "misuseCalls": 3,
+ "lessons": true,
+ "documentRef": "09c5f209-6f79-4613-ac01-c0efdb4e11d3",
+ "programs": true,
+ "contextPlacement": "developer-once+input",
+ "repoWritten": [
+  "src/jvmMain/kotlin/afield/app/diagnostics/CoroutineProfiling.kt"
+ ],
+ "repoRuns": [
+  "git-status  -> 0",
+  "git-diff 61c617906850dbe73ff5c63fbdbba927baa28e4a -- src -> 0",
+  "git-diff 685a90e2f^ 685a90e2f -- src/jvmMain/kotlin/afield/app/diagnostics src/jvmMain/kotlin/afield/graphics/paint/Klecks.kt -> 0",
+  "git-diff 61c617906850dbe73ff5c63fbdbba927baa28e4a -- src/jvmMain/kotlin/afield/app/diagnostics/CoroutineProfiling.kt src/jvmMain/kotlin/afield/app/diagnostics/FrameProfile.kt src/jvmMain/kotlin/afield/graphics/paint/Klecks.kt -> 0",
+  "git-log -n 4 -> 0",
+  "python-test tools/test_check_staged_generated_artifacts.py GeneratedArtifactSelectionTests.test_stdlib_change_selects_reference_and_kdoc_guards -> 1",
+  "git-diff  -> 0",
+  "python-test tools/test_check_staged_generated_artifacts.py GeneratedArtifactSelectionTests.test_stdlib_change_selects_reference_and_kdoc_guards -> 1"
+ ]
+}

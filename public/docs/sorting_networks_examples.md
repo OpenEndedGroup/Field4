@@ -1,7 +1,5 @@
 # Sorting networks to FLine examples
 
-*Every public declaration used below is listed, with its KDoc, in the codebase reference: [`sorting_networks.kt`](reference/data.md#sorting-networks-kt). Start from [what's already in the box](reference/index.md).*
-
 A sorting network is a fixed list of compare-and-swap steps between wires: the plan is decided ahead of time, and only the data changes. Because the plan is fixed, it can be drawn. This page draws two networks, plots how quickly each one removes disorder from random inputs, and then uses `SortingNetwork.anneal(...)` to search for smaller networks. All four examples are boxes in the [sorting_networks](agent_transcripts.md#sorting_networks) starting point.
 
 ## Topology: bubble against odd-even merge
@@ -360,3 +358,5 @@ The scatter puts comparator count across the page and depth up it. Where a run f
 ![three stacked Plotly charts. The top two, "Best so far: comparators" and "Best so far: depth" against iteration, hold one line per run: blue lines that step down and wander through the first half before flattening, orange lines lower down that mostly run flat with a few steps, and a flat green line along the bottom. The third, "Where each run finished", is a scatter of depth against comparators with a legend: one green marker alone at the bottom left, orange markers along the bottom just to its right, and blue markers higher and further right](assets/sorting_networks_examples/anneal_regimes.png)
 
 For more fixed structure with plotted behaviour, continue with [Graph connectivity examples](graph_connectivity_examples.md) and [Boolean networks examples](boolean_networks_examples.md).
+
+*The public declarations used on this page are listed, with their KDoc, in the codebase reference: [`sorting_networks.kt`](reference/data.md#sorting-networks-kt). Start from [what's already in the box](reference/index.md).*

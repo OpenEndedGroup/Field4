@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-29T19:19:01.085Z",
+  "documentName": "fern_iterated_systems",
+  "outputs": [
+    {
+      "uid": "fern_renderer",
+      "channel": "Vulkan window · still image",
+      "open": true,
+      "path": "outputs/0.html",
+      "width": 1520,
+      "height": 1800,
+      "kinds": [
+        "native-image"
+      ],
+      "warnings": []
+    }
+  ]
+}

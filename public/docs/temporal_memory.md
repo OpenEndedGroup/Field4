@@ -5,8 +5,8 @@ envelope of a phrase. Then ask Field to keep going: continue it in the same styl
 as you like, while you take over one channel and give it back. This page covers two ways of
 doing that, with no training step:
 
-- **A Variable Markov Oracle** (Wang and Dubnov) remembers the recording itself and recombines it. Every
-  sample it plays comes from somewhere in what you gave it, and it can say where.
+- **A Variable Markov Oracle** (Wang and Dubnov) remembers the recording and recombines its
+  passages. It records where they came from and applies a fading correction at joins.
 - **Timestral**, Mistral's pretrained forecasting model, has never seen your recording and does
   not need to. It reads the recent history and predicts what comes next, with an uncertainty
   band. It runs in an optional Python worker.
@@ -683,7 +683,7 @@ val played = Improviser(memory, judge = judge).take(60.0)
 At every jump decision the improviser plays each candidate two seconds ahead (`judgeAhead`), and
 the judge scores each path by how well it sits inside the forecast's quantile fan, step by step
 (the mean pinball loss). The forecast is refreshed every second in the background; until one has
-arrived, the improviser decides alone. Every sample is still played from the recording. There are
+arrived, the improviser decides alone. The passages still come from the recording, with corrections at joins. There are
 two ways to use the score:
 
 - `judgeMode = JudgeMode.Prefer` (the default) adds it to the oracle's own preferences, weighted by

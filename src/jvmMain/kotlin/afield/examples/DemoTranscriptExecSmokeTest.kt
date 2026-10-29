@@ -96,6 +96,8 @@ object DemoTranscriptExecSmokeTest {
 
     /** Pure-compute demos that are safe to run to completion headless. */
     internal val EXECUTE = setOf(
+        // Loads a committed glTF fixture through Assimp and opens column()/tree() on it; no renderer.
+        "assimp_browsing",
         // stacksl_examples.md's fitting demo: fits a StackSL program's literals on the CPU.
         "stacksl_fit_demo",
         // ai4_chat_archive.md's demo: reads the example chat under public/docs/assets by checkout path.
@@ -403,6 +405,12 @@ object DemoTranscriptExecSmokeTest {
         // Certified envelopes for Fn (2026-09-23): a SignalViewer with and without its certified
         // band, certifiedRange, and the refusal of a lambda channel. Pure CPU, no window.
         "certified_envelope",
+        // Own-document tour (2026-10-29): numbers, squares, and a three-step slideShow that
+        // selects them by name. Pure CPU.
+        "slideshow_own_tour",
+        // Controls renewal (2026-10-29): a five-control surface feeding a live figure and a slider
+        // that re-renders itself mid-drag. Pure CPU, output-channel controls only.
+        "controls_surface",
         // Kolakoski counts crossed with Euclidean placement. Pure CPU: the figures are
         // `showPatRollOf` (SVG into an output channel) and the audio is `showDirtAudio` /
         // `patRenderStereoDirt`, which mixes samples into a buffer offline — no audio device, and

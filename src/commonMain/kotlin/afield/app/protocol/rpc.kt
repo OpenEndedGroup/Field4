@@ -1206,8 +1206,13 @@ data class ExportDocumentResult(val edn: String, val filename: String = "")
 data class ExportWebDocumentResult(
     val document: ExportDocumentResult,
     val outputs: List<Set_output>,
-    val assets: List<String>
+    val assets: List<String>,
+    val nativeImages: List<NativePublicationImage> = emptyList(),
+    val warnings: List<String> = emptyList()
 )
+
+@Serializable
+data class NativePublicationImage(val uid: String, val dataUrl: String, val width: Int, val height: Int)
 
 @Serializable
 data class PasteBoxes(val edn: String)

@@ -1,10 +1,6 @@
 # Projecting a distance matrix
 
-*Every public declaration used below is listed, with its KDoc, in the codebase reference:
-[Data](reference/data.md#smile-mds-kt) and [Math](reference/math.md).*
-
-Sometimes the data is not a signal and not a table. It is a **set of things** plus one number for
-each pair of them: how far apart those two are. Twenty words and an edit distance. A hundred and
+Suppose you have a **set of things** and one number for each pair: how far apart they are. Twenty words and an edit distance. A hundred and
 sixty samples along a curve and the number of hops between them. A thousand mel frames and a
 Wasserstein distance. There is nothing to plot, because the things have no coordinates, which is the
 whole problem, and it is what [`smile_mds.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/math/statistics/smile_mds.kt) is for. Give it the distances and it
@@ -689,3 +685,6 @@ For the audio-specific wrappers over these same four functions, see
 [short-time spectral spaces](audio_ai_spectral_embeddings.md); for the graph constructions the second
 fence borrows, [Neighbors & graphs](graph_connectivity_examples.md); and for the dependence
 coefficients the fences use to check themselves, [Statistics & dependence](statistics_examples.md).
+
+*The public declarations used on this page are listed, with their KDoc, in the codebase reference:
+[Data](reference/data.md#smile-mds-kt) and [Math](reference/math.md).*

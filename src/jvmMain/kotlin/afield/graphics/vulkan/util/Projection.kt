@@ -24,6 +24,7 @@ import kotlin.math.tan
 // ============================================================================
 
 class Projection : HasUniform<Matrix4f> {
+    /** The matrix itself, rebuilt in place by [resize] and returned by [evaluateUniform]. Editing [fov], [zNear] or [zFar] does not touch it until the next resize. */
     @JvmField
     val projectionMatrix: Matrix4f
 
@@ -36,10 +37,22 @@ class Projection : HasUniform<Matrix4f> {
      * shipped exactly that for the whole standard-renderer path.
      */
     var fov = Options.fov
+
+    /** Distance to the near clip plane, in view-space units; depth maps to 0 here. Defaults to [Options.zNear]. */
     var zNear = Options.zNear
+
+    /** Distance to the far clip plane, where depth maps to 1 — Vulkan's `[0,1]` range rather than OpenGL's `[-1,1]`. Defaults to [Options.zFar]. */
     var zFar = Options.zFar
+
+    /** Width over height of the viewport this was last sized for. [resize] computes it; assigning it alone changes nothing until the next resize. */
     var aspect = 1.0f
 
+    /**
+     * Run by [evaluateUniform] immediately before the matrix is handed to a shader. The
+     * renderer constructor sets it to re-size to the window, so a projection built that way
+     * follows the window; one built from an explicit width and height leaves it empty and must be
+     * resized by hand.
+     */
     var auto: () -> Unit = {}
 
     constructor(width: Int, height: Int, fov: Double = Options.fov) {
@@ -79,30 +92,41 @@ class Projection : HasUniform<Matrix4f> {
 
 class SuperProjection : HasUniform<Matrix4f> {
 
+    /** The blended matrix, rebuilt in place by [resize] and [setAspect] and returned by [evaluateUniform]. Every dial below is read when it is rebuilt, not when it is assigned. */
     @JvmField
     val projectionMatrix: Matrix4f
 
     /** Vertical field of view in **radians**, and must be positive — see [Projection.fov]. */
     var fov = Options.fov
+
+    /** Distance to the near clip plane, in view-space units; the blended matrix is renormalized so depth is 0 here. Defaults to [Options.zNear]. */
     var zNear = Options.zNear
+
+    /** Distance to the far clip plane, where the renormalized depth reaches 1. Defaults to [Options.zFar]. */
     var zFar = Options.zFar
+
+    /** Width over height of the viewport, set by [resize] from a window size or by [setAspect] directly. */
     var aspect = 1.0f
 
-    // Principal-point offsets at matchDepth, in units of "half width / half height".
-    // ox = 0, oy = 0   → centered
-    // ox = 1          → center shifted one half-width to +X at matchDepth
-    // oy = 1          → center shifted one half-height to +Y at matchDepth
+    /** Sideways offset of the principal point, in half-widths of what is visible at [matchDepth]: 0 is centred, 1 moves the centre of the picture a half-width towards +X. */
     var ox = 0.0
+
+    /** The same offset vertically, in half-heights at [matchDepth]. Off-centre projections of this kind are what tiled renders and stereo pairs are built from. */
     var oy = 0.0
 
-    // 0 = pure perspective, 1 = pure ortho (endpoints of the Lie path)
+    /** Where the projection sits between perspective at 0 and orthographic at 1. Values between the two are interpolated along a matrix-logarithm path rather than by blending the two matrices entry by entry, and anything outside `[0,1]` is clamped. */
     var orthoness = 0.0
 
-    // Distance along -Z (in view space) where the ortho footprint should match
-    // the perspective footprint. If <= 0, we fall back to the midpoint between zNear/zFar.
+    /**
+     * The view-space depth, measured along -Z, at which the perspective and orthographic ends of
+     * the blend frame exactly the same rectangle. The blend is also renormalized to hold the
+     * vertical scale there, so what the camera frames at this distance stays put as [orthoness] is
+     * turned and only nearer and farther geometry changes size. Zero or less falls back to the
+     * midpoint between [zNear] and [zFar].
+     */
     var matchDepth = 5.0
 
-    // Optional callback to automatically choose matchDepth (e.g. focus distance).
+    /** Where [auto] gets [matchDepth] from each frame — a focus distance, say, or the camera's distance to its subject. Both constructors default it to returning [matchDepth] unchanged, and only the renderer constructor installs an [auto] that calls it. */
     var autoMatchDistance: () -> Double
     constructor(width: Int, height: Int, fov: Double = Options.fov) {
         this.projectionMatrix = Matrix4f()
@@ -120,6 +144,12 @@ class SuperProjection : HasUniform<Matrix4f> {
             resize(renderer.window.width, renderer.window.height)
         }
     }
+    /**
+     * Run by [evaluateUniform] immediately before the matrix is handed to a shader. The renderer
+     * constructor sets it to read [autoMatchDistance] and re-size to the window, which is what makes
+     * a projection built that way track both the window and the focus distance; one built from an
+     * explicit width and height leaves it empty.
+     */
     var auto: () -> Unit = {}
 
 

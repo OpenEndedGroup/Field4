@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-29T19:19:03.610Z",
+  "documentName": "particles_sketchbook",
+  "outputs": [
+    {
+      "uid": "particles_renderer",
+      "channel": "Vulkan window · still image",
+      "open": true,
+      "path": "outputs/0.html",
+      "width": 2200,
+      "height": 1520,
+      "kinds": [
+        "native-image"
+      ],
+      "warnings": []
+    }
+  ]
+}

@@ -1,10 +1,9 @@
 # Let AI4 Wait for Long Builds
 
-A [derived build](studies.md#build-derived-results-without-blocking-edits) can take minutes or
-hours: a checked mesh, a fabrication export, a solver run. AI4 can start one, end its turn, and
-pick the same conversation up again when the build has finished. Nothing is sent to the model
-while it waits, so a forty-minute build costs a request to start it and a request to read the
-result, not one request every few minutes to ask whether it is done yet.
+A checked mesh, a fabrication export or a solver run can take minutes or hours. AI4 can start a
+[derived build](studies.md#build-derived-results-without-blocking-edits), end its turn and resume
+the same conversation when the result is ready. Field does the waiting, so the model doesn't need
+to keep checking on the build.
 
 ## Start a build and let the agent wait
 
@@ -69,8 +68,7 @@ ordinary turn, and the wait carries on behind it. To stop waiting, type `/stop-w
 chat: the build keeps running, and nothing resumes the conversation when it finishes. Clearing the
 chat, rewinding it or switching its branch stops the wait too.
 
-The agent chooses how long to wait at most, four hours unless it asks for another limit, and never
-more than 48.
+The agent can set a maximum wait. The default is four hours, and the longest allowed is 48.
 
 ## What the conversation resumes with
 
@@ -125,9 +123,8 @@ Add `--stop-waiting` after `ai-chat Estimate` to end the wait, as `/stop-waiting
 
 ## When Field restarts
 
-The wait is saved with the chat, in the document. When Field restarts, the wait starts again as
-soon as the document is opened. A build that was running when Field stopped cannot finish, because
-its runner stopped with Field, so the conversation resumes with that job marked interrupted and the
+The wait is saved with the chat and resumes when you reopen the document. A build that was running
+when Field stopped is marked interrupted; the conversation resumes with that result and the
 agent can start it again. Field gives the runner two minutes after the document opens to come back
 (its box running again, by hand or by `autorun`); after that it reads what the runner last recorded.
 

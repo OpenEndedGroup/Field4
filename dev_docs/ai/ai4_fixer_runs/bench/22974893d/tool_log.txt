@@ -1,0 +1,25 @@
+[field] ok  RepoReadFileRequest {"endLine":240,"path":"AGENTS.md","startLine":1}
+[field] ok  RepoSearchRequest {"glob":"**/*","ignoreCase":false,"maxMatches":60,"query":"checkKDocAttachment","regex":false}
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-status","timeoutSec":30}
+[field] ok  RepoReadFileRequest {"endLine":200,"path":"src/jvmMain/kotlin/afield/audio/ai/CorpusClip.kt","startLine":1}
+[field] ok  RepoRunCommandRequest {"args":["871f8f497614e163fc78de2bb0e41f9633e44cda","--","src/jvmMain/kotlin/afield/audio/ai/CorpusMicroscope.kt","src/jvmMain/kotlin/afield/ui/output/outputs.k
+[field] ok  RepoReadFileRequest {"endLine":300,"path":"src/jvmMain/kotlin/afield/tools/docs/KDocAttachmentGuard.kt","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":170,"path":"dev_docs/kdoc_reference_contract.md","startLine":1}
+[field] ok  RepoListFilesRequest {"glob":"tools/*kdoc*"}
+[field] ok  RepoReadFileRequest {"endLine":80,"path":"src/jvmMain/kotlin/afield/audio/ai/CorpusMicroscope.kt","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":552,"path":"AGENTS.md","startLine":241}
+[field] ok  RepoSearchRequest {"glob":"tools/*.py","ignoreCase":true,"maxMatches":60,"query":"kdoc","regex":false}
+[field] ok  RepoReadFileRequest {"endLine":330,"path":"src/jvmMain/kotlin/afield/tools/docs/KDocAttachmentGuard.kt","startLine":295}
+[field] ok  RepoListFilesRequest {"glob":"**/KDocExtractor.kt"}
+[field] ok  RepoListFilesRequest {"glob":"**/*KDoc*Test*"}
+[field] ok  RepoReadFileRequest {"endLine":190,"path":"src/jvmMain/kotlin/afield/tools/docs/index/KDocExtractor.kt","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":125,"path":"tools/check_box_idioms.py","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":110,"path":"tools/test_check_staged_generated_artifacts.py","startLine":1}
+[field] ok  RepoSearchRequest {"glob":"tools/check_box_idioms.py","ignoreCase":false,"maxMatches":25,"query":"def main","regex":false}
+[field] ok  RepoPatchFileRequest {"newText":" * short query-tail to neighbour-head judgement rather than another aligned view.\n *\n * @param placeControlIds One control id per neighbour, for a
+[field] ok  RepoPatchFileRequest {"newText":"    placeControlIds: List<String>? = null,","oldText":"    /** One control id per neighbour, for a **place** button on its card; [showCorpusMicrosco
+[field] ERR RepoRunCommandRequest {"args":["tools/test_check_staged_generated_artifacts.py","GeneratedArtifactSelectionTests.test_ordinary_kotlin_source_does_not_become_a_corpus_input"],"command
+[field] ok  RepoReadFileRequest {"endLine":69,"path":"src/jvmMain/kotlin/afield/audio/ai/CorpusMicroscope.kt","startLine":43}
+[field] ok  RepoRunCommandRequest {"args":["--","src/jvmMain/kotlin/afield/audio/ai/CorpusMicroscope.kt"],"command":"git-diff","timeoutSec":30}
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-status","timeoutSec":30}
+[field] model=openai/gpt-6.1-sol rounds=9/40 wall=65s tokens in=412825 out=1792 cacheRead=366092 wrote=['src/jvmMain/kotlin/afield/audio/ai/CorpusMicroscope.kt', 'src/jvmMain/kotlin/afield/audio/ai/CorpusMicroscope.kt'] ran=['git-status  -> 0', 'git-diff 871f8f497614e163fc78de2bb0e41f9633e44cda -- src/jvmMain/kotlin/afield/audio/ai/CorpusMicroscope.kt src/jvmMain/kotlin/afield/ui/output/outputs.kt -> 0', 'python-test tools/test_check_staged_generated_artifacts.py GeneratedArtifactSelectionTests.test_ordinary_kotlin_source_does_not_become_a_corpus_input -> 1', 'git-diff -- src/jvmMain/kotlin/afield/audio/ai/CorpusMicroscope.kt -> 0', 'git-status  -> 0'] verdict=unchecked error=-

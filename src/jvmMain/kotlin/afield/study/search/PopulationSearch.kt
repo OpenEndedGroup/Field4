@@ -86,6 +86,7 @@ import kotlin.random.Random
 
 /** A named variation operator, so a run can report *which* mutation produced each improvement. */
 class Variation<G>(val name: String, val apply: (G, Random) -> G) {
+    /** The operator's [name], which is what a run records against each improvement. */
     override fun toString(): String = name
 }
 
@@ -128,25 +129,33 @@ interface GenomeOps<G> {
 
 /**
  * What one candidate scored.
- *
- * @property fitness the scalar, **higher is better**. Drives tournament selection and the trace.
- * @property cases per-test-case scores, higher better, for [Selection.LEXICASE]. Empty means the
- *   objective has no case structure, and lexicase then degenerates to a uniform random draw — which
- *   is why [evolve] rejects that combination instead of selecting at random.
- * @property behaviour a fixed-length behavioural descriptor for [PopulationSearch.novelty]. Empty
- *   means the objective offers none.
  */
 class Evaluation(
+    /** The scalar, **higher is better**. Drives tournament selection and the trace. */
     val fitness: Double,
+    /**
+     * Per-test-case scores, higher better, for [Selection.LEXICASE]. Empty means the objective has
+     * no case structure, and lexicase then degenerates to a uniform random draw — which is why
+     * [evolve] rejects that combination instead of selecting at random.
+     */
     val cases: DoubleArray = DoubleArray(0),
+    /**
+     * A fixed-length behavioural descriptor for [PopulationSearch.novelty]. Empty means the
+     * objective offers none.
+     */
     val behaviour: DoubleArray = DoubleArray(0)
 ) {
+    /** The fitness and the sizes of [cases] and [behaviour], for a log line. */
     override fun toString(): String = "Evaluation(%.5f, %d case(s), %d descriptor(s))"
         .format(fitness, cases.size, behaviour.size)
 }
 
 /** Scores a genome. Higher is better, always — a cost function is negated by its caller, not here. */
 fun interface Objective<G> {
+    /**
+     * Score one genome. A throw is caught and read as negative infinity, so a candidate the
+     * objective cannot evaluate costs its budget and loses rather than ending the run.
+     */
     fun evaluate(genome: G): Evaluation
 }
 
@@ -155,25 +164,30 @@ fun <G> objectiveOf(score: (G) -> Double): Objective<G> = Objective { Evaluation
 
 /** A genome and what it scored. */
 class Individual<G>(val genome: G, val evaluation: Evaluation, val origin: String) {
+    /** Shorthand for [Evaluation.fitness], which is what selection and the trace compare. */
     val fitness: Double get() = evaluation.fitness
+
+    /** The fitness and the [origin] that produced it, as the drivers' logs print it. */
     override fun toString(): String = "%.5f via %s".format(fitness, origin)
 }
 
 /**
  * One generation in which the population's leader improved.
- *
- * @property generation 1-based generation index
- * @property fitness what the new leader scored
- * @property origin the variation operator that produced it, or `"seed"`/`"random"`/`"immigrant"`
- * @property genome the new leader itself, so the list of improvements *is* a lineage and a figure
- *   can show what the search looked like as it went rather than only where it ended up
  */
 class Improvement<G>(
+    /** 1-based generation index. */
     val generation: Int,
+    /** What the new leader scored. */
     val fitness: Double,
+    /** The variation operator that produced it, or `"seed"`/`"random"`/`"immigrant"`. */
     val origin: String,
+    /**
+     * The new leader itself, so the list of improvements *is* a lineage and a figure can show what
+     * the search looked like as it went rather than only where it ended up.
+     */
     val genome: G
 ) {
+    /** The generation, the fitness and the [origin], as a run's improvement log prints it. */
     override fun toString(): String = "gen $generation: %.5f via %s".format(fitness, origin)
 }
 
@@ -196,24 +210,46 @@ enum class Selection {
 
 /**
  * What one search run did.
- *
- * @property trace best-so-far fitness after each **evaluation**, so two drivers at the same budget
- *   are directly comparable however differently they are shaped internally.
- * @property proposals genomes offered to the evaluator, including cache hits. Well above
- *   [evaluations] means the driver is re-treading; see [GenomeOps.signature].
- * @property recombined how many children came from [GenomeOps.crossover]. Zero for a genome that
- *   declares no recombination, and the number to look at before calling a run "a GA".
  */
 class SearchRun<G>(
+    /** Which driver this was: `random`, `hill climb`, `evolve`, `novelty` or `map-elites`. */
     val label: String,
+    /** The best genome the run evaluated, or `null` if it never evaluated one. */
     val best: Individual<G>?,
+    /**
+     * Times the objective was actually called. A cache hit costs none of this, so it is the budget
+     * the run spent rather than the number of genomes it looked at.
+     */
     val evaluations: Int,
+    /**
+     * Best-so-far fitness after each **evaluation**, so two drivers at the same budget are directly
+     * comparable however differently they are shaped internally.
+     */
     val trace: DoubleArray,
+    /**
+     * Genomes offered to the evaluator, including cache hits. Well above [evaluations] means the
+     * driver is re-treading; see [GenomeOps.signature].
+     */
     val proposals: Int,
+    /**
+     * How many children came from [GenomeOps.crossover]. Zero for a genome that declares no
+     * recombination, and the number to look at before calling a run "a GA".
+     */
     val recombined: Int,
+    /**
+     * How many children were fresh draws rather than offspring, from [PopulationSearch.evolve]'s
+     * `immigrantRate`. Zero for every other driver.
+     */
     val immigrants: Int,
+    /** Generations the loop completed. Zero for the drivers that have no generation. */
     val generations: Int,
+    /**
+     * The population the run ended with — the last generation from [PopulationSearch.evolve], the
+     * filled cells from [PopulationSearch.mapElites], the point [PopulationSearch.hillClimb]
+     * stopped on. Always empty for [PopulationSearch.random], which keeps no population.
+     */
     val survivors: List<Individual<G>>,
+    /** Wall-clock milliseconds for the whole run, the caller's objective included. */
     val millis: Double,
     /** Every generation in which the leader improved, in order. Empty for a non-generational driver. */
     val improvements: List<Improvement<G>> = emptyList()
@@ -224,6 +260,10 @@ class SearchRun<G>(
     /** Best-so-far at the *first* evaluation — the one-shot baseline every later point improves on. */
     val initialFitness: Double get() = if (trace.isEmpty()) Double.NEGATIVE_INFINITY else trace[0]
 
+    /**
+     * One aligned line for a comparison table: the label, the budget spent, the best fitness, the
+     * generations and the proposals, with crossover and immigrant counts only when non-zero.
+     */
     fun summary(): String = buildString {
         append("%-18s %5d evals".format(label, evaluations))
         append("  best %10.5f".format(bestFitness))
@@ -234,6 +274,7 @@ class SearchRun<G>(
         append("  %.1f s".format(millis / 1000.0))
     }
 
+    /** The run's [summary] line. */
     override fun toString(): String = summary()
 }
 

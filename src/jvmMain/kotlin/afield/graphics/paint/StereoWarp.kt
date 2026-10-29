@@ -28,12 +28,16 @@ import kotlin.math.roundToInt
  * displacement between them, as a membrane would (Laplace's equation). [pins] makes pins from
  * lines in 3D seen by both eyes. Between the lines, the sheet is pulled smoothly from one line's
  * disparity to the next.
- *
- * @property columns grid nodes across.
- * @property rows grid nodes down.
- * @property cell canvas units between nodes.
  */
-class StereoWarp internal constructor(val columns: Int, val rows: Int, val cell: Double, internal val at: FloatArray) {
+class StereoWarp internal constructor(
+    /** Grid nodes across the canvas. */
+    val columns: Int,
+    /** Grid nodes down the canvas. */
+    val rows: Int,
+    /** Canvas units between nodes: the sheet is as fine as this, and [map] interpolates between. */
+    val cell: Double,
+    internal val at: FloatArray,
+) {
 
     /** A place on this canvas ([here]) and the same place on the reference ([there]), canvas units. */
     data class Pin(val here: Vec2, val there: Vec2)

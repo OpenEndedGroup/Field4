@@ -1,0 +1,37 @@
+[field] ok  RepoReadFileRequest {"endLine":220,"path":"AGENTS.md","startLine":1}
+[field] ERR RunToolProgramRequest {"code":"for (const [path,startLine,endLine] of [['src/jvmMain/kotlin/afield/graphics/scene/simpleGLTFSupport.kt',210,295],['src/jvmMain/kotlin/afield/math/func
+[field] ok  RepoReadFileRequest {"path":"src/jvmMain/kotlin/afield/graphics/scene/simpleGLTFSupport.kt","startLine":210,"endLine":295}
+[field] ok  RepoReadFileRequest {"path":"src/jvmMain/kotlin/afield/math/functions/FunctionFit.kt","startLine":245,"endLine":330}
+[field] ERR RepoReadFileRequest {"path":"src/jvmTest/kotlin/afield/docs/PersonalBoundaryTest.kt","startLine":1,"endLine":400}
+[field] ok  RunToolProgramRequest {"code":"text(tools.RepoListFiles({glob:'**/PersonalBoundaryTest.kt'}));text(tools.RepoSearch({glob:'src/jvmMain/kotlin/afield/lang/python/PythonInterface.kt',q
+[field] ok  RepoListFilesRequest {"glob":"**/PersonalBoundaryTest.kt"}
+[field] ok  RepoSearchRequest {"glob":"src/jvmMain/kotlin/afield/lang/python/PythonInterface.kt","query":"importlib","regex":false,"ignoreCase":false,"maxMatches":20}
+[field] ok  RepoListFilesRequest {"glob":"tools/*kdoc*"}
+[field] ok  RepoReadFileRequest {"path":"AGENTS.md","startLine":360,"endLine":552}
+[field] ok  RepoRunCommandRequest {"command":"git-status","args":[],"timeoutSec":10}
+[field] ok  RepoReadFileRequest {"endLine":370,"path":"src/jvmTest/kotlin/afield/tools/docs/PersonalBoundaryTest.kt","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":2035,"path":"src/jvmMain/kotlin/afield/lang/python/PythonInterface.kt","startLine":1950}
+[field] ok  RepoListFilesRequest {"glob":"**/*KDoc*kt"}
+[field] ok  RepoListFilesRequest {"glob":"tools/check_*"}
+[field] ok  RepoReadFileRequest {"endLine":260,"path":"src/jvmMain/kotlin/afield/tools/docs/KDocAttachmentGuard.kt","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":220,"path":"tools/check_module_imports.py","startLine":1}
+[field] ok  RepoSearchRequest {"glob":"src/jvmMain/kotlin/afield/tools/docs/index/KDocExtractor.kt","ignoreCase":false,"maxMatches":20,"query":"parseDeclaration","regex":false}
+[field] ok  RepoReadFileRequest {"endLine":120,"path":"dev_docs/kdoc_reference_contract.md","startLine":1}
+[field] ok  RunToolProgramRequest {"code":"const edits=[{path:'src/jvmMain/kotlin/afield/graphics/scene/simpleGLTFSupport.kt',helper:'        /**\\n         * `view * model` for this primitive u
+[field] ok  RepoPatchFileRequest {"path":"src/jvmMain/kotlin/afield/graphics/scene/simpleGLTFSupport.kt","oldText":"        /**\n         * `view * model` for this primitive under [camera], wit
+[field] ok  RepoPatchFileRequest {"path":"src/jvmMain/kotlin/afield/graphics/scene/simpleGLTFSupport.kt","oldText":"        /**\n         * Upload this instance's buffers and set the push const
+[field] ok  RepoPatchFileRequest {"path":"src/jvmMain/kotlin/afield/math/functions/FunctionFit.kt","oldText":"/**\n * The name-node prefix a lowering gives a number that is meant to be solved f
+[field] ok  RepoPatchFileRequest {"path":"src/jvmMain/kotlin/afield/math/functions/FunctionFit.kt","oldText":"/**\n * Fits the numeric leaves of [seed] to [target] by Adam descent on the RMSE l
+[field] ok  RepoPatchFileRequest {"path":"src/jvmMain/kotlin/afield/lang/python/PythonInterface.kt","oldText":"                    import importlib.metadata\n                    emit(\"jepVersi
+[field] ok  RunToolProgramRequest {"code":"text(tools.RepoRunCommand({command:'git-diff',args:[],timeoutSec:10}));text(tools.RepoReadFile({path:'src/jvmMain/kotlin/afield/tools/docs/index/KDocEx
+[field] ok  RepoRunCommandRequest {"command":"git-diff","args":[],"timeoutSec":10}
+[field] ok  RepoReadFileRequest {"path":"src/jvmMain/kotlin/afield/tools/docs/index/KDocExtractor.kt","startLine":172,"endLine":230}
+[field] ok  RepoReadFileRequest {"path":"tools/test_field_python_env.py","startLine":1,"endLine":220}
+[field] ok  RepoReadFileRequest {"path":"src/jvmMain/kotlin/afield/graphics/scene/simpleGLTFSupport.kt","startLine":235,"endLine":282}
+[field] ok  RepoReadFileRequest {"path":"src/jvmMain/kotlin/afield/math/functions/FunctionFit.kt","startLine":270,"endLine":325}
+[field] ok  RepoReadFileRequest {"path":"src/jvmMain/kotlin/afield/lang/python/PythonInterface.kt","startLine":1990,"endLine":1998}
+[field] ok  RepoRunCommandRequest {"args":["--stat"],"command":"git-diff","timeoutSec":10}
+[field] ok  RepoReadFileRequest {"endLine":278,"path":"src/jvmMain/kotlin/afield/graphics/scene/simpleGLTFSupport.kt","startLine":269}
+[field] ok  RepoReadFileRequest {"endLine":319,"path":"src/jvmMain/kotlin/afield/math/functions/FunctionFit.kt","startLine":307}
+[field] ok  RepoReadFileRequest {"endLine":1998,"path":"src/jvmMain/kotlin/afield/lang/python/PythonInterface.kt","startLine":1992}
+[field] model=openai/gpt-6.1-sol rounds=8/40 wall=63s tokens in=352028 out=2319 cacheRead=301233 wrote=['src/jvmMain/kotlin/afield/graphics/scene/simpleGLTFSupport.kt', 'src/jvmMain/kotlin/afield/graphics/scene/simpleGLTFSupport.kt', 'src/jvmMain/kotlin/afield/math/functions/FunctionFit.kt', 'src/jvmMain/kotlin/afield/math/functions/FunctionFit.kt', 'src/jvmMain/kotlin/afield/lang/python/PythonInterface.kt'] ran=['git-status  -> 0', 'git-diff  -> 0', 'git-diff --stat -> 0'] verdict=unchecked error=-

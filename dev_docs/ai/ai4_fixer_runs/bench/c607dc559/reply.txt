@@ -1,0 +1,3 @@
+Added the missing source citation to the handoff heading; inspection confirms it matches the guard’s accepted syntax and the implementation at line 994. The diff changes one line only; tests could not be rerun because Gradle is unavailable and no Python equivalent covers this check.
+
+FIXER-VERDICT: {"verdict": "fix", "culprit": "docs/language-p3-shared", "reason": "The new handoff omitted evidence beside its heading’s claim, repaired by adding a verified source citation within that claim unit."}

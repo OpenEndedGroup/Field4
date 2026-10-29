@@ -41,16 +41,17 @@ expect:
 */
 /**
  * Guards the [PersonalLayer] boundary: `src/personal` is off the app `-cp` and reachable only
- * through its own classloader, so the ways it can quietly stop working are all invisible.
+ * through its own classloader.
  *
  * Each of these fails silently rather than loudly if it regresses — box code stops resolving
  * personal symbols with an ordinary "unresolved reference", which looks like a user typo; and
  * completion just returns fewer candidates. Hence a test rather than trust:
  *
- *  1. personal really is off `-cp` (otherwise the layer is decorative and Phase 2 can never drop it),
+ *  1. personal really is off `-cp` (otherwise the layer is decorative: the classes would resolve
+ *     from the app loader anyway),
  *  2. [PersonalLayer.wrap] is idempotent (Server.main installs the layer as the context classloader,
  *     so KI2's `wrap(contextClassLoader)` must not stack a second layer on top of the first),
- *  3. and — the one that actually matters — the K2 REPL both *compiles* and *runs* against it.
+ *  3. and the K2 REPL both *compiles* and *runs* against it.
  *     Compilation is the subtle half: it works only because
  *     `dependenciesFromClassloader(wholeClasspath = true)` walks the parent chain collecting each
  *     loader's URLs, which is behaviour of the Kotlin scripting library, not of anything here.

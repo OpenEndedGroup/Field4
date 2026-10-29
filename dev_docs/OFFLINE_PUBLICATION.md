@@ -105,8 +105,82 @@ Run `uv run python tools/docs_publications.py sync` to refresh without rendering
 Unchanged documents start no Field JVM or browser. Documents with no output-area channels have
 their own source fingerprints in `catalog.json`'s `emptyDocuments`; they remain code-only and
 are reconsidered when their sources change. The supported population is the two pilot documents
-plus the existing headless-safe transcript classification; native/device/service scenes stay
-outside this automatic capture pass.
+plus the existing headless-safe transcript classification. Native scenes with a matching
+`capture="native-window"` docs recipe also receive the real retained screenshot, attached to its
+`capture-box`; these scenes are opened for export without executing their compile-only code.
+Their image and authoring page fingerprints trigger a refresh when the docs runner changes them.
+Hardware capture profiles remain owned by that runner, so publishing does not require the GPU
+that originally rendered a retained image. Device/service scenes without a docs capture stay
+code-only.
+
+### Adding a transcript: the routine path
+
+New transcripts are the usual update; the corpus does not need a full recapture each time.
+There is no second list of publication names to maintain.
+
+1. Add `dev_docs/agents/transcripts/<name>.yaml` and classify it in
+   `src/jvmMain/kotlin/afield/examples/DemoTranscriptExecSmokeTest.kt`.
+   `EXECUTE` scenes are eligible for automatic output capture once materialized. Choose the
+   classification for actual runtime requirements: GPU/device/service scenes must not be moved
+   into `EXECUTE` just to obtain a publication.
+2. Write its entry in `public/docs/agent_transcripts.md` under the matching `verified-by` section,
+   with the normal offline Open link to `assets/agent_transcripts/<name>/metadata.edn`.
+   Agent-only transcripts excluded by the materializer have no starting-point Open link.
+3. Regenerate the saved starting points, then build with incremental capture:
+
+   ```bash
+   ./gradlew regenerateAgentTranscriptStartingPoints
+   FIELD_DOCS_RUNNER_MODE=incremental uv run --project . --group docs python tools/build_zensical_docs.py
+   ```
+
+   The HTML build refreshes publications for existing materialized documents; it does not replace
+   the materialization step. A new eligible scene has no catalog entry, so the publication sync
+   captures it automatically. Unchanged scenes reuse their captures. Create-only `EXECUTE`
+   transcripts have their prepared boxes evaluated in creation order for publication.
+4. Inspect the new gallery entry and its actual outputs. A scene with no output-area channels
+   stays code-only and is recorded in `emptyDocuments`; changes to its sources cause another try.
+   For native scenes, add a real `diffstatic_runner` recipe on the relevant docs page with
+   `macro-file="../../dev_docs/agents/transcripts/<name>.yaml"`, `capture="native-window"`,
+   `capture-box="<renderer-box-id>"` and `screenshot="<retained-image.png>"`. The docs runner must
+   produce the real image before publication can reuse it. Preserve the appropriate hardware
+   capture profile; an absent or unsupported capture is not a rendered example.
+5. Commit the authored changes and generated starting points/publications. Run
+   `uv run python tools/land.py precheck`, then `uv run python tools/land.py enqueue --push`.
+   The lander regenerates affected starting points **before** publication sync on the merged
+   tree, so transcripts arriving from other branches join the same discovered population.
+   After landing, `uv run python tools/land.py doc` queues the main-site build; wait for its
+   printed queue id before reporting the rebuilt site as ready.
+
+### Refresh choices and diagnosis
+
+| Change | Action |
+| --- | --- |
+| New or edited transcript | Materialize, then the incremental build above. |
+| New native docs image | The docs runner captures first; publication sync runs before assets are copied. |
+| Gallery prose or viewer CSS | Normal incremental build; no output recapture needed. |
+| Broad runtime/API refactor affecting rendered results | Materialize, then build with `FIELD_DOCS_RUNNER_MODE=always` to recapture supported scenes. General runtime edits are not all included in publication fingerprints. |
+| Publisher or canonical Three.js implementation | Tracked capture fingerprints invalidate eligible publications automatically. |
+| Rebuild HTML using valid existing captures only | `FIELD_DOCS_RUNNER_MODE=never`; stale or missing publications fail rather than silently publish old output. |
+
+For a focused repair after materializing a changed transcript:
+
+```bash
+uv run python tools/docs_publications.py capture --group gallery --name <name> --force
+```
+
+List eligible recipes with `uv run python tools/docs_publications.py list --group gallery`.
+If a new scene is missing, check its execution classification, materialized metadata and (for
+compile-only native scenes) matching docs capture recipe. `KOTLINJS` and device/service scenes
+without a supported capture remain code-only. Check catalog coverage without starting Field with
+`uv run python tools/docs_publications.py check`; the build also exposes this as
+`./gradlew checkDocsPublications`. Refresh counts and failures are in
+`build/docs-publications-refresh.json`. Neither source fingerprints nor a successful HTML build
+prove the picture is correct: inspect new or substantially changed outputs in the gallery, and
+use `tools/check_docs_publications.mjs` for browser coverage as described below.
+
+Publishing a running document also captures each already open Vulkan window through the same
+native-window screenshot operation used by the backdoor. Each renderer gets a frozen image;
+publishing does not launch renderers. Capture failures are reported alongside the exported outputs.
 
 `checkDocsPublications`, included in `check` and `docsGates`, checks recipe coverage, source and
 publisher fingerprints, manifests, output files and shared-runtime references without launching

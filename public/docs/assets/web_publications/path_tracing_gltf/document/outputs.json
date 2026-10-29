@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-29T15:51:34.166Z",
+  "documentName": "path_tracing_gltf",
+  "outputs": [
+    {
+      "uid": "path_trace_gltf",
+      "channel": "Vulkan window · still image",
+      "open": true,
+      "path": "outputs/0.html",
+      "width": 6528,
+      "height": 3672,
+      "kinds": [
+        "native-image"
+      ],
+      "warnings": []
+    }
+  ]
+}

@@ -265,7 +265,7 @@ export async function captureOutputs(sources, {fontCss = '', three = null, progr
 }
 
 /** Build a relocatable static site; callers may save the Blob or inspect its files before download. */
-export async function buildPublication(source, {progress = () => {}, includeViewer = true} = {}) {
+export async function buildPublication(source, {progress = () => {}, includeViewer = true, nativeImages = []} = {}) {
     const files = new Map();
     progress('Bundling the viewer and local fonts');
     // Fetch in small batches rather than issuing hundreds of simultaneous requests for Monaco.
@@ -290,6 +290,15 @@ export async function buildPublication(source, {progress = () => {}, includeView
         for (const path of three.sourcePaths) files.delete(path);
     }
     const captured = await captureOutputs(source.outputs, {fontCss, three, progress});
+    for (const image of [...(source.nativeImages || []), ...nativeImages]) {
+        const path = `outputs/${captured.outputs.length}.html`;
+        const node = document.createElement('img');
+        node.src = image.dataUrl; node.alt = image.alt || 'Vulkan window at publication time';
+        node.style.cssText = 'display:block;width:100%;height:100%;object-fit:contain';
+        captured.files.set(path, '<!doctype html><html data-capture-ready="true"><meta charset="utf-8"><body style="margin:0;background:#000">' + node.outerHTML + '</body></html>');
+        captured.outputs.push({uid:image.uid,channel:'Vulkan window · still image',open:true,path,
+            width:image.width,height:image.height,kinds:['native-image'],warnings:[]});
+    }
     if (!includeViewer) {
         for (const path of [...files.keys()]) if (path !== 'three-publication-runtime.js') files.delete(path);
         if (captured.outputs.some(o => o.kinds.includes('plotly'))) {
@@ -305,7 +314,7 @@ export async function buildPublication(source, {progress = () => {}, includeView
     files.set('document/outputs.json', JSON.stringify(manifest,null,2));
     files.set('index.html', '<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=offline.html?file=document/metadata.edn&amp;outputs=document/outputs.json"><a href="offline.html?file=document/metadata.edn&amp;outputs=document/outputs.json">Open published Field document</a>');
     files.set('README.md', `# ${source.document.filename}\n\nUnzip and serve this directory with any static web server. Open index.html.\n\nCode, notes and captured outputs are included. Field is not required.\nThree.js views retain orbit, zoom, parts, X-ray and local GLB download over frozen geometry. Field-only controls are hidden.\nUnsupported custom viewer tools and animated shots use an image fallback with no controls.\nLazy inspectors contain the rows materialized in the captured browser.\nSee document/outputs.json for capture warnings.\n`);
-    const warnings = manifest.outputs.flatMap(o => o.warnings.map(w => `${o.channel}: ${w}`));
+    const warnings = [...(source.warnings || []), ...manifest.outputs.flatMap(o => o.warnings.map(w => `${o.channel}: ${w}`))];
     progress('Packing the publication');
     return {blob:await zipFiles(files), files, manifest, warnings};
 }

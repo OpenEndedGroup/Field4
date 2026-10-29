@@ -178,7 +178,8 @@ internal fun registerArrayControlUpdateHandler() {
 
         val callback = arrayCallbacks[update.controlId]
         if (callback != null) {
-            GlobalScope.launch {
+            // In arrival order (the socket serializes array-update): a plain launch could reorder a drag.
+            GlobalScope.launch(start = kotlinx.coroutines.CoroutineStart.UNDISPATCHED) {
                 try {
                     callback(update.values)
                 } catch (e: Exception) {

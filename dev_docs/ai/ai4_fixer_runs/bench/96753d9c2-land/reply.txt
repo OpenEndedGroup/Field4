@@ -1,0 +1,3 @@
+Removed the private-tree citation from `CREATURE_EVOLUTION.md`, retaining the public implementation reference. The test’s exact path pattern now finds no match in the edited file; Gradle is unavailable, and no Python checker covers this rule.
+
+FIXER-VERDICT: {"verdict": "fix", "culprit": "claude/genetic-algorithm-water-bug-cb6eff", "reason": "The branch introduced a private-path citation in its new documentation, which was removed while retaining the public implementation reference."}

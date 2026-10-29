@@ -1,6 +1,6 @@
 # Keyboard shortcuts
 
-Every keyboard shortcut in Field is one line in one file that belongs to you:
+You can change Field's keyboard shortcuts to suit the way you work. They live in one file:
 
 ```diffstatic {data-lang=text}
 ~/.afield/keybindings.yaml
@@ -11,9 +11,8 @@ in there, including the ones that ship with no shortcut at all. Change a line, s
 shortcut moves immediately: the file is watched, like `~/.afield/theme.css`, and nothing
 needs restarting.
 
-Press `?` on the canvas and Field shows you the card below. It is not a picture of the
-defaults: each legend is read from the shortcut that is *actually bound right now*, so once
-you have edited the file the card describes your Field, not ours.
+Press `?` on the canvas to see the shortcut card. It reads your current bindings, so any changes
+you make to the file show up there too.
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector="#cheatsheet .centered-container-div" screenshot="assets/keybindings/cheatsheet.png" padding="8" wait="0" timeout="120" embed=true hidden=true name="keybindings-cheatsheet" alt="Field's ? cheatsheet card, with every key legend filled in from the live keybindings"}
 // The card's legends come from the live bindings, so make sure this capture is of the
@@ -81,9 +80,8 @@ re-registers them in the editor and on the canvas at once, then tells you it has
 you would rather not wait, or you changed the file while Field was not running, there is a
 **Reload Keybindings** command that re-reads it on the spot.
 
-Deleted the file? Field writes a fresh one from its own defaults the next time it takes
-stock of its commands, which is every run. That is also the way to get a clean copy back if
-you have edited yourself into a corner: move yours aside and let Field regenerate.
+If you delete the file, Field writes a fresh copy with the defaults on its next run. You can use
+the same trick to start over: move your edited file aside and let Field make another.
 
 ## Writing a shortcut
 
@@ -125,7 +123,7 @@ A **shifted character stands for Shift plus its key**, which is much nicer to re
 spelling the modifier out. `?` is exactly `shift+/`, and that is how the cheatsheet's own
 shortcut is written. The same goes for `~ ! @ # $ % ^ & * ( ) _ { } : " < > |`.
 
-Two characters that are also separators need a word about them: a lone `,`, `-` or `+` is
+Three characters that are also separators need a word about them: a lone `,`, `-` or `+` is
 read as a key only when it is the last thing in the spec. So `cmd+,` binds the comma key
 (that really is one of Field's defaults, "Previous Property"), `cmd+-` binds the minus key,
 and `cmd + k` is just `cmd+k` with room to breathe.
@@ -141,8 +139,8 @@ bindings:
 ```
 
 Every key ends a chord, and the modifiers written before a key belong to it. That is why
-`cmd shift d` is still one shortcut, Cmd+Shift+D: it has one key. `cmd+k cmd+s` has two, so it
-is two chords. A chord is at most two keys.
+`cmd shift d` is still one shortcut, Cmd+Shift+D: it has one key. `cmd+k cmd+s` has two keys,
+so it is a chord. A chord is at most two keys.
 
 After the first key Field shows it at the bottom of the window ("Cmd+K … (waiting for the
 second key)") and waits **one second**. Then:
@@ -227,7 +225,7 @@ will use every day.
 
 ## When you get it wrong
 
-Field would rather tell you than guess.
+If a binding cannot be applied, Field tells you what went wrong.
 
 - **A spec it cannot read** is reported with the reason, as a notification and in the log —
   and the other lines in the file still apply, so one bad shortcut does not cost you the rest:

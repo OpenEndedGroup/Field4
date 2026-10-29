@@ -765,11 +765,25 @@ internal object InspectorValues {
 // Handler wiring
 // -------------------------------------------------------------------------------------------------
 
-@RunsAt(installHandlers)
-fun installInspectorHandler() {
+/**
+ * Every [BrowsableAdapters] registration the server makes, in one place. A `register*BrowsingAdapters()`
+ * function defined anywhere in `src/jvmMain` must be called from here, or `column()`/`tree()` never see
+ * its types (the Assimp/glTF adapters sat unregistered from their introduction until 2026-10-28);
+ * `InspectorTest` scans the source and fails on one that is not. Idempotent.
+ */
+fun registerAllBrowsingAdapters() {
+    if (!allBrowsingAdaptersRegistered.compareAndSet(false, true)) return
     registerExampleRoots()
     registerExampleAdapters()
     registerRendererBrowsingAdapters()
+    registerAssimpBrowsingAdapters()
+}
+
+private val allBrowsingAdaptersRegistered = java.util.concurrent.atomic.AtomicBoolean(false)
+
+@RunsAt(installHandlers)
+fun installInspectorHandler() {
+    registerAllBrowsingAdapters()
     rawHandlers.getOrPut("__browsing__") { mutableSetOf() }.add { text ->
         val s = thisSession.get()
         inMain {

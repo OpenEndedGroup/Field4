@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-28T20:52:28.885Z",
+  "capturedAt": "2026-10-29T15:26:50.082Z",
   "documentName": "fline_examples",
   "outputs": [
     {
@@ -263,8 +263,8 @@
       "kinds": [
         "svg"
       ],
-      "width": 478,
-      "height": 173,
+      "width": 480,
+      "height": 150,
       "path": "outputs/21.html"
     },
     {

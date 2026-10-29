@@ -73,6 +73,35 @@ it all at once. `selectBox(box)` selects a box, and with `property`, `line` and 
 opens the editor on that property, scrolls to a line and marks it. Use `selectBoxByName("name")`
 for a box you do not have in a variable; it searches the whole document.
 
+## A tour of your own document
+
+To guide someone through boxes you already have, add one more box for the guide and name the
+boxes it visits. Each step selects the box it talks about, so the editor follows the reader:
+
+```diffstatic {data-lang=kotlin}
+val show = slideShow {
+    step("Data") {
+        markdownNote("## `numbers` makes the data\n[[next]]")
+        selectBoxByName("numbers")
+    }
+    step("The work") {
+        markdownNote("## Line 3 squares each number\n[[back]] [[next]]")
+        selectBoxByName("squares", line = 3, highlight = 3)
+    }
+    step("Done") {
+        markdownNote("## Run `squares` to see the result\n[[home:Start again]] [[finish]]")
+    }
+}
+
+runBlocking { show.start() }
+```
+
+Replace `numbers` and `squares` with the names of your own boxes. The note stays beside the guide
+box; `anchorNoteTo(box)` in a step moves it beside the box being described instead. A name that
+no box has is skipped without an error: the note still opens but the selection does not move, so
+check the names if the editor stays put. The [slideshow_guide](#a-guide-to-open) starting point at
+the end of this page is this tour with callout lines and a counter added.
+
 ## Moving between steps
 
 The reader moves through a guide with links in its notes. A `[[...]]` shortcut in a Markdown note
@@ -134,7 +163,9 @@ template, described next.
 
 ## Add callbacks and live template values
 
-An interactive step uses a `#custom:name` link in the note body, a `linkCallback("name") { ... }` handler in the step to receive it, and `{{propertyName}}` template expansion for the live values. Together they cover choices, branching, and notes that update while the guide stays on the same step.
+A note can offer choices and show values that change while the reader stays on the same step.
+Use a `#custom:name` link with a `linkCallback("name") { ... }` handler for a choice, and
+`{{propertyName}}` to put a live value in the note.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/interactive_guides/callbacks_and_templates.png" wait="1.5" capture="box" outputs="none" embed=true name="callbacks-and-templates" w="560" h="140" padding="28" alt="The guide box beside its note, headed Interactive Guides with Callbacks. Three blue callback links are listed as bullets: Increment, Choose performance mode, Choose quality mode. Above them the line reads Version: 1.0.0, and the footer reads Count: 3 and Choice: Balanced Mode."}
 :::static
@@ -206,7 +237,7 @@ Annotations let a note point at an exact target.
 - `annotate(...)` points from the note to a box.
 - `annotateToLine(...)` points to an exact property and line inside the editor.
 
-Use them when a sentence is about one box, one property, or one line.
+Add a callout wherever it will help the reader find what the note describes.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/interactive_guides/annotations.png" wait="5" capture="window-editor" outputs="none" embed=true name="guide-annotations" w="240" h="60" padding="12" alt="The Field window. On the left the small guide box, selected, with a green arrowhead at its top-right corner, and beside it the note headed Annotation Lines with its two bullets. An orange dashed line runs from the note across the canvas and curves down to the editor's left edge, ending at the top of line 17. On the right the editor shows the snippet, with a red mark in the gutter at line 17, the selectBox call."}
 :::static
@@ -327,7 +358,7 @@ Most guides are written in this order:
 7. `annotate(...)` or `annotateToLine(...)`, when a sentence is about one exact target.
 8. `withChat()`, when a step needs discussion.
 
-Steps 4 to 8 go only on the steps that ask for them.
+Add the later features wherever the guide needs them.
 
 ## A guide to open
 

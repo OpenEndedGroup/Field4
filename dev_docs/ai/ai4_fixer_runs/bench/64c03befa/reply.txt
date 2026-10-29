@@ -1,0 +1,3 @@
+Changed only the four reported fence headers in `public/docs/learned_pen.md` to `diffstatic`, preserving their contents. Source inspection and the diff confirm the exact prescribed replacements; Gradle is unavailable, and no equivalent Python fence check was found.
+
+FIXER-VERDICT: {"verdict": "fix", "culprit": "claude/handwriting-pen", "reason": "The branch added four bare code fences, now mechanically corrected to the exact diffstatic headers prescribed by the failing test."}

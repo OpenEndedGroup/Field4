@@ -1,13 +1,13 @@
 # What a capture can and cannot show
 
-For anything visual, *it compiles* is not verification. The way to know a change worked is to drive
-it to pixels and look at them, and [Automating Field](automating_field.md) is how that is
-done here without a human in the chair.
+A visual example can compile and still produce the wrong picture. Field's capture tools let you
+run a document and inspect what it actually draws; [Automating Field](automating_field.md) shows
+how to drive them.
 
-This page is about the pictures that cannot be taken, or that come out wrong without saying so.
-They mark the edge of what a person or an agent can claim about a running document from a capture.
+Some captures fail clearly, while others time out or produce a plausible but wrong image. Here's
+how to recognize those cases and what you can check before trusting the result.
 
-The limits sort into three kinds:
+The cases below range from an explicit failure to a capture that succeeds but shows the wrong thing:
 
 | kind | what you get | what it costs you |
 |---|---|---|

@@ -315,6 +315,9 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   started, which is why it is compile-only here.
 - `read_only_session.yaml`: **read-only mode from the inside** — a `saved{}` counter that cannot count,
   and what the flag refuses rather than silently drops. The reason every demo folder says `--read-only`.
+- `controls_surface.yaml`: **a performer's control surface** from the `controlGroup` DSL (log-law
+  slider, XY pad with keyboard nudges and reset, toggle, text, colour) feeding a live figure, and a
+  slider whose callback rebuilds its own group mid-drag without dropping the drag.
 - `certified_envelope.yaml`: **a bound no feature can slip between**. An hour-long signal with a
   10 ms glitch that the signal viewer's sampled envelope misses by 0.4956, the same viewer with its
   opt-in certified band (interval arithmetic over `FnFormulas`) catching it, `certifiedRange` with
@@ -446,6 +449,17 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json \
 The FIELD_TEST `examples.agent-transcripts.materialize` re-materializes to a temp dir and **fails if
 the committed bundle is out of date** — or absent entirely — so a transcript edit without a regenerate
 is caught in CI. `./gradlew checkAgentTranscripts` is the same guard inside `check`.
+
+### Publishing the frozen outputs
+
+After materialization, the normal incremental docs build discovers new eligible transcripts and
+captures their output areas for the gallery's offline viewer. Existing unchanged captures are
+reused, so adding one scene does not require replaying the corpus. Eligibility comes from the
+execution classification above; native scenes can reuse real retained docs captures.
+
+Follow [Adding a transcript: the routine path](../../OFFLINE_PUBLICATION.md#adding-a-transcript-the-routine-path)
+for the authoring, capture, verification and landing checklist. That guide also covers broad
+refactors, focused recaptures and diagnosing a scene that remains code-only.
 
 ### Documentation pages for a starting point
 

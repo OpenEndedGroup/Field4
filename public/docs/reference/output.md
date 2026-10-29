@@ -2,11 +2,44 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # Output
 
-1 source file(s), 25 public symbol(s), 17 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+1 source file(s), 25 public symbol(s), 25 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
 ## MediaSlots.kt { #mediaslots-kt }
+
+A row of input slots for pictures and text, in a box's output: what a program that compares a few
+things (CLIP embeddings, a style transfer, a classifier) reads its inputs from.
+
+```diffstatic {data-lang=kotlin}
+val inputs = mediaSlots {
+    image("public/docs/assets/madp_tetra/tabby_cat.jpg")
+    image("public/docs/assets/madp_tetra/labrador.jpg")
+    text("a photo of a cat")
+    tray("public/docs/assets/madp_tetra")     // more pictures, to drag onto a slot
+}
+inputs.onChange { slots ->
+    val vectors = slots.map { it.clip() }
+    ...
+}
+```
+
+Each slot has a number and a colour, and holds one picture or one piece of text:
+
+- **click** a picture slot to choose a file, or **drop** one on it; drop several and they fill that
+  slot and the ones after it;
+- drop a **folder** (or use **folder…**) to put its pictures in the **tray** under the slots, then
+  drag any of them onto a slot; [`MediaSlotsBuilder.tray`](output.md#mediaslots-kt--mediaslotsbuilder--tray) fills the tray from the box's own code;
+- **type** into a text slot;
+- **reset** puts every slot back as the code says.
+
+Pictures are scaled in the browser to at most 640 pixels on the long side, with the photo's EXIF
+orientation applied, before they are sent; the box sees a `BufferedImage`. What was dropped or typed
+outlives a re-run of the box, but not a restart of Field: the code's own files are what a document
+keeps.
+
+[`onChange`](output.md#mediaslots-kt--mediaslots--onchange) runs on a thread of its own, once now and again after every change, and only when every
+slot is filled. Changes that arrive while it is running are folded into one more run.
 
 `src/jvmMain/kotlin/afield/ui/output/MediaSlots.kt` — [read the source](source/jvmMain/afield/ui/output/MediaSlots/)
 
@@ -14,59 +47,59 @@
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="mediaslots-kt--mediaslots"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">mediaSlots</span><span class="p">(</span><span class="n">channel</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;inputs&quot;</span><span class="p">,</span> <span class="n">colors</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nc">MEDIA&#95;SLOT&#95;COLORS</span><span class="p">,</span> <span class="n">block</span><span class="p">:</span> <span class="nc">MediaSlotsBuilder</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">MediaSlots</span></code>](source/jvmMain/afield/ui/output/MediaSlots/#L289) | Show a row of picture and text slots in this box's output and return them; see [`MediaSlots`](output.md#mediaslots-kt-mediaslots). |
+| <a id="mediaslots-kt--mediaslots"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">mediaSlots</span><span class="p">(</span><span class="n">channel</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;inputs&quot;</span><span class="p">,</span> <span class="n">colors</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nc">MEDIA&#95;SLOT&#95;COLORS</span><span class="p">,</span> <span class="n">block</span><span class="p">:</span> <span class="nc">MediaSlotsBuilder</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">MediaSlots</span></code>](source/jvmMain/afield/ui/output/MediaSlots/#L299) | Show a row of picture and text slots in this box's output and return them; see [`MediaSlots`](output.md#mediaslots-kt-mediaslots). |
 
 ### Top-level values { #mediaslots-kt-values }
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="mediaslots-kt--media-slot-colors"></a>[<code class="highlight"><span class="k">val</span> <span class="nc">MEDIA&#95;SLOT&#95;COLORS</span></code>](source/jvmMain/afield/ui/output/MediaSlots/#L303) | The madp `tetra` page's four slot colours, then two more from the same palette. |
+| <a id="mediaslots-kt--media-slot-colors"></a>[<code class="highlight"><span class="k">val</span> <span class="nc">MEDIA&#95;SLOT&#95;COLORS</span></code>](source/jvmMain/afield/ui/output/MediaSlots/#L313) | The madp `tetra` page's four slot colours, then two more from the same palette. |
 
 ### MediaSlots { #mediaslots-kt-mediaslots }
 
-[<code class="highlight"><span class="k">class</span> <span class="nc">MediaSlots</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">channel</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">defaults</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">MediaSlot</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/ui/output/MediaSlots/#L62)
+[<code class="highlight"><span class="k">class</span> <span class="nc">MediaSlots</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">channel</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">defaults</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">MediaSlot</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/ui/output/MediaSlots/#L71)
 
-A row of input slots for pictures and text, in a box's output: what a program that compares a few things (CLIP embeddings, a style transfer, a classifier) reads its inputs from.
+The row of slots a box is holding: read [`slots`](output.md#mediaslots-kt--mediaslots--slots) or index it with [`get`](output.md#mediaslots-kt--mediaslots--get), ask whether it is [`complete`](output.md#mediaslots-kt--mediaslots--complete), and hand [`onChange`](output.md#mediaslots-kt--mediaslots--onchange) a block to run whenever one of them changes.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="mediaslots-kt--mediaslots--slots"></a>[<code class="highlight"><span class="k">val</span> <span class="n">slots</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">MediaSlot</span><span class="p">&gt;</span></code>](source/jvmMain/afield/ui/output/MediaSlots/#L80) | The slots as they are now: the code's, with whatever was dropped or typed over them. |
-| <a id="mediaslots-kt--mediaslots--tray"></a>[<code class="highlight"><span class="k">val</span> <span class="n">tray</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">MediaSlot</span><span class="p">&gt;</span></code>](source/jvmMain/afield/ui/output/MediaSlots/#L84) | The pictures waiting in the tray. |
-| <a id="mediaslots-kt--mediaslots--get"></a>[<code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">get</span><span class="p">(</span><span class="n">i</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">MediaSlot</span></code>](source/jvmMain/afield/ui/output/MediaSlots/#L87) | Slot `i`, counting from 0. |
-| <a id="mediaslots-kt--mediaslots--complete"></a>[<code class="highlight"><span class="k">val</span> <span class="n">complete</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/ui/output/MediaSlots/#L90) | Whether every slot holds something. |
-| <a id="mediaslots-kt--mediaslots--onchange"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">onChange</span><span class="p">(</span><span class="n">block</span><span class="p">:</span> <span class="p">(</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">MediaSlot</span><span class="p">&gt;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/ui/output/MediaSlots/#L96) | Run `block` with the slots now, and again after every change, on a thread of its own. It is not called while a slot is empty. Calling `onChange` again replaces the block. |
+| <a id="mediaslots-kt--mediaslots--slots"></a>[<code class="highlight"><span class="k">val</span> <span class="n">slots</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">MediaSlot</span><span class="p">&gt;</span></code>](source/jvmMain/afield/ui/output/MediaSlots/#L89) | The slots as they are now: the code's, with whatever was dropped or typed over them. |
+| <a id="mediaslots-kt--mediaslots--tray"></a>[<code class="highlight"><span class="k">val</span> <span class="n">tray</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">MediaSlot</span><span class="p">&gt;</span></code>](source/jvmMain/afield/ui/output/MediaSlots/#L93) | The pictures waiting in the tray. |
+| <a id="mediaslots-kt--mediaslots--get"></a>[<code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">get</span><span class="p">(</span><span class="n">i</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">MediaSlot</span></code>](source/jvmMain/afield/ui/output/MediaSlots/#L96) | Slot `i`, counting from 0. |
+| <a id="mediaslots-kt--mediaslots--complete"></a>[<code class="highlight"><span class="k">val</span> <span class="n">complete</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/ui/output/MediaSlots/#L99) | Whether every slot holds something. |
+| <a id="mediaslots-kt--mediaslots--onchange"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">onChange</span><span class="p">(</span><span class="n">block</span><span class="p">:</span> <span class="p">(</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">MediaSlot</span><span class="p">&gt;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/ui/output/MediaSlots/#L105) | Run `block` with the slots now, and again after every change, on a thread of its own. It is not called while a slot is empty. Calling `onChange` again replaces the block. |
 
 ### MediaSlot { #mediaslots-kt-mediaslot }
 
-[<code class="highlight"><span class="k">class</span> <span class="nc">MediaSlot</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">Kind</span><span class="p">,</span> <span class="k">val</span> <span class="n">color</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">image</span><span class="p">:</span> <span class="nc">BufferedImage</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">file</span><span class="p">:</span> <span class="nc">File</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>](source/jvmMain/afield/ui/output/MediaSlots/#L212)
+[<code class="highlight"><span class="k">class</span> <span class="nc">MediaSlot</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">Kind</span><span class="p">,</span> <span class="k">val</span> <span class="n">color</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">image</span><span class="p">:</span> <span class="nc">BufferedImage</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">file</span><span class="p">:</span> <span class="nc">File</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>](source/jvmMain/afield/ui/output/MediaSlots/#L214)
 
 One slot of a [`MediaSlots`](output.md#mediaslots-kt-mediaslots): a picture or a piece of text, with the slot's number and colour.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="mediaslots-kt--mediaslot--index"></a><code class="highlight"><span class="k">val</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
-| <a id="mediaslots-kt--mediaslot--kind"></a><code class="highlight"><span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">Kind</span></code> |  |
-| <a id="mediaslots-kt--mediaslot--color"></a><code class="highlight"><span class="k">val</span> <span class="n">color</span><span class="p">:</span> <span class="nc">String</span></code> |  |
-| <a id="mediaslots-kt--mediaslot--label"></a><code class="highlight"><span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span></code> |  |
-| <a id="mediaslots-kt--mediaslot--image"></a><code class="highlight"><span class="k">val</span> <span class="n">image</span><span class="p">:</span> <span class="nc">BufferedImage</span><span class="o">?</span></code> |  |
-| <a id="mediaslots-kt--mediaslot--text"></a><code class="highlight"><span class="k">val</span> <span class="n">text</span><span class="p">:</span> <span class="nc">String</span></code> |  |
-| <a id="mediaslots-kt--mediaslot--file"></a><code class="highlight"><span class="k">val</span> <span class="n">file</span><span class="p">:</span> <span class="nc">File</span><span class="o">?</span></code> |  |
-| <a id="mediaslots-kt--mediaslot--kind-2"></a>[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">Kind</span></code>](source/jvmMain/afield/ui/output/MediaSlots/#L222) | A picture slot or a text slot. |
-| <a id="mediaslots-kt--mediaslot--isempty"></a>[<code class="highlight"><span class="k">val</span> <span class="n">isEmpty</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/ui/output/MediaSlots/#L225) | Whether there is nothing in the slot yet. |
-| <a id="mediaslots-kt--mediaslot--clip"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">clip</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">ClipVector</span></code>](source/jvmMain/afield/ui/output/MediaSlots/#L231) | The slot's CLIP embedding: [`clipEncodeImage`](machine-learning.md#clip-kt--clipencodeimage) for a picture, [`clipEncode`](machine-learning.md#clip-kt--clipencode) for text. Both land in the same 512-dimensional space, so a picture and a sentence can be compared. |
-| <a id="mediaslots-kt--mediaslot--tostring"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/ui/output/MediaSlots/#L241) |  |
+| <a id="mediaslots-kt--mediaslot--index"></a><code class="highlight"><span class="k">val</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Int</span></code> | The slot's position, from 0; the widget shows `index + 1`. |
+| <a id="mediaslots-kt--mediaslot--kind"></a><code class="highlight"><span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">Kind</span></code> | Whether the slot takes a picture or a piece of text. |
+| <a id="mediaslots-kt--mediaslot--color"></a><code class="highlight"><span class="k">val</span> <span class="n">color</span><span class="p">:</span> <span class="nc">String</span></code> | The slot's CSS colour, which a drawing of the result should reuse. |
+| <a id="mediaslots-kt--mediaslot--label"></a><code class="highlight"><span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span></code> | The picture's file name without its extension, or, for a text slot, the text itself. |
+| <a id="mediaslots-kt--mediaslot--image"></a><code class="highlight"><span class="k">val</span> <span class="n">image</span><span class="p">:</span> <span class="nc">BufferedImage</span><span class="o">?</span></code> | The picture, for an image slot that is filled, and null for one that is not. |
+| <a id="mediaslots-kt--mediaslot--text"></a><code class="highlight"><span class="k">val</span> <span class="n">text</span><span class="p">:</span> <span class="nc">String</span></code> | The text, for a text slot; empty for an image slot. |
+| <a id="mediaslots-kt--mediaslot--file"></a><code class="highlight"><span class="k">val</span> <span class="n">file</span><span class="p">:</span> <span class="nc">File</span><span class="o">?</span></code> | Where the picture came from, when it came from a file on this machine rather than a drop. |
+| <a id="mediaslots-kt--mediaslot--kind-2"></a>[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">Kind</span></code>](source/jvmMain/afield/ui/output/MediaSlots/#L231) | A picture slot or a text slot. |
+| <a id="mediaslots-kt--mediaslot--isempty"></a>[<code class="highlight"><span class="k">val</span> <span class="n">isEmpty</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/ui/output/MediaSlots/#L234) | Whether there is nothing in the slot yet. |
+| <a id="mediaslots-kt--mediaslot--clip"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">clip</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">ClipVector</span></code>](source/jvmMain/afield/ui/output/MediaSlots/#L240) | The slot's CLIP embedding: [`clipEncodeImage`](machine-learning.md#clip-kt--clipencodeimage) for a picture, [`clipEncode`](machine-learning.md#clip-kt--clipencode) for text. Both land in the same 512-dimensional space, so a picture and a sentence can be compared. |
+| <a id="mediaslots-kt--mediaslot--tostring"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/ui/output/MediaSlots/#L251) | The slot's number as the widget shows it, its kind and its label, and whether it is empty. |
 
 ### MediaSlotsBuilder { #mediaslots-kt-mediaslotsbuilder }
 
-[<code class="highlight"><span class="k">class</span> <span class="nc">MediaSlotsBuilder</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">colors</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/ui/output/MediaSlots/#L245)
+[<code class="highlight"><span class="k">class</span> <span class="nc">MediaSlotsBuilder</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">colors</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/ui/output/MediaSlots/#L255)
 
 The receiver of [`Box.mediaSlots`](output.md#mediaslots-kt--mediaslots)'s block: one call per slot, in order, and any trays.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="mediaslots-kt--mediaslotsbuilder--image"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">image</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/ui/output/MediaSlots/#L252) | A picture slot holding the image at `path` (relative to Field's working directory, or absolute). |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">image</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/ui/output/MediaSlots/#L259) | An empty picture slot, to be filled by a drop. |
-| <a id="mediaslots-kt--mediaslotsbuilder--text"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">text</span><span class="p">(</span><span class="n">initial</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/ui/output/MediaSlots/#L264) | A text slot, starting with `initial`. |
-| <a id="mediaslots-kt--mediaslotsbuilder--tray"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">tray</span><span class="p">(</span><span class="n">folder</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/ui/output/MediaSlots/#L269) | Put every picture in `folder` (JPEG, PNG, GIF, BMP; not its subfolders) in the tray, by name. |
+| <a id="mediaslots-kt--mediaslotsbuilder--image"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">image</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/ui/output/MediaSlots/#L262) | A picture slot holding the image at `path` (relative to Field's working directory, or absolute). |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">image</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/ui/output/MediaSlots/#L269) | An empty picture slot, to be filled by a drop. |
+| <a id="mediaslots-kt--mediaslotsbuilder--text"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">text</span><span class="p">(</span><span class="n">initial</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/ui/output/MediaSlots/#L274) | A text slot, starting with `initial`. |
+| <a id="mediaslots-kt--mediaslotsbuilder--tray"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">tray</span><span class="p">(</span><span class="n">folder</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/ui/output/MediaSlots/#L279) | Put every picture in `folder` (JPEG, PNG, GIF, BMP; not its subfolders) in the tray, by name. |
 
 </div>

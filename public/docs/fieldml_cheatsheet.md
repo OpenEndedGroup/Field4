@@ -1,6 +1,8 @@
 # FieldML cheatsheet
 
-FieldML is Field's small ML-flavoured expression language, strict and statically typed, with a prelude aimed at generating geometry. Everything in it is an expression and every expression has a type, so the tables below can give a type for every name the language ships with. [FieldML Examples](fieldml_examples.md) is the guided tour.
+FieldML is a small, statically typed expression language with tools for making geometry. This
+cheatsheet lists its syntax and the types of the names in its prelude. For a guided introduction,
+try [FieldML Examples](fieldml_examples.md).
 
 Types are written the way they read: `->` is right associative, so `Float -> Float -> Vec2` is a function of two arguments. A type in argument position keeps its parentheses, as in `('a -> 'b) -> ['a] -> ['b]`.
 

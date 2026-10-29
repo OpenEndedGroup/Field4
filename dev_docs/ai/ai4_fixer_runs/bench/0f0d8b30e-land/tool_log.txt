@@ -1,0 +1,26 @@
+[field] ok  RepoReadFileRequest {"endLine":220,"path":"AGENTS.md","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":300,"path":"dev_docs/server_surface_inventory.md","startLine":1}
+[field] ok  RepoSearchRequest {"glob":"src/**","ignoreCase":false,"maxMatches":30,"query":"set-viewports","regex":false}
+[field] ok  RepoReadFileRequest {"endLine":240,"path":"src/jvmTest/kotlin/afield/app/server/ServerSurfaceLedgerTest.kt","startLine":1}
+[field] ok  RepoSearchRequest {"glob":"tools/*.py","ignoreCase":true,"maxMatches":40,"query":"server_surface","regex":false}
+[field] ok  RepoReadFileRequest {"endLine":2955,"path":"src/jvmMain/kotlin/afield/app/server/Server.kt","startLine":2845}
+[field] ok  RepoReadFileRequest {"endLine":475,"path":"dev_docs/server_surface_inventory.md","startLine":291}
+[field] ok  RepoReadFileRequest {"endLine":580,"path":"src/jvmTest/kotlin/afield/app/server/ServerSurfaceLedgerTest.kt","startLine":270}
+[field] ok  RepoRunCommandRequest {"args":["2d62181fcfa3...8957bdb630eb","--","src/jvmMain/kotlin/afield/app/server/Server.kt"],"command":"git-diff","timeoutSec":30}
+[field] ok  RepoReadFileRequest {"endLine":640,"path":"src/jvmTest/kotlin/afield/app/server/ServerSurfaceLedgerTest.kt","startLine":600}
+[field] ok  RepoSearchRequest {"glob":"src/jvmTest/**/KotlinRouteScan.kt","ignoreCase":false,"maxMatches":10,"query":"serverKotlinFiles","regex":false}
+[field] ok  RepoSearchRequest {"glob":"tools/*.py","ignoreCase":true,"maxMatches":20,"query":"ServerSurfaceLedger|surface_inventory|commandCountRows","regex":true}
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-status","timeoutSec":30}
+[field] ok  RepoReadFileRequest {"endLine":180,"path":"src/jvmTest/kotlin/afield/app/server/KotlinRouteScan.kt","startLine":144}
+[field] ok  RepoSearchRequest {"glob":"src/jvmMain/kotlin/afield/**/*.kt","ignoreCase":false,"maxMatches":300,"query":"(?<![A-Za-z0-9_])handlers\\[\\s*\"([A-Za-z0-9_.:-]+)\"\\s*]","regex":tr
+[field] ok  RunToolProgramRequest {"code":"const s = tools.RepoSearch({glob:'src/jvmMain/kotlin/afield/**/*.kt',ignoreCase:false,maxMatches:300,query:'(?<![A-Za-z0-9_])handlers\\\\[\\\\s*\"([A-Z
+[field] ok  RepoSearchRequest {"glob":"src/jvmMain/kotlin/afield/**/*.kt","ignoreCase":false,"maxMatches":300,"query":"(?<![A-Za-z0-9_])handlers\\[\\s*\"([A-Za-z0-9_.:-]+)\"\\s*]","regex":tr
+[field] ok  RepoReadFileRequest {"path":"dev_docs/server_surface_inventory.md","startLine":1,"endLine":669}
+[field] ok  RepoPatchFileRequest {"newText":"| `Server.kt` | 52 |","oldText":"| `Server.kt` | 51 |","path":"dev_docs/server_surface_inventory.md","replaceAll":false}
+[field] ok  RepoPatchFileRequest {"newText":"| `set-viewport` | `Server.kt` |\n| `set-viewports` | `Server.kt` |","oldText":"| `set-viewport` | `Server.kt` |","path":"dev_docs/server_surface_in
+[field] ok  RepoPatchFileRequest {"newText":"`set-viewports` stores the client's per-pane visible rectangles in the attached session's\nmemory, like `set-viewport`; it accepts no path or code a
+[field] ok  RunToolProgramRequest {"code":"const s = tools.RepoSearch({glob:'src/jvmMain/kotlin/afield/**/*.kt',ignoreCase:false,maxMatches:300,query:'(?<![A-Za-z0-9_])handlers\\\\[\\\\s*\"([A-Z
+[field] ok  RepoSearchRequest {"glob":"src/jvmMain/kotlin/afield/**/*.kt","ignoreCase":false,"maxMatches":300,"query":"(?<![A-Za-z0-9_])handlers\\[\\s*\"([A-Za-z0-9_.:-]+)\"\\s*]","regex":tr
+[field] ok  RepoReadFileRequest {"path":"dev_docs/server_surface_inventory.md","startLine":1,"endLine":700}
+[field] ok  RepoRunCommandRequest {"args":["--","dev_docs/server_surface_inventory.md"],"command":"git-diff","timeoutSec":30}
+[field] model=openai/gpt-6.1-sol rounds=12/40 wall=75s tokens in=578424 out=2799 cacheRead=530406 wrote=['dev_docs/server_surface_inventory.md', 'dev_docs/server_surface_inventory.md', 'dev_docs/server_surface_inventory.md'] ran=['git-diff 2d62181fcfa3...8957bdb630eb -- src/jvmMain/kotlin/afield/app/server/Server.kt -> 0', 'git-status  -> 0', 'git-diff -- dev_docs/server_surface_inventory.md -> 0'] verdict=unchecked error=-

@@ -1,10 +1,9 @@
 # Spreadsheets
 
-A box can hold a spreadsheet. The sheet is shown in the box's output area, you type into it the
-way you type into any spreadsheet, and a cell that starts with `=` is a formula. Formulas are
-Kotlin, compiled by the same engine as box code, so a cell can hold a number, a string, a vector,
-a quantity with units or a drawing, and a formula can read the variables of any box in the
-document. The sheet is saved with the box.
+Put a spreadsheet in a box and you can type into it, write formulas and keep it alongside your
+code. Formulas are Kotlin, so cells can hold vectors, quantities with units and drawings as well as
+numbers and text. A formula can also read values from other boxes. Field saves the sheet with its
+box.
 
 ## A sheet in a box
 
@@ -82,9 +81,9 @@ does not start with `=` is text.
 
 ## Values that carry units, vectors and drawings
 
-A value keeps what it is as it moves through the sheet. `| m` attaches a unit, and arithmetic on
-quantities works out the units of the result. `vec(1.0, 2.0)` is a vector, and arithmetic with a
-number applies to each component; `.x`, `.y`, `.z` and `.w` read one. An `FLine` is a drawing:
+Values keep their types in the sheet. Use `| m` to attach a unit; arithmetic on quantities works
+out the units of the result. `vec(1.0, 2.0)` makes a vector: arithmetic with a number applies to
+each component, and `.x`, `.y`, `.z` and `.w` read individual components. An `FLine` is a drawing:
 adding a vector moves it, multiplying scales it, `.x` and `.y` give the corner of its bounds, and
 `.width` and `.height` their size. Where a single number is needed, a vector stands for its
 length and a line for its diagonal.

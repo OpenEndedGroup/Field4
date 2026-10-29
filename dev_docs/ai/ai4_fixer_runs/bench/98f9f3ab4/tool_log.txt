@@ -1,0 +1,24 @@
+[field] ok  RepoReadFileRequest {"endLine":220,"path":"AGENTS.md","startLine":1}
+[field] ok  RepoSearchRequest {"glob":"**","ignoreCase":true,"maxMatches":60,"query":"checkKDocAttachment","regex":false}
+[field] ok  RepoListFilesRequest {"glob":"tools/*kdoc*"}
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-status","timeoutSec":10}
+[field] ok  RepoReadFileRequest {"endLine":552,"path":"AGENTS.md","startLine":340}
+[field] ok  RepoReadFileRequest {"endLine":300,"path":"src/jvmMain/kotlin/afield/tools/docs/KDocAttachmentGuard.kt","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":180,"path":"dev_docs/kdoc_reference_contract.md","startLine":1}
+[field] ok  RepoListFilesRequest {"glob":"tools/check_*.py"}
+[field] ok  RepoRunCommandRequest {"args":["0999f8289084b0bd96abc34daac96f67501bddcb","--","src/jvmMain/kotlin/afield/math/oracle","src/jvmMain/kotlin/afield/math/temporal"],"command":"git-diff"
+[field] ok  RepoSearchRequest {"glob":"tools/*.py","ignoreCase":true,"maxMatches":60,"query":"kdoc","regex":false}
+[field] ok  RepoReadFileRequest {"endLine":220,"path":"src/jvmMain/kotlin/afield/math/oracle/Trajectory.kt","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":340,"path":"src/jvmMain/kotlin/afield/tools/docs/KDocAttachmentGuard.kt","startLine":295}
+[field] ok  RepoReadFileRequest {"endLine":150,"path":"tools/check_box_idioms.py","startLine":1}
+[field] ok  RepoSearchRequest {"glob":"src/**/afield/math/**/*.kt","ignoreCase":false,"maxMatches":60,"query":"@\\w+ .*\\b(val|var|fun|class)\\b","regex":true}
+[field] ok  RepoReadFileRequest {"endLine":190,"path":"src/jvmTest/kotlin/afield/math/temporal/RecedingHorizonTest.kt","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":180,"path":"src/jvmTest/kotlin/afield/math/temporal/TemporalExperiments.kt","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":190,"path":"src/jvmTest/kotlin/afield/math/oracle/VariableMarkovOracleTest.kt","startLine":1}
+[field] ok  RepoSearchRequest {"glob":"src/**/KDocExtractor.kt","ignoreCase":false,"maxMatches":20,"query":"parseDeclaration","regex":false}
+[field] ok  RepoPatchFileRequest {"newText":"    @Volatile\n    var revision = 0L; private set","oldText":"    @Volatile var revision = 0L; private set","path":"src/jvmMain/kotlin/afield/math/t
+[field] ok  RepoReadFileRequest {"endLine":160,"path":"src/jvmMain/kotlin/afield/math/temporal/TemporalSession.kt","startLine":140}
+[field] ok  RepoReadFileRequest {"endLine":260,"path":"src/jvmMain/kotlin/afield/tools/docs/index/KDocExtractor.kt","startLine":115}
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-diff","timeoutSec":10}
+[field] ok  RepoReadFileRequest {"endLine":319,"path":"src/jvmMain/kotlin/afield/math/oracle/Improviser.kt","startLine":160}
+[field] model=openai/gpt-6.1-sol rounds=7/40 wall=46s tokens in=395694 out=1436 cacheRead=326207 wrote=['src/jvmMain/kotlin/afield/math/temporal/TemporalSession.kt'] ran=['git-status  -> 0', 'git-diff 0999f8289084b0bd96abc34daac96f67501bddcb -- src/jvmMain/kotlin/afield/math/oracle src/jvmMain/kotlin/afield/math/temporal -> 0', 'git-diff  -> 0'] verdict=unchecked error=-

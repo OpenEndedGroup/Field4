@@ -39,6 +39,7 @@ sealed class GpAcquisition {
 
 /** One evaluated point: parameter values by name, and the objective there. */
 data class GpTrial(val parameters: Map<String, Double>, val value: Double) {
+    /** The value of one parameter by name. An unknown name is an error, not a null. */
     operator fun get(name: String): Double = parameters[name] ?: error("No parameter '$name' in $parameters")
 }
 
@@ -69,11 +70,17 @@ data class GpTrial(val parameters: Map<String, Double>, val value: Double) {
  */
 class GpOptimizer(
     parameters: List<GpRange>,
+    /** Search for the smallest value rather than the largest. */
     val minimize: Boolean = false,
+    /** How an untried point is scored from the surrogate's mean and standard deviation. */
     val acquisition: GpAcquisition = GpAcquisition.ExpectedImprovement(),
+    /** Seeds the opening design and the candidate draws, so a run repeats exactly. */
     val seed: Long = 1L,
+    /** How many space-filling suggestions come before the surrogate is used at all. */
     val initialPoints: Int = max(4, parameters.size + 2),
+    /** How many uniform random points the acquisition is scored at, besides 32 jitters of the best four. */
     val candidates: Int = 768,
+    /** How many of the best candidates are refined by projected gradient ascent. */
     val refineStarts: Int = 4,
     /** Fit hyperparameters every this many observations; reuse the last fit in between. */
     val refitEvery: Int = 1,
@@ -85,7 +92,9 @@ class GpOptimizer(
         seed: Long = 1L,
     ) : this(ranges.map { GpRange(it.first, it.second.start, it.second.endInclusive) }, minimize, acquisition, seed)
 
+    /** The parameters being searched over, in the order their coordinates are held. */
     val parameters: List<GpRange> = parameters.toList()
+    /** How many parameters there are. */
     val dimensions: Int get() = parameters.size
     init {
         require(parameters.isNotEmpty()) { "GpOptimizer needs at least one parameter" }
@@ -104,6 +113,7 @@ class GpOptimizer(
 
     /** Everything observed, in order. */
     val history: List<GpTrial> get() = unitX.indices.map { GpTrial(toNamed(unitX[it]), rawY[it]) }
+    /** How many trials have been observed. */
     val observations: Int get() = rawY.size
 
     /** The best observed trial (largest value, or smallest when [minimize]); null before any. */
@@ -139,6 +149,7 @@ class GpOptimizer(
         cached = null
     }
 
+    /** Record a whole [GpTrial], as returned by [best] or carried in [history]. */
     fun observe(trial: GpTrial) = observe(trial.parameters, trial.value)
 
     /** The next point to evaluate. */

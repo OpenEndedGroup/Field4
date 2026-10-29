@@ -1,11 +1,12 @@
 # A function, played and read back
 
-Play a `Functions.Fn` as a sound, analyse the sound, and you can put what the analysis found next
-to the function it came from. `afield.math.functions.Functions` builds the function, and `FnInterval`
-certifies its range on any interval.
-A Dough graph plays it, rendered offline to a 16-bit `.wav`. `PatOnsetDetection` and
-`PatPitchDetection` read the file back. The time-axis viewer draws the function, its certified band,
-what came back, and the audio, on one timeline.
+Turn a function into sound, then analyse the recording and compare what you recover with the
+original. We'll play the same curve as loudness and as pitch, and put the recording, measurements
+and a certified range on one timeline.
+
+`afield.math.functions.Functions` builds the function and `FnInterval` certifies its range. A Dough
+graph plays it, rendered offline to a 16-bit `.wav`; `PatOnsetDetection` and `PatPitchDetection`
+read the file back. The time-axis viewer brings the results together.
 
 Most of what changes on the way is delay: one from how the function reaches the signal graph and
 one from how the pitch detector reports time. Both can be measured to the sample.

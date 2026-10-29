@@ -60,6 +60,7 @@ internal fun registerBuiltInAgentTools(tools: ToolRegistry) {
         afield.ai.agent.registerStudyBuildTools(tools)
         registerAskUserTools(tools)
         registerRepoFileTools(tools)
+        registerRepoCommandTools(tools)
         afield.ai.agent.registerKitTools(tools)
 
 

@@ -9,6 +9,19 @@ import afield.runtime.lifecycle.inMain
 import java.util.IdentityHashMap
 
 /**
+ * Ownership for the modules a box puts into a renderer's target maps, which is what
+ * `renderer += "name" to module` records so that something can take the module out again.
+ *
+ * The map belongs to the renderer and the module to the box that compiled it, a split the map alone
+ * cannot express: a deleted box's module would otherwise go on drawing, holding the snippet
+ * classloader that built it. Each put therefore files a lifecycle claim under
+ * [afield.runtime.lifecycle.ReleasePolicy.KEYED], so stopping the box leaves the module drawing, a
+ * re-run under the same name replaces it, and retiring the box (delete, document close) removes it.
+ * The claim is filed under the renderer as well, and disposing the renderer ends the ones whose
+ * device has gone.
+ */
+
+/**
  * Put [value] into this render-target map under [name] — what `renderer += "name" to module` does —
  * and record it in the lifecycle ledger against the box that is executing.
  *

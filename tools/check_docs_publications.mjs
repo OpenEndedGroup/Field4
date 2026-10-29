@@ -90,6 +90,35 @@ try {
     await page.getByRole('button',{name:'Close document',exact:true}).click();assert.equal(await rail.count(),0);
     await ctx.close();
     ctx=null;
+    // These regressions must be exercised inside the real gallery, through both iframe layers.
+    ctx=await context();page=await ctx.newPage();
+    for(const name of ['pat_fn_graph_fit','three_inspector_wall']){
+        await page.goto(new URL('agent_transcripts/',base).href);
+        await page.locator(`a[href*="file=assets/agent_transcripts/${name}/metadata.edn"]`).first().click();
+        const viewer=await (await page.locator('.field-transcript-viewer iframe').elementHandle()).contentFrame();
+        await viewer.locator('.published-output iframe').first().waitFor();
+        if(name==='pat_fn_graph_fit'){
+            const plotted=viewer.locator('.box[data-box-id="pat_fn_fit"] .published-output iframe').first();
+            const frame=await (await plotted.elementHandle()).contentFrame();
+            await frame.locator('.js-line').first().waitFor();
+            assert.ok(await frame.locator('.js-line').first().evaluate(n=>n.getTotalLength()>100),'Signal has no visible curve');
+            const box=viewer.locator('.box[data-box-id="pat_fn_inspect"]');
+            const before=await box.boundingBox();
+            // boundingBox already uses top-level coordinates, including the outer iframe offset.
+            await page.mouse.move(before.x+before.width/2,before.y+before.height/2);
+            await page.mouse.down();await page.mouse.move(before.x+before.width/2+90,before.y+before.height/2+35,{steps:6});await page.mouse.up();
+            const after=await box.boundingBox();
+            assert.ok(Math.abs(after.x-before.x-90)<2 && Math.abs(after.y-before.y-35)<2,'Offline box did not drag');
+            assert.equal(await box.evaluate(n=>Number(n.style.zIndex)),await viewer.locator('.box').count());
+        }else{
+            const output=await (await viewer.locator('.published-output iframe').first().elementHandle()).contentFrame();
+            const three=await (await output.locator('iframe').elementHandle()).contentFrame();
+            await three.waitForFunction(()=>window.FieldViewer?.captureStatus().ready,{},{timeout:30000});
+            assert.match(await three.locator('#meta').textContent(),/21 ln.*8 tri/,'Wall has no captured geometry');
+        }
+        await page.screenshot({path:resolve(evidence,name+'.png')});
+    }
+    await ctx.close();ctx=null;
     const channels=[];
     for(const [source,entry] of Object.entries(registry.documents)){
         const manifest=await (await fetch(new URL(entry.outputs,base))).json();
@@ -101,6 +130,10 @@ try {
         const channel=channels[i];
         try {
             await page.goto(channel.url);await ready(page);
+            if(channel.kinds.includes('native-image')){
+                const image=page.locator('img').first();
+                assert.ok(await image.evaluate(async n=>{await n.decode();return n.naturalWidth>100&&n.naturalHeight>100;}),'Native capture image is empty');
+            }
             if(channel.source==='assets/agent_transcripts/inertial_movement/metadata.edn' && channel.kinds.includes('plotly')){
                 const fonts=await page.locator('.js-plotly-plot text').evaluateAll(nodes=>nodes.map(n=>getComputedStyle(n).fontFamily));
                 assert.ok(fonts.length && fonts.every(f=>f.includes('Iosevka')),'Published Plotly lost the Field typeface');

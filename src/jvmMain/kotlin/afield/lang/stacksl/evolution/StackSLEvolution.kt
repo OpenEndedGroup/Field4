@@ -129,6 +129,7 @@ class StackSLEvolution(
     /** The target at a given fitness resolution. Asked once per resolution and kept. */
     private val targetAt: (dim: Int) -> StackSLTarget,
     settings: StackSLEvolveSettings = StackSLEvolveSettings(),
+    /** The one seed every draw, selection and mutation is threaded from; a snapshot carries it. */
     val seed: Long = 1L,
     /** Split each render's rows across cores. */
     val parallel: Boolean = true,
@@ -209,7 +210,7 @@ class StackSLEvolution(
     /** The stage the next generation runs under. */
     val stage: StackSLStage get() = settings.stageAt(generation)
 
-    /** The objective of the current [stage]. */
+    /** The objective of the current [StackSLEvolution.stage]. */
     val objective: StackSLImageObjective get() = objectiveFor(stage)
 
     /** The current stage's target. */
@@ -610,6 +611,7 @@ class StackSLEvolution(
         credit.forEach { (k, c) -> appendLine("%-16s %8d %8d %7d".format(k, c.offered, c.survived, c.leads)) }
     }
 
+    /** The search's [summary] block. */
     override fun toString(): String = summary()
 
     // ------------------------------------------------------------------------------------------
@@ -802,14 +804,18 @@ class StackSLEvolution(
 
 /**
  * One stage of a schedule: how many generations it lasts and what fitness means during it.
- *
- * @property lpipsGrid regions per side scored as lexicase cases under LPIPS: 2 is the quadrants, 3
- *   the ninths, 0 none. Ignored under [StackSLMetric.PIXEL], whose cases are its own 4 by 4 grid.
  */
 data class StackSLStage(
+    /** How many generations it lasts. The schedule's last stage runs on whatever this says. */
     val generations: Int = Int.MAX_VALUE,
+    /** The square side candidates are rendered at while it runs. A multiple of 4 in 8..256. */
     val dim: Int = DEFAULT_FITNESS_DIM,
+    /** What "close to the target" means during it. */
     val metric: StackSLMetric = StackSLMetric.LPIPS,
+    /**
+     * Regions per side scored as lexicase cases under LPIPS: 2 is the quadrants, 3 the ninths, 0
+     * none. Ignored under [StackSLMetric.PIXEL], whose cases are its own 4 by 4 grid.
+     */
     val lpipsGrid: Int = 2
 ) {
     /** What identifies the stage's objective and score cache. */
@@ -822,12 +828,14 @@ data class StackSLStage(
         return side
     }
 
+    /** The stage in words: the metric, the resolution, and the region grid when it has one. */
     fun describe(): String = buildString {
         append(metric.name)
         append(" at ${dim}px")
         if (metric != StackSLMetric.PIXEL && lpipsGrid >= 2) append(", ${lpipsGrid}x$lpipsGrid region cases")
     }
 
+    /** Throw if any of the stage's numbers is out of range. */
     fun validate() {
         require(generations >= 1) { "a stage lasts at least one generation, got $generations" }
         require(dim in 8..256 && dim % 4 == 0) { "stage dim must be a multiple of 4 in 8..256, got $dim" }
@@ -837,14 +845,26 @@ data class StackSLStage(
 
 /** Everything about how a [StackSLEvolution] searches. Plain data, so a snapshot carries it. */
 data class StackSLEvolveSettings(
+    /** Survivors kept per island each generation. */
     val mu: Int = 12,
+    /** Children produced per island each generation. */
     val lambda: Int = 24,
+    /** How many populations evolve side by side, exchanging programs through [migrateEvery]. */
     val islands: Int = 1,
+    /** Every this many generations, each island sends its best to the next one; 0 never. */
     val migrateEvery: Int = 8,
+    /** How many of an island's best travel on a migration. A program the destination already has is not copied. */
     val migrants: Int = 2,
+    /**
+     * How a parent is chosen. [Selection.LEXICASE] falls back to [Selection.TOURNAMENT] for any
+     * stage whose objective offers no cases, rather than degenerating into a random draw.
+     */
     val selection: Selection = Selection.LEXICASE,
+    /** How many candidates a tournament compares. Unused under lexicase selection. */
     val tournament: Int = 3,
+    /** The chance a child is recombined from two parents rather than mutated from one. */
     val crossoverRate: Double = 0.25,
+    /** The chance a child is a fresh random draw instead, which is how an island keeps new words arriving. */
     val immigrantRate: Double = 0.05,
     /** Longest program, in words, definitions included; proposals over it are refused, never cut. */
     val maxTokens: Int = 48,
@@ -852,7 +872,9 @@ data class StackSLEvolveSettings(
     val stages: List<StackSLStage> = listOf(StackSLStage()),
     /** Every this many generations, a round of Adam on the leader's literals; 0 never. */
     val fitEvery: Int = 0,
+    /** Adam steps per [fitEvery] round. */
     val fitIterations: Int = 16,
+    /** Adam's step size over the literals, which are in the program's own units. */
     val fitLearningRate: Double = 0.05,
     /** Every this many generations, a watchmaker round; 0 never (unless [watchmakerOnStall]). */
     val watchmakerEvery: Int = 0,
@@ -877,6 +899,7 @@ data class StackSLEvolveSettings(
         return stages.last()
     }
 
+    /** Throw if any of the settings is out of range, each stage included. */
     fun validate() {
         require(mu >= 1 && lambda >= 1) { "mu and lambda must be >= 1" }
         require(islands in 1..16) { "islands must be in 1..16, got $islands" }
@@ -917,21 +940,33 @@ data class StackSLEvolveSettings(
 
 /** One generation's leader. [leaderOrigin] is set only in a generation where the leader improved. */
 data class StackSLGenerationRecord(
+    /** Which generation this is, from 1. */
     val generation: Int = 0,
+    /** Renders spent by the end of it — the budget axis every trace is read against. */
     val renders: Int = 0,
+    /** The stage it ran under, as [StackSLStage.key] writes it. */
     val stage: String = "",
+    /** The leader's fitness at the end of it. */
     val bestFitness: Double = 0.0,
+    /** The same score in skill units: 0 is a flat fill of the target's mean colour, 1 is exact. */
     val bestSkill: Double = 0.0,
+    /** What produced the new leader, or `null` in a generation where the leader did not change. */
     val leaderOrigin: String? = null
 )
 
 /** A new overall leader. */
 data class StackSLImprovement(
+    /** The generation it arrived in. */
     val generation: Int = 0,
+    /** Renders spent when it did, so improvements can be plotted against budget rather than time. */
     val renders: Int = 0,
+    /** What it scored. */
     val fitness: Double = 0.0,
+    /** The same score in skill units; see [StackSLGenerationRecord.bestSkill]. */
     val skill: Double = 0.0,
+    /** What produced it: a named mutation, a crossover, a migrant, or a watchmaker round. */
     val origin: String = "",
+    /** The program itself, so the list of improvements is a readable lineage. */
     val program: String = ""
 )
 
@@ -940,42 +975,84 @@ data class StackSLImprovement(
  * under the search's own metric before and after. [problem] says why there is no fitted program.
  */
 data class StackSLFitOutcome(
+    /** The program the descent started from. */
     val program: String,
+    /** The program with its literals moved, or `null` when there is a [problem]. */
     val fitted: String?,
+    /** The descent's own loss before it ran, which is not the search's metric. */
     val lossBefore: Double?,
+    /** The same loss after. A descent can lower this and still lose skill; both are reported. */
     val lossAfter: Double?,
+    /** Skill under the search's metric before the descent. */
     val skillBefore: Double?,
+    /**
+     * Skill under the search's metric after it, or `null` when the fitted program was refused. The
+     * fitted program is offered to the population either way: this says whether it was worth it.
+     */
     val skillAfter: Double?,
+    /** Why there is no fitted program, or `null` when there is one. */
     val problem: String?
 )
 
 /** How one origin of candidates has done. */
-data class StackSLOriginCredit(var offered: Int = 0, var survived: Int = 0, var leads: Int = 0)
+data class StackSLOriginCredit(
+    /** Candidates this origin produced. */
+    var offered: Int = 0,
+    /** How many of them survived a trim into the next generation. */
+    var survived: Int = 0,
+    /** How many of them became the overall leader, which is the column a claim about an operator rests on. */
+    var leads: Int = 0,
+)
 
 /** A member of a saved island. */
-data class StackSLSnapshotMember(val program: String = "", val origin: String = "", val fitness: Double = 0.0, val skill: Double = 0.0)
+data class StackSLSnapshotMember(
+    /** The program as source text. */
+    val program: String = "",
+    /** What produced it. */
+    val origin: String = "",
+    /** What it scored under the stage it was saved from. */
+    val fitness: Double = 0.0,
+    /** The same score in skill units; see [StackSLGenerationRecord.bestSkill]. */
+    val skill: Double = 0.0,
+)
 
 /** A [StackSLEvolution] as plain data. [StackSLEvolutionSnapshot.write] and [read] are its JSON. */
 data class StackSLEvolutionSnapshot(
+    /** The format version. Reading ignores fields it does not know, so a newer file still loads. */
     val version: Int = 1,
+    /** A name for this saved population, which the archive files it under. */
     val label: String = "",
+    /** The target's name, which is how a restored search finds the picture again. */
     val target: String = "",
+    /** The search's seed, so a restored run continues the same stream rather than a fresh one. */
     val seed: Long = 1L,
+    /** The generation it was saved at. */
     val generation: Int = 0,
+    /** Renders spent by then. */
     val renders: Int = 0,
+    /** The settings it was running under, saved whole because they are plain data. */
     val settings: StackSLEvolveSettings = StackSLEvolveSettings(),
+    /** Each island's members, best first. */
     val islands: List<List<StackSLSnapshotMember>> = emptyList(),
+    /** One record per generation. */
     val history: List<StackSLGenerationRecord> = emptyList(),
+    /** Every generation in which the overall leader improved. */
     val improvements: List<StackSLImprovement> = emptyList(),
+    /** The run's own log lines, in order. */
     val notes: List<String> = emptyList(),
+    /** What each origin has produced, survived and led with, keyed by origin name. */
     val credit: Map<String, StackSLOriginCredit> = emptyMap(),
+    /** What the watchmaker has cost the run so far. */
     val usage: StackSLModelUsage = StackSLModelUsage(),
+    /** The last watchmaker round's outcomes, which the next round's prompt reports back. */
     val lastRound: List<StackSLProposalOutcome> = emptyList(),
+    /** When it was written, as epoch milliseconds. */
     val savedAt: Long = 0L
 ) {
     /** The best saved program and its skill, or `null` for an empty snapshot. */
     val best: StackSLSnapshotMember? get() = islands.flatten().maxByOrNull { it.fitness }
 
+    /** Write the snapshot as JSON, through a temporary file so a reader never sees a half-written one. */
     fun write(file: File) {
         file.parentFile?.mkdirs()
         val tmp = File(file.parentFile, file.name + ".tmp")

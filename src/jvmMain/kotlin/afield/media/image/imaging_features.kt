@@ -210,11 +210,15 @@ fun hysteresis(thinned: Img, low: Float, high: Float): Img {
 
 /**
  * A detected interest point.
- * @property x sub-pixel-capable column
- * @property y sub-pixel-capable row
- * @property response detector strength (Harris response, Shi–Tomasi min-eigenvalue, FAST score, …)
  */
-data class Corner(val x: Double, val y: Double, val response: Double) {
+data class Corner(
+    /** Column, refined to sub-pixel when the detector was asked for it. */
+    val x: Double,
+    /** Row, refined to sub-pixel when the detector was asked for it. */
+    val y: Double,
+    /** Detector strength: Harris response, Shi–Tomasi min-eigenvalue or FAST score. */
+    val response: Double
+) {
     /** As a [Vec2] so it drops straight into `polylineFrom` / the rest of the stdlib geometry. */
     fun toVec2(): Vec2 = Vec2(x.toFloat(), y.toFloat())
 }
@@ -430,11 +434,15 @@ private fun fastQualifies(ring: FloatArray, centre: Float, t: Float, need: Int):
 
 /**
  * A line in Hesse normal form: `x*cos(theta) + y*sin(theta) = rho`.
- * @property rho signed distance from the image origin (top-left) to the line, in pixels
- * @property theta line normal angle in radians, `[0, π)`
- * @property votes accumulator strength — how many edge pixels supported this line
  */
-data class HoughLine(val rho: Double, val theta: Double, val votes: Int) {
+data class HoughLine(
+    /** Signed distance from the image origin (top-left) to the line, in pixels. */
+    val rho: Double,
+    /** Line normal angle in radians, in `[0, π)`. */
+    val theta: Double,
+    /** Accumulator strength: how many edge pixels voted for this line. */
+    val votes: Int
+) {
 
     /** Clip the (infinite) line to the `w x h` image rectangle; `null` if it misses entirely. */
     fun clipTo(w: Int, h: Int): Pair<Vec2, Vec2>? {
@@ -548,9 +556,17 @@ private fun sameLine(a: HoughLine, b: HoughLine, dTheta: Double, dRho: Double): 
 
 /**
  * A circle found by [houghCircles].
- * @property votes accumulator strength at the centre for this radius
  */
-data class HoughCircle(val x: Double, val y: Double, val radius: Double, val votes: Int)
+data class HoughCircle(
+    /** Centre column, on the whole-pixel accumulator grid: these are not refined to sub-pixel. */
+    val x: Double,
+    /** Centre row, on the whole-pixel accumulator grid. */
+    val y: Double,
+    /** Radius in pixels, one of the radii that were tested — `minRadius + k * radiusStep`. */
+    val radius: Double,
+    /** Accumulator strength at the centre for this radius. */
+    val votes: Int
+)
 
 /**
  * Hough circle transform over a binary edge mask, brute force over the radius range. Each edge
@@ -707,23 +723,29 @@ fun Img.blackHat(radius: Int = 3, shape: StructuringElement = StructuringElement
 
 /**
  * One labelled blob from [connectedComponents].
- *
- * @property label the value this blob carries in the label map (1-based; 0 is background)
- * @property area pixel count
- * @property minX/[minY]/[maxX]/[maxY] inclusive bounding box
- * @property centroidX/[centroidY] area centroid
  */
 data class Component(
+    /** The value this blob carries in the label map; 1-based, since 0 is background. */
     val label: Int,
+    /** Pixel count. */
     val area: Int,
+    /** Leftmost column of the bounding box, inclusive. */
     val minX: Int,
+    /** Topmost row of the bounding box, inclusive. */
     val minY: Int,
+    /** Rightmost column of the bounding box, inclusive. */
     val maxX: Int,
+    /** Bottom row of the bounding box, inclusive. */
     val maxY: Int,
+    /** Mean column over the blob's pixels. */
     val centroidX: Double,
+    /** Mean row over the blob's pixels. */
     val centroidY: Double
 ) {
+    /** Bounding-box width in pixels; inclusive, so a single-pixel blob is 1 wide. */
     val boundingWidth: Int get() = maxX - minX + 1
+
+    /** Bounding-box height in pixels; inclusive, so a single-pixel blob is 1 high. */
     val boundingHeight: Int get() = maxY - minY + 1
 
     /** Area over bounding-box area — 1.0 for a filled rectangle, ~π/4 for a disc. */
@@ -735,10 +757,13 @@ data class Component(
 
 /**
  * Result of a connected-component labelling.
- * @property labels 1-channel image whose samples are the integer label of each pixel (0 = background)
- * @property components per-blob statistics, in label order
  */
-class ComponentLabelling(val labels: Img, val components: List<Component>) {
+class ComponentLabelling(
+    /** 1-channel image whose samples are the integer label of each pixel; 0 is background. */
+    val labels: Img,
+    /** Per-blob statistics, in label order. */
+    val components: List<Component>
+) {
     /** How many blobs were found (excluding background). */
     val count: Int get() = components.size
 

@@ -5,7 +5,7 @@ let running = false, serial = 0;
 function sourceDocument() {
     return new Promise((resolve, reject) => {
         const reply = `web-publication-${++serial}`;
-        const timer = setTimeout(() => {clearReplyHandler(reply); reject(new Error('Document export timed out'));}, 15000);
+        const timer = setTimeout(() => {clearReplyHandler(reply); reject(new Error('Document export timed out'));}, 180000);
         sendWithReply('export-web-document', {}, reply, (_message, response) => {
             clearTimeout(timer); resolve(response); return 'remove';
         });

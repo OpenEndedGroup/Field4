@@ -2059,9 +2059,11 @@ body.field-pane-resizing-h * {
     gap: 10px;
 }
 
-.field-slider:focus { outline: none; }
+.field-slider:focus,
+.field-vec2:focus { outline: none; }
 .field-slider:focus-visible,
-.field-slider:focus-within {
+.field-slider:focus-within,
+.field-vec2:focus-visible {
     border-radius: 4px;
     box-shadow: 0 0 0 1px var(--field-accent-text-soft);
 }
@@ -2073,6 +2075,8 @@ body.field-pane-resizing-h * {
 /* Shift-drag: the relative, ten-times-finer drag. The thumb grows a ring so the mode is visible. */
 .field-slider.fine .slider-thumb { stroke-width: 3; r: 7; }
 .field-slider.fine .field-value::after { content: " fine"; opacity: 0.6; }
+.field-vec2.fine .vec2-handle { stroke-width: 3; r: 6; }
+.field-vec2.fine .vec2-tr::after { content: " fine"; opacity: 0.6; }
 .field-value-edit {
     font-family: var(--field-font);
     box-sizing: border-box;

@@ -1,7 +1,5 @@
 # Linear algebra in Field
 
-*Every public declaration used below is listed, with its KDoc, in the codebase reference: [`linalg.kt`](reference/math.md#linalg-kt). Start from [what's already in the box](reference/index.md).*
-
 Linear algebra is the small vocabulary underneath movement, cameras, lighting,
 meshes, simulation, and spatial data. In Field it is meant to read like GLSL and
 run like live code: reorder a vector's components by name, do arithmetic with the
@@ -318,8 +316,7 @@ Field's matrices come in two precisions that share one shape. The
 renderer, camera, and quaternion code speak. The **double-precision** family
 (`Matrix2d`, `Matrix3d`, `Matrix4d`) is its f64 sibling, for arithmetic that must
 never round to `float` silently. Both are generated from the same model as the
-vectors, so a shared method behaves identically bit-for-bit apart from storage
-width.
+vectors, so corresponding methods have the same API while rounding at their respective precisions.
 
 A matrix draws as a **diverging heatmap**: neutral grey at zero, blue for
 positive entries, orange for negative, scaled by magnitude. The header keeps the
@@ -525,8 +522,10 @@ vectors; arithmetic also works on the double and half-precision vectors.
 
 For matrices, pick the precision by need: the `…f` family for anything that ends
 up on screen (cameras, rotations, per-frame transforms), the `…d` family when
-accumulated arithmetic must stay exact. Rotation, projection, and transforming a
+accumulated arithmetic needs greater precision. Rotation, projection, and transforming a
 vector are done with the single-precision `Matrix4f`.
 
 For the complete member listing of every type, precision, and storage form, see
 the [generated vector API reference](linear_algebra_api.md).
+
+*The public declarations used on this page are listed, with their KDoc, in the codebase reference: [`linalg.kt`](reference/math.md#linalg-kt). Start from [what's already in the box](reference/index.md).*

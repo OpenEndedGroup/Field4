@@ -97,32 +97,50 @@ import kotlin.math.sin
  */
 
 /**
- * Dynamic point state for time-varying graph systems.
- *
- * Keeps your existing Vec3 point list plus optional labels and time.
+ * The point cloud a [DynamicGraphSystem] reads and a [DynamicPointProcess] moves: the positions,
+ * optional per-point labels, and the clock.
  */
 data class DynamicPointState(
+    /** The positions, mutated in place; a process may append to or shorten this list. */
     val points: MutableList<Vec3>,
+    /**
+     * One label per point, read by the systems that bias towards like neighbours. A process that adds
+     * or removes points needs this to be a `MutableList`, and says so by name if it is not.
+     */
     val labels: List<Vec4>? = null,
+    /** Seconds accumulated by the systems: each [DynamicGraphSystem]'s `step` adds its own `dt`. */
     var time: Float = 0f
 ) {
+    /** How many points there are now, which is the index space every system walks. */
     val pointCount: Int get() = points.size
 }
 
 /**
- * Edge with dynamic state. This is separate from GraphEdge so the original static graph API stays clean.
+ * An edge with a lifetime: a weight the systems reinforce, plus an age, a countdown and a flag word.
+ * `GraphEdge`, which the static graph library takes, carries only the weight.
  */
 data class DynamicGraphEdge(
+    /** One end. In an undirected [DynamicEdgeList] this is the lower index; otherwise the source. */
     val i: Int,
+    /** The other end. In an undirected [DynamicEdgeList] this is the higher index; otherwise the target. */
     val j: Int,
+    /** Strength, raised by [DynamicEdgeList.reinforce] and lowered by the two decay passes. */
     var weight: Double,
+    /** Seconds this edge has existed. Only the decay passes advance it. */
     var age: Float = 0f,
+    /** Seconds of life left; the decay passes count it down and drop the edge at zero. */
     var ttl: Float = 0f,
+    /** Bit field, currently just [DYNAMIC_EDGE_FLAG_MERGED]. */
     var flags: Int = 0
 ) {
+    /** This edge as a plain `GraphEdge`: the two ends and the weight, with the lifetime dropped. */
     fun toGraphEdge(): GraphEdge = GraphEdge(i, j, weight)
 }
 
+/**
+ * The live edges as a static `PointGraph`, keeping those above [minWeight]. The lifetime fields are
+ * dropped, so the rest of the graph library can take the result.
+ */
 fun dynamicGraphSnapshot(
     dynamicEdges: Collection<DynamicGraphEdge>,
     pointCount: Int,
@@ -927,6 +945,11 @@ class Vec3AlphaEventHypergraphCollapseSystem(
 // Convenience frame helpers
 // -------------------------------------------------------------------------------------
 
+/**
+ * One frame of [system]: widen the store to the cloud's current size, rebuild [spatialHash] over the
+ * points, then step. Nothing here decays: no edge ages, none has its time to live counted down, and
+ * none is dropped. The decaying variants below add that.
+ */
 fun stepDynamicGraph(
     dt: Float,
     state: DynamicPointState,
@@ -941,6 +964,12 @@ fun stepDynamicGraph(
     system.step(dt, state, edges, spatialHash)
 }
 
+/**
+ * [stepDynamicGraph], then [DynamicEdgeList.decayLinear]: every edge ages by `dt` and loses
+ * `weightDecayPerSecond × dt` of weight, and one that reaches zero weight or runs out of time to
+ * live is dropped. Weight falls to zero in a time proportional to it, so a strong edge outlives a
+ * weak one in proportion.
+ */
 fun stepDynamicGraphWithLinearDecay(
     dt: Float,
     state: DynamicPointState,
@@ -953,6 +982,12 @@ fun stepDynamicGraphWithLinearDecay(
     edges.decayLinear(dt, weightDecayPerSecond)
 }
 
+/**
+ * [stepDynamicGraph], then [DynamicEdgeList.decayExponential]: every edge ages by `dt` and its weight
+ * is multiplied by `exp(−lambda × dt)`, with the edge dropped once that falls to `1e-9` or it runs
+ * out of time to live. Weight approaches zero without reaching it, so unlike the linear variant the
+ * time an edge survives grows only with the logarithm of its weight.
+ */
 fun stepDynamicGraphWithExponentialDecay(
     dt: Float,
     state: DynamicPointState,

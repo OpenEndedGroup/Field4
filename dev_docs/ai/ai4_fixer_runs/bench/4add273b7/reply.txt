@@ -1,0 +1,3 @@
+Moved the contour-tree index entry into the execute-verified section and replaced `listOf(dots)` with `[dots]`; the Python checker now passes. Index placement was checked against the guard’s source; Gradle is unavailable in this replay.
+
+FIXER-VERDICT: {"verdict": "fix", "culprit": "claude/contour-trees", "reason": "The branch placed its EXECUTE transcript in a compile-only index section and used listOf where the documentation checker requires a collection literal."}

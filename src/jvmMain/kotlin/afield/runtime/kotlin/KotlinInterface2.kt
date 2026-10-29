@@ -726,10 +726,10 @@ class KotlinInterface2(
 
     /**
      * Which backend actually served the most recent [complete] call, and the [AaCompletionClient.Outcome]
-     * detail that decided it. [complete] already logs both; this makes them ASSERTABLE, which a test that
-     * means to exercise the AA chain needs: a K1 fallback answers a name position with thousands of names,
-     * so "the candidate I wanted is in the list" can be satisfied entirely by the fallback and still read
-     * as a green AA result. `CompletionAaE2EProbe` is what this exists for.
+     * detail that decided it. [complete] logs both; reading them here lets a test assert which backend
+     * answered, which a test of the AA chain needs: a K1 fallback answers a name position with thousands
+     * of names, so "the candidate I wanted is in the list" can be satisfied by the fallback alone and
+     * still read as a green AA result. `CompletionAaE2EProbe` asserts it.
      */
     @Volatile
     var lastCompletionBackend: KotlinEngineConfig.CompletionBackend? = null
@@ -740,7 +740,7 @@ class KotlinInterface2(
         private set
 
     /**
-     * Completion intentionally delegates to the K1 IDE-services path.
+     * Completion delegates to the K1 IDE-services path.
      * K2 remains the execution backend, but autocomplete needs compiler-grade
      * language semantics rather than partial handwritten Analysis API coverage.
      */
@@ -888,6 +888,48 @@ class KotlinInterface2(
     private var k1CompletionDelegateBootstrapped = false
     private var k1CompletionDelegatePreambleFingerprint: Int? = null
     private val k1CompletionDelegateMutex = Mutex()
+
+    /**
+     * Give this engine's K1 completion delegate to [next], the same box's next engine, instead of
+     * disposing it with this one. The delegate holds the intro and the box's preamble and nothing of
+     * this engine's history, so it serves [next] as it is (and is rebuilt there if the preamble has
+     * changed). Otherwise every run of a box built a new one: a K1 compile of the whole intro, ~130
+     * ms of CPU beside the run's own compile.
+     *
+     * Asynchronous, because the delegate is usually still being built when the box's next run
+     * replaces this engine (an edit warms completion just before the run): the handover waits for
+     * that build. Call before [dispose], which then leaves the delegate alone. The delegate is
+     * disposed instead when its build failed, or [next] has built its own meanwhile or is disposed.
+     */
+    @OptIn(DelicateCoroutinesApi::class)
+    internal fun handCompletionDelegateTo(next: KotlinInterface2) {
+        if (next === this) return
+        completionDelegateHandedOn = true
+        GlobalScope.launch(Dispatchers.Default) {
+            val (delegate, fingerprint) = k1CompletionDelegateMutex.withLock {
+                val d = k1CompletionDelegate
+                k1CompletionDelegate = null
+                if (d != null && (!k1CompletionDelegateBootstrapped || d.isDisposed)) {
+                    d.dispose()
+                    null to null
+                } else d to k1CompletionDelegatePreambleFingerprint
+            }
+            if (delegate == null) return@launch
+            val kept = next.k1CompletionDelegateMutex.withLock {
+                if (next.k1CompletionDelegate != null || next.disposed) return@withLock false
+                next.k1CompletionDelegate = delegate
+                next.k1CompletionDelegateBootstrapped = true
+                next.k1CompletionDelegatePreambleFingerprint = fingerprint
+                delegate.associatedBox = next.associatedBox
+                true
+            }
+            if (!kept) delegate.dispose()
+            lprintln("info,ki,startup", "K1 completion delegate for $filePrefix ${if (kept) "handed to the next engine" else "disposed: the next engine has its own"}")
+        }
+    }
+
+    @Volatile
+    private var completionDelegateHandedOn = false
 
     private suspend fun k1CompletionDelegate(): KotlinInterface {
         return k1CompletionDelegateMutex.withLock {
@@ -2973,8 +3015,8 @@ class KotlinInterface2(
     }
 
     /**
-     * Run the stdlib bootstrap (intro) without the [bootstrapReady] gate — it is what opens
-     * the gate — and release the gate afterwards, whatever happened, so nothing waits forever.
+     * Run the stdlib bootstrap (intro) without waiting on the `bootstrapReady` gate, since this call
+     * is what opens it, and release it afterwards whatever happened, so nothing waits forever.
      */
     override suspend fun bootstrap(
         s: String,
@@ -3161,8 +3203,8 @@ class KotlinInterface2(
     override fun dispose() {
         disposed = true
         if (compilationStateUsers.get() == 0) releaseCompilationState()
-        // Its own compiler project, which nothing else releases.
-        k1CompletionDelegate?.dispose()
+        // Its own compiler project, which nothing else releases, unless it is being handed on.
+        if (!completionDelegateHandedOn) k1CompletionDelegate?.dispose()
     }
 
     @Volatile

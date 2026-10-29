@@ -4,10 +4,9 @@
     This is an early snapshot of Field's native **visionOS** front end. Some pieces are
     solid and verified; others are half-built and named as such. Expect it to move.
 
-Field's front end and its Vulkan renderer already talk to each other over JSON. The browser is only
-one client of the Field server, and that decoupling is what makes a spatial front end tractable.
-Rather than cram a desktop UI into a headset, we give each half of Field a native home on visionOS
-and let them float in the room.
+Field's front end and Vulkan renderer talk through a server, so a browser is only one way to use
+Field. On visionOS, the editor and canvas can float in the room alongside native 3D views and
+streams from the renderer.
 
 - **Docks** — the existing Field web UI (editor, canvas, welcome) rendered in `WKWebView`s the
   system composites and drives. HTML stays HTML; we never texture it.

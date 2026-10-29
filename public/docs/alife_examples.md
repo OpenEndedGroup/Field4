@@ -1,23 +1,11 @@
 # Spatial artificial life
 
-*Every public declaration used below is listed, with its KDoc, in the codebase reference:
-[`alife.kt`](reference/alife.md#alife-kt), [`alife_ca.kt`](reference/alife.md#alife-ca-kt),
-[`alife_continuous.kt`](reference/alife.md#alife-continuous-kt),
-[`alife_agents.kt`](reference/alife.md#alife-agents-kt),
-[`alife_lsystem.kt`](reference/alife.md#alife-lsystem-kt) and
-[`alife_field.kt`](reference/alife.md#alife-field-kt). Start from
-[what's already in the box](reference/index.md).*
-
-Artificial life is the study of systems whose interesting behaviour is not in their rules. You write
-down something local and small (count your neighbours, follow the strongest smell, grow toward the
-nearest unclaimed space) and something global and large happens that the rule never mentions: a
-spaceship, a coastline, a transport network, a dendrite with a fractional dimension. This page is
-about the *spatial* half of that: grids, continuous fields and populations of agents. The
-graph-rewriting half lives in [`growing.kt`](reference/data.md#growing-kt) and
-[interaction nets](interaction_nets_examples.md), the constraint-based generative half is
-[Wave Function Collapse](wfc_examples.md), and the half where a *moving* point cloud carries a
-decaying graph with it is [graphs that change while you
-watch](dynamic_graph_systems_examples.md).
+Write a small local rule — count your neighbours, follow the strongest smell, grow toward the
+nearest unclaimed space — and a larger structure can appear: a spaceship, a coastline, a transport
+network, a dendrite with a fractional dimension. This page explores those systems through grids,
+continuous fields and populations of agents. For related work, see [`growing.kt`](reference/data.md#growing-kt),
+[interaction nets](interaction_nets_examples.md), [Wave Function Collapse](wfc_examples.md), and
+[graphs that change while you watch](dynamic_graph_systems_examples.md).
 
 Almost any local rule applied to noise looks organic, so each example here prints a measurement
 beside a *control*: the same setup with one ingredient removed, which gets the number wrong. A
@@ -2146,3 +2134,11 @@ of them opens a `Window` or a `Renderer`. To replay them from a terminal instead
 python3 tools/field_backdoor.py run-transcript dev_docs/agents/transcripts/alife_worked_example.yaml
 python3 tools/field_backdoor.py run-transcript dev_docs/agents/transcripts/alife_evolution.yaml
 ```
+
+*The public declarations used on this page are listed, with their KDoc, in the codebase reference:
+[`alife.kt`](reference/alife.md#alife-kt), [`alife_ca.kt`](reference/alife.md#alife-ca-kt),
+[`alife_continuous.kt`](reference/alife.md#alife-continuous-kt),
+[`alife_agents.kt`](reference/alife.md#alife-agents-kt),
+[`alife_lsystem.kt`](reference/alife.md#alife-lsystem-kt) and
+[`alife_field.kt`](reference/alife.md#alife-field-kt). Start from
+[what's already in the box](reference/index.md).*

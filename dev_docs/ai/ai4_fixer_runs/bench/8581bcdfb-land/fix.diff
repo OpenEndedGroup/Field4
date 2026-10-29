@@ -1,0 +1,25 @@
+diff --git a/dev_docs/GUARD_CORPORA.md b/dev_docs/GUARD_CORPORA.md
+index 911f5ed90..59c9624e3 100644
+--- a/dev_docs/GUARD_CORPORA.md
++++ b/dev_docs/GUARD_CORPORA.md
+@@ -89,7 +89,7 @@ property that makes a page like this checkable by a person at all.
+ | transcripts, recursive | 269 | `find dev_docs/agents/transcripts -name '*.yaml' -o -name '*.yml'` | what `AgentTranscriptLayoutGuard` walks; the difference is the `docs_capture/` variants |
+ | demo directories | 53 | `git ls-files dev_docs/agents/demos/ \| cut -d/ -f4 \| sort -u` | the COMMITTED demo directories, which is what a ledger can be stated over. `ls -1d` was the derivation until 2026-09-25, and it counts anything on disk — so an ignored scratch folder under `demos/` read as an undeclared demo and failed this guard in a working tree while the committed corpus was correct. held as a named set by `AgentDemoRegistrationTest.DEMO_CORPUS` and `test_demo_build_scripts.CORPUS`. **Directories, not documents** — one of them (`flow_grain`, 2026-09-22) has no `metadata.edn` and is transcript *source* rather than a saved document, so the loadable-document population is one smaller and is what `AgentDemoRegistrationTest.demoDocuments` filters to |
+ | demos shipping a `build.yaml` | 10 | `git ls-files 'dev_docs/agents/demos/*/build.yaml'` | the population `test_demo_build_scripts.py` diffs against its `_code_.kt` sidecars |
+-| entries on `public/docs/agent_transcripts.md` | 233 | `grep -oE '^### [a-z0-9_]+$' public/docs/agent_transcripts.md` | must equal the top-level transcript count, both directions |
++| entries on `public/docs/agent_transcripts.md` | 234 | `grep -oE '^### [a-z0-9_]+$' public/docs/agent_transcripts.md` | must equal the top-level transcript count, both directions |
+ | materialized starting-point bundles | 228 | `ls -1d public/docs/assets/agent_transcripts/*/` | transcripts minus `AgentTranscriptMaterializer.EXCLUDE` |
+ 
+ The two transcript counts are both right and they are not the same measurement: 269 = 234 + 35 under `docs_capture/`. If you quote one of them, say which.
+diff --git a/tools/test_demo_build_scripts.py b/tools/test_demo_build_scripts.py
+index 8a0cd3049..1e590f1e1 100644
+--- a/tools/test_demo_build_scripts.py
++++ b/tools/test_demo_build_scripts.py
+@@ -137,6 +137,7 @@ CORPUS = {
+     "path_tracing_emitters",
+     "path_tracing_medium",
+     "pattern_condense",
++    "python_box_parity",
+     "python_cells",
+     "read_only_session",
+     "skinned_characters",

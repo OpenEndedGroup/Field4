@@ -416,8 +416,7 @@ which of these apply to your own expression, beside `fieldNotes()` and `allRefus
 A distance field is full of kinks: `min` and `max` *are* CSG, `abs` is `Shell` and `Gyroid`,
 `sqrt` at zero is every radial primitive's own centre. `abs`, `min` and `max` split the derivative
 **0.5/0.5 at an exact tie**, so a sample that lands exactly where two CSG children meet gets half the
-gradient from each side rather than an arbitrary one of them, and the step it takes still decreases
-the loss.
+gradient from each side rather than an arbitrary one of them.
 
 `gradientNotes()` also flags the two places a smaller step cannot help. At a radial primitive's own
 centre `√·` has an infinite derivative, so a sample there gives `Infinity` in the *position* gradient

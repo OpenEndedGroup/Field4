@@ -5,10 +5,9 @@ boxes, runs them, reads what they printed, looks at what they display, searches 
 and source. This page lists every tool Field gives a chat without any setup, and shows the
 common ones at work.
 
-Every example below is a real call. A script opens an empty document, makes each call on this
-page in order through the same tool registry a chat uses, and writes back what came back. A
-model would send the same arguments and read the same results. Long strings and lists are cut
-short, and box uids are written `<uid of Name>`.
+The examples show real calls and their results, starting with an empty document. A model sends
+the same arguments and reads the same responses during a chat. Long strings and lists are
+shortened here, and box IDs are shown as `<uid of Name>`.
 
 Your own tools join these when you register them; see
 [Give the AI a tool of your own](aiFeatures.md#give-the-ai-a-tool-of-your-own).
@@ -607,6 +606,31 @@ A guide is a Markdown file saved in the document, for anything that should outla
   "conflict": false
 }
 ```
+
+## Working on Field's own repository
+
+AI4 can also do a coding agent's job on a checkout of Field, outside any document: set
+`FIELD_AGENT=field` (or put `field` in `~/.afield/agent`) and the landing queue's fixer, its `huh?`,
+and `tools/docs_notes.py revise` ask AI4 instead of `claude` or `codex`. A chat never sees these
+tools; only a job that names a checkout gets them.
+
+- `RepoReadFileRequest`, `RepoListFilesRequest` and `RepoSearchRequest` read the checkout, and
+  `RepoPatchFileRequest` and `RepoWriteFileRequest` change it. Each job lists the paths it may read and
+  the paths it may write, and a file marked `DO NOT EDIT` is refused.
+- `RepoRunCommandRequest` runs one of the commands the job allows, by name: `gradle` with task names
+  and `--tests`, `python-test` with a `tools/test_*.py` file, `check` with a `tools/check_*.py` file,
+  read-only `git-status`, `git-diff`, `git-log` and `git-show`, and `land-precheck`. It is not a shell.
+  Each name has a fixed command line, and its arguments are checked one by one, so `--stop`, `clean`,
+  or a `;` is refused. Each run has a time limit, after which the command and everything it started
+  is stopped (Gradle's shared daemon is left alone). Long output keeps its beginning and its end.
+  The command also refuses to start while a smoke, UI or docs run holds that checkout's verification
+  lock.
+
+The fixer gets the Gradle, Python, check and git commands, so it can reproduce a red, make the
+smallest edit, and run the same command again to confirm it. To try it by hand, run
+`uv run --project . --group backdoor python tools/field_repo_agent.py --root . --write '**' --run fixer --prompt-file prompt.md`
+in a checkout. The answer goes to stdout, and one line per tool call (with the commands it ran and
+their exit codes) goes to stderr.
 
 ## Every built-in tool
 

@@ -1,16 +1,16 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-28T17:42:47.423Z",
+  "capturedAt": "2026-10-29T15:49:24.595Z",
   "documentName": "drawn_paint",
   "outputs": [
     {
       "uid": "dp_pencil",
-      "channel": "main",
+      "channel": "output",
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 912,
-      "height": 308,
+      "width": 469,
+      "height": 45,
       "path": "outputs/0.html"
     },
     {
@@ -37,53 +37,43 @@
     },
     {
       "uid": "dp_paint",
-      "channel": "main",
+      "channel": "output",
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 912,
-      "height": 1008,
+      "width": 469,
+      "height": 45,
       "path": "outputs/3.html"
     },
     {
       "uid": "dp_drying",
-      "channel": "main",
+      "channel": "output",
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 912,
-      "height": 289,
+      "width": 469,
+      "height": 45,
       "path": "outputs/4.html"
     },
     {
-      "uid": "dp_drying",
-      "channel": "times",
+      "uid": "dp_crossings",
+      "channel": "output",
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 516,
-      "height": 40,
+      "width": 469,
+      "height": 45,
       "path": "outputs/5.html"
     },
     {
-      "uid": "dp_crossings",
-      "channel": "main",
-      "open": true,
-      "warnings": [],
-      "kinds": [],
-      "width": 912,
-      "height": 383,
-      "path": "outputs/6.html"
-    },
-    {
       "uid": "dp_meadow",
-      "channel": "main",
+      "channel": "output",
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 912,
-      "height": 571,
-      "path": "outputs/7.html"
+      "width": 469,
+      "height": 45,
+      "path": "outputs/6.html"
     }
   ]
 }

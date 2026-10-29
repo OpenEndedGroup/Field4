@@ -1,0 +1,3 @@
+Changed the fixture’s `package x` to `package afield.fixture`, a one-line fix matching the boundary check’s allowed roots without changing line-number expectations. Source review confirms the match; executable verification was blocked by unavailable Gradle and the Python test’s `ModuleNotFoundError: tools`.
+
+FIXER-VERDICT: {"verdict": "fix", "culprit": "claude/ai4-attach-lines", "reason": "The branch introduced a fixture declaring package x; changing it to afield.fixture satisfies the existing public-root rule without altering the test's purpose."}

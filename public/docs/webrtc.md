@@ -112,8 +112,8 @@ the panels connect as `@you`. If you have already authorised aaaframe on GitHub,
 and closes without asking anything.
 
 Field remembers the class and your aaaframe login in `~/.afield/webrtc/aaaframe-sign-ins.json`,
-a file only your user account can read. It belongs to you, not to a document, so a document you
-share does not carry your login. When the login expires or the class server is restarted with a
+a file only your user account can read. The login stays with your account; sharing a document does
+not include it. When the login expires or the class server is restarted with a
 new key, aaaframe refuses it, and Field opens the sign-in window again. The publisher list and the
 line under a publishing view also have a **Sign in to aaaframe** button, which starts a fresh
 sign-in.

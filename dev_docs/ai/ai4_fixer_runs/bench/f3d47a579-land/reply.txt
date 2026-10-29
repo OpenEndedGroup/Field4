@@ -1,0 +1,3 @@
+Split the two flagged `@Test` annotations onto separate lines in `GesturePaintReplayTest.kt`; source and diff inspection confirm the minimal fix matches the checker’s attachment rules. Gradle is unavailable, and no Python check covers KDoc attachment, so the guard could not be rerun here.
+
+FIXER-VERDICT: {"verdict": "fix", "culprit": "nightly/2026-10-13/1-gesture-paint-replay", "reason": "Split the two flagged inline test annotations onto separate lines as required by the KDoc extractor; verified by source inspection because Gradle is unavailable."}

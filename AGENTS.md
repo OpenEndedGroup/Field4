@@ -338,11 +338,12 @@ Field has more than one main loop, and conflating them makes bugs hard fast.
 - Boxes form a persistent, live-synced graph. `children`/`parents` (`Boxes.kt`), edited by
   actions such as `-connect`/`-disconnect` (the backdoor's `connect <parent> <child>...` matches
   the frontend `g` action), drive both UI structure and where values come from.
-- "Exported" properties are usually inherited: `Inheritance<T>` (`afield/stdlib/stdlib.kt`)
-  resolves a missing property by walking up `parents`; `prop<T>(name)` / `rootProp<T>(name)`
-  (`afield/stdlib/props.kt`) generate new inherited properties. Shader properties (`fragment`,
-  `vertex`, `compute`, `task`, `mesh`) are built this way (`afield/stdlib/shaders.kt`), which is
-  why shader graphs compose through box connections.
+- "Exported" properties are usually inherited: `Inheritance<T>`
+  (`afield/document/properties/stdlib_properties.kt`) resolves a missing property by walking up
+  `parents`; `prop<T>(name)` / `rootProp<T>(name)` (`afield/document/properties/props.kt`) generate
+  new inherited properties. Shader properties (`fragment`, `vertex`, `compute`, `task`, `mesh`) are
+  built this way (`afield/graphics/shader/shaders.kt`), which is why shader graphs compose through
+  box connections.
 - `fromContext<T>()` (in `afield.document.context`, `src/jvmMain/kotlin/afield/document/context/Mesh_context.kt`)
   finds the nearest `T` by searching the executing `Box` (`Box.context`), its `properties`, then
   each ancestor generation in turn (properties, then script variables `box.ki.context.vars`). The

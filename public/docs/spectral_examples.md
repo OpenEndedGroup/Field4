@@ -1,7 +1,5 @@
 # Signal examples: time and frequency
 
-*Every public declaration used below is listed, with its KDoc, in the codebase reference: [`timeseries.kt`](reference/math.md#timeseries-kt) for the time-domain filters and detectors, [`spectral.kt`](reference/math.md#spectral-kt) for the frequency-domain half. Start from [what's already in the box](reference/index.md).*
-
 Signal processing needs pictures. A filter can reveal structure or erase the detail you cared about. An event detector can catch a gesture or promote a random spike. The first two examples here work sample by sample in the time domain and keep the raw stream and the processed stream in the same frame; the rest of the page asks what a signal is *made of*, in frequency.
 
 ## Filter chains as layered curves
@@ -93,7 +91,7 @@ The stream gets a `+0.95` spike at every 83rd sample and a `-0.8` dip at every 1
 
 The gamma detector, fed `abs(x)`, marks single samples. The beta detector holds `+1` and `-1` across whole stretches instead, and its window is why: 64 samples is shorter than the 109 the 1.1 Hz sine takes to come round at 120 samples a second, so every fit is a fit over a trend and the trend's own continuation keeps landing in a tail. Give a distribution fit at least one full cycle of any periodic component, or detrend before the detector sees it.
 
-For inline diagnostics of similar live values, continue with [Visualizers](visualizers.md). When the value you care about is *hidden* behind the noise rather than merely buried in it, a state you can only measure indirectly, reach for [State estimation](state_estimation_examples.md).
+For inline diagnostics of similar live values, continue with [Visualizers](visualizers.md). When you need to estimate a state you can only measure indirectly, see [State estimation](state_estimation_examples.md).
 
 ## From time to frequency
 
@@ -463,3 +461,5 @@ and each box computes and draws its own figure with no other setup.
 
 Then edit the signal, or swap `WindowType.HANN` for `HAMMING` / `BLACKMAN`, and re-run a box to
 watch its figure change.
+
+*The public declarations used on this page are listed, with their KDoc, in the codebase reference: [`timeseries.kt`](reference/math.md#timeseries-kt) for the time-domain filters and detectors, [`spectral.kt`](reference/math.md#spectral-kt) for the frequency-domain half. Start from [what's already in the box](reference/index.md).*

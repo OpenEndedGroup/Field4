@@ -6,6 +6,11 @@ import afield.media.webrtc.WebRTCSink
 import afield.media.webrtc.webrtcPublish
 
 /**
+ * ShaderTrinket's Publish, as a function: [publishShadertoyCanvas] streams a shader canvas over
+ * WebRTC under a name, so what a viewer sees is whatever that canvas is showing, presets included.
+ */
+
+/**
  * ShaderTrinket's **Publish**: stream [canvas] to the class as `login/name`, with the stream's
  * preview and status in this box's output.
  *

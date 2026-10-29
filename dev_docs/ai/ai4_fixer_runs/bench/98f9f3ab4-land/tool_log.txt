@@ -1,0 +1,18 @@
+[field] ok  RepoReadFileRequest {"endLine":220,"path":"AGENTS.md","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":170,"path":"src/jvmMain/kotlin/afield/math/temporal/TemporalSession.kt","startLine":110}
+[field] ok  RepoListFilesRequest {"glob":"**/*[Kk][Dd]oc*"}
+[field] ok  RepoReadFileRequest {"endLine":180,"path":"dev_docs/kdoc_reference_contract.md","startLine":1}
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-status","timeoutSec":10}
+[field] ok  RepoReadFileRequest {"endLine":250,"path":"src/jvmMain/kotlin/afield/tools/docs/KDocAttachmentGuard.kt","startLine":1}
+[field] ok  RepoSearchRequest {"glob":"tools/**/*.py","ignoreCase":true,"maxMatches":50,"query":"kdoc","regex":false}
+[field] ok  RepoReadFileRequest {"endLine":552,"path":"AGENTS.md","startLine":450}
+[field] ok  RepoSearchRequest {"glob":"src/jvmMain/kotlin/afield/tools/docs/index/KDocExtractor.kt","ignoreCase":false,"maxMatches":20,"query":"startsWith(\"@\")","regex":false}
+[field] ok  RepoListFilesRequest {"glob":"tools/check_*.py"}
+[field] ok  RepoReadFileRequest {"endLine":310,"path":"src/jvmMain/kotlin/afield/tools/docs/KDocAttachmentGuard.kt","startLine":255}
+[field] ok  RepoReadFileRequest {"endLine":175,"path":"src/jvmMain/kotlin/afield/tools/docs/index/KDocExtractor.kt","startLine":110}
+[field] ok  RepoSearchRequest {"glob":"tools/*.py","ignoreCase":true,"maxMatches":40,"query":"kdoc","regex":false}
+[field] ok  RepoPatchFileRequest {"newText":"    @Volatile\n    var revision = 0L; private set","oldText":"    @Volatile var revision = 0L; private set","path":"src/jvmMain/kotlin/afield/math/t
+[field] ok  RepoReadFileRequest {"endLine":155,"path":"src/jvmMain/kotlin/afield/math/temporal/TemporalSession.kt","startLine":140}
+[field] ok  RepoRunCommandRequest {"args":["--","src/jvmMain/kotlin/afield/math/temporal/TemporalSession.kt"],"command":"git-diff","timeoutSec":10}
+[field] ok  RepoReadFileRequest {"endLine":285,"path":"src/jvmMain/kotlin/afield/tools/docs/index/KDocExtractor.kt","startLine":176}
+[field] model=openai/gpt-6.1-sol rounds=6/40 wall=33s tokens in=214442 out=1024 cacheRead=181191 wrote=['src/jvmMain/kotlin/afield/math/temporal/TemporalSession.kt'] ran=['git-status  -> 0', 'git-diff -- src/jvmMain/kotlin/afield/math/temporal/TemporalSession.kt -> 0'] verdict=unchecked error=-

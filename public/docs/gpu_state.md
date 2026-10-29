@@ -18,7 +18,7 @@ live, given that both the CPU and the GPU write it? What is it before frame one?
 "current", and how does a second box find out? And when the force law itself is the thing you are
 editing, how do you change it without stopping?
 
-This page answers those. Most of the answers are decisions rather than code.
+This page works through those decisions in a running simulation.
 
 The running example is the [gpu_state](agent_transcripts.md#gpu_state) starting point: three boxes,
 40,000 particles held on a noise field, a force law you can retype while it runs, and a GPU-side

@@ -1,0 +1,3 @@
+Replaced three `listOf(...)` calls with collection literals in `public/docs/filming_the_canvas.md`. The Python idiom checker now exits 0 with `clean (the corpus)`; only three lines in one file changed.
+
+FIXER-VERDICT: {"verdict": "fix", "culprit": "claude/canvas-flight-filming", "reason": "The branch's new documentation used listOf in three examples where the idiom guard requires collection literals, and replacing them makes the checker pass."}

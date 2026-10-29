@@ -100,34 +100,39 @@ import kotlin.math.sqrt
 
 /**
  * Reynolds' three boid steering weights plus the numbers that bound the motion.
- *
- * @property perceptionRadius how far an agent sees for alignment and cohesion
- * @property separationRadius the (smaller) radius inside which it actively pushes away
- * @property separationWeight strength of the push away from close neighbours
- * @property alignmentWeight strength of the pull toward the mean neighbour heading — set this to 0 and
- *   the flock stops being a flock, which is the control arm the [polarization] claim is made against
- * @property cohesionWeight strength of the pull toward the neighbour centroid
- * @property maxSpeed speed cap (agents fly at close to this)
- * @property minSpeedFraction floor on speed as a fraction of [maxSpeed].
- *
- *   Not cosmetic, and found by measurement: the three steering terms are all written as
- *   *desired-minus-current* velocities, so in a settled flock — where each agent already has close to
- *   the mean velocity — they largely cancel, and with a force cap the speed drifts downward. The first
- *   run of this family measured a mean speed of 0.46 against a cap of 1.4, i.e. a flock that had mostly
- *   stopped while still scoring well on alignment. Reynolds' boids fly at a roughly constant speed; a
- *   floor is the standard way to say so, and it changes only the magnitude, never the heading, so it
- *   cannot inflate a polarization measurement.
- * @property maxForce per-step cap on the steering acceleration; without it a boid in a dense cluster
- *   receives an unbounded separation impulse and leaves at implausible speed
  */
 data class BoidParams(
+    /** How far an agent sees for alignment and cohesion. */
     val perceptionRadius: Double = 12.0,
+    /** The (smaller) radius inside which it actively pushes away. */
     val separationRadius: Double = 4.5,
+    /** Strength of the push away from close neighbours. */
     val separationWeight: Double = 1.6,
+    /**
+     * Strength of the pull toward the mean neighbour heading — set this to 0 and the flock stops being a flock,
+     * which is the control arm the [polarization] claim is made against.
+     */
     val alignmentWeight: Double = 1.0,
+    /** Strength of the pull toward the neighbour centroid. */
     val cohesionWeight: Double = 0.9,
+    /** Speed cap (agents fly at close to this). */
     val maxSpeed: Double = 1.4,
+    /**
+     * Floor on speed as a fraction of [maxSpeed].
+     *
+     * Not cosmetic, and found by measurement: the three steering terms are all written as
+     * *desired-minus-current* velocities, so in a settled flock — where each agent already has close to the
+     * mean velocity — they largely cancel, and with a force cap the speed drifts downward. The first run of
+     * this family measured a mean speed of 0.46 against a cap of 1.4, i.e. a flock that had mostly stopped
+     * while still scoring well on alignment. Reynolds' boids fly at a roughly constant speed; a floor is the
+     * standard way to say so, and it changes only the magnitude, never the heading, so it cannot inflate a
+     * polarization measurement.
+     */
     val minSpeedFraction: Double = 0.75,
+    /**
+     * Per-step cap on the steering acceleration; without it a boid in a dense cluster receives an unbounded
+     * separation impulse and leaves at implausible speed.
+     */
     val maxForce: Double = 0.06
 ) {
     init {
@@ -147,20 +152,19 @@ data class BoidParams(
  * The domain wraps, which matters for more than tidiness: in a bounded box the walls do half the
  * flocking (agents that bounce off the same wall end up parallel), so a polarization measured in a box
  * is not evidence about the *rules*. On a torus there is nothing to align a flock but its neighbours.
- *
- * @property width domain width
- * @property height domain height
- * @property x agent x positions
- * @property y agent y positions
- * @property vx agent x velocities
- * @property vy agent y velocities
  */
 class BoidFlock(
+    /** Domain width. */
     val width: Double,
+    /** Domain height. */
     val height: Double,
+    /** Agent x positions. */
     val x: FloatArray,
+    /** Agent y positions. */
     val y: FloatArray,
+    /** Agent x velocities. */
     val vx: FloatArray,
+    /** Agent y velocities. */
     val vy: FloatArray
 ) {
     init {
@@ -389,37 +393,40 @@ fun BoidFlock.toImg(scale: Double = 1.0, tail: Double = 3.0): Img {
 /**
  * Jones' Physarum transport-network model parameters — the "deposit, sense, move" agent whose
  * population reproduces the transport networks *Physarum polycephalum* grows.
- *
- * @property sensorAngle angle between the centre sensor and each side sensor, in radians
- * @property sensorDistance how far ahead the sensors look, in cells
- * @property turnAngle how far an agent rotates when a side sensor wins, in radians
- * @property stepSize how far it moves per step, in cells
- * @property deposit how much trail it leaves per step
- * @property decay fraction of the trail that survives each step (`0.9` = 10 % evaporates)
- * @property blurRadius box-blur radius applied to the trail each step, which is the diffusion term
- * @property exclusive Jones' one-agent-per-cell rule: an agent may only move into a cell no other
- *   agent occupies, and otherwise stays put and picks a new random heading.
- *
- *   **This single flag is the difference between a network and a dot.** Without it there is nothing to
- *   stop every agent within sensing range of the brightest trail from converging on it, and they do:
- *   the first run of this family collapsed 6000 agents onto a 191-cell streak and measured a top-5%
- *   deposit share of 1.000, which reads as "perfect concentration" and is in fact total failure.
- *   Mutual exclusion makes the agent population *incompressible*, so a trail can only get so strong
- *   before it has to widen or branch — and branching under a density limit is what a transport network
- *   is. It is in Jones (2010) for this reason and is not an optimisation.
- * @property sensing when `false` the agent turns at random instead of following the trail — the
- *   control arm. Everything else is identical, so a difference in [Img.topShare] between the two runs
- *   is attributable to the sensing and to nothing else.
  */
 data class PhysarumParams(
+    /** Angle between the centre sensor and each side sensor, in radians. */
     val sensorAngle: Double = PI / 4.0,
+    /** How far ahead the sensors look, in cells. */
     val sensorDistance: Double = 9.0,
+    /** How far an agent rotates when a side sensor wins, in radians. */
     val turnAngle: Double = PI / 4.0,
+    /** How far it moves per step, in cells. */
     val stepSize: Double = 1.0,
+    /** How much trail it leaves per step. */
     val deposit: Double = 5.0,
+    /** Fraction of the trail that survives each step (`0.9` = 10 % evaporates). */
     val decay: Double = 0.92,
+    /** Box-blur radius applied to the trail each step, which is the diffusion term. */
     val blurRadius: Int = 1,
+    /**
+     * Jones' one-agent-per-cell rule: an agent may only move into a cell no other agent occupies, and otherwise
+     * stays put and picks a new random heading.
+     *
+     * **This single flag is the difference between a network and a dot.** Without it there is nothing to stop
+     * every agent within sensing range of the brightest trail from converging on it, and they do: the first run
+     * of this family collapsed 6000 agents onto a 191-cell streak and measured a top-5% deposit share of 1.000,
+     * which reads as "perfect concentration" and is in fact total failure. Mutual exclusion makes the agent
+     * population *incompressible*, so a trail can only get so strong before it has to widen or branch — and
+     * branching under a density limit is what a transport network is. It is in Jones (2010) for this reason and
+     * is not an optimisation.
+     */
     val exclusive: Boolean = true,
+    /**
+     * When `false` the agent turns at random instead of following the trail — the control arm. Everything else
+     * is identical, so a difference in [Img.topShare] between the two runs is attributable to the sensing and
+     * to nothing else.
+     */
     val sensing: Boolean = true
 ) {
     init {
@@ -438,16 +445,15 @@ data class PhysarumParams(
  * write to and read from. That stigmergic loop — deposit into the environment, sense the environment,
  * turn toward more of it — is the entire mechanism, and it is why the resulting network is not stored
  * anywhere: it is the fixed point of the loop.
- *
- * @property trail the deposit field, mutated each step; 1-channel, unbounded above
- * @property x agent x positions in cells
- * @property y agent y positions in cells
- * @property heading agent headings in radians
  */
 class PhysarumSwarm(
+    /** The deposit field, mutated each step; 1-channel, unbounded above. */
     val trail: Img,
+    /** Agent x positions in cells. */
     val x: FloatArray,
+    /** Agent y positions in cells. */
     val y: FloatArray,
+    /** Agent headings in radians. */
     val heading: FloatArray
 ) {
     init {
@@ -619,20 +625,20 @@ fun PhysarumSwarm.stepTimes(p: PhysarumParams, steps: Int, seed: Long = 1L): Phy
 
 /**
  * A grown aggregate.
- *
- * @property mask 1-channel binary occupancy of the cluster
- * @property points the occupied cells, in the order they stuck — so growth order is available, not
- *   only the final shape
- * @property center the seed location, which is the origin every radial measurement is taken from
- * @property maxRadius the furthest occupied cell from [center], in cells
- * @property walkSteps how many random-walk steps were taken in total (the cost, and the thing a
- *   naive implementation makes quadratic)
  */
 class Aggregate(
+    /** 1-channel binary occupancy of the cluster. */
     val mask: Img,
+    /** The occupied cells, in the order they stuck — so growth order is available, not only the final shape. */
     val points: List<Vec2>,
+    /** The seed location, which is the origin every radial measurement is taken from. */
     val center: Vec2,
+    /** The furthest occupied cell from [center], in cells. */
     val maxRadius: Double,
+    /**
+     * How many random-walk steps were taken in total (the cost, and the thing a naive implementation makes
+     * quadratic).
+     */
     val walkSteps: Long
 ) {
     /** [massRadiusDimension] of this aggregate, fitted over the range its own size supports. */

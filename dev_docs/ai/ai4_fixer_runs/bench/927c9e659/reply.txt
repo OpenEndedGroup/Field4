@@ -1,0 +1,3 @@
+Changed only the studio example’s fence opener in `public/docs/three_output.md` to the exact format required by `DocsFenceTreatmentTest`; the example content is unchanged. Source inspection and the final diff confirm the correction, but the test could not be rerun because Gradle is unavailable and no Python check covers this rule.
+
+FIXER-VERDICT: {"verdict": "fix", "culprit": "claude/madp-geometry-d1fb28", "reason": "The branch introduced one bare Kotlin fence, corrected with the exact one-line replacement prescribed by the failing test."}

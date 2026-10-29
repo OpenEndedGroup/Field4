@@ -1,8 +1,15 @@
 # Reading Saved AI4 Chats
 
-Every AI4 chat is saved with its document. That includes the turns you rewound away. A long chat can be hard to scroll through afterwards, so Field can read a saved chat back as a tree that a box or an agent can work with. An agent can then write a **lens**: a shorter chat that summarizes the long one, where every block says which stretch of the original it stands for. The lens viewer shows the two side by side, with a band from each lens block to the part of the chat it covers.
+Every AI4 chat is saved with its document, including turns you rewound away. When a conversation
+grows long, you can read it back as a tree and follow its branches. You can also ask an agent to
+make a **lens**: a shorter account linked to the parts of the original it describes. The lens
+viewer shows both side by side, so you can follow a summary back to the conversation.
 
-The examples on this page read a chat that ships with the docs, `harbour`, from the Studio box of [AI4 Paints](ai4_painting.md). In it, AI4 painted a harbour at dusk, turned it into night, and was then rewound to the dusk canvas and asked for a stormy morning. Along the way it made 418 tool calls and looked at the canvas 16 times. The night and a first storm attempt, which started from the night canvas by mistake, are on branches that were rewound away. To use your own chats, point the same code at a document folder in your workspace.
+We'll explore `harbour`, a saved chat from the Studio in [AI4 Paints](ai4_painting.md). The agent
+painted a harbour at dusk, turned it into night, then returned to dusk and tried a stormy morning.
+The night and an earlier storm attempt remain on rewound branches. The conversation includes 418
+tool calls and 16 looks at the canvas. To explore your own chats, point the same code at a document
+folder in your workspace.
 
 ## A chat as a tree
 
@@ -41,7 +48,10 @@ A lens is written in the chat's own markup, so the chat panel can draw it. Each 
 The first glaze turned the canvas almost black. It lifted the blues back, restated the boats and broke the moonlight into short strokes, but stopped before hanging it. This branch was rewound away.
 ```
 
-A block can cite several stretches, separated by commas: this lens's storm request cites both times it was asked. Pictures from the chat can be reused by their `ai4img:` reference. The only check is that every address exists, since a band can't be drawn to a missing block. Nothing checks whether a summary is accurate. `ChatLogViews.lensProblems` lists the bad citations (here there are none), and `lensStats` says how much of the chat the lens covers and how much shorter it is:
+A block can cite several stretches, separated by commas; the storm request in this lens cites
+both times it was asked. Pictures can be reused by their `ai4img:` reference. Field checks that the
+addresses exist, but it cannot check whether a summary is accurate. `ChatLogViews.lensProblems`
+lists invalid citations, and `lensStats` reports coverage and length:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/ai4_chat_archive/stats.png" embed=true w="760" h="50" wait="1.5" timeout="90" name="chat-archive-lens-stats" alt="The box's output: no problems, then the lens's statistics: 6 blocks citing 71 of the chat's 103 blocks, 44.7 times shorter than what it cites"}
 import afield.ai.conversation.chatlog.*

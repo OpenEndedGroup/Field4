@@ -37,7 +37,11 @@ class GeneratedArtifactSelectionTests(unittest.TestCase):
                      'public/docs/assets/fline_examples/metadata.edn',
                      'public/docs/assets/agent_transcripts/new/box_code_.kt',
                      'public/docs/assets/web_publications/catalog.json',
-                     'src/commonMain/resources/publication-capture.js'):
+                     'src/commonMain/resources/publication-capture.js',
+                     'public/docs/assets/field_probes/particles-galaxy.png',
+                     'public/docs/field_probes.md',
+                     'src/commonMain/resources/threejs_viewer.html',
+                     'src/jvmMain/kotlin/afield/document/workspace/WebPublication.kt'):
             self.assertIn('checkDocsPublications', task_names([path]))
         self.assertNotIn('checkDocsPublications', task_names(['public/docs/stylesheets/extra.css']))
         producer = task_names(['src/jvmMain/kotlin/afield/examples/AgentTranscriptMaterializer.kt'])

@@ -1,13 +1,14 @@
 # Beat and pitch analysis
 
-*To run the examples on this page, open the [audio_ai_analysis](agent_transcripts.md#audio_ai_analysis) starting point.*
+Where are the beats in a recording? What notes are sounding? Field can analyse both and show the
+results alongside the waveform. `analysis.beats` measures tempo over several window lengths, so
+you can see how the estimate changes with the timescale.
 
-Where the beats are and what note is sounding are separate questions here, and they arrive as
-separate jobs. `analysis.beats` takes the first at several window lengths at once, since a tempo
-figure means little apart from the window it was measured over. For the second, how much is
-sounding at once decides: `analysis.pitch_mono` tracks one voice as a continuous F0 with a voicing
-probability, and `analysis.pitch_poly` returns discrete note events and a MIDI file where there are
-chords.
+For pitch, choose the analysis that fits your recording. `analysis.pitch_mono` tracks a single
+voice as a continuous F0 with a voicing probability; `analysis.pitch_poly` finds discrete notes in
+chords and returns them as events and a MIDI file.
+
+*To run the examples on this page, open the [audio_ai_analysis](agent_transcripts.md#audio_ai_analysis) starting point.*
 
 | Field operation | Implementation | What comes back |
 | --- | --- | --- |

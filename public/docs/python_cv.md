@@ -44,10 +44,10 @@ second one.
 
 ## What a detector returns
 
-Every detector returns a dictionary of numpy arrays, and every coordinate in it is *normalized*:
-`x` is divided by the frame's width and `y` by its height, so `(0, 0)` is the top-left corner and
-`(1, 1)` the bottom-right, whatever size the frames were. `step()` runs one frame on the cell's own
-thread, which is the easiest way to look:
+Every detector returns a dictionary of results, including numpy arrays. Image positions are
+*normalized*: `x` is divided by the frame's width and `y` by its height, so `(0, 0)` is the top-left
+corner and `(1, 1)` the bottom-right. Flow vectors, listed below, are in pixels per frame. `step()`
+runs one frame on the cell's own thread, which is the easiest way to look:
 
 ```diffstatic_runner {data-lang=python screenshot="assets/python_cv/one_frame.png" capture="editor" outputs="inline" wait="4" padding="10" w="900" h="330" timeout="300" requires="jep,python:cv2,python:mediapipe" embed=true name="python-cv-one-frame" alt="A Python box that runs one frame of the swing clip through pose, hands and face, printing the shape of each result array beside the line that made it."}
 :::static

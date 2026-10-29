@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-28T17:41:45.370Z",
+  "capturedAt": "2026-10-29T15:42:26.528Z",
   "documentName": "alife_script",
   "outputs": [
     {
@@ -18,13 +18,13 @@
     {
       "uid": "regime",
       "channel": "order",
-      "open": true,
+      "open": false,
       "warnings": [],
       "kinds": [
         "plotly"
       ],
       "width": 712,
-      "height": 458,
+      "height": 446,
       "path": "outputs/1.html"
     },
     {

@@ -2,6 +2,20 @@ package afield.ai.tools
 
 import java.security.MessageDigest
 
+/**
+ * Reading a long attachment one window at a time, under the guards every attachment shares.
+ *
+ * The slice is taken after ordinary resolution, so an attachment already in the turn's context and one
+ * the document's own resolver fetches are treated alike. The window is bounded (2 to 65536 characters)
+ * and has to start inside the content. The content's SHA-256 comes back as `sourceHash`, and a later
+ * read that passes it back is refused when the source has changed since, with a message asking for a
+ * fresh read from the start rather than a splice of two versions. A `find` string moves the window to
+ * the first match at or after the offset, with a little room before it, and an empty window with
+ * `searchMatched` false says there was none. An offset that would split a surrogate pair is refused,
+ * and a computed start or end that would is moved back one, so a window never ends mid-character.
+ * `nextOffset` is null on the last one.
+ */
+
 /** Slice after ordinary resolution so attachments, property refs and resolver paths share guards. */
 internal fun AttachmentResponse.excerpt(request: AttachmentRequest): AttachmentResponse {
     require(request.maxChars in 2..65536) { "maxChars must be between 2 and 65536" }

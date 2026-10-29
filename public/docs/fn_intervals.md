@@ -2,7 +2,9 @@
 
 A plot of a function is a set of samples joined up. Anything narrower than the gap between two samples can fall between them, and the plot gives no sign that it did. For most work that's fine. When you need to *know* that a control signal never goes above 0.9, or where its real peak is, sampling more densely only makes a miss less likely.
 
-`Functions.Fn` can answer those questions with **interval arithmetic**. Instead of evaluating `f(x)` at a number, Field evaluates it over a whole interval `[a, b]` at once and gets back a range `[lo, hi]` that every value of `f` on that interval is guaranteed to lie inside. Nothing is sampled, so nothing can be missed. Splitting the interval in half and asking again tightens the range, and repeating that search finds the true maximum and minimum to any tolerance you like.
+`Functions.Fn` can answer those questions with **interval arithmetic**. Instead of evaluating `f(x)` at a number, Field evaluates it over a whole interval `[a, b]` at once and gets back a range `[lo, hi]` that every value of `f` on that interval is guaranteed to lie inside. The enclosure covers values between plot samples too. Splitting the interval and evaluating each
+half can tighten the bounds; the search reports whether it reached the requested tolerance within
+its work budget.
 
 ## A bump the plot misses
 

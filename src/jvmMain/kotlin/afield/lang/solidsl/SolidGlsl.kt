@@ -18,10 +18,9 @@ import kotlin.math.sin
  * println(part.toRaymarchFragment())   // a complete fragment shader that draws it
  * ```
  *
- * This is the third column, and it is the one that only a *symbolic* notation can have. A
- * `(Vec3) -> Float` runs on the JVM and nowhere else; an expression tree can be walked into whatever
- * language you like. RectSL made the same move in 2D on 2026-08-06 (`RectSLGlsl.emitSdf`), and its
- * memory says the port was small because the IR was symbolic. It was small here too.
+ * This is the lowering that only a *symbolic* notation can have. A `(Vec3) -> Float` runs on the JVM
+ * and nowhere else; an expression tree can be walked into whatever language you like. RectSL does
+ * the same in 2D, in `RectSLGlsl.emitSdf`.
  *
  * # What is emitted, and the unusual shape of it
  *
@@ -39,9 +38,9 @@ import kotlin.math.sin
  * }
  * ```
  *
- * That looks like a strange thing to hand a shader compiler, and it is a deliberate trade. Any driver
- * will re-vectorise this in its first pass, so nothing is lost at run time. What is *gained* is that
- * the emitted text falls inside a grammar small enough to write a reader for — which is what
+ * That looks like a strange thing to hand a shader compiler. Any driver will re-vectorise this in
+ * its first pass, so nothing is lost at run time. What is *gained* is that the emitted text falls
+ * inside a grammar small enough to write a reader for — which is what
  * `SolidSLGlslTest` does. It parses the shader back and evaluates it at tens of thousands of points
  * against [SolidExpr.toField3], so the claim "the GLSL computes the same field" is **measured**
  * rather than asserted from the fact that both came from the same tree walk. A dropped negation, a

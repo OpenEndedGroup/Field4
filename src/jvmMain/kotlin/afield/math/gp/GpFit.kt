@@ -20,9 +20,19 @@ data class GpParameter(val name: String, val initial: Double, val lower: Double,
 
 /** A bounded local likelihood fit, not a posterior over hyperparameters or a global optimum. */
 class GpFitResult internal constructor(
-    val process: GaussianProcess, values: Map<String, Double>, val evaluations: Int,
-    val iterations: Int, val converged: Boolean, val initialLogMarginalLikelihood: Double
+    /** The process built at the best parameters found, ready to predict from. */
+    val process: GaussianProcess,
+    values: Map<String, Double>,
+    /** How many models the search built, including the one at the initial setting. */
+    val evaluations: Int,
+    /** How many pattern-search passes ran, at most the `maxIterations` asked for. */
+    val iterations: Int,
+    /** True when the search step fell below the tolerance, false when the iterations ran out. */
+    val converged: Boolean,
+    /** Log marginal likelihood at the initial setting, to compare against [process]'s. */
+    val initialLogMarginalLikelihood: Double
 ) {
+    /** The fitted value of each parameter, by name, clamped to the bounds it was given. */
     val parameters: Map<String, Double> = values.toMap()
 }
 
@@ -72,22 +82,34 @@ fun fitGpHyperparameters(
  * Evidence for each candidate value of one parameter, with every other choice fixed by [build].
  * [posteriorWeights] normalise exp(log evidence): the posterior over the candidates under a
  * uniform prior on the grid. Spread candidates in log space for a scale such as a period or
- * length scale. A broad posterior is the honest answer when the data cannot decide.
+ * length scale. A broad posterior means the data does not choose between the candidates.
  */
 class GpEvidenceScan internal constructor(candidates: DoubleArray, logEvidence: DoubleArray) {
     private val c = candidates.copyOf()
     private val e = logEvidence.copyOf()
+    /** The candidate values that were scanned, in the order they were given. A copy. */
     val candidates: DoubleArray get() = c.copyOf()
+    /** The log marginal likelihood at each candidate, aligned with [candidates]. A copy. */
     val logEvidence: DoubleArray get() = e.copyOf()
+    /**
+     * The posterior over [candidates] under a uniform prior on the grid: [logEvidence]
+     * exponentiated against its maximum and normalised, so the weights sum to one.
+     */
     val posteriorWeights: DoubleArray get() {
         val top = e.max()
         val w = DoubleArray(e.size) { exp(e[it] - top) }
         val total = w.sum()
         return DoubleArray(w.size) { w[it] / total }
     }
+    /** The candidate with the largest evidence. The first of them if several tie. */
     val best: Double get() = c[e.indices.maxBy { e[it] }]
 }
 
+/**
+ * The log marginal likelihood of the model [build] makes at each of [candidates], as a
+ * [GpEvidenceScan]. Every model must have observations. One parameter at a time: whatever
+ * else [build] varies with the candidate is folded into the evidence without being reported.
+ */
 fun scanGpEvidence(candidates: DoubleArray, build: (Double) -> GaussianProcess): GpEvidenceScan {
     require(candidates.isNotEmpty() && candidates.all { it.isFinite() })
     return GpEvidenceScan(candidates, DoubleArray(candidates.size) {
