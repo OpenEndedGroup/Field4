@@ -717,15 +717,15 @@ def step_entries(result: dict[str, Any]) -> dict[tuple[str, str], dict[str, Any]
 
 
 def spread(runs: list[dict[str, Any]]) -> dict[tuple[str, str], dict[str, float]]:
-    """Per step present in every run: the largest deviation, in percent, of one run's median (and
-    p90) from the median of all of them."""
+    """Per step measured by at least two runs: the largest deviation, in percent, of one run's median
+    (and p90) from the median of the runs that measured it. A run where the step failed has no
+    timing for it and does not count."""
     entries = [step_entries(r) for r in runs]
-    common = set(entries[0]).intersection(*entries[1:])
     out: dict[tuple[str, str], dict[str, float]] = {}
-    for key in common:
+    for key in set().union(*entries):
         row: dict[str, float] = {}
         for field_name, label in (("wallMs", "medianPct"), ("wallP90Ms", "p90Pct")):
-            values = [e[key][field_name] for e in entries if field_name in e[key]]
+            values = [e[key][field_name] for e in entries if key in e and field_name in e[key]]
             if len(values) < 2:
                 continue
             centre = statistics.median(values)
@@ -742,14 +742,17 @@ def make_baseline(runs: list[dict[str, Any]]) -> dict[str, Any]:
     entries = [step_entries(r) for r in runs]
     noise = spread(runs) if len(runs) > 1 else {}
     steps: dict[str, dict[str, Any]] = {}
-    common = set(entries[0]).intersection(*entries[1:])
-    # In the order the last run met them: first launch before its frames before the reruns.
-    for key in [k for k in entries[-1] if k in common]:
+    # Every step some run measured, each from the runs that measured it (a step that failed in one
+    # run still gets a baseline from the others), in the order the runs met them: first launch
+    # before its frames before the reruns.
+    order = list(dict.fromkeys(k for e in reversed(entries) for k in e))
+    for key in order:
+        measuring = [e[key] for e in entries if key in e]
         def mid(field_name: str) -> float | None:
-            values = [e[key][field_name] for e in entries if field_name in e[key]]
+            values = [m[field_name] for m in measuring if field_name in m]
             return round(statistics.median(values), 1) if values else None
-        last = entries[-1][key]
-        row: dict[str, Any] = {"n": last["n"], "wallMs": mid("wallMs")}
+        last = measuring[-1]
+        row: dict[str, Any] = {"n": last["n"], "runs": len(measuring), "wallMs": mid("wallMs")}
         for field_name in ("wallP90Ms", "wallP99Ms"):
             if (value := mid(field_name)) is not None:
                 row[field_name] = value
@@ -814,6 +817,11 @@ def ms(value: float | None) -> str:
     return "" if value is None else f"{value:,.0f}" if value >= 100 else f"{value:.1f}"
 
 
+def one_run(step: dict[str, Any]) -> str:
+    """A note on a band no spread was measured for: the step's timing came from a single run."""
+    return " (1 run)" if step.get("runs", 2) < 2 else ""
+
+
 def render_baseline(baseline: dict[str, Any], rows: list[dict[str, Any]] | None = None, result: dict[str, Any] | None = None) -> str:
     """One host's baseline as Markdown; with [rows] from `check_against`, the result beside it."""
     m = baseline["machine"]
@@ -837,7 +845,7 @@ def render_baseline(baseline: dict[str, Any], rows: list[dict[str, Any]] | None 
         for key, b in phases.items():
             spans = ", ".join(f"{k} {v:,.0f}" for k, v in b.get("spansMs", {}).items() if v >= 1)
             line = (f"| {key} | {b['n']} | {ms(b['wallMs'])} | {ms(b.get('wallP90Ms'))} | {ms(b.get('wallP99Ms'))} | "
-                    f"±{b['tolMedianPct']:.0f}% / ±{b['tolP90Pct']:.0f}% | {spans} |")
+                    f"±{b['tolMedianPct']:.0f}% / ±{b['tolP90Pct']:.0f}%{one_run(b)} | {spans} |")
             if rows is not None:
                 r = by_step.get((scenario, key), {})
                 now = r.get("now") or {}
