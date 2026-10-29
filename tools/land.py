@@ -1462,18 +1462,53 @@ def _fixer_command() -> list[str] | None:
 
 
 def _fixer_context(members: list[dict], main_sha: str, wt: Path, log: Path, failures: str | None, queue: Path) -> str:
+    return fixer_context_text(members, main_sha, wt, log.read_text(errors="replace").splitlines(),
+                              log.with_suffix(".failures.txt"), failures, _fixer_ledger(queue), subject=_subject)
+
+
+# A failed Gradle task prints its finding where it runs, often a thousand lines above the end of the
+# log (KDocAttachmentGuard, AgentTranscriptIndexGuard), so the 200-line tail can hold only "Execution
+# failed for task ':checkKDocAttachment'". Measured 2026-10-29 with tools/field_fixer_bench.py: AI4
+# declined 77996cfc5 because "the supplied log omits the finding".
+FAILED_TASK = re.compile(r"^> Task :(\S+) FAILED")
+
+
+def _failed_task_excerpts(lines: list[str], tail_from: int, limit: int = 40) -> list[str]:
+    # Gradle prints a task's output first and its `> Task :x FAILED` header after it, so the finding
+    # is the run of lines between the previous `> Task :` line and that header (its last [limit]).
+    out = []
+    start = 0
+    for n, line in enumerate(lines[:tail_from]):
+        m = FAILED_TASK.match(line)
+        if m:
+            body = [l for l in lines[start:n] if l.strip()][-limit:]
+            out.append(f"\nWhat :{m.group(1)} printed when it failed:\n" + "\n".join([*body, line]))
+        if line.startswith("> Task :"):
+            start = n + 1
+    return out
+
+
+def fixer_context_text(members: list[dict], main_sha: str, wt: Path, log_lines: list[str], failures_file: Path,
+                       failures: str | None, ledger: list[dict], subject=lambda m: m.get("subject", "")) -> str:
+    """The context after FIXER_PROMPT, from the round's log lines and the ledger as they stand.
+    tools/field_fixer_bench.py replays past rounds through this with both cut at the round's time."""
     parts = [f"main before this round: {main_sha}\n\nBranches in the round, each merged as its own commit:"]
     for m in members:
         stat = _git(wt, "diff", "--stat=120", f"{main_sha}...{m['sha']}", check=False)
-        parts.append(f"\n## {m['branch']} ({m['sha'][:9]}, by {m['by']})\n{_subject(m) or ''}\n{stat}")
+        commits = _git(wt, "log", "--oneline", "-n", "15", f"{main_sha}..{m['sha']}", check=False)
+        # Measured 2026-10-29 (tools/field_fixer_bench.py): AI4 declined real fixups because it judged
+        # the branch by `git show <tip>` alone and found the culprit lines in an earlier commit of it.
+        parts.append(f"\n## {m['branch']} ({m['sha'][:9]}, by {m['by']})\n{subject(m) or ''}\n{stat}\n"
+                     f"Its commits (the branch is all of them, not only the tip; its whole change is "
+                     f"`git diff {main_sha[:12]}...{m['sha'][:12]}`):\n{commits}")
     if failures:
         parts.append(f"\nFailing tests (first): {failures}")
-        path = log.with_suffix(".failures.txt")
-        if path.exists():
-            parts.append(path.read_text(errors="replace")[:6000])
-    tail = log.read_text(errors="replace").splitlines()[-200:]
-    parts.append("\nThe end of the landing log:\n" + "\n".join(tail))
-    ledger = _fixer_ledger(queue)[-8:]
+        if failures_file.exists():
+            parts.append(failures_file.read_text(errors="replace")[:6000])
+    tail_from = max(0, len(log_lines) - 200)
+    parts.extend(_failed_task_excerpts(log_lines, tail_from))
+    parts.append("\nThe end of the landing log:\n" + "\n".join(log_lines[tail_from:]))
+    ledger = ledger[-8:]
     if ledger:
         parts.append("\nWhat the fixer did on recent reds (for calibration):\n"
                      + "\n".join(f"- {e.get('outcome')}: {e.get('reason', '')}" for e in ledger))

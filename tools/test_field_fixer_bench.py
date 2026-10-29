@@ -43,5 +43,40 @@ class CheckSpecTest(unittest.TestCase):
         self.assertEqual(bench.check_spec(case, bench.REPO), [["junit", "afield.app.server.ServerSurfaceLedgerTest"]])
 
 
+class LanderContextTest(unittest.TestCase):
+    """The two context changes in land.py that the bench's measured failures motivated."""
+
+    def test_a_failed_task_finding_far_above_the_tail_is_quoted(self) -> None:
+        lines = ["> Task :compileKotlinJvm", "KDocAttachmentGuard: 1 mis-attached KDoc block(s):",
+                 "  src/x.kt:12: DROPPED", "> Task :checkKDocAttachment FAILED", *["noise"] * 300]
+        excerpts = bench.land._failed_task_excerpts(lines, len(lines) - 200)
+        self.assertEqual(len(excerpts), 1)
+        self.assertIn("src/x.kt:12: DROPPED", excerpts[0])
+        self.assertIn(":checkKDocAttachment", excerpts[0])
+
+    def test_the_context_lists_every_commit_of_the_branch(self) -> None:
+        import subprocess
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            env = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t",
+                   "GIT_COMMITTER_EMAIL": "t@t", "PATH": "/usr/bin:/bin:/opt/homebrew/bin", "HOME": tmp}
+
+            def git(*a: str) -> str:
+                return subprocess.run(["git", *a], cwd=root, env=env, check=True, capture_output=True,
+                                      text=True).stdout.strip()
+            git("init", "-q")
+            for name in ("base", "first slip", "tip"):
+                (root / f"{name}.txt").write_text(name)
+                git("add", "-A")
+                git("commit", "-qm", name)
+            main = git("rev-parse", "HEAD~2")
+            tip = git("rev-parse", "HEAD")
+            text = bench.land.fixer_context_text([{"branch": "b", "sha": tip, "by": "t", "subject": "tip"}], main,
+                                                 root, ["log"], root / "none.txt", None, [])
+            self.assertIn("first slip", text)
+            self.assertIn(f"git diff {main[:12]}...{tip[:12]}", text)
+
+
 if __name__ == "__main__":
     unittest.main()

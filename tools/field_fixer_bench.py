@@ -111,7 +111,7 @@ def check_spec(case: dict, root: Path) -> list[list[str]]:
             fq = _fq_class(REPO, simple)
             if fq:
                 specs.append(["junit", fq])
-    if "checkKDocAttachment" in text:
+    if "checkKDocAttachment" in text or re.search(r"doc comments? (?:stacked|back above)|two doc comments", text):
         specs.append(["main", "afield.tools.docs.KDocAttachmentGuard"])
     if "checkAgentTranscriptIndex" in text:
         specs.append(["main", "afield.tools.docs.AgentTranscriptIndexGuard"])
@@ -163,13 +163,58 @@ def run_checks(specs: list[list[str]], root: Path) -> tuple[bool | None, str]:
 
 # ---------------------------------------------------------------------------------------- the brief
 
-def brief(case: dict, root: Path) -> str:
-    """land.py's fixer prompt and context, rebuilt from what the queue kept about this round."""
+REPLAY_NOTE = ("\n\nThis replay's checkout cannot build: the `gradle` command is not available, so verify by "
+               "reading the check's source and rerunning any `tools/` Python check that covers it.\n")
+
+
+def brief(case: dict, root: Path, context: str = "land") -> str:
+    """The fixer's brief for this round. `land`: land.FIXER_PROMPT + land.fixer_context_text, the
+    lander's own code, over the log and ledger cut at the moment the fixer was asked. `v0`: the
+    context as land.py built it before 2026-10-29 (the baseline the first measurements used)."""
+    if context == "v0":
+        return brief_v0(case, root)
     log = Path(case["log"])
     lines = log.read_text(errors="replace").splitlines()
     asked = max(n for n, l in enumerate(lines) if "asking the fixer" in l)
-    head = re.search(r"onto main ([0-9a-f]{40})", lines[0])
-    main_sha = head.group(1) if head else git(root, "merge-base", case["parent"], "origin/main").strip()
+    main_sha = _main_before(lines)
+    failures_file = log.with_suffix(".failures.txt")
+    failures = ", ".join(dict.fromkeys(re.findall(r"^## (\S+)", failures_file.read_text(errors="replace"), re.M))) \
+        if failures_file.exists() else None
+    member = {"branch": case["branch"], "sha": case["parent"], "by": "Marc",
+              "subject": git(root, "log", "-1", "--format=%s", case["parent"]).strip()}
+    prompt = land.FIXER_PROMPT.format(max_files=land.FIXUP_MAX_FILES, max_lines=land.FIXUP_MAX_LINES,
+                                      verdict=land.FIXER_VERDICT)
+    return prompt + land.fixer_context_text([member], main_sha, root, lines[: asked + 1], failures_file, failures,
+                                            _ledger_before(case)) + REPLAY_NOTE
+
+
+def _main_before(lines: list[str]) -> str:
+    """main's sha from the round's `=== ... onto main <sha>` header (the log opens with a blank line).
+    There is no fallback: a merge-base with today's main is the branch tip itself once it has landed,
+    which turns the branch's diff into nothing (the first 2026-10-29 pass did exactly that)."""
+    for line in lines[:10]:
+        m = re.search(r"onto main ([0-9a-f]{40})", line)
+        if m:
+            return m.group(1)
+    raise ValueError("no '=== ... onto main <sha>' header in the round log")
+
+
+def _ledger_before(case: dict) -> list[dict]:
+    out = []
+    for line in (queue_dir() / "fixer.jsonl").read_text().splitlines()[: case["ledger_before"]]:
+        try:
+            out.append(json.loads(line))
+        except json.JSONDecodeError:
+            pass
+    return out
+
+
+def brief_v0(case: dict, root: Path) -> str:
+    """land.py's fixer prompt and context as of 2026-10-28, rebuilt from what the queue kept."""
+    log = Path(case["log"])
+    lines = log.read_text(errors="replace").splitlines()
+    asked = max(n for n, l in enumerate(lines) if "asking the fixer" in l)
+    main_sha = _main_before(lines)
     prompt = land.FIXER_PROMPT.format(max_files=land.FIXUP_MAX_FILES, max_lines=land.FIXUP_MAX_LINES,
                                       verdict=land.FIXER_VERDICT)
     stat = git(root, "diff", "--stat=120", f"{main_sha}...{case['parent']}", check=False).rstrip()
@@ -192,9 +237,7 @@ def brief(case: dict, root: Path) -> str:
     if ledger[-8:]:
         parts.append("\nWhat the fixer did on recent reds (for calibration):\n"
                      + "\n".join(f"- {e.get('outcome')}: {e.get('reason', '')}" for e in ledger[-8:]))
-    replay = ("\n\nThis replay's checkout cannot build: the `gradle` command is not available, so verify by "
-              "reading the check's source and rerunning any `tools/` Python check that covers it.\n")
-    return prompt + "\n".join(parts) + replay
+    return prompt + "\n".join(parts) + REPLAY_NOTE
 
 
 # ---------------------------------------------------------------------------------------- grading
@@ -243,7 +286,7 @@ def run_case(case: dict, args) -> dict:
         return {"id": case["id"], "skipped": f"controls do not hold (F^: {note_parent}; F: {note_fix})"}
     out = OUT / f"{case['id']}{args.suffix}"
     out.mkdir(parents=True, exist_ok=True)
-    prompt = brief(case, root)
+    prompt = brief(case, root, args.context)
     (out / "prompt.md").write_text(prompt, encoding="utf-8")
     started = time.monotonic()
     argv = [sys.executable, str(HERE / "field_repo_agent.py"), "--root", str(root), "--write", "**",
@@ -269,7 +312,8 @@ def run_case(case: dict, args) -> dict:
            "ai4_reason": verdict.get("reason"), **g, "model": f"{data.get('provider')}/{data.get('model')}",
            "rounds": data.get("rounds"), "input_tokens": data.get("inputTokens"),
            "output_tokens": data.get("outputTokens"), "cache_read": data.get("cacheReadTokens"),
-           "wall_s": round(wall), "error": data.get("error"), "suffix": args.suffix}
+           "wall_s": round(wall), "error": data.get("error"), "suffix": args.suffix,
+           "context": args.context}
     with (OUT / "results.jsonl").open("a") as f:
         f.write(json.dumps(row) + "\n")
     reset(root, case["parent"])
@@ -313,6 +357,8 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--model", default=os.environ.get("FIELD_AGENT_MODEL", ""))
     r.add_argument("--max-rounds", type=int, default=40)
     r.add_argument("--timeout", type=float, default=900)
+    r.add_argument("--context", choices=("land", "v0"), default="land",
+                   help="the brief: land.py's current fixer context (default) or the 2026-10-28 one")
     r.add_argument("--suffix", default="", help="tag for a re-run (e.g. -after)")
     sub.add_parser("table")
     sub.add_parser("controls", help="the check and its controls for every case, without AI4")
