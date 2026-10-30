@@ -1,37 +1,40 @@
 # Keyframes: capturing, persisting and replaying live state
 
-Live coding has a specific kind of loss built into it. You push sliders around for twenty minutes,
-arrive somewhere good, and then the thing you arrived at exists only as the current contents of a
-running process. Reload the shader and it is gone. Close the document and it is gone. Try to
-reproduce it tomorrow from memory and you get something that is *nearly* it, which is worse.
+You push sliders around for twenty minutes and arrive somewhere good. The keyframer lets you keep
+that look: save it, recall it tomorrow, compare it with another one, and blend smoothly from one look
+to the next. A look you saved can also be turned back into Kotlin source and pasted into a box.
 
-`keyframer.kt` is the answer to that: a `KeyframeScope` is a set of named live targets, `capture()`
-reads all of them into a `Key`, and invoking that `Key` writes them all back. Once a look is a
-`Key`, it is an ordinary value: you can diff it against another one, blend between them, write it
-to disk with a version history, or turn it into Kotlin source you can paste into a box and commit.
+## The words on this page
 
-The blending half of this (numbers and vectors easing while *code* steps discretely) has a worked
-example over on
-[Values over time](interpolants_examples.md#keyframes-morphing-a-whole-parameter-state-including-code).
-This page is the rest of it: what a scope can watch, why a camera move is a screw motion, how saving
-works and what survives it, and how a captured look becomes source.
+- A **scope** (`KeyframeScope`) is the list of things you want a look to remember. You tell it which
+  live values to watch, and it reads and writes them for you.
+- A **target** is one of those things: a uniform on a shader `Structure`, a Kotlin local, a slider,
+  a camera.
+- A **key** (`Key`) is one saved look: a snapshot of every target in the scope, by name.
+  `scope.capture()` makes one. Calling the key, `key()`, writes every value back.
+- A **slot** is one named value inside a key, such as `glow@radius`. Some APIs call a slot a
+  **lane**, for example a class that adds several slots at once.
+- To **interpolate** is to make a key part of the way between two others: `scope.interpolate(a, b, t)`
+  with `t` from 0 to 1. Numbers and vectors ease smoothly.
+- Code cannot ease that way, so a slot that holds code **steps**: it keeps the first key's code until
+  `t` reaches 1, then switches to the second.
+- A **code blend** is the exception. When two pieces of code differ only in their numbers, the
+  keyframer can blend those numbers and build the code in between. It is off until you turn it on.
 
-Almost everything below runs on the CPU, without a renderer. The [keyframer reference](reference/graphics.md#keyframer-kt) lists the declarations with their KDoc.
-
-??? aside "Why most of this page needs no GPU"
-    `Structure` is constructible bare
-(`Structure.kt:112#open class Structure(`) and its `bind`/`bindings` are plain map operations
-    (`Structure.kt:176#fun bind(property: String, value: Function0<*>) {`, `Structure.kt:136#val bindings: MutableMap<String, Function0<*>> = root?.bindings`), so a keyframe scope can be exercised, and tested,
-    without a GPU. The exception is
-    [the GPU still](#the-same-thing-driving-a-live-gpu-uniform), which is a real Vulkan render, and the
-    targets that need a renderer, which [`dev_docs/KEYFRAMER_COVERAGE.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/KEYFRAMER_COVERAGE.md) lists.
+[Values over time](interpolants_examples.md#keyframes-morphing-a-whole-parameter-state-including-code)
+has a worked example of blending a whole look. The [keyframer reference](reference/graphics.md#keyframer-kt)
+lists every declaration with its KDoc.
 
 ## What a scope watches
 
-A scope holds no values of its own. It holds *targets*: places to read from and write to. The
-simplest is a uniform `Structure`, and the interesting wrinkle is the `@` in a key name: everything
-after the last `@` is the property driven on the target, so a glow pass and a blur pass can both own
-a `radius` without colliding.
+Start by telling a scope what to remember, capturing a key, and writing it back. The simplest
+target is a uniform on a `Structure`. Give each target a name. Everything after the last `@` in the
+name is the property on the structure. The part before it keeps two passes apart, so a glow pass
+and a blur pass can both have a `radius`.
+
+The example below captures three values, edits two of them and writes them back. It then restores
+the original key. Read the four panels in order: the captured key, the edit, the live values, and
+the check that the restore put everything back.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/capture_apply.png" wait="2.0" capture="box" open-outputs="true" w="900" h="620" padding="16"}
 :::static
@@ -77,7 +80,6 @@ captured()
 val restored = scope.capture()
 
 :::fold render the four panels
-// The card's width is pinned so the figure stays legible — see the persistence example below.
 markdown(
     "keys",
     """
@@ -202,9 +204,11 @@ Composition-specific choices stay in the contributor: what a lane means, when it
 whether a zero retires a resource, and how the names are versioned. Field only supplies composition,
 typed boundaries, interpolation and persistence.
 
-Besides a `Structure`, a scope can target a member of a live module's uniform block:
-`target(module, "key@block.member")`, with `ComputeModulePointer` and `MeshModulePointer` forms. These
-need a live renderer, so every fence on this page uses the plain `Structure` form.
+A scope can also drive a running shader's uniforms. `scope.target("tint", module.look)` targets
+the uniform block of a graphics module directly, because that block is a `Structure` too. To name
+one member of a module's block, use `target(module, "key@block.member")`; there are forms for
+compute and mesh modules as well. [The same thing, driving a live GPU uniform](#the-same-thing-driving-a-live-gpu-uniform)
+shows a key writing a shader's uniform.
 
 ??? aside "`capture()` reads and writes back either kind of property"
 
@@ -219,10 +223,10 @@ need a live renderer, so every fence on this page uses the plain `Structure` for
 
 ## The same thing, driving a live GPU uniform
 
-Everything so far ran on bare `Structure`s. This fence is a Vulkan render (a native window, a
-`moduleHere()` graphics module, a fan of **white** triangles) in which the only source of colour in
-the entire frame is a `vec4 tint` in the shader's uniform block, and the only thing that ever writes
-that uniform is a keyframe.
+A key can drive a running shader the same way. Below, a native Vulkan window draws a fan of
+**white** triangles. The shader multiplies them by a `vec4 tint` uniform. A key blended halfway
+between a cool look and a warm one is the only thing that writes that uniform, so the colour you see
+comes from the key.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/gpu_tint.png" wait="0.25" timeout="20" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true name="keyframer-gpu-tint" source-box="assets/canonical_graphics/keyframer-look" source-box-properties="vertex,fragment" source-box-wait="0.1"}
 var m = Mesh()
@@ -509,10 +513,10 @@ module.look.m = camera.m()
 
 ## A camera move is a screw motion, not a straight line
 
-`KeyframeScope.camera` registers a `Camera` as a target. What it stores is not a position and a
-target point but a `CameraPose`: the camera's rigid transform as a dual quaternion, plus the focus
-distance. That choice is what makes the target worth having, and the difference is easiest to see
-drawn.
+You can save camera positions as keys and blend between them. The camera keeps looking at the
+subject and keeps its distance, with no look-at code. `KeyframeScope.camera` adds a `Camera` as a
+target. It stores a `CameraPose`: the camera's position and rotation as one dual quaternion, plus
+the focus distance. The picture below shows why that matters.
 
 Interpolating a dual quaternion is a *screw motion* (`CameraPose.sclerp`, `CameraPose.kt:45#fun sclerp(other: CameraPose, t: Float): CameraPose =`, over
 `DualQuaternionf.sclerp`, `DualQuaternionf.kt:158#fun sclerp(other: DualQuaternionf, t: Float, dest:`): a rotation and a translation about one axis,
@@ -665,8 +669,10 @@ for free, with no look-at constraint anywhere in the loop.
 
 ## Saving: every save is history
 
-`saveKey` writes pretty JSON, and every single time also appends a numbered copy to a
-`<file>.versions` directory with a manifest. Saving is always additive; nothing prunes it.
+Save a key to a file, and you can load it again in another session. Every save is also kept as
+history, so an earlier look is never lost. `saveKey` writes the key as readable JSON. It also adds a
+numbered copy to a `<file>.versions` folder beside it, with a manifest of notes and times. Nothing
+ever deletes those copies.
 
 What survives the trip is a closed set. `KValue.fromAny` recognises numbers, Booleans,
 `vec2`/`3`/`4`, quaternion, dual quaternion, camera pose, string, StackSL source and source-backed
@@ -833,13 +839,18 @@ a half-written file are still there for you to read.
 
 ### Browsing saved keys
 
-A directory of saved keys is easier to read laid out than listed. `keyframeBrowser(dir, scope = …)`
-puts the keyframe collection browser in a box's output: every key in the directory, every slot any
-of them holds, and each slot's saved values plotted across its range, so you can see at a glance
-which slots the looks actually disagree about. Passing the `scope` is what makes it live: with
-it, **Apply** writes a selected key back into the scope's targets, a slot the scope watches but no
-key holds shows as never saved, and a slot a key holds that the scope no longer watches is struck
-through. Without it the browser only reads.
+To see a folder of saved looks side by side, show it in a keyframe browser.
+`keyframeBrowser(dir, scope = …)` puts the browser in the box's output. It lists every key in the
+folder and every slot they hold. For each slot it marks each key's value along the slot's range, so
+you can see which values the looks disagree about.
+
+Pass the `scope` to make the browser live. **Apply** then writes the selected key back into the
+scope's targets. A slot the scope watches but no key holds is marked as never saved. A slot that a
+key holds but the scope no longer watches is struck through. Without a scope, the browser only
+reads.
+
+The example saves four looks for a glow pass, each with a note, and opens the browser on their
+folder.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/browser.png" wait="4.0" capture="box" open-outputs="true" w="960" h="560" padding="16"}
 :::static
@@ -882,9 +893,9 @@ selected key as source, which is the next section.
 
 ## A captured look becomes source
 
-The last step of the loop closes it. `Key.updateCode()` emits the snapshot as pasteable Kotlin: an
-`update { … }` or `updateAndApply { … }` block, sorted by name, so that a state you arrived at by
-fiddling becomes a diff you can commit.
+When a look is right, you can turn it into code and paste it into the box. `Key.updateCode()`
+writes the key as Kotlin: an `update { … }` or `updateAndApply { … }` block, one assignment per
+slot, sorted by name. A look you found by moving sliders becomes a change you can commit.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/update_code.png" wait="2.0" capture="box" open-outputs="true" w="900" h="560" padding="16"}
 :::static
@@ -940,17 +951,142 @@ only returns the string.
 
 ## Blending two programs, not just two numbers
 
-A key can hold a `stack.auto` slot's *numbers* without its code: `stackAutoNumbers(module, name)` registers
-one lane per number, which a key turns on the GPU with no recompile (see [its numbers,
-live](stacksl_examples.md#its-numbers-live)).
+A slot can hold code as well as numbers. Two kinds of code can go in a key:
 
-A key can hold code: a `stack.auto` StackSL program registered with `stackAuto`, or a Kotlin
-expression captured by the `sourceBlock { }` macro. By default `interpolate` **steps** those: the
-left source until `t` reaches 1, then the right one. There is no midpoint between two arbitrary
-programs, and a program assembled out of halves of two others is not one either.
+- a StackSL program for a `stack.auto` slot. `stack.auto` is a part of a shader written in StackSL,
+  Field's small stack language. [StackSL examples](stacksl_examples.md) introduces it.
+- a Kotlin `sourceBlock { … }`. A `sourceBlock` is a block of Kotlin that keeps its own source
+  text, so a key can save it and compile it again later.
+  [Running code](running_code.md#sourceblock-and-interpolant-code-that-keeps-its-own-source)
+  describes it.
 
-Two programs that differ only in *numbers* are the exception, and they are the common case when the
-two keys are two looks for one patch. `codeBlend` turns that case on:
+By default `interpolate` **steps** code: it keeps the first key's code until `t` reaches 1, then
+switches to the second. There is no halfway point between two unrelated programs.
+
+Often the two programs are two looks for one patch, and they differ only in their numbers. Then the
+keyframer can do better. Set `scope.codeBlend` to `CodeBlendMode.STATIC` or `CodeBlendMode.RUNTIME`,
+and it blends those numbers and builds the program in between.
+
+If you only want to animate a StackSL slot's numbers, you do not need code keys at all.
+`stackAutoNumbers(module, name)` adds one slot per number in the program. A key then changes those
+numbers on the GPU without recompiling the shader. [Its numbers, live](stacksl_examples.md#its-numbers-live)
+shows this.
+
+### Two `sourceBlock` keys
+
+Here two keys each hold a `sourceBlock`. The two blocks differ in two numbers. The output shows the
+key halfway between them twice: first with `codeBlend` off, then on. Off, it is still the first
+block. On, it is a new block whose numbers are halfway, and calling it gives the halfway result.
+Below that is the plan, which lists each number that moves.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/source_block_blend.png" wait="2.0" capture="box" open-outputs="true" w="760" h="300" padding="16"}
+val scope = KeyframeScope()
+val quiet = scope.Key(mutableMapOf<String, Any?>("level" to sourceBlock { 2.0f * 3.0f + 1.0f }))
+val loud = scope.Key(mutableMapOf<String, Any?>("level" to sourceBlock { 8.0f * 3.0f + 5.0f }))
+
+// codeBlend is off by default: halfway, the key still holds the first block.
+val stepped = scope.interpolate(quiet, loud, 0.5).values["level"] as SourceBackedBlock<*>
+
+// With codeBlend on, the numbers that differ are blended into a new block.
+scope.codeBlend = CodeBlendOptions(mode = CodeBlendMode.STATIC)
+val blended = scope.interpolate(quiet, loud, 0.5).values["level"] as SourceBackedBlock<*>
+val plan = scope.codeBlendPlans(quiet, loud).getValue("level")
+
+markdown(
+    "blend",
+    """
+    | codeBlend | block at t = 0.5 | value |
+    |---|---|---|
+    | off | `${stepped.source}` | ${stepped()} |
+    | on | `${blended.source}` | ${blended()} |
+
+    ~~~
+${plan.describe()}
+    ~~~
+""",
+)
+```
+
+![A table with two rows. With codeBlend off, the block at t = 0.5 is 2.0f * 3.0f + 1.0f, value 7.0. With codeBlend on, it is 5.0f * 3.0f + 3.0f, value 18.0. Below, the plan: 2 moving sites of 3, 0 divergences, STATIC, with 2.0f moving to 8.0f and 1.0f to 5.0f](assets/keyframer_examples/source_block_blend.png)
+
+Two `sourceBlock` keys blend like two StackSL keys only when all three of these hold:
+
+- `scope.codeBlend` is `STATIC` or `RUNTIME`. With the default, `STEP`, code always steps.
+- Both blocks were written in the same box. Blocks from two different boxes always step, because the
+  blended block has to be compiled in one box, and neither is the right one.
+- The two sources differ only in number literals. Anything else that differs steps the whole slot,
+  and the plan says `STEP` with the reason.
+
+In every other case you get the first block until `t` reaches 1, then the second.
+
+### A family of curves between two looks
+
+The same works for longer code. Below are two looks for a wave, `calm` and `restless`. Each block
+builds the wave from a carrier, a ripple, an envelope and an offset. The structure is the same in
+both; only the numbers differ. The figure draws the blended wave at five values of `t`: blue is
+`calm` (t = 0), orange is `restless` (t = 1), and the three curves between are the blends. Look at how
+each curve sits between its neighbours: the frequencies, the decay and the offset all move together.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/source_block_curves.png" wait="3.0" capture="box" open-outputs="true" w="820" h="560" padding="16"}
+import kotlin.math.*
+
+// Two looks for one wave, each sampled across one turn: the same terms, different numbers.
+val scope = KeyframeScope()
+val calm = scope.Key(mutableMapOf<String, Any?>("wave" to sourceBlock {
+    (0..300).map { i ->
+        val x = i * 2 * PI / 300
+        val carrier = 0.6 * sin(2.0 * x)
+        val ripple = 0.15 * sin(7.0 * x + 0.3)
+        val envelope = exp(-0.1 * x)
+        (carrier + ripple) * envelope + 0.1
+    }
+}))
+val restless = scope.Key(mutableMapOf<String, Any?>("wave" to sourceBlock {
+    (0..300).map { i ->
+        val x = i * 2 * PI / 300
+        val carrier = 0.9 * sin(3.0 * x)
+        val ripple = 0.4 * sin(11.0 * x + 1.2)
+        val envelope = exp(-0.35 * x)
+        (carrier + ripple) * envelope + 0.3
+    }
+}))
+
+// Blend with codeBlend on at five values of t, call each blended block, and draw its wave.
+scope.codeBlend = CodeBlendOptions(mode = CodeBlendMode.STATIC)
+val ts = [0.0, 0.25, 0.5, 0.75, 1.0]
+val curves = ts.map { t ->
+    val wave = scope.interpolate(calm, restless, t).values["wave"] as SourceBackedBlock<*>
+    val ys = wave() as List<*>
+    FLine().apply {
+        ys.forEachIndexed { i, y ->
+            val p = vec(i * 2.5, -(y as Double) * 120)
+            if (i == 0) moveTo(p) else lineTo(p)
+        }
+        thickness = 2.0
+        color = vec(0.3 + 0.7 * t, 0.6, 1.0 - 0.7 * t, 1.0)
+    }
+}
+lines(curves, w = 760.0, h = 300.0, fitToSize = true)
+
+val plan = scope.codeBlendPlans(calm, restless).getValue("wave")
+markdown("plan", "blue: calm (t = 0) · orange: restless (t = 1)\n\n~~~\n${plan.describe()}\n~~~")
+```
+
+![Five waves drawn over one turn, from blue through purple to orange. The blue wave, calm, is slow and gentle; the orange one, restless, is faster, rippled and decays quickly; each wave between sits between its neighbours. Below, the plan: 7 moving sites of 11, 0 divergences, STATIC, listing each number that moves](assets/keyframer_examples/source_block_curves.png)
+
+!!! note "What counts as differing only in numbers"
+    The Kotlin blend compares the two sources token by token. Comments and whitespace are ignored.
+    A `+` or `-` directly in front of a number belongs to the number, so `-0.1` against `-0.35` is a
+    number that moves. A `+` or `-` *between* two terms is an operator: an offset written `+ 0.1` in
+    one look and `- 0.2` in the other is a structural difference, and the whole slot steps. Write
+    both as `+`, with a negative number where needed. A vector, quaternion or dual-quaternion
+    constructor whose arguments are all literals blends as one value, so a rotation turns along the
+    shorter arc. Hexadecimal, binary and unsigned literals never move.
+
+### How the two programs are compared
+
+Here is the plan for two StackSL looks that differ in three numbers. `planStackSLCodeBlend` makes
+the plan without a scope, and `describe()` lists each number that moves:
 
 ```diffstatic {data-lang=kotlin}
 val warm = "uv 3.0 * fbm 0.15 + [1.0,0.55,0.2] *"
