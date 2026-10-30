@@ -650,7 +650,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**35380 public symbols across 1605 source files**, 20683 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**35381 public symbols across 1605 source files**, 20684 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -678,7 +678,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Audio](audio.md) | 77 | 2092 | 1013 (48%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 22 | 586 | 586 (100%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 123 | 3096 | 1520 (49%) | Field's small languages, from the host side. |
-| [Workspace](workspace.md) | 236 | 3205 | 1286 (40%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
+| [Workspace](workspace.md) | 236 | 3206 | 1287 (40%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [Machine learning](machine-learning.md) | 112 | 2610 | 1040 (39%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 | [Animation](animation.md) | 10 | 178 | 41 (23%) |  |
 | [Execution](execution.md) | 2 | 9 | 9 (100%) |  |
@@ -1914,7 +1914,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>properties/<wbr></small> [saved.kt](data.md#saved-kt) | Data | 7 | 7 | Per-box persistence for Kotlin values, on top of kotlinx.serialization. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>stdlib/<wbr></small> [SavedJsonSmokeTest.kt](examples.md#savedjsonsmoketest-kt) | Examples · internal | 3 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>diagnostics/<wbr>logging/<wbr></small> [SaveReloadLog.kt](workspace.md#savereloadlog-kt) | Workspace | 5 | 1 | A timestamped append-only log of document save and reload events, written to `~/.afield/logs/save_reload.log`. |  |
-| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>persistence/<wbr></small> [saving.kt](workspace.md#saving-kt) | Workspace · internal | 32 | 10 | Reads and writes a document as `metadata.edn` plus sidecar files, and keeps backups of what it replaces. | [What a document is on disk](../document_on_disk.md) |
+| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>persistence/<wbr></small> [saving.kt](workspace.md#saving-kt) | Workspace · internal | 33 | 11 | Reads and writes a document as `metadata.edn` plus sidecar files, and keeps backups of what it replaces. | [What a document is on disk](../document_on_disk.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>spatial/<wbr>steamaudio/<wbr></small> [Scene.kt](audio.md#scene-kt) | Audio | 26 | 19 | Acoustic geometry: the scene that sound is simulated against, and the meshes in it. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>io/<wbr>dmx/<wbr></small> [SceneOnARig.kt](lighting.md#sceneonarig-kt) | Lighting | 16 | 16 | A RectSL scene driven onto a light rig over sACN, and measured end to end. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>motion/<wbr></small> [Score.kt](simulation.md#score-kt) | Simulation | 81 | 49 | The canvas as a score: boxes are the events, a playhead box sweeps across them, and each box's `score { }` runs every frame the playhead is over it. |  |
