@@ -14,11 +14,11 @@ val kfs = KeyframeScope()
 
 // Four keys, saved properly.
 ["a" to 1f, "b" to 2f, "c" to 3f, "d" to 4f].forEach { (n, r) ->
-    kfs.saveKey(dir.resolve(n), kfs.Key(mutableMapOf("glow@radius" to r)), "look $n")
+    kfs.saveKey(dir.resolve(n), kfs.Key("glow@radius" to r), "look $n")
 }
 
 // One key, saved properly and then truncated — a write that stopped halfway.
-kfs.saveKey(dir.resolve("e"), kfs.Key(mutableMapOf("glow@radius" to 5f)), "look e")
+kfs.saveKey(dir.resolve("e"), kfs.Key("glow@radius" to 5f), "look e")
 val e = dir.resolve("e")
 Files.writeString(e, Files.readString(e).take(14))
 

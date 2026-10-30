@@ -1633,22 +1633,22 @@
     },
     "assets/agent_transcripts/keyframe_code_blend/metadata.edn": {
       "captureDigest": "d1d480e4a96ffb92bbe0276a6b4e731b8ded2572574a83bb2e39cd347acff689",
-      "capturedAt": "2026-10-29T22:28:48.129Z",
+      "capturedAt": "2026-10-30T22:54:27.040Z",
       "channels": 5,
       "file": "assets/web_publications/keyframe_code_blend/document/metadata.edn",
       "files": {
-        "assets/web_publications/keyframe_code_blend/document/metadata.edn": "fc7dd4a416ab08d5603b3bc49db6d5b7c38dd38aab736bd524b48a1616c06b7a",
-        "assets/web_publications/keyframe_code_blend/document/outputs.json": "a8a925f6027a95634125bcab13e8ea950f5c2dc70e6c64335367eb81059b1567",
-        "assets/web_publications/keyframe_code_blend/outputs/0.html": "87564634db8d1ae1201a93a4fa8fa60a7a58b0c91c5e35e28b25abac28a42140",
-        "assets/web_publications/keyframe_code_blend/outputs/1.html": "a7ad12876ffc4e6ed2b2f425d3fcea4505a23e68211eed46c67c46b7c3af8d55",
-        "assets/web_publications/keyframe_code_blend/outputs/2.html": "526854061768c423554b18a129c63224df81fb53e4eed3663ef4c2f5ce55fb74",
-        "assets/web_publications/keyframe_code_blend/outputs/3.html": "6ab5e771f6e2a618bea05f40848adc115d2fafbeadb25e07f9c8973ff6a5cc69",
-        "assets/web_publications/keyframe_code_blend/outputs/4.html": "13bcb7e99f418f367188e228b5045c92054b50a80bd600656d672fbefcb7a81d"
+        "assets/web_publications/keyframe_code_blend/document/metadata.edn": "f206987b045f169c6441de96831aa704db2b8457a9af2d36b55698373fede4e9",
+        "assets/web_publications/keyframe_code_blend/document/outputs.json": "baf1f7e0d7f73b85fcad94049a7e1ea900bb8dfcc081f67fbf561637ea7b54e9",
+        "assets/web_publications/keyframe_code_blend/outputs/0.html": "878c75bcffec6725f18b52ab5a66f27e8b545ea52348646a34ff486dbce86fb3",
+        "assets/web_publications/keyframe_code_blend/outputs/1.html": "1e322f5eb91c46ed1ed3d145164f9f7cd6727ab74633cb1eff871d26c8b3dae6",
+        "assets/web_publications/keyframe_code_blend/outputs/2.html": "99dcb8a56dd7a09a5e4ab4d38d9e3970ef9768db8e7c6f3ea59fac3cbfba56a7",
+        "assets/web_publications/keyframe_code_blend/outputs/3.html": "5ac835d94ae5bb2b2c362a8abcd672d08688d332c270d69a6668568c0993c774",
+        "assets/web_publications/keyframe_code_blend/outputs/4.html": "50b8f6093bda3b2c04e7e585803809cb08662c2b538d92851e7a35d0eb189876"
       },
       "kinds": [],
       "outputs": "assets/web_publications/keyframe_code_blend/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/keyframe_code_blend.yaml": "7da3a1fad8d4c29d756aa5f221cebd1facf0ad0ae56212d2d29f9c7148682efe",
+        "dev_docs/agents/transcripts/keyframe_code_blend.yaml": "9d3dce584b22e02eea93e15cf60ec221bee8a0971b55159b055c049d88a8df46",
         "public/docs/assets/agent_transcripts/keyframe_code_blend/guides/keyframer_examples-blending-two-programs-not-just-two-numbers.md": "b1581d6012efb5191cdf4d94429231a2112e480a0ba67ee5a5806f204a55427e",
         "public/docs/assets/agent_transcripts/keyframe_code_blend/kfb_breakdown_code_.kt": "c052a08b57783c87dd8d2839c1604776944a38a9f8776ca9d0470ac4ef0aa767",
         "public/docs/assets/agent_transcripts/keyframe_code_blend/kfb_kotlin_code_.kt": "19e48fb2d211f15a787ba7b8b78e7405e85930569901110bfd9c1f0347616a71",
@@ -1688,21 +1688,21 @@
     },
     "assets/agent_transcripts/keyframe_key_discovery/metadata.edn": {
       "captureDigest": "d1d480e4a96ffb92bbe0276a6b4e731b8ded2572574a83bb2e39cd347acff689",
-      "capturedAt": "2026-10-29T22:38:49.335Z",
+      "capturedAt": "2026-10-30T22:54:30.630Z",
       "channels": 4,
       "file": "assets/web_publications/keyframe_key_discovery/document/metadata.edn",
       "files": {
-        "assets/web_publications/keyframe_key_discovery/document/metadata.edn": "7b9e03162cd686d441f2c9f86347de73397b7929329b317ce2ca8de186d8bed0",
-        "assets/web_publications/keyframe_key_discovery/document/outputs.json": "21afcf509965957e9f6ba41c2a6cbbd97b97f248da051ab7a73c4583fc70d872",
-        "assets/web_publications/keyframe_key_discovery/outputs/0.html": "cf13e02a929896e1fc0133dd2b4029ed9d8b621dabfedca5c848d1ba3a59aee3",
-        "assets/web_publications/keyframe_key_discovery/outputs/1.html": "6fd84e3e0c0f9b2c4c6ee88cfaa36975e09e3ce668f654fe972c4a6acdfaa135",
-        "assets/web_publications/keyframe_key_discovery/outputs/2.html": "6c19a66e22771198e10562a62888958519cd7b73916c9afab450605ef1b42c24",
-        "assets/web_publications/keyframe_key_discovery/outputs/3.html": "8bc23437531904709d1f529ed1318355e5fba2ddf0b8aadd04aa1c1502b4f930"
+        "assets/web_publications/keyframe_key_discovery/document/metadata.edn": "daf67d89a2c694f03ad1ad4c5cdb7dadd4c2b1f4187a35409520224375fd8419",
+        "assets/web_publications/keyframe_key_discovery/document/outputs.json": "8ddf8a4169fd2e08c3d0abcad2caa8ee52a8ea97abd70d5bd2837c1941186f98",
+        "assets/web_publications/keyframe_key_discovery/outputs/0.html": "238150ba6bf588f095608c1c792ecae8ce663e1a2a1a1259507fadbc0dd55814",
+        "assets/web_publications/keyframe_key_discovery/outputs/1.html": "079af8a81d9d4a2d3e338847bd29b5b9e154d54de830fa6d13f971c3117e9a77",
+        "assets/web_publications/keyframe_key_discovery/outputs/2.html": "483efcb7b530052c5a8021b93a434a050458174272abeac8e4f01fde59ba2e9e",
+        "assets/web_publications/keyframe_key_discovery/outputs/3.html": "bf2f4f647c286ca91ae405c44d1964956e2417f3de16ffbafd7f5630715a9a38"
       },
       "kinds": [],
       "outputs": "assets/web_publications/keyframe_key_discovery/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/keyframe_key_discovery.yaml": "e47304b837713a1fd70b801df01f1598bace48eefdc57d3282d15f4a5ca0446f",
+        "dev_docs/agents/transcripts/keyframe_key_discovery.yaml": "a8617996fbb2bfb4041911e41eff5b935242c0bab9e8cb76148e36cdfeba2390",
         "public/docs/assets/agent_transcripts/keyframe_key_discovery/guides/keyframer_examples.md": "8b6bafa93792e9b2e19e7409aed9df37529e07dba3278de79f3324047a467808",
         "public/docs/assets/agent_transcripts/keyframe_key_discovery/kf_before_after_code_.kt": "20d5a8d98ac8f3045120b476dd8a1fc75eaf718cac2154bb3ce368916296d1de",
         "public/docs/assets/agent_transcripts/keyframe_key_discovery/kf_junk_vs_damage_code_.kt": "63d54af3595e5bf71459a0db3f831263c1bc4395ce78488a56fb80087cea2977",
@@ -1712,24 +1712,24 @@
     },
     "assets/agent_transcripts/keyframer_worked_example/metadata.edn": {
       "captureDigest": "d1d480e4a96ffb92bbe0276a6b4e731b8ded2572574a83bb2e39cd347acff689",
-      "capturedAt": "2026-10-29T22:40:24.417Z",
+      "capturedAt": "2026-10-30T22:54:35.868Z",
       "channels": 5,
       "file": "assets/web_publications/keyframer_worked_example/document/metadata.edn",
       "files": {
-        "assets/web_publications/keyframer_worked_example/document/metadata.edn": "4a83864a79a3cf363fcbe46f36d2f26f02fc895527090a8ea45fc4b7fedc5b19",
-        "assets/web_publications/keyframer_worked_example/document/outputs.json": "5f53bc378af5e1b3caa8a5cacb0dab59213d98f1528f8badeb07746d2c8d4f1d",
-        "assets/web_publications/keyframer_worked_example/outputs/0.html": "c9eda1608fcb753b6c9df6ba825f8be7e4509e04412b7e4fae61347fc8046484",
-        "assets/web_publications/keyframer_worked_example/outputs/1.html": "46a2d13753f80684cabe249887f35130cc6a42b5c7e56dde7ee97714007ff052",
-        "assets/web_publications/keyframer_worked_example/outputs/2.html": "118f9b5e992e96b516c46a7930d421b6abc0c19bd1666ff93e43680f88292c38",
-        "assets/web_publications/keyframer_worked_example/outputs/3.html": "01c68f0552aba46c4d1f4d7d8db5c182f496fb675fbb530054a7b09d4faffbbb",
-        "assets/web_publications/keyframer_worked_example/outputs/4.html": "16acbd318dde81e4cc0dccc300afc8451994cd504603efc8273cc82d6bbcac62"
+        "assets/web_publications/keyframer_worked_example/document/metadata.edn": "a7e1a44cedd63f033ff20858545375af58a65a9aad41c773a6c3ca304c7f070a",
+        "assets/web_publications/keyframer_worked_example/document/outputs.json": "b237dfb846e4b11849f6ec15cd3faac9a255549b430af86a35ec80ec2e79515b",
+        "assets/web_publications/keyframer_worked_example/outputs/0.html": "e6ad40f381631a9bec397bcfa1c4b99c99f18590c398a85272e53917384b36f1",
+        "assets/web_publications/keyframer_worked_example/outputs/1.html": "0123bde7cfd961c186c10dfc8fae1e0e24fc95d25d1de058a3d5e2ebe5ae6bae",
+        "assets/web_publications/keyframer_worked_example/outputs/2.html": "7e9d3ceb2c53b4e92816ed938f0f8623d266591c277180c697c07543264dca13",
+        "assets/web_publications/keyframer_worked_example/outputs/3.html": "8109f4d9d63cf6197b38444a8630f0861a9c44dbf3d09f03e57489478c7d90b9",
+        "assets/web_publications/keyframer_worked_example/outputs/4.html": "2d31a26f1318b5843d5c8a5724b287f59fb3d1f6bb6522857f6ba22bcafefb66"
       },
       "kinds": [
         "svg"
       ],
       "outputs": "assets/web_publications/keyframer_worked_example/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/keyframer_worked_example.yaml": "6bfc348c05a1dba842c215bf69f83ee396205fdb813e2845fa13d89867cca344",
+        "dev_docs/agents/transcripts/keyframer_worked_example.yaml": "8ee864813b08b40658f56117e061a968e4bb906041d030c4f082e4a056a01cbe",
         "public/docs/assets/agent_transcripts/keyframer_worked_example/guides/keyframer_examples.md": "c56cf45f502640ec3fdde4734496047ba624733a9b12a80c64a3bf877b6fb9c9",
         "public/docs/assets/agent_transcripts/keyframer_worked_example/keyframe_camera_code_.kt": "6c311feacda5a4d87c1080a51ff0fc14c171459ccc895872078545a6826eb27e",
         "public/docs/assets/agent_transcripts/keyframer_worked_example/keyframe_persist_code_.kt": "269a651935f1a84ce36743954a85282070b51120947d441271cd36c6c04afdfd",

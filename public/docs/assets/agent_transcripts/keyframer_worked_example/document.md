@@ -317,7 +317,7 @@ move from lerping the two positions. Draw both and the argument makes itself.
 The two camera positions; both look at the subject at the origin. Move one and rerun.
 
 ```edn [field-box id="keyframe_camera" role="properties"]
-{"id" "keyframe_camera" "index" 3 "name" "A camera move is a screw motion" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A camera move is a screw motion" "_tombstone" false "frame" #afield/rect [80.0 540.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "keyframe_camera_code_.kt" "lines" 115 "characters" 4216 "sha256" "6c311feacda5a4d87c1080a51ff0fc14c171459ccc895872078545a6826eb27e"}]}
+{"id" "keyframe_camera" "index" 3 "name" "A camera move is a screw motion" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A camera move is a screw motion" "_tombstone" false "frame" #afield/rect [80.0 540.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "keyframe_camera_code_.kt" "lines" 115 "characters" 4188 "sha256" "b7f469a649660da8c247e2b758cae0edfbea4a67a4a12849e6b4986168767490"}]}
 ```
 
 ```kotlin [field-property box="keyframe_camera" name="code" path="keyframe_camera_code_.kt"]
@@ -332,8 +332,8 @@ var fromPos = Vector3f(8f, 2f, 0f)
 var toPos = Vector3f(0f, 2f, 8f)
 
 val scope = KeyframeScope()
-val a = scope.Key(mutableMapOf("camera" to CameraPose.lookAt(fromPos, Vector3f(0f, 0f, 0f))))
-val b = scope.Key(mutableMapOf("camera" to CameraPose.lookAt(toPos, Vector3f(0f, 0f, 0f))))
+val a = scope.Key("camera" to CameraPose.lookAt(fromPos, Vector3f(0f, 0f, 0f)))
+val b = scope.Key("camera" to CameraPose.lookAt(toPos, Vector3f(0f, 0f, 0f)))
 val pa = (a["camera"] as CameraPose).position
 val pb = (b["camera"] as CameraPose).position
 
