@@ -75,8 +75,8 @@ data class TemplateMetadata(
  *
  * [templating] starts one background fetch of each `/list` endpoint. The cache is not refreshed
  * afterwards, and failed or empty responses do not create cache entries. Template insertion checks
- * `$home/templates`, then bundled templates, then cached remote servers; it does not insert the
- * document entries that [SavingContext.listTemplates] finds directly beneath `$home`.
+ * `$home/templates`, then bundled templates, then the documents directly beneath `$home`, then cached
+ * remote servers ([localTemplatePath]).
  */
 val templateServers: List<String> by lazy {
     val serversEnv = System.getenv("AFIELD_TEMPLATE_SERVERS") ?: System.getProperty("afield.templateServers") ?: ""
@@ -413,6 +413,7 @@ fun templating() {
 
         val templatesHome = SavingContext().listTemplates("$home/templates")
         val templatesApp = SavingContext().listTemplates("$app/templates")
+        val workspaceDocuments = SavingContext().listTemplates(home)
 
         val session = thisSession.get()
         val si = thisSessionInfo.get()
@@ -424,21 +425,21 @@ fun templating() {
                 // Try local templates first
                 // A template's header names become the receiving document's, so its boxes keep saving them.
                 fun cloneTemplate(path: String): Set<afield.document.graph.Box> =
-                    SavingContext().cloneInto(path).also {
+                    SavingContext().cloneTemplateInto(path).also {
                         afield.document.graph.Box.recordDocumentPersistentProperties(
                             si.filename,
                             // `load` records a standalone `.edn` template's header against its folder
                             afield.document.graph.Box.persistentPropertiesFor(
                                 File(path).let { if (it.isFile) it.absoluteFile.parent else it.path }))
                     }
-                val boxes = if (templatesHome.contains(templateName)) {
-                    cloneTemplate(resolveTemplatePath("$home/templates", templateName))
-                } else if (templatesApp.contains(templateName)) {
-                    cloneTemplate(resolveTemplatePath("$app/templates", templateName))
+                val local = localTemplatePath(templateName, home, app)
+                val boxes = if (local != null) {
+                    cloneTemplate(local)
                 } else {
                     val remote = downloaded[templateName]
                     if (remote == null) {
                         if (templateName in downloaded) notify("Could not download template '$templateName'", "error")
+                        else notify("No template named '$templateName'", "error")
                         emptySet()
                     } else {
                         val (serverUrl, ednContent) = remote
@@ -502,7 +503,7 @@ fun templating() {
         }
 
         val remoteNames = exec.value.filter { name ->
-            name !in templatesHome && name !in templatesApp && remoteTemplatesCache.values.any { name in it }
+            name !in templatesHome && name !in templatesApp && name !in workspaceDocuments && remoteTemplatesCache.values.any { name in it }
         }
         if (remoteNames.isEmpty()) {
             insert(emptyMap())
@@ -552,6 +553,18 @@ fun templating() {
         }
         Handled.yes
     })
+}
+
+/**
+ * Where `insert-template` reads the local template [name] from: `$home/templates` first, then the
+ * bundled `$app/templates`, then a document directly in the workspace [home] (the palette lists those
+ * as "Workspace file"). Null when none holds it, which leaves the remote servers.
+ */
+internal fun localTemplatePath(name: String, home: String, app: String): String? = when (name) {
+    in SavingContext().listTemplates("$home/templates") -> resolveTemplatePath("$home/templates", name)
+    in SavingContext().listTemplates("$app/templates") -> resolveTemplatePath("$app/templates", name)
+    in SavingContext().listTemplates(home) -> resolveTemplatePath(home, name)
+    else -> null
 }
 
 private fun resolveTemplatePath(baseDir: String, name: String): String {
