@@ -275,8 +275,8 @@ Structure target drives it. This is the overload to use for a module uniform.
 val scope = KeyframeScope()
 scope.target("tint", module.look)
 
-val cool = scope.Key(mutableMapOf("tint" to vec(0.20, 0.65, 1.00, 1.0)))
-val warm = scope.Key(mutableMapOf("tint" to vec(1.00, 0.50, 0.12, 1.0)))
+val cool = scope.Key("tint" to vec(0.20, 0.65, 1.00, 1.0))
+val warm = scope.Key("tint" to vec(1.00, 0.50, 0.12, 1.0))
 
 /*
 A quarter of the way from cool to warm — NOT the midpoint. These two are nearly
@@ -356,8 +356,8 @@ camera.at = vec(-3.03, 1.0, 1.75)
 camera.target = vec(0, 0, 0)
 val poseWarm = camera.pose()
 
-val cool = scope.Key(mutableMapOf("camera" to poseCool, "tint" to vec(0.20, 0.65, 1.00, 1.0)))
-val warm = scope.Key(mutableMapOf("camera" to poseWarm, "tint" to vec(1.00, 0.50, 0.12, 1.0)))
+val cool = scope.Key("camera" to poseCool, "tint" to vec(0.20, 0.65, 1.00, 1.0))
+val warm = scope.Key("camera" to poseWarm, "tint" to vec(1.00, 0.50, 0.12, 1.0))
 
 val t = 0.0
 scope.interpolate(cool, warm, t)()
@@ -402,8 +402,8 @@ val poseCool = camera.pose()
 camera.at = vec(-3.03, 1.0, 1.75)
 camera.target = vec(0, 0, 0)
 val poseWarm = camera.pose()
-val cool = scope.Key(mutableMapOf("camera" to poseCool, "tint" to vec(0.20, 0.65, 1.00, 1.0)))
-val warm = scope.Key(mutableMapOf("camera" to poseWarm, "tint" to vec(1.00, 0.50, 0.12, 1.0)))
+val cool = scope.Key("camera" to poseCool, "tint" to vec(0.20, 0.65, 1.00, 1.0))
+val warm = scope.Key("camera" to poseWarm, "tint" to vec(1.00, 0.50, 0.12, 1.0))
 scope.interpolate(cool, warm, 0.333)()
 module.look.p = camera.p()
 module.look.m = camera.m()
@@ -444,8 +444,8 @@ val poseCool = camera.pose()
 camera.at = vec(-3.03, 1.0, 1.75)
 camera.target = vec(0, 0, 0)
 val poseWarm = camera.pose()
-val cool = scope.Key(mutableMapOf("camera" to poseCool, "tint" to vec(0.20, 0.65, 1.00, 1.0)))
-val warm = scope.Key(mutableMapOf("camera" to poseWarm, "tint" to vec(1.00, 0.50, 0.12, 1.0)))
+val cool = scope.Key("camera" to poseCool, "tint" to vec(0.20, 0.65, 1.00, 1.0))
+val warm = scope.Key("camera" to poseWarm, "tint" to vec(1.00, 0.50, 0.12, 1.0))
 scope.interpolate(cool, warm, 0.666)()
 module.look.p = camera.p()
 module.look.m = camera.m()
@@ -486,8 +486,8 @@ val poseCool = camera.pose()
 camera.at = vec(-3.03, 1.0, 1.75)
 camera.target = vec(0, 0, 0)
 val poseWarm = camera.pose()
-val cool = scope.Key(mutableMapOf("camera" to poseCool, "tint" to vec(0.20, 0.65, 1.00, 1.0)))
-val warm = scope.Key(mutableMapOf("camera" to poseWarm, "tint" to vec(1.00, 0.50, 0.12, 1.0)))
+val cool = scope.Key("camera" to poseCool, "tint" to vec(0.20, 0.65, 1.00, 1.0))
+val warm = scope.Key("camera" to poseWarm, "tint" to vec(1.00, 0.50, 0.12, 1.0))
 scope.interpolate(cool, warm, 1.0)()
 module.look.p = camera.p()
 module.look.m = camera.m()
@@ -525,8 +525,8 @@ at the same subject, those are very different moves:
 :::static
 val scope = KeyframeScope()
 // Two cameras, both two units up, both looking at the origin, a quarter turn apart.
-val a = scope.Key(mutableMapOf("camera" to CameraPose.lookAt(Vector3f(8f, 2f, 0f), Vector3f(0f, 0f, 0f))))
-val b = scope.Key(mutableMapOf("camera" to CameraPose.lookAt(Vector3f(0f, 2f, 8f), Vector3f(0f, 0f, 0f))))
+val a = scope.Key("camera" to CameraPose.lookAt(Vector3f(8f, 2f, 0f), Vector3f(0f, 0f, 0f)))
+val b = scope.Key("camera" to CameraPose.lookAt(Vector3f(0f, 2f, 8f), Vector3f(0f, 0f, 0f)))
 val pa = (a["camera"] as CameraPose).position
 val pb = (b["camera"] as CameraPose).position
 
@@ -688,11 +688,9 @@ val scope = KeyframeScope(schemaVersion = 1)
 scope.saveKey(
     path,
     scope.Key(
-        mutableMapOf(
-            "gain" to 0.20f,
-            "pos" to Vector3f(1f, 2f, 3f),
-            "voice" to stackSLString("saw 110 *"),
-        ),
+        "gain" to 0.20f,
+        "pos" to Vector3f(1f, 2f, 3f),
+        "voice" to stackSLString("saw 110 *"),
     ),
     note = "first pass",
 )
@@ -700,23 +698,19 @@ scope.saveKey(
 scope.saveKey(
     path,
     scope.Key(
-        mutableMapOf(
-            "gain" to 0.65f,
-            "pos" to Vector3f(4f, 5f, 6f),
-            "voice" to stackSLString("sin 220 * fold"),
-        ),
+        "gain" to 0.65f,
+        "pos" to Vector3f(4f, 5f, 6f),
+        "voice" to stackSLString("sin 220 * fold"),
     ),
     note = "brighter",
 )
 
 // A third save that also carries values the union cannot represent.
 val lossy = scope.Key(
-    mutableMapOf(
-        "gain" to 0.90f,
-        "enabled" to true, // a Boolean is kept
-        "taps" to [1, 2, 3], // a list is not
-        "absent" to null, // and neither is a null
-    ),
+    "gain" to 0.90f,
+    "enabled" to true, // a Boolean is kept
+    "taps" to [1, 2, 3], // a list is not
+    "absent" to null, // and neither is a null
 )
 scope.saveKey(path, lossy, note = "with unsupported values")
 
@@ -898,18 +892,16 @@ slot, sorted by name. A look you found by moving sliders becomes a change you ca
 :::static
 val scope = KeyframeScope()
 val key = scope.Key(
-    mutableMapOf<String, Any?>(
-        "gain" to 0.65f, // a Float, and the 'f' suffix matters
-        "steps" to 12,
-        "seed" to 99L,
-        "pos" to Vector3f(1.5f, 0f, -2.25f),
-        "spin" to Quaternionf().setAngleAxis(0.7f, 0f, 1f, 0f),
-        "voice" to stackSLString("sin 220 * fold"),
-        // A source block whose body mentions a '$'. Emitting this as a Kotlin *raw* string would
-        // have let the '$' interpolate at paste time; it now falls back to an escaped literal.
-        "block" to SourceBackedBlock<Any?>("box-1", "val total = 2\nprintln(\"sum: \$total\")"),
-        "notes" to listOf<String>("unsupported", "on purpose"), // typed: a bare [..] has no element type here
-    ),
+    "gain" to 0.65f, // a Float, and the 'f' suffix matters
+    "steps" to 12,
+    "seed" to 99L,
+    "pos" to Vector3f(1.5f, 0f, -2.25f),
+    "spin" to Quaternionf().setAngleAxis(0.7f, 0f, 1f, 0f),
+    "voice" to stackSLString("sin 220 * fold"),
+    // A source block whose body mentions a '$'. Emitting this as a Kotlin *raw* string would
+    // have let the '$' interpolate at paste time; it now falls back to an escaped literal.
+    "block" to SourceBackedBlock<Any?>("box-1", "val total = 2\nprintln(\"sum: \$total\")"),
+    "notes" to listOf<String>("unsupported", "on purpose"), // typed: a bare [..] has no element type here
 )
 
 :::fold render the generated update code
@@ -981,8 +973,8 @@ a number. The plan reports it, and the whole slot steps.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/source_block_blend.png" wait="2.0" capture="box" open-outputs="true" w="760" h="420" padding="16"}
 val scope = KeyframeScope()
-val quiet = scope.Key(mutableMapOf<String, Any?>("level" to sourceBlock { 2.0f * 3.0f + 1.0f }))
-val loud = scope.Key(mutableMapOf<String, Any?>("level" to sourceBlock { 8.0f * 3.0f + 5.0f }))
+val quiet = scope.Key("level" to sourceBlock { 2.0f * 3.0f + 1.0f })
+val loud = scope.Key("level" to sourceBlock { 8.0f * 3.0f + 5.0f })
 
 // codeBlend is off by default: halfway, the key still holds the first block.
 val stepped = scope.interpolate(quiet, loud, 0.5).values["level"] as SourceBackedBlock<*>
@@ -993,7 +985,7 @@ val blended = scope.interpolate(quiet, loud, 0.5).values["level"] as SourceBacke
 val plan = scope.codeBlendPlans(quiet, loud).getValue("level")
 
 // A key whose block also changes an operator: `+` becomes `-`. That is not a number, so it steps.
-val other = scope.Key(mutableMapOf<String, Any?>("level" to sourceBlock { 8.0f * 3.0f - 5.0f }))
+val other = scope.Key("level" to sourceBlock { 8.0f * 3.0f - 5.0f })
 val refused = scope.codeBlendPlans(quiet, other).getValue("level")
 
 markdown(
@@ -1040,7 +1032,7 @@ import kotlin.math.*
 
 // Two looks for one wave, each sampled across one turn: the same terms, different numbers.
 val scope = KeyframeScope()
-val calm = scope.Key(mutableMapOf<String, Any?>("wave" to sourceBlock {
+val calm = scope.Key("wave" to sourceBlock {
     (0..300).map { i ->
         val x = i * 2 * PI / 300
         val carrier = 0.6 * sin(2.0 * x)
@@ -1048,8 +1040,8 @@ val calm = scope.Key(mutableMapOf<String, Any?>("wave" to sourceBlock {
         val envelope = exp(-0.1 * x)
         (carrier + ripple) * envelope + 0.1
     }
-}))
-val restless = scope.Key(mutableMapOf<String, Any?>("wave" to sourceBlock {
+})
+val restless = scope.Key("wave" to sourceBlock {
     (0..300).map { i ->
         val x = i * 2 * PI / 300
         val carrier = 0.9 * sin(3.0 * x)
@@ -1057,7 +1049,7 @@ val restless = scope.Key(mutableMapOf<String, Any?>("wave" to sourceBlock {
         val envelope = exp(-0.35 * x)
         (carrier + ripple) * envelope + 0.3
     }
-}))
+})
 
 // Blend with codeBlend on at five values of t, call each blended block, and draw its wave.
 scope.codeBlend = CodeBlendOptions(mode = CodeBlendMode.STATIC)
