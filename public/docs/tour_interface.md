@@ -113,24 +113,56 @@ ui.pause(800)
 
 `alt+d` turns on a drawing layer over the whole canvas, for notes, arrows and sketches beside the
 boxes. While it is on, the mouse and keyboard draw; press `alt+d` again to go back to the boxes.
-The drawing stays visible either way and moves with the canvas. Boxes can read and answer what
-you draw: [Drawing and Notation](drawing_and_notation.md).
+The drawing stays visible either way and moves with the canvas. Boxes can draw on it too: here
+the `notes` box draws the arrow with `notation { arrow(from = sketch, to = thisBox) }`, and its
+ends follow the boxes when they move. Boxes can also read what you draw:
+[Drawing and Notation](drawing_and_notation.md).
 
-```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x700" screenshot="assets/tour_interface/drawing-layer.png" transcript="../../dev_docs/agents/transcripts/docs_capture/tour_interface.yaml" document="docs-tour-interface-drawing-layer" fresh-document=true hide-toasts=true padding="8" wait="0" timeout="150" clip="0,0,1100,200" embed=true hidden=true name="tour-interface-drawing-layer" alt="The canvas with the drawing layer on: the drawing toolbar across the top, over the two boxes sketch and notes."}
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1400x300" screenshot="assets/tour_interface/drawing-layer.png" transcript="../../dev_docs/agents/transcripts/docs_capture/tour_interface.yaml" document="docs-tour-interface-drawing-layer" fresh-document=true hide-toasts=true padding="8" wait="0" timeout="150" clip="0,0,1400,280" embed=true hidden=true name="tour-interface-drawing-layer" alt="The canvas with the drawing layer on: the drawing toolbar across the top with the hand tool chosen, and below it the boxes sketch and notes joined by a blue arrow labelled notes on, drawn by the notes box."}
 ui.eval("if (document.activeElement) document.activeElement.blur(); return true")
 ui.press("Alt+d")
-ui.pause(2500)
+ui.pause(2000)
+// The hand tool, which moves the canvas; with it chosen Excalidraw shows no hint line under the toolbar.
+ui.press("h")
+ui.pause(800)
+// Fail rather than photograph a toolbar cut off at the frame's edge.
+val tb = ui.eval("const t = document.querySelector('#field-drawing-layer .App-toolbar'); if (!t) return 'missing'; const r = t.getBoundingClientRect(); return [Math.round(r.left), Math.round(r.right), innerWidth].join(',')").toString().trim('"')
+check(tb != "missing" && tb.split(",")[1].toInt() <= 1390) { "the drawing toolbar is not inside the 1400px frame: " + tb }
 ```
 
 ## The Macro Recorder
 
 The Macro Recorder records what you do to boxes (making them, editing, connecting, running) and
 saves it as a macro you can run again, here or in another document. Open it from the command
-palette: **Macro: Recorder Panel**.
+palette: **Macro: Recorder Panel**. Press **Record**, do something on the canvas, give the macro a
+name and press **Save**; below, the recording is one drag of the `sketch` box.
 
-```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x700" clip-selector="#macro-recorder-panel" screenshot="assets/tour_interface/macro-recorder.png" transcript="../../dev_docs/agents/transcripts/docs_capture/tour_interface.yaml" document="docs-tour-interface-macro-recorder" fresh-document=true hide-toasts=true padding="8" wait="0" timeout="150" embed=true hidden=true name="tour-interface-macro-recorder" alt="The Macro Recorder panel: a name field and Record, Save and Run buttons, the list of saved macros, and the transcript and YAML areas below."}
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x700" clip-selector="#macro-recorder-panel" screenshot="assets/tour_interface/macro-recorder.png" transcript="../../dev_docs/agents/transcripts/docs_capture/tour_interface.yaml" document="docs-tour-interface-macro-recorder" fresh-document=true hide-toasts=true padding="8" wait="0" timeout="150" embed=true hidden=true name="tour-interface-macro-recorder" alt="The Macro Recorder after recording one macro: the name move_sketch_right, Record, Save and Run, the document's saved macro move_sketch_right in the list, and the transcript of the recorded move below."}
 ui.eval("const a = (window.lastActions || []).find(a => a.id === 'macro-transcript-panel'); if (!a) throw new Error('no action macro-transcript-panel'); a.run(); return true")
-ui.pause(1200)
+ui.pause(1000)
+// Record a real macro: Record, close the panel so the canvas is clear, drag the sketch box to the
+// right with the pointer, reopen the panel, name the recording and Save.
+ui.clickSelector("#macro-recorder-panel [data-action='start']")
+ui.pause(600)
+ui.clickSelector("#macro-recorder-panel [data-action='close']")
+ui.pause(400)
+val r = ui.eval("const b = [...document.querySelectorAll('.box')].find(b => b.uid === 'tour_sketch'); const q = b.getBoundingClientRect(); return [q.x + q.width / 2, q.y + q.height / 2]").toString().trim('[', ']').split(",").map { it.trim().toDouble() }
+ui.moveMouse(r[0], r[1])
+ui.mouseDown()
+ui.moveMouse(r[0] + 160.0, r[1], steps = 12)
+ui.mouseUp()
+ui.pause(1000)
+ui.eval("const a = (window.lastActions || []).find(a => a.id === 'macro-transcript-panel'); a.run(); return true")
+ui.pause(1000)
+ui.clickSelector("#macro-recorder-panel [data-role='name']")
+ui.type("move_sketch_right")
+ui.clickSelector("#macro-recorder-panel [data-action='save']")
+ui.pause(2000)
+val listed = ui.eval("return [...document.querySelectorAll('#macro-recorder-panel [data-role=document-list] [data-macro-name]')].map(b => b.getAttribute('data-macro-name'))").toString()
+check("move_sketch_right" in listed) { "the recorded macro is not listed: " + listed }
+check(!listed.contains("_ui_")) { "runner plumbing is listed: " + listed }
+val ops = ui.eval("return document.querySelector('#macro-recorder-panel [data-role=content]')?.value || ''").toString()
+check("- move:" in ops) { "the recorded macro has no move: " + ops }
 ```
 
 ## Document history
