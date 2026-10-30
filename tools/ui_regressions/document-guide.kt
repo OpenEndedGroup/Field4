@@ -54,6 +54,7 @@ display("ai-chat", "<<ai>>\n[Open the fragment from chat](field://box/$guideUid?
 for ((macroName, scope) in listOf("guide_link_demo" to "document", "guide_link_scope_demo" to "workspace")) {
     check(afield.tools.automation.OperationTranscript.writeMacro(inside.filename, macroName, """
 name: $macroName
+internal: true
 operations:
   - execute:
       box: $guideUid
