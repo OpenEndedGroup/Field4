@@ -116,6 +116,150 @@ selected, the change list on the right shows the boxes and properties that diffe
 current document. Click the boxes (or single properties) you want — **Pick Boxes** picks all of
 them — and choose **Apply — selected boxes**. Everything you did not pick is left as it is now.
 
+### One box, edit by edit
+
+With a box selected on the canvas, the sidebar's **This Box** list shows the selected property
+(usually `code`) of that box across every version, newest first. Saves that left the box alone are
+folded together, so a range like `#1–2` is one value the box kept for two saves, and a box that did
+not exist yet reads *not in these versions*. Each row shows the first line that value added and how
+many lines it added and removed. Click a row to select that version in the timeline.
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1440x900" clip="0,0,1440,900" screenshot="assets/document_history/history-box-story.png" transcript="assets/transcripts/document_history_setup.yaml" document="docs-history-box-story" fresh-document=true padding="0" wait="0" timeout="180" embed=true hidden=true name="document-history-box-story" alt="Field's history view with the sidebar's This Box list for the box sketch: four values over five versions, newest first, each with its version range, the first line it added and its added and removed line counts; the row for version #1 is selected and the editor lays that version's code over the current code"}
+val uid = ui.eval("""
+    const b = [...document.querySelectorAll(".box")].find(b => (b.textContent || "").includes("sketch"))
+    return b ? (b.uid || b.getAttribute("uid") || b.getAttribute("data-uid")) : null
+""".trimIndent()).toString().trim('"')
+check(uid.isNotBlank() && uid != "null") { "the setup transcript's sketch box is not on the canvas" }
+ui.openEditor(uid)
+ui.waitForSelector(".monaco-editor", 15000.0)
+ui.eval("""
+    const c = document.querySelector(".monaco-editor-container")
+    for (const k of ["width", "height", "top", "right", "left", "bottom", "transform"]) c.style[k] = ""
+    if (window.globalEditor && window.globalEditor.layout) window.globalEditor.layout()
+    return true
+""".trimIndent())
+ui.pause(6500)
+// Three more saved edits of sketch's code: radius 64, then a ring of points, then radius 80.
+val edits = [
+    "// Successive radius values, saved as three source versions.\nval radius = 64.0\nprintln(\"radius \" + radius)\n",
+    "// Successive radius values, saved as three source versions.\nval radius = 64.0\nval ring = (0 until 12).map { it * 30.0 }\nprintln(\"radius \" + radius + \", \" + ring.size + \" points\")\n",
+    "// Successive radius values, saved as three source versions.\nval radius = 80.0\nval ring = (0 until 12).map { it * 30.0 }\nprintln(\"radius \" + radius + \", \" + ring.size + \" points\")\n",
+]
+for (text in edits) {
+    val quoted = "\"" + text.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n") + "\""
+    ui.eval("window.globalEditor.setValue($quoted); return true")
+    ui.pause(6500)
+}
+ui.eval("window.switchToHistoryForFile(window.currentDocumentFilename || \"default\"); return true")
+// Wait for the sidebar's This Box list to hold sketch's values.
+var story = ""
+for (i in 0 until 100) {
+    ui.pause(250)
+    story = ui.eval("""
+        const f = window.getHistoryIframeElement ? window.getHistoryIframeElement() : document.querySelector("#history-iframe")
+        const d = f && f.contentDocument
+        return "rows=" + (d ? d.querySelectorAll("#box-story-list .box-story-item").length : 0)
+    """.trimIndent()).toString()
+    if ((Regex("rows=(\\d+)").find(story)?.groupValues?.get(1)?.toInt() ?: 0) >= 4) break
+}
+check((Regex("rows=(\\d+)").find(story)?.groupValues?.get(1)?.toInt() ?: 0) >= 4) { "This Box never listed sketch's four values: " + story }
+ui.pause(800)
+// Click the row holding version #1 (radius 64.0), where it is drawn.
+val at = ui.eval("""
+    const f = window.getHistoryIframeElement ? window.getHistoryIframeElement() : document.querySelector("#history-iframe")
+    const fr = f.getBoundingClientRect()
+    const row = [...f.contentDocument.querySelectorAll("#box-story-list .box-story-item")].find(r => r.querySelector(".range").textContent.trim() === "#1")
+    const r = row.getBoundingClientRect()
+    return [fr.left + r.left + 30, fr.top + r.top + r.height / 2].join(",")
+""".trimIndent()).toString().trim('"').split(",").map { it.toDouble() }
+ui.moveMouse(at[0], at[1], 6)
+ui.clickAt(at[0], at[1])
+var shown = ""
+for (i in 0 until 60) {
+    ui.pause(250)
+    shown = ui.eval("""
+        const f = window.getHistoryIframeElement ? window.getHistoryIframeElement() : document.querySelector("#history-iframe")
+        const d = f.contentDocument
+        return "target=" + (d.querySelector("#target-version")?.textContent?.trim() || "") +
+            " active=" + (d.querySelector("#box-story-list .box-story-item.active .range")?.textContent?.trim() || "")
+    """.trimIndent()).toString()
+    if (shown.contains("target=#1") && shown.contains("active=#1")) break
+}
+check(shown.contains("target=#1") && shown.contains("active=#1")) { "clicking This Box's #1 row did not select version #1: " + shown }
+ui.pause(1200)
+```
+
+Choose **Restore** on a row to put that value back into this one property of this box; the rest of
+the document is left as it is now. The restore is saved as a new version, so it appears at the top of
+the list and the value it replaced stays below it.
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1440x900" clip="0,0,1440,900" screenshot="assets/document_history/history-box-story-restored.png" transcript="assets/transcripts/document_history_setup.yaml" document="docs-history-box-restore" fresh-document=true padding="0" wait="0" timeout="180" embed=true hidden=true name="document-history-box-story-restore" alt="After Restore on the This Box row for version #0: the editor holds sketch's first code again, radius 40.0, and This Box lists a new newest value equal to version #0's"}
+val uid = ui.eval("""
+    const b = [...document.querySelectorAll(".box")].find(b => (b.textContent || "").includes("sketch"))
+    return b ? (b.uid || b.getAttribute("uid") || b.getAttribute("data-uid")) : null
+""".trimIndent()).toString().trim('"')
+check(uid.isNotBlank() && uid != "null") { "the setup transcript's sketch box is not on the canvas" }
+ui.openEditor(uid)
+ui.waitForSelector(".monaco-editor", 15000.0)
+ui.eval("""
+    const c = document.querySelector(".monaco-editor-container")
+    for (const k of ["width", "height", "top", "right", "left", "bottom", "transform"]) c.style[k] = ""
+    if (window.globalEditor && window.globalEditor.layout) window.globalEditor.layout()
+    return true
+""".trimIndent())
+ui.pause(6500)
+// Three more saved edits of sketch's code: radius 64, then a ring of points, then radius 80.
+val edits = [
+    "// Successive radius values, saved as three source versions.\nval radius = 64.0\nprintln(\"radius \" + radius)\n",
+    "// Successive radius values, saved as three source versions.\nval radius = 64.0\nval ring = (0 until 12).map { it * 30.0 }\nprintln(\"radius \" + radius + \", \" + ring.size + \" points\")\n",
+    "// Successive radius values, saved as three source versions.\nval radius = 80.0\nval ring = (0 until 12).map { it * 30.0 }\nprintln(\"radius \" + radius + \", \" + ring.size + \" points\")\n",
+]
+for (text in edits) {
+    val quoted = "\"" + text.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n") + "\""
+    ui.eval("window.globalEditor.setValue($quoted); return true")
+    ui.pause(6500)
+}
+ui.eval("window.switchToHistoryForFile(window.currentDocumentFilename || \"default\"); return true")
+// Wait for the sidebar's This Box list to hold sketch's values.
+var story = ""
+for (i in 0 until 100) {
+    ui.pause(250)
+    story = ui.eval("""
+        const f = window.getHistoryIframeElement ? window.getHistoryIframeElement() : document.querySelector("#history-iframe")
+        const d = f && f.contentDocument
+        return "rows=" + (d ? d.querySelectorAll("#box-story-list .box-story-item").length : 0)
+    """.trimIndent()).toString()
+    if ((Regex("rows=(\\d+)").find(story)?.groupValues?.get(1)?.toInt() ?: 0) >= 4) break
+}
+check((Regex("rows=(\\d+)").find(story)?.groupValues?.get(1)?.toInt() ?: 0) >= 4) { "This Box never listed sketch's four values: " + story }
+ui.pause(800)
+// Restore the oldest value, #0 (radius 40.0), from its row's Restore button, accepting the confirmation.
+ui.eval("window.confirm = () => true; return true")
+val at = ui.eval("""
+    const f = window.getHistoryIframeElement ? window.getHistoryIframeElement() : document.querySelector("#history-iframe")
+    const fr = f.getBoundingClientRect()
+    const rows = [...f.contentDocument.querySelectorAll("#box-story-list .box-story-item")]
+    const b = rows[rows.length - 1].querySelector("button")
+    const r = b.getBoundingClientRect()
+    return [fr.left + r.left + r.width / 2, fr.top + r.top + r.height / 2].join(",")
+""".trimIndent()).toString().trim('"').split(",").map { it.toDouble() }
+ui.moveMouse(at[0], at[1], 6)
+ui.clickAt(at[0], at[1])
+var after = ""
+for (i in 0 until 80) {
+    ui.pause(250)
+    after = ui.eval("""
+        const f = window.getHistoryIframeElement ? window.getHistoryIframeElement() : document.querySelector("#history-iframe")
+        const rows = f.contentDocument.querySelectorAll("#box-story-list .box-story-item").length
+        return "rows=" + rows + " editor=" + (window.globalEditor.getValue().includes("radius = 40.0"))
+    """.trimIndent()).toString()
+    if (after.contains("editor=true") && after.contains("rows=5")) break
+}
+check(after.contains("editor=true")) { "Restore did not put version #0's code back in the editor: " + after }
+check(after.contains("rows=5")) { "the restore did not appear as a new value in This Box: " + after }
+ui.pause(1200)
+```
+
 ## What a full restore changes
 
 - Boxes in the chosen version get back the properties they had then.
