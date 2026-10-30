@@ -29,6 +29,10 @@ nav:
     # these are moved here rather than aliased, and their former sections were rebalanced to suit.
     - A Tour:
       - What Field Is: funFeatures.md
+      # Second, before any subject: every later stop opens a panel or presses a shortcut, and this
+      # page shows each panel once with its shortcut and its close. A new tour_ page rather than a
+      # section of survivalGuide.md, which teaches the first box and the editor and links here.
+      - The Interface: tour_interface.md
       - Frames and the Animation Loop: animation_time_model.md
       - Generative Mocap — ARDY and CLoSD: motion_recordings.md
       - Drawing with FLines: fline_examples.md

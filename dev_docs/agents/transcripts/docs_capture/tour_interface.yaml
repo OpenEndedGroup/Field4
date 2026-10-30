@@ -1,0 +1,23 @@
+name: tour_interface
+description: >
+  A small document for the figures on `public/docs/tour_interface.md`: one box, sketch, with a few
+  lines of code to show in the editor and to search for, and a second box, notes, beside it.
+  Capture-only, so it lives under transcripts/docs_capture/.
+operations:
+  - create:
+      box: tour_sketch
+      name: sketch
+      frame: { x: 60.0, y: 60.0, w: 160.0, h: 60.0 }
+      properties:
+        code: |
+          // A ring of points.
+          val radius = 64.0
+          val count = 12
+          println("radius $radius, $count points")
+  - create:
+      box: tour_notes
+      name: notes
+      frame: { x: 280.0, y: 60.0, w: 160.0, h: 60.0 }
+      properties:
+        code: |
+          println("ring sketch notes")
