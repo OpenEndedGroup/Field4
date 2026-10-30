@@ -27,6 +27,9 @@ import afield.ui.output.history
 import afield.ui.output.transcript
 
 import afield.app.notifications.notify
+import afield.app.protocol.HistoryBoxStoryEntry
+import afield.app.protocol.HistoryBoxStoryRequest
+import afield.app.protocol.HistoryBoxStoryResult
 import afield.app.protocol.CherryPickHistoryRequest
 import afield.app.protocol.CherryPickHistoryResult
 import afield.app.protocol.Handled
@@ -1849,6 +1852,68 @@ object HistoryManager {
         return matches.sorted()
     }
 
+    /**
+     * The story of [uid].[property] across every saved version, oldest first: consecutive versions
+     * holding the same text collapse into one [HistoryBoxStoryEntry], so a box edited three times
+     * over forty saves reads as four entries. Versions where the box is absent are their own
+     * entries with `exists = false`. The history panel's **This box** list is built from this.
+     */
+    fun boxStory(documentPath: String, uid: String, property: String = "code"): HistoryBoxStoryResult {
+        val versions = listVersions(documentPath)
+        if (uid.isBlank() || property.isBlank() || isScrubInternalProperty(property)) {
+            return HistoryBoxStoryResult(uid, property, versions.size)
+        }
+        val entries = mutableListOf<HistoryBoxStoryEntry>()
+        var lastText: String? = null
+        var lastExists: Boolean? = null
+        var previousLines: List<String> = emptyList()
+        for (version in versions) {
+            val exists: Boolean
+            val text: String
+            try {
+                exists = uid in boxIdsForVersion(documentPath, version)
+                text = if (exists) loadBoxPropertyText(version, documentPath, uid, property) else ""
+            } catch (e: Exception) {
+                lprintln("warning,history", "box story: failed to read version ${version.index}: ${e.message}")
+                continue
+            }
+            if (entries.isNotEmpty() && exists == lastExists && text == lastText) {
+                entries[entries.lastIndex] = entries.last().copy(toVersion = version.index)
+                continue
+            }
+            val lines = if (exists) splitHistoryLines(text) else emptyList()
+            val (added, removed, sample) = storyLineDelta(previousLines, lines)
+            entries += HistoryBoxStoryEntry(
+                fromVersion = version.index,
+                toVersion = version.index,
+                exists = exists,
+                lineCount = lines.size,
+                added = added,
+                removed = removed,
+                sample = sample.trim().take(120)
+            )
+            lastText = text
+            lastExists = exists
+            if (exists) previousLines = lines
+        }
+        return HistoryBoxStoryResult(uid, property, versions.size, entries)
+    }
+
+    /** Lines added and removed between [before] and [after] as multisets, plus the first new line. */
+    private fun storyLineDelta(before: List<String>, after: List<String>): Triple<Int, Int, String> {
+        val pool = before.groupingBy { it }.eachCount().toMutableMap()
+        var added = 0
+        var sample = ""
+        for (line in after) {
+            val n = pool[line] ?: 0
+            if (n > 0) pool[line] = n - 1 else {
+                added++
+                if (sample.isEmpty() && line.isNotBlank()) sample = line
+            }
+        }
+        return Triple(added, pool.values.sum(), sample)
+    }
+
     fun propertyTextAtVersion(
         documentPath: String,
         versionIndex: Int,
@@ -3047,6 +3112,17 @@ fun installHistoryHandlers() {
             reply(Message("cherry-pick-history-error").payload(mapOf("error" to "Failed to cherry-pick version")))
         }
 
+        Handled.yes
+    })
+
+    handlers["history-box-story"] = mutableSetOf({ message, reply ->
+        val req = Json.decodeFromJsonElement<HistoryBoxStoryRequest>(message.payload!!)
+        val info = thisSessionInfo.get()
+        val documentPath = info.filename
+        GlobalScope.launch(Runloop.miscPool.asCoroutineDispatcher()) {
+            val story = HistoryManager.boxStory(documentPath, req.uid, req.property)
+            reply(Message("history-box-story-results").payload(story))
+        }
         Handled.yes
     })
 
