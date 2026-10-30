@@ -310,6 +310,7 @@
   {"doc": "gpu_state", "box": "gs_sim", "codeSha256": "0186fce41b8f19f3", "codeLines": 128, "receivers": ["afield.document.graph.Box"], "preamble": "gpu_state__gs_sim.preamble.kt"},
   {"doc": "hello_display", "box": "agent_hello_display", "codeSha256": "d95cb31f298d39b6", "codeLines": 1, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "hello_display_capture", "box": "agent_hello_display_capture", "codeSha256": "d95cb31f298d39b6", "codeLines": 1, "receivers": ["afield.document.graph.Box"], "preamble": ""},
+  {"doc": "history_box_story", "box": "history_sketch", "codeSha256": "a4168c14815a517b", "codeLines": 4, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "imaging_cv_examples", "box": "imaging_basics", "codeSha256": "f3056b8a24de42c2", "codeLines": 43, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "imaging_cv_examples", "box": "imaging_edges", "codeSha256": "2bd55d28314d9a43", "codeLines": 39, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "imaging_cv_examples", "box": "imaging_features", "codeSha256": "05eba4954e27c8eb", "codeLines": 54, "receivers": ["afield.document.graph.Box"], "preamble": ""},
