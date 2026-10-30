@@ -51,3 +51,18 @@
 }
 .field-panel-icon.field-panel-icon:hover { border-color: var(--fp-control-hover-border); background: var(--fp-control-hover-bg); color: var(--fp-control-hover-fg); }
 .field-panel-title-text { font-size: var(--fp-title-size); font-weight: var(--fp-title-weight); line-height: 1; color: var(--fp-fg); }
+
+/* The small × of the output-area family (inline outputs, the history lens): the shared glyph,
+   colours and hover at gutter size. A button, so it is focusable and labelled. */
+button.closeBox {
+    appearance: none;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    background: transparent;
+    padding: 0 2px;
+    font-family: "Iosevka Web", "Iosevka", monospace;
+    line-height: 1;
+    color: var(--fp-muted);
+    cursor: pointer;
+}
+button.closeBox:hover { color: var(--fp-control-hover-fg); background: var(--fp-control-hover-bg); border-color: var(--fp-control-hover-border); }
