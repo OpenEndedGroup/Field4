@@ -26,6 +26,9 @@ import kotlin.system.exitProcess
  * `--check` reports what would change and exits 1 if anything would. `--imports` also removes each
  * `code` block's redundant and unused imports ([formatBoxKotlin]); `--k2` adds the code-use sidecar's
  * resolution evidence to that. Follow a real run with `./gradlew checkBoxCodeCompiles`.
+ *
+ * A `.md` argument formats the Kotlin in its `diffstatic` / `diffstatic_runner` fences ([formatMarkdown]);
+ * `--docs` adds every `.md` page directly under `public/docs`. Follow a docs run with a docs build.
  */
 object BoxCodeFormat {
     private var imports = false
@@ -38,16 +41,21 @@ object BoxCodeFormat {
         val check = "--check" in args
         imports = "--imports" in args
         k2 = "--k2" in args
+        val docs = if ("--docs" in args) {
+            (File("public/docs").listFiles { f -> f.isFile && f.extension == "md" } ?: emptyArray()).sortedBy { it.name }
+        } else emptyList()
         val files = args.filter { !it.startsWith("--") }.map(::File).ifEmpty {
+            if (docs.isNotEmpty()) return@ifEmpty emptyList()
             val dir = DemoTranscriptExecSmokeTest.locateTranscriptsDir()
             (dir.listFiles { f -> f.isFile && f.extension == "yaml" } ?: emptyArray()).sortedBy { it.name }
-        }
+        } + docs
         var changed = 0
         for (file in files) {
             val before = file.readText()
             val after = when {
                 file.name.endsWith("_code_.kt") -> formatOrNull("code", before, file.path) ?: before
                 file.extension == "yaml" || file.extension == "yml" -> formatYaml(before, file.path)
+                file.extension == "md" -> formatMarkdown(before, file.path)
                 else -> before
             }
             if (after != before) {
@@ -148,6 +156,44 @@ object BoxCodeFormat {
             result = result.replaceRange(edit.start, edit.end, edit.replacement)
         }
         return result
+    }
+
+    private val FENCE_OPEN = Regex("""^(`{3,})(diffstatic_runner|diffstatic)(?![\w-])(.*)$""")
+    private val FENCE_LANG = Regex("""\b(?:data-lang|data-language|lang|language)\s*=\s*["']?([\w+-]+)""")
+
+    // What the docs runner reads out of a fence body, or what a reformat would move away from the
+    // line a page's prose points at: section and fold markers, fragment breaks, region comments and
+    // the runner's own `FIELD_DOCS_` directives. A fence holding any of them is left as written.
+    private val RUNNER_MARKER = Regex("""^\s*(:::|//\s*%-|//\s*(?:end)?region\b|//\s*#(?:end)?region\b)|FIELD_DOCS_""")
+
+    /**
+     * Format the Kotlin in a docs page's `diffstatic` / `diffstatic_runner` fences, in place.
+     *
+     * Only unindented fences whose language is Kotlin (no `data-lang`, or `kotlin`/`kt`/`kts`) are
+     * touched; `diff` fences hold before/after sections and are never formatted. A fence that does not
+     * parse, or that carries a [RUNNER_MARKER], is left as written. The fence lines stay as they are.
+     */
+    fun formatMarkdown(text: String, label: String): String {
+        val lines = text.split("\n")
+        val out = ArrayList<String>(lines.size)
+        var i = 0
+        while (i < lines.size) {
+            val open = FENCE_OPEN.matchEntire(lines[i])
+            out += lines[i]
+            i++
+            if (open == null) continue
+            val ticks = open.groupValues[1]
+            val start = i
+            while (i < lines.size && lines[i].trimEnd() != ticks) i++
+            if (i >= lines.size) { out += lines.subList(start, i); break }
+            val body = lines.subList(start, i)
+            val lang = FENCE_LANG.find(open.groupValues[3])?.groupValues?.get(1)?.lowercase()
+            val kotlin = lang == null || lang in setOf("kotlin", "kt", "kts")
+            val formatted = if (!kotlin || body.isEmpty() || body.any { RUNNER_MARKER.containsMatchIn(it) }) null
+            else formatOrNull("code", body.joinToString("\n"), "$label:$start")
+            if (formatted == null) out += body else out += formatted.trimEnd().split("\n")
+        }
+        return out.joinToString("\n")
     }
 
     private fun formatOrNull(property: String, code: String, label: String): String? = try {
