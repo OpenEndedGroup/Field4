@@ -5378,7 +5378,7 @@ body.canvas-flight-recording .monaco-editor .cursor {
     box-shadow: 0 0 0 2px var(--field-search-active-soft);
 }
 
-#document-search .search-button {
+#document-search .search-button:not(.field-panel-icon) {
     background: var(--field-hover-soft);
     border: 1px solid var(--field-border-soft);
     color: var(--field-fg-bright);
@@ -5391,15 +5391,9 @@ body.canvas-flight-recording .monaco-editor .cursor {
     transition: background 120ms ease, border-color 120ms ease;
 }
 
-#document-search .search-button:hover {
+#document-search .search-button:not(.field-panel-icon):hover {
     background: var(--field-hover-medium);
     border-color: var(--field-border-strong);
-}
-
-#document-search .search-button.close {
-    width: 26px;
-    height: 26px;
-    font-size: 14px;
 }
 
 #document-search .search-count {
@@ -5464,17 +5458,15 @@ body.canvas-flight-recording .monaco-editor .cursor {
     overflow: hidden;
 }
 
-/* header */
+/* header: the FieldPanel title and close button (fieldPanelTokens.css) */
 .field-tray__header {
-    flex: 0 0 26px;
+    flex: 0 0 var(--fp-head-height);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 8px 0 10px;
+    padding: 0 6px 0 10px;
     gap: 6px;
-    font-size: 10px;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
+    font-family: var(--field-font);
 }
 
 .field-tray__title {
@@ -5482,31 +5474,9 @@ body.canvas-flight-recording .monaco-editor .cursor {
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
-    opacity: 0.8;
-}
-
-.field-tray__close {
-    flex: 0 0 auto;
-    border: none;
-    border-radius: 3px;
-    padding: 2px 6px;
-    background: var(--field-surface);
-    color: inherit;
-    cursor: pointer;
-    font-size: 11px;
-    line-height: 1;
-    opacity: 0.8;
-    transition: background 0.12s ease-out, opacity 0.12s ease-out, transform 0.12s ease-out;
-}
-
-.field-tray__close:hover {
-    background: var(--field-hover-strong);
-    opacity: 1;
-    transform: translateY(-0.5px);
-}
-
-.field-tray__close:active {
-    transform: translateY(0.5px);
+    font-size: var(--fp-title-size);
+    font-weight: var(--fp-title-weight);
+    color: var(--fp-fg);
 }
 
 /* body + iframe */
@@ -5882,29 +5852,28 @@ body.mode-editor-only .field-toast {
 }
 
 /* ── Field panels (FieldPanel in fieldPanel.kt) ─────────────────────────────────────────────
-   Shell after .macro-recorder-panel, cards and pills after the history viewer (history.html).
-   Shared by every canvas-level panel; the bookmarks panel is the first. */
+   Tokens (--fp-*) and the close button live in fieldPanelTokens.css, shared with the history and
+   keyframe-browser iframes. Panel-specific placement (.macro-recorder-panel, ...) sits with
+   each panel. */
 .field-panel {
-    --fp-panel-2: #242424;
-    --fp-muted: #8a8a8a;
-    --fp-dim: #5c5c5c;
+    --fp-panel-2: var(--fp-card);
     position: fixed;
     top: 10px;
     right: 10px;
     width: min(560px, calc(100vw - 20px));
     max-height: calc(100vh - 20px);
-    border: 5px solid var(--field-border);
-    border-radius: 5px;
-    background: #000000;
-    color: #d8d8d8;
+    border: var(--fp-border);
+    border-radius: var(--fp-radius);
+    background: var(--fp-bg);
+    color: var(--fp-fg);
     z-index: 12060;
     display: none;
     flex-direction: column;
     gap: 6px;
-    padding: 8px;
+    padding: var(--fp-pad);
     box-sizing: border-box;
     font-family: var(--field-font);
-    font-size: 10.2px;
+    font-size: var(--fp-font-size);
     overflow: hidden;
 }
 .field-panel.is-visible { display: flex; }
@@ -5914,9 +5883,9 @@ body.mode-editor-only .field-toast {
     align-items: center;
     justify-content: space-between;
     gap: 10px;
-    min-height: 28px;
+    min-height: var(--fp-head-height);
 }
-.field-panel-title { font-size: 11px; font-weight: 500; line-height: 1; }
+.field-panel-title { font-size: var(--fp-title-size); font-weight: var(--fp-title-weight); line-height: 1; }
 .field-panel-status { color: var(--fp-muted); font-size: 10.2px; margin-top: 3px; }
 .field-panel-body {
     min-height: 0;
@@ -5927,7 +5896,7 @@ body.mode-editor-only .field-toast {
     scrollbar-width: none;
 }
 .field-panel-body::-webkit-scrollbar { width: 0; height: 0; }
-.field-panel button, .field-panel-icon {
+.field-panel button {
     border: 1px solid #2b2b2b;
     background: #050505;
     color: var(--fp-muted);
@@ -5940,7 +5909,6 @@ body.mode-editor-only .field-toast {
 }
 .field-panel button:hover:not(:disabled) { border-color: #464646; background: #101010; color: #f0f0f0; }
 .field-panel button:disabled { opacity: 0.38; cursor: default; }
-.field-panel-icon { width: 26px; height: 26px; padding: 0; font-size: 17px; line-height: 1; }
 .field-panel input[type="text"] {
     border: 1px solid transparent;
     background: transparent;
