@@ -1567,8 +1567,39 @@ function parseLiterateSegments(text) {
     // terminators, which would otherwise be yanked out as prose and desync the
     // code highlighting across the `"""` boundaries.
     let insideTriple = false;
+    // Inside a `/* ... */` block that began at the start of a line: its lines
+    // are prose, with the delimiters and any KDoc-style leading `*` removed.
+    let insideBlock = false;
+
+    const pushComment = (text) => {
+        if (current.type !== 'comment') pushCurrent();
+        current.type = 'comment';
+        current.lines.push(text);
+    };
 
     lines.forEach(line => {
+        if (insideBlock) {
+            const end = line.indexOf('*/');
+            const body = end >= 0 ? line.slice(0, end) : line;
+            if (end >= 0) insideBlock = false;
+            const text = body.replace(/^\s*\*(?!\/)/, '').trim();
+            if (end < 0 || text) pushComment(text);
+            return;
+        }
+        const trimmed = line.trim();
+        if (!insideTriple && trimmed.startsWith('/*')) {
+            const end = trimmed.indexOf('*/', 2);
+            // A block that closes and is followed by code on the same line stays code.
+            if (end < 0 || trimmed.slice(end + 2).trim() === '') {
+                const body = trimmed.slice(trimmed.startsWith('/**') ? 3 : 2, end < 0 ? undefined : end).trim();
+                if (end < 0) insideBlock = true;
+                if (body) pushComment(body);
+                else if (current.type !== 'comment') pushCurrent();
+                if (current.type === null) current.type = 'comment';
+                return;
+            }
+        }
+
         const startedInsideTriple = insideTriple;
         const tripleCount = (line.match(/"""/g) || []).length;
         if (tripleCount % 2 === 1) insideTriple = !insideTriple;
