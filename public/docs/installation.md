@@ -1,6 +1,7 @@
 # Installation
 
-Field is distributed as source code. The checkout is the installation; the launcher downloads its own
+Field is distributed as source code. The checkout is the installation; the launcher script in it (`./field.sh`, or `field.bat` on
+Windows) downloads its own
 Java and Node runtimes, builds Field, and opens the desktop app. You do not need to install Java,
 Gradle, Node, Python, an AI API key, or the optional submodules to get started.
 
@@ -10,8 +11,9 @@ the platform requirements and recovery steps are on this page.
 
 ## Before you clone
 
-Install **Git and Git LFS**, and run `git lfs install` before cloning. The compiler fork is stored
-in LFS: without it, Git leaves a small text pointer where the compiler JAR should be. GitHub's
+Install **Git and Git LFS**, and run `git lfs install` before cloning. Field ships its own modified
+Kotlin compiler as a large file, and Git LFS (Large File Storage) is how Git downloads large files:
+without it, Git leaves a small text pointer where the compiler JAR should be. GitHub's
 **Download ZIP** is not the recommended installation route.
 
 Start with at least **10 GB of free space** for the checkout, downloaded runtimes, dependency
@@ -98,11 +100,14 @@ A proxy or blocked download host can prevent the first build. Later launches reu
 runtimes and Gradle's incremental outputs. `./field.sh --offline` uses the cache; it cannot prepare
 a machine that has never completed an online build.
 
-On the first **interactive** launch, a small Kotlin welcome tool runs before Field's full build.
-Choose the recommended desktop app or browser/server mode, then select optional features from
-the checkbox list: **Up/Down** moves through the list, **Space** toggles a checkbox and **Enter** reviews your choices.
-Prerequisites appear on the right. Features with missing tools are disabled unless Windows
-setup can install every missing tool through winget; otherwise, install the prerequisites and rerun
+On the first launch from a terminal, Field asks two things before it builds: whether you want the
+desktop app (recommended) or [browser/server-only mode](#browser-or-server-only-use), and which
+optional features to prepare. Accepting the defaults and leaving every feature unchecked is a
+complete installation; Kotlin, JavaScript, Faust, ordinary audio and browser drawing need no extras.
+
+In the checkbox list, **Up/Down** moves, **Space** toggles a checkbox and **Enter** reviews your
+choices. Each feature's prerequisites appear on the right. Features with missing tools are
+disabled (on Windows, unless setup can install them, below); install the prerequisites and rerun
 setup. Features your platform does not support, and NVIDIA-only features without a working
 `nvidia-smi`, are left out. Limited terminals use numbered checkboxes:
 type numbers or names to toggle them, then press Enter to review. Leave everything unchecked to skip extras.
@@ -110,24 +115,19 @@ Setup then shows the exact package-manager commands and requires you to type `IN
 before running them. Administrator authentication belongs to your OS package manager; no API keys
 are requested. You can leave the commands for later and install them yourself.
 
-Installing Python prerequisites does not configure the JEP runtime: complete that in the Welcome page's
-**Python** panel. Vulkan diagnostics do not install your GPU driver. AI features, model services
-and agent tooling have their own guides and prerequisites.
+The setup list itself is the full catalogue of optional features; most have their own guide in
+these docs. Installing Python prerequisites does not finish [Python boxes](python.md): choose the
+interpreter in the Welcome page's **Python** panel. Vulkan diagnostics do not install your GPU
+driver.
 
-The menu covers Python/JEP, computer vision and voice; Vulkan/OpenXR and shader tools;
-Ceres, TetGen, Manifold, [SolidCraft](solidcraft.md), paint and the [Patchy layered editor](patchy.md); the geometry extensions
-([Morse–Smale complexes](morse_smale.md), [principal curves](principal_curves.md) and [polyvector vectorization](polyvector.md),
-for which setup installs OpenCV, Boost and Eigen packages on macOS and Linux); Pure Data, Csound and LuaJIT; and optional
-physics, video, audio-AI and training workers, guide/template services and audio samples. It also includes agent and documentation tooling.
-Kotlin, JavaScript, Faust, ordinary audio and browser drawing work without selecting any extras.
-
-On Windows, setup uses winget when it is available. It offers missing CPython 3.12, uv,
-CMake, Rustup and Git LFS with exact package IDs, interactive installers and no upgrades to
-existing installations. Selectable rows marked **install:** need those prerequisites first.
-After `INSTALL`, open a fresh terminal and rerun `.\field.bat --setup` before optional builds
-so the new PATH is visible. In the Python installer, enable **Add python.exe to PATH**.
-Visual Studio C++ Build Tools, GPU drivers and Vulkan SDK setup remain in their feature guides.
-Without winget, install or update Microsoft's App Installer, or follow the manual instructions.
+??? note "Windows: what setup installs through winget"
+    On Windows, setup uses winget when it is available. It offers missing CPython 3.12, uv,
+    CMake, Rustup and Git LFS with exact package IDs, interactive installers and no upgrades to
+    existing installations. Selectable rows marked **install:** need those prerequisites first.
+    After `INSTALL`, open a fresh terminal and rerun `.\field.bat --setup` before optional builds
+    so the new PATH is visible. In the Python installer, enable **Add python.exe to PATH**.
+    Visual Studio C++ Build Tools, GPU drivers and Vulkan SDK setup remain in their feature guides.
+    Without winget, install or update Microsoft's App Installer, or follow the manual instructions.
 
 For native libraries and learned shaders with a Field preparation task, setup shows
 that task and checks its build tools. Type **BUILD** to run it, or leave it for later. **INSTALL**
@@ -264,6 +264,9 @@ These are whole documents. To reuse a few boxes inside a document instead, see
 [Templates](templates.md).
 
 ## Browser or server-only use
+
+Use server-only mode when you want Field in your own browser instead of the desktop app, or on a
+machine you reach over SSH:
 
 ```diffstatic {data-lang=bash}
 ./field.sh --server-only
