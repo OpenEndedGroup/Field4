@@ -823,6 +823,7 @@ class RunnerOptions:
     box_w: float
     box_h: float
     open_outputs: bool
+    open_details: bool
     expect_outputs: str
     wait_output: bool
     wait_output_kind: str
@@ -3546,6 +3547,7 @@ def parse_runner_options(*, runner_name: str, open_line: str, page_path: Path, l
         box_w=parse_float(first_attr(attrs, "w"), default=default_box_w),
         box_h=parse_float(first_attr(attrs, "h"), default=default_box_h),
         open_outputs=open_outputs,
+        open_details=parse_bool(first_attr(attrs, "open-details", "open_details"), default=False),
         expect_outputs=expect_outputs,
         wait_output=wait_output,
         wait_output_kind=wait_output_kind,
@@ -5763,6 +5765,8 @@ def build_backdoor_command(
             ]
             if options.open_outputs:
                 parts.append("--open-outputs")
+            if options.open_details:
+                parts.append("--open-details")
             parts.extend(["--expect-outputs", options.expect_outputs])
             if options.scale is not None:
                 parts.extend(["--scale", str(options.scale)])

@@ -1313,7 +1313,9 @@ data class BoxScreenshotRequest(
     val preserveSelection: Boolean = false,
     val includeNotifications: Boolean = false,
     /** One of [ExpectedOutputs]; what this capture asserts the box's output is. */
-    val expectOutputs: String = ExpectedOutputs.PANEL
+    val expectOutputs: String = ExpectedOutputs.PANEL,
+    /** Open every `<details>` in the box's output before measuring, as a reader clicking each one would. */
+    val openDetails: Boolean = false
 )
 
 @Serializable
@@ -1378,6 +1380,8 @@ data class AgentBoxScreenshot(
     val includeNotifications: Boolean = false,
     /** One of [ExpectedOutputs]; what this capture asserts the box's output is. */
     val expectOutputs: String = ExpectedOutputs.PANEL,
+    /** Open every `<details>` in the box's output before measuring; see [BoxScreenshotRequest.openDetails]. */
+    val openDetails: Boolean = false,
     /**
      * Device pixels per CSS pixel for this one screenshot; null keeps the capture page's own (2).
      * A docs figure of a narrow output panel takes a higher one so it can be shown wider than its

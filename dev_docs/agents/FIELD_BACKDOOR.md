@@ -382,7 +382,7 @@ asymmetry is the other easy mistake: the `-window` commands take the box through
 | --- | --- | --- |
 | `screenshot-window` | `path` | `--uid --property --with-editor --open-outputs --expect-outputs --no-pan --wait-ms --preserve-selection --include-notifications --timeout` |
 | `screenshot-editor` | `uid path` | `--property --padding --open-outputs --expect-outputs --no-pan --timeout` |
-| `screenshot-box` | `uid path` | `--padding --open-outputs --no-open-outputs --expect-outputs --no-pan --preserve-selection --include-notifications --scale --timeout` |
+| `screenshot-box` | `uid path` | `--padding --open-outputs --no-open-outputs --expect-outputs --no-pan --open-details --preserve-selection --include-notifications --scale --timeout` |
 | `native-screenshot` | `path` | `--uid --wait-frames --timeout` |
 | `wait-native-renderer` | `[uid]` | `--frames --timeout` |
 | `record-window` | `path` | `--uid --property --with-editor --open-outputs --expect-outputs --no-pan --duration --fps --frame-synchronous --restart-target --timeout` |
@@ -678,6 +678,8 @@ EOF
 - `screenshot-box <box> <path> --padding 16`: a clipped image of just that box, with nested and
   output disclosures opened and some padding, for documentation or visual diffing.
   `--open-outputs` is accepted for symmetry; box screenshots already open outputs.
+  `--open-details` also opens every `<details>` inside the output first, as a reader clicking
+  each one would (the docs fence attribute `open-details="true"`).
 
 ```bash
 cat <<'EOF' | uv run --project . --group backdoor python tools/field_backdoor.py --json \

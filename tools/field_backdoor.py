@@ -1560,6 +1560,7 @@ class FieldBackdoor:
         preserve_selection: bool = False,
         include_notifications: bool = False,
         scale: float | None = None,
+        open_details: bool = False,
     ) -> dict[str, Any]:
         resolved_uid, _ = self.require_box_reference(uid)
         normalized_path = str(Path(path).expanduser().resolve())
@@ -1584,6 +1585,7 @@ class FieldBackdoor:
                 "expectOutputs": expect_outputs,
                 "preserveSelection": preserve_selection,
                 "includeNotifications": include_notifications,
+                "openDetails": open_details,
                 **({"deviceScaleFactor": scale} if scale is not None else {}),
             },
             timeout=timeout,
@@ -3546,6 +3548,8 @@ def build_command_parser() -> argparse.ArgumentParser:
     screenshot_box.add_argument("--expect-outputs", dest="expect_outputs", default="panel", choices=["panel", "inline", "none"])
     screenshot_box.add_argument("--no-open-outputs", dest="open_outputs", action="store_false")
     screenshot_box.add_argument("--no-pan", action="store_true")
+    screenshot_box.add_argument("--open-details", action="store_true",
+                                help="open every <details> in the box's output before the shot")
     screenshot_box.add_argument("--preserve-selection", action="store_true")
     screenshot_box.add_argument("--include-notifications", action="store_true")
     screenshot_box.add_argument("--scale", type=float, default=None,
@@ -4371,6 +4375,7 @@ async def dispatch_command(
             preserve_selection=args.preserve_selection,
             include_notifications=args.include_notifications,
             scale=args.scale,
+            open_details=args.open_details,
         )
         data = attach_capture_warnings(client, data, args.uid, editor=False)
         data = await annotate_screenshot_size(client, data)
