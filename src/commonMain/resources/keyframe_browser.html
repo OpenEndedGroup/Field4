@@ -71,6 +71,8 @@
             min-height: 20px;
         }
 
+        .kb-close { margin-left: auto; align-self: center; }
+
         .kb-title {
             font-size: 11px;
             font-weight: 500;
@@ -677,6 +679,7 @@
 </div>
 
 <script src="/iframe_autosize.js"></script>
+<script src="/fieldPanelHost.js"></script>
 <script>
     const ROOT_TOKEN = new URLSearchParams(location.search).get('root');
     const WS_URL = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`;
@@ -976,6 +979,7 @@ keyframeBrowser("looks", scope = myScope)</pre>
             parts.push(`<span class="kb-badge">schema ${c.schemaVersions[0]}</span>`);
         }
         if (!c.hasScope) parts.push(`<span class="kb-badge">read-only</span>`);
+        parts.push(`<button type="button" class="field-panel-icon kb-close" data-field-panel-close title="Close" aria-label="Close">×</button>`);
         parts.push(`</div>`);
 
         const stamp = [c.latestAgo ? `last save ${c.latestAgo}` : null,
