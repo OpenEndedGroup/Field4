@@ -84,8 +84,15 @@ class PetriDeadTransitionsSweepTest {
     /**
      * `public/docs/reference/` is generated after a merge, not written, so it is scanned past. A
      * regeneration that starts listing `deadTransitions` must not be able to fail this test.
+     * `public/docs/assets/web_publications/` is the same: the docs build and landing copy each
+     * transcript document there, and the documents it copies are already on the list above.
      */
-    private val EXCLUDED = listOf("public/docs/reference/", "/build/", "/.git/")
+    private val EXCLUDED = listOf(
+        "public/docs/reference/",
+        "public/docs/assets/web_publications/",
+        "/build/",
+        "/.git/",
+    )
 
     private val root: File by lazy {
         var at = File(System.getProperty("user.dir")).absoluteFile
