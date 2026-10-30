@@ -1,5 +1,6 @@
 package afield.app.client
 
+import afield.app.canvas.CanvasCamera
 import afield.app.canvas.invoke
 
 import kotlinx.browser.document
@@ -86,6 +87,8 @@ private fun ensureSearchWidget() {
 
     val input = document.createElement("input") as HTMLInputElement
     input.placeholder = "Search boxes"
+    input.setAttribute("aria-label", "Search box code and names")
+    input.spellcheck = false
     input.oninput = {
         performSearch(input.value)
         null
@@ -103,20 +106,27 @@ private fun ensureSearchWidget() {
     }
 
     val count = document.createElement("span") as HTMLSpanElement
-    count.classList.add("search-count")
-    count.textContent = "0 / 0"
+    count.classList.add("search-count", "field-panel-status")
+    count.setAttribute("role", "status")
+    count.textContent = ""
 
     val prev = document.createElement("button") as HTMLButtonElement
-    prev.innerHTML = "&#8593;"
-    prev.classList.add("search-button")
+    prev.textContent = "↑"
+    prev.classList.add("search-button", "field-panel-icon")
+    prev.title = "Previous match (Shift+Enter)"
+    prev.setAttribute("aria-label", "Previous match (Shift+Enter)")
+    prev.type = "button"
     prev.onclick = {
         goToPreviousMatch()
         null
     }
 
     val next = document.createElement("button") as HTMLButtonElement
-    next.innerHTML = "&#8595;"
-    next.classList.add("search-button")
+    next.textContent = "↓"
+    next.classList.add("search-button", "field-panel-icon")
+    next.title = "Next match (Enter)"
+    next.setAttribute("aria-label", "Next match (Enter)")
+    next.type = "button"
     next.onclick = {
         goToNextMatch()
         null
@@ -125,6 +135,7 @@ private fun ensureSearchWidget() {
     val close = document.createElement("button") as HTMLButtonElement
     close.textContent = "×"
     close.classList.add("search-button", "close", "field-panel-icon")
+    close.type = "button"
     close.title = "Close"
     close.setAttribute("aria-label", "Close")
     close.onclick = {
@@ -132,11 +143,15 @@ private fun ensureSearchWidget() {
         null
     }
 
+    // One row: the field, the counter in the status-line style, then three identical icon buttons.
     container.appendChild(input)
+    container.appendChild(count)
     container.appendChild(prev)
     container.appendChild(next)
-    container.appendChild(count)
     container.appendChild(close)
+    // Keys and clicks typed into search stay off the canvas, as in every Field panel.
+    container.addEventListener("mousedown", { it.stopPropagation() })
+    container.addEventListener("wheel", { it.stopPropagation() })
 
     document.body?.appendChild(container)
 
@@ -146,6 +161,7 @@ private fun ensureSearchWidget() {
     searchPrev = prev
     searchNext = next
     searchClose = close
+    updateCounter()
 }
 
 private fun registerSearchKeybindings() {
@@ -175,9 +191,33 @@ private fun registerSearchKeybindings() {
     }, true)
 }
 
+/**
+ * Bottom-left of the main canvas pane, above any panel already docked there (history, macro
+ * recorder, layers), so it is not mistaken for the editor's own Find at the top right.
+ */
+private fun positionSearch() {
+    val container = searchContainer ?: return
+    val pane = CanvasCamera.main.rect
+    val paneBottom = pane.y + pane.h
+    var bottom = paneBottom - 10.0
+    listOf(".history-iframe-container", "#macro-recorder-panel.is-visible", "#layers-panel.is-visible").forEach { sel ->
+        val el = document.querySelector(sel) as? HTMLElement ?: return@forEach
+        val cs = window.getComputedStyle(el)
+        if (cs.display == "none" || cs.visibility == "hidden") return@forEach
+        val r = el.getBoundingClientRect()
+        if (r.width <= 0.0 || r.height <= 0.0 || r.left > pane.x + 400.0) return@forEach
+        bottom = minOf(bottom, r.top - 8.0)
+    }
+    container.style.left = "${pane.x + 10.0}px"
+    container.style.top = "auto"
+    container.style.right = "auto"
+    container.style.bottom = "${window.innerHeight - bottom}px"
+}
+
 private fun openSearch() {
     ensureSearchWidget()
     searchContainer?.style?.display = "flex"
+    positionSearch()
     searchInput?.focus()
     searchInput?.select()
     // Re-run existing query to refresh highlights if the widget was reopened.
@@ -341,11 +381,24 @@ private fun goToPreviousMatch() {
 }
 
 private fun updateCounter(match: SearchMatch? = null) {
-    val current = if (activeMatchIndex >= 0) activeMatchIndex + 1 else 0
     val total = searchMatches.size
+    val query = searchInput?.value?.trim().orEmpty()
+    val noMatch = query.isNotEmpty() && total == 0
+    searchContainer?.classList?.toggle("is-no-match", noMatch)
+    searchPrev?.disabled = total == 0
+    searchNext?.disabled = total == 0
+    if (query.isEmpty()) {
+        searchCount?.textContent = ""
+        return
+    }
+    if (total == 0) {
+        searchCount?.textContent = "No matches"
+        return
+    }
     val property = match?.property ?: searchMatches.getOrNull(activeMatchIndex)?.property
     val propertyLabel = property?.let { " · $it" } ?: ""
-    searchCount?.textContent = "$current / $total$propertyLabel"
+    searchCount?.textContent = if (activeMatchIndex >= 0) "${activeMatchIndex + 1} of $total$propertyLabel"
+        else if (total == 1) "1 match" else "$total matches"
 }
 
 private fun openMatch(match: SearchMatch, allowEditorFocus: Boolean) {

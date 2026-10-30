@@ -5347,60 +5347,51 @@ body.canvas-flight-recording .monaco-editor .cursor {
 
 
 /* Document search widget. */
+/* Document search (documentSearch.kt): a FieldPanel-family bar, bottom-left of the main pane
+   (placed by positionSearch), so it does not read as the editor's own Find at the top right. */
 #document-search {
     position: fixed;
-    top: 14px;
-    right: 18px;
+    left: 10px;
+    bottom: 10px;
     display: none;
     align-items: center;
-    gap: 6px;
-    padding: 7px 8px;
-    background: var(--field-overlay);
-    border: 1px solid var(--field-border-subtle);
-    border-radius: 7px;
-    box-shadow: var(--field-shadow-xl);
-    z-index: 11000;
-    font-family: var(--field-font-code-fallback);
+    gap: 4px;
+    padding: 4px 4px 4px 4px;
+    background: var(--fp-bg);
+    border: var(--fp-border);
+    border-radius: var(--fp-radius);
+    z-index: 12065;
+    font-family: var(--field-font);
+    font-size: var(--fp-font-size);
+    color: var(--fp-fg);
 }
 
 #document-search input {
-    min-width: 220px;
-    padding: 6px 8px;
-    border-radius: 5px;
-    background: var(--field-hover-soft);
-    border: 1px solid var(--field-border-soft);
-    color: var(--field-fg-bright);
+    width: 240px;
+    height: var(--fp-close-size);
+    box-sizing: border-box;
+    padding: 0 8px;
+    border-radius: var(--fp-control-radius);
+    background: var(--fp-control-bg);
+    border: 1px solid var(--fp-control-border);
+    color: var(--fp-fg);
+    font-family: var(--field-font);
+    font-size: 12px;
     outline: none;
 }
 
-#document-search input:focus {
-    border-color: var(--field-search-focus);
-    box-shadow: 0 0 0 2px var(--field-search-active-soft);
-}
-
-#document-search .search-button:not(.field-panel-icon) {
-    background: var(--field-hover-soft);
-    border: 1px solid var(--field-border-soft);
-    color: var(--field-fg-bright);
-    border-radius: 5px;
-    width: 28px;
-    height: 28px;
-    display: grid;
-    place-items: center;
-    cursor: pointer;
-    transition: background 120ms ease, border-color 120ms ease;
-}
-
-#document-search .search-button:not(.field-panel-icon):hover {
-    background: var(--field-hover-medium);
-    border-color: var(--field-border-strong);
-}
+#document-search input::placeholder { color: var(--fp-muted); font-family: var(--field-font); }
+#document-search input:hover { border-color: var(--fp-control-hover-border); }
+#document-search input:focus { border-color: var(--fp-control-hover-border); background: var(--fp-control-hover-bg); box-shadow: none; }
+#document-search.is-no-match input { border-color: rgba(255, 133, 133, 0.55); }
+#document-search.is-no-match .search-count { color: #ff8585; }
+#document-search .field-panel-icon:disabled { opacity: 0.38; cursor: default; }
 
 #document-search .search-count {
-    color: var(--field-fg-soft);
-    font-size: 12px;
+    margin: 0 4px;
     min-width: 72px;
     text-align: right;
+    white-space: nowrap;
 }
 
 .box.search-hit {
