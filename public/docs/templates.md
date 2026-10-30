@@ -119,7 +119,7 @@ ui.type("greeter")
 ui.pause(500)
 ui.press("Enter")
 ui.pause(1500)
-for (y in listOf(300.0, 440.0)) {
+for (y in [300.0, 440.0]) {
     ui.clickAt(250.0, y)
     ui.pause(400)
     ui.press("ControlOrMeta+t")
