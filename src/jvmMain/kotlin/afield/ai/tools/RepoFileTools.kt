@@ -24,7 +24,7 @@ import java.nio.file.StandardOpenOption
 /** What one job may touch. Globs are `java.nio` globs over the root-relative path: `**` crosses directories. */
 data class RepoScope(val root: Path, val readable: List<String>, val writable: List<String> = emptyList())
 
-@JsonClassDescription("Read a text file of the repository this job works in, with line numbers. Paths are relative to the job's root, e.g. `public/docs/fline.md`. Give startLine/endLine (1-based, inclusive) for a range; a whole file is returned up to 2000 lines, then truncated=true says to ask for the rest. Fails with the reason for a path outside the job's allow-list.")
+@JsonClassDescription("Read a text file of the repository this job works in, with line numbers. Use it before RepoPatchFileRequest, to copy the exact passage to replace. Paths are relative to the job's root, e.g. `public/docs/fline.md`. Give startLine/endLine (1-based, inclusive) for a range; a whole file is returned up to 2000 lines, then truncated=true says to ask for the rest. Fails with the reason for a path outside the job's allow-list, a missing file, or one that is not UTF-8 text under 2 MB.")
 @AgentToolMeta("repo", effects = [ToolEffect.FILESYSTEM_READ])
 data class RepoReadFileRequest(
     val path: String,
@@ -33,11 +33,11 @@ data class RepoReadFileRequest(
     val endLine: Int = 0,
 )
 
-@JsonClassDescription("List repository files matching a glob, relative to the job's root, e.g. `public/docs/*.md` or `src/jvmMain/kotlin/afield/ai/**`. Only files the job may read are listed; at most 500.")
+@JsonClassDescription("List repository files matching a glob, relative to the job's root, e.g. `public/docs/*.md` or `src/jvmMain/kotlin/afield/ai/**`. Use it to find a file by name; to find text inside files, use RepoSearchRequest instead. Returns only files the job may read, at most 500; past that complete=false and the list is cut, so narrow the glob. The list is empty if no readable file matches.")
 @AgentToolMeta("repo", effects = [ToolEffect.FILESYSTEM_READ])
 data class RepoListFilesRequest(val glob: String = "**")
 
-@JsonClassDescription("Search the repository files this job may read for literal text (or a Java regex with regex=true), one match per line. Narrow with glob, e.g. `src/**/*.kt`. Returns path, line and the line's text; complete=false means the cap was reached.")
+@JsonClassDescription("Search the repository files this job may read for literal text (or a Java regex with regex=true), one match per line. Use it to find where something is said or called before reading the file. Narrow with glob, e.g. `src/**/*.kt`. Returns path, line and the line's text; complete=false means the cap was reached. Fails on an empty or multi-line query or a bad regex; files that are not UTF-8 text are skipped.")
 @AgentToolMeta("repo", effects = [ToolEffect.FILESYSTEM_READ])
 data class RepoSearchRequest(
     val query: String,
@@ -48,11 +48,11 @@ data class RepoSearchRequest(
     val maxMatches: Int = 100,
 )
 
-@JsonClassDescription("Replace an exact passage in a repository file the job may write. oldText must occur exactly once (copy it from RepoReadFileRequest without the line-number prefixes), unless replaceAll=true. The file is rewritten in place; read it again to check.")
+@JsonClassDescription("Replace an exact passage in a repository file the job may write, e.g. oldText `val x = 1` with newText `val x = 2`. Use it for any change to an existing file; use RepoWriteFileRequest only to create one. oldText must occur exactly once (copy it from RepoReadFileRequest without the line-number prefixes), unless replaceAll=true. Reports how many occurrences were replaced. Refuses a file outside the writable list, a generated file (a DO NOT EDIT header), and oldText that is missing or occurs more than once. The file is rewritten in place; read it again to check.")
 @AgentToolMeta("repo", effects = [ToolEffect.FILESYSTEM_WRITE])
 data class RepoPatchFileRequest(val path: String, val oldText: String, val newText: String, val replaceAll: Boolean = false)
 
-@JsonClassDescription("Create a repository file the job may write, with this content. Refuses an existing file unless overwrite=true; prefer RepoPatchFileRequest for changes to one.")
+@JsonClassDescription("Create a repository file the job may write, with this content, e.g. path `dev_docs/notes/new_page.md`. Reports the path and character count written. Refuses an existing file unless overwrite=true, a generated file, and content over 2 MB; prefer RepoPatchFileRequest for changes to one.")
 @AgentToolMeta("repo", effects = [ToolEffect.FILESYSTEM_WRITE])
 data class RepoWriteFileRequest(val path: String, val content: String, val overwrite: Boolean = false)
 
