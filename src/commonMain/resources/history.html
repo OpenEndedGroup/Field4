@@ -7,16 +7,17 @@
         <title>Document History</title>
         <style>
             @import url("/iosevka.css");
+            @import url("/fieldPanelTokens.css");
 
             :root {
                 --bg: #111111;
-                --shell: #000000;
+                --shell: var(--fp-bg, #000000);
                 --panel: #1f1f1f;
-                --panel-2: #242424;
+                --panel-2: var(--fp-card, #242424);
                 --panel-3: #181818;
-                --fg: #d8d8d8;
-                --muted: #8a8a8a;
-                --dim: #5c5c5c;
+                --fg: var(--fp-fg, #d8d8d8);
+                --muted: var(--fp-muted, #8a8a8a);
+                --dim: var(--fp-dim, #5c5c5c);
                 --line: #050505;
                 --line-2: #101010;
                 --accent: #d8d8d8;
@@ -1210,7 +1211,7 @@
                 <div class="history-actions">
                     <button
                         id="close-btn"
-                        class="icon-button"
+                        class="icon-button field-panel-icon"
                         aria-label="Close"
                         title="Close"
                     >
@@ -4156,6 +4157,17 @@
                     event.preventDefault();
                     event.stopPropagation();
                     closeScreenshotPreview();
+                    return;
+                }
+                // Escape closes the panel, as it does every Field panel; a text field keeps its own.
+                if (
+                    (event.key === "Escape" || event.key === "Esc") &&
+                    !event.defaultPrevented &&
+                    !textEditingShortcutTarget(event.target)
+                ) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    document.getElementById("close-btn")?.click();
                     return;
                 }
                 if (

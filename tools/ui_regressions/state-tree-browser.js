@@ -39,7 +39,7 @@ check(!draft.value.includes('7200'), 'State contents leaked into chat reference'
 check(draft.value.includes('StateReadRequest'), 'Reference lacks retrieval tool');
 check(content.__aiChatHistory === history, 'Referencing sent a message');
 click('Clear comparison');
-click('Close'); check(root.querySelector('.state-tree-browser').hidden, 'Close failed');
+click('×'); check(root.querySelector('.state-tree-browser').hidden, 'Close failed');
 click('States'); await until(() => nodes().length === 2);
 check(draft.value.startsWith('My question'), 'Reopening lost draft');
 nodes()[1].click(); await until(() => root.querySelector('.state-tree-detail').textContent.includes('7200'));

@@ -1,9 +1,10 @@
-.profile-timeline { position:fixed; z-index:12020; left:12px; right:12px; bottom:12px; height:min(650px,80vh); display:flex; flex-direction:column; gap:8px; padding:14px; background:#000; color:#ddd; border:5px solid var(--field-border,#333); border-radius:5px; font:12px var(--field-font,"Iosevka Web"),Iosevka,monospace; overflow:hidden; user-select:none; -webkit-user-select:none; box-sizing:border-box; }
+.profile-timeline { position:fixed; z-index:12020; left:12px; right:12px; bottom:12px; height:min(650px,80vh); display:flex; flex-direction:column; gap:8px; padding:var(--fp-pad,8px); background:var(--fp-bg,#000); color:#ddd; border:var(--fp-border,5px solid #333); border-radius:var(--fp-radius,5px); font:12px var(--field-font,"Iosevka Web"),Iosevka,monospace; overflow:hidden; user-select:none; -webkit-user-select:none; box-sizing:border-box; }
 .profile-timeline[hidden] { display:none; }
 .profile-timeline * { box-sizing:border-box; user-select:none; -webkit-user-select:none; }
 .profile-timeline [hidden] { display:none !important; }
 .profile-timeline header,.profile-toolbar { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-.profile-timeline header strong { font-size:14px; margin-right:10px; }
+.profile-timeline header { min-height:var(--fp-head-height,28px); }
+.profile-timeline header strong { font-size:var(--fp-title-size,11px); font-weight:var(--fp-title-weight,500); color:var(--fp-fg,#d8d8d8); margin-right:10px; }
 .profile-timeline button,.profile-timeline select,.profile-timeline input { background:#090909; color:#ddd; font:inherit; border:1px solid #3c3c3c; border-radius:4px; padding:5px 8px; min-height:28px; }
 .profile-timeline button { cursor:pointer; }
 .profile-timeline button:hover:not(:disabled) { background:#222; border-color:#aaa; }
@@ -29,7 +30,6 @@
 .profile-timeline footer { color:#888; font-size:11px; line-height:1.4; }
 @media(max-width:850px) { .profile-detail { flex-basis:190px; width:190px; } .profile-labels { flex-basis:140px; width:140px; } #profile-spans { width:calc(100% - 140px); } .profile-timeline.profile-compact { right:12px; min-width:0; } }
 
-.profile-timeline #profile-close { font-size:20px; width:28px; height:28px; min-height:28px; padding:0; line-height:1; }
 .profile-stack-toggle { display:flex; align-items:center; gap:5px; color:#aaa; cursor:pointer; }
 .profile-stack-toggle input { accent-color:#48c9ff; min-height:0; min-width:0; flex:none; }
 .profile-tabs { display:flex; gap:14px; flex:none; }

@@ -40,7 +40,7 @@ export function mountReviewInbox(root, options) {
     if(!document.querySelector('style[data-field-review-inbox]')) {
         const style=document.createElement('style');style.dataset.fieldReviewInbox='';style.textContent=styleText;document.head.append(style);
     }
-    root.innerHTML="<div class=\"review-actions\"><button type=\"button\" id=\"review-refresh\">Refresh</button><button type=\"button\" id=\"review-close\">Close</button></div>\n    <label><input type=\"checkbox\" id=\"review-completed\"> Include resolved</label>\n    <p id=\"review-counts\"></p>\n    <p id=\"review-error\" class=\"review-copy review-error\" aria-live=\"polite\"></p>\n    <div id=\"review-threads\"></div>";
+    root.innerHTML="<div class=\"review-actions\"><button type=\"button\" id=\"review-refresh\">Refresh</button><button type=\"button\" id=\"review-close\" class=\"field-panel-icon\" title=\"Close\" aria-label=\"Close\">×</button></div>\n    <label><input type=\"checkbox\" id=\"review-completed\"> Include resolved</label>\n    <p id=\"review-counts\"></p>\n    <p id=\"review-error\" class=\"review-copy review-error\" aria-live=\"polite\"></p>\n    <div id=\"review-threads\"></div>";
     const find=id=>root.querySelector('#'+id);
     const reviewThreadsEl=find('review-threads'),reviewErrorEl=find('review-error');
     const completed=find('review-completed'),counts=find('review-counts');counts.classList.add('review-counts');
@@ -149,6 +149,7 @@ async function reviewLoadThreads(focusNote = null, expectedView = null) {
     }
     function close(){root.hidden=true;root.classList.add('hidden');}
     find('review-close').onclick=close;
+    root.addEventListener('keydown',e=>{if(e.key==='Escape'&&!e.defaultPrevented&&!/^(INPUT|TEXTAREA)$/.test(e.target.tagName)){e.stopPropagation();close();}});
     find('review-refresh').onclick=()=>reviewLoadThreads();
     completed.onchange=()=>reviewLoadThreads();
     window.addEventListener('message',async event=>{

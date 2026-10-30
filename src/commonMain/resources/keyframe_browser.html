@@ -18,20 +18,19 @@
     <link rel="stylesheet" href="/field.css">
     <style>
         /*
-          The panel language is the macro recorder's and Document History's, because this is a Field
-          panel and should not invent a third: black ground, #242424 cards for content, #050505 for
-          controls and code, one uppercase grey label per section. Values come from field.css
-          (`.macro-recorder-*`, around line 2498) rather than being eyeballed.
+          The panel language is FieldPanel's (Document History, the macro recorder): the tokens are
+          read from /fieldPanelTokens.css, the one copy, with the old values as fallbacks.
         */
+        @import url("/fieldPanelTokens.css");
         :root {
             color-scheme: dark;
-            --kb-card: #242424;
-            --kb-card-edge: #050505;
-            --kb-sunken: #050505;
-            --kb-control-edge: #2b2b2b;
-            --kb-control-edge-hover: #464646;
-            --kb-text: #d8d8d8;
-            --kb-muted: #8a8a8a;
+            --kb-card: var(--fp-card, #242424);
+            --kb-card-edge: var(--fp-control-bg, #050505);
+            --kb-sunken: var(--fp-control-bg, #050505);
+            --kb-control-edge: var(--fp-control-border, #2b2b2b);
+            --kb-control-edge-hover: var(--fp-control-hover-border, #464646);
+            --kb-text: var(--fp-fg, #d8d8d8);
+            --kb-muted: var(--fp-muted, #8a8a8a);
             --kb-fainter: #777777;
             --kb-sel: #EF9F27;
             --kb-cool: #6cf;

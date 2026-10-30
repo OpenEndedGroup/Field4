@@ -123,8 +123,10 @@ private fun ensureSearchWidget() {
     }
 
     val close = document.createElement("button") as HTMLButtonElement
-    close.innerHTML = "&times;"
-    close.classList.add("search-button", "close")
+    close.textContent = "×"
+    close.classList.add("search-button", "close", "field-panel-icon")
+    close.title = "Close"
+    close.setAttribute("aria-label", "Close")
     close.onclick = {
         hideSearch()
         null

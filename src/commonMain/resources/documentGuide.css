@@ -1,15 +1,15 @@
-.document-guide { position:fixed; z-index:12010; left:18px; top:58px; width:min(720px,54vw); height:calc(100vh - 90px); display:flex; flex-direction:column; gap:10px; padding:14px; color:#ddd; background:#000; border:5px solid var(--field-border,#333); border-radius:6px; overflow:hidden; font:13px var(--field-font,"Iosevka Web"),Iosevka,monospace; }
+.document-guide { position:fixed; z-index:12010; left:18px; top:58px; width:min(720px,54vw); height:calc(100vh - 90px); display:flex; flex-direction:column; gap:10px; padding:var(--fp-pad,8px); color:var(--fp-fg,#ddd); background:var(--fp-bg,#000); border:var(--fp-border,5px solid #333); border-radius:var(--fp-radius,5px); overflow:hidden; font:13px var(--field-font,"Iosevka Web"),Iosevka,monospace; }
 .document-guide,.document-guide * { box-sizing:border-box; }
 .document-guide [hidden],.document-guide[hidden],#document-guide-launcher[hidden] { display:none !important; }
 .document-guide header,.guide-toolbar { display:flex; align-items:center; gap:8px; flex:none; user-select:none; -webkit-user-select:none; }
 .guide-header { cursor:move; min-height:30px; }
-.guide-header strong { color:#eee; font-size:15px; white-space:nowrap; }
+.guide-header { min-height:var(--fp-head-height,28px); }
+.guide-header strong { color:var(--fp-fg,#eee); font-size:var(--fp-title-size,11px); font-weight:var(--fp-title-weight,500); white-space:nowrap; }
 .guide-title { flex:1; color:#999; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .document-guide button,#document-guide-launcher { font:inherit; background:#101010; color:#ccc; border:1px solid #3a3a3a; border-radius:5px; min-height:28px; padding:4px 8px; cursor:pointer; user-select:none; -webkit-user-select:none; }
 .document-guide button:hover:not(:disabled),#document-guide-launcher:hover { background:#303030; border-color:#888; color:#fff; }
 .document-guide button:focus-visible,.guide-reader:focus-visible { outline:1px solid #48c9ff; outline-offset:2px; }
 .document-guide button:disabled { opacity:.35; cursor:default; }
-#guide-close { font-size:22px; width:30px; padding:0; line-height:1; }
 .guide-toolbar { flex-wrap:wrap; }
 .guide-toolbar .guide-active { color:#48c9ff; border-color:#48c9ff; }
 #guide-pin { margin-left:auto; }
