@@ -895,16 +895,11 @@
                 overflow: hidden;
                 text-overflow: ellipsis;
                 white-space: nowrap;
-                font-size: 11px;
+                font-size: var(--fp-title-size, 11px);
+                font-weight: var(--fp-title-weight, 500);
+                color: var(--fp-fg, #d8d8d8);
             }
 
-            .screenshot-preview-close {
-                width: 28px;
-                height: 28px;
-                padding: 0;
-                font-size: 17px;
-                border-radius: var(--radius-control);
-            }
 
             .screenshot-preview-stage {
                 min-width: 0;
@@ -4262,7 +4257,7 @@
                 preview.innerHTML = `
                     <div class="screenshot-preview-chrome">
                         <div class="screenshot-preview-title"></div>
-                        <button class="screenshot-preview-close" type="button" aria-label="Close screenshot preview">×</button>
+                        <button class="screenshot-preview-close field-panel-icon" type="button" title="Close" aria-label="Close">×</button>
                     </div>
                     <div class="screenshot-preview-stage">
                         <img alt="" />

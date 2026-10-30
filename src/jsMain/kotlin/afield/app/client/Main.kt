@@ -6919,22 +6919,23 @@ suspend fun main() {
 
         if (note.persistent) {
             val closeBtn = document.createElement("button") as HTMLElement
-            closeBtn.classList.add("close-btn")
-            closeBtn.innerHTML = "×"
+            // The shared FieldPanel close (fieldPanelTokens.css); only its place is set here.
+            closeBtn.classList.add("close-btn", "field-panel-icon")
+            closeBtn.textContent = "×"
+            closeBtn.setAttribute("type", "button")
+            closeBtn.title = "Close"
+            closeBtn.setAttribute("aria-label", "Close")
             closeBtn.style.apply {
                 position = "absolute"
                 top = "8px"
                 right = "8px"
-                background = "rgba(255, 255, 255, 0.2)"
-                border = "none"
-                borderRadius = "4px"
-                color = "#fff"
-                fontSize = "20px"
-                width = "24px"
-                height = "24px"
-                cursor = "pointer"
-                lineHeight = "20px"
-                textAlign = "center"
+            }
+            overlay.onkeydown = { event ->
+                if (event.key == "Escape" && overlay.style.display != "none") {
+                    event.stopPropagation()
+                    overlay.style.display = "none"
+                    clearSlideAnnotations()
+                }
             }
             closeBtn.onclick = {
                 overlay.style.display = "none"
