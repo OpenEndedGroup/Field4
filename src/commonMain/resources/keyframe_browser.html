@@ -970,9 +970,11 @@ keyframeBrowser("looks", scope = myScope)</pre>
 
         // Head: the folder you are browsing, with the glob as a chip beside it. The glob used to be
         // the title, which reads as noise — a bare `?` or `**` tells you nothing about where you are.
-        const folder = String(c.root).replace(/\/+$/, "").split("/").slice(-2).join("/");
+        // Only the folder's own name is shown; the absolute path (a temp or home directory nobody
+        // wants on screen, or in a published figure) is the title's tooltip.
+        const folder = String(c.root).replace(/[\/\\]+$/, "").split(/[\/\\]/).pop();
         parts.push(`<div class="kb-head">`);
-        parts.push(`<span class="kb-title kb-mono">${esc(folder || c.root)}</span>`);
+        parts.push(`<span class="kb-title kb-mono" title="${esc(c.root)}">${esc(folder || c.root)}</span>`);
         parts.push(`<span class="kb-badge kb-mono" title="glob, matched against paths relative to the root">${esc(c.pattern)}</span>`);
         if (c.schemaVersions.length > 1) {
             parts.push(`<span class="kb-badge kb-warn">schema ${c.schemaVersions.join(", ")}</span>`);
@@ -986,7 +988,7 @@ keyframeBrowser("looks", scope = myScope)</pre>
         const stamp = [c.latestAgo ? `last save ${c.latestAgo}` : null,
             c.latestNote ? `"${c.latestNote}"` : null].filter(Boolean).join(" · ");
         parts.push(`<div class="kb-sub" title="${esc(c.root)}${c.latestTimestamp ? " · " + esc(c.latestTimestamp) : ""}">` +
-            `${esc(c.root)}${stamp ? " · " + esc(stamp) : ""}</div>`);
+            `${esc(stamp || "no saves yet")}</div>`);
 
         if (c.problems.length) {
             parts.push(`<div class="kb-problems">` + c.problems.map(esc).join("<br>") + `</div>`);
