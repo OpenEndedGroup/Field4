@@ -686,8 +686,35 @@ class GeneratedFiles:
 # `--strict` CI build fails on.
 WORKSPACE_MARKDOWN_FILENAMES = frozenset({"README.md", "AGENTS.md", "document.md"})
 
+# A page's link to a markdown file under assets/, in markdown or HTML form.
+ASSET_MARKDOWN_LINK = re.compile(r"""(?:\]\(|href=["'])(?:\./)?(assets/[^)"'\s#]+\.md)""")
 
-def is_workspace_markdown(relative: Path) -> bool:
+
+def _inside_a_workspace(relative: Path, docs_root: Path) -> bool:
+    """True when some folder above [relative], inside assets/, holds a Field document."""
+    for depth in range(len(relative.parts) - 1, 1, -1):
+        if (docs_root / Path(*relative.parts[:depth]) / "metadata.edn").is_file():
+            return True
+    return False
+
+
+_LINKED_ASSET_MARKDOWN: dict[Path, frozenset[str]] = {}
+
+
+def linked_asset_markdown(docs_root: Path) -> frozenset[str]:
+    """The `assets/**.md` files a page outside assets/ links to; those stay pages."""
+    key = docs_root.resolve()
+    if key not in _LINKED_ASSET_MARKDOWN:
+        linked: set[str] = set()
+        for page in docs_root.rglob("*.md"):
+            if page.relative_to(docs_root).parts[:1] == ("assets",):
+                continue
+            linked.update(ASSET_MARKDOWN_LINK.findall(page.read_text(encoding="utf-8", errors="replace")))
+        _LINKED_ASSET_MARKDOWN[key] = frozenset(linked)
+    return _LINKED_ASSET_MARKDOWN[key]
+
+
+def is_workspace_markdown(relative: Path, docs_root: Path | None = None) -> bool:
     """True for a markdown file that belongs to a downloadable workspace, not to the site.
 
     Every `assets/<name>/` folder under the docs root is a *Field workspace* -- a document the
@@ -701,8 +728,20 @@ def is_workspace_markdown(relative: Path) -> bool:
     rendered, which keeps the raw file at its own URL (`assets/<name>/document.md`) for whoever
     wants to read the workspace on disk, and keeps the thing the gallery actually links --
     `metadata.edn`, opened in the offline viewer -- untouched.
+
+    Given [docs_root], every other markdown file inside a workspace is furniture too: the
+    `guides/*.md` redirects a starting point carries to the pages that teach it (titled with that
+    page's own heading, so each was a near-duplicate search hit for a real page), box `*_notes_.md`
+    sidecars, saved chats and lenses. A workspace is a folder under assets/ holding `metadata.edn`.
+    The exception is a file a page outside assets/ links to, such as `canonical_graphics/LESSONS.md`.
     """
-    return relative.name in WORKSPACE_MARKDOWN_FILENAMES and relative.parts[:1] == ("assets",)
+    if relative.parts[:1] != ("assets",):
+        return False
+    if relative.name in WORKSPACE_MARKDOWN_FILENAMES:
+        return True
+    if docs_root is None:
+        return False
+    return _inside_a_workspace(relative, docs_root) and relative.as_posix() not in linked_asset_markdown(docs_root)
 
 
 # The two ways a page names a local file: an HTML attribute, and a markdown link/image target.
@@ -938,7 +977,7 @@ def preprocess_docs(*, public_dir: Path, generated_docs: Path, page_filters: tup
     try:
         for path in sorted(source_docs.rglob("*.md")):
             relative = path.relative_to(source_docs)
-            if is_workspace_markdown(relative):
+            if is_workspace_markdown(relative, source_docs):
                 # Copied verbatim below rather than rendered; see is_workspace_markdown.
                 continue
             destination = generated_docs / relative
@@ -1014,7 +1053,7 @@ def copy_workspace_markdown(*, source_docs: Path, site_dir: Path) -> int:
     copied = 0
     for path in sorted(source_docs.rglob("*.md")):
         relative = path.relative_to(source_docs)
-        if not is_workspace_markdown(relative):
+        if not is_workspace_markdown(relative, source_docs):
             continue
         destination = site_dir / relative
         destination.parent.mkdir(parents=True, exist_ok=True)
@@ -1318,7 +1357,7 @@ def page_output(relative: Path) -> Path:
 def missing_pages(*, generated_docs: Path, site_dir: Path) -> tuple[int, list[Path]]:
     """How many pages the generated docs hold, and those of them with no built page in [site_dir]."""
     pages = [path.relative_to(generated_docs) for path in sorted(generated_docs.rglob("*.md"))]
-    pages = [page for page in pages if not is_workspace_markdown(page)]
+    pages = [page for page in pages if not is_workspace_markdown(page, generated_docs)]
     return len(pages), [page for page in pages if not (site_dir / page_output(page)).is_file()]
 
 
