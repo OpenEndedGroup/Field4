@@ -66,14 +66,12 @@ edited()
 // bare property name, not on the qualified key name.
 fun live(s: Structure, p: String) = s.bindings[p]?.invoke()?.toString() ?: "{dim:unbound}"
 // Read now, while the edit is still applied — the next line puts the old values back.
-val liveRows =
-    [
-            "glow.radius" to live(glow, "radius"),
-            "glow.intensity" to live(glow, "intensity"),
-            "blur.radius" to live(blur, "radius"),
-            "glow.*glow@radius*" to live(glow, "glow@radius"),
-        ]
-        .joinToString("\n") { (k, v) -> "| $k | $v |" }
+val liveRows = [
+    "glow.radius" to live(glow, "radius"),
+    "glow.intensity" to live(glow, "intensity"),
+    "blur.radius" to live(blur, "radius"),
+    "glow.*glow@radius*" to live(glow, "glow@radius"),
+].joinToString("\n") { (k, v) -> "| $k | $v |" }
 
 // Put the original back, and diff to show the scope is exactly where it started.
 captured()
@@ -870,17 +868,16 @@ scope.target("glow@falloff", glow)
 
 // Four looks, each saved as its own key with a note.
 [
-        Triple("soft", [3f, 0.20f, 1.5f], "first pass"),
-        Triple("hot", [9f, 0.80f, 0.6f], "too much"),
-        Triple("mid", [6f, 0.50f, 1.0f], "between the two"),
-        Triple("wide", [12f, 0.35f, 2.2f], "for the long shot"),
-    ]
-    .forEach { (name, v, note) ->
-        glow.bind("radius") { v[0] }
-        glow.bind("intensity") { v[1] }
-        glow.bind("falloff") { v[2] }
-        scope.capture().save(dir.resolve(name), note)
-    }
+    Triple("soft", [3f, 0.20f, 1.5f], "first pass"),
+    Triple("hot", [9f, 0.80f, 0.6f], "too much"),
+    Triple("mid", [6f, 0.50f, 1.0f], "between the two"),
+    Triple("wide", [12f, 0.35f, 2.2f], "for the long shot"),
+].forEach { (name, v, note) ->
+    glow.bind("radius") { v[0] }
+    glow.bind("intensity") { v[1] }
+    glow.bind("falloff") { v[2] }
+    scope.capture().save(dir.resolve(name), note)
+}
 
 keyframeBrowser(dir, scope = scope, height = 330)
 ```
@@ -964,7 +961,8 @@ By default `interpolate` **steps** code: it keeps the first key's code until `t`
 switches to the second. There is no halfway point between two unrelated programs.
 
 Often the two programs are two looks for one patch, and they differ only in their numbers. Then the
-keyframer can do better. Set `scope.codeBlend` to `CodeBlendMode.STATIC` or `CodeBlendMode.RUNTIME`,
+keyframer can do better. The rule is strict: if the two programs differ anywhere except in numbers,
+the blend steps. There is no partial blend of the parts that match. Set `scope.codeBlend` to `CodeBlendMode.STATIC` or `CodeBlendMode.RUNTIME`,
 and it blends those numbers and builds the program in between.
 
 If you only want to animate a StackSL slot's numbers, you do not need code keys at all.
@@ -977,9 +975,11 @@ shows this.
 Here two keys each hold a `sourceBlock`. The two blocks differ in two numbers. The output shows the
 key halfway between them twice: first with `codeBlend` off, then on. Off, it is still the first
 block. On, it is a new block whose numbers are halfway, and calling it gives the halfway result.
-Below that is the plan, which lists each number that moves.
+Below that is the plan, which lists each number that moves. Last is the plan for a third key
+whose block also turns a `+` into a `-`. That operator is a **divergence**: a difference that is not
+a number. The plan reports it, and the whole slot steps.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/source_block_blend.png" wait="2.0" capture="box" open-outputs="true" w="760" h="300" padding="16"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/source_block_blend.png" wait="2.0" capture="box" open-outputs="true" w="760" h="420" padding="16"}
 val scope = KeyframeScope()
 val quiet = scope.Key(mutableMapOf<String, Any?>("level" to sourceBlock { 2.0f * 3.0f + 1.0f }))
 val loud = scope.Key(mutableMapOf<String, Any?>("level" to sourceBlock { 8.0f * 3.0f + 5.0f }))
@@ -992,6 +992,10 @@ scope.codeBlend = CodeBlendOptions(mode = CodeBlendMode.STATIC)
 val blended = scope.interpolate(quiet, loud, 0.5).values["level"] as SourceBackedBlock<*>
 val plan = scope.codeBlendPlans(quiet, loud).getValue("level")
 
+// A key whose block also changes an operator: `+` becomes `-`. That is not a number, so it steps.
+val other = scope.Key(mutableMapOf<String, Any?>("level" to sourceBlock { 8.0f * 3.0f - 5.0f }))
+val refused = scope.codeBlendPlans(quiet, other).getValue("level")
+
 markdown(
     "blend",
     """
@@ -1003,11 +1007,15 @@ markdown(
     ~~~
 ${plan.describe()}
     ~~~
+
+    ~~~
+${refused.describe()}
+    ~~~
 """,
 )
 ```
 
-![A table with two rows. With codeBlend off, the block at t = 0.5 is 2.0f * 3.0f + 1.0f, value 7.0. With codeBlend on, it is 5.0f * 3.0f + 3.0f, value 18.0. Below, the plan: 2 moving sites of 3, 0 divergences, STATIC, with 2.0f moving to 8.0f and 1.0f to 5.0f](assets/keyframer_examples/source_block_blend.png)
+![A table with two rows. With codeBlend off, the block at t = 0.5 is 2.0f * 3.0f + 1.0f, value 7.0. With codeBlend on, it is 5.0f * 3.0f + 3.0f, value 18.0. Below, the plan: 2 moving sites of 3, 0 divergences, STATIC, with 2.0f moving to 8.0f and 1.0f to 5.0f. Last, the plan against a block with a minus: 1 divergence, downgraded to STEP, naming the + against the -](assets/keyframer_examples/source_block_blend.png)
 
 Two `sourceBlock` keys blend like two StackSL keys only when all three of these hold:
 
