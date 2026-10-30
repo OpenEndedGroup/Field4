@@ -13,7 +13,7 @@ with(Functions) {
         """
     seed    ${seed.graphNode().strings["source"]}
     fitted  ${run.fitted.graphNode().strings["source"]}
-    RMSE    ${"%.4f".format(run.initialError)} -> ${"%.4f".format(run.finalError)}
+    RMSE    ${run.initialError.f4} -> ${run.finalError.f4}
     """
             .trimIndent()
     println(report)

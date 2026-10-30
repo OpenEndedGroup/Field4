@@ -78,7 +78,7 @@ run {
     // Field's own topology, which shares no code with Manifold's.
     val mesh = build.solid.toTriMesh()
     println("watertight       ${mesh.isWatertight()}")
-    println("volume           ${"%.6f".format(mesh.signedVolume())}")
+    println("volume           ${mesh.signedVolume().f6}")
     println("genus            ${mesh.genus()}")
     println("status           ${build.solid.status} — closed however the field behaved")
 

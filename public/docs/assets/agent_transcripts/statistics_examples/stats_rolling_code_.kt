@@ -75,11 +75,11 @@ markdown(
     """
     | window | dCor | xi | \|r\| |
     |--------|------|----|-------|
-    | window-full to the change (i=$w..${change - 1}) | ${"%.3f".format(dSeries.subList(w, change).average())} | ${"%.3f".format(xiSeries.subList(w, change).average())} | ${"%.3f".format(absR.subList(w, change).average())} |
-    | settled after the change (i=${change + w}..${total - 1}) | ${"%.3f".format(dSeries.subList(change + w, total).average())} | ${"%.3f".format(xiSeries.subList(change + w, total).average())} | ${"%.3f".format(absR.subList(change + w, total).average())} |
+    | window-full to the change (i=$w..${change - 1}) | ${dSeries.subList(w, change).average().f3} | ${xiSeries.subList(w, change).average().f3} | ${absR.subList(w, change).average().f3} |
+    | settled after the change (i=${change + w}..${total - 1}) | ${dSeries.subList(change + w, total).average().f3} | ${xiSeries.subList(change + w, total).average().f3} | ${absR.subList(change + w, total).average().f3} |
 
-    {muted:dCor null 95th pct ${"%.3f".format(threshold)}: $dCrossing.
-    xi null 95th pct ${"%.3f".format(xiThreshold)}: $xiCrossing.}
+    {muted:dCor null 95th pct ${threshold.f3}: $dCrossing.
+    xi null 95th pct ${xiThreshold.f3}: $xiCrossing.}
 
     {muted:incremental vs batch on the final window: |difference| = $agreement}
 """,

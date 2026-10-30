@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-29T22:43:45.557Z",
+  "capturedAt": "2026-10-30T23:57:36.430Z",
   "documentName": "solidcraft_intro",
   "outputs": [
     {
@@ -9,8 +9,8 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 440,
-      "height": 84,
+      "width": 439,
+      "height": 82,
       "path": "outputs/0.html"
     }
   ]

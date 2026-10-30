@@ -29,7 +29,7 @@ showImgGrid(
     cellSide = 260,
 )
 println(
-    "|grad| max ${"%.3f".format(grad.magnitude().max())}; " +
+    "|grad| max ${grad.magnitude().max().f3}; " +
         "canny ${edges.data.count { it > 0.5f }} px, cannyAuto ${auto.data.count { it > 0.5f }} px; " +
         "${flines.size} FLines, ${flines.sumOf { it.nodes.size }} nodes total",
 )

@@ -154,8 +154,8 @@ if (backend == null) {
     println(
         """
         ${data.size} fixed points, two free variables, no point unknowns at all
-        ceres       centre (${"%.9f".format(centre.x)}, ${"%.9f".format(centre.y)}, ${"%.9f".format(centre.z)})  radius ${"%.9f".format(radius)}
-        closed form centre (${"%.9f".format(trueCentre.x)}, ${"%.9f".format(trueCentre.y)}, ${"%.9f".format(trueCentre.z)})  radius ${"%.9f".format(trueRadius)}
+        ceres       centre (${centre.x.f9}, ${centre.y.f9}, ${centre.z.f9})  radius ${radius.f9}
+        closed form centre (${trueCentre.x.f9}, ${trueCentre.y.f9}, ${trueCentre.z.f9})  radius ${trueRadius.f9}
         centre off by ${"%.2e".format(centreError)}, radius off by ${"%.2e".format(kotlin.math.abs(radius - trueRadius))}
         ${result.summary}
         """

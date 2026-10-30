@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="kratos_flow" index="0" -->
 
 ```edn [field-box id="kratos_flow" role="properties"]
-{"id" "kratos_flow" "index" 0 "name" "Kratos flow playground" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Kratos flow playground" "_tombstone" false "frame" #afield/rect [60.0 140.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kratos_flow_code_.kt" "lines" 209 "characters" 10463 "sha256" "f14979616fa7de9c5c97c7ad746ac189535fd4b5fde216a106565b765a591db1"}]}
+{"id" "kratos_flow" "index" 0 "name" "Kratos flow playground" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Kratos flow playground" "_tombstone" false "frame" #afield/rect [60.0 140.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kratos_flow_code_.kt" "lines" 209 "characters" 10451 "sha256" "02ad18e6ac75a8d0525427d04a2f1c71ce238c7058da0763f1884830da21f036"}]}
 ```
 
 ```kotlin [field-property box="kratos_flow" name="code" path="kratos_flow_code_.kt"]
@@ -130,7 +130,7 @@ frames {
                 pending = worker.solveAsync(body(requested[0]), parameters)
                 resultText =
                     "Solving ${values[3].toInt()} steps at Re " +
-                        "${"%.0f".format(parameters.reynolds(2*values[0]))} on the obstacle…"
+                        "${parameters.reynolds(2*values[0]).f0} on the obstacle…"
             }
 
             val ready = pending

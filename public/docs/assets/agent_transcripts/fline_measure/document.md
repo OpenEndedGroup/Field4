@@ -59,7 +59,7 @@ lines(loose, tight, ring, loop, dots, w = 420.0, h = 260.0, fitToSize = true)
 <!-- field-box id="fline-measure-trim" index="1" -->
 
 ```edn [field-box id="fline-measure-trim" role="properties"]
-{"id" "fline-measure-trim" "index" 1 "name" "2 - Trim and split by distance" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - Trim and split by distance" "_tombstone" false "frame" #afield/rect [520.0 60.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fline-measure-trim_code_.kt" "lines" 26 "characters" 734 "sha256" "5dec0ceb98280f2eaf9731f2ce08151934463491e3c120127372d1b0f7053c7a"}]}
+{"id" "fline-measure-trim" "index" 1 "name" "2 - Trim and split by distance" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - Trim and split by distance" "_tombstone" false "frame" #afield/rect [520.0 60.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fline-measure-trim_code_.kt" "lines" 26 "characters" 698 "sha256" "d18cc2e2b1f3dbbede5a4059ade8db7910b78e0e0e23e9d9188f7a27f6451fdf"}]}
 ```
 
 ```kotlin [field-property box="fline-measure-trim" name="code" path="fline-measure-trim_code_.kt"]
@@ -86,7 +86,7 @@ head.apply {
     color = vec(1.0, 0.6, 0.2, 1.0)
 }
 
-print("total ${"%.1f".format(total)} = ${"%.1f".format(head.length())} + ${"%.1f".format(tail.length())}")
+print("total ${total.f1} = ${head.length().f1} + ${tail.length().f1}")
 
 lines(curve, head, middle, w = 420.0, h = 260.0, fitToSize = true)
 ```

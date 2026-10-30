@@ -58,7 +58,7 @@ loop {
         title(sources.joinToString("                 ") { it.first })
         helpers(true)
     }
-    markdown("status", "**${sources.joinToString(" · ") { it.first }}** · ${"%.2f".format(time)} s\n\n" +
+    markdown("status", "**${sources.joinToString(" · ") { it.first }}** · ${time.f2} s\n\n" +
         "Actual recorded poses; horizontal root travel removed separately in each lane. White: executed. Cyan: reference. " +
         when(experiment) {
             "closd" -> "Strong: 8000 N/m, 120 N s/m, 2500 N cap. Attach at 2 s; release at 4 s. Red: anchor; amber: force (scaled)."

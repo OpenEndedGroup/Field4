@@ -163,7 +163,7 @@ and a generated Kotlin expression reads a registry slot addressed by an integer 
 into its text, because generated text cannot close over a value.
 
 ```edn [field-box id="kfb_kotlin" role="properties"]
-{"id" "kfb_kotlin" "index" 3 "name" "The same blend, in Kotlin" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The same blend, in Kotlin" "_tombstone" false "frame" #afield/rect [80.0 1040.0 420.0 102.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kfb_kotlin_code_.kt" "lines" 35 "characters" 1533 "sha256" "19e48fb2d211f15a787ba7b8b78e7405e85930569901110bfd9c1f0347616a71"}]}
+{"id" "kfb_kotlin" "index" 3 "name" "The same blend, in Kotlin" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The same blend, in Kotlin" "_tombstone" false "frame" #afield/rect [80.0 1040.0 420.0 102.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kfb_kotlin_code_.kt" "lines" 35 "characters" 1477 "sha256" "db738d9e27c4faf4f03802e28dc1072145eb380088ebc2678021d9a5f46f53dd"}]}
 ```
 
 ```kotlin [field-property box="kfb_kotlin" name="code" path="kfb_kotlin_code_.kt"]
@@ -185,8 +185,8 @@ val scope = KeyframeScope()
 scope.target("amount", get = { amount }, set = { v -> amount = v })
 scope.codeBlend = CodeBlendOptions(mode = CodeBlendMode.RUNTIME)
 
-val a = scope.Key(mutableMapOf<String, Any?>("amount" to quiet))
-val b = scope.Key(mutableMapOf<String, Any?>("amount" to loud))
+val a = scope.Key("amount" to quiet)
+val b = scope.Key("amount" to loud)
 
 val plan = scope.codeBlendPlans(a, b).getValue("amount")
 println(plan.describe())

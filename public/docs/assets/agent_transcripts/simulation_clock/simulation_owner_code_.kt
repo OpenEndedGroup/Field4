@@ -62,7 +62,7 @@ frames {
                       <circle cx="$x" cy="$y" r="12" fill="#48c9ff"/>
                       <circle cx="200" cy="125" r="${8+18*pulse}" fill="#ddd"/>
                       <text x="20" y="250" fill="#aaa" font-family="Iosevka,monospace">
-                        simulation ${"%.2f".format(time)} s · ${pendingTimers} timers
+                        simulation ${time.f2} s · ${pendingTimers} timers
                       </text>
                     </svg>
                     """,

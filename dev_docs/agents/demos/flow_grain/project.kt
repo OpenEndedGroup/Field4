@@ -23,10 +23,7 @@ mesh.clock = { flowClock }
 mesh.emitter = { flowEmitter }
 module +=
     "barrier" to
-        computeTask { _, cmd, _ ->
-            computeMemoryBarrier(cmd, null as VulkanBuffer?)
-            graphicsMemoryBarrier(cmd, null as VulkanBuffer?)
-        }
+        computeBarrier(graphics = true)
 flowSimulation += "project" to module
 loop { true }
     .end {

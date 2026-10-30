@@ -85,8 +85,8 @@ val (shaded, plain, netGenus) = Solid.scope {
     val start = System.nanoTime()
     val welded = Solid.union(rods).checked("cloth net")
     println(
-        "union of ${rods.size} rods: ${"%.0f".format((System.nanoTime() - start) / 1e6)} ms, " +
-            "${welded.triangleCount} triangles, volume ${"%.5f".format(welded.volume)}",
+        "union of ${rods.size} rods: ${((System.nanoTime() - start) / 1e6).f0} ms, " +
+            "${welded.triangleCount} triangles, volume ${welded.volume.f5}",
     )
     Triple(
         welded.toTriMesh(normals = true, minSharpAngle = 30.0),

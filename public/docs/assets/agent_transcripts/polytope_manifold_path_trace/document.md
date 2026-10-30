@@ -32,7 +32,7 @@ start(renderer::run)
 <!-- field-box id="polytope_manifold_trace" index="1" -->
 
 ```edn [field-box id="polytope_manifold_trace" role="properties"]
-{"id" "polytope_manifold_trace" "index" 1 "name" "polytope, eroded into a shell, cut open, traced" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "polytope, eroded into a shell, cut open, traced" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_manifold_trace_code_.kt" "lines" 126 "characters" 5408 "sha256" "f4c811d7f918af481add9f85fc4d90ebd2ef4e5cf745434abba0419de866dd50"}]}
+{"id" "polytope_manifold_trace" "index" 1 "name" "polytope, eroded into a shell, cut open, traced" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "polytope, eroded into a shell, cut open, traced" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_manifold_trace_code_.kt" "lines" 126 "characters" 5328 "sha256" "76254357a60226b5be17e3366dd75ebc8be3e66f35b4334cbf97ed38b114698d"}]}
 ```
 
 ```kotlin [field-property box="polytope_manifold_trace" name="code" path="polytope_manifold_trace_code_.kt"]
@@ -80,10 +80,10 @@ val shaded = Solid.scope {
     val solid = plain.toSolid()
     println(
         "Manifold: status ${solid.status}, genus ${solid.genus}, " +
-            "volume ${"%.4f".format(solid.volume)}, area ${"%.4f".format(solid.surfaceArea)}",
+            "volume ${solid.volume.f4}, area ${solid.surfaceArea.f4}",
     )
     println(
-        "   Field says volume ${"%.4f".format(plain.signedVolume())}, " +
+        "   Field says volume ${plain.signedVolume().f4}, " +
             "differing by ${"%.2e".format(kotlin.math.abs(plain.signedVolume() - solid.volume))}",
     )
 
@@ -97,13 +97,13 @@ val shaded = Solid.scope {
     val inner = solid.minkowskiDifference(ball)
     val wall = solid - inner
     println(
-        "shell: volume ${"%.4f".format(wall.volume)}, genus ${wall.genus}, " + "${wall.triangleCount} triangles",
+        "shell: volume ${wall.volume.f4}, genus ${wall.genus}, " + "${wall.triangleCount} triangles",
     )
     // A constant-thickness wall over a convex body has volume area*t minus a curvature
     // term, so the ratio lands a little under one and says how much the corners take back.
     println(
-        "   area * thickness = ${"%.4f".format(solid.surfaceArea * thickness)}, " +
-            "ratio ${"%.3f".format(wall.volume / (solid.surfaceArea * thickness))}",
+        "   area * thickness = ${(solid.surfaceArea * thickness).f4}, " +
+            "ratio ${(wall.volume / (solid.surfaceArea * thickness)).f3}",
     )
 
     /*
@@ -116,7 +116,7 @@ val shaded = Solid.scope {
     // shallow ones average together and the polytope stops reading as one.
     val shaded = cut.toTriMesh(normals = true, minSharpAngle = 20.0)
     println(
-        "cut: genus ${cut.genus}, volume ${"%.4f".format(cut.volume)}, " +
+        "cut: genus ${cut.genus}, volume ${cut.volume.f4}, " +
             "${shaded.triangleCount} triangles for the render",
     )
 

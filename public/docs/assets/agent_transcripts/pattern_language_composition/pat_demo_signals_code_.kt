@@ -25,5 +25,5 @@ println(
     "segment(4) arcs = " + sine().segment(4).events(PatArc(PatQ.ZERO, PatQ.ONE)).map { "${it.arc}" },
 )
 println(
-    "segment(4) values = " + sine().segment(4).events(PatArc(PatQ.ZERO, PatQ.ONE)).map { "%.4f".format(it.value) },
+    "segment(4) values = " + sine().segment(4).events(PatArc(PatQ.ZERO, PatQ.ONE)).map { it.value.f4 },
 )

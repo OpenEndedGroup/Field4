@@ -34,7 +34,7 @@ start(renderer::run)
 <!-- field-box id="gs_sim" index="1" -->
 
 ```edn [field-box id="gs_sim" role="properties"]
-{"id" "gs_sim" "index" 1 "name" "simulate" "parents" ["root" "gs_renderer"] "children" ["gs_draw"] "properties" {"children" #{#afield/box "gs_draw"} "parents" #{#afield/box "root" #afield/box "gs_renderer"} "name" "simulate" "_tombstone" false "frame" #afield/rect [340.0 40.0 300.0 100.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "gs_sim_compute_.glsl" "lines" 58 "characters" 1856 "sha256" "0a4d10ae493ee9e931ba3192ec6988cd7fd89ed350fd5863486ab9e6b0acbd01"} {"name" "code" "language" "kotlin" "path" "gs_sim_code_.kt" "lines" 128 "characters" 5080 "sha256" "35d919970c4b8c7d2c47079f1bee4753973fe3e2013dffa8ad47cf12bcda7905"}]}
+{"id" "gs_sim" "index" 1 "name" "simulate" "parents" ["root" "gs_renderer"] "children" ["gs_draw"] "properties" {"children" #{#afield/box "gs_draw"} "parents" #{#afield/box "root" #afield/box "gs_renderer"} "name" "simulate" "_tombstone" false "frame" #afield/rect [340.0 40.0 300.0 100.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "gs_sim_compute_.glsl" "lines" 58 "characters" 1856 "sha256" "0a4d10ae493ee9e931ba3192ec6988cd7fd89ed350fd5863486ab9e6b0acbd01"} {"name" "code" "language" "kotlin" "path" "gs_sim_code_.kt" "lines" 128 "characters" 5071 "sha256" "b1f1694632c9c4111828ef2782272b50679de27ae984fa6a799104f2766ad1fe"}]}
 ```
 
 ```glsl [field-property box="gs_sim" name="compute" path="gs_sim_compute_.glsl"]
@@ -161,7 +161,7 @@ sim.state = { if (renderer.frameCounter % 2L == 0L) stateA else stateB }
 sim.prevState = { if (renderer.frameCounter % 2L == 0L) stateB else stateA }
 sim.anchors = { anchors }
 sim.heat = { heat }
-sim.count = { N.toUInt() }
+sim.count = { N }
 sim.dt = {
     1f / 60f
 } // FIXED, not measured: stability depends on it

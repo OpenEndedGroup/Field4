@@ -46,7 +46,7 @@ Solid.scope {
 <!-- field-box id="photo_plaque" index="1" -->
 
 ```edn [field-box id="photo_plaque" role="properties"]
-{"id" "photo_plaque" "index" 1 "name" "the depth map as a closed relief plaque" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the depth map as a closed relief plaque" "_tombstone" false "frame" #afield/rect [60.0 1100.0 420.0 90.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "photo_plaque_code_.kt" "lines" 24 "characters" 1228 "sha256" "33225ce200e7ad186fcc503dfbde792333023587233a771ca16d518ba96c9935"}]}
+{"id" "photo_plaque" "index" 1 "name" "the depth map as a closed relief plaque" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the depth map as a closed relief plaque" "_tombstone" false "frame" #afield/rect [60.0 1100.0 420.0 90.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "photo_plaque_code_.kt" "lines" 24 "characters" 1216 "sha256" "efac2b47034b1fc668f4b9133b280c67c95d10833965666662403f2f393f485a"}]}
 ```
 
 ```kotlin [field-property box="photo_plaque" name="code" path="photo_plaque_code_.kt"]
@@ -60,7 +60,7 @@ val topo = relief.topology()
 println("relief ${relief.vertexCount} vertices, ${relief.triangleCount} triangles")
 println("watertight=${topo.isWatertight} manifold=${topo.isManifold} chi=${topo.eulerCharacteristic}")
 println("boundary loops=${topo.boundaryLoops.size} — a plaque has none, a heightfield has one")
-println("volume ${"%.6f".format(relief.volume())}, and Manifold agrees to the last digit")
+println("volume ${relief.volume().f6}, and Manifold agrees to the last digit")
 
 // The CPU rasteriser is AWT-free (PngEncoder), so it is safe inside a live box on macOS.
 // Three angles, because a relief read from one is a picture and read from three is a shape.

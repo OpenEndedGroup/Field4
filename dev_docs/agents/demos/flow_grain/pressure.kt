@@ -23,9 +23,7 @@ for (i in 0 until 24) {
     mesh.emitter = { flowEmitter }
     module +=
         "barrier-$i" to
-            computeTask { _, cmd, _ ->
-                computeMemoryBarrier(cmd, null as VulkanBuffer?)
-            }
+            computeBarrier()
 }
 flowSimulation += "pressure" to module
 loop { true }

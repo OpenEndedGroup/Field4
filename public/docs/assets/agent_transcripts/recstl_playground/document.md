@@ -51,7 +51,7 @@ time  — scrub to a frame (while paused); moving it freezes the clock there
 See the "RectSL examples" docs page / rectsl_cheatsheet.md for the language.
 
 ```edn [field-box id="recstl_playground" role="properties"]
-{"id" "recstl_playground" "index" 1 "name" "recstl" "parents" ["root" "recstl_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "recstl_renderer"} "name" "recstl" "_tombstone" false "frame" #afield/rect [300.0 140.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "recstl_playground_code_.kt" "lines" 103 "characters" 3126 "sha256" "8f2a4653c5967b7551c2ce7f86841877e95e082f67c58e625522ec28481b74ac"}]}
+{"id" "recstl_playground" "index" 1 "name" "recstl" "parents" ["root" "recstl_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "recstl_renderer"} "name" "recstl" "_tombstone" false "frame" #afield/rect [300.0 140.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "recstl_playground_code_.kt" "lines" 104 "characters" 3108 "sha256" "e359ebd54b9c4d6859e74cd285f9c6f46f94a59e4ceeb106d33802cbc5bcf7a3"}]}
 ```
 
 ```kotlin [field-property box="recstl_playground" name="code" path="recstl_playground_code_.kt"]
@@ -70,6 +70,7 @@ See the "RectSL examples" docs page / rectsl_cheatsheet.md for the language.
 import afield.lang.rectsl.RECT_ANIMATION_VERTEX_SHADER
 import afield.lang.rectsl.RectAnimationOracle
 import afield.lang.rectsl.rectMaterialShaderCode
+import afield.lang.rectsl.worldToClip
 import afield.lang.rectsl.writeFrameToMesh
 
 val rectsl =
@@ -127,7 +128,7 @@ renderer += "rectsl" to module
 
 val ww = program.wall.width.toFloat()
 val wh = program.wall.height.toFloat()
-m.push["worldToClip"] = afield.math.linalg.Matrix4f().ortho(-ww / 2f, ww / 2f, -wh / 2f, wh / 2f, -1f, 1f)
+m.push["worldToClip"] = program.wall.worldToClip()
 m.push["wallWidth"] = ww
 m.push["wallHeight"] = wh
 

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-29T22:28:48.129Z",
+  "capturedAt": "2026-10-30T23:51:05.173Z",
   "documentName": "keyframe_code_blend",
   "outputs": [
     {
@@ -9,17 +9,17 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 464,
-      "height": 166,
+      "width": 465,
+      "height": 165,
       "path": "outputs/0.html"
     },
     {
       "uid": "kfb_kotlin_run",
       "channel": "output",
-      "open": false,
+      "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 424,
+      "width": 426,
       "height": 176,
       "path": "outputs/1.html"
     },
@@ -29,7 +29,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 471,
+      "width": 472,
       "height": 163,
       "path": "outputs/2.html"
     },
@@ -39,7 +39,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 424,
+      "width": 426,
       "height": 176,
       "path": "outputs/3.html"
     },
@@ -50,7 +50,7 @@
       "warnings": [],
       "kinds": [],
       "width": 604,
-      "height": 134,
+      "height": 132,
       "path": "outputs/4.html"
     }
   ]

@@ -64,8 +64,8 @@ val (scene, sceneLo, sceneHi) = Solid.scope {
     val levelSetMs = (System.nanoTime() - t0) / 1e6
     println(
         "Manifold's levelSet:   ${whole.triangleCount} triangles, status ${whole.status}, " +
-            "genus ${whole.genus}, volume ${"%.4f".format(whole.volume)}, " +
-            "${"%.0f".format(levelSetMs)} ms",
+            "genus ${whole.genus}, volume ${whole.volume.f4}, " +
+            "${levelSetMs.f0} ms",
     )
 
     /*
@@ -79,12 +79,12 @@ val (scene, sceneLo, sceneHi) = Solid.scope {
     println()
     println("${parts.size} separate clusters survived ${generations} generations")
     println(
-        "  largest ${"%.2f".format(volumes.first())}, smallest ${"%.3f".format(volumes.last())}, " +
-            "median ${"%.3f".format(volumes[volumes.size / 2])}",
+        "  largest ${volumes.first().f2}, smallest ${volumes.last().f3}, " +
+            "median ${volumes[volumes.size / 2].f3}",
     )
     println(
-        "  they sum to ${"%.2f".format(volumes.sum())} against the whole solid's " +
-            "${"%.2f".format(whole.volume)}",
+        "  they sum to ${volumes.sum().f2} against the whole solid's " +
+            "${whole.volume.f2}",
     )
     println("  and each one on its own has genus ${parts.take(6).map { it.genus }} ...")
 
@@ -122,8 +122,8 @@ val (scene, sceneLo, sceneHi) = Solid.scope {
     println()
     println("scene: $appended triangles from ${parts.size} clusters, $dropped dropped")
     println(
-        "  occupying ${"%.2f".format(sceneHi.x - sceneLo.x)} x " +
-            "${"%.2f".format(sceneHi.y - sceneLo.y)} x ${"%.2f".format(sceneHi.z - sceneLo.z)} " +
+        "  occupying ${(sceneHi.x - sceneLo.x).f2} x " +
+            "${(sceneHi.y - sceneLo.y).f2} x ${(sceneHi.z - sceneLo.z).f2} " +
             "of the 2.40-unit cube the volume was scaled into",
     )
     Triple(scene, sceneLo, sceneHi)

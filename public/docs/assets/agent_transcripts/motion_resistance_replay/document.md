@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="motion_resistance_replay" index="0" -->
 
 ```edn [field-box id="motion_resistance_replay" role="properties"]
-{"id" "motion_resistance_replay" "index" 0 "name" "CLoSD — resistance and release" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "CLoSD — resistance and release" "_tombstone" false "frame" #afield/rect [80.0 80.0 600.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "motion_resistance_replay_code_.kt" "lines" 23 "characters" 1254 "sha256" "add608769569e6ccc7bcb98498dd54b37aea762a499005f7b23af857cc69a956"}]}
+{"id" "motion_resistance_replay" "index" 0 "name" "CLoSD — resistance and release" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "CLoSD — resistance and release" "_tombstone" false "frame" #afield/rect [80.0 80.0 600.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "motion_resistance_replay_code_.kt" "lines" 23 "characters" 1220 "sha256" "88c01ed8667c4c747360c0619f5fd82abfc2a60db82a24bef3006552c5deb2eb"}]}
 ```
 
 ```kotlin [field-property box="motion_resistance_replay" name="code" path="motion_resistance_replay_code_.kt"]
@@ -27,9 +27,9 @@ frames {
                 val t = dancer.telemetry.tether("tether")
                 showMotion(snapshot.frame, dancer.skeleton, follow=true, followHalfLife=.4,
                     followEpoch="${loop}:${snapshot.frame.episode}", overlays=t?.overlays() ?: emptyList())
-                val action = if (t?.active == true) "TETHERED · ${"%.1f".format(t.stretchMetres*100)} cm · ${"%.0f".format(t.forceN)} N"
+                val action = if (t?.active == true) "TETHERED · ${(t.stretchMetres*100).f1} cm · ${t.forceN.f0} N"
                     else if (snapshot.frame.time >= 4.0) "RELEASED" else "WALKING"
-                markdown("status", "**$action** · ${"%.2f".format(snapshot.frame.time)} s\n\n" +
+                markdown("status", "**$action** · ${snapshot.frame.time.f2} s\n\n" +
                     "Recorded CLoSD physics. White: executed · cyan: reference · red: anchor · amber: submitted force (scaled). " +
                     "8000 N/m, 120 N s/m, 2500 N cap. The prompt stays unchanged. Follow camera half-life: 0.4 s.")
                 displayOpen("motion"); displayOpen("status")

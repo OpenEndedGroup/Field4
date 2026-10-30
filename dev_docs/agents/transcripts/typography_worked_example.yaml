@@ -57,8 +57,8 @@ operations:
           */
           val face = typeface("SansSerif", 140.0)
           println(
-              "$face — ascent ${"%.1f".format(face.ascent)}, descent ${"%.1f".format(face.descent)}, " +
-                  "line height ${"%.1f".format(face.lineHeight)}",
+              "$face — ascent ${face.ascent.f1}, descent ${face.descent.f1}, " +
+                  "line height ${face.lineHeight.f1}",
           )
 
           /*
@@ -70,7 +70,7 @@ operations:
               val g = face.glyph(c)
               println(
                   "'$c' glyph #${g.glyphCode}: ${g.contourCount} contours (${g.holeCount} holes), " +
-                      "advance ${"%.1f".format(g.advance)}, ink area ${"%.0f".format(g.inkArea)}",
+                      "advance ${g.advance.f1}, ink area ${g.inkArea.f0}",
               )
               g.contours.forEachIndexed { i, ring ->
                   println(
@@ -96,7 +96,7 @@ operations:
           )
           println(
               "laid out: ${word.contourCount} contours, ${word.holeCount} holes, " +
-                  "${"%.1f".format(word.advanceWidth)} units wide, ink ${"%.1f".format(100 * rasterizeText(word, 400, 120).inkFraction())}%",
+                  "${word.advanceWidth.f1} units wide, ink ${(100 * rasterizeText(word, 400, 120).inkFraction()).f1}%",
           )
 
           /*
@@ -169,9 +169,9 @@ operations:
               columns = 3,
               cellSide = 420,
           )
-          println("ink with the convention  : ${"%.2f".format(100 * withConvention.inkFraction())}%")
+          println("ink with the convention  : ${(100 * withConvention.inkFraction()).f2}%")
           println(
-              "ink without it           : ${"%.2f".format(100 * withoutConvention.inkFraction())}%  <- the counters closed up",
+              "ink without it           : ${(100 * withoutConvention.inkFraction()).f2}%  <- the counters closed up",
           )
           println("worst NON_ZERO vs EVEN_ODD difference over the correct rings: $worst (0.0 means the two rules agree exactly)")
   - create:
@@ -188,8 +188,8 @@ operations:
           // different AWT paths — accumulated positions versus per-glyph metrics — that must agree.
           val plain = layoutText("minimum", face.withKerning(false))
           println(
-              "advance width ${"%.4f".format(plain.advanceWidth)} vs sum of advances " +
-                  "${"%.4f".format(plain.glyphs.sumOf { it.glyph.advance })}",
+              "advance width ${plain.advanceWidth.f4} vs sum of advances " +
+                  "${plain.glyphs.sumOf { it.glyph.advance }.f4}",
           )
 
           // Identity two: tracking adds one gap per INTER-GLYPH space, not one per glyph.
@@ -197,8 +197,8 @@ operations:
           val tight = layoutText("TYPE", face)
           val loose = layoutText("TYPE", face, tracking = t)
           println(
-              "tracking ${"%.1f".format(t)} over ${tight.glyphs.size - 1} gaps widened the line by " +
-                  "${"%.4f".format(loose.advanceWidth - tight.advanceWidth)} (expected ${"%.4f".format((tight.glyphs.size - 1) * t)})",
+              "tracking ${t.f1} over ${tight.glyphs.size - 1} gaps widened the line by " +
+                  "${(loose.advanceWidth - tight.advanceWidth).f4} (expected ${((tight.glyphs.size - 1) * t).f4})",
           )
 
           // Kerning adjusts spacing for specific pairs and may widen or narrow them.
@@ -210,9 +210,9 @@ operations:
           // The diagram of the decisions rather than the letters: baselines, ascent/descent guides and
           // one advance box per glyph — including for the space, which has no glyph to draw.
           showPlaneGrid(
-              "tracking 0 — ${"%.0f".format(tight.advanceWidth)} units wide" to
+              "tracking 0 — ${tight.advanceWidth.f0} units wide" to
                   (tight.metricsFLines() + tight.advanceBoxFLines() + tight.toFLines(thickness = 1.0)),
-              "tracking 0.16em — ${"%.0f".format(loose.advanceWidth)} units wide" to
+              "tracking 0.16em — ${loose.advanceWidth.f0} units wide" to
                   (loose.metricsFLines() + loose.advanceBoxFLines() + loose.toFLines(thickness = 1.0)),
               columns = 1,
               cellWidth = 820,
@@ -229,7 +229,7 @@ operations:
               maxWidth = 620.0,
           )
           println(
-              "wrapped to ${prose.lines().size} lines, widest ${"%.1f".format(prose.lines().maxOf { textWidth(it, face.atSize(44.0)) })} of 620",
+              "wrapped to ${prose.lines().size} lines, widest ${prose.lines().maxOf { textWidth(it, face.atSize(44.0)) }.f1} of 620",
           )
           displayOpen("alignment")
           showImgGrid(
@@ -262,7 +262,7 @@ operations:
           // the layout's width means the string closes exactly.
           val circle = textCircle(radius = ring.advanceWidth / (2 * Math.PI))
           val onCircle = ring.onCurve(circle, align = TextAlign.CENTER)
-          println("circle circumference ${"%.1f".format(circle.arcLength())} vs layout width ${"%.1f".format(ring.advanceWidth)}")
+          println("circle circumference ${circle.arcLength().f1} vs layout width ${ring.advanceWidth.f1}")
           println(
               "${onCircle.glyphs.count { kotlin.math.abs(it.rotation) > 0.05 }} of ${onCircle.glyphs.size} glyphs turned with the curve",
           )
@@ -393,7 +393,7 @@ operations:
           val expected = flat.glyphs.sumOf { it.glyph.inkArea } * 46.0
           val measured = layoutText("o", face).toMesh(depth = 46.0, yUp = false).volume()
           println(
-              "'o': ink area x depth = ${"%.0f".format(expected)}, mesh volume ${"%.0f".format(measured)}, " +
+              "'o': ink area x depth = ${expected.f0}, mesh volume ${measured.f0}, " +
                   "relative difference ${"%.2e".format(kotlin.math.abs(expected - measured) / expected)}",
           )
 
@@ -434,8 +434,8 @@ operations:
           val sdf = layout.toSdf(depth = 0.24, gridResolution = 340)
           val grid = sdf.distanceField
           println(
-              "grid ${grid.nx}x${grid.ny} over ${"%.0f".format(grid.bounds.w)}x${"%.0f".format(grid.bounds.h)} units; " +
-                  "deepest inside the ink ${"%.1f".format(grid.deepestInside())} units",
+              "grid ${grid.nx}x${grid.ny} over ${grid.bounds.w.f0}x${grid.bounds.h.f0} units; " +
+                  "deepest inside the ink ${grid.deepestInside().f1} units",
           )
 
           val marched = sdf.march(resolution = 130)
@@ -481,7 +481,7 @@ operations:
           val fine = layout.samplePoints(spacing = 4.5)
           println(
               "spacing 18 -> ${coarse.size} points, spacing 4.5 -> ${fine.size} points " +
-                  "(${"%.2f".format(fine.size.toDouble() / coarse.size)}x for 4x finer)",
+                  "(${(fine.size.toDouble() / coarse.size).f2}x for 4x finer)",
           )
 
           // Delaunay over the outline samples: the triangulation of a word.
@@ -494,7 +494,7 @@ operations:
           val layer = ClusterLayer("outline strokes", km.labels)
           println(
               "k-medoids k=6: sizes ${km.labels.toList().groupingBy { it }.eachCount().values.sorted()}, " +
-                  "distortion ${"%.1f".format(km.distortion)}, converged ${km.converged}",
+                  "distortion ${km.distortion.f1}, converged ${km.converged}",
           )
 
           // Every panel shares one window, so the four views of the same word line up.

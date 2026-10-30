@@ -89,8 +89,8 @@ bindPush(even, odd) {
 }
 even.color = { 0 }
 odd.color = { 1 }
-even.seed = { seed.toUInt() }
+even.seed = { seed }
 // Offset the seed so the two passes draw different randoms.
-odd.seed = { (seed + 100003).toUInt() }
+odd.seed = { seed + 100003 }
 
 println("update launched L=" + latticeSide + " N=" + N + " groups=" + groups)

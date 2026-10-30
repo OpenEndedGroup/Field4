@@ -88,7 +88,7 @@ println("  after simplifying:  ${noBlend.simplified().exactRefusal()?.why ?: "(n
 <!-- field-box id="solidsl_part" index="1" -->
 
 ```edn [field-box id="solidsl_part" role="properties"]
-{"id" "solidsl_part" "index" 1 "name" "SolidSL — a part, and what the notation knows before it meshes" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "SolidSL — a part, and what the notation knows before it meshes" "_tombstone" false "frame" #afield/rect [80.0 80.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "solidsl_part_code_.kt" "lines" 94 "characters" 4096 "sha256" "08e53158dee271c260ff19325294f82519d79a5d9e165c657a904a518b968958"}]}
+{"id" "solidsl_part" "index" 1 "name" "SolidSL — a part, and what the notation knows before it meshes" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "SolidSL — a part, and what the notation knows before it meshes" "_tombstone" false "frame" #afield/rect [80.0 80.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "solidsl_part_code_.kt" "lines" 94 "characters" 4084 "sha256" "140fdbcbbfbaaa70bf7c4d168f17016b9d9e184d004ac95ac613daddbfa0092b"}]}
 ```
 
 ```kotlin [field-property box="solidsl_part" name="code" path="solidsl_part_code_.kt"]
@@ -172,7 +172,7 @@ run {
     // Field's own topology, which shares no code with Manifold's.
     val mesh = build.solid.toTriMesh()
     println("watertight       ${mesh.isWatertight()}")
-    println("volume           ${"%.6f".format(mesh.signedVolume())}")
+    println("volume           ${mesh.signedVolume().f6}")
     println("genus            ${mesh.genus()}")
     println("status           ${build.solid.status} — closed however the field behaved")
 

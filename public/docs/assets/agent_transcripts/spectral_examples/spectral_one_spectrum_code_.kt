@@ -28,10 +28,10 @@ showSignals(
     xTitle = "frequency (Hz)",
     yTitle = "magnitude",
     marks = [
-        "centroid ${"%.0f".format(centroid)} Hz" to centroid,
-        "85% rolloff ${"%.0f".format(rolloff)} Hz" to rolloff,
+        "centroid ${centroid.f0} Hz" to centroid,
+        "85% rolloff ${rolloff.f0} Hz" to rolloff,
     ],
 )
 println(
-    "peak=${"%.0f".format(peak)}Hz centroid=${"%.0f".format(centroid)}Hz rolloff=${"%.0f".format(rolloff)}Hz bins=${mag.size}",
+    "peak=${peak.f0}Hz centroid=${centroid.f0}Hz rolloff=${rolloff.f0}Hz bins=${mag.size}",
 )

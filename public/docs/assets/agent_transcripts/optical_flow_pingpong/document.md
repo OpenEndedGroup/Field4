@@ -38,7 +38,7 @@ start(renderer::run)
 <!-- field-box id="optical_flow_pingpong" index="1" -->
 
 ```edn [field-box id="optical_flow_pingpong" role="properties"]
-{"id" "optical_flow_pingpong" "index" 1 "name" "optical_flow_pingpong" "parents" ["root" "agent_graphics_context"] "children" ["flow_texture"] "properties" {"children" #{#afield/box "flow_texture"} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "optical_flow_pingpong" "_tombstone" false "frame" #afield/rect [400.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "optical_flow_pingpong_code_.kt" "lines" 120 "characters" 4509 "sha256" "ff9d5217916761d6e94f30609d469f8a9553c1d42da1c00e7b6b0a87386a27e2"} {"name" "vertex" "language" "glsl" "path" "optical_flow_pingpong_vertex_.glsl" "lines" 6 "characters" 148 "sha256" "15ab8178d1aef2acf5d8bd95e36711503c7d8eb87f1698920f9a4e6c99275242"} {"name" "fragment" "language" "glsl" "path" "optical_flow_pingpong_fragment_.glsl" "lines" 32 "characters" 1320 "sha256" "609aec65ad7272e96f1a46cff071236778e9c84f858a16c0b02470b593e2ceba"}]}
+{"id" "optical_flow_pingpong" "index" 1 "name" "optical_flow_pingpong" "parents" ["root" "agent_graphics_context"] "children" ["flow_texture"] "properties" {"children" #{#afield/box "flow_texture"} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "optical_flow_pingpong" "_tombstone" false "frame" #afield/rect [400.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "optical_flow_pingpong_code_.kt" "lines" 119 "characters" 4484 "sha256" "be25f60895e3f5bdffebd70e69fde3f52e03fd4d922ed889025266f9cc29a094"} {"name" "vertex" "language" "glsl" "path" "optical_flow_pingpong_vertex_.glsl" "lines" 6 "characters" 148 "sha256" "15ab8178d1aef2acf5d8bd95e36711503c7d8eb87f1698920f9a4e6c99275242"} {"name" "fragment" "language" "glsl" "path" "optical_flow_pingpong_fragment_.glsl" "lines" 32 "characters" 1320 "sha256" "609aec65ad7272e96f1a46cff071236778e9c84f858a16c0b02470b593e2ceba"}]}
 ```
 
 ```kotlin [field-property box="optical_flow_pingpong" name="code" path="optical_flow_pingpong_code_.kt"]
@@ -64,8 +64,7 @@ val scene = moduleHere {
     depthWrite = false
     blend = false
 }
-val triangle = Mesh(renderer, scene)
-triangle.resize(3, 0, scene)
+val triangle = fullscreenTriangle(scene)
 triangle.push.setMembers(scene.current.fi.pushConstants.single().members)
 scene += "image" to triangle
 history += "image" to scene
@@ -220,7 +219,7 @@ The parent publishes these three props: previousImage, currentImage, motion.
 moduleHere() resolves the samplers by those names, just like any other texture.
 
 ```edn [field-box id="flow_texture" role="properties"]
-{"id" "flow_texture" "index" 2 "name" "flow_texture" "parents" ["root" "optical_flow_pingpong"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "optical_flow_pingpong"} "name" "flow_texture" "_tombstone" false "frame" #afield/rect [760.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_texture_code_.kt" "lines" 17 "characters" 639 "sha256" "d75ec0846c25124226c38a653fbf305daa4f9055afc2a3a1bcdd2acfd4a2bfca"} {"name" "vertex" "language" "glsl" "path" "flow_texture_vertex_.glsl" "lines" 6 "characters" 148 "sha256" "15ab8178d1aef2acf5d8bd95e36711503c7d8eb87f1698920f9a4e6c99275242"} {"name" "fragment" "language" "glsl" "path" "flow_texture_fragment_.glsl" "lines" 23 "characters" 1080 "sha256" "5f46665a6416948d2710a8cf37d47611243c67129e8ea92fc2f8f4cd0234eb3b"}]}
+{"id" "flow_texture" "index" 2 "name" "flow_texture" "parents" ["root" "optical_flow_pingpong"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "optical_flow_pingpong"} "name" "flow_texture" "_tombstone" false "frame" #afield/rect [760.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "flow_texture_code_.kt" "lines" 16 "characters" 615 "sha256" "5a700e7ba3f45598a00f1e40795e8a1be5f31d9737a9bfe8013b9ec3a4e8e5f2"} {"name" "vertex" "language" "glsl" "path" "flow_texture_vertex_.glsl" "lines" 6 "characters" 148 "sha256" "15ab8178d1aef2acf5d8bd95e36711503c7d8eb87f1698920f9a4e6c99275242"} {"name" "fragment" "language" "glsl" "path" "flow_texture_fragment_.glsl" "lines" 23 "characters" 1080 "sha256" "5f46665a6416948d2710a8cf37d47611243c67129e8ea92fc2f8f4cd0234eb3b"}]}
 ```
 
 ```kotlin [field-property box="flow_texture" name="code" path="flow_texture_code_.kt"]
@@ -231,8 +230,7 @@ val view = moduleHere {
     depthWrite = false
     blend = false
 }
-val triangle = Mesh(renderer, view)
-triangle.resize(3, 0, view)
+val triangle = fullscreenTriangle(view)
 view += "display" to triangle
 renderer.renderList.modules["pingpong flow texture"] = view
 val owner = renderer

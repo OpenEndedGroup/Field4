@@ -21,6 +21,6 @@ head.apply {
     color = vec(1.0, 0.6, 0.2, 1.0)
 }
 
-print("total ${"%.1f".format(total)} = ${"%.1f".format(head.length())} + ${"%.1f".format(tail.length())}")
+print("total ${total.f1} = ${head.length().f1} + ${tail.length().f1}")
 
 lines(curve, head, middle, w = 420.0, h = 260.0, fitToSize = true)

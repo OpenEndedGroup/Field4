@@ -71,7 +71,7 @@ operations:
               }
               line.hoverColor = vec(0.96, 0.98, 1.00, 0.98)
               line.onClick = { hit ->
-                  val deployed = height?.let { "%.2f".format(it) } ?: "not selected"
+                  val deployed = height?.let { it.f2 } ?: "not selected"
                   status(
                       """
                       **output face ${face.id.value}**

@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="world_tear" index="0" -->
 
 ```edn [field-box id="world_tear" role="properties"]
-{"id" "world_tear" "index" 0 "name" "2 - A sphere tearing through a pinned sheet" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - A sphere tearing through a pinned sheet" "_tombstone" false "frame" #afield/rect [500.0 40.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "world_tear_code_.kt" "lines" 54 "characters" 2195 "sha256" "5c78eb0843f7433023490954a5f81913e37649e03794e9f253ba6e472f12861d"}]}
+{"id" "world_tear" "index" 0 "name" "2 - A sphere tearing through a pinned sheet" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - A sphere tearing through a pinned sheet" "_tombstone" false "frame" #afield/rect [500.0 40.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "world_tear_code_.kt" "lines" 54 "characters" 2183 "sha256" "94da642cfd2b2db4b46c7f6be9a24baa84b3e17e374b8d540dd477ae741a7e28"}]}
 ```
 
 ```kotlin [field-property box="world_tear" name="code" path="world_tear_code_.kt"]
@@ -66,7 +66,7 @@ loop {
         title = "a sphere tearing through a pinned sheet",
         caption =
             "frame $frames · ${tear.brokenTotal} edges torn · ${sim.liveEdgeCount()} left · " +
-                "peak strain ${"%.2f".format(sim.peakStrain())}",
+                "peak strain ${sim.peakStrain().f2}",
     )
 }
 ```
@@ -190,7 +190,7 @@ loop {
 <!-- field-box id="world_wind" index="2" -->
 
 ```edn [field-box id="world_wind" role="properties"]
-{"id" "world_wind" "index" 2 "name" "3 - A flag in gusty wind, seen from above" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - A flag in gusty wind, seen from above" "_tombstone" false "frame" #afield/rect [40.0 190.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "world_wind_code_.kt" "lines" 57 "characters" 2208 "sha256" "6dc905d05bd52698a8c8fce4c18f5e32637745001a900f2bbf58773e0e1eeee6"}]}
+{"id" "world_wind" "index" 2 "name" "3 - A flag in gusty wind, seen from above" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - A flag in gusty wind, seen from above" "_tombstone" false "frame" #afield/rect [40.0 190.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "world_wind_code_.kt" "lines" 57 "characters" 2196 "sha256" "b7803330d0a0ae4a245c730433f4c3b010b83af892bdf66ca8a7f9a98794794b"}]}
 ```
 
 ```kotlin [field-property box="world_wind" name="code" path="world_wind_code_.kt"]
@@ -248,7 +248,7 @@ loop {
             topView(wind.windLines(-0.4f, 0f, -1.1f, 5.6f, 0f, 1.1f, columns = 10, rows = 7, scale = 0.05f)),
         window = view,
         title = "a flag in gusty wind, seen from above",
-        caption = "frame $frames · aero impulse ${"%.1f".format(aero.lastImpulse)} · green: the wind field",
+        caption = "frame $frames · aero impulse ${aero.lastImpulse.f1} · green: the wind field",
     )
 }
 ```

@@ -95,7 +95,7 @@ fun runCorpus(checkActive: () -> Unit) {
             if (seed == 0) "the level as it is"
             else "seed $seed · ${(json.readValue<Map<String, Any?>>(source)["rooms"] as Map<*, *>).size} rooms",
             "within budget ${measures.values.count { it["withinBudget"] == true }} of ${measures.size} · sightlines ${walk?.facts?.get("sightlines") ?: "–"}",
-            "longest relaxed/rough ${worst?.let { "%.2f".format(it) } ?: "–"}",
+            "longest relaxed/rough ${worst?.f2 ?: "–"}",
             when {
                 placed?.status == StudyBuildStatus.SUCCEEDED ->
                     "placed: " +

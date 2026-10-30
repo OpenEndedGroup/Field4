@@ -30,11 +30,11 @@ cc.components
     .sortedByDescending { it.area }
     .forEach {
         println(
-            "  area=${it.area} centroid=(${"%.1f".format(it.centroidX)}, ${"%.1f".format(it.centroidY)}) " +
-                "bbox=${it.boundingWidth}x${it.boundingHeight} fill=${"%.2f".format(it.fillRatio)}",
+            "  area=${it.area} centroid=(${it.centroidX.f1}, ${it.centroidY.f1}) " +
+                "bbox=${it.boundingWidth}x${it.boundingHeight} fill=${it.fillRatio.f2}",
         )
     }
-println("distance-transform peak ${"%.1f".format(dt.max())} (largest planted radius ${discs.maxOf { it.third }})")
+println("distance-transform peak ${dt.max().f1} (largest planted radius ${discs.maxOf { it.third }})")
 
 // Connected components are blobs; blobs have outlines. Same story as Canny — the raster
 // is the evidence, the FLines are the result you can actually build on.

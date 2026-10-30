@@ -36,7 +36,7 @@ display(
     <polyline points="$spd" fill="none" stroke="#c52" stroke-width="1.5"/>
     <text x="4" y="14" fill="#2a7">decoded frame (0 … ${fMax.toInt()})</text>
     <text x="4" y="${h - 6}" fill="#c52">measured speed (0.8 … 1.2)</text>
-    <text x="${w / 2 - 40}" y="${h + 22}" fill="#999">playback time, s (0 … ${"%.2f".format(tMax)})</text>
+    <text x="${w / 2 - 40}" y="${h + 22}" fill="#999">playback time, s (0 … ${tMax.f2})</text>
   </g></svg>""",
 )
 markdown(

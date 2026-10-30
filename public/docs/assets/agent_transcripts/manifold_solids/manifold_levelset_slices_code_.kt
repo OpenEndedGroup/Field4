@@ -52,10 +52,10 @@ run {
     val solid = Solid.levelSet(bounds, edgeLength = 1.1, field = ::field)
     val marchMs = (System.nanoTime() - start) / 1e6
 
-    println("level set: ${"%.0f".format(marchMs)} ms")
+    println("level set: ${marchMs.f0} ms")
     println("status     ${solid.status}   — a valid closed manifold, whatever the field did")
     println("genus      ${solid.genus}")
-    println("volume     ${"%.1f".format(solid.volume)} mm^3")
+    println("volume     ${solid.volume.f1} mm^3")
     println("mesh       ${solid.triangleCount} triangles")
 
     /*
@@ -105,7 +105,7 @@ run {
 
     println()
     println(
-        "$layers layers between z=${"%.1f".format(zLow)} and ${"%.1f".format(zHigh)}, " +
+        "$layers layers between z=${zLow.f1} and ${zHigh.f1}, " +
             "$totalContours contours in total",
     )
     println("orange = the ${nozzle}mm nozzle path, offset inward from each layer's outline")
@@ -116,7 +116,7 @@ run {
         title = "A gyroid-thickened torus, marched from a Kotlin lambda",
         caption =
             "${solid.triangleCount} triangles &middot; genus ${solid.genus} &middot; " +
-                "${"%.0f".format(marchMs)} ms across Manifold's thread pool &middot; " +
+                "${marchMs.f0} ms across Manifold's thread pool &middot; " +
                 "guaranteed closed, so it can be cut",
         view = MeshView(yawDegrees = 24.0, pitchDegrees = 52.0, width = 700, height = 430),
     )
