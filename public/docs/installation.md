@@ -260,6 +260,9 @@ as a bundled one, both are listed: yours gets `-checkout` (from `src/personal`) 
 (from your own directory) added to its name. Git ignores `src/personal`, so back those templates
 up yourself.
 
+These are whole documents. To reuse a few boxes inside a document instead, see
+[Templates](templates.md).
+
 ## Browser or server-only use
 
 ```diffstatic {data-lang=bash}
