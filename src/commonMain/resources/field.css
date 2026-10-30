@@ -883,9 +883,11 @@ pre code {
 }
 
 .ai-chat-messages {
-    /* The transcript scrolls in its share; its content length must not squeeze sibling panels. */
+    /* The transcript scrolls in its share; its content length must not squeeze sibling panels.
+       It keeps 72px even when the state browser and the Local AI status line (localAiFeedback.js)
+       are both showing: the state browser (flex-shrink 1) gives way instead. */
     flex: 1 1 0;
-    min-height: 0;
+    min-height: 72px;
     overflow-y: auto;
     margin-left: 5px;
     padding-right: 5px;
@@ -1634,28 +1636,31 @@ pre code {
     }
 }
 
-#slide-note-overlay h1 {
-    margin-top: 0;
-    margin-bottom: 12px;
-    font-size: 22px;
-    font-weight: 650;
-    color: var(--field-fg-heading);
-}
-
-#slide-note-overlay h2 {
-    margin-top: 0;
-    margin-bottom: 12px;
-    font-size: 20px;
-    font-weight: 600;
-    color: var(--field-fg-heading);
-}
-
+/* A note's headings use the panel title tokens (fieldPanelTokens.css), so a slide note's title
+   reads like every other panel's; the reading text below stays at 13px. A heading further down
+   the note is a bold line at body size. */
+#slide-note-overlay h1,
+#slide-note-overlay h2,
 #slide-note-overlay h3 {
     margin-top: 10px;
-    margin-bottom: 8px;
-    font-size: 16px;
+    margin-bottom: 6px;
+    font-size: 13px;
     font-weight: 600;
+    line-height: 1.4;
     color: var(--field-fg-heading);
+}
+
+#slide-note-overlay h1:first-child,
+#slide-note-overlay h2:first-child,
+#slide-note-overlay h3:first-child,
+#slide-note-overlay > div:first-child > :is(h1, h2, h3):first-child {
+    margin-top: 2px;
+    margin-bottom: 10px;
+    padding-right: 30px;
+    font-size: var(--fp-title-size);
+    font-weight: var(--fp-title-weight);
+    line-height: 1.4;
+    color: var(--fp-fg);
 }
 
 #slide-note-overlay p {
@@ -1718,27 +1723,11 @@ pre code {
     padding: 0;
 }
 
-/* Close button styling */
+/* Close button: the shared FieldPanel × (fieldPanelTokens.css); only its place is set here. */
 #slide-note-overlay .close-btn {
     position: absolute;
-    top: 5px;
-    right: 5px;
-    background: transparent;
-    border: none;
-    color: var(--field-fg-strong);
-    font-size: 24px;
-    cursor: pointer;
-    padding: 0;
-    width: 24px;
-    height: 24px;
-    line-height: 20px;
-    text-align: center;
-    opacity: 0.7;
-    transition: opacity 0.2s;
-}
-
-#slide-note-overlay .close-btn:hover {
-    opacity: 1;
+    top: 8px;
+    right: 8px;
 }
 
 /* Scrollbar styling */
@@ -5347,66 +5336,51 @@ body.canvas-flight-recording .monaco-editor .cursor {
 
 
 /* Document search widget. */
+/* Document search (documentSearch.kt): a FieldPanel-family bar, bottom-left of the main pane
+   (placed by positionSearch), so it does not read as the editor's own Find at the top right. */
 #document-search {
     position: fixed;
-    top: 14px;
-    right: 18px;
+    left: 10px;
+    bottom: 10px;
     display: none;
     align-items: center;
-    gap: 6px;
-    padding: 7px 8px;
-    background: var(--field-overlay);
-    border: 1px solid var(--field-border-subtle);
-    border-radius: 7px;
-    box-shadow: var(--field-shadow-xl);
-    z-index: 11000;
-    font-family: var(--field-font-code-fallback);
+    gap: 4px;
+    padding: 4px 4px 4px 4px;
+    background: var(--fp-bg);
+    border: var(--fp-border);
+    border-radius: var(--fp-radius);
+    z-index: 12065;
+    font-family: var(--field-font);
+    font-size: var(--fp-font-size);
+    color: var(--fp-fg);
 }
 
 #document-search input {
-    min-width: 220px;
-    padding: 6px 8px;
-    border-radius: 5px;
-    background: var(--field-hover-soft);
-    border: 1px solid var(--field-border-soft);
-    color: var(--field-fg-bright);
+    width: 240px;
+    height: var(--fp-close-size);
+    box-sizing: border-box;
+    padding: 0 8px;
+    border-radius: var(--fp-control-radius);
+    background: var(--fp-control-bg);
+    border: 1px solid var(--fp-control-border);
+    color: var(--fp-fg);
+    font-family: var(--field-font);
+    font-size: 12px;
     outline: none;
 }
 
-#document-search input:focus {
-    border-color: var(--field-search-focus);
-    box-shadow: 0 0 0 2px var(--field-search-active-soft);
-}
-
-#document-search .search-button {
-    background: var(--field-hover-soft);
-    border: 1px solid var(--field-border-soft);
-    color: var(--field-fg-bright);
-    border-radius: 5px;
-    width: 28px;
-    height: 28px;
-    display: grid;
-    place-items: center;
-    cursor: pointer;
-    transition: background 120ms ease, border-color 120ms ease;
-}
-
-#document-search .search-button:hover {
-    background: var(--field-hover-medium);
-    border-color: var(--field-border-strong);
-}
-
-#document-search .search-button.close {
-    width: 26px;
-    height: 26px;
-    font-size: 14px;
-}
+#document-search input::placeholder { color: var(--fp-muted); font-family: var(--field-font); }
+#document-search input:hover { border-color: var(--fp-control-hover-border); }
+#document-search input:focus { border-color: var(--fp-control-hover-border); background: var(--fp-control-hover-bg); box-shadow: none; }
+#document-search.is-no-match input { border-color: rgba(255, 133, 133, 0.55); }
+#document-search.is-no-match .search-count { color: #ff8585; }
+#document-search .field-panel-icon:disabled { opacity: 0.38; cursor: default; }
 
 #document-search .search-count {
-    color: var(--field-fg-soft);
-    font-size: 12px;
+    margin: 0 4px;
     min-width: 72px;
     text-align: right;
+    white-space: nowrap;
 }
 
 .box.search-hit {
@@ -5464,17 +5438,15 @@ body.canvas-flight-recording .monaco-editor .cursor {
     overflow: hidden;
 }
 
-/* header */
+/* header: the FieldPanel title and close button (fieldPanelTokens.css) */
 .field-tray__header {
-    flex: 0 0 26px;
+    flex: 0 0 var(--fp-head-height);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 8px 0 10px;
+    padding: 0 6px 0 10px;
     gap: 6px;
-    font-size: 10px;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
+    font-family: var(--field-font);
 }
 
 .field-tray__title {
@@ -5482,31 +5454,9 @@ body.canvas-flight-recording .monaco-editor .cursor {
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
-    opacity: 0.8;
-}
-
-.field-tray__close {
-    flex: 0 0 auto;
-    border: none;
-    border-radius: 3px;
-    padding: 2px 6px;
-    background: var(--field-surface);
-    color: inherit;
-    cursor: pointer;
-    font-size: 11px;
-    line-height: 1;
-    opacity: 0.8;
-    transition: background 0.12s ease-out, opacity 0.12s ease-out, transform 0.12s ease-out;
-}
-
-.field-tray__close:hover {
-    background: var(--field-hover-strong);
-    opacity: 1;
-    transform: translateY(-0.5px);
-}
-
-.field-tray__close:active {
-    transform: translateY(0.5px);
+    font-size: var(--fp-title-size);
+    font-weight: var(--fp-title-weight);
+    color: var(--fp-fg);
 }
 
 /* body + iframe */
@@ -5882,29 +5832,28 @@ body.mode-editor-only .field-toast {
 }
 
 /* ── Field panels (FieldPanel in fieldPanel.kt) ─────────────────────────────────────────────
-   Shell after .macro-recorder-panel, cards and pills after the history viewer (history.html).
-   Shared by every canvas-level panel; the bookmarks panel is the first. */
+   Tokens (--fp-*) and the close button live in fieldPanelTokens.css, shared with the history and
+   keyframe-browser iframes. Panel-specific placement (.macro-recorder-panel, ...) sits with
+   each panel. */
 .field-panel {
-    --fp-panel-2: #242424;
-    --fp-muted: #8a8a8a;
-    --fp-dim: #5c5c5c;
+    --fp-panel-2: var(--fp-card);
     position: fixed;
     top: 10px;
     right: 10px;
     width: min(560px, calc(100vw - 20px));
     max-height: calc(100vh - 20px);
-    border: 5px solid var(--field-border);
-    border-radius: 5px;
-    background: #000000;
-    color: #d8d8d8;
+    border: var(--fp-border);
+    border-radius: var(--fp-radius);
+    background: var(--fp-bg);
+    color: var(--fp-fg);
     z-index: 12060;
     display: none;
     flex-direction: column;
     gap: 6px;
-    padding: 8px;
+    padding: var(--fp-pad);
     box-sizing: border-box;
     font-family: var(--field-font);
-    font-size: 10.2px;
+    font-size: var(--fp-font-size);
     overflow: hidden;
 }
 .field-panel.is-visible { display: flex; }
@@ -5914,9 +5863,9 @@ body.mode-editor-only .field-toast {
     align-items: center;
     justify-content: space-between;
     gap: 10px;
-    min-height: 28px;
+    min-height: var(--fp-head-height);
 }
-.field-panel-title { font-size: 11px; font-weight: 500; line-height: 1; }
+.field-panel-title { font-size: var(--fp-title-size); font-weight: var(--fp-title-weight); line-height: 1; }
 .field-panel-status { color: var(--fp-muted); font-size: 10.2px; margin-top: 3px; }
 .field-panel-body {
     min-height: 0;
@@ -5927,7 +5876,7 @@ body.mode-editor-only .field-toast {
     scrollbar-width: none;
 }
 .field-panel-body::-webkit-scrollbar { width: 0; height: 0; }
-.field-panel button, .field-panel-icon {
+.field-panel button {
     border: 1px solid #2b2b2b;
     background: #050505;
     color: var(--fp-muted);
@@ -5940,7 +5889,6 @@ body.mode-editor-only .field-toast {
 }
 .field-panel button:hover:not(:disabled) { border-color: #464646; background: #101010; color: #f0f0f0; }
 .field-panel button:disabled { opacity: 0.38; cursor: default; }
-.field-panel-icon { width: 26px; height: 26px; padding: 0; font-size: 17px; line-height: 1; }
 .field-panel input[type="text"] {
     border: 1px solid transparent;
     background: transparent;

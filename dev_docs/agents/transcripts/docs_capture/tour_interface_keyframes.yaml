@@ -1,0 +1,17 @@
+name: tour_interface_keyframes
+description: >
+  The keyframe-browser figure on `public/docs/tour_interface.md`: one box that shows a keyframe
+  browser over an empty folder in its output panel. Capture-only.
+operations:
+  - create:
+      box: tour_keys
+      name: keys
+      frame: { x: 60.0, y: 60.0, w: 160.0, h: 60.0 }
+      properties:
+        code: |
+          keyframeBrowser("/tmp", width = 640, height = 160)
+  - execute:
+      box: tour_keys
+      property: code
+  - wait:
+      millis: 1500

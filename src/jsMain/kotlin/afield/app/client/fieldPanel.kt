@@ -32,6 +32,7 @@ class FieldPanel(id: String, title: String, private val onHide: () -> Unit = {})
         val close = el("button", "field-panel-icon", "×")
         close.setAttribute("type", "button")
         close.title = "Close"
+        close.setAttribute("aria-label", "Close")
         close.addEventListener("click", { hide() })
         head.appendChild(close)
         root.appendChild(head)

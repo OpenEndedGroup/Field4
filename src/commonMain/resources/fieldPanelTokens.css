@@ -1,0 +1,68 @@
+/* Field panel tokens: the one place the panel look is defined. index.html loads this before
+   field.css (whose .field-panel* rules read it); history.html and keyframe_browser.html link it
+   too, so the iframe panels share it rather than keep a copy. */
+:root {
+    --fp-bg: #000000;
+    --fp-fg: #d8d8d8;
+    --fp-muted: #8a8a8a;
+    --fp-dim: #5c5c5c;
+    --fp-card: #242424;
+    --fp-border: 5px solid var(--field-border, #000000);
+    --fp-radius: 5px;
+    --fp-pad: 8px;
+    --fp-font-size: 10.2px;
+    --fp-title-size: 11px;
+    --fp-title-weight: 500;
+    --fp-head-height: 28px;
+    --fp-control-radius: 6px;
+    --fp-control-border: #2b2b2b;
+    --fp-control-bg: #050505;
+    --fp-control-hover-border: #464646;
+    --fp-control-hover-bg: #101010;
+    --fp-control-hover-fg: #f0f0f0;
+    --fp-close-size: 26px;
+    --fp-close-glyph: 17px;
+}
+
+/* The close button, usable outside a .field-panel shell: the doubled class outranks a host
+   panel's own `.x button` rule. */
+.field-panel-icon.field-panel-icon {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    width: var(--fp-close-size);
+    height: var(--fp-close-size);
+    min-height: var(--fp-close-size);
+    padding: 0;
+    margin: 0;
+    border: 1px solid var(--fp-control-border);
+    border-radius: var(--fp-control-radius);
+    background: var(--fp-control-bg);
+    color: var(--fp-muted);
+    font-family: "Iosevka Web", "Iosevka", monospace;
+    font-size: var(--fp-close-glyph);
+    font-weight: 400;
+    line-height: 1;
+    text-transform: none;
+    letter-spacing: normal;
+    cursor: pointer;
+}
+.field-panel-icon.field-panel-icon:hover { border-color: var(--fp-control-hover-border); background: var(--fp-control-hover-bg); color: var(--fp-control-hover-fg); }
+.field-panel-title-text { font-size: var(--fp-title-size); font-weight: var(--fp-title-weight); line-height: 1; color: var(--fp-fg); }
+
+/* The small × of the output-area family (inline outputs, the history lens): the shared glyph,
+   colours and hover at gutter size. A button, so it is focusable and labelled. */
+button.closeBox {
+    appearance: none;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    background: transparent;
+    padding: 0 2px;
+    font-family: "Iosevka Web", "Iosevka", monospace;
+    line-height: 1;
+    color: var(--fp-muted);
+    cursor: pointer;
+}
+button.closeBox:hover { color: var(--fp-control-hover-fg); background: var(--fp-control-hover-bg); border-color: var(--fp-control-hover-border); }
