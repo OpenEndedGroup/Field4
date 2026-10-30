@@ -2060,6 +2060,17 @@ which is why every demo under `dev_docs/agents/demos/` tells you to pass the fla
 
 [Open →](offline.html?file=assets/agent_transcripts/read_only_session/metadata.edn)
 
+### history_box_story
+
+**One box's code across every saved version.** A transcript, not a saved document: replay it into a
+saving document (not `--scratch`) and it edits one box, `sketch`, three times, waiting for the autosave
+after each edit, so the document's backups hold four real versions. Select `sketch`, run **Show Document
+History**, and the sidebar's **This Box** list shows its four values newest first. Click a row to select
+that version, or choose **Restore** to put that value back into `sketch` alone. See
+[Document History](document_history.md#one-box-edit-by-edit).
+
+[Open →](offline.html?file=assets/agent_transcripts/history_box_story/metadata.edn)
+
 ### controls_surface
 
 **A performer's control surface.** Two pure-CPU boxes built from the `controlGroup` DSL. The first

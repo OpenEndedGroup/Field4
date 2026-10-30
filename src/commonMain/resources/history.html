@@ -706,6 +706,80 @@
                 font-weight: 400;
             }
 
+            .box-story-head {
+                color: var(--muted);
+                font-size: 10px;
+                margin-bottom: 4px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            .box-story-list {
+                display: flex;
+                flex-direction: column;
+                gap: 3px;
+                max-height: 260px;
+                overflow-y: auto;
+            }
+
+            .box-story-item {
+                display: grid;
+                grid-template-columns: 52px minmax(0, 1fr) auto;
+                gap: 6px;
+                align-items: center;
+                border-radius: var(--radius-control);
+                background: var(--panel-2);
+                padding: 5px 8px;
+                cursor: pointer;
+                border-left: 2px solid transparent;
+            }
+
+            .box-story-item:hover {
+                background: #2a2a2a;
+            }
+
+            .box-story-item.active {
+                border-left-color: var(--accent, #6aa7ff);
+                background: #2c3036;
+            }
+
+            .box-story-item.absent {
+                opacity: 0.55;
+            }
+
+            .box-story-item .range {
+                color: var(--muted);
+                font-size: 10px;
+            }
+
+            .box-story-item .what {
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                font-family: var(--mono, monospace);
+                font-size: 10px;
+            }
+
+            .box-story-item .delta {
+                font-size: 9px;
+                white-space: nowrap;
+            }
+
+            .box-story-item .delta .plus {
+                color: #7fc97f;
+            }
+
+            .box-story-item .delta .minus {
+                color: #e57373;
+            }
+
+            .box-story-item button {
+                font-size: 9px;
+                padding: 1px 6px;
+                margin-left: 4px;
+            }
+
             .version-meta {
                 color: var(--muted);
                 font-size: 9px;
@@ -1226,6 +1300,11 @@
                             <label>Selected</label
                             ><strong id="metric-selected">0</strong>
                         </div>
+                    </div>
+                    <div class="section-title">This Box</div>
+                    <div class="box-story-head" id="box-story-head"></div>
+                    <div class="box-story-list" id="box-story-list">
+                        <div class="empty">Select a box to see its edits.</div>
                     </div>
                     <div class="section-title">Named Versions</div>
                     <div class="named-list" id="named-list"></div>
@@ -1902,6 +1981,11 @@
                     return;
                 }
 
+                if (message.name === "history-box-story-results") {
+                    applyBoxStory(message.payload);
+                    return;
+                }
+
                 if (message.name === "cherry-pick-history-success") {
                     cherryInFlight = false;
                     notify(
@@ -2045,6 +2129,8 @@
                     requestLineBlameSoon();
                 }
                 updateScopeButton();
+                requestBoxStorySoon();
+                renderBoxStory();
 	                renderRail();
                 if (selectedOnly) {
                     selectedBoxes.clear();
@@ -3479,6 +3565,8 @@
 	                updateDiffBasisButton();
 	                renderRail();
 	                renderNamedVersions();
+	                requestBoxStorySoon();
+	                renderBoxStory();
                 renderTransitions();
             }
 
@@ -3803,6 +3891,155 @@
                         selectVersionByNumber(version.index),
                     );
                     list.appendChild(row);
+                });
+            }
+
+            // "This Box": the box selected on the canvas, edit by edit across every version.
+            let boxStory = null;
+            let boxStoryRequestSignature = "";
+            let boxStoryTimer = null;
+
+            function boxStoryTarget() {
+                const uid = readParentSelectedUids()[0] || "";
+                const property =
+                    String(currentParentEditorProperty() || "code").trim() ||
+                    "code";
+                return { uid, property };
+            }
+
+            function requestBoxStorySoon() {
+                clearTimeout(boxStoryTimer);
+                boxStoryTimer = setTimeout(requestBoxStoryNow, 120);
+            }
+
+            function requestBoxStoryNow() {
+                const { uid, property } = boxStoryTarget();
+                const signature = `${uid}::${property}::${versions.length}::${latestVersionNumber()}`;
+                if (signature === boxStoryRequestSignature) return;
+                boxStoryRequestSignature = signature;
+                if (!uid) {
+                    boxStory = null;
+                    renderBoxStory();
+                    return;
+                }
+                send({
+                    name: "history-box-story",
+                    payload: { uid, property },
+                });
+            }
+
+            function applyBoxStory(payload) {
+                const { uid, property } = boxStoryTarget();
+                if (!payload || payload.uid !== uid || payload.property !== property)
+                    return;
+                boxStory = payload;
+                renderBoxStory();
+            }
+
+            function boxDisplayName(uid) {
+                const el = findParentBox(uid);
+                const name = (el && typeof el.name === "string" && el.name) || "";
+                return String(name).trim() || uid;
+            }
+
+            function restoreBoxFromStory(entry) {
+                if (!boxStory || cherryInFlight) return;
+                const versionIndex = entry.toVersion;
+                const ok = confirmHistoryAction(
+                    `Restore ${boxStory.property} of ${boxDisplayName(boxStory.uid)} to version #${versionIndex}? The rest of the document is left as it is.`,
+                );
+                if (!ok) return;
+                cherryInFlight = true;
+                send({
+                    name: "cherry-pick-history-version",
+                    payload: {
+                        versionIndex,
+                        selections: [
+                            {
+                                uid: boxStory.uid,
+                                properties: [boxStory.property],
+                            },
+                        ],
+                        includeTopology: false,
+                    },
+                });
+            }
+
+            function renderBoxStory() {
+                const list = document.getElementById("box-story-list");
+                const head = document.getElementById("box-story-head");
+                if (!list || !head) return;
+                const { uid } = boxStoryTarget();
+                if (!uid) {
+                    head.textContent = "";
+                    list.innerHTML = `<div class="empty">Select a box to see its edits.</div>`;
+                    return;
+                }
+                if (!boxStory || boxStory.uid !== uid) {
+                    head.textContent = boxDisplayName(uid);
+                    list.innerHTML = `<div class="empty">Reading versions…</div>`;
+                    return;
+                }
+                const entries = boxStory.entries || [];
+                const edits = entries.filter((e) => e.exists).length;
+                head.textContent = `${boxDisplayName(uid)} · ${boxStory.property} · ${edits} value${edits === 1 ? "" : "s"} over ${boxStory.versionCount} versions`;
+                list.innerHTML = "";
+                const selected = selectedVersionNumber();
+                const latest = latestVersionNumber();
+                entries
+                    .slice()
+                    .reverse()
+                    .forEach((entry, i, all) => {
+                        const row = document.createElement("div");
+                        row.className = "box-story-item";
+                        if (!entry.exists) row.classList.add("absent");
+                        if (selected >= entry.fromVersion && selected <= entry.toVersion)
+                            row.classList.add("active");
+                        const range =
+                            entry.fromVersion === entry.toVersion
+                                ? `#${entry.fromVersion}`
+                                : `#${entry.fromVersion}–${entry.toVersion}`;
+                        const first = i === all.length - 1;
+                        const what = !entry.exists
+                            ? "not in these versions"
+                            : entry.lineCount === 0
+                              ? "empty"
+                              : first ||
+                                  (all[i + 1] &&
+                                      (!all[i + 1].exists ||
+                                          all[i + 1].lineCount === 0))
+                              ? `created · ${entry.lineCount} lines`
+                              : entry.sample || "lines removed";
+                        row.innerHTML = `<span class="range"></span><span class="what"></span><span class="delta"></span>`;
+                        row.querySelector(".range").textContent = range;
+                        row.querySelector(".what").textContent = what;
+                        row.title = entry.sample || what;
+                        const delta = row.querySelector(".delta");
+                        if (entry.exists) {
+                            delta.innerHTML = `<span class="plus">+${entry.added}</span> <span class="minus">−${entry.removed}</span>`;
+                            const holdsLatest = entry.toVersion === latest;
+                            // An empty value is a box made before its code was typed; restoring
+                            // it would only clear the box, so it gets no button.
+                            if (!holdsLatest && entry.lineCount > 0) {
+                                const button = document.createElement("button");
+                                button.textContent = "Restore";
+                                button.title = "Restore only this box's text to this version";
+                                button.addEventListener("click", (event) => {
+                                    event.stopPropagation();
+                                    restoreBoxFromStory(entry);
+                                });
+                                delta.appendChild(button);
+                            }
+                        }
+                        row.addEventListener("click", () =>
+                            selectVersionByNumber(entry.toVersion, {
+                                ensureVisible: true,
+                            }),
+                        );
+                        list.appendChild(row);
+                    });
+                list.querySelector(".box-story-item.active")?.scrollIntoView?.({
+                    block: "nearest",
                 });
             }
 

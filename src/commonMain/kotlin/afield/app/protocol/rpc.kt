@@ -2085,6 +2085,45 @@ data class HistorySearchResult(
     val versionIndexes: List<Int> = emptyList()
 )
 
+/** Ask for one box property's story: every distinct value it had across the saved versions. */
+@Serializable
+data class HistoryBoxStoryRequest(
+    val uid: String,
+    val property: String = "code"
+)
+
+/**
+ * One stretch of versions over which a box property held the same text. [fromVersion]..[toVersion]
+ * are version indexes; [exists] is false where the box was not in those versions. [added] and
+ * [removed] count lines against the previous stretch; [sample] is the first line that changed.
+ */
+@Serializable
+data class HistoryBoxStoryEntry(
+    val fromVersion: Int,
+    val toVersion: Int,
+    // Encoded even at their defaults: the panel reads a missing `exists` as false.
+    @EncodeDefault
+    val exists: Boolean = true,
+    @EncodeDefault
+    val lineCount: Int = 0,
+    @EncodeDefault
+    val added: Int = 0,
+    @EncodeDefault
+    val removed: Int = 0,
+    @EncodeDefault
+    val sample: String = ""
+)
+
+@Serializable
+data class HistoryBoxStoryResult(
+    val uid: String,
+    val property: String,
+    @EncodeDefault
+    val versionCount: Int = 0,
+    @EncodeDefault
+    val entries: List<HistoryBoxStoryEntry> = emptyList()
+)
+
 @Serializable
 data class HistoryLineBlameRequest(
     val uid: String,
