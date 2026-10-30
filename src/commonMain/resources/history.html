@@ -4004,7 +4004,10 @@
                             ? "not in these versions"
                             : entry.lineCount === 0
                               ? "empty"
-                              : first || (all[i + 1] && !all[i + 1].exists)
+                              : first ||
+                                  (all[i + 1] &&
+                                      (!all[i + 1].exists ||
+                                          all[i + 1].lineCount === 0))
                               ? `created · ${entry.lineCount} lines`
                               : entry.sample || "lines removed";
                         row.innerHTML = `<span class="range"></span><span class="what"></span><span class="delta"></span>`;

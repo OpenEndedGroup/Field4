@@ -411,6 +411,9 @@ object DemoTranscriptExecSmokeTest {
         // Controls renewal (2026-10-29): a five-control surface feeding a live figure and a slider
         // that re-renders itself mid-drag. Pure CPU, output-channel controls only.
         "controls_surface",
+        // History renewal (2026-10-30): one box edited three times with autosave waits between, so
+        // the document holds four versions for the history view's This Box list. Pure CPU.
+        "history_box_story",
         // Kolakoski counts crossed with Euclidean placement. Pure CPU: the figures are
         // `showPatRollOf` (SVG into an output channel) and the audio is `showDirtAudio` /
         // `patRenderStereoDirt`, which mixes samples into a buffer offline — no audio device, and

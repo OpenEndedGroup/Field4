@@ -4,7 +4,7 @@ Every time Field saves a document whose contents changed, it keeps the previous 
 view shows those saves as a timeline, lets you compare any of them with what you have now, and
 puts back an earlier one — the whole document, or just the boxes you pick.
 
-```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1440x900" clip="0,0,1440,900" screenshot="assets/document_history/history-version-selected.png" transcript="assets/transcripts/document_history_setup.yaml" document="docs-history-figure" fresh-document=true padding="0" wait="0" timeout="150" embed=true hidden=true name="document-history-version-selected" alt="Field with the document history view open below a box named sketch and its editor: the timeline holds three saves, #0, #1 and the current document, version #1 is selected and differs from the live document in one box, and the editor lays version #1 over the current code as a read-only inline diff, version #1's lines in green (radius 40.0, a println of radius and count) against the current lines in red (radius 64.0, the ring and its println)"}
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1440x900" clip="0,0,1440,900" screenshot="assets/document_history/history-version-selected.png" transcript="assets/transcripts/document_history_setup.yaml" document="docs-history-figure" fresh-document=true padding="0" wait="0" timeout="150" embed=true hidden=true name="document-history-version-selected" alt="Field with the document history view open below a box named sketch and its editor: the timeline holds three saves, #0, #1 and the current document, version #1 is selected and differs from the live document in one box, and the editor lays version #1 over the current code as a read-only inline diff, version #1's lines in green (radius 40.0, a println of radius and count) against the current lines in red (radius 64.0, the ring and its println); below the timeline, the sidebar's This Box list shows sketch's values across the versions"}
 // The setup box holds version 0 of its code. Two edits through the editor, each left for the
 // 5 s autosave, give the document's backups three real versions; then the history view opens and
 // the middle version is clicked, which lays that version's text over the editor as a diff.
@@ -91,7 +91,8 @@ ui.pause(800)
 ```
 
 Above, an earlier save of the box `sketch` is selected in the timeline, and the editor shows how it
-differs from the current code. To scrub one line back through its versions without leaving the
+differs from the current code; the sidebar's **This Box** list, [described below](#one-box-edit-by-edit), shows
+the same box's values version by version. To scrub one line back through its versions without leaving the
 editor, use [Code History](history_lens.md).
 
 ## Get back an earlier version
@@ -169,6 +170,7 @@ val at = ui.eval("""
     const f = window.getHistoryIframeElement ? window.getHistoryIframeElement() : document.querySelector("#history-iframe")
     const fr = f.getBoundingClientRect()
     const row = [...f.contentDocument.querySelectorAll("#box-story-list .box-story-item")].find(r => r.querySelector(".range").textContent.trim() === "#1")
+    row.scrollIntoView({ block: "center" })
     const r = row.getBoundingClientRect()
     return [fr.left + r.left + 30, fr.top + r.top + r.height / 2].join(",")
 """.trimIndent()).toString().trim('"').split(",").map { it.toDouble() }
@@ -239,7 +241,8 @@ val at = ui.eval("""
     const f = window.getHistoryIframeElement ? window.getHistoryIframeElement() : document.querySelector("#history-iframe")
     const fr = f.getBoundingClientRect()
     const rows = [...f.contentDocument.querySelectorAll("#box-story-list .box-story-item")]
-    const b = rows[rows.length - 1].querySelector("button")
+    const b = rows.filter(r => r.querySelector("button")).pop().querySelector("button")
+    b.scrollIntoView({ block: "center" })
     const r = b.getBoundingClientRect()
     return [fr.left + r.left + r.width / 2, fr.top + r.top + r.height / 2].join(",")
 """.trimIndent()).toString().trim('"').split(",").map { it.toDouble() }
