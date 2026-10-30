@@ -58,20 +58,62 @@ The "before" columns are measured values. Open paths are the ones the capture pr
 hoverable`, a small × in a narrow gutter. A 26px button does not fit there. Unifying them is a
 separate design question.
 
-## Close / Escape checks (after)
+## Second pass (2026-10-30)
 
-The probe opens each panel, clicks its close control, reopens it, focuses a control inside it and
-dispatches Escape (`.nightly-tmp/probe/measure.js`).
+- **Keyframe browser, charGrid:** `fieldPanelHost.js` (iframe side) closes the output disclosure
+  holding the iframe through the host's `__disclosureAPI.close(id)`, for a `[data-field-panel-close]`
+  button and for Escape outside text fields. The keyframe browser has the shared ×; charGrid has
+  no chrome of its own, so it gets Escape and the tokens.
+- **Publish document:** the panel moved to `publishPanel.js` (loaded after `publishDocument.js`,
+  replacing its `window.fieldPublishDocument`). `docs_publications.capture_digest` hashes
+  `publication-capture.js`, `publication-three.js`, `publishDocument.js`, `threejs_*.{html,js}` and
+  `WebPublication.kt`; `publishPanel.js` is not hashed and should not be — it is chrome, not
+  output. `publishDocument.js` still holds its old panel function, overridden; delete it at the
+  next deliberate publication refresh.
+- **Command palette:** shell, label (sentence case, 11/500), colours from the tokens. No close
+  button; Escape as before.
+- **closeBox family** (inline output areas, history lens): a `<button>` with `title`/`aria-label`
+  "Close", shared colours and hover at gutter size (`button.closeBox` in the tokens file). The
+  history lens closes on Escape when focus is in it. The FLine editor overlay has no close control.
+- **Slideshow notes:** shared × (positioned only); Escape closes when focus is in the note.
+- **Docs source viewer:** tokens and the shared ×; the doc-notes panel keeps its "DOC NOTES"
+  header because three published pages quote it.
+- **History screenshot preview:** shared × and title tokens.
+- **Publication capture:** no UI of its own (it is the capture code); nothing to change.
+- **Document search:** black FieldPanel bar at the main pane's bottom-left (`positionSearch`,
+  from `CanvasCamera.main.rect`, lifted above history / macro recorder / layers when they are
+  docked there). Before, it sat at (1766, 14), on top of Monaco's Find at (1754, 17). Input in the
+  palette's font and token colours, focus ring from the tokens; ↑ ↓ × are one row of identical
+  26px icon buttons labelled "Previous match (Shift+Enter)", "Next match (Enter)", "Close"; the
+  counter is status-line text: blank, "N matches", "i of N · property", or "No matches" (red, with
+  the field outlined and ↑/↓ disabled). Behaviour kept: case-insensitive substring over the box
+  name and code/shader/metadata properties, `.search-hit` and a badge on matching boxes, Enter /
+  Shift+Enter cycle, the match is selected and revealed in the editor and the box scrolled into
+  view. Cmd/Ctrl+F with the canvas focused opens it; with the editor focused it opens Monaco's
+  Find instead (verified: search hidden, `.find-widget.visible`).
+- **Bug found:** the first pass's history Escape fired from history's *parent-window* listener
+  (kept there for the arrow keys), so with history loaded any Escape closed history and stopped
+  the event. That was the intermittent Bookmarks Escape and the slideshow-note failure. Escape now
+  closes history only for keys aimed at the history document. When the screenshot preview is
+  open, Escape anywhere still closes the preview first (as on main).
+
+## Close / Escape checks (final)
+
+Five full probe runs after the last change, plus five charGrid runs with its box running.
 
 | Panel | Click closes | Escape closes |
 | --- | --- | --- |
-| Bookmarks | pass | pass (one probe run in three missed it; a direct 4× retest and the final run passed) |
-| Layers | pass | pass |
-| Macro Recorder | pass | pass |
-| History | pass | pass (failed before) |
-| Document search | pass | pass |
-| Document guide | pass | pass |
-| Profiling timeline | pass | pass |
-| Trays | pass | pass (failed before) |
-| Publish document | pass (FieldPanel version, since reverted) | pass (FieldPanel version, since reverted) |
-| Command palette | no close button | pass |
+| Bookmarks | 5/5 | 5/5 |
+| Layers | 5/5 | 5/5 |
+| Macro Recorder | 5/5 | 5/5 |
+| History | 5/5 | 5/5 |
+| Screenshot preview | pass (closes the preview, history stays) | pass |
+| Keyframe browser | 5/5 | 5/5 |
+| Document search | 5/5 | 5/5 |
+| Document guide | 5/5 | 5/5 |
+| Profiling timeline | 5/5 | 5/5 |
+| Trays | 5/5 | 5/5 |
+| Slideshow note | pass (2 runs) | pass (2 runs, after fixing the probe's wait) |
+| Publish document | 5/5 | 5/5 |
+| charGrid | no close button | 5/5 |
+| Command palette | no close button | 5/5 |
