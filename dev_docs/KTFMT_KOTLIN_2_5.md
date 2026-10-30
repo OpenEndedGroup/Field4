@@ -26,12 +26,20 @@ published under the new group.
   `@file:OptIn(KtImplementationDetail::class)` (2.5 marks `KtStubElementTypes` as PSI-internal);
 - in `core/build.gradle.kts`, opt-ins to `MessageCollectorAccess` and `CoreEnvironmentDeprecation`
   when building for 2.5. `Parser.kt` is shared by every compiler line, so these 2.5-only markers
-  cannot be named in its source.
+  cannot be named in its source;
+- in `core/.../format/visitor/PsiUtils.kt`, `isBlockLikeCall` also accepts a Kotlin 2.5 collection
+  literal (`isBlockLikeCollectionLiteral`: a trailing comma, or a block-like element), except inside
+  an annotation entry. On the kotlinlang experimental engine, which Field uses, `val xs = [` ... `]`
+  then formats exactly like `val xs = listOf(` ... `)`; before, the literal broke after `=` and its
+  elements sat a continuation indent deeper. The default engine is unchanged. Cases are under
+  `core/src/test/resources/cases/kotlinlang/collectionLiterals/` (`.output` for the default engine,
+  `.new.output` for the experimental one).
 
-Built with `./gradlew :ktfmt:jar`. sha256 `5f334deaf5bd3667e6ef0f17da58bcf270b47c57d5e19c1a2807cb09c079f605`.
+Built with `./gradlew :ktfmt:jar`. sha256 `9dd1edb1a0d961c4e43c5bf8397b69d7076884a5d12c09a05a1c05ce59fa5f3b`.
 
-Verified on 2.5.0-Beta1: ktfmt's own suite runs 927 tests with 1 failure,
-`NativeImageSubstitutionTest`. That test checks the GraalVM native-image build's substitution of
+Verified on 2.5.0-Beta1: ktfmt's own suite runs 949 tests (927 before the collection-literal cases)
+with 1 failure, `NativeImageSubstitutionTest`. With the `PsiUtils.kt` change reverted, the
+experimental-engine variants of four new cases fail (8 tests). That test checks the GraalVM native-image build's substitution of
 `KotlinCoreEnvironment.registerApplicationExtensionPointsAndExtensionsFrom`, whose signature moved in
 2.5, and it does not affect JVM use. The context-parameter format case
 (`cases/format/misc/contextParameters`) was confirmed to run and pass by a negative control:
@@ -49,7 +57,9 @@ corrupting its expected output failed exactly that case.
   RemoteJS instrumenter and the pattern-rewrite smoke. Nothing shadows ktfmt.
 - ktfmt's stock parser runs fine beside the forked compiler: checked in a live Field, where
   `-format-property` formatted and synced a box after that box had compiled and run.
-- `formatKotlinCode` passes `FileType.SCRIPT`: box code has top-level statements.
+- `formatKotlinCode` passes `FileType.SCRIPT`: box code has top-level statements. It formats with
+  `KOTLINLANG_FORMAT.copy(maxWidth = 120, experimentalEngine = true)`; `KotlinFormatterCollectionLiteralTest`
+  fails on the stock engine or on a jar without the collection-literal change.
 - A local jar has no POM, so `build.gradle.kts` names ktfmt's runtime dependencies
   (google-java-format 1.23.0, guava 33.5.0-jre, ec4j 1.2.0), at the versions Field already resolved.
 

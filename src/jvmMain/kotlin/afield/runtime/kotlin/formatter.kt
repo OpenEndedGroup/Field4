@@ -53,7 +53,7 @@ fun formatKotlinCode(code: String, blockifyComments: Boolean = true): String {
     val endsInComment = code.lines().lastOrNull { it.isNotBlank() }?.trim()?.startsWith("//") == true
     val input = if (endsInComment) code.trimEnd() + "\n" + END_SENTINEL + "\n" else code
     var formatted = restoreFragmentBreaks(
-        Formatter.format(Formatter.KOTLINLANG_FORMAT.copy(maxWidth = MAX_WIDTH), KotlinCode(input, FileType.SCRIPT))
+        Formatter.format(FORMAT_OPTIONS, KotlinCode(input, FileType.SCRIPT))
     )
     if (endsInComment) formatted = formatted.trimEnd().removeSuffix(END_SENTINEL).trimEnd() + "\n"
     formatted = restoreStatementSpacing(code, formatted)
@@ -112,6 +112,12 @@ fun joinAssignmentBreaks(code: String): String {
 // Box code is read in an editor beside a canvas and in a docs column, and it was mostly written
 // to about 100. At 200, ktfmt joined deliberately wrapped string concatenations into one line.
 private const val MAX_WIDTH = 120
+
+// ktfmt's kotlinlang style on its experimental engine, the one that keeps a block-like call or
+// collection literal on the line it starts (`val xs = [` ... `]`, `foo(` ... `)`) instead of breaking
+// after `=` and indenting the whole call. The stock engine indents `[`/`listOf(` chains twice.
+private val FORMAT_OPTIONS =
+    Formatter.KOTLINLANG_FORMAT.copy(maxWidth = MAX_WIDTH, experimentalEngine = true)
 
 private val BLANK_LINE = Regex("""\n[ \t]*\n""")
 

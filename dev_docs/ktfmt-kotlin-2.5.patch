@@ -61,6 +61,414 @@ index 0000000..b86f9d4
 +
 +val KtDestructuringDeclarationEntry.ownValOrVarKeywordText: String?
 +  get() = ownValOrVarKeyword?.text
+diff --git a/core/src/main/kotlin/org/jetbrains/ktfmt/format/visitor/PsiUtils.kt b/core/src/main/kotlin/org/jetbrains/ktfmt/format/visitor/PsiUtils.kt
+index a891d29..d30b601 100644
+--- a/core/src/main/kotlin/org/jetbrains/ktfmt/format/visitor/PsiUtils.kt
++++ b/core/src/main/kotlin/org/jetbrains/ktfmt/format/visitor/PsiUtils.kt
+@@ -30,7 +30,9 @@ import org.jetbrains.kotlin.psi.KtBinaryExpression
+ import org.jetbrains.kotlin.psi.KtBinaryExpressionWithTypeRHS
+ import org.jetbrains.kotlin.psi.KtCallElement
+ import org.jetbrains.kotlin.psi.KtCallExpression
++import org.jetbrains.kotlin.psi.KtCollectionLiteralExpression
+ import org.jetbrains.kotlin.psi.KtExpression
++import org.jetbrains.kotlin.psi.KtFile
+ import org.jetbrains.kotlin.psi.KtLabeledExpression
+ import org.jetbrains.kotlin.psi.KtLambdaArgument
+ import org.jetbrains.kotlin.psi.KtLambdaExpression
+@@ -72,21 +74,20 @@ val KtExpression.callExpression: KtCallExpression?
+ /**
+  * @return true when [KtExpression] is a call that is forced onto multiple lines regardless of the
+  *   line width, either because its value argument list has a trailing comma (e.g. `foo(\n 1,\n
+- *   2,\n)`) or because one of its arguments is itself a block-like multiline call.
++ *   2,\n)`) or because one of its arguments is itself a block-like multiline call. A collection
++ *   literal counts too, see [isBlockLikeCollectionLiteral].
+  *
+  * Such calls are rendered "block-like": they stay on the same line as the preceding `=`/`by`
+  * operator (instead of breaking and indenting after it), and any chained selectors break onto their
+  * own line, mirroring how scoping functions and lambdas are handled.
+  */
+-@OptIn(ExperimentalContracts::class)
+ val KtExpression?.isBlockLikeCall: Boolean
+   get() {
+-    contract { returns(true) implies (this@isBlockLikeCall is KtCallExpression) }
+-
+     if (this == null) return false
+     // Leading comments cause weird indentation; keep the default layout.
+     if (this.getPrevSiblingIgnoringWhitespace() is PsiComment) return false
+ 
++    if (this is KtCollectionLiteralExpression) return isBlockLikeCollectionLiteral
+     if (this !is KtCallExpression) return false
+ 
+     val valueArgumentList = valueArgumentList ?: return false
+@@ -94,6 +95,29 @@ val KtExpression?.isBlockLikeCall: Boolean
+         valueArgumentList.arguments.any { it.isBlockLikeArgument }
+   }
+ 
++/**
++ * A Kotlin 2.5 collection literal in expression position (`[a, b, c]`) is laid out like a call's
++ * argument list with `[`/`]` for `(`/`)`, so it is block-like under the same conditions: a trailing
++ * comma, or an element that is itself block-like. Collection literals inside annotations
++ * (`@A([1, 2])`) keep their historical layout.
++ */
++val KtCollectionLiteralExpression.isBlockLikeCollectionLiteral: Boolean
++  get() {
++    if (isInAnnotationEntry) return false
++    return trailingComma != null ||
++        getInnerExpressions().any { it.isBlockLikeCall || it.isChainedBlockLikeCall }
++  }
++
++val KtCollectionLiteralExpression.isInAnnotationEntry: Boolean
++  get() {
++    var p: PsiElement? = parent
++    while (p != null && p !is KtFile) {
++      if (p is KtAnnotationEntry) return true
++      p = p.parent
++    }
++    return false
++  }
++
+ val KtValueArgument.isBlockLikeArgument: Boolean
+   get() {
+     val argumentExpression = getArgumentExpression()
+diff --git a/core/src/test/resources/cases/kotlinlang/collectionLiterals/asCallArgument.input b/core/src/test/resources/cases/kotlinlang/collectionLiterals/asCallArgument.input
+new file mode 100644
+index 0000000..e50beae
+--- /dev/null
++++ b/core/src/test/resources/cases/kotlinlang/collectionLiterals/asCallArgument.input
+@@ -0,0 +1,13 @@
++// MAX_WIDTH 60
++
++fun f() {
++  draw(points = [Vec2(0.0, 0.0), Vec2(1.0, 0.0), Vec2(1.0, 1.0)], closed = true)
++  draw([
++    Vec2(0.0, 0.0),
++    Vec2(1.0, 0.0),
++  ])
++  val a = [
++    1,
++    2,
++  ]
++}
+diff --git a/core/src/test/resources/cases/kotlinlang/collectionLiterals/asCallArgument.new.output b/core/src/test/resources/cases/kotlinlang/collectionLiterals/asCallArgument.new.output
+new file mode 100644
+index 0000000..f2372ed
+--- /dev/null
++++ b/core/src/test/resources/cases/kotlinlang/collectionLiterals/asCallArgument.new.output
+@@ -0,0 +1,23 @@
++// MAX_WIDTH 60
++
++fun f() {
++    draw(
++        points =
++            [
++                Vec2(0.0, 0.0),
++                Vec2(1.0, 0.0),
++                Vec2(1.0, 1.0),
++            ],
++        closed = true,
++    )
++    draw(
++        [
++            Vec2(0.0, 0.0),
++            Vec2(1.0, 0.0),
++        ],
++    )
++    val a = [
++        1,
++        2,
++    ]
++}
+diff --git a/core/src/test/resources/cases/kotlinlang/collectionLiterals/asCallArgument.output b/core/src/test/resources/cases/kotlinlang/collectionLiterals/asCallArgument.output
+new file mode 100644
+index 0000000..0fe21ca
+--- /dev/null
++++ b/core/src/test/resources/cases/kotlinlang/collectionLiterals/asCallArgument.output
+@@ -0,0 +1,24 @@
++// MAX_WIDTH 60
++
++fun f() {
++    draw(
++        points =
++            [
++                Vec2(0.0, 0.0),
++                Vec2(1.0, 0.0),
++                Vec2(1.0, 1.0),
++            ],
++        closed = true,
++    )
++    draw(
++        [
++            Vec2(0.0, 0.0),
++            Vec2(1.0, 0.0),
++        ],
++    )
++    val a =
++        [
++            1,
++            2,
++        ]
++}
+diff --git a/core/src/test/resources/cases/kotlinlang/collectionLiterals/chainedForEach.input b/core/src/test/resources/cases/kotlinlang/collectionLiterals/chainedForEach.input
+new file mode 100644
+index 0000000..0a3fa50
+--- /dev/null
++++ b/core/src/test/resources/cases/kotlinlang/collectionLiterals/chainedForEach.input
+@@ -0,0 +1,19 @@
++// FILE_TYPE SCRIPT
++
++val dir = "x"
++// Four looks, each saved as its own key with a note.
++[
++    Triple("soft", [3f, 0.20f, 1.5f], "first pass"),
++    Triple("hot", [9f, 0.80f, 0.6f], "too much"),
++    Triple("mid", [6f, 0.50f, 1.0f], "between the two"),
++    Triple("wide", [12f, 0.35f, 2.2f], "for the long shot"),
++].forEach { (name, v, note) ->
++    println(name)
++}
++
++listOf(
++    Triple("soft", [3f, 0.20f, 1.5f], "first pass"),
++    Triple("hot", [9f, 0.80f, 0.6f], "too much"),
++).forEach { (name, v, note) ->
++    println(name)
++}
+diff --git a/core/src/test/resources/cases/kotlinlang/collectionLiterals/chainedForEach.new.output b/core/src/test/resources/cases/kotlinlang/collectionLiterals/chainedForEach.new.output
+new file mode 100644
+index 0000000..33a3a69
+--- /dev/null
++++ b/core/src/test/resources/cases/kotlinlang/collectionLiterals/chainedForEach.new.output
+@@ -0,0 +1,22 @@
++// FILE_TYPE SCRIPT
++
++val dir = "x"
++
++// Four looks, each saved as its own key with a note.
++[
++    Triple("soft", [3f, 0.20f, 1.5f], "first pass"),
++    Triple("hot", [9f, 0.80f, 0.6f], "too much"),
++    Triple("mid", [6f, 0.50f, 1.0f], "between the two"),
++    Triple("wide", [12f, 0.35f, 2.2f], "for the long shot"),
++]
++    .forEach { (name, v, note) ->
++        println(name)
++    }
++
++listOf(
++    Triple("soft", [3f, 0.20f, 1.5f], "first pass"),
++    Triple("hot", [9f, 0.80f, 0.6f], "too much"),
++)
++    .forEach { (name, v, note) ->
++        println(name)
++    }
+diff --git a/core/src/test/resources/cases/kotlinlang/collectionLiterals/chainedForEach.output b/core/src/test/resources/cases/kotlinlang/collectionLiterals/chainedForEach.output
+new file mode 100644
+index 0000000..9452067
+--- /dev/null
++++ b/core/src/test/resources/cases/kotlinlang/collectionLiterals/chainedForEach.output
+@@ -0,0 +1,22 @@
++// FILE_TYPE SCRIPT
++
++val dir = "x"
++
++// Four looks, each saved as its own key with a note.
++[
++        Triple("soft", [3f, 0.20f, 1.5f], "first pass"),
++        Triple("hot", [9f, 0.80f, 0.6f], "too much"),
++        Triple("mid", [6f, 0.50f, 1.0f], "between the two"),
++        Triple("wide", [12f, 0.35f, 2.2f], "for the long shot"),
++    ]
++    .forEach { (name, v, note) ->
++        println(name)
++    }
++
++listOf(
++        Triple("soft", [3f, 0.20f, 1.5f], "first pass"),
++        Triple("hot", [9f, 0.80f, 0.6f], "too much"),
++    )
++    .forEach { (name, v, note) ->
++        println(name)
++    }
+diff --git a/core/src/test/resources/cases/kotlinlang/collectionLiterals/empty.input b/core/src/test/resources/cases/kotlinlang/collectionLiterals/empty.input
+new file mode 100644
+index 0000000..3f8c012
+--- /dev/null
++++ b/core/src/test/resources/cases/kotlinlang/collectionLiterals/empty.input
+@@ -0,0 +1,2 @@
++val e: List<Int> = []
++val f = listOf<List<Int>>([], [])
+diff --git a/core/src/test/resources/cases/kotlinlang/collectionLiterals/empty.new.output b/core/src/test/resources/cases/kotlinlang/collectionLiterals/empty.new.output
+new file mode 100644
+index 0000000..3f8c012
+--- /dev/null
++++ b/core/src/test/resources/cases/kotlinlang/collectionLiterals/empty.new.output
+@@ -0,0 +1,2 @@
++val e: List<Int> = []
++val f = listOf<List<Int>>([], [])
+diff --git a/core/src/test/resources/cases/kotlinlang/collectionLiterals/inAnnotation.input b/core/src/test/resources/cases/kotlinlang/collectionLiterals/inAnnotation.input
+new file mode 100644
+index 0000000..b575046
+--- /dev/null
++++ b/core/src/test/resources/cases/kotlinlang/collectionLiterals/inAnnotation.input
+@@ -0,0 +1,16 @@
++// MAX_WIDTH 32
++
++@Foo(a = [1, 2])
++fun doIt(o: Object) {
++    //
++}
++
++@Anno(
++    array =
++        [
++            someItem,
++            andAnother,
++            withTrailingComma,
++        ],
++)
++class Host
+diff --git a/core/src/test/resources/cases/kotlinlang/collectionLiterals/inAnnotation.new.output b/core/src/test/resources/cases/kotlinlang/collectionLiterals/inAnnotation.new.output
+new file mode 100644
+index 0000000..b575046
+--- /dev/null
++++ b/core/src/test/resources/cases/kotlinlang/collectionLiterals/inAnnotation.new.output
+@@ -0,0 +1,16 @@
++// MAX_WIDTH 32
++
++@Foo(a = [1, 2])
++fun doIt(o: Object) {
++    //
++}
++
++@Anno(
++    array =
++        [
++            someItem,
++            andAnother,
++            withTrailingComma,
++        ],
++)
++class Host
+diff --git a/core/src/test/resources/cases/kotlinlang/collectionLiterals/longSingleLevel.input b/core/src/test/resources/cases/kotlinlang/collectionLiterals/longSingleLevel.input
+new file mode 100644
+index 0000000..028930d
+--- /dev/null
++++ b/core/src/test/resources/cases/kotlinlang/collectionLiterals/longSingleLevel.input
+@@ -0,0 +1,4 @@
++// MAX_WIDTH 60
++
++val xs = [100000, 200000, 300000, 400000, 500000, 600000, 700000, 800000]
++val ys = [1, 2, 3]
+diff --git a/core/src/test/resources/cases/kotlinlang/collectionLiterals/longSingleLevel.new.output b/core/src/test/resources/cases/kotlinlang/collectionLiterals/longSingleLevel.new.output
+new file mode 100644
+index 0000000..be131a9
+--- /dev/null
++++ b/core/src/test/resources/cases/kotlinlang/collectionLiterals/longSingleLevel.new.output
+@@ -0,0 +1,13 @@
++// MAX_WIDTH 60
++
++val xs = [
++    100000,
++    200000,
++    300000,
++    400000,
++    500000,
++    600000,
++    700000,
++    800000,
++]
++val ys = [1, 2, 3]
+diff --git a/core/src/test/resources/cases/kotlinlang/collectionLiterals/longSingleLevel.output b/core/src/test/resources/cases/kotlinlang/collectionLiterals/longSingleLevel.output
+new file mode 100644
+index 0000000..26d5753
+--- /dev/null
++++ b/core/src/test/resources/cases/kotlinlang/collectionLiterals/longSingleLevel.output
+@@ -0,0 +1,14 @@
++// MAX_WIDTH 60
++
++val xs =
++    [
++        100000,
++        200000,
++        300000,
++        400000,
++        500000,
++        600000,
++        700000,
++        800000,
++    ]
++val ys = [1, 2, 3]
+diff --git a/core/src/test/resources/cases/kotlinlang/collectionLiterals/nested.input b/core/src/test/resources/cases/kotlinlang/collectionLiterals/nested.input
+new file mode 100644
+index 0000000..f8095dd
+--- /dev/null
++++ b/core/src/test/resources/cases/kotlinlang/collectionLiterals/nested.input
+@@ -0,0 +1,5 @@
++// MAX_WIDTH 60
++
++val m = mapOf("a" to [Triple("soft", [3f, 0.20f, 1.5f], "first pass"), Triple("hot", [9f, 0.80f, 0.6f], "too much")])
++
++val grid = [[1, 2, 3], [4, 5, 6], [7, 8, 9], [10, 11, 12], [13, 14, 15]]
+diff --git a/core/src/test/resources/cases/kotlinlang/collectionLiterals/nested.new.output b/core/src/test/resources/cases/kotlinlang/collectionLiterals/nested.new.output
+new file mode 100644
+index 0000000..3c810ee
+--- /dev/null
++++ b/core/src/test/resources/cases/kotlinlang/collectionLiterals/nested.new.output
+@@ -0,0 +1,21 @@
++// MAX_WIDTH 60
++
++val m = mapOf(
++    "a" to
++        [
++            Triple(
++                "soft",
++                [3f, 0.20f, 1.5f],
++                "first pass",
++            ),
++            Triple("hot", [9f, 0.80f, 0.6f], "too much"),
++        ],
++)
++
++val grid = [
++    [1, 2, 3],
++    [4, 5, 6],
++    [7, 8, 9],
++    [10, 11, 12],
++    [13, 14, 15],
++]
+diff --git a/core/src/test/resources/cases/kotlinlang/collectionLiterals/nested.output b/core/src/test/resources/cases/kotlinlang/collectionLiterals/nested.output
+new file mode 100644
+index 0000000..64dc43c
+--- /dev/null
++++ b/core/src/test/resources/cases/kotlinlang/collectionLiterals/nested.output
+@@ -0,0 +1,27 @@
++// MAX_WIDTH 60
++
++val m =
++    mapOf(
++        "a" to
++            [
++                Triple(
++                    "soft",
++                    [3f, 0.20f, 1.5f],
++                    "first pass",
++                ),
++                Triple(
++                    "hot",
++                    [9f, 0.80f, 0.6f],
++                    "too much",
++                ),
++            ],
++    )
++
++val grid =
++    [
++        [1, 2, 3],
++        [4, 5, 6],
++        [7, 8, 9],
++        [10, 11, 12],
++        [13, 14, 15],
++    ]
 diff --git a/gradle/libs.versions.toml b/gradle/libs.versions.toml
 index c41da2b..e05fe95 100644
 --- a/gradle/libs.versions.toml
