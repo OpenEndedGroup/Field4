@@ -2097,10 +2097,16 @@ data class HistoryBoxStoryRequest(
 data class HistoryBoxStoryEntry(
     val fromVersion: Int,
     val toVersion: Int,
+    // Encoded even at their defaults: the panel reads a missing `exists` as false.
+    @EncodeDefault
     val exists: Boolean = true,
+    @EncodeDefault
     val lineCount: Int = 0,
+    @EncodeDefault
     val added: Int = 0,
+    @EncodeDefault
     val removed: Int = 0,
+    @EncodeDefault
     val sample: String = ""
 )
 
@@ -2108,7 +2114,9 @@ data class HistoryBoxStoryEntry(
 data class HistoryBoxStoryResult(
     val uid: String,
     val property: String,
+    @EncodeDefault
     val versionCount: Int = 0,
+    @EncodeDefault
     val entries: List<HistoryBoxStoryEntry> = emptyList()
 )
 

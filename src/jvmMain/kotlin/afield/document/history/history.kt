@@ -1881,7 +1881,7 @@ object HistoryManager {
                 entries[entries.lastIndex] = entries.last().copy(toVersion = version.index)
                 continue
             }
-            val lines = if (exists) splitHistoryLines(text) else emptyList()
+            val lines = if (exists) splitHistoryLines(text.removeSuffix("\n")) else emptyList()
             val (added, removed, sample) = storyLineDelta(previousLines, lines)
             entries += HistoryBoxStoryEntry(
                 fromVersion = version.index,

@@ -1,5 +1,8 @@
 package afield.document.history
 
+import afield.app.protocol.HistoryBoxStoryEntry
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import java.io.File
 import java.nio.file.Files
 import kotlin.test.AfterTest
@@ -59,5 +62,14 @@ class HistoryBoxStoryTest {
         assertEquals(1, edit.removed)
         assertEquals("val radius = 64.0", edit.sample)
         assertEquals(2, story.entries[1].added)
+        assertEquals(2, story.entries[1].lineCount)
+    }
+
+    /** The panel reads a missing `exists` as false; the first live drive listed every version as absent. */
+    @Test
+    fun defaultsAreOnTheWire() {
+        val json = Json.encodeToString(HistoryBoxStoryEntry(fromVersion = 1, toVersion = 2))
+        check("\"exists\":true" in json) { json }
+        check("\"added\":0" in json) { json }
     }
 }
