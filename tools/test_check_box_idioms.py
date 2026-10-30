@@ -312,5 +312,102 @@ class ScopeTests(unittest.TestCase):
             f.close()
 
 
+class HelperAdoptionTests(unittest.TestCase):
+    """The approved-helper rules (dev_docs/agents/box_code_helpers/ADOPTION.md)."""
+
+    PATH = "dev_docs/agents/demos/d/x_code_.kt"
+
+    def run_on(self, code: str, path: str | None = None) -> tuple[list[tuple[int, str, bool, bool]], str]:
+        path = path or self.PATH
+        f = Fixture({path: code})
+        try:
+            findings = idioms.process(path, f.root, fix=False)
+            f.run("--fix")
+            return [(x.line, x.rule, x.fixable, x.blocking) for x in findings], f.read(path)
+        finally:
+            f.close()
+
+    def test_key_pairs(self):
+        found, fixed = self.run_on(
+            'val a = scope.Key(mutableMapOf<String, Any?>("amount" to quiet))\n'
+            'kfs.saveKey(d, kfs.Key(mutableMapOf("r" to f(1, 2), "g" to 2)), "look")\n')
+        self.assertEqual([r for _, r, _, _ in found], ["key-pairs", "key-pairs"])
+        self.assertEqual(fixed, 'val a = scope.Key("amount" to quiet)\n'
+                                'kfs.saveKey(d, kfs.Key("r" to f(1, 2), "g" to 2), "look")\n')
+
+    def test_key_pairs_leaves_empty_spread_and_other_maps_alone(self):
+        code = ("val a = scope.Key(mutableMapOf())\nval b = scope.Key(mutableMapOf(*pairs))\n"
+                "val c = scope.Key(existing)\nval d = MyKey(mutableMapOf(\"a\" to 1))\n"
+                "val e = scope.Key(mutableMapOf(\"a\" to 1), extra)\n")
+        self.assertEqual(self.run_on(code), ([], code))
+
+    def test_fixed_format(self):
+        found, fixed = self.run_on(
+            'println("${"%.3f".format(x)} and ${"%.1f".format(a / b)}")\n'
+            'val s = "%.2f".format(stats.mean()) + "%.0f".format((n))\n'
+            'val t = "%.4f".format(xs.maxOf { it.v }) + "%.2f".format(-y) + "%.2f".format("%.1f".format(1.0).length)\n')
+        self.assertEqual([r for _, r, _, _ in found], ["fixed-format"] * 3)
+        self.assertEqual(fixed,
+                         'println("${x.f3} and ${(a / b).f1}")\n'
+                         'val s = stats.mean().f2 + n.f0\n'
+                         'val t = xs.maxOf { it.v }.f4 + (-y).f2 + (1.0.f1.length).f2\n')
+
+    def test_fixed_format_leaves_other_formats_alone(self):
+        code = ('val a = "%6.2f".format(x)\nval b = "%.2f%%".format(x)\nval c = "%.2f, %.2f".format(x, y)\n'
+                'val d = "%.2f".format(Locale.ROOT, x)\nval e = "%,d".format(n)\nval f = "\\"%.2f\\".format(x)"\n')
+        self.assertEqual(self.run_on(code), ([], code))
+
+    def test_starting_value_cast(self):
+        found, fixed = self.run_on("(q as NeedsStartingValue<Double>).startAt(0.0)\n")
+        self.assertEqual(found, [(1, "starting-value-cast", True, True)])
+        self.assertEqual(fixed, "q.startAt(0.0)\n")
+        code = "(q as Other<Double>).startAt(0.0)\nq.startAt(0.0)\n"
+        self.assertEqual(self.run_on(code), ([], code))
+
+    def test_uint_push_lambda_in_a_module_box(self):
+        found, fixed = self.run_on(
+            "val m = moduleHere { }\nm.count = { N.toUInt() }\nm.seed = { (seed + 1).toUInt() }\n")
+        self.assertEqual([(l, r, x) for l, r, x, _ in found], [(2, "uint-push-lambda", True), (3, "uint-push-lambda", True)])
+        self.assertEqual(fixed, "val m = moduleHere { }\nm.count = { N }\nm.seed = { seed + 1 }\n")
+
+    def test_uint_push_lambda_elsewhere_is_a_note(self):
+        code = "state.count = { N.toUInt() }\nval u = n.toUInt()\nm.count = { a + b.toUInt() }\n"
+        self.assertEqual(self.run_on(code), ([(1, "uint-push-lambda", False, False)], code))
+
+    def test_compute_barrier(self):
+        found, fixed = self.run_on(
+            'module += "b" to computeTask { _, cmd, _ ->\n    computeMemoryBarrier(cmd)\n}\n'
+            'module +=\n    "c" to\n        computeTask { _, cmd, _ ->\n'
+            '            computeMemoryBarrier(cmd, null as VulkanBuffer?)\n'
+            '            graphicsMemoryBarrier(cmd, null as VulkanBuffer?)\n        }\n')
+        self.assertEqual([(l, r) for l, r, _, _ in found], [(1, "compute-barrier"), (6, "compute-barrier")])
+        self.assertEqual(fixed, 'module += "b" to computeBarrier()\n'
+                                'module +=\n    "c" to\n        computeBarrier(graphics = true)\n')
+
+    def test_compute_barrier_keeps_tasks_that_do_more(self):
+        code = ("computeTask { _, cmd, _ ->\n    computeMemoryBarrier(cmd)\n    tmp.zero(cmd)\n}\n"
+                "computeTask { _, cmd, _ ->\n    graphicsMemoryBarrier(cmd)\n}\n"
+                "computeTask { _, cmd, _ ->\n    computeMemoryBarrier(cmd, buf)\n}\n")
+        self.assertEqual(self.run_on(code), ([], code))
+
+    def test_wall_projection_is_a_failure_without_a_rewrite(self):
+        code = 'm.push["worldToClip"] = afield.math.linalg.Matrix4f().ortho(-ww / 2f, ww / 2f, -wh / 2f, wh / 2f, -1f, 1f)\n'
+        self.assertEqual(self.run_on(code), ([(1, "wall-projection", False, True)], code))
+        clean = 'm.push["worldToClip"] = program.wall.worldToClip()\nm.push["view"] = Matrix4f().ortho(0f, 1f, 0f, 1f, -1f, 1f)\n'
+        self.assertEqual(self.run_on(clean), ([], clean))
+
+    def test_fullscreen_triangle_is_a_note(self):
+        code = "val t = Mesh(renderer, view)\nt.resize(3, 0, view)\nquad.resize(4, 6, view)\n"
+        self.assertEqual(self.run_on(code), ([(2, "fullscreen-triangle", False, False)], code))
+
+    def test_recorded_listings_are_not_rewritten(self):
+        page = ("<!-- demo-source:a -->\n```kotlin\nval s = \"%.2f\".format(x)\n```\n<!-- /demo-source:a -->\n"
+                "```kotlin\nval t = \"%.2f\".format(x)\n```\n")
+        found, fixed = self.run_on(page, "public/docs/page.md")
+        self.assertEqual(found, [(7, "fixed-format", True, True)])
+        self.assertIn('val s = "%.2f".format(x)', fixed)
+        self.assertIn("val t = x.f2", fixed)
+
+
 if __name__ == "__main__":
     unittest.main()
