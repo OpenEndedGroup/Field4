@@ -103,7 +103,7 @@ the reply fields that tell you when you have hit one of those limits.
 ## Where to go next
 
 - [Where to Go Next](staging.md) completes the Tour with a map of the rest of the documentation.
-- [How these pages are built](staging.md#how-these-pages-are-built) says how the docs
+- [Building the Docs & Running the Tests](building_and_testing.md) says how the docs
   build itself uses this machinery.
 - [Building & Testing](building_and_testing.md) covers the backdoor as a test harness.
 - For the complete reference — every operation, the observable results, and worked
