@@ -334,9 +334,9 @@ private fun initializeTemplateServers() {
  * `$home/templates`, bundled templates and cached remote names. Reads every document's
  * `metadata.edn` and sidecars, so in a real workspace this is hundreds of files.
  */
-internal fun listTemplatesWithMetadata(): Directory {
+internal fun listTemplatesWithMetadata(currentDocument: String? = null): Directory {
     val templates2 = SavingContext().listTemplates(app + "/templates/")
-    val templates = SavingContext().listTemplates(home)
+    val templates = workspaceDocumentsBesides(SavingContext().listTemplates(home), home, currentDocument)
     val templatesHome = SavingContext().listTemplates("$home/templates")
 
     // Include remote templates from all configured servers
@@ -386,6 +386,15 @@ internal fun listTemplatesWithMetadata(): Directory {
     )
 }
 
+/**
+ * The workspace documents the palette offers: all of [documents] except the one being edited,
+ * [currentDocument] (a document folder path), which inserting would only copy into itself.
+ */
+internal fun workspaceDocumentsBesides(documents: List<String>, home: String, currentDocument: String?): List<String> {
+    val current = currentDocument?.let { File(it).absoluteFile.normalize() } ?: return documents
+    return documents.filter { File(home, it).absoluteFile.normalize() != current }
+}
+
 /** The palette's reply to `request-templates`: [list]'s result, or an empty list when it throws. */
 internal fun templateListingOrEmpty(list: () -> Directory = ::listTemplatesWithMetadata): Directory =
     runCatching(list)
@@ -401,8 +410,9 @@ fun templating() {
         // This runs on the Netty event loop serving the page's websocket, and the listing reads every
         // document in the workspace. It touches no session state, so it runs off the loop and replies
         // from there; a throw still replies, with an empty list, so the palette is never left waiting.
+        val currentDocument = thisSessionInfo.get()?.filename
         templateIoScope.launch {
-            reply(Message("list").payload(templateListingOrEmpty()))
+            reply(Message("list").payload(templateListingOrEmpty { listTemplatesWithMetadata(currentDocument) }))
         }
         Handled.yes
     })

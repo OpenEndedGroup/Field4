@@ -24,4 +24,14 @@ class TemplateListingReplyTest {
         val listing = Directory(command = "list", value = listOf("a", "b"))
         assertSame(listing, templateListingOrEmpty { listing })
     }
+
+    @Test
+    fun theDocumentBeingEditedIsNotOffered() {
+        val home = "/tmp/ws"
+        assertEquals(
+            listOf("other"),
+            workspaceDocumentsBesides(listOf("other", "mine"), home, "/tmp/ws/mine")
+        )
+        assertEquals(listOf("other", "mine"), workspaceDocumentsBesides(listOf("other", "mine"), home, null))
+    }
 }

@@ -76,7 +76,7 @@ The palette names where each entry comes from:
 | --- | --- |
 | Workspace template | `templates/<name>.edn` (or a folder) in your workspace, which is where **Save selection as template** writes |
 | Bundled template | `templates/` in the Field checkout, such as `first-steps` and `first-graphics` |
-| Workspace file | another document in your workspace: inserting it copies all of its boxes into this one |
+| Workspace file | another document in your workspace (not the one you are in): inserting it copies all of its boxes into this one |
 | Remote template | a template server you configured (see [Share templates](#share-templates)) |
 
 When two entries have the same name, a workspace template is inserted before a bundled one, and a
