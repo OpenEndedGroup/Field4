@@ -9,8 +9,9 @@ import kotlin.test.assertEquals
  * Field formats with ktfmt's kotlinlang style on its experimental engine, where a multi-line call
  * stays on the line it starts (`val xs = listOf(` ... `)`). The jar Field ships carries a patch that
  * gives collection literals the same treatment, so a literal formats exactly as `listOf(...)` in the
- * same position with `[`/`]` in place of `listOf(`/`)`. A jar without that patch, or the stock engine,
- * fails here.
+ * same position with `[`/`]` in place of `listOf(`/`)`, and the first call chained onto either stays on
+ * the closing bracket's line (`].forEach {`, `).map {`). A jar without those patches, or the stock
+ * engine, fails here.
  */
 class KotlinFormatterCollectionLiteralTest {
 
@@ -32,12 +33,23 @@ class KotlinFormatterCollectionLiteralTest {
 
     @Test
     fun aChainedLiteralFormatsLikeTheSameListOfCall() {
-        // The engine keeps `]`/`)` at column 0 and puts the chained call on the next line, indented.
-        val expected = "[\n$looks\n]\n    .forEach { (name, v, note) ->\n        println(name)\n    }\n"
-        val literal = formatKotlinCode("[\n$looks\n].forEach { (name, v, note) ->\n    println(name)\n}\n")
+        // The first chained call stays on the closing bracket's line; later links go one per line at +4.
+        val expected = "[\n$looks\n].forEach { (name, v, note) ->\n    println(name)\n}\n"
+        val literal = formatKotlinCode("[\n$looks\n]\n    .forEach { (name, v, note) ->\n        println(name)\n    }\n")
         assertEquals(expected, literal)
         assertEquals(asCalls(expected), formatKotlinCode(asCalls(expected)))
         assertEquals(literal, formatKotlinCode(literal))
+    }
+
+    @Test
+    fun laterLinksOfABlockLikeChainGoOnePerLine() {
+        val code = "val r = listOf(\n    a,\n    b,\n).map { it * 2 }.filter { it > 0 }.sortedBy { -it }\n"
+        val expected = "val r = listOf(\n    a,\n    b,\n).map { it * 2 }\n    .filter { it > 0 }\n    .sortedBy { -it }\n"
+        assertEquals(expected, formatKotlinCode(code))
+        assertEquals(expected, formatKotlinCode(expected))
+        // A root that fits on one line is not block-like and keeps its one-line chain.
+        val short = "val s = listOf(a, b).map { it * 2 }.filter { it > 0 }\n"
+        assertEquals(short, formatKotlinCode(short))
     }
 
     @Test

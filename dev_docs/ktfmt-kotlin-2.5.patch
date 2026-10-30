@@ -61,6 +61,55 @@ index 0000000..b86f9d4
 +
 +val KtDestructuringDeclarationEntry.ownValOrVarKeywordText: String?
 +  get() = ownValOrVarKeyword?.text
+diff --git a/core/src/main/kotlin/org/jetbrains/ktfmt/format/visitor/CallFormatter.kt b/core/src/main/kotlin/org/jetbrains/ktfmt/format/visitor/CallFormatter.kt
+index 9b202b4..ea3dfd8 100644
+--- a/core/src/main/kotlin/org/jetbrains/ktfmt/format/visitor/CallFormatter.kt
++++ b/core/src/main/kotlin/org/jetbrains/ktfmt/format/visitor/CallFormatter.kt
+@@ -345,23 +345,29 @@ internal open class CallFormatterImpl : CallFormatter {
+     }
+     format(parts[0])
+ 
++    // The first link stays on the root's closing bracket line (`].filter { ... }`, `).map { ... }`);
++    // every later link goes on its own line, one block indent in.
++    fun emitPart(part: KtQualifiedExpression) {
++      builder.token(part.operationSign.value)
++      val selectorExpression = part.selectorExpression
++      if (selectorExpression is KtCallExpression) {
++        format(selectorExpression.calleeExpression)
++        formatFunctionCall(
++            null,
++            selectorExpression.typeArgumentList,
++            selectorExpression.valueArgumentList,
++            selectorExpression.trailingLambda,
++        )
++      } else {
++        format(selectorExpression)
++      }
++    }
++
++    if (parts.size > 1) emitPart(parts[1] as KtQualifiedExpression)
+     builder.block(expressionBreakIndent) {
+-      for (i in 1 until parts.size) {
+-        val part = parts[i] as KtQualifiedExpression
++      for (i in 2 until parts.size) {
+         builder.forcedBreak()
+-        builder.token(part.operationSign.value)
+-        val selectorExpression = part.selectorExpression
+-        if (selectorExpression is KtCallExpression) {
+-          format(selectorExpression.calleeExpression)
+-          formatFunctionCall(
+-              null,
+-              selectorExpression.typeArgumentList,
+-              selectorExpression.valueArgumentList,
+-              selectorExpression.trailingLambda,
+-          )
+-        } else {
+-          format(selectorExpression)
+-        }
++        emitPart(parts[i] as KtQualifiedExpression)
+       }
+     }
+   }
 diff --git a/core/src/main/kotlin/org/jetbrains/ktfmt/format/visitor/PsiUtils.kt b/core/src/main/kotlin/org/jetbrains/ktfmt/format/visitor/PsiUtils.kt
 index a891d29..d30b601 100644
 --- a/core/src/main/kotlin/org/jetbrains/ktfmt/format/visitor/PsiUtils.kt
@@ -130,6 +179,292 @@ index a891d29..d30b601 100644
  val KtValueArgument.isBlockLikeArgument: Boolean
    get() {
      val argumentExpression = getArgumentExpression()
+diff --git a/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/callRoot.input b/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/callRoot.input
+new file mode 100644
+index 0000000..c11b821
+--- /dev/null
++++ b/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/callRoot.input
+@@ -0,0 +1,11 @@
++fun f() {
++    listOf(
++        a,
++        b,
++    ).map { it * 2 }
++    val r = listOf(
++        a,
++        b,
++    )
++        .map { it * 2 }
++}
+diff --git a/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/callRoot.new.output b/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/callRoot.new.output
+new file mode 100644
+index 0000000..8a3f17a
+--- /dev/null
++++ b/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/callRoot.new.output
+@@ -0,0 +1,10 @@
++fun f() {
++    listOf(
++        a,
++        b,
++    ).map { it * 2 }
++    val r = listOf(
++        a,
++        b,
++    ).map { it * 2 }
++}
+diff --git a/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/callRoot.output b/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/callRoot.output
+new file mode 100644
+index 0000000..96705ce
+--- /dev/null
++++ b/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/callRoot.output
+@@ -0,0 +1,13 @@
++fun f() {
++    listOf(
++            a,
++            b,
++        )
++        .map { it * 2 }
++    val r =
++        listOf(
++                a,
++                b,
++            )
++            .map { it * 2 }
++}
+diff --git a/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/chainOfThree.input b/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/chainOfThree.input
+new file mode 100644
+index 0000000..1c373ce
+--- /dev/null
++++ b/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/chainOfThree.input
+@@ -0,0 +1,4 @@
++val r = listOf(
++    a,
++    b,
++).map { it * 2 }.filter { it > 0 }.sortedBy { -it }
+diff --git a/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/chainOfThree.new.output b/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/chainOfThree.new.output
+new file mode 100644
+index 0000000..0e83ce0
+--- /dev/null
++++ b/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/chainOfThree.new.output
+@@ -0,0 +1,6 @@
++val r = listOf(
++    a,
++    b,
++).map { it * 2 }
++    .filter { it > 0 }
++    .sortedBy { -it }
+diff --git a/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/chainOfThree.output b/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/chainOfThree.output
+new file mode 100644
+index 0000000..4580244
+--- /dev/null
++++ b/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/chainOfThree.output
+@@ -0,0 +1,8 @@
++val r =
++    listOf(
++            a,
++            b,
++        )
++        .map { it * 2 }
++        .filter { it > 0 }
++        .sortedBy { -it }
+diff --git a/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/literalRoot.input b/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/literalRoot.input
+new file mode 100644
+index 0000000..c93aa11
+--- /dev/null
++++ b/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/literalRoot.input
+@@ -0,0 +1,13 @@
++// FILE_TYPE SCRIPT
++
++val backend = [
++    Path.of("build/ken-ceres-redistributable/libken_ceres_jvm.dylib"),
++    Path.of("build/ken-ceres/libken_ceres_jvm.dylib"),
++].filter { Files.exists(it) }.firstNotNullOfOrNull { path -> runCatching { FfmCeresBackend(path) }.getOrNull() }
++
++[
++    Triple("soft", [3f, 0.20f, 1.5f], "first pass"),
++    Triple("hot", [9f, 0.80f, 0.6f], "too much"),
++].forEach { (name, v, note) ->
++    println(name)
++}
+diff --git a/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/literalRoot.new.output b/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/literalRoot.new.output
+new file mode 100644
+index 0000000..bb5a70c
+--- /dev/null
++++ b/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/literalRoot.new.output
+@@ -0,0 +1,14 @@
++// FILE_TYPE SCRIPT
++
++val backend = [
++    Path.of("build/ken-ceres-redistributable/libken_ceres_jvm.dylib"),
++    Path.of("build/ken-ceres/libken_ceres_jvm.dylib"),
++].filter { Files.exists(it) }
++    .firstNotNullOfOrNull { path -> runCatching { FfmCeresBackend(path) }.getOrNull() }
++
++[
++    Triple("soft", [3f, 0.20f, 1.5f], "first pass"),
++    Triple("hot", [9f, 0.80f, 0.6f], "too much"),
++].forEach { (name, v, note) ->
++    println(name)
++}
+diff --git a/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/literalRoot.output b/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/literalRoot.output
+new file mode 100644
+index 0000000..c5100bf
+--- /dev/null
++++ b/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/literalRoot.output
+@@ -0,0 +1,17 @@
++// FILE_TYPE SCRIPT
++
++val backend =
++    [
++            Path.of("build/ken-ceres-redistributable/libken_ceres_jvm.dylib"),
++            Path.of("build/ken-ceres/libken_ceres_jvm.dylib"),
++        ]
++        .filter { Files.exists(it) }
++        .firstNotNullOfOrNull { path -> runCatching { FfmCeresBackend(path) }.getOrNull() }
++
++[
++        Triple("soft", [3f, 0.20f, 1.5f], "first pass"),
++        Triple("hot", [9f, 0.80f, 0.6f], "too much"),
++    ]
++    .forEach { (name, v, note) ->
++        println(name)
++    }
+diff --git a/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/nestedRootInArgument.input b/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/nestedRootInArgument.input
+new file mode 100644
+index 0000000..d14bcb6
+--- /dev/null
++++ b/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/nestedRootInArgument.input
+@@ -0,0 +1,9 @@
++fun f() {
++    draw(
++        points = [
++            Vec2(0.0, 0.0),
++            Vec2(1.0, 0.0),
++        ].map { it * 2.0 },
++        closed = true,
++    )
++}
+diff --git a/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/nestedRootInArgument.new.output b/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/nestedRootInArgument.new.output
+new file mode 100644
+index 0000000..b451d62
+--- /dev/null
++++ b/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/nestedRootInArgument.new.output
+@@ -0,0 +1,10 @@
++fun f() {
++    draw(
++        points =
++            [
++                Vec2(0.0, 0.0),
++                Vec2(1.0, 0.0),
++            ].map { it * 2.0 },
++        closed = true,
++    )
++}
+diff --git a/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/nestedRootInArgument.output b/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/nestedRootInArgument.output
+new file mode 100644
+index 0000000..b8de2f6
+--- /dev/null
++++ b/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/nestedRootInArgument.output
+@@ -0,0 +1,11 @@
++fun f() {
++    draw(
++        points =
++            [
++                    Vec2(0.0, 0.0),
++                    Vec2(1.0, 0.0),
++                ]
++                .map { it * 2.0 },
++        closed = true,
++    )
++}
+diff --git a/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/rootFitsOnOneLine.input b/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/rootFitsOnOneLine.input
+new file mode 100644
+index 0000000..4249a70
+--- /dev/null
++++ b/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/rootFitsOnOneLine.input
+@@ -0,0 +1,4 @@
++val r = listOf(a, b).map { it * 2 }.filter { it > 0 }
++val s = [a, b].map { it * 2 }
++val t =
++    listOf(aaaaaaaaaaaaaaaaaaaaaaaaaa, bbbbbbbbbbbbbbbbbbbbbbbbbbbbbb, cccccccccccccccccccccc).map { it * 2 }
+diff --git a/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/rootFitsOnOneLine.new.output b/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/rootFitsOnOneLine.new.output
+new file mode 100644
+index 0000000..657f920
+--- /dev/null
++++ b/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/rootFitsOnOneLine.new.output
+@@ -0,0 +1,6 @@
++val r = listOf(a, b).map { it * 2 }.filter { it > 0 }
++val s = [a, b].map { it * 2 }
++val t =
++    listOf(aaaaaaaaaaaaaaaaaaaaaaaaaa, bbbbbbbbbbbbbbbbbbbbbbbbbbbbbb, cccccccccccccccccccccc).map {
++        it * 2
++    }
+diff --git a/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/rootFitsOnOneLine.output b/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/rootFitsOnOneLine.output
+new file mode 100644
+index 0000000..657f920
+--- /dev/null
++++ b/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/rootFitsOnOneLine.output
+@@ -0,0 +1,6 @@
++val r = listOf(a, b).map { it * 2 }.filter { it > 0 }
++val s = [a, b].map { it * 2 }
++val t =
++    listOf(aaaaaaaaaaaaaaaaaaaaaaaaaa, bbbbbbbbbbbbbbbbbbbbbbbbbbbbbb, cccccccccccccccccccccc).map {
++        it * 2
++    }
+diff --git a/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/trailingLambdaRoot.input b/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/trailingLambdaRoot.input
+new file mode 100644
+index 0000000..3a73e6e
+--- /dev/null
++++ b/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/trailingLambdaRoot.input
+@@ -0,0 +1,11 @@
++fun f() {
++    foo(a) {
++        println(it)
++    }.bar()
++    foo(
++        a,
++        b,
++    ) {
++        println(it)
++    }.bar()
++}
+diff --git a/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/trailingLambdaRoot.new.output b/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/trailingLambdaRoot.new.output
+new file mode 100644
+index 0000000..4717618
+--- /dev/null
++++ b/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/trailingLambdaRoot.new.output
+@@ -0,0 +1,12 @@
++fun f() {
++    foo(a) {
++            println(it)
++        }
++        .bar()
++    foo(
++        a,
++        b,
++    ) {
++        println(it)
++    }.bar()
++}
+diff --git a/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/trailingLambdaRoot.output b/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/trailingLambdaRoot.output
+new file mode 100644
+index 0000000..9d73cf1
+--- /dev/null
++++ b/core/src/test/resources/cases/kotlinlang/chainedBlockLikeRoot/trailingLambdaRoot.output
+@@ -0,0 +1,13 @@
++fun f() {
++    foo(a) {
++            println(it)
++        }
++        .bar()
++    foo(
++            a,
++            b,
++        ) {
++            println(it)
++        }
++        .bar()
++}
 diff --git a/core/src/test/resources/cases/kotlinlang/collectionLiterals/asCallArgument.input b/core/src/test/resources/cases/kotlinlang/collectionLiterals/asCallArgument.input
 new file mode 100644
 index 0000000..e50beae
@@ -235,10 +570,10 @@ index 0000000..0a3fa50
 +}
 diff --git a/core/src/test/resources/cases/kotlinlang/collectionLiterals/chainedForEach.new.output b/core/src/test/resources/cases/kotlinlang/collectionLiterals/chainedForEach.new.output
 new file mode 100644
-index 0000000..33a3a69
+index 0000000..e6c647c
 --- /dev/null
 +++ b/core/src/test/resources/cases/kotlinlang/collectionLiterals/chainedForEach.new.output
-@@ -0,0 +1,22 @@
+@@ -0,0 +1,20 @@
 +// FILE_TYPE SCRIPT
 +
 +val dir = "x"
@@ -249,18 +584,16 @@ index 0000000..33a3a69
 +    Triple("hot", [9f, 0.80f, 0.6f], "too much"),
 +    Triple("mid", [6f, 0.50f, 1.0f], "between the two"),
 +    Triple("wide", [12f, 0.35f, 2.2f], "for the long shot"),
-+]
-+    .forEach { (name, v, note) ->
-+        println(name)
-+    }
++].forEach { (name, v, note) ->
++    println(name)
++}
 +
 +listOf(
 +    Triple("soft", [3f, 0.20f, 1.5f], "first pass"),
 +    Triple("hot", [9f, 0.80f, 0.6f], "too much"),
-+)
-+    .forEach { (name, v, note) ->
-+        println(name)
-+    }
++).forEach { (name, v, note) ->
++    println(name)
++}
 diff --git a/core/src/test/resources/cases/kotlinlang/collectionLiterals/chainedForEach.output b/core/src/test/resources/cases/kotlinlang/collectionLiterals/chainedForEach.output
 new file mode 100644
 index 0000000..9452067
@@ -469,6 +802,100 @@ index 0000000..64dc43c
 +        [10, 11, 12],
 +        [13, 14, 15],
 +    ]
+diff --git a/core/src/test/resources/cases/new_codestyle/calls/gh633-2.new.output b/core/src/test/resources/cases/new_codestyle/calls/gh633-2.new.output
+index e38eca5..6e23220 100644
+--- a/core/src/test/resources/cases/new_codestyle/calls/gh633-2.new.output
++++ b/core/src/test/resources/cases/new_codestyle/calls/gh633-2.new.output
+@@ -10,12 +10,10 @@ fun quux() = listOf(
+     listOf(
+         "a",
+         "b",
+-    )
+-        .baz()
++    ).baz()
+         .bar(1, 2)
+         .fold { it.boom() }
+-)
+-    .baz()
++).baz()
+ 
+ fun quux() {
+     listOf(
+@@ -33,10 +31,8 @@ fun quux() {
+         listOf(
+             "a",
+             "b",
+-        )
+-            .baz()
++        ).baz()
+             .bar(1, 2)
+             .fold { it.boom() }
+-    )
+-        .baz()
++    ).baz()
+ }
+diff --git a/core/src/test/resources/cases/new_codestyle/calls/gh633.new.output b/core/src/test/resources/cases/new_codestyle/calls/gh633.new.output
+index a5ba497..5f92d04 100644
+--- a/core/src/test/resources/cases/new_codestyle/calls/gh633.new.output
++++ b/core/src/test/resources/cases/new_codestyle/calls/gh633.new.output
+@@ -11,16 +11,14 @@ fun f() {
+     foo(
+         1,
+         2,
+-    )
+-        .bar()
++    ).bar()
+ }
+ 
+ fun f() {
+     foo(
+         1,
+         2,
+-    )
+-        .bar()
++    ).bar()
+ }
+ 
+ val x = foo(
+@@ -31,8 +29,7 @@ val x = foo(
+ val x = foo(
+     1,
+     2,
+-)
+-    .bar()
++).bar()
+ 
+ val x by foo(
+     1,
+@@ -42,8 +39,7 @@ val x by foo(
+ val x by foo(
+     1,
+     2,
+-)
+-    .bar()
++).bar()
+ 
+ var x: Int
+     field = foo(
+@@ -55,8 +51,7 @@ var x: Int
+     field = foo(
+         1,
+         2,
+-    )
+-        .bar()
++    ).bar()
+ 
+ val x = // comment
+     foo(
+@@ -76,7 +71,6 @@ val x = foo(
+     bar(
+         1,
+         2,
+-    )
+-        .baz(),
++    ).baz(),
+     3,
+ )
 diff --git a/gradle/libs.versions.toml b/gradle/libs.versions.toml
 index c41da2b..e05fe95 100644
 --- a/gradle/libs.versions.toml
