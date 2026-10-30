@@ -30,20 +30,12 @@ window.fieldPublishDocument = async () => {
     previous?.remove();
     const panel = document.createElement('section'); panel.id = 'field-publication';
     panel.setAttribute('aria-label','Publish document');
-    // A FieldPanel shell (fieldPanel.kt, .field-panel in field.css): title, status, × close.
-    panel.className = 'field-panel is-visible'; panel.style.zIndex = '100000'; panel.style.width = 'min(440px, calc(100vw - 20px))';
-    const head = document.createElement('div'); head.className = 'field-panel-head';
-    const titles = document.createElement('div');
-    const title = document.createElement('div'); title.className = 'field-panel-title'; title.textContent = 'Publish document';
-    const status = document.createElement('div'); status.className = 'field-panel-status'; status.setAttribute('role','status');
-    titles.append(title, status);
-    const close = document.createElement('button'); close.type = 'button'; close.className = 'field-panel-icon'; close.textContent = '×';
-    close.title = 'Close'; close.setAttribute('aria-label', 'Close'); close.onclick = () => panel.remove();
-    head.append(titles, close);
-    const body = document.createElement('div'); body.className = 'field-panel-body';
-    const actions = document.createElement('div'); actions.className = 'field-panel-actions';
-    body.append(actions);
-    panel.append(head, body); document.body.append(panel);
+    panel.style.cssText = 'position:fixed;right:24px;top:70px;z-index:100000;max-width:440px;max-height:75vh;overflow:auto;padding:20px;background:#080808;color:#ddd;border:1px solid #555;font:13px "Iosevka Web",monospace;box-shadow:0 8px 32px #000';
+    const title = document.createElement('strong'); title.textContent = 'Publish document';
+    const status = document.createElement('p'); status.setAttribute('role','status');
+    const close = document.createElement('button'); close.textContent = 'Close'; close.onclick = () => panel.remove();
+    close.style.cssText = 'background:#111;color:#ddd;border:1px solid #555;padding:6px 12px;font:inherit';
+    panel.append(title,status,close); document.body.append(panel);
     panel.addEventListener('keydown', e => {if(e.key === 'Escape') panel.remove(); e.stopPropagation();});
     panel.addEventListener('mousedown', e => e.stopPropagation());
     try {
@@ -52,14 +44,14 @@ window.fieldPublishDocument = async () => {
         status.textContent = `${captured}/${result.manifest.outputs.length} outputs captured. Code and notes included.`;
         const description = document.createElement('p');
         description.textContent = 'Download, unzip, and upload the folder to any static web host. Plot data and 3D geometry are frozen; Three.js views retain orbit, parts and X-ray.';
-        body.insertBefore(description,actions);
+        panel.insertBefore(description,close);
         if (result.warnings.length) {
             const warnings = document.createElement('ul');
             for (const warning of result.warnings) {const row = document.createElement('li');row.textContent = warning;warnings.append(row);}
-            body.insertBefore(warnings,actions);
+            panel.insertBefore(warnings,close);
         }
-        const save = document.createElement('button'); save.type = 'button'; save.textContent = 'Download web publication (.zip)';
+        const save = close.cloneNode(); save.textContent = 'Download web publication (.zip)';
         save.onclick = () => download(result.blob,result.manifest.documentName);
-        actions.append(save);
+        panel.insertBefore(save,close); close.style.marginLeft = '8px';
     } catch (error) {status.textContent = `Publication failed: ${error.message}`;}
 };
