@@ -4155,8 +4155,11 @@
                     return;
                 }
                 // Escape closes the panel, as it does every Field panel; a text field keeps its own.
+                // Only for keys aimed at this panel: the listener is also on the parent window (for
+                // the arrow keys), and an Escape there belongs to whatever has focus in Field.
                 if (
                     (event.key === "Escape" || event.key === "Esc") &&
+                    (event.target === document || event.target?.ownerDocument === document) &&
                     !event.defaultPrevented &&
                     !textEditingShortcutTarget(event.target)
                 ) {
