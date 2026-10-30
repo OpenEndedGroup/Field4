@@ -1633,17 +1633,17 @@
     },
     "assets/agent_transcripts/keyframe_code_blend/metadata.edn": {
       "captureDigest": "d1d480e4a96ffb92bbe0276a6b4e731b8ded2572574a83bb2e39cd347acff689",
-      "capturedAt": "2026-10-30T22:54:27.040Z",
+      "capturedAt": "2026-10-30T23:14:39.160Z",
       "channels": 5,
       "file": "assets/web_publications/keyframe_code_blend/document/metadata.edn",
       "files": {
-        "assets/web_publications/keyframe_code_blend/document/metadata.edn": "f206987b045f169c6441de96831aa704db2b8457a9af2d36b55698373fede4e9",
-        "assets/web_publications/keyframe_code_blend/document/outputs.json": "baf1f7e0d7f73b85fcad94049a7e1ea900bb8dfcc081f67fbf561637ea7b54e9",
-        "assets/web_publications/keyframe_code_blend/outputs/0.html": "878c75bcffec6725f18b52ab5a66f27e8b545ea52348646a34ff486dbce86fb3",
-        "assets/web_publications/keyframe_code_blend/outputs/1.html": "1e322f5eb91c46ed1ed3d145164f9f7cd6727ab74633cb1eff871d26c8b3dae6",
-        "assets/web_publications/keyframe_code_blend/outputs/2.html": "99dcb8a56dd7a09a5e4ab4d38d9e3970ef9768db8e7c6f3ea59fac3cbfba56a7",
-        "assets/web_publications/keyframe_code_blend/outputs/3.html": "5ac835d94ae5bb2b2c362a8abcd672d08688d332c270d69a6668568c0993c774",
-        "assets/web_publications/keyframe_code_blend/outputs/4.html": "50b8f6093bda3b2c04e7e585803809cb08662c2b538d92851e7a35d0eb189876"
+        "assets/web_publications/keyframe_code_blend/document/metadata.edn": "f20e93029e541162b6285625ae15e203ba9d7303d88738311d912fed3f4a4ae7",
+        "assets/web_publications/keyframe_code_blend/document/outputs.json": "b701f89d28d6a37958cf84bf464f400cb64c1b509cb74505b1a16aeeb40e01f9",
+        "assets/web_publications/keyframe_code_blend/outputs/0.html": "0492a8bebf5bbd126ff1ec0328d333fef55a77eef942a98705e50859622ee2fd",
+        "assets/web_publications/keyframe_code_blend/outputs/1.html": "c25d7dec9d4c4fcbf68875b10891571b26f646146f8217bacc73951b5f25b42e",
+        "assets/web_publications/keyframe_code_blend/outputs/2.html": "e9d36bb76bfe21b4a74a88801f3bfd90fcae069ab914a8d82cd80f096bac9037",
+        "assets/web_publications/keyframe_code_blend/outputs/3.html": "64355c5ed7c2d0af8d03f157eaae056d13c8007673055b32041ceb56c65876d2",
+        "assets/web_publications/keyframe_code_blend/outputs/4.html": "afdc3d618f0d0cc1ced5d19f0adb4d663ab086a3b2318c5718ad15d9b12e2b5d"
       },
       "kinds": [],
       "outputs": "assets/web_publications/keyframe_code_blend/document/outputs.json",
@@ -1651,11 +1651,11 @@
         "dev_docs/agents/transcripts/keyframe_code_blend.yaml": "9d3dce584b22e02eea93e15cf60ec221bee8a0971b55159b055c049d88a8df46",
         "public/docs/assets/agent_transcripts/keyframe_code_blend/guides/keyframer_examples-blending-two-programs-not-just-two-numbers.md": "b1581d6012efb5191cdf4d94429231a2112e480a0ba67ee5a5806f204a55427e",
         "public/docs/assets/agent_transcripts/keyframe_code_blend/kfb_breakdown_code_.kt": "c052a08b57783c87dd8d2839c1604776944a38a9f8776ca9d0470ac4ef0aa767",
-        "public/docs/assets/agent_transcripts/keyframe_code_blend/kfb_kotlin_code_.kt": "19e48fb2d211f15a787ba7b8b78e7405e85930569901110bfd9c1f0347616a71",
+        "public/docs/assets/agent_transcripts/keyframe_code_blend/kfb_kotlin_code_.kt": "db738d9e27c4faf4f03802e28dc1072145eb380088ebc2678021d9a5f46f53dd",
         "public/docs/assets/agent_transcripts/keyframe_code_blend/kfb_kotlin_run_code_.kt": "87789dc4fdf68d30f3e2f6fbf7e1adcee909f44523b6376f89f80b81d8eaec80",
         "public/docs/assets/agent_transcripts/keyframe_code_blend/kfb_runtime_code_.kt": "5728e66705249b8e5d034c47f8e8a1f03567b7c77594df387912a922408eb1d2",
         "public/docs/assets/agent_transcripts/keyframe_code_blend/kfb_static_code_.kt": "9cbdf2c69aab6c9aaec87624a7e1e9b568f1b61bfc68b846f32b26bd4beeec8a",
-        "public/docs/assets/agent_transcripts/keyframe_code_blend/metadata.edn": "0f752a5978b22d425f7166ff30ae34329e42036eb6f3d420896b0f41dd897ad0"
+        "public/docs/assets/agent_transcripts/keyframe_code_blend/metadata.edn": "4b7ef88ea1e72e9c4e26aa724d36a910099296333af81ea8b297c04539dca4f2"
       }
     },
     "assets/agent_transcripts/keyframe_editor/metadata.edn": {
@@ -1688,16 +1688,16 @@
     },
     "assets/agent_transcripts/keyframe_key_discovery/metadata.edn": {
       "captureDigest": "d1d480e4a96ffb92bbe0276a6b4e731b8ded2572574a83bb2e39cd347acff689",
-      "capturedAt": "2026-10-30T22:54:30.630Z",
+      "capturedAt": "2026-10-30T23:14:45.385Z",
       "channels": 4,
       "file": "assets/web_publications/keyframe_key_discovery/document/metadata.edn",
       "files": {
         "assets/web_publications/keyframe_key_discovery/document/metadata.edn": "daf67d89a2c694f03ad1ad4c5cdb7dadd4c2b1f4187a35409520224375fd8419",
-        "assets/web_publications/keyframe_key_discovery/document/outputs.json": "8ddf8a4169fd2e08c3d0abcad2caa8ee52a8ea97abd70d5bd2837c1941186f98",
-        "assets/web_publications/keyframe_key_discovery/outputs/0.html": "238150ba6bf588f095608c1c792ecae8ce663e1a2a1a1259507fadbc0dd55814",
-        "assets/web_publications/keyframe_key_discovery/outputs/1.html": "079af8a81d9d4a2d3e338847bd29b5b9e154d54de830fa6d13f971c3117e9a77",
-        "assets/web_publications/keyframe_key_discovery/outputs/2.html": "483efcb7b530052c5a8021b93a434a050458174272abeac8e4f01fde59ba2e9e",
-        "assets/web_publications/keyframe_key_discovery/outputs/3.html": "bf2f4f647c286ca91ae405c44d1964956e2417f3de16ffbafd7f5630715a9a38"
+        "assets/web_publications/keyframe_key_discovery/document/outputs.json": "820e37a4f3f7c994ab98eae2f773cd9d9d34092ded70c2fe215347f229e538e0",
+        "assets/web_publications/keyframe_key_discovery/outputs/0.html": "7edafd08a58482b5d597b18514a939a1d654bfa95493b5a262c7b0e9d2d4d62f",
+        "assets/web_publications/keyframe_key_discovery/outputs/1.html": "3a09d9372560554589f0dee461d9263903c270cb704564d801c81b8951676dc7",
+        "assets/web_publications/keyframe_key_discovery/outputs/2.html": "50439231930ee89016109cdd5bb349846019647a52c6a52a06b481c32cc6831d",
+        "assets/web_publications/keyframe_key_discovery/outputs/3.html": "8b232c565f18910298b1e1aa42ef7e4cd6b00f157366cd0a2f0d844b41d62f4c"
       },
       "kinds": [],
       "outputs": "assets/web_publications/keyframe_key_discovery/document/outputs.json",
@@ -1705,24 +1705,24 @@
         "dev_docs/agents/transcripts/keyframe_key_discovery.yaml": "a8617996fbb2bfb4041911e41eff5b935242c0bab9e8cb76148e36cdfeba2390",
         "public/docs/assets/agent_transcripts/keyframe_key_discovery/guides/keyframer_examples.md": "8b6bafa93792e9b2e19e7409aed9df37529e07dba3278de79f3324047a467808",
         "public/docs/assets/agent_transcripts/keyframe_key_discovery/kf_before_after_code_.kt": "20d5a8d98ac8f3045120b476dd8a1fc75eaf718cac2154bb3ce368916296d1de",
-        "public/docs/assets/agent_transcripts/keyframe_key_discovery/kf_junk_vs_damage_code_.kt": "63d54af3595e5bf71459a0db3f831263c1bc4395ce78488a56fb80087cea2977",
+        "public/docs/assets/agent_transcripts/keyframe_key_discovery/kf_junk_vs_damage_code_.kt": "e0d773cf15f0628ee2abca916136d6de07ee32cdfa8c0302160d89409e09b6b9",
         "public/docs/assets/agent_transcripts/keyframe_key_discovery/kf_orphaned_slots_code_.kt": "e7965aa2397180bacb32e2ab562b3f969dc19bfc09109ab7f7f857d1a4de49da",
-        "public/docs/assets/agent_transcripts/keyframe_key_discovery/metadata.edn": "9db606f705ec3a0690efacae5dba89a0f1845d15f5c55a22af3b7c37de606d21"
+        "public/docs/assets/agent_transcripts/keyframe_key_discovery/metadata.edn": "c24106ac3015afdc6b12e46a28828159a4c2175d3910adba1f0129b8631c83ce"
       }
     },
     "assets/agent_transcripts/keyframer_worked_example/metadata.edn": {
       "captureDigest": "d1d480e4a96ffb92bbe0276a6b4e731b8ded2572574a83bb2e39cd347acff689",
-      "capturedAt": "2026-10-30T22:54:35.868Z",
+      "capturedAt": "2026-10-30T23:14:51.715Z",
       "channels": 5,
       "file": "assets/web_publications/keyframer_worked_example/document/metadata.edn",
       "files": {
         "assets/web_publications/keyframer_worked_example/document/metadata.edn": "a7e1a44cedd63f033ff20858545375af58a65a9aad41c773a6c3ca304c7f070a",
-        "assets/web_publications/keyframer_worked_example/document/outputs.json": "b237dfb846e4b11849f6ec15cd3faac9a255549b430af86a35ec80ec2e79515b",
-        "assets/web_publications/keyframer_worked_example/outputs/0.html": "e6ad40f381631a9bec397bcfa1c4b99c99f18590c398a85272e53917384b36f1",
-        "assets/web_publications/keyframer_worked_example/outputs/1.html": "0123bde7cfd961c186c10dfc8fae1e0e24fc95d25d1de058a3d5e2ebe5ae6bae",
-        "assets/web_publications/keyframer_worked_example/outputs/2.html": "7e9d3ceb2c53b4e92816ed938f0f8623d266591c277180c697c07543264dca13",
-        "assets/web_publications/keyframer_worked_example/outputs/3.html": "8109f4d9d63cf6197b38444a8630f0861a9c44dbf3d09f03e57489478c7d90b9",
-        "assets/web_publications/keyframer_worked_example/outputs/4.html": "2d31a26f1318b5843d5c8a5724b287f59fb3d1f6bb6522857f6ba22bcafefb66"
+        "assets/web_publications/keyframer_worked_example/document/outputs.json": "b1298b69e977aa7697dca668f0274b028a1f5662d7cea1707d643c7c4d57b13c",
+        "assets/web_publications/keyframer_worked_example/outputs/0.html": "3070a27c74ddb91cd6689bd569dfc3206a85f1adea88006df7533a8759c09b7a",
+        "assets/web_publications/keyframer_worked_example/outputs/1.html": "f02639445d21d28a7287c746a9554696ce6079c6b736b95bd99777b1b870533c",
+        "assets/web_publications/keyframer_worked_example/outputs/2.html": "93f32273bb7373362018a51ebb5498f606d37cde507292e38aa5ac8019f449bf",
+        "assets/web_publications/keyframer_worked_example/outputs/3.html": "61bc5646e7554923b2c283686313559c0f5b5a21b1e9d9d3e1140dc6d2e4937b",
+        "assets/web_publications/keyframer_worked_example/outputs/4.html": "cc1e0b3dcf1146528df858ed488319bb447b9d15fcb35b9c4d4fdcc457bca216"
       },
       "kinds": [
         "svg"
@@ -1731,11 +1731,11 @@
       "sources": {
         "dev_docs/agents/transcripts/keyframer_worked_example.yaml": "8ee864813b08b40658f56117e061a968e4bb906041d030c4f082e4a056a01cbe",
         "public/docs/assets/agent_transcripts/keyframer_worked_example/guides/keyframer_examples.md": "c56cf45f502640ec3fdde4734496047ba624733a9b12a80c64a3bf877b6fb9c9",
-        "public/docs/assets/agent_transcripts/keyframer_worked_example/keyframe_camera_code_.kt": "6c311feacda5a4d87c1080a51ff0fc14c171459ccc895872078545a6826eb27e",
+        "public/docs/assets/agent_transcripts/keyframer_worked_example/keyframe_camera_code_.kt": "b7f469a649660da8c247e2b758cae0edfbea4a67a4a12849e6b4986168767490",
         "public/docs/assets/agent_transcripts/keyframer_worked_example/keyframe_persist_code_.kt": "269a651935f1a84ce36743954a85282070b51120947d441271cd36c6c04afdfd",
         "public/docs/assets/agent_transcripts/keyframer_worked_example/keyframe_targets_code_.kt": "f700b7811c1caa0ca068cb9ab2157e4d288fffd8d157cddc1a4ece464880f0ad",
         "public/docs/assets/agent_transcripts/keyframer_worked_example/keyframe_updatecode_code_.kt": "039958d95c92df04be873ac5f55ec63466ee7a24b731b42979157f242e4b4c4d",
-        "public/docs/assets/agent_transcripts/keyframer_worked_example/metadata.edn": "456deb601f8f81866ca70454702fde4ca44194950c5928d3c0916af57cbd1999"
+        "public/docs/assets/agent_transcripts/keyframer_worked_example/metadata.edn": "4209c17f7b9e2816f1c90165aa4b6d7b01d8d6366913028a6f9c462ad0915f45"
       }
     },
     "assets/agent_transcripts/kolakoski_euclid/metadata.edn": {
