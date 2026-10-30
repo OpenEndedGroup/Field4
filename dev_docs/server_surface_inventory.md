@@ -301,7 +301,7 @@ the file, and the reach is described per file below in prose that a human checke
 | --- | --- |
 | `Server.kt` | 55 |
 | `agent_backdoor.kt` | 26 |
-| `history.kt` | 13 |
+| `history.kt` | 14 |
 | `executing.kt` | 10 |
 | `Ai4Installer.kt` | 10 |
 | `importing.kt` | 4 |
@@ -456,6 +456,7 @@ reach to a client that `agent-eval` and `launch-all` already let run arbitrary c
 | `glsl-context` | `Server.kt` |
 | `hello` | `Server.kt` |
 | `hello_chat` | `Ai4Installer.kt` |
+| `history-box-story` | `history.kt` |
 | `history-line-churn` | `history.kt` |
 | `history-property-version` | `history.kt` |
 | `history-rail-line-stats` | `history.kt` |
