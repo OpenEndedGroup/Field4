@@ -1948,7 +1948,15 @@ class RunnerState:
         # The warm-session daemon holds a WebSocket to this server; it is now stale.
         self._stop_session(reason="shared server restart")
         self._stop_shared_field_server()
+        self._remove_fresh_documents_again()
         self._ensure_shared_field_server()
+
+    def _remove_fresh_documents_again(self) -> None:
+        """A stopping Field saves every document it still holds, so the fresh documents the captures
+        already removed come back when the shared server stops; remove them once more."""
+        workspace = runner_workspace(self.repo_root)
+        for document in sorted(getattr(self, "_fresh_documents", set())):
+            remove_fresh_document(workspace, document, settle=0)
 
     # ----- Warm-session daemon (opt-in) -------------------------------------
     def _ensure_session(self) -> Path | None:
@@ -2300,6 +2308,7 @@ class RunnerState:
             finally:
                 try:
                     self._stop_shared_field_server()
+                    self._remove_fresh_documents_again()
                 finally:
                     self._stop_semantic_sidecar()
                     if self.environment is not None:
@@ -2427,19 +2436,31 @@ class RunnerState:
         # Remember which backdoor invocation this was, so a failure diagnosis can find
         # *its* client log instead of whichever recent one happens to contain an error.
         self._last_capture_child_pid = None
-        completed, duration_ms, timed_out = run_with_watchdog(
-            command,
-            cwd=self.repo_root,
-            timeout=outer_timeout,
-            heartbeat_interval=8.0,
-            heartbeat=lambda message: LOG.info("Field docs runner%s", message),
-            label=label,
-            completion_probe=commands_complete,
-            exit_grace=10.0,
-            input_text=input_text,
-            on_start=self._remember_capture_child_pid,
-            check_environment=getattr(self, "_capture_environment_check", None),
-        )
+        try:
+            completed, duration_ms, timed_out = run_with_watchdog(
+                command,
+                cwd=self.repo_root,
+                timeout=outer_timeout,
+                heartbeat_interval=8.0,
+                heartbeat=lambda message: LOG.info("Field docs runner%s", message),
+                label=label,
+                completion_probe=commands_complete,
+                exit_grace=10.0,
+                input_text=input_text,
+                on_start=self._remember_capture_child_pid,
+                check_environment=getattr(self, "_capture_environment_check", None),
+            )
+        finally:
+            # A fresh-document capture made a real document in the runner's workspace. Left there it
+            # shows up in that workspace's lists (the cmd+t palette offers every document as a
+            # "Workspace file"), so the next capture photographs it.
+            if options.fresh_document:
+                document = command_document(command)
+                if document:
+                    if not hasattr(self, "_fresh_documents"):
+                        self._fresh_documents = set()
+                    self._fresh_documents.add(document)
+                remove_fresh_document(runner_workspace(self.repo_root), document)
         if timed_out:
             emitted = len(parse_backdoor_results(completed.stdout))
             reason = (
@@ -5353,6 +5374,58 @@ def build_audio_backdoor_command(
     return command
 
 
+FRESH_DOCUMENT_NAME = re.compile(r"[A-Za-z0-9._-]+-[0-9a-f]{8}")
+
+
+def runner_workspace(repo_root: Path) -> Path:
+    """The workspace the runner's Field serves: `RUNNER_WORKSPACE_ENV`, else the checkout's automation workspace."""
+    return Path(os.environ.get(RUNNER_WORKSPACE_ENV) or str(automation_workspace(repo_root)))
+
+
+def command_document(command: list[str]) -> str | None:
+    """The `--document` a backdoor command line names, if any."""
+    for i, arg in enumerate(command[:-1]):
+        if arg == "--document":
+            return command[i + 1]
+    return None
+
+
+def remove_fresh_document(workspace: Path, document: str | None, settle: float = 6.0) -> bool:
+    """Delete the document folder a `fresh-document=true` capture created: only a name shaped like
+    [invocation_document]'s (`<name>-<8 hex>`), and only directly inside [workspace]."""
+    if not document or not FRESH_DOCUMENT_NAME.fullmatch(document):
+        return False
+    root = workspace.resolve()
+    target = (root / document).resolve()
+    if target.parent != root or not target.is_dir():
+        return False
+    # Field writes a document again after the capture process exits: when its last client detaches,
+    # and on the next tick of the 5 s autosave. Either puts the folder back, so remove it, then keep
+    # removing it until it has stayed gone for [settle] seconds, longer than one autosave period.
+    deadline = time.monotonic() + settle
+    while True:
+        if target.exists():
+            shutil.rmtree(target, ignore_errors=True)
+            deadline = time.monotonic() + settle
+        if time.monotonic() >= deadline:
+            break
+        time.sleep(0.25)
+    LOG.info("Field docs runner removed fresh document %s", target)
+    return not target.exists()
+
+
+def fresh_document_release_commands(options: RunnerOptions) -> list[str]:
+    """Last commands of a `fresh-document=true` capture: take the shared capture page off the document.
+
+    The page outlives the capture, and while it is still connected the document stays open; Field
+    writes it again when the page finally leaves it, during the *next* capture, after the runner has
+    removed it. Leaving it here makes that last write happen before [remove_fresh_document] runs.
+    """
+    if not options.fresh_document:
+        return []
+    return [shlex.join(["page-eval", "--body", "location.href = 'about:blank'; return true", "--wait-ms", "500"])]
+
+
 def invocation_document(options: RunnerOptions) -> str | None:
     """The document a capture runs in: `document=`, or a new uniquely named one for `fresh-document`."""
     if not options.fresh_document:
@@ -5456,6 +5529,7 @@ def build_backdoor_command(
             "macro", "run", transcript_name,
             "--timeout", str(options.timeout),
         ]))
+        backdoor_commands.extend(fresh_document_release_commands(options))
         for command_line in backdoor_commands:
             command.extend(["--command", command_line])
         return BackdoorInvocation(
@@ -5809,6 +5883,7 @@ def build_backdoor_command(
         ]))
     if options.expects_error:
         backdoor_commands = [waive_execution_verdict(line) for line in backdoor_commands]
+    backdoor_commands.extend(fresh_document_release_commands(options))
     for command_line in backdoor_commands:
         command.extend(["--command", command_line])
     session_eligible = (

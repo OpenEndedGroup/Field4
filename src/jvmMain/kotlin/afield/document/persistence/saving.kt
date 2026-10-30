@@ -234,6 +234,34 @@ class SavingContext {
         }, upgradeOnLoad = false)
     }
 
+    /**
+     * [cloneInto] for inserting a template into an open document. The template's own `root` and
+     * `metaroot` entries are left out: a template that is a whole document (a workspace document, or a
+     * bundled template folder saved with its root) would otherwise write its root's frame, children,
+     * drawing and bookmarks over the receiving document's root and add a stray copy of its metaroot.
+     * Its top-level boxes still name `root` as their parent, which is the receiving document's root.
+     * A `metadata.json` template has no such entries to drop and goes through [cloneInto].
+     */
+    @OptIn(ExperimentalUuidApi::class)
+    fun cloneTemplateInto(path: String): Set<Box> {
+        val file = File(path)
+        val (transfers, directory) = when {
+            file.isFile && file.name.endsWith(".edn") -> {
+                val directory = file.absoluteFile.parentFile?.absolutePath ?: file.absolutePath
+                readEdnTransfersFromString(file.readText(), recordInto = directory) to directory
+            }
+            File(file, METADATA_EDN).exists() -> readEdnTransfers(file.path) to file.path
+            else -> return cloneInto(path)
+        }
+        val seen = mutableMapOf("root" to "root", METAROOT_ID to METAROOT_ID)
+        return instantiateTransfers(
+            transfers.filterNot { it.id == "root" || it.id == METAROOT_ID },
+            directory,
+            { id -> seen.computeIfAbsent(id) { Uuid.random().toString() } },
+            createBoxes = true
+        )
+    }
+
     var altered = false
 
     private fun withoutMetarootTopology(name: String, value: Any?): Any? {

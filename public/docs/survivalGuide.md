@@ -91,6 +91,8 @@ Documents are created on demand in your current workspace. Field reopens the wor
 
 For anything advanced pressing `f1` reveals a searchable command palette. This works both inside the editor and outside the editor — although you'll get a different set of commands in different situations. All kinds of things hide there — changing editor tabs, applying AI to code and error messages...
 
+Two of its canvas commands save and reuse boxes: **Save selection as template**, and **Insert template** (`cmd+t`); see [Templates](templates.md).
+
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".afield-palette-shell" screenshot="assets/command-palette.png" padding="6" wait="0" timeout="90" embed=true hidden=true name="command-palette"}
 ui.openEditor(id)
 ui.pause(700)
