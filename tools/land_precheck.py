@@ -306,17 +306,15 @@ def _git(*args: str, check: bool = True) -> subprocess.CompletedProcess:
                           stderr=subprocess.PIPE, text=True)
 
 
-def _patch_ids(repo: Path, revisions: str) -> dict[str, str]:
-    """patch-id -> commit, for the non-merge commits in `revisions` (oldest wins on a repeat)."""
-    log = subprocess.run(["git", "log", "-p", "--no-merges", "--reverse", "--format=commit %H", revisions],
-                         cwd=repo, check=True, stdout=subprocess.PIPE).stdout
-    ids = subprocess.run(["git", "patch-id", "--stable"], cwd=repo, input=log, check=True,
-                         stdout=subprocess.PIPE).stdout.decode()
-    found: dict[str, str] = {}
-    for line in ids.splitlines():
-        pid, _, sha = line.partition(" ")
-        found.setdefault(pid, sha)
-    return found
+def _patch_id(repo: Path, sha: str) -> str:
+    """One commit's `git patch-id --stable`. Per commit on purpose: fed a multi-commit `git log -p`,
+    patch-id gave the second commit of a branch a different id from the same commit shown alone
+    (observed 2026-10-30 on a real cherry-pick), so a batch run missed the duplicate."""
+    shown = subprocess.run(["git", "show", "--no-color", "--format=commit %H", sha], cwd=repo, check=True,
+                           stdout=subprocess.PIPE).stdout
+    out = subprocess.run(["git", "patch-id", "--stable"], cwd=repo, input=shown, check=True,
+                         stdout=subprocess.PIPE).stdout.decode().split()
+    return out[0] if out else ""
 
 
 @dataclass(frozen=True)
@@ -337,17 +335,22 @@ def duplicate_patches(repo: Path, base: str = BASE, head: str = "HEAD") -> list[
     commit had to be found and dropped by hand. `git patch-id --stable` over merge-base..base and
     merge-base..head finds it before any merge is tried.
     """
-    merge_base = subprocess.run(["git", "merge-base", base, head], cwd=repo, check=True,
-                                stdout=subprocess.PIPE, text=True).stdout.strip()
-    on_base = _patch_ids(repo, f"{merge_base}..{base}")
-    if not on_base:
-        return []
+    def git(*args: str) -> str:
+        return subprocess.run(["git", *args], cwd=repo, check=True, stdout=subprocess.PIPE, text=True).stdout
+
+    # `git cherry` decides (it is git's own upstream-equivalence test); patch ids only name the twin,
+    # searched among the base commits that touch the same files.
+    merge_base = git("merge-base", base, head).strip()
     duplicates = []
-    for pid, sha in _patch_ids(repo, f"{merge_base}..{head}").items():
-        if pid in on_base:
-            subject = subprocess.run(["git", "log", "-1", "--format=%s", sha], cwd=repo, check=True,
-                                     stdout=subprocess.PIPE, text=True).stdout.strip()
-            duplicates.append(Duplicate(sha, on_base[pid], subject))
+    for line in git("cherry", base, head, merge_base).splitlines():
+        mark, _, sha = line.partition(" ")
+        if mark != "-":
+            continue
+        pid = _patch_id(repo, sha)
+        files = [f for f in git("show", "--format=", "--name-only", sha).splitlines() if f]
+        twin = next((c for c in git("log", "--no-merges", "--format=%H", f"{merge_base}..{base}", "--", *files).split()
+                     if _patch_id(repo, c) == pid), "")
+        duplicates.append(Duplicate(sha, twin or "(a commit on the base)", git("log", "-1", "--format=%s", sha).strip()))
     return duplicates
 
 
