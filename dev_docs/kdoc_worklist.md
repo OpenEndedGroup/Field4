@@ -196,7 +196,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [simplePLYSupport.kt](../src/jvmMain/kotlin/afield/graphics/scene/simplePLYSupport.kt) | Graphics | geometry_from_disk | 0 | 6 | 60% |
 | [RectSLGlsl.kt](../src/jvmMain/kotlin/afield/lang/rectsl/RectSLGlsl.kt) | Languages | rectsl_cheatsheet | 0 | 6 | 82% |
 | [Trajectory.kt](../src/jvmMain/kotlin/afield/math/oracle/Trajectory.kt) | Math | temporal_memory | 0 | 6 | 76% |
-| [imaging.kt](../src/jvmMain/kotlin/afield/media/image/imaging.kt) | Imaging | imaging_examples, wfc_examples, contour_trees | 0 | 6 | 90% |
+| [imaging.kt](../src/jvmMain/kotlin/afield/media/image/imaging.kt) | Imaging | imaging_examples, visualizers, wfc_examples | 0 | 6 | 90% |
 | [OnnxRuntime.kt](../src/jvmMain/kotlin/afield/ai/inference/onnx/OnnxRuntime.kt) | Machine learning | onnx | 0 | 5 | 75% |
 | [CsoundBox.kt](../src/jvmMain/kotlin/afield/audio/synth/CsoundBox.kt) | Synthesis | csound | 0 | 5 | 82% |
 | [Dough.kt](../src/jvmMain/kotlin/afield/audio/synth/Dough.kt) | Synthesis | sound_paths | 0 | 5 | 78% |
