@@ -44,7 +44,7 @@ The "before" columns are measured values. Open paths are the ones the capture pr
 | 14 | Lazy output panel | `Outputs.kt` | output `closeBox` | output family | left alone |
 | 15 | FLine editor overlay | `sliders.js` | output overlay | output family | left alone |
 | 16 | Slideshow notes | slideshow step | close styled inline from Kotlin | not opened (needs a slideshow) | left alone, follow-up |
-| 17 | Publish document | `fieldPublishDocument()` | 20px pad, 0 radius, 1px #555 border, shadow, 13px; text "Close" button | as listed | FieldPanel shell (`field-panel` classes): title, status, × |
+| 17 | Publish document | `fieldPublishDocument()` | 20px pad, 0 radius, 1px #555 border, shadow, 13px; text "Close" button | as listed | left alone. `publishDocument.js` feeds `docs_publications.capture_digest`, so any edit makes all 181 publications stale. Moving the shell into a FieldPanel first needs it moved out of the digested file |
 | 18 | Publication capture | `publication-capture.js` | — | not opened | left alone |
 | 19 | State tree browser | AI chat | text "Close" button | — | × `field-panel-icon` with title and aria; the UI regression clicks `×` |
 | 20 | Geometry review inbox | three viewer | text "Close"; no Escape | — | × `field-panel-icon`; Escape closes outside text fields. On pages without `fieldPanelTokens.css` the × is unstyled |
@@ -73,5 +73,5 @@ dispatches Escape (`.nightly-tmp/probe/measure.js`).
 | Document guide | pass | pass |
 | Profiling timeline | pass | pass |
 | Trays | pass | pass (failed before) |
-| Publish document | pass | pass |
+| Publish document | pass (FieldPanel version, since reverted) | pass (FieldPanel version, since reverted) |
 | Command palette | no close button | pass |
