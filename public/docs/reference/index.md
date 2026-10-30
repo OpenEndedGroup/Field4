@@ -650,7 +650,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**35382 public symbols across 1605 source files**, 20685 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**35383 public symbols across 1605 source files**, 20686 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -677,7 +677,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Patterns](patterns.md) | 40 | 1316 | 721 (54%) | Musical time, as a value. |
 | [Audio](audio.md) | 77 | 2092 | 1013 (48%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 22 | 586 | 586 (100%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
-| [Languages](languages.md) | 123 | 3096 | 1520 (49%) | Field's small languages, from the host side. |
+| [Languages](languages.md) | 123 | 3097 | 1521 (49%) | Field's small languages, from the host side. |
 | [Workspace](workspace.md) | 236 | 3207 | 1288 (40%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [Machine learning](machine-learning.md) | 112 | 2610 | 1040 (39%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 | [Animation](animation.md) | 10 | 178 | 41 (23%) |  |
@@ -2072,7 +2072,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>stacksl/<wbr></small> [StackSLBox.kt](graphics.md#stackslbox-kt) | Graphics | 19 | 19 | Host-side entry points for StackSL: compiling the stack language to GLSL, and evaluating it on the GPU sample by sample. | [StackSL cheatsheet](../stacksl_cheatsheet.md), [StackSL examples](../stacksl_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>stacksl/<wbr>cpu/<wbr></small> [StackSLCpu.kt](languages.md#stackslcpu-kt) | Languages | 16 | 15 | StackSL's CPU backend: the same GLSL a GPU would run, evaluated one pixel at a time on the JVM, so a StackSL program can be rendered, unit-tested, diffed and documented with no graphics context at all. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>stacksl/<wbr>cpu/<wbr></small> [StackSLCpuContactSheet.kt](languages.md#stackslcpucontactsheet-kt) | Languages · internal | 4 | 4 |  |  |
-| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>stacksl/<wbr>cpu/<wbr></small> [StackSLCpuGallery.kt](languages.md#stackslcpugallery-kt) | Languages · internal | 29 | 16 | Compares StackSL's CPU renderer against the GPU: 31 committed gallery programs, each with its fragment template and the 512x512 PNG a real GPU drew for it. |  |
+| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>stacksl/<wbr>cpu/<wbr></small> [StackSLCpuGallery.kt](languages.md#stackslcpugallery-kt) | Languages · internal | 30 | 17 | Compares StackSL's CPU renderer against the GPU: 31 committed gallery programs, each with its fragment template and the 512x512 PNG a real GPU drew for it. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>stacksl/<wbr></small> [StackSLDocumentToolSmoke.kt](examples.md#stacksldocumenttoolsmoke-kt) | Examples | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>stacksl/<wbr>evolution/<wbr></small> [StackSLEvolution.kt](search.md#stackslevolution-kt) | Search | 129 | 129 | The resumable StackSL search: `StackSLEvolution` holds the island populations, the stage schedule and the per-origin credit table between generations, and saves them as a `StackSLEvolutionSnapshot`. | [Evolving a Shader Toward a Picture](../stacksl_evolve.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>stacksl/<wbr>evolution/<wbr></small> [StackSLEvolve.kt](search.md#stackslevolve-kt) | Search | 110 | 110 | Genetic programming over StackSL **token sequences**, scored by rendering the program and comparing it to a target image. | [Evolving a Shader Toward a Picture](../stacksl_evolve.md) |
