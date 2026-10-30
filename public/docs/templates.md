@@ -15,11 +15,9 @@ Select the boxes you want to keep: one box, or a group with the connections betw
 the command palette (`f1`) with the canvas focused, choose **Save selection as template**, type a
 name and press Enter.
 
-```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".quick-input-widget" screenshot="assets/templates/save-name.png" padding="6" wait="0" timeout="120" embed=true hidden=true name="templates-save-name" alt="the Save selection as template name field, with greeter typed into it"}
-name = "Greeter"
-metadata = "doc: |\n  Prints a greeting that names its box.\n"
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".quick-input-widget" screenshot="assets/templates/save-name.png" padding="6" wait="0" timeout="120" embed=true hidden=true transcript="../../dev_docs/agents/transcripts/docs_capture/templates_setup.yaml" document="docs-templates" fresh-document=true name="templates-save-name" alt="the Save selection as template name field, with greeter typed into it"}
 ui.pause(800)
-ui.click(id)
+ui.click("tpl_greeter")
 ui.pause(400)
 ui.press("F1")
 ui.pause(1000)
@@ -45,11 +43,9 @@ Move the mouse to where you want the copy, press `cmd+t` and start typing the na
 palette lists every template it can find, with the documentation of its boxes beside the
 selected entry.
 
-```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".quick-input-widget" screenshot="assets/templates/insert-palette.png" padding="6" wait="0" timeout="150" embed=true hidden=true name="templates-insert-palette" alt="the Insert template palette filtered to greeter, showing Workspace template and the box's documentation"}
-name = "Greeter"
-metadata = "doc: |\n  Prints a greeting that names its box.\n"
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".afield-palette-shell" screenshot="assets/templates/insert-palette.png" padding="6" wait="0" timeout="150" embed=true hidden=true transcript="../../dev_docs/agents/transcripts/docs_capture/templates_setup.yaml" document="docs-templates" fresh-document=true name="templates-insert-palette" alt="the Insert template palette filtered to greeter, showing Workspace template and the box's documentation"}
 ui.pause(800)
-ui.click(id)
+ui.click("tpl_greeter")
 ui.pause(400)
 ui.press("F1")
 ui.pause(1000)
@@ -61,7 +57,8 @@ ui.type("greeter")
 ui.pause(500)
 ui.press("Enter")
 ui.pause(1500)
-ui.moveMouse(600.0, 400.0)
+ui.clickAt(600.0, 400.0)
+ui.pause(400)
 ui.press("ControlOrMeta+t")
 ui.pause(1800)
 ui.type("greet")
@@ -106,13 +103,11 @@ Every inserted box records two properties, and both are saved with the document:
 - `source_id` is the uid the box had inside the template, which is the uid of the box you saved.
 
 So two copies of `greeter` share a `templateId` and a `source_id`, but have their own uids.
-Here two copies of `greeter` were inserted with `cmd+t`, one beside the other:
+Here `Greeter` was saved as `greeter` and two copies were inserted below it with `cmd+t`:
 
-```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x700" clip="0,0,1100,560" screenshot="assets/templates/two-copies.png" padding="0" wait="0" timeout="180" embed=true hidden=true name="templates-two-copies" alt="the canvas with two boxes named Greeter, inserted from the greeter template at two mouse positions"}
-name = "Greeter"
-metadata = "doc: |\n  Prints a greeting that names its box.\n"
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x700" clip="0,0,480,600" screenshot="assets/templates/two-copies.png" padding="0" wait="0" timeout="180" embed=true hidden=true transcript="../../dev_docs/agents/transcripts/docs_capture/templates_setup.yaml" document="docs-templates" fresh-document=true name="templates-two-copies" alt="the canvas with the original Greeter box and, below it, two Greeter copies inserted from the greeter template"}
 ui.pause(800)
-ui.click(id)
+ui.click("tpl_greeter")
 ui.pause(400)
 ui.press("F1")
 ui.pause(1000)
@@ -124,9 +119,9 @@ ui.type("greeter")
 ui.pause(500)
 ui.press("Enter")
 ui.pause(1500)
-for (x in listOf(450.0, 700.0)) {
-    ui.moveMouse(x, 300.0)
-    ui.pause(300)
+for (y in listOf(300.0, 440.0)) {
+    ui.clickAt(250.0, y)
+    ui.pause(400)
     ui.press("ControlOrMeta+t")
     ui.pause(1800)
     ui.type("greeter")
@@ -134,15 +129,7 @@ for (x in listOf(450.0, 700.0)) {
     ui.press("Enter")
     ui.pause(1500)
 }
-```
-
-Box code can find every copy. This box lists the boxes beside it that came from a template:
-
-```diffstatic_runner {data-lang=kotlin screenshot="assets/templates/copies-output.png" embed=true wait="1" timeout="90" name="templates-copies-output" alt="the box's output: one line per Greeter copy with its templateId greeter and the source_id they share"}
-for (b in root.children - thisBox) {
-    if (b.templateId != null)
-        print("${b.name}  templateId=${b.templateId}  source_id=${b.properties["source_id"]}")
-}
+ui.pause(1000)
 ```
 
 Slideshow chats use the same property: `withChat(id = "templateId")` gives every copy of a
