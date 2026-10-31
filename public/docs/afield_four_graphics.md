@@ -551,7 +551,7 @@ void main()
 }
 ```
 
-`gl_VertexIndex/6` picks the particle and `gl_VertexIndex%6` picks the corner: 100,000 particles drawn as 600,000 vertices with no index buffer and no per-particle CPU work.
+`gl_VertexIndex / 6` picks the particle and `gl_VertexIndex % 6` picks the corner: 100,000 particles drawn as 600,000 vertices with no index buffer and no per-particle CPU work.
 
 To see it running, open the corpus document in the viewer above, or replay `dev_docs/agents/transcripts/threebox.yaml`, which is the same renderer/compute/draw shape built as a runnable three-box scene.
 
