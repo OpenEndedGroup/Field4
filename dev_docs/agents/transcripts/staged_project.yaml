@@ -320,7 +320,8 @@ operations:
               // A floor slab per room, and a wall piece on every cell edge between two rooms, or a room and outside, that is
               // not a door.
               val pieces = mutableListOf<List<Double>>()
-              for ((_, r) in g.rooms) pieces += [r[0].toDouble(), r[1].toDouble(), -0.1, r[2].toDouble(), r[3].toDouble(), 0.1]
+              for ((_, r) in g.rooms) pieces +=
+                  listOf(r[0].toDouble(), r[1].toDouble(), -0.1, r[2].toDouble(), r[3].toDouble(), 0.1)
               val walls = mutableSetOf<Pair<Cell, Cell>>()
               for ((a, _) in g.room) for (b in
                   [

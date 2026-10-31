@@ -193,6 +193,13 @@ class ListLiteralTests(unittest.TestCase):
         self.assertEqual(self.fixed(code), code)
         self.assertEqual(self.fixed("val p = listOf(a * b, c)\n"), "val p = [a * b, c]\n")
 
+    def test_an_operator_operand_keeps_listOf(self):
+        # `xs + [a, b]` is ambiguous between plus(T), plus(Array) and plus(Iterable).
+        code = ("val c = merge.comparators + listOf(S(0, 1), S(2, 3))\nxs -= listOf(1)\nxs += listOf(1)\n"
+                "val d = xs +\n    listOf(1, 2)\nval f = { x -> listOf(x) }\n")
+        self.assertEqual(self.fixed(code), code.replace("{ x -> listOf(x) }", "{ x -> [x] }"))
+        self.assertEqual(self.fixed("val e = listOf(1) + listOf(2)\n"), "val e = [1] + listOf(2)\n")
+
     def test_a_call_spanning_lines_is_a_note_not_a_rewrite(self):
         code = "```kotlin\nval xs = listOf(\n    1,\n    2,\n)\n```\n"
         f = Fixture({self.PATH: code})

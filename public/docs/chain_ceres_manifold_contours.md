@@ -77,12 +77,12 @@ Solid.scope {
     pair.slice(0.5).use { s ->
         val centre = (s.bounds.first.x + s.bounds.second.x) / 2.0
         rows +=
-            [
+            listOf(
                 "two unit cubes meeting along one edge, cut on it",
                 "0.500000000",
                 s.area.f4 + " centred at x = %.4f".format(centre),
                 s.contourCount,
-            ]
+            )
     }
     Unit
 }
@@ -409,7 +409,7 @@ Solid.scope {
         // Scaling an inside-out body onto the bed would mirror it into looking like one.
         if (d.signedVolume <= 0.0) {
             rows +=
-                [
+                listOf(
                     label,
                     "%.3e".format(d.tangencyRadiusSpread),
                     verdict,
@@ -419,7 +419,7 @@ Solid.scope {
                     "—",
                     "—",
                     "—",
-                ]
+                )
             continue
         }
         val solid = onTheBed(bare)
@@ -427,7 +427,7 @@ Solid.scope {
         val (disagreeing, over) = overlap(solid)
         sweeps += label to sweep
         rows +=
-            [
+            listOf(
                 label,
                 "%.3e".format(d.tangencyRadiusSpread),
                 verdict,
@@ -437,7 +437,7 @@ Solid.scope {
                 sweep.last().f5,
                 "$disagreeing / 192, %.6f".format(over),
                 (1.0 - 2.0 * over).f5,
-            ]
+            )
     }
     Unit
 }
