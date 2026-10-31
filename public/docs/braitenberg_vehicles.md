@@ -101,6 +101,47 @@ showImg(
 )
 ```
 
+### The same four, at driving speed
+
+The still shows where the vehicles have been. This clip shows how they move, at two steps per displayed
+frame: the aggressors swerve into a light and accelerate through it, the cowards turn away from each
+light and speed off, the lovers slow down and come to rest facing a lamp, and the explorers slow down
+near a lamp and then turn and leave.
+
+```diffstatic_runner {data-lang=kotlin video="assets/braitenberg_vehicles/wirings.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="16" fps="20" timeout="300" w="1000" embed=true name="vehicles-wirings-video" alt="four panels of Braitenberg vehicles moving slowly among four lights: aggressors swerving into the lights, cowards turning away, lovers slowing to a stop facing a lamp, explorers slowing and turning away"}
+val lights = [Light(60.0, 60.0), Light(180.0, 70.0), Light(120.0, 180.0), Light(200.0, 200.0)]
+val excite = VehicleParams()
+val inhibit = VehicleParams(neuron = NeuronParams(bias = -1.0))
+
+class Arm(val name: String, wiring: DoubleArray, val p: VehicleParams) {
+    val world = VehicleWorld.random(24, lights, wiring = wiring, seed = 3L)
+    val canvas = VehicleCanvas(world, scale = 1.2, fade = 0.97f)
+}
+
+val arms = [
+    Arm("aggressor", VehicleWorld.AGGRESSOR, excite),
+    Arm("coward", VehicleWorld.COWARD, excite),
+    Arm("lover", VehicleWorld.LOVER, inhibit),
+    Arm("explorer", VehicleWorld.EXPLORER, inhibit),
+]
+
+animateEvolution(
+    Unit,
+    totalSteps = 600,
+    seconds = 15.0,
+    framesTarget = 300,
+    columns = 2,
+    cellSide = 300,
+    step = {
+        for (arm in arms) {
+            arm.world.step(arm.p)
+            arm.canvas.record()
+        }
+    },
+    panels = { _, n -> arms.map { it.name + " " + n to it.canvas.image() } },
+)
+```
+
 ## 3. Getting bored: homeostasis
 
 A lover parks in front of the first light it finds and stays there. That is a fixed point, and nothing
@@ -151,7 +192,7 @@ in some mixture. With learning on, the weights drift negative: the population di
 down in the light keeps it in the light, which is the lover's strategy. Each caption is the step count and
 the mean light at the vehicles' bodies.
 
-```diffstatic_runner {data-lang=kotlin video="assets/braitenberg_vehicles/learning.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="9" fps="20" timeout="400" w="1000" embed=true name="vehicles-learning-video" alt="two populations of randomly wired vehicles among four lights; on the left the weights learn and the vehicles gather and linger at the lights, on the right they never learn and keep wandering"}
+```diffstatic_runner {data-lang=kotlin video="assets/braitenberg_vehicles/learning.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="13" fps="20" timeout="600" w="1000" embed=true name="vehicles-learning-video" alt="two populations of randomly wired vehicles among four lights; on the left the weights learn and the vehicles gather and linger at the lights, on the right they never learn and keep wandering"}
 val lights = [Light(60.0, 60.0), Light(180.0, 70.0), Light(120.0, 180.0), Light(200.0, 200.0)]
 val learn = VehicleParams(
     neuron = NeuronParams(bias = -1.0),
@@ -166,8 +207,9 @@ val canvasB = VehicleCanvas(b, scale = 1.2)
 
 animateEvolution(
     Unit,
-    totalSteps = 15000,
-    seconds = 8.0,
+    totalSteps = 30000,
+    seconds = 12.0,
+    framesTarget = 240,
     columns = 2,
     cellSide = 300,
     step = {
@@ -185,7 +227,8 @@ animateEvolution(
 )
 ```
 
-Over three seeds, after 15 000 steps, the mean light at the body in the last 2000 steps is 0.58, 0.55
+The clip runs 30 000 steps. The learning population climbs for about the first 20 000 and then levels
+off near 0.59, with the summed weight per vehicle settled around −1.6; out to 80 000 steps neither changes by more than its own wobble. Over three seeds, after 15 000 steps, the mean light at the body in the last 2000 steps is 0.58, 0.55
 and 0.62 with learning against 0.41, 0.42 and 0.44 without, and the summed weight per vehicle has moved
 down by between 0.6 and 1.5. A much larger `learningRate` overshoots: at 80 the weights
 become inhibitory enough that the faint background light between the lamps stops the vehicles too, and
