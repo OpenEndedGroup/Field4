@@ -1,5 +1,7 @@
 # Field 4 Graphics
 
+<div data-field-transcript-gallery hidden></div>
+
 Build a window, draw into it, and then start changing what the GPU does. This curriculum takes you
 from a triangle through cameras, textures, compute shaders and particles, with each lesson in a
 box you can run and edit. For a shorter first encounter, try [Graphics on the GPU](tour_gpu_graphics.md).
@@ -553,7 +555,7 @@ void main()
 
 `gl_VertexIndex / 6` picks the particle and `gl_VertexIndex % 6` picks the corner: 100,000 particles drawn as 600,000 vertices with no index buffer and no per-particle CPU work.
 
-To see it running, open the corpus document in the viewer above, or replay `dev_docs/agents/transcripts/threebox.yaml`, which is the same renderer/compute/draw shape built as a runnable three-box scene.
+To see it running, open the corpus document in the viewer above, or open [threebox](offline.html?file=assets/agent_transcripts/threebox/metadata.edn), the same renderer/compute/draw shape built as a runnable three-box scene.
 
 ## Texturing
 
@@ -854,7 +856,7 @@ void main()
 
 Compare that with the texturing fragment shader: it is the same shader. From the consumer's side there is no difference between sampling a file loaded from disk and sampling the output of another box. Two boxes and one renamed property are the smallest complete statement of how `Field 4` composes.
 
-The graphics-scene transcripts `threebox` and `spin_glass` in [agent transcripts](agent_transcripts.md) are runnable versions of the same producer/consumer shape.
+[threebox](offline.html?file=assets/agent_transcripts/threebox/metadata.edn) and [spin_glass](offline.html?file=assets/agent_transcripts/spin_glass/metadata.edn), from the [agent transcripts](agent_transcripts.md), are runnable versions of the same producer/consumer shape.
 
 ## Ping-pong render to texture
 
@@ -1773,7 +1775,7 @@ the lessons that use it.
 Each image is the lesson's own output, captured from a live Vulkan window. Sections without an
 image say why under the code: the lesson needs two boxes wired together, needs a file or tool the
 repository does not ship, or produces something other than a picture. For the two-box shape, the
-`threebox` and `spin_glass` [agent transcripts](agent_transcripts.md) are runnable versions.
+[threebox](offline.html?file=assets/agent_transcripts/threebox/metadata.edn) and [spin_glass](offline.html?file=assets/agent_transcripts/spin_glass/metadata.edn) [agent transcripts](agent_transcripts.md) are runnable versions.
 
 ## Fabricate Renderer
 
