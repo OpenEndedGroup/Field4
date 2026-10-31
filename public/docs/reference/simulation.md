@@ -14,7 +14,7 @@ Where the neighbours are. [Solvers](solvers.md) is Ceres, which finds the shape 
 
 The prose, with pictures: [Physics: particles, constraints and cloth](../physics.md) for the real-time stack — read it before touching `stiffness`, because it and `iterations` are not two knobs — and [Filling a solid: tetrahedral meshing with TetGen](../tetgen.md) for the meshing and the route into Kratos. Four loadable Kratos documents (thermal, flow, structural and the parameter study) and the cloth starting point are in the [Agent Transcript Gallery](../agent_transcripts.md); [Frames and the Animation Loop](../animation_time_model.md) explains why an integrator wants a fixed `dt`. `dev_docs/TETGEN.md` carries the mesher comparison that chose this route.
 
-47 source file(s), 1379 public symbol(s), 746 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+48 source file(s), 1449 public symbol(s), 815 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -410,6 +410,181 @@ A bounded, world-aligned rectangle of tiles, stored in reusable toroidal slots. 
 | <a id="tileresidency-kt--tileresidency--invalidate"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">invalidate</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/graphics/render/TileResidency/#L78) | Drop contents at the next move, preserving generation identities. |
 | <a id="tileresidency-kt--tileresidency--moveto"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">moveTo</span><span class="p">(</span><span class="n">px</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">py</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/graphics/render/TileResidency/#L80) |  |
 | <a id="tileresidency-kt--tileresidency--pack"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">pack</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">IntArray</span><span class="p">,</span> <span class="n">offset</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span><span class="p">:</span> <span class="nc">IntArray</span></code>](source/jvmMain/afield/graphics/render/TileResidency/#L115) | Four ints per slot: world tile x/y, generation, occupied. No Float precision loss. |
+
+## alife_vehicles.kt { #alife-vehicles-kt }
+
+Braitenberg vehicles whose neurons have internal state: two light sensors, two motor neurons,
+two wheels, and between them a small dynamical system rather than a wire.
+
+In Braitenberg's book a vehicle's wiring is its personality: crossed excitatory wires make an
+"aggressor" that speeds into a light, uncrossed inhibitory wires make a "lover" that slows down and
+parks in front of it. Those vehicles are memoryless — the wheel speed is a function of what the
+sensors read *now*. Here each motor neuron carries three kinds of memory on three timescales:
+
+- **membrane** (a few steps): a leaky integrator, so the vehicle responds to a smoothed input;
+- **hysteresis** (state-dependent): self-excitation, which makes a steep activation bistable, so a
+  neuron that switched on at one input level switches off at a lower one;
+- **homeostasis** (hundreds of steps, [`NeuronParams.adaptationRate`](simulation.md#alife-vehicles-kt--neuronparams--adaptationrate)): the threshold integrates the
+  difference between the neuron's rate and a target rate, so a vehicle held in constant light gets
+  used to it — a parked lover eventually drives off;
+- **plasticity** (thousands of steps, [`PlasticityParams`](simulation.md#alife-vehicles-kt-plasticityparams)): the four sensor→motor weights learn from
+  reward-modulated eligibility traces of the motor noise, so a randomly wired population can
+  discover, on its own, that crossed wiring brings it into the light.
+
+Each of these is switched off by one parameter, which is how the measurements on the docs page
+make their claims: same seed, one ingredient removed, a number that changes.
+
+Mutable, like [`BoidFlock`](alife.md#alife-agents-kt-boidflock): [`VehicleWorld.step`](simulation.md#alife-vehicles-kt--vehicleworld--step) advances the population in place.
+
+`src/jvmMain/kotlin/afield/simulation/agents/alife_vehicles.kt` — [read the source](source/jvmMain/afield/simulation/agents/alife_vehicles/)
+
+**Used in:** [Braitenberg vehicles with memory](../braitenberg_vehicles.md)
+
+### Top-level functions { #alife-vehicles-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="alife-vehicles-kt--hysteresissweep"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">hysteresisSweep</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">NeuronParams</span><span class="p">,</span> <span class="n">lo</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="p">-</span><span class="mf">2.5</span><span class="p">,</span> <span class="n">hi</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">,</span> <span class="n">steps</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">2000</span><span class="p">)</span><span class="p">:</span> <span class="nc">HysteresisSweep</span></code>](source/jvmMain/afield/simulation/agents/alife_vehicles/#L171) | The memoryless input→output steady state is the wrong question for a bistable neuron, so this measures what the neuron actually does: sweep the input from `lo` to `hi` and back over `steps` steps each way, slowly enough for the membrane to follow, and record the rate. |
+
+### Activation { #alife-vehicles-kt-activation }
+
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">Activation</span></code>](source/jvmMain/afield/simulation/agents/alife_vehicles/#L48)
+
+The nonlinearity a motor neuron applies to its membrane potential. Each maps to roughly `0..1`, so the wheel speed reads the same way whichever one is chosen.
+
+Constants: `SIGMOID`, `TANH`, `RELU`, `BUMP`.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="alife-vehicles-kt--activation--apply"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">apply</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/simulation/agents/alife_vehicles/#L65) | Apply this activation to `x`. |
+
+### NeuronParams { #alife-vehicles-kt-neuronparams }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">NeuronParams</span><span class="p">(</span><span class="k">val</span> <span class="n">activation</span><span class="p">:</span> <span class="nc">Activation</span> <span class="o">=</span> <span class="nc">Activation</span><span class="p">.</span><span class="nc">SIGMOID</span><span class="p">,</span> <span class="k">val</span> <span class="n">gain</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">6.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">tauMembrane</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">4.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">selfExcitation</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">bias</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">adaptationRate</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">targetRate</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.35</span><span class="p">,</span> <span class="k">val</span> <span class="n">thresholdLimit</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">3.0</span><span class="p">)</span></code>](source/jvmMain/afield/simulation/agents/alife_vehicles/#L83)
+
+The internal dynamics of one motor neuron.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="alife-vehicles-kt--neuronparams--activation"></a><code class="highlight"><span class="k">val</span> <span class="n">activation</span><span class="p">:</span> <span class="nc">Activation</span></code> | The nonlinearity; see [`Activation`](simulation.md#alife-vehicles-kt-activation). |
+| <a id="alife-vehicles-kt--neuronparams--gain"></a><code class="highlight"><span class="k">val</span> <span class="n">gain</span><span class="p">:</span> <span class="nc">Double</span></code> | Slope applied before the activation. |
+| <a id="alife-vehicles-kt--neuronparams--taumembrane"></a><code class="highlight"><span class="k">val</span> <span class="n">tauMembrane</span><span class="p">:</span> <span class="nc">Double</span></code> | Membrane time constant in steps; `1.0` is no smoothing at all. |
+| <a id="alife-vehicles-kt--neuronparams--selfexcitation"></a><code class="highlight"><span class="k">val</span> <span class="n">selfExcitation</span><span class="p">:</span> <span class="nc">Double</span></code> | Weight of the neuron's own output fed back into its membrane. For the sigmoid the neuron is bistable — and so has a hysteresis loop — once `selfExcitation · gain / 4 > 1`. Zero is the memoryless control. |
+| <a id="alife-vehicles-kt--neuronparams--bias"></a><code class="highlight"><span class="k">val</span> <span class="n">bias</span><span class="p">:</span> <span class="nc">Double</span></code> | A fixed offset subtracted from the membrane drive. |
+| <a id="alife-vehicles-kt--neuronparams--adaptationrate"></a><code class="highlight"><span class="k">val</span> <span class="n">adaptationRate</span><span class="p">:</span> <span class="nc">Double</span></code> | How fast the threshold integrates `r − targetRate`, per step. Zero switches homeostasis off; a typical value is `0.002`, a time constant of a few hundred steps. |
+| <a id="alife-vehicles-kt--neuronparams--targetrate"></a><code class="highlight"><span class="k">val</span> <span class="n">targetRate</span><span class="p">:</span> <span class="nc">Double</span></code> | The firing rate homeostasis pulls the neuron toward. |
+| <a id="alife-vehicles-kt--neuronparams--thresholdlimit"></a><code class="highlight"><span class="k">val</span> <span class="n">thresholdLimit</span><span class="p">:</span> <span class="nc">Double</span></code> | How far the threshold may wander either way. |
+
+### PlasticityParams { #alife-vehicles-kt-plasticityparams }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PlasticityParams</span><span class="p">(</span><span class="k">val</span> <span class="n">learningRate</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">noise</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.15</span><span class="p">,</span> <span class="k">val</span> <span class="n">tauTrace</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">30.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">tauBaseline</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">50.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">maxWeight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">3.0</span><span class="p">)</span></code>](source/jvmMain/afield/simulation/agents/alife_vehicles/#L125)
+
+The slow learning level: reward-modulated plasticity of the four sensor→motor weights.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="alife-vehicles-kt--plasticityparams--learningrate"></a><code class="highlight"><span class="k">val</span> <span class="n">learningRate</span><span class="p">:</span> <span class="nc">Double</span></code> | Zero is the control: the weights never move. Around `3.0` learns in ten thousand steps; much above `10` overshoots. |
+| <a id="alife-vehicles-kt--plasticityparams--noise"></a><code class="highlight"><span class="k">val</span> <span class="n">noise</span><span class="p">:</span> <span class="nc">Double</span></code> | Standard deviation of the motor noise, which is both the exploration and what is learned from. |
+| <a id="alife-vehicles-kt--plasticityparams--tautrace"></a><code class="highlight"><span class="k">val</span> <span class="n">tauTrace</span><span class="p">:</span> <span class="nc">Double</span></code> | Eligibility-trace time constant in steps: how long after a twitch its consequence still counts. |
+| <a id="alife-vehicles-kt--plasticityparams--taubaseline"></a><code class="highlight"><span class="k">val</span> <span class="n">tauBaseline</span><span class="p">:</span> <span class="nc">Double</span></code> | Reward-baseline time constant in steps. |
+| <a id="alife-vehicles-kt--plasticityparams--maxweight"></a><code class="highlight"><span class="k">val</span> <span class="n">maxWeight</span><span class="p">:</span> <span class="nc">Double</span></code> | Weights are clamped to `±maxWeight`. |
+
+### VehicleParams { #alife-vehicles-kt-vehicleparams }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">VehicleParams</span><span class="p">(</span><span class="k">val</span> <span class="n">sensorAngle</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.6</span><span class="p">,</span> <span class="k">val</span> <span class="n">sensorDistance</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">3.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">baseSpeed</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.15</span><span class="p">,</span> <span class="k">val</span> <span class="n">motorSpeed</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.2</span><span class="p">,</span> <span class="k">val</span> <span class="n">axle</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">2.5</span><span class="p">,</span> <span class="k">val</span> <span class="n">neuron</span><span class="p">:</span> <span class="nc">NeuronParams</span> <span class="o">=</span> <span class="nc">NeuronParams</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">plasticity</span><span class="p">:</span> <span class="nc">PlasticityParams</span> <span class="o">=</span> <span class="nc">PlasticityParams</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>](source/jvmMain/afield/simulation/agents/alife_vehicles/#L147)
+
+Body, sensors and wheels of a vehicle, plus its two [`NeuronParams`](simulation.md#alife-vehicles-kt-neuronparams) layers of dynamics.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="alife-vehicles-kt--vehicleparams--sensorangle"></a><code class="highlight"><span class="k">val</span> <span class="n">sensorAngle</span><span class="p">:</span> <span class="nc">Double</span></code> | Angle of each sensor off the heading, in radians. |
+| <a id="alife-vehicles-kt--vehicleparams--sensordistance"></a><code class="highlight"><span class="k">val</span> <span class="n">sensorDistance</span><span class="p">:</span> <span class="nc">Double</span></code> | Distance of each sensor ahead of the body centre. |
+| <a id="alife-vehicles-kt--vehicleparams--basespeed"></a><code class="highlight"><span class="k">val</span> <span class="n">baseSpeed</span><span class="p">:</span> <span class="nc">Double</span></code> | Wheel speed with the motor neuron silent. |
+| <a id="alife-vehicles-kt--vehicleparams--motorspeed"></a><code class="highlight"><span class="k">val</span> <span class="n">motorSpeed</span><span class="p">:</span> <span class="nc">Double</span></code> | Extra wheel speed at a rate of 1. |
+| <a id="alife-vehicles-kt--vehicleparams--axle"></a><code class="highlight"><span class="k">val</span> <span class="n">axle</span><span class="p">:</span> <span class="nc">Double</span></code> | Distance between the wheels; smaller turns harder. |
+| <a id="alife-vehicles-kt--vehicleparams--neuron"></a><code class="highlight"><span class="k">val</span> <span class="n">neuron</span><span class="p">:</span> <span class="nc">NeuronParams</span></code> | Motor-neuron dynamics. |
+| <a id="alife-vehicles-kt--vehicleparams--plasticity"></a><code class="highlight"><span class="k">val</span> <span class="n">plasticity</span><span class="p">:</span> <span class="nc">PlasticityParams</span></code> | Weight learning. |
+
+### HysteresisSweep { #alife-vehicles-kt-hysteresissweep }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">HysteresisSweep</span><span class="p">(</span><span class="k">val</span> <span class="n">inputsUp</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">ratesUp</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">inputsDown</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">ratesDown</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">)</span></code>](source/jvmMain/afield/simulation/agents/alife_vehicles/#L193)
+
+The result of [`hysteresisSweep`](simulation.md#alife-vehicles-kt--hysteresissweep): the same neuron driven up and then back down.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="alife-vehicles-kt--hysteresissweep--inputsup"></a><code class="highlight"><span class="k">val</span> <span class="n">inputsUp</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> | Inputs of the rising sweep. |
+| <a id="alife-vehicles-kt--hysteresissweep--ratesup"></a><code class="highlight"><span class="k">val</span> <span class="n">ratesUp</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> | Rates on the rising sweep. |
+| <a id="alife-vehicles-kt--hysteresissweep--inputsdown"></a><code class="highlight"><span class="k">val</span> <span class="n">inputsDown</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> | Inputs of the falling sweep (the rising ones reversed). |
+| <a id="alife-vehicles-kt--hysteresissweep--ratesdown"></a><code class="highlight"><span class="k">val</span> <span class="n">ratesDown</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> | Rates on the falling sweep. |
+| <a id="alife-vehicles-kt--hysteresissweep--switchon"></a>[<code class="highlight"><span class="k">val</span> <span class="n">switchOn</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/simulation/agents/alife_vehicles/#L204) | The input at which the rising sweep first crosses a rate of 0.5, or NaN if it never does. |
+| <a id="alife-vehicles-kt--hysteresissweep--switchoff"></a>[<code class="highlight"><span class="k">val</span> <span class="n">switchOff</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/simulation/agents/alife_vehicles/#L207) | The input at which the falling sweep first drops below 0.5, or NaN if it never does. |
+| <a id="alife-vehicles-kt--hysteresissweep--width"></a>[<code class="highlight"><span class="k">val</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/simulation/agents/alife_vehicles/#L210) | `switchOn − switchOff`: zero for a memoryless neuron, the loop's width for a bistable one. |
+| <a id="alife-vehicles-kt--hysteresissweep--area"></a>[<code class="highlight"><span class="k">val</span> <span class="n">area</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/simulation/agents/alife_vehicles/#L213) | The area between the two branches, in input × rate units. |
+| <a id="alife-vehicles-kt--hysteresissweep--toimg"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">toImg</span><span class="p">(</span><span class="n">width</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">300</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">200</span><span class="p">)</span><span class="p">:</span> <span class="nc">Img</span></code>](source/jvmMain/afield/simulation/agents/alife_vehicles/#L233) | Both branches plotted into a small RGB image: rising in orange, falling in blue, input across, rate up. |
+
+### Light { #alife-vehicles-kt-light }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Light</span><span class="p">(</span><span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">intensity</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">radius</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">18.0</span><span class="p">)</span></code>](source/jvmMain/afield/simulation/agents/alife_vehicles/#L273)
+
+A light: brightness `intensity / (1 + d²/radius²)` at distance `d`.
+
+### VehicleWorld { #alife-vehicles-kt-vehicleworld }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">VehicleWorld</span><span class="p">(</span><span class="k">val</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">lights</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Light</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">heading</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">w</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">neurons</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">traces</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">baseline</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="n">seed</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">1L</span><span class="p">)</span></code>](source/jvmMain/afield/simulation/agents/alife_vehicles/#L283)
+
+A population of vehicles among [`lights`](simulation.md#alife-vehicles-kt--vehicleworld--lights) on a torus.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="alife-vehicles-kt--vehicleworld--width"></a><code class="highlight"><span class="k">val</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Double</span></code> | Domain width. |
+| <a id="alife-vehicles-kt--vehicleworld--height"></a><code class="highlight"><span class="k">val</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Double</span></code> | Domain height. |
+| <a id="alife-vehicles-kt--vehicleworld--lights"></a><code class="highlight"><span class="k">val</span> <span class="n">lights</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Light</span><span class="p">&gt;</span></code> | The light sources. |
+| <a id="alife-vehicles-kt--vehicleworld--x"></a><code class="highlight"><span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> | Body x positions. |
+| <a id="alife-vehicles-kt--vehicleworld--y"></a><code class="highlight"><span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> | Body y positions. |
+| <a id="alife-vehicles-kt--vehicleworld--heading"></a><code class="highlight"><span class="k">val</span> <span class="n">heading</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> | Headings in radians. |
+| <a id="alife-vehicles-kt--vehicleworld--w"></a><code class="highlight"><span class="k">val</span> <span class="n">w</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> | Sensor→motor weights, four per vehicle. |
+| <a id="alife-vehicles-kt--vehicleworld--neurons"></a><code class="highlight"><span class="k">val</span> <span class="n">neurons</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> | Neuron state, three per motor neuron (`u`, `r`, `θ`), six per vehicle. |
+| <a id="alife-vehicles-kt--vehicleworld--traces"></a><code class="highlight"><span class="k">val</span> <span class="n">traces</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> | Eligibility traces, four per vehicle. |
+| <a id="alife-vehicles-kt--vehicleworld--baseline"></a><code class="highlight"><span class="k">val</span> <span class="n">baseline</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> | Running reward average, one per vehicle. |
+| <a id="alife-vehicles-kt--vehicleworld--count"></a>[<code class="highlight"><span class="k">val</span> <span class="n">count</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/simulation/agents/alife_vehicles/#L317) | How many vehicles. |
+| <a id="alife-vehicles-kt--vehicleworld--steps"></a>[<code class="highlight"><span class="k">var</span> <span class="n">steps</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/simulation/agents/alife_vehicles/#L320) | Steps taken so far. |
+| <a id="alife-vehicles-kt--vehicleworld--light"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">light</span><span class="p">(</span><span class="n">px</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">py</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/simulation/agents/alife_vehicles/#L324) | Brightness at a point, summed over [`lights`](simulation.md#alife-vehicles-kt--vehicleworld--lights) under the toroidal metric. |
+| <a id="alife-vehicles-kt--vehicleworld--nearestlightwithin"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">nearestLightWithin</span><span class="p">(</span><span class="n">i</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">within</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/simulation/agents/alife_vehicles/#L335) | The index of the light within `within` of vehicle `i`, or -1. |
+| <a id="alife-vehicles-kt--vehicleworld--rate"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">rate</span><span class="p">(</span><span class="n">i</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">m</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/simulation/agents/alife_vehicles/#L348) | The rate of motor neuron `m` of vehicle `i`. |
+| <a id="alife-vehicles-kt--vehicleworld--threshold"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">threshold</span><span class="p">(</span><span class="n">i</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">m</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/simulation/agents/alife_vehicles/#L351) | The threshold of motor neuron `m` of vehicle `i`. |
+| <a id="alife-vehicles-kt--vehicleworld--crossing"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">crossing</span><span class="p">(</span><span class="n">i</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/simulation/agents/alife_vehicles/#L357) | How *crossed-excitatory* vehicle `i` is: `(w_LR + w_RL − w_LL − w_RR) / 2`. Positive steers toward light (Braitenberg's 2b), negative away (2a). |
+| <a id="alife-vehicles-kt--vehicleworld--meancrossing"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">meanCrossing</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/simulation/agents/alife_vehicles/#L360) | Mean [`crossing`](simulation.md#alife-vehicles-kt--vehicleworld--crossing) over the population. |
+| <a id="alife-vehicles-kt--vehicleworld--meanlight"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">meanLight</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/simulation/agents/alife_vehicles/#L363) | Mean light at the vehicles' bodies right now. |
+| <a id="alife-vehicles-kt--vehicleworld--step"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">step</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">VehicleParams</span><span class="p">)</span></code>](source/jvmMain/afield/simulation/agents/alife_vehicles/#L366) | Advance every vehicle by one step. |
+| <a id="alife-vehicles-kt--vehicleworld--steptimes"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">stepTimes</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">VehicleParams</span><span class="p">,</span> <span class="n">n</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/simulation/agents/alife_vehicles/#L410) | [`step`](simulation.md#alife-vehicles-kt--vehicleworld--step) `n` times. |
+| <a id="alife-vehicles-kt--vehicleworld--copy"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">copy</span><span class="p">(</span><span class="n">seed</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">1L</span><span class="p">)</span><span class="p">:</span> <span class="nc">VehicleWorld</span></code>](source/jvmMain/afield/simulation/agents/alife_vehicles/#L413) | An independent copy with the same noise seed, so a run can be forked into two arms. |
+| <a id="alife-vehicles-kt--vehicleworld--tostring"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/simulation/agents/alife_vehicles/#L424) |  |
+
+### LightVisits { #alife-vehicles-kt-lightvisits }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">LightVisits</span><span class="p">(</span><span class="n">world</span><span class="p">:</span> <span class="nc">VehicleWorld</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">within</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">8.0</span><span class="p">)</span></code>](source/jvmMain/afield/simulation/agents/alife_vehicles/#L486)
+
+Counts, per vehicle, how many times it *arrives* at a light other than the last one it was at — the number that tells a vehicle that parks from one that forages. Call [`observe`](simulation.md#alife-vehicles-kt--lightvisits--observe) once per step.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="alife-vehicles-kt--lightvisits--visits"></a>[<code class="highlight"><span class="k">val</span> <span class="n">visits</span></code>](source/jvmMain/afield/simulation/agents/alife_vehicles/#L490) | Arrivals so far, per vehicle. |
+| <a id="alife-vehicles-kt--lightvisits--observe"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">observe</span><span class="p">(</span><span class="n">world</span><span class="p">:</span> <span class="nc">VehicleWorld</span><span class="p">)</span></code>](source/jvmMain/afield/simulation/agents/alife_vehicles/#L493) | Record the current positions. |
+| <a id="alife-vehicles-kt--lightvisits--mean"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">mean</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/simulation/agents/alife_vehicles/#L501) | Mean arrivals per vehicle. |
+
+### VehicleCanvas { #alife-vehicles-kt-vehiclecanvas }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">VehicleCanvas</span><span class="p">(</span><span class="k">val</span> <span class="n">world</span><span class="p">:</span> <span class="nc">VehicleWorld</span><span class="p">,</span> <span class="k">val</span> <span class="n">scale</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.5</span><span class="p">,</span> <span class="k">val</span> <span class="n">fade</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mf">0.992f</span><span class="p">)</span></code>](source/jvmMain/afield/simulation/agents/alife_vehicles/#L511)
+
+A fading trail buffer for drawing a [`VehicleWorld`](simulation.md#alife-vehicles-kt-vehicleworld): the light field as a dim backdrop, each vehicle's recent path as a streak coloured by its motor rates (red the left neuron, green the right, so a vehicle driving straight at full tilt is yellow), and the bodies on top.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="alife-vehicles-kt--vehiclecanvas--w"></a>[<code class="highlight"><span class="k">val</span> <span class="n">w</span></code>](source/jvmMain/afield/simulation/agents/alife_vehicles/#L513) | Pixels across. |
+| <a id="alife-vehicles-kt--vehiclecanvas--h"></a>[<code class="highlight"><span class="k">val</span> <span class="n">h</span></code>](source/jvmMain/afield/simulation/agents/alife_vehicles/#L516) | Pixels down. |
+| <a id="alife-vehicles-kt--vehiclecanvas--record"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">record</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/simulation/agents/alife_vehicles/#L531) | Fade the trails and add the vehicles' current positions. |
+| <a id="alife-vehicles-kt--vehiclecanvas--image"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">image</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Img</span></code>](source/jvmMain/afield/simulation/agents/alife_vehicles/#L543) | Backdrop + trails + bodies. |
 
 ## Creatures.kt { #creatures-kt }
 

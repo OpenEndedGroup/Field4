@@ -595,7 +595,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ### simulation
 
-- [agents](alife.md#alife-kt)
+- *agents* — [ALife](alife.md#alife-kt) · [Simulation](simulation.md#alife-vehicles-kt)
 - *automata* — [ALife](alife.md#alife-ca-kt) · [Data](data.md#booleannetworks-kt)
 - [creatures](simulation.md#creatures-kt)
 - [flow](simulation.md#flowshaders-kt)
@@ -650,7 +650,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**35447 public symbols across 1609 source files**, 20740 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**35517 public symbols across 1610 source files**, 20809 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -667,7 +667,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Renderers](renderers.md) | 46 | 797 | 427 (53%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 586 | 431 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 766 | 514 (67%) | Nonlinear least squares, aimed at geometry. |
-| [Simulation](simulation.md) | 47 | 1379 | 746 (54%) | Making a shape behave. |
+| [Simulation](simulation.md) | 48 | 1449 | 815 (56%) | Making a shape behave. |
 | [Imaging](imaging.md) | 51 | 826 | 434 (52%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
 | [ALife](alife.md) | 14 | 803 | 729 (90%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization), plus the measurement layer every one of them makes its claims through. |
 | [Function](function.md) | 16 | 611 | 405 (66%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
@@ -758,6 +758,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>agents/<wbr></small> [alife_lbm.kt](alife.md#alife-lbm-kt) | ALife | 63 | 63 | A two-dimensional fluid on the GPU by the lattice Boltzmann method, with a control texture you draw obstacles, forces and dye sources into, and a dye field that the flow carries. | [Field 4 Graphics](../afield_four_graphics.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>agents/<wbr></small> [alife_lsystem.kt](alife.md#alife-lsystem-kt) | ALife | 62 | 59 | Structural spatial ALife: a bracketed, parametric, optionally stochastic L-system with a turtle that emits `FLine`s, plus space-colonization branching. | [Spatial artificial life](../alife_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>agents/<wbr></small> [alife_script.kt](alife.md#alife-script-kt) | ALife | 161 | 145 | Per-agent **scripted** behaviour for ALife: a coroutine each agent runs as its own little program, on a fixed-step virtual clock, composing into weighted steering drives. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>agents/<wbr></small> [alife_vehicles.kt](simulation.md#alife-vehicles-kt) | Simulation | 70 | 69 | Braitenberg vehicles whose neurons have internal state: two light sensors, two motor neurons, two wheels, and between them a small dynamical system rather than a wire. | [Braitenberg vehicles with memory](../braitenberg_vehicles.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>agents/<wbr></small> [alife_walls.kt](alife.md#alife-walls-kt) | ALife | 59 | 43 | Walls for `alife_script.kt`: obstacles, swept circle collision, and radius-aware routing around them. | [Spatial artificial life](../alife_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>stdlib/<wbr></small> [AlifeEvolveGallery.kt](examples.md#alifeevolvegallery-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>stdlib/<wbr></small> [AlifeGallery.kt](examples.md#alifegallery-kt) | Examples | 2 | 1 |  |  |
