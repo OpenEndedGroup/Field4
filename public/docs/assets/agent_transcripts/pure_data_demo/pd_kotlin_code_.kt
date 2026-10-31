@@ -38,6 +38,6 @@ patch.send("pitch", 110)
 var n = 0
 patch.receive("level") { m ->
     // env~ reports in dB, 100 = full scale; this lambda runs on Field's main thread.
-    if (n++ % 10 == 0) display("level", "<div style='padding:8px'>[s level] ${"%.1f".format(m.float ?: 0f)} dB</div>")
+    if (n++ % 10 == 0) display("level", "<div style='padding:8px'>[s level] ${(m.float ?: 0f).f1} dB</div>")
 }
 patch

@@ -72,7 +72,7 @@ operations:
           loop {
               // A target that never holds still, so every single frame is a re-aim.
               goal = sin(frameNumber / 40.0) * 0.8
-              (restarted as NeedsStartingValue<Double>).startAt(fromRest.lastOrNull() ?: 0.0)
+              restarted.startAt(fromRest.lastOrNull() ?: 0.0)
 
               target += goal
               reSolved += carried()

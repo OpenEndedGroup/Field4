@@ -7,8 +7,7 @@ fun draw() {
     val c = "rgba(${(tint.x * 255).toInt()},${(tint.y * 255).toInt()},${(tint.z * 255).toInt()},${tint.w})"
     val r = 10 + 40 * kotlin.math.log10(cutoff / 20.0) / 3.0
     val dot =
-        if (armed) "<circle cx='${150 + orbit.x * 120}' cy='${150 - orbit.y * 120}' r='${"%.1f".format(r)}' fill='$c'/>"
-        else ""
+        if (armed) "<circle cx='${150 + orbit.x * 120}' cy='${150 - orbit.y * 120}' r='${r.f1}' fill='$c'/>" else ""
     display(
         "figure",
         """

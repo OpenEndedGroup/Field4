@@ -308,7 +308,7 @@ Three stages derived from the level: blockout, traversal and placement.
 Each reads the level as it was when its build started, and reports what it measured.
 
 ```edn [field-box id="staged_builds" role="properties"]
-{"id" "staged_builds" "index" 2 "name" "Builds" "parents" ["root" "staged_level" "staged_rule"] "children" ["staged_corpus"] "properties" {"children" #{#afield/box "staged_corpus"} "parents" #{#afield/box "root" #afield/box "staged_level" #afield/box "staged_rule"} "name" "Builds" "_tombstone" false "frame" #afield/rect [640.0 40.0 300.0 100.0] "autorun" true} "blockProperties" [{"name" "code" "language" "kotlin" "path" "staged_builds_code_.kt" "lines" 314 "characters" 13504 "sha256" "32b395a618745dbd367501c8e89c2741066d830d1d85ba296c2c9fc71cac6321"}]}
+{"id" "staged_builds" "index" 2 "name" "Builds" "parents" ["root" "staged_level" "staged_rule"] "children" ["staged_corpus"] "properties" {"children" #{#afield/box "staged_corpus"} "parents" #{#afield/box "root" #afield/box "staged_level" #afield/box "staged_rule"} "name" "Builds" "_tombstone" false "frame" #afield/rect [640.0 40.0 300.0 100.0] "autorun" true} "blockProperties" [{"name" "code" "language" "kotlin" "path" "staged_builds_code_.kt" "lines" 314 "characters" 13504 "sha256" "d1bb06ecba7276bc7996b65aeb8727461916aa2ff8dc846bb5992d03e3f6e1a8"}]}
 ```
 
 ```kotlin [field-property box="staged_builds" name="code" path="staged_builds_code_.kt"]
@@ -389,7 +389,7 @@ val blockout = StudyBuildStage(
             }
     val summary =
         "${g.rooms.size} rooms, $area cells of floor, ${walls.size} wall pieces, ${g.doors.size / 2} door${if (g.doors.size == 2) "" else "s"}" +
-            (solid?.let { ", joined into one solid of volume ${"%.1f".format(it["volume"])} (${it["status"]})" }
+            (solid?.let { ", joined into one solid of volume ${(it["volume"] as Number).f1} (${it["status"]})" }
                 ?: "; install Manifold to check it as one solid")
     StudyBuildProduct(
         ["blockout.obj"],
@@ -633,7 +633,7 @@ go {
 <!-- field-box id="staged_corpus" index="3" -->
 
 ```edn [field-box id="staged_corpus" role="properties"]
-{"id" "staged_corpus" "index" 3 "name" "Corpus" "parents" ["root" "staged_builds"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "staged_builds"} "name" "Corpus" "_tombstone" false "frame" #afield/rect [1440.0 520.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "staged_corpus_code_.kt" "lines" 146 "characters" 6746 "sha256" "53946ca56e5fc4622f3a47f2f0a1d00d258bb8e569548e976267cb175df76775"}]}
+{"id" "staged_corpus" "index" 3 "name" "Corpus" "parents" ["root" "staged_builds"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "staged_builds"} "name" "Corpus" "_tombstone" false "frame" #afield/rect [1440.0 520.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "staged_corpus_code_.kt" "lines" 146 "characters" 6723 "sha256" "0a5b6b92c8d6b38acd8169cfa0af3b47adacaf7cb461ed829b864100e4274e88"}]}
 ```
 
 ```kotlin [field-property box="staged_corpus" name="code" path="staged_corpus_code_.kt"]
@@ -734,7 +734,7 @@ fun runCorpus(checkActive: () -> Unit) {
             if (seed == 0) "the level as it is"
             else "seed $seed · ${(json.readValue<Map<String, Any?>>(source)["rooms"] as Map<*, *>).size} rooms",
             "within budget ${measures.values.count { it["withinBudget"] == true }} of ${measures.size} · sightlines ${walk?.facts?.get("sightlines") ?: "–"}",
-            "longest relaxed/rough ${worst?.let { "%.2f".format(it) } ?: "–"}",
+            "longest relaxed/rough ${worst?.f2 ?: "–"}",
             when {
                 placed?.status == StudyBuildStatus.SUCCEEDED ->
                     "placed: " +

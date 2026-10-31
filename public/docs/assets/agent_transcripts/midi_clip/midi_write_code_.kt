@@ -47,7 +47,7 @@ markdown(
     | bytes | ${out.length()} |
     | tracks | ${clip.tracks.size} (${clip.tracks.joinToString { it.name ?: "?" }}) |
     | tempo | ${clip.bpmAt(0.0)} BPM |
-    | length | ${"%.2f".format(clip.durationSeconds)}s / ${clip.durationBeats} beats |
+    | length | ${clip.durationSeconds.f2}s / ${clip.durationBeats} beats |
 
     Format 1, with a real conductor track. Open it in any DAW, or run box 2.
     """

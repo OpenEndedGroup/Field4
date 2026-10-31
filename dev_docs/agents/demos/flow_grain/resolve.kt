@@ -1,6 +1,4 @@
 // Dependencies are explicit graph exports; resources stay in their parent box.
-val flowLook = fromContextWithNameOrNull<afield.math.linalg.Vec4>("flowLook")!!
-val flowSurface = fromContextWithNameOrNull<RenderToTexture>("flowSurface")!!
 
 // The color and motion attachment are both available to future postprocessing boxes.
 var module = moduleHere {

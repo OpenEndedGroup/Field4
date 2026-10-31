@@ -143,7 +143,7 @@ operations:
           var n = 0
           patch.receive("level") { m ->
               // env~ reports in dB, 100 = full scale; this lambda runs on Field's main thread.
-              if (n++ % 10 == 0) display("level", "<div style='padding:8px'>[s level] ${"%.1f".format(m.float ?: 0f)} dB</div>")
+              if (n++ % 10 == 0) display("level", "<div style='padding:8px'>[s level] ${(m.float ?: 0f).f1} dB</div>")
           }
           patch
   - create:
@@ -177,7 +177,7 @@ operations:
 
           val ups = (1 until left.size).count { left[it - 1] < 0f && left[it] >= 0f }
           val peak = left.maxOf { abs(it) }
-          println("$ups upward zero crossings in 1 s, peak ${"%.4f".format(peak)}, channels equal: ${left.contentEquals(right)}")
+          println("$ups upward zero crossings in 1 s, peak ${peak.f4}, channels equal: ${left.contentEquals(right)}")
           showSignals("tabwrite~ scope" to scope.toList(), channel = "scope", title = "[table scope], recorded by Pd")
           lines(afield.audio.pd.PdPatchGraph.parse(text).toFLines(), channel = "patch", w = 420.0, h = 200.0, fitToSize = true)
   - create:
@@ -206,8 +206,7 @@ operations:
           )
           var n = 0
           fx.receive("level") { m ->
-              if (n++ % 10 == 0)
-                  display("level", "<div style='padding:8px'>after the lowpass: ${"%.1f".format(m.float ?: 0f)} dB</div>")
+              if (n++ % 10 == 0) display("level", "<div style='padding:8px'>after the lowpass: ${(m.float ?: 0f).f1} dB</div>")
           }
           fx
   - create:

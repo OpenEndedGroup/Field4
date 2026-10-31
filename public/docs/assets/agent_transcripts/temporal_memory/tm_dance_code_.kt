@@ -31,7 +31,7 @@ val poses =
             it.thickness = 2.0
         }
     }
-print("${played.segments.size - 1} jumps; every take used: coverage ${"%.2f".format(played.coverage(dance.length))}")
+print("${played.segments.size - 1} jumps; every take used: coverage ${played.coverage(dance.length).f2}")
 // an invisible point above the rows leaves room for the viewer's toolbar
 val headroom = fline {
     moveTo(0.0, 70.0, 0.0)

@@ -79,7 +79,7 @@ Solid.scope {
     println("hybrid  ${build.solid.triangleCount} triangles")
     println("naive   ${naive.triangleCount} triangles for the same shape at the same edge length")
     println(
-        "        — ${"%.2f".format(naive.triangleCount.toDouble() / build.solid.triangleCount)}x, and " +
+        "        — ${(naive.triangleCount.toDouble() / build.solid.triangleCount).f2}x, and " +
             "the plate's six faces stay six faces",
     )
     println()

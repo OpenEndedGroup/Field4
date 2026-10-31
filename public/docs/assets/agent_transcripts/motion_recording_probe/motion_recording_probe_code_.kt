@@ -45,7 +45,7 @@ loop {
     markdown(
         "status",
         "**Coordinate probe** · no network inference\n\n" +
-            "Time ${"%.2f".format(time)} s · episode ${snapshot.frame.episode} · " +
+            "Time ${time.f2} s · episode ${snapshot.frame.episode} · " +
             if (snapshot.held) "holding before reset" else "recorded pose",
     )
     displayOpen("motion")

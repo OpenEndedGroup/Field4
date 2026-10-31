@@ -32,7 +32,7 @@ start(renderer::run)
 <!-- field-box id="physics_manifold_trace" index="1" -->
 
 ```edn [field-box id="physics_manifold_trace" role="properties"]
-{"id" "physics_manifold_trace" "index" 1 "name" "a draped cloth, welded into one solid, traced" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "a draped cloth, welded into one solid, traced" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "physics_manifold_trace_code_.kt" "lines" 141 "characters" 5557 "sha256" "ba5089d2ac2d527f2ada3781cd991dfd87193d2dabbc99698a8e50f6197609ba"}]}
+{"id" "physics_manifold_trace" "index" 1 "name" "a draped cloth, welded into one solid, traced" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "a draped cloth, welded into one solid, traced" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "physics_manifold_trace_code_.kt" "lines" 141 "characters" 5535 "sha256" "5166d7728fab9f545fd66b58a0f87834f295c0c79e98dabe6eb8ac9ec00ed0ca"}]}
 ```
 
 ```kotlin [field-property box="physics_manifold_trace" name="code" path="physics_manifold_trace_code_.kt"]
@@ -123,8 +123,8 @@ val (shaded, plain, netGenus) = Solid.scope {
     val start = System.nanoTime()
     val welded = Solid.union(rods).checked("cloth net")
     println(
-        "union of ${rods.size} rods: ${"%.0f".format((System.nanoTime() - start) / 1e6)} ms, " +
-            "${welded.triangleCount} triangles, volume ${"%.5f".format(welded.volume)}",
+        "union of ${rods.size} rods: ${((System.nanoTime() - start) / 1e6).f0} ms, " +
+            "${welded.triangleCount} triangles, volume ${welded.volume.f5}",
     )
     Triple(
         welded.toTriMesh(normals = true, minSharpAngle = 30.0),

@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="motion_tether_score" index="0" -->
 
 ```edn [field-box id="motion_tether_score" role="properties"]
-{"id" "motion_tether_score" "index" 0 "name" "CLoSD — a movement score" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "CLoSD — a movement score" "_tombstone" false "frame" #afield/rect [80.0 80.0 600.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "motion_tether_score_code_.kt" "lines" 36 "characters" 1209 "sha256" "3b1d83f004a954b86b1f427922943c049a3597250f5b8a14b07bf01c18f9ff91"}]}
+{"id" "motion_tether_score" "index" 0 "name" "CLoSD — a movement score" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "CLoSD — a movement score" "_tombstone" false "frame" #afield/rect [80.0 80.0 600.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "motion_tether_score_code_.kt" "lines" 36 "characters" 1197 "sha256" "0504f0cb0d7400eee137f30a55af18e7bea2f509841ae04ca93b1d1bebec3874"}]}
 ```
 
 ```kotlin [field-property box="motion_tether_score" name="code" path="motion_tether_score_code_.kt"]
@@ -32,7 +32,7 @@ frames {
             markdown(
                 "status",
                 when {
-                    foot?.active == true -> "**TETHERED** · ${"%.0f".format(foot.forceN)} N"
+                    foot?.active == true -> "**TETHERED** · ${foot.forceN.f0} N"
                     foot != null -> "**RELEASED**"
                     else -> "**WALKING**"
                 },

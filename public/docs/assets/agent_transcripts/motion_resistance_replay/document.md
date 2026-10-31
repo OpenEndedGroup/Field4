@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="motion_resistance_replay" index="0" -->
 
 ```edn [field-box id="motion_resistance_replay" role="properties"]
-{"id" "motion_resistance_replay" "index" 0 "name" "CLoSD — resistance and release" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "CLoSD — resistance and release" "_tombstone" false "frame" #afield/rect [80.0 80.0 600.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "motion_resistance_replay_code_.kt" "lines" 35 "characters" 1507 "sha256" "082d58fa8acd76bb4f14040ca1facf8f2cd673a61ab4ad5840ffe12fee227547"}]}
+{"id" "motion_resistance_replay" "index" 0 "name" "CLoSD — resistance and release" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "CLoSD — resistance and release" "_tombstone" false "frame" #afield/rect [80.0 80.0 600.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "motion_resistance_replay_code_.kt" "lines" 34 "characters" 1449 "sha256" "410e023810afd3f02d27ab53d8caf6f17e7260543c670f3fd43b3299c0b4b9df"}]}
 ```
 
 ```kotlin [field-property box="motion_resistance_replay" name="code" path="motion_resistance_replay_code_.kt"]
@@ -34,12 +34,11 @@ frames {
                     overlays = t?.overlays() ?: emptyList(),
                 )
                 val action =
-                    if (t?.active == true)
-                        "TETHERED · ${"%.1f".format(t.stretchMetres*100)} cm · ${"%.0f".format(t.forceN)} N"
+                    if (t?.active == true) "TETHERED · ${(t.stretchMetres*100).f1} cm · ${t.forceN.f0} N"
                     else if (snapshot.frame.time >= 4.0) "RELEASED" else "WALKING"
                 markdown(
                     "status",
-                    "**$action** · ${"%.2f".format(snapshot.frame.time)} s\n\n" +
+                    "**$action** · ${snapshot.frame.time.f2} s\n\n" +
                         "Recorded CLoSD physics. White: executed · cyan: reference · red: anchor · amber: submitted force (scaled). " +
                         "8000 N/m, 120 N s/m, 2500 N cap. The prompt stays unchanged. Follow camera half-life: 0.4 s.",
                 )

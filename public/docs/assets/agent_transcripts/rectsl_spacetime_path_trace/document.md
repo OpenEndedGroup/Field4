@@ -32,7 +32,7 @@ start(renderer::run)
 <!-- field-box id="rectsl_spacetime_trace" index="1" -->
 
 ```edn [field-box id="rectsl_spacetime_trace" role="properties"]
-{"id" "rectsl_spacetime_trace" "index" 1 "name" "a RectSL animation, as a solid" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "a RectSL animation, as a solid" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_spacetime_trace_code_.kt" "lines" 230 "characters" 8721 "sha256" "43a3d112937951af89c8f91faad1e0e0c8d671dedc5e9dce580a7880c06b6034"}]}
+{"id" "rectsl_spacetime_trace" "index" 1 "name" "a RectSL animation, as a solid" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "a RectSL animation, as a solid" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_spacetime_trace_code_.kt" "lines" 229 "characters" 8641 "sha256" "4327f8f9aec99538cc3eb6827cbbb169e95da64fff6d20390ecf80fadb3557d7"}]}
 ```
 
 ```kotlin [field-property box="rectsl_spacetime_trace" name="code" path="rectsl_spacetime_trace_code_.kt"]
@@ -116,10 +116,9 @@ for (k in 0 until nt) {
     }
 }
 val sampleMs = (System.nanoTime() - sampledAt) / 1e6
-println("sampled ${inner.size} points, ${nt} tapes, ${"%.0f".format(sampleMs)} ms")
+println("sampled ${inner.size} points, ${nt} tapes, ${sampleMs.f0} ms")
 println(
-    "  ${inner.count { it < 0f }} of them inside, distances " +
-        "${"%.3f".format(inner.min())} to ${"%.3f".format(inner.max())}",
+    "  ${inner.count { it < 0f }} of them inside, distances " + "${inner.min().f3} to ${inner.max().f3}",
 )
 
 val innerBounds = boundsOf(
@@ -145,7 +144,7 @@ println(
 )
 println(
     "  levelSetOf:    ${cutSolid.triangleCount} triangles, status ${cutSolid.status}, " +
-        "genus ${cutSolid.genus}, volume ${"%.3f".format(cutSolid.volume)}",
+        "genus ${cutSolid.genus}, volume ${cutSolid.volume.f3}",
 )
 cutSolid.close()
 
@@ -177,13 +176,13 @@ println(
 val whole = Solid.levelSetOf(spacetime, bounds, edgeLength = 0.12)
 println(
     "  levelSetOf:    ${whole.triangleCount} triangles, status ${whole.status}, " +
-        "genus ${whole.genus}, volume ${"%.3f".format(whole.volume)}",
+        "genus ${whole.genus}, volume ${whole.volume.f3}",
 )
 
 val parts = whole.decompose()
 println(
     "  ${parts.size} component(s): volumes " +
-        parts.map { "%.2f".format(it.volume) }.joinToString(", ") +
+        parts.map { it.volume.f2 }.joinToString(", ") +
         " — connected because the two rects overlap on screen at some frame",
 )
 

@@ -98,9 +98,9 @@ run {
     val mesh = part.toTriMesh()
     println("status      ${part.status}")
     println(
-        "volume      ${"%.3f".format(part.volume)} mm^3   (%.2f g in 6061 aluminium)".format(part.volume * 0.0027),
+        "volume      ${part.volume.f3} mm^3   (%.2f g in 6061 aluminium)".format(part.volume * 0.0027),
     )
-    println("area        ${"%.3f".format(part.surfaceArea)} mm^2")
+    println("area        ${part.surfaceArea.f3} mm^2")
     println("genus       ${part.genus}   — four bores plus the slot, so five holes through it")
     println("mesh        ${part.triangleCount} triangles, ${part.vertexCount} vertices")
 
@@ -114,8 +114,8 @@ run {
     println("  watertight  ${mesh.isWatertight()}")
     println("  genus       ${mesh.genus()}   — agreeing with Manifold's ${part.genus}")
     println(
-        "  volume      ${"%.3f".format(mesh.signedVolume())}   " +
-            "(Manifold said ${"%.3f".format(part.volume)}, differing by " +
+        "  volume      ${mesh.signedVolume().f3}   " +
+            "(Manifold said ${part.volume.f3}, differing by " +
             "${"%.2e".format(kotlin.math.abs(mesh.signedVolume() - part.volume))})",
     )
     println(
@@ -138,8 +138,7 @@ run {
     }
     println()
     println(
-        "wall between the slot and the nearest bore: " +
-            "${"%.3f".format(slotSolid.minGap(nearestBore, searchLength = 30.0))} mm",
+        "wall between the slot and the nearest bore: " + "${slotSolid.minGap(nearestBore, searchLength = 30.0).f3} mm",
     )
     nearestBore.close()
     slotSolid.close()
@@ -148,7 +147,7 @@ run {
         shaded,
         title = "60 x 40 x 8 plate, four bored bosses, a rounded slot, ${chamfer}mm chamfer",
         caption =
-            "genus ${part.genus} &middot; ${"%.1f".format(part.volume)} mm&sup3; &middot; " +
+            "genus ${part.genus} &middot; ${part.volume.f1} mm&sup3; &middot; " +
                 "${part.triangleCount} triangles &middot; every Boolean guaranteed to close",
         view = MeshView(yawDegrees = 34.0, pitchDegrees = 26.0, width = 760, height = 470),
     )

@@ -28,6 +28,28 @@ This is the check that retires the prose. The rules:
   lines is a note, since a literal takes no spread and this line-by-line check cannot see one on a
   later line. ``listOf()``, ``listOf<T>(...)`` and a spread (``listOf(*xs)``) are left alone.
 
+- Approved helpers (``dev_docs/agents/box_code_helpers/ADOPTION.md``), each replacing the verbose form
+  the corpus used before the helper existed:
+
+  - ``key-pairs``: ``scope.Key(mutableMapOf<String, Any?>("a" to x))`` is ``scope.Key("a" to x)``.
+  - ``fixed-format``: ``"%.3f".format(x)`` is ``x.f3`` (``Number.f0`` .. ``f9``, ``Locale.ROOT``). A
+    compound argument is parenthesised: ``(a / b).f2``. Only a single-argument call of exactly
+    ``"%.Nf"`` is touched; ``"%6.2f"``, ``"%.2f%%"`` and multi-argument formats are left alone.
+  - ``starting-value-cast``: ``(q as NeedsStartingValue<T>).startAt(v)`` is ``q.startAt(v)``:
+    ``smoothTo`` and ``inertialTo`` return ``Interpolant<T>``.
+  - ``uint-push-lambda``: ``m.count = { n.toUInt() }`` is ``m.count = { n }``: generated ``uint``
+    push members take an ``Int`` lambda. Rewritten only in a block that builds a module or mesh
+    (where such members come from); elsewhere a note, since a plain ``UInt`` property needs it.
+  - ``compute-barrier``: a ``computeTask { _, cmd, _ -> ... }`` holding nothing but
+    ``computeMemoryBarrier(cmd)`` (and ``graphicsMemoryBarrier(cmd)``) is ``computeBarrier()``
+    (``computeBarrier(graphics = true)``).
+  - ``wall-projection``: a RectSL ``m.push["worldToClip"] = Matrix4f().ortho(...)`` built by hand from
+    the wall's size is ``program.wall.worldToClip()`` (``import afield.lang.rectsl.worldToClip``),
+    which also honours a top-left origin. Not rewritten: the wall is named differently per box.
+  - ``fullscreen-triangle``: ``tri.resize(3, 0, module)`` is ``fullscreenTriangle(module)`` when
+    the vertex shader draws from ``gl_VertexIndex``. A note: a three-vertex mesh with attributes
+    is legitimate.
+
 Use ``--collection-literals --paths <files>`` during the code revision pass to include
 those selected transcripts/demos/templates in the list-literal audit. Default landing scope stays
 limited to handwritten docs until the wider corpus conversion finishes.
@@ -108,6 +130,144 @@ def lists_as_literals(path: str) -> bool:
             and not any(_under(path, root) for root in LIST_LITERAL_EXCLUDED))
 
 LIST_OF = re.compile(r"(?<![\w.])listOf\(")
+KEY_MAP = re.compile(r"(?<!\w)Key\(\s*mutableMapOf(?:<\s*String\s*,\s*Any\?\s*>)?\(")
+FIXED_FORMAT = re.compile(r'(?<!\\)"%\.(?P<digits>\d)f"\.format\(')
+SIMPLE_RECEIVER = re.compile(r"^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*|\(\)|\[[^\[\]()]*\])*$|^\d+(?:\.\d+)?$")
+STARTING_CAST = re.compile(r"\((?P<name>[A-Za-z_]\w*)\s+as\s+(?:afield\.animation\.interpolation\.)?NeedsStartingValue<[^()]*>\)\.startAt\(")
+UINT_PUSH = re.compile(
+    r"^(?P<head>\s*[A-Za-z_][\w.]*\.\w+\s*=\s*\{\s*)(?P<expr>.+?)\.toUInt\(\)(?P<tail>\s*\}\s*(?://.*)?)$")
+MAKES_PUSH_MEMBERS = re.compile(r"\b(?:moduleHere|computeModuleHere|meshModuleHere|ComputeMesh|Mesh|fullscreenTriangle)\b")
+BARRIER_TASK = re.compile(r"^(?P<head>.*?)computeTask\s*\{\s*_\s*,\s*cmd\s*,\s*_\s*->\s*$")
+BARRIER_ARG = r"cmd(?:\s*,\s*null(?:\s+as\s+VulkanBuffer\?)?)?"
+COMPUTE_BARRIER_LINE = re.compile(rf"^\s*computeMemoryBarrier\({BARRIER_ARG}\)\s*$")
+GRAPHICS_BARRIER_LINE = re.compile(rf"^\s*graphicsMemoryBarrier\({BARRIER_ARG}\)\s*$")
+CLOSE_BRACE = re.compile(r"^\s*\}(?P<rest>.*)$")
+HAND_WALL_ORTHO = re.compile(r"""push\[\s*"worldToClip"\s*\]\s*=\s*(?:afield\.math\.linalg\.)?Matrix4f\(\)\.ortho\(""")
+TRIANGLE_RESIZE = re.compile(r"(?<![\w.])(?P<mesh>[A-Za-z_]\w*)\.resize\(\s*3\s*,\s*0\s*,\s*(?P<module>[^,()]+?)\s*\)")
+
+
+def key_pairs(line: str) -> str | None:
+    """The line with each one-line ``Key(mutableMapOf(...))`` reduced to ``Key(...)``, or None."""
+    out, pos, changed = [], 0, False
+    while m := KEY_MAP.search(line, pos):
+        inner_open = m.end() - 1
+        inner_close = _closing_paren(line, inner_open)
+        outer_close = _closing_paren(line, line.index("(", m.start()))
+        if inner_close < 0 or outer_close < 0 or line[inner_close + 1:outer_close].strip():
+            out.append(line[pos:m.end()])
+            pos = m.end()
+            continue
+        args = line[inner_open + 1:inner_close]
+        if not args.strip() or _spread(args):
+            out.append(line[pos:m.end()])
+            pos = m.end()
+            continue
+        out.append(line[pos:m.start()] + "Key(" + args + ")")
+        pos = outer_close + 1
+        changed = True
+    if not changed:
+        return None
+    out.append(line[pos:])
+    return "".join(out)
+
+
+def _top_level_comma(args: str) -> bool:
+    depth, j = 0, 0
+    while j < len(args):
+        c = args[j]
+        if c == '"':
+            j += 1
+            while j < len(args) and args[j] != '"':
+                j += 2 if args[j] == "\\" else 1
+        elif c in "([{":
+            depth += 1
+        elif c in ")]}":
+            depth -= 1
+        elif c == "," and depth == 0:
+            return True
+        j += 1
+    return False
+
+
+def _strip_parens(expr: str) -> str:
+    expr = expr.strip()
+    while expr.startswith("(") and _closing_paren(expr, 0) == len(expr) - 1:
+        expr = expr[1:-1].strip()
+    return expr
+
+
+def _postfix(expr: str) -> bool:
+    """Whether ``expr`` is one postfix chain (``a.b(c)[d] { e }.f``), so ``.fN`` binds to all of it."""
+    if not re.match(r"[A-Za-z_]|\d+(?:\.\d+)?$", expr):
+        return False
+    depth, j = 0, 0
+    while j < len(expr):
+        c = expr[j]
+        if c == '"':
+            j += 1
+            while j < len(expr) and expr[j] != '"':
+                j += 2 if expr[j] == "\\" else 1
+        elif c in "([{":
+            depth += 1
+        elif c in ")]}":
+            depth -= 1
+        elif depth == 0 and c == " " and re.match(r" *\{", expr[j:]):
+            pass  # a trailing lambda: `xs.maxOf { ... }`
+        elif depth == 0 and not (c.isalnum() or c in "_.!"):
+            return False
+        j += 1
+    return depth == 0
+
+
+def fixed_formats(line: str) -> str | None:
+    """The line with each single-argument ``"%.Nf".format(x)`` written ``x.fN``, or None."""
+    out, pos, changed = [], 0, False
+    while m := FIXED_FORMAT.search(line, pos):
+        close = _closing_paren(line, m.end() - 1)
+        args = line[m.end():close] if close >= 0 else ""
+        if close < 0 or not args.strip() or _top_level_comma(args) or _spread(args):
+            out.append(line[pos:m.end()])
+            pos = m.end()
+            continue
+        inner = fixed_formats(args)
+        expr = _strip_parens(inner if inner is not None else args)
+        receiver = expr if _postfix(expr) else f"({expr})"
+        out.append(line[pos:m.start()] + f"{receiver}.f{m['digits']}")
+        pos = close + 1
+        changed = True
+    if not changed:
+        return None
+    out.append(line[pos:])
+    return "".join(out)
+
+
+def uint_lambda(line: str) -> str | None:
+    if not (m := UINT_PUSH.match(line)):
+        return None
+    expr = m["expr"].strip()
+    if expr.startswith("(") and _closing_paren(expr, 0) == len(expr) - 1:
+        expr = expr[1:-1].strip()
+    elif not SIMPLE_RECEIVER.match(expr):
+        return None
+    return f"{m['head']}{expr}{m['tail']}"
+
+
+def barrier_task(lines: list[str], i: int, end: int) -> tuple[int, str] | None:
+    """For a ``computeTask { _, cmd, _ ->`` at ``i`` whose body is only memory barriers:
+    (index of its closing line, the replacement line)."""
+    if not (m := BARRIER_TASK.match(lines[i])):
+        return None
+    j, compute, graphics = i + 1, False, False
+    while j < end and (COMPUTE_BARRIER_LINE.match(lines[j]) or GRAPHICS_BARRIER_LINE.match(lines[j])):
+        compute |= bool(COMPUTE_BARRIER_LINE.match(lines[j]))
+        graphics |= bool(GRAPHICS_BARRIER_LINE.match(lines[j]))
+        j += 1
+    if not compute or j >= end or not (c := CLOSE_BRACE.match(lines[j])):
+        return None
+    call = "computeBarrier(graphics = true)" if graphics else "computeBarrier()"
+    return j, f"{m['head']}{call}{c['rest']}"
+
+
 UNUSED_IMPORTS = {
     "import afield.graphics.vulkan.Renderer": re.compile(r"\bRenderer\b"),
     "import afield.document.context.fromContext": re.compile(r"\bfromContext\b"),
@@ -115,7 +275,7 @@ UNUSED_IMPORTS = {
 
 
 # Rules whose unfixable findings are judgement calls: printed as notes, never a failure.
-NOTE_RULES = {"redundant-renderer", "box-alias", "list-literal"}
+NOTE_RULES = {"redundant-renderer", "box-alias", "list-literal", "uint-push-lambda", "fullscreen-triangle"}
 
 
 @dataclass(frozen=True)
@@ -253,10 +413,47 @@ def list_literals(line: str) -> tuple[str, bool] | None:
     return "".join(out), complete
 
 
-def check_block(lines: list[str], start: int, end: int, literals: bool = False) -> list[tuple[int, str, str, bool]]:
-    """(line index, rule, message, fixable) for one Kotlin block."""
+def _helper_findings(lines: list[str], i: int, end: int, makes_push: bool) -> list[tuple[int, str, str, bool]]:
+    """Findings of the approved-helper rules on line ``i``."""
+    line, out = lines[i], []
+    if key_pairs(line) is not None:
+        out.append((i, "key-pairs",
+                    "write `scope.Key(\"name\" to value, ...)`: `Key` takes the pairs itself", True))
+    if fixed_formats(line) is not None:
+        out.append((i, "fixed-format",
+                    "write `x.f3` for `\"%.3f\".format(x)` (Number.f0..f9, Locale.ROOT)", True))
+    if STARTING_CAST.search(line):
+        out.append((i, "starting-value-cast",
+                    "write `q.startAt(v)`: smoothTo/inertialTo return Interpolant<T>, no cast needed", True))
+    if uint_lambda(line) is not None:
+        if makes_push:
+            out.append((i, "uint-push-lambda",
+                        "write `{ n }`: generated uint push members take an Int lambda", True))
+        else:
+            out.append((i, "uint-push-lambda",
+                        "if this is a generated uint push member, drop `.toUInt()`: it takes an Int lambda", False))
+    if barrier_task(lines, i, end) is not None:
+        out.append((i, "compute-barrier",
+                    "write `computeBarrier()` (`computeBarrier(graphics = true)` when it also publishes to "
+                    "graphics) instead of a computeTask of memory barriers", True))
+    if HAND_WALL_ORTHO.search(line):
+        out.append((i, "wall-projection",
+                    "write `m.push[\"worldToClip\"] = program.wall.worldToClip()` (import "
+                    "afield.lang.rectsl.worldToClip): it also honours a top-left wall origin", False))
+    if m := TRIANGLE_RESIZE.search(line):
+        out.append((i, "fullscreen-triangle",
+                    f"if the vertex shader draws from gl_VertexIndex with no attributes, write "
+                    f"`val {m['mesh']} = fullscreenTriangle({m['module'].strip()})` instead of a Mesh resized to 3", False))
+    return out
+
+
+def check_block(lines: list[str], start: int, end: int, literals: bool = False,
+                helpers: bool = True) -> list[tuple[int, str, str, bool]]:
+    """(line index, rule, message, fixable) for one Kotlin block. ``helpers`` False skips the
+    approved-helper rules (a listing quoting recorded source)."""
     text = "\n".join(lines[start:end])
     starts_coroutines = bool(COROUTINE_START.search(text))
+    makes_push = bool(MAKES_PUSH_MEMBERS.search(text))
     out = []
     for i in range(start, end):
         line = lines[i]
@@ -285,6 +482,8 @@ def check_block(lines: list[str], start: int, end: int, literals: bool = False) 
         elif SPACED_MARKER.match(line):
             out.append((i, "spaced-fragment-marker",
                         "write `//%-`, the documented spelling of a fragment break", True))
+        if helpers:
+            out.extend(_helper_findings(lines, i, end, makes_push))
         if literals and (lit := list_literals(line)):
             out.append((i, "list-literal",
                         "write the list as a collection literal, `[a, b, c]`" if lit[1] else
@@ -293,14 +492,35 @@ def check_block(lines: list[str], start: int, end: int, literals: bool = False) 
     return out
 
 
-def fix_block(lines: list[str], start: int, end: int, literals: bool = False) -> list[str]:
+def _fix_helpers(line: str, makes_push: bool) -> str:
+    if (rewritten := key_pairs(line)) is not None:
+        line = rewritten
+    if (rewritten := fixed_formats(line)) is not None:
+        line = rewritten
+    line = STARTING_CAST.sub(lambda m: f"{m['name']}.startAt(", line)
+    if makes_push and (rewritten := uint_lambda(line)) is not None:
+        line = rewritten
+    return line
+
+
+def fix_block(lines: list[str], start: int, end: int, literals: bool = False, helpers: bool = True) -> list[str]:
     """The block's lines with every fixable finding rewritten, and imports it orphaned removed."""
     block = lines[start:end]
     text = "\n".join(block)
     starts_coroutines = bool(COROUTINE_START.search(text))
+    makes_push = bool(MAKES_PUSH_MEMBERS.search(text))
     out: list[str] = []
     removed_renderer = False
-    for line in block:
+    skip_to = -1
+    for k, line in enumerate(block):
+        if k <= skip_to:
+            continue
+        if helpers and (barrier := barrier_task(block, k, len(block))):
+            skip_to, line = barrier
+            out.append(line)
+            continue
+        if helpers:
+            line = _fix_helpers(line, makes_push)
         if RENDERER_LINE.match(line) and not starts_coroutines:
             removed_renderer = True
             continue
@@ -365,15 +585,16 @@ def process(path: str, root: Path, fix: bool, collection_literals: bool = False)
     recorded = recorded_regions(lines)
     # A listing a packager copies from saved source (between `<!-- NAME-source:BLOCK -->` markers) shows the
     # recorded bytes; rewriting its lists would make the page disagree with the record it quotes.
-    spelled = lambda start: literals and not any(a <= start < b for a, b in recorded)
+    quoted = lambda start: any(a <= start < b for a, b in recorded)
+    spelled = lambda start: literals and not quoted(start)
     findings = [
         Finding(path, i + 1, rule, message, fixable, blocking=fixable or rule not in NOTE_RULES)
         for start, end in blocks
-        for i, rule, message, fixable in check_block(lines, start, end, spelled(start))
+        for i, rule, message, fixable in check_block(lines, start, end, spelled(start), not quoted(start))
     ]
     if fix and any(f.fixable for f in findings):
         for start, end in reversed(blocks):
-            lines[start:end] = fix_block(lines, start, end, spelled(start))
+            lines[start:end] = fix_block(lines, start, end, spelled(start), not quoted(start))
         file.write_text("\n".join(lines), encoding="utf-8")
     return findings
 

@@ -15,9 +15,9 @@ val blind = PhysarumSwarm.disc(side, side, 6000, 0.55, seed = 6L).stepTimes(p.co
 
 println(
     "top-5% deposit share: sensing " +
-        "%.3f".format(sensing.trail.topShare(0.05)) +
+        sensing.trail.topShare(0.05).f3 +
         ", CONTROL sensing off " +
-        "%.3f".format(blind.trail.topShare(0.05)) +
+        blind.trail.topShare(0.05).f3 +
         " (a flat field gives 0.05)",
 )
 println("sensing morphology: " + sensing.trail.normalized().morphology())

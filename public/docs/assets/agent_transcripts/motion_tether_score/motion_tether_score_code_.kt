@@ -15,7 +15,7 @@ frames {
             markdown(
                 "status",
                 when {
-                    foot?.active == true -> "**TETHERED** · ${"%.0f".format(foot.forceN)} N"
+                    foot?.active == true -> "**TETHERED** · ${foot.forceN.f0} N"
                     foot != null -> "**RELEASED**"
                     else -> "**WALKING**"
                 },

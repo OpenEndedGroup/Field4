@@ -48,7 +48,7 @@ def build():
         if key not in ('controls','reset','profile','helpers'):
             ops.append({'launch': {'box':f'flow_{key}', 'property':'code'}})
     ops.append({'wait':{'frames':120}})
-    return yaml.dump({'name':'flow_grain', 'description':'Bounded scrolling fluid tiles, world-space grain, velocity strokes and motion correspondence. Normal launch/stop; frame-boundary reset; existing profiling timeline.', 'operations':ops},Dumper=Readable,sort_keys=False,allow_unicode=True)
+    return yaml.dump({'name':'flow_grain', 'description':'Bounded scrolling fluid tiles, world-space grain, velocity strokes and motion correspondence. Normal launch/stop; frame-boundary reset; existing profiling timeline.', 'docs':[{'page':'flow_grain.md', 'why':'Explains fluid tiles, grain, velocity strokes and motion correspondence.'}], 'operations':ops},Dumper=Readable,sort_keys=False,allow_unicode=True)
 
 if __name__=='__main__':
     path=ROOT/'dev_docs/agents/transcripts/flow_grain.yaml'

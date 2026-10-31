@@ -37,7 +37,7 @@ showImgGrid(
 )
 // The median is the right tool for impulse noise; the numbers say so, not the picture.
 println(
-    "residual vs clean — gaussian ${"%.4f".format(gauss.meanAbsDiff(clean))}, " +
-        "median ${"%.4f".format(med.meanAbsDiff(clean))}, " +
-        "bilateral ${"%.4f".format(bil.meanAbsDiff(clean))}",
+    "residual vs clean — gaussian ${gauss.meanAbsDiff(clean).f4}, " +
+        "median ${med.meanAbsDiff(clean).f4}, " +
+        "bilateral ${bil.meanAbsDiff(clean).f4}",
 )

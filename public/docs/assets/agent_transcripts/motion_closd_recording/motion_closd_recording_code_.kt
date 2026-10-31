@@ -51,7 +51,7 @@ loop {
         "status",
         "**CLoSD · recorded GPU motion**\n\n" +
             "White: executed body. Cyan: planner reference positions. Red: physical foot tether, attached at 2 s and released at 4 s. " +
-            "Time ${"%.2f".format(seconds)} s · episode ${snapshot.frame.episode}. Orbit the view with the mouse.",
+            "Time ${seconds.f2} s · episode ${snapshot.frame.episode}. Orbit the view with the mouse.",
     )
     displayOpen("motion")
     displayOpen("status")

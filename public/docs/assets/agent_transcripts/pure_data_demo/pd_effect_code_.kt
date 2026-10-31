@@ -18,7 +18,6 @@ val fx = pd(
 )
 var n = 0
 fx.receive("level") { m ->
-    if (n++ % 10 == 0)
-        display("level", "<div style='padding:8px'>after the lowpass: ${"%.1f".format(m.float ?: 0f)} dB</div>")
+    if (n++ % 10 == 0) display("level", "<div style='padding:8px'>after the lowpass: ${(m.float ?: 0f).f1} dB</div>")
 }
 fx

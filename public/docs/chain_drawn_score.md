@@ -208,9 +208,9 @@ markdown(
 | notes scheduled, two cycles | ${heard.scheduled} |
 | onsets detected, not told where | ${heard.onsetsDetected} |
 | onsets within 30 ms of a note | ${heard.matchedOnsets} |
-| worst onset error | ${"%.1f".format(heard.maxOnsetErrorMs)} ms |
+| worst onset error | ${heard.maxOnsetErrorMs.f1} ms |
 | notes with a voiced pitch | ${heard.pitched} |
-| worst pitch error | ${"%.3f".format(heard.maxPitchError)} semitones |
+| worst pitch error | ${heard.maxPitchError.f3} semitones |
 | the published clip reads the same notes | $same |
 """,
     width = 1000,

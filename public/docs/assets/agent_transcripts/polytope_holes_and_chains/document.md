@@ -84,7 +84,7 @@ From `code`
 **** CHANGE THIS LINE ***** the hole's half-width; strictly between 0 and 1.
 
 ```edn [field-box id="polytope_plate_with_and_without" role="properties"]
-{"id" "polytope_plate_with_and_without" "index" 1 "name" "2 — the same plate, with the ring and without it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — the same plate, with the ring and without it" "_tombstone" false "frame" #afield/rect [80.0 220.0 430.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_plate_with_and_without_code_.kt" "lines" 80 "characters" 3395 "sha256" "d9e86ba5521dc91ecbfc6fb5ccf3a44d0fa29f66eccda2fec5feddef6b117584"}]}
+{"id" "polytope_plate_with_and_without" "index" 1 "name" "2 — the same plate, with the ring and without it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — the same plate, with the ring and without it" "_tombstone" false "frame" #afield/rect [80.0 220.0 430.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_plate_with_and_without_code_.kt" "lines" 80 "characters" 3385 "sha256" "cb49698612489660fc8449518b55404b54d4322505db2a72b4c4a456e3ef6b80"}]}
 ```
 
 ```kotlin [field-property box="polytope_plate_with_and_without" name="code" path="polytope_plate_with_and_without_code_.kt"]
@@ -156,7 +156,7 @@ val cells =
                 "${object3.topology.elements(0).size}v ${object3.topology.elements(1).size}e" +
                     " · holes ${object3.topology.faceHoles(face.id).size}" +
                     " · ${mesh.triangleCount} triangles" +
-                    " · area ${"%.3f".format(4.0 - if (withRing) 4.0 * hole * hole else 0.0)}",
+                    " · area ${(4.0 - if (withRing) 4.0 * hole * hole else 0.0).f3}",
         )
     }
 threeGrid(cells, channel = "plates", name = "plates", columns = 2, height = 260, cellWidth = 300, view = view)

@@ -82,15 +82,9 @@ operations:
               println("built " + mesh.vertexCount + " vertices, " + mesh.triangleCount + " triangles")
               val b = mesh.bounds()
               println(
-                  "extent " +
-                      "%.3f".format(b[3] - b[0]) +
-                      " x " +
-                      "%.3f".format(b[4] - b[1]) +
-                      " x " +
-                      "%.3f".format(b[5] - b[2]) +
-                      " m",
+                  "extent " + (b[3] - b[0]).f3 + " x " + (b[4] - b[1]).f3 + " x " + (b[5] - b[2]).f3 + " m",
               )
-              println("winding agreement " + "%.0f".format(mesh.windingAgreement() * 100) + "%")
+              println("winding agreement " + (mesh.windingAgreement() * 100).f0 + "%")
           }
   - create:
       box: agent_vision_geometry_desk_preview_inverted
@@ -141,7 +135,7 @@ operations:
               val agreement = mesh.windingAgreement()
               println(
                   "winding agreement " +
-                      "%.0f".format(agreement * 100) +
+                      (agreement * 100).f0 +
                       "% — " +
                       (if (agreement < 0.5) "wound inside-out; the head would cull this away" else "consistent"),
               )

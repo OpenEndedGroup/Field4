@@ -73,7 +73,7 @@ operations:
               | bytes | ${out.length()} |
               | tracks | ${clip.tracks.size} (${clip.tracks.joinToString { it.name ?: "?" }}) |
               | tempo | ${clip.bpmAt(0.0)} BPM |
-              | length | ${"%.2f".format(clip.durationSeconds)}s / ${clip.durationBeats} beats |
+              | length | ${clip.durationSeconds.f2}s / ${clip.durationBeats} beats |
 
               Format 1, with a real conductor track. Open it in any DAW, or run box 2.
               """
@@ -112,7 +112,7 @@ operations:
               | | |
               |---|---|
               | PPQ | ${clip.ppq} |
-              | tempo | ${"%.2f".format(clip.bpmAt(0.0))} BPM |
+              | tempo | ${clip.bpmAt(0.0).f2} BPM |
               | tempo events | ${clip.tempoMap.size} |
               | time signature | ${clip.timeSignature.first}/${clip.timeSignature.second} |
               | tracks | ${clip.tracks.map { "${it.name} (${it.notes.size})" }.joinToString()} |
@@ -219,9 +219,9 @@ operations:
               | | |
               |---|---|
               | file | `${r.file.absolutePath}` |
-              | length | ${"%.2f".format(r.seconds)}s |
-              | **peak amplitude** | **${"%.3f".format(r.peakAmplitude)}** |
-              | rms amplitude | ${"%.4f".format(r.rmsAmplitude)} |
+              | length | ${r.seconds.f2}s |
+              | **peak amplitude** | **${r.peakAmplitude.f3}** |
+              | rms amplitude | ${r.rmsAmplitude.f4} |
               | soundbank | ${r.soundbankName} |
 
               Peak amplitude is the check that matters: a WAV of pure silence is exactly as large

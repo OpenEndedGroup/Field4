@@ -72,7 +72,7 @@ markdown(
 | steps | ${gasket.steps} | ${chaos.steps} |
 | onsets | ${gasket.onsets} | ${chaos.onsets} |
 | shortest notation | `${gasket.condensation.notation}` | `${chaos.condensation.notation}` |
-| against a flat spelling | ${"%.2f".format(gasket.compression)} | ${"%.2f".format(chaos.compression)} |
+| against a flat spelling | ${gasket.compression.f2} | ${chaos.compression.f2} |
 | the search signed for it | ${gasket.condensation.exact} | ${chaos.condensation.exact} |
 """,
     width = 1000,
@@ -168,7 +168,7 @@ val rows =
     CaSoundDocs.CONDENSATION_SURVEY.zip(bars)
         .sortedByDescending { (_, bar) -> bar.compression }
         .joinToString("\n") { (rule, bar) ->
-            "| $rule | ${bar.onsets} of ${bar.steps} | ${"%.2f".format(bar.compression)} | " +
+            "| $rule | ${bar.onsets} of ${bar.steps} | ${bar.compression.f2} | " +
                 "`${bar.condensation.notation}` |"
         }
 markdown(

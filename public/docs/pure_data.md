@@ -95,7 +95,7 @@ val fx = pd(
 
 // [env~] reports the level of what leaves the lowpass, in dB with 100 at full scale.
 fx.receive("level") { m ->
-    display("level", "<div style='padding:8px'>after the lowpass: ${"%.1f".format(m.float ?: 0f)} dB</div>")
+    display("level", "<div style='padding:8px'>after the lowpass: ${(m.float ?: 0f).f1} dB</div>")
 }
 fx
 ```
@@ -252,7 +252,7 @@ val peak = left.maxOf { abs(it) }
 display(
     "measured",
     "<pre style='margin:8px'>${left.size} samples, $ups upward zero crossings, " +
-        "peak ${"%.4f".format(peak)}, left == right: ${left.contentEquals(right)}</pre>",
+        "peak ${peak.f4}, left == right: ${left.contentEquals(right)}</pre>",
 )
 ```
 

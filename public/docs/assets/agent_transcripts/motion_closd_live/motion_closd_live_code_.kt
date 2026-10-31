@@ -127,7 +127,7 @@ frames {
                         "impulse" -> dancer.body("Torso").impulse(vec(10, 0, 0))
                         "reset" -> dancer.reset(dancer.editableTime)
                     }
-                    notice.set("$command · next editable time ${"%.2f".format(dancer.editableTime)} s")
+                    notice.set("$command · next editable time ${dancer.editableTime.f2} s")
                 } catch (e: Exception) {
                     notice.set(e.message ?: e.toString())
                 }
@@ -148,15 +148,15 @@ frames {
                     observed == null -> "Waiting for physics — enable Advance simulation"
                     !observed.active -> "${observed.reason} — attach again to resume the tether"
                     else ->
-                        "${observed.body}: ${"%.1f".format(observed.stretchMetres*100)} cm stretch · " +
-                            "${"%.0f".format(observed.forceN)} / ${"%.0f".format(observed.maxForce)} N" +
+                        "${observed.body}: ${(observed.stretchMetres*100).f1} cm stretch · " +
+                            "${observed.forceN.f0} / ${observed.maxForce.f0} N" +
                             if (observed.saturated) " · FORCE CAPPED" else ""
                 }
                 markdown(
                     "status",
                     "${notice.get()}\n\n**$connection**\n\n" +
                         "White: executed body · cyan: reference · red: anchor/spring · amber: submitted force (scaled). " +
-                        "${"%.2f".format(sample.frame.time)} s · episode ${sample.frame.episode} · lag ${"%.3f".format(sample.lagSeconds)} s. " +
+                        "${sample.frame.time.f2} s · episode ${sample.frame.episode} · lag ${sample.lagSeconds.f3} s. " +
                         "Resets release attachments. Force and power are mechanical quantities, not muscular effort. Recording $recording",
                 )
             }

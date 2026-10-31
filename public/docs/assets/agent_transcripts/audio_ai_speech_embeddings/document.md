@@ -34,7 +34,7 @@ display("all durable jobs", fieldAudioJobMonitor(heightPixels = 430))
 <!-- field-box id="analyse_near_drowning_speech" index="1" -->
 
 ```edn [field-box id="analyse_near_drowning_speech" role="properties"]
-{"id" "analyse_near_drowning_speech" "index" 1 "name" "3 · import, submit, monitor, audition near_drowning" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · import, submit, monitor, audition near_drowning" "_tombstone" false "frame" #afield/rect [40.0 190.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_near_drowning_speech_code_.kt" "lines" 114 "characters" 5224 "sha256" "d9d6cff0523731353f498bd24e187256e4e468a02aeba6b3d4ef248aa2df2339"}]}
+{"id" "analyse_near_drowning_speech" "index" 1 "name" "3 · import, submit, monitor, audition near_drowning" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · import, submit, monitor, audition near_drowning" "_tombstone" false "frame" #afield/rect [40.0 190.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_near_drowning_speech_code_.kt" "lines" 114 "characters" 5212 "sha256" "3ff7839be5fb513812d0ea6064cdbe10794508dc41dd3a6d5a68300b8c28db2e"}]}
 ```
 
 ```kotlin [field-property box="analyse_near_drowning_speech" name="code" path="analyse_near_drowning_speech_code_.kt"]
@@ -70,7 +70,7 @@ go {
         display(
             "source",
             audio.audioVisualizerHtml(
-                label = "near_drowning.wav · ${"%.2f".format(duration)} s · ${audio.sampleRate} Hz",
+                label = "near_drowning.wav · ${duration.f2} s · ${audio.sampleRate} Hz",
                 options = AudioVisualizerOptions(
                     width = 1100,
                     waveformHeight = 150,

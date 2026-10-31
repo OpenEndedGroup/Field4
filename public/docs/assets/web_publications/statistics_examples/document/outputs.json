@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-29T22:35:13.397Z",
+  "capturedAt": "2026-10-31T03:49:15.128Z",
   "documentName": "statistics_examples",
   "outputs": [
     {
@@ -24,7 +24,7 @@
         "svg"
       ],
       "width": 838,
-      "height": 1030,
+      "height": 1021,
       "path": "outputs/1.html"
     },
     {
@@ -36,7 +36,7 @@
         "svg"
       ],
       "width": 636,
-      "height": 439,
+      "height": 438,
       "path": "outputs/2.html"
     },
     {
@@ -47,7 +47,7 @@
       "kinds": [
         "plotly"
       ],
-      "width": 744,
+      "width": 712,
       "height": 458,
       "path": "outputs/3.html"
     },
@@ -64,13 +64,13 @@
     {
       "uid": "stats_warp",
       "channel": "the fitted curve",
-      "open": false,
+      "open": true,
       "warnings": [],
       "kinds": [
         "plotly"
       ],
-      "width": 774,
-      "height": 457,
+      "width": 712,
+      "height": 458,
       "path": "outputs/5.html"
     },
     {
@@ -81,8 +81,8 @@
       "kinds": [
         "svg"
       ],
-      "width": 773,
-      "height": 229,
+      "width": 783,
+      "height": 234,
       "path": "outputs/6.html"
     }
   ]

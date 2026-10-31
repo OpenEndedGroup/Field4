@@ -8,7 +8,7 @@ val topo = relief.topology()
 println("relief ${relief.vertexCount} vertices, ${relief.triangleCount} triangles")
 println("watertight=${topo.isWatertight} manifold=${topo.isManifold} chi=${topo.eulerCharacteristic}")
 println("boundary loops=${topo.boundaryLoops.size} — a plaque has none, a heightfield has one")
-println("volume ${"%.6f".format(relief.volume())}, and Manifold agrees to the last digit")
+println("volume ${relief.volume().f6}, and Manifold agrees to the last digit")
 
 // The CPU rasteriser is AWT-free (PngEncoder), so it is safe inside a live box on macOS.
 // Three angles, because a relief read from one is a picture and read from three is a shape.

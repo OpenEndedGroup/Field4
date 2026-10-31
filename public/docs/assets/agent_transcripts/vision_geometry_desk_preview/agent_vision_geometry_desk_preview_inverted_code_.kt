@@ -41,7 +41,7 @@ capture?.mesh()?.let { mesh ->
     val agreement = mesh.windingAgreement()
     println(
         "winding agreement " +
-            "%.0f".format(agreement * 100) +
+            (agreement * 100).f0 +
             "% — " +
             (if (agreement < 0.5) "wound inside-out; the head would cull this away" else "consistent"),
     )

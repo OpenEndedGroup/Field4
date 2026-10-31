@@ -19,7 +19,7 @@ sliceIntoOverlappingPatterns2D learn from a row-major FloatArray, so the same ma
 synthesises numbers -- and numbers in Field are geometry waiting to happen.
 
 ```edn [field-box id="wfc_scalar_field" role="properties"]
-{"id" "wfc_scalar_field" "index" 0 "name" "7 — Not pixels: WFC on a scalar field" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "7 — Not pixels: WFC on a scalar field" "_tombstone" false "frame" #afield/rect [1060.0 60.0 360.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "wfc_scalar_field_code_.kt" "lines" 107 "characters" 4623 "sha256" "47a20215d92ecb010caa5c03053d1f999db56756773568ab9a612ba79adbe15e"}]}
+{"id" "wfc_scalar_field" "index" 0 "name" "7 — Not pixels: WFC on a scalar field" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "7 — Not pixels: WFC on a scalar field" "_tombstone" false "frame" #afield/rect [1060.0 60.0 360.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "wfc_scalar_field_code_.kt" "lines" 107 "characters" 4579 "sha256" "0eddcf93136eca57f967ee730143b7f7ca43bab281d4ce97f0b2806cd2c4e8b4"}]}
 ```
 
 ```kotlin [field-property box="wfc_scalar_field" name="code" path="wfc_scalar_field_code_.kt"]
@@ -102,12 +102,12 @@ fun roughness(values: FloatArray): String {
             vn++
         }
     }
-    return "h=" + "%.3f".format(hs / hn) + " v=" + "%.3f".format(vs / vn)
+    return "h=" + (hs / hn).f3 + " v=" + (vs / vn).f3
 }
 
 println(tiles.tileCount.toString() + " levels, " + patterns.tileCount + " distinct 3x3 value patterns")
-println("1x1 tiles:    mean " + "%.2f".format(tiledHeights.average()) + ", roughness " + roughness(tiledHeights))
-println("3x3 patterns: mean " + "%.2f".format(patternHeights.average()) + ", roughness " + roughness(patternHeights))
+println("1x1 tiles:    mean " + tiledHeights.average().f2 + ", roughness " + roughness(tiledHeights))
+println("3x3 patterns: mean " + patternHeights.average().f2 + ", roughness " + roughness(patternHeights))
 
 // The payoff: iso-contours of the synthesised field are FLines, not a picture of them.
 val smooth = floatsToImg(patternHeights, outW, outH).gaussianBlur(1.2)
@@ -146,7 +146,7 @@ solvers at once. Nothing here arranges a view: no colormap call, no montage, no 
 plumbing beyond display().
 
 ```edn [field-box id="wfc_inline_view" role="properties"]
-{"id" "wfc_inline_view" "index" 1 "name" "8 — The solver's own inline view" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "8 — The solver's own inline view" "_tombstone" false "frame" #afield/rect [1060.0 260.0 330.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "wfc_inline_view_code_.kt" "lines" 72 "characters" 2862 "sha256" "b2e8ef2f657f9c8119d798da4f20e4461a783e52f92c3d06b99c86ba032d6e44"}]}
+{"id" "wfc_inline_view" "index" 1 "name" "8 — The solver's own inline view" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "8 — The solver's own inline view" "_tombstone" false "frame" #afield/rect [1060.0 260.0 330.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "wfc_inline_view_code_.kt" "lines" 72 "characters" 2850 "sha256" "5e84368ddd8e2c6fa3b3dc88106f50f1d31ca740eb0c93a22e0c17fdb20cf1b6"}]}
 ```
 
 ```kotlin [field-property box="wfc_inline_view" name="code" path="wfc_inline_view_code_.kt"]
@@ -215,7 +215,7 @@ display("b. contradicted", stuck.h)
 println(solver.toString())
 println(
     "  entropy range drawn: 0 .. " +
-        "%.3f".format(rules.fullSetEntropy()) +
+        rules.fullSetEntropy().f3 +
         " nats, " +
         solver.entropyHeatmap().nonFiniteCount +
         " cell(s) undefined",

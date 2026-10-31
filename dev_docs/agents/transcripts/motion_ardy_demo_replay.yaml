@@ -32,7 +32,7 @@ operations:
                       halfLifeSeconds = .4,
                       epoch = "${(elapsed/duration).toInt()}:${snapshot.frame.episode}",
                   )
-                  title("ARDY · skipping · ${"%.2f".format(snapshot.frame.time)} s")
+                  title("ARDY · skipping · ${snapshot.frame.time.f2} s")
                   helpers(true)
               }
               markdown(

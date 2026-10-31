@@ -154,7 +154,7 @@ groups. Try `kolakoskiWord(8, a = 2, b = 3)` with a group of 4 - no group is eve
 and none is ever full, so the bar keeps moving without ever locking to the grid.
 
 ```edn [field-box id="kolakoski_x_euclid" role="properties"]
-{"id" "kolakoski_x_euclid" "index" 1 "name" "1 - counts and placement" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - counts and placement" "_tombstone" false "frame" #afield/rect [60.0 60.0 405.3 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kolakoski_x_euclid_code_.kt" "lines" 71 "characters" 3083 "sha256" "c1bc8a383f6934e5af201316c785cae6b50f8a7a693ba98e97e5015ca5440baa"}]}
+{"id" "kolakoski_x_euclid" "index" 1 "name" "1 - counts and placement" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - counts and placement" "_tombstone" false "frame" #afield/rect [60.0 60.0 405.3 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kolakoski_x_euclid_code_.kt" "lines" 71 "characters" 3073 "sha256" "b795bc43c110e51002f257501707257c296326462b08b50f416a5d3a16957954"}]}
 ```
 
 ```kotlin [field-property box="kolakoski_x_euclid" name="code" path="kolakoski_x_euclid_code_.kt"]
@@ -203,7 +203,7 @@ val audio = dirt.audio
 val wav = "kolakoski-flat.wav".file
 afield.audio.engine.WavFloatArrayWriter.writeStereo16(wav, audio.left, audio.right, PatSoundDocs.SR, 0.9f)
 println(
-    "wrote $wav — ${"%.1f".format(12 * cps)} hits/s, samples: ${dirt.usedSamples}, matched ${dirt.matched}, synth fallback ${dirt.unmatched}",
+    "wrote $wav — ${(12 * cps).f1} hits/s, samples: ${dirt.usedSamples}, matched ${dirt.matched}, synth fallback ${dirt.unmatched}",
 )
 
 markdown(

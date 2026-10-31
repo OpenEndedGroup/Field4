@@ -620,7 +620,7 @@ else
                 var lifted = paths().sumOf { c.wipe(through(it), r, [pressure()]) }
                 lifted += points().chunked(2).filter { it.size == 2 }.sumOf { c.blot(r, it[0], it[1], pressure()) }
                 done(
-                    "lifted ${"%.1f".format(lifted)} mm³ of paint; the rag's face is ${pct(c.ragState(r).load)} loaded",
+                    "lifted ${lifted.f1} mm³ of paint; the rag's face is ${pct(c.ragState(r).load)} loaded",
                 )
             }
         }
@@ -849,7 +849,7 @@ else
             val c = canvas()
             "The canvas on the Studio easel is 1000 units wide and ${c.heightUnits.roundToInt()} tall (aspect ${c.aspect}), " +
                 "x to the right, y DOWN from the top edge. It is ${(c.mmPerUnit * 1000).roundToInt()} mm wide, so one unit is " +
-                "${"%.2f".format(c.mmPerUnit)} mm: a 10 mm brush is ${(10 / c.mmPerUnit).roundToInt()} units wide. ${state()}. " +
+                "${c.mmPerUnit.f2} mm: a 10 mm brush is ${(10 / c.mmPerUnit).roundToInt()} units wide. ${state()}. " +
                 "Kept tools: " +
                 tools().describe(c).lines().joinToString("; ")
         }

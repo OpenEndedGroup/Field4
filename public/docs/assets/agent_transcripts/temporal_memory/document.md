@@ -335,7 +335,7 @@ lines(fan + past + median, w = 900.0, h = 320.0, fitToSize = true)
 <!-- field-box id="tm_dance" index="5" -->
 
 ```edn [field-box id="tm_dance" role="properties"]
-{"id" "tm_dance" "index" 5 "name" "1 - a dancer's memory" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - a dancer's memory" "_tombstone" false "frame" #afield/rect [60.0 760.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tm_dance_code_.kt" "lines" 46 "characters" 1886 "sha256" "7caff5561f9bdb766fcb2d216723139292fe31c9635327c573ddf92660f1438f"}]}
+{"id" "tm_dance" "index" 5 "name" "1 - a dancer's memory" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - a dancer's memory" "_tombstone" false "frame" #afield/rect [60.0 760.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tm_dance_code_.kt" "lines" 46 "characters" 1874 "sha256" "960023328f8df3e65f3ce79ed0e57a7ad17f1fa5e13b2237ed249d2b047f768d"}]}
 ```
 
 ```kotlin [field-property box="tm_dance" name="code" path="tm_dance_code_.kt"]
@@ -372,7 +372,7 @@ val poses =
             it.thickness = 2.0
         }
     }
-print("${played.segments.size - 1} jumps; every take used: coverage ${"%.2f".format(played.coverage(dance.length))}")
+print("${played.segments.size - 1} jumps; every take used: coverage ${played.coverage(dance.length).f2}")
 // an invisible point above the rows leaves room for the viewer's toolbar
 val headroom = fline {
     moveTo(0.0, 70.0, 0.0)

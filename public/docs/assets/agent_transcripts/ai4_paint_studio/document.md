@@ -106,7 +106,7 @@ the easel, the tube paints, the kept tools and the hung paintings.
 Needs the paint library: ./gradlew buildPaintNative.
 
 ```edn [field-box id="ai4_paint_studio" role="properties"]
-{"id" "ai4_paint_studio" "index" 1 "name" "Studio" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Studio" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ai4_paint_studio_code_.kt" "lines" 946 "characters" 52183 "sha256" "340834ca8dda44c25d35625ef74acd114455e87f5435f42a7f405ccec1557b24"}]}
+{"id" "ai4_paint_studio" "index" 1 "name" "Studio" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Studio" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ai4_paint_studio_code_.kt" "lines" 946 "characters" 52159 "sha256" "2439b3021746ea6825c37a873c505f729f4e4b4745acac3136850bf7e236e882"}]}
 ```
 
 ```kotlin [field-property box="ai4_paint_studio" name="code" path="ai4_paint_studio_code_.kt"]
@@ -732,7 +732,7 @@ else
                 var lifted = paths().sumOf { c.wipe(through(it), r, [pressure()]) }
                 lifted += points().chunked(2).filter { it.size == 2 }.sumOf { c.blot(r, it[0], it[1], pressure()) }
                 done(
-                    "lifted ${"%.1f".format(lifted)} mm³ of paint; the rag's face is ${pct(c.ragState(r).load)} loaded",
+                    "lifted ${lifted.f1} mm³ of paint; the rag's face is ${pct(c.ragState(r).load)} loaded",
                 )
             }
         }
@@ -961,7 +961,7 @@ else
             val c = canvas()
             "The canvas on the Studio easel is 1000 units wide and ${c.heightUnits.roundToInt()} tall (aspect ${c.aspect}), " +
                 "x to the right, y DOWN from the top edge. It is ${(c.mmPerUnit * 1000).roundToInt()} mm wide, so one unit is " +
-                "${"%.2f".format(c.mmPerUnit)} mm: a 10 mm brush is ${(10 / c.mmPerUnit).roundToInt()} units wide. ${state()}. " +
+                "${c.mmPerUnit.f2} mm: a 10 mm brush is ${(10 / c.mmPerUnit).roundToInt()} units wide. ${state()}. " +
                 "Kept tools: " +
                 tools().describe(c).lines().joinToString("; ")
         }

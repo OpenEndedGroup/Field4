@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-29T22:33:07.310Z",
+  "capturedAt": "2026-10-31T03:47:48.462Z",
   "documentName": "audio_ai_speech_embeddings",
   "outputs": [
     {
@@ -9,7 +9,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 461,
+      "width": 458,
       "height": 348,
       "path": "outputs/0.html"
     },
@@ -26,13 +26,13 @@
     {
       "uid": "speech_embedding_visualizer_gallery",
       "channel": "speech spaces",
-      "open": false,
+      "open": true,
       "warnings": [],
       "kinds": [
         "canvas-image"
       ],
       "width": 1052,
-      "height": 854,
+      "height": 865,
       "path": "outputs/2.html"
     }
   ]

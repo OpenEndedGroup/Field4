@@ -39,6 +39,6 @@ renderer += module
 // `vertices` is a reflected physical pointer. Field writes vertexData's device address into
 // the push constant; the array itself stays in the addressable buffer.
 m.vertices = { vertexData }
-m.count = { vertices.size.toUInt() }
+m.count = { vertices.size }
 
 m.resize(vertices.size)

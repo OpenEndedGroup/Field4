@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="motion_ardy_path" index="0" -->
 
 ```edn [field-box id="motion_ardy_path" role="properties"]
-{"id" "motion_ardy_path" "index" 0 "name" "ARDY — timed Field routes" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "ARDY — timed Field routes" "_tombstone" false "frame" #afield/rect [80.0 80.0 600.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "motion_ardy_path_code_.kt" "lines" 262 "characters" 13285 "sha256" "2e293f6d37b01a6f914b7c03aeb3a32ccd065f4277c7dcfeb1277a3ab76f969d"}]}
+{"id" "motion_ardy_path" "index" 0 "name" "ARDY — timed Field routes" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "ARDY — timed Field routes" "_tombstone" false "frame" #afield/rect [80.0 80.0 600.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "motion_ardy_path_code_.kt" "lines" 262 "characters" 13237 "sha256" "0fd14aa7c1f2c0ccc024c18429d30c7e82724d8f9d996beca04b5c917a6995ec"}]}
 ```
 
 ```kotlin [field-property box="motion_ardy_path" name="code" path="motion_ardy_path_code_.kt"]
@@ -223,7 +223,7 @@ frames {
                             anchor = null
                         }
                     }
-                    notice.set("$command · first editable time ${"%.2f".format(nextTime)} s · $output")
+                    notice.set("$command · first editable time ${nextTime.f2} s · $output")
                 } catch (e: Exception) {
                     notice.set(e.message ?: e.toString())
                 }
@@ -259,11 +259,11 @@ frames {
                     else {
                         val p = sample.frame.executed.position(worker.skeleton.joint(pinnedJoint))
                         val error = sqrt((p.x - target[0]).pow(2) + (p.y - target[1]).pow(2) + (p.z - target[2]).pow(2))
-                        " · raw target residual ${"%.3f".format(error)} m"
+                        " · raw target residual ${error.f3} m"
                     }
                 markdown(
                     "status",
-                    "${notice.get()}\n\nSession ${"%.2f".format(sample.frame.time)} s · episode ${sample.frame.episode} · lag ${"%.3f".format(sample.lagSeconds)} s$residual. " +
+                    "${notice.get()}\n\nSession ${sample.frame.time.f2} s · episode ${sample.frame.episode} · lag ${sample.lagSeconds.f3} s$residual. " +
                         "Yellow: requested path. Red: model conditioning residual. Global joint targets also condition the explicit root path; this is not a physical attachment. No postprocessing.",
                 )
             }

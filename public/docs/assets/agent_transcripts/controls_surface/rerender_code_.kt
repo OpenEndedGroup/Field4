@@ -6,7 +6,7 @@ fun surface() {
         slider("gain", 0.0, 1.0, 0.01, 0.2) {
             display(
                 "seen",
-                "<div style='font:18px Iosevka,monospace;color:#0cc8ed'>gain ${"%.2f".format(it)}  rebuilt $rebuilt</div>",
+                "<div style='font:18px Iosevka,monospace;color:#0cc8ed'>gain ${it.f2}  rebuilt $rebuilt</div>",
             )
             if (it > 0.5 && rebuilt == 0) {
                 rebuilt++

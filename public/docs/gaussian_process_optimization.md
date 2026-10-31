@@ -57,10 +57,10 @@ println(
     "best after 30 tries: misfit %.2e at %s"
         .format(
             opt.best!!.value,
-            opt.best!!.parameters.mapValues { "%.3f".format(it.value) },
+            opt.best!!.parameters.mapValues { it.value.f3 },
         ),
 )
-println("first five tries (blue, left): " + opt.history.take(5).joinToString { "%.3f".format(it.value) })
+println("first five tries (blue, left): " + opt.history.take(5).joinToString { it.value.f3 })
 ```
 
 ![Top: two copies of a thick grey five-lobed target curve; on the left the first five guesses in faint blue scatter around it, on the right the red best curve after thirty tries lies on the grey one. Below: a chart of log10 best misfit against tries, stepping down from about -1.2 to about -3.4, with the last large drop near try 24](assets/gaussian_process_optimization/converging.png)
@@ -151,7 +151,7 @@ fun show() {
         "<div>%d answers. A (left) vs B (right).%s</div>"
             .format(
                 taste.comparisons.size,
-                if (fav == null) "" else " Favourite so far: " + fav.mapValues { "%.2f".format(it.value) },
+                if (fav == null) "" else " Favourite so far: " + fav.mapValues { it.value.f2 },
             ),
     )
 }
@@ -245,7 +245,7 @@ chart.height = 280.0
 showChart(chart, channel = "utility")
 snapshots.forEachIndexed { i, p ->
     println(
-        "after %2d answers: %s  utility %.3f".format(6 * (i + 1), p.mapValues { "%.2f".format(it.value) }, utility(p)),
+        "after %2d answers: %s  utility %.3f".format(6 * (i + 1), p.mapValues { it.value.f2 }, utility(p)),
     )
 }
 println(

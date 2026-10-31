@@ -82,7 +82,7 @@ loop {
     }
     markdown(
         "status",
-        "**${sources.joinToString(" · ") { it.first }}** · ${"%.2f".format(time)} s\n\n" +
+        "**${sources.joinToString(" · ") { it.first }}** · ${time.f2} s\n\n" +
             "Actual recorded poses; horizontal root travel removed separately in each lane. White: executed. Cyan: reference. " +
             when (experiment) {
                 "closd" ->

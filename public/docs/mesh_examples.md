@@ -358,7 +358,7 @@ for (target in [2000, 600, 150]) {
                 small.isWatertight(),
             ),
     )
-    budgets.add("decimate($target) — deviation ${"%.4f".format(deviation)}" to small)
+    budgets.add("decimate($target) — deviation ${deviation.f4}" to small)
 }
 :::fold draw the original beside the three budgets
 showMeshGrid(

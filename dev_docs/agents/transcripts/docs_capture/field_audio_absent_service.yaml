@@ -55,7 +55,7 @@ operations:
           display(
               "render",
               "rendered ${render.path} · ${render.channels}ch @ ${render.sampleRate} Hz · " +
-                  "${"%.3f".format(render.durationSeconds)} s",
+                  "${render.durationSeconds?.f3} s",
           )
 
           // The default address. Nothing is listening on it unless you started the Python service.
@@ -68,7 +68,7 @@ operations:
                   display(
                       "what a box sees",
                       "the service answered: ${completed.analyses.size} analyses over " +
-                          "${"%.3f".format(completed.region.durationSeconds)} s",
+                          "${completed.region.durationSeconds.f3} s",
                   )
               }
               .exceptionally { raised ->

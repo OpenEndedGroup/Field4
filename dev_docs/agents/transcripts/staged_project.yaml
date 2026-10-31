@@ -354,7 +354,7 @@ operations:
                       }
               val summary =
                   "${g.rooms.size} rooms, $area cells of floor, ${walls.size} wall pieces, ${g.doors.size / 2} door${if (g.doors.size == 2) "" else "s"}" +
-                      (solid?.let { ", joined into one solid of volume ${"%.1f".format(it["volume"])} (${it["status"]})" }
+                      (solid?.let { ", joined into one solid of volume ${(it["volume"] as Number).f1} (${it["status"]})" }
                           ?: "; install Manifold to check it as one solid")
               StudyBuildProduct(
                   ["blockout.obj"],
@@ -763,7 +763,7 @@ operations:
                       if (seed == 0) "the level as it is"
                       else "seed $seed · ${(json.readValue<Map<String, Any?>>(source)["rooms"] as Map<*, *>).size} rooms",
                       "within budget ${measures.values.count { it["withinBudget"] == true }} of ${measures.size} · sightlines ${walk?.facts?.get("sightlines") ?: "–"}",
-                      "longest relaxed/rough ${worst?.let { "%.2f".format(it) } ?: "–"}",
+                      "longest relaxed/rough ${worst?.f2 ?: "–"}",
                       when {
                           placed?.status == StudyBuildStatus.SUCCEEDED ->
                               "placed: " +

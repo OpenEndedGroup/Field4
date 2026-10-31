@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="surface" index="0" -->
 
 ```edn [field-box id="surface" role="properties"]
-{"id" "surface" "index" 0 "name" "1 - A performer's surface" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - A performer's surface" "_tombstone" false "frame" #afield/rect [60.0 60.0 260.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "surface_code_.kt" "lines" 47 "characters" 1510 "sha256" "a4aa21b685d06eea3b1564ae41d55813cd542845ff3168f051df7431738d25fd"}]}
+{"id" "surface" "index" 0 "name" "1 - A performer's surface" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - A performer's surface" "_tombstone" false "frame" #afield/rect [60.0 60.0 260.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "surface_code_.kt" "lines" 46 "characters" 1490 "sha256" "def660097b214a6a3937a20373cd226a8c7a6942a1a3d97ff2d0a8b105fcb72e"}]}
 ```
 
 ```kotlin [field-property box="surface" name="code" path="surface_code_.kt"]
@@ -24,8 +24,7 @@ fun draw() {
     val c = "rgba(${(tint.x * 255).toInt()},${(tint.y * 255).toInt()},${(tint.z * 255).toInt()},${tint.w})"
     val r = 10 + 40 * kotlin.math.log10(cutoff / 20.0) / 3.0
     val dot =
-        if (armed) "<circle cx='${150 + orbit.x * 120}' cy='${150 - orbit.y * 120}' r='${"%.1f".format(r)}' fill='$c'/>"
-        else ""
+        if (armed) "<circle cx='${150 + orbit.x * 120}' cy='${150 - orbit.y * 120}' r='${r.f1}' fill='$c'/>" else ""
     display(
         "figure",
         """
@@ -76,7 +75,7 @@ Drag "gain" from left to right. When it passes 0.5 the callback rebuilds this gr
 replacing the slider's DOM under the pointer; the drag continues on the new one.
 
 ```edn [field-box id="rerender" role="properties"]
-{"id" "rerender" "index" 1 "name" "2 - A slider that rebuilds itself mid-drag" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - A slider that rebuilds itself mid-drag" "_tombstone" false "frame" #afield/rect [680.0 60.0 260.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rerender_code_.kt" "lines" 20 "characters" 664 "sha256" "32999f3d80822e726297a996a4c2149b6116fc93de8774a5baea8663da1e8f73"}]}
+{"id" "rerender" "index" 1 "name" "2 - A slider that rebuilds itself mid-drag" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - A slider that rebuilds itself mid-drag" "_tombstone" false "frame" #afield/rect [680.0 60.0 260.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rerender_code_.kt" "lines" 20 "characters" 652 "sha256" "a6e124793ea68ed4fe2b8140698612aa29c368ac2b5fdf209a839e9bd555bd38"}]}
 ```
 
 ```kotlin [field-property box="rerender" name="code" path="rerender_code_.kt"]
@@ -88,7 +87,7 @@ fun surface() {
         slider("gain", 0.0, 1.0, 0.01, 0.2) {
             display(
                 "seen",
-                "<div style='font:18px Iosevka,monospace;color:#0cc8ed'>gain ${"%.2f".format(it)}  rebuilt $rebuilt</div>",
+                "<div style='font:18px Iosevka,monospace;color:#0cc8ed'>gain ${it.f2}  rebuilt $rebuilt</div>",
             )
             if (it > 0.5 && rebuilt == 0) {
                 rebuilt++

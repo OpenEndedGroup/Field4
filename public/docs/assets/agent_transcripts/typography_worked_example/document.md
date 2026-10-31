@@ -18,7 +18,7 @@ Layout is AWT's advances and kerning pairs, plus the things AWT does not do: \n,
 spacing, alignment, and a mutable transform handle per glyph.
 
 ```edn [field-box id="typo_layout" role="properties"]
-{"id" "typo_layout" "index" 0 "name" "3 — advances, kerning, tracking, alignment" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — advances, kerning, tracking, alignment" "_tombstone" false "frame" #afield/rect [1000.0 60.0 390.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "typo_layout_code_.kt" "lines" 63 "characters" 2915 "sha256" "7a527dad8c5126b50708e1c07b38e5ed605e7f472c516634eb7f518aa86db415"}]}
+{"id" "typo_layout" "index" 0 "name" "3 — advances, kerning, tracking, alignment" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — advances, kerning, tracking, alignment" "_tombstone" false "frame" #afield/rect [1000.0 60.0 390.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "typo_layout_code_.kt" "lines" 62 "characters" 2815 "sha256" "a356919522e2ef63ec422115cbd73e9360353f7646f8bc5a0f44fc31288e41b9"}]}
 ```
 
 ```kotlin [field-property box="typo_layout" name="code" path="typo_layout_code_.kt"]
@@ -30,8 +30,7 @@ val face = typeface("SansSerif", 120.0)
 // different AWT paths — accumulated positions versus per-glyph metrics — that must agree.
 val plain = layoutText("minimum", face.withKerning(false))
 println(
-    "advance width ${"%.4f".format(plain.advanceWidth)} vs sum of advances " +
-        "${"%.4f".format(plain.glyphs.sumOf { it.glyph.advance })}",
+    "advance width ${plain.advanceWidth.f4} vs sum of advances " + "${plain.glyphs.sumOf { it.glyph.advance }.f4}",
 )
 
 // Identity two: tracking adds one gap per INTER-GLYPH space, not one per glyph.
@@ -39,8 +38,8 @@ val t = 0.16 * face.size
 val tight = layoutText("TYPE", face)
 val loose = layoutText("TYPE", face, tracking = t)
 println(
-    "tracking ${"%.1f".format(t)} over ${tight.glyphs.size - 1} gaps widened the line by " +
-        "${"%.4f".format(loose.advanceWidth - tight.advanceWidth)} (expected ${"%.4f".format((tight.glyphs.size - 1) * t)})",
+    "tracking ${t.f1} over ${tight.glyphs.size - 1} gaps widened the line by " +
+        "${(loose.advanceWidth - tight.advanceWidth).f4} (expected ${((tight.glyphs.size - 1) * t).f4})",
 )
 
 // Kerning adjusts spacing for specific pairs and may widen or narrow them.
@@ -52,9 +51,9 @@ println("kerning: $off -> $on (width change ${on - off} units)")
 // The diagram of the decisions rather than the letters: baselines, ascent/descent guides and
 // one advance box per glyph — including for the space, which has no glyph to draw.
 showPlaneGrid(
-    "tracking 0 — ${"%.0f".format(tight.advanceWidth)} units wide" to
+    "tracking 0 — ${tight.advanceWidth.f0} units wide" to
         (tight.metricsFLines() + tight.advanceBoxFLines() + tight.toFLines(thickness = 1.0)),
-    "tracking 0.16em — ${"%.0f".format(loose.advanceWidth)} units wide" to
+    "tracking 0.16em — ${loose.advanceWidth.f0} units wide" to
         (loose.metricsFLines() + loose.advanceBoxFLines() + loose.toFLines(thickness = 1.0)),
     columns = 1,
     cellWidth = 820,
@@ -71,7 +70,7 @@ val prose = wrapText(
     maxWidth = 620.0,
 )
 println(
-    "wrapped to ${prose.lines().size} lines, widest ${"%.1f".format(prose.lines().maxOf { textWidth(it, face.atSize(44.0)) })} of 620",
+    "wrapped to ${prose.lines().size} lines, widest ${prose.lines().maxOf { textWidth(it, face.atSize(44.0)) }.f1} of 620",
 )
 displayOpen("alignment")
 showImgGrid(
@@ -172,7 +171,7 @@ it in z with the exact prism formula. Negative inside the ink, per mesh_sdf.kt's
 convention. From there letters are just another ScalarField3D, which is the point.
 
 ```edn [field-box id="typo_sdf" role="properties"]
-{"id" "typo_sdf" "index" 2 "name" "7 — letters in the SDF family" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "7 — letters in the SDF family" "_tombstone" false "frame" #afield/rect [60.0 1140.0 310.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "typo_sdf_code_.kt" "lines" 40 "characters" 1658 "sha256" "c2d1abc1b14216cc37c98dbb39403c6709b4cbc53389c79a97b5e333b3554fff"}]}
+{"id" "typo_sdf" "index" 2 "name" "7 — letters in the SDF family" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "7 — letters in the SDF family" "_tombstone" false "frame" #afield/rect [60.0 1140.0 310.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "typo_sdf_code_.kt" "lines" 40 "characters" 1622 "sha256" "6de993e8e3f8157dfff399311fd22af1dfcfcc81d81fb9413f670df9f4cca755"}]}
 ```
 
 ```kotlin [field-property box="typo_sdf" name="code" path="typo_sdf_code_.kt"]
@@ -185,8 +184,8 @@ val layout = layoutText("SDF", typeface("SansSerif", 170.0))
 val sdf = layout.toSdf(depth = 0.24, gridResolution = 340)
 val grid = sdf.distanceField
 println(
-    "grid ${grid.nx}x${grid.ny} over ${"%.0f".format(grid.bounds.w)}x${"%.0f".format(grid.bounds.h)} units; " +
-        "deepest inside the ink ${"%.1f".format(grid.deepestInside())} units",
+    "grid ${grid.nx}x${grid.ny} over ${grid.bounds.w.f0}x${grid.bounds.h.f0} units; " +
+        "deepest inside the ink ${grid.deepestInside().f1} units",
 )
 
 val marched = sdf.march(resolution = 130)
@@ -231,7 +230,7 @@ what every point-consuming family in the stdlib eats. Once a word is points, the
 clusterers, the triangulators and the alife agents all work on letters.
 
 ```edn [field-box id="typo_points" role="properties"]
-{"id" "typo_points" "index" 3 "name" "8 — letters as point clouds" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "8 — letters as point clouds" "_tombstone" false "frame" #afield/rect [1000.0 1140.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "typo_points_code_.kt" "lines" 39 "characters" 1857 "sha256" "95386fe6f64ba38e424d994553296007ae94503d8b5dd0193e2ebc7fc0faef3c"}]}
+{"id" "typo_points" "index" 3 "name" "8 — letters as point clouds" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "8 — letters as point clouds" "_tombstone" false "frame" #afield/rect [1000.0 1140.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "typo_points_code_.kt" "lines" 39 "characters" 1835 "sha256" "1c3347f8d925ac77e5f5180528e16bc67bcc4760c3a4b176d0f40e9e8ee52609"}]}
 ```
 
 ```kotlin [field-property box="typo_points" name="code" path="typo_points_code_.kt"]
@@ -245,7 +244,7 @@ val coarse = layout.samplePoints(spacing = 18.0)
 val fine = layout.samplePoints(spacing = 4.5)
 println(
     "spacing 18 -> ${coarse.size} points, spacing 4.5 -> ${fine.size} points " +
-        "(${"%.2f".format(fine.size.toDouble() / coarse.size)}x for 4x finer)",
+        "(${(fine.size.toDouble() / coarse.size).f2}x for 4x finer)",
 )
 
 // Delaunay over the outline samples: the triangulation of a word.
@@ -258,7 +257,7 @@ val km = vec2KMedoids(coarse, k = 6, options = KMedoidsOptions(randomSeed = 11L)
 val layer = ClusterLayer("outline strokes", km.labels)
 println(
     "k-medoids k=6: sizes ${km.labels.toList().groupingBy { it }.eachCount().values.sorted()}, " +
-        "distortion ${"%.1f".format(km.distortion)}, converged ${km.converged}",
+        "distortion ${km.distortion.f1}, converged ${km.converged}",
 )
 
 // Every panel shares one window, so the four views of the same word line up.
@@ -290,7 +289,7 @@ sampleByDistance and byDashing use — and then sets that glyph's rotation and p
 letters stay letters, and the spacing is even in DISTANCE rather than in curve parameter.
 
 ```edn [field-box id="typo_curve" role="properties"]
-{"id" "typo_curve" "index" 4 "name" "4 — text on a curve, by arc length" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — text on a curve, by arc length" "_tombstone" false "frame" #afield/rect [1000.0 420.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "typo_curve_code_.kt" "lines" 47 "characters" 1890 "sha256" "fbb5d79c3b0e4a8b0e07fb9a48dffc88b8292ef7216bdfdb9a4838f7c2723acf"}]}
+{"id" "typo_curve" "index" 4 "name" "4 — text on a curve, by arc length" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — text on a curve, by arc length" "_tombstone" false "frame" #afield/rect [1000.0 420.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "typo_curve_code_.kt" "lines" 47 "characters" 1866 "sha256" "8874de2cde568ef35e4aea84485b5c4d83da64e563d78a8187f25aa3376213bb"}]}
 ```
 
 ```kotlin [field-property box="typo_curve" name="code" path="typo_curve_code_.kt"]
@@ -307,7 +306,7 @@ val ring = layoutText("AROUND AND AROUND", face, tracking = 7.0)
 // the layout's width means the string closes exactly.
 val circle = textCircle(radius = ring.advanceWidth / (2 * Math.PI))
 val onCircle = ring.onCurve(circle, align = TextAlign.CENTER)
-println("circle circumference ${"%.1f".format(circle.arcLength())} vs layout width ${"%.1f".format(ring.advanceWidth)}")
+println("circle circumference ${circle.arcLength().f1} vs layout width ${ring.advanceWidth.f1}")
 println(
     "${onCircle.glyphs.count { kotlin.math.abs(it.rotation) > 0.05 }} of ${onCircle.glyphs.size} glyphs turned with the curve",
 )
@@ -358,7 +357,7 @@ is what makes the result watertight, and what makes genus a meaningful question 
 letter.
 
 ```edn [field-box id="typo_mesh" role="properties"]
-{"id" "typo_mesh" "index" 5 "name" "6 — extrusion, counters and all" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — extrusion, counters and all" "_tombstone" false "frame" #afield/rect [1000.0 780.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "typo_mesh_code_.kt" "lines" 59 "characters" 2787 "sha256" "53422c4d149604acec708248bf7cfaf203a6d6ed73c2313e2fcab9d5a5836057"}]}
+{"id" "typo_mesh" "index" 5 "name" "6 — extrusion, counters and all" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — extrusion, counters and all" "_tombstone" false "frame" #afield/rect [1000.0 780.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "typo_mesh_code_.kt" "lines" 59 "characters" 2763 "sha256" "66de641e11486e5b22648a495f6ece8dc423cb885edff77ee77ef7118471c31b"}]}
 ```
 
 ```kotlin [field-property box="typo_mesh" name="code" path="typo_mesh_code_.kt"]
@@ -395,7 +394,7 @@ val flat = layoutText("o", face)
 val expected = flat.glyphs.sumOf { it.glyph.inkArea } * 46.0
 val measured = layoutText("o", face).toMesh(depth = 46.0, yUp = false).volume()
 println(
-    "'o': ink area x depth = ${"%.0f".format(expected)}, mesh volume ${"%.0f".format(measured)}, " +
+    "'o': ink area x depth = ${expected.f0}, mesh volume ${measured.f0}, " +
         "relative difference ${"%.2e".format(kotlin.math.abs(expected - measured) / expected)}",
 )
 
@@ -437,7 +436,7 @@ which is what Skia and Java2D both do — cancels a +1 outer against a -1 hole a
 counter; give it two rings wound the same way and it fills them solid.
 
 ```edn [field-box id="typo_winding" role="properties"]
-{"id" "typo_winding" "index" 6 "name" "2 — the winding convention, and what happens without it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — the winding convention, and what happens without it" "_tombstone" false "frame" #afield/rect [60.0 420.0 470.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "typo_winding_code_.kt" "lines" 51 "characters" 1960 "sha256" "083831f1ac4ac7412afa52668ca9045482bb44f0318509516934eacf3c42578a"}]}
+{"id" "typo_winding" "index" 6 "name" "2 — the winding convention, and what happens without it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — the winding convention, and what happens without it" "_tombstone" false "frame" #afield/rect [60.0 420.0 470.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "typo_winding_code_.kt" "lines" 51 "characters" 1940 "sha256" "04602ab4aca96bbee29fdb4f0db0f49fdf9b895db30ac93d9f60a93cf840f112"}]}
 ```
 
 ```kotlin [field-property box="typo_winding" name="code" path="typo_winding_code_.kt"]
@@ -487,9 +486,9 @@ showImgGrid(
     columns = 3,
     cellSide = 420,
 )
-println("ink with the convention  : ${"%.2f".format(100 * withConvention.inkFraction())}%")
+println("ink with the convention  : ${(100 * withConvention.inkFraction()).f2}%")
 println(
-    "ink without it           : ${"%.2f".format(100 * withoutConvention.inkFraction())}%  <- the counters closed up",
+    "ink without it           : ${(100 * withoutConvention.inkFraction()).f2}%  <- the counters closed up",
 )
 println("worst NON_ZERO vs EVEN_ODD difference over the correct rings: $worst (0.0 means the two rules agree exactly)")
 ```
@@ -507,7 +506,7 @@ resolve; Typefaces.fromFile("...ttf") loads one off disk through Font.createFont
 Typefaces.firstAvailable("Futura", "Avenir") picks the first face you actually have.
 
 ```edn [field-box id="typo_values" role="properties"]
-{"id" "typo_values" "index" 7 "name" "1 — a string becomes contours" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — a string becomes contours" "_tombstone" false "frame" #afield/rect [60.0 60.0 310.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "typo_values_code_.kt" "lines" 67 "characters" 2775 "sha256" "f0a442e55ab25cdfa967ad10c14fa24e2511980440c8f7d4e5f74def5f52ec17"}]}
+{"id" "typo_values" "index" 7 "name" "1 — a string becomes contours" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — a string becomes contours" "_tombstone" false "frame" #afield/rect [60.0 60.0 310.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "typo_values_code_.kt" "lines" 66 "characters" 2685 "sha256" "3492cc0eb4b4acf6fedbb6d3d3c058f2c0505258c90ac6869556483a765a21ab"}]}
 ```
 
 ```kotlin [field-property box="typo_values" name="code" path="typo_values_code_.kt"]
@@ -518,8 +517,7 @@ Typefaces.firstAvailable("Futura", "Avenir") picks the first face you actually h
 */
 val face = typeface("SansSerif", 140.0)
 println(
-    "$face — ascent ${"%.1f".format(face.ascent)}, descent ${"%.1f".format(face.descent)}, " +
-        "line height ${"%.1f".format(face.lineHeight)}",
+    "$face — ascent ${face.ascent.f1}, descent ${face.descent.f1}, " + "line height ${face.lineHeight.f1}",
 )
 
 /*
@@ -531,7 +529,7 @@ for (c in ['o', 'l', 'B']) {
     val g = face.glyph(c)
     println(
         "'$c' glyph #${g.glyphCode}: ${g.contourCount} contours (${g.holeCount} holes), " +
-            "advance ${"%.1f".format(g.advance)}, ink area ${"%.0f".format(g.inkArea)}",
+            "advance ${g.advance.f1}, ink area ${g.inkArea.f0}",
     )
     g.contours.forEachIndexed { i, ring ->
         println(
@@ -557,7 +555,7 @@ showImgGrid(
 )
 println(
     "laid out: ${word.contourCount} contours, ${word.holeCount} holes, " +
-        "${"%.1f".format(word.advanceWidth)} units wide, ink ${"%.1f".format(100 * rasterizeText(word, 400, 120).inkFraction())}%",
+        "${word.advanceWidth.f1} units wide, ink ${(100 * rasterizeText(word, 400, 120).inkFraction()).f1}%",
 )
 
 /*

@@ -36,14 +36,14 @@ val heard = showPatTranscriptionOf(
     minGapSeconds = (1.0 / cps) / 16,
     minHz = minHz,
     maxHz = patMidiToHz(73.0),
-    label = "31 ms notes, minHz = ${"%.0f".format(minHz)} Hz",
+    label = "31 ms notes, minHz = ${minHz.f0} Hz",
 )
 
 display(
     "resolution",
     """
-    minHz ${"%.1f".format(minHz)} Hz → analysis window $window samples (${"%.1f".format(1000.0 * window / PatSoundDocs.SR)} ms)
-    the notes are ${"%.1f".format(1000.0 / cps / 16)} ms long
+    minHz ${minHz.f1} Hz → analysis window $window samples (${(1000.0 * window / PatSoundDocs.SR).f1} ms)
+    the notes are ${(1000.0 / cps / 16).f1} ms long
 """
         .trimIndent(),
 )

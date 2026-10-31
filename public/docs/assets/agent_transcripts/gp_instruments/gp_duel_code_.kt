@@ -26,7 +26,7 @@ fun show() {
         "<div>%d answers. A (left) vs B (right).%s</div>"
             .format(
                 taste.comparisons.size,
-                if (fav == null) "" else " Favourite so far: " + fav.mapValues { "%.2f".format(it.value) },
+                if (fav == null) "" else " Favourite so far: " + fav.mapValues { it.value.f2 },
             ),
     )
 }

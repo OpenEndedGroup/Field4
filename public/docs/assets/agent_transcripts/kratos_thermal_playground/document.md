@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="kratos_thermal" index="0" -->
 
 ```edn [field-box id="kratos_thermal" role="properties"]
-{"id" "kratos_thermal" "index" 0 "name" "Kratos thermal playground" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Kratos thermal playground" "_tombstone" false "frame" #afield/rect [60.0 60.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kratos_thermal_code_.kt" "lines" 148 "characters" 8139 "sha256" "7c8626e9b6ba859b36cfdde8c0048274a39c0b0c124fa038721f2734b97809c4"}]}
+{"id" "kratos_thermal" "index" 0 "name" "Kratos thermal playground" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Kratos thermal playground" "_tombstone" false "frame" #afield/rect [60.0 60.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kratos_thermal_code_.kt" "lines" 148 "characters" 8115 "sha256" "89edf19b0cae543e24c6757fbebcdc95dd9c4ee661e9a44c50643fd56a0331b0"}]}
 ```
 
 ```kotlin [field-property box="kratos_thermal" name="code" path="kratos_thermal_code_.kt"]
@@ -125,11 +125,11 @@ frames {
                                     "data-revision='${result.revision.simulation}' data-arm='${submitted[0]}' " +
                                     "data-changed='$changed' data-delta='$delta'>" +
                                     "Result revision ${result.revision} · arm ${submitted[0]} m<br>" +
-                                    "Changed classification vs first: $changed nodes · max ΔT ${"%.4f".format(delta)} K<br>" +
+                                    "Changed classification vs first: $changed nodes · max ΔT ${delta.f4} K<br>" +
                                     "Temperature ${safe(d["temperatureMin"])}–${safe(d["temperatureMax"])} K<br>" +
                                     "Classification ${safe(d["classificationMs"])} ms (${safe(d["classificationScope"])}) · " +
                                     "model ${safe(d["modelUpdateMs"])} ms<br>Assembly ${safe(d["assemblyMs"])} ms · solve ${safe(d["solveMs"])} ms<br>" +
-                                    "Transfer out/in ${safe(d["geometryTransferMs"])}/${safe(d["resultTransferMs"])} ms · view ${"%.1f".format(visualMs)} ms<br>" +
+                                    "Transfer out/in ${safe(d["geometryTransferMs"])}/${safe(d["resultTransferMs"])} ms · view ${visualMs.f1} ms<br>" +
                                     "Relative residual ${safe(d["relativeLinearResidual"])}<br>" +
                                     "Blue → red: each slice uses its own temperature range; grey means no active support.</span>"
                         }

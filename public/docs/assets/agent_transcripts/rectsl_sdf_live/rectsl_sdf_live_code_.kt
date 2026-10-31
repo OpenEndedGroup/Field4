@@ -79,8 +79,7 @@ val module = Module(
     },
 ).pointer()
 
-val mesh = Mesh(renderer, module)
-mesh.resize(3, 0, module)
+val mesh = fullscreenTriangle(module)
 
 val startedAt = System.nanoTime()
 mesh.push.bind("time") {
