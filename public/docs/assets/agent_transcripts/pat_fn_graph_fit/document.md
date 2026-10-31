@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="pat_fn_fit" index="0" -->
 
 ```edn [field-box id="pat_fn_fit" role="properties"]
-{"id" "pat_fn_fit" "index" 0 "name" "2 · fit the rhythm" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · fit the rhythm" "_tombstone" false "frame" #afield/rect [60.0 390.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_fn_fit_code_.kt" "lines" 23 "characters" 956 "sha256" "533db7b938a69b6b4495345bfc9caddfc15dc3154c08a57d6d4d434389c12917"}]}
+{"id" "pat_fn_fit" "index" 0 "name" "2 · fit the rhythm" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · fit the rhythm" "_tombstone" false "frame" #afield/rect [60.0 390.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_fn_fit_code_.kt" "lines" 23 "characters" 932 "sha256" "2e33c31026edae4968fed68c7d9a7e5010aca79f0d6456ec5abb1370f350de94"}]}
 ```
 
 ```kotlin [field-property box="pat_fn_fit" name="code" path="pat_fn_fit_code_.kt"]
@@ -30,7 +30,7 @@ with(Functions) {
         """
     seed    ${seed.graphNode().strings["source"]}
     fitted  ${run.fitted.graphNode().strings["source"]}
-    RMSE    ${"%.4f".format(run.initialError)} -> ${"%.4f".format(run.finalError)}
+    RMSE    ${run.initialError.f4} -> ${run.finalError.f4}
     """
             .trimIndent()
     println(report)
@@ -81,7 +81,7 @@ display("<pre>" + report + "</pre>")
 <!-- field-box id="pat_fn_permute" index="2" -->
 
 ```edn [field-box id="pat_fn_permute" role="properties"]
-{"id" "pat_fn_permute" "index" 2 "name" "3 · what it cannot do" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · what it cannot do" "_tombstone" false "frame" #afield/rect [620.0 390.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_fn_permute_code_.kt" "lines" 25 "characters" 1146 "sha256" "bc9732e4b7383fa03433453c8f972e59c0feb825ad0bfdcad43a38fc2f18f1b1"}]}
+{"id" "pat_fn_permute" "index" 2 "name" "3 · what it cannot do" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · what it cannot do" "_tombstone" false "frame" #afield/rect [620.0 390.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_fn_permute_code_.kt" "lines" 25 "characters" 1122 "sha256" "e4082126ac8b2bb87bacc49e30c371ee78e803a377a3eec01a1dea7869437e99"}]}
 ```
 
 ```kotlin [field-property box="pat_fn_permute" name="code" path="pat_fn_permute_code_.kt"]
@@ -100,7 +100,7 @@ with(Functions) {
         """
     mirrored seed  ${mirrored.graphNode().strings["source"]}
     ended at       ${run.fitted.graphNode().strings["source"]}
-    RMSE           ${"%.4f".format(run.initialError)} -> ${"%.4f".format(run.finalError)}
+    RMSE           ${run.initialError.f4} -> ${run.finalError.f4}
 
     It descends, but not to the answer: it escapes into wide kernels, where a
     normalised blend flattens toward the mean of its atom values. Structure search

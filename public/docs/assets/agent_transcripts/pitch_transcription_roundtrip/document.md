@@ -17,7 +17,7 @@ From `code`
 Sixteen notes in half a second: 31 ms each.
 
 ```edn [field-box id="pitch_roundtrip_register" role="properties"]
-{"id" "pitch_roundtrip_register" "index" 0 "name" "4 · POKE THIS — the register is the whole lever" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 · POKE THIS — the register is the whole lever" "_tombstone" false "frame" #afield/rect [520.0 190.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pitch_roundtrip_register_code_.kt" "lines" 53 "characters" 2047 "sha256" "17f991ca6f01066dd0e123245ce23402f318618f73ff9e7924695f9e07ccbe35"}]}
+{"id" "pitch_roundtrip_register" "index" 0 "name" "4 · POKE THIS — the register is the whole lever" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 · POKE THIS — the register is the whole lever" "_tombstone" false "frame" #afield/rect [520.0 190.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pitch_roundtrip_register_code_.kt" "lines" 53 "characters" 2003 "sha256" "3337ee43fac5cc3d47d1c1d5dbf8c1c16486e86f719427f089d8bc199c860d09"}]}
 ```
 
 ```kotlin [field-property box="pitch_roundtrip_register" name="code" path="pitch_roundtrip_register_code_.kt"]
@@ -61,14 +61,14 @@ val heard = showPatTranscriptionOf(
     minGapSeconds = (1.0 / cps) / 16,
     minHz = minHz,
     maxHz = patMidiToHz(73.0),
-    label = "31 ms notes, minHz = ${"%.0f".format(minHz)} Hz",
+    label = "31 ms notes, minHz = ${minHz.f0} Hz",
 )
 
 display(
     "resolution",
     """
-    minHz ${"%.1f".format(minHz)} Hz → analysis window $window samples (${"%.1f".format(1000.0 * window / PatSoundDocs.SR)} ms)
-    the notes are ${"%.1f".format(1000.0 / cps / 16)} ms long
+    minHz ${minHz.f1} Hz → analysis window $window samples (${(1000.0 * window / PatSoundDocs.SR).f1} ms)
+    the notes are ${(1000.0 / cps / 16).f1} ms long
 """
         .trimIndent(),
 )
@@ -225,7 +225,7 @@ From `code`
 The notation, and the ground truth Field already owns because it wrote it.
 
 ```edn [field-box id="pitch_roundtrip_clean" role="properties"]
-{"id" "pitch_roundtrip_clean" "index" 3 "name" "2 · notate → render → hear it back" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · notate → render → hear it back" "_tombstone" false "frame" #afield/rect [520.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pitch_roundtrip_clean_code_.kt" "lines" 29 "characters" 1037 "sha256" "64491da63e1788412831706d5ce183b2e4e87c3da2106ba406b69e6fedcabf17"}]}
+{"id" "pitch_roundtrip_clean" "index" 3 "name" "2 · notate → render → hear it back" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · notate → render → hear it back" "_tombstone" false "frame" #afield/rect [520.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pitch_roundtrip_clean_code_.kt" "lines" 29 "characters" 1013 "sha256" "9457b1a6aae01d7c3f45cf2befd8f1aaa4fd25b5d51129fe8dfc86a1d5b75c17"}]}
 ```
 
 ```kotlin [field-property box="pitch_roundtrip_clean" name="code" path="pitch_roundtrip_clean_code_.kt"]
@@ -250,11 +250,11 @@ val heard = showPatTranscriptionOf(
 )
 
 display("authored", "pat(\"$notation\") × $cycles cycles at cps $cps")
-display("recovered", "pat(\"${heard.miniNotation}\") at cps ${"%.3f".format(heard.cps)}")
+display("recovered", "pat(\"${heard.miniNotation}\") at cps ${heard.cps.f3}")
 display(
     "pitch error",
     heard.notes.joinToString("\n") {
-        "MIDI ${it.midi}  ${"%+.1f".format(it.centsOffset)} cents  conf ${"%.2f".format(it.confidence)}"
+        "MIDI ${it.midi}  ${"%+.1f".format(it.centsOffset)} cents  conf ${it.confidence.f2}"
     },
 )
 display("summary", heard.describe())
@@ -265,7 +265,7 @@ display("summary", heard.describe())
 <!-- field-box id="pitch_roundtrip_guide" index="4" -->
 
 ```edn [field-box id="pitch_roundtrip_guide" role="properties"]
-{"id" "pitch_roundtrip_guide" "index" 4 "name" "1 · hearing pitch — the loop and its last arrow" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · hearing pitch — the loop and its last arrow" "_tombstone" false "frame" #afield/rect [40.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pitch_roundtrip_guide_code_.kt" "lines" 36 "characters" 2290 "sha256" "3d76e62261377bc2e97e9d199ffc511b6a66bce2fee612f0da3a8ad046b82b6d"}]}
+{"id" "pitch_roundtrip_guide" "index" 4 "name" "1 · hearing pitch — the loop and its last arrow" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · hearing pitch — the loop and its last arrow" "_tombstone" false "frame" #afield/rect [40.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pitch_roundtrip_guide_code_.kt" "lines" 36 "characters" 2270 "sha256" "813875ec4c0dcda545d970bd13478b40df97bb156fa10081e898141b08ef1f82"}]}
 ```
 
 ```kotlin [field-property box="pitch_roundtrip_guide" name="code" path="pitch_roundtrip_guide_code_.kt"]
@@ -299,8 +299,8 @@ display(
     """
     the analysis window is 2·(sampleRate/minHz) of frame plus one longest lag,
     so the register you admit sets the shortest note you can resolve:
-      minHz  65 Hz (the wide default) → ${patPitchFrameSpan(PatSoundDocs.SR, 65.0)} samples = ${"%.1f".format(1000.0 * patPitchFrameSpan(PatSoundDocs.SR, 65.0) / PatSoundDocs.SR)} ms
-      minHz 261 Hz (a treble line)    → ${patPitchFrameSpan(PatSoundDocs.SR, 261.0)} samples = ${"%.1f".format(1000.0 * patPitchFrameSpan(PatSoundDocs.SR, 261.0) / PatSoundDocs.SR)} ms
+      minHz  65 Hz (the wide default) → ${patPitchFrameSpan(PatSoundDocs.SR, 65.0)} samples = ${(1000.0 * patPitchFrameSpan(PatSoundDocs.SR, 65.0) / PatSoundDocs.SR).f1} ms
+      minHz 261 Hz (a treble line)    → ${patPitchFrameSpan(PatSoundDocs.SR, 261.0)} samples = ${(1000.0 * patPitchFrameSpan(PatSoundDocs.SR, 261.0) / PatSoundDocs.SR).f1} ms
     That ratio is what box 4 is about.
 """
         .trimIndent(),

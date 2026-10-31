@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="simulation_owner" index="0" -->
 
 ```edn [field-box id="simulation_owner" role="properties"]
-{"id" "simulation_owner" "index" 0 "name" "1. Simulation — launch / stop" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1. Simulation — launch / stop" "_tombstone" false "frame" #afield/rect [80.0 100.0 360.0 115.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "simulation_owner_code_.kt" "lines" 81 "characters" 3392 "sha256" "a6fabab7f9976cf7acd7fff91d3a1593528d12d2799d75faf9fc2aabdaea3c9b"}]}
+{"id" "simulation_owner" "index" 0 "name" "1. Simulation — launch / stop" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1. Simulation — launch / stop" "_tombstone" false "frame" #afield/rect [80.0 100.0 360.0 115.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "simulation_owner_code_.kt" "lines" 81 "characters" 3380 "sha256" "e2ba96c100d9cb711529b5311448360818dc84747cc9125498a45c826e8eb611"}]}
 ```
 
 ```kotlin [field-property box="simulation_owner" name="code" path="simulation_owner_code_.kt"]
@@ -79,7 +79,7 @@ frames {
                       <circle cx="$x" cy="$y" r="12" fill="#48c9ff"/>
                       <circle cx="200" cy="125" r="${8+18*pulse}" fill="#ddd"/>
                       <text x="20" y="250" fill="#aaa" font-family="Iosevka,monospace">
-                        simulation ${"%.2f".format(time)} s · ${pendingTimers} timers
+                        simulation ${time.f2} s · ${pendingTimers} timers
                       </text>
                     </svg>
                     """,

@@ -47,8 +47,8 @@ operations:
               """
               the analysis window is 2·(sampleRate/minHz) of frame plus one longest lag,
               so the register you admit sets the shortest note you can resolve:
-                minHz  65 Hz (the wide default) → ${patPitchFrameSpan(PatSoundDocs.SR, 65.0)} samples = ${"%.1f".format(1000.0 * patPitchFrameSpan(PatSoundDocs.SR, 65.0) / PatSoundDocs.SR)} ms
-                minHz 261 Hz (a treble line)    → ${patPitchFrameSpan(PatSoundDocs.SR, 261.0)} samples = ${"%.1f".format(1000.0 * patPitchFrameSpan(PatSoundDocs.SR, 261.0) / PatSoundDocs.SR)} ms
+                minHz  65 Hz (the wide default) → ${patPitchFrameSpan(PatSoundDocs.SR, 65.0)} samples = ${(1000.0 * patPitchFrameSpan(PatSoundDocs.SR, 65.0) / PatSoundDocs.SR).f1} ms
+                minHz 261 Hz (a treble line)    → ${patPitchFrameSpan(PatSoundDocs.SR, 261.0)} samples = ${(1000.0 * patPitchFrameSpan(PatSoundDocs.SR, 261.0) / PatSoundDocs.SR).f1} ms
               That ratio is what box 4 is about.
           """
                   .trimIndent(),
@@ -80,11 +80,11 @@ operations:
           )
 
           display("authored", "pat(\"$notation\") × $cycles cycles at cps $cps")
-          display("recovered", "pat(\"${heard.miniNotation}\") at cps ${"%.3f".format(heard.cps)}")
+          display("recovered", "pat(\"${heard.miniNotation}\") at cps ${heard.cps.f3}")
           display(
               "pitch error",
               heard.notes.joinToString("\n") {
-                  "MIDI ${it.midi}  ${"%+.1f".format(it.centsOffset)} cents  conf ${"%.2f".format(it.confidence)}"
+                  "MIDI ${it.midi}  ${"%+.1f".format(it.centsOffset)} cents  conf ${it.confidence.f2}"
               },
           )
           display("summary", heard.describe())
@@ -194,14 +194,14 @@ operations:
               minGapSeconds = (1.0 / cps) / 16,
               minHz = minHz,
               maxHz = patMidiToHz(73.0),
-              label = "31 ms notes, minHz = ${"%.0f".format(minHz)} Hz",
+              label = "31 ms notes, minHz = ${minHz.f0} Hz",
           )
 
           display(
               "resolution",
               """
-              minHz ${"%.1f".format(minHz)} Hz → analysis window $window samples (${"%.1f".format(1000.0 * window / PatSoundDocs.SR)} ms)
-              the notes are ${"%.1f".format(1000.0 / cps / 16)} ms long
+              minHz ${minHz.f1} Hz → analysis window $window samples (${(1000.0 * window / PatSoundDocs.SR).f1} ms)
+              the notes are ${(1000.0 / cps / 16).f1} ms long
           """
                   .trimIndent(),
           )

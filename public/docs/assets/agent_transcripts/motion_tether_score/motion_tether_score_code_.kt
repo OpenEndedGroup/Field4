@@ -9,7 +9,7 @@ frames {
                 overlays=dancer.telemetry.tethers().flatMap { it.overlays() })
             val foot = dancer.telemetry.tether("left-foot")
             markdown("status", when {
-                foot?.active == true -> "**TETHERED** · ${"%.0f".format(foot.forceN)} N"
+                foot?.active == true -> "**TETHERED** · ${foot.forceN.f0} N"
                 foot != null -> "**RELEASED**"
                 else -> "**WALKING**"
             })

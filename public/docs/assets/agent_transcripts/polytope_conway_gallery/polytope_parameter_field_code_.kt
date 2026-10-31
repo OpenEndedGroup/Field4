@@ -60,7 +60,7 @@ val faceLines = out.toFaceFLines { face, line ->
             **output face ${face.id.value}**
 
             - role: `$role`
-            - deployed spike: `${spike?.let { "%.3f".format(it) } ?: "not selected"}`
+            - deployed spike: `${spike?.let { it.f3 } ?: "not selected"}`
             - source: ${result.sourceElements(face.id).joinToString { "rank ${it.rank} / id ${it.id.value}" }}
             - clicked at: `${hit.position}`
             """

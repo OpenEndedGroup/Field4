@@ -62,7 +62,7 @@ run {
                     surrogate.unitPeriodMass,
                     g,
                     fd,
-                    if (fd == 0.0) "(no oracle)" else "%.3f".format(g / fd),
+                    if (fd == 0.0) "(no oracle)" else (g / fd).f3,
                 ),
         )
     }

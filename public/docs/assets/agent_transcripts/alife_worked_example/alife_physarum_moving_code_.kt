@@ -11,8 +11,8 @@ flat cream. The caption's number is `topShare(0.05)`, recomputed every frame.
 val p = PhysarumParams()
 val ceiling = (p.deposit / (1.0 - p.decay)).toFloat()
 fun trails(a: PhysarumSwarm, b: PhysarumSwarm, n: Int) = [
-    "sensing " + n + "  " + "%.3f".format(a.trail.topShare(0.05)) to a.trail.colormap("magma", 0f, ceiling),
-    "blind " + n + "  " + "%.3f".format(b.trail.topShare(0.05)) to b.trail.colormap("magma", 0f, ceiling),
+    "sensing " + n + "  " + a.trail.topShare(0.05).f3 to a.trail.colormap("magma", 0f, ceiling),
+    "blind " + n + "  " + b.trail.topShare(0.05).f3 to b.trail.colormap("magma", 0f, ceiling),
 ]
 
 /*

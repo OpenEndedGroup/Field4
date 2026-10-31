@@ -812,7 +812,7 @@ markdown(
     "field",
     """
     kis deployed over ${deployed.size} faces ·
-    heightScale resolved ${"%.3f".format(lo)} … ${"%.3f".format(hi)}
+    heightScale resolved ${lo.f3} … ${hi.f3}
 
     output ${out.topology.elements(0).size}v ${out.topology.elements(1).size}e ${out.topology.elements(2).size}f ·
     ${g.triangleCount} triangles over ${g.triangleFaceIds.toSet().size} source polygons
@@ -932,7 +932,7 @@ val metrics =
                 row("after solveRealization()", solved.finalDiagnostics),
             ],
         )
-        .format("edge mean") { "%.5f".format(it) }
+        .format("edge mean") { (it as Number).f5 }
         .format("edge RMS dev", sci)
         .format("max planarity err", sci)
         .format("planarity RMS", sci)
@@ -1031,7 +1031,7 @@ val metrics =
         .format("tangency radius spread", sci)
         .format("tangency centroid offset", sci)
         .format("max planarity err", sci)
-        .format("dihedral mean") { "%.4f".format(it) }
+        .format("dihedral mean") { (it as Number).f4 }
         .format("dihedral spread", sci)
 
 markdown(
@@ -1137,7 +1137,7 @@ val metrics =
         .format("tangency radius spread", sci)
         .format("tangency centroid offset", sci)
         .format("max planarity err", sci)
-        .format("min dihedral") { "%.3f".format(it) }
+        .format("min dihedral") { (it as Number).f3 }
 
 markdown(
     "kkc",
@@ -1223,7 +1223,7 @@ val routes =
             ],
         )
         .format("tangency spread", sci)
-        .format("dihedral mean (rad)") { "%.4f".format(it) }
+        .format("dihedral mean (rad)") { (it as Number).f4 }
 
 markdown(
     "spectral",

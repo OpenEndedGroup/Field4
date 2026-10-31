@@ -155,7 +155,7 @@ A scalar per face, written as an ordinary attribute. Selection and deployment ar
 separate concerns: `band` decides WHERE kis happens, `spike` decides HOW MUCH.
 
 ```edn [field-box id="polytope_parameter_field" role="properties"]
-{"id" "polytope_parameter_field" "index" 2 "name" "3 — a non-uniform parameter field on the faces" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — a non-uniform parameter field on the faces" "_tombstone" false "frame" #afield/rect [80.0 1000.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_parameter_field_code_.kt" "lines" 80 "characters" 3359 "sha256" "dac359518509a1e1ce32a771476df66097d171e54ad7af13988c00f2f6dabdf8"}]}
+{"id" "polytope_parameter_field" "index" 2 "name" "3 — a non-uniform parameter field on the faces" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — a non-uniform parameter field on the faces" "_tombstone" false "frame" #afield/rect [80.0 1000.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_parameter_field_code_.kt" "lines" 80 "characters" 3347 "sha256" "d32d7c6870371f00a7403f9190f8c96e17893205975b43e7871a9d10cca6d494"}]}
 ```
 
 ```kotlin [field-property box="polytope_parameter_field" name="code" path="polytope_parameter_field_code_.kt"]
@@ -221,7 +221,7 @@ val faceLines = out.toFaceFLines { face, line ->
             **output face ${face.id.value}**
 
             - role: `$role`
-            - deployed spike: `${spike?.let { "%.3f".format(it) } ?: "not selected"}`
+            - deployed spike: `${spike?.let { it.f3 } ?: "not selected"}`
             - source: ${result.sourceElements(face.id).joinToString { "rank ${it.rank} / id ${it.id.value}" }}
             - clicked at: `${hit.position}`
             """

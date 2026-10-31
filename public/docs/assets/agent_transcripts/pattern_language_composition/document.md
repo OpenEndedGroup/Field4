@@ -19,7 +19,7 @@ exactly one event, sampled at the arc's exact rational midpoint. Nothing plays a
 continuous pattern directly — you discretise it, and segment(n) is how.
 
 ```edn [field-box id="pat_demo_signals" role="properties"]
-{"id" "pat_demo_signals" "index" 0 "name" "1 — continuous signals" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — continuous signals" "_tombstone" false "frame" #afield/rect [60.0 60.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_demo_signals_code_.kt" "lines" 29 "characters" 1150 "sha256" "d654cee4fe35fb718d6614c795c119f1b72161850ae1217726eee4a4871aee78"}]}
+{"id" "pat_demo_signals" "index" 0 "name" "1 — continuous signals" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — continuous signals" "_tombstone" false "frame" #afield/rect [60.0 60.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_demo_signals_code_.kt" "lines" 29 "characters" 1138 "sha256" "21e3be675028c8ec62dfb22daf3c0aabac8ad4d24e6bf3d9513a72d3d0bf751b"}]}
 ```
 
 ```kotlin [field-property box="pat_demo_signals" name="code" path="pat_demo_signals_code_.kt"]
@@ -50,7 +50,7 @@ println(
     "segment(4) arcs = " + sine().segment(4).events(PatArc(PatQ.ZERO, PatQ.ONE)).map { "${it.arc}" },
 )
 println(
-    "segment(4) values = " + sine().segment(4).events(PatArc(PatQ.ZERO, PatQ.ONE)).map { "%.4f".format(it.value) },
+    "segment(4) values = " + sine().segment(4).events(PatArc(PatQ.ZERO, PatQ.ONE)).map { it.value.f4 },
 )
 ```
 
@@ -244,7 +244,7 @@ pattern: one literal per note, typed by hand. Now a parameter can be a FUNCTION,
 the note count does not change when you read it.
 
 ```edn [field-box id="pat_demo_parameter" role="properties"]
-{"id" "pat_demo_parameter" "index" 4 "name" "3 — a parameter, not a staircase" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — a parameter, not a staircase" "_tombstone" false "frame" #afield/rect [60.0 520.0 330.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_demo_parameter_code_.kt" "lines" 38 "characters" 1309 "sha256" "38c303533a34b4afc1dec55be7feafbaa8bda3f815988483198fd07fba3fe2bd"}]}
+{"id" "pat_demo_parameter" "index" 4 "name" "3 — a parameter, not a staircase" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — a parameter, not a staircase" "_tombstone" false "frame" #afield/rect [60.0 520.0 330.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_demo_parameter_code_.kt" "lines" 38 "characters" 1297 "sha256" "7c1a476f2f402e77fab9cc050bbe60a02f40b3d1b1abe631a5b9d16d54682bbf"}]}
 ```
 
 ```kotlin [field-property box="pat_demo_parameter" name="code" path="pat_demo_parameter_code_.kt"]
@@ -265,7 +265,7 @@ for (n in [4, 8, 16]) {
             .format(
                 n,
                 notes.size,
-                notes.joinToString(" ") { "%.0f".format(it.num("cutoff")) },
+                notes.joinToString(" ") { it.num("cutoff").f0 },
             ),
     )
 }

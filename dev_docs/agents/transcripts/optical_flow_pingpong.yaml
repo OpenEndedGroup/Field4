@@ -55,8 +55,7 @@ operations:
             depthWrite = false
             blend = false
         }
-        val triangle = Mesh(renderer, scene)
-        triangle.resize(3, 0, scene)
+        val triangle = fullscreenTriangle(scene)
         triangle.push.setMembers(scene.current.fi.pushConstants.single().members)
         scene += "image" to triangle
         history += "image" to scene
@@ -219,8 +218,7 @@ operations:
           depthWrite = false
           blend = false
       }
-      val triangle = Mesh(renderer, scene)
-      triangle.resize(3, 0, scene)
+      val triangle = fullscreenTriangle(scene)
       triangle.push.setMembers(scene.current.fi.pushConstants.single().members)
       scene += "image" to triangle
       history += "image" to scene
@@ -334,8 +332,7 @@ operations:
             depthWrite = false
             blend = false
         }
-        val triangle = Mesh(renderer, view)
-        triangle.resize(3, 0, view)
+        val triangle = fullscreenTriangle(view)
         view += "display" to triangle
         renderer.renderList.modules["pingpong flow texture"] = view
         val owner = renderer
@@ -371,8 +368,7 @@ operations:
           depthWrite = false
           blend = false
       }
-      val triangle = Mesh(renderer, view)
-      triangle.resize(3, 0, view)
+      val triangle = fullscreenTriangle(view)
       view += "display" to triangle
       renderer.renderList.modules["pingpong flow texture"] = view
       val owner = renderer

@@ -146,7 +146,7 @@ showPatRollOf(
 val rows =
     traces.entries.joinToString("\n") { (order, t) ->
         "| `${order.name}` | ${t.steps} | ${t.betas} | `${t.betaCondensation.notation}` | " +
-            "${"%.2f".format(t.betaCompression)} | ${t.betaCondensation.exact} |"
+            "${t.betaCompression.f2} | ${t.betaCondensation.exact} |"
     }
 markdown(
     "spellings",

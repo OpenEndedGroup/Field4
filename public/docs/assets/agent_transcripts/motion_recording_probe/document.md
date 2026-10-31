@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="motion_recording_probe" index="0" -->
 
 ```edn [field-box id="motion_recording_probe" role="properties"]
-{"id" "motion_recording_probe" "index" 0 "name" "Motion — coordinate probe" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Motion — coordinate probe" "_tombstone" false "frame" #afield/rect [80.0 80.0 600.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "motion_recording_probe_code_.kt" "lines" 49 "characters" 2045 "sha256" "7f9974398b9580ea31b5f5ef997cfb0eab614673ca324882e1867c46edd8f8b2"}]}
+{"id" "motion_recording_probe" "index" 0 "name" "Motion — coordinate probe" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Motion — coordinate probe" "_tombstone" false "frame" #afield/rect [80.0 80.0 600.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "motion_recording_probe_code_.kt" "lines" 49 "characters" 2033 "sha256" "c89b685563724a344b9bea7744e3a4b7d6a8c2b5a8a9e86c64932aa25dc0ea6f"}]}
 ```
 
 ```kotlin [field-property box="motion_recording_probe" name="code" path="motion_recording_probe_code_.kt"]
@@ -57,7 +57,7 @@ loop {
     val border = fline { rect(0.0, 0.0, 600.0, 300.0); color = vec(0.2, 0.25, 0.3, 1.0) }
     lines(border, drawing, points, w=600.0, h=300.0, channel="motion")
     markdown("status", "**Coordinate probe** · no network inference\n\n" +
-        "Time ${"%.2f".format(time)} s · episode ${snapshot.frame.episode} · " +
+        "Time ${time.f2} s · episode ${snapshot.frame.episode} · " +
         if (snapshot.held) "holding before reset" else "recorded pose")
     displayOpen("motion")
     displayOpen("status")

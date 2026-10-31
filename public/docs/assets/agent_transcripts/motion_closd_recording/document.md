@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="motion_closd_recording" index="0" -->
 
 ```edn [field-box id="motion_closd_recording" role="properties"]
-{"id" "motion_closd_recording" "index" 0 "name" "CLoSD — a recorded foot tether" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "CLoSD — a recorded foot tether" "_tombstone" false "frame" #afield/rect [80.0 80.0 600.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "motion_closd_recording_code_.kt" "lines" 43 "characters" 2239 "sha256" "e2b9b00ef1b53c694e955a7139808108e468299dc0c3fe5621387caac7b584e8"}]}
+{"id" "motion_closd_recording" "index" 0 "name" "CLoSD — a recorded foot tether" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "CLoSD — a recorded foot tether" "_tombstone" false "frame" #afield/rect [80.0 80.0 600.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "motion_closd_recording_code_.kt" "lines" 43 "characters" 2227 "sha256" "7aa6c45c0213b04203fa2bbde23ad3ed0585c87fe1637898fc5629c18c5a859c"}]}
 ```
 
 ```kotlin [field-property box="motion_closd_recording" name="code" path="motion_closd_recording_code_.kt"]
@@ -52,7 +52,7 @@ loop {
     showMotion(snapshot.frame, clip.skeleton, reference=showReference.get(), overlays=overlays, follow=follow.get(), followHalfLife=followHalfLife.get())
     markdown("status", "**CLoSD · recorded GPU motion**\n\n" +
         "White: executed body. Cyan: planner reference positions. Red: physical foot tether, attached at 2 s and released at 4 s. " +
-        "Time ${"%.2f".format(seconds)} s · episode ${snapshot.frame.episode}. Orbit the view with the mouse.")
+        "Time ${seconds.f2} s · episode ${snapshot.frame.episode}. Orbit the view with the mouse.")
     displayOpen("motion")
     displayOpen("status")
     delay(16) // Yield without flooding the UI transport.

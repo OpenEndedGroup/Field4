@@ -19,7 +19,7 @@ line: restarting a blend throws away the speed it had, which is what any one-sho
 does every time you re-aim it. Left alone, `inertialTo` re-solves and keeps that speed.
 
 ```edn [field-box id="inertial_vs_restarting" role="properties"]
-{"id" "inertial_vs_restarting" "index" 0 "name" "what restarting a blend costs" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "what restarting a blend costs" "_tombstone" false "frame" #afield/rect [80.0 900.0 310.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "inertial_vs_restarting_code_.kt" "lines" 35 "characters" 1132 "sha256" "bb691322ebe32922ff617ee9e9a7b9e6b2633ab0d4e2181b01a3fec0f85ac680"}]}
+{"id" "inertial_vs_restarting" "index" 0 "name" "what restarting a blend costs" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "what restarting a blend costs" "_tombstone" false "frame" #afield/rect [80.0 900.0 310.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "inertial_vs_restarting_code_.kt" "lines" 35 "characters" 1100 "sha256" "77f99f093249452de3b244af1ae7078c653edae6b8240f1753963aa58dd93615"}]}
 ```
 
 ```kotlin [field-property box="inertial_vs_restarting" name="code" path="inertial_vs_restarting_code_.kt"]
@@ -39,7 +39,7 @@ val fromRest = mutableListOf<Double>()
 loop {
     // A target that never holds still, so every single frame is a re-aim.
     goal = sin(frameNumber / 40.0) * 0.8
-    (restarted as NeedsStartingValue<Double>).startAt(fromRest.lastOrNull() ?: 0.0)
+    restarted.startAt(fromRest.lastOrNull() ?: 0.0)
 
     target += goal
     reSolved += carried()

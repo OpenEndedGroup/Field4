@@ -30,7 +30,7 @@ val trace =
     }
 
 println(
-    "frames=${spec.numFrames} bins=${spec.numBins} centroid ${"%.0f".format(centroid.first())} -> ${"%.0f".format(centroid.last())} Hz",
+    "frames=${spec.numFrames} bins=${spec.numBins} centroid ${centroid.first().f0} -> ${centroid.last().f0} Hz",
 )
 showHeatmap(
     dB,

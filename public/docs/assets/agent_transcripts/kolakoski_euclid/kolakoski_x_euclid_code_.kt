@@ -43,7 +43,7 @@ val audio = dirt.audio
 val wav = "kolakoski-flat.wav".file
 afield.audio.engine.WavFloatArrayWriter.writeStereo16(wav, audio.left, audio.right, PatSoundDocs.SR, 0.9f)
 println(
-    "wrote $wav — ${"%.1f".format(12 * cps)} hits/s, samples: ${dirt.usedSamples}, matched ${dirt.matched}, synth fallback ${dirt.unmatched}",
+    "wrote $wav — ${(12 * cps).f1} hits/s, samples: ${dirt.usedSamples}, matched ${dirt.matched}, synth fallback ${dirt.unmatched}",
 )
 
 markdown(

@@ -34,21 +34,21 @@ val panels = cases.map { (label, y) ->
         pointSize = 1.1,
     )
     val caption =
-        "r=${"%.3f".format(r)} rho=${"%.3f".format(rho)} tau=${"%.3f".format(tau)}" +
-            " xi=${"%.3f".format(xi)} dCor=${"%.3f".format(dcor)} MIC~=${"%.3f".format(mic)}"
+        "r=${r.f3} rho=${rho.f3} tau=${tau.f3}" +
+            " xi=${xi.f3} dCor=${dcor.f3} MIC~=${mic.f3}"
     "$label\n$caption" to cloud
 }
 
 val parabola = cases[2].second
 println(
-    "xi is asymmetric on purpose: xi(x, x^2)=${"%.3f".format(StatsDependence.xi(x, parabola))} " +
-        "but xi(x^2, x)=${"%.3f".format(StatsDependence.xi(parabola, x))} — x is NOT a function of x^2.",
+    "xi is asymmetric on purpose: xi(x, x^2)=${StatsDependence.xi(x, parabola).f3} " +
+        "but xi(x^2, x)=${StatsDependence.xi(parabola, x).f3} — x is NOT a function of x^2.",
 )
 println(
     "dCor is 1 only for a STRAIGHT line, not for any perfect relationship: " +
-        "dCor(x, 3x+1)=${"%.6f".format(StatsDependence.distanceCorrelation(x, DoubleArray(n) { 3.0 * x[it] + 1.0 }))}, " +
-        "dCor(x, -2x+5)=${"%.6f".format(StatsDependence.distanceCorrelation(x, DoubleArray(n) { -2.0 * x[it] + 5.0 }))}, " +
-        "but dCor on the parabola is only ${"%.3f".format(StatsDependence.distanceCorrelation(x, parabola))}.",
+        "dCor(x, 3x+1)=${StatsDependence.distanceCorrelation(x, DoubleArray(n) { 3.0 * x[it] + 1.0 }).f6}, " +
+        "dCor(x, -2x+5)=${StatsDependence.distanceCorrelation(x, DoubleArray(n) { -2.0 * x[it] + 5.0 }).f6}, " +
+        "but dCor on the parabola is only ${StatsDependence.distanceCorrelation(x, parabola).f3}.",
 )
 
 // There are no p-values anywhere in this family, and dCor under independence is biased
@@ -70,13 +70,13 @@ for (rep in 0 until reps) {
 val sortedD = nullDcor.sortedArray()
 val sortedXi = nullXi.sortedArray()
 println(
-    "growing-spread case: observed dCor=${"%.4f".format(observedDcor)} against a null of " +
-        "mean ${"%.4f".format(sortedD.average())}, 95th pct ${"%.4f".format(sortedD[(reps * 0.95).toInt()])}, " +
-        "max ${"%.4f".format(sortedD.last())} — re-pairings reaching it: ${sortedD.count { it >= observedDcor }}/$reps",
+    "growing-spread case: observed dCor=${observedDcor.f4} against a null of " +
+        "mean ${sortedD.average().f4}, 95th pct ${sortedD[(reps * 0.95).toInt()].f4}, " +
+        "max ${sortedD.last().f4} — re-pairings reaching it: ${sortedD.count { it >= observedDcor }}/$reps",
 )
 println(
-    "                     observed xi  =${"%.4f".format(observedXi)} against a null 95th pct of " +
-        "${"%.4f".format(sortedXi[(reps * 0.95).toInt()])} — re-pairings reaching it: " +
+    "                     observed xi  =${observedXi.f4} against a null 95th pct of " +
+        "${sortedXi[(reps * 0.95).toInt()].f4} — re-pairings reaching it: " +
         "${sortedXi.count { it >= observedXi }}/$reps. xi correctly declines to call this functional.",
 )
 

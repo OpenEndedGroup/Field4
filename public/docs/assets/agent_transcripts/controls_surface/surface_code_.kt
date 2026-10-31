@@ -6,7 +6,7 @@ var tint = Vector4f(0.05f, 0.78f, 0.93f, 1f)
 fun draw() {
     val c = "rgba(${(tint.x * 255).toInt()},${(tint.y * 255).toInt()},${(tint.z * 255).toInt()},${tint.w})"
     val r = 10 + 40 * kotlin.math.log10(cutoff / 20.0) / 3.0
-    val dot = if (armed) "<circle cx='${150 + orbit.x * 120}' cy='${150 - orbit.y * 120}' r='${"%.1f".format(r)}' fill='$c'/>" else ""
+    val dot = if (armed) "<circle cx='${150 + orbit.x * 120}' cy='${150 - orbit.y * 120}' r='${r.f1}' fill='$c'/>" else ""
     display("figure", """
         <svg width="300" height="300" style="background:#05080a;border:1px solid #136178">
           <line x1="150" y1="150" x2="${150 + orbit.x * 120}" y2="${150 - orbit.y * 120}" stroke="#136178"/>$dot

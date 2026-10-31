@@ -50,7 +50,7 @@ operations:
               val border = fline { rect(0.0, 0.0, 600.0, 300.0); color = vec(0.2, 0.25, 0.3, 1.0) }
               lines(border, drawing, points, w=600.0, h=300.0, channel="motion")
               markdown("status", "**Coordinate probe** · no network inference\n\n" +
-                  "Time ${"%.2f".format(time)} s · episode ${snapshot.frame.episode} · " +
+                  "Time ${time.f2} s · episode ${snapshot.frame.episode} · " +
                   if (snapshot.held) "holding before reset" else "recorded pose")
               displayOpen("motion")
               displayOpen("status")

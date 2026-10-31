@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-29T22:39:12.239Z",
+  "capturedAt": "2026-10-31T03:50:32.912Z",
   "documentName": "smpte_timecode",
   "outputs": [
     {
@@ -21,7 +21,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 463,
+      "width": 474,
       "height": 82,
       "path": "outputs/1.html"
     },
@@ -31,7 +31,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 283,
+      "width": 309,
       "height": 64,
       "path": "outputs/2.html"
     },
@@ -41,7 +41,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 349,
+      "width": 381,
       "height": 64,
       "path": "outputs/3.html"
     },

@@ -21,7 +21,7 @@ go {
         display(
             "source",
             audio.audioVisualizerHtml(
-                label = "$sourcePattern · ${"%.2f".format(duration)} seconds",
+                label = "$sourcePattern · ${duration.f2} seconds",
                 options = AudioVisualizerOptions(
                     width = 1100,
                     waveformHeight = 145,

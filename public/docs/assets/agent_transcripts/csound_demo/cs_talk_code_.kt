@@ -3,7 +3,7 @@ val pluck = csoundOf("pluck").csound
 
 pluck.setChannel("cutoff", 900) // chnget "cutoff" reads it next k-cycle
 pluck.setStringChannel("voice", "from Kotlin") // an S channel; Reverb outvalues it back
-println("level now: ${"%.4f".format(pluck.channel("level"))}")
+println("level now: ${pluck.channel("level").f4}")
 
 // Every channel the orchestra allocated, with the range chn_k declared for it.
 pluck.channels().forEach { c ->
@@ -21,6 +21,6 @@ run.own(pluck.onOutvalue("said") { println("Csound said: $it") })
 var n = 0
 run.own(
     pluck.onOutvalue("level") { v ->
-        if (n++ % 40 == 0) display("level", "<div style='padding:8px'>Reverb rms ${"%.4f".format(v as Double)}</div>")
+        if (n++ % 40 == 0) display("level", "<div style='padding:8px'>Reverb rms ${(v as Double).f4}</div>")
     },
 )

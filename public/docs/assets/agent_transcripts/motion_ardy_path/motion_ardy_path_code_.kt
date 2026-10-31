@@ -135,7 +135,7 @@ frames {
                         "unpin" -> { worker.setJointTargets(emptyList(), nextTime); anchor = null }
                         "reset" -> { worker.reset(nextTime); activeRoute = emptyList(); pathOverlay = emptyList(); anchor = null }
                     }
-                    notice.set("$command · first editable time ${"%.2f".format(nextTime)} s · $output")
+                    notice.set("$command · first editable time ${nextTime.f2} s · $output")
                 } catch (e: Exception) { notice.set(e.message ?: e.toString()) }
                 command = actions.poll()
             }
@@ -152,9 +152,9 @@ frames {
                 val residual = if (target == null || sample.frame.time >= pinUntil) "" else {
                     val p = sample.frame.executed.position(worker.skeleton.joint(pinnedJoint))
                     val error = sqrt((p.x - target[0]).pow(2) + (p.y - target[1]).pow(2) + (p.z - target[2]).pow(2))
-                    " · raw target residual ${"%.3f".format(error)} m"
+                    " · raw target residual ${error.f3} m"
                 }
-                markdown("status", "${notice.get()}\n\nSession ${"%.2f".format(sample.frame.time)} s · episode ${sample.frame.episode} · lag ${"%.3f".format(sample.lagSeconds)} s$residual. " +
+                markdown("status", "${notice.get()}\n\nSession ${sample.frame.time.f2} s · episode ${sample.frame.episode} · lag ${sample.lagSeconds.f3} s$residual. " +
                     "Yellow: requested path. Red: model conditioning residual. Global joint targets also condition the explicit root path; this is not a physical attachment. No postprocessing.")
             }
             worker.failure?.let { throw it }

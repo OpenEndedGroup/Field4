@@ -56,10 +56,10 @@ markdown(
     |---|---|
     | read as a single whole-span figure | **$named** |
     | of those, wrong | **$wrong** |
-    | median compression | ${"%.3f".format(median)} |
-    | the same number for `kolakoskiMask(16)` | ${"%.3f".format(structured)} |
+    | median compression | ${median.f3} |
+    | the same number for `kolakoskiMask(16)` | ${structured.f3} |
 
-    Noise compresses about ${"%.1f".format(median / structured)} times worse than the figure
+    Noise compresses about ${(median / structured).f1} times worse than the figure
     it is up against. That separation is the claim. If random masks compressed as well as
     structured ones, the search would be finding figures in nothing.
 

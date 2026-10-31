@@ -18,7 +18,7 @@ A rosette with four dials: petals, depth, curl and hue. Say which of two you
 like better, and the model proposes the next two.
 
 ```edn [field-box id="gp_duel" role="properties"]
-{"id" "gp_duel" "index" 0 "name" "2 - A or B? (you choose)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - A or B? (you choose)" "_tombstone" false "frame" #afield/rect [800.0 40.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gp_duel_code_.kt" "lines" 43 "characters" 1545 "sha256" "c1eb2da49b084d205972ff247d5d1459756ad291f7bfd95348540081b8855ffc"}]}
+{"id" "gp_duel" "index" 0 "name" "2 - A or B? (you choose)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - A or B? (you choose)" "_tombstone" false "frame" #afield/rect [800.0 40.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gp_duel_code_.kt" "lines" 43 "characters" 1533 "sha256" "44e83d4a5976e26306ce47ed08753aefa9068f4145cbac4ec2ade3f0344de5b9"}]}
 ```
 
 ```kotlin [field-property box="gp_duel" name="code" path="gp_duel_code_.kt"]
@@ -50,7 +50,7 @@ fun show() {
         "<div>%d answers. A (left) vs B (right).%s</div>"
             .format(
                 taste.comparisons.size,
-                if (fav == null) "" else " Favourite so far: " + fav.mapValues { "%.2f".format(it.value) },
+                if (fav == null) "" else " Favourite so far: " + fav.mapValues { it.value.f2 },
             ),
     )
 }
@@ -81,7 +81,7 @@ model's favourite after every six, then - past a dividing line - the judge's ide
 own colour, so shape and colour can both be compared.
 
 ```edn [field-box id="gp_judge" role="properties"]
-{"id" "gp_judge" "index" 1 "name" "3 - A or B? (a simulated judge)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - A or B? (a simulated judge)" "_tombstone" false "frame" #afield/rect [1540.0 40.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gp_judge_code_.kt" "lines" 83 "characters" 3573 "sha256" "1889b1d965b6bfa46fd8a9c1644d894106d191d9f6a7b18526d22b4887b51742"}]}
+{"id" "gp_judge" "index" 1 "name" "3 - A or B? (a simulated judge)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - A or B? (a simulated judge)" "_tombstone" false "frame" #afield/rect [1540.0 40.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gp_judge_code_.kt" "lines" 83 "characters" 3561 "sha256" "acbefc44a5aa3662b8d028932318a4e5de2849c262c2acda5074e99d80e17392"}]}
 ```
 
 ```kotlin [field-property box="gp_judge" name="code" path="gp_judge_code_.kt"]
@@ -147,7 +147,7 @@ chart.height = 280.0
 showChart(chart, channel = "utility")
 snapshots.forEachIndexed { i, p ->
     println(
-        "after %2d answers: %s  utility %.3f".format(6 * (i + 1), p.mapValues { "%.2f".format(it.value) }, utility(p)),
+        "after %2d answers: %s  utility %.3f".format(6 * (i + 1), p.mapValues { it.value.f2 }, utility(p)),
     )
 }
 println(
@@ -182,7 +182,7 @@ A closed curve with three dials: how far it wobbles, where the wobble starts, an
 it is squashed sideways. One setting of the dials is the target; pretend we cannot see it.
 
 ```edn [field-box id="gp_tune" role="properties"]
-{"id" "gp_tune" "index" 2 "name" "1 - Tune a curve to a target" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - Tune a curve to a target" "_tombstone" false "frame" #afield/rect [60.0 40.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gp_tune_code_.kt" "lines" 52 "characters" 2037 "sha256" "b8e171252ac1eff25c954e0151a53b94bcd58d29c1fb51c34afb37419067fd75"}]}
+{"id" "gp_tune" "index" 2 "name" "1 - Tune a curve to a target" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - Tune a curve to a target" "_tombstone" false "frame" #afield/rect [60.0 40.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gp_tune_code_.kt" "lines" 52 "characters" 2013 "sha256" "6a658ea91ba343bbdeac95ceaffa62be61242ae7e466bb0bbaf0864e28883ff0"}]}
 ```
 
 ```kotlin [field-property box="gp_tune" name="code" path="gp_tune_code_.kt"]
@@ -234,9 +234,9 @@ println(
     "best after 30 tries: misfit %.2e at %s"
         .format(
             opt.best!!.value,
-            opt.best!!.parameters.mapValues { "%.3f".format(it.value) },
+            opt.best!!.parameters.mapValues { it.value.f3 },
         ),
 )
-println("first five tries (blue, left): " + opt.history.take(5).joinToString { "%.3f".format(it.value) })
+println("first five tries (blue, left): " + opt.history.take(5).joinToString { it.value.f3 })
 ```
 

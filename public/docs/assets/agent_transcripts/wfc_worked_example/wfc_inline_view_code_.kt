@@ -63,7 +63,7 @@ display("b. contradicted", stuck.h)
 println(solver.toString())
 println(
     "  entropy range drawn: 0 .. " +
-        "%.3f".format(rules.fullSetEntropy()) +
+        rules.fullSetEntropy().f3 +
         " nats, " +
         solver.entropyHeatmap().nonFiniteCount +
         " cell(s) undefined",

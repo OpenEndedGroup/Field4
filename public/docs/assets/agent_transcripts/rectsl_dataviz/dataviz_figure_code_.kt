@@ -9,6 +9,7 @@ See rectsl_cheatsheet.md ("Data visualization") / rectsl_examples.md.
 import afield.lang.rectsl.RECT_ANIMATION_VERTEX_SHADER
 import afield.lang.rectsl.RectAnimationOracle
 import afield.lang.rectsl.rectMaterialShaderCode
+import afield.lang.rectsl.worldToClip
 import afield.lang.rectsl.writeFrameToMesh
 
 val rectsl =
@@ -53,7 +54,7 @@ renderer += "rectsl-dataviz" to module
 
 val ww = program.wall.width.toFloat()
 val wh = program.wall.height.toFloat()
-m.push["worldToClip"] = afield.math.linalg.Matrix4f().ortho(-ww / 2f, ww / 2f, -wh / 2f, wh / 2f, -1f, 1f)
+m.push["worldToClip"] = program.wall.worldToClip()
 m.push["wallWidth"] = ww
 m.push["wallHeight"] = wh
 

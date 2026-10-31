@@ -8,6 +8,6 @@ for (i in ltc.indices step 512) {
     clock.feedLtc(ltc, i, minOf(512, ltc.size - i))
     Thread.sleep(10) // ~ the real duration of 512 samples
     if (clock.locked && i % (512 * 16) == 0)
-        readings += "${clock.now()} (${clock.source}, speed ${"%.2f".format(clock.speed)})"
+        readings += "${clock.now()} (${clock.source}, speed ${clock.speed.f2})"
 }
 markdown("main", readings.joinToString("  \n"))

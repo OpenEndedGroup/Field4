@@ -21,7 +21,7 @@ val poses = (0 until 32).flatMap { k ->
     val at = doubleArrayOf((k % 16) * 14.0, if (k < 16) 0.0 else -42.0, 0.0)
     takes[0].skeleton(played.output.frame(t), dance.channels, at).onEach { it.color = colours[take]; it.thickness = 2.0 }
 }
-print("${played.segments.size - 1} jumps; every take used: coverage ${"%.2f".format(played.coverage(dance.length))}")
+print("${played.segments.size - 1} jumps; every take used: coverage ${played.coverage(dance.length).f2}")
 // an invisible point above the rows leaves room for the viewer's toolbar
 val headroom = fline { moveTo(0.0, 70.0, 0.0); color = vec(0, 0, 0, 0) }
 three(name = "dance-strip", width = 1000, height = 420) {

@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="rig_measure" index="0" -->
 
 ```edn [field-box id="rig_measure" role="properties"]
-{"id" "rig_measure" "index" 0 "name" "3. Measure: round trip and aliasing (run)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3. Measure: round trip and aliasing (run)" "_tombstone" false "frame" #afield/rect [60.0 560.0 380.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rig_measure_code_.kt" "lines" 17 "characters" 680 "sha256" "ed7915efa26d60778636dc236081ae79ae2db6c5479c6fcc954f4fe2c297aa1f"}]}
+{"id" "rig_measure" "index" 0 "name" "3. Measure: round trip and aliasing (run)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3. Measure: round trip and aliasing (run)" "_tombstone" false "frame" #afield/rect [60.0 560.0 380.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rig_measure_code_.kt" "lines" 17 "characters" 632 "sha256" "b5a1df3be5d954ee1063fe69396be562330ef37b06c7c26b602e7b6323e904d2"}]}
 ```
 
 ```kotlin [field-property box="rig_measure" name="code" path="rig_measure_code_.kt"]
@@ -27,10 +27,10 @@ println(trip)
 
 val (point, area) = SceneOnARig.aliasing()
 println(
-    "point samples: dark in ${point.darkFrames} of ${point.total.size} frames, light on the rig ${"%.2f".format(point.min)}..${"%.2f".format(point.max)}",
+    "point samples: dark in ${point.darkFrames} of ${point.total.size} frames, light on the rig ${point.min.f2}..${point.max.f2}",
 )
 println(
-    "area average:  dark in ${area.darkFrames} frames, light on the rig ${"%.3f".format(area.min)}..${"%.3f".format(area.max)} (the line is worth ${SceneOnARig.LINE_TRUTH})",
+    "area average:  dark in ${area.darkFrames} frames, light on the rig ${area.min.f3}..${area.max.f3} (the line is worth ${SceneOnARig.LINE_TRUTH})",
 )
 ```
 

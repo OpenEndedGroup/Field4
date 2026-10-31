@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="motion_ardy_demo_replay" index="0" -->
 
 ```edn [field-box id="motion_ardy_demo_replay" role="properties"]
-{"id" "motion_ardy_demo_replay" "index" 0 "name" "ARDY — the interactive skipping take" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "ARDY — the interactive skipping take" "_tombstone" false "frame" #afield/rect [80.0 80.0 600.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "motion_ardy_demo_replay_code_.kt" "lines" 27 "characters" 1262 "sha256" "20d1f628bcd9ca9939e7dc00a14eea0dc7125e7ce903b481c1d85aaed9dcd69a"}]}
+{"id" "motion_ardy_demo_replay" "index" 0 "name" "ARDY — the interactive skipping take" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "ARDY — the interactive skipping take" "_tombstone" false "frame" #afield/rect [80.0 80.0 600.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "motion_ardy_demo_replay_code_.kt" "lines" 27 "characters" 1250 "sha256" "cbfa9e4a946ffff334ef542a6e942294f505a2507a150c1df288b05a39ca219b"}]}
 ```
 
 ```kotlin [field-property box="motion_ardy_demo_replay" name="code" path="motion_ardy_demo_replay_code_.kt"]
@@ -33,7 +33,7 @@ loop {
         camera(yaw=35.0, pitch=12.0, padding=2.6) // Room for the whole skipping gesture.
         followCamera(vec(pose.root[0], pose.root[1], pose.root[2]), halfLifeSeconds=.4,
             epoch="${(elapsed/duration).toInt()}:${snapshot.frame.episode}")
-        title("ARDY · skipping · ${"%.2f".format(snapshot.frame.time)} s")
+        title("ARDY · skipping · ${snapshot.frame.time.f2} s")
         helpers(true)
     }
     markdown("status", "**ARDY · skipping**\n\n" +

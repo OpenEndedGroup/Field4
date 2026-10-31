@@ -25,7 +25,7 @@ val conduit = fline {
     pointSize = 8.0
     hoverColor = vec(1.0, 0.94, 0.66, 1.0)
     onClick = { hit ->
-        println("conduit hit: ${hit.kind} node ${hit.nodeIndex} u=${"%.3f".format(hit.u)} at ${hit.onElement}")
+        println("conduit hit: ${hit.kind} node ${hit.nodeIndex} u=${hit.u.f3} at ${hit.onElement}")
     }
 }
 

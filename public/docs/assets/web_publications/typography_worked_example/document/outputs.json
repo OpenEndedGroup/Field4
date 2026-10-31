@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-29T22:41:53.898Z",
+  "capturedAt": "2026-10-31T03:51:55.126Z",
   "documentName": "typography_worked_example",
   "outputs": [
     {
@@ -12,7 +12,7 @@
         "svg"
       ],
       "width": 862,
-      "height": 608,
+      "height": 606,
       "path": "outputs/0.html"
     },
     {
@@ -32,7 +32,7 @@
       "warnings": [],
       "kinds": [],
       "width": 348,
-      "height": 233,
+      "height": 236,
       "path": "outputs/2.html"
     },
     {
@@ -50,13 +50,13 @@
     {
       "uid": "typo_points",
       "channel": "main",
-      "open": false,
+      "open": true,
       "warnings": [],
       "kinds": [
         "svg"
       ],
-      "width": 874,
-      "height": 343,
+      "width": 878,
+      "height": 606,
       "path": "outputs/4.html"
     },
     {
@@ -78,7 +78,7 @@
         "svg"
       ],
       "width": 454,
-      "height": 483,
+      "height": 482,
       "path": "outputs/6.html"
     },
     {
@@ -134,7 +134,7 @@
         "svg"
       ],
       "width": 745,
-      "height": 283,
+      "height": 282,
       "path": "outputs/11.html"
     }
   ]
