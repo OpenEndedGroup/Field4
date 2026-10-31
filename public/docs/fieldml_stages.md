@@ -248,7 +248,8 @@ A FieldML body cannot call `Frames.frame()`. You can pass FieldML functions to K
 that take a `suspend` block, such as `eachFrame`, `loop`, `forever` and `animate`, and they run every
 frame. This works because a FieldML body never suspends. `Frames.frame()` suspends, so FieldML
 refuses to call it, and `frames { }`, whose body is expected to call `frame()` itself, cannot take a
-FieldML function. See the [FieldML JVM Bridge](fieldml_host_bridge.md).
+FieldML function. A box can still *start* a suspend method with `hostLaunch`, which hands the result to a
+function you pass rather than waiting for it. See the [FieldML JVM Bridge](fieldml_host_bridge.md#calling-a-suspend-method).
 
 There is no stage after core: no bytecode and no optimiser. The evaluator walks the core tree
 directly, which is why a box responds to an edit immediately. For code that needs to be fast, call

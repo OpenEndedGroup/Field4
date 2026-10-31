@@ -213,6 +213,30 @@ These are four frames of the spinning-triangle demo [below](#open-it), a second 
 
 ![four captures of a native Vulkan window, a second apart: a large filled triangle in the middle of a black frame, at a different rotation in each and shading from green-teal through cyan](assets/fieldml_frames_demo/spin-frames.png)
 
+
+## Calling a suspend method
+
+A Kotlin `suspend` method, such as `Renderer.run`, is called with `hostLaunch`: the method name, its arguments, the object, and then a function that receives the result once the method returns.
+
+```diffstatic {data-lang=fieldml}
+let w = hostNew {title = "FieldML"} (hostClass "afield.graphics.vulkan.util.Window")
+let r = hostNew {mainWindow = w} (hostClass "afield.graphics.vulkan.Renderer")
+let _ = thisBox |> hostCall "setPropertyRaw" ("renderer", r, false)
+
+// `run` renders until the window closes; the function runs then.
+hostLaunch "run" () r (fun ignored -> print "renderer stopped")
+```
+
+`hostLaunch` returns at once with the call's `Job`, which you can `cancel`. The method starts inside the `hostLaunch` call, so one that returns without suspending hands its result to your function before `hostLaunch` returns, and an error it throws before suspending is reported on your box. After its first suspension it continues on Field's main loop, as `start(renderer::run)` does in a Kotlin box. An error after that point is printed to the server log, because the box that called it has finished.
+
+`hostCall` refuses a suspend method, and `hostLaunch` refuses one that is not suspend.
+
+The suspend demo has no Kotlin box: one FieldML box opens the window and starts the renderer this way, and a second rewrites a ribbon's vertices every frame. Run `window and renderer (FieldML)` once, then `A ribbon rewritten every frame`.
+
+[Open ↗](offline.html?file=assets/fieldml_suspend_demo/metadata.edn)
+
+![two captures of a native Vulkan window a second apart: a thick colour-graded ribbon on black, following a sine wave whose phase has moved between them](assets/fieldml_suspend_demo/ribbon-pair.png)
+
 ## By name
 
 To pass arguments by name, and leave out the ones with Kotlin defaults, write a record where a tuple would go. A positional call cannot skip a parameter, so named arguments are the only way to use a default:
@@ -246,7 +270,7 @@ A name the method does not have is an error where it is written. When two overlo
 - A JVM `Map` comes back as a FieldML record, so passing one to `hostCall` as one argument needs `hostCall1`, which never spreads. Lists work the same way.
 - A callback written inside a helper has untyped parameters. `line |> hostCall1 "transform" (fun p -> …)` in a pipeline is typed; the same call inside `let warp line = …` is not, because `line` is a function parameter with no known class. Use `hostAs "Vec3"` there.
 - A lambda's result is not checked against what Kotlin wants. It is converted, which is why `fun x y -> 0` satisfies a function returning `Float`, but a result of the wrong shape fails when it runs.
-- A `suspend` method cannot be called. Passing a FieldML function as a suspend lambda works (see [Every frame](#every-frame)), but calling `Renderer.run`, which is `suspend`, does not. The box that owns your window and renderer is still a Kotlin box.
+- A `suspend` method is called with `hostLaunch`, not `hostCall`, and its result arrives in a function rather than as the value of the expression (see [Calling a suspend method](#calling-a-suspend-method)). The FieldML body itself still never waits.
 - `internal` Kotlin members cannot be reached by their source names, because the compiler renames them.
 - Buffers, kernels and anchors, which FieldML cannot build and which have no constructor to call, are out of reach.
 
