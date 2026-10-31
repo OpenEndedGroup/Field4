@@ -1832,7 +1832,7 @@ loop {
 
 ### Presets and morphing
 
-A preset is a [keyframer](keyframer_examples.md) key. Declare each value as a local delegated to a `KeyframeScope` — `var size by keys.slider(0.4, 0.1..1.0)` — and the scope holds it as a key target, named after the local. `keys.controls()` puts a control for each one in the group, `keys.onChange { }` runs whenever a hand, a preset or a morph changes one, and `presetBar(keys)` adds the bar. The bar has a name field with **store** and **recall**, a button for each saved key, and a **preset morph** slider. Here two keys, `calm` and `storm`, are saved the first time the box runs, so there is something to morph between straight away:
+`presetBar(keys)` adds a preset bar over a [`KeyframeScope`](keyframer_examples.md): a preset is a keyframer key. Declare the values as delegated locals (`var size by keys.slider(0.4, 0.1..1.0)`) and add them to the group with `keys.controls()`, as in [One value shared by a local, a control and a key](keyframer_examples.md#one-value-shared-by-a-local-a-control-and-a-key). Here two keys, `calm` and `storm`, are saved the first time the box runs, so there is something to morph between straight away:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-preset-bar.png" capture="box" open-outputs="true" wait="2.0" w="700" embed=true name="controls-preset-bar" alt="A control group: a size slider at 0.40, an offset pad, a blue tint colour picker, a ring checkbox, then a row with a preset name field reading storm and store and recall buttons, a row of calm and storm buttons, a preset morph slider at 0, a rec size button and a MIDI learn button. Below it a dark square holding a blue circle"}
 :::static
@@ -1872,11 +1872,9 @@ controlGroup("look") {
 draw()
 ```
 
-**store** captures the scope under the name in the field; **recall**, or a key's own button, applies it, which sets the locals, moves the controls and runs `onChange`, as if you had dragged each one there. **preset morph** blends across the saved keys in name order with `KeyframeScope.interpolate`: numbers, pads and colours move smoothly, and a checkbox switches at the halfway point. With `calm` and `storm`, the morph at 0.5 gives a mid-size purple circle with the ring on.
+**store** saves the panel as a key under the name in the field. **recall**, or a key's own button, applies it: the locals change, the controls move and `onChange` runs. **preset morph** blends across the saved keys in name order. With `calm` and `storm`, the morph at 0.5 gives a mid-size purple circle with the ring on. `presetBar` returns the bar, whose `store(name)`, `recall(name)` and `morph(t, between)` do the same from code.
 
-The locals keep that value when the box runs again: each one starts from what the panel last showed, from the line that declares it, and a slider whose range has narrowed clamps it. A new local starts from its initializer. The label is the local's name unless you pass `label = "..."`; `keys.slider(0.35f, ...)`, `keys.text("calm")` and the `step` and `law` of `slider(...)` work the same way. When a value has to live somewhere other than a local, the `keyframeSlider(keys, name, label, get = { ... }, set = { ... })` family takes an explicit getter and setter.
-
-The keys are ordinary key files in `presetDirectory("look")`, so every store adds to that key's history, and `keyframeBrowser(dir, scope = keys)` shows them side by side: see [Saving: every save is history](keyframer_examples.md#saving-every-save-is-history) and [Browsing saved keys](keyframer_examples.md#browsing-saved-keys). `presetBar` returns the bar, whose `store(name)`, `recall(name)` and `morph(t, between)` do the same from code.
+The presets are ordinary key files in `presetDirectory("look")`. For their history, browsing and how each kind of value blends, see [Saving: every save is history](keyframer_examples.md#saving-every-save-is-history), [Browsing saved keys](keyframer_examples.md#browsing-saved-keys) and [What a scope watches](keyframer_examples.md#what-a-scope-watches).
 
 ### MIDI learn
 
