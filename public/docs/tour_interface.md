@@ -11,14 +11,16 @@ tours go further into one subject each: [Connecting Boxes](tour_connecting_boxes
 
 ## Shortcuts at a glance
 
-These are the shortcuts Field ships with. You can change any of them in
-`~/.afield/keybindings.yaml` ([Keyboard shortcuts](keybindings.md)); a command with no shortcut
-runs from the command palette. On Windows and Linux, `cmd` is `ctrl`.
+These are the shortcuts for the parts of Field on this page; [Keyboard shortcuts](keybindings.md)
+has the complete list. You can change any of them in `~/.afield/keybindings.yaml`, and a command
+with no shortcut runs from the command palette. On Windows and Linux, `cmd` is `ctrl`.
 
 | What | Command | Default shortcut |
 | --- | --- | --- |
 | Command palette | `open-command-palette` | `cmd+shift+p`, `f1` |
 | Open Anything | `open-anything` | `cmd+p` |
+| Insert a template | `insert-from-workspace` | `cmd+t` |
+| AI chat for the selected box | `ai-chat-panel` | `cmd+4` |
 | Shortcut card | `show-cheatsheet` | `?` |
 | Documentation pane | `toggle-docs` | `cmd+/` |
 | Run the line or selection | `execute-fragment` | `alt+enter` |
@@ -56,6 +58,9 @@ The command palette (`cmd+shift+p` or `F1`) lists every command Field has, with 
 and filters as you type. Open Anything (`cmd+p`) searches boxes, properties and text across the
 document and jumps to what you pick. **Esc** closes either. The
 [Survival Guide](survivalGuide.md#the-command-palette) has more on the palette.
+
+**Insert template** (`cmd+t`) is the same kind of palette over your saved templates: pick one and
+a copy of its boxes lands where the mouse is. [Templates](templates.md) covers saving them.
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x700" clip-selector=".afield-palette-shell" screenshot="assets/tour_interface/command-palette.png" transcript="../../dev_docs/agents/transcripts/docs_capture/tour_interface.yaml" document="docs-tour-interface-command-palette" fresh-document=true hide-toasts=true padding="8" wait="0" timeout="150" embed=true hidden=true name="tour-interface-command-palette" alt="The command palette opened with F1: Document Commands beside its filter field, the list of commands with their shortcuts on the left and a preview of the highlighted one on the right."}
 ui.eval("if (document.activeElement) document.activeElement.blur(); return true")
@@ -340,9 +345,19 @@ ui.pause(300)
 
 ## Box output
 
-A box's output (`println`, plots, controls, `display(...)`) appears in panels under the box,
-one per channel. Each panel has a title bar to open or fold it; drag its corner to resize it.
-[Box output](box_output.md) has the details. Some outputs are small tools of their own, such as
+What a box shows with `display(...)` (and plots, controls, and the value it ends on) appears in
+panels under the box, one per channel. `println` is different: it prints in the text editor, beside
+or under the line that printed. Each panel has a title bar to open or fold it; drag its corner to
+resize it. [Box output](box_output.md) has the details.
+
+Some panels look like the floating ones above but belong to one box. The
+[AI chat](aiFeatures.md#chat-about-one-box) (`cmd+4` with a box selected) opens as that box's
+`ai-chat` output: it reads the box's code and can propose edits to it. Here is one restored from a
+saved conversation, in [a worked example](stackauto_conversation.md):
+
+![The polytope box with its AI4 chat restored, at the model's last reply: yes, the live cycle now matches what you asked for](assets/stackauto_conversation/saved-chat.png)
+
+Others are small tools of their own, such as
 the keyframe browser, which lists saved keyframes and closes with its own **×**. Below it reads
 four looks saved for a glow pass, `hot`, `mid`, `soft` and `wide`, and plots each look's values
 for the pass's three settings; [Keyframer examples](keyframer_examples.md#browsing-saved-keys)
