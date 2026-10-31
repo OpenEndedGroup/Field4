@@ -268,6 +268,25 @@ class FieldMLSmokeExamplesTest {
     }
 
     /**
+     * The demo with no Kotlin box at all: the renderer box starts `Renderer.run` through
+     * `hostLaunch`, and the ribbon box rewrites `pos` and `col` through `Mesh.write` every frame.
+     * Type-checked only here, because both boxes need a device. Run on 2026-10-31 against the
+     * Mac's Vulkan device; `ribbon-0.png` and `ribbon-1.png` beside it differ.
+     */
+    @Test
+    fun theSuspendDemoTypeChecksAndKeepsItsSubject() {
+        val demo = Path.of("public/docs/assets/fieldml_suspend_demo/metadata.edn")
+        val sources = ednCodeStrings(demo.toFile().readText())
+        assertEquals(2, sources.size, "expected two FieldML boxes in $demo")
+        val (rendererBox, ribbonBox) = sources
+        sources.forEachIndexed { i, source -> assertNotNull(compileOk("$demo box $i", source).core) }
+        assertTrue("hostLaunch \"run\"" in rendererBox, "$demo no longer starts Renderer.run from FieldML")
+        listOf("eachFrame", "launchFrames", "\"write\"").forEach { name ->
+            assertTrue(name in ribbonBox, "$demo no longer calls $name, so it no longer writes the mesh per frame")
+        }
+    }
+
+    /**
      * The demo where a **source macro** builds the whole scene — mechanism A on a real device, and the
      * thing `dev_docs/FIELDML_HOST_BRIDGE.md` named as the prize for closing it.
      *

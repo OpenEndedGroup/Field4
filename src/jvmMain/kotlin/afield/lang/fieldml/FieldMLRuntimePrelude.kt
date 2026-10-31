@@ -394,6 +394,36 @@ object FieldMLRuntimePrelude {
                     )
                 }
             },
+            // A `suspend` member: `hostLaunch "run" () renderer (fun result -> …)`. The last
+            // argument is the continuation, written out, and it runs when the member returns —
+            // immediately if it never suspended. FieldMLHostBridge.launchSuspendMember argues why
+            // this is sound. A failure before the first suspension is thrown here, in the calling
+            // box; a later one is printed, because there is no FieldML frame left to throw into.
+            "hostLaunch" to native4("hostLaunch") { name, arguments, target, then ->
+                val method = name.asString("method name")
+                var starting = true
+                var early: Throwable? = null
+                val job = FieldMLHostBridge.launchSuspendMember(
+                    method,
+                    target.asHost("target"),
+                    FieldMLHostBridge.spreadArguments(arguments),
+                    afield.runtime.lifecycle.Runloop.runLoop.main,
+                ) { result ->
+                    result.fold(
+                        { applyFieldMLFunction(then, hostToFieldMLValue(it)) },
+                        {
+                            if (starting) {
+                                early = it
+                            } else if (it !is kotlinx.coroutines.CancellationException) {
+                                System.err.println("hostLaunch \"$method\" failed: $it")
+                            }
+                        },
+                    )
+                }
+                starting = false
+                early?.let { throw it }
+                FieldMLValue.HostValue(job)
+            },
             "hostCall0" to native2("hostCall0") { name, target ->
                 FieldMLHostBridge.callMethod(name.asString("method name"), target.asHost("target"), emptyList())
             },
