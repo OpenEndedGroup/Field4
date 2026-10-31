@@ -13,10 +13,10 @@ original stays unchanged, and opening it again makes another fresh copy.
 `Field 4` is Field's direct Vulkan path. A graphics box usually has three parts:
 
 - Kotlin code that creates modules, meshes, buffers, cameras, textures, and renderer connections.
-- Shader properties such as `vertex`, `fragment`, `compute`, or `vertex_fragment`.
-- Reflected accessors that Field generates by reading the shader interface.
+- Shader properties: properties of the box, such as `vertex`, `fragment`, `compute`, or `vertex_fragment`, that hold GLSL code. You switch the code editor to one of them and edit it like the box's Kotlin.
+- Reflected accessors that Field generates by reading the shader interface. Field compiles the shaders, reads which inputs, buffers, uniforms and push constants they declare, and gives the box Kotlin properties with the same names, so you never write binding numbers or byte offsets by hand.
 
-That last part is the one to learn. If a vertex shader declares `layout(location = 0) in vec3 pos`, the Kotlin side can write `pos.add(...)` inside `m.set { ... }`. If a shader declares a push constant member named `vertexData`, the Kotlin side can assign `m.vertexData = { vertexData }`. A shader is both the code that runs on the GPU and the contract that shapes the Kotlin API for its box.
+In any graphics engine, the GLSL view of how to talk to the GPU and the Kotlin view of it have to match. In Field the GLSL drives that conversation, and the Kotlin side follows it. If a vertex shader declares `layout(location = 0) in vec3 pos`, the Kotlin side can write `pos.add(...)` inside `m.set { ... }`. If a shader declares a push constant member named `vertexData`, the Kotlin side can assign `m.vertexData = { vertexData }`. A shader is both the code that runs on the GPU and the contract that shapes the Kotlin API for its box.
 
 <iframe
   src="offline.html?file=assets/canonical_graphics/metadata.edn"
@@ -26,16 +26,18 @@ That last part is the one to learn. If a vertex shader declares `layout(location
   allowfullscreen>
 </iframe>
 
-For progressive PBR rendering with environment lighting, glass and editable
+This page is about the low-level Vulkan pieces: what you need for the kind of shader hacking
+behind a lot of new media art and data visualization. For more standard photorealistic rendering,
+progressive PBR with environment lighting, glass and editable
 material shaders, see [Progressive path tracing](path_tracing.md), including
 [glTF and GLB import](path_tracing.md#loading-gltf-and-glb-models). It renders into
 an ordinary `RenderToTexture`, so its output can be combined with the techniques
 in this guide. The [firefly controls](path_tracing.md#reducing-bright-specks) help
 keep interactive previews clean.
 
-## A traditional triangle
+## Hello triangle, first attempt
 
-Start with one shader module and one mesh. `moduleHere { ... }` creates a shader module from the current box's shader properties. `Mesh()` creates draw data. `module += m named "my mesh"` attaches the mesh to the module, and `renderer += module` makes the module part of the window.
+Start with the rite of passage for any new graphics system: getting a triangle on the screen. That needs one of everything: one shader module, one mesh to draw, one renderer and one window. `moduleHere { ... }` creates a shader module from the current box's shader properties. `Mesh()` creates draw data. `module += m named "my mesh"` attaches the mesh to the module, and `renderer += module` makes the module part of the window.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/00-traditional-triangle.png" alt="a single right triangle filling most of a native render window against black, its right angle at the bottom right. The fill is interpolated from vertex colours: deep blue at the bottom left corner, teal along the bottom edge, and green at the apex top right" wait="0.25" timeout="10" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="four-traditional-triangle" macro-file="../../dev_docs/agents/transcripts/afield_four_traditional_triangle.yaml" capture-box="agent_four_traditional_triangle"}
 // A module is one draw pipeline: this box's `vertex` and `fragment` shaders plus
@@ -80,7 +82,7 @@ void main()
 }
 ```
 
-`layout(location = 0) in vec3 pos` is why Kotlin has `pos.add(...)`. `layout(location = 1) in vec4 col` is why Kotlin has `col.add(...)`. The shader copies `col` to `fcol`, and the fragment shader receives that value at the matching location:
+`layout(location = 0) in vec3 pos` is why Kotlin can compile something like `pos.add(...)`. `layout(location = 1) in vec4 col` is why Kotlin can compile `col.add(...)`. The shader copies `col` to `fcol`, and the fragment shader receives that value at the matching location:
 
 ```diffstatic {data-lang=glsl}
 #version 450
@@ -95,9 +97,9 @@ void main()
 
 The first example is as small as it can be: vertex data is written directly into the mesh, the shader reads it as vertex attributes, and the fragment shader colors the pixels.
 
-## Buffer-backed triangles
+## Hello triangle, second attempt
 
-The first triangle put `pos` and `col` directly into the mesh's vertex buffers. Sometimes you want a buffer that is visible as an ordinary named resource in the shader: perhaps the geometry changes every frame, perhaps a compute shader fills it, or perhaps several draws share it. This example uses the simplest version of that pattern: write a few positions into a `defaultBuffer`, bind that buffer to a reflected push-constant member, and draw vertices by index.
+The first triangle put `pos` and `col` directly into the mesh's vertex buffers. That is completely supported, and it is the closest to what you were taught if you learned OpenGL (or Three.js), but it is not the most general or flexible way to feed a shader. Sometimes you want a buffer that is visible as an ordinary named resource in the shader: perhaps the geometry changes every frame, perhaps a compute shader fills it, or perhaps several draws share it. This example uses the simplest version of that pattern: write a few positions into a `defaultBuffer`, bind that buffer to a reflected push-constant member, and draw vertices by index.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/01-buffer-triangles.png" alt="three triangles against black: a bronze triangle on the left, a magenta-to-green triangle in the middle, and a blue-grey triangle on the right with a lighter overlapping region" wait="0.25" timeout="10" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="four-buffer-triangles" source-box="assets/canonical_graphics/af0946dd-f25d-4355-984d-f0d24a43ee12" source-box-properties="vertex,fragment" source-box-wait="0.1"}
 var module = moduleHere { primitiveType = triangles }
@@ -108,8 +110,7 @@ renderer += module
 var vertexData = defaultBuffer {
     perFrame = true
     size = 9.vec4s
-}
-    .buffer
+}.buffer
 
 m.vertexData = { vertexData }
 
@@ -130,7 +131,7 @@ vertexData.write {
 m.resize(9)
 ```
 
-There are three moving pieces here. `defaultBuffer { ... }.buffer` allocates GPU-visible storage. `vertexData.write { ... }` fills it with nine `vec4` positions, three per triangle. `m.resize(9)` tells the draw to consume nine vertices. If this were animated, the same code would move the `write` and `resize` calls into a `frames { ... }` loop.
+There are three moving pieces here. `defaultBuffer { ... }.buffer` allocates GPU-visible storage. `vertexData.write { ... }` fills it with nine `vec4` positions, three per triangle. `m.resize(9)` tells the draw to consume nine vertices. If this were animated, the same code would move the `write` and `resize` calls into a `frames { ... }` loop (see [Frames and the animation loop](animation_time_model.md)).
 
 The shader side uses a Vulkan buffer reference:
 
@@ -316,9 +317,24 @@ var kc by keyCamera(camera = camera)
 
 The shader is the same push-constant shape as the previous section, just without the color attribute. Camera control is ordinary Kotlin state around the same rendering contract.
 
+With the render window focused, these keys move the camera. Movement glides to a stop after you let go, and steps are a fraction of the distance to the camera's target, so the same key moves less up close.
+
+| Key | Moves | With Shift |
+| --- | --- | --- |
+| W / Up, S / Down | forward, back (the target moves too) | forward, back toward a fixed target |
+| A, D | left, right | the same, with the target fixed |
+| E, C | up, down | the same, with the target fixed |
+| Left, Right | turn in place | orbit around the target |
+| Page Up, Page Down | tilt in place | orbit up and down around the target |
+| Z / `,`, X / `.` | roll | |
+| `-`, `=` | narrow, widen the field of view | in finer steps |
+| R | reset to where the camera started | |
+
+Re-running the box replaces the controls rather than adding a second set, because `keyCamera` registers them under the property's name (`kc` here).
+
 ## Compute shader
 
-Compute modules use the same box model, but they dispatch workgroups instead of drawing vertices. This example writes an input buffer, dispatches a `ComputeMesh`, reads the output buffer, and prints a trace. It does not draw to the graphics window, so there is no screenshot for this section.
+Compute modules use the same box model, but instead of drawing vertices they dispatch workgroups: groups of GPU threads that run the same shader together. This example writes an input buffer, dispatches a `ComputeMesh`, reads the output buffer, and prints a trace. It does not draw to the graphics window, so there is no screenshot for this section.
 
 ```diffstatic {data-lang=kotlin}
 var numVec4 = 16
@@ -387,7 +403,7 @@ void main() {
 }
 ```
 
-`layout(local_size_x = 16)` matches the Kotlin `localSize`. `m.x`, `m.y`, and `m.z` set the dispatch dimensions. The storage-buffer names become `module.InputBuffer` and `module.OutputBuffer`, which is why Kotlin can map and read/write them directly.
+`layout(local_size_x = 16)` matches the Kotlin `localSize`. `m.x`, `m.y`, and `m.z` set the dispatch dimensions, counted in workgroups. Here `numVec4` is 16 and `localSize` is 16, so `m.x = (16 + 16 - 1) / 16 = 1`: one workgroup of 16 × 1 × 1 threads, 16 invocations in all, one per `vec4`. With `numVec4 = 20` it would be two workgroups, 32 invocations, and the `idx >=` guard in the shader stops the 12 that have no element. The storage-buffer names become `module.InputBuffer` and `module.OutputBuffer`, which is why Kotlin can map and read/write them directly.
 
 ## Compute particles, then draw them
 
@@ -560,31 +576,8 @@ var kc by keyCamera(camera = camera)
 m.set(4, 2) {
     val z = 0.0
 
-    pos.add(
-        0,
-        0,
-        0 + z,
-        1.0,
-        0.1,
-        z,
-        1,
-        1,
-        z,
-        0,
-        1,
-        z,
-    )
-
-    tc.add(
-        0,
-        0,
-        1,
-        0,
-        1,
-        1,
-        0,
-        1,
-    )
+    pos.add(0, 0, 0 + z, 1.0, 0.1, z, 1, 1, z, 0, 1, z)
+    tc.add(0, 0, 1, 0, 1, 1, 0, 1)
 
     tri.add(0, 1, 2)
     tri.add(0, 2, 3)
@@ -661,31 +654,8 @@ var kc by keyCamera(camera = camera)
 m.set(4, 2) {
     val z = 0.0
 
-    pos.add(
-        0,
-        0,
-        0 + z,
-        1.0,
-        0.1,
-        z,
-        1,
-        1,
-        z,
-        0,
-        1,
-        z,
-    )
-
-    tc.add(
-        0,
-        0,
-        1,
-        0,
-        1,
-        1,
-        0,
-        1,
-    )
+    pos.add(0, 0, 0 + z, 1.0, 0.1, z, 1, 1, z, 0, 1, z)
+    tc.add(0, 0, 1, 0, 1, 1, 0, 1)
 
     tri.add(0, 1, 2)
     tri.add(0, 2, 3)
@@ -807,8 +777,6 @@ Everything so far drew into the window. `RenderToTexture` gives a module somewhe
 The producing box creates the target, registers it on the renderer's render list, and attaches its module to the *target* rather than to the renderer:
 
 ```diffstatic {data-lang=kotlin}
-import org.lwjgl.vulkan.VK10.*
-
 prop<RenderToTexture>(target) = RenderToTexture {
     clearFirst = false
     useDepth = true
@@ -860,20 +828,7 @@ mesh.m = camera.m
 var kc by keyCamera(camera = camera)
 mesh.set(4, 2) {
     val z = 0.0
-    pos.add(
-        -1,
-        -1,
-        z,
-        1.0,
-        -1.0,
-        z,
-        1,
-        1,
-        z,
-        -1.0,
-        1,
-        z,
-    )
+    pos.add(-1, -1, z, 1.0, -1.0, z, 1, 1, z, -1.0, 1, z)
     tc.add(0, 0, 1, 0, 1, 1, 0, 1)
     tri.add(0, 1, 2)
     tri.add(0, 2, 3)
@@ -1291,31 +1246,8 @@ m.set(4 * n, 2 * n) {
     n {
         val z = it + 0.0
 
-        pos.add(
-            0,
-            0,
-            0 + z,
-            1.0,
-            0.1,
-            z,
-            1,
-            1,
-            z,
-            0,
-            1,
-            z,
-        )
-
-        tc.add(
-            0,
-            0,
-            1,
-            0,
-            1,
-            1,
-            0,
-            1,
-        )
+        pos.add(0, 0, 0 + z, 1.0, 0.1, z, 1, 1, z, 0, 1, z)
+        tc.add(0, 0, 1, 0, 1, 1, 0, 1)
 
         val b = it * 4
         tri.add(b + 0, b + 1, b + 2)
@@ -1349,7 +1281,7 @@ In the Vulkan window the 100 quads stack along z, so from the camera they land o
 
 ## Streaming a target over the network
 
-`FieldRTTStreamer` turns a render target into an encoded video stream, which is how a Field sketch drives a display it is not attached to. Its largest consumer is the Vision Pro front end; see [Apple Vision Pro](vision.md), which covers the stereo side-by-side layout, the media wire's pose tail, and `tagPosesFrom` for stamping a frame with the head pose it was rendered from:
+`FieldRTTStreamer` turns a render target into an encoded video stream, which is how a Field sketch drives a display it is not attached to. A render can also be streamed over WebRTC to other Field instances and to browser ShaderTrinkets ([WebRTC Streams](webrtc.md)), or shown in Field's own desktop app ([graphics in output areas](four_in_output_areas.md)). The largest consumer of `FieldRTTStreamer` is the Vision Pro front end; see [Apple Vision Pro](vision.md), which covers the stereo side-by-side layout, the media wire's pose tail, and `tagPosesFrom` for stamping a frame with the head pose it was rendered from:
 
 ```diffstatic {data-lang=kotlin}
 import afield.media.stream.FieldRTTStreamer
@@ -1828,7 +1760,9 @@ freed buffer, is refused the same way. Stop that work yourself, from a box you c
 
 Every example on this page is a box in a real Field document, `canonical_graphics`, which is
 committed under `public/docs/assets/canonical_graphics/` and is what the viewer at the top of this
-page is showing. If you want to read the code rather than the prose, or you are an agent about to
+page is showing: click a box there to read its code and shaders. To run and edit the lessons, open
+**Welcome → Starting points → canonical_graphics** in Field, which makes you an editable copy;
+launch its **window** box first, then a lesson. If you want to read the code rather than the prose, or you are an agent about to
 write Field 4 graphics code and want a known-good pattern to adapt, start from
 [the lesson index](assets/canonical_graphics/LESSONS.md). It lists every lesson with its Kotlin and
 shader files, records the parent chain each one needs in order to run, and carries a reverse index
@@ -1842,7 +1776,14 @@ repository does not ship, or produces something other than a picture. For the tw
 
 ## Fabricate Renderer
 
-For experimental area lights, Vulkan ray-query shadows and optional RTXDI resampling, see [Direct lighting](direct_lighting.md).
+For experimental area lights, Vulkan ray-query shadows and optional RTXDI resampling, see [Direct lighting](direct_lighting.md). Other pages that build on the pieces here:
+
+- [Ray Tracing Examples](ray_tracing_examples.md): a ray-traced image built up from a ray-generation shader.
+- [Compute your ray-traced geometry](computed_ray_geometry.md): a compute shader writes the triangles the ray tracer sees.
+- [Ray Reconstruction](ray_reconstruction.md): denoising RTXDI samples into a stable image.
+- [Field Probes](field_probes.md): instrumenting shaders that have no `println`.
+- [WebRTC Streams](webrtc.md): publishing a render as a live video stream, and sampling other streams as textures.
+- [Stereo RTT composite](stereo_rtt_composite.md): a small scene you can change while wearing a headset.
 
 These examples cover the low-level pieces: modules, meshes, buffers, cameras, compute dispatch,
 textures, offscreen targets, shader includes and templating, and the debugging tools. Once that

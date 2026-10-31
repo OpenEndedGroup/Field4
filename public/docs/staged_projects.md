@@ -4,6 +4,11 @@ Some projects are built in stages: a building, a game level, a machine part. An 
 make later results stale, and rebuilding everything can take a while. A staged project gives you
 and an agent a way to keep track of the source and the results it produces.
 
+A staged project is one document, made from a starting point. It is not a [kit](kits.md): a kit is
+how you package starting points and shared tools so several documents can receive them and be
+upgraded together. You can put a staged project in a kit once it works (see
+[Make it yours](#make-it-yours)).
+
 We'll try it on a puzzle shooter-looter level small enough to build in seconds.
 
 The document is set up like this:

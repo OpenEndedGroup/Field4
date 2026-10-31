@@ -138,7 +138,8 @@ These chains end in something you could print, mount, hang or light.
 
 ## MADP Practice Core
 
-The MADP tools are single-page browser sketchbooks for a studio class: code on the left, art on
+MADP is Media Arts and Design Practice at the University of Chicago. Its tools are single-page
+browser sketchbooks for a studio class: code on the left, art on
 the right, and a program short enough to read in one sitting. Each card below is one of those
 tools rebuilt in Field. The program the student writes keeps its shape and its names, but it
 lives in boxes, so it can run beside other boxes, take their output and hand on its own. Each is

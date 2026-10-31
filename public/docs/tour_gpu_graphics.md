@@ -110,7 +110,7 @@ property and add the angle around the centre to the line that makes the rings:
     float rings = 0.5 + 0.5 * sin(24.0 * r - 3.0 * pc.time + 5.0 * atan(p.y, p.x));
 ```
 
-Press Alt-Enter in the GLSL editor and the rings become a five-armed spiral, still turning. You do
+Press `Alt-Enter` in the GLSL editor and the rings become a five-armed spiral, still turning. You do
 not need to run the box again: Field recompiles the shader in place, the window stays open, and
 the renderer keeps its frame loop.
 
