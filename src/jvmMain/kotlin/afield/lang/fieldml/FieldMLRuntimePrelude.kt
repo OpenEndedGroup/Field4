@@ -398,7 +398,8 @@ object FieldMLRuntimePrelude {
             // argument is the continuation, written out, and it runs when the member returns —
             // immediately if it never suspended. FieldMLHostBridge.launchSuspendMember argues why
             // this is sound. A failure before the first suspension is thrown here, in the calling
-            // box; a later one is printed, because there is no FieldML frame left to throw into.
+            // box; a later one goes to the box's error output (and stderr), because there is no
+            // FieldML frame left to throw into.
             "hostLaunch" to native4("hostLaunch") { name, arguments, target, then ->
                 val method = name.asString("method name")
                 var starting = true
@@ -415,7 +416,11 @@ object FieldMLRuntimePrelude {
                             if (starting) {
                                 early = it
                             } else if (it !is kotlinx.coroutines.CancellationException) {
-                                System.err.println("hostLaunch \"$method\" failed: $it")
+                                // The box's evaluation is over, but its error output is still the
+                                // place its author is looking; stderr keeps the server-log trail.
+                                val message = "hostLaunch \"$method\" failed: $it"
+                                System.err.println(message)
+                                output?.displayError(message)
                             }
                         },
                     )
@@ -423,6 +428,29 @@ object FieldMLRuntimePrelude {
                 starting = false
                 early?.let { throw it }
                 FieldMLValue.HostValue(job)
+            },
+            // A `suspend` member, *waited for*: `hostAwait "frame" () f` inside a `frames` body.
+            // Only the suspending walk (a FieldML closure Kotlin called with a real continuation)
+            // can take the last argument; anywhere else this refuses, and says where it works.
+            "hostAwait" to native2("hostAwait") { name, arguments ->
+                val method = name.asString("method name")
+                FieldMLValue.NativeFunctionValue(
+                    "hostAwait/2",
+                    apply = {
+                        error(
+                            "hostAwait \"$method\" can only run inside a body Kotlin calls as a suspend function " +
+                                "(frames, eachFrame, loop, start, ...), and not inside a callback a host function " +
+                                "calls synchronously (map, Mesh.write's builder). Use hostLaunch to start it instead.",
+                        )
+                    },
+                    suspendApply = { target ->
+                        FieldMLHostBridge.awaitSuspendMember(
+                            method,
+                            target.asHost("target"),
+                            FieldMLHostBridge.spreadArguments(arguments),
+                        )
+                    },
+                )
             },
             "hostCall0" to native2("hostCall0") { name, target ->
                 FieldMLHostBridge.callMethod(name.asString("method name"), target.asHost("target"), emptyList())

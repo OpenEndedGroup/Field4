@@ -229,11 +229,11 @@ let openWindow title =
 openWindow
 ```
 
-`hostLaunch` returns at once with the call's `Job`, which you can `cancel`. The method starts inside the `hostLaunch` call, so one that returns without suspending hands its result to your function before `hostLaunch` returns, and an error it throws before suspending is reported on your box. After its first suspension it continues on Field's main loop, as `start(renderer::run)` does in a Kotlin box. An error after that point is printed to the server log, because the box that called it has finished.
+`hostLaunch` returns at once with the call's `Job`, which you can `cancel`. The method starts inside the `hostLaunch` call, so one that returns without suspending hands its result to your function before `hostLaunch` returns, and an error it throws before suspending is reported on your box. After its first suspension it continues on Field's main loop, as `start(renderer::run)` does in a Kotlin box. An error after that point is shown on your box as an error, because the box that called it has already finished.
 
 `hostCall` refuses a suspend method, and `hostLaunch` refuses one that is not suspend.
 
-The suspend demo has no Kotlin box: one FieldML box opens the window and starts the renderer this way, and a second rewrites a ribbon's vertices every frame. Run `window and renderer (FieldML)` once, then `A ribbon rewritten every frame`.
+The suspend demo has no Kotlin box: one FieldML box opens the window and starts the renderer this way, and a second rewrites a ribbon's vertices every frame. Run `window and renderer (FieldML)`, then `A ribbon rewritten every frame`. The renderer box wraps the window in `once "renderer" (fun u -> …)`, which makes it the first time the box runs and returns the same renderer on every later run, so running the box again does not open a second window.
 
 [Open ↗](offline.html?file=assets/fieldml_suspend_demo/metadata.edn)
 
@@ -267,12 +267,44 @@ This works with `hostCall`, `hostStaticCall`, `hostExt` and `hostNew` alike: a t
 
 A name the method does not have is an error where it is written. When two overloads both accept the names you gave, the call is refused with the candidates listed, and a `?` on each parameter that has a default.
 
+## Waiting inside a frames body
+
+`hostAwait` calls a `suspend` method and waits for it: the method name, its arguments, and the object. The result is the value of the expression, as with `hostCall`. It works inside a function that Kotlin calls as a `suspend` block, which is what `frames`, `eachFrame`, `loop`, `forever` and `Box.launchFrames` take. Inside `frames`, whose body runs once and moves the frame clock itself, that means a FieldML script can have a middle:
+
+```diffstatic {data-lang=fieldml}
+let raiseColumn k = print k
+
+let script =
+  hostStaticCall "frames" (fun f ->
+    let grow k =
+      if k <= 48 then
+        let _ = raiseColumn k in
+        // Continue on the next line 40 ms (and at least one frame) later.
+        let _ = hostAwait "delay" 40 f in
+        grow (k + 1)
+      else Unit
+    in grow 0
+  ) (hostClass "afield.runtime.lifecycle.PhasedKt")
+
+script
+```
+
+`frames` only builds the script. Start it with `thisBox |> hostExt (hostClass "afield.runtime.lifecycle.PhasedKt") "launchFrames" (script, "script", "frames", true)`, which runs it on Field's main loop and stops it when the box is stopped.
+
+`hostAwait "frame" () f` waits exactly one frame. A function that Kotlin calls in the ordinary way cannot wait: the function given to `map`, or to `Mesh.write` as its builder, runs to the end before Kotlin continues, so `hostAwait` inside it stops the box with an error naming the problem. Use `hostLaunch` there to start the method without waiting.
+
+The frames sequence demo raises a band one column at a time, holds it, and starts again in the other colour, all from one FieldML `frames` body. Run `window and renderer (FieldML)`, then `a script across frames`.
+
+[Open ↗](offline.html?file=assets/fieldml_frames_sequence_demo/metadata.edn)
+
+![FRAMES_SEQUENCE_IMAGE](assets/fieldml_frames_sequence_demo/sequence.png)
+
 ## What it still will not do
 
 - A JVM `Map` comes back as a FieldML record, so passing one to `hostCall` as one argument needs `hostCall1`, which never spreads. Lists work the same way.
 - A callback written inside a helper has untyped parameters. `line |> hostCall1 "transform" (fun p -> …)` in a pipeline is typed; the same call inside `let warp line = …` is not, because `line` is a function parameter with no known class. Use `hostAs "Vec3"` there.
 - A lambda's result is not checked against what Kotlin wants. It is converted, which is why `fun x y -> 0` satisfies a function returning `Float`, but a result of the wrong shape fails when it runs.
-- A `suspend` method is called with `hostLaunch`, not `hostCall`, and its result arrives in a function rather than as the value of the expression (see [Calling a suspend method](#calling-a-suspend-method)). The FieldML body itself still never waits.
+- A `suspend` method is called with `hostLaunch`, not `hostCall`, and its result arrives in a function rather than as the value of the expression (see [Calling a suspend method](#calling-a-suspend-method)). `hostAwait` waits for one, but only inside a body Kotlin calls as a `suspend` block (see [Waiting inside a frames body](#waiting-inside-a-frames-body)).
 - `internal` Kotlin members cannot be reached by their source names, because the compiler renames them.
 - Buffers, kernels and anchors, which FieldML cannot build and which have no constructor to call, are out of reach.
 
