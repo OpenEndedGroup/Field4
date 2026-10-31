@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-31T00:21:43.953Z",
+  "capturedAt": "2026-10-31T13:43:53.712Z",
   "documentName": "audio_ai_corpus_microscope",
   "outputs": [
     {
@@ -9,18 +9,18 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 200,
-      "height": 651,
+      "width": 446,
+      "height": 309,
       "path": "outputs/0.html"
     },
     {
       "uid": "corpus_microscope_guide",
       "channel": "all durable jobs",
-      "open": false,
+      "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 200,
-      "height": 40,
+      "width": 768,
+      "height": 418,
       "path": "outputs/1.html"
     }
   ]

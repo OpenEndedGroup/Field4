@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-29T22:44:11.390Z",
+  "capturedAt": "2026-10-31T14:01:38.656Z",
   "documentName": "mesh_repair_demo",
   "outputs": [
     {
@@ -11,7 +11,7 @@
       "kinds": [
         "svg"
       ],
-      "width": 433,
+      "width": 474,
       "height": 293,
       "path": "outputs/0.html"
     },
@@ -30,11 +30,11 @@
     {
       "uid": "mesh-repair-diagnose",
       "channel": "main",
-      "open": false,
+      "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 473,
-      "height": 651,
+      "width": 475,
+      "height": 633,
       "path": "outputs/2.html"
     }
   ]

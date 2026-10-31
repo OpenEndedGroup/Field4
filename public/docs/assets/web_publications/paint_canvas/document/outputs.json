@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-29T22:43:48.669Z",
+  "capturedAt": "2026-10-31T14:01:04.624Z",
   "documentName": "paint_canvas",
   "outputs": [
     {
@@ -9,7 +9,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 449,
+      "width": 469,
       "height": 45,
       "path": "outputs/0.html"
     },
@@ -19,7 +19,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 449,
+      "width": 469,
       "height": 45,
       "path": "outputs/1.html"
     },
@@ -29,7 +29,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 449,
+      "width": 469,
       "height": 45,
       "path": "outputs/2.html"
     }

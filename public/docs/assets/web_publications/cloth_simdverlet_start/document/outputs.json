@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-29T22:27:55.080Z",
+  "capturedAt": "2026-10-31T13:36:42.033Z",
   "documentName": "cloth_simdverlet_start",
   "outputs": [
     {
@@ -12,7 +12,7 @@
         "svg"
       ],
       "width": 762,
-      "height": 606,
+      "height": 605,
       "path": "outputs/0.html"
     }
   ]

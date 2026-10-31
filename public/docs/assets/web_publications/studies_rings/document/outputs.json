@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-29T22:27:32.396Z",
+  "capturedAt": "2026-10-31T13:36:13.814Z",
   "documentName": "studies_rings",
   "outputs": [
     {
@@ -16,11 +16,11 @@
     {
       "uid": "rings_try",
       "channel": "main",
-      "open": false,
+      "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 200,
-      "height": 40,
+      "width": 356,
+      "height": 614,
       "path": "outputs/1.html"
     }
   ]
