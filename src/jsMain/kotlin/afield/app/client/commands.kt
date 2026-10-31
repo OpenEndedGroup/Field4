@@ -2304,6 +2304,7 @@ fun insertFromWorkspace() {
                 "workspace" -> "Workspace file"
                 "workspace-template" -> "Workspace template"
                 "bundled-template" -> "Bundled template"
+                "personal-template" -> "Personal template"
                 "remote-template" -> "Remote template"
                 else -> "Template"
             }

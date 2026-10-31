@@ -269,4 +269,21 @@ class AutosaveDirtyTrackingTest {
         assertTrue(File(backups, "b_code_.kt.external-$base").exists(), "another sidecar's copy must not be touched")
         assertTrue(File(backups, "a_code__backup_00001.kt").exists(), "ordinary backups must not be touched")
     }
+
+    /**
+     * Backlog N1030-4(d): a template's boxes were on disk after a normal stop in only 2 of 4 runs.
+     * This inserts the way `insert-template` does ([afield.app.server.insertTemplateInto]) into a
+     * saved document, stops at once (the shutdown flush, no autosave tick), and reads the file.
+     */
+    @Test
+    fun aTemplateInsertIsSaved() {
+        val template = savedDocument("template-source")
+        documents.remove(template.filename)
+        val info = savedDocument("template-target")
+        thisSessionInfo.set(info)
+        val inserted = afield.app.server.insertTemplateInto(info, "template-source", template.filename)
+        assertEquals(2, inserted.size, "the template's two boxes")
+        val text = info.afterShutdownFlush()
+        inserted.forEach { assertTrue(it.id in text, "inserted box ${it.id} is not in metadata.edn:\n$text") }
+    }
 }

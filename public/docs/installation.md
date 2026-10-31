@@ -260,8 +260,9 @@ as a bundled one, both are listed: yours gets `-checkout` (from `src/personal`) 
 (from your own directory) added to its name. Git ignores `src/personal`, so back up those templates
 yourself.
 
-These are whole documents. To reuse a few boxes inside a document instead, see
-[Templates](templates.md).
+The same templates are offered by `cmd+t` inside a document, which inserts a copy of their boxes
+there rather than making a new document; see [Templates](templates.md#insert-a-template), which
+also says what happens to two templates with the same name.
 
 ## Browser or server-only use
 
