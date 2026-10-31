@@ -34,7 +34,6 @@ nav:
       # section of survivalGuide.md, which teaches the first box and the editor and links here.
       - The Interface: tour_interface.md
       - Frames and the Animation Loop: animation_time_model.md
-      - Generative Mocap — ARDY and CLoSD: motion_recordings.md
       - Drawing with FLines: fline_examples.md
       # Straight after FLines, because a stroke read from the drawing is an FLine: the box that
       # listens turns each pen stroke into one and draws an answer back. The drawing layer (Alt+D)
@@ -191,6 +190,10 @@ nav:
       # model for a target that keeps moving. Filed under Time & Signals rather than beside
       # physics.md because nothing here is a solve — it is arithmetic on a value over time.
       - Springs & Character Movement: movement_examples.md
+      # After springs and steering, its bigger cousin: recorded and generated human motion, read
+      # as MotionRecording clips, values over time. Moved out of the Tour, which reads in order
+      # from first contact; this page needs ARDY and CLoSD installed separately.
+      - Generative Mocap — ARDY and CLoSD: motion_recordings.md
       # Short because the long title wrapped in the sidebar; the page's own H1 still says what a
       # keyframe is for (capturing, persisting and replaying live state).
       - Keyframes: keyframer_examples.md

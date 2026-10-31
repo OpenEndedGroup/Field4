@@ -184,6 +184,9 @@ them. Switch the editor from `code` to `vertex` or `fragment` to read them. The
 // The setup macro launches both boxes with their shipped code and shader properties.
 ```
 
+When the triangle runs, [Graphics on the GPU](tour_gpu_graphics.md) goes on to shaders you
+edit while the window draws.
+
 ## Where next?
 
 From here, the [Survival Guide](survivalGuide.md) gives you the moves you'll use every day. To
