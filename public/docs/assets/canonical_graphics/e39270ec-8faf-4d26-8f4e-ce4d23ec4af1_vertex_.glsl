@@ -2,6 +2,8 @@
 #extension GL_EXT_buffer_reference : require
 #extension GL_EXT_scalar_block_layout : require
 
+// One walker. mode 0 is walking; any other value means it stuck last frame and is respawned
+// at a random position.
 struct Particle {
     vec2 positionPx;
     uint rngState;
@@ -12,6 +14,7 @@ layout(std430, buffer_reference, scalar) buffer ParticleBuffer {
     Particle particles[];
 };
 
+// the accumulated image; a texel at or above solidThreshold in red counts as solid
 layout(set = 0, binding = 0) uniform sampler2D sourceTex;
 
 layout(push_constant) uniform Push {
@@ -27,6 +30,7 @@ layout(push_constant) uniform Push {
 
 layout(location = 0) out vec4 vColor;
 
+// a small per-walker random number generator (PCG hash)
 uint nextRandom(inout uint state) {
     state = state * 747796405u + 2891336453u;
     uint word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
@@ -89,6 +93,7 @@ void main() {
         }
     }
 
+    // write the walker back so the next frame continues from here
     push.particleBuffer.particles[gl_VertexIndex].positionPx = positionPx;
     push.particleBuffer.particles[gl_VertexIndex].rngState = max(rng, 1u);
     push.particleBuffer.particles[gl_VertexIndex].mode = mode;
@@ -97,6 +102,8 @@ void main() {
     vec2 clip = uv * 2.0 - 1.0;
     gl_Position = vec4(clip.x, -clip.y, 0.0, 1.0);
     gl_PointSize = push.pointSize;
+    // a walker that has just stuck draws in the stuck colour, whose red is what isSolidAt tests for;
+    // walking ones draw in green
     vColor = becameSolid
     ? vec4(push.stuckRed, 0.0, push.stuckBlue, 0.0)
     : vec4(0.0, push.walkerGreen, 0.0, 0.0);

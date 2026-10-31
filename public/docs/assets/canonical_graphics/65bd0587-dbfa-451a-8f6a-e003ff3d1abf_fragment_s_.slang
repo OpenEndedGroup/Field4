@@ -1,3 +1,5 @@
+// A fragment stage written on its own in Slang. This box's `vertex_fragment` property is non-blank and takes
+// precedence, so this source is not compiled while that property holds code.
 struct FragmentInput
 {
     [[vk::location(0)]]

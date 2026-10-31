@@ -4,6 +4,7 @@ layout (location = 0) in vec3 pos;
 layout (location = 1) in vec4 col;
 layout (location = 0) out vec4 fcol;
 
+// No camera here: positions pass straight through to clip space.
 // layout(push_constant) uniform matrices {
 //     mat4 projectionMatrix;
 //     mat4 modelMatrix;

@@ -34,6 +34,8 @@ layout(location = 3) out vec4 vColor;
 
 void main()
 {
+    // Fetch the index ourselves, then unpack this vertex from the flat float buffer: position at +0,
+    // normal at +3, uv at +6, colour at +8. The offsets select this primitive's slice of shared buffers.
     uint idx = pc.indexBuffer.indexData[data.indexOffset+uint(gl_VertexIndex)];
     uint base = data.vertexOffset + idx * data.vertexStride;
 

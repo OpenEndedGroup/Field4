@@ -1,3 +1,6 @@
+// Vertex (`vsMain`) and fragment (`fsMain`) stages for the texture lesson, in one Slang file.
+
+// vertex attributes: the `pos` and `tc` the box code fills with m.set { ... }
 struct VertexInput
 {
     [[vk::location(0)]]
@@ -7,6 +10,7 @@ struct VertexInput
     float2 tc;
 };
 
+// an entry point's `uniform` parameter becomes the push-constant block (`m.p`, `m.m` in the box code)
 struct Matrices
 {
     float4x4 p;
@@ -19,6 +23,7 @@ struct Varyings
     float2 ftc : TEXCOORD0;
 };
 
+// bound by name to prop<LoadedTexture>(bbc) in the box code
 [[vk::binding(0, 0)]]
 Sampler2D bbc;
 

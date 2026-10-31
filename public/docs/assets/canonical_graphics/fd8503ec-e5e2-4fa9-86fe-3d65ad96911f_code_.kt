@@ -1,4 +1,8 @@
+// 5. lygia: using the Lygia shader library through #include.
+// Parent: window. The fragment shader (open it with the editor's property switcher) includes
+// Lygia's gerstnerWave and fbm functions and builds a procedural pattern from the texture coordinates.
 registerLygiaIncludeRoot()
+// Registers Lygia's source tree as an include root, so `#include "lygia/..."` resolves.
 
 var module = moduleHere {}
 var m = Mesh()
@@ -12,6 +16,7 @@ m.m = camera.m
 
 var kc by keyCamera(camera = camera)
 m.set(4, 2) {
+    // A unit quad from (0, 0) to (1, 1) with matching texture coordinates.
     val z = 0.0
 
     pos.add(

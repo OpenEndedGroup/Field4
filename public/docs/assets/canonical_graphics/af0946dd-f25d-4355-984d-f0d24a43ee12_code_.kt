@@ -1,54 +1,45 @@
-// First, we'll make a shader module associated with this box that draws filled triangles
+// 1. hello triangle
+//
+// Triangles whose vertex positions are written from Kotlin into a GPU buffer every frame. The vertex shader
+// reads that buffer through a buffer reference, so the mesh carries no vertex attributes at all.
+// Needs the renderer window box as its parent.
+//
+// The `vertex` and `fragment` properties hold the shaders; open them with the editor's property switcher
+// (`f1` or `ctrl-P`).
+
+// A shader module belonging to this box, drawing filled triangles
 var module = moduleHere { primitiveType = triangles }
 
-// ... and make a mesh, which runs the shader with some data
+// ... and a mesh, which runs the shader with some data
 var m = Mesh()
 
-// Then we connect the mesh to the module under the name "someMesh"
+// Connect the mesh to the module under the name "someMesh"
 module += m named "someMesh"
 
 // ... and connect the module to the renderer (under the name of this box)
 renderer += module
 
-/*
-This gets us everything we need to start rendering things. In particular, we get a vertex shader:
-
-[[property vertex]]
-*/
-
-// and a fragment shader:
-
-/*
-[[property fragment]]
-*/
-
-// you can edit these by switching to these properties in the editor `f1` or `ctrl-P`
-
-// <hr>
-
-// Now we need a place to put our data
+// Now a buffer to hold the vertex positions
 var vertexData = defaultBuffer {
     perFrame = true
     size = 3.vec4s
 }
     .buffer
 
-/* Two things:
+// `size = 3.vec4s` is only a starting size: the buffer grows when a write needs more room, as the loop below
+// does (it writes up to 150 vec4s).
+//
+// `perFrame = true` gives one buffer per frame in flight, so the CPU can write the next frame's data while
+// the GPU is still reading the current frame's, without waiting.
 
-- we're free to guess the size we'll need (that's the `3.vec4s`), but if we're wrong, we'll get a dynamicly resizing buffer (I'm deliberately setting the size wrong on this buffer to make sure that the dynamic resizing works correctly. The size should be `30.vec4s`)
-
-- `perframe = true` means that we actually have a VulkanBuffer per frame-in-flight, so we can always write to a buffer (and GPU-read from it) without waiting.*/
-
-// now we connect this buffer to the mesh
-// `.vertexData` gets magically defined for us with the coorect type, because Field has read our vertex shader
+// Connect the buffer to the mesh. `m.vertexData` exists because Field has read the vertex shader and found
+// its `vertexData` buffer reference; it has the matching type.
 m.vertexData = { vertexData }
 
-// You'll note that we have not have written any data to any of the buffers buffer at this point, but this is ok,
-// because we don't size the mesh until later. Or we could write in here before.
+// Nothing has been written to the buffer yet. That is fine, because the mesh has no vertices until
+// `m.resize` is called below.
 
-// <hr>
-
-// Now a little demo, some triangles that move in circles
+// Triangles that move in circles
 var t = 0.0
 fun polar(t: Double, r: Double) = vec(Math.sin(t), Math.cos(t)) * r.f
 
@@ -56,7 +47,7 @@ loop {
     t += 0.01
     var num = 0
 
-    var numVertToWrite = (Math.sin(t * 0.1) * 20 + 30).i // showing that we can add and remove verts in flight
+    var numVertToWrite = (Math.sin(t * 0.1) * 20 + 30).i // the triangle count changes over time
 
     vertexData.write {
         for (x in 0 until numVertToWrite) {
@@ -69,17 +60,13 @@ loop {
         }
     }
 
-    // it's important that we tell the mesh how many "vertices we want to draw", but, other than that turning into
-    // triangles, what that means is entirely up to our vertex shader
+    // Tell the mesh how many vertices to draw. Every 3 make a triangle; what each vertex means is up to the
+    // vertex shader.
     m.resize(num)
 
-    // loop forever:
+    // returning true keeps the loop running
     true
 }
 
-// because `loop` is the last thing in this script, that code runs (once per animation frame) when you launch it
-// (`alt-mouse-swipe` or `alt-up`)
-
-// ultimately, we get something that looks like this:
-
-// [[render_clip]]
+// `loop` is the last thing in this script, so its body runs once per animation frame while the box is
+// launched (`alt-mouse-swipe` or `alt-up`).

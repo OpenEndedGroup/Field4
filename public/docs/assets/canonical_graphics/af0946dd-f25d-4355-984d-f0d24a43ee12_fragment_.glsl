@@ -1,7 +1,7 @@
 #version 450
 layout(location = 0) out vec4 uFragColor;
 
-// location 0 here needs to match location 0 in the vertexShader
+// location 0 here needs to match location 0 in the vertex shader
 layout(location = 0) in vec4 localColor;
 void main()
 {

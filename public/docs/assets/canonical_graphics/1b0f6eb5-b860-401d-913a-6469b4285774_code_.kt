@@ -1,4 +1,5 @@
 // Biham–Middleton–Levine traffic: red cars move right, blue cars move down, in turns.
+// Run this in a box beneath the renderer (`window`) box. The grid wraps at its edges.
 // 0.20 flows freely, 0.45 jams; 0.32 sits near the transition between them.
 var bml = ShaderBmlSystem() {
     width = 512

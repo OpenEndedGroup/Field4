@@ -25,6 +25,4 @@ void main()
 
     // compute a different color for every vertex
     localColor = vec4(wrap(gl_VertexIndex,3),wrap(gl_VertexIndex,5),wrap(gl_VertexIndex,11),1.0);
-
-    //    gl_Position = vec4(gl_VertexIndex%3-1.5 + gl_VertexIndex/20.0, gl_VertexIndex%2-0.5, 0.5, 1);
 }
