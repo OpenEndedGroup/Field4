@@ -412,7 +412,7 @@ void main() {
 
 The compute example above dispatched a shader and read the result back on the CPU. The more useful pattern keeps the data on the GPU: one box computes into a buffer, a *second* box draws from that same buffer, and the two are wired together through the box graph rather than through a shared global.
 
-This is the first example that needs two boxes, so it is also the first place the graph topology matters. The compute box publishes its output buffer as a property:
+This is the first example that needs two boxes, so it is also the first place the graph topology matters: the draw box is [connected beneath](tour_connecting_boxes.md) the compute box, which publishes its output buffer as a [property](reactive_properties.md):
 
 ```diffstatic {data-lang=kotlin}
 fieldProbeHere(1000).display("probe")
@@ -555,6 +555,28 @@ void main()
 
 `gl_VertexIndex / 6` picks the particle and `gl_VertexIndex % 6` picks the corner: 100,000 particles drawn as 600,000 vertices with no index buffer and no per-particle CPU work.
 
+Here are the three boxes on the canvas, renderer above compute above draw, each joined to the one beneath it:
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x720" clip="0,0,420,500" screenshot="assets/afield_four_graphics/03b-particles-boxes.png" transcript="dev_docs/agents/transcripts/threebox.yaml" capture-box="tb_renderer" padding="0" wait="2" timeout="240" embed=true hidden=true name="four-particles-boxes" alt="three connected boxes on the canvas: renderer at the top, compute particles beneath it, draw particles beneath that, joined by arrows"}
+// Only the boxes and their connections: the output panels are hidden for this picture.
+ui.eval(
+    """
+    const style = document.createElement("style")
+    style.textContent = ".disclosure-group { display: none !important; }"
+    document.head.appendChild(style)
+    return true
+    """
+        .trimIndent(),
+)
+ui.pause(800)
+```
+
+and what the draw box puts in the window: 100,000 particles drawn straight from the compute box's buffer.
+
+```diffstatic_runner {data-lang=kotlin capture="native-window" capture-box="tb_renderer" transcript="dev_docs/agents/transcripts/threebox.yaml" screenshot="assets/afield_four_graphics/03b-particles.png" wait="6" timeout="240" native-wait-frames="4" trim-native=true embed=true hidden=true name="four-particles" alt="100,000 particles drawn as small rings in a native Vulkan window, a bright diagonal cloud dense at the centre and thinning towards its ragged edges"}
+// The transcript builds renderer, compute and draw boxes, connects them and launches each in turn.
+```
+
 To see it running, open the corpus document in the viewer above, or open [threebox](offline.html?file=assets/agent_transcripts/threebox/metadata.edn), the same renderer/compute/draw shape built as a runnable three-box scene.
 
 ## Texturing
@@ -629,14 +651,14 @@ The name `bbc` is the bridge. Kotlin creates `prop<LoadedTexture>(bbc)`, the sha
 
 A shader can declare an *array* of samplers, and the Kotlin side binds it by publishing an array of image views under the array's name. The reflected-name contract is the same as the single texture above; only the type changes.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/04b-multi-texture.png" alt="the same multicoloured checkerboard quad with its white and black crossing diagonals. It is pixel-identical to the single-texture figure on purpose: all three entries of the sampler array point at the same image file, so what the figure shows is that the array binds, links and draws at all" wait="0.25" timeout="10" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="four-multi-texture" source-box="assets/canonical_graphics/3cbcadc0-b279-470d-9a5f-afc120518829" source-box-properties="vertex,fragment" source-box-wait="0.1"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/04b-multi-texture.png" alt="one quad in thirds, each third sampling a different entry of the texture array: a blue and gold spiral on the left, an orange-to-green gradient in the middle, and the coloured checkerboard with its crossing diagonals on the right" wait="0.25" timeout="10" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="four-multi-texture" source-box="assets/canonical_graphics/3cbcadc0-b279-470d-9a5f-afc120518829" source-box-properties="vertex,fragment" source-box-wait="0.1"}
 var bbc = LoadedTexture("public/docs/assets/afield_four_graphics/docs-checker-texture.png")
 bbc.transferNow()
 
-var bbc2 = LoadedTexture("public/docs/assets/afield_four_graphics/docs-checker-texture.png")
+var bbc2 = LoadedTexture("public/docs/assets/rt-uv-gradient.png")
 bbc2.transferNow()
 
-var bbc3 = LoadedTexture("public/docs/assets/afield_four_graphics/docs-checker-texture.png")
+var bbc3 = LoadedTexture("public/docs/assets/afield_four_graphics/spiral-texture.png")
 bbc3.transferNow()
 
 var asArray: Array<ImageView> = arrayOf(bbc.imageView, bbc2.imageView, bbc3.imageView)
@@ -665,7 +687,7 @@ m.set(4, 2) {
 }
 ```
 
-`prop<Array<ImageView>>(ta)` is the whole difference. Note that `LoadedTexture` is not itself the bindable resource; `bbc.imageView` is, which is why the array is built from image views rather than from the textures. All three entries here point at the same image file, so the figure looks exactly like the texturing one: same quad, same texture. Swap in different files to see the array at work.
+`prop<Array<ImageView>>(ta)` is the whole difference. Note that `LoadedTexture` is not itself the bindable resource; `bbc.imageView` is, which is why the array is built from image views rather than from the textures. Each entry here is a different image, the checkerboard, a colour gradient and a frame of the spiral from [Graphics on the GPU](tour_gpu_graphics.md), and the fragment shader picks one for each third of the quad.
 
 The fragment shader declares the array and indexes it:
 
@@ -771,7 +793,32 @@ void main()
 
 It also shows how to place a primitive using the file's own transform: `camera.m() * meshes[0].meshes[2].bindPose.m` composes the view matrix with the primitive's bind pose. That is the hand-written form of the `model` default `applyToMesh` supplies, and the fix for any loop that assigns `modelView` itself.
 
-Neither carries a figure: these saved lessons use an external glTF file on disk. The paths above point at the [glTF Sample Models](https://github.com/KhronosGroup/glTF-Sample-Models) collection, which the saved lessons were written against. Their paths are relative to the directory Field runs from, so clone that collection into your Field checkout or point the paths at your own copy. If you want geometry from disk with assets that *are* in the tree, see [Geometry from disk](geometry_from_disk.md).
+The saved lessons read the [glTF Sample Models](https://github.com/KhronosGroup/glTF-Sample-Models) collection, which is not in the tree; their paths are relative to the directory Field runs from. The same call works on a file that is: the Khronos toy car the [Fabricate renderer](fabricate_renderer.md) pages use. This file stands the car up and scales it to a few centimetres with its node transform, so the box passes `applyToMesh` its own model matrix, keeping the rotation and making the car about four units long, and lets the shaders `gltfModelHere` writes for the file do the rest:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/04c-gltf-toycar.png" alt="the Khronos toy car, a 1950s saloon with tail fins, filling a native window seen from the front left, shaded by its view-space normals in blue, green and magenta" wait="4" timeout="120" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="four-gltf-toycar"}
+var (module, meshes) = gltfModelHere("public/docs/assets/fabricate_demo/ToyCar.glb")
+
+var m = Mesh()
+module += "car" to m
+renderer += "car" to module
+
+val camera = Camera()
+camera.p.orthoness = 0.3
+camera.p.matchDepth = 2.0
+camera.target = vec(0, 0.4, 0)
+camera.at = vec(-2.2, 1.8, 2.9)
+KeyCamera(camera = camera)
+
+val model = Matrix4f().rotateX(Math.PI.toFloat() / 2).scale(0.01f)
+meshes[0].meshes[0].applyToMesh(m, camera, model)
+camera.p()
+
+loop {
+    frame()
+}
+```
+
+The colours are the generated fragment shader's: it shades by the view-space normal, so faces turned the same way share a colour.
 
 ## Render to texture
 
@@ -891,19 +938,41 @@ layout(set=0, binding = 0) uniform sampler2D otherView;
 void main()
 {
     vec2 tc = gl_FragCoord.xy / 1024.0;
-    vec4 c = texture(otherView, tc.xy + vec2(0.001));
+    vec2 px = vec2(1.0 / 1024.0);
 
-    uFragColor = vec4(c.gr+vec2(0.001),1,1);
+    // Last frame, blurred hard and faded a little.
+    vec3 c = vec3(0);
+    float total = 0.0;
+    for (int y = -1; y <= 1; y++)
+        for (int x = -1; x <= 1; x++) {
+            float w = (x == 0 && y == 0) ? 4.0 : ((x == 0 || y == 0) ? 2.0 : 1.0);
+            c += w * texture(otherView, tc + 5.0 * px * vec2(x, y)).rgb;
+            total += w;
+        }
+    c = c / total * 0.996;
+
+    // A dot on a Lissajous path, its colour cycling, stamped in every frame.
+    vec2 at = vec2(0.5) + 0.32 * vec2(cos(pc.time * 0.9), sin(pc.time * 1.3));
+    vec3 ink = 0.5 + 0.5 * cos(pc.time + vec3(0, 2, 4));
+    c = max(c, ink * smoothstep(0.025, 0.0, length(tc - at)));
+
+    uFragColor = vec4(c, 1.0);
 }
 ```
 
-Reading `otherView` at a slightly offset coordinate and writing the channels back swapped (`c.gr`) is what makes the image drift and recolour over time rather than settle. The consuming box then displays `target.thisImageView`, the half that was just written:
+Each frame reads the last one blurred and slightly darker, then stamps the dot in at its new place, so the dot leaves a trail that spreads and fades rather than a line. `pc.time` advances a fixed 1/60 s per frame (`m.time = { time += 1f / 60; time }`), not with the clock, so a slow frame slows the animation instead of making the dot jump. The consuming box then displays `target.thisImageView`, the half that was just written:
 
 ```diffstatic {data-lang=kotlin}
 prop<HasImageView>(bbc) = target.thisImageView
 ```
 
 Note the property type here is `HasImageView`, not `RenderToTexture`. A ping-pong target is not one image, so the two halves are handed out individually, and `HasImageView` is the interface that any bindable image satisfies. `module { +target }` inside the module builder is what matches the module's pipeline state (format, sample count, attachment layout) to the target it draws into; without it the pipeline and the target disagree.
+
+And the feedback running in the window: a dot moving through the target leaves a trail that blurs and fades, because each frame reads the last.
+
+```diffstatic_runner {data-lang=kotlin capture="native-window" capture-box="lesson_pingpong_0" transcript="dev_docs/agents/transcripts/docs_capture/lesson_pingpong.yaml" video="assets/afield_four_graphics/05-pingpong.mp4" duration="8" wait="1" timeout="240" embed=true hidden=true name="four-pingpong" alt="a dot moving on a looping path through the ping-pong target, its colour cycling, leaving a trail that blurs outward and fades as each frame reads and rewrites the last"}
+// The transcript builds window, 5. PingPongTT and 5. draw pingpoing from their sidecars and launches each.
+```
 
 ## A blur kernel across three boxes
 
@@ -1022,6 +1091,28 @@ void main()
     vec4 c = texture(back, vec3(ftc.yx,1.0), 0.0);
     uFragColor = vec4(c.rgb, 1.0);
 }
+```
+
+Here is the chain on the canvas:
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x900" clip="0,0,420,700" screenshot="assets/afield_four_graphics/05-blur-boxes.png" transcript="dev_docs/agents/transcripts/docs_capture/lesson_blur.yaml" capture-box="lesson_blur_0" padding="0" wait="2" timeout="240" embed=true hidden=true name="four-blur-boxes" alt="four connected boxes on the canvas, stacked: window, 5. Bluring, 5. kernel and 5. draw blur, each joined to the one beneath it by an arrow"}
+// Only the boxes and their connections: the output panels are hidden for this picture.
+ui.eval(
+    """
+    const style = document.createElement("style")
+    style.textContent = ".disclosure-group { display: none !important; }"
+    document.head.appendChild(style)
+    return true
+    """
+        .trimIndent(),
+)
+ui.pause(800)
+```
+
+and what the last box draws:
+
+```diffstatic_runner {data-lang=kotlin capture="native-window" capture-box="lesson_blur_0" transcript="dev_docs/agents/transcripts/docs_capture/lesson_blur.yaml" screenshot="assets/afield_four_graphics/05-blur.png" wait="6" timeout="240" native-wait-frames="4" trim-native=true embed=true hidden=true name="four-blur" alt="the checkerboard the first box draws, after the kernel box: a grid of blue, cyan and green squares whose hard edges are visibly softened"}
+// The transcript builds window, 5. Bluring, 5. kernel and 5. draw blur from their sidecars and launches each.
 ```
 
 ## Shader includes
@@ -1494,7 +1585,7 @@ outColor = colourOf(next);
 
 The window shows the pattern but not how much of the traffic is moving. A [field probe](field_probes.md) can tell you. Set `probe` to a GLSL expression and the system calls `fieldProbe(...)` with it at the commented line above, which runs exactly once for each car that moves. Here it records `x + y` of the cell the car is leaving:
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin video="assets/afield_four_graphics/09b-bml-probe.mp4" alt="the probe card on the BML box's output, updating as the traffic runs: a calls count of the cars that moved this half-step, summary statistics of their x + y, a histogram and a quantile curve" capture="box" graphics-context=true open-outputs="true" wait-output="true" wait-output-kind="display" duration="6" fps="10" wait="3" w="760" h="60" x="24" y="180" timeout="300" embed=true name="four-bml-probe" source-box="assets/canonical_graphics/176b09bd-6e1c-4cb4-9c8a-b046d54c6dde" source-box-properties="vertex,fragment" source-box-wait="0.1"}
 var bml = ShaderBmlSystem() {
     width = 512
     height = 512
