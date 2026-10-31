@@ -1008,7 +1008,7 @@ for its replies, so call them inside `go { ... }`.
 
 `src/jvmMain/kotlin/afield/app/server/PatchyWeb.kt` — [read the source](source/jvmMain/afield/app/server/PatchyWeb/)
 
-**Used in:** [Patchy in a Field document](../patchy.md)
+**Used in:** [Patchy](../patchy.md)
 
 ### Top-level functions { #patchyweb-kt-functions }
 
