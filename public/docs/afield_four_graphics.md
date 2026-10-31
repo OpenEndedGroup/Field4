@@ -110,7 +110,8 @@ renderer += module
 var vertexData = defaultBuffer {
     perFrame = true
     size = 9.vec4s
-}.buffer
+}
+    .buffer
 
 m.vertexData = { vertexData }
 
