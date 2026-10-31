@@ -23,14 +23,12 @@ layout(push_constant) uniform Controls {
 void main()
 {
     vec4 c = texture(bbc, ftc.yx)/10.0;
-    uFragColor = vec4(c.rgb/1.0, 1.0);
-
     c.r += sin(ftc.x*10.0+ftc.y*123.3)*0.0001;
 
-    // remap c.r through the warp curve; the second argument is the strength, 1 = fully warped
+    // remap c.r through the warp curve; pc.warpStrength is the strength, 1 = fully warped
     float r = fieldQuantileWarpMix(
     c.r,
-    1,
+    pc.warpStrength,
     pc.warpXLo,
     pc.warpXHi,
     pc.warpYLo,
@@ -41,5 +39,5 @@ void main()
     if (length(fract(gl_FragCoord.xy*100.9123))<0.1)
     fieldProbe(c.r);
 
-    uFragColor.rgb = vec3(r);
+    uFragColor = vec4(vec3(r), 1.0);
 }
