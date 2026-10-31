@@ -1,10 +1,12 @@
-// Ping-pong render to texture: feedback from one frame to the next.
-//
-// A pass cannot read the image it is writing, so PingPongRenderToTexture keeps two images and swaps
-// their roles every frame. The fragment shader (open "fragment" in the property switcher) samples
-// last frame's image as `otherView`, offsets and recolours it, and writes the result, so the image
-// drifts over time. The child box `5. draw pingpoing` displays it.
-// Run this box beneath the renderer (`window`) box.
+/*
+Ping-pong render to texture: feedback from one frame to the next.
+
+A pass cannot read the image it is writing, so PingPongRenderToTexture keeps two images and swaps
+their roles every frame. The fragment shader (open "fragment" in the property switcher) samples
+last frame's image as `otherView`, offsets and recolours it, and writes the result, so the image
+drifts over time. The child box `5. draw pingpoing` displays it.
+Run this box beneath the renderer (`window`) box.
+*/
 import org.lwjgl.vulkan.VK10.*
 
 prop<PingPongRenderToTexture>(target) = PingPongRenderToTexture {
@@ -18,9 +20,11 @@ prop<HasImageView>(otherView) = target.otherImageView
 renderer.renderList += "target" to target
 
 var module = moduleHere {
-    // A disabled alternative: a 16-bit float colour format for the module.
-    //  imageFormat = VK_FORMAT_R16G16B16A16_SFLOAT
-    // Match this module's attachments to the target it draws into.
+    /*
+    A disabled alternative: a 16-bit float colour format for the module.
+     imageFormat = VK_FORMAT_R16G16B16A16_SFLOAT
+    Match this module's attachments to the target it draws into.
+    */
     +target
 }
 var m = Mesh()

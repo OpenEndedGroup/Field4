@@ -1,10 +1,12 @@
-// Blur kernel, the middle of the blur chain (window -> 5. Bluring -> 5. kernel -> 5. draw blur).
-//
-// Samples the parent's checkerboard target and writes a horizontal Gaussian blur into a second
-// target, `b1`, which the child box `5. draw blur` displays. Most of the lesson is in the shaders
-// (open "vertex" and "fragment" in the property switcher): the vertex shader computes the Gaussian
-// weights once per vertex, and the fragment shader takes seven symmetric taps and writes two
-// colour attachments at once.
+/*
+Blur kernel, the middle of the blur chain (window -> 5. Bluring -> 5. kernel -> 5. draw blur).
+
+Samples the parent's checkerboard target and writes a horizontal Gaussian blur into a second
+target, `b1`, which the child box `5. draw blur` displays. Most of the lesson is in the shaders
+(open "vertex" and "fragment" in the property switcher): the vertex shader computes the Gaussian
+weights once per vertex, and the fragment shader takes seven symmetric taps and writes two
+colour attachments at once.
+*/
 
 // The parent's `target`, republished under the name the fragment shader samples (`sampler2D b0`).
 prop<RenderToTexture>(b0) = target

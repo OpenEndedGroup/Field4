@@ -1,11 +1,13 @@
-// Debugging / mapping: a texture probe that drives a quantile warp. Run this in a box beneath the
-// renderer (`window`) box.
-//
-// The fragment shader (open `fragment` from the editor's property switcher) probes a value it computes
-// and then remaps that value through a warp curve before drawing it. Each frame the box reads the
-// probe's samples, refits the curve so the probed values spread evenly over 0..1, and pushes the new
-// curve back to the shader. Use this when the interesting variation sits in a narrow part of the range
-// and a linear readout flattens it.
+/*
+Debugging / mapping: a texture probe that drives a quantile warp. Run this in a box beneath the
+renderer (`window`) box.
+
+The fragment shader (open `fragment` from the editor's property switcher) probes a value it computes
+and then remaps that value through a warp curve before drawing it. Each frame the box reads the
+probe's samples, refits the curve so the probed values spread evenly over 0..1, and pushes the new
+curve back to the shader. Use this when the interesting variation sits in a narrow part of the range
+and a linear readout flattens it.
+*/
 
 // The texture is bound by name: `bbc` matches the `sampler2D bbc` in the fragment shader.
 // The bundled image makes the lesson runnable; change the path to try your own.
@@ -29,9 +31,11 @@ val warp = AdaptiveQuantileWarp(
     target = TargetDistributions.Uniform01,
 ).reset(seed = identityWarp)
 
-// Connects the probe to the warp. `install = false` means nothing runs automatically: the `loop` at the
-// end calls `tick()` once per frame. Each refit is passed to the block below, which writes the curve into
-// the mesh's `warpXLo` ... `warpYHi` push constants.
+/*
+Connects the probe to the warp. `install = false` means nothing runs automatically: the `loop` at the
+end calls `tick()` once per frame. Each refit is passed to the block below, which writes the curve into
+the mesh's `warpXLo` ... `warpYHi` push constants.
+*/
 val warper = fieldProbeQuantileWarp(
     probe = probe,
     warp = warp,

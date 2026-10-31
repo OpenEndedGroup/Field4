@@ -1,9 +1,11 @@
-// Textures from a glTF file.
-//
-// gltfModelWithTextureHere is gltfModelHere plus the file's images, bound as the sampler array
-// `uTextures` that the fragment shader declares (open "fragment" in the property switcher).
-// Run this box beneath the renderer (`window`) box. The path is relative to the directory Field runs
-// from: clone the Khronos glTF-Sample-Models collection there, or point it at your own file.
+/*
+Textures from a glTF file.
+
+gltfModelWithTextureHere is gltfModelHere plus the file's images, bound as the sampler array
+`uTextures` that the fragment shader declares (open "fragment" in the property switcher).
+Run this box beneath the renderer (`window`) box. The path is relative to the directory Field runs
+from: clone the Khronos glTF-Sample-Models collection there, or point it at your own file.
+*/
 var (module, meshes) = gltfModelWithTextureHere(
     "glTF-Sample-Models/2.0/TextureLinearInterpolationTest/glTF/TextureLinearInterpolationTest.gltf",
 )

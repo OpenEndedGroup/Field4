@@ -1,8 +1,10 @@
-// Display the blur, the end of the blur chain (window -> 5. Bluring -> 5. kernel -> 5. draw blur).
-//
-// Draws a quad in the window textured with the kernel's output. A multi-layer target is sampled as a
-// sampler2DArray; the fragment shader (open "fragment" in the property switcher) reads layer 1 of
-// `back`, the layer the kernel's vertex shader writes to.
+/*
+Display the blur, the end of the blur chain (window -> 5. Bluring -> 5. kernel -> 5. draw blur).
+
+Draws a quad in the window textured with the kernel's output. A multi-layer target is sampled as a
+sampler2DArray; the fragment shader (open "fragment" in the property switcher) reads layer 1 of
+`back`, the layer the kernel's vertex shader writes to.
+*/
 
 // The whole kernel target, bound to the fragment shader's `bbc`.
 prop<RenderToTexture>(bbc) = b1

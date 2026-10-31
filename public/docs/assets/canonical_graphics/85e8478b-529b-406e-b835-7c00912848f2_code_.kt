@@ -1,11 +1,13 @@
-// 1b. hello triangle (UBO)
-//
-// The same scene as "2. hello camera", but the camera matrices travel in a uniform buffer instead of push
-// constants. Usually push constants (or buffer references) are the better choice; this shows the
-// alternative. Needs the renderer window box as its parent.
-//
-// Open the `vertex` property (editor property switcher, `f1` or `ctrl-P`): it declares a uniform block
-// named `view` holding `p` and `m`.
+/*
+1b. hello triangle (UBO)
+
+The same scene as "2. hello camera", but the camera matrices travel in a uniform buffer instead of push
+constants. Usually push constants (or buffer references) are the better choice; this shows the
+alternative. Needs the renderer window box as its parent.
+
+Open the `vertex` property (editor property switcher, `f1` or `ctrl-P`): it declares a uniform block
+named `view` holding `p` and `m`.
+*/
 var m = Mesh()
 var module = moduleHere()
 

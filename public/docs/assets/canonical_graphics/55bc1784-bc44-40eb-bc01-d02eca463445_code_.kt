@@ -1,10 +1,12 @@
-// Texturing a quad.
-//
-// The fragment shader declares `uniform sampler2D bbc` (open "fragment" in the property switcher).
-// Publishing a LoadedTexture property with the same name is what binds it: resources are matched to
-// shader declarations by name. Run this box beneath the renderer (`window`) box.
-//
-// The bundled texture makes this lesson runnable; change the path to try your own image.
+/*
+Texturing a quad.
+
+The fragment shader declares `uniform sampler2D bbc` (open "fragment" in the property switcher).
+Publishing a LoadedTexture property with the same name is what binds it: resources are matched to
+shader declarations by name. Run this box beneath the renderer (`window`) box.
+
+The bundled texture makes this lesson runnable; change the path to try your own image.
+*/
 prop<LoadedTexture>(bbc) = LoadedTexture("public/docs/assets/afield_four_graphics/docs-checker-texture.png")
 // Upload the image to the GPU now, before the first draw needs it.
 bbc.transferNow()

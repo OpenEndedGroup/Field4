@@ -1,10 +1,12 @@
-// Debugging: texture probes. Run this in a box beneath the renderer (`window`) box.
-//
-// A field probe samples values out of a running shader and shows them in this box's output area. Here
-// the vertex shader (open `vertex` from the editor's property switcher) brings the probe in with
-// `{% property "fieldProbe" %}` and calls `fieldProbe(...)` with each vertex's post-projection position,
-// which is a direct check that the camera transform does what you expect.
-// The quads stack along z, so in the window they look like one; the probe readout is the point here.
+/*
+Debugging: texture probes. Run this in a box beneath the renderer (`window`) box.
+
+A field probe samples values out of a running shader and shows them in this box's output area. Here
+the vertex shader (open `vertex` from the editor's property switcher) brings the probe in with
+`{% property "fieldProbe" %}` and calls `fieldProbe(...)` with each vertex's post-projection position,
+which is a direct check that the camera transform does what you expect.
+The quads stack along z, so in the window they look like one; the probe readout is the point here.
+*/
 
 // The texture is bound by name: `bbc` matches the `sampler2D bbc` in the fragment shader.
 // The bundled image makes the lesson runnable; change the path to try your own.

@@ -1,11 +1,13 @@
-// 3. compute shader
-//
-// Runs a compute shader every frame over a small storage buffer and prints the results back on the CPU.
-// Needs the renderer window box as its parent.
-//
-// The shader is in the `compute` property (open it with the editor's property switcher, `f1` or `ctrl-P`).
-// It declares two storage buffers, `InputBuffer` and `OutputBuffer`, bound by descriptor. Newer lessons
-// ("3b. compute particles") pass buffers as buffer references instead, which is usually the better choice.
+/*
+3. compute shader
+
+Runs a compute shader every frame over a small storage buffer and prints the results back on the CPU.
+Needs the renderer window box as its parent.
+
+The shader is in the `compute` property (open it with the editor's property switcher, `f1` or `ctrl-P`).
+It declares two storage buffers, `InputBuffer` and `OutputBuffer`, bound by descriptor. Newer lessons
+("3b. compute particles") pass buffers as buffer references instead, which is usually the better choice.
+*/
 var numVec4 = 16
 
 // Storage buffers declared in the shader are allocated by the module; `ssboSizer` returns each one's size

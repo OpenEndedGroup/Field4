@@ -1,8 +1,10 @@
-// The renderer window: the parent box every graphics lesson runs beneath.
-//
-// It opens a native Window, builds a Renderer for it and runs the frame loop. Connect a lesson box below
-// this one and that box can use `renderer` directly; the two `prop` lines below publish `window` and
-// `renderer` to every box beneath this one in the graph.
+/*
+The renderer window: the parent box every graphics lesson runs beneath.
+
+It opens a native Window, builds a Renderer for it and runs the frame loop. Connect a lesson box below
+this one and that box can use `renderer` directly; the two `prop` lines below publish `window` and
+`renderer` to every box beneath this one in the graph.
+*/
 import afield.graphics.vulkan.util.Options
 
 prop<Window>(window)

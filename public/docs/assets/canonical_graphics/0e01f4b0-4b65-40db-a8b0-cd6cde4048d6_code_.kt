@@ -1,12 +1,14 @@
-// Loading a glTF model.
-//
-// gltfModelHere reads a glTF file and returns a module whose shaders already match the file's vertex
-// layout, together with the meshes it found. Run this box beneath the renderer (`window`) box.
-// The vertex shader (open "vertex" in the editor's property switcher) unpacks position, normal, uv and
-// colour from a flat float buffer by stride; the fragment shader shades by the view-space normal.
-//
-// The path is relative to the directory Field runs from: clone the Khronos glTF-Sample-Models
-// collection there, or point it at your own file.
+/*
+Loading a glTF model.
+
+gltfModelHere reads a glTF file and returns a module whose shaders already match the file's vertex
+layout, together with the meshes it found. Run this box beneath the renderer (`window`) box.
+The vertex shader (open "vertex" in the editor's property switcher) unpacks position, normal, uv and
+colour from a flat float buffer by stride; the fragment shader shades by the view-space normal.
+
+The path is relative to the directory Field runs from: clone the Khronos glTF-Sample-Models
+collection there, or point it at your own file.
+*/
 var (module, meshes) = gltfModelHere("glTF-Sample-Models/2.0/Box/glTF/Box.gltf")
 
 var m = Mesh()

@@ -1,9 +1,11 @@
-// Producer for the blur chain (window -> 5. Bluring -> 5. kernel -> 5. draw blur).
-//
-// Renders a checkerboard into an offscreen RenderToTexture, published as `target` so the child box
-// `5. kernel` can sample it. The checkerboard comes from the fragment shader (open "fragment" in the
-// property switcher), which colours by gl_FragCoord; hard edges make the blur easy to see.
-// Run this box beneath the renderer (`window`) box.
+/*
+Producer for the blur chain (window -> 5. Bluring -> 5. kernel -> 5. draw blur).
+
+Renders a checkerboard into an offscreen RenderToTexture, published as `target` so the child box
+`5. kernel` can sample it. The checkerboard comes from the fragment shader (open "fragment" in the
+property switcher), which colours by gl_FragCoord; hard edges make the blur easy to see.
+Run this box beneath the renderer (`window`) box.
+*/
 import org.lwjgl.vulkan.VK10.*
 
 prop<RenderToTexture>(target) = RenderToTexture {
@@ -15,9 +17,11 @@ prop<RenderToTexture>(target) = RenderToTexture {
 renderer.renderList += "target" to target
 
 var module = moduleHere {
-    // A disabled alternative: a 16-bit float colour format for the module.
-    //  imageFormat = VK_FORMAT_R16G16B16A16_SFLOAT
-    // Match this module's colour and depth attachments to the target it draws into.
+    /*
+    A disabled alternative: a 16-bit float colour format for the module.
+     imageFormat = VK_FORMAT_R16G16B16A16_SFLOAT
+    Match this module's colour and depth attachments to the target it draws into.
+    */
     +target
 }
 var m = Mesh()

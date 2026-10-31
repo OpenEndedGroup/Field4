@@ -1,7 +1,10 @@
-// 5. lygia: using the Lygia shader library through #include.
-// Parent: window. The fragment shader (open it with the editor's property switcher) includes
-// Lygia's gerstnerWave and fbm functions and builds a procedural pattern from the texture coordinates.
+/*
+5. lygia: using the Lygia shader library through #include.
+Parent: window. The fragment shader (open it with the editor's property switcher) includes
+Lygia's gerstnerWave and fbm functions and builds a procedural pattern from the texture coordinates.
+*/
 registerLygiaIncludeRoot()
+
 // Registers Lygia's source tree as an include root, so `#include "lygia/..."` resolves.
 
 var module = moduleHere {}

@@ -1,7 +1,9 @@
-// 5. included: a vertex shader that pulls its declarations in from another property.
-// Parent: window. Open the vertex property in the editor's property switcher: the line
-// {% property "vertex_included" %} is replaced, before compilation, by the GLSL held in the
-// `vertex_included` property (attributes `pos` and `col`, and the push constants `pc`).
+/*
+5. included: a vertex shader that pulls its declarations in from another property.
+Parent: window. Open the vertex property in the editor's property switcher: the line
+{% property "vertex_included" %} is replaced, before compilation, by the GLSL held in the
+`vertex_included` property (attributes `pos` and `col`, and the push constants `pc`).
+*/
 var module = moduleHere()
 var m = Mesh()
 

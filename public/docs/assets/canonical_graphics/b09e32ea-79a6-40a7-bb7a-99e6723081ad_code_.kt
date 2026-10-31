@@ -1,10 +1,12 @@
-// Run this in a box beneath the renderer (`window`) box.
-//
-// A lattice Boltzmann fluid in a wind tunnel: a wind blows left to right and the
-// lattice wraps, so what leaves on the right comes back on the left.
-// On its own it is uniform wind and shows nothing; "10b. lbm cylinder", beneath
-// this box, puts something in its way.
-// published as the `lbm` property so boxes beneath this one can reach the system
+/*
+Run this in a box beneath the renderer (`window`) box.
+
+A lattice Boltzmann fluid in a wind tunnel: a wind blows left to right and the
+lattice wraps, so what leaves on the right comes back on the left.
+On its own it is uniform wind and shows nothing; "10b. lbm cylinder", beneath
+this box, puts something in its way.
+published as the `lbm` property so boxes beneath this one can reach the system
+*/
 prop<ShaderLatticeBoltzmannSystem>(lbm) = ShaderLatticeBoltzmannSystem() {
     width = 800
     height = 480

@@ -1,9 +1,10 @@
-// 5. draw rtt: draws the offscreen target from `5. RTT` onto a quad in the window.
-// Parent chain: window -> 5. RTT. The parent publishes `target`, a RenderToTexture it draws into.
-// The fragment shader (open it with the editor's property switcher) declares `sampler2D bbc`;
-// publishing the target under the same name `bbc` is what binds it to that sampler.
+/*
+5. draw rtt: draws the offscreen target from `5. RTT` onto a quad in the window.
+Parent chain: window -> 5. RTT. The parent publishes `target`, a RenderToTexture it draws into.
+The fragment shader (open it with the editor's property switcher) declares `sampler2D bbc`;
+publishing the target under the same name `bbc` is what binds it to that sampler.
+*/
 prop<RenderToTexture>(bbc) = target
-
 
 // A module beneath the window renderer, holding one mesh.
 var module = moduleHere()

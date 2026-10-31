@@ -1,11 +1,13 @@
-// 2. hello keyboard camera
-//
-// One triangle, built from ordinary vertex attributes, seen through a Camera you can move with the keyboard
-// while the renderer window has focus. Needs the renderer window box as its parent.
-//
-// The `vertex` property holds the vertex shader (open it with the editor's property switcher, `f1` or
-// `ctrl-P`): it multiplies each position by the `p` and `m` push constants. The `fragment` shader paints
-// one flat color.
+/*
+2. hello keyboard camera
+
+One triangle, built from ordinary vertex attributes, seen through a Camera you can move with the keyboard
+while the renderer window has focus. Needs the renderer window box as its parent.
+
+The `vertex` property holds the vertex shader (open it with the editor's property switcher, `f1` or
+`ctrl-P`): it multiplies each position by the `p` and `m` push constants. The `fragment` shader paints
+one flat color.
+*/
 
 // As usual, a shader module and a mesh for it
 var module = moduleHere()
@@ -15,15 +17,17 @@ var m = Mesh()
 module += m named "mainMesh"
 renderer += module
 
-// A Camera is a convenient way of producing two matrices, `p` and `m`:
-//
-// `p` is the projection matrix. It maps the 3D space of the world onto the screen following the rules of
-// perspective (things further away are proportionally smaller).
-//
-// `m` is the model-view matrix. It accounts for the rotation and translation of the camera and the model.
-//
-// The mesh's `m.p` and `m.m` match the vertex shader's push constants. They are given the camera's matrix
-// objects, which are read again every frame, so moving the camera needs no further code here.
+/*
+A Camera is a convenient way of producing two matrices, `p` and `m`:
+
+`p` is the projection matrix. It maps the 3D space of the world onto the screen following the rules of
+perspective (things further away are proportionally smaller).
+
+`m` is the model-view matrix. It accounts for the rotation and translation of the camera and the model.
+
+The mesh's `m.p` and `m.m` match the vertex shader's push constants. They are given the camera's matrix
+objects, which are read again every frame, so moving the camera needs no further code here.
+*/
 val camera = Camera()
 m.p = camera.p
 m.m = camera.m

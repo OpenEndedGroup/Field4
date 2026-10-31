@@ -1,11 +1,13 @@
-// 0. traditional triangle
-//
-// About the smallest drawing there is: a shader module, a mesh with three vertices, one triangle.
-// Needs the renderer window box as its parent.
-//
-// The shaders live on this box too: open the `vertex` and `fragment` properties with the editor's property
-// switcher (`f1` or `ctrl-P`). The vertex shader passes `pos` straight through as a clip-space position and
-// hands `col` on to the fragment shader, which tints it.
+/*
+0. traditional triangle
+
+About the smallest drawing there is: a shader module, a mesh with three vertices, one triangle.
+Needs the renderer window box as its parent.
+
+The shaders live on this box too: open the `vertex` and `fragment` properties with the editor's property
+switcher (`f1` or `ctrl-P`). The vertex shader passes `pos` straight through as a clip-space position and
+hands `col` on to the fragment shader, which tints it.
+*/
 
 // First a shader module belonging to this box, drawing triangle strips
 var module = moduleHere {

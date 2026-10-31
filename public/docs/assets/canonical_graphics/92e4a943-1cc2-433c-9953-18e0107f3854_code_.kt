@@ -1,9 +1,11 @@
-// Slang: texture. Run this in a box beneath the renderer (`window`) box.
-//
-// This is the texturing lesson with its shaders written in Slang. They are in this box's
-// `vertex_fragment` property (open it from the editor's property switcher); when it is non-blank it is
-// used for both stages instead of the GLSL `vertex` and `fragment` properties. The Kotlin does not change:
-// resources and push constants are matched by their reflected names, whatever the shader language.
+/*
+Slang: texture. Run this in a box beneath the renderer (`window`) box.
+
+This is the texturing lesson with its shaders written in Slang. They are in this box's
+`vertex_fragment` property (open it from the editor's property switcher); when it is non-blank it is
+used for both stages instead of the GLSL `vertex` and `fragment` properties. The Kotlin does not change:
+resources and push constants are matched by their reflected names, whatever the shader language.
+*/
 
 // The texture is bound by name: `bbc` matches `Sampler2D bbc` in the Slang source.
 // The bundled image makes the lesson runnable; change the path to try your own.

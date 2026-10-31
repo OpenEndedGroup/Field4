@@ -1,7 +1,9 @@
-// 5c. some more templating: a push-constant block generated from a Kotlin class.
-// Parent: window. PushConstants<T> reflects the class's members into a GLSL push_constant block;
-// the fragment shader (open it with the editor's property switcher) splices that in with
-// {{ pc.dec }}, calls loadRegs(), and reads member `a` through the generated accessor a().
+/*
+5c. some more templating: a push-constant block generated from a Kotlin class.
+Parent: window. PushConstants<T> reflects the class's members into a GLSL push_constant block;
+the fragment shader (open it with the editor's property switcher) splices that in with
+{{ pc.dec }}, calls loadRegs(), and reads member `a` through the generated accessor a().
+*/
 class MyPC(
     var a: Vec4,
     var b: Vec4,

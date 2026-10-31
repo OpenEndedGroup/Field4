@@ -1,8 +1,10 @@
-// Render to texture: drawing offscreen.
-//
-// A RenderToTexture is an offscreen image a module can draw into instead of the window. This box
-// publishes it as `target`; a child box can then republish it under the sampler name its own
-// fragment shader declares and draw it. Run this box beneath the renderer (`window`) box.
+/*
+Render to texture: drawing offscreen.
+
+A RenderToTexture is an offscreen image a module can draw into instead of the window. This box
+publishes it as `target`; a child box can then republish it under the sampler name its own
+fragment shader declares and draw it. Run this box beneath the renderer (`window`) box.
+*/
 import org.lwjgl.vulkan.VK10.*
 
 prop<RenderToTexture>(target) = RenderToTexture {

@@ -1,12 +1,14 @@
-// 3b. compute particles
-//
-// A compute shader that moves 100,000 particles held in GPU buffers, and publishes the output buffer so a
-// child box ("3b. draw particles") can draw it straight from the GPU. Needs the renderer window box as its
-// parent.
-//
-// The shader is in the `compute` property (open it with the editor's property switcher, `f1` or `ctrl-P`).
-// It receives both buffers as buffer references in its push constants, and calls `fieldProbe` on one
-// value per particle so the distribution of that value can be watched in this box's "probe" output.
+/*
+3b. compute particles
+
+A compute shader that moves 100,000 particles held in GPU buffers, and publishes the output buffer so a
+child box ("3b. draw particles") can draw it straight from the GPU. Needs the renderer window box as its
+parent.
+
+The shader is in the `compute` property (open it with the editor's property switcher, `f1` or `ctrl-P`).
+It receives both buffers as buffer references in its push constants, and calls `fieldProbe` on one
+value per particle so the distribution of that value can be watched in this box's "probe" output.
+*/
 
 // A probe that samples up to 1000 values from the shader and shows them in the "probe" output channel
 fieldProbeHere(1000).display("probe")

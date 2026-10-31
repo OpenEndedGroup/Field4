@@ -1,7 +1,9 @@
-// 5b. some templating: Kotlin supplies GLSL source that is spliced into a shader before it compiles.
-// Parent: window. The fragment shader (open it with the editor's property switcher) writes
-// {{ col.fixedColor }}, which is replaced by the string the Resolver below returns.
-// A Resolver returns GLSL source text, not a value: changing it recompiles the shader.
+/*
+5b. some templating: Kotlin supplies GLSL source that is spliced into a shader before it compiles.
+Parent: window. The fragment shader (open it with the editor's property switcher) writes
+{{ col.fixedColor }}, which is replaced by the string the Resolver below returns.
+A Resolver returns GLSL source text, not a value: changing it recompiles the shader.
+*/
 shaderTemplate["col"] = mapOf("fixedColor" to Resolver { "vec4(1,0.75,0,1)" })
 
 // `//%-` is Field's execution break. The template is registered above it, so it exists before

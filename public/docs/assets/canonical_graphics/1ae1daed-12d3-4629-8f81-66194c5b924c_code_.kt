@@ -1,6 +1,8 @@
-// 6. RTT- draw rtt: shows the streamed target from `6. RTT - sending` on a quad in the window.
-// Parent chain: window -> 6. RTT - sending. The fragment shader (open it with the editor's property
-// switcher) declares `sampler2D bbc`; publishing the target under the name `bbc` binds it there.
+/*
+6. RTT- draw rtt: shows the streamed target from `6. RTT - sending` on a quad in the window.
+Parent chain: window -> 6. RTT - sending. The fragment shader (open it with the editor's property
+switcher) declares `sampler2D bbc`; publishing the target under the name `bbc` binds it there.
+*/
 prop<RenderToTexture>(bbc) = _target
 
 var module = moduleHere()

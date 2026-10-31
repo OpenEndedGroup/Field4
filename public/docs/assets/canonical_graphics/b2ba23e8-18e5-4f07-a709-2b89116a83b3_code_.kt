@@ -1,11 +1,13 @@
-// 2. hello camera
-//
-// A stack of triangles seen through a moving Camera. The camera's projection and view matrices reach the
-// vertex shader as push constants. Needs the renderer window box as its parent.
-//
-// Open the `vertex` property (editor property switcher, `f1` or `ctrl-P`) to see the `p` and `m` push
-// constants and how they transform each position. The `fragment` shader paints every triangle one flat
-// color.
+/*
+2. hello camera
+
+A stack of triangles seen through a moving Camera. The camera's projection and view matrices reach the
+vertex shader as push constants. Needs the renderer window box as its parent.
+
+Open the `vertex` property (editor property switcher, `f1` or `ctrl-P`) to see the `p` and `m` push
+constants and how they transform each position. The `fragment` shader paints every triangle one flat
+color.
+*/
 var m = Mesh()
 var module = moduleHere()
 

@@ -1,11 +1,13 @@
-// An array of textures.
-//
-// The fragment shader declares `uniform sampler2D ta[3]` (open "fragment" in the property switcher)
-// and samples ta[0]; change the index there to see the other entries. The array published as `ta`
-// must have exactly as many entries as the shader declares, or the texture is refused at link time.
-// Run this box beneath the renderer (`window`) box.
-//
-// The bundled textures make this lesson runnable; change these paths to try your own images.
+/*
+An array of textures.
+
+The fragment shader declares `uniform sampler2D ta[3]` (open "fragment" in the property switcher)
+and samples ta[0]; change the index there to see the other entries. The array published as `ta`
+must have exactly as many entries as the shader declares, or the texture is refused at link time.
+Run this box beneath the renderer (`window`) box.
+
+The bundled textures make this lesson runnable; change these paths to try your own images.
+*/
 var bbc = LoadedTexture("public/docs/assets/afield_four_graphics/docs-checker-texture.png")
 bbc.transferNow()
 

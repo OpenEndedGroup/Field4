@@ -1,7 +1,9 @@
-// 5d. GPU schema: one Kotlin data class describes vertex memory for both Kotlin and GLSL.
-// Parent: window. Three position/colour vertices form one triangle. The vertex shader (open it with
-// the editor's property switcher) splices in the generated struct with {{ Vertex.all }} and reads the
-// vertices from a buffer by gl_VertexIndex, so the mesh has no vertex attributes of its own.
+/*
+5d. GPU schema: one Kotlin data class describes vertex memory for both Kotlin and GLSL.
+Parent: window. Three position/colour vertices form one triangle. The vertex shader (open it with
+the editor's property switcher) splices in the generated struct with {{ Vertex.all }} and reads the
+vertices from a buffer by gl_VertexIndex, so the mesh has no vertex attributes of its own.
+*/
 name = "5d. GPU schema"
 
 @GpuStruct

@@ -1,11 +1,13 @@
 import afield.graphics.text.slug.*
 import org.lwjgl.vulkan.VK10.*
 
-// 5e. Slug filled paths: an FLine filled on the GPU with the Slug coverage algorithm.
-// Parent: window. SlugPath.compile turns the path into curve and band data; the vertex and fragment
-// shaders (open them with the editor's property switcher) draw one quad covering the path and compute
-// per-pixel coverage from that data, so edges stay sharp at any zoom.
-// Compiling needs the native helper; build it once with: bash native/field-slug/build.sh
+/*
+5e. Slug filled paths: an FLine filled on the GPU with the Slug coverage algorithm.
+Parent: window. SlugPath.compile turns the path into curve and band data; the vertex and fragment
+shaders (open them with the editor's property switcher) draw one quad covering the path and compute
+per-pixel coverage from that data, so edges stay sharp at any zoom.
+Compiling needs the native helper; build it once with: bash native/field-slug/build.sh
+*/
 name = "5e. Slug filled paths"
 val path =
     FLine().moveTo(-1, -1).lineTo(1, -1).cubicTo(vec(1.4, 0, 0), vec(0.8, 1.3, 0), vec(0, 1, 0)).lineTo(-1, 1).close()

@@ -1,9 +1,11 @@
-// Debugging: printf from a shader. Run this in a box beneath the renderer (`window`) box.
-//
-// The Kotlin is a cut-down hello triangle; the lesson is in the vertex shader (open `vertex` from the
-// editor's property switcher). It enables `GL_EXT_debug_printf` and calls `debugPrintfEXT` for vertex 0
-// only, so one line per draw reaches the log. Printing goes through the Vulkan validation layer
-// (`Options.validate`, on by default, or `Options.shaderDebugPrintf`).
+/*
+Debugging: printf from a shader. Run this in a box beneath the renderer (`window`) box.
+
+The Kotlin is a cut-down hello triangle; the lesson is in the vertex shader (open `vertex` from the
+editor's property switcher). It enables `GL_EXT_debug_printf` and calls `debugPrintfEXT` for vertex 0
+only, so one line per draw reaches the log. Printing goes through the Vulkan validation layer
+(`Options.validate`, on by default, or `Options.shaderDebugPrintf`).
+*/
 
 var module = moduleHere { primitiveType = triangles }
 

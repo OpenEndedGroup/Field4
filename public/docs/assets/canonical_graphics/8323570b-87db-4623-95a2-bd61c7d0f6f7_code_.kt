@@ -1,10 +1,12 @@
 import afield.media.stream.FieldRTTStreamer
 import org.lwjgl.vulkan.VK10.*
 
-// 6. RTT - sending: render into a target that FieldRTTStreamer encodes and streams over the network.
-// Parent: window. The streamer allocates the surface and hands back a RenderToTexture to draw into;
-// here it sends 1280x720 at 15 fps to 127.0.0.1:9001. `6. RTT- draw rtt` also shows the target in
-// the window. The fragment shader (open it with the editor's property switcher) colours by pixel position.
+/*
+6. RTT - sending: render into a target that FieldRTTStreamer encodes and streams over the network.
+Parent: window. The streamer allocates the surface and hands back a RenderToTexture to draw into;
+here it sends 1280x720 at 15 fps to 127.0.0.1:9001. `6. RTT- draw rtt` also shows the target in
+the window. The fragment shader (open it with the editor's property switcher) colours by pixel position.
+*/
 
 prop<FieldRTTStreamer>(streamer)
 // `once` creates the streamer only on the first run, so re-running the box keeps the same stream.

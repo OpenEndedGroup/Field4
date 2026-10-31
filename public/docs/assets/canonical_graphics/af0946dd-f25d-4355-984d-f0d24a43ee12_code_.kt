@@ -1,11 +1,13 @@
-// 1. hello triangle
-//
-// Triangles whose vertex positions are written from Kotlin into a GPU buffer every frame. The vertex shader
-// reads that buffer through a buffer reference, so the mesh carries no vertex attributes at all.
-// Needs the renderer window box as its parent.
-//
-// The `vertex` and `fragment` properties hold the shaders; open them with the editor's property switcher
-// (`f1` or `ctrl-P`).
+/*
+1. hello triangle
+
+Triangles whose vertex positions are written from Kotlin into a GPU buffer every frame. The vertex shader
+reads that buffer through a buffer reference, so the mesh carries no vertex attributes at all.
+Needs the renderer window box as its parent.
+
+The `vertex` and `fragment` properties hold the shaders; open them with the editor's property switcher
+(`f1` or `ctrl-P`).
+*/
 
 // A shader module belonging to this box, drawing filled triangles
 var module = moduleHere { primitiveType = triangles }
@@ -26,11 +28,13 @@ var vertexData = defaultBuffer {
 }
     .buffer
 
-// `size = 3.vec4s` is only a starting size: the buffer grows when a write needs more room, as the loop below
-// does (it writes up to 150 vec4s).
-//
-// `perFrame = true` gives one buffer per frame in flight, so the CPU can write the next frame's data while
-// the GPU is still reading the current frame's, without waiting.
+/*
+`size = 3.vec4s` is only a starting size: the buffer grows when a write needs more room, as the loop below
+does (it writes up to 150 vec4s).
+
+`perFrame = true` gives one buffer per frame in flight, so the CPU can write the next frame's data while
+the GPU is still reading the current frame's, without waiting.
+*/
 
 // Connect the buffer to the mesh. `m.vertexData` exists because Field has read the vertex shader and found
 // its `vertexData` buffer reference; it has the matching type.

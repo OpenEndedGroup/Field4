@@ -1,8 +1,10 @@
-// Display a ping-pong target. Run this box as a child of `5. PingPongTT`, whose `target` it reads.
-//
-// A ping-pong target is two images, so its halves are handed out as HasImageView rather than as a
-// RenderToTexture. thisImageView is the half most recently written; it is bound to the fragment
-// shader's `sampler2D bbc` (open "fragment" in the property switcher).
+/*
+Display a ping-pong target. Run this box as a child of `5. PingPongTT`, whose `target` it reads.
+
+A ping-pong target is two images, so its halves are handed out as HasImageView rather than as a
+RenderToTexture. thisImageView is the half most recently written; it is bound to the fragment
+shader's `sampler2D bbc` (open "fragment" in the property switcher).
+*/
 prop<HasImageView>(bbc) = target.thisImageView
 
 var module = moduleHere()

@@ -1,9 +1,11 @@
-// Run this in a box beneath "11. forest fire", whose `fire` property it uses.
-//
-// Draws into the fire's ignition texture: two points that burn for ever, one red
-// and one green. Each relights its neighbourhood as soon as the trees recover, so
-// each sends out a train of rings, and where the trains meet one kind takes over.
-// start from a clean ignition texture and an unburnt forest, so a re-run does not keep the old drawing
+/*
+Run this in a box beneath "11. forest fire", whose `fire` property it uses.
+
+Draws into the fire's ignition texture: two points that burn for ever, one red
+and one green. Each relights its neighbourhood as soon as the trees recover, so
+each sends out a train of rings, and where the trains meet one kind takes over.
+start from a clean ignition texture and an unburnt forest, so a re-run does not keep the old drawing
+*/
 fire.clearFireInput()
 fire.clearState()
 
