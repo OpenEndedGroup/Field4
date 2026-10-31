@@ -1294,14 +1294,14 @@
     },
     "assets/agent_transcripts/fn_rewrite_kotlin_boxes/metadata.edn": {
       "captureDigest": "4d5add3a103558e3a45b0b09c14392b55f14042e4118c9d4d341d9a926c175b0",
-      "capturedAt": "2026-10-31T21:57:49.149Z",
+      "capturedAt": "2026-10-31T23:08:00.674Z",
       "channels": 2,
       "file": "assets/web_publications/fn_rewrite_kotlin_boxes/document/metadata.edn",
       "files": {
         "assets/web_publications/fn_rewrite_kotlin_boxes/document/metadata.edn": "fe5987602f6f5808a11da4d9f60d0f3ed5bcc17fcb3ba24d2f90501af3d920bb",
-        "assets/web_publications/fn_rewrite_kotlin_boxes/document/outputs.json": "9ff6074d4f1768256b6a1c924d0f2178b75d0ad563e1e12ed0089d9bb18578bd",
-        "assets/web_publications/fn_rewrite_kotlin_boxes/outputs/0.html": "2ee197b07da653551c80a3361306b54560417bd6ebf9db04f170fb95b2470f06",
-        "assets/web_publications/fn_rewrite_kotlin_boxes/outputs/1.html": "b9c4e5bdb72aa13841878de26892fad25663ef9fda4e1c4b760b0207d9437ae9"
+        "assets/web_publications/fn_rewrite_kotlin_boxes/document/outputs.json": "53aac27df06d20a32ec630a829632a093644c931def79ec8b4d2062a0a15c836",
+        "assets/web_publications/fn_rewrite_kotlin_boxes/outputs/0.html": "e012518664c53ec90bb0db3d61ac9d3a0a6c5600a34609c002dee81b0f7223bb",
+        "assets/web_publications/fn_rewrite_kotlin_boxes/outputs/1.html": "0877f210f081b12a87a6b26830b50c6f96b8f3d069f00c45ea030ff3fa764149"
       },
       "kinds": [
         "plotly",
@@ -1312,8 +1312,8 @@
         "dev_docs/agents/transcripts/fn_rewrite_kotlin_boxes.yaml": "b8a82e678cf60820009d30456041adf153677aa3f6247d6be4d8943728fea519",
         "public/docs/assets/agent_transcripts/fn_rewrite_kotlin_boxes/fnrw_broken_code_.kt": "b827f3874372f5cea20538279b2bcda841f3759f451ef7a73cf95f2b846ee096",
         "public/docs/assets/agent_transcripts/fn_rewrite_kotlin_boxes/fnrw_host_code_.kt": "ae1f0977ff1f0c713f43958562103af09b6328a85adc64319a41b4bb1acd8da0",
-        "public/docs/assets/agent_transcripts/fn_rewrite_kotlin_boxes/fnrw_working_code_.kt": "819b2e11beebafcee43789ea5a64367f2840a7cbab0903a9883fe57e57609ba3",
-        "public/docs/assets/agent_transcripts/fn_rewrite_kotlin_boxes/metadata.edn": "e7e2a01100176aacd49c0898cb78c313d9fc897085b5f626c7a0633ca6349024"
+        "public/docs/assets/agent_transcripts/fn_rewrite_kotlin_boxes/fnrw_working_code_.kt": "f573d1b166191c91fb8818f7cff08abb3b1ab9492cb120dacf07d9c592723026",
+        "public/docs/assets/agent_transcripts/fn_rewrite_kotlin_boxes/metadata.edn": "9cd11c5e4469bd98627e978d85e957990e0456e12a2cb9ca8e086610650544b4"
       }
     },
     "assets/agent_transcripts/frames_lifecycle/metadata.edn": {

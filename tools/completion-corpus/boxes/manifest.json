@@ -264,7 +264,7 @@
   {"doc": "fn_differentiable_fit_demo", "box": "fn_fit_demo", "codeSha256": "b4cc3535095076ea", "codeLines": 13, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "fn_rewrite_kotlin_boxes", "box": "fnrw_broken", "codeSha256": "1c051c0b6a3e879e", "codeLines": 18, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "fn_rewrite_kotlin_boxes", "box": "fnrw_host", "codeSha256": "3acdf7fa6d3184c7", "codeLines": 3, "receivers": ["afield.document.graph.Box"], "preamble": ""},
-  {"doc": "fn_rewrite_kotlin_boxes", "box": "fnrw_working", "codeSha256": "8623a38e2184d127", "codeLines": 29, "receivers": ["afield.document.graph.Box"], "preamble": ""},
+  {"doc": "fn_rewrite_kotlin_boxes", "box": "fnrw_working", "codeSha256": "af5bbee682116bf8", "codeLines": 26, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "forest_fire", "box": "fire_forest", "codeSha256": "9905a66704242f1b", "codeLines": 17, "receivers": ["afield.document.graph.Box"], "preamble": "forest_fire__fire_forest.preamble.kt"},
   {"doc": "forest_fire", "box": "fire_renderer", "codeSha256": "aa3800181d3182a4", "codeLines": 14, "receivers": ["afield.document.graph.Box"], "preamble": "forest_fire__fire_renderer.preamble.kt"},
   {"doc": "forest_fire", "box": "fire_starter", "codeSha256": "715d1cae8926aca6", "codeLines": 20, "receivers": ["afield.document.graph.Box"], "preamble": "forest_fire__fire_starter.preamble.kt"},

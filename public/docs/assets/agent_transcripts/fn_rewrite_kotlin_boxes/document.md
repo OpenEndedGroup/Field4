@@ -39,7 +39,7 @@ WORKS. `rewriteFn` names the box to compile the `@{...}` snippets in, and that b
 idle, so hydrating there replays nothing. One pass, and the sampled signal really moves.
 
 ```edn [field-box id="fnrw_working" role="properties"]
-{"id" "fnrw_working" "index" 1 "name" "Two boxes - works" "parents" ["root" "fnrw_host"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "fnrw_host"} "name" "Two boxes - works" "_tombstone" false "frame" #afield/rect [60.0 250.0 560.0 170.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fnrw_working_code_.kt" "lines" 29 "characters" 1460 "sha256" "819b2e11beebafcee43789ea5a64367f2840a7cbab0903a9883fe57e57609ba3"}]}
+{"id" "fnrw_working" "index" 1 "name" "Two boxes - works" "parents" ["root" "fnrw_host"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "fnrw_host"} "name" "Two boxes - works" "_tombstone" false "frame" #afield/rect [60.0 250.0 560.0 170.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fnrw_working_code_.kt" "lines" 26 "characters" 1214 "sha256" "f573d1b166191c91fb8818f7cff08abb3b1ab9492cb120dacf07d9c592723026"}]}
 ```
 
 ```kotlin [field-property box="fnrw_working" name="code" path="fnrw_working_code_.kt"]
@@ -57,9 +57,6 @@ The host comes from TOPOLOGY, not from a hard-coded id: whatever this box is con
 beneath is where the `@{...}` snippets get compiled. Drag a different parent in and the
 rewrite follows it.
 
-NOT `?: error(...)`. Inside a box, `error` is `HasOutput.error(message, property, line)`,
-which returns Unit, so the elvis widens this to `Any` and the failure surfaces as a
-baffling "receiver type mismatch" on rewriteFn below. Throw explicitly.
 */
 val host = parents.lastOrNull() ?: throw IllegalStateException("connect this box under a box to compile the @{...} in")
 println("compiling in parent: " + host.name)
