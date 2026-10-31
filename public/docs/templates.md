@@ -76,11 +76,16 @@ The palette names where each entry comes from:
 | --- | --- |
 | Workspace template | `templates/<name>.edn` (or a folder) in your workspace, which is where **Save selection as template** writes |
 | Bundled template | `templates/` in the Field checkout, such as `first-steps` and `first-graphics` |
+| Personal template | `~/.afield/templates/` (or `-Dafield.personalTemplates.dir`), and `src/personal/templates/` in the checkout: the same folders as [Personal templates](installation.md#personal-templates) on the Welcome screen |
 | Workspace file | another document in your workspace (not the one you are in): inserting it copies all of its boxes into this one |
 | Remote template | a template server you configured (see [Share templates](#share-templates)) |
 
-When two entries have the same name, a workspace template is inserted before a bundled one, and a
-bundled one before a workspace document.
+The palette looks in the folders in the order of this table, and the first folder holding a name
+owns it: its entry, its documentation and what is inserted all come from there. The same name
+further down is listed once more with the folder added, so a personal `first-steps` next to the
+bundled one appears as `first-steps-personal`, and a workspace document called `greeter` next to a
+saved template appears as `greeter-workspace`. A remote template whose name a local one already
+has is not listed.
 
 ### Describe a template
 
@@ -154,8 +159,9 @@ Field uses the word "template" for two things.
 - **Templates** (this page) are boxes you insert into the document you are in, with `cmd+t`.
 - **Starting points**, listed under **Templates** on the Welcome screen, are whole documents.
   Opening one makes a new document, a copy, in your workspace. Your own go in `~/.afield/templates/`
-  ([Personal templates](installation.md#personal-templates)). They do not appear in the `cmd+t`
-  palette; the bundled ones in the checkout's `templates/` folder appear in both.
+  ([Personal templates](installation.md#personal-templates)). Those folders and the checkout's
+  `templates/` appear in both places: on the Welcome screen as starting points, and in the `cmd+t`
+  palette as templates whose boxes you insert into the document you are in.
 
 A [kit](kits.md) packages starting points with the code, dependencies and assets they need, and
 keeps track of which version each document received. Reach for a kit when the thing you want to
