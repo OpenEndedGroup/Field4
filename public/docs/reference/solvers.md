@@ -129,7 +129,7 @@ A name as written, with where it was written — so an unresolved name can point
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="brief-kt--briefname--tostring"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/lang/brief/Brief/#L182) | The name as written, so a diagnostic can interpolate it without reaching for [`text`](imaging.md#puppetbrowserpage-kt--text). |
+| <a id="brief-kt--briefname--tostring"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/lang/brief/Brief/#L182) | The name as written, so a diagnostic can interpolate it without reaching for `text`. |
 
 ### BriefElementKind { #brief-kt-briefelementkind }
 

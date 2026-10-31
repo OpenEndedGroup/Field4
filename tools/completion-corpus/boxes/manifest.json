@@ -141,6 +141,8 @@
   {"doc": "control_surface_laws", "box": "control_surface_button", "codeSha256": "4e7a9c030d1c50a2", "codeLines": 27, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "control_surface_laws", "box": "control_surface_laws", "codeSha256": "74a6baa04c854bc8", "codeLines": 53, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "control_surface_laws", "box": "control_surface_meter", "codeSha256": "c04d83b88f9e75f9", "codeLines": 32, "receivers": ["afield.document.graph.Box"], "preamble": ""},
+  {"doc": "controls_presets_morph_midi", "box": "controls_midi_demo", "codeSha256": "0c2d15288306ea87", "codeLines": 18, "receivers": ["afield.document.graph.Box"], "preamble": ""},
+  {"doc": "controls_presets_morph_midi", "box": "controls_presets_demo", "codeSha256": "a9561233fd76e7c4", "codeLines": 38, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "controls_surface", "box": "rerender", "codeSha256": "8ad532a5ee842d7c", "codeLines": 20, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "controls_surface", "box": "surface", "codeSha256": "b4f72323ae4ed360", "codeLines": 46, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "csound_demo", "box": "cs_into_fx", "codeSha256": "b1a97ab3db10a5e4", "codeLines": 6, "receivers": ["afield.document.graph.Box"], "preamble": ""},

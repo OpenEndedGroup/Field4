@@ -1812,6 +1812,101 @@ loop {
 
 To edit a take key by key, bake it into keyframe lanes with `bakeGesture(pad)`, and send the edited lanes back with `pad.setTake(x, y)`: see [From a performed gesture](keyframe_editor.md#from-a-performed-gesture).
 
+### Recording a slider into keyframes
+
+A gesture records an XY pad take, kept on the pad, which you bake into keyframes afterwards with `bakeGesture`. `recordToggle` records a single control straight into a keyframe curve. In the presets example below, `recordToggle("size")` adds a **rec size** button. Press it, move the size slider, and press it again: what you played becomes a [keyframe curve](keyframe_editor.md) named `size`, opened under the panel. The take is thinned to the keys needed to stay within half a percent of the slider's range, so a slow sweep becomes a handful of keys you can edit, not a key per mouse event.
+
+To play the curve back into the slider, read it in a `loop` and hand it to `playControl`:
+
+```diffstatic {data-lang=kotlin}
+val take = keyframes(name = "size")
+val start = System.nanoTime()
+loop {
+    val t = ((System.nanoTime() - start) / 1e9) % 2.0
+    take.setTime(t)
+    playControl("size", take, t, channel = "look")
+}
+```
+
+`playControl` moves the slider and runs its callback, so the playback drives whatever the slider drives. `recordControl(label, channel)` is the same recording without the button: it returns a recording whose `stop()` writes the curve.
+
+### Presets and morphing
+
+`presetBar(keys)` adds a preset bar over a [`KeyframeScope`](keyframer_examples.md): a preset is a keyframer key. Declare the values as delegated locals (`var size by keys.slider(0.4, 0.1..1.0)`) and add them to the group with `keys.controls()`, as in [One value shared by a local, a control and a key](keyframer_examples.md#one-value-shared-by-a-local-a-control-and-a-key). Here two keys, `calm` and `storm`, are saved the first time the box runs, so there is something to morph between straight away:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-preset-bar.png" capture="box" open-outputs="true" wait="2.0" w="700" embed=true name="controls-preset-bar" alt="A control group: a size slider at 0.40, an offset pad, a blue tint colour picker, a ring checkbox, then a row with a preset name field reading storm and store and recall buttons, a row of calm and storm buttons, a preset morph slider at 0, a rec size button and a MIDI learn button. Below it a dark square holding a blue circle"}
+:::static
+val keys = KeyframeScope()
+var size by keys.slider(0.4, 0.1..1.0)
+var offset by keys.vec2(Vector2f(0f, 0f))
+var tint by keys.color(Vector4f(0.2f, 0.6f, 1f, 1f))
+var ring by keys.checkbox(false)
+
+fun draw() {
+    val r = (20 + size * 60).toInt()
+    val cx = 110 + (offset.x * 60).toInt()
+    val cy = 90 - (offset.y * 50).toInt()
+    val fill = "rgba(${(tint.x * 255).toInt()},${(tint.y * 255).toInt()},${(tint.z * 255).toInt()},${tint.w})"
+    val stroke = if (ring) "stroke='white' stroke-width='6'" else ""
+    display("main", "<svg width='220' height='180' style='background:#222'><circle cx='$cx' cy='$cy' r='$r' fill='$fill' $stroke/></svg>")
+}
+keys.onChange { draw() }
+
+val dir = presetDirectory("look")
+
+// Two keys to start from, written once; after that the stored ones are used.
+if (keys.savedKeyNames(dir).isEmpty()) {
+    keys.Key("size" to 0.25, "offset" to Vector2f(-0.5f, 0.3f), "tint" to Vector4f(0.2f, 0.6f, 1f, 1f), "ring" to 0f)
+        .save(dir.resolve("calm"))
+    keys.Key("size" to 0.95, "offset" to Vector2f(0.6f, -0.4f), "tint" to Vector4f(1f, 0.25f, 0.1f, 1f), "ring" to 1f)
+        .save(dir.resolve("storm"))
+}
+
+controlGroup("look") {
+    keys.controls()
+    presetBar(keys)
+    recordToggle("size")
+    midiLearnButton()
+}
+
+draw()
+```
+
+**store** saves the panel as a key under the name in the field. **recall**, or a key's own button, applies it: the locals change, the controls move and `onChange` runs. **preset morph** blends across the saved keys in name order. With `calm` and `storm`, the morph at 0.5 gives a mid-size purple circle with the ring on. `presetBar` returns the bar, whose `store(name)`, `recall(name)` and `morph(t, between)` do the same from code.
+
+The presets are ordinary key files in `presetDirectory("look")`. For their history, browsing and how each kind of value blends, see [Saving: every save is history](keyframer_examples.md#saving-every-save-is-history), [Browsing saved keys](keyframer_examples.md#browsing-saved-keys) and [What a scope watches](keyframer_examples.md#what-a-scope-watches).
+
+### MIDI learn
+
+`midiLearnButton()` adds a **MIDI learn** button. Press it, touch the control you want, and turn a knob on your controller (or turn the knob first, then touch the control). From then on that knob moves that control. A knob follows the control's own response, so on a logarithmic frequency slider the middle of the knob is the middle of the slider, not 10 kHz. A knob bound to a checkbox switches it on above halfway. Learning a knob that is already bound moves the binding, and the bindings are saved with the box.
+
+`midiLearn(channel)` does the same from code. `bind` attaches a knob by its controller number, `attach` listens to a MIDI input, and `feed` hands it a controller value from anywhere else — a test, an OSC message, or the loop below, which stands in for a knob:
+
+```diffstatic {data-lang=kotlin}
+var cutoff = 1000.0
+var bright = false
+controlGroup("synth") {
+    slider("cutoff", 20.0, 20000.0, initialValue = cutoff, law = ControlLaw.LOGARITHMIC) { cutoff = it }
+    checkbox("bright", bright) { bright = it }
+    midiLearnButton()
+}
+val midi = midiLearn("synth")
+midi.bind("cutoff", cc = 74)
+midi.bind("bright", cc = 64)
+// What a knob sends; with hardware, midi.attach(MidiDevices.openInput(MidiDevices.inputs().first())).
+for (v in [0, 32, 64, 96, 127]) {
+    midi.feed(0, 74, v)
+    println("CC74 = $v  ->  cutoff ${cutoff.f1}")
+}
+midi.feed(0, 64, 127)
+midi.feed(0, 74, 80)
+println("bright = $bright, bindings = ${midi.bindings}")
+```
+
+It prints the cutoff at 20, 114, 650, 3705 and 20000 as the stand-in knob goes from 0 to 127: the middle of the knob lands near the middle of the log scale.
+
+To hear hardware, open an input with `MidiDevices` and attach it: `midi.attach(MidiDevices.openInput(MidiDevices.inputs().first()))`, or pass the input to `midiLearnButton(input)`.
+
 ### Choosing the right control
 
 - Use `slider(...)` for one bounded numeric value.
@@ -1824,6 +1919,7 @@ To edit a take key by key, bake it into keyframe lanes with `bakeGesture(pad)`, 
 - Use `rangeSlider(...)` for an interval, such as a band, a window or a velocity range. Use `polar = true` when the value wraps around, like a phase or a hue.
 - Use `menu(...)` for choosing one of a few named options.
 - Use `gesture(...)` for a two-axis movement you want to perform once and loop.
+- Use `recordToggle(...)` to perform one control's movement into a keyframe curve, and `presetBar(keys)` to store and morph between whole settings of a panel.
 - For a curve over time you shape by hand, an envelope, use the keyframe editor, `keyframes(...)`: see [Keyframes and timelines](funFeatures.md#keyframes-and-timelines).
 
 The `vec2Control(...)` includes an XY pad, a vector line, and magnitude readout, so it works well for motion and layout values where two sliders would hide the relationship between axes.

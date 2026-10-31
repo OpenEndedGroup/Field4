@@ -96,6 +96,8 @@ object DemoTranscriptExecSmokeTest {
 
     /** Pure-compute demos that are safe to run to completion headless. */
     internal val EXECUTE = setOf(
+        // visualizers.md's presets demo: a preset bar, record button and MIDI learn; the MIDI box feeds stand-in CCs.
+        "controls_presets_morph_midi",
         // Loads a committed glTF fixture through Assimp and opens column()/tree() on it; no renderer.
         "assimp_browsing",
         // stacksl_examples.md's fitting demo: fits a StackSL program's literals on the CPU.

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-29T22:31:54.843Z",
+  "capturedAt": "2026-10-31T13:42:16.137Z",
   "documentName": "petri_state_space",
   "outputs": [
     {
@@ -22,7 +22,7 @@
       "warnings": [],
       "kinds": [],
       "width": 467,
-      "height": 130,
+      "height": 131,
       "path": "outputs/1.html"
     },
     {
@@ -84,11 +84,11 @@
     {
       "uid": "petri_ss_reduction",
       "channel": "statespace-summary",
-      "open": false,
+      "open": true,
       "warnings": [],
       "kinds": [],
       "width": 467,
-      "height": 148,
+      "height": 175,
       "path": "outputs/7.html"
     },
     {

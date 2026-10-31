@@ -36,7 +36,7 @@ async function embedUrl(raw, base, ctx) {
 async function freezeCss(css, base, ctx) {
     const matches = [...css.matchAll(/url\(\s*["']?([^"')]+)["']?\s*\)/g)];
     for (const match of matches) {
-        if (Date.now() > ctx.deadline) throw new Error('Output capture exceeded 30 seconds');
+        if (Date.now() > ctx.deadline) throw new Error('Output capture exceeded 60 seconds');
         try { css = css.replace(match[0], `url("${await embedUrl(match[1], base, ctx)}")`); }
         catch (error) { failure(ctx, `Image omitted: ${error.message}`); css = css.replace(match[0], 'none'); }
     }
@@ -46,7 +46,7 @@ async function freezeCss(css, base, ctx) {
 /** Copies computed presentation and current values, including content inside same-origin iframes. */
 async function freezeNode(node, ctx, depth = 0) {
     if (++ctx.nodes > MAX_NODES) throw new Error('Output exceeds the 30,000 element capture limit');
-    if (Date.now() > ctx.deadline) throw new Error('Output capture exceeded 30 seconds');
+    if (Date.now() > ctx.deadline) throw new Error('Output capture exceeded 60 seconds');
     if (node.nodeType === 3) return node.cloneNode();
     if (node.nodeType !== 1) return null;
     const doc = node.ownerDocument, win = doc.defaultView, tag = node.localName.toLowerCase();
@@ -252,7 +252,7 @@ export async function captureOutputs(sources, {fontCss = '', three = null, progr
             await waitForContent(root, Date.now() + 12000);
             entry.width = Math.max(160, Math.min(4096, root.offsetWidth || 640));
             entry.height = Math.max(40, Math.min(8192, root.offsetHeight || 420));
-            const ctx = {resources, warnings:new Set(), kinds:new Set(), nodes:0, deadline:Date.now() + 30000, fontCss, three};
+            const ctx = {resources, warnings:new Set(), kinds:new Set(), nodes:0, deadline:Date.now() + 60000, fontCss, three};
             const html = await freezeDocument(root, ctx);
             entry.path = `outputs/${i}.html`; entry.kinds = [...ctx.kinds]; entry.warnings = [...ctx.warnings];
             if (root.offsetWidth > 4096 || root.offsetHeight > 8192) entry.warnings.push('Output viewport limited to 4096 × 8192 pixels');
