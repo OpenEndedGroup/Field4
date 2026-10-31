@@ -650,7 +650,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**35439 public symbols across 1607 source files**, 20733 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**35439 public symbols across 1607 source files**, 20734 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -663,7 +663,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Video](video.md) | 14 | 192 | 192 (100%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 47 | 2162 | 1623 (75%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 26 | 1061 | 502 (47%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 327 | 8022 | 5277 (65%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 327 | 8022 | 5278 (65%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 46 | 797 | 427 (53%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 586 | 431 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 766 | 514 (67%) | Nonlinear least squares, aimed at geometry. |
@@ -1349,7 +1349,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>keyframes/<wbr></small> [KeyframeControls.kt](graphics.md#keyframecontrols-kt) | Graphics | 13 | 10 |  | [Visualizers, Displays, and Little Instruments](../visualizers.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>interpolation/<wbr></small> [keyframeInterpolants.kt](graphics.md#keyframeinterpolants-kt) | Graphics | 22 | 22 | Custom key types for the keyframe editor that `keyframes(...)` opens: a named segment shape, written as a Kotlin lambda. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>keyframes/<wbr></small> [keyframer.kt](graphics.md#keyframer-kt) | Graphics | 91 | 90 | Snapshot, interpolate and persist the live state of a running sketch. | [Keyframes: capturing, persisting and replaying live state](../keyframer_examples.md), [Values over time: interpolants & keyframes](../interpolants_examples.md) |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>keyframes/<wbr></small> [keyframes.kt](graphics.md#keyframes-kt) | Graphics | 51 | 33 | Keyframe curves edited by hand in a box's output panel and read back by code as a number at any time. | [The keyframe editor: drawing a value over time](../keyframe_editor.md), [Agent transcript gallery](../agent_transcripts.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>keyframes/<wbr></small> [keyframes.kt](graphics.md#keyframes-kt) | Graphics | 51 | 34 | Keyframe curves edited by hand in a box's output panel and read back by code as a number at any time. | [The keyframe editor: drawing a value over time](../keyframe_editor.md), [Agent transcript gallery](../agent_transcripts.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>keyframes/<wbr></small> [keyframeSweep.kt](graphics.md#keyframesweep-kt) | Graphics | 102 | 80 | Overnight exploration of a keyframe space: a directory of saved keys in, an archive of renders out. | [Sweeping saved keyframes overnight](../keyframe_autosweep.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>keyframes/<wbr></small> [keyframeSweepCapture.kt](graphics.md#keyframesweepcapture-kt) | Graphics | 4 | 4 | The GPU half of a keyframe sweep: turning one blended look into the still and the short clip that a night's archive is actually made of. | [Sweeping saved keyframes overnight](../keyframe_autosweep.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [KeyframeSweepDemo.kt](examples.md#keyframesweepdemo-kt) | Examples | 6 | 5 |  |  |

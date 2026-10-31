@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 20733 of 35439 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 20734 of 35439 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**1971 undocumented entry points** (types, top-level functions and values) and 12072 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**1971 undocumented entry points** (types, top-level functions and values) and 12071 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -53,7 +53,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Phased.kt](../src/jvmMain/kotlin/afield/runtime/lifecycle/Phased.kt) | Workspace | animation_time_model | 6 | 12 | 47% |
 | [SolidExpr.kt](../src/jvmMain/kotlin/afield/lang/solidsl/SolidExpr.kt) | Graphics | solid_notation, manifold | 6 | 11 | 77% |
 | [Structure.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/buffers/Structure.kt) | Graphics | gpu_schema, running_code | 5 | 31 | 33% |
-| [keyframes.kt](../src/jvmMain/kotlin/afield/animation/keyframes/keyframes.kt) | Graphics | keyframe_editor, agent_transcripts | 5 | 13 | 64% |
+| [keyframes.kt](../src/jvmMain/kotlin/afield/animation/keyframes/keyframes.kt) | Graphics | keyframe_editor, agent_transcripts | 5 | 12 | 66% |
 | [Solver.kt](../src/jvmMain/kotlin/afield/simulation/physics/pressure/Solver.kt) | Simulation | pressure_membranes | 5 | 12 | 14% |
 | [nesting.kt](../src/jvmMain/kotlin/afield/document/graph/nesting.kt) | Workspace | visualizers | 5 | 0 | 50% |
 | [ParamQuery.kt](../src/jvmMain/kotlin/afield/audio/synth/ParamQuery.kt) | Synthesis | graph_query | 4 | 46 | 8% |
@@ -1148,9 +1148,9 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `Remember` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:934` |
 | `Recall` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:937` |
 | `ToolExecutionContext` | class | `src/jvmMain/kotlin/afield/ai/tools/Tools.kt:939` |
-| `Keyframe` | class | `src/jvmMain/kotlin/afield/animation/keyframes/keyframes.kt:638` |
-| `Handles` | class | `src/jvmMain/kotlin/afield/animation/keyframes/keyframes.kt:647` |
-| `Handle` | class | `src/jvmMain/kotlin/afield/animation/keyframes/keyframes.kt:653` |
+| `Keyframe` | class | `src/jvmMain/kotlin/afield/animation/keyframes/keyframes.kt:642` |
+| `Handles` | class | `src/jvmMain/kotlin/afield/animation/keyframes/keyframes.kt:651` |
+| `Handle` | class | `src/jvmMain/kotlin/afield/animation/keyframes/keyframes.kt:657` |
 | `MotionBodyHandle` | class | `src/jvmMain/kotlin/afield/animation/mocap/MotionAuthoring.kt:94` |
 | `MotionJointHandle` | class | `src/jvmMain/kotlin/afield/animation/mocap/MotionAuthoring.kt:140` |
 | `MotionProcessConfig` | class | `src/jvmMain/kotlin/afield/animation/mocap/MotionProcess.kt:22` |
