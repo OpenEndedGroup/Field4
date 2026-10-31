@@ -27,7 +27,7 @@ StackSL program drawn live in a window, and
 start the same way, with **Make a StackSL Program** and **Make a RectSL Scene**.
 
 The recorded conversation below started from the same source, in a document of its
-own. [Open that starter](offline.html?file=assets/function_conversation/function_conversation/metadata.edn)
+own. [Open that starter](offline.html?zip=assets/function_conversation/function_conversation.zip)
 to begin from the same place: it opens in the document viewer, and **Open in Field·4**
 copies it into your workspace as a new document. It has one box,
 **The function — talk here (AI4)**; opening the document checks its source in and
@@ -45,7 +45,7 @@ model reads before editing, includes the line your editor's cursor is on, so
 
 ### The starting Kotlin
 
-This is the complete code in the downloadable starter's **function_source** box.
+This is the complete code in the starter's **function_source** box.
 Each `fn` receives a time in seconds and currently returns `0.0`; `StudyComposition`
 collects the three channels. The conversation replaces and extends this same code.
 
@@ -101,12 +101,10 @@ entirely. Zoom in before you judge a detail.
 
 ## A worked conversation
 
-[Look at the developed example](offline.html?file=assets/function_conversation/function_conversation_example/metadata.edn)
-in the document viewer for its finished source. To work in it,
-[download it](assets/function_conversation/function_conversation_example.zip) and
-unzip it into your Field workspace: **Open in Field·4** copies only the document, and
-the download also holds the box's saved chat, all nine saved revisions, and the
-recorded conversations and plots. Opening it restores
+[Open the developed example](offline.html?zip=assets/function_conversation/function_conversation_example.zip)
+and press **Open in Field·4**. The copy it makes in your workspace has the finished
+source, the box's saved chat, all nine saved revisions, and the recorded
+conversations and plots. Opening it restores
 the checked composition and draws the viewer. Then select **The function — talk
 here (AI4)** and press **ctrl/command-4**.
 The seven recorded turns are already in that box's chat, with their original

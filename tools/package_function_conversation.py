@@ -119,7 +119,7 @@ def reader(name: str, source: str) -> bytes:
         intro="The original exchange, including tool results and plot images. Expand tool activity to inspect the steps; open a plot to see it full size.")
 
 
-def document_files(name: str) -> dict[str, bytes]:
+def archive(name: str) -> bytes:
     folder = DEMOS / name
     files = [folder / p for p in STARTER_FILES]
     if name != "function_conversation":
@@ -127,18 +127,11 @@ def document_files(name: str) -> dict[str, bytes]:
         for directory in ("studies", "conversations", "prompts", "checks"):
             files.extend(p for p in (folder / directory).rglob("*") if p.is_file())
         files.extend((folder / "guides/conversations").glob("*.md"))
-    return {p.relative_to(folder).as_posix(): p.read_bytes() for p in sorted(set(files))}
+    return demo.deterministic_zip(name, {p.relative_to(folder).as_posix(): p.read_bytes() for p in sorted(set(files))}, date=(2026, 9, 22, 0, 0, 0))
 
 
 def assets() -> dict[str, bytes]:
-    result: dict[str, bytes] = {}
-    for name in ("function_conversation", "function_conversation_example"):
-        files = document_files(name)
-        result[name + ".zip"] = demo.deterministic_zip(name, files, date=(2026, 9, 22, 0, 0, 0))
-        # The document itself unpacked too, for the offline viewer's preview and its Open in
-        # Field·4 button, so a reader inside Field's docs panel never has to unzip anything. Only
-        # what the viewer reads: the saved revisions and plots stay in the zip.
-        result.update({f"{name}/{path}": data for path, data in files.items() if path in (*STARTER_FILES, CHAT_FILE)})
+    result = {name + ".zip": archive(name) for name in ("function_conversation", "function_conversation_example")}
     for name, source in {
         "created.png": "studies/function_source/r3-66fd67f6fe7c-0.0-3600.0.png",
         "lag.png": "studies/function_source/r6-deb1b1738cb0-1505.0-1530.0-vs-r5-2aa6023ddfca.png",
