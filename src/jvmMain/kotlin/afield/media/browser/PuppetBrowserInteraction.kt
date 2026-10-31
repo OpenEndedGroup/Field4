@@ -149,12 +149,19 @@ class PuppetBrowserWindowInput(
     var active: Boolean = false
         private set
 
+    /** A companion window can regain keyboard input through normal desktop focus. */
+    var focusFollowsWindow = false
+    var onPointerActivity: (() -> Unit)? = null
+    val lastPointerUv: Pair<Double, Double>? get() = lastHit
+
     private var lastHit: Pair<Double, Double>? = null
     private var captured = false
     private val removers = mutableListOf<() -> Unit>()
+    private val heldKeys = mutableMapOf<Int, BrowserKeyEvent>()
 
     init {
         removers += window.addCursorListener { x, y ->
+            onPointerActivity?.invoke()
             val hit = hitTest(x, y)
             if (hit != null) lastHit = hit
             val at = hit ?: if (captured) lastHit else null
@@ -162,6 +169,7 @@ class PuppetBrowserWindowInput(
         }
         removers += window.addMouseButtonListener { button, action, mods ->
             val browserButton = browserMouseButton(button) ?: return@addMouseButtonListener
+            onPointerActivity?.invoke()
             uv.modifiers = browserModifiers(mods)
             val at = hitTest(window.cursor.x.toDouble(), window.cursor.y.toDouble())
             if (at != null) lastHit = at
@@ -179,6 +187,7 @@ class PuppetBrowserWindowInput(
             }
         }
         removers += window.addScrollListener { x, y ->
+            onPointerActivity?.invoke()
             val at = hitTest(window.cursor.x.toDouble(), window.cursor.y.toDouble())
             if (active && at != null) uv.wheel(-x * 40.0, -y * 40.0, at.first, at.second)
         }
@@ -186,8 +195,7 @@ class PuppetBrowserWindowInput(
             if (!active) return@addKeyListener
             uv.modifiers = browserModifiers(mods)
             browserKey(key, mods)?.let { descriptor ->
-                browser.key(
-                    BrowserKeyEvent(
+                val event = BrowserKeyEvent(
                         type = if (action == GLFW.GLFW_RELEASE) BrowserKeyEventType.KEY_UP
                         else BrowserKeyEventType.RAW_KEY_DOWN,
                         key = descriptor.key,
@@ -198,19 +206,16 @@ class PuppetBrowserWindowInput(
                         autoRepeat = action == GLFW.GLFW_REPEAT,
                         keypad = descriptor.keypad,
                     )
-                )
+                if (action == GLFW.GLFW_RELEASE) heldKeys.remove(key) else heldKeys[key] = event
+                browser.key(event)
             }
         }
         removers += window.addCharListener { codepoint ->
             if (active) browser.insertText(String(Character.toChars(codepoint)))
         }
         removers += window.addFocusListener { focused ->
-            if (!focused && active) {
-                uv.releaseAll()
-                active = false
-                captured = false
-                browser.blur()
-            }
+            if (!focused) releaseFocus()
+            else if (focusFollowsWindow) takeFocus()
         }
     }
 
@@ -221,10 +226,17 @@ class PuppetBrowserWindowInput(
 
     fun releaseFocus() {
         if (!active) return
-        uv.releaseAll()
+        releasePointer()
+        heldKeys.values.forEach { browser.key(it.copy(type = BrowserKeyEventType.KEY_UP, modifiers = emptySet())) }
+        heldKeys.clear()
+        uv.modifiers = emptySet()
         active = false
-        captured = false
         browser.blur()
+    }
+
+    fun releasePointer() {
+        uv.releaseAll()
+        captured = false
     }
 
     override fun close() {
@@ -253,6 +265,13 @@ class PuppetBrowserPanel(
     private var pressed = false
     private var captured = false
     private var lastHit: Hit? = null
+
+    /** Cancel capture when a device disappears or another input source takes ownership. */
+    fun releasePointer() {
+        uv.releaseAll()
+        pressed = false
+        captured = false
+    }
 
     /** Compose this panel's world transform with one eye's view/projection matrices. */
     fun panelMvp(
@@ -331,7 +350,10 @@ class PuppetBrowserPanel(
         scrollY: Double = 0.0,
         localForward: Vector3f = Vector3f(0f, 0f, 1f),
     ): Hit? {
-        if (!state.active || !state.poseValid) return null
+        if (!state.active || !state.poseValid) {
+            releasePointer()
+            return null
+        }
         val (origin, direction) = controllerRay(state, localForward)
         return interact(origin, direction, state.selectPressed || state.triggerPressed, scrollY)
     }

@@ -249,7 +249,7 @@ class SideBySideStereoTarget(
     }
 
     /** Attach mouse handlers to drive the mock controller. Re-registering replaces previous handlers. */
-    fun enableMouseController(mouse: MouseEvents = renderer.window.mouseEvents ?: MouseEvents(renderer), name: String = "sbs-mouse-controller", distanceMeters: Float = 1f) {
+    fun enableMouseController(mouse: MouseEvents = renderer.window.mouseEvents ?: MouseEvents(renderer), name: String = "sbs-mouse-controller", distanceMeters: Float = 1f): () -> Unit {
         mouseControllerDistance = distanceMeters
 
         val updateFromScreen: (MouseEvent) -> Unit = { ev ->
@@ -272,6 +272,13 @@ class SideBySideStereoTarget(
             mockController.triggerPressed = false
             mockController.triggerValue = 0f
             true
+        }
+        return {
+            mouse.remove(name)
+            mouseControllerPos = null
+            mockController.selectPressed = false
+            mockController.triggerPressed = false
+            mockController.triggerValue = 0f
         }
     }
 

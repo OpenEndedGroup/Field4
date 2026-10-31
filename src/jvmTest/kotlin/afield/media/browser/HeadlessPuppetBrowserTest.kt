@@ -320,6 +320,61 @@ class HeadlessPuppetBrowserTest {
 
     private fun browser(): HeadlessPuppetBrowser = shared ?: fail("no headless browser")
 
+    @Test
+    fun `VR keyboard pointer clicks preserve text field focus and deliver real input`() {
+        val keyboard = FieldVrKeyboard(browser(), recenter = {})
+        try {
+            assertEquals(900, value("innerWidth").jsonPrimitive.int)
+            assertEquals(600, value("innerHeight").jsonPrimitive.int)
+            assertEquals(1, value("devicePixelRatio").jsonPrimitive.int)
+            keyboard.install().get(15, TimeUnit.SECONDS)
+            // Real CDP mouse presses, rather than element.click(), exercise focus suppression.
+            fun click(label: String) {
+                val quoted = JsonPrimitive(label).toString()
+                val rect = value("""
+                    (() => {
+                        const b = [...document.getElementById('field-vr-tools').shadowRoot.querySelectorAll('button')]
+                            .find(b => b.textContent === $quoted);
+                        const r = b.getBoundingClientRect();
+                        return {x:r.x+r.width/2, y:r.y+r.height/2};
+                    })()
+                """).jsonObject
+                val x = rect["x"]!!.jsonPrimitive.content.toDouble()
+                val y = rect["y"]!!.jsonPrimitive.content.toDouble()
+                browser().pointer(BrowserPointerEvent(BrowserPointerEventType.DOWN, x, y,
+                    button = BrowserMouseButton.LEFT, buttons = 1, clickCount = 1))
+                browser().pointer(BrowserPointerEvent(BrowserPointerEventType.UP, x, y,
+                    button = BrowserMouseButton.LEFT, clickCount = 1))
+                browser().flushInput().get(15, TimeUnit.SECONDS)
+            }
+            click("Keyboard")
+            value("""
+                (() => { const t = document.createElement('textarea'); t.id = 'vr-text';
+                    t.style.cssText = 'position:fixed;top:0;left:0;width:200px;height:40px';
+                    document.body.appendChild(t); t.focus(); return true; })()
+            """)
+            click("q")
+            assertEquals("q", value("""
+                new Promise((resolve, reject) => {
+                    const t = document.getElementById('vr-text');
+                    const done = () => { if(t.value === 'q') resolve(t.value); };
+                    t.addEventListener('input', done); done();
+                    setTimeout(() => reject(new Error('virtual key did not insert text')), 3000);
+                })
+            """).jsonPrimitive.content)
+            assertEquals("vr-text", value("document.activeElement.id").jsonPrimitive.content)
+            click("⌫")
+            assertEquals("", value("""
+                new Promise((resolve, reject) => {
+                    const t = document.getElementById('vr-text');
+                    const done = () => { if(t.value === '') resolve(t.value); };
+                    t.addEventListener('input', done); done();
+                    setTimeout(() => reject(new Error('virtual backspace did not delete text')), 3000);
+                })
+            """).jsonPrimitive.content)
+        } finally { keyboard.close() }
+    }
+
     companion object {
         private val root = locateFieldProjectRoot()
         private val fixtures = File(root, "src/jvmTest/resources/puppetBrowser")

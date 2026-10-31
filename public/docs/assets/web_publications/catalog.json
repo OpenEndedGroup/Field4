@@ -1053,12 +1053,12 @@
     },
     "assets/agent_transcripts/fern_iterated_systems/metadata.edn": {
       "captureDigest": "d1d480e4a96ffb92bbe0276a6b4e731b8ded2572574a83bb2e39cd347acff689",
-      "capturedAt": "2026-10-29T22:44:48.833Z",
+      "capturedAt": "2026-10-31T20:31:17.174Z",
       "channels": 1,
       "file": "assets/web_publications/fern_iterated_systems/document/metadata.edn",
       "files": {
         "assets/web_publications/fern_iterated_systems/document/metadata.edn": "58c2137eb4b83350f288fcce7a1633fb36026623e8a7f3ff2edb3d52e7f4ecd7",
-        "assets/web_publications/fern_iterated_systems/document/outputs.json": "ec3deee1bb0e3ab5cd0aa35fc38cd97a52cf76c19080795a34dc6aaf7099bea4",
+        "assets/web_publications/fern_iterated_systems/document/outputs.json": "c2643266feca06291ab5324c9ef41b8182dc9c0fd3c4636f0c74ba4b3b04d2b1",
         "assets/web_publications/fern_iterated_systems/outputs/0.html": "15b01baebdd33687dfb2f7fc1727985a860600bfeca53435be5960daa16f90c7"
       },
       "kinds": [
@@ -1067,7 +1067,7 @@
       "outputs": "assets/web_publications/fern_iterated_systems/document/outputs.json",
       "sources": {
         "dev_docs/agents/transcripts/fern_iterated_systems.yaml": "13bc05524ca8237f3b57d80eb49e52791ceb598c47ee4e6e711f36a8303f86a4",
-        "public/docs/agent_transcripts.md": "bd9e328be45eb19afdaf4d95b526012a92552679e7ecbc55a5c4c9b0cf626a50",
+        "public/docs/agent_transcripts.md": "8512b0373164cab361b27fcc8f469ce98e0225c455a3f33d0b4d14cbaebff873",
         "public/docs/assets/agent_transcripts/fern_iterated_systems/fern_barnsley_code_.kt": "465350835ba6b09747ec8601dc4cc9e52a769a222658aa11312db7f4c3daec9e",
         "public/docs/assets/agent_transcripts/fern_iterated_systems/fern_barnsley_compute_.glsl": "32b40c7b0f4ad43154427cd5a02875a9261a9a52c115e3f6f9356b161ec08b23",
         "public/docs/assets/agent_transcripts/fern_iterated_systems/fern_barnsley_notes_.md": "e52fceb04c29422e455753e00be039fc1bc5ca402627ee33bcec34cd25c23daf",
@@ -1091,12 +1091,12 @@
     },
     "assets/agent_transcripts/field_ui_browser_texture/metadata.edn": {
       "captureDigest": "d1d480e4a96ffb92bbe0276a6b4e731b8ded2572574a83bb2e39cd347acff689",
-      "capturedAt": "2026-10-29T22:46:32.511Z",
+      "capturedAt": "2026-10-31T20:31:39.744Z",
       "channels": 1,
       "file": "assets/web_publications/field_ui_browser_texture/document/metadata.edn",
       "files": {
         "assets/web_publications/field_ui_browser_texture/document/metadata.edn": "e268983eb856d8c018f847824bd7aa7206f38bc9cdcd16312c053c82effc7fd2",
-        "assets/web_publications/field_ui_browser_texture/document/outputs.json": "e1d1e7ee1aaadaa1d22979c7f1f1f8313aed2a03814191fd33872b3175946d7f",
+        "assets/web_publications/field_ui_browser_texture/document/outputs.json": "07bbce02edcfdc43d0f3e7ce1cf2e02e914e812911c04e4752bf89621fe16afb",
         "assets/web_publications/field_ui_browser_texture/outputs/0.html": "a7cc9dec7ecbe56c3f61381a3ee035935c5593efca9f29b07f034c286b2fe68e"
       },
       "kinds": [
@@ -1112,11 +1112,40 @@
         "public/docs/assets/agent_transcripts/field_ui_browser_texture/guides/puppet_browser.md": "1cf93dd6e995f5ce137c3d99bbbce5ec1b821c59be77f14a917f7cb63a2a5343",
         "public/docs/assets/agent_transcripts/field_ui_browser_texture/metadata.edn": "3fa7bd0965c5e559902059422dbd1cd93cf60e3709a44e53a9ed7756cb2a55a2",
         "public/docs/assets/browser_texture/field-ui-on-texture.png": "2f777378ef7d90dabb49d8d31da1ececf8898367b3f3e54a5796add67f86d397",
-        "public/docs/puppet_browser.md": "22f1facd0669d62f9ad7d4ee54d2cf4f389d8826eca566385c4c2e628200599f"
+        "public/docs/puppet_browser.md": "931ba7b4a470aee95df696abfd5b4a23bb29a9c530d3034625f606d77d17cc49"
       },
       "supplementalSources": [
         "public/docs/assets/browser_texture/field-ui-on-texture.png",
         "public/docs/puppet_browser.md"
+      ]
+    },
+    "assets/agent_transcripts/field_vr_ide/metadata.edn": {
+      "captureDigest": "d1d480e4a96ffb92bbe0276a6b4e731b8ded2572574a83bb2e39cd347acff689",
+      "capturedAt": "2026-10-31T20:31:32.665Z",
+      "channels": 1,
+      "file": "assets/web_publications/field_vr_ide/document/metadata.edn",
+      "files": {
+        "assets/web_publications/field_vr_ide/document/metadata.edn": "94eba03ec6b1d3af878cf65b862b6599fbee2ba86d467881b41374c4b8be5928",
+        "assets/web_publications/field_vr_ide/document/outputs.json": "56b7de9bebb750b3f4842858f368928e2821a9a17ec7e5e4c92f03279e3602fb",
+        "assets/web_publications/field_vr_ide/outputs/0.html": "eede874aa18b5bff30ec4eea5575e6a83944f5b5faf69cdef777042a7a8e6102"
+      },
+      "kinds": [
+        "native-image"
+      ],
+      "outputs": "assets/web_publications/field_vr_ide/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/field_vr_ide.yaml": "ee53eeb33fbed6edf67baec613824fab146fa38e5b835cba6e9eba6a3d596818",
+        "public/docs/assets/agent_transcripts/field_vr_ide/guides/field_vr_ide.md": "897719db0e3daa1a52e25f07c8c7eaff6f94ef0978756c7cb28e502130a01b90",
+        "public/docs/assets/agent_transcripts/field_vr_ide/metadata.edn": "7397b62748553d675bf3b97dc6f88e34009bc39b87d44a349edd838f1d701618",
+        "public/docs/assets/agent_transcripts/field_vr_ide/vr_ide_panel_code_.kt": "91b26da800fc54a2b02a238b6eecb7a236c754c19479ac1ee9950b19029d10b1",
+        "public/docs/assets/agent_transcripts/field_vr_ide/vr_ide_playground_code_.kt": "3ea79f511fa8214363d3cfccc42f1972fa8e9d05461fee5d0877ab67fafcc964",
+        "public/docs/assets/agent_transcripts/field_vr_ide/vr_ide_renderer_code_.kt": "966d7c73147749d9001cb821c0df5e6560dde69c0a787783dcdc405fa66ba659",
+        "public/docs/assets/field_vr_ide/companion.png": "fef91aa2684861fce89c175fa373d6526626bd64ecc9ee83677f0e7961290013",
+        "public/docs/field_vr_ide.md": "4516387d30f86ebf98e8916befbe488b4f2012d8cf63fd2a257648631c44b486"
+      },
+      "supplementalSources": [
+        "public/docs/assets/field_vr_ide/companion.png",
+        "public/docs/field_vr_ide.md"
       ]
     },
     "assets/agent_transcripts/fline_exact_booleans/metadata.edn": {
@@ -1968,12 +1997,12 @@
     },
     "assets/agent_transcripts/madp_boids/metadata.edn": {
       "captureDigest": "d1d480e4a96ffb92bbe0276a6b4e731b8ded2572574a83bb2e39cd347acff689",
-      "capturedAt": "2026-10-29T22:44:53.608Z",
+      "capturedAt": "2026-10-31T20:31:22.906Z",
       "channels": 1,
       "file": "assets/web_publications/madp_boids/document/metadata.edn",
       "files": {
         "assets/web_publications/madp_boids/document/metadata.edn": "5d0032141a78fb4319b0a910ab33eab5934b1d5e5209a58d26c45778bdc276bf",
-        "assets/web_publications/madp_boids/document/outputs.json": "e7981d7b14430927f30ed0e48cccdd7011a1d8285caf1c7b4f7efd1c4dc7ce9d",
+        "assets/web_publications/madp_boids/document/outputs.json": "b4f6b472f035d4626087a41d0e58a7f364063b86a3c7e613006978db2ae031a2",
         "assets/web_publications/madp_boids/outputs/0.html": "eef75244bb5f77284c2270704fea5cf94b8f2b28c900b802ff42c0bb92524277"
       },
       "kinds": [
@@ -1982,7 +2011,7 @@
       "outputs": "assets/web_publications/madp_boids/document/outputs.json",
       "sources": {
         "dev_docs/agents/transcripts/madp_boids.yaml": "631ae33bad0aea35ca5a32076a932b47e89b7ae7c13c3c010ca7dff74784cb2a",
-        "public/docs/agent_transcripts.md": "bd9e328be45eb19afdaf4d95b526012a92552679e7ecbc55a5c4c9b0cf626a50",
+        "public/docs/agent_transcripts.md": "8512b0373164cab361b27fcc8f469ce98e0225c455a3f33d0b4d14cbaebff873",
         "public/docs/assets/agent_transcripts/madp_boids/boids_bait_ball_code_.kt": "f0ea1e6f2ad52df552cda83b6ebb855407a0faeeb4791c5eb6382323b06a2248",
         "public/docs/assets/agent_transcripts/madp_boids/boids_bait_ball_compute_.glsl": "69e860072ee2490be04021ef5d5c4629f97bf3f0ab63fba355515584646c3812",
         "public/docs/assets/agent_transcripts/madp_boids/boids_bait_ball_notes_.md": "3d8b9ea07067fddb4c997ead04d91520fa7667142c2ceea197f1965a3b3ca573",
@@ -2496,12 +2525,12 @@
     },
     "assets/agent_transcripts/particles_sketchbook/metadata.edn": {
       "captureDigest": "d1d480e4a96ffb92bbe0276a6b4e731b8ded2572574a83bb2e39cd347acff689",
-      "capturedAt": "2026-10-29T22:44:51.227Z",
+      "capturedAt": "2026-10-31T20:31:20.454Z",
       "channels": 1,
       "file": "assets/web_publications/particles_sketchbook/document/metadata.edn",
       "files": {
         "assets/web_publications/particles_sketchbook/document/metadata.edn": "232c7eb5075ac61bea8bd0c0054cbc103c765c93915976a3bdedd9c9ba9d1fab",
-        "assets/web_publications/particles_sketchbook/document/outputs.json": "a1d33bfcb8e5da405e7dc9039e2af4c10b08889c5137adf604f15696c34200a3",
+        "assets/web_publications/particles_sketchbook/document/outputs.json": "d9fddf92a0d65995d657b5ed88929a680cb4febfc0d93665e2feca09d1b779a3",
         "assets/web_publications/particles_sketchbook/outputs/0.html": "789f3eb7400c78e65d45b01dcb4a2b18edbe70f8001350f9a3fc77533817c6f6"
       },
       "kinds": [
@@ -2510,7 +2539,7 @@
       "outputs": "assets/web_publications/particles_sketchbook/document/outputs.json",
       "sources": {
         "dev_docs/agents/transcripts/particles_sketchbook.yaml": "2be7bfe425ae340f289bd3e0deb041a286ab5f975e127a275bf8abd4f57a59cc",
-        "public/docs/agent_transcripts.md": "bd9e328be45eb19afdaf4d95b526012a92552679e7ecbc55a5c4c9b0cf626a50",
+        "public/docs/agent_transcripts.md": "8512b0373164cab361b27fcc8f469ce98e0225c455a3f33d0b4d14cbaebff873",
         "public/docs/assets/agent_transcripts/particles_sketchbook/metadata.edn": "24c14856726aad5186eb357648677e6587b64738d7f884d0619914037810062a",
         "public/docs/assets/agent_transcripts/particles_sketchbook/particles_boids_code_.kt": "89c2ed280a9f1789190107607d3a151c3d4fc8d6477d0e206adba020ba707bdf",
         "public/docs/assets/agent_transcripts/particles_sketchbook/particles_boids_compute_.glsl": "9dee72db57521ab74224621398df07de50cdf86d28956af6840a94c1285eb63d",
@@ -3404,12 +3433,12 @@
     },
     "assets/agent_transcripts/shadertrinket/metadata.edn": {
       "captureDigest": "d1d480e4a96ffb92bbe0276a6b4e731b8ded2572574a83bb2e39cd347acff689",
-      "capturedAt": "2026-10-29T22:44:58.446Z",
+      "capturedAt": "2026-10-31T20:31:28.195Z",
       "channels": 1,
       "file": "assets/web_publications/shadertrinket/document/metadata.edn",
       "files": {
         "assets/web_publications/shadertrinket/document/metadata.edn": "77d4f24a108b0fb31e221e351e28594946967c46d501efc1d5ce0f1789677aaf",
-        "assets/web_publications/shadertrinket/document/outputs.json": "b21f102afbd0d8799ff51cfaaad6ceb76d4a551cfbde85d7f0ae03d77df0083f",
+        "assets/web_publications/shadertrinket/document/outputs.json": "c8429f8dbae919dd53d7b707a1ba902577cc9d8f59c7bacb4e6f6dc09d8c97e0",
         "assets/web_publications/shadertrinket/outputs/0.html": "3cecdc0f9ed1fc8cbbe925f6dbfa6bff8dde5f275a71d41e2fc28840fbafaaf9"
       },
       "kinds": [
@@ -3418,7 +3447,7 @@
       "outputs": "assets/web_publications/shadertrinket/document/outputs.json",
       "sources": {
         "dev_docs/agents/transcripts/shadertrinket.yaml": "9afa02fecc07031fe00c05c778817ea944e898856c1744b7cbca4c2fc8c507e9",
-        "public/docs/agent_transcripts.md": "bd9e328be45eb19afdaf4d95b526012a92552679e7ecbc55a5c4c9b0cf626a50",
+        "public/docs/agent_transcripts.md": "8512b0373164cab361b27fcc8f469ce98e0225c455a3f33d0b4d14cbaebff873",
         "public/docs/assets/agent_transcripts/shadertrinket/metadata.edn": "c359ecede876a76da964e02fcd8a1665bd7f98389c79f5d8f42c3b27cec2fd1a",
         "public/docs/assets/agent_transcripts/shadertrinket/shadertrinket_camera_code_.kt": "051b81079a5fcec105de568de0f6d103979aa4c7bc515be1b9326acacf4fe293",
         "public/docs/assets/agent_transcripts/shadertrinket/shadertrinket_camera_fragment_.glsl": "91bc60be7eb8a3d1a9d8aee6de734f5d049fb632bc53bb34a431d6ca4089b170",
@@ -3797,12 +3826,12 @@
     },
     "assets/agent_transcripts/splat_shader/metadata.edn": {
       "captureDigest": "d1d480e4a96ffb92bbe0276a6b4e731b8ded2572574a83bb2e39cd347acff689",
-      "capturedAt": "2026-10-29T22:44:45.913Z",
+      "capturedAt": "2026-10-31T20:31:12.794Z",
       "channels": 1,
       "file": "assets/web_publications/splat_shader/document/metadata.edn",
       "files": {
         "assets/web_publications/splat_shader/document/metadata.edn": "6085b2313bd025d80b27fccac42b481fe9bf90c8e28e7eeb5648474b724fcaea",
-        "assets/web_publications/splat_shader/document/outputs.json": "9fbf66897381e3a9063e583165f551ec36da78fd0ef3c20fa4e3da96bad62f80",
+        "assets/web_publications/splat_shader/document/outputs.json": "feea813d28bf1049c2c3df98ad32e9abf8e3ec3b8185e8d1110acf88860bf46c",
         "assets/web_publications/splat_shader/outputs/0.html": "315793c8e9e6cfe64a81fb8c27a61711c4c803f121b176e27f4356e2f229e9d1"
       },
       "kinds": [
@@ -3811,7 +3840,7 @@
       "outputs": "assets/web_publications/splat_shader/document/outputs.json",
       "sources": {
         "dev_docs/agents/transcripts/splat_shader.yaml": "9c1c31d705d0ee0173745ae3fb8bb2d79d617e7386d6afb29804f67e7eb232c8",
-        "public/docs/agent_transcripts.md": "bd9e328be45eb19afdaf4d95b526012a92552679e7ecbc55a5c4c9b0cf626a50",
+        "public/docs/agent_transcripts.md": "8512b0373164cab361b27fcc8f469ce98e0225c455a3f33d0b4d14cbaebff873",
         "public/docs/assets/agent_transcripts/splat_shader/metadata.edn": "5e118614434d9ed48f0b9c1c2515dfbcac9dc851e7be0c3397d21f9af988b02d",
         "public/docs/assets/agent_transcripts/splat_shader/splat_dissolve_code_.kt": "915b087b839a258bd256d6bd1104a50b9a16b1f5e2d6a66f2691f3ff47a318d2",
         "public/docs/assets/agent_transcripts/splat_shader/splat_dissolve_compute_.glsl": "ed4c69f3f194f5b3996c4ec92972f2ef3e5834776c0025939082ee5492ea52c3",
@@ -3935,12 +3964,12 @@
     },
     "assets/agent_transcripts/stacktrinket_feedback/metadata.edn": {
       "captureDigest": "d1d480e4a96ffb92bbe0276a6b4e731b8ded2572574a83bb2e39cd347acff689",
-      "capturedAt": "2026-10-29T22:45:00.636Z",
+      "capturedAt": "2026-10-31T20:31:30.542Z",
       "channels": 1,
       "file": "assets/web_publications/stacktrinket_feedback/document/metadata.edn",
       "files": {
         "assets/web_publications/stacktrinket_feedback/document/metadata.edn": "fd94e0442291348565971c9bb2dae9b5d10b4018f24a2aa06d0ade39a1b62937",
-        "assets/web_publications/stacktrinket_feedback/document/outputs.json": "8ffc43feb26cf467c176fa4c960500c3d8850fea79ca6fb42a828a2e728405d8",
+        "assets/web_publications/stacktrinket_feedback/document/outputs.json": "d2a31e7133503d06dfb068c415911de9843b628b1e8ad6e6508488ac39191b76",
         "assets/web_publications/stacktrinket_feedback/outputs/0.html": "1bb4016cbd60e516d25378f0128a9b0278db7c7098ed6cd1070c80af917b44de"
       },
       "kinds": [
@@ -3949,7 +3978,7 @@
       "outputs": "assets/web_publications/stacktrinket_feedback/document/outputs.json",
       "sources": {
         "dev_docs/agents/transcripts/stacktrinket_feedback.yaml": "e849bdc1d68ddac3f499ade62117c6c13c158f3a8af8922207419da06a1a6cbb",
-        "public/docs/agent_transcripts.md": "bd9e328be45eb19afdaf4d95b526012a92552679e7ecbc55a5c4c9b0cf626a50",
+        "public/docs/agent_transcripts.md": "8512b0373164cab361b27fcc8f469ce98e0225c455a3f33d0b4d14cbaebff873",
         "public/docs/assets/agent_transcripts/stacktrinket_feedback/metadata.edn": "9a26551c651e51b774f05136b9bb7c5b1de00847d33dd1fc68982ae371fa0cc3",
         "public/docs/assets/agent_transcripts/stacktrinket_feedback/stacktrinket_feedback_fog_code_.kt": "a97a1b0a1788d92d535c74325b2993bc27ac2970a3ff020d2ed97a300db43a22",
         "public/docs/assets/agent_transcripts/stacktrinket_feedback/stacktrinket_feedback_fog_notes_.md": "a0fb802b1d8a564e06f2be941c72813124e2f219b61faff44a35cb64cf6386d2",
@@ -4352,12 +4381,12 @@
     },
     "assets/agent_transcripts/webrtc_shader_jam/metadata.edn": {
       "captureDigest": "d1d480e4a96ffb92bbe0276a6b4e731b8ded2572574a83bb2e39cd347acff689",
-      "capturedAt": "2026-10-29T22:44:55.958Z",
+      "capturedAt": "2026-10-31T20:31:25.259Z",
       "channels": 1,
       "file": "assets/web_publications/webrtc_shader_jam/document/metadata.edn",
       "files": {
         "assets/web_publications/webrtc_shader_jam/document/metadata.edn": "7083605b0daf67a08ad0949298636eda53d7e99d654e66557405a1d88d138839",
-        "assets/web_publications/webrtc_shader_jam/document/outputs.json": "2fe5b9f450c113c5b1bb457211fd77035419c2f8b743b08eafe4bb8c7c4b0a0b",
+        "assets/web_publications/webrtc_shader_jam/document/outputs.json": "e707a1625548b10b274c25f2c30371afce22964160ded28191a574c81690a0c4",
         "assets/web_publications/webrtc_shader_jam/outputs/0.html": "7084f74efc5f112bdd9bb5a7d11d79faae9131f7c56676be6f379671f7df2d2c"
       },
       "kinds": [
@@ -4366,7 +4395,7 @@
       "outputs": "assets/web_publications/webrtc_shader_jam/document/outputs.json",
       "sources": {
         "dev_docs/agents/transcripts/webrtc_shader_jam.yaml": "4347e2cb7a261e31c38b530b9258061290e5637b904ceb073877037367aa99cb",
-        "public/docs/agent_transcripts.md": "bd9e328be45eb19afdaf4d95b526012a92552679e7ecbc55a5c4c9b0cf626a50",
+        "public/docs/agent_transcripts.md": "8512b0373164cab361b27fcc8f469ce98e0225c455a3f33d0b4d14cbaebff873",
         "public/docs/assets/agent_transcripts/webrtc_shader_jam/metadata.edn": "f7023cb1cad351167921038a65ffe991d068e78d26ea5486c04eb15d3368995b",
         "public/docs/assets/agent_transcripts/webrtc_shader_jam/webrtc_publish_shader_code_.kt": "26b7f408670562fac5a5b43aacc3be9c5f9c9cdf8ea5622a505e4739d3cf9e57",
         "public/docs/assets/agent_transcripts/webrtc_shader_jam/webrtc_publish_shader_fragment_.glsl": "99d306b6c193e5f76a0982fc0149c26e701395cc049cbad515af4b428b177b6f",
@@ -4425,12 +4454,12 @@
     },
     "assets/agent_transcripts/youtube_kaleidoscope/metadata.edn": {
       "captureDigest": "d1d480e4a96ffb92bbe0276a6b4e731b8ded2572574a83bb2e39cd347acff689",
-      "capturedAt": "2026-10-29T22:46:34.863Z",
+      "capturedAt": "2026-10-31T20:31:42.252Z",
       "channels": 1,
       "file": "assets/web_publications/youtube_kaleidoscope/document/metadata.edn",
       "files": {
         "assets/web_publications/youtube_kaleidoscope/document/metadata.edn": "c397be4cda3d663812af1cb89e93d1a11b56375c9f036638c1be6aec7b8e8181",
-        "assets/web_publications/youtube_kaleidoscope/document/outputs.json": "c728df4b4f2e051873be11f3597f538307e97dd6b7546b320130bbed37a136ef",
+        "assets/web_publications/youtube_kaleidoscope/document/outputs.json": "8332b6c97402c3de4b626aa471394853ed047c550d6bf417920cb1d9e952d24a",
         "assets/web_publications/youtube_kaleidoscope/outputs/0.html": "3fbea7d9be2deb61177ddc1fd265f6a3424aa79d1d35424b8979d609e5ed64b3"
       },
       "kinds": [
@@ -4444,7 +4473,7 @@
         "public/docs/assets/agent_transcripts/youtube_kaleidoscope/youtube_kaleidoscope_renderer_code_.kt": "64daf720c8211e7d59a3a79723fda489d4f33749164253020cbd975c0f8b9170",
         "public/docs/assets/agent_transcripts/youtube_kaleidoscope/youtube_kaleidoscope_shards_code_.kt": "9daffa57e27565815cbd521262a396c4d666eb56d8e437e196a7b4b06baca997",
         "public/docs/assets/puppet_browser/youtube-kaleidoscope.png": "a6e6a7775144d317c347720078fcfb71bda679a41665c66f366adcf4dec8954b",
-        "public/docs/puppet_browser.md": "22f1facd0669d62f9ad7d4ee54d2cf4f389d8826eca566385c4c2e628200599f"
+        "public/docs/puppet_browser.md": "931ba7b4a470aee95df696abfd5b4a23bb29a9c530d3034625f606d77d17cc49"
       },
       "supplementalSources": [
         "public/docs/assets/puppet_browser/youtube-kaleidoscope.png",
@@ -4453,12 +4482,12 @@
     },
     "assets/agent_transcripts/youtube_mouse_keyboard_browser/metadata.edn": {
       "captureDigest": "d1d480e4a96ffb92bbe0276a6b4e731b8ded2572574a83bb2e39cd347acff689",
-      "capturedAt": "2026-10-29T22:46:27.948Z",
+      "capturedAt": "2026-10-31T20:31:34.804Z",
       "channels": 1,
       "file": "assets/web_publications/youtube_mouse_keyboard_browser/document/metadata.edn",
       "files": {
         "assets/web_publications/youtube_mouse_keyboard_browser/document/metadata.edn": "b7316eba54ebaa5129e0b3943b9f896c70998e3c8ca275f46aff661ad6e48351",
-        "assets/web_publications/youtube_mouse_keyboard_browser/document/outputs.json": "0375df529ec4b2f9c64ae17574682580d7afde6021a3acc3e4634c52a24028ac",
+        "assets/web_publications/youtube_mouse_keyboard_browser/document/outputs.json": "30422491f5e21048355526acff3d0f0c5ae088b8fdb38b60f63fdaebd5a2f533",
         "assets/web_publications/youtube_mouse_keyboard_browser/outputs/0.html": "95c96af58c8d6290d2bb395b03ec4257c2174ef9451630c2036e698de7c1ea59"
       },
       "kinds": [
@@ -4472,7 +4501,7 @@
         "public/docs/assets/agent_transcripts/youtube_mouse_keyboard_browser/youtube_desktop_panel_code_.kt": "1c29e0f8711256788d98cd04e56a17d3fd6345b810106594debc022a22918542",
         "public/docs/assets/agent_transcripts/youtube_mouse_keyboard_browser/youtube_desktop_renderer_code_.kt": "53af4900d8eb44bd30c235869088104ad7e91cff42abb1c7ff2e1a86fbbcd8ae",
         "public/docs/assets/puppet_browser/youtube-desktop.png": "0d01b988e49c3dfeb632585f46c75b62eb80e4acf3c2b49b2c8b36ebb31336c9",
-        "public/docs/puppet_browser.md": "22f1facd0669d62f9ad7d4ee54d2cf4f389d8826eca566385c4c2e628200599f"
+        "public/docs/puppet_browser.md": "931ba7b4a470aee95df696abfd5b4a23bb29a9c530d3034625f606d77d17cc49"
       },
       "supplementalSources": [
         "public/docs/assets/puppet_browser/youtube-desktop.png",
@@ -4481,12 +4510,12 @@
     },
     "assets/agent_transcripts/youtube_vr_browser/metadata.edn": {
       "captureDigest": "d1d480e4a96ffb92bbe0276a6b4e731b8ded2572574a83bb2e39cd347acff689",
-      "capturedAt": "2026-10-29T22:46:30.208Z",
+      "capturedAt": "2026-10-31T20:31:37.366Z",
       "channels": 1,
       "file": "assets/web_publications/youtube_vr_browser/document/metadata.edn",
       "files": {
         "assets/web_publications/youtube_vr_browser/document/metadata.edn": "74c4a931a13b43bd81126616295cf403582b4c20c65e8368a9aa97f3235c38d3",
-        "assets/web_publications/youtube_vr_browser/document/outputs.json": "01d1301b98abb468d023634b9e0d4532ee1ff8e135dccceacd9d6883d8418932",
+        "assets/web_publications/youtube_vr_browser/document/outputs.json": "703b0523aac0bded29de652dc8c0160a3b9166b1369b243550094851ade08334",
         "assets/web_publications/youtube_vr_browser/outputs/0.html": "185bb2a06ad4775c37cc9035f503280fe9dbab8b386afcc0fe8be5abefb01d2e"
       },
       "kinds": [
@@ -4500,7 +4529,7 @@
         "public/docs/assets/agent_transcripts/youtube_vr_browser/youtube_vr_panel_code_.kt": "a52099e0b7fa4fb26b1de3a1f488422bcf121fcf383082a5e2c00cdc470b7311",
         "public/docs/assets/agent_transcripts/youtube_vr_browser/youtube_vr_renderer_code_.kt": "d7b86120583e7054b2a123d01f70d92b40b44b8bf67c2e811b8b5369ca924926",
         "public/docs/assets/puppet_browser/youtube-stereo.png": "fdb3f4f79de3957d04f958f1592659787900fbf550a574ce576d6babc8cbd77e",
-        "public/docs/puppet_browser.md": "22f1facd0669d62f9ad7d4ee54d2cf4f389d8826eca566385c4c2e628200599f"
+        "public/docs/puppet_browser.md": "931ba7b4a470aee95df696abfd5b4a23bb29a9c530d3034625f606d77d17cc49"
       },
       "supplementalSources": [
         "public/docs/assets/puppet_browser/youtube-stereo.png",
