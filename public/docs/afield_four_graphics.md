@@ -737,9 +737,11 @@ camera.at = vec(-2.2, 1.8, 2.9)
 // Keyboard controls for the camera; R resets it.
 KeyCamera(camera = camera)
 
-// The file stands the car up and scales it to centimetres (a 0.0001 node scale); this model matrix
-// keeps the rotation and makes it about four units long. meshes[model].meshes[primitive]: copy
-// primitive 0 of model 0 into our mesh.
+/*
+The file stands the car up and scales it to centimetres (a 0.0001 node scale); this model matrix
+keeps the rotation and makes it about four units long. meshes[model].meshes[primitive]: copy
+primitive 0 of model 0 into our mesh.
+*/
 val model = Matrix4f().rotateX(Math.PI.toFloat() / 2).scale(0.01f)
 meshes[0].meshes[0].applyToMesh(m, camera, model)
 camera.p()
