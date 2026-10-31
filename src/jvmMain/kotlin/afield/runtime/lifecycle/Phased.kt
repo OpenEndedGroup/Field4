@@ -292,7 +292,7 @@ fun Box.launchFrames(
             } catch (e: CancellationException) {
             } catch (t: Throwable) {
                 lprintln("error,execution", t.stackTraceToString())
-                box.error(t.message ?: t.javaClass.name)
+                box.displayError(t.message ?: t.javaClass.name)
             } finally {
                 if (box.currentRunningStates[strand]?.watermark == generation) {
                     box.currentRunningStates.remove(strand)

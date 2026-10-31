@@ -1,6 +1,6 @@
 name: lesson_pingpong
 description: >
-  The ping-pong render-to-texture lessons of canonical_graphics, rebuilt from their sidecars: window, 5. PingPongTT, 5. draw pingpoing. For the docs video the draw box's camera is moved in and the window is smaller.
+  The ping-pong render-to-texture lessons of canonical_graphics, rebuilt from their sidecars: window, 5. PingPongTT, 5. draw pingpoing. For the docs video the window is smaller.
 docs:
   - page: afield_four_graphics.md
     why: "Rebuilds the lesson chain this page captures, from the canonical_graphics sidecars."
@@ -77,7 +77,10 @@ operations:
           // The shaders read this push constant to move the dot. It advances a fixed 1/60 s each frame rather
           // than following the clock, so a slow frame slows the animation instead of making it jump.
           var time = 0f
-          m.time = { time += 1f / 60; time }
+          m.time = {
+              time += 1f / 60
+              time
+          }
 
           // One triangle covering the target in clip space (the vertex shader ignores any camera).
           m.set(3, 1) {
@@ -153,7 +156,8 @@ operations:
           renderer += "boo" to module
 
           val camera = Camera()
-          camera.at = vec(0, 0, -1.2)  // closer, for the docs capture
+          // The quad runs from (-1, -1) to (1, 1): close enough that it fills the window.
+          camera.at = vec(0, 0, -1.6)
           mesh.p = camera.p
           mesh.m = camera.m
 

@@ -350,7 +350,7 @@ class StackSLExecution(val inside: Box) : BoxExecution {
             val live = StackSLPrograms.live(inside)
             var lastGood = if (report(first, trace.reply, originSession)) first else null
             val refused = lastGood?.let { live.show(it) }?.takeIf { !it.startsWith("no window") }
-            refused?.let { inside.error(it, StackSLPrograms.PROPERTY, 1); lastGood = null }
+            refused?.let { inside.displayError(it, StackSLPrograms.PROPERTY, 1); lastGood = null }
             val ok = lastGood != null
             if (ok) trace.finish(true) else trace.finish(false, "the program has errors; the window keeps the last program that compiled")
             if (checkIn && ok) checkInLater()
@@ -383,7 +383,7 @@ class StackSLExecution(val inside: Box) : BoxExecution {
                             // A stage the GPU refuses falls back to the whole program; only the program itself failing is an error.
                             if (refused != null && wanted != good) live.show(good)
                             else if (refused != null) {
-                                inside.error(refused, StackSLPrograms.PROPERTY, 1)
+                                inside.displayError(refused, StackSLPrograms.PROPERTY, 1)
                                 lastGood = null
                             }
                         }
@@ -405,7 +405,7 @@ class StackSLExecution(val inside: Box) : BoxExecution {
     private fun report(source: String, reply: (Message) -> Unit, originSession: io.ktor.websocket.WebSocketSession?): Boolean {
         val problems = runCatching { StackSLStudy.diagnose(source) }.getOrElse { listOf(StackSLProblem(true, it.message ?: "$it", null, "$it")) }
         clearErrors(reply, originSession)
-        problems.forEach { p -> inside.error((if (p.error) "" else "warning: ") + p.message, StackSLPrograms.PROPERTY, p.line ?: 1) }
+        problems.forEach { p -> inside.displayError((if (p.error) "" else "warning: ") + p.message, StackSLPrograms.PROPERTY, p.line ?: 1) }
         return problems.none { it.error }
     }
 
@@ -423,7 +423,7 @@ class StackSLExecution(val inside: Box) : BoxExecution {
                 val study = StackSLPrograms.readyStudy(inside)
                 if (study.revisions.liveState()["dirty"] == true) study.checkIn("run by hand")
             } catch (e: afield.study.source.StudyRejection) {
-                inMain { inside.error("not checked in: ${e.message}", StackSLPrograms.PROPERTY, 1) }
+                inMain { inside.displayError("not checked in: ${e.message}", StackSLPrograms.PROPERTY, 1) }
             } catch (e: Exception) {
                 lprintln("warning,stacksl", "checking in '${inside.name}' failed: $e")
             }

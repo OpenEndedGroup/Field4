@@ -153,6 +153,21 @@ def _demo_input(path: str) -> bool:
     return _under(path, "dev_docs/agents/demos")
 
 
+# The authored documents AgentDemoDriftGuard visits beside the demos: each directory directly under
+# one of these roots. Keep in step with AUTHORED_ROOTS there.
+_AUTHORED_DOCUMENT_ROOTS = ("public/docs/assets", "templates", "tools/presentation/example")
+_SIDECAR_SUFFIXES = (".edn", ".kt", ".glsl", ".js", ".yaml")
+
+
+def _saved_document_input(path: str) -> bool:
+    # metadata.edn or a sidecar directly in an authored document: either side of an inline copy.
+    if _demo_input(path):
+        return True
+    return path.endswith(_SIDECAR_SUFFIXES) and any(
+        path.startswith(root + "/") and path.count("/") == root.count("/") + 2 for root in _AUTHORED_DOCUMENT_ROOTS
+    )
+
+
 def _box_code_input(path: str) -> bool:
     # The checker's own definition of its corpus, so the two cannot disagree about a path.
     sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -455,7 +470,7 @@ GUARDS = (
     Guard("checkAgentTranscriptIndex", "agent transcript index", _transcript_input),
     Guard("checkDocsPublications", "published document freshness and coverage", _publication_input),
     Guard("checkAgentTranscriptLayouts", "agent transcript and demo layouts", _demo_input),
-    Guard("checkAgentDemos", "saved demo consistency", _demo_input),
+    Guard("checkAgentDemos", "saved document inline copies", _saved_document_input),
     Guard("checkPythonTools", "Python tools and their corpus contracts", _python_tool_input),
     Guard(
         "checkCompletionCorpusFixtures",

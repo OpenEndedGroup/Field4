@@ -133,7 +133,7 @@ private fun requirePd() {
 private fun Box.reportPdProblems(instance: PdInstance, patch: PdPatch, offset: Int) {
     instance.poll()
     for (p in patch.problems) runCatching { println("Pd: ${p.message}") }
-    for (p in patch.problems) if (p.line >= 0) runCatching { error(p.message, "code", offset + p.line + 1) }
+    for (p in patch.problems) if (p.line >= 0) runCatching { displayError(p.message, "code", offset + p.line + 1) }
 }
 
 /**

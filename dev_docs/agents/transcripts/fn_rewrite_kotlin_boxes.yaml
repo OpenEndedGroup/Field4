@@ -51,9 +51,6 @@ operations:
           beneath is where the `@{...}` snippets get compiled. Drag a different parent in and the
           rewrite follows it.
 
-          NOT `?: error(...)`. Inside a box, `error` is `HasOutput.error(message, property, line)`,
-          which returns Unit, so the elvis widens this to `Any` and the failure surfaces as a
-          baffling "receiver type mismatch" on rewriteFn below. Throw explicitly.
           */
           val host = parents.lastOrNull() ?: throw IllegalStateException("connect this box under a box to compile the @{...} in")
           println("compiling in parent: " + host.name)
@@ -88,9 +85,6 @@ operations:
           beneath is where the `@{...}` snippets get compiled. Drag a different parent in and the
           rewrite follows it.
 
-          NOT `?: error(...)`. Inside a box, `error` is `HasOutput.error(message, property, line)`,
-          which returns Unit, so the elvis widens this to `Any` and the failure surfaces as a
-          baffling "receiver type mismatch" on rewriteFn below. Throw explicitly.
           */
           val host = parents.lastOrNull() ?: throw IllegalStateException("connect this box under a box to compile the @{...} in")
           println("compiling in parent: " + host.name)

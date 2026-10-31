@@ -87,7 +87,7 @@ class CsoundExecution(val inside: Box) : BoxExecution {
         inMain {
             configureOutputProxies(inside, trace.reply, originSession)
             if (!CsoundLibrary.isAvailable) {
-                inside.error(CsoundLibrary.describe(), line = execute.line + 1, property = "code")
+                inside.displayError(CsoundLibrary.describe(), line = execute.line + 1, property = "code")
                 trace.finish(false, "libcsound is not built")
                 return@inMain
             }
@@ -100,13 +100,13 @@ class CsoundExecution(val inside: Box) : BoxExecution {
                 // One error, one message: a diagnostic placed on a line is not printed again below.
                 if (e.problems.none { it.line > 0 }) for (line in e.printed) runCatching { inside.println(line) }
                 for (p in e.problems) {
-                    runCatching { inside.error(p.message, "code", if (p.line > 0) doc.orchestra.firstLine + p.line else execute.line + 1) }
+                    runCatching { inside.displayError(p.message, "code", if (p.line > 0) doc.orchestra.firstLine + p.line else execute.line + 1) }
                 }
                 trace.finish(false, "the orchestra did not compile")
                 send(Message("is-running").payload(IsRunning(execute.uid, false, generation, strand)))
                 return@inMain
             } catch (t: Throwable) {
-                inside.error(t.message ?: t.javaClass.simpleName, line = execute.line + 1, property = "code")
+                inside.displayError(t.message ?: t.javaClass.simpleName, line = execute.line + 1, property = "code")
                 trace.finish(false, "Csound did not start")
                 send(Message("is-running").payload(IsRunning(execute.uid, false, generation, strand)))
                 return@inMain
@@ -196,7 +196,7 @@ class CsoundExecution(val inside: Box) : BoxExecution {
                 return@inMain
             }
             if (state == null) {
-                inside.error("this Csound box is not playing: launch it (Alt-0), then Alt-Enter sends to it", line = execute.line + 1, property = "code")
+                inside.displayError("this Csound box is not playing: launch it (Alt-0), then Alt-Enter sends to it", line = execute.line + 1, property = "code")
                 trace.finish(false, "not running")
                 return@inMain
             }
@@ -211,10 +211,10 @@ class CsoundExecution(val inside: Box) : BoxExecution {
             state.csound.poll()
             if (!result.ok || result.problems.isNotEmpty()) {
                 for (p in result.problems) {
-                    runCatching { inside.error(p.message, "code", if (p.line > 0) firstLine + p.line else execute.line + 1) }
+                    runCatching { inside.displayError(p.message, "code", if (p.line > 0) firstLine + p.line else execute.line + 1) }
                 }
                 if (!result.ok) {
-                    if (result.problems.isEmpty()) inside.error("Csound refused it: " + result.printed.lastOrNull().orEmpty(), line = execute.line + 1, property = "code")
+                    if (result.problems.isEmpty()) inside.displayError("Csound refused it: " + result.printed.lastOrNull().orEmpty(), line = execute.line + 1, property = "code")
                     trace.finish(false, "Csound refused the fragment")
                     return@inMain
                 }

@@ -50,6 +50,7 @@ from check_staged_generated_artifacts import (  # noqa: E402
     _formatted_box_code,
     _demo_input,
     _publication_input,
+    _saved_document_input,
     _python_tool_input,
     _reference_input,
     _transcript_input,
@@ -220,6 +221,14 @@ CHECKS: tuple[Check, ...] = (
         # test_demo_build_scripts.py (the CORPUS that bounced both branches) runs under python-tools,
         # which the same paths select.
         lander_guards=("checkAgentDemos", "checkAgentTranscriptLayouts"),
+    ),
+    Check(
+        "saved-document-inlines",
+        "checkAgentDemos on every authored document's inline copies (2026-10-31: canonical_graphics carried 77 "
+        "stale inline copies, and the first hand edit of its metadata.edn loaded the old lesson code)",
+        lambda c: [p for p in c.paths if _saved_document_input(p)],
+        gradle=("checkAgentDemos",),
+        lander_guards=("checkAgentDemos",),
     ),
     Check(
         "transcript-index",

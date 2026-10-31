@@ -22,7 +22,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "public/docs"
 PUBLICATIONS = DOCS / "assets/web_publications"
 CATALOG = PUBLICATIONS / "catalog.json"
-PILOTS = ("fline_examples", "three_output_gallery")
+PILOTS = ("fline_examples", "three_output_gallery", "canonical_graphics")
 
 
 def publication_node() -> str | None:
@@ -345,6 +345,98 @@ def recipes(group: str) -> list[dict]:
     return result
 
 
+# A box beneath the renderer that takes each lesson's picture; it never reaches the publication.
+SNAPSHOT_HELPER = "lesson-snapshot"
+# Lessons that need something the publishing run does not have (a network peer to stream to).
+LESSONS_NOT_RUN = {"6. RTT - sending", "6. RTT- draw rtt"}
+
+
+async def run_lessons(client, snapshot: dict) -> None:
+    """Every canonical_graphics lesson, one at a time beneath the `window` box, each ending with a
+    picture of what it drew in its own `window` output channel.
+
+    A depth-first walk from `window`: a box is launched after its parent, a box with no children is
+    pictured by the helper box (`snapshotWindow`, 90 frames after it starts) so the lesson's own code
+    is published unchanged, and each box is stopped once everything beneath it is done, so the next
+    lesson draws alone. Most lessons register their module under the same name and would replace
+    the last one anyway; stopping covers the ones that do not.
+    """
+    boxes = {b["uid"]: b for b in snapshot["boxes"]}
+    window = next(b for b in boxes.values() if b.get("name", "").strip() == "window")
+    await command(client, f"launch {window['uid']} --timeout 180")
+    await command(client, "wait-native-renderer " + window["uid"] + " --frames 5 --timeout 120")
+    await command(client, f"new-box --name {SNAPSHOT_HELPER}")
+    await command(client, f"connect {window['uid']} @last")
+
+    def ordered(uids):
+        return sorted((boxes[u] for u in uids if u in boxes), key=lambda b: (b["frame"]["x"], b["frame"]["y"]))
+
+    # The document's graph is not a tree: a lesson can list `window` among its children. Visit each
+    # box once, and never `window` again.
+    seen = {window["uid"]}
+
+    async def visit(box):
+        if box["uid"] in seen:
+            return
+        seen.add(box["uid"])
+        if box.get("name", "").strip() in LESSONS_NOT_RUN or not box.get("code", "").strip():
+            return
+        print(f"LESSON {box['name'].strip()}", flush=True)
+        try:
+            await command(client, f"launch {box['uid']} --timeout 180")
+        except RuntimeError as failed:
+            # A lesson that cannot run here (a file it reads is not in the tree) keeps its code and
+            # simply has no picture; the boxes beneath it need it, so they are skipped too.
+            detail = re.findall(r'"errors": \[([^\]]*)\]', str(failed))
+            print(f"SKIP {box['name'].strip()}: {(detail[0] if detail else str(failed))[:600]}", flush=True)
+            await command(client, f"stop {box['uid']}")
+            return
+        children = ordered(box.get("children") or [])
+        if not children:
+            code = ("fun Box.under(seen: MutableSet<Box> = mutableSetOf()): Sequence<Box> = sequence { "
+                    "for (c in children) if (seen.add(c)) { yield(c); yieldAll(c.under(seen)) } }; "
+                    f"parents.first().under().first {{ it.id == \"{box['uid']}\" }}.snapshotWindow(renderer, frames = 90, skipBlank = true)")
+            await command(client, f"run {SNAPSHOT_HELPER} --value {json.dumps(code)} --timeout 60")
+            await client.wait_frames(150, timeout=60)
+        for child in children:
+            await visit(child)
+        await command(client, f"stop {box['uid']}")
+
+    # Stopping a box leaves what it launched drawing (by design), so each lesson starts from an empty
+    # render list: otherwise every lesson registered under its own name piles into the next picture.
+    clear = ("renderer.renderList.modules.clear(); renderer.renderList.meshModules.clear(); "
+             "renderer.renderList.others.clear(); renderer.renderList.preTargets.clear()")
+    for child in ordered(window.get("children") or []):
+        await command(client, f"run {SNAPSHOT_HELPER} --value {json.dumps(clear)} --timeout 60")
+        await client.wait_frames(5, timeout=30)
+        await visit(child)
+    await command(client, f"delete-box {SNAPSHOT_HELPER}")
+    # Every lesson now carries its own picture, so the window's own last frame is not published.
+    await command(client, f"stop {window['uid']}")
+    # The document's own layout, spread out from its top-left corner: 1.4 times wider (columns 340 apart
+    # become 476, room for a 440-pixel picture) and 3.3 times taller (rows 120 apart become 396, room for
+    # the box and the picture under it). Every box keeps its place relative to the others.
+    after = await client.refresh_snapshot(60)
+    placed = [b for b in after["boxes"] if b.get("code", "").strip() and b.get("name", "").strip() != SNAPSHOT_HELPER]
+    x0 = min(b["frame"]["x"] for b in placed); y0 = min(b["frame"]["y"] for b in placed)
+    for b in placed:
+        frame = b["frame"]
+        try:
+            await client.set_frame(b["uid"], {**frame, "x": x0 + 1.4 * (frame["x"] - x0), "y": y0 + 3.3 * (frame["y"] - y0)})
+        except Exception as gone:  # a box the snapshot still lists but the document no longer has
+            print(f"LAYOUT skipped {b['uid'][:8]}: {gone}", flush=True)
+    await client.playwright_input(action="pageEval", script_mode="body", timeout=60, script="""
+        for (const img of document.querySelectorAll('img[alt="the renderer window"]')) {
+            const content = img.closest('.disclosure-content');
+            if (!content) continue;
+            content.style.width = '440px'; content.style.height = '272px';
+            content.dispatchEvent(new MouseEvent('mouseup', {bubbles: true}));
+        }
+        return true;
+    """)
+    await client.wait_frames(15, timeout=30)
+
+
 async def command(client, text: str) -> dict:
     import field_backdoor as fb
     result = await fb.dispatch_command(client, fb.parse_command(text), text,
@@ -464,6 +556,8 @@ async def capture(selected: list[dict], *, port: int | None, force: bool) -> lis
                                 created = op.get('create', {})
                                 if created.get('properties', {}).get('code', '').strip():
                                     await command(client, f"run {created['box']} --timeout 180")
+                    elif name == "canonical_graphics":
+                        await run_lessons(client, await client.refresh_snapshot(60))
                     else:
                         snapshot = await client.refresh_snapshot(60)
                         boxes = sorted((b for b in snapshot["boxes"] if b.get("code", "").strip()),

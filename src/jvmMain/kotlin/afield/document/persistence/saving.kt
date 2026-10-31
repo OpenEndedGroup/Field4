@@ -1429,9 +1429,12 @@ class SavingContext {
      * Only `metadata.edn` is rewritten; source sidecars, history and generated prose are untouched.
      * Paths are confined to the document directory so a malformed artifact cannot read elsewhere.
      * Returns the refreshed relative paths in document order.
+     *
+     * A missing loose file is an error unless [allowInlineOnly]: then the inline copy is the only one,
+     * which is what Field loads, and it is kept as it is.
      */
-    fun refreshInlineFilesFromDisk(directory: String): List<String> {
-        val refreshed = canonicalInlineMetadata(directory)
+    fun refreshInlineFilesFromDisk(directory: String, allowInlineOnly: Boolean = false): List<String> {
+        val refreshed = canonicalInlineMetadata(directory, allowInlineOnly)
         File(File(directory).canonicalFile, METADATA_EDN)
             .safeSave(refreshed.metadataEdn, createBackup = false, atomic = true)
         return refreshed.paths
@@ -1447,7 +1450,7 @@ class SavingContext {
      * document merely decodes to the same values" — the second one makes `--write` dirty a file
      * nobody touched.
      */
-    fun canonicalInlineMetadata(directory: String): InlineMetadata {
+    fun canonicalInlineMetadata(directory: String, allowInlineOnly: Boolean = false): InlineMetadata {
         val root = File(directory).canonicalFile
         val metadata = File(root, METADATA_EDN)
         require(metadata.isFile) { "missing $METADATA_EDN in ${root.path}" }
@@ -1460,16 +1463,20 @@ class SavingContext {
                 require(target.toPath().normalize().startsWith(rootPath)) {
                     "inline file escapes document directory: ${value.path}"
                 }
-                require(target.isFile) { "missing inline sidecar ${value.path} in ${root.path}" }
-                refreshedPaths += value.path
-                value.copy(inline = target.readText())
+                if (!target.isFile && allowInlineOnly) value else {
+                    require(target.isFile) { "missing inline sidecar ${value.path} in ${root.path}" }
+                    refreshedPaths += value.path
+                    value.copy(inline = target.readText())
+                }
             }
 
             // What Field would save: a large sidecar is referenced, not inlined (see referencingLargeSidecars).
             is Map<*, *> -> LinkedHashMap<Any?, Any?>().also { out ->
                 value.forEach { (key, item) ->
                     val refreshedItem = refresh(item)
-                    out[refresh(key)] = if (refreshedItem is FileInline && key is String && referencesSidecar(key, refreshedItem.inline)) FileRef(refreshedItem.path) else refreshedItem
+                    // An inline-only copy stays inline: a reference to a file that is not there would load as empty.
+                    out[refresh(key)] = if (refreshedItem is FileInline && key is String && referencesSidecar(key, refreshedItem.inline) &&
+                        File(root, refreshedItem.path).isFile) FileRef(refreshedItem.path) else refreshedItem
                 }
             }
 

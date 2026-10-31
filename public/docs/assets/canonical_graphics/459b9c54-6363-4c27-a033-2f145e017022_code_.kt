@@ -13,6 +13,8 @@ module += "mainMesh" to mesh
 renderer += "boo" to module
 
 val camera = Camera()
+// The quad runs from (-1, -1) to (1, 1): close enough that it fills the window.
+camera.at = vec(0, 0, -1.6)
 mesh.p = camera.p
 mesh.m = camera.m
 

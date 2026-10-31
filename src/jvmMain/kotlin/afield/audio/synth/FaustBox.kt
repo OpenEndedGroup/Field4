@@ -112,7 +112,7 @@ fun Box.faust(
         // Both channels, for the same reason Sonic Pi uses both: the marker puts the failure on the
         // line, and the text makes it readable. Faust's own message is terse but accurate.
         val boxLine = offset + headerLines + ((e.line ?: 1) - 1)
-        runCatching { error(e.faustMessage, "code", boxLine) }
+        runCatching { displayError(e.faustMessage, "code", boxLine) }
         runCatching { println("Faust: ${e.raw.trim()}") }
         throw e
     }
@@ -139,7 +139,7 @@ fun Box.faustCompile(source: String): FaustProgram {
     return try {
         FaustEngine.compile(faustModuleName(this), body)
     } catch (e: FaustCompileError) {
-        runCatching { error(e.faustMessage, "code", offset + headerLines + ((e.line ?: 1) - 1)) }
+        runCatching { displayError(e.faustMessage, "code", offset + headerLines + ((e.line ?: 1) - 1)) }
         throw e
     }
 }

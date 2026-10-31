@@ -126,8 +126,12 @@ interface HasOutput {
      */
     fun display(channel: String, message: Any?)
 
-    // an error of null,,-1 means 'clear errors'
-    fun error(message: Any?, property: String = "code", line: Int = -1)
+    /**
+     * Paints [message] as an error diagnostic on [property] at [line] of this box; a null message at
+     * line -1 clears the errors. Named `displayError` rather than `error` so that, inside a box and in
+     * `Box` extensions, `error("...")` is Kotlin's and throws (`?: error(...)` narrows as it should).
+     */
+    fun displayError(message: Any?, property: String = "code", line: Int = -1)
 }
 
 class DefaultOutput : HasOutput {
@@ -155,7 +159,7 @@ class DefaultOutput : HasOutput {
         proxy(message, true, -1)
     }
 
-    override fun error(message: Any?, property: String, line: Int) {
+    override fun displayError(message: Any?, property: String, line: Int) {
         errorProxy(message, property, line)
     }
 }

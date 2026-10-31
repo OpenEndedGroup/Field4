@@ -752,7 +752,7 @@ class Orca internal constructor(
             val message = "orca: ${e.message ?: e.javaClass.simpleName}"
             if (message != lastError) {
                 lastError = message
-                box.error(message)
+                box.displayError(message)
             }
         }
     }

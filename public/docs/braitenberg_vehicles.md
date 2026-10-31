@@ -39,7 +39,7 @@ output back, and a sigmoid becomes bistable: once on, the neuron's own rate hold
 has fallen below the level that turned it on. `hysteresisSweep` drives the input slowly from −2.5 to 2
 and back and reports where the rate crosses 0.5 on each leg.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/braitenberg_vehicles/hysteresis.png" wait="5.0" capture="box" open-outputs="true" padding="20"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/braitenberg_vehicles/hysteresis.png" embed=true wait="5.0" capture="box" open-outputs="true" padding="20"}
 val plain = hysteresisSweep(NeuronParams(selfExcitation = 0.0))
 val latched = hysteresisSweep(NeuronParams(selfExcitation = 1.5))
 for ((name, s) in ["no feedback" to plain, "selfExcitation 1.5" to latched]) {
@@ -71,7 +71,7 @@ for the right, so a vehicle driving flat out is yellow and a turning one is red 
 
 The inhibitory pair use `bias = −1.0`, so their neurons are on in the dark and switched off by light.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/braitenberg_vehicles/zoo.png" wait="12.0" capture="box" open-outputs="true" padding="20"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/braitenberg_vehicles/zoo.png" embed=true wait="12.0" capture="box" open-outputs="true" padding="20"}
 val lights = [Light(60.0, 60.0), Light(180.0, 70.0), Light(120.0, 180.0), Light(200.0, 200.0)]
 val excite = VehicleParams()
 val inhibit = VehicleParams(neuron = NeuronParams(bias = -1.0))
@@ -152,7 +152,7 @@ thresholds climb again, and it arrives at the next light able to be stopped by i
 
 `LightVisits` counts arrivals at a light other than the last one.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/braitenberg_vehicles/bored.png" wait="20.0" timeout="240" capture="box" open-outputs="true" padding="20"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/braitenberg_vehicles/bored.png" embed=true wait="20.0" timeout="240" capture="box" open-outputs="true" padding="20"}
 val lights = [Light(60.0, 60.0), Light(180.0, 70.0), Light(120.0, 180.0), Light(200.0, 200.0)]
 val fixed = VehicleParams(baseSpeed = 0.0, neuron = NeuronParams(bias = -1.0))
 val bored = fixed.copy(neuron = fixed.neuron.copy(adaptationRate = 0.002))

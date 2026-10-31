@@ -77,7 +77,7 @@ class PdExecution(val inside: Box) : BoxExecution {
         inMain {
             configureOutputProxies(inside, trace.reply, originSession)
             if (!PdLibrary.isAvailable) {
-                inside.error(PdLibrary.describe(), line = execute.line, property = "code")
+                inside.displayError(PdLibrary.describe(), line = execute.line, property = "code")
                 trace.finish(false, "libpd is not built")
                 return@inMain
             }
@@ -88,7 +88,7 @@ class PdExecution(val inside: Box) : BoxExecution {
             val state = try {
                 open(inside, code, execute.line)
             } catch (t: Throwable) {
-                inside.error(t.message ?: t.javaClass.simpleName, line = execute.line, property = "code")
+                inside.displayError(t.message ?: t.javaClass.simpleName, line = execute.line, property = "code")
                 trace.finish(false, "the patch did not open")
                 send(Message("is-running").payload(IsRunning(execute.uid, false, generation, strand)))
                 return@inMain
@@ -127,7 +127,7 @@ class PdExecution(val inside: Box) : BoxExecution {
             pd.poll()
             val (placed, unplaced) = patch.problems.partition { it.line >= 0 }
             for (p in unplaced) runCatching { box.println(p.message) }
-            for (p in placed) runCatching { box.error(p.message, "code", firstLine + p.line + 1) }
+            for (p in placed) runCatching { box.displayError(p.message, "code", firstLine + p.line + 1) }
             val graph = PdPatchGraph.parse(code)
             // Listen on every name the patch uses, so a line note can show what went through it.
             for (name in graph.sendNames + graph.receiveNames) closeables += pd.receive(name) {}
@@ -157,7 +157,7 @@ class PdExecution(val inside: Box) : BoxExecution {
             configureOutputProxies(inside, trace.reply, originSession)
             val state = running
             if (state == null) {
-                inside.error("this patch is not running; run the box first, then send it messages", line = execute.line, property = "code")
+                inside.displayError("this patch is not running; run the box first, then send it messages", line = execute.line, property = "code")
                 trace.finish(false, "not running")
                 return@inMain
             }

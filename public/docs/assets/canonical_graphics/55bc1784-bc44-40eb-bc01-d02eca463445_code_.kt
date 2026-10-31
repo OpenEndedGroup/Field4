@@ -19,6 +19,9 @@ renderer += "boo" to module
 
 // p and m are the vertex shader's push-constant matrices, supplied by the camera.
 val camera = Camera()
+// The quad runs from (0, 0) to (1, 1): aim at its centre, close enough that it fills the window.
+camera.at = vec(0.5, 0.5, -0.8)
+camera.target = vec(0.5, 0.5, 0)
 m.p = camera.p
 m.m = camera.m
 
