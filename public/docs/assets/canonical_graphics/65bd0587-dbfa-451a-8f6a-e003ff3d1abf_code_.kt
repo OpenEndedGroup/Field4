@@ -2,10 +2,10 @@
 Slang: hello triangle. Run this in a box beneath the renderer (`window`) box.
 
 The Kotlin here is the same as "1. hello triangle"; what changes is the shader language. This box has a
-`vertex_fragment` property holding one Slang source with both stages (`vsMain` and `fsMain`). When that
-property is non-blank it wins over `vertex`, `fragment`, `vertex_s` and `fragment_s`, so the GLSL
-properties this box also carries are not used. Open `vertex_fragment` from the editor's property
-switcher (`f1` or `ctrl-P`) to read or edit it. Compiling it needs `slangc` on the machine.
+`vertex_fragment` property holding one Slang source with both stages (`vsMain` and `fsMain`); when it
+is non-blank it takes the place of the separate `vertex` and `fragment` shaders. Open `vertex_fragment`
+from the editor's property switcher (`f1` or `ctrl-P`) to read or edit it. Compiling it needs `slangc`
+on the machine.
 
 Nothing below depends on the language: reflection reads the compiled shader's interface, so the mesh
 accessors (`m.vertexData`) come out the same as they do for GLSL.

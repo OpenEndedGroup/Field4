@@ -4,7 +4,6 @@ layout(location = 0) out vec4 uFragColor;
 layout(push_constant) uniform matrices {
     mat4 p;
     mat4 m;
-    vec4 finalColor;
 } pc;
 
 layout(set=0, binding = 0) uniform sampler2D otherView;
@@ -18,6 +17,5 @@ void main()
 
     // Read last frame slightly offset and write it back with channels swapped, so the image drifts and
     // recolours instead of settling.
-    // uFragColor = pc.finalColor;
     uFragColor = vec4(c.gr+vec2(0.001),1,1);
 }

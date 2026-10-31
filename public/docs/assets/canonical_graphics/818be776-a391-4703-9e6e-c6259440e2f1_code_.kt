@@ -18,6 +18,8 @@ prop<RenderToTexture>(target) = RenderToTexture {
 renderer.renderList += "target" to target
 
 var module = moduleHere {
+    // Match the module's pipeline (colour format, depth) to the target it draws into.
+    +target
     // A disabled alternative: a 16-bit float colour format for the module.
     //  imageFormat = VK_FORMAT_R16G16B16A16_SFLOAT
 }
@@ -30,8 +32,6 @@ target += "boo" to module
 val camera = Camera()
 m.p = camera.p
 m.m = camera.m
-// finalColor is a push-constant member; the fragment shader declares it but currently draws white.
-m.finalColor = { vec(Math.random(), Math.random(), Math.random(), 1.0) }
 
 // Target parameters stay live: this can be changed while the box runs.
 target.parameters.clearFirst = true

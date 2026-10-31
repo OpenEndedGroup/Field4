@@ -3,7 +3,7 @@
 Parent chain: window -> 6. RTT - sending. The fragment shader (open it with the editor's property
 switcher) declares `sampler2D bbc`; publishing the target under the name `bbc` binds it there.
 */
-prop<RenderToTexture>(bbc) = _target
+prop<RenderToTexture>(bbc) = target
 
 var module = moduleHere()
 var mesh = Mesh()

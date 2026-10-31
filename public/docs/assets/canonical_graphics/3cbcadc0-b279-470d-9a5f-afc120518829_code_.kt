@@ -2,8 +2,9 @@
 An array of textures.
 
 The fragment shader declares `uniform sampler2D ta[3]` (open "fragment" in the property switcher)
-and samples ta[0]; change the index there to see the other entries. The array published as `ta`
-must have exactly as many entries as the shader declares, or the texture is refused at link time.
+and shows one entry in each third of the quad: here the checkerboard, a gradient, then the
+checkerboard again. The array published as `ta` must have exactly as many entries as the shader
+declares, or the texture is refused at link time.
 Run this box beneath the renderer (`window`) box.
 
 The bundled textures make this lesson runnable; change these paths to try your own images.
@@ -40,7 +41,7 @@ m.set(4, 2) {
         0,
         0 + z,
         1.0,
-        0.1,
+        0,
         z,
         1,
         1,

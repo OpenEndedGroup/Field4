@@ -69,7 +69,15 @@ inData.write {
     }
 }
 
-// Read the first output value back once and print it
-outData.read {
-    print(get())
+/*
+The dispatch is recorded into a frame, so wait a couple of frames before reading the output back; reading
+straight away would print the buffer before the shader has written it. `frames` runs only because it is the
+last expression in the box.
+*/
+frames {
+    frame()
+    frame()
+    outData.read {
+        print(get())
+    }
 }

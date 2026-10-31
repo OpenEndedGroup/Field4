@@ -33,8 +33,6 @@ target += "boo" to module
 val camera = Camera()
 m.p = camera.p
 m.m = camera.m
-// finalColor is a push-constant member; the fragment shader declares it but currently ignores it.
-m.finalColor = { vec(Math.random(), Math.random(), Math.random(), 1.0) }
 
 // Target parameters stay live: this can be changed while the box runs.
 target.parameters.clearFirst = true

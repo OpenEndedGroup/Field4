@@ -38,7 +38,15 @@ renderer.renderList.others["sort"] = Target { command, index ->
     sorter.sort(command, sourceBuffer, 200)
 }
 
-// Read the first key back through the host-visible memory and print it in the editor.
-sourceBuffer.read_ints {
-    _print(this.get(0))
+/*
+The sort runs when a frame is submitted, so wait a couple of frames, then read the first key back through
+the host-visible memory and print it in the editor: 1801 once sorted (2000 before). `frames` runs only
+because it is the last expression in the box.
+*/
+frames {
+    frame()
+    frame()
+    sourceBuffer.read_ints {
+        _print(this.get(0))
+    }
 }
