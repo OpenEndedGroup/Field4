@@ -34,7 +34,10 @@ target += "boo" to module
 // The shaders read this push constant to move the dot. It advances a fixed 1/60 s each frame rather
 // than following the clock, so a slow frame slows the animation instead of making it jump.
 var time = 0f
-m.time = { time += 1f / 60; time }
+m.time = {
+    time += 1f / 60
+    time
+}
 
 // One triangle covering the target in clip space (the vertex shader ignores any camera).
 m.set(3, 1) {
