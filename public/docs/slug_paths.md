@@ -1,6 +1,7 @@
 # Slug filled paths
 
-Slug renders a filled `FLine` as analytic curve coverage on the GPU. The path can
+[Slug](https://sluglibrary.com/) (Eric Lengyel's GPU curve-rendering algorithm,
+[JCGT 2017](https://jcgt.org/published/0006/02/02/)) renders a filled `FLine` as analytic curve coverage on the GPU. The path can
 contain straight edges, cubic curves and holes. Its six-vertex bounding quad moves
 with the camera; the fragment shader evaluates the actual outline within it.
 

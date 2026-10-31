@@ -460,3 +460,7 @@ for (i in 0 until 80) {
 check(Regex("[1-9]\\d*/[1-9]").containsMatchIn(status)) { "publish captured no outputs: " + status }
 ui.pause(800)
 ```
+
+---
+
+**The Tour:** previous, [What Field Is](funFeatures.md) · next, [Frames and the Animation Loop](animation_time_model.md)

@@ -20,6 +20,8 @@ box becomes a program, layered noise over slowly drifting coordinates, and draws
 program and press **ctrl/command-4** to open AI4 chat. Configure an AI provider through Field's
 welcome page if you have not already; see [AI features](aiFeatures.md).
 
+![A program box with its AI4 chat open: the model's reply explaining a blue mound in the aurora, followed by its trace of the program and the fix](assets/stacksl_conversation/saved-chat.png)
+
 The program box edits its `stackSL` property, and the window follows every edit that compiles; an
 edit with an error is marked on its line, and the window keeps the last program that compiled.
 Running the box (ctrl/command-return) checks your program in as a revision. The root holds no code:

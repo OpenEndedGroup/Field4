@@ -1,6 +1,6 @@
 # Kotlin Syntax Overview <span style="font-size: 70%;">(for Python + JavaScript folks)</span>
 
-Field uses _Kotlin_, a terser "better Java" from JetBrains that runs on the JVM. Field uses it because it can call the whole Java ecosystem, and because operator overloading makes graphics math pleasant to write.
+Field uses [_Kotlin_](https://kotlinlang.org/), a terser "better Java" from JetBrains that runs on the JVM. Field uses it because it can call the whole Java ecosystem, and because operator overloading makes graphics math pleasant to write.
  
 For live coding, Kotlin gives Field a useful combination: the compiler catches many mistakes before
 execution, and static types let completion and navigation offer specific help. The tradeoff is that

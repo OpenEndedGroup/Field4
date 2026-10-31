@@ -1,6 +1,6 @@
 # Presenting with Field
 
-A Field presentation is a document you can teach from. Its Kotlin code combines HTML slides, real webpages, YouTube video and live Field documents. The audience gets a separate window; your Field document keeps the source and guide notes. Saved macros and interactive guides work inside the live document on the audience display.
+With a few lines of Kotlin, Field can produce presentations that combine HTML slides, real webpages, YouTube video and live Field documents ([show a live document](#bring-the-working-material-on-screen)). A presentation is itself a document you can teach from. The audience gets a separate window; your Field document keeps the source and guide notes. Saved macros and interactive guides work inside the live document on the audience display.
 
 ## Start a presentation
 
@@ -40,6 +40,8 @@ presentation(title = "A lesson about motion") {
     }
     .present()
 ```
+
+`audienceDocument("wave-study")` puts the live Field document named `wave-study` on the audience display; [Bring the working material on screen](#bring-the-working-material-on-screen) covers its macros and guides.
 
 ### Keyboard search
 

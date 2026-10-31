@@ -7,7 +7,7 @@ you a drawing to change and brings you back here with a box you've already launc
 
 The cheat-sheet can be accessed by pressing the '?' key. Every shortcut on it is yours to change, and
 the card shows whatever you have bound rather than these defaults — [Keyboard
-Shortcuts](keybindings.md) is the whole story. Right now it looks like this:
+Shortcuts](keybindings.md) has the complete list. Right now it looks like this:
 
 ![Field's ? cheatsheet card with the default bindings: Basics (N for a new box, select a box for its editor), Search and Help, Run (Opt-0 runs the whole box, Opt-click and Opt-Up launch, Opt-Down stops, Opt-Enter runs the current line), Editor, and Graph](assets/keybindings/cheatsheet.png)
 

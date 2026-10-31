@@ -4,8 +4,8 @@ Wave Function Collapse (WFC) is a constraint solver that is mostly used to make 
 grid, a set of tiles, and a table of which tiles may sit next to which, and it fills the grid: every
 cell starts holding *every* tile as a possibility, and the solver repeatedly picks the cell with the
 fewest options left, commits it to one tile chosen by weight, and then propagates the consequences
-outward until nothing else can be narrowed. Repeat until every cell is decided. The name is an analogy
-with quantum mechanics; there is no physics involved. Usually the constraints are *learned*: you
+outward until nothing else can be narrowed. Repeat until every cell is decided. The name is borrowed
+from quantum mechanics. Usually the constraints are *learned*: you
 draw one small example of the thing you want, and the solver reads the adjacency table off it and
 produces more.
 
