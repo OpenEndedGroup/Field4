@@ -516,6 +516,22 @@ code {
     }
 }
 
+/* The reference index's "Every file" table has six columns and a long path in
+   the first; in the reading column it scrolls sideways and crops "What it is".
+   Here it hangs out into both margins instead, centred on the column and clear of the reading rail, and
+   scrolls only once the viewport itself is too narrow. */
+.md-typeset .codebase-file-index table td:first-child {
+    width: auto;
+}
+
+@media screen and (min-width: 76.234375em) {
+    .md-typeset .codebase-file-index .md-typeset__scrollwrap {
+        --field-file-index-width: min(calc(100vw - 8rem), 76rem);
+        width: var(--field-file-index-width);
+        margin-inline: calc((100% - var(--field-file-index-width)) / 2);
+    }
+}
+
 .md-typeset pre > code {
     background: var(--mono-panel) !important;
     /* border-right: 0.5px solid white !important; */
