@@ -172,11 +172,8 @@ import com.fasterxml.jackson.annotation.JsonClassDescription
 data class ColoursOfStackSLStudy(val revision: String = "current")
 
 val document = inside.filename
-AgentToolExtensions.register(
-    ColoursOfStackSLStudy::class.java,
-    { it.focus?.document == document && it.focus?.property == "stackSL" },
-    scope = document,
-) { ctx, _ ->
+AgentToolExtensions.register(ColoursOfStackSLStudy::class.java,
+    { it.focus?.document == document && it.focus?.property == "stackSL" }, scope = document) { ctx, _ ->
     val program = ctx.focus!!.box.getPropertyRaw("stackSL", "") as String
     StackSLStudyShader.colourKnobs(program).map { it.hex }
 }

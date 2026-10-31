@@ -89,24 +89,79 @@ ui.pause(1200)
 
 `shift+F1` to `shift+F9` restore a saved view of the canvas; `cmd+shift+F1` to `F9` save one.
 `alt+b` opens the bookmarks panel, which lists the slots with their names and a small map of
-what each one shows. [Moving around the canvas](moving_around_the_canvas.md) explains views,
+what each one shows; below, two slots are saved and named, `ideas` and `render`.
+[Moving around the canvas](moving_around_the_canvas.md) explains views,
 framing (`alt+f`) and resetting (`alt+h`).
 
-```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x700" clip-selector="#bookmarks-panel" screenshot="assets/tour_interface/bookmarks.png" transcript="../../dev_docs/agents/transcripts/docs_capture/tour_interface.yaml" document="docs-tour-interface-bookmarks" fresh-document=true hide-toasts=true padding="8" wait="0" timeout="150" embed=true hidden=true name="tour-interface-bookmarks" alt="The Bookmarks panel: its title, a status line with how many of the nine slots are saved, and the list of slots."}
-ui.eval("if (document.activeElement) document.activeElement.blur(); return true")
-ui.press("Alt+b")
-ui.pause(800)
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x900" clip-selector="#bookmarks-panel" screenshot="assets/tour_interface/bookmarks.png" transcript="../../dev_docs/agents/transcripts/docs_capture/bookmarks_panel.yaml" document="docs-tour-interface-bookmarks" fresh-document=true hide-toasts=true padding="8" wait="0" timeout="150" embed=true hidden=true name="tour-interface-bookmarks" alt="The Bookmarks panel with two of its nine slots saved, F1 named ideas and F2 named render: each shows a small map of the document's boxes with the saved view as a dashed rectangle, the view position, the box being edited and the output panels that were open, with Restore, Save and delete buttons. The other slots read empty."}
+// Slot 1: `sketch` selected with its editor open. Slot 2: the same for `render`.
+ui.openEditor("bm_sketch")
+ui.pause(900)
+ui.down("Meta")
+ui.down("Shift")
+ui.press("F1")
+ui.up("Shift")
+ui.up("Meta")
+ui.pause(300)
+ui.openEditor("bm_render")
+ui.pause(900)
+ui.down("Meta")
+ui.down("Shift")
+ui.press("F2")
+ui.up("Shift")
+ui.up("Meta")
+ui.pause(300)
+ui.down("Alt")
+ui.press("KeyB")
+ui.up("Alt")
+ui.waitForSelector("#bookmarks-panel.is-visible", 8000.0)
+// Name the two slots through the panel's own name fields, the way a reader would.
+ui.eval(
+    """
+  const names = Array.from(document.querySelectorAll("#bookmarks-panel input[type=text]"));
+  if (names.length < 2) return "only " + names.length + " saved slots";
+  [["ideas", 0], ["render", 1]].forEach(([value, i]) => {
+    names[i].value = value;
+    names[i].dispatchEvent(new Event("change"));
+  });
+  return "named";
+""",
+)
+ui.pause(600)
 ```
 
 ## Layers
 
 Layers hide and show groups of boxes. `alt+l` opens the layers panel, where you can show, hide,
-solo and activate each layer; new boxes go on the active layer.
+solo and activate each layer; new boxes go on the active layer. Here a document has four
+layers, and `draft` is active.
 
-```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x700" clip-selector="#layers-panel" screenshot="assets/tour_interface/layers.png" transcript="../../dev_docs/agents/transcripts/docs_capture/tour_interface.yaml" document="docs-tour-interface-layers" fresh-document=true hide-toasts=true padding="8" wait="0" timeout="150" embed=true hidden=true name="tour-interface-layers" alt="The Layers panel with its single default layer, shown and active."}
-ui.eval("if (document.activeElement) document.activeElement.blur(); return true")
-ui.press("Alt+l")
-ui.pause(800)
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x700" clip-selector="#layers-panel" screenshot="assets/tour_interface/layers.png" transcript="../../dev_docs/agents/transcripts/docs_capture/layers_guide.yaml" document="docs-tour-interface-layers" fresh-document=true hide-toasts=true padding="8" wait="0" timeout="150" embed=true hidden=true name="tour-interface-layers" alt="The Layers panel with four layers, default, draft, final and sketch, all shown, each with its eye, its box count and a Solo button; draft is the active layer."}
+ui.eval("if (document.activeElement) document.activeElement.blur(); return 'blurred'")
+ui.down("Alt")
+ui.press("KeyL")
+ui.up("Alt")
+ui.waitForSelector("#layers-panel.is-visible", 8000.0)
+// A fresh document shows only `default`. Show every layer, then make `draft` active, through the
+// panel's own buttons.
+ui.eval(
+    """
+  const all = Array.from(document.querySelectorAll("#layers-panel button")).find(b => b.textContent === "Show all");
+  all.click();
+  return "showed all";
+""",
+)
+ui.pause(700)
+ui.eval(
+    """
+  const rows = Array.from(document.querySelectorAll("#layers-panel .layer-row"));
+  const draft = rows.find(r => r.querySelector(".layer-name").textContent === "draft");
+  if (!draft) return "rows: " + rows.map(r => r.querySelector(".layer-name").textContent).join(",");
+  draft.querySelector(".layer-active").click();
+  return "activated draft";
+""",
+)
+ui.pause(900)
 ```
 
 ## The drawing layer
@@ -189,13 +244,106 @@ check("- move:" in ops) { "the recorded macro has no move: " + ops }
 
 Every save is kept. **Show Document History** in the command palette opens the history panel
 along the bottom of the canvas: a timeline of saves, what changed in each, and buttons to bring
-back a box or the whole document. [Document history](document_history.md) walks through it.
+back a box or the whole document. Below, the box `sketch` has been edited and saved four times,
+and version #1 is selected: the counts say what differs from now, **This Box** lists `sketch`'s
+code version by version, and the diff shows that version against the current code.
+[Document history](document_history.md) walks through it.
 
-```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x700" clip-selector=".history-iframe-container" screenshot="assets/tour_interface/history.png" transcript="../../dev_docs/agents/transcripts/docs_capture/tour_interface.yaml" document="docs-tour-interface-history" fresh-document=true hide-toasts=true padding="8" wait="0" timeout="150" embed=true hidden=true name="tour-interface-history" alt="The document history panel along the bottom of the window: the timeline of saves, the change counts, and the Apply buttons and close button at the top right."}
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x1000" clip-selector=".history-iframe-container" screenshot="assets/tour_interface/history.png" transcript="assets/transcripts/document_history_setup.yaml" document="docs-tour-interface-history" fresh-document=true hide-toasts=true padding="8" wait="0" timeout="180" embed=true hidden=true name="tour-interface-history" alt="The document history panel after four saved edits of the box sketch: the timeline of saves with version #1 selected, the counts of boxes, properties and lines that differ from the current document, This Box listing sketch's values version by version, and the diff of that version against the current code."}
+val uid =
+    ui.eval(
+            """
+            const b = [...document.querySelectorAll(".box")].find(b => (b.textContent || "").includes("sketch"))
+            return b ? (b.uid || b.getAttribute("uid") || b.getAttribute("data-uid")) : null
+            """
+                .trimIndent(),
+        )
+        .toString()
+        .trim('"')
+check(uid.isNotBlank() && uid != "null") { "the setup transcript's sketch box is not on the canvas" }
+ui.openEditor(uid)
+ui.waitForSelector(".monaco-editor", 15000.0)
 ui.eval(
-    "const a = (window.lastActions || []).find(a => a.id === 'show-document-history'); if (!a) throw new Error('no action show-document-history'); a.run(); return true",
+    """
+    const c = document.querySelector(".monaco-editor-container")
+    for (const k of ["width", "height", "top", "right", "left", "bottom", "transform"]) c.style[k] = ""
+    if (window.globalEditor && window.globalEditor.layout) window.globalEditor.layout()
+    return true
+    """
+        .trimIndent(),
 )
-ui.pause(2500)
+ui.pause(6500)
+// Three more saved edits of sketch's code: radius 64, then a ring of points, then radius 80.
+val edits = [
+    "// Successive radius values, saved as three source versions.\nval radius = 64.0\nprintln(\"radius \" + radius)\n",
+    "// Successive radius values, saved as three source versions.\nval radius = 64.0\nval ring = (0 until 12).map { it * 30.0 }\nprintln(\"radius \" + radius + \", \" + ring.size + \" points\")\n",
+    "// Successive radius values, saved as three source versions.\nval radius = 80.0\nval ring = (0 until 12).map { it * 30.0 }\nprintln(\"radius \" + radius + \", \" + ring.size + \" points\")\n",
+]
+for (text in edits) {
+    val quoted = "\"" + text.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n") + "\""
+    ui.eval("window.globalEditor.setValue($quoted); return true")
+    ui.pause(6500)
+}
+ui.eval("window.switchToHistoryForFile(window.currentDocumentFilename || \"default\"); return true")
+// Wait for the sidebar's This Box list to hold sketch's values.
+var story = ""
+for (i in 0 until 100) {
+    ui.pause(250)
+    story =
+        ui.eval(
+                """
+                const f = window.getHistoryIframeElement ? window.getHistoryIframeElement() : document.querySelector("#history-iframe")
+                const d = f && f.contentDocument
+                return "rows=" + (d ? d.querySelectorAll("#box-story-list .box-story-item").length : 0)
+                """
+                    .trimIndent(),
+            )
+            .toString()
+    if ((Regex("rows=(\\d+)").find(story)?.groupValues?.get(1)?.toInt() ?: 0) >= 4) break
+}
+check((Regex("rows=(\\d+)").find(story)?.groupValues?.get(1)?.toInt() ?: 0) >= 4) {
+    "This Box never listed sketch's four values: " + story
+}
+ui.pause(800)
+// Click the row holding version #1 (radius 64.0), where it is drawn.
+val at =
+    ui.eval(
+            """
+            const f = window.getHistoryIframeElement ? window.getHistoryIframeElement() : document.querySelector("#history-iframe")
+            const fr = f.getBoundingClientRect()
+            const row = [...f.contentDocument.querySelectorAll("#box-story-list .box-story-item")].find(r => r.querySelector(".range").textContent.trim() === "#1")
+            row.scrollIntoView({ block: "center" })
+            const r = row.getBoundingClientRect()
+            return [fr.left + r.left + 30, fr.top + r.top + r.height / 2].join(",")
+            """
+                .trimIndent(),
+        )
+        .toString()
+        .trim('"')
+        .split(",")
+        .map { it.toDouble() }
+ui.moveMouse(at[0], at[1], 6)
+ui.clickAt(at[0], at[1])
+var shown = ""
+for (i in 0 until 60) {
+    ui.pause(250)
+    shown =
+        ui.eval(
+                """
+                const f = window.getHistoryIframeElement ? window.getHistoryIframeElement() : document.querySelector("#history-iframe")
+                const d = f.contentDocument
+                return "target=" + (d.querySelector("#target-version")?.textContent?.trim() || "") +
+                    " active=" + (d.querySelector("#box-story-list .box-story-item.active .range")?.textContent?.trim() || "")
+                """
+                    .trimIndent(),
+            )
+            .toString()
+    if (shown.contains("target=#1") && shown.contains("active=#1")) break
+}
+check(shown.contains("target=#1") && shown.contains("active=#1")) {
+    "clicking This Box's #1 row did not select version #1: " + shown
+}
+ui.pause(1200)
 ```
 
 For one line of code rather than the whole document, put the cursor on it and press
@@ -204,21 +352,61 @@ For one line of code rather than the whole document, put the cursor on it and pr
 ## The document guide
 
 The document guide is a reader for a document's own Markdown files and notes, beside the
-canvas. Open it with **Show Document Guide** in the command palette.
+canvas. Open it with **Show Document Guide** in the command palette. A box's `notes` property
+is listed too; here the guide is reading the notes on `sketch`.
 
-```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x480" clip-selector="#document-guide" screenshot="assets/tour_interface/document-guide.png" transcript="../../dev_docs/agents/transcripts/docs_capture/tour_interface.yaml" document="docs-tour-interface-document-guide" fresh-document=true hide-toasts=true padding="8" wait="0" timeout="150" embed=true hidden=true name="tour-interface-document-guide" alt="The Document Guide panel: its title and close button above the list of the document's files and notes."}
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x600" clip-selector="#document-guide" screenshot="assets/tour_interface/document-guide.png" transcript="../../dev_docs/agents/transcripts/docs_capture/tour_interface_document.yaml" document="docs-tour-interface-document-guide" fresh-document=true hide-toasts=true padding="8" wait="0" timeout="150" embed=true hidden=true name="tour-interface-document-guide" alt="The Document Guide reading the box notes of sketch: the list on the left with sketch under Box notes, and the notes themselves, a heading Ring sketch, a sentence and two bullet points, on the right."}
 ui.eval("window.showDocumentGuide(); return true")
-ui.pause(1500)
+ui.waitForSelector("#document-guide #guide-notes button, #document-guide #guide-notes a", 15000.0)
+// Open sketch's notes from the guide's own list, the way a reader would.
+ui.eval(
+    "const b = document.querySelector('#document-guide #guide-notes button, #document-guide #guide-notes a'); b.click(); return true",
+)
+ui.pause(1200)
+val text = ui.eval("return document.querySelector('#document-guide')?.innerText || ''").toString()
+check("Ring sketch" in text) { "the guide is not showing sketch's notes: " + text }
 ```
 
 ## The profiling timeline
 
 **Show Profiling Timeline** records what your boxes' coroutines, the CPU and allocations are
-doing for a few seconds, and lays it out as a timeline you can zoom into.
+doing for a few seconds, and lays it out as a timeline you can zoom into. Below is a
+three-second recording of three running boxes, zoomed in, with the lane of the box that
+allocates selected. [The profiling timeline](profiling_timeline.md) explains how to read it.
 
-```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x520" clip-selector="#profile-timeline" screenshot="assets/tour_interface/profiling-timeline.png" transcript="../../dev_docs/agents/transcripts/docs_capture/tour_interface.yaml" document="docs-tour-interface-profiling-timeline" fresh-document=true hide-toasts=true padding="8" wait="0" timeout="150" embed=true hidden=true name="tour-interface-profiling-timeline" alt="The profiling timeline across the bottom of the window: the duration menu, Record and Latch, an empty overview, and the lanes."}
-ui.eval("window.showProfilingTimeline(); return true")
-ui.pause(1200)
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x520" clip-selector="#profile-timeline" screenshot="assets/tour_interface/profiling-timeline.png" transcript="../../dev_docs/agents/transcripts/profiling_timeline.yaml" document="docs-tour-interface-profiling-timeline" fresh-document=true hide-toasts=true padding="8" wait="0" timeout="180" embed=true hidden=true name="tour-interface-profiling-timeline" alt="The profiling timeline after a real three-second recording of three running boxes, brushed and zoomed: the overview of allocated bytes, a lane for each box's coroutine, and the selected Allocate or reuse lane with its CPU time and allocated bytes."}
+ui.eval("window.showProfilingTimeline(); return 'requested'")
+var ready = false
+repeat(40) {
+    if (!ready) {
+        ui.pause(150)
+        ready =
+            ui.eval(
+                    "return document.getElementById('profile-status')?.textContent.startsWith('Latched') && Number(document.getElementById('profile-timeline')?.dataset.selectedCount) > 30",
+                )
+                ?.toString() == "true"
+    }
+}
+check(ready) { "The real profiling demo did not produce a latched capture" }
+// Frame the actual panel at a readable width; all content and plotted data come from the capture.
+ui.eval("const p=document.getElementById('profile-timeline'); return 'framed'")
+ui.pause(300)
+ui.eval(
+    """
+    const metric=document.getElementById('profile-metric');
+    metric.value='bytes'; metric.dispatchEvent(new Event('change'));
+    const overview=document.getElementById('profile-overview');
+    for(let i=0;i<4;i++) overview.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true}));
+    document.getElementById('profile-zoom').click();
+    const lane=[...document.querySelectorAll('.profile-labels button')].find(b=>b.textContent.includes('Allocate or reuse'));
+    if(!lane) throw new Error('The vector workload has no lane');
+    lane.click();
+    const count=Number(document.getElementById('profile-timeline').dataset.selectedCount);
+    if(count<=0) throw new Error('The brushed interval has no observed resumes');
+    return count;
+""",
+)
+ui.pause(300)
 ```
 
 ## Box output
@@ -226,9 +414,12 @@ ui.pause(1200)
 A box's output (`println`, plots, controls, `display(...)`) appears in panels under the box,
 one per channel. Each panel has a title bar to open or fold it; drag its corner to resize it.
 [Box output](box_output.md) has the details. Some outputs are small tools of their own, such as
-the keyframe browser, which lists saved keyframes and closes with its own **×**.
+the keyframe browser, which lists saved keyframes and closes with its own **×**. Below it reads
+four looks saved for a glow pass, `hot`, `mid`, `soft` and `wide`, and plots each look's values
+for the pass's three settings; [Keyframer examples](keyframer_examples.md#browsing-saved-keys)
+shows the code that saved them.
 
-```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x700" clip-selector="iframe.field-keyframe-browser" screenshot="assets/tour_interface/keyframe-browser.png" transcript="../../dev_docs/agents/transcripts/docs_capture/tour_interface_keyframes.yaml" document="docs-tour-interface-keyframe-browser" fresh-document=true hide-toasts=true padding="8" wait="0" timeout="150" embed=true hidden=true name="tour-interface-keyframe-browser" alt="The keyframe browser in a box's output panel: the folder it is reading, a read-only tag and a close button, and a line saying no key files matched yet."}
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x700" clip-selector="iframe.field-keyframe-browser" screenshot="assets/tour_interface/keyframe-browser.png" transcript="../../dev_docs/agents/transcripts/docs_capture/tour_interface_keyframes.yaml" document="docs-tour-interface-keyframe-browser" fresh-document=true hide-toasts=true padding="8" wait="0" timeout="150" embed=true hidden=true name="tour-interface-keyframe-browser" alt="The keyframe browser in the glow box's output panel, reading the glow-looks folder: four saved keys, hot, mid, soft and wide, and one row for each of the three slots, glow@falloff, glow@intensity and glow@radius, with a tick for every key's value along the slot's range."}
 ui.waitForSelector("iframe.field-keyframe-browser", 15000.0)
 ui.pause(1500)
 ```
@@ -237,11 +428,20 @@ ui.pause(1500)
 
 **Publish document for the web (.zip)** in the command palette captures every box's output and
 packages the document as a folder you can put on any static web host. A panel shows its
-progress and, when it is done, a download button.
+progress and, when it is done, a download button; below, it has captured the output of this
+document's box.
 
-```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x700" clip-selector="#field-publication" screenshot="assets/tour_interface/publish.png" transcript="../../dev_docs/agents/transcripts/docs_capture/tour_interface.yaml" document="docs-tour-interface-publish" fresh-document=true hide-toasts=true padding="8" wait="0" timeout="150" embed=true hidden=true name="tour-interface-publish" alt="The Publish document panel: its title, a status line with its progress, and the close button."}
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x700" clip-selector="#field-publication" screenshot="assets/tour_interface/publish.png" transcript="../../dev_docs/agents/transcripts/docs_capture/tour_interface_document.yaml" document="docs-tour-interface-publish" fresh-document=true hide-toasts=true padding="8" wait="0" timeout="150" embed=true hidden=true name="tour-interface-publish" alt="The Publish document panel after packaging this document: a status line counting the outputs captured, a line on what the folder holds, and the Download web publication (.zip) button."}
 ui.eval(
     "const a = (window.lastActions || []).find(a => a.id === 'publish-document-web'); if (!a) throw new Error('no action publish-document-web'); a.run(); return true",
 )
-ui.pause(2500)
+// Wait for the publication to finish packaging, so the panel shows its result rather than its progress.
+var status = ""
+for (i in 0 until 80) {
+    ui.pause(250)
+    status = ui.eval("return document.querySelector('#field-publication')?.innerText || ''").toString()
+    if (Regex("[1-9]\\d*/[1-9]").containsMatchIn(status) && !status.contains("Capturing")) break
+}
+check(Regex("[1-9]\\d*/[1-9]").containsMatchIn(status)) { "publish captured no outputs: " + status }
+ui.pause(800)
 ```

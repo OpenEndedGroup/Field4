@@ -87,15 +87,26 @@ object BoxCodeFormat {
     // Recorded artifacts whose bytes are pinned to a saved revision (package_function_conversation.py
     // asserts the final source equals studies/function_source/r9-*.kt), so a format would break the record.
     // The page's listings are those same bytes, written by that packager.
-    private val RECORDED = listOf("dev_docs/agents/demos/function_conversation_example/", "public/docs/function_conversation.md")
+    private val RECORDED = listOf(
+        "dev_docs/agents/demos/function_conversation_example/",
+        "public/docs/function_conversation.md",
+        "public/docs/rectsl_conversation.md",
+        "public/docs/stacksl_conversation.md",
+        "public/docs/stackauto_conversation.md",
+    )
 
-    /** Every corpus the formatter owns: transcripts, tracked `*_code_.kt` sidecars outside [GENERATED_ROOT], docs pages. */
+    /** Every corpus the formatter owns: transcripts, demo build scripts, tracked `*_code_.kt` sidecars outside [GENERATED_ROOT], docs pages. */
     fun allCorpora(): List<File> {
         val tracked = ProcessBuilder("git", "ls-files", "*_code_.kt").redirectErrorStream(true).start()
             .inputStream.bufferedReader().readLines()
             .filter { it.isNotBlank() && !it.startsWith(GENERATED_ROOT) && RECORDED.none(it::startsWith) }
             .map(::File)
-        return transcripts() + tracked + docsPages()
+        // A demo's build.yaml / verify.yaml holds the same box code as its saved document's sidecars
+        // (test_demo_build_scripts.py compares them), so both are formatted together.
+        val demoScripts = (File("dev_docs/agents/demos").listFiles() ?: emptyArray()).sortedBy { it.name }
+            .flatMap { d -> listOf("build.yaml", "verify.yaml").map { File(d, it) }.filter(File::isFile) }
+            .filter { f -> RECORDED.none { "dev_docs/agents/demos/${f.parentFile.name}/".startsWith(it) } }
+        return transcripts() + demoScripts + tracked + docsPages()
     }
 
     // `--guard` limits the corpus to the paths the lander says a branch touched, the same

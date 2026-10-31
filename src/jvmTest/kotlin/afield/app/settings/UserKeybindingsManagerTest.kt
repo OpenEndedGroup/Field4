@@ -55,6 +55,24 @@ class UserKeybindingsManagerTest {
         )
     )
 
+    /** A shown path never carries the home directory, and an automation stand-in reads as the default. */
+    @Test
+    fun theDisplayPathHidesTheHomeDirectoryAndTheAutomationStandIn() {
+        val home = "/home/someone"
+        val standIn = "/work/build/field-automation-keybindings.yaml"
+        assertEquals(
+            "~/.afield/keybindings.yaml",
+            UserKeybindingsManager.displayPath(File("/home/someone/.afield/keybindings.yaml"), home, null),
+        )
+        assertEquals(
+            "~/.afield/keybindings.yaml",
+            UserKeybindingsManager.displayPath(File(standIn), home, standIn),
+        )
+        assertEquals("/etc/keys.yaml", UserKeybindingsManager.displayPath(File("/etc/keys.yaml"), home, null))
+        val neighbour = "/home/someoneelse/k.yaml"
+        assertEquals(neighbour, UserKeybindingsManager.displayPath(File(neighbour), home, null))
+    }
+
     /** The generated file has to be valid YAML that reads back as the very defaults it was made from. */
     @Test
     fun generatesAFileThatParsesBackToItsOwnDefaults() {

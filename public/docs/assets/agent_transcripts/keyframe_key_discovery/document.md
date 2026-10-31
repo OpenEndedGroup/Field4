@@ -22,7 +22,7 @@ not a corrupt key, and a list that files both under one red heading is a permane
 A permanent false alarm teaches you to stop reading the alarm.
 
 ```edn [field-box id="kf_junk_vs_damage" role="properties"]
-{"id" "kf_junk_vs_damage" "index" 0 "name" "2 - Junk is not damage" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - Junk is not damage" "_tombstone" false "frame" #afield/rect [700.0 60.0 381.8 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kf_junk_vs_damage_code_.kt" "lines" 49 "characters" 2174 "sha256" "63d54af3595e5bf71459a0db3f831263c1bc4395ce78488a56fb80087cea2977"}]}
+{"id" "kf_junk_vs_damage" "index" 0 "name" "2 - Junk is not damage" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - Junk is not damage" "_tombstone" false "frame" #afield/rect [700.0 60.0 381.8 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kf_junk_vs_damage_code_.kt" "lines" 49 "characters" 2146 "sha256" "e0d773cf15f0628ee2abca916136d6de07ee32cdfa8c0302160d89409e09b6b9"}]}
 ```
 
 ```kotlin [field-property box="kf_junk_vs_damage" name="code" path="kf_junk_vs_damage_code_.kt"]
@@ -42,11 +42,11 @@ val kfs = KeyframeScope()
 
 // Four keys, saved properly.
 ["a" to 1f, "b" to 2f, "c" to 3f, "d" to 4f].forEach { (n, r) ->
-    kfs.saveKey(dir.resolve(n), kfs.Key(mutableMapOf("glow@radius" to r)), "look $n")
+    kfs.saveKey(dir.resolve(n), kfs.Key("glow@radius" to r), "look $n")
 }
 
 // One key, saved properly and then truncated — a write that stopped halfway.
-kfs.saveKey(dir.resolve("e"), kfs.Key(mutableMapOf("glow@radius" to 5f)), "look e")
+kfs.saveKey(dir.resolve("e"), kfs.Key("glow@radius" to 5f), "look e")
 val e = dir.resolve("e")
 Files.writeString(e, Files.readString(e).take(14))
 

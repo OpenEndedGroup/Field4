@@ -46,9 +46,8 @@ if (opacity == "0" || opacity == "missing") error("the ? shortcut did not open t
 Everything Field itself does: the canvas commands (`new-box`, `copy-selection`, …), the
 editor's actions (`execute-fragment`, `ai-assist`, …), the four global ones that work
 wherever you are (`open-command-palette`, `open-anything`, `toggle-docs`, `show-cheatsheet`)
-and all eighteen bookmark slots. Commands that appear only when something is selected
-(`connect`, `-copy`, the box actions a running box declares) are in the file too, and stay
-rebindable even at moments when they are not on offer.
+and all eighteen bookmark slots. Commands that only make sense with something selected, such
+as connecting two boxes, are in the file too, and you can rebind them at any time.
 
 A command that ships without a shortcut appears in the file as `""`, and giving it a chord
 is the same edit as changing one:
@@ -64,11 +63,11 @@ Two things are *not* in the file:
   multi-taps — `Esc Esc` to clear the newest output, `Esc Esc Esc` to clear them all,
   `Shift Shift` to open anything from the canvas, `Cmd Cmd`-and-hold for
   [stepping between boxes](moving_around_the_canvas.md#stepping-between-boxes). These are not single chords, so there is
-  nothing in the grammar below to write them with; they are hard-wired.
+  no way to write them in the shortcut syntax described below; they are hard-wired.
 - **Monaco's own editor bindings.** Autocomplete (`Ctrl+Space`), undo, find, multi-cursor
   and the rest belong to the text editor Field embeds, not to Field's command list.
 
-Two-key chords, such as `cmd+k cmd+s`, *are* in the grammar: see
+Two-key chords, such as `cmd+k cmd+s`, *can* be written in the shortcut syntax: see
 [Writing a two-key chord](#writing-a-two-key-chord). No default uses one, so every chord in
 your file is one you wrote.
 
@@ -101,9 +100,8 @@ bindings:
 ```
 
 **Modifiers** are `cmd`, `alt` and `shift`. `cmd` means Command on macOS and Control
-everywhere else, so one spec covers both platforms; `ctrl`, `control`, `command`, `meta`,
-`mod`, `ctrlcmd` and `super` are all accepted spellings of it. `alt` is Option on macOS;
-`option` and `opt` also work. Case does not matter, and `+`, `-`, a space or a comma all
+everywhere else, so one spec covers both platforms; `ctrl` means the same. `alt` is Option
+on macOS. Case does not matter, and `+`, `-`, a space or a comma all
 separate tokens, so `cmd-shift-d`, `CMD + SHIFT + D` and `cmd shift d` are the same
 shortcut as `cmd+shift+d`.
 
@@ -159,9 +157,8 @@ second key)") and waits **one second**. Then:
 
 So a key can be a shortcut and the first half of a chord at once (`cmd+k` and `cmd+k cmd+s`), and
 the cost is that the plain `cmd+k` now fires a second late. This is the same in an editor and on
-the canvas. In an editor, a chord whose first key has no `cmd` or `alt` is canvas-only, for the
-same reason a bare letter is (below): that key is typing. The second key may be bare: `cmd+k d`
-works in an editor too.
+the canvas. Which chords work while you are typing is covered under
+[Where a shortcut is live](#where-a-shortcut-is-live).
 
 ### Where a shortcut is live
 
@@ -180,10 +177,12 @@ the opposite; no comment at all means both. The scope belongs to the command, no
 spec, so it is not something you edit, but it does tell you whether a bare letter is a
 sensible thing to bind a command to.
 
-One line of your file sets the shortcut for both the editor and the canvas. Matching is on the physical key
-(`KeyboardEvent.code`), not the character produced, so an Alt shortcut survives macOS turning
-`Alt+]` into `’`, falling back to the character itself for shifted punctuation on layouts
-where it is not physically Shift plus that key.
+The same goes for chords. In an editor, a chord whose first key has no `cmd` or `alt` does not
+fire, because that key is typing. The second key may be bare, so `cmd+k d` works in an editor
+too.
+
+One line of your file sets the shortcut for both the editor and the canvas. Shortcuts follow
+the key's position on the keyboard, not the character it types.
 
 ## Finding a command's id
 
@@ -229,8 +228,8 @@ Thread {
     .start()
 ```
 
-The `?` card is the third route, and the shortest one for the twenty or so shortcuts you
-will use every day.
+The `?` card is the quickest way to see your current shortcuts for the twenty or so commands
+you will use every day.
 
 ## When you get it wrong
 
@@ -286,7 +285,7 @@ val bound =
 markdown(
     "main",
     """
-    {muted:${live.path.md}}
+    {muted:${live.displayPath.md}}
 
     {muted:${live.problems.size} problem(s) in it}
 

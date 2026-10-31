@@ -141,7 +141,8 @@ class GeneratedArtifactSelectionTests(unittest.TestCase):
         # A build script is box code, so it also selects the idiom check.
         self.assertEqual(
             task_names(["dev_docs/agents/demos/new_demo/build.yaml"]),
-            ["checkAgentTranscriptLayouts", "checkAgentDemos", "checkPythonTools", "checkBoxIdioms", "citationGates"],
+            ["checkAgentTranscriptLayouts", "checkAgentDemos", "checkPythonTools", "checkBoxIdioms",
+             "checkBoxCodeFormat", "citationGates"],
         )
 
     def test_unrelated_agent_document_does_not_select_demo_guards(self) -> None:

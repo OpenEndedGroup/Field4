@@ -73,6 +73,24 @@ object UserKeybindingsManager {
             ?: File(File(System.getProperty("user.home"), ".afield"), "keybindings.yaml")
 
     /**
+     * How [file] is shown to a person. The stand-in an automated server watches through
+     * `AFIELD_KEYBINDINGS_FILE` reads as the default it replaces, so a docs capture shows what a user's
+     * Field shows; anything else under the home directory is abbreviated to `~/…`.
+     */
+    internal fun displayPath(
+        file: File,
+        home: String = System.getProperty("user.home"),
+        automationFile: String? = System.getenv("AFIELD_KEYBINDINGS_FILE"),
+    ): String {
+        val abs = file.absoluteFile.normalize().path
+        if (!automationFile.isNullOrBlank() && File(automationFile).absoluteFile.normalize().path == abs) {
+            return "~/.afield/keybindings.yaml"
+        }
+        val h = File(home).absoluteFile.normalize().path
+        return if (abs == h || abs.startsWith(h + File.separator)) "~" + abs.substring(h.length) else abs
+    }
+
+    /**
      * The file being watched. Normally `~/.afield/keybindings.yaml`; [watchFile] points it elsewhere.
      */
     @Volatile
@@ -161,7 +179,7 @@ bindings:
         get() = synchronized(inventoryById) { inventoryById.values.toList() }
 
     @Volatile
-    private var current: UserKeybindings = UserKeybindings(path = bindingsFile.absolutePath)
+    private var current: UserKeybindings = UserKeybindings(path = bindingsFile.absolutePath, displayPath = displayPath(bindingsFile))
 
     @OptIn(DelicateCoroutinesApi::class)
     fun start() {
@@ -342,7 +360,7 @@ bindings:
 
     private fun read(): UserKeybindings {
         if (!bindingsFile.exists()) {
-            return UserKeybindings(path = bindingsFile.absolutePath)
+            return UserKeybindings(path = bindingsFile.absolutePath, displayPath = displayPath(bindingsFile))
         }
 
         val problems = mutableListOf<String>()
@@ -392,6 +410,7 @@ bindings:
         val resolved = UserKeybindings(
             bindings = bindings,
             path = bindingsFile.absolutePath,
+            displayPath = displayPath(bindingsFile),
             lastModified = bindingsFile.lastModified(),
             problems = problems,
             effective = effectiveBindings(bindings)

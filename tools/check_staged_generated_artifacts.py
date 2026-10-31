@@ -161,14 +161,20 @@ def _box_code_input(path: str) -> bool:
     return in_corpus(path)
 
 
+_PACKAGED_PAGES = frozenset(
+    f"public/docs/{name}_conversation.md" for name in ("function", "rectsl", "stacksl", "stackauto")
+)
+
+
 def _formatted_box_code(path: str) -> bool:
     # BoxCodeFormat.allCorpora: top-level transcripts, *_code_.kt sidecars outside the generated
     # starting points, and the docs pages directly under public/docs.
-    if path.startswith(("public/docs/assets/agent_transcripts/", "dev_docs/agents/demos/function_conversation_example/")) or path == "public/docs/function_conversation.md":
+    if path.startswith(("public/docs/assets/agent_transcripts/", "dev_docs/agents/demos/function_conversation_example/")) or path in _PACKAGED_PAGES:
         return False
     return (
         _compiled_transcript(path)
         or path.endswith("_code_.kt")
+        or (_demo_input(path) and path.count("/") == 4 and path.endswith(("/build.yaml", "/verify.yaml")))
         or (path.startswith("public/docs/") and path.count("/") == 2 and path.endswith(".md"))
     )
 
