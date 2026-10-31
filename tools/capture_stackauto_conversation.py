@@ -139,10 +139,6 @@ async def capture(port: int, workspace: Path) -> None:
         await c.open_playwright(timeout=90)
         await command(f"launch {RENDERER} --timeout 120")
         await command(f"wait-native-renderer {RENDERER} --frames 5 --timeout 120")
-        # The example document's boxes carry preambles saved before supplier tags; with them the box
-        # beneath the renderer no longer resolves `renderer` (Unresolved reference, 2026-10-31). Run
-        # this copy from a clean preamble, as a fresh document would; the bug is filed as a handoff.
-        await command(f'set {BOX} preamble --value ""')
         await command(f"run {BOX} --timeout 240")
         print(name, "card", await evaluate(CARD_READY), flush=True)
 

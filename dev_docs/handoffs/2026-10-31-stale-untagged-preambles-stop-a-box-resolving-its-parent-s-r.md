@@ -39,3 +39,17 @@ not resolve (an import, or the line being dropped later) is unmeasured (conjectu
 Treat untagged inherit-marked lines in a box's own preamble as unknown origin and let a live ancestor's
 declaration of the same name win (or drop them on load), with a test that reopens a document whose child
 preamble carries the legacy line. Then remove the workaround from the capture script.
+
+## Resolution (2026-10-31)
+
+The theory above was wrong: untagged lines were not the cause. The one-off corpus formatter (`f8cd87437`,
+"Format the frozen Kotlin and GLSL corpus") reformatted saved `preamble` strings inside `metadata.edn` as if
+they were box code, leaving a second, headless copy of `MappedStructure` (indented `lateinit var` lines and a
+stray `}`). That preamble no longer compiles, so `checkPreambleAndExecute` stops before `renderer` is declared.
+Documents never run through that pass load fine, which is why it looked subtle.
+
+Fixed by restoring the 31 preambles that commit rewrote, in six documents (`stackauto_conversation_polytope`,
+`canonical_graphics`, `skinned_characters`, `frame_history_reprojection`, `gpu_probe_bench`,
+`nesting_edge_demo`), each to its bytes before the formatter and only where nothing has edited it since. The
+capture script's workaround is gone; the capture runs both documents clean. Today's `BoxCodeFormat` does not
+touch EDN, so nothing running now repeats it.
