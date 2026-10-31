@@ -1324,6 +1324,7 @@ function loadProperty(box, property) {
     if (monacoEditor) {
         monaco.editor.setModelLanguage(monacoEditor.getModel(), language);
         monacoEditor.setValue(content);
+        monacoEditor.updateOptions({ lineNumbers: offlineLineNumberLabel });
     }
     renderLiterateView(content, language);
 }
@@ -1433,7 +1434,7 @@ async function initializeMonaco() {
                     fontFamily: '"Iosevka Web", monospace',
                     fontWeight: '300',
                     fontLigatures: '"liga" on, "calt" on, "dlig" on, "TXTR" on',
-                    lineNumbers: 'on',
+                    lineNumbers: offlineLineNumberLabel,
                     glyphMargin: false,
                     folding: true,
                     lineDecorationsWidth: 12,
@@ -1542,6 +1543,62 @@ function updateEditorVisibility() {
             monacoEditor.layout();
         }
     }
+}
+
+// Line numbers only on lines that carry code, as in Field's editor (`proseLineFlags` in
+// BootstrapMonacoInit.kt): blank lines and comment-only lines get none.
+const cStyleCommentLanguages = new Set(['kotlin', 'glsl', 'javascript', 'typescript', 'java', 'c', 'cpp', 'slang', 'rust', 'swift', 'scala', 'csharp', 'go']);
+let proseCacheKey = null;
+let proseCache = [];
+
+function proseLineFlags(text, cStyle) {
+    const lines = text.split('\n');
+    const flags = new Array(lines.length).fill(false);
+    let depth = 0;
+    let inString = null;
+    lines.forEach((line, li) => {
+        const blank = line.trim() === '';
+        let code = false;
+        let comment = depth > 0 && !blank;
+        let i = 0;
+        while (i < line.length) {
+            const c = line[i];
+            if (inString != null) {
+                code = true;
+                if (c === '\\' && inString === '"') i++;
+                else if (line.startsWith(inString, i)) { i += inString.length; inString = null; continue; }
+                i++;
+                continue;
+            }
+            if (cStyle && depth === 0 && line.startsWith('//', i)) { comment = true; break; }
+            if (cStyle && line.startsWith('/*', i)) { depth++; comment = true; i += 2; continue; }
+            if (cStyle && depth > 0 && line.startsWith('*/', i)) { depth--; i += 2; continue; }
+            if (depth === 0 && !/\s/.test(c)) {
+                code = true;
+                if (line.startsWith('"""', i)) { inString = '"""'; i += 3; continue; }
+                if (c === '"') inString = '"';
+                if (c === "'") {
+                    const close = line.indexOf("'", i + (line[i + 1] === '\\' ? 3 : 2));
+                    if (close > i) { i = close + 1; continue; }
+                }
+            }
+            i++;
+        }
+        if (inString === '"') inString = null;
+        flags[li] = !code && (comment || blank);
+    });
+    return flags;
+}
+
+function offlineLineNumberLabel(n) {
+    const model = monacoEditor && monacoEditor.getModel();
+    if (!model) return String(n);
+    const key = `${model.uri}#${model.getVersionId()}`;
+    if (key !== proseCacheKey) {
+        proseCache = proseLineFlags(model.getValue(), cStyleCommentLanguages.has(model.getLanguageId()));
+        proseCacheKey = key;
+    }
+    return proseCache[n - 1] ? '' : String(n);
 }
 
 function parseLiterateSegments(text) {
