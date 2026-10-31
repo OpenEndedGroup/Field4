@@ -112,6 +112,15 @@ class SelectionTest(unittest.TestCase):
         self.assertNotIn("demo-corpus", keys(Change({"dev_docs/agents/transcripts/x.yaml": "A"})))
         self.assertIn("transcript-index", keys(Change({"dev_docs/agents/transcripts/x.yaml": "A"})))
 
+    def test_a_docs_document_sidecar_selects_the_inline_copy_guard(self) -> None:
+        sidecar = "public/docs/assets/canonical_graphics/0e01f4b0_code_.kt"
+        self.assertIn("saved-document-inlines", keys(Change({sidecar: "M"})))
+        self.assertIn("saved-document-inlines", keys(Change({"templates/first-steps/metadata.edn": "M"})))
+        # Negative controls: a figure beside the documents, and a generated transcript document.
+        self.assertNotIn("saved-document-inlines", keys(Change({"public/docs/assets/afield_four_graphics/04c.png": "M"})))
+        self.assertNotIn("saved-document-inlines",
+                         keys(Change({"public/docs/assets/agent_transcripts/x/metadata.edn": "M"})))
+
     def test_build_gradle_selects_the_python_suites_as_the_lander_does(self) -> None:
         self.assertIn("python-tools", keys(Change({"build.gradle.kts": "M"})))
 

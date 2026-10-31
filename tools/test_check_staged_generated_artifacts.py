@@ -145,6 +145,11 @@ class GeneratedArtifactSelectionTests(unittest.TestCase):
              "checkBoxCodeFormat", "citationGates"],
         )
 
+    def test_docs_document_sidecar_selects_the_inline_copy_guard(self) -> None:
+        self.assertIn("checkAgentDemos", task_names(["public/docs/assets/canonical_graphics/metadata.edn"]))
+        self.assertIn("checkAgentDemos", task_names(["tools/presentation/example/field-demo/a_code_.kt"]))
+        self.assertNotIn("checkAgentDemos", task_names(["public/docs/assets/agent_transcripts/x/metadata.edn"]))
+
     def test_unrelated_agent_document_does_not_select_demo_guards(self) -> None:
         self.assertEqual(task_names(["dev_docs/agents/notes.md"]), ["citationGates"])
 
@@ -153,7 +158,7 @@ class GeneratedArtifactSelectionTests(unittest.TestCase):
         # code, and the canonical_graphics bundle is where a private import once shipped.
         self.assertEqual(
             task_names(["public/docs/assets/canonical_graphics/abc_code_.kt"]),
-            ["checkBoxIdioms", "checkBoxCodeFormat", "citationGates"],
+            ["checkAgentDemos", "checkBoxIdioms", "checkBoxCodeFormat", "citationGates"],
         )
 
     def test_box_code_format_covers_authored_code_not_generated_or_recorded_copies(self) -> None:
@@ -182,7 +187,7 @@ class GeneratedArtifactSelectionTests(unittest.TestCase):
         # the three committed forms PersonalBoundaryTest reads.
         self.assertEqual(
             task_names(["templates/hello/metadata.edn"]),
-            ["checkCompletionCorpusFixtures", "citationGates"],
+            ["checkAgentDemos", "checkCompletionCorpusFixtures", "citationGates"],
         )
 
     def test_unrelated_change_selects_nothing(self) -> None:

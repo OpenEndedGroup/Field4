@@ -557,7 +557,7 @@ automatically.
 | `AgentTranscriptIndexGuard` (`checkAgentTranscriptIndex`) | `public/docs/agent_transcripts.md` has exactly one entry per transcript (206), an Open link exactly when materialized (200), section markers that match the registry, and no hand-written totals |
 | `AgentTranscriptLayoutGuard` (`checkAgentTranscriptLayouts`) | positive frames inside the canvas, ordinary boxes at most 620 by 170, unique ids; exceptions in `transcript_layout_exceptions.yaml`, and a stale exception fails |
 | `AgentDemoRegistrationTest` | every demo document under `dev_docs/agents/demos/` has a transcript and a verification level or a written reason; every docs-asset document is a starting point or on a list that may only shrink |
-| `AgentDemoDriftGuard` (`checkAgentDemos`) | demo `metadata.edn` is byte-for-byte codec output and inline code equals its sidecar |
+| `AgentDemoDriftGuard` (`checkAgentDemos`) | demo and authored docs/template `metadata.edn` is byte-for-byte codec output and inline code equals its sidecar (a stale inline copy loads instead of the sidecar once `metadata.edn` is the newer file) |
 | `check_box_idioms.py` (`checkBoxIdioms`) | published box code avoids known non-idioms (redundant renderer lookups and similar) |
 
 **Conversation demos.** The AI4 "talk a study into existence" demos (function, StackSL, RectSL,

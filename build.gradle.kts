@@ -2323,7 +2323,7 @@ tasks.register<JavaExec>("regenerateAgentTranscriptStartingPoints") {
 // yet comes back modified from every regenerate, in every branch.
 tasks.register<JavaExec>("checkAgentDemos") {
     group = "verification"
-    description = "Fails when a dev_docs/agents/demos metadata.edn inline fallback differs from its loose sidecar file, or when metadata.edn is not byte-for-byte what Field's EDN codec writes."
+    description = "Fails when an authored document's metadata.edn inline fallback (dev_docs/agents/demos, and documents directly under public/docs/assets, templates and tools/presentation/example) differs from its loose sidecar file, or when metadata.edn is not byte-for-byte what Field's EDN codec writes."
     javaLauncher.set(javaToolchains.fieldLauncher())
     classpath = sourceSets["jvmMain"].runtimeClasspath
     mainClass.set("afield.tools.docs.AgentDemoDriftGuard")
@@ -2337,7 +2337,7 @@ tasks.register<JavaExec>("checkAgentDemos") {
 // tree; -Ponly=<name>[,<name>] narrows it further, to the document(s) actually being worked on.
 tasks.register<JavaExec>("regenerateAgentDemos") {
     group = "documentation"
-    description = "Refreshes dev_docs/agents/demos metadata.edn inline fallbacks from their loose files through Field's EDN codec. Pass -Ponly=<document>[,<document>] to touch only those demos."
+    description = "Refreshes the inline fallbacks in every document checkAgentDemos covers from their loose files through Field's EDN codec. Pass -Ponly=<document>[,<document>] (a directory name or a path) to touch only those documents."
     javaLauncher.set(javaToolchains.fieldLauncher())
     classpath = sourceSets["jvmMain"].runtimeClasspath
     mainClass.set("afield.tools.docs.AgentDemoDriftGuard")
