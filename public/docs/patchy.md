@@ -1,27 +1,11 @@
-# Patchy in a Field document
+[Patchy](https://github.com/SethRobinson/Patchy) is a layered painting editor. In Field it runs
+live inside a box's output panel, and your Kotlin code and [AI4](ai4_tools.md), Field's AI chat, can
+edit the same canvas you paint in by hand.
 
-[Patchy](https://github.com/SethRobinson/Patchy) runs as a live, layered painting editor inside a
-Field output. Kotlin and AI4 can edit the same canvas you paint in by hand. Choose
-**Patchy layered painting editor** in `./field.sh --setup` (Windows:
-`field.bat --setup`) and approve its optional **BUILD** step. Or build it later:
-
-```diffstatic {data-lang=bash}
-./gradlew buildPatchyWeb
-```
-
-The recipe fetches a pinned upstream Patchy revision, applies Field's small bridge patch, and
-builds the threaded WebAssembly editor. Its source, Qt and Emscripten toolchains, and finished
-site are cached under `~/.field4/patchy-web/`, outside the Field checkout. Expect several GB of
-downloads and a long first build. Rebuilds reuse the cache. Field finds the finished site on its
-next launch and serves it from `/patchy/` with the isolation headers Patchy requires. This
-optional task is outside Field's normal build and `check`.
-
-Inside Field, Patchy uses a compact black Qt theme with flat controls and Iosevka Field
-for Latin UI text. The bundled Noto fonts cover other scripts. This styling belongs to
-the embedded editor; a standalone Patchy window keeps its own theme.
-
-To use a separately built site while developing, set `AFIELD_PATCHY_WEB_ROOT` to its directory
-before starting Field. It must contain `patchy.html`, `patchy.js`, `patchy.wasm`, and `patchy.data`.
+Patchy is optional and has to be built once. Choose **Patchy layered painting editor** in
+`./field.sh --setup` (Windows: `field.bat --setup`) and approve its optional **BUILD** step, or
+build it later with `./gradlew buildPatchyWeb` ([Building Patchy](#building-patchy) says what that
+does). Field picks it up the next time it starts.
 
 This box opens a painting kept in the Field document, gives AI4 tools to inspect, create, paint,
 and undo, then makes the first mark. Open the box's AI Chat panel and ask it to use the tools.
@@ -90,7 +74,8 @@ go {
 ```
 
 The tools run in the same live Patchy instance as the person painting. Re-running this box
-replaces its AI4 tools; the saved PSD is restored before a queued tool call starts. `p.state()`
+replaces its AI4 tools; before a waiting tool call runs, Field loads the saved PSD back into the
+editor. `p.state()`
 reports the current documents, layers, and IDs, including edits made by hand. The four tools
 above are box code: change their descriptions or add another operation as your painting evolves.
 The final `go { ... }` makes the first mark when the box runs. Those Patchy calls wait for replies
@@ -118,8 +103,9 @@ read the active document's name. The visible iframe is the live view; this Kotli
 separate preview snapshot method.
 
 Patchy's [scripting guide](https://github.com/SethRobinson/Patchy/blob/main/scripts/bundled/scripting-guide.md)
-describes the JavaScript objects and methods. Each `script` call reads the current edit token
-before it runs; if a manual edit intervenes, Patchy rejects the call rather than overwriting it.
+describes the JavaScript objects and methods. Before each `script` call runs, Field
+records which edit the painting is at; if you paint by hand in between, Patchy rejects the call
+rather than overwriting your stroke.
 `p.connected` reports whether the iframe is ready, and `p.close()` ends this Kotlin session;
 stopping the box closes it automatically.
 
@@ -134,3 +120,18 @@ still downloads through the browser.
 `patchyWeb()` also accepts `channel` (the output panel name), `width` and `height` in pixels.
 Without `documentFile`, the painting is only in the live browser session. Setting
 `autosave = false` with a `documentFile` loads the PSD but does not write later edits to it.
+
+## Building Patchy
+
+```diffstatic {data-lang=bash}
+./gradlew buildPatchyWeb
+```
+
+The task fetches a pinned upstream Patchy revision, applies Field's small bridge patch, and
+builds the threaded WebAssembly editor. Its source, Qt and Emscripten toolchains, and finished
+site are cached under `~/.field4/patchy-web/`, outside the Field checkout. Expect several GB of
+downloads and a long first build. Rebuilds reuse the cache. Field finds the finished site on its
+next launch and serves it from `/patchy/`. The task is not part of Field's normal build.
+
+To use a separately built site while developing, set `AFIELD_PATCHY_WEB_ROOT` to its directory
+before starting Field. It must contain `patchy.html`, `patchy.js`, `patchy.wasm`, and `patchy.data`.
