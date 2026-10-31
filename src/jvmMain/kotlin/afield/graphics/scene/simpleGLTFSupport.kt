@@ -119,7 +119,11 @@ fun Box._gltfModelHereWithTexture(
         val was = textureResolver
         textureResolver = { tex ->
             if (tex.name == "uTextures") {
-                val textures = loader.meshes[0].material.textures.map { slot -> slot.texture as HasImageView }
+                // Exactly as many as the shader declares: a file with more images than the array binds the
+                // first ones, and one with fewer repeats its last, so any file links.
+                val all = loader.meshes[0].material.textures.map { slot -> slot.texture as HasImageView }
+                val count = tex.arrayCount.coerceAtLeast(1)
+                val textures = List(count) { i -> all[minOf(i, all.size - 1)] }
                 val maxMip = textures.maxOf { texture -> texture.imageView.mipLevels }
                 fromViews(textures, sampler = TextureSampler(renderer = fromContext(), maxMip, true))
             } else was(tex)

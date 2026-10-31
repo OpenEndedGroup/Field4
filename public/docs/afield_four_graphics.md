@@ -718,38 +718,44 @@ The declared array length (`ta[3]`) is the descriptor count, and the count must 
 
 ## Loading a glTF model
 
-Everything so far built its geometry in Kotlin. `gltfModelHere(path)` instead reads a glTF file and hands back a module *and* the meshes it found, with the shaders already matched to how that data is laid out:
+Everything so far built its geometry in Kotlin. `gltfModelHere(path)` instead reads a glTF file and hands back a module *and* the meshes it found, with shaders written to match how that file lays out its data. Here it loads the Khronos toy car the [Fabricate renderer](fabricate_renderer.md) pages use:
 
-```diffstatic {data-lang=kotlin}
-var (module, meshes) = gltfModelHere("glTF-Sample-Models/2.0/Box/glTF/Box.gltf")
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/04c-gltf-toycar.png" alt="the Khronos toy car, a 1950s saloon with tail fins, filling a native window seen from the front left, shaded by its view-space normals in blue, green and magenta" wait="4" timeout="120" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="four-gltf-toycar"}
+var (module, meshes) = gltfModelHere("public/docs/assets/fabricate_demo/ToyCar.glb")
 
 var m = Mesh()
-
-module += "let's go" to m
+module += "car" to m
 renderer += "boo" to module
 
+// orthoness blends between perspective (0) and orthographic (1) projection.
 val camera = Camera()
 camera.p.orthoness = 0.3
 camera.p.matchDepth = 2.0
+camera.target = vec(0, 0.4, 0)
+camera.at = vec(-2.2, 1.8, 2.9)
 
+// Keyboard controls for the camera; R resets it.
 KeyCamera(camera = camera)
-meshes[0].meshes[0].applyToMesh(m, camera)
 
-camera.at = vec(0, 0, -10)
+// The file stands the car up and scales it to centimetres (a 0.0001 node scale); this model matrix
+// keeps the rotation and makes it about four units long. meshes[model].meshes[primitive]: copy
+// primitive 0 of model 0 into our mesh.
+val model = Matrix4f().rotateX(Math.PI.toFloat() / 2).scale(0.01f)
+meshes[0].meshes[0].applyToMesh(m, camera, model)
 camera.p()
 
 loop {
-    module.VertexData.modelView = meshes[0].meshes[0].modelView(camera)
-    module.VertexData.proj = camera.p()
     frame()
 }
 ```
 
-Three things to notice. `meshes[0].meshes[0].applyToMesh(m, camera)` copies one primitive of one model into your mesh; the outer index is the model, the inner one the primitive, so a multi-part file is addressed rather than flattened. `module.VertexData` is the reflected *uniform block*, assigned whole (`module.VertexData.proj = camera.p()`) instead of through per-member lambdas. And `camera.p.orthoness` / `camera.p.matchDepth` are Field's blend between perspective and orthographic rather than a choice between them.
+The colours are the written fragment shader's: it shades by the view-space normal, so faces turned the same way share a colour.
 
-`applyToMesh` composes `modelView` as `view * model`, with the primitive's own node transform as the model, so a multi-node file assembles where its nodes put it. The loop keeps that by assigning `meshes[0].meshes[0].modelView(camera)`, the same product, rather than `camera.m()` alone. [Geometry from disk](geometry_from_disk.md) has the measurement behind it.
+Three things to notice. `meshes[0].meshes[0].applyToMesh(m, camera, model)` copies one primitive of one model into your mesh; the outer index is the model, the inner one the primitive, so a multi-part file is addressed rather than flattened. The `model` matrix is there because this file stands the car up and scales it to a few centimetres with its own node transform: the box keeps the rotation and makes the car about four units long, a size the camera can frame. And `camera.p.orthoness` / `camera.p.matchDepth` are Field's blend between perspective and orthographic rather than a choice between them.
 
-The vertex shader shows what "already matched to the data" means. Rather than declaring vertex attributes, it reads a flat float array through a buffer reference and unpacks by stride:
+`applyToMesh` also fills the shader's `modelView` (view times model) and `proj` push constants from the camera every frame, which is why the loop has nothing to do but `frame()`. [Geometry from disk](geometry_from_disk.md) has the measurement behind the composition.
+
+The vertex shader shows what "matched to the data" means. Rather than declaring vertex attributes, it reads a flat float array through a buffer reference and unpacks by stride:
 
 ```diffstatic {data-lang=glsl}
 layout(std430, buffer_reference) readonly buffer VertexBuffer {
@@ -760,56 +766,42 @@ layout(std430, buffer_reference) readonly buffer IndexBuffer {
     uint indexData[];
 };
 
-layout (binding = 0) uniform VertexData {
-    mat4 modelView; // view * model
-    mat4 proj; // projection
-
+layout(push_constant) uniform PushConstants {
+    mat4 modelView;        // view * model
+    mat4 proj;             // projection
     vec4 materialBaseColor;
-
-    uint vertexOffset; // in floats
-    uint indexOffset; // in indices
-    uint vertexStride; // in floats
-    uint useVertexColor; // bool as uint
-} data;
+    uint vertexOffset;     // in floats
+    uint indexOffset;      // in indices
+    uint vertexStride;     // in floats
+    uint useVertexColor;   // bool as uint
+    VertexBuffer vertexBuffer;
+    IndexBuffer indexBuffer;
+} pc;
 
 void main()
 {
-    uint idx = pc.indexBuffer.indexData[data.indexOffset+uint(gl_VertexIndex)];
-    uint base = data.vertexOffset + idx * data.vertexStride;
+    uint idx = pc.indexBuffer.indexData[pc.indexOffset+uint(gl_VertexIndex)];
+    uint base = pc.vertexOffset + idx * pc.vertexStride;
 
     vec3 pos = vec3(
-    pc.vertexBuffer.vertexData[base + 0],
-    pc.vertexBuffer.vertexData[base + 1],
-    pc.vertexBuffer.vertexData[base + 2]
+        pc.vertexBuffer.vertexData[base + 0],
+        pc.vertexBuffer.vertexData[base + 1],
+        pc.vertexBuffer.vertexData[base + 2]
     );
-    // … normal at +3, uv at +6, colour at +8 …
+    // ... normal, uv and colour follow at base + 3 to base + 11
 }
 ```
 
 `vertexOffset`, `indexOffset` and `vertexStride` are what let every primitive in the file share one pair of buffers: the mesh selects its slice by offset instead of owning an allocation. Manual indexing (`indexData[indexOffset + gl_VertexIndex]`) rather than a bound index buffer is the same trade.
 
-The companion lesson swaps one call for the textured variant, `gltfModelWithTextureHere(path)`, which additionally binds the file's images as a sampler array — the array-of-samplers pattern above, populated from the asset rather than by hand:
+The companion lesson swaps one call for the textured variant, `gltfModelWithTextureHere(path)`, which also binds the file's images as the sampler array `uTextures` the fragment shader declares: the array-of-samplers pattern above, filled from the file rather than by hand. The array gets exactly as many images as the shader declares, so the car's ten fill its six slots with the first six:
 
-```diffstatic {data-lang=glsl}
-layout(location = 2) in vec2 vUV;
-layout(set = 0, binding = 1) uniform sampler2D uTextures[6];
-
-void main()
-{
-    uFragColor = texture(uTextures[0], vUV);
-}
-```
-
-It also shows how to place a primitive using the file's own transform: `camera.m() * meshes[0].meshes[2].bindPose.m` composes the view matrix with the primitive's bind pose. That is the hand-written form of the `model` default `applyToMesh` supplies, and the fix for any loop that assigns `modelView` itself.
-
-The saved lessons read the [glTF Sample Models](https://github.com/KhronosGroup/glTF-Sample-Models) collection, which is not in the tree; their paths are relative to the directory Field runs from. The same call works on a file that is: the Khronos toy car the [Fabricate renderer](fabricate_renderer.md) pages use. This file stands the car up and scales it to a few centimetres with its node transform, so the box passes `applyToMesh` its own model matrix, keeping the rotation and making the car about four units long, and lets the shaders `gltfModelHere` writes for the file do the rest:
-
-```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/04c-gltf-toycar.png" alt="the Khronos toy car, a 1950s saloon with tail fins, filling a native window seen from the front left, shaded by its view-space normals in blue, green and magenta" wait="4" timeout="120" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="four-gltf-toycar"}
-var (module, meshes) = gltfModelHere("public/docs/assets/fabricate_demo/ToyCar.glb")
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/04d-gltf-toycar-textured.png" alt="the same toy car with its textures: red body and bumpers, a green roof and bonnet carrying orange flames, a chequered stripe and a racing number, and whitewall tyres" wait="4" timeout="120" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true hidden=true name="four-gltf-toycar-textured" source-box="assets/canonical_graphics/f1d2cbea-b20d-4794-b9f7-37b847dcdeb6" source-box-properties="vertex,fragment" source-box-wait="0.1"}
+var (module, meshes) = gltfModelWithTextureHere("public/docs/assets/fabricate_demo/ToyCar.glb")
 
 var m = Mesh()
 module += "car" to m
-renderer += "car" to module
+renderer += "boo" to module
 
 val camera = Camera()
 camera.p.orthoness = 0.3
@@ -818,6 +810,7 @@ camera.target = vec(0, 0.4, 0)
 camera.at = vec(-2.2, 1.8, 2.9)
 KeyCamera(camera = camera)
 
+// The same placement as the untextured lesson: the file's rotation, scaled to about four units long.
 val model = Matrix4f().rotateX(Math.PI.toFloat() / 2).scale(0.01f)
 meshes[0].meshes[0].applyToMesh(m, camera, model)
 camera.p()
@@ -826,8 +819,6 @@ loop {
     frame()
 }
 ```
-
-The colours are the generated fragment shader's: it shades by the view-space normal, so faces turned the same way share a colour.
 
 ## Render to texture
 

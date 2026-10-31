@@ -32,8 +32,17 @@ private val snapshotScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
  *
  * Run it after the box has set up what it draws; a box that adds its module after this call would be
  * captured before it appears.
+ *
+ * With [skipBlank], a window that is black in every pixel puts nothing in the output and logs that it
+ * did not: a compute-only box draws nothing, and a black rectangle is not a picture of it.
  */
-fun Box.snapshotWindow(renderer: Renderer, frames: Int = 10, channel: String = "window", width: Int = 640): Job {
+fun Box.snapshotWindow(
+    renderer: Renderer,
+    frames: Int = 10,
+    channel: String = "window",
+    width: Int = 640,
+    skipBlank: Boolean = false,
+): Job {
     val box = this
     return snapshotScope.launch {
         val target = renderer.frameCounter + frames
@@ -46,6 +55,10 @@ fun Box.snapshotWindow(renderer: Renderer, frames: Int = 10, channel: String = "
         try {
             renderer.captureWindowToFile(outputPath = file.absolutePath)
             val full: BufferedImage = ImageIO.read(file) ?: throw IllegalStateException("the window capture wrote no image")
+            if (skipBlank && (0 until full.height).all { y -> (0 until full.width).all { x -> full.getRGB(x, y) and 0xffffff == 0 } }) {
+                lprintln("graphics", "snapshotWindow for ${box.name.ifBlank { box.id }}: the window is black, so nothing is shown")
+                return@launch
+            }
             val scale = minOf(1.0, width.toDouble() / full.width)
             val w = (full.width * scale).toInt().coerceAtLeast(1)
             val h = (full.height * scale).toInt().coerceAtLeast(1)
