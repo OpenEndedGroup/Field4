@@ -688,7 +688,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 
 Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without public declarations. Dimmed entries are identifiable internal plumbing or build/test harnesses; they remain linked and searchable. Low-level APIs that a box can use, such as renderers and textures, retain full emphasis.
 
-<div class="codebase-reference" markdown>
+<div class="codebase-reference codebase-file-index" markdown>
 
 | File | Category | Symbols | Documented | What it is | Used in |
 | --- | --- | --- | --- | --- | --- |
