@@ -650,7 +650,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**35517 public symbols across 1610 source files**, 20809 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**35518 public symbols across 1610 source files**, 20810 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -678,7 +678,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Audio](audio.md) | 78 | 2099 | 1018 (48%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 22 | 586 | 586 (100%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 123 | 3098 | 1522 (49%) | Field's small languages, from the host side. |
-| [Workspace](workspace.md) | 237 | 3208 | 1289 (40%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
+| [Workspace](workspace.md) | 237 | 3209 | 1290 (40%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [Machine learning](machine-learning.md) | 112 | 2610 | 1040 (39%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 | [Animation](animation.md) | 10 | 178 | 41 (23%) |  |
 | [Execution](execution.md) | 2 | 9 | 9 (100%) |  |
@@ -1006,7 +1006,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>io/<wbr>dmx/<wbr></small> [DmxInput.kt](lighting.md#dmxinput-kt) | Lighting | 27 | 27 | DMX reception: Field as an Art-Net or sACN node on the network. | [Driving Lights: Art-Net and sACN](../dmx_lighting.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>io/<wbr>dmx/<wbr></small> [DmxOutput.kt](lighting.md#dmxoutput-kt) | Lighting | 36 | 36 | DMX transmission: the frame buffers a box writes into, and the thread that puts them on the wire. | [A RectSL scene on a light rig](../chain_scene_to_light.md), [Driving Lights: Art-Net and sACN](../dmx_lighting.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>io/<wbr>dmx/<wbr></small> [DmxVisual.kt](lighting.md#dmxvisual-kt) | Lighting | 7 | 7 | Drawings of a DMX rig and its universes as `FLine` geometry, for a box's output or a PNG. | [A RectSL scene on a light rig](../chain_scene_to_light.md), [Driving Lights: Art-Net and sACN](../dmx_lighting.md) |
-| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>tools/<wbr>docs/<wbr></small> [doc.kt](workspace.md#doc-kt) | Workspace · internal | 26 | 2 | Exports a Field document to documentation pages, and the capture helpers that export uses. |  |
+| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>tools/<wbr>docs/<wbr></small> [doc.kt](workspace.md#doc-kt) | Workspace · internal | 27 | 3 | Exports a Field document to documentation pages, and the capture helpers that export uses. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [docsAnnotations.kt](workspace.md#docsannotations-kt) | Workspace · internal | 40 | 15 | Notes written on a documentation page, and the `/field-docs/` mirror those pages are read through. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [DocsAudioProvenance.kt](audio.md#docsaudioprovenance-kt) | Audio · internal | 16 | 16 | An audit of every playable audio file the documentation publishes, by the family of code that made it. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [DocsPanelCodeLinksSmokeTest.kt](examples.md#docspanelcodelinkssmoketest-kt) | Examples · internal | 2 | 1 |  |  |

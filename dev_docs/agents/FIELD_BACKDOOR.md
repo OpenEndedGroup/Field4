@@ -384,6 +384,7 @@ asymmetry is the other easy mistake: the `-window` commands take the box through
 | `screenshot-editor` | `uid path` | `--property --padding --open-outputs --expect-outputs --no-pan --timeout` |
 | `screenshot-box` | `uid path` | `--padding --open-outputs --no-open-outputs --expect-outputs --no-pan --open-details --preserve-selection --include-notifications --scale --timeout` |
 | `native-screenshot` | `path` | `--uid --wait-frames --timeout` |
+| `record-native` | `path` | `--uid --duration --timeout` |
 | `wait-native-renderer` | `[uid]` | `--frames --timeout` |
 | `record-window` | `path` | `--uid --property --with-editor --open-outputs --expect-outputs --no-pan --duration --fps --frame-synchronous --restart-target --timeout` |
 | `record-editor` | `uid path` | `--property --padding --open-outputs --expect-outputs --no-pan --duration --fps --frame-synchronous --restart-target --timeout` |
@@ -394,6 +395,7 @@ asymmetry is the other easy mistake: the `-window` commands take the box through
 
 ```bash
 --command 'native-screenshot /tmp/frame.png --wait-frames 40'   # native renderer window
+--command 'record-native /tmp/clip.mp4 --duration 6'             # the same window, filmed (direct swapchain copies)
 --command 'screenshot-box @last /tmp/box.png'                    # one box, uid first
 --command 'screenshot-window /tmp/all.png --uid @last'           # whole viewport, box via --uid
 ```
