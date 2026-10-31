@@ -26,7 +26,9 @@ This is the check that retires the prose. The rules:
   (``-Xcollection-literals``), so a list is written ``[a, b, c]``; with a declared type the same
   brackets build a ``Set``, ``MutableList`` or array. A call on one line is rewritten. One spanning
   lines is a note, since a literal takes no spread and this line-by-line check cannot see one on a
-  later line. ``listOf()``, ``listOf<T>(...)`` and a spread (``listOf(*xs)``) are left alone.
+  later line. ``listOf()``, ``listOf<T>(...)``, a spread (``listOf(*xs)``) and an operand of an
+  arithmetic operator (``xs + listOf(a)``, ``xs -= listOf(a)``: no expected type, so ``plus`` is
+  ambiguous) are left alone.
 
 - Approved helpers (``dev_docs/agents/box_code_helpers/ADOPTION.md``), each replacing the verbose form
   the corpus used before the helper existed:
@@ -130,6 +132,9 @@ def lists_as_literals(path: str) -> bool:
             and not any(_under(path, root) for root in LIST_LITERAL_EXCLUDED))
 
 LIST_OF = re.compile(r"(?<![\w.])listOf\(")
+# An operand of an arithmetic operator has no expected type, so a literal there is ambiguous
+# (`xs + [a, b]` matches `plus(T)`, `plus(Array)` and `plus(Iterable)`); `listOf` stays.
+OPERATOR_BEFORE = re.compile(r"(?:[-+*/%]=?)\s*$")
 KEY_MAP = re.compile(r"(?<!\w)Key\(\s*mutableMapOf(?:<\s*String\s*,\s*Any\?\s*>)?\(")
 FIXED_FORMAT = re.compile(r'(?<!\\)"%\.(?P<digits>\d)f"\.format\(')
 SIMPLE_RECEIVER = re.compile(r"^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*|\(\)|\[[^\[\]()]*\])*$|^\d+(?:\.\d+)?$")
@@ -387,13 +392,17 @@ def _spread(args: str) -> bool:
     return False
 
 
-def list_literals(line: str) -> tuple[str, bool] | None:
-    """`(rewritten line, every call converted)` if the line holds a `listOf(...)` with arguments."""
+def list_literals(line: str, prev: str = "") -> tuple[str, bool] | None:
+    """`(rewritten line, every call converted)` if the line holds a `listOf(...)` with arguments.
+    `prev` is the line before, whose trailing operator makes a call opening this line an operand."""
     out, pos, found, complete = [], 0, False, True
     while m := LIST_OF.search(line, pos):
         close = _closing_paren(line, m.end() - 1)
         args = line[m.end():close] if close >= 0 else line[m.end():]
-        if close >= 0 and (not args.strip() or _spread(args)):
+        before = line[:m.start()]
+        operand = bool(OPERATOR_BEFORE.search(before) or
+                       (not before.strip() and OPERATOR_BEFORE.search(prev.split("//")[0])))
+        if operand or (close >= 0 and (not args.strip() or _spread(args))):
             out.append(line[pos:m.end()])
             pos = m.end()
             continue
@@ -484,7 +493,7 @@ def check_block(lines: list[str], start: int, end: int, literals: bool = False,
                         "write `//%-`, the documented spelling of a fragment break", True))
         if helpers:
             out.extend(_helper_findings(lines, i, end, makes_push))
-        if literals and (lit := list_literals(line)):
+        if literals and (lit := list_literals(line, lines[i - 1] if i > start else "")):
             out.append((i, "list-literal",
                         "write the list as a collection literal, `[a, b, c]`" if lit[1] else
                         "if no argument is a spread (`*xs`), write the list as a collection literal: change "
@@ -536,7 +545,7 @@ def fix_block(lines: list[str], start: int, end: int, literals: bool = False, he
         if BOX_CONTEXT.search(line):
             out.append(BOX_CONTEXT.sub("thisBox", line))
             continue
-        if literals and (lit := list_literals(line)) and lit[1]:
+        if literals and (lit := list_literals(line, block[k - 1] if k else "")) and lit[1]:
             line = lit[0]
         out.append(line)
     if removed_renderer:
