@@ -14,6 +14,7 @@ import java.lang.reflect.Proxy
 import java.lang.reflect.TypeVariable
 import java.lang.reflect.WildcardType
 import kotlin.coroutines.Continuation
+import kotlin.coroutines.startCoroutine
 import kotlin.reflect.KFunction
 import kotlin.reflect.KParameter
 import kotlin.reflect.jvm.isAccessible
@@ -100,6 +101,67 @@ object FieldMLHostBridge {
             ?: error(refusal("method", name, target.javaClass, candidates, arguments))
         return hostToFieldMLValue(invoke(chosen, target, arguments))
     }
+
+    /**
+     * Calls a Kotlin `suspend` **member** of [target] by name — `Renderer.run`, `Frames.frame` —
+     * and hands its eventual result to [onResult]. This is the calling-*into* half of mechanism D in
+     * `dev_docs/FIELDML_HOST_BRIDGE.md`; [samProxy] is the being-called half.
+     *
+     * A suspend member is, to reflection, a method with one extra trailing [Continuation]
+     * parameter that returns either its value or `COROUTINE_SUSPENDED`. The bridge could not call
+     * one because it had no continuation to pass and nowhere to resume. The answer here is that it
+     * does not need to resume *FieldML*: the call is started as a fresh coroutine
+     * ([startCoroutine]) whose completion is [onResult], so the FieldML closure that wants the
+     * result is itself the continuation, written explicitly. Nothing blocks, no FieldML stack frame
+     * is ever suspended (FieldML still has no suspension points), and the host resumes on whatever
+     * thread its own machinery resumes on — where a Kotlin
+     * `launch(Dispatchers.Unconfined) { target.name(args) }` would continue.
+     *
+     * Returns the coroutine's [kotlinx.coroutines.Job], so the caller can cancel it. Only methods
+     * whose last parameter really is a [Continuation] are candidates: a plain method of arity
+     * `n + 1` is refused here, and a suspend member is still refused by [callMethod].
+     */
+    fun launchSuspendMember(
+        name: String,
+        target: Any,
+        arguments: List<Any?>,
+        onResult: (Result<Any?>) -> Unit,
+    ): kotlinx.coroutines.Job {
+        val candidates = instanceMethods(target.javaClass, name, arguments.size + 1)
+            .filter { !it.isVarArgs && it.parameterTypes.last() == Continuation::class.java }
+        val shaped = arguments + continuationPlaceholder
+        val chosen = choose(candidates, shaped)
+            ?: error(
+                if (candidates.isEmpty() && instanceMethods(target.javaClass, name, arguments.size).isNotEmpty()) {
+                    "${target.javaClass.simpleName}.$name is not a suspend member; call it with hostCall"
+                } else {
+                    refusal("suspend method", name, target.javaClass, candidates, shaped)
+                },
+            )
+        val job = kotlinx.coroutines.Job()
+        val block: suspend () -> Any? = {
+            kotlin.coroutines.intrinsics.suspendCoroutineUninterceptedOrReturn { continuation ->
+                invoke(chosen, target, arguments + continuation)
+            }
+        }
+        block.startCoroutine(
+            object : Continuation<Any?> {
+                override val context = job
+                override fun resumeWith(result: Result<Any?>) {
+                    result.fold({ job.complete() }, { job.completeExceptionally(it) })
+                    onResult(result)
+                }
+            },
+        )
+        return job
+    }
+
+    /** Stands in for the continuation while scoring: it is a [Continuation], which is all `choose` asks. */
+    private val continuationPlaceholder: Continuation<Any?> =
+        object : Continuation<Any?> {
+            override val context = kotlin.coroutines.EmptyCoroutineContext
+            override fun resumeWith(result: Result<Any?>) = Unit
+        }
 
     /**
      * Calls a static method of [owner] by name.

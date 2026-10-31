@@ -913,6 +913,7 @@ object FieldMLCompletionEngine {
         "hostCall0",
         "hostCall1",
         "hostCall2",
+        "hostLaunch",
         "hostExt",
         "hostClass",
         "hostAs",
