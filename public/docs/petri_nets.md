@@ -59,6 +59,15 @@ displayOpen("main")
 Places are circles, tokens are dots inside them, transitions are bars: bright when they are ready
 to fire, dim when they are not. A net that is a single cycle is drawn as a ring.
 
+Here is the same net played: `hit` fires the `bd` sample and `back` fires `sd`, through the
+Dirt-Samples the pattern language uses. Four cycles at half a cycle a second, eight seconds of kick and
+snare taking turns.
+
+```diffstatic_runner {data-lang=kotlin audio="assets/petri_nets/two-place-loop.wav" audio-spec="two-place-loop" audio-renderer="afield.audio.synth.PetriSoundDocs" requires="dirt-samples" embed=true hidden=true name="petri-two-place-loop-audio"}
+// Offline-rendered by PetriSoundDocs.renderWav("two-place-loop"): this net's emits(), through real
+// Dirt-Samples.
+```
+
 The report ends with the net's period, worked out from the net itself: nothing in the source says
 how long a bar is.
 
