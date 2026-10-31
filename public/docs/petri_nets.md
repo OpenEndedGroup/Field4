@@ -18,7 +18,8 @@ work on a Petri net as they do on any other pattern.
 
 This net has one token, two places and two transitions. Each transition plays a sound when it
 fires. The token can only be in one place at a time, so the two transitions take turns, and that
-alternation is the rhythm. The example draws the net and prints the first few steps.
+alternation is the rhythm. The example draws the net and prints the first few steps; a recording
+of it playing follows the figure.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/petri_nets/two_place_loop.png" alt="three stacked output channels. The drawing is a diamond: the place kick at the top holding one token, hats at the bottom holding none, and between them the transitions hit (green, ready to fire) and back (grey). The summary panel lists kick 1, hats 0, two places, two transitions, step at grid 1/8. The text panel below tabulates six steps at 0, 1/8, 1/4, 3/8, 1/2 and 5/8 with the token alternating between the two places, then reports period 1/4 cycles, the single T-invariant back + hit, and a state space of two markings that is deadlock-free, safe, quasi-live, live and reversible" wait="2.0" capture="box" open-outputs="true" embed=true name="petri-two-place-loop" w="1240" padding="12"}
 :::static
