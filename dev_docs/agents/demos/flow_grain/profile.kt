@@ -20,7 +20,16 @@ frames {
     var recording = false
     try {
         val ticket = resetFlow.request()
-        while (frame() && resetFlow.completed < ticket) {}
+        val resetStarted = System.nanoTime()
+        val resetTimeoutNanos = 30_000_000_000L
+        while (resetFlow.completed < ticket) {
+            // Ignore a prior failure while this new request is still pending.
+            if (!resetFlow.pending) check(resetFlow.failure == null) { "Reset failed: ${resetFlow.failure}" }
+            check(System.nanoTime() - resetStarted < resetTimeoutNanos) {
+                "Timed out waiting for reset $ticket: ${resetFlow.failure ?: "no frame-boundary consumer"}"
+            }
+            if (!frame()) return@frames
+        }
         println("Profile settings: $settings; reset ticket=${resetFlow.completed}")
         val start = renderer.frameCounter
         while (frame() && renderer.frameCounter - start < 60) {} // Warm shaders and caches.
