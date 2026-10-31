@@ -37,6 +37,6 @@ display(
     separates a chord (a few discrete partials) from a snare (a continuum).
     Compare: a sawtooth is a full harmonic stack on ONE note and is NOT refused,
     because timbre is not polyphony.
-"""
+    """
         .trimIndent(),
 )

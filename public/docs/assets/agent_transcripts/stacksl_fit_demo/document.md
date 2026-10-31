@@ -305,7 +305,7 @@ Read the table below against the program above it. Wire #0 is the `3.0` you can 
 #1..#16 are the four `vec4` operands of `palette`. Nothing here invented syntax for a parameter.
 
 ```edn [field-box id="stacksl-wires" role="properties"]
-{"id" "stacksl-wires" "index" 2 "name" "The wires — every literal in a StackSL program, made addressable" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The wires — every literal in a StackSL program, made addressable" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stacksl-wires_code_.kt" "lines" 73 "characters" 2988 "sha256" "348f5c5e6a666dc180c68db967afe5bfcf4f805ba55bae77cc8b3272fa4432fc"}]}
+{"id" "stacksl-wires" "index" 2 "name" "The wires — every literal in a StackSL program, made addressable" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The wires — every literal in a StackSL program, made addressable" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stacksl-wires_code_.kt" "lines" 73 "characters" 2992 "sha256" "5b5c2de9bf8c3df0760f909060d4e43cad1a9088eae32ae7c58e8affd05f8e21"}]}
 ```
 
 ```kotlin [field-property box="stacksl-wires" name="code" path="stacksl-wires_code_.kt"]
@@ -333,7 +333,7 @@ run {
         1.0 1.0 1.0 1 vec4
         0.0 0.33 0.67 1 vec4
         palette
-    """
+        """
             .trimIndent()
 
     println("The StackSL program:")

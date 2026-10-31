@@ -22,7 +22,7 @@ run {
         fbm
         palette
         saturate
-    """
+        """
             .trimIndent()
 
     // `StackSLCpu.compile` is the ordinary `stack.auto` compile: same options, same emitter.

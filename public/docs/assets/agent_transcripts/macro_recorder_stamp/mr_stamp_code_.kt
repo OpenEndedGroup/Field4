@@ -1,6 +1,7 @@
 // A macro is YAML. This one is what the recorder writes when you make a box with code,
 // make another, and connect them with `g`.
-val stamp = """
+val stamp =
+    """
     name: stamp
     operations:
       - create:
@@ -17,6 +18,7 @@ val stamp = """
       - connect:
           parent: stamp_source
           child: stamp_sink
-""".trimIndent()
+    """
+        .trimIndent()
 val saved = OperationTranscript.writeMacro(thisBox.inside.filename, "stamp", stamp)
 println("${saved.message} ${saved.operationCount} operations")

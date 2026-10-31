@@ -242,7 +242,7 @@ each agent runs its own suspending program, and the clock is a fixed step, so th
 same every time you press play.
 
 ```edn [field-box id="one_agent" role="properties"]
-{"id" "one_agent" "index" 2 "name" "One agent, one program" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "One agent, one program" "_tombstone" false "frame" #afield/rect [60.0 40.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "one_agent_code_.kt" "lines" 26 "characters" 1263 "sha256" "637513b44ef5bd5bf918e08517fe17cc62bc005328906820fbe782df1ce4e49b"}]}
+{"id" "one_agent" "index" 2 "name" "One agent, one program" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "One agent, one program" "_tombstone" false "frame" #afield/rect [60.0 40.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "one_agent_code_.kt" "lines" 32 "characters" 1294 "sha256" "8c4ee62c5b08c24b75364f351adda666c4c26fb542c14211ac0965ad2814b348"}]}
 ```
 
 ```kotlin [field-property box="one_agent" name="code" path="one_agent_code_.kt"]
@@ -260,17 +260,23 @@ w.spawn(100.0, 60.0, maxSpeed = 50.0) {
     forever { moveFor(4.0) { orbit(centre, distance = 40.0) } }
 }
 w.run(480)
-lines(*w.trailFLines().toTypedArray(), channel = "orbit", w = 440.0, h = 240.0, fitToSize = true)
+lines(
+    *w.trailFLines().toTypedArray(),
+    channel = "orbit",
+    w = 440.0,
+    h = 240.0,
+    fitToSize = true,
+)
 
 /*
-Try this: change `distance = 40.0` to 20.0 and re-run — the circle tightens.
-Then swap `orbit(centre, ...)` for `wander(turn = 30.0)` and the same lines draw a random walk
-instead. The program is the agent's, so changing it changes one agent and nobody else.
+ Try this: change `distance = 40.0` to 20.0 and re-run — the circle tightens.
+ Then swap `orbit(centre, ...)` for `wander(turn = 30.0)` and the same lines draw a random walk
+ instead. The program is the agent's, so changing it changes one agent and nobody else.
 
-Why `centre` is hoisted out of the steering block: `point()` belongs to the behaviour scope,
-and inside `moveFor { }` the receiver is the steering builder, which does not expose it. Written
-inline it fails to compile with "cannot be called in this context with an implicit receiver" —
-so build targets where the program can see them, and pass them in.
-*/
+ Why `centre` is hoisted out of the steering block: `point()` belongs to the behaviour scope,
+ and inside `moveFor { }` the receiver is the steering builder, which does not expose it. Written
+ inline it fails to compile with "cannot be called in this context with an implicit receiver" —
+ so build targets where the program can see them, and pass them in.
+ */
 ```
 

@@ -101,7 +101,7 @@ structure, so the same net always draws the same way.
 <!-- field-box id="petri_tala_status" index="2" -->
 
 ```edn [field-box id="petri_tala_status" role="properties"]
-{"id" "petri_tala_status" "index" 2 "name" "3 — which engine drew it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — which engine drew it" "_tombstone" false "frame" #afield/rect [60.0 700.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_tala_status_code_.kt" "lines" 100 "characters" 4354 "sha256" "f17609c48fd87eebacd591ebd482c085c4e1a819ab17ee0ed5cbf493aaee3424"}]}
+{"id" "petri_tala_status" "index" 2 "name" "3 — which engine drew it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — which engine drew it" "_tombstone" false "frame" #afield/rect [60.0 700.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_tala_status_code_.kt" "lines" 101 "characters" 4366 "sha256" "796479ab204858cde8cb5dd3c2be127a2c9915bfbc1d547907f73c3681987335"}]}
 ```
 
 ```kotlin [field-property box="petri_tala_status" name="code" path="petri_tala_status_code_.kt"]
@@ -172,7 +172,8 @@ go {
     }
 
     val detail =
-        if (D2Layout.available) "The two drawings differ: <b>$differ</b>. False here would mean TALA fell back silently."
+        if (D2Layout.available)
+            "The two drawings differ: <b>$differ</b>. False here would mean TALA fell back silently."
         else
             "differ = <b>$differ</b>, which is the fallback working. Build it with " +
                 "<code>(cd native/field-d2-layout &amp;&amp; go build -o build/field-d2-layout .)</code> — " +

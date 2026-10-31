@@ -1479,17 +1479,27 @@ value the callback received.
 ui.waitForSelector(".vec2-visual", 8000.0)
 ui.pause(300)
 fun at(fx: Double, fy: Double): Pair<Double, Double> {
-    val c = ui.eval(
-        """
+    val c =
+        ui.eval(
+                """
         const r = [...document.querySelectorAll('.vec2-visual')].find((s) => s.getBoundingClientRect().width > 0).getBoundingClientRect();
         return [r.left + r.width * $fx, r.top + r.height * $fy].join(',');
         """,
-    ).toString().trim('"').split(',').map { it.toDouble() }
+            )
+            .toString()
+            .trim('"')
+            .split(',')
+            .map { it.toDouble() }
     return c[0] to c[1]
 }
 fun xy(): List<Double> =
-    ui.eval("const p = [...document.querySelectorAll('.field-vec2')].find((s) => s.getBoundingClientRect().width > 0); return p.dataset.x + ',' + p.dataset.y")
-        .toString().trim('"').split(',').map { it.toDouble() }
+    ui.eval(
+            "const p = [...document.querySelectorAll('.field-vec2')].find((s) => s.getBoundingClientRect().width > 0); return p.dataset.x + ',' + p.dataset.y",
+        )
+        .toString()
+        .trim('"')
+        .split(',')
+        .map { it.toDouble() }
 
 val press = at(0.8, 0.2)
 ui.moveMouse(press.first, press.second, 10)
@@ -1498,7 +1508,10 @@ ui.mouseUp()
 ui.pause(200)
 val pressed = xy()
 check(pressed[0] > 0.4 && pressed[1] > 0.4) { "press did not move the handle: $pressed" }
-repeat(5) { ui.press("ArrowLeft"); ui.pause(120) }
+repeat(5) {
+    ui.press("ArrowLeft")
+    ui.pause(120)
+}
 val nudged = xy()
 check(kotlin.math.abs(nudged[0] - (pressed[0] - 0.05)) < 0.006) { "arrows did not nudge: $pressed -> $nudged" }
 

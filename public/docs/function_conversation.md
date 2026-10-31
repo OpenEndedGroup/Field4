@@ -128,15 +128,15 @@ this same source; the first saved conversation grows r2 into r3.
 <!-- function-study-source:recorded-start -->
 ```diffstatic {data-lang=kotlin}
 import afield.math.functions.Functions
-import afield.math.functions.StudyComposition
 import afield.math.functions.StudyChoice
+import afield.math.functions.StudyComposition
 
 // A blank musical page: three constant channels. Ask AI4 to grow this Kotlin.
 // The final expression returns a candidate; the tools box compiles and checks it.
 with(Functions) {
     StudyComposition(
         channels = listOf("x", "y", "z").map { name -> fn(0.0..3600.0, name) { 0.5 } },
-        choices = listOf(StudyChoice("Initial constant background is a disposable starting point", "agent assumption"))
+        choices = listOf(StudyChoice("Initial constant background is a disposable starting point", "agent assumption")),
     )
 }
 ```
@@ -163,7 +163,8 @@ These are excerpts from the saved source, inside its `with(Functions)` block.
 fun background(seconds: Double, channel: Int): Double {
     val drift = phaseExcursionRadians * kotlin.math.sin(2.0 * PI * seconds / relativePhasePeriodSeconds)
     val phase = 2.0 * PI * seconds / carrierPeriodSeconds + (channel - 1) * drift
-    return backgroundCenter + backgroundAmplitude * kotlin.math.sin(phase) +
+    return backgroundCenter +
+        backgroundAmplitude * kotlin.math.sin(phase) +
         slowAmplitude * kotlin.math.sin(2.0 * PI * seconds / slowPeriodSeconds)
 }
 ```
@@ -176,19 +177,20 @@ background into a pulse train and then into the hold.
 
 <!-- function-study-source:channels -->
 ```diffstatic {data-lang=kotlin}
-val channels = listOf("x", "y", "z").mapIndexed { index, name ->
-    fn(0.0..durationSeconds, name) { seconds ->
-        // The background always uses absolute time; events never restart it.
-        val base = background(seconds, index)
-        val event = events.firstOrNull { seconds >= it.start && seconds <= it.end }
-        when {
-            event == null -> base
-            seconds < event.plateauStart -> shoulder(base, seconds - event.start, event.rise)
-            seconds <= event.plateauEnd -> 1.0 // exact closed constant hold
-            else -> shoulder(base, event.end - seconds, event.fall)
+val channels =
+    listOf("x", "y", "z").mapIndexed { index, name ->
+        fn(0.0..durationSeconds, name) { seconds ->
+            // The background always uses absolute time; events never restart it.
+            val base = background(seconds, index)
+            val event = events.firstOrNull { seconds >= it.start && seconds <= it.end }
+            when {
+                event == null -> base
+                seconds < event.plateauStart -> shoulder(base, seconds - event.start, event.rise)
+                seconds <= event.plateauEnd -> 1.0 // exact closed constant hold
+                else -> shoulder(base, event.end - seconds, event.fall)
+            }
         }
     }
-}
 ```
 <!-- /function-study-source:channels -->
 

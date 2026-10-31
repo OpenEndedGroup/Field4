@@ -65,11 +65,11 @@ for (i in 0 until 60) {
     ready =
         ui.eval(
                 """
-        const s = window.drawingLayerState()
-        const tools = document.querySelector("#field-drawing-layer .App-toolbar")
-        const shown = !!tools && tools.getBoundingClientRect().width > 0
-        return (s && s.active && shown) ? "ready" : "waiting"
-    """
+                const s = window.drawingLayerState()
+                const tools = document.querySelector("#field-drawing-layer .App-toolbar")
+                const shown = !!tools && tools.getBoundingClientRect().width > 0
+                return (s && s.active && shown) ? "ready" : "waiting"
+                """
                     .trimIndent(),
             )
             .toString()
@@ -93,9 +93,9 @@ for (i in 0 until 80) {
     echoed =
         ui.eval(
                 """
-        const els = window.drawingLayerScene()
-        return els.some(e => !e.isDeleted && e.customData && e.customData.fieldKey === "echo") ? "echoed" : "waiting"
-    """
+                const els = window.drawingLayerScene()
+                return els.some(e => !e.isDeleted && e.customData && e.customData.fieldKey === "echo") ? "echoed" : "waiting"
+                """
                     .trimIndent(),
             )
             .toString()

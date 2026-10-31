@@ -27,13 +27,15 @@ Open /extensions/remote_ar/index.html?debug=1 on the browser or headset.
 Edit this box and Launch it again to replace the running scene.
 
 ```edn [field-box id="agent_remotear_start" role="properties"]
-{"id" "agent_remotear_start" "index" 1 "name" "RemoteAR Starter" "parents" ["root" "agent_remotear_start_root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_remotear_start_root"} "name" "RemoteAR Starter" "_tombstone" false "frame" #afield/rect [90.0 150.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_remotear_start_code_.kt" "lines" 19 "characters" 502 "sha256" "bcc8d399b77056d05f4a2d309d8fb22b274c6be89bc140c3c5ff3510f2afc35e"}]}
+{"id" "agent_remotear_start" "index" 1 "name" "RemoteAR Starter" "parents" ["root" "agent_remotear_start_root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_remotear_start_root"} "name" "RemoteAR Starter" "_tombstone" false "frame" #afield/rect [90.0 150.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_remotear_start_code_.kt" "lines" 21 "characters" 499 "sha256" "02d7890d771d077f95c3ddfef2ca04428a293740937e8bfb710863fdfe510a4e"}]}
 ```
 
 ```kotlin [field-property box="agent_remotear_start" name="code" path="agent_remotear_start_code_.kt"]
-// {{ remoteAR }}
-// Open /extensions/remote_ar/index.html?debug=1 on the browser or headset.
-// Edit this box and Launch it again to replace the running scene.
+/*
+{{ remoteAR }}
+Open /extensions/remote_ar/index.html?debug=1 on the browser or headset.
+Edit this box and Launch it again to replace the running scene.
+*/
 onStart {
     val cube = addBox("starter-cube", 0.3).mesh
     cube.position.set(0.0, 1.2, -1.5)

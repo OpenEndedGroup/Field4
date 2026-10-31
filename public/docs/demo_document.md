@@ -185,19 +185,19 @@ ui.pause(3600)
 glide(2560.0, 1130.0, 1.15, 2600)
 ui.eval(
     """
-  const frame = [...document.querySelectorAll('iframe')].filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0).pop();
-  const d = frame.contentDocument;
-  const fr = frame.getBoundingClientRect();
-  const centre = el => { const r = el.getBoundingClientRect(); return [fr.left + r.left + r.width / 2, fr.top + r.top + r.height / 2]; };
-  const keys = () => [...d.querySelectorAll('.kf-keyframe')].map(g => centre(g.querySelector('circle')));
-  const k = keys();
-  const sx = (k[1][0] - k[0][0]) / 1.0, sy = (k[1][1] - k[0][1]) / 0.8;
-  window.__kf = {
-    pos: (t, v) => [k[0][0] + t * sx, k[0][1] + (v - 0.1) * sy].join(','),
-    key: i => keys()[i].join(',')
-  };
-  return 'ok';
-"""
+    const frame = [...document.querySelectorAll('iframe')].filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0).pop();
+    const d = frame.contentDocument;
+    const fr = frame.getBoundingClientRect();
+    const centre = el => { const r = el.getBoundingClientRect(); return [fr.left + r.left + r.width / 2, fr.top + r.top + r.height / 2]; };
+    const keys = () => [...d.querySelectorAll('.kf-keyframe')].map(g => centre(g.querySelector('circle')));
+    const k = keys();
+    const sx = (k[1][0] - k[0][0]) / 1.0, sy = (k[1][1] - k[0][1]) / 0.8;
+    window.__kf = {
+      pos: (t, v) => [k[0][0] + t * sx, k[0][1] + (v - 0.1) * sy].join(','),
+      key: i => keys()[i].join(',')
+    };
+    return 'ok';
+    """
         .trimIndent(),
 )
 val added = xy("return window.__kf.pos(3.2, 0.8)")

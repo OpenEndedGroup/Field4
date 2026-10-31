@@ -37,7 +37,7 @@ print(f"{r['width']}x{r['height']} frames, "
 <!-- field-box id="cv_renderer" index="2" -->
 
 ```edn [field-box id="cv_renderer" role="properties"]
-{"id" "cv_renderer" "index" 2 "name" "0 · window" "parents" ["root"] "children" ["cv_camera" "cv_inset" "cv_overlay"] "properties" {"children" #{#afield/box "cv_camera" #afield/box "cv_inset" #afield/box "cv_overlay"} "parents" #{#afield/box "root"} "name" "0 · window" "_tombstone" false "frame" #afield/rect [40.0 40.0 260.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cv_renderer_code_.kt" "lines" 14 "characters" 280 "sha256" "a8748e49030fe553568abb5631049eeed12984c1aa5fc552bf3fb32f949bf99c"}]}
+{"id" "cv_renderer" "index" 2 "name" "0 · window" "parents" ["root"] "children" ["cv_camera" "cv_inset" "cv_overlay"] "properties" {"children" #{#afield/box "cv_camera" #afield/box "cv_inset" #afield/box "cv_overlay"} "parents" #{#afield/box "root"} "name" "0 · window" "_tombstone" false "frame" #afield/rect [40.0 40.0 260.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cv_renderer_code_.kt" "lines" 14 "characters" 279 "sha256" "43161e777be8d148c0a4f297d051bfeab6a8357d8d1334c0caf241796e88d246"}]}
 ```
 
 ```kotlin [field-property box="cv_renderer" name="code" path="cv_renderer_code_.kt"]

@@ -17,16 +17,21 @@ every command and its default shortcut.
 Using these keyboard shortcuts, you should be able to write and execute some code in Field:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="760x560" clip="0,0,760,512" hide-toasts=true video="assets/survival_intro.mp4" fps="20" padding="0" wait="0" timeout="180" embed=true hidden=true name="survival-intro" alt="The mouse moves onto the empty canvas and n makes a new box there; a click selects it and opens its empty editor. A println of hello world is typed one key at a time and Alt-Enter runs that line, printing hello world underneath it. Two more lines are typed, val total = (1..10).sum() and println(total), and Alt-0 runs the whole box, printing 55 under the last line and hello world a second time (marked x2). Last, loop { display(frameNumber) } is typed and Alt-Up launches the box: it turns striped while it runs, and a click opens its output panel, where the frame count keeps climbing. A caption over the canvas shows each key and click as it happens."}
-// Lay the editor pane out for this window, as a user's browser would: screenshot prep pins it
-// to a fixed size and place, which at this window size would cover the canvas. The fence hides
-// the toasts, which would otherwise stack over the canvas and the keypress caption.
-ui.eval("""
+/*
+Lay the editor pane out for this window, as a user's browser would: screenshot prep pins it
+to a fixed size and place, which at this window size would cover the canvas. The fence hides
+the toasts, which would otherwise stack over the canvas and the keypress caption.
+*/
+ui.eval(
+    """
     const c = document.querySelector(".monaco-editor-container")
     if (!c) throw new Error("no editor container")
     for (const k of ["width", "height", "top", "right", "left", "bottom", "transform"]) c.style[k] = ""
     if (window.globalEditor && window.globalEditor.layout) window.globalEditor.layout()
     return c.getBoundingClientRect().left
-""".trimIndent())
+    """
+        .trimIndent(),
+)
 ui.keypressDisplay(true)
 ui.pause(200)
 ui.moveMouse(170.0, 130.0, 12)
@@ -65,7 +70,9 @@ ui.moveMouse(110.0, 200.0, 10)
 ui.clickAt(110.0, 200.0)
 ui.pause(4000)
 val text = ui.eval("return document.querySelector('.monaco-editor-container').innerText").toString()
-check("loop { display(frameNumber) }" in text.replace('\u00a0', ' ')) { "the intro did not type its loop: " + text.take(600) }
+check("loop { display(frameNumber) }" in text.replace('\u00a0', ' ')) {
+    "the intro did not type its loop: " + text.take(600)
+}
 check("hello world" in text && "55" in text) { "the intro's runs did not print hello world and 55: " + text.take(400) }
 ```
 
@@ -112,7 +119,9 @@ For its main code-writing experience _Field·4_ wraps the [Monaco text editor](h
 One of the most useful keyboard shortcuts of all is autocomplete — `ctrl-space`. Use it to provide ideas about what you might type, and documentation about those things:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="editor" warm-completion=true screenshot="assets/autocomplete.png" wait="0" timeout="90" embed=true hidden=true name="autocomplete"}
-ui.eval("window.localStorage.removeItem('field.suggest.recency.v1'); var s=document.createElement('style');s.textContent='.tick_text.ok{display:none !important}';document.head.appendChild(s);return 'setup';")
+ui.eval(
+    "window.localStorage.removeItem('field.suggest.recency.v1'); var s=document.createElement('style');s.textContent='.tick_text.ok{display:none !important}';document.head.appendChild(s);return 'setup';",
+)
 ui.openEditor(id)
 ui.pause(700)
 ui.waitForSelector(".monaco-editor", 15000.0)
@@ -122,9 +131,11 @@ ui.press("Control+A")
 ui.type("val axis = vec")
 ui.pause(300)
 ui.press("Control+Space")
-// warm-completion=true built the completion engine up front, so the enriched RPC
-// result — the type-based completions and their KDoc — arrives promptly. Wait for
-// the documentation itself (not just the item) so the capture shows the doc panel.
+/*
+warm-completion=true built the completion engine up front, so the enriched RPC
+result — the type-based completions and their KDoc — arrives promptly. Wait for
+the documentation itself (not just the item) so the capture shows the doc panel.
+*/
 ui.waitForSelector("text=Creates a mutable", 15000.0)
 ui.pause(1000)
 ```

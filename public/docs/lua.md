@@ -225,7 +225,9 @@ popup is open on `p` inside a loop, where Field's `play` sits beside Lua's own `
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".afield-suggest" screenshot="assets/lua/completion.png" transcript="assets/transcripts/lua_completion_setup.yaml" padding="6" wait="0" timeout="180" embed=true hidden=true name="lua-completion" alt="Field's completion popup in a Lua box at the prefix p. Under FUNCTIONS: play, pairs, pcall and print, each with its signature in grey underneath — play(sequence, [options]), pairs(t), pcall(f, ...), print(...) — and under OTHER the package table. The panel to the right reads: play(sequence, [options]) — loops a sequence through Field's pattern voice until the box stops: {cps=, wave=, decay=, sustain=, gain=}."}
 // The setup transcript runs the Lua box once, because completion reads the box's live lua_State.
-ui.eval("window.localStorage.removeItem('field.suggest.recency.v1'); var s=document.createElement('style');s.textContent='.tick_text{display:none !important}';document.head.appendChild(s);return 'setup';")
+ui.eval(
+    "window.localStorage.removeItem('field.suggest.recency.v1'); var s=document.createElement('style');s.textContent='.tick_text{display:none !important}';document.head.appendChild(s);return 'setup';",
+)
 ui.openEditor("lua_completion")
 ui.pause(900)
 ui.waitForSelector(".monaco-editor", 15000.0)

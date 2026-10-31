@@ -18,18 +18,18 @@ operations:
       properties:
         code: |
           import afield.graphics.vulkan.util.Options
-          
+
           prop<Window>(window)
           prop<Renderer>(renderer)
-          
+
           Options.enableHDR = false
           Options.profiling = false
-          
+
           once.renderer {
               window = Window("External browser surface Linux smoke")
               Renderer(window)
           }
-          
+
           println("external browser surface renderer ready")
           start(renderer::run)
   - create:

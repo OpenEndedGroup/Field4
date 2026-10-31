@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-29T22:30:27.623Z",
+  "capturedAt": "2026-10-31T00:13:18.232Z",
   "documentName": "vision_geometry_desk_preview",
   "outputs": [
     {
@@ -10,7 +10,7 @@
       "warnings": [],
       "kinds": [],
       "width": 732,
-      "height": 608,
+      "height": 622,
       "path": "outputs/0.html"
     },
     {
@@ -20,7 +20,7 @@
       "warnings": [],
       "kinds": [],
       "width": 732,
-      "height": 626,
+      "height": 640,
       "path": "outputs/1.html"
     }
   ]

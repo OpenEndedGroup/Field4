@@ -188,8 +188,11 @@ import com.fasterxml.jackson.annotation.JsonClassDescription
 data class RectanglesOfRectSLStudy(val revision: String = "current")
 
 val document = inside.filename
-AgentToolExtensions.register(RectanglesOfRectSLStudy::class.java,
-    { it.focus?.document == document && it.focus?.property == "rectSL" }, scope = document) { ctx, _ ->
+AgentToolExtensions.register(
+    RectanglesOfRectSLStudy::class.java,
+    { it.focus?.document == document && it.focus?.property == "rectSL" },
+    scope = document,
+) { ctx, _ ->
     val scene = ctx.focus!!.box.getPropertyRaw("rectSL", "") as String
     compileRectSLWithSource(scene).origins.entries.groupBy({ it.value.line }, { it.key }).toSortedMap()
 }

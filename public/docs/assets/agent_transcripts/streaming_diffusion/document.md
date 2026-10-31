@@ -156,7 +156,7 @@ if (!support.available) {
 <!-- field-box id="diffusion_guide" index="2" -->
 
 ```edn [field-box id="diffusion_guide" role="properties"]
-{"id" "diffusion_guide" "index" 2 "name" "1 · streaming diffusion" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · streaming diffusion" "_tombstone" false "frame" #afield/rect [40.0 40.0 360.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "diffusion_guide_code_.kt" "lines" 18 "characters" 734 "sha256" "a83899629cce2fb37e04bee59e38dc955e4781320d3e2c56c573d14c6e998c5e"}]}
+{"id" "diffusion_guide" "index" 2 "name" "1 · streaming diffusion" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · streaming diffusion" "_tombstone" false "frame" #afield/rect [40.0 40.0 360.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "diffusion_guide_code_.kt" "lines" 18 "characters" 738 "sha256" "6aa0eef134434b5745dbfcf31135427e1bd6b55996b1fd322ccd28e032c446d6"}]}
 ```
 
 ```kotlin [field-property box="diffusion_guide" name="code" path="diffusion_guide_code_.kt"]
@@ -175,7 +175,7 @@ markdown(
     Set `FIELD_STREAMDIFFUSION_ROOT` before starting Field after completing the setup.
 
     [Setup and RTT integration](https://openendedgroup.com/Field4/streaming_diffusion/)
-"""
+    """
         .trimIndent(),
 )
 ```

@@ -140,10 +140,14 @@ the popup captured while it is open. It is served by the same Analysis API backe
     changes materially, something real changed.
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".afield-suggest" warm-completion=true screenshot="assets/popup-decides-fline-dot.png" padding="6" wait="0" timeout="140" embed=true hidden=true name="popup-decides-fline-dot" alt="A real Field completion popup at a bare dot on an FLine. A single section header reads GRAPHICS. Under it, in this order: moveTo(x: Number, y: Number, z: Number), lineTo(same), cubicTo(x0: Number, y0: Number, z0: Number, x1: Number...), close(), here (FLine.Node), rot(angle: Number, center: Vec2), scale(scale: Number), copy(), then arcLength(). Those are FLine's eight @CommonMembers in declared order, followed by the first member the class says nothing about. The documentation panel on the right reads Category Graphics above a signature card for moveTo and its documentation."}
-// Fresh and deterministic: clear the recency store so nothing this machine happens to have accepted
-// before outranks the prior, and hide the run-tick overlay — all of it, not just `.tick_text.ok`,
-// since `f.` is deliberately incomplete Kotlin and any tick here would be the error-coloured one.
-ui.eval("window.localStorage.removeItem('field.suggest.recency.v1'); var s=document.createElement('style');s.textContent='.tick_text{display:none !important}';document.head.appendChild(s);return 'setup';")
+/*
+Fresh and deterministic: clear the recency store so nothing this machine happens to have accepted
+before outranks the prior, and hide the run-tick overlay — all of it, not just `.tick_text.ok`,
+since `f.` is deliberately incomplete Kotlin and any tick here would be the error-coloured one.
+*/
+ui.eval(
+    "window.localStorage.removeItem('field.suggest.recency.v1'); var s=document.createElement('style');s.textContent='.tick_text{display:none !important}';document.head.appendChild(s);return 'setup';",
+)
 ui.openEditor(id)
 ui.pause(700)
 ui.waitForSelector(".monaco-editor", 15000.0)
@@ -153,9 +157,11 @@ ui.press("Control+A")
 ui.type("val f = FLine()\nf.")
 ui.pause(400)
 ui.press("Control+Space")
-// warm-completion=true builds the completion engine up front AND waits for the Analysis API session
-// to actually serve, so this is a photograph of the backend a user gets rather than of the K1
-// fallback. Wait for a row rather than guessing a pause; a cold first completion can take seconds.
+/*
+warm-completion=true builds the completion engine up front AND waits for the Analysis API session
+to actually serve, so this is a photograph of the backend a user gets rather than of the K1
+fallback. Wait for a row rather than guessing a pause; a cold first completion can take seconds.
+*/
 ui.waitForSelector(".afield-suggest-row", 20000.0)
 ui.pause(1400)
 ```

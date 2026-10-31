@@ -41,7 +41,7 @@ start(renderer::run)
 <!-- field-box id="youtube_kaleidoscope_shards" index="1" -->
 
 ```edn [field-box id="youtube_kaleidoscope_shards" role="properties"]
-{"id" "youtube_kaleidoscope_shards" "index" 1 "name" "YouTube — 224 Vulkan shards" "parents" ["root" "youtube_kaleidoscope_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "youtube_kaleidoscope_renderer"} "name" "YouTube — 224 Vulkan shards" "_tombstone" false "frame" #afield/rect [430.0 40.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "youtube_kaleidoscope_shards_code_.kt" "lines" 113 "characters" 4089 "sha256" "9daffa57e27565815cbd521262a396c4d666eb56d8e437e196a7b4b06baca997"}]}
+{"id" "youtube_kaleidoscope_shards" "index" 1 "name" "YouTube — 224 Vulkan shards" "parents" ["root" "youtube_kaleidoscope_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "youtube_kaleidoscope_renderer"} "name" "YouTube — 224 Vulkan shards" "_tombstone" false "frame" #afield/rect [430.0 40.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "youtube_kaleidoscope_shards_code_.kt" "lines" 113 "characters" 4189 "sha256" "3471bcb95e54c850e248927f85d287c5507400cad6e17e9ba0e4ffa3616df9d5"}]}
 ```
 
 ```kotlin [field-property box="youtube_kaleidoscope_shards" name="code" path="youtube_kaleidoscope_shards_code_.kt"]
@@ -106,31 +106,31 @@ loop {
         browser
             .evaluate(
                 """
-            (async () => {
-                const buttons = Array.from(document.querySelectorAll('button'))
-                const consent = buttons.find(button =>
-                    /^(accept all|i agree)$/i.test((button.innerText || button.textContent || '').trim()))
-                if (consent) {
-                    consent.click()
-                    return { state: 'consent-clicked', label: consent.innerText }
-                }
-                const video = document.querySelector('video')
-                if (!video) return { state: 'waiting-for-video', title: document.title }
-                video.muted = false
-                try {
-                    await video.play()
-                } catch (error) {
-                    return { state: 'play-rejected', reason: String(error), readyState: video.readyState }
-                }
-                await new Promise(resolve => setTimeout(resolve, 350))
-                return {
-                    state: video.paused ? 'paused' : 'playing',
-                    currentTime: video.currentTime,
-                    readyState: video.readyState,
-                    title: document.title
-                }
-            })()
-            """
+                (async () => {
+                    const buttons = Array.from(document.querySelectorAll('button'))
+                    const consent = buttons.find(button =>
+                        /^(accept all|i agree)$/i.test((button.innerText || button.textContent || '').trim()))
+                    if (consent) {
+                        consent.click()
+                        return { state: 'consent-clicked', label: consent.innerText }
+                    }
+                    const video = document.querySelector('video')
+                    if (!video) return { state: 'waiting-for-video', title: document.title }
+                    video.muted = false
+                    try {
+                        await video.play()
+                    } catch (error) {
+                        return { state: 'play-rejected', reason: String(error), readyState: video.readyState }
+                    }
+                    await new Promise(resolve => setTimeout(resolve, 350))
+                    return {
+                        state: video.paused ? 'paused' : 'playing',
+                        currentTime: video.currentTime,
+                        readyState: video.readyState,
+                        title: document.title
+                    }
+                })()
+                """
                     .trimIndent(),
                 userGesture = true,
                 timeoutMillis = 15_000,

@@ -17,7 +17,7 @@ From `code`
 Step through "stamp" one operation at a time, as the panel's Step button does.
 
 ```edn [field-box id="mr_steps" role="properties"]
-{"id" "mr_steps" "index" 0 "name" "steps" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "steps" "_tombstone" false "frame" #afield/rect [80.0 640.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mr_steps_code_.kt" "lines" 10 "characters" 496 "sha256" "7a689b501a97f7cd1d0c3c70f4fc9753e34e96b440e9826996535f6136b4dae7"}]}
+{"id" "mr_steps" "index" 0 "name" "steps" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "steps" "_tombstone" false "frame" #afield/rect [80.0 640.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mr_steps_code_.kt" "lines" 11 "characters" 505 "sha256" "29e1d0702656c8c4012e125dac863f262b4297e1929e78422e36319c12f9ab5e"}]}
 ```
 
 ```kotlin [field-property box="mr_steps" name="code" path="mr_steps_code_.kt"]
@@ -25,8 +25,9 @@ Step through "stamp" one operation at a time, as the panel's Step button does.
 val document = thisBox.inside.filename
 (0 until 3).forEach { step ->
     val run = OperationTranscript.runMacro(
-        document, "stamp",
-        replay = OperationTranscript.MacroReplayOptions(step = step)
+        document,
+        "stamp",
+        replay = OperationTranscript.MacroReplayOptions(step = step),
     )
     println("step ${step + 1}: ${run.message}" + run.errors.joinToString("") { " " + it })
 }
@@ -45,13 +46,14 @@ A macro is YAML. This one is what the recorder writes when you make a box with c
 make another, and connect them with `g`.
 
 ```edn [field-box id="mr_stamp" role="properties"]
-{"id" "mr_stamp" "index" 1 "name" "stamp" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "stamp" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mr_stamp_code_.kt" "lines" 22 "characters" 742 "sha256" "628c9db73a0c28d607bdb5cc8c3b46921dd7b70d1a0ec3b04c5af3ee1a545c41"}]}
+{"id" "mr_stamp" "index" 1 "name" "stamp" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "stamp" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mr_stamp_code_.kt" "lines" 24 "characters" 759 "sha256" "3ad0a4e2e74cf73cec5036a02b947410fe49913c7f0fc36d387705c66c084336"}]}
 ```
 
 ```kotlin [field-property box="mr_stamp" name="code" path="mr_stamp_code_.kt"]
 // A macro is YAML. This one is what the recorder writes when you make a box with code,
 // make another, and connect them with `g`.
-val stamp = """
+val stamp =
+    """
     name: stamp
     operations:
       - create:
@@ -68,7 +70,8 @@ val stamp = """
       - connect:
           parent: stamp_source
           child: stamp_sink
-""".trimIndent()
+    """
+        .trimIndent()
 val saved = OperationTranscript.writeMacro(thisBox.inside.filename, "stamp", stamp)
 println("${saved.message} ${saved.operationCount} operations")
 ```
@@ -85,7 +88,7 @@ Replay "stamp" as a copy three times, each 140 lower: the boxes it creates get n
 identities on every run, so each run makes another connected pair.
 
 ```edn [field-box id="mr_copies" role="properties"]
-{"id" "mr_copies" "index" 2 "name" "copies" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "copies" "_tombstone" false "frame" #afield/rect [80.0 360.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mr_copies_code_.kt" "lines" 12 "characters" 654 "sha256" "8a03cc6243a90d8dc7ad431e2d7f82bb521ad9a00a8aa5b76e23421c9894af05"}]}
+{"id" "mr_copies" "index" 2 "name" "copies" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "copies" "_tombstone" false "frame" #afield/rect [80.0 360.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mr_copies_code_.kt" "lines" 15 "characters" 670 "sha256" "4333a7a4d0d7b0eb56069e741fc85332ab40b51a9500362eac134cf2ea47b8dc"}]}
 ```
 
 ```kotlin [field-property box="mr_copies" name="code" path="mr_copies_code_.kt"]
@@ -94,12 +97,15 @@ identities on every run, so each run makes another connected pair.
 val document = thisBox.inside.filename
 (1..3).forEach { i ->
     val run = OperationTranscript.runMacro(
-        document, "stamp",
-        replay = OperationTranscript.MacroReplayOptions(asCopy = true, offsetY = 140.0 * i)
+        document,
+        "stamp",
+        replay = OperationTranscript.MacroReplayOptions(asCopy = true, offsetY = 140.0 * i),
     )
     println(run.message + run.errors.joinToString("") { " " + it })
 }
 val sources = thisBox.inside.boxes.values.filter { it.name == "Source" }
-println("${sources.size} Source boxes; Sinks wired to each: ${sources.map { s -> s.children.count { it.name == "Sink" } }}")
+println(
+    "${sources.size} Source boxes; Sinks wired to each: ${sources.map { s -> s.children.count { it.name == "Sink" } }}",
+)
 ```
 

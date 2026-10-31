@@ -363,16 +363,20 @@ in 41
 ```
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="editor" clip-selector=".monaco-editor-container" screenshot="assets/pure_data/line-note.png" macro-file="../../dev_docs/agents/transcripts/docs_capture/pd_line_note_roundtrip.yaml" capture-box="pd_doc_roundtrip" requires="libpd" padding="10" wait="0" timeout="120" embed=true hidden=true name="pure-data-line-note" alt="A Pd box in Field's editor holding the round-trip patch: a comment, the message line in 41, then the #N and #X statements for r in, + 1, s out and print out. At the editor's foot the line note reads 'out' = 42.0, with 42.0 in bold, over a muted line: line 6 · [s out] · the last message, live."}
-// The setup transcript launched the box and ran its line `in 41`. Put the cursor on `[s out]`
-// (box line 6) and wait for the editor to show that line's note. The still is taken here, clipped to
-// the editor (clip-selector), because a capture after the script re-preps the editor, which resets
-// the cursor and the pane height, and the note goes with them.
+/*
+The setup transcript launched the box and ran its line `in 41`. Put the cursor on `[s out]`
+(box line 6) and wait for the editor to show that line's note. The still is taken here, clipped to
+the editor (clip-selector), because a capture after the script re-preps the editor, which resets
+the cursor and the pane height, and the note goes with them.
+*/
 ui.openEditor("pd_doc_roundtrip")
 ui.waitForSelector(".monaco-editor", 15000.0)
 ui.pause(1000)
 // Size the pane to the patch, so the note at its foot sits right under the code.
 ui.editorHeight(330)
-ui.eval("var e = window.globalEditor; e.focus(); e.setPosition({lineNumber: 6, column: 1}); e.revealLine(6); return 'ok';")
+ui.eval(
+    "var e = window.globalEditor; e.focus(); e.setPosition({lineNumber: 6, column: 1}); e.revealLine(6); return 'ok';",
+)
 ui.waitForSelector(".afield-line-note", 10000.0)
 ui.pause(600)
 ```
@@ -402,15 +406,19 @@ it has run `pdBox("drone").pdSend("freq", 330)`. With the cursor on the drone's 
 the line note shows what arrived:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="editor" clip-selector=".monaco-editor-container" screenshot="assets/pure_data/send-from-kotlin.png" macro-file="../../dev_docs/agents/transcripts/docs_capture/pd_send_from_kotlin.yaml" capture-box="pd_doc_drone" requires="libpd" padding="10" wait="0" timeout="120" embed=true hidden=true name="pure-data-send-from-kotlin" alt="A Pd box named drone in Field's editor, its patch starting #X obj 20 20 r freq, then phasor~ 110, lop~ 1200, *~ 0.05 and dac~. At the editor's foot the line note reads 'freq' = 330.0, with 330.0 in bold, over a muted line: line 2 · [r freq] · the last message, live."}
-// The setup transcript launched "drone", then ran the Kotlin box `pdBox("drone").pdSend("freq", 330)`.
-// Put the cursor on the drone's `[r freq]` (box line 2) and wait for its note; the still is taken
-// here, clipped to the editor, as in the figure above.
+/*
+The setup transcript launched "drone", then ran the Kotlin box `pdBox("drone").pdSend("freq", 330)`.
+Put the cursor on the drone's `[r freq]` (box line 2) and wait for its note; the still is taken
+here, clipped to the editor, as in the figure above.
+*/
 ui.openEditor("pd_doc_drone")
 ui.waitForSelector(".monaco-editor", 15000.0)
 ui.pause(1000)
 // Size the pane to the patch, so the note at its foot sits right under the code.
 ui.editorHeight(350)
-ui.eval("var e = window.globalEditor; e.focus(); e.setPosition({lineNumber: 2, column: 1}); e.revealLine(2); return 'ok';")
+ui.eval(
+    "var e = window.globalEditor; e.focus(); e.setPosition({lineNumber: 2, column: 1}); e.revealLine(2); return 'ok';",
+)
 ui.waitForSelector(".afield-line-note", 10000.0)
 ui.pause(600)
 ```

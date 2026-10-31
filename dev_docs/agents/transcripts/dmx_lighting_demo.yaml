@@ -12,11 +12,11 @@ operations:
         "autorun": false
         "code": |
           import afield.io.dmx.*
-          
+
           // Field as an Art-Net node: listen on UDP 6454, merge what arrives (HTP), answer ArtPoll.
           // Launch this first, then launch the sender. Stopping this box closes the socket.
           val input = artnetIn()
-          
+
           // Redraw the two received universes as RGB cells whenever new data has arrived.
           var seen = -1L
           loop {
@@ -68,7 +68,7 @@ operations:
         "autorun": false
         "code": |
           import afield.io.dmx.*
-          
+
           // Art-Net discovery: send one ArtPoll and list every node that answers within a second.
           // With the receiver box running, Field itself answers. Try "255.255.255.255" on a real network.
           artPoll("127.0.0.1").forEach { println(it) }

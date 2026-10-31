@@ -2,8 +2,9 @@
 val document = thisBox.inside.filename
 (0 until 3).forEach { step ->
     val run = OperationTranscript.runMacro(
-        document, "stamp",
-        replay = OperationTranscript.MacroReplayOptions(step = step)
+        document,
+        "stamp",
+        replay = OperationTranscript.MacroReplayOptions(step = step),
     )
     println("step ${step + 1}: ${run.message}" + run.errors.joinToString("") { " " + it })
 }

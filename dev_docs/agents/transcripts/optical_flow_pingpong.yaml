@@ -14,13 +14,45 @@ operations:
       w: 300.0
       h: 100.0
     properties:
-      code: "import afield.graphics.vulkan.util.Options\n\nprop<Window>(window)\nprop<Renderer>(renderer)\n\nOptions.enableVR = false\nOptions.enableHDR = false\nOptions.profiling = false\n\nonce.renderer {\n    window = Window(\"Field\")\n    Renderer(window)\n}\n\nprintln(\"agent graphics renderer ready\")\nstart(renderer::run)\n"
+      code: |-
+        import afield.graphics.vulkan.util.Options
+
+        prop<Window>(window)
+        prop<Renderer>(renderer)
+
+        Options.enableVR = false
+        Options.enableHDR = false
+        Options.profiling = false
+
+        once.renderer {
+            window = Window("Field")
+            Renderer(window)
+        }
+
+        println("agent graphics renderer ready")
+        start(renderer::run)
 - launch:
     box: agent_graphics_context
     property: code
     type: code
     strand: renderer
-    code: "import afield.graphics.vulkan.util.Options\n\nprop<Window>(window)\nprop<Renderer>(renderer)\n\nOptions.enableVR = false\nOptions.enableHDR = false\nOptions.profiling = false\n\nonce.renderer {\n    window = Window(\"Field\")\n    Renderer(window)\n}\n\nprintln(\"agent graphics renderer ready\")\nstart(renderer::run)\n"
+    code: |-
+      import afield.graphics.vulkan.util.Options
+
+      prop<Window>(window)
+      prop<Renderer>(renderer)
+
+      Options.enableVR = false
+      Options.enableHDR = false
+      Options.profiling = false
+
+      once.renderer {
+          window = Window("Field")
+          Renderer(window)
+      }
+
+      println("agent graphics renderer ready")
+      start(renderer::run)
 - wait:
     frames: 3
 - create:
@@ -153,8 +185,13 @@ operations:
             }
         }
             .end { ownedSession.close() }
-      vertex: "#version 460\nlayout(location=0) out vec2 uv;\nvoid main() {\n    uv=vec2((gl_VertexIndex<<1)&2,gl_VertexIndex&2);\n\
-        \    gl_Position=vec4(uv*2-1,0,1);\n}\n"
+      vertex: |-
+        #version 460
+        layout(location=0) out vec2 uv;
+        void main() {
+            uv=vec2((gl_VertexIndex<<1)&2,gl_VertexIndex&2);
+            gl_Position=vec4(uv*2-1,0,1);
+        }
       fragment: |
         #version 460
         layout(location=0) out vec4 color;
@@ -344,17 +381,37 @@ operations:
                 owner.renderList.modules.remove("pingpong flow texture", view)
                 if (!owner.isClosed) owner.cleanup += Runnable { view.current.cleanup() }
             }
-      vertex: "#version 460\nlayout(location=0) out vec2 uv;\nvoid main() {\n    uv=vec2((gl_VertexIndex<<1)&2,gl_VertexIndex&2);\n\
-        \    gl_Position=vec4(uv*2-1,0,1);\n}\n"
-      fragment: "#version 460\nlayout(location=0) in vec2 uv;\nlayout(location=0) out vec4 color;\nlayout(set=0,binding=0)\
-        \ uniform sampler2D previousImage;\nlayout(set=0,binding=1) uniform sampler2D currentImage;\nlayout(set=0,binding=2)\
-        \ uniform sampler2D motion;\nvoid main() {\n    vec2 panel=vec2(uv.x,1-uv.y)*2,st=fract(panel);\n    vec4\
-        \ field=texture(motion,st); // xy: input pixels, z: hardware matching cost\n    vec3 rgb;\n    if(panel.y<1)rgb=panel.x<1?texture(previousImage,st).rgb:texture(currentImage,st).rgb;\n\
-        \    else if(panel.x>=1)rgb=vec3(clamp(field.z/100,0,1));\n    else {\n        float angle=atan(field.y,field.x);\n\
-        \        rgb=(.5+.5*cos(angle+vec3(0,2.094,4.189)))*clamp(length(field.xy)/8,0,1);\n        vec2 cell=(fract(st*vec2(textureSize(currentImage,0))/40)-.5)*40;\n\
-        \        vec2 d=normalize(field.xy+vec2(.0001));\n        float along=dot(cell,d),across=abs(dot(cell,vec2(-d.y,d.x)));\n\
-        \        float arrow=float((abs(along)<12&&across<.8)||(along>6&&along<13&&abs(across-(13-along))<1));\n\
-        \        rgb=mix(rgb,vec3(1),arrow*.8*clamp(length(field.xy),0,1));\n    }\n    color=vec4(rgb,1);\n}\n"
+      vertex: |-
+        #version 460
+        layout(location=0) out vec2 uv;
+        void main() {
+            uv=vec2((gl_VertexIndex<<1)&2,gl_VertexIndex&2);
+            gl_Position=vec4(uv*2-1,0,1);
+        }
+      fragment: |-
+        #version 460
+        layout(location=0) in vec2 uv;
+        layout(location=0) out vec4 color;
+        layout(set=0,binding=0) uniform sampler2D previousImage;
+        layout(set=0,binding=1) uniform sampler2D currentImage;
+        layout(set=0,binding=2) uniform sampler2D motion;
+        void main() {
+            vec2 panel=vec2(uv.x,1-uv.y)*2,st=fract(panel);
+            vec4 field=texture(motion,st); // xy: input pixels, z: hardware matching cost
+            vec3 rgb;
+            if(panel.y<1)rgb=panel.x<1?texture(previousImage,st).rgb:texture(currentImage,st).rgb;
+            else if(panel.x>=1)rgb=vec3(clamp(field.z/100,0,1));
+            else {
+                float angle=atan(field.y,field.x);
+                rgb=(.5+.5*cos(angle+vec3(0,2.094,4.189)))*clamp(length(field.xy)/8,0,1);
+                vec2 cell=(fract(st*vec2(textureSize(currentImage,0))/40)-.5)*40;
+                vec2 d=normalize(field.xy+vec2(.0001));
+                float along=dot(cell,d),across=abs(dot(cell,vec2(-d.y,d.x)));
+                float arrow=float((abs(along)<12&&across<.8)||(along>6&&along<13&&abs(across-(13-along))<1));
+                rgb=mix(rgb,vec3(1),arrow*.8*clamp(length(field.xy),0,1));
+            }
+            color=vec4(rgb,1);
+        }
 - connect:
     parent: optical_flow_pingpong
     child: flow_texture

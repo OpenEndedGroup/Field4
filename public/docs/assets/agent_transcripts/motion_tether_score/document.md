@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="motion_tether_score" index="0" -->
 
 ```edn [field-box id="motion_tether_score" role="properties"]
-{"id" "motion_tether_score" "index" 0 "name" "CLoSD — a movement score" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "CLoSD — a movement score" "_tombstone" false "frame" #afield/rect [80.0 80.0 600.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "motion_tether_score_code_.kt" "lines" 28 "characters" 1068 "sha256" "4022a9da64956a725373597b1e8557096db193f8068a14e88ad721b01f8bf48b"}]}
+{"id" "motion_tether_score" "index" 0 "name" "CLoSD — a movement score" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "CLoSD — a movement score" "_tombstone" false "frame" #afield/rect [80.0 80.0 600.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "motion_tether_score_code_.kt" "lines" 36 "characters" 1209 "sha256" "3b1d83f004a954b86b1f427922943c049a3597250f5b8a14b07bf01c18f9ff91"}]}
 ```
 
 ```kotlin [field-property box="motion_tether_score" name="code" path="motion_tether_score_code_.kt"]
@@ -22,15 +22,23 @@ frames {
     CLoSD.openAsync().awaitMotion().use { dancer ->
         dancer.prompt("A person walks forward.")
         fun draw(snapshot: MotionSnapshot) {
-            showMotion(snapshot.frame, dancer.skeleton, follow=true,
-                overlays=dancer.telemetry.tethers().flatMap { it.overlays() })
+            showMotion(
+                snapshot.frame,
+                dancer.skeleton,
+                follow = true,
+                overlays = dancer.telemetry.tethers().flatMap { it.overlays() },
+            )
             val foot = dancer.telemetry.tether("left-foot")
-            markdown("status", when {
-                foot?.active == true -> "**TETHERED** · ${"%.0f".format(foot.forceN)} N"
-                foot != null -> "**RELEASED**"
-                else -> "**WALKING**"
-            })
-            displayOpen("motion"); displayOpen("status")
+            markdown(
+                "status",
+                when {
+                    foot?.active == true -> "**TETHERED** · ${"%.0f".format(foot.forceN)} N"
+                    foot != null -> "**RELEASED**"
+                    else -> "**WALKING**"
+                },
+            )
+            displayOpen("motion")
+            displayOpen("status")
         }
         playMotion(dancer, 2.seconds, ::draw)
         val foot = dancer.body("L_Ankle").tether("left-foot") {

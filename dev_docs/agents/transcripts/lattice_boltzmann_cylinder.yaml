@@ -26,7 +26,8 @@ operations:
           Options.profiling = false
           // once: re-running this box keeps the existing window and renderer
           once.renderer {
-              window = Window("Lattice Boltzmann - a cylinder in a wind tunnel", initialDimensions = Rect(80.0, 80.0, 1000.0, 600.0))
+              window =
+                  Window("Lattice Boltzmann - a cylinder in a wind tunnel", initialDimensions = Rect(80.0, 80.0, 1000.0, 600.0))
               Renderer(window)
           }
           println("renderer ready")
@@ -38,10 +39,12 @@ operations:
       frame: { x: 340.0, y: 40.0, w: 300.0, h: 100.0 }
       properties:
         code: |
-          // A lattice Boltzmann fluid in a wind tunnel: a wind blows left to right and the
-          // lattice wraps, so what leaves on the right comes back on the left.
-          // On its own it is uniform wind and shows nothing; the box beneath this one puts
-          // something in its way.
+          /*
+          A lattice Boltzmann fluid in a wind tunnel: a wind blows left to right and the
+          lattice wraps, so what leaves on the right comes back on the left.
+          On its own it is uniform wind and shows nothing; the box beneath this one puts
+          something in its way.
+          */
           prop<ShaderLatticeBoltzmannSystem>(lbm) = ShaderLatticeBoltzmannSystem() {
               width = 800
               height = 480
@@ -65,9 +68,11 @@ operations:
       frame: { x: 340.0, y: 160.0, w: 300.0, h: 100.0 }
       properties:
         code: |
-          // Draws into the fluid's control texture: a solid disc, walls top and bottom, and
-          // stripes of dye released at the left edge. The controls persist from frame to
-          // frame, so clear them first or a re-run leaves the old drawing behind.
+          /*
+          Draws into the fluid's control texture: a solid disc, walls top and bottom, and
+          stripes of dye released at the left edge. The controls persist from frame to
+          frame, so clear them first or a re-run leaves the old drawing behind.
+          */
           lbm.clearControls()
 
           var module = moduleHere(lbm.controlsParameters("cylinder"))

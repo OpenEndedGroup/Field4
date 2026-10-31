@@ -32,7 +32,7 @@ start(renderer::run)
 <!-- field-box id="rectsl_spacetime_trace" index="1" -->
 
 ```edn [field-box id="rectsl_spacetime_trace" role="properties"]
-{"id" "rectsl_spacetime_trace" "index" 1 "name" "a RectSL animation, as a solid" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "a RectSL animation, as a solid" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_spacetime_trace_code_.kt" "lines" 230 "characters" 8669 "sha256" "4112bf5f38787678dda3ff85f95785d61765141654465e85471265e1beeb579a"}]}
+{"id" "rectsl_spacetime_trace" "index" 1 "name" "a RectSL animation, as a solid" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "a RectSL animation, as a solid" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_spacetime_trace_code_.kt" "lines" 230 "characters" 8721 "sha256" "43a3d112937951af89c8f91faad1e0e0c8d671dedc5e9dce580a7880c06b6034"}]}
 ```
 
 ```kotlin [field-property box="rectsl_spacetime_trace" name="code" path="rectsl_spacetime_trace_code_.kt"]
@@ -61,21 +61,21 @@ a time, linearly interpolated, and `->x` takes one wherever it takes a number.
 */
 val source =
     """
-#rectsl
-->wall 8 8 abstract
-->duration 4
-->fps 30
+    #rectsl
+    ->wall 8 8 abstract
+    ->duration 4
+    ->fps 30
 
-"sweep" rect
-  0.7 2.4 ->wh
-  '( 0=-2.6  4=2.6 ) ->x
-  '( 0=0  4=3.14159 ) ->rot
+    "sweep" rect
+      0.7 2.4 ->wh
+      '( 0=-2.6  4=2.6 ) ->x
+      '( 0=0  4=3.14159 ) ->rot
 
-"pulse" rect
-  1.2 1.2 ->wh
-  1.6 -1.4 ->xy
-  '( 0=0.3  4=2.2 ) ->w
-"""
+    "pulse" rect
+      1.2 1.2 ->wh
+      1.6 -1.4 ->xy
+      '( 0=0.3  4=2.2 ) ->w
+    """
         .trimIndent()
 
 val program = compileRectSL(source).program

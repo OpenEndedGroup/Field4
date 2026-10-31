@@ -478,27 +478,46 @@ A few keyboard shortcuts for getting around Field.
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="900x560" clip="0,0,900,560" video="assets/funfeatures/command-palette.mp4" fps="10" transcript="assets/transcripts/funfeatures_tour_setup.yaml" padding="0" wait="0" timeout="180" embed=true hidden=true name="funfeatures-command-palette" alt="In a small Field window with two boxes, sketch's editor is open. Cmd/Ctrl-Shift-P opens the Command Palette for the box, with editor commands in it, and typing fold all narrows it to the folding commands; pressing the shortcut again turns it into Document Commands, and typing document history narrows that to the document history commands. Escape closes it."}
 // The setup transcript makes two boxes, sketch and helper. Lay the editor pane out for this
 // window, as a user's browser would: screenshot prep pins it to a size meant for a larger page.
-fun boxAt(name: String): List<Double> = ui.eval("""
+fun boxAt(name: String): List<Double> =
+    ui.eval(
+            """
     const b = [...document.querySelectorAll(".box")].find(b => (b.name || "") === "$name" || (b.textContent || "").trim() === "$name")
     if (!b) return null
     const r = b.getBoundingClientRect()
     return [r.left + r.width / 2, r.top + r.height / 2, b.uid || ""].join(",")
-""".trimIndent()).toString().trim('"').split(",").let { [it[0].toDouble(), it[1].toDouble()] }
-fun boxUid(name: String): String = ui.eval("""
+"""
+                .trimIndent(),
+        )
+        .toString()
+        .trim('"')
+        .split(",")
+        .let { [it[0].toDouble(), it[1].toDouble()] }
+fun boxUid(name: String): String =
+    ui.eval(
+            """
     const b = [...document.querySelectorAll(".box")].find(b => (b.name || "") === "$name" || (b.textContent || "").trim() === "$name")
     return b ? b.uid : null
-""".trimIndent()).toString().trim('"')
+"""
+                .trimIndent(),
+        )
+        .toString()
+        .trim('"')
 fun freeEditorLayout() {
-    ui.eval("""
+    ui.eval(
+        """
         const c = document.querySelector(".monaco-editor-container")
         if (c) for (const k of ["width", "height", "top", "right", "left", "bottom", "transform"]) c.style[k] = ""
         if (window.globalEditor && window.globalEditor.layout) window.globalEditor.layout()
         return true
-    """.trimIndent())
+        """
+            .trimIndent(),
+    )
 }
 // The page-load toasts (keybindings reloaded, finished loading) are hidden the way screenshot prep
 // hides them; toasts the drive's own actions raise still show.
-ui.eval("document.querySelectorAll('.bubble').forEach(b => { b.style.visibility = 'hidden'; b.style.opacity = '0' }); return true")
+ui.eval(
+    "document.querySelectorAll('.bubble').forEach(b => { b.style.visibility = 'hidden'; b.style.opacity = '0' }); return true",
+)
 freeEditorLayout()
 ui.openEditor(boxUid("sketch"))
 ui.waitForSelector(".monaco-editor", 15000.0)
@@ -560,32 +579,42 @@ opens the layers panel, which lists every layer some box is on:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector="#layers-panel" screenshot="assets/layers-panel-floating.png" transcript="assets/transcripts/layers_setup.yaml" padding="8" wait="0" timeout="120" embed=true hidden=true name="layers-panel-floating" alt="The layers panel: four rows, default, overlay, render and sketch, each with an eye button, a radio button, the layer name, its box count and a Solo button, all in aligned columns. overlay is hidden: its eye is dimmed and so is its row. default is the active layer: its radio is checked and its name is in the accent colour. Below the rows are Show all and Move selection to active layer buttons."}
 ui.eval("if (document.activeElement) document.activeElement.blur(); return 'blurred'")
-ui.down("Alt"); ui.press("KeyL"); ui.up("Alt")
+ui.down("Alt")
+ui.press("KeyL")
+ui.up("Alt")
 ui.waitForSelector("#layers-panel.is-visible", 8000.0)
-// In a fresh document only `default` is shown. Show every layer, make `default` active, then hide
-// `overlay`, all through the panel's own buttons. `default` rather than another layer: the active
-// layer outlives this figure on the capture page, and the next figure's box is on `default`.
-ui.eval("""
+/*
+In a fresh document only `default` is shown. Show every layer, make `default` active, then hide
+`overlay`, all through the panel's own buttons. `default` rather than another layer: the active
+layer outlives this figure on the capture page, and the next figure's box is on `default`.
+*/
+ui.eval(
+    """
   const all = Array.from(document.querySelectorAll("#layers-panel button")).find(b => b.textContent === "Show all");
   all.click();
   return "showed all";
-""")
+""",
+)
 ui.pause(700)
-ui.eval("""
+ui.eval(
+    """
   const rows = Array.from(document.querySelectorAll("#layers-panel .layer-row"));
   const row = name => rows.find(r => r.querySelector(".layer-name").textContent === name);
   const target = row("default"), overlay = row("overlay");
   if (!target || !overlay) return "rows: " + rows.map(r => r.querySelector(".layer-name").textContent).join(",");
   target.querySelector(".layer-active").click();
   return "activated";
-""")
+""",
+)
 ui.pause(700)
-ui.eval("""
+ui.eval(
+    """
   const rows = Array.from(document.querySelectorAll("#layers-panel .layer-row"));
   const overlay = rows.find(r => r.querySelector(".layer-name").textContent === "overlay");
   overlay.querySelector(".layer-eye").click();
   return "hid overlay";
-""")
+""",
+)
 ui.pause(900)
 ```
 
@@ -615,7 +644,9 @@ same controls in that box's output area instead:
 // The floating layers panel from the figure above is still open on this page; close it first.
 ui.eval("if (document.activeElement) document.activeElement.blur(); return 'blurred'")
 if ((ui.eval("return !!document.querySelector('#layers-panel.is-visible')") ?: "").toString() == "true") {
-    ui.down("Alt"); ui.press("KeyL"); ui.up("Alt")
+    ui.down("Alt")
+    ui.press("KeyL")
+    ui.up("Alt")
 }
 ui.openEditor("layerdemo")
 ui.waitForSelector(".layers-palette", 8000.0)
@@ -845,27 +876,46 @@ Boxes can be nested inside other boxes: select them, open the command palette (`
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="900x560" clip="0,0,900,560" video="assets/funfeatures/nesting.mp4" fps="10" transcript="assets/transcripts/funfeatures_tour_setup.yaml" padding="0" wait="0" timeout="180" embed=true hidden=true name="funfeatures-nesting" alt="Two boxes, sketch and helper. A click selects sketch and shift-click adds helper; F1 opens the palette over the canvas, typing nest narrows it to Nest 'helper' into 'sketch', and Enter runs it: helper disappears into sketch's nest."}
 // The setup transcript makes two boxes, sketch and helper. Lay the editor pane out for this
 // window, as a user's browser would: screenshot prep pins it to a size meant for a larger page.
-fun boxAt(name: String): List<Double> = ui.eval("""
+fun boxAt(name: String): List<Double> =
+    ui.eval(
+            """
     const b = [...document.querySelectorAll(".box")].find(b => (b.name || "") === "$name" || (b.textContent || "").trim() === "$name")
     if (!b) return null
     const r = b.getBoundingClientRect()
     return [r.left + r.width / 2, r.top + r.height / 2, b.uid || ""].join(",")
-""".trimIndent()).toString().trim('"').split(",").let { [it[0].toDouble(), it[1].toDouble()] }
-fun boxUid(name: String): String = ui.eval("""
+"""
+                .trimIndent(),
+        )
+        .toString()
+        .trim('"')
+        .split(",")
+        .let { [it[0].toDouble(), it[1].toDouble()] }
+fun boxUid(name: String): String =
+    ui.eval(
+            """
     const b = [...document.querySelectorAll(".box")].find(b => (b.name || "") === "$name" || (b.textContent || "").trim() === "$name")
     return b ? b.uid : null
-""".trimIndent()).toString().trim('"')
+"""
+                .trimIndent(),
+        )
+        .toString()
+        .trim('"')
 fun freeEditorLayout() {
-    ui.eval("""
+    ui.eval(
+        """
         const c = document.querySelector(".monaco-editor-container")
         if (c) for (const k of ["width", "height", "top", "right", "left", "bottom", "transform"]) c.style[k] = ""
         if (window.globalEditor && window.globalEditor.layout) window.globalEditor.layout()
         return true
-    """.trimIndent())
+        """
+            .trimIndent(),
+    )
 }
 // The page-load toasts (keybindings reloaded, finished loading) are hidden the way screenshot prep
 // hides them; toasts the drive's own actions raise still show.
-ui.eval("document.querySelectorAll('.bubble').forEach(b => { b.style.visibility = 'hidden'; b.style.opacity = '0' }); return true")
+ui.eval(
+    "document.querySelectorAll('.bubble').forEach(b => { b.style.visibility = 'hidden'; b.style.opacity = '0' }); return true",
+)
 freeEditorLayout()
 val sketch = boxAt("sketch")
 val helper = boxAt("helper")
@@ -886,10 +936,15 @@ ui.typeSlowly("nest", 120)
 ui.pause(800)
 ui.press("Enter")
 ui.pause(1250)
-val nested = ui.eval("""
-    const h = [...document.querySelectorAll(".box")].find(b => (b.name || "") === "helper")
-    return h ? getComputedStyle(h).display + "/" + getComputedStyle(h).visibility : "gone"
-""".trimIndent()).toString()
+val nested =
+    ui.eval(
+            """
+            const h = [...document.querySelectorAll(".box")].find(b => (b.name || "") === "helper")
+            return h ? getComputedStyle(h).display + "/" + getComputedStyle(h).visibility : "gone"
+            """
+                .trimIndent(),
+        )
+        .toString()
 check(!nested.contains("block/visible")) { "helper is still on the canvas after Nest: " + nested }
 ui.pause(750)
 ```
@@ -923,27 +978,46 @@ The document-level command "Add Editor to Output Area" pins a particular propert
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="900x560" clip="0,0,900,560" video="assets/funfeatures/multi-editor.mp4" fps="10" transcript="assets/transcripts/funfeatures_tour_setup.yaml" padding="0" wait="0" timeout="180" embed=true hidden=true name="funfeatures-multi-editor" alt="A click selects the box named helper and opens its editor. F1, then typing add editor to output, finds Add Editor to Output Area; Enter, then code, picks the property, and a second, embedded editor holding helper's code opens in the box's output area under it."}
 // The setup transcript makes two boxes, sketch and helper. Lay the editor pane out for this
 // window, as a user's browser would: screenshot prep pins it to a size meant for a larger page.
-fun boxAt(name: String): List<Double> = ui.eval("""
+fun boxAt(name: String): List<Double> =
+    ui.eval(
+            """
     const b = [...document.querySelectorAll(".box")].find(b => (b.name || "") === "$name" || (b.textContent || "").trim() === "$name")
     if (!b) return null
     const r = b.getBoundingClientRect()
     return [r.left + r.width / 2, r.top + r.height / 2, b.uid || ""].join(",")
-""".trimIndent()).toString().trim('"').split(",").let { [it[0].toDouble(), it[1].toDouble()] }
-fun boxUid(name: String): String = ui.eval("""
+"""
+                .trimIndent(),
+        )
+        .toString()
+        .trim('"')
+        .split(",")
+        .let { [it[0].toDouble(), it[1].toDouble()] }
+fun boxUid(name: String): String =
+    ui.eval(
+            """
     const b = [...document.querySelectorAll(".box")].find(b => (b.name || "") === "$name" || (b.textContent || "").trim() === "$name")
     return b ? b.uid : null
-""".trimIndent()).toString().trim('"')
+"""
+                .trimIndent(),
+        )
+        .toString()
+        .trim('"')
 fun freeEditorLayout() {
-    ui.eval("""
+    ui.eval(
+        """
         const c = document.querySelector(".monaco-editor-container")
         if (c) for (const k of ["width", "height", "top", "right", "left", "bottom", "transform"]) c.style[k] = ""
         if (window.globalEditor && window.globalEditor.layout) window.globalEditor.layout()
         return true
-    """.trimIndent())
+        """
+            .trimIndent(),
+    )
 }
 // The page-load toasts (keybindings reloaded, finished loading) are hidden the way screenshot prep
 // hides them; toasts the drive's own actions raise still show.
-ui.eval("document.querySelectorAll('.bubble').forEach(b => { b.style.visibility = 'hidden'; b.style.opacity = '0' }); return true")
+ui.eval(
+    "document.querySelectorAll('.bubble').forEach(b => { b.style.visibility = 'hidden'; b.style.opacity = '0' }); return true",
+)
 freeEditorLayout()
 val helper = boxAt("helper")
 ui.pause(600)
@@ -963,7 +1037,9 @@ ui.typeSlowly("code", 140)
 ui.pause(600)
 ui.press("Enter")
 ui.pause(900)
-val open = ui.eval("return !!(window.embeddedEditors && window.embeddedEditors.getFor('" + boxUid("helper") + "', 'code'))").toString()
+val open =
+    ui.eval("return !!(window.embeddedEditors && window.embeddedEditors.getFor('" + boxUid("helper") + "', 'code'))")
+        .toString()
 check(open.contains("true")) { "no embedded code editor opened in helper's output area" }
 ui.pause(900)
 ```

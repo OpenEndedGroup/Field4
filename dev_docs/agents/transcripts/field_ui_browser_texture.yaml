@@ -25,18 +25,18 @@ operations:
       properties:
         code: |
           import afield.graphics.vulkan.util.Options
-          
+
           prop<Window>(window)
           prop<Renderer>(renderer)
-          
+
           Options.enableHDR = false
           Options.profiling = false
-          
+
           once.renderer {
               window = Window("Field UI on a texture")
               Renderer(window)
           }
-          
+
           println("Field UI texture renderer ready")
           start(renderer::run)
   - create:
@@ -214,18 +214,18 @@ operations:
       strand: renderer
       code: |
         import afield.graphics.vulkan.util.Options
-        
+
         prop<Window>(window)
         prop<Renderer>(renderer)
-        
+
         Options.enableHDR = false
         Options.profiling = false
-        
+
         once.renderer {
             window = Window("Field UI on a texture")
             Renderer(window)
         }
-        
+
         println("Field UI texture renderer ready")
         start(renderer::run)
   - wait: { frames: 3 }

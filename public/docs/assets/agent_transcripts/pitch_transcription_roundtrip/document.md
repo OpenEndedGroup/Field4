@@ -166,7 +166,7 @@ inability, not the loudest note. `~` is the only thing mini-notation can say for
 that sounded and was not named, so the refusal lives in the warnings and the verdict.
 
 ```edn [field-box id="pitch_roundtrip_refusal" role="properties"]
-{"id" "pitch_roundtrip_refusal" "index" 2 "name" "5 · a chord, refused rather than guessed at" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 · a chord, refused rather than guessed at" "_tombstone" false "frame" #afield/rect [40.0 340.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pitch_roundtrip_refusal_code_.kt" "lines" 42 "characters" 1530 "sha256" "58406ea28b081eeb75fe9193f237ddff8945101b670977c133f6a13c1b2c07c8"}]}
+{"id" "pitch_roundtrip_refusal" "index" 2 "name" "5 · a chord, refused rather than guessed at" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 · a chord, refused rather than guessed at" "_tombstone" false "frame" #afield/rect [40.0 340.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pitch_roundtrip_refusal_code_.kt" "lines" 42 "characters" 1534 "sha256" "b98ac3f20c903a3846ae73087e4ed57228fdfce532108106a3438efd60616848"}]}
 ```
 
 ```kotlin [field-property box="pitch_roundtrip_refusal" name="code" path="pitch_roundtrip_refusal_code_.kt"]
@@ -209,7 +209,7 @@ display(
     separates a chord (a few discrete partials) from a snare (a continuum).
     Compare: a sawtooth is a full harmonic stack on ONE note and is NOT refused,
     because timbre is not polyphony.
-"""
+    """
         .trimIndent(),
 )
 ```
@@ -265,32 +265,32 @@ display("summary", heard.describe())
 <!-- field-box id="pitch_roundtrip_guide" index="4" -->
 
 ```edn [field-box id="pitch_roundtrip_guide" role="properties"]
-{"id" "pitch_roundtrip_guide" "index" 4 "name" "1 · hearing pitch — the loop and its last arrow" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · hearing pitch — the loop and its last arrow" "_tombstone" false "frame" #afield/rect [40.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pitch_roundtrip_guide_code_.kt" "lines" 36 "characters" 2290 "sha256" "3d76e62261377bc2e97e9d199ffc511b6a66bce2fee612f0da3a8ad046b82b6d"}]}
+{"id" "pitch_roundtrip_guide" "index" 4 "name" "1 · hearing pitch — the loop and its last arrow" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · hearing pitch — the loop and its last arrow" "_tombstone" false "frame" #afield/rect [40.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pitch_roundtrip_guide_code_.kt" "lines" 36 "characters" 2366 "sha256" "ac4c26927f4537cc19ea721701bce0afd6b68946613a1b49a9ba52903a0f8c54"}]}
 ```
 
 ```kotlin [field-property box="pitch_roundtrip_guide" name="code" path="pitch_roundtrip_guide_code_.kt"]
 display(
     "guide",
     """
-<section style="width:1040px;max-width:100%;box-sizing:border-box;background:#151a20;color:#dbe3e9;padding:18px;border:1px solid #303c46;border-radius:8px;font:13px/1.55 system-ui,sans-serif">
-  <h2 style="margin:0 0 8px;color:#7fcbd7">notation → sound → notation</h2>
-  <p>Field already rendered notation to sound exactly, and already heard <b>rhythm</b> back
-  (<code>PatOnsetDetection.kt</code>). What it could not do was hear <b>pitch</b>, or write
-  what it heard back out as something it can re-render. These boxes are that half.</p>
-  <p>Every box below is pure CPU: <code>patRenderStereo</code> or <code>doughRenderMono</code>
-  makes a finite buffer, <code>patTranscribe</code> reads it, and the figure overlays the
-  notation Field authored (hollow outline) on what the detector heard (solid bar) on one
-  shared MIDI axis. Nothing here talks to <code>services/field-audio-ai</code>, opens an audio
-  device, or needs model weights.</p>
-  <p>The measurement is unusually cheap to trust: the reference is not somebody's annotation
-  of the audio, it <i>is</i> the audio's cause. Box 2 is the clean case. Boxes 3 and 5 are
-  the two ways this fails on purpose. <b>Box 4 is the one to poke</b> — it has the single
-  parameter that matters most, and a comment saying what should happen when you change it.</p>
-  <p style="margin:12px 0 0;color:#98a6b3">Pitch error is reported in <b>cents</b>, not in note
-  names. One of the corpus cases is exactly 50 cents from equal temperament, where the correct
-  note name genuinely does not exist — a measurement 0.1 cents out flips it a semitone.</p>
-</section>
-"""
+    <section style="width:1040px;max-width:100%;box-sizing:border-box;background:#151a20;color:#dbe3e9;padding:18px;border:1px solid #303c46;border-radius:8px;font:13px/1.55 system-ui,sans-serif">
+      <h2 style="margin:0 0 8px;color:#7fcbd7">notation → sound → notation</h2>
+      <p>Field already rendered notation to sound exactly, and already heard <b>rhythm</b> back
+      (<code>PatOnsetDetection.kt</code>). What it could not do was hear <b>pitch</b>, or write
+      what it heard back out as something it can re-render. These boxes are that half.</p>
+      <p>Every box below is pure CPU: <code>patRenderStereo</code> or <code>doughRenderMono</code>
+      makes a finite buffer, <code>patTranscribe</code> reads it, and the figure overlays the
+      notation Field authored (hollow outline) on what the detector heard (solid bar) on one
+      shared MIDI axis. Nothing here talks to <code>services/field-audio-ai</code>, opens an audio
+      device, or needs model weights.</p>
+      <p>The measurement is unusually cheap to trust: the reference is not somebody's annotation
+      of the audio, it <i>is</i> the audio's cause. Box 2 is the clean case. Boxes 3 and 5 are
+      the two ways this fails on purpose. <b>Box 4 is the one to poke</b> — it has the single
+      parameter that matters most, and a comment saying what should happen when you change it.</p>
+      <p style="margin:12px 0 0;color:#98a6b3">Pitch error is reported in <b>cents</b>, not in note
+      names. One of the corpus cases is exactly 50 cents from equal temperament, where the correct
+      note name genuinely does not exist — a measurement 0.1 cents out flips it a semitone.</p>
+    </section>
+    """
         .trimIndent(),
 )
 

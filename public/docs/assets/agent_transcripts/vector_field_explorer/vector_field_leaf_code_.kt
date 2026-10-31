@@ -9,8 +9,10 @@ fun show(blur: Double) {
     val topology = VectorFieldTopology.compute(VectorFieldTopology.gradientOf(print.luma().gaussianBlur(blur)))
     showImgGrid(
         "photograph" to print.scaleBy(2.0),
-        "${topology.criticalPoints.size} points" to print.overlay(dark, 0.6).drawFLines(topology.toFLines() + topology.criticalPointsFLine(7.0), scale = 2.0),
-        columns = 2, cellSide = 300,
+        "${topology.criticalPoints.size} points" to
+            print.overlay(dark, 0.6).drawFLines(topology.toFLines() + topology.criticalPointsFLine(7.0), scale = 2.0),
+        columns = 2,
+        cellSide = 300,
     )
 }
 slider("blur", min = 3.0, max = 16.0, step = 0.5, initialValue = 7.0) { show(it) }

@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="lbm_renderer" index="0" -->
 
 ```edn [field-box id="lbm_renderer" role="properties"]
-{"id" "lbm_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["lbm_fluid"] "properties" {"children" #{#afield/box "lbm_fluid"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lbm_renderer_code_.kt" "lines" 14 "characters" 501 "sha256" "764c5bd8a4b8a79b11d2292b0ddd0df3bad2789471f6cb334a16e7ad870f72c0"}]}
+{"id" "lbm_renderer" "index" 0 "name" "renderer" "parents" ["root"] "children" ["lbm_fluid"] "properties" {"children" #{#afield/box "lbm_fluid"} "parents" #{#afield/box "root"} "name" "renderer" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lbm_renderer_code_.kt" "lines" 15 "characters" 509 "sha256" "e055a811e3d0713b2db3405794bd18ee91bea2d517361c8a0bfe9b9471332afa"}]}
 ```
 
 ```kotlin [field-property box="lbm_renderer" name="code" path="lbm_renderer_code_.kt"]
@@ -23,7 +23,8 @@ Options.enableHDR = false
 Options.profiling = false
 // once: re-running this box keeps the existing window and renderer
 once.renderer {
-    window = Window("Lattice Boltzmann - a cylinder in a wind tunnel", initialDimensions = Rect(80.0, 80.0, 1000.0, 600.0))
+    window =
+        Window("Lattice Boltzmann - a cylinder in a wind tunnel", initialDimensions = Rect(80.0, 80.0, 1000.0, 600.0))
     Renderer(window)
 }
 println("renderer ready")
@@ -45,14 +46,16 @@ On its own it is uniform wind and shows nothing; the box beneath this one puts
 something in its way.
 
 ```edn [field-box id="lbm_fluid" role="properties"]
-{"id" "lbm_fluid" "index" 1 "name" "fluid" "parents" ["root" "lbm_renderer"] "children" ["lbm_cylinder"] "properties" {"children" #{#afield/box "lbm_cylinder"} "parents" #{#afield/box "root" #afield/box "lbm_renderer"} "name" "fluid" "_tombstone" false "frame" #afield/rect [340.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lbm_fluid_code_.kt" "lines" 21 "characters" 955 "sha256" "080f35adcadf5fc1bf3f9c4df0010bc6cb8412b7a3d301fdbb703ce0acf2027d"}]}
+{"id" "lbm_fluid" "index" 1 "name" "fluid" "parents" ["root" "lbm_renderer"] "children" ["lbm_cylinder"] "properties" {"children" #{#afield/box "lbm_cylinder"} "parents" #{#afield/box "root" #afield/box "lbm_renderer"} "name" "fluid" "_tombstone" false "frame" #afield/rect [340.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lbm_fluid_code_.kt" "lines" 23 "characters" 949 "sha256" "5331d4ad169f31f0ef6bbaf106a697f9aca7969b5c957fe7a0cf74aa2510404e"}]}
 ```
 
 ```kotlin [field-property box="lbm_fluid" name="code" path="lbm_fluid_code_.kt"]
-// A lattice Boltzmann fluid in a wind tunnel: a wind blows left to right and the
-// lattice wraps, so what leaves on the right comes back on the left.
-// On its own it is uniform wind and shows nothing; the box beneath this one puts
-// something in its way.
+/*
+A lattice Boltzmann fluid in a wind tunnel: a wind blows left to right and the
+lattice wraps, so what leaves on the right comes back on the left.
+On its own it is uniform wind and shows nothing; the box beneath this one puts
+something in its way.
+*/
 prop<ShaderLatticeBoltzmannSystem>(lbm) = ShaderLatticeBoltzmannSystem() {
     width = 800
     height = 480
@@ -85,13 +88,15 @@ stripes of dye released at the left edge. The controls persist from frame to
 frame, so clear them first or a re-run leaves the old drawing behind.
 
 ```edn [field-box id="lbm_cylinder" role="properties"]
-{"id" "lbm_cylinder" "index" 2 "name" "cylinder" "parents" ["root" "lbm_fluid"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "lbm_fluid"} "name" "cylinder" "_tombstone" false "frame" #afield/rect [340.0 160.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lbm_cylinder_code_.kt" "lines" 14 "characters" 497 "sha256" "1186886114bb16605e9f3fcdeff14c9140d2396a98c8df7a569bbb73c030f2b3"} {"name" "vertex" "language" "glsl" "path" "lbm_cylinder_vertex_.glsl" "lines" 12 "characters" 345 "sha256" "c0ac9cc065ddd6b8287a1f4e4fa5deda869d6ebda87289989aa92f59ebdc6e54"} {"name" "fragment" "language" "glsl" "path" "lbm_cylinder_fragment_.glsl" "lines" 21 "characters" 582 "sha256" "3b24a103fe4c9a276e882e311da89cdc3d0dd74c3d2731b88fef79964e8c5646"}]}
+{"id" "lbm_cylinder" "index" 2 "name" "cylinder" "parents" ["root" "lbm_fluid"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "lbm_fluid"} "name" "cylinder" "_tombstone" false "frame" #afield/rect [340.0 160.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lbm_cylinder_code_.kt" "lines" 16 "characters" 494 "sha256" "79266ffd359cdd12a94b22aa274fccc154d9ef43d0657cefed497e023cca0fd9"} {"name" "vertex" "language" "glsl" "path" "lbm_cylinder_vertex_.glsl" "lines" 12 "characters" 345 "sha256" "c0ac9cc065ddd6b8287a1f4e4fa5deda869d6ebda87289989aa92f59ebdc6e54"} {"name" "fragment" "language" "glsl" "path" "lbm_cylinder_fragment_.glsl" "lines" 21 "characters" 582 "sha256" "3b24a103fe4c9a276e882e311da89cdc3d0dd74c3d2731b88fef79964e8c5646"}]}
 ```
 
 ```kotlin [field-property box="lbm_cylinder" name="code" path="lbm_cylinder_code_.kt"]
-// Draws into the fluid's control texture: a solid disc, walls top and bottom, and
-// stripes of dye released at the left edge. The controls persist from frame to
-// frame, so clear them first or a re-run leaves the old drawing behind.
+/*
+Draws into the fluid's control texture: a solid disc, walls top and bottom, and
+stripes of dye released at the left edge. The controls persist from frame to
+frame, so clear them first or a re-run leaves the old drawing behind.
+*/
 lbm.clearControls()
 
 var module = moduleHere(lbm.controlsParameters("cylinder"))

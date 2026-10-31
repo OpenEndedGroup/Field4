@@ -15,7 +15,7 @@ val ruby =
       play (scale :e3, :minor_pentatonic).tick, release: 0.7, amp: 0.35
       sleep 1
     end
-"""
+    """
         .trimIndent()
 
 recordSonicPiWav(

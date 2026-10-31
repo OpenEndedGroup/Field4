@@ -19,13 +19,15 @@ execution on a root's CHILDREN, never on the root (LanguageRuntimeSupport.kt:56-
 Its `mainLanguage` property is what makes the four boxes below Python.
 
 ```edn [field-box id="python_root" role="properties"]
-{"id" "python_root" "index" 0 "name" "Python root -- children of this box run as Python" "parents" ["root"] "children" ["python_hello" "python_shared" "python_interop" "python_plotly"] "properties" {"children" #{#afield/box "python_hello" #afield/box "python_shared" #afield/box "python_interop" #afield/box "python_plotly"} "parents" #{#afield/box "root"} "name" "Python root -- children of this box run as Python" "_tombstone" false "frame" #afield/rect [60.0 40.0 340.0 100.0] "mainLanguage" "python" "isPythonRoot" true} "blockProperties" [{"name" "code" "language" "kotlin" "path" "python_root_code_.kt" "lines" 4 "characters" 280 "sha256" "ed659e63937a2e980dbf36b678538f53de10b48d3145947cdd76d1aca9242532"}]}
+{"id" "python_root" "index" 0 "name" "Python root -- children of this box run as Python" "parents" ["root"] "children" ["python_hello" "python_shared" "python_interop" "python_plotly"] "properties" {"children" #{#afield/box "python_hello" #afield/box "python_shared" #afield/box "python_interop" #afield/box "python_plotly"} "parents" #{#afield/box "root"} "name" "Python root -- children of this box run as Python" "_tombstone" false "frame" #afield/rect [60.0 40.0 340.0 100.0] "mainLanguage" "python" "isPythonRoot" true} "blockProperties" [{"name" "code" "language" "kotlin" "path" "python_root_code_.kt" "lines" 6 "characters" 277 "sha256" "5053dce5769422537e3344e78c6cddd5070ac013dc41afdad50b291ba9eebe98"}]}
 ```
 
 ```kotlin [field-property box="python_root" name="code" path="python_root_code_.kt"]
-// This box is the language ROOT, and is itself still Kotlin -- the toggle swaps the
-// execution on a root's CHILDREN, never on the root (LanguageRuntimeSupport.kt:56-69).
-// Its `mainLanguage` property is what makes the four boxes below Python.
+/*
+This box is the language ROOT, and is itself still Kotlin -- the toggle swaps the
+execution on a root's CHILDREN, never on the root (LanguageRuntimeSupport.kt:56-69).
+Its `mainLanguage` property is what makes the four boxes below Python.
+*/
 println("the root stays Kotlin")
 ```
 

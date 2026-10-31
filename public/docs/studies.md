@@ -434,8 +434,14 @@ of them, so a chat that waited for the build resumes with a close-up of the held
 failureNotes = { failed ->
     val held = failed.problem?.details?.get("held") as? List<*>
     if (held.isNullOrEmpty()) emptyList()
-    else [StudyBuildNotice("${held.size} routes were held.", StudyBuildNoticeKind.ERROR,
-        StudyBuildView("Held routes", "each held route, close up") { showHeld(held) })]
+    else
+        [
+            StudyBuildNotice(
+                "${held.size} routes were held.",
+                StudyBuildNoticeKind.ERROR,
+                StudyBuildView("Held routes", "each held route, close up") { showHeld(held) },
+            ),
+        ]
 }
 ```
 

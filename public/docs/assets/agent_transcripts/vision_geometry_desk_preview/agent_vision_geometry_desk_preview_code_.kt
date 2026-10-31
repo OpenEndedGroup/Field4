@@ -46,7 +46,7 @@ val program =
         }
         onFrame { frame -> uniform("spin", frame.time * 0.5) }
     }
-"""
+    """
         .trimIndent()
 
 // This really compiles the Kotlin above to JavaScript and really runs it; the mesh drawn
