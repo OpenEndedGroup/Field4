@@ -18,7 +18,7 @@ Topology is the source of truth. Coordinates and the FLine viewer only arrive af
 selection and the abstract Conway operation have decided what the new faces are.
 
 ```edn [field-box id="polytope_selective_kis" role="properties"]
-{"id" "polytope_selective_kis" "index" 0 "name" "Polytope — selective kis, topology to FLine" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Polytope — selective kis, topology to FLine" "_tombstone" false "frame" #afield/rect [80.0 80.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_selective_kis_code_.kt" "lines" 83 "characters" 2910 "sha256" "3474f02bc897f2a516a66235039c6fc6607fae952a9c956543cfabf03577914f"}]}
+{"id" "polytope_selective_kis" "index" 0 "name" "Polytope — selective kis, topology to FLine" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Polytope — selective kis, topology to FLine" "_tombstone" false "frame" #afield/rect [80.0 80.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_selective_kis_code_.kt" "lines" 83 "characters" 2898 "sha256" "dff9537fa2ab0e5713ae90f9da8f05c3d9c395ff0f7ff629cf90d5b3c5bf9f74"}]}
 ```
 
 ```kotlin [field-property box="polytope_selective_kis" name="code" path="polytope_selective_kis_code_.kt"]
@@ -77,7 +77,7 @@ val faceLines = polyhedron.toFaceFLines { face, line ->
     }
     line.hoverColor = vec(0.96, 0.98, 1.00, 0.98)
     line.onClick = { hit ->
-        val deployed = height?.let { "%.2f".format(it) } ?: "not selected"
+        val deployed = height?.let { it.f2 } ?: "not selected"
         status(
             """
             **output face ${face.id.value}**

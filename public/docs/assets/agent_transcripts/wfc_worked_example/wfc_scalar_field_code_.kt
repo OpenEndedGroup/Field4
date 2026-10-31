@@ -77,12 +77,12 @@ fun roughness(values: FloatArray): String {
             vn++
         }
     }
-    return "h=" + "%.3f".format(hs / hn) + " v=" + "%.3f".format(vs / vn)
+    return "h=" + (hs / hn).f3 + " v=" + (vs / vn).f3
 }
 
 println(tiles.tileCount.toString() + " levels, " + patterns.tileCount + " distinct 3x3 value patterns")
-println("1x1 tiles:    mean " + "%.2f".format(tiledHeights.average()) + ", roughness " + roughness(tiledHeights))
-println("3x3 patterns: mean " + "%.2f".format(patternHeights.average()) + ", roughness " + roughness(patternHeights))
+println("1x1 tiles:    mean " + tiledHeights.average().f2 + ", roughness " + roughness(tiledHeights))
+println("3x3 patterns: mean " + patternHeights.average().f2 + ", roughness " + roughness(patternHeights))
 
 // The payoff: iso-contours of the synthesised field are FLines, not a picture of them.
 val smooth = floatsToImg(patternHeights, outW, outH).gaussianBlur(1.2)

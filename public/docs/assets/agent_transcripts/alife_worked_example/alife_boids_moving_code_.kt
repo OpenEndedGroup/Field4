@@ -8,8 +8,8 @@ up at nine units of travel per frame. `order()` reads the velocity array, so nei
 touches what is measured; the number in each caption is computed fresh every frame.
 */
 fun flocks(a: BoidFlock, b: BoidFlock, n: Int) = [
-    "flock " + n + ": order " + "%.2f".format(a.order()) to a.toImg(1.0, tail = 8.0),
-    "no align " + n + ": " + "%.2f".format(b.order()) to b.toImg(1.0, tail = 8.0),
+    "flock " + n + ": order " + a.order().f2 to a.toImg(1.0, tail = 8.0),
+    "no align " + n + ": " + b.order().f2 to b.toImg(1.0, tail = 8.0),
 ]
 
 /*

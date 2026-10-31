@@ -52,6 +52,6 @@ loop {
             topView(wind.windLines(-0.4f, 0f, -1.1f, 5.6f, 0f, 1.1f, columns = 10, rows = 7, scale = 0.05f)),
         window = view,
         title = "a flag in gusty wind, seen from above",
-        caption = "frame $frames · aero impulse ${"%.1f".format(aero.lastImpulse)} · green: the wind field",
+        caption = "frame $frames · aero impulse ${aero.lastImpulse.f1} · green: the wind field",
     )
 }

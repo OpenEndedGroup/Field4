@@ -16,7 +16,7 @@ loop {
         camera(yaw=35.0, pitch=12.0, padding=2.6) // Room for the whole skipping gesture.
         followCamera(vec(pose.root[0], pose.root[1], pose.root[2]), halfLifeSeconds=.4,
             epoch="${(elapsed/duration).toInt()}:${snapshot.frame.episode}")
-        title("ARDY · skipping · ${"%.2f".format(snapshot.frame.time)} s")
+        title("ARDY · skipping · ${snapshot.frame.time.f2} s")
         helpers(true)
     }
     markdown("status", "**ARDY · skipping**\n\n" +

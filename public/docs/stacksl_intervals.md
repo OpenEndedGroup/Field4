@@ -47,7 +47,7 @@ for (program in programs) {
                 val x0 = 64 - n / 2
                 val y0 = (8 - n / 2).coerceIn(0, 128 - n)
                 val b = StackSLIntervals.enclosePixels(glsl, x0, y0, x0 + n - 1, y0 + n - 1, 128, 128)
-                if (b.certified) "%.4f".format(b.width) else "refused"
+                if (b.certified) b.width.f4 else "refused"
             },
     )
 }

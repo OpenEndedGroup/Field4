@@ -19,7 +19,7 @@ An Img is width x height x channels floats, interleaved, origin top-left. This o
 question "is this fast enough to actually use?" has a meaningful answer.
 
 ```edn [field-box id="imaging_basics" role="properties"]
-{"id" "imaging_basics" "index" 0 "name" "Img basics — build, resample, luma, HSV, threshold" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Img basics — build, resample, luma, HSV, threshold" "_tombstone" false "frame" #afield/rect [80.0 80.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imaging_basics_code_.kt" "lines" 43 "characters" 1853 "sha256" "868058b5a85ded703fa59706295623ef3d83af6a83de97ba8b7c0466ca9e4966"}]}
+{"id" "imaging_basics" "index" 0 "name" "Img basics — build, resample, luma, HSV, threshold" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Img basics — build, resample, luma, HSV, threshold" "_tombstone" false "frame" #afield/rect [80.0 80.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imaging_basics_code_.kt" "lines" 43 "characters" 1817 "sha256" "f629ada5dec41c570d6609db47962b52b0e0df4f620bd576e3d185591de8e98d"}]}
 ```
 
 ```kotlin [field-property box="imaging_basics" name="code" path="imaging_basics_code_.kt"]
@@ -54,13 +54,13 @@ showImgGrid(
     "hue channel" to hsv.channel(0),
     "saturation channel" to hsv.channel(1),
     "resize(600,450) then back up" to backUp,
-    "thresholdOtsu() @ ${"%.3f".format(t)}" to mask,
+    "thresholdOtsu() @ ${t.f3}" to mask,
     columns = 3,
     cellSide = 260,
 )
 println(
-    "Img ${card.width}x${card.height} x${card.channels} ch, mean ${"%.3f".format(card.mean())}, " +
-        "otsu ${"%.3f".format(t)}, foreground ${mask.data.count { it > 0.5f }} px",
+    "Img ${card.width}x${card.height} x${card.channels} ch, mean ${card.mean().f3}, " +
+        "otsu ${t.f3}, foreground ${mask.data.count { it > 0.5f }} px",
 )
 
 // The threshold is a mask; a mask has outlines; outlines are geometry. Everything the
@@ -79,7 +79,7 @@ From `code`
 A clean synthetic source, and the same source with 4% salt-and-pepper corruption.
 
 ```edn [field-box id="imaging_filters" role="properties"]
-{"id" "imaging_filters" "index" 1 "name" "filters — gaussian / median / bilateral / unsharp" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "filters — gaussian / median / bilateral / unsharp" "_tombstone" false "frame" #afield/rect [80.0 500.0 430.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imaging_filters_code_.kt" "lines" 43 "characters" 1755 "sha256" "2f37c5caf8eab4e3f8c250b1714edeb2ff75aab4d52949c330b379074cfe784f"}]}
+{"id" "imaging_filters" "index" 1 "name" "filters — gaussian / median / bilateral / unsharp" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "filters — gaussian / median / bilateral / unsharp" "_tombstone" false "frame" #afield/rect [80.0 500.0 430.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imaging_filters_code_.kt" "lines" 43 "characters" 1719 "sha256" "5e39d32a90fab1123f5a6dcc317cf41e51d9bd05b139c00a14158425cfaeee26"}]}
 ```
 
 ```kotlin [field-property box="imaging_filters" name="code" path="imaging_filters_code_.kt"]
@@ -122,9 +122,9 @@ showImgGrid(
 )
 // The median is the right tool for impulse noise; the numbers say so, not the picture.
 println(
-    "residual vs clean — gaussian ${"%.4f".format(gauss.meanAbsDiff(clean))}, " +
-        "median ${"%.4f".format(med.meanAbsDiff(clean))}, " +
-        "bilateral ${"%.4f".format(bil.meanAbsDiff(clean))}",
+    "residual vs clean — gaussian ${gauss.meanAbsDiff(clean).f4}, " +
+        "median ${med.meanAbsDiff(clean).f4}, " +
+        "bilateral ${bil.meanAbsDiff(clean).f4}",
 )
 ```
 
@@ -139,7 +139,7 @@ From `code`
 A square whose corners are at exactly known coordinates.
 
 ```edn [field-box id="imaging_features" role="properties"]
-{"id" "imaging_features" "index" 2 "name" "features — Harris / FAST corners and Hough lines" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "features — Harris / FAST corners and Hough lines" "_tombstone" false "frame" #afield/rect [80.0 1340.0 430.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imaging_features_code_.kt" "lines" 54 "characters" 2539 "sha256" "5d2ab1a01d1668cd9904d31fd58ed328dfce809b1cf2250978b10bd85d7868c1"}]}
+{"id" "imaging_features" "index" 2 "name" "features — Harris / FAST corners and Hough lines" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "features — Harris / FAST corners and Hough lines" "_tombstone" false "frame" #afield/rect [80.0 1340.0 430.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imaging_features_code_.kt" "lines" 54 "characters" 2503 "sha256" "7aebcd64a456980c9969b69bcda3e1403e7a0901271eef265cf1c7d1427ff5ab"}]}
 ```
 
 ```kotlin [field-property box="imaging_features" name="code" path="imaging_features_code_.kt"]
@@ -177,7 +177,7 @@ showImgGrid(
     columns = 3,
     cellSide = 260,
 )
-println("harris ${harris.size} corners, worst ${"%.2f".format(worst)} px from the true square corners")
+println("harris ${harris.size} corners, worst ${worst.f2} px from the true square corners")
 println(
     "fast ${fast.size} corners at " +
         fast.sortedBy { it.y * 1000 + it.x }.joinToString(", ") { "(${it.x.toInt()},${it.y.toInt()})" },
@@ -185,7 +185,7 @@ println(
 println(
     "hough " +
         houghs.joinToString(", ") {
-            "(rho=${"%.0f".format(it.rho)}, theta=${"%.2f".format(it.theta)}, votes=${it.votes})"
+            "(rho=${it.rho.f0}, theta=${it.theta.f2}, votes=${it.votes})"
         },
 )
 
@@ -210,7 +210,7 @@ From `code`
 Three disjoint discs of known radius, then noise on top of them.
 
 ```edn [field-box id="imaging_morphology" role="properties"]
-{"id" "imaging_morphology" "index" 3 "name" "morphology, connected components, distance transform" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "morphology, connected components, distance transform" "_tombstone" false "frame" #afield/rect [80.0 1760.0 450.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imaging_morphology_code_.kt" "lines" 41 "characters" 1792 "sha256" "60541dda8014dd4815584a93d479329c88c9ab6f31da00ed094cf0228cb4793e"}]}
+{"id" "imaging_morphology" "index" 3 "name" "morphology, connected components, distance transform" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "morphology, connected components, distance transform" "_tombstone" false "frame" #afield/rect [80.0 1760.0 450.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imaging_morphology_code_.kt" "lines" 41 "characters" 1744 "sha256" "b658d04dbf7bfba182a3ccfbba88c6d10b25c1ddb2c720e96daef324265bb84f"}]}
 ```
 
 ```kotlin [field-property box="imaging_morphology" name="code" path="imaging_morphology_code_.kt"]
@@ -246,11 +246,11 @@ cc.components
     .sortedByDescending { it.area }
     .forEach {
         println(
-            "  area=${it.area} centroid=(${"%.1f".format(it.centroidX)}, ${"%.1f".format(it.centroidY)}) " +
-                "bbox=${it.boundingWidth}x${it.boundingHeight} fill=${"%.2f".format(it.fillRatio)}",
+            "  area=${it.area} centroid=(${it.centroidX.f1}, ${it.centroidY.f1}) " +
+                "bbox=${it.boundingWidth}x${it.boundingHeight} fill=${it.fillRatio.f2}",
         )
     }
-println("distance-transform peak ${"%.1f".format(dt.max())} (largest planted radius ${discs.maxOf { it.third }})")
+println("distance-transform peak ${dt.max().f1} (largest planted radius ${discs.maxOf { it.third }})")
 
 // Connected components are blobs; blobs have outlines. Same story as Canny — the raster
 // is the evidence, the FLines are the result you can actually build on.
@@ -273,7 +273,7 @@ version tracked 0 of 125 seeds at this size. Coarse octaves survive to the top o
 pyramid; the fine ones sharpen the final refinement.
 
 ```edn [field-box id="imaging_motion" role="properties"]
-{"id" "imaging_motion" "index" 4 "name" "motion — Lucas–Kanade flow and the homography RANSAC fits to it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "motion — Lucas–Kanade flow and the homography RANSAC fits to it" "_tombstone" false "frame" #afield/rect [80.0 2180.0 520.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imaging_motion_code_.kt" "lines" 64 "characters" 2935 "sha256" "76a9c8e05112980b4c094109c7392d976214f8132b6430ff5d6ded577bd7d5cd"}]}
+{"id" "imaging_motion" "index" 4 "name" "motion — Lucas–Kanade flow and the homography RANSAC fits to it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "motion — Lucas–Kanade flow and the homography RANSAC fits to it" "_tombstone" false "frame" #afield/rect [80.0 2180.0 520.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imaging_motion_code_.kt" "lines" 64 "characters" 2899 "sha256" "5a69827c983ca6171af523025eff279813145cf0c4265453c310040471c0fb40"}]}
 ```
 
 ```kotlin [field-property box="imaging_motion" name="code" path="imaging_motion_code_.kt"]
@@ -332,10 +332,10 @@ showImgGrid(
 val (mdx, mdy) = flow.medianDisplacement()
 println(
     "${flow.tracked().size}/${seeds.size} tracked; median displacement " +
-        "(${"%.2f".format(mdx)}, ${"%.2f".format(mdy)}) px",
+        "(${mdx.f2}, ${mdy.f2}) px",
 )
 println("RANSAC ${fit.inlierCount} inliers of ${flow.tracked().size} after ${fit.iterations} iterations")
-println("recovered model agrees with the planted transform to ${"%.3f".format(worst)} px over the probe grid")
+println("recovered model agrees with the planted transform to ${worst.f3} px over the probe grid")
 println(fit.homography.toString())
 
 // One arrow FLine per track. This is the whole family's shape in one line: raster in,
@@ -348,7 +348,7 @@ lines(flow.toFLines(scale = 6.0, minMagnitude = 0.5))
 <!-- field-box id="imaging_edges" index="5" -->
 
 ```edn [field-box id="imaging_edges" role="properties"]
-{"id" "imaging_edges" "index" 5 "name" "gradients + Canny + the FLines the edges become" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "gradients + Canny + the FLines the edges become" "_tombstone" false "frame" #afield/rect [80.0 920.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imaging_edges_code_.kt" "lines" 39 "characters" 1682 "sha256" "358ca651a4e441708964a042f01c2566c888905f89ee36fef94fb871d61abfd0"}]}
+{"id" "imaging_edges" "index" 5 "name" "gradients + Canny + the FLines the edges become" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "gradients + Canny + the FLines the edges become" "_tombstone" false "frame" #afield/rect [80.0 920.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imaging_edges_code_.kt" "lines" 39 "characters" 1670 "sha256" "1d7fd7b774a7ff1613133fb56fe114c3d77b63402bf9a3178a8aa6d74e6fa309"}]}
 ```
 
 ```kotlin [field-property box="imaging_edges" name="code" path="imaging_edges_code_.kt"]
@@ -383,7 +383,7 @@ showImgGrid(
     cellSide = 260,
 )
 println(
-    "|grad| max ${"%.3f".format(grad.magnitude().max())}; " +
+    "|grad| max ${grad.magnitude().max().f3}; " +
         "canny ${edges.data.count { it > 0.5f }} px, cannyAuto ${auto.data.count { it > 0.5f }} px; " +
         "${flines.size} FLines, ${flines.sumOf { it.nodes.size }} nodes total",
 )

@@ -1,8 +1,4 @@
 // Dependencies are explicit graph exports; resources stay in their parent box.
-val particleA = fromContextWithNameOrNull<FrameBufferGroup>("particleA")!!
-val particleB = fromContextWithNameOrNull<FrameBufferGroup>("particleB")!!
-val cameraHistory = fromContextWithNameOrNull<FrameBufferGroup>("cameraHistory")!!
-val flowStep = fromContextWithNameOrNull<java.util.concurrent.atomic.AtomicLong>("flowStep")!!
 
 var module = moduleHere {
     depthTest = false
@@ -21,5 +17,7 @@ mesh.resize(16000 * 6)
 renderer += "flow-strokes" to module
 loop { true }
     .end {
-        if (renderer.renderList.modules["flow-strokes"] === module) renderer.renderList.modules.remove("flow-strokes")
+        if (renderer.renderList.modules["flow-strokes"] === module) {
+            renderer.renderList.modules.remove("flow-strokes")
+        }
     }

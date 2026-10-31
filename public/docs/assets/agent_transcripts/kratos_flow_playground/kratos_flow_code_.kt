@@ -113,7 +113,7 @@ frames {
                 pending = worker.solveAsync(body(requested[0]), parameters)
                 resultText =
                     "Solving ${values[3].toInt()} steps at Re " +
-                        "${"%.0f".format(parameters.reynolds(2*values[0]))} on the obstacle…"
+                        "${parameters.reynolds(2*values[0]).f0} on the obstacle…"
             }
 
             val ready = pending

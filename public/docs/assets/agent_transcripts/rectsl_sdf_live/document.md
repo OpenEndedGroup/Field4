@@ -56,7 +56,7 @@ motion blur — in exchange for fill, material and z order, because `min` is
 union and a union has no layers.
 
 ```edn [field-box id="rectsl_sdf_live" role="properties"]
-{"id" "rectsl_sdf_live" "index" 1 "name" "rectsl scene as a distance field" "parents" ["root" "rectsl_sdf_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "rectsl_sdf_renderer"} "name" "rectsl scene as a distance field" "_tombstone" false "frame" #afield/rect [300.0 140.0 330.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_sdf_live_code_.kt" "lines" 104 "characters" 4158 "sha256" "f14c41c00634637ed70df35eca8ac40ced698dddf0c21cfbdfcd3d0a4e9f9c11"}]}
+{"id" "rectsl_sdf_live" "index" 1 "name" "rectsl scene as a distance field" "parents" ["root" "rectsl_sdf_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "rectsl_sdf_renderer"} "name" "rectsl scene as a distance field" "_tombstone" false "frame" #afield/rect [300.0 140.0 330.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_sdf_live_code_.kt" "lines" 103 "characters" 4136 "sha256" "e3cdb0141539848ac1979e529cf980f226a341c4a1be6fd114e8ee068f2a9bf8"}]}
 ```
 
 ```kotlin [field-property box="rectsl_sdf_live" name="code" path="rectsl_sdf_live_code_.kt"]
@@ -143,8 +143,7 @@ val module =
         )
         .pointer()
 
-val mesh = Mesh(renderer, module)
-mesh.resize(3, 0, module)
+val mesh = fullscreenTriangle(module)
 
 val startedAt = System.nanoTime()
 mesh.push.bind("time") {

@@ -58,7 +58,7 @@ From `code`
 A Field sawtooth through a Pd lowpass: `input` feeds the patch's [adc~]. Launch it.
 
 ```edn [field-box id="pd_effect" role="properties"]
-{"id" "pd_effect" "index" 2 "name" "as an effect" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "as an effect" "_tombstone" false "frame" #afield/rect [230.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pd_effect_code_.kt" "lines" 25 "characters" 603 "sha256" "afd8dbaeec5697bd936ecd63f5330c9a2b115a4f538d57c365210aa1a6cadda2"}]}
+{"id" "pd_effect" "index" 2 "name" "as an effect" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "as an effect" "_tombstone" false "frame" #afield/rect [230.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pd_effect_code_.kt" "lines" 25 "characters" 593 "sha256" "3e7a94a7e893e49edad4f4cf7036d02fc11cad20cf3d33876ed9c0d8b1fb89d5"}]}
 ```
 
 ```kotlin [field-property box="pd_effect" name="code" path="pd_effect_code_.kt"]
@@ -84,7 +84,7 @@ val fx =
 var n = 0
 fx.receive("level") { m ->
     if (n++ % 10 == 0)
-        display("level", "<div style='padding:8px'>after the lowpass: ${"%.1f".format(m.float ?: 0f)} dB</div>")
+        display("level", "<div style='padding:8px'>after the lowpass: ${(m.float ?: 0f).f1} dB</div>")
 }
 fx
 ```
@@ -100,7 +100,7 @@ From `code`
 A Pd patch as a Kotlin value. Launch it; move the Pitch slider.
 
 ```edn [field-box id="pd_kotlin" role="properties"]
-{"id" "pd_kotlin" "index" 3 "name" "from Kotlin" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "from Kotlin" "_tombstone" false "frame" #afield/rect [40.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pd_kotlin_code_.kt" "lines" 44 "characters" 1320 "sha256" "2410a88fe22ceec5906162aae113eabb40db7b2b68c8e3198ae3fbd05f5585d1"}]}
+{"id" "pd_kotlin" "index" 3 "name" "from Kotlin" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "from Kotlin" "_tombstone" false "frame" #afield/rect [40.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pd_kotlin_code_.kt" "lines" 44 "characters" 1310 "sha256" "7fc67cae2eb72d3b19f1ac9e6ba23838a75c5c2f0d3e5b37324b6725076810b3"}]}
 ```
 
 ```kotlin [field-property box="pd_kotlin" name="code" path="pd_kotlin_code_.kt"]
@@ -145,7 +145,7 @@ patch.send("pitch", 110)
 var n = 0
 patch.receive("level") { m ->
     // env~ reports in dB, 100 = full scale; this lambda runs on Field's main thread.
-    if (n++ % 10 == 0) display("level", "<div style='padding:8px'>[s level] ${"%.1f".format(m.float ?: 0f)} dB</div>")
+    if (n++ % 10 == 0) display("level", "<div style='padding:8px'>[s level] ${(m.float ?: 0f).f1} dB</div>")
 }
 patch
 ```
@@ -161,7 +161,7 @@ From `code`
 No audio device: render one second, measure it, read back what Pd recorded.
 
 ```edn [field-box id="pd_offline" role="properties"]
-{"id" "pd_offline" "index" 4 "name" "offline" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "offline" "_tombstone" false "frame" #afield/rect [610.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pd_offline_code_.kt" "lines" 28 "characters" 1093 "sha256" "c4e5b4c3608d937c12301e3680c94ff6b9ccbe1914caea6975305aa527b64635"}]}
+{"id" "pd_offline" "index" 4 "name" "offline" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "offline" "_tombstone" false "frame" #afield/rect [610.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pd_offline_code_.kt" "lines" 28 "characters" 1081 "sha256" "90678b6fecabb5b0fa39cb626ef469c588b42f072ec1126d1dbe70d99fcbeddb"}]}
 ```
 
 ```kotlin [field-property box="pd_offline" name="code" path="pd_offline_code_.kt"]
@@ -190,7 +190,7 @@ pd.close()
 
 val ups = (1 until left.size).count { left[it - 1] < 0f && left[it] >= 0f }
 val peak = left.maxOf { abs(it) }
-println("$ups upward zero crossings in 1 s, peak ${"%.4f".format(peak)}, channels equal: ${left.contentEquals(right)}")
+println("$ups upward zero crossings in 1 s, peak ${peak.f4}, channels equal: ${left.contentEquals(right)}")
 showSignals("tabwrite~ scope" to scope.toList(), channel = "scope", title = "[table scope], recorded by Pd")
 lines(afield.audio.pd.PdPatchGraph.parse(text).toFLines(), channel = "patch", w = 420.0, h = 200.0, fitToSize = true)
 ```

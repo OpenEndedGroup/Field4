@@ -76,7 +76,7 @@ val blockout = StudyBuildStage(
                 }
         val summary =
             "${g.rooms.size} rooms, $area cells of floor, ${walls.size} wall pieces, ${g.doors.size / 2} door${if (g.doors.size == 2) "" else "s"}" +
-                (solid?.let { ", joined into one solid of volume ${"%.1f".format(it["volume"])} (${it["status"]})" }
+                (solid?.let { ", joined into one solid of volume ${(it["volume"] as Number).f1} (${it["status"]})" }
                     ?: "; install Manifold to check it as one solid")
         StudyBuildProduct(
             ["blockout.obj"],

@@ -173,8 +173,8 @@ if (backend == null) {
 
                 Its plane is two free variables Ceres solved for, not geometry anyone supplied:
 
-                - normal `n` = `(${"%.6f".format(n.x)}, ${"%.6f".format(n.y)}, ${"%.6f".format(n.z)})`, on a sphere manifold
-                - offset `d` = `${"%.6f".format(d)}`
+                - normal `n` = `(${n.x.f6}, ${n.y.f6}, ${n.z.f6})`, on a sphere manifold
+                - offset `d` = `${d.f6}`
                 - `|n|` = `${"%.15f".format(kotlin.math.sqrt(n.x * n.x + n.y * n.y + n.z * n.z))}`
                 - worst corner off this plane: `${"%.3e".format(worst)}`
 

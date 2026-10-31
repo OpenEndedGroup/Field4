@@ -271,7 +271,7 @@ What a night looks like from the other end. Nothing here touches the renderer: a
 archive describes itself, which is the whole point of the manifests.
 
 ```edn [field-box id="ks_archive" role="properties"]
-{"id" "ks_archive" "index" 2 "name" "the morning" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the morning" "_tombstone" false "frame" #afield/rect [1500.0 40.0 360.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ks_archive_code_.kt" "lines" 51 "characters" 2167 "sha256" "5b5199dfac79c911981b8c3fd124fb458c19a42384a0db09eefb5c15e9f0e206"}]}
+{"id" "ks_archive" "index" 2 "name" "the morning" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the morning" "_tombstone" false "frame" #afield/rect [1500.0 40.0 360.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ks_archive_code_.kt" "lines" 51 "characters" 2143 "sha256" "899b3f5cca2dab7e998870a0734b8c64922863816ab76a18bccebc576a00f46b"}]}
 ```
 
 ```kotlin [field-property box="ks_archive" name="code" path="ks_archive_code_.kt"]
@@ -310,8 +310,8 @@ markdown(
     | # | parents and weights | pushed past the hull | discrete lane from |
     |---|---------------------|----------------------|--------------------|
     ${rows.joinToString("\n") { m ->
-        "| ${m.index} | ${m.parents.joinToString("<br>") { "${it.key} ${"%.2f".format(it.weight)}" }} " +
-            "| ${m.extrapolationGain?.let { g -> "x${"%.2f".format(g)} away from ${m.extrapolationPole}" } ?: "—"} " +
+        "| ${m.index} | ${m.parents.joinToString("<br>") { "${it.key} ${it.weight.f2}" }} " +
+            "| ${m.extrapolationGain?.let { g -> "x${g.f2} away from ${m.extrapolationPole}" } ?: "—"} " +
             "| ${m.discreteLanes.values.distinct().joinToString(", ")} |"
     }}
 """,
@@ -340,7 +340,7 @@ The whole of it. Twelve renders here so the box finishes while you watch; set `c
 to 5000 and `maxDurationMs` to whatever "stop at 7am" is, and walk away.
 
 ```edn [field-box id="ks_sweep" role="properties"]
-{"id" "ks_sweep" "index" 3 "name" "the sweep" "parents" ["root" "ks_rig"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "ks_rig"} "name" "the sweep" "_tombstone" false "frame" #afield/rect [40.0 360.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ks_sweep_code_.kt" "lines" 60 "characters" 2584 "sha256" "c14c86e7ce055eef22c03137e614f90417ebf22a5f259ab37c8098d4a9bd3cb1"}]}
+{"id" "ks_sweep" "index" 3 "name" "the sweep" "parents" ["root" "ks_rig"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "ks_rig"} "name" "the sweep" "_tombstone" false "frame" #afield/rect [40.0 360.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ks_sweep_code_.kt" "lines" 60 "characters" 2560 "sha256" "f5a4ad316fd30d42019840f9d6419e45f4872b0bd28aeea0c073e2fa6c9af467"}]}
 ```
 
 ```kotlin [field-property box="ks_sweep" name="code" path="ks_sweep_code_.kt"]
@@ -367,7 +367,7 @@ val sweep = KeyframeSweep(
         extrapolationProbability = 0.3,
     ),
     onRender = { m ->
-        println("${m.id} ${m.status} — " + m.parents.joinToString(", ") { "${it.key} ${"%.2f".format(it.weight)}" })
+        println("${m.id} ${m.status} — " + m.parents.joinToString(", ") { "${it.key} ${it.weight.f2}" })
     },
 )
 
@@ -402,7 +402,7 @@ frames {
     written `toString`.
     */
     println("$report")
-    println("that is ${"%.0f".format(report.rendersPerHour())} renders an hour")
+    println("that is ${report.rendersPerHour().f0} renders an hour")
 }
 ```
 

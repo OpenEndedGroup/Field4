@@ -83,13 +83,13 @@ showImgGrid(
     "hue channel" to hsv.channel(0),
     "saturation channel" to hsv.channel(1),
     "resize(60,45) then back up" to backUp,
-    "thresholdOtsu() @ ${"%.3f".format(t)}" to gray.threshold(t),
+    "thresholdOtsu() @ ${t.f3}" to gray.threshold(t),
     columns = 3,
     cellSide = 260,
 )
 println(
-    "Img ${card.width}x${card.height} x${card.channels} ch, mean ${"%.3f".format(card.mean())}, " +
-        "otsu ${"%.3f".format(t)}, foreground ${gray.threshold(t).data.count { it > 0.5f }} px",
+    "Img ${card.width}x${card.height} x${card.channels} ch, mean ${card.mean().f3}, " +
+        "otsu ${t.f3}, foreground ${gray.threshold(t).data.count { it > 0.5f }} px",
 )
 ```
 
@@ -141,9 +141,9 @@ showImgGrid(
     cellSide = 260,
 )
 println(
-    "residual vs clean — gaussian ${"%.4f".format(gauss.meanAbsDiff(clean))}, " +
-        "median ${"%.4f".format(med.meanAbsDiff(clean))}, " +
-        "bilateral ${"%.4f".format(bil.meanAbsDiff(clean))}",
+    "residual vs clean — gaussian ${gauss.meanAbsDiff(clean).f4}, " +
+        "median ${med.meanAbsDiff(clean).f4}, " +
+        "bilateral ${bil.meanAbsDiff(clean).f4}",
 )
 ```
 
@@ -193,7 +193,7 @@ showImgGrid(
     cellSide = 260,
 )
 println(
-    "|grad| max ${"%.3f".format(grad.magnitude().max())}; " +
+    "|grad| max ${grad.magnitude().max().f3}; " +
         "canny ${edges.data.count { it > 0.5f }} px, cannyAuto ${auto.data.count { it > 0.5f }} px; " +
         "${flines.size} FLines, ${flines.sumOf { it.nodes.size }} nodes total",
 )
@@ -297,11 +297,11 @@ cc.components
     .sortedByDescending { it.area }
     .forEach {
         println(
-            "  area=${it.area} centroid=(${"%.1f".format(it.centroidX)}, ${"%.1f".format(it.centroidY)}) " +
-                "bbox=${it.boundingWidth}x${it.boundingHeight} fill=${"%.2f".format(it.fillRatio)}",
+            "  area=${it.area} centroid=(${it.centroidX.f1}, ${it.centroidY.f1}) " +
+                "bbox=${it.boundingWidth}x${it.boundingHeight} fill=${it.fillRatio.f2}",
         )
     }
-println("distance-transform peak ${"%.1f".format(dt.max())} (largest planted radius ${discs.maxOf { it.third }})")
+println("distance-transform peak ${dt.max().f1} (largest planted radius ${discs.maxOf { it.third }})")
 ```
 
 ![](assets/imaging_examples/morphology.png)
@@ -401,10 +401,10 @@ showImgGrid(
 val (mdx, mdy) = flow.medianDisplacement()
 println(
     "${flow.tracked().size}/${seeds.size} tracked; median displacement " +
-        "(${"%.2f".format(mdx)}, ${"%.2f".format(mdy)}) px",
+        "(${mdx.f2}, ${mdy.f2}) px",
 )
 println("RANSAC ${fit.inlierCount} inliers of ${flow.tracked().size} after ${fit.iterations} iterations")
-println("recovered model agrees with the planted transform to ${"%.3f".format(worst)} px over the probe grid")
+println("recovered model agrees with the planted transform to ${worst.f3} px over the probe grid")
 println(fit.homography.toString())
 ```
 

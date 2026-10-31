@@ -31,7 +31,7 @@ val flat = layoutText("o", face)
 val expected = flat.glyphs.sumOf { it.glyph.inkArea } * 46.0
 val measured = layoutText("o", face).toMesh(depth = 46.0, yUp = false).volume()
 println(
-    "'o': ink area x depth = ${"%.0f".format(expected)}, mesh volume ${"%.0f".format(measured)}, " +
+    "'o': ink area x depth = ${expected.f0}, mesh volume ${measured.f0}, " +
         "relative difference ${"%.2e".format(kotlin.math.abs(expected - measured) / expected)}",
 )
 

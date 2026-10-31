@@ -33,9 +33,9 @@ val report =
     | | |
     |---|---|
     | file | `${r.file.absolutePath}` |
-    | length | ${"%.2f".format(r.seconds)}s |
-    | **peak amplitude** | **${"%.3f".format(r.peakAmplitude)}** |
-    | rms amplitude | ${"%.4f".format(r.rmsAmplitude)} |
+    | length | ${r.seconds.f2}s |
+    | **peak amplitude** | **${r.peakAmplitude.f3}** |
+    | rms amplitude | ${r.rmsAmplitude.f4} |
     | soundbank | ${r.soundbankName} |
 
     Peak amplitude is the check that matters: a WAV of pure silence is exactly as large

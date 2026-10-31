@@ -18,7 +18,7 @@ What comes back from a file is not what went out, and this is the round trip tha
 Nothing here writes into the repository: a temp directory, deleted at the end.
 
 ```edn [field-box id="disk_roundtrip" role="properties"]
-{"id" "disk_roundtrip" "index" 0 "name" "Out to a file and back — what each format keeps" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Out to a file and back — what each format keeps" "_tombstone" false "frame" #afield/rect [80.0 210.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "disk_roundtrip_code_.kt" "lines" 61 "characters" 2874 "sha256" "a9d22845368b09c885220bf7e064f5e46f4f6316c12f5982710a800573ed4486"}]}
+{"id" "disk_roundtrip" "index" 0 "name" "Out to a file and back — what each format keeps" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Out to a file and back — what each format keeps" "_tombstone" false "frame" #afield/rect [80.0 210.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "disk_roundtrip_code_.kt" "lines" 61 "characters" 2862 "sha256" "58349068c234aed8a157f9514be803d3700499d1c941fee29c1e97203bb73e3e"}]}
 ```
 
 ```kotlin [field-property box="disk_roundtrip" name="code" path="disk_roundtrip_code_.kt"]
@@ -63,7 +63,7 @@ try {
     println(row("via ball.stl", viaStl))
     println(row("via ball.stl, welded", welded))
     println()
-    println("mean edge length ${"%.5f".format(source.meanEdgeLength())} — the scale that makes")
+    println("mean edge length ${source.meanEdgeLength().f5} — the scale that makes")
     println("$weldTolerance a safe weld tolerance rather than a guess")
     println()
     println("OBJ indexes positions, normals and uvs separately, so it keeps the structure and")

@@ -23,7 +23,7 @@ val found = showPatCondense(*rhythms.toTypedArray(), channel = "roll")
 val rows =
     rhythms.zip(found).joinToString("\n") { (source, c) ->
         "| `$source` | `${c.notation}` | ${c.notation.length}/${c.flat.length} | " +
-            "${"%.2f".format(c.compression)} | ${c.structure.joinToString(", ")} |"
+            "${c.compression.f2} | ${c.structure.joinToString(", ")} |"
     }
 
 markdown(

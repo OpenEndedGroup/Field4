@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="motion_ardy_intentions" index="0" -->
 
 ```edn [field-box id="motion_ardy_intentions" role="properties"]
-{"id" "motion_ardy_intentions" "index" 0 "name" "ARDY — changing body intentions" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "ARDY — changing body intentions" "_tombstone" false "frame" #afield/rect [80.0 80.0 600.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "motion_ardy_intentions_code_.kt" "lines" 165 "characters" 10812 "sha256" "59f261b514b145e15b0ebca4b535398191bc2c65c17a6500d0137c1772620caf"}]}
+{"id" "motion_ardy_intentions" "index" 0 "name" "ARDY — changing body intentions" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "ARDY — changing body intentions" "_tombstone" false "frame" #afield/rect [80.0 80.0 600.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "motion_ardy_intentions_code_.kt" "lines" 165 "characters" 10764 "sha256" "395e788b0a4fa109080d8c5e36a20b32d1568d782f984cc2dc5d3dfee25876c1"}]}
 ```
 
 ```kotlin [field-property box="motion_ardy_intentions" name="code" path="motion_ardy_intentions_code_.kt"]
@@ -152,7 +152,7 @@ frames {
                         "unpin" -> { worker.setJointTargets(emptyList(), nextTime); anchor = null }
                         "reset" -> { worker.reset(nextTime); activeRoute = emptyList(); pathOverlay = emptyList(); anchor = null }
                     }
-                    notice.set("$command · first editable time ${"%.2f".format(nextTime)} s · $output")
+                    notice.set("$command · first editable time ${nextTime.f2} s · $output")
                 } catch (e: Exception) { notice.set(e.message ?: e.toString()) }
                 command = actions.poll()
             }
@@ -169,9 +169,9 @@ frames {
                 val residual = if (target == null || sample.frame.time >= pinUntil) "" else {
                     val p = sample.frame.executed.position(worker.skeleton.joint(pinnedJoint))
                     val error = sqrt((p.x - target[0]).pow(2) + (p.y - target[1]).pow(2) + (p.z - target[2]).pow(2))
-                    " · raw target residual ${"%.3f".format(error)} m"
+                    " · raw target residual ${error.f3} m"
                 }
-                markdown("status", "${notice.get()}\n\nSession ${"%.2f".format(sample.frame.time)} s · episode ${sample.frame.episode} · lag ${"%.3f".format(sample.lagSeconds)} s$residual. " +
+                markdown("status", "${notice.get()}\n\nSession ${sample.frame.time.f2} s · episode ${sample.frame.episode} · lag ${sample.lagSeconds.f3} s$residual. " +
                     "Yellow: requested path. Red: model conditioning residual. Global joint targets also condition the explicit root path; this is not a physical attachment. No postprocessing.")
             }
             worker.failure?.let { throw it }

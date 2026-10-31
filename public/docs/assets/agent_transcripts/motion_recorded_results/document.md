@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="motion_recorded_results" index="0" -->
 
 ```edn [field-box id="motion_recorded_results" role="properties"]
-{"id" "motion_recorded_results" "index" 0 "name" "Recorded motion — ARDY and CLoSD" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Recorded motion — ARDY and CLoSD" "_tombstone" false "frame" #afield/rect [80.0 80.0 600.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "motion_recorded_results_code_.kt" "lines" 71 "characters" 4075 "sha256" "18ff619da650cb054cc41abdfd40e02564719af5b235e7d47a9edd6b9188f448"}]}
+{"id" "motion_recorded_results" "index" 0 "name" "Recorded motion — ARDY and CLoSD" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Recorded motion — ARDY and CLoSD" "_tombstone" false "frame" #afield/rect [80.0 80.0 600.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "motion_recorded_results_code_.kt" "lines" 71 "characters" 4063 "sha256" "1b89847eb85ce7f6f0855a0e99e9267770811a83220ae3c304e2d21aa1904a92"}]}
 ```
 
 ```kotlin [field-property box="motion_recorded_results" name="code" path="motion_recorded_results_code_.kt"]
@@ -75,7 +75,7 @@ loop {
         title(sources.joinToString("                 ") { it.first })
         helpers(true)
     }
-    markdown("status", "**${sources.joinToString(" · ") { it.first }}** · ${"%.2f".format(time)} s\n\n" +
+    markdown("status", "**${sources.joinToString(" · ") { it.first }}** · ${time.f2} s\n\n" +
         "Actual recorded poses; horizontal root travel removed separately in each lane. White: executed. Cyan: reference. " +
         when(experiment) {
             "closd" -> "Strong: 8000 N/m, 120 N s/m, 2500 N cap. Attach at 2 s; release at 4 s. Red: anchor; amber: force (scaled)."

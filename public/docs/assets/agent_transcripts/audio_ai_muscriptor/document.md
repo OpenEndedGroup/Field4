@@ -65,7 +65,7 @@ display(
 <!-- field-box id="transcribe_field_render" index="2" -->
 
 ```edn [field-box id="transcribe_field_render" role="properties"]
-{"id" "transcribe_field_render" "index" 2 "name" "3 · submit, monitor, audition, download MIDI" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · submit, monitor, audition, download MIDI" "_tombstone" false "frame" #afield/rect [40.0 140.0 340.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "transcribe_field_render_code_.kt" "lines" 71 "characters" 3536 "sha256" "c21506659f455bc0058c4eeb2eb637421e6ae10ea4f893ebe2542fc708ec4dfe"}]}
+{"id" "transcribe_field_render" "index" 2 "name" "3 · submit, monitor, audition, download MIDI" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · submit, monitor, audition, download MIDI" "_tombstone" false "frame" #afield/rect [40.0 140.0 340.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "transcribe_field_render_code_.kt" "lines" 71 "characters" 3524 "sha256" "e8c83fc08d7aea221f504b575bd79e860e0b44e56bb39a29c1366090f3b26963"}]}
 ```
 
 ```kotlin [field-property box="transcribe_field_render" name="code" path="transcribe_field_render_code_.kt"]
@@ -92,7 +92,7 @@ go {
         display(
             "source",
             audio.audioVisualizerHtml(
-                label = "$sourcePattern · ${"%.2f".format(duration)} seconds",
+                label = "$sourcePattern · ${duration.f2} seconds",
                 options = AudioVisualizerOptions(
                     width = 1100,
                     waveformHeight = 145,

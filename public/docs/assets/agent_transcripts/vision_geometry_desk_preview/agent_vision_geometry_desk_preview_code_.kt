@@ -65,12 +65,12 @@ capture?.mesh()?.let { mesh ->
     val b = mesh.bounds()
     println(
         "extent " +
-            "%.3f".format(b[3] - b[0]) +
+            (b[3] - b[0]).f3 +
             " x " +
-            "%.3f".format(b[4] - b[1]) +
+            (b[4] - b[1]).f3 +
             " x " +
-            "%.3f".format(b[5] - b[2]) +
+            (b[5] - b[2]).f3 +
             " m",
     )
-    println("winding agreement " + "%.0f".format(mesh.windingAgreement() * 100) + "%")
+    println("winding agreement " + (mesh.windingAgreement() * 100).f0 + "%")
 }

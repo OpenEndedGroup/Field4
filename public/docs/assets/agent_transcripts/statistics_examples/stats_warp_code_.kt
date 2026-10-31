@@ -15,15 +15,15 @@ println(
         QuantileWarpConfig().probabilities.joinToString() +
         " — more knots on the left tail.",
 )
-println("input knots : ${state.inputKnots.joinToString { "%.3f".format(it) }}")
-println("target knots: ${state.targetKnots.joinToString { "%.3f".format(it) }}")
+println("input knots : ${state.inputKnots.joinToString { it.f3 }}")
+println("target knots: ${state.targetKnots.joinToString { it.f3 }}")
 println(
-    "held-out BEFORE: mean ${"%.3f".format(before.mean)}  sd ${"%.3f".format(before.sampleStdDev)}" +
-        "  skew ${"%.3f".format(before.skewness)}  excess kurtosis ${"%.1f".format(before.kurtosisExcess)}",
+    "held-out BEFORE: mean ${before.mean.f3}  sd ${before.sampleStdDev.f3}" +
+        "  skew ${before.skewness.f3}  excess kurtosis ${before.kurtosisExcess.f1}",
 )
 println(
-    "held-out AFTER : mean ${"%.4f".format(after.mean)}  sd ${"%.4f".format(after.sampleStdDev)}" +
-        "  skew ${"%.4f".format(after.skewness)}  excess kurtosis ${"%.4f".format(after.kurtosisExcess)}",
+    "held-out AFTER : mean ${after.mean.f4}  sd ${after.sampleStdDev.f4}" +
+        "  skew ${after.skewness.f4}  excess kurtosis ${after.kurtosisExcess.f4}",
 )
 println("  (every number above is OUT OF SAMPLE — the curve was fitted on a different draw)")
 
@@ -48,18 +48,18 @@ val pchip = inputs.map { state.evaluate(it) }
 val exact = inputs.map { inverseStandardNormalCdf(empiricalCdf(it).coerceIn(1e-4, 1.0 - 1e-4)) }
 println(
     "worst |8-knot PCHIP - exact Phi^-1(Fhat)| over the 2nd..98th percentile: " +
-        "${"%.4f".format(pchip.indices.maxOf { abs(pchip[it] - exact[it]) })}",
+        "${pchip.indices.maxOf { abs(pchip[it] - exact[it]) }.f4}",
 )
 println(
-    "inverseStandardNormalCdf(0.975)=${"%.6f".format(inverseStandardNormalCdf(0.975))} " +
-        "(published 1.959964); (0.001)=${"%.6f".format(inverseStandardNormalCdf(0.001))} (published -3.090232)",
+    "inverseStandardNormalCdf(0.975)=${inverseStandardNormalCdf(0.975).f6} " +
+        "(published 1.959964); (0.001)=${inverseStandardNormalCdf(0.001).f6} (published -3.090232)",
 )
 
 // Sharp edge 1: outside the fitted knots, evaluate extrapolates linearly from the
 // endpoint tangent, and nothing clamps it.
 println(
-    "lowest input knot is ${"%.3f".format(state.inputKnots.first())}; " +
-        "evaluate(0.0)=${"%.2f".format(state.evaluate(0.0))}, evaluate(-1.0)=${"%.1f".format(state.evaluate(-1.0))} " +
+    "lowest input knot is ${state.inputKnots.first().f3}; " +
+        "evaluate(0.0)=${state.evaluate(0.0).f2}, evaluate(-1.0)=${state.evaluate(-1.0).f1} " +
         "— unbounded linear extrapolation, so clamp the input yourself.",
 )
 
@@ -76,8 +76,8 @@ val gaps = (1..12).map {
 println("median knot chasing a step to $step (smoothingAlpha=${QuantileWarpConfig().smoothingAlpha}):")
 [1, 2, 4, 8, 12].forEach { k ->
     println(
-        "  after $k updates gap=${"%.3f".format(gaps[k - 1])}  vs closed form ${step}*0.8^$k=" +
-            "${"%.3f".format(step * 0.8.pow(k))}",
+        "  after $k updates gap=${gaps[k - 1].f3}  vs closed form ${step}*0.8^$k=" +
+            "${(step * 0.8.pow(k)).f3}",
     )
 }
 
@@ -97,7 +97,7 @@ val svgs = [
         heightPx = 220,
         padTop = 26,
         decimals = 2,
-        title = "held-out input: skew ${"%.1f".format(before.skewness)}",
+        title = "held-out input: skew ${before.skewness.f1}",
     ),
     histogramToSvg(
         buildHistogram(warped),
@@ -105,7 +105,7 @@ val svgs = [
         heightPx = 220,
         padTop = 26,
         decimals = 2,
-        title = "after the warp: skew ${"%.3f".format(after.skewness)}",
+        title = "after the warp: skew ${after.skewness.f3}",
     ),
 ]
 showRow("distributions", svgs)

@@ -78,9 +78,9 @@ markdown(
     "fit",
     """
     ~~~
-generated radius   ${"%.1f".format(mean)} +/- ${"%.1f".format(sd)}   (target: 100)
-chamfer to target  ${"%.2f".format(chamferDistance(samples, target))}
-training loss      ${"%.4f".format(field.loss(200))} over ${field.parameterCount} parameters
+generated radius   ${mean.f1} +/- ${sd.f1}   (target: 100)
+chamfer to target  ${chamferDistance(samples, target).f2}
+training loss      ${field.loss(200).f4} over ${field.parameterCount} parameters
     ~~~
 """,
 )
@@ -172,8 +172,8 @@ markdown(
     "miss",
     """
     ~~~
-closed source (circle -> ring)    mean landing error ${"%.2f".format(miss(fromCircle, circleSource))}
-open source   (segment -> ring)   mean landing error ${"%.2f".format(miss(fromSegment, segmentSource))}
+closed source (circle -> ring)    mean landing error ${miss(fromCircle, circleSource).f2}
+open source   (segment -> ring)   mean landing error ${miss(fromSegment, segmentSource).f2}
     ~~~
 """,
 )
@@ -431,7 +431,7 @@ markdown(
     "knot",
     """
     ~~~
-mean landing error ${"%.2f".format(miss)} on a knot about 150 units across
+mean landing error ${miss.f2} on a knot about 150 units across
     ~~~
 """,
 )

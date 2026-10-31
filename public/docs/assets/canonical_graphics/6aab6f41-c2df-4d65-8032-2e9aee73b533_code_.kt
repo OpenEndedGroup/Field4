@@ -47,7 +47,7 @@ m.splatPositions = { positions }
 m.splatDistances = { dists }
 m.splatIndices = { indices }
 m.indirect = { indirectBuffer }
-m.splatNum = { splatNum.toUInt() }
+m.splatNum = { splatNum }
 m.cameraPosition = { vec(0,0,0,0) }
 
 

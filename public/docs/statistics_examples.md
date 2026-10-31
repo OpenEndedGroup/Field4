@@ -70,9 +70,9 @@ Three things the card reports that are easy to misread, pinned here as arithmeti
 val madOverIqr = s.mad / s.iqr
 val note =
     "n=${s.count}, dropped=${s.droppedCount}; " +
-        "median=${"%.3f".format(s.median)}  mean=${"%.3f".format(s.mean)} (mean > median: right-skewed); " +
-        "MAD=${"%.3f".format(s.mad)} = ${"%.3f".format(madOverIqr)} x IQR; " +
-        "skew=${"%.3f".format(s.skewness)}  excess kurtosis=${"%.3f".format(s.kurtosisExcess)}"
+        "median=${s.median.f3}  mean=${s.mean.f3} (mean > median: right-skewed); " +
+        "MAD=${s.mad.f3} = ${madOverIqr.f3} x IQR; " +
+        "skew=${s.skewness.f3}  excess kurtosis=${s.kurtosisExcess.f3}"
 :::fold render the card
 display("card", buf.summaryHtml(widthPx = 620, chartHeightPx = 150, decimals = 3))
 markdown("read this off the card", "{muted:$note}", width = 620)
@@ -142,10 +142,10 @@ fun explain(name: String, values: List<Double>): String {
     }
     val predicted = Math.round(range / winner).toInt().coerceIn(1, 2000)
     val actual = buildHistogram(values)
-    return "$name: FD=${"%.4f".format(hFd)}  Scott=${"%.4f".format(hScott)}  " +
-        "Sturges=${"%.4f".format(hSturges)} (k=$kSturges) -> $which wins; " +
-        "predicted ${predicted} bins of ${"%.5f".format(range / predicted)}, " +
-        "got ${actual.bins.size} of ${"%.5f".format(actual.binWidth)}; counts sum to ${actual.count}"
+    return "$name: FD=${hFd.f4}  Scott=${hScott.f4}  " +
+        "Sturges=${hSturges.f4} (k=$kSturges) -> $which wins; " +
+        "predicted ${predicted} bins of ${(range / predicted).f5}, " +
+        "got ${actual.bins.size} of ${actual.binWidth.f5}; counts sum to ${actual.count}"
 }
 
 val skewedNote = explain("skewed", skewed)
@@ -409,8 +409,8 @@ showSignals(
     xTitle = "distance correlation",
     yTitle = "count",
     marks = [
-        "null 95th pct = ${"%.3f".format(p95)}" to p95,
-        "observed = ${"%.3f".format(observedDcor)}" to observedDcor,
+        "null 95th pct = ${p95.f3}" to p95,
+        "observed = ${observedDcor.f3}" to observedDcor,
     ],
 )
 showSignals(
@@ -425,16 +425,16 @@ showSignals(
 markdown(
     "verdict",
     """
-    {muted:observed dCor = ${"%.4f".format(observedDcor)}; null mean ${"%.4f".format(nullDcor.average())},
-    95th pct ${"%.4f".format(p95)}, max ${"%.4f".format(sortedD.last())};
+    {muted:observed dCor = ${observedDcor.f4}; null mean ${nullDcor.average().f4},
+    95th pct ${p95.f4}, max ${sortedD.last().f4};
     re-pairings reaching the observed value: $exceed / $reps}
 
-    {muted:observed xi = ${"%.4f".format(observedXi)}; xi null 95th pct
-    ${"%.4f".format(nullXi.sortedArray()[(reps * 0.95).toInt()])};
+    {muted:observed xi = ${observedXi.f4}; xi null 95th pct
+    ${nullXi.sortedArray()[(reps * 0.95).toInt()].f4};
     re-pairings reaching it: $xiExceed / $reps}
 
     {muted:null 95th pct vs n (measured / 2.5-over-root-n):
-    ${sizes.indices.joinToString(" · ") { "n=${sizes[it]} ${"%.3f".format(thresholds[it])}/${"%.3f".format(fitted[it])}" }}}
+    ${sizes.indices.joinToString(" · ") { "n=${sizes[it]} ${thresholds[it].f3}/${fitted[it].f3}" }}}
 """,
     width = 900,
 )
@@ -546,11 +546,11 @@ markdown(
     """
     | window | dCor | xi | \|r\| |
     |--------|------|----|-------|
-    | window-full to the change (i=$w..${change - 1}) | ${"%.3f".format(dSeries.subList(w, change).average())} | ${"%.3f".format(xiSeries.subList(w, change).average())} | ${"%.3f".format(absR.subList(w, change).average())} |
-    | settled after the change (i=${change + w}..${total - 1}) | ${"%.3f".format(dSeries.subList(change + w, total).average())} | ${"%.3f".format(xiSeries.subList(change + w, total).average())} | ${"%.3f".format(absR.subList(change + w, total).average())} |
+    | window-full to the change (i=$w..${change - 1}) | ${dSeries.subList(w, change).average().f3} | ${xiSeries.subList(w, change).average().f3} | ${absR.subList(w, change).average().f3} |
+    | settled after the change (i=${change + w}..${total - 1}) | ${dSeries.subList(change + w, total).average().f3} | ${xiSeries.subList(change + w, total).average().f3} | ${absR.subList(change + w, total).average().f3} |
 
-    {muted:dCor null 95th pct ${"%.3f".format(threshold)}: $dCrossing.
-    xi null 95th pct ${"%.3f".format(xiThreshold)}: $xiCrossing.}
+    {muted:dCor null 95th pct ${threshold.f3}: $dCrossing.
+    xi null 95th pct ${xiThreshold.f3}: $xiCrossing.}
 
     {muted:incremental vs batch on the final window: |difference| = $agreement}
 """,
@@ -647,7 +647,7 @@ val svgs = [
         heightPx = 250,
         padTop = 26,
         decimals = 2,
-        title = "held-out input: skew ${"%.1f".format(before.skewness)}",
+        title = "held-out input: skew ${before.skewness.f1}",
     ),
     histogramToSvg(
         buildHistogram(warped),
@@ -655,7 +655,7 @@ val svgs = [
         heightPx = 250,
         padTop = 26,
         decimals = 2,
-        title = "after the warp: skew ${"%.3f".format(after.skewness)}",
+        title = "after the warp: skew ${after.skewness.f3}",
     ),
 ]
 showRow("distributions", svgs)
@@ -665,14 +665,14 @@ markdown(
     """
     | held-out | mean | sd | skew | excess kurtosis |
     |----------|------|----|------|-----------------|
-    | before | ${"%.3f".format(before.mean)} | ${"%.3f".format(before.sampleStdDev)} | ${"%.3f".format(before.skewness)} | ${"%.1f".format(before.kurtosisExcess)} |
-    | after | ${"%.4f".format(after.mean)} | ${"%.4f".format(after.sampleStdDev)} | ${"%.4f".format(after.skewness)} | ${"%.4f".format(after.kurtosisExcess)} |
+    | before | ${before.mean.f3} | ${before.sampleStdDev.f3} | ${before.skewness.f3} | ${before.kurtosisExcess.f1} |
+    | after | ${after.mean.f4} | ${after.sampleStdDev.f4} | ${after.skewness.f4} | ${after.kurtosisExcess.f4} |
 
-    {muted:input knots: ${state.inputKnots.joinToString { "%.3f".format(it) }}}
+    {muted:input knots: ${state.inputKnots.joinToString { it.f3 }}}
 
-    {muted:target knots: ${state.targetKnots.joinToString { "%.3f".format(it) }}}
+    {muted:target knots: ${state.targetKnots.joinToString { it.f3 }}}
 
-    {muted:worst |PCHIP - exact| over the 2nd..98th percentile: ${"%.4f".format(worst)}}
+    {muted:worst |PCHIP - exact| over the 2nd..98th percentile: ${worst.f4}}
 """,
     width = 900,
 )

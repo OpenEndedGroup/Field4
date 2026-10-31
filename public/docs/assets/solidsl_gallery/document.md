@@ -19,7 +19,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="refusals" index="1" -->
 
 ```edn [field-box id="refusals" role="properties"]
-{"id" "refusals" "index" 1 "name" "Solid notation — refusals, and the hybrid build" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Solid notation — refusals, and the hybrid build" "_tombstone" false "frame" #afield/rect [80.0 280.0 380.0 50.0] "nested" #{} "preamble" "" "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "refusals_code_.kt" "lines" 103 "characters" 4645 "sha256" "5ea6967fcc08af204c22795c98ebda8965840d0a246853ca8d62d2c9783bc301"}]}
+{"id" "refusals" "index" 1 "name" "Solid notation — refusals, and the hybrid build" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Solid notation — refusals, and the hybrid build" "_tombstone" false "frame" #afield/rect [80.0 280.0 380.0 50.0] "nested" #{} "preamble" "" "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "refusals_code_.kt" "lines" 103 "characters" 4635 "sha256" "639c9b6f569b8e52886d53159125f170a06acbc5388501e51ca6d66980a7363f"}]}
 ```
 
 ```kotlin [field-property box="refusals" name="code" path="refusals_code_.kt"]
@@ -105,7 +105,7 @@ Solid.scope {
     println("hybrid  ${build.solid.triangleCount} triangles")
     println("naive   ${naive.triangleCount} triangles for the same shape at the same edge length")
     println(
-        "        — ${"%.2f".format(naive.triangleCount.toDouble() / build.solid.triangleCount)}x, and " +
+        "        — ${(naive.triangleCount.toDouble() / build.solid.triangleCount).f2}x, and " +
             "the plate's six faces stay six faces",
     )
     println()
@@ -133,7 +133,7 @@ Solid.scope {
 <!-- field-box id="cross_check" index="2" -->
 
 ```edn [field-box id="cross_check" role="properties"]
-{"id" "cross_check" "index" 2 "name" "Solid notation — one shape, two evaluations" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Solid notation — one shape, two evaluations" "_tombstone" false "frame" #afield/rect [80.0 80.0 380.0 50.0] "nested" #{} "preamble" "" "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cross_check_code_.kt" "lines" 125 "characters" 6488 "sha256" "1f04d401fc92690852c64f945b18cb51daf379e38cdf5587bf9c4c9ad7371cb0"}]}
+{"id" "cross_check" "index" 2 "name" "Solid notation — one shape, two evaluations" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Solid notation — one shape, two evaluations" "_tombstone" false "frame" #afield/rect [80.0 80.0 380.0 50.0] "nested" #{} "preamble" "" "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cross_check_code_.kt" "lines" 125 "characters" 6416 "sha256" "25d8b883114eb7ce1c7ebf02bc06fe424833aa0e59f3b7f6ed624994ef2c0d16"}]}
 ```
 
 ```kotlin [field-property box="cross_check" name="code" path="cross_check_code_.kt"]
@@ -206,8 +206,8 @@ Solid.scope {
     val coarse = part.buildSolid(SolidQuality(segments = quality, edgeLengthFraction = 1.0 / 40.0))
     val fine = part.buildSolid(SolidQuality(segments = quality, edgeLengthFraction = 1.0 / 110.0))
     val unmoved = coarse.solid.volume == fine.solid.volume && coarse.solid.triangleCount == fine.solid.triangleCount
-    println("side B at h/40:  volume ${"%.9f".format(coarse.solid.volume)}, ${coarse.solid.triangleCount} triangles")
-    println("side B at h/110: volume ${"%.9f".format(fine.solid.volume)}, ${fine.solid.triangleCount} triangles")
+    println("side B at h/40:  volume ${coarse.solid.volume.f9}, ${coarse.solid.triangleCount} triangles")
+    println("side B at h/110: volume ${fine.solid.volume.f9}, ${fine.solid.triangleCount} triangles")
     println(
         if (coarse.isExact && fine.isExact) "side B is exact CSG at both resolutions: an independent evaluation"
         else "side B uses field fallback: agreement is self-consistency, not independent cross-validation",
@@ -235,7 +235,7 @@ Solid.scope {
     val marched = part.marchedMesh(q)
     println(
         "Field's own topology on the marched surface: watertight ${marched.isWatertight()}, " +
-            "genus ${marched.genus()}, signed volume ${"%.5f".format(marched.signedVolume())}",
+            "genus ${marched.genus()}, signed volume ${marched.signedVolume().f5}",
     )
 
     val reference = fine.solid
@@ -244,7 +244,7 @@ Solid.scope {
         channel = "exact",
         title = if (fine.isExact) "B — Manifold's exact CSG" else "B — native solid with field fallback",
         caption =
-            "${reference.triangleCount} triangles · volume ${"%.5f".format(reference.volume)} · " +
+            "${reference.triangleCount} triangles · volume ${reference.volume.f5} · " +
                 "genus ${reference.genus} · native solid guaranteed closed",
         view = MeshView(yawDegrees = 34.0, pitchDegrees = 24.0, width = 700, height = 440),
     )
@@ -254,9 +254,9 @@ Solid.scope {
         title = "A — the same expression, marched from its distance field",
         caption =
             "${marched.triangleCount} triangles · volume " +
-                "${"%.5f".format(marched.signedVolume())} · the two disagree by " +
+                "${marched.signedVolume().f5} · the two disagree by " +
                 "${"%.3e".format(agreement.relativeVolumeError)} relative; largest sampled surface deviation " +
-                "${"%.4f".format(agreement.deviation)} model units",
+                "${agreement.deviation.f4} model units",
         view = MeshView(yawDegrees = 34.0, pitchDegrees = 24.0, width = 700, height = 440),
     )
     // Mesh viewers keep copied arrays; native solids close on every exit.

@@ -32,7 +32,7 @@ showImgGrid(
     columns = 3,
     cellSide = 260,
 )
-println("harris ${harris.size} corners, worst ${"%.2f".format(worst)} px from the true square corners")
+println("harris ${harris.size} corners, worst ${worst.f2} px from the true square corners")
 println(
     "fast ${fast.size} corners at " +
         fast.sortedBy { it.y * 1000 + it.x }.joinToString(", ") { "(${it.x.toInt()},${it.y.toInt()})" },
@@ -40,7 +40,7 @@ println(
 println(
     "hough " +
         houghs.joinToString(", ") {
-            "(rho=${"%.0f".format(it.rho)}, theta=${"%.2f".format(it.theta)}, votes=${it.votes})"
+            "(rho=${it.rho.f0}, theta=${it.theta.f2}, votes=${it.votes})"
         },
 )
 

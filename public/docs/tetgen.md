@@ -85,7 +85,7 @@ for (t in 0 until half.cellCount) {
     colors[3 * t + 2] = c.b.toFloat()
 }
 :::fold measure it, then draw the three views
-println("Manifold  ${"%.4f".format(part.volume)} mm³, ${part.triangleCount} triangles, genus ${part.genus}")
+println("Manifold  ${part.volume.f4} mm³, ${part.triangleCount} triangles, genus ${part.genus}")
 // The surface's own digest, printed because the element count below depends on it and on nothing
 // else — see "the count moves between sessions" under Sizing.
 println(
@@ -93,7 +93,7 @@ println(
         "digest ${surface.positions.contentHashCode()}/${surface.indices.contentHashCode()}",
 )
 println("TetGen    $mesh")
-println("          volume ${"%.4f".format(mesh.volume())} mm³")
+println("          volume ${mesh.volume().f4} mm³")
 println("          inverted elements ${mesh.volumes().count { it <= 0.0 }}")
 println()
 println(
@@ -101,7 +101,7 @@ println(
         "${half.boundary().triangleCount} boundary triangles",
 )
 println(
-    "quality   min ${"%.4f".format(quality.min())}, median " + "${"%.4f".format(quality.sorted()[quality.size / 2])}",
+    "quality   min ${quality.min().f4}, median " + "${quality.sorted()[quality.size / 2].f4}",
 )
 
 // Pitch well over the horizon, because the cut plane is horizontal in this frame and a low camera
@@ -259,32 +259,32 @@ val slivers = mesh.filtered { it in worst }
 val sorted = quality.sorted()
 println("${mesh.cellCount} elements at targetEdgeLength = 3.0")
 println(
-    "radius ratio     min ${"%.4f".format(sorted.first())}  " +
-        "1st pct ${"%.4f".format(sorted[sorted.size / 100])}  " +
-        "median ${"%.4f".format(sorted[sorted.size / 2])}  max ${"%.4f".format(sorted.last())}",
+    "radius ratio     min ${sorted.first().f4}  " +
+        "1st pct ${sorted[sorted.size / 100].f4}  " +
+        "median ${sorted[sorted.size / 2].f4}  max ${sorted.last().f4}",
 )
 println("below 0.05       ${sorted.count { it < 0.05 }}   (slivers)")
 println("below 0.10       ${sorted.count { it < 0.10 }}")
 println()
 println(
-    "radius-edge      min ${"%.4f".format(radiusEdge.min())}  " +
-        "(the regular tetrahedron's floor is ${"%.4f".format(Math.sqrt(6.0) / 4.0)})",
+    "radius-edge      min ${radiusEdge.min().f4}  " +
+        "(the regular tetrahedron's floor is ${(Math.sqrt(6.0) / 4.0).f4})",
 )
 println(
-    "                 max ${"%.4f".format(radiusEdge.max())}, " +
+    "                 max ${radiusEdge.max().f4}, " +
         "${radiusEdge.count { it > 1.2 }} above the 1.2 bound that was asked for",
 )
 println()
 // The point of printing these together: the two measures do not rank the same elements. The worst
 // element by radius-edge is a perfectly usable one, and most of the bad ones are inside the bound.
 println(
-    "worst by radius-edge: ${"%.4f".format(radiusEdge.max())}, whose radius ratio is " +
-        "${"%.4f".format(quality[radiusEdge.indices.maxBy { radiusEdge[it] }])} — a fine element",
+    "worst by radius-edge: ${radiusEdge.max().f4}, whose radius ratio is " +
+        "${quality[radiusEdge.indices.maxBy { radiusEdge[it] }].f4} — a fine element",
 )
 val inBound = quality.indices.filter { radiusEdge[it] <= 1.2 }
 println(
     "of the ${inBound.size} elements inside the bound, ${inBound.count { quality[it] < 0.10 }} " +
-        "are below radius ratio 0.10; the worst is ${"%.5f".format(inBound.minOf { quality[it] })}",
+        "are below radius ratio 0.10; the worst is ${inBound.minOf { quality[it] }.f5}",
 )
 
 showChart(
@@ -299,7 +299,7 @@ showMesh(
     slivers.boundary(),
     title = "the 400 worst elements, in place",
     caption =
-        "radius ratio ${"%.4f".format(sorted.first())} to ${"%.4f".format(sorted[399])} · " +
+        "radius ratio ${sorted.first().f4} to ${sorted[399].f4} · " +
             "densest around the three bores, and scattered everywhere else",
     view = MeshView(yawDegrees = 34.0, pitchDegrees = 22.0, width = 760, height = 420),
 )
@@ -567,9 +567,9 @@ for (h in sizes) {
     boxError += worstError(coordinates(b.toTriMesh()), ::boxDistance)
     sphereError += worstError(coordinates(s.toTriMesh()), ::sphereDistance)
     println(
-        "${"%.2f".format(h)}   ${"%.6f".format(boxError.last())} = " +
-            "${"%.4f".format(boxError.last() / h)} h    " +
-            "${"%.6f".format(sphereError.last())} = ${"%.4f".format(sphereError.last() / h)} h",
+        "${h.f2}   ${boxError.last().f6} = " +
+            "${(boxError.last() / h).f4} h    " +
+            "${sphereError.last().f6} = ${(sphereError.last() / h).f4} h",
     )
     // A real cross section through the marched body, at z = 0. The rounding is 1.5% of the body at
     // h = 0.4: plain in a cross section, invisible in a render of the whole box.

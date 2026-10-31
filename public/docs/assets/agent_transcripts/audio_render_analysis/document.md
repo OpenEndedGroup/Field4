@@ -188,7 +188,7 @@ client
 <!-- field-box id="analyse_pat_render" index="4" -->
 
 ```edn [field-box id="analyse_pat_render" role="properties"]
-{"id" "analyse_pat_render" "index" 4 "name" "2 · Pat / Dirt render → analysis" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · Pat / Dirt render → analysis" "_tombstone" false "frame" #afield/rect [520.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_pat_render_code_.kt" "lines" 32 "characters" 1362 "sha256" "97bf29fbaebf498fc121bf5bef94a4639ca1997e605a97b1743e146fb336a272"}]}
+{"id" "analyse_pat_render" "index" 4 "name" "2 · Pat / Dirt render → analysis" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · Pat / Dirt render → analysis" "_tombstone" false "frame" #afield/rect [520.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_pat_render_code_.kt" "lines" 32 "characters" 1351 "sha256" "38fae9eb2407cd8e2091b551b1cef4559d7f2d344c45a3a8aa758942e39f8483"}]}
 ```
 
 ```kotlin [field-property box="analyse_pat_render" name="code" path="analyse_pat_render_code_.kt"]
@@ -203,7 +203,7 @@ val render = renderDirtWav(
     cps = 1.6,
     provenance = mapOf("field_box" to "analyse_pat_render", "pattern" to "pitched chord + drums"),
 )
-display("render", "rendered ${render.path} · ${"%.2f".format(render.durationSeconds)} s")
+display("render", "rendered ${render.path} · ${render.durationSeconds?.f2} s")
 
 client
     .analyzeRenderedAudio(

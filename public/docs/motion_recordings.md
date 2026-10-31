@@ -84,7 +84,7 @@ frames {
                 overlays=dancer.telemetry.tethers().flatMap { it.overlays() })
             val foot = dancer.telemetry.tether("left-foot")
             markdown("status", when {
-                foot?.active == true -> "**TETHERED** · ${"%.0f".format(foot.forceN)} N"
+                foot?.active == true -> "**TETHERED** · ${foot.forceN.f0} N"
                 foot != null -> "**RELEASED**"
                 else -> "**WALKING**"
             })
@@ -139,11 +139,11 @@ loop {
         camera(yaw=35.0, pitch=12.0, padding=1.5)
         followCamera(vec(frame.executed.root[0],frame.executed.root[1],frame.executed.root[2]),
             halfLifeSeconds=.4, epoch="${(elapsed/duration).toInt()}:${frame.episode}")
-        title("CLoSD · movement score · ${"%.2f".format(time)} s")
+        title("CLoSD · movement score · ${time.f2} s")
         helpers(true)
     }
     val phase = when {
-        active -> "TETHERED · ${"%.0f".format(tether?.forceN ?: 0.0)} N"
+        active -> "TETHERED · ${(tether?.forceN ?: 0.0).f0} N"
         time >= release -> "RELEASED"
         else -> "WALKING"
     }
@@ -249,7 +249,7 @@ loop {
         camera(yaw=35.0, pitch=12.0, padding=2.6) // Room for the whole skipping gesture.
         followCamera(vec(pose.root[0], pose.root[1], pose.root[2]), halfLifeSeconds=.4,
             epoch="${(elapsed/duration).toInt()}:${snapshot.frame.episode}")
-        title("ARDY · skipping · ${"%.2f".format(snapshot.frame.time)} s")
+        title("ARDY · skipping · ${snapshot.frame.time.f2} s")
         helpers(true)
     }
     markdown("status", "**ARDY · skipping**\n\n" +
@@ -379,7 +379,7 @@ loop {
         title(sources.joinToString("                 ") { it.first })
         helpers(true)
     }
-    markdown("status", "**${sources.joinToString(" · ") { it.first }}** · ${"%.2f".format(time)} s\n\n" +
+    markdown("status", "**${sources.joinToString(" · ") { it.first }}** · ${time.f2} s\n\n" +
         "Actual recorded poses; horizontal root travel removed separately in each lane. White: executed. Cyan: reference. " +
         when(experiment) {
             "closd" -> "Strong: 8000 N/m, 120 N s/m, 2500 N cap. Attach at 2 s; release at 4 s. Red: anchor; amber: force (scaled)."
@@ -460,7 +460,7 @@ loop {
         title(sources.joinToString("                 ") { it.first })
         helpers(true)
     }
-    markdown("status", "**${sources.joinToString(" · ") { it.first }}** · ${"%.2f".format(time)} s\n\n" +
+    markdown("status", "**${sources.joinToString(" · ") { it.first }}** · ${time.f2} s\n\n" +
         "Actual recorded poses; horizontal root travel removed separately in each lane. White: executed. Cyan: reference. " +
         when(experiment) {
             "closd" -> "Strong: 8000 N/m, 120 N s/m, 2500 N cap. Attach at 2 s; release at 4 s. Red: anchor; amber: force (scaled)."
@@ -540,7 +540,7 @@ loop {
         title(sources.joinToString("                 ") { it.first })
         helpers(true)
     }
-    markdown("status", "**${sources.joinToString(" · ") { it.first }}** · ${"%.2f".format(time)} s\n\n" +
+    markdown("status", "**${sources.joinToString(" · ") { it.first }}** · ${time.f2} s\n\n" +
         "Actual recorded poses; horizontal root travel removed separately in each lane. White: executed. Cyan: reference. " +
         when(experiment) {
             "closd" -> "Strong: 8000 N/m, 120 N s/m, 2500 N cap. Attach at 2 s; release at 4 s. Red: anchor; amber: force (scaled)."

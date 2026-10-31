@@ -68,7 +68,7 @@ operations:
               "segment(4) arcs = " + sine().segment(4).events(PatArc(PatQ.ZERO, PatQ.ONE)).map { "${it.arc}" },
           )
           println(
-              "segment(4) values = " + sine().segment(4).events(PatArc(PatQ.ZERO, PatQ.ONE)).map { "%.4f".format(it.value) },
+              "segment(4) values = " + sine().segment(4).events(PatArc(PatQ.ZERO, PatQ.ONE)).map { it.value.f4 },
           )
   # 2 ── structure choice: the operator family, and the event tables it produces.
   - create:
@@ -132,7 +132,7 @@ operations:
                       .format(
                           n,
                           notes.size,
-                          notes.joinToString(" ") { "%.0f".format(it.num("cutoff")) },
+                          notes.joinToString(" ") { it.num("cutoff").f0 },
                       ),
               )
           }
