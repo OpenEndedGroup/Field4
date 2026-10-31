@@ -1400,7 +1400,7 @@ Slang requires `slangc` to be available. Field checks an explicit `AFIELD_SLANGC
 
 The last lesson is the shortest, because the work is packaged:
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/08-dla.png" alt="a diffusion-limited aggregation cluster in a native render window: a wide ring of fine magenta branches, darker red near its inner edge, around a dark hollow centre, with the green haze of still-walking particles filling the space outside it" wait="20" timeout="90" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="four-dla" source-box="assets/canonical_graphics/e39270ec-8faf-4d26-8f4e-ce4d23ec4af1" source-box-properties="vertex,fragment" source-box-wait="0.1"}
 var dla = ShaderDlaSystem() {
     width = 1024
     height = 1024
@@ -1459,7 +1459,7 @@ Whether the result branches depends on how densely the walkers cover the texture
 
 In the Biham–Middleton–Levine model every cell of a torus is empty or holds one car. Red cars only move right, blue cars only move down, and they take turns: on even steps every red car with an empty cell ahead moves into it, on odd steps the blue cars do the same. The only parameter is how many cars there are. Run this in a box beneath the renderer box:
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/09-bml-traffic.png" alt="Biham–Middleton–Levine traffic on a 512 by 512 torus: red and blue cars organised into diagonal bands running from lower left to upper right, with empty black road between them" wait="15" timeout="90" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="four-bml-traffic" source-box="assets/canonical_graphics/1b0f6eb5-b860-401d-913a-6469b4285774" source-box-properties="vertex,fragment" source-box-wait="0.1"}
 var bml = ShaderBmlSystem() {
     width = 512
     height = 512
