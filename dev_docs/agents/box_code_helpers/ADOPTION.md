@@ -14,10 +14,10 @@ its own imports, not box code, and none of the old forms below appeared there as
 
 | Helper | Old form | Before | After | Rule | Auto-fix? |
 | --- | --- | --- | --- | --- | --- |
-| `scope.Key("a" to x)` | `scope.Key(mutableMapOf<String, Any?>("a" to x))` | 24 | 12 (all `keyframer_examples.md`) | `key-pairs` | yes |
-| `x.f0`..`x.f9` | `"%.3f".format(x)` | 547 lines / 132 files | 204 lines / 66 files | `fixed-format` | yes |
+| `scope.Key("a" to x)` | `scope.Key(mutableMapOf<String, Any?>("a" to x))` | 24 | 0 | `key-pairs` | yes |
+| `x.f0`..`x.f9` | `"%.3f".format(x)` | 547 lines / 132 files (plus `functions_examples.md`) | 0 | `fixed-format` | yes |
 | `Interpolant.startAt` | `(q as NeedsStartingValue<T>).startAt(v)` | 1 | 0 | `starting-value-cast` | yes |
-| `uint` push members take `Int` | `m.count = { n.toUInt() }` | 8 | 4 | `uint-push-lambda` | yes in a module/mesh box; else a note |
+| `uint` push members take `Int` | `m.count = { n.toUInt() }` | 8 | 0 | `uint-push-lambda` | yes in a module/mesh box; else a note |
 | `computeBarrier(graphics = ...)` | `computeTask { _, cmd, _ -> computeMemoryBarrier(cmd); graphicsMemoryBarrier(cmd) }` | 4 | 0 | `compute-barrier` | yes |
 | `WallSpec.worldToClip()` | `m.push["worldToClip"] = Matrix4f().ortho(-ww / 2f, ww / 2f, ...)` | 4 | 0 | `wall-projection` | no (failure) |
 | `fullscreenTriangle(module)` | `val t = Mesh(r, m); t.resize(3, 0, m)` | 12 | 0 | `fullscreen-triangle` | no (note) |
@@ -39,20 +39,17 @@ search for the old form finds no other teaching copy, so there is no regex worth
 
 ## What is left, and why
 
-- **`fixed-format`, 204 lines.** Docs pages other than `statistics_examples.md` and
-  `imaging_examples.md` (34 pages), the asset documents under `public/docs/assets`
-  (`solidsl_gallery`, `mesh_repair_demo`, `three_mesh_pick_demo`, `mqtt_demo`, ...) and the
-  `docs_capture/` transcripts. Each is a page whose figures must be recaptured after its fences
-  change, and `docs_capture/` transcripts are outside `checkBoxCodeCompiles`. The rule is blocking
-  on every file a landing touches, so each page converts (`check_box_idioms.py --fix --paths <page>`)
-  when it is next edited and recaptured.
-- **`uint-push-lambda`, 4.** Two canonical graphics lessons and `gpu_state.md`/`gpu_schema.md`:
-  GPU captures, left for a pass that recaptures them on the renderer. The two docs pages are notes
-  (their fences do not build the module themselves).
-- **`key-pairs`, 12.** All in `keyframer_examples.md`, under revision on another branch.
-- **`FaustPatternRender.wav()`.** The four remaining `encodeStereo16` calls encode Pat/Dirt
-  renders (`patRenderStereoDirt`, `PatSoundDocs`), not a `FaustPatternRender`, so the helper does
-  not apply. No rule: the receiver type is not visible to a line check.
+Nothing that fails: `check_box_idioms.py` over the whole corpus is clean, apart from notes that predate
+this pass. `keyframer_examples.md` was converted on its own branch. Captures of the docs pages and
+asset documents whose fences changed are left for the strict full-site build, which recaptures any
+fence whose digest changed. Before that, each changed docs fence, asset sidecar and `docs_capture/`
+block was compiled through the `checkBoxCodeCompiles` path, before and after the edit. Errors that
+appeared only after the edit came from `Double?` and `Any?` receivers and are fixed (`?.fN`,
+`(it as Number).fN`).
+
+`FaustPatternRender.wav()` was not adopted: the four remaining `encodeStereo16` calls encode Pat or
+Dirt renders, not a `FaustPatternRender`. There is no rule for it, because a line check cannot see
+the receiver's type.
 
 ## Gate scope
 
