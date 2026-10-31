@@ -650,7 +650,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**35440 public symbols across 1608 source files**, 20735 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**35447 public symbols across 1609 source files**, 20740 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -675,7 +675,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Visualization](visualization.md) | 62 | 1726 | 1232 (71%) | Turning a value into something you can look at, without leaving the box. |
 | [Synthesis](synthesis.md) | 43 | 1534 | 763 (49%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
 | [Patterns](patterns.md) | 40 | 1316 | 721 (54%) | Musical time, as a value. |
-| [Audio](audio.md) | 77 | 2092 | 1013 (48%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
+| [Audio](audio.md) | 78 | 2099 | 1018 (48%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 22 | 586 | 586 (100%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 123 | 3098 | 1522 (49%) | Field's small languages, from the host side. |
 | [Workspace](workspace.md) | 237 | 3208 | 1289 (40%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
@@ -1741,6 +1741,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>petri/<wbr></small> [PetriNets.kt](visualization.md#petrinets-kt) | Visualization | 145 | 85 | Petri nets: places hold tokens, transitions move them, and the whole thing is a clock. | [Petri nets](../petri_nets.md), [A Petri net that throws sparks](../chain_petri_sparks.md), [Petri notation cheatsheet](../petri_cheatsheet.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>petri/<wbr></small> [PetriNotation.kt](visualization.md#petrinotation-kt) | Visualization | 20 | 9 | The `#petri` text notation: a net you can retype while it is playing. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>petri/<wbr></small> [PetriSmokeTest.kt](simulation.md#petrismoketest-kt) | Simulation · internal | 3 | 1 | The whole stack, end to end, in one headless process: model, notation, analysis, the pattern bridge, the live runtime, the drawing, and — the part that matters most — **the sound**. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [PetriSoundDocs.kt](audio.md#petrisounddocs-kt) | Audio | 7 | 5 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [PetriSparksDocs.kt](audio.md#petrisparksdocs-kt) | Audio | 9 | 7 | The sound on `chain_petri_sparks.md`: the page's Petri net, played from the pinned Dirt-Samples. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>simulation/<wbr>petri/<wbr></small> [PetriStateSpace.kt](visualization.md#petristatespace-kt) | Visualization | 75 | 57 | Every marking a net can reach by *any* interleaving, and the classical properties read off that: boundedness, safety, deadlock, quasi-liveness, liveness, reversibility, home markings, mutual exclusion. | [Petri nets](../petri_nets.md), [A Deadlock, Sculpted and Traced](../chain_petri_sculpture.md), [Petri notation cheatsheet](../petri_cheatsheet.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>petri/<wbr></small> [PetriTalaComparison.kt](examples.md#petritalacomparison-kt) | Examples | 2 | 1 |  |  |
