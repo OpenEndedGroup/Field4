@@ -1441,10 +1441,11 @@ def render_brief(partition: Partition, all_notes: list[dict[str, Any]], git: Git
     out.append("\n".join(memories) if memories else "(none yet)")
     handoffs = [n for n in all_notes if n.get("kind") == "handoff" and _handoff_touches(n, partition.pages)]
     if handoffs:
-        out.append("\n## Handoffs already filed from these pages (do not file them again)\n")
+        out.append("\n## Handoffs already filed from these pages (do not file them again; "
+                   "`wait` a note on an open one instead)\n")
         for item in handoffs:
             info = item.get("handoff") or {}
-            out.append(f"- [{info.get('state', 'open')}{', blocking' if info.get('blocking') else ''}] "
+            out.append(f"- {item['id'][:8]} [{info.get('state', 'open')}{', blocking' if info.get('blocking') else ''}] "
                        f"{info.get('scope', 'project')}: {item.get('note', '').strip()} ({info.get('path', '')})"
                        + (f"\n    → {item.get('resolution', '').strip()[:240]}" if item.get("resolution") else ""))
     recent = [n for n in all_notes if is_resolved(n) and n.get("kind") not in ("memory", "handoff")
@@ -1511,6 +1512,8 @@ def apply_op(notes: list[dict[str, Any]], op: dict[str, Any]) -> dict[str, Any]:
     if action == "handoff-close":
         return _close_handoff(notes, op, author, text)
     note = find_note(notes, op["id"])
+    if action == "wait":
+        return _wait_on_handoff(notes, note, op, author, extra)
     if action == "resolve":
         note["resolvedAtEpochMs"] = op.get("atEpochMs", now_ms())
         note["resolution"] = text
@@ -1564,6 +1567,25 @@ def _apply_handoff(notes: list[dict[str, Any]], op: dict[str, Any], author: str,
         if note["id"] in op.get("notes", []) or on_page:
             add_entry(note, "blocked", f"waiting on handoff: {op['title']}", author, handoff=handoff["id"], **extra)
     return handoff
+
+
+def _wait_on_handoff(notes: list[dict[str, Any]], note: dict[str, Any], op: dict[str, Any], author: str,
+                     extra: dict[str, Any]) -> dict[str, Any]:
+    """Make a note wait on a handoff that is already filed, as if it had been filed from it.
+
+    Without this a note that asks for what an existing handoff will deliver can only collect
+    memories, and every drain hands it to an agent that again changes nothing.
+    """
+    handoff = find_note(notes, op["handoff"])
+    info = handoff.get("handoff") or {}
+    if handoff.get("kind") != "handoff" or is_resolved(handoff) or info.get("state", "open") not in ("open", "taken"):
+        raise SystemExit(f"{handoff['id'][:8]} is not an open handoff")
+    handoff["handoff"] = {**info, "fromNotes": [*info.get("fromNotes", []), note["id"]]}
+    if op.get("text", "").strip():
+        add_entry(note, "memory", op["text"].strip(), author, **extra)
+    add_entry(note, "blocked", f"waiting on handoff: {handoff.get('note', '').strip()}", author,
+              handoff=handoff["id"], **extra)
+    return note
 
 
 def _close_handoff(notes: list[dict[str, Any]], op: dict[str, Any], author: str, text: str) -> dict[str, Any]:
@@ -1723,13 +1745,20 @@ page's remaining notes as waiting. A non-blocking handoff is filed and you carry
 other notes. A note you handed off needs no other outcome: it waits on the handoff, and comes
 back to this page's queue when the handoff is closed.
 
+When a note asks for what a handoff already listed in the brief will deliver, do not file it
+again and do not just leave a memory (the note would come back on every pass): make it wait
+on that handoff, and it returns to the queue when the handoff closes:
+
+  {cli} wait <note-id> <handoff-id> ["what the page needs once it is done"]
+
 If running that command is refused (a permission prompt nobody is there to answer), do not stop
 and do not leave the outcome only in your reply: write it with your Write tool to
 {outcomes_file} as a JSON list, and the harness records it exactly as if the command had run:
 
   [{{"op": "resolve", "id": "<note-id>", "text": "what you changed", "memory": "optional"}},
    {{"op": "question", "id": "<note-id>", "text": "what the human must decide"}},
-   {{"op": "memory", "id": "<note-id>", "text": "..."}}]
+   {{"op": "memory", "id": "<note-id>", "text": "..."}},
+   {{"op": "wait", "id": "<note-id>", "handoff": "<handoff-id>", "text": "optional"}}]
 
 Resolve only what you actually fixed. Ask a question rather than guessing when a note is
 ambiguous or asks for a decision that is the human's. Leave a memory when you learned something
@@ -2055,15 +2084,18 @@ def read_outcomes_file(path: Path, partition: "Partition", agent_name: str, ids:
         return []
     ops = []
     for entry in entries if isinstance(entries, list) else []:
-        if not isinstance(entry, dict) or entry.get("op") not in ("resolve", "question", "memory", "comment"):
+        if not isinstance(entry, dict) or entry.get("op") not in ("resolve", "question", "memory", "comment", "wait"):
             continue
         wanted = str(entry.get("id", ""))
         match = [i for i in ids if wanted and (i == wanted or i.startswith(wanted))]
         text = str(entry.get("text", "")).strip()
-        if len(match) != 1 or not text:
+        handoff = str(entry.get("handoff", "")).strip()
+        if len(match) != 1 or not (handoff if entry["op"] == "wait" else text):
             continue
         op = {"op": entry["op"], "id": match[0], "text": text, "author": f"agent:{agent_name}", "atEpochMs": now_ms(),
               "via": "outcomes file"}
+        if entry["op"] == "wait":
+            op["handoff"] = handoff
         if entry["op"] == "resolve" and str(entry.get("memory", "")).strip():
             op["memory"] = str(entry["memory"]).strip()
         ops.append(op)
@@ -3428,6 +3460,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--page", help="page URL, docs page or repo path, for a page-level memory")
     p.add_argument("--line", type=int, help="with --page: anchor the memory at this line of the page's source")
 
+    p = sub.add_parser("wait", help="make a note wait on an already-filed handoff")
+    p.add_argument("id")
+    p.add_argument("handoff")
+    p.add_argument("text", nargs="?", default="", help="optional memory: what the page needs once it is done")
+
     p = sub.add_parser("handoff", help="queue a larger task as a document in dev_docs/handoffs/")
     p.add_argument("title", help="short imperative title")
     p.add_argument("--scope", choices=HANDOFF_SCOPES, default="project",
@@ -3553,6 +3590,12 @@ def main(argv: list[str] | None = None) -> int:
             op["memory"] = args.memory
         result = record(store, op)
         print(f"{args.command}: {result.get('id', '')[:8]}" + (" (journaled)" if "journaled" in result else ""))
+        return 0
+    if args.command == "wait":
+        op = {"op": "wait", "id": args.id if os.environ.get(JOURNAL_ENV) else find_note(store.notes(), args.id)["id"],
+              "handoff": args.handoff, "text": args.text}
+        result = record(store, op)
+        print(f"wait: {result.get('id', '')[:8]}" + (" (journaled)" if "journaled" in result else ""))
         return 0
     if args.command == "memory":
         if args.page:

@@ -477,6 +477,18 @@ class HandoffTest(unittest.TestCase):
         self.assertEqual(dn.note_state(notes["aaaa0001"]), "blocked", "the handed-off note waits on its handoff")
         self.assertEqual([e["kind"] for e in notes["aaaa0001"]["thread"]][-2:], ["handoff", "blocked"])
 
+    def test_a_note_can_wait_on_a_handoff_filed_from_another_note(self) -> None:
+        # A note that asks for what an existing handoff delivers used to stay open, so every drain
+        # gave it to an agent that could only leave a memory (function_conversation.md, 2026-10-31).
+        self.cli("handoff", "Add a helper for this", "--note", "aaaa0001", "--body-file", str(self.body))
+        handoff = next(n for n in self.notes().values() if n["kind"] == "handoff")
+        self.assertEqual(self.cli("wait", "bbbb0002", handoff["id"][:8], "rewrite once the helper exists"), 0)
+        notes = self.notes()
+        self.assertEqual(dn.blocked_by(notes["bbbb0002"]), handoff["id"])
+        self.assertIn("bbbb0002", notes[handoff["id"]]["handoff"]["fromNotes"])
+        self.cli("handoff-close", handoff["id"][:8], "added")
+        self.assertEqual(dn.note_state(self.notes()["bbbb0002"]), "open", "it comes back when the handoff closes")
+
     def test_a_deleted_handoff_releases_what_it_held(self) -> None:
         self.cli("handoff", "Big thing", "--blocking", "--note", "aaaa0001", "--body-file", str(self.body))
         data = json.loads(self.store_path.read_text())
