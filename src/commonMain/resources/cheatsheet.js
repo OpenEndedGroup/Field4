@@ -132,9 +132,11 @@
 			renderGroup(target, target.dataset.commandGroup, from, to);
 		});
 
+		// The display form (`~/…`) is the text; the file actually watched is the tooltip.
 		const path = window.fieldUserKeybindingsPath;
-		if (path) {
-			root.querySelectorAll("[data-keybindings-path]").forEach((el) => { el.textContent = path; });
+		const shown = window.fieldUserKeybindingsDisplayPath || path;
+		if (shown) {
+			root.querySelectorAll("[data-keybindings-path]").forEach((el) => { el.textContent = shown; el.title = path || shown; });
 		}
 	};
 

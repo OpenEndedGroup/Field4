@@ -277,7 +277,7 @@ val bound =
 markdown(
     "main",
     """
-    {muted:${live.path.md}}
+    {muted:${live.displayPath.md}}
 
     {muted:${live.problems.size} problem(s) in it}
 

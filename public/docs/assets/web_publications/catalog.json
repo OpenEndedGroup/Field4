@@ -1633,29 +1633,29 @@
     },
     "assets/agent_transcripts/keyframe_code_blend/metadata.edn": {
       "captureDigest": "d1d480e4a96ffb92bbe0276a6b4e731b8ded2572574a83bb2e39cd347acff689",
-      "capturedAt": "2026-10-29T22:28:48.129Z",
+      "capturedAt": "2026-10-30T23:14:39.160Z",
       "channels": 5,
       "file": "assets/web_publications/keyframe_code_blend/document/metadata.edn",
       "files": {
-        "assets/web_publications/keyframe_code_blend/document/metadata.edn": "fc7dd4a416ab08d5603b3bc49db6d5b7c38dd38aab736bd524b48a1616c06b7a",
-        "assets/web_publications/keyframe_code_blend/document/outputs.json": "a8a925f6027a95634125bcab13e8ea950f5c2dc70e6c64335367eb81059b1567",
-        "assets/web_publications/keyframe_code_blend/outputs/0.html": "87564634db8d1ae1201a93a4fa8fa60a7a58b0c91c5e35e28b25abac28a42140",
-        "assets/web_publications/keyframe_code_blend/outputs/1.html": "a7ad12876ffc4e6ed2b2f425d3fcea4505a23e68211eed46c67c46b7c3af8d55",
-        "assets/web_publications/keyframe_code_blend/outputs/2.html": "526854061768c423554b18a129c63224df81fb53e4eed3663ef4c2f5ce55fb74",
-        "assets/web_publications/keyframe_code_blend/outputs/3.html": "6ab5e771f6e2a618bea05f40848adc115d2fafbeadb25e07f9c8973ff6a5cc69",
-        "assets/web_publications/keyframe_code_blend/outputs/4.html": "13bcb7e99f418f367188e228b5045c92054b50a80bd600656d672fbefcb7a81d"
+        "assets/web_publications/keyframe_code_blend/document/metadata.edn": "f20e93029e541162b6285625ae15e203ba9d7303d88738311d912fed3f4a4ae7",
+        "assets/web_publications/keyframe_code_blend/document/outputs.json": "b701f89d28d6a37958cf84bf464f400cb64c1b509cb74505b1a16aeeb40e01f9",
+        "assets/web_publications/keyframe_code_blend/outputs/0.html": "0492a8bebf5bbd126ff1ec0328d333fef55a77eef942a98705e50859622ee2fd",
+        "assets/web_publications/keyframe_code_blend/outputs/1.html": "c25d7dec9d4c4fcbf68875b10891571b26f646146f8217bacc73951b5f25b42e",
+        "assets/web_publications/keyframe_code_blend/outputs/2.html": "e9d36bb76bfe21b4a74a88801f3bfd90fcae069ab914a8d82cd80f096bac9037",
+        "assets/web_publications/keyframe_code_blend/outputs/3.html": "64355c5ed7c2d0af8d03f157eaae056d13c8007673055b32041ceb56c65876d2",
+        "assets/web_publications/keyframe_code_blend/outputs/4.html": "afdc3d618f0d0cc1ced5d19f0adb4d663ab086a3b2318c5718ad15d9b12e2b5d"
       },
       "kinds": [],
       "outputs": "assets/web_publications/keyframe_code_blend/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/keyframe_code_blend.yaml": "7da3a1fad8d4c29d756aa5f221cebd1facf0ad0ae56212d2d29f9c7148682efe",
+        "dev_docs/agents/transcripts/keyframe_code_blend.yaml": "9d3dce584b22e02eea93e15cf60ec221bee8a0971b55159b055c049d88a8df46",
         "public/docs/assets/agent_transcripts/keyframe_code_blend/guides/keyframer_examples-blending-two-programs-not-just-two-numbers.md": "b1581d6012efb5191cdf4d94429231a2112e480a0ba67ee5a5806f204a55427e",
         "public/docs/assets/agent_transcripts/keyframe_code_blend/kfb_breakdown_code_.kt": "c052a08b57783c87dd8d2839c1604776944a38a9f8776ca9d0470ac4ef0aa767",
-        "public/docs/assets/agent_transcripts/keyframe_code_blend/kfb_kotlin_code_.kt": "19e48fb2d211f15a787ba7b8b78e7405e85930569901110bfd9c1f0347616a71",
+        "public/docs/assets/agent_transcripts/keyframe_code_blend/kfb_kotlin_code_.kt": "db738d9e27c4faf4f03802e28dc1072145eb380088ebc2678021d9a5f46f53dd",
         "public/docs/assets/agent_transcripts/keyframe_code_blend/kfb_kotlin_run_code_.kt": "87789dc4fdf68d30f3e2f6fbf7e1adcee909f44523b6376f89f80b81d8eaec80",
         "public/docs/assets/agent_transcripts/keyframe_code_blend/kfb_runtime_code_.kt": "5728e66705249b8e5d034c47f8e8a1f03567b7c77594df387912a922408eb1d2",
         "public/docs/assets/agent_transcripts/keyframe_code_blend/kfb_static_code_.kt": "9cbdf2c69aab6c9aaec87624a7e1e9b568f1b61bfc68b846f32b26bd4beeec8a",
-        "public/docs/assets/agent_transcripts/keyframe_code_blend/metadata.edn": "0f752a5978b22d425f7166ff30ae34329e42036eb6f3d420896b0f41dd897ad0"
+        "public/docs/assets/agent_transcripts/keyframe_code_blend/metadata.edn": "4b7ef88ea1e72e9c4e26aa724d36a910099296333af81ea8b297c04539dca4f2"
       }
     },
     "assets/agent_transcripts/keyframe_editor/metadata.edn": {
@@ -1688,54 +1688,54 @@
     },
     "assets/agent_transcripts/keyframe_key_discovery/metadata.edn": {
       "captureDigest": "d1d480e4a96ffb92bbe0276a6b4e731b8ded2572574a83bb2e39cd347acff689",
-      "capturedAt": "2026-10-29T22:38:49.335Z",
+      "capturedAt": "2026-10-30T23:14:45.385Z",
       "channels": 4,
       "file": "assets/web_publications/keyframe_key_discovery/document/metadata.edn",
       "files": {
-        "assets/web_publications/keyframe_key_discovery/document/metadata.edn": "7b9e03162cd686d441f2c9f86347de73397b7929329b317ce2ca8de186d8bed0",
-        "assets/web_publications/keyframe_key_discovery/document/outputs.json": "21afcf509965957e9f6ba41c2a6cbbd97b97f248da051ab7a73c4583fc70d872",
-        "assets/web_publications/keyframe_key_discovery/outputs/0.html": "cf13e02a929896e1fc0133dd2b4029ed9d8b621dabfedca5c848d1ba3a59aee3",
-        "assets/web_publications/keyframe_key_discovery/outputs/1.html": "6fd84e3e0c0f9b2c4c6ee88cfaa36975e09e3ce668f654fe972c4a6acdfaa135",
-        "assets/web_publications/keyframe_key_discovery/outputs/2.html": "6c19a66e22771198e10562a62888958519cd7b73916c9afab450605ef1b42c24",
-        "assets/web_publications/keyframe_key_discovery/outputs/3.html": "8bc23437531904709d1f529ed1318355e5fba2ddf0b8aadd04aa1c1502b4f930"
+        "assets/web_publications/keyframe_key_discovery/document/metadata.edn": "daf67d89a2c694f03ad1ad4c5cdb7dadd4c2b1f4187a35409520224375fd8419",
+        "assets/web_publications/keyframe_key_discovery/document/outputs.json": "820e37a4f3f7c994ab98eae2f773cd9d9d34092ded70c2fe215347f229e538e0",
+        "assets/web_publications/keyframe_key_discovery/outputs/0.html": "7edafd08a58482b5d597b18514a939a1d654bfa95493b5a262c7b0e9d2d4d62f",
+        "assets/web_publications/keyframe_key_discovery/outputs/1.html": "3a09d9372560554589f0dee461d9263903c270cb704564d801c81b8951676dc7",
+        "assets/web_publications/keyframe_key_discovery/outputs/2.html": "50439231930ee89016109cdd5bb349846019647a52c6a52a06b481c32cc6831d",
+        "assets/web_publications/keyframe_key_discovery/outputs/3.html": "8b232c565f18910298b1e1aa42ef7e4cd6b00f157366cd0a2f0d844b41d62f4c"
       },
       "kinds": [],
       "outputs": "assets/web_publications/keyframe_key_discovery/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/keyframe_key_discovery.yaml": "e47304b837713a1fd70b801df01f1598bace48eefdc57d3282d15f4a5ca0446f",
+        "dev_docs/agents/transcripts/keyframe_key_discovery.yaml": "a8617996fbb2bfb4041911e41eff5b935242c0bab9e8cb76148e36cdfeba2390",
         "public/docs/assets/agent_transcripts/keyframe_key_discovery/guides/keyframer_examples.md": "8b6bafa93792e9b2e19e7409aed9df37529e07dba3278de79f3324047a467808",
         "public/docs/assets/agent_transcripts/keyframe_key_discovery/kf_before_after_code_.kt": "20d5a8d98ac8f3045120b476dd8a1fc75eaf718cac2154bb3ce368916296d1de",
-        "public/docs/assets/agent_transcripts/keyframe_key_discovery/kf_junk_vs_damage_code_.kt": "63d54af3595e5bf71459a0db3f831263c1bc4395ce78488a56fb80087cea2977",
+        "public/docs/assets/agent_transcripts/keyframe_key_discovery/kf_junk_vs_damage_code_.kt": "e0d773cf15f0628ee2abca916136d6de07ee32cdfa8c0302160d89409e09b6b9",
         "public/docs/assets/agent_transcripts/keyframe_key_discovery/kf_orphaned_slots_code_.kt": "e7965aa2397180bacb32e2ab562b3f969dc19bfc09109ab7f7f857d1a4de49da",
-        "public/docs/assets/agent_transcripts/keyframe_key_discovery/metadata.edn": "9db606f705ec3a0690efacae5dba89a0f1845d15f5c55a22af3b7c37de606d21"
+        "public/docs/assets/agent_transcripts/keyframe_key_discovery/metadata.edn": "c24106ac3015afdc6b12e46a28828159a4c2175d3910adba1f0129b8631c83ce"
       }
     },
     "assets/agent_transcripts/keyframer_worked_example/metadata.edn": {
       "captureDigest": "d1d480e4a96ffb92bbe0276a6b4e731b8ded2572574a83bb2e39cd347acff689",
-      "capturedAt": "2026-10-29T22:40:24.417Z",
+      "capturedAt": "2026-10-30T23:14:51.715Z",
       "channels": 5,
       "file": "assets/web_publications/keyframer_worked_example/document/metadata.edn",
       "files": {
-        "assets/web_publications/keyframer_worked_example/document/metadata.edn": "4a83864a79a3cf363fcbe46f36d2f26f02fc895527090a8ea45fc4b7fedc5b19",
-        "assets/web_publications/keyframer_worked_example/document/outputs.json": "5f53bc378af5e1b3caa8a5cacb0dab59213d98f1528f8badeb07746d2c8d4f1d",
-        "assets/web_publications/keyframer_worked_example/outputs/0.html": "c9eda1608fcb753b6c9df6ba825f8be7e4509e04412b7e4fae61347fc8046484",
-        "assets/web_publications/keyframer_worked_example/outputs/1.html": "46a2d13753f80684cabe249887f35130cc6a42b5c7e56dde7ee97714007ff052",
-        "assets/web_publications/keyframer_worked_example/outputs/2.html": "118f9b5e992e96b516c46a7930d421b6abc0c19bd1666ff93e43680f88292c38",
-        "assets/web_publications/keyframer_worked_example/outputs/3.html": "01c68f0552aba46c4d1f4d7d8db5c182f496fb675fbb530054a7b09d4faffbbb",
-        "assets/web_publications/keyframer_worked_example/outputs/4.html": "16acbd318dde81e4cc0dccc300afc8451994cd504603efc8273cc82d6bbcac62"
+        "assets/web_publications/keyframer_worked_example/document/metadata.edn": "a7e1a44cedd63f033ff20858545375af58a65a9aad41c773a6c3ca304c7f070a",
+        "assets/web_publications/keyframer_worked_example/document/outputs.json": "b1298b69e977aa7697dca668f0274b028a1f5662d7cea1707d643c7c4d57b13c",
+        "assets/web_publications/keyframer_worked_example/outputs/0.html": "3070a27c74ddb91cd6689bd569dfc3206a85f1adea88006df7533a8759c09b7a",
+        "assets/web_publications/keyframer_worked_example/outputs/1.html": "f02639445d21d28a7287c746a9554696ce6079c6b736b95bd99777b1b870533c",
+        "assets/web_publications/keyframer_worked_example/outputs/2.html": "93f32273bb7373362018a51ebb5498f606d37cde507292e38aa5ac8019f449bf",
+        "assets/web_publications/keyframer_worked_example/outputs/3.html": "61bc5646e7554923b2c283686313559c0f5b5a21b1e9d9d3e1140dc6d2e4937b",
+        "assets/web_publications/keyframer_worked_example/outputs/4.html": "cc1e0b3dcf1146528df858ed488319bb447b9d15fcb35b9c4d4fdcc457bca216"
       },
       "kinds": [
         "svg"
       ],
       "outputs": "assets/web_publications/keyframer_worked_example/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/keyframer_worked_example.yaml": "6bfc348c05a1dba842c215bf69f83ee396205fdb813e2845fa13d89867cca344",
+        "dev_docs/agents/transcripts/keyframer_worked_example.yaml": "8ee864813b08b40658f56117e061a968e4bb906041d030c4f082e4a056a01cbe",
         "public/docs/assets/agent_transcripts/keyframer_worked_example/guides/keyframer_examples.md": "c56cf45f502640ec3fdde4734496047ba624733a9b12a80c64a3bf877b6fb9c9",
-        "public/docs/assets/agent_transcripts/keyframer_worked_example/keyframe_camera_code_.kt": "6c311feacda5a4d87c1080a51ff0fc14c171459ccc895872078545a6826eb27e",
+        "public/docs/assets/agent_transcripts/keyframer_worked_example/keyframe_camera_code_.kt": "b7f469a649660da8c247e2b758cae0edfbea4a67a4a12849e6b4986168767490",
         "public/docs/assets/agent_transcripts/keyframer_worked_example/keyframe_persist_code_.kt": "269a651935f1a84ce36743954a85282070b51120947d441271cd36c6c04afdfd",
         "public/docs/assets/agent_transcripts/keyframer_worked_example/keyframe_targets_code_.kt": "f700b7811c1caa0ca068cb9ab2157e4d288fffd8d157cddc1a4ece464880f0ad",
         "public/docs/assets/agent_transcripts/keyframer_worked_example/keyframe_updatecode_code_.kt": "039958d95c92df04be873ac5f55ec63466ee7a24b731b42979157f242e4b4c4d",
-        "public/docs/assets/agent_transcripts/keyframer_worked_example/metadata.edn": "456deb601f8f81866ca70454702fde4ca44194950c5928d3c0916af57cbd1999"
+        "public/docs/assets/agent_transcripts/keyframer_worked_example/metadata.edn": "4209c17f7b9e2816f1c90165aa4b6d7b01d8d6366913028a6f9c462ad0915f45"
       }
     },
     "assets/agent_transcripts/kolakoski_euclid/metadata.edn": {
