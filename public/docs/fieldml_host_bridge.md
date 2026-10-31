@@ -297,7 +297,9 @@ The frames sequence demo raises a band one column at a time, holds it, and start
 
 [Open ↗](offline.html?file=assets/fieldml_frames_sequence_demo/metadata.edn)
 
-![FRAMES_SEQUENCE_IMAGE](assets/fieldml_frames_sequence_demo/sequence.png)
+![a native Vulkan window, captured while the script runs: an orange band that has risen across the left third of the window, its lower edge a sine curve](assets/fieldml_frames_sequence_demo/sequence-0.png)
+
+![the same window 0.6 s later: the band now reaches three quarters of the way across](assets/fieldml_frames_sequence_demo/sequence-1.png)
 
 ## What it still will not do
 
