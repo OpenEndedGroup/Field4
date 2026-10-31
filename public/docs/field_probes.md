@@ -465,7 +465,7 @@ frames {
 
                 | n | mean | σ | min | median | max |
                 |---|------|---|-----|--------|-----|
-                | ${s.finiteCount} | ${"%.4f".format(s.mean)} | ${"%.4f".format(s.standardDeviation)} | ${"%.4f".format(s.min)} | ${"%.4f".format(s.quantile(0.5))} | ${"%.4f".format(s.max)} |
+                | ${s.finiteCount} | ${s.mean.f4} | ${s.standardDeviation.f4} | ${s.min.f4} | ${s.quantile(0.5).f4} | ${s.max.f4} |
             """,
             )
             :::endfold

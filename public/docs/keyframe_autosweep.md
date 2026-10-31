@@ -270,8 +270,8 @@ frames {
         | # | keys blended, and at what weight | pushed past the hull | `palette` taken from |
         |---|----------------------------------|----------------------|----------------------|
         ${rows.joinToString("\n") { m ->
-            "| ${m.index} | ${m.parents.joinToString("<br>") { "${it.key} ${"%.2f".format(it.weight)}" }} " +
-                "| ${m.extrapolationGain?.let { g -> "x${"%.2f".format(g)} away from<br>${m.extrapolationPole}" } ?: "—"} " +
+            "| ${m.index} | ${m.parents.joinToString("<br>") { "${it.key} ${it.weight.f2}" }} " +
+                "| ${m.extrapolationGain?.let { g -> "x${g.f2} away from<br>${m.extrapolationPole}" } ?: "—"} " +
                 "| ${m.discreteLanes.values.distinct().joinToString(", ")} |"
         }}
     """,

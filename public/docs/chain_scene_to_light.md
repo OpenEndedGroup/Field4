@@ -204,17 +204,17 @@ val k = point.peak.indexOfFirst { it < 0.01 }.coerceAtLeast(0)
 val frame = RectSLImager(SceneOnARig.LINE).frame(times[k], 256, 128, linear = true)
 val rig = SceneOnARig.Rig()
 rig.show(frame, area = false)
-showPatch(rig.patch, channel = "point samples at t = ${"%.3f".format(times[k])} s", w = 540.0, h = 300.0)
+showPatch(rig.patch, channel = "point samples at t = ${times[k].f3} s", w = 540.0, h = 300.0)
 rig.show(frame, area = true)
-showPatch(rig.patch, channel = "area average at t = ${"%.3f".format(times[k])} s", w = 540.0, h = 300.0)
+showPatch(rig.patch, channel = "area average at t = ${times[k].f3} s", w = 540.0, h = 300.0)
 
 markdown(
     "counts",
     """
 | route | frames with the rig dark | light on the rig, min – max | mean over the sweep | (max − min) / mean |
 |---|---|---|---|---|
-| point samples | ${point.darkFrames} of ${point.total.size} | ${"%.2f".format(point.min)} – ${"%.2f".format(point.max)} | ${"%.3f".format(point.mean)} | ${"%.2f".format(point.flicker)} |
-| area average | ${area.darkFrames} of ${area.total.size} | ${"%.3f".format(area.min)} – ${"%.3f".format(area.max)} | ${"%.3f".format(area.mean)} | ${"%.4f".format(area.flicker)} |
+| point samples | ${point.darkFrames} of ${point.total.size} | ${point.min.f2} – ${point.max.f2} | ${point.mean.f3} | ${point.flicker.f2} |
+| area average | ${area.darkFrames} of ${area.total.size} | ${area.min.f3} – ${area.max.f3} | ${area.mean.f3} | ${area.flicker.f4} |
 """,
     width = 1000,
 )

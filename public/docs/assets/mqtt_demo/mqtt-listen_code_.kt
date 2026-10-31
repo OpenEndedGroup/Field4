@@ -8,5 +8,5 @@ Re-running this box replaces the callback rather than adding a second one.
 var count = 0
 mqtt.subscribe("sensors/+/temp") { topic, message ->
     count++
-    markdown("**$topic** = ${"%.2f".format(message.number)}  _(message $count)_")
+    markdown("**$topic** = ${message.number?.f2}  _(message $count)_")
 }

@@ -131,7 +131,7 @@ and Kotlin binds the actual address in the usual Field way:
 
 ```diffstatic {data-lang=kotlin}
 mesh.particles = { particleBuffer }
-mesh.count = { values.size.toUInt() }
+mesh.count = { values.size }
 ```
 
 The schema and the buffer divide the work between them:

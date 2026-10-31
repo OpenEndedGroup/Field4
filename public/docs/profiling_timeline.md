@@ -491,9 +491,9 @@ display(
             title = "one deliberate hitch, seen through a 500-sample window",
             note =
                 "across those 500 spans p99 moved by " +
-                    "%.2f".format(after.p99Ms - withHitch.p99Ms) +
+                    (after.p99Ms - withHitch.p99Ms).f2 +
                     "ms while max fell by " +
-                    "%.2f".format(withHitch.maxMs - after.maxMs) +
+                    (withHitch.maxMs - after.maxMs).f2 +
                     "ms. Over a full window p99 is the sixth " +
                     "worst sample and there was only one bad one, so it never saw the hitch at all; max is now " +
                     (if (after.maxMs > 10) "somehow still holding it" else "back among the short spans") +
@@ -504,9 +504,9 @@ display(
                 [
                     when_,
                     s.n,
-                    "%.2f".format(s.p50Ms),
-                    "%.2f".format(s.p99Ms),
-                    "%.2f".format(s.maxMs),
+                    s.p50Ms.f2,
+                    s.p99Ms.f2,
+                    s.maxMs.f2,
                 ]
             },
         )

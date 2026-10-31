@@ -11,13 +11,13 @@ operations:
           fun showTrail(v: Vector2f) {
               trail += Vector2f(v)
               val dots = trail.takeLast(60).joinToString("") { p ->
-                  "<circle cx='${"%.1f".format(150 + p.x * 130)}' cy='${"%.1f".format(150 - p.y * 130)}' r='3' fill='#0cc8ed'/>"
+                  "<circle cx='${(150 + p.x * 130).f1}' cy='${(150 - p.y * 130).f1}' r='3' fill='#0cc8ed'/>"
               }
               display(
                   "what the box received",
                   """
                   <svg width="300" height="300" style="background:#05080a;border:1px solid #136178">$dots</svg>
-                  <div style="font:20px Iosevka,monospace;color:#0cc8ed;padding:6px 0">(${"%.2f".format(v.x)}, ${"%.2f".format(v.y)})</div>
+                  <div style="font:20px Iosevka,monospace;color:#0cc8ed;padding:6px 0">(${v.x.f2}, ${v.y.f2})</div>
                   """.trimIndent(),
               )
           }
