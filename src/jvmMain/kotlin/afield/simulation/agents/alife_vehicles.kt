@@ -133,11 +133,17 @@ data class PlasticityParams(
     val tauBaseline: Double = 50.0,
     /** Weights are clamped to `±maxWeight`. */
     val maxWeight: Double = 3.0,
+    /**
+     * Price of speed in the reward: `R = light − speedCost · speed`. Zero is the plain light reward;
+     * with a cost, a vehicle that holds the same light while driving slower is the better one.
+     */
+    val speedCost: Double = 0.0,
 ) {
     init {
         require(learningRate >= 0.0) { "learningRate must be >= 0, got $learningRate" }
         require(noise >= 0.0) { "noise must be >= 0, got $noise" }
         require(tauTrace >= 1.0 && tauBaseline >= 1.0) { "time constants must be >= 1 step" }
+        require(speedCost >= 0.0) { "speedCost must be >= 0, got $speedCost" }
     }
 }
 
@@ -269,8 +275,38 @@ internal fun neuronStep(p: NeuronParams, state: DoubleArray, input: Double, nois
 // The world
 // ==============================================================================================
 
-/** A light: brightness `intensity / (1 + d²/radius²)` at distance `d`. */
-data class Light(val x: Double, val y: Double, val intensity: Double = 1.0, val radius: Double = 18.0)
+/**
+ * A light: brightness `intensity / (1 + d²/radius²)` at distance `d`. A light with a velocity
+ * ([vx], [vy], in distance per step) drifts across the torus as the world steps.
+ */
+data class Light(
+    val x: Double,
+    val y: Double,
+    val intensity: Double = 1.0,
+    val radius: Double = 18.0,
+    val vx: Double = 0.0,
+    val vy: Double = 0.0,
+) {
+    /** Brightness at distance [d] from this light. */
+    fun brightnessAt(d: Double): Double = intensity / (1.0 + d * d / (radius * radius))
+
+    /** Whether this light moves. */
+    val moving: Boolean get() = vx != 0.0 || vy != 0.0
+
+    /** Speed in distance per step. */
+    val speed: Double get() = sqrt(vx * vx + vy * vy)
+}
+
+/**
+ * The [NeuronParams.bias] that makes an [Activation.BUMP] neuron fire hardest when a sensor wired with
+ * [weight] reads the brightness [distance] away from [light]. Wired crossed and excitatory
+ * ([VehicleWorld.AGGRESSOR]), such a vehicle turns toward the light when it is farther than [distance]
+ * and away from it when nearer, so it circles at about that radius.
+ */
+fun orbitBias(distance: Double, weight: Double = 2.0, light: Light = Light(0.0, 0.0)): Double {
+    require(distance > 0.0) { "distance must be > 0, got $distance" }
+    return weight * light.brightnessAt(distance)
+}
 
 /**
  * A population of vehicles among [lights] on a torus.
@@ -285,8 +321,7 @@ class VehicleWorld(
     val width: Double,
     /** Domain height. */
     val height: Double,
-    /** The light sources. */
-    val lights: List<Light>,
+    lights: List<Light>,
     /** Body x positions. */
     val x: DoubleArray,
     /** Body y positions. */
@@ -312,6 +347,13 @@ class VehicleWorld(
     }
 
     private val rng = kotlin.random.Random(seed)
+
+    /** The light sources, at their current positions; lights with a velocity move every [step]. */
+    var lights: List<Light> = lights
+        private set
+
+    /** Each vehicle's forward speed on the last step. */
+    val speed: DoubleArray = DoubleArray(x.size)
 
     /** How many vehicles. */
     val count: Int get() = x.size
@@ -343,6 +385,42 @@ class VehicleWorld(
         }
         return best
     }
+
+    /** Distance from vehicle [i] to the nearest light, under the toroidal metric. */
+    fun nearestLightDistance(i: Int): Double {
+        var best = Double.MAX_VALUE
+        for (l in lights) {
+            val dx = wrapDelta(x[i] - l.x, width)
+            val dy = wrapDelta(y[i] - l.y, height)
+            best = min(best, dx * dx + dy * dy)
+        }
+        return sqrt(best)
+    }
+
+    /**
+     * How far vehicles near moving lights lag behind them: for every vehicle within [within] of a
+     * moving light, its offset from that light projected on the light's direction of travel, averaged.
+     * Negative is trailing, positive leading. Returns NaN when no vehicle is near a moving light.
+     * Divide by the light's speed for the lag in steps.
+     */
+    fun trailAlong(within: Double = 20.0): Double {
+        var sum = 0.0
+        var n = 0
+        for (i in 0 until count) {
+            val k = nearestLightWithin(i, within)
+            if (k < 0) continue
+            val l = lights[k]
+            if (!l.moving) continue
+            val dx = wrapDelta(x[i] - l.x, width)
+            val dy = wrapDelta(y[i] - l.y, height)
+            sum += (dx * l.vx + dy * l.vy) / l.speed
+            n++
+        }
+        return if (n == 0) Double.NaN else sum / n
+    }
+
+    /** Mean forward speed over the population on the last step. */
+    fun meanSpeed(): Double = speed.average()
 
     /** The rate of motor neuron [m] of vehicle [i]. */
     fun rate(i: Int, m: Int): Double = neurons[6 * i + 3 * m + 1]
@@ -388,12 +466,13 @@ class VehicleWorld(
             val vl = p.baseSpeed + p.motorSpeed * rates[0]
             val vr = p.baseSpeed + p.motorSpeed * rates[1]
             val v = 0.5 * (vl + vr)
+            speed[i] = v
             heading[i] = h + (vr - vl) / p.axle
             x[i] = wrap(x[i] + cos(heading[i]) * v, width)
             y[i] = wrap(y[i] + sin(heading[i]) * v, height)
 
             if (learning) {
-                val reward = light(x[i], y[i])
+                val reward = light(x[i], y[i]) - pl.speedCost * v
                 val adv = reward - baseline[i]
                 baseline[i] += (reward - baseline[i]) / pl.tauBaseline
                 for (m in 0..1) for (s in 0..1) {
@@ -402,6 +481,9 @@ class VehicleWorld(
                     w[k] = (w[k] + pl.learningRate * adv * traces[k]).coerceIn(-pl.maxWeight, pl.maxWeight)
                 }
             }
+        }
+        if (lights.any { it.moving }) {
+            lights = lights.map { if (it.moving) it.copy(x = wrap(it.x + it.vx, width), y = wrap(it.y + it.vy, height)) else it }
         }
         steps++
     }
@@ -502,6 +584,62 @@ class LightVisits(world: VehicleWorld, private val within: Double = 8.0) {
 }
 
 /**
+ * Collects every vehicle's distance to its nearest light, once per [observe], for the distribution of
+ * radii an orbiting population keeps.
+ */
+class OrbitRadii {
+    private val samples = ArrayList<Double>()
+
+    /** Record each vehicle's current distance to its nearest light. */
+    fun observe(world: VehicleWorld) {
+        for (i in 0 until world.count) samples += world.nearestLightDistance(i)
+    }
+
+    /** How many distances have been recorded. */
+    val size: Int get() = samples.size
+
+    /** The [q] quantile (`0..1`) of the recorded distances. */
+    fun quantile(q: Double): Double {
+        require(samples.isNotEmpty()) { "no samples yet" }
+        val sorted = samples.sorted()
+        return sorted[((sorted.size - 1) * q.coerceIn(0.0, 1.0)).roundToInt()]
+    }
+
+    /** Median recorded distance. */
+    fun median(): Double = quantile(0.5)
+
+    /** Fraction of recorded distances inside `lo..hi`. */
+    fun fractionWithin(lo: Double, hi: Double): Double = samples.count { it in lo..hi }.toDouble() / max(1, samples.size)
+
+    /**
+     * A histogram of the distances from 0 to [maxDistance] in [bins] bars, as a small RGB image, with
+     * an optional [mark] drawn as a vertical line (the radius the vehicles were tuned for).
+     */
+    fun toImg(maxDistance: Double = 60.0, bins: Int = 60, mark: Double = Double.NaN, width: Int = 300, height: Int = 160): Img {
+        val counts = IntArray(bins)
+        for (d in samples) if (d < maxDistance) counts[(d / maxDistance * bins).toInt().coerceIn(0, bins - 1)]++
+        val top = max(1, counts.max())
+        val out = Img.filled(width, height, 3, 0.06f)
+        for (px in 0 until width) {
+            val b = (px * bins / width).coerceIn(0, bins - 1)
+            val barH = (counts[b].toDouble() / top * (height - 6)).roundToInt()
+            for (py in height - barH until height) {
+                val o = (py * width + px) * 3
+                out.data[o] = 1f; out.data[o + 1] = 0.6f; out.data[o + 2] = 0.2f
+            }
+        }
+        if (!mark.isNaN() && mark < maxDistance) {
+            val px = (mark / maxDistance * width).roundToInt().coerceIn(0, width - 1)
+            for (py in 0 until height) {
+                val o = (py * width + px) * 3
+                out.data[o] = 0.4f; out.data[o + 1] = 0.75f; out.data[o + 2] = 1f
+            }
+        }
+        return out
+    }
+}
+
+/**
  * A fading trail buffer for drawing a [VehicleWorld]: the light field as a dim backdrop, each vehicle's
  * recent path as a streak coloured by its motor rates (red the left neuron, green the right, so a
  * vehicle driving straight at full tilt is yellow), and the bodies on top.
@@ -515,7 +653,20 @@ class VehicleCanvas(val world: VehicleWorld, val scale: Double = 1.5, val fade: 
     /** Pixels down. */
     val h = max(1, (world.height * scale).roundToInt())
     private val trails = FloatArray(w * h * 3)
-    private val backdrop: FloatArray by lazy {
+    private var backdropFor: List<Light>? = null
+    private var backdropCache = FloatArray(0)
+
+    /** The light field, recomputed whenever the lights have moved since it was last drawn. */
+    private val backdrop: FloatArray
+        get() {
+            if (backdropFor != world.lights) {
+                backdropCache = drawBackdrop()
+                backdropFor = world.lights
+            }
+            return backdropCache
+        }
+
+    private fun drawBackdrop(): FloatArray {
         val b = FloatArray(w * h * 3)
         for (py in 0 until h) for (px in 0 until w) {
             val l = min(1.0, world.light(px / scale, py / scale)).toFloat()
@@ -524,7 +675,7 @@ class VehicleCanvas(val world: VehicleWorld, val scale: Double = 1.5, val fade: 
             b[o + 1] = 0.05f + 0.22f * l * l
             b[o + 2] = 0.08f + 0.10f * l
         }
-        b
+        return b
     }
 
     /** Fade the trails and add the vehicles' current positions. */
