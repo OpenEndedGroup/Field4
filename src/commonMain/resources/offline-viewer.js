@@ -494,16 +494,33 @@ if (typeof window !== 'undefined') window.addEventListener('DOMContentLoaded', a
         const params = new URLSearchParams(window.location.search);
         await window.FieldOfflineOutputs?.resolvePublication?.(params);
         ednFileUrl = params.get('file');
+        const zipParam = params.get('zip');
 
-        if (!ednFileUrl) {
-            showError('No file specified. Add ?file=path/to/metadata.edn to the URL');
+        if (!ednFileUrl && !zipParam) {
+            showError('No file specified. Add ?file=path/to/metadata.edn or ?zip=path/to/document.zip to the URL');
             return;
         }
 
-        // Load and parse the EDN file
-        const { text: ednText, url: resolvedUrl } = await fetchEdnFile(ednFileUrl);
+        // Load and parse the EDN file: from beside it, or out of the document zip.
+        let ednText;
+        let sidecarFetcher = fetchSidecarText;
+        if (ednFileUrl) {
+            const fetched = await fetchEdnFile(ednFileUrl);
+            ednText = fetched.text;
+            ednBaseUrl = new URL(fetched.url, window.location.href).href;
+        } else {
+            const documentZip = await loadDocumentZip(zipParam);
+            ednText = documentZip.text('metadata.edn');
+            if (ednText == null) throw new Error('the zip has no metadata.edn');
+            ednFileUrl = new URL(zipParam, window.location.href).href;
+            ednBaseUrl = ZIP_BASE_URL;
+            sidecarFetcher = async (url) => {
+                const text = documentZip.text(decodeURIComponent(new URL(url).pathname.slice(1)));
+                if (text == null) throw new Error('not in the zip');
+                return text;
+            };
+        }
         ednFileText = ednText;
-        ednBaseUrl = new URL(resolvedUrl, window.location.href).href;
         const data = parseEdn(ednText);
         currentDocumentData = data;
 
@@ -515,7 +532,7 @@ if (typeof window !== 'undefined') window.addEventListener('DOMContentLoaded', a
         }
 
         // `#afield/file` sidecars (too large to inline) live only beside metadata.edn.
-        const sidecarStatus = await resolveSidecars(data, ednBaseUrl, fetchSidecarText);
+        const sidecarStatus = await resolveSidecars(data, ednBaseUrl, sidecarFetcher);
 
         showDrawing = params.get('drawing') !== '0';
         activeLayer = params.get('layer');
@@ -565,7 +582,7 @@ if (typeof window !== 'undefined') window.addEventListener('DOMContentLoaded', a
         // Field loads a sidecar from its loose file and keeps the inline copy as a fallback; read
         // the loose files now, and refresh the open box if one of them differs.
         // Publications contain an immutable, fully inlined export from the live server.
-        if (!params.get('outputs')) resolveSidecars(data, ednBaseUrl, fetchSidecarText, { includeInline: true }).then(status => {
+        if (!params.get('outputs')) resolveSidecars(data, ednBaseUrl, sidecarFetcher, { includeInline: true }).then(status => {
             if (status.refreshed > 0) {
                 showDocumentInfo(data, ednFileUrl, { ...sidecarStatus, refreshed: status.refreshed });
                 if (selectedBox) showEditorForBox(selectedBox);
@@ -633,6 +650,50 @@ async function fetchEdnFile(url) {
     }
 
     throw new Error(`Failed to fetch ${url} (tried ${candidates.length}: ${failures.join('; ')})`);
+}
+
+// A document opened from `?zip=`: its sidecars resolve against this base and are read from the zip.
+const ZIP_BASE_URL = 'https://document.zip.invalid/';
+let loadedDocumentZip = null;
+
+/**
+ * Fetches and reads a document zip (stored or deflated entries, as Python's zipfile and Field's
+ * downloads write them). A zip whose entries share one top folder, the layout a download unzips
+ * to, is read as if that folder were its root.
+ */
+async function loadDocumentZip(zipUrl) {
+    const response = await fetch(new URL(zipUrl, window.location.href));
+    if (!response.ok) throw new Error(`could not fetch the document zip (HTTP ${response.status})`);
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    let end = bytes.length - 22;
+    while (end >= 0 && view.getUint32(end, true) !== 0x06054b50) end--;
+    if (end < 0) throw new Error('not a zip file');
+    const count = view.getUint16(end + 10, true);
+    let at = view.getUint32(end + 16, true);
+    const decoder = new TextDecoder();
+    const raw = [];
+    for (let i = 0; i < count; i++) {
+        const method = view.getUint16(at + 10, true);
+        const size = view.getUint32(at + 20, true);
+        const nameLength = view.getUint16(at + 28, true);
+        const extra = view.getUint16(at + 30, true);
+        const comment = view.getUint16(at + 32, true);
+        const local = view.getUint32(at + 42, true);
+        const name = decoder.decode(bytes.subarray(at + 46, at + 46 + nameLength));
+        at += 46 + nameLength + extra + comment;
+        if (name.endsWith('/')) continue;
+        const start = local + 30 + view.getUint16(local + 26, true) + view.getUint16(local + 28, true);
+        const packed = bytes.subarray(start, start + size);
+        const data = method === 0 ? packed
+            : new Uint8Array(await new Response(new Blob([packed]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer());
+        raw.push([name, data]);
+    }
+    const roots = new Set(raw.map(([name]) => name.includes('/') ? name.slice(0, name.indexOf('/')) : ''));
+    const prefix = roots.size === 1 && !roots.has('') ? `${[...roots][0]}/` : '';
+    const files = new Map(raw.map(([name, data]) => [name.startsWith(prefix) ? name.slice(prefix.length) : name, data]));
+    loadedDocumentZip = { bytes, files, text: (name) => files.has(name) ? decoder.decode(files.get(name)) : null };
+    return loadedDocumentZip;
 }
 
 async function fetchSidecarText(url) {
@@ -1897,12 +1958,27 @@ function fieldImportBases() {
     return bases;
 }
 
-async function importOfflineDocViaLocalhost(recommendedName, ednText) {
+/**
+ * The whole document as a zip, base64, when the page names one with `&zip=` (resolved against this
+ * page, like `file=`). Open in Field·4 sends it so the import keeps the document's sidecars and
+ * folders (saved chats, revisions); without one, only `metadata.edn` travels.
+ */
+async function documentZipBase64() {
+    const zip = new URLSearchParams(window.location.search).get('zip');
+    if (!zip) return null;
+    const bytes = (loadedDocumentZip ?? await loadDocumentZip(zip)).bytes;
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    return btoa(binary);
+}
+
+async function importOfflineDocViaLocalhost(recommendedName, ednText, zipBase64) {
     const bases = fieldImportBases();
     const body = JSON.stringify({
         recommendedName,
         ednText,
-        sourceUrl: window.location.href
+        sourceUrl: window.location.href,
+        ...(zipBase64 ? { zipBase64 } : {})
     });
 
     const unreachable = [];
@@ -1956,6 +2032,7 @@ function setupOpenLocalButton(fileUrl, ednText, data) {
         button.textContent = 'Sending to Field·4...';
         try {
             const recommendedName = deriveRecommendedName(fileUrl);
+            const zipBase64 = await documentZipBase64();
             let localBase = fieldImportBases()[0];
             let result = null;
             let hostOpened = false;
@@ -1965,12 +2042,13 @@ function setupOpenLocalButton(fileUrl, ednText, data) {
                     recommendedName,
                     ednText,
                     sourceUrl: window.location.href,
+                    ...(zipBase64 ? { zipBase64 } : {}),
                     openInHost: true
                 });
                 hostOpened = true;
             } catch (hostError) {
                 console.info('offline-viewer host import unavailable, falling back to localhost import', hostError);
-                const fallback = await importOfflineDocViaLocalhost(recommendedName, ednText);
+                const fallback = await importOfflineDocViaLocalhost(recommendedName, ednText, zipBase64);
                 localBase = fallback.localBase;
                 result = fallback.result;
             }
@@ -2021,7 +2099,7 @@ function nameFromPathSegments(segments) {
         const parent = segments[segments.length - 2];
         if (parent) return parent;
     }
-    return last.replace(/\.edn$/i, '') || null;
+    return last.replace(/\.(edn|zip)$/i, '') || null;
 }
 
 function deriveRecommendedName(fileUrl) {

@@ -31,9 +31,9 @@ the window, and a program whose window is closed still has its card's WebGL prev
 Language: StackSL** on a box you made yourself does the same, and every box beneath it is a program.
 
 The recorded sessions below started from a flat grey.
-[Download that starter](assets/stacksl_conversation/stacksl_conversation.zip) to begin from the same
-place: unzip it into your Field workspace, keeping the `stacksl_conversation` folder intact, and open
-it. It has two boxes:
+[Open that starter](offline.html?zip=assets/stacksl_conversation/stacksl_conversation.zip) to begin
+from the same place: it opens in the document viewer, and **Open in Field·4** copies it into your
+workspace as a new document. It has two boxes:
 
 | Box | What it is |
 | --- | --- |

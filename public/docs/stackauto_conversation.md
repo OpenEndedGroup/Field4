@@ -80,9 +80,9 @@ module.face_decay =
 
 ## Start
 
-[Download the starter](assets/stackauto_conversation/stackauto_conversation.zip), the document as
-the recording began. Unzip it into your Field workspace, keeping the `stackauto_conversation` folder
-intact, and open it. It has two boxes:
+[Open the starter](offline.html?zip=assets/stackauto_conversation/stackauto_conversation.zip), the
+document as the recording began: it opens in the document viewer, and **Open in Field·4** copies it
+into your workspace as a new document. It has two boxes:
 
 | Box | What it is |
 | --- | --- |

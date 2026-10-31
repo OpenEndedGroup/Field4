@@ -264,7 +264,8 @@ if (typeof window.handleDocsIframeMessage === 'undefined') {
             body: JSON.stringify({
                 recommendedName: payload.recommendedName,
                 ednText: payload.ednText,
-                sourceUrl: payload.sourceUrl
+                sourceUrl: payload.sourceUrl,
+                ...(typeof payload.zipBase64 === 'string' ? { zipBase64: payload.zipBase64 } : {})
             })
         });
 
@@ -321,7 +322,7 @@ if (typeof window.handleDocsIframeMessage === 'undefined') {
 
                 case 'field-import-offline-doc':
                     Promise.resolve().then(async () => {
-                        if (typeof data.ednText !== 'string' || data.ednText.length === 0) {
+                        if ((typeof data.ednText !== 'string' || data.ednText.length === 0) && typeof data.zipBase64 !== 'string') {
                             throw new Error('missing ednText');
                         }
 

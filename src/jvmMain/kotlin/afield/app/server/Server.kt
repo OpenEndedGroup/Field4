@@ -2533,7 +2533,9 @@ class Server {
         data class OfflineImportRequest(
             val recommendedName: String? = null,
             val ednText: String? = null,
-            val sourceUrl: String? = null
+            val sourceUrl: String? = null,
+            /** The whole document as a zip, base64: `metadata.edn` with its sidecars and folders. */
+            val zipBase64: String? = null
         )
 
         @Serializable
@@ -5507,7 +5509,9 @@ class Server {
                             try {
                                 val payload = call.receive<OfflineImportRequest>()
                                 val rawName = payload.recommendedName ?: "imported-document"
-                                val ednText = payload.ednText ?: throw IllegalArgumentException("missing ednText")
+                                val zip = payload.zipBase64?.let { java.util.Base64.getDecoder().decode(it) }
+                                val ednText = payload.ednText
+                                if (zip == null && ednText == null) throw IllegalArgumentException("missing ednText")
 
                                 fun sanitize(base: String): String {
                                     val cleaned = base.lowercase().replace(Regex("[^a-z0-9_-]+"), "-").trim('-')
@@ -5525,9 +5529,16 @@ class Server {
                                 val targetDir = File(home, candidate)
                                 targetDir.mkdirs()
 
-                                // Persist the incoming EDN as-is; Field will expand sidecar files on next save.
-                                val metadataFile = File(targetDir, SavingContext.METADATA_EDN)
-                                metadataFile.writeText(ednText)
+                                if (zip != null) {
+                                    // The whole document, sidecars and folders included.
+                                    runCatching { unpackDocumentZip(zip, targetDir) }.onFailure {
+                                        targetDir.deleteRecursively()
+                                        throw IllegalArgumentException(it.message ?: "bad document zip")
+                                    }
+                                } else {
+                                    // Persist the incoming EDN as-is; Field will expand sidecar files on next save.
+                                    File(targetDir, SavingContext.METADATA_EDN).writeText(ednText!!)
+                                }
 
                                 val encodedName = URLEncoder.encode(candidate, "UTF-8")
                                 // Answer on the connector the import arrived on. An offline viewer

@@ -30,9 +30,9 @@ it; running one again reopens the window. **Set Main Language: RectSL** on a box
 does the same, and every box beneath it is a scene.
 
 The recorded sessions below started from a blank wall.
-[Download that starter](assets/rectsl_conversation/rectsl_conversation.zip) to begin from the same
-place: unzip it into your Field workspace, keeping the `rectsl_conversation` folder intact, and open
-it. It has two boxes:
+[Open that starter](offline.html?zip=assets/rectsl_conversation/rectsl_conversation.zip) to begin
+from the same place: it opens in the document viewer, and **Open in Field·4** copies it into your
+workspace as a new document. It has two boxes:
 
 | Box | What it is |
 | --- | --- |
