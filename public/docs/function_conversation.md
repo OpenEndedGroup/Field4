@@ -27,9 +27,9 @@ StackSL program drawn live in a window, and
 start the same way, with **Make a StackSL Program** and **Make a RectSL Scene**.
 
 The recorded conversation below started from the same source, in a document of its
-own. [Download that starter](assets/function_conversation/function_conversation.zip)
-to begin from the same place: unzip it into your Field workspace, keeping the
-`function_conversation` folder intact, and open it. It has one box,
+own. [Open that starter](offline.html?file=assets/function_conversation/function_conversation/metadata.edn)
+to begin from the same place: it opens in the document viewer, and **Open in Field·4**
+copies it into your workspace as a new document. It has one box,
 **The function — talk here (AI4)**; opening the document checks its source in and
 draws the viewer.
 
@@ -101,9 +101,12 @@ entirely. Zoom in before you judge a detail.
 
 ## A worked conversation
 
-[Download the developed example](assets/function_conversation/function_conversation_example.zip)
-to open **function_conversation_example**. It contains the finished source, all
-nine saved revisions, and the recorded conversations and plots. Opening it restores
+[Look at the developed example](offline.html?file=assets/function_conversation/function_conversation_example/metadata.edn)
+in the document viewer for its finished source. To work in it,
+[download it](assets/function_conversation/function_conversation_example.zip) and
+unzip it into your Field workspace: **Open in Field·4** copies only the document, and
+the download also holds the box's saved chat, all nine saved revisions, and the
+recorded conversations and plots. Opening it restores
 the checked composition and draws the viewer. Then select **The function — talk
 here (AI4)** and press **ctrl/command-4**.
 The seven recorded turns are already in that box's chat, with their original
