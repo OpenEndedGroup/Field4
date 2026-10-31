@@ -146,7 +146,7 @@ checks both cases side by side.
 
 If you have edited sidecars and want `metadata.edn`'s inline copies brought back into agreement
 without opening the document,
-`src/jvmMain/kotlin/afield/document/persistence/saving.kt:1277#fun refreshInlineFilesFromDisk(directory: String): List<String>`
+`src/jvmMain/kotlin/afield/document/persistence/saving.kt:1436#fun refreshInlineFilesFromDisk(directory: String, allowInlineOnly: Boolean = false): List<String>`
 does exactly that and nothing else.
 
 ## Editing the directory under a running Field
