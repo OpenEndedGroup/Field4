@@ -1053,13 +1053,13 @@
     },
     "assets/agent_transcripts/fern_iterated_systems/metadata.edn": {
       "captureDigest": "d1d480e4a96ffb92bbe0276a6b4e731b8ded2572574a83bb2e39cd347acff689",
-      "capturedAt": "2026-10-31T00:15:45.680Z",
+      "capturedAt": "2026-10-31T04:54:35.721Z",
       "channels": 1,
       "file": "assets/web_publications/fern_iterated_systems/document/metadata.edn",
       "files": {
         "assets/web_publications/fern_iterated_systems/document/metadata.edn": "58c2137eb4b83350f288fcce7a1633fb36026623e8a7f3ff2edb3d52e7f4ecd7",
-        "assets/web_publications/fern_iterated_systems/document/outputs.json": "11c138fd34a36804952e479fcdd6d89b1903d835e141f45eefe1cf073c806a0b",
-        "assets/web_publications/fern_iterated_systems/outputs/0.html": "15b01baebdd33687dfb2f7fc1727985a860600bfeca53435be5960daa16f90c7"
+        "assets/web_publications/fern_iterated_systems/document/outputs.json": "7ebd5863e57976e0ed894093248bce3c7e1ae74e58871483f33453961a53e8dd",
+        "assets/web_publications/fern_iterated_systems/outputs/0.html": "d418324c8edd964ebe43f71477044617fa89161dec291f6a359adf48ac760af3"
       },
       "kinds": [
         "native-image"
@@ -1082,7 +1082,7 @@
         "public/docs/assets/agent_transcripts/fern_iterated_systems/fern_sierpinski_compute_.glsl": "c8434e43c45f4e6f9e664f3c1e2a428d45fed1960f9b0ef7e2f239262b14bf81",
         "public/docs/assets/agent_transcripts/fern_iterated_systems/fern_sierpinski_notes_.md": "ca9c457d4987a709b556ed63ad8e9325e0dca85583f3faf69ffd4bf8fab379fa",
         "public/docs/assets/agent_transcripts/fern_iterated_systems/metadata.edn": "c93da87ea082cb5eaa9c22f13163d5edc98e9296aad792872ab2c9c216a093c9",
-        "public/docs/assets/agent_transcripts_gallery/fern_iterated_systems_barnsley.png": "898e1fdb17d694a0c47ef54a2b06861a481691828c9ba05c0f909d463f311bb8"
+        "public/docs/assets/agent_transcripts_gallery/fern_iterated_systems_barnsley.png": "404c728169a1f0fbbcba9bdbc18fd6e57db0f0ae7d43f059e2df54d0a784438e"
       },
       "supplementalSources": [
         "public/docs/agent_transcripts.md",
@@ -1968,13 +1968,13 @@
     },
     "assets/agent_transcripts/madp_boids/metadata.edn": {
       "captureDigest": "d1d480e4a96ffb92bbe0276a6b4e731b8ded2572574a83bb2e39cd347acff689",
-      "capturedAt": "2026-10-31T00:15:56.098Z",
+      "capturedAt": "2026-10-31T04:54:39.839Z",
       "channels": 1,
       "file": "assets/web_publications/madp_boids/document/metadata.edn",
       "files": {
-        "assets/web_publications/madp_boids/document/metadata.edn": "6b968133632951c291fe3a9484ad4e3c8cdb5e01f5f84b23e40f58fb94f83570",
-        "assets/web_publications/madp_boids/document/outputs.json": "a726753b34a523a8f84c9e8bb52f936564a8802d6ad5199a6a51baa3146ce35b",
-        "assets/web_publications/madp_boids/outputs/0.html": "eef75244bb5f77284c2270704fea5cf94b8f2b28c900b802ff42c0bb92524277"
+        "assets/web_publications/madp_boids/document/metadata.edn": "5d0032141a78fb4319b0a910ab33eab5934b1d5e5209a58d26c45778bdc276bf",
+        "assets/web_publications/madp_boids/document/outputs.json": "475890e84221e9be10807c4cd88ee796fe3573c5a17bef66d898b07a8f33d9c3",
+        "assets/web_publications/madp_boids/outputs/0.html": "c5bc4a4b3e4f958c0c7a37a297aa67e3a5b6b3ebe20871363be2abfa666b6f8a"
       },
       "kinds": [
         "native-image"
@@ -2006,7 +2006,7 @@
         "public/docs/assets/agent_transcripts/madp_boids/boids_two_tribes_compute_.glsl": "935f960fc6de3de263df5acbb5809201bc4e718a05e36de059d31328d6120b28",
         "public/docs/assets/agent_transcripts/madp_boids/boids_two_tribes_notes_.md": "59aceca9ccccd15b433fef36e66c1c43d88b515df26e8990500bdfcb0b886f19",
         "public/docs/assets/agent_transcripts/madp_boids/metadata.edn": "55c47aaf617ace84639158ffe162daa985872d2c6e110033f80acca01fdefd43",
-        "public/docs/assets/agent_transcripts_gallery/madp_boids_murmuration.png": "b2a6f75758adb91059920a7927b4786574de6fcde73b243d97f811a96c2175c3"
+        "public/docs/assets/agent_transcripts_gallery/madp_boids_murmuration.png": "c550e72d4b047a9809aa127a80702f27514d675eacb5cc4cd43bf081ecfd2836"
       },
       "supplementalSources": [
         "public/docs/agent_transcripts.md",
@@ -2496,13 +2496,13 @@
     },
     "assets/agent_transcripts/particles_sketchbook/metadata.edn": {
       "captureDigest": "d1d480e4a96ffb92bbe0276a6b4e731b8ded2572574a83bb2e39cd347acff689",
-      "capturedAt": "2026-10-31T00:15:50.810Z",
+      "capturedAt": "2026-10-31T04:54:37.901Z",
       "channels": 1,
       "file": "assets/web_publications/particles_sketchbook/document/metadata.edn",
       "files": {
         "assets/web_publications/particles_sketchbook/document/metadata.edn": "232c7eb5075ac61bea8bd0c0054cbc103c765c93915976a3bdedd9c9ba9d1fab",
-        "assets/web_publications/particles_sketchbook/document/outputs.json": "17562bd34f20dd483959db269c725320947f19fb9f6b37a328aeb4a88bf4b857",
-        "assets/web_publications/particles_sketchbook/outputs/0.html": "789f3eb7400c78e65d45b01dcb4a2b18edbe70f8001350f9a3fc77533817c6f6"
+        "assets/web_publications/particles_sketchbook/document/outputs.json": "39332f85a808379b11011a2493977f3f85f7dae3343a22f5d97898157c29e02d",
+        "assets/web_publications/particles_sketchbook/outputs/0.html": "3be8612a7d5b26e5f33da545298e5decddd97f56bcbeab8fd5def99d6af4c1c3"
       },
       "kinds": [
         "native-image"
@@ -2534,7 +2534,7 @@
         "public/docs/assets/agent_transcripts/particles_sketchbook/particles_vortex_brush_code_.kt": "81c66b5d7baba3767819645e2ce3368393ac02008ce4ec8f8649ff2429a4a136",
         "public/docs/assets/agent_transcripts/particles_sketchbook/particles_vortex_brush_compute_.glsl": "e3522a7fca84c76517dd0906a384a82dac5c21682735ea823d5ccfc96600604c",
         "public/docs/assets/agent_transcripts/particles_sketchbook/particles_vortex_brush_notes_.md": "5ced5ad6fef8634c00743707cf9731508eaeb91f57a06b186d77b361dca48506",
-        "public/docs/assets/agent_transcripts_gallery/particles_sketchbook_boids.png": "69dc67e26b5c2656344a600f7cca890db46add8215e52ef5536fb06a379150a4"
+        "public/docs/assets/agent_transcripts_gallery/particles_sketchbook_boids.png": "a85d486857cc7ea2da54af20c68adc5cf5f6504a823854b9c6e02148c84737f5"
       },
       "supplementalSources": [
         "public/docs/agent_transcripts.md",
@@ -3404,13 +3404,13 @@
     },
     "assets/agent_transcripts/shadertrinket/metadata.edn": {
       "captureDigest": "d1d480e4a96ffb92bbe0276a6b4e731b8ded2572574a83bb2e39cd347acff689",
-      "capturedAt": "2026-10-31T00:16:04.712Z",
+      "capturedAt": "2026-10-31T04:54:41.827Z",
       "channels": 1,
       "file": "assets/web_publications/shadertrinket/document/metadata.edn",
       "files": {
-        "assets/web_publications/shadertrinket/document/metadata.edn": "77d4f24a108b0fb31e221e351e28594946967c46d501efc1d5ce0f1789677aaf",
-        "assets/web_publications/shadertrinket/document/outputs.json": "7c86610139e8e0ad1082bc87dcf3489326c760c4783d9ddfca837f51478378f6",
-        "assets/web_publications/shadertrinket/outputs/0.html": "3cecdc0f9ed1fc8cbbe925f6dbfa6bff8dde5f275a71d41e2fc28840fbafaaf9"
+        "assets/web_publications/shadertrinket/document/metadata.edn": "4f8b3b826c99e0304f120d91533275492c9d0473888e870c9215ee2f56f37d4d",
+        "assets/web_publications/shadertrinket/document/outputs.json": "91e585a623a90300b4feb824f135bfaf5e36d681ac35726592eae695f1463a52",
+        "assets/web_publications/shadertrinket/outputs/0.html": "79a0331bb894b437c14148fab96903ee3bef527cdf664b7df59a7a92f1351ea0"
       },
       "kinds": [
         "native-image"
@@ -3445,7 +3445,7 @@
         "public/docs/assets/agent_transcripts/shadertrinket/shadertrinket_star_tunnel_code_.kt": "780300bb197f8396544f9a8eac0169bc6313e77c030628388e96c177e8d2877e",
         "public/docs/assets/agent_transcripts/shadertrinket/shadertrinket_star_tunnel_fragment_.glsl": "92961c85b5ab42bae1dc13fa1b2f9ef1167f0d8929a1536ec1b6acb0a0433a80",
         "public/docs/assets/agent_transcripts/shadertrinket/shadertrinket_star_tunnel_notes_.md": "d682e8e1be03fe82931c6a357d8979001c7ee78983ed98eca542027995d132df",
-        "public/docs/assets/agent_transcripts_gallery/shadertrinket_flat_rings.png": "26db2c6403f739e61d2d03572ce9fff042ea3673769f2b078661d5a6b1e89748"
+        "public/docs/assets/agent_transcripts_gallery/shadertrinket_flat_rings.png": "52859d589a91544e90bc3b74f7580aa1023d935868499f20e89f3e64aee90e87"
       },
       "supplementalSources": [
         "public/docs/agent_transcripts.md",
@@ -3797,13 +3797,13 @@
     },
     "assets/agent_transcripts/splat_shader/metadata.edn": {
       "captureDigest": "d1d480e4a96ffb92bbe0276a6b4e731b8ded2572574a83bb2e39cd347acff689",
-      "capturedAt": "2026-10-31T00:15:40.683Z",
+      "capturedAt": "2026-10-31T04:54:33.206Z",
       "channels": 1,
       "file": "assets/web_publications/splat_shader/document/metadata.edn",
       "files": {
         "assets/web_publications/splat_shader/document/metadata.edn": "6085b2313bd025d80b27fccac42b481fe9bf90c8e28e7eeb5648474b724fcaea",
-        "assets/web_publications/splat_shader/document/outputs.json": "a4add7ca7ae31eaaed20143e34adfacd89d36234793c45b58b55a6d0d25fdd26",
-        "assets/web_publications/splat_shader/outputs/0.html": "315793c8e9e6cfe64a81fb8c27a61711c4c803f121b176e27f4356e2f229e9d1"
+        "assets/web_publications/splat_shader/document/outputs.json": "a3572c179bfecc2cd6b56a16ac8c6aaaee6e04791286b525ca33f63752cfe126",
+        "assets/web_publications/splat_shader/outputs/0.html": "393908407997670cb62e68c4162d0035703a0a7a499976d7b00da9d1d1382331"
       },
       "kinds": [
         "native-image"
@@ -3839,7 +3839,7 @@
         "public/docs/assets/agent_transcripts/splat_shader/splat_xray_shell_code_.kt": "6086b4240464a87e942171e488a3231a3073323e38147c893c6bde6e980e94b7",
         "public/docs/assets/agent_transcripts/splat_shader/splat_xray_shell_compute_.glsl": "1e9b757b35e20151bc50e34a071ee7f5cf05fe81fa8e21042d5842baa782ee2a",
         "public/docs/assets/agent_transcripts/splat_shader/splat_xray_shell_notes_.md": "8357530a72911bb5c1a16a92890b6b683c4cde56e7bc73413a4177dc9eb2383c",
-        "public/docs/assets/agent_transcripts_gallery/splat_shader_passthrough.png": "7451105678c68a54c7dec9f7854775534aeb3a04a7f82c77ddf08ff88ce7eb08"
+        "public/docs/assets/agent_transcripts_gallery/splat_shader_passthrough.png": "4872588ce8a915a324ee92cfa363fb8bd4fb7128e5f126481a7921126c457ebe"
       },
       "supplementalSources": [
         "public/docs/agent_transcripts.md",
