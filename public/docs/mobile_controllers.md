@@ -1,10 +1,12 @@
 # Field from your phone
 
-Open Field's `/controllers` page in a phone browser and the phone becomes a remote for a running Field document: adjust live controls, read outputs, talk to AI4, pick a box, and edit that box in Monaco, none of which asks you to squeeze the canvas UI onto a phone.
+Open Field's `/controllers` page in a phone browser and the phone becomes a remote for a running Field document, laid out for a small screen rather than squeezing the canvas onto it.
 
-This page needs nothing on the phone but a browser. A phone that already runs an OSC control surface, such as TouchOSC, can instead talk to a box directly: see [OSC and TUIO](osc.md).
+From the phone you can adjust a box's live controls and read its outputs. You can chat with AI4, Field's built-in AI assistant, about a box. You can pick a box and edit its code in the same code editor Field uses on the desktop.
 
-The phone follows Field's current box selection, and a selection made on the phone becomes the document's. There is one selection behind all six tabs: **Select** sets it, and **Pad**, **Group**, **Outputs**, **Chat** and **Edit** act on whatever it currently is.
+This page needs nothing on the phone but a browser. A phone that already runs an OSC control surface (OSC is a network protocol for sending control messages; TouchOSC is one such app) can instead talk to a box directly: see [OSC and TUIO](osc.md).
+
+The phone follows Field's current box selection, and a selection made on the phone becomes the document's. The page has six tabs, described in the table below. One of them, **Select**, sets the selection; the other five (**Pad**, **Group**, **Outputs**, **Chat** and **Edit**) act on whatever box it currently is.
 
 ## Open it on your phone
 
@@ -31,7 +33,7 @@ Replace `FIELD-HOST` with the machine's LAN name or address and `YOUR-DOCUMENT` 
 | **Group** | Phone-sized sliders, toggles, text inputs, vector pads, color controls, multisliders, matrices, range sliders and menus published by the selected box's `controlGroup(...)`, with their playheads. |
 | **Outputs** | The selected box's output areas, reformatted into a narrow scrolling column. Native controls remain interactive. |
 | **Chat** | The real AI4 conversation for the selected box and property, including attachments, code, and expandable tool-use summaries. File edits are called out by filename. |
-| **Select** | Field's **Open Anything** panel, adapted for touch. Search boxes, properties, commands, and document text. Choosing a result updates every other phone tab. |
+| **Select** | Field's [**Open Anything**](tour_interface.md#the-command-palette-and-open-anything) panel (the `cmd+p` search over everything in a document), adapted for touch. Search boxes, properties, commands, and document text. Choosing a result updates every other phone tab. |
 | **Edit** | A full embedded Monaco editor on the box and property chosen in **Select**. The same editor instance moves between Select and Edit, preserving its model and undo history. |
 
 </div>
@@ -92,7 +94,7 @@ ui.pause(6000)
 ```
 
 The Group tab also carries multisliders, matrices, range sliders and menus, with their playheads.
-Here is a small step sequencer, first in the desktop app beside its code, then on the phone:
+Here is a small step sequencer, first in the desktop app beside its code, then on the phone. Watch the orange playhead step across the velocity bars and the pattern grid, and along the band slider. In the code, each control call returns a handle, kept in a `lateinit var` so the `loop` below can reach it. The loop's three `playhead(...)` calls are what move the playheads; the rest declares the controls.
 
 ```diffstatic_runner {data-lang=kotlin capture="window" with-editor="true" viewport="1440x900" execution="launch" open-outputs="true" wait-output="true" wait-output-kind="display" screenshot="assets/mobile_controllers/desktop-sequencer.png" alt="The Field desktop app: on the canvas, a box named sequencer with its output panel open, showing a sixteen-bar velocity multislider, a four-row pattern grid with cells in red, green and blue, a band range slider and a wave menu, with an orange playhead on one column; beside it the code editor open on the box's Kotlin, the controlGroup declaring those four controls and the loop that drives the playheads" wait="1.5" timeout="180" w="220" h="80" embed=true hidden=true name="sequencer"}
 var velocity = 16 { i -> 0.5 + 0.4 * Math.sin(i * 0.6) }
@@ -209,7 +211,7 @@ ui.pause(10000)
 
 ## The Pad scrubs a number in your code
 
-The Pad does not send values to a box. It edits code, the way Field's [OSC editor](osc.md#fields-own-osc-editor) does: dragging replaces the number under the editor's cursor with the pad's value and, after a short pause, runs the box again. Put the cursor on a constant, either in the desktop editor or in the phone's **Edit** tab, then drag.
+The Pad does not send values to a box. It edits code: dragging rewrites the number under the editor's cursor in the box's source with the pad's value and, after a short pause, runs the box again. Put the cursor on a constant, either in the desktop editor or in the phone's **Edit** tab, then drag.
 
 - **Value.** In absolute mode the number becomes the finger's position, from 0 at the bottom (or left) edge to 1 at the top (or right). In delta mode the drag's movement is added to it. *Both* does each in turn.
 - **XY.** With the XY axis, a cursor on either number of a pair such as `Vector2f(0.2f, 0.7f)` sets both numbers at once.
@@ -266,8 +268,6 @@ for (v in [0.6, 0.7, 0.8, 0.9, 0.7, 0.5, 0.3, 0.15, 0.4]) {
 ui.mouseUp()
 ui.pause(1500)
 ```
-
-The Pad works without the OSC editor being switched on in the welcome page; it talks to Field over the controller's own connection.
 
 ## Link straight to a tab
 

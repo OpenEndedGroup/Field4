@@ -71,10 +71,32 @@ another set, shifted by the **offset** you give. **Step** replays one operation 
 marks where you are in the list, which is the easiest way to see what a macro does before you
 trust it with a document.
 
-```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".macro-recorder-panel" screenshot="assets/automating_field/macro-panel.png" transcript="assets/transcripts/greeter_macro.yaml" alt="Field's Macro Recorder panel listing recorded operations" padding="8" wait="0" timeout="90" embed=true hidden=true name="macro-panel"}
-ui.eval("window.macroTranscriptPanel()")
-ui.waitForSelector(".macro-recorder-panel", 8000.0)
-ui.pause(1800)
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".macro-recorder-panel" screenshot="assets/automating_field/macro-panel.png" transcript="assets/transcripts/greeter_macro.yaml" alt="The Macro Recorder after recording one macro: the name move_hello_right with Record, Save and Run, the saved macro in the document list, its YAML beside the readable step, one move of the hello sketch box, and the transcript of the recorded move below." padding="8" wait="0" timeout="150" document="docs-automating-macro-panel" fresh-document=true hide-toasts=true embed=true hidden=true name="macro-panel"}
+ui.eval("const a = (window.lastActions || []).find(a => a.id === 'macro-transcript-panel'); if (!a) throw new Error('no action macro-transcript-panel'); a.run(); return true")
+ui.pause(1000)
+// Record a real macro: Record, close the panel so the canvas is clear, drag the hello sketch box to the
+// right with the pointer, reopen the panel, name the recording and Save.
+ui.clickSelector("#macro-recorder-panel [data-action='start']")
+ui.pause(600)
+ui.clickSelector("#macro-recorder-panel [data-action='close']")
+ui.pause(400)
+val r = ui.eval("const b = [...document.querySelectorAll('.box')].find(b => b.uid === 'hello_box'); const q = b.getBoundingClientRect(); return [q.x + q.width / 2, q.y + q.height / 2]").toString().trim('[', ']').split(",").map { it.trim().toDouble() }
+ui.moveMouse(r[0], r[1])
+ui.mouseDown()
+ui.moveMouse(r[0] + 160.0, r[1], steps = 12)
+ui.mouseUp()
+ui.pause(1000)
+ui.eval("const a = (window.lastActions || []).find(a => a.id === 'macro-transcript-panel'); a.run(); return true")
+ui.pause(1000)
+ui.clickSelector("#macro-recorder-panel [data-role='name']")
+ui.type("move_hello_right")
+ui.clickSelector("#macro-recorder-panel [data-action='save']")
+ui.pause(2000)
+val listed = ui.eval("return [...document.querySelectorAll('#macro-recorder-panel [data-role=document-list] [data-macro-name]')].map(b => b.getAttribute('data-macro-name'))").toString()
+check("move_hello_right" in listed) { "the recorded macro is not listed: " + listed }
+check(!listed.contains("_ui_")) { "runner plumbing is listed: " + listed }
+val ops = ui.eval("return document.querySelector('#macro-recorder-panel [data-role=content]')?.value || ''").toString()
+check("- move:" in ops) { "the recorded macro has no move: " + ops }
 ```
 
 ## Driving Field from a script or agent
@@ -103,7 +125,7 @@ the reply fields that tell you when you have hit one of those limits.
 ## Where to go next
 
 - [Where to Go Next](staging.md) completes the Tour with a map of the rest of the documentation.
-- [How these pages are built](staging.md#how-these-pages-are-built) says how the docs
+- [Building the Docs & Running the Tests](building_and_testing.md) says how the docs
   build itself uses this machinery.
 - [Building & Testing](building_and_testing.md) covers the backdoor as a test harness.
 - For the complete reference — every operation, the observable results, and worked

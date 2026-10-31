@@ -9,8 +9,8 @@ var fromPos = Vector3f(8f, 2f, 0f)
 var toPos = Vector3f(0f, 2f, 8f)
 
 val scope = KeyframeScope()
-val a = scope.Key(mutableMapOf("camera" to CameraPose.lookAt(fromPos, Vector3f(0f, 0f, 0f))))
-val b = scope.Key(mutableMapOf("camera" to CameraPose.lookAt(toPos, Vector3f(0f, 0f, 0f))))
+val a = scope.Key("camera" to CameraPose.lookAt(fromPos, Vector3f(0f, 0f, 0f)))
+val b = scope.Key("camera" to CameraPose.lookAt(toPos, Vector3f(0f, 0f, 0f)))
 val pa = (a["camera"] as CameraPose).position
 val pb = (b["camera"] as CameraPose).position
 
