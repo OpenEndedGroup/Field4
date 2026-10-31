@@ -1,7 +1,7 @@
 # Sound: from a pattern to something you can hear
 
 Boxes make sound too. Write `pat("bd ~ sd ~")` in one and you have a beat: kick, rest, snare,
-rest, round and round. This stop follows that one line until you can hear it — first through a
+rest, round and round. This page follows that one line until you can hear it — first through a
 small synthesiser built into Field, then through real drum samples — and then runs the path
 backwards, from a recording to a pattern you can play again.
 
@@ -19,33 +19,36 @@ You can listen to the clips here before setting anything up. To make a pattern o
 the stand-in voice first; [Getting real drums in your own box](#getting-real-drums-in-your-own-box)
 then shows how to use samples.
 
-Next on the Tour, [Field from your phone](mobile_controllers.md) puts the controls of a running
+See also [Field from your phone](mobile_controllers.md), which puts the controls of a running
 document within reach of a phone browser.
 
 ---
 
 ## The path
 
-| stage | what it is | where |
-| --- | --- | --- |
-| `pat("bd ~ sd ~")` | mini-notation parsed into a `PatPattern<String>` | [Patterns & Rhythm](pattern_language.md) |
-| `.events(arc)` | the schedule, as values with rational spans | `PatPattern` |
-| `showPatRoll` | those events drawn | `PatPianoRollGallery.kt` |
-| `patVoice` → `patRenderStereo` | **the stand-in**: one oscillator per event | `PatSoundDocs.kt` |
-| `DirtSampleLibrary` → `patRenderStereoDirt` | **real samples**, mixed into a buffer | `DirtRender.kt` |
-| `WavFloatArrayWriter` | a 16-bit PCM WAV, or bytes into a box's output | `WavFloatArrayWriter.kt` |
-| `patTranscribe` | **back the other way**: the buffer heard as pitched notes, and a `pat("…")` string that re-renders | `PatTranscription.kt` |
-| `patTranscribeAuto` | the same, with the register estimated instead of declared | `PatTranscription.kt` |
-| `showPatTranscriptionOf` | notated against recovered, overlaid on one MIDI axis | `PatTranscriptionGallery.kt` |
+A pattern does not make sound by itself. You ask it for the events in a stretch of time — say,
+the first two cycles — and it hands back a list: each value with the exact moment it starts and
+stops. Everything else on this page takes that list and does something with it. These are the
+calls you will meet, in the order the sections use them:
 
-A pattern answers a query with a list of events. Both voices below play the same list, so you can
-hear what changes when you change the sound source. For more on writing patterns, see
-[Patterns & Rhythm](pattern_language.md).
+| call | what it does |
+| --- | --- |
+| `pat("bd ~ sd ~")` | turns the mini-notation into a pattern ([Patterns & Rhythm](pattern_language.md)) |
+| `showPatRollOf(...)` | draws a pattern's events as a piano roll, before anything is heard |
+| `showPatAudio(...)` | plays the events through **the stand-in**, a small built-in synth (`patVoice`) |
+| `showDirtAudio(...)` | plays them through **real drum samples** from Tidal's Dirt-Samples |
+| `patTranscribe` | goes **back the other way**: hears a recording as notes and writes a `pat("…")` you can play again |
+| `patTranscribeAuto` | the same, guessing the pitch range instead of being told it |
+
+Both voices below play the same list, so you can hear what changes when you change the sound
+source. For more on writing patterns, see [Patterns & Rhythm](pattern_language.md).
 
 
 ## The events, before anything makes a sound
 
-One kick-and-snare and eight hats, stacked. Two cycles.
+`showPatRollOf` takes a few labelled patterns and draws each one as its own lane, time running
+left to right. Here a kick-and-snare lane sits over a lane of eight hats, for two cycles. Each
+block is one event; the gaps in the top lane are the rests.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/sound_render_path/the-beat-roll.png" wait="2" capture="box" open-outputs="true" name="sound-doc-beat-roll"}
 :::static
@@ -130,27 +133,28 @@ Two details determine how the samples follow the pattern:
 
 ### How the library is found
 
-`DirtRender.dirtSampleRoot()` probes, in order:
+If you have run Tidal, you already have Dirt-Samples and Field finds it by itself. If not,
+`./gradlew fetchDocsDirtSamples` downloads the few folders these docs use (see
+[Getting real drums in your own box](#getting-real-drums-in-your-own-box)). Field does not include
+the library itself.
+
+To point Field at a copy somewhere else, set `FIELD_DIRT_SAMPLES`; it takes effect on the next
+render, with no restart. Field looks in these places, in order:
 
 1. `$FIELD_DIRT_SAMPLES`, if set and non-blank — the documented override;
 2. `~/Library/Application Support/SuperCollider/downloaded-quarks/Dirt-Samples` (macOS);
 3. `~/.local/share/SuperCollider/downloaded-quarks/Dirt-Samples` (Linux);
 4. `~/Dirt-Samples`.
 
-Dirt-Samples ships as a SuperCollider *quark*, so if you have run Tidal you already have it in
-one of those places. Field does not include the library itself. Setting `FIELD_DIRT_SAMPLES`
-takes effect on the next render, with no restart.
-
 ---
 
-## Two fallbacks, at different granularities
+## When samples are missing
 
-**No library on this machine: the whole render falls back.** `patRenderStereoDirt` returns
-the `patRenderStereo` render exactly, the same samples rather than an approximation, and
-`DirtRenderResult.usedSamples` is `false`. Nothing breaks and no figure fails to generate;
-the caller is simply told, and can say so.
+**No library on this machine: you hear the stand-in.** `showDirtAudio` plays exactly what
+`showPatAudio` would, and its result says so (`usedSamples` is `false`). Nothing breaks. Install
+the library as described [above](#how-the-library-is-found) to hear real drums.
 
-**Library present, one token missing from it: only that event falls back.** A pattern of
+**Library present, one token missing from it: only that event uses the stand-in.** A pattern of
 MIDI note numbers, or one naming a drum Dirt has never heard of, must not go silent just
 because the library loaded successfully. The unrecognised events are voiced by `patVoice` and
 mixed on top of the sampled ones, and `DirtRenderResult.unmatched` names them.
@@ -184,19 +188,15 @@ synth voice (no Dirt-Samples found; set FIELD_DIRT_SAMPLES to use real samples)
 
 ---
 
-## What you hear on the other pages
+## See also
 
-The mini-notation cards on [Patterns & Rhythm](pattern_language.md) play the Dirt-Samples drums.
-Some of the longer clips there, and on a few other pages, use the stand-in synth: its noise-burst
-hats stay distinct where a sampled hat would blur, and its pitched lines have a clean tone.
-
-Other pages use other voices. The effects on [DoughDSP Sound Examples](dough_dsp_sound.md) run on real
-signals, and [Faust](faust.md#what-it-sounds-like-at-eight-voices-and-at-one) plays its own
-instruments. [Subharmonic Synthesis](subharmonic_sound.md) plays a new tone under three real
-sources: a synth bassline, Dirt-Samples drums and the dialogue of a 1968 film. The clips on
-[A pattern in space](pat_spatial.md) are the mono source before spatialisation and one binaural
-render through Steam Audio. The drums on [How to make sound in Field](sound_paths.md#one-buffer-three-paths) and
-[Boolean network music examples](boolean_network_music_examples.md) are real Tidal samples.
+* [Patterns & Rhythm](pattern_language.md) — writing patterns, with Dirt-Samples drums on its cards.
+* [DoughDSP Sound Examples](dough_dsp_sound.md) — effects on real signals.
+* [Faust](faust.md#what-it-sounds-like-at-eight-voices-and-at-one) — a pattern playing a Faust instrument.
+* [Subharmonic Synthesis](subharmonic_sound.md) — a new tone under a bassline, drums and film dialogue.
+* [A pattern in space](pat_spatial.md) — a pattern rendered binaurally through Steam Audio.
+* [How to make sound in Field](sound_paths.md#one-buffer-three-paths) and
+  [Boolean network music examples](boolean_network_music_examples.md) — more patterns on real Tidal samples.
 
 ---
 
@@ -266,12 +266,12 @@ cents. The bars sit on the outlines, and in the third panel they sit off them by
 
 ![Three panels of notated-against-recovered piano rolls: a stepped scale at 15 of 16 notes recovered, wide leaps at 16 of 16 with the pitch order intact, and a detuned run at 8 of 8 whose bars sit slightly off their outlines](assets/pat_transcription/pat-transcription-roundtrip.svg)
 
-Splitting audio into notes is harder. The two ways of finding where a note starts fail on
-opposite material. A flat-envelope Dough render has no energy transients to cut on
-(energy recall 0.13) but clean pitch steps (0.86); a line that strikes each pitch
-twice has transients at every note but no pitch change at half of them. Field's pitch detector
-still finds most of those at the dip where the note is struck again (energy 0.00, pitch 0.88, 0.88
-merged), and merging the two never loses a note start the pitch detector found:
+Finding where each note starts is the harder part. The detector uses two clues and combines them:
+a jump in loudness, and a change of pitch. Each fails where the other works. A smooth legato line
+has no loudness jumps but clear pitch changes; a line that plays each pitch twice has a loudness
+jump at every note but no pitch change at half of them. In the figure below, the left panel is the
+legato line and the right panel the repeated pitches; combining the two clues finds most note
+starts in both:
 
 ![Two panels: a legato Dough render where the energy detector finds almost nothing while the pitch steps are clean, and a repeated-pitch line where the reverse holds](assets/pat_transcription/pat-transcription-opposite-failures.svg)
 
