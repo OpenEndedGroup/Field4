@@ -36,6 +36,14 @@ class KotlinFormatterCommentTest {
     // ------------------------------------------------------- what gets collapsed
 
     @Test
+    fun aHeadMarkerStaysALineCommentAheadOfTheRun() {
+        // KotlinJsHeadProfiles reads `// {{ name }}` on the first line; folded into a block it is lost.
+        val code = "// {{ tone }}\n// one\n// two\n// three\nval x = 1\n"
+        val formatted = blockifyLineCommentRuns(code)
+        assertTrue(formatted.startsWith("// {{ tone }}\n/*\n"), formatted)
+    }
+
+    @Test
     fun aRunOfThreeBecomesOneBlockComment() {
         assertEquals(
             "/*\nfirst\nsecond\nthird\n*/\nval a = 1",

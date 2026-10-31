@@ -216,6 +216,8 @@ private class LineCommentLine(val end: Int, val lineStart: Int, val indent: Stri
 //
 // Run this on ktfmt's output, not its input: the indentation is already canonical, and ktfmt
 // never gets a second look at what we emit.
+private val HEAD_MARKER = Regex("""^//\s*\{\{.*\}\}\s*$""")
+
 fun blockifyLineCommentRuns(code: String): String {
     // If ktfmt handed us something we can't re-parse, the transform simply doesn't apply.
     val file = try {
@@ -231,6 +233,8 @@ fun blockifyLineCommentRuns(code: String): String {
             // Fragment markers are execution boundaries. Leave them as line comments,
             // separating prose runs on either side so the splitter still sees them.
             if (isFragmentBreak(comment.text)) return@mapNotNull null
+            // A `// {{ name }}` head marker is read as a line comment (KotlinJsHeadProfiles.resolve).
+            if (HEAD_MARKER.matches(comment.text)) return@mapNotNull null
             val start = comment.startOffset
             val lineStart = code.lastIndexOf('\n', start - 1) + 1
             val indent = code.substring(lineStart, start)

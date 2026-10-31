@@ -1,5 +1,5 @@
+// {{ visionmetal uniforms=phase,amount,tint }}
 /*
-{{ visionmetal uniforms=phase,amount,tint }}
 Open Live Metal in Field4Vision. Launch again after editing to hot-reload.
 The shader lives in this box's `msl` property — edit it and press alt-r to
 recompile on the headset without restarting any of this.

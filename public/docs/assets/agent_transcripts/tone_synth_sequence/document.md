@@ -23,17 +23,14 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 From `code`
 
 {{ tone }}
-A tiny chord arpeggio played through a reverb, scheduled on the Transport.
-Tone is installed as the global `Tone` in the RemoteAR head; every name below is
-bound by afield.audio.tone.ToneKotlinJs and grounded against the vendored Tone.js.
 
 ```edn [field-box id="agent_tone_synth_sequence" role="properties"]
-{"id" "agent_tone_synth_sequence" "index" 1 "name" "Tone Synth Sequence" "parents" ["root" "agent_tone_synth_sequence_root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_tone_synth_sequence_root"} "name" "Tone Synth Sequence" "_tombstone" false "frame" #afield/rect [120.0 690.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_tone_synth_sequence_code_.kt" "lines" 39 "characters" 1096 "sha256" "4a975ec30a3c0ac86fa29ed74de2aed0b2d2e0d2ec9b9cb87f1c5a5af0e845a9"}]}
+{"id" "agent_tone_synth_sequence" "index" 1 "name" "Tone Synth Sequence" "parents" ["root" "agent_tone_synth_sequence_root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_tone_synth_sequence_root"} "name" "Tone Synth Sequence" "_tombstone" false "frame" #afield/rect [120.0 690.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_tone_synth_sequence_code_.kt" "lines" 39 "characters" 1099 "sha256" "60c2613abac7cd1f20938e4f187cff18ed3813d7ae7ffe5424615da254b011ca"}]}
 ```
 
 ```kotlin [field-property box="agent_tone_synth_sequence" name="code" path="agent_tone_synth_sequence_code_.kt"]
+// {{ tone }}
 /*
-{{ tone }}
 A tiny chord arpeggio played through a reverb, scheduled on the Transport.
 Tone is installed as the global `Tone` in the RemoteAR head; every name below is
 bound by afield.audio.tone.ToneKotlinJs and grounded against the vendored Tone.js.
