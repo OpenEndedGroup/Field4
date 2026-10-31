@@ -3462,13 +3462,8 @@ def parse_runner_options(*, runner_name: str, open_line: str, page_path: Path, l
     capture = (first_attr(attrs, "capture", "mode") or "box").strip().lower()
     if capture not in {"box", "window", "window-editor", "editor", "native-window", "ui"}:
         raise RuntimeError(f"{page_path}:{line_number} unsupported capture={capture!r}")
-    if capture == "native-window" and video:
-        # The video recorders all record the browser page; recording "the native window" through
-        # them would silently capture the wrong surface (capture_limits.md).
-        raise RuntimeError(
-            f"{page_path}:{line_number} capture=\"native-window\" cannot take video=: no recorder "
-            "records the native window; use screenshot= or a browser capture for the video"
-        )
+    # capture="native-window" with video= films the renderer's own window through `record-native`
+    # (direct swapchain copies on the server); the browser recorders cannot see that window.
 
     # capture="ui" runs the fence body as a `drive` transcript that scripts the live
     # editor (keypresses/clicks) via Playwright and captures a video and/or still. The
@@ -5767,7 +5762,15 @@ def build_backdoor_command(
 
     if is_video:
         # Use record-* commands instead of screenshot-*
-        if capture_mode == "box":
+        if capture_mode == "native-window":
+            backdoor_commands.append(shlex.join([
+                "record-native",
+                str(screenshot_path),
+                "--uid", default_target_uid,
+                "--duration", str(options.duration),
+                "--timeout", str(capture_timeout),
+            ]))
+        elif capture_mode == "box":
             target_uid = default_target_uid
             parts = [
                 "record-box",
