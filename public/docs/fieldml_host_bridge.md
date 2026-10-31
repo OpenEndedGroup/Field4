@@ -222,7 +222,7 @@ A Kotlin `suspend` method, such as `Renderer.run`, is called with `hostLaunch`: 
 let openWindow title =
   let w = hostNew {title = title} (hostClass "afield.graphics.vulkan.util.Window") in
   let r = hostNew {mainWindow = w} (hostClass "afield.graphics.vulkan.Renderer") in
-  let _ = thisBox |> hostCall "setPropertyRaw" ("renderer", r, false) in
+  let _ = setProp "renderer" r in
   // `run` renders until the window closes; the function runs then.
   hostLaunch "run" () r (fun ignored -> print "renderer stopped")
 
