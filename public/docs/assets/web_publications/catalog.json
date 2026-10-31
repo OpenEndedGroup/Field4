@@ -1453,13 +1453,13 @@
     },
     "assets/agent_transcripts/gpu_state/metadata.edn": {
       "captureDigest": "d1d480e4a96ffb92bbe0276a6b4e731b8ded2572574a83bb2e39cd347acff689",
-      "capturedAt": "2026-10-31T03:52:58.470Z",
+      "capturedAt": "2026-10-31T04:36:11.958Z",
       "channels": 1,
       "file": "assets/web_publications/gpu_state/document/metadata.edn",
       "files": {
         "assets/web_publications/gpu_state/document/metadata.edn": "cc92fabe786d4d9f7a8740f319cfd4637df8f5300b23acdafc05b62baee9a262",
-        "assets/web_publications/gpu_state/document/outputs.json": "e95480ef540bcaed1fdfb8cbe521eb160182e316d99b1e72175a31f94985ff03",
-        "assets/web_publications/gpu_state/outputs/0.html": "35cacc9447c993051246f1ff25d3318749be218b54586cc58c887352a17cebb5"
+        "assets/web_publications/gpu_state/document/outputs.json": "4dbb7af72b30a9da85b2a4cbd37b949f8578d4063f5d02a1e0b4a6857e6909e4",
+        "assets/web_publications/gpu_state/outputs/0.html": "0d445999d60eff474eb516482caf3e60eaefcccd02c62aa7a00e01e3a91726d1"
       },
       "kinds": [
         "native-image"
@@ -1475,7 +1475,7 @@
         "public/docs/assets/agent_transcripts/gpu_state/gs_sim_compute_.glsl": "0a4d10ae493ee9e931ba3192ec6988cd7fd89ed350fd5863486ab9e6b0acbd01",
         "public/docs/assets/agent_transcripts/gpu_state/guides/gpu_state.md": "e238fb0603255df494c776a9f2955a71038185b6dea921f641f1265a6afb7497",
         "public/docs/assets/agent_transcripts/gpu_state/metadata.edn": "ed68f1a3552cd4a33e41775f26d77b0226a244b67331af2215504fd00d5099d0",
-        "public/docs/assets/gpu_state/particle-field.png": "7085c7d8c7eda73184f3f15dc7502f8732913f0234d5e5144d84d4180737e795",
+        "public/docs/assets/gpu_state/particle-field.png": "ce01e7aca4c3416d5df7a01e9c457423c649e805da7507dde83d347c2b357587",
         "public/docs/gpu_state.md": "ac49e959611df077da272ada49a37f6fdd1b6f38dcd48f42b8be570068ec4110"
       },
       "supplementalSources": [
@@ -4209,13 +4209,13 @@
     },
     "assets/agent_transcripts/threebox/metadata.edn": {
       "captureDigest": "d1d480e4a96ffb92bbe0276a6b4e731b8ded2572574a83bb2e39cd347acff689",
-      "capturedAt": "2026-10-31T03:52:52.309Z",
+      "capturedAt": "2026-10-31T04:36:08.829Z",
       "channels": 1,
       "file": "assets/web_publications/threebox/document/metadata.edn",
       "files": {
         "assets/web_publications/threebox/document/metadata.edn": "725aabb0f7ca0e541773cabf62aa1c4cadf45ab90cf04e9ff723d521a06c4aca",
-        "assets/web_publications/threebox/document/outputs.json": "6d50a61480b4fb59b136a94e5346e50f172904399b265cd081184bc271aaf751",
-        "assets/web_publications/threebox/outputs/0.html": "a61ac227e5f9dc3243fb1331d1243ff58c546e66594e846f6e0439fcb5ae01ee"
+        "assets/web_publications/threebox/document/outputs.json": "37219db1b06967f521557e6dc3d9ea9110d397cf7a7a50ac66237c42abb34709",
+        "assets/web_publications/threebox/outputs/0.html": "061d5d23bfa4bf775bec21b14f22e5289f578cc7c0e35212fcf849cd2a7b9d78"
       },
       "kinds": [
         "native-image"
@@ -4232,7 +4232,7 @@
         "public/docs/assets/agent_transcripts/threebox/tb_draw_fragment_.glsl": "739c6e5b6ad0ac8fd506d6926fe7af6eac86d734807a1a8c121ca6d00585c25e",
         "public/docs/assets/agent_transcripts/threebox/tb_draw_vertex_.glsl": "2c8e11634cdf55e1666a96f3bd1411949e77074c7a19dbac24f48c5380aa07f1",
         "public/docs/assets/agent_transcripts/threebox/tb_renderer_code_.kt": "5adb4383d6451544289629b5958e7ac4767f497841dc5b8c0797e2c4f4ea53af",
-        "public/docs/assets/field_probes/particles-galaxy.png": "b3d13b9aac385f9235aef40f6beeb052031e8ae11f7b81b1a5c9746ad863d508",
+        "public/docs/assets/field_probes/particles-galaxy.png": "1fc47c94391c1cc0aa8676d79ff91d008a5051a6106b24137c68ad4d52197620",
         "public/docs/field_probes.md": "5d4a3cc593320562a3d29d210add339e8d6a599b167e8c039e79f8fbdbb6fead"
       },
       "supplementalSources": [
