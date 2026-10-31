@@ -277,6 +277,8 @@ data class Light(val x: Double, val y: Double, val intensity: Double = 1.0, val 
  *
  * Per-vehicle state is in flat arrays. Weight `w[4i + 2m + s]` connects sensor `s` (0 left, 1 right) to
  * motor neuron `m` (0 drives the left wheel, 1 the right), so *crossed* wiring is `m ≠ s`.
+ *
+ * @param seed seed for the motor noise; the run is deterministic given it
  */
 class VehicleWorld(
     /** Domain width. */
@@ -299,7 +301,6 @@ class VehicleWorld(
     val traces: DoubleArray,
     /** Running reward average, one per vehicle. */
     val baseline: DoubleArray,
-    /** Seed for the motor noise; the run is deterministic given it. */
     seed: Long = 1L,
 ) {
     init {
