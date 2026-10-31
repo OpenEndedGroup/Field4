@@ -308,7 +308,7 @@ Three stages derived from the level: blockout, traversal and placement.
 Each reads the level as it was when its build started, and reports what it measured.
 
 ```edn [field-box id="staged_builds" role="properties"]
-{"id" "staged_builds" "index" 2 "name" "Builds" "parents" ["root" "staged_level" "staged_rule"] "children" ["staged_corpus"] "properties" {"children" #{#afield/box "staged_corpus"} "parents" #{#afield/box "root" #afield/box "staged_level" #afield/box "staged_rule"} "name" "Builds" "_tombstone" false "frame" #afield/rect [640.0 40.0 300.0 100.0] "autorun" true} "blockProperties" [{"name" "code" "language" "kotlin" "path" "staged_builds_code_.kt" "lines" 314 "characters" 13504 "sha256" "d1bb06ecba7276bc7996b65aeb8727461916aa2ff8dc846bb5992d03e3f6e1a8"}]}
+{"id" "staged_builds" "index" 2 "name" "Builds" "parents" ["root" "staged_level" "staged_rule"] "children" ["staged_corpus"] "properties" {"children" #{#afield/box "staged_corpus"} "parents" #{#afield/box "root" #afield/box "staged_level" #afield/box "staged_rule"} "name" "Builds" "_tombstone" false "frame" #afield/rect [640.0 40.0 300.0 100.0] "autorun" true} "blockProperties" [{"name" "code" "language" "kotlin" "path" "staged_builds_code_.kt" "lines" 315 "characters" 13518 "sha256" "94b2418756e37b56bea961e475e341a0bf74b36c5ce685b68c9af182b226aaa4"}]}
 ```
 
 ```kotlin [field-property box="staged_builds" name="code" path="staged_builds_code_.kt"]
@@ -355,7 +355,8 @@ val blockout = StudyBuildStage(
     // A floor slab per room, and a wall piece on every cell edge between two rooms, or a room and outside, that is
     // not a door.
     val pieces = mutableListOf<List<Double>>()
-    for ((_, r) in g.rooms) pieces += [r[0].toDouble(), r[1].toDouble(), -0.1, r[2].toDouble(), r[3].toDouble(), 0.1]
+    for ((_, r) in g.rooms) pieces +=
+        listOf(r[0].toDouble(), r[1].toDouble(), -0.1, r[2].toDouble(), r[3].toDouble(), 0.1)
     val walls = mutableSetOf<Pair<Cell, Cell>>()
     for ((a, _) in g.room) for (b in
         [

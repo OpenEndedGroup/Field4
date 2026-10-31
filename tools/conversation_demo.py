@@ -66,7 +66,7 @@ def current_kotlin_listing(source: str) -> str:
         from check_box_idioms import list_literals
     lines = []
     for line in source.splitlines(keepends=True):
-        rewrite = list_literals(line)
+        rewrite = list_literals(line, lines[-1] if lines else "")
         lines.append(rewrite[0] if rewrite and rewrite[1] else line)
     return "".join(lines)
 
