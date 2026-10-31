@@ -20,7 +20,8 @@ class OfflineImportZipTest {
     }
 
     /** A docs download unzips to one folder; the import puts its contents in the new document. */
-    @Test fun aDownloadsTopFolderIsRemovedAndEveryFolderBesideTheDocumentKept() {
+    @Test
+    fun aDownloadsTopFolderIsRemovedAndEveryFolderBesideTheDocumentKept() {
         val dir = createTempDirectory("offline-import").toFile()
         try {
             val count = unpackDocumentZip(zip(
