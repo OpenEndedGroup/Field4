@@ -27,6 +27,7 @@ import afield.study.source.SourceStudy
 
 import afield.document.properties.saved
 import afield.media.video.image
+import java.io.File
 import java.nio.file.Files
 import java.util.concurrent.CancellationException
 import kotlin.test.*
@@ -184,5 +185,13 @@ class FunctionStudyTest {
             assertFailsWith<IllegalArgumentException> { study.edit("empty",FunctionStudy.hash("initial"),"narrow","test") }
             assertEquals("empty",study.currentId())
         } finally { dir.deleteRecursively() }
+    }
+
+    /** The shipped starter has no imports (the corpus formatter takes out ones a box gets by default). */
+    @Test
+    fun theStarterSourceCompilesWithoutImportsOfItsOwn() {
+        val starter = File("dev_docs/agents/demos/function_conversation/function_source_code_.kt").readText()
+        assertFalse(starter.lineSequence().any { it.startsWith("import ") }, "the case this test exists for")
+        assertEquals(listOf("x", "y", "z"), FunctionStudy.compileStudy(starter).channels.map { it.name })
     }
 }
