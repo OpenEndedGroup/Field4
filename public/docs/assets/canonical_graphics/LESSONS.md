@@ -66,7 +66,7 @@ Field API names and GLSL features scanned out of the sources above — the rever
 - `#include` — 5. lygia
 - `AdaptiveQuantileWarp` — 6b. debugging / mapping - Texture probe example
 - `buffer_reference` — 1. hello triangle, 3b. compute particles, 3b. draw particles, 4. gltf loading, 4. multi-textureing from a gltf, 5e. Slug filled paths, 6. debugging — printf, 8. dla
-- `Camera` — 1b. hello triangle (UBO), 2. hello camera, 2. hello keyboard camera, 4. gltf loading, 4. multi-textureing from a gltf, 4. texturing, 4b. multi-texture, 5. Bluring, 5. PingPongTT, 5. RTT, 5. draw blur, 5. draw pingpoing, 5. draw rtt, 5. included, 5. lygia, 5e. Slug filled paths, 6. RTT - sending, 6. RTT- draw rtt, 6. debugging - Texture probe example, 6b. debugging / mapping - Texture probe example, 7b. slang — Texture
+- `Camera` — 1b. hello triangle (UBO), 2. hello camera, 2. hello keyboard camera, 4. gltf loading, 4. multi-textureing from a gltf, 4. texturing, 4b. multi-texture, 5. Bluring, 5. RTT, 5. draw blur, 5. draw pingpoing, 5. draw rtt, 5. included, 5. lygia, 5e. Slug filled paths, 6. RTT - sending, 6. RTT- draw rtt, 6. debugging - Texture probe example, 6b. debugging / mapping - Texture probe example, 7b. slang — Texture
 - `ComputeMesh` — 3. compute shader, 3b. compute particles
 - `computeModuleHere` — 3. compute shader, 3b. compute particles
 - `debugPrintfEXT` — 6. debugging — printf
@@ -77,7 +77,7 @@ Field API names and GLSL features scanned out of the sources above — the rever
 - `GpuRadixSort` — 6. radix sort
 - `HasImageView` — 5. PingPongTT, 5. draw blur, 5. draw pingpoing
 - `KeyCamera` — 4. gltf loading, 4. multi-textureing from a gltf, 5. included
-- `keyCamera` — 2. hello keyboard camera, 4. texturing, 4b. multi-texture, 5. Bluring, 5. PingPongTT, 5. RTT, 5. draw blur, 5. draw pingpoing, 5. draw rtt, 5. lygia, 5e. Slug filled paths, 6. RTT - sending, 6. RTT- draw rtt, 6. debugging - Texture probe example, 6b. debugging / mapping - Texture probe example, 7b. slang — Texture
+- `keyCamera` — 2. hello keyboard camera, 4. texturing, 4b. multi-texture, 5. Bluring, 5. RTT, 5. draw blur, 5. draw pingpoing, 5. draw rtt, 5. lygia, 5e. Slug filled paths, 6. RTT - sending, 6. RTT- draw rtt, 6. debugging - Texture probe example, 6b. debugging / mapping - Texture probe example, 7b. slang — Texture
 - `LoadedTexture` — 4. texturing, 4b. multi-texture, 6. debugging - Texture probe example, 6b. debugging / mapping - Texture probe example, 7b. slang — Texture
 - `mapAndRead` — 3. compute shader
 - `mapAndWrite` — 3. compute shader

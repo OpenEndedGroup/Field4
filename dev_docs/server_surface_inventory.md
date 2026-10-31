@@ -300,7 +300,7 @@ the file, and the reach is described per file below in prose that a human checke
 | declaring file | commands |
 | --- | --- |
 | `Server.kt` | 55 |
-| `agent_backdoor.kt` | 26 |
+| `agent_backdoor.kt` | 27 |
 | `history.kt` | 14 |
 | `executing.kt` | 10 |
 | `Ai4Installer.kt` | 10 |
@@ -384,6 +384,7 @@ reach to a client that `agent-eval` and `launch-all` already let run arbitrary c
 | `agent-film-page` | `agent_backdoor.kt` |
 | `agent-get-property` | `agent_backdoor.kt` |
 | `agent-lifecycle-census` | `agent_backdoor.kt` |
+| `agent-native-window-record` | `agent_backdoor.kt` |
 | `agent-native-window-screenshot` | `agent_backdoor.kt` |
 | `agent-open-document` | `agent_backdoor.kt` |
 | `agent-open-editor` | `agent_backdoor.kt` |

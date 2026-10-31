@@ -3,8 +3,8 @@ Ping-pong render to texture: feedback from one frame to the next.
 
 A pass cannot read the image it is writing, so PingPongRenderToTexture keeps two images and swaps
 their roles every frame. The fragment shader (open "fragment" in the property switcher) samples
-last frame's image as `otherView`, offsets and recolours it, and writes the result, so the image
-drifts over time. The child box `5. draw pingpoing` displays it.
+last frame's image as `otherView`, blurs and fades it a little, and stamps a moving dot into it, so
+the dot leaves a trail that spreads out and dies away. The child box `5. draw pingpoing` displays it.
 Run this box beneath the renderer (`window`) box.
 */
 import org.lwjgl.vulkan.VK10.*
@@ -28,25 +28,19 @@ var module = moduleHere {
     +target
 }
 var m = Mesh()
-
 module += "mainMesh" to m
 target += "boo" to module
 
-val camera = Camera()
-m.p = camera.p
-m.m = camera.m
+// The shaders read this push constant to move the dot. It advances a fixed 1/60 s each frame rather
+// than following the clock, so a slow frame slows the animation instead of making it jump.
+var time = 0f
+m.time = {
+    time += 1f / 60
+    time
+}
 
-// Target parameters stay live: this can be changed while the box runs.
-target.parameters.clearFirst = true
-
-var kc by keyCamera(camera = camera)
-// loop runs its body once per frame, rebuilding one large triangle each time. The body's value
-// (the trailing `true`) is not used.
-loop {
-    m.set(3, 1) {
-        val z = Math.random() * 0.0
-        pos.add(-3, 1, -1 + z, 1.0, -20.3, z, 3, 3, z)
-        tri.add(0, 1, 2)
-    }
-    true
+// One triangle covering the target in clip space (the vertex shader ignores any camera).
+m.set(3, 1) {
+    pos.add(-1, -1, 0, 3, -1, 0, -1, 3, 0)
+    tri.add(0, 1, 2)
 }

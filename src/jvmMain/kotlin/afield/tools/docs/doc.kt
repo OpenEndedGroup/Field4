@@ -761,6 +761,45 @@ suspend fun Window.raiseAndScreenshot(
     }
 }
 
+/**
+ * Films this window for [durationSec] seconds into the MP4 at [outPath], by direct swapchain copies like
+ * [raiseAndScreenshot]: no screen recording, no window raise, so nothing touches AppKit off its thread.
+ * At most [inFlight] copies are outstanding at once, since each holds a staging buffer the size of the
+ * swapchain and a frame serves every pending request; a copy is requested at most every 1/[fps] s. The
+ * frames are encoded at the rate actually reached, so the video plays in real time, scaled to [width].
+ */
+suspend fun Window.recordDirect(durationSec: Double, outPath: String, fps: Int = 20, width: Int = 1280, inFlight: Int = 3) {
+    val renderer = rendererForDirectCapture(15_000L)
+    val frames = java.nio.file.Files.createTempDirectory("field-record-native-").toFile()
+    try {
+        val slots = kotlinx.coroutines.sync.Semaphore(inFlight)
+        val started = System.nanoTime()
+        var taken = 0
+        kotlinx.coroutines.coroutineScope {
+            while (System.nanoTime() - started < (durationSec * 1e9).toLong()) {
+                val due = started + taken * 1_000_000_000L / fps
+                val wait = (due - System.nanoTime()) / 1_000_000
+                if (wait > 0) kotlinx.coroutines.delay(wait)
+                slots.acquire()
+                val file = File(frames, "%05d.png".format(taken++)).absolutePath
+                launch {
+                    try { renderer.captureWindowToFile(this@recordDirect, file) } finally { slots.release() }
+                }
+            }
+        }
+        val elapsed = (System.nanoTime() - started) / 1e9
+        val rate = (taken / elapsed).coerceAtLeast(1.0)
+        File(outPath).parentFile?.mkdirs()
+        val (code, err, _) = runProcessLogged(listOf("ffmpeg", "-loglevel", "error", "-y", "-framerate", "%.3f".format(rate),
+            "-i", File(frames, "%05d.png").absolutePath, "-vf", "scale=$width:-2", "-c:v", "libx264",
+            "-pix_fmt", "yuv420p", "-movflags", "+faststart", outPath))
+        require(code == 0) { "ffmpeg failed encoding $outPath: $err" }
+        lprintln("info,doc", "recorded $taken frames in %.2fs (%.1f fps) to $outPath".format(elapsed, rate))
+    } finally {
+        frames.deleteRecursively()
+    }
+}
+
 suspend fun Window.raiseAndRecord(waitFrames: Int, outPath: String) {
     GLFW.glfwShowWindow(windowHandle)
     GLFW.glfwFocusWindow(windowHandle)

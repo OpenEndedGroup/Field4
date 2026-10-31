@@ -4233,12 +4233,12 @@
     },
     "assets/agent_transcripts/threebox/metadata.edn": {
       "captureDigest": "4d5add3a103558e3a45b0b09c14392b55f14042e4118c9d4d341d9a926c175b0",
-      "capturedAt": "2026-10-31T14:03:42.325Z",
+      "capturedAt": "2026-10-31T19:32:45.815Z",
       "channels": 1,
       "file": "assets/web_publications/threebox/document/metadata.edn",
       "files": {
-        "assets/web_publications/threebox/document/metadata.edn": "5f21c0aadd7ec8ed1df8d71595e00af459b88c678ee1b08fdce7d1250bbcd542",
-        "assets/web_publications/threebox/document/outputs.json": "bc8238c9629d266e6605367fa7767d001145ec0eb8eb2ee72ee8d9655f870526",
+        "assets/web_publications/threebox/document/metadata.edn": "1b2a2cd06ac0baa584c9268c1db2b7f4e849e34da4879a2c113c941b2079c6b2",
+        "assets/web_publications/threebox/document/outputs.json": "26df39401902c5231c8e88c8b9e22e644f87d9257e01ac9b152465f9c17316f5",
         "assets/web_publications/threebox/outputs/0.html": "845b72f6e5bcc73ab4319b6eb4a9783ed585192f04876443f0a1915515acb9d7"
       },
       "kinds": [
@@ -4246,10 +4246,10 @@
       ],
       "outputs": "assets/web_publications/threebox/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/threebox.yaml": "aaa8511c2141d23863f2c5da970f2b8ae3b23d183e2701c4536b50a82e3b5497",
+        "dev_docs/agents/transcripts/threebox.yaml": "6eb223ba2cfd9fe46fd3c48ec61c9302b2ccbc4c55b565cfec08ed70f6adacb6",
         "public/docs/assets/agent_transcripts/threebox/guides/afield_four_graphics.md": "a13f2e9a2771dc072863ea75e0492150cb81e2853b2ee604bb55d7a343cd5d08",
         "public/docs/assets/agent_transcripts/threebox/guides/field_probes.md": "491fd38858a00c867df2101bc9d6ac6c9a3eb688dd32ce7ea5d598f4f13ada85",
-        "public/docs/assets/agent_transcripts/threebox/metadata.edn": "e102e57520b2960df1356fe925f91f91e51bdc8fdd15ad9974d56fd2cf9c6f72",
+        "public/docs/assets/agent_transcripts/threebox/metadata.edn": "7132d3b53945cce14c3872be6d690fd2cf25ff0c4cee2c72ca45ebbb78c74649",
         "public/docs/assets/agent_transcripts/threebox/tb_compute_code_.kt": "f3d046be8037154031c0c6c163dd6b3c162f3181b7fde1f88172684cdaa88bc1",
         "public/docs/assets/agent_transcripts/threebox/tb_compute_compute_.glsl": "817c9f667f61952741d442d986e0004318c9bfef7c510faf1d5fb933751e40ab",
         "public/docs/assets/agent_transcripts/threebox/tb_draw_code_.kt": "60e8d9bb841f8f308e594ff0e9e44b06c4eb33880e976247aef79e5945573461",

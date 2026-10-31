@@ -1398,6 +1398,15 @@ data class AgentNativeWindowScreenshot(
     val uid: String? = null
 )
 
+/** Film a native renderer window for [durationSec] seconds into the MP4 at [path] (the `record-native` backdoor command). */
+@Serializable
+data class AgentNativeWindowRecord(
+    val path: String,
+    val durationSec: Int = 6,
+    val waitFrames: Int = 30,
+    val uid: String? = null
+)
+
 @Serializable
 data class AgentScreenshotResponse(
     val ok: Boolean,

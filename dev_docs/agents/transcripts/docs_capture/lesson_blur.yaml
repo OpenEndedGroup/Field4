@@ -1,0 +1,344 @@
+name: lesson_blur
+description: >
+  The three-box blur lessons of canonical_graphics, rebuilt from their sidecars: window, 5. Bluring, 5. kernel, 5. draw blur. The draw box's camera is moved in for the docs capture.
+docs:
+  - page: afield_four_graphics.md
+    why: "Rebuilds the lesson chain this page captures, from the canonical_graphics sidecars."
+operations:
+  - create:
+      box: lesson_blur_0
+      name: 'window'
+      frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          /*
+          The renderer window: the parent box every graphics lesson runs beneath.
+
+          It opens a native Window, builds a Renderer for it and runs the frame loop. Connect a lesson box below
+          this one and that box can use `renderer` directly; the two `prop` lines below publish `window` and
+          `renderer` to every box beneath this one in the graph.
+          */
+          import afield.graphics.vulkan.util.Options
+
+          prop<Window>(window)
+          prop<Renderer>(renderer)
+
+          // Ask for an HDR swapchain where the display supports one.
+          Options.enableHDR = true
+
+          // `once` builds the Window and Renderer the first time this box runs and keeps them on later runs, so
+          // re-running the box does not open a second window.
+          once.renderer {
+              window = Window("Field")
+              Renderer(window)
+          }
+
+          // Run the renderer's frame loop until this box is stopped.
+          start(renderer::run)
+  - create:
+      box: lesson_blur_1
+      name: '5. Bluring'
+      frame: { x: 40.0, y: 200.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          /*
+          Producer for the blur chain (window -> 5. Bluring -> 5. kernel -> 5. draw blur).
+
+          Renders a checkerboard into an offscreen RenderToTexture, published as `target` so the child box
+          `5. kernel` can sample it. The checkerboard comes from the fragment shader (open "fragment" in the
+          property switcher), which colours by gl_FragCoord; hard edges make the blur easy to see.
+          Run this box beneath the renderer (`window`) box.
+          */
+          import org.lwjgl.vulkan.VK10.*
+
+          prop<RenderToTexture>(target) = RenderToTexture {
+              clearFirst = false
+              useDepth = true
+          }
+
+          // Schedule the offscreen pass as part of every frame.
+          renderer.renderList += "target" to target
+
+          var module = moduleHere {
+              /*
+              A disabled alternative: a 16-bit float colour format for the module.
+               imageFormat = VK_FORMAT_R16G16B16A16_SFLOAT
+              Match this module's colour and depth attachments to the target it draws into.
+              */
+              +target
+          }
+          var m = Mesh()
+
+          module += "mainMesh" to m
+          // Draw into the target rather than into the window.
+          target += "boo" to module
+
+          val camera = Camera()
+          camera.at = vec(0, 0, -2.6)  // closer, for the docs capture
+          m.p = camera.p
+          m.m = camera.m
+
+          // Target parameters stay live: this can be changed while the box runs.
+          target.parameters.clearFirst = true
+
+          var kc by keyCamera(camera = camera)
+          // loop runs its body once per frame, rebuilding one large triangle each time. The body's value
+          // (the trailing `true`) is not used.
+          loop {
+              m.set(3, 1) {
+                  val z = Math.random() * 0.0
+                  pos.add(-3, 1, -1 + z, 1.0, -20.3, z, 3, 3, z)
+                  tri.add(0, 1, 2)
+              }
+              true
+          }
+        vertex: |
+          #version 450
+          layout (location = 0) in vec3 pos;
+
+          layout(push_constant) uniform matrices {
+              mat4 p;
+              mat4 m;
+          } pc;
+
+          void main()
+          {
+              gl_Position = pc.p * pc.m * vec4(pos, 1);
+          }
+        fragment: |
+          #version 450
+          layout(location = 0) out vec4 uFragColor;
+
+          layout(push_constant) uniform matrices {
+              mat4 p;
+              mat4 m;
+          } pc;
+
+          void main()
+          {
+              // A 32-pixel checkerboard from the pixel position, for hard edges to blur.
+              uFragColor = vec4(int(gl_FragCoord.x/32) % 2,int(gl_FragCoord.y/32) % 2,0,1);
+          }
+  - create:
+      box: lesson_blur_2
+      name: '5. kernel'
+      frame: { x: 40.0, y: 360.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          /*
+          Blur kernel, the middle of the blur chain (window -> 5. Bluring -> 5. kernel -> 5. draw blur).
+
+          Samples the parent's checkerboard target and writes a horizontal Gaussian blur into a second
+          target, `b1`, which the child box `5. draw blur` displays. Most of the lesson is in the shaders
+          (open "vertex" and "fragment" in the property switcher): the vertex shader computes the Gaussian
+          weights once per vertex, and the fragment shader takes seven symmetric taps and writes two
+          colour attachments at once.
+          */
+
+          // The parent's `target`, republished under the name the fragment shader samples (`sampler2D b0`).
+          prop<RenderToTexture>(b0) = target
+
+          // Two colour attachments (one per fragment-shader output), each with two layers and a mip chain.
+          prop<RenderToTexture>(b1) = RenderToTexture {
+              useDepth = false
+              mipLevels = 10
+              colorLayerCount = 2
+              colorAttachments = 2
+          }
+
+          renderer.renderList += "b1" to b1
+
+          var module = moduleHere {
+              primitiveType = triangle_strip
+              depth = 0
+              +b1
+          }
+
+          var m = Mesh()
+          module += "mainMesh" to m
+          b1 += "boo" to module
+
+          // radius and sigma are the vertex shader's push constants; edit them live to change the blur.
+          m.radius = { 10.0f }
+          m.sigma = { 10.0f }
+          // A fullscreen quad with no vertex data: four vertices drawn as a triangle strip, positions made in
+          // the vertex shader from gl_VertexIndex.
+          m.resize(4)
+        vertex: |
+          #version 450
+          #extension GL_ARB_shader_viewport_layer_array : enable
+
+          layout (location = 0) out vec2 ftc;
+          layout (location = 1) out vec4 radii;
+          layout (location = 2) out vec4 weights;
+
+          // Push constants, set from Kotlin as m.radius and m.sigma.
+          layout(push_constant) uniform BlurParams {
+              float radius; // e.g., 5–8
+              float sigma; // e.g., radius * 0.5–0.7
+          } blur;
+
+          float gauss(float x, float sigma) {
+              float s2 = sigma * sigma;
+              return exp(-x * x / (2.0 * s2));
+          }
+
+          void main()
+          {
+              // Fullscreen quad corners in triangle-strip order; there are no vertex attributes.
+              const vec2 positions[4] = vec2[](
+              vec2(-1.0, -1.0),
+              vec2(1.0, -1.0),
+              vec2(-1.0, 1.0),
+              vec2(1.0, 1.0)
+              );
+
+              // The Gaussian weights are the same for every pixel, so compute them here, four times, rather than
+              // once per fragment, and pass them down.
+              float r1 = blur.radius * 0.275; // near
+              float r2 = blur.radius * 0.65; // mid
+              float r3 = blur.radius * 0.95; // far
+
+              float w0 = gauss(0.0, blur.sigma);
+              float w1 = gauss(r1, blur.sigma);
+              float w2 = gauss(r2, blur.sigma);
+              float w3 = gauss(r3, blur.sigma);
+              float norm = w0 + 2.0 * (w1 + w2 + w3);
+
+              radii = vec4(r1,r2,r3,norm);
+              weights = vec4(w0,w1,w2,w3);
+
+              vec2 p = positions[gl_VertexIndex];
+              gl_Position = vec4(p, 0.0, 1.0);
+              ftc = p * 0.5 + 0.5;
+
+              // Write into layer 1 of the layered target (needs GL_ARB_shader_viewport_layer_array).
+              gl_Layer = 1;
+          }
+        fragment: |
+          #version 450
+          layout(location = 0) out vec4 uFragColor;
+          layout(location = 1) out vec4 uFragColor1;
+          layout(location = 0) in vec2 ftc;
+
+          layout(set = 0, binding = 0) uniform sampler2D b0;
+
+          layout(location = 1) in vec4 radii;
+          layout(location = 2) in vec4 weights;
+
+          void main()
+          {
+              // Seven-tap horizontal Gaussian: the centre plus three symmetric pairs, at the radii and with the
+              // weights the vertex shader computed. radii.w is the sum of the weights, used to normalise.
+
+              vec2 texel = 1.0 / vec2(textureSize(b0, 0));
+              vec2 dx1 = texel * vec2(radii.x, 0.0);
+              vec2 dx2 = texel * vec2(radii.y, 0.0);
+              vec2 dx3 = texel * vec2(radii.z, 0.0);
+
+              vec4 c =
+              weights.x * texture(b0, ftc)
+              + weights.y * (texture(b0, ftc + dx1) + texture(b0, ftc - dx1))
+              + weights.z * (texture(b0, ftc + dx2) + texture(b0, ftc - dx2))
+              + weights.w * (texture(b0, ftc + dx3) + texture(b0, ftc - dx3));
+
+              uFragColor = vec4(c.rgb / radii.w, 1.0);
+              // A second output, one per colour attachment of b1; this one has red and blue swapped.
+              uFragColor1 = vec4(c.bgr / radii.w, 1.0);
+
+          }
+  - create:
+      box: lesson_blur_3
+      name: '5. draw blur'
+      frame: { x: 40.0, y: 520.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          /*
+          Display the blur, the end of the blur chain (window -> 5. Bluring -> 5. kernel -> 5. draw blur).
+
+          Draws a quad in the window textured with the kernel's output. A multi-layer target is sampled as a
+          sampler2DArray; the fragment shader (open "fragment" in the property switcher) reads layer 1 of
+          `back`, the layer the kernel's vertex shader writes to.
+          */
+
+          // The whole kernel target, bound to the fragment shader's `bbc`.
+          prop<RenderToTexture>(bbc) = b1
+          // imageViewArray holds one view per colour attachment; [1] is the second attachment, the
+          // channel-swapped copy of the blur.
+          val other = b1.imageViewArray[1]
+          prop<HasImageView>(back) = other
+
+          var module = moduleHere()
+          var mesh = Mesh()
+          module += "mainMesh" to mesh
+          renderer += "boo" to module
+
+          val camera = Camera()
+          camera.at = vec(0, 0, -2.6)  // closer, for the docs capture
+          mesh.p = camera.p
+          mesh.m = camera.m
+
+          var kc by keyCamera(camera = camera)
+          // A textured quad from (-1, -1) to (1, 1).
+          mesh.set(4, 2) {
+              val z = 0.0
+              pos.add(
+                  -1,
+                  -1,
+                  z,
+                  1.0,
+                  -1.0,
+                  z,
+                  1,
+                  1,
+                  z,
+                  -1.0,
+                  1,
+                  z,
+              )
+              tc.add(0, 0, 1, 0, 1, 1, 0, 1)
+              tri.add(0, 1, 2)
+              tri.add(0, 2, 3)
+          }
+        vertex: |
+          #version 450
+          layout (location = 0) in vec3 pos;
+          layout (location = 1) in vec2 tc;
+
+          layout (location = 1) out vec2 ftc;
+
+          layout(push_constant) uniform matrices {
+              mat4 p;
+              mat4 m;
+          } pc;
+
+          void main()
+          {
+              gl_Position = pc.p * pc.m * vec4(pos, 1);
+              ftc = tc;
+          }
+        fragment: |
+          #version 450
+          layout(location = 0) out vec4 uFragColor;
+          layout(location = 1) in vec2 ftc;
+
+          layout(set=0, binding = 0) uniform sampler2DArray bbc;
+          layout(set=0, binding = 1) uniform sampler2DArray back;
+
+          void main()
+          {
+              // The third coordinate picks the array layer; the last argument is a mip bias.
+              vec4 c = texture(back, vec3(ftc.yx,1.0), 0.0);
+              uFragColor = vec4(c.rgb, 1.0);
+          }
+  - connect: { parent: lesson_blur_0, child: lesson_blur_1 }
+  - connect: { parent: lesson_blur_1, child: lesson_blur_2 }
+  - connect: { parent: lesson_blur_2, child: lesson_blur_3 }
+  - launch: { box: lesson_blur_0, property: code, strand: renderer }
+  - await: {}
+  - launch: { box: lesson_blur_1, property: code }
+  - await: {}
+  - launch: { box: lesson_blur_2, property: code }
+  - await: {}
+  - launch: { box: lesson_blur_3, property: code }
+  - await: {}
