@@ -29,6 +29,8 @@ import kotlin.system.exitProcess
  *
  * A `.md` argument formats the Kotlin in its `diffstatic` / `diffstatic_runner` fences ([formatMarkdown]);
  * `--docs` adds every `.md` page directly under `public/docs`. Follow a docs run with a docs build.
+ * `--all` takes every corpus at once ([allCorpora]); `--guard --check` is `./gradlew checkBoxCodeFormat`,
+ * which landing runs on the files a branch touches.
  */
 object BoxCodeFormat {
     private var imports = false
@@ -41,14 +43,14 @@ object BoxCodeFormat {
         val check = "--check" in args
         imports = "--imports" in args
         k2 = "--k2" in args
-        val docs = if ("--docs" in args) {
-            (File("public/docs").listFiles { f -> f.isFile && f.extension == "md" } ?: emptyArray()).sortedBy { it.name }
-        } else emptyList()
-        val files = args.filter { !it.startsWith("--") }.map(::File).ifEmpty {
-            if (docs.isNotEmpty()) return@ifEmpty emptyList()
-            val dir = DemoTranscriptExecSmokeTest.locateTranscriptsDir()
-            (dir.listFiles { f -> f.isFile && f.extension == "yaml" } ?: emptyArray()).sortedBy { it.name }
-        } + docs
+        val docs = if ("--docs" in args) docsPages() else emptyList()
+        val explicit = args.filter { !it.startsWith("--") }.map(::File)
+        val files = when {
+            "--all" in args || "--guard" in args -> guardScope(allCorpora(), "--guard" in args)
+            explicit.isNotEmpty() -> explicit + docs
+            docs.isNotEmpty() -> docs
+            else -> transcripts()
+        }
         var changed = 0
         for (file in files) {
             val before = file.readText()
@@ -66,6 +68,43 @@ object BoxCodeFormat {
         }
         println("BoxCodeFormat: ${files.size} file(s), $changed ${if (check) "need formatting" else "formatted"}")
         exitProcess(if (check && changed > 0) 1 else 0)
+    }
+
+    private fun transcripts(): List<File> {
+        val dir = DemoTranscriptExecSmokeTest.locateTranscriptsDir()
+        return (dir.listFiles { f -> f.isFile && f.extension == "yaml" } ?: emptyArray()).sortedBy { it.name }
+    }
+
+    private fun docsPages(): List<File> =
+        (File("public/docs").listFiles { f -> f.isFile && f.extension == "md" } ?: emptyArray())
+            .filter { f -> RECORDED.none { "public/docs/${f.name}".startsWith(it) } }
+            .sortedBy { it.name }
+
+    // Copies regenerated from the transcripts (regenerateAgentTranscriptStartingPoints); formatting
+    // them by hand would only be overwritten, and a guard over them would blame the wrong file.
+    private const val GENERATED_ROOT = "public/docs/assets/agent_transcripts/"
+
+    // Recorded artifacts whose bytes are pinned to a saved revision (package_function_conversation.py
+    // asserts the final source equals studies/function_source/r9-*.kt), so a format would break the record.
+    // The page's listings are those same bytes, written by that packager.
+    private val RECORDED = listOf("dev_docs/agents/demos/function_conversation_example/", "public/docs/function_conversation.md")
+
+    /** Every corpus the formatter owns: transcripts, tracked `*_code_.kt` sidecars outside [GENERATED_ROOT], docs pages. */
+    fun allCorpora(): List<File> {
+        val tracked = ProcessBuilder("git", "ls-files", "*_code_.kt").redirectErrorStream(true).start()
+            .inputStream.bufferedReader().readLines()
+            .filter { it.isNotBlank() && !it.startsWith(GENERATED_ROOT) && RECORDED.none(it::startsWith) }
+            .map(::File)
+        return transcripts() + tracked + docsPages()
+    }
+
+    // `--guard` limits the corpus to the paths the lander says a branch touched, the same
+    // AFIELD_GUARD_CHANGED_PATHS_FILE listing checkBoxIdioms reads. Without it the whole corpus is checked.
+    private fun guardScope(corpus: List<File>, guard: Boolean): List<File> {
+        val listing = System.getenv("AFIELD_GUARD_CHANGED_PATHS_FILE")?.takeIf { guard && it.isNotBlank() } ?: return corpus
+        val changed = File(listing).readLines().map(String::trim).filter(String::isNotEmpty).toSet()
+        val root = File("").absoluteFile
+        return corpus.filter { it.absoluteFile.relativeTo(root).invariantSeparatorsPath in changed }
     }
 
     fun formatYaml(text: String, label: String): String {

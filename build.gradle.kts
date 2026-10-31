@@ -2238,6 +2238,21 @@ tasks.register<JavaExec>("boxImportCensus") {
     jvmArgs(requiredRunJvmArgs())
 }
 
+// Box code and docs fences are formatted by formatBoxCode; this fails when a touched file is not, so the
+// formatting cannot drift again after the 2026-10-31 reformat. Scoped by AFIELD_GUARD_CHANGED_PATHS_FILE
+// like checkBoxIdioms; unscoped it checks every corpus. Fix with ./gradlew formatBoxCode --args="--all".
+tasks.register<JavaExec>("checkBoxCodeFormat") {
+    group = "verification"
+    description = "Fails if a changed transcript, *_code_.kt sidecar or public/docs page is not formatted as formatBoxCode would format it."
+    javaLauncher.set(javaToolchains.fieldLauncher())
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    mainClass.set("afield.examples.BoxCodeFormat")
+    workingDir = rootDir
+    args("--guard", "--check")
+    jvmArgs("-XX:+UnlockExperimentalVMOptions")
+    jvmArgs(requiredRunJvmArgs())
+}
+
 tasks.register<Exec>("checkBoxIdioms") {
     group = "verification"
     description = "Flags redundant renderer lookups, bindPushConstant calls, Box.context lookups and spaced //%- markers in the changed box code (tools/check_box_idioms.py)."
