@@ -513,7 +513,7 @@ private fun Box.charGridSounds(grid: CharGridBuffer, sounds: List<String>, sound
 
 private fun Box.reportOnce(last: String?, t: Throwable, what: String): String {
     val message = t.message ?: t.toString()
-    if (message != last) this.error("$what threw: $message")
+    if (message != last) this.displayError("$what threw: $message")
     return message
 }
 

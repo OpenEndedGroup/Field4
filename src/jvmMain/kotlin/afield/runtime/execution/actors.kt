@@ -384,7 +384,7 @@ private fun reportBoxError(box: Box, e: Throwable) {
     }
     val firstLine = if (firstLineInThisBox != -1) firstLineInThisBox else fallbackFirstLine
     val message = e.message?.takeIf { it.isNotBlank() } ?: e.javaClass.name
-    box.error(message, line = firstLine)
+    box.displayError(message, line = firstLine)
 }
 
 /**

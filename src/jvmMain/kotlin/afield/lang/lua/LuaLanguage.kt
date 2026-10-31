@@ -144,12 +144,12 @@ class LuaExecution(val inside: Box) : BoxExecution {
         inMain {
             configureOutputProxies(inside, trace.reply, originSession)
             if (!LuaLibrary.isAvailable) {
-                inside.error(LuaLibrary.describe(), line = execute.line, property = "code")
+                inside.displayError(LuaLibrary.describe(), line = execute.line, property = "code")
                 trace.finish(false, "LuaJIT is not installed")
                 return@inMain
             }
             val lua = try { luaState() } catch (t: Throwable) {
-                inside.error("could not open a Lua state: ${t.message}", line = execute.line, property = "code")
+                inside.displayError("could not open a Lua state: ${t.message}", line = execute.line, property = "code")
                 trace.finish(false, "no Lua state")
                 return@inMain
             }
@@ -185,7 +185,7 @@ class LuaExecution(val inside: Box) : BoxExecution {
                 }
                 is LuaState.Result.Err -> {
                     // Painted last: anything printed after would clear it.
-                    inside.error(result.message, "code", offset + (result.line ?: 1))
+                    inside.displayError(result.message, "code", offset + (result.line ?: 1))
                     trace.finish(false, result.message)
                     return@inMain
                 }
@@ -213,7 +213,7 @@ class LuaExecution(val inside: Box) : BoxExecution {
                         val r = RunScope.withCurrent(scope) { lua.tick(now / 1e9, (now - last) / 1e9) }
                         last = now
                         if (r is LuaState.Result.Err) {
-                            inside.error(r.message, "code", offset + (r.line ?: 1))
+                            inside.displayError(r.message, "code", offset + (r.line ?: 1))
                             break
                         }
                         if ((r as LuaState.Result.Ok).values.firstOrNull() != true) break
@@ -581,7 +581,7 @@ private fun callBack(box: Box, fn: LuaState.LuaFunction, value: Any?) {
     inMain {
         if (fn.state.isClosed) return@inMain
         val r = RunScope.withCurrent(box.runScopes.ambient()) { fn.state.callGuarded(fn, value) }
-        if (r is LuaState.Result.Err) box.error(r.message, "code", r.line ?: -1)
+        if (r is LuaState.Result.Err) box.displayError(r.message, "code", r.line ?: -1)
     }
 }
 

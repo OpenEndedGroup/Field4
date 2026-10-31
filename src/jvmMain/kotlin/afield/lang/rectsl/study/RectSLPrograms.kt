@@ -495,7 +495,7 @@ class RectSLExecution(val inside: Box) : BoxExecution {
                     val refused = live.present(lastGood)?.takeIf { !it.startsWith("no window") }
                     val ok = lastGood != null && refused == null
                     withContext(Runloop.runLoop.main) {
-                        refused?.let { inside.error(it, RectSLPrograms.PROPERTY, 1) }
+                        refused?.let { inside.displayError(it, RectSLPrograms.PROPERTY, 1) }
                         if (ok) trace.finish(true) else trace.finish(false, "the scene has problems; the window keeps the last scene that compiled")
                     }
                     if (refused != null) lastGood = null
@@ -525,7 +525,7 @@ class RectSLExecution(val inside: Box) : BoxExecution {
                         // Pinned to a line, or following the editor's: the scene as it stands after that line.
                         val partial = live.shownLine(cursor)?.let { l -> RectSLPrograms.study(inside).drawableThrough(now, l) }
                         live.present(partial ?: lastGood)?.takeIf { !it.startsWith("no window") }?.let {
-                            withContext(Runloop.runLoop.main) { inside.error(it, RectSLPrograms.PROPERTY, 1) }
+                            withContext(Runloop.runLoop.main) { inside.displayError(it, RectSLPrograms.PROPERTY, 1) }
                             lastGood = null
                         }
                         // A card drawn before the window was up says the CPU drew it; redraw it once it is.
@@ -559,7 +559,7 @@ class RectSLExecution(val inside: Box) : BoxExecution {
             dispatchExecutionOutput(inside, reply,
                 Output(uid = inside.id, line = -1, kind = "err", property = RectSLPrograms.PROPERTY, html = "", frame = Runloop.runLoop.frame.toInt()),
                 originSession = originSession)
-            problems.forEach { p -> inside.error((if (p.error) "" else "warning: ") + p.message, RectSLPrograms.PROPERTY, p.line ?: 1) }
+            problems.forEach { p -> inside.displayError((if (p.error) "" else "warning: ") + p.message, RectSLPrograms.PROPERTY, p.line ?: 1) }
         }
         return drawable
     }
@@ -572,7 +572,7 @@ class RectSLExecution(val inside: Box) : BoxExecution {
                 if (study.revisions.liveState()["dirty"] == true) study.checkIn("run by hand")
                 else RectSLPrograms.viewer(inside).refreshLater()
             } catch (e: afield.study.source.StudyRejection) {
-                inMain { inside.error("not checked in: ${e.message}", RectSLPrograms.PROPERTY, 1) }
+                inMain { inside.displayError("not checked in: ${e.message}", RectSLPrograms.PROPERTY, 1) }
             } catch (e: Exception) {
                 lprintln("warning,rectsl", "checking in '${inside.name}' failed: $e")
             }

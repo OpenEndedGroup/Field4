@@ -892,7 +892,7 @@ object ClojureInterface {
             try {
                 body.invoke()
             } catch (t: Throwable) {
-                box?.error(t.message ?: t.javaClass.name, "code", line)
+                box?.displayError(t.message ?: t.javaClass.name, "code", line)
                 end()
             } finally {
                 currentFrames = previousFrames
@@ -1088,7 +1088,7 @@ object ClojureInterface {
                 )
             }
         } catch (t: Throwable) {
-            box.error("${control.label}: ${t.message ?: t.javaClass.name}", "code", control.line)
+            box.displayError("${control.label}: ${t.message ?: t.javaClass.name}", "code", control.line)
         } finally {
             thisBox = previousBox
             thisLine = previousLine
@@ -1185,7 +1185,7 @@ class ClojureExecution(val inside: Box) : BoxExecution {
             // identical reader error a second time.
             lprintln("error,clojure", "Syntax errs: ${compiled.errors}")
             val first = compiled.errors[0]
-            inside.error(first.message, line = boxLine(first.line), property = "code")
+            inside.displayError(first.message, line = boxLine(first.line), property = "code")
             afield.ui.output.LastRunNotes.record(inside, "code", execute.code, execute.line, emptyList(), first.line, first.message)
             return EvalOutcome(ok = false)
         }
@@ -1206,7 +1206,7 @@ class ClojureExecution(val inside: Box) : BoxExecution {
                 onStderr = { text, line ->
                     hasOutput = true
                     wroteToStderr = true
-                    inside.error(text, "code", boxLine(line))
+                    inside.displayError(text, "code", boxLine(line))
                 },
                 onStdout = { text, line ->
                     hasOutput = true
@@ -1226,7 +1226,7 @@ class ClojureExecution(val inside: Box) : BoxExecution {
                     // Clear the marker a *previous* failed run left, so fixing a typo and re-running
                     // takes the red away. Skipped when this run wrote to `*err*`, which arrives as
                     // an error and would otherwise be cleared by its own success.
-                    if (!wroteToStderr) inside.error(null, "code", -1)
+                    if (!wroteToStderr) inside.displayError(null, "code", -1)
                     EvalOutcome(
                         ok = true,
                         value = e.result.value,
@@ -1238,7 +1238,7 @@ class ClojureExecution(val inside: Box) : BoxExecution {
 
                 is EvalResult.Err -> {
                     lprintln("error,clojure", "Runtime err: ${e.error}")
-                    inside.error(e.error.message, line = boxLine(e.error.line), property = "code")
+                    inside.displayError(e.error.message, line = boxLine(e.error.line), property = "code")
                     EvalOutcome(ok = false, printedAnything = hasOutput)
                 }
             }
@@ -1246,7 +1246,7 @@ class ClojureExecution(val inside: Box) : BoxExecution {
             // Drawn even after a throw, as a Python cell does: the controls asked for before the
             // failing form are real, and a box half-built is easier to fix with them on screen.
             runCatching { ClojureInterface.flushControls(inside) }
-                .onFailure { inside.error("controls: ${it.message ?: it.javaClass.name}", "code", -1) }
+                .onFailure { inside.displayError("controls: ${it.message ?: it.javaClass.name}", "code", -1) }
             ClojureInterface.thisBox = previousBox
             ClojureInterface.thisLine = previousLine
         }
