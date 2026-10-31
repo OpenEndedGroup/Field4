@@ -198,10 +198,11 @@ ui.pause(1500)
 
 ### What box code sees
 
-A box reads what the canvas shows from two properties, both in world units at any zoom.
-`viewport` is the main (bottom-right) pane, the world rect `(-x, -y, w, h)`, and
-`onViewportChange` callbacks fire when it moves. `viewports` lists every pane's visible world rect
-`(x, y, w, h)`, main pane last.
+A box reads what the canvas shows from two properties. Both are in world units, the units a box's
+`frame` is in, so they do not change with zoom. `viewport` is the main (bottom-right) pane, as the
+rect `(-x, -y, w, h)`: its first two numbers are the negated world position of the pane's top-left
+corner. `onViewportChange` callbacks fire when it moves. Note the different sign from
+`viewports`, which lists every pane's visible world rect as `(x, y, w, h)`, main pane last.
 
 ```diffstatic {data-lang=kotlin}
 viewports.forEach { println("${it.x}, ${it.y}: ${it.w} × ${it.h}") }
@@ -239,7 +240,7 @@ While the mode is up, Field draws over the canvas:
 - a solid outline around the box you are on
 - a dashed outline around each box you can reach, up to four, one per direction
 - a line from your box to each of those, and an arrow badge on the far side of each one
-- an `F` chip on any box that a bookmark slot points at
+- an `F` chip on any box that a [bookmark](#bookmarks) slot points at
 
 A direction with no box in it is absent from the overlay, and pressing that arrow does nothing.
 
@@ -371,6 +372,16 @@ if (!report.contains("overlay-settled")) {
 }
 ```
 
+### How the neighbours are chosen
+
+Field sorts the visible boxes by the dominant axis of their offset from the current one. A box
+further to the left than it is above counts as west, and so on. Within each direction it takes the
+nearest, counting sideways distance as a fifth of distance along the direction of travel, so a box
+that is slightly off-axis does not beat one that is directly ahead.
+
+Only one box per direction is offered, so a dense column collapses to its nearest member. Boxes that
+are hidden, deleted, or drawn at zero size are not candidates.
+
 ## Framing the selection
 
 `alt/option-F` (**Frame Selected** in the command palette, rebindable as `frame-selected`) brings the
@@ -402,7 +413,7 @@ A slot stores a view rather than a box reference. Restoring one reapplies, in th
 - the size of each output panel that was open, and the open or closed state of every output
   panel. A panel that did not exist when the slot was saved, or no longer exists, is left as it is
 - the selected box, when exactly one box was selected at save time
-- the property that was open in Monaco
+- the property that was open in the editor
 - the editor cursor line and column
 
 ### The bookmarks panel
@@ -490,16 +501,6 @@ brings every layer back, and **Move selection to active layer** puts the selecte
 active layer. The last visible layer cannot be hidden. If the document has a drawing, it has a
 `drawing` row of its own, whose eye shows or hides it. [Layers](layers.md) covers how a box names
 its layers, and how each layer keeps its own layout.
-
-## How the neighbours are chosen
-
-Field sorts the visible boxes by the dominant axis of their offset from the current one. A box
-further to the left than it is above counts as west, and so on. Within each direction it takes the
-nearest, counting sideways distance as a fifth of distance along the direction of travel, so a box
-that is slightly off-axis does not beat one that is directly ahead.
-
-Only one box per direction is offered, so a dense column collapses to its nearest member. Boxes that
-are hidden, deleted, or drawn at zero size are not candidates.
 
 ## Limits
 

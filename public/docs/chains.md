@@ -47,8 +47,8 @@ These chains end in the GPU path tracer, and each starts somewhere a renderer wo
 
 -   ![A blue limb pinched by twisting, in front of an undeformed gold limb](assets/chain_skinned_volume/twist.png)
 
-    **[A Twisted Limb, Weighed and Traced](chain_skinned_volume.md).** Linear blend skinning
-    squeezes a twisted joint into a candy wrapper. Turn the posed mesh into a solid to measure
+    **[A Twisted Limb, Weighed and Traced](chain_skinned_volume.md).** Linear blend skinning, the
+    usual way a skeleton bends a mesh, squeezes a twisted joint into a candy wrapper. Turn the posed mesh into a solid to measure
     how much of the limb is lost.
 
 -   ![Two cage-like sculptures of thin tubes over a dark floor, one tube in each glowing orange down to a red bead](assets/chain_petri_sculpture/sculpture.png)
@@ -68,7 +68,8 @@ These chains end in something you can listen to, or start from it.
 -   ![Rule 30's space-time diagram, a fan of white cells spreading from one cell at the top](assets/chain_ca_sound/hero.png)
 
     **[A Cellular Automaton You Can Hear](chain_ca_sound.md).** A row of an elementary
-    cellular automaton, a line of on/off cells updated by a fixed rule, becomes a step mask. `patCondense` runs the mini-notation parser backwards to spell it,
+    cellular automaton, a line of on/off cells updated by a fixed rule, becomes a step mask. `patCondense` runs the pattern mini-notation (the short text syntax
+    for rhythms that Field borrows from TidalCycles) backwards to spell it,
     and the length of the spelling gives you a way to compare the resulting rhythms.
 
 -   ![Four concentric rings of particles in blue, orange, green and amber](assets/chain_pattern_particles/rings.png)
@@ -80,7 +81,7 @@ These chains end in something you can listen to, or start from it.
 -   ![Three rings of dust with bursts of coloured sparks leaving them](assets/chain_petri_sparks/sparks.png)
 
     **[A Petri Net That Throws Sparks](chain_petri_sparks.md).** One Petri net plays a drum part
-    from the Dirt-Samples, and every transition that fires throws a burst of GPU sparks in its own
+    from the Dirt-Samples drum library, and every transition that fires throws a burst of GPU sparks in its own
     colour.
 
 -   ![A drawn score: blue piano-roll rectangles, a red glissando, a green held note and an orange playhead](assets/chain_drawn_score/hero.png)
@@ -103,7 +104,7 @@ These chains end in something you can listen to, or start from it.
 
     **[A Function, Played and Read Back](chain_fn_sound_roundtrip.md).** Play a function,
     detect its pitch and onsets in the recording, and draw both on one timeline next to the
-    function's certified range.
+    range interval arithmetic proves the function stays within.
 
 </div>
 
@@ -115,8 +116,9 @@ These chains end in something you could print, mount, hang or light.
 
 -   ![Forty-eight extruded layers of canonical gC, coloured by height](assets/chain_ceres_manifold_contours/stack.png)
 
-    **[A Polytope, Canonicalised and Sliced](chain_ceres_manifold_contours.md).** Make a Conway
-    polytope canonical with a Ceres solve and slice it into the layers a 3D printer would print.
+    **[A Polytope, Canonicalised and Sliced](chain_ceres_manifold_contours.md).** Solve for the
+    canonical form of a Conway polytope, where every edge is tangent to one sphere, with the Ceres
+    optimiser, and slice it into the layers a 3D printer would print.
 
 -   ![A relief plaque and its frame rendered with the path tracer](assets/chain_photo_to_solid/mounted_path_trace.png)
 
@@ -136,7 +138,7 @@ These chains end in something you could print, mount, hang or light.
 
 </div>
 
-## MADP Practice Core
+## Studio tools from MADP
 
 MADP is Media Arts and Design Practice at the University of Chicago. Its tools are single-page
 browser sketchbooks for a studio class: code on the left, art on
@@ -202,7 +204,8 @@ every box in the document does.
 -   ![A sphere of about a thousand small glowing splats on black, coloured by longitude from cyan through chartreuse to red and orange](assets/agent_transcripts_gallery/splat_shader_passthrough.png)
 
     **[Splat Shader](agent_transcripts.md#splat_shader).** A few lines of GLSL run once per
-    Gaussian splat each frame and may move, resize, recolour or turn it. The edit runs before the
+    Gaussian splat each frame and may move, resize, recolour or turn it. (A Gaussian splat is a soft
+    coloured blob; a few thousand of them make a 3D scene.) The edit runs before the
     depth sort, so splats thrown outward still draw in the right order.
 
 -   ![A soft white ring on black, centred, fading smoothly to black on both sides](assets/agent_transcripts_gallery/stacktrinket_feedback_pulse_ring.png)
@@ -225,7 +228,7 @@ every box in the document does.
 
 -   ![Photographs of a cat, a dog, a tiger and a red car above a tetrahedron whose edges are labelled with the distances between them](assets/agent_transcripts_gallery/madp_tetra.png)
 
-    **[Tetra](agent_transcripts.md#madp_tetra).** CLIP turns four pictures into four points, and
+    **[Tetra](agent_transcripts.md#madp_tetra).** CLIP, an image-and-text model, turns four pictures into four points, and
     the six distances between them become the edges of a tetrahedron. Any four such points fit
     in three dimensions, so the shape keeps all six distances exactly. Drop in your own pictures.
 
