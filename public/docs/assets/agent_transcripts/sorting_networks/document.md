@@ -147,7 +147,7 @@ display(
 <!-- field-box id="sorting_anneal_regimes" index="2" -->
 
 ```edn [field-box id="sorting_anneal_regimes" role="properties"]
-{"id" "sorting_anneal_regimes" "index" 2 "name" "Starting networks and schedules" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Starting networks and schedules" "_tombstone" false "frame" #afield/rect [1460.0 960.0 420.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sorting_anneal_regimes_code_.kt" "lines" 128 "characters" 4028 "sha256" "fa6561ce16565a461cb643ebc21b39b8dd87d5f578f7b05c8c81f1181ae0bf99"}]}
+{"id" "sorting_anneal_regimes" "index" 2 "name" "Starting networks and schedules" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Starting networks and schedules" "_tombstone" false "frame" #afield/rect [1460.0 960.0 420.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sorting_anneal_regimes_code_.kt" "lines" 128 "characters" 4034 "sha256" "d177fb78e4c6e370d4f2291d3b1fde7e47c20fad7abbe5bd4835d064430292ff"}]}
 ```
 
 ```kotlin [field-property box="sorting_anneal_regimes" name="code" path="sorting_anneal_regimes_code_.kt"]
@@ -174,12 +174,12 @@ val merge = SortingNetwork.oddEvenMerge(8)
 val mergeDense = SortingNetwork(
     8,
     merge.comparators +
-        [
+        listOf(
             SortingComparator(0, 1),
             SortingComparator(2, 3),
             SortingComparator(4, 5),
             SortingComparator(6, 7),
-        ],
+        ),
 )
 
 val configs = [

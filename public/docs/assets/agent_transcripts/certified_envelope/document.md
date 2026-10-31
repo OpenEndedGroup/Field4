@@ -117,7 +117,7 @@ a lambda was the piecewise event selection; here it is exact 0/1 `step` indicato
 product and sum in the lambda's order, so the two agree bit for bit.
 
 ```edn [field-box id="workbench" role="properties"]
-{"id" "workbench" "index" 2 "name" "5 - The worked example, certified" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 - The worked example, certified" "_tombstone" false "frame" #afield/rect [60.0 2120.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "workbench_code_.kt" "lines" 139 "characters" 6152 "sha256" "d86d4c2d05c48e81fe9e5189970085c035c1ec88a4e7737daed1dab6b9b7e380"}]}
+{"id" "workbench" "index" 2 "name" "5 - The worked example, certified" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 - The worked example, certified" "_tombstone" false "frame" #afield/rect [60.0 2120.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "workbench_code_.kt" "lines" 139 "characters" 6158 "sha256" "764beaf3a8fce7f6eb07de14a2c13daef71a66b7ded3055a6a64d3a28452b8ed"}]}
 ```
 
 ```kotlin [field-property box="workbench" name="code" path="workbench_code_.kt"]
@@ -231,14 +231,14 @@ for ((i, name) in names.withIndex()) {
     val above = f.certifiedNeverExceeds(1.0, 0.0, 3600.0)
     val witness = above.witness!!
     rows +=
-        [
+        listOf(
             name,
             "${FnIntervals.unsupportedOps(l)} / ${FnIntervals.unsupportedOps(f)}",
             "$mismatches of ${grid.size}",
             "$holds of ${events.size} PROVEN",
             f.certifiedNeverBelow(0.0, 0.0, 3600.0).kind.name,
             "${above.kind} at $witness: lambda ${l(witness)}",
-        ]
+        )
 }
 display(
     "claims",
