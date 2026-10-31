@@ -2159,13 +2159,13 @@ batches instead of finishing a query nobody will read.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="templating-kt--templating"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">templating</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/templating/#L406) |  |
+| <a id="templating-kt--templating"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">templating</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/templating/#L425) |  |
 
 ### Top-level values { #templating-kt-values }
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="templating-kt--templateservers"></a>[<code class="highlight"><span class="k">val</span> <span class="n">templateServers</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="k">by</span> <span class="n">lazy</span></code>](source/jvmMain/afield/app/server/templating/#L81) | Remote metadata-template servers, read once from `AFIELD_TEMPLATE_SERVERS` or, when the environment variable is absent, `afield.templateServers`. |
+| <a id="templating-kt--templateservers"></a>[<code class="highlight"><span class="k">val</span> <span class="n">templateServers</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="k">by</span> <span class="n">lazy</span></code>](source/jvmMain/afield/app/server/templating/#L80) | Remote metadata-template servers, read once from `AFIELD_TEMPLATE_SERVERS` or, when the environment variable is absent, `afield.templateServers`. |
 
 ### RemoteTemplate { #templating-kt-remotetemplate }
 
