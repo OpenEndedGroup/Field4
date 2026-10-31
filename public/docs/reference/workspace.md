@@ -4,7 +4,7 @@
 
 The box's own surroundings: properties, persistence, and the handful of names every box already has in scope.
 
-236 source file(s), 3207 public symbol(s), 1288 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+237 source file(s), 3208 public symbol(s), 1289 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -1228,7 +1228,7 @@ options such as `--workspace` and `--document` are read here as [`home`](workspa
 | <a id="server-kt--parselayerslist"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">parseLayersList</span><span class="p">(</span><span class="n">layersString</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/app/server/Server/#L817) |  |
 | <a id="server-kt--scheduleautorunboxes"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">SessionInformation</span><span class="p">.</span><span class="nf">scheduleAutorunBoxes</span><span class="p">(</span><span class="n">delayMs</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">500L</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/Server/#L827) |  |
 | <a id="server-kt--autorunboxes"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">SessionInformation</span><span class="p">.</span><span class="nf">autorunBoxes</span><span class="p">(</span><span class="n">targetBoxes</span><span class="p">:</span> <span class="nc">Collection</span><span class="p">&lt;</span><span class="nc">Box</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">delayMs</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">500L</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/Server/#L838) |  |
-| <a id="server-kt--languagenameforproperty"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">languageNameForProperty</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">property</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/app/server/Server/#L6268) |  |
+| <a id="server-kt--languagenameforproperty"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">languageNameForProperty</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">property</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/app/server/Server/#L6279) |  |
 
 ### Top-level values { #server-kt-values }
 
@@ -2099,6 +2099,16 @@ Capture all log events (while still emitting to stdout) and expose a lightweight
 | <a id="logstream-kt--logstream--addsubscription"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">addSubscription</span><span class="p">(</span><span class="n">subId</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">filter</span><span class="p">:</span> <span class="nc">Filter</span><span class="p">,</span> <span class="n">sender</span><span class="p">:</span> <span class="p">(</span><span class="nc">String</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/logstream/#L220) |  |
 | <a id="logstream-kt--logstream--unsubscribe-2"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">unsubscribe</span><span class="p">(</span><span class="n">subId</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/logstream/#L264) |  |
 | <a id="logstream-kt--logstream--ensuresinkregistered"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">ensureSinkRegistered</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/logstream/#L268) |  |
+
+## offlineImport.kt { #offlineimport-kt }
+
+`src/jvmMain/kotlin/afield/app/server/offlineImport.kt` — [read the source](source/jvmMain/afield/app/server/offlineImport/)
+
+### Top-level functions { #offlineimport-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="offlineimport-kt--unpackdocumentzip"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">unpackDocumentZip</span><span class="p">(</span><span class="n">zip</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="p">,</span> <span class="n">targetDir</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/app/server/offlineImport/#L18) | Unpacks a document zip, as the docs pages ship them, into `targetDir`, for `/api/import-offline-doc`: `metadata.edn` together with its sidecars and every folder beside it (saved chats, study revisions, recorded conversations), which an `ednText` import leaves behind. |
 
 ## refactorPass.kt { #refactorpass-kt }
 
