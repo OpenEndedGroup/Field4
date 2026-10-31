@@ -81,8 +81,9 @@ are saved with it.
 
 ## A parent publishes, a child reads
 
-`prop` declares a value that children can read. **Palette** declares `petals`, an `Int`, and sets
-it:
+This example uses two boxes, named **Palette** and **Swatch**, with Swatch connected beneath
+Palette. `prop` declares a value that children can read. Palette declares `petals`, an `Int`, and
+sets it:
 
 ```diffstatic {data-lang=kotlin}
 prop<Int>(petals) = 5
@@ -122,9 +123,8 @@ Palette that never reads `petals` is left alone.
 ## Why it matters
 
 The value a parent publishes can be anything Kotlin can hold: a number, a list, a function, a
-loaded dataset. The next stop depends on it: the box that opens a window
-publishes `renderer`, and every box connected beneath it draws with that renderer without looking
-for it.
+loaded dataset. Graphics work the same way: the box that opens a window publishes `renderer`, and
+every box connected beneath it draws with that renderer without looking it up.
 
 See also:
 

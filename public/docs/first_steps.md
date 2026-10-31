@@ -30,7 +30,13 @@ check(ready) { "Welcome did not finish loading" }
 ui.pause(1200)
 ```
 
-1. Select **First steps · a moving drawing** to open its code.
+The document opens as a canvas holding one box. A box is a titled rectangle that holds code;
+when the code runs, what it draws or prints appears in the box's output area, just below it.
+To *launch* a box is to run all of its code from the top. Code that keeps going, like this
+drawing's animation loop, keeps running until you stop the box.
+
+1. Click the box titled **First steps · a moving drawing** (the one the Welcome button copied
+   for you) to select it and open its code in the editor.
 2. Press **alt/option-Up** to launch it. Open the output disclosure below
    the box if the drawing is collapsed. Fine blue-white curves ripple and twist together.
 3. While it runs, change the 5 in `var petals = 5` (the second line) to 8, keep the cursor on that line
@@ -45,7 +51,7 @@ ui.pause(1200)
 If a window manager intercepts the shortcuts, use Field's editor command palette (**ctrl/command-shift-P**) to
 find the launch and stop commands. Press **?** on the canvas for the shortcut card.
 
-The drawing is made of `FLine` paths drawn into the box's output, so it needs no separate graphics
+The drawing is made of `FLine`s, Field's type for drawn lines and curves, drawn into the box's output, so it needs no separate graphics
 window. Its loop computes a ribbon from `petals` and `phase`. Each layer follows the same wave
 with a small delay, making the lines bunch together and spread apart. The code is in the document,
 including the comments that walk through these steps.
@@ -120,8 +126,9 @@ window too, the next starting point takes you there. You can skip it and continu
 [Survival Guide](survivalGuide.md) if you want to stay with the basics for now.
 
 Return to Welcome and click **Next: native graphics**. This opens an editable `first-graphics`
-copy with two connected boxes. Check Welcome's **Vulkan** panel first: you need a working GPU
-driver and desktop session.
+copy with two connected boxes. The window draws with Vulkan, the GPU graphics system Field uses,
+so first open the **Vulkan** panel on the Welcome page and check that it finds a working GPU
+driver. You also need a desktop session for the window to appear in.
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x720" clip="0,0,1100,600" screenshot="assets/first_steps/first-graphics.png" macro-file="../../dev_docs/agents/transcripts/docs_capture/first_graphics.yaml" capture-box="first_graphics_renderer" padding="0" wait="0" timeout="120" embed=true hidden=true name="first-graphics-document" alt="The first-graphics document has two connected boxes: 1 · Launch the renderer above 2 · Launch the triangle. The renderer's Kotlin is open on the right."}
 ui.openEditor("first_graphics_renderer")
@@ -145,8 +152,11 @@ ui.pause(800)
 3. To stop, select the triangle box and press **alt/option-Down**.
    Then select the renderer box and press the same shortcut.
 
-The Kotlin code and GLSL shader properties come from the worked
-[graphics curriculum](afield_four_graphics.md). With both boxes running, the window looks like this:
+The renderer box's code opens the window and creates the renderer. The triangle box's code lists
+the triangle's three corners and their colors. The triangle box also holds two shaders, small
+programs that run on the GPU: `vertex` places each corner and `fragment` colors the pixels between
+them. Switch the editor from `code` to `vertex` or `fragment` to read them. The
+[graphics curriculum](afield_four_graphics.md) builds on this pair step by step. With both boxes running, the window looks like this:
 
 ```diffstatic_runner {capture-profile="linux-nvidia" data-lang=kotlin capture="native-window" native-wait-frames="4" trim-native=true screenshot="assets/first_steps/triangle.png" macro-file="../../dev_docs/agents/transcripts/docs_capture/first_graphics_native.yaml" capture-box="first_graphics_triangle" wait="0.25" timeout="120" embed=true hidden=true name="first-graphics-triangle" alt="The first native graphics window draws a blue-to-green triangle on black."}
 // The setup macro launches both boxes with their shipped code and shader properties.

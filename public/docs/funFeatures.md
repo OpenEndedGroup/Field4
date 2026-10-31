@@ -25,12 +25,12 @@ To help you find that snippet of code.
 
 ## Running things
 
-You can run code in Field in the following ways (from the commonplace to the rare):
+A Field document is a canvas of *boxes*. Each box holds a piece of code (and, often, its output); you edit one box at a time in the editor. You can run that code in the following ways (from the commonplace to the rare):
 
  * `alt/option-enter` — runs the line or block that the cursor is in.
  * Or, `alt/option-enter` — runs the currently selected code.
  * `alt/option-up arrow` — *launches* the currently edited box. `alt/option-down arrow` stops.
- * `alt/option-click` — *launches* the clicked-on box while the mouse is down. Swipe up to let go and keep it launched; `alt/option-click / swipe down` stops. For example:
+ * `alt/option-click` on a box — *launches* it for as long as you hold the mouse button down, and stops it when you let go. To keep it running after you let go, drag upwards before releasing. To stop it later, `alt/option-click` it again and drag downwards. For example:
 
 <video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
 	<source src="assets/launching.mp4" type="video/mp4">
@@ -38,7 +38,7 @@ You can run code in Field in the following ways (from the commonplace to the rar
 
  * `alt/option-0` — runs everything in a box (but doesn't *launch* it)
 
- What's the difference between 'running' and 'launching'? Boxes can end with an object that could 'keep on going by itself'. When launched, these objects get threaded into the _animation loop_. Every launched box gets one 'go' at computing per animation cycle in a consistent order. The idea of installing code into, and removing it from, the animation cycle is fundamental to making sound, image and data visualizations, so this idea is right at the heart of Field.
+What's the difference between 'running' and 'launching'? Running executes the code once. A box can end with an object that keeps going by itself, such as a `loop { }`; launching the box hands that object to Field's _animation loop_, which calls it once every frame until you stop it. When several boxes are launched, they are called in the same order every frame. The idea of installing code into, and removing it from, the animation cycle is fundamental to making sound, image and data visualizations, so this idea is right at the heart of Field.
 
 That's everything you _need_ to know — with these shortcuts you can have a fun time in Field. Go! Write and run some code against your favourite libraries, in [Kotlin](kotlin_overview.md) (on the JVM), [Python](python.md), [Clojure](clojure.md), even [Lua](lua.md).
 
@@ -61,7 +61,7 @@ Often your code does something — draws a line, loads a model, makes a sound. B
 
 ### `print(...)` — 'print here':
 
-`print` (and `println`) always prints next to, or underneath, the line containing the `print`. If what you print fits on a single line, it sits beside that line; if it doesn't, you get a little block under the line instead. This is what the snippet below looks like in Field's editor, captured by the docs build running it:
+`print` (and `println`) always prints next to, or underneath, the line containing the `print`. If what you print fits on a single line, it sits beside that line; if it doesn't, you get a little block under the line instead:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/funFeatures-print-here.png" capture="editor" outputs="inline" wait="2" padding="10" timeout="90" embed=true name="funfeatures-print-here" w="900" h="300" alt="Field's editor holding the snippet. Beside the print(x+y) line sits 30; under the last println is a black block of six lines, row 1: 1 down to row 6: 36."}
 var x = 10
@@ -73,7 +73,7 @@ println((1..6).joinToString("\n") { "row $it: ${it * it}" })
 
 You can close blocks with the 'x' symbol in the margin, or by `double-tap Esc`, which you'll likely be pressing a lot. `triple-tap Esc` will get rid of all the outputs inside the current editor. You'll be doing that a lot.
 
-`print` isn't an ordinary function: it's a macro (see [below](#kotlin-with-macros)) that knows which line it was written on. You may see `_print` in older code and in the videos below; it's the same thing under its old name.
+`print` isn't an ordinary function: it's a macro (see [below](#kotlin-with-macros)) that knows which line it was written on.
 
 This can be handy in longer, more interesting code, for example:
 
@@ -137,8 +137,6 @@ display("m is equal to ", m.h)
 display("just some html", "<div style='font-weight:900'>foo!</div>")
 ```
 
-That's also how this documentation gets made: the docs build runs the examples in a real Field, automatically, and captures what they display. Every picture on this page that sits under a piece of code came out of that code, run by the build.
-
 ## Browsing things — print where I can interact with it
 
 There are a few more elaborate visualizers for more tangled structures. The "column" visualizer is loosely modelled after Smalltalk's browser:
@@ -168,8 +166,6 @@ logs()
 ```
 
 [Visualizers](visualizers.md#trees-and-columns) has more on `tree` and `column`.
-
-Some systems, like the Vulkan graphics system, expose interfaces that make them particularly clear when presented with these viewers — to help answer the question: just what exactly am I drawing here, in what order, and why is my frame rate so bad?
 
 ## 'printing' (editable) geometry
 
@@ -210,14 +206,20 @@ See [fline_examples](fline_examples.md) for much more.
 
 ## "Printing" chunks of UI
 
-Take a look at [visualizers](visualizers.md) if you want more help either visualizing values inside your code or printing user interface components to provide input to your code. Field is set up to run a type- and current-value-driven 'autocomplete' as the cursor moves around the editor. This gives you an active hint about what you might type (and what those parameters are in the function you are changing) and what value that variable currently has:
+Sliders, checkboxes, colour pickers and other input controls can be 'printed' into a box's output area too; [Visualizers](visualizers.md) shows how.
+
+## Hints as you type
+
+As the cursor moves around the editor, Field shows a hint built from types and current values: what you might type next, the parameters of the function you are in, and the value a variable has right now:
 
 <video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
 	<source src="assets/autoauto.mp4" type="video/mp4">
 </video>
 
 
-Additionally, we can write code that extends and decorates our text editor in a variety of ways. The docs are limited, but this gives us a [Strudel](https://strudel.cc/) feel (in a very different language) without too much work at all:
+## Decorating the editor
+
+Box code can also extend and decorate the text editor itself. In the video below, a musical pattern written in the editor is drawn over as it plays, much as in [Strudel](https://strudel.cc/), though the language is different:
 
 <video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
 	<source src="assets/pat.mp4" type="video/mp4">
@@ -280,7 +282,7 @@ while (notDone()) {
 p.finish()
 ```
 
-These are polite by default: nothing is sent to the front end unless the work runs longer than ~2s; a finished bar lingers for a beat and then removes itself, and the whole thing is a complete no-op when the code isn't running inside a box. Because they hang off the box context, long-running library routines can offer a bar without you asking — `evolveVariety`, sorting-network `anneal`, wave-function-collapse `run`, interaction-net `reduce`, and friends already do.
+A bar appears only for work that takes longer than about two seconds, and removes itself shortly after the work finishes. Some long-running library routines show one without you asking.
 
 Turn them all off with `ProgressBars.enabled = false`, or tune `ProgressBars.showDelayMillis` (the grace period) and `ProgressBars.lingerMillis` (how long a completed bar sticks around).
 
@@ -294,7 +296,8 @@ In Field you can *talk* code and data structures into existence. Below, a polyto
 
 ![The polytope box with its AI4 chat restored: the last request, a sheet of nine frames of the polytope bursting and healing, and the model's reply that the live cycle now matches what was asked for](assets/stackauto_conversation/saved-chat.png)
 
-Finally, this documentation itself is part of the agents' search context and Field's test system, and is mostly AI-generated. Almost every screenshot that sits underneath a piece of code is mechanically produced by that code (and reproduced if the codebase changes). The prose is extended, cleaned up and modified nightly as agents play in the [codebase](how_field_is_built.md).
+??? aside "How this documentation is made"
+    This documentation is part of the agents' search context and Field's test system, and is mostly AI-generated. Almost every screenshot under a piece of code is produced by running that code, and reproduced when the codebase changes. Agents extend and revise the prose nightly; see [How Field is built](how_field_is_built.md).
 
 # Multi-language, multi-paradigm
 
@@ -302,7 +305,7 @@ Field's primary language for live coding is Kotlin, which we've found to be expr
 
 ## Kotlin, with macros
 
-To cure some of the challenges of deploying Kotlin in a live-coding context we've gently extended the language with a macro system. A handful of things that look like function calls in a Kotlin box are really *macros*, rewritten before the compiler sees them. You might have met two already: `print` magically knows the line it sits on, and `prop` (further down, under [Making bigger things](#making-bigger-things)) turns a name into a typed property that child boxes inherit. The graphics system leans on a few more: `moduleHere { }` reads the GLSL in the box's shader properties, compiles it, and generates typed Kotlin accessors for its inputs, push constants and structs, so a shader's `pos` and `worldToClip` become ordinary typed Kotlin names just in time for your code that uses them to actually work. [Running code in a box](running_code.md) goes through this in great detail.
+To cure some of the challenges of deploying Kotlin in a live-coding context we've gently extended the language with a macro system. A handful of things that look like function calls in a Kotlin box are really *macros*, rewritten before the compiler sees them. You have met one already: `print` knows the line it sits on. `prop` and the graphics system's `moduleHere { }` are macros too; [Running code in a box](running_code.md) goes through them in detail.
 
 This isn't just internal gymnastics: you can write your own macros. A `rewrite { }` block in a box is a rule over the *shape* of your source:
 

@@ -1,12 +1,14 @@
 # Browsing code from the completion panel
 
-Press `ctrl-space` for autocomplete and you can explore the documentation without leaving the
-editor. Click a `[Symbol]` reference in a KDoc comment or the `source …:line` link at the bottom
-of a card. The panel opens that symbol's own signature and documentation; back, forward and a
+Press `ctrl-space` for autocomplete and, next to the list of suggestions, a panel shows a card
+for the highlighted one: its signature, its documentation comment (the `/** … */` written above
+the declaration), and a `source …:line` link at the bottom. You can explore the documentation
+from that card without leaving the editor. Click a `[Symbol]` reference in the documentation, or
+the `source …:line` link, and the panel opens that symbol's own card; back, forward and a
 breadcrumb trail help you find your way back.
 
-Links only appear when they resolve. A `[Symbol]` that Field can't find stays
-plain, bracketed text.
+A `[Symbol]` becomes a link only when Field can find the declaration it names. One it can't
+find stays plain, bracketed text.
 
 The order of the candidates in the popup is covered in
 [How completions are ranked](completion_ranking.md), including how a class of your own
@@ -17,10 +19,10 @@ can promote its members.
 Start typing a value and ask for completions. Here we type `val axis = vec` and
 press `ctrl-space`. The best match is `vec`, the function that builds a 2D
 vector, and its documentation reads *"Creates a mutable 2D `Vec2` from numeric
-coordinates."* Because `Vec2` resolves — it is a real type alias in Field's
+coordinates."* Because Field can find `Vec2` — it is a real type alias in Field's
 standard library — the `[Vec2]` token in that sentence is rendered as a link:
 
-```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".afield-suggest" warm-completion=true screenshot="assets/docpanel-code-link.png" padding="6" wait="0" timeout="120" embed=true hidden=true name="docpanel-code-link" alt="A completion doc panel with a clickable Vec2 code-link in the KDoc"}
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".afield-suggest" warm-completion=true screenshot="assets/docpanel-code-link.png" padding="6" wait="0" timeout="120" embed=true hidden=true name="docpanel-code-link" alt="A completion doc panel with a clickable Vec2 link in its documentation"}
 // Fresh, deterministic capture: forget recency ranking and hide the run-tick overlay.
 ui.eval("window.localStorage.removeItem('field.suggest.recency.v1'); var s=document.createElement('style');s.textContent='.tick_text.ok{display:none !important}';document.head.appendChild(s);return 'setup';")
 ui.openEditor(id)
@@ -54,7 +56,7 @@ try {
 } catch (e: Throwable) {}
 ```
 
-The `Vec2` in the documentation is underlined: that is the code-link. The same
+The `Vec2` in the documentation is underlined: that is the link. The same
 sentence ends *"…converting each component to [Float]."*, and there `[Float]`
 stays literal: `Float` comes from the Kotlin standard library, whose source
 Field does not index, so there is nothing to link to. The `source …:line` footer
@@ -78,10 +80,8 @@ separate UI and retrieval path; see [Semantic retrieval](semantic_index.md).
 
 ## Local completion history
 
-Field keeps a local history of what you do with autocomplete. Each record includes the complete unsaved source,
-the edited and related code properties, caret position, each distinct completion ordering shown in the
-popup, and whether a row was accepted or the popup was dismissed. Accepted rows retain their visible
-rank and the resulting source.
+Field keeps a local log of how you use autocomplete: what was suggested, what you picked, and
+the full source of the box you were editing at the time.
 
 The files live under `~/.afield/logs/completion_interactions/`, one JSONL file per UTC day. They are not
 uploaded anywhere. Because they contain full source, treat them with the same privacy and backup

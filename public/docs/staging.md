@@ -11,9 +11,9 @@ of these sections, start with the chains below.
 
 ## Chains across subsystems
 
-The [Long Way Round](chains.md) pages each follow one object through several parts of Field. They are the quickest way to see how the sections below fit together before you pick one to learn.
+Each [chain page](chains.md) follows one piece of work through several parts of Field. They are the quickest way to see how the sections below fit together before you pick one to learn.
 
-- [A Polytope, Cut Open and Traced](chain_polytope_render.md) is the one to read first: a polytope built with Conway operators, cut with an exact Boolean, then path-traced.
+- [A Polytope, Cut Open and Traced](chain_polytope_render.md) is the one to read first: a solid is built, cut in half and rendered.
 - [A Cellular Automaton You Can Hear](chain_ca_sound.md) goes the other way, from a Wolfram rule to the shortest pattern notation that plays it, rendered to a `.wav`.
 
 The rest cross physics, patterns, RectSL, photographs, λ-terms and lighting; [the overview](chains.md) lists the full set.
@@ -26,12 +26,12 @@ The document itself: moving around it, finding things in it, and getting back wh
 - [File Management](files_and_paths.md) is short and saves a lot of time: `"data.csv".file` resolves inside the document folder first and the workspace project second, so a path keeps working after the document is moved or handed to somebody else.
 - [Your History with Field](history_overview.md) says which of Field's kinds of history holds what, and which tool opens each. [Document History](document_history.md) is whole-document recovery from saved versions; [Code History](history_lens.md) shows what *this line* said a few saves ago, without leaving the editor.
 - [Snapping](snapping.md) is a toggle rather than a mode, for a moment of layout cleanup. The drawing layer over the canvas is on the Tour, in [Drawing and Notation](drawing_and_notation.md).
-- [The Semantic Index](semantic_index.md) is the second of the two searches that `/welcome` runs over your workspace as you type.
-- [Profiling](profiling_timeline.md) is the page to open when a piece stops keeping up. It covers the panel that records what each box cost, what its numbers mean, and [simulation time](profiling_timeline.md#simulation-time), which runs coroutine code against a clock you advance yourself instead of the wall clock.
+- [The Semantic Index](semantic_index.md) adds search by meaning to the workspace search on `/welcome`, which otherwise matches words in document metadata and box text.
+- [Profiling](profiling_timeline.md) is the page to open when a piece stops keeping up. Its panel records how long each box took, so you can see which one is slowing things down.
 
 ## Seeing values
 
-What happens when a box ends on a value, which is most of what working in Field feels like.
+The value a box ends with is shown beneath it. These pages cover where that output appears and the ways to look at it.
 
 - [Box Output](box_output.md) explains where printed values and display panels appear.
   [Visualizers & Controls](visualizers.md) goes on to `.h`, sliders and the value visualizer.
@@ -59,7 +59,7 @@ The geometry, sound and audio-AI groups in that section are larger than this lis
 
 ## Small languages
 
-- [Querying Object Graphs](graph_query.md) and [Datalog in a Box](datalog.md) are a pair, read in that order: the first is for the times you want every cutoff in a rig rather than one you can name, and the second answers the recursive questions a path pattern cannot, such as what runs downstream of a box.
+- [Querying Object Graphs](graph_query.md) and [Datalog in a Box](datalog.md) are a pair, read in that order: the first finds every value of a kind inside a live object, such as every filter cutoff in a synth, and the second answers questions that follow connections as far as they go, such as which boxes run downstream of this one.
 - [FieldML Cheatsheet](fieldml_cheatsheet.md) and [FieldML Examples](fieldml_examples.md) cover Field's small ML-flavoured expression language, from its prelude of numbers, lists and vectors to boxes that generate and animate drawings.
 - [StackSL Cheatsheet](stacksl_cheatsheet.md) and [StackSL Examples](stacksl_examples.md) document the concatenative stack language and its worked drawings, and [RectSL Cheatsheet](rectsl_cheatsheet.md) and [RectSL Examples](rectsl_examples.md) do the same for the rectangle-stack drawing language.
 - [ForthField Examples](forth_examples.md) covers Field's own Forth, its output helpers, and its bridge into JVM objects. [Nano Examples](nano_examples.md) covers the tiny assembly-like machine and its RAM and register visualizers.
@@ -71,15 +71,13 @@ The section ends with pages about making your own. [Rewriting Your Own Syntax](p
 
 The Tour's [Graphics on the GPU](tour_gpu_graphics.md) stop gets a shader drawing in a window. These pages go further.
 
-- [Field 4 Graphics](afield_four_graphics.md) exercises the lower-level renderer path, through the transcript-driven renderer parent described at the foot of this page.
+- [Field 4 Graphics](afield_four_graphics.md) goes underneath that, step by step: triangles and buffers, cameras, compute shaders, textures, glTF models and render-to-texture.
 - [Fabricate Renderer](fabricate_renderer.md) covers the `StandardRenderer` bundle: scene graph, render planning, frame graph, post stack, glTF import, material response, shadows and ambient occlusion.
 - [Aperture Playground](aperture_playground.md) is the worked multi-pass example: light bands, reductions, aperture filters and a composite, each in its own box, with every shader stage in the document. It shows defocus spreading a line rather than just dimming it.
 - [Field Probes](field_probes.md) instruments live shaders, with the CPU read-back `fieldProbe` and the GPU-resident `fieldStats` both demonstrated on one compute-shader particle system.
-- [Apple Vision Pro](vision.md) is the native visionOS front end, still being built: docks, islands and tethers, starting with a stereo dock. [Geometry in the Headset](vision_geometry.md) is written for code running inside that app; only its geometry half can be previewed on your Mac.
+- [Apple Vision Pro](vision.md) is Field's app for the headset, still being built: it puts the editor and canvas in the room beside 3D geometry and the renderer's output. [Geometry in the Headset](vision_geometry.md) is written for code running inside that app; only its geometry half can be previewed on your Mac.
 - [Ray Tracing Examples](ray_tracing_examples.md) walks through `VK_KHR_ray_tracing_pipeline` programs, from a raygen shader writing into a storage image to procedural spheres reflecting a traced floor. They need a GPU and driver with hardware ray tracing; the [path tracer](path_tracing.md) has a compute backend for machines without it.
-- [Kotlin in the Head](kotlin_in_the_head.md) is the compile route into that headset and into an ordinary browser tab: a box whose Kotlin is cross-compiled to JavaScript in-process and shipped over Field's own WebSocket, so `data class`es, operator overloading and compile-time type checking carry over into a THREE.js scene, a Tone.js engine, or a native Metal shader.
-
-Not here yet: a guide to the low-level Vulkan renderer internals, especially device setup, synchronization, descriptor ownership and shader reflection. Fabricate Renderer is the entry point for the fabricated layer above them, and Field 4 Graphics for the layer below.
+- [Kotlin in the Head](kotlin_in_the_head.md) runs a box's Kotlin in a browser tab or on the headset instead of inside Field, for 3D scenes, sound and shaders.
 
 ## AI and agents
 
@@ -88,7 +86,7 @@ Not here yet: a guide to the low-level Vulkan renderer internals, especially dev
 - [AI Tool-Use History](ai_tool_use_history.md) is the structured trace of what a send actually did, for when a tool call goes wrong, and [AI Documentation Polish](ai_doc_polish.md) covers the generated documentation that fills in for a completion entry whose source carries no useful KDoc.
 - [Notes on the Documentation](docs_notes.md) turns notes you leave on these pages into a queue that agents work through.
 
-Two pages you might expect here are on the Tour instead, because both are about reaching a running document rather than about Field's own AI: [Automating Field](automating_field.md), on the macros, transcript format and MCP bridge that let a script or an agent drive Field the way a person does, and [Field from your phone](mobile_controllers.md), which turns `/controllers` into a phone-sized remote for live controls, outputs, AI4 chat, Open Anything selection and Monaco editing.
+Two pages you might expect here are on the Tour instead, because both are about reaching a running document rather than about Field's own AI: [Automating Field](automating_field.md), on the macros, the transcript format and the backdoor script that let a script or an agent drive Field the way a person does, and [Field from your phone](mobile_controllers.md), which turns `/controllers` into a phone-sized remote for live controls, outputs, AI4 chat, Open Anything selection and Monaco editing.
 
 ## Reference, and internals
 
@@ -98,10 +96,7 @@ Neither section is a worked example. The reference is for looking something up; 
 
 *Internals* is the other extreme: hand-written prose about mechanism, for when you are extending Field or working out why it did something, rather than writing a box. [What Field Exposes](server_surface.md) is the one to start from: the HTTP and WebSocket surface your own editor already talks to. [What a Document Is on Disk](document_on_disk.md) is the one to read before editing a document by hand, because it says which file in that folder wins when Field loads.
 
-## How these pages are built
-
-Many pictures and videos on these pages are captured by running their examples in Field. Some
-captures are retained from machines with particular hardware; the build guide explains when they
-are reused or regenerated.
-
-[Building the Docs & Running the Tests](building_and_testing.md) has the build command and its capture modes. [Code Diff Player](diff-player.md) lists the attributes a single capture fence can carry, and [Automating Field](automating_field.md) covers the transcript format the graphics captures replay.
+??? aside "How these pages are built"
+    Many pictures and videos on these pages are captured by running their examples in Field.
+    [Building the Docs & Running the Tests](building_and_testing.md) has the build command and its
+    capture modes, and [Code Diff Player](diff-player.md) lists the attributes a capture fence can carry.

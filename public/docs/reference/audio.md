@@ -3380,7 +3380,7 @@ downloads, so a clip is made from the same bytes on every machine or not made at
 
 `src/jvmMain/kotlin/afield/audio/synth/DirtRender.kt` — [read the source](source/jvmMain/afield/audio/synth/DirtRender/)
 
-**Used in:** [Sound: from a pattern to something you can hear](../sound.md), [How to make sound in Field](../sound_paths.md)
+**Used in:** [How to make sound in Field](../sound_paths.md)
 
 ### Top-level functions { #dirtrender-kt-functions }
 

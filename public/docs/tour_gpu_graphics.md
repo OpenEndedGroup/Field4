@@ -16,12 +16,8 @@ One box opens the window and runs the frame loop. Its code publishes the window 
 as properties, builds them once, and starts the renderer:
 
 ```diffstatic {data-lang=kotlin}
-import afield.graphics.vulkan.util.Options
-
 prop<Window>(window)
 prop<Renderer>(renderer)
-
-Options.enableHDR = true
 
 once.renderer {
     window = Window("Field")
@@ -64,7 +60,7 @@ renderer += moduleHere {
 `moduleHere { }` makes a draw pipeline from this box's `vertex` and `fragment` properties, and
 `renderer += ...` puts it on screen. The names inside `set(4, 2) { }` are not part of a library:
 `pos` and `tc` exist because the vertex shader declares those two inputs, and `tri` is the index
-buffer every mesh has.
+buffer every mesh has. Here is the vertex shader, the box's `vertex` property:
 
 ```diffstatic {data-lang=glsl}
 #version 450
@@ -80,8 +76,8 @@ void main()
 }
 ```
 
-`time` comes from the fragment shader the same way. It is a member of the shader's push constants,
-so the mesh gets a `time` property, and the function assigned to it is called every frame: here,
+`time` comes from the fragment shader, shown below, the same way. It is a member of the shader's
+push constants, the small block of values the CPU hands the shader fresh each frame, so the mesh gets a `time` property, and the function assigned to it is called every frame: here,
 seconds since the box ran. The shader declares a `float`, and Field narrows the `Double` to it as it
 writes the value. The clock is the `AnimationClock` from
 [Frames and the Animation Loop](animation_time_model.md), so the rings drift outward at the same rate live and in a recording.
@@ -198,8 +194,9 @@ surface is rebuilt.
 
 ## Drawing into the box itself
 
-In Field's desktop app a renderer can also draw into a box's output panel, next to its code. An
-`ElectronRTTView` is a render target that shows up in the panel. Give it the module from before, and
+In Field's desktop app a renderer can also draw into a box's output panel, so the live picture sits
+next to its code instead of in a separate window. An `ElectronRTTView` is that picture: a 640 × 360
+image the renderer draws into each frame, streamed to the panel. Give it the module from before, and
 the spiral turns inside the box:
 
 ```diffstatic_runner {data-lang=kotlin video="assets/tour_gpu_graphics/spiral-panel.mp4" alt="a box's output panel holding a 640 by 360 view of the blue and gold five-armed spiral, turning steadily, with a line of small grey frame timings under it" capture="box" capture-profile="macos-electron" graphics-context=true open-outputs="true" wait-output="true" wait-output-kind="display" duration="6" fps="20" wait="3" w="760" h="60" timeout="300" embed=true name="tour-gpu-panel" source-box="assets/tour_gpu_graphics/spiral" source-box-properties="vertex,fragment" source-box-wait="0.1"}
