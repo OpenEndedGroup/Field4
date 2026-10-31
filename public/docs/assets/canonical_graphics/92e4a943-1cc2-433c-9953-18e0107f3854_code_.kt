@@ -1,4 +1,14 @@
-// Bundled textures make this lesson runnable; change these paths to try your own images.
+/*
+Slang: texture. Run this in a box beneath the renderer (`window`) box.
+
+This is the texturing lesson with its shaders written in Slang. They are in this box's
+`vertex_fragment` property (open it from the editor's property switcher); when it is non-blank it is
+used for both stages instead of the GLSL `vertex` and `fragment` properties. The Kotlin does not change:
+resources and push constants are matched by their reflected names, whatever the shader language.
+*/
+
+// The texture is bound by name: `bbc` matches `Sampler2D bbc` in the Slang source.
+// The bundled image makes the lesson runnable; change the path to try your own.
 prop<LoadedTexture>(bbc) = LoadedTexture("public/docs/assets/afield_four_graphics/docs-checker-texture.png")
 bbc.transferNow()
 
@@ -8,12 +18,13 @@ var m = Mesh()
 module += "mainMesh" to m
 renderer += "boo" to module
 
-// just trying to see if the history thing is working?
+// the camera's projection and view matrices feed the shader's `p` and `m` push constants
 val camera = Camera()
 m.p = camera.p
 m.m = camera.m
 
 var kc by keyCamera(camera = camera)
+// one textured quad: 4 vertices, 2 triangles
 m.set(4, 2) {
     val z = 0.0
 

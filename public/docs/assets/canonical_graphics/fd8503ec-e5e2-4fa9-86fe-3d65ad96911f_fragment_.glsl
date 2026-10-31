@@ -3,6 +3,7 @@
 layout(location = 0) out vec4 uFragColor;
 layout(location = 1) in vec2 ftc;
 
+// These resolve because the box called registerLygiaIncludeRoot().
 #include "lygia/generative/gerstnerWave.glsl"
 #include "lygia/generative/fbm.glsl"
 
@@ -11,6 +12,7 @@ void main()
     vec2 uv = ftc.xy * 1.0;
     vec3 f = gerstnerWave(uv, vec2(1.0, 1.2), 10.3, 0.3, 0.3);
 
+    // Fractal noise, its domain warped by the wave and then by itself.
     float n = fbm(uv*2 + f.yx * 0.75);
     float n2 = fbm(uv * 2.0 -
     f.yx * 0.5 +

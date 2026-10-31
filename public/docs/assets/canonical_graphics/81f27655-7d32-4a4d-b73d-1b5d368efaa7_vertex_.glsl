@@ -1,5 +1,6 @@
 #version 450
 #extension GL_EXT_buffer_reference : require
+// required for debugPrintfEXT
 #extension GL_EXT_debug_printf : enable
 
 layout(std430, buffer_reference) buffer vertexData
@@ -27,6 +28,7 @@ void main()
 
     localColor = vec4(wrap(gl_VertexIndex,3),wrap(gl_VertexIndex,5),wrap(gl_VertexIndex,11),1.0);
 
+    // Guard the print: unguarded, every vertex of every draw would print and flood the log.
     if (gl_VertexIndex == 0) {
         debugPrintfEXT("VS: index=%d, pos=(%f,%f)",gl_VertexIndex, pos.x, pos.y);
     }

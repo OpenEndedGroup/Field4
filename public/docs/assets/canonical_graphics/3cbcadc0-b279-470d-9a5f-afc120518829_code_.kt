@@ -1,10 +1,20 @@
-// Bundled textures make this lesson runnable; change these paths to try your own images.
+/*
+An array of textures.
+
+The fragment shader declares `uniform sampler2D ta[3]` (open "fragment" in the property switcher)
+and samples ta[0]; change the index there to see the other entries. The array published as `ta`
+must have exactly as many entries as the shader declares, or the texture is refused at link time.
+Run this box beneath the renderer (`window`) box.
+
+The bundled textures make this lesson runnable; change these paths to try your own images.
+*/
 var bbc = LoadedTexture("public/docs/assets/afield_four_graphics/docs-checker-texture.png")
 bbc.transferNow()
 
 var bbc2 = LoadedTexture("public/docs/assets/rt-uv-gradient.png")
 bbc2.transferNow()
 
+// A sampler array is published as an Array<ImageView>, so take each texture's imageView.
 var asArray: Array<ImageView> = arrayOf(bbc.imageView, bbc2.imageView, bbc.imageView)
 
 prop<Array<ImageView>>(ta) = asArray
@@ -20,6 +30,8 @@ m.p = camera.p
 m.m = camera.m
 
 var kc by keyCamera(camera = camera)
+// The same textured quad as the texturing lesson: positions and texture coordinates for four
+// vertices, two triangles.
 m.set(4, 2) {
     val z = 0.0
 
