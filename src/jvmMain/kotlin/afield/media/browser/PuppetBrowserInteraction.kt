@@ -17,9 +17,11 @@ import kotlin.math.abs
  */
 
 /** Maps normalized panel UVs into the browser's CSS-pixel input coordinate system. */
-class PuppetBrowserUvInput(val browser: PuppetBrowser) {
-    val cssWidth: Double get() = browser.spec.width / browser.spec.deviceScaleFactor
-    val cssHeight: Double get() = browser.spec.height / browser.spec.deviceScaleFactor
+class PuppetBrowserUvInput(val browser: PuppetBrowserControl, val viewport: ExternalBrowserSurfaceSpec) {
+    constructor(browser: PuppetBrowser) : this(browser, browser.spec)
+    val cssWidth: Double get() = viewport.width / viewport.deviceScaleFactor
+    val cssHeight: Double get() = viewport.height / viewport.deviceScaleFactor
+    val position: Pair<Double, Double> get() = lastU to lastV
 
     var modifiers: Set<BrowserModifier> = emptySet()
     var buttons: Int = 0

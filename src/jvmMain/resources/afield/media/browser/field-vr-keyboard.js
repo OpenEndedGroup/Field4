@@ -10,8 +10,8 @@
         .row{display:flex;justify-content:center;gap:5px;margin:4px 0}
         button{font:inherit;color:#fff;background:#304158;border:1px solid #678;border-radius:6px;min-width:45px;height:42px;padding:0 12px;cursor:pointer}
         button:hover{background:#476b90}button:active,button.on{background:#267ab5}
-        #keys[hidden]{display:none}#status{font:13px system-ui;text-align:center;min-height:17px;color:#bce}
-    </style><div class="tools"><div class="row" id="toolbar"></div><div id="keys" hidden></div><div id="status">Trigger / pinch: click · grip: move panel · stick: scroll</div></div>`;
+        #keys[hidden]{display:none}#status,#input-status{font:13px system-ui;text-align:center;min-height:17px;color:#bce}
+    </style><div class="tools"><div class="row" id="toolbar"></div><div id="keys" hidden></div><div id="status">Trigger / pinch: click · grip: move panel · stick: scroll</div><div id="input-status"></div></div>`;
     let shift = false;
     const request = payload => window.fieldPuppet.request('field-vr-input', payload)
         .catch(error => { root.getElementById('status').textContent = error.message; });

@@ -2,6 +2,7 @@ package afield.media.browser
 
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import java.util.concurrent.CompletableFuture
@@ -29,6 +30,10 @@ class FieldVrKeyboard(
 
     /** Idempotent; also called after navigation to a different document. */
     fun install(): CompletableFuture<BrowserJavascriptResult> = browser.evaluate(script)
+
+    fun reportInputStatus(status: String): CompletableFuture<BrowserJavascriptResult> = browser.evaluate(
+        "(() => { const node = document.getElementById('field-vr-tools')?.shadowRoot?.getElementById('input-status'); " +
+            "if (node) node.textContent = ${JsonPrimitive(status)}; return !!node; })()")
 
     fun press(key: String, shift: Boolean = false, control: Boolean = false, alt: Boolean = false) {
         val descriptor = keys[key] ?: throw IllegalArgumentException("Unsupported VR key: $key")

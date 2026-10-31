@@ -57,11 +57,65 @@ the companion's keyboard input; focus loss releases its held keys and buttons. T
 also visible on the VR panel. Moving a controller resumes its ray cursor; a held mouse drag keeps
 ownership until release or an explicit controller press.
 
-A Bluetooth keyboard paired to the Quest can also reach the PC through WiVRn's **HID forwarding**.
-WiVRn 26.6.2 defaults that setting to false and requires a writable `/dev/uinput`; its native server
-then presents the forwarded input to Linux. The same native-window focus requirement applies.
-See [WiVRn's versioned configuration](https://github.com/WiVRn/WiVRn/blob/v26.6.2/docs/configuration.md#hid-forwarding).
-Keyboard visibility or passthrough in the headset is a separate client feature from forwarding keys.
+## Headset keyboard and mouse, without desktop focus
+
+On Linux/OpenXR, `FieldVrWorkspace` automatically listens for WiVRn's virtual **WiVRn Keyboard**
+and **WiVRn Mouse** devices. Field verifies their USB bus/vendor/product identities, takes an
+exclusive evdev grab, and sends their events directly to this Chromium panel. A headset mouse
+moves a cursor inside the page; clicks, held drags and vertical/horizontal scrolling use that
+cursor. Moving the panel leaves the cursor at the same page coordinates. An explicit controller
+press can take over; controller hover cannot interrupt a mouse drag.
+
+The desktop window does not need focus. In this mode **Real keyboard** focuses the browser
+control path without requesting desktop window focus. Keys go to the panel's focused editor,
+palette or input. The toolbar reports waiting, capture and permission status. Disconnects and
+input overflow release held keys/buttons; reconnecting does not replay already-held presses.
+The desktop-connected devices still use the ordinary companion-window focus described above.
+
+Install the narrowly scoped Linux device rule once, as the user who runs Field. The command is a
+dry run unless `--install` is present. On this machine:
+
+```bash
+sudo python3 /home/marc/Field4/tools/setup_wivrn_input.py --install --user marc --serve-port 8443
+```
+
+This grants Marc access only to WiVRn's two identified virtual devices, excludes them from desktop
+libinput, enables WiVRn HID forwarding, and adds a private Tailscale HTTPS listener on the unused
+port 8443. Existing listeners are preserved; an occupied or public target port is refused. Omit
+`--serve-port 8443` when only input setup is wanted. Reconnect WiVRn afterwards so the desktop
+sees newly created devices with the rule applied. Stop the VR panel to release Field's grabs;
+the device rule continues excluding those forwarded devices from the desktop.
+
+Attach the keyboard and mouse to the Quest by USB-C hub or Bluetooth. WiVRn must capture and
+forward the devices; its Android client forwards relative mouse events, rather than an absolute
+Android system pointer. The physical Quest USB/Bluetooth path still needs an on-headset check;
+software replay establishes the Field routing, not Quest firmware/device compatibility.
+See [WiVRn's HID configuration](https://github.com/WiVRn/WiVRn/blob/v26.6.2/docs/configuration.md#hid-forwarding)
+and [its Android input handler](https://github.com/WiVRn/WiVRn/blob/v26.6.2/client/android/hid.cpp).
+
+The default keyboard layout is US. Set `FIELD_VR_KEYBOARD_LAYOUT`,
+`FIELD_VR_KEYBOARD_VARIANT` and `FIELD_VR_KEYBOARD_OPTIONS` before launching Field to select XKB
+layout, variant and Compose options. Shift, Ctrl, Alt, Meta, AltGr and dead-key composition are
+translated without relying on a desktop keyboard seat. For example, use layout `us`, variant
+`intl` for international dead keys, or layout `fr` for a French keyboard.
+
+## A remote browser on the same document
+
+After the administrator command has successfully installed the private listener, open:
+
+```text
+https://a0.finch-eel.ts.net:8443/index.html?file=Field-VR-IDE
+```
+
+Use the same Tailscale account/tailnet access and document name. Each browser retains its own
+selection, caret, scroll and keyboard/mouse focus while edits flow through the shared Field
+server. Remote text updates preserve focus in another input or palette; they must not pull focus
+back into Monaco. This is shared document editing, not a streamed desktop or remote mouse.
+
+Nobody needs to operate the PC display. Field still requires a working graphics/display session
+for Vulkan and Chromium, and WiVRn must be running and paired. This workflow does not remove the
+Linux display-session requirement. The private URL is unavailable until the one-time administrator
+setup succeeds; it does not replace the machine's existing public listener.
 
 ## Readable text
 

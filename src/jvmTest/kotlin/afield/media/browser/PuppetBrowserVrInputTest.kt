@@ -126,4 +126,13 @@ class PuppetBrowserVrInputTest {
         input.update(listOf(pointer.copy(gripPressed = false)))
         assertTrue(events.none { it.type == BrowserPointerEventType.DOWN }, "Held trigger after a grab is not a new click")
     }
+
+    @Test fun `a grip held during mouse ownership does not grab on hover takeover`() {
+        val grab = PuppetBrowserVrGrab(panel)
+        val held = ray("right").copy(gripPressed = true)
+        assertFalse(grab.update(listOf(held), enabled = false))
+        assertFalse(grab.update(listOf(held)))
+        grab.update(listOf(held.copy(gripPressed = false)))
+        assertTrue(grab.update(listOf(held)))
+    }
 }

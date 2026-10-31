@@ -112,7 +112,12 @@ class PuppetBrowserVrGrab(private val panel: PuppetBrowserPanel) {
     private val offset = Matrix4f()
     private var previousGrips = emptySet<String>()
 
-    fun update(pointers: List<BrowserVrPointer>): Boolean {
+    fun update(pointers: List<BrowserVrPointer>, enabled: Boolean = true): Boolean {
+        if (!enabled) {
+            owner = null
+            previousGrips = pointers.filter { it.gripPressed }.map { it.id }.toSet()
+            return false
+        }
         val held = pointers.firstOrNull { it.id == owner && it.gripPressed }
         if (held != null) {
             panel.model.set(pose(held).mul(offset))

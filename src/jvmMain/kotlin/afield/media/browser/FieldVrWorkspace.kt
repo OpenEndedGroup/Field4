@@ -22,6 +22,7 @@ class FieldVrWorkspace(
     val widthMeters: Float = 2.0f,
     val distanceMeters: Float = 1.35f,
     cpuBitmapFallback: Boolean = FieldUiBrowserTexture.cpuBitmapFallbackRequired,
+    headsetInput: Boolean = renderer.openXRHmdTarget != null && System.getProperty("os.name").startsWith("Linux"),
 ) : AutoCloseable {
     private val closed = AtomicBoolean(false)
     private val recenterRequested = AtomicBoolean(false)
@@ -29,6 +30,10 @@ class FieldVrWorkspace(
     private var previousTime = System.nanoTime()
     private var installedGeneration = -1L
     private var desktopPointer = renderer.openXRHmdTarget == null
+    private var headsetPointer = false
+    private var reportedInputStatus: String? = null
+    var headsetDevices: WiVRnBrowserInput? = null
+        private set
     private var previousPresses = emptySet<String>()
     private var previousGrips = emptySet<String>()
     private val rayAnchors = mutableMapOf<String, Pair<Vector3f, Vector3f>>()
@@ -77,10 +82,25 @@ class FieldVrWorkspace(
         companion.input.onPointerActivity = {
             input.cancel()
             grab.cancel()
+            headsetDevices?.releasePointer()
+            headsetPointer = false
             desktopPointer = true
             rayAnchors.clear()
         }
         companion.build()
+        if (headsetInput) headsetDevices = WiVRnBrowserInput(browser, browser.spec,
+            pointerActivity = {
+                if (!headsetPointer) {
+                    val hit = panel.lastHit
+                    input.cancel()
+                    grab.cancel()
+                    companion.input.releasePointer()
+                    if (hit?.onPanel == true) headsetDevices?.placeCursor(hit.u, hit.v)
+                    headsetPointer = true
+                    desktopPointer = false
+                    rayAnchors.clear()
+                }
+            }, otherModifiers = { companion.input.uv.modifiers })
     }
 
     /** Keep the panel in the room; call this to bring it in front of the current head position. */
@@ -100,11 +120,14 @@ class FieldVrWorkspace(
 
     private fun update() {
         if (closed.get()) return
-        if (keyboardFocusRequested.getAndSet(false)) focusPhysicalKeyboard()
+        if (keyboardFocusRequested.getAndSet(false)) {
+            if (headsetDevices != null) browser.focus() else focusPhysicalKeyboard()
+        }
         if (recenterRequested.getAndSet(false)) recenter()
         val now = System.nanoTime()
         val elapsed = (now - previousTime) / 1e9
         previousTime = now
+        headsetDevices?.poll(deliver = browser.pageReady && !browser.state.loading)
         val xr = renderer.openXRHmdTarget
         val pointers = if (xr == null) emptyList() else {
             // Use raw runtime states: the desktop mock must never appear when tracking drops.
@@ -125,31 +148,47 @@ class FieldVrWorkspace(
             moved && panel.panel.raycast(pointer.origin, pointer.direction)?.onPanel == true
         }
         // A moving controller may resume hover, but cannot interrupt a physical mouse drag.
-        if ((worldPress || (worldMotion && companion.input.uv.buttons == 0)) && desktopPointer) {
+        if ((worldPress || (worldMotion && companion.input.uv.buttons == 0 && headsetDevices?.uv?.buttons.orZero() == 0)) &&
+            (desktopPointer || headsetPointer)) {
             companion.input.releasePointer()
+            headsetDevices?.releasePointer()
             desktopPointer = false
+            headsetPointer = false
         }
         previousPresses = pointers.filter { it.pressed }.map { it.id }.toSet()
         previousGrips = pointers.filter { it.gripPressed }.map { it.id }.toSet()
-        val dragging = !desktopPointer && grab.update(pointers)
+        val worldPointer = !desktopPointer && !headsetPointer
+        val dragging = grab.update(pointers, enabled = worldPointer)
         // Physical Shift/Ctrl also apply to controller clicks (selection, links and canvas tools).
-        panel.panel.uv.modifiers = companion.input.uv.modifiers
-        val hit = input.update(pointers, enabled = !desktopPointer && !dragging)
-        val cursor = if (desktopPointer) companion.input.lastPointerUv?.let { (u, v) ->
+        panel.panel.uv.modifiers = companion.input.uv.modifiers + (headsetDevices?.modifiers ?: emptySet())
+        val hit = input.update(pointers, enabled = worldPointer && !dragging)
+        val pageCursor = if (headsetPointer) headsetDevices?.uv?.position else if (desktopPointer) companion.input.lastPointerUv else null
+        val cursor = pageCursor?.let { (u, v) ->
             val world = panel.panel.model.transformPosition(Vector3f(
                 ((u - 0.5) * 2 * panel.panel.halfWidth).toFloat(),
                 ((0.5 - v) * 2 * panel.panel.halfHeight).toFloat(), 0f))
             PuppetBrowserPanel.Hit(world, u, v, u in 0.0..1.0 && v in 0.0..1.0)
-        } else hit
-        panel.showPointer(cursor, if (desktopPointer) companion.input.uv.buttons != 0 else panel.panel.uv.buttons != 0)
+        } ?: hit
+        val pressed = when {
+            headsetPointer -> headsetDevices?.uv?.buttons.orZero() != 0
+            desktopPointer -> companion.input.uv.buttons != 0
+            else -> panel.panel.uv.buttons != 0
+        }
+        panel.showPointer(cursor, pressed)
         val generation = browser.state.navigationGeneration
         if (browser.pageReady && !browser.state.loading && installedGeneration != generation) {
             installedGeneration = generation
             keyboardReady = false
             keyboard.install().whenComplete { _, error ->
                 keyboardError = error?.message
+                reportedInputStatus = null
                 keyboardReady = error == null
             }
+        }
+        val status = headsetDevices?.status ?: "Desktop companion keyboard / mouse"
+        if (keyboardReady && status != reportedInputStatus) {
+            reportedInputStatus = status
+            keyboard.reportInputStatus(status)
         }
     }
 
@@ -164,10 +203,13 @@ class FieldVrWorkspace(
         renderer.renderList.preTargets.remove("sbs-pack", stereo)
         input.cancel()
         grab.cancel()
+        headsetDevices?.close()
         keyboard.close()
         renderer.runOnQueueThread { org.lwjgl.vulkan.VK10.vkDeviceWaitIdle(renderer.device.vkDevice) }
         companion.close()
         panel.cleanup()
         browser.close()
     }
+
+    private fun Int?.orZero(): Int = this ?: 0
 }
