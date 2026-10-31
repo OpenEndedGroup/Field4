@@ -1,14 +1,14 @@
 # The Demo Document
 
-The demo document is one canvas that shows most of what Field does at once. It is the film behind
-this site's home page, and it is built from nothing by an [operation
-transcript](agent_transcripts.md), `demo_document.yaml`, so the film and the document can be made
-again at any time.
+The demo document is one canvas that shows most of what Field does at once. To open it, use the
+[demo_document starting point](agent_transcripts.md#demo_document). The film on this site's home page
+is a tour of it.
 
 On it:
 
-- **Connected boxes.** `palette` pushes a value, `petals`, down to three boxes connected beneath it
-  with `propDown`. Change it and run `palette` again, and all three run again with the new value.
+- **Connected boxes.** `palette` pushes a value, `petals`, down to three boxes connected beneath it:
+  `propDown` declares a value that every box connected beneath this one can read
+  ([Properties That Re-run Boxes](reactive_properties.md)). Change it and run `palette` again, and all three run again with the new value.
   `sketch` holds two more boxes nested inside it, in its `nested` panel. See [Connecting
   Boxes](tour_connecting_boxes.md).
 - **3D and 2D in output panels.** `gyroid` shows a marched gyroid surface and its open rims in a
@@ -22,8 +22,9 @@ On it:
 - **Time.** `brightness` is a keyframe curve, played in a loop with its playhead running and a
   meter it drives ([Keyframe Editor](keyframe_editor.md)). `metrics` draws a histogram, a history
   and a summary beside its own lines of code when its editor is open
-  ([Visualizers](visualizers.md)). `t` is a time slider: drag it sideways and it starts each cue box
-  it enters and stops each one it leaves.
+  ([Visualizers](visualizers.md)). `t` is a time slider, a tall, narrow box standing beside a row of
+  boxes named `cue 1`, `cue 2` and so on. Drag it sideways and it starts each box it enters and stops
+  each one it leaves.
 - **Drawing.** `notes` draws circles, arrows, frames and labels on the drawing layer, over the
   boxes they point at ([Drawing and Notation](drawing_and_notation.md)). `alt/option-D` turns the
   layer on, so you can draw on it by hand.
@@ -271,7 +272,9 @@ ui.pause(1500)
 
 ## Making it again
 
-To open the document itself, replay the transcript with the [backdoor](automating_field.md):
+The document is built from nothing by an [operation transcript](agent_transcripts.md),
+`demo_document.yaml`, so it can be made again at any time. From a Field checkout, the
+[backdoor](automating_field.md) replays it into a new document:
 
 ```diffstatic {data-lang=bash}
 uv run --project . --group backdoor python tools/field_backdoor.py --json \
@@ -280,10 +283,10 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json \
   --command 'macro run demo_document'
 ```
 
-The feel benchmark times the same replay, as its `demo-document` scenario
-([`dev_docs/testing/FEEL_BENCHMARKS.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/testing/FEEL_BENCHMARKS.md)).
-
 ??? aside "Agents: how the film is made"
+    The feel benchmark times the same replay, as its `demo-document` scenario
+    ([`dev_docs/testing/FEEL_BENCHMARKS.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/testing/FEEL_BENCHMARKS.md)).
+
     The film is a `drive` capture: the runner opens the capture page in this checkout's Electron
     (`playwright-open --electron`), runs the transcript, and records the window in real time while
     the script runs. The camera moves are `window.moveCanvasCamera` calls, 40 ms apart, eased in
