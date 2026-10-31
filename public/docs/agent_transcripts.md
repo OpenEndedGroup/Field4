@@ -2628,10 +2628,10 @@ for (i in 0 until 240) {
     at =
         ui.eval(
                 """
-        const f = document.querySelector("iframe[src*='score_view']")
-        const s = f && f.contentDocument && f.contentDocument.getElementById("status")
-        return s ? s.textContent : "no score view yet"
-    """
+                const f = document.querySelector("iframe[src*='score_view']")
+                const s = f && f.contentDocument && f.contentDocument.getElementById("status")
+                return s ? s.textContent : "no score view yet"
+                """
                     .trimIndent(),
             )
             .toString()

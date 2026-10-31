@@ -19,7 +19,7 @@ Echo, which plays the last eight back in threes, an octave up; every eighth note
 plays, Kotlin moves one note of Lead's tune a step up the scale. Click a grid to join in.
 
 ```edn [field-box id="orca_duet" role="properties"]
-{"id" "orca_duet" "index" 0 "name" "ORCA duet · run me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "ORCA duet · run me" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "orca_duet_code_.kt" "lines" 77 "characters" 2181 "sha256" "99e5b617c44fb2700b501d0509822eefc5a4dc0e8aef07b2b0d94f2f1c6feb4d"}]}
+{"id" "orca_duet" "index" 0 "name" "ORCA duet · run me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "ORCA duet · run me" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "orca_duet_code_.kt" "lines" 75 "characters" 2125 "sha256" "2cfe83e53bfd89a6cfbdbb6a2cf91e0ee9f99267d6465434bc387870efafdeeb"}]}
 ```
 
 ```kotlin [field-property box="orca_duet" name="code" path="orca_duet_code_.kt"]
@@ -29,13 +29,12 @@ Echo, which plays the last eight back in threes, an octave up; every eighth note
 plays, Kotlin moves one note of Lead's tune a step up the scale. Click a grid to join in.
 */
 val synth = PatSynthBank()
-val lead =
-    orca(
-        "lead",
-        cols = 40,
-        rows = 10,
-        grid =
-            """
+val lead = orca(
+    "lead",
+    cols = 40,
+    rows = 10,
+    grid =
+        """
     #.LEAD.#
     .
     .2C8
@@ -45,21 +44,20 @@ val lead =
     D8
     .:12C
 """,
-    )
-val echo =
-    orca(
-        "echo",
-        cols = 40,
-        rows = 10,
-        grid =
-            """
+)
+val echo = orca(
+    "echo",
+    cols = 40,
+    rows = 10,
+    grid =
+        """
     #.ECHO.#
     .
     .3C8
     D3.8TCCCCCCCC
     .:25
 """,
-    )
+)
 val up = mapOf('C' to 'D', 'D' to 'E', 'E' to 'G', 'G' to 'A', 'A' to 'C')
 val heard = ArrayDeque("CCCCCCCC".toList())
 var echoes = 0

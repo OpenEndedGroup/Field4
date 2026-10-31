@@ -18,7 +18,7 @@ Exactly what you would paste into a `// {{ visionmetal }}` box — a lantern bui
 the shape helpers and a hand-written ring of quads on top.
 
 ```edn [field-box id="agent_vision_geometry_desk_preview" role="properties"]
-{"id" "agent_vision_geometry_desk_preview" "index" 0 "name" "Vision geometry — desk preview" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Vision geometry — desk preview" "_tombstone" false "frame" #afield/rect [60.0 60.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_vision_geometry_desk_preview_code_.kt" "lines" 76 "characters" 2969 "sha256" "d4d810144653038c2a1efc2a2be7471d21558c7776c1c085dc32ba7a93e158ac"}]}
+{"id" "agent_vision_geometry_desk_preview" "index" 0 "name" "Vision geometry — desk preview" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Vision geometry — desk preview" "_tombstone" false "frame" #afield/rect [60.0 60.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_vision_geometry_desk_preview_code_.kt" "lines" 70 "characters" 2901 "sha256" "71088fed1e5b4bdd06cc6d6688943014a7861f42fe2fb09f5c7c1e905055e233"}]}
 ```
 
 ```kotlin [field-property box="agent_vision_geometry_desk_preview" name="code" path="agent_vision_geometry_desk_preview_code_.kt"]
@@ -70,7 +70,7 @@ val program =
         }
         onFrame { frame -> uniform("spin", frame.time * 0.5) }
     }
-"""
+    """
         .trimIndent()
 
 // This really compiles the Kotlin above to JavaScript and really runs it; the mesh drawn
@@ -88,13 +88,7 @@ capture?.mesh()?.let { mesh ->
     println("built " + mesh.vertexCount + " vertices, " + mesh.triangleCount + " triangles")
     val b = mesh.bounds()
     println(
-        "extent " +
-            (b[3] - b[0]).f3 +
-            " x " +
-            (b[4] - b[1]).f3 +
-            " x " +
-            (b[5] - b[2]).f3 +
-            " m",
+        "extent " + (b[3] - b[0]).f3 + " x " + (b[4] - b[1]).f3 + " x " + (b[5] - b[2]).f3 + " m",
     )
     println("winding agreement " + (mesh.windingAgreement() * 100).f0 + "%")
 }
@@ -113,7 +107,7 @@ outward; only the winding changed. The head culls back faces, so on the device t
 ring you can only see from the inside — and from any normal viewing position, nothing.
 
 ```edn [field-box id="agent_vision_geometry_desk_preview_inverted" role="properties"]
-{"id" "agent_vision_geometry_desk_preview_inverted" "index" 1 "name" "… and the same mesh wound backwards" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "… and the same mesh wound backwards" "_tombstone" false "frame" #afield/rect [60.0 400.0 350.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_vision_geometry_desk_preview_inverted_code_.kt" "lines" 48 "characters" 1643 "sha256" "cec30dc5d3be35bb5acc08cb978c0a2cf7c4f2621860b6bdf35f77c5a6baf31c"}]}
+{"id" "agent_vision_geometry_desk_preview_inverted" "index" 1 "name" "… and the same mesh wound backwards" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "… and the same mesh wound backwards" "_tombstone" false "frame" #afield/rect [60.0 400.0 350.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_vision_geometry_desk_preview_inverted_code_.kt" "lines" 48 "characters" 1647 "sha256" "5c52bb8a6777f9facbd96b15c489b709143ae34d2d4f051425932573ad9505cd"}]}
 ```
 
 ```kotlin [field-property box="agent_vision_geometry_desk_preview_inverted" name="code" path="agent_vision_geometry_desk_preview_inverted_code_.kt"]
@@ -146,7 +140,7 @@ val inverted =
             }
         }
     }
-"""
+    """
         .trimIndent()
 
 val capture = try {

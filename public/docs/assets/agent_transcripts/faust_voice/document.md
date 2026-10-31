@@ -60,7 +60,7 @@ The source is identical to the diagram box above, so this compile is a cache hit
 are memoised on a hash of the source.
 
 ```edn [field-box id="faust_voice_waveform" role="properties"]
-{"id" "faust_voice_waveform" "index" 1 "name" "waveform" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "waveform" "_tombstone" false "frame" #afield/rect [680.0 620.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_voice_waveform_code_.kt" "lines" 18 "characters" 523 "sha256" "acef40d9bcb6fe0924422ab543306a1c0adb4aa20e5e24330a3b0a4a3df80928"}]}
+{"id" "faust_voice_waveform" "index" 1 "name" "waveform" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "waveform" "_tombstone" false "frame" #afield/rect [680.0 620.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_voice_waveform_code_.kt" "lines" 17 "characters" 511 "sha256" "3dced7ba254191f9a70b20e58d039a79092823855042537da6dd30c74373f350"}]}
 ```
 
 ```kotlin [field-property box="faust_voice_waveform" name="code" path="faust_voice_waveform_code_.kt"]
@@ -71,14 +71,13 @@ so this box runs on a machine with no sound card.
 The source is identical to the diagram box above, so this compile is a cache hit: compiles
 are memoised on a hash of the source.
 */
-val program =
-    faustCompile(
-        """
+val program = faustCompile(
+    """
 #faust
 import("stdfaust.lib");
 process = os.sawtooth(220) : fi.lowpass(3, 1200) * 0.2 <: _,_;
 """,
-    )
+)
 
 faustWaveform(program, seconds = 0.02)
 println("rendered 20ms of " + program.outputs + " channels")
@@ -100,7 +99,7 @@ why setting a value is a float store and not a message. And note the order: Faus
 controls alphabetically, not in the order they were declared.
 
 ```edn [field-box id="faust_voice_interface" role="properties"]
-{"id" "faust_voice_interface" "index" 2 "name" "the interface it declares" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the interface it declares" "_tombstone" false "frame" #afield/rect [80.0 420.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_voice_interface_code_.kt" "lines" 45 "characters" 1434 "sha256" "333ff1fa48ee7593fe08f7325c5d3407a46961e4f369e75be6b64307f48f12b3"}]}
+{"id" "faust_voice_interface" "index" 2 "name" "the interface it declares" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the interface it declares" "_tombstone" false "frame" #afield/rect [80.0 420.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_voice_interface_code_.kt" "lines" 44 "characters" 1422 "sha256" "1d84ecfc6388c3052cc7d8f5cd35ef03df78069d3335afea9c01876c76cbf926"}]}
 ```
 
 ```kotlin [field-property box="faust_voice_interface" name="code" path="faust_voice_interface_code_.kt"]
@@ -112,9 +111,8 @@ controls in the first box are generated rather than written.
 why setting a value is a float store and not a message. And note the order: Faust lists
 controls alphabetically, not in the order they were declared.
 */
-val program =
-    faustCompile(
-        """
+val program = faustCompile(
+    """
 #faust
 import("stdfaust.lib");
 freq   = hslider("freq [unit:Hz] [scale:log]", 220, 50, 2000, 0.01);
@@ -126,7 +124,7 @@ env = en.adsr(0.01, 0.2, 0.6, 0.4, gate);
 dry = os.sawtooth(freq) : fi.lowpass(2, cutoff) * env * 0.2;
 process = (dry : (_ <: attach(_, abs : max ~ *(0.999) : level))) * (1 - bypass) <: _,_;
 """,
-    )
+)
 
 println(program.inputs.toString() + " in, " + program.outputs + " out")
 program.ui.writable.forEach { c ->
@@ -166,7 +164,7 @@ generateAuxFiles throws *after* writing the SVG (it goes on to try a C++ backend
 is not built), so FaustEngine reads the files regardless of the exception.
 
 ```edn [field-box id="faust_voice_diagram" role="properties"]
-{"id" "faust_voice_diagram" "index" 3 "name" "block diagram" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "block diagram" "_tombstone" false "frame" #afield/rect [680.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_voice_diagram_code_.kt" "lines" 18 "characters" 599 "sha256" "4ec781e538aea67be302b97940b93b069afc0932863a3756d972b0cd68cd172f"}]}
+{"id" "faust_voice_diagram" "index" 3 "name" "block diagram" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "block diagram" "_tombstone" false "frame" #afield/rect [680.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_voice_diagram_code_.kt" "lines" 17 "characters" 587 "sha256" "7dabc0d92290375d1c9acf768f139cd56acbaf04be61a70a8eec6b981880ea16"}]}
 ```
 
 ```kotlin [field-property box="faust_voice_diagram" name="code" path="faust_voice_diagram_code_.kt"]
@@ -177,14 +175,13 @@ comes out of the embedded compiler, so there is no `faust -svg` and no command l
 generateAuxFiles throws *after* writing the SVG (it goes on to try a C++ backend that
 is not built), so FaustEngine reads the files regardless of the exception.
 */
-val program =
-    faustCompile(
-        """
+val program = faustCompile(
+    """
 #faust
 import("stdfaust.lib");
 process = os.sawtooth(220) : fi.lowpass(3, 1200) * 0.2 <: _,_;
 """,
-    )
+)
 
 faustDiagram(program)
 println("diagram for " + program.name + " — " + program.wasm.size + " bytes of wasm")

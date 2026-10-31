@@ -19,7 +19,7 @@ Freedman-Diaconis, Scott and Sturges widths, floored so the count cannot exceed 
 Re-derive the whole decision from the public stats and predict the bin count.
 
 ```edn [field-box id="stats_histogram" role="properties"]
-{"id" "stats_histogram" "index" 0 "name" "Histograms, and the rule that picks the bins" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Histograms, and the rule that picks the bins" "_tombstone" false "frame" #afield/rect [80.0 470.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stats_histogram_code_.kt" "lines" 69 "characters" 2970 "sha256" "67c87cdbfcc653c9b025159c777b8c1bb1386d5489fff6f0a4790c19605a4c7b"}]}
+{"id" "stats_histogram" "index" 0 "name" "Histograms, and the rule that picks the bins" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Histograms, and the rule that picks the bins" "_tombstone" false "frame" #afield/rect [80.0 470.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stats_histogram_code_.kt" "lines" 68 "characters" 2958 "sha256" "9457950c2b4d2c7a19a955aadaf6293746710187a6133140446a1e0334205fd0"}]}
 ```
 
 ```kotlin [field-property box="stats_histogram" name="code" path="stats_histogram_code_.kt"]
@@ -55,8 +55,7 @@ fun Box.explain(label: String, values: List<Double>): Histogram {
     val actual = buildHistogram(values)
     println("$label: iqr=${s.iqr.f3} sd=${s.sampleStdDev.f3} range=${range.f3}")
     println(
-        "  FD=${hFd.f4}  Scott=${hScott.f4}  Sturges=${hSturges.f4} (k=$kSturges)" +
-            "  -> $which wins",
+        "  FD=${hFd.f4}  Scott=${hScott.f4}  Sturges=${hSturges.f4} (k=$kSturges)" + "  -> $which wins",
     )
     println(
         "  predicted ${predicted} bins of ${(range / predicted).f5}; " +
@@ -106,7 +105,7 @@ The whole reason StatsDependence has six coefficients instead of one. Six shapes
 coefficient on each, printed as one table so the disagreements line up in a row.
 
 ```edn [field-box id="stats_dependence" role="properties"]
-{"id" "stats_dependence" "index" 1 "name" "Six questions, six answers — and is the answer big?" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Six questions, six answers — and is the answer big?" "_tombstone" false "frame" #afield/rect [960.0 80.0 450.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stats_dependence_code_.kt" "lines" 93 "characters" 4296 "sha256" "82b2e207c2617a8ffde7ef3797cb8667d5844a1333520f766bfdb44733689d82"}]}
+{"id" "stats_dependence" "index" 1 "name" "Six questions, six answers — and is the answer big?" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Six questions, six answers — and is the answer big?" "_tombstone" false "frame" #afield/rect [960.0 80.0 450.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stats_dependence_code_.kt" "lines" 91 "characters" 4276 "sha256" "50b9495b9783c53cecc48f74bee5d0243ff33977226dec3e4ca6320556c71bbc"}]}
 ```
 
 ```kotlin [field-property box="stats_dependence" name="code" path="stats_dependence_code_.kt"]
@@ -145,9 +144,7 @@ val panels = cases.map { (label, y) ->
         color = vec(0.48, 0.85, 1.0, 0.8),
         pointSize = 1.1,
     )
-    val caption =
-        "r=${r.f3} rho=${rho.f3} tau=${tau.f3}" +
-            " xi=${xi.f3} dCor=${dcor.f3} MIC~=${mic.f3}"
+    val caption = "r=${r.f3} rho=${rho.f3} tau=${tau.f3}" + " xi=${xi.f3} dCor=${dcor.f3} MIC~=${mic.f3}"
     "$label\n$caption" to cloud
 }
 
@@ -217,7 +214,7 @@ buildSummaryStats hands back seventeen numbers. Three of them are routinely misr
 pin each one as arithmetic rather than trusting the label on the card.
 
 ```edn [field-box id="stats_summary" role="properties"]
-{"id" "stats_summary" "index" 2 "name" "Summary stats, and exactly how boring they are" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Summary stats, and exactly how boring they are" "_tombstone" false "frame" #afield/rect [80.0 80.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stats_summary_code_.kt" "lines" 55 "characters" 2604 "sha256" "e41cc7e490cf546484962ab6b3cb2a5cfebb742c5df6a39b3dbf53532085c8c2"}]}
+{"id" "stats_summary" "index" 2 "name" "Summary stats, and exactly how boring they are" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Summary stats, and exactly how boring they are" "_tombstone" false "frame" #afield/rect [80.0 80.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stats_summary_code_.kt" "lines" 54 "characters" 2596 "sha256" "9bd92e27c261d13ab047c62dc9eb5eeb532eee5c53abbe9915b1455340ffd140"}]}
 ```
 
 ```kotlin [field-property box="stats_summary" name="code" path="stats_summary_code_.kt"]
@@ -235,8 +232,7 @@ val s = buf.snapshot()
 
 println("n=${s.count}  seen=${buf.samplesSeen}  refused=${buf.droppedNonFinite}  evicted=${buf.droppedByCapacity}")
 println(
-    "min=${s.min.f3}  q1=${s.q1.f3}  median=${s.median.f3}" +
-        "  q3=${s.q3.f3}  max=${s.max.f3}",
+    "min=${s.min.f3}  q1=${s.q1.f3}  median=${s.median.f3}" + "  q3=${s.q3.f3}  max=${s.max.f3}",
 )
 
 // 1. mean > median is the signature of a right skew, and skewness agrees in sign.
@@ -388,7 +384,7 @@ quantilewarp.kt does not measure anything. It fits a monotone 8-knot PCHIP curve
 the measured quantiles of recent samples onto the quantiles of a target distribution.
 
 ```edn [field-box id="stats_warp" role="properties"]
-{"id" "stats_warp" "index" 4 "name" "Reshaping a distribution with an 8-knot warp" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Reshaping a distribution with an 8-knot warp" "_tombstone" false "frame" #afield/rect [80.0 860.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stats_warp_code_.kt" "lines" 111 "characters" 4390 "sha256" "b508bea09d8a6cfe4762172a833ba5cb47c36ae3c9eb243cd229f660b3ca8846"}]}
+{"id" "stats_warp" "index" 4 "name" "Reshaping a distribution with an 8-knot warp" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Reshaping a distribution with an 8-knot warp" "_tombstone" false "frame" #afield/rect [80.0 860.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stats_warp_code_.kt" "lines" 110 "characters" 4378 "sha256" "5243537cf8a17188ef752394b6fe7d6b8fb5334869c12963f4bd8170a9998b20"}]}
 ```
 
 ```kotlin [field-property box="stats_warp" name="code" path="stats_warp_code_.kt"]
@@ -470,8 +466,7 @@ val gaps = (1..12).map {
 println("median knot chasing a step to $step (smoothingAlpha=${QuantileWarpConfig().smoothingAlpha}):")
 [1, 2, 4, 8, 12].forEach { k ->
     println(
-        "  after $k updates gap=${gaps[k - 1].f3}  vs closed form ${step}*0.8^$k=" +
-            "${(step * 0.8.pow(k)).f3}",
+        "  after $k updates gap=${gaps[k - 1].f3}  vs closed form ${step}*0.8^$k=" + "${(step * 0.8.pow(k)).f3}",
     )
 }
 

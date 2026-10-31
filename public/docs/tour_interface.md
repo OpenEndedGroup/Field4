@@ -102,16 +102,27 @@ framing (`alt+f`) and resetting (`alt+h`).
 // Slot 1: `sketch` selected with its editor open. Slot 2: the same for `render`.
 ui.openEditor("bm_sketch")
 ui.pause(900)
-ui.down("Meta"); ui.down("Shift"); ui.press("F1"); ui.up("Shift"); ui.up("Meta")
+ui.down("Meta")
+ui.down("Shift")
+ui.press("F1")
+ui.up("Shift")
+ui.up("Meta")
 ui.pause(300)
 ui.openEditor("bm_render")
 ui.pause(900)
-ui.down("Meta"); ui.down("Shift"); ui.press("F2"); ui.up("Shift"); ui.up("Meta")
+ui.down("Meta")
+ui.down("Shift")
+ui.press("F2")
+ui.up("Shift")
+ui.up("Meta")
 ui.pause(300)
-ui.down("Alt"); ui.press("KeyB"); ui.up("Alt")
+ui.down("Alt")
+ui.press("KeyB")
+ui.up("Alt")
 ui.waitForSelector("#bookmarks-panel.is-visible", 8000.0)
 // Name the two slots through the panel's own name fields, the way a reader would.
-ui.eval("""
+ui.eval(
+    """
   const names = Array.from(document.querySelectorAll("#bookmarks-panel input[type=text]"));
   if (names.length < 2) return "only " + names.length + " saved slots";
   [["ideas", 0], ["render", 1]].forEach(([value, i]) => {
@@ -119,7 +130,8 @@ ui.eval("""
     names[i].dispatchEvent(new Event("change"));
   });
   return "named";
-""")
+""",
+)
 ui.pause(600)
 ```
 
@@ -174,8 +186,15 @@ ui.pause(2000)
 ui.press("h")
 ui.pause(800)
 // Fail rather than photograph a toolbar cut off at the frame's edge.
-val tb = ui.eval("const t = document.querySelector('#field-drawing-layer .App-toolbar'); if (!t) return 'missing'; const r = t.getBoundingClientRect(); return [Math.round(r.left), Math.round(r.right), innerWidth].join(',')").toString().trim('"')
-check(tb != "missing" && tb.split(",")[1].toInt() <= 1390) { "the drawing toolbar is not inside the 1400px frame: " + tb }
+val tb =
+    ui.eval(
+            "const t = document.querySelector('#field-drawing-layer .App-toolbar'); if (!t) return 'missing'; const r = t.getBoundingClientRect(); return [Math.round(r.left), Math.round(r.right), innerWidth].join(',')",
+        )
+        .toString()
+        .trim('"')
+check(tb != "missing" && tb.split(",")[1].toInt() <= 1390) {
+    "the drawing toolbar is not inside the 1400px frame: " + tb
+}
 ```
 
 ## The Macro Recorder
@@ -186,7 +205,9 @@ palette: **Macro: Recorder Panel**. Press **Record**, do something on the canvas
 name and press **Save**; below, the recording is one drag of the `sketch` box.
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x700" clip-selector="#macro-recorder-panel" screenshot="assets/tour_interface/macro-recorder.png" transcript="../../dev_docs/agents/transcripts/docs_capture/tour_interface.yaml" document="docs-tour-interface-macro-recorder" fresh-document=true hide-toasts=true padding="8" wait="0" timeout="150" embed=true hidden=true name="tour-interface-macro-recorder" alt="The Macro Recorder after recording one macro: the name move_sketch_right, Record, Save and Run, the document's saved macro move_sketch_right in the list, and the transcript of the recorded move below."}
-ui.eval("const a = (window.lastActions || []).find(a => a.id === 'macro-transcript-panel'); if (!a) throw new Error('no action macro-transcript-panel'); a.run(); return true")
+ui.eval(
+    "const a = (window.lastActions || []).find(a => a.id === 'macro-transcript-panel'); if (!a) throw new Error('no action macro-transcript-panel'); a.run(); return true",
+)
 ui.pause(1000)
 // Record a real macro: Record, close the panel so the canvas is clear, drag the sketch box to the
 // right with the pointer, reopen the panel, name the recording and Save.
@@ -194,7 +215,14 @@ ui.clickSelector("#macro-recorder-panel [data-action='start']")
 ui.pause(600)
 ui.clickSelector("#macro-recorder-panel [data-action='close']")
 ui.pause(400)
-val r = ui.eval("const b = [...document.querySelectorAll('.box')].find(b => b.uid === 'tour_sketch'); const q = b.getBoundingClientRect(); return [q.x + q.width / 2, q.y + q.height / 2]").toString().trim('[', ']').split(",").map { it.trim().toDouble() }
+val r =
+    ui.eval(
+            "const b = [...document.querySelectorAll('.box')].find(b => b.uid === 'tour_sketch'); const q = b.getBoundingClientRect(); return [q.x + q.width / 2, q.y + q.height / 2]",
+        )
+        .toString()
+        .trim('[', ']')
+        .split(",")
+        .map { it.trim().toDouble() }
 ui.moveMouse(r[0], r[1])
 ui.mouseDown()
 ui.moveMouse(r[0] + 160.0, r[1], steps = 12)
@@ -206,7 +234,11 @@ ui.clickSelector("#macro-recorder-panel [data-role='name']")
 ui.type("move_sketch_right")
 ui.clickSelector("#macro-recorder-panel [data-action='save']")
 ui.pause(2000)
-val listed = ui.eval("return [...document.querySelectorAll('#macro-recorder-panel [data-role=document-list] [data-macro-name]')].map(b => b.getAttribute('data-macro-name'))").toString()
+val listed =
+    ui.eval(
+            "return [...document.querySelectorAll('#macro-recorder-panel [data-role=document-list] [data-macro-name]')].map(b => b.getAttribute('data-macro-name'))",
+        )
+        .toString()
 check("move_sketch_right" in listed) { "the recorded macro is not listed: " + listed }
 check(!listed.contains("_ui_")) { "runner plumbing is listed: " + listed }
 val ops = ui.eval("return document.querySelector('#macro-recorder-panel [data-role=content]')?.value || ''").toString()
@@ -223,19 +255,28 @@ code version by version, and the diff shows that version against the current cod
 [Document history](document_history.md) walks through it.
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x1000" clip-selector=".history-iframe-container" screenshot="assets/tour_interface/history.png" transcript="assets/transcripts/document_history_setup.yaml" document="docs-tour-interface-history" fresh-document=true hide-toasts=true padding="8" wait="0" timeout="180" embed=true hidden=true name="tour-interface-history" alt="The document history panel after four saved edits of the box sketch: the timeline of saves with version #1 selected, the counts of boxes, properties and lines that differ from the current document, This Box listing sketch's values version by version, and the diff of that version against the current code."}
-val uid = ui.eval("""
-    const b = [...document.querySelectorAll(".box")].find(b => (b.textContent || "").includes("sketch"))
-    return b ? (b.uid || b.getAttribute("uid") || b.getAttribute("data-uid")) : null
-""".trimIndent()).toString().trim('"')
+val uid =
+    ui.eval(
+            """
+            const b = [...document.querySelectorAll(".box")].find(b => (b.textContent || "").includes("sketch"))
+            return b ? (b.uid || b.getAttribute("uid") || b.getAttribute("data-uid")) : null
+            """
+                .trimIndent(),
+        )
+        .toString()
+        .trim('"')
 check(uid.isNotBlank() && uid != "null") { "the setup transcript's sketch box is not on the canvas" }
 ui.openEditor(uid)
 ui.waitForSelector(".monaco-editor", 15000.0)
-ui.eval("""
+ui.eval(
+    """
     const c = document.querySelector(".monaco-editor-container")
     for (const k of ["width", "height", "top", "right", "left", "bottom", "transform"]) c.style[k] = ""
     if (window.globalEditor && window.globalEditor.layout) window.globalEditor.layout()
     return true
-""".trimIndent())
+    """
+        .trimIndent(),
+)
 ui.pause(6500)
 // Three more saved edits of sketch's code: radius 64, then a ring of points, then radius 80.
 val edits = [
@@ -253,38 +294,60 @@ ui.eval("window.switchToHistoryForFile(window.currentDocumentFilename || \"defau
 var story = ""
 for (i in 0 until 100) {
     ui.pause(250)
-    story = ui.eval("""
-        const f = window.getHistoryIframeElement ? window.getHistoryIframeElement() : document.querySelector("#history-iframe")
-        const d = f && f.contentDocument
-        return "rows=" + (d ? d.querySelectorAll("#box-story-list .box-story-item").length : 0)
-    """.trimIndent()).toString()
+    story =
+        ui.eval(
+                """
+                const f = window.getHistoryIframeElement ? window.getHistoryIframeElement() : document.querySelector("#history-iframe")
+                const d = f && f.contentDocument
+                return "rows=" + (d ? d.querySelectorAll("#box-story-list .box-story-item").length : 0)
+                """
+                    .trimIndent(),
+            )
+            .toString()
     if ((Regex("rows=(\\d+)").find(story)?.groupValues?.get(1)?.toInt() ?: 0) >= 4) break
 }
-check((Regex("rows=(\\d+)").find(story)?.groupValues?.get(1)?.toInt() ?: 0) >= 4) { "This Box never listed sketch's four values: " + story }
+check((Regex("rows=(\\d+)").find(story)?.groupValues?.get(1)?.toInt() ?: 0) >= 4) {
+    "This Box never listed sketch's four values: " + story
+}
 ui.pause(800)
 // Click the row holding version #1 (radius 64.0), where it is drawn.
-val at = ui.eval("""
-    const f = window.getHistoryIframeElement ? window.getHistoryIframeElement() : document.querySelector("#history-iframe")
-    const fr = f.getBoundingClientRect()
-    const row = [...f.contentDocument.querySelectorAll("#box-story-list .box-story-item")].find(r => r.querySelector(".range").textContent.trim() === "#1")
-    row.scrollIntoView({ block: "center" })
-    const r = row.getBoundingClientRect()
-    return [fr.left + r.left + 30, fr.top + r.top + r.height / 2].join(",")
-""".trimIndent()).toString().trim('"').split(",").map { it.toDouble() }
+val at =
+    ui.eval(
+            """
+            const f = window.getHistoryIframeElement ? window.getHistoryIframeElement() : document.querySelector("#history-iframe")
+            const fr = f.getBoundingClientRect()
+            const row = [...f.contentDocument.querySelectorAll("#box-story-list .box-story-item")].find(r => r.querySelector(".range").textContent.trim() === "#1")
+            row.scrollIntoView({ block: "center" })
+            const r = row.getBoundingClientRect()
+            return [fr.left + r.left + 30, fr.top + r.top + r.height / 2].join(",")
+            """
+                .trimIndent(),
+        )
+        .toString()
+        .trim('"')
+        .split(",")
+        .map { it.toDouble() }
 ui.moveMouse(at[0], at[1], 6)
 ui.clickAt(at[0], at[1])
 var shown = ""
 for (i in 0 until 60) {
     ui.pause(250)
-    shown = ui.eval("""
-        const f = window.getHistoryIframeElement ? window.getHistoryIframeElement() : document.querySelector("#history-iframe")
-        const d = f.contentDocument
-        return "target=" + (d.querySelector("#target-version")?.textContent?.trim() || "") +
-            " active=" + (d.querySelector("#box-story-list .box-story-item.active .range")?.textContent?.trim() || "")
-    """.trimIndent()).toString()
+    shown =
+        ui.eval(
+                """
+                const f = window.getHistoryIframeElement ? window.getHistoryIframeElement() : document.querySelector("#history-iframe")
+                const d = f.contentDocument
+                return "target=" + (d.querySelector("#target-version")?.textContent?.trim() || "") +
+                    " active=" + (d.querySelector("#box-story-list .box-story-item.active .range")?.textContent?.trim() || "")
+                """
+                    .trimIndent(),
+            )
+            .toString()
     if (shown.contains("target=#1") && shown.contains("active=#1")) break
 }
-check(shown.contains("target=#1") && shown.contains("active=#1")) { "clicking This Box's #1 row did not select version #1: " + shown }
+check(shown.contains("target=#1") && shown.contains("active=#1")) {
+    "clicking This Box's #1 row did not select version #1: " + shown
+}
 ui.pause(1200)
 ```
 
@@ -301,7 +364,9 @@ is listed too; here the guide is reading the notes on `sketch`.
 ui.eval("window.showDocumentGuide(); return true")
 ui.waitForSelector("#document-guide #guide-notes button, #document-guide #guide-notes a", 15000.0)
 // Open sketch's notes from the guide's own list, the way a reader would.
-ui.eval("const b = document.querySelector('#document-guide #guide-notes button, #document-guide #guide-notes a'); b.click(); return true")
+ui.eval(
+    "const b = document.querySelector('#document-guide #guide-notes button, #document-guide #guide-notes a'); b.click(); return true",
+)
 ui.pause(1200)
 val text = ui.eval("return document.querySelector('#document-guide')?.innerText || ''").toString()
 check("Ring sketch" in text) { "the guide is not showing sketch's notes: " + text }
@@ -320,14 +385,19 @@ var ready = false
 repeat(40) {
     if (!ready) {
         ui.pause(150)
-        ready = ui.eval("return document.getElementById('profile-status')?.textContent.startsWith('Latched') && Number(document.getElementById('profile-timeline')?.dataset.selectedCount) > 30")?.toString() == "true"
+        ready =
+            ui.eval(
+                    "return document.getElementById('profile-status')?.textContent.startsWith('Latched') && Number(document.getElementById('profile-timeline')?.dataset.selectedCount) > 30",
+                )
+                ?.toString() == "true"
     }
 }
 check(ready) { "The real profiling demo did not produce a latched capture" }
 // Frame the actual panel at a readable width; all content and plotted data come from the capture.
 ui.eval("const p=document.getElementById('profile-timeline'); return 'framed'")
 ui.pause(300)
-ui.eval("""
+ui.eval(
+    """
     const metric=document.getElementById('profile-metric');
     metric.value='bytes'; metric.dispatchEvent(new Event('change'));
     const overview=document.getElementById('profile-overview');
@@ -339,7 +409,8 @@ ui.eval("""
     const count=Number(document.getElementById('profile-timeline').dataset.selectedCount);
     if(count<=0) throw new Error('The brushed interval has no observed resumes');
     return count;
-""")
+""",
+)
 ui.pause(300)
 ```
 
@@ -376,7 +447,9 @@ progress and, when it is done, a download button; below, it has captured the out
 document's box.
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x700" clip-selector="#field-publication" screenshot="assets/tour_interface/publish.png" transcript="../../dev_docs/agents/transcripts/docs_capture/tour_interface_document.yaml" document="docs-tour-interface-publish" fresh-document=true hide-toasts=true padding="8" wait="0" timeout="150" embed=true hidden=true name="tour-interface-publish" alt="The Publish document panel after packaging this document: a status line counting the outputs captured, a line on what the folder holds, and the Download web publication (.zip) button."}
-ui.eval("const a = (window.lastActions || []).find(a => a.id === 'publish-document-web'); if (!a) throw new Error('no action publish-document-web'); a.run(); return true")
+ui.eval(
+    "const a = (window.lastActions || []).find(a => a.id === 'publish-document-web'); if (!a) throw new Error('no action publish-document-web'); a.run(); return true",
+)
 // Wait for the publication to finish packaging, so the panel shows its result rather than its progress.
 var status = ""
 for (i in 0 until 80) {

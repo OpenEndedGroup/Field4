@@ -66,8 +66,7 @@ operations:
 
           println("n=${s.count}  seen=${buf.samplesSeen}  refused=${buf.droppedNonFinite}  evicted=${buf.droppedByCapacity}")
           println(
-              "min=${s.min.f3}  q1=${s.q1.f3}  median=${s.median.f3}" +
-                  "  q3=${s.q3.f3}  max=${s.max.f3}",
+              "min=${s.min.f3}  q1=${s.q1.f3}  median=${s.median.f3}" + "  q3=${s.q3.f3}  max=${s.max.f3}",
           )
 
           // 1. mean > median is the signature of a right skew, and skewness agrees in sign.
@@ -146,8 +145,7 @@ operations:
               val actual = buildHistogram(values)
               println("$label: iqr=${s.iqr.f3} sd=${s.sampleStdDev.f3} range=${range.f3}")
               println(
-                  "  FD=${hFd.f4}  Scott=${hScott.f4}  Sturges=${hSturges.f4} (k=$kSturges)" +
-                      "  -> $which wins",
+                  "  FD=${hFd.f4}  Scott=${hScott.f4}  Sturges=${hSturges.f4} (k=$kSturges)" + "  -> $which wins",
               )
               println(
                   "  predicted ${predicted} bins of ${(range / predicted).f5}; " +
@@ -224,9 +222,7 @@ operations:
                   color = vec(0.48, 0.85, 1.0, 0.8),
                   pointSize = 1.1,
               )
-              val caption =
-                  "r=${r.f3} rho=${rho.f3} tau=${tau.f3}" +
-                      " xi=${xi.f3} dCor=${dcor.f3} MIC~=${mic.f3}"
+              val caption = "r=${r.f3} rho=${rho.f3} tau=${tau.f3}" + " xi=${xi.f3} dCor=${dcor.f3} MIC~=${mic.f3}"
               "$label\n$caption" to cloud
           }
 
@@ -459,8 +455,7 @@ operations:
           println("median knot chasing a step to $step (smoothingAlpha=${QuantileWarpConfig().smoothingAlpha}):")
           [1, 2, 4, 8, 12].forEach { k ->
               println(
-                  "  after $k updates gap=${gaps[k - 1].f3}  vs closed form ${step}*0.8^$k=" +
-                      "${(step * 0.8.pow(k)).f3}",
+                  "  after $k updates gap=${gaps[k - 1].f3}  vs closed form ${step}*0.8^$k=" + "${(step * 0.8.pow(k)).f3}",
               )
           }
 

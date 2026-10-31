@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="refusals" index="0" -->
 
 ```edn [field-box id="refusals" role="properties"]
-{"id" "refusals" "index" 0 "name" "Solid notation — refusals, and the hybrid build" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Solid notation — refusals, and the hybrid build" "_tombstone" false "frame" #afield/rect [80.0 280.0 380.0 50.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "refusals_code_.kt" "lines" 104 "characters" 4593 "sha256" "bc467454f232beab41bda0418a502b3f6d2a0a8fa98408f3334fdd15cb9ba0e8"}]}
+{"id" "refusals" "index" 0 "name" "Solid notation — refusals, and the hybrid build" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Solid notation — refusals, and the hybrid build" "_tombstone" false "frame" #afield/rect [80.0 280.0 380.0 50.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "refusals_code_.kt" "lines" 103 "characters" 4556 "sha256" "80dc2ea314da78ef80ed1c649ecf0c3fe21be02e27fdaa6b57cde9af8286dbfb"}]}
 ```
 
 ```kotlin [field-property box="refusals" name="code" path="refusals_code_.kt"]
@@ -55,14 +55,13 @@ run {
     // The catalogue, and why the last two refusals are a different kind from the first two.
     println("The catalogue, in full — try each of these:")
     listOf<Pair<String, SolidExpr>>(
-            "smoothUnion(a, b, k)" to smoothUnion(sphere(1.0), cuboid(1.0, 1.0, 1.0), k = 0.2),
-            "gyroid()" to gyroid(),
-            "sphere(1).rounded(0.1)" to sphere(1.0).rounded(0.1),
-            "sphere(1).shelled(0.05)" to sphere(1.0).shelled(0.05),
-        )
-        .forEach { (label, e) ->
-            println("  %-24s %s".format(label, e.exactRefusal()!!.why.take(96) + "…"))
-        }
+        "smoothUnion(a, b, k)" to smoothUnion(sphere(1.0), cuboid(1.0, 1.0, 1.0), k = 0.2),
+        "gyroid()" to gyroid(),
+        "sphere(1).rounded(0.1)" to sphere(1.0).rounded(0.1),
+        "sphere(1).shelled(0.05)" to sphere(1.0).shelled(0.05),
+    ).forEach { (label, e) ->
+        println("  %-24s %s".format(label, e.exactRefusal()!!.why.take(96) + "…"))
+    }
     println()
     println("The last two are the interesting ones. They are NOT 'we did not get to it': an")
     println("exact-looking answer is available — Minkowski sum with a sphere — and it is the")

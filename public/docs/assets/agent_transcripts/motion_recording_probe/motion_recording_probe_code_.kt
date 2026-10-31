@@ -8,8 +8,8 @@ val clip = MotionExamples.contractClip()
 val play = AtomicBoolean(false)
 val scrub = AtomicReference(1.35)
 controlGroup {
-    slider("Session time (seconds)", 0.0, 4.0, initialValue=1.35) { scrub.set(it) }
-    checkbox("Play recording", initialValue=false) { play.set(it) }
+    slider("Session time (seconds)", 0.0, 4.0, initialValue = 1.35) { scrub.set(it) }
+    checkbox("Play recording", initialValue = false) { play.set(it) }
 }
 val started = AnimationClock.nowSeconds()
 
@@ -37,13 +37,18 @@ loop {
         color = vec(0.85, 0.9, 1.0, 1.0)
         filled = true
     }
-    val border = fline { rect(0.0, 0.0, 600.0, 300.0); color = vec(0.2, 0.25, 0.3, 1.0) }
-    lines(border, drawing, points, w=600.0, h=300.0, channel="motion")
-    markdown("status", "**Coordinate probe** · no network inference\n\n" +
-        "Time ${time.f2} s · episode ${snapshot.frame.episode} · " +
-        if (snapshot.held) "holding before reset" else "recorded pose")
+    val border = fline {
+        rect(0.0, 0.0, 600.0, 300.0)
+        color = vec(0.2, 0.25, 0.3, 1.0)
+    }
+    lines(border, drawing, points, w = 600.0, h = 300.0, channel = "motion")
+    markdown(
+        "status",
+        "**Coordinate probe** · no network inference\n\n" +
+            "Time ${time.f2} s · episode ${snapshot.frame.episode} · " +
+            if (snapshot.held) "holding before reset" else "recorded pose",
+    )
     displayOpen("motion")
     displayOpen("status")
     delay(16) // Yield without flooding the UI transport.
-
 }

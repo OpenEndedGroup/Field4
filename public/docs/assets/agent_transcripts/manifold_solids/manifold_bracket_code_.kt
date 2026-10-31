@@ -138,8 +138,7 @@ run {
     }
     println()
     println(
-        "wall between the slot and the nearest bore: " +
-            "${slotSolid.minGap(nearestBore, searchLength = 30.0).f3} mm",
+        "wall between the slot and the nearest bore: " + "${slotSolid.minGap(nearestBore, searchLength = 30.0).f3} mm",
     )
     nearestBore.close()
     slotSolid.close()

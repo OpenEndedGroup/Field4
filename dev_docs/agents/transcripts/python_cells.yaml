@@ -29,9 +29,11 @@ operations:
         mainLanguage: python
         isPythonRoot: true
         code: |
-          // This box is the language ROOT, and is itself still Kotlin -- the toggle swaps the
-          // execution on a root's CHILDREN, never on the root (LanguageRuntimeSupport.kt:56-69).
-          // Its `mainLanguage` property is what makes the four boxes below Python.
+          /*
+          This box is the language ROOT, and is itself still Kotlin -- the toggle swaps the
+          execution on a root's CHILDREN, never on the root (LanguageRuntimeSupport.kt:56-69).
+          Its `mainLanguage` property is what makes the four boxes below Python.
+          */
           println("the root stays Kotlin")
   - create:
       box: python_hello

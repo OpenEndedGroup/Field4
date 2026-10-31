@@ -26,18 +26,18 @@ operations:
       properties:
         code: |
           import afield.graphics.vulkan.util.Options
-          
+
           prop<Window>(window)
           prop<Renderer>(renderer)
-          
+
           Options.enableHDR = false
           Options.profiling = false
-          
+
           once.renderer {
               window = Window("RectSL SDF")
               Renderer(window)
           }
-          
+
           println("rectsl sdf renderer ready")
           start(renderer::run)
   # 2. the SDF box — this is the one to hack on.
@@ -117,18 +117,16 @@ operations:
 
           // 4. One fullscreen triangle, no vertex attributes, and a clock. `time` is the
           //    only thing that changes per frame — the geometry never moves on the CPU.
-          val module =
-              Module(
-                      parameters(renderer) {
-                          name = "rectsl-sdf-live"
-                          vertex = RectSLSdfShader.VERTEX
-                          fragment = fragmentSource
-                          blend = false
-                          depthTest = false
-                          primitiveType = triangles
-                      },
-                  )
-                  .pointer()
+          val module = Module(
+              parameters(renderer) {
+                  name = "rectsl-sdf-live"
+                  vertex = RectSLSdfShader.VERTEX
+                  fragment = fragmentSource
+                  blend = false
+                  depthTest = false
+                  primitiveType = triangles
+              },
+          ).pointer()
 
           val mesh = fullscreenTriangle(module)
 

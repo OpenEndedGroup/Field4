@@ -30,8 +30,7 @@ fun Box.explain(label: String, values: List<Double>): Histogram {
     val actual = buildHistogram(values)
     println("$label: iqr=${s.iqr.f3} sd=${s.sampleStdDev.f3} range=${range.f3}")
     println(
-        "  FD=${hFd.f4}  Scott=${hScott.f4}  Sturges=${hSturges.f4} (k=$kSturges)" +
-            "  -> $which wins",
+        "  FD=${hFd.f4}  Scott=${hScott.f4}  Sturges=${hSturges.f4} (k=$kSturges)" + "  -> $which wins",
     )
     println(
         "  predicted ${predicted} bins of ${(range / predicted).f5}; " +

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-31T03:45:34.467Z",
+  "capturedAt": "2026-10-31T03:46:21.597Z",
   "documentName": "inertial_movement",
   "outputs": [
     {
@@ -36,7 +36,7 @@
         "svg"
       ],
       "width": 542,
-      "height": 385,
+      "height": 397,
       "path": "outputs/2.html"
     },
     {

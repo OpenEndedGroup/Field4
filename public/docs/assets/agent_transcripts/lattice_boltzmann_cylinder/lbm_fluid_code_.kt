@@ -1,7 +1,9 @@
-// A lattice Boltzmann fluid in a wind tunnel: a wind blows left to right and the
-// lattice wraps, so what leaves on the right comes back on the left.
-// On its own it is uniform wind and shows nothing; the box beneath this one puts
-// something in its way.
+/*
+A lattice Boltzmann fluid in a wind tunnel: a wind blows left to right and the
+lattice wraps, so what leaves on the right comes back on the left.
+On its own it is uniform wind and shows nothing; the box beneath this one puts
+something in its way.
+*/
 prop<ShaderLatticeBoltzmannSystem>(lbm) = ShaderLatticeBoltzmannSystem() {
     width = 800
     height = 480

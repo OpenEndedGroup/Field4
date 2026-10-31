@@ -12,8 +12,7 @@ val s = buf.snapshot()
 
 println("n=${s.count}  seen=${buf.samplesSeen}  refused=${buf.droppedNonFinite}  evicted=${buf.droppedByCapacity}")
 println(
-    "min=${s.min.f3}  q1=${s.q1.f3}  median=${s.median.f3}" +
-        "  q3=${s.q3.f3}  max=${s.max.f3}",
+    "min=${s.min.f3}  q1=${s.q1.f3}  median=${s.median.f3}" + "  q3=${s.q3.f3}  max=${s.max.f3}",
 )
 
 // 1. mean > median is the signature of a right skew, and skewness agrees in sign.

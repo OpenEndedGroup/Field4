@@ -76,8 +76,7 @@ val gaps = (1..12).map {
 println("median knot chasing a step to $step (smoothingAlpha=${QuantileWarpConfig().smoothingAlpha}):")
 [1, 2, 4, 8, 12].forEach { k ->
     println(
-        "  after $k updates gap=${gaps[k - 1].f3}  vs closed form ${step}*0.8^$k=" +
-            "${(step * 0.8.pow(k)).f3}",
+        "  after $k updates gap=${gaps[k - 1].f3}  vs closed form ${step}*0.8^$k=" + "${(step * 0.8.pow(k)).f3}",
     )
 }
 

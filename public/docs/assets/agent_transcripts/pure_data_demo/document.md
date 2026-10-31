@@ -58,14 +58,13 @@ From `code`
 A Field sawtooth through a Pd lowpass: `input` feeds the patch's [adc~]. Launch it.
 
 ```edn [field-box id="pd_effect" role="properties"]
-{"id" "pd_effect" "index" 2 "name" "as an effect" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "as an effect" "_tombstone" false "frame" #afield/rect [230.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pd_effect_code_.kt" "lines" 25 "characters" 593 "sha256" "3e7a94a7e893e49edad4f4cf7036d02fc11cad20cf3d33876ed9c0d8b1fb89d5"}]}
+{"id" "pd_effect" "index" 2 "name" "as an effect" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "as an effect" "_tombstone" false "frame" #afield/rect [230.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pd_effect_code_.kt" "lines" 23 "characters" 569 "sha256" "2ad12538db6b4f3aba1f97fdef92ccd236764d9fb740327bf7a4b4e9127b7371"}]}
 ```
 
 ```kotlin [field-property box="pd_effect" name="code" path="pd_effect_code_.kt"]
 // A Field sawtooth through a Pd lowpass: `input` feeds the patch's [adc~]. Launch it.
-val fx =
-    pd(
-        """
+val fx = pd(
+    """
 #X obj 20 20 adc~;
 #X obj 20 60 lop~ 600;
 #X obj 20 100 *~ 0.15;
@@ -79,12 +78,11 @@ val fx =
 #X connect 2 0 4 0;
 #X connect 4 0 5 0;
 """,
-        input = SawOsc(Param(110f)).pan(),
-    )
+    input = SawOsc(Param(110f)).pan(),
+)
 var n = 0
 fx.receive("level") { m ->
-    if (n++ % 10 == 0)
-        display("level", "<div style='padding:8px'>after the lowpass: ${(m.float ?: 0f).f1} dB</div>")
+    if (n++ % 10 == 0) display("level", "<div style='padding:8px'>after the lowpass: ${(m.float ?: 0f).f1} dB</div>")
 }
 fx
 ```
@@ -100,14 +98,13 @@ From `code`
 A Pd patch as a Kotlin value. Launch it; move the Pitch slider.
 
 ```edn [field-box id="pd_kotlin" role="properties"]
-{"id" "pd_kotlin" "index" 3 "name" "from Kotlin" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "from Kotlin" "_tombstone" false "frame" #afield/rect [40.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pd_kotlin_code_.kt" "lines" 44 "characters" 1310 "sha256" "7fc67cae2eb72d3b19f1ac9e6ba23838a75c5c2f0d3e5b37324b6725076810b3"}]}
+{"id" "pd_kotlin" "index" 3 "name" "from Kotlin" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "from Kotlin" "_tombstone" false "frame" #afield/rect [40.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pd_kotlin_code_.kt" "lines" 43 "characters" 1298 "sha256" "811615c14f6256f65ce63a6436300ea1c19ba3e7ddccc0c81c1ff6de1beaaa3f"}]}
 ```
 
 ```kotlin [field-property box="pd_kotlin" name="code" path="pd_kotlin_code_.kt"]
 // A Pd patch as a Kotlin value. Launch it; move the Pitch slider.
-val patch =
-    pd(
-        """
+val patch = pd(
+    """
 #N canvas 0 0 520 300 12;
 #X obj 20 20 hsl 128 15 55 440 0 0 empty pitch Pitch -2 -8 0 10 #fcfcfc #000000 #000000 0 1;
 #X msg 20 50 \$1 40;
@@ -127,7 +124,7 @@ val patch =
 #X connect 4 0 7 0;
 #X connect 7 0 8 0;
 """,
-    )
+)
 
 // tabosc4~ wants 2^n + 3 points: one guard point before, two after.
 val partials = [1.0, 0.5, 0.33, 0.25, 0.2, 0.16]

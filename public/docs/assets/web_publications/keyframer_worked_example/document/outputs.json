@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-31T03:51:04.221Z",
+  "capturedAt": "2026-10-31T01:03:20.819Z",
   "documentName": "keyframer_worked_example",
   "outputs": [
     {
@@ -42,7 +42,7 @@
         "svg"
       ],
       "width": 958,
-      "height": 481,
+      "height": 479,
       "path": "outputs/3.html"
     },
     {

@@ -40,40 +40,49 @@ Double-click empty graph to add a key. Drag a key to move it in time and value a
 // Wait for the editor and its keys, then find things in its iframe, in page coordinates, as "x,y".
 ui.waitForSelector("iframe[src*='/keyframe?']", 20000.0)
 // The iframe arrives before its keys do; wait until the editor is drawing all four.
-val ready = """
-  const f = Array.from(document.querySelectorAll('iframe')).filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0).pop();
-  return f && f.contentDocument ? f.contentDocument.querySelectorAll('.kf-keyframe').length : 0;
-""".trimIndent()
+val ready =
+    """
+    const f = Array.from(document.querySelectorAll('iframe')).filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0).pop();
+    return f && f.contentDocument ? f.contentDocument.querySelectorAll('.kf-keyframe').length : 0;
+    """
+        .trimIndent()
 var tries = 0
 while (ui.eval(ready).toString().trim('"') != "4" && tries++ < 60) ui.pause(250)
 ui.pause(200)
-// Keep the main page producing frames. The recorder only gets a new one when this page paints, and
-// the lanes repaint inside their own frames, so without this the video holds a stale picture while
-// the curves, playheads and pad go on changing underneath. One pixel, all but transparent.
-ui.eval("const k = document.createElement('div'); k.style = 'position:fixed;left:0;top:0;width:1px;height:1px;pointer-events:none;z-index:2147483647'; document.body.appendChild(k); let on = false; (function tick() { on = !on; k.style.opacity = on ? '0.011' : '0.010'; requestAnimationFrame(tick); })(); return 'ok'")
-ui.eval("""
-  const frame = Array.from(document.querySelectorAll('iframe')).filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0).pop();
-  const d = frame.contentDocument;
-  const fr = frame.getBoundingClientRect();
-  const centre = el => { const r = el.getBoundingClientRect(); return [fr.left + r.left + r.width / 2, fr.top + r.top + r.height / 2]; };
-  const keys = () => Array.from(d.querySelectorAll('.kf-keyframe')).map(g => centre(g.querySelector('circle')));
-  // time/value -> page, from the first two keys as drawn: (0, 0.1) and (1, 0.9).
-  const k = keys();
-  const sx = (k[1][0] - k[0][0]) / 1.0, sy = (k[1][1] - k[0][1]) / 0.8;
-  window.__kf = {
-    pos: (t, v) => [k[0][0] + t * sx, k[0][1] + (v - 0.1) * sy].join(','),
-    key: i => keys()[i].join(','),
-    handle: i => {
-      const kp = keys()[i];
-      const hs = Array.from(d.querySelectorAll('.kf-handle')).map(centre).filter(p => p[0] > kp[0] + 2);
-      hs.sort((a, b) => Math.hypot(a[0] - kp[0], a[1] - kp[1]) - Math.hypot(b[0] - kp[0], b[1] - kp[1]));
-      return hs[0].join(',');
-    },
-    // The menu is drawn in this page, not in the editor's frame.
-    button: title => { const r = document.querySelector('.kfm-type[title="' + title + '"]').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2].join(','); }
-  };
-  return 'ok';
-""".trimIndent())
+/*
+Keep the main page producing frames. The recorder only gets a new one when this page paints, and
+the lanes repaint inside their own frames, so without this the video holds a stale picture while
+the curves, playheads and pad go on changing underneath. One pixel, all but transparent.
+*/
+ui.eval(
+    "const k = document.createElement('div'); k.style = 'position:fixed;left:0;top:0;width:1px;height:1px;pointer-events:none;z-index:2147483647'; document.body.appendChild(k); let on = false; (function tick() { on = !on; k.style.opacity = on ? '0.011' : '0.010'; requestAnimationFrame(tick); })(); return 'ok'",
+)
+ui.eval(
+    """
+    const frame = Array.from(document.querySelectorAll('iframe')).filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0).pop();
+    const d = frame.contentDocument;
+    const fr = frame.getBoundingClientRect();
+    const centre = el => { const r = el.getBoundingClientRect(); return [fr.left + r.left + r.width / 2, fr.top + r.top + r.height / 2]; };
+    const keys = () => Array.from(d.querySelectorAll('.kf-keyframe')).map(g => centre(g.querySelector('circle')));
+    // time/value -> page, from the first two keys as drawn: (0, 0.1) and (1, 0.9).
+    const k = keys();
+    const sx = (k[1][0] - k[0][0]) / 1.0, sy = (k[1][1] - k[0][1]) / 0.8;
+    window.__kf = {
+      pos: (t, v) => [k[0][0] + t * sx, k[0][1] + (v - 0.1) * sy].join(','),
+      key: i => keys()[i].join(','),
+      handle: i => {
+        const kp = keys()[i];
+        const hs = Array.from(d.querySelectorAll('.kf-handle')).map(centre).filter(p => p[0] > kp[0] + 2);
+        hs.sort((a, b) => Math.hypot(a[0] - kp[0], a[1] - kp[1]) - Math.hypot(b[0] - kp[0], b[1] - kp[1]));
+        return hs[0].join(',');
+      },
+      // The menu is drawn in this page, not in the editor's frame.
+      button: title => { const r = document.querySelector('.kfm-type[title="' + title + '"]').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2].join(','); }
+    };
+    return 'ok';
+    """
+        .trimIndent(),
+)
 
 fun at(expr: String): Pair<Double, Double> {
     val (x, y) = ui.eval("return window.__kf.$expr").toString().trim('"').split(",").map { it.toDouble() }
@@ -123,14 +132,19 @@ for (attempt in 1..3) {
 }
 ui.pause(300)
 // The menu opens in this page; if it did not, say what is showing instead.
-val shown = ui.eval("""
+val shown =
+    ui.eval(
+            """
   const f = Array.from(document.querySelectorAll('iframe')).filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0).pop();
   const d = f.contentDocument, fr = f.getBoundingClientRect();
   const m = document.querySelector('.kfm');
   const el = d.elementFromPoint(${peak.first} - fr.left, ${peak.second} - fr.top);
   return (m ? 'menu: ' + m.textContent.slice(0, 80) : 'no menu') + ' | under pointer: ' +
     (el ? el.tagName + '.' + (el.getAttribute('class') || '') : 'nothing') + ' | menus in frame: ' + d.querySelectorAll('.kfm').length;
-""".trimIndent()).toString()
+"""
+                .trimIndent(),
+        )
+        .toString()
 if (!shown.contains("Continuous")) error("key menu did not open on the peak: " + shown)
 val b = at("button('Bezier (Continuous)')")
 ui.moveMouse(b.first, b.second, 10)
@@ -159,7 +173,9 @@ ui.press("Enter")
 ui.pause(300)
 
 // And undo it.
-ui.down("Meta"); ui.press("KeyZ"); ui.up("Meta")
+ui.down("Meta")
+ui.press("KeyZ")
+ui.up("Meta")
 ui.pause(450)
 ```
 
@@ -194,18 +210,22 @@ Here is the menu for a key, open over the curve. With several keys selected it a
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="700x980" clip="0,0,700,980" hide-toasts=true screenshot="assets/keyframe_editor/key_menu.png" transcript="../../dev_docs/agents/transcripts/docs_capture/keyframe_editing.yaml" padding="0" wait="0" timeout="240" embed=true hidden=true name="keyframe-key-menu" alt="The brightness editor with the menu for the key at time 1 open beside it, reaching past the editor's own frame. The menu is headed KEY and has time and value fields reading 1 and 0.9, five type buttons labelled Linear, Hold, Free, Flat and Continuous with Linear highlighted, the library's Ease table and its Spline, Shape and Noise groups, then Copy, Cut, Duplicate and Paste here with their shortcuts, Lock, Delete, and Frame curve"}
 ui.waitForSelector("iframe[src*='/keyframe?']", 20000.0)
-val ready = """
-  const f = Array.from(document.querySelectorAll('iframe')).filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0).pop();
-  return f && f.contentDocument ? f.contentDocument.querySelectorAll('.kf-keyframe').length : 0;
-""".trimIndent()
+val ready =
+    """
+    const f = Array.from(document.querySelectorAll('iframe')).filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0).pop();
+    return f && f.contentDocument ? f.contentDocument.querySelectorAll('.kf-keyframe').length : 0;
+    """
+        .trimIndent()
 var tries = 0
 while (ui.eval(ready).toString().trim('"') != "4" && tries++ < 60) ui.pause(250)
-val peakScript = """
-  const f = Array.from(document.querySelectorAll('iframe')).filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0).pop();
-  const fr = f.getBoundingClientRect();
-  const r = f.contentDocument.querySelectorAll('.kf-keyframe circle')[1].getBoundingClientRect();
-  return Math.round(fr.left + r.left + r.width / 2) + ',' + Math.round(fr.top + r.top + r.height / 2);
-""".trimIndent()
+val peakScript =
+    """
+    const f = Array.from(document.querySelectorAll('iframe')).filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0).pop();
+    const fr = f.getBoundingClientRect();
+    const r = f.contentDocument.querySelectorAll('.kf-keyframe circle')[1].getBoundingClientRect();
+    return Math.round(fr.left + r.left + r.width / 2) + ',' + Math.round(fr.top + r.top + r.height / 2);
+    """
+        .trimIndent()
 // Measured only once the page has stopped moving: the panel may still be opening or panning into view.
 fun peakNow(): List<Double> {
     var last = ""
@@ -259,20 +279,24 @@ Smoothed, then simplified, from the curve's menu:
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="960x470" clip="0,0,960,470" hide-toasts=true video="assets/keyframe_editor/tidy_take.mp4" transcript="../../dev_docs/agents/transcripts/docs_capture/keyframe_tidy_take.yaml" fps="15" padding="0" wait="0" timeout="240" embed=true hidden=true name="keyframe-tidy-take" alt="The take editor full of keys, a ring for every frame, jittering along a wave while the playhead plays. A right-click on empty graph opens the curve's menu, headed Whole curve, 241 keys. Dragging the Smooth slider to the right irons the jitter out of the curve while the keys stay put in time; letting go keeps it. Dragging the Simplify slider then thins the keys out until the readout says 17 are left, spread along a curve of the same shape, and Undo in the menu lights up"}
 ui.waitForSelector("iframe[src*='/keyframe?']", 20000.0)
 // The iframe arrives before its keys do; wait until the editor is drawing the whole take.
-val ready = """
-  const f = Array.from(document.querySelectorAll('iframe')).filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0).pop();
-  return f && f.contentDocument ? f.contentDocument.querySelectorAll('.kf-keyframe').length : 0;
-""".trimIndent()
+val ready =
+    """
+    const f = Array.from(document.querySelectorAll('iframe')).filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0).pop();
+    return f && f.contentDocument ? f.contentDocument.querySelectorAll('.kf-keyframe').length : 0;
+    """
+        .trimIndent()
 var tries = 0
 while (ui.eval(ready).toString().trim('"') != "241" && tries++ < 60) ui.pause(250)
 // The plotting area, in page coordinates, once it has stopped moving.
-val area = """
-  const f = Array.from(document.querySelectorAll('iframe')).filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0).pop();
-  const fr = f.getBoundingClientRect();
-  const hit = Array.from(f.contentDocument.querySelectorAll('rect')).find(r => r.style.cursor === 'crosshair');
-  const r = hit.getBoundingClientRect();
-  return [fr.left + r.left, fr.top + r.top, r.width, r.height].map(Math.round).join(' ');
-""".trimIndent()
+val area =
+    """
+    const f = Array.from(document.querySelectorAll('iframe')).filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0).pop();
+    const fr = f.getBoundingClientRect();
+    const hit = Array.from(f.contentDocument.querySelectorAll('rect')).find(r => r.style.cursor === 'crosshair');
+    const r = hit.getBoundingClientRect();
+    return [fr.left + r.left, fr.top + r.top, r.width, r.height].map(Math.round).join(' ');
+    """
+        .trimIndent()
 var rect = ""
 tries = 0
 while (tries++ < 40) {
@@ -290,16 +314,28 @@ fun glide(x0: Double, y0: Double, x1: Double, y1: Double, steps: Int) {
     }
 }
 // A slider in the open menu, by its label: the page coordinates of its left end and its width.
-fun slider(label: String): List<Double> = ui.eval("""
+fun slider(label: String): List<Double> =
+    ui.eval(
+            """
   const row = Array.from(document.querySelectorAll('.kfm .kfm-tool')).find(r => r.textContent.indexOf('$label') === 0);
   const r = row.querySelector('input').getBoundingClientRect();
   return [r.left, r.top + r.height / 2, r.width].map(Math.round).join(' ');
-""".trimIndent()).toString().trim('"').split(" ").map { it.toDouble() }
+"""
+                .trimIndent(),
+        )
+        .toString()
+        .trim('"')
+        .split(" ")
+        .map { it.toDouble() }
 
-// Keep the main page producing frames. The recorder only gets a new one when this page paints, and
-// the editor repaints inside its own frame, so without this the video holds a stale picture while
-// the playhead goes on moving underneath. One pixel, all but transparent.
-ui.eval("const k = document.createElement('div'); k.style = 'position:fixed;left:0;top:0;width:1px;height:1px;pointer-events:none;z-index:2147483647'; document.body.appendChild(k); let on = false; (function tick() { on = !on; k.style.opacity = on ? '0.011' : '0.010'; requestAnimationFrame(tick); })(); return 'ok'")
+/*
+Keep the main page producing frames. The recorder only gets a new one when this page paints, and
+the editor repaints inside its own frame, so without this the video holds a stale picture while
+the playhead goes on moving underneath. One pixel, all but transparent.
+*/
+ui.eval(
+    "const k = document.createElement('div'); k.style = 'position:fixed;left:0;top:0;width:1px;height:1px;pointer-events:none;z-index:2147483647'; document.body.appendChild(k); let on = false; (function tick() { on = !on; k.style.opacity = on ? '0.011' : '0.010'; requestAnimationFrame(tick); })(); return 'ok'",
+)
 ui.pause(600)
 // The curve's menu, from empty graph at the right, so it opens beside the curve rather than over it.
 val mx = g[0] + g[2] * 0.97
@@ -382,18 +418,22 @@ The key menu lists them all:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="760x1000" clip-selector=".kfm" hide-toasts=true screenshot="assets/keyframe_editor/library_menu.png" transcript="../../dev_docs/agents/transcripts/docs_capture/keyframe_editing.yaml" padding="0" wait="0" timeout="240" embed=true hidden=true name="keyframe-library-menu" alt="The key menu, tall: the key's time and value fields; the five built-in types; under EASE a table of ten families, sine, quad, cubic, quart, quint, expo, circ, back, elastic and bounce, each with small icons for in, out and in-out, the elastic and bounce icons visibly wobbling; under SPLINE, Catmull-Rom, TCB tense, TCB loose, TCB overshoot, TCB corner, monotone and Steffen; under SHAPE, smoothstep, smootherstep, cosine, sigmoid, approach, slow middle, spring, 4 steps and 8 steps; under NOISE, noise, busy, drift and jitter; then Copy, Cut, Duplicate, Paste here, Lock, Delete and Frame curve"}
 ui.waitForSelector("iframe[src*='/keyframe?']", 20000.0)
-val ready = """
-  const f = Array.from(document.querySelectorAll('iframe')).filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0).pop();
-  return f && f.contentDocument ? f.contentDocument.querySelectorAll('.kf-keyframe').length : 0;
-""".trimIndent()
+val ready =
+    """
+    const f = Array.from(document.querySelectorAll('iframe')).filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0).pop();
+    return f && f.contentDocument ? f.contentDocument.querySelectorAll('.kf-keyframe').length : 0;
+    """
+        .trimIndent()
 var tries = 0
 while (ui.eval(ready).toString().trim('"') != "4" && tries++ < 60) ui.pause(250)
-val keyScript = """
-  const f = Array.from(document.querySelectorAll('iframe')).filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0).pop();
-  const fr = f.getBoundingClientRect();
-  const r = f.contentDocument.querySelectorAll('.kf-keyframe circle')[0].getBoundingClientRect();
-  return Math.round(fr.left + r.left + r.width / 2) + ',' + Math.round(fr.top + r.top + r.height / 2);
-""".trimIndent()
+val keyScript =
+    """
+    const f = Array.from(document.querySelectorAll('iframe')).filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0).pop();
+    const fr = f.getBoundingClientRect();
+    const r = f.contentDocument.querySelectorAll('.kf-keyframe circle')[0].getBoundingClientRect();
+    return Math.round(fr.left + r.left + r.width / 2) + ',' + Math.round(fr.top + r.top + r.height / 2);
+    """
+        .trimIndent()
 // Measured only once the page has stopped moving: the panel may still be opening or panning into view.
 fun keyNow(): List<Double> {
     var last = ""
@@ -413,7 +453,9 @@ for (attempt in 1..3) {
     ui.pause(600)
     if (ui.eval("return !!document.querySelector('.kfm .kfm-ease')").toString() == "true") break
 }
-val state = ui.eval("""
+val state =
+    ui.eval(
+            """
   const f = Array.from(document.querySelectorAll('iframe')).filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0).pop();
   const d = f.contentDocument, fr = f.getBoundingClientRect();
   const el = d.elementFromPoint(${key[0]} - fr.left, ${key[1]} - fr.top);
@@ -421,7 +463,11 @@ val state = ui.eval("""
   return 'host menu ' + !!document.querySelector('.kfm') + ', frame menu ' + d.querySelectorAll('.kfm').length +
     ', under pointer in frame ' + (el ? el.tagName + '.' + (el.getAttribute('class') || '') : 'none') +
     ', in page ' + (top ? top.tagName + '.' + (top.className || '') : 'none');
-""".trimIndent()).toString().replace("\"", "'")
+"""
+                .trimIndent(),
+        )
+        .toString()
+        .replace("\"", "'")
 if (!state.contains("host menu true")) error("KEYMENU-DIAG " + state)
 ui.pause(400)
 ```
@@ -455,20 +501,24 @@ Drag a key and the shapes either side of it follow, worked out in Kotlin as you 
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="700x330" clip="0,0,700,330" hide-toasts=true video="assets/keyframe_editor/custom_types.mp4" transcript="../../dev_docs/agents/transcripts/docs_capture/keyframe_custom_types.yaml" fps="20" padding="0" wait="0" timeout="240" embed=true hidden=true name="keyframe-custom-types" alt="The custom curve of four keys: an overshoot from 0.1 up to the key at time 1.5, a wobble down to 0.3 at time 3, and a jagged chaotic scribble up to 0.6 at time 4.5. The second key is dragged through half a circle over the top and let go further right and level with where it began, and the overshoot before it and the wobble after it re-form as it moves and stay as they are when it is let go; then the third key is dragged through half a circle below and let go to the right, the wobble and the chaotic scribble either side of it following it the same way"}
 ui.waitForSelector("iframe[src*='/keyframe?']", 20000.0)
-val ready = """
-  const f = Array.from(document.querySelectorAll('iframe')).filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0).pop();
-  return f && f.contentDocument ? f.contentDocument.querySelectorAll('.kf-keyframe').length : 0;
-""".trimIndent()
+val ready =
+    """
+    const f = Array.from(document.querySelectorAll('iframe')).filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0).pop();
+    return f && f.contentDocument ? f.contentDocument.querySelectorAll('.kf-keyframe').length : 0;
+    """
+        .trimIndent()
 var tries = 0
 while (ui.eval(ready).toString().trim('"') != "4" && tries++ < 60) ui.pause(250)
 // Key [i] in page coordinates, measured once the page has stopped moving.
 fun keyAt(i: Int): List<Double> {
-    val script = """
+    val script =
+        """
       const f = Array.from(document.querySelectorAll('iframe')).filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0).pop();
       const fr = f.getBoundingClientRect();
       const r = f.contentDocument.querySelectorAll('.kf-keyframe circle')[$i].getBoundingClientRect();
       return Math.round(fr.left + r.left + r.width / 2) + ',' + Math.round(fr.top + r.top + r.height / 2);
-    """.trimIndent()
+    """
+            .trimIndent()
     var last = ""
     repeat(30) {
         val now = ui.eval(script).toString().trim('"')
@@ -583,18 +633,20 @@ To work on a moment across all of them, hold Cmd (Ctrl elsewhere) and sweep a ba
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="700x900" clip="0,0,700,900" hide-toasts=true video="assets/keyframe_editor/two_curves.mp4" transcript="../../dev_docs/agents/transcripts/docs_capture/keyframe_two_lanes.yaml" fps="15" padding="0" wait="0" timeout="240" embed=true hidden=true name="keyframe-two-curves" alt="Two editors, x and y, stacked above an XY pad named spot whose handle traces a loop while both playheads sweep. The pointer moves across the x lane and a dashed time line follows it in the y lane. A zoom in the x lane narrows the time axis of both lanes at once; a scroll in the y lane slides both along in time; Frame curve, chosen from the y lane's menu, returns both to showing all their keys. Then a band swept across x's second key selects a key in each lane, and dragging x's key later in time carries y's selected key along by the same amount"}
 ui.waitForSelector("iframe[src*='/keyframe?']", 20000.0)
 // The two lanes' plotting areas, in page coordinates, once both are showing their keys.
-val lanes = """
-  const frames = Array.from(document.querySelectorAll('iframe')).filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0);
-  if (frames.length < 2) return '';
-  const parts = frames.map(f => {
-    const fr = f.getBoundingClientRect();
-    const hit = Array.from(f.contentDocument.querySelectorAll('rect')).find(r => r.style.cursor === 'crosshair');
-    if (!hit || f.contentDocument.querySelectorAll('.kf-keyframe').length < 3) return '';
-    const r = hit.getBoundingClientRect();
-    return [fr.left + r.left, fr.top + r.top, r.width, r.height].map(Math.round).join(' ');
-  });
-  return parts.every(p => p) ? parts.join(';') : '';
-""".trimIndent()
+val lanes =
+    """
+    const frames = Array.from(document.querySelectorAll('iframe')).filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0);
+    if (frames.length < 2) return '';
+    const parts = frames.map(f => {
+      const fr = f.getBoundingClientRect();
+      const hit = Array.from(f.contentDocument.querySelectorAll('rect')).find(r => r.style.cursor === 'crosshair');
+      if (!hit || f.contentDocument.querySelectorAll('.kf-keyframe').length < 3) return '';
+      const r = hit.getBoundingClientRect();
+      return [fr.left + r.left, fr.top + r.top, r.width, r.height].map(Math.round).join(' ');
+    });
+    return parts.every(p => p) ? parts.join(';') : '';
+    """
+        .trimIndent()
 var rects = ""
 var tries = 0
 while (tries++ < 60) {
@@ -613,10 +665,14 @@ fun glide(x0: Double, y0: Double, x1: Double, y1: Double, steps: Int) {
     }
 }
 
-// Keep the main page producing frames. The recorder only gets a new one when this page paints, and
-// the lanes repaint inside their own frames, so without this the video holds a stale picture while
-// the curves, playheads and pad go on changing underneath. One pixel, all but transparent.
-ui.eval("const k = document.createElement('div'); k.style = 'position:fixed;left:0;top:0;width:1px;height:1px;pointer-events:none;z-index:2147483647'; document.body.appendChild(k); let on = false; (function tick() { on = !on; k.style.opacity = on ? '0.011' : '0.010'; requestAnimationFrame(tick); })(); return 'ok'")
+/*
+Keep the main page producing frames. The recorder only gets a new one when this page paints, and
+the lanes repaint inside their own frames, so without this the video holds a stale picture while
+the curves, playheads and pad go on changing underneath. One pixel, all but transparent.
+*/
+ui.eval(
+    "const k = document.createElement('div'); k.style = 'position:fixed;left:0;top:0;width:1px;height:1px;pointer-events:none;z-index:2147483647'; document.body.appendChild(k); let on = false; (function tick() { on = !on; k.style.opacity = on ? '0.011' : '0.010'; requestAnimationFrame(tick); })(); return 'ok'",
+)
 ui.pause(600)
 // The pointer's time is marked in the other lane.
 val (h0x, h0y) = at(lx, 0.15, 0.5)
@@ -627,24 +683,36 @@ ui.pause(400)
 // Zoom time in x: y follows.
 val (zx, zy) = at(lx, 0.35, 0.5)
 ui.moveMouse(zx, zy, 10)
-repeat(8) { ui.wheel(zx, zy, 0.0, -50.0, "Control"); ui.pause(70) }
+repeat(8) {
+    ui.wheel(zx, zy, 0.0, -50.0, "Control")
+    ui.pause(70)
+}
 ui.pause(700)
 // Slide along in time from y: x follows.
 val (px, py) = at(ly, 0.5, 0.5)
 ui.moveMouse(px, py, 16)
-repeat(10) { ui.wheel(px, py, 30.0, 0.0); ui.pause(60) }
+repeat(10) {
+    ui.wheel(px, py, 30.0, 0.0)
+    ui.pause(60)
+}
 ui.pause(700)
 // Frame curve, from y's own menu: both lanes show all their keys again.
 val (fx, fy) = at(ly, 0.9, 0.15)
 ui.moveMouse(fx, fy, 8)
 ui.rightClickAt(fx, fy)
 ui.pause(600)
-val fit = ui.eval("""
-  const b = Array.from(document.querySelectorAll('.kfm .kfm-item')).find(e => e.textContent.indexOf('Frame curve') >= 0);
-  if (!b) return '';
-  const r = b.getBoundingClientRect();
-  return Math.round(r.left + r.width / 2) + ',' + Math.round(r.top + r.height / 2);
-""".trimIndent()).toString().trim('"')
+val fit =
+    ui.eval(
+            """
+            const b = Array.from(document.querySelectorAll('.kfm .kfm-item')).find(e => e.textContent.indexOf('Frame curve') >= 0);
+            if (!b) return '';
+            const r = b.getBoundingClientRect();
+            return Math.round(r.left + r.width / 2) + ',' + Math.round(r.top + r.height / 2);
+            """
+                .trimIndent(),
+        )
+        .toString()
+        .trim('"')
 if (fit.isNotEmpty()) {
     val (bx, by) = fit.split(",").map { it.toDouble() }
     ui.moveMouse(bx, by, 8)
@@ -655,12 +723,20 @@ ui.pause(800)
 
 // A moment across both lanes: Cmd-sweep a band in x, around its second key.
 fun keyIn(lane: Int, i: Int): Pair<Double, Double> {
-    val p = ui.eval("""
+    val p =
+        ui.eval(
+                """
       const frames = Array.from(document.querySelectorAll('iframe')).filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0);
       const f = frames[$lane], fr = f.getBoundingClientRect();
       const r = f.contentDocument.querySelectorAll('.kf-keyframe circle')[$i].getBoundingClientRect();
       return Math.round(fr.left + r.left + r.width / 2) + ',' + Math.round(fr.top + r.top + r.height / 2);
-    """.trimIndent()).toString().trim('"').split(",").map { it.toDouble() }
+    """
+                    .trimIndent(),
+            )
+            .toString()
+            .trim('"')
+            .split(",")
+            .map { it.toDouble() }
     return p[0] to p[1]
 }
 val (k1x, k1y) = keyIn(0, 1)
@@ -741,23 +817,27 @@ Here it is in the [starting point](#start-from-a-working-document)'s box, given 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="600x1110" clip="0,0,600,1110" hide-toasts=true video="assets/keyframe_editor/smooth_take.mp4" transcript="../../dev_docs/agents/transcripts/docs_capture/gesture_smooth_take.yaml" fps="15" padding="0" wait="0" timeout="240" embed=true hidden=true name="gesture-smooth-take" alt="Two keyframe lanes, lanes/x and lanes/y, packed with keys that follow a shaky sine in x and a shaky double wave in y, above a gesture pad whose trail is a figure eight with a ragged, trembling outline. Playheads sweep both lanes while a dot travels the eight. The hold button beside smooth take is pressed: both lanes thin out to a few smooth keys along the same waves, and the pad's trail redraws as a clean figure eight"}
 ui.waitForSelector("iframe[src*='/keyframe?']", 20000.0)
 // Both lanes showing their keys, and the page no longer moving.
-val ready = """
-  const frames = Array.from(document.querySelectorAll('iframe')).filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0);
-  return frames.length === 2 && frames.every(f => f.contentDocument && f.contentDocument.querySelectorAll('.kf-keyframe').length > 20) ? 'yes' : '';
-""".trimIndent()
+val ready =
+    """
+    const frames = Array.from(document.querySelectorAll('iframe')).filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0);
+    return frames.length === 2 && frames.every(f => f.contentDocument && f.contentDocument.querySelectorAll('.kf-keyframe').length > 20) ? 'yes' : '';
+    """
+        .trimIndent()
 var tries = 0
 while (ui.eval(ready).toString().trim('"') != "yes" && tries++ < 80) ui.pause(250)
 // The hold button in the row labelled smooth take, in page coordinates, once it has stopped moving.
-val button = """
-  const b = Array.from(document.querySelectorAll('button')).find(b => {
-    let row = b.parentElement;
-    for (let k = 0; k < 3 && row; k++, row = row.parentElement) if ((row.textContent || '').toLowerCase().indexOf('smooth take') >= 0 && row.querySelectorAll('button').length === 1) return true;
-    return false;
-  });
-  if (!b) return '';
-  const r = b.getBoundingClientRect();
-  return Math.round(r.left + r.width / 2) + ',' + Math.round(r.top + r.height / 2);
-""".trimIndent()
+val button =
+    """
+    const b = Array.from(document.querySelectorAll('button')).find(b => {
+      let row = b.parentElement;
+      for (let k = 0; k < 3 && row; k++, row = row.parentElement) if ((row.textContent || '').toLowerCase().indexOf('smooth take') >= 0 && row.querySelectorAll('button').length === 1) return true;
+      return false;
+    });
+    if (!b) return '';
+    const r = b.getBoundingClientRect();
+    return Math.round(r.left + r.width / 2) + ',' + Math.round(r.top + r.height / 2);
+    """
+        .trimIndent()
 var at = ""
 tries = 0
 while (tries++ < 40) {
@@ -768,10 +848,14 @@ while (tries++ < 40) {
 }
 val (bx, by) = at.split(",").map { it.toDouble() }
 
-// Keep the main page producing frames. The recorder only gets a new one when this page paints, and
-// the lanes repaint inside their own frames, so without this the video holds a stale picture while
-// the playheads go on moving underneath. One pixel, all but transparent.
-ui.eval("const k = document.createElement('div'); k.style = 'position:fixed;left:0;top:0;width:1px;height:1px;pointer-events:none;z-index:2147483647'; document.body.appendChild(k); let on = false; (function tick() { on = !on; k.style.opacity = on ? '0.011' : '0.010'; requestAnimationFrame(tick); })(); return 'ok'")
+/*
+Keep the main page producing frames. The recorder only gets a new one when this page paints, and
+the lanes repaint inside their own frames, so without this the video holds a stale picture while
+the playheads go on moving underneath. One pixel, all but transparent.
+*/
+ui.eval(
+    "const k = document.createElement('div'); k.style = 'position:fixed;left:0;top:0;width:1px;height:1px;pointer-events:none;z-index:2147483647'; document.body.appendChild(k); let on = false; (function tick() { on = !on; k.style.opacity = on ? '0.011' : '0.010'; requestAnimationFrame(tick); })(); return 'ok'",
+)
 ui.pause(1800)
 ui.moveMouse(bx, by, 16)
 ui.pause(300)

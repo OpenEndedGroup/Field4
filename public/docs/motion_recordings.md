@@ -211,7 +211,7 @@ loop {
 For a live session, the call is simply:
 
 ```diffstatic {data-lang=kotlin}
-showMotion(snapshot.frame, dancer.skeleton, follow=true, followHalfLife=.4)
+showMotion(snapshot.frame, dancer.skeleton, follow = true, followHalfLife = .4)
 ```
 
 Use `followVertical=true` to follow all axes. On an ordinary Three view, call

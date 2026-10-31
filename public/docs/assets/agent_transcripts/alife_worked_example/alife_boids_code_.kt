@@ -18,10 +18,7 @@ val noSep = start.copy()
 noSep.stepTimes(params.copy(separationWeight = 0.0), 900)
 
 println(
-    "flock polarization " +
-        flock.order().f3 +
-        ", CONTROL with no alignment " +
-        noAlign.order().f3,
+    "flock polarization " + flock.order().f3 + ", CONTROL with no alignment " + noAlign.order().f3,
 )
 println(
     "5th-percentile nearest neighbour: flock " +

@@ -533,13 +533,11 @@ operations:
 
           // Build something worth looking at: a sphere with a hole drilled through it, so the card has a
           // genus to report, then smooth it so the drill rim is not a hard edge.
-          val drilled =
-              marchingCubes(
-                      sdfSubtract(sdfSphere(0.8), sdfCylinder(0.32, 2.0)),
-                      boundsAround(radius = 1.0),
-                      48,
-                  )
-                  .taubinSmooth(12)
+          val drilled = marchingCubes(
+              sdfSubtract(sdfSphere(0.8), sdfCylinder(0.32, 2.0)),
+              boundsAround(radius = 1.0),
+              48,
+          ).taubinSmooth(12)
 
           println(drilled.summary())
           println("the card below reports the same numbers; the drill added a handle, so genus is 1")

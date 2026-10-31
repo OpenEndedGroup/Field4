@@ -42,7 +42,7 @@ fun freeEditorLayout() {
         if (c) for (const k of ["width", "height", "top", "right", "left", "bottom", "transform"]) c.style[k] = ""
         if (window.globalEditor && window.globalEditor.layout) window.globalEditor.layout()
         return true
-    """
+        """
             .trimIndent(),
     )
 }

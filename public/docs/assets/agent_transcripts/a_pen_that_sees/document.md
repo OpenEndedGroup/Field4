@@ -224,7 +224,7 @@ lines(
 <!-- field-box id="ps_doodle" index="4" -->
 
 ```edn [field-box id="ps_doodle" role="properties"]
-{"id" "ps_doodle" "index" 4 "name" "9 - hatch your drawing (launch)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "9 - hatch your drawing (launch)" "_tombstone" false "frame" #afield/rect [60.0 5460.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ps_doodle_code_.kt" "lines" 66 "characters" 2004 "sha256" "ffd5a4be5e87df0b34e074b7052e6a836308fda868a1859ce446acab8ff51eef"}]}
+{"id" "ps_doodle" "index" 4 "name" "9 - hatch your drawing (launch)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "9 - hatch your drawing (launch)" "_tombstone" false "frame" #afield/rect [60.0 5460.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ps_doodle_code_.kt" "lines" 64 "characters" 1895 "sha256" "0119cd4c2edef0643a2d5bff420c183f4d67bbbadfff1b008c61120ea253173c"}]}
 ```
 
 ```kotlin [field-property box="ps_doodle" name="code" path="ps_doodle_code_.kt"]
@@ -240,21 +240,19 @@ val border = fline {
     lineTo(0, 0)
     color = vec(1, 1, 1, 0.2)
 }
-val starter =
-    [
-            fline {
-                moveTo(90, 60)
-                cubicTo(200, 20, 260, 220, 400, 160)
-            },
-            fline {
-                moveTo(150, 250)
-                cubicTo(180, 150, 300, 300, 330, 230)
-            },
-        ]
-        .onEach {
-            it.color = vec(1.0, 0.85, 0.3, 1.0)
-            it.thickness = 2.0
-        }
+val starter = [
+    fline {
+        moveTo(90, 60)
+        cubicTo(200, 20, 260, 220, 400, 160)
+    },
+    fline {
+        moveTo(150, 250)
+        cubicTo(180, 150, 300, 300, 330, 230)
+    },
+].onEach {
+    it.color = vec(1.0, 0.85, 0.3, 1.0)
+    it.thickness = 2.0
+}
 val canvas = lines([border] + starter, channel = "draw here", w = 520.0, h = 320.0, editable = true, drawing = true)!!
 val hands = ["echoes", "michaux"]
 var hand = 0

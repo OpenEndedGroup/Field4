@@ -23,9 +23,6 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 From `code`
 
 {{ visionmetal uniforms=phase,amount,tint }}
-Open Live Metal in Field4Vision. Launch again after editing to hot-reload.
-The shader lives in this box's `msl` property — edit it and press alt-r to
-recompile on the headset without restarting any of this.
 
 From `msl` tags: `#define`
 
@@ -33,14 +30,16 @@ Uniforms are read by name: the head generates `#define u_phase frame.user[0]`
 and so on from the `uniforms=` list on the marker in the code property.
 
 ```edn [field-box id="agent_visionos_start" role="properties"]
-{"id" "agent_visionos_start" "index" 1 "name" "visionOS Starter" "parents" ["root" "agent_visionos_start_root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_visionos_start_root"} "name" "visionOS Starter" "_tombstone" false "frame" #afield/rect [90.0 150.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_visionos_start_code_.kt" "lines" 24 "characters" 716 "sha256" "a5cf1e01a68741218dcd077df16bf1b11f381c75238440479c240c703f95dd1e"} {"name" "msl" "language" "msl" "path" "agent_visionos_start_msl_.metal" "lines" 38 "characters" 1349 "sha256" "88d0efd7d55751118876a2806e3bd79ac51c05cc4ba67a2326b5b60fecb58747"}]}
+{"id" "agent_visionos_start" "index" 1 "name" "visionOS Starter" "parents" ["root" "agent_visionos_start_root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_visionos_start_root"} "name" "visionOS Starter" "_tombstone" false "frame" #afield/rect [90.0 150.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_visionos_start_code_.kt" "lines" 26 "characters" 713 "sha256" "b0899ad87799d73e731619efabf5f46fd39f3d9feed74d94220855dd8b083169"} {"name" "msl" "language" "msl" "path" "agent_visionos_start_msl_.metal" "lines" 38 "characters" 1349 "sha256" "88d0efd7d55751118876a2806e3bd79ac51c05cc4ba67a2326b5b60fecb58747"}]}
 ```
 
 ```kotlin [field-property box="agent_visionos_start" name="code" path="agent_visionos_start_code_.kt"]
 // {{ visionmetal uniforms=phase,amount,tint }}
-// Open Live Metal in Field4Vision. Launch again after editing to hot-reload.
-// The shader lives in this box's `msl` property — edit it and press alt-r to
-// recompile on the headset without restarting any of this.
+/*
+Open Live Metal in Field4Vision. Launch again after editing to hot-reload.
+The shader lives in this box's `msl` property — edit it and press alt-r to
+recompile on the headset without restarting any of this.
+*/
 onStart {
     // Geometry is built here, in the headset, and handed to Metal in one call.
     geometry {

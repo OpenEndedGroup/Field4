@@ -105,8 +105,7 @@ run {
 
     println()
     println(
-        "$layers layers between z=${zLow.f1} and ${zHigh.f1}, " +
-            "$totalContours contours in total",
+        "$layers layers between z=${zLow.f1} and ${zHigh.f1}, " + "$totalContours contours in total",
     )
     println("orange = the ${nozzle}mm nozzle path, offset inward from each layer's outline")
 

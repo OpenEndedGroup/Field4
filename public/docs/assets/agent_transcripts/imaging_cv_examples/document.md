@@ -273,7 +273,7 @@ version tracked 0 of 125 seeds at this size. Coarse octaves survive to the top o
 pyramid; the fine ones sharpen the final refinement.
 
 ```edn [field-box id="imaging_motion" role="properties"]
-{"id" "imaging_motion" "index" 4 "name" "motion — Lucas–Kanade flow and the homography RANSAC fits to it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "motion — Lucas–Kanade flow and the homography RANSAC fits to it" "_tombstone" false "frame" #afield/rect [80.0 2180.0 520.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imaging_motion_code_.kt" "lines" 64 "characters" 2899 "sha256" "5a69827c983ca6171af523025eff279813145cf0c4265453c310040471c0fb40"}]}
+{"id" "imaging_motion" "index" 4 "name" "motion — Lucas–Kanade flow and the homography RANSAC fits to it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "motion — Lucas–Kanade flow and the homography RANSAC fits to it" "_tombstone" false "frame" #afield/rect [80.0 2180.0 520.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imaging_motion_code_.kt" "lines" 63 "characters" 2891 "sha256" "6d8e33ced85d7224a8240ae491ba7694fd9137bc11af1a00b8cdebccafddd18f"}]}
 ```
 
 ```kotlin [field-property box="imaging_motion" name="code" path="imaging_motion_code_.kt"]
@@ -331,8 +331,7 @@ showImgGrid(
 )
 val (mdx, mdy) = flow.medianDisplacement()
 println(
-    "${flow.tracked().size}/${seeds.size} tracked; median displacement " +
-        "(${mdx.f2}, ${mdy.f2}) px",
+    "${flow.tracked().size}/${seeds.size} tracked; median displacement " + "(${mdx.f2}, ${mdy.f2}) px",
 )
 println("RANSAC ${fit.inlierCount} inliers of ${flow.tracked().size} after ${fit.iterations} iterations")
 println("recovered model agrees with the planted transform to ${worst.f3} px over the probe grid")

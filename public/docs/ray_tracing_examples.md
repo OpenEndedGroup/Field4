@@ -59,16 +59,14 @@ This is the smallest useful ray tracing pipeline: a single raygen shader writes 
 The module setup is just a raygen stage plus an image resolver:
 
 ```diffstatic {data-lang=kotlin}
-val module =
-    RayTracingModule(
-            Parameters(
-                renderer = renderer,
-                raygen = uvGradientRaygen,
-                imageResolver = { outputImageView },
-                name = "rt-uv-gradient",
-            ),
-        )
-        .pointer()
+val module = RayTracingModule(
+    Parameters(
+        renderer = renderer,
+        raygen = uvGradientRaygen,
+        imageResolver = { outputImageView },
+        name = "rt-uv-gradient",
+    ),
+).pointer()
 
 module += "dispatch" to RayTracingDispatch(module, 1024, 1024)
 renderer += "rt-uv-gradient" to module
@@ -154,19 +152,17 @@ val tlas = AccelerationStructure(renderer, "triangle-tlas").buildTopLevelNow(ins
 Once the TLAS exists, the module connects shader source to the output image and acceleration structure:
 
 ```diffstatic {data-lang=kotlin}
-val module =
-    RayTracingModule(
-            Parameters(
-                renderer = renderer,
-                raygen = triangleRaygen,
-                miss = triangleMiss,
-                closesthit = triangleClosestHit,
-                imageResolver = { outputImageView },
-                accelerationStructureResolver = { tlas },
-                name = "rt-triangle",
-            ),
-        )
-        .pointer()
+val module = RayTracingModule(
+    Parameters(
+        renderer = renderer,
+        raygen = triangleRaygen,
+        miss = triangleMiss,
+        closesthit = triangleClosestHit,
+        imageResolver = { outputImageView },
+        accelerationStructureResolver = { tlas },
+        name = "rt-triangle",
+    ),
+).pointer()
 module += "dispatch" to RayTracingDispatch(module, 1024, 1024)
 renderer += "rt-triangle" to module
 ```
@@ -382,18 +378,16 @@ val groups = RayTracingGroups(
     ),
 )
 
-val module =
-    RayTracingModule(
-            Parameters(
-                renderer = renderer,
-                rayTracingGroups = groups,
-                maxRayRecursionDepth = 3, // reflection bounces + 1 for the primary ray
-                imageResolver = { outputImageView },
-                accelerationStructureResolver = { tlas },
-                name = "rt-mirror-balls",
-            ),
-        )
-        .pointer()
+val module = RayTracingModule(
+    Parameters(
+        renderer = renderer,
+        rayTracingGroups = groups,
+        maxRayRecursionDepth = 3, // reflection bounces + 1 for the primary ray
+        imageResolver = { outputImageView },
+        accelerationStructureResolver = { tlas },
+        name = "rt-mirror-balls",
+    ),
+).pointer()
 ```
 
 The procedural sphere intersection shader solves a ray/sphere quadratic in object space, then reports the hit:

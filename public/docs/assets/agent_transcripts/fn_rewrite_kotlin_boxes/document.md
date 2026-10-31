@@ -39,20 +39,18 @@ WORKS. `rewriteFn` names the box to compile the `@{...}` snippets in, and that b
 idle, so hydrating there replays nothing. One pass, and the sampled signal really moves.
 
 ```edn [field-box id="fnrw_working" role="properties"]
-{"id" "fnrw_working" "index" 1 "name" "Two boxes - works" "parents" ["root" "fnrw_host"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "fnrw_host"} "name" "Two boxes - works" "_tombstone" false "frame" #afield/rect [60.0 250.0 560.0 170.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fnrw_working_code_.kt" "lines" 31 "characters" 1513 "sha256" "1e76a0024d3c58939185de53ffbef2262f20d98d166d089fe2d67313c614e80e"}]}
+{"id" "fnrw_working" "index" 1 "name" "Two boxes - works" "parents" ["root" "fnrw_host"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "fnrw_host"} "name" "Two boxes - works" "_tombstone" false "frame" #afield/rect [60.0 250.0 560.0 170.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fnrw_working_code_.kt" "lines" 29 "characters" 1460 "sha256" "819b2e11beebafcee43789ea5a64367f2840a7cbab0903a9883fe57e57609ba3"}]}
 ```
 
 ```kotlin [field-property box="fnrw_working" name="code" path="fnrw_working_code_.kt"]
 // WORKS. `rewriteFn` names the box to compile the `@{...}` snippets in, and that box is
 // idle, so hydrating there replays nothing. One pass, and the sampled signal really moves.
-val spec =
-    [
-            "#fnrewrite",
-            "sin/*/saw => op=triangle",
-            "sin/**/[tag=number][value>0.15] => *= @{1.0 + depth * 0.08}",
-            "**/[role=amplitude] => *= @{if (parentOp == \"sin\") 0.75 else 1.0}",
-        ]
-        .joinToString("\n")
+val spec = [
+    "#fnrewrite",
+    "sin/*/saw => op=triangle",
+    "sin/**/[tag=number][value>0.15] => *= @{1.0 + depth * 0.08}",
+    "**/[role=amplitude] => *= @{if (parentOp == \"sin\") 0.75 else 1.0}",
+].joinToString("\n")
 
 /*
 The host comes from TOPOLOGY, not from a hard-coded id: whatever this box is connected
@@ -89,7 +87,7 @@ The runtime refuses before replaying the body. Run this box to see that refusal;
 copy the two-box example above, whose parent host is idle.
 
 ```edn [field-box id="fnrw_broken" role="properties"]
-{"id" "fnrw_broken" "index" 2 "name" "One box - does not work" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "One box - does not work" "_tombstone" false "frame" #afield/rect [60.0 460.0 560.0 170.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fnrw_broken_code_.kt" "lines" 20 "characters" 655 "sha256" "177d503b1400448239c066fe643cbe930dcb4c09559808eedae5808235a64a03"}]}
+{"id" "fnrw_broken" "index" 2 "name" "One box - does not work" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "One box - does not work" "_tombstone" false "frame" #afield/rect [60.0 460.0 560.0 170.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fnrw_broken_code_.kt" "lines" 18 "characters" 602 "sha256" "b827f3874372f5cea20538279b2bcda841f3759f451ef7a73cf95f2b846ee096"}]}
 ```
 
 ```kotlin [field-property box="fnrw_broken" name="code" path="fnrw_broken_code_.kt"]
@@ -98,14 +96,12 @@ Intentionally wrong: source hydration would compile in this running box's own en
 The runtime refuses before replaying the body. Run this box to see that refusal;
 copy the two-box example above, whose parent host is idle.
 */
-val spec =
-    [
-            "#fnrewrite",
-            "sin/*/saw => op=triangle",
-            "sin/**/[tag=number][value>0.15] => *= @{1.0 + depth * 0.08}",
-            "**/[role=amplitude] => *= @{if (parentOp == \"sin\") 0.75 else 1.0}",
-        ]
-        .joinToString("\n")
+val spec = [
+    "#fnrewrite",
+    "sin/*/saw => op=triangle",
+    "sin/**/[tag=number][value>0.15] => *= @{1.0 + depth * 0.08}",
+    "**/[role=amplitude] => *= @{if (parentOp == \"sin\") 0.75 else 1.0}",
+].joinToString("\n")
 
 println("one box: body entered")
 

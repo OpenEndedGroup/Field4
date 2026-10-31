@@ -1032,24 +1032,30 @@ import kotlin.math.*
 
 // Two looks for one wave, each sampled across one turn: the same terms, different numbers.
 val scope = KeyframeScope()
-val calm = scope.Key("wave" to sourceBlock {
-    (0..300).map { i ->
-        val x = i * 2 * PI / 300
-        val carrier = 0.6 * sin(2.0 * x)
-        val ripple = 0.15 * sin(7.0 * x + 0.3)
-        val envelope = exp(-0.1 * x)
-        (carrier + ripple) * envelope + 0.1
-    }
-})
-val restless = scope.Key("wave" to sourceBlock {
-    (0..300).map { i ->
-        val x = i * 2 * PI / 300
-        val carrier = 0.9 * sin(3.0 * x)
-        val ripple = 0.4 * sin(11.0 * x + 1.2)
-        val envelope = exp(-0.35 * x)
-        (carrier + ripple) * envelope + 0.3
-    }
-})
+val calm = scope.Key(
+    "wave" to
+        sourceBlock {
+            (0..300).map { i ->
+                val x = i * 2 * PI / 300
+                val carrier = 0.6 * sin(2.0 * x)
+                val ripple = 0.15 * sin(7.0 * x + 0.3)
+                val envelope = exp(-0.1 * x)
+                (carrier + ripple) * envelope + 0.1
+            }
+        },
+)
+val restless = scope.Key(
+    "wave" to
+        sourceBlock {
+            (0..300).map { i ->
+                val x = i * 2 * PI / 300
+                val carrier = 0.9 * sin(3.0 * x)
+                val ripple = 0.4 * sin(11.0 * x + 1.2)
+                val envelope = exp(-0.35 * x)
+                (carrier + ripple) * envelope + 0.3
+            }
+        },
+)
 
 // Blend with codeBlend on at five values of t, call each blended block, and draw its wave.
 scope.codeBlend = CodeBlendOptions(mode = CodeBlendMode.STATIC)

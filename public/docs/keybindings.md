@@ -22,17 +22,22 @@ ui.pause(1200)
 
 // The card is taller than it is allowed to be and scrolls; lift that ceiling so the still shows
 // all of it instead of stopping mid-list. Every legend in it is still drawn by the real card.
-ui.eval("var s=document.createElement('style');s.textContent='#cheatsheet .centered-container-div{max-height:none !important;overflow:visible !important}';document.head.appendChild(s);return 'unrolled'")
+ui.eval(
+    "var s=document.createElement('style');s.textContent='#cheatsheet .centered-container-div{max-height:none !important;overflow:visible !important}';document.head.appendChild(s);return 'unrolled'",
+)
 
 // `?` is ignored while a text field has focus — there it is just a question mark — so let go
 // of whatever the page focused as it loaded.
-ui.eval("if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur(); return document.activeElement.tagName")
+ui.eval(
+    "if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur(); return document.activeElement.tagName",
+)
 ui.press("Shift+Slash")
 ui.pause(1500)
 
 // Fail the capture rather than photograph an invisible card.
-val opacity = ui.eval("return getComputedStyle(document.getElementById('cheatsheet')).opacity")
-    ?.toString()?.trim('"') ?: "missing"
+val opacity =
+    ui.eval("return getComputedStyle(document.getElementById('cheatsheet')).opacity")?.toString()?.trim('"')
+        ?: "missing"
 if (opacity == "0" || opacity == "missing") error("the ? shortcut did not open the cheatsheet (opacity=$opacity)")
 ```
 
@@ -190,15 +195,15 @@ current shortcut is shown on the right of the row. That makes it the real test o
 since those labels are drawn from the same binding your keypress would use:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".afield-palette-shell" screenshot="assets/keybindings/rebound-palette.png" padding="6" wait="0" timeout="150" embed=true hidden=true name="keybindings-rebound-palette" alt="Field's command palette, opened with a custom Alt+K shortcut, listing New Box with its rebound Cmd+Opt+B"}
-// A rebind, taken all the way through the real machinery: write a keybindings.yaml,
-// let Field read it, then press a chord Field has never shipped and photograph what
-// happens. The file is a scratch one — nobody's own shortcuts are touched.
+/*
+A rebind, taken all the way through the real machinery: write a keybindings.yaml,
+let Field read it, then press a chord Field has never shipped and photograph what
+happens. The file is a scratch one — nobody's own shortcuts are touched.
+*/
 val scratch = java.io.File(System.getProperty("java.io.tmpdir"), "field-docs-keybindings/keybindings.yaml")
 scratch.parentFile.mkdirs()
 scratch.writeText(
-    "bindings:\n" +
-    "  open-command-palette: alt+k\n" +
-    "  new-box: cmd+alt+b\n"
+    "bindings:\n" + "  open-command-palette: alt+k\n" + "  new-box: cmd+alt+b\n",
 )
 afield.app.settings.UserKeybindingsManager.watchFile(scratch)
 ui.pause(1500)
@@ -209,14 +214,18 @@ ui.pause(1600)
 ui.type("New Box")
 ui.pause(1400)
 
-// The still is taken immediately after this script, so hand the watcher back on a short delay:
-// restoring it here would re-register every binding while the palette is still on screen. The
-// figures either side of this one point the watcher back themselves, so a slow shot cannot leave
-// them describing this scratch file.
+/*
+The still is taken immediately after this script, so hand the watcher back on a short delay:
+restoring it here would re-register every binding while the palette is still on screen. The
+figures either side of this one point the watcher back themselves, so a slow shot cannot leave
+them describing this scratch file.
+*/
 Thread {
     Thread.sleep(2500)
     afield.app.settings.UserKeybindingsManager.watchFile(null)
-}.also { it.isDaemon = true }.start()
+}
+    .also { it.isDaemon = true }
+    .start()
 ```
 
 The `?` card is the quickest way to see your current shortcuts for the twenty or so commands

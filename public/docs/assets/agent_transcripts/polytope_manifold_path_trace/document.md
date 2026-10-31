@@ -32,7 +32,7 @@ start(renderer::run)
 <!-- field-box id="polytope_manifold_trace" index="1" -->
 
 ```edn [field-box id="polytope_manifold_trace" role="properties"]
-{"id" "polytope_manifold_trace" "index" 1 "name" "polytope, eroded into a shell, cut open, traced" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "polytope, eroded into a shell, cut open, traced" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_manifold_trace_code_.kt" "lines" 126 "characters" 5328 "sha256" "76254357a60226b5be17e3366dd75ebc8be3e66f35b4334cbf97ed38b114698d"}]}
+{"id" "polytope_manifold_trace" "index" 1 "name" "polytope, eroded into a shell, cut open, traced" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "polytope, eroded into a shell, cut open, traced" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_manifold_trace_code_.kt" "lines" 125 "characters" 5316 "sha256" "31a7d9797da983d00b1aafca06a17bb6b19925215e925a3c8eb731ddba9cfd46"}]}
 ```
 
 ```kotlin [field-property box="polytope_manifold_trace" name="code" path="polytope_manifold_trace_code_.kt"]
@@ -116,8 +116,7 @@ val shaded = Solid.scope {
     // shallow ones average together and the polytope stops reading as one.
     val shaded = cut.toTriMesh(normals = true, minSharpAngle = 20.0)
     println(
-        "cut: genus ${cut.genus}, volume ${cut.volume.f4}, " +
-            "${shaded.triangleCount} triangles for the render",
+        "cut: genus ${cut.genus}, volume ${cut.volume.f4}, " + "${shaded.triangleCount} triangles for the render",
     )
 
     shaded

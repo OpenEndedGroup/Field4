@@ -106,7 +106,7 @@ the easel, the tube paints, the kept tools and the hung paintings.
 Needs the paint library: ./gradlew buildPaintNative.
 
 ```edn [field-box id="ai4_paint_studio" role="properties"]
-{"id" "ai4_paint_studio" "index" 1 "name" "Studio" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Studio" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ai4_paint_studio_code_.kt" "lines" 967 "characters" 52767 "sha256" "ac53e78baa6371b71166361dc77f76bbd06f16ca56ae49e7490c206bef8d3e57"}]}
+{"id" "ai4_paint_studio" "index" 1 "name" "Studio" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Studio" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ai4_paint_studio_code_.kt" "lines" 946 "characters" 52159 "sha256" "2439b3021746ea6825c37a873c505f729f4e4b4745acac3136850bf7e236e882"}]}
 ```
 
 ```kotlin [field-property box="ai4_paint_studio" name="code" path="ai4_paint_studio_code_.kt"]
@@ -310,17 +310,15 @@ else
             )
             effects(ToolEffect.CAPTURE_IMAGE, ToolEffect.FILESYSTEM_WRITE)
             val wet by param<Boolean>("show the paint as it is now, wet, without relief", default = false)
-            val light by
-                param<String>(
-                    "flat; raking, a low lamp that shows the relief, knife ridges and wet sheen; or gallery",
-                    default = "flat",
-                )
-            val map by
-                param<String?>(
-                    "instead of the picture, a map of the water: surface (standing water), absorbed, pigment; " +
-                        "or contact, where the hairs of the last moving-brush stroke touched",
-                    default = null,
-                )
+            val light by param<String>(
+                "flat; raking, a low lamp that shows the relief, knife ridges and wet sheen; or gallery",
+                default = "flat",
+            )
+            val map by param<String?>(
+                "instead of the picture, a map of the water: surface (standing water), absorbed, pigment; " +
+                    "or contact, where the hairs of the last moving-brush stroke touched",
+                default = null,
+            )
             action {
                 val c = canvas()
                 val png =
@@ -351,16 +349,14 @@ else
             )
             effects(ToolEffect.CONTROL_RUNTIME)
             val paths by param<List<List<Double>>>("paths, each [x0, y0, x1, y1, ...] in canvas units")
-            val color by
-                param<String?>(
-                    "#rrggbb, a tube name, or tubes by parts: \"lead white:3, yellow ochre:1\"; null paints a kept tool with what it carries",
-                    default = null,
-                )
-            val tool by
-                param<String?>(
-                    "a kept brush's name (paint_tool) to paint with, dirty as it is; null for a fresh brush of `brush`",
-                    default = null,
-                )
+            val color by param<String?>(
+                "#rrggbb, a tube name, or tubes by parts: \"lead white:3, yellow ochre:1\"; null paints a kept tool with what it carries",
+                default = null,
+            )
+            val tool by param<String?>(
+                "a kept brush's name (paint_tool) to paint with, dirty as it is; null for a fresh brush of `brush`",
+                default = null,
+            )
             val brush by
                 param<String>("Round, HogFlat, Filbert, Fan, Rigger or Badger (a fresh brush)", default = "Filbert")
             val width by param<Double>("brush width in canvas units (a fresh brush)", default = 20.0)
@@ -399,17 +395,15 @@ else
             )
             effects(ToolEffect.CONTROL_RUNTIME)
             val points by param<List<Double>>("[x0, y0, x1, y1, ...]")
-            val color by
-                param<String?>(
-                    "#rrggbb, a tube name, or tubes by parts; null dabs a kept tool with what it carries",
-                    default = null,
-                )
+            val color by param<String?>(
+                "#rrggbb, a tube name, or tubes by parts; null dabs a kept tool with what it carries",
+                default = null,
+            )
             val tool by param<String?>("a kept brush's name to dab with; null for a fresh brush", default = null)
-            val brush by
-                param<String>(
-                    "Round, HogFlat, Filbert, Fan, Rigger, Badger or Stippler (a fresh brush)",
-                    default = "Round",
-                )
+            val brush by param<String>(
+                "Round, HogFlat, Filbert, Fan, Rigger, Badger or Stippler (a fresh brush)",
+                default = "Round",
+            )
             val width by param<Double>("brush width in canvas units", default = 12.0)
             val pressure by param<Double>("harder makes a bigger, fuller mark", default = 0.6)
             val angle by param<Double>("a flat's wide axis, degrees", default = 0.0)
@@ -434,17 +428,15 @@ else
             )
             effects(ToolEffect.CONTROL_RUNTIME)
             val paths by param<List<List<Double>>>("strokes, each [x0, y0, x1, y1, ...]")
-            val color by
-                param<String?>(
-                    "pigments by concentration in µg per mm³ of water, \"ultramarine:2, burnt sienna:1\" (1 pale .. 6 strong), " +
-                        "\"water\" for clean water; null paints a kept brush with what it holds",
-                    default = null,
-                )
-            val tool by
-                param<String?>(
-                    "a kept watercolour brush (paint_tool type Watercolour); null for a fresh one",
-                    default = null,
-                )
+            val color by param<String?>(
+                "pigments by concentration in µg per mm³ of water, \"ultramarine:2, burnt sienna:1\" (1 pale .. 6 strong), " +
+                    "\"water\" for clean water; null paints a kept brush with what it holds",
+                default = null,
+            )
+            val tool by param<String?>(
+                "a kept watercolour brush (paint_tool type Watercolour); null for a fresh one",
+                default = null,
+            )
             val width by param<Double>("a fresh brush's width, canvas units", default = 40.0)
             val fill by
                 param<Double>("how full of water the brush is loaded, 0..1 (above 1 overloads it)", default = 1.0)
@@ -478,36 +470,31 @@ else
             effects(ToolEffect.CONTROL_RUNTIME)
             val paths by param<List<List<Double>>>("movements, each [x0, y0, x1, y1, ...]; one after another")
             val tool by param<String>("the kept moving brush")
-            val color by
-                param<String?>(
-                    "oil (#rrggbb or tubes by parts) or, for watercolour, pigments by concentration, µg/mm³ " +
-                        "(\"ultramarine:3\"; 1 pale .. 6 strong .. 20-80 pan strength for drybrush); null paints with what it holds",
-                    default = null,
-                )
+            val color by param<String?>(
+                "oil (#rrggbb or tubes by parts) or, for watercolour, pigments by concentration, µg/mm³ " +
+                    "(\"ultramarine:3\"; 1 pale .. 6 strong .. 20-80 pan strength for drybrush); null paints with what it holds",
+                default = null,
+            )
             val fill by
                 param<Double>("watercolour: how full of water to load it, 0..1 (0.1-0.3 for drybrush)", default = 1.0)
             val speed by param<Double>("mm/s: 20 slow and deliberate .. 400 a flick", default = 80.0)
-            val pressure by
-                param<List<Double>>(
-                    "pressure along each movement, evenly spaced, 0 the tips just touch .. 1 pressed .. 1.5 crushed, below 0 lifted off: " +
-                        "[0.9, -0.3] presses then lifts away",
-                    default = [0.6],
-                )
-            val tilt by
-                param<Double>(
-                    "the handle's lean from upright, degrees: 0 straight down .. 60 laid over",
-                    default = 30.0,
-                )
-            val roll by
-                param<List<Double>?>(
-                    "the handle's turn, degrees, at the start and end of each movement (a flat's wide axis); null keeps a flat across its path",
-                    default = null,
-                )
-            val pause by
-                param<Double>(
-                    "seconds between movements (the brush stays down and still at the end of each for this long first)",
-                    default = 0.3,
-                )
+            val pressure by param<List<Double>>(
+                "pressure along each movement, evenly spaced, 0 the tips just touch .. 1 pressed .. 1.5 crushed, below 0 lifted off: " +
+                    "[0.9, -0.3] presses then lifts away",
+                default = [0.6],
+            )
+            val tilt by param<Double>(
+                "the handle's lean from upright, degrees: 0 straight down .. 60 laid over",
+                default = 30.0,
+            )
+            val roll by param<List<Double>?>(
+                "the handle's turn, degrees, at the start and end of each movement (a flat's wide axis); null keeps a flat across its path",
+                default = null,
+            )
+            val pause by param<Double>(
+                "seconds between movements (the brush stays down and still at the end of each for this long first)",
+                default = 0.3,
+            )
             action {
                 val c = canvas()
                 val d = tools().dynamicBrush(tool())
@@ -581,22 +568,20 @@ else
             )
             effects(ToolEffect.CONTROL_RUNTIME)
             val name by param<String>("what to call it, e.g. \"big filbert\"")
-            val type by
-                param<String>(
-                    "a brush (Round, HogFlat, Filbert, Fan, Rigger, Badger, Stippler), Watercolour, Knife, Rag, or a pencil grade (HB, 4B) or Chalk",
-                )
+            val type by param<String>(
+                "a brush (Round, HogFlat, Filbert, Fan, Rigger, Badger, Stippler), Watercolour, Knife, Rag, or a pencil grade (HB, 4B) or Chalk",
+            )
             val width by param<Double>("brush width, knife blade length or rag pad size, canvas units", default = 20.0)
             val bristles by param<Int?>("how many bristles (a brush); null for the kind's own", default = null)
             val stiffness by
                 param<Double?>("0 soft hair .. 1 stiff hog (a brush); null for the kind's own", default = null)
             val ragged by param<Double?>("0 even .. 1 ragged hair lengths, for broken marks (a brush)", default = null)
             val point by param<Double?>("0 blunt .. 1 a fine point (a round brush)", default = null)
-            val moving by
-                param<Boolean>(
-                    "a brush whose hairs move (paint with paint_gesture): they bend, splay, flick and keep a set; " +
-                        "load it with oil or watercolour",
-                    default = false,
-                )
+            val moving by param<Boolean>(
+                "a brush whose hairs move (paint with paint_gesture): they bend, splay, flick and keep a set; " +
+                    "load it with oil or watercolour",
+                default = false,
+            )
             action {
                 val c = canvas()
                 val t = type().trim()
@@ -642,27 +627,23 @@ else
             )
             effects(ToolEffect.CONTROL_RUNTIME)
             val tool by param<String>("the kept tool's name")
-            val color by
-                param<String?>(
-                    "#rrggbb, a tube name, or tubes by parts; null only wipes (a rag: dampens; a pencil: sharpens)",
-                    default = null,
-                )
-            val amount by
-                param<Double>(
-                    "a knife: 0..1 of a full bead; a watercolour brush: how full of water, 0..1",
-                    default = 0.6,
-                )
-            val wipe by
-                param<Double>(
-                    "how much of what is in the brush to wipe off first, 0..1; 0 mixes into it (a knife: above 0 wipes it clean)",
-                    default = 0.85,
-                )
+            val color by param<String?>(
+                "#rrggbb, a tube name, or tubes by parts; null only wipes (a rag: dampens; a pencil: sharpens)",
+                default = null,
+            )
+            val amount by param<Double>(
+                "a knife: 0..1 of a full bead; a watercolour brush: how full of water, 0..1",
+                default = 0.6,
+            )
+            val wipe by param<Double>(
+                "how much of what is in the brush to wipe off first, 0..1; 0 mixes into it (a knife: above 0 wipes it clean)",
+                default = 0.85,
+            )
             val thinness by param<Double>("tube mixes: 0 from the tube, 1 thinned with oil medium", default = 0.0)
-            val turps by
-                param<Double>(
-                    "0..0.9 of the paint's volume turpentine: it flows, spatters, and evaporates as it is laid",
-                    default = 0.0,
-                )
+            val turps by param<Double>(
+                "0..0.9 of the paint's volume turpentine: it flows, spatters, and evaporates as it is laid",
+                default = 0.0,
+            )
             val side by param<Double>("dip one edge only: -1 or 1; 0 the whole brush", default = 0.0)
             val share by param<Double>("with side: the share of the width that goes in", default = 1.0)
             val damp by param<Double>("a rag: how damp with spirits, 0..1", default = 0.6)
@@ -794,11 +775,10 @@ else
             val outline by param<List<Double>>("the region's outline, [x0, y0, x1, y1, ...], closed automatically")
             val color by param<String>("#rrggbb, a tube name, or tubes by parts", default = "#ffffff")
             val handling by param<String>("Broad, Body, Detail, Hatch, Glaze, Scumble or Blend", default = "Body")
-            val angle by
-                param<Double?>(
-                    "stroke direction in degrees (0 left to right, 90 top to bottom); null for the handling's own",
-                    default = null,
-                )
+            val angle by param<Double?>(
+                "stroke direction in degrees (0 left to right, 90 top to bottom); null for the handling's own",
+                default = null,
+            )
             val width by param<Double?>("brush width in canvas units; null for the handling's own", default = null)
             val coverage by
                 param<Double?>("layers of strokes over each point; null for the handling's own", default = null)
@@ -926,12 +906,11 @@ else
                 "Put a new canvas on the easel. The old one is not lost: it stays with the conversation, and rewinding brings it back.",
             )
             effects(ToolEffect.CONTROL_RUNTIME)
-            val ground by
-                param<String>(
-                    "Oil (warm primed linen), OilRedGround, Linen (raw), Bare (flat white); or paper for watercolour and ink: " +
-                        "ColdPress, HotPress, Rough, Xuan (rice paper), Blotting",
-                    default = "Oil",
-                )
+            val ground by param<String>(
+                "Oil (warm primed linen), OilRedGround, Linen (raw), Bare (flat white); or paper for watercolour and ink: " +
+                    "ColdPress, HotPress, Rough, Xuan (rice paper), Blotting",
+                default = "Oil",
+            )
             val aspect by param<Double>("width / height: 1.25 landscape, 0.8 portrait, 1 square", default = 1.25)
             action {
                 val seed = System.nanoTime() % 100_000

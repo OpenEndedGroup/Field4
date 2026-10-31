@@ -18,7 +18,7 @@ Branch-and-bound over the hour: the true maximum is at least the value reached a
 witness, and at most the proven bound. The same for the minimum.
 
 ```edn [field-box id="range" role="properties"]
-{"id" "range" "index" 0 "name" "3 - certifiedRange, with witnesses" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - certifiedRange, with witnesses" "_tombstone" false "frame" #afield/rect [60.0 1480.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "range_code_.kt" "lines" 33 "characters" 1276 "sha256" "a17ed87488669cebe11491fc7d6c2ebd355a081728f0b7e3c51cb6e9f974f251"}]}
+{"id" "range" "index" 0 "name" "3 - certifiedRange, with witnesses" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - certifiedRange, with witnesses" "_tombstone" false "frame" #afield/rect [60.0 1480.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "range_code_.kt" "lines" 32 "characters" 1255 "sha256" "4afc38ecc555a206da277aac1b07dd460833388dfbfdd6202e0b031171bdf6a1"}]}
 ```
 
 ```kotlin [field-property box="range" name="code" path="range_code_.kt"]
@@ -33,10 +33,9 @@ val min = range.min!!
 display(
     "range",
     Table(
-            ["side", "reached", "at x", "proven bound", "enclosures"],
-            title = "certifiedRange(0, 3600): certified = ${range.certified}",
-        )
-        .row("max", max.value, max.witness, max.bound, max.enclosures)
+        ["side", "reached", "at x", "proven bound", "enclosures"],
+        title = "certifiedRange(0, 3600): certified = ${range.certified}",
+    ).row("max", max.value, max.witness, max.bound, max.enclosures)
         .row("min", min.value, min.witness, min.bound, min.enclosures)
         .role("at x", CellRole.ACCENT),
 )
@@ -118,7 +117,7 @@ a lambda was the piecewise event selection; here it is exact 0/1 `step` indicato
 product and sum in the lambda's order, so the two agree bit for bit.
 
 ```edn [field-box id="workbench" role="properties"]
-{"id" "workbench" "index" 2 "name" "5 - The worked example, certified" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 - The worked example, certified" "_tombstone" false "frame" #afield/rect [60.0 2120.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "workbench_code_.kt" "lines" 140 "characters" 6173 "sha256" "5ddcbd9fbe17544576485cca94838ccc9181fc278d86b8c73b83f66de1b497a2"}]}
+{"id" "workbench" "index" 2 "name" "5 - The worked example, certified" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 - The worked example, certified" "_tombstone" false "frame" #afield/rect [60.0 2120.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "workbench_code_.kt" "lines" 139 "characters" 6152 "sha256" "d86d4c2d05c48e81fe9e5189970085c035c1ec88a4e7737daed1dab6b9b7e380"}]}
 ```
 
 ```kotlin [field-property box="workbench" name="code" path="workbench_code_.kt"]
@@ -244,10 +243,9 @@ for ((i, name) in names.withIndex()) {
 display(
     "claims",
     Table(
-            ["ch", "refused ops (lambda / formula)", "bit mismatches", "== 1 on plateau", ">= 0", "<= 1"],
-            title = "the worked example's claims, on its formula rewrite",
-        )
-        .rows(rows)
+        ["ch", "refused ops (lambda / formula)", "bit mismatches", "== 1 on plateau", ">= 0", "<= 1"],
+        title = "the worked example's claims, on its formula rewrite",
+    ).rows(rows)
         .role("<= 1", CellRole.WARN),
 )
 

@@ -18,7 +18,7 @@ Layout is AWT's advances and kerning pairs, plus the things AWT does not do: \n,
 spacing, alignment, and a mutable transform handle per glyph.
 
 ```edn [field-box id="typo_layout" role="properties"]
-{"id" "typo_layout" "index" 0 "name" "3 — advances, kerning, tracking, alignment" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — advances, kerning, tracking, alignment" "_tombstone" false "frame" #afield/rect [1000.0 60.0 390.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "typo_layout_code_.kt" "lines" 63 "characters" 2823 "sha256" "ac7c26b6cb716065c08c9dbdf2c677da8812f725820a60085b42b77b568912e5"}]}
+{"id" "typo_layout" "index" 0 "name" "3 — advances, kerning, tracking, alignment" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — advances, kerning, tracking, alignment" "_tombstone" false "frame" #afield/rect [1000.0 60.0 390.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "typo_layout_code_.kt" "lines" 62 "characters" 2815 "sha256" "a356919522e2ef63ec422115cbd73e9360353f7646f8bc5a0f44fc31288e41b9"}]}
 ```
 
 ```kotlin [field-property box="typo_layout" name="code" path="typo_layout_code_.kt"]
@@ -30,8 +30,7 @@ val face = typeface("SansSerif", 120.0)
 // different AWT paths — accumulated positions versus per-glyph metrics — that must agree.
 val plain = layoutText("minimum", face.withKerning(false))
 println(
-    "advance width ${plain.advanceWidth.f4} vs sum of advances " +
-        "${plain.glyphs.sumOf { it.glyph.advance }.f4}",
+    "advance width ${plain.advanceWidth.f4} vs sum of advances " + "${plain.glyphs.sumOf { it.glyph.advance }.f4}",
 )
 
 // Identity two: tracking adds one gap per INTER-GLYPH space, not one per glyph.
@@ -507,7 +506,7 @@ resolve; Typefaces.fromFile("...ttf") loads one off disk through Font.createFont
 Typefaces.firstAvailable("Futura", "Avenir") picks the first face you actually have.
 
 ```edn [field-box id="typo_values" role="properties"]
-{"id" "typo_values" "index" 7 "name" "1 — a string becomes contours" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — a string becomes contours" "_tombstone" false "frame" #afield/rect [60.0 60.0 310.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "typo_values_code_.kt" "lines" 67 "characters" 2693 "sha256" "f6bb15627d23a6022d1da084090780ff657c677c91ebf6a90161b98517ef4da1"}]}
+{"id" "typo_values" "index" 7 "name" "1 — a string becomes contours" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — a string becomes contours" "_tombstone" false "frame" #afield/rect [60.0 60.0 310.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "typo_values_code_.kt" "lines" 66 "characters" 2685 "sha256" "3492cc0eb4b4acf6fedbb6d3d3c058f2c0505258c90ac6869556483a765a21ab"}]}
 ```
 
 ```kotlin [field-property box="typo_values" name="code" path="typo_values_code_.kt"]
@@ -518,8 +517,7 @@ Typefaces.firstAvailable("Futura", "Avenir") picks the first face you actually h
 */
 val face = typeface("SansSerif", 140.0)
 println(
-    "$face — ascent ${face.ascent.f1}, descent ${face.descent.f1}, " +
-        "line height ${face.lineHeight.f1}",
+    "$face — ascent ${face.ascent.f1}, descent ${face.descent.f1}, " + "line height ${face.lineHeight.f1}",
 )
 
 /*

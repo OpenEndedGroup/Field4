@@ -57,15 +57,14 @@ From `code`
 The marker lands on line 5, the throw inside mean.
 
 ```edn [field-box id="kparity_error" role="properties"]
-{"id" "kparity_error" "index" 2 "name" "Kotlin: an exception is marked on its line" "parents" ["root" "kparity_root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "kparity_root"} "name" "Kotlin: an exception is marked on its line" "_tombstone" false "frame" #afield/rect [560.0 1140.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kparity_error_code_.kt" "lines" 9 "characters" 265 "sha256" "88bb3b7914a63593b7276314d61669a138a5c011c32c39b01dcf5c76e794fcfe"}]}
+{"id" "kparity_error" "index" 2 "name" "Kotlin: an exception is marked on its line" "parents" ["root" "kparity_root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "kparity_root"} "name" "Kotlin: an exception is marked on its line" "_tombstone" false "frame" #afield/rect [560.0 1140.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kparity_error_code_.kt" "lines" 8 "characters" 257 "sha256" "b4a5e9ab345d318ba81fb0fb8164926fd3234567e45fc9c937d33f64dff5d4ac"}]}
 ```
 
 ```kotlin [field-property box="kparity_error" name="code" path="kparity_error_code_.kt"]
 // {{ remoteAR }}
 // The marker lands on line 5, the throw inside mean.
 fun mean(values: List<Double>): Double {
-    if (values.isEmpty())
-        throw IllegalArgumentException("mean of nothing")
+    if (values.isEmpty()) throw IllegalArgumentException("mean of nothing")
     return values.sum() / values.size
 }
 
@@ -220,7 +219,7 @@ From `code`
 {{ remoteAR }}
 
 ```edn [field-box id="kparity_controls" role="properties"]
-{"id" "kparity_controls" "index" 9 "name" "Kotlin: display, a slider and a checkbox" "parents" ["root" "kparity_root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "kparity_root"} "name" "Kotlin: display, a slider and a checkbox" "_tombstone" false "frame" #afield/rect [560.0 1640.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kparity_controls_code_.kt" "lines" 11 "characters" 332 "sha256" "4c1ea312d62dddec4001eafa52b127c49471d0dcd4a90688ed3bbabc21dafc87"}]}
+{"id" "kparity_controls" "index" 9 "name" "Kotlin: display, a slider and a checkbox" "parents" ["root" "kparity_root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "kparity_root"} "name" "Kotlin: display, a slider and a checkbox" "_tombstone" false "frame" #afield/rect [560.0 1640.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kparity_controls_code_.kt" "lines" 17 "characters" 346 "sha256" "d83268b6462963567f7521e00765aafcb1a3ac2cabb88c3ad5072062a1a02adb"}]}
 ```
 
 ```kotlin [field-property box="kparity_controls" name="code" path="kparity_controls_code_.kt"]
@@ -232,8 +231,14 @@ fun redraw() {
     display("main", "<b>${if (square) "square" else "sine"}</b> at ${freq.asDynamic().toFixed(1)} Hz")
 }
 
-slider("frequency", min = 1.0, max = 10.0, step = 0.1, initialValue = 3.0) { freq = it; redraw() }
-checkbox("square wave") { square = it; redraw() }
+slider("frequency", min = 1.0, max = 10.0, step = 0.1, initialValue = 3.0) {
+    freq = it
+    redraw()
+}
+checkbox("square wave") {
+    square = it
+    redraw()
+}
 redraw()
 ```
 
@@ -249,15 +254,18 @@ From `code`
 The run ends at once; line 4 prints half a second later.
 
 ```edn [field-box id="kparity_late" role="properties"]
-{"id" "kparity_late" "index" 10 "name" "Kotlin: output printed after the run finished" "parents" ["root" "kparity_root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "kparity_root"} "name" "Kotlin: output printed after the run finished" "_tombstone" false "frame" #afield/rect [560.0 2340.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kparity_late_code_.kt" "lines" 6 "characters" 161 "sha256" "2c799a14e236996d17df73cf0513256c33c2ca3951d3afc7c5ec9247bfe13e48"}]}
+{"id" "kparity_late" "index" 10 "name" "Kotlin: output printed after the run finished" "parents" ["root" "kparity_root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "kparity_root"} "name" "Kotlin: output printed after the run finished" "_tombstone" false "frame" #afield/rect [560.0 2340.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kparity_late_code_.kt" "lines" 9 "characters" 180 "sha256" "60291d2f9b6734c19728c0a3637b14e03d3270004dc480a526fb64843286daee"}]}
 ```
 
 ```kotlin [field-property box="kparity_late" name="code" path="kparity_late_code_.kt"]
 // {{ remoteAR }}
 // The run ends at once; line 4 prints half a second later.
-setTimeout({
-    println("half a second later")
-}, 500)
+setTimeout(
+    {
+        println("half a second later")
+    },
+    500,
+)
 println("the run is over")
 ```
 

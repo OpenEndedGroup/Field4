@@ -504,7 +504,7 @@ Build something worth looking at: a sphere with a hole drilled through it, so th
 genus to report, then smooth it so the drill rim is not a hard edge.
 
 ```edn [field-box id="mesh_inline_view" role="properties"]
-{"id" "mesh_inline_view" "index" 5 "name" "The inline view — evaluate a mesh, look at it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The inline view — evaluate a mesh, look at it" "_tombstone" false "frame" #afield/rect [80.0 1400.0 410.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mesh_inline_view_code_.kt" "lines" 34 "characters" 1697 "sha256" "2e91d58819474d5bf5f399e29a318e230d1160b27bf4aae7d1a3361dbf76d81f"}]}
+{"id" "mesh_inline_view" "index" 5 "name" "The inline view — evaluate a mesh, look at it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The inline view — evaluate a mesh, look at it" "_tombstone" false "frame" #afield/rect [80.0 1400.0 410.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mesh_inline_view_code_.kt" "lines" 32 "characters" 1652 "sha256" "f554bd4b31d47178fe997f03d80204281bf5430657e8b2885475a99602378e56"}]}
 ```
 
 ```kotlin [field-property box="mesh_inline_view" name="code" path="mesh_inline_view_code_.kt"]
@@ -526,13 +526,11 @@ stay the real mesh's.
 
 // Build something worth looking at: a sphere with a hole drilled through it, so the card has a
 // genus to report, then smooth it so the drill rim is not a hard edge.
-val drilled =
-    marchingCubes(
-            sdfSubtract(sdfSphere(0.8), sdfCylinder(0.32, 2.0)),
-            boundsAround(radius = 1.0),
-            48,
-        )
-        .taubinSmooth(12)
+val drilled = marchingCubes(
+    sdfSubtract(sdfSphere(0.8), sdfCylinder(0.32, 2.0)),
+    boundsAround(radius = 1.0),
+    48,
+).taubinSmooth(12)
 
 println(drilled.summary())
 println("the card below reports the same numbers; the drill added a handle, so genus is 1")

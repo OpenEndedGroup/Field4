@@ -20,16 +20,14 @@ val camera = Camera(renderer).also {
     it.at.set(center).add(radius * 1.7f, radius * 1.05f, radius * 2f)
     it.p.fov = 0.55
 }
-val tracer =
-    PathTracingRenderer(
-            renderer,
-            scene,
-            PathTraceEnvironment.fromFile("public/docs/assets/fabricate_demo/venice_sunset_1k.exr"),
-            width = 1280,
-            height = 720,
-            camera = camera,
-        )
-        .install()
+val tracer = PathTracingRenderer(
+    renderer,
+    scene,
+    PathTraceEnvironment.fromFile("public/docs/assets/fabricate_demo/venice_sunset_1k.exr"),
+    width = 1280,
+    height = 720,
+    camera = camera,
+).install()
 tracer.maxBounces = 8
 tracer.samplesPerFrame = 4
 tracer.rayEpsilon = (radius * 0.00001f).coerceAtLeast(0.0000001f)

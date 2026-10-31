@@ -27,15 +27,13 @@ language is functions from queries to lists of events.
 // Nothing is stored. Ask the same pattern three different questions.
 val drums = pat("bd sd hh hh")
 
-val answers =
-    [
-            "one cycle" to PatArc(PatQ.ZERO, PatQ.ONE),
-            "second half" to PatArc(PatQ.of(1, 2), PatQ.ONE),
-            "cycle 97" to PatArc(PatQ.of(97), PatQ.of(98)),
-        ]
-        .joinToString("\n") { (label, arc) ->
-            "%-12s %s".format(label, drums.events(arc).joinToString("  ") { "${it.value}@${it.arc.start}" })
-        }
+val answers = [
+    "one cycle" to PatArc(PatQ.ZERO, PatQ.ONE),
+    "second half" to PatArc(PatQ.of(1, 2), PatQ.ONE),
+    "cycle 97" to PatArc(PatQ.of(97), PatQ.of(98)),
+].joinToString("\n") { (label, arc) ->
+    "%-12s %s".format(label, drums.events(arc).joinToString("  ") { "${it.value}@${it.arc.start}" })
+}
 println(answers)
 display("<pre>" + answers + "</pre>")
 ```

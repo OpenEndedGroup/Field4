@@ -18,12 +18,17 @@ ui.waitForSelector("#field-drawing-layer .excalidraw", 15000.0)
 var ready = ""
 for (i in 0 until 60) {
     ui.pause(250)
-    ready = ui.eval("""
-        const s = window.drawingLayerState()
-        const tools = document.querySelector("#field-drawing-layer .App-toolbar")
-        const shown = !!tools && tools.getBoundingClientRect().width > 0
-        return (s && s.active && shown) ? "ready" : "waiting: active=" + (s && s.active) + " toolbar=" + shown
-    """.trimIndent()).toString()
+    ready =
+        ui.eval(
+                """
+                const s = window.drawingLayerState()
+                const tools = document.querySelector("#field-drawing-layer .App-toolbar")
+                const shown = !!tools && tools.getBoundingClientRect().width > 0
+                return (s && s.active && shown) ? "ready" : "waiting: active=" + (s && s.active) + " toolbar=" + shown
+                """
+                    .trimIndent(),
+            )
+            .toString()
     if (ready.contains("ready")) break
 }
 check(ready.contains("ready")) { "the drawing layer's toolbar never showed: " + ready }

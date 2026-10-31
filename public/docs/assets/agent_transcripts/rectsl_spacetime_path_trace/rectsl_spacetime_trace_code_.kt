@@ -23,21 +23,21 @@ a time, linearly interpolated, and `->x` takes one wherever it takes a number.
 */
 val source =
     """
-#rectsl
-->wall 8 8 abstract
-->duration 4
-->fps 30
+    #rectsl
+    ->wall 8 8 abstract
+    ->duration 4
+    ->fps 30
 
-"sweep" rect
-  0.7 2.4 ->wh
-  '( 0=-2.6  4=2.6 ) ->x
-  '( 0=0  4=3.14159 ) ->rot
+    "sweep" rect
+      0.7 2.4 ->wh
+      '( 0=-2.6  4=2.6 ) ->x
+      '( 0=0  4=3.14159 ) ->rot
 
-"pulse" rect
-  1.2 1.2 ->wh
-  1.6 -1.4 ->xy
-  '( 0=0.3  4=2.2 ) ->w
-"""
+    "pulse" rect
+      1.2 1.2 ->wh
+      1.6 -1.4 ->xy
+      '( 0=0.3  4=2.2 ) ->w
+    """
         .trimIndent()
 
 val program = compileRectSL(source).program
@@ -80,8 +80,7 @@ for (k in 0 until nt) {
 val sampleMs = (System.nanoTime() - sampledAt) / 1e6
 println("sampled ${inner.size} points, ${nt} tapes, ${sampleMs.f0} ms")
 println(
-    "  ${inner.count { it < 0f }} of them inside, distances " +
-        "${inner.min().f3} to ${inner.max().f3}",
+    "  ${inner.count { it < 0f }} of them inside, distances " + "${inner.min().f3} to ${inner.max().f3}",
 )
 
 val innerBounds = boundsOf(

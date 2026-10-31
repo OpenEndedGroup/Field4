@@ -33,7 +33,7 @@ The final landing frame snaps exactly and clears velocity.
 Animation controls. Rerun setup after changing these values or the term/scheduler rows.
 
 ```edn [field-box id="confluence_grid" role="properties"]
-{"id" "confluence_grid" "index" 0 "name" "Confluence in 3D: 5 terms x 4 schedulers" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Confluence in 3D: 5 terms x 4 schedulers" "_tombstone" false "frame" #afield/rect [40.0 40.0 620.0 170.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "confluence_grid_code_.kt" "lines" 366 "characters" 14546 "sha256" "c5e5d9f0865e4285f58bbddeefbb7a9a71d3ed700fc9b9ca217add801ef9042c"}]}
+{"id" "confluence_grid" "index" 0 "name" "Confluence in 3D: 5 terms x 4 schedulers" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Confluence in 3D: 5 terms x 4 schedulers" "_tombstone" false "frame" #afield/rect [40.0 40.0 620.0 170.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "confluence_grid_code_.kt" "lines" 364 "characters" 14477 "sha256" "d945649897b521c8457da9ed1ee63d8e9a0de3f232e9f68f6258f2b50c47edaf"}]}
 ```
 
 ```kotlin [field-property box="confluence_grid" name="code" path="confluence_grid_code_.kt"]
@@ -270,12 +270,10 @@ class Cell(val row: Int, val col: Int, val src: String, order: ActivationOrder) 
         val nodes = compiled.net.nodes.map { "node:" + nodeKey(it) }
         val edges =
             compiled.net.edges.map { edge ->
-                val endpoints =
-                    [
-                            nodeKey(edge.a.node) + ":" + edge.a.index,
-                            nodeKey(edge.b.node) + ":" + edge.b.index,
-                        ]
-                        .sorted()
+                val endpoints = [
+                    nodeKey(edge.a.node) + ":" + edge.a.index,
+                    nodeKey(edge.b.node) + ":" + edge.b.index,
+                ].sorted()
                 "edge:" + endpoints.joinToString("--")
             }
         return (nodes + edges).sorted()

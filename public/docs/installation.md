@@ -180,7 +180,7 @@ ui.eval(
     f.setAttribute("style", "position:fixed;left:0;top:0;width:1100px;height:1240px;border:0;background:#111;z-index:2147483000")
     document.body.appendChild(f)
     return true
-"""
+    """
         .trimIndent(),
 )
 // Wait for the parts that load after the page: the starting-points dock and every panel summary.
@@ -190,13 +190,13 @@ for (i in 0 until 60) {
     state =
         ui.eval(
                 """
-        const d = document.getElementById("docs-welcome-frame")?.contentDocument
-        if (!d || !d.getElementById("starting-points-dock")) return "loading"
-        const splash = d.getElementById("splash-screen")
-        if (splash && !splash.classList.contains("hidden")) return "splash"
-        const pending = [...d.querySelectorAll("details > summary")].filter(s => /loading|checking/i.test(s.textContent)).length
-        return pending === 0 ? "ready" : "pending:" + pending
-    """
+                const d = document.getElementById("docs-welcome-frame")?.contentDocument
+                if (!d || !d.getElementById("starting-points-dock")) return "loading"
+                const splash = d.getElementById("splash-screen")
+                if (splash && !splash.classList.contains("hidden")) return "splash"
+                const pending = [...d.querySelectorAll("details > summary")].filter(s => /loading|checking/i.test(s.textContent)).length
+                return pending === 0 ? "ready" : "pending:" + pending
+                """
                     .trimIndent(),
             )
             .toString()
@@ -217,7 +217,7 @@ ui.eval(
     const response = await f.contentWindow.fetch("/api/kits", {cache: "no-store"})
     if (!response.ok) throw new Error("Kit library failed to load: " + response.status)
     return true
-"""
+    """
         .trimIndent(),
 )
 ```

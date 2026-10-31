@@ -6,25 +6,36 @@ You can edit your copy freely. For this example, you won't need a GPU driver, Py
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x900" clip-selector="#docs-first-welcome" screenshot="assets/first_steps/welcome.png" padding="0" wait="0" timeout="120" embed=true hidden=true name="first-welcome" alt="Welcome with the Start here: a moving drawing button at the top, beside the five-minute guide and Next: native graphics."}
 // Capture the compact Welcome action row and the first-document prompt.
-ui.eval("""
+ui.eval(
+    """
     const f = document.createElement("iframe")
     f.id = "docs-first-welcome"
     f.src = "/welcome"
     f.setAttribute("style", "position:fixed;left:0;top:0;width:1100px;height:850px;border:0;background:#111;z-index:2147483000")
     document.body.appendChild(f)
     return true
-""".trimIndent())
+    """
+        .trimIndent(),
+)
 var ready = false
 for (i in 0 until 60) {
     ui.pause(250)
-    val state = ui.eval("""
-        const d = document.getElementById("docs-first-welcome")?.contentDocument
-        if (!d?.getElementById("open-first-steps")) return false
-        const splash = d.getElementById("splash-screen")
-        if (splash && !splash.classList.contains("hidden")) return false
-        return [...d.querySelectorAll("details > summary")].every(s => !/loading|checking/i.test(s.textContent))
-    """.trimIndent()).toString()
-    if (state == "true") { ready = true; break }
+    val state =
+        ui.eval(
+                """
+                const d = document.getElementById("docs-first-welcome")?.contentDocument
+                if (!d?.getElementById("open-first-steps")) return false
+                const splash = d.getElementById("splash-screen")
+                if (splash && !splash.classList.contains("hidden")) return false
+                return [...d.querySelectorAll("details > summary")].every(s => !/loading|checking/i.test(s.textContent))
+                """
+                    .trimIndent(),
+            )
+            .toString()
+    if (state == "true") {
+        ready = true
+        break
+    }
 }
 check(ready) { "Welcome did not finish loading" }
 ui.pause(1200)
@@ -70,22 +81,29 @@ line while the drawing moves, launch again, and stop.
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1200x760" clip="0,0,1200,720" hide-toasts=true video="assets/first_steps/first-look.mp4" macro-file="../../dev_docs/agents/transcripts/docs_capture/first_steps.yaml" capture-box="first_steps_drawing" fps="10" padding="0" wait="0" timeout="180" embed=true hidden=true name="first-look" alt="Field's real editor launches a cyan moving FLine drawing, changes its petal count from five to eight and runs that one line with Alt+Enter while the drawing keeps moving, relaunches it, and shows the value eight inline before stopping the animation."}
 ui.eval("document.getElementById('docs-first-welcome')?.remove(); return true")
 ui.openEditor("first_steps_drawing")
-ui.eval("""
+ui.eval(
+    """
     const c = document.querySelector(".monaco-editor-container")
     Object.assign(c.style, {width:"620px", height:"710px", top:"0px", right:"0px", left:"auto", bottom:"auto", transform:"none"})
     window.globalEditor.layout()
     return true
-""".trimIndent())
+    """
+        .trimIndent(),
+)
 ui.clickSelector(".monaco-editor")
 ui.keypressDisplay(true)
 ui.press("Alt+ArrowUp")
-ui.eval("""
+ui.eval(
+    """
     const label = document.querySelector('#keycast-overlay .keycast-text').textContent
     if (!['Alt+↑', '⌥↑'].includes(label)) throw new Error('launch chord was not displayed once: ' + label)
     return true
-""".trimIndent())
+    """
+        .trimIndent(),
+)
 ui.pause(2500)
-ui.eval("""
+ui.eval(
+    """
     const box = [...document.querySelectorAll(".box")].find(b => b.uid === "first_steps_drawing")
     const host = [...box.querySelectorAll("*")].find(e => e.__disclosureAPI)
     if (!host) throw new Error("drawing output did not appear")
@@ -98,7 +116,9 @@ ui.eval("""
     editor.setSelection({startLineNumber:match.range.startLineNumber, startColumn:match.range.endColumn-1, endLineNumber:match.range.endLineNumber, endColumn:match.range.endColumn})
     editor.focus()
     return true
-""".trimIndent())
+    """
+        .trimIndent(),
+)
 ui.pause(2800)
 ui.typeSlowly("8", 160)
 ui.press("Escape")
@@ -107,12 +127,15 @@ ui.press("Alt+Enter")
 ui.pause(3500)
 ui.press("Alt+ArrowUp")
 ui.pause(3500)
-ui.eval("""
+ui.eval(
+    """
     if (!window.globalEditor.getModel().getValue().includes("\nvar petals = 8 ")) throw new Error("the editor did not retain the edit")
     const outputs = [...document.querySelectorAll('.tick_text, .execution_output .inner_output')]
     if (!outputs.some(e => e.textContent.trim() === '8')) throw new Error("the real inline value eight did not appear")
     return true
-""".trimIndent())
+    """
+        .trimIndent(),
+)
 ui.pause(3500)
 ui.press("Alt+ArrowDown")
 ui.pause(1200)
@@ -132,7 +155,8 @@ driver. You also need a desktop session for the window to appear in.
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x720" clip="0,0,1100,600" screenshot="assets/first_steps/first-graphics.png" macro-file="../../dev_docs/agents/transcripts/docs_capture/first_graphics.yaml" capture-box="first_graphics_renderer" padding="0" wait="0" timeout="120" embed=true hidden=true name="first-graphics-document" alt="The first-graphics document has two connected boxes: 1 · Launch the renderer above 2 · Launch the triangle. The renderer's Kotlin is open on the right."}
 ui.openEditor("first_graphics_renderer")
-ui.eval("""
+ui.eval(
+    """
     const c = document.querySelector(".monaco-editor-container")
     Object.assign(c.style, {width:"580px", height:"350px", top:"30px", right:"0px", left:"auto", bottom:"auto", transform:"none"})
     window.globalEditor.layout()
@@ -141,7 +165,9 @@ ui.eval("""
         if (!boxes.some(b => b.uid === uid)) throw new Error('missing template box: ' + uid)
     }
     return true
-""".trimIndent())
+    """
+        .trimIndent(),
+)
 ui.pause(800)
 ```
 

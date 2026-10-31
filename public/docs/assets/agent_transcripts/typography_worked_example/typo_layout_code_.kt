@@ -6,8 +6,7 @@ val face = typeface("SansSerif", 120.0)
 // different AWT paths — accumulated positions versus per-glyph metrics — that must agree.
 val plain = layoutText("minimum", face.withKerning(false))
 println(
-    "advance width ${plain.advanceWidth.f4} vs sum of advances " +
-        "${plain.glyphs.sumOf { it.glyph.advance }.f4}",
+    "advance width ${plain.advanceWidth.f4} vs sum of advances " + "${plain.glyphs.sumOf { it.glyph.advance }.f4}",
 )
 
 // Identity two: tracking adds one gap per INTER-GLYPH space, not one per glyph.

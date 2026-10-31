@@ -126,13 +126,12 @@ net.willDeadlock() // false — it loops
 net.deadTransitions() // [] — every voice is sounding
 
 petri(
-        """
+    """
     armed : 1
     src   : 4
     ~armed + src -[ blocked : bd ]-> dst
 """,
-    )
-    .willDeadlock() // true — nothing can ever empty 'armed'
+).willDeadlock() // true — nothing can ever empty 'armed'
 ```
 
 `~armed` is an inhibitor arc: the transition is enabled only while that place is empty. Nothing
@@ -279,15 +278,14 @@ can use like any other. Here tokens pile up in `tension` and open a filter on th
 previous section:
 
 ```diffstatic {data-lang=kotlin}
-val net =
-    petri(
-        """
+val net = petri(
+    """
     !grid 1/4
     src     : 8
     tension : 0 ^8
     src -[ build @1/4 ]-> tension
 """,
-    )
+)
 val run = net.run()
 
 // `level` normalises against the place's declared capacity, which is the form `rangex` wants.

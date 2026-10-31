@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="solidcraft_compare" index="0" -->
 
 ```edn [field-box id="solidcraft_compare" role="properties"]
-{"id" "solidcraft_compare" "index" 0 "name" "SolidCraft — a parameter changes the part" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "SolidCraft — a parameter changes the part" "_tombstone" false "frame" #afield/rect [80.0 80.0 500.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "solidcraft_compare_code_.kt" "lines" 44 "characters" 1863 "sha256" "cc0bc3aa54913b913bec6bfef1b223afa26b0fc62c8223864111bdbaef4353d1"}]}
+{"id" "solidcraft_compare" "index" 0 "name" "SolidCraft — a parameter changes the part" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "SolidCraft — a parameter changes the part" "_tombstone" false "frame" #afield/rect [80.0 80.0 500.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "solidcraft_compare_code_.kt" "lines" 43 "characters" 1847 "sha256" "48b4f0503a0b510bb47cc5752eb6a187555bc262056d60bfe7b1ee119cafc1b0"}]}
 ```
 
 ```kotlin [field-property box="solidcraft_compare" name="code" path="solidcraft_compare_code_.kt"]
@@ -42,8 +42,7 @@ run {
         val after = part.mesh(tolerance = tolerance).toTriMesh().weld()
 
         println(
-            "B-rep volume: ${original.getDouble("volume").f1} → " +
-                "${changed.getDouble("volume").f1} mm³",
+            "B-rep volume: ${original.getDouble("volume").f1} → " + "${changed.getDouble("volume").f1} mm³",
         )
         println("STEP ${part.exportStep().size} bytes; STL ${part.exportStl().size} bytes")
         println("The hole is blind at width > 40 mm: its cut depth stays 20 mm.")

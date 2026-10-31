@@ -14,12 +14,10 @@ val hardware = MidiDevices.hardware()
 
 val rows =
     all.joinToString("\n") { d ->
-        val direction =
-            listOfNotNull(
-                    if (d.canReceive) "Field can send" else null,
-                    if (d.canTransmit) "Field can listen" else null,
-                )
-                .joinToString(" + ")
+        val direction = listOfNotNull(
+            if (d.canReceive) "Field can send" else null,
+            if (d.canTransmit) "Field can listen" else null,
+        ).joinToString(" + ")
         "| `${d.name}` | ${d.vendor} | ${d.implementation} | $direction |"
     }
 

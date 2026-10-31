@@ -65,14 +65,13 @@ operations:
           generateAuxFiles throws *after* writing the SVG (it goes on to try a C++ backend that
           is not built), so FaustEngine reads the files regardless of the exception.
           */
-          val program =
-              faustCompile(
-                  """
+          val program = faustCompile(
+              """
           #faust
           import("stdfaust.lib");
           process = os.sawtooth(220) : fi.lowpass(3, 1200) * 0.2 <: _,_;
           """,
-              )
+          )
 
           faustDiagram(program)
           println("diagram for " + program.name + " — " + program.wasm.size + " bytes of wasm")
@@ -89,14 +88,13 @@ operations:
           The source is identical to the diagram box above, so this compile is a cache hit: compiles
           are memoised on a hash of the source.
           */
-          val program =
-              faustCompile(
-                  """
+          val program = faustCompile(
+              """
           #faust
           import("stdfaust.lib");
           process = os.sawtooth(220) : fi.lowpass(3, 1200) * 0.2 <: _,_;
           """,
-              )
+          )
 
           faustWaveform(program, seconds = 0.02)
           println("rendered 20ms of " + program.outputs + " channels")
@@ -114,9 +112,8 @@ operations:
           why setting a value is a float store and not a message. And note the order: Faust lists
           controls alphabetically, not in the order they were declared.
           */
-          val program =
-              faustCompile(
-                  """
+          val program = faustCompile(
+              """
           #faust
           import("stdfaust.lib");
           freq   = hslider("freq [unit:Hz] [scale:log]", 220, 50, 2000, 0.01);
@@ -128,7 +125,7 @@ operations:
           dry = os.sawtooth(freq) : fi.lowpass(2, cutoff) * env * 0.2;
           process = (dry : (_ <: attach(_, abs : max ~ *(0.999) : level))) * (1 - bypass) <: _,_;
           """,
-              )
+          )
 
           println(program.inputs.toString() + " in, " + program.outputs + " out")
           program.ui.writable.forEach { c ->

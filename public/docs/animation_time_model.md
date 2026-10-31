@@ -729,10 +729,9 @@ arithmetic by eye.
 */
 val figure = showTable(
     Table(
-            ["after pump #"] + (1..pumps).map { "$it" } + "frameNumber",
-            note = "cells are cumulative body calls",
-        )
-        .rows(builders.map { (label, r) -> [label] + r.first + r.second })
+        ["after pump #"] + (1..pumps).map { "$it" } + "frameNumber",
+        note = "cells are cumulative body calls",
+    ).rows(builders.map { (label, r) -> [label] + r.first + r.second })
         .accent("frameNumber")
         .expect("frameNumber", because = "one frame per pump") { it == pumps - 1 },
     channel = "main",

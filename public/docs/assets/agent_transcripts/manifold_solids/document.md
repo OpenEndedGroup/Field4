@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="manifold_bracket" index="0" -->
 
 ```edn [field-box id="manifold_bracket" role="properties"]
-{"id" "manifold_bracket" "index" 0 "name" "Manifold — a part, and whether it is manufacturable" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Manifold — a part, and whether it is manufacturable" "_tombstone" false "frame" #afield/rect [80.0 80.0 460.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "manifold_bracket_code_.kt" "lines" 156 "characters" 7026 "sha256" "bd2ee4af0527c52686631da478d7065bce367a5a39aef407915384b2b7adca7c"}]}
+{"id" "manifold_bracket" "index" 0 "name" "Manifold — a part, and whether it is manufacturable" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Manifold — a part, and whether it is manufacturable" "_tombstone" false "frame" #afield/rect [80.0 80.0 460.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "manifold_bracket_code_.kt" "lines" 155 "characters" 7014 "sha256" "90b60897a6baa0765693910fd3e7a96d22d0391252c446d178ca684bd41d85b0"}]}
 ```
 
 ```kotlin [field-property box="manifold_bracket" name="code" path="manifold_bracket_code_.kt"]
@@ -155,8 +155,7 @@ run {
     }
     println()
     println(
-        "wall between the slot and the nearest bore: " +
-            "${slotSolid.minGap(nearestBore, searchLength = 30.0).f3} mm",
+        "wall between the slot and the nearest bore: " + "${slotSolid.minGap(nearestBore, searchLength = 30.0).f3} mm",
     )
     nearestBore.close()
     slotSolid.close()
@@ -178,7 +177,7 @@ run {
 <!-- field-box id="manifold_levelset_slices" index="1" -->
 
 ```edn [field-box id="manifold_levelset_slices" role="properties"]
-{"id" "manifold_levelset_slices" "index" 1 "name" "Manifold — a Kotlin lambda as a level set, then sliced" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Manifold — a Kotlin lambda as a level set, then sliced" "_tombstone" false "frame" #afield/rect [80.0 230.0 460.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "manifold_levelset_slices_code_.kt" "lines" 125 "characters" 5218 "sha256" "bdc4569ebdf8e7d6b6ed7ce2b6bf85ffb094d95a761f626e8ac1bd82a1930027"}]}
+{"id" "manifold_levelset_slices" "index" 1 "name" "Manifold — a Kotlin lambda as a level set, then sliced" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Manifold — a Kotlin lambda as a level set, then sliced" "_tombstone" false "frame" #afield/rect [80.0 230.0 460.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "manifold_levelset_slices_code_.kt" "lines" 124 "characters" 5206 "sha256" "7b2adce9e29e1506239680bb2f380603cf04b0dcb27a3da684dcce6aa62978b2"}]}
 ```
 
 ```kotlin [field-property box="manifold_levelset_slices" name="code" path="manifold_levelset_slices_code_.kt"]
@@ -289,8 +288,7 @@ run {
 
     println()
     println(
-        "$layers layers between z=${zLow.f1} and ${zHigh.f1}, " +
-            "$totalContours contours in total",
+        "$layers layers between z=${zLow.f1} and ${zHigh.f1}, " + "$totalContours contours in total",
     )
     println("orange = the ${nozzle}mm nozzle path, offset inward from each layer's outline")
 

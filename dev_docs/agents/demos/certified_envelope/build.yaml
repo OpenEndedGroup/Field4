@@ -96,10 +96,9 @@ operations:
           display(
               "range",
               Table(
-                      ["side", "reached", "at x", "proven bound", "enclosures"],
-                      title = "certifiedRange(0, 3600): certified = ${range.certified}",
-                  )
-                  .row("max", max.value, max.witness, max.bound, max.enclosures)
+                  ["side", "reached", "at x", "proven bound", "enclosures"],
+                  title = "certifiedRange(0, 3600): certified = ${range.certified}",
+              ).row("max", max.value, max.witness, max.bound, max.enclosures)
                   .row("min", min.value, min.witness, min.bound, min.enclosures)
                   .role("at x", CellRole.ACCENT),
           )
@@ -281,10 +280,9 @@ operations:
           display(
               "claims",
               Table(
-                      ["ch", "refused ops (lambda / formula)", "bit mismatches", "== 1 on plateau", ">= 0", "<= 1"],
-                      title = "the worked example's claims, on its formula rewrite",
-                  )
-                  .rows(rows)
+                  ["ch", "refused ops (lambda / formula)", "bit mismatches", "== 1 on plateau", ">= 0", "<= 1"],
+                  title = "the worked example's claims, on its formula rewrite",
+              ).rows(rows)
                   .role("<= 1", CellRole.WARN),
           )
 

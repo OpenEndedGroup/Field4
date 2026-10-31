@@ -5,8 +5,7 @@ Typefaces.firstAvailable("Futura", "Avenir") picks the first face you actually h
 */
 val face = typeface("SansSerif", 140.0)
 println(
-    "$face — ascent ${face.ascent.f1}, descent ${face.descent.f1}, " +
-        "line height ${face.lineHeight.f1}",
+    "$face — ascent ${face.ascent.f1}, descent ${face.descent.f1}, " + "line height ${face.lineHeight.f1}",
 )
 
 /*

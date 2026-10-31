@@ -1142,7 +1142,7 @@ nearest-neighbour distribution has a floor. Both are measured against the same i
 with one weight zeroed -- so the difference is attributable to that weight and nothing else.
 
 ```edn [field-box id="alife_boids" role="properties"]
-{"id" "alife_boids" "index" 18 "name" "6 — Boids: order above the random baseline" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — Boids: order above the random baseline" "_tombstone" false "frame" #afield/rect [520.0 460.0 390.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_boids_code_.kt" "lines" 45 "characters" 1693 "sha256" "1db14555792e53e7cb68263367210977c10ea15aebfb9d91042b3e2cdb45015e"}]}
+{"id" "alife_boids" "index" 18 "name" "6 — Boids: order above the random baseline" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — Boids: order above the random baseline" "_tombstone" false "frame" #afield/rect [520.0 460.0 390.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_boids_code_.kt" "lines" 42 "characters" 1669 "sha256" "30ae1a443aa12ba777ec6469a077eecbeacf4d4342d90c684a3c9880a57c7e2e"}]}
 ```
 
 ```kotlin [field-property box="alife_boids" name="code" path="alife_boids_code_.kt"]
@@ -1166,10 +1166,7 @@ val noSep = start.copy()
 noSep.stepTimes(params.copy(separationWeight = 0.0), 900)
 
 println(
-    "flock polarization " +
-        flock.order().f3 +
-        ", CONTROL with no alignment " +
-        noAlign.order().f3,
+    "flock polarization " + flock.order().f3 + ", CONTROL with no alignment " + noAlign.order().f3,
 )
 println(
     "5th-percentile nearest neighbour: flock " +

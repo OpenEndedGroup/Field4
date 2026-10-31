@@ -24,7 +24,9 @@ standard library — the `[Vec2]` token in that sentence is rendered as a link:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".afield-suggest" warm-completion=true screenshot="assets/docpanel-code-link.png" padding="6" wait="0" timeout="120" embed=true hidden=true name="docpanel-code-link" alt="A completion doc panel with a clickable Vec2 link in its documentation"}
 // Fresh, deterministic capture: forget recency ranking and hide the run-tick overlay.
-ui.eval("window.localStorage.removeItem('field.suggest.recency.v1'); var s=document.createElement('style');s.textContent='.tick_text.ok{display:none !important}';document.head.appendChild(s);return 'setup';")
+ui.eval(
+    "window.localStorage.removeItem('field.suggest.recency.v1'); var s=document.createElement('style');s.textContent='.tick_text.ok{display:none !important}';document.head.appendChild(s);return 'setup';",
+)
 ui.openEditor(id)
 ui.pause(700)
 ui.waitForSelector(".monaco-editor", 15000.0)
@@ -34,25 +36,29 @@ ui.press("Control+A")
 ui.type("val axis = vec")
 ui.pause(300)
 ui.press("Control+Space")
-// warm-completion=true built the K1 completion engine up front, so the enriched
-// RPC — the type-based completion and its KDoc — resolves headlessly. Wait for the
-// linkified [Vec2] token itself, so the still shows a live code-link (not just the
-// item, and not the instant quick-stub).
+/*
+warm-completion=true built the K1 completion engine up front, so the enriched
+RPC — the type-based completion and its KDoc — resolves headlessly. Wait for the
+linkified [Vec2] token itself, so the still shows a live code-link (not just the
+item, and not the instant quick-stub).
+*/
 ui.waitForSelector("a[href^=\"field-source:\"]", 15000.0)
 ui.pause(800)
-// Best-effort second frame: follow the [Vec2] link into its own card and grab the
-// breadcrumb, then step back so the fence's end-screenshot above is still the
-// linkified panel. Wrapped so a navigation hiccup can never fail the primary still.
-// Target only the KDoc [Vec2] link (the source-footer link also uses field-source:,
-// and Playwright's strict locator refuses a two-match click).
+/*
+Best-effort second frame: follow the [Vec2] link into its own card and grab the
+breadcrumb, then step back so the fence's end-screenshot above is still the
+linkified panel. Wrapped so a navigation hiccup can never fail the primary still.
+Target only the KDoc [Vec2] link (the source-footer link also uses field-source:,
+and Playwright's strict locator refuses a two-match click).
+*/
 try {
-  ui.clickSelector("a[href^=\"field-source:\"]:not(.afield-suggest-source-link)")
-  ui.waitForSelector(".afield-suggest-nav-crumbs", 8000.0)
-  ui.pause(700)
-  ui.shotClip("public/docs/assets/docpanel-breadcrumb.png", ".afield-suggest")
-  ui.clickSelector(".afield-suggest-nav-btn[data-nav=\"back\"]")
-  ui.waitForSelector("a[href^=\"field-source:\"]:not(.afield-suggest-source-link)", 8000.0)
-  ui.pause(400)
+    ui.clickSelector("a[href^=\"field-source:\"]:not(.afield-suggest-source-link)")
+    ui.waitForSelector(".afield-suggest-nav-crumbs", 8000.0)
+    ui.pause(700)
+    ui.shotClip("public/docs/assets/docpanel-breadcrumb.png", ".afield-suggest")
+    ui.clickSelector(".afield-suggest-nav-btn[data-nav=\"back\"]")
+    ui.waitForSelector("a[href^=\"field-source:\"]:not(.afield-suggest-source-link)", 8000.0)
+    ui.pause(400)
 } catch (e: Throwable) {}
 ```
 

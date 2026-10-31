@@ -122,8 +122,7 @@ operations:
           // {{ remoteAR }}
           // The marker lands on line 5, the throw inside mean.
           fun mean(values: List<Double>): Double {
-              if (values.isEmpty())
-                  throw IllegalArgumentException("mean of nothing")
+              if (values.isEmpty()) throw IllegalArgumentException("mean of nothing")
               return values.sum() / values.size
           }
 
@@ -142,8 +141,14 @@ operations:
               display("main", "<b>${if (square) "square" else "sine"}</b> at ${freq.asDynamic().toFixed(1)} Hz")
           }
 
-          slider("frequency", min = 1.0, max = 10.0, step = 0.1, initialValue = 3.0) { freq = it; redraw() }
-          checkbox("square wave") { square = it; redraw() }
+          slider("frequency", min = 1.0, max = 10.0, step = 0.1, initialValue = 3.0) {
+              freq = it
+              redraw()
+          }
+          checkbox("square wave") {
+              square = it
+              redraw()
+          }
           redraw()
   - create:
       box: kparity_late
@@ -153,9 +158,12 @@ operations:
         code: |
           // {{ remoteAR }}
           // The run ends at once; line 4 prints half a second later.
-          setTimeout({
-              println("half a second later")
-          }, 500)
+          setTimeout(
+              {
+                  println("half a second later")
+              },
+              500,
+          )
           println("the run is over")
   - create:
       box: kparity_spin

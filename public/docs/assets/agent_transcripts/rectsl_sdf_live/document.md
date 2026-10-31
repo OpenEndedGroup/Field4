@@ -56,7 +56,7 @@ motion blur — in exchange for fill, material and z order, because `min` is
 union and a union has no layers.
 
 ```edn [field-box id="rectsl_sdf_live" role="properties"]
-{"id" "rectsl_sdf_live" "index" 1 "name" "rectsl scene as a distance field" "parents" ["root" "rectsl_sdf_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "rectsl_sdf_renderer"} "name" "rectsl scene as a distance field" "_tombstone" false "frame" #afield/rect [300.0 140.0 330.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_sdf_live_code_.kt" "lines" 103 "characters" 4136 "sha256" "e3cdb0141539848ac1979e529cf980f226a341c4a1be6fd114e8ee068f2a9bf8"}]}
+{"id" "rectsl_sdf_live" "index" 1 "name" "rectsl scene as a distance field" "parents" ["root" "rectsl_sdf_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "rectsl_sdf_renderer"} "name" "rectsl scene as a distance field" "_tombstone" false "frame" #afield/rect [300.0 140.0 330.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_sdf_live_code_.kt" "lines" 101 "characters" 4051 "sha256" "1dec76e5bea1ee13d886d5e8bd256ca65db3bcc3d1d16f26169f98e767de479a"}]}
 ```
 
 ```kotlin [field-property box="rectsl_sdf_live" name="code" path="rectsl_sdf_live_code_.kt"]
@@ -130,18 +130,16 @@ if (!field.ok) println("fidelity caveats: ${field.notes.joinToString("; ")}")
 
 // 4. One fullscreen triangle, no vertex attributes, and a clock. `time` is the
 //    only thing that changes per frame — the geometry never moves on the CPU.
-val module =
-    Module(
-            parameters(renderer) {
-                name = "rectsl-sdf-live"
-                vertex = RectSLSdfShader.VERTEX
-                fragment = fragmentSource
-                blend = false
-                depthTest = false
-                primitiveType = triangles
-            },
-        )
-        .pointer()
+val module = Module(
+    parameters(renderer) {
+        name = "rectsl-sdf-live"
+        vertex = RectSLSdfShader.VERTEX
+        fragment = fragmentSource
+        blend = false
+        depthTest = false
+        primitiveType = triangles
+    },
+).pointer()
 
 val mesh = fullscreenTriangle(module)
 

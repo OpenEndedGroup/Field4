@@ -52,8 +52,7 @@ showImgGrid(
 )
 val (mdx, mdy) = flow.medianDisplacement()
 println(
-    "${flow.tracked().size}/${seeds.size} tracked; median displacement " +
-        "(${mdx.f2}, ${mdy.f2}) px",
+    "${flow.tracked().size}/${seeds.size} tracked; median displacement " + "(${mdx.f2}, ${mdy.f2}) px",
 )
 println("RANSAC ${fit.inlierCount} inliers of ${flow.tracked().size} after ${fit.iterations} iterations")
 println("recovered model agrees with the planted transform to ${worst.f3} px over the probe grid")

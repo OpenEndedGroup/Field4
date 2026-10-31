@@ -650,13 +650,13 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**35383 public symbols across 1605 source files**, 20686 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**35385 public symbols across 1605 source files**, 20688 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
 | Category | Files | Symbols | Documented | Covers |
 | --- | --- | --- | --- | --- |
-| [Examples](examples.md) | 218 | 690 | 304 (44%) | Runnable examples, galleries and verification programs. |
+| [Examples](examples.md) | 218 | 692 | 306 (44%) | Runnable examples, galleries and verification programs. |
 | [Internal](internal.md) | 16 | 156 | 55 (35%) | Implementation details explicitly marked Internal by their source. |
 | [Lighting](lighting.md) | 8 | 206 | 206 (100%) | Light sources, fixtures and control protocols for working with physical and rendered lighting. |
 | [Networking](networking.md) | 16 | 366 | 213 (58%) | OSC messages, discovery and query interfaces for connecting Field to other applications and devices. |
@@ -822,7 +822,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>ai/<wbr></small> [BoxAiToolsSmokeTest.kt](examples.md#boxaitoolssmoketest-kt) | Examples · internal | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>execution/<wbr></small> [BoxBodyRun.kt](workspace.md#boxbodyrun-kt) | Workspace | 3 | 3 | Which boxes are executing their body right now, as distinct from a frame loop or callback the body started: `BoxBodyRun` counts each box's nested body runs, and a source-backed block reads it to refuse re-entering its own box. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [BoxCodeCompileGuard.kt](examples.md#boxcodecompileguard-kt) | Examples | 2 | 1 |  |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [BoxCodeFormat.kt](examples.md#boxcodeformat-kt) | Examples | 3 | 1 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [BoxCodeFormat.kt](examples.md#boxcodeformat-kt) | Examples | 5 | 3 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>graph/<wbr></small> [Boxes.kt](workspace.md#boxes-kt) | Workspace | 80 | 23 | The `Box` model: a box's properties, its `children`/`parents` graph, and the property sets that decide what is saved and what is sent to the browser. | [AI4's built-in tools](../ai4_tools.md), [Keyboard shortcuts](../keybindings.md), [Keyframes: capturing, persisting and replaying live state](../keyframer_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [BoxImportCensus.kt](examples.md#boximportcensus-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>kotlin/<wbr></small> [boxImports.kt](workspace.md#boximports-kt) | Workspace · internal | 14 | 10 | Which of a box's imports it needs. |  |

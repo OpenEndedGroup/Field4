@@ -32,7 +32,7 @@ start(renderer::run)
 <!-- field-box id="rectsl_spacetime_trace" index="1" -->
 
 ```edn [field-box id="rectsl_spacetime_trace" role="properties"]
-{"id" "rectsl_spacetime_trace" "index" 1 "name" "a RectSL animation, as a solid" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "a RectSL animation, as a solid" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_spacetime_trace_code_.kt" "lines" 230 "characters" 8597 "sha256" "f56e5cd498b886a633a1c6142986ef059962c8f90e2dd3de48464f0d43dd9193"}]}
+{"id" "rectsl_spacetime_trace" "index" 1 "name" "a RectSL animation, as a solid" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "a RectSL animation, as a solid" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_spacetime_trace_code_.kt" "lines" 229 "characters" 8641 "sha256" "4327f8f9aec99538cc3eb6827cbbb169e95da64fff6d20390ecf80fadb3557d7"}]}
 ```
 
 ```kotlin [field-property box="rectsl_spacetime_trace" name="code" path="rectsl_spacetime_trace_code_.kt"]
@@ -61,21 +61,21 @@ a time, linearly interpolated, and `->x` takes one wherever it takes a number.
 */
 val source =
     """
-#rectsl
-->wall 8 8 abstract
-->duration 4
-->fps 30
+    #rectsl
+    ->wall 8 8 abstract
+    ->duration 4
+    ->fps 30
 
-"sweep" rect
-  0.7 2.4 ->wh
-  '( 0=-2.6  4=2.6 ) ->x
-  '( 0=0  4=3.14159 ) ->rot
+    "sweep" rect
+      0.7 2.4 ->wh
+      '( 0=-2.6  4=2.6 ) ->x
+      '( 0=0  4=3.14159 ) ->rot
 
-"pulse" rect
-  1.2 1.2 ->wh
-  1.6 -1.4 ->xy
-  '( 0=0.3  4=2.2 ) ->w
-"""
+    "pulse" rect
+      1.2 1.2 ->wh
+      1.6 -1.4 ->xy
+      '( 0=0.3  4=2.2 ) ->w
+    """
         .trimIndent()
 
 val program = compileRectSL(source).program
@@ -118,8 +118,7 @@ for (k in 0 until nt) {
 val sampleMs = (System.nanoTime() - sampledAt) / 1e6
 println("sampled ${inner.size} points, ${nt} tapes, ${sampleMs.f0} ms")
 println(
-    "  ${inner.count { it < 0f }} of them inside, distances " +
-        "${inner.min().f3} to ${inner.max().f3}",
+    "  ${inner.count { it < 0f }} of them inside, distances " + "${inner.min().f3} to ${inner.max().f3}",
 )
 
 val innerBounds = boundsOf(

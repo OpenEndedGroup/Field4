@@ -160,8 +160,7 @@ operations:
               }
               println()
               println(
-                  "wall between the slot and the nearest bore: " +
-                      "${slotSolid.minGap(nearestBore, searchLength = 30.0).f3} mm",
+                  "wall between the slot and the nearest bore: " + "${slotSolid.minGap(nearestBore, searchLength = 30.0).f3} mm",
               )
               nearestBore.close()
               slotSolid.close()
@@ -289,8 +288,7 @@ operations:
 
               println()
               println(
-                  "$layers layers between z=${zLow.f1} and ${zHigh.f1}, " +
-                      "$totalContours contours in total",
+                  "$layers layers between z=${zLow.f1} and ${zHigh.f1}, " + "$totalContours contours in total",
               )
               println("orange = the ${nozzle}mm nozzle path, offset inward from each layer's outline")
 

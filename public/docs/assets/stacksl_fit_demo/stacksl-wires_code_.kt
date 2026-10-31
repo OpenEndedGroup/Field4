@@ -22,7 +22,7 @@ run {
         1.0 1.0 1.0 1 vec4
         0.0 0.33 0.67 1 vec4
         palette
-    """
+        """
             .trimIndent()
 
     println("The StackSL program:")

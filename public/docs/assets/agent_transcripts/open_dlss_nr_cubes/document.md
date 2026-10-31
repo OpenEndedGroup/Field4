@@ -35,7 +35,7 @@ start(renderer::run)
 <!-- field-box id="open_dlss_nr" index="1" -->
 
 ```edn [field-box id="open_dlss_nr" role="properties"]
-{"id" "open_dlss_nr" "index" 1 "name" "neural cubes" "parents" ["root" "agent_graphics_context"] "children" ["nr_record"] "properties" {"children" #{#afield/box "nr_record"} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "neural cubes" "_tombstone" false "frame" #afield/rect [400.0 40.0 350.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "open_dlss_nr_code_.kt" "lines" 62 "characters" 2457 "sha256" "48530c7cd77965ce90cf079ae2eff30832d6cefc963fbeaf9ee6c62c2b79a86b"} {"name" "vertex" "language" "glsl" "path" "open_dlss_nr_vertex_.glsl" "lines" 98 "characters" 3728 "sha256" "0c71e00f89a8c8aabef5159588fd6535901635507f441f8082429834e20313d1"} {"name" "fragment" "language" "glsl" "path" "open_dlss_nr_fragment_.glsl" "lines" 43 "characters" 1844 "sha256" "dae3930e45ae77ec2321912a08af00c60f72a342a1e259bde0a65dc4b5ae718a"}]}
+{"id" "open_dlss_nr" "index" 1 "name" "neural cubes" "parents" ["root" "agent_graphics_context"] "children" ["nr_record"] "properties" {"children" #{#afield/box "nr_record"} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "neural cubes" "_tombstone" false "frame" #afield/rect [400.0 40.0 350.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "open_dlss_nr_code_.kt" "lines" 62 "characters" 2457 "sha256" "48530c7cd77965ce90cf079ae2eff30832d6cefc963fbeaf9ee6c62c2b79a86b"} {"name" "vertex" "language" "glsl" "path" "open_dlss_nr_vertex_.glsl" "lines" 98 "characters" 3712 "sha256" "846552df2e767e56de5b02d748a210497251cc02bb2276e7428b7de86749fed3"} {"name" "fragment" "language" "glsl" "path" "open_dlss_nr_fragment_.glsl" "lines" 43 "characters" 1844 "sha256" "dae3930e45ae77ec2321912a08af00c60f72a342a1e259bde0a65dc4b5ae718a"}]}
 ```
 
 ```kotlin [field-property box="open_dlss_nr" name="code" path="open_dlss_nr_code_.kt"]
@@ -166,10 +166,10 @@ vec4 project(vec3 worldPosition, float time) {
     float near = .1;
     float far = 100;
     return vec4(
-        dot(viewOffset, right) * 1.9 * pc.sizeJitter.y / pc.sizeJitter.x,
-        dot(viewOffset, up) * 1.9,
-        far / (far - near) * depth - far * near / (far - near),
-        depth
+    dot(viewOffset, right) * 1.9 * pc.sizeJitter.y / pc.sizeJitter.x,
+    dot(viewOffset, up) * 1.9,
+    far / (far - near) * depth - far * near / (far - near),
+    depth
     );
 }
 void main() {

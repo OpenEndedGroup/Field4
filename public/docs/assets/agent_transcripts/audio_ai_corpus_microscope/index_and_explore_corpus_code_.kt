@@ -40,21 +40,20 @@ runAsync<Pair<AudioAsset, CorpusPreview>>(
                 val duration = requireNotNull(asset.durationSeconds) { "asset has no duration" }
                 val whole = AssetRegion(asset.id, 0.0, duration)
                 tracked(
-                        "source ${index + 1} segments",
-                        segmentCorpus(
+                    "source ${index + 1} segments",
+                    segmentCorpus(
+                        whole,
+                        requestedBy = "field:corpus-microscope/index",
+                    ),
+                ).thenCompose {
+                    tracked(
+                        "source ${index + 1} descriptors",
+                        embedCorpus(
                             whole,
                             requestedBy = "field:corpus-microscope/index",
                         ),
                     )
-                    .thenCompose {
-                        tracked(
-                            "source ${index + 1} descriptors",
-                            embedCorpus(
-                                whole,
-                                requestedBy = "field:corpus-microscope/index",
-                            ),
-                        )
-                    }
+                }
             }
             CompletableFuture.allOf(*indexes.toTypedArray()).thenApply { assets.first() }
         }
@@ -62,21 +61,20 @@ runAsync<Pair<AudioAsset, CorpusPreview>>(
             if (future.isDone) throw CancellationException("run ended")
             val query = AssetRegion(nancy.id, startSeconds = queryStartSeconds, durationSeconds = queryDurationSeconds)
             tracked(
-                    "Nancy neighbour query",
-                    findCorpusNeighbours(
-                        query,
-                        limit = neighbourCount,
-                        includeSameAsset = false,
-                        weights = weights,
-                        requestedBy = "field:corpus-microscope/query",
-                    ),
-                )
-                .thenCompose { result ->
-                    if (future.isDone) throw CancellationException("run ended")
-                    client
-                        .corpusPreview(result.id)
-                        .also { pending -> onCancel { pending.cancel(true) } }
-                        .thenApply { preview -> nancy to preview }
-                }
+                "Nancy neighbour query",
+                findCorpusNeighbours(
+                    query,
+                    limit = neighbourCount,
+                    includeSameAsset = false,
+                    weights = weights,
+                    requestedBy = "field:corpus-microscope/query",
+                ),
+            ).thenCompose { result ->
+                if (future.isDone) throw CancellationException("run ended")
+                client
+                    .corpusPreview(result.id)
+                    .also { pending -> onCancel { pending.cancel(true) } }
+                    .thenApply { preview -> nancy to preview }
+            }
         }
 }

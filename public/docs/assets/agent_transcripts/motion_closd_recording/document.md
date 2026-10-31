@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="motion_closd_recording" index="0" -->
 
 ```edn [field-box id="motion_closd_recording" role="properties"]
-{"id" "motion_closd_recording" "index" 0 "name" "CLoSD — a recorded foot tether" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "CLoSD — a recorded foot tether" "_tombstone" false "frame" #afield/rect [80.0 80.0 600.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "motion_closd_recording_code_.kt" "lines" 43 "characters" 2227 "sha256" "7aa6c45c0213b04203fa2bbde23ad3ed0585c87fe1637898fc5629c18c5a859c"}]}
+{"id" "motion_closd_recording" "index" 0 "name" "CLoSD — a recorded foot tether" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "CLoSD — a recorded foot tether" "_tombstone" false "frame" #afield/rect [80.0 80.0 600.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "motion_closd_recording_code_.kt" "lines" 59 "characters" 2489 "sha256" "727a1266db6fd9bd7043c42991112fe217b053d10a7454690ba4b08b2fd67819"}]}
 ```
 
 ```kotlin [field-property box="motion_closd_recording" name="code" path="motion_closd_recording_code_.kt"]
@@ -29,34 +29,50 @@ val followHalfLife = AtomicReference(.4)
 val scrub = AtomicReference(3.4)
 val showReference = AtomicBoolean(true)
 controlGroup {
-    checkbox("Follow body", initialValue=true) { follow.set(it) }
-    slider("Follow half-life seconds", .05, 2.0, initialValue=.4) { followHalfLife.set(it) }
-    slider("Recorded seconds", clip.startTime, clip.endTime, initialValue=3.4) { scrub.set(it) }
-    checkbox("Play", initialValue=false) { play.set(it) }
-    checkbox("Reference pose", initialValue=true) { showReference.set(it) }
+    checkbox("Follow body", initialValue = true) { follow.set(it) }
+    slider("Follow half-life seconds", .05, 2.0, initialValue = .4) { followHalfLife.set(it) }
+    slider("Recorded seconds", clip.startTime, clip.endTime, initialValue = 3.4) { scrub.set(it) }
+    checkbox("Play", initialValue = false) { play.set(it) }
+    checkbox("Reference pose", initialValue = true) { showReference.set(it) }
 }
 val started = AnimationClock.nowSeconds()
 
 loop {
-    val seconds = if (play.get()) clip.startTime + (AnimationClock.nowSeconds() - started) % (clip.endTime - clip.startTime) else scrub.get()
+    val seconds =
+        if (play.get()) clip.startTime + (AnimationClock.nowSeconds() - started) % (clip.endTime - clip.startTime)
+        else scrub.get()
     val snapshot = clip.sample(seconds)
     val tether = events.lastOrNull { it.optString("type") == "tetherPhysics" && it.getDouble("time") <= seconds }
-    val overlays = if (tether != null && seconds < 4.0) listOf(fline {
-        val a = tether.getJSONArray("anchor")
-        val p = tether.getJSONArray("point")
-        moveTo(a.getDouble(0), a.getDouble(1), a.getDouble(2))
-        lineTo(p.getDouble(0), p.getDouble(1), p.getDouble(2))
-        color = vec(1.0, 0.3, 0.4, 1.0)
-        thickness = 3.0
-    }) else emptyList()
-    showMotion(snapshot.frame, clip.skeleton, reference=showReference.get(), overlays=overlays, follow=follow.get(), followHalfLife=followHalfLife.get())
-    markdown("status", "**CLoSD · recorded GPU motion**\n\n" +
-        "White: executed body. Cyan: planner reference positions. Red: physical foot tether, attached at 2 s and released at 4 s. " +
-        "Time ${seconds.f2} s · episode ${snapshot.frame.episode}. Orbit the view with the mouse.")
+    val overlays =
+        if (tether != null && seconds < 4.0)
+            listOf(
+                fline {
+                    val a = tether.getJSONArray("anchor")
+                    val p = tether.getJSONArray("point")
+                    moveTo(a.getDouble(0), a.getDouble(1), a.getDouble(2))
+                    lineTo(p.getDouble(0), p.getDouble(1), p.getDouble(2))
+                    color = vec(1.0, 0.3, 0.4, 1.0)
+                    thickness = 3.0
+                },
+            )
+        else emptyList()
+    showMotion(
+        snapshot.frame,
+        clip.skeleton,
+        reference = showReference.get(),
+        overlays = overlays,
+        follow = follow.get(),
+        followHalfLife = followHalfLife.get(),
+    )
+    markdown(
+        "status",
+        "**CLoSD · recorded GPU motion**\n\n" +
+            "White: executed body. Cyan: planner reference positions. Red: physical foot tether, attached at 2 s and released at 4 s. " +
+            "Time ${seconds.f2} s · episode ${snapshot.frame.episode}. Orbit the view with the mouse.",
+    )
     displayOpen("motion")
     displayOpen("status")
     delay(16) // Yield without flooding the UI transport.
-
 }
 ```
 

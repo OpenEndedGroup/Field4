@@ -27,7 +27,7 @@ val inverted =
             }
         }
     }
-"""
+    """
         .trimIndent()
 
 val capture = try {

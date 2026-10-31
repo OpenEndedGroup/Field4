@@ -19,7 +19,7 @@ parse the text, compile it to an interaction net, reduce the net until nothing f
 back out. Nothing here needs a GPU, a network or any setup.
 
 ```edn [field-box id="lambda_normalise" role="properties"]
-{"id" "lambda_normalise" "index" 0 "name" "normalise a term" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "normalise a term" "_tombstone" false "frame" #afield/rect [60.0 60.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lambda_normalise_code_.kt" "lines" 65 "characters" 3282 "sha256" "7a8d1f644b14d954e3fef5fb62a029545d8043fbaf7759f24d0b96524e8cb066"}]}
+{"id" "lambda_normalise" "index" 0 "name" "normalise a term" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "normalise a term" "_tombstone" false "frame" #afield/rect [60.0 60.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lambda_normalise_code_.kt" "lines" 64 "characters" 3205 "sha256" "cf506fc49400248d343d9d9a3dc3577d073469d5ffb0eef121461e6bb0a59a64"}]}
 ```
 
 ```kotlin [field-property box="lambda_normalise" name="code" path="lambda_normalise_code_.kt"]
@@ -44,25 +44,24 @@ order to disagree with the net, and the readback is compared to it with `alphaEq
 println()
 println("term                                       normal form                   steps  fans  agents")
 [
-        "\\x. x",
-        "(\\x y z. x z (y z)) (\\x y. x) (\\x y. x)",
-        "(\\n f x. f (n f x)) (\\f x. f (f x))",
-        "(\\m n f. m (n f)) (\\f x. f (f x)) (\\f x. f (f (f x)))",
-        "(\\f x. f (f (f x))) (\\f x. f (f x))",
-        "(\\n f x. n (\\g h. h (g f)) (\\u. x) (\\u. u)) (\\f x. f (f (f x)))",
-        "(\\x. x x) (\\y. ((\\x. x) (\\x. x)) y)",
-        "(\\x y. x) (\\x. x) ((\\m n f. m (n f)) (\\f x. f (f x)) (\\f x. f (f (f x))))",
-    ]
-    .forEach { source ->
-        val each = LambdaTerms.normalise(source)
-        val ok = LambdaTerms.alphaEquivalent(each.result, LambdaTerms.referenceNormalOrder(each.term))
-        println(
-            source.take(40).padEnd(42) +
-                each.printed.take(28).padEnd(30) +
-                "%5d %5d %7d".format(each.steps, each.fans, each.remainingNodes) +
-                (if (ok) "" else "   ORACLE DISAGREES"),
-        )
-    }
+    "\\x. x",
+    "(\\x y z. x z (y z)) (\\x y. x) (\\x y. x)",
+    "(\\n f x. f (n f x)) (\\f x. f (f x))",
+    "(\\m n f. m (n f)) (\\f x. f (f x)) (\\f x. f (f (f x)))",
+    "(\\f x. f (f (f x))) (\\f x. f (f x))",
+    "(\\n f x. n (\\g h. h (g f)) (\\u. x) (\\u. u)) (\\f x. f (f (f x)))",
+    "(\\x. x x) (\\y. ((\\x. x) (\\x. x)) y)",
+    "(\\x y. x) (\\x. x) ((\\m n f. m (n f)) (\\f x. f (f x)) (\\f x. f (f (f x))))",
+].forEach { source ->
+    val each = LambdaTerms.normalise(source)
+    val ok = LambdaTerms.alphaEquivalent(each.result, LambdaTerms.referenceNormalOrder(each.term))
+    println(
+        source.take(40).padEnd(42) +
+            each.printed.take(28).padEnd(30) +
+            "%5d %5d %7d".format(each.steps, each.fans, each.remainingNodes) +
+            (if (ok) "" else "   ORACLE DISAGREES"),
+    )
+}
 
 /*
 Read the `agents` column against the `normal form` column on the exponentiation row — `three two`,

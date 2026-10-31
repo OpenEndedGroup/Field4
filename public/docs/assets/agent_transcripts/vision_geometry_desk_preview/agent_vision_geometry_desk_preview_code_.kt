@@ -46,7 +46,7 @@ val program =
         }
         onFrame { frame -> uniform("spin", frame.time * 0.5) }
     }
-"""
+    """
         .trimIndent()
 
 // This really compiles the Kotlin above to JavaScript and really runs it; the mesh drawn
@@ -64,13 +64,7 @@ capture?.mesh()?.let { mesh ->
     println("built " + mesh.vertexCount + " vertices, " + mesh.triangleCount + " triangles")
     val b = mesh.bounds()
     println(
-        "extent " +
-            (b[3] - b[0]).f3 +
-            " x " +
-            (b[4] - b[1]).f3 +
-            " x " +
-            (b[5] - b[2]).f3 +
-            " m",
+        "extent " + (b[3] - b[0]).f3 + " x " + (b[4] - b[1]).f3 + " x " + (b[5] - b[2]).f3 + " m",
     )
     println("winding agreement " + (mesh.windingAgreement() * 100).f0 + "%")
 }

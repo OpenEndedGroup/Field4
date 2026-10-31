@@ -20,7 +20,7 @@ the data outside recolours, and the footnote counts them. An unbounded side draw
 edge — that is the visual difference between "at most 1e-6" and "0 to 1e-6".
 
 ```edn [field-box id="chart_expect" role="properties"]
-{"id" "chart_expect" "index" 0 "name" "4 - An assertion you can watch fail" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - An assertion you can watch fail" "_tombstone" false "frame" #afield/rect [634.2 226.0 534.2 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chart_expect_code_.kt" "lines" 28 "characters" 1108 "sha256" "221a755fe7a57dea5c7900c850bc3acb9f7c6762c80839f745945ee421310883"}]}
+{"id" "chart_expect" "index" 0 "name" "4 - An assertion you can watch fail" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - An assertion you can watch fail" "_tombstone" false "frame" #afield/rect [634.2 226.0 534.2 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chart_expect_code_.kt" "lines" 26 "characters" 1047 "sha256" "bdfb148144246c46d520f2f0a7aa40f0877077d0cc28bf1abf5ac412cb336633"}]}
 ```
 
 ```kotlin [field-property box="chart_expect" name="code" path="chart_expect_code_.kt"]
@@ -36,16 +36,14 @@ val residual = iterations.map { i ->
     if (i == 11 || i == 23) base + 2.4e-6 else base // two real overshoots
 }
 
-val c =
-    Chart(
-            title = "residual per iteration",
-            xLabel = "iteration",
-            yLabel = "|r|",
-            note = "Adam, lr 0.05",
-        )
-        .line("residual", iterations, residual)
-        .points("residual", iterations, residual)
-        .expect(max = 1e-6, because = "converged below 1e-6")
+val c = Chart(
+    title = "residual per iteration",
+    xLabel = "iteration",
+    yLabel = "|r|",
+    note = "Adam, lr 0.05",
+).line("residual", iterations, residual)
+    .points("residual", iterations, residual)
+    .expect(max = 1e-6, because = "converged below 1e-6")
 
 showChart(c)
 

@@ -44,21 +44,27 @@ lines that were launched while they keep running:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1000x500" clip-selector=".monaco-editor-container" screenshot="assets/running_code/launch-fragment.png" transcript="../../dev_docs/agents/transcripts/docs_capture/launch_fragment.yaml" padding="0" wait="0" timeout="120" embed=true hidden=true name="running-code-launch-fragment" alt="Field's editor with the cursor inside a loop block after Alt+1. A striped green bar in the left margin spans the five lines of the loop, lines 4 to 8, and not the two lines above it. Beside print(count) the running count reads 475."}
 ui.openEditor("launch_fragment")
-ui.eval("""
+ui.eval(
+    """
     const c = document.querySelector(".monaco-editor-container")
     Object.assign(c.style, {width:"560px", height:"260px", top:"20px", right:"20px", left:"auto", bottom:"auto", transform:"none"})
     window.globalEditor.layout()
     window.globalEditor.setPosition({lineNumber: 6, column: 5})
     window.globalEditor.focus()
     return true
-""".trimIndent())
+    """
+        .trimIndent(),
+)
 ui.press("Alt+1")
 ui.pause(1500)
-ui.eval("""
+ui.eval(
+    """
     const bars = document.querySelectorAll(".monaco-editor .margin [class*='execution-marker-']")
     if (bars.length == 0) throw new Error("no execution marker in the margin")
     return true
-""".trimIndent())
+    """
+        .trimIndent(),
+)
 ```
 
 To tune a value while watching its effect, put the cursor on a numeric literal and use **Increment
@@ -98,24 +104,30 @@ the rest of Field:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1000x420" clip="40,40,940,330" screenshot="assets/running_code/go-jobs-badge.png" transcript="../../dev_docs/agents/transcripts/docs_capture/go_jobs_badge.yaml" padding="0" wait="0" timeout="120" embed=true hidden=true name="running-code-go-jobs-badge" alt="A box named counting with a small striped square holding the number 1 in its top-right corner. Beside it, Field's editor shows the box's go block with the cursor inside it after Alt+1: a striped bar in the margin spans the go block, and the count printed beside print(ticks) reads 3."}
 ui.openEditor("go_jobs_badge")
-ui.eval("""
+ui.eval(
+    """
     const c = document.querySelector(".monaco-editor-container")
     Object.assign(c.style, {width:"560px", height:"280px", top:"45px", right:"60px", left:"auto", bottom:"auto", transform:"none"})
     window.globalEditor.layout()
     window.globalEditor.setPosition({lineNumber: 4, column: 9})
     window.globalEditor.focus()
     return true
-""".trimIndent())
+    """
+        .trimIndent(),
+)
 ui.press("Alt+1")
 ui.pause(1800)
-ui.eval("""
+ui.eval(
+    """
     const box = [...document.querySelectorAll(".box")].find(b => b.uid === "go_jobs_badge")
     const badge = box && box.querySelector(":scope > .go-jobs-badge")
     if (!badge || badge.textContent.trim() !== "1") throw new Error("go badge missing or wrong: " + (badge && badge.textContent))
     if (box.classList.contains("running")) throw new Error("the box is drawn as launched")
     if (!document.querySelector(".monaco-editor .margin [class*='execution-marker-']")) throw new Error("no margin marker")
     return true
-""".trimIndent())
+    """
+        .trimIndent(),
+)
 ```
 
 ---
@@ -438,8 +450,10 @@ The preamble is regenerated **on run**: Field recomputes the gathered preamble, 
 `prop` is the explicit way to make an inheritable slot. `@exported` is the automatic cousin: annotate a normal Kotlin `fun`/`val`/`var`, and *after the box runs*, Field reflects over it and does the same job for you.
 
 ```diffstatic {data-lang=kotlin}
-@exported fun add(x: Int, y: Int): Int = x + y
-@exported val answer: Int = 42
+@exported
+fun add(x: Int, y: Int): Int = x + y
+@exported
+val answer: Int = 42
 ```
 
 After this box runs, its preamble gains inheriting accessors (note the leading-underscore **alias**):

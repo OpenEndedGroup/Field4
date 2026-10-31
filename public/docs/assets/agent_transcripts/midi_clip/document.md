@@ -25,7 +25,7 @@ On macOS the IAC driver appears as two entries with the SAME name, one output an
 input, so a name alone does not identify a device: check the direction.
 
 ```edn [field-box id="midi_devices" role="properties"]
-{"id" "midi_devices" "index" 0 "name" "What can this machine see?" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "What can this machine see?" "_tombstone" false "frame" #afield/rect [60.0 2040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "midi_devices_code_.kt" "lines" 48 "characters" 1908 "sha256" "0784e3c7a0dac0d81185a824960c1e467a170813bf0e837c6ecfd371fa3781bb"}]}
+{"id" "midi_devices" "index" 0 "name" "What can this machine see?" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "What can this machine see?" "_tombstone" false "frame" #afield/rect [60.0 2040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "midi_devices_code_.kt" "lines" 46 "characters" 1855 "sha256" "4c683712fe158b39fc19932457d2e367467ae6864a90b1843cb3bb4a4428e094"}]}
 ```
 
 ```kotlin [field-property box="midi_devices" name="code" path="midi_devices_code_.kt"]
@@ -45,12 +45,10 @@ val hardware = MidiDevices.hardware()
 
 val rows =
     all.joinToString("\n") { d ->
-        val direction =
-            listOfNotNull(
-                    if (d.canReceive) "Field can send" else null,
-                    if (d.canTransmit) "Field can listen" else null,
-                )
-                .joinToString(" + ")
+        val direction = listOfNotNull(
+            if (d.canReceive) "Field can send" else null,
+            if (d.canTransmit) "Field can listen" else null,
+        ).joinToString(" + ")
         "| `${d.name}` | ${d.vendor} | ${d.implementation} | $direction |"
     }
 

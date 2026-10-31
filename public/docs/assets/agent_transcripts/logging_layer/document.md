@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="log_blocks" index="0" -->
 
 ```edn [field-box id="log_blocks" role="properties"]
-{"id" "log_blocks" "index" 0 "name" "Blocks, and what the indent holds" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Blocks, and what the indent holds" "_tombstone" false "frame" #afield/rect [60.0 4040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "log_blocks_code_.kt" "lines" 60 "characters" 2344 "sha256" "bd1a02b339868f8ff70e5582721cf4475261ae1940adb1a5d084838c11953652"}]}
+{"id" "log_blocks" "index" 0 "name" "Blocks, and what the indent holds" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Blocks, and what the indent holds" "_tombstone" false "frame" #afield/rect [60.0 4040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "log_blocks_code_.kt" "lines" 59 "characters" 2271 "sha256" "ccb74bddc555808a494e0b4afef90fc97b4423c06c0a53f82d64fe99e9a3e8f0"}]}
 ```
 
 ```kotlin [field-property box="log_blocks" name="code" path="log_blocks_code_.kt"]
@@ -56,23 +56,22 @@ terminal a line inside an lblock is prefixed by a raw 36-character UUID.
 display(
     "main",
     Table(
-            ["depth", "boundary", "block", "message"],
-            title = "two nested lblocks, as the dispatcher saw them",
-            note =
-                "the deepest line's raw indent: '" +
-                    (deepest?.indent?.replace("\t", "\\t") ?: "") +
-                    "' — block ids and tabs, not spaces",
-        )
-        .rows(
-            mine.map { e ->
-                [
-                    e.indent.split("\t").count { it.isNotEmpty() },
-                    e.boundary?.name ?: "—",
-                    e.blockId?.take(8) ?: "—",
-                    e.message.substringBefore(" - '"),
-                ]
-            },
-        )
+        ["depth", "boundary", "block", "message"],
+        title = "two nested lblocks, as the dispatcher saw them",
+        note =
+            "the deepest line's raw indent: '" +
+                (deepest?.indent?.replace("\t", "\\t") ?: "") +
+                "' — block ids and tabs, not spaces",
+    ).rows(
+        mine.map { e ->
+            [
+                e.indent.split("\t").count { it.isNotEmpty() },
+                e.boundary?.name ?: "—",
+                e.blockId?.take(8) ?: "—",
+                e.message.substringBefore(" - '"),
+            ]
+        },
+    )
         .role("message", CellRole.ACCENT),
 )
 ```
@@ -82,7 +81,7 @@ display(
 <!-- field-box id="log_mute" index="1" -->
 
 ```edn [field-box id="log_mute" role="properties"]
-{"id" "log_mute" "index" 1 "name" "Muting compares the whole string" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Muting compares the whole string" "_tombstone" false "frame" #afield/rect [60.0 1040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "log_mute_code_.kt" "lines" 26 "characters" 1010 "sha256" "02ccc5d1bc52bd7e08debf6ab8f723fc604f2a1d7dc6709ee7a6cb22e180d070"}]}
+{"id" "log_mute" "index" 1 "name" "Muting compares the whole string" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Muting compares the whole string" "_tombstone" false "frame" #afield/rect [60.0 1040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "log_mute_code_.kt" "lines" 25 "characters" 985 "sha256" "4de4bca1b53c386542790759e0b3151aeceb858aef97baf3d4bc1dbe219d9513"}]}
 ```
 
 ```kotlin [field-property box="log_mute" name="code" path="log_mute_code_.kt"]
@@ -101,11 +100,10 @@ val spellings = ["info,boxes", "boxes,info", "info,boxes,extra", "info,Boxes", "
 display(
     "main",
     Table(
-            ["channel string", "isMuted"],
-            title = "ConsoleMute compares the whole channel string",
-            note = "the set this JVM booted with: " + ConsoleMute.channels.sorted().joinToString(", "),
-        )
-        .rows(spellings.map { [it, ConsoleMute.isMuted(it)] })
+        ["channel string", "isMuted"],
+        title = "ConsoleMute compares the whole channel string",
+        note = "the set this JVM booted with: " + ConsoleMute.channels.sorted().joinToString(", "),
+    ).rows(spellings.map { [it, ConsoleMute.isMuted(it)] })
         .role("channel string", CellRole.ACCENT)
         .roleBy("isMuted") { if (it == true) CellRole.WARN else CellRole.OK },
 )
@@ -119,7 +117,7 @@ display(
 <!-- field-box id="log_mute_is_console_only" index="2" -->
 
 ```edn [field-box id="log_mute_is_console_only" role="properties"]
-{"id" "log_mute_is_console_only" "index" 2 "name" "Muting is a console policy, not a filter" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Muting is a console policy, not a filter" "_tombstone" false "frame" #afield/rect [60.0 3040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "log_mute_is_console_only_code_.kt" "lines" 33 "characters" 1445 "sha256" "c08ad21e5fdc59bc2e2ff38390cb3904d82e17aba65aef2b38cfc4a9328698b6"}]}
+{"id" "log_mute_is_console_only" "index" 2 "name" "Muting is a console policy, not a filter" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Muting is a console policy, not a filter" "_tombstone" false "frame" #afield/rect [60.0 3040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "log_mute_is_console_only_code_.kt" "lines" 32 "characters" 1412 "sha256" "31acb98147461ac0bf4da5c06dc73fcb663eb3985449b70bc8441adf3bb89ca8"}]}
 ```
 
 ```kotlin [field-property box="log_mute_is_console_only" name="code" path="log_mute_is_console_only_code_.kt"]
@@ -145,13 +143,12 @@ LogDispatcher.withSink(probe) {
 display(
     "main",
     Table(
-            ["channel", "muted on the console", "reached my sink"],
-            title = "muting keeps a line off the console, not out of the layer",
-            note =
-                "${arrived.size} of ${channels.size} arrived. Mute is for a channel too chatty " +
-                    "for a terminal, not for one you want gone.",
-        )
-        .rows(channels.map { [it, ConsoleMute.isMuted(it), it in arrived] })
+        ["channel", "muted on the console", "reached my sink"],
+        title = "muting keeps a line off the console, not out of the layer",
+        note =
+            "${arrived.size} of ${channels.size} arrived. Mute is for a channel too chatty " +
+                "for a terminal, not for one you want gone.",
+    ).rows(channels.map { [it, ConsoleMute.isMuted(it), it in arrived] })
         .role("channel", CellRole.ACCENT)
         .roleBy("muted on the console") { if (it == true) CellRole.WARN else CellRole.DIM }
         .roleBy("reached my sink") { if (it == true) CellRole.OK else CellRole.BAD },
@@ -208,7 +205,7 @@ display(
 <!-- field-box id="log_filter" index="4" -->
 
 ```edn [field-box id="log_filter" role="properties"]
-{"id" "log_filter" "index" 4 "name" "The log widget takes any substring" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The log widget takes any substring" "_tombstone" false "frame" #afield/rect [60.0 2040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "log_filter_code_.kt" "lines" 50 "characters" 1887 "sha256" "73ee65a8737c542f2f368807eed3b89e30d6333a1bcff7f3855831c9e30808f0"}]}
+{"id" "log_filter" "index" 4 "name" "The log widget takes any substring" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The log widget takes any substring" "_tombstone" false "frame" #afield/rect [60.0 2040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "log_filter_code_.kt" "lines" 49 "characters" 1854 "sha256" "7eed24d2ff4f8deed789b76b74f42f6f3911d9c7a9814ac01c2c787714290fa3"}]}
 ```
 
 ```kotlin [field-property box="log_filter" name="code" path="log_filter_code_.kt"]
@@ -252,13 +249,12 @@ pairs of a real tag and a real channel in this tree differ the same way.
 display(
     "main",
     Table(
-            ["channel emitted", "pushed to the subscriber"],
-            title = "a LogStream filter of [\"kotlin\"] against three channels",
-            note =
-                "${matched.size} of ${emitted.size} matched: kotlin is a tag in the first and only a " +
-                    "substring in the second. The pinned console splits on commas, so it would take only the first.",
-        )
-        .rows(emitted.map { [it, it in matched] })
+        ["channel emitted", "pushed to the subscriber"],
+        title = "a LogStream filter of [\"kotlin\"] against three channels",
+        note =
+            "${matched.size} of ${emitted.size} matched: kotlin is a tag in the first and only a " +
+                "substring in the second. The pinned console splits on commas, so it would take only the first.",
+    ).rows(emitted.map { [it, it in matched] })
         .role("channel emitted", CellRole.ACCENT)
         .roleBy("pushed to the subscriber") { if (it == true) CellRole.OK else CellRole.DIM },
 )
@@ -269,7 +265,7 @@ display(
 <!-- field-box id="log_stats" index="5" -->
 
 ```edn [field-box id="log_stats" role="properties"]
-{"id" "log_stats" "index" 5 "name" "Stat lines and the heatmap" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Stat lines and the heatmap" "_tombstone" false "frame" #afield/rect [60.0 5040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "log_stats_code_.kt" "lines" 46 "characters" 1652 "sha256" "07591fe4eea331ee0cfea06cfde98207a8c9fd055d0a2eadd782913c6ee8df3b"}]}
+{"id" "log_stats" "index" 5 "name" "Stat lines and the heatmap" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Stat lines and the heatmap" "_tombstone" false "frame" #afield/rect [60.0 5040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "log_stats_code_.kt" "lines" 42 "characters" 1506 "sha256" "2fffb680aa382c13412aafc1ae026fc50fbb71ab4473fc7ea9996558bd1a290b"}]}
 ```
 
 ```kotlin [field-property box="log_stats" name="code" path="log_stats_code_.kt"]
@@ -285,30 +281,26 @@ formatMillis emits a unit that matches that grammar, which is why a slow compile
 reads compile=1.63s rather than compile=1629ms.
 */
 val durations = [120_000L, 3_400_000L, 47_000_000L, 250_000_000L, 1_630_000_000L, 12_400_000_000L]
-val ladder =
-    Table(
-            ["nanoseconds", "formatted"],
-            title = "formatMillis keeps digits where they matter",
-            note = "more digits below a millisecond, plain integers past 100ms, decimal seconds past a second",
-        )
-        .rows(durations.map { [it, formatMillis(it)] })
-        .role("formatted", CellRole.ACCENT)
+val ladder = Table(
+    ["nanoseconds", "formatted"],
+    title = "formatMillis keeps digits where they matter",
+    note = "more digits below a millisecond, plain integers past 100ms, decimal seconds past a second",
+).rows(durations.map { [it, formatMillis(it)] })
+    .role("formatted", CellRole.ACCENT)
 
 val line = "fps=61.2 upload=3.4MB net:102% dropped=0"
-val torn =
-    Table(
-            ["fragment", "treated as"],
-            title = "how a stats line is torn into colourable tokens",
-            note =
-                "history is kept per channel and per key, so two unrelated metrics sharing one " +
-                    "channel do not colour each other",
-        )
-        .rows(
-            StatsHeatmap.fragments("logdemo", line).map {
-                ["'${it.text}'", if (it.style == null) "plain text" else "number"]
-            },
-        )
-        .roleBy("treated as") { if (it == "number") CellRole.ACCENT else CellRole.DIM }
+val torn = Table(
+    ["fragment", "treated as"],
+    title = "how a stats line is torn into colourable tokens",
+    note =
+        "history is kept per channel and per key, so two unrelated metrics sharing one " +
+            "channel do not colour each other",
+).rows(
+    StatsHeatmap.fragments("logdemo", line).map {
+        ["'${it.text}'", if (it.style == null) "plain text" else "number"]
+    },
+)
+    .roleBy("treated as") { if (it == "number") CellRole.ACCENT else CellRole.DIM }
 
 markdown(
     "main",

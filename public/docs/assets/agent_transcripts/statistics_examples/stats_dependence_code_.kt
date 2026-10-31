@@ -33,9 +33,7 @@ val panels = cases.map { (label, y) ->
         color = vec(0.48, 0.85, 1.0, 0.8),
         pointSize = 1.1,
     )
-    val caption =
-        "r=${r.f3} rho=${rho.f3} tau=${tau.f3}" +
-            " xi=${xi.f3} dCor=${dcor.f3} MIC~=${mic.f3}"
+    val caption = "r=${r.f3} rho=${rho.f3} tau=${tau.f3}" + " xi=${xi.f3} dCor=${dcor.f3} MIC~=${mic.f3}"
     "$label\n$caption" to cloud
 }
 

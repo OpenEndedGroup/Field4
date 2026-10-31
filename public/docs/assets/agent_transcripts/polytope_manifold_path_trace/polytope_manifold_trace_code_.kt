@@ -78,8 +78,7 @@ val shaded = Solid.scope {
     // shallow ones average together and the polytope stops reading as one.
     val shaded = cut.toTriMesh(normals = true, minSharpAngle = 20.0)
     println(
-        "cut: genus ${cut.genus}, volume ${cut.volume.f4}, " +
-            "${shaded.triangleCount} triangles for the render",
+        "cut: genus ${cut.genus}, volume ${cut.volume.f4}, " + "${shaded.triangleCount} triangles for the render",
     )
 
     shaded

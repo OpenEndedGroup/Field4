@@ -35,14 +35,13 @@ val builds = studyBuilds(
             context.file("estimate.txt").writeText("$estimate\n")
             StudyBuildProduct(
                 ["estimate.txt"],
-                facts =
-                    mapOf("samples" to samples, "estimate" to estimate, "error" to Math.abs(estimate - Math.PI)),
+                facts = mapOf("samples" to samples, "estimate" to estimate, "error" to Math.abs(estimate - Math.PI)),
             )
         },
     ],
 ) {
-        emptyMap()
-    }
+    emptyMap()
+}
 showStudyBuilds("estimate")
 ```
 

@@ -83,8 +83,7 @@ val (scene, sceneLo, sceneHi) = Solid.scope {
             "median ${volumes[volumes.size / 2].f3}",
     )
     println(
-        "  they sum to ${volumes.sum().f2} against the whole solid's " +
-            "${whole.volume.f2}",
+        "  they sum to ${volumes.sum().f2} against the whole solid's " + "${whole.volume.f2}",
     )
     println("  and each one on its own has genus ${parts.take(6).map { it.genus }} ...")
 

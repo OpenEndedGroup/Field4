@@ -29,26 +29,24 @@ val mergeDense = SortingNetwork(
         ],
 )
 
-val configs =
-    [
-            Triple("bubble", SortingNetwork.bubble(8), "#8ad6ff"),
-            Triple("merge+", mergeDense, "#ffb857"),
-            Triple("merge", merge, "#94ffad"),
-        ]
-        .flatMapIndexed { familyIndex, (family, initial, hue) ->
-            [0.7 to 0.05, 1.5 to 0.02, 3.2 to 0.01].flatMapIndexed { tempIndex, (startTemp, endTemp) ->
-                (0 until 3).map { seed ->
-                    RunConfig(
-                        family = family,
-                        initial = initial,
-                        initialTemp = startTemp,
-                        finalTemp = endTemp,
-                        seed = (familyIndex * 100 + tempIndex * 10 + seed).toLong(),
-                        hue = hue,
-                    )
-                }
-            }
+val configs = [
+    Triple("bubble", SortingNetwork.bubble(8), "#8ad6ff"),
+    Triple("merge+", mergeDense, "#ffb857"),
+    Triple("merge", merge, "#94ffad"),
+].flatMapIndexed { familyIndex, (family, initial, hue) ->
+    [0.7 to 0.05, 1.5 to 0.02, 3.2 to 0.01].flatMapIndexed { tempIndex, (startTemp, endTemp) ->
+        (0 until 3).map { seed ->
+            RunConfig(
+                family = family,
+                initial = initial,
+                initialTemp = startTemp,
+                finalTemp = endTemp,
+                seed = (familyIndex * 100 + tempIndex * 10 + seed).toLong(),
+                hue = hue,
+            )
         }
+    }
+}
 
 val iterations = 2_000
 val progressEvery = 80

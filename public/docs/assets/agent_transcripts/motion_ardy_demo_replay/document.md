@@ -11,11 +11,12 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="motion_ardy_demo_replay" index="0" -->
 
 ```edn [field-box id="motion_ardy_demo_replay" role="properties"]
-{"id" "motion_ardy_demo_replay" "index" 0 "name" "ARDY — the interactive skipping take" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "ARDY — the interactive skipping take" "_tombstone" false "frame" #afield/rect [80.0 80.0 600.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "motion_ardy_demo_replay_code_.kt" "lines" 27 "characters" 1250 "sha256" "cbfa9e4a946ffff334ef542a6e942294f505a2507a150c1df288b05a39ca219b"}]}
+{"id" "motion_ardy_demo_replay" "index" 0 "name" "ARDY — the interactive skipping take" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "ARDY — the interactive skipping take" "_tombstone" false "frame" #afield/rect [80.0 80.0 600.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "motion_ardy_demo_replay_code_.kt" "lines" 37 "characters" 1361 "sha256" "f4ba7844700097cf040fc15fe11a76fe30753a22752856bd91725cf9a7ff5bcf"}]}
 ```
 
 ```kotlin [field-property box="motion_ardy_demo_replay" name="code" path="motion_ardy_demo_replay_code_.kt"]
 import afield.animation.mocap.*
+
 val clip = MotionRecording("%docs/assets/motion_recordings/ardy-live-skip.f4motion".path).clip()
 val started = AnimationClock.nowSeconds()
 
@@ -25,21 +26,30 @@ loop {
     val snapshot = clip.sample(clip.startTime + elapsed % duration)
     val pose = snapshot.frame.executed
     val bones = pose.bones(clip.skeleton).apply {
-        color=vec(.94,.96,1.0,1.0); thickness=3.0
-        pointed=true; pointSize=.8
+        color = vec(.94, .96, 1.0, 1.0)
+        thickness = 3.0
+        pointed = true
+        pointSize = .8
     }
-    three(channel="motion", height=480, width=700) {
+    three(channel = "motion", height = 480, width = 700) {
         lines(bones)
-        camera(yaw=35.0, pitch=12.0, padding=2.6) // Room for the whole skipping gesture.
-        followCamera(vec(pose.root[0], pose.root[1], pose.root[2]), halfLifeSeconds=.4,
-            epoch="${(elapsed/duration).toInt()}:${snapshot.frame.episode}")
+        camera(yaw = 35.0, pitch = 12.0, padding = 2.6) // Room for the whole skipping gesture.
+        followCamera(
+            vec(pose.root[0], pose.root[1], pose.root[2]),
+            halfLifeSeconds = .4,
+            epoch = "${(elapsed/duration).toInt()}:${snapshot.frame.episode}",
+        )
         title("ARDY · skipping · ${snapshot.frame.time.f2} s")
         helpers(true)
     }
-    markdown("status", "**ARDY · skipping**\n\n" +
-        "Six uninterrupted seconds from the interactive session. Prompt: A person skips forward. " +
-        "Four denoising steps; original poses and session timestamps retained.")
-    displayOpen("motion"); displayOpen("status")
+    markdown(
+        "status",
+        "**ARDY · skipping**\n\n" +
+            "Six uninterrupted seconds from the interactive session. Prompt: A person skips forward. " +
+            "Four denoising steps; original poses and session timestamps retained.",
+    )
+    displayOpen("motion")
+    displayOpen("status")
     delay(16)
 }
 ```

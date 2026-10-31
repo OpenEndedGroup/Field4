@@ -37,12 +37,14 @@ operations:
       frame: { x: 340.0, y: 40.0, w: 300.0, h: 100.0 }
       properties:
         code: |
-          // A forest fire: a fixed scatter of trees, and four kinds of fire (red, green, blue,
-          // magenta) that compete for them. Burnt trees recover, so a fire front can be
-          // followed by another. Nothing burns until something is lit; the box beneath this
-          // one lights it.
-          // The forest is 768 trees high and as wide as the window's shape needs, so it fills
-          // the window without being stretched.
+          /*
+          A forest fire: a fixed scatter of trees, and four kinds of fire (red, green, blue,
+          magenta) that compete for them. Burnt trees recover, so a fire front can be
+          followed by another. Nothing burns until something is lit; the box beneath this
+          one lights it.
+          The forest is 768 trees high and as wide as the window's shape needs, so it fills
+          the window without being stretched.
+          */
           val treesHigh = 768
           prop<ShaderForestFireSystem>(fire) = ShaderForestFireSystem() {
               height = treesHigh
@@ -58,9 +60,11 @@ operations:
       frame: { x: 340.0, y: 160.0, w: 300.0, h: 100.0 }
       properties:
         code: |
-          // Draws into the fire's ignition texture: two points that burn for ever, one red
-          // and one green. Each relights its neighbourhood as soon as the trees recover, so
-          // each sends out a train of rings, and where the trains meet one kind takes over.
+          /*
+          Draws into the fire's ignition texture: two points that burn for ever, one red
+          and one green. Each relights its neighbourhood as soon as the trees recover, so
+          each sends out a train of rings, and where the trains meet one kind takes over.
+          */
           fire.clearFireInput()
           fire.clearState()
 

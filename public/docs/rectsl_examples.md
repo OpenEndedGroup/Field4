@@ -602,12 +602,10 @@ with(Functions) {
     val seed = gaussian(0.45, 0.20) + gaussian(0.60, 0.20) * 0.50
     val run = fitBest(target, seed, restarts = 12) // RMSE collapses toward ~0
 
-    val program =
-        compileRectSL(
-                source,
-                mapOf("target" to target, "seed" to seed, "fit" to run.fitted),
-            )
-            .program!!
+    val program = compileRectSL(
+        source,
+        mapOf("target" to target, "seed" to seed, "fit" to run.fitted),
+    ).program!!
     // ... render program like any other scene ...
 }
 ```

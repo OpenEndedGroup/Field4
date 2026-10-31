@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="surface" index="0" -->
 
 ```edn [field-box id="surface" role="properties"]
-{"id" "surface" "index" 0 "name" "1 - A performer's surface" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - A performer's surface" "_tombstone" false "frame" #afield/rect [60.0 60.0 260.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "surface_code_.kt" "lines" 26 "characters" 1351 "sha256" "553671b4ffb4b6226596957f2810e3f95a2d13f1a8dd588531296c5d8071d442"}]}
+{"id" "surface" "index" 0 "name" "1 - A performer's surface" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - A performer's surface" "_tombstone" false "frame" #afield/rect [60.0 60.0 260.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "surface_code_.kt" "lines" 46 "characters" 1490 "sha256" "def660097b214a6a3937a20373cd226a8c7a6942a1a3d97ff2d0a8b105fcb72e"}]}
 ```
 
 ```kotlin [field-property box="surface" name="code" path="surface_code_.kt"]
@@ -23,20 +23,40 @@ var tint = Vector4f(0.05f, 0.78f, 0.93f, 1f)
 fun draw() {
     val c = "rgba(${(tint.x * 255).toInt()},${(tint.y * 255).toInt()},${(tint.z * 255).toInt()},${tint.w})"
     val r = 10 + 40 * kotlin.math.log10(cutoff / 20.0) / 3.0
-    val dot = if (armed) "<circle cx='${150 + orbit.x * 120}' cy='${150 - orbit.y * 120}' r='${r.f1}' fill='$c'/>" else ""
-    display("figure", """
+    val dot =
+        if (armed) "<circle cx='${150 + orbit.x * 120}' cy='${150 - orbit.y * 120}' r='${r.f1}' fill='$c'/>" else ""
+    display(
+        "figure",
+        """
         <svg width="300" height="300" style="background:#05080a;border:1px solid #136178">
           <line x1="150" y1="150" x2="${150 + orbit.x * 120}" y2="${150 - orbit.y * 120}" stroke="#136178"/>$dot
         </svg>
         <div style="font:18px Iosevka,monospace;color:#0cc8ed">$title  cutoff ${cutoff.toInt()} Hz</div>
-    """.trimIndent())
+    """
+            .trimIndent(),
+    )
 }
 controlGroup("controls") {
-    slider("cutoff", min = 20.0, max = 20000.0, initialValue = 800.0, law = ControlLaw.LOGARITHMIC) { cutoff = it; draw() }
-    vec2Control("orbit", initialValue = Vector2f(0.3f, 0.2f), step = 0.01) { orbit = it; draw() }
-    checkbox("armed", initialValue = true) { armed = it; draw() }
-    stringInput("title", initialValue = "orbit") { title = it; draw() }
-    colorPicker("tint", initialValue = Vector4f(0.05f, 0.78f, 0.93f, 1f)) { tint = it; draw() }
+    slider("cutoff", min = 20.0, max = 20000.0, initialValue = 800.0, law = ControlLaw.LOGARITHMIC) {
+        cutoff = it
+        draw()
+    }
+    vec2Control("orbit", initialValue = Vector2f(0.3f, 0.2f), step = 0.01) {
+        orbit = it
+        draw()
+    }
+    checkbox("armed", initialValue = true) {
+        armed = it
+        draw()
+    }
+    stringInput("title", initialValue = "orbit") {
+        title = it
+        draw()
+    }
+    colorPicker("tint", initialValue = Vector4f(0.05f, 0.78f, 0.93f, 1f)) {
+        tint = it
+        draw()
+    }
 }
 displayOpen("controls")
 draw()
@@ -55,7 +75,7 @@ Drag "gain" from left to right. When it passes 0.5 the callback rebuilds this gr
 replacing the slider's DOM under the pointer; the drag continues on the new one.
 
 ```edn [field-box id="rerender" role="properties"]
-{"id" "rerender" "index" 1 "name" "2 - A slider that rebuilds itself mid-drag" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - A slider that rebuilds itself mid-drag" "_tombstone" false "frame" #afield/rect [680.0 60.0 260.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rerender_code_.kt" "lines" 14 "characters" 562 "sha256" "dd79b825ab298c71fa163f98ba4362c291430247f0e84d6b9db860c7ef50d21b"}]}
+{"id" "rerender" "index" 1 "name" "2 - A slider that rebuilds itself mid-drag" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - A slider that rebuilds itself mid-drag" "_tombstone" false "frame" #afield/rect [680.0 60.0 260.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rerender_code_.kt" "lines" 20 "characters" 652 "sha256" "a6e124793ea68ed4fe2b8140698612aa29c368ac2b5fdf209a839e9bd555bd38"}]}
 ```
 
 ```kotlin [field-property box="rerender" name="code" path="rerender_code_.kt"]
@@ -65,8 +85,14 @@ var rebuilt = 0
 fun surface() {
     controlGroup("controls") {
         slider("gain", 0.0, 1.0, 0.01, 0.2) {
-            display("seen", "<div style='font:18px Iosevka,monospace;color:#0cc8ed'>gain ${it.f2}  rebuilt $rebuilt</div>")
-            if (it > 0.5 && rebuilt == 0) { rebuilt++; surface() }
+            display(
+                "seen",
+                "<div style='font:18px Iosevka,monospace;color:#0cc8ed'>gain ${it.f2}  rebuilt $rebuilt</div>",
+            )
+            if (it > 0.5 && rebuilt == 0) {
+                rebuilt++
+                surface()
+            }
             if (it < 0.3) rebuilt = 0
         }
     }

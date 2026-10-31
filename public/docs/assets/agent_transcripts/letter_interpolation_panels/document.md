@@ -34,7 +34,7 @@ start(renderer::run)
 <!-- field-box id="li_fields" index="1" -->
 
 ```edn [field-box id="li_fields" role="properties"]
-{"id" "li_fields" "index" 1 "name" "train both letters" "parents" ["root" "li_renderer"] "children" ["li_panels"] "properties" {"children" #{#afield/box "li_panels"} "parents" #{#afield/box "root" #afield/box "li_renderer"} "name" "train both letters" "_tombstone" false "frame" #afield/rect [380.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "li_fields_code_.kt" "lines" 76 "characters" 3055 "sha256" "63eb79df46ae9768ee416001df95003d970aca8399232f46586e246a0aa12559"}]}
+{"id" "li_fields" "index" 1 "name" "train both letters" "parents" ["root" "li_renderer"] "children" ["li_panels"] "properties" {"children" #{#afield/box "li_panels"} "parents" #{#afield/box "root" #afield/box "li_renderer"} "name" "train both letters" "_tombstone" false "frame" #afield/rect [380.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "li_fields_code_.kt" "lines" 74 "characters" 3010 "sha256" "96f2e825e2968db8786c4500276f79315c170985c1b65835435dce08cc2ee7c7"}]}
 ```
 
 ```kotlin [field-property box="li_fields" name="code" path="li_fields_code_.kt"]
@@ -101,13 +101,11 @@ fun align(contour: List<Vec3>): List<Vec3> {
 
 // The same seed in both calls. Smile's Xavier initialisation is drawn from a generator
 // that `flowMatch` reseeds, so this really is the same starting point twice.
-fun train(target: List<Vec3>) =
-    flowMatch(
-            target,
-            source,
-            FlowMatchOptions(steps = 9000, coupling = FlowCoupling.PAIRED, seed = 7, hidden = intArrayOf(64, 64)),
-        )
-        .export()
+fun train(target: List<Vec3>) = flowMatch(
+    target,
+    source,
+    FlowMatchOptions(steps = 9000, coupling = FlowCoupling.PAIRED, seed = 7, hidden = intArrayOf(64, 64)),
+).export()
 
 fieldA = train(align(glyph(LETTERS.first)))
 fieldB = train(align(glyph(LETTERS.second)))

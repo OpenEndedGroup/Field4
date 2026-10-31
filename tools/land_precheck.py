@@ -47,6 +47,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from check_staged_generated_artifacts import (  # noqa: E402
     _box_code_input,
     _compiled_transcript,
+    _formatted_box_code,
     _demo_input,
     _publication_input,
     _python_tool_input,
@@ -198,6 +199,14 @@ CHECKS: tuple[Check, ...] = (
         lambda c: sorted(set(_paths(c, _compiled_transcript) + _paths(c, _box_code_input))),
         gradle=("checkBoxCodeCompiles", "checkBoxIdioms"),
         lander_guards=("checkBoxCodeCompiles", "checkBoxIdioms"),
+    ),
+    Check(
+        "box-format",
+        "checkBoxCodeFormat (2026-10-31: box code and docs fences reformatted once; a branch that edits "
+        "them unformatted would drift them again)",
+        lambda c: _paths(c, _formatted_box_code),
+        gradle=("checkBoxCodeFormat",),
+        lander_guards=("checkBoxCodeFormat",),
     ),
     Check(
         "demo-corpus",

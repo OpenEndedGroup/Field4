@@ -12,9 +12,8 @@ never change a note.
 The first compile of a session is slow (13-22s of GraalVM warm-up, then ~600ms). Run
 `FaustEngine.warmInBackground()` in another box first if you would rather wait now.
 */
-val inst =
-    faustPoly(
-        """
+val inst = faustPoly(
+    """
 #faust
 import("stdfaust.lib");
 cutoff = hslider("cutoff [unit:Hz]", 2600, 120, 9000, 1);
@@ -25,8 +24,8 @@ env = en.adsr(0.004, 0.09, 0.55, 0.03, gate);
 process = (os.sawtooth(freq) + os.sawtooth(freq * 1.005)) * 0.5
         : fi.resonlp(cutoff, 1.4, 1) * env * gain <: _,_;
 """,
-        voices = 8,
-    )
+    voices = 8,
+)
 
 /*
 Two patterns, one timeline. The chords are notes; the cutoff is a parameter. Both are scheduled

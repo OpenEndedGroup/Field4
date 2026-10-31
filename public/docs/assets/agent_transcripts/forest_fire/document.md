@@ -47,16 +47,18 @@ The forest is 768 trees high and as wide as the window's shape needs, so it fill
 the window without being stretched.
 
 ```edn [field-box id="fire_forest" role="properties"]
-{"id" "fire_forest" "index" 1 "name" "forest" "parents" ["root" "fire_renderer"] "children" ["fire_starter"] "properties" {"children" #{#afield/box "fire_starter"} "parents" #{#afield/box "root" #afield/box "fire_renderer"} "name" "forest" "_tombstone" false "frame" #afield/rect [340.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fire_forest_code_.kt" "lines" 15 "characters" 667 "sha256" "752efb964c88b5d940489b1c1d35727b820fdef688095a10d1be0f34c15dcfcf"}]}
+{"id" "fire_forest" "index" 1 "name" "forest" "parents" ["root" "fire_renderer"] "children" ["fire_starter"] "properties" {"children" #{#afield/box "fire_starter"} "parents" #{#afield/box "root" #afield/box "fire_renderer"} "name" "forest" "_tombstone" false "frame" #afield/rect [340.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fire_forest_code_.kt" "lines" 17 "characters" 655 "sha256" "4c6e9946df4151b615c288bc2ea1f880430058a48e6e4a9f80fab1ef88e879bf"}]}
 ```
 
 ```kotlin [field-property box="fire_forest" name="code" path="fire_forest_code_.kt"]
-// A forest fire: a fixed scatter of trees, and four kinds of fire (red, green, blue,
-// magenta) that compete for them. Burnt trees recover, so a fire front can be
-// followed by another. Nothing burns until something is lit; the box beneath this
-// one lights it.
-// The forest is 768 trees high and as wide as the window's shape needs, so it fills
-// the window without being stretched.
+/*
+A forest fire: a fixed scatter of trees, and four kinds of fire (red, green, blue,
+magenta) that compete for them. Burnt trees recover, so a fire front can be
+followed by another. Nothing burns until something is lit; the box beneath this
+one lights it.
+The forest is 768 trees high and as wide as the window's shape needs, so it fills
+the window without being stretched.
+*/
 val treesHigh = 768
 prop<ShaderForestFireSystem>(fire) = ShaderForestFireSystem() {
     height = treesHigh
@@ -81,13 +83,15 @@ and one green. Each relights its neighbourhood as soon as the trees recover, so
 each sends out a train of rings, and where the trains meet one kind takes over.
 
 ```edn [field-box id="fire_starter" role="properties"]
-{"id" "fire_starter" "index" 2 "name" "fire starter" "parents" ["root" "fire_forest"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "fire_forest"} "name" "fire starter" "_tombstone" false "frame" #afield/rect [340.0 160.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fire_starter_code_.kt" "lines" 18 "characters" 707 "sha256" "6b38a3f9a45095e0c7f3309a71b2795991a5ffd0855536500e091e2302bfdb0f"} {"name" "vertex" "language" "glsl" "path" "fire_starter_vertex_.glsl" "lines" 12 "characters" 345 "sha256" "c0ac9cc065ddd6b8287a1f4e4fa5deda869d6ebda87289989aa92f59ebdc6e54"} {"name" "fragment" "language" "glsl" "path" "fire_starter_fragment_.glsl" "lines" 17 "characters" 442 "sha256" "42593d907e70917fc34ef6dca29a58ac2d8345b6d39dbbff5cf0b30e1bfef648"}]}
+{"id" "fire_starter" "index" 2 "name" "fire starter" "parents" ["root" "fire_forest"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "fire_forest"} "name" "fire starter" "_tombstone" false "frame" #afield/rect [340.0 160.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fire_starter_code_.kt" "lines" 20 "characters" 704 "sha256" "e76657c59135025617b0c5b17989311a5cc27128d9c2b2f7dd03a9e774e3ddc2"} {"name" "vertex" "language" "glsl" "path" "fire_starter_vertex_.glsl" "lines" 12 "characters" 345 "sha256" "c0ac9cc065ddd6b8287a1f4e4fa5deda869d6ebda87289989aa92f59ebdc6e54"} {"name" "fragment" "language" "glsl" "path" "fire_starter_fragment_.glsl" "lines" 17 "characters" 442 "sha256" "42593d907e70917fc34ef6dca29a58ac2d8345b6d39dbbff5cf0b30e1bfef648"}]}
 ```
 
 ```kotlin [field-property box="fire_starter" name="code" path="fire_starter_code_.kt"]
-// Draws into the fire's ignition texture: two points that burn for ever, one red
-// and one green. Each relights its neighbourhood as soon as the trees recover, so
-// each sends out a train of rings, and where the trains meet one kind takes over.
+/*
+Draws into the fire's ignition texture: two points that burn for ever, one red
+and one green. Each relights its neighbourhood as soon as the trees recover, so
+each sends out a train of rings, and where the trains meet one kind takes over.
+*/
 fire.clearFireInput()
 fire.clearState()
 

@@ -1,9 +1,4 @@
-/**
- * ComplexTest.kt
- * Demonstrates various Kotlin features for compiler testing.
- */
-
-
+/** ComplexTest.kt Demonstrates various Kotlin features for compiler testing. */
 import kotlin.random.Random
 
 // Type alias
@@ -13,22 +8,26 @@ public typealias StringList = List<String>
 @JvmInline
 value class Meter(val value: Double) {
     operator fun plus(other: Meter) = Meter(this.value + other.value)
+
     operator fun compareTo(other: Meter): Int = this.value.compareTo(other.value)
+
     override fun toString() = "${'$'}value m"
 }
 
 // Sealed class hierarchy
 sealed class Expr {
-    data class Const(val number: Double): Expr()
-    data class Sum(val e1: Expr, val e2: Expr): Expr()
-    object NotANumber: Expr()
+    data class Const(val number: Double) : Expr()
+
+    data class Sum(val e1: Expr, val e2: Expr) : Expr()
+
+    object NotANumber : Expr()
 }
 
 // Extension function
 fun Expr.evaluate(): Double = when (this) {
-    is Expr.Const    -> number
-    is Expr.Sum      -> e1.evaluate() + e2.evaluate()
-    Expr.NotANumber  -> Double.NaN
+    is Expr.Const -> number
+    is Expr.Sum -> e1.evaluate() + e2.evaluate()
+    Expr.NotANumber -> Double.NaN
 }
 
 // Generic class with delegation
@@ -59,10 +58,10 @@ inline fun <T> measureTimeMillis(block: () -> T): Pair<T, Long> {
 data class Person(
     val name: String,
     val age: Int = 0,
-    val nicknames: StringList = listOf()
+    val nicknames: StringList = listOf(),
 ) {
-    fun greet(): String = "Hello, my name is $name" +
-        if (nicknames.isNotEmpty()) " (also known as ${nicknames.joinToString()})" else ""
+    fun greet(): String =
+        "Hello, my name is $name" + if (nicknames.isNotEmpty()) " (also known as ${nicknames.joinToString()})" else ""
 }
 
 // Object declaration
@@ -70,8 +69,8 @@ object Utils {
     fun randomExpr(depth: Int): Expr = if (depth <= 0) {
         Expr.Const(Random.nextDouble())
     } else {
-        Expr.Sum(randomExpr(depth - 1), randomExpr(depth - 1))
-    }
+            Expr.Sum(randomExpr(depth - 1), randomExpr(depth - 1))
+        }
 
     tailrec fun gcd(a: Long, b: Long): Long = if (b == 0L) a else gcd(b, a % b)
 }
@@ -115,8 +114,6 @@ fun main(args: Array<String>) {
     }
 
     // Sequence example
-    val fibs = generateSequence(Pair(0, 1)) { (a, b) -> Pair(b, a + b) }
-        .map { it.first }
-        .take(10)
+    val fibs = generateSequence(Pair(0, 1)) { (a, b) -> Pair(b, a + b) }.map { it.first }.take(10)
     println("Fibonacci: ${'$'}{fibs.toList()}")
 }

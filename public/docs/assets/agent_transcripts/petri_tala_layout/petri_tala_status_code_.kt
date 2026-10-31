@@ -65,7 +65,8 @@ go {
     }
 
     val detail =
-        if (D2Layout.available) "The two drawings differ: <b>$differ</b>. False here would mean TALA fell back silently."
+        if (D2Layout.available)
+            "The two drawings differ: <b>$differ</b>. False here would mean TALA fell back silently."
         else
             "differ = <b>$differ</b>, which is the fallback working. Build it with " +
                 "<code>(cd native/field-d2-layout &amp;&amp; go build -o build/field-d2-layout .)</code> — " +

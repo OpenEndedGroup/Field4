@@ -116,7 +116,7 @@ markdown(
 <!-- field-box id="tc_follow_ltc" index="3" -->
 
 ```edn [field-box id="tc_follow_ltc" role="properties"]
-{"id" "tc_follow_ltc" "index" 3 "name" "4 - A clock following LTC" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - A clock following LTC" "_tombstone" false "frame" #afield/rect [520.0 260.0 400.0 140.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tc_follow_ltc_code_.kt" "lines" 13 "characters" 637 "sha256" "d261b950a0836d3a75ecef2886152f948315124cc5851fc2b510c3227034c395"}]}
+{"id" "tc_follow_ltc" "index" 3 "name" "4 - A clock following LTC" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - A clock following LTC" "_tombstone" false "frame" #afield/rect [520.0 260.0 400.0 140.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tc_follow_ltc_code_.kt" "lines" 12 "characters" 629 "sha256" "5351abb133e025f560d7664e0382e144f5cce23d7aa91e24ce54847b7f5a111e"}]}
 ```
 
 ```kotlin [field-property box="tc_follow_ltc" name="code" path="tc_follow_ltc_code_.kt"]
@@ -129,8 +129,7 @@ val readings = ArrayList<String>()
 for (i in ltc.indices step 512) {
     clock.feedLtc(ltc, i, minOf(512, ltc.size - i))
     Thread.sleep(10) // ~ the real duration of 512 samples
-    if (clock.locked && i % (512 * 16) == 0)
-        readings += "${clock.now()} (${clock.source}, speed ${clock.speed.f2})"
+    if (clock.locked && i % (512 * 16) == 0) readings += "${clock.now()} (${clock.source}, speed ${clock.speed.f2})"
 }
 markdown("main", readings.joinToString("  \n"))
 ```
