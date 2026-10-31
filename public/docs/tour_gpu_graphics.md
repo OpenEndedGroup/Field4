@@ -33,6 +33,12 @@ press `g`) can use `renderer` directly, the same way a child box sees any proper
 publishes. The canonical_graphics starting point (**Welcome → Starting points →
 canonical_graphics**) already has this box, named **window**; launch it first.
 
+The **first-graphics** starting point from [First steps](first_steps.md#next-a-native-graphics-window)
+is this pair: the renderer box with its code open on the right, and the box beneath it, joined by the
+arrow `g` draws.
+
+![Two connected boxes, 1 · Launch the renderer above 2 · Launch the triangle, joined by an arrow from the renderer down to the box beneath it; the renderer's Kotlin is open on the right](assets/first_steps/first-graphics.png)
+
 ## A shader-driven result
 
 This box draws one square that covers the window, and lets its fragment shader decide every pixel.
@@ -199,7 +205,7 @@ next to its code instead of in a separate window. An `ElectronRTTView` is that p
 image the renderer draws into each frame, streamed to the panel. Give it the module from before, and
 the spiral turns inside the box:
 
-```diffstatic_runner {data-lang=kotlin video="assets/tour_gpu_graphics/spiral-panel.mp4" alt="a box's output panel holding a 640 by 360 view of the blue and gold five-armed spiral, turning steadily, with a line of small grey frame timings under it" capture="box" capture-profile="macos-electron" graphics-context=true open-outputs="true" wait-output="true" wait-output-kind="display" duration="6" fps="20" wait="3" w="760" h="60" timeout="300" embed=true name="tour-gpu-panel" source-box="assets/tour_gpu_graphics/spiral" source-box-properties="vertex,fragment" source-box-wait="0.1"}
+```diffstatic_runner {data-lang=kotlin video="assets/tour_gpu_graphics/spiral-panel.mp4" alt="a box's output panel holding a 640 by 360 view of the blue and gold five-armed spiral, turning steadily, with a line of small grey frame timings under it" capture="box" capture-profile="macos-electron" graphics-context=true open-outputs="true" wait-output="true" wait-output-kind="display" duration="6" fps="20" wait="3" w="760" h="60" x="24" y="180" timeout="300" embed=true name="tour-gpu-panel" source-box="assets/tour_gpu_graphics/spiral" source-box-properties="vertex,fragment" source-box-wait="0.1"}
 import afield.media.stream.ElectronRTTView
 
 val view = ElectronRTTView(640, 360)
