@@ -1,6 +1,6 @@
 # Agent transcript gallery
 
-<div data-field-transcript-gallery hidden></div>
+<div data-field-transcript-gallery="entries" hidden></div>
 
 These are documents built from a blank canvas by agents working in Field. Open one to see the
 result, try it in Field, or take it apart and make it your own.

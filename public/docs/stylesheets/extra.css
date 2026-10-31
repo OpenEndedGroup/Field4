@@ -13,7 +13,7 @@
 /* A gallery document opens beside its entry, using the space beyond the reading column. */
 html.field-transcript-open { overflow-x:auto !important; }
 html.field-transcript-open body { overflow-x:visible !important; }
-.md-content__inner:has([data-field-transcript-gallery]) p:has(> a[href*="offline.html?file=assets/agent_transcripts/"]) {
+.md-content__inner:has([data-field-transcript-gallery="entries"]) p:has(> a[href*="offline.html?file=assets/agent_transcripts/"]) {
     text-align:right;
 }
 .field-transcript-viewer {
