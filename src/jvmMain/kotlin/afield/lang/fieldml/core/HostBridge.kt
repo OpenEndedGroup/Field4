@@ -14,7 +14,7 @@ import java.lang.reflect.Proxy
 import java.lang.reflect.TypeVariable
 import java.lang.reflect.WildcardType
 import kotlin.coroutines.Continuation
-import kotlin.coroutines.startCoroutine
+import kotlin.coroutines.intrinsics.startCoroutineUninterceptedOrReturn
 import kotlin.reflect.KFunction
 import kotlin.reflect.KParameter
 import kotlin.reflect.jvm.isAccessible
@@ -111,11 +111,18 @@ object FieldMLHostBridge {
      * parameter that returns either its value or `COROUTINE_SUSPENDED`. The bridge could not call
      * one because it had no continuation to pass and nowhere to resume. The answer here is that it
      * does not need to resume *FieldML*: the call is started as a fresh coroutine
-     * ([startCoroutine]) whose completion is [onResult], so the FieldML closure that wants the
+     * ([startCoroutineUninterceptedOrReturn]) whose completion is [onResult], so the FieldML closure that wants the
      * result is itself the continuation, written explicitly. Nothing blocks, no FieldML stack frame
      * is ever suspended (FieldML still has no suspension points), and the host resumes on whatever
      * thread its own machinery resumes on — where a Kotlin
      * `launch(Dispatchers.Unconfined) { target.name(args) }` would continue.
+     *
+     * **Where it resumes is [dispatcher], and that is not optional in a live Field.** The first step
+     * runs undispatched, inside this call, so a member that never suspends hands its value over
+     * before `hostLaunch` returns. Every later resumption goes through [dispatcher]; the prelude
+     * passes Field's runloop (`Runloop.runLoop.main`). Without an interceptor `yield()` does not
+     * suspend at all, and `Renderer.run` — `while (running) { render(); yield() }` — would spin
+     * forever on the thread that called it.
      *
      * Returns the coroutine's [kotlinx.coroutines.Job], so the caller can cancel it. Only methods
      * whose last parameter really is a [Continuation] are candidates: a plain method of arity
@@ -125,6 +132,7 @@ object FieldMLHostBridge {
         name: String,
         target: Any,
         arguments: List<Any?>,
+        dispatcher: kotlin.coroutines.CoroutineContext = kotlin.coroutines.EmptyCoroutineContext,
         onResult: (Result<Any?>) -> Unit,
     ): kotlinx.coroutines.Job {
         val candidates = instanceMethods(target.javaClass, name, arguments.size + 1)
@@ -144,15 +152,19 @@ object FieldMLHostBridge {
                 invoke(chosen, target, arguments + continuation)
             }
         }
-        block.startCoroutine(
-            object : Continuation<Any?> {
-                override val context = job
-                override fun resumeWith(result: Result<Any?>) {
-                    result.fold({ job.complete() }, { job.completeExceptionally(it) })
-                    onResult(result)
-                }
-            },
-        )
+        val completion = object : Continuation<Any?> {
+            override val context = job + dispatcher
+            override fun resumeWith(result: Result<Any?>) {
+                result.fold({ job.complete() }, { job.completeExceptionally(it) })
+                onResult(result)
+            }
+        }
+        // Undispatched first step, as `inMain` does on the runloop: a member that never suspends
+        // finishes inside this call, and one that fails before suspending fails here.
+        val first = runCatching { block.startCoroutineUninterceptedOrReturn(completion) }
+        if (first.isFailure || first.getOrNull() !== kotlin.coroutines.intrinsics.COROUTINE_SUSPENDED) {
+            completion.resumeWith(first)
+        }
         return job
     }
 

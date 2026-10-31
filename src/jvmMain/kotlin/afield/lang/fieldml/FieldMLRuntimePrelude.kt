@@ -407,6 +407,7 @@ object FieldMLRuntimePrelude {
                     method,
                     target.asHost("target"),
                     FieldMLHostBridge.spreadArguments(arguments),
+                    afield.runtime.lifecycle.Runloop.runLoop.main,
                 ) { result ->
                     result.fold(
                         { applyFieldMLFunction(then, hostToFieldMLValue(it)) },

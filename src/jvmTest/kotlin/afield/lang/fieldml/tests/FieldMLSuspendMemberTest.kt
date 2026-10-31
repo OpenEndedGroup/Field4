@@ -6,6 +6,7 @@ import afield.lang.fieldml.FieldMLRuntimePrelude
 import afield.lang.fieldml.core.Evaluator
 import afield.lang.fieldml.core.FieldMLValue
 import afield.lang.fieldml.core.fieldMLValueToHost
+import afield.runtime.lifecycle.Runloop
 import kotlinx.coroutines.Job
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.resume
@@ -40,6 +41,11 @@ class FieldMLSuspendMemberTest {
 
         suspend fun broken(): Int = error("broken on purpose")
 
+        suspend fun yielding(): Int {
+            kotlinx.coroutines.yield()
+            return 7
+        }
+
         suspend fun brokenLater(): Int = suspendCoroutine { pending = it }
 
         fun plain(x: Int): Int = x + 1
@@ -68,8 +74,22 @@ class FieldMLSuspendMemberTest {
         assertNull(suspender.seen)
         assertTrue(job.isActive)
         suspender.pending!!.resume(40)
+        // The resumption is dispatched to Field's runloop, not run on the resuming thread.
+        assertNull(suspender.seen)
+        Runloop.runLoop.main.frame()
         assertEquals(42L, suspender.seen)
         assertTrue(job.isCompleted)
+    }
+
+    @Test
+    fun yieldReallySuspendsBecauseTheCoroutineHasTheRunloopAsItsDispatcher() {
+        // The case that decides whether `hostLaunch "run" () renderer` is safe: `Renderer.run`
+        // loops on `yield()`, and with no interceptor `yield()` returns at once and the loop spins
+        // on the calling thread. Here it parks until the runloop's next frame.
+        evaluate("""hostLaunch "yielding" () s (fun r -> s |> hostCall1 "record" r)""")
+        assertNull(suspender.seen)
+        Runloop.runLoop.main.frame()
+        assertEquals(7L, suspender.seen)
     }
 
     @Test
@@ -85,6 +105,7 @@ class FieldMLSuspendMemberTest {
     fun aLaterFailureCompletesTheJobExceptionallyAndSkipsTheClosure() {
         val job = assertIs<Job>(evaluate("""hostLaunch "brokenLater" () s (fun r -> s |> hostCall1 "record" r)"""))
         suspender.pending!!.resumeWithException(IllegalStateException("late"))
+        Runloop.runLoop.main.frame()
         assertNull(suspender.seen)
         assertTrue(job.isCancelled)
     }
