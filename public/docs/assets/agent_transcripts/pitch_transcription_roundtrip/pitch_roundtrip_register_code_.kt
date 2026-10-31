@@ -3,14 +3,12 @@ val notation = "60 62 64 65 67 69 71 72 72 71 69 67 65 64 62 60"
 val cycles = 2
 val cps = 2.0
 val sustain = 0.9
-val audio =
-    patRenderStereo(
-            pat(notation),
-            cycles,
-            cps,
-            patVoice(sustain = sustain, decay = 0.01),
-        )
-        .mono
+val audio = patRenderStereo(
+    pat(notation),
+    cycles,
+    cps,
+    patVoice(sustain = sustain, decay = 0.01),
+).mono
 val reference = patReferenceNotes(notation, cycles, cps, sustain = sustain)
 
 /*

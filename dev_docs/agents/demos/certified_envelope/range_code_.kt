@@ -9,10 +9,9 @@ val min = range.min!!
 display(
     "range",
     Table(
-            ["side", "reached", "at x", "proven bound", "enclosures"],
-            title = "certifiedRange(0, 3600): certified = ${range.certified}",
-        )
-        .row("max", max.value, max.witness, max.bound, max.enclosures)
+        ["side", "reached", "at x", "proven bound", "enclosures"],
+        title = "certifiedRange(0, 3600): certified = ${range.certified}",
+    ).row("max", max.value, max.witness, max.bound, max.enclosures)
         .row("min", min.value, min.witness, min.bound, min.enclosures)
         .role("at x", CellRole.ACCENT),
 )

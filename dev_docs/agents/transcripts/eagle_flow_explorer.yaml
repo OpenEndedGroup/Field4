@@ -92,28 +92,26 @@ operations:
                       .savePng(File(pngs, "%03d.png".format(frame)).path)
                   if (frame % 30 == 0) println("frame $frame of ${flow.frameCount}")
               }
-              val encode =
-                  ProcessBuilder(
-                          FFMPEG,
-                          "-v",
-                          "error",
-                          "-y",
-                          "-framerate",
-                          "18",
-                          "-i",
-                          File(pngs, "%03d.png").path,
-                          "-c:v",
-                          "libx264",
-                          "-preset",
-                          "slow",
-                          "-crf",
-                          "28",
-                          "-pix_fmt",
-                          "yuv420p",
-                          out.path,
-                      )
-                      .inheritIO()
-                      .start()
+              val encode = ProcessBuilder(
+                  FFMPEG,
+                  "-v",
+                  "error",
+                  "-y",
+                  "-framerate",
+                  "18",
+                  "-i",
+                  File(pngs, "%03d.png").path,
+                  "-c:v",
+                  "libx264",
+                  "-preset",
+                  "slow",
+                  "-crf",
+                  "28",
+                  "-pix_fmt",
+                  "yuv420p",
+                  out.path,
+              ).inheritIO()
+                  .start()
               check(encode.waitFor() == 0) { "ffmpeg failed" }
               println("wrote ${out.absolutePath}")
           }

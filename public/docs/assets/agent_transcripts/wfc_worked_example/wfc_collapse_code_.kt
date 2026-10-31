@@ -62,9 +62,8 @@ println("magma is mapped with an explicit lo/hi so the colours mean the same thi
 display(
     "main",
     vstack(
-            montage(waves, columns = 4, cellSide = 260),
-            montage(entropy, columns = 4, cellSide = 260),
-            gap = 14,
-        )
-        .toPngBytes(),
+        montage(waves, columns = 4, cellSide = 260),
+        montage(entropy, columns = 4, cellSide = 260),
+        gap = 14,
+    ).toPngBytes(),
 )

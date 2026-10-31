@@ -147,7 +147,7 @@ display(
 <!-- field-box id="sorting_anneal_regimes" index="2" -->
 
 ```edn [field-box id="sorting_anneal_regimes" role="properties"]
-{"id" "sorting_anneal_regimes" "index" 2 "name" "Starting networks and schedules" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Starting networks and schedules" "_tombstone" false "frame" #afield/rect [1460.0 960.0 420.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sorting_anneal_regimes_code_.kt" "lines" 130 "characters" 4177 "sha256" "3d1cfe139ad4e7f65d30420f15400e1751c70a06024db6b69f0b3dfc5b7b81d4"}]}
+{"id" "sorting_anneal_regimes" "index" 2 "name" "Starting networks and schedules" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Starting networks and schedules" "_tombstone" false "frame" #afield/rect [1460.0 960.0 420.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sorting_anneal_regimes_code_.kt" "lines" 128 "characters" 4028 "sha256" "fa6561ce16565a461cb643ebc21b39b8dd87d5f578f7b05c8c81f1181ae0bf99"}]}
 ```
 
 ```kotlin [field-property box="sorting_anneal_regimes" name="code" path="sorting_anneal_regimes_code_.kt"]
@@ -182,26 +182,24 @@ val mergeDense = SortingNetwork(
         ],
 )
 
-val configs =
-    [
-            Triple("bubble", SortingNetwork.bubble(8), "#8ad6ff"),
-            Triple("merge+", mergeDense, "#ffb857"),
-            Triple("merge", merge, "#94ffad"),
-        ]
-        .flatMapIndexed { familyIndex, (family, initial, hue) ->
-            [0.7 to 0.05, 1.5 to 0.02, 3.2 to 0.01].flatMapIndexed { tempIndex, (startTemp, endTemp) ->
-                (0 until 3).map { seed ->
-                    RunConfig(
-                        family = family,
-                        initial = initial,
-                        initialTemp = startTemp,
-                        finalTemp = endTemp,
-                        seed = (familyIndex * 100 + tempIndex * 10 + seed).toLong(),
-                        hue = hue,
-                    )
-                }
-            }
+val configs = [
+    Triple("bubble", SortingNetwork.bubble(8), "#8ad6ff"),
+    Triple("merge+", mergeDense, "#ffb857"),
+    Triple("merge", merge, "#94ffad"),
+].flatMapIndexed { familyIndex, (family, initial, hue) ->
+    [0.7 to 0.05, 1.5 to 0.02, 3.2 to 0.01].flatMapIndexed { tempIndex, (startTemp, endTemp) ->
+        (0 until 3).map { seed ->
+            RunConfig(
+                family = family,
+                initial = initial,
+                initialTemp = startTemp,
+                finalTemp = endTemp,
+                seed = (familyIndex * 100 + tempIndex * 10 + seed).toLong(),
+                hue = hue,
+            )
         }
+    }
+}
 
 val iterations = 2_000
 val progressEvery = 80

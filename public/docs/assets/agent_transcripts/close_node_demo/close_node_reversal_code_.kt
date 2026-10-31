@@ -94,8 +94,7 @@ val roundTrip = { l: FLine ->
 }
 
 [
-        "grey = the original, cyan = its reversal",
-        "square   reverse-twice: ${roundTrip(square)}",
-        "glyph    reverse-twice: ${roundTrip(glyph)}",
-    ]
-    .joinToString("\n")
+    "grey = the original, cyan = its reversal",
+    "square   reverse-twice: ${roundTrip(square)}",
+    "glyph    reverse-twice: ${roundTrip(glyph)}",
+].joinToString("\n")

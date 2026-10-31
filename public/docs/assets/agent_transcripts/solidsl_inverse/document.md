@@ -203,7 +203,7 @@ part.gradientNotes().forEach { println("  - $it") }
 <!-- field-box id="refusals" index="2" -->
 
 ```edn [field-box id="refusals" role="properties"]
-{"id" "refusals" "index" 2 "name" "3 - What refuses, and the one that does not" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - What refuses, and the one that does not" "_tombstone" false "frame" #afield/rect [60.0 226.0 600.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "refusals_code_.kt" "lines" 71 "characters" 3636 "sha256" "0c72a3075912ddd6a01fe1231d00f0830f841d22502fc9b4e129605787193fc0"}]}
+{"id" "refusals" "index" 2 "name" "3 - What refuses, and the one that does not" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - What refuses, and the one that does not" "_tombstone" false "frame" #afield/rect [60.0 226.0 600.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "refusals_code_.kt" "lines" 69 "characters" 3531 "sha256" "41a2affc80da500b657183467de2a782771fd2d2efa514f1b621ed0329ab7ed3"}]}
 ```
 
 ```kotlin [field-property box="refusals" name="code" path="refusals_code_.kt"]
@@ -218,30 +218,28 @@ are not in the lowering. They are in the *parameterisation*, and there are seven
 */
 println("---- seven ways a binding can refuse, each with a reason ----")
 listOf<Pair<String, SolidLowering<*>>>(
-        "a path that does not exist" to body.parameterize { param("r", "Difference/0/Cuboid.w") },
-        "a predicate that matches nothing" to body.parameterize { param("r") { it.node == "Torus" } },
-        "one name declared twice" to
-            body.parameterize {
-                param("r", "Difference/0/Cuboid.x")
-                param("r", "Difference/0/Cuboid.y")
-            },
-        "two names for one number" to
-            body.parameterize {
-                param("a", "Difference/0/Cuboid.x")
-                param("b", "Difference/0/Cuboid.x")
-            },
-        "tied slots with different seeds" to body.parameterize { param("size") { it.node == "Cuboid" } },
-        "a Scale factor at zero" to
-            sphere(0.5).sized(1.0, 1.0, 1.0).parameterize { param("s", "Scale.x", seed = 1e-9) },
-        "a blend radius at zero" to
-            smoothUnion(sphere(0.4), sphere(0.4).at(0.5, 0.0, 0.0), 0.2).parameterize {
-                param("k", "SmoothUnion.k", seed = 0.0)
-            },
-    )
-    .forEach { (what, l) ->
-        println("  $what:")
-        println("    ${l.refusalOrNull()}")
-    }
+    "a path that does not exist" to body.parameterize { param("r", "Difference/0/Cuboid.w") },
+    "a predicate that matches nothing" to body.parameterize { param("r") { it.node == "Torus" } },
+    "one name declared twice" to
+        body.parameterize {
+            param("r", "Difference/0/Cuboid.x")
+            param("r", "Difference/0/Cuboid.y")
+        },
+    "two names for one number" to
+        body.parameterize {
+            param("a", "Difference/0/Cuboid.x")
+            param("b", "Difference/0/Cuboid.x")
+        },
+    "tied slots with different seeds" to body.parameterize { param("size") { it.node == "Cuboid" } },
+    "a Scale factor at zero" to sphere(0.5).sized(1.0, 1.0, 1.0).parameterize { param("s", "Scale.x", seed = 1e-9) },
+    "a blend radius at zero" to
+        smoothUnion(sphere(0.4), sphere(0.4).at(0.5, 0.0, 0.0), 0.2).parameterize {
+            param("k", "SmoothUnion.k", seed = 0.0)
+        },
+).forEach { (what, l) ->
+    println("  $what:")
+    println("    ${l.refusalOrNull()}")
+}
 println()
 println("A SolidLowering.Refused rather than a thrown exception, for SolidExact.kt's own")
 println("reason: a null invites a caller to substitute something plausible, and an exception")

@@ -221,16 +221,14 @@ operations:
         }
       code: |
         // every polyline channel box 1 publishes, and the colour it is drawn in
-        val channels =
-            [
-                    "tracks" to vec(0.2, 1.0, 0.3, 0.8),
-                    "skeleton" to vec(1.0, 0.3, 0.8, 1.0),
-                    "hands" to vec(1.0, 0.9, 0.2, 1.0),
-                    "face" to vec(0.3, 0.9, 1.0, 0.9),
-                    "contours" to vec(1.0, 0.55, 0.1, 1.0),
-                    "strokes" to vec(1.0, 1.0, 1.0, 1.0),
-                ]
-                .map { (name, colour) -> NumpyShared.lines(name) to colour }
+        val channels = [
+            "tracks" to vec(0.2, 1.0, 0.3, 0.8),
+            "skeleton" to vec(1.0, 0.3, 0.8, 1.0),
+            "hands" to vec(1.0, 0.9, 0.2, 1.0),
+            "face" to vec(0.3, 0.9, 1.0, 0.9),
+            "contours" to vec(1.0, 0.55, 0.1, 1.0),
+            "strokes" to vec(1.0, 1.0, 1.0, 1.0),
+        ].map { (name, colour) -> NumpyShared.lines(name) to colour }
 
         var module = moduleHere {}
         var m = Mesh()

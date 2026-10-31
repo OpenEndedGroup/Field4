@@ -32,7 +32,7 @@ start(renderer::run)
 <!-- field-box id="path_trace_gltf" index="1" -->
 
 ```edn [field-box id="path_trace_gltf" role="properties"]
-{"id" "path_trace_gltf" "index" 1 "name" "textured glTF path tracing" "parents" ["root" "path_trace_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "path_trace_renderer"} "name" "textured glTF path tracing" "_tombstone" false "frame" #afield/rect [320.0 180.0 350.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "path_trace_gltf_code_.kt" "lines" 43 "characters" 1512 "sha256" "76c60567dc21891e682d1c6e7e14de477821050d759b4e5a72f4cc411484f463"}]}
+{"id" "path_trace_gltf" "index" 1 "name" "textured glTF path tracing" "parents" ["root" "path_trace_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "path_trace_renderer"} "name" "textured glTF path tracing" "_tombstone" false "frame" #afield/rect [320.0 180.0 350.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "path_trace_gltf_code_.kt" "lines" 41 "characters" 1443 "sha256" "80e3d6c31114b060cad63d67c30386cf7c2304b3e4564de59487dafa826084fa"}]}
 ```
 
 ```kotlin [field-property box="path_trace_gltf" name="code" path="path_trace_gltf_code_.kt"]
@@ -58,16 +58,14 @@ val camera = Camera(renderer).also {
     it.at.set(center).add(radius * 1.7f, radius * 1.05f, radius * 2f)
     it.p.fov = 0.55
 }
-val tracer =
-    PathTracingRenderer(
-            renderer,
-            scene,
-            PathTraceEnvironment.fromFile("public/docs/assets/fabricate_demo/venice_sunset_1k.exr"),
-            width = 1280,
-            height = 720,
-            camera = camera,
-        )
-        .install()
+val tracer = PathTracingRenderer(
+    renderer,
+    scene,
+    PathTraceEnvironment.fromFile("public/docs/assets/fabricate_demo/venice_sunset_1k.exr"),
+    width = 1280,
+    height = 720,
+    camera = camera,
+).install()
 tracer.maxBounces = 8
 tracer.samplesPerFrame = 4
 tracer.rayEpsilon = (radius * 0.00001f).coerceAtLeast(0.0000001f)

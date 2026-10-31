@@ -6,9 +6,8 @@ controls in the first box are generated rather than written.
 why setting a value is a float store and not a message. And note the order: Faust lists
 controls alphabetically, not in the order they were declared.
 */
-val program =
-    faustCompile(
-        """
+val program = faustCompile(
+    """
 #faust
 import("stdfaust.lib");
 freq   = hslider("freq [unit:Hz] [scale:log]", 220, 50, 2000, 0.01);
@@ -20,7 +19,7 @@ env = en.adsr(0.01, 0.2, 0.6, 0.4, gate);
 dry = os.sawtooth(freq) : fi.lowpass(2, cutoff) * env * 0.2;
 process = (dry : (_ <: attach(_, abs : max ~ *(0.999) : level))) * (1 - bypass) <: _,_;
 """,
-    )
+)
 
 println(program.inputs.toString() + " in, " + program.outputs + " out")
 program.ui.writable.forEach { c ->

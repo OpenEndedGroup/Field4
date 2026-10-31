@@ -67,7 +67,7 @@ loop {
 <!-- field-box id="scene_sender" index="2" -->
 
 ```edn [field-box id="scene_sender" role="properties"]
-{"id" "scene_sender" "index" 2 "name" "1. Scene on the rig: RectSL to sACN (launch)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1. Scene on the rig: RectSL to sACN (launch)" "_tombstone" false "frame" #afield/rect [60.0 60.0 380.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "scene_sender_code_.kt" "lines" 57 "characters" 1559 "sha256" "a551e672dfaa99177feb1bbff8290d178f299875a2d3300ac0671885739d1ba7"}]}
+{"id" "scene_sender" "index" 2 "name" "1. Scene on the rig: RectSL to sACN (launch)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1. Scene on the rig: RectSL to sACN (launch)" "_tombstone" false "frame" #afield/rect [60.0 60.0 380.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "scene_sender_code_.kt" "lines" 56 "characters" 1547 "sha256" "cef10dd32046be0438db4330abe9f005b66917f913dca5afd605c275a53d1371"}]}
 ```
 
 ```kotlin [field-property box="scene_sender" name="code" path="scene_sender_code_.kt"]
@@ -76,9 +76,8 @@ import afield.lang.rectsl.*
 
 // A RectSL scene, drawn on the CPU, on a light rig. Edit the scene and launch again: the receiver
 // box shows what arrives. (Try the line's width, 0.25 ->wh below, or area = false further down.)
-val scene =
-    RectSLImager(
-        """
+val scene = RectSLImager(
+    """
 #rectsl
 ->wall 16 8 abstract
 ->background 0x0c1024
@@ -105,7 +104,7 @@ val scene =
   '( 0=-8  4=8 ) linear ->x
 ;
 """,
-    )
+)
 
 // 16 x 8 RGB pixels in universe 1 and four RGBWA washes in universe 2: one fixture per wall unit.
 val rig = SceneOnARig.Rig()

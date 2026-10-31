@@ -108,7 +108,7 @@ the start and the reversal below comes out right — the defect only shows on a 
 where the Close is carrying a segment nothing else draws.
 
 ```edn [field-box id="close_node_reversal" role="properties"]
-{"id" "close_node_reversal" "index" 1 "name" "reversing a closed contour" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "reversing a closed contour" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "close_node_reversal_code_.kt" "lines" 101 "characters" 3694 "sha256" "24fdbb77da905e0b988a2a769638bef65ed1412fcaf4825dd4162c8ca925120e"}]}
+{"id" "close_node_reversal" "index" 1 "name" "reversing a closed contour" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "reversing a closed contour" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "close_node_reversal_code_.kt" "lines" 100 "characters" 3673 "sha256" "8f8754ca955955763405424c2bf074b2b84d41ae002cf11781b13d828d4a5d9d"}]}
 ```
 
 ```kotlin [field-property box="close_node_reversal" name="code" path="close_node_reversal_code_.kt"]
@@ -208,10 +208,9 @@ val roundTrip = { l: FLine ->
 }
 
 [
-        "grey = the original, cyan = its reversal",
-        "square   reverse-twice: ${roundTrip(square)}",
-        "glyph    reverse-twice: ${roundTrip(glyph)}",
-    ]
-    .joinToString("\n")
+    "grey = the original, cyan = its reversal",
+    "square   reverse-twice: ${roundTrip(square)}",
+    "glyph    reverse-twice: ${roundTrip(glyph)}",
+].joinToString("\n")
 ```
 

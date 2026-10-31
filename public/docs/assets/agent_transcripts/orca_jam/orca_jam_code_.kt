@@ -1,18 +1,17 @@
 // Run this, open its AI Chat with Cmd-4 and ask it to play. AI4 writes into the grid while the
 // music runs; rewinding the chat puts the board back. Channels: 0 lead, 1 bass, 2 hat, 3 square.
 val synth = PatSynthBank(voices = 24)
-val o =
-    orca(
-        rows = 16,
-        grid =
-            """
+val o = orca(
+    rows = 16,
+    grid =
+        """
     #.JAM.#
     .
     .4C4
     D4.4TCEGE
     .:03
 """,
-    )
+)
 o.onNote {
     when (it.channel) {
         0 -> synth.play(it, pan = 0.4, wave = PatWave.TRIANGLE)

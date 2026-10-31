@@ -282,7 +282,7 @@ frames {
 <!-- field-box id="tm_fan" index="4" -->
 
 ```edn [field-box id="tm_fan" role="properties"]
-{"id" "tm_fan" "index" 4 "name" "5 - Timestral, a forecast and its fan" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 - Timestral, a forecast and its fan" "_tombstone" false "frame" #afield/rect [60.0 3560.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tm_fan_code_.kt" "lines" 45 "characters" 1401 "sha256" "1f0aff5460ed3aede2126670d5f3f734ca8705ed545854ebfa223db2dc154323"}]}
+{"id" "tm_fan" "index" 4 "name" "5 - Timestral, a forecast and its fan" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 - Timestral, a forecast and its fan" "_tombstone" false "frame" #afield/rect [60.0 3560.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tm_fan_code_.kt" "lines" 42 "characters" 1316 "sha256" "ddc06c6b59ad7201b16129311d167bffa5f295e5f55de24362d2a18974bcfc65"}]}
 ```
 
 ```kotlin [field-property box="tm_fan" name="code" path="tm_fan_code_.kt"]
@@ -307,17 +307,14 @@ val forecast = TimestralSession().use { it.propose(ContinuationRequest(0, histor
 
 fun plot(line: FLine) = line.transform { vec(it.x * 30, -it.y * 120, 0) }
 val ahead = DoubleArray(forecast.horizon) { (n + it) / rate }
-val past =
-    plot(
-            FLine().apply {
-                for (t in 0 until n) if (t == 0) moveTo(0.0, history.values[0][0])
-                else lineTo(t / rate, history.values[0][t])
-            },
-        )
-        .apply {
-            color = vec(1, 1, 1, 0.9)
-            thickness = 1.5
-        }
+val past = plot(
+    FLine().apply {
+        for (t in 0 until n) if (t == 0) moveTo(0.0, history.values[0][0]) else lineTo(t / rate, history.values[0][t])
+    },
+).apply {
+    color = vec(1, 1, 1, 0.9)
+    thickness = 1.5
+}
 val fan =
     [0.01 to 0.99, 0.1 to 0.9, 0.25 to 0.75].map { (lo, hi) ->
         plot(forecast.bandFLine(0, lo, hi, ahead)).apply {

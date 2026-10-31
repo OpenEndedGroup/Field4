@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="analyse_sonic_pi_recording" index="0" -->
 
 ```edn [field-box id="analyse_sonic_pi_recording" role="properties"]
-{"id" "analyse_sonic_pi_recording" "index" 0 "name" "5 · Sonic Pi recording → analysis" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 · Sonic Pi recording → analysis" "_tombstone" false "frame" #afield/rect [40.0 340.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_sonic_pi_recording_code_.kt" "lines" 46 "characters" 1578 "sha256" "8321b9ed92abe8a248b0ed1a2177f27c165d2255856a895985f87b2956c2b033"}]}
+{"id" "analyse_sonic_pi_recording" "index" 0 "name" "5 · Sonic Pi recording → analysis" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 · Sonic Pi recording → analysis" "_tombstone" false "frame" #afield/rect [40.0 340.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_sonic_pi_recording_code_.kt" "lines" 45 "characters" 1505 "sha256" "690e8bdc5b764eb27c3ff81962f774a7edbb56891b4aaaa2a053d22f88c87a1b"}]}
 ```
 
 ```kotlin [field-property box="analyse_sonic_pi_recording" name="code" path="analyse_sonic_pi_recording_code_.kt"]
@@ -36,24 +36,23 @@ val ruby =
         .trimIndent()
 
 recordSonicPiWav(
-        sonicPi(),
-        Path.of(System.getProperty("java.io.tmpdir"), "field-audio-renders", "sonic-pi-study.wav"),
-        ruby,
-        seconds = 18.0,
-        workspace = "field_audio_analysis",
-        provenance = mapOf("field_box" to "analyse_sonic_pi_recording", "bpm" to "92"),
+    sonicPi(),
+    Path.of(System.getProperty("java.io.tmpdir"), "field-audio-renders", "sonic-pi-study.wav"),
+    ruby,
+    seconds = 18.0,
+    workspace = "field_audio_analysis",
+    provenance = mapOf("field_box" to "analyse_sonic_pi_recording", "bpm" to "92"),
+).thenCompose { render ->
+    display("render", "recorded ${render.path}")
+    client.analyzeRenderedAudio(
+        render,
+        requests = { region -> standardAudioAnalyses(region, requestedBy = "field:render-analysis/sonic-pi") },
+        onAccepted = { named, accepted -> display("${named.label} job", fieldAudioJobStatusHtml(accepted)) },
+        onProgress = { named, accepted, event ->
+            display("${named.label} job", fieldAudioJobStatusHtml(accepted, event))
+        },
     )
-    .thenCompose { render ->
-        display("render", "recorded ${render.path}")
-        client.analyzeRenderedAudio(
-            render,
-            requests = { region -> standardAudioAnalyses(region, requestedBy = "field:render-analysis/sonic-pi") },
-            onAccepted = { named, accepted -> display("${named.label} job", fieldAudioJobStatusHtml(accepted)) },
-            onProgress = { named, accepted, event ->
-                display("${named.label} job", fieldAudioJobStatusHtml(accepted, event))
-            },
-        )
-    }
+}
     .thenAccept { completed ->
         display("synchronized result", completed.visualizationHtml(width = 1040, panelHeight = 230))
     }
@@ -92,7 +91,7 @@ display("all durable jobs", fieldAudioJobMonitor(heightPixels = 390))
 <!-- field-box id="analyse_faust_render" index="2" -->
 
 ```edn [field-box id="analyse_faust_render" role="properties"]
-{"id" "analyse_faust_render" "index" 2 "name" "4 · Faust render → analysis" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 · Faust render → analysis" "_tombstone" false "frame" #afield/rect [520.0 190.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_faust_render_code_.kt" "lines" 37 "characters" 1429 "sha256" "f3d3303c0fc3f7426b16ec1fa88bb783fa72be7257e5222daff566d92a421915"}]}
+{"id" "analyse_faust_render" "index" 2 "name" "4 · Faust render → analysis" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 · Faust render → analysis" "_tombstone" false "frame" #afield/rect [520.0 190.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_faust_render_code_.kt" "lines" 36 "characters" 1360 "sha256" "0aaf51e975b6d209a013d974779676dfd2867d389c8c237061a8d4e6f65a1b45"}]}
 ```
 
 ```kotlin [field-property box="analyse_faust_render" name="code" path="analyse_faust_render_code_.kt"]
@@ -109,23 +108,22 @@ val faustSource =
         .trimIndent()
 
 renderFaustWavAsync(
-        Path.of(System.getProperty("java.io.tmpdir"), "field-audio-renders", "faust-sweep-study.wav"),
-        name = "faust-sweep-study",
-        source = faustSource,
-        seconds = 18.0,
-        provenance = mapOf("field_box" to "analyse_faust_render"),
+    Path.of(System.getProperty("java.io.tmpdir"), "field-audio-renders", "faust-sweep-study.wav"),
+    name = "faust-sweep-study",
+    source = faustSource,
+    seconds = 18.0,
+    provenance = mapOf("field_box" to "analyse_faust_render"),
+).thenCompose { render ->
+    display("render", "rendered ${render.path} · ${render.sampleRate} Hz stereo")
+    client.analyzeRenderedAudio(
+        render,
+        requests = { region -> standardAudioAnalyses(region, requestedBy = "field:render-analysis/faust") },
+        onAccepted = { named, accepted -> display("${named.label} job", fieldAudioJobStatusHtml(accepted)) },
+        onProgress = { named, accepted, event ->
+            display("${named.label} job", fieldAudioJobStatusHtml(accepted, event))
+        },
     )
-    .thenCompose { render ->
-        display("render", "rendered ${render.path} · ${render.sampleRate} Hz stereo")
-        client.analyzeRenderedAudio(
-            render,
-            requests = { region -> standardAudioAnalyses(region, requestedBy = "field:render-analysis/faust") },
-            onAccepted = { named, accepted -> display("${named.label} job", fieldAudioJobStatusHtml(accepted)) },
-            onProgress = { named, accepted, event ->
-                display("${named.label} job", fieldAudioJobStatusHtml(accepted, event))
-            },
-        )
-    }
+}
     .thenAccept { completed ->
         display("synchronized result", completed.visualizationHtml(width = 1040, panelHeight = 230))
     }

@@ -270,9 +270,8 @@ When the Kotlin is the larger part, `csound` compiles an orchestra and score ins
 returns a `CsoundLaunch`. Return it as the box's last expression to hear it:
 
 ```diffstatic {data-lang=kotlin}
-val drone =
-    csound(
-        """
+val drone = csound(
+    """
 chn_k "pitch", 1, 2, 110, 55, 440
 chn_k "cutoff", 1, 2, 1200, 200, 6000
 instr 1
@@ -285,8 +284,8 @@ instr 1
   outs a1, a1
 endin
 """,
-        "i1 0 z",
-    )
+    "i1 0 z",
+)
 csoundControls(drone)
 drone
 ```

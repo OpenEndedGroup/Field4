@@ -181,7 +181,7 @@ From `code`
 **** CHANGE THIS LINE ***** the window's half-width, anywhere inside (0, 1).
 
 ```edn [field-box id="polytope_face_with_a_hole" role="properties"]
-{"id" "polytope_face_with_a_hole" "index" 2 "name" "1 — a face with a hole, end to end" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — a face with a hole, end to end" "_tombstone" false "frame" #afield/rect [80.0 80.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_face_with_a_hole_code_.kt" "lines" 78 "characters" 3226 "sha256" "7f6cad6e7f7164376e2c2dfaca9adf28c65aa2b42378b2f6323fc886761f02f6"}]}
+{"id" "polytope_face_with_a_hole" "index" 2 "name" "1 — a face with a hole, end to end" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — a face with a hole, end to end" "_tombstone" false "frame" #afield/rect [80.0 80.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_face_with_a_hole_code_.kt" "lines" 76 "characters" 3157 "sha256" "53eb45ff5e65e491473c0db6ba695fe815a125af9219658688a82d18ab322b7e"}]}
 ```
 
 ```kotlin [field-property box="polytope_face_with_a_hole" name="code" path="polytope_face_with_a_hole_code_.kt"]
@@ -198,16 +198,14 @@ Everything a holed face refuses, and the message it refuses with. These are valu
 accidents: a Conway operator, a dualization and an OFF export are all defined for closed
 manifolds, and a face with a hole is a surface with boundary.
 */
-val refusals =
-    listOf<Pair<String, () -> Any>>(
-            "topology.dual()" to { topology.dual() },
-            "solid.bevel()" to { solid.bevel() },
-            "solid.toOff()" to { solid.toOff() },
-            "triangulate(FanFaceTriangulator)" to { solid.triangulate(FanFaceTriangulator) },
-        )
-        .map { (name, call) ->
-            name to (runCatching { call() }.exceptionOrNull()?.message ?: "DID NOT THROW")
-        }
+val refusals = listOf<Pair<String, () -> Any>>(
+    "topology.dual()" to { topology.dual() },
+    "solid.bevel()" to { solid.bevel() },
+    "solid.toOff()" to { solid.toOff() },
+    "triangulate(FanFaceTriangulator)" to { solid.triangulate(FanFaceTriangulator) },
+).map { (name, call) ->
+    name to (runCatching { call() }.exceptionOrNull()?.message ?: "DID NOT THROW")
+}
 
 println(
     """

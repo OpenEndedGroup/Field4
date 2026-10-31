@@ -120,10 +120,9 @@ for ((i, name) in names.withIndex()) {
 display(
     "claims",
     Table(
-            ["ch", "refused ops (lambda / formula)", "bit mismatches", "== 1 on plateau", ">= 0", "<= 1"],
-            title = "the worked example's claims, on its formula rewrite",
-        )
-        .rows(rows)
+        ["ch", "refused ops (lambda / formula)", "bit mismatches", "== 1 on plateau", ">= 0", "<= 1"],
+        title = "the worked example's claims, on its formula rewrite",
+    ).rows(rows)
         .role("<= 1", CellRole.WARN),
 )
 

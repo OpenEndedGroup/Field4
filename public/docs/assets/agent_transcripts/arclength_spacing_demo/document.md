@@ -18,7 +18,7 @@ Same two curves, ticked instead of dashed, so you can see the spacing itself rat
 than its effect on a dash.
 
 ```edn [field-box id="arclength_ticks" role="properties"]
-{"id" "arclength_ticks" "index" 0 "name" "where the mechanism actually is" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "where the mechanism actually is" "_tombstone" false "frame" #afield/rect [80.0 720.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "arclength_ticks_code_.kt" "lines" 105 "characters" 3884 "sha256" "88f18e7356c7c48079a0f12db5bfc6fcbb1413f06d6a1791c835077896d679ad"}]}
+{"id" "arclength_ticks" "index" 0 "name" "where the mechanism actually is" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "where the mechanism actually is" "_tombstone" false "frame" #afield/rect [80.0 720.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "arclength_ticks_code_.kt" "lines" 104 "characters" 3859 "sha256" "4e72e4dd7cefb45b001dd6473c739e8239c77db255a08a5ecd883d1725290d88"}]}
 ```
 
 ```kotlin [field-property box="arclength_ticks" name="code" path="arclength_ticks_code_.kt"]
@@ -121,12 +121,11 @@ val report = { name: String, line: FLine ->
 }
 
 [
-        report("S-curve", bent),
-        report("collinear", straight),
-        "",
-        "flatness alone stops at one leaf whenever it reads 0.000, and no tolerance can beat 0.",
-    ]
-    .joinToString("\n")
+    report("S-curve", bent),
+    report("collinear", straight),
+    "",
+    "flatness alone stops at one leaf whenever it reads 0.000, and no tolerance can beat 0.",
+].joinToString("\n")
 ```
 
 ## 2. dashes, spaced by parameter and by arc length

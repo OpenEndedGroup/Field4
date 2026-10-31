@@ -450,8 +450,10 @@ The preamble is regenerated **on run**: Field recomputes the gathered preamble, 
 `prop` is the explicit way to make an inheritable slot. `@exported` is the automatic cousin: annotate a normal Kotlin `fun`/`val`/`var`, and *after the box runs*, Field reflects over it and does the same job for you.
 
 ```diffstatic {data-lang=kotlin}
-@exported fun add(x: Int, y: Int): Int = x + y
-@exported val answer: Int = 42
+@exported
+fun add(x: Int, y: Int): Int = x + y
+@exported
+val answer: Int = 42
 ```
 
 After this box runs, its preamble gains inheriting accessors (note the leading-underscore **alias**):

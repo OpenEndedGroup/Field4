@@ -207,7 +207,7 @@ A stage's value need not be a number. One Vector3f reader, drawn as its three co
 one stage structure carrying three values, so the osc:2 stage bumps all of them at once.
 
 ```edn [field-box id="marf_vector" role="properties"]
-{"id" "marf_vector" "index" 3 "name" "one Vector3f reader, three components" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "one Vector3f reader, three components" "_tombstone" false "frame" #afield/rect [60.0 226.0 340.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "marf_vector_code_.kt" "lines" 73 "characters" 2643 "sha256" "c04e983554fc11aa576fbcb75bc7becc5de99a67ca9c6e2ebfef9efe32f30a93"}]}
+{"id" "marf_vector" "index" 3 "name" "one Vector3f reader, three components" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "one Vector3f reader, three components" "_tombstone" false "frame" #afield/rect [60.0 226.0 340.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "marf_vector_code_.kt" "lines" 71 "characters" 2582 "sha256" "cabd5c2c0eebb4b00143c09d6fe2c4dff407e69060fc11dde58e69a4cd417851"}]}
 ```
 
 ```kotlin [field-property box="marf_vector" name="code" path="marf_vector_code_.kt"]
@@ -216,15 +216,13 @@ one stage structure carrying three values, so the osc:2 stage bumps all of them 
 displayClearAll() // drop anything a previous run left on another channel
 displayOpen("lines")
 
-val path =
-    marfBankIn(
-            MarfVector3f,
-            stageTo(Vector3f(0f, 0f, 0f), 1.0, label = "origin"),
-            stageTo(Vector3f(1f, 0f, 0f), 0.5, MarfCurve.Smooth, label = "x"),
-            stageTo(Vector3f(1f, 1f, 0f), 1.5, MarfCurve.Exp(3.0), label = "xy"),
-            stageTo(Vector3f(0f, 0.25f, 1f), 1.0, MarfCurve.Osc(2.0), label = "z"),
-        )
-        .read(pat("<0 1 2 3 2 1>").nums(), fields = MarfFieldClock.STAGES, name = "vec")
+val path = marfBankIn(
+    MarfVector3f,
+    stageTo(Vector3f(0f, 0f, 0f), 1.0, label = "origin"),
+    stageTo(Vector3f(1f, 0f, 0f), 0.5, MarfCurve.Smooth, label = "x"),
+    stageTo(Vector3f(1f, 1f, 0f), 1.5, MarfCurve.Exp(3.0), label = "xy"),
+    stageTo(Vector3f(0f, 0.25f, 1f), 1.0, MarfCurve.Osc(2.0), label = "z"),
+).read(pat("<0 1 2 3 2 1>").nums(), fields = MarfFieldClock.STAGES, name = "vec")
 
 val cycles = 6L
 val W = 1060.0

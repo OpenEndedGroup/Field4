@@ -2172,13 +2172,12 @@ client
         ),
     ) { preview, frames ->
         [
-                SpectralEmbeddingDistance.MEL_WASSERSTEIN,
-                SpectralEmbeddingDistance.LOG_MEL_COSINE,
-                SpectralEmbeddingDistance.MFCC_EUCLIDEAN,
-            ]
-            .map { distance ->
-                preview.withSpectralProjection(frames.tsne(distance = distance, dimensions = 4))
-            }
+            SpectralEmbeddingDistance.MEL_WASSERSTEIN,
+            SpectralEmbeddingDistance.LOG_MEL_COSINE,
+            SpectralEmbeddingDistance.MFCC_EUCLIDEAN,
+        ].map { distance ->
+            preview.withSpectralProjection(frames.tsne(distance = distance, dimensions = 4))
+        }
     }
     .thenAccept { previews ->
         display("spaces", spectralEmbeddingPreviewDashboardHtml(previews, syncGroup = "recording"))

@@ -11,16 +11,14 @@ Everything a holed face refuses, and the message it refuses with. These are valu
 accidents: a Conway operator, a dualization and an OFF export are all defined for closed
 manifolds, and a face with a hole is a surface with boundary.
 */
-val refusals =
-    listOf<Pair<String, () -> Any>>(
-            "topology.dual()" to { topology.dual() },
-            "solid.bevel()" to { solid.bevel() },
-            "solid.toOff()" to { solid.toOff() },
-            "triangulate(FanFaceTriangulator)" to { solid.triangulate(FanFaceTriangulator) },
-        )
-        .map { (name, call) ->
-            name to (runCatching { call() }.exceptionOrNull()?.message ?: "DID NOT THROW")
-        }
+val refusals = listOf<Pair<String, () -> Any>>(
+    "topology.dual()" to { topology.dual() },
+    "solid.bevel()" to { solid.bevel() },
+    "solid.toOff()" to { solid.toOff() },
+    "triangulate(FanFaceTriangulator)" to { solid.triangulate(FanFaceTriangulator) },
+).map { (name, call) ->
+    name to (runCatching { call() }.exceptionOrNull()?.message ?: "DID NOT THROW")
+}
 
 println(
     """

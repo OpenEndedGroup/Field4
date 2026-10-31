@@ -11,9 +11,8 @@ println(
         ?: "no Dirt-Samples found — set ${DirtRender.ENV_VAR}, or install the SuperCollider quark",
 )
 
-val net =
-    petri(
-        """
+val net = petri(
+    """
     #petri
     !grid 1/8
     !conflict priority
@@ -26,7 +25,7 @@ val net =
     &mid   -[ build @1/8 pri=3      ]-> fill
     3*fill -[ crash @1/8 pri=1 : sd ]->
 """,
-    )
+)
 showPetriNet(net, w = 700.0, h = 360.0)
 
 /*

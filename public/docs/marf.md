@@ -228,15 +228,13 @@ there. The curve is still a single number from 0 to 1. It says how far through t
 and that fraction is the same for every component of the vector.
 
 ```diffstatic {data-lang=kotlin}
-val path =
-    marfBankIn(
-            MarfVector3f,
-            stageTo(Vector3f(0f, 0f, 0f), 1.0),
-            stageTo(Vector3f(1f, 0f, 0f), 0.5, MarfCurve.Smooth),
-            stageTo(Vector3f(1f, 1f, 0f), 1.5, MarfCurve.Exp(3.0)),
-            stageTo(Vector3f(0f, 0.25f, 1f), 1.0, MarfCurve.Osc(2.0)),
-        )
-        .read(pat("<0 1 2 3 2 1>").nums(), fields = MarfFieldClock.STAGES)
+val path = marfBankIn(
+    MarfVector3f,
+    stageTo(Vector3f(0f, 0f, 0f), 1.0),
+    stageTo(Vector3f(1f, 0f, 0f), 0.5, MarfCurve.Smooth),
+    stageTo(Vector3f(1f, 1f, 0f), 1.5, MarfCurve.Exp(3.0)),
+    stageTo(Vector3f(0f, 0.25f, 1f), 1.0, MarfCurve.Osc(2.0)),
+).read(pat("<0 1 2 3 2 1>").nums(), fields = MarfFieldClock.STAGES)
 
 path.at(3.5).value // a Vector3f
 path.signal { it.x.toDouble() } // any component, as an ordinary signal

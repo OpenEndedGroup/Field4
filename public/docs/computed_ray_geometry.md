@@ -132,12 +132,10 @@ The ray pipeline is Field's `RayTracingModule`, with `allowClusterAccelerationSt
 The editable example uses this exact path:
 
 ```diffstatic {data-lang=kotlin}
-val lab =
-    ClusterGeometryDemo(
-            renderer,
-            producerFactory = { computeModuleHere(it) },
-        )
-        .install()
+val lab = ClusterGeometryDemo(
+    renderer,
+    producerFactory = { computeModuleHere(it) },
+).install()
 ```
 
 `ClusterGeometryDemo` is the terrain viewer. `ClusterGeometry` is the reusable builder: its inputs need not resemble terrain, use the sample's patch counts, or originate in GLSL. A Slang producer can write the same buffers. The builder's returned address can be instanced with ordinary TLAS transforms.

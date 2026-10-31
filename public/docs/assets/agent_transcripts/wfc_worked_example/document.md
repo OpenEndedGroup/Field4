@@ -397,7 +397,7 @@ waveToImg averages each cell's remaining possibilities -- undecided cells are a 
 they might become. possibilityCountImg is the remaining option count as a scalar field.
 
 ```edn [field-box id="wfc_collapse" role="properties"]
-{"id" "wfc_collapse" "index" 4 "name" "6 — Watching the collapse" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — Watching the collapse" "_tombstone" false "frame" #afield/rect [560.0 460.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "wfc_collapse_code_.kt" "lines" 70 "characters" 2631 "sha256" "bebeacb34705e060dea24e9aeef5995cd43841460306859641bbd76b3aeb917a"}]}
+{"id" "wfc_collapse" "index" 4 "name" "6 — Watching the collapse" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — Watching the collapse" "_tombstone" false "frame" #afield/rect [560.0 460.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "wfc_collapse_code_.kt" "lines" 69 "characters" 2606 "sha256" "b27217c4bc322546797b651d40e828f40e983c6c299d0afbaa20eb894006f801"}]}
 ```
 
 ```kotlin [field-property box="wfc_collapse" name="code" path="wfc_collapse_code_.kt"]
@@ -465,11 +465,10 @@ println("magma is mapped with an explicit lo/hi so the colours mean the same thi
 display(
     "main",
     vstack(
-            montage(waves, columns = 4, cellSide = 260),
-            montage(entropy, columns = 4, cellSide = 260),
-            gap = 14,
-        )
-        .toPngBytes(),
+        montage(waves, columns = 4, cellSide = 260),
+        montage(entropy, columns = 4, cellSide = 260),
+        gap = 14,
+    ).toPngBytes(),
 )
 ```
 

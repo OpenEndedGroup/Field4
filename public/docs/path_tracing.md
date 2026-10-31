@@ -88,16 +88,14 @@ val camera = Camera(renderer).also {
     it.at.set(0f, 2f, 7f)
     it.target.set(0f, 1f, 0f)
 }
-val tracer =
-    PathTracingRenderer(
-            renderer,
-            scene,
-            env,
-            width = 1280,
-            height = 720,
-            camera = camera,
-        )
-        .install()
+val tracer = PathTracingRenderer(
+    renderer,
+    scene,
+    env,
+    width = 1280,
+    height = 720,
+    camera = camera,
+).install()
 ```
 
 `PathTraceEnvironment` accepts OpenEXR, Radiance HDR, STB-supported ordinary image

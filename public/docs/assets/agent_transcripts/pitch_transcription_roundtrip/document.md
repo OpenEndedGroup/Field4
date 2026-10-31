@@ -17,7 +17,7 @@ From `code`
 Sixteen notes in half a second: 31 ms each.
 
 ```edn [field-box id="pitch_roundtrip_register" role="properties"]
-{"id" "pitch_roundtrip_register" "index" 0 "name" "4 · POKE THIS — the register is the whole lever" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 · POKE THIS — the register is the whole lever" "_tombstone" false "frame" #afield/rect [520.0 190.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pitch_roundtrip_register_code_.kt" "lines" 53 "characters" 2047 "sha256" "17f991ca6f01066dd0e123245ce23402f318618f73ff9e7924695f9e07ccbe35"}]}
+{"id" "pitch_roundtrip_register" "index" 0 "name" "4 · POKE THIS — the register is the whole lever" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 · POKE THIS — the register is the whole lever" "_tombstone" false "frame" #afield/rect [520.0 190.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pitch_roundtrip_register_code_.kt" "lines" 51 "characters" 1994 "sha256" "e211c85650a7223d99463d349c20a1e4edefa5929861cae37ede88603e157831"}]}
 ```
 
 ```kotlin [field-property box="pitch_roundtrip_register" name="code" path="pitch_roundtrip_register_code_.kt"]
@@ -26,14 +26,12 @@ val notation = "60 62 64 65 67 69 71 72 72 71 69 67 65 64 62 60"
 val cycles = 2
 val cps = 2.0
 val sustain = 0.9
-val audio =
-    patRenderStereo(
-            pat(notation),
-            cycles,
-            cps,
-            patVoice(sustain = sustain, decay = 0.01),
-        )
-        .mono
+val audio = patRenderStereo(
+    pat(notation),
+    cycles,
+    cps,
+    patVoice(sustain = sustain, decay = 0.01),
+).mono
 val reference = patReferenceNotes(notation, cycles, cps, sustain = sustain)
 
 /*
@@ -166,7 +164,7 @@ inability, not the loudest note. `~` is the only thing mini-notation can say for
 that sounded and was not named, so the refusal lives in the warnings and the verdict.
 
 ```edn [field-box id="pitch_roundtrip_refusal" role="properties"]
-{"id" "pitch_roundtrip_refusal" "index" 2 "name" "5 · a chord, refused rather than guessed at" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 · a chord, refused rather than guessed at" "_tombstone" false "frame" #afield/rect [40.0 340.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pitch_roundtrip_refusal_code_.kt" "lines" 42 "characters" 1534 "sha256" "b98ac3f20c903a3846ae73087e4ed57228fdfce532108106a3438efd60616848"}]}
+{"id" "pitch_roundtrip_refusal" "index" 2 "name" "5 · a chord, refused rather than guessed at" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 · a chord, refused rather than guessed at" "_tombstone" false "frame" #afield/rect [40.0 340.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pitch_roundtrip_refusal_code_.kt" "lines" 40 "characters" 1481 "sha256" "a7555f084b78fd4e6c1b2e82a77cf875b33970c438e07402e146a6bfdf1b9c3d"}]}
 ```
 
 ```kotlin [field-property box="pitch_roundtrip_refusal" name="code" path="pitch_roundtrip_refusal_code_.kt"]
@@ -179,14 +177,12 @@ val notation = "[60,64,67] ~ [62,65,69] ~"
 val cycles = 2
 val cps = 0.75
 val sustain = 0.85
-val audio =
-    patRenderStereo(
-            pat(notation),
-            cycles,
-            cps,
-            patVoice(sustain = sustain, decay = 0.03),
-        )
-        .mono
+val audio = patRenderStereo(
+    pat(notation),
+    cycles,
+    cps,
+    patVoice(sustain = sustain, decay = 0.03),
+).mono
 
 val heard = showPatTranscriptionOf(
     audio,

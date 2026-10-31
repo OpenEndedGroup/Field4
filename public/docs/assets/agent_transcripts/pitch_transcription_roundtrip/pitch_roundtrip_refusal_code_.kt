@@ -7,14 +7,12 @@ val notation = "[60,64,67] ~ [62,65,69] ~"
 val cycles = 2
 val cps = 0.75
 val sustain = 0.85
-val audio =
-    patRenderStereo(
-            pat(notation),
-            cycles,
-            cps,
-            patVoice(sustain = sustain, decay = 0.03),
-        )
-        .mono
+val audio = patRenderStereo(
+    pat(notation),
+    cycles,
+    cps,
+    patVoice(sustain = sustain, decay = 0.03),
+).mono
 
 val heard = showPatTranscriptionOf(
     audio,

@@ -306,28 +306,28 @@ fun prop12(ab: Line2, c: Point2) = construction(
     "I.12",
     "To draw a straight line perpendicular to a given infinite straight line from a given point not on it.",
 ) {
-        require(ab.side(c) != 0) { "I.12: the point is on the line" }
-        step("Let AB be the given straight line and C the given point not on it.", ab.drawn(Byrne.BLACK), c.named("C"))
-        val d = ab.point + (ab.point - c) * 0.3
-        step("Take any point D on the other side of AB.", d.named("D"))
-        val circle = Circle2(c, c.dist(d))
-        val (g, e) = meet(ab, circle, "I.12").sortedBy { ab.direction dot it }
-        step(
-            "With centre C and radius CD describe the circle EFG, cutting AB at G and E.",
-            circle.drawn(Byrne.BLUE, Role.CONSTRUCTION),
-            g.named("G"),
-            e.named("E"),
-        )
-        val h = by { Elements.prop10(Segment2(g, e)) }
-        val ch = Segment2(c, h)
-        step(
-            "Bisect GE at H, and join CH. CH is perpendicular to AB.",
-            h.named("H"),
-            ch.drawn(Byrne.YELLOW, Role.RESULT),
-        )
-        check(eq((ch.b - ch.a).normalized() dot ab.direction.normalized(), 0.0), "I.12: CH is not perpendicular")
-        ch
-    }
+    require(ab.side(c) != 0) { "I.12: the point is on the line" }
+    step("Let AB be the given straight line and C the given point not on it.", ab.drawn(Byrne.BLACK), c.named("C"))
+    val d = ab.point + (ab.point - c) * 0.3
+    step("Take any point D on the other side of AB.", d.named("D"))
+    val circle = Circle2(c, c.dist(d))
+    val (g, e) = meet(ab, circle, "I.12").sortedBy { ab.direction dot it }
+    step(
+        "With centre C and radius CD describe the circle EFG, cutting AB at G and E.",
+        circle.drawn(Byrne.BLUE, Role.CONSTRUCTION),
+        g.named("G"),
+        e.named("E"),
+    )
+    val h = by { Elements.prop10(Segment2(g, e)) }
+    val ch = Segment2(c, h)
+    step(
+        "Bisect GE at H, and join CH. CH is perpendicular to AB.",
+        h.named("H"),
+        ch.drawn(Byrne.YELLOW, Role.RESULT),
+    )
+    check(eq((ch.b - ch.a).normalized() dot ab.direction.normalized(), 0.0), "I.12: CH is not perpendicular")
+    ch
+}
 
 val c = prop12(Line2(point2(0, 0), point2(1, 0)), point2(60, -120))
 lines(c.toFLines(extent = 220.0, width = 520.0, height = 420.0), w = 520.0, h = 420.0)
@@ -349,42 +349,42 @@ fun prop23(along: Ray2, vertex: Point2, d: Point2, e: Point2, side: Int = 1) = c
     "I.23",
     "On a given straight line and at a point on it to construct a rectilineal angle equal to a given rectilineal angle.",
 ) {
-        val a = along.origin
-        step(
-            "Let AB be the given line, A the point on it, and DCE the given angle.",
-            along.drawn(Byrne.BLACK),
-            a.named("A"),
-            Segment2(vertex, d).drawn(Byrne.BLACK),
-            Segment2(vertex, e).drawn(Byrne.BLACK),
-            vertex.named("C"),
-        )
-        val r = minOf(vertex.dist(d), vertex.dist(e))
-        val gauge = Circle2(vertex, r)
-        val d1 = pick(meet(Ray2(vertex, d - vertex), gauge, "I.23"))
-        val e1 = pick(meet(Ray2(vertex, e - vertex), gauge, "I.23"))
-        step(
-            "Cut CD and CE at D and E equally far from C, and join DE.",
-            gauge.drawn(Byrne.BLUE, Role.CONSTRUCTION),
-            d1.named("D"),
-            e1.named("E"),
-            Segment2(d1, e1).drawn(Byrne.RED),
-        )
-        val copy = Circle2(a, r)
-        val f = pick(meet(along, copy, "I.23"))
-        step("On AB make AF equal to CD.", copy.drawn(Byrne.BLUE, Role.CONSTRUCTION), f.named("F"))
-        val chord = Circle2(f, d1.dist(e1))
-        val g = pickSide(along.line, meet(copy, chord, "I.23"), side)
-        val ag = Ray2(a, g - a)
-        step(
-            "With centre F and radius DE cut the circle at G, and join AG. The triangles AFG and CDE have their sides equal, so the angle FAG equals DCE.",
-            chord.drawn(Byrne.RED, Role.CONSTRUCTION),
-            g.named("G"),
-            Segment2(f, g).drawn(Byrne.RED),
-            Segment2(a, g).drawn(Byrne.YELLOW, Role.RESULT),
-        )
-        check(eq(angleAt(a, a + along.direction, g), angleAt(vertex, d, e)), "I.23: the angles differ")
-        ag
-    }
+    val a = along.origin
+    step(
+        "Let AB be the given line, A the point on it, and DCE the given angle.",
+        along.drawn(Byrne.BLACK),
+        a.named("A"),
+        Segment2(vertex, d).drawn(Byrne.BLACK),
+        Segment2(vertex, e).drawn(Byrne.BLACK),
+        vertex.named("C"),
+    )
+    val r = minOf(vertex.dist(d), vertex.dist(e))
+    val gauge = Circle2(vertex, r)
+    val d1 = pick(meet(Ray2(vertex, d - vertex), gauge, "I.23"))
+    val e1 = pick(meet(Ray2(vertex, e - vertex), gauge, "I.23"))
+    step(
+        "Cut CD and CE at D and E equally far from C, and join DE.",
+        gauge.drawn(Byrne.BLUE, Role.CONSTRUCTION),
+        d1.named("D"),
+        e1.named("E"),
+        Segment2(d1, e1).drawn(Byrne.RED),
+    )
+    val copy = Circle2(a, r)
+    val f = pick(meet(along, copy, "I.23"))
+    step("On AB make AF equal to CD.", copy.drawn(Byrne.BLUE, Role.CONSTRUCTION), f.named("F"))
+    val chord = Circle2(f, d1.dist(e1))
+    val g = pickSide(along.line, meet(copy, chord, "I.23"), side)
+    val ag = Ray2(a, g - a)
+    step(
+        "With centre F and radius DE cut the circle at G, and join AG. The triangles AFG and CDE have their sides equal, so the angle FAG equals DCE.",
+        chord.drawn(Byrne.RED, Role.CONSTRUCTION),
+        g.named("G"),
+        Segment2(f, g).drawn(Byrne.RED),
+        Segment2(a, g).drawn(Byrne.YELLOW, Role.RESULT),
+    )
+    check(eq(angleAt(a, a + along.direction, g), angleAt(vertex, d, e)), "I.23: the angles differ")
+    ag
+}
 
 val c = prop23(
     along = Ray2(point2(0, 0), point2(1, 0)),
@@ -491,58 +491,58 @@ fun prop47(t: Triangle2) = construction(
     "I.47",
     "In right-angled triangles the square on the side opposite the right angle equals the squares on the sides containing the right angle.",
 ) {
-        val (a, b, c) = t
-        step(
-            "Let ABC be a right-angled triangle with the right angle at A.",
-            *t.sides.map { it.drawn(Byrne.BLACK) }.toTypedArray(),
-            a.named("A"),
-            b.named("B"),
-            c.named("C"),
-        )
-        val onBC = by { Elements.prop46(Segment2(b, c), -Line2.through(b, c).side(a)) }
-        val onBA = by { Elements.prop46(Segment2(b, a), -Line2.through(b, a).side(c)) }
-        val onAC = by { Elements.prop46(Segment2(a, c), -Line2.through(a, c).side(b)) }
-        val d = onBC.d
-        val e = onBC.c
-        val f = onBA.d
-        val g = onBA.c
-        val h = onAC.d
-        val k = onAC.c
-        step(
-            "On BC, BA and AC describe the squares BDEC, BAGF and ACKH (I.46).",
-            onBA.polygon.drawn(Byrne.RED, Role.AREA),
-            onAC.polygon.drawn(Byrne.BLUE, Role.AREA),
-            *(onBC.sides + onBA.sides + onAC.sides).map { it.drawn(Byrne.BLACK) }.toTypedArray(),
-            d.named("D"),
-            e.named("E"),
-            f.named("F"),
-            g.named("G"),
-            h.named("H"),
-            k.named("K"),
-        )
-        val al = by { Elements.prop31(a, Segment2(b, d)) }
-        val l = pick(meet(al, Segment2(d, e), "I.47"))
-        val m = pick(meet(al, Segment2(b, c), "I.47"))
-        step(
-            "Through A draw AL parallel to BD, cutting BC at M and DE at L.",
-            Segment2(a, l).drawn(Byrne.BLACK),
-            l.named("L"),
-            m.named("M"),
-        )
-        step(
-            "Join AD and FC. The triangles ABD and FBC are equal, and each is half of the rectangle BL and of the square on BA, so these are equal; in the same way CL equals the square on AC.",
-            Segment2(a, d).drawn(Byrne.BLACK, Role.CONSTRUCTION),
-            Segment2(f, c).drawn(Byrne.BLACK, Role.CONSTRUCTION),
-            Polygon2(b, d, l, m).drawn(Byrne.RED, Role.AREA),
-            Polygon2(m, l, e, c).drawn(Byrne.BLUE, Role.AREA),
-        )
-        step(
-            "So the whole square on BC equals the squares on BA and AC.",
-            *onBC.sides.map { it.drawn(Byrne.YELLOW, Role.RESULT) }.toTypedArray(),
-        )
-        check([onBC, onBA, onAC].none { centroid(a, b, c) in it.polygon }, "I.47: a square lies over the triangle")
-        Triple(onBC, onBA, onAC)
-    }
+    val (a, b, c) = t
+    step(
+        "Let ABC be a right-angled triangle with the right angle at A.",
+        *t.sides.map { it.drawn(Byrne.BLACK) }.toTypedArray(),
+        a.named("A"),
+        b.named("B"),
+        c.named("C"),
+    )
+    val onBC = by { Elements.prop46(Segment2(b, c), -Line2.through(b, c).side(a)) }
+    val onBA = by { Elements.prop46(Segment2(b, a), -Line2.through(b, a).side(c)) }
+    val onAC = by { Elements.prop46(Segment2(a, c), -Line2.through(a, c).side(b)) }
+    val d = onBC.d
+    val e = onBC.c
+    val f = onBA.d
+    val g = onBA.c
+    val h = onAC.d
+    val k = onAC.c
+    step(
+        "On BC, BA and AC describe the squares BDEC, BAGF and ACKH (I.46).",
+        onBA.polygon.drawn(Byrne.RED, Role.AREA),
+        onAC.polygon.drawn(Byrne.BLUE, Role.AREA),
+        *(onBC.sides + onBA.sides + onAC.sides).map { it.drawn(Byrne.BLACK) }.toTypedArray(),
+        d.named("D"),
+        e.named("E"),
+        f.named("F"),
+        g.named("G"),
+        h.named("H"),
+        k.named("K"),
+    )
+    val al = by { Elements.prop31(a, Segment2(b, d)) }
+    val l = pick(meet(al, Segment2(d, e), "I.47"))
+    val m = pick(meet(al, Segment2(b, c), "I.47"))
+    step(
+        "Through A draw AL parallel to BD, cutting BC at M and DE at L.",
+        Segment2(a, l).drawn(Byrne.BLACK),
+        l.named("L"),
+        m.named("M"),
+    )
+    step(
+        "Join AD and FC. The triangles ABD and FBC are equal, and each is half of the rectangle BL and of the square on BA, so these are equal; in the same way CL equals the square on AC.",
+        Segment2(a, d).drawn(Byrne.BLACK, Role.CONSTRUCTION),
+        Segment2(f, c).drawn(Byrne.BLACK, Role.CONSTRUCTION),
+        Polygon2(b, d, l, m).drawn(Byrne.RED, Role.AREA),
+        Polygon2(m, l, e, c).drawn(Byrne.BLUE, Role.AREA),
+    )
+    step(
+        "So the whole square on BC equals the squares on BA and AC.",
+        *onBC.sides.map { it.drawn(Byrne.YELLOW, Role.RESULT) }.toTypedArray(),
+    )
+    check([onBC, onBA, onAC].none { centroid(a, b, c) in it.polygon }, "I.47: a square lies over the triangle")
+    Triple(onBC, onBA, onAC)
+}
 
 val c = prop47(Triangle2(point2(0, 0), point2(120, 0), point2(0, -90)))
 lines(c.toFLines(width = 560.0, height = 560.0), w = 560.0, h = 560.0)
@@ -569,53 +569,53 @@ fun book2prop5(ab: Segment2, side: Int = 1) = construction(
     "II.5",
     "If a straight line be cut into equal and unequal segments, the rectangle contained by the unequal segments, together with the square on the straight line between the points of section, equals the square on the half.",
 ) {
-        val (a, b) = ab
-        step("Let AB be the given straight line.", ab.drawn(Byrne.BLACK), a.named("A"), b.named("B"))
-        val c = by { Elements.prop10(ab) }
-        val d = c.lerp(b, 0.4)
-        step("Bisect AB at C, and take any point D between C and B.", c.named("C"), d.named("D"))
-        val sq = by { Elements.prop46(Segment2(c, b), side) }
-        val f = sq.c
-        val e = sq.d
-        step(
-            "On CB describe the square CEFB, and join BE.",
-            *sq.sides.map { it.drawn(Byrne.BLACK) }.toTypedArray(),
-            Segment2(b, e).drawn(Byrne.BLACK, Role.CONSTRUCTION),
-            e.named("E"),
-            f.named("F"),
-        )
-        val dg = by { Elements.prop31(d, Segment2(c, e)) }
-        val g = pick(meet(dg, Segment2(e, f), "II.5"))
-        val h = pick(meet(dg, Segment2(b, e), "II.5"))
-        step(
-            "Through D draw DG parallel to CE, cutting BE at H.",
-            Segment2(d, g).drawn(Byrne.BLACK),
-            g.named("G"),
-            h.named("H"),
-        )
-        val km = by { Elements.prop31(h, ab) }
-        val l = pick(meet(km, Line2.through(c, e), "II.5"))
-        val m = pick(meet(km, Line2.through(b, f), "II.5"))
-        val k = pick(meet(by { Elements.prop31(a, Segment2(c, l)) }, km, "II.5"))
-        step(
-            "Through H draw KLM parallel to AB, and through A draw AK parallel to CL.",
-            Segment2(k, m).drawn(Byrne.BLACK),
-            Segment2(a, k).drawn(Byrne.BLACK),
-            k.named("K"),
-            l.named("L"),
-            m.named("M"),
-        )
-        val gnomon = Polygon2(c, b, f, g, h, l)
-        step(
-            "AL equals DF, so the rectangle AH, which is AD·DB, equals the gnomon CBFGHL. Add to each the square LG on CD: the rectangle AD·DB with the square on CD equals the square on CB.",
-            Polygon2(a, c, l, k).drawn(Byrne.RED, Role.AREA),
-            Polygon2(d, b, f, g).drawn(Byrne.RED, Role.AREA),
-            Polygon2(c, d, h, l).drawn(Byrne.BLUE, Role.AREA),
-            Polygon2(l, h, g, e).drawn(Byrne.YELLOW, Role.AREA),
-        )
-        check(eq(gnomon.area, a.dist(d) * d.dist(b)), "II.5: the gnomon is not AD·DB")
-        gnomon
-    }
+    val (a, b) = ab
+    step("Let AB be the given straight line.", ab.drawn(Byrne.BLACK), a.named("A"), b.named("B"))
+    val c = by { Elements.prop10(ab) }
+    val d = c.lerp(b, 0.4)
+    step("Bisect AB at C, and take any point D between C and B.", c.named("C"), d.named("D"))
+    val sq = by { Elements.prop46(Segment2(c, b), side) }
+    val f = sq.c
+    val e = sq.d
+    step(
+        "On CB describe the square CEFB, and join BE.",
+        *sq.sides.map { it.drawn(Byrne.BLACK) }.toTypedArray(),
+        Segment2(b, e).drawn(Byrne.BLACK, Role.CONSTRUCTION),
+        e.named("E"),
+        f.named("F"),
+    )
+    val dg = by { Elements.prop31(d, Segment2(c, e)) }
+    val g = pick(meet(dg, Segment2(e, f), "II.5"))
+    val h = pick(meet(dg, Segment2(b, e), "II.5"))
+    step(
+        "Through D draw DG parallel to CE, cutting BE at H.",
+        Segment2(d, g).drawn(Byrne.BLACK),
+        g.named("G"),
+        h.named("H"),
+    )
+    val km = by { Elements.prop31(h, ab) }
+    val l = pick(meet(km, Line2.through(c, e), "II.5"))
+    val m = pick(meet(km, Line2.through(b, f), "II.5"))
+    val k = pick(meet(by { Elements.prop31(a, Segment2(c, l)) }, km, "II.5"))
+    step(
+        "Through H draw KLM parallel to AB, and through A draw AK parallel to CL.",
+        Segment2(k, m).drawn(Byrne.BLACK),
+        Segment2(a, k).drawn(Byrne.BLACK),
+        k.named("K"),
+        l.named("L"),
+        m.named("M"),
+    )
+    val gnomon = Polygon2(c, b, f, g, h, l)
+    step(
+        "AL equals DF, so the rectangle AH, which is AD·DB, equals the gnomon CBFGHL. Add to each the square LG on CD: the rectangle AD·DB with the square on CD equals the square on CB.",
+        Polygon2(a, c, l, k).drawn(Byrne.RED, Role.AREA),
+        Polygon2(d, b, f, g).drawn(Byrne.RED, Role.AREA),
+        Polygon2(c, d, h, l).drawn(Byrne.BLUE, Role.AREA),
+        Polygon2(l, h, g, e).drawn(Byrne.YELLOW, Role.AREA),
+    )
+    check(eq(gnomon.area, a.dist(d) * d.dist(b)), "II.5: the gnomon is not AD·DB")
+    gnomon
+}
 
 val c = book2prop5(Segment2(point2(0, 0), point2(200, 0)), side = -1)
 lines(c.toFLines(width = 560.0, height = 380.0), w = 560.0, h = 380.0)
@@ -633,58 +633,58 @@ fun book2prop6(ab: Segment2, side: Int = 1) = construction(
     "II.6",
     "If a straight line be bisected and a straight line be added to it, the rectangle contained by the whole with the added straight line and the added straight line, together with the square on the half, equals the square on the straight line made up of the half and the added straight line.",
 ) {
-        val (a, b) = ab
-        step("Let AB be the given straight line.", ab.drawn(Byrne.BLACK), a.named("A"), b.named("B"))
-        val c = by { Elements.prop10(ab) }
-        val d = pick(meet(Ray2(b, b - a), Circle2(b, ab.length * 0.35), "II.6"))
-        step(
-            "Bisect AB at C, and produce it to any point D.",
-            Segment2(b, d).drawn(Byrne.BLACK),
-            c.named("C"),
-            d.named("D"),
-        )
-        val sq = by { Elements.prop46(Segment2(c, d), side) }
-        val f = sq.c
-        val e = sq.d
-        step(
-            "On CD describe the square CEFD, and join DE.",
-            *sq.sides.map { it.drawn(Byrne.BLACK) }.toTypedArray(),
-            Segment2(d, e).drawn(Byrne.BLACK, Role.CONSTRUCTION),
-            e.named("E"),
-            f.named("F"),
-        )
-        val bg = by { Elements.prop31(b, Segment2(c, e)) }
-        val g = pick(meet(bg, Segment2(e, f), "II.6"))
-        val h = pick(meet(bg, Segment2(d, e), "II.6"))
-        step(
-            "Through B draw BG parallel to CE, cutting DE at H.",
-            Segment2(b, g).drawn(Byrne.BLACK),
-            g.named("G"),
-            h.named("H"),
-        )
-        val km = by { Elements.prop31(h, ab) }
-        val l = pick(meet(km, Line2.through(c, e), "II.6"))
-        val m = pick(meet(km, Line2.through(d, f), "II.6"))
-        val k = pick(meet(by { Elements.prop31(a, Segment2(c, l)) }, km, "II.6"))
-        step(
-            "Through H draw KLM parallel to AB, and through A draw AK parallel to CL.",
-            Segment2(k, m).drawn(Byrne.BLACK),
-            Segment2(a, k).drawn(Byrne.BLACK),
-            k.named("K"),
-            l.named("L"),
-            m.named("M"),
-        )
-        val gnomon = Polygon2(c, d, f, g, h, l)
-        step(
-            "AL equals HF, so the rectangle AM, which is AD·DB, equals the gnomon CDFGHL. Add to each the square LG on CB: the rectangle AD·DB with the square on CB equals the square on CD.",
-            Polygon2(a, c, l, k).drawn(Byrne.RED, Role.AREA),
-            Polygon2(h, m, f, g).drawn(Byrne.RED, Role.AREA),
-            Polygon2(c, d, m, l).drawn(Byrne.BLUE, Role.AREA),
-            Polygon2(l, h, g, e).drawn(Byrne.YELLOW, Role.AREA),
-        )
-        check(eq(gnomon.area, a.dist(d) * d.dist(b)), "II.6: the gnomon is not AD·DB")
-        gnomon
-    }
+    val (a, b) = ab
+    step("Let AB be the given straight line.", ab.drawn(Byrne.BLACK), a.named("A"), b.named("B"))
+    val c = by { Elements.prop10(ab) }
+    val d = pick(meet(Ray2(b, b - a), Circle2(b, ab.length * 0.35), "II.6"))
+    step(
+        "Bisect AB at C, and produce it to any point D.",
+        Segment2(b, d).drawn(Byrne.BLACK),
+        c.named("C"),
+        d.named("D"),
+    )
+    val sq = by { Elements.prop46(Segment2(c, d), side) }
+    val f = sq.c
+    val e = sq.d
+    step(
+        "On CD describe the square CEFD, and join DE.",
+        *sq.sides.map { it.drawn(Byrne.BLACK) }.toTypedArray(),
+        Segment2(d, e).drawn(Byrne.BLACK, Role.CONSTRUCTION),
+        e.named("E"),
+        f.named("F"),
+    )
+    val bg = by { Elements.prop31(b, Segment2(c, e)) }
+    val g = pick(meet(bg, Segment2(e, f), "II.6"))
+    val h = pick(meet(bg, Segment2(d, e), "II.6"))
+    step(
+        "Through B draw BG parallel to CE, cutting DE at H.",
+        Segment2(b, g).drawn(Byrne.BLACK),
+        g.named("G"),
+        h.named("H"),
+    )
+    val km = by { Elements.prop31(h, ab) }
+    val l = pick(meet(km, Line2.through(c, e), "II.6"))
+    val m = pick(meet(km, Line2.through(d, f), "II.6"))
+    val k = pick(meet(by { Elements.prop31(a, Segment2(c, l)) }, km, "II.6"))
+    step(
+        "Through H draw KLM parallel to AB, and through A draw AK parallel to CL.",
+        Segment2(k, m).drawn(Byrne.BLACK),
+        Segment2(a, k).drawn(Byrne.BLACK),
+        k.named("K"),
+        l.named("L"),
+        m.named("M"),
+    )
+    val gnomon = Polygon2(c, d, f, g, h, l)
+    step(
+        "AL equals HF, so the rectangle AM, which is AD·DB, equals the gnomon CDFGHL. Add to each the square LG on CB: the rectangle AD·DB with the square on CB equals the square on CD.",
+        Polygon2(a, c, l, k).drawn(Byrne.RED, Role.AREA),
+        Polygon2(h, m, f, g).drawn(Byrne.RED, Role.AREA),
+        Polygon2(c, d, m, l).drawn(Byrne.BLUE, Role.AREA),
+        Polygon2(l, h, g, e).drawn(Byrne.YELLOW, Role.AREA),
+    )
+    check(eq(gnomon.area, a.dist(d) * d.dist(b)), "II.6: the gnomon is not AD·DB")
+    gnomon
+}
 
 val c = book2prop6(Segment2(point2(0, 0), point2(160, 0)), side = -1)
 lines(c.toFLines(width = 560.0, height = 380.0), w = 560.0, h = 380.0)
@@ -705,48 +705,48 @@ fun book2prop11(ab: Segment2, side: Int = 1) = construction(
     "II.11",
     "To cut a given straight line so that the rectangle contained by the whole and one of the segments equals the square on the remaining segment.",
 ) {
-        val (a, b) = ab
-        step("Let AB be the given straight line.", ab.drawn(Byrne.BLACK), a.named("A"), b.named("B"))
-        val sq = by { Elements.prop46(ab, side) }
-        val c = sq.d
-        val d = sq.c
-        step(
-            "On AB describe the square ABDC.",
-            *sq.sides.map { it.drawn(Byrne.BLACK) }.toTypedArray(),
-            c.named("C"),
-            d.named("D"),
-        )
-        val e = by { Elements.prop10(Segment2(a, c)) }
-        step("Bisect AC at E, and join BE.", e.named("E"), Segment2(b, e).drawn(Byrne.BLACK, Role.CONSTRUCTION))
-        val circle = Circle2(e, e.dist(b))
-        val f = pick(meet(Ray2(a, a - c), circle, "II.11"))
-        step(
-            "Produce CA to F, making EF equal to EB.",
-            circle.drawn(Byrne.BLUE, Role.CONSTRUCTION),
-            Segment2(a, f).drawn(Byrne.BLACK, Role.CONSTRUCTION),
-            f.named("F"),
-        )
-        val sqF = by { Elements.prop46(Segment2(a, f), Line2.through(a, f).side(b)) }
-        val g = sqF.c
-        val h = sqF.d
-        val k = pick(meet(Line2.through(g, h), Line2.through(c, d), "II.11"))
-        step(
-            "On AF describe the square FGHA, and produce GH to K. AB is cut at H so that the rectangle AB·BH, which is HD, equals the square AG on AH.",
-            sqF.polygon.drawn(Byrne.YELLOW, Role.AREA),
-            Polygon2(h, b, d, k).drawn(Byrne.RED, Role.AREA),
-            Segment2(g, k).drawn(Byrne.BLACK),
-            *sqF.sides.map { it.drawn(Byrne.BLACK) }.toTypedArray(),
-            g.named("G"),
-            h.named("H"),
-            k.named("K"),
-            Segment2(a, h).drawn(Byrne.YELLOW, Role.RESULT),
-        )
-        check(
-            eq(a.dist(h) * a.dist(h), ab.length * h.dist(b)) && eq(a.dist(h) + h.dist(b), ab.length),
-            "II.11: H is not the section",
-        )
-        h
-    }
+    val (a, b) = ab
+    step("Let AB be the given straight line.", ab.drawn(Byrne.BLACK), a.named("A"), b.named("B"))
+    val sq = by { Elements.prop46(ab, side) }
+    val c = sq.d
+    val d = sq.c
+    step(
+        "On AB describe the square ABDC.",
+        *sq.sides.map { it.drawn(Byrne.BLACK) }.toTypedArray(),
+        c.named("C"),
+        d.named("D"),
+    )
+    val e = by { Elements.prop10(Segment2(a, c)) }
+    step("Bisect AC at E, and join BE.", e.named("E"), Segment2(b, e).drawn(Byrne.BLACK, Role.CONSTRUCTION))
+    val circle = Circle2(e, e.dist(b))
+    val f = pick(meet(Ray2(a, a - c), circle, "II.11"))
+    step(
+        "Produce CA to F, making EF equal to EB.",
+        circle.drawn(Byrne.BLUE, Role.CONSTRUCTION),
+        Segment2(a, f).drawn(Byrne.BLACK, Role.CONSTRUCTION),
+        f.named("F"),
+    )
+    val sqF = by { Elements.prop46(Segment2(a, f), Line2.through(a, f).side(b)) }
+    val g = sqF.c
+    val h = sqF.d
+    val k = pick(meet(Line2.through(g, h), Line2.through(c, d), "II.11"))
+    step(
+        "On AF describe the square FGHA, and produce GH to K. AB is cut at H so that the rectangle AB·BH, which is HD, equals the square AG on AH.",
+        sqF.polygon.drawn(Byrne.YELLOW, Role.AREA),
+        Polygon2(h, b, d, k).drawn(Byrne.RED, Role.AREA),
+        Segment2(g, k).drawn(Byrne.BLACK),
+        *sqF.sides.map { it.drawn(Byrne.BLACK) }.toTypedArray(),
+        g.named("G"),
+        h.named("H"),
+        k.named("K"),
+        Segment2(a, h).drawn(Byrne.YELLOW, Role.RESULT),
+    )
+    check(
+        eq(a.dist(h) * a.dist(h), ab.length * h.dist(b)) && eq(a.dist(h) + h.dist(b), ab.length),
+        "II.11: H is not the section",
+    )
+    h
+}
 
 val c = book2prop11(Segment2(point2(0, 0), point2(160, 0)), side = -1)
 lines(c.toFLines(width = 520.0, height = 520.0), w = 520.0, h = 520.0)
@@ -885,29 +885,29 @@ fun book4prop10(ab: Segment2) = construction(
     "IV.10",
     "To construct an isosceles triangle having each of the angles at the base double the remaining one.",
 ) {
-        val (a, b) = ab
-        step("Let AB be any straight line.", ab.drawn(Byrne.BLACK), a.named("A"), b.named("B"))
-        val c = by { Elements.book2prop11(ab) }
-        step(
-            "Cut AB at C so that the rectangle AB·BC equals the square on AC (II.11).",
-            c.named("C"),
-            Segment2(a, c).drawn(Byrne.RED),
-        )
-        val circle = Circle2(a, ab.length)
-        step("With centre A and radius AB describe the circle BDE.", circle.drawn(Byrne.BLUE, Role.CONSTRUCTION))
-        val chord = Circle2(b, a.dist(c))
-        val d = pick(meet(circle, chord, "IV.10"))
-        step(
-            "In it fit BD equal to AC (IV.1), and join AD and DC. The angles at B and D are each double the angle at A.",
-            chord.drawn(Byrne.RED, Role.CONSTRUCTION),
-            d.named("D"),
-            Segment2(d, c).drawn(Byrne.BLACK, Role.CONSTRUCTION),
-            Segment2(a, d).drawn(Byrne.YELLOW, Role.RESULT),
-            Segment2(b, d).drawn(Byrne.RED, Role.RESULT),
-        )
-        check(eq(angleAt(b, a, d), 2 * angleAt(a, b, d)), "IV.10: the base angles are not double")
-        Triangle2(a, b, d)
-    }
+    val (a, b) = ab
+    step("Let AB be any straight line.", ab.drawn(Byrne.BLACK), a.named("A"), b.named("B"))
+    val c = by { Elements.book2prop11(ab) }
+    step(
+        "Cut AB at C so that the rectangle AB·BC equals the square on AC (II.11).",
+        c.named("C"),
+        Segment2(a, c).drawn(Byrne.RED),
+    )
+    val circle = Circle2(a, ab.length)
+    step("With centre A and radius AB describe the circle BDE.", circle.drawn(Byrne.BLUE, Role.CONSTRUCTION))
+    val chord = Circle2(b, a.dist(c))
+    val d = pick(meet(circle, chord, "IV.10"))
+    step(
+        "In it fit BD equal to AC (IV.1), and join AD and DC. The angles at B and D are each double the angle at A.",
+        chord.drawn(Byrne.RED, Role.CONSTRUCTION),
+        d.named("D"),
+        Segment2(d, c).drawn(Byrne.BLACK, Role.CONSTRUCTION),
+        Segment2(a, d).drawn(Byrne.YELLOW, Role.RESULT),
+        Segment2(b, d).drawn(Byrne.RED, Role.RESULT),
+    )
+    check(eq(angleAt(b, a, d), 2 * angleAt(a, b, d)), "IV.10: the base angles are not double")
+    Triangle2(a, b, d)
+}
 
 val c = book4prop10(Segment2(point2(0, -150), point2(0, 0)))
 lines(c.toFLines(width = 520.0, height = 480.0), w = 520.0, h = 480.0)
@@ -1044,49 +1044,49 @@ fun book4prop16(circle: Circle2, at: Double = -PI / 2) = construction(
     "IV.16",
     "In a given circle to inscribe a fifteen-angled figure which shall be both equilateral and equiangular.",
 ) {
-        val o = circle.center
-        val a = circle.at(at)
-        step("Let ABCD be the given circle.", circle.drawn(Byrne.BLACK), a.named("A"))
-        val hexagon = by { Elements.book4prop15(circle, at) }.points
-        val c = hexagon[2]
-        step(
-            "Inscribe an equilateral triangle with a corner at A (IV.2, here taking every other corner of the hexagon of IV.15); let AC be its side.",
-            *Triangle2(hexagon[0], hexagon[2], hexagon[4]).sides.map { it.drawn(Byrne.BLUE) }.toTypedArray(),
-            c.named("C"),
-        )
-        val pentagon = by { Elements.book4prop11(circle, at) }.points
-        val b = pentagon[1]
-        step(
-            "Inscribe a regular pentagon with a corner at A (IV.11); let AB be its side. Of the fifteen equal parts of the circle, the arc AC holds five and AB three, so BC holds two.",
-            pentagon.let { Polygon2(it) }.drawn(Byrne.RED),
-            b.named("B"),
-        )
-        val mid = by { Elements.prop10(Segment2(b, c)) }
-        val up = by { Elements.prop11(Segment2(b, c), mid) }
-        val e = meet(Line2(mid, up.direction), circle, "IV.16").minBy { it.dist(b) }
-        step(
-            "Bisect the arc BC at E (III.30). BE and EC are each a fifteenth of the circle.",
-            Segment2(mid, e).drawn(Byrne.BLACK, Role.CONSTRUCTION),
-            e.named("E"),
-        )
-        val side = b.dist(e)
-        val corners = mutableListOf(a)
-        val steps = mutableListOf<Figure>()
-        while (corners.size < 15) {
-            val p = corners.last()
-            val chord = Circle2(p, side)
-            steps += chord.drawn(Byrne.YELLOW, Role.CONSTRUCTION)
-            corners += meet(chord, circle, "IV.16").minBy { offset(o, p, it) }
-        }
-        val figure = Polygon2(corners)
-        step(
-            "Fit straight lines equal to BE round the whole circle (IV.1): the figure is equilateral and equiangular.",
-            *steps.toTypedArray(),
-            figure.drawn(Byrne.YELLOW, Role.RESULT),
-        )
-        check(isRegular(figure, 15), "IV.16: the figure is not regular")
-        figure
+    val o = circle.center
+    val a = circle.at(at)
+    step("Let ABCD be the given circle.", circle.drawn(Byrne.BLACK), a.named("A"))
+    val hexagon = by { Elements.book4prop15(circle, at) }.points
+    val c = hexagon[2]
+    step(
+        "Inscribe an equilateral triangle with a corner at A (IV.2, here taking every other corner of the hexagon of IV.15); let AC be its side.",
+        *Triangle2(hexagon[0], hexagon[2], hexagon[4]).sides.map { it.drawn(Byrne.BLUE) }.toTypedArray(),
+        c.named("C"),
+    )
+    val pentagon = by { Elements.book4prop11(circle, at) }.points
+    val b = pentagon[1]
+    step(
+        "Inscribe a regular pentagon with a corner at A (IV.11); let AB be its side. Of the fifteen equal parts of the circle, the arc AC holds five and AB three, so BC holds two.",
+        pentagon.let { Polygon2(it) }.drawn(Byrne.RED),
+        b.named("B"),
+    )
+    val mid = by { Elements.prop10(Segment2(b, c)) }
+    val up = by { Elements.prop11(Segment2(b, c), mid) }
+    val e = meet(Line2(mid, up.direction), circle, "IV.16").minBy { it.dist(b) }
+    step(
+        "Bisect the arc BC at E (III.30). BE and EC are each a fifteenth of the circle.",
+        Segment2(mid, e).drawn(Byrne.BLACK, Role.CONSTRUCTION),
+        e.named("E"),
+    )
+    val side = b.dist(e)
+    val corners = mutableListOf(a)
+    val steps = mutableListOf<Figure>()
+    while (corners.size < 15) {
+        val p = corners.last()
+        val chord = Circle2(p, side)
+        steps += chord.drawn(Byrne.YELLOW, Role.CONSTRUCTION)
+        corners += meet(chord, circle, "IV.16").minBy { offset(o, p, it) }
     }
+    val figure = Polygon2(corners)
+    step(
+        "Fit straight lines equal to BE round the whole circle (IV.1): the figure is equilateral and equiangular.",
+        *steps.toTypedArray(),
+        figure.drawn(Byrne.YELLOW, Role.RESULT),
+    )
+    check(isRegular(figure, 15), "IV.16: the figure is not regular")
+    figure
+}
 
 val c = book4prop16(Circle2(point2(0, 0), 100.0))
 lines(c.toFLines(width = 480.0, height = 480.0), w = 480.0, h = 480.0)

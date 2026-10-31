@@ -340,8 +340,8 @@ val builds = studyBuilds(
         },
     ],
 ) {
-        mapOf("source" to design.liveSource())
-    }
+    mapOf("source" to design.liveSource())
+}
 showStudyBuilds("reports")
 ```
 

@@ -1,16 +1,16 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-29T22:33:15.380Z",
+  "capturedAt": "2026-10-31T00:21:43.953Z",
   "documentName": "audio_ai_corpus_microscope",
   "outputs": [
     {
       "uid": "corpus_microscope_guide",
       "channel": "guide",
-      "open": false,
+      "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 449,
-      "height": 257,
+      "width": 200,
+      "height": 651,
       "path": "outputs/0.html"
     },
     {

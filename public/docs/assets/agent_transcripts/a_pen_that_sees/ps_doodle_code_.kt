@@ -10,21 +10,19 @@ val border = fline {
     lineTo(0, 0)
     color = vec(1, 1, 1, 0.2)
 }
-val starter =
-    [
-            fline {
-                moveTo(90, 60)
-                cubicTo(200, 20, 260, 220, 400, 160)
-            },
-            fline {
-                moveTo(150, 250)
-                cubicTo(180, 150, 300, 300, 330, 230)
-            },
-        ]
-        .onEach {
-            it.color = vec(1.0, 0.85, 0.3, 1.0)
-            it.thickness = 2.0
-        }
+val starter = [
+    fline {
+        moveTo(90, 60)
+        cubicTo(200, 20, 260, 220, 400, 160)
+    },
+    fline {
+        moveTo(150, 250)
+        cubicTo(180, 150, 300, 300, 330, 230)
+    },
+].onEach {
+    it.color = vec(1.0, 0.85, 0.3, 1.0)
+    it.thickness = 2.0
+}
 val canvas = lines([border] + starter, channel = "draw here", w = 520.0, h = 320.0, editable = true, drawing = true)!!
 val hands = ["echoes", "michaux"]
 var hand = 0

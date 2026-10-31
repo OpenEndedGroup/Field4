@@ -66,7 +66,7 @@ show()
 <!-- field-box id="eagle_flow_movie" index="1" -->
 
 ```edn [field-box id="eagle_flow_movie" role="properties"]
-{"id" "eagle_flow_movie" "index" 1 "name" "2 - The whole clip as a movie" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - The whole clip as a movie" "_tombstone" false "frame" #afield/rect [560.0 60.0 420.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "eagle_flow_movie_code_.kt" "lines" 56 "characters" 2007 "sha256" "fdc02f1b9e93f900f4317e3a9abdfa852fc5c1b1ac3e50f297e085df2daeb861"}]}
+{"id" "eagle_flow_movie" "index" 1 "name" "2 - The whole clip as a movie" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - The whole clip as a movie" "_tombstone" false "frame" #afield/rect [560.0 60.0 420.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "eagle_flow_movie_code_.kt" "lines" 54 "characters" 1838 "sha256" "ea04c39e27f5f6a4a3a943a5006f660a79b0841685e7456af300f8bd044aeb45"}]}
 ```
 
 ```kotlin [field-property box="eagle_flow_movie" name="code" path="eagle_flow_movie_code_.kt"]
@@ -100,28 +100,26 @@ suspend fun render() {
             .savePng(File(pngs, "%03d.png".format(frame)).path)
         if (frame % 30 == 0) println("frame $frame of ${flow.frameCount}")
     }
-    val encode =
-        ProcessBuilder(
-                FFMPEG,
-                "-v",
-                "error",
-                "-y",
-                "-framerate",
-                "18",
-                "-i",
-                File(pngs, "%03d.png").path,
-                "-c:v",
-                "libx264",
-                "-preset",
-                "slow",
-                "-crf",
-                "28",
-                "-pix_fmt",
-                "yuv420p",
-                out.path,
-            )
-            .inheritIO()
-            .start()
+    val encode = ProcessBuilder(
+        FFMPEG,
+        "-v",
+        "error",
+        "-y",
+        "-framerate",
+        "18",
+        "-i",
+        File(pngs, "%03d.png").path,
+        "-c:v",
+        "libx264",
+        "-preset",
+        "slow",
+        "-crf",
+        "28",
+        "-pix_fmt",
+        "yuv420p",
+        out.path,
+    ).inheritIO()
+        .start()
     check(encode.waitFor() == 0) { "ffmpeg failed" }
     println("wrote ${out.absolutePath}")
 }

@@ -1,7 +1,6 @@
 // A Pd patch as a Kotlin value. Launch it; move the Pitch slider.
-val patch =
-    pd(
-        """
+val patch = pd(
+    """
 #N canvas 0 0 520 300 12;
 #X obj 20 20 hsl 128 15 55 440 0 0 empty pitch Pitch -2 -8 0 10 #fcfcfc #000000 #000000 0 1;
 #X msg 20 50 \$1 40;
@@ -21,7 +20,7 @@ val patch =
 #X connect 4 0 7 0;
 #X connect 7 0 8 0;
 """,
-    )
+)
 
 // tabosc4~ wants 2^n + 3 points: one guard point before, two after.
 val partials = [1.0, 0.5, 0.33, 0.25, 0.2, 0.16]

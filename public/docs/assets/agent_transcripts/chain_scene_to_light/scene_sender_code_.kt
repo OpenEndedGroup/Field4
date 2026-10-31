@@ -3,9 +3,8 @@ import afield.lang.rectsl.*
 
 // A RectSL scene, drawn on the CPU, on a light rig. Edit the scene and launch again: the receiver
 // box shows what arrives. (Try the line's width, 0.25 ->wh below, or area = false further down.)
-val scene =
-    RectSLImager(
-        """
+val scene = RectSLImager(
+    """
 #rectsl
 ->wall 16 8 abstract
 ->background 0x0c1024
@@ -32,7 +31,7 @@ val scene =
   '( 0=-8  4=8 ) linear ->x
 ;
 """,
-    )
+)
 
 // 16 x 8 RGB pixels in universe 1 and four RGBWA washes in universe 2: one fixture per wall unit.
 val rig = SceneOnARig.Rig()

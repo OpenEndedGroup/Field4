@@ -5,9 +5,8 @@ Two nets in one. The fast ring plays the bar; the slow ring is the arrangement, 
 token walking verse -> verse -> chorus and back. Same mechanism at both timescales,
 which is the argument for using a net rather than a sequencer and a separate song mode.
 */
-val net =
-    petri(
-        """
+val net = petri(
+    """
     #petri
     !grid 1/4
 
@@ -22,7 +21,7 @@ val net =
     &chorus + beat  -[ cbeat @1/4 : sd ]-> beat2
     beat2 -[ off @1/4 : hh ]-> beat
 """,
-    )
+)
 
 showPetriNet(net, w = 760.0, h = 420.0)
 

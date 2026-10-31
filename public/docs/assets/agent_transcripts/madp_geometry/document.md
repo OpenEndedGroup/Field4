@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="fungal_tree" index="0" -->
 
 ```edn [field-box id="fungal_tree" role="properties"]
-{"id" "fungal_tree" "index" 0 "name" "fungal tree" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "fungal tree" "_tombstone" false "frame" #afield/rect [80.0 2000.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "fungal_tree_notes_.md" "lines" 1 "characters" 253 "sha256" "a5bafe6ef1ffdd94d40c681c01860c243810847743a63fc8d7f3188b5fdf8f63"} {"name" "code" "language" "kotlin" "path" "fungal_tree_code_.kt" "lines" 57 "characters" 2161 "sha256" "ba1e5c73beea95d145ac9d6d8a66ded8a36f5901b9fc2abb2840f9fb48e0947a"}]}
+{"id" "fungal_tree" "index" 0 "name" "fungal tree" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "fungal tree" "_tombstone" false "frame" #afield/rect [80.0 2000.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "fungal_tree_notes_.md" "lines" 1 "characters" 253 "sha256" "a5bafe6ef1ffdd94d40c681c01860c243810847743a63fc8d7f3188b5fdf8f63"} {"name" "code" "language" "kotlin" "path" "fungal_tree_code_.kt" "lines" 55 "characters" 2092 "sha256" "85c3a5dcde733cea5374b6cb489fbc1753ab53ea8a89d4c5bc2fa6c75687595e"}]}
 ```
 
 ```markdown [field-property box="fungal_tree" name="notes" path="fungal_tree_notes_.md"]
@@ -63,13 +63,11 @@ geometry {
         for (i in 0 until branches) {
             val turn = i.toDouble() / branches * TAU + rand(-0.5, 0.5)
             val lift = 0.48 + rand(0.0, 0.32)
-            val next =
-                vec(
-                        dir.x * 0.62 + cos(turn) * (0.45 + rand(0.0, 0.22)),
-                        dir.y * 0.52 + lift,
-                        dir.z * 0.62 + sin(turn) * (0.45 + rand(0.0, 0.22)),
-                    )
-                    .normalize()
+            val next = vec(
+                dir.x * 0.62 + cos(turn) * (0.45 + rand(0.0, 0.22)),
+                dir.y * 0.52 + lift,
+                dir.z * 0.62 + sin(turn) * (0.45 + rand(0.0, 0.22)),
+            ).normalize()
             branch(end - (radius * 0.6) * dir, next, length * rand(0.56, 0.76), radius * rand(0.58, 0.72), depth - 1)
         }
     }

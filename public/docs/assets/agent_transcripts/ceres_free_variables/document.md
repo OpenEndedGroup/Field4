@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="ceres_free_variables_planes" index="0" -->
 
 ```edn [field-box id="ceres_free_variables_planes" role="properties"]
-{"id" "ceres_free_variables_planes" "index" 0 "name" "Ceres — a plane per face, solved as a free variable" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Ceres — a plane per face, solved as a free variable" "_tombstone" false "frame" #afield/rect [80.0 80.0 450.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ceres_free_variables_planes_code_.kt" "lines" 230 "characters" 9265 "sha256" "ccf2c31e89aaf63d45c27481a3a1929ca0e3993482fe0f0cb416e75fbaa06bf4"}]}
+{"id" "ceres_free_variables_planes" "index" 0 "name" "Ceres — a plane per face, solved as a free variable" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Ceres — a plane per face, solved as a free variable" "_tombstone" false "frame" #afield/rect [80.0 80.0 450.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ceres_free_variables_planes_code_.kt" "lines" 228 "characters" 9192 "sha256" "22479b95576c5a0f1a1bab00f9860bd39cc14fb67ea4d0e1808446e67c01e262"}]}
 ```
 
 ````kotlin [field-property box="ceres_free_variables_planes" name="code" path="ceres_free_variables_planes_code_.kt"]
@@ -39,21 +39,19 @@ val expression = "tI"
 // Nothing is committed, so look where each build task puts its artifact. Constructing the
 // backend is what refuses a missing or too-old library, so that is the check.
 val backendFailures = mutableListOf<String>()
-val backend =
-    [
-            Path.of("build/ken-ceres-redistributable/libken_ceres_jvm.dylib"),
-            Path.of("build/ken-ceres/libken_ceres_jvm.dylib"),
-        ]
-        .filter { Files.exists(it) }
-        .firstNotNullOfOrNull { path ->
-            runCatching { FfmCeresBackend(path) }
-                .onFailure { failure ->
-                    val detail = "$path: ${failure.javaClass.simpleName}: ${failure.message}"
-                    backendFailures += detail
-                    println("Ceres load failed: $detail")
-                }
-                .getOrNull()
-        }
+val backend = [
+    Path.of("build/ken-ceres-redistributable/libken_ceres_jvm.dylib"),
+    Path.of("build/ken-ceres/libken_ceres_jvm.dylib"),
+].filter { Files.exists(it) }
+    .firstNotNullOfOrNull { path ->
+        runCatching { FfmCeresBackend(path) }
+            .onFailure { failure ->
+                val detail = "$path: ${failure.javaClass.simpleName}: ${failure.message}"
+                backendFailures += detail
+                println("Ceres load failed: $detail")
+            }
+            .getOrNull()
+    }
 val backendStatus = when {
     backend != null -> "Loaded a compatible Ceres wrapper."
     backendFailures.isEmpty() -> "No Ceres wrapper found in build/ken-ceres-redistributable or build/ken-ceres."
@@ -252,7 +250,7 @@ if (backend == null) {
 <!-- field-box id="ceres_free_variables_sphere" index="1" -->
 
 ```edn [field-box id="ceres_free_variables_sphere" role="properties"]
-{"id" "ceres_free_variables_sphere" "index" 1 "name" "Ceres — unknowns that are not points" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Ceres — unknowns that are not points" "_tombstone" false "frame" #afield/rect [580.0 80.0 350.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ceres_free_variables_sphere_code_.kt" "lines" 258 "characters" 10150 "sha256" "32a8ebeb9acb6c4566b4e80846ab3bf31b05c0f49a204fcab11b3fe3af50179a"}]}
+{"id" "ceres_free_variables_sphere" "index" 1 "name" "Ceres — unknowns that are not points" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Ceres — unknowns that are not points" "_tombstone" false "frame" #afield/rect [580.0 80.0 350.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ceres_free_variables_sphere_code_.kt" "lines" 256 "characters" 10077 "sha256" "9e07a0ab5c65c65b9a87d8820d837900706ceb63e32e280375093b732fe9d29d"}]}
 ```
 
 ````kotlin [field-property box="ceres_free_variables_sphere" name="code" path="ceres_free_variables_sphere_code_.kt"]
@@ -285,21 +283,19 @@ val data = [
 // Nothing is committed, so look where each build task puts its artifact. Constructing the
 // backend is what refuses a missing or too-old library, so that is the check.
 val backendFailures = mutableListOf<String>()
-val backend =
-    [
-            Path.of("build/ken-ceres-redistributable/libken_ceres_jvm.dylib"),
-            Path.of("build/ken-ceres/libken_ceres_jvm.dylib"),
-        ]
-        .filter { Files.exists(it) }
-        .firstNotNullOfOrNull { path ->
-            runCatching { FfmCeresBackend(path) }
-                .onFailure { failure ->
-                    val detail = "$path: ${failure.javaClass.simpleName}: ${failure.message}"
-                    backendFailures += detail
-                    println("Ceres load failed: $detail")
-                }
-                .getOrNull()
-        }
+val backend = [
+    Path.of("build/ken-ceres-redistributable/libken_ceres_jvm.dylib"),
+    Path.of("build/ken-ceres/libken_ceres_jvm.dylib"),
+].filter { Files.exists(it) }
+    .firstNotNullOfOrNull { path ->
+        runCatching { FfmCeresBackend(path) }
+            .onFailure { failure ->
+                val detail = "$path: ${failure.javaClass.simpleName}: ${failure.message}"
+                backendFailures += detail
+                println("Ceres load failed: $detail")
+            }
+            .getOrNull()
+    }
 val backendStatus = when {
     backend != null -> "Loaded a compatible Ceres wrapper."
     backendFailures.isEmpty() -> "No Ceres wrapper found in build/ken-ceres-redistributable or build/ken-ceres."

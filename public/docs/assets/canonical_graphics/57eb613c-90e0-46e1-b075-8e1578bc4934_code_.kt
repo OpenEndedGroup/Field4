@@ -8,15 +8,13 @@ var m = Mesh()
 val probe = fieldProbeHere().display("probe")
 
 val identityWarp = QuantileWarpState.identity01()
-val warp =
-    AdaptiveQuantileWarp(
-            config = QuantileWarpConfig(
-                historyFrames = 8,
-                smoothingAlpha = 0.01,
-            ),
-            target = TargetDistributions.Uniform01,
-        )
-        .reset(seed = identityWarp)
+val warp = AdaptiveQuantileWarp(
+    config = QuantileWarpConfig(
+        historyFrames = 8,
+        smoothingAlpha = 0.01,
+    ),
+    target = TargetDistributions.Uniform01,
+).reset(seed = identityWarp)
 
 val warper = fieldProbeQuantileWarp(
     probe = probe,
@@ -29,12 +27,12 @@ val warper = fieldProbeQuantileWarp(
     ),
     install = false,
 ) { nextWarp, _ ->
-        nextWarp.applyToPushConstants(
-            setVec4 = { name, value ->
-                m.push.set(name, value)
-            },
-        )
-    }
+    nextWarp.applyToPushConstants(
+        setVec4 = { name, value ->
+            m.push.set(name, value)
+        },
+    )
+}
 
 module += "mainMesh" to m
 renderer += "boo" to module

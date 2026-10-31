@@ -5,16 +5,14 @@ typed() reads the loaded columns and writes a named schema into this box's pream
 @DataSchema interface Peach { val name: String; val age: Int }
 That named type lets later fragments use the columns as Kotlin properties.
 */
-val people =
-    dataFrameOf("name", "age")(
-            "Alice",
-            15,
-            "Bob",
-            30,
-            "Cara",
-            45,
-        )
-        .typed("Peach")
+val people = dataFrameOf("name", "age")(
+    "Alice",
+    15,
+    "Bob",
+    30,
+    "Cara",
+    45,
+).typed("Peach")
 
 /*
 Keep this break: the first fragment writes Peach, then Field reloads the preamble
