@@ -308,6 +308,7 @@ nav:
     - Boolean Network Music Examples: boolean_network_music_examples.md
     - Wave Function Collapse Examples: wfc_examples.md
     - Spatial Artificial Life: alife_examples.md
+    - Braitenberg Vehicles with Memory: braitenberg_vehicles.md
     - Evolving Creatures: evolving_creatures.md
     - Neighbors & Graphs Examples: graph_connectivity_examples.md
     - Graphs That Change While You Watch: dynamic_graph_systems_examples.md

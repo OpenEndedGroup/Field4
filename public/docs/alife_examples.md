@@ -5,7 +5,8 @@ nearest unclaimed space — and a larger structure can appear: a spaceship, a co
 network, a dendrite with a fractional dimension. This page explores those systems through grids,
 continuous fields and populations of agents. For related work, see [`growing.kt`](reference/data.md#growing-kt),
 [interaction nets](interaction_nets_examples.md), [Wave Function Collapse](wfc_examples.md), and
-[graphs that change while you watch](dynamic_graph_systems_examples.md).
+[graphs that change while you watch](dynamic_graph_systems_examples.md). For vehicles whose neurons have
+memory, adaptation and learning, see [Braitenberg vehicles with memory](braitenberg_vehicles.md).
 
 Almost any local rule applied to noise looks organic, so each example here prints a measurement
 beside a *control*: the same setup with one ingredient removed, which gets the number wrong. A
