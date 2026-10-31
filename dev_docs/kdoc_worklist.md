@@ -2,7 +2,7 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 20685 of 35382 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 20686 of 35383 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
 **1971 undocumented entry points** (types, top-level functions and values) and 12063 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
@@ -605,7 +605,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [SyphonTexture.kt](../src/jvmMain/kotlin/afield/io/syphon/SyphonTexture.kt) | Graphics | — | 0 | 12 | 31% |
 | [HostTypes.kt](../src/jvmMain/kotlin/afield/lang/fieldml/type/HostTypes.kt) | Languages | — | 0 | 12 | 61% |
 | [RectSLSource.kt](../src/jvmMain/kotlin/afield/lang/rectsl/RectSLSource.kt) | Languages | — | 0 | 12 | 55% |
-| [StackSLCpuGallery.kt](../src/jvmMain/kotlin/afield/lang/stacksl/cpu/StackSLCpuGallery.kt) | Languages | — | 0 | 12 | 55% |
+| [StackSLCpuGallery.kt](../src/jvmMain/kotlin/afield/lang/stacksl/cpu/StackSLCpuGallery.kt) | Languages | — | 0 | 12 | 56% |
 | [LifecycleLedger.kt](../src/jvmMain/kotlin/afield/runtime/lifecycle/LifecycleLedger.kt) | Workspace | — | 0 | 12 | 46% |
 | [alife_script.kt](../src/jvmMain/kotlin/afield/simulation/agents/alife_script.kt) | ALife | — | 0 | 12 | 90% |
 | [SimdVerletDyn4jBridge.kt](../src/jvmMain/kotlin/afield/simulation/physics/SimdVerletDyn4jBridge.kt) | Simulation | — | 0 | 12 | 45% |

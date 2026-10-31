@@ -44,7 +44,10 @@ data class RepoCommandScope(
     "gradle: task names and `--tests <pattern>`, e.g. [\"jvmTest\", \"--tests\", \"afield.ai.tools.RepoFileToolsTest\"]; " +
     "python-test: a `tools/test_*.py` path then optional unittest names; check: a `tools/check_*.py` path; " +
     "git-status: none; git-diff: optional `--stat`/`--cached`, revisions, then `--` and paths; git-log: optional `-n N`, revisions, `--`, paths; " +
-    "git-show: one revision. Returns exitCode, timedOut and the merged output (head and tail kept when long).")
+    "git-show: one revision. Returns exitCode, timedOut and the merged output (head and tail kept when long). " +
+    "Use it to reproduce a failure and to confirm a fix after patching; to look at files, use RepoReadFileRequest or RepoSearchRequest instead. " +
+    "Refuses a command the job does not allow, an argument its slot rejects, and any run while another process holds the checkout's verification lock; " +
+    "a run past its timeout is stopped and comes back with timedOut=true.")
 @AgentToolMeta("repo", effects = [ToolEffect.EXECUTE_CODE, ToolEffect.FILESYSTEM_WRITE])
 data class RepoRunCommandRequest(
     val command: String,
