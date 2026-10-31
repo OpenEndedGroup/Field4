@@ -219,12 +219,14 @@ These are four frames of the spinning-triangle demo [below](#open-it), a second 
 A Kotlin `suspend` method, such as `Renderer.run`, is called with `hostLaunch`: the method name, its arguments, the object, and then a function that receives the result once the method returns.
 
 ```diffstatic {data-lang=fieldml}
-let w = hostNew {title = "FieldML"} (hostClass "afield.graphics.vulkan.util.Window")
-let r = hostNew {mainWindow = w} (hostClass "afield.graphics.vulkan.Renderer")
-let _ = thisBox |> hostCall "setPropertyRaw" ("renderer", r, false)
+let openWindow title =
+  let w = hostNew {title = title} (hostClass "afield.graphics.vulkan.util.Window") in
+  let r = hostNew {mainWindow = w} (hostClass "afield.graphics.vulkan.Renderer") in
+  let _ = thisBox |> hostCall "setPropertyRaw" ("renderer", r, false) in
+  // `run` renders until the window closes; the function runs then.
+  hostLaunch "run" () r (fun ignored -> print "renderer stopped")
 
-// `run` renders until the window closes; the function runs then.
-hostLaunch "run" () r (fun ignored -> print "renderer stopped")
+openWindow
 ```
 
 `hostLaunch` returns at once with the call's `Job`, which you can `cancel`. The method starts inside the `hostLaunch` call, so one that returns without suspending hands its result to your function before `hostLaunch` returns, and an error it throws before suspending is reported on your box. After its first suspension it continues on Field's main loop, as `start(renderer::run)` does in a Kotlin box. An error after that point is printed to the server log, because the box that called it has finished.

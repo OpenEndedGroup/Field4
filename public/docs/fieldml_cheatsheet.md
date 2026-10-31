@@ -255,6 +255,7 @@ Use `hostTap` when a Kotlin function is an effect in the middle of a pipe: it lo
 | `hostCall`<br>`String -> 'a -> 'b -> Host` | `hostCall name arguments target` invokes an instance method. Use a record for Kotlin named arguments and defaults. |
 | `hostCall0`<br>`String -> 'a -> Host` | `hostCall0 name target` invokes a method with no arguments. |
 | `hostCall1`<br>`String -> 'a -> 'b -> Host` | `hostCall1 name argument target` passes exactly one argument. A list or record remains one value rather than being spread. |
+| `hostLaunch`<br>`String -> 'a -> 'b -> (Host -> 'c) -> Host` | `hostLaunch name arguments target then` calls a Kotlin `suspend` method and passes its result to `then` when it returns. It returns the call's `Job` at once. |
 | `hostCall2`<br>`String -> 'a -> 'b -> 'c -> Host` | `hostCall2 name a b target` invokes a method with exactly two arguments. |
 | `hostStaticCall`<br>`String -> 'a -> Host -> Host` | `hostStaticCall name arguments class` invokes a static JVM method. Argument spreading follows `hostCall`. |
 | `hostExt`<br>`Host -> String -> 'a -> 'b -> Host` | `hostExt class name arguments receiver` invokes a Kotlin extension compiled into that class. The piped receiver is separate from the written arguments. |
