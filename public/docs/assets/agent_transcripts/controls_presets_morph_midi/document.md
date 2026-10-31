@@ -17,7 +17,7 @@ From `code`
 Each control is a local delegated to `keys`, so a preset is a key of that scope.
 
 ```edn [field-box id="controls_presets_demo" role="properties"]
-{"id" "controls_presets_demo" "index" 0 "name" "Presets · morph · record · run me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Presets · morph · record · run me" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "controls_presets_demo_code_.kt" "lines" 38 "characters" 1479 "sha256" "9b5793019f4f536102c4d0cc2a81fac0f64750210fa5bc4db560a4bf90dea611"}]}
+{"id" "controls_presets_demo" "index" 0 "name" "Presets · morph · record · run me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Presets · morph · record · run me" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "controls_presets_demo_code_.kt" "lines" 43 "characters" 1520 "sha256" "99de693c0b6271f9bb0aa3394f745b1502e1faa4c577b574f7f89399519aab00"}]}
 ```
 
 ```kotlin [field-property box="controls_presets_demo" name="code" path="controls_presets_demo_code_.kt"]
@@ -34,7 +34,10 @@ fun draw() {
     val cy = 90 - (offset.y * 50).toInt()
     val fill = "rgba(${(tint.x * 255).toInt()},${(tint.y * 255).toInt()},${(tint.z * 255).toInt()},${tint.w})"
     val stroke = if (ring) "stroke='white' stroke-width='6'" else ""
-    display("main", "<svg width='220' height='180' style='background:#222'><circle cx='$cx' cy='$cy' r='$r' fill='$fill' $stroke/></svg>")
+    display(
+        "main",
+        "<svg width='220' height='180' style='background:#222'><circle cx='$cx' cy='$cy' r='$r' fill='$fill' $stroke/></svg>",
+    )
 }
 
 keys.onChange { draw() }
@@ -43,9 +46,11 @@ val dir = presetDirectory("look")
 
 // Two keys to start from, written once; after that the stored ones are used.
 if (keys.savedKeyNames(dir).isEmpty()) {
-    keys.Key("size" to 0.25, "offset" to Vector2f(-0.5f, 0.3f), "tint" to Vector4f(0.2f, 0.6f, 1f, 1f), "ring" to 0f)
+    keys
+        .Key("size" to 0.25, "offset" to Vector2f(-0.5f, 0.3f), "tint" to Vector4f(0.2f, 0.6f, 1f, 1f), "ring" to 0f)
         .save(dir.resolve("calm"), "seeded by the demo")
-    keys.Key("size" to 0.95, "offset" to Vector2f(0.6f, -0.4f), "tint" to Vector4f(1f, 0.25f, 0.1f, 1f), "ring" to 1f)
+    keys
+        .Key("size" to 0.95, "offset" to Vector2f(0.6f, -0.4f), "tint" to Vector4f(1f, 0.25f, 0.1f, 1f), "ring" to 1f)
         .save(dir.resolve("storm"), "seeded by the demo")
 }
 
@@ -66,7 +71,7 @@ println("presets: ${presets!!.names} in $dir")
 <!-- field-box id="controls_midi_demo" index="1" -->
 
 ```edn [field-box id="controls_midi_demo" role="properties"]
-{"id" "controls_midi_demo" "index" 1 "name" "MIDI learn · run me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "MIDI learn · run me" "_tombstone" false "frame" #afield/rect [80.0 200.0 300.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "controls_midi_demo_code_.kt" "lines" 18 "characters" 652 "sha256" "65bfda042d988ffbdd22aa7978b42a5532db065db401bb942a35a6ae8cab8057"}]}
+{"id" "controls_midi_demo" "index" 1 "name" "MIDI learn · run me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "MIDI learn · run me" "_tombstone" false "frame" #afield/rect [80.0 200.0 300.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "controls_midi_demo_code_.kt" "lines" 18 "characters" 640 "sha256" "b5a9d3c80ad261fc39499e875fc0b43871b5bf2732d310df9ca960dda14b4fb2"}]}
 ```
 
 ```kotlin [field-property box="controls_midi_demo" name="code" path="controls_midi_demo_code_.kt"]
@@ -83,7 +88,7 @@ midi.bind("bright", cc = 64)
 // What a knob sends; with hardware, midi.attach(MidiDevices.openInput(MidiDevices.inputs().first())).
 for (v in [0, 32, 64, 96, 127]) {
     midi.feed(0, 74, v)
-    println("CC74 = $v  ->  cutoff ${"%.1f".format(cutoff)}")
+    println("CC74 = $v  ->  cutoff ${cutoff.f1}")
 }
 midi.feed(0, 64, 127)
 midi.feed(0, 74, 80)

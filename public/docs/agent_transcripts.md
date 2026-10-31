@@ -2082,6 +2082,19 @@ under the pointer, and the drag carries on. `dev_docs/CONTROLS_RENEWAL.md` is th
 
 [Open →](offline.html?file=assets/agent_transcripts/controls_surface/metadata.edn)
 
+### controls_presets_morph_midi
+
+**Presets you can morph between, a recorded slider, and a MIDI knob.** Two pure-CPU boxes. The
+first declares its controls as locals delegated to a `KeyframeScope` and adds `presetBar(keys)`:
+two keys, `calm` and `storm`, are saved on its first run, so its buttons recall them and the
+**preset morph** slider blends between them, moving the circle it draws. A **rec size** button
+records the size slider into a keyframe curve. The second box binds a log-law cutoff slider and a
+checkbox to MIDI controller numbers and feeds them stand-in knob values, printing the cutoff as the
+knob goes from 0 to 127. These are the two examples from
+[Presets and morphing](visualizers.md#presets-and-morphing) and [MIDI learn](visualizers.md#midi-learn).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/controls_presets_morph_midi/metadata.edn)
+
 ### certified_envelope
 
 **A bound no feature can slip between.** Five pure-CPU boxes, no window and no setup. The signal is

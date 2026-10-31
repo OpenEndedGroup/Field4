@@ -11,7 +11,10 @@ fun draw() {
     val cy = 90 - (offset.y * 50).toInt()
     val fill = "rgba(${(tint.x * 255).toInt()},${(tint.y * 255).toInt()},${(tint.z * 255).toInt()},${tint.w})"
     val stroke = if (ring) "stroke='white' stroke-width='6'" else ""
-    display("main", "<svg width='220' height='180' style='background:#222'><circle cx='$cx' cy='$cy' r='$r' fill='$fill' $stroke/></svg>")
+    display(
+        "main",
+        "<svg width='220' height='180' style='background:#222'><circle cx='$cx' cy='$cy' r='$r' fill='$fill' $stroke/></svg>",
+    )
 }
 
 keys.onChange { draw() }
@@ -20,9 +23,11 @@ val dir = presetDirectory("look")
 
 // Two keys to start from, written once; after that the stored ones are used.
 if (keys.savedKeyNames(dir).isEmpty()) {
-    keys.Key("size" to 0.25, "offset" to Vector2f(-0.5f, 0.3f), "tint" to Vector4f(0.2f, 0.6f, 1f, 1f), "ring" to 0f)
+    keys
+        .Key("size" to 0.25, "offset" to Vector2f(-0.5f, 0.3f), "tint" to Vector4f(0.2f, 0.6f, 1f, 1f), "ring" to 0f)
         .save(dir.resolve("calm"), "seeded by the demo")
-    keys.Key("size" to 0.95, "offset" to Vector2f(0.6f, -0.4f), "tint" to Vector4f(1f, 0.25f, 0.1f, 1f), "ring" to 1f)
+    keys
+        .Key("size" to 0.95, "offset" to Vector2f(0.6f, -0.4f), "tint" to Vector4f(1f, 0.25f, 0.1f, 1f), "ring" to 1f)
         .save(dir.resolve("storm"), "seeded by the demo")
 }
 
