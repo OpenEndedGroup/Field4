@@ -57,10 +57,26 @@ def capture_digest() -> str:
     return hashlib.sha256(b''.join(p.read_bytes() for p in paths if p.is_file())).hexdigest()
 
 
+def ignored_files(folder: Path) -> set[Path]:
+    """The gitignored files under [folder], or none outside a git checkout.
+
+    Field writes runtime state into a document folder (`backups/`, including the
+    `*.before-inline-*` copies it keeps when it loads a newer inline copy), and that state differs from
+    checkout to checkout: counting it made a publication stale in the one checkout that had opened the
+    document, and fresh in every other."""
+    result = subprocess.run(['git', '-C', str(ROOT), 'ls-files', '-z', '--others', '--ignored', '--exclude-standard',
+                             '--', str(folder)], capture_output=True)
+    if result.returncode != 0:
+        return set()
+    return {ROOT / name for name in result.stdout.decode().split('\0') if name}
+
+
 def source_files(source: str, transcript: str | None = None) -> dict[str, str]:
     folder = (DOCS / source).parent
+    ignored = ignored_files(folder)
     files = [p for p in folder.rglob("*") if p.is_file() and p.name not in
-             {"AGENTS.md", "README.md", "document.md"} and not any(s.startswith(".") for s in p.relative_to(folder).parts)]
+             {"AGENTS.md", "README.md", "document.md"} and not any(s.startswith(".") for s in p.relative_to(folder).parts)
+             and p not in ignored]
     if transcript:
         files.append(ROOT / transcript)
     return {str(p.relative_to(ROOT)): digest(p) for p in sorted(files)}
