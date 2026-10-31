@@ -482,6 +482,10 @@ class FLine {
 
         f.uvs = this.uvs.map(x => x)
         f.colors = this.colors.map(x => x)
+        // A moved, rotated or scaled line draws the way the original did.
+        for (const k of ["stroked", "filled", "pointed", "color", "strokeColor", "fillColor",
+                         "opacity", "strokeOpacity", "fillOpacity", "pointOpacity"])
+            if (this[k] !== undefined) f[k] = this[k]
         f.mouseDown = this.mouseDown
         f.mouseUp = this.mouseUp
         f.mouseMove = this.mouseMove

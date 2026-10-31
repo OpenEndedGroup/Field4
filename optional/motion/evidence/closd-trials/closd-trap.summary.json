@@ -1,0 +1,19 @@
+{
+  "mode": "trap",
+  "frames": 180,
+  "duration": 6.000000312924385,
+  "coldSeconds": 10.443966014776379,
+  "advanceP50Ms": 42.20594989601523,
+  "advanceP95Ms": 44.742475962266326,
+  "events": {
+    "applied": 3,
+    "planner": 2,
+    "tetherPhysics": 120
+  },
+  "maxPrefixResidualM": 0.0,
+  "meanTrackingErrorM": 0.04691729930974499,
+  "maxTetherForceN": 150.00000000000003,
+  "totalTetherWorkJ": -116.30839292461157,
+  "commandToVisibleMeasured": false,
+  "visualInspection": false
+}

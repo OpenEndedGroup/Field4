@@ -2,12 +2,12 @@
 
 Field 4 is a live-coding environment for graphics, sound, exploratory data visualization, and new media art.
 
+Project site and user documentation: https://openendedgroup.com/field4
+
 [![A moving drawing in Field, with its editable Kotlin and inline petal count](public/docs/assets/first_steps/preview.gif)](https://openendedgroup.com/field4/first_steps/)
 
 [Watch the short recording](https://openendedgroup.com/field4/assets/first_steps/first-look.mp4) ·
 [Your first five minutes](public/docs/first_steps.md)
-
-Project site and user documentation: https://openendedgroup.com/field4
 
 ## Status
 
@@ -89,7 +89,7 @@ or firewall: the LAN API has no authentication. See [server access](public/docs/
 
 ## OpenAI Features
 
-Some experimental AI-assisted editing, documentation search, and autocomplete
+Some AI-assisted editing, documentation search, and autocomplete
 features use the OpenAI API. Field reads the standard `OPENAI_API_KEY`
 environment variable through the OpenAI client libraries.
 
@@ -122,10 +122,11 @@ Optional model override environment variables:
 - `AFIELD_DOCS_SEARCH_FALLBACK_MODEL`
 - `AFIELD_COMPLETION_DOC_MODEL`
 
+Alternatively, you can configure your model preferences (including the use of a local model) from the /welcome screen.
+
 ## Workspace
 
-Field documents are stored on disk in a workspace directory. Name one when you
-launch:
+Field documents are stored on disk in a workspace directory, which defaults to ~/Documents/AFieldWorkspace. Alternatively, name one when you launch:
 
 ```bash
 ./field.sh /path/to/AFieldWorkspace
@@ -147,11 +148,7 @@ ask without launching:
 ```
 
 Naming a workspace also makes it the remembered one, so the next bare `./field.sh`
-comes back to it. The Gradle entry points take the same flag:
-
-```bash
-./gradlew runDesktop --args="--workspace /path/to/AFieldWorkspace"
-```
+comes back to it. 
 
 ## Opening a document
 

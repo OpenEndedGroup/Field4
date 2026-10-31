@@ -105,8 +105,8 @@ operations:
                                   owner,
                                   ExternalBrowserSurfaceSpec(64, 64, BrowserSurfacePixelFormat.BGRA8_UNORM, slotCount = 2),
                               ) {
-                                      releases.add(it)
-                                  }
+                                  releases.add(it)
+                              }
                               surface = s
                               val ref = MetalIOSurface.lookup(streamer.ioSurfaceIds[0])
                               require(ref != 0L) { "IOSurface lookup failed" }

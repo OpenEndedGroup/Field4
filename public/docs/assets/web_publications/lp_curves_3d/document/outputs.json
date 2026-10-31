@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-29T22:35:38.549Z",
+  "documentName": "lp_curves_3d",
+  "outputs": [
+    {
+      "uid": "lp3_fan",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 708,
+      "height": 478,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "lp3_routes",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 768,
+      "height": 478,
+      "path": "outputs/1.html"
+    }
+  ]
+}

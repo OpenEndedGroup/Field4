@@ -9,7 +9,7 @@ directly, with nothing to convert and no second runtime to start.
 
 ## A Clojure box is a child of a Clojure root
 
-A box becomes Clojure by being childed to a Clojure root. Select a box and run
+To make a Clojure box, connect it beneath a Clojure root. Select a box and run
 *Set Main Language: Clojure* from the command palette (`set-main-language-clojure`). Every box
 childed to it from then on runs as Clojure. This works the same way it does for
 [Python](python.md#a-python-box-is-a-child-of-a-python-root):
@@ -309,9 +309,8 @@ expect:
 
 The function runs every frame; `(def n 160)` ran once, when the box was launched.
 
-**Stop** ends an animation. It does not interrupt a form that is still evaluating, so a box stuck
-in an infinite `loop` cannot be stopped, just as a Kotlin box in a `while (true)` that never
-suspends cannot.
+**Stop** ends an animation. It does not interrupt a Clojure form that is still evaluating, so avoid
+an infinite `loop` in code that runs before the animation.
 
 ## When something throws
 
@@ -410,11 +409,15 @@ vector and docstring, and offers local names in scope at the caret: a `let` bind
 parameter or a `doseq` variable. The popup below was opened at the prefix `sp`:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".afield-suggest" screenshot="assets/clojure/completion.png" transcript="assets/transcripts/clojure_completion_setup.yaml" padding="6" wait="0" timeout="180" embed=true hidden=true name="clojure-completion" alt="Field's completion popup in a Clojure box at the prefix sp, grouped by kind. Under FUNCTIONS: spit, split-at, split-with and special-symbol?, each with its argument vector in grey underneath. Then LOCAL, holding spline — the let binding two lines up. Then VALUES, holding a var named spiral, and TYPES, holding a class. The panel to the right reads clojure.core/spit, its argument vector, and its docstring."}
-// An ordinary prefix, in code with a `let` binding in scope, so one figure carries both halves of
-// what a Clojure candidate is: the shape of one (name, argument vector, docstring) and where it
-// came from (core, the binding two lines up, and — as `spiral` under VALUES — a var an earlier box
-// on this page left in the shared namespace).
-ui.eval("window.localStorage.removeItem('field.suggest.recency.v1'); var s=document.createElement('style');s.textContent='.tick_text{display:none !important}';document.head.appendChild(s);return 'setup';")
+/*
+An ordinary prefix, in code with a `let` binding in scope, so one figure carries both halves of
+what a Clojure candidate is: the shape of one (name, argument vector, docstring) and where it
+came from (core, the binding two lines up, and — as `spiral` under VALUES — a var an earlier box
+on this page left in the shared namespace).
+*/
+ui.eval(
+    "window.localStorage.removeItem('field.suggest.recency.v1'); var s=document.createElement('style');s.textContent='.tick_text{display:none !important}';document.head.appendChild(s);return 'setup';",
+)
 ui.openEditor("clojure_completion")
 ui.pause(900)
 ui.waitForSelector(".monaco-editor", 15000.0)
@@ -422,16 +425,26 @@ ui.clickSelector(".monaco-editor")
 ui.pause(300)
 ui.press("Control+A")
 ui.type("(let [spline (polyline [[0 0] [10 10]])]\n  (lines [sp")
+ui.waitForSelector(".afield-suggest", 15000.0)
 ui.pause(400)
 // Escape first: typing does not open the popup, and opening it once on the finished text is the
 // only way to be sure the request the figure shows is the one for the caret the figure shows.
 ui.press("Escape")
 ui.pause(200)
 ui.press("Control+Space")
-// No warm-completion here: Clojure's candidates come from Compliment in Field's own JVM rather
-// than from the Analysis API sidecar, so there is nothing to pre-warm — but the first call does
-// load `compliment.core`, which is why this waits for a row rather than guessing a pause.
-ui.waitForSelector(".afield-suggest-row", 20000.0)
+/*
+No warm-completion here: Clojure's candidates come from Compliment in Field's own JVM rather
+than from the Analysis API sidecar, so there is nothing to pre-warm — but the first call does
+load `compliment.core`, which is why this waits for Compliment's own `split-at` row. Any row
+would not do: the `let` binding's LOCAL row appears at once, before Compliment answers.
+*/
+ui.waitForSelector(".afield-suggest-row:has-text('split-at')", 30000.0)
+val compliment =
+    ui.eval(
+            "return [...document.querySelectorAll('.afield-suggest-row')].some(r => r.textContent.includes('split-at')) ? 'served' : 'absent'",
+        )
+        .toString()
+check(compliment.contains("served")) { "Compliment's candidates never reached the popup (only its local rows did)" }
 ui.pause(1400)
 ```
 
@@ -453,4 +466,4 @@ form again, so an unrealised lazy sequence is named rather than printed. See
 - **No compile-time diagnostics.** See the note under "When something throws".
 - **Stop does not interrupt an evaluation**, only an animation.
 
-See also [Python in a Box](python.md) and [language extensions](language_extensions.md).
+See also [Python in a Box](python.md), [Lua in a Box](lua.md) and [language extensions](language_extensions.md).

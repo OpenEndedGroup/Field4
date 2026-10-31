@@ -1,13 +1,12 @@
 # A Drawn Morph, Heard
 
-Two strokes on the drawing layer, a circle and a heart. `notation` reads them back as lists of
-points, `resampleByLength` gives each the same number of points, evenly spaced, and `matchPoints`
-pairs every point of the circle with a point of the heart. Moving each point toward its partner is
-a morph. The size of the cloud as it moves is a number per step, and played as pitch it is a tune
-you can hear the shape change in.
+Draw a circle and a heart, then move the points of one towards the other. The changing outline is
+a morph; measure its size as it moves and you can turn that measurement into a tune. You'll hear
+the shape change as well as see it.
 
-The two strokes on this page are drawn by code, but two strokes you draw by hand and name "from" and
-"to" are read the same way.
+Here `notation` reads two strokes from the drawing layer. `resampleByLength` spaces their points
+evenly, and `matchPoints` pairs the circle's points with the heart's. The example draws its strokes
+in code, but you can draw your own and name them "from" and "to".
 
 ## Two strokes, paired
 
@@ -45,18 +44,18 @@ markdown(
 |---|---|
 | points drawn, circle and heart | ${drawnFrom.size} and ${drawnTo.size} |
 | points after resampling | ${from.size} and ${to.size} |
-| squared travel, matched (left) | ${"%.0f".format(match.squaredCost)} |
-| squared travel, by list index (right) | ${"%.0f".format(byIndex)} |
+| squared travel, matched (left) | ${match.squaredCost.f0} |
+| squared travel, by list index (right) | ${byIndex.f0} |
 """,
     width = 420,
 )
 :::endfold
 ```
 
-Matched, each chord is short and they fan out together. Paired by index, the circle's first point
-goes to the heart's first point, which is on the other side of the figure, and every other pair is
-dragged round with it. The readout is the total squared distance each pairing asks the points to
-travel.
+The matched pairs mostly stay close together and fan out. Pair the points by index instead and
+the circle's first point goes to the heart's first point on the other side of the figure; the other
+pairs follow it around. The readout totals the squared distances the points must travel for each
+pairing.
 
 Resampling is what makes the two strokes comparable. Excalidraw keeps a stroke as the points the
 pen produced, so the two strokes have different numbers of points, and the circle's are crowded at
@@ -160,9 +159,9 @@ The same loop with `to` in place of `partner`, the points paired by index:
 // Offline-rendered by DrawnMorphDocs.renderWav("drawn-morph-index").
 ```
 
-The heart is smaller than the circle, so the first falls steadily to the heart's pitch and climbs
-back. The second falls about twice as far and climbs back before it reaches the heart, which is the
-fold in the bottom row of the morph above.
+The heart is smaller than the circle, so the first tune falls to the heart's pitch and climbs
+back. The second falls about twice as far, then climbs before it reaches the heart: you can see
+that fold in the bottom row of the morph above.
 
 The pitch the box computes, step by step, for both:
 

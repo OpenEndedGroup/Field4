@@ -478,6 +478,9 @@ data class ThreeGeometryPayload(
     /** Join the document's camera link on load, in this group. See [ThreeSceneBuilder.linkCamera]. */
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     val cameraLink: ThreeCameraLinkSpec? = null,
+    /** Smoothed translation following a world point, independent of orbit and zoom. */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val cameraFollow: ThreeCameraFollowSpec? = null,
     /** Turn slowly about the up axis until somebody interacts. See [ThreeSceneBuilder.turntable]. */
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     val turntable: ThreeTurntableSpec? = null,

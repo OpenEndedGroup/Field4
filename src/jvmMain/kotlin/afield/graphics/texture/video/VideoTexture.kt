@@ -52,6 +52,12 @@ class VideoTexture(
     private val textureSlots: Int = 2,
     /** P010 for display video; RGBA8 for movies whose RGB channels carry numeric data. */
     val pixelFormat: VideoDecodeFormat = VideoDecodeFormat.P010,
+    /**
+     * Decode and colour-convert on a worker thread, leaving the render callback only the Vulkan
+     * upload; with it off, [update] decodes inline on whichever thread calls it. It also enables
+     * [prepareFrame], and opens a second decoder so that a short loop does not pay for an
+     * end-to-start seek each time around.
+     */
     val backgroundDecode: Boolean = false
 ) : HasImageViewArray, afield.graphics.vulkan.Target, HasBrowsable {
 
@@ -76,6 +82,12 @@ class VideoTexture(
         sampledSource = next
     }
 
+    /**
+     * The texture whose images [imageViewArray] hands out: this one, unless [sampleFrom] has
+     * pointed it at another already-loaded VideoTexture of matching format and size. Only the
+     * descriptor array follows the redirection, so [getLumaTexture], [timestamp] and the rest
+     * still report this texture's own state.
+     */
     val sampledFrom: VideoTexture get() = sampledSource ?: this
 
     // Inspector support: expose state + version tied to timestamp
@@ -154,7 +166,13 @@ class VideoTexture(
     private var loopResetWorker: Thread? = null
     @Volatile private var decodeWorkerRunning = false
     @Volatile private var decodeFailure: Throwable? = null
-    @Volatile var backgroundDecodeMicros: Long = 0
+    /**
+     * Microseconds the worker's most recent [VideoDecoder.decodeNextFrame] took, for watching
+     * whether decoding is keeping up. It reports the last frame rather than an average, and only
+     * [backgroundDecode] playback writes it.
+     */
+    @Volatile
+    var backgroundDecodeMicros: Long = 0
         private set
     private var lastRequestedFrame = Long.MIN_VALUE
     private var seenDecodedSerial = -1L
@@ -481,13 +499,36 @@ class VideoTexture(
         }
 
     /**
-     * Get video properties.
+     * Width in pixels of the loaded video, and 0 with nothing loaded. [cleanup] returns it to 0;
+     * [unload] leaves it, because the Vulkan textures stay allocated for the next video of the
+     * same size.
      */
     val width: Int get() = videoWidth
+
+    /** Height in pixels of the loaded video, and 0 with nothing loaded, on [width]'s terms. */
     val height: Int get() = videoHeight
+
+    /** Length of the loaded video in seconds, read from [VideoDecoder.duration], and 0.0 with nothing loaded. */
     val duration: Double get() = decoder?.duration ?: 0.0
+
+    /**
+     * Frame rate the loaded video declares, and 0.0 with nothing loaded. [update] and
+     * [prepareFrame] use it to turn a clock time into a frame number, and [prepareFrame] refuses
+     * to run while it is 0.
+     */
     val fps: Double get() = decoder?.fps ?: 0.0
+
+    /**
+     * Presentation time in seconds of the frame most recently uploaded, which is not the time the
+     * clock is asking for. [seek] moves it to the requested position before any frame has been
+     * decoded there.
+     */
     val timestamp: Double get() = currentTimestamp
+
+    /**
+     * True between [play] and [pause]. [play] does nothing without a loaded video, and running
+     * off the end of the video loops back to the start rather than clearing this.
+     */
     val playing: Boolean get() = isPlaying
     /** True after at least one decoded frame has reached its Vulkan image. */
     val hasFrame: Boolean get() = uploadedFrame

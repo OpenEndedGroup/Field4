@@ -17,6 +17,7 @@ that way.
 from __future__ import annotations
 
 import argparse
+import ast
 import functools
 import json
 import re
@@ -141,6 +142,7 @@ def _transcript_input(path: str) -> bool:
         _under(path, "dev_docs/agents/transcripts")
         or _under(path, "public/docs/assets/agent_transcripts")
         or path == "public/docs/agent_transcripts.md"
+        or path == "src/jvmMain/kotlin/afield/examples/AgentTranscriptMaterializer.kt"
         # Every starting point ships a copy of this as its AGENTS.md.
         or path == "templates/WORKSPACE_AGENTS.md"
     )
@@ -157,6 +159,24 @@ def _box_code_input(path: str) -> bool:
     from check_box_idioms import in_corpus
 
     return in_corpus(path)
+
+
+_PACKAGED_PAGES = frozenset(
+    f"public/docs/{name}_conversation.md" for name in ("function", "rectsl", "stacksl", "stackauto")
+)
+
+
+def _formatted_box_code(path: str) -> bool:
+    # BoxCodeFormat.allCorpora: top-level transcripts, *_code_.kt sidecars outside the generated
+    # starting points, and the docs pages directly under public/docs.
+    if path.startswith(("public/docs/assets/agent_transcripts/", "dev_docs/agents/demos/function_conversation_example/")) or path in _PACKAGED_PAGES:
+        return False
+    return (
+        _compiled_transcript(path)
+        or path.endswith("_code_.kt")
+        or (_demo_input(path) and path.count("/") == 4 and path.endswith(("/build.yaml", "/verify.yaml")))
+        or (path.startswith("public/docs/") and path.count("/") == 2 and path.endswith(".md"))
+    )
 
 
 def _compiled_transcript(path: str) -> bool:
@@ -374,17 +394,48 @@ class Guard:
         return self.input_matches(path) or any(_under(path, root) for root in self.output_roots)
 
 
+@functools.lru_cache(maxsize=1)
+def _scraped_completion_docs() -> frozenset[str]:
+    producer = Path(__file__).with_name("scrape_completion_corpus.py")
+    for node in ast.parse(producer.read_text()).body:
+        if isinstance(node, ast.Assign) and any(
+            isinstance(target, ast.Name) and target.id == "DOCS" for target in node.targets
+        ):
+            return frozenset(f"public/docs/{name}.md" for name in ast.literal_eval(node.value))
+    raise RuntimeError(f"cannot read the completion scrape's DOCS manifest: {producer}")
+
+
 def _python_tool_input(path: str) -> bool:
     # The reference catalog is read by Python guard-selection and documentation
     # detector tests. Its producer and generated pages must run those tests too.
     return (
         _demo_input(path)
+        or path in _scraped_completion_docs()
+        or path in {"tools/completion-corpus/scraped.tsv", "tools/completion-corpus/name-fixtures.tsv"}
         or path == _REFERENCE_GENERATOR_REL
         or _under(path, "public/docs/reference")
         or (_under(path, "tools") and path.endswith(".py"))
         or _under(path, "tools/refactor-engine")
         or path in {"build.gradle.kts", "pyproject.toml", "uv.lock"}
     )
+
+
+def _publication_input(path: str) -> bool:
+    return (_transcript_input(path) or _under(path, 'public/docs/assets/web_publications')
+            or _under(path, 'public/docs/assets/fline_examples')
+            or _under(path, 'public/docs/assets/three_output_gallery')
+            or (path.startswith('public/docs/') and path.endswith(('.md', '.png')))
+            or path in {'tools/docs_publications.py', 'tools/build_zensical_docs.py',
+                        'src/jvmMain/kotlin/afield/examples/DemoTranscriptExecSmokeTest.kt',
+                        'src/jvmMain/kotlin/afield/examples/AgentTranscriptMaterializer.kt',
+                        'src/commonMain/resources/publication-capture.js',
+                        'src/commonMain/resources/publication-three.js',
+                        'src/commonMain/resources/publishDocument.js',
+                        'src/commonMain/resources/threejs_viewer.html',
+                        'src/commonMain/resources/threejs_tools.js',
+                        'src/commonMain/resources/threejs_shot.js',
+                        'src/commonMain/resources/threejs_camera_link.js',
+                        'src/jvmMain/kotlin/afield/document/workspace/WebPublication.kt'})
 
 
 GUARDS = (
@@ -402,6 +453,7 @@ GUARDS = (
         ("public/docs/assets/agent_transcripts",),
     ),
     Guard("checkAgentTranscriptIndex", "agent transcript index", _transcript_input),
+    Guard("checkDocsPublications", "published document freshness and coverage", _publication_input),
     Guard("checkAgentTranscriptLayouts", "agent transcript and demo layouts", _demo_input),
     Guard("checkAgentDemos", "saved demo consistency", _demo_input),
     Guard("checkPythonTools", "Python tools and their corpus contracts", _python_tool_input),
@@ -412,6 +464,7 @@ GUARDS = (
         ("tools/completion-corpus/boxes",),
     ),
     Guard("checkBoxIdioms", "box-code idioms", _box_code_input),
+    Guard("checkBoxCodeFormat", "box code and docs fences formatted", _formatted_box_code),
     Guard("checkBoxCodeCompiles", "box code compiles", _compiled_transcript),
     Guard(
         "citationGates",

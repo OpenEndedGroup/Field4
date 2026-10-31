@@ -10,6 +10,22 @@ is committed to a repository, and this repository has 117 of them — six under
 git ls-files '*metadata.edn' | wc -l        # 117 on 2026-09-05
 ```
 
+## Read-only writer audit, 2026-10-25
+
+The reachable writer backlog in `DocumentDirectoryWriterLedgerTest` is now gated at each
+producer: resolving document files skips directory creation; macro saves, renames, deletes and
+transcript checkpoints refuse document writes; history metrics and screenshot helpers refuse
+writes; shared types compile into temporary storage outside the document. Explicit workspace and
+project macro exports remain available. Read-only shared types still produce loadable classes.
+
+The ledger keeps its exemptions for workspace lifecycle operations, explicit exports, scratch
+harnesses and writers protected by their callers. A GATED entry records that a source file consults
+the predicate; the behavioral tests establish what the individual producer does. The added coverage
+is `FileManagerFallbackTest`, `OperationTranscriptReadOnlyTest`, `HistoryMetricsReadOnlyTest`,
+`SharedTypesReadOnlyTest`, and the real compiler path in `SharedTypesSmokeTest`.
+
+The sections below retain the original investigation and its historical measurements.
+
 ## The producers
 
 Seven hang off `SavingContext.save`, in `src/jvmMain/kotlin/afield/document/persistence/saving.kt`. All but the first

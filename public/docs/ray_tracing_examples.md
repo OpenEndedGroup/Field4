@@ -1,6 +1,9 @@
 # Ray Tracing Examples
 
-Field's ray tracing support is built around Vulkan `VK_KHR_ray_tracing_pipeline`. The four examples below run from a raygen shader writing straight into a storage image to procedural spheres reflecting a traced floor, and between them they cover image binding, acceleration structures, shader groups, dispatch, and GLSL.
+These four examples build up a ray-traced image in Field, from a ray-generation shader writing
+into a storage image to procedural spheres reflected in a traced floor. Along the way you'll set
+up image bindings, acceleration structures, shader groups and dispatch using Vulkan's
+`VK_KHR_ray_tracing_pipeline`.
 
 The figures are 1024 × 1024 captures from Field on Linux with an RTX 4090. The examples
 require an enabled `VK_KHR_ray_tracing_pipeline`; Field checks device features, independently
@@ -56,16 +59,14 @@ This is the smallest useful ray tracing pipeline: a single raygen shader writes 
 The module setup is just a raygen stage plus an image resolver:
 
 ```diffstatic {data-lang=kotlin}
-val module =
-    RayTracingModule(
-            Parameters(
-                renderer = renderer,
-                raygen = uvGradientRaygen,
-                imageResolver = { outputImageView },
-                name = "rt-uv-gradient",
-            ),
-        )
-        .pointer()
+val module = RayTracingModule(
+    Parameters(
+        renderer = renderer,
+        raygen = uvGradientRaygen,
+        imageResolver = { outputImageView },
+        name = "rt-uv-gradient",
+    ),
+).pointer()
 
 module += "dispatch" to RayTracingDispatch(module, 1024, 1024)
 renderer += "rt-uv-gradient" to module
@@ -151,19 +152,17 @@ val tlas = AccelerationStructure(renderer, "triangle-tlas").buildTopLevelNow(ins
 Once the TLAS exists, the module connects shader source to the output image and acceleration structure:
 
 ```diffstatic {data-lang=kotlin}
-val module =
-    RayTracingModule(
-            Parameters(
-                renderer = renderer,
-                raygen = triangleRaygen,
-                miss = triangleMiss,
-                closesthit = triangleClosestHit,
-                imageResolver = { outputImageView },
-                accelerationStructureResolver = { tlas },
-                name = "rt-triangle",
-            ),
-        )
-        .pointer()
+val module = RayTracingModule(
+    Parameters(
+        renderer = renderer,
+        raygen = triangleRaygen,
+        miss = triangleMiss,
+        closesthit = triangleClosestHit,
+        imageResolver = { outputImageView },
+        accelerationStructureResolver = { tlas },
+        name = "rt-triangle",
+    ),
+).pointer()
 module += "dispatch" to RayTracingDispatch(module, 1024, 1024)
 renderer += "rt-triangle" to module
 ```
@@ -379,18 +378,16 @@ val groups = RayTracingGroups(
     ),
 )
 
-val module =
-    RayTracingModule(
-            Parameters(
-                renderer = renderer,
-                rayTracingGroups = groups,
-                maxRayRecursionDepth = 3, // reflection bounces + 1 for the primary ray
-                imageResolver = { outputImageView },
-                accelerationStructureResolver = { tlas },
-                name = "rt-mirror-balls",
-            ),
-        )
-        .pointer()
+val module = RayTracingModule(
+    Parameters(
+        renderer = renderer,
+        rayTracingGroups = groups,
+        maxRayRecursionDepth = 3, // reflection bounces + 1 for the primary ray
+        imageResolver = { outputImageView },
+        accelerationStructureResolver = { tlas },
+        name = "rt-mirror-balls",
+    ),
+).pointer()
 ```
 
 The procedural sphere intersection shader solves a ray/sphere quadratic in object space, then reports the hit:

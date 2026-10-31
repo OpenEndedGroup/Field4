@@ -262,6 +262,13 @@ data class LocalEval(val uid: String, val prompt: String, val kind: String)
 @Serializable
 data class Stop_box(val uid: String)
 
+/**
+ * Server → client: a stop asked for [uid] has not taken effect yet ([pending] true), or now has
+ * (false). Sent by `afield.app.server.StopWatch`; the box's status marker pulses while pending.
+ */
+@Serializable
+data class StopPending(val uid: String, val pending: Boolean)
+
 @Serializable
 data class InitialBoxFrame(val uid: String, val frame: Rect)
 
@@ -1194,6 +1201,19 @@ data class CopyBoxesResult(val edn: String, val filename: String = "")
 @Serializable
 data class ExportDocumentResult(val edn: String, val filename: String = "")
 
+/** A live publication's source document, retained output channels and bundled viewer files. */
+@Serializable
+data class ExportWebDocumentResult(
+    val document: ExportDocumentResult,
+    val outputs: List<Set_output>,
+    val assets: List<String>,
+    val nativeImages: List<NativePublicationImage> = emptyList(),
+    val warnings: List<String> = emptyList()
+)
+
+@Serializable
+data class NativePublicationImage(val uid: String, val dataUrl: String, val width: Int, val height: Int)
+
 @Serializable
 data class PasteBoxes(val edn: String)
 
@@ -1293,7 +1313,9 @@ data class BoxScreenshotRequest(
     val preserveSelection: Boolean = false,
     val includeNotifications: Boolean = false,
     /** One of [ExpectedOutputs]; what this capture asserts the box's output is. */
-    val expectOutputs: String = ExpectedOutputs.PANEL
+    val expectOutputs: String = ExpectedOutputs.PANEL,
+    /** Open every `<details>` in the box's output before measuring, as a reader clicking each one would. */
+    val openDetails: Boolean = false
 )
 
 @Serializable
@@ -1358,6 +1380,8 @@ data class AgentBoxScreenshot(
     val includeNotifications: Boolean = false,
     /** One of [ExpectedOutputs]; what this capture asserts the box's output is. */
     val expectOutputs: String = ExpectedOutputs.PANEL,
+    /** Open every `<details>` in the box's output before measuring; see [BoxScreenshotRequest.openDetails]. */
+    val openDetails: Boolean = false,
     /**
      * Device pixels per CSS pixel for this one screenshot; null keeps the capture page's own (2).
      * A docs figure of a narrow output panel takes a higher one so it can be shown wider than its
@@ -2061,6 +2085,45 @@ data class HistorySearchResult(
     val versionIndexes: List<Int> = emptyList()
 )
 
+/** Ask for one box property's story: every distinct value it had across the saved versions. */
+@Serializable
+data class HistoryBoxStoryRequest(
+    val uid: String,
+    val property: String = "code"
+)
+
+/**
+ * One stretch of versions over which a box property held the same text. [fromVersion]..[toVersion]
+ * are version indexes; [exists] is false where the box was not in those versions. [added] and
+ * [removed] count lines against the previous stretch; [sample] is the first line that changed.
+ */
+@Serializable
+data class HistoryBoxStoryEntry(
+    val fromVersion: Int,
+    val toVersion: Int,
+    // Encoded even at their defaults: the panel reads a missing `exists` as false.
+    @EncodeDefault
+    val exists: Boolean = true,
+    @EncodeDefault
+    val lineCount: Int = 0,
+    @EncodeDefault
+    val added: Int = 0,
+    @EncodeDefault
+    val removed: Int = 0,
+    @EncodeDefault
+    val sample: String = ""
+)
+
+@Serializable
+data class HistoryBoxStoryResult(
+    val uid: String,
+    val property: String,
+    @EncodeDefault
+    val versionCount: Int = 0,
+    @EncodeDefault
+    val entries: List<HistoryBoxStoryEntry> = emptyList()
+)
+
 @Serializable
 data class HistoryLineBlameRequest(
     val uid: String,
@@ -2320,6 +2383,8 @@ data class DependencyFlow(
     /** Reads since the server started; 0 means the arrow is remembered from `dependencies.edn`. */
     val sessionCount: Long,
     val lastSeen: Long,
+    /** The reader has finished a full run since without these reads: kept to explain, no longer reruns it. */
+    val historical: Boolean = false,
 )
 
 /** A box that asked for [name] and found nothing, with the boxes that supplied it on earlier reads. */

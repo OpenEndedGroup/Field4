@@ -44,23 +44,21 @@ operations:
               poolMillis = 200.0,
               hopMillis = 40.0,
           )
-          val previews =
-              [
-                      SpectralEmbeddingDistance.MEL_WASSERSTEIN,
-                      SpectralEmbeddingDistance.LOG_MEL_COSINE,
-                      SpectralEmbeddingDistance.MFCC_EUCLIDEAN,
-                  ]
-                  .mapIndexed { index, distance ->
-                      preview.withSpectralProjection(
-                          frames.tsne(
-                              dimensions = 4,
-                              distance = distance,
-                              perplexity = 30.0,
-                              maxIterations = 750,
-                              seed = 184921L + index,
-                          ),
-                      )
-                  }
+          val previews = [
+              SpectralEmbeddingDistance.MEL_WASSERSTEIN,
+              SpectralEmbeddingDistance.LOG_MEL_COSINE,
+              SpectralEmbeddingDistance.MFCC_EUCLIDEAN,
+          ].mapIndexed { index, distance ->
+              preview.withSpectralProjection(
+                  frames.tsne(
+                      dimensions = 4,
+                      distance = distance,
+                      perplexity = 30.0,
+                      maxIterations = 750,
+                      seed = 184921L + index,
+                  ),
+              )
+          }
           display("spectral spaces", spectralEmbeddingPreviewDashboardHtml(previews, width = 1040, phaseHeight = 210))
   - create:
       box: analyse_near_drowning_spectral
@@ -179,23 +177,22 @@ operations:
                       }
                       preview.thenCombineAsync(frames) { summary, samples ->
                           [
-                                  SpectralEmbeddingDistance.MEL_WASSERSTEIN,
-                                  SpectralEmbeddingDistance.LOG_MEL_COSINE,
-                                  SpectralEmbeddingDistance.MFCC_EUCLIDEAN,
-                              ]
-                              .mapIndexed { index, distance ->
-                                  // The fitter has no interrupt hook; stop suppresses output and skips later fits.
-                                  if (future.isDone) throw CancellationException("run ended")
-                                  summary.withSpectralProjection(
-                                      samples.tsne(
-                                          dimensions = 4,
-                                          distance = distance,
-                                          perplexity = perplexity,
-                                          maxIterations = iterations,
-                                          seed = seed + index,
-                                      ),
-                                  )
-                              }
+                              SpectralEmbeddingDistance.MEL_WASSERSTEIN,
+                              SpectralEmbeddingDistance.LOG_MEL_COSINE,
+                              SpectralEmbeddingDistance.MFCC_EUCLIDEAN,
+                          ].mapIndexed { index, distance ->
+                              // The fitter has no interrupt hook; stop suppresses output and skips later fits.
+                              if (future.isDone) throw CancellationException("run ended")
+                              summary.withSpectralProjection(
+                                  samples.tsne(
+                                      dimensions = 4,
+                                      distance = distance,
+                                      perplexity = perplexity,
+                                      maxIterations = iterations,
+                                      seed = seed + index,
+                                  ),
+                              )
+                          }
                       }
                   }
           }

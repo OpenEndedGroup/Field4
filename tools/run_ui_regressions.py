@@ -514,6 +514,8 @@ return {
 MACRO_TRANSCRIPT_PANEL_BATCH_MACRO = """\
 name: ui-regression-panel-batch
 description: Browser regression fixture for macro launch batch completion.
+# The 1.2 s sleep lives in box A's own code: since 275522630 a whole-box launch runs the box's
+# current code and ignores a `code:` on the op, so a sleep there never ran.
 operations:
   - create:
       box: ui_regression_macro_batch_a
@@ -525,6 +527,7 @@ operations:
         h: 120.0
       properties:
         code: |
+          Thread.sleep(1200)
           println("batch macro fixture a")
   - create:
       box: ui_regression_macro_batch_b
@@ -541,9 +544,6 @@ operations:
       box: ui_regression_macro_batch_a
       property: code
       line: 0
-      code: |
-        Thread.sleep(1200)
-        println("batch macro launch a")
       singleLine: false
       type: launch
       strand: default
@@ -551,8 +551,6 @@ operations:
       box: ui_regression_macro_batch_b
       property: code
       line: 0
-      code: |
-        println("batch macro launch b")
       singleLine: false
       type: launch
       strand: default
@@ -4015,6 +4013,36 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot=shell_join(["screenshot-editor", "@last", "{screenshot}", "--timeout", pw_timeout]),
         ),
         UiRegression(
+            id="controls-vec2-keys",
+            description="A vec2 pad takes focus, arrow keys nudge it a step per axis (shift x10), Backspace and double-click reset it, and its angle label agrees in sign with the readout.",
+            commands=[
+                "new-box --name ControlsVec2Keys",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/controls-vec2-keys.kt")]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/controls-vec2-keys.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="controls-vec2-fine",
+            description="A shift-drag on a vec2 pad is relative and ten times finer, reaches the Kotlin callback, and a collapsed pad ignores a press.",
+            commands=[
+                "new-box --name ControlsVec2Fine",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/controls-vec2-fine.kt")]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/controls-vec2-fine.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="controls-slider-wheel-rerun",
+            description="The wheel steps a focused slider (an unfocused one keeps the canvas scroll), and a drag survives the box re-rendering the slider mid-gesture.",
+            commands=[
+                "new-box --name ControlsSliderWheelRerun",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/controls-slider-wheel-rerun.kt")]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/controls-slider-wheel-rerun.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="keyframe-linked-simplify",
             description="The keyframe editor's Simplify slider simplifies lanes that share key times to the same times, and leaves other lanes alone.",
             commands=[
@@ -4620,7 +4648,7 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
         ),
         UiRegression(
             id="canvas-flight",
-            description="A filmed canvas flight through three bookmarks has one frame per 1/fps, reaches each bookmark exactly where restoring it does, turns the three.js sheet at 8 degrees a second, and gives the sheet its camera back.",
+            description="A filmed canvas flight through three bookmarks has one frame per 1/fps, reaches each bookmark exactly where restoring it does, turns the three.js sheet at 8 degrees a second, and gives the sheet its camera back; a sheet whose panel opens mid-flight joins it there and turns from that moment.",
             document=f"ui-regression-canvas-flight-{int(time.time())}",
             commands=[
                 "viewport 1280x720",
@@ -4637,6 +4665,7 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
                     "--record", str(BUILD_ROOT / "scratch" / "canvas-flight.mp4"),
                 ]),
                 shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/canvas-flight-check.js"), "--timeout", pw_timeout]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/canvas-flight-late-view.js"), "--timeout", pw_timeout]),
                 "viewport default",
             ],
             screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),

@@ -12,6 +12,25 @@ import afield.math.linalg.Matrix4f
 import org.lwjgl.system.MemoryUtil.memFree
 
 /**
+ * Posing a rigged glTF on the CPU: into a fresh [TriMesh], or back into the vertex buffer a loaded
+ * model already owns.
+ *
+ * Which of the two you want depends on what happens next. [skinnedGltfToTriMesh] loads the file,
+ * deforms it at one time and hands back geometry, which suits measuring a pose, feeding the
+ * software rasteriser, or treating a frame as data. [CpuSkinner] wraps a mesh that is already
+ * loaded for drawing and overwrites its positions and normals in place, so the stock glTF shaders
+ * draw a moving character without knowing that anything is being skinned.
+ *
+ * [posedGltfToTriMesh] is [skinnedGltfToTriMesh] with the joint palette supplied by the caller,
+ * for a clip blend or a pose an IK solver produced, and [gltfClipNames] reads the clip names out
+ * of a file without deforming anything.
+ *
+ * The blend itself is [GltfSkinning]'s; what this file adds is the plumbing on either side of it.
+ * [GpuSkinner] moves the same work into the vertex shader, which is the path to take when the
+ * character has to animate every frame.
+ */
+
+/**
  * A rigged file, deformed at a time, as a [TriMesh] you can render, measure and look at.
  *
  * [assimpToTriMesh] is the rigid sibling of this: it applies each node's own world matrix and hands

@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-29T22:26:17.844Z",
+  "documentName": "particle_video_reader",
+  "outputs": [
+    {
+      "uid": "particle_video_reader_only",
+      "channel": "particle video controls",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 536,
+      "height": 376,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "particle_video_reader_only",
+      "channel": "particle video",
+      "open": false,
+      "warnings": [],
+      "kinds": [],
+      "width": 380,
+      "height": 334,
+      "path": "outputs/1.html"
+    }
+  ]
+}

@@ -27,15 +27,13 @@ language is functions from queries to lists of events.
 // Nothing is stored. Ask the same pattern three different questions.
 val drums = pat("bd sd hh hh")
 
-val answers =
-    [
-            "one cycle" to PatArc(PatQ.ZERO, PatQ.ONE),
-            "second half" to PatArc(PatQ.of(1, 2), PatQ.ONE),
-            "cycle 97" to PatArc(PatQ.of(97), PatQ.of(98)),
-        ]
-        .joinToString("\n") { (label, arc) ->
-            "%-12s %s".format(label, drums.events(arc).joinToString("  ") { "${it.value}@${it.arc.start}" })
-        }
+val answers = [
+    "one cycle" to PatArc(PatQ.ZERO, PatQ.ONE),
+    "second half" to PatArc(PatQ.of(1, 2), PatQ.ONE),
+    "cycle 97" to PatArc(PatQ.of(97), PatQ.of(98)),
+].joinToString("\n") { (label, arc) ->
+    "%-12s %s".format(label, drums.events(arc).joinToString("  ") { "${it.value}@${it.arc.start}" })
+}
 println(answers)
 display("<pre>" + answers + "</pre>")
 ```
@@ -862,7 +860,7 @@ movement becomes 9, and the pitch-class sets are identical.
 
 ## A rhythm as a curve — and as a graph you can fit
 
-A pattern schedules *events*. Sometimes what you want from those events is not a note but a
+A pattern schedules *events*. Sometimes you want those events to trigger something other than a note, such as a
 **continuous curve**: an envelope to drive a parameter, a gesture to animate something with.
 `patFn` does that: each event becomes a little kernel, and the value at any time is the
 blend of the kernels around it. The kernel is chosen per atom, and its numbers are written
@@ -932,7 +930,7 @@ with(Functions) {
         """
     seed    ${seed.graphNode().strings["source"]}
     fitted  ${run.fitted.graphNode().strings["source"]}
-    RMSE    ${"%.4f".format(run.initialError)} -> ${"%.4f".format(run.finalError)}
+    RMSE    ${run.initialError.f4} -> ${run.finalError.f4}
     """
             .trimIndent()
     println(report)

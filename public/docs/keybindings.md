@@ -1,6 +1,6 @@
 # Keyboard shortcuts
 
-Every keyboard shortcut in Field is one line in one file that belongs to you:
+You can change Field's keyboard shortcuts to suit the way you work. They live in one file:
 
 ```diffstatic {data-lang=text}
 ~/.afield/keybindings.yaml
@@ -11,9 +11,8 @@ in there, including the ones that ship with no shortcut at all. Change a line, s
 shortcut moves immediately: the file is watched, like `~/.afield/theme.css`, and nothing
 needs restarting.
 
-Press `?` on the canvas and Field shows you the card below. It is not a picture of the
-defaults: each legend is read from the shortcut that is *actually bound right now*, so once
-you have edited the file the card describes your Field, not ours.
+Press `?` on the canvas to see the shortcut card. It reads your current bindings, so any changes
+you make to the file show up there too.
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector="#cheatsheet .centered-container-div" screenshot="assets/keybindings/cheatsheet.png" padding="8" wait="0" timeout="120" embed=true hidden=true name="keybindings-cheatsheet" alt="Field's ? cheatsheet card, with every key legend filled in from the live keybindings"}
 // The card's legends come from the live bindings, so make sure this capture is of the
@@ -23,17 +22,22 @@ ui.pause(1200)
 
 // The card is taller than it is allowed to be and scrolls; lift that ceiling so the still shows
 // all of it instead of stopping mid-list. Every legend in it is still drawn by the real card.
-ui.eval("var s=document.createElement('style');s.textContent='#cheatsheet .centered-container-div{max-height:none !important;overflow:visible !important}';document.head.appendChild(s);return 'unrolled'")
+ui.eval(
+    "var s=document.createElement('style');s.textContent='#cheatsheet .centered-container-div{max-height:none !important;overflow:visible !important}';document.head.appendChild(s);return 'unrolled'",
+)
 
 // `?` is ignored while a text field has focus — there it is just a question mark — so let go
 // of whatever the page focused as it loaded.
-ui.eval("if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur(); return document.activeElement.tagName")
+ui.eval(
+    "if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur(); return document.activeElement.tagName",
+)
 ui.press("Shift+Slash")
 ui.pause(1500)
 
 // Fail the capture rather than photograph an invisible card.
-val opacity = ui.eval("return getComputedStyle(document.getElementById('cheatsheet')).opacity")
-    ?.toString()?.trim('"') ?: "missing"
+val opacity =
+    ui.eval("return getComputedStyle(document.getElementById('cheatsheet')).opacity")?.toString()?.trim('"')
+        ?: "missing"
 if (opacity == "0" || opacity == "missing") error("the ? shortcut did not open the cheatsheet (opacity=$opacity)")
 ```
 
@@ -42,9 +46,8 @@ if (opacity == "0" || opacity == "missing") error("the ? shortcut did not open t
 Everything Field itself does: the canvas commands (`new-box`, `copy-selection`, …), the
 editor's actions (`execute-fragment`, `ai-assist`, …), the four global ones that work
 wherever you are (`open-command-palette`, `open-anything`, `toggle-docs`, `show-cheatsheet`)
-and all eighteen bookmark slots. Commands that appear only when something is selected
-(`connect`, `-copy`, the box actions a running box declares) are in the file too, and stay
-rebindable even at moments when they are not on offer.
+and all eighteen bookmark slots. Commands that only make sense with something selected, such
+as connecting two boxes, are in the file too, and you can rebind them at any time.
 
 A command that ships without a shortcut appears in the file as `""`, and giving it a chord
 is the same edit as changing one:
@@ -60,11 +63,11 @@ Two things are *not* in the file:
   multi-taps — `Esc Esc` to clear the newest output, `Esc Esc Esc` to clear them all,
   `Shift Shift` to open anything from the canvas, `Cmd Cmd`-and-hold for
   [stepping between boxes](moving_around_the_canvas.md#stepping-between-boxes). These are not single chords, so there is
-  nothing in the grammar below to write them with; they are hard-wired.
+  no way to write them in the shortcut syntax described below; they are hard-wired.
 - **Monaco's own editor bindings.** Autocomplete (`Ctrl+Space`), undo, find, multi-cursor
   and the rest belong to the text editor Field embeds, not to Field's command list.
 
-Two-key chords, such as `cmd+k cmd+s`, *are* in the grammar: see
+Two-key chords, such as `cmd+k cmd+s`, *can* be written in the shortcut syntax: see
 [Writing a two-key chord](#writing-a-two-key-chord). No default uses one, so every chord in
 your file is one you wrote.
 
@@ -81,9 +84,8 @@ re-registers them in the editor and on the canvas at once, then tells you it has
 you would rather not wait, or you changed the file while Field was not running, there is a
 **Reload Keybindings** command that re-reads it on the spot.
 
-Deleted the file? Field writes a fresh one from its own defaults the next time it takes
-stock of its commands, which is every run. That is also the way to get a clean copy back if
-you have edited yourself into a corner: move yours aside and let Field regenerate.
+If you delete the file, Field writes a fresh copy with the defaults on its next run. You can use
+the same trick to start over: move your edited file aside and let Field make another.
 
 ## Writing a shortcut
 
@@ -98,9 +100,8 @@ bindings:
 ```
 
 **Modifiers** are `cmd`, `alt` and `shift`. `cmd` means Command on macOS and Control
-everywhere else, so one spec covers both platforms; `ctrl`, `control`, `command`, `meta`,
-`mod`, `ctrlcmd` and `super` are all accepted spellings of it. `alt` is Option on macOS;
-`option` and `opt` also work. Case does not matter, and `+`, `-`, a space or a comma all
+everywhere else, so one spec covers both platforms; `ctrl` means the same. `alt` is Option
+on macOS. Case does not matter, and `+`, `-`, a space or a comma all
 separate tokens, so `cmd-shift-d`, `CMD + SHIFT + D` and `cmd shift d` are the same
 shortcut as `cmd+shift+d`.
 
@@ -125,7 +126,7 @@ A **shifted character stands for Shift plus its key**, which is much nicer to re
 spelling the modifier out. `?` is exactly `shift+/`, and that is how the cheatsheet's own
 shortcut is written. The same goes for `~ ! @ # $ % ^ & * ( ) _ { } : " < > |`.
 
-Two characters that are also separators need a word about them: a lone `,`, `-` or `+` is
+Three characters that are also separators need a word about them: a lone `,`, `-` or `+` is
 read as a key only when it is the last thing in the spec. So `cmd+,` binds the comma key
 (that really is one of Field's defaults, "Previous Property"), `cmd+-` binds the minus key,
 and `cmd + k` is just `cmd+k` with room to breathe.
@@ -141,8 +142,8 @@ bindings:
 ```
 
 Every key ends a chord, and the modifiers written before a key belong to it. That is why
-`cmd shift d` is still one shortcut, Cmd+Shift+D: it has one key. `cmd+k cmd+s` has two, so it
-is two chords. A chord is at most two keys.
+`cmd shift d` is still one shortcut, Cmd+Shift+D: it has one key. `cmd+k cmd+s` has two keys,
+so it is a chord. A chord is at most two keys.
 
 After the first key Field shows it at the bottom of the window ("Cmd+K … (waiting for the
 second key)") and waits **one second**. Then:
@@ -156,9 +157,8 @@ second key)") and waits **one second**. Then:
 
 So a key can be a shortcut and the first half of a chord at once (`cmd+k` and `cmd+k cmd+s`), and
 the cost is that the plain `cmd+k` now fires a second late. This is the same in an editor and on
-the canvas. In an editor, a chord whose first key has no `cmd` or `alt` is canvas-only, for the
-same reason a bare letter is (below): that key is typing. The second key may be bare: `cmd+k d`
-works in an editor too.
+the canvas. Which chords work while you are typing is covered under
+[Where a shortcut is live](#where-a-shortcut-is-live).
 
 ### Where a shortcut is live
 
@@ -177,10 +177,12 @@ the opposite; no comment at all means both. The scope belongs to the command, no
 spec, so it is not something you edit, but it does tell you whether a bare letter is a
 sensible thing to bind a command to.
 
-One line of your file sets the shortcut for both the editor and the canvas. Matching is on the physical key
-(`KeyboardEvent.code`), not the character produced, so an Alt shortcut survives macOS turning
-`Alt+]` into `’`, falling back to the character itself for shifted punctuation on layouts
-where it is not physically Shift plus that key.
+The same goes for chords. In an editor, a chord whose first key has no `cmd` or `alt` does not
+fire, because that key is typing. The second key may be bare, so `cmd+k d` works in an editor
+too.
+
+One line of your file sets the shortcut for both the editor and the canvas. Shortcuts follow
+the key's position on the keyboard, not the character it types.
 
 ## Finding a command's id
 
@@ -193,15 +195,15 @@ current shortcut is shown on the right of the row. That makes it the real test o
 since those labels are drawn from the same binding your keypress would use:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".afield-palette-shell" screenshot="assets/keybindings/rebound-palette.png" padding="6" wait="0" timeout="150" embed=true hidden=true name="keybindings-rebound-palette" alt="Field's command palette, opened with a custom Alt+K shortcut, listing New Box with its rebound Cmd+Opt+B"}
-// A rebind, taken all the way through the real machinery: write a keybindings.yaml,
-// let Field read it, then press a chord Field has never shipped and photograph what
-// happens. The file is a scratch one — nobody's own shortcuts are touched.
+/*
+A rebind, taken all the way through the real machinery: write a keybindings.yaml,
+let Field read it, then press a chord Field has never shipped and photograph what
+happens. The file is a scratch one — nobody's own shortcuts are touched.
+*/
 val scratch = java.io.File(System.getProperty("java.io.tmpdir"), "field-docs-keybindings/keybindings.yaml")
 scratch.parentFile.mkdirs()
 scratch.writeText(
-    "bindings:\n" +
-    "  open-command-palette: alt+k\n" +
-    "  new-box: cmd+alt+b\n"
+    "bindings:\n" + "  open-command-palette: alt+k\n" + "  new-box: cmd+alt+b\n",
 )
 afield.app.settings.UserKeybindingsManager.watchFile(scratch)
 ui.pause(1500)
@@ -212,22 +214,26 @@ ui.pause(1600)
 ui.type("New Box")
 ui.pause(1400)
 
-// The still is taken immediately after this script, so hand the watcher back on a short delay:
-// restoring it here would re-register every binding while the palette is still on screen. The
-// figures either side of this one point the watcher back themselves, so a slow shot cannot leave
-// them describing this scratch file.
+/*
+The still is taken immediately after this script, so hand the watcher back on a short delay:
+restoring it here would re-register every binding while the palette is still on screen. The
+figures either side of this one point the watcher back themselves, so a slow shot cannot leave
+them describing this scratch file.
+*/
 Thread {
     Thread.sleep(2500)
     afield.app.settings.UserKeybindingsManager.watchFile(null)
-}.also { it.isDaemon = true }.start()
+}
+    .also { it.isDaemon = true }
+    .start()
 ```
 
-The `?` card is the third route, and the shortest one for the twenty or so shortcuts you
-will use every day.
+The `?` card is the quickest way to see your current shortcuts for the twenty or so commands
+you will use every day.
 
 ## When you get it wrong
 
-Field would rather tell you than guess.
+If a binding cannot be applied, Field tells you what went wrong.
 
 - **A spec it cannot read** is reported with the reason, as a notification and in the log —
   and the other lines in the file still apply, so one bad shortcut does not cost you the rest:
@@ -279,7 +285,7 @@ val bound =
 markdown(
     "main",
     """
-    {muted:${live.path.md}}
+    {muted:${live.displayPath.md}}
 
     {muted:${live.problems.size} problem(s) in it}
 

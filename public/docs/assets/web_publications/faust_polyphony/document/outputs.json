@@ -1,0 +1,103 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-31T00:21:10.745Z",
+  "documentName": "faust_polyphony",
+  "outputs": [
+    {
+      "uid": "faust_polyphony_offline",
+      "channel": "main-audio",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "faust_polyphony_offline",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "plotly"
+      ],
+      "width": 877,
+      "height": 458,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "faust_polyphony_steal",
+      "channel": "steal=1",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "faust_polyphony_steal",
+      "channel": "steal=1440",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "faust_polyphony_timing",
+      "channel": "audio",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/4.html"
+    },
+    {
+      "uid": "faust_polyphony_timing",
+      "channel": "waveform",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "plotly"
+      ],
+      "width": 712,
+      "height": 458,
+      "path": "outputs/5.html"
+    },
+    {
+      "uid": "faust_polyphony_chord",
+      "channel": "chord",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/6.html"
+    },
+    {
+      "uid": "faust_polyphony_chord",
+      "channel": "one voice",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/7.html"
+    }
+  ]
+}

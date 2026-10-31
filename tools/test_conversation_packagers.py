@@ -1,7 +1,9 @@
 """conversation_packagers: which edits feed a recorded-conversation page, and the lander's repackaging."""
 import sys
 import unittest
+from unittest.mock import patch
 from pathlib import Path
+from subprocess import CompletedProcess
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import conversation_packagers as cp  # noqa: E402
@@ -35,6 +37,18 @@ class PackagersTest(unittest.TestCase):
 
     def test_a_clean_tree_needs_no_repackaging(self):
         self.assertEqual((0, []), cp.repackage_stale(cp.ROOT))
+
+    def test_checks_and_regeneration_use_the_checkout_docs_environment(self):
+        packager = cp.Packager("tools/package_example_conversation.py", "example_conversation", ())
+        with patch.object(cp, "packagers", return_value=[packager]), patch.object(cp.subprocess, "run") as run:
+            # A stale check is followed by successful regeneration.
+            run.side_effect = [CompletedProcess([], 1), CompletedProcess([], 0)]
+            code, _ = cp.repackage_stale(cp.ROOT)
+        self.assertEqual(0, code)
+        command = ["uv", "run", "--project", ".", "--group", "docs", "--frozen", "python", packager.script]
+        self.assertEqual([*command, "--check"], run.call_args_list[0].args[0])
+        self.assertEqual(command, run.call_args_list[1].args[0])
+        self.assertTrue(all(call.kwargs["cwd"] == cp.ROOT for call in run.call_args_list))
 
 
 if __name__ == "__main__":

@@ -52,8 +52,9 @@ showImgGrid(
 )
 ```
 
-The flow is treated as linear across each small triangle of the grid, so every critical point is
-found exactly, with its own Jacobian, and nothing is missed between samples. The type comes from
+The flow is treated as linear across each small triangle of the grid. Critical points are found
+within that interpolated field, each with its own Jacobian; detail absent from the samples cannot
+be recovered. The type comes from
 the Jacobian: a negative determinant is a saddle; otherwise the sign of the divergence says out or
 in, and complex eigenvalues add the spiral.
 
@@ -163,7 +164,12 @@ val film = videoFrames("public/docs/assets/vector_field_topology/eagle.mp4", wid
 
 fun panel(frame: Int, camera: CameraMotion, minSpeed: Double): Pair<String, Img> {
     val topology =
-        VectorFieldTopology.compute(flow.at(frame, window = 1, camera = camera), minStrength = 0.02, maxLength = 300.0)
+        VectorFieldTopology.compute(
+            flow.at(frame, window = 1, camera = camera),
+            minStrength = 0.02,
+            maxLength = 300.0,
+            minSpeed = minSpeed,
+        )
     val lines =
         topology.streamlines(spacing = 1.5, length = 14.0, minSpeed = minSpeed) +
             topology.toFLines() +
@@ -181,9 +187,7 @@ showImgGrid(
 )
 ```
 
-The separatrices still run out past the bird, because the flow around it is close to zero rather
-than exactly zero, and a streamline follows direction whatever the speed. Both pictures are the
-same footage read in two frames of reference.
+Both pictures are the same footage read in two frames of reference.
 
 ??? aside "Where the footage came from"
     *Golden Eagles* (Kodak Cinegraph, 1930s), public domain, from the Internet Archive item

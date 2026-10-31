@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "records": {
+    "c3014ebb4a2173b4b0cfbb14b956b21bc693553dbed5719c7f679348e3fcacb6": {
+      "sourceName": "KeyframeEvaluator.set",
+      "sourcePath": "src/jvmMain/kotlin/afield/math/keyframes.kt",
+      "sourceLine": 52,
+      "sourceHash": "911cd57fc3985f9bbb4c2650e8b735aaf2724fd8d30a660bcc4e8bb9319baa1c",
+      "documentation": "Replaces the evaluator’s keyframes with those decoded from a JSON string, ordered by time.\n\n**Parameter notes**\n- `jsonString`: JSON encoding a list of keyframes; unknown JSON fields are ignored.",
+      "model": "gpt-6-luna",
+      "createdAtEpochMs": 1791388800053
+    }
+  }
+}

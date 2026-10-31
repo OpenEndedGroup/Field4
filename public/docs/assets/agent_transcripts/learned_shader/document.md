@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. renderer
@@ -102,7 +102,7 @@ frames {
 <!-- field-box id="learned_material" index="2" -->
 
 ```edn [field-box id="learned_material" role="properties"]
-{"id" "learned_material" "index" 2 "name" "editable learned material" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "editable learned material" "_tombstone" false "frame" #afield/rect [400.0 340.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "learned_material_code_.kt" "lines" 40 "characters" 1501 "sha256" "95009f63277f0a57ecc804b2f9ac5dc66883a82606a77ce567271d094d6aa18e"} {"name" "vertex" "language" "glsl" "path" "learned_material_vertex_.glsl" "lines" 7 "characters" 174 "sha256" "bcd4c2889657a59af7bc9ae25c65886d166f90b889f154b640ffd93e4f1c35ab"} {"name" "fragment" "language" "glsl" "path" "learned_material_fragment_.glsl" "lines" 12 "characters" 436 "sha256" "231fe59291fb8d75063c17d80688cd3c7c36b0bd1708b3abadc19c49df20f12e"}]}
+{"id" "learned_material" "index" 2 "name" "editable learned material" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "editable learned material" "_tombstone" false "frame" #afield/rect [400.0 340.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "learned_material_code_.kt" "lines" 39 "characters" 1476 "sha256" "a3aaf66e850e70f36c2924a0941d22722ec4e47de52a3ae0ae27619873a7dc0e"} {"name" "vertex" "language" "glsl" "path" "learned_material_vertex_.glsl" "lines" 7 "characters" 174 "sha256" "bcd4c2889657a59af7bc9ae25c65886d166f90b889f154b640ffd93e4f1c35ab"} {"name" "fragment" "language" "glsl" "path" "learned_material_fragment_.glsl" "lines" 12 "characters" 436 "sha256" "231fe59291fb8d75063c17d80688cd3c7c36b0bd1708b3abadc19c49df20f12e"}]}
 ```
 
 ```kotlin [field-property box="learned_material" name="code" path="learned_material_code_.kt"]
@@ -123,8 +123,7 @@ val material = moduleHere {
     depthWrite = false
     blend = false
 }
-val triangle = Mesh(owner, material)
-triangle.resize(3, 0, material)
+val triangle = fullscreenTriangle(material)
 material += "fullscreen" to triangle
 
 // Compute and resolve run before this ordinary fragment shader samples their RTT.

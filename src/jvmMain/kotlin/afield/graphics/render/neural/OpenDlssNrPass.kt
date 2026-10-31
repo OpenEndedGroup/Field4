@@ -15,6 +15,7 @@ import afield.graphics.vulkan.device.vkLayout
 import afield.graphics.vulkan.device.CommandBuffer
 import afield.graphics.vulkan.device.Queue
 import afield.graphics.scene.fabricated.FabricatePostEffect
+import afield.graphics.scene.fabricated.FabricatePostStack
 import afield.graphics.render.lighting.LightingGpuTimer
 import afield.graphics.vulkan.targets.RenderToTexture
 import afield.graphics.texture.*
@@ -27,8 +28,8 @@ import kotlin.math.abs
 
 /** What a Vulkan sampler returns. SRGB-format views already decode, so use LINEAR_LDR for those. */
 enum class OpenDlssNrColorEncoding { SRGB_CODE, LINEAR_LDR, LINEAR_HDR }
-/** Style is the network condition, independently of grading after the pass. Tone/structure are
- * deliberately unrestricted within finite binary16 range: -10..30 is useful for image exploration.
+/** Style is the network condition, independently of grading after the pass. Tone and structure take
+ * any finite binary16 value: -10..30 is useful for image exploration.
  * Skin is active only with autoMask; negative skin inherits structure. Fixed seed is the default. */
 data class OpenDlssNrControls(val seed: Int=1,val style: Int=1,val tone: Float=1f,val structure: Float=1f,
     val skin: Float=-1f,val autoMask: Boolean=false,val intensity: Float=1f,val temporal: Boolean=false) {
@@ -169,6 +170,8 @@ class OpenDlssNrPass(val renderer: Renderer,val width: Int,val height: Int) : Au
         if(closed)return;closed=true
         renderer.beforeDeviceCleanup.remove(closeWithRenderer)
         storage.evaluate=null
+        storage.retired=true
+        FabricatePostStack.retire(storage)
         val old=handle
         renderer.cleanup+=Runnable {
             if(old!=MemorySegment.NULL)native.check(native.destroy.invokeWithArguments(old))
@@ -183,7 +186,10 @@ private class NrOutput(renderer: Renderer,width: Int,height: Int) : RenderToText
 }) {
     var evaluate: ((CommandBuffer)->Unit)?=null
     fun recordCaptures(command: CommandBuffer)=recordPendingFileSaves(command)
-    override fun render(command: CommandBuffer,index: Int) {checkNotNull(evaluate) {"Configure the NR post effect before attaching it"}(command)}
+    /** Set by [OpenDlssNrPass.close]; a frame graph still naming this target then skips it. */
+    @Volatile
+    var retired=false
+    override fun render(command: CommandBuffer,index: Int) {if(retired)return;checkNotNull(evaluate) {"Configure the NR post effect before attaching it"}(command)}
     fun transition(command: CommandBuffer,layout: Int)=MemoryStack.stackPush().use { stack ->
         val image=colorImageRefs[0]!!;val old=image.getLastKnownLayout() ?: VK_IMAGE_LAYOUT_UNDEFINED
         image_layout_transition(command.vkCommandBuffer,image,VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,

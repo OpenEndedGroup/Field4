@@ -1,0 +1,22 @@
+{
+  "sourceRecording": "ardy-1792502450266.f4motion",
+  "sourceKeptRunning": true,
+  "model": "nvidia/ARDY-Core-RP-20FPS-Horizon40",
+  "steps": 4,
+  "excerptSeconds": {
+    "skip": [
+      102,
+      108
+    ],
+    "run": [
+      45.2,
+      51.2
+    ],
+    "recoil": [
+      138.4,
+      144.4
+    ]
+  },
+  "poses": "Contiguous unmodified source poses with original timestamps, frame indices and episode IDs. Source chunk hashes are in each manifest.",
+  "assessment": "Skipping sustains visible articulation. The selected running and recoil prompt passages are much more static; prompt labels are not action scores."
+}

@@ -2304,6 +2304,7 @@ fun insertFromWorkspace() {
                 "workspace" -> "Workspace file"
                 "workspace-template" -> "Workspace template"
                 "bundled-template" -> "Bundled template"
+                "personal-template" -> "Personal template"
                 "remote-template" -> "Remote template"
                 else -> "Template"
             }
@@ -2862,6 +2863,13 @@ fun registerBuiltinCommands() {
             detail:"Download a self-contained .edn file of the whole document",
             run: () => {
                 exportDocumentToDownload()
+            }
+        },{
+            id:'publish-document-web',
+            label:"Publish document for the web (.zip)",
+            detail:"Download code, notes and captured output areas as a static website",
+            run: () => {
+                window.fieldPublishDocument()
             }
         },{
             id:'export-ipynb',

@@ -246,9 +246,9 @@ answers it from two sets of examples.
 positives it subtracts the distance to its nearest neighbour among the positives from the distance
 to its nearest neighbour among the negatives, and divides by `√(2m)`. The higher the value, the closer
 the shape's twin in the positives compared with anything like it in the negatives; near zero or
-below, the negatives have it too. `platos(count)` picks
-out the best of them (the paper's name for the top candidate), each with the example and offset it
-came from.
+below, the negatives have it too. The best of these
+shapes is what the paper calls a *plato*; `platos(count)` picks out the best `count` of them, each
+with the example and offset it came from.
 
 <!--
 FIELD_TEST
@@ -305,17 +305,17 @@ subsequence that spans two examples is no subsequence at all.
   everything, at distance `√(2m)`. A signal that sits at a constant level for long stretches will
   show a plateau in its profile there.
 - `m` must be at least 3 and no longer than the signal.
+- There is no streaming (append-one-sample) profile and no GPU evaluation, and `k` for the
+  multidimensional profile is yours to choose.
 
-??? aside "How the profile is computed, and what is tested"
+??? aside "How the profile is computed and tested"
     The self-join walks each diagonal of the distance matrix once, keeping the mean-centred
     covariance of the pair up to date with SCAMP's two-term update (`df`, `dg`); per-window means
     and norms are computed exactly, not from running sums, so long signals do not drift. Workers
     keep their own best-so-far arrays and are merged at the end, so there is no locking in the
     inner loop. `MatrixProfileTest` checks the self-join, both directions of the join, MASS, the
     one-sided profiles and every `k` of the multidimensional profile against brute force, the
-    anytime profile as an upper bound, and planted motifs, discords, subspaces and platos. Not
-    done yet: a streaming (append-one-sample) profile, GPU evaluation, and the MDL criterion
-    mSTAMP proposes for choosing `k` automatically.
+    anytime profile as an upper bound, and planted motifs, discords, subspaces and platos.
 
 ## Further reading
 

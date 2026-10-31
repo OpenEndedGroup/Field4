@@ -63,8 +63,8 @@ mqtt.subscribe("installation/#") { topic, message ->
 ## Reading values without a callback
 
 Often you only want the latest value. `track` subscribes without a callback, and then `number`,
-`text` and `series` read what has arrived. Here the same box also plays two sensors, so there is
-something to plot:
+`text` and `series` read what has arrived. Here the same box also plays two sensors for four
+seconds, so there is something to plot:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/mqtt/track_series.png" execution="launch" wait="6.0" wait-output="true" wait-output-kind="display" capture="box" open-outputs="true" w="900" timeout="120" embed=true name="mqtt-track-series" alt="A dark line plot titled Temperatures with two traces, kitchen in cyan oscillating around 21 and garden in orange drifting around 12, built from MQTT messages received over the last few seconds"}
 import afield.io.mqtt.*
@@ -87,6 +87,7 @@ loop {
         "garden" to mqtt.series("sensors/garden/env", "temp"),
         title = "Temperatures (°C)",
     )
+    if (AnimationClock.nowSeconds() - start > 4.0) end()
     delay(100)
 }
 ```
@@ -150,7 +151,7 @@ restarts or the network drops. `print(mqtt)` shows its state and message counts.
 
 - MQTT 3.1.1 only; MQTT 5 brokers accept 3.1.1 clients, so this matters only for v5-only features.
 - No TLS (`mqtts://`, port 8883) and no WebSocket transport.
-- QoS 2 is accepted but delivered as QoS 1: a message can arrive twice, never zero times.
+- QoS 2 is accepted but delivered as QoS 1: delivery can include duplicates.
 - Two subscriptions that overlap without one containing the other, such as `a/+/c` and `a/b/+`, receive `a/b/c` twice from most brokers. Overlaps where one filter contains the other (`a/+` and `a/#`) deliver once.
 - A subscription inside one you already have (`a/b` after `a/#`) gets its retained messages from what this connection has already seen, not from the broker.
 - The built-in broker keeps no sessions between connections and has no authentication.

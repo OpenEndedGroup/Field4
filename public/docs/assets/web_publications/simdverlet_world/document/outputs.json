@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-31T03:46:17.147Z",
+  "documentName": "simdverlet_world",
+  "outputs": [
+    {
+      "uid": "world_tear",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 762,
+      "height": 603,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "world_all",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 762,
+      "height": 603,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "world_wind",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 762,
+      "height": 603,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "world_drape",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 762,
+      "height": 603,
+      "path": "outputs/3.html"
+    }
+  ]
+}

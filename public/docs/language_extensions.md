@@ -1,12 +1,9 @@
 # Field language extensions
 
-Write a few lines of your own language inside a triple-quoted string in a Kotlin
-box and the editor sees one long string, coloured all the way through. A language
-extension changes that. It is a small JavaScript object, registered in the
-browser, that gives your language syntax highlighting inside the string, its own
-error markers, completion, and decorations that show how values move through the
-code. You do not need to change Field's editor to add one, so a language can be
-useful long before it is built into Field. RectSL and StackSL both work this way.
+Write a little language inside a Kotlin string and you can give it an editor of its own: syntax
+highlighting, error markers, completion and decorations that show values as they move through the
+code. A language extension is a small JavaScript object registered in the browser; RectSL and
+StackSL both use this mechanism. You can add one without changing Field's editor.
 
 ## Loading
 
@@ -282,7 +279,7 @@ its programs live in, so any language can have them. These are the ones Field's 
 | Pd | an object: what it is fed by and feeds; an `[s]` or `[r]`: the last value through its name, live from the playing patch; a `#X connect` line: the two ends it joins | — |
 
 The [ForthField](forth_examples.md#what-each-line-left-on-the-stack) and
-[Python](python.md#what-each-line-came-to) pages show notes in the editor; the [Clojure](clojure.md) and
+[Python](python.md#what-each-line-came-to) and [Lua](lua.md#line-notes) pages show notes in the editor; the [Clojure](clojure.md) and
 [Datalog](datalog.md) pages say what theirs contain.
 
 **A note never runs your code.** StackSL and RectSL can say what part of a program does without

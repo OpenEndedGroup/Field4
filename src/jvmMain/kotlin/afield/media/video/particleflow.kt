@@ -12,6 +12,24 @@ import kotlin.math.hypot
 import kotlin.math.roundToInt
 
 /**
+ * Tracked particles from a video, turned into a velocity field that can be measured.
+ *
+ * [ParticleVideo] follows thousands of points through a movie and leaves a cloud of samples per
+ * frame. This file splats those velocities onto a regular grid, one [FlowFrame] per frame, so every
+ * cell carries a velocity whether or not a particle landed in it. [ParticleFlow.at] hands one frame
+ * back as an [Img], u in channel 0 and v in channel 1, which is the form the vector-field topology
+ * and streamline code reads.
+ *
+ * A tracked video's flow often describes the camera more than its subject, and on old film the
+ * whole frame shifts and turns a little from one frame to the next. So each frame also carries the
+ * camera motion measured from its own particles: a median shift, and an affine fit that picks up a
+ * slight zoom or rotation as well. [CameraMotion] chooses how much of that to subtract when a frame
+ * is read back. A flow is far smaller than the tracks it came from, and smaller again gzipped and
+ * quantised, so [ParticleFlow.save] and [loadParticleFlow] let a page or a test begin from a saved
+ * flow instead of running the tracker.
+ */
+
+/**
  * What to take out of a flow before using it: nothing ([KEEP]), the frame's median velocity
  * ([SHIFT]), or an affine motion fitted to every particle and refitted without the outliers
  * ([AFFINE]), which also removes a camera's slight zoom and rotation, or old film weaving in the gate.

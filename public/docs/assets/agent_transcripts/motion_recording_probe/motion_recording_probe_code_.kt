@@ -1,0 +1,54 @@
+import afield.animation.mocap.MotionExamples
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
+
+// A known coordinate probe: this clip contains no learned or simulated motion.
+// Replace it with MotionRecording(Path.of("your.f4motion")).clip() to inspect a recording.
+val clip = MotionExamples.contractClip()
+val play = AtomicBoolean(false)
+val scrub = AtomicReference(1.35)
+controlGroup {
+    slider("Session time (seconds)", 0.0, 4.0, initialValue = 1.35) { scrub.set(it) }
+    checkbox("Play recording", initialValue = false) { play.set(it) }
+}
+val started = AnimationClock.nowSeconds()
+
+loop {
+    val time = if (play.get()) (AnimationClock.nowSeconds() - started) % 4.0 else scrub.get()
+    val snapshot = clip.sample(time)
+    val pose = snapshot.frame.executed
+    val drawing = fline {
+        clip.skeleton.parents.forEachIndexed { i, parent ->
+            if (parent >= 0) {
+                val a = pose.position(parent)
+                val b = pose.position(i)
+                moveTo(300.0 + 180 * a.x, 250.0 - 180 * a.y)
+                lineTo(300.0 + 180 * b.x, 250.0 - 180 * b.y)
+            }
+        }
+        color = if (snapshot.frame.episode == 0L) vec(0.25, 0.7, 1.0, 1.0) else vec(1.0, 0.5, 0.2, 1.0)
+        thickness = 5.0
+    }
+    val points = fline {
+        repeat(clip.skeleton.size) { i ->
+            val p = pose.position(i)
+            circle(300.0 + 180 * p.x, 250.0 - 180 * p.y, 7.0)
+        }
+        color = vec(0.85, 0.9, 1.0, 1.0)
+        filled = true
+    }
+    val border = fline {
+        rect(0.0, 0.0, 600.0, 300.0)
+        color = vec(0.2, 0.25, 0.3, 1.0)
+    }
+    lines(border, drawing, points, w = 600.0, h = 300.0, channel = "motion")
+    markdown(
+        "status",
+        "**Coordinate probe** · no network inference\n\n" +
+            "Time ${time.f2} s · episode ${snapshot.frame.episode} · " +
+            if (snapshot.held) "holding before reset" else "recorded pose",
+    )
+    displayOpen("motion")
+    displayOpen("status")
+    delay(16) // Yield without flooding the UI transport.
+}

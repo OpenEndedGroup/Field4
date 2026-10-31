@@ -3,6 +3,10 @@
 To animate something from a box, end the box with a `loop { }`. The code above it runs once, when
 you run the box. The block runs again every frame, until you stop the box or run it again:
 
+Try launching this with **alt/option-Up**, then stop it with **alt/option-Down**. Open the `main`
+output panel to see it count while the box is running. The [first moving drawing](first_steps.md)
+uses the same idea to keep lines in motion.
+
 ```diffstatic {data-lang=kotlin}
 var n = 0 // runs once
 
@@ -21,11 +25,11 @@ loop { n++ } // not the last expression …
 println("set up") // … so this is the box's value, and nothing runs
 ```
 
-Here is a longer one, recorded frame by frame. The disc's position comes from
-`AnimationClock.nowSeconds()`; the tick row below it grows with `frameNumber`, one mark per four
-frames reached. At four and a half seconds the body calls `end()`, and the `.end { }` block redraws
-the last state in red. Nothing after that moves: the remaining three and a half seconds are the
-stopped animation, not the end of the recording.
+Here's a longer animation: a disc that slides along a track, and a row of ticks below it that grows
+by one every four frames. The disc's position comes from `AnimationClock.nowSeconds()`, the time in
+seconds ([Time in seconds](#time-in-seconds)). After four and a half seconds the loop calls `end()`
+to stop itself, and the `.end { }` block chained onto it redraws the last state in red
+([What happens when you stop](#what-happens-when-you-stop)). Everything then stays still.
 
 ```diffstatic_runner {data-lang=kotlin video="assets/animation_time_model/running_and_stopping.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="300" w="1000" h="140" embed=true name="animation-running-stopping" alt="a cyan disc travelling along a horizontal track above a row of tick marks that grows steadily longer as frames accumulate; four and a half seconds in the disc stops dead, the tick row stops growing, and everything redraws in red and stays frozen for the rest of the clip"}
 :::static
@@ -110,15 +114,15 @@ loop {
     }
 ```
 
-Two habits in that code are worth copying. Motion is a function of the clock, not of how many frames
-have gone by ([Time in seconds](#time-in-seconds) says why), and the wind-down goes in `.end { }`
-([What happens when you stop](#what-happens-when-you-stop)).
+Two useful habits appear here: use the clock to control motion, and put the wind-down in
+`.end { }`. We'll look at [time](#time-in-seconds) and [stopping](#what-happens-when-you-stop)
+in more detail below.
 
-Every animated thing in Field runs on this one mechanism: a `loop { }` in a box, the ALife evolution
-driver, a subprocess streaming its stdout into an output panel, the renderer's own
-`start(renderer::run)`. Each of them is a `Frames`, and the same loop pumps all of them. The sections
-below cover the other ways to build one, how they stop, a physics solver in the loop, and the
-pull-based generator layer that sits beside it. [Inside the loop](#inside-the-loop), at the bottom,
+`loop { }`, `forever { }` and `frames { }` all build the same kind of object: something Field runs a
+little of once per frame. Much of Field works this way, including the renderer and a subprocess
+streaming its output into a panel. The sections below cover the other ways to build one, how they
+stop, a physics solver in the loop, and generators: step-by-step code you advance by hand instead of
+once a frame. [Inside the loop](#inside-the-loop), at the bottom,
 is how the machinery works, for when an animation does something you did not expect.
 
 This page picks up where [Running code in a box](running_code.md) stops: that page ends when the
@@ -176,8 +180,7 @@ at a different speed again while a shader is compiling. Write it against
 
 Live, `AnimationClock.nowSeconds()` is wall-clock time. When you record a video, it advances by
 exactly `1 / fps` per recorded frame, however long each frame takes to capture, so motion written
-against it plays back at the right speed in the video, and comes out the same every time. The video
-at the top of this page was made that way.
+against it plays back at the right speed in the video, and comes out the same every time.
 
 Live, the rate is whatever the machine can manage. Here is a frame body that does nothing but stamp
 the clock, for two seconds, with the gaps between the stamps plotted:
@@ -275,7 +278,9 @@ loop {
     }
 ```
 
-The end block is a frame body in its own right, so it can take frames of its own:
+The end block is a frame body in its own right, so it can take frames of its own. Here
+`10 { ... }` runs its block ten times, with `it` counting the pass from `0` to `9`, and each pass
+waits a frame:
 
 ```diffstatic {data-lang=kotlin}
 var x = 0
@@ -401,16 +406,15 @@ one at stiffness 16·k.
 
 ## The generator layer
 
-Field also has a second, quite different mechanism. A `Generator` is a Python-style coroutine
-you drive by hand: `start()` runs it to its first `yield`, and `next(input)` resumes it with a value
-and runs it to the next one. No dispatcher, no `Job`, no frame boundary; the caller decides when a
-step happens.
+Sometimes you want code that remembers its state from one step to the next, but steps when *you*
+say, not once a frame. A `Generator` does that. Its body is ordinary code with local variables;
+`start()` runs it until its first `yield`, where it pauses, and each `next(input)` hands it a value
+and runs it on to the next `yield`. The locals are still there when it resumes.
 
-That suits a hot loop. `SimdVerlet` gives every particle a
-`MapOfGenerators<ForceContext, Unit>` and steps all of them per physics tick, and
-`addPidPositionController` writes a PID controller as a generator whose integral and derivative
-history are ordinary local variables, kept alive across steps by the suspension itself rather than by
-a state object anyone has to declare:
+The physics solver uses this for its per-particle forces. One example is a PID controller, which
+steers a value toward a target using the current error, the error summed over time, and how fast the
+error is changing. Written as a generator, that running sum and the previous error are plain local
+variables, with no state object to declare:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/animation_time_model/generator_pid.png" wait="2.0" capture="box" open-outputs="true" wait-output="true" w="1100" name="animation-generator-pid"}
 /*
@@ -472,9 +476,8 @@ in the middle of the `while (true)`, so `integral` and `previousError` are simpl
 
 ### Composing them
 
-The rest of the layer is combinators, which is how a generator stops being a one-off and starts
-being a pipeline. Here are three of them building one signal in four stages, each stage derived from
-the one before:
+You can combine generators into a pipeline. Here are three combinators building one signal in four
+stages, each stage derived from the one before:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/animation_time_model/generator_pipeline.png" wait="2.0" capture="box" open-outputs="true" wait-output="true" w="1100" name="animation-generator-pipeline"}
 /*
@@ -642,9 +645,9 @@ It runs on one thread, named `field-runloop-main`. `idle()` is 64 `Thread.onSpin
 a 50 µs `LockSupport.parkNanos` by default, tunable with `AFIELD_RUNLOOP_IDLE` and friends. Nothing
 here waits for a display, which is why a frame is a unit of work rather than of time.
 
-`main` is a **`Framer`**, and a `Framer` is a `kotlinx.coroutines.CoroutineDispatcher`, about thirty
-lines of it. `dispatch` appends the runnable to a queue. `frame()` atomically swaps in a fresh queue
-and runs everything that was in the old one, inline, to completion:
+The main loop keeps a queue of work, and one frame runs everything in the queue. (`main` is a
+`Framer`, Field's coroutine dispatcher.) Scheduling work appends it to the queue; `frame()` swaps in
+a fresh queue and runs everything that was in the old one, to completion:
 
 ```diffstatic {data-lang=kotlin}
 fun frame(): Int {
@@ -726,10 +729,9 @@ arithmetic by eye.
 */
 val figure = showTable(
     Table(
-            ["after pump #"] + (1..pumps).map { "$it" } + "frameNumber",
-            note = "cells are cumulative body calls",
-        )
-        .rows(builders.map { (label, r) -> [label] + r.first + r.second })
+        ["after pump #"] + (1..pumps).map { "$it" } + "frameNumber",
+        note = "cells are cumulative body calls",
+    ).rows(builders.map { (label, r) -> [label] + r.first + r.second })
         .accent("frameNumber")
         .expect("frameNumber", because = "one frame per pump") { it == pumps - 1 },
     channel = "main",

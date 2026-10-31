@@ -20,7 +20,7 @@ export function mountStateTreeBrowser(host, {request, chatUid, insertReference})
     const controls = el('div', 'state-tree-controls');
     const sources = el('select'); sources.setAttribute('aria-label', 'State history');
     const refresh = button('Refresh', () => open());
-    const dismiss = button('Close', close);
+    const dismiss = button('×', close); dismiss.className = 'field-panel-icon'; dismiss.title = 'Close'; dismiss.setAttribute('aria-label', 'Close');
     controls.append(sources, refresh, dismiss);
     const status = el('p', 'state-tree-status'); status.setAttribute('role', 'status');
     const body = el('div', 'state-tree-body');

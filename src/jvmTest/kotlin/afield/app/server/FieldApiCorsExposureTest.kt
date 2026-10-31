@@ -263,8 +263,8 @@ class FieldApiCorsExposureTest {
         // wholesale update of the map above.
         val unguarded = found.count { it.value == "none" }
         assertEquals(
-            48, unguarded,
-            "The complete census has 48 state-changing routes with no route-specific access control, out " +
+            56, unguarded,
+            "The complete census has 56 state-changing routes with no route-specific access control, out " +
                 "of ${found.size}. If this went down, say so in dev_docs/DOCS_IMPROVEMENT_AGENT.md — it is " +
                 "the headline number in that page. If it went up, you added an unauthenticated write.",
         )
@@ -549,6 +549,15 @@ class FieldApiCorsExposureTest {
             // The one route whose openness is a feature: the offline viewer POSTs here from
             // whatever origin its bundle was served from, which is why anyHost() stands.
             "POST /api/import-offline-doc" to "none",
+            // Welcome kit management uses Field's application-wide browser-origin guard and bind policy.
+            "POST /api/kits/activate" to "none",
+            "POST /api/kits/create" to "none",
+            "POST /api/kits/inspect" to "none",
+            "POST /api/kits/install" to "none",
+            "POST /api/kits/migrate" to "none",
+            "POST /api/kits/open-host" to "none",
+            "POST /api/kits/remove" to "none",
+            "POST /api/kits/restart" to "none",
             "POST /api/maven-dependencies" to "none",
             "POST /api/maven-repositories" to "none",
             "POST /api/maven-resolve" to "none",

@@ -1,13 +1,9 @@
 # Neighbours and graphs on a point cloud
 
-*Every public declaration used below is listed, with its KDoc, in the codebase reference: [`graph_connectivity.kt`](reference/graphics.md#graph-connectivity-kt), [`smile_neighbors.kt`](reference/data.md#smile-neighbors-kt). Start from [what's already in the box](reference/index.md).*
-
-A point cloud gives you a different answer depending on what you ask it. Which
-points are *near* a query is a question about the coordinates and nothing else.
-Which points are *connected* depends on the edges you decide to draw between
-them, and there is more than one defensible answer. How you *route* from one
-point to another is then a question about the graph those edges make. This page
-works up through them in that order, with a drawing at each step.
+Start with a cloud of points. Which ones are close to you? Join each point to a few neighbours and
+another question appears: can you get from one side of the cloud to the other? Change how you
+draw the edges and the answer can change too. We'll draw the searches, connections and routes as
+we go.
 
 ## Query neighborhood with exact and approximate search
 
@@ -214,7 +210,7 @@ over.
 
 ## Orthant neighborhoods: one edge per direction
 
-A k-nearest-neighbor graph asks only *how close*, so on a clustered cloud every
+A k-nearest-neighbor graph asks only *how close*. On this clustered cloud, every
 edge stays inside its cluster and the graph falls apart into islands.
 `vec2OrthantGraph(...)` also asks *which way*. It splits the plane around each
 point into four quadrants along the coordinate axes and joins the point to its
@@ -421,11 +417,12 @@ a diameter decomposition instead. So the coloured paths together account for
 every edge of the base graph, but not all of them start at the anchor — the
 later ones are the leftovers, so a long path far from the anchor is not
 necessarily something the anchor reached. The A* overlay is a
-single route by cost, drawn on top, and it is free to leave the cover's edges
-wherever a cheaper one exists.
+single route by cost, drawn on top of the cover.
 
 Everything on this page assumes the points sit still. When the cloud moves every
 frame and its edges have to be proposed, strengthened and forgotten as it goes,
 see [graphs that change while you watch](dynamic_graph_systems_examples.md). Its
 snapshots turn back into the `PointGraph` used here, keeping only the edges that
 have lasted.
+
+*The public declarations used on this page are listed, with their KDoc, in the codebase reference: [`graph_connectivity.kt`](reference/graphics.md#graph-connectivity-kt), [`smile_neighbors.kt`](reference/data.md#smile-neighbors-kt). Start from [what's already in the box](reference/index.md).*

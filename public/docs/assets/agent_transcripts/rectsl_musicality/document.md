@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. window + renderer
@@ -52,7 +52,7 @@ Nothing below is written in seconds. Edit `rectsl` and re-run to change the
 groove live. See rectsl_cheatsheet.md ("Musicality") / rectsl_examples.md.
 
 ```edn [field-box id="music_groove" role="properties"]
-{"id" "music_groove" "index" 1 "name" "rectsl musicality" "parents" ["root" "music_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "music_renderer"} "name" "rectsl musicality" "_tombstone" false "frame" #afield/rect [300.0 140.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "music_groove_code_.kt" "lines" 112 "characters" 3279 "sha256" "13adbd0a1c2a8bb5c4321341894c267e95abef9acf791d34528f62816e0258a9"}]}
+{"id" "music_groove" "index" 1 "name" "rectsl musicality" "parents" ["root" "music_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "music_renderer"} "name" "rectsl musicality" "_tombstone" false "frame" #afield/rect [300.0 140.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "music_groove_code_.kt" "lines" 113 "characters" 3261 "sha256" "5c240e6823df23e02499578634ecacc627066e67eddadd4a7a59f54320946155"}]}
 ```
 
 ```kotlin [field-property box="music_groove" name="code" path="music_groove_code_.kt"]
@@ -72,6 +72,7 @@ groove live. See rectsl_cheatsheet.md ("Musicality") / rectsl_examples.md.
 import afield.lang.rectsl.RECT_ANIMATION_VERTEX_SHADER
 import afield.lang.rectsl.RectAnimationOracle
 import afield.lang.rectsl.rectMaterialShaderCode
+import afield.lang.rectsl.worldToClip
 import afield.lang.rectsl.writeFrameToMesh
 
 val rectsl =
@@ -156,7 +157,7 @@ renderer += "rectsl-musicality" to module
 
 val ww = program.wall.width.toFloat()
 val wh = program.wall.height.toFloat()
-m.push["worldToClip"] = afield.math.linalg.Matrix4f().ortho(-ww / 2f, ww / 2f, -wh / 2f, wh / 2f, -1f, 1f)
+m.push["worldToClip"] = program.wall.worldToClip()
 m.push["wallWidth"] = ww
 m.push["wallHeight"] = wh
 

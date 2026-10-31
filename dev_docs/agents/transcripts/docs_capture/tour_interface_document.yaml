@@ -1,0 +1,51 @@
+name: tour_interface_document
+description: >
+  The tour_interface document with sketch run and carrying box notes, for the document-guide and
+  publish figures on `public/docs/tour_interface.md`. A small document for the figures on `public/docs/tour_interface.md`: a box, sketch, with a few
+  lines of code to show in the editor and to search for, and a second box, notes, whose code
+  draws an arrow from sketch to itself on the drawing layer. The boxes sit below the band where
+  the drawing layer shows its toolbar and hint, so neither covers them.
+  Capture-only, so it lives under transcripts/docs_capture/.
+operations:
+  - create:
+      box: tour_sketch
+      name: sketch
+      frame: { x: 60.0, y: 150.0, w: 160.0, h: 60.0 }
+      properties:
+        code: |
+          // A ring of points.
+          val radius = 64.0
+          val count = 12
+          println("radius $radius, $count points")
+          val dots = (0 until count).joinToString("") {
+              val a = it * 2 * Math.PI / count
+              "<circle cx='${80 + radius * Math.cos(a)}' cy='${80 + radius * Math.sin(a)}' r='5' fill='#4dabf7'/>"
+          }
+          display("ring", "<svg width='160' height='160'>$dots</svg>")
+        notes: |
+          # Ring sketch
+
+          A ring of `count` points at `radius` around the origin.
+
+          - Try `count = 24` for a denser ring.
+          - The `notes` box draws an arrow back to this one.
+  - create:
+      box: tour_notes
+      name: notes
+      frame: { x: 420.0, y: 150.0, w: 160.0, h: 60.0 }
+      properties:
+        code: |
+          // Ring sketch notes: an arrow on the drawing layer from sketch to this box.
+          val sketch = thisBox.named("sketch")
+          notation {
+              stroke = "#1971c2"
+              arrow(from = sketch, to = thisBox, label = "notes on")
+          }
+  - execute:
+      box: tour_sketch
+      property: code
+  - execute:
+      box: tour_notes
+      property: code
+  - wait:
+      millis: 800

@@ -2,9 +2,8 @@ import afield.simulation.petri.*
 
 // Two independent rings, one five long and one three long, sharing a clock. Nothing in
 // this source says "fifteen" — that is a property of the net, and the net can tell you.
-val net =
-    petri(
-        """
+val net = petri(
+    """
     #petri
     !grid 1/15
 
@@ -20,7 +19,7 @@ val net =
     b1 -[ b1.go      ]-> b2
     b2 -[ b2.go : hh ]-> b0
 """,
-    )
+)
 
 showPetriNet(net, w = 700.0, h = 340.0)
 

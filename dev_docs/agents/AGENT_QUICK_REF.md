@@ -85,6 +85,7 @@ screenshot-box <box> <path> [--padding 16]
 screenshot-editor <box> <path> [--padding 10]     # inline Monaco visualizers
 native-screenshot <path> [--wait-frames 4]        # native Field 4 Vulkan window
 wait-native-renderer [<box>] [--frames 3]         # before any native-screenshot
+page-eval [<script>] [--body] [--file <probe.js>]  # page JS; needs `return`; async via return (async()=>{...})()
 record-window <path> [--uid <box>] [--duration 5] [--fps 30]
 record-box <box> <path> [--duration 5] [--fps 30]
 record-editor <box> <path> [--duration 5] [--fps 30]

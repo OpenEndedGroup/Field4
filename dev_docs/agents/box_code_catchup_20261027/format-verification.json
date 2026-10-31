@@ -1,0 +1,15 @@
+{
+  "spans": 424,
+  "uniqueBodies": 389,
+  "formattedBodies": 20,
+  "changedPaths": [
+    "dev_docs/agents/transcripts/a_pen_that_sees.yaml",
+    "dev_docs/agents/transcripts/teaching_a_pen.yaml",
+    "dev_docs/agents/transcripts/temporal_memory.yaml",
+    "public/docs/a_pen_that_sees.md",
+    "public/docs/teaching_a_pen.md"
+  ],
+  "skips": [],
+  "tokenLiteralsFoldsAndFragmentMarkersVerified": true,
+  "formatter": "Actual Field editor imports, ktfmt and GLSL formatting"
+}

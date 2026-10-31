@@ -7,6 +7,24 @@ import org.lwjgl.vulkan.*
 import org.lwjgl.vulkan.VK13.*
 import java.io.File
 
+/**
+ * The preflight check for local streaming diffusion: whether this machine can run it, and a
+ * sentence saying what is missing when it cannot.
+ *
+ * `probe` reports the first absent piece, looking at the platform, the renderer, the selected
+ * Vulkan device's external memory and semaphore FD support, an NVIDIA device that can export
+ * buffers and timeline semaphores, the backend root and its Python environment, the Field worker
+ * script, the model files a `diffusion` backend needs, and the native handle-passing helper. It
+ * allocates nothing on the GPU, starts no Python and reads no weights, so box code can call it and
+ * show the reason instead of a view. [StreamDiffusionView] and [StreamDiffusionSession] each check
+ * it as they are constructed and fail with the same sentence; CUDA, the Python packages, the
+ * weights and TensorRT are checked later, when the worker starts.
+ *
+ * `configuredRoot` is where the installation path comes from: `FIELD_STREAMDIFFUSION_ROOT`, or the
+ * one line in `~/.afield/streamdiffusion-root.txt`, which is read on every call so a Field that is
+ * already running finds a backend installed after it started.
+ */
+
 /** Availability without creating GPU allocations, starting Python, or loading model weights. */
 data class StreamDiffusionSupport(val available: Boolean, val reason: String) {
     companion object {

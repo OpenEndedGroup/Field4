@@ -1,0 +1,26 @@
+[field] ok  RepoReadFileRequest {"endLine":200,"path":"AGENTS.md","startLine":1}
+[field] ok  RepoSearchRequest {"glob":"**/*","ignoreCase":false,"maxMatches":70,"query":"checkKDocAttachment","regex":false}
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-status","timeoutSec":10}
+[field] ERR RepoRunCommandRequest {"args":["61c617906850dbe73ff5c63fbdbba927baa28e4a","--","src/"],"command":"git-diff","timeoutSec":10}
+[field] ok  RepoRunCommandRequest {"args":["61c617906850dbe73ff5c63fbdbba927baa28e4a","--","src"],"command":"git-diff","timeoutSec":10}
+[field] ok  RepoReadFileRequest {"endLine":260,"path":"src/jvmMain/kotlin/afield/tools/docs/KDocAttachmentGuard.kt","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":140,"path":"dev_docs/kdoc_reference_contract.md","startLine":1}
+[field] ok  RepoListFilesRequest {"glob":"tools/*kdoc*"}
+[field] ok  RepoRunCommandRequest {"args":["685a90e2f^","685a90e2f","--","src/jvmMain/kotlin/afield/app/diagnostics","src/jvmMain/kotlin/afield/graphics/paint/Klecks.kt"],"command":"git-diff","t
+[field] ok  RepoReadFileRequest {"endLine":501,"path":"src/jvmMain/kotlin/afield/tools/docs/KDocAttachmentGuard.kt","startLine":260}
+[field] ok  RepoSearchRequest {"glob":"tools/*.py","ignoreCase":true,"maxMatches":40,"query":"kdoc","regex":false}
+[field] ok  RepoRunCommandRequest {"args":["61c617906850dbe73ff5c63fbdbba927baa28e4a","--","src/jvmMain/kotlin/afield/app/diagnostics/CoroutineProfiling.kt","src/jvmMain/kotlin/afield/app/diagno
+[field] ok  RepoRunCommandRequest {"args":["-n","4"],"command":"git-log","timeoutSec":10}
+[field] ok  RepoSearchRequest {"glob":"tools/check_*.py","ignoreCase":true,"maxMatches":30,"query":"attachment|parseDeclaration|mis-attached","regex":true}
+[field] ok  RepoReadFileRequest {"endLine":110,"path":"tools/test_check_staged_generated_artifacts.py","startLine":1}
+[field] ok  RepoSearchRequest {"glob":"src/jvmMain/kotlin/afield/tools/docs/index/KDocExtractor.kt","ignoreCase":false,"maxMatches":20,"query":"parseDeclaration|startsWith\\(\"@\"\\)","regex
+[field] ok  RepoReadFileRequest {"endLine":300,"path":"src/jvmMain/kotlin/afield/app/diagnostics/CoroutineProfiling.kt","startLine":264}
+[field] ok  RepoReadFileRequest {"endLine":552,"path":"AGENTS.md","startLine":470}
+[field] ERR RepoRunCommandRequest {"args":["tools/test_check_staged_generated_artifacts.py","GeneratedArtifactSelectionTests.test_stdlib_change_selects_reference_and_kdoc_guards"],"command":"pyt
+[field] ok  RepoReadFileRequest {"endLine":650,"path":"tools/check_staged_generated_artifacts.py","startLine":460}
+[field] ok  RepoPatchFileRequest {"newText":"    @Synchronized\n    fun markLane(lane: Int, state: String) {","oldText":"    @Synchronized fun markLane(lane: Int, state: String) {","path":"src/
+[field] ok  RepoReadFileRequest {"endLine":205,"path":"src/jvmMain/kotlin/afield/tools/docs/index/KDocExtractor.kt","startLine":100}
+[field] ok  RepoReadFileRequest {"endLine":281,"path":"src/jvmMain/kotlin/afield/app/diagnostics/CoroutineProfiling.kt","startLine":270}
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-diff","timeoutSec":10}
+[field] ERR RepoRunCommandRequest {"args":["tools/test_check_staged_generated_artifacts.py","GeneratedArtifactSelectionTests.test_stdlib_change_selects_reference_and_kdoc_guards"],"command":"pyt
+[field] model=openai/gpt-6.1-sol rounds=10/40 wall=66s tokens in=503347 out=1834 cacheRead=447930 wrote=['src/jvmMain/kotlin/afield/app/diagnostics/CoroutineProfiling.kt'] ran=['git-status  -> 0', 'git-diff 61c617906850dbe73ff5c63fbdbba927baa28e4a -- src -> 0', 'git-diff 685a90e2f^ 685a90e2f -- src/jvmMain/kotlin/afield/app/diagnostics src/jvmMain/kotlin/afield/graphics/paint/Klecks.kt -> 0', 'git-diff 61c617906850dbe73ff5c63fbdbba927baa28e4a -- src/jvmMain/kotlin/afield/app/diagnostics/CoroutineProfiling.kt src/jvmMain/kotlin/afield/app/diagnostics/FrameProfile.kt src/jvmMain/kotlin/afield/graphics/paint/Klecks.kt -> 0', 'git-log -n 4 -> 0', 'python-test tools/test_check_staged_generated_artifacts.py GeneratedArtifactSelectionTests.test_stdlib_change_selects_reference_and_kdoc_guards -> 1', 'git-diff  -> 0', 'python-test tools/test_check_staged_generated_artifacts.py GeneratedArtifactSelectionTests.test_stdlib_change_selects_reference_and_kdoc_guards -> 1'] verdict=unchecked error=-

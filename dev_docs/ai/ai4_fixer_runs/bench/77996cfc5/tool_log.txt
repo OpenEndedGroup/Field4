@@ -1,0 +1,22 @@
+[field] ok  RepoReadFileRequest {"endLine":200,"path":"AGENTS.md","startLine":1}
+[field] ok  RepoSearchRequest {"glob":"**","ignoreCase":true,"maxMatches":50,"query":"checkKDocAttachment","regex":false}
+[field] ok  RepoListFilesRequest {"glob":"tools/*kdoc*"}
+[field] ok  RepoReadFileRequest {"endLine":552,"path":"AGENTS.md","startLine":400}
+[field] ok  RepoReadFileRequest {"endLine":300,"path":"src/jvmMain/kotlin/afield/tools/docs/KDocAttachmentGuard.kt","startLine":1}
+[field] ok  RepoRunCommandRequest {"args":["f903419088fba11d6a37a4248fee508976201018","--","src"],"command":"git-diff","timeoutSec":30}
+[field] ok  RepoReadFileRequest {"endLine":120,"path":"dev_docs/kdoc_reference_contract.md","startLine":1}
+[field] ok  RepoRunCommandRequest {"args":["f3248592c^","f3248592c","--","src/jvmMain/kotlin/afield/audio/synth/PatSynth.kt","src/jvmMain/kotlin/afield/geometry/mesh/mesh_topology.kt","src/jvmMa
+[field] ok  RepoListFilesRequest {"glob":"tools/check_*.py"}
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-status","timeoutSec":30}
+[field] ok  RepoRunCommandRequest {"args":["f903419088fba11d6a37a4248fee508976201018","--","src/jvmMain/kotlin/afield/audio/synth/PatSynth.kt","src/jvmMain/kotlin/afield/geometry/mesh/mesh_topol
+[field] ok  RepoSearchRequest {"glob":"tools/*.py","ignoreCase":true,"maxMatches":40,"query":"kdoc","regex":false}
+[field] ok  RepoReadFileRequest {"endLine":1338,"path":"src/jvmMain/kotlin/afield/document/workspace/dir.kt","startLine":1280}
+[field] ok  RepoSearchRequest {"glob":"**/KDocExtractor.kt","ignoreCase":false,"maxMatches":20,"query":"fun parseDeclaration","regex":false}
+[field] ok  RepoRunCommandRequest {"args":["-n","4"],"command":"git-log","timeoutSec":30}
+[field] ok  RepoRunCommandRequest {"args":["f903419088fba11d6a37a4248fee508976201018","--","src/jvmMain/kotlin/afield/examples/chain/PhotoToSolidChain.kt","src/jvmMain/kotlin/afield/geometry/mes
+[field] ok  RepoReadFileRequest {"endLine":270,"path":"src/jvmMain/kotlin/afield/tools/docs/index/KDocExtractor.kt","startLine":172}
+[field] ok  RepoPatchFileRequest {"newText":"    // Listed names for additionalDocuments that differ from their directory's, by canonical path.","oldText":"    /** Listed names for [additionalD
+[field] ok  RepoReadFileRequest {"endLine":1330,"path":"src/jvmMain/kotlin/afield/document/workspace/dir.kt","startLine":1316}
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-diff","timeoutSec":30}
+[field] ok  RepoReadFileRequest {"endLine":320,"path":"src/jvmMain/kotlin/afield/tools/docs/KDocAttachmentGuard.kt","startLine":296}
+[field] model=openai/gpt-6.1-sol rounds=10/40 wall=53s tokens in=548760 out=1722 cacheRead=486624 wrote=['src/jvmMain/kotlin/afield/document/workspace/dir.kt'] ran=['git-diff f903419088fba11d6a37a4248fee508976201018 -- src -> 0', 'git-diff f3248592c^ f3248592c -- src/jvmMain/kotlin/afield/audio/synth/PatSynth.kt src/jvmMain/kotlin/afield/geometry/mesh/mesh_topology.kt src/jvmMain/kotlin/afield/document/workspace/dir.kt src/jvmMain/kotlin/afield/graphics/scene/fabricated/PathTraceScene.kt -> 0', 'git-status  -> 0', 'git-diff f903419088fba11d6a37a4248fee508976201018 -- src/jvmMain/kotlin/afield/audio/synth/PatSynth.kt src/jvmMain/kotlin/afield/geometry/mesh/mesh_topology.kt src/jvmMain/kotlin/afield/document/workspace/dir.kt src/jvmMain/kotlin/afield/graphics/scene/fabricated/PathTraceScene.kt -> 0', 'git-log -n 4 -> 0', 'git-diff f903419088fba11d6a37a4248fee508976201018 -- src/jvmMain/kotlin/afield/examples/chain/PhotoToSolidChain.kt src/jvmMain/kotlin/afield/geometry/mesh/mesh_field.kt src/jvmMain/kotlin/afield/geometry/solid/manifold/ManifoldNative.kt src/jvmMain/kotlin/afield/geometry/solid/manifold/ManifoldSmokeTest.kt src/jvmMain/kotlin/afield/geometry/solid/manifold/Solid.kt src/jvmMain/kotlin/afield/graphics/text/typography_field.kt src/jvmMain/kotlin/afield/graphics/three/Three.kt src/jvmMain/kotlin/afield/lang/solidsl/SolidExact.kt src/jvmMain/kotlin/afield/lang/solidsl/SolidField.kt src/jvmMain/kotlin/afield/simulation/automata/alife_ca.kt -> 0', 'git-diff  -> 0'] verdict=unchecked error=-

@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-31T00:21:52.051Z",
+  "documentName": "arclength_spacing_demo",
+  "outputs": [
+    {
+      "uid": "arclength_ticks",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 918,
+      "height": 607,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "arclength_dashes",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 918,
+      "height": 607,
+      "path": "outputs/1.html"
+    }
+  ]
+}

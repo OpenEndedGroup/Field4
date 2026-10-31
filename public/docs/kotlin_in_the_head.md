@@ -5,10 +5,9 @@ box's Kotlin, compile it to JavaScript *in-process*, and ship it over a WebSocke
 else entirely, into a **head**: a browser tab showing a THREE.js/WebXR scene, an Apple Vision Pro
 running a native Metal shader, or a Tone.js computer-music engine. We call this "Kotlin in the head".
 
-You keep writing real Kotlin throughout: `data class`es, `operator fun`, the standard library,
-compile-time type errors on the right source line. That Kotlin then runs, unchanged in meaning,
-somewhere the JVM cannot reach. Operator overloading works as it does on the JVM, so vector and matrix
-math reads the way it should.
+You can use Kotlin's `data class`es, `operator fun` and standard library, with compile-time errors
+reported on the corresponding source line. Operator overloading works in the head too, so you can
+write vector and matrix math in the same style.
 
 If Kotlin itself is new to you, read the [Kotlin Syntax Overview](kotlin_overview.md) first. This
 page assumes you can read a `data class` and a lambda.
@@ -73,6 +72,34 @@ keepAlive() // ask the head to keep ticking frames
 
 `onStart`/`onFrame`/`onStop`/`keepAlive` are inert during a plain Execute; they come alive on
 **Launch**, and the head runs registered `onStop` callbacks exactly once on relaunch or Stop.
+
+## Printing, errors, display and controls
+
+The browser profiles (`remoteAR`, `tone`, and no marker) give a box the same output a Kotlin box on
+the JVM has. `println` and `console.log` print beside the line that called them. An exception
+puts the red marker on the line of your code it came from, and a run with no head connected is an
+error on the box. `display`, `slider` and `checkbox` draw into the box's output area, and their
+callbacks run in the head:
+
+```diffstatic_runner {data-lang=kotlin capture="box" screenshot="assets/kotlin_in_the_head/controls.png" macro-file="../../dev_docs/agents/transcripts/docs_capture/kith_controls.yaml" run-box="kith_controls_box" capture-box="kith_controls_box" open-outputs="true" wait="3" timeout="240" padding="18" embed=true name="kith-controls" alt="A Kotlin box compiled to Javascript: the main channel reads sine at the slider's frequency, and the controls channel holds a FREQUENCY slider and a SQUARE WAVE checkbox."}
+// {{ remoteAR }}
+var freq = 3.0
+
+fun redraw() = display("main", "<b>sine</b> at $freq Hz")
+
+slider("frequency", min = 1.0, max = 10.0, step = 0.1, initialValue = 3.0) {
+    freq = it
+    redraw()
+}
+checkbox("square wave") { println("square: $it") }
+setTimeout({ println("half a second later") }, 500)
+redraw()
+```
+
+`setTimeout` is the browser's timer; what it prints still reaches the box. An exception thrown
+inside an inline standard-library function such as `reduce` is marked on the line that called the
+function it was inlined into. The [Javascript page](remotejs.md) shows the same sketch for a
+Javascript box.
 
 ## A vector type with operators
 

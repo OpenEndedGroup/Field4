@@ -30,7 +30,7 @@ internal fun featureOptions(
     if (platform !in extra.platforms || extra.id == "syphon") return@mapIndexedNotNull null
     val tools = extraTools(setOf(extra.id), platform).sorted().toMutableList()
     if (extra.id == "paint") tools += "rustup"
-    val gpu = extra.id in setOf("dlss", "opendlssnr", "diffusion")
+    val gpu = extra.id in setOf("dlss", "opendlssnr", "diffusion", "ardy", "closd")
     if (gpu && !nvidia) return@mapIndexedNotNull null
     val missing = tools.filter { if (it == "rustup") !rustup else !available(it) }.toMutableList()
     if (extra.id == "paint" && rustErrors.isNotEmpty()) {

@@ -17,13 +17,15 @@ import org.lwjgl.system.MemoryUtil
  * and lay the structs out by hand. Definitions transcribed from Monado's
  * `src/external/openxr_includes/openxr/XR_MNDX_xdev_space.h` (spec version 3, extension 445).
  *
- * We need it because it is the only route to WiVRn's body trackers — see
- * [OpenXRHmdTarget.initBodyTracking] for why `XR_FB_body_tracking` is a dead end there.
+ * It is the only route to WiVRn's body trackers. The obvious one, `XR_FB_body_tracking`, is a dead
+ * end there; [OpenXRHmdTarget]'s body-tracking setup says why, and cites the WiVRn source.
  *
- * The extension enumerates every "xdev" (tracked device) the runtime knows about — HMD,
- * controllers, body trackers — and hands back an `XrSpace` per device, which we then locate with
- * the ordinary [XR10.xrLocateSpace].
+ * The extension enumerates every "xdev" (tracked device) the runtime knows about (HMD, controllers,
+ * body trackers) and hands back an `XrSpace` per device, which the caller then locates with the
+ * ordinary `xrLocateSpace`.
  */
+
+/** The extension's entry points, resolved per instance by `load`, which is null unless all are there. */
 internal class MndxXDevSpace private constructor(
     private val pCreateXDevList: Long,
     private val pGetGenerationNumber: Long,

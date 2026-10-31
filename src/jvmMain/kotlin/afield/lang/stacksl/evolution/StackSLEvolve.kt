@@ -240,6 +240,7 @@ class StackSLWord(val token: String, val kind: StackSLWordKind) {
         StackSLWordKind.TERNARY -> 3
     }
 
+    /** The word's [token], so a palette prints as its vocabulary. */
     override fun toString(): String = token
 }
 
@@ -259,6 +260,7 @@ class StackSLProgram(val tokens: List<String>) {
     /** How many tokens; the parsimony axis and one of the MAP-Elites axes. */
     val size: Int get() = tokens.size
 
+    /** The program as [text], which is also what the search memoises on. */
     override fun toString(): String = text
 
     companion object {
@@ -285,6 +287,7 @@ class StackSLProgram(val tokens: List<String>) {
  * modulation vocabulary actually lives.
  */
 class StackSLPalette(
+    /** The words a draw may choose from, each with the arity it is modelled at. One of every kind is required. */
     val words: List<StackSLWord>,
     /** Literal values the `number` draw picks from before jitter widens them. */
     val numbers: List<Double> = DEFAULT_NUMBERS,
@@ -430,14 +433,16 @@ class StackSLPalette(
  * three decimals, a `delete` on a token past [maxTokens] that was going to be clipped anyway — all
  * of those are neutral, all of them are common, and the core charges no budget for a cache hit
  * because the evaluator was not called. At 30 ms a render that is not a micro-optimisation.
- *
- * @param minTokens shortest program the generator or `delete` will produce
- * @param maxTokens longest; every operator clamps to it, so bloat has a hard ceiling rather than a
- *   parsimony penalty that would have to be weighed against image error in units nobody has
  */
 class StackSLGenome(
+    /** The words and literals every draw and substitution comes from. */
     val palette: StackSLPalette = StackSLPalette.DEFAULT,
+    /** Shortest program the generator or `delete` will produce. */
     val minTokens: Int = 3,
+    /**
+     * Longest; every operator clamps to it, so bloat has a hard ceiling rather than a parsimony
+     * penalty that would have to be weighed against image error in units nobody has.
+     */
     val maxTokens: Int = 24,
     /** Longest program [random] draws; [maxTokens] still bounds what mutation may grow to. */
     val maxRandomTokens: Int = maxTokens
@@ -470,6 +475,12 @@ class StackSLGenome(
         return canonical(out)
     }
 
+    /**
+     * The six positional operators, by the names a run reports against each improvement: `point`
+     * substitutes one token, `insert` and `delete` change the length, `duplicate` copies a slice,
+     * `jitter` moves a numeric literal, and `swap` exchanges two positions. Each clamps to
+     * [minTokens]`..`[maxTokens], so none of them can produce a program the search would refuse.
+     */
     override val mutations: List<Variation<StackSLProgram>> = listOf(
         Variation("point") { g, rng ->
             if (g.size == 0) g else {
@@ -592,22 +603,28 @@ class StackSLGenome(
  *
  * Reported rather than merely thresholded, because "this render was rejected as blank" is only
  * believable next to the numbers that rejected it.
- *
- * @property spread the largest per-channel standard deviation over the image, in `0..1` units. A
- *   flat fill is exactly 0; the StackSL gallery's stills sit between 0.08 and 0.35.
- * @property distinctColours how many distinct 8-bit RGB triples appear, capped at
- *   [DISTINCT_CAP] so a busy image does not pay for counting them all.
- * @property spatialFrequency mean absolute luma gradient, scaled into `0..1`. Independent of
- *   [spread] in the way that matters: a smooth left-to-right ramp has a large spread and a tiny
- *   spatial frequency, and a checkerboard has both.
  */
 class RasterStructure(
+    /**
+     * The largest per-channel standard deviation over the image, in `0..1` units. A flat fill is
+     * exactly 0; the StackSL gallery's stills sit between 0.08 and 0.35.
+     */
     val spread: Double,
+    /**
+     * How many distinct 8-bit RGB triples appear, capped at [DISTINCT_CAP] so a busy image does not
+     * pay for counting them all.
+     */
     val distinctColours: Int,
+    /**
+     * Mean absolute luma gradient, scaled into `0..1`. Independent of [spread] in the way that
+     * matters: a smooth left-to-right ramp has a large spread and a tiny spatial frequency, and a
+     * checkerboard has both.
+     */
     val spatialFrequency: Double,
     /** Mean per-pixel `max(rgb) - min(rgb)` — how far the image is from grey. */
     val colourfulness: Double
 ) {
+    /** All four numbers on one line, which is how a refusal reports what it measured. */
     override fun toString(): String =
         "spread %.4f, %d colours, freq %.4f, colour %.4f".format(spread, distinctColours, spatialFrequency, colourfulness)
 
@@ -812,6 +829,7 @@ class StackSLTarget(val name: String, val raster: CpuRaster) {
         return CpuRaster(raster.width, raster.height, data)
     }
 
+    /** The target's name, the raster's size and its [RasterStructure]. */
     override fun toString(): String = "$name (${raster.width}x${raster.height}, $structure)"
 
     companion object {
@@ -965,18 +983,25 @@ enum class StackSLMetric {
 
 /**
  * One render's scores under both metrics, so one render can serve several objectives.
- *
- * @property valid `false` for a render the blank guard refused or a program that threw; every
- *   score is then [StackSLImageObjective.INVALID_SCORE].
- * @property lpipsCases one LPIPS case per region, or empty when the objective was not asked for
- *   them ([StackSLImageObjective.lpipsRegions])
  */
 class StackSLScores(
+    /**
+     * `false` for a render the blank guard refused or a program that threw; every score is then
+     * [StackSLImageObjective.INVALID_SCORE].
+     */
     val valid: Boolean,
+    /** The whole-picture pixel-error score, higher better. */
     val pixelFitness: Double,
+    /** One pixel-error case per cell of the objective's grid, for lexicase selection. */
     val pixelCases: DoubleArray,
+    /** The whole-picture LPIPS score, higher better. */
     val lpipsFitness: Double,
+    /**
+     * One LPIPS case per region, or empty when the objective was not asked for them
+     * ([StackSLImageObjective.lpipsRegions]).
+     */
     val lpipsCases: DoubleArray,
+    /** The behavioural descriptor, which MAP-Elites bins on and novelty search measures against. */
     val behaviour: DoubleArray
 ) {
     /** The scalar fitness under [metric]. */
@@ -1083,8 +1108,11 @@ class StackSLScoreCache {
  * and lets [invalidRate] count it.)
  */
 class StackSLImageObjective(
+    /** The picture to get close to. A target that is itself blank is refused in `init`. */
     val target: StackSLTarget,
+    /** The square side each candidate is rendered at; the target's own width by default. */
     val dim: Int = target.raster.width,
+    /** The `time` value every still is rendered at, so an animated program is judged on one frame. */
     val time: Float = 1.75f,
     /** The [StackSLMetric.PIXEL] lexicase cases: one per cell of this grid. */
     val caseGrid: Int = 4,
@@ -1196,6 +1224,11 @@ class StackSLImageObjective(
     /** Fraction of candidates that were not pictures. Reported, never hidden. */
     val invalidRate: Double get() = if (considered == 0) 0.0 else invalid.toDouble() / considered
 
+    /**
+     * Render [genome] once, score it under both metrics and return the one [metric] asks for. A
+     * render that throws, or that the blank guard refuses, scores [INVALID_SCORE] on every case
+     * rather than propagating, and is counted in [invalid]. A [cache] hit skips the render.
+     */
     override fun evaluate(genome: StackSLProgram): Evaluation {
         considered++
         val s = cache?.get(genome.text) ?: run {
@@ -1469,15 +1502,20 @@ const val DEFAULT_FITNESS_DIM: Int = 32
  * [StackSLGenome] at the same budget with the same seed, which is the only thing that turns
  * "evolution found this" from a sentence into a claim: a generator good enough to stumble onto a
  * decent shader occasionally looks exactly like a successful search.
- *
- * @property danglingValues values the best program pushed and never consumed, off the compiler's
- *   own `StackSLAnalysis`. The arity model's error bar, in the only units it has.
  */
 class StackSLEvolveRun(
+    /** The picture both arms were aimed at. */
     val target: StackSLTarget,
+    /** The search arm. */
     val evolved: SearchRun<StackSLProgram>,
+    /** The control arm: the same genome and budget, drawn at random rather than selected. */
     val control: SearchRun<StackSLProgram>,
+    /** The evolved arm's [StackSLImageObjective.invalidRate]: candidates that were not pictures. */
     val invalidRate: Double,
+    /**
+     * Values the best program pushed and never consumed, off the compiler's own `StackSLAnalysis`.
+     * The arity model's error bar, in the only units it has.
+     */
     val danglingValues: Int,
     /** The objective the evolved arm ran against — kept so [skill] and re-rendering are available. */
     val objective: StackSLImageObjective
@@ -1541,6 +1579,10 @@ class StackSLEvolveRun(
     /** [program]'s skill under this run's own objective, the units [evolvedSkill] is in. */
     fun skillOf(program: StackSLProgram): Double = objective.skill(objective.evaluate(program).fitness)
 
+    /**
+     * One aligned line comparing the two arms: both fitnesses and skills, the margin between them,
+     * the layout check, the invalid rate, the dangling values and the time.
+     */
     fun summary(): String = buildString {
         append("%-10s evolved %.4f (skill %+.3f)  random %.4f (skill %+.3f)".format(
             target.name, evolved.bestFitness, evolvedSkill, control.bestFitness, controlSkill
@@ -1553,6 +1595,7 @@ class StackSLEvolveRun(
         append("  %.1fs".format((evolved.millis + control.millis) / 1000.0))
     }
 
+    /** The run's [summary] line. */
     override fun toString(): String = summary()
 }
 

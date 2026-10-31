@@ -15,7 +15,7 @@ import time
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 try:
     from .field_python_env import ensure_repo_python
@@ -50,6 +50,13 @@ LOCAL_SITE_CAPTURE = re.compile(r"<!--\s*docs-capture-needs-local-site:\s*([a-zA
 ZENSICAL_STALL_ENV = "FIELD_DOCS_ZENSICAL_STALL_SEC"
 ZENSICAL_STALL_SECONDS = 120.0
 STALL_CPU_SECONDS = 1.0
+# A wedge with no file changing under zensical is the machine, not the tree: on 2026-10-24 three lander
+# builds in a row sat at "Build started" at 0% CPU in the eleven minutes after the Mac woke from
+# hibernate on a flat battery, with nothing written under the watched dirs, and the same build passed
+# by hand minutes later and in the lander from then on. Such a wedge is tried again this many times,
+# after ZENSICAL_STALL_RETRY_PAUSE seconds. A wedge with files changing is a writer and fails at once.
+ZENSICAL_STALL_RETRIES = 1
+ZENSICAL_STALL_RETRY_PAUSE = 30.0
 
 # A site missing more than this share of its pages is refused rather than installed.
 MAX_MISSING_PAGE_FRACTION = 0.01
@@ -495,6 +502,50 @@ NATIVE_PREREQUISITES: dict[str, tuple[Any, str]] = {
 REQUIRES_ATTR_RE = re.compile(r'(?m)^```\w*_?runner\b[^\n]*?\brequires="([^"]*)"')
 
 
+# The task a remedy ends in: `./gradlew buildPaintNative`, or `brew install ..., then ./gradlew buildPolyvectorNative`.
+GRADLE_PREREQUISITE_RE = re.compile(r"(?:^|, then )\./gradlew (\w+)$")
+
+
+def refresh_native_prerequisites(repo_root: Path, needed: dict[str, list[str]]) -> None:
+    """Run the Gradle task behind each needed native artifact, so a stale one is rebuilt.
+
+    The existence check below cannot see staleness: a `libfield_paint_jvm.dylib` built before
+    `field_paint_stroke_noise` existed passes it, and the capture that first calls the new entry
+    point fails with an UnsatisfiedLinkError an hour into the build. The tasks declare their
+    sources as inputs, so a current artifact costs Gradle's up-to-date check and nothing more.
+    A failure here (no cargo, no network) is left to the existence check, which already decides
+    whether a missing artifact is a warning or an error in this mode.
+    `FIELD_DOCS_REFRESH_NATIVES=0` skips it.
+    """
+    if os.environ.get("FIELD_DOCS_REFRESH_NATIVES", "1").strip() == "0":
+        return
+    gradlew = repo_root / "gradlew"
+    if not gradlew.is_file():
+        return
+    tasks = sorted({
+        match.group(1)
+        for key in needed
+        if key in NATIVE_PREREQUISITES
+        and (match := GRADLE_PREREQUISITE_RE.search(NATIVE_PREREQUISITES[key][1]))
+    })
+    if not tasks:
+        return
+    started = time.monotonic()
+    from verification_runtime import pinned_graalvm_args  # noqa: PLC0415
+    result = subprocess.run(
+        [str(gradlew), *pinned_graalvm_args(repo_root), "--no-daemon", "-q", "--continue", *tasks],
+        cwd=repo_root,
+        check=False,
+    )
+    if result.returncode != 0:
+        print(
+            f"Refreshing native prerequisites ({', '.join(tasks)}) failed; checking what exists.",
+            file=sys.stderr,
+        )
+        return
+    print(f"Native prerequisites current ({', '.join(tasks)}) in {time.monotonic() - started:.1f}s")
+
+
 def check_native_prerequisites(
     *,
     public_dir: Path,
@@ -537,6 +588,8 @@ def check_native_prerequisites(
                 needed.setdefault(key, [])
                 if relative.as_posix() not in needed[key]:
                     needed[key].append(relative.as_posix())
+
+    refresh_native_prerequisites(repo_root, needed)
 
     missing: list[str] = []
     python = resolve_jep_python() if any(key.startswith("python:") for key in needed) else None
@@ -633,8 +686,35 @@ class GeneratedFiles:
 # `--strict` CI build fails on.
 WORKSPACE_MARKDOWN_FILENAMES = frozenset({"README.md", "AGENTS.md", "document.md"})
 
+# A page's link to a markdown file under assets/, in markdown or HTML form.
+ASSET_MARKDOWN_LINK = re.compile(r"""(?:\]\(|href=["'])(?:\./)?(assets/[^)"'\s#]+\.md)""")
 
-def is_workspace_markdown(relative: Path) -> bool:
+
+def _inside_a_workspace(relative: Path, docs_root: Path) -> bool:
+    """True when some folder above [relative], inside assets/, holds a Field document."""
+    for depth in range(len(relative.parts) - 1, 1, -1):
+        if (docs_root / Path(*relative.parts[:depth]) / "metadata.edn").is_file():
+            return True
+    return False
+
+
+_LINKED_ASSET_MARKDOWN: dict[Path, frozenset[str]] = {}
+
+
+def linked_asset_markdown(docs_root: Path) -> frozenset[str]:
+    """The `assets/**.md` files a page outside assets/ links to; those stay pages."""
+    key = docs_root.resolve()
+    if key not in _LINKED_ASSET_MARKDOWN:
+        linked: set[str] = set()
+        for page in docs_root.rglob("*.md"):
+            if page.relative_to(docs_root).parts[:1] == ("assets",):
+                continue
+            linked.update(ASSET_MARKDOWN_LINK.findall(page.read_text(encoding="utf-8", errors="replace")))
+        _LINKED_ASSET_MARKDOWN[key] = frozenset(linked)
+    return _LINKED_ASSET_MARKDOWN[key]
+
+
+def is_workspace_markdown(relative: Path, docs_root: Path | None = None) -> bool:
     """True for a markdown file that belongs to a downloadable workspace, not to the site.
 
     Every `assets/<name>/` folder under the docs root is a *Field workspace* -- a document the
@@ -648,8 +728,20 @@ def is_workspace_markdown(relative: Path) -> bool:
     rendered, which keeps the raw file at its own URL (`assets/<name>/document.md`) for whoever
     wants to read the workspace on disk, and keeps the thing the gallery actually links --
     `metadata.edn`, opened in the offline viewer -- untouched.
+
+    Given [docs_root], every other markdown file inside a workspace is furniture too: the
+    `guides/*.md` redirects a starting point carries to the pages that teach it (titled with that
+    page's own heading, so each was a near-duplicate search hit for a real page), box `*_notes_.md`
+    sidecars, saved chats and lenses. A workspace is a folder under assets/ holding `metadata.edn`.
+    The exception is a file a page outside assets/ links to, such as `canonical_graphics/LESSONS.md`.
     """
-    return relative.name in WORKSPACE_MARKDOWN_FILENAMES and relative.parts[:1] == ("assets",)
+    if relative.parts[:1] != ("assets",):
+        return False
+    if relative.name in WORKSPACE_MARKDOWN_FILENAMES:
+        return True
+    if docs_root is None:
+        return False
+    return _inside_a_workspace(relative, docs_root) and relative.as_posix() not in linked_asset_markdown(docs_root)
 
 
 # The two ways a page names a local file: an HTML attribute, and a markdown link/image target.
@@ -680,7 +772,7 @@ def normalize_over_climbing_refs(*, markdown: str, page_path: Path, docs_dir: Pa
     helpfully writes the `../` itself gets a second one, and its refs leave the site. That is
     invisible while the site is served at `/`, because `..` clamps at the server root -- and it is a
     404 the moment the site is served under a path prefix, which is exactly how this one is
-    published (`site_url: http://openendedgroup.com/Field4/`). Measured before this existed:
+    published (`site_url: https://openendedgroup.com/field4/`). Measured before this existed:
     `rectsl_examples.md`'s 12 `<img src="../assets/rectsl/...">` rendered as `../../assets/...` and
     404'd under a simulated `/Field4/` prefix, while `rectsl_cheatsheet.md`'s three `<img
     src="assets/rectsl/...">` -- the same construct, written file-relative -- served 200.
@@ -863,7 +955,8 @@ def build_generated_config(
     return build_config
 
 
-def preprocess_docs(*, public_dir: Path, generated_docs: Path, page_filters: tuple[str, ...] = ()) -> None:
+def preprocess_docs(*, public_dir: Path, generated_docs: Path, page_filters: tuple[str, ...] = (),
+                    before_asset_copy: Callable[[], None] | None = None) -> None:
     _configure_logging()
     sys.path.insert(0, str(public_dir))
     import docs_hooks  # type: ignore[import-not-found]
@@ -884,7 +977,7 @@ def preprocess_docs(*, public_dir: Path, generated_docs: Path, page_filters: tup
     try:
         for path in sorted(source_docs.rglob("*.md")):
             relative = path.relative_to(source_docs)
-            if is_workspace_markdown(relative):
+            if is_workspace_markdown(relative, source_docs):
                 # Copied verbatim below rather than rendered; see is_workspace_markdown.
                 continue
             destination = generated_docs / relative
@@ -944,6 +1037,8 @@ def preprocess_docs(*, public_dir: Path, generated_docs: Path, page_filters: tup
     if page_filters:
         print(f"Processed {matched_pages}/{total_pages} docs page(s) with runner mode {runner_mode}; non-matching pages used runner mode never.")
 
+    if before_asset_copy is not None:
+        before_asset_copy()
     copy_non_markdown_files(source_docs, generated_docs)
 
 
@@ -958,7 +1053,7 @@ def copy_workspace_markdown(*, source_docs: Path, site_dir: Path) -> int:
     copied = 0
     for path in sorted(source_docs.rglob("*.md")):
         relative = path.relative_to(source_docs)
-        if not is_workspace_markdown(relative):
+        if not is_workspace_markdown(relative, source_docs):
             continue
         destination = site_dir / relative
         destination.parent.mkdir(parents=True, exist_ok=True)
@@ -1031,6 +1126,11 @@ def emit_offline_viewer(*, site_dir: Path) -> None:
     import sync_offline_assets  # type: ignore[import-not-found]
 
     sync_offline_assets.sync_target(site_dir, metadata=False, docs=False)
+    import docs_publications
+
+    (site_dir / "offline-publications.json").write_text(
+        json.dumps(docs_publications.registry(), indent=2) + "\n", encoding="utf-8"
+    )
 
 
 def remove_tree(path: Path, *, attempts: int = 5) -> bool:
@@ -1077,6 +1177,7 @@ class ZensicalRun:
     finished: bool = False  # Printed "Build finished in ...".
     interrupted: bool = False  # Printed "Received interrupt, exiting".
     stalled: str | None = None  # Why run_zensical stopped it.
+    changed: int = 0  # Files changed under the watched dirs while it ran, counted when it stalled.
 
     def failure(self) -> str | None:
         """Why this run is not a complete build, or None if it is."""
@@ -1136,6 +1237,20 @@ def files_changed_since(roots: list[Path], since: float, *, limit: int = 8) -> t
     return count, found
 
 
+def seconds_since_wake() -> float | None:
+    """Seconds since macOS last woke from sleep (`kern.waketime`), or None elsewhere or if unknown."""
+    if sys.platform != "darwin":
+        return None
+    try:
+        out = subprocess.run(["sysctl", "-n", "kern.waketime"], capture_output=True, text=True, timeout=5).stdout
+    except (OSError, subprocess.SubprocessError):
+        return None
+    match = re.search(r"sec = (\d+)", out)
+    if not match or int(match.group(1)) == 0:
+        return None
+    return max(0.0, time.time() - int(match.group(1)))
+
+
 def run_zensical(command: list[str], *, cwd: Path, watched: list[Path], stall_seconds: float) -> ZensicalRun:
     """Run zensical, echoing its output, and stop it if it wedges.
 
@@ -1189,7 +1304,10 @@ def run_zensical(command: list[str], *, cwd: Path, watched: list[Path], stall_se
             break
     if run.stalled:
         count, changed = files_changed_since(watched, started_wall)
+        run.changed = count
         print(f"\nzensical has stalled: {run.stalled}.")
+        if (woke := seconds_since_wake()) is not None:
+            print(f"The machine last woke from sleep {woke / 60:.0f} min ago.")
         if count:
             print(f"{count} file(s) changed under directories zensical watches since it started. A process "
                   "that keeps writing there holds zensical's build open; the first of them:")
@@ -1207,6 +1325,28 @@ def run_zensical(command: list[str], *, cwd: Path, watched: list[Path], stall_se
     return run
 
 
+def run_zensical_retrying_idle_wedges(
+    run: Callable[[], ZensicalRun],
+    *,
+    before_retry: Callable[[], bool],
+    retries: int = ZENSICAL_STALL_RETRIES,
+    pause: float = ZENSICAL_STALL_RETRY_PAUSE,
+) -> ZensicalRun | None:
+    """[run], and again up to [retries] times while it wedges with nothing changing under it (see
+    ZENSICAL_STALL_RETRIES). None if [before_retry] (clearing the staging dir) fails."""
+    result = run()
+    for attempt in range(retries):
+        if not (result.stalled and result.changed == 0):
+            break
+        print(f"Nothing changed under the watched dirs, so this wedge is the machine, not the tree; "
+              f"trying again in {pause:.0f} s (retry {attempt + 1} of {retries}).", flush=True)
+        time.sleep(pause)
+        if not before_retry():
+            return None
+        result = run()
+    return result
+
+
 def page_output(relative: Path) -> Path:
     """Where zensical (with `use_directory_urls`) writes the page built from [relative]."""
     if relative.stem in ("index", "README"):
@@ -1217,7 +1357,7 @@ def page_output(relative: Path) -> Path:
 def missing_pages(*, generated_docs: Path, site_dir: Path) -> tuple[int, list[Path]]:
     """How many pages the generated docs hold, and those of them with no built page in [site_dir]."""
     pages = [path.relative_to(generated_docs) for path in sorted(generated_docs.rglob("*.md"))]
-    pages = [page for page in pages if not is_workspace_markdown(page)]
+    pages = [page for page in pages if not is_workspace_markdown(page, generated_docs)]
     return len(pages), [page for page in pages if not (site_dir / page_output(page)).is_file()]
 
 
@@ -1356,7 +1496,16 @@ def run(args: argparse.Namespace) -> int:
             print("Source pages are missing. Failing because --strict.", file=sys.stderr)
             return 1
 
-    preprocess_docs(public_dir=public_dir, generated_docs=generated_docs, page_filters=tuple(args.page))
+    # Native captures may change during preprocessing. Publish after those captures finish and
+    # before the asset copy, so the site and its publications share this build's actual images.
+    import docs_publications
+    # `--page` recaptures only the named pages: publications are other pages' captures, so they are
+    # refreshed only where stale. `always --page x.md` used to recapture every publication too.
+    publication_mode = docs_hooks.resolve_runner_mode(os.environ.get(docs_hooks.RUNNER_MODE_ENV))
+    if args.page and publication_mode == 'always':
+        publication_mode = 'incremental'
+    preprocess_docs(public_dir=public_dir, generated_docs=generated_docs, page_filters=tuple(args.page),
+        before_asset_copy=lambda: docs_publications.sync_publications(mode=publication_mode))
     generated_config = build_generated_config(
         public_dir=public_dir,
         generated_root=generated_root,
@@ -1388,8 +1537,18 @@ def run(args: argparse.Namespace) -> int:
     if args.strict:
         command.append("--strict")
     stall_seconds = float(os.environ.get(ZENSICAL_STALL_ENV) or ZENSICAL_STALL_SECONDS)
-    zensical = run_zensical(command, cwd=public_dir, watched=[generated_docs, public_dir / "overrides"],
-                            stall_seconds=stall_seconds)
+    watched = [generated_docs, public_dir / "overrides"]
+
+    def clear_staging() -> bool:
+        return not staging.exists() or remove_tree(staging)
+
+    zensical = run_zensical_retrying_idle_wedges(
+        lambda: run_zensical(command, cwd=public_dir, watched=watched, stall_seconds=stall_seconds),
+        before_retry=clear_staging,
+    )
+    if zensical is None:
+        print(f"{FAILURE_PREFIX}could not clear the staging site dir {staging}", file=sys.stderr)
+        return 1
     sys.stdout.flush()
     failure = zensical.failure()
     if failure:

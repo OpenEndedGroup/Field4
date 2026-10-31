@@ -16,6 +16,10 @@ from __future__ import annotations
 import sys
 import unittest
 from pathlib import Path
+from tempfile import TemporaryDirectory
+from types import SimpleNamespace
+from unittest.mock import patch
+import build_zensical_docs as build_docs
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -27,6 +31,27 @@ from build_zensical_docs import (  # noqa: E402
 
 
 class WorkspaceMarkdownDetectionTests(unittest.TestCase):
+    def test_publications_see_new_native_captures_before_assets_are_copied(self):
+        with TemporaryDirectory() as temp:
+            public = Path(temp)/'public'
+            source = public/'docs'
+            source.mkdir(parents=True)
+            (source/'graphics.md').write_text('# Native scene')
+            image = source/'native.png'
+            image.write_bytes(b'old capture fixture')
+            def capture(**kwargs):
+                image.write_bytes(b'new capture fixture')
+                return kwargs['markdown']
+            def publish():
+                self.assertEqual(image.read_bytes(), b'new capture fixture')
+                (source/'publication.png').write_bytes(image.read_bytes())
+            hooks = SimpleNamespace(ensure_state=lambda _:SimpleNamespace(runner_mode='incremental'),
+                process_markdown=capture, on_post_build=lambda _:None)
+            with patch.dict(sys.modules, docs_hooks=hooks), patch.object(sys, 'path', sys.path.copy()), \
+                 patch.object(build_docs, 'normalize_over_climbing_refs', return_value=('# Native scene', [])):
+                build_docs.preprocess_docs(public_dir=public, generated_docs=public/'generated', before_asset_copy=publish)
+            self.assertEqual((public/'generated/publication.png').read_bytes(), b'new capture fixture')
+
     def test_markdown_inside_the_asset_tree_is_workspace_markdown(self):
         for relative in (
             "assets/agent_transcripts/alife_worked_example/README.md",
@@ -60,6 +85,47 @@ class WorkspaceMarkdownDetectionTests(unittest.TestCase):
         ):
             with self.subTest(relative=relative):
                 self.assertFalse(is_workspace_markdown(Path(relative)))
+
+
+class WorkspaceFurnitureTests(unittest.TestCase):
+    """Everything else Field writes into a workspace is furniture as well, given the docs root.
+
+    The bug this guards: a starting point's `guides/keyframer_examples.md` redirect, titled with the
+    keyframer page's own heading, was built as a page and indexed, so a search for the keyframer
+    found 1 real page and a crowd of redirects; box `*_notes_.md` sidecars did the same.
+    """
+
+    def setUp(self):
+        self._tmp = TemporaryDirectory()
+        self.docs = Path(self._tmp.name)
+        workspace = self.docs / "assets/agent_transcripts/demo"
+        (workspace / "guides").mkdir(parents=True)
+        (workspace / "metadata.edn").write_text("{}\n")
+        (workspace / "guides/keyframer_examples.md").write_text("# Keyframer\n")
+        (workspace / "box_notes_.md").write_text("notes\n")
+        (workspace / "LESSONS.md").write_text("# Lessons\n")
+        loose = self.docs / "assets/fabricate_demo"
+        loose.mkdir(parents=True)
+        (loose / "ATTRIBUTION.md").write_text("# Credits\n")
+        (self.docs / "graphics.md").write_text("[the lesson index](assets/agent_transcripts/demo/LESSONS.md)\n")
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_guides_and_notes_inside_a_workspace_are_furniture(self):
+        for relative in ("assets/agent_transcripts/demo/guides/keyframer_examples.md",
+                         "assets/agent_transcripts/demo/box_notes_.md"):
+            with self.subTest(relative=relative):
+                self.assertTrue(is_workspace_markdown(Path(relative), self.docs))
+                # Without the root the old name-only rule applies, so they read as pages.
+                self.assertFalse(is_workspace_markdown(Path(relative)))
+
+    def test_a_workspace_file_a_page_links_to_stays_a_page(self):
+        self.assertFalse(is_workspace_markdown(Path("assets/agent_transcripts/demo/LESSONS.md"), self.docs))
+
+    def test_prose_outside_any_workspace_stays_a_page(self):
+        self.assertFalse(is_workspace_markdown(Path("assets/fabricate_demo/ATTRIBUTION.md"), self.docs))
+        self.assertFalse(is_workspace_markdown(Path("graphics.md"), self.docs))
 
 
 class CopyWorkspaceMarkdownTests(unittest.TestCase):

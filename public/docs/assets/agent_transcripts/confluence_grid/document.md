@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 1 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 1 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. Confluence in 3D: 5 terms x 4 schedulers
@@ -33,7 +33,7 @@ The final landing frame snaps exactly and clears velocity.
 Animation controls. Rerun setup after changing these values or the term/scheduler rows.
 
 ```edn [field-box id="confluence_grid" role="properties"]
-{"id" "confluence_grid" "index" 0 "name" "Confluence in 3D: 5 terms x 4 schedulers" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Confluence in 3D: 5 terms x 4 schedulers" "_tombstone" false "frame" #afield/rect [40.0 40.0 620.0 170.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "confluence_grid_code_.kt" "lines" 363 "characters" 14298 "sha256" "5902db3422863a07e0aaf45abe98d1b7882d3464bcdea1341651440aadd35523"}]}
+{"id" "confluence_grid" "index" 0 "name" "Confluence in 3D: 5 terms x 4 schedulers" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Confluence in 3D: 5 terms x 4 schedulers" "_tombstone" false "frame" #afield/rect [40.0 40.0 620.0 170.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "confluence_grid_code_.kt" "lines" 364 "characters" 14477 "sha256" "d945649897b521c8457da9ed1ee63d8e9a0de3f232e9f68f6258f2b50c47edaf"}]}
 ```
 
 ```kotlin [field-property box="confluence_grid" name="code" path="confluence_grid_code_.kt"]
@@ -57,7 +57,7 @@ The picture has to get two things right before any of that is visible in it.
 // Animation controls. Rerun setup after changing these values or the term/scheduler rows.
 val stepEvery = 7
 val displayEvery = 2
-val displayDelayMs = 34L
+val frameMs = 17L
 val landingFrames = 40
 val maxFrames = 2600
 
@@ -270,12 +270,10 @@ class Cell(val row: Int, val col: Int, val src: String, order: ActivationOrder) 
         val nodes = compiled.net.nodes.map { "node:" + nodeKey(it) }
         val edges =
             compiled.net.edges.map { edge ->
-                val endpoints =
-                    [
-                            nodeKey(edge.a.node) + ":" + edge.a.index,
-                            nodeKey(edge.b.node) + ":" + edge.b.index,
-                        ]
-                        .sorted()
+                val endpoints = [
+                    nodeKey(edge.a.node) + ":" + edge.a.index,
+                    nodeKey(edge.b.node) + ":" + edge.b.index,
+                ].sorted()
                 "edge:" + endpoints.joinToString("--")
             }
         return (nodes + edges).sorted()
@@ -345,60 +343,63 @@ println("rows: " + terms.joinToString(", ") { it.first })
 println("cols: " + orders.joinToString(", ") { it.first })
 
 /*
-This standalone lesson paces CPU reduction with a blocking sleep loop and finishes
-when every cell lands or maxFrames is reached. It needs no native Window or Renderer.
+The animation runs as a frames { } loop: launch the box and the Runloop steps the grid
+one frame per tick, so nothing blocks and no native Window or Renderer is needed. The
+wall-clock gate keeps the tempo the same whether the Runloop ticks at 60 Hz or faster.
 The Three.js viewer keeps its iframe while new geometry streams through its socket.
-The dimensions below size the iframe; resize its output panel to frame the whole grid.
 */
 val panelW = 1460
 val panelH = 840
 three(channel = "confluence3d", name = "confluence", width = panelW, height = panelH) {
     lines(geometry())
 }
-Thread.sleep(300)
 
-var frame = 0
-while (frame < maxFrames && !cells.all { it.done && it.landing >= landingFrames }) {
-    frame++
-    if (frame % stepEvery == 0)
-        cells.forEach { it.step() } // One reaction per beat, independently of the display cadence.
-    cells.forEach {
-        it.physics()
-        it.land()
-    }
-    if (frame % displayEvery == 0) {
-        three(channel = "confluence3d", name = "confluence", width = panelW, height = panelH) {
-            lines(geometry())
+frames {
+    var frame = 0
+    var next = System.nanoTime()
+    while (frame() && frame < maxFrames && !cells.all { it.done && it.landing >= landingFrames }) {
+        if (System.nanoTime() < next) continue
+        next += frameMs * 1_000_000
+        frame++
+        if (frame % stepEvery == 0)
+            cells.forEach { it.step() } // One reaction per beat, independently of the display cadence.
+        cells.forEach {
+            it.physics()
+            it.land()
         }
-        Thread.sleep(displayDelayMs)
+        if (frame % displayEvery == 0) {
+            three(channel = "confluence3d", name = "confluence", width = panelW, height = panelH) {
+                lines(geometry())
+            }
+        }
     }
-}
-three(channel = "confluence3d", name = "confluence", width = panelW, height = panelH) {
-    lines(geometry())
-}
-println("frames $frame")
-terms.forEachIndexed { r, (label, src2) ->
-    val row = cells.filter { it.row == r }
-    val keys = row.map { LambdaTerms.deBruijnKey(LambdaTerms.readback(it.compiled)) }.toSet()
-    val oracle = LambdaTerms.deBruijnKey(LambdaTerms.referenceNormalOrder(LambdaTerms.parse(src2)))
-    val placed = row.map { it.positionedGraph() }.toSet()
-    val landed = row.all { c ->
-        c.done &&
-            c.landing == landingFrames &&
-            c.pose.all { (id, target) -> c.pos[id] == target && c.vel[id] == vec(0.0, 0.0, 0.0) }
+    three(channel = "confluence3d", name = "confluence", width = panelW, height = panelH) {
+        lines(geometry())
     }
-    println(
-        label.padEnd(10) +
-            " steps " +
-            row.joinToString("/") { it.steps.toString() }.padEnd(16) +
-            " one answer: " +
-            (keys.size == 1 && keys.first() == oracle) +
-            "   landed exactly: " +
-            landed +
-            "   matching positioned graph: " +
-            (landed && placed.size == 1),
-    )
+    println("frames $frame")
+    terms.forEachIndexed { r, (label, src2) ->
+        val row = cells.filter { it.row == r }
+        val keys = row.map { LambdaTerms.deBruijnKey(LambdaTerms.readback(it.compiled)) }.toSet()
+        val oracle = LambdaTerms.deBruijnKey(LambdaTerms.referenceNormalOrder(LambdaTerms.parse(src2)))
+        val placed = row.map { it.positionedGraph() }.toSet()
+        val landed = row.all { c ->
+            c.done &&
+                c.landing == landingFrames &&
+                c.pose.all { (id, target) -> c.pos[id] == target && c.vel[id] == vec(0.0, 0.0, 0.0) }
+        }
+        println(
+            label.padEnd(10) +
+                " steps " +
+                row.joinToString("/") { it.steps.toString() }.padEnd(16) +
+                " one answer: " +
+                (keys.size == 1 && keys.first() == oracle) +
+                "   landed exactly: " +
+                landed +
+                "   matching positioned graph: " +
+                (landed && placed.size == 1),
+        )
+    }
+    println("GRID3D DONE")
 }
-println("GRID3D DONE")
 ```
 

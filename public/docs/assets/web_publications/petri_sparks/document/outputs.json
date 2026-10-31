@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-31T08:16:06.370Z",
+  "documentName": "petri_sparks",
+  "outputs": [
+    {
+      "uid": "ps_sparks",
+      "channel": "Vulkan window · still image",
+      "open": true,
+      "path": "outputs/0.html",
+      "width": 4112,
+      "height": 2524,
+      "kinds": [
+        "native-image"
+      ],
+      "warnings": []
+    }
+  ]
+}

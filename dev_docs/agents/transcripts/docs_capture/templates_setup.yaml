@@ -1,0 +1,16 @@
+name: templates_setup
+description: >
+  Setup for the captures on templates.md: a box named Greeter, with a line of documentation in its
+  metadata, for the drives to save as a template through the command palette and insert with
+  cmd+t.
+operations:
+  - create:
+      box: tpl_greeter
+      name: Greeter
+      frame: { x: 80, y: 80, w: 140, h: 60 }
+      properties:
+        code: |
+          print("hello from " + name)
+        metadata: |
+          doc: |
+            Prints a greeting that names its box.

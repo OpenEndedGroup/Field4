@@ -16,8 +16,8 @@ import kotlin.math.sqrt
  * has. So four 512-dimensional CLIP vectors make a tetrahedron whose six edges *are* their six
  * distances, not an approximation of them: classical MDS on four points recovers them up to rotation
  * and reflection. Three points make a triangle (exact in a plane), two a segment. Five or more do not
- * fit in general, and [stress1] says by how much; with five, the picture is the best 3D fit and its
- * edges are no longer the distances in the table.
+ * fit in general: [EmbeddingSimplex.stress1] says by how much, and the edges drawn are then the best
+ * 3D fit rather than the distances in the table.
  *
  * ```kotlin
  * val simplex = embeddingSimplex(
@@ -30,37 +30,47 @@ import kotlin.math.sqrt
  *
  * #### Which distance
  *
- * With [normalize] on (the default, as the madp demo does), each vector is scaled to unit length and
- * [distances] are **chord** lengths, `|a − b| = √(2 − 2 cos θ)`, which range over `0..2`. Chord length
- * is a true Euclidean distance between the points on the sphere, which is what makes the embedding
- * exact; cosine distance `1 − cos θ` is half the *square* of it and is not a metric, so it is carried
- * along in [cosineDistances] for reading but never fed to MDS.
+ * With `normalize` on (the default), each vector is scaled to unit length and
+ * [EmbeddingSimplex.distances] are **chord** lengths, `|a − b| = √(2 − 2 cos θ)`, which range over
+ * `0..2`. Chord length is a true Euclidean distance between the points on the sphere, which is what
+ * makes the embedding exact; cosine distance `1 − cos θ` is half the *square* of it and is not a
+ * metric, so it is carried along in [EmbeddingSimplex.cosineDistances] for reading but never fed
+ * to MDS.
  *
  * #### The 3D coordinates
  *
- * [points] come from [smileMdsDistances] with `positiveCorrection = false`: Torgerson's classical
- * MDS, the double-centred `−½ D²` and its top three eigenvectors scaled by `√λ`. They are centred on
- * the origin and multiplied by [scale] so that the point farthest from the centre lies at [radius];
- * multiply a distance by [scale] to get an edge's drawn length. Signs are not canonicalised, so two
- * machines may draw mirror images of one simplex.
- *
- * @property labels one per point, in input order.
- * @property distances chord (or, with `normalize = false`, plain Euclidean) distances, `n × n`.
- * @property cosineDistances `1 − cos θ` between the points, `n × n`.
- * @property points the 3D positions, centred and scaled; `points[i]` is input `i`.
- * @property scale display units per unit of distance.
- * @property edges every pair `a < b`, in the order (0,1), (0,2), … (n−2,n−1).
- * @property stress1 Kruskal's stress-1 of the 3D fit against [distances]: about `1e-8` or less when
- * the fit is exact (n ≤ 4), larger when the points need more than three dimensions.
+ * [EmbeddingSimplex.points] come from [smileMdsDistances] with `positiveCorrection = false`:
+ * Torgerson's classical MDS, the double-centred `−½ D²` and its leading eigenvectors scaled by `√λ`,
+ * three of them once there are four points or more. They are centred on the origin and multiplied by
+ * [EmbeddingSimplex.scale] so that the point farthest from the centre lies at
+ * [EmbeddingSimplex.radius]; multiply a distance by that scale to get an edge's drawn length. Signs
+ * are not canonicalised, so two machines may draw mirror images of one simplex.
+ */
+
+/**
+ * The distances among a few embeddings, with a 3D placement of them whose edge lengths are those
+ * distances. [exact] says whether the drawing is faithful; [showSimplex] draws it.
  */
 class EmbeddingSimplex internal constructor(
+    /** One per point, in input order. */
     val labels: List<String>,
+    /** Chord distances between the embeddings, `n × n`; plain Euclidean ones with `normalize = false`. */
     val distances: Array<DoubleArray>,
+    /** `1 − cos θ` between the points, `n × n`. Carried for reading; never fed to MDS. */
     val cosineDistances: Array<DoubleArray>,
+    /** The 3D positions, centred on the origin and scaled by [scale]; `points[i]` is input `i`. */
     val points: List<Vec3>,
+    /** Display units per unit of distance. */
     val scale: Double,
+    /** Where the point farthest from the centre is drawn, in display units. */
     val radius: Double,
+    /** Every pair `a < b`, in the order (0,1), (0,2), … (n−2,n−1). */
     val edges: List<SimplexEdge>,
+    /**
+     * Kruskal's stress-1 of the 3D placement against [distances]. It is at or below the threshold
+     * [exact] tests against whenever the fit is exact (four points or fewer), and larger when the
+     * points need more than three dimensions.
+     */
     val stress1: Double,
 ) {
     /** How many points. */
@@ -75,6 +85,7 @@ class EmbeddingSimplex internal constructor(
     /** The edges that touch point [i], closest first. */
     fun edgesFrom(i: Int): List<SimplexEdge> = edges.filter { it.a == i || it.b == i }.sortedBy { it.rankFrom(i) }
 
+    /** A header line, then one line per edge: the two labels, the distance, and the cosine distance. */
     override fun toString(): String = buildString {
         append("EmbeddingSimplex(${labels.size} points, stress1 %.2e)".format(stress1))
         for (e in edges) append("\n  ${labels[e.a]} – ${labels[e.b]}: %.3f (cos %.3f)".format(e.distance, e.cosineDistance))
@@ -87,21 +98,25 @@ class EmbeddingSimplex internal constructor(
 }
 
 /**
- * One pair of an [EmbeddingSimplex].
- *
- * [rankFromA] says where this edge comes among the edges that touch point [a], `0` being the closest
- * of them, and [rankFromB] the same for [b]; with four points the ranks run 0, 1, 2, which the madp
- * `tetra2` page draws as green, orange and red flags at each end of each edge. Ties go to the lower
- * point index.
+ * One pair of an [EmbeddingSimplex]: the two points, how far apart they are, and where that distance
+ * ranks at each end.
  */
 data class SimplexEdge(
+    /** Index of one end, the lower of the two. */
     val a: Int,
+    /** Index of the other end, always greater than [a]. */
     val b: Int,
     /** Chord (or Euclidean) distance between the two embeddings. */
     val distance: Double,
     /** `1 − cos θ` between them. */
     val cosineDistance: Double,
+    /**
+     * Where this edge comes among the edges that touch [a], `0` being the closest of them; ties go to
+     * the lower point index. With four points the ranks run 0, 1, 2, and [showSimplex] with
+     * `flags = true` draws them as green, orange and red diamonds at each end of each edge.
+     */
     val rankFromA: Int,
+    /** The same for [b]. */
     val rankFromB: Int,
 ) {
     /** [rankFromA] or [rankFromB], for whichever end [i] is. */
@@ -202,7 +217,7 @@ fun embeddingSimplex(
 
 /**
  * Classical MDS of [distances] into three columns: [smileMdsDistances] wherever it applies (it needs
- * at least two output dimensions, fewer than the number of points), the obvious answer for one or two
+ * at least one output dimension, fewer than the number of points), the obvious answer for one or two
  * points, and zero columns past what the points can span.
  */
 private fun classicalMds3(distances: Array<DoubleArray>): List<DoubleArray> {

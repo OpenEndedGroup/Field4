@@ -1,0 +1,87 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-31T03:50:46.009Z",
+  "documentName": "gp_instruments",
+  "outputs": [
+    {
+      "uid": "gp_duel",
+      "channel": "controls",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 536,
+      "height": 100,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "gp_duel",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "gp_duel",
+      "channel": "status",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 200,
+      "height": 40,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "gp_judge",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "gp_judge",
+      "channel": "utility",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/4.html"
+    },
+    {
+      "uid": "gp_tune",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/5.html"
+    },
+    {
+      "uid": "gp_tune",
+      "channel": "convergence",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/6.html"
+    }
+  ]
+}

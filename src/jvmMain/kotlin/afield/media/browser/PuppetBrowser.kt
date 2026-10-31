@@ -37,7 +37,7 @@ data class PuppetBrowserState(
     val navigationGeneration: Long = 0,
 )
 
-/** One browser or protocol event. Payloads deliberately retain Electron/CDP fields verbatim. */
+/** One browser or protocol event; its payload carries Electron's or CDP's own fields verbatim, unrenamed. */
 data class PuppetBrowserEvent(
     val sequence: Long,
     val name: String,
@@ -155,11 +155,11 @@ data class BrowserTouchPoint(
  * page→Field request bridge. Fire-and-forget input methods retain TCP order; commands return futures completed by
  * Electron.
  *
- * It deliberately says nothing about pixels. A tab that is only being *driven* — by a test, by a docs build, by a box
- * that wants the DOM rather than the picture — needs no texture, and until this interface was split out the type system
- * insisted on one: [PuppetBrowser] extends [ExternalBrowserSurface], so naming the control plane obliged you to own a
- * Vulkan image view and therefore a [afield.graphics.vulkan.Renderer]. [HeadlessPuppetBrowser] implements this and
- * nothing else.
+ * It says nothing about pixels. A tab that is only being *driven* (by a test, by a docs build, by a box that wants
+ * the DOM rather than the picture) needs no texture, and this is the type to name for that. The texture comes with
+ * [PuppetBrowser], which is this interface and [ExternalBrowserSurface] together, so naming *that* one obliges you to
+ * own a Vulkan image view and therefore a [afield.graphics.vulkan.Renderer]. [HeadlessPuppetBrowser] implements this
+ * interface and nothing else.
  */
 interface PuppetBrowserControl : AutoCloseable {
     val state: PuppetBrowserState

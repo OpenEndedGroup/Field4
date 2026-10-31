@@ -13,25 +13,43 @@ the parent down to the child:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="900x560" clip="0,0,460,360" video="assets/tour_connecting_boxes/connect.mp4" fps="10" transcript="assets/transcripts/tour_connecting_setup.yaml" padding="0" wait="0" timeout="180" embed=true hidden=true name="tour-connect-g" alt="Two boxes on the canvas, Palette above Swatch, with no line between them. A click selects Palette, a shift-click adds Swatch to the selection, and pressing g draws a connection line from Palette down to Swatch. Swatch is then dragged off to the right, and the line bends to follow it."}
 // The setup transcript makes two unconnected boxes, Palette and Swatch.
-fun boxAt(name: String): List<Double> = ui.eval("""
+fun boxAt(name: String): List<Double> =
+    ui.eval(
+            """
     const b = [...document.querySelectorAll(".box")].find(b => (b.name || "") === "$name" || (b.textContent || "").trim() === "$name")
     if (!b) return null
     const r = b.getBoundingClientRect()
     return [r.left + r.width / 2, r.top + r.height / 2].join(",")
-""".trimIndent()).toString().trim('"').split(",").let { [it[0].toDouble(), it[1].toDouble()] }
-fun splineCount(): Int = ui.eval("return document.querySelectorAll('#connectionsplinelayer *').length").toString().trim('"').toDouble().toInt()
+"""
+                .trimIndent(),
+        )
+        .toString()
+        .trim('"')
+        .split(",")
+        .let { [it[0].toDouble(), it[1].toDouble()] }
+fun splineCount(): Int =
+    ui.eval("return document.querySelectorAll('#connectionsplinelayer *').length")
+        .toString()
+        .trim('"')
+        .toDouble()
+        .toInt()
 // Lay the editor pane out for this window, as a user's browser would: screenshot prep pins it to a
 // size meant for a larger page, and pinned it covers Swatch.
 fun freeEditorLayout() {
-    ui.eval("""
+    ui.eval(
+        """
         const c = document.querySelector(".monaco-editor-container")
         if (c) for (const k of ["width", "height", "top", "right", "left", "bottom", "transform"]) c.style[k] = ""
         if (window.globalEditor && window.globalEditor.layout) window.globalEditor.layout()
         return true
-    """.trimIndent())
+        """
+            .trimIndent(),
+    )
 }
 // The page-load toasts are hidden the way screenshot prep hides them.
-ui.eval("document.querySelectorAll('.bubble').forEach(b => { b.style.visibility = 'hidden'; b.style.opacity = '0' }); return true")
+ui.eval(
+    "document.querySelectorAll('.bubble').forEach(b => { b.style.visibility = 'hidden'; b.style.opacity = '0' }); return true",
+)
 freeEditorLayout()
 val palette = boxAt("Palette")
 val swatch = boxAt("Swatch")
@@ -57,20 +75,21 @@ ui.drag("tour_swatch", -120.0, 40.0, 30)
 ui.pause(1200)
 ```
 
-The line follows the boxes when you move them. `u` with the same two boxes selected disconnects
-them. A box can have several parents and several
-children; the lines are the document's structure, and they are saved with it.
+The line follows the boxes when you move them. To disconnect them, select both and press `u`.
+A box can have several parents and several children. The connections are part of the document and
+are saved with it.
 
 ## A parent publishes, a child reads
 
-`prop` declares a value that children can read. **Palette** declares `petals`, an `Int`, and sets
-it:
+This example uses two boxes, named **Palette** and **Swatch**, with Swatch connected beneath
+Palette. `prop` declares a value that children can read. Palette declares `petals`, an `Int`, and
+sets it:
 
 ```diffstatic {data-lang=kotlin}
 prop<Int>(petals) = 5
 ```
 
-**Swatch**, connected beneath Palette, uses `petals` as if it had declared it itself:
+**Swatch**, connected beneath Palette, can now use `petals`:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/tour_connecting_boxes/five.png" capture="box" open-outputs="true" wait="1.5" timeout="180" embed=true name="tour-connect-prop" macro-file="../../dev_docs/agents/transcripts/docs_capture/tour_connect_prop.yaml" capture-box="tc_swatch" w="560" h="80" alt="Swatch's output, one line: A flower with 5 petals, followed by five flower symbols"}
 markdown("A flower with $petals petals: " + "✿".repeat(petals))
@@ -104,9 +123,8 @@ Palette that never reads `petals` is left alone.
 ## Why it matters
 
 The value a parent publishes can be anything Kotlin can hold: a number, a list, a function, a
-loaded dataset. The next stop depends on it: the box that opens a window
-publishes `renderer`, and every box connected beneath it draws with that renderer without looking
-for it.
+loaded dataset. Graphics work the same way: the box that opens a window publishes `renderer`, and
+every box connected beneath it draws with that renderer without looking it up.
 
 See also:
 

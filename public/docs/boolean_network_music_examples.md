@@ -1,7 +1,5 @@
 # Boolean network music examples
 
-*Every public declaration used below is listed, with its KDoc, in the codebase reference: [`booleannetworks.kt`](reference/data.md#booleannetworks-kt). Start from [what's already in the box](reference/index.md).*
-
 Give each step of a Boolean network a duration and its stream of states can be read as notes, sample names or triggers. These extension functions on `BooleanNetwork` do it:
 
 - `scheduledSteps(...)` for timed Boolean states.
@@ -66,7 +64,7 @@ $preview
 :::endfold
 ```
 
-The fence picks its seed by sweeping seeds 0 to 80 for a `kauffmanNetwork(n = 5, k = 2)` with an attractor of period 6 or more and takes the first that qualifies. What comes back is an ordinary `NoteProcess`, so `notesBetween` and `pianoRollSvg` work on it exactly as they do on a hand-written one.
+The example picks its seed by sweeping seeds 0 to 80 for a `kauffmanNetwork(n = 5, k = 2)` with an attractor of period 6 or more and takes the first that qualifies. What comes back is an ordinary `NoteProcess`, so `notesBetween` and `pianoRollSvg` work on it exactly as they do on a hand-written one.
 
 ![a piano roll headed "seed 4, period 6, initial 00110" and running from now to just past six seconds. Four lanes of coloured note bars repeat on a steady grid: pale yellow near the top of the range, pink below it, green at C3 and blue at the bottom near B1. The header strip reads 2 on, 37 notes, B1 to C#4](assets/boolean_network_music_examples/noteprocess_roll.png)
 
@@ -357,7 +355,7 @@ the oscillator's period. Each cycle has a gap of about half a second in which no
 
 ## Driving a live Dirt player
 
-`respondAhead(...)` clocks the network in real time and calls back with `BooleanNetworkStep` values, enough to drive a `DirtSamplePlayer` directly. It does not start anything itself: it builds a `BooleanNetworkResponseSpec`, and a registered return-value handler launches that spec when it turns up as the box's last expression. So the responder runs because the fence *ends* with it, and the job it starts belongs to the box. Stop the box and the sound stops.
+`respondAhead(...)` clocks the network in real time and calls back with `BooleanNetworkStep` values, enough to drive a `DirtSamplePlayer` directly. It does not start anything itself: it builds a `BooleanNetworkResponseSpec`, and a registered return-value handler launches that spec when it turns up as the box's last expression. So the responder runs because the example *ends* with it, and the job it starts belongs to the box. Stop the box and the sound stops.
 
 ```diffstatic {data-lang=kotlin}
 val clock = musicClock().reset(started = true)
@@ -387,3 +385,5 @@ audio { kit } +
 ```
 
 For the underlying state-space pictures, continue with [Boolean networks examples](boolean_networks_examples.md). For piano-roll and synth display tooling, see [Visualizers & Controls](visualizers.md).
+
+*The public declarations used on this page are listed, with their KDoc, in the codebase reference: [`booleannetworks.kt`](reference/data.md#booleannetworks-kt). Start from [what's already in the box](reference/index.md).*

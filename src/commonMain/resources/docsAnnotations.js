@@ -325,11 +325,11 @@
     // modified click still follows the GitHub link, and so does a file the route will not serve.
     const sourceCss = document.createElement("style");
     sourceCss.textContent = `
-      #f4-source { position:fixed; z-index:2147483610; inset:4vh 4vw; display:flex; flex-direction:column; color:#d7dce2; background:#0b0b0b; border:1px solid #333; box-shadow:0 12px 40px #000c; font:12px/1.5 Iosevka,monospace; }
+      #f4-source { position:fixed; z-index:2147483610; inset:4vh 4vw; display:flex; flex-direction:column; color:var(--fp-fg,#d7dce2); background:var(--fp-bg,#0b0b0b); border:var(--fp-border,1px solid #333); border-radius:var(--fp-radius,0); box-shadow:0 12px 40px #000c; font:12px/1.5 Iosevka,monospace; }
       #f4-source[hidden] { display:none; }
-      #f4-source header { display:flex; gap:10px; align-items:center; padding:8px 12px; border-bottom:1px solid #333; }
-      #f4-source header strong { flex:1; font-weight:normal; color:#e8e8e8; word-break:break-all; }
-      #f4-source header a, #f4-source header button { color:#8b8b8b; background:none; border:1px solid #333; padding:3px 8px; cursor:pointer; text-decoration:none; font:inherit; }
+      #f4-source header { display:flex; gap:10px; align-items:center; min-height:var(--fp-head-height,28px); padding:4px var(--fp-pad,8px); border-bottom:1px solid var(--fp-control-border,#333); }
+      #f4-source header strong { flex:1; font-size:var(--fp-title-size,11px); font-weight:var(--fp-title-weight,500); color:var(--fp-fg,#e8e8e8); word-break:break-all; }
+      #f4-source header a, #f4-source header button:not(.field-panel-icon) { color:#8b8b8b; background:none; border:1px solid #333; padding:3px 8px; cursor:pointer; text-decoration:none; font:inherit; }
       #f4-source .f4s-body { flex:1; overflow:auto; display:flex; position:relative; }
       #f4-source .f4s-gutter { padding:10px 8px 10px 12px; text-align:right; color:#555; user-select:none; white-space:pre; }
       #f4-source pre { margin:0; padding:10px 12px; flex:1; white-space:pre; tab-size:4; background:none; }
@@ -338,10 +338,11 @@
       #f4-source .f4s-note { padding:4px 12px; color:#8b8b8b; border-top:1px solid #222; }
     `;
     document.head.appendChild(sourceCss);
+    if (!document.querySelector('link[href="/fieldPanelTokens.css"]')) { const tokens = document.createElement("link"); tokens.rel = "stylesheet"; tokens.href = "/fieldPanelTokens.css"; document.head.appendChild(tokens); }
     const sourceViewer = document.createElement("section");
     sourceViewer.id = "f4-source"; sourceViewer.hidden = true;
     sourceViewer.setAttribute("role", "dialog"); sourceViewer.setAttribute("aria-label", "Source file from this checkout");
-    sourceViewer.innerHTML = `<header><strong data-role="path"></strong><a data-role="github" target="_blank" rel="noopener">GitHub</a><button data-act="close-source" title="Close (Escape)">×</button></header><div class="f4s-body"><div class="f4s-gutter" data-role="gutter"></div><pre><code data-role="code"></code></pre></div><div class="f4s-note" data-role="note" hidden></div>`;
+    sourceViewer.innerHTML = `<header><strong data-role="path"></strong><a data-role="github" target="_blank" rel="noopener">GitHub</a><button type="button" class="field-panel-icon" data-act="close-source" title="Close" aria-label="Close">×</button></header><div class="f4s-body"><div class="f4s-gutter" data-role="gutter"></div><pre><code data-role="code"></code></pre></div><div class="f4s-note" data-role="note" hidden></div>`;
     document.body.appendChild(sourceViewer);
     const SOURCE_LANGUAGES = { kt:"kotlin", kts:"kotlin", java:"java", js:"javascript", mjs:"javascript", cjs:"javascript", py:"python", sh:"bash", json:"json", yaml:"yaml", yml:"yaml", md:"markdown", html:"xml", css:"css", glsl:"cpp", swift:"swift", toml:"ini" };
     const closeSource = () => { sourceViewer.hidden = true; };

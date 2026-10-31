@@ -4,9 +4,9 @@
 every point is a foot that steps on its own cycle and the joints between edges bend to cyclic target
 curves. A genetic algorithm breeds the shape, the foot timing and the joint curves together.
 
-What the library does not decide is the world. You write how a foot meets its surroundings (a
-`ContactModel`) and what counts as doing well (a `fitness`), and the same search evolves water bugs,
-floor crawlers or anything else you can write as a force on a foot.
+You supply the world: write how a foot meets its surroundings in a `ContactModel`, and what counts
+as doing well in a `fitness`. The same search can then evolve water bugs, floor crawlers or another
+creature whose environment you can express as forces on its feet.
 
 The [evolving_water_bugs](agent_transcripts.md#evolving_water_bugs) starting point is the live
 version of this page: two boxes that evolve on their own thread and animate the current champion.

@@ -1,0 +1,52 @@
+{
+  "ok": true,
+  "method": "browser pointer event to first viewer draw carrying a newer command revision, 10 ms polling plus one animation frame",
+  "nativeVulkanMeasured": false,
+  "results": [
+    {
+      "control": "Run",
+      "delayMs": 315.2000000476837,
+      "revision": 4
+    },
+    {
+      "control": "Stop",
+      "delayMs": 826.1999999284744,
+      "revision": 5
+    },
+    {
+      "control": "Recoil",
+      "delayMs": 315.39999997615814,
+      "revision": 6
+    },
+    {
+      "control": "Run",
+      "delayMs": 326.60000002384186,
+      "revision": 7
+    },
+    {
+      "control": "Stop",
+      "delayMs": 255,
+      "revision": 8
+    },
+    {
+      "control": "Apply timed route from current root",
+      "delayMs": 323.5,
+      "revision": 10
+    },
+    {
+      "control": "Restrict joint at first editable frame",
+      "delayMs": 277.5,
+      "revision": 11
+    },
+    {
+      "control": "Remove joint targets",
+      "delayMs": 289,
+      "revision": 12
+    }
+  ],
+  "p50Ms": 315.30000001192093,
+  "p95Ms": 826.1999999284744,
+  "maximumMs": 826.1999999284744,
+  "percentileMethod": "nearest rank",
+  "sampleCount": 8
+}

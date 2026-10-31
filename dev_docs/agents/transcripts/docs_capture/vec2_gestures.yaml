@@ -1,0 +1,31 @@
+name: vec2_gestures
+description: A live controlGroup vec2 pad for the XY-pad interaction capture in visualizers.md.
+operations:
+  - create:
+      box: vec2_gestures
+      name: vec2 gestures
+      frame: { x: 80.0, y: 100.0, w: 230.0, h: 105.0 }
+      properties:
+        code: |
+          val trail = mutableListOf<Vector2f>()
+          fun showTrail(v: Vector2f) {
+              trail += Vector2f(v)
+              val dots = trail.takeLast(60).joinToString("") { p ->
+                  "<circle cx='${(150 + p.x * 130).f1}' cy='${(150 - p.y * 130).f1}' r='3' fill='#0cc8ed'/>"
+              }
+              display(
+                  "what the box received",
+                  """
+                  <svg width="300" height="300" style="background:#05080a;border:1px solid #136178">$dots</svg>
+                  <div style="font:20px Iosevka,monospace;color:#0cc8ed;padding:6px 0">(${v.x.f2}, ${v.y.f2})</div>
+                  """.trimIndent(),
+              )
+          }
+          controlGroup("controls") {
+              vec2Control("orbit", initialValue = Vector2f(0.0f, 0.0f), step = 0.01) { v -> showTrail(v) }
+          }
+          displayOpen("controls")
+          displayOpen("what the box received")
+  - launch: { box: vec2_gestures }
+  - wait:
+      millis: 800

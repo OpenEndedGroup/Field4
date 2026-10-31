@@ -18,8 +18,8 @@ A `Timecode` is a frame count at a `TimecodeRate`: `FPS_24`, `FPS_25`, `FPS_30`,
 29.97 frames a second with drop-frame labels. Adding and subtracting frames is integer arithmetic on
 the count; the hours, minutes, seconds and frame fields are worked out from it.
 
-Counting frames this way is what makes drop-frame simple. NTSC video runs at 30000/1001 frames a second, slightly slower than 30,
-so a clock that labelled 30 frames a second would fall 3.6 seconds behind the wall each hour.
+NTSC video runs at 30000/1001 frames a second, slightly slower than 30. Without drop-frame labels,
+timecode counting 30 frames per second would fall about 3.6 seconds behind the clock each hour.
 Drop-frame keeps up by skipping the labels `;00` and `;01` at the start of every minute except every
 tenth minute. No frames are dropped, only labels. A `;` before the frames marks a drop-frame
 timecode, and `parse` reads it that way:
@@ -44,7 +44,7 @@ val hour = Timecode.parse("01:00:00;00").totalSeconds
 markdown(
     "main",
     "`$t` + 1 frame = `${t + 1}`  \n`$tenth` + 1 frame = `${tenth + 1}`  \n" +
-        "an hour of drop-frame labels is ${"%.3f".format(hour)} s of wall time",
+        "an hour of drop-frame labels is ${hour.f3} s of wall time",
 )
 ```
 
@@ -127,7 +127,7 @@ display(
     <polyline points="$spd" fill="none" stroke="#c52" stroke-width="1.5"/>
     <text x="4" y="14" fill="#2a7">decoded frame (0 … ${fMax.toInt()})</text>
     <text x="4" y="${h - 6}" fill="#c52">measured speed (0.8 … 1.2)</text>
-    <text x="${w / 2 - 40}" y="${h + 22}" fill="#999">playback time, s (0 … ${"%.2f".format(tMax)})</text>
+    <text x="${w / 2 - 40}" y="${h + 22}" fill="#999">playback time, s (0 … ${tMax.f2})</text>
   </g></svg>""",
 )
 markdown(

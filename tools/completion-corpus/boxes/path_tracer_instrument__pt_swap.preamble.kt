@@ -1,7 +1,7 @@
-import afield.graphics.vulkan.Renderer
-import afield.graphics.vulkan.util.Window
-import afield.graphics.scene.fabricated.PathTraceConvergence
 import afield.graphics.scene.fabricated.PathTracingRenderer
+import afield.graphics.scene.fabricated.PathTraceConvergence
+import afield.graphics.vulkan.util.Window
+import afield.graphics.vulkan.Renderer
 var Box.tracer by Inheritance<PathTracingRenderer>() /**/
 val Once.tracer by Onceing<PathTracingRenderer>() /**/
 val Why.tracer by Whying() /**/

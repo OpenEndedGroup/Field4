@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-29T22:27:32.396Z",
+  "documentName": "studies_rings",
+  "outputs": [
+    {
+      "uid": "rings_change",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 356,
+      "height": 683,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "rings_try",
+      "channel": "main",
+      "open": false,
+      "warnings": [],
+      "kinds": [],
+      "width": 200,
+      "height": 40,
+      "path": "outputs/1.html"
+    }
+  ]
+}

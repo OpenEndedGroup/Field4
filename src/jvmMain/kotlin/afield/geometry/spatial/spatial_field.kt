@@ -106,8 +106,8 @@ import afield.geometry.path.polylineFrom
  *
  * Every partitioner in `graph_connectivity.kt`, `dirichlet.kt`, `contours.kt` and `clustering.kt`
  * answers with *structure* — cell vertex rings, circular arcs, triangle index triples, cluster
- * labels — and none of them answers with geometry. This file is the missing hop: one `toFLines` per
- * result type, so a Voronoi diagram, an Apollonius cell, a Delaunay triangulation or a k-medoids
+ * labels — and none of them answers with geometry. This file converts each of them: one `toFLines`
+ * per result type, so a Voronoi diagram, an Apollonius cell, a Delaunay triangulation or a k-medoids
  * partition lands in the same drawing, animation and export machinery as anything drawn by hand.
  * It is the plane counterpart of `mesh_field.kt`, which does the same job for `TriMesh`.
  *
@@ -621,15 +621,15 @@ private fun escapePlaneHtml(text: String): String = text
 // ==============================================================================================
 
 private const val PLANE_FIGURE_CARD_STYLE =
-    "padding:12px 12px 16px 12px;background:linear-gradient(180deg,#0d1219,#090d12);" +
+    "padding:12px 12px 16px 12px;background:#090d12;" +
         "border:1px solid #202b38;border-radius:10px"
 
 private fun planeFigureTitleStyle(width: Int): String =
-    "font-family:monospace;font-size:12px;font-weight:700;letter-spacing:0.04em;" +
+    "font-family:'Iosevka Web',Iosevka,monospace;font-size:12px;font-weight:700;letter-spacing:0.04em;" +
         "color:#91a4ba;margin-bottom:8px;width:${width}px;overflow-wrap:break-word"
 
 private fun planeFigureCaptionStyle(width: Int): String =
-    "font-family:monospace;font-size:11px;line-height:1.5;color:#7f92a8;" +
+    "font-family:'Iosevka Web',Iosevka,monospace;font-size:11px;line-height:1.5;color:#7f92a8;" +
         "margin:-2px 0 8px 0;width:${width}px;overflow-wrap:break-word"
 
 /**

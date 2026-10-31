@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 20 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 20 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. 2 — Four elementary rules, filling in — launch me
@@ -216,7 +216,7 @@ up at nine units of travel per frame. `order()` reads the velocity array, so nei
 touches what is measured; the number in each caption is computed fresh every frame.
 
 ```edn [field-box id="alife_boids_moving" role="properties"]
-{"id" "alife_boids_moving" "index" 3 "name" "6 — Boids: the control arm, running — launch me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — Boids: the control arm, running — launch me" "_tombstone" false "frame" #afield/rect [520.0 1160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_boids_moving_code_.kt" "lines" 35 "characters" 1570 "sha256" "dd42bad6f5cba198041a7005a0685619b709e56f8a6a48cc9ab809f831511539"}]}
+{"id" "alife_boids_moving" "index" 3 "name" "6 — Boids: the control arm, running — launch me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — Boids: the control arm, running — launch me" "_tombstone" false "frame" #afield/rect [520.0 1160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_boids_moving_code_.kt" "lines" 35 "characters" 1546 "sha256" "b28dff4773d0ee4dee5aa46c81de7b71f043e44d49594915fa79aaaa9553459e"}]}
 ```
 
 ```kotlin [field-property box="alife_boids_moving" name="code" path="alife_boids_moving_code_.kt"]
@@ -230,8 +230,8 @@ up at nine units of travel per frame. `order()` reads the velocity array, so nei
 touches what is measured; the number in each caption is computed fresh every frame.
 */
 fun flocks(a: BoidFlock, b: BoidFlock, n: Int) = [
-    "flock " + n + ": order " + "%.2f".format(a.order()) to a.toImg(1.0, tail = 8.0),
-    "no align " + n + ": " + "%.2f".format(b.order()) to b.toImg(1.0, tail = 8.0),
+    "flock " + n + ": order " + a.order().f2 to a.toImg(1.0, tail = 8.0),
+    "no align " + n + ": " + b.order().f2 to b.toImg(1.0, tail = 8.0),
 ]
 
 /*
@@ -274,7 +274,7 @@ is 1 - (1 - 1/states)^8 -- a closed form. Once the field has organised, every ce
 a neighbour and the advance fraction pins at 1.0, which no uncorrelated field does.
 
 ```edn [field-box id="alife_cyclic" role="properties"]
-{"id" "alife_cyclic" "index" 4 "name" "3 — Cyclic CA: self-organisation, measured" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — Cyclic CA: self-organisation, measured" "_tombstone" false "frame" #afield/rect [60.0 460.0 390.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_cyclic_code_.kt" "lines" 42 "characters" 1990 "sha256" "1cd8a12826c0b9158e2f94980bd52f8b9a14940499e6306e228e4e8e2db02fe9"}]}
+{"id" "alife_cyclic" "index" 4 "name" "3 — Cyclic CA: self-organisation, measured" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — Cyclic CA: self-organisation, measured" "_tombstone" false "frame" #afield/rect [60.0 460.0 390.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_cyclic_code_.kt" "lines" 42 "characters" 1930 "sha256" "e56af6cf4fbbbd05be55442cd59fd982f12b9c8f83297e1ca345ef8f3c5cf62f"}]}
 ```
 
 ```kotlin [field-property box="alife_cyclic" name="code" path="alife_cyclic_code_.kt"]
@@ -293,8 +293,8 @@ val predicted = 1.0 - Math.pow(1.0 - 1.0 / rule.states, 8.0)
 val early = cyclicAdvanceFraction(soup, soup.step(rule))
 val settled = soup.stepTimes(rule, 400)
 val late = cyclicAdvanceFraction(settled, settled.step(rule))
-println("soup advance fraction " + "%.4f".format(early) + ", closed form " + "%.4f".format(predicted))
-println("after 400 generations " + "%.4f".format(late) + " of cells advance every step")
+println("soup advance fraction " + early.f4 + ", closed form " + predicted.f4)
+println("after 400 generations " + late.f4 + " of cells advance every step")
 
 // The excitable corner of the parameter space (wider neighbourhood, higher threshold) is a
 // visibly different phase -- spiral cores -- and the difference is measurable as a length scale.
@@ -302,9 +302,9 @@ val ex = CYCLIC_EXCITABLE
 val exSettled = IntGrid.random(200, 200, states = ex.states, seed = 7L).stepTimes(ex, 200)
 println(
     "correlation length: labyrinth " +
-        "%.2f".format(settled.toImg(rule.states).correlationLength(maxLag = 30)) +
+        settled.toImg(rule.states).correlationLength(maxLag = 30).f2 +
         ", excitable " +
-        "%.2f".format(exSettled.toImg(ex.states).correlationLength(maxLag = 30)),
+        exSettled.toImg(ex.states).correlationLength(maxLag = 30).f2,
 )
 
 val palette = cyclicPalette(rule.states)
@@ -327,7 +327,7 @@ showImg(
 <!-- field-box id="alife_lenia" index="5" -->
 
 ```edn [field-box id="alife_lenia" role="properties"]
-{"id" "alife_lenia" "index" 5 "name" "5 — Lenia: exact in its discrete limit, and Orbium across mu" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 — Lenia: exact in its discrete limit, and Orbium across mu" "_tombstone" false "frame" #afield/rect [520.0 260.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_lenia_code_.kt" "lines" 51 "characters" 2063 "sha256" "59c27a0dfd733affa24feed64ddb69d9334beb38f225bbf6184a9b75e8bfac1a"}]}
+{"id" "alife_lenia" "index" 5 "name" "5 — Lenia: exact in its discrete limit, and Orbium across mu" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 — Lenia: exact in its discrete limit, and Orbium across mu" "_tombstone" false "frame" #afield/rect [520.0 260.0 370.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_lenia_code_.kt" "lines" 54 "characters" 2118 "sha256" "29425a474ad3381bd7e9beba2614b8e05111069387a9e47e6ad9e5ac3090e206"}]}
 ```
 
 ```kotlin [field-property box="alife_lenia" name="code" path="alife_lenia_code_.kt"]
@@ -360,7 +360,9 @@ println(
 // The continuous regime: Orbium, from Bert Chan's catalogue: its cells shuffled, then only mu moved.
 val orbium = LeniaPresets.orbium()
 for (seed in 1L..6L) {
-    println("shuffled cells, seed " + seed + ": " + leniaRun(orbium.shuffled(seed).seed(64, 64), orbium.rule, steps = 300))
+    println(
+        "shuffled cells, seed " + seed + ": " + leniaRun(orbium.shuffled(seed).seed(64, 64), orbium.rule, steps = 300),
+    )
 }
 for (mu in [0.11, 0.12, 0.13, 0.16, 0.17, 0.18]) {
     val rule = leniaRuleFromCatalogue(radius = 13, t = 10.0, mu = mu, sigma = 0.015)
@@ -368,16 +370,17 @@ for (mu in [0.11, 0.12, 0.13, 0.16, 0.17, 0.18]) {
 }
 
 val moments = [0, 5, 10, 20, 250]
-val panels = [0.12, 0.15, 0.18].flatMap { mu ->
-    val rule = leniaRuleFromCatalogue(radius = 13, t = 10.0, mu = mu, sigma = 0.015)
-    var current = orbium.seed(64, 64)
-    var done = 0
-    moments.map { step ->
-        current = current.leniaTimes(rule, step - done)
-        done = step
-        (if (step == 0) "mu " + mu else "step " + step) to current.colormap("inferno", 0f, 1f).upscaleNearest(3)
+val panels =
+    [0.12, 0.15, 0.18].flatMap { mu ->
+        val rule = leniaRuleFromCatalogue(radius = 13, t = 10.0, mu = mu, sigma = 0.015)
+        var current = orbium.seed(64, 64)
+        var done = 0
+        moments.map { step ->
+            current = current.leniaTimes(rule, step - done)
+            done = step
+            (if (step == 0) "mu " + mu else "step " + step) to current.colormap("inferno", 0f, 1f).upscaleNearest(3)
+        }
     }
-}
 showImg(
     montage(panels, columns = 5, cellSide = 192),
     caption = "rows: mu = 0.12, 0.15, 0.18; columns: steps 0, 5, 10, 20 and 250",
@@ -396,7 +399,7 @@ L-systems are the one generative system in this family whose output can be check
 combinatorially rather than statistically -- so they carry the sharpest evidence here.
 
 ```edn [field-box id="alife_lsystem" role="properties"]
-{"id" "alife_lsystem" "index" 6 "name" "9 — L-systems: exact combinatorial identities" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "9 — L-systems: exact combinatorial identities" "_tombstone" false "frame" #afield/rect [980.0 460.0 410.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_lsystem_code_.kt" "lines" 60 "characters" 2923 "sha256" "fa37ef2b826d0da33b37f312bbedc37b7d3718829ce12e2eb881d6de5bc8894c"}]}
+{"id" "alife_lsystem" "index" 6 "name" "9 — L-systems: exact combinatorial identities" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "9 — L-systems: exact combinatorial identities" "_tombstone" false "frame" #afield/rect [980.0 460.0 410.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_lsystem_code_.kt" "lines" 60 "characters" 2913 "sha256" "8c3ccc9d4f09445b270d1c887072e2b565551efa16728e651d154918091118ea"}]}
 ```
 
 ```kotlin [field-property box="alife_lsystem" name="code" path="alife_lsystem_code_.kt"]
@@ -418,7 +421,7 @@ val tp = TurtleParams(angle = Math.PI / 3.0, step = step)
 val gens = (0..5).map { drawLSystem(LSYSTEM_KOCH_SNOWFLAKE, it, tp) }
 println("worst closure residual: " + gens.map { turtleClosureError(it, step) }.max() + " of a step")
 val lens = gens.map { flineTotalLength(it.lines) }
-println("length ratio per generation: " + (1..5).map { "%.6f".format(lens[it] / lens[it - 1]) })
+println("length ratio per generation: " + (1..5).map { (lens[it] / lens[it - 1]).f6 })
 println(
     "area, relative error against the closed form: " +
         (0..5).map { gen ->
@@ -480,7 +483,7 @@ deposit / (1 - decay) = 62.5. The first cut of this clip guessed 30 and clipped 
 flat cream. The caption's number is `topShare(0.05)`, recomputed every frame.
 
 ```edn [field-box id="alife_physarum_moving" role="properties"]
-{"id" "alife_physarum_moving" "index" 7 "name" "7 — Physarum: the network finding itself — launch me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "7 — Physarum: the network finding itself — launch me" "_tombstone" false "frame" #afield/rect [980.0 760.0 450.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_physarum_moving_code_.kt" "lines" 34 "characters" 1834 "sha256" "568a0507e85531290321a18f538f6936814fa978ad75ca4898e724a08ecce90f"}]}
+{"id" "alife_physarum_moving" "index" 7 "name" "7 — Physarum: the network finding itself — launch me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "7 — Physarum: the network finding itself — launch me" "_tombstone" false "frame" #afield/rect [980.0 760.0 450.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_physarum_moving_code_.kt" "lines" 34 "characters" 1810 "sha256" "467b964d24afb8c9e50c5fec5a84e2cdd380826d842553398d2c3f3fd3868f57"}]}
 ```
 
 ```kotlin [field-property box="alife_physarum_moving" name="code" path="alife_physarum_moving_code_.kt"]
@@ -497,8 +500,8 @@ flat cream. The caption's number is `topShare(0.05)`, recomputed every frame.
 val p = PhysarumParams()
 val ceiling = (p.deposit / (1.0 - p.decay)).toFloat()
 fun trails(a: PhysarumSwarm, b: PhysarumSwarm, n: Int) = [
-    "sensing " + n + "  " + "%.3f".format(a.trail.topShare(0.05)) to a.trail.colormap("magma", 0f, ceiling),
-    "blind " + n + "  " + "%.3f".format(b.trail.topShare(0.05)) to b.trail.colormap("magma", 0f, ceiling),
+    "sensing " + n + "  " + a.trail.topShare(0.05).f3 to a.trail.colormap("magma", 0f, ceiling),
+    "blind " + n + "  " + b.trail.topShare(0.05).f3 to b.trail.colormap("magma", 0f, ceiling),
 ]
 
 /*
@@ -536,7 +539,7 @@ Grow the cluster once, then replay `Aggregate.points` -- which IS the order the 
 in -- at a uniform rate over seven seconds.
 
 ```edn [field-box id="alife_dla_moving" role="properties"]
-{"id" "alife_dla_moving" "index" 8 "name" "8 — DLA: the order the branches arrived in — launch me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "8 — DLA: the order the branches arrived in — launch me" "_tombstone" false "frame" #afield/rect [980.0 960.0 470.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_dla_moving_code_.kt" "lines" 60 "characters" 2555 "sha256" "f05fdcd0eaae6c29649cb5a9d656d5a1e33fa78a329426c50c275e5c5a0c4965"}]}
+{"id" "alife_dla_moving" "index" 8 "name" "8 — DLA: the order the branches arrived in — launch me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "8 — DLA: the order the branches arrived in — launch me" "_tombstone" false "frame" #afield/rect [980.0 960.0 470.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_dla_moving_code_.kt" "lines" 60 "characters" 2535 "sha256" "836710297854beaf58d63d88b50c3839fabb9f7f84e7f3e1323fa82ac3b7f487"}]}
 ```
 
 ```kotlin [field-property box="alife_dla_moving" name="code" path="alife_dla_moving_code_.kt"]
@@ -586,9 +589,9 @@ println(
         " x " +
         ch +
         " of 300 x 300, so " +
-        "%.1f".format(100.0 * dla.points.size / (cw * ch)) +
+        (100.0 * dla.points.size / (cw * ch)).f1 +
         "% of the panel is ever lit, against " +
-        "%.1f".format(100.0 * dla.points.size / 90000.0) +
+        (100.0 * dla.points.size / 90000.0).f1 +
         "% uncropped",
 )
 
@@ -687,7 +690,7 @@ more. The control is the identical population with sensing switched off -- same 
 seed, same deposit, same decay, random turns.
 
 ```edn [field-box id="alife_physarum" role="properties"]
-{"id" "alife_physarum" "index" 10 "name" "7 — Physarum: a network the code never mentions" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "7 — Physarum: a network the code never mentions" "_tombstone" false "frame" #afield/rect [980.0 60.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_physarum_code_.kt" "lines" 35 "characters" 1416 "sha256" "4c6517907e12f28ed3e1ad03a9531bef795dc623cede0a9e423ded62cc0f76f5"}]}
+{"id" "alife_physarum" "index" 10 "name" "7 — Physarum: a network the code never mentions" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "7 — Physarum: a network the code never mentions" "_tombstone" false "frame" #afield/rect [980.0 60.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_physarum_code_.kt" "lines" 35 "characters" 1392 "sha256" "986424fbf683f5569004aca7fbaf9852e528b968fcc25ebd95c9829716600de5"}]}
 ```
 
 ```kotlin [field-property box="alife_physarum" name="code" path="alife_physarum_code_.kt"]
@@ -708,9 +711,9 @@ val blind = PhysarumSwarm.disc(side, side, 6000, 0.55, seed = 6L).stepTimes(p.co
 
 println(
     "top-5% deposit share: sensing " +
-        "%.3f".format(sensing.trail.topShare(0.05)) +
+        sensing.trail.topShare(0.05).f3 +
         ", CONTROL sensing off " +
-        "%.3f".format(blind.trail.topShare(0.05)) +
+        blind.trail.topShare(0.05).f3 +
         " (a flat field gives 0.05)",
 )
 println("sensing morphology: " + sensing.trail.normalized().morphology())
@@ -928,7 +931,7 @@ Orbium, a Lenia lifeform from Bert Chan's catalogue, gliding beside the same cel
 growth curve's centre mu moved from 0.15 to 0.12, where they burst and fill the torus.
 
 ```edn [field-box id="alife_lenia_moving" role="properties"]
-{"id" "alife_lenia_moving" "index" 14 "name" "5 — Lenia: Orbium gliding, beside the same cells at mu 0.12 — launch me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 — Lenia: Orbium gliding, beside the same cells at mu 0.12 — launch me" "_tombstone" false "frame" #afield/rect [520.0 960.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_lenia_moving_code_.kt" "lines" 28 "characters" 1127 "sha256" "78ed9002db3eed367b88c062760a098fad878aa5541321c4c3e989caaa858bf1"}]}
+{"id" "alife_lenia_moving" "index" 14 "name" "5 — Lenia: Orbium gliding, beside the same cells at mu 0.12 — launch me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 — Lenia: Orbium gliding, beside the same cells at mu 0.12 — launch me" "_tombstone" false "frame" #afield/rect [520.0 960.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_lenia_moving_code_.kt" "lines" 27 "characters" 1126 "sha256" "5b2fd6b5a1c9295316c57b1d288b742058ea9e17e0fa7187ddee803adc5e0dcb"}]}
 ```
 
 ```kotlin [field-property box="alife_lenia_moving" name="code" path="alife_lenia_moving_code_.kt"]
@@ -945,7 +948,6 @@ fun fields(a: Img, b: Img, n: Int) = [
     "Orbium, step %d: mass %.4f".format(n, a.mean()) to a.colormap("inferno", 0f, 1f).upscaleNearest(6),
     "mu 0.12, step %d: mass %.4f".format(n, b.mean()) to b.colormap("inferno", 0f, 1f).upscaleNearest(6),
 ]
-
 
 // The same cells, with the growth curve centred at 0.12 instead of 0.15.
 val lowMu = leniaRuleFromCatalogue(radius = 13, t = 10.0, mu = 0.12, sigma = 0.015)
@@ -979,7 +981,7 @@ instead of by a diffusing walker) and a uniform sprinkle both have dimension 2, 
 controls show the estimator is reading the diffusion-limited part and not merely "growth".
 
 ```edn [field-box id="alife_dla" role="properties"]
-{"id" "alife_dla" "index" 15 "name" "8 — DLA: a fractal dimension, and two controls at 2" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "8 — DLA: a fractal dimension, and two controls at 2" "_tombstone" false "frame" #afield/rect [980.0 260.0 450.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_dla_code_.kt" "lines" 39 "characters" 1765 "sha256" "6892728985baf4a4ef821528c1c70617d02861f4b823757c3267ec4c593685e6"}]}
+{"id" "alife_dla" "index" 15 "name" "8 — DLA: a fractal dimension, and two controls at 2" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "8 — DLA: a fractal dimension, and two controls at 2" "_tombstone" false "frame" #afield/rect [980.0 260.0 450.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_dla_code_.kt" "lines" 39 "characters" 1681 "sha256" "138b532375d0ccd9ff8ded39fe7fd8b4aab9731c150b524e03cdd4db9ac766b6"}]}
 ```
 
 ```kotlin [field-property box="alife_dla" name="code" path="alife_dla_code_.kt"]
@@ -996,11 +998,11 @@ val side = 300
 val dla = dlaCluster(side, side, particles = 6000, seed = 2L)
 val fit = dla.fractalDimension(rMin = 5.0, rMaxFraction = 0.75)
 println(dla)
-println("DLA mass dimension " + "%.3f".format(fit.dimension) + " (r2 = " + "%.4f".format(fit.rSquared) + ")")
+println("DLA mass dimension " + fit.dimension.f3 + " (r2 = " + fit.rSquared.f4 + ")")
 
 val eden = edenCluster(side, side, particles = dla.points.size, seed = 2L)
 val edenFit = eden.fractalDimension(rMin = 5.0, rMaxFraction = 0.75)
-println("CONTROL Eden dimension " + "%.3f".format(edenFit.dimension))
+println("CONTROL Eden dimension " + edenFit.dimension.f3)
 val sprinkle = sprinkleCluster(side, side, dla.points.size, dla.maxRadius, seed = 2L)
 val sprinkleFit = massRadiusDimension(
     sprinkle.points,
@@ -1009,14 +1011,14 @@ val sprinkleFit = massRadiusDimension(
     rMax = sprinkle.maxRadius * 0.75,
     minCount = 60,
 )
-println("CONTROL uniform sprinkle dimension " + "%.3f".format(sprinkleFit.dimension) + " (exactly 2 by construction)")
+println("CONTROL uniform sprinkle dimension " + sprinkleFit.dimension.f3 + " (exactly 2 by construction)")
 
 showImg(
     montage(
         [
-            "DLA: D = " + "%.2f".format(fit.dimension) to dla.arrivalOrderImg().colormap("turbo"),
-            "Eden: D = " + "%.2f".format(edenFit.dimension) to eden.arrivalOrderImg().colormap("turbo"),
-            "sprinkle: D = " + "%.2f".format(sprinkleFit.dimension) to sprinkle.mask,
+            "DLA: D = " + fit.dimension.f2 to dla.arrivalOrderImg().colormap("turbo"),
+            "Eden: D = " + edenFit.dimension.f2 to eden.arrivalOrderImg().colormap("turbo"),
+            "sprinkle: D = " + sprinkleFit.dimension.f2 to sprinkle.mask,
         ],
         columns = 3,
         cellSide = 280,
@@ -1140,7 +1142,7 @@ nearest-neighbour distribution has a floor. Both are measured against the same i
 with one weight zeroed -- so the difference is attributable to that weight and nothing else.
 
 ```edn [field-box id="alife_boids" role="properties"]
-{"id" "alife_boids" "index" 18 "name" "6 — Boids: order above the random baseline" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — Boids: order above the random baseline" "_tombstone" false "frame" #afield/rect [520.0 460.0 390.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_boids_code_.kt" "lines" 45 "characters" 1813 "sha256" "5ecc84841a03ef51632d251a2586a27444072e369be6a495b69b0f4f6487c5db"}]}
+{"id" "alife_boids" "index" 18 "name" "6 — Boids: order above the random baseline" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — Boids: order above the random baseline" "_tombstone" false "frame" #afield/rect [520.0 460.0 390.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_boids_code_.kt" "lines" 42 "characters" 1669 "sha256" "30ae1a443aa12ba777ec6469a077eecbeacf4d4342d90c684a3c9880a57c7e2e"}]}
 ```
 
 ```kotlin [field-property box="alife_boids" name="code" path="alife_boids_code_.kt"]
@@ -1153,8 +1155,8 @@ with one weight zeroed -- so the difference is attributable to that weight and n
 val n = 400
 val start = BoidFlock.random(n, 260.0, 260.0, speed = 1.4, seed = 4L)
 val params = BoidParams()
-println("random-heading baseline for " + n + " agents: " + "%.3f".format(randomPolarizationBaseline(n)))
-println("initial polarization: " + "%.3f".format(start.order()))
+println("random-heading baseline for " + n + " agents: " + randomPolarizationBaseline(n).f3)
+println("initial polarization: " + start.order().f3)
 
 val flock = start.copy()
 flock.stepTimes(params, 900)
@@ -1164,25 +1166,22 @@ val noSep = start.copy()
 noSep.stepTimes(params.copy(separationWeight = 0.0), 900)
 
 println(
-    "flock polarization " +
-        "%.3f".format(flock.order()) +
-        ", CONTROL with no alignment " +
-        "%.3f".format(noAlign.order()),
+    "flock polarization " + flock.order().f3 + ", CONTROL with no alignment " + noAlign.order().f3,
 )
 println(
     "5th-percentile nearest neighbour: flock " +
-        "%.2f".format(quantileOf(flock.neighborDistances(), 0.05)) +
+        quantileOf(flock.neighborDistances(), 0.05).f2 +
         ", CONTROL with no separation " +
-        "%.2f".format(quantileOf(noSep.neighborDistances(), 0.05)),
+        quantileOf(noSep.neighborDistances(), 0.05).f2,
 )
-println("mean speed " + "%.2f".format(flock.meanSpeed()) + " of a " + params.maxSpeed + " cap")
+println("mean speed " + flock.meanSpeed().f2 + " of a " + params.maxSpeed + " cap")
 
 showImg(
     montage(
         [
-            "gen 0: order " + "%.2f".format(start.order()) to start.toImg(1.4, tail = 5.0),
-            "900 steps: " + "%.2f".format(flock.order()) to flock.toImg(1.4, tail = 5.0),
-            "no alignment: " + "%.2f".format(noAlign.order()) to noAlign.toImg(1.4, tail = 5.0),
+            "gen 0: order " + start.order().f2 to start.toImg(1.4, tail = 5.0),
+            "900 steps: " + flock.order().f2 to flock.toImg(1.4, tail = 5.0),
+            "no alignment: " + noAlign.order().f2 to noAlign.toImg(1.4, tail = 5.0),
             "no separation" to noSep.toImg(1.4, tail = 5.0),
         ],
         columns = 2,

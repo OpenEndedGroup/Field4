@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-31T01:03:16.258Z",
+  "documentName": "keyframe_key_discovery",
+  "outputs": [
+    {
+      "uid": "kf_junk_vs_damage",
+      "channel": "junk is not damage",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 908,
+      "height": 388,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "kf_orphaned_slots",
+      "channel": "saved, but wired to nothing",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 908,
+      "height": 408,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "kf_before_after",
+      "channel": "before: pattern = \"??\"",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 908,
+      "height": 328,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "kf_before_after",
+      "channel": "after: the default",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 908,
+      "height": 388,
+      "path": "outputs/3.html"
+    }
+  ]
+}

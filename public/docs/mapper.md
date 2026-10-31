@@ -104,7 +104,7 @@ showImgGrid(
 The x and eccentricity lenses both vary along the ring, and both graphs look like the cloud. The
 density lens is nearly the same all the way round the ring, so the whole ring lands in one or two
 bins, and the centre of a cluster that is a whole ring is the middle of the hole. When a Mapper
-graph stops looking like the cloud, the lens is the wrong one for that shape.
+graph stops looking like the cloud, try another lens and compare what it reveals.
 
 The other settings are `intervals` (how many bins: more gives a finer graph), `overlap` (the
 fraction each bin shares with the next: more joins clusters more readily), `eps` (the largest gap

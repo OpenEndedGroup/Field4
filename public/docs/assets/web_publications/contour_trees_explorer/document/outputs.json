@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-29T22:26:23.022Z",
+  "documentName": "contour_trees_explorer",
+  "outputs": [
+    {
+      "uid": "contour_tree_landscape",
+      "channel": "controls",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 469,
+      "height": 60,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "contour_tree_landscape",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 912,
+      "height": 264,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "contour_tree_photo",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 475,
+      "height": 310,
+      "path": "outputs/2.html"
+    }
+  ]
+}

@@ -492,6 +492,7 @@ if (typeof window !== 'undefined') window.addEventListener('DOMContentLoaded', a
     try {
         // Get EDN file URL from query parameter
         const params = new URLSearchParams(window.location.search);
+        await window.FieldOfflineOutputs?.resolvePublication?.(params);
         ednFileUrl = params.get('file');
 
         if (!ednFileUrl) {
@@ -505,6 +506,8 @@ if (typeof window !== 'undefined') window.addEventListener('DOMContentLoaded', a
         ednBaseUrl = new URL(resolvedUrl, window.location.href).href;
         const data = parseEdn(ednText);
         currentDocumentData = data;
+
+        await window.FieldOfflineOutputs?.load(params);
 
         if (!data || !data.boxes) {
             showError('Invalid EDN format: missing boxes array');
@@ -525,6 +528,11 @@ if (typeof window !== 'undefined') window.addEventListener('DOMContentLoaded', a
 
         // Show document info
         showDocumentInfo(data, ednFileUrl, sidecarStatus);
+        const outputInfo = window.FieldOfflineOutputs?.info();
+        if (outputInfo) {
+            const info = document.createElement('span'); info.textContent = ` • ${outputInfo}`;
+            document.querySelector('.offline-banner').append(info);
+        }
         setupDocumentPanel(data);
 
         // Initialize Monaco editor. A failure here (e.g. the Monaco bundle isn't
@@ -541,6 +549,7 @@ if (typeof window !== 'undefined') window.addEventListener('DOMContentLoaded', a
 
         // Setup view toggle
         setupLiterateToggle();
+        setupEditorResize();
 
         // Setup the "Open in Field·4" button
         setupOpenLocalButton(ednFileUrl, ednText, data);
@@ -555,7 +564,8 @@ if (typeof window !== 'undefined') window.addEventListener('DOMContentLoaded', a
 
         // Field loads a sidecar from its loose file and keeps the inline copy as a fallback; read
         // the loose files now, and refresh the open box if one of them differs.
-        resolveSidecars(data, ednBaseUrl, fetchSidecarText, { includeInline: true }).then(status => {
+        // Publications contain an immutable, fully inlined export from the live server.
+        if (!params.get('outputs')) resolveSidecars(data, ednBaseUrl, fetchSidecarText, { includeInline: true }).then(status => {
             if (status.refreshed > 0) {
                 showDocumentInfo(data, ednFileUrl, { ...sidecarStatus, refreshed: status.refreshed });
                 if (selectedBox) showEditorForBox(selectedBox);
@@ -694,7 +704,8 @@ function renderBoxes(boxes) {
 
     visibleBoxes = boxes.filter(box => {
         const props = box.properties || {};
-        return props._tombstone !== true && box.id !== 'root' && hasDisplayableCode(props) && hasDisplayableName(props) &&
+        const hasOutput = window.FieldOfflineOutputs?.forBox(box.id).length;
+        return props._tombstone !== true && (hasOutput || (box.id !== 'root' && hasDisplayableCode(props) && hasDisplayableName(props))) &&
             (!activeLayer || boxLayers(props).includes(activeLayer));
     });
 
@@ -720,7 +731,7 @@ function renderBoxes(boxes) {
         // Box name
         const nameEl = document.createElement('div');
         nameEl.className = 'box-name';
-        nameEl.textContent = props.name || box.id;
+        nameEl.textContent = props.name || (box.id === 'root' ? 'Document outputs' : box.id);
         boxEl.appendChild(nameEl);
 
         if (typeof props.notes === 'string' && props.notes.trim()) {
@@ -735,10 +746,42 @@ function renderBoxes(boxes) {
         // Click handler to select box
         boxEl.addEventListener('click', (e) => {
             e.stopPropagation();
+            if (boxEl.dataset.dragMoved) { delete boxEl.dataset.dragMoved; return; }
             selectBox(box, boxEl);
+        });
+        boxEl.addEventListener('pointerdown', e => {
+            if (e.button !== 0 || e.shiftKey || e.target.closest('.published-outputs')) return;
+            e.preventDefault();
+            e.stopPropagation();
+            bringBoxToFront(boxEl);
+            delete boxEl.dataset.dragMoved;
+            const startX = e.clientX, startY = e.clientY;
+            const original = [...(props.frame || [0, 0, 300, 200])];
+            boxEl.setPointerCapture(e.pointerId);
+            const move = event => {
+                const dx = event.clientX - startX, dy = event.clientY - startY;
+                if (!boxEl.dataset.dragMoved && Math.hypot(dx, dy) < 4) return;
+                boxEl.dataset.dragMoved = '1';
+                props.frame = [original[0] + dx / zoom, original[1] + dy / zoom, original[2], original[3]];
+                boxEl.style.left = `${props.frame[0]}px`;
+                boxEl.style.top = `${props.frame[1]}px`;
+                boxEl.style.cursor = 'grabbing';
+                drawConnections();
+            };
+            const end = () => {
+                boxEl.removeEventListener('pointermove', move);
+                boxEl.removeEventListener('pointerup', end);
+                boxEl.removeEventListener('pointercancel', end);
+                boxEl.style.cursor = '';
+                if (boxEl.hasPointerCapture(e.pointerId)) boxEl.releasePointerCapture(e.pointerId);
+            };
+            boxEl.addEventListener('pointermove', move);
+            boxEl.addEventListener('pointerup', end);
+            boxEl.addEventListener('pointercancel', end);
         });
 
         canvas.appendChild(boxEl);
+        window.FieldOfflineOutputs?.mount(boxEl,box.id);
 
         // Update canvas size
         maxX = Math.max(maxX, x + w);
@@ -888,7 +931,7 @@ function contentBounds() {
     };
     visibleBoxes.forEach(box => {
         const [x, y, w, h] = (box.properties || {}).frame || [0, 0, 300, 200];
-        add({ x, y, w, h });
+        add(window.FieldOfflineOutputs?.bounds(box) || { x, y, w, h });
     });
     if (showDrawing && drawingInfo) add(drawingInfo.bounds);
     return Number.isFinite(minX) ? { x: minX, y: minY, w: maxX - minX, h: maxY - minY } : null;
@@ -960,6 +1003,12 @@ function findBoxByIdOrName(key) {
 }
 
 function applyUrlState(params) {
+    if (params.get('focus') === 'outputs') {
+        const first = visibleBoxes.filter(b => window.FieldOfflineOutputs?.forBox(b.id).some(o => o.path))
+            .sort((a,b) => (a.properties.frame?.[1] || 0) - (b.properties.frame?.[1] || 0) ||
+                (a.properties.frame?.[0] || 0) - (b.properties.frame?.[0] || 0))[0];
+        if (first) frameWorldRect(window.FieldOfflineOutputs.bounds(first),1,30);
+    }
     const bookmarkSlot = Number(params.get('bookmark'));
     if (bookmarkSlot) {
         const bookmark = bookmarks.find(b => b.slot === bookmarkSlot);
@@ -967,8 +1016,6 @@ function applyUrlState(params) {
     }
     if (params.get('reader') === '1') {
         literateMode = true;
-        const toggle = document.getElementById('literate-toggle');
-        if (toggle) toggle.textContent = 'editor';
     }
     const box = findBoxByIdOrName(params.get('select'));
     if (box) {
@@ -1114,6 +1161,14 @@ function isEditorFocused() {
     return active && active.closest('.monaco-editor-container');
 }
 
+function bringBoxToFront(boxEl) {
+    // Keep iframe nodes mounted: moving them in the DOM would restart their viewers.
+    const boxes = [...boxEl.parentElement.querySelectorAll(':scope > .box')]
+        .sort((a, b) => (Number(a.style.zIndex) || 0) - (Number(b.style.zIndex) || 0));
+    boxes.filter(node => node !== boxEl).forEach((node, i) => node.style.zIndex = String(i + 1));
+    boxEl.style.zIndex = String(boxes.length);
+}
+
 function selectBox(box, boxEl, reveal = false) {
     // Deselect previous box
     if (selectedBox) {
@@ -1125,6 +1180,7 @@ function selectBox(box, boxEl, reveal = false) {
 
     // Select new box
     selectedBox = box;
+    bringBoxToFront(boxEl);
     boxEl.classList.add('selected');
 
     // Show editor with box properties
@@ -1234,11 +1290,6 @@ function showEditorForBox(box) {
 
     const tabsContainer = document.getElementById('property-tabs');
     tabsContainer.innerHTML = '';
-
-    const title = document.createElement('div');
-    title.className = 'panel-title';
-    title.textContent = props.name || box.id;
-    tabsContainer.appendChild(title);
 
     if (codeProperties.length > 0) {
         codeProperties.forEach(prop => {
@@ -1355,16 +1406,26 @@ async function initializeMonaco() {
             settled = true;
             reject(new Error('Monaco editor timed out while loading'));
         }, 15000);
-        require.config({ paths: { vs: './min/vs' } });
+        const vs = new URL('./min/vs', window.location.href).href;
+        window.MonacoEnvironment = {
+            ...(window.MonacoEnvironment || {}),
+            getWorkerUrl: () => `${vs}/base/worker/workerMain.js`
+        };
+        require.config({ paths: { vs } });
         require(['vs/editor/editor.main'], () => {
             if (settled) return;
             settled = true;
             clearTimeout(timer);
             try {
+                monaco.editor.defineTheme('field-offline-dark', {
+                    base: 'vs-dark', inherit: true, rules: [],
+                    colors: { 'editor.background':'#1e1e1e', 'editorGutter.background':'#000000',
+                        'editor.lineHighlightBorder':'#00000000', 'editorCursor.foreground':'#dddddd' }
+                });
                 monacoEditor = monaco.editor.create(document.getElementById('editor'), {
                     value: '',
                     language: 'kotlin',
-                    theme: 'vs-dark',
+                    theme: 'field-offline-dark',
                     readOnly: true,
                     minimap: { enabled: false },
                     scrollBeyondLastLine: false,
@@ -1375,9 +1436,10 @@ async function initializeMonaco() {
                     lineNumbers: 'on',
                     glyphMargin: false,
                     folding: true,
-                    lineDecorationsWidth: 0,
-                    lineNumbersMinChars: 3,
-                    renderLineHighlight: 'all',
+                    lineDecorationsWidth: 12,
+                    lineNumbersMinChars: 2,
+                    padding: {top:2,bottom:2},
+                    renderLineHighlight: 'none',
                     automaticLayout: true
                 });
                 resolve();
@@ -1388,12 +1450,69 @@ async function initializeMonaco() {
     });
 }
 
+function setupEditorResize() {
+    const panel = document.getElementById('editor-container');
+    const handle = document.getElementById('editor-resize-handle');
+    if (!panel || !handle) return;
+    let drag = null;
+    const limits = () => {
+        const max = Math.max(0, window.innerWidth - 10);
+        return { min: Math.min(320, max), max };
+    };
+    const describe = () => {
+        const { min, max } = limits();
+        const width = Math.round(panel.getBoundingClientRect().width);
+        handle.setAttribute('aria-valuemin', String(min));
+        handle.setAttribute('aria-valuemax', String(max));
+        handle.setAttribute('aria-valuenow', String(width));
+        handle.setAttribute('aria-valuetext', `${width} pixels wide`);
+    };
+    const setWidth = width => {
+        const { min, max } = limits();
+        panel.style.width = `${Math.round(Math.max(min, Math.min(max, width)))}px`;
+        if (monacoEditor) monacoEditor.layout();
+        describe();
+    };
+    handle.addEventListener('pointerdown', event => {
+        if (event.button !== 0 || drag) return;
+        event.preventDefault();
+        event.stopPropagation();
+        drag = { id: event.pointerId, x: event.clientX, width: panel.getBoundingClientRect().width };
+        handle.setPointerCapture(event.pointerId);
+        document.documentElement.classList.add('editor-resizing');
+    });
+    handle.addEventListener('pointermove', event => {
+        if (drag && event.pointerId === drag.id) setWidth(drag.width + drag.x - event.clientX);
+    });
+    const stop = event => {
+        if (!drag || event.pointerId !== drag.id) return;
+        drag = null;
+        document.documentElement.classList.remove('editor-resizing');
+    };
+    handle.addEventListener('pointerup', stop);
+    handle.addEventListener('pointercancel', stop);
+    handle.addEventListener('lostpointercapture', stop);
+    handle.addEventListener('keydown', event => {
+        const step = event.shiftKey ? 80 : 20;
+        const width = panel.getBoundingClientRect().width;
+        const { min, max } = limits();
+        const next = { ArrowLeft: width + step, ArrowRight: width - step, Home: min, End: max }[event.key];
+        if (next === undefined) return;
+        event.preventDefault();
+        event.stopPropagation();
+        setWidth(next);
+    });
+    new ResizeObserver(describe).observe(panel);
+    window.addEventListener('resize', () => {
+        if (panel.style.width) setWidth(parseFloat(panel.style.width));
+    });
+}
+
 function setupLiterateToggle() {
     const toggle = document.getElementById('literate-toggle');
     if (!toggle) return;
     toggle.addEventListener('click', () => {
         literateMode = !literateMode;
-        toggle.textContent = literateMode ? 'editor' : 'reader';
         updateEditorVisibility();
         // Re-render current content to ensure view is fresh
         if (selectedBox && currentProperty) loadProperty(selectedBox, currentProperty);
@@ -1401,6 +1520,11 @@ function setupLiterateToggle() {
 }
 
 function updateEditorVisibility() {
+    const toggle = document.getElementById('literate-toggle');
+    if (toggle) {
+        toggle.setAttribute('aria-pressed', String(literateMode));
+        toggle.title = literateMode ? 'Show code' : 'Show reader view';
+    }
     const editorEl = document.getElementById('editor');
     if (!editorEl || !literateViewEl) return;
     if (!currentProperty || (selectedBox && contentProperties(selectedBox.properties || {}).length === 0)) {
@@ -1443,8 +1567,39 @@ function parseLiterateSegments(text) {
     // terminators, which would otherwise be yanked out as prose and desync the
     // code highlighting across the `"""` boundaries.
     let insideTriple = false;
+    // Inside a `/* ... */` block that began at the start of a line: its lines
+    // are prose, with the delimiters and any KDoc-style leading `*` removed.
+    let insideBlock = false;
+
+    const pushComment = (text) => {
+        if (current.type !== 'comment') pushCurrent();
+        current.type = 'comment';
+        current.lines.push(text);
+    };
 
     lines.forEach(line => {
+        if (insideBlock) {
+            const end = line.indexOf('*/');
+            const body = end >= 0 ? line.slice(0, end) : line;
+            if (end >= 0) insideBlock = false;
+            const text = body.replace(/^\s*\*(?!\/)/, '').trim();
+            if (end < 0 || text) pushComment(text);
+            return;
+        }
+        const trimmed = line.trim();
+        if (!insideTriple && trimmed.startsWith('/*')) {
+            const end = trimmed.indexOf('*/', 2);
+            // A block that closes and is followed by code on the same line stays code.
+            if (end < 0 || trimmed.slice(end + 2).trim() === '') {
+                const body = trimmed.slice(trimmed.startsWith('/**') ? 3 : 2, end < 0 ? undefined : end).trim();
+                if (end < 0) insideBlock = true;
+                if (body) pushComment(body);
+                else if (current.type !== 'comment') pushCurrent();
+                if (current.type === null) current.type = 'comment';
+                return;
+            }
+        }
+
         const startedInsideTriple = insideTriple;
         const tripleCount = (line.match(/"""/g) || []).length;
         if (tripleCount % 2 === 1) insideTriple = !insideTriple;
@@ -1813,6 +1968,8 @@ function nameFromPathSegments(segments) {
 }
 
 function deriveRecommendedName(fileUrl) {
+    const published = window.FieldOfflineOutputs?.documentName?.();
+    if (typeof published === 'string' && published.trim() && !['.','..'].includes(published) && !/[\\/\0]/.test(published)) return published;
     try {
         const url = new URL(fileUrl, window.location.href);
         const parts = url.pathname.split('/').filter(Boolean);

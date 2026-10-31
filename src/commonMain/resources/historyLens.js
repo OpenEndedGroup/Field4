@@ -701,19 +701,31 @@ const HistoryLens = (() => {
             event.stopPropagation();
             setCursorToVersion(editor, state, Number(row.dataset.versionIndex), false);
         });
+        root.addEventListener("keydown", (event) => {
+            if (event.key !== "Escape" || event.defaultPrevented) return;
+            event.preventDefault();
+            event.stopPropagation();
+            close(editor);
+        });
         return root;
     }
 
     function createMarginDom(editor) {
         const margin = document.createElement("div");
         margin.className = "history-lens-margin";
-        margin.innerHTML = `<div class="history-lens-margin-close closeBox hoverable" title="Close code history">×</div>`;
+        margin.innerHTML = `<button type="button" class="history-lens-margin-close closeBox hoverable" title="Close" aria-label="Close">×</button>`;
         for (const eventName of ["pointerdown", "mousedown", "mouseup"]) {
             margin.addEventListener(eventName, (event) => {
                 event.stopPropagation();
             });
         }
         margin.addEventListener("click", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            close(editor);
+        });
+        margin.addEventListener("keydown", (event) => {
+            if (event.key !== "Escape") return;
             event.preventDefault();
             event.stopPropagation();
             close(editor);

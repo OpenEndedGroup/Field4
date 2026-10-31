@@ -77,6 +77,7 @@ object CompletionDiffK1Probe {
         val member: String,
         val isDot: Boolean,
         val prefix: String,
+        val source: String,
         val candidates: List<K1DumpCandidate>,
     )
 
@@ -109,7 +110,7 @@ object CompletionDiffK1Probe {
                     else -> emptyList()
                 }
                 val hit = meta.any { it.text == member || it.displayText.startsWith("$member(") || it.displayText.startsWith("$member ") }
-                dump += K1DumpFixture(label, member, isDot, prefix,
+                dump += K1DumpFixture(label, member, isDot, prefix, code,
                     meta.map { K1DumpCandidate(it.text, it.displayText, it.tail, it.icon) })
                 println("[$label] ${if (isDot) "DOT" else "NAME"} prefix='$prefix' intended .$member ${if (hit) "✓" else "✗"} (${meta.size} cands)")
             }

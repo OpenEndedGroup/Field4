@@ -1,6 +1,6 @@
-import afield.graphics.vulkan.Renderer
-import afield.graphics.vulkan.util.Window
 import afield.simulation.agents.ShaderForestFireSystem
+import afield.graphics.vulkan.util.Window
+import afield.graphics.vulkan.Renderer
 var Box.fire by Inheritance<ShaderForestFireSystem>() /**/
 val Once.fire by Onceing<ShaderForestFireSystem>() /**/
 val Why.fire by Whying() /**/

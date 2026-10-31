@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-29T22:28:29.212Z",
+  "documentName": "fn_differentiable_fit_demo",
+  "outputs": [
+    {
+      "uid": "fn_fit_demo",
+      "channel": "1 target",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "plotly",
+        "svg"
+      ],
+      "width": 1008,
+      "height": 471,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "fn_fit_demo",
+      "channel": "2 fitted",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "plotly",
+        "svg"
+      ],
+      "width": 1008,
+      "height": 471,
+      "path": "outputs/1.html"
+    }
+  ]
+}

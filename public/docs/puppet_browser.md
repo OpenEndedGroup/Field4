@@ -7,8 +7,8 @@ Chromium's composited pixels arrive in Field as a sampled Vulkan image.
 You can click and type into that tab with the mouse and keyboard, aim at it with an OpenXR
 controller, drive it from code, and hand it to any ordinary mesh, shader or render pass.
 
-The control half of it does not need the texture half. The same tab — navigation, input, JavaScript,
-CDP, the page bridge — is drivable with no renderer and no GPU at all, which is what lets a test,
+You can also drive the tab without rendering its pixels: navigation, input, JavaScript, CDP and the
+page bridge work without a renderer or GPU. That lets a test,
 a docs build or a data box use a browser. See [a browser you do not have to
 render](#a-browser-you-do-not-have-to-render).
 

@@ -1,13 +1,12 @@
 # What a document is on disk
 
-A Field document is a directory. Look inside one and you will find six or more files that the last
-save wrote, in a fixed order, on a background thread; opening the document reads a single one of
-them. This page covers what is in that directory, **which artifact wins when Field loads**, and when
-each of them is written. Edit one of those files by hand and those two answers decide whether your
-edit survives.
+A Field document is a directory. Inside it are the saved box graph, the code in each box, and
+records of the document's history and operations. You can inspect these files with ordinary tools,
+and you can edit some of them by hand.
 
-[File management](files_and_paths.md) covers the `files/` subdirectory — the resolver a
-box uses to find `data.csv`. This page is about everything beside it.
+Here's what Field writes on a save, what it reads when you reopen the document, and which copy
+takes precedence when a value appears in more than one file. For files your own code uses, such as
+`data.csv`, see [File management](files_and_paths.md).
 
 ## What one save writes
 
@@ -120,16 +119,21 @@ line decides which copy a load uses:
 ```diffstatic {data-lang=kotlin}
 is FileInline -> {
     val file = File(directory, value.path)
-    if (!preferInlineFiles && file.exists()) file.readText() else value.inline
+    if (!preferInlineFiles && file.exists()) sidecarOrNewerInline(file, value, directory) else value.inline
 }
 ```
 
-`src/jvmMain/kotlin/afield/document/persistence/saving.kt:1357#if (!preferInlineFiles && file.exists()) file.readText() else value.inline`.
-So **if the loose sidecar file exists, its contents win, and the inline copy in `metadata.edn` is not
-read.** Regenerate a `metadata.edn` by hand with new code in the `inline` field, leave
-`<box>_code_.kt` in place, and the document opens with the old code: that one property came from the
-file. Frames, names, topology and everything else on the same box are still read from `metadata.edn`
-exactly as written. The choice is per property, and only for the property names in
+`src/jvmMain/kotlin/afield/document/persistence/saving.kt:1546#if (!preferInlineFiles && file.exists()) sidecarOrNewerInline(file, value, directory) else value.inline`.
+So **if the loose sidecar file exists, its contents win**, with one exception: when `metadata.edn`
+was written more than two seconds after the sidecar and its inline copy differs from it, the inline
+copy is loaded instead
+(`src/jvmMain/kotlin/afield/document/persistence/saving.kt:1510#if (!metadata.isFile || metadata.lastModified() <= file.lastModified() + 2000) return text`).
+That is a hand edit of the `inline` field made while the document was closed. Before loading it,
+Field copies the sidecar into `backups/` and logs a `warning,save` line naming the copy, so neither
+edit is lost. A checkout writes both files at once, and the two seconds keep it on the sidecar. Edit
+the sidecar after `metadata.edn` and the sidecar wins. Frames, names, topology and
+everything else on the same box are always read from `metadata.edn` exactly as written. The choice
+is per property, and only for the property names in
 `src/jvmMain/kotlin/afield/document/graph/Boxes.kt:498#var ioSeparateProperties = mutableMapOf(`.
 
 `preferInlineFiles` inverts it, and there is one caller who wants that: the history machinery, which
@@ -168,9 +172,9 @@ cannot have removed it. A property of a box already open is applied when the new
 differs from that box's value in the last `metadata.edn` Field wrote or read
 (`src/jvmMain/kotlin/afield/document/persistence/FileWatchManager.kt:734#private fun applyExternalPropertyEdits(`),
 so a value you changed in Field since the last save, and the file did not touch, is kept. Two things
-the reconcile does not do: it does not rewire the connections of a box already open (`children`,
-`parents`, nesting), and it does not remove a property you delete from the file, because the next save
-writes it back.
+the reconcile handles differently: edits to `children` and `parents` connect or disconnect boxes,
+while nesting is handled by the add/remove passes. Deleting a property from the file does not remove
+it from an open box; the next save writes it back.
 
 **A `document.md` edit does nothing**, for the reason above: nothing reads it, and the watcher does
 not decode it either.

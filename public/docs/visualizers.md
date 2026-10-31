@@ -1,22 +1,17 @@
 # Visualizers, Displays, and Little Instruments
 
-*Every public declaration used below is listed, with its KDoc, in the codebase reference: [`ValueVisualizer.kt`](reference/visualization.md#valuevisualizer-kt), [`ImagingVisualizer.kt`](reference/visualization.md#imagingvisualizer-kt), [`plotly.kt`](reference/visualization.md#plotly-kt). Start from [what's already in the box](reference/index.md).*
-
 Field has many ways to show a value, and the quickest takes two keystrokes: put `.h` on the end of an expression and run the line.
 
-What comes back can land in several places. Some visuals appear **inline in the editor**, beside the line you ran. Some fill an **output area** under the box. Some output areas become **inspectors**, or **little control panels** whose sliders you drag while the code around them keeps running. And helpers like `.h` and `.h2` are about turning an arbitrary Kotlin value into something formatted well enough to read.
-
-This page is a tour of the whole family.
+The result might appear **inline in the editor**, beside the line you ran, or in an **output area**
+under the box. An output area can also become an inspector or a little control panel, with sliders
+you can move while the surrounding code keeps running. Let's look at the ways to show and work
+with values, starting with `.h` and `.h2`.
 
 ## The value visualizer: what `.h` draws
 
-Most environments answer "what is this
-value?" with a line of `toString()`. Field answers with a *picture*: whenever you
-ask Field to show a value, the **value visualizer** turns it into a compact HTML
-view — a reflective tree for arbitrary objects, and, for the types Field draws
-with, a little inline graphic. You reach it three ways, all
-of which call the same renderer (`ValueVisualizer.visualize(...)`, in
-`src/jvmMain/kotlin/afield/ui/visualization/ValueVisualizer.kt`):
+Ask Field to show a value and the **value visualizer** makes a compact HTML view of it. An object
+becomes a tree you can open; a vector, path or function can also get a small drawing. These three
+calls reach the same visualizer:
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -45,7 +40,7 @@ readable properties — and it walks the members into an indented tree. Numbers,
 booleans, strings, and nested values are each rendered by the same rules,
 recursively.
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-reflective-tree.png" alt="an output channel named cam holding a tree headed Camera: position as vec3(0, 1.5, -4) with a small axis drawing of the vector, fieldOfView 55, active true, and layers as the list dots, lines, labels with its count of 3" wait="1.0" capture="box" open-outputs="true" w="640" h="200" embed=true name="reflective-tree"}
 :::static
 data class Camera(
     val position: Vector3f,
@@ -55,15 +50,11 @@ data class Camera(
 )
 
 val cam = Camera(Vector3f(0f, 1.5f, -4f), 55.0, true, ["dots", "lines", "labels"])
-cam.h
+display("cam", cam.h)
 ```
 
-![Reflective tree for a Camera data class](assets/value_visualizers/reflective_tree.png){ width="516" }
-
-Notice that the tree is not flat text: the nested `position` is itself rendered as
-a `vec3`, and `layers` collapses to a list with a size count. The renderer keeps
-only a handful of fields inline (with a "… +N more fields" expander for the rest)
-so a large object never floods the output.
+The nested `position` is drawn as a `vec3`, and `layers` collapses to a list with a size count.
+For a larger object, open the "… +N more fields" expander to see the rest.
 
 ### Numeric collections, with stats
 
@@ -71,13 +62,11 @@ Arrays and lists of numbers get a preview plus a one-line statistical summary �
 mean, standard deviation, and range — so you can judge a buffer without scrolling
 through it. Long collections elide the middle:
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-double-array.png" alt="an output channel named samples holding the first values of a sine, 0, 0.131, 0.259 up to 1 and back, then '… +28 more items' with mu 8.90e-17, sigma 0.707 and range -1 to 1, the count 48, and a small sparkline of the wave" wait="1.0" capture="box" open-outputs="true" w="900" h="120" embed=true name="double-array"}
 :::static
 val samples = DoubleArray(48) { i -> sin(i / 48.0 * 2.0 * Math.PI) }
-samples.h
+display("samples", samples.h)
 ```
-
-![DoubleArray preview with mean, sigma and range](assets/value_visualizers/double_array.png)
 
 The tail reads `… +28 more items [μ=8.90e-17, σ=0.707, range=−1…1] (48)`: the
 sampled sine averages to ~0, has the expected 0.707 RMS spread, and spans −1…1 —
@@ -86,38 +75,35 @@ visible immediately, without a plot. The same treatment applies to `IntArray`,
 
 ### Vectors, matrices, and quaternions
 
-Field's generated linear-algebra types render as compact, colour-coded tokens
-rather than as reflective trees — the point of a `vec3` is its three numbers, not
-its class internals:
+Vectors render as compact, colour-coded tokens, making their components easy to pick out:
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-vectors.png" alt="an output channel named vectors holding a list of three: vec2(0.5, 1.5), vec3(1, 2, 3) and vec4(0.25, 0.5, 1, 2), each with a small drawing, arrows for the first two and a four-bar chart for the vec4" wait="1.0" capture="box" open-outputs="true" w="400" h="200" embed=true name="vectors"}
 :::static
-[vec(0.5, 1.5), vec(1.0, 2.0, 3.0), vec(0.25, 0.5, 1.0, 2.0)].h
+display("vectors", [vec(0.5, 1.5), vec(1.0, 2.0, 3.0), vec(0.25, 0.5, 1.0, 2.0)].h)
 ```
-
-![vec2, vec3 and vec4 rendered as compact tokens](assets/value_visualizers/vectors.png){ width="324" }
 
 Matrices summarise rather than dump every cell: a `mat3` shows its determinant, a
 `mat4` shows determinant plus extracted translation, and a quaternion shows its
 four components. Here they are keyed by a map, which the visualizer renders as a
 tree — a good way to label several related values at once:
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-linalg-map.png" alt="an output channel named transforms holding a map: scale (mat3) with det=6 and a 3 by 3 heatmap grid, translate (mat4) with det=1 and t=(5, -2, 1) and a 4 by 4 grid, and spin (quat) as quat(0, 0.296, 0, 0.955)" wait="1.0" capture="box" open-outputs="true" w="640" h="200" embed=true name="linalg-map"}
 :::static
-linkedMapOf(
-        "scale (mat3)" to Matrix3f().set(2f, 0f, 0f, 0f, 3f, 0f, 0f, 0f, 1f),
-        "translate (mat4)" to
-            Matrix4f().identity().apply {
-                set(3, 0, 5f)
-                set(3, 1, -2f)
-                set(3, 2, 1f)
-            },
-        "spin (quat)" to Quaternionf().rotateY(0.6f),
-    )
-    .h
+display(
+    "transforms",
+    linkedMapOf(
+            "scale (mat3)" to Matrix3f().set(2f, 0f, 0f, 0f, 3f, 0f, 0f, 0f, 1f),
+            "translate (mat4)" to
+                Matrix4f().identity().apply {
+                    set(3, 0, 5f)
+                    set(3, 1, -2f)
+                    set(3, 2, 1f)
+                },
+            "spin (quat)" to Quaternionf().rotateY(0.6f),
+        )
+        .h,
+)
 ```
-
-![A map of mat3, mat4 and quaternion values](assets/value_visualizers/linalg_map.png){ width="564" }
 
 The `mat3` reports `det=6` (2 × 3 × 1), the `mat4` reports `det=1, t=(5, -2, 1)`,
 and the quaternion shows its normalized components. For the algebra behind these
@@ -125,12 +111,10 @@ types, see [Linear Algebra](linear_algebra.md).
 
 ### An `FLine`, drawn
 
-An [`FLine`](fline_examples.md) — Field's core drawable path — is where the
-renderer stops summarising and starts *drawing*. Alongside its node counts,
-bounding box, length, and a compressed path signature, it appends a small inline
-SVG thumbnail of the actual geometry:
+For an [`FLine`](fline_examples.md), Field shows the node counts, bounding box, length and a
+compressed path signature, followed by a small SVG drawing of the path:
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-fline-spiral.png" alt="an output channel named spiral headed FLine (141 nodes), then M=1 L=140 C=0, bounds 130x124 and length 1.19e+03, the signature M(Lx41) … (Lx22), and a thumbnail of a five-turn spiral" wait="1.0" capture="box" open-outputs="true" w="640" h="200" embed=true name="fline-spiral"}
 :::static
 val spiral = FLine()
 val steps = 140
@@ -143,10 +127,8 @@ for (i in 0..steps) {
     val y = 80.0 + Math.sin(a) * r
     spiral.lineTo(x, y)
 }
-spiral.h
+display("spiral", spiral.h)
 ```
-
-![FLine node stats, path signature, and an SVG spiral thumbnail](assets/value_visualizers/fline_spiral.png){ width="552" }
 
 The header reads `FLine (141 nodes)`, then `M=1 L=140 C=0 · b=130×124 ·
 len=1.19e+03`, then the run-compressed signature `M(Lx41) … (Lx22)`, and finally
@@ -161,15 +143,13 @@ full reflective tree — its `domain`, `evalFn`, `graph`, and `name` — because
 graph is the function's rebuildable structure. Then, below it, it appends a safe
 SVG line plot of the function sampled over a finite window of its domain:
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-fn-sin-plot.png" alt="an output channel named fn holding the tree of an Fn, its domain 0..3, name sin, the graph node with its op, children and maps, and evalFn, then a line plot of sin(10x) over 0 to 3 between labels 1.159 and -1.159" wait="1.0" capture="box" open-outputs="true" w="640" h="200" embed=true name="fn-sin-plot"}
 :::static
 with(Functions) {
     val fn = sin(10) over (0.0..3.0)
-    fn.h
+    display("fn", fn.h)
 }
 ```
-
-![Fn reflective tree with an appended SVG sine plot](assets/value_visualizers/fn_sin_plot.png){ width="612" }
 
 The plot mirrors `Fn`'s own sampling rules: an unbounded domain falls back to a
 preview window, non-finite samples become gaps in the curve rather than spikes, a
@@ -180,32 +160,53 @@ on its own — the value display is never allowed to fail.
 
 ### Images, edges, corners and flow
 
-The [imaging / computer-vision family](imaging_examples.md) gets the same
-treatment, and it is the case where the picture most obviously beats the text: an
-`Img` is a `FloatArray` you cannot read, a `List<Corner>` is forty records of
-three doubles each, and a `GaussianPyramid` is `GaussianPyramid@3f1a2b`. Every
-imaging value below is rendered by
-`src/jvmMain/kotlin/afield/ui/visualization/ImagingVisualizer.kt`, reached through the
-same `.h` you have been using all along.
+The same `.h` also helps you look at [images and computer-vision results](imaging_examples.md).
+Instead of reading a long array or a list of coordinates, you can see the pixels, detected corners,
+gradients or motion directly.
 
 Evaluate an `Img` and you get the actual pixels, aspect-correct, plus a `<details>`
 disclosure holding the per-channel strip, a per-channel histogram computed over the
 *full-resolution* samples, and the numbers:
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-img-rgb.png" alt="an output channel named scene holding the 240 by 180 test scene, a gradient with a yellow rectangle, a cyan disc, two white rulings and a pink checker patch, captioned Img, 240x180, rgb, range 0.1 to 0.98; below it the open disclosure with the R, G and B channels, a three-channel histogram, and min 0.1, max 0.98, mean 0.3426, mode direct" wait="1.0" capture="box" open-outputs="true" open-details="true" w="640" h="200" embed=true name="img-rgb"}
 :::static
-val scene = Img.generateRGB(240, 180) { x, y -> /* … */ }
-scene.h
+:::fold the scene: a gradient, a bright rectangle, a disc, two rulings and a checker patch
+val scene =
+    Img.generateRGB(240, 180) { x, y ->
+        var r = 0.10f + 0.30f * (x / 239f)
+        var g = 0.12f + 0.22f * (y / 179f)
+        var b = 0.34f - 0.20f * (x / 239f)
+        if (x in 30..90 && y in 26..76) {
+            r = 0.94f
+            g = 0.86f
+            b = 0.42f
+        }
+        if (hypot(x - 172.0, y - 62.0) <= 30.0) {
+            r = 0.30f
+            g = 0.80f
+            b = 0.92f
+        }
+        if (x in 150..152 || y in 140..142) {
+            r = 0.98f
+            g = 0.98f
+            b = 0.98f
+        }
+        if (x in 24..104 && y in 104..164 && (x / 8 + y / 8) % 2 == 0) {
+            r = 0.88f
+            g = 0.30f
+            b = 0.55f
+        }
+        Triple(r, g, b)
+    }
+:::endfold
+display("scene", scene.h)
 ```
-
-![An RGB Img with its channel strip, histogram and statistics](assets/imaging_visualizers/img_rgb.png){ width="564" }
 
 #### The range policy
 
-This family is **float-channel and unbounded**. A Sobel `dx` is signed. An unnormalised response exceeds 1. An upstream division produces a NaN. A
-visualizer that just clamps everything to `0…1` answers all three questions with a
-flat white rectangle. So the renderer picks one of three modes and **always names
-the one it picked**:
+Image channels can contain values outside `0…1`: a Sobel `dx` has negative values, for example,
+and an unnormalised response can exceed 1. The visualizer chooses a display range for the data
+and names the mode it used:
 
 `direct` — every finite sample is already in `0…1`. Nothing is rescaled, and the
 caption says `direct`. That is the picture above.
@@ -216,12 +217,39 @@ to put it, and a 1-channel image is run through the `coolwarm` diverging ramp fr
 [`Colormaps`](rectsl_cheatsheet.md) — blue negative, pale zero, red positive.
 Grey simply cannot carry a sign:
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-img-signed-dx.png" alt="an output channel named dx holding the scene's Sobel dx, mostly pale with red left edges and blue right edges, captioned range -0.4083 to 0.4088, signed, coolwarm; the open disclosure shows it in grey and viridis, a histogram spiking at zero, and mean 0.0002, sigma 0.052" wait="1.0" capture="box" open-outputs="true" open-details="true" w="640" h="200" embed=true name="img-signed-dx"}
 :::static
-scene.luma().sobel().dx.h
+:::fold the scene: a gradient, a bright rectangle, a disc, two rulings and a checker patch
+val scene =
+    Img.generateRGB(240, 180) { x, y ->
+        var r = 0.10f + 0.30f * (x / 239f)
+        var g = 0.12f + 0.22f * (y / 179f)
+        var b = 0.34f - 0.20f * (x / 239f)
+        if (x in 30..90 && y in 26..76) {
+            r = 0.94f
+            g = 0.86f
+            b = 0.42f
+        }
+        if (hypot(x - 172.0, y - 62.0) <= 30.0) {
+            r = 0.30f
+            g = 0.80f
+            b = 0.92f
+        }
+        if (x in 150..152 || y in 140..142) {
+            r = 0.98f
+            g = 0.98f
+            b = 0.98f
+        }
+        if (x in 24..104 && y in 104..164 && (x / 8 + y / 8) % 2 == 0) {
+            r = 0.88f
+            g = 0.30f
+            b = 0.55f
+        }
+        Triple(r, g, b)
+    }
+:::endfold
+display("dx", scene.luma().sobel().dx.h)
 ```
-
-![A signed Sobel dx rendered with a coolwarm diverging map](assets/imaging_visualizers/img_signed_dx.png){ width="752" }
 
 Read it: the rectangle's left edge is red (dark→bright going right, so `dx > 0`)
 and its right edge is blue; the disc is warm on its left limb and cool on its
@@ -233,27 +261,76 @@ one response image.
 `auto-ranged` — non-negative, but the maximum is above 1. Rescaled for display
 with the **true range printed**, so a bright pixel is never mistaken for 1.0:
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-img-autoranged.png" alt="an output channel named edges holding the scene's edge magnitude, white outlines on black, captioned range 0 to 10.2584, auto-ranged for display; the open disclosure shows grey and viridis readings, a histogram and max 10.2584, mode auto-ranged" wait="1.0" capture="box" open-outputs="true" open-details="true" w="640" h="200" embed=true name="img-autoranged"}
 :::static
-(scene.luma().sobelMagnitude() * 25f).h
+:::fold the scene: a gradient, a bright rectangle, a disc, two rulings and a checker patch
+val scene =
+    Img.generateRGB(240, 180) { x, y ->
+        var r = 0.10f + 0.30f * (x / 239f)
+        var g = 0.12f + 0.22f * (y / 179f)
+        var b = 0.34f - 0.20f * (x / 239f)
+        if (x in 30..90 && y in 26..76) {
+            r = 0.94f
+            g = 0.86f
+            b = 0.42f
+        }
+        if (hypot(x - 172.0, y - 62.0) <= 30.0) {
+            r = 0.30f
+            g = 0.80f
+            b = 0.92f
+        }
+        if (x in 150..152 || y in 140..142) {
+            r = 0.98f
+            g = 0.98f
+            b = 0.98f
+        }
+        if (x in 24..104 && y in 104..164 && (x / 8 + y / 8) % 2 == 0) {
+            r = 0.88f
+            g = 0.30f
+            b = 0.55f
+        }
+        Triple(r, g, b)
+    }
+:::endfold
+display("edges", (scene.luma().sobelMagnitude() * 25f).h)
 ```
-
-![An unnormalised response, auto-ranged with its true 0…10.26 range printed](assets/imaging_visualizers/img_autoranged.png){ width="752" }
 
 And non-finite samples — NaN, ±∞ — are counted, excluded from every statistic, and
 painted **magenta**:
 
-![An image with a NaN block and one infinity, painted magenta](assets/imaging_visualizers/img_non_finite.png){ width="752" }
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-img-non-finite.png" alt="an output channel named ramp holding a 96 by 72 grey ramp with an 8 by 8 magenta block and one magenta pixel, captioned 65 non-finite (magenta); the open disclosure shows grey and viridis readings, a histogram, mean 0.5003 and non-finite=65" wait="1.0" capture="box" open-outputs="true" open-details="true" w="640" h="200" embed=true name="img-non-finite"}
+:::static
+val ramp =
+    Img.generate(96, 72) { x, y ->
+        when {
+            x in 40..47 && y in 30..37 -> Float.NaN
+            x == 70 && y == 20 -> Float.POSITIVE_INFINITY
+            else -> (x + y) / 166f
+        }
+    }
+display("ramp", ramp.h)
+```
 
-Magenta because the alternative is silence: one NaN poisons `min()`/`max()`,
-`normalized()` returns an all-NaN image, and the PNG quantiser turns NaN into
-`0`, so a broken image comes back as an **all-black** thumbnail captioned
-`range NaN…NaN`. An image that is wrong should look wrong.
+The magenta pixels make missing or invalid values visible, and the count tells you how many
+samples need attention.
 
 Four-channel images sit on a checkerboard, so transparent black and opaque black
 are different pictures:
 
-![An RGBA image over a checkerboard, with its alpha channel broken out](assets/imaging_visualizers/img_rgba.png){ width="732" }
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-img-rgba.png" alt="an output channel named glow holding an orange disc fading to transparent over a checkerboard, captioned Img, 140x140, rgba; the open disclosure shows the R, G, B and A channels, the last a white radial falloff, with a histogram and statistics" wait="1.0" capture="box" open-outputs="true" open-details="true" w="640" h="200" embed=true name="img-rgba"}
+:::static
+val w = 140
+val h = 140
+val data = FloatArray(w * h * 4)
+for (y in 0 until h) for (x in 0 until w) {
+    val i = (y * w + x) * 4
+    data[i] = 0.95f
+    data[i + 1] = 0.55f
+    data[i + 2] = 0.20f
+    data[i + 3] = (1.0 - hypot(x - 70.0, y - 70.0) / 66.0).coerceIn(0.0, 1.0).toFloat()
+}
+display("glow", Img(w, h, 4, data).h)
+```
 
 #### Gradients and pyramids
 
@@ -261,14 +338,110 @@ A `Gradient` is two signed images and a direction, so it shows all of it — `dx
 `dy`, the magnitude, and the hue-by-direction image the type already knows how to
 build:
 
-![A Gradient shown as dx, dy, magnitude and hue-by-direction](assets/imaging_visualizers/gradient.png){ width="752" }
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-gradient.png" alt="an output channel named gradient holding four small images of the scene: dx and dy in the coolwarm map, the magnitude in grey and hue = direction, captioned Gradient, 240x180, max gradient magnitude 0.4103" wait="1.0" capture="box" open-outputs="true" open-details="true" w="640" h="200" embed=true name="gradient"}
+:::static
+:::fold the scene: a gradient, a bright rectangle, a disc, two rulings and a checker patch
+val scene =
+    Img.generateRGB(240, 180) { x, y ->
+        var r = 0.10f + 0.30f * (x / 239f)
+        var g = 0.12f + 0.22f * (y / 179f)
+        var b = 0.34f - 0.20f * (x / 239f)
+        if (x in 30..90 && y in 26..76) {
+            r = 0.94f
+            g = 0.86f
+            b = 0.42f
+        }
+        if (hypot(x - 172.0, y - 62.0) <= 30.0) {
+            r = 0.30f
+            g = 0.80f
+            b = 0.92f
+        }
+        if (x in 150..152 || y in 140..142) {
+            r = 0.98f
+            g = 0.98f
+            b = 0.98f
+        }
+        if (x in 24..104 && y in 104..164 && (x / 8 + y / 8) % 2 == 0) {
+            r = 0.88f
+            g = 0.30f
+            b = 0.55f
+        }
+        Triple(r, g, b)
+    }
+:::endfold
+display("gradient", scene.luma().sobel().h)
+```
 
 A pyramid is drawn as a **ladder of rungs at true relative scale**, bottom-aligned,
-so the halving is the visible fact rather than a number in a caption:
+so you can see each level halve in size:
 
-![A GaussianPyramid as five rungs at true relative scale](assets/imaging_visualizers/gaussian_pyramid.png){ width="752" }
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-gaussian-pyramid.png" alt="an output channel named pyramid holding five rungs of the scene, bottom-aligned and halving in size, labelled L0 240x180 down to L4 15x11, captioned GaussianPyramid, 5 levels" wait="1.0" capture="box" open-outputs="true" open-details="true" w="640" h="200" embed=true name="gaussian-pyramid"}
+:::static
+:::fold the scene: a gradient, a bright rectangle, a disc, two rulings and a checker patch
+val scene =
+    Img.generateRGB(240, 180) { x, y ->
+        var r = 0.10f + 0.30f * (x / 239f)
+        var g = 0.12f + 0.22f * (y / 179f)
+        var b = 0.34f - 0.20f * (x / 239f)
+        if (x in 30..90 && y in 26..76) {
+            r = 0.94f
+            g = 0.86f
+            b = 0.42f
+        }
+        if (hypot(x - 172.0, y - 62.0) <= 30.0) {
+            r = 0.30f
+            g = 0.80f
+            b = 0.92f
+        }
+        if (x in 150..152 || y in 140..142) {
+            r = 0.98f
+            g = 0.98f
+            b = 0.98f
+        }
+        if (x in 24..104 && y in 104..164 && (x / 8 + y / 8) % 2 == 0) {
+            r = 0.88f
+            g = 0.30f
+            b = 0.55f
+        }
+        Triple(r, g, b)
+    }
+:::endfold
+display("pyramid", scene.gaussianPyramid(5).h)
+```
 
-![A LaplacianPyramid: signed band rungs plus a tagged residual](assets/imaging_visualizers/laplacian_pyramid.png){ width="752" }
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-laplacian-pyramid.png" alt="an output channel named bands holding four signed band rungs in the coolwarm map, L0 240x180 down to L3 30x22, and a small rung labelled residual 15x11, captioned LaplacianPyramid, 4 bands, reconstructs to 240x180" wait="1.0" capture="box" open-outputs="true" open-details="true" w="640" h="200" embed=true name="laplacian-pyramid"}
+:::static
+:::fold the scene: a gradient, a bright rectangle, a disc, two rulings and a checker patch
+val scene =
+    Img.generateRGB(240, 180) { x, y ->
+        var r = 0.10f + 0.30f * (x / 239f)
+        var g = 0.12f + 0.22f * (y / 179f)
+        var b = 0.34f - 0.20f * (x / 239f)
+        if (x in 30..90 && y in 26..76) {
+            r = 0.94f
+            g = 0.86f
+            b = 0.42f
+        }
+        if (hypot(x - 172.0, y - 62.0) <= 30.0) {
+            r = 0.30f
+            g = 0.80f
+            b = 0.92f
+        }
+        if (x in 150..152 || y in 140..142) {
+            r = 0.98f
+            g = 0.98f
+            b = 0.98f
+        }
+        if (x in 24..104 && y in 104..164 && (x / 8 + y / 8) % 2 == 0) {
+            r = 0.88f
+            g = 0.30f
+            b = 0.55f
+        }
+        Triple(r, g, b)
+    }
+:::endfold
+display("bands", scene.luma().laplacianPyramid(4).h)
+```
 
 The Laplacian bands are signed, so they get the diverging treatment, and the one
 rung that is *not* a band is labelled `residual`.
@@ -281,11 +454,43 @@ points' own bounding box unioned with the origin — image coordinates start at
 `(0, 0)`, and including it keeps the points where they actually sit in the frame.
 The caption states the inferred extent:
 
-![Harris corners as a strength-coded scatter](assets/imaging_visualizers/corners.png){ width="752" }
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-corners.png" alt="an output channel named corners holding 13 Harris corners as dots on black, larger and brighter for stronger responses, captioned with the response range and an inferred extent of 157.86x144.81; the open disclosure lists the strongest, led by (148.66, 138.65) and the rectangle's corners" wait="1.0" capture="box" open-outputs="true" open-details="true" w="640" h="200" embed=true name="corners"}
+:::static
+:::fold the scene: a gradient, a bright rectangle, a disc, two rulings and a checker patch
+val scene =
+    Img.generateRGB(240, 180) { x, y ->
+        var r = 0.10f + 0.30f * (x / 239f)
+        var g = 0.12f + 0.22f * (y / 179f)
+        var b = 0.34f - 0.20f * (x / 239f)
+        if (x in 30..90 && y in 26..76) {
+            r = 0.94f
+            g = 0.86f
+            b = 0.42f
+        }
+        if (hypot(x - 172.0, y - 62.0) <= 30.0) {
+            r = 0.30f
+            g = 0.80f
+            b = 0.92f
+        }
+        if (x in 150..152 || y in 140..142) {
+            r = 0.98f
+            g = 0.98f
+            b = 0.98f
+        }
+        if (x in 24..104 && y in 104..164 && (x / 8 + y / 8) % 2 == 0) {
+            r = 0.88f
+            g = 0.30f
+            b = 0.55f
+        }
+        Triple(r, g, b)
+    }
+:::endfold
+display("corners", scene.luma().harrisCorners(minDistance = 8, maxCount = 40).h)
+```
 
-The four strongest here read back as `(30.7, 26.7)`, `(89.3, 26.7)`,
-`(30.7, 75.3)`, `(89.3, 75.3)` — the four corners of a rectangle planted at
-`x 30…90, y 26…76` — and the single strongest is where the two rulings cross.
+The strongest corner, `(148.7, 138.7)`, is where the two rulings cross. Next come
+`(30.7, 26.7)` and `(89.3, 26.7)`, and further down the list `(30.7, 75.3)` and
+`(89.3, 75.3)`: the four corners of the rectangle planted at `x 30…90, y 26…76`.
 
 A `HoughLine` is `(rho, theta)`: an **infinite** line with no extent of its own,
 which is why `toFLine` insists on being handed the image dimensions. With no image
@@ -294,19 +499,118 @@ still cross, says which square that was, and points at `linesToFLines` for the
 in-place version. The right panel needs no extent at all and is therefore exact:
 ρ against θ, sized by votes.
 
-![Hough lines in an inferred square, beside their (theta, rho) accumulator peaks](assets/imaging_visualizers/hough_lines.png){ width="752" }
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-hough-lines.png" alt="an output channel named lines holding two panels: the two detected lines, one vertical and one horizontal, clipped into an inferred 211x211 square, and their theta-rho peaks; the caption reads 2 lines, votes 140, no image extent known, and the open disclosure lists both lines" wait="1.0" capture="box" open-outputs="true" open-details="true" w="640" h="200" embed=true name="hough-lines"}
+:::static
+:::fold the scene: a gradient, a bright rectangle, a disc, two rulings and a checker patch
+val scene =
+    Img.generateRGB(240, 180) { x, y ->
+        var r = 0.10f + 0.30f * (x / 239f)
+        var g = 0.12f + 0.22f * (y / 179f)
+        var b = 0.34f - 0.20f * (x / 239f)
+        if (x in 30..90 && y in 26..76) {
+            r = 0.94f
+            g = 0.86f
+            b = 0.42f
+        }
+        if (hypot(x - 172.0, y - 62.0) <= 30.0) {
+            r = 0.30f
+            g = 0.80f
+            b = 0.92f
+        }
+        if (x in 150..152 || y in 140..142) {
+            r = 0.98f
+            g = 0.98f
+            b = 0.98f
+        }
+        if (x in 24..104 && y in 104..164 && (x / 8 + y / 8) % 2 == 0) {
+            r = 0.88f
+            g = 0.30f
+            b = 0.55f
+        }
+        Triple(r, g, b)
+    }
+:::endfold
+val edges = scene.luma().canny(0.10, 0.25)
+display("lines", houghLines(edges, maxLines = 8, threshold = 40).h)
+```
 
 A circle *does* have an extent, so no assumption is needed:
 
-![Hough circles drawn over their own extent](assets/imaging_visualizers/hough_circles.png){ width="752" }
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-hough-circles.png" alt="an output channel named circles holding one detected circle drawn as a green ring with its centre, captioned 1 circle, r 30, 98 votes; the open disclosure gives centre (172, 62), r=30" wait="1.0" capture="box" open-outputs="true" open-details="true" w="640" h="200" embed=true name="hough-circles"}
+:::static
+:::fold the scene: a gradient, a bright rectangle, a disc, two rulings and a checker patch
+val scene =
+    Img.generateRGB(240, 180) { x, y ->
+        var r = 0.10f + 0.30f * (x / 239f)
+        var g = 0.12f + 0.22f * (y / 179f)
+        var b = 0.34f - 0.20f * (x / 239f)
+        if (x in 30..90 && y in 26..76) {
+            r = 0.94f
+            g = 0.86f
+            b = 0.42f
+        }
+        if (hypot(x - 172.0, y - 62.0) <= 30.0) {
+            r = 0.30f
+            g = 0.80f
+            b = 0.92f
+        }
+        if (x in 150..152 || y in 140..142) {
+            r = 0.98f
+            g = 0.98f
+            b = 0.98f
+        }
+        if (x in 24..104 && y in 104..164 && (x / 8 + y / 8) % 2 == 0) {
+            r = 0.88f
+            g = 0.30f
+            b = 0.55f
+        }
+        Triple(r, g, b)
+    }
+:::endfold
+val edges = scene.luma().canny(0.10, 0.25)
+display("circles", houghCircles(edges, minRadius = 20, maxRadius = 40, maxCircles = 4).h)
+```
 
-A `FlowField` is a quiver — one arrow per converged track, hue by direction, and
-**failed tracks drawn as grey crosses** rather than dropped. A tracker that never
-reports failure is lying, and so is a picture that hides the failures.
-Displacements are drawn at true pixel scale unless the median motion is too small
-to see, in which case an integer exaggeration factor is applied and named:
+A `FlowField` shows one arrow per converged track, coloured by direction; grey crosses mark tracks
+that failed. Displacements are drawn at their pixel scale unless the median motion is too small to
+see. In that case the view enlarges them and reports the factor:
 
-![An optical-flow field as a hue-coded quiver, tracing a planted rotation](assets/imaging_visualizers/flow_field.png){ width="752" }
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-flow-field.png" alt="an output channel named flow holding an optical-flow quiver, arrows coloured by direction around the disc and across the checker patch, captioned FlowField, 60 of 61 tracked, median displacement 4.27 px, arrows drawn at twice their length" wait="1.0" capture="box" open-outputs="true" open-details="true" w="640" h="200" embed=true name="flow-field"}
+:::static
+:::fold the scene: a gradient, a bright rectangle, a disc, two rulings and a checker patch
+val scene =
+    Img.generateRGB(240, 180) { x, y ->
+        var r = 0.10f + 0.30f * (x / 239f)
+        var g = 0.12f + 0.22f * (y / 179f)
+        var b = 0.34f - 0.20f * (x / 239f)
+        if (x in 30..90 && y in 26..76) {
+            r = 0.94f
+            g = 0.86f
+            b = 0.42f
+        }
+        if (hypot(x - 172.0, y - 62.0) <= 30.0) {
+            r = 0.30f
+            g = 0.80f
+            b = 0.92f
+        }
+        if (x in 150..152 || y in 140..142) {
+            r = 0.98f
+            g = 0.98f
+            b = 0.98f
+        }
+        if (x in 24..104 && y in 104..164 && (x / 8 + y / 8) % 2 == 0) {
+            r = 0.88f
+            g = 0.30f
+            b = 0.55f
+        }
+        Triple(r, g, b)
+    }
+:::endfold
+val before = scene.luma()
+val after = scene.rotate(0.06).luma()
+val seeds = before.goodFeaturesToTrack(maxCount = 90, minDistance = 9)
+display("flow", opticalFlowLK(before, after, seeds.map { it.toVec2() }, levels = 3).h)
+```
 
 The frames here differ by a 0.06 rad rotation about the centre, and that is exactly
 what the arrows trace: little motion near the middle, tangential motion at the
@@ -317,18 +621,81 @@ rotation — adjacent label ids get unrelated colours, which is what makes two
 touching blobs distinguishable at thumbnail size — with the per-blob areas and
 centroids behind the disclosure:
 
-![A connected-component label map with one hue per blob](assets/imaging_visualizers/components.png){ width="752" }
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-components.png" alt="an output channel named blobs holding a label map of the thresholded scene, the rectangle, disc, rulings and small blobs each in their own hue, captioned 7 components; the open disclosure lists each component's area, bounding box and centroid" wait="1.0" capture="box" open-outputs="true" open-details="true" w="640" h="200" embed=true name="components"}
+:::static
+:::fold the scene: a gradient, a bright rectangle, a disc, two rulings and a checker patch
+val scene =
+    Img.generateRGB(240, 180) { x, y ->
+        var r = 0.10f + 0.30f * (x / 239f)
+        var g = 0.12f + 0.22f * (y / 179f)
+        var b = 0.34f - 0.20f * (x / 239f)
+        if (x in 30..90 && y in 26..76) {
+            r = 0.94f
+            g = 0.86f
+            b = 0.42f
+        }
+        if (hypot(x - 172.0, y - 62.0) <= 30.0) {
+            r = 0.30f
+            g = 0.80f
+            b = 0.92f
+        }
+        if (x in 150..152 || y in 140..142) {
+            r = 0.98f
+            g = 0.98f
+            b = 0.98f
+        }
+        if (x in 24..104 && y in 104..164 && (x / 8 + y / 8) % 2 == 0) {
+            r = 0.88f
+            g = 0.30f
+            b = 0.55f
+        }
+        Triple(r, g, b)
+    }
+:::endfold
+display("blobs", scene.luma().gaussianBlur(1.2).thresholdOtsu().connectedComponents().h)
+```
 
 A plain `List<Img>` becomes a filmstrip, which is the shape a frame sequence or a
 parameter sweep already has:
 
-![A List<Img> as a filmstrip of a blur sweep](assets/imaging_visualizers/filmstrip.png){ width="752" }
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-filmstrip.png" alt="an output channel named sweep holding a filmstrip of five copies of the scene, numbered 0 to 4, each more blurred than the last, captioned List<Img>, 5 images, 240x180" wait="1.0" capture="box" open-outputs="true" open-details="true" w="640" h="200" embed=true name="filmstrip"}
+:::static
+:::fold the scene: a gradient, a bright rectangle, a disc, two rulings and a checker patch
+val scene =
+    Img.generateRGB(240, 180) { x, y ->
+        var r = 0.10f + 0.30f * (x / 239f)
+        var g = 0.12f + 0.22f * (y / 179f)
+        var b = 0.34f - 0.20f * (x / 239f)
+        if (x in 30..90 && y in 26..76) {
+            r = 0.94f
+            g = 0.86f
+            b = 0.42f
+        }
+        if (hypot(x - 172.0, y - 62.0) <= 30.0) {
+            r = 0.30f
+            g = 0.80f
+            b = 0.92f
+        }
+        if (x in 150..152 || y in 140..142) {
+            r = 0.98f
+            g = 0.98f
+            b = 0.98f
+        }
+        if (x in 24..104 && y in 104..164 && (x / 8 + y / 8) % 2 == 0) {
+            r = 0.88f
+            g = 0.30f
+            b = 0.55f
+        }
+        Triple(r, g, b)
+    }
+:::endfold
+display("sweep", (0 until 5).map { i -> scene.gaussianBlur(0.001 + i * 1.6) }.h)
+```
 
-#### All of it, in a real box
+#### A whole pipeline in one box
 
-Everything above is a fragment rendered on its own. Here is the same renderer
-inside an actual Field box, in Field's own output areas: a whole pipeline, with
-`.h` doing all the work.
+Each figure above is one value in its own box. Several values can share one output channel: here
+four stages of a pipeline sit in two rows of two, with `.h` doing all the work.
 
 <!--
 FIELD_TEST
@@ -341,10 +708,10 @@ waitSec: 1.5
 # box frame — setting w/h here moved the box but not the pane. `showRow` lays the panels out
 # with `:::row`, which is a grid of equal-width columns (grid-auto-flow:column, 1fr) and
 # never wraps, so the wrap-collapse the hand-rolled flex row had to avoid cannot happen here.
-# The columns still share the width, so four panels is the count that stays readable, and
-# ComponentLabelling has its own figure above.
-w: 1120
-h: 420
+# The columns share the width, so the four panels go in two rows of two: one row of four
+# was too wide to read at the docs column width.
+w: 760
+h: 700
 expect:
   outputContains:
     - "imaging visualizers ready"
@@ -354,7 +721,7 @@ expect:
     kind: box
     padding: 16
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-imaging-panels.png" alt="four imaging panels in a row, each a thumbnail over a line of metadata and a row of disclosure links. An RGB image of a yellow rectangle and a cyan disc on a four-way colour gradient, labelled 180x132, rgb, range 0.1 to 0.98; a signed Sobel response of the same scene painted in the blue-white-red coolwarm map, labelled range -0.4083 to 0.4089, signed; a GaussianPyramid as four rungs at true relative scale, 180x132 down to 22x16; and a List of 9 Corners as coloured dots on black, labelled with its response range and an inferred extent of 118.23 by 106.17" wait="1.5" capture="box" open-outputs="true" padding="8" w="1200" h="700" embed=true name="imaging-panels"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-imaging-panels.png" alt="four imaging panels in two rows of two in one output channel: the RGB scene, captioned 180x132, rgb, range 0.1 to 0.98; its signed Sobel response in the coolwarm map, range -0.4083 to 0.4089; a GaussianPyramid of four rungs from 180x132 down to 22x16; and a List of 9 Corners as coloured dots on black, with an inferred extent of 118.23 by 106.17" wait="1.5" capture="box" open-outputs="true" padding="8" w="760" h="700" embed=true name="imaging-panels"}
 :::static
 val scene =
     Img.generateRGB(180, 132) { x, y ->
@@ -380,23 +747,21 @@ val scene =
     }
 val gray = scene.luma()
 
-// Four stages of one pipeline, four different value types, one `.h` each. showRow keeps
-// them in a single output channel instead of four tall ones.
+// Four stages of one pipeline, four different value types, one `.h` each, laid out as
+// two rows of two in a single output channel.
 val panels = [
     scene.h, // direct mode, 3 channels
     gray.sobel().dx.h, // signed -> coolwarm diverging
     gray.gaussianPyramid(4).h, // rungs at true relative scale
     gray.harrisCorners(minDistance = 6, maxCount = 20).h, // scatter, strength-coded
 ]
-showRow("panels", panels)
+markdown("panels", FieldMarkdown.row(panels.take(2)) + "\n\n" + FieldMarkdown.row(panels.drop(2)))
 
 println("imaging visualizers ready")
 ```
 
-Note what is *not* in that code: no `showImg`, no PNG encoding, no colour-map
-choice, no normalisation, no per-type branching. `.h` is the whole interface, and
-the renderer decides per value whether it is looking at colour data, a signed
-response, a pyramid, or a list of detections.
+Each value ends in `.h`. Field chooses a view suited to it, whether it is colour data, a signed
+response, a pyramid or a list of detections.
 
 !!! tip "Open the demo document"
     The [imaging_visualizers_demo](agent_transcripts.md#imaging_visualizers_demo)
@@ -405,9 +770,8 @@ response, a pyramid, or a list of detections.
     ends with one imaging value, and Field draws it; no `display(...)` call is
     needed. Then change a sigma or a threshold and re-run a box.
 
-The rest of this page is the *instruments* built on top of this renderer: inline
-probes that live next to a line of code, display channels, control surfaces, and
-synth scopes.
+Next, let's put visualizers beside running code, display larger results under a box, and add
+controls you can move while the code runs.
 
 ## Inline editor visualizers
 
@@ -419,7 +783,7 @@ val m = __m("some-marker")
 m.histogram(0.42)
 ```
 
-The marker remembers a little state and renders HTML back into the editor gutter / inline output location for that line.
+The marker keeps the values it needs and draws the result beside that line in the editor.
 
 ### Histogram, history, and summary stats
 
@@ -495,7 +859,7 @@ These functions are **passthroughs**. They return the value they were given, so 
 val filtered = __m("cutoff").history(rawCutoff)
 ```
 
-That makes them excellent debugging instruments: tiny scopes for values, not transformations of values.
+They make handy little scopes for seeing a value as it passes through your code.
 
 If you want a **live** feed rather than a one-shot summary, write a loop and **launch** the box:
 
@@ -657,7 +1021,8 @@ display("heavy", big.h2)
 println("display helpers ready")
 ```
 
-Use `.h` when the structure is small enough that you want a pleasant, immediate rendering. Use `.h2` when you want to browse instead of read. That covers a large map, list, array or buffer without turning the output area into soup, and it covers your own data classes and Field's own types too.
+Use `.h` for a compact view, and `.h2` when you want to browse a larger map, list, array or buffer.
+Both work with your own data classes as well as Field's types.
 
 `.h2` on a plain object gives you its properties as a scrollable table: one row per property, with its declared type and its value. Above the table sit `outliner` and `columns` links, which open the same value in the full tree and column browsers. There is nothing to register; it reflects. If a property's getter throws, the row is still there, marked, with the exception text in its value cell.
 
@@ -669,9 +1034,8 @@ To see all of it at once, insert the **h2 Explorer Examples** template and run i
 
 ### Markdown for captions and tables
 
-The escape hatch above has a way of taking over. A figure that wants a heading, a key/value table and a block of computed text ends up as a hundred lines of string concatenation, with a hand-picked font stack, a `<tr><td style=…>` builder and a local `fun esc(s: String)`, often longer than the code it illustrates.
-
-`markdown("channel", "…")` says the same thing in markdown, and picks up Field's own `--field-*` tokens instead of re-inventing them:
+For a heading, a table and some text, Markdown is often easier to write than a string of HTML.
+`markdown("channel", "…")` displays it using Field's styles:
 
 <!--
 FIELD_TEST
@@ -869,7 +1233,58 @@ ui.pause(300)
 
 Private properties are left out, as `graphPaths` leaves them out by default. Pass `includePrivate = true` to `tree` or `column` to list them; their paths then need `graphPaths(pattern, GraphWalkOptions(includePrivate = true))`. A row has no path when nothing reaches it by name: an element of a primitive array, a map key that is an object, the second of two map keys that print alike.
 
-And while it is not a “visualizer” in the chart sense, `logs(...)` belongs in the same family. This box shows only the `demo` channel and logs a small job into it; rows that share a block id are grouped under the block's first line:
+#### Browsing the renderer
+
+A box beneath a renderer box can open the renderer itself. It answers "what am I drawing, in what order, and where does the frame time go?" without a debugger:
+
+```diffstatic {data-lang=kotlin}
+column("renderer", renderer, width = 1100)
+```
+
+`renderer` is already in scope beneath the renderer box. `width` gives the panel room for several columns side by side, and `open = "render/modules"` opens the columns down to that path when the browser loads (the **path** button on a row copies its path). The renderer opens to:
+
+- `render`: the window's render target. Its children are listed in the order the target records them each frame: `preTargets` (render-to-texture passes drawn first), `modules` (one per `moduleHere`, in the order they were added), `meshModules`, then `others`.
+- A module opens to its `parameters` (name, colour attachments and format, depth, primitive type, blend), its `uniforms` and texture bindings with their set and binding numbers, and its `meshes` with vertex, triangle and instance counts.
+- `compute`: the compute target and its modules, drawn before graphics.
+- `cpu`: the CPU spans of the frame loop (acquire, record, submit, present), with p1 to p99 times in milliseconds.
+- `windows`, `contexts`, `queues`, `device`: the swapchain, its format and size, and the Vulkan objects behind them.
+
+Every node with children starts with a `summary` row: choose it to see that node's card. The renderer's card has the frame number, module counts, the window and the p50/p90 of each CPU span. Cards follow the running renderer, refreshing about once a second. `tree("renderer", renderer)` shows the same nodes as an outline.
+
+Here the column browser is open on a running renderer that draws one triangle, down to the triangle's module and its card:
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1900x900" clip-selector="iframe.field-inspector" screenshot="assets/visualizers-renderer-column.png" transcript="../../dev_docs/agents/transcripts/docs_capture/renderer_column.yaml" graphics-context=true padding="6" wait="0" timeout="240" embed=true hidden=true name="renderer-column" alt="Six columns of a column browser over a running renderer. Renderer lists summary, render, compute, contexts, windows, queues, cpu (6 spans), device and pipelineCache; render lists summary, preTargets, modules, meshModules, others and preRecorded; modules holds the triangle box's module; the module lists summary, parameters, shaders (2 entries), uniforms, liveUniforms and meshes (1 entry); the last column is the module's card: valid true, enabled true, pipelines built, uniforms 0, meshes 1, shaders vertex and fragment, cut off at the right edge."}
+val frame = "document.querySelector('iframe.field-inspector')"
+ui.waitForSelector("iframe.field-inspector", 8000.0)
+ui.eval("document.body.classList.add('mode-no-editor'); return true")
+ui.pause(1500)
+fun inFrame(js: String) = ui.eval("const w = $frame.contentWindow, d = $frame.contentDocument; $js").toString()
+fun columns() = inFrame("return d.querySelectorAll('#columns .column').length").trim('"').toIntOrNull() ?: 0
+for (i in 0 until 40) {
+    if (columns() >= 6) break
+    ui.pause(250)
+}
+check(columns() >= 6) { inFrame("return d.body.innerText.slice(0, 600)") }
+check("shaders" in inFrame("return d.body.innerText")) { inFrame("return d.body.innerText") }
+```
+
+### Browsing a glTF scene
+
+A scene file opens the same way. `GltfSupport.loadModel` gives Assimp's own view of a glTF (or any
+file Assimp reads), and `column(...)` or `tree(...)` lists its root node with its transform and
+children, then its meshes, materials and animations. A `GltfModel` loaded for drawing browses as its
+meshes, each with its buffers, material, texture slots and transform.
+
+```diffstatic {data-lang=kotlin}
+import afield.graphics.scene.GltfSupport
+
+val scene = GltfSupport.loadModel("dev_docs/agents/fixtures/path_tracing/transforms.gltf")!!
+column("columns", scene, width = 1300)
+tree("tree", scene, width = 700)
+```
+
+For a live log in an output panel, use `logs(...)`. This box shows the `demo` channel and logs a
+small job into it; rows with the same block ID are grouped under the block's first line:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-logs.png" alt="A logs embed with a channels: demo chip, a find box and a clear button. Below, one grouped block in the demo channel, each row with its time: starting a job, then step 1 of 3, step 2 of 3 and step 3 of 3, the block running on below the bottom of the panel." wait="3.0" capture="box" open-outputs="true" w="900" h="200" embed=true name="logs-demo"}
 logs("logs") { channel("demo") }
@@ -889,7 +1304,7 @@ log.log(
 )
 ```
 
-It gives you a live log iframe inside an output channel, which is often exactly what you want while instrumenting a system.
+The log updates as the job runs.
 
 The embed has a find box (`/`) that hides rows not containing its text, a **clear** button (or `k`), and, when you have scrolled up to read something, a `↓ N new` button instead of jumping away from what you were reading. If Field restarts, the embed reconnects by itself.
 
@@ -953,11 +1368,11 @@ Available pieces include:
 - `colorPicker(...)`
 - `controlGroup(...) { ... }`
 
-The `vec2Control(...)` is the “xy thing” in the nicest sense: an XY pad with a vector line, magnitude, and angle readout.
+`vec2Control(...)` gives you an XY pad with a vector line and readouts for its length and angle.
 
 ### Handling a slider
 
-Every slider, standalone, in `sliders(...)`, or in a `controlGroup`, answers the same hand:
+Standalone sliders, `sliders(...)` and sliders in a `controlGroup` share the same gestures:
 
 This recording drags a live `controlGroup` slider, nudges it with the arrow key, then double-clicks
 the track to return to its starting value. The large bar is updated by the slider's callback, so it
@@ -1048,6 +1463,85 @@ ui.pause(100)
 | arrow keys (after a click) | one `step` per press; **shift** ×10, **alt** ÷10. A `law =` slider moves 1% of its travel instead |
 | **PageUp** / **PageDown**, **Home** / **End** | 10% of travel, or the ends |
 | **Backspace** | back to `initialValue` |
+| the mouse wheel (after a click) | one arrow press per notch, with the same **shift** and **alt**. A slider you have not clicked lets the wheel scroll the canvas |
+
+If the box re-renders the control while you are dragging it, because its callback rebuilt the
+`controlGroup` or the box re-ran, the drag carries on with the new control.
+
+#### Handling an XY pad
+
+A `vec2Control` takes the slider's gestures in two dimensions. This recording presses the pad to put
+the handle under the pointer, walks it left with the arrow keys, then holds **shift** and drags: the
+handle moves a tenth as far as the pointer, from where it was. The dots in the panel below are each
+value the callback received.
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="box" capture-box="vec2_gestures" open-outputs="true" screenshot="assets/visualizers-vec2-gestures.png" transcript="../../dev_docs/agents/transcripts/docs_capture/vec2_gestures.yaml" padding="16" wait="0" timeout="240" embed=true hidden=true name="vec2-gestures" alt="An ORBIT vec2 pad with its handle up and to the right of centre at (0.64, 0.77), theta 50 degrees. Below it, the panel of values the box received: the dots of the arrow-key steps and the shift-drag sit packed into one short hook, because the fine drag moved the handle a tenth as far as the pointer travelled."}
+ui.waitForSelector(".vec2-visual", 8000.0)
+ui.pause(300)
+fun at(fx: Double, fy: Double): Pair<Double, Double> {
+    val c =
+        ui.eval(
+                """
+        const r = [...document.querySelectorAll('.vec2-visual')].find((s) => s.getBoundingClientRect().width > 0).getBoundingClientRect();
+        return [r.left + r.width * $fx, r.top + r.height * $fy].join(',');
+        """,
+            )
+            .toString()
+            .trim('"')
+            .split(',')
+            .map { it.toDouble() }
+    return c[0] to c[1]
+}
+fun xy(): List<Double> =
+    ui.eval(
+            "const p = [...document.querySelectorAll('.field-vec2')].find((s) => s.getBoundingClientRect().width > 0); return p.dataset.x + ',' + p.dataset.y",
+        )
+        .toString()
+        .trim('"')
+        .split(',')
+        .map { it.toDouble() }
+
+val press = at(0.8, 0.2)
+ui.moveMouse(press.first, press.second, 10)
+ui.mouseDown()
+ui.mouseUp()
+ui.pause(200)
+val pressed = xy()
+check(pressed[0] > 0.4 && pressed[1] > 0.4) { "press did not move the handle: $pressed" }
+repeat(5) {
+    ui.press("ArrowLeft")
+    ui.pause(120)
+}
+val nudged = xy()
+check(kotlin.math.abs(nudged[0] - (pressed[0] - 0.05)) < 0.006) { "arrows did not nudge: $pressed -> $nudged" }
+
+val start = at(0.3, 0.7)
+ui.moveMouse(start.first, start.second, 6)
+ui.down("Shift")
+ui.mouseDown()
+for (step in 1..30) {
+    val a = step / 30.0 * Math.PI
+    ui.moveMouse(start.first + 60 * kotlin.math.sin(a), start.second - 60 * (1 - kotlin.math.cos(a)) / 2, 1)
+    ui.pause(60)
+}
+ui.mouseUp()
+ui.up("Shift")
+ui.pause(600)
+val fine = xy()
+check(kotlin.math.abs(fine[0] - nudged[0]) < 0.12 && kotlin.math.abs(fine[1] - nudged[1]) < 0.12 && fine != nudged) {
+    "shift-drag was not fine and relative: $nudged -> $fine"
+}
+ui.moveMouse(900.0, 700.0, 4)
+```
+
+| Do this on a pad | To get |
+| --- | --- |
+| press and drag | the handle jumps to the pointer and follows it |
+| hold **shift** while dragging | a relative drag, ten times finer, from where the handle already is |
+| double-click the pad | its `initialValue` again |
+| arrow keys (after a click) | one `step` along that axis, up is +y; **shift** ×10 |
+| **Backspace** | back to `initialValue` |
+| **Enter** | type `(x, y)` |
 
 The other controls' readouts take typing too. On a `vec2Control`, click **X** or **Y** to set one coordinate, the `(x, y)` pair to set both, `|v|` to change the length and keep the direction, or `θ` (degrees) to turn it and keep the length. On a `colorPicker`, click the `rgba(...)` readout and type four numbers from 0 to 1, or a `#rrggbb` hex colour; click the alpha number to type the alpha alone. Typed values are clamped and snapped like a drag.
 
@@ -1155,7 +1649,7 @@ This pattern is good for surfaces that combine parameter editing with a compact 
 
 ### Sequencer controls: multisliders, grids, ranges and menus
 
-Four controls hold more than one number, after the Max objects they borrow from:
+These controls take their names and ideas from Max objects:
 
 - `multiSlider(...)` is a bank of bars you draw by sweeping across them, like Max's `multislider`. A fast sweep fills every bar it passes.
 - `matrix(...)` is a grid of cells, like `matrixctrl`. A press advances a cell to its next state, and dragging paints that state across every cell you cross. Cells are on or off by default; pass `states = 4` and each cell cycles through 0 to 3. State 0 is black and the others are equally spaced colours.
@@ -1272,7 +1766,10 @@ loop {
 
 `gesture(...)` is an XY pad that remembers what you did with it. A plain drag works like `vec2Control(...)`, and the callback gets each position. **Shift-drag** records a take: the whole stroke and its timing, kept with the box like any other control value. On a phone, tap **rec**, then draw. The trail of the take stays on the pad.
 
-The box replays the take, and the box keeps the time. `at(seconds)` returns where the take is that far into its loop, interpolated between the recorded samples, and `playhead(seconds)` puts a ring on the pad there. Read both off the clock in a `loop`, as the sequencer does, and the replay never drifts and keeps going with the browser closed. `initialTake` gives the pad something to play before you have recorded anything; here it is a figure eight:
+The box controls playback. `at(seconds)` returns the position at a given time in the loop,
+interpolating between recorded samples; `playhead(seconds)` shows that position on the pad. Read
+both from the clock in a `loop` and playback continues even with the browser closed. `initialTake`
+gives the pad something to play before you record: here it is a figure eight:
 
 <!--
 FIELD_TEST
@@ -1655,9 +2152,8 @@ so a bin's min and max rarely land on a peak. Zoom in and it becomes the wavefor
 
 ![Nancy’s source waveform above real beat, pYIN pitch and Basic Pitch note panels.](assets/audio_ai_analysis/synchronized_analysis.png)
 
-The Field Audio integration keeps full-resolution analysis tensors as immutable NPZ assets and sends
-only bounded preview trajectories to the browser. `analysisVisualizationHtml(...)` presents three
-different operations in the same zoomable, pannable timeline:
+Field Audio can show beat and pitch analyses alongside a recording. The full results stay in NPZ
+files, while `analysisVisualizationHtml(...)` draws previews on a timeline you can zoom and pan:
 
 - multi-scale tempo curves, onset strength, and beat markers;
 - monophonic pYIN pitch and voicing confidence;
@@ -1686,12 +2182,11 @@ Replace the request with `monophonicPitchAnalysis(region)` or
 The visualization endpoint caps previews at 4096 points; zoom and pan never turn the full activation
 tensor into a large JSON response.
 
-For comparative inspection, `analysisDashboardHtml(listOf(beats, mono, poly))` aligns all three
-results and synchronizes zoom, pan, hover, seeking and playback time. `analysisPreviewVisualizationHtml(...)` and
-`analysisPreviewDashboardHtml(...)` use the identical renderer with an already-fetched or synthetic
-`AnalysisPreview`, which is useful for offline documents and small reproducible fixtures. Per-job
-progress can replace a named output with `fieldAudioJobStatusHtml(accepted, event)`, while
-`fieldAudioJobMonitor()` embeds the complete durable queue.
+To compare results, `analysisDashboardHtml(listOf(beats, mono, poly))` lines them up and keeps
+zoom, pan, hover and playback together. If you already have an `AnalysisPreview`, use
+`analysisPreviewVisualizationHtml(...)` or `analysisPreviewDashboardHtml(...)` to show it without
+fetching again. For progress, `fieldAudioJobStatusHtml(accepted, event)` displays one job and
+`fieldAudioJobMonitor()` shows the queue.
 
 The [beat and pitch analysis walkthrough](audio_ai_analysis.md) and loadable
 `audio_ai_analysis` operation transcript contain the full source → submit → monitor → await →
@@ -1775,22 +2270,20 @@ client
         ),
     ) { preview, frames ->
         [
-                SpectralEmbeddingDistance.MEL_WASSERSTEIN,
-                SpectralEmbeddingDistance.LOG_MEL_COSINE,
-                SpectralEmbeddingDistance.MFCC_EUCLIDEAN,
-            ]
-            .map { distance ->
-                preview.withSpectralProjection(frames.tsne(distance = distance, dimensions = 4))
-            }
+            SpectralEmbeddingDistance.MEL_WASSERSTEIN,
+            SpectralEmbeddingDistance.LOG_MEL_COSINE,
+            SpectralEmbeddingDistance.MFCC_EUCLIDEAN,
+        ].map { distance ->
+            preview.withSpectralProjection(frames.tsne(distance = distance, dimensions = 4))
+        }
     }
     .thenAccept { previews ->
         display("spaces", spectralEmbeddingPreviewDashboardHtml(previews, syncGroup = "recording"))
     }
 ```
 
-The complete [short-time spectral walkthrough](audio_ai_spectral_embeddings.md) and
-`audio_ai_spectral_embeddings` transcript show source lookup/import → durable job → progress →
-binary artifact → temporal pooling → three Field Smile spaces → bidirectional audition.
+The [short-time spectral walkthrough](audio_ai_spectral_embeddings.md) takes a recording through
+analysis and projection into all three spaces, then lets you listen while exploring them.
 
 ### Instrument-labelled transcription
 
@@ -1820,9 +2313,8 @@ display(
 )
 ```
 
-The complete [MuScriptor walkthrough](audio_ai_muscriptor.md) and `audio_ai_muscriptor` transcript
-show the source lookup, typed request, durable job monitoring, synchronized result, typed MessagePack
-note access, and MIDI export.
+The [MuScriptor walkthrough](audio_ai_muscriptor.md) follows a recording through transcription,
+the synchronized display and MIDI export.
 
 The same visualizer can begin with sound generated inside Field. `renderPatWav`, `renderDirtWav`,
 `renderDoughWav`, `renderFaustWavAsync`, and `recordSonicPiWav` all produce a
@@ -1848,9 +2340,8 @@ and the immutable query-to-neighbour splice preview returned by Field Audio. Tha
 a general pattern for comparing aligned excerpts: produce a `CorpusPreview`, choose the query WAV
 representation, and let the range-aware player request only the visible envelopes.
 
-The [corpus microscope walkthrough](audio_ai_corpus_microscope.md) and
-`audio_ai_corpus_microscope` transcript show the complete index → submit → monitor → query →
-visualize path.
+The [corpus microscope walkthrough](audio_ai_corpus_microscope.md) shows how to index a collection
+and compare a passage with its neighbours.
 
 ### Waveform-summary endpoint contract
 
@@ -1885,9 +2376,8 @@ the user pans and asks for a fresh, pixel-sized envelope after zooming or resizi
 
 ## Signal and synth visualizers
 
-Field's synth layer also comes with ready-made HTML and SVG visualizers for audio patches, scopes, envelopes, compressors, and related objects.
-
-These are display-based rather than inline, which is usually the right choice because they want a bit more space.
+Field's synth layer has HTML and SVG views for audio patches, scopes, envelopes and compressors.
+They appear in an output panel, with room to show more than fits beside a line of code.
 
 <!--
 FIELD_TEST
@@ -1949,7 +2439,7 @@ Good things to know here:
 - `env.stateSvg()` and `comp.stateSvg()` are compact SVG views for modulators / processors.
 - `noteProcess.pianoRollSvg()` is great when you want the piano roll in an output area instead of inline in the editor.
 
-So the choice is mostly about **where you want the visual to live**.
+Choose the view that gives your patch or signal enough room.
 
 ## Choosing between inline and display
 
@@ -1963,3 +2453,5 @@ Here is the practical rule of thumb:
 `histogram(...)` and `history(...)` return the value they were given, so you can leave them in a computation while you debug it.
 
 All of these tools compose. One box can have a little inline history, a piano roll, a browser in one output channel, and a control surface in another. Field is very happy when code is also an interface.
+
+*The public declarations used on this page are listed, with their KDoc, in the codebase reference: [`ValueVisualizer.kt`](reference/visualization.md#valuevisualizer-kt), [`ImagingVisualizer.kt`](reference/visualization.md#imagingvisualizer-kt), [`plotly.kt`](reference/visualization.md#plotly-kt). Start from [what's already in the box](reference/index.md).*

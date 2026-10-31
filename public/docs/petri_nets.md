@@ -1,11 +1,9 @@
 # Petri nets
 
-*The notation is summarised on the [Petri cheatsheet](petri_cheatsheet.md). To try the musical
-examples on this page, open the [petri_sound](agent_transcripts.md#petri_sound) starting point.*
-
-A Petri net is a graph of places that hold tokens and transitions that move them, with arrows
-saying where they go. It has a standard way of being drawn, and a body of theory that answers
-practical questions such as "how long is this loop?" and "can this get stuck?".
+A Petri net has places that hold tokens and transitions that move them along arrows. Draw one and
+you can ask practical questions about it: how long is this loop? Can the system get stuck? The [Petri
+cheatsheet](petri_cheatsheet.md) summarises the notation; open the
+[petri_sound](agent_transcripts.md#petri_sound) starting point to try the musical examples.
 
 In Field a Petri net can be used as a rhythm, as the structure of a piece, or as a control signal.
 That works because a net whose conflicts are always resolved the same way gives the same firings
@@ -128,13 +126,12 @@ net.willDeadlock() // false — it loops
 net.deadTransitions() // [] — every voice is sounding
 
 petri(
-        """
+    """
     armed : 1
     src   : 4
     ~armed + src -[ blocked : bd ]-> dst
 """,
-    )
-    .willDeadlock() // true — nothing can ever empty 'armed'
+).willDeadlock() // true — nothing can ever empty 'armed'
 ```
 
 `~armed` is an inhibitor arc: the transition is enabled only while that place is empty. Nothing
@@ -281,15 +278,14 @@ can use like any other. Here tokens pile up in `tension` and open a filter on th
 previous section:
 
 ```diffstatic {data-lang=kotlin}
-val net =
-    petri(
-        """
+val net = petri(
+    """
     !grid 1/4
     src     : 8
     tension : 0 ^8
     src -[ build @1/4 ]-> tension
 """,
-    )
+)
 val run = net.run()
 
 // `level` normalises against the place's declared capacity, which is the form `rangex` wants.

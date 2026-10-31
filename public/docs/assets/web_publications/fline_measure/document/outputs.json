@@ -1,0 +1,67 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-31T03:51:47.412Z",
+  "documentName": "fline_measure",
+  "outputs": [
+    {
+      "uid": "fline-measure-cross",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "fline-measure-trim",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "fline-measure-helix",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "fline-measure-fill",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "fline-measure-locate",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/4.html"
+    }
+  ]
+}

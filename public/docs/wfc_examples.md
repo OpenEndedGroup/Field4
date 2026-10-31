@@ -1,9 +1,5 @@
 # Wave Function Collapse examples
 
-*Every public declaration used below is listed, with its KDoc, in the codebase reference:
-[`wfc.kt`](reference/data.md#wfc-kt) and [`wfc_field.kt`](reference/data.md#wfc-field-kt). Start from
-[what's already in the box](reference/index.md).*
-
 Wave Function Collapse (WFC) is a constraint solver that is mostly used to make textures and maps. Give it a
 grid, a set of tiles, and a table of which tiles may sit next to which, and it fills the grid: every
 cell starts holding *every* tile as a possibility, and the solver repeatedly picks the cell with the
@@ -13,11 +9,9 @@ with quantum mechanics; there is no physics involved. Usually the constraints ar
 draw one small example of the thing you want, and the solver reads the adjacency table off it and
 produces more.
 
-Unlike noise or an L-system, you describe neither the output nor a process that makes it. You
-describe what is *locally legal*, and a search finds a whole arrangement that never breaks a local
-rule. That is why WFC output tends to look designed. It also fails the way constraint solvers fail:
-too many constraints and it deadlocks, too few and every cell is legal but the result is shapeless.
-Most of the work is in the rules, not the solver.
+You describe what is *locally legal*, and the solver searches for an arrangement that obeys those
+rules. That can make the output look designed, but the rules take care: too many constraints can
+lead to a contradiction, while too few can leave a shapeless result.
 
 ## Source files
 
@@ -826,9 +820,8 @@ with an explicit `lo = 0f, hi = tileCount` so the colours mean the same thing in
 to the default, the range would rescale per frame and an animation of the collapse would appear to go
 nowhere.)
 
-Read either row and the algorithm is legible. It nucleates. The first collapse creates an island of
-certainty, and every decision after it spreads outward from what is already decided, because
-lowest-entropy always means "next to something known". The bright rim in the entropy row is the
+Read either row and you can see this run grow. The first collapse creates an island of certainty;
+later decisions spread outward as propagation narrows the choices around it. The bright rim in the entropy row is the
 frontier: cells that have been constrained but not yet decided. Interior cells stay at the full
 option count, untouched, until the front reaches them. That is also why WFC is fast in practice
 despite being a constraint solver on a large grid: almost all of the work is local to a moving
@@ -1002,7 +995,7 @@ display("b. contradicted", stuck.h)
 // And the numbers the panels are drawn from, so the picture can be checked against them.
 val readBack =
     "mid-collapse: ${solver}\n" +
-        "  entropy range drawn: 0 .. ${"%.3f".format(rules.fullSetEntropy())} nats" +
+        "  entropy range drawn: 0 .. ${rules.fullSetEntropy().f3} nats" +
         " (${solver.entropyHeatmap().nonFiniteCount} cells undefined)\n" +
         "contradicted: ${stuck}\n" +
         "  cells with no possibilities left: ${stuck.possibilityCountGrid().count { it == 0 }}"
@@ -1191,8 +1184,8 @@ val symLines =
         val g = grain(entry.second, outW, outH)
         "3x3 + D4 seed " +
             entry.first.toString().padEnd(3) +
-            " grain along rows ${"%.3f".format(g.first)} / down columns ${"%.3f".format(g.second)}" +
-            ", ratio ${"%.1f".format(maxOf(g.first, g.second) / maxOf(1e-6, minOf(g.first, g.second)))}x"
+            " grain along rows ${g.first.f3} / down columns ${g.second.f3}" +
+            ", ratio ${(maxOf(g.first, g.second) / maxOf(1e-6, minOf(g.first, g.second))).f1}x"
     }
 :::endfold
 
@@ -1200,11 +1193,11 @@ val symLines =
 val statsReport =
     "${tiles.tileCount} levels; ${patterns.tileCount} distinct 3x3 windows -> " +
         "${symmetric.tileCount} once closed under D4\n" +
-        "1x1 tiles          mean ${"%.2f".format(tiledHeights.average())}, " +
+        "1x1 tiles          mean ${tiledHeights.average().f2}, " +
         "${tiledOutcome.attempts} attempt(s)\n" +
-        "3x3 patterns       grain along rows ${"%.3f".format(plainGrain.first)} / down columns " +
-        "${"%.3f".format(plainGrain.second)}" +
-        ", ratio ${"%.1f".format(maxOf(plainGrain.first, plainGrain.second) / maxOf(1e-6, minOf(plainGrain.first, plainGrain.second)))}x\n" +
+        "3x3 patterns       grain along rows ${plainGrain.first.f3} / down columns " +
+        "${plainGrain.second.f3}" +
+        ", ratio ${(maxOf(plainGrain.first, plainGrain.second) / maxOf(1e-6, minOf(plainGrain.first, plainGrain.second))).f1}x\n" +
         symLines
 markdown(
     "stats",
@@ -1518,8 +1511,7 @@ it when an unplaceable edge tile is the actual problem, and read the header afte
 The learned set is the last two cases at once. Its fault is in the weights strip, where tile 2 sits
 off the ramp because the sample never contained it and it can therefore never be chosen, and
 because it never appeared, all four of its masks were empty, so widening them leaves that model 87%
-invented. A tile the sample never showed does not merely fail to contribute; it dilutes everything
-the sample did show.
+invented. That unseen tile also dilutes the patterns the sample did show.
 
 ## Recipes
 
@@ -1583,9 +1575,9 @@ Magenta in a wave frame is a cell whose possibility set has been emptied.
 **Names and shapes that bite inside a Field box.** Every snippet on this page runs in one, and neither
 of these is WFC-specific:
 
-- **A box's scope is crowded.** `h`, `sky` and `error` all resolve to something Field already defines
-  ahead of a script-local `val` of the same name once you are inside a lambda with its own receiver.
-  `outW`/`outH`/`skyPattern` are not paranoia, and `throw` beats `error(...)`.
+- **`error(...)` in a box shows a message and does not throw.** It is the box's own `error`, which
+  marks the box, so `?: error("...")` leaves the expression nullable. Write
+  `?: throw IllegalStateException("...")` to stop.
 - **`display(channel, x)` replaces that channel's contents; it does not append.** Text and a picture
   need two channels, or one payload that contains both. `showImg(img, caption = …)` is the latter
   (a single `<figure>`), but in an *animation* prefer drawing the label into the raster with `montage`
@@ -1607,3 +1599,7 @@ Everything above as a Field document you can open and edit:
 
     Three further checks hold particular claims about the terrain to account; they are listed in
     `dev_docs/WFC_GALLERY.md`.
+
+*The public declarations used on this page are listed, with their KDoc, in the codebase reference:
+[`wfc.kt`](reference/data.md#wfc-kt) and [`wfc_field.kt`](reference/data.md#wfc-field-kt). Start from
+[what's already in the box](reference/index.md).*

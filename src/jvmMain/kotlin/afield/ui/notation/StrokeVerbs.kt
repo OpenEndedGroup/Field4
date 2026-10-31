@@ -24,6 +24,24 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
+ * The drawing vocabulary of a living stroke: Perlin noise, curve maths, and the verbs that turn a
+ * list of points into an [FLine].
+ *
+ * [StrokeVerbs] carries the verbs, and [Stroke] inherits it, so `eachStroke { }` code calls them
+ * directly. Some are short names over the shared geometry: `smooth` is [catmullRomCentripetal] and
+ * `atomize` is [FLine.byAtomizing], while `wiggle` and `transformTo` have a curve form of their own
+ * and a line form that calls [FLine.byWiggling] and [FLine.byTransformingTo]. The noise, the
+ * resampling and the rest of the curve arithmetic are this file's own.
+ *
+ * The three [FLine] properties here are read by the stroke layer rather than by any verb.
+ * [FLine.overshoot] runs each open subpath of a line past its ends, a node's `overshoot` overrides
+ * that for the subpath it ends, and [FLine.ignore] keeps a line out of the point index
+ * [Stroke.closestOutput] searches, so a guide or a stitch does not attract the strokes around it.
+ *
+ * `StrokeVerbsTest` pins the resampling, the curve maths and the noise.
+ */
+
+/**
  * How far past each end the stroke layer draws every subpath of this line, along its tangent, in the
  * line's own units: the sketchy overrun of a pen that does not stop exactly where it means to. `null`
  * (the default) draws none. Only the stroke layer ([eachStroke]) draws it.

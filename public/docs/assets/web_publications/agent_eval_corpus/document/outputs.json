@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-29T22:37:26.313Z",
+  "documentName": "agent_eval_corpus",
+  "outputs": [
+    {
+      "uid": "corpus_summary",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 200,
+      "height": 352,
+      "path": "outputs/0.html"
+    }
+  ]
+}

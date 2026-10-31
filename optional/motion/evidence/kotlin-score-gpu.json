@@ -1,0 +1,16 @@
+{
+  "ok": true,
+  "command": "run-jvm-main afield.animation.mocap.MotionScoreSmoke --timeout 240",
+  "data": {
+    "ok": true,
+    "entrypoint": "afield.animation.mocap.MotionScoreSmoke",
+    "exitCode": 0,
+    "stdout": "Motion score smoke passed: actual GPU tether/tune/move/release/reset, reused id ordering and one-shot impulse\n",
+    "stderr": "WARNING: Using incubator modules: jdk.incubator.vector\n",
+    "durationMs": 20137,
+    "commandOmitted": true,
+    "commandOmittedReason": "Use run-jvm-main --include-command to include the full JVM command/classpath."
+  },
+  "events": [],
+  "timedOut": false
+}

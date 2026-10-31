@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-29T22:26:43.180Z",
+  "documentName": "notation_elements",
+  "outputs": [
+    {
+      "uid": "ne_hand",
+      "channel": "hand",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 200,
+      "height": 40,
+      "path": "outputs/0.html"
+    }
+  ]
+}

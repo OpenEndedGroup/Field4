@@ -2,12 +2,19 @@
 
 `FLine` is Field’s core geometry container type: it’s basically an ordered list of drawing instructions (`moveTo`, `lineTo`, `cubicTo`, `close`) plus style properties (`color`, `thickness`, `filled`, `stroked`, `pointed`, and so on). This isn’t a new idea — it’s essentially a “path” like you’ll find in [SVG](https://en.wikipedia.org/wiki/Scalable_Vector_Graphics), [PDF](https://en.wikipedia.org/wiki/PDF), and [PostScript](https://en.wikipedia.org/wiki/PostScript). Unlike those formats, Field stores points in 3D when that makes sense.
 
-All of the code below runs inside a box in Field. Each snippet ends with a `lines(...)` so you can actually see what you've drawn.
+The examples below run inside a box in Field. Many use `lines(...)` to show what they've drawn;
+others use a 3D viewer or build on an earlier example.
 
-If you want to run these examples, this embedded viewer's "Open in Field4" button will do just that, if you have Field already running.
+If you're new to FLines, start with [seeing one](#seeing-an-fline-static-and-editable-viewers),
+then try [building a path](#building-paths-moveto-lineto-cubicto-close) and changing its
+[style](#styling-color-stroked-filled-pointed). There is much more here to return to when you
+need it. To draw a stroke by hand and have code read it, continue to
+[Drawing and Notation](drawing_and_notation.md).
+
+Every example on this page is also in the document below; click a box to read its code.
 
 <iframe
-    src="offline.html?file=assets/fline_examples/metadata.edn"
+    src="offline.html?file=assets/fline_examples/metadata.edn&amp;focus=outputs"
     title="FLine examples (offline viewer)"
     style="width:100%; height:720px; border:1px solid #444; border-radius:8px; background:#111;"
     loading="lazy"
@@ -56,7 +63,7 @@ There are two main ways to inspect `FLine` geometry in Field:
 - `lines(...)` renders an SVG-style 2D view in an output area.
 - `threeLines(...)` renders the same geometry in the Three.js viewer.
 
-Both accept `editable = true`. With `editable = false` they are viewers. With `editable = true` they become lightweight editors for the underlying `FLine` data rather than just pictures of it.
+Both accept `editable = true`, which lets you change the underlying `FLine` in the view.
 
 ### 2D output: `lines(...)`
 
@@ -88,8 +95,8 @@ val fill = fline {
     moveTo(40, 170)
     cubicTo(120, 40, 180, 40, 250, 170)
     cubicTo(320, 300, 380, 300, 460, 170)
-    lineTo(460, 260)
-    lineTo(40, 260)
+    lineTo(460, 300)
+    lineTo(40, 300)
     close()
     filled = true
     stroked = false
@@ -131,7 +138,8 @@ val stem = fline {
 lines(petal, stem, w = 420.0, h = 420.0, fitToSize = true, editable = true)
 ```
 
-This is not editing a copy of the SVG: it mutates the `FLine` you passed in, so it is useful as a geometry sketchpad, a control-shape editor, or a quick way to pull a hand-tuned curve back into your code.
+The editor changes the `FLine` you passed in. Use it as a geometry sketchpad, a control-shape
+editor, or a quick way to bring a hand-tuned curve back into your code.
 
 ### 3D output: `threeLines(...)`
 
@@ -214,16 +222,14 @@ threeLines(ribbons, channel = "editable3d", height = 430, editable = true)
 
 ![Editable Three.js FLine viewer](assets/fline_examples/three_lines_editable.png)
 
-That gives you a useful split of responsibilities:
-
-- `lines(...)` for direct 2D inspection and editing.
-- `threeLines(...)` for orbiting, spatial debugging, and editing geometry in depth.
-
-The two viewers are close in spirit: learn one and the other should feel familiar rather than like a separate subsystem.
+Use `lines(...)` for 2D inspection and editing, and `threeLines(...)` when you want to orbit or
+work with geometry in depth. The controls are similar across both views.
 
 ### The 3D output area as an instrument: `threeInspect(...)`
 
-Three questions come up about anything that is going to get *built*, and a picture answers none of them. How far apart are these two things? What does it look like in section? How does it come apart? `threeInspect(...)` is `threeLines(...)` with an answer to each, and the view it hands back stays live, so changing any of the three does not mean re-running the box.
+How far apart are two parts? What does the assembly look like in section, or with its pieces
+pulled apart? `threeInspect(...)` adds measurement, section and explode controls to the
+`threeLines(...)` view. You can adjust them live without rerunning the box.
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -248,9 +254,7 @@ fun Box.threeInspect(
 
 #### Measuring
 
-A `ThreeMeasurement` is a dimension the figure carries from the moment it is drawn: two elements, and the **closest approach** between them. That is not centroid to centroid, which on a panel drawing is a different number. The dimension is drawn in the scene with witness lines and a legible number, so it orbits with the figure.
-
-You can also click the ruler in the viewer's toolbar and pick two elements yourself.
+To put a dimension on the drawing, pass `measurements`. Each `ThreeMeasurement` names two elements (a face, a segment) and draws the shortest distance between them as a number with a line to each element, so it turns with the figure. The example below dimensions a wall's thickness and a conduit's clearance.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fline_examples/three_inspect_measure.png" wait="3.0" capture="box" open-outputs="true" w="1200"}
 :::static
@@ -309,13 +313,16 @@ threeInspect(
 
 ![Two dimensions drawn in the Three.js inspector](assets/fline_examples/three_inspect_measure.png)
 
-A measurement is in **model space**: it reads the real distance between the two things, which is what you want on a drawing, and it is not moved by the explode slider. Scrub the explode back to zero to read a dimension against the geometry it dimensions.
+The distance is closest approach, not centre to centre, which on a panel drawing is a different number. It is measured on the unexploded geometry, so the explode slider does not change it; scrub the explode back to zero to read a dimension against what it dimensions. You can also click the ruler in the viewer's toolbar and pick two elements yourself.
 
 #### Exploding
 
-`ThreeExplode` has two modes. `radial` slides every group away from the figure's centre, which reads well on an irregular assembly like a routed conduit run. `axis` slides every group along one direction, spaced by its **rank** in that direction rather than by its distance. A layered wall needs the rank version: four skins 12 mm apart stay in a clump under a distance-proportional explode, while the far one leaves the frame.
+Exploding pulls the parts of an assembly apart with a slider, so you can see the layers hidden inside it. `ThreeExplode` has two modes:
 
-The ranks are centred, so the assembly stays put as the slider moves instead of walking out of view.
+- `radial` moves each part away from the figure's centre. It suits an irregular assembly, like a routed conduit run.
+- `axis` moves the parts along one direction, evenly spaced in their order along it rather than in proportion to their distance. A layered wall needs this: with proportional spacing, four skins 12 mm apart stay in a clump while the far one leaves the frame.
+
+The spacing is centred on the middle part, so the assembly stays in view as the slider moves.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fline_examples/three_inspect_explode.png" wait="3.0" capture="box" open-outputs="true" w="1200"}
 :::static
@@ -345,16 +352,16 @@ val view = threeInspect(
     height = 520,
     units = "mm",
     explode = ThreeExplode(
-        amount = 900.0,
+        amount = 200.0,
         mode = "axis",
         axis = floatArrayOf(1f, 0f, 0f),
-        sliderMax = 1800.0,
+        sliderMax = 800.0,
     ),
 )
 
 /*
 `amount` is a parameter, not a literal you retype: the view can be driven again.
-view.explode(1800.0)
+view.explode(800.0)
 view.explodeAlong(0.0, 0.0, 1.0, 600.0)
 */
 ```
@@ -365,7 +372,9 @@ view.explodeAlong(0.0, 0.0, 1.0, 600.0)
 
 `ThreeSection` cuts the figure at a **fraction of its own bounds** measured along the section normal, so `0.42` means the same thing on a 3 m wall and a 30 mm bracket and the slider is meaningful without knowing the model's scale.
 
-The cut *outline* is what makes it a section rather than a hidden half: the viewer computes where the plane crosses each triangle of the fill and each line segment, and draws those crossings brightly over the clipped figure. Hiding the front half shows you the inside of a shell; the outline shows you the cut, which on a fabrication drawing is the content of a section.
+The viewer draws the cut outline brightly over the clipped figure, finding where the plane
+crosses each filled triangle and line segment. Hiding the front half reveals the inside; the
+outline shows where the section passes through it.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fline_examples/three_inspect_section.png" wait="3.0" capture="box" open-outputs="true" w="1200"}
 :::static
@@ -543,6 +552,8 @@ println("drag the explode slider; press the ruler and click two things")
 
 `FLine` can also be interactive without being editable. If you set `onClick`, Field registers a callback for that line. If you set `hoverColor`, the line brightens or changes color when the pointer moves over it.
 
+The callback receives an `FLineIntersection`, a record of what was clicked: which line, which part of it (a node, a segment, or the inside of a closed shape), and where. Most callbacks only need `closestVertexIndex` or `label`:
+
 ```diffstatic {data-lang=kotlin}
 :::static
 enum class FLineHitKind {
@@ -579,27 +590,9 @@ var FLine.label: String?
 
 This works in both the 2D `lines(...)` renderer and the Three.js `threeLines(...)` renderer.
 
-**What the record tells you.** Both renderers fill all of it in: which element you hit (a node, one
-segment, or the inside of a closed subpath), which line of the several you may have drawn, and *where*
-on that element — `u` along a segment (the curve parameter, for a cubic), and `(u, v)` across a face,
-which for a four-corner face are true bilinear coordinates, so they are a position **on a panel**.
-`onElement` is the point on the element itself rather than where the pointer was, so its `z` is
-interpolated along the element: a 3D line drawn into the flat 2D output still reports a depth. Every field
-past `position` is defaulted, so a two-field callback still compiles.
-
-Two cautions before you read a number off it. `u` on a **cubic** is the Bézier parameter, not
-arc length, and on a curve whose control points crowd its start the two can be far apart: `u = 0.5`
-can sit well short of halfway along. And `(u, v)` on a face means different things on different faces, so the record says
-which: `faceCoordinates` is `BILINEAR` only for a four-corner face whose solve is checked and passes,
-`BOUNDING_BOX` for anything else, and `NONE` (with `NaN`) for a face with no plane. The Three.js
-renderer fills in the same record, working in each face's own plane.
-
-`lineIndex` and `label` are what let **one** closure serve a whole figure instead of one closure per
-part. `Box.inspect(lines)` is that pattern packaged: it renders exactly what `lines(...)` renders and
-names whatever you click. The [`fline_hit_records`](agent_transcripts.md#fline_hit_records) starting
-point is a wall of panels to try it on.
-
 #### 2D callbacks
+
+This draws a triangle and a closed curve. Hover over either to see it brighten, and click it to print its name and the nearest vertex below the drawing.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fline_examples/callbacks_2d.png" wait="1.0" capture="box" open-outputs="true" w="1200" embed=true name="fline-callbacks-2d"}
 :::static
@@ -642,6 +635,8 @@ In practice this is useful for picking diagram elements, selecting generated for
 
 #### 3D callbacks
 
+This stacks three rings at different depths in the Three.js viewer. Orbit the view, then click a ring to print which one you hit.
+
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fline_examples/callbacks_3d.png" wait="1.0" capture="box" open-outputs="true" w="1200" name="fline-callbacks-3d" embed=true}
 :::static
 val status: (String) -> Unit = { message ->
@@ -675,6 +670,27 @@ threeLines(stack, channel = "callbacks3d", height = 430, editable = false)
 ```
 
 The 3D version is the same idea, just with ray-picking instead of SVG hit testing. That makes it useful for picking generated layers, debugging spatial structures, or attaching lightweight behavior to procedural geometry.
+
+#### Where on the element you clicked
+
+Both renderers fill in the whole `FLineIntersection`. Past `closestVertexIndex` and `position` it says
+*where* on the element you clicked: `u` runs along a segment (for a cubic, the curve parameter), and
+`(u, v)` runs across a face. `onElement` is the point on the element itself rather than under the
+pointer, so its `z` is interpolated along the element: a 3D line drawn into the flat 2D output still
+reports a depth. Every field past `position` is defaulted, so a two-field callback still compiles.
+
+Two cautions before you read a number off it. `u` on a **cubic** is the Bézier parameter, not
+arc length, and on a curve whose control points crowd its start the two can be far apart: `u = 0.5`
+can sit well short of halfway along. And `(u, v)` means different things on different faces, so the
+record's `faceCoordinates` says which. It is `BILINEAR` for a four-corner face, where `(u, v)` is a
+position on that panel (Field checks the solve, and falls back if it fails); `BOUNDING_BOX` for any
+other face, where it is a position in the face's bounding box; and `NONE` (with `NaN`) for a face with
+no plane.
+
+`lineIndex` and `label` let **one** closure serve a whole figure instead of one closure per
+part. `Box.inspect(lines)` is that pattern packaged: it renders exactly what `lines(...)` renders and
+names whatever you click. The [`fline_hit_records`](agent_transcripts.md#fline_hit_records) starting
+point is a wall of panels to try it on.
 
 ## Styling: `color`, `stroked`, `filled`, `pointed`
 
@@ -724,12 +740,25 @@ val debugPoints = shape.copy().apply {
     stroked = false
     filled = false
     pointed = true
-    pointSize = 3.0
+    pointSize = 4.0
     color = vec(1.0, 0.5, 0.2, 1.0)
 }
 
-lines(filledOnly, strokedOnly, debugPoints, w = 420.0, h = 320.0, fitToSize = true)
+// side by side: each property alone, then all three together
+lines(
+    strokedOnly,
+    filledOnly + vec(400, 0),
+    debugPoints + vec(800, 0),
+    filledOnly + vec(1200, 0),
+    strokedOnly + vec(1200, 0),
+    debugPoints + vec(1200, 0),
+    w = 1000.0,
+    h = 260.0,
+    fitToSize = true,
+)
 ```
+
+Left to right: `stroked` alone, `filled` alone, `pointed` alone, and all three drawn together.
 
 ## Building paths: `moveTo`, `lineTo`, `cubicTo`, `close`
 
@@ -884,17 +913,17 @@ lines(tri, w = 420.0, h = 300.0, fitToSize = true)
 
 ## Terser construction: pen operators, literals, and the `data` mini-language
 
-The four calls above are the foundation, but for quick sketches there’s a shorter vocabulary layered on top. None of it replaces `moveTo`/`lineTo`/`cubicTo` — it just desugars to them — so you can mix and match freely.
+For quick sketches, you can also use a shorter vocabulary. These forms build the same path
+instructions as `moveTo`, `lineTo` and `cubicTo`, so you can mix them freely.
 
 ```diffstatic {data-lang=kotlin}
 :::static
 /*
-1) Collection literals — a `[ ... ]` in a typed context builds a polyline
-   (first point -> moveTo, the rest -> lineTo). Elements may be a mix of
-   Number runs, Vec2 and Vec3.
+1) FLine.of — a polyline through the points (first point -> moveTo, the
+   rest -> lineTo). Elements may be a mix of Number runs, Vec2 and Vec3.
 */
-val poly: FLine = [vec(0, 0), vec(1, 0), vec(1, 1)]
-val square: FLine = [0, 0, 1, 0, 1, 1, 0, 1]
+val poly = FLine.of(vec(0, 0), vec(1, 0), vec(1, 1))
+val square = FLine.of(0, 0, 1, 0, 1, 1, 0, 1)
 
 // 2) Pen operators — MEMBERS of FLine, so they only light up when an FLine is the
 //    receiver, i.e. inside `fline { }`, `copy { }`. `-v` draws, `+v` lifts the pen.
@@ -933,8 +962,8 @@ val zig = fline {
     color = vec(0.98, 0.88, 0.28, 1.0)
 }
 
-// Collection literal: first point is a moveTo, the rest lineTo.
-val tri: FLine = [vec(60, 220), vec(180, 300), vec(300, 220)]
+// FLine.of: first point is a moveTo, the rest lineTo.
+val tri = FLine.of(vec(60, 220), vec(180, 300), vec(300, 220))
 tri.apply {
     close()
     thickness = 2.0
@@ -1005,11 +1034,13 @@ fline {
 }
 ```
 
-A note on scope: the `+`/`-` pen operators and the `style`-lambda overloads only resolve when an `FLine` is the receiver, which in practice means inside `fline { }` (or `copy { }`). Collection literals, `..`, and `+=` work anywhere. And because collection literals resolve against the *expected* type, they only fire where that type is known — an assignment, argument, or return — never a bare `[ ... ]`.
+A note on scope: the `+`/`-` pen operators and the `style`-lambda overloads only resolve when an `FLine` is the receiver, which in practice means inside `fline { }` (or `copy { }`). `FLine.of`, `..`, and `+=` work anywhere.
 
 ## Multiple subpaths: `breakNext()` and `pieces()`
 
-One `FLine` can contain multiple disjoint strokes (multiple `moveTo`-initiated subpaths). This section shows how to force a new subpath while building (`breakNext`) and how to split an existing line into separate pieces (`pieces`).
+One `FLine` can contain several separate strokes, each beginning with a `moveTo`. Use `breakNext`
+to start another stroke while building a line, or `pieces` to split an existing line into separate
+FLines.
 
 ### `breakNext()`
 
@@ -1059,7 +1090,9 @@ val f = fline {
     color = vec(0.7, 0.9, 1.0, 1.0)
 }
 
-val ps = f.pieces()
+// Each piece is its own FLine; colour them separately to show the split.
+val colors = [vec(1.0, 0.5, 0.25, 1.0), vec(0.4, 1.0, 0.6, 1.0)]
+val ps = f.pieces().mapIndexed { i, p -> p.apply { color = colors[i % colors.size] } }
 lines(ps, w = 420.0, h = 260.0, fitToSize = true)
 ```
 
@@ -1085,21 +1118,23 @@ These are the everyday tools for reusing a shape without rebuilding it: `copy()`
 val base = fline {
     moveTo(60, 60)
     cubicTo(120, 20, 240, 200, 320, 140)
-    thickness = 4.0
-    color = vec(1.0, 1.0, 1.0, 1.0)
+    thickness = 2.0
+    color = vec(1.0, 1.0, 1.0, 0.35)
+    pointed = true
+    pointSize = 3.0
 }
 
-val wobble =
+// Every stored point, control points included, goes through the function:
+// here each one moves 60 down and spreads 20% wider.
+val moved =
     base
-        .transform { p ->
-            val dx = 10f * kotlin.math.sin(p.y * 0.05f)
-            vec(p.x + dx, p.y, p.z)
-        }
+        .transform { p -> vec(p.x * 1.2f, p.y + 60, p.z) }
         .apply {
+            thickness = 4.0
             color = vec(1.0, 0.4, 0.4, 1.0)
         }
 
-lines(base, wobble, w = 420.0, h = 260.0, fitToSize = true)
+lines(base, moved, w = 420.0, h = 260.0, fitToSize = true)
 ```
 
 ### Operator transforms: `+`, `-`, `*`
@@ -1127,9 +1162,9 @@ val square = fline {
     color = vec(0.3, 0.8, 1.0, 0.35)
 }
 
-val a = (square * 1.0) + vec(60, 60, 0)
-val b = (square * 1.4) + vec(200, 80, 0)
-val c = (square * 0.7) + vec(320, 140, 0)
+val a = square + vec(20, 60, 0) // moved only
+val b = ((square * 1.4) + vec(150, 40, 0)).apply { color = vec(0.4, 1.0, 0.6, 0.35) } // scaled 1.4x, then moved
+val c = ((square * 0.7) + vec(320, 75, 0)).apply { color = vec(1.0, 0.7, 0.2, 0.35) } // scaled 0.7x, then moved
 
 lines(a, b, c, w = 420.0, h = 260.0, fitToSize = true)
 ```
@@ -1314,15 +1349,25 @@ val s1 = fline {
 
 val s2 = fline {
     moveTo(60, 200)
-    tcbTo(vec(120, 60), tension = 0.2f, continuity = -0.2f, bias = 0.0f)
-    tcbTo(vec(220, 240), tension = 0.2f, continuity = -0.2f, bias = 0.0f)
-    tcbTo(vec(360, 120), tension = 0.2f, continuity = -0.2f, bias = 0.0f)
+    tcbTo(vec(120, 60), tension = 0.0f, continuity = -0.8f, bias = 0.0f)
+    tcbTo(vec(220, 240), tension = 0.0f, continuity = -0.8f, bias = 0.0f)
+    tcbTo(vec(360, 120), tension = 0.0f, continuity = -0.8f, bias = 0.0f)
     thickness = 5.0
     color = vec(0.4, 1.0, 0.6, 0.9)
 }
 
-lines(s1, s2, w = 420.0, h = 260.0, fitToSize = true)
+// The four points both curves pass through.
+val knots = polylineFrom([vec(60, 200), vec(120, 60), vec(220, 240), vec(360, 120)]).apply {
+    thickness = 1.0
+    color = vec(1.0, 1.0, 1.0, 0.25)
+    pointed = true
+    pointSize = 4.0
+}
+
+lines(knots, s1, s2, w = 420.0, h = 260.0, fitToSize = true)
 ```
+
+Negative continuity pulls the green `tcbTo` curve toward a corner at each point; `smoothTo` (orange) stays rounded.
 
 ### Biarcs: `biarcTo(...)` and `biarcBetween(...)`
 
@@ -1373,16 +1418,18 @@ val b = vec(350, 90)
 
 val f1 = fline {
     moveTo(a)
-    // Headings are in radians in the current drawing plane
-    biarcTo(b, startHeading = 0.0f, endHeading = (-1.2f), join = 0.55f, bulge = 0.08f, segments = 40)
-    thickness = 1.0
+    // Headings are in radians in the current drawing plane. With the default join this is the
+    // classic biarc: two circular arcs, meeting both headings exactly.
+    biarcTo(b, startHeading = 0.0f, endHeading = (-1.2f), segments = 40)
+    thickness = 3.0
     color = vec(1.0, 0.7, 0.2, 0.9)
 }
 
 val f2 = fline {
     moveTo(a.x, a.y - 60)
-    biarcTo(vec(b.x, b.y - 60), startHeading = 0.2f, endHeading = (-1.0f), join = 0.35f, bulge = -0.10f, segments = 40)
-    thickness = 1.0
+    // Moving the join and bulging it sideways reshapes the pair; the join stays smooth.
+    biarcTo(vec(b.x, b.y - 60), startHeading = 0.0f, endHeading = (-1.2f), join = 0.35f, bulge = -0.10f, segments = 40)
+    thickness = 3.0
     color = vec(0.4, 1.0, 0.6, 0.9)
 }
 
@@ -1397,7 +1444,18 @@ fun dot(p: Vec2, c: Vec4) = fline {
     color = c
 }
 
-lines(f1, f2, dot(a, vec(1, 1, 1, 1)), dot(b, vec(1, 1, 1, 1)), w = 420.0, h = 260.0, fitToSize = true)
+val white = vec(1, 1, 1, 1)
+lines(
+    f1,
+    f2,
+    dot(a, white),
+    dot(b, white),
+    dot(vec(a.x, a.y - 60), white),
+    dot(vec(b.x, b.y - 60), white),
+    w = 420.0,
+    h = 260.0,
+    fitToSize = true,
+)
 ```
 
 ### Arcs: `arcTo(...)`
@@ -1413,17 +1471,30 @@ fun FLine.arcTo(p1x: Number, p1y: Number, p2x: Number, p2y: Number, radius: Numb
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/arcs_arcto.png" embed=true}
 :::static
-val rounded = fline {
+// The sharp path we are rounding, drawn faintly with its corners marked.
+val sharp = fline {
     moveTo(60, 200)
     lineTo(60, 60)
-    arcTo(vec(60, 60), vec(360, 60), radius = 40, segments = 32)
+    lineTo(360, 60)
+    lineTo(360, 200)
+    thickness = 1.0
+    color = vec(1.0, 1.0, 1.0, 0.3)
+    pointed = true
+    pointSize = 4.0
+}
+
+// arcTo(corner, next, radius): a line toward `corner`, then an arc turning toward `next`.
+val rounded = fline {
+    moveTo(60, 200)
+    arcTo(vec(60, 60), vec(360, 60), radius = 40)
+    arcTo(vec(360, 60), vec(360, 200), radius = 40)
     lineTo(360, 200)
 
-    thickness = 1.0
+    thickness = 4.0
     color = vec(1.0, 0.9, 0.5, 1.0)
 }
 
-lines(rounded, w = 420.0, h = 260.0, fitToSize = true)
+lines(sharp, rounded, w = 420.0, h = 260.0, fitToSize = true)
 ```
 
 ### Circular arc through a point: `circleThroughTo(...)`
@@ -1453,7 +1524,15 @@ val f = fline {
     color = vec(0.6, 0.9, 1.0, 1.0)
 }
 
-lines(f, w = 420.0, h = 260.0, fitToSize = true)
+// The three points that define the arc: start, through, end.
+val defining = polylineFrom([vec(60, 200), vec(220, 40), vec(360, 200)]).apply {
+    stroked = false
+    pointed = true
+    pointSize = 5.0
+    color = vec(1.0, 1.0, 1.0, 1.0)
+}
+
+lines(f, defining, w = 420.0, h = 260.0, fitToSize = true)
 ```
 
 ## 2D transformations (geometry-aware)
@@ -1474,32 +1553,61 @@ These transforms are for 2D shapes in the XY plane: rotate around a centre, refl
 
 </div>
 
-These also work in the XY plane, rather than point by point like the generic `transform`.
+Each panel below draws the original house faintly with the result over it. From left to right: rotate by 0.5 rad about its centre, scale by 0.6, mirror across the vertical line x = 50 (drawn), and shear by `shearX = 0.4`.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/rotate_scale_reflect_shear.png" embed=true}
 :::static
-val base = fline {
-    moveTo(80, 60)
-    lineTo(320, 60)
-    lineTo(320, 200)
-    lineTo(80, 200)
+// An asymmetric "house" (the roof peak is off-centre), so every transform shows which way it went.
+fun house() = fline {
+    moveTo(0, 0)
+    lineTo(100, 0)
+    lineTo(100, 60)
+    lineTo(30, 90)
+    lineTo(0, 60)
     close()
+}
 
-    thickness = 3.0
+fun ghost(dx: Double) = (house() + vec(dx, 0.0)).apply {
+    stroked = true
+    filled = false
+    thickness = 1.5
+    color = vec(1.0, 1.0, 1.0, 0.35)
+}
+
+fun styled(f: FLine, dx: Double, c: Vec4) = (f + vec(dx, 0.0)).apply {
     stroked = true
     filled = true
-    color = vec(1.0, 1.0, 1.0, 0.15)
+    thickness = 2.5
+    color = c
 }
 
-val rot = base.byRotating2D(angle = 0.4f, center = vec(200f, 130f)).apply {
-    color = vec(1.0, 0.5, 0.2, 0.25)
-}
+val center = vec(50f, 45f)
 
-val shear = base.byShearing2D(shearX = 0.35f, shearY = 0.0f).apply {
-    color = vec(0.4, 1.0, 0.6, 0.25)
+val rot = styled(house().byRotating2D(angle = 0.5f, center = center), 0.0, vec(1.0, 0.5, 0.2, 0.45))
+val scaled = styled(house().byScaling2D(scale = 0.6f, center = center), 170.0, vec(0.7, 0.9, 1.0, 0.45))
+val mirror = fline {
+    moveTo(50 + 340, -20)
+    lineTo(50 + 340, 110)
+    thickness = 1.0
+    color = vec(1.0, 1.0, 1.0, 0.5)
 }
+val reflected = styled(house().byReflecting2D(vec(50f, 0f), vec(50f, 100f)), 340.0, vec(0.8, 0.6, 1.0, 0.45))
+val sheared = styled(house().byShearing2D(shearX = 0.4f, shearY = 0f), 510.0, vec(0.4, 1.0, 0.6, 0.45))
 
-lines(base, rot, shear, w = 420.0, h = 260.0, fitToSize = true)
+lines(
+    ghost(0.0),
+    rot,
+    ghost(170.0),
+    scaled,
+    ghost(340.0),
+    mirror,
+    reflected,
+    ghost(510.0),
+    sheared,
+    w = 720.0,
+    h = 220.0,
+    fitToSize = true,
+)
 ```
 
 ### 3D transforms and projections
@@ -1520,7 +1628,7 @@ Field’s `FLine` nodes are 3D, so you can transform them in 3D and then project
 :::static
 // A little 3D helix, projected onto the Z=0 plane.
 val helix = fline {
-    moveTo(60, 120, -80)
+    moveTo(330, 130, -80)
     for (i in 1..160) {
         val t = i / 160.0
         val a = t * kotlin.math.PI * 6.0
@@ -1549,7 +1657,9 @@ lines(ortho, persp, w = 420.0, h = 260.0, fitToSize = true)
 
 ## Sampling and traversal
 
-Sampling turns a path into a list of points, which is the bridge to lots of procedural tricks: animation along a curve, particle emission, spacing markers by distance, and measurement. `Cursor` is the lower-level primitive; `sampleBy...` are the friendly wrappers.
+Sample a path to get points you can use for animation, particle emission, evenly spaced markers
+or measurement. `Cursor` lets you walk the path directly; `sampleBy...` provides shorter calls
+for common sampling jobs.
 
 ### Cursor: continuous traversal over segments
 
@@ -1561,7 +1671,8 @@ fun FLine.cursor(tol: Float = 0.01f): afield.geometry.path.java2d.FLinesAndJavaS
 fun FLine.cursor(closestTo: Vec3): afield.geometry.path.java2d.FLinesAndJavaShapes.Cursor
 ```
 
-In practice, you’ll reach for `Cursor` when you need **even spacing by distance** (`setD`) or when you want access to **differentials** (tangent / normal / curvature-ish things) while walking along a curve.
+Use `Cursor` to step by distance with `setD`, or to read the tangent, normal and curvature as
+you move along a curve.
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -1644,13 +1755,13 @@ fun dot(p: Vec3, color: Vec4) = fline {
     moveTo(p.x, p.y)
     lineTo(p.x + 0.001, p.y + 0.001)
     pointed = true
-    pointSize = 2.75
+    pointSize = 1.0
     stroked = false
     filled = true
     this.color = color
 }
 
-val step = 18f
+val step = 24f
 var d = 0f
 while (d <= total) {
     c.setD(d)
@@ -1660,14 +1771,14 @@ while (d <= total) {
     val t = c.tangent()
     if (t != null && t.lengthSquared() > 1e-9) {
         val dir = Vec3(t).normalize()
-        val a = Vec3(p).sub(Vec3(dir).mul(8f))
-        val b = Vec3(p).add(Vec3(dir).mul(8f))
+        val a = Vec3(p).sub(Vec3(dir).mul(12f))
+        val b = Vec3(p).add(Vec3(dir).mul(12f))
         ticks.add(
             fline {
                 moveTo(a)
                 lineTo(b)
                 thickness = 1.5
-                color = vec(1.0, 1.0, 1.0, 0.25)
+                color = vec(0.7, 0.9, 1.0, 0.8)
             },
         )
     }
@@ -1690,27 +1801,39 @@ fun FLine.sampleByDistance(distance: Float): List<Vec3>
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/samplebynumber_and_samplebydistance.png" embed=true}
 :::static
-val f = fline {
-    moveTo(60, 150)
-    cubicTo(120, 20, 300, 260, 360, 120)
-    thickness = 3.0
-    color = vec(0.9, 0.9, 1.0, 1.0)
+fun curve(dy: Double) = fline {
+    moveTo(60, 150 + dy)
+    cubicTo(120, 20 + dy, 300, 260 + dy, 360, 120 + dy)
+    thickness = 2.0
+    color = vec(1.0, 1.0, 1.0, 0.4)
 }
 
-val dots = polylineFrom(f.sampleByNumber(40).map { it.v2 }).apply {
+fun dot(p: Vec3, color: Vec4) = fline {
+    moveTo(p.x, p.y)
+    lineTo(p.x + 0.001, p.y + 0.001)
     pointed = true
-    pointSize = 2.5
+    pointSize = 1.5
     stroked = false
     filled = true
-    color = vec(1.0, 0.5, 0.2, 1.0)
+    this.color = color
 }
 
-lines(f, dots, w = 420.0, h = 260.0, fitToSize = true)
+// Top: exactly 12 points, both ends included.
+val top = curve(0.0)
+val byNumber = top.sampleByNumber(12).map { dot(it, vec(1.0, 0.5, 0.2, 1.0)) }
+
+// Bottom: one point every 40 units; the end is only hit if the length divides evenly.
+val bottom = curve(200.0)
+val byDistance = bottom.sampleByDistance(40f).map { dot(it, vec(0.4, 1.0, 0.6, 1.0)) }
+
+lines([top, bottom] + byNumber + byDistance, w = 420.0, h = 420.0, fitToSize = true)
 ```
+
+Both space their points evenly along the curve. `sampleByNumber(12)` (top) always lands on both ends; `sampleByDistance(40f)` (bottom) steps a fixed 40 units, so its last point can stop short of the end.
 
 ## Geometry operations (simple → complex)
 
-These functions take an existing `FLine` and return new geometry: smoothing/simplifying (cleanup), offsetting (stroke outlines), and dashing (segmenting). For all of the gesture-style filters (EMA / One Euro / alpha-beta / One-Dollar) and Gaussian-process interpolation, see [Filtering + interpolation](#filters-and-gp).
+These functions take an existing `FLine` and return new geometry: smoothing/simplifying (cleanup), offsetting (stroke outlines), and dashing (segmenting). For all of the gesture-style filters (EMA / One Euro / alpha-beta / One-Dollar) and Gaussian-process interpolation, see [Smoothing a hand-drawn stroke](#filters-and-gp).
 
 ### Simplify and smooth
 
@@ -1736,13 +1859,16 @@ val noisy = fline {
 }
 
 val smooth = noisy.byGaussianSmoothing(sigma = 2.0f, samples = 120).apply {
-    thickness = 4.0
+    thickness = 2.5
     color = vec(0.4, 1.0, 0.6, 1.0)
 }
 
+// The red dots are the vertices that survive simplifying.
 val simple = smooth.bySimplifying(epsilon = 2.0f).apply {
-    thickness = 1.0
-    color = vec(1.0, 0.4, 0.4, 0.75)
+    thickness = 1.5
+    pointed = true
+    pointSize = 1.2
+    color = vec(1.0, 0.4, 0.4, 1.0)
 }
 
 lines(noisy, smooth, simple, w = 420.0, h = 260.0, fitToSize = true)
@@ -1780,10 +1906,10 @@ val simplified = raw.bySimplifying(epsilon = 1.5f).apply {
 }
 
 val resampled = simplified.byArcLengthParameterizing(spacing = 12f).apply {
-    thickness = 4.5
+    thickness = 1.5
     color = vec(1.0, 0.6, 0.2, 0.95)
     pointed = true
-    pointSize = 2.5
+    pointSize = 1.0
     stroked = true
     filled = false
 }
@@ -1815,37 +1941,43 @@ fun FLine.byPerlinNoising(
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/noise_utilities_make_it_organic.png" embed=true}
 :::static
-val base = fline {
-    moveTo(60, 180)
-    cubicTo(120, 20, 260, 280, 360, 120)
+fun base(dy: Double) = fline {
+    moveTo(0, dy)
+    cubicTo(80, dy - 60, 220, dy + 60, 300, dy)
 }
 
-val clean = base.copy().apply {
+fun ghost(dy: Double) = base(dy).apply {
     thickness = 4.0
-    color = vec(1.0, 1.0, 1.0, 0.30)
+    color = vec(1.0, 1.0, 1.0, 0.25)
 }
 
-val gauss = base.byGaussianNoising(amplitude = 6f, seed = 1L, samples = 140).apply {
-    thickness = 3.0
-    color = vec(1.0, 0.6, 0.2, 0.85)
+// One row per kind of noise, each over a faint copy of the clean curve.
+val gauss = base(0.0).byGaussianNoising(amplitude = 6f, seed = 1L, samples = 140).apply {
+    thickness = 2.5
+    color = vec(1.0, 0.6, 0.2, 0.9)
 }
 
-val oriented = base.byOrientedGaussianNoising(normalAmplitude = 10f, tangentAmplitude = 1.5f, seed = 2L, samples = 140).apply {
-    thickness = 4.5
-    color = vec(0.4, 1.0, 0.6, 0.85)
+val oriented =
+    base(110.0)
+        .byOrientedGaussianNoising(normalAmplitude = 10f, tangentAmplitude = 1.5f, seed = 2L, samples = 140)
+        .apply {
+            thickness = 2.5
+            color = vec(0.4, 1.0, 0.6, 0.9)
+        }
+
+val perlin = base(220.0).byPerlinNoising(amplitude = 12f, frequency = 0.02f, octaves = 4, seed = 3L, samples = 140).apply {
+    thickness = 2.5
+    color = vec(0.7, 0.9, 1.0, 0.9)
 }
 
-val perlin = base.byPerlinNoising(amplitude = 12f, frequency = 0.02f, octaves = 4, seed = 3L, samples = 140).apply {
-    thickness = 3.5
-    color = vec(0.7, 0.9, 1.0, 0.85)
-}
-
-lines(clean, gauss, oriented, perlin, w = 420.0, h = 260.0, fitToSize = true)
+lines(ghost(0.0), gauss, ghost(110.0), oriented, ghost(220.0), perlin, w = 420.0, h = 340.0, fitToSize = true)
 ```
 
-### Filtering + interpolation (Gaussian process / EMA / One Euro / alpha-beta / driver pursuit) {#filters-and-gp}
+Top to bottom: `byGaussianNoising`, `byOrientedGaussianNoising` (mostly across the curve), `byPerlinNoising`.
 
-These all take a sampled version of your path and return a regularized polyline:
+### Smoothing a hand-drawn stroke {#filters-and-gp}
+
+These functions resample your path and return a smoothed polyline. `byGaussianProcessInterpolating` fits a smooth curve through samples of the path; `byEmaFiltering` averages each point with the ones before it (an exponential moving average); `byOneEuroFiltering` smooths slow parts of the stroke heavily and fast parts lightly, so it removes jitter without lagging behind quick movements; `byAlphaBetaFiltering` tracks position and velocity together; and `byDriverSmoothing` steers a point that follows the path, rounding off its corners.
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -1929,59 +2061,70 @@ fun FLine.byOneDollarFiltering(
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/filtering_interpolation_gaussian_process_ema_one_euro_alpha_beta_filters_and_gp.png" embed=true}
 :::static
-val raw = fline {
-    moveTo(40, 140)
+fun raw(dx: Double, dy: Double) = fline {
+    moveTo(dx, dy)
     for (i in 1..240) {
         val t = i / 240.0
-        val x = 40 + t * 340
-        val y = 140 + 55 * kotlin.math.sin(t * 7.0 * kotlin.math.PI) + 11 * kotlin.math.sin(t * 70.0)
-        lineTo(x, y)
+        lineTo(dx + t * 340, dy + 55 * kotlin.math.sin(t * 7.0 * kotlin.math.PI) + 11 * kotlin.math.sin(t * 70.0))
     }
 }
 
-val showRaw = raw.copy().apply {
-    thickness = 2.0
-    color = vec(1.0, 1.0, 1.0, 0.20)
+fun ghost(dx: Double, dy: Double) = raw(dx, dy).apply {
+    thickness = 1.5
+    color = vec(1.0, 1.0, 1.0, 0.25)
 }
 
-val ema = raw.byEmaFiltering(alpha = 0.10f, samples = 220).apply {
+fun styled(f: FLine, c: Vec4) = f.apply {
     thickness = 3.0
-    color = vec(0.7, 0.9, 1.0, 0.85)
+    color = c
 }
 
-val oneEuro = raw.byOneEuroFiltering(minCutoffHz = 1.0f, beta = 0.05f, dCutoffHz = 1.0f, fpsHint = 60f, samples = 220).apply {
-    thickness = 4.0
-    color = vec(0.4, 1.0, 0.6, 0.85)
-}
-
-val ab = raw.byAlphaBetaFiltering(alpha = 0.25f, beta = 0.08f, fpsHint = 60f, samples = 220).apply {
-    thickness = 3.5
-    color = vec(1.0, 0.6, 0.2, 0.85)
-}
-
-val gpMean =
-    raw.byGaussianProcessInterpolating(
+// A grid: each filter over a faint copy of the same noisy input.
+val ema = styled(raw(0.0, 0.0).byEmaFiltering(alpha = 0.10f, samples = 220), vec(0.7, 0.9, 1.0, 0.95))
+val oneEuro = styled(
+    raw(400.0, 0.0)
+        .byOneEuroFiltering(minCutoffHz = 1.0f, beta = 0.05f, dCutoffHz = 1.0f, fpsHint = 60f, samples = 220),
+    vec(0.4, 1.0, 0.6, 0.95),
+)
+val ab = styled(
+    raw(0.0, 170.0).byAlphaBetaFiltering(alpha = 0.25f, beta = 0.08f, fpsHint = 60f, samples = 220),
+    vec(1.0, 0.6, 0.2, 0.95),
+)
+val gpMean = styled(
+    raw(400.0, 170.0)
+        .byGaussianProcessInterpolating(
             trainingSamples = 44,
             samples = 220,
             lengthScale = 0.11f,
             variance = 1f,
             noise = 0.02f,
             drawSamples = false,
-        )
-        .apply {
-            thickness = 5.0
-            color = vec(1.0, 0.4, 0.4, 0.70)
-        }
+        ),
+    vec(1.0, 0.4, 0.4, 0.95),
+)
+// One-Dollar normalizes the gesture around the origin (rotated, scaled to 220, resampled), so it gets its own cell.
+val oneDollar = styled(
+    raw(0.0, 0.0).byOneDollarFiltering(targetSamples = 64, targetSize = 220f, rotateToZero = true),
+    vec(0.8, 0.6, 1.0, 0.95),
+) + vec(370, 340, 0)
 
-// One-Dollar outputs a normalized gesture around the origin; shift it back into view.
-val oneDollar = (raw.byOneDollarFiltering(targetSamples = 64, targetSize = 220f, rotateToZero = true)).apply {
-    thickness = 4.0
-    color = vec(0.8, 0.6, 1.0, 0.85)
-}
-val oneDollarPlaced = oneDollar + vec(210, 140, 0)
-
-lines(showRaw, ema, oneEuro, ab, gpMean, oneDollarPlaced, w = 420.0, h = 260.0, fitToSize = true)
+lines(
+    ghost(0.0, 0.0),
+    ema,
+    ghost(400.0, 0.0),
+    oneEuro,
+    ghost(0.0, 170.0),
+    ab,
+    ghost(400.0, 170.0),
+    gpMean,
+    oneDollar,
+    w = 720.0,
+    h = 480.0,
+    fitToSize = true,
+)
 ```
+
+Row by row: EMA, One Euro; alpha-beta, the Gaussian-process mean; and below, the One-Dollar normalization of the same gesture.
 
 #### Driver smoothing in 2D
 
@@ -2059,7 +2202,9 @@ val sweep3d =
 threeLines(sweep3d, channel = "driver3d", height = 430, editable = false)
 ```
 
-This is the same sweep idea as the 2D version, but the source curve itself bends through depth and the smoothed family stays genuinely 3D. The steering is quaternion-based internally, so the driver turns toward the lookahead target with bounded angular acceleration and bounded angular velocity in space rather than flattening down to XY first.
+Here the source curve bends through depth, and the smoothed curves follow it in 3D. The driver
+uses quaternions to turn towards its lookahead target, with bounds on angular acceleration and
+velocity.
 
 ### Offsetting / parallel curves
 
@@ -2142,23 +2287,24 @@ fun FLine.selfCrossings2D(tolerance: Float = 0.01f): List<FLineCrossing>
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/intersections.png" embed=true}
 :::static
 val a = fline {
-    moveTo(60, 60)
-    cubicTo(140, 10, 220, 260, 360, 180)
+    moveTo(40, 130)
+    cubicTo(140, -40, 260, 300, 380, 130)
     thickness = 4.0
     color = vec(1.0, 1.0, 1.0, 1.0)
 }
 
+// A straight line that crosses the S three times.
 val b = fline {
-    moveTo(60, 200)
-    cubicTo(120, 260, 260, 10, 360, 80)
-    thickness = 4.0
+    moveTo(40, 100)
+    lineTo(380, 160)
+    thickness = 3.0
     color = vec(0.7, 0.9, 1.0, 0.9)
 }
 
 val hits = a.crossings2D(b, tolerance = 1f).map { it.point }
 val hitDots = polylineFrom(hits.map { it.v2 }).apply {
     pointed = true
-    pointSize = 5.0
+    pointSize = 2.0
     stroked = false
     filled = true
     color = vec(1.0, 0.5, 0.2, 1.0)
@@ -2186,18 +2332,18 @@ fun FLine.byCreatingNormalLines(samples: Int = 20, length: Float = 10f): List<FL
 val f = fline {
     moveTo(60, 190)
     cubicTo(120, 20, 260, 280, 360, 120)
-    thickness = 4.0
+    thickness = 2.0
     color = vec(1.0, 1.0, 1.0, 1.0)
 }
 
 val tangents = f.byCreatingTangentLines(samples = 18, length = 22f).onEach {
     it.thickness = 1.5
-    it.color = vec(1.0, 1.0, 1.0, 0.20)
+    it.color = vec(0.7, 0.9, 1.0, 0.7)
 }
 
 val normals = f.byCreatingNormalLines(samples = 18, length = 18f).onEach {
     it.thickness = 1.5
-    it.color = vec(0.4, 1.0, 0.6, 0.22)
+    it.color = vec(0.4, 1.0, 0.6, 0.7)
 }
 
 val highCurvature = f.findHighCurvaturePoints(threshold = 0.02f, samples = 120)
@@ -2207,7 +2353,7 @@ val corners =
         [
             polylineFrom(highCurvature.map { it.v2 }).apply {
                 pointed = true
-                pointSize = 3.5
+                pointSize = 1.2
                 stroked = false
                 filled = true
                 color = vec(1.0, 0.5, 0.2, 1.0)
@@ -2252,7 +2398,20 @@ val pieces =
         }
     }
 
-lines([hull, scribble] + pieces, w = 420.0, h = 260.0, fitToSize = true)
+// A dot where each piece begins: the inflections, plus the start.
+val splits = pieces.map { p ->
+    val s = p.sampleByNumber(2).first()
+    fline {
+        moveTo(s.x, s.y)
+        lineTo(s.x + 0.001, s.y + 0.001)
+        pointed = true
+        pointSize = 1.5
+        stroked = false
+        color = vec(1.0, 1.0, 1.0, 1.0)
+    }
+}
+
+lines([hull] + pieces + splits, w = 420.0, h = 260.0, fitToSize = true)
 ```
 
 ## Parameterized operations (vary along the curve)
@@ -2367,7 +2526,7 @@ val circle = fline {
         val p = vec(center.x + radius * kotlin.math.cos(a), center.y + radius * kotlin.math.sin(a))
         lineTo(p)
     }
-    thickness = 3.0
+    thickness = 8.0
     color = vec(1.0, 1.0, 1.0, 0.35)
 }
 
@@ -2377,10 +2536,12 @@ val messy = circle.byPerlinNoising(amplitude = 26f, frequency = 0.03f, octaves =
     color = vec(1.0, 0.6, 0.2, 0.65)
 }
 
-// Project the messy samples back onto the circle
-val projected = messy.byProjectingOnto(circle, samples = 180).apply {
-    thickness = 4.0
-    color = vec(0.4, 1.0, 0.6, 0.85)
+// Project the messy samples back onto the circle: the green dots land on the pale band.
+val projected = messy.byProjectingOnto(circle, samples = 60).apply {
+    thickness = 1.5
+    pointed = true
+    pointSize = 3.0
+    color = vec(0.4, 1.0, 0.6, 1.0)
 }
 
 lines(circle, messy, projected, w = 420.0, h = 260.0, fitToSize = true)
@@ -2497,30 +2658,69 @@ These are higher-level operations that treat an `FLine` as something you can edi
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/reverse_blend_extract.png" embed=true}
 :::static
 val a = fline {
-    moveTo(60, 190)
-    cubicTo(120, 20, 260, 280, 360, 120)
-    thickness = 2.0
-    color = vec(1.0, 1.0, 1.0, 1.0)
-}
-
-val b = a.byReversing().apply { color = vec(1.0, 0.4, 0.4, 0.65) }
-
-val mid = a.byBlendingWith(b, t = 0.5f).apply {
+    moveTo(0, 150)
+    cubicTo(40, 0, 160, 200, 200, 50)
     thickness = 1.0
-    color = vec(0.4, 1.0, 0.6, 0.7)
+    color = vec(1.0, 1.0, 1.0, 0.35)
 }
 
-val snippet = a.byExtracting(tStart = 0.8f, tEnd = 1.9f).apply {
+// 1: reversed. The same shape; the dot marks where it now starts.
+val b = a.byReversing().apply {
     thickness = 2.0
-    color = vec(1.0, 0.7, 0.2, 0.8)
+    color = vec(1.0, 0.4, 0.4, 1.0)
+}
+val bStart = b.sampleByNumber(2).first()
+val startDot = fline {
+    moveTo(bStart.x, bStart.y)
+    lineTo(bStart.x + 0.001, bStart.y + 0.001)
+    pointed = true
+    pointSize = 5.0
+    stroked = false
+    color = vec(1.0, 0.4, 0.4, 1.0)
 }
 
-lines(a, b, mid, snippet, w = 420.0, h = 260.0, fitToSize = true)
+// 2: half way between a and a flat line.
+val flat = fline {
+    moveTo(0, 150)
+    lineTo(200, 150)
+    thickness = 1.0
+    color = vec(1.0, 1.0, 1.0, 0.35)
+}
+val mid = a.byBlendingWith(flat, t = 0.5f).apply {
+    thickness = 2.0
+    color = vec(0.4, 1.0, 0.6, 1.0)
+}
+
+// 3: the piece of the cubic between t = 0.3 and t = 0.8
+val snippet = a.byExtracting(tStart = 0.3f, tEnd = 0.8f).apply {
+    thickness = 3.0
+    color = vec(1.0, 0.7, 0.2, 1.0)
+}
+
+val dx = vec(260.0, 0.0)
+val dx2 = vec(520.0, 0.0)
+lines(
+    a,
+    b,
+    startDot,
+    a + dx,
+    flat + dx,
+    mid + dx,
+    a + dx2,
+    snippet + dx2,
+    w = 720.0,
+    h = 220.0,
+    fitToSize = true,
+)
 ```
+
+Left: the reversed line, starting at the dot. Middle: half way between the curve and a flat line. Right: the piece of the cubic between t = 0.3 and t = 0.8.
 
 ### Contour-aware morphing: `FLineInterpolator`
 
-If `byBlendingWith(...)` is the “same control structure, just lerp it” tool, `FLineInterpolator` is the more serious morphing tool. It resamples, matches, and re-parameterizes one contour against another, so it copes much better when the two shapes have different point counts or start their outlines at different places. It works reliably on a single contour only: one `moveTo(...)`, with open contours as the safest default.
+`FLineInterpolator` resamples and matches two contours before morphing between them. This helps
+when the shapes have different point counts or their outlines start in different places. It works
+reliably on a single contour: one `moveTo(...)`, with open contours as the safest default.
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -2552,20 +2752,18 @@ fun FLineInterpolator.lineAt(
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/flineinterpolator_vanilla.png" embed=true}
 :::static
+// An S that morphs into a curl. They have different numbers of segments:
+// the interpolator resamples both so that they can be matched point for point.
 val f = fline {
-    moveTo(0, 0)
-    cubicTo(10, 20, 30, 20, 20, 40)
-    cubicTo(60, 20, 30, 20, 40, 20)
-} * 3
+    moveTo(0, 50)
+    cubicTo(30, 0, 70, 100, 100, 50)
+}
 
 val f2 = fline {
-    moveTo(10, 60)
-    cubicTo(10, 20, 30, 20, 90, 40)
-    cubicTo(60, 20, 30, 20, 20, 20)
-    cubicTo(10, 200, 30, 20, 30, 20)
-} * 3 + vec(300, 0)
-
-val ii = FLineInterpolator(f, f2)
+    moveTo(0, 90)
+    cubicTo(0, 0, 100, 0, 100, 60)
+    cubicTo(100, 100, 45, 100, 45, 65)
+}
 
 fun ink(line: FLine, tint: Vec4, thick: Double) = line.apply {
     filled = false
@@ -2574,30 +2772,25 @@ fun ink(line: FLine, tint: Vec4, thick: Double) = line.apply {
     color = tint
 }
 
-val ghosts = [
-    ink(f.copy(), vec(0.78, 0.9, 1.0, 0.20), 1.8),
-    ink(f2.copy(), vec(1.0, 0.76, 0.52, 0.20), 1.8),
-]
+// blue at t = 0, through to orange at t = 1
+fun tint(t: Float) = vec(0.4 + 0.6 * t, 0.85 - 0.25 * t, 1.0 - 0.75 * t, 1.0)
 
+val n = 7
+val step = 140.0
+
+val ii = FLineInterpolator(f, f2)
+
+// One frame per column, left to right, rather than all of them on top of each other.
 val frames =
-    (0 until 10).map { i ->
-        val t = i / 9f
-        ink(
-            ii.lineAt(t),
-            vec(
-                0.28 + i * 0.06,
-                0.94 - i * 0.05,
-                1.0 - i * 0.08,
-                0.88,
-            ),
-            3.0,
-        )
+    (0 until n).map { i ->
+        val t = i / (n - 1f)
+        ink(ii.lineAt(t), tint(t), 3.0) + vec(i * step, 0.0)
     }
 
-lines(ghosts + frames, w = 560.0, h = 360.0, fitToSize = true)
+lines(frames, w = 720.0, h = 160.0, fitToSize = true)
 ```
 
-This is the basic pattern: two contours in, one reusable interpolator out, then sample `lineAt(t)` as many times as you want.
+This is the basic pattern: two contours in, one reusable interpolator out, then sample `lineAt(t)` as many times as you want. The seven frames run from t = 0 (the S, blue) to t = 1 (the curl, orange).
 
 #### Spicy 1: rotation-aware matching
 
@@ -2627,31 +2820,27 @@ val end =
         .byScaling2D(0.78f, 1.24f, center = vec(0f, 0f))
         .byShearing2D(0.18f, -0.08f)
 
-val vanillaMid = start.interpolatorTo(end).lineAt(0.5f).apply {
-    filled = false
-    stroked = true
-    thickness = 3.0
-    color = vec(1.0, 0.58, 0.22, 0.8)
-}
+val vanilla = start.interpolatorTo(end)
+val aligned = start.interpolatorTo(
+    end,
+    config = FLineInterpolationConfig(
+        alignment = FLineInterpolationAlignment(
+            rotationMode = FLineInterpolationRotationMode.FIT_LINE_2D,
+            scaleMode = FLineInterpolationScaleMode.BOUNDS_DIAGONAL,
+        ),
+    ),
+)
 
-val alignedMid =
-    start
-        .interpolatorTo(
-            end,
-            config = FLineInterpolationConfig(
-                alignment = FLineInterpolationAlignment(
-                    rotationMode = FLineInterpolationRotationMode.FIT_LINE_2D,
-                    scaleMode = FLineInterpolationScaleMode.BOUNDS_DIAGONAL,
-                ),
-            ),
-        )
-        .lineAt(0.5f)
-        .apply {
-            filled = false
-            stroked = true
-            thickness = 3.0
-            color = vec(0.42, 1.0, 0.68, 0.8)
-        }
+// Nine in-between shapes, t = 0.1 ... 0.9, shaded from the start's blue to the end's orange.
+fun sweep(interpolator: FLineInterpolator) = (1..9).map { i ->
+    val t = i / 10f
+    interpolator.lineAt(t).apply {
+        filled = false
+        stroked = true
+        thickness = 1.6
+        color = vec(0.45 + 0.55 * t, 0.75 - 0.2 * t, 1.0 - 0.75 * t, 0.85)
+    }
+}
 
 fun ghost(line: FLine, tint: Vec4) = line.copy().apply {
     filled = false
@@ -2681,36 +2870,48 @@ val panels = [
 val alignedLines: List<FLine> = [
     ghost(start, vec(0.76, 0.9, 1.0, 0.20)) + leftShift,
     ghost(end, vec(1.0, 0.8, 0.5, 0.20)) + leftShift,
-    vanillaMid + leftShift,
     ghost(start, vec(0.76, 0.9, 1.0, 0.20)) + rightShift,
     ghost(end, vec(1.0, 0.8, 0.5, 0.20)) + rightShift,
-    alignedMid + rightShift,
-]
+] + sweep(vanilla).map { it + leftShift } + sweep(aligned).map { it + rightShift }
 val comparison = panels + alignedLines
 
 lines(comparison, w = 720.0, h = 360.0, fitToSize = true)
 ```
 
-Left is the default midpoint. Right pre-aligns the shapes before correspondence using `FIT_LINE_2D`, which is much better once the target has been rotated and rescaled.
+Both panels show nine in-between shapes from `t = 0.1` (blue) to `t = 0.9` (orange). On the left, the default interpolator moves each point straight to its partner, so the in-between shapes zigzag and collapse toward the centre as they cut across the rotation. On the right, `FIT_LINE_2D` aligns the shapes before matching points, so the in-between strokes sweep around more smoothly, though they still pinch near the centre.
 
 #### Spicy 2: extra motion at evaluation time
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/flineinterpolator_motion_spins.png" embed=true}
 :::static
+// An S that morphs into a curl. They have different numbers of segments:
+// the interpolator resamples both so that they can be matched point for point.
 val f = fline {
-    moveTo(0, 0)
-    cubicTo(10, 20, 30, 20, 20, 40)
-    cubicTo(60, 20, 30, 20, 40, 20)
-} * 3
+    moveTo(0, 50)
+    cubicTo(30, 0, 70, 100, 100, 50)
+}
 
 val f2 = fline {
-    moveTo(10, 60)
-    cubicTo(10, 20, 30, 20, 90, 40)
-    cubicTo(60, 20, 30, 20, 20, 20)
-    cubicTo(10, 200, 30, 20, 30, 20)
-} * 3 + vec(300, 0)
+    moveTo(0, 90)
+    cubicTo(0, 0, 100, 0, 100, 60)
+    cubicTo(100, 100, 45, 100, 45, 65)
+}
 
-val ii = FLineInterpolator(
+fun ink(line: FLine, tint: Vec4, thick: Double) = line.apply {
+    filled = false
+    stroked = true
+    thickness = thick
+    color = tint
+}
+
+// blue at t = 0, through to orange at t = 1
+fun tint(t: Float) = vec(0.4 + 0.6 * t, 0.85 - 0.25 * t, 1.0 - 0.75 * t, 1.0)
+
+val n = 7
+val step = 140.0
+
+val plain = FLineInterpolator(f, f2)
+val spun = FLineInterpolator(
     f,
     f2,
     FLineInterpolationConfig(
@@ -2722,47 +2923,24 @@ val ii = FLineInterpolator(
     ),
 )
 
-val shift = vec(28, 8, 0)
+// Both rows go through the same perspective camera, looking at the middle of the shapes.
+fun seen(line: FLine) = line.byPerspectiveProjecting(cameraPos = vec(50f, 50f, -400f))
 
-fun ink(line: FLine, tint: Vec4, thick: Double) = line.apply {
-    filled = false
-    stroked = true
-    thickness = thick
-    color = tint
-}
-
+// Top row: the plain morph. Bottom row: the same morph with the spin.
 val frames =
-    (0 until 10).map { i ->
-        val t = i / 9f
-        ink(
-            ii.lineAt(t).byPerspectiveProjecting(cameraPos = vec(180f, 90f, -620f)) + shift,
-            vec(
-                0.24 + i * 0.07,
-                0.92 - i * 0.05,
-                1.0 - i * 0.08,
-                0.9,
-            ),
-            3.0,
-        )
+    (0 until n).flatMap { i ->
+        val t = i / (n - 1f)
+        val at = vec(i * step, 0.0)
+        [
+            ink(seen(plain.lineAt(t)), vec(1.0, 1.0, 1.0, 0.45), 2.0) + at,
+            ink(seen(spun.lineAt(t)), tint(t), 3.0) + at + vec(0.0, 150.0),
+        ]
     }
 
-val ghosts = [
-    ink(
-        f.copy().byPerspectiveProjecting(cameraPos = vec(180f, 90f, -620f)) + shift,
-        vec(0.78, 0.9, 1.0, 0.18),
-        1.8,
-    ),
-    ink(
-        f2.copy().byPerspectiveProjecting(cameraPos = vec(180f, 90f, -620f)) + shift,
-        vec(1.0, 0.76, 0.52, 0.18),
-        1.8,
-    ),
-]
-
-lines(ghosts + frames, w = 460.0, h = 240.0, fitToSize = true)
+lines(frames, w = 720.0, h = 300.0, fitToSize = true)
 ```
 
-This is the same base demo, but with `spatialSpinAngle = 1f` in the interpolator config and a perspective projection on the evaluated lines. The source and target still land in the same places; the extra depth only appears in the middle of the morph.
+This is the same morph with `spatialSpinAngle = 1f` in the interpolator config, and both rows go through a perspective projection. The top row is the plain morph, for comparison. In the bottom row the first and last frames still match the source and target, and the spin turns the line away from the camera only in the middle of the morph.
 
 ### Circle fitting + subdivision
 
@@ -2783,7 +2961,7 @@ These are more specialized tools that are still extremely useful when you need t
 
 ### Euler spiral in 3D (clothoid-ish connection)
 
-This builds a smooth-ish curve between two points with start/end direction constraints in 3D. It’s great for “motion paths” and connecting strokes while controlling how the heading evolves.
+This builds the curve between two points that leaves along one direction and arrives along another, with curvature changing at a constant rate along its length. It’s good for motion paths and for joining strokes without a kink. The curve is solved in the plane of the two directions; if the end point is out of that plane, the curve climbs to it at a constant slope.
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -2940,7 +3118,7 @@ multiples.forEachIndexed { i, multiple ->
 lines(out, w = 700.0, h = 320.0, fitToSize = true)
 ```
 
-The thick pale line is the plain cubic, the blue one is the hyperbezier, and the faint outline is the control polygon they are both reading. The first two panels have short arms and the curves are nearly flat and nearly identical. The third is `circleArm` exactly: here the hyperbezier is a true circular arc, and the cubic — which is only ever an approximation to one — is close enough to hide underneath it. The bottom row is where they part company. At 1.4x, 1.9x and 2.4x the circle arm the cubic keeps ballooning out towards the control points, while the hyperbezier pulls into a corner.
+The thick pale line is the plain cubic, the blue one is the hyperbezier, and the faint outline is the control polygon they are both reading. The first two panels have short arms and the curves are nearly flat and nearly identical. The third is `circleArm` exactly: here the hyperbezier is a true circular arc, and the cubic — which is only ever an approximation to one — is close enough to hide underneath it. The bottom row is where they part company. At 1.4x, 1.9x and 2.4x the circle arm the cubic is pulled up into a near-point at the control polygon's apex, while the hyperbezier stays lower and keeps its curvature spread along the arc.
 
 The one thing the family cannot do is a cubic's *second* inflection, so a polygon that crosses itself in an S-of-an-S is not representable. Everything else about the shape is fair game.
 
@@ -3003,20 +3181,17 @@ Blue is the default `tension = 1.0`; orange is `tension = 0.45`, which shortens 
 
 </div>
 
-By default these use Java2D `Area` (via `FLinesAndJavaShapes`). Both inputs are read as filled regions under the non-zero rule, and an open line is closed with a straight segment. Pass `exact = true` to get the curve-preserving engine described under [Exact booleans and offsets](#exact-booleans-and-offsets) below.
+By default these use Java2D `Area` (via `FLinesAndJavaShapes`). Both inputs are read as filled regions under the non-zero rule, whatever their `thickness`, and an open line is closed with a straight segment; pass `stroke = true` to use a styled input's stroke outline instead. Pass `exact = true` to get the curve-preserving engine described under [Exact booleans and offsets](#exact-booleans-and-offsets) below.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/boolean_ops_2d.png" embed=true}
 :::static
+// The inputs' style does not enter the boolean; the results are styled below.
 val a = fline {
     moveTo(80, 80)
     lineTo(260, 80)
     lineTo(260, 220)
     lineTo(80, 220)
     close()
-    filled = true
-    stroked = true
-    thickness = 2.0
-    color = vec(1.0, 1.0, 1.0, 0.20)
 }
 
 val b = fline {
@@ -3025,10 +3200,6 @@ val b = fline {
     lineTo(170, 240)
     lineTo(40, 140)
     close()
-    filled = true
-    stroked = true
-    thickness = 2.0
-    color = vec(1.0, 1.0, 1.0, 0.20)
 }
 
 val u = a.byUnionWith(b).apply {
@@ -3044,8 +3215,34 @@ val i = a.byIntersectionWith(b).apply {
     thickness = 3.0
 }
 
-lines(a, b, u, i, w = 420.0, h = 260.0, fitToSize = true)
+// Faint copies of the inputs to draw underneath.
+fun ghost(f: FLine, offset: Vec2) = (f + offset).apply {
+    filled = true
+    stroked = true
+    thickness = 1.0
+    color = vec(1.0, 1.0, 1.0, 0.15)
+}
+
+// inputs on the left, then the union, then the intersection, each over faint copies of the inputs
+val dx = vec(340.0, 0.0)
+val dx2 = vec(680.0, 0.0)
+val none = vec(0.0, 0.0)
+lines(
+    ghost(a, none),
+    ghost(b, none),
+    ghost(a, dx),
+    ghost(b, dx),
+    u + dx,
+    ghost(a, dx2),
+    ghost(b, dx2),
+    i + dx2,
+    w = 720.0,
+    h = 220.0,
+    fitToSize = true,
+)
 ```
+
+Left: the square and the diamond. Middle: their union (green). Right: their intersection (orange).
 
 ### Exact booleans and offsets
 
@@ -3327,7 +3524,7 @@ head.apply {
     color = vec(1.0, 0.6, 0.2, 1.0)
 }
 
-print("total ${"%.1f".format(total)} = ${"%.1f".format(head.length())} + ${"%.1f".format(tail.length())}")
+print("total ${total.f1} = ${head.length().f1} + ${tail.length().f1}")
 
 lines(curve, head, middle, w = 420.0, h = 260.0, fitToSize = true)
 ```
@@ -3473,7 +3670,7 @@ lines(poly, center, w = 420.0, h = 260.0, fitToSize = true)
 
 ## Java2D bridge
 
-These let you round-trip between `FLine` and Java2D shapes (and pick up a ton of 2D computational geometry “for free”). You’ll see them used internally for booleans, insetting/outsetting, and intersections.
+Java's standard 2D library (`java.awt.geom`) already has shapes such as ellipses, rounded rectangles and arcs, and operations on them. These functions turn a Java2D `Shape` into an `FLine` and back, so you can draw any of them, or run an `FLine` through a Java2D operation. `intersect` returns the points where two lines cross.
 
 ```diffstatic {data-lang=kotlin}
 :::static

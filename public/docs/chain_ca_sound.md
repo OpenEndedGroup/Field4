@@ -1,9 +1,9 @@
 # A cellular automaton you can hear
 
-This page turns a cellular automaton into rhythm. `alife_ca.kt` steps one of Wolfram's
-elementary rules, and one row or one column of the result becomes a step mask. `patCondense`
-finds the shortest mini-notation that plays that mask, and `patRenderStereo` plays the notation
-offline into a `.wav`.
+What does a cellular automaton sound like? We'll run one of Wolfram's elementary rules, turn a
+row or column of its output into a rhythm, and listen. `alife_ca.kt` runs the rule; `patCondense`
+finds the shortest mini-notation that plays the resulting step mask; and `patRenderStereo` renders
+it to a `.wav`.
 
 `patCondense` is the mini-notation parser run backwards. A rhythm with structure gets a much
 shorter spelling than one without, so the length of what it returns tells you something about the
@@ -72,7 +72,7 @@ markdown(
 | steps | ${gasket.steps} | ${chaos.steps} |
 | onsets | ${gasket.onsets} | ${chaos.onsets} |
 | shortest notation | `${gasket.condensation.notation}` | `${chaos.condensation.notation}` |
-| against a flat spelling | ${"%.2f".format(gasket.compression)} | ${"%.2f".format(chaos.compression)} |
+| against a flat spelling | ${gasket.compression.f2} | ${chaos.compression.f2} |
 | the search signed for it | ${gasket.condensation.exact} | ${chaos.condensation.exact} |
 """,
     width = 1000,
@@ -112,10 +112,10 @@ numbers measure that difference.
 
 ## The same rule read as pitch
 
-Row *n* of Pascal's triangle mod 2 has exactly `2^popcount(n)` odd entries, so the population of
-rule 90's rows is the binary digit sum of the generation index. `CaSoundDocs.gasketScale` counts the
-real CA's rows and maps the digit sum to a degree of a
-minor pentatonic. The tune is the binary expansion of 0, 1, 2, … read out loud: it falls
+Row *n* of Pascal's triangle mod 2 has exactly `2^popcount(n)` odd entries: its population is a
+power of two, with the binary digit sum of the generation index as its exponent.
+`CaSoundDocs.gasketScale` counts the real CA's rows and maps that digit sum to a degree of a minor
+pentatonic. The tune is the binary expansion of 0, 1, 2, … read out loud: it falls
 back to the root at every power of two and climbs through the carries in between.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_ca_sound/scale.png" wait="8" capture="box" open-outputs="true" w="1180" h="280" padding="18" timeout="120" name="chain-ca-scale" embed=true alt="A sawtooth-shaped trace of rule 90's row populations climbing to 32 at generation 31 and dropping back to 2 at every power of two, above a single-cycle piano roll of 32 notes on six pitches with the same shape"}
@@ -168,7 +168,7 @@ val rows =
     CaSoundDocs.CONDENSATION_SURVEY.zip(bars)
         .sortedByDescending { (_, bar) -> bar.compression }
         .joinToString("\n") { (rule, bar) ->
-            "| $rule | ${bar.onsets} of ${bar.steps} | ${"%.2f".format(bar.compression)} | " +
+            "| $rule | ${bar.onsets} of ${bar.steps} | ${bar.compression.f2} | " +
                 "`${bar.condensation.notation}` |"
         }
 markdown(

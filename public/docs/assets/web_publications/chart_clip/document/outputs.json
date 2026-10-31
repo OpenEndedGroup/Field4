@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-29T22:37:37.712Z",
+  "documentName": "chart_clip",
+  "outputs": [
+    {
+      "uid": "clip_marks",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "clip_off",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "clip_on",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "note_wrap",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/3.html"
+    }
+  ]
+}

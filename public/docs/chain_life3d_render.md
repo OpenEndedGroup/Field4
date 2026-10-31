@@ -1,9 +1,8 @@
 # Three-dimensional Life, counted and traced
 
-A cellular automaton in three dimensions is a volume of ones and zeros, and there is no obvious way
-to ask it the question you actually want to ask: *how many separate things are left?* This page runs
-`LIFE3D_BLOB` for eight generations, turns the surviving cells into a Manifold solid, asks that
-question with one call, and traces the answer.
+Run a cellular automaton in three dimensions and you get a volume of ones and zeros. How many
+separate things are left inside it? Here we'll run `LIFE3D_BLOB` for eight generations, turn the
+surviving cells into a Manifold solid, count its separate parts, and render them.
 
 `alife_ca.kt` runs the automaton, `afield.geometry.solid.manifold` turns it into closed solids and counts them,
 and the GPU path tracer draws the result.
@@ -72,19 +71,19 @@ live cells per generation: `${populations.joinToString(" -> ")}`
 
 | | triangles | watertight | genus | volume |
 |---|---|---|---|---|
-| Field's `marchingCubes` | ${marched.triangleCount} | ${marched.isWatertight()} | ${marched.genus()} | ${"%.4f".format(marched.signedVolume())} |
-| Manifold's `levelSet` | ${whole.triangleCount} | by construction | ${whole.genus} | ${"%.4f".format(whole.volume)} |
+| Field's `marchingCubes` | ${marched.triangleCount} | ${marched.isWatertight()} | ${marched.genus()} | ${marched.signedVolume().f4} |
+| Manifold's `levelSet` | ${whole.triangleCount} | by construction | ${whole.genus} | ${whole.volume.f4} |
 
 `decompose()` returns **${parts.size}** separate solids, and `1 - ${parts.size} = ${1 - parts.size}`
 is the genus above. Each one on its own has genus ${parts.take(5).map { it.genus }.distinct()}.
 
 | | volume |
 |---|---|
-| largest cluster | ${"%.3f".format(volumes.first())} |
-| median cluster | ${"%.3f".format(volumes[volumes.size / 2])} |
-| smallest cluster | ${"%.3f".format(volumes.last())} |
-| the ${parts.size} summed | ${"%.4f".format(volumes.sum())} |
-| the solid they came from | ${"%.4f".format(whole.volume)} |
+| largest cluster | ${volumes.first().f3} |
+| median cluster | ${volumes[volumes.size / 2].f3} |
+| smallest cluster | ${volumes.last().f3} |
+| the ${parts.size} summed | ${volumes.sum().f4} |
+| the solid they came from | ${whole.volume.f4} |
 """,
     width = 1020,
 )
@@ -104,13 +103,13 @@ val sweep = buildString {
                     field(vec(x, y, z)).toDouble()
                 }
             appendLine(
-                "| `levelSet` edgeLength ${edge} | ${s.decompose().size} | " + "${"%.2f".format(s.volume)} |",
+                "| `levelSet` edgeLength ${edge} | ${s.decompose().size} | " + "${s.volume.f2} |",
             )
         }
     }
     [55, 110, 220].forEach { resolution ->
         val m = marchingCubes(field, bounds, resolution = resolution, positiveOutside = false)
-        appendLine("| `marchingCubes` resolution ${resolution} | | ${"%.2f".format(m.signedVolume())} |")
+        appendLine("| `marchingCubes` resolution ${resolution} | | ${m.signedVolume().f2} |")
     }
 }
 markdown("spacing", "#### The same field at three spacings each way\n\n" + sweep, width = 1020)
@@ -127,9 +126,9 @@ Field's `genus()` reads one Euler characteristic and solves `χ = 2 − 2g`, whi
 **connected** surface. Handed forty-eight disjoint closed surfaces it returns the genus of the one it
 implicitly assumes, and says nothing about the other forty-seven.
 
-Manifold's `genus` is computed over the whole boundary, and for a set of *k* disjoint genus-zero
-spheres χ is `2k`, so `g = 1 − k`. A negative genus is therefore not an error and not a hole count:
-it is a component count in disguise, and `1 − 48 = −47` is the arithmetic the readout shows.
+Manifold's `genus` is computed over the whole boundary. For *k* disjoint genus-zero spheres,
+χ is `2k`, so the formula gives `g = 1 − k`. Here that gives `1 − 48 = −47`: the value reflects
+the number of disconnected pieces rather than a count of holes.
 
 `decompose()` turns that back into the number you wanted: the separate pieces, sorted largest
 first, each with its own volume. Because Manifold computes each volume independently, the pieces
@@ -146,9 +145,8 @@ fine one, so the cluster count falls as the triangles get bigger. And a trilinea
 direction, and at comparable spacings they land within a few percent of each other. Neither number
 is "the" volume of the automaton.
 
-So report the spacing beside any count. The relation between genus and component count, and the
-pieces adding up to the whole, hold at every spacing, because they describe whatever surface was
-produced.
+Include the sampling spacing when you report a count. The genus relation and the sum of the
+pieces describe the surface produced at that spacing.
 
 ## What the render is framed on
 

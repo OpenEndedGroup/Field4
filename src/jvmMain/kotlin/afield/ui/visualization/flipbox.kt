@@ -29,6 +29,21 @@ import afield.app.diagnostics.logging.lprintln
 import afield.document.graph.Marker
 
 /**
+ * A checkbox drawn in the editor that re-runs one block of a box without re-running the box.
+ *
+ * `flipbox` extends [Marker], so it is reached through a marker uid in the source
+ * (`__m("aVq3x-k2").flipbox(true) { … }`), and the checkbox is drawn at that call: over a bare
+ * `true` or `false` argument where there is one, and before the call otherwise.
+ *
+ * The rest of the file is that decoration. A [RawDecoration] carries the glyph, its hover colour
+ * and a click callback, and is rewritten after every evaluation and after every click, so the
+ * editor always shows the current state rather than the argument's.
+ *
+ * It belongs with the other marker decorations in `decorations.kt` (`toggle`, `beep`, `bop`,
+ * `liveNumber`), and is the one that owns a block rather than a value.
+ */
+
+/**
  * A block with a checkbox drawn in the editor over its argument: it runs when the box evaluates with the box
  * ticked, and you tick it to run the block again. Each evaluation unticks it.
  *

@@ -153,6 +153,10 @@ object PersonalLayer {
 
     private fun stage(): List<File> = roots.map { root ->
         if (root.isDirectory) return@map root
+        // Kit JARs already live at immutable, content-addressed paths. Staging beside them would
+        // write generations into the package snapshot and invalidate its integrity on the next build.
+        val packages = File(afield.document.workspace.KitPackages.directory, "packages").canonicalFile.toPath()
+        if (root.canonicalFile.toPath().startsWith(packages)) return@map root
         runCatching {
             runCatching { removeExitedStaging(File(root.parentFile, "generations")) }
             val staged = stagedPath(root, generation)
@@ -229,12 +233,16 @@ object PersonalLayer {
 
     private val retired = mutableListOf<Retired>()
 
-    /** Has anything been retired yet? The cheap gate that keeps the scan off the normal path. */
+    /**
+     * Whether [advance] has retired a layer that is still listed. `PersonalReload.kt`'s staleness
+     * checks return early when it is false, so nothing walks the retired list on the normal path.
+     */
     val hasRetiredLayers: Boolean @Synchronized get() = retired.isNotEmpty()
 
     /**
-     * The generation that owned [type], if it came from a layer that has since been retired — i.e.
-     * "this object is stale". Null for everything else, including classes from the *live* layer.
+     * The generation that owned [type], when [type] came from a layer a later reload retired, which
+     * is what makes an object holding it stale. Null for everything else, including classes from the
+     * *live* layer.
      */
     @Synchronized
     fun retiredGenerationOf(type: Class<*>?): Int? {

@@ -196,6 +196,10 @@ SIDECAR_START_DEADLINE_SEC = float(os.environ.get("AFIELD_DOCS_SIDECAR_START_TIM
 # serving (`(AA→K1: <why>)`) -- only the latter is a defect in a capture.
 COMPLETION_AA_FALLBACK_RE = re.compile(r"^.*completion backend=K1.*\(AA→K1:.*$", re.MULTILINE)
 COMPLETION_BACKEND_RE = re.compile(r"completion backend=(\w+)")
+# How long a completion capture waits for Field's `completion backend=` line to reach the log file.
+COMPLETION_LOG_SETTLE_SEC = 5.0
+# The docs build's runloop-watchdog interrupt (BoxInterrupt.Watchdog), 5 minutes; Field's default is 30 s.
+DOCS_RUNLOOP_WATCHDOG_INTERRUPT_MS = 300_000
 ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*m")
 RUNNER_MODE_ALIASES = {
     "incremental": "incremental",
@@ -756,6 +760,7 @@ RUNNER_DIGEST_SOURCE_FILES = (
     "src/jvmMain/kotlin/afield/graphics/someSkiko.kt",
     "src/commonMain/resources/outputareas2.js",
     "tools/field_backdoor.py",
+    "tools/lighting/capture_background.js",
     "tools/capture_transaction.py",
     "tools/run_field_tests.py",
 )
@@ -818,6 +823,7 @@ class RunnerOptions:
     box_w: float
     box_h: float
     open_outputs: bool
+    open_details: bool
     expect_outputs: str
     wait_output: bool
     wait_output_kind: str
@@ -938,6 +944,29 @@ def sidecar_workspace_status(url: str, repo_root: Path) -> str:
 class CacheEntry:
     digest: str
     metadata: dict[str, Any] | None = None
+
+
+def asset_fingerprint(path: Path, previous: dict[str, Any] | None = None) -> dict[str, Any] | None:
+    """Size, mtime and sha256 of a cached asset, or None when it is gone.
+
+    A cache entry certifies the bytes its capture published. Recording them lets a later run tell
+    that the file at that path is no longer those bytes (a `git stash`, a checkout of `main`'s
+    copy, a hand edit) and capture again, instead of passing the stale file as a cache hit. The
+    hash is reused while size and mtime are unchanged, so saving the cache does not reread 1 GB.
+    """
+    try:
+        stat = path.stat()
+    except OSError:
+        return None
+    if not path.is_file():
+        return None
+    if previous and previous.get("size") == stat.st_size and previous.get("mtime_ns") == stat.st_mtime_ns:
+        return dict(previous)
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(chunk)
+    return {"size": stat.st_size, "mtime_ns": stat.st_mtime_ns, "sha256": digest.hexdigest()}
 
 
 class RunnerState:
@@ -1260,8 +1289,16 @@ class RunnerState:
 
         Only an `AA→K1` fallback fails. A build that deliberately selects K1
         (`-Dafield.kotlin.completion=k1`) logs `(backend=k1)` and is left alone.
+
+        The backend line can reach the log file after the drive has returned -- in a full build it
+        landed behind the next drive's code -- so the slice is re-read for up to
+        COMPLETION_LOG_SETTLE_SEC before concluding no completion was requested.
         """
         slice_text = self._shared_log_since(log_offset)
+        deadline = time.monotonic() + COMPLETION_LOG_SETTLE_SEC
+        while not COMPLETION_BACKEND_RE.search(slice_text) and time.monotonic() < deadline:
+            time.sleep(0.2)
+            slice_text = self._shared_log_since(log_offset)
         fallbacks = COMPLETION_AA_FALLBACK_RE.findall(slice_text)
         if fallbacks:
             # Field's log is written for a terminal, so the channel tag arrives wrapped in ANSI. Strip it:
@@ -1656,14 +1693,26 @@ class RunnerState:
         # The general automation notebook also holds draft review notes made by other test
         # runners. The notes-panel capture must see only notes from this docs runner, while
         # still staying isolated from the user's real notebook.
-        server_env = automation_server_environment(
-            self.backdoor_port,
-            extra={
-                "AFIELD_DOCS_ANNOTATIONS_STORE": str(
-                    self.repo_root / "build" / "field-docs-runner-annotations.json"
-                )
-            },
-        )
+        # The KDoc drafts the ai_doc_polish captures count and import would otherwise be whatever
+        # completion cached in this checkout's .field/filestore: nothing in a fresh clone, and on
+        # one machine a draft whose file the package cutover had moved. A fresh copy of a committed
+        # cache gives every build the same real draft (test_docs_runner_inputs keeps it importable).
+        extra_env = {
+            "AFIELD_DOCS_ANNOTATIONS_STORE": str(
+                self.repo_root / "build" / "field-docs-runner-annotations.json"
+            ),
+            # The runloop watchdog interrupts box code that holds the runloop this long. Docs examples
+            # may compute for a while in their body, and each capture already has its own timeout.
+            "AFIELD_RUNLOOP_WATCHDOG_INTERRUPT_MS": str(DOCS_RUNLOOP_WATCHDOG_INTERRUPT_MS),
+        }
+        committed_drafts = self.repo_root / "tools" / "docs_runner_inputs" / "generated_completion_docs.json"
+        if committed_drafts.is_file():
+            drafts = self.repo_root / "build" / "field-docs-runner-completion-drafts" / committed_drafts.name
+            shutil.rmtree(drafts.parent, ignore_errors=True)
+            drafts.parent.mkdir(parents=True)
+            shutil.copyfile(committed_drafts, drafts)
+            extra_env["AFIELD_COMPLETION_DRAFTS_FILE"] = str(drafts)
+        server_env = automation_server_environment(self.backdoor_port, extra=extra_env)
         sidecar_url = self._ensure_semantic_sidecar()
         if sidecar_url:
             server_env[SIDECAR_URL_ENV] = sidecar_url
@@ -1899,7 +1948,15 @@ class RunnerState:
         # The warm-session daemon holds a WebSocket to this server; it is now stale.
         self._stop_session(reason="shared server restart")
         self._stop_shared_field_server()
+        self._remove_fresh_documents_again()
         self._ensure_shared_field_server()
+
+    def _remove_fresh_documents_again(self) -> None:
+        """A stopping Field saves every document it still holds, so the fresh documents the captures
+        already removed come back when the shared server stops; remove them once more."""
+        workspace = runner_workspace(self.repo_root)
+        for document in sorted(getattr(self, "_fresh_documents", set())):
+            remove_fresh_document(workspace, document, settle=0)
 
     # ----- Warm-session daemon (opt-in) -------------------------------------
     def _ensure_session(self) -> Path | None:
@@ -2181,6 +2238,8 @@ class RunnerState:
 
         cache: dict[str, str] = {}
         metadata: dict[str, dict[str, Any]] = {}
+        fingerprints: dict[str, dict[str, Any]] = {}
+        dropped = 0
         for key, value in entries.items():
             cache_key = str(key)
             if isinstance(value, str):
@@ -2191,10 +2250,20 @@ class RunnerState:
             digest = value.get("digest")
             if not isinstance(digest, str):
                 continue
+            recorded = value.get("asset")
+            if isinstance(recorded, dict):
+                current = asset_fingerprint(Path(cache_key), recorded)
+                if current is None or current.get("sha256") != recorded.get("sha256"):
+                    dropped += 1
+                    continue
+                fingerprints[cache_key] = current
             cache[cache_key] = digest
             entry_metadata = value.get("metadata")
             if isinstance(entry_metadata, dict):
                 metadata[cache_key] = entry_metadata
+        if dropped:
+            LOG.info("Field docs runner cache: %d entries dropped, their asset is no longer the bytes they certified", dropped)
+        self._asset_fingerprints = fingerprints
         return cache, metadata
 
     def save(self) -> None:
@@ -2203,15 +2272,19 @@ class RunnerState:
         if not self.dirty:
             return
         entries: dict[str, Any] = {}
+        fingerprints = getattr(self, "_asset_fingerprints", {})
         for cache_key, digest in self.cache.items():
             metadata = self.cache_metadata.get(cache_key)
-            if metadata is None:
+            asset = asset_fingerprint(Path(cache_key), fingerprints.get(cache_key))
+            if metadata is None and asset is None:
                 entries[cache_key] = digest
             else:
-                entries[cache_key] = {
-                    "digest": digest,
-                    "metadata": metadata,
-                }
+                entries[cache_key] = {"digest": digest}
+                if metadata is not None:
+                    entries[cache_key]["metadata"] = metadata
+                if asset is not None:
+                    entries[cache_key]["asset"] = fingerprints[cache_key] = asset
+        self._asset_fingerprints = fingerprints
         payload = {
             "version": SCRIPT_VERSION,
             "mode": self.runner_mode,
@@ -2235,6 +2308,7 @@ class RunnerState:
             finally:
                 try:
                     self._stop_shared_field_server()
+                    self._remove_fresh_documents_again()
                 finally:
                     self._stop_semantic_sidecar()
                     if self.environment is not None:
@@ -2362,19 +2436,31 @@ class RunnerState:
         # Remember which backdoor invocation this was, so a failure diagnosis can find
         # *its* client log instead of whichever recent one happens to contain an error.
         self._last_capture_child_pid = None
-        completed, duration_ms, timed_out = run_with_watchdog(
-            command,
-            cwd=self.repo_root,
-            timeout=outer_timeout,
-            heartbeat_interval=8.0,
-            heartbeat=lambda message: LOG.info("Field docs runner%s", message),
-            label=label,
-            completion_probe=commands_complete,
-            exit_grace=10.0,
-            input_text=input_text,
-            on_start=self._remember_capture_child_pid,
-            check_environment=getattr(self, "_capture_environment_check", None),
-        )
+        try:
+            completed, duration_ms, timed_out = run_with_watchdog(
+                command,
+                cwd=self.repo_root,
+                timeout=outer_timeout,
+                heartbeat_interval=8.0,
+                heartbeat=lambda message: LOG.info("Field docs runner%s", message),
+                label=label,
+                completion_probe=commands_complete,
+                exit_grace=10.0,
+                input_text=input_text,
+                on_start=self._remember_capture_child_pid,
+                check_environment=getattr(self, "_capture_environment_check", None),
+            )
+        finally:
+            # A fresh-document capture made a real document in the runner's workspace. Left there it
+            # shows up in that workspace's lists (the cmd+t palette offers every document as a
+            # "Workspace file"), so the next capture photographs it.
+            if options.fresh_document:
+                document = command_document(command)
+                if document:
+                    if not hasattr(self, "_fresh_documents"):
+                        self._fresh_documents = set()
+                    self._fresh_documents.add(document)
+                remove_fresh_document(runner_workspace(self.repo_root), document)
         if timed_out:
             emitted = len(parse_backdoor_results(completed.stdout))
             reason = (
@@ -3482,6 +3568,7 @@ def parse_runner_options(*, runner_name: str, open_line: str, page_path: Path, l
         box_w=parse_float(first_attr(attrs, "w"), default=default_box_w),
         box_h=parse_float(first_attr(attrs, "h"), default=default_box_h),
         open_outputs=open_outputs,
+        open_details=parse_bool(first_attr(attrs, "open-details", "open_details"), default=False),
         expect_outputs=expect_outputs,
         wait_output=wait_output,
         wait_output_kind=wait_output_kind,
@@ -5287,6 +5374,58 @@ def build_audio_backdoor_command(
     return command
 
 
+FRESH_DOCUMENT_NAME = re.compile(r"[A-Za-z0-9._-]+-[0-9a-f]{8}")
+
+
+def runner_workspace(repo_root: Path) -> Path:
+    """The workspace the runner's Field serves: `RUNNER_WORKSPACE_ENV`, else the checkout's automation workspace."""
+    return Path(os.environ.get(RUNNER_WORKSPACE_ENV) or str(automation_workspace(repo_root)))
+
+
+def command_document(command: list[str]) -> str | None:
+    """The `--document` a backdoor command line names, if any."""
+    for i, arg in enumerate(command[:-1]):
+        if arg == "--document":
+            return command[i + 1]
+    return None
+
+
+def remove_fresh_document(workspace: Path, document: str | None, settle: float = 6.0) -> bool:
+    """Delete the document folder a `fresh-document=true` capture created: only a name shaped like
+    [invocation_document]'s (`<name>-<8 hex>`), and only directly inside [workspace]."""
+    if not document or not FRESH_DOCUMENT_NAME.fullmatch(document):
+        return False
+    root = workspace.resolve()
+    target = (root / document).resolve()
+    if target.parent != root or not target.is_dir():
+        return False
+    # Field writes a document again after the capture process exits: when its last client detaches,
+    # and on the next tick of the 5 s autosave. Either puts the folder back, so remove it, then keep
+    # removing it until it has stayed gone for [settle] seconds, longer than one autosave period.
+    deadline = time.monotonic() + settle
+    while True:
+        if target.exists():
+            shutil.rmtree(target, ignore_errors=True)
+            deadline = time.monotonic() + settle
+        if time.monotonic() >= deadline:
+            break
+        time.sleep(0.25)
+    LOG.info("Field docs runner removed fresh document %s", target)
+    return not target.exists()
+
+
+def fresh_document_release_commands(options: RunnerOptions) -> list[str]:
+    """Last commands of a `fresh-document=true` capture: take the shared capture page off the document.
+
+    The page outlives the capture, and while it is still connected the document stays open; Field
+    writes it again when the page finally leaves it, during the *next* capture, after the runner has
+    removed it. Leaving it here makes that last write happen before [remove_fresh_document] runs.
+    """
+    if not options.fresh_document:
+        return []
+    return [shlex.join(["page-eval", "--body", "location.href = 'about:blank'; return true", "--wait-ms", "500"])]
+
+
 def invocation_document(options: RunnerOptions) -> str | None:
     """The document a capture runs in: `document=`, or a new uniquely named one for `fresh-document`."""
     if not options.fresh_document:
@@ -5347,6 +5486,11 @@ def build_backdoor_command(
             backdoor_commands.append(shlex.join([
                 "macro", "run", setup_name, "--timeout", str(options.timeout),
             ]))
+            # The setup is plumbing, not a macro the page's reader saved: remove it before the drive,
+            # so a capture of the Macro Recorder or the palette does not show it.
+            backdoor_commands.append(shlex.join([
+                "macro", "delete", setup_name, "--timeout", str(options.timeout),
+            ]))
         # Run the fence body as a single `drive` transcript op: it scripts the live
         # editor via Playwright (the `ui` driver is in scope) and produces the video
         # and/or still itself, so no separate screenshot-/record- command is appended.
@@ -5379,6 +5523,9 @@ def build_backdoor_command(
         transcript = {
             "name": transcript_name,
             "description": "Generated by public/docs_hooks.py capture=ui drive.",
+            # Unlisted (OperationTranscript.isInternalMacro): it is running while the capture is
+            # taken, and must not appear in a captured macro list.
+            "internal": True,
             "operations": [{"drive": drive_op}],
         }
         backdoor_commands.append(shlex.join([
@@ -5390,6 +5537,10 @@ def build_backdoor_command(
             "macro", "run", transcript_name,
             "--timeout", str(options.timeout),
         ]))
+        backdoor_commands.append(shlex.join([
+            "macro", "delete", transcript_name, "--timeout", str(options.timeout),
+        ]))
+        backdoor_commands.extend(fresh_document_release_commands(options))
         for command_line in backdoor_commands:
             command.extend(["--command", command_line])
         return BackdoorInvocation(
@@ -5525,7 +5676,25 @@ def build_backdoor_command(
         if options.source_box_wait > 0:
             backdoor_commands.append(shlex.join(["sleep", str(options.source_box_wait)]))
     if options.macro_file:
-        pass
+        # A macro builds the document; `run-box` then names a box to run after it. An editor
+        # capture opens that box's editor first, so the inline output of the run lands in an
+        # editor that is already showing (output that arrives before the editor opens is not
+        # drawn beside its line).
+        if options.run_box:
+            if capture_mode == "editor":
+                backdoor_commands.append(shlex.join([
+                    "editor-open",
+                    options.run_box,
+                    "--property", options.property_name,
+                    "--padding", str(options.padding),
+                    "--timeout", str(options.timeout),
+                ]))
+            backdoor_commands.append(shlex.join([
+                "launch" if options.execution == "launch" else "run",
+                options.run_box,
+                "--property", options.property_name,
+                "--timeout", str(options.timeout),
+            ]))
     elif options.run_box is None and capture_mode == "editor":
         # Target the box explicitly rather than "@last": under graphics-context the
         # box is created via a macro (so "@last" is stale) and must match the box
@@ -5681,6 +5850,8 @@ def build_backdoor_command(
             ]
             if options.open_outputs:
                 parts.append("--open-outputs")
+            if options.open_details:
+                parts.append("--open-details")
             parts.extend(["--expect-outputs", options.expect_outputs])
             if options.scale is not None:
                 parts.extend(["--scale", str(options.scale)])
@@ -5723,6 +5894,7 @@ def build_backdoor_command(
         ]))
     if options.expects_error:
         backdoor_commands = [waive_execution_verdict(line) for line in backdoor_commands]
+    backdoor_commands.extend(fresh_document_release_commands(options))
     for command_line in backdoor_commands:
         command.extend(["--command", command_line])
     session_eligible = (

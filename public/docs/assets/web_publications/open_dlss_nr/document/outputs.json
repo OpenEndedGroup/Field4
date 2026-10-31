@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-29T22:45:58.603Z",
+  "documentName": "open_dlss_nr",
+  "outputs": [
+    {
+      "uid": "open_dlss_nr",
+      "channel": "Vulkan window · still image",
+      "open": true,
+      "path": "outputs/0.html",
+      "width": 3917,
+      "height": 1414,
+      "kinds": [
+        "native-image"
+      ],
+      "warnings": []
+    }
+  ]
+}

@@ -1,0 +1,3 @@
+Moved the helper declarations so `TypeAnchors`’ KDoc attaches correctly; no executable logic changed. The targeted Python regression failed before the fix and passes afterward; Gradle verification was unavailable in this replay.
+
+FIXER-VERDICT: {"verdict": "fix", "culprit": "docs/kdoc-symbol-links-2", "reason": "The branch inserted helper declarations between TypeAnchors and its KDoc, and relocating them removes the stacked KDoc with a passing targeted Python regression."}

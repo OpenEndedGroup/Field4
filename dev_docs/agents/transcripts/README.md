@@ -85,6 +85,8 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
 
 ## Files
 
+- `stereo_rtt_composite.yaml`: desktop-first stereo cubes, resolution chart, editable per-eye-safe FXAA RTT, and optional OpenXR presentation. Launch 1, 2, 2b, 3, 4; the last box owns the render loop. See `public/docs/stereo_rtt_composite.md`.
+
 - `profiling_timeline.yaml`: three editable CPU/allocation workloads plus a capture box. Replay to
   get a checked, latched three-second capture in **Show Profiling Timeline**. Workers stop at the
   end; brush, zoom, inspect a resume, or explore JVM classes and sampled box lines in **Hot code**.
@@ -96,6 +98,8 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   `MacroReplayOptions(asCopy = true, offsetY = ...)` three times, `steps` replays it one operation
   at a time. Open the Macro Recorder afterwards to run, rename or delete it from the panel.
 - `hello_display.yaml`: smallest useful blank-canvas transcript; creates one box, displays HTML, and can be undone.
+- `spreadsheet_tour.yaml`: a bill kept as a spreadsheet in one box (`sheet { }`, Kotlin formulas, a quantity with units), priced by `tax` and `discount` variables in a second box that the formulas read with `box("...")["tax"]`. Run the Rates box, then the Bill box; change a rate and run Rates again, and the open sheet recomputes on the next frame (`public/docs/spreadsheets.md`).
+- `spreadsheet_constraints.yaml`: two sheets that solve for their cells with Ceres: a temperature sheet (`=free(100)` Celsius, `=free(212)` Fahrenheit, `B2 eq B1 * 9.0 / 5.0 + 32.0`) where editing either moves the other, and a rectangle held to `area eq 40` and `width le 6`. Run each box; then type into a variable cell (`public/docs/spreadsheets.md#solving-for-cells`).
 - `ai4_iframe_hello.yaml`: one Field-served webpage in an output iframe, with a textbox and opt-in AI4 tools for inspecting and driving that live page. Run the host box after opening its starting point.
 - `orca_hello.yaml`: ORCA in a box output (`orca()`), playing through a returned `PatSynthBank`, with `exposeTools()` so AI4 can read and write the grid. Compiled only: running it opens an audio device, and ORCA plays only in a browser; `run_ui_regressions.py --id orca-io` is its live check.
 - `orca_jam.yaml`: one ORCA with four voiced channels and `exposeTools(about = ...)`: AI4 plays it with `orca_write`/`orca_look` while it runs, and its board and tempo follow the chat (`branchState`). Compiled only, like `orca_hello`.
@@ -185,6 +189,7 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
 
 - `autodiff_worked_example.yaml`: **automatic differentiation** as five pure-CPU boxes, one per layer of the AD stack. `autodiff_basics` differentiates one expression three ways that must agree (reverse-mode tape, second-order forward-mode `Dual2`, and a central-difference oracle) and plots f, f' and f'' from a single sweep, plus the exact 2x2 Rosenbrock Hessian. `autodiff_optimizers` walks the same Rosenbrock valley with SGD+momentum, Adam and L-BFGS and plots log10 loss - the line-searched method plunges past 1e-24 in ~42 iterations while the first-order ones are still crawling near 1e-3. `autodiff_fn_fit` is the Field-specific bridge: the SAME `fitGradient()` call once with the historic finite-difference gradient and once with `gradient = FnGradientMode.EXACT`, which re-interprets the `Fn` graph in AD arithmetic - same optimiser, lower RMSE, a quarter of the loss evaluations - and asks `exactFitRefusal` why a saw-based seed is refused. `autodiff_ik` solves inverse kinematics on a four-link `FLine` chain and shows the rest pose, the solved pose and a smoothness-penalised pose in three panels sharing one window. `autodiff_pack` packs twelve discs by descending a `relu(overlap)^2` hinge, before and after. No `Window`, no `Renderer`; EXECUTE-bucket in `examples.demo-transcript.exec`. Committed captures of all five box outputs live in `public/docs/assets/autodiff/`; the layer itself is documented in `dev_docs/autodiff.md`.
 - `recstl_playground.yaml`: a one-stop, drag-in **RectSL playground**. Builds a "window + renderer" parent box and a child "recstl" box connected beneath it; the child compiles a `#rectsl` snippet, draws it live in the on-screen window, and publishes a `controlGroup("transport")` in its output area — `play`/`loop` checkboxes, a `speed` slider, and a `time` scrub slider. Edit the `rectsl` string and re-run the child to change it live; check `play` to loop it, or scrub `time` while paused to freeze on a frame. Requires a GPU/Vulkan window (like `threebox.yaml`); capture its window with a follow-on `native-screenshot <path>` (`--with-playwright`). Because it starts with `name:`/`operations:`, dropping the file onto a Field document is recognized as a transcript and run (write-then-run) — this is the intended "drag in to get started" path.
+- `demo_document.yaml`: the showcase canvas behind the docs home page's film (`public/docs/demo_document.md`): connected and nested boxes, a three.js view, an editable FLine view, a renderer streaming into a box's panel (`ElectronRTTView`, frames only in Field's Electron app), a compute shader with a Field probe, a keyframe curve, inline visualizers, a time slider over cue boxes, and `notation` marks on the drawing layer. Requires a GPU/Vulkan window. `tools/feel_bench.py`'s `demo-document` scenario times its replay into a fresh document; `transcript.op` spans attribute the time per operation.
 - `threebox.yaml`: self-contained capstone. One transcript builds a three-box particle system on a blank canvas — a renderer box (owns `Window` + `Renderer`, pumps the loop), a compute box (simulates particles into a `buffer_reference` buffer and probes speed via `{% property "fieldProbe" %}`, publishing the buffer as `prop<FrameBufferGroup>(outputPositions)`), and a draw box (reads `outputPositions` and renders). Requires a GPU/Vulkan window. Demonstrates cross-box property publish/read and the `await` barrier between the three launches; the transcript itself produces no image artifact (no screenshot step) — capture its native window with a follow-on `native-screenshot <path>` backdoor command (`--with-playwright`).
 - `vision_metal_cube.yaml`: one device-facing box that publishes the animated indexed cube to
   Field4Vision's autonomous Compositor Services renderer. Open **Live Metal** in the visionOS app,
@@ -250,6 +255,16 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
 - `sound_render_path.yaml`: **one beat, three ways of sounding it** — roll, synth stand-in, Dirt
   samples, the per-event fallback and the library search, the companion to `sound.md`. Promoted from
   `public/docs/assets/sound_render_path/` on 2026-10-02; the page's wavs and roll stay there.
+- `learned_pen.yaml`: **the learned pen** — the starting point of `public/docs/learned_pen.md`.
+  Six pure-CPU boxes on `afield.ai.learning.pen`: `continueWith`, `futuresWith` as small multiples, a
+  launched `PenLine` writing on from an editable drawing panel, `Pen.setCell` on one memory cell, a
+  launched tip magnifier with next-step ellipses, and a cell-colouring slider.
+- `a_pen_that_sees.yaml`: **a pen that sees** — the starting point of `public/docs/a_pen_that_sees.md`.
+  Seven pure-CPU boxes on the sensing pens (`PenSense`): what one sees, Michaux hatching and cracks against
+  blind twins, a field of lines, the following/joins measures, and two launched drawing panels.
+- `teaching_a_pen.yaml`: **teaching a pen** — the starting point of `public/docs/teaching_a_pen.md`.
+  Seven pure-CPU boxes on the synthetic corpora and bundled pens: the corpora, each pen alone, one stroke
+  in seven hands, the two-hands probe and held cells, a click-to-keep taste box, rounder, a corpus of your own.
 - `stipple_sheet.yaml`: **the stipple transport sheet** — the companion to
   `stipple_transport.md`. Loads the committed two-image model and deforms particles and a lattice
   under transport-time, movie-time and step sliders. Pure CPU.
@@ -274,6 +289,9 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   `euclid(12,24)` at the same density, the same rule run recursively as a branching tree whose level
   sizes are the word's own partial sums, and a `.wav` player pinned to the canvas through
   `customization`. Sample-backed through `showDirtAudio`; falls back to `patVoice` with no library.
+- `renderer_browsing.yaml`: **the Vulkan renderer in `column(...)` and `tree(...)`** — a renderer box,
+  a triangle module beneath it, and a box that opens the renderer: targets in draw order, modules
+  with shaders, bindings and meshes, CPU span timings. GPU. See `dev_docs/INSPECTOR_EMBEDS.md`.
 - `browse_embeds.yaml`: **the three inspector embeds**, one box each — `tree(...)` over a data class,
   a `DoubleArray`, a 5000-item list paged 200 rows at a time, object keys and a two-node loop;
   `column(...)`; a **launched** box whose list grows without a re-run; and `logs(...)` filtered to one
@@ -285,6 +303,10 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   on the line inside the `defn` that raised, a slider and checkbox whose handlers are Clojure fns or
   atoms, and `(context ...)` reading a parent's property and Kotlin variable. Compile-only here (the
   Kotlin root); `ClojureFieldCoreTest` runs the Clojure half.
+- `remotejs_box_parity.yaml`: **RemoteJS boxes doing what Kotlin, Python and Clojure boxes do**:
+  `print` and `console.log` beside their lines, an error marked inside the function that raised,
+  `display`, a slider and a checkbox whose callbacks run in the browser head, output printed after
+  the run, and a Stop that stops `launch(...)` loops. Needs the head the root opens; compile-only here.
 - `python_box_parity.yaml`: **Python boxes doing what Kotlin boxes do** — an error marked on the line
   inside the function that raised, and a slider and checkbox whose callbacks are Python. Same JEP
   prerequisite as `python_cells`, and compile-only here for the same reason.
@@ -293,6 +315,12 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   started, which is why it is compile-only here.
 - `read_only_session.yaml`: **read-only mode from the inside** — a `saved{}` counter that cannot count,
   and what the flag refuses rather than silently drops. The reason every demo folder says `--read-only`.
+- `history_box_story.yaml`: **one box's code across every saved version** — four saved values of
+  `sketch` for the history view's This Box list (row click selects a version, Restore puts back that
+  property of that box only). Replay into a saving document, not `--scratch`; the waits are the autosave.
+- `controls_surface.yaml`: **a performer's control surface** from the `controlGroup` DSL (log-law
+  slider, XY pad with keyboard nudges and reset, toggle, text, colour) feeding a live figure, and a
+  slider whose callback rebuilds its own group mid-drag without dropping the drag.
 - `certified_envelope.yaml`: **a bound no feature can slip between**. An hour-long signal with a
   10 ms glitch that the signal viewer's sampled envelope misses by 0.4956, the same viewer with its
   opt-in certified band (interval arithmetic over `FnFormulas`) catching it, `certifiedRange` with
@@ -424,6 +452,17 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json \
 The FIELD_TEST `examples.agent-transcripts.materialize` re-materializes to a temp dir and **fails if
 the committed bundle is out of date** — or absent entirely — so a transcript edit without a regenerate
 is caught in CI. `./gradlew checkAgentTranscripts` is the same guard inside `check`.
+
+### Publishing the frozen outputs
+
+After materialization, the normal incremental docs build discovers new eligible transcripts and
+captures their output areas for the gallery's offline viewer. Existing unchanged captures are
+reused, so adding one scene does not require replaying the corpus. Eligibility comes from the
+execution classification above; native scenes can reuse real retained docs captures.
+
+Follow [Adding a transcript: the routine path](../../OFFLINE_PUBLICATION.md#adding-a-transcript-the-routine-path)
+for the authoring, capture, verification and landing checklist. That guide also covers broad
+refactors, focused recaptures and diagnosing a scene that remains code-only.
 
 ### Documentation pages for a starting point
 

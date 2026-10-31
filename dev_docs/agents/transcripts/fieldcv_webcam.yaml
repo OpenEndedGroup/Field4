@@ -15,7 +15,21 @@ operations:
       w: 260.0
       h: 60.0
     properties:
-      code: "import afield.graphics.vulkan.util.Options\n\n// 0 · the native window everything below draws into. Run this first.\nprop<Window>(window)\nprop<Renderer>(renderer)\n\nOptions.enableHDR = false\n\nonce.renderer {\n    window = Window(\"fieldcv\")\n    Renderer(window)\n}\n\nstart(renderer::run)\n"
+      code: |-
+        import afield.graphics.vulkan.util.Options
+
+        // 0 · the native window everything below draws into. Run this first.
+        prop<Window>(window)
+        prop<Renderer>(renderer)
+
+        Options.enableHDR = false
+
+        once.renderer {
+            window = Window("fieldcv")
+            Renderer(window)
+        }
+
+        start(renderer::run)
 - create:
     box: cv_python
     name: python
@@ -207,16 +221,14 @@ operations:
         }
       code: |
         // every polyline channel box 1 publishes, and the colour it is drawn in
-        val channels =
-            [
-                    "tracks" to vec(0.2, 1.0, 0.3, 0.8),
-                    "skeleton" to vec(1.0, 0.3, 0.8, 1.0),
-                    "hands" to vec(1.0, 0.9, 0.2, 1.0),
-                    "face" to vec(0.3, 0.9, 1.0, 0.9),
-                    "contours" to vec(1.0, 0.55, 0.1, 1.0),
-                    "strokes" to vec(1.0, 1.0, 1.0, 1.0),
-                ]
-                .map { (name, colour) -> NumpyShared.lines(name) to colour }
+        val channels = [
+            "tracks" to vec(0.2, 1.0, 0.3, 0.8),
+            "skeleton" to vec(1.0, 0.3, 0.8, 1.0),
+            "hands" to vec(1.0, 0.9, 0.2, 1.0),
+            "face" to vec(0.3, 0.9, 1.0, 0.9),
+            "contours" to vec(1.0, 0.55, 0.1, 1.0),
+            "strokes" to vec(1.0, 1.0, 1.0, 1.0),
+        ].map { (name, colour) -> NumpyShared.lines(name) to colour }
 
         var module = moduleHere {}
         var m = Mesh()

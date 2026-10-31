@@ -1,7 +1,7 @@
 # Typography as geometry — a string becomes contours
 
-A string in Field is geometry. Field reads the font's own Bézier outlines, so a word can be
-extruded, marched, sampled, clustered or animated like any other shape. Every function used below is
+Field can turn a string into geometry by reading the font's Bézier outlines. You can extrude,
+march, sample, cluster or animate a word like any other shape. Every function used below is
 listed, with its documentation, in the [Graphics](reference/graphics.md) reference.
 
 <div class="field-data-table" markdown>
@@ -520,8 +520,9 @@ Typefaces.fromFile("/path/to/Whatever.ttf", 64.0) // Font.createFont, not regist
 
 `Typefaces.available()` lists the installed families.
 
-`SansSerif` and `Serif` map to different real fonts on different machines, so the pictures above
-will look a little different on yours. The ring counts, genus and winding do not change.
+`SansSerif` and `Serif` map to different real fonts on different machines, so the pictures may look
+different on yours. Glyph shapes can change ring counts and genus; the winding convention remains
+the same.
 
 ## Run it yourself
 

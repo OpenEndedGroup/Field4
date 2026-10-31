@@ -1,0 +1,24 @@
+[field] ok  RepoReadFileRequest {"endLine":220,"path":"AGENTS.md","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":555,"path":"AGENTS.md","startLine":360}
+[field] ok  RepoReadFileRequest {"endLine":460,"path":"src/jvmTest/kotlin/afield/tools/docs/PersonalBoundaryTest.kt","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":270,"path":"src/jvmTest/kotlin/afield/document/workspace/KitPackagesTest.kt","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":260,"path":"public/docs/kits.md","startLine":1}
+[field] ok  RepoSearchRequest {"glob":"tools/*.py","ignoreCase":true,"maxMatches":60,"query":"personal_boundary|PersonalBoundary|PUBLIC_IMPORT_ROOTS|package.*roots","regex":true}
+[field] ok  RepoReadFileRequest {"endLine":150,"path":"tools/check_module_imports.py","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":340,"path":"tools/test_check_staged_generated_artifacts.py","startLine":270}
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-status","timeoutSec":30}
+[field] ok  RepoSearchRequest {"glob":"public/docs/kits.md","ignoreCase":false,"maxMatches":30,"query":"example","regex":false}
+[field] ERR RepoRunCommandRequest {"args":["tools/test_check_staged_generated_artifacts.py","PrivateBoundarySelectionTests"],"command":"python-test","timeoutSec":120}
+[field] ok  RepoReadFileRequest {"endLine":590,"path":"tools/check_staged_generated_artifacts.py","startLine":420}
+[field] ok  RepoReadFileRequest {"endLine":100,"path":"tools/test_guard_corpora.py","startLine":1}
+[field] ok  RepoPatchFileRequest {"newText":"package afield.example","oldText":"package example","path":"public/docs/kits.md","replaceAll":false}
+[field] ok  RepoPatchFileRequest {"newText":"kotlin/afield/example/Tools.kt","oldText":"kotlin/example/Tools.kt","path":"public/docs/kits.md","replaceAll":false}
+[field] ok  RepoPatchFileRequest {"newText":"extensions/kotlin/afield/demo/Extra.kt","oldText":"extensions/kotlin/demo/Extra.kt","path":"src/jvmTest/kotlin/afield/document/workspace/KitPackages
+[field] ok  RepoPatchFileRequest {"newText":"package afield.demo\\nclass Extra","oldText":"package demo\\nclass Extra","path":"src/jvmTest/kotlin/afield/document/workspace/KitPackagesTest.kt","
+[field] ok  RepoReadFileRequest {"endLine":85,"path":"tools/test_agents_md.py","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":50,"path":"tools/test_field_kit.py","startLine":1}
+[field] ok  RepoRunCommandRequest {"args":["--","public/docs/kits.md","src/jvmTest/kotlin/afield/document/workspace/KitPackagesTest.kt"],"command":"git-diff","timeoutSec":30}
+[field] ok  RepoReadFileRequest {"endLine":76,"path":"src/jvmTest/kotlin/afield/document/workspace/KitPackagesTest.kt","startLine":29}
+[field] ok  RepoReadFileRequest {"endLine":116,"path":"public/docs/kits.md","startLine":107}
+[field] ok  RepoSearchRequest {"glob":"{public/docs/kits.md,src/jvmTest/kotlin/afield/document/workspace/KitPackagesTest.kt}","ignoreCase":false,"maxMatches":30,"query":"package (example|dem
+[field] model=openai/gpt-6.1-sol rounds=12/40 wall=64s tokens in=607895 out=1704 cacheRead=556570 wrote=['public/docs/kits.md', 'public/docs/kits.md', 'src/jvmTest/kotlin/afield/document/workspace/KitPackagesTest.kt', 'src/jvmTest/kotlin/afield/document/workspace/KitPackagesTest.kt'] ran=['git-status  -> 0', 'python-test tools/test_check_staged_generated_artifacts.py PrivateBoundarySelectionTests -> 1', 'git-diff -- public/docs/kits.md src/jvmTest/kotlin/afield/document/workspace/KitPackagesTest.kt -> 0'] verdict=unchecked error=-

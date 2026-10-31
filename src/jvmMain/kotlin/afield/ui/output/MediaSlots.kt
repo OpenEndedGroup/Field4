@@ -59,6 +59,15 @@ import javax.imageio.ImageIO
  * [onChange] runs on a thread of its own, once now and again after every change, and only when every
  * slot is filled. Changes that arrive while it is running are folded into one more run.
  */
+
+/**
+ * The row of slots a box is holding: read [slots] or index it with [get], ask whether it is
+ * [complete], and hand [onChange] a block to run whenever one of them changes.
+ *
+ * There is one of these per box and output channel, and a re-run finds the slots as they were left.
+ * Where the code for a slot has itself changed, the code's new content wins over whatever was
+ * dropped on it.
+ */
 class MediaSlots internal constructor(private val box: Box, private val channel: String, private val defaults: List<MediaSlot>) {
 
     private val key = "${box.id}/$channel"
@@ -201,21 +210,21 @@ private class SlotState {
 
 /**
  * One slot of a [MediaSlots]: a picture or a piece of text, with the slot's number and colour.
- *
- * @property index the slot's position, from 0; the widget shows `index + 1`.
- * @property color the slot's CSS colour, which the picture of the result should reuse.
- * @property label the picture's file name without its extension, or the text itself.
- * @property image the picture, for an image slot that is filled.
- * @property text the text, for a text slot.
- * @property file where the picture came from, when it came from a file on this machine.
  */
 class MediaSlot internal constructor(
+    /** The slot's position, from 0; the widget shows `index + 1`. */
     val index: Int,
+    /** Whether the slot takes a picture or a piece of text. */
     val kind: Kind,
+    /** The slot's CSS colour, which a drawing of the result should reuse. */
     val color: String,
+    /** The picture's file name without its extension, or, for a text slot, the text itself. */
     val label: String,
+    /** The picture, for an image slot that is filled, and null for one that is not. */
     val image: BufferedImage?,
+    /** The text, for a text slot; empty for an image slot. */
     val text: String,
+    /** Where the picture came from, when it came from a file on this machine rather than a drop. */
     val file: File? = null,
 ) {
     /** A picture slot or a text slot. */
@@ -238,6 +247,7 @@ class MediaSlot internal constructor(
         Kind.TEXT -> MediaSlot(index, kind, color, c.text ?: "", null, c.text ?: "")
     }
 
+    /** The slot's number as the widget shows it, its kind and its label, and whether it is empty. */
     override fun toString(): String = "MediaSlot(${index + 1}, $kind, \"$label\"${if (isEmpty) ", empty" else ""})"
 }
 

@@ -4,12 +4,11 @@ neither ships vertices nor builds them in Kotlin/JS would draw nothing. This one
 for the built-in cube by name.
 */
 visionMetal(
-        shader = visionMetalExampleShader,
-        script = visionMetalExampleScript,
-        uniforms = ["phase", "amount", "tint"],
-        geometry = VisionMetalGeometryOrigin.BUILTIN,
-    )
-    .onStatus {
-        println("vision-metal ${it.phase}: ${it.message}")
-    }
+    shader = visionMetalExampleShader,
+    script = visionMetalExampleScript,
+    uniforms = ["phase", "amount", "tint"],
+    geometry = VisionMetalGeometryOrigin.BUILTIN,
+).onStatus {
+    println("vision-metal ${it.phase}: ${it.message}")
+}
 println("vision-metal cube published")

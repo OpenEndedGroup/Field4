@@ -1,23 +1,11 @@
 # Spatial artificial life
 
-*Every public declaration used below is listed, with its KDoc, in the codebase reference:
-[`alife.kt`](reference/alife.md#alife-kt), [`alife_ca.kt`](reference/alife.md#alife-ca-kt),
-[`alife_continuous.kt`](reference/alife.md#alife-continuous-kt),
-[`alife_agents.kt`](reference/alife.md#alife-agents-kt),
-[`alife_lsystem.kt`](reference/alife.md#alife-lsystem-kt) and
-[`alife_field.kt`](reference/alife.md#alife-field-kt). Start from
-[what's already in the box](reference/index.md).*
-
-Artificial life is the study of systems whose interesting behaviour is not in their rules. You write
-down something local and small (count your neighbours, follow the strongest smell, grow toward the
-nearest unclaimed space) and something global and large happens that the rule never mentions: a
-spaceship, a coastline, a transport network, a dendrite with a fractional dimension. This page is
-about the *spatial* half of that: grids, continuous fields and populations of agents. The
-graph-rewriting half lives in [`growing.kt`](reference/data.md#growing-kt) and
-[interaction nets](interaction_nets_examples.md), the constraint-based generative half is
-[Wave Function Collapse](wfc_examples.md), and the half where a *moving* point cloud carries a
-decaying graph with it is [graphs that change while you
-watch](dynamic_graph_systems_examples.md).
+Write a small local rule — count your neighbours, follow the strongest smell, grow toward the
+nearest unclaimed space — and a larger structure can appear: a spaceship, a coastline, a transport
+network, a dendrite with a fractional dimension. This page explores those systems through grids,
+continuous fields and populations of agents. For related work, see [`growing.kt`](reference/data.md#growing-kt),
+[interaction nets](interaction_nets_examples.md), [Wave Function Collapse](wfc_examples.md), and
+[graphs that change while you watch](dynamic_graph_systems_examples.md).
 
 Almost any local rule applied to noise looks organic, so each example here prints a measurement
 beside a *control*: the same setup with one ingredient removed, which gets the number wrong. A
@@ -398,8 +386,8 @@ val predicted = 1.0 - Math.pow(1.0 - 1.0 / rule.states, 8.0)
 val early = cyclicAdvanceFraction(soup, soup.step(rule))
 val settled = soup.stepTimes(rule, 400)
 val late = cyclicAdvanceFraction(settled, settled.step(rule))
-println("soup advance fraction " + "%.4f".format(early) + ", closed form " + "%.4f".format(predicted))
-println("after 400 generations " + "%.4f".format(late) + " of cells advance every step")
+println("soup advance fraction " + early.f4 + ", closed form " + predicted.f4)
+println("after 400 generations " + late.f4 + " of cells advance every step")
 
 // The excitable corner of the parameter space (wider neighbourhood, higher threshold) is a
 // visibly different phase -- spiral cores -- and the difference is measurable as a length scale.
@@ -407,9 +395,9 @@ val ex = CYCLIC_EXCITABLE
 val exSettled = IntGrid.random(200, 200, states = ex.states, seed = 7L).stepTimes(ex, 200)
 println(
     "correlation length: labyrinth " +
-        "%.2f".format(settled.toImg(rule.states).correlationLength(maxLag = 30)) +
+        settled.toImg(rule.states).correlationLength(maxLag = 30).f2 +
         ", excitable " +
-        "%.2f".format(exSettled.toImg(ex.states).correlationLength(maxLag = 30)),
+        exSettled.toImg(ex.states).correlationLength(maxLag = 30).f2,
 )
 
 :::fold one palette per rule, and three generations of the labyrinth beside the excitable phase
@@ -725,7 +713,9 @@ each at steps 0, 5, 10, 20 and 250.
 :::static
 val orbium = LeniaPresets.orbium()
 for (seed in 1L..6L) {
-    println("shuffled cells, seed " + seed + ": " + leniaRun(orbium.shuffled(seed).seed(64, 64), orbium.rule, steps = 300))
+    println(
+        "shuffled cells, seed " + seed + ": " + leniaRun(orbium.shuffled(seed).seed(64, 64), orbium.rule, steps = 300),
+    )
 }
 for (mu in [0.11, 0.12, 0.13, 0.16, 0.17, 0.18]) {
     val rule = leniaRuleFromCatalogue(radius = 13, t = 10.0, mu = mu, sigma = 0.015)
@@ -734,16 +724,17 @@ for (mu in [0.11, 0.12, 0.13, 0.16, 0.17, 0.18]) {
 
 :::fold three values of mu, the same five moments of each
 val moments = [0, 5, 10, 20, 250]
-val panels = [0.12, 0.15, 0.18].flatMap { mu ->
-    val rule = leniaRuleFromCatalogue(radius = 13, t = 10.0, mu = mu, sigma = 0.015)
-    var current = orbium.seed(64, 64)
-    var done = 0
-    moments.map { step ->
-        current = current.leniaTimes(rule, step - done)
-        done = step
-        (if (step == 0) "mu " + mu else "step " + step) to current.colormap("inferno", 0f, 1f).upscaleNearest(3)
+val panels =
+    [0.12, 0.15, 0.18].flatMap { mu ->
+        val rule = leniaRuleFromCatalogue(radius = 13, t = 10.0, mu = mu, sigma = 0.015)
+        var current = orbium.seed(64, 64)
+        var done = 0
+        moments.map { step ->
+            current = current.leniaTimes(rule, step - done)
+            done = step
+            (if (step == 0) "mu " + mu else "step " + step) to current.colormap("inferno", 0f, 1f).upscaleNearest(3)
+        }
     }
-}
 showImg(
     montage(panels, columns = 5, cellSide = 192),
     caption = "rows: mu = 0.12, 0.15, 0.18; columns: steps 0, 5, 10, 20 and 250",
@@ -856,8 +847,8 @@ with one weight zeroed -- so the difference is attributable to that weight and n
 val n = 400
 val start = BoidFlock.random(n, 260.0, 260.0, speed = 1.4, seed = 4L)
 val params = BoidParams()
-println("random-heading baseline for " + n + " agents: " + "%.3f".format(randomPolarizationBaseline(n)))
-println("initial polarization: " + "%.3f".format(start.order()))
+println("random-heading baseline for " + n + " agents: " + randomPolarizationBaseline(n).f3)
+println("initial polarization: " + start.order().f3)
 
 val flock = start.copy()
 flock.stepTimes(params, 900)
@@ -868,25 +859,25 @@ noSep.stepTimes(params.copy(separationWeight = 0.0), 900)
 
 println(
     "flock polarization " +
-        "%.3f".format(flock.order()) +
+        flock.order().f3 +
         ", CONTROL with no alignment " +
-        "%.3f".format(noAlign.order()),
+        noAlign.order().f3,
 )
 println(
     "5th-percentile nearest neighbour: flock " +
-        "%.2f".format(quantileOf(flock.neighborDistances(), 0.05)) +
+        quantileOf(flock.neighborDistances(), 0.05).f2 +
         ", CONTROL with no separation " +
-        "%.2f".format(quantileOf(noSep.neighborDistances(), 0.05)),
+        quantileOf(noSep.neighborDistances(), 0.05).f2,
 )
-println("mean speed " + "%.2f".format(flock.meanSpeed()) + " of a " + params.maxSpeed + " cap")
+println("mean speed " + flock.meanSpeed().f2 + " of a " + params.maxSpeed + " cap")
 
 :::fold draw the four populations with a five-unit motion streak behind each agent
 showImg(
     montage(
         [
-            "gen 0: order " + "%.2f".format(start.order()) to start.toImg(1.4, tail = 5.0),
-            "900 steps: " + "%.2f".format(flock.order()) to flock.toImg(1.4, tail = 5.0),
-            "no alignment: " + "%.2f".format(noAlign.order()) to noAlign.toImg(1.4, tail = 5.0),
+            "gen 0: order " + start.order().f2 to start.toImg(1.4, tail = 5.0),
+            "900 steps: " + flock.order().f2 to flock.toImg(1.4, tail = 5.0),
+            "no alignment: " + noAlign.order().f2 to noAlign.toImg(1.4, tail = 5.0),
             "no separation" to noSep.toImg(1.4, tail = 5.0),
         ],
         columns = 2,
@@ -927,8 +918,8 @@ up at nine units of travel per frame. `order()` reads the velocity array, so nei
 touches what is measured; the number in each caption is computed fresh every frame.
 */
 fun flocks(a: BoidFlock, b: BoidFlock, n: Int) = [
-    "flock " + n + ": order " + "%.2f".format(a.order()) to a.toImg(1.0, tail = 8.0),
-    "no align " + n + ": " + "%.2f".format(b.order()) to b.toImg(1.0, tail = 8.0),
+    "flock " + n + ": order " + a.order().f2 to a.toImg(1.0, tail = 8.0),
+    "no align " + n + ": " + b.order().f2 to b.toImg(1.0, tail = 8.0),
 ]
 
 :::endfold
@@ -995,9 +986,9 @@ val blind = PhysarumSwarm.disc(side, side, 6000, 0.55, seed = 6L).stepTimes(p.co
 
 println(
     "top-5% deposit share: sensing " +
-        "%.3f".format(sensing.trail.topShare(0.05)) +
+        sensing.trail.topShare(0.05).f3 +
         ", CONTROL sensing off " +
-        "%.3f".format(blind.trail.topShare(0.05)) +
+        blind.trail.topShare(0.05).f3 +
         " (a flat field gives 0.05)",
 )
 println("sensing morphology: " + sensing.trail.normalized().morphology())
@@ -1065,8 +1056,8 @@ deposit / (1 - decay) = 62.5. A lower ceiling clips the network to flat cream. T
 val p = PhysarumParams()
 val ceiling = (p.deposit / (1.0 - p.decay)).toFloat()
 fun trails(a: PhysarumSwarm, b: PhysarumSwarm, n: Int) = [
-    "sensing " + n + "  " + "%.3f".format(a.trail.topShare(0.05)) to a.trail.colormap("magma", 0f, ceiling),
-    "blind " + n + "  " + "%.3f".format(b.trail.topShare(0.05)) to b.trail.colormap("magma", 0f, ceiling),
+    "sensing " + n + "  " + a.trail.topShare(0.05).f3 to a.trail.colormap("magma", 0f, ceiling),
+    "blind " + n + "  " + b.trail.topShare(0.05).f3 to b.trail.colormap("magma", 0f, ceiling),
 ]
 
 :::endfold
@@ -1141,11 +1132,11 @@ val side = 300
 val dla = dlaCluster(side, side, particles = 6000, seed = 2L)
 val fit = dla.fractalDimension(rMin = 5.0, rMaxFraction = 0.75)
 println(dla)
-println("DLA mass dimension " + "%.3f".format(fit.dimension) + " (r2 = " + "%.4f".format(fit.rSquared) + ")")
+println("DLA mass dimension " + fit.dimension.f3 + " (r2 = " + fit.rSquared.f4 + ")")
 
 val eden = edenCluster(side, side, particles = dla.points.size, seed = 2L)
 val edenFit = eden.fractalDimension(rMin = 5.0, rMaxFraction = 0.75)
-println("CONTROL Eden dimension " + "%.3f".format(edenFit.dimension))
+println("CONTROL Eden dimension " + edenFit.dimension.f3)
 val sprinkle = sprinkleCluster(side, side, dla.points.size, dla.maxRadius, seed = 2L)
 val sprinkleFit = massRadiusDimension(
     sprinkle.points,
@@ -1154,15 +1145,15 @@ val sprinkleFit = massRadiusDimension(
     rMax = sprinkle.maxRadius * 0.75,
     minCount = 60,
 )
-println("CONTROL uniform sprinkle dimension " + "%.3f".format(sprinkleFit.dimension) + " (exactly 2 by construction)")
+println("CONTROL uniform sprinkle dimension " + sprinkleFit.dimension.f3 + " (exactly 2 by construction)")
 
 :::fold draw all three clusters, the first two coloured by arrival order
 showImg(
     montage(
         [
-            "DLA: D = " + "%.2f".format(fit.dimension) to dla.arrivalOrderImg().colormap("turbo"),
-            "Eden: D = " + "%.2f".format(edenFit.dimension) to eden.arrivalOrderImg().colormap("turbo"),
-            "sprinkle: D = " + "%.2f".format(sprinkleFit.dimension) to sprinkle.mask,
+            "DLA: D = " + fit.dimension.f2 to dla.arrivalOrderImg().colormap("turbo"),
+            "Eden: D = " + edenFit.dimension.f2 to eden.arrivalOrderImg().colormap("turbo"),
+            "sprinkle: D = " + sprinkleFit.dimension.f2 to sprinkle.mask,
         ],
         columns = 3,
         cellSide = 280,
@@ -1250,9 +1241,9 @@ println(
         " x " +
         ch +
         " of 300 x 300, so " +
-        "%.1f".format(100.0 * dla.points.size / (cw * ch)) +
+        (100.0 * dla.points.size / (cw * ch)).f1 +
         "% of the panel is ever lit, against " +
-        "%.1f".format(100.0 * dla.points.size / 90000.0) +
+        (100.0 * dla.points.size / 90000.0).f1 +
         "% uncropped",
 )
 
@@ -1311,7 +1302,7 @@ val tp = TurtleParams(angle = Math.PI / 3.0, step = step)
 val gens = (0..5).map { drawLSystem(LSYSTEM_KOCH_SNOWFLAKE, it, tp) }
 println("worst closure residual: " + gens.map { turtleClosureError(it, step) }.max() + " of a step")
 val lens = gens.map { flineTotalLength(it.lines) }
-println("length ratio per generation: " + (1..5).map { "%.6f".format(lens[it] / lens[it - 1]) })
+println("length ratio per generation: " + (1..5).map { (lens[it] / lens[it - 1]).f6 })
 println(
     "area, relative error against the closed form: " +
         (0..5).map { gen ->
@@ -1422,11 +1413,6 @@ animateEvolution(
 )
 ```
 
-??? aside "Why `drawSymbols` exists"
-    The Sierpiński arrowhead curve is written `A → B−A−B`, `B → A+B+A`, where `A` and `B` are *both*
-    drawing symbols. Interpreted with the default `F`/`G` alphabet it draws nothing at all, and a blank
-    panel is the only warning you get.
-
 ## 10. Bridges out: FLines, trees and a watertight mesh
 
 What makes this family Field's rather than a generic ALife library is where its output goes. Three
@@ -1445,13 +1431,6 @@ bridges, all into machinery that was already here:
    occupancy and runs `mesh_sdf.kt`'s marching cubes, so the automaton's surface is a real mesh you can
    boolean, subdivide and export. The claim asserted is that it is **watertight**: a leaking mesher
    produces a picture that looks fine and a model that cannot be printed.
-
-!!! warning "Contour loops carry no winding information"
-    An annulus contours to two loops, an outer and an inner, and **both come back wound the same way**.
-    Each is right to better than 0.4 % of its own circle, so the geometry is sound, but
-    `loops.sumOf { flineSignedArea(...) }` reads 67 % high for a shape with a hole; the right answer is
-    the *difference* of the magnitudes (0.006 % out). Anything that fills, booleans or exports these
-    curves has to find the hole by containment or by area, not by orientation.
 
 ??? aside "An empty mesh is vacuously watertight"
     A dead volume meshes to **zero triangles** and passes a watertight check, so the triangle count is
@@ -2155,3 +2134,11 @@ of them opens a `Window` or a `Renderer`. To replay them from a terminal instead
 python3 tools/field_backdoor.py run-transcript dev_docs/agents/transcripts/alife_worked_example.yaml
 python3 tools/field_backdoor.py run-transcript dev_docs/agents/transcripts/alife_evolution.yaml
 ```
+
+*The public declarations used on this page are listed, with their KDoc, in the codebase reference:
+[`alife.kt`](reference/alife.md#alife-kt), [`alife_ca.kt`](reference/alife.md#alife-ca-kt),
+[`alife_continuous.kt`](reference/alife.md#alife-continuous-kt),
+[`alife_agents.kt`](reference/alife.md#alife-agents-kt),
+[`alife_lsystem.kt`](reference/alife.md#alife-lsystem-kt) and
+[`alife_field.kt`](reference/alife.md#alife-field-kt). Start from
+[what's already in the box](reference/index.md).*

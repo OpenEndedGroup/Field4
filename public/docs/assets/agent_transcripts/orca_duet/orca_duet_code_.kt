@@ -4,13 +4,12 @@ Echo, which plays the last eight back in threes, an octave up; every eighth note
 plays, Kotlin moves one note of Lead's tune a step up the scale. Click a grid to join in.
 */
 val synth = PatSynthBank()
-val lead =
-    orca(
-        "lead",
-        cols = 40,
-        rows = 10,
-        grid =
-            """
+val lead = orca(
+    "lead",
+    cols = 40,
+    rows = 10,
+    grid =
+        """
     #.LEAD.#
     .
     .2C8
@@ -20,21 +19,20 @@ val lead =
     D8
     .:12C
 """,
-    )
-val echo =
-    orca(
-        "echo",
-        cols = 40,
-        rows = 10,
-        grid =
-            """
+)
+val echo = orca(
+    "echo",
+    cols = 40,
+    rows = 10,
+    grid =
+        """
     #.ECHO.#
     .
     .3C8
     D3.8TCCCCCCCC
     .:25
 """,
-    )
+)
 val up = mapOf('C' to 'D', 'D' to 'E', 'E' to 'G', 'G' to 'A', 'A' to 'C')
 val heard = ArrayDeque("CCCCCCCC".toList())
 var echoes = 0

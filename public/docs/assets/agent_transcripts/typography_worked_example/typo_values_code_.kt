@@ -5,8 +5,7 @@ Typefaces.firstAvailable("Futura", "Avenir") picks the first face you actually h
 */
 val face = typeface("SansSerif", 140.0)
 println(
-    "$face — ascent ${"%.1f".format(face.ascent)}, descent ${"%.1f".format(face.descent)}, " +
-        "line height ${"%.1f".format(face.lineHeight)}",
+    "$face — ascent ${face.ascent.f1}, descent ${face.descent.f1}, " + "line height ${face.lineHeight.f1}",
 )
 
 /*
@@ -18,7 +17,7 @@ for (c in ['o', 'l', 'B']) {
     val g = face.glyph(c)
     println(
         "'$c' glyph #${g.glyphCode}: ${g.contourCount} contours (${g.holeCount} holes), " +
-            "advance ${"%.1f".format(g.advance)}, ink area ${"%.0f".format(g.inkArea)}",
+            "advance ${g.advance.f1}, ink area ${g.inkArea.f0}",
     )
     g.contours.forEachIndexed { i, ring ->
         println(
@@ -44,7 +43,7 @@ showImgGrid(
 )
 println(
     "laid out: ${word.contourCount} contours, ${word.holeCount} holes, " +
-        "${"%.1f".format(word.advanceWidth)} units wide, ink ${"%.1f".format(100 * rasterizeText(word, 400, 120).inkFraction())}%",
+        "${word.advanceWidth.f1} units wide, ink ${(100 * rasterizeText(word, 400, 120).inkFraction()).f1}%",
 )
 
 /*

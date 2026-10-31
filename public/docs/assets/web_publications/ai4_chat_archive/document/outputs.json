@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-31T00:13:05.319Z",
+  "documentName": "ai4_chat_archive",
+  "outputs": [
+    {
+      "uid": "chat-lens-viewer",
+      "channel": "lens",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 1056,
+      "height": 608,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "chat-archive-outline",
+      "channel": "outline",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 1434,
+      "height": 921,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "chat-archive-read",
+      "channel": "night",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 823,
+      "height": 193,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "chat-archive-lens-stats",
+      "channel": "lens",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 472,
+      "height": 115,
+      "path": "outputs/3.html"
+    }
+  ]
+}

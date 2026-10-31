@@ -45,7 +45,7 @@ camera-facing quad; the fragment shader draws a soft dot. This is the ordinary
 two-module (compute + draw) pattern from
 [Field 4 Graphics](afield_four_graphics.md). The only probe-specific lines
 are the include and the single `fieldProbe(length(delta))` call, which records
-how far each particle moved this step (its speed).
+how far each particle moved this step.
 
 ```diffstatic {data-lang=glsl}
 #version 450
@@ -465,7 +465,7 @@ frames {
 
                 | n | mean | σ | min | median | max |
                 |---|------|---|-----|--------|-----|
-                | ${s.finiteCount} | ${"%.4f".format(s.mean)} | ${"%.4f".format(s.standardDeviation)} | ${"%.4f".format(s.min)} | ${"%.4f".format(s.quantile(0.5))} | ${"%.4f".format(s.max)} |
+                | ${s.finiteCount} | ${s.mean.f4} | ${s.standardDeviation.f4} | ${s.min.f4} | ${s.quantile(0.5).f4} | ${s.max.f4} |
             """,
             )
             :::endfold

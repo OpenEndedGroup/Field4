@@ -1,0 +1,29 @@
+[field] ok  RepoReadFileRequest {"endLine":200,"path":"AGENTS.md","startLine":1}
+[field] ERR RepoRunCommandRequest {"args":["tools/check_box_idioms.py"],"command":"check","timeoutSec":120}
+[field] ok  RepoSearchRequest {"glob":"**/*","ignoreCase":false,"maxMatches":50,"query":"checkAgentTranscriptIndex","regex":false}
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-status","timeoutSec":10}
+[field] ok  RepoReadFileRequest {"endLine":552,"path":"AGENTS.md","startLine":201}
+[field] ok  RepoReadFileRequest {"endLine":300,"path":"src/jvmMain/kotlin/afield/tools/docs/AgentTranscriptIndexGuard.kt","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":130,"path":"public/docs/contour_trees.md","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":100,"path":"dev_docs/agents/transcripts/contour_trees_explorer.yaml","startLine":1}
+[field] ok  RepoSearchRequest {"glob":"public/docs/agent_transcripts.md","ignoreCase":true,"maxMatches":40,"query":"contour","regex":false}
+[field] ok  RepoReadFileRequest {"endLine":2460,"path":"public/docs/agent_transcripts.md","startLine":2370}
+[field] ok  RepoSearchRequest {"glob":"public/docs/agent_transcripts.md","ignoreCase":false,"maxMatches":70,"query":"^## |verified-by","regex":true}
+[field] ok  RepoSearchRequest {"glob":"src/jvmMain/kotlin/afield/examples/*.kt","ignoreCase":false,"maxMatches":20,"query":"contour_trees","regex":false}
+[field] ok  RepoListFilesRequest {"glob":"public/docs/assets/agent_transcripts/contour_trees_explorer/*"}
+[field] ok  RepoReadFileRequest {"endLine":180,"path":"tools/check_box_idioms.py","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":130,"path":"src/jvmMain/kotlin/afield/examples/DemoTranscriptExecSmokeTest.kt","startLine":65}
+[field] ok  RepoReadFileRequest {"endLine":220,"path":"src/jvmMain/kotlin/afield/examples/AgentTranscriptMaterializer.kt","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":1959,"path":"public/docs/agent_transcripts.md","startLine":1920}
+[field] ok  RepoListFilesRequest {"glob":"tools/*transcript*"}
+[field] ok  RepoListFilesRequest {"glob":"public/docs/assets/agent_transcripts/tracking_explorer/*"}
+[field] ok  RunToolProgramRequest {"code":"const path = \"public/docs/agent_transcripts.md\";\nconst entry = \"### contour_trees_explorer\\n\\n[Merge trees and contour trees](contour_trees.md). 
+[field] ok  RepoPatchFileRequest {"path":"public/docs/agent_transcripts.md","oldText":"### contour_trees_explorer\n\n[Merge trees and contour trees](contour_trees.md). The first box shows a lan
+[field] ok  RepoPatchFileRequest {"path":"public/docs/agent_transcripts.md","oldText":"## Service-backed composition scenes\n","newText":"### contour_trees_explorer\n\n[Merge trees and contour 
+[field] ok  RepoPatchFileRequest {"path":"public/docs/contour_trees.md","oldText":".drawFLines(listOf(dots),","newText":".drawFLines([dots],","replaceAll":false}
+[field] ok  RepoRunCommandRequest {"command":"check","args":["tools/check_box_idioms.py"],"timeoutSec":120}
+[field] ok  RepoRunCommandRequest {"args":["--","public/docs/agent_transcripts.md","public/docs/contour_trees.md"],"command":"git-diff","timeoutSec":10}
+[field] ok  RepoReadFileRequest {"endLine":1970,"path":"public/docs/agent_transcripts.md","startLine":1943}
+[field] ok  RepoReadFileRequest {"endLine":33,"path":"public/docs/contour_trees.md","startLine":24}
+[field] ok  RepoReadFileRequest {"endLine":340,"path":"src/jvmMain/kotlin/afield/tools/docs/AgentTranscriptIndexGuard.kt","startLine":303}
+[field] model=openai/gpt-6.1-sol rounds=7/40 wall=54s tokens in=309672 out=1650 cacheRead=261058 wrote=['public/docs/agent_transcripts.md', 'public/docs/agent_transcripts.md', 'public/docs/contour_trees.md'] ran=['check tools/check_box_idioms.py -> 1', 'git-status  -> 0', 'check tools/check_box_idioms.py -> 0', 'git-diff -- public/docs/agent_transcripts.md public/docs/contour_trees.md -> 0'] verdict=unchecked error=-

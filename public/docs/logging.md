@@ -12,11 +12,11 @@ There is one function to know:
 lprintln("info,mypage", "something happened")
 ```
 
-`"info,mypage"` is a **channel**: a comma-separated list of *tags*, which every consumer
-downstream selects on. A channel is neither a level nor a logger name. There
-are **1066**<!--count:lprintlnChannelCallSites--> places in `src/jvmMain` that call
+`"info,mypage"` is a **channel**: a comma-separated list of *tags* that consumers use to select
+messages. There
+are **1101**<!--count:lprintlnChannelCallSites--> places in `src/jvmMain` that call
 `lprintln` with the channel written out as a literal, spelling
-**247**<!--count:logChannelStrings--> distinct channel strings between them.
+**255**<!--count:logChannelStrings--> distinct channel strings between them.
 
 By convention the first tag is a severity, drawn from six the console knows how to colour
 (`PinnedConsole.kt:1024#val LEVELS = listOf("error", "warning", "warn", "info", "debug", "trace")`),
@@ -452,11 +452,11 @@ So when something has gone wrong and the terminal is no help, that file is where
 | `NotifyLog` | stdout, plus a desktop notification, deduped within a second | via `StdoutLog` |
 | `SilentLog` | nowhere, on purpose | n/a |
 
-Two loggers sit outside this layer. `SaveReloadLog` writes save and reload
-timings straight to `~/.afield/logs/save_reload.log` without touching the dispatcher, so it
-is invisible to every sink above. `TraceLogger` and `AiToolIoLogger` write AI request traces
-under `~/.afield/logs/` when their environment variables are set, and are wired to a
-`LogSink` only for the one line that announces the file.
+`SaveReloadLog` and `TraceLogger` keep their own files under `~/.afield/logs/` and send a line for
+each entry through the dispatcher too: save and reload timings on `info,persist,savereload` (muted
+on the console with the rest of `info,persist`, and shown in the log widget), and one line per AI
+request trace on `info,ai.trace` when tracing is on. `AiToolIoLogger` writes its tool records to
+files and sends one `info,ai.toolio` line naming each file.
 
 ## Reference
 

@@ -1,6 +1,6 @@
 # Kotlin Syntax Overview <span style="font-size: 70%;">(for Python + JavaScript folks)</span>
 
-Field uses _Kotlin_, which is a language that might be new to you. Promoted by Google as the "official" language for Android app development, Kotlin was initiated by (and is still maintained by) Jetbrains — a company that is primarily responsible for a really good Java development environment. Kotlin has emerged over the last decade as the winner of an attempt to invent a "better Java" through a cunning combination of interoperability (which means the ecosystem is _huge_), a terser syntax (which means it's much more fun to write), and quality of life improvements like operator overloading (which means that doing the kind of math that computer graphics wants us to do is tolerable).
+Field uses _Kotlin_, a terser "better Java" from JetBrains that runs on the JVM. Field uses it because it can call the whole Java ecosystem, and because operator overloading makes graphics math pleasant to write.
  
 For live coding, Kotlin gives Field a useful combination: the compiler catches many mistakes before
 execution, and static types let completion and navigation offer specific help. The tradeoff is that
@@ -42,15 +42,15 @@ If you’ve used Swift: Kotlin’s `val`/`var` are very close to Swift’s `let`
 
 ### Editing a running box
 
-In Field, you can edit a plain `var` declaration and press **Alt/Option-Enter** on that line.
-After the line succeeds, older mutable bindings with the same name and Kotlin type in that box
-receive the new value. A loop you already launched can therefore pick up the edit without restarting.
-There is no need to repeat the initializer as a separate assignment.
+A `var` is also how you tweak a value while your code keeps running. If a box has started a loop
+that reads `speed`, change the number and press **Alt/Option-Enter** on that line:
 
-This reset happens when the declaration runs. Older and newer declarations still have separate
-storage, so subsequent changes in one snippet do not continuously synchronize the others.
-Captured `val` bindings remain fixed: use them when a cleanup callback must retain the exact resource
-it owns. Delegated properties and declarations of a different type keep their usual behavior.
+```diffstatic {data-lang=kotlin}
+:::static
+var speed = 0.5 // edit to 2.0, then Alt/Option-Enter on this line
+```
+
+The running loop picks up the new value without restarting. A `val` stays fixed.
 
 ### Types and type inference
 
@@ -107,7 +107,7 @@ Python distinguishes integers and floating-point values, and JavaScript's ordina
 single double-precision type, but neither has Kotlin's compile-time numeric conversion rules. In
 Kotlin you will often add an explicit `.toDouble()` or `.toFloat()` at an API boundary.
 
-Field's default live-coding imports add short `Number` extension properties for these conversions:
+Field adds `.d`, `.f`, `.i` and `.l` to every number as short forms of `.toDouble()`, `.toFloat()`, `.toInt()` and `.toLong()`:
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -118,7 +118,7 @@ val sumD = d + i.d // result: 2.0
 val sumF = f + i.f + 0.2.f // result: 2.2f
 ```
 
-And `.i` and `.l` as well. This looks a bit odd, but it's much less typing than `.toDouble()`.
+This looks a bit odd, but it's much less typing than `.toDouble()`.
 
 ### Printing
 
@@ -144,7 +144,7 @@ println(x) // prints: 42
 println("x = " + x) // prints: x = 42
 ```
 
-Field wires Kotlin's `print( ... )` and `println( ... )` functions such that whatever is printed arrives at the bottom of the text editor. Furthermore, there's a `_print( ... )` that arrives right there next to that line itself. This is especially handy for instrumenting code and figuring out if it's even running.
+In Field, whatever `print( ... )` and `println( ... )` print shows up beside the line that printed it, or in a block under that line if it is long. This is especially handy for instrumenting code and figuring out if it's even running.
 
 For larger outputs Field also defines a `display(channel :String, contents: Any)` function that lets you 'print' to a channel on the canvas. So:
 
@@ -182,8 +182,8 @@ controlGroup("controls") {
     vec2Control("the position") { /*...*/ }
     checkbox("flag") { /*...*/ }
     stringInput("label") { /*...*/ }
-    checkbox("bar") { _print(it) }
-    stringInput("foo") { _print(it) }
+    checkbox("bar") { print(it) }
+    stringInput("foo") { print(it) }
 }
 ```
 
@@ -295,7 +295,7 @@ Kotlin files can declare a `package` at the top, and can `import` names so you c
 package my.project
 ```
 
-In Field you’ll often skip this because Field pre-imports a lot of things (mostly from itself) before you start writing. You’ll still occasionally see `import ...` in examples.
+In Field you’ll often skip this because Field already imports its own drawing, math and utility names, so box code needs no import lines. You’ll still occasionally see `import ...` in examples.
 
 Python, JavaScript, Swift, and C# all have the same basic idea (bring names into scope), just with different syntax:
 
@@ -414,7 +414,9 @@ val x = 10
 val label = if (x > 0) "positive" else "non-positive"
 ```
 
-Python uses an inline-if expression (`label = "positive" if x > 0 else "non-positive"`). JavaScript, Swift, and C# typically use the ternary operator.
+Python uses an inline-if expression (`label = "positive" if x > 0 else "non-positive"`).
+JavaScript and C# use the ternary operator; Swift has one too, as well as `if` expressions in recent
+versions.
 
 ### Loops and ranges
 
@@ -437,12 +439,12 @@ for (i in 6 downTo 0 step 2) {
 }
 ```
 
-Field also defines an extension function to make the common case even terser:
+Field makes the common case even terser: `6 { ... }` repeats the block six times, with `it` counting 0 to 5:
 
 ```diffstatic {data-lang=kotlin}
 :::static
 6 {
-    _print(it) // 0,1,2,3,4,5
+    print(it) // 0,1,2,3,4,5
 }
 ```
 
@@ -584,8 +586,6 @@ fun describe(x: Any): String = when (x) {
 }
 ```
 
-Kotlin `when` can match values, ranges, types, and more.
-
 Swift’s closest equivalent is `switch`, which also supports ranges and pattern matching. C# has `switch` expressions with rich pattern matching as well.
 
 Swift:
@@ -693,7 +693,7 @@ foreach (var i in Enumerable.Range(0, 3))
 
 In Field sketches you’ll often see patterns like `fline { ... }`. This is a small Field helper built on Kotlin’s `apply { ... }`, which lets you make an object, configure it, and return it in one expression.
 
-This is especially handy when the methods you’re calling don’t return the object (for example, `FLine.moveTo(...)` returns a `Node`, so it can’t be chained in the usual fluent style).
+This is especially handy when the methods you’re calling don’t return the object (for example, [`FLine`](fline_examples.md), Field's line and path type, has a `moveTo(...)` that returns the new point rather than the line, so it can’t be chained in the usual fluent style).
 
 ```diffstatic {data-lang=kotlin}
 :::static

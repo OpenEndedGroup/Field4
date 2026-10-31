@@ -14,9 +14,8 @@ field lands in the same drawing, animation and export machinery as anything you 
 Scalar responses colour-map through the same [`Colormaps`](rectsl_examples.md) tables RectSL uses.
 And `Img` implements `ToHTML`, so evaluating one in a box shows the picture, not `Img@3f1a2b`.
 
-Everything here is arithmetic you could have written out by hand. For the two questions you cannot
-(how far away is this, and what is it a picture *of*), see [depth and CLIP](onnx.md), which runs
-neural models over the same RGBA bytes an `Img` converts to in a dozen lines.
+For learned estimates of depth and image content, see [depth and CLIP](onnx.md), which runs
+neural models over the same RGBA bytes an `Img` can produce.
 
 ## The value type
 
@@ -32,8 +31,8 @@ distance), 3 (RGB) or 4 (RGBA); nothing else.
 
 Three choices change what the numbers mean:
 
-- **Float, not bytes.** Every operation is float math. Nothing quantises mid-pipeline, so a
-  twelve-stage chain does not accumulate rounding steps; clamping happens once, on output.
+- **Float, not bytes.** Every operation is float math. Operations keep floating-point values through the pipeline instead of quantising to bytes
+  at every stage; clamping happens on output.
 - **Signed where it should be.** Gradients, Laplacians and differences legitimately go negative and
   are left that way. `colormapDiverging(...)` is the right way to look at them.
 - **Gradients are in true units-per-pixel.** The Sobel derivative factor is `[-1, 0, 1]/2` and the
@@ -84,13 +83,13 @@ showImgGrid(
     "hue channel" to hsv.channel(0),
     "saturation channel" to hsv.channel(1),
     "resize(60,45) then back up" to backUp,
-    "thresholdOtsu() @ ${"%.3f".format(t)}" to gray.threshold(t),
+    "thresholdOtsu() @ ${t.f3}" to gray.threshold(t),
     columns = 3,
     cellSide = 260,
 )
 println(
-    "Img ${card.width}x${card.height} x${card.channels} ch, mean ${"%.3f".format(card.mean())}, " +
-        "otsu ${"%.3f".format(t)}, foreground ${gray.threshold(t).data.count { it > 0.5f }} px",
+    "Img ${card.width}x${card.height} x${card.channels} ch, mean ${card.mean().f3}, " +
+        "otsu ${t.f3}, foreground ${gray.threshold(t).data.count { it > 0.5f }} px",
 )
 ```
 
@@ -142,9 +141,9 @@ showImgGrid(
     cellSide = 260,
 )
 println(
-    "residual vs clean — gaussian ${"%.4f".format(gauss.meanAbsDiff(clean))}, " +
-        "median ${"%.4f".format(med.meanAbsDiff(clean))}, " +
-        "bilateral ${"%.4f".format(bil.meanAbsDiff(clean))}",
+    "residual vs clean — gaussian ${gauss.meanAbsDiff(clean).f4}, " +
+        "median ${med.meanAbsDiff(clean).f4}, " +
+        "bilateral ${bil.meanAbsDiff(clean).f4}",
 )
 ```
 
@@ -194,7 +193,7 @@ showImgGrid(
     cellSide = 260,
 )
 println(
-    "|grad| max ${"%.3f".format(grad.magnitude().max())}; " +
+    "|grad| max ${grad.magnitude().max().f3}; " +
         "canny ${edges.data.count { it > 0.5f }} px, cannyAuto ${auto.data.count { it > 0.5f }} px; " +
         "${flines.size} FLines, ${flines.sumOf { it.nodes.size }} nodes total",
 )
@@ -298,11 +297,11 @@ cc.components
     .sortedByDescending { it.area }
     .forEach {
         println(
-            "  area=${it.area} centroid=(${"%.1f".format(it.centroidX)}, ${"%.1f".format(it.centroidY)}) " +
-                "bbox=${it.boundingWidth}x${it.boundingHeight} fill=${"%.2f".format(it.fillRatio)}",
+            "  area=${it.area} centroid=(${it.centroidX.f1}, ${it.centroidY.f1}) " +
+                "bbox=${it.boundingWidth}x${it.boundingHeight} fill=${it.fillRatio.f2}",
         )
     }
-println("distance-transform peak ${"%.1f".format(dt.max())} (largest planted radius ${discs.maxOf { it.third }})")
+println("distance-transform peak ${dt.max().f1} (largest planted radius ${discs.maxOf { it.third }})")
 ```
 
 ![](assets/imaging_examples/morphology.png)
@@ -402,10 +401,10 @@ showImgGrid(
 val (mdx, mdy) = flow.medianDisplacement()
 println(
     "${flow.tracked().size}/${seeds.size} tracked; median displacement " +
-        "(${"%.2f".format(mdx)}, ${"%.2f".format(mdy)}) px",
+        "(${mdx.f2}, ${mdy.f2}) px",
 )
 println("RANSAC ${fit.inlierCount} inliers of ${flow.tracked().size} after ${fit.iterations} iterations")
-println("recovered model agrees with the planted transform to ${"%.3f".format(worst)} px over the probe grid")
+println("recovered model agrees with the planted transform to ${worst.f3} px over the probe grid")
 println(fit.homography.toString())
 ```
 

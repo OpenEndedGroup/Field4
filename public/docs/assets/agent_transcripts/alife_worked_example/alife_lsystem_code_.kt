@@ -16,7 +16,7 @@ val tp = TurtleParams(angle = Math.PI / 3.0, step = step)
 val gens = (0..5).map { drawLSystem(LSYSTEM_KOCH_SNOWFLAKE, it, tp) }
 println("worst closure residual: " + gens.map { turtleClosureError(it, step) }.max() + " of a step")
 val lens = gens.map { flineTotalLength(it.lines) }
-println("length ratio per generation: " + (1..5).map { "%.6f".format(lens[it] / lens[it - 1]) })
+println("length ratio per generation: " + (1..5).map { (lens[it] / lens[it - 1]).f6 })
 println(
     "area, relative error against the closed form: " +
         (0..5).map { gen ->

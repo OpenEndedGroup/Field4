@@ -1,11 +1,10 @@
 # Filling a solid: tetrahedral meshing with TetGen
 
-[Manifold](manifold.md) gives Field surfaces that are guaranteed closed. A closed surface is a
-boundary: it says where the part stops. It says nothing about the inside, and every question worth
-asking about a part — how much does it deflect, where does it get hot, where does it crack — is a
-question about the inside.
+How much will a part deflect? Where will it get hot, or crack? To investigate its interior, you
+need more than its outer surface. A tetrahedral mesh divides the enclosed volume into elements you
+can use for those calculations.
 
-A tetrahedral mesh is the inside, written down. [TetGen](https://wias-berlin.de/software/tetgen/)
+[Manifold](manifold.md) gives Field closed surfaces to start from. [TetGen](https://wias-berlin.de/software/tetgen/)
 takes the closed triangle surface and fills the volume it bounds with tetrahedra whose faces match
 that surface exactly. In a box, `Tetgen.tetrahedralize` takes a closed `TriMesh` and returns a
 `TetMesh`. This one fills an L-shaped part built with Manifold:
@@ -86,7 +85,7 @@ for (t in 0 until half.cellCount) {
     colors[3 * t + 2] = c.b.toFloat()
 }
 :::fold measure it, then draw the three views
-println("Manifold  ${"%.4f".format(part.volume)} mm³, ${part.triangleCount} triangles, genus ${part.genus}")
+println("Manifold  ${part.volume.f4} mm³, ${part.triangleCount} triangles, genus ${part.genus}")
 // The surface's own digest, printed because the element count below depends on it and on nothing
 // else — see "the count moves between sessions" under Sizing.
 println(
@@ -94,7 +93,7 @@ println(
         "digest ${surface.positions.contentHashCode()}/${surface.indices.contentHashCode()}",
 )
 println("TetGen    $mesh")
-println("          volume ${"%.4f".format(mesh.volume())} mm³")
+println("          volume ${mesh.volume().f4} mm³")
 println("          inverted elements ${mesh.volumes().count { it <= 0.0 }}")
 println()
 println(
@@ -102,7 +101,7 @@ println(
         "${half.boundary().triangleCount} boundary triangles",
 )
 println(
-    "quality   min ${"%.4f".format(quality.min())}, median " + "${"%.4f".format(quality.sorted()[quality.size / 2])}",
+    "quality   min ${quality.min().f4}, median " + "${quality.sorted()[quality.size / 2].f4}",
 )
 
 // Pitch well over the horizon, because the cut plane is horizontal in this frame and a low camera
@@ -260,32 +259,32 @@ val slivers = mesh.filtered { it in worst }
 val sorted = quality.sorted()
 println("${mesh.cellCount} elements at targetEdgeLength = 3.0")
 println(
-    "radius ratio     min ${"%.4f".format(sorted.first())}  " +
-        "1st pct ${"%.4f".format(sorted[sorted.size / 100])}  " +
-        "median ${"%.4f".format(sorted[sorted.size / 2])}  max ${"%.4f".format(sorted.last())}",
+    "radius ratio     min ${sorted.first().f4}  " +
+        "1st pct ${sorted[sorted.size / 100].f4}  " +
+        "median ${sorted[sorted.size / 2].f4}  max ${sorted.last().f4}",
 )
 println("below 0.05       ${sorted.count { it < 0.05 }}   (slivers)")
 println("below 0.10       ${sorted.count { it < 0.10 }}")
 println()
 println(
-    "radius-edge      min ${"%.4f".format(radiusEdge.min())}  " +
-        "(the regular tetrahedron's floor is ${"%.4f".format(Math.sqrt(6.0) / 4.0)})",
+    "radius-edge      min ${radiusEdge.min().f4}  " +
+        "(the regular tetrahedron's floor is ${(Math.sqrt(6.0) / 4.0).f4})",
 )
 println(
-    "                 max ${"%.4f".format(radiusEdge.max())}, " +
+    "                 max ${radiusEdge.max().f4}, " +
         "${radiusEdge.count { it > 1.2 }} above the 1.2 bound that was asked for",
 )
 println()
 // The point of printing these together: the two measures do not rank the same elements. The worst
 // element by radius-edge is a perfectly usable one, and most of the bad ones are inside the bound.
 println(
-    "worst by radius-edge: ${"%.4f".format(radiusEdge.max())}, whose radius ratio is " +
-        "${"%.4f".format(quality[radiusEdge.indices.maxBy { radiusEdge[it] }])} — a fine element",
+    "worst by radius-edge: ${radiusEdge.max().f4}, whose radius ratio is " +
+        "${quality[radiusEdge.indices.maxBy { radiusEdge[it] }].f4} — a fine element",
 )
 val inBound = quality.indices.filter { radiusEdge[it] <= 1.2 }
 println(
     "of the ${inBound.size} elements inside the bound, ${inBound.count { quality[it] < 0.10 }} " +
-        "are below radius ratio 0.10; the worst is ${"%.5f".format(inBound.minOf { quality[it] })}",
+        "are below radius ratio 0.10; the worst is ${inBound.minOf { quality[it] }.f5}",
 )
 
 showChart(
@@ -300,7 +299,7 @@ showMesh(
     slivers.boundary(),
     title = "the 400 worst elements, in place",
     caption =
-        "radius ratio ${"%.4f".format(sorted.first())} to ${"%.4f".format(sorted[399])} · " +
+        "radius ratio ${sorted.first().f4} to ${sorted[399].f4} · " +
             "densest around the three bores, and scattered everywhere else",
     view = MeshView(yawDegrees = 34.0, pitchDegrees = 22.0, width = 760, height = 420),
 )
@@ -344,8 +343,9 @@ one.
 The coincident-corner cube is not a failure either: collapsing one corner of a unit cube onto its
 neighbour really does leave a body of volume `2/3`, and TetGen meshed exactly that. This is the
 shape the mistake takes in practice: a mesh off disk with an unwelded or over-welded seam produces a
-plausible solid of the wrong size, and nothing in this path will tell you. Compare `mesh.volume()`
-against `Solid.volume` before you trust a result.
+plausible solid of the wrong size. `Tetgen.tetrahedralize` checks the surface first and says so on
+`warning,tetgen`, naming the coincident vertices, open loops or collapsed triangles it found, and
+warns again if the tetrahedra do not hold the volume the surface encloses.
 
 ??? aside "The fatal path"
     Two of the eight — self-intersection and degeneracy — reach TetGen's own fatal handler. Built
@@ -567,9 +567,9 @@ for (h in sizes) {
     boxError += worstError(coordinates(b.toTriMesh()), ::boxDistance)
     sphereError += worstError(coordinates(s.toTriMesh()), ::sphereDistance)
     println(
-        "${"%.2f".format(h)}   ${"%.6f".format(boxError.last())} = " +
-            "${"%.4f".format(boxError.last() / h)} h    " +
-            "${"%.6f".format(sphereError.last())} = ${"%.4f".format(sphereError.last() / h)} h",
+        "${h.f2}   ${boxError.last().f6} = " +
+            "${(boxError.last() / h).f4} h    " +
+            "${sphereError.last().f6} = ${(sphereError.last() / h).f4} h",
     )
     // A real cross section through the marched body, at z = 0. The rounding is 1.5% of the body at
     // h = 0.4: plain in a cross section, invisible in a render of the whole box.
@@ -671,31 +671,35 @@ level set does not sharpen an edge; it makes a smaller rounded one.
 
 TetGen's worst node lies `0.0` outside the true box, exactly, because it never resamples the
 surface: Manifold's triangulation goes in as a piecewise-linear complex whose facet edges are
-constraints, and TetGen's output honours them. So this is the one choice on the page that is not a
-trade-off — if your part has a sharp edge and you care what happens there, the level-set route cannot
-get you closer by refining. [`dev_docs/TETGEN.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/TETGEN.md) has the per-resolution errors, and the same
+constraints, and TetGen's output honours them. For a part with a sharp edge, a body-fitted mesh preserves that edge directly. A refined level-set
+mesh approaches it, but still rounds it at the scale of the grid. [`dev_docs/TETGEN.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/TETGEN.md) has the per-resolution errors, and the same
 comparison run against MMG rather than marching cubes.
 
-### Where precision is lost: `TriMesh` stores float32
+### Mesh the `Solid` for full precision
 
-The bracket's meshed volume differs from Manifold's by `1.6e-9` relative, where the cube's differs by
-`2.7e-15`. That gap is not the mesher. `TriMesh` stores positions as `Float`, so `Solid.toTriMesh()`
-narrows every coordinate on the way in:
+`Tetgen.tetrahedralize` also takes a Manifold `Solid` directly, and that is the route to use when the
+volume has to match Manifold's:
+
+```diffstatic {data-lang=kotlin}
+val mesh = Tetgen.tetrahedralize(part, targetEdgeLength = 5.0) // part is the Solid itself
+```
+
+`TriMesh` stores positions as `Float`, so `part.toTriMesh()` narrows every coordinate before TetGen
+sees it. The `Solid` overload reads Manifold's `double` positions instead. On the bracket:
 
 <div class="field-data-table" markdown>
 
-| Representation | volume of the bracket |
-|---|---|
-| Manifold, in double | `76958.9090888672` |
-| its `TriMesh`, after narrowing to float32 | `76958.90896392896` |
-| TetGen's mesh of that `TriMesh` | `76958.90896392865` |
+| Representation | volume of the bracket | relative to Manifold |
+|---|---|---|
+| Manifold, in double | `76958.9090888672` | |
+| TetGen's mesh of `part.toTriMesh()` | `76958.90896392895` | `1.6e-9` |
+| TetGen's mesh of `part` | `76958.90908886695` | `3.4e-15` |
 
 </div>
 
-TetGen reproduces what it was handed to `4e-15`. The cube lands at `2.7e-15` because `0`, `2`, `3`
-and `4` are exactly representable in float32 and a 48-segment cylinder's vertices are not. If you
-need better than 1 part in `10⁹` on a curved body, the bridge is where to spend the effort, not the
-mesher.
+The cube is exact either way, because `0`, `2`, `3` and `4` are exactly representable in float32 and
+a 48-segment cylinder's vertices are not. The `Solid` overload takes the same `quality`,
+`targetEdgeLength`, `preserveSurface` and `order` arguments.
 
 ### Promoting to 10 nodes
 

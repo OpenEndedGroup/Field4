@@ -1,11 +1,12 @@
 # A function, played and read back
 
-Play a `Functions.Fn` as a sound, analyse the sound, and you can put what the analysis found next
-to the function it came from. `afield.math.functions.Functions` builds the function, and `FnInterval`
-certifies its range on any interval.
-A Dough graph plays it, rendered offline to a 16-bit `.wav`. `PatOnsetDetection` and
-`PatPitchDetection` read the file back. The time-axis viewer draws the function, its certified band,
-what came back, and the audio, on one timeline.
+Turn a function into sound, then analyse the recording and compare what you recover with the
+original. We'll play the same curve as loudness and as pitch, and put the recording, measurements
+and a certified range on one timeline.
+
+`afield.math.functions.Functions` builds the function and `FnInterval` certifies its range. A Dough
+graph plays it, rendered offline to a 16-bit `.wav`; `PatOnsetDetection` and `PatPitchDetection`
+read the file back. The time-axis viewer brings the results together.
 
 Most of what changes on the way is delay: one from how the function reaches the signal graph and
 one from how the pitch detector reports time. Both can be measured to the sample.
@@ -117,8 +118,8 @@ displayAudioBytes(
 )
 
 fun row(label: String, t: FnSoundDocs.RoundTrip) =
-    "| $label | ${t.measured.size} of ${t.frames.size} | ${"%.5f".format(t.rmsError)} | ${"%.4f".format(t.maxAbsError)} at ${"%.3f".format(t.maxErrorAtSeconds)} s | " +
-        "${t.insideCount} of ${t.measured.size}, worst ${"%.1e".format(t.worstOutside)} outside | ${"%.2f".format(t.blip.survival)} |"
+    "| $label | ${t.measured.size} of ${t.frames.size} | ${t.rmsError.f5} | ${t.maxAbsError.f4} at ${t.maxErrorAtSeconds.f3} s | " +
+        "${t.insideCount} of ${t.measured.size}, worst ${"%.1e".format(t.worstOutside)} outside | ${t.blip.survival.f2} |"
 markdown(
     "readout",
     """
@@ -202,12 +203,12 @@ displaySignal(
 val rows =
     trips.joinToString("\n") { t ->
         "| ${t.encoding.name.lowercase()} | ${if (t.route == Route.PER_SAMPLE) "`toSignal()`" else "`Param { }`"} | " +
-            "${"%.5f".format(t.rmsError)} | ${t.bestLagSamples} | ${"%.5f".format(t.rmsErrorAtBestLag)} |"
+            "${t.rmsError.f5} | ${t.bestLagSamples} | ${t.rmsErrorAtBestLag.f5} |"
     }
 markdown(
     "delays",
     """
-One audio block is ${FnSoundDocs.BLOCK} samples, ${"%.2f".format(1000.0 * FnSoundDocs.BLOCK / FnSoundDocs.SR)} ms.
+One audio block is ${FnSoundDocs.BLOCK} samples, ${(1000.0 * FnSoundDocs.BLOCK / FnSoundDocs.SR).f2} ms.
 
 | encoding | bridge | RMS error | best delay, samples | RMS error at that delay |
 |---|---|---|---|---|

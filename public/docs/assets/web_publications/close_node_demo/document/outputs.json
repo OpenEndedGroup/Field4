@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-31T00:21:54.029Z",
+  "documentName": "close_node_demo",
+  "outputs": [
+    {
+      "uid": "close_node_arrow",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 918,
+      "height": 627,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "close_node_reversal",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 918,
+      "height": 627,
+      "path": "outputs/1.html"
+    }
+  ]
+}

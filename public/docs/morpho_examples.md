@@ -6,11 +6,10 @@ compiler keeps dividing until a `SPLIT` runs out of bits, and the recursion bott
 fallback. Bus widths are never declared: a 32-bit adder and an 8-bit adder are the same eleven
 lines of source, and the difference is entirely in how far the division ran.
 
-**None of MorphoHDL is reimplemented.** Field runs upstream's parser, upstream's compiler and
-upstream's layout kernel, byte-identical to
-[commit `3ff923f`](https://github.com/paradigms-of-intelligence/morpho/tree/3ff923f9fafcb5b97ad2ef393795c96710ed00ea),
-and supplies only the things a language needs from an environment rather than from itself:
-simulation, drawing, and somewhere to be typed.
+Field runs MorphoHDL's upstream parser, compiler and layout kernel, byte-identical to
+[commit `3ff923f`](https://github.com/paradigms-of-intelligence/morpho/tree/3ff923f9fafcb5b97ad2ef393795c96710ed00ea).
+It adds simulation, drawing and an editor; the expansion scheduler is adapted for Field, as
+described below.
 
 A `morpho` box takes upstream's source directly, and a Kotlin box can compile a design with
 `morphoCircuit(...)` in a few lines; both are under [Using it](#using-it), straight after the

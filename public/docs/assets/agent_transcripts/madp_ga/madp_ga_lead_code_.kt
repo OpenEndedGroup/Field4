@@ -18,7 +18,7 @@ The language is reverse Polish: every word takes its inputs off a stack.
   dup          copy the top
 An empty stack reads 0.5 and unknown words are skipped, so every program draws something.
 
-These two parents are the demo's starters. Edit them and run the box again (alt-R); the
+These two parents are the demo's starters. Edit them and run the box again (Alt+Enter); the
 parents you pick are printed under the grid, ready to paste back in here.
 */
 val ga = colorRpnEvolution(

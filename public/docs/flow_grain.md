@@ -56,9 +56,9 @@ for (i in 0 until tiles.changedCount) {
 tiles.pack(metadata)
 ```
 
-The packed record is `(worldX, worldY, generation, occupied)`. A shader must check the
-resident world coordinates before sampling a slot: modulo addressing alone accidentally
-joins opposite edges of the pool. The demo also tags each cell's contents with its
+The packed record is `(worldX, worldY, generation, occupied)`. Check the resident world
+coordinates before sampling a slot in a shader: modulo addressing alone joins opposite edges of
+the pool. The demo also tags each cell's contents with its
 generation, so a recycled tile cannot read fluid left by its previous occupant.
 
 `afield.simulation.flow.TileAtlasLayout` adds atlas coordinates and optional halo storage for

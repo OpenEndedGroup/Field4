@@ -1,27 +1,18 @@
 # Running code in a box
 
-This page is about what Field does behind the scenes when you run a box. You do not need it to
-start writing boxes. It is for when something that looks like an ordinary call turns out not to be
-one, or when a child box cannot see a value its parent set.
+A box can run a line, a selection, or a whole program; it can also keep code running in Field's
+animation loop. Once you've tried the shortcuts, you may want to know how fragments find their
+variables, how boxes share values, or why a familiar-looking call behaves differently in Field.
+This page takes you through what happens when code runs.
 
-- **Running versus launching.** `alt/option-enter` runs a selection, a line, or its outer enclosing block;
-  `alt/option-0` runs everything in the box; `alt/option-click` and `alt/option-up` *launch* it, and `alt/option-1` relaunches
-  just the code `alt/option-enter` would run, without rerunning the rest of the box. Running evaluates and
-  stops. Launching gives the code a
-  chance to put something into the animation loop and keep going. The keys themselves, the `?`
-  cheat sheet and the `ctrl/command-shift-P` palette are in the [Survival Guide](survivalGuide.md).
-- **What happens between the keystroke and the compiler** — fragments, macro expansion, the
-  preamble, inheritance from parent boxes, `@exported` — is the rest of this page.
-- **What happens after the last line evaluates**, when what you returned is a `Frames`, is
-  [Frames and the animation loop](animation_time_model.md). Launching a box is exactly the case where
-  that page takes over from this one.
-- **When a value comes from a box you did not expect**, [Why does this value resolve
-  here?](why.md) asks Field which box supplied it and by what path. It is the inheritance walk
-  described below, reported for one name.
+We'll start with the shortcuts for running part or all of a box, then follow the code through
+fragments, macros and the preamble that lets boxes share values. If you're looking for a quicker
+introduction, try the [Tour](funFeatures.md) or the [Survival Guide](survivalGuide.md).
 
-For a friendly tour of `connect` / `prop` / `once` in use, rather than in mechanism, read the
-[Feature Overview](funFeatures.md); for the graphics-box API on top of all this, see
-[Field 4 Graphics](afield_four_graphics.md). This page is the layer underneath both.
+For code that keeps running, [Frames and the animation loop](animation_time_model.md) picks up
+where this page leaves off. To find where an inherited value came from, try
+[Why does this value resolve here?](why.md). The graphics APIs built on these ideas are in
+[Field 4 Graphics](afield_four_graphics.md).
 
 ---
 
@@ -53,21 +44,27 @@ lines that were launched while they keep running:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1000x500" clip-selector=".monaco-editor-container" screenshot="assets/running_code/launch-fragment.png" transcript="../../dev_docs/agents/transcripts/docs_capture/launch_fragment.yaml" padding="0" wait="0" timeout="120" embed=true hidden=true name="running-code-launch-fragment" alt="Field's editor with the cursor inside a loop block after Alt+1. A striped green bar in the left margin spans the five lines of the loop, lines 4 to 8, and not the two lines above it. Beside print(count) the running count reads 475."}
 ui.openEditor("launch_fragment")
-ui.eval("""
+ui.eval(
+    """
     const c = document.querySelector(".monaco-editor-container")
     Object.assign(c.style, {width:"560px", height:"260px", top:"20px", right:"20px", left:"auto", bottom:"auto", transform:"none"})
     window.globalEditor.layout()
     window.globalEditor.setPosition({lineNumber: 6, column: 5})
     window.globalEditor.focus()
     return true
-""".trimIndent())
+    """
+        .trimIndent(),
+)
 ui.press("Alt+1")
 ui.pause(1500)
-ui.eval("""
+ui.eval(
+    """
     const bars = document.querySelectorAll(".monaco-editor .margin [class*='execution-marker-']")
     if (bars.length == 0) throw new Error("no execution marker in the margin")
     return true
-""".trimIndent())
+    """
+        .trimIndent(),
+)
 ```
 
 To tune a value while watching its effect, put the cursor on a numeric literal and use **Increment
@@ -107,24 +104,30 @@ the rest of Field:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1000x420" clip="40,40,940,330" screenshot="assets/running_code/go-jobs-badge.png" transcript="../../dev_docs/agents/transcripts/docs_capture/go_jobs_badge.yaml" padding="0" wait="0" timeout="120" embed=true hidden=true name="running-code-go-jobs-badge" alt="A box named counting with a small striped square holding the number 1 in its top-right corner. Beside it, Field's editor shows the box's go block with the cursor inside it after Alt+1: a striped bar in the margin spans the go block, and the count printed beside print(ticks) reads 3."}
 ui.openEditor("go_jobs_badge")
-ui.eval("""
+ui.eval(
+    """
     const c = document.querySelector(".monaco-editor-container")
     Object.assign(c.style, {width:"560px", height:"280px", top:"45px", right:"60px", left:"auto", bottom:"auto", transform:"none"})
     window.globalEditor.layout()
     window.globalEditor.setPosition({lineNumber: 4, column: 9})
     window.globalEditor.focus()
     return true
-""".trimIndent())
+    """
+        .trimIndent(),
+)
 ui.press("Alt+1")
 ui.pause(1800)
-ui.eval("""
+ui.eval(
+    """
     const box = [...document.querySelectorAll(".box")].find(b => b.uid === "go_jobs_badge")
     const badge = box && box.querySelector(":scope > .go-jobs-badge")
     if (!badge || badge.textContent.trim() !== "1") throw new Error("go badge missing or wrong: " + (badge && badge.textContent))
     if (box.classList.contains("running")) throw new Error("the box is drawn as launched")
     if (!document.querySelector(".monaco-editor .margin [class*='execution-marker-']")) throw new Error("no margin marker")
     return true
-""".trimIndent())
+    """
+        .trimIndent(),
+)
 ```
 
 ---
@@ -176,7 +179,8 @@ Expansion produces an **`Insert`** with three parts that matter:
 The expander walks your code's syntax tree, asks the macro registry to rewrite each recognised call, and applies the edits. Two consequences follow from that:
 
 - **Macro expansion is not pure.** Besides rewriting text, it mutates box state. `moduleHere { }`, for instance, seeds the box's `vertex`/`fragment` shader properties and *compiles those shaders* during expansion (it needs the shader interface to generate typed accessors — see **Generated GLSL accessors** below). This is why the ordering of `//%-` fragments matters (see **The `//%-` fragment break** below).
-- **A macro's output lands in the preamble**, so it becomes available not just to the rest of your code but — if tagged for inheritance — to child boxes too.
+- **A macro's output lands in the preamble**, making it available to the rest of your code and,
+  when tagged for inheritance, to child boxes too.
 
 ### `sourceBlock` and `interpolant`: code that keeps its own source
 
@@ -242,7 +246,7 @@ val Why.savemarker by Whying() /**/
 - **Reading** `savemarker` returns this box's value if set, otherwise walks *up the box graph* to the first ancestor that has one (that is what `Inheritance` does — see **Property inheritance** below).
 - **`why.savemarker`** says which box that value came from; see [Why does this value resolve here?](why.md).
 
-The name is written unquoted: it is a name, not a string.
+Write the name without quotes, as in the example.
 
 ### `once`: fill the slot the first time
 
@@ -304,8 +308,8 @@ you; it changes nothing. It saves keeping that code commented out and uncommenti
 
 ### `flipbox`: a block with a checkbox
 
-A `flipbox` sits between `once` and `aside`: a block you switch on and off with a checkbox. Press ctrl/command-shift-. to insert a marker (drawn
-as a single rune), then write `.flipbox(true) { … }` after it:
+A `flipbox` is a block you switch on and off with a checkbox. Press ctrl/command-shift-. to insert
+a marker (drawn as a single rune), then write `.flipbox(true) { … }` after it:
 
 ```diffstatic {data-lang=kotlin}
 __m("Zk3q-a1").flipbox(true) {
@@ -383,6 +387,58 @@ This is the commonest graphics mistake: a freshly created box whose only parent 
 
 When a value comes from a box you did not expect, [Why does this value resolve here?](why.md) shows how to ask Field which box supplied it, by what path, and which other boxes it shadowed.
 
+### Disconnecting a running box
+
+A box reads an inherited value at the moment its code reads the name. Disconnecting it does not stop
+it or change the code it compiled; the next read just walks a graph that no longer has the parent in
+it. **Ticker** runs a `go` block that reads Garden's `petals` every 300 ms, and partway through its
+connection to Garden was cut:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/running_code/disconnect.png" capture="box" open-outputs="true" wait="0.2" timeout="180" embed=true name="running-code-disconnect" macro-file="../../dev_docs/agents/transcripts/docs_capture/running_code_disconnect.yaml" capture-box="bgx_ticker" w="760" h="100" alt="Ticker's main output after its connection to Garden was cut: read 10: Can't find a value for inherited property 'petals' in 'Ticker' or any of its 2 parent boxes. Are you sure the parent boxes that define 'petals' have been executed?"}
+go {
+    repeat(40) { n ->
+        val seen = try {
+            "petals = $petals"
+        } catch (e: Exception) {
+                e.message
+            }
+        markdown("read $n: $seen")
+        delay(300)
+    }
+}
+```
+
+Before the cut each read found Garden's 5; the capture is a read after it. Ticker keeps running, but
+every read now fails. A long-running box that must survive being rewired reads the value once, before
+it starts, and keeps it. The same holds for `renderer`: read it before `start { }` or `go { }` and
+pass it in, rather than looking it up inside a block that may run after the box has moved.
+
+### When a lookup fails
+
+The error message can help you tell these three failures apart.
+
+**`Unresolved reference 'petals'`** is a compile error: no box above this one declares `petals`.
+The box is not connected where you think it is, or the declaring box uses another name.
+
+**`Can't find a value for inherited property ...`** means the accessor was gathered but no box up the
+graph has a value yet. Usually the parent has not run, or it failed. Here Garden declares `petals`
+but was never run, and Flower, beneath it, reports:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/running_code/missing.png" capture="box" open-outputs="true" wait="1.5" timeout="180" embed=true name="running-code-missing" macro-file="../../dev_docs/agents/transcripts/docs_capture/running_code_missing.yaml" capture-box="bgm_flower" w="760" h="100" alt="Flower's main output: Can't find a value for inherited property 'petals' in 'Flower' or any of its 3 parent boxes. Are you sure the parent boxes that define 'petals' have been executed?"}
+val seen = try {
+    "petals = $petals"
+} catch (e: Exception) {
+        e.message
+    }
+markdown("$seen")
+```
+
+**`must pass in a value for context parameter ...`** comes from `fromContext<T>()` when nothing up
+the graph is a `T`; for a renderer it names `afield.graphics.vulkan.Renderer`. Pass
+`fromContext(defaultValue = ...)` if the box should run without one.
+
+Waiting longer fixes none of these; the connection or the parent's run does.
+
 A child sees a changed value the next time it runs. To have Field rerun the readers when the value changes, or run the supplier when a read finds nothing, declare it with `propDown`, `propUp` or `propUpDown`: [Properties that re-run boxes](reactive_properties.md).
 
 The preamble is regenerated **on run**: Field recomputes the gathered preamble, diffs it against the cached copy, and executes only the newly-added segments, so adding a `prop` in a parent and re-running a child is enough to make the new accessor appear.
@@ -394,8 +450,10 @@ The preamble is regenerated **on run**: Field recomputes the gathered preamble, 
 `prop` is the explicit way to make an inheritable slot. `@exported` is the automatic cousin: annotate a normal Kotlin `fun`/`val`/`var`, and *after the box runs*, Field reflects over it and does the same job for you.
 
 ```diffstatic {data-lang=kotlin}
-@exported fun add(x: Int, y: Int): Int = x + y
-@exported val answer: Int = 42
+@exported
+fun add(x: Int, y: Int): Int = x + y
+@exported
+val answer: Int = 42
 ```
 
 After this box runs, its preamble gains inheriting accessors (note the leading-underscore **alias**):
@@ -416,7 +474,9 @@ Three variants set **where** the accessor goes:
 
 That makes `@rootExported`/`@metarootExported` the tidy way to define a helper once and share it across boxes.
 
-`prop` and `@exported` are two front-ends to the same back-end: both write a ` /**/`-tagged `Inheritance…` accessor into the preamble, and both rely on the graph-walking delegate to resolve the value at read time. `prop` is a macro for a *value slot* you assign; `@exported` promotes *declarations you already wrote*.
+Both `prop` and `@exported` write a ` /**/`-tagged `Inheritance…` accessor into the preamble, and
+both resolve the value by walking the graph when you read it. Use `prop` to make a slot you can
+assign; use `@exported` to share a declaration you have already written.
 
 ---
 
@@ -487,6 +547,32 @@ A single Kotlin box launched through the transcript/multi-box path is also await
 The preamble and setup blocks also re-run between fragments, so a fragment that *writes* to the box's preamble at runtime has published a real source declaration by the time the next fragment is compiled. That is how `DataFrame.typed("People")` makes typed columns survive into the second half of the same execution; see [DataFrames in a Box](dataframe.md#fragment-marker).
 
 ---
+
+## Code that never returns
+
+Box code runs on Field's main loop, so a box that never finishes stops every other box and the
+canvas with it:
+
+```diffstatic {data-lang=kotlin}
+var i = 0L
+while (true) {
+    i++
+}
+```
+
+Field notices. After about a second and a half with no frame, the log names the box that is
+running and where it is. After five seconds Field throws out of that box's code: the run ends with
+the error `Box interrupted: ...`, and everything else carries on. To get out sooner, run
+**Interrupt Running Box** from the command palette.
+
+The interruption lands at the next loop iteration or function call in the box's own code, so it
+also stops runaway recursion, and a `catch (e: Exception)` inside the loop does not swallow it.
+It cannot reach into a library call that never returns on its own. A `Thread.sleep` or a wait
+inside the loop is woken, though.
+
+Two environment variables change the timings: `AFIELD_RUNLOOP_WATCHDOG_INTERRUPT_MS` sets the
+delay before the automatic interrupt (`0` turns it off and leaves only the command), and
+`AFIELD_RUNLOOP_WATCHDOG_REPORT_MS` sets the delay before the report.
 
 ## Putting it together
 

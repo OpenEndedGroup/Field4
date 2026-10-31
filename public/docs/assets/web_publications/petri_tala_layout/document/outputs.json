@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-31T00:14:15.707Z",
+  "documentName": "petri_tala_layout",
+  "outputs": [
+    {
+      "uid": "petri_tala_tala",
+      "channel": "petri",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "petri_tala_tala",
+      "channel": "petri-summary",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 467,
+      "height": 219,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "petri_tala_force",
+      "channel": "petri",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "petri_tala_force",
+      "channel": "petri-summary",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 467,
+      "height": 219,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "petri_tala_status",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 200,
+      "height": 40,
+      "path": "outputs/4.html"
+    }
+  ]
+}

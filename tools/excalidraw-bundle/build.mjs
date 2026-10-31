@@ -6,7 +6,7 @@
 // `staticFiles(dir = src/jsMain/resources/)` mount in Server.kt). The output is committed, like
 // Monaco, so neither a Field build nor an offline machine needs npm.
 import { build } from "esbuild";
-import { cpSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -18,6 +18,57 @@ const pkgDist = join(here, "node_modules/@excalidraw/excalidraw/dist/prod");
 // when a CJK glyph is first drawn. Everything else (~0.5 MB) is served locally so the Latin
 // fonts work offline.
 const SKIPPED_FONTS = new Set(["Xiaolai"]);
+
+// Excalidraw has no API for adding a font: its families are a fixed id table, a metrics table,
+// a registration list and the three quick-pick buttons. This plugin adds Field's Iosevka to all
+// four, at an id Excalidraw does not use, and puts it on the "code" button in place of Comic
+// Shanns. The face is Field's own woff2 (served at /woff2/, one level above EXCALIDRAW_ASSET_PATH),
+// so it is not copied. Each patch must match exactly once, so an Excalidraw upgrade that moves
+// the code fails the build instead of quietly dropping the font.
+const IOSEVKA_FAMILY_ID = 42;
+const IOSEVKA_URI = "../woff2/iosevka-semicondensed.woff2";
+// From the woff2's head/hhea tables: unitsPerEm 1000, ascent 965, descent -215.
+const IOSEVKA_METRICS = "{unitsPerEm:1e3,ascender:965,descender:-215,lineHeight:1.25}";
+
+const IOSEVKA_PATCHES = [
+    // FONT_FAMILY
+    [/"Liberation Sans":9\}/, `"Liberation Sans":9,Iosevka:${IOSEVKA_FAMILY_ID}}`],
+    // FONT_METADATA: a non-deprecated entry, so it is listed in the font picker's dropdown
+    [
+        /(\[(\w+)\["Comic Shanns"\]\]:\{metrics:\{[^}]*\},icon:(\w+)\},)/,
+        `$1[$2.Iosevka]:{metrics:${IOSEVKA_METRICS},icon:$3},`,
+    ],
+    // Fonts.init
+    [/(\w+)\("Cascadia",\.\.\.(\w+)\),/, `$1("Cascadia",...$2),$1("Iosevka",{uri:${JSON.stringify(IOSEVKA_URI)}}),`],
+    // the quick-pick "code" button
+    [
+        /value:(\w+)\["Comic Shanns"\],(icon:\w+,text:\w+\("labels\.code"\))/,
+        "value:$1.Iosevka,$2",
+    ],
+];
+
+const iosevkaPlugin = {
+    name: "field-iosevka",
+    setup(b) {
+        const hits = IOSEVKA_PATCHES.map(() => 0);
+        b.onLoad({ filter: /@excalidraw[\\/]excalidraw[\\/]dist[\\/]prod[\\/].*\.js$/ }, async (args) => {
+            let text = readFileSync(args.path, "utf8");
+            IOSEVKA_PATCHES.forEach(([re, rep], i) => {
+                const n = (text.match(new RegExp(re.source, "g")) || []).length;
+                if (n > 1) throw new Error(`Iosevka patch ${i} matched ${n} times in ${args.path}`);
+                if (n === 1) {
+                    hits[i]++;
+                    text = text.replace(re, rep);
+                }
+            });
+            return { contents: text, loader: "js" };
+        });
+        b.onEnd(() => {
+            const missing = hits.flatMap((h, i) => (h === 1 ? [] : [i]));
+            if (missing.length) throw new Error(`Iosevka patches did not apply exactly once: ${missing.join(", ")}`);
+        });
+    },
+};
 
 rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });
@@ -38,6 +89,7 @@ await build({
     assetNames: "assets/[name]-[hash]",
     legalComments: "linked",
     logLevel: "info",
+    plugins: [iosevkaPlugin],
 });
 
 for (const family of readdirSync(join(pkgDist, "fonts"))) {

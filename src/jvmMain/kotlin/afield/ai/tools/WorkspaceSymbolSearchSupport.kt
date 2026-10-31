@@ -131,16 +131,22 @@ fun searchWorkspaceSymbols(
             fileId = def.fileId,
             line = def.line,
             definitionLine = definitionLineText(def),
-            definitionBody = functionBody(def),
+            definitionBody = functionBody(def, maxChars = 3_000),
             relatedGuides = related.guides,
             relatedExamples = related.examples,
             kdoc = def.kdoc
         )
     }
 
+    val unindexed = unindexedFilesMentioning(index!!, query.substringAfterLast('.'))
+    fun result(matches: List<WorkspaceSymbolMatch>) = WorkspaceSymbolSearchResult(matches, unindexed,
+        if (unindexed.isEmpty()) "" else "WARNING: ${unindexed.size} source file(s) saved since the symbol index was built " +
+            "mention '$query' and their declarations may be missing from matches: ${unindexed.joinToString()}. " +
+            "Read them with WorkspaceSearchRequest(scope=FIELD_KOTLIN_SOURCE, query=\"$query\").")
+
     // Avoid reading and scoring every source file for an exact indexed symbol.
     val exact = definitions.filter { it.name == query || it.name.endsWith(".$query") }
-    if (exact.isNotEmpty()) return WorkspaceSymbolSearchResult(exact.take(limit.coerceIn(1, 100)).map(::toMatch))
+    if (exact.isNotEmpty()) return result(withBodyBudget(exact.take(limit.coerceIn(1, 100)).map(::toMatch)))
 
     val ranked = LinkedHashMap<String, RankedWorkspaceSymbolMatch>()
     definitions.forEachIndexed { definitionIndex, def ->
@@ -174,7 +180,34 @@ fun searchWorkspaceSymbols(
         .take(limit.coerceAtLeast(1))
         .map { toMatch(it.definition) }
 
-    return WorkspaceSymbolSearchResult(matches)
+    return result(withBodyBudget(matches))
+}
+
+/**
+ * `.kt` files under the index root's src/ saved after the index was built (and after their own record)
+ * that contain [name] literally, at most ten. A file with no record is not enough: the index never covers
+ * some trees (`src/personal/verification`, tests), and listing those on every search was noise. On 2026-10-28 a local model asked for `drawn` an hour after
+ * `Shape2.drawn` was written, got eight unrelated hits, and could not tell the index was behind.
+ */
+internal fun unindexedFilesMentioning(index: KotlinSourceIndexDb, name: String, limit: Int = 10): List<String> {
+    if (name.isBlank()) return emptyList()
+    val root = Paths.get(index.root)
+    val src = root.resolve("src")
+    if (!Files.isDirectory(src)) return emptyList()
+    val recorded = index.files.associate { root.resolve(it.path).normalize().toString() to it.modifiedEpochMs }
+    return runCatching {
+        Files.walk(src).use { paths ->
+            paths.filter { it.toString().endsWith(".kt") && Files.isRegularFile(it) }
+                .filter { path ->
+                    val mtime = Files.getLastModifiedTime(path).toMillis()
+                    mtime > index.updatedAtEpochMs && mtime > (recorded[path.normalize().toString()] ?: Long.MIN_VALUE)
+                }
+                .filter { runCatching { Files.readString(it).contains(name) }.getOrDefault(false) }
+                .limit(limit.toLong())
+                .map { root.relativize(it).toString() }
+                .toList()
+        }
+    }.getOrDefault(emptyList())
 }
 
 private fun analyzeWorkspaceSymbolQuery(rawQuery: String): WorkspaceQueryAnalysis {
@@ -316,4 +349,25 @@ private fun scoreWorkspaceSymbolCandidate(
     }
 
     return bestQueryScore + tokenScore + kindScore + pathScore
+}
+
+/** All the definition bodies one search returns, together; see [withBodyBudget]. */
+internal const val SYMBOL_SEARCH_BODY_BUDGET = 6_000
+
+/**
+ * Bodies in rank order until [SYMBOL_SEARCH_BODY_BUDGET]; later matches keep their signature and KDoc.
+ * One search for "FLines" returned 17k characters, most of it a single unrelated function's body, to a
+ * local model with a 64k-token window (2026-10-22). A body left out says how to get it.
+ *
+ * The ranking itself is unchanged on purpose: plural folding, a usage prior learned from Field's tutorial
+ * box code, and type-aware bonuses were measured against 60 searches labelled by what agents then wrote
+ * (`dev_docs/ai/AI4_FIRST_LOCAL_CONVERSATION.md`), and none beat it by more than noise.
+ */
+internal fun withBodyBudget(matches: List<WorkspaceSymbolMatch>): List<WorkspaceSymbolMatch> {
+    var left = SYMBOL_SEARCH_BODY_BUDGET
+    return matches.map { match ->
+        val body = match.definitionBody ?: return@map match
+        if (body.length <= left) { left -= body.length; match }
+        else match.copy(definitionBody = "(body of ${body.length} chars omitted from this search; read it with AttachmentRequest(file=\"${match.filePath}\", find=\"${match.symbol.substringAfterLast('.')}\"))")
+    }
 }

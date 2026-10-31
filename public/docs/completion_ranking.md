@@ -1,15 +1,13 @@
 # How completions are ranked
 
-This is an internals page. You do not need it to use completion; it is for someone changing
-the completion code, or writing a class whose members should rank well. It covers where the
-popup's order is decided, what goes into it, and how a class you write, in a Field box or in
-Field's own source, gets a say in it.
+What makes one completion appear above another? If you're writing a class and want its useful
+members to show up early, or you're changing Field's completion code, this page explains how the
+ordering works and how a class can influence it.
 
-The short answer is that the server sends everything and the browser does the ranking. Field's
-completion server does not rank. It answers a caret with *every* candidate it can find, up to a
-cap of 1200 that no real receiver comes near, and the order it sends them in is only the last-resort
-tie-break (see [the authority order](#the-authority-order)); a comment in the Kotlin reads "Ranking
-is client-side". The order you see is computed in JavaScript, in `src/commonMain/resources/fieldSuggest.js`, by a function called `rankItems`.
+The server gathers candidates, and the browser ranks them. The server sends up to 1200 candidates;
+its ordering is a last-resort tie-break (see [the authority order](#the-authority-order)). The
+JavaScript function `rankItems` in `src/commonMain/resources/fieldSuggest.js` computes the order
+you see.
 
 So if you are reading Kotlin looking for the code that decides what comes first, you will not find
 it. What Kotlin decides is what each row *carries*: its category, where it was declared, and its
@@ -142,10 +140,14 @@ the popup captured while it is open. It is served by the same Analysis API backe
     changes materially, something real changed.
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".afield-suggest" warm-completion=true screenshot="assets/popup-decides-fline-dot.png" padding="6" wait="0" timeout="140" embed=true hidden=true name="popup-decides-fline-dot" alt="A real Field completion popup at a bare dot on an FLine. A single section header reads GRAPHICS. Under it, in this order: moveTo(x: Number, y: Number, z: Number), lineTo(same), cubicTo(x0: Number, y0: Number, z0: Number, x1: Number...), close(), here (FLine.Node), rot(angle: Number, center: Vec2), scale(scale: Number), copy(), then arcLength(). Those are FLine's eight @CommonMembers in declared order, followed by the first member the class says nothing about. The documentation panel on the right reads Category Graphics above a signature card for moveTo and its documentation."}
-// Fresh and deterministic: clear the recency store so nothing this machine happens to have accepted
-// before outranks the prior, and hide the run-tick overlay — all of it, not just `.tick_text.ok`,
-// since `f.` is deliberately incomplete Kotlin and any tick here would be the error-coloured one.
-ui.eval("window.localStorage.removeItem('field.suggest.recency.v1'); var s=document.createElement('style');s.textContent='.tick_text{display:none !important}';document.head.appendChild(s);return 'setup';")
+/*
+Fresh and deterministic: clear the recency store so nothing this machine happens to have accepted
+before outranks the prior, and hide the run-tick overlay — all of it, not just `.tick_text.ok`,
+since `f.` is deliberately incomplete Kotlin and any tick here would be the error-coloured one.
+*/
+ui.eval(
+    "window.localStorage.removeItem('field.suggest.recency.v1'); var s=document.createElement('style');s.textContent='.tick_text{display:none !important}';document.head.appendChild(s);return 'setup';",
+)
 ui.openEditor(id)
 ui.pause(700)
 ui.waitForSelector(".monaco-editor", 15000.0)
@@ -155,9 +157,11 @@ ui.press("Control+A")
 ui.type("val f = FLine()\nf.")
 ui.pause(400)
 ui.press("Control+Space")
-// warm-completion=true builds the completion engine up front AND waits for the Analysis API session
-// to actually serve, so this is a photograph of the backend a user gets rather than of the K1
-// fallback. Wait for a row rather than guessing a pause; a cold first completion can take seconds.
+/*
+warm-completion=true builds the completion engine up front AND waits for the Analysis API session
+to actually serve, so this is a photograph of the backend a user gets rather than of the K1
+fallback. Wait for a row rather than guessing a pause; a cold first completion can take seconds.
+*/
 ui.waitForSelector(".afield-suggest-row", 20000.0)
 ui.pause(1400)
 ```

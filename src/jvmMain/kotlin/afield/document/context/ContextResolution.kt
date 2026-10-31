@@ -120,8 +120,16 @@ object ContextResolution {
     fun explain(box: Box, name: String? = null, type: String? = null): WhyAnswer =
         WhyAnswer(ContextWhy.explain(box, name, type))
 
-    /** A walk's answer plus how many ancestors it examined — the count `Inheritance` reports. */
-    class Search(val resolution: Resolution?, val ancestorsExamined: Int)
+    /**
+     * A walk's answer plus how many ancestors it examined. [boxAncestorsExamined] leaves out the
+     * document root and metaroot, which every box has above it; that is the count `Inheritance`
+     * reports, since "any of its 3 parent boxes" for a box with one parent sent people looking for
+     * two boxes that are not on the canvas (backlog N1023-2).
+     */
+    class Search(val resolution: Resolution?, val ancestorsExamined: Int, val boxAncestorsExamined: Int = ancestorsExamined)
+
+    /** Whether [box] is a document root or metaroot: above every box, never drawn as a parent. */
+    fun isStructuralAncestor(box: Box): Boolean = box.id == "root" || box.id == afield.document.graph.METAROOT_ID
 
     /**
      * [walk], also reporting how many ancestors were examined before it stopped.
@@ -168,6 +176,7 @@ object ContextResolution {
         var fringe: Collection<Box> = listOf(box)
         var depth = 0
         var examined = 0
+        var boxes = 0
         while (fringe.isNotEmpty()) {
             depth++
             val next = LinkedHashSet<Box>()
@@ -182,12 +191,14 @@ object ContextResolution {
             if (found != null) {
                 for (ancestor in next) {
                     examined++
+                    if (!isStructuralAncestor(ancestor)) boxes++
                     collect(ancestor, depth, query, policy, isOwn = false, into = found) { error("unreachable") }
                 }
             } else {
                 val generation = next.toList()
                 for ((i, ancestor) in generation.withIndex()) {
                     examined++
+                    if (!isStructuralAncestor(ancestor)) boxes++
                     val hit = firstIn(ancestor, depth, query, policy) ?: continue
                     // Finish this generation: an equidistant supplier holding a different value is
                     // an ambiguity. The pick stays deterministic (parents order); it is reported.
@@ -200,13 +211,13 @@ object ContextResolution {
                     }
                     val resolution = Resolution(mechanism, query.description, box, hit, predecessor, emptyList(), competing)
                     if (competing.isNotEmpty()) warnAmbiguity(resolution)
-                    return Search(resolution, examined)
+                    return Search(resolution, examined, boxes)
                 }
             }
             fringe = next
         }
 
-        if (found.isNullOrEmpty()) return Search(null, examined)
+        if (found.isNullOrEmpty()) return Search(null, examined, boxes)
         val first = found.first()
         val rest = found.drop(1)
         val shadowed = rest.map { it.toCandidate(box, predecessor) }
@@ -215,7 +226,7 @@ object ContextResolution {
             .filter { it.value !== first.value && it.value != first.value }
             .distinctBy { it.supplier }
             .map { it.toCandidate(box, predecessor) }
-        return Search(Resolution(mechanism, query.description, box, first, predecessor, shadowed, competing), examined)
+        return Search(Resolution(mechanism, query.description, box, first, predecessor, shadowed, competing), examined, boxes)
     }
 
     private fun firstIn(b: Box, depth: Int, query: Query, policy: Policy): Found? {

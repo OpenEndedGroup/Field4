@@ -1,5 +1,8 @@
 # Neural particle systems
 
+Give a particle system a picture to make, and let a small neural network learn how to move the
+particles into place. Here it has assembled 300,000 particles into the word FIELD:
+
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/neural_particles/word.png" capture="native-window" wait="50" native-wait-frames="30" embed=true hidden=true timeout="900" duration="0" name="neural-particles-word" alt="The word FIELD drawn in warm gold particles on black, the letter outlines bright and their interiors a dimmer haze" macro-file="../../dev_docs/agents/transcripts/neural_particles.yaml" capture-box="np_renderer"}
 // Built and launched from dev_docs/agents/transcripts/neural_particles.yaml
 // (renderer, an offline training box, and the live system).
@@ -38,10 +41,9 @@ There are two kinds of rule a particle can follow. The first reads only its own 
 field `v(x, t)`, blind to every other particle in the buffer. The second reads its neighbours: a
 force that depends on the particles nearby.
 
-Field fits either one. A velocity field is a **map**: every particle is travelling somewhere
-specific and will arrive, which is what makes shapes and words reachable. An interaction is a
-**force**, which is what makes flocks, swarms and crowds, and it needs a neighbour search underneath
-it to be affordable.
+Field fits either one. A velocity field moves particles toward a target shape; an interaction
+produces forces from their neighbours, making flocks, swarms and crowds. The latter needs a neighbour
+search to run efficiently.
 
 The two are built in that order below: tier one is sections 1 to 3, the neighbour search is
 section 4, and tier two is sections 5 to 7.

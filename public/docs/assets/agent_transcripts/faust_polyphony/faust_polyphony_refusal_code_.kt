@@ -6,16 +6,15 @@ Writing pitch to control index 0 and hoping would produce silence, or a filter s
 is nothing in silence to read. So this refuses, and names what is missing, what the program did
 declare, and the line of Faust that would fix it.
 */
-val program =
-    faustCompile(
-        """
+val program = faustCompile(
+    """
 #faust
 import("stdfaust.lib");
 cutoff = hslider("cutoff [unit:Hz]", 1200, 60, 8000, 1);
 freq   = hslider("freq [unit:Hz]", 220, 40, 4000, 0.001);
 process = os.sawtooth(freq) : fi.lowpass(2, cutoff) * 0.2 <: _,_;
 """,
-    )
+)
 
 println("it declares, in the order Faust lists them (alphabetical, not as written):")
 program.ui.writable.forEach { println("  " + it.displayLabel + "  " + it.type + "  index " + it.index) }

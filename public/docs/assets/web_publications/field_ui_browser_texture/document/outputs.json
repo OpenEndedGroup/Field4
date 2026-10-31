@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-31T09:33:47.894Z",
+  "documentName": "field_ui_browser_texture",
+  "outputs": [
+    {
+      "uid": "field_ui_texture_renderer",
+      "channel": "Vulkan window · still image",
+      "open": true,
+      "path": "outputs/0.html",
+      "width": 4112,
+      "height": 2524,
+      "kinds": [
+        "native-image"
+      ],
+      "warnings": []
+    }
+  ]
+}

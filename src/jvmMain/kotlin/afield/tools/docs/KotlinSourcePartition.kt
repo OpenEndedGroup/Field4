@@ -696,10 +696,15 @@ object KotlinSourcePartition {
             return last + 1
         }
 
-        /** A non-blank line carrying only annotations and/or modifiers — no declaration keyword. */
+        /**
+         * A non-blank line carrying only annotations and/or modifiers — no declaration keyword. A
+         * context-parameter list on its own line (`context(context: CheckerContext, reporter: …)` above
+         * an `override fun`, as FIR checkers are written) is a prefix of the same kind.
+         */
         fun isPrefixOnlyLine(index: Int): Boolean {
             val text = masked.code[index].trim()
             if (text.isEmpty()) return false
+            if (text.startsWith("context(") && text.endsWith(")") && text.count { it == '(' } == text.count { it == ')' }) return true
             val stripped = stripAnnotations(text)
             if (stripped.isEmpty()) return true
             val tokens = stripped.split(WHITESPACE).filter { it.isNotEmpty() }
@@ -835,7 +840,16 @@ object KotlinSourcePartition {
                         }
                         return Extent(line, bodyOpen, bodyClose)
                     }
-                    if (!needsBranch && !continues(line, hi, inEnum)) return Extent(line, bodyOpen, bodyClose)
+                    // A primary constructor may start below `class Name`. It is part of this
+                    // header, even though `constructor` normally opens a separate declaration.
+                    // Once the class body opens, constructors inside it stay separate children.
+                    val next = nextCodeLine(line + 1, hi)
+                    val primaryConstructor = head.decl.kind in setOf("class", "enum class") &&
+                        bodyOpen < 0 && !sawEquals && next != null &&
+                        headAt(next, hi)?.decl?.kind == "constructor"
+                    if (!needsBranch && !primaryConstructor && !continues(line, hi, inEnum)) {
+                        return Extent(line, bodyOpen, bodyClose)
+                    }
                 }
                 line++
             }

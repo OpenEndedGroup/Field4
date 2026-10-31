@@ -1,0 +1,27 @@
+[field] ok  RepoReadFileRequest {"endLine":200,"path":"AGENTS.md","startLine":1}
+[field] ok  RepoSearchRequest {"glob":"**/*","ignoreCase":false,"maxMatches":60,"query":"checkAgentTranscriptIndex","regex":false}
+[field] ok  RepoReadFileRequest {"endLine":552,"path":"AGENTS.md","startLine":370}
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-status","timeoutSec":10}
+[field] ok  RepoListFilesRequest {"glob":"tools/check_*idiom*"}
+[field] ok  RepoReadFileRequest {"endLine":300,"path":"src/jvmMain/kotlin/afield/tools/docs/AgentTranscriptIndexGuard.kt","startLine":1}
+[field] ERR RepoRunCommandRequest {"args":["tools/check_box_idioms.py"],"command":"check","timeoutSec":120}
+[field] ok  RepoReadFileRequest {"endLine":120,"path":"dev_docs/agents/transcripts/contour_trees_explorer.yaml","startLine":1}
+[field] ok  RepoRunCommandRequest {"args":["2be5ed1b1b8549297e1b0a58e14d2e776e2f636b","--","public/docs/agent_transcripts.md"],"command":"git-diff","timeoutSec":10}
+[field] ok  RepoReadFileRequest {"endLine":100,"path":"public/docs/contour_trees.md","startLine":1}
+[field] ok  RepoSearchRequest {"glob":"public/docs/agent_transcripts.md","ignoreCase":false,"maxMatches":60,"query":"^## |verified-by","regex":true}
+[field] ok  RepoSearchRequest {"glob":"src/jvmMain/kotlin/afield/examples/*.kt","ignoreCase":false,"maxMatches":20,"query":"contour_trees_explorer","regex":false}
+[field] ok  RepoListFilesRequest {"glob":"public/docs/assets/agent_transcripts/contour_trees_explorer/*"}
+[field] ok  RepoListFilesRequest {"glob":"tools/*transcript*"}
+[field] ok  RepoReadFileRequest {"endLine":115,"path":"src/jvmMain/kotlin/afield/examples/DemoTranscriptExecSmokeTest.kt","startLine":65}
+[field] ok  RepoReadFileRequest {"endLine":110,"path":"dev_docs/agent_transcript_index.md","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":220,"path":"tools/check_box_idioms.py","startLine":1}
+[field] ok  RepoListFilesRequest {"glob":"tools/check_*.py"}
+[field] ok  RepoListFilesRequest {"glob":"public/docs/assets/agent_transcripts/*/metadata.edn"}
+[field] ok  RepoReadFileRequest {"endLine":130,"path":"src/jvmMain/kotlin/afield/examples/AgentTranscriptMaterializer.kt","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":1960,"path":"public/docs/agent_transcripts.md","startLine":1925}
+[field] ok  RepoListFilesRequest {"glob":"tools/test_*idiom*"}
+[field] ok  RepoReadFileRequest {"endLine":280,"path":"src/jvmMain/kotlin/afield/examples/AgentTranscriptMaterializer.kt","startLine":150}
+[field] ok  RepoReadFileRequest {"endLine":45,"path":"public/docs/assets/agent_transcripts/principal_curves_explorer/metadata.edn","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":120,"path":"tools/check_doc_assets.py","startLine":1}
+[field] ok  RepoRunCommandRequest {"args":["--stat"],"command":"git-diff","timeoutSec":10}
+[field] model=openai/gpt-6.1-sol rounds=7/40 wall=55s tokens in=288931 out=1789 cacheRead=238345 wrote=None ran=['git-status  -> 0', 'check tools/check_box_idioms.py -> 1', 'git-diff 2be5ed1b1b8549297e1b0a58e14d2e776e2f636b -- public/docs/agent_transcripts.md -> 0', 'git-diff --stat -> 0'] verdict=unchecked error=-

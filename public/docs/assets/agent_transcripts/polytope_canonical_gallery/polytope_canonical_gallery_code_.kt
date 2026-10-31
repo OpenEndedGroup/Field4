@@ -62,7 +62,7 @@ fun PolyhedralObject.panel(label: String, dx: Float, alpha: Double) =
 
                 - degree: `$degree`
                 - combinatorial orbit: `$orbit of ${orbits.faceClassCount}`
-                - face-plane distance from centre: `${"%.5f".format(depth)}`
+                - face-plane distance from centre: `${depth.f5}`
                 """
                     .trimIndent(),
             )

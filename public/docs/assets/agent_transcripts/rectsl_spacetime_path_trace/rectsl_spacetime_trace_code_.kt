@@ -23,21 +23,21 @@ a time, linearly interpolated, and `->x` takes one wherever it takes a number.
 */
 val source =
     """
-#rectsl
-->wall 8 8 abstract
-->duration 4
-->fps 30
+    #rectsl
+    ->wall 8 8 abstract
+    ->duration 4
+    ->fps 30
 
-"sweep" rect
-  0.7 2.4 ->wh
-  '( 0=-2.6  4=2.6 ) ->x
-  '( 0=0  4=3.14159 ) ->rot
+    "sweep" rect
+      0.7 2.4 ->wh
+      '( 0=-2.6  4=2.6 ) ->x
+      '( 0=0  4=3.14159 ) ->rot
 
-"pulse" rect
-  1.2 1.2 ->wh
-  1.6 -1.4 ->xy
-  '( 0=0.3  4=2.2 ) ->w
-"""
+    "pulse" rect
+      1.2 1.2 ->wh
+      1.6 -1.4 ->xy
+      '( 0=0.3  4=2.2 ) ->w
+    """
         .trimIndent()
 
 val program = compileRectSL(source).program
@@ -78,10 +78,9 @@ for (k in 0 until nt) {
     }
 }
 val sampleMs = (System.nanoTime() - sampledAt) / 1e6
-println("sampled ${inner.size} points, ${nt} tapes, ${"%.0f".format(sampleMs)} ms")
+println("sampled ${inner.size} points, ${nt} tapes, ${sampleMs.f0} ms")
 println(
-    "  ${inner.count { it < 0f }} of them inside, distances " +
-        "${"%.3f".format(inner.min())} to ${"%.3f".format(inner.max())}",
+    "  ${inner.count { it < 0f }} of them inside, distances " + "${inner.min().f3} to ${inner.max().f3}",
 )
 
 val innerBounds = boundsOf(
@@ -107,7 +106,7 @@ println(
 )
 println(
     "  levelSetOf:    ${cutSolid.triangleCount} triangles, status ${cutSolid.status}, " +
-        "genus ${cutSolid.genus}, volume ${"%.3f".format(cutSolid.volume)}",
+        "genus ${cutSolid.genus}, volume ${cutSolid.volume.f3}",
 )
 cutSolid.close()
 
@@ -139,13 +138,13 @@ println(
 val whole = Solid.levelSetOf(spacetime, bounds, edgeLength = 0.12)
 println(
     "  levelSetOf:    ${whole.triangleCount} triangles, status ${whole.status}, " +
-        "genus ${whole.genus}, volume ${"%.3f".format(whole.volume)}",
+        "genus ${whole.genus}, volume ${whole.volume.f3}",
 )
 
 val parts = whole.decompose()
 println(
     "  ${parts.size} component(s): volumes " +
-        parts.map { "%.2f".format(it.volume) }.joinToString(", ") +
+        parts.map { it.volume.f2 }.joinToString(", ") +
         " — connected because the two rects overlap on screen at some frame",
 )
 

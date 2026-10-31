@@ -1,6 +1,9 @@
 # ForthField examples
 
-ForthField is Field's Forth: a data stack and a dictionary of words that push and pop it. A definition is usually one line long (`: sqr dup * ;` is a complete one), and the dictionary can be rewritten while the box is still running. Around that core sit the control-flow words, vec2 helpers, enough `FLine` vocabulary to sketch geometry, and a reflection bridge that lets ForthField call methods on any JVM object it can reach.
+ForthField is Field's Forth: a data stack and a dictionary of words that push and pop it. A
+whole definition can fit on one line (`: sqr dup * ;`), and you can rewrite the dictionary while
+the box is running. There are words for control flow, vec2 helpers and `FLine` drawing, plus a
+reflection bridge for calling methods on JVM objects.
 
 To get a ForthField box, run **Set Main Language: ForthField** on a parent box; its children then run ForthField rather than Kotlin. Every example below is ForthField you can paste into such a box.
 

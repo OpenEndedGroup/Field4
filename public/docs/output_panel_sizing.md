@@ -1,8 +1,10 @@
 # How an output panel decides its size
 
-This page explains how Field sizes the output panels in a box, and what to do when one comes out
-the wrong size. For what panels and channels are, and how to open, close and remove them, start
-with [Box Output](box_output.md). If you are sizing a 3D viewer, see also
+An output panel usually sizes itself to what it contains. If yours opens too narrow, crops its
+contents or keeps more empty space than you expect, start with the symptoms below. You can also
+[resize a panel by hand](box_output.md#how-big-a-panel-is).
+
+For an introduction to panels and channels, see [Box Output](box_output.md); for 3D viewers, see
 [Field's 3D output](three_output.md#which-renderer-draws-this).
 
 Call `display` in a box and the box grows a grey disclosure to hold the output. That is an output
@@ -12,9 +14,8 @@ panel. Closed, it is exactly 200 pixels wide
 (`src/commonMain/resources/outputareas2.js:17#const AUTO_SIZE_PASSES`) as fonts load and iframes
 boot.
 
-A panel comes out the wrong size when it cannot read the size you gave it (a percentage, for
-example) and sizes itself from whatever else it finds. No error is shown and nothing is logged, so
-start from what you see.
+A panel can come out the wrong size when it cannot use the size its content declares. There may be
+no error or log message, so the symptoms below help you find which measurement to check.
 
 ## Symptoms
 

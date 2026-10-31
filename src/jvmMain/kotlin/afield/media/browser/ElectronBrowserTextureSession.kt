@@ -34,6 +34,21 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 
+/**
+ * The Electron process that paints a web page for Field, and the ways a frame of it crosses into
+ * this process.
+ *
+ * `ElectronBrowserTextureSession` starts `electron/browser-texture-producer.js` under the Electron
+ * that `./gradlew electronInstall` put in the checkout, passes it the page, the surface size and
+ * the rest as `FIELD_BROWSER_TEXTURE_*` environment variables, and talks to it in JSON lines over a
+ * loopback socket the session opens for the purpose. All of that is platform-neutral; only the GPU
+ * handle transfer is not, and each `BrowserHandleTransport` here is one way to do it: a Mach send
+ * right on macOS, a dma-buf descriptor over `SCM_RIGHTS` on Linux, and an opt-in fallback that
+ * carries the pixels themselves over a second socket for when no handle can cross. The receiver
+ * side of the contract is `ExternalBrowserSurface`, described in
+ * `dev_docs/external_browser_surfaces.md`.
+ */
+
 /** Walks up from the working directory to the Field checkout that owns the Electron producer. */
 internal fun locateFieldProjectRoot(): File {
     var cursor = File(System.getProperty("user.dir")).absoluteFile

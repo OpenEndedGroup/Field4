@@ -2,29 +2,20 @@
 
 <!-- capture-sources: src/jvmMain/kotlin/afield/geometry/mesh/ src/jvmMain/kotlin/afield/graphics/three/Three.kt -->
 
-Drawing in three dimensions is one thing. An [`FLine`](fline_examples.md) has a `z`, the renderer
-takes triangles, the [ray tracer](ray_tracing_examples.md) intersects analytic solids. **Computing
-with a surface** is another. Ask a mesh whether it is closed, subdivide it, smooth it without
-deflating it, decimate it to a budget, measure its volume, shoot a ray at it, write it out for
-another program to read.
+A mesh gives you a surface to work with as well as a shape to draw. Ask whether it is closed,
+subdivide it, smooth it without deflating it, reduce its triangle count, measure its volume, or
+shoot a ray at it. You can also write it out for another program to read.
 
-`afield.geometry.mesh` carries a CPU triangle-mesh family for that, built around a single value type,
-`TriMesh`. It generates primitives, marches an SDF into a surface, works out a mesh's topology,
-subdivides it (Loop), smooths it (Laplacian and Taubin), decimates it (QEM), welds it, measures its
-curvature, raycasts it through a BVH, reads and writes OBJ and STL, and takes a convex hull. All of
-it is pure Kotlin with no external dependency and no GPU, and all of it runs headless in a box. It is
-the 3D counterpart to the raster [imaging family](imaging_examples.md) and is built the same way.
-Every public declaration is listed, with its KDoc, in the [codebase reference](reference/graphics.md#mesh-kt).
+Field's CPU mesh tools are built around `TriMesh`. They make primitives and surfaces from signed
+distance fields, then let you inspect, reshape, simplify and export them. The operations run in a
+box without a GPU; the [graphics reference](reference/graphics.md#mesh-kt) lists the API.
 
-Two things about it shape the rest of this page. A `TriMesh` is a **value you can look at**. It
-implements `ToHTML`, so ending a box on one draws it, with the numbers that decide whether it is
-usable printed beside the picture:
+End a box on a `TriMesh` and Field draws it, with measurements beside the picture:
 
 ![The inline TriMesh card: a shaded render beside counts, watertightness, Euler characteristic, genus, area, signed volume and bounds](assets/mesh_gallery/11-inline-visualizer.png)
 
-And there is a hop back out: `toFLines(...)` turns a mesh into `FLine`s, so a wireframe, a crease set
-or a normal field lands in the same drawing, animation and export machinery as anything you drew by
-hand.
+Use `toFLines(...)` to turn a mesh into a wireframe, crease set or normal field. You can then draw,
+animate and export those lines alongside the rest of your work.
 
 ## The value type
 
@@ -151,9 +142,10 @@ The primitives are `sdfSphere`, `sdfBox`, `sdfRoundBox`, `sdfTorus`, `sdfPlane`,
 
 ## Looking at what you got
 
-A broken mesh often looks fine. A duplicated edge, a missing cap, a row of vertices that were
-never welded and a leaked marching-cubes surface all still render plausibly. One integer catches all four: the **Euler characteristic** `V - E + F`, which is exactly 2
-for any closed genus-0 solid and `2 - 2g` for genus *g*.
+A broken mesh can still look fine. A missing cap, unwelded vertices or a tear in a marched surface
+may be hard to see in a render. Start by measuring the mesh: the **Euler characteristic**
+`V - E + F` is 2 for a closed genus-0 surface and `2 - 2g` for genus *g*. Check watertightness and
+manifoldness as well; the Euler characteristic alone cannot establish that a mesh is sound.
 
 `summary()` prints the whole verdict in one line. The rest of the pieces are separately available:
 `isWatertight()`, `isManifold()`, `eulerCharacteristic()`, `genus()`, `boundaryLoops()`,
@@ -340,9 +332,9 @@ position, and the cheapest is taken until the budget is met. Collapses are vetoe
 condition** (so the mesh cannot go non-manifold), by a normal-flip test, and by a shape test that
 defers a collapse which would produce a sliver.
 
-You get the triangle count you asked for, so the number to judge a decimation by is the *deviation*:
-how far either mesh's vertices sit from the other's surface. `maxDeviation(a, b)` reports it
-symmetrically, so a decimation cannot look good by having simply shrunk inside the original.
+After reducing the triangle count, check the *deviation*: how far either mesh's vertices sit from
+the other's surface. `maxDeviation(a, b)` measures both directions, so you can see how much shape
+the simplification has lost.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/mesh_examples/decimate.png" wait="3.0" capture="box" open-outputs="true" padding="20"}
 :::static
@@ -366,7 +358,7 @@ for (target in [2000, 600, 150]) {
                 small.isWatertight(),
             ),
     )
-    budgets.add("decimate($target) — deviation ${"%.4f".format(deviation)}" to small)
+    budgets.add("decimate($target) — deviation ${deviation.f4}" to small)
 }
 :::fold draw the original beside the three budgets
 showMeshGrid(
@@ -515,9 +507,9 @@ curvature has both signs, positive on the outside and negative in the hole:
 
 ![Gaussian curvature on a torus (red outside, blue in the hole), mean curvature as a smooth gradient, and a convex hull of 200 points](assets/mesh_gallery/09-measure-and-query.png)
 
-The global check is **Gauss–Bonnet**: the integral of Gaussian curvature over a closed surface is
-exactly 2πχ. No local sign error or area-weighting bug survives it, so it is the assertion to put in
-a test.
+A useful global check is **Gauss–Bonnet**: the integral of Gaussian curvature over a closed
+surface is 2πχ. Compare the computed integral with that value, while keeping in mind that a global
+sum can hide local errors that cancel each other.
 
 ```diffstatic {data-lang=kotlin}
 val k = mesh.gaussianCurvature()
@@ -525,7 +517,7 @@ val areas = mesh.mixedVertexAreas()
 val total = (0 until mesh.vertexCount).sumOf { k[it] * areas[it] } // == 2 * PI * chi
 ```
 
-`bvh()` builds a bounding-volume hierarchy and turns every useful query from O(*n*) into O(log *n*):
+`bvh()` builds a bounding-volume hierarchy to accelerate spatial queries:
 `raycast(origin, direction)`, `raycastAll(...)`, `closestPoint(query)`, `contains(query)` (a parity
 test, so it needs a watertight mesh) and `signedDistance(query)`. `asSdf()` hands the whole thing
 back as a `ScalarField3D`, which closes the loop: you can march a mesh's own signed distance field
@@ -575,7 +567,7 @@ showMeshGrid(
 | a shape from an equation | `marchingCubes(field, boundsAround(radius = r), resolution)` | Extracts the zero surface of a scalar field within the supplied bounds. Increase resolution to resolve finer geometry, at greater sampling cost. |
 | is this mesh usable? | `println(mesh.summary())` | Reports mesh counts, extent and topology measurements. Inspect it before treating imported geometry as a closed solid. |
 | a mesh from a photo or a heightfield | `img.toHeightfieldMesh(scale = 0.25)` or `heightfieldMesh(nx, nz) { x, z -> h }` | Builds a sampled height surface from image values or a function. The result is a heightfield rather than a closed volume. |
-| a lathed profile | `revolveMesh(profile, segments)` | Revolves a profile around an axis. Segment count controls angular tessellation. |
+| a lathed profile | `revolveMesh(profile, axis, segments)` | Revolves a profile around `RevolveAxis.Y` or `RevolveAxis.Z`. Segment count controls angular tessellation. |
 | a swept tube along a path | `tubeMesh(fline, radius, sides, samples)` | Sweeps a polygonal cross-section along the path. Radius sets thickness, sides sets the cross-section detail and samples sets path resolution. |
 | smooth without shrinking | `taubinSmooth(iterations = 30, lambda = 0.6, mu = -0.63)` | Alternates smoothing passes to reduce shrinkage. Compare the result with the original when feature preservation matters. |
 | more detail | `loopSubdivide(2)` | Subdivides triangle connectivity twice. This adds mesh detail and changes the surface; it does not recover detail absent from the source. |

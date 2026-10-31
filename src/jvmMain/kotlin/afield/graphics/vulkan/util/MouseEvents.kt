@@ -14,11 +14,22 @@ import afield.math.linalg.Vec2
 import org.lwjgl.glfw.GLFW
 
 data class MouseEvent(
+    /** Where the pointer is, in points from the window's top-left corner — the same units as [windowSize], not framebuffer pixels. */
     val pos: Vec2,
+    /** How far the pointer moved since the previous poll, in the same points. Only [Type.MOVE] and [Type.DRAG] carry one; a press, release or scroll arrives with zero. */
     val delta: Vec2 = Vec2(),
+    /** Wheel and trackpad movement since the previous poll, horizontal then vertical. Only a [Type.SCROLL] event carries one. */
     val scroll: Vec2 = Vec2(),
+    /**
+     * The buttons held at this poll, under the names `left`, `right`, `middle` and the GLFW numbers.
+     * Only buttons some handler asked about are read, so one with no `onDown`, `onUp` or per-button
+     * `onDrag` never appears here however hard it is held. An `onDrag` with no button named asks for
+     * left, right and middle.
+     */
     val buttonsDown: Set<String> = emptySet(),
+    /** Which button this event is about. A press, a release and a per-button drag name one; a move, a scroll and an any-button drag leave it null. */
     val button: String? = null,
+    /** Which of the five kinds of event this is. */
     val type: Type,
     /** The window's size, in the same units as [pos]: window points, not framebuffer pixels. */
     val windowSize: Vec2 = Vec2(1f, 1f),
@@ -31,7 +42,14 @@ data class MouseEvent(
 }
 
 class MouseEvents(
+    /** The renderer whose window is polled. This becomes that window's `mouseEvents` if it does not already have one. */
     val renderer: Renderer = fromContext(),
+    /**
+     * The key this polling takes in the window's poll map, which is not the name a handler is
+     * registered under. A second [MouseEvents] built with the same name takes over the polling from
+     * the first, so re-running a box leaves one; the `name` passed to `onDown`, `onMove` and the
+     * rest is what keeps a box from stacking up duplicate handlers inside it.
+     */
     val name: String = "__mouseevents__"
 ) {
     companion object {

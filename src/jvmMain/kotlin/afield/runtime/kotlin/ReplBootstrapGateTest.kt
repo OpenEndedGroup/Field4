@@ -25,6 +25,7 @@ import afield.media.stream.*
 import afield.media.video.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
@@ -59,11 +60,13 @@ expect:
  * 2. It checks that the engine's bootstrap gate ([KotlinScriptEngine.armBootstrapGate] and
  *    [KotlinScriptEngine.bootstrap]) holds an ordinary exec until the gate is released.
  * 3. It checks that a concurrent exec waits for the bootstrap to finish.
+ * 4. It checks that a compile without evaluation ([KotlinScriptEngine.compileSnippet], the
+ *    `checkBoxCodeCompiles` path) waits for the bootstrap too.
  *
  * Like [CompiledSnippetTest] it is a runnable object rather than a JUnit class.
  */
 
-/** Runs the three bootstrap-ordering cases; `main` fails if any of them does. */
+/** Runs the four bootstrap-ordering cases; `main` fails if any of them does. */
 object ReplBootstrapGateTest {
 
     fun runTests(): Boolean {
@@ -72,6 +75,7 @@ object ReplBootstrapGateTest {
             testOutOfOrderEvalIsNowSafe()
             testGateBlocksUntilReleased()
             testConcurrentExecWaitsForBootstrap()
+            testCompileWaitsForBootstrap()
             println("✅ ReplBootstrapGate tests passed")
             true
         } catch (t: Throwable) {
@@ -177,6 +181,32 @@ object ReplBootstrapGateTest {
         val result = withTimeout(30_000) { gated.await() }
         require(result.toString().contains("42")) {
             "gated exec should observe the bootstrap's declaration (introMarker=41 -> 42); got: $result"
+        }
+    }
+
+    /**
+     * A compile with no evaluation waits for the intro as well. `checkBoxCodeCompiles` compiles
+     * each box's code while the box's async intro may still be queued on the runloop; when the
+     * runloop was late, the box's code compiled against an engine with no default imports and
+     * every reference came back unresolved (`motion_ardy_demo_replay`, 2026-10-31). The bootstrap
+     * here starts only after the compile was given a second to run alone, so without the wait the
+     * compile reports `introMarker` unresolved every time.
+     */
+    private fun testCompileWaitsForBootstrap() = runBlocking {
+        println("  Testing compile-only waits for bootstrap...")
+        val ki = KotlinInterface2(filePrefix = "gate-compile")
+        ki.armBootstrapGate()
+
+        val errors = mutableListOf<String>()
+        val gated = async(Dispatchers.Default) {
+            ki.compileSnippet("introMarker + 1", implicits = emptyList()) { d -> d.forEach { errors += it.message } }
+        }
+        delay(1_000)
+        ki.bootstrap("val introMarker = 41")
+
+        val snippet = withTimeout(30_000) { gated.await() }
+        require(snippet != null && errors.isEmpty()) {
+            "a compile started while the gate was armed must see the bootstrap's declarations; errors: $errors"
         }
     }
 }

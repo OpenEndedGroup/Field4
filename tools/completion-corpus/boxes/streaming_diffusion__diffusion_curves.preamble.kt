@@ -1,6 +1,6 @@
-import afield.graphics.vulkan.Renderer
-import afield.graphics.vulkan.util.Window
 import afield.media.video.diffusion.SpinningDiffusionDemo
+import afield.graphics.vulkan.util.Window
+import afield.graphics.vulkan.Renderer
 var Box.diffusionDemo by Inheritance<SpinningDiffusionDemo>() /**/
 val Once.diffusionDemo by Onceing<SpinningDiffusionDemo>() /**/
 val Why.diffusionDemo by Whying() /**/

@@ -15,6 +15,6 @@ eachStroke(trail = 0.92) {
 
         val halo = dots(scale(base, 1.24 + tri01(t * 0.35 + heldNoise(4.1, t, 4.0) * 0.5) * 0.18), 0.8)
         halo.color = rgba(255, 255, 255, 0.22)
-        listOf(segments, sparks, halo)
+        [segments, sparks, halo]
     }
 }

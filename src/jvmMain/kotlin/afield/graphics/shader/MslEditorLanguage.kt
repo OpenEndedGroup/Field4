@@ -21,11 +21,20 @@ import java.io.File
  * node-probe smoke test exercises the exact code that ships.
  */
 object MslEditorLanguage {
+    /**
+     * The language id, `msl`, as the same string `languageId` holds. Neither constant reaches the
+     * browser: the id Monaco registers is declared inside `msl.js` itself.
+     */
     const val id: String = "msl"
 
     /** The Monaco language id Field uses for the `msl` property, and for `.metal` / `.msl` files. */
     const val languageId: String = "msl"
 
+    /**
+     * The text of `msl.js`, read from the classpath, or from `src/commonMain/resources/msl.js`
+     * relative to the working directory when the resource is not on it. Throws when neither is
+     * there, rather than returning an empty grammar.
+     */
     fun javascript(): String {
         MslEditorLanguage::class.java.getResourceAsStream("/msl.js")?.use { stream ->
             return stream.readBytes().toString(Charsets.UTF_8)
@@ -36,4 +45,5 @@ object MslEditorLanguage {
     }
 }
 
+/** The same text [MslEditorLanguage.javascript] returns, as a top-level function. */
 fun mslEditorLanguageJavascript(): String = MslEditorLanguage.javascript()

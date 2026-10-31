@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-29T22:28:54.357Z",
+  "documentName": "hello_display_capture",
+  "outputs": [
+    {
+      "uid": "agent_hello_display_capture",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 200,
+      "height": 40,
+      "path": "outputs/0.html"
+    }
+  ]
+}

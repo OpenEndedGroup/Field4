@@ -270,8 +270,8 @@ frames {
         | # | keys blended, and at what weight | pushed past the hull | `palette` taken from |
         |---|----------------------------------|----------------------|----------------------|
         ${rows.joinToString("\n") { m ->
-            "| ${m.index} | ${m.parents.joinToString("<br>") { "${it.key} ${"%.2f".format(it.weight)}" }} " +
-                "| ${m.extrapolationGain?.let { g -> "x${"%.2f".format(g)} away from<br>${m.extrapolationPole}" } ?: "—"} " +
+            "| ${m.index} | ${m.parents.joinToString("<br>") { "${it.key} ${it.weight.f2}" }} " +
+                "| ${m.extrapolationGain?.let { g -> "x${g.f2} away from<br>${m.extrapolationPole}" } ?: "—"} " +
                 "| ${m.discreteLanes.values.distinct().joinToString(", ")} |"
         }}
     """,
@@ -316,7 +316,7 @@ thousand write-once renders do not want ten thousand one-entry histories.
 rewritten after. A manifest still reading `"status": "running"` is a render whose process died inside
 it, which is the distinction a resume needs.
 
-**`index.jsonl` is a projection, not the record.** It is appended as renders finish, so a process
+**`index.jsonl` is a convenient index of the manifests.** It is appended as renders finish, so a process
 killed between a manifest write and its append leaves it one line short.
 [`readSweepArchive`](reference/graphics.md#keyframesweep-kt) falls back to walking the manifests, and
 [`KeyframeSweep.reindex`](reference/graphics.md#keyframesweep-kt) rebuilds it; the manifests are

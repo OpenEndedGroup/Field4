@@ -1,0 +1,37 @@
+{
+  "passed": true,
+  "capturedAt": "2026-10-26T17:35:10.922Z",
+  "checks": [
+    "111 slides",
+    "slash and Cmd/Ctrl+F",
+    "incremental body matching and excerpts",
+    "arrow selection without audience changes",
+    "Enter and repeat hops",
+    "accent-insensitive search",
+    "multiple terms",
+    "zero matches do not navigate",
+    "Refresh rebuilds cached index",
+    "Escape resumes normal keyboard navigation",
+    "reveal text searchable",
+    "starter restored before capture"
+  ],
+  "inputs": {
+    "src/jsMain/resources/iosevka.css": "65b48da3af979fc722e0270b32da0a102adc3aac1e4733b28bad42cc49b0b82f",
+    "src/commonMain/resources/field.css": "284ebce72c33f7a000a2877befe6098bedf19c307be034dd7c7c8e282b80a505",
+    "src/commonMain/resources/presentation-control.js": "9c4a7ba231f2e13688642307d7a9502fee755e54d31020095de00d9ad280caed",
+    "src/commonMain/resources/presentation-control.html": "d4bffef7655b92eebb0a16d1c4ad3102a39b4f3c0b90ac45e2cdb6382eb86da7",
+    "src/commonMain/resources/presentation-search.js": "9d30dd003a610a6befa61f994404db2112f47e4dc1105524a3fe63ca717dd413",
+    "src/jvmMain/kotlin/afield/ui/slides/PresentationSearch.kt": "21c63c57ced4d702dd83376e715f3fdb5f3a0b22f3cc1c4a5985697f3586d8fc",
+    "src/jvmMain/kotlin/afield/ui/slides/SlideShow.kt": "d1d3b6b4ddcf2f2139e61aeaddbb76b4e94afc25df66b66066f8b0d0e3757466",
+    "templates/presentation/present_talk_code_.kt": "4fe6d42ee3be10ad36904bd937aa14d6e78fd7e07e3f3648c548dd633ad41254",
+    "templates/presentation/files/talk.slides.json": "52cf70b8fe492774b854d772e53653d1cd5ae142f760ff2d78fbc01caf3e32b4"
+  },
+  "pictures": [
+    {
+      "file": "search.png",
+      "width": 1000,
+      "height": 580,
+      "sha256": "6513b86b09d535d8295140520d202495e51a4c9da6e96cd47108df342c22085f"
+    }
+  ]
+}

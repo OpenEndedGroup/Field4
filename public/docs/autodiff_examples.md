@@ -1,9 +1,12 @@
 # Differentiating Functions
 
-Field computes exact derivatives of the code you write, by automatic differentiation. Reverse mode
-over `Double` gives gradients, second-order forward mode gives curvature, and SGD, Adam and L-BFGS
-minimize using either. An `Fn` built from stdlib parts can be differentiated too, with respect to
-its own numeric parameters.
+How does a small change to a parameter change the result? Field can differentiate supported
+expressions directly, so you can follow a slope, measure curvature or ask an optimizer to find a
+minimum. An `Fn` built from stdlib parts can be differentiated with respect to its own numeric
+parameters too.
+
+The examples use automatic differentiation: reverse mode over `Double` for gradients,
+second-order forward mode for curvature, and SGD, Adam and L-BFGS for minimization.
 
 ## One expression, three ways of differentiating it
 

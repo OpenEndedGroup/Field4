@@ -24,7 +24,7 @@ weighting decision now rests on. Nothing here is a summary written by hand.
 Run me (cmd-Enter / the run gutter). See dev_docs/completion_rank_at_scale.md.
 
 ```edn [field-box id="corpus" role="properties"]
-{"id" "corpus" "index" 0 "name" "1 - the corpus" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - the corpus" "frame" #afield/rect [60.0 60.0 340.0 136.0] "preamble" "" "nested" #{}} "blockProperties" [{"name" "code" "language" "kotlin" "path" "corpus_code_.kt" "lines" 77 "characters" 3452 "sha256" "7faba0a482c638966b1dbad51e9d6376ad7336daffe8980ba6d8570eedabf13a"}]}
+{"id" "corpus" "index" 0 "name" "1 - the corpus" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - the corpus" "frame" #afield/rect [60.0 60.0 340.0 136.0] "preamble" "" "nested" #{}} "blockProperties" [{"name" "code" "language" "kotlin" "path" "corpus_code_.kt" "lines" 77 "characters" 3442 "sha256" "ade92d547e9ba2c70fa1ff0716020c9749e7c663567d20c9aae577dd3de30e3b"}]}
 ```
 
 ```kotlin [field-property box="corpus" name="code" path="corpus_code_.kt"]
@@ -74,7 +74,7 @@ val report = buildString {
     appendLine("${corpus.name}  ${corpus.length() / 1024} KB on disk")
     appendLine(
         "${cases.size} carets, ${payloadSize.sum()} payload rows, ${rows.size} distinct " +
-            "(${"%.1f".format(payloadSize.sum().toDouble() / rows.size)}x interning)",
+            "(${(payloadSize.sum().toDouble() / rows.size).f1}x interning)",
     )
     appendLine()
     for ((form, group) in byForm) {

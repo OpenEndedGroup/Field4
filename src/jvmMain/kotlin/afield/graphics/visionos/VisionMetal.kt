@@ -163,10 +163,9 @@ data class VisionMetalStatus(
 )
 
 /**
- * The wire encoder. `encodeDefaults` is load-bearing twice over: it puts `channel`/`type`/`version`
- * on every message, and it spells absent parts as explicit nulls, which is how the head tells
- * "unchanged" from "cleared". Public so tests can assert against the real bytes rather than a
- * lookalike configuration.
+ * The wire encoder. `encodeDefaults` puts `channel`/`type`/`version` on every message, and spells
+ * absent parts as explicit nulls, which is how the head tells "unchanged" from "cleared". Public so
+ * tests can assert against the real bytes rather than a lookalike configuration.
  */
 val visionMetalWireJson = Json { encodeDefaults = true; ignoreUnknownKeys = true }
 private val knownVisionMetalPrograms = ConcurrentHashMap<String, VisionMetalProgramState>()

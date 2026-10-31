@@ -172,6 +172,16 @@ def cmd_enqueue(args: argparse.Namespace) -> int:
     if _ok(here, "merge-base", "--is-ancestor", sha, "refs/heads/main"):
         print(f"land: {branch} ({sha[:9]}) is already on main; nothing to land")
         return 0
+    try:
+        # Warn, not refuse: a clean duplicate lands harmlessly, and precheck is where it is refused.
+        from land_precheck import describe_duplicates, duplicate_patches  # noqa: PLC0415
+
+        duplicates = duplicate_patches(here, "refs/heads/main", sha)
+    except (ImportError, subprocess.CalledProcessError):
+        duplicates = []
+    if duplicates:
+        print(f"land: warning: {len(duplicates)} commit(s) on {branch} repeat a patch main already has:\n  "
+              + describe_duplicates(duplicates, "main"), file=sys.stderr)
     replaced: dict | None = None
     for item in _items(queue, PENDING):
         # An item the lander has started stays: removing its file mid-landing hid it from status
@@ -353,6 +363,38 @@ def _superseded_by(queue: Path, item: dict) -> dict | None:
     return later[0] if later else None
 
 
+def _content_on_main(item: dict) -> bool:
+    """The bounced commit's changes are already on `main`: merging it now would change nothing.
+    True when it was merged into a branch that landed, and also when its changes were copied onto
+    one with new SHAs (cherry-picked, or a subset of a bigger branch). Such a bounce needs nobody."""
+    sha = item.get("sha")
+    if not sha:
+        return False
+    repo = _primary(Path.cwd())
+    if _ok(repo, "merge-base", "--is-ancestor", sha, "refs/heads/main"):
+        return True
+    if not _ok(repo, "cat-file", "-e", f"{sha}^{{commit}}"):
+        return False
+    merged = subprocess.run(["git", "merge-tree", "--write-tree", "refs/heads/main", sha], cwd=repo,
+                            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+    return merged.returncode == 0 and merged.stdout.split("\n", 1)[0] == _git(repo, "rev-parse", "refs/heads/main^{tree}")
+
+
+def _branch_gone(item: dict) -> bool:
+    """Its branch has been deleted, so nobody is going to fix and re-enqueue it: abandoned on purpose."""
+    branch = item.get("branch")
+    return bool(branch) and not _ok(_primary(Path.cwd()), "show-ref", "--verify", "--quiet", f"refs/heads/{branch}")
+
+
+def _settled(item: dict) -> str | None:
+    """Why a bounce with no later landing of its own branch still needs nobody, or None if it does."""
+    if _content_on_main(item):
+        return "its changes reached main another way"
+    if _branch_gone(item):
+        return "its branch was deleted"
+    return None
+
+
 def _describe(state: str, item: dict, queue: Path | None = None) -> str:
     if _is_doc(item):
         head = f"{item['id']}  docs for {item['checkout']}  by {item['by']}"
@@ -423,6 +465,10 @@ def _describe(state: str, item: dict, queue: Path | None = None) -> str:
             lines[0] = f"resolved {head}"
             lines.append(f"         bounced {_span(_since(item.get('finished')))} ago, then landed as {fixed['id']} "
                          f"-> main {fixed.get('landed_as', '')[:9]}")
+            return "\n".join(lines)
+        if why := _settled(item):
+            lines[0] = f"resolved {head}"
+            lines.append(f"         bounced {_span(_since(item.get('finished')))} ago; {why}")
             return "\n".join(lines)
         lines.append(f"         {_span(_since(item.get('finished')))} ago: {' '.join(str(item.get('reason', '?')).split())}")
         lines.append(f"         log: {item.get('log', '')}")
@@ -562,8 +608,8 @@ def _stranded_bounces(queue: Path, hours: float) -> list[dict]:
             continue
         if _superseded_by(queue, item) or item.get("branch") in queued:
             continue
-        # Landed some other way (merged into another branch that landed): not stranded.
-        if _ok(_primary(Path.cwd()), "merge-base", "--is-ancestor", item["sha"], "refs/heads/main"):
+        # Landed some other way, or its branch was deleted: not stranded.
+        if _settled(item):
             continue
         out.append(item)
     # One per branch: the newest attempt is the one that matters.
@@ -847,8 +893,8 @@ def _pretty_status(queue: Path, recent: int) -> None:
                   f"  {st.dim(ago + ' ago')}" + (st.dim(f" \u00b7 took {_span(took)} \u00b7 {how}") if took is not None else ""))
             if item.get("fixup"):
                 print(f"      {fixed_line(item)}")
-        elif _superseded_by(queue, item):
-            continue  # bounced, then landed: history, not news
+        elif _superseded_by(queue, item) or _settled(item):
+            continue  # bounced, then landed (or landed another way, or abandoned): history, not news
         else:
             reason = " ".join(str(item.get("reason", "?")).split())
             print(f"  {st.red(g['bounce'])} {who(item)}  {st.dim(ago + ' ago')}")
@@ -1408,6 +1454,9 @@ Hard rules (the lander rejects a fix that breaks them):
   The lander commits your edit itself.
 - Do not edit dev_docs/testing/expected_*.json, tools/check_*.py, tools/land.py, tools/merge_regen.py,
   the git hooks, or the Gradle build files; do not delete files; do not disable or skip a test.
+- Do not clear a finding by widening the guard that made it: no new allowlist entry, exemption, root
+  or known-benign site in the check's own source. Change what it flagged. Adding the row or entry a
+  ledger check asks for (a missing inventory row, a COMPILE_ONLY entry, a corpus name) is not widening.
 - At most {max_files} files and {max_lines} changed lines.
 - The fix must belong to ONE branch below: the one whose change the failure follows from.
 
@@ -1426,18 +1475,53 @@ def _fixer_command() -> list[str] | None:
 
 
 def _fixer_context(members: list[dict], main_sha: str, wt: Path, log: Path, failures: str | None, queue: Path) -> str:
+    return fixer_context_text(members, main_sha, wt, log.read_text(errors="replace").splitlines(),
+                              log.with_suffix(".failures.txt"), failures, _fixer_ledger(queue), subject=_subject)
+
+
+# A failed Gradle task prints its finding where it runs, often a thousand lines above the end of the
+# log (KDocAttachmentGuard, AgentTranscriptIndexGuard), so the 200-line tail can hold only "Execution
+# failed for task ':checkKDocAttachment'". Measured 2026-10-29 with tools/field_fixer_bench.py: AI4
+# declined 77996cfc5 because "the supplied log omits the finding".
+FAILED_TASK = re.compile(r"^> Task :(\S+) FAILED")
+
+
+def _failed_task_excerpts(lines: list[str], tail_from: int, limit: int = 40) -> list[str]:
+    # Gradle prints a task's output first and its `> Task :x FAILED` header after it, so the finding
+    # is the run of lines between the previous `> Task :` line and that header (its last [limit]).
+    out = []
+    start = 0
+    for n, line in enumerate(lines[:tail_from]):
+        m = FAILED_TASK.match(line)
+        if m:
+            body = [l for l in lines[start:n] if l.strip()][-limit:]
+            out.append(f"\nWhat :{m.group(1)} printed when it failed:\n" + "\n".join([*body, line]))
+        if line.startswith("> Task :"):
+            start = n + 1
+    return out
+
+
+def fixer_context_text(members: list[dict], main_sha: str, wt: Path, log_lines: list[str], failures_file: Path,
+                       failures: str | None, ledger: list[dict], subject=lambda m: m.get("subject", "")) -> str:
+    """The context after FIXER_PROMPT, from the round's log lines and the ledger as they stand.
+    tools/field_fixer_bench.py replays past rounds through this with both cut at the round's time."""
     parts = [f"main before this round: {main_sha}\n\nBranches in the round, each merged as its own commit:"]
     for m in members:
         stat = _git(wt, "diff", "--stat=120", f"{main_sha}...{m['sha']}", check=False)
-        parts.append(f"\n## {m['branch']} ({m['sha'][:9]}, by {m['by']})\n{_subject(m) or ''}\n{stat}")
+        commits = _git(wt, "log", "--oneline", "-n", "15", f"{main_sha}..{m['sha']}", check=False)
+        # Measured 2026-10-29 (tools/field_fixer_bench.py): AI4 declined real fixups because it judged
+        # the branch by `git show <tip>` alone and found the culprit lines in an earlier commit of it.
+        parts.append(f"\n## {m['branch']} ({m['sha'][:9]}, by {m['by']})\n{subject(m) or ''}\n{stat}\n"
+                     f"Its commits (the branch is all of them, not only the tip; its whole change is "
+                     f"`git diff {main_sha[:12]}...{m['sha'][:12]}`):\n{commits}")
     if failures:
         parts.append(f"\nFailing tests (first): {failures}")
-        path = log.with_suffix(".failures.txt")
-        if path.exists():
-            parts.append(path.read_text(errors="replace")[:6000])
-    tail = log.read_text(errors="replace").splitlines()[-200:]
-    parts.append("\nThe end of the landing log:\n" + "\n".join(tail))
-    ledger = _fixer_ledger(queue)[-8:]
+        if failures_file.exists():
+            parts.append(failures_file.read_text(errors="replace")[:6000])
+    tail_from = max(0, len(log_lines) - 200)
+    parts.extend(_failed_task_excerpts(log_lines, tail_from))
+    parts.append("\nThe end of the landing log:\n" + "\n".join(log_lines[tail_from:]))
+    ledger = ledger[-8:]
     if ledger:
         parts.append("\nWhat the fixer did on recent reds (for calibration):\n"
                      + "\n".join(f"- {e.get('outcome')}: {e.get('reason', '')}" for e in ledger))

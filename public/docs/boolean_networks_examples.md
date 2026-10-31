@@ -1,7 +1,5 @@
 # Boolean networks to FLine examples
 
-*Every public declaration used below is listed, with its KDoc, in the codebase reference: [`booleannetworks.kt`](reference/data.md#booleannetworks-kt). Start from [what's already in the box](reference/index.md).*
-
 A Boolean network is a set of nodes that are each on or off, plus a rule that computes every node's next value from the current values of the others. Because there are only finitely many states, every run ends up in a loop or at a fixed point (an *attractor*), and Field can list them all exactly. Each example below draws the network's wiring next to what it does over time.
 
 ## Wiring and state-space, side by side
@@ -178,14 +176,14 @@ fun markers(values: List<Double>, color: Vec4, size: Double): FLine = fline {
 
 lines(
     guides() +
-        [
+        listOf(
             curve(rows.map { it.attractors }, vec(0.56, 0.92, 1.0, 0.95), 3.0),
             curve(rows.map { it.period }, vec(1.0, 0.74, 0.38, 0.92), 3.0),
             curve(rows.map { it.fixed }, vec(0.58, 1.0, 0.68, 0.92), 3.0),
             markers(rows.map { it.attractors }, vec(0.56, 0.92, 1.0, 0.95), 5.0),
             markers(rows.map { it.period }, vec(1.0, 0.74, 0.38, 0.92), 5.0),
             markers(rows.map { it.fixed }, vec(0.58, 1.0, 0.68, 0.92), 5.0),
-        ],
+        ),
     channel = "boolean-kauffman",
     w = 1180.0,
     h = 660.0,
@@ -278,3 +276,5 @@ The middle grid is the raw attractor repeated over two bars. The right grid is t
 ![three panels. The blue-tinted left panel holds five blue discs in a ring with six lines between them, two of them crossing the middle. The middle panel is a five-lane step grid with orange bar-lines every four steps, each lane in its own colour, and two bars' worth of the same pattern repeated. The brown-tinted right panel is the same five lanes much more sparsely filled, a handful of triggers per lane instead of a dense run](assets/boolean_networks_examples/rhythm_cycles.png)
 
 For the next step, where those grids become `NoteProcess` objects and live Dirt triggers, continue with [Boolean network music examples](boolean_network_music_examples.md). For related work where static structure and measured behavior are plotted together, continue with [Values over time (interpolants, keyframes, correlations & estimation)](interpolants_examples.md) and [Sorting networks examples](sorting_networks_examples.md).
+
+*The public declarations used on this page are listed, with their KDoc, in the codebase reference: [`booleannetworks.kt`](reference/data.md#booleannetworks-kt). Start from [what's already in the box](reference/index.md).*

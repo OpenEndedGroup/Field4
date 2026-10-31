@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 1 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 1 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. Polytope — selective kis, topology to FLine
@@ -18,7 +18,7 @@ Topology is the source of truth. Coordinates and the FLine viewer only arrive af
 selection and the abstract Conway operation have decided what the new faces are.
 
 ```edn [field-box id="polytope_selective_kis" role="properties"]
-{"id" "polytope_selective_kis" "index" 0 "name" "Polytope — selective kis, topology to FLine" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Polytope — selective kis, topology to FLine" "_tombstone" false "frame" #afield/rect [80.0 80.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_selective_kis_code_.kt" "lines" 83 "characters" 2910 "sha256" "3474f02bc897f2a516a66235039c6fc6607fae952a9c956543cfabf03577914f"}]}
+{"id" "polytope_selective_kis" "index" 0 "name" "Polytope — selective kis, topology to FLine" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Polytope — selective kis, topology to FLine" "_tombstone" false "frame" #afield/rect [80.0 80.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_selective_kis_code_.kt" "lines" 83 "characters" 2898 "sha256" "dff9537fa2ab0e5713ae90f9da8f05c3d9c395ff0f7ff629cf90d5b3c5bf9f74"}]}
 ```
 
 ```kotlin [field-property box="polytope_selective_kis" name="code" path="polytope_selective_kis_code_.kt"]
@@ -77,7 +77,7 @@ val faceLines = polyhedron.toFaceFLines { face, line ->
     }
     line.hoverColor = vec(0.96, 0.98, 1.00, 0.98)
     line.onClick = { hit ->
-        val deployed = height?.let { "%.2f".format(it) } ?: "not selected"
+        val deployed = height?.let { it.f2 } ?: "not selected"
         status(
             """
             **output face ${face.id.value}**

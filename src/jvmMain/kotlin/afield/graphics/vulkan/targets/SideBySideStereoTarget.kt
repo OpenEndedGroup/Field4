@@ -12,7 +12,6 @@ import afield.document.context.fromContext
 import afield.graphics.vulkan.targets.OpenXRHmdTarget.ControllerState
 import afield.graphics.vulkan.targets.OpenXRHmdTarget.Hand
 import afield.graphics.texture.HasImageView
-import afield.graphics.texture.image_layout_transition
 import afield.graphics.vulkan.util.Camera
 import afield.graphics.vulkan.util.DownResult
 import afield.graphics.vulkan.util.MouseEvent
@@ -29,9 +28,7 @@ import afield.math.linalg.Vector4f
 import afield.math.linalg.*
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK10.*
-import org.lwjgl.vulkan.VK13.*
 import org.lwjgl.vulkan.VkImageCopy
-import org.lwjgl.vulkan.VkImageSubresourceRange
 
 /**
  * Stereo rendering into one packed image: [SideBySideStereoTarget] draws the scene once per eye
@@ -52,14 +49,24 @@ import org.lwjgl.vulkan.VkImageSubresourceRange
  *   otherwise uses an internal stereo camera.
  */
 class SideBySideStereoTarget(
+    /** The renderer whose device owns the eye passes and the packed image. Found in the box graph by default. */
     val renderer: Renderer = fromContext(),
+    /** Width of one eye's pass in pixels. Defaults to half the swapchain's, so the pair fills the window. */
     val eyeWidth: Int = renderer.swapChain.swapChainExtent.width() / 2,
+    /** Height of one eye's pass in pixels. Defaults to the swapchain's full height. */
     val eyeHeight: Int = renderer.swapChain.swapChainExtent.height(),
+    /**
+     * The headset to take per-eye view and projection matrices from, and to hand [packed] to. Null
+     * renders the same stereo pair from [stereoCamera] instead, which is the desktop-window path.
+     */
     var openXR: OpenXRHmdTarget? = null
 ) : afield.graphics.vulkan.Target, HasImageView {
 
-    // Internal stereo camera for non-XR rendering paths.
-    val stereoCamera = StereoCamera(Camera(renderer))
+    /** The camera the eye passes use when neither [poseSource] nor [openXR] supplies a head. */
+    val stereoCamera = StereoCamera(Camera(renderer).apply {
+        // The target resizes this projection per eye; window auto-sizing would overwrite it.
+        p.auto = {}
+    })
 
     // Per-eye offscreen passes.
     private val left = RenderToTexture(renderer) {
@@ -82,7 +89,11 @@ class SideBySideStereoTarget(
         clearColor = vec(0f, 0f, 0f, 1f)
     }
 
-    // Packed side-by-side output (left half, right half) suitable as OpenXR sideBySideSource.
+    /**
+     * The finished pair, `2 * eyeWidth` by [eyeHeight], left eye in the left half. This is what a
+     * desktop window samples and what [OpenXRHmdTarget.copySideBySideToEyes] copies halves out of;
+     * it carries both transfer usages so either path works.
+     */
     val packed = RenderToTexture(renderer) {
         width = eyeWidth * 2
         height = eyeHeight
@@ -94,9 +105,17 @@ class SideBySideStereoTarget(
         clearColor = vec(0f, 0f, 0f, 1f)
     }
 
+    /**
+     * The packed pair, so a [SideBySideStereoTarget] is itself usable anywhere a [HasImageView] is —
+     * a desktop window, a postprocess pass, an OpenXR side-by-side source.
+     */
     override val imageView = packed.imageView
 
-    // Active eye index during rendering (-1 when idle).
+    /**
+     * Which eye the modules are being drawn for right now: 0 left, 1 right, -1 between the two
+     * passes. Module code reads this to pick per-eye data, and it is the eye
+     * [currentEyeViewMatrix] and [currentEyeProjectionMatrix] answer for.
+     */
     var currentEyeIndex: Int = -1
         private set
 
@@ -109,8 +128,8 @@ class SideBySideStereoTarget(
     var poseSource: StereoPoseSource? = null
 
     /**
-     * Identity of the pose the most recent frame was rendered from, or -1 when [poseSource] is unset
-     * or has never latched.
+     * Identity of the pose the most recent frame was rendered from, or -1 before either the
+     * remote source or OpenXR has located a pose.
      *
      * This is the frame/pose association: whatever ships the rendered image onward can say which pose
      * it was drawn for, so a later stage can reproject it instead of assuming it is current.
@@ -118,7 +137,7 @@ class SideBySideStereoTarget(
     var renderedPoseFrameId: Long = -1L
         private set
 
-    /** The head's predicted display time for [renderedPoseFrameId], in *the head's* clock. */
+    /** Predicted display time for [renderedPoseFrameId], in seconds in the selected source's clock. */
     var renderedPoseDisplayTime: Double = 0.0
         private set
 
@@ -128,9 +147,7 @@ class SideBySideStereoTarget(
     private var mouseControllerDistance: Float = 1f
 
     init {
-        // Render eyes before the main swapchain if desired.
-        renderer.renderList.preTargets["sbs-left"] = left
-        renderer.renderList.preTargets["sbs-right"] = right
+        // This target renders its eyes once each, then packs them, before the main swapchain.
         renderer.renderList.preTargets["sbs-pack"] = this
 
         // If an OpenXR target is provided, wire the packed RTT as its side-by-side source.
@@ -322,6 +339,10 @@ class SideBySideStereoTarget(
             renderedPoseFrameId = source.latchedFrameId
             renderedPoseDisplayTime = source.latchedDisplayTime
         }
+        if (poseSource == null) {
+            renderedPoseFrameId = openXR?.locatedViewFrameId ?: -1L
+            renderedPoseDisplayTime = (openXR?.locatedViewDisplayTime ?: 0L) / 1_000_000_000.0
+        }
 
         // Render each eye into its own RTT.
         currentEyeIndex = 0
@@ -335,164 +356,37 @@ class SideBySideStereoTarget(
     }
 
     private fun copyEyesIntoPacked(command: CommandBuffer) {
-        MemoryStack.stackPush().use { stack ->
-            val dstRange = VkImageSubresourceRange.calloc(stack)
-                .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
-                .baseMipLevel(0)
-                .levelCount(1)
-                .baseArrayLayer(0)
-                .layerCount(1)
-
-            val dstView = packed.imageView
-            val dstImage = dstView.image
-            val dstUnderlying = dstView.underlyingImage
-
-            // Transition destination to TRANSFER_DST
-            if (dstUnderlying != null) {
-                image_layout_transition(
-                    command.vkCommandBuffer,
-                    dstUnderlying,
-                    VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
-                    VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-                    VK_ACCESS_2_SHADER_READ_BIT,
-                    VK_ACCESS_2_TRANSFER_WRITE_BIT,
-                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                    dstRange
-                )
-            } else {
-                image_layout_transition(
-                    command.vkCommandBuffer,
-                    dstImage,
-                    VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
-                    VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-                    VK_ACCESS_2_SHADER_READ_BIT,
-                    VK_ACCESS_2_TRANSFER_WRITE_BIT,
-                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                    dstRange
-                )
+        // Let each RTT track the barriers as well as its layout. In particular the packed
+        // image starts UNDEFINED, and descriptor preparation must see it initialized after copy.
+        packed.recordColorTransferDestination(command) { dstImage ->
+            fun copyEye(source: RenderToTexture, eyeIndex: Int) {
+                source.recordColorTransferSource(command) { srcImage ->
+                    recordStereoEyeCopy(command, srcImage, dstImage, eyeIndex, 0, eyeWidth, eyeHeight)
+                }
             }
-
-            fun copyEye(srcRTT: RenderToTexture, eyeIndex: Int) {
-                val srcView = srcRTT.imageViewArray[0].imageView
-                val srcImage = srcView.image
-                val srcUnderlying = srcView.underlyingImage
-
-                val srcRange = VkImageSubresourceRange.calloc(stack)
-                    .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
-                    .baseMipLevel(0)
-                    .levelCount(1)
-                    .baseArrayLayer(0)
-                    .layerCount(1)
-
-                // Source to TRANSFER_SRC
-                if (srcUnderlying != null)
-                    image_layout_transition(
-                        command.vkCommandBuffer,
-                        srcUnderlying,
-                        VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
-                        VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-                        VK_ACCESS_2_SHADER_READ_BIT,
-                        VK_ACCESS_2_TRANSFER_READ_BIT,
-                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                        srcRange
-                    )
-                else
-                    image_layout_transition(
-                        command.vkCommandBuffer,
-                        srcImage,
-                        VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
-                        VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-                        VK_ACCESS_2_SHADER_READ_BIT,
-                        VK_ACCESS_2_TRANSFER_READ_BIT,
-                        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                        srcRange
-                    )
-
-                val region = VkImageCopy.calloc(1, stack)
-                region[0].srcSubresource()
-                    .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
-                    .mipLevel(0)
-                    .baseArrayLayer(0)
-                    .layerCount(1)
-                region[0].dstSubresource()
-                    .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
-                    .mipLevel(0)
-                    .baseArrayLayer(0)
-                    .layerCount(1)
-                region[0].srcOffset().set(0, 0, 0)
-                region[0].dstOffset().set(eyeIndex * eyeWidth, 0, 0)
-                region[0].extent().set(eyeWidth, eyeHeight, 1)
-
-                org.lwjgl.vulkan.VK10.vkCmdCopyImage(
-                    command.vkCommandBuffer,
-                    srcImage,
-                    vkLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
-                    dstImage,
-                    vkLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
-                    region
-                )
-
-                // Restore source to SHADER_READ
-                if (srcUnderlying != null)
-                    image_layout_transition(
-                        command.vkCommandBuffer,
-                        srcUnderlying,
-                        VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-                        VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
-                        VK_ACCESS_2_TRANSFER_READ_BIT,
-                        VK_ACCESS_2_SHADER_READ_BIT,
-                        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                        srcRange
-                    )
-                else
-                    image_layout_transition(
-                        command.vkCommandBuffer,
-                        srcImage,
-                        VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-                        VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
-                        VK_ACCESS_2_TRANSFER_READ_BIT,
-                        VK_ACCESS_2_SHADER_READ_BIT,
-                        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                        srcRange
-                    )
-            }
-
             copyEye(left, 0)
             copyEye(right, 1)
-
-            // Restore destination to SHADER_READ
-            if (dstUnderlying != null) {
-                image_layout_transition(
-                    command.vkCommandBuffer,
-                    dstUnderlying,
-                    VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-                    VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
-                    VK_ACCESS_2_TRANSFER_WRITE_BIT,
-                    VK_ACCESS_2_SHADER_READ_BIT,
-                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                    dstRange
-                )
-            } else {
-                image_layout_transition(
-                    command.vkCommandBuffer,
-                    dstImage,
-                    VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-                    VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
-                    VK_ACCESS_2_TRANSFER_WRITE_BIT,
-                    VK_ACCESS_2_SHADER_READ_BIT,
-                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                    dstRange
-                )
-            }
         }
+    }
+
+}
+
+/** Copy one source layer into its eye's half; the RTT owners bracket this with layout barriers. */
+private fun recordStereoEyeCopy(
+    command: CommandBuffer, source: Long, destination: Long,
+    eyeIndex: Int, sourceLayer: Int, eyeWidth: Int, eyeHeight: Int
+) {
+    MemoryStack.stackPush().use { stack ->
+        val region = VkImageCopy.calloc(1, stack)
+        region[0].srcSubresource().aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
+            .mipLevel(0).baseArrayLayer(sourceLayer).layerCount(1)
+        region[0].dstSubresource().aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
+            .mipLevel(0).baseArrayLayer(0).layerCount(1)
+        region[0].srcOffset().set(0, 0, 0)
+        region[0].dstOffset().set(eyeIndex * eyeWidth, 0, 0)
+        region[0].extent().set(eyeWidth, eyeHeight, 1)
+        vkCmdCopyImage(command.vkCommandBuffer, source, vkLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
+            destination, vkLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL), region)
     }
 }
 
@@ -512,14 +406,32 @@ class SideBySideStereoTarget(
  * not reliable for Field's current path.
  */
 class MultiviewSideBySideStereoTarget(
+    /**
+     * The renderer whose device owns the layered pass. Its device must report `supportsMultiview`,
+     * and construction fails on macOS outright.
+     */
     val renderer: Renderer = fromContext(),
+    /** Width of one eye's layer in pixels. Defaults to half the swapchain's. */
     val eyeWidth: Int = renderer.swapChain.swapChainExtent.width() / 2,
+    /** Height of one eye's layer in pixels. Defaults to the swapchain's full height. */
     val eyeHeight: Int = renderer.swapChain.swapChainExtent.height(),
+    /**
+     * The headset to take per-eye matrices from, and to hand [packed] to. Null renders both eyes
+     * from [stereoCamera] instead.
+     */
     var openXR: OpenXRHmdTarget? = null
 ) : afield.graphics.vulkan.Target, HasImageView {
 
-    val stereoCamera = StereoCamera(Camera(renderer))
+    /** The camera both views are derived from when [openXR] is unset. */
+    val stereoCamera = StereoCamera(Camera(renderer).apply {
+        // The target resizes this projection per eye; window auto-sizing would overwrite it.
+        p.auto = {}
+    })
 
+    /**
+     * The two-layer pass both eyes are drawn into at once, with `viewMask = 0b11`. Shaders select
+     * their eye from `gl_ViewIndex` rather than from a per-pass index.
+     */
     val layered = RenderToTexture(renderer) {
         width = eyeWidth
         height = eyeHeight
@@ -536,6 +448,11 @@ class MultiviewSideBySideStereoTarget(
         clearColor = vec(0f, 0f, 0f, 1f)
     }
 
+    /**
+     * [layered]'s two layers copied side by side, `2 * eyeWidth` by [eyeHeight], layer 0 in the left
+     * half. The copy is what lets the existing OpenXR side-by-side path consume a multiview render
+     * unchanged.
+     */
     val packed = RenderToTexture(renderer) {
         width = eyeWidth * 2
         height = eyeHeight
@@ -547,11 +464,21 @@ class MultiviewSideBySideStereoTarget(
         clearColor = vec(0f, 0f, 0f, 1f)
     }
 
+    /**
+     * The packed pair, so a [MultiviewSideBySideStereoTarget] is itself usable anywhere a
+     * [HasImageView] is: the layers are already copied into it by then.
+     */
     override val imageView = packed.imageView
 
+    /** The two-layer pass itself, for code that would rather sample the layers than the packed copy. */
     val layeredImageView: HasImageView
         get() = layered
 
+    /**
+     * Always -1 here. A multiview pass draws both eyes in one go, so there is no "current eye" to
+     * report; the field exists to mirror [SideBySideStereoTarget], and the current-eye matrix
+     * accessors consequently answer for the left eye.
+     */
     var currentEyeIndex: Int = -1
         private set
 
@@ -732,161 +659,15 @@ class MultiviewSideBySideStereoTarget(
     }
 
     private fun copyLayersIntoPacked(command: CommandBuffer) {
-        MemoryStack.stackPush().use { stack ->
-            val dstRange = VkImageSubresourceRange.calloc(stack)
-                .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
-                .baseMipLevel(0)
-                .levelCount(1)
-                .baseArrayLayer(0)
-                .layerCount(1)
-
-            val dstView = packed.imageView
-            val dstImage = dstView.image
-            val dstUnderlying = dstView.underlyingImage
-
-            if (dstUnderlying != null) {
-                image_layout_transition(
-                    command.vkCommandBuffer,
-                    dstUnderlying,
-                    VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
-                    VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-                    VK_ACCESS_2_SHADER_READ_BIT,
-                    VK_ACCESS_2_TRANSFER_WRITE_BIT,
-                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                    dstRange
-                )
-            } else {
-                image_layout_transition(
-                    command.vkCommandBuffer,
-                    dstImage,
-                    VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
-                    VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-                    VK_ACCESS_2_SHADER_READ_BIT,
-                    VK_ACCESS_2_TRANSFER_WRITE_BIT,
-                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                    dstRange
-                )
-            }
-
-            fun copyLayer(eyeIndex: Int) {
-                val srcView = layered.imageViewArray[0].imageView
-                val srcImage = srcView.image
-                val srcUnderlying = srcView.underlyingImage
-
-                val srcRange = VkImageSubresourceRange.calloc(stack)
-                    .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
-                    .baseMipLevel(0)
-                    .levelCount(1)
-                    .baseArrayLayer(eyeIndex)
-                    .layerCount(1)
-
-                if (srcUnderlying != null)
-                    image_layout_transition(
-                        command.vkCommandBuffer,
-                        srcUnderlying,
-                        VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
-                        VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-                        VK_ACCESS_2_SHADER_READ_BIT,
-                        VK_ACCESS_2_TRANSFER_READ_BIT,
-                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                        srcRange
-                    )
-                else
-                    image_layout_transition(
-                        command.vkCommandBuffer,
-                        srcImage,
-                        VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
-                        VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-                        VK_ACCESS_2_SHADER_READ_BIT,
-                        VK_ACCESS_2_TRANSFER_READ_BIT,
-                        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                        srcRange
-                    )
-
-                val region = VkImageCopy.calloc(1, stack)
-                region[0].srcSubresource()
-                    .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
-                    .mipLevel(0)
-                    .baseArrayLayer(eyeIndex)
-                    .layerCount(1)
-                region[0].dstSubresource()
-                    .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
-                    .mipLevel(0)
-                    .baseArrayLayer(0)
-                    .layerCount(1)
-                region[0].srcOffset().set(0, 0, 0)
-                region[0].dstOffset().set(eyeIndex * eyeWidth, 0, 0)
-                region[0].extent().set(eyeWidth, eyeHeight, 1)
-
-                org.lwjgl.vulkan.VK10.vkCmdCopyImage(
-                    command.vkCommandBuffer,
-                    srcImage,
-                    vkLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
-                    dstImage,
-                    vkLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
-                    region
-                )
-
-                if (srcUnderlying != null)
-                    image_layout_transition(
-                        command.vkCommandBuffer,
-                        srcUnderlying,
-                        VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-                        VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
-                        VK_ACCESS_2_TRANSFER_READ_BIT,
-                        VK_ACCESS_2_SHADER_READ_BIT,
-                        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                        srcRange
-                    )
-                else
-                    image_layout_transition(
-                        command.vkCommandBuffer,
-                        srcImage,
-                        VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-                        VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
-                        VK_ACCESS_2_TRANSFER_READ_BIT,
-                        VK_ACCESS_2_SHADER_READ_BIT,
-                        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                        srcRange
-                    )
-            }
-
-            copyLayer(0)
-            copyLayer(1)
-
-            if (dstUnderlying != null) {
-                image_layout_transition(
-                    command.vkCommandBuffer,
-                    dstUnderlying,
-                    VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-                    VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
-                    VK_ACCESS_2_TRANSFER_WRITE_BIT,
-                    VK_ACCESS_2_SHADER_READ_BIT,
-                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                    dstRange
-                )
-            } else {
-                image_layout_transition(
-                    command.vkCommandBuffer,
-                    dstImage,
-                    VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-                    VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
-                    VK_ACCESS_2_TRANSFER_WRITE_BIT,
-                    VK_ACCESS_2_SHADER_READ_BIT,
-                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                    dstRange
-                )
+        packed.recordColorTransferDestination(command) { dstImage ->
+            layered.recordColorTransferSource(command) { srcImage ->
+                for (eyeIndex in 0..1) {
+                    recordStereoEyeCopy(command, srcImage, dstImage, eyeIndex, eyeIndex, eyeWidth, eyeHeight)
+                }
             }
         }
     }
+
 }
 
 /**
@@ -894,12 +675,23 @@ class MultiviewSideBySideStereoTarget(
  * and supports asymmetric frustum offsets through the base projection.
  */
 class StereoCamera(val base: Camera = Camera()) {
+    /**
+     * Interpupillary distance in world units, split half to each side of [base] along its right
+     * vector. The default 0.064 is the usual adult average in metres.
+     */
     var ipd: Float = 0.064f
     /**
      * Distance multiplier for the stereo convergence point, measured from the
      * base camera toward its target along the forward vector.
      */
     var convergenceDistance: Float = 1f
+
+    /**
+     * Shifts each eye's principal point instead of toeing its view in: the left eye gets
+     * `-asymmetricFrustumOffset` and the right `+asymmetricFrustumOffset` as the base projection's
+     * `ox`, so the units are half-widths of what that projection frames at its match depth. Zero
+     * leaves both frusta centred, and convergence is then [convergenceDistance]'s business alone.
+     */
     var asymmetricFrustumOffset: Double = 0.0
 
     data class EyePose(val eye: Camera)

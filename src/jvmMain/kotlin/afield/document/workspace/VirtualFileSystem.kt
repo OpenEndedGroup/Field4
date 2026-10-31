@@ -27,29 +27,56 @@ import java.nio.file.Paths
 
 /** One addressable file: its `afield:` [uri], a display [fileName] and a [language] label. */
 data class VirtualFileRef(
+    /** The address to read this file back by, which for [AfieldVirtualFileSystem] is `afield://<document>/<uid>/<property>`. */
     val uri: String,
+    /** A name to show. [AfieldVirtualFileSystem] puts the whole URI here, since a box property has no filename. */
     val fileName: String,
+    /**
+     * What the text is written in, as a label for a reader rather than a parser: `Kotlin`, or a stage such as
+     * `GLSL (fragment)` or `Slang (compute)`. Falls back to the property name for a property with no label.
+     */
     val language: String
 )
 
+/** One virtual file, read whole. */
 data class VirtualTextFile(
+    /** Where this text came from, carried along so a consumer can attribute or re-read it. */
     val ref: VirtualFileRef,
+    /** The property's text, exactly as the document stores it. */
     val content: String
 )
 
+/** A source of addressable read-only text files, chosen by the scheme of the URI being asked about. */
 interface VirtualFileSystem {
+    /** The URI scheme this file system answers for, matched without regard to case. */
     val scheme: String
+
+    /** Every file under [root], which is a scheme-specific place to look rather than a single file. */
     fun list(root: URI): List<VirtualFileRef>
+
+    /** The text at [uri], or null when it names nothing this file system can produce. */
     fun read(uri: URI): VirtualTextFile?
 }
 
+/**
+ * The `afield:` file system, which reads box text straight out of saved documents on disk without a running
+ * Field. The two halves take their scope from different places: `list` reads whichever workspace directory
+ * the root URI names, while `read` resolves a document name against the roots this was constructed with.
+ */
 class AfieldVirtualFileSystem(
     private val roots: List<Path>,
     private val properties: Set<String> = DEFAULT_PROPERTIES,
     private val languageByProperty: Map<String, String> = DEFAULT_LANGUAGE_BY_PROPERTY
 ) : VirtualFileSystem {
+    /** `afield`, the scheme of every URI this reads and every one it hands back. */
     override val scheme: String = "afield"
 
+    /**
+     * Every exposed text property of every saved document directly under [root], whose path (or host) names
+     * a workspace directory. Reads `metadata.edn`, or `metadata.json` when there is no EDN, and leaves out
+     * tombstoned boxes. A root that is not a directory lists nothing rather than failing, and the listing is
+     * not limited to the constructor's roots, which govern [read] alone.
+     */
     override fun list(root: URI): List<VirtualFileRef> {
         val rootPath = rootPath(root) ?: return emptyList()
         val rootDir = rootPath.toFile()
@@ -79,6 +106,13 @@ class AfieldVirtualFileSystem(
         return refs
     }
 
+    /**
+     * The text of one box property, found by looking for the document name under each of the constructor's
+     * roots in turn and taking the first that holds a document. Sidecar-backed properties are resolved to
+     * their contents. Null throughout for anything it cannot produce: another scheme, too few path segments,
+     * a property outside the exposed set, an unknown document or box, a tombstoned box, and a property whose
+     * stored value is not text.
+     */
     override fun read(uri: URI): VirtualTextFile? {
         val ref = parseFileRef(uri) ?: return null
         if (!properties.contains(ref.property)) return null
@@ -229,6 +263,10 @@ class AfieldVirtualFileSystem(
     }
 }
 
+/**
+ * Lists every root against whichever of [fileSystems] claims its scheme, concatenated in the order the roots
+ * are given. A root with no scheme, or one no file system claims, is skipped without comment.
+ */
 fun listVirtualFileRefs(roots: List<URI>, fileSystems: List<VirtualFileSystem>): List<VirtualFileRef> {
     val out = mutableListOf<VirtualFileRef>()
     roots.forEach { root ->
@@ -239,6 +277,11 @@ fun listVirtualFileRefs(roots: List<URI>, fileSystems: List<VirtualFileSystem>):
     return out
 }
 
+/**
+ * Reads each URI through whichever of [fileSystems] claims its scheme, keeping the ones that produced text.
+ * A URI that resolves to nothing is dropped, so the result may be shorter than [uris] and a caller that
+ * needs to know which failed has to compare them.
+ */
 fun resolveVirtualFiles(uris: List<URI>, fileSystems: List<VirtualFileSystem>): List<VirtualTextFile> {
     val out = mutableListOf<VirtualTextFile>()
     uris.forEach { uri ->
@@ -249,6 +292,11 @@ fun resolveVirtualFiles(uris: List<URI>, fileSystems: List<VirtualFileSystem>): 
     return out
 }
 
+/**
+ * Reads everything the [roots] list and everything [uris] names, as one set of files with duplicate URIs
+ * collapsed. The explicit URIs come first, so an address given both ways is read once. This is the way in
+ * for a caller that wants document text without caring which file system produced it.
+ */
 fun collectVirtualFiles(
     roots: List<URI>,
     uris: List<URI>,

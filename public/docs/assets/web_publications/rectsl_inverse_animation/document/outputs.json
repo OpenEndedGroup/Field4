@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-29T22:44:18.013Z",
+  "documentName": "rectsl_inverse_animation",
+  "outputs": [
+    {
+      "uid": "rectsl_inverse_fit",
+      "channel": "figure",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 912,
+      "height": 748,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "rectsl_free_param_word",
+      "channel": "before / after",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 912,
+      "height": 506,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "rectsl_free_param_word",
+      "channel": "fit",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 384,
+      "height": 40,
+      "path": "outputs/2.html"
+    }
+  ]
+}

@@ -1,5 +1,10 @@
 # Why an embedded viewer's output panel opens at 480 x 174
 
+**Fixed.** Since 2026-09-18 (`5c1954dde`) `adoptDeclaredSizeForFixedPanel` in `outputareas2.js` gives a
+`fixed` panel its iframe's declared size, within the room the box gives it; `run_ui_regressions.py --id
+viewer-panel-sizing` pins it, and `confluence_grid` measured 1460 x 872 (iframe 1452 x 840) on
+2026-10-27. What follows is the investigation that led there.
+
 An iframe-bearing output panel — a Three.js viewer from `Box.three` or `Box.threeLines`, and any
 other output that goes through the iframe view — opens at **480 x 174** and stays there, no matter
 what size the iframe asks for. Dragging it works and the size persists; nothing else does.

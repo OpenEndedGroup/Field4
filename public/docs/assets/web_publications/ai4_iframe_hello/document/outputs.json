@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-29T22:28:56.260Z",
+  "documentName": "ai4_iframe_hello",
+  "outputs": [
+    {
+      "uid": "ai4_iframe_hello",
+      "channel": "page",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 648,
+      "height": 388,
+      "path": "outputs/0.html"
+    }
+  ]
+}

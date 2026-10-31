@@ -304,7 +304,7 @@ private fun updateOutputControlVisibility(output: dynamic) {
     } else {
         ""
     }
-    domNodeControl.innerHTML = "<div class='closeBox hoverable' onclick='removeArea(\"$id\")'>&#215;</div>$toggle"
+    domNodeControl.innerHTML = "<button type='button' class='closeBox hoverable' title='Close' aria-label='Close' onclick='removeArea(\"$id\")'>×</button>$toggle"
 }
 
 private fun recomputeOutputHeight(editor: dynamic, output: dynamic) {
@@ -1645,7 +1645,8 @@ fun addOutput(
     if (!richHtml && extraClass != "error") {
         belowLine = normalizeInlineOutputTargetLine(editor, belowLine)
     }
-    val canInline = !textClean.contains("<br>") && extraClass != "error" && !richHtml
+    // A warning takes its own zone, as an error does: an inline tick would be replaced by the next print on its line.
+    val canInline = !textClean.contains("<br>") && extraClass != "error" && extraClass != "warning" && !richHtml
 
     val edDecor = editorDecorationsFor(editor)
     var repeatedInlineOutput = false

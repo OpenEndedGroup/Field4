@@ -1,8 +1,7 @@
 # Vectorizing line drawings: polyvector fields
 
-A scanned sketch is pixels. `Polyvector.vectorize` turns it into curves: one smooth curve down the
-middle of each stroke, continuing straight through places where strokes cross and meeting at
-T-junctions. The method is Bessmeltsev and Solomon's *Vectorization of Line Drawings via Polyvector
+`Polyvector.vectorize` turns a scanned sketch into curves, tracing the middle of each stroke and
+trying to follow it through crossings and T-junctions. The method is Bessmeltsev and Solomon's *Vectorization of Line Drawings via Polyvector
 Fields* (ACM Transactions on Graphics, 2019), and Field runs the authors' own implementation.
 
 The idea that makes it work at crossings is the **polyvector field**. At every inked pixel it holds two
@@ -89,7 +88,7 @@ curve, in pixel coordinates.
 
 ## From pixels to geometry
 
-What comes out is not a cleaned-up image but curves: each one an ordinary `FLine` that you can
+What comes out is a set of curves, each an ordinary `FLine` that you can
 measure, offset, resample, warp or extrude like any other Field geometry. This example vectorizes the
 same sketch, drops any fragment shorter than 12 pixels, and then gives the curves three treatments
 that would be awkward to do to the pixels: parallel outlines, a comb of normals, and a wave.
@@ -237,11 +236,10 @@ reuses it. Everything is plain Kotlin data.
 readily short side branches are pruned, which small holes are closed over, and the final smoothing.
 The defaults are the authors'.
 
-## What it does well, and what it does not
+## Which drawings it suits
 
 The method was designed for, and tested on, scanned pencil and ink drawings with strokes a few
-pixels wide. On those it reproduces the authors' published results exactly. Outside that range it
-has limits worth knowing:
+pixels wide. On those it reproduces the authors' published results exactly. Outside that range:
 
 - **Strokes much wider than about four pixels** can lose the stem of a T-junction. Scaling the image
   down does not reliably fix this.
@@ -251,7 +249,7 @@ has limits worth knowing:
 - **It is not fast.** A drawing of a few hundred pixels takes seconds to a minute, and only one
   vectorization runs at a time in a Field process.
 
-??? aside "How this is checked"
+??? aside "Agents: how this is checked"
     `tools/validate_polyvector.py` builds the authors' command-line program from the same pinned
     commit and runs it and Field's library on the authors' six sample drawings: the curves are
     identical point for point. Getting there turned up two places where the first port differed: the

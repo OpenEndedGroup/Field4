@@ -3,6 +3,7 @@
 package afield.app.client
 
 import afield.app.protocol.GoJobs
+import afield.app.protocol.StopPending
 
 import afield.ai.conversation.images
 import afield.app.canvas.animate
@@ -1358,6 +1359,10 @@ private fun collectOutputScreenshotRects(box: HTMLElement): List<Rect> {
         return content.querySelector(".field-control, input, textarea, select, button") != null
     }
 
+    // A `.h` value view (`ValueVisualizer`, `.value-viz`) is text with SVG thumbnails inside it, so
+    // cropping to its SVGs, which suits a plot, cuts away the tree, captions and statistics.
+    fun holdsValueView(element: Element) = element.querySelector(".value-viz") != null
+
     fun disclosureScreenshotRect(disclosure: HTMLElement): Rect? {
         val disclosureRect = domRectToRect(disclosure.getBoundingClientRect())
         if (disclosureRect.w <= 2.0 || disclosureRect.h <= 2.0) return null
@@ -1367,7 +1372,7 @@ private fun collectOutputScreenshotRects(box: HTMLElement): List<Rect> {
             return if (disclosureTitleRect == null) bodyRect else unionRects(listOf(disclosureTitleRect, bodyRect))
                 ?: bodyRect
         }
-        val svgRects = disclosure.querySelectorAll("svg").asList()
+        val svgRects = if (holdsValueView(disclosure)) emptyList() else disclosure.querySelectorAll("svg").asList()
             .mapNotNull { node ->
                 val svg = node as? SVGElement ?: return@mapNotNull null
                 if (!isOverlayVisible(svg as Element)) return@mapNotNull null
@@ -1402,7 +1407,7 @@ private fun collectOutputScreenshotRects(box: HTMLElement): List<Rect> {
         ?.let(::disclosureScreenshotRect)
         ?.let { return listOf(it) }
 
-    val svgRects = outputArea.querySelectorAll("svg").asList()
+    val svgRects = if (holdsValueView(outputArea)) emptyList() else outputArea.querySelectorAll("svg").asList()
         .mapNotNull { node ->
             val svg = node as? SVGElement ?: return@mapNotNull null
             if (!isOverlayVisible(svg as Element)) return@mapNotNull null
@@ -1702,6 +1707,20 @@ private fun declaresIframeHeight(frame: HTMLElement): Boolean {
     return dataAttributePixelsOrZero(frame, "data-afield-intrinsic-height") > 0.0
 }
 
+/**
+ * The pixel width an iframe that opted out of self-measurement (`data-afield-autosize="off"`) states
+ * inline, or 0. The live panel adopts that width (`adoptDeclaredSizeForFixedPanel`), but the capture
+ * measured the iframe's rect, which `width:100% !important` makes the panel's pre-capture width, so a
+ * sheet's figure came out a column and a half wide while the panel in Field showed all four.
+ */
+private fun declaredFixedIframeWidth(element: HTMLElement): Double {
+    if (element.tagName.uppercase() != "IFRAME") return 0.0
+    if (element.getAttribute("data-afield-autosize")?.trim()?.lowercase() != "off") return 0.0
+    val inline = element.style.width.trim().lowercase()
+    if (!inline.endsWith("px")) return 0.0
+    return inline.removeSuffix("px").toDoubleOrNull()?.coerceAtLeast(0.0) ?: 0.0
+}
+
 private fun fitOutputDisclosuresForScreenshot(outputArea: HTMLElement) {
     outputArea.style.maxHeight = "none"
     val maxDisclosureHeight = max(680.0, min(1400.0, window.innerHeight.toDouble() * 0.82))
@@ -1745,11 +1764,30 @@ private fun fitOutputDisclosuresForScreenshot(outputArea: HTMLElement) {
                 content.querySelector("svg") != null -> 260.0
                 else -> 120.0
             }
-            val targetHeight = max(minimumHeight, naturalHeight + 36.0)
+            // Iframes that state a pixel height (`terminal`, `keyframeBrowser`) are the size they asked
+            // for in the live panel. The floor and slack below would stretch them, since a panel's
+            // iframe is `height:100%`, and the figure would show a panel nobody sees.
+            val declaredIframeHeight = declaredIframeHeightOrNull(content)
+            val targetHeight = if (declaredIframeHeight != null) {
+                val style = window.getComputedStyle(content)
+                declaredIframeHeight + parsePixelsOrZero(style.paddingTop) + parsePixelsOrZero(style.paddingBottom)
+            } else max(minimumHeight, naturalHeight + 36.0)
                 .coerceAtMost(maxDisclosureHeight)
             content.style.height = "${targetHeight}px"
         }
 }
+
+/** The tallest declared pixel height, when every element in [content] is an iframe that declares one. */
+private fun declaredIframeHeightOrNull(content: HTMLElement): Double? {
+    val children = content.children.asList().mapNotNull { it as? HTMLElement }
+    if (children.isEmpty() || children.any { it.tagName.uppercase() != "IFRAME" }) return null
+    val heights = children.map { child ->
+        child.style.height.trim().takeIf { it.endsWith("px") }?.removeSuffix("px")?.toDoubleOrNull() ?: return null
+    }
+    return heights.maxOrNull()?.takeIf { it > 0.0 }
+}
+
+private fun parsePixelsOrZero(value: String): Double = value.trim().removeSuffix("px").toDoubleOrNull() ?: 0.0
 
 // A `data-afield-autosize="off"` frame that declares no width of its own has no width to report and
 // none to contribute here. `outputareas2.js` (`fillWidthForDisclosure`) deliberately gives such a
@@ -1803,8 +1841,10 @@ private fun fitBoxWidthToOutputsForScreenshot(box: HTMLElement, outputArea: HTML
                     if (containsFillWidthIframe(element)) return@mapNotNull null
                     val edgeW = element.getBoundingClientRect().right - contentRect.left
                     val html = element as? HTMLElement
-                    val intrinsicWidth =
-                        html?.let { dataAttributePixelsOrZero(it, "data-afield-intrinsic-width") } ?: 0.0
+                    val intrinsicWidth = max(
+                        html?.let { dataAttributePixelsOrZero(it, "data-afield-intrinsic-width") } ?: 0.0,
+                        html?.let(::declaredFixedIframeWidth) ?: 0.0
+                    )
                     max(
                         edgeW,
                         max(
@@ -2488,6 +2528,12 @@ private fun registerCanvasZoomActions() {
     reset.run = { resetCanvasZoom() }
     val builtin = allActions.builtin ?: js("[]")
     builtin.push(reset)
+    val interrupt: dynamic = js("({})")
+    interrupt.id = "interrupt-box"
+    interrupt.label = "Interrupt Running Box"
+    interrupt.detail = "Throw out of box code that never returns (a runaway loop or recursion), so Field runs again"
+    interrupt.run = { send("interrupt-box", js("({})")) }
+    builtin.push(interrupt)
     val frame: dynamic = js("({})")
     frame.id = "frame-selected"
     frame.label = "Frame Selected"
@@ -3025,6 +3071,11 @@ private fun prepareBoxScreenshot(req: BoxScreenshotRequest): BoxScreenshotRespon
         ?: return BoxScreenshotResponse(uid = req.uid, success = false, message = "box ${req.uid} not found")
 
     if (!req.includeNotifications) hideNotificationsForScreenshot()
+    if (req.openDetails) {
+        // Before any measuring, so the clip and the readiness checks see the opened layout.
+        val details = box.querySelectorAll(".outputArea details")
+        for (i in 0 until details.length) details.item(i).asDynamic().open = true
+    }
     if (req.hideMonaco) {
         if (!req.preserveSelection) clearSelectionForScreenshot()
         runCatching { hideMonaco() }
@@ -3215,7 +3266,8 @@ private fun rawToBoxScreenshotRequest(raw: dynamic) = BoxScreenshotRequest(
     hideMonaco = dynamicBoolean(raw?.hideMonaco, true),
     openOutputs = dynamicBoolean(raw?.openOutputs, false),
     preserveSelection = dynamicBoolean(raw?.preserveSelection, false),
-    includeNotifications = dynamicBoolean(raw?.includeNotifications, false)
+    includeNotifications = dynamicBoolean(raw?.includeNotifications, false),
+    openDetails = dynamicBoolean(raw?.openDetails, false)
 )
 
 private fun rawToWindowScreenshotRequest(raw: dynamic) = WindowScreenshotRequest(
@@ -6114,6 +6166,12 @@ suspend fun main() {
 
         Handled.yes
     }
+    handlers.put("stop-pending") { message, _ ->
+        val stop = Json.decodeFromJsonElement<StopPending>(message.payload!!)
+        val setStopPending = window.asDynamic().setStopPending
+        if (setStopPending != null) setStopPending(stop.uid, stop.pending)
+        Handled.yes
+    }
     handlers.put("go-jobs") { message, _ ->
         val goJobs = Json.decodeFromJsonElement<GoJobs>(message.payload!!)
         setGoJobsBadge(goJobs.uid, goJobs.count, goJobs.strands)
@@ -6861,22 +6919,23 @@ suspend fun main() {
 
         if (note.persistent) {
             val closeBtn = document.createElement("button") as HTMLElement
-            closeBtn.classList.add("close-btn")
-            closeBtn.innerHTML = "×"
+            // The shared FieldPanel close (fieldPanelTokens.css); only its place is set here.
+            closeBtn.classList.add("close-btn", "field-panel-icon")
+            closeBtn.textContent = "×"
+            closeBtn.setAttribute("type", "button")
+            closeBtn.title = "Close"
+            closeBtn.setAttribute("aria-label", "Close")
             closeBtn.style.apply {
                 position = "absolute"
                 top = "8px"
                 right = "8px"
-                background = "rgba(255, 255, 255, 0.2)"
-                border = "none"
-                borderRadius = "4px"
-                color = "#fff"
-                fontSize = "20px"
-                width = "24px"
-                height = "24px"
-                cursor = "pointer"
-                lineHeight = "20px"
-                textAlign = "center"
+            }
+            overlay.onkeydown = { event ->
+                if (event.key == "Escape" && overlay.style.display != "none") {
+                    event.stopPropagation()
+                    overlay.style.display = "none"
+                    clearSlideAnnotations()
+                }
             }
             closeBtn.onclick = {
                 overlay.style.display = "none"

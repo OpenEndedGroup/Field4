@@ -1,4 +1,4 @@
-@file:afield.runtime.completion.CompletionCategory("IO")
+@file:afield.runtime.completion.CompletionCategory("Data")
 
 package afield.io.mocap
 

@@ -1,4 +1,21 @@
 @file:Suppress("unused")
+/**
+ * The evidence run behind Field's CPU glTF skinning: `./gradlew --no-daemon runSkinningEvidence`.
+ *
+ * It writes the rigged fixture out as glTF, loads it back through the real Assimp path, and prints
+ * what came back with the population each number was measured over: the skeleton and its clips, the
+ * influence weights after the four-wide cap, whether the bind pose is bit-identical to the
+ * unskinned mesh, and the displacement through the bend. A second, harder fixture covers the cases
+ * that are easy to get wrong: a translated node that glTF says to ignore for a skinned mesh, a
+ * shear whose correct vertex normal is known in closed form, and a vertex with six influences for
+ * the cap to discard from. The run ends with a throughput figure in nanoseconds per vertex, with
+ * and without exact inverse-transpose normals.
+ *
+ * Frames go to `dev_docs/agents/evidence/skinning/` for a person to look at, named by
+ * [SkinningEvidence.frames] so the sequence reads in sorted order, and the numbers are the ones
+ * `dev_docs/SKINNED_CHARACTERS.md` quotes. [GpuSkinningEvidence] is the same exercise for the
+ * compute-shader path.
+ */
 
 package afield.graphics.scene
 

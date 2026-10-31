@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-29T22:28:25.540Z",
+  "documentName": "point_matching",
+  "outputs": [
+    {
+      "uid": "match_hello",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "square_to_heart",
+      "channel": "morph",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 912,
+      "height": 448,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "million_pixels",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 912,
+      "height": 908,
+      "path": "outputs/2.html"
+    }
+  ]
+}

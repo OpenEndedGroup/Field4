@@ -1,5 +1,5 @@
-import afield.graphics.vulkan.Renderer
 import afield.graphics.vulkan.util.Window
+import afield.graphics.vulkan.Renderer
 var Box.window by Inheritance<Window>() /*from:path_trace_renderer*/ /**/
 val Once.window by Onceing<Window>() /*from:path_trace_renderer*/ /**/
 val Why.window by Whying() /*from:path_trace_renderer*/ /**/

@@ -1,0 +1,89 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-29T22:42:29.192Z",
+  "documentName": "teaching_a_pen",
+  "outputs": [
+    {
+      "uid": "tp_corpora",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "tp_hands",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "tp_rounder",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "tp_switch",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "tp_yours",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/4.html"
+    },
+    {
+      "uid": "tp_taste",
+      "channel": "taste",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 536,
+      "height": 100,
+      "path": "outputs/5.html"
+    },
+    {
+      "uid": "tp_pens",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/6.html"
+    }
+  ]
+}

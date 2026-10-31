@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. kaleidoscope window + renderer
@@ -41,7 +41,7 @@ start(renderer::run)
 <!-- field-box id="youtube_kaleidoscope_shards" index="1" -->
 
 ```edn [field-box id="youtube_kaleidoscope_shards" role="properties"]
-{"id" "youtube_kaleidoscope_shards" "index" 1 "name" "YouTube — 224 Vulkan shards" "parents" ["root" "youtube_kaleidoscope_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "youtube_kaleidoscope_renderer"} "name" "YouTube — 224 Vulkan shards" "_tombstone" false "frame" #afield/rect [430.0 40.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "youtube_kaleidoscope_shards_code_.kt" "lines" 113 "characters" 4089 "sha256" "9daffa57e27565815cbd521262a396c4d666eb56d8e437e196a7b4b06baca997"}]}
+{"id" "youtube_kaleidoscope_shards" "index" 1 "name" "YouTube — 224 Vulkan shards" "parents" ["root" "youtube_kaleidoscope_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "youtube_kaleidoscope_renderer"} "name" "YouTube — 224 Vulkan shards" "_tombstone" false "frame" #afield/rect [430.0 40.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "youtube_kaleidoscope_shards_code_.kt" "lines" 113 "characters" 4189 "sha256" "3471bcb95e54c850e248927f85d287c5507400cad6e17e9ba0e4ffa3616df9d5"}]}
 ```
 
 ```kotlin [field-property box="youtube_kaleidoscope_shards" name="code" path="youtube_kaleidoscope_shards_code_.kt"]
@@ -106,31 +106,31 @@ loop {
         browser
             .evaluate(
                 """
-            (async () => {
-                const buttons = Array.from(document.querySelectorAll('button'))
-                const consent = buttons.find(button =>
-                    /^(accept all|i agree)$/i.test((button.innerText || button.textContent || '').trim()))
-                if (consent) {
-                    consent.click()
-                    return { state: 'consent-clicked', label: consent.innerText }
-                }
-                const video = document.querySelector('video')
-                if (!video) return { state: 'waiting-for-video', title: document.title }
-                video.muted = false
-                try {
-                    await video.play()
-                } catch (error) {
-                    return { state: 'play-rejected', reason: String(error), readyState: video.readyState }
-                }
-                await new Promise(resolve => setTimeout(resolve, 350))
-                return {
-                    state: video.paused ? 'paused' : 'playing',
-                    currentTime: video.currentTime,
-                    readyState: video.readyState,
-                    title: document.title
-                }
-            })()
-            """
+                (async () => {
+                    const buttons = Array.from(document.querySelectorAll('button'))
+                    const consent = buttons.find(button =>
+                        /^(accept all|i agree)$/i.test((button.innerText || button.textContent || '').trim()))
+                    if (consent) {
+                        consent.click()
+                        return { state: 'consent-clicked', label: consent.innerText }
+                    }
+                    const video = document.querySelector('video')
+                    if (!video) return { state: 'waiting-for-video', title: document.title }
+                    video.muted = false
+                    try {
+                        await video.play()
+                    } catch (error) {
+                        return { state: 'play-rejected', reason: String(error), readyState: video.readyState }
+                    }
+                    await new Promise(resolve => setTimeout(resolve, 350))
+                    return {
+                        state: video.paused ? 'paused' : 'playing',
+                        currentTime: video.currentTime,
+                        readyState: video.readyState,
+                        title: document.title
+                    }
+                })()
+                """
                     .trimIndent(),
                 userGesture = true,
                 timeoutMillis = 15_000,

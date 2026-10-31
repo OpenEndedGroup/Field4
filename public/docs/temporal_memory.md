@@ -5,8 +5,8 @@ envelope of a phrase. Then ask Field to keep going: continue it in the same styl
 as you like, while you take over one channel and give it back. This page covers two ways of
 doing that, with no training step:
 
-- **A Variable Markov Oracle** (Wang and Dubnov) remembers the recording itself and recombines it. Every
-  sample it plays comes from somewhere in what you gave it, and it can say where.
+- **A Variable Markov Oracle** (Wang and Dubnov) remembers the recording and recombines its
+  passages. It records where they came from and applies a fading correction at joins.
 - **Timestral**, Mistral's pretrained forecasting model, has never seen your recording and does
   not need to. It reads the recent history and predicts what comes next, with an uncertainty
   band. It runs in an optional Python worker.
@@ -150,9 +150,8 @@ Three measures describe a performance without plotting it:
 
 - `coverage(memory length)` is how much of the memory got used.
 - `outputRepetition()` is how much the output repeats *itself*: the share of two-second stretches
-  that closely match an earlier stretch. Use it rather than `reuse()`, which only counts memory positions.
-  Two copies of the same gesture in different places in memory are different positions but the
-  same output.
+  that closely match an earlier stretch. Two copies of the same gesture from different places in
+  memory count here.
 - `joinRoughness(memory)` is how sharp the joins are, compared with the recording's own motion (1
   is as smooth as the recording on average).
 
@@ -364,13 +363,14 @@ frames {
 }
 ```
 
-??? aside "Why the dance needed bridges, a runway and fresh starts"
-    The first version of this example froze. With 114 channels the oracle's suffix links
-    almost never cross from one take to another, so three of the six takes were never entered. The
-    takes also end alike, with the dancer coming to rest, so at the end of a take the best matches
-    were the ends of other takes: a loop around the last seconds of each. Three changes fixed it. Bridges give a
-    way across. Candidates need a phrase of runway before their take ends. A take ends by beginning
-    another, least recently played first. It is all in the lab notebook of the starting point.
+??? aside "Why the dance needs bridges, a runway and fresh starts"
+    With 114 channels the oracle's suffix links almost never cross from one take to another, so
+    without `bridges` half the takes would never be entered. The takes also end alike, with the
+    dancer coming to rest, so the best match for the end of one take is the end of another; without
+    the runway rule, which rejects a candidate that has less than a phrase left before its take
+    ends, the improviser would loop around those last seconds. A take that does end begins
+    another, the one played least recently. The measurements are in the starting point's lab
+    notebook.
 
 ## Taking over a channel
 
@@ -683,7 +683,7 @@ val played = Improviser(memory, judge = judge).take(60.0)
 At every jump decision the improviser plays each candidate two seconds ahead (`judgeAhead`), and
 the judge scores each path by how well it sits inside the forecast's quantile fan, step by step
 (the mean pinball loss). The forecast is refreshed every second in the background; until one has
-arrived, the improviser decides alone. Every sample is still played from the recording. There are
+arrived, the improviser decides alone. The passages still come from the recording, with corrections at joins. There are
 two ways to use the score:
 
 - `judgeMode = JudgeMode.Prefer` (the default) adds it to the oracle's own preferences, weighted by
@@ -693,7 +693,7 @@ two ways to use the score:
   staying, and leaves the choice among the rest to the oracle.
 
 `judgedDecisions`, `judgeChanged`, `judgeVetoed` and `judgeStayed` count what the judge did.
-`Performance.reuse()`, `coverage()` and `joinRoughness(memory)` measure the result without
+`Performance.sourceReuse()`, `coverage()` and `joinRoughness(memory)` measure the result without
 asking the judge: how much of the output replays a recently played passage of the memory, how much of the recording gets
 used, and how sharp the joins are compared with the recording itself (1 means as smooth as the
 recording on average).
@@ -782,10 +782,10 @@ first, and try the judge when you want fewer, longer phrases.
 | Says where it came from | yes: `segments`, `source` | no |
 | Speed | microseconds per sample, in the frame loop | tens to hundreds of milliseconds per replan, in the background |
 
-Use the oracle when the material is the point: phrases, gestures, a particular way of moving.
-Use Timestral when the dynamics are the point (a smooth continuation of whatever is happening
-now, or a forecast steered by a channel whose future you know), and to see how predictable a
-signal is from its band.
+Use the oracle to get the recorded material back: phrases, gestures, a particular way of moving.
+Use Timestral to continue the dynamics (a smooth continuation of whatever is happening now, or a
+forecast steered by a channel whose future you know), and to see how predictable a signal is from
+its band.
 
 
 ## See also

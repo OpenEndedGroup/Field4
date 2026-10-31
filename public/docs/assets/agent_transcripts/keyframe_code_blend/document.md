@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 5 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 5 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. Where a runtime blend cannot reach
@@ -163,7 +163,7 @@ and a generated Kotlin expression reads a registry slot addressed by an integer 
 into its text, because generated text cannot close over a value.
 
 ```edn [field-box id="kfb_kotlin" role="properties"]
-{"id" "kfb_kotlin" "index" 3 "name" "The same blend, in Kotlin" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The same blend, in Kotlin" "_tombstone" false "frame" #afield/rect [80.0 1040.0 420.0 102.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kfb_kotlin_code_.kt" "lines" 35 "characters" 1533 "sha256" "19e48fb2d211f15a787ba7b8b78e7405e85930569901110bfd9c1f0347616a71"}]}
+{"id" "kfb_kotlin" "index" 3 "name" "The same blend, in Kotlin" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The same blend, in Kotlin" "_tombstone" false "frame" #afield/rect [80.0 1040.0 420.0 102.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kfb_kotlin_code_.kt" "lines" 35 "characters" 1477 "sha256" "db738d9e27c4faf4f03802e28dc1072145eb380088ebc2678021d9a5f46f53dd"}]}
 ```
 
 ```kotlin [field-property box="kfb_kotlin" name="code" path="kfb_kotlin_code_.kt"]
@@ -185,8 +185,8 @@ val scope = KeyframeScope()
 scope.target("amount", get = { amount }, set = { v -> amount = v })
 scope.codeBlend = CodeBlendOptions(mode = CodeBlendMode.RUNTIME)
 
-val a = scope.Key(mutableMapOf<String, Any?>("amount" to quiet))
-val b = scope.Key(mutableMapOf<String, Any?>("amount" to loud))
+val a = scope.Key("amount" to quiet)
+val b = scope.Key("amount" to loud)
 
 val plan = scope.codeBlendPlans(a, b).getValue("amount")
 println(plan.describe())

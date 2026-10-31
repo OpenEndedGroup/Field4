@@ -39,7 +39,7 @@ check(!draft.value.includes('7200'), 'State contents leaked into chat reference'
 check(draft.value.includes('StateReadRequest'), 'Reference lacks retrieval tool');
 check(content.__aiChatHistory === history, 'Referencing sent a message');
 click('Clear comparison');
-click('Close'); check(root.querySelector('.state-tree-browser').hidden, 'Close failed');
+click('×'); check(root.querySelector('.state-tree-browser').hidden, 'Close failed');
 click('States'); await until(() => nodes().length === 2);
 check(draft.value.startsWith('My question'), 'Reopening lost draft');
 nodes()[1].click(); await until(() => root.querySelector('.state-tree-detail').textContent.includes('7200'));
@@ -111,7 +111,7 @@ for (const [width, height] of dimensions) {
     const input = root.querySelector('.ai-chat-input').getBoundingClientRect();
     check(Math.abs(rect.height-before)<2, `Long transcript squeezed the browser at ${width}x${height}`);
     check(body.bottom<=rect.bottom+1 && pager.bottom<=rect.bottom+1, 'State area or paging clipped');
-    check(messages.height>60 && messages.top>=rect.bottom-1, 'Conversation overlaps the state browser');
+    check(messages.height>60 && messages.top>=rect.bottom-1, `Conversation overlaps the state browser at ${width}x${height}: messages top ${Math.round(messages.top)} height ${Math.round(messages.height)}, browser bottom ${Math.round(rect.bottom)} height ${Math.round(rect.height)}; rows ${[...content.querySelectorAll(':scope > *, :scope > * > *')].map(e=>(e.className||e.tagName)+':'+Math.round(e.getBoundingClientRect().height)).join(', ')}`);
     check(input.bottom<=root.getBoundingClientRect().bottom+1, 'Composer clipped');
 }
 window.aiChatUpdate(content, root.dataset.uid, originalTranscript);

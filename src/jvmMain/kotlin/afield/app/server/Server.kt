@@ -52,6 +52,7 @@ import afield.ui.visualization.typed
 import afield.ai.tools.AiToolUseImprovementMonitor
 import afield.app.diagnostics.CodeUseSemanticAnalyzeRequest
 import afield.app.diagnostics.CodeUseTelemetryService
+import afield.app.diagnostics.LatencySpans
 import afield.app.notifications.notify
 import afield.app.protocol.AgentOpenPlaywrightResponse
 import afield.app.protocol.AllLayersResult
@@ -271,6 +272,7 @@ import afield.ai.completion.AI4_AUTO_NAME_SIGNATURE_PROPERTY
 import afield.ai.models.AiSettingsSaveRequest
 import afield.ai.models.aiProviderStatus
 import afield.ai.models.checkLocalAiConnection
+import afield.ai.models.localAiFeedback
 import afield.ai.models.aiSettingsEnvironmentOverrides
 import afield.ai.models.readLocalAiCredential
 import afield.ai.models.configuredAiBaseUrl
@@ -663,6 +665,10 @@ class SessionInformation(
      */
     @Volatile
     var savedFingerprint: Long? = null
+
+    /** The per-property hashes behind [savedFingerprint], for the unmarked-edit tripwire. */
+    @Volatile
+    var savedFingerprintEntries: Map<Pair<String, String>, Long>? = null
     private val pendingSidecarSaveVersions = ConcurrentHashMap<Pair<String, String>, Long>()
     private val propertySyncSequences = ConcurrentHashMap<Pair<String, String>, AtomicLong>()
     private val pendingPropertySyncOrigins = ConcurrentHashMap<Pair<String, String>, PropertySyncOrigin>()
@@ -743,6 +749,8 @@ class SessionInformation(
      * as its KDoc says. Called, this always tears down.
      */
     fun cleanup() {
+        afield.document.workspace.KitRuntime.deactivate(this)
+        if (File(filename, afield.document.workspace.KitInstances.RECORD).isFile) autorunTriggered = false
         _fileWatchManager?.stop()
         _fileWatchManager = null
         retireBoxes(boxes.values.toList(), "session-cleanup")
@@ -818,8 +826,10 @@ val documentReadyHooks = java.util.concurrent.CopyOnWriteArrayList<(SessionInfor
 
 fun SessionInformation.scheduleAutorunBoxes(delayMs: Long = 500L) {
     if (autorunTriggered) return
+    afield.document.workspace.KitRuntime.activate(this)
     autorunTriggered = true
-    autorunBoxes(boxes.values, delayMs)
+    val ordered = afield.document.workspace.KitRuntime.launchBoxes(this).orEmpty()
+    autorunBoxes(boxes.values.filterNot { it in ordered }, delayMs)
     documentReadyHooks.forEach { hook ->
         runCatching { hook(this) }.onFailure { lprintln("warning,server", "document-ready hook failed for $documentName: ${it.message}") }
     }
@@ -1018,7 +1028,17 @@ data class OutputBackPressureSnapshot(
 class OutputBackPressure(val maxPending: Int = 8, val bufferSize: Int = 4) {
     private val pending = java.util.concurrent.atomic.AtomicInteger(0)
     private val skipped = java.util.concurrent.atomic.AtomicInteger(0)
-    private val buffer = ArrayDeque<String>()   // guarded by synchronized(this)
+    /**
+     * One buffered frame. [slotted] frames are back-pressured outputs and take a pending slot when
+     * they leave; unslotted ones (see [enqueueBehind]) only wait their turn.
+     */
+    private data class Entry(val key: String?, val frame: String, val slotted: Boolean = true)
+
+    /** A frame [drainFrames] released, and whether it took a pending slot. */
+    data class Drained(val frame: String, val slotted: Boolean)
+
+    /** Buffered frames in send order; guarded by synchronized(this). */
+    private val buffer = kotlin.collections.ArrayDeque<Entry>()
 
     /**
      * Try to acquire a send slot.
@@ -1034,18 +1054,46 @@ class OutputBackPressure(val maxPending: Int = 8, val bufferSize: Int = 4) {
 
     /**
      * Buffer a message for later delivery (call when [tryAcquire] returns -1).
-     * The rolling buffer holds the last [bufferSize] messages; older entries are evicted and
-     * their count is added to [skipped] so the frontend knows how many were truly dropped.
+     *
+     * A message with a [coalesceKey] (a `set-output`: one box's one output panel) removes the
+     * buffered message with the same key and joins the tail, since only the newest content of a
+     * panel is worth showing. It does not take the old entry's slot: that would move it ahead of
+     * frames buffered between the two (a clear, a line), reordering what the box sent. It is
+     * never evicted to make room: evicting it would lose a panel, not a
+     * line. Otherwise the rolling buffer holds the last [bufferSize] unkeyed messages; older
+     * entries are evicted and their count is added to [skipped] so the frontend knows how many
+     * were truly dropped.
      */
-    fun bufferMessage(message: String) {
+    fun bufferMessage(message: String, coalesceKey: String? = null) {
         synchronized(this) {
-            if (buffer.size >= bufferSize) {
-                buffer.removeFirst()
+            if (coalesceKey != null) {
+                val i = buffer.indexOfFirst { it.key == coalesceKey }
+                if (i >= 0) buffer.removeAt(i)
+                buffer.addLast(Entry(coalesceKey, message))
+                return
+            }
+            if (buffer.count { it.key == null && it.slotted } >= bufferSize) {
+                buffer.removeAt(buffer.indexOfFirst { it.key == null && it.slotted })
                 skipped.incrementAndGet()   // evicted from buffer — truly skipped
             }
-            buffer.addLast(message)
+            buffer.addLast(Entry(null, message))
         }
     }
+
+    /**
+     * Queue a frame that is not back-pressured (an `output-control` clear or open, say) behind
+     * the buffered outputs, so it cannot overtake them. Returns false, queueing nothing, when the
+     * buffer is empty: the caller sends it directly. The frame takes no slot, is never evicted
+     * and never coalesces.
+     */
+    fun enqueueBehind(message: String): Boolean = synchronized(this) {
+        if (buffer.isEmpty()) return false
+        buffer.addLast(Entry(null, message, slotted = false))
+        true
+    }
+
+    /** The skipped count since it was last taken, reset to zero. */
+    fun takeSkipped(): Int = skipped.getAndSet(0)
 
     fun hasBufferedMessages(): Boolean = synchronized(this) {
         buffer.isNotEmpty()
@@ -1070,13 +1118,20 @@ class OutputBackPressure(val maxPending: Int = 8, val bufferSize: Int = 4) {
      * Returns messages that were successfully acquired; messages that still cannot
      * acquire a slot remain buffered for the next acknowledgement cycle.
      */
-    fun drainBuffer(): List<String> {
-        val result = mutableListOf<String>()
+    fun drainBuffer(): List<String> = drainFrames().map { it.frame }
+
+    /** [drainBuffer], saying which frames took a slot; unslotted frames leave as soon as they reach the head. */
+    fun drainFrames(): List<Drained> {
+        val result = mutableListOf<Drained>()
         synchronized(this) {
             while (buffer.isNotEmpty()) {
-                val prev = pending.getAndUpdate { cur -> if (cur >= maxPending) cur else cur + 1 }
-                if (prev >= maxPending) break
-                result.add(buffer.removeFirst())
+                val head = buffer.first()
+                if (head.slotted) {
+                    val prev = pending.getAndUpdate { cur -> if (cur >= maxPending) cur else cur + 1 }
+                    if (prev >= maxPending) break
+                }
+                buffer.removeFirst()
+                result.add(Drained(head.frame, head.slotted))
             }
         }
         return result
@@ -1088,10 +1143,10 @@ class OutputBackPressure(val maxPending: Int = 8, val bufferSize: Int = 4) {
         pending.updateAndGet { maxOf(0, it - 1) }
     }
 
-    fun releaseAndDrain(): Pair<Int, List<String>> {
+    fun releaseAndDrain(): Pair<Int, List<Drained>> {
         release()
         val skipCount = skipped.getAndSet(0)
-        return skipCount to drainBuffer()
+        return skipCount to drainFrames()
     }
 }
 
@@ -1229,6 +1284,7 @@ private fun normalizeFieldPreferences(preferences: FieldPreferences): FieldPrefe
 private fun applyFieldPreferences(preferences: FieldPreferences) {
     val framePresentationLogWasEnabled = Options.framePresentationLog
     CodeUseTelemetryService.configureQuietMode(preferences.quietMode)
+    afield.runtime.lifecycle.BoxInterrupt.applyPreference(preferences.boxInterrupt)
     Options.profiling = if (Options.captureCompatibility) false else preferences.profiling
     Options.framePresentationLog = preferences.framePresentationLog
     Options.logShadercSource = preferences.logShadercSource
@@ -1400,6 +1456,33 @@ private fun relaunchWithWorkspace(workspace: String) {
         .redirectError(ProcessBuilder.Redirect.appendTo(logFile))
         .start()
     lprintln("info,server", "relaunching Field via current Java command; restart log: ${logFile.absolutePath}")
+}
+
+/** Save the current workspace and restart through its launcher so kit build inputs take effect. */
+private fun restartForKits() {
+    afield.document.workspace.KitRestarts.prepare(File(app).canonicalFile, ::restartPreparedKitHost)
+}
+
+private fun restartPreparedKitHost() {
+    val directory = File(app).canonicalFile
+    val windows = System.getProperty("os.name").startsWith("Windows")
+    val launcher = File(directory, if (windows) "field.ps1" else "field.sh")
+    require(launcher.isFile) { "This Field installation has no launcher for rebuilding kit runtimes" }
+    val log = workspaceRestartLogFile().also { it.parentFile.mkdirs() }
+    thread(name = "field-kit-restart", isDaemon = false) {
+        Thread.sleep(300)
+        afield.document.persistence.DocumentShutdownFlush.flushPendingDocumentSaves()
+        persistWorkspacePath(home)
+        runCatching { Server.ourServer.stop(500, 2000) }
+        // Keep existing Electron/browser windows: they reconnect to the same host after the build.
+        val command = if (windows) listOf("powershell.exe", "-ExecutionPolicy", "Bypass", "-File", launcher.path,
+            "--server-only", "--workspace", home) else listOf("bash", launcher.path, "--server-only", "--workspace", home)
+        val builder = ProcessBuilder(command).directory(directory).redirectOutput(ProcessBuilder.Redirect.appendTo(log))
+            .redirectError(ProcessBuilder.Redirect.appendTo(log))
+        builder.environment()["AFIELD_SKIP_BUILD"] = "1"
+        builder.start()
+        exitProcess(0)
+    }
 }
 
 private fun launchFieldDesktopFromProject(projectDir: File, reason: String) {
@@ -1718,6 +1801,59 @@ internal fun outputBackPressureLog(
     lprintln("debug,output-backpressure", "session=$sessionId event=$event$msg $state$suffix")
 }
 
+
+/**
+ * One sender per websocket session that runs its sends one at a time, in the order they were
+ * submitted. `sendWithOutputBackPressure` used to start a `GlobalScope.launch` per message, and
+ * those coroutines raced on the default dispatcher, so two messages sent back to back could reach
+ * the browser swapped: a box's `display("a", ..)` then `display("b", ..)` built its output panels
+ * in either order (and a `set-output` could overtake the `output-control` sent after it).
+ *
+ * Head-of-line blocking is intended: one slow send holds every later frame for that session
+ * (and only that session) until it completes. Order is the point; a stalled socket was already
+ * stalling that client's output.
+ */
+internal class OrderedSessionSender(scope: CoroutineScope) {
+    private val queue = kotlinx.coroutines.channels.Channel<suspend () -> Unit>(kotlinx.coroutines.channels.Channel.UNLIMITED)
+    private val consumer = scope.launch {
+        for (send in queue) {
+            try { send() } catch (c: CancellationException) { throw c } catch (_: Throwable) { }
+        }
+    }
+
+    fun submit(send: suspend () -> Unit) { queue.trySend(send) }
+
+    fun close() { queue.close() }
+}
+
+@OptIn(DelicateCoroutinesApi::class)
+private val sessionOrderedSenders = ConcurrentHashMap<WebSocketSession, OrderedSessionSender>()
+
+/** Queue [send] behind everything already queued for [session]; see [OrderedSessionSender]. */
+@OptIn(DelicateCoroutinesApi::class)
+internal fun sendInOrder(session: WebSocketSession, send: suspend () -> Unit) {
+    sendInOrder(sessionOrderedSenders, session, session.outgoing.isClosedForSend, send)
+}
+
+/**
+ * A send that arrives after the session closed is dropped rather than recreating the sender the
+ * close handler removed, which would otherwise live (and hold the session) forever.
+ */
+@OptIn(DelicateCoroutinesApi::class)
+internal fun <K : Any> sendInOrder(
+    senders: ConcurrentHashMap<K, OrderedSessionSender>,
+    key: K,
+    closed: Boolean,
+    send: suspend () -> Unit,
+    scope: CoroutineScope = GlobalScope
+) {
+    if (closed) {
+        senders.remove(key)?.close()
+        return
+    }
+    senders.computeIfAbsent(key) { OrderedSessionSender(scope) }.submit(send)
+}
+
 @OptIn(DelicateCoroutinesApi::class)
 internal fun sendWithOutputBackPressure(
     session: WebSocketSession,
@@ -1730,46 +1866,72 @@ internal fun sendWithOutputBackPressure(
     }
     NetStats.sent(encoded.length) // one text frame per session; _send() fans out through here
     if (!isBackPressuredOutputMessage(message)) {
-        GlobalScope.launch {
-            session.send(encoded)
+        // While outputs wait in this session's buffer, this frame waits behind them; checking and
+        // sending under the pressure's lock keeps it from slipping between a drain and its send.
+        val pressure = sessionOutputPressure[session]
+        if (pressure == null) {
+            sendInOrder(session) { session.send(encoded) }
+        } else synchronized(pressure) {
+            if (!pressure.enqueueBehind(encoded)) sendInOrder(session) { session.send(encoded) }
         }
         return
     }
 
     val bp = sessionOutputPressure.getOrPut(session) { OutputBackPressure() }
-    val skipCount = bp.tryAcquire()
-    if (skipCount < 0) {
-        bp.bufferMessage(encoded)
+    // Frames leave in the order they were sent: this one joins the tail of the buffer, and the
+    // buffer drains from its head as far as there are slots. Taking and queueing happen under the
+    // pressure's lock, so a concurrent send or ack cannot interleave its share ahead of ours.
+    val skipCount: Int
+    val toSend: List<OutputBackPressure.Drained>
+    synchronized(bp) {
+        bp.bufferMessage(encoded, outputCoalesceKey(message))
+        toSend = bp.drainFrames()
+        skipCount = if (toSend.isEmpty()) 0 else bp.takeSkipped()
+        if (toSend.isNotEmpty()) sendBuffered(session, bp, message, toSend)
+    }
+    if (toSend.isEmpty()) {
         outputBackPressureLog(session, "buffer", message, bp, detail = "encodedBytes=${encoded.length}")
         return
     }
-
-    val buffered = if (skipCount > 0 || bp.hasBufferedMessages()) bp.drainBuffer() else emptyList()
-    if (skipCount > 0 || buffered.isNotEmpty()) {
+    if (skipCount > 0 || toSend.size > 1) {
         outputBackPressureLog(
             session,
             "send-with-buffer",
             message,
             bp,
-            detail = "drained=${buffered.size} skippedToNotify=$skipCount encodedBytes=${encoded.length}",
+            detail = "drained=${toSend.size - 1} skippedToNotify=$skipCount encodedBytes=${encoded.length}",
             force = true
         )
     }
     noteSkippedOutputs(session, skipCount)
-    GlobalScope.launch {
+}
+
+/** A `set-output` replaces its own panel's buffered content; nothing else coalesces. */
+internal fun outputCoalesceKey(message: Message): String? {
+    if (message.name != "set-output") return null
+    val payload = message.payload as? kotlinx.serialization.json.JsonObject ?: return null
+    fun field(name: String) = (payload[name] as? kotlinx.serialization.json.JsonPrimitive)?.content
+    val uid = field("uid") ?: return null
+    return "$uid\u0000${field("property")}\u0000${field("channel")}"
+}
+
+private fun sendBuffered(session: WebSocketSession, bp: OutputBackPressure, message: Message?, frames: List<OutputBackPressure.Drained>) {
+    sendInOrder(session) {
+        var sent = 0
         try {
-            for (bufferedMsg in buffered) {
-                session.send(bufferedMsg)
+            for (frame in frames) {
+                session.send(frame.frame)
+                sent++
             }
-            session.send(encoded)
         } catch (_: Exception) {
-            repeat(1 + buffered.size) { bp.release() }
+            // Only the frames that took a slot give one back.
+            repeat(frames.drop(sent).count { it.slotted }) { bp.release() }
             outputBackPressureLog(
                 session,
                 "send-failed-release",
                 message,
                 bp,
-                detail = "released=${1 + buffered.size}",
+                detail = "released=${frames.size - sent}",
                 force = true
             )
         }
@@ -1779,7 +1941,14 @@ internal fun sendWithOutputBackPressure(
 @OptIn(DelicateCoroutinesApi::class)
 private fun releaseAndFlushOutputBackPressure(session: WebSocketSession) {
     val bp = sessionOutputPressure[session] ?: return
-    val (skipCount, buffered) = bp.releaseAndDrain()
+    val skipCount: Int
+    val buffered: List<OutputBackPressure.Drained>
+    synchronized(bp) {
+        val drained = bp.releaseAndDrain()
+        skipCount = drained.first
+        buffered = drained.second
+        if (buffered.isNotEmpty()) sendBuffered(session, bp, null, buffered)
+    }
     outputBackPressureLog(
         session,
         "ack",
@@ -1787,27 +1956,8 @@ private fun releaseAndFlushOutputBackPressure(session: WebSocketSession) {
         detail = "drained=${buffered.size} skippedToNotify=$skipCount",
         force = skipCount > 0 || buffered.isNotEmpty()
     )
-    if (skipCount <= 0 && buffered.isEmpty()) return
-
-    noteSkippedOutputs(session, skipCount)
     // Skips alone have nothing to send here — the accumulator decides when a toast is due.
-    if (buffered.isEmpty()) return
-    GlobalScope.launch {
-        try {
-            for (bufferedMsg in buffered) {
-                session.send(bufferedMsg)
-            }
-        } catch (_: Exception) {
-            repeat(buffered.size) { bp.release() }
-            outputBackPressureLog(
-                session,
-                "flush-failed-release",
-                pressure = bp,
-                detail = "released=${buffered.size}",
-                force = true
-            )
-        }
-    }
+    noteSkippedOutputs(session, skipCount)
 }
 
 @OptIn(DelicateCoroutinesApi::class)
@@ -2889,10 +3039,10 @@ class Server {
                         oldValue,
                         targetBox.getPropertyRaw(set.property)?.toString().orEmpty()
                     )
-                    // Proactively warm the K1 completion delegate as the user edits Kotlin code, so
-                    // the intelligent-error path (and completion) is warm by run time instead of
-                    // paying the ~1s bootstrap on the first compile error. Self-de-duplicating.
-                    if (set.property == "code") {
+                    // Warm the K1 completion delegate as the user edits a Kotlin box, so error suggestions
+                    // and completion are warm by run time. Kotlin boxes only: `ki` builds a Kotlin engine on
+                    // first touch, which in a Clojure box ran on the runloop ahead of its own completion.
+                    if (set.property == "code" && targetBox.ke is KotlinExecution) {
                         targetBox.ki.warmCompletionAsync()
                     }
                 }
@@ -3417,6 +3567,18 @@ class Server {
                 Handled.yes
             })
 
+            handlers["export-web-document"] = mutableSetOf({ _, reply ->
+                val info = thisSessionInfo.get()
+                val source = afield.document.workspace.exportWebDocument(info)
+                val native = afield.document.workspace.nativePublicationTargets(info)
+                controlUpdateScope.launch {
+                    reply(Message("export-web-document").payload(
+                        afield.document.workspace.captureNativePublication(source, native)
+                    ))
+                }
+                Handled.yes
+            })
+
             handlers["paste-boxes"] = mutableSetOf({ message, reply ->
                 val req = Json.decodeFromJsonElement<PasteBoxes>(message.payload!!)
                 val info = thisSessionInfo.get()
@@ -3531,7 +3693,9 @@ class Server {
 
                 val callback = getVec2Callback(update.controlId)
                 if (callback != null) {
-                    GlobalScope.launch {
+                    // In arrival order, as slider-update does: a plain launch let a burst of drag updates reach
+                    // the callback out of order, so it could end on a stale value.
+                    GlobalScope.launch(start = CoroutineStart.UNDISPATCHED) {
                         try {
                             callback(Vector2f(update.x.toFloat(), update.y.toFloat()))
                         } catch (e: Exception) {
@@ -3554,7 +3718,9 @@ class Server {
 
                 val callback = getCheckboxCallback(update.controlId)
                 if (callback != null) {
-                    GlobalScope.launch {
+                    // In arrival order, as slider-update does: a plain launch let a burst of drag updates reach
+                    // the callback out of order, so it could end on a stale value.
+                    GlobalScope.launch(start = CoroutineStart.UNDISPATCHED) {
                         try {
                             callback(update.value)
                         } catch (e: Exception) {
@@ -3626,15 +3792,23 @@ class Server {
                     return@mutableSetOf Handled.yes
                 }
 
-                GlobalScope.launch {
-                    try {
-                        session.translate(update)
-                    } catch (e: Exception) {
-                        lprintln("error,fline", "Error applying FLine edit translation: ${e.message}")
-                        e.printStackTrace()
-                    }
+                // Applied in websocket order, so the fline-edit-commit that follows a drag sees every delta.
+                try {
+                    session.translate(update)
+                } catch (e: Exception) {
+                    lprintln("error,fline", "Error applying FLine edit translation: ${e.message}")
+                    e.printStackTrace()
                 }
 
+                Handled.yes
+            })
+
+            handlers["fline-edit-commit"] = mutableSetOf({ message, reply ->
+                val id = (message.payload as? kotlinx.serialization.json.JsonObject)?.get("sessionId")
+                    ?.let { (it as? kotlinx.serialization.json.JsonPrimitive)?.content }
+                val session = id?.let { getFLineEditSession(it) } ?: return@mutableSetOf Handled.yes
+                // As threeLines does: the snapshot and the callback both happen here, in websocket order.
+                runCatching { session.commit() }.onFailure { lprintln("error,fline", "onEditCommitted failed: ${it.message}") }
                 Handled.yes
             })
 
@@ -3746,7 +3920,9 @@ class Server {
 
                 val callback = getStringCallback(update.controlId)
                 if (callback != null) {
-                    GlobalScope.launch {
+                    // In arrival order, as slider-update does: a plain launch let a burst of drag updates reach
+                    // the callback out of order, so it could end on a stale value.
+                    GlobalScope.launch(start = CoroutineStart.UNDISPATCHED) {
                         try {
                             callback(update.value)
                         } catch (e: Exception) {
@@ -3806,7 +3982,9 @@ class Server {
 
                 val callback = getColorCallback(update.controlId)
                 if (callback != null) {
-                    GlobalScope.launch {
+                    // In arrival order, as slider-update does: a plain launch let a burst of drag updates reach
+                    // the callback out of order, so it could end on a stale value.
+                    GlobalScope.launch(start = CoroutineStart.UNDISPATCHED) {
                         try {
                             callback(
                                 Vector4f(
@@ -3954,6 +4132,7 @@ class Server {
 
             registerTemplate(home)
             persistWorkspacePath(home)
+            afield.document.workspace.KitRuntime.start()
             installKitFirstOpen()
 
             val preferredPort = System.getenv("PORT")?.trim()?.toIntOrNull() ?: 9092
@@ -4116,6 +4295,7 @@ class Server {
                         installSignalViewerRoutes()
                         installDocsAnnotationRoutes()
                         installDocumentGuideRoutes()
+                        installKitRoutes(::restartForKits)
                         installChatlogRoutes()
 
                         installControllerRoutes(::currentFieldPreferences)
@@ -4410,6 +4590,11 @@ class Server {
                             call.respond(response)
                         }
 
+                        get("/api/perf/spans") {
+                            val after = call.request.queryParameters["since"]?.toLongOrNull() ?: 0L
+                            call.respond(LatencySpans.since(after))
+                        }
+
                         get("/api/code-use/summary") {
                             call.respond(CodeUseTelemetryService.summary())
                         }
@@ -4646,6 +4831,11 @@ class Server {
                                 lprintln("error,server", "Maven upgrade failed: ${e.message}")
                                 call.respond(HttpStatusCode.InternalServerError, mapOf("error" to "Maven upgrade failed"))
                             }
+                        }
+
+                        get("/api/ai-local-feedback") {
+                            call.response.header("Cache-Control", "no-store")
+                            call.respondText(withContext(Dispatchers.IO) { localAiFeedback() }, ContentType.Application.Json)
                         }
 
                         post("/api/ai-local-connection") {
@@ -5452,7 +5642,7 @@ class Server {
                                                     t.printStackTrace()
                                                 }
                                             }
-                                            if (message.name == "slider-update" || message.name == "button-update" || message.name == "output-request")
+                                            if (message.name in ORDERED_CONTROL_MESSAGES)
                                                 orderedControls.send(dispatch)
                                             else launch(block = dispatch)
                                         }
@@ -5469,6 +5659,7 @@ class Server {
                                 afield.graphics.visionos.VisionPoseStream.detach(ts)
                                 // Clean up back pressure state for this session.
                                 sessionOutputPressure.remove(ts)
+                                sessionOrderedSenders.remove(ts)?.close()
                                 sessionControlUpdatePumps.remove(ts)
                                 sessionSkippedOutputNotifiers.remove(ts)
                             }
@@ -5991,6 +6182,8 @@ class Server {
          */
         fun stop(box: Box, entrypoint: String = "server.stop") {
             FlightRecorder.recordStopEntrypoint(entrypoint, box)
+            // If the runloop is blocked, this stop waits for it; the box's marker says so.
+            StopWatch.watch(box)
             box.ke.stop(box)
             // If this box owns a Field 4 Renderer (e.g. the agent graphics-context box),
             // cancelling its jobs never disposes the native window/surface. Do that now — before the
@@ -6356,3 +6549,14 @@ internal fun Application.installFieldApiSameSiteGuard() {
         finish()
     }
 }
+
+/**
+ * Messages the `/ws` socket handles one at a time in arrival order. Every control's `*-update` is
+ * here, not only the slider's: a vec2 or colour drag sends a burst, and dispatching each in its own
+ * coroutine let them reach the callback (and the stored value other pages echo) out of order, so a
+ * drag could end on an earlier value than the one the performer let go at.
+ */
+internal val ORDERED_CONTROL_MESSAGES = setOf(
+    "slider-update", "button-update", "output-request",
+    "vec2-update", "checkbox-update", "string-update", "color-update", "array-update",
+)

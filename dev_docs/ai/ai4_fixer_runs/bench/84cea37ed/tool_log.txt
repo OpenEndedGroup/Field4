@@ -1,0 +1,18 @@
+[field] ok  RepoReadFileRequest {"endLine":200,"path":"AGENTS.md","startLine":1}
+[field] ok  RepoSearchRequest {"glob":"**","ignoreCase":false,"maxMatches":50,"query":"checkKDocAttachment","regex":false}
+[field] ok  RepoReadFileRequest {"endLine":300,"path":"src/jvmMain/kotlin/afield/tools/docs/screenshot.kt","startLine":1}
+[field] ok  RepoRunCommandRequest {"args":["9a352ad91b43369c3b7f42d9128727315e7909f2","--","src/jvmMain/kotlin/afield/tools/docs/screenshot.kt"],"command":"git-diff","timeoutSec":30}
+[field] ok  RepoListFilesRequest {"glob":"tools/*kdoc*"}
+[field] ok  RepoReadFileRequest {"endLine":310,"path":"src/jvmMain/kotlin/afield/tools/docs/KDocAttachmentGuard.kt","startLine":1}
+[field] ok  RepoReadFileRequest {"endLine":2310,"path":"src/jvmMain/kotlin/afield/tools/docs/screenshot.kt","startLine":2200}
+[field] ok  RepoListFilesRequest {"glob":"tools/check_*.py"}
+[field] ok  RepoReadFileRequest {"endLine":145,"path":"dev_docs/kdoc_reference_contract.md","startLine":1}
+[field] ok  RepoSearchRequest {"glob":"tools/*.py","ignoreCase":true,"maxMatches":60,"query":"kdoc","regex":false}
+[field] ok  RepoReadFileRequest {"endLine":180,"path":"tools/check_box_idioms.py","startLine":1}
+[field] ok  RepoRunCommandRequest {"args":[],"command":"git-status","timeoutSec":30}
+[field] ok  RepoReadFileRequest {"endLine":552,"path":"AGENTS.md","startLine":430}
+[field] ok  RepoPatchFileRequest {"newText":"/**\n * Has a relaunched docs-video target reached the point the movie may start?","oldText":"/**\n * Return a callback that starts (or simply admit
+[field] ok  RepoPatchFileRequest {"newText":"/**\n * Return a callback that starts (or simply admits) frame-synchronous capture.\n *\n * Docs captures prepare their clip against the already-run
+[field] ok  RepoReadFileRequest {"endLine":2275,"path":"src/jvmMain/kotlin/afield/tools/docs/screenshot.kt","startLine":2227}
+[field] ok  RepoRunCommandRequest {"args":["--","src/jvmMain/kotlin/afield/tools/docs/screenshot.kt"],"command":"git-diff","timeoutSec":30}
+[field] model=openai/gpt-6.1-sol rounds=7/40 wall=49s tokens in=279804 out=1299 cacheRead=240542 wrote=['src/jvmMain/kotlin/afield/tools/docs/screenshot.kt', 'src/jvmMain/kotlin/afield/tools/docs/screenshot.kt'] ran=['git-diff 9a352ad91b43369c3b7f42d9128727315e7909f2 -- src/jvmMain/kotlin/afield/tools/docs/screenshot.kt -> 0', 'git-status  -> 0', 'git-diff -- src/jvmMain/kotlin/afield/tools/docs/screenshot.kt -> 0'] verdict=unchecked error=-

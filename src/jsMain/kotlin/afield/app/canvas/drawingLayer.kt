@@ -273,6 +273,7 @@ fun drawingLayerViewportChanged() {
 }
 
 fun setDrawingLayerActive(active: Boolean) {
+    if (active && !drawingLayerVisible) setDrawingLayerVisible(true)
     drawingLayerActive = active
     val el = ensureHost()
     el.classList.toggle("field-drawing-active", active)
@@ -280,6 +281,27 @@ fun setDrawingLayerActive(active: Boolean) {
     ensureLoaded { mounts.forEach { it.handle.setActive(active) } }
     hoverMount = -1
     notify(if (active) "Drawing layer: on (Alt+D to return)" else "Drawing layer: off", "drawing")
+}
+
+/** Whether the drawing is shown at all; the layers panel's eye for it. Not saved with the document. */
+var drawingLayerVisible = true
+    private set
+
+fun setDrawingLayerVisible(visible: Boolean) {
+    drawingLayerVisible = visible
+    if (!visible && drawingLayerActive) setDrawingLayerActive(false)
+    ensureHost().classList.toggle("field-drawing-hidden", !visible)
+}
+
+/** How many live (not deleted) elements the document's drawing holds, for the layers panel. */
+fun drawingElementCount(): Int {
+    val json = currentRootDrawing()?.takeIf { it.isNotBlank() } ?: return 0
+    return try {
+        val elements = JSON.parse<dynamic>(json).elements ?: return 0
+        (elements as Array<dynamic>).count { it.isDeleted != true }
+    } catch (e: Throwable) {
+        0
+    }
 }
 
 @OptIn(ExperimentalJsExport::class)

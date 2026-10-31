@@ -3,8 +3,7 @@
 Field is written by a few people and a lot of agents, all at once, in many separate checkouts.
 That only works because the machinery around the code is unusually strict about one thing: a
 green result has to come from running the real code, now. This page tours that machinery, with
-emphasis on the parts that are unusual, that you can see and use from Field itself, and that
-are worth copying into a project of your own:
+emphasis on the parts you can see and use from Field itself, and take into a project of your own:
 
 - documentation whose every figure is a test,
 - numbers in prose that are recomputed from the code,
@@ -227,10 +226,13 @@ turned into ready-made documents and committed. With the canonical graphics less
 the **Starting points** list on Welcome:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector="#docs-starting-points-crop" screenshot="assets/how_field_is_built/starting_points.png" padding="0" wait="0" timeout="120" embed=true hidden=true name="welcome-starting-points" alt="The Starting points list on the Welcome page, opened: its title with a count of 201, the line Curated example scenes, open one to get an editable copy in your workspace, and the first dozen entries, canonical_graphics with 37 boxes and then two-box scenes such as youtube_kaleidoscope, wfc_worked_example and vision_geometry_shapes, each with its box count and age."}
-// /welcome is its own page: load it into a frame on the capture page at a desktop window's size,
-// open Starting points the way a click on its title does, and mark the list's rectangle so the
-// capture can be clipped to it (the clip selector sees only the top document).
-ui.eval("""
+/*
+/welcome is its own page: load it into a frame on the capture page at a desktop window's size,
+open Starting points the way a click on its title does, and mark the list's rectangle so the
+capture can be clipped to it (the clip selector sees only the top document).
+*/
+ui.eval(
+    """
     document.getElementById("docs-welcome-frame")?.remove()
     const f = document.createElement("iframe")
     f.id = "docs-welcome-frame"
@@ -238,22 +240,30 @@ ui.eval("""
     f.setAttribute("style", "position:fixed;left:0;top:0;width:1100px;height:1000px;border:0;background:#111;z-index:2147483000")
     document.body.appendChild(f)
     return true
-""".trimIndent())
+    """
+        .trimIndent(),
+)
 var state = ""
 for (i in 0 until 80) {
     ui.pause(250)
-    state = ui.eval("""
-        const d = document.getElementById("docs-welcome-frame")?.contentDocument
-        const section = d && d.querySelector("#starting-points-dock details.starting-points-section:not([data-section])")
-        if (!section) return "loading"
-        if (!section.open) section.querySelector("summary").click()
-        return section.querySelectorAll(".starting-point-entry").length > 0 ? "ready" : "empty"
-    """.trimIndent()).toString()
+    state =
+        ui.eval(
+                """
+                const d = document.getElementById("docs-welcome-frame")?.contentDocument
+                const section = d && d.querySelector("#starting-points-dock details.starting-points-section:not([data-section])")
+                if (!section) return "loading"
+                if (!section.open) section.querySelector("summary").click()
+                return section.querySelectorAll(".starting-point-entry").length > 0 ? "ready" : "empty"
+                """
+                    .trimIndent(),
+            )
+            .toString()
     if (state.contains("ready")) break
 }
 check(state.contains("ready")) { "the Starting points list did not load: " + state }
 ui.pause(800)
-ui.eval("""
+ui.eval(
+    """
     const f = document.getElementById("docs-welcome-frame")
     const r = (f.contentDocument.getElementById("starting-points-dock")).getBoundingClientRect()
     const o = f.getBoundingClientRect()
@@ -264,7 +274,9 @@ ui.eval("""
         "left:" + (o.left + r.left) + "px;top:" + (o.top + r.top) + "px;width:" + r.width + "px;height:" + r.height + "px")
     document.body.appendChild(m)
     return [r.width, r.height]
-""".trimIndent())
+    """
+        .trimIndent(),
+)
 ui.pause(300)
 ```
 
@@ -325,7 +337,8 @@ page lists it with its state and where it sits in the source:
 // DOC NOTES panel to sit beside the text, select a sentence, and leave a note with the real keys.
 val note = "Show what a bounce looks like here, and where its failures file is. @example"
 val sentence = "That queues the current branch at its current commit and returns immediately."
-ui.eval("""
+ui.eval(
+    """
     document.getElementById("docs-notes-frame")?.remove()
     const f = document.createElement("iframe")
     f.id = "docs-notes-frame"
@@ -333,31 +346,49 @@ ui.eval("""
     f.setAttribute("style", "position:fixed;left:0;top:0;width:1720px;height:720px;border:0;background:#111;z-index:2147483000")
     document.body.appendChild(f)
     return true
-""".trimIndent())
+"""
+        .trimIndent(),
+)
 var state = ""
 for (i in 0 until 80) {
     ui.pause(250)
-    state = ui.eval("""
+    state =
+        ui.eval(
+                """
         const f = document.getElementById("docs-notes-frame")
         const d = f?.contentDocument
         if (!d || !d.getElementById("f4-annotations") || !d.querySelector("article p")) return "loading"
         if (f.contentWindow.__FIELD_DOCS_SOURCE__ !== "local") return "not local"
         return "ready"
-    """.trimIndent()).toString()
+    """
+                    .trimIndent(),
+            )
+            .toString()
     if (state.contains("ready")) break
 }
 check(state.contains("ready")) { "the docs page did not load with its notes panel: " + state }
-// Fail closed: this capture runs against the automation server's own notebook
-// (AFIELD_DOCS_ANNOTATIONS_STORE). Any note it did not write means it is looking at someone's real
-// notes, which must neither be shown nor touched. Its own note from an earlier run is removed.
-val store = ui.eval("""
+/*
+Fail closed: this capture runs against the automation server's own notebook
+(AFIELD_DOCS_ANNOTATIONS_STORE). Any note it did not write means it is looking at someone's real
+notes, which must neither be shown nor touched. Its own note from an earlier run is removed. The
+KDoc drafts ai_doc_polish imports from the runner's committed drafts cache are machine notes on
+source pages, not this page's, so they are left alone rather than counted as someone's.
+*/
+val store =
+    ui.eval(
+            """
     const items = await (await fetch("/api/docs-annotations?resolved=true")).json()
-    if (items.some(a => a.note !== "$note")) return "foreign"
-    for (const a of items) await fetch("/api/docs-annotations/" + encodeURIComponent(a.id), { method: "DELETE" })
+    const others = items.filter(a => a.kind !== "kdoc-draft")
+    if (others.some(a => a.note !== "$note")) return "foreign"
+    for (const a of others) await fetch("/api/docs-annotations/" + encodeURIComponent(a.id), { method: "DELETE" })
     return "clean"
-""".trimIndent()).toString()
+"""
+                .trimIndent(),
+        )
+        .toString()
 check(store.contains("clean")) { "the notes store holds notes this capture did not write; refusing to capture it" }
-ui.eval("""
+ui.eval(
+    """
     document.getElementById("docs-notes-frame")?.remove()
     const f = document.createElement("iframe")
     f.id = "docs-notes-frame"
@@ -365,10 +396,14 @@ ui.eval("""
     f.setAttribute("style", "position:fixed;left:0;top:0;width:1720px;height:720px;border:0;background:#111;z-index:2147483000")
     document.body.appendChild(f)
     return true
-""".trimIndent())
+"""
+        .trimIndent(),
+)
 for (i in 0 until 80) {
     ui.pause(250)
-    state = ui.eval("""
+    state =
+        ui.eval(
+                """
         const f = document.getElementById("docs-notes-frame")
         const d = f?.contentDocument
         if (!d || !d.getElementById("f4-annotations") || !d.querySelector("article p")) return "loading"
@@ -384,7 +419,10 @@ for (i in 0 until 80) {
         selection.addRange(range)
         f.contentWindow.focus()
         return "ready"
-    """.trimIndent()).toString()
+    """
+                    .trimIndent(),
+            )
+            .toString()
     if (state.contains("ready")) break
 }
 check(state.contains("ready")) { "could not select the sentence to annotate: " + state }
@@ -394,16 +432,22 @@ ui.typeSlowly(note, 15)
 ui.press("Enter")
 for (i in 0 until 40) {
     ui.pause(250)
-    state = ui.eval("""
+    state =
+        ui.eval(
+                """
         const d = document.getElementById("docs-notes-frame").contentDocument
         return d.querySelectorAll("#f4-annotations .f4a-note").length > 0 ? "saved" : "saving"
-    """.trimIndent()).toString()
+    """
+                    .trimIndent(),
+            )
+            .toString()
     if (state.contains("saved")) break
 }
 check(state.contains("saved")) { "the note did not appear in the panel: " + state }
 ui.pause(800)
 // Clip to the page's text column and the panel, from the title down past the annotated paragraph.
-ui.eval("""
+ui.eval(
+    """
     const f = document.getElementById("docs-notes-frame")
     const d = f.contentDocument
     const title = d.querySelector("article h1").getBoundingClientRect()
@@ -420,7 +464,9 @@ ui.eval("""
         "left:" + left + "px;top:" + top + "px;width:" + (o.left + panel.right - left) + "px;height:" + (bottom - top) + "px")
     document.body.appendChild(m)
     return true
-""".trimIndent())
+"""
+        .trimIndent(),
+)
 ui.pause(300)
 ```
 
@@ -445,7 +491,8 @@ landed. It reads the same queue, so the note above is already waiting in it:
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector="#docs-pass-crop" screenshot="assets/how_field_is_built/docs_pass.png" padding="0" wait="0" timeout="150" embed=true hidden=true name="docs-pass-page" alt="The first three steps of the documentation revision pass page. 1, Worktree: no pass is open, with Start a pass, Finish and Abandon buttons. 2, Drain the queue: 1 open note, the agent (claude), how many at a time (4), tag and page filters, and buttons to drain the queue, stop, and import completion KDoc drafts. 3, Handoffs: how handoffs are worked in batches, a button to group them, and None open."}
 // /docs-pass.html is its own page: load it into a frame and wait for the status it fetches from
 // tools/docs_notes.py (the queue, the counts, the handoffs), then take its first three steps.
-ui.eval("""
+ui.eval(
+    """
     document.getElementById("docs-pass-frame")?.remove()
     const f = document.createElement("iframe")
     f.id = "docs-pass-frame"
@@ -453,23 +500,31 @@ ui.eval("""
     f.setAttribute("style", "position:fixed;left:0;top:0;width:1200px;height:1400px;border:0;background:#111;z-index:2147483000")
     document.body.appendChild(f)
     return true
-""".trimIndent())
+    """
+        .trimIndent(),
+)
 var state = ""
 for (i in 0 until 240) {
     ui.pause(250)
-    state = ui.eval("""
-        const d = document.getElementById("docs-pass-frame")?.contentDocument
-        if (!d || !d.getElementById("posture")) return "loading"
-        if (/Loading/.test(d.getElementById("posture").textContent)) return "posture"
-        if (!d.getElementById("counts")?.children.length) return "counts"
-        if (!d.getElementById("handoffs")?.children.length) return "handoffs"
-        return "ready"
-    """.trimIndent()).toString()
+    state =
+        ui.eval(
+                """
+                const d = document.getElementById("docs-pass-frame")?.contentDocument
+                if (!d || !d.getElementById("posture")) return "loading"
+                if (/Loading/.test(d.getElementById("posture").textContent)) return "posture"
+                if (!d.getElementById("counts")?.children.length) return "counts"
+                if (!d.getElementById("handoffs")?.children.length) return "handoffs"
+                return "ready"
+                """
+                    .trimIndent(),
+            )
+            .toString()
     if (state.contains("ready")) break
 }
 check(state.contains("ready")) { "the revision pass page did not finish loading: " + state }
 ui.pause(800)
-ui.eval("""
+ui.eval(
+    """
     const f = document.getElementById("docs-pass-frame")
     const r = ((() => {
         const d = f.contentDocument
@@ -485,7 +540,9 @@ ui.eval("""
         "left:" + (o.left + r.left) + "px;top:" + (o.top + r.top) + "px;width:" + r.width + "px;height:" + r.height + "px")
     document.body.appendChild(m)
     return [r.width, r.height]
-""".trimIndent())
+    """
+        .trimIndent(),
+)
 ui.pause(300)
 ```
 
@@ -502,7 +559,8 @@ completion's KDoc drafts waiting for review, the documentation notes, and the to
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector="#docs-welcome-cards-crop" screenshot="assets/how_field_is_built/welcome_cards.png" padding="12" wait="0" timeout="120" embed=true hidden=true name="welcome-improvement-cards" alt="Three task cards from the AI panel on the Welcome page. KDoc drafts: 30 drafts in 13 files, with Review in docs pass. Documentation notes: 1 open, with Revision pass. Agent tool use: no logs yet in this checkout, with Review logs, Generate proposal and Mark reviewed."}
 // /welcome is its own page: load it into a frame, open the AI panel the way a click on its summary
 // does, and mark the rectangle from the KDoc drafts card to the Agent tool use card.
-ui.eval("""
+ui.eval(
+    """
     document.getElementById("docs-welcome-frame")?.remove()
     const f = document.createElement("iframe")
     f.id = "docs-welcome-frame"
@@ -510,30 +568,41 @@ ui.eval("""
     f.setAttribute("style", "position:fixed;left:0;top:0;width:1700px;height:2000px;border:0;background:#111;z-index:2147483000")
     document.body.appendChild(f)
     return true
-""".trimIndent())
+    """
+        .trimIndent(),
+)
 var state = ""
 for (i in 0 until 80) {
     ui.pause(250)
-    state = ui.eval("""
-        const d = document.getElementById("docs-welcome-frame")?.contentDocument
-        const panel = d && d.getElementById("ai-settings-details")
-        if (!panel) return "loading"
-        if (!panel.open) panel.querySelector("summary").click()
-        const states = ["completion-doc-polish-state", "docs-pass-state", "ai-tool-use-improvement-state"]
-            .map(id => d.getElementById(id)?.textContent || "checking")
-        return states.some(s => /checking/i.test(s)) ? "pending" : "ready"
-    """.trimIndent()).toString()
+    state =
+        ui.eval(
+                """
+                const d = document.getElementById("docs-welcome-frame")?.contentDocument
+                const panel = d && d.getElementById("ai-settings-details")
+                if (!panel) return "loading"
+                if (!panel.open) panel.querySelector("summary").click()
+                const states = ["completion-doc-polish-state", "docs-pass-state", "ai-tool-use-improvement-state"]
+                    .map(id => d.getElementById(id)?.textContent || "checking")
+                return states.some(s => /checking/i.test(s)) ? "pending" : "ready"
+                """
+                    .trimIndent(),
+            )
+            .toString()
     if (state.contains("ready")) break
 }
 check(state.contains("ready")) { "the welcome AI panel did not finish loading: " + state }
 ui.pause(1000)
-ui.eval("""
+ui.eval(
+    """
     const panel = document.getElementById("docs-welcome-frame").contentDocument.getElementById("ai-settings-details")
     panel.querySelectorAll(".ai-docs-panel")[0].scrollIntoView({ block: "start" })
     return true
-""".trimIndent())
+    """
+        .trimIndent(),
+)
 ui.pause(300)
-ui.eval("""
+ui.eval(
+    """
     const f = document.getElementById("docs-welcome-frame")
     const r = ((() => {
         const cards = [...f.contentDocument.querySelectorAll("#ai-settings-details .ai-docs-panel")]
@@ -549,7 +618,9 @@ ui.eval("""
         "left:" + (o.left + r.left) + "px;top:" + (o.top + r.top) + "px;width:" + r.width + "px;height:" + r.height + "px")
     document.body.appendChild(m)
     return [r.width, r.height]
-""".trimIndent())
+    """
+        .trimIndent(),
+)
 ui.pause(300)
 ```
 

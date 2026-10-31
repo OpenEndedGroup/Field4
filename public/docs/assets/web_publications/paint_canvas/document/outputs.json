@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-29T22:43:48.669Z",
+  "documentName": "paint_canvas",
+  "outputs": [
+    {
+      "uid": "paint_flow_field",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 449,
+      "height": 45,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "paint_pencil_drawing",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 449,
+      "height": 45,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "paint_first_strokes",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 449,
+      "height": 45,
+      "path": "outputs/2.html"
+    }
+  ]
+}

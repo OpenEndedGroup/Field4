@@ -883,9 +883,11 @@ pre code {
 }
 
 .ai-chat-messages {
-    /* The transcript scrolls in its share; its content length must not squeeze sibling panels. */
+    /* The transcript scrolls in its share; its content length must not squeeze sibling panels.
+       It keeps 72px even when the state browser and the Local AI status line (localAiFeedback.js)
+       are both showing: the state browser (flex-shrink 1) gives way instead. */
     flex: 1 1 0;
-    min-height: 0;
+    min-height: 72px;
     overflow-y: auto;
     margin-left: 5px;
     padding-right: 5px;
@@ -1287,6 +1289,55 @@ pre code {
     color: var(--ai-chat-ai-fg, var(--field-fg));
 }
 
+/* A question the agent asked (AskUserQuestionRequest): the turn waits for the person's answer. */
+.ai-chat-question {
+    align-self: stretch;
+    margin: 4px 6px;
+    padding: 6px 8px;
+    border-left: 2px solid var(--field-border-medium);
+    border-radius: 0 8px 8px 0;
+    background: var(--field-editor-bg);
+    color: var(--field-fg);
+}
+
+.ai-chat-question.open {
+    border-left-color: var(--field-accent);
+    background: rgba(var(--field-accent-rgb), 0.08);
+}
+
+.ai-chat-question-choices {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+}
+
+.ai-chat-question-choice {
+    font: inherit;
+    padding: 3px 10px;
+    border: 1px solid var(--field-border-strong);
+    border-radius: 12px;
+    background: var(--field-surface);
+    color: var(--field-fg-strong);
+    cursor: pointer;
+}
+
+.ai-chat-question-choice:hover:not(:disabled) {
+    border-color: var(--field-accent);
+    background: rgba(var(--field-accent-rgb), 0.18);
+}
+
+.ai-chat-question-choice:disabled {
+    cursor: default;
+    opacity: 0.5;
+}
+
+.ai-chat-question-hint {
+    margin-top: 4px;
+    font-size: 0.85em;
+    color: var(--field-fg-muted);
+}
+
 .ai-chat-turn.you {
     align-self: flex-end;
     text-align: right;
@@ -1585,28 +1636,31 @@ pre code {
     }
 }
 
-#slide-note-overlay h1 {
-    margin-top: 0;
-    margin-bottom: 12px;
-    font-size: 22px;
-    font-weight: 650;
-    color: var(--field-fg-heading);
-}
-
-#slide-note-overlay h2 {
-    margin-top: 0;
-    margin-bottom: 12px;
-    font-size: 20px;
-    font-weight: 600;
-    color: var(--field-fg-heading);
-}
-
+/* A note's headings use the panel title tokens (fieldPanelTokens.css), so a slide note's title
+   reads like every other panel's; the reading text below stays at 13px. A heading further down
+   the note is a bold line at body size. */
+#slide-note-overlay h1,
+#slide-note-overlay h2,
 #slide-note-overlay h3 {
     margin-top: 10px;
-    margin-bottom: 8px;
-    font-size: 16px;
+    margin-bottom: 6px;
+    font-size: 13px;
     font-weight: 600;
+    line-height: 1.4;
     color: var(--field-fg-heading);
+}
+
+#slide-note-overlay h1:first-child,
+#slide-note-overlay h2:first-child,
+#slide-note-overlay h3:first-child,
+#slide-note-overlay > div:first-child > :is(h1, h2, h3):first-child {
+    margin-top: 2px;
+    margin-bottom: 10px;
+    padding-right: 30px;
+    font-size: var(--fp-title-size);
+    font-weight: var(--fp-title-weight);
+    line-height: 1.4;
+    color: var(--fp-fg);
 }
 
 #slide-note-overlay p {
@@ -1669,27 +1723,11 @@ pre code {
     padding: 0;
 }
 
-/* Close button styling */
+/* Close button: the shared FieldPanel × (fieldPanelTokens.css); only its place is set here. */
 #slide-note-overlay .close-btn {
     position: absolute;
-    top: 5px;
-    right: 5px;
-    background: transparent;
-    border: none;
-    color: var(--field-fg-strong);
-    font-size: 24px;
-    cursor: pointer;
-    padding: 0;
-    width: 24px;
-    height: 24px;
-    line-height: 20px;
-    text-align: center;
-    opacity: 0.7;
-    transition: opacity 0.2s;
-}
-
-#slide-note-overlay .close-btn:hover {
-    opacity: 1;
+    top: 8px;
+    right: 8px;
 }
 
 /* Scrollbar styling */
@@ -1766,7 +1804,10 @@ body {
 }
 
 .field-main-viewport {
-    --field-vignette-background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cdefs%3E%3Cfilter id='v' x='-25%25' y='-25%25' width='150%25' height='150%25' color-interpolation-filters='sRGB'%3E%3CfeGaussianBlur in='SourceGraphic' stdDeviation='5.2' result='blur'/%3E%3CfeTurbulence type='fractalNoise' baseFrequency='3.15' numOctaves='4' seed='71' result='noise'/%3E%3CfeColorMatrix in='noise' type='matrix' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .36 .36 .36 0 -.14' result='noiseAlpha'/%3E%3CfeComposite in='noiseAlpha' in2='blur' operator='in' result='edgeNoise'/%3E%3CfeComposite in='blur' in2='edgeNoise' operator='arithmetic' k2='.88' k3='.46' k4='0' result='dithered'/%3E%3CfeColorMatrix in='dithered' type='matrix' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .72 0'/%3E%3C/filter%3E%3Cfilter id='d' x='0' y='0' width='100%25' height='100%25' color-interpolation-filters='sRGB'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='6.4' numOctaves='3' seed='137' stitchTiles='stitch' result='grain'/%3E%3CfeColorMatrix in='grain' type='saturate' values='0' result='mono'/%3E%3CfeComposite in='SourceGraphic' in2='mono' operator='arithmetic' k2='1' k3='.085' k4='-.0425'/%3E%3C/filter%3E%3C/defs%3E%3Cg filter='url(%23d)'%3E%3Crect width='100' height='100' fill='%23181818'/%3E%3Crect x='-10' y='-10' width='120' height='120' fill='none' stroke='%23000' stroke-width='16' opacity='.66' filter='url(%23v)'/%3E%3C/g%3E%3C/svg%3E");
+    /* Fallback for the WebGL backdrop (fieldWebglBackground.js): same centre (#181818) and edge
+       darkening (28% toward #020202), no grain. An SVG feTurbulence grain here was generated on a
+       100-unit viewBox and stretched to the window, so it read as coarse speckle. */
+    --field-vignette-background: radial-gradient(farthest-corner at center, #181818 55%, #121212 100%);
     position: relative;
     z-index: 0;
     /* clip, not hidden: a hidden box is still a scroll container, and scrollIntoView or a focus() inside an
@@ -2007,9 +2048,11 @@ body.field-pane-resizing-h * {
     gap: 10px;
 }
 
-.field-slider:focus { outline: none; }
+.field-slider:focus,
+.field-vec2:focus { outline: none; }
 .field-slider:focus-visible,
-.field-slider:focus-within {
+.field-slider:focus-within,
+.field-vec2:focus-visible {
     border-radius: 4px;
     box-shadow: 0 0 0 1px var(--field-accent-text-soft);
 }
@@ -2021,6 +2064,8 @@ body.field-pane-resizing-h * {
 /* Shift-drag: the relative, ten-times-finer drag. The thumb grows a ring so the mode is visible. */
 .field-slider.fine .slider-thumb { stroke-width: 3; r: 7; }
 .field-slider.fine .field-value::after { content: " fine"; opacity: 0.6; }
+.field-vec2.fine .vec2-handle { stroke-width: 3; r: 6; }
+.field-vec2.fine .vec2-tr::after { content: " fine"; opacity: 0.6; }
 .field-value-edit {
     font-family: var(--field-font);
     box-sizing: border-box;
@@ -2809,6 +2854,13 @@ body.field-pane-resizing-h * {
 .error .inner_output {
     background: var(--field-danger-bg) !important;
     border: 1px solid var(--field-danger);
+    font-size: 90%;
+    font-style: italic;
+}
+
+.warning .inner_output {
+    background: rgba(var(--field-warning-rgb), 0.12) !important;
+    border: 1px solid rgba(var(--field-warning-rgb), 0.6);
     font-size: 90%;
     font-style: italic;
 }
@@ -4721,6 +4773,31 @@ kbd {
     transition: 0.2s all;
 }
 
+/* A stop was asked for and the box is still running: it is not responding to the stop. */
+.statusArea.stop-pending {
+    position: absolute;
+    left: auto;
+    right: 4px;
+    bottom: 4px;
+    width: 7px;
+    height: 7px;
+    border-radius: 1px;
+    background: var(--field-warning);
+    border: 0.5px solid var(--field-warning);
+    animation: stop-pending-pulse 0.9s ease-in-out infinite alternate;
+}
+
+@keyframes stop-pending-pulse {
+    from {
+        opacity: 1;
+        transform: scale(1);
+    }
+    to {
+        opacity: 0.35;
+        transform: scale(0.7);
+    }
+}
+
 .statusArea .tooltiptext {
     visibility: hidden;
     position: absolute;
@@ -5276,66 +5353,51 @@ body.canvas-flight-recording .monaco-editor .cursor {
 
 
 /* Document search widget. */
+/* Document search (documentSearch.kt): a FieldPanel-family bar, bottom-left of the main pane
+   (placed by positionSearch), so it does not read as the editor's own Find at the top right. */
 #document-search {
     position: fixed;
-    top: 14px;
-    right: 18px;
+    left: 10px;
+    bottom: 10px;
     display: none;
     align-items: center;
-    gap: 6px;
-    padding: 7px 8px;
-    background: var(--field-overlay);
-    border: 1px solid var(--field-border-subtle);
-    border-radius: 7px;
-    box-shadow: var(--field-shadow-xl);
-    z-index: 11000;
-    font-family: var(--field-font-code-fallback);
+    gap: 4px;
+    padding: 4px 4px 4px 4px;
+    background: var(--fp-bg);
+    border: var(--fp-border);
+    border-radius: var(--fp-radius);
+    z-index: 12065;
+    font-family: var(--field-font);
+    font-size: var(--fp-font-size);
+    color: var(--fp-fg);
 }
 
 #document-search input {
-    min-width: 220px;
-    padding: 6px 8px;
-    border-radius: 5px;
-    background: var(--field-hover-soft);
-    border: 1px solid var(--field-border-soft);
-    color: var(--field-fg-bright);
+    width: 240px;
+    height: var(--fp-close-size);
+    box-sizing: border-box;
+    padding: 0 8px;
+    border-radius: var(--fp-control-radius);
+    background: var(--fp-control-bg);
+    border: 1px solid var(--fp-control-border);
+    color: var(--fp-fg);
+    font-family: var(--field-font);
+    font-size: 12px;
     outline: none;
 }
 
-#document-search input:focus {
-    border-color: var(--field-search-focus);
-    box-shadow: 0 0 0 2px var(--field-search-active-soft);
-}
-
-#document-search .search-button {
-    background: var(--field-hover-soft);
-    border: 1px solid var(--field-border-soft);
-    color: var(--field-fg-bright);
-    border-radius: 5px;
-    width: 28px;
-    height: 28px;
-    display: grid;
-    place-items: center;
-    cursor: pointer;
-    transition: background 120ms ease, border-color 120ms ease;
-}
-
-#document-search .search-button:hover {
-    background: var(--field-hover-medium);
-    border-color: var(--field-border-strong);
-}
-
-#document-search .search-button.close {
-    width: 26px;
-    height: 26px;
-    font-size: 14px;
-}
+#document-search input::placeholder { color: var(--fp-muted); font-family: var(--field-font); }
+#document-search input:hover { border-color: var(--fp-control-hover-border); }
+#document-search input:focus { border-color: var(--fp-control-hover-border); background: var(--fp-control-hover-bg); box-shadow: none; }
+#document-search.is-no-match input { border-color: rgba(255, 133, 133, 0.55); }
+#document-search.is-no-match .search-count { color: #ff8585; }
+#document-search .field-panel-icon:disabled { opacity: 0.38; cursor: default; }
 
 #document-search .search-count {
-    color: var(--field-fg-soft);
-    font-size: 12px;
+    margin: 0 4px;
     min-width: 72px;
     text-align: right;
+    white-space: nowrap;
 }
 
 .box.search-hit {
@@ -5393,17 +5455,15 @@ body.canvas-flight-recording .monaco-editor .cursor {
     overflow: hidden;
 }
 
-/* header */
+/* header: the FieldPanel title and close button (fieldPanelTokens.css) */
 .field-tray__header {
-    flex: 0 0 26px;
+    flex: 0 0 var(--fp-head-height);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 8px 0 10px;
+    padding: 0 6px 0 10px;
     gap: 6px;
-    font-size: 10px;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
+    font-family: var(--field-font);
 }
 
 .field-tray__title {
@@ -5411,31 +5471,9 @@ body.canvas-flight-recording .monaco-editor .cursor {
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
-    opacity: 0.8;
-}
-
-.field-tray__close {
-    flex: 0 0 auto;
-    border: none;
-    border-radius: 3px;
-    padding: 2px 6px;
-    background: var(--field-surface);
-    color: inherit;
-    cursor: pointer;
-    font-size: 11px;
-    line-height: 1;
-    opacity: 0.8;
-    transition: background 0.12s ease-out, opacity 0.12s ease-out, transform 0.12s ease-out;
-}
-
-.field-tray__close:hover {
-    background: var(--field-hover-strong);
-    opacity: 1;
-    transform: translateY(-0.5px);
-}
-
-.field-tray__close:active {
-    transform: translateY(0.5px);
+    font-size: var(--fp-title-size);
+    font-weight: var(--fp-title-weight);
+    color: var(--fp-fg);
 }
 
 /* body + iframe */
@@ -5736,6 +5774,11 @@ body.mode-editor-only .field-toast {
     pointer-events: none;
 }
 
+/* Hidden from the layers panel's "drawing" row. */
+.field-drawing-layer.field-drawing-hidden {
+    visibility: hidden;
+}
+
 .field-drawing-inactive .layer-ui__wrapper,
 .field-drawing-inactive .App-bottom-bar,
 .field-drawing-inactive .footer-center {
@@ -5806,29 +5849,28 @@ body.mode-editor-only .field-toast {
 }
 
 /* ── Field panels (FieldPanel in fieldPanel.kt) ─────────────────────────────────────────────
-   Shell after .macro-recorder-panel, cards and pills after the history viewer (history.html).
-   Shared by every canvas-level panel; the bookmarks panel is the first. */
+   Tokens (--fp-*) and the close button live in fieldPanelTokens.css, shared with the history and
+   keyframe-browser iframes. Panel-specific placement (.macro-recorder-panel, ...) sits with
+   each panel. */
 .field-panel {
-    --fp-panel-2: #242424;
-    --fp-muted: #8a8a8a;
-    --fp-dim: #5c5c5c;
+    --fp-panel-2: var(--fp-card);
     position: fixed;
     top: 10px;
     right: 10px;
     width: min(560px, calc(100vw - 20px));
     max-height: calc(100vh - 20px);
-    border: 5px solid var(--field-border);
-    border-radius: 5px;
-    background: #000000;
-    color: #d8d8d8;
+    border: var(--fp-border);
+    border-radius: var(--fp-radius);
+    background: var(--fp-bg);
+    color: var(--fp-fg);
     z-index: 12060;
     display: none;
     flex-direction: column;
     gap: 6px;
-    padding: 8px;
+    padding: var(--fp-pad);
     box-sizing: border-box;
     font-family: var(--field-font);
-    font-size: 10.2px;
+    font-size: var(--fp-font-size);
     overflow: hidden;
 }
 .field-panel.is-visible { display: flex; }
@@ -5838,9 +5880,9 @@ body.mode-editor-only .field-toast {
     align-items: center;
     justify-content: space-between;
     gap: 10px;
-    min-height: 28px;
+    min-height: var(--fp-head-height);
 }
-.field-panel-title { font-size: 11px; font-weight: 500; line-height: 1; }
+.field-panel-title { font-size: var(--fp-title-size); font-weight: var(--fp-title-weight); line-height: 1; }
 .field-panel-status { color: var(--fp-muted); font-size: 10.2px; margin-top: 3px; }
 .field-panel-body {
     min-height: 0;
@@ -5851,7 +5893,7 @@ body.mode-editor-only .field-toast {
     scrollbar-width: none;
 }
 .field-panel-body::-webkit-scrollbar { width: 0; height: 0; }
-.field-panel button, .field-panel-icon {
+.field-panel button {
     border: 1px solid #2b2b2b;
     background: #050505;
     color: var(--fp-muted);
@@ -5864,7 +5906,6 @@ body.mode-editor-only .field-toast {
 }
 .field-panel button:hover:not(:disabled) { border-color: #464646; background: #101010; color: #f0f0f0; }
 .field-panel button:disabled { opacity: 0.38; cursor: default; }
-.field-panel-icon { width: 26px; height: 26px; padding: 0; font-size: 17px; line-height: 1; }
 .field-panel input[type="text"] {
     border: 1px solid transparent;
     background: transparent;
@@ -5924,7 +5965,8 @@ body.mode-editor-only .field-toast {
 .bookmark-options { display: flex; flex-wrap: wrap; gap: 4px 10px; }
 
 /* Layers panel (layersPanel.kt) */
-#layers-panel { width: min(420px, calc(100vw - 20px)); }
+/* Bottom-left, with the history viewer and the macro recorder. */
+#layers-panel { top: auto; right: auto; left: 10px; bottom: 10px; width: min(420px, calc(100vw - 20px)); }
 .layer-row .field-panel-card-head { grid-template-columns: 30px 18px minmax(0, 1fr) 64px auto; }
 .layer-row .field-panel-meta { text-align: right; }
 .field-panel button.layer-eye { width: 30px; padding: 0; display: inline-flex; align-items: center; justify-content: center; opacity: 0.35; }

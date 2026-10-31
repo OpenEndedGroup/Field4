@@ -1,0 +1,3 @@
+Moved the displaced KDoc back above `patternEventsForCycles`; source inspection confirms the stacked blocks are gone, with no executable changes. Gradle was unavailable, and the Python guard-selection tests could not start because of `ModuleNotFoundError: tools`, so no passing check is claimed.
+
+FIXER-VERDICT: {"verdict": "fix", "culprit": "handoffs/code-20261015-2234", "reason": "The branch inserted declarations between an existing function and its KDoc, so moving that comment back mechanically removes the guard-rejected stacked blocks."}

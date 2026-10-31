@@ -52,12 +52,8 @@ and reload the page.
 
 ## Which chat hears you
 
-The push-to-talk key talks to one chat, and that chat stays the same until you pick another:
-
-- the last box you **selected** that has an AI chat open, or
-- the last chat you **typed into**,
-
-whichever happened most recently. Selecting a box with no chat leaves the target where it was.
+The push-to-talk key sends your words to the most recently chosen chat: either the chat in the
+last box you **selected**, if it has one open, or the last chat you **typed into**. Selecting a box with no chat leaves the target where it was.
 If no chat is open at all, Field opens one for the selected box. With nothing selected and no
 chat, Field asks you to select a box first. While a chat is recording or transcribing, its
 microphone button and outline show it.
@@ -87,10 +83,9 @@ newlines:
 localStorage.setItem("fieldVoiceVocabulary", "GpuRadixSort, RenderToTexture, Lygia")
 ```
 
-**After transcription**, a spoken prompt is marked as dictated when it is sent. The model is told
-that it is reading a speech-to-text transcript that may contain recognition errors, to read it for
-what was meant using the code and the conversation, and to say which reading it took when a
-correction changes what it would do. The chat history keeps your words as Whisper heard them.
+**After transcription**, Field marks the prompt as dictated. The model is told that it may contain
+recognition errors and can use the code and conversation to interpret it; if a correction changes
+what it would do, it should say how it understood you. The chat history keeps Whisper's transcript.
 
 ## How fast it is
 

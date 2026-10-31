@@ -1,0 +1,19 @@
+{
+  "mode": "impulse",
+  "frames": 180,
+  "duration": 6.000000312924385,
+  "coldSeconds": 9.813892446341924,
+  "advanceP50Ms": 41.07203509192914,
+  "advanceP95Ms": 43.950928025878966,
+  "events": {
+    "applied": 2,
+    "impulsePhysics": 1,
+    "planner": 2
+  },
+  "maxPrefixResidualM": 0.0,
+  "meanTrackingErrorM": 0.05141584323854336,
+  "maxTetherForceN": 0,
+  "totalTetherWorkJ": 0,
+  "commandToVisibleMeasured": false,
+  "visualInspection": false
+}

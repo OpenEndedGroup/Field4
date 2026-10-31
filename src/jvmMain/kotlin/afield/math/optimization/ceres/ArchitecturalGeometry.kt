@@ -45,11 +45,14 @@ class PointRef internal constructor(val id: PointId, val name: String?) {
     /** The raw index, for reaching the underlying [PointCloud] or [MutablePointCloud] directly. */
     val index: Int get() = id.value
 
+    /** By [id] alone, so a reference from another model compares equal at the same index. */
     override fun equals(other: Any?): Boolean =
         other is PointRef && id == other.id
 
+    /** [id]'s hash, to match [equals]. */
     override fun hashCode(): Int = id.hashCode()
 
+    /** The declared name, or `p` and the index — `p12` — where the scope was given none. */
     override fun toString(): String = name ?: "p$index"
 }
 
@@ -72,6 +75,7 @@ data class PlaneRef(val a: PointRef, val b: PointRef, val c: PointRef, val name:
  * pair describes a bow tie rather than a panel.
  */
 data class PanelRef(val a: PointRef, val b: PointRef, val c: PointRef, val d: PointRef, val name: String? = null) {
+    /** The four corners in perimeter order, for a caller that wants to iterate rather than name them. */
     val points: List<PointRef> get() = listOf(a, b, c, d)
 }
 
@@ -91,6 +95,7 @@ class PointExpr internal constructor(
     internal val terms: Map<PointRef, Double>,
     internal val constant: Vec3 = Vec3(0.0, 0.0, 0.0),
 ) {
+    /** Add two expressions, summing the coefficient of any point they share. Not a midpoint. */
     operator fun plus(other: PointExpr): PointExpr {
         val next = terms.toMutableMap()
         other.terms.forEach { (point, weight) ->
@@ -99,14 +104,19 @@ class PointExpr internal constructor(
         return PointExpr(next.cleanTerms(), constant + other.constant)
     }
 
+    /** Add a bare point into this expression, as a term with coefficient one. */
     operator fun plus(other: PointRef): PointExpr = this + other.expr
 
+    /** Subtract an expression, which for two points is the edge vector between them. */
     operator fun minus(other: PointExpr): PointExpr = this + (-other)
 
+    /** Subtract a bare point from this expression. */
     operator fun minus(other: PointRef): PointExpr = this - other.expr
 
+    /** Negate every coefficient and the constant. */
     operator fun unaryMinus(): PointExpr = this * -1.0
 
+    /** Scale every coefficient and the constant. The scale must be finite. */
     operator fun times(scale: Number): PointExpr {
         val s = scale.toDouble()
         require(s.isFinite()) { "expression scale must be finite" }
@@ -116,6 +126,7 @@ class PointExpr internal constructor(
     internal fun directPointOrNull(): PointRef? =
         terms.entries.singleOrNull()?.takeIf { it.value == 1.0 && constant.isZero() }?.key
 
+    /** The combination written out, as in `west + east*0.5`, so a trace point can be named. */
     override fun toString(): String =
         buildString {
             if (terms.isEmpty() && constant.isZero()) append("0")
@@ -136,8 +147,11 @@ class PointExpr internal constructor(
  * target is a cosine; [ConstraintScope.raw] makes it a raw dot product in length squared.
  */
 class DotExpr internal constructor(
+    /** The first segment. Its direction is `b - a` of that line. */
     val a: LineRef,
+    /** The second segment, dotted against [a]. */
     val b: LineRef,
+    /** Whether the target is a cosine. False makes it a raw dot product, in length squared. */
     val normalized: Boolean = true,
 )
 
@@ -148,7 +162,9 @@ class DotExpr internal constructor(
  * the next one — which is why an expression relation is one-way within a single solve.
  */
 class GeometryTrace internal constructor(
+    /** The synthetic point the expression is written into, which is a free parameter like any other. */
     val target: PointRef,
+    /** What [target] is recomputed from at the start of each solve. */
     val expression: PointExpr,
 )
 
@@ -161,10 +177,15 @@ class GeometryTrace internal constructor(
  * saying so.
  */
 class PointBinding internal constructor(
+    /** The model point this value stands for. */
     val point: PointRef,
+    /** Called before each step to see where the outside world has put the point. */
     val reader: () -> Vec3,
+    /** Called after each solve with the answer, which is how a bound `Vector3f` is updated in place. */
     val writer: (Vec3) -> Unit,
+    /** How far a read value may move between steps before the change counts as user input. */
     val dragTolerance: Double,
+    /** The prior weight such a change is given, or null for the policy's own drag weight. */
     val dragWeight: Double?,
     internal val sourceIdentity: Int? = null,
 ) {
@@ -188,12 +209,15 @@ class PointBinding internal constructor(
  * problems.
  */
 class GeometryModel internal constructor(
+    /** One entry per point, in index order, null where the scope declared the point unnamed. */
     val pointNames: List<String?>,
     private val initialValues: DoubleArray,
+    /** The constraints as the backend wants them, ready to compile but not yet compiled. */
     val program: CeresProgram,
     internal val traces: List<GeometryTrace>,
     internal val bindings: List<PointBinding>,
 ) {
+    /** How many points the model declares, trace points included. */
     val pointCount: Int = pointNames.size
 
     /** A copy of the declared positions. Copies, so the model's own seed cannot be edited through it. */
@@ -307,8 +331,10 @@ class GeometryModelScope {
         this.loss = loss
     }
 
+    /** A named point at explicit coordinates: the name-first spelling of [point]. */
     fun point(name: String, x: Double, y: Double, z: Double): PointRef = point(x, y, z, name)
 
+    /** A named point seeded from a `Vector3fc`, memoised by object identity like the unnamed form. */
     fun point(name: String, value: Vector3fc): PointRef = point(value, name)
 
     /**
@@ -425,21 +451,28 @@ class GeometryModelScope {
         return LineRef(a, b, name)
     }
 
+    /** As [line], declaring a point for each `Vector3fc` end. */
     fun line(a: Vector3fc, b: Vector3fc, name: String? = null): LineRef =
         line(point(a), point(b), name)
 
+    /** As [line], declaring a point for the `Vector3fc` end. */
     fun line(a: PointRef, b: Vector3fc, name: String? = null): LineRef =
         line(a, point(b), name)
 
+    /** As [line], declaring a point for the `Vector3fc` end. */
     fun line(a: Vector3fc, b: PointRef, name: String? = null): LineRef =
         line(point(a), b, name)
 
+    /** `a lineTo b` — [line] as an infix, for reading a declaration left to right. */
     infix fun PointRef.lineTo(other: PointRef): LineRef = line(this, other)
 
+    /** As above, declaring a point for the `Vector3fc` end. */
     infix fun PointRef.lineTo(other: Vector3fc): LineRef = line(this, other)
 
+    /** As above, declaring a point for the `Vector3fc` end. */
     infix fun Vector3fc.lineTo(other: PointRef): LineRef = line(this, other)
 
+    /** As above, declaring a point for both ends. */
     infix fun Vector3fc.lineTo(other: Vector3fc): LineRef = line(this, other)
 
     /**
@@ -454,15 +487,19 @@ class GeometryModelScope {
         return PlaneRef(a, b, c, name)
     }
 
+    /** As [plane], declaring a point for each `Vector3fc` corner. The order still fixes the normal. */
     fun plane(a: Vector3fc, b: Vector3fc, c: Vector3fc, name: String? = null): PlaneRef =
         plane(point(a), point(b), point(c), name)
 
+    /** As [plane], declaring points for the `Vector3fc` corners. */
     fun plane(a: PointRef, b: Vector3fc, c: Vector3fc, name: String? = null): PlaneRef =
         plane(a, point(b), point(c), name)
 
+    /** As [plane], declaring points for the `Vector3fc` corners. */
     fun plane(a: Vector3fc, b: PointRef, c: Vector3fc, name: String? = null): PlaneRef =
         plane(point(a), b, point(c), name)
 
+    /** As [plane], declaring points for the `Vector3fc` corners. */
     fun plane(a: Vector3fc, b: Vector3fc, c: PointRef, name: String? = null): PlaneRef =
         plane(point(a), point(b), c, name)
 
@@ -475,6 +512,7 @@ class GeometryModelScope {
         return PanelRef(a, b, c, d, name)
     }
 
+    /** As [panel], declaring a point for each corner. Perimeter order still matters. */
     fun panel(a: Vector3fc, b: Vector3fc, c: Vector3fc, d: Vector3fc, name: String? = null): PanelRef =
         panel(point(a), point(b), point(c), point(d), name)
 
@@ -612,26 +650,37 @@ class ConstraintScope internal constructor(private val model: GeometryModelScope
         add(CeresExpressionResidual(points.map { it.id }, build(bound), weight))
     }
 
+    /** `v.c` — declare a point at this vector's value, inside `constraints { }`. Read once, not watched. */
     val Vector3fc.c: PointRef get() = model.point(this)
 
+    /** `v.point` — declare a point *bound* to this mutable vector, so the solve writes back into it. */
     val Vector3f.point: PointRef get() = model.bindPoint(value = this)
 
+    /** Declare a point from inside `constraints { }`, for geometry the model block did not name. */
     fun point(value: Vector3fc, name: String? = null): PointRef = model.point(value, name)
 
+    /** Name a segment from inside `constraints { }`. The endpoints must be distinct. */
     fun line(a: PointRef, b: PointRef, name: String? = null): LineRef = model.line(a, b, name)
 
+    /** As above, declaring a point for each `Vector3fc` end. */
     fun line(a: Vector3fc, b: Vector3fc, name: String? = null): LineRef = model.line(a, b, name)
 
+    /** As above, declaring a point for the `Vector3fc` end. */
     fun line(a: PointRef, b: Vector3fc, name: String? = null): LineRef = model.line(a, b, name)
 
+    /** As above, declaring a point for the `Vector3fc` end. */
     fun line(a: Vector3fc, b: PointRef, name: String? = null): LineRef = model.line(a, b, name)
 
+    /** `a lineTo b` — [line] as an infix. */
     infix fun PointRef.lineTo(other: PointRef): LineRef = line(this, other)
 
+    /** As above, declaring a point for the `Vector3fc` end. */
     infix fun PointRef.lineTo(other: Vector3fc): LineRef = line(this, other)
 
+    /** As above, declaring a point for the `Vector3fc` end. */
     infix fun Vector3fc.lineTo(other: PointRef): LineRef = line(this, other)
 
+    /** As above, declaring a point for both ends. */
     infix fun Vector3fc.lineTo(other: Vector3fc): LineRef = line(this, other)
 
     /** Begin a dot-product statement: `(a lineTo b) dot (c lineTo d) ceq 0.5`. Normalised, so the target is a cosine. */
@@ -643,18 +692,25 @@ class ConstraintScope internal constructor(private val model: GeometryModelScope
      */
     fun DotExpr.raw(): DotExpr = DotExpr(a, b, normalized = false)
 
+    /** Start a [PointExpr] from two points. A sum of positions, not a midpoint; scale it yourself. */
     operator fun PointRef.plus(other: PointRef): PointExpr = expr + other
 
+    /** Add a point into an existing expression. */
     operator fun PointRef.plus(other: PointExpr): PointExpr = expr + other
 
+    /** The difference of two points, which is the edge vector between them. */
     operator fun PointRef.minus(other: PointRef): PointExpr = expr - other
 
+    /** Subtract an expression from a point. */
     operator fun PointRef.minus(other: PointExpr): PointExpr = expr - other
 
+    /** Scale a point's position, as in `0.5 * (a + b)`. */
     operator fun PointRef.times(scale: Number): PointExpr = expr * scale
 
+    /** The same scaling with the number on the left, so `0.5 * a` reads as it would on paper. */
     operator fun Number.times(point: PointRef): PointExpr = point * this
 
+    /** The same, scaling a whole expression, as in `0.5 * (a + b)`. */
     operator fun Number.times(expr: PointExpr): PointExpr = expr * this
 
     /** Drive a [dot] statement to a value. Weight is fixed at `1.0`; use [angleCosTo] if you need to set it. */
@@ -674,10 +730,12 @@ class ConstraintScope internal constructor(private val model: GeometryModelScope
         sameXYZ(this, other)
     }
 
+    /** As [PointRef.ceq], against a position; the vector is declared as a point first. */
     infix fun PointRef.ceq(other: Vector3fc) {
         this ceq other.c
     }
 
+    /** As [PointRef.ceq], with the vector on the left; it is declared as a point first. */
     infix fun Vector3fc.ceq(other: PointRef) {
         this.c ceq other
     }
@@ -694,18 +752,28 @@ class ConstraintScope internal constructor(private val model: GeometryModelScope
         sameXYZ(model.materialize(this), other)
     }
 
+    /** As [PointExpr.ceq], against a position; the vector is declared as a point first. */
     infix fun PointExpr.ceq(other: Vector3fc) {
         this ceq other.c
     }
 
+    /** [PointExpr.ceq] with the operands the other way round; the same one-way coupling applies. */
     infix fun PointRef.ceq(other: PointExpr) {
         other ceq this
     }
 
+    /**
+     * A weak "stay near where you are" prior on every point, at a weight meant to be invisible except
+     * where the geometry leaves a point free.
+     *
+     * [WeakPosition]'s target is refreshed from the input cloud on each solve, so this regularises
+     * against the *current* positions rather than pulling back towards the seed.
+     */
     fun weakAll(weight: Double = 1e-6) {
         add(WeakPosition(listOf(PointId.ALL_POINTS), AxisSet.XYZ, weight))
     }
 
+    /** Penalise negative `z` on every point: a ground plane written as a residual, not as a bound. */
     fun noNegativeZAll(weight: Double = 1.0) {
         add(NoNegativeZ(listOf(PointId.ALL_POINTS), weight))
     }
@@ -807,13 +875,21 @@ class ConstraintScope internal constructor(private val model: GeometryModelScope
     }
 
     /**
-     * Two segments the same length, without saying what ([EqualDistance]).
+     * Two segments the same length, without saying what ([EqualDistance]). Use [sameVectorAs] if you also mean parallel.
      *
-     * The two segments must not share a point — see [EqualDistance], which does not check for it and cannot be encoded
-     * that way. Use [sameVectorAs] if you also mean parallel.
+     * Segments that share a point — two walls meeting at a corner — are the common case for "make this room square", and
+     * Ceres aborts the whole process on a residual that names one point twice. So a shared point re-encodes as one
+     * [expression] residual over the distinct points: the same `|ab| - |cd|`, scaled by the same `sqrt(weight)`.
      */
     fun LineRef.sameLengthAs(other: LineRef, weight: Double = 1.0) {
-        add(EqualDistance(a.id, b.id, other.a.id, other.b.id, weight))
+        val ends = listOf(a, b, other.a, other.b)
+        if (ends.map { it.id }.distinct().size == 4) {
+            add(EqualDistance(a.id, b.id, other.a.id, other.b.id, weight))
+            return
+        }
+        val distinct = ends.distinctBy { it.id }
+        fun slot(p: PointRef) = distinct.indexOfFirst { it.id == p.id }
+        expression(distinct, weight) { v -> listOf(v[slot(a)].distanceTo(v[slot(b)]) - v[slot(other.a)].distanceTo(v[slot(other.b)])) }
     }
 
     /**
@@ -935,8 +1011,13 @@ class ConstraintScope internal constructor(private val model: GeometryModelScope
 class GeometrySolveSession internal constructor(
     model: GeometryModel,
     backend: CeresSolverBackend,
+    /** The weights and iteration counts this session's drag, release and settle passes use. */
     val policy: InteractionPolicy,
 ) : AutoCloseable {
+    /**
+     * The model compiled into the native problem. A live program swaps it for one with the same point
+     * count and program hash, which is how a step reuses the session instead of recompiling.
+     */
     var model: GeometryModel = model
         private set
     /** The live geometry, overwritten by every solve. Read it for results; [snapshot] it before you need an undo. */
@@ -1022,6 +1103,7 @@ class GeometrySolveSession internal constructor(
         points.set(point.id, value.copy())
     }
 
+    /** [set] from loose coordinates. A starting position, not a constraint; see the overload above. */
     fun set(point: PointRef, x: Double, y: Double, z: Double) {
         points.set(point.id, x, y, z)
     }
@@ -1114,6 +1196,7 @@ class GeometrySolveSession internal constructor(
         }
     }
 
+    /** Release the native problem. The session, its points and its priors are unusable afterwards. */
     override fun close() {
         compiled.close()
     }
@@ -1130,7 +1213,9 @@ class GeometrySolveSession internal constructor(
  */
 class DragHandle internal constructor(
     private val session: GeometrySolveSession,
+    /** The point this gesture holds. */
     val point: PointRef,
+    /** The weights and iteration counts [to], [settle] and [release] draw their defaults from. */
     val policy: InteractionPolicy,
 ) : AutoCloseable {
     private var active = true
@@ -1147,6 +1232,7 @@ class DragHandle internal constructor(
         return !solve || session.solvePrepared(policy.dragOptions, activeDrag = point.id)
     }
 
+    /** [to] from loose coordinates. */
     fun to(x: Double, y: Double, z: Double, solve: Boolean = true): Boolean =
         to(Vec3(x, y, z), solve)
 
@@ -1224,10 +1310,15 @@ fun GeometryModel.session(
  * ([explicit]) or the move was inferred from exceeding the binding's drag tolerance.
  */
 class LivePointMove internal constructor(
+    /** The binding that noticed, which names the point and carries the tolerance that was exceeded. */
     val binding: PointBinding,
+    /** Where the point stood after the previous step. */
     val previous: Vec3,
+    /** What the binding's reader returns now. */
     val read: Vec3,
+    /** How far it moved: the distance compared against the binding's drag tolerance. */
     val distance: Double,
+    /** True when the caller named this point as dragged, false when the move was inferred. */
     val explicit: Boolean,
 )
 
@@ -1240,11 +1331,17 @@ class LivePointMove internal constructor(
  * state.
  */
 class LiveGeometryStep internal constructor(
+    /** Whether this step's solve was usable. */
     val ok: Boolean,
+    /** Whether the session had to be recompiled, which drops pins and the state they stood on. */
     val rebuilt: Boolean,
+    /** The bound points that changed since the last step, explicitly or by exceeding a tolerance. */
     val moved: List<LivePointMove>,
+    /** The point count of the model that was solved; one of the three things a reuse depends on. */
     val pointCount: Int,
+    /** The program hash of the model that was solved; another, alongside the point names. */
     val programHash: UInt,
+    /** The session's own report, not a copy. Read it before the next step overwrites it. */
     val report: MutableSolveReport,
 )
 
@@ -1329,9 +1426,11 @@ class LiveGeometryProgram(
         )
     }
 
+    /** [step] naming the dragged points as varargs, so a caller need not build a collection. */
     fun step(dragged: PointRef, vararg moreDragged: PointRef, options: SolveOptions? = null): LiveGeometryStep =
         step(options = options, dragged = sequenceOf(dragged, *moreDragged).asIterable())
 
+    /** [step] naming the dragged *bound vectors* as varargs, matched by object identity. */
     fun step(dragged: Vector3f, vararg moreDragged: Vector3f, options: SolveOptions? = null): LiveGeometryStep =
         step(options = options, draggedVectors = sequenceOf(dragged, *moreDragged).asIterable())
 
@@ -1404,9 +1503,11 @@ class LiveGeometryProgram(
         return improvement >= 0.0 && improvement <= max(1e-12, abs(previous) * 1e-9)
     }
 
+    /** [polishLocked] naming the locked points as varargs. */
     fun polishLocked(locked: PointRef, vararg moreLocked: PointRef, weight: Double = policy.pinnedWeight, options: SolveOptions = policy.settleOptions): LiveGeometryStep =
         polishLocked(locked = sequenceOf(locked, *moreLocked).asIterable(), weight = weight, options = options)
 
+    /** [polishLocked] naming the locked *bound vectors* as varargs, matched by object identity. */
     fun polishLocked(locked: Vector3f, vararg moreLocked: Vector3f, weight: Double = policy.pinnedWeight, options: SolveOptions = policy.settleOptions): LiveGeometryStep =
         polishLocked(lockedVectors = sequenceOf(locked, *moreLocked).asIterable(), weight = weight, options = options)
 
@@ -1447,6 +1548,7 @@ class LiveGeometryProgram(
         }
     }
 
+    /** Release the compiled session. A later [step] compiles a fresh one rather than failing. */
     override fun close() {
         session?.close()
         session = null
@@ -1487,18 +1589,28 @@ fun liveGeometry(
 /** A point as a one-term [PointExpr], so arithmetic can start from it. `a + b` and `0.5 * a` go through this. */
 val PointRef.expr: PointExpr get() = PointExpr(mapOf(this to 1.0))
 
+/**
+ * The point arithmetic, outside `constraints { }`. These are the operators [ConstraintScope] carries, for
+ * building an expression before there is a scope to state it in.
+ */
 operator fun PointRef.plus(other: PointRef): PointExpr = expr + other
 
+/** Add a point into an existing expression. */
 operator fun PointRef.plus(other: PointExpr): PointExpr = expr + other
 
+/** The difference of two points, which is the edge vector between them. */
 operator fun PointRef.minus(other: PointRef): PointExpr = expr - other
 
+/** Subtract an expression from a point. */
 operator fun PointRef.minus(other: PointExpr): PointExpr = expr - other
 
+/** Scale a point's position. Nothing normalises, so `0.5 * (a + b)` is the midpoint and `a + b` is not. */
 operator fun PointRef.times(scale: Number): PointExpr = expr * scale
 
+/** The same scaling with the number on the left. */
 operator fun Number.times(point: PointRef): PointExpr = point * this
 
+/** The same, scaling a whole expression. */
 operator fun Number.times(expr: PointExpr): PointExpr = expr * this
 
 private fun requireDistinctRefs(vararg refs: PointRef) {

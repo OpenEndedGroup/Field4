@@ -9,6 +9,16 @@ import afield.study.search.Offspring
 import afield.study.search.evolveByEye
 
 /**
+ * The box-facing front of the [ColorRpn] family: one call puts a breeding grid of generated
+ * pictures in a box's output panel, and clicking two of them breeds the next generation.
+ *
+ * [colorRpnEvolution] is the three other files joined up, with the madp GA demo's choices filled
+ * in: [ColorRpn] as the genome, [ColorRpnGenome] as the breeding, `EyeEvolution.kt`'s grid as the
+ * interface, and a toolbar over the breeding knobs that are worth turning while you watch. Call
+ * `afield.study.search.evolveByEye` directly instead when you want to change any of that.
+ */
+
+/**
  * The madp GA demo in a box: two [ColorRpn] parents and seven children in a 3×3 grid, bred by
  * [ColorRpnGenome]; click two tiles and they become the parents of the next generation.
  *

@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-31T03:50:40.875Z",
+  "documentName": "smpte_timecode",
+  "outputs": [
+    {
+      "uid": "tc_ltc_roundtrip",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 716,
+      "height": 271,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "tc_ltc_roundtrip",
+      "channel": "info",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 474,
+      "height": 82,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "tc_arithmetic",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 309,
+      "height": 64,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "tc_mtc",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 381,
+      "height": 64,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "tc_follow_ltc",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 200,
+      "height": 101,
+      "path": "outputs/4.html"
+    }
+  ]
+}

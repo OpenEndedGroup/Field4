@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-29T22:41:08.220Z",
+  "documentName": "morpho_circuit_search",
+  "outputs": [
+    {
+      "uid": "morpho_search_recursion",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 1014,
+      "height": 380,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "morpho_search_recursion",
+      "channel": "cost",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 938,
+      "height": 499,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "morpho_search_control",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 742,
+      "height": 506,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "morpho_search_adder",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 938,
+      "height": 519,
+      "path": "outputs/3.html"
+    }
+  ]
+}

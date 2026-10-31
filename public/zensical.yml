@@ -29,7 +29,12 @@ nav:
     # these are moved here rather than aliased, and their former sections were rebalanced to suit.
     - A Tour:
       - What Field Is: funFeatures.md
+      # Second, before any subject: every later stop opens a panel or presses a shortcut, and this
+      # page shows each panel once with its shortcut and its close. A new tour_ page rather than a
+      # section of survivalGuide.md, which teaches the first box and the editor and links here.
+      - The Interface: tour_interface.md
       - Frames and the Animation Loop: animation_time_model.md
+      - Generative Mocap — ARDY and CLoSD: motion_recordings.md
       - Drawing with FLines: fline_examples.md
       # Straight after FLines, because a stroke read from the drawing is an FLine: the box that
       # listens turns each pen stroke into one and draws an answer back. The drawing layer (Alt+D)
@@ -107,10 +112,15 @@ nav:
     # Beside moving_around_the_canvas.md: a canvas flight is a camera move through its bookmarks,
     # filmed to MP4.
     - Filming the Canvas: filming_the_canvas.md
+    # Beside filming_the_canvas.md: the showcase canvas built by demo_document.yaml, and the film of it
+    # that plays behind the home page.
+    - The Demo Document: demo_document.md
     # Beside moving_around_the_canvas.md: which boxes are on the canvas at all, and where each one
     # sits, per layer.
     - Layers: layers.md
     - Snapping: snapping.md
+    # Beside snapping.md: putting boxes on the canvas, here copies of saved ones (cmd+t).
+    - Templates: templates.md
     - File Management: files_and_paths.md
     # Beside files_and_paths.md: both are about the document folder on disk, this one from the
     # side of an editor or script writing into it while Field has it open.
@@ -147,11 +157,15 @@ nav:
     # are removed. Everything else in Seeing Values is something you put in one of those panels.
     - Box Output: box_output.md
     - Visualizers & Controls: visualizers.md
+    - A Terminal in a Box: terminal.md
     - Patchy from Kotlin: patchy.md
     - Field's 3D Output: three_output.md
     - Point to geometry and leave notes: geometry_review.md
     - Charts as FLines: chart.md
     - DataFrames in a Box: dataframe.md
+    # Beside DataFrames: the other table a box can hold, this one typed into and computed by Kotlin
+    # formulas. Expands the funFeatures "Spreadsheets!" blurb.
+    - Spreadsheets in a Box: spreadsheets.md
     - Interactive Guides: interactive_guides.md
   - Presenting & Teaching:
     - Presenting with Field: presentation_studio.md
@@ -195,6 +209,11 @@ nav:
       # After finding what repeats: continuing a recording, by recombining it (oracle) or by
       # forecasting it (Timestral).
       - "Continuing a Gesture": temporal_memory.md
+      # Continuing a drawn line rather than a recorded signal: a learned handwriting model that
+      # carries on any FLine. Beside temporal_memory.md because both continue what you give them.
+      - A Learned Pen: learned_pen.md
+      - Teaching a Pen: teaching_a_pen.md
+      - A Pen That Sees: a_pen_that_sees.md
     # Two pages whose input is an unordered set of points rather than a series or a function, and
     # which were each a one-page group of their own ("Distances & Projections", "Clouds &
     # Deformations") until they were put together here. Not under "Time & Signals": the input to a
@@ -234,6 +253,7 @@ nav:
       - Geometry From Disk (OBJ, STL, PLY, glTF): geometry_from_disk.md
       - Polytopes & the Conway Algebra: polytope_examples.md
       - Typography as Geometry: typography_examples.md
+      - Euclid's Elements: euclid_elements.md
       - Voronoi, Contours & Clusters: spatial_geometry_examples.md
       - Linear Programs as Curves: lp_curves.md
     # sound.md is the Tour's sound stop, so this group starts at the pattern language that feeds
@@ -318,6 +338,9 @@ nav:
     # with the host's objects reachable directly — and a reader who has read one wants the contrast.
     - Clojure in a Box: clojure.md
     - Lua in a Box: lua.md
+    # The desktop, browser-tab side of RemoteJS, beside the other guest languages. Its WebXR and
+    # headset reference (ar_reference.md) stays under Heads & Headsets.
+    - Javascript in a Browser Tab: remotejs.md
     - Nano Examples: nano_examples.md
     # MorphoHDL is a language brought in from outside (upstream's own compiler on GraalJS). Its
     # page is a user page since 2026-10-11; the circuit-search study that used to fill its second
@@ -403,6 +426,7 @@ nav:
       - Kotlin in the Head: kotlin_in_the_head.md
       - Apple Vision Pro (WiP): vision.md
       - Geometry in the Headset: vision_geometry.md
+      - Stereo RTT composite: stereo_rtt_composite.md
       - ImGui as a VR Panel: imgui_vr_panel.md
   - AI & Agents:
     # First, ahead of the explanations: a showcase of whole documents agents built from a blank
@@ -412,6 +436,7 @@ nav:
     # front page links it too.
     - Agent Transcript Gallery: agent_transcripts.md
     - AI Overview: aiFeatures.md
+    - AI4's Built-in Tools: ai4_tools.md
     - Local AI: local_ai.md
     - Talking to AI4: voice_input.md
     - Let AI4 Drive a Live Webpage: ai4_live_iframe.md
@@ -430,8 +455,8 @@ nav:
     - Let AI4 Wait for Long Builds: ai4_long_builds.md
     # After the long-builds page: a qualified source's replay is one of those builds.
     - Change a Rule Safely: qualified_sources.md
-    # After the builds pages: a kit carries a document's builders and sources to many documents.
-    - Kits for Many Documents: kits.md
+    # After the builds pages: install reusable runtimes and starting points, then version their document instances.
+    - Kits and Starting Points: kits.md
     - AI Tool-Use History: ai_tool_use_history.md
     - Reading Saved AI4 Chats: ai4_chat_archive.md
     - AI Documentation Polish: ai_doc_polish.md
@@ -446,6 +471,7 @@ nav:
       - Math: reference/math.md
       - Data: reference/data.md
       - Graphics: reference/graphics.md
+      - Animation: reference/animation.md
       - Output: reference/output.md
       - Renderers: reference/renderers.md
       - Polytopes: reference/polytopes.md
@@ -465,7 +491,6 @@ nav:
       - Execution: reference/execution.md
       - Machine learning: reference/machine-learning.md
       - Networking: reference/networking.md
-      - IO: reference/io.md
       - Video: reference/video.md
       - Lighting: reference/lighting.md
       - Examples: reference/examples.md
@@ -578,10 +603,11 @@ extra_javascript:
   - assets/sticky-headings.js
   - assets/lesswrong-rail.js
   - assets/image-lightbox.js
+  - assets/transcript-viewer.js
   - assets/code-diff-player/fence-upgrade.js
   - assets/code-diff-player/code-diff-player.js
   - assets/code-diff-player/field-doc-export.js
 
-site_url: http://openendedgroup.com/Field4/
+site_url: https://openendedgroup.com/field4/
 site_dir: field4
   

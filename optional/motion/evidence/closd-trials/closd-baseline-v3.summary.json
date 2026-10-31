@@ -1,0 +1,18 @@
+{
+  "mode": "baseline",
+  "frames": 180,
+  "duration": 6.000000312924385,
+  "coldSeconds": 16.352971932967193,
+  "advanceP50Ms": 43.96794002968818,
+  "advanceP95Ms": 48.966399976052344,
+  "events": {
+    "applied": 1,
+    "planner": 2
+  },
+  "maxPrefixResidualM": 0.0,
+  "meanTrackingErrorM": 0.043821381163821366,
+  "maxTetherForceN": 0,
+  "totalTetherWorkJ": 0,
+  "commandToVisibleMeasured": false,
+  "visualInspection": false
+}

@@ -14,8 +14,21 @@ import kotlin.math.sin
 
 /** Mutable 2D affine pose. Angles are radians; scale is positive and uniform. */
 class MotionPose(
-    var x: Float = 0f, var y: Float = 0f, var angle: Float = 0f,
-    var scale: Float = 1f, var energy: Float = 1f, var softness: Float = 0f
+    /** Centre of the item on the x axis, in whatever units the pass draws in. */
+    var x: Float = 0f,
+    /** Centre of the item on the y axis. */
+    var y: Float = 0f,
+    /** Rotation about that centre, in radians. Only the difference between two frames is written out. */
+    var angle: Float = 0f,
+    /** Uniform scale about that centre. Must be finite and above zero; [MotionItems.write] requires it. */
+    var scale: Float = 1f,
+    /**
+     * How much this item should count for. [MotionItems.write] treats a previous energy at or below
+     * `1e-7` as no usable history, so a fading item stops contributing motion before it disappears.
+     */
+    var energy: Float = 1f,
+    /** How soft the item's edge is. Like [energy], what reaches the pass is the previous frame's value. */
+    var softness: Float = 0f
 ) {
     fun set(other: MotionPose) {
         x = other.x
@@ -44,6 +57,10 @@ class MotionItems {
     }
     private val items = HashMap<Any, Item>()
     private var frame: Long? = null
+    /**
+     * How many keys are being held, which is this frame's items plus any from the frame before that
+     * have not been written again yet. [begin] drops the rest, and [clear] takes it to zero.
+     */
     val retained: Int get() = items.size
 
     fun begin(serial: Long) {

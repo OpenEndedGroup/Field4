@@ -1,12 +1,13 @@
 # Progressive path tracing
 
-[`PathTracingRenderer`](reference/renderers.md#pathtracingrenderer-kt-pathtracingrenderer) is a GPU
-path tracer for Field 4. It runs on ordinary
-Vulkan compute devices, including MoltenVK on macOS. When Field has enabled
-`VK_KHR_ray_query`, `AUTO` selects hardware triangle traversal. Both backends use
-the same lighting, material evaluation and accumulation code. Every type this page
-uses is documented on the [Renderers](reference/renderers.md) reference page, alongside
-the real-time deferred renderer and the splat renderer.
+Field's progressive path tracer lets you light a scene with materials, reflections and environment
+maps, then watch the image settle as samples accumulate. The examples below build scenes you can
+change and render yourself.
+
+[`PathTracingRenderer`](reference/renderers.md#pathtracingrenderer-kt-pathtracingrenderer) runs on
+Vulkan compute devices, including MoltenVK on macOS. When Field has enabled `VK_KHR_ray_query`,
+`AUTO` selects hardware triangle traversal. Both backends share lighting, material evaluation and
+accumulation code. The [Renderers](reference/renderers.md) reference covers the types used here.
 
 ```diffstatic_runner {capture-profile="linux-nvidia" data-lang=kotlin screenshot="assets/path_tracing/materials.png" capture="native-window" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="materials study converged" embed=true hidden=true timeout="150" name="path-tracing-materials" alt="Plastic, polished gold and rough metal spheres lit by a Venice sunset environment, rendered by Field’s progressive path tracer" macro-file="../../dev_docs/agents/transcripts/path_tracing_materials.yaml" capture-box="path_trace_materials"}
 // Built and launched from dev_docs/agents/transcripts/path_tracing_materials.yaml.
@@ -87,16 +88,14 @@ val camera = Camera(renderer).also {
     it.at.set(0f, 2f, 7f)
     it.target.set(0f, 1f, 0f)
 }
-val tracer =
-    PathTracingRenderer(
-            renderer,
-            scene,
-            env,
-            width = 1280,
-            height = 720,
-            camera = camera,
-        )
-        .install()
+val tracer = PathTracingRenderer(
+    renderer,
+    scene,
+    env,
+    width = 1280,
+    height = 720,
+    camera = camera,
+).install()
 ```
 
 `PathTraceEnvironment` accepts OpenEXR, Radiance HDR, STB-supported ordinary image
@@ -494,42 +493,42 @@ val twoLobe =
         .integratorSource()
         .replace(
             """
-        float phase(float mu,float g) {
-            if (abs(g)<1e-4) return 1.0/(4.0*PI);
-            float d=1.0+g*g-2.0*g*clamp(mu,-1.0,1.0);
-            return (1.0-g*g)/(4.0*PI*max(d,1e-12)*sqrt(max(d,1e-12)));
-        }
-    """
+            float phase(float mu,float g) {
+                if (abs(g)<1e-4) return 1.0/(4.0*PI);
+                float d=1.0+g*g-2.0*g*clamp(mu,-1.0,1.0);
+                return (1.0-g*g)/(4.0*PI*max(d,1e-12)*sqrt(max(d,1e-12)));
+            }
+            """
                 .trimIndent(),
             """
-        const float BACK_G=-0.55;   // the backward lobe
-        const float BACK_W=0.3;     // its share of the mixture
-        float hg(float mu,float g) {
-            if (abs(g)<1e-4) return 1.0/(4.0*PI);
-            float d=1.0+g*g-2.0*g*clamp(mu,-1.0,1.0);
-            return (1.0-g*g)/(4.0*PI*max(d,1e-12)*sqrt(max(d,1e-12)));
-        }
-        // The MIXTURE is the density. Evaluating one lobe while sampling two is the
-        // classic way to bias this, and it looks plausible on screen.
-        float phase(float mu,float g) {
-            return (1.0-BACK_W)*hg(mu,g)+BACK_W*hg(mu,BACK_G);
-        }
-    """
+            const float BACK_G=-0.55;   // the backward lobe
+            const float BACK_W=0.3;     // its share of the mixture
+            float hg(float mu,float g) {
+                if (abs(g)<1e-4) return 1.0/(4.0*PI);
+                float d=1.0+g*g-2.0*g*clamp(mu,-1.0,1.0);
+                return (1.0-g*g)/(4.0*PI*max(d,1e-12)*sqrt(max(d,1e-12)));
+            }
+            // The MIXTURE is the density. Evaluating one lobe while sampling two is the
+            // classic way to bias this, and it looks plausible on screen.
+            float phase(float mu,float g) {
+                return (1.0-BACK_W)*hg(mu,g)+BACK_W*hg(mu,BACK_G);
+            }
+            """
                 .trimIndent(),
         )
         .replace(
             "float mu;\n    if (abs(g)<1e-4) mu=1.0-2.0*xi.y;",
             """
-        float mu;
-        // Pick a lobe with xi.x, then remap it back to uniform for phi — conditional on
-        // each branch the remapped value is exactly uniform, the same argument
-        // sampleMediumDistance uses to share its dimension.
-        float g2=g;
-        if (xi.x<BACK_W) { g2=BACK_G; xi.x=xi.x/BACK_W; }
-        else             { xi.x=(xi.x-BACK_W)/(1.0-BACK_W); }
-        g=g2;
-        if (abs(g)<1e-4) mu=1.0-2.0*xi.y;
-    """
+            float mu;
+            // Pick a lobe with xi.x, then remap it back to uniform for phi — conditional on
+            // each branch the remapped value is exactly uniform, the same argument
+            // sampleMediumDistance uses to share its dimension.
+            float g2=g;
+            if (xi.x<BACK_W) { g2=BACK_G; xi.x=xi.x/BACK_W; }
+            else             { xi.x=(xi.x-BACK_W)/(1.0-BACK_W); }
+            g=g2;
+            if (abs(g)<1e-4) mu=1.0-2.0*xi.y;
+            """
                 .trimIndent(),
         )
 
@@ -886,8 +885,7 @@ With temporal reuse disabled, use `tracer.samples` to compare views at the same 
 
 ## Sampling the lamps directly
 
-The clamp above gives a clean preview at the cost of some bias. Specks from small,
-bright emissive triangles can be removed without bias by sampling the lamps directly.
+The clamp above gives a clean preview at the cost of some bias. Sampling small, bright emissive triangles directly can reduce those specks without adding bias.
 Without it, a path finds a lamp only by scattering into it by chance; the smaller and
 brighter the lamp, the rarer and spikier those hits. With it, emissive triangles are
 importance-sampled from a cumulative table and connected with a shadow ray, as the

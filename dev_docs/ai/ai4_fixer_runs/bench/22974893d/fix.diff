@@ -1,0 +1,21 @@
+diff --git a/src/jvmMain/kotlin/afield/audio/ai/CorpusMicroscope.kt b/src/jvmMain/kotlin/afield/audio/ai/CorpusMicroscope.kt
+index 2ef6b2cab..59474222f 100644
+--- a/src/jvmMain/kotlin/afield/audio/ai/CorpusMicroscope.kt
++++ b/src/jvmMain/kotlin/afield/audio/ai/CorpusMicroscope.kt
+@@ -49,6 +49,8 @@ private fun corpusTime(value: Double): String = String.format(Locale.US, "%.2f",
+  * The general audio visualizer's event bus can therefore share hover, zoom, seeking and playheads
+  * across recordings with unrelated file timelines. The splice player remains independent: it is a
+  * short query-tail to neighbour-head judgement rather than another aligned view.
++ *
++ * @param placeControlIds One control id per neighbour, for a **place** button on its card; [showCorpusMicroscope] supplies them.
+  */
+ fun corpusMicroscopeHtml(
+     preview: CorpusPreview,
+@@ -57,7 +59,6 @@ fun corpusMicroscopeHtml(
+     width: Int = 1100,
+     cardWidth: Int = 510,
+     syncGroup: String = "corpus-${preview.query.assetId.takeLast(12)}-${preview.query.startSeconds}",
+-    /** One control id per neighbour, for a **place** button on its card; [showCorpusMicroscope] supplies them. */
+     placeControlIds: List<String>? = null,
+ ): String {
+     require(preview.operation == "analysis.find_neighbours") {

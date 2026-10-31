@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-31T00:21:05.506Z",
+  "documentName": "faust_voice",
+  "outputs": [
+    {
+      "uid": "faust_voice_waveform",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "plotly"
+      ],
+      "width": 712,
+      "height": 458,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "faust_voice_diagram",
+      "channel": "diagram",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 545,
+      "height": 208,
+      "path": "outputs/1.html"
+    }
+  ]
+}

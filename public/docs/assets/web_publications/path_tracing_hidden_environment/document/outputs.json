@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-31T00:24:53.211Z",
+  "documentName": "path_tracing_hidden_environment",
+  "outputs": [
+    {
+      "uid": "path_trace_hidden_environment",
+      "channel": "Vulkan window · still image",
+      "open": true,
+      "path": "outputs/0.html",
+      "width": 6528,
+      "height": 3672,
+      "kinds": [
+        "native-image"
+      ],
+      "warnings": []
+    }
+  ]
+}

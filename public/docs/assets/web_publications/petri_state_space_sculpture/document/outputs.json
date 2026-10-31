@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-29T22:45:13.167Z",
+  "documentName": "petri_state_space_sculpture",
+  "outputs": [
+    {
+      "uid": "petri_sculpture_trace",
+      "channel": "Vulkan window · still image",
+      "open": true,
+      "path": "outputs/0.html",
+      "width": 4112,
+      "height": 2524,
+      "kinds": [
+        "native-image"
+      ],
+      "warnings": []
+    }
+  ]
+}

@@ -3,6 +3,7 @@ import { aiChatMarkdownToHtml, aiChatHistoryToHtml, aiChatSetToolFamilies, send,
 import { renderAiChatFences } from "./aiChatFenceRenderers.js";
 import { typesetAiChatMath } from "./aiChatMath.js";
 import { installAiChatFenceCatalog } from "./aiChatFenceCatalog.js";
+import { mountLocalAiFeedback } from "./localAiFeedback.js";
 
 // Rebuild every open chat once, for a catalog that arrived after it first rendered.
 function rerenderOpenChats() {
@@ -1170,6 +1171,10 @@ function disclosureInterface(container) {
                                 subtree: true,
                                 characterData: true
                         });
+                        // Opening a <details> changes an attribute, which the observer above does not
+                        // watch, so the panel would keep its closed size and clip what just opened.
+                        // `toggle` does not bubble; listen in the capture phase.
+                        d.cw.addEventListener("toggle", () => markContentChanged(id, "toggle"), true);
                 }
 
                 if (!d.contentResizeObserver && typeof ResizeObserver !== "undefined") {
@@ -1990,6 +1995,16 @@ function ensureAiChat(container, uid, property) {
                         rewindConversation(Number(turn.dataset.aiTurn), turn.dataset.aiText || "", turnAction.dataset.aiAction === "edit");
                         return;
                 }
+                const answer = target.closest(".ai-chat-question-choice");
+                if (answer) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        if (answer.disabled) return;
+                        // The agent's question is answered by the person's next message: send the choice as one.
+                        textarea.value = answer.dataset.aiAnswer || answer.textContent || "";
+                        submitPrompt();
+                        return;
+                }
                 const button = target.closest(".ai-chat-copy");
                 if (!button) return;
                 const block = button.closest(".ai-chat-code-block");
@@ -2468,6 +2483,7 @@ function ensureAiChat(container, uid, property) {
                         textarea.focus();
                 }
         });
+        mountLocalAiFeedback(root);
         root.appendChild(messages);
         root.appendChild(inputWrap);
         container.innerHTML = "";

@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-29T22:29:36.905Z",
+  "documentName": "stippling",
+  "outputs": [
+    {
+      "uid": "stipple_hello",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 492,
+      "height": 368,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "stipple_relaxing",
+      "channel": "start",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 492,
+      "height": 368,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "stipple_relaxing",
+      "channel": "relaxed",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 492,
+      "height": 368,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "stipple_relaxing",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "plotly"
+      ],
+      "width": 716,
+      "height": 458,
+      "path": "outputs/3.html"
+    }
+  ]
+}

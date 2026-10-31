@@ -17,9 +17,20 @@ import afield.math.linalg.vec
 import org.lwjgl.system.MemoryStack
 import java.io.File
 
-/** One immutable, fence-completed Vulkan image for the Electron nativePixmap import spike.
- * Arguments: evidence directory. Start tools/electron_dmabuf_probe/main.js first.
+/**
+ * A standalone Linux probe that hands Electron one finished Vulkan image and reads back its verdict
+ * on the pixels.
+ *
+ * It clears a 64×64 dma-buf-exportable [RenderToTexture] to a known colour, copies that back through
+ * a staging buffer to confirm the Field side is not blank, releases the image to
+ * `VK_QUEUE_FAMILY_EXTERNAL` behind a waited fence, and sends the descriptor over [UnixFdPass] with
+ * the plane's stride and offset and the allocation's DRM modifier written beside it as
+ * `texture.json`. Then it waits up to a minute for the Node side's `result.json`. Start
+ * `tools/electron_dmabuf_probe/main.js` first; the single argument is the directory the two sides
+ * exchange evidence in, and `native/field-fdpass` has to be built.
  */
+
+/** One immutable, fence-completed Vulkan image for the Electron nativePixmap import. */
 object LinuxElectronImportProbe {
     @JvmStatic fun main(args: Array<String>) {
         val directory = File(args.single()).apply { mkdirs() }

@@ -1,0 +1,3 @@
+Fixed the two misplaced KDocs, added the documented Python standard-library root, and updated its checked count: four files, 46 changed lines. Source-level checks passed; Gradle was unavailable, and no applicable Python checker covers these guards.
+
+FIXER-VERDICT: {"verdict": "fix", "culprit": "handoffs/code-20261015-2234", "reason": "The branch introduced two stacked KDocs and an unlisted standard-library import root, corrected mechanically and verified against the check sources."}

@@ -177,14 +177,100 @@ saved it 2/2: the first-read marking above masked the gap. Script:
 
 ### Still open
 
-- Churn (N1020-7): a box that rewrites a persisted property every frame causes one full save per
-  5 s tick (snapshot, write, backup rotation capped at 10). Not measured or throttled.
 - A value of a class with an identity `hashCode` that is mutated in place is invisible to the
   fingerprint, as it was to marking. Every persisted type today (`Rect`, strings, numbers,
   collections of those, box refs) hashes by content.
 - A brand-new document has no fingerprint until its first save, so an unmarked edit before then is
   caught only by the next marked one.
-- The macro-replay/`--as-copy` SIGINT smoke test (N1020-1) was not written.
+
+## Tripwire, no-op saves, macro replay (2026-10-23)
+
+**Tripwire (N1022-2).** `PersistedFingerprint.entries` keeps one hash per `(box id, property)`;
+`SessionInformation.savedFingerprintEntries` holds the set that matched disk. When
+`DocumentShutdownFlush.saveIfPending` saves, every key whose hash moved without being in
+`pendingSidecarSaves` gets one line on the `warning,persistence` channel:
+
+```
+[warning,persistence] unmarked edit: box 7cb72a9c-... (Mut) property 'layerFrames' changed without notePersistentChange; saved on autosave
+```
+
+The save still happens; the line names a mutator to fix. It is always on (one hash map per 5 s
+tick per open document). In a live backdoor session on port 9611 it fired for box code writing
+`thisBox.layerFrames["start"] = rect`, and for nothing else exercised: new box, `set-rect`
+moves, `set-active-layer` in and out of a layer, `set-visible-layers`, `set-string`, and a macro
+replay (create, connect, edit). `Box.layerFrames` now returns `PersistentMapView`, which marks
+on `put`/`putAll`/`remove`/`clear`; the same run afterwards saved with no tripwire line. The other
+subsystems were driven on 2026-10-24 (next section).
+
+**No-op saves (N1020-7).** `set-string` (and every explicit `markSidecarPending` caller) marks
+even when the text is unchanged. `safeSave` already skips writing identical files, so this was
+never a *disk* write: measured live, three identical `set-string`s 6 s apart left `metadata.edn`'s
+mtime and the backup count (15) unchanged on both builds. What it cost was a full save pass per
+tick (snapshot, EDN serialisation, read-and-compare of every file): `save_reload.log` showed 3
+`[save]` passes with `changed=0` with the skip disabled, and 0 with it. The skip: when the
+fingerprint equals the saved one and every marked value hashes by content
+(`PersistedFingerprint.hashesByContent`), the marks are cleared and nothing is saved. A marked
+value hashed by identity still saves. A box that writes a *different* value every frame still
+saves once per tick; that was not throttled.
+
+**Macro replay, then SIGINT (N1020-1).** `tools/sigint_macro_persistence_smoke.py --port <p>
+--workspace <ws>` replays a create/create/connect/edit macro into a fresh document of a Field you
+started, signals it as soon as `macro run` returns, waits for exit and checks `metadata.edn` and
+the sidecar. Run 2026-10-23 on port 9611: SIGINT 0 ms after the macro, Field exited, 7/7 checks
+held. It is a Python script, not a `FIELD_TEST` jvm-main smoke, because it needs a real server it
+may stop.
+
+## Subsystems through the tripwire (2026-10-24)
+
+`AutosaveSubsystemMarkingTest` drives each older subsystem that persists into a root or box
+property through its own write path, in a saved document, and checks three things: the write is
+*marked* (`(box, property)` lands in `pendingSidecarSaves`), the save that follows leaves the
+tripwire *quiet* (`DocumentShutdownFlush.lastUnmarked` empty), and the value is *on disk* as the
+loader reads it back (`SavingContext.readEdnTransfers`). A future write path in any of these that
+mutates a persisted value without marking fails the first or second check.
+
+| Subsystem | Property | Write path driven | Marked at base | Now | Test |
+| --- | --- | --- | --- | --- | --- |
+| Bookmarks | root `bookmarks` | `set-string` handler's `setPropertyRaw(textPropertyValue(...))` | yes | yes | `bookmarks` |
+| Split panes | root `panes` | same | yes | yes | `splitPanes` |
+| Drawing layer (string) | root `drawing` | same | yes | yes | `drawingLayerSentAsAString` |
+| Drawing layer (merge) | root `drawing` | the real `notation-scene` handler (`installNotationHandlers`) → `NotationStore.update` | yes | yes | `drawingLayerMergedThroughNotationScene` |
+| Notation from box code | root `drawing` | `box.notation { rect(...) }`, then an edit of the same mark | yes | yes | `notationWrittenByBoxCode` |
+| Keyframe editor keys | `keyframeData` | `saveKeyframeData` (what the `__keyframes__` handler calls) | yes | yes | `keyframeEditorKeys` |
+| Keyframe interpolants | `keyframeInterpolants` | `registerInterpolant` with source | yes | yes | `keyframeInterpolantSource` |
+| Layer frames, map views | `layerFrames` | `entries...setValue`, `keys.removeIf`, `values.iterator().remove()` | **no** (N1023-5) | yes | `layerFramesThroughEveryMapView` |
+| Controls, gesture | `_controlGroupValues` | `controlGroup { slider }`, `updateControllerControlValue` | yes | yes | `controlGestureIsMarked` |
+| Controls, keyframe-driven | `_controlGroupValues` | `updateControllerControlValueProgrammatically` (key recall, a playing curve) | **no** | yes | `controlDrivenByKeyframesIsMarked` |
+| Slideshow | `slideShow` | `box.slideShow { step(...) }` | yes | yes | `slideshowDefinitionIsMarkedButNotWrittenToDisk` |
+
+"Marked at base" was observed by running the test with this branch's `src/jvmMain` changes
+stashed: the two **no** rows failed ("written without marking"), the other nine passed.
+
+- **Layer-frame views (N1023-5).** `PersistentMapView` marked `put`/`putAll`/`remove`/`clear`
+  only. `entries`, `keys` and `values` now return views (`MarkingSet`, `MarkingCollection`,
+  `MarkingEntry` in `Boxes.kt`) that mark on an iterator `remove()`, `remove`, `removeAll`,
+  `retainAll`, `removeIf`, `clear` and `entry.setValue`, and only when something changed.
+- **Keyframe-driven controls.** `updateCachedControlGroupValueInMemory` rewrote
+  `_controlGroupValues` with `properties[...] = values`, past marking, on purpose ("without
+  recording one document edit for every animation frame"). Since the 10-22 fingerprint that
+  write was saved anyway on the next tick, with a tripwire line each time a curve played. It
+  now calls `notePersistentChange`; still no resync and no flight-recorder entry per frame. The
+  persisted value is kept because `KeyframerTest` pins it (a rerun restores a recalled key). A
+  playing curve therefore saves once per 5 s tick, as before, now for a named reason.
+- **Slideshow.** `slideShow` is in the persistent list, but its value is a live
+  `SlideShowInstance` (lambdas). It is marked and a save runs, and nothing reaches
+  `metadata.edn`: the box's code rebuilds it on the next run. The test pins both halves.
+- The `set-string` rows call the handler's own statement, not the handler: `Server.server()`
+  installs it with the rest of the server. The notation row runs the real handler.
+- The persistence of each row was checked as the value in `metadata.edn`, not by reopening a
+  document in a live Field. Manual check: add a bookmark (Alt+B) or split the canvas, `kill -INT`
+  Field within 1 s, restart, and the bookmark or split is there.
+
+Also in this pass (N1023-2): the missing-inherited-property error counted the document root and
+metaroot as parent boxes, so a box with one parent read "any of its 3 parent boxes".
+`ContextResolution.Search.boxAncestorsExamined` leaves them out, the message reads "in 'Flower'
+or the 1 box above it (the document root was searched too)", and FieldML's `prop` message counts
+the same way (`MissingInheritedPropertyCountTest`).
 
 ## Not verified
 
@@ -193,3 +279,14 @@ saved it 2/2: the first-read marking above masked the gap. Script:
 - Ctrl-C in a real terminal. There the JVM is in the foreground process group, receives SIGINT
   itself, and also gets SIGTERM from `field.sh`'s trap.
 - Windows. `InterruptSignal` does nothing there.
+
+## Template inserts (backlog N1030-4 d, 2026-10-31)
+
+The templates guide recorded a template insert on disk in only 2 of 4 runs. Re-measured on port
+9540 (backdoor-managed): a fresh document, a warm `Killer` box, `raw-send insert-template` of a
+personal template, then `Killer` sending `kill -INT` to its own JVM 4 ms after the insert was
+dispatched (plus one compile). The inserted box was in `metadata.edn` in 4 of 4 trials. Insertion
+marks the document pending like any box creation, so the shutdown flush saves it:
+`AutosaveDirtyTrackingTest.aTemplateInsertIsSaved` inserts through `insertTemplateInto` and runs
+only the flush. Verdict: no loss on this path. The earlier 2 of 4 was not reproduced; its runs
+were not recorded closely enough to say which document they read.

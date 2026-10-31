@@ -111,9 +111,9 @@ sealed interface ExternalBrowserImageHandle : AutoCloseable {
     }
 
     /**
-     * Pixels that have already been read back to the CPU, for the deliberately non-zero-copy
-     * fallback. Not a native handle at all: nothing is shared, and the bytes are owned by this
-     * value until [close] frees them.
+     * Pixels that have already been read back to the CPU, for the non-zero-copy fallback. Not a
+     * native handle at all: nothing is shared, and the bytes are owned by this value until [close]
+     * frees them.
      */
     class CpuBitmap(val pixels: java.nio.ByteBuffer, val stride: Int) : ExternalBrowserImageHandle {
         private val closed = AtomicBoolean(false)
@@ -230,9 +230,9 @@ enum class BrowserFrameOfferResult {
 }
 
 /**
- * A browser surface is deliberately a stable Field texture. Platform textures are copied on-GPU
- * before their producer lease is released, so Chromium may recycle them without changing or
- * corrupting what Field samples between browser paints.
+ * A browser surface is a stable Field texture: platform textures are copied on-GPU before their
+ * producer lease is released, so Chromium may recycle them without changing or corrupting what
+ * Field samples between browser paints.
  */
 interface ExternalBrowserSurface :
     HasImageView,

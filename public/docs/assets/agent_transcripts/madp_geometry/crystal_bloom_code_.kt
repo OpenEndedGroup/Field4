@@ -22,8 +22,12 @@ geometry {
             tri(
                 vertex(cos(a0) * radius, lift, sin(a0) * radius, hsl(hue - 14, 0.9, 0.38)),
                 vertex(cos(a1) * radius, lift + jitter, sin(a1) * radius, hsl(hue + 10, 0.95, 0.52)),
-                vertex(cos(mid) * (radius + 0.12 + lean), lift + height, sin(mid) * (radius + 0.12 - lean),
-                    hsl(hue + 26, 0.95, 0.68)),
+                vertex(
+                    cos(mid) * (radius + 0.12 + lean),
+                    lift + height,
+                    sin(mid) * (radius + 0.12 - lean),
+                    hsl(hue + 26, 0.95, 0.68),
+                ),
             )
         }
     }

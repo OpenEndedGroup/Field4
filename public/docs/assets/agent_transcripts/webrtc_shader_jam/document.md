@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. WebRTC window + renderer
@@ -47,16 +47,19 @@ From `notes`
 WebRTC shader jam
 
 ```edn [field-box id="webrtc_publish_shader" role="properties"]
-{"id" "webrtc_publish_shader" "index" 1 "name" "publish a shader" "parents" ["root" "webrtc_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "webrtc_renderer"} "name" "publish a shader" "_tombstone" false "frame" #afield/rect [40.0 200.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "webrtc_publish_shader_code_.kt" "lines" 23 "characters" 708 "sha256" "d86fd6fe7825042629ad63c3f8b54c76cb834062650d752bbc20ed7e5f271e51"} {"name" "notes" "language" "markdown" "path" "webrtc_publish_shader_notes_.md" "lines" 43 "characters" 1747 "sha256" "3a7b70d91fd4cf938223968e66fab7f0d01ecec726575568620f5ada5818eddd"} {"name" "vertex" "language" "glsl" "path" "webrtc_publish_shader_vertex_.glsl" "lines" 6 "characters" 106 "sha256" "7270a97f3cbaae098ffd43be2431591d87417f94d449cd9a01207a1c60fc2eb6"} {"name" "fragment" "language" "glsl" "path" "webrtc_publish_shader_fragment_.glsl" "lines" 16 "characters" 489 "sha256" "74159cc699e630c09c9c75ba30480e36684adb01e78c9034d655d3cc0c640d7b"}]}
+{"id" "webrtc_publish_shader" "index" 1 "name" "publish a shader" "parents" ["root" "webrtc_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "webrtc_renderer"} "name" "publish a shader" "_tombstone" false "frame" #afield/rect [40.0 200.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "webrtc_publish_shader_code_.kt" "lines" 26 "characters" 705 "sha256" "ba8bc0901bbcf1d8eed804928ebd373d53ec01846d70d8019744fcc9c65a8bf7"} {"name" "notes" "language" "markdown" "path" "webrtc_publish_shader_notes_.md" "lines" 43 "characters" 1747 "sha256" "3a7b70d91fd4cf938223968e66fab7f0d01ecec726575568620f5ada5818eddd"} {"name" "vertex" "language" "glsl" "path" "webrtc_publish_shader_vertex_.glsl" "lines" 6 "characters" 106 "sha256" "7270a97f3cbaae098ffd43be2431591d87417f94d449cd9a01207a1c60fc2eb6"} {"name" "fragment" "language" "glsl" "path" "webrtc_publish_shader_fragment_.glsl" "lines" 17 "characters" 585 "sha256" "99d306b6c193e5f76a0982fc0149c26e701395cc049cbad515af4b428b177b6f"}]}
 ```
 
 ```kotlin [field-property box="webrtc_publish_shader" name="code" path="webrtc_publish_shader_code_.kt"]
 import afield.media.webrtc.webrtcSink
 
-// Published as login/field-shader: your aaaframe login, or this computer's user name on
-// Field's own relay. A browser ShaderTrinket receives it by that name. To join a class,
-// run WebRTCNetwork.join("https://<your aaaframe>") once; Field asks you to sign in.
-@exported val sink = webrtcSink("field-shader", 640, 360)
+/*
+Published as login/field-shader: your aaaframe login, or this computer's user name on
+Field's own relay. A browser ShaderTrinket receives it by that name. To join a class,
+run WebRTCNetwork.join("https://<your aaaframe>") once; Field asks you to sign in.
+*/
+@exported
+val sink = webrtcSink("field-shader", 640, 360)
 
 val module = moduleHere { +sink }
 val quad = Mesh()
@@ -139,6 +142,7 @@ layout(push_constant) uniform constants {
     vec4 clock;
 } pc;
 
+// Falling masks invert an increasing smoothstep; reversed edges are undefined in GLSL.
 void main() {
     vec2 uv = (gl_FragCoord.xy - vec2(320.0, 180.0)) / 180.0;
     float t = pc.clock.x;
@@ -146,7 +150,7 @@ void main() {
     float a = atan(uv.y, uv.x);
     float rings = 0.5 + 0.5 * sin(10.0 * r - 3.0 * t + 4.0 * sin(3.0 * a + t));
     vec3 tint = 0.5 + 0.5 * cos(vec3(0.0, 2.1, 4.2) + t + 2.0 * r);
-    color = vec4(tint * rings * smoothstep(1.6, 0.2, r), 1.0);
+    color = vec4(tint * rings * (1.0 - smoothstep(0.2, 1.6, r)), 1.0);
 }
 ```
 

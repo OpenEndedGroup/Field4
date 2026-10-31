@@ -18,20 +18,19 @@
     <link rel="stylesheet" href="/field.css">
     <style>
         /*
-          The panel language is the macro recorder's and Document History's, because this is a Field
-          panel and should not invent a third: black ground, #242424 cards for content, #050505 for
-          controls and code, one uppercase grey label per section. Values come from field.css
-          (`.macro-recorder-*`, around line 2498) rather than being eyeballed.
+          The panel language is FieldPanel's (Document History, the macro recorder): the tokens are
+          read from /fieldPanelTokens.css, the one copy, with the old values as fallbacks.
         */
+        @import url("/fieldPanelTokens.css");
         :root {
             color-scheme: dark;
-            --kb-card: #242424;
-            --kb-card-edge: #050505;
-            --kb-sunken: #050505;
-            --kb-control-edge: #2b2b2b;
-            --kb-control-edge-hover: #464646;
-            --kb-text: #d8d8d8;
-            --kb-muted: #8a8a8a;
+            --kb-card: var(--fp-card, #242424);
+            --kb-card-edge: var(--fp-control-bg, #050505);
+            --kb-sunken: var(--fp-control-bg, #050505);
+            --kb-control-edge: var(--fp-control-border, #2b2b2b);
+            --kb-control-edge-hover: var(--fp-control-hover-border, #464646);
+            --kb-text: var(--fp-fg, #d8d8d8);
+            --kb-muted: var(--fp-muted, #8a8a8a);
             --kb-fainter: #777777;
             --kb-sel: #EF9F27;
             --kb-cool: #6cf;
@@ -71,6 +70,9 @@
             flex-wrap: wrap;
             min-height: 20px;
         }
+
+        .kb-head .kb-close.field-panel-icon { margin-left: auto; align-self: center; }
+        .kb-head { width: 100%; box-sizing: border-box; }
 
         .kb-title {
             font-size: 11px;
@@ -678,6 +680,7 @@
 </div>
 
 <script src="/iframe_autosize.js"></script>
+<script src="/fieldPanelHost.js"></script>
 <script>
     const ROOT_TOKEN = new URLSearchParams(location.search).get('root');
     const WS_URL = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`;
@@ -967,9 +970,11 @@ keyframeBrowser("looks", scope = myScope)</pre>
 
         // Head: the folder you are browsing, with the glob as a chip beside it. The glob used to be
         // the title, which reads as noise — a bare `?` or `**` tells you nothing about where you are.
-        const folder = String(c.root).replace(/\/+$/, "").split("/").slice(-2).join("/");
+        // Only the folder's own name is shown; the absolute path (a temp or home directory nobody
+        // wants on screen, or in a published figure) is the title's tooltip.
+        const folder = String(c.root).replace(/[\/\\]+$/, "").split(/[\/\\]/).pop();
         parts.push(`<div class="kb-head">`);
-        parts.push(`<span class="kb-title kb-mono">${esc(folder || c.root)}</span>`);
+        parts.push(`<span class="kb-title kb-mono" title="${esc(c.root)}">${esc(folder || c.root)}</span>`);
         parts.push(`<span class="kb-badge kb-mono" title="glob, matched against paths relative to the root">${esc(c.pattern)}</span>`);
         if (c.schemaVersions.length > 1) {
             parts.push(`<span class="kb-badge kb-warn">schema ${c.schemaVersions.join(", ")}</span>`);
@@ -977,12 +982,13 @@ keyframeBrowser("looks", scope = myScope)</pre>
             parts.push(`<span class="kb-badge">schema ${c.schemaVersions[0]}</span>`);
         }
         if (!c.hasScope) parts.push(`<span class="kb-badge">read-only</span>`);
+        parts.push(`<button type="button" class="field-panel-icon kb-close" data-field-panel-close title="Close" aria-label="Close">×</button>`);
         parts.push(`</div>`);
 
         const stamp = [c.latestAgo ? `last save ${c.latestAgo}` : null,
             c.latestNote ? `"${c.latestNote}"` : null].filter(Boolean).join(" · ");
         parts.push(`<div class="kb-sub" title="${esc(c.root)}${c.latestTimestamp ? " · " + esc(c.latestTimestamp) : ""}">` +
-            `${esc(c.root)}${stamp ? " · " + esc(stamp) : ""}</div>`);
+            `${esc(stamp || "no saves yet")}</div>`);
 
         if (c.problems.length) {
             parts.push(`<div class="kb-problems">` + c.problems.map(esc).join("<br>") + `</div>`);

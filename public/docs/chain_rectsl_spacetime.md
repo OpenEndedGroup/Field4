@@ -1,9 +1,9 @@
 # A RectSL animation, as a solid object
 
-A RectSL scene lowers to a signed distance field over `(x, y, time)`. Read that as a 2D shape that
-changes and you get an animation. Read the third input as a third *axis* and the same field describes
-a 3D volume whose cross-sections are the animation's frames, and then it is a thing the Boolean layer
-can cut and the path tracer can render.
+What if time became a third dimension? A RectSL animation can be read as a volume whose
+cross-sections are its frames. Once you have that volume, you can cut it with Field's Boolean tools
+and render it with the path tracer. The scene's signed distance field takes `(x, y, time)`; here we
+use time as the third spatial axis.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_rectsl_spacetime/solid.png" capture="native-window" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="spacetime study converged" embed=true hidden=true timeout="420" name="chain-rectsl-solid" alt="A smooth sculpture on a pale floor with the Venice lagoon behind: a twisted ribbon rising from a flat base, joined to a long wedge, shading from warm cream at the near end to cool lavender at the far one" macro-file="../../dev_docs/agents/transcripts/rectsl_spacetime_path_trace.yaml" capture-box="rectsl_spacetime_trace"}
 // Built and launched from dev_docs/agents/transcripts/rectsl_spacetime_path_trace.yaml.
@@ -149,9 +149,9 @@ disagreement between the autodiff channels and `Fn.eval` was `${field.worstChann
 | the volume ends | marcher | triangles | closed | detail |
 |---|---|---|---|---|
 | at the first and last frame | `marchingCubes` | ${cutMarch.triangleCount} | **${cutMarch.isWatertight()}** | ${cutMarch.diagnose().boundaryLoops.size} boundary loops |
-| at the first and last frame | `levelSetOf` | ${cutSolid.triangleCount} | ${cutSolid.status == afield.geometry.solid.manifold.ManifoldStatus.NO_ERROR} | genus ${cutSolid.genus}, volume ${"%.3f".format(cutSolid.volume)} |
+| at the first and last frame | `levelSetOf` | ${cutSolid.triangleCount} | ${cutSolid.status == afield.geometry.solid.manifold.ManifoldStatus.NO_ERROR} | genus ${cutSolid.genus}, volume ${cutSolid.volume.f3} |
 | one empty slice beyond each | `marchingCubes` | ${closedMarch.triangleCount} | **${closedMarch.isWatertight()}** | genus ${closedMarch.genus()} |
-| one empty slice beyond each | `levelSetOf` | ${closedSolid.triangleCount} | ${closedSolid.status == afield.geometry.solid.manifold.ManifoldStatus.NO_ERROR} | genus ${closedSolid.genus}, volume ${"%.3f".format(closedSolid.volume)} |
+| one empty slice beyond each | `levelSetOf` | ${closedSolid.triangleCount} | ${closedSolid.status == afield.geometry.solid.manifold.ManifoldStatus.NO_ERROR} | genus ${closedSolid.genus}, volume ${closedSolid.volume.f3} |
 
 `decompose()` finds **${parts.size}** component, because the bar passes over the square at some
 frame and two shapes that touch on screen are one solid in space-time.

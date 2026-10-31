@@ -33,8 +33,8 @@ markdown(
     | # | parents and weights | pushed past the hull | discrete lane from |
     |---|---------------------|----------------------|--------------------|
     ${rows.joinToString("\n") { m ->
-        "| ${m.index} | ${m.parents.joinToString("<br>") { "${it.key} ${"%.2f".format(it.weight)}" }} " +
-            "| ${m.extrapolationGain?.let { g -> "x${"%.2f".format(g)} away from ${m.extrapolationPole}" } ?: "—"} " +
+        "| ${m.index} | ${m.parents.joinToString("<br>") { "${it.key} ${it.weight.f2}" }} " +
+            "| ${m.extrapolationGain?.let { g -> "x${g.f2} away from ${m.extrapolationPole}" } ?: "—"} " +
             "| ${m.discreteLanes.values.distinct().joinToString(", ")} |"
     }}
 """,

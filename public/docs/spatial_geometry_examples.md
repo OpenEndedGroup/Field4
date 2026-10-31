@@ -2,9 +2,6 @@
 
 <!-- capture-sources: src/jvmMain/kotlin/afield/geometry/path/contours.kt src/jvmMain/kotlin/afield/geometry/spatial/ -->
 
-*Every public declaration used below is listed, with its KDoc, in the codebase reference:
-[Graphics](reference/graphics.md) and [Data](reference/data.md).*
-
 Given a set of points, much of what you might do with them comes down to one question: which part
 of the plane belongs to which point, and where are the boundaries between them?
 
@@ -496,7 +493,7 @@ two endpoints' weights. A capsule has one radius for its whole length and so can
 comes from the union of densely sampled discs, and taking the minimum keeps a capsule from bulging
 out past the thin end it feeds into.
 
-### Two decisions inside the marcher, and one rough edge
+### Two decisions inside the marcher
 
 Marching squares makes two decisions, and a plausible implementation can get either one silently
 wrong. The figures below show how Field's marcher makes them.
@@ -789,10 +786,6 @@ In the bottom row the decider has nothing to go on. The numerators in the captio
 meeting at a point, and both pairings are equally correct. Left to the numerator's sign, the pairing
 would depend on which way a multiplication rounded, and could change with grid resolution. The two
 panels agree because the marcher settles the tie with `SADDLE_TIE_RELATIVE_EPSILON` instead.
-
-**The rough edge:** the segment stitcher joins crossings by proximity and is O(*m*²) in the
-number of segments, so a very high grid resolution gets expensive. `marchingCubes` avoids this
-by keying shared vertices on grid-edge identity; the 2D marcher does not yet.
 
 ### Sweep the level through the saddle
 
@@ -1105,7 +1098,7 @@ two bands stay apart at `k = 2`. The number after the semicolon in `SINGLE`'s ca
 cluster at `k = 2`, and it is **43**, not 82: the third straggler joins the band it was already
 nearest.
 
-Chaining happens only when the bridge is *denser than the groups it bridges*. Along a band the
+Here the bridge is too sparse to join the bands early. Along a band the
 nearest-neighbour spacing is about 0.25; the shortest hop from a straggler to the far band is about
 0.55. Single linkage merges the cheapest pair available at every step, so every within-band link is
 used up long before any gap-crossing one, and there is no `k` at which the chain wins. It takes
@@ -1525,3 +1518,6 @@ Convert graphs, cells or clusters into Field drawings and interactive views.
 Source: `src/jvmMain/kotlin/afield/geometry/path/contours.kt`,
 `afield/geometry/spatial/voronoi.kt` and `spatial_field.kt`, `afield/math/statistics/dirichlet.kt`
 and `clustering.kt`, and the JTS-backed corner of `afield/data/graph/graph_connectivity.kt`.
+
+*The public declarations used on this page are listed, with their KDoc, in the codebase reference:
+[Graphics](reference/graphics.md) and [Data](reference/data.md).*

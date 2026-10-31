@@ -61,7 +61,7 @@ import clojure.lang.*
 import java.io.PrintWriter
 import java.io.Writer
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.concurrent.thread
 
 /**
  * Clojure as a Field main language: a box whose source is Clojure, evaluated by the real Clojure
@@ -90,8 +90,8 @@ import java.util.concurrent.atomic.AtomicBoolean
  *    rather than naming `SomeSkikoKt`.
  *  - [ClojureExecution] is the `BoxExecution`, so it is the half that knows about boxes: output
  *    proxying, `is-running`, per-fragment generation counting, and `complete`, whose candidates
- *    come from Compliment if that namespace loads and from nothing if it does not — completion is
- *    optional here by design rather than by omission.
+ *    come from Compliment if that namespace loads. Without it on the classpath `complete` returns
+ *    an empty list rather than throwing, so a box runs and completes nothing.
  *  - [installClojure] and [clojureTopologyNeedsUpdating] are the registration, and they are
  *    identical in shape to every other main language: one `registerMainLanguageRuntime` call, one
  *    `TopologyWatcher` that swaps a child box's execution when the graph changes.
@@ -298,14 +298,14 @@ private fun atLine(error: CompileError, line: Int): CompileError =
  */
 class ClojureHost(private val defaultNs: String = "user") {
 
-    private val bootOnce = AtomicBoolean(false)
+    // Synchronized: a completion arriving while [warmInBackground] loads Compliment waits for it.
+    private val booted = lazy { try { requireNs("compliment.core") } catch (_: Throwable) { /* completions optional */ } }
 
-    private fun boot() {
-        if (bootOnce.getAndSet(true)) return
-        try {
-            requireNs("compliment.core")
-        } catch (_: Throwable) { /* completions optional */
-        }
+    private fun boot() = booted.value
+
+    /** Load Compliment off the runloop; its first load is about the popup's 15 s reply timeout. */
+    fun warmInBackground() {
+        thread(isDaemon = true, name = "clojure-compliment-warm") { boot() }
     }
 
 
@@ -822,8 +822,8 @@ class ClojureHost(private val defaultNs: String = "user") {
  * document. What interop is *bad* at is the two shapes Field's Kotlin API uses most — an extension
  * function (compiled to a static whose class name is a file name, `SomeSkikoKt`) and a default
  * argument (not a default at all from outside Kotlin, so every parameter has to be passed). So this
- * is a thin facade over exactly those, and deliberately nothing else: everything below is a
- * one-liner, and a verb that reads well as raw interop does not belong here.
+ * is a thin facade over exactly those and nothing else: everything below is a one-liner, and a verb
+ * that reads well as raw interop does not belong here.
  *
  * [thisBox] is the same device as `PythonInterface.thisBox` and carries the same caveat: box code
  * runs on the main coroutine, one fragment at a time, so a single slot is enough — but it *is* a
@@ -1150,7 +1150,7 @@ private const val PENDING_LAUNCH_MODE = "launching"
 private const val ACTIVE_LAUNCH_MODE = "launch"
 
 class ClojureExecution(val inside: Box) : BoxExecution {
-    val clj = ClojureHost(defaultNs = "live.user")
+    val clj = ClojureHost(defaultNs = "live.user").also { it.warmInBackground() }
 
     /**
      * What one evaluation of a box came to: whether it got to the end, and the value of its last

@@ -1,5 +1,6 @@
 package afield.graphics.render
 
+import afield.app.diagnostics.LatencySpans
 import afield.graphics.scene.main
 
 import afield.graphics.shader.Introspected
@@ -408,14 +409,16 @@ class ComputeModule(val parameters: Parameters) : Renderable {
                     .stage(stage[0])
                     .layout(pipelineLayout)
 
-                vkCheck(
-                    vkCreateComputePipelines(
-                        parameters.renderer.device.vkDevice,
-                        parameters.renderer.pipelineCache.vkPipelineCache,
-                        cp, null, lp
-                    ),
-                    "Error creating compute pipeline"
-                )
+                LatencySpans.time("pipeline.create", detail = "compute") {
+                    vkCheck(
+                        vkCreateComputePipelines(
+                            parameters.renderer.device.vkDevice,
+                            parameters.renderer.pipelineCache.vkPipelineCache,
+                            cp, null, lp
+                        ),
+                        "Error creating compute pipeline"
+                    )
+                }
                 this.pipeline = lp[0]
                 pipelineDisposeToken.updateCleanup(snapshotPipelineCleanup())
                 parameters.renderer.device.nameObject(
@@ -456,14 +459,16 @@ class ComputeModule(val parameters: Parameters) : Renderable {
 
                 val lp = stack.mallocLong(1)
                 synchronized(parameters.renderer.pipelineCache) {
-                    vkCheck(
-                        vkCreateComputePipelines(
-                            parameters.renderer.device.vkDevice,
-                            parameters.renderer.pipelineCache.vkPipelineCache,
-                            cp, null, lp
-                        ),
-                        "Error creating compute pipeline update"
-                    )
+                    LatencySpans.time("pipeline.update", detail = "compute") {
+                        vkCheck(
+                            vkCreateComputePipelines(
+                                parameters.renderer.device.vkDevice,
+                                parameters.renderer.pipelineCache.vkPipelineCache,
+                                cp, null, lp
+                            ),
+                            "Error creating compute pipeline update"
+                        )
+                    }
                 }
                 newPipeline = lp[0]
                 parameters.renderer.device.nameObject(

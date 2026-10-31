@@ -25,8 +25,8 @@ import kotlin.math.sin
  * scene, in closed form. A rect is a convex quadrilateral and a pixel is a convex box, so a single
  * rect's coverage is a convex-convex clip ([clipConvexToBox], Sutherland–Hodgman) followed by the
  * shoelace formula ([polygonArea]) — exact in the arithmetic, with no sampling anywhere. A *union* of
- * rects is not convex, so that case goes to JTS, which is an external implementation of the same
- * quantity and therefore an oracle rather than a second opinion from the same author.
+ * rects is not convex, so that case goes to JTS, an outside implementation of the same quantity,
+ * which makes it a check on this file rather than a restatement of it.
  * `RectSLSoftRasterTest` cross-checks the two on the single-rect case where both apply.
  *
  * # The three biases, named
@@ -37,9 +37,9 @@ import kotlin.math.sin
  *
  * 1. **Obliquity.** Every kernel in [CoverageKernel] is a function of a single signed distance, so it
  *    is implicitly assuming the edge is axis-aligned. For an axis-aligned edge the exact area of a
- *    unit pixel on one side of it *is* `clamp(0.5 - d)`, so [CoverageKernel.LINEAR] at `beta` = one
- *    pixel has **zero** obliquity bias there — a fact worth checking, because if it does not come out
- *    at machine precision then either the kernel or the exact reference is wrong. As the edge rotates
+ *    unit pixel on one side of it *is* `clamp(0.5 - d)`, so [CoverageKernel]'s `LINEAR` at `beta` =
+ *    one pixel has **zero** obliquity bias there, which is itself a check: if that case does not come
+ *    out at machine precision, either the kernel or the exact reference is wrong. As the edge rotates
  *    the true coverage curve becomes piecewise quadratic and the ramp cannot follow it.
  * 2. **Feature scale.** A rect thinner than the band never lets coverage saturate. As
  *    width/`beta` → 0 the error tends to the whole of the feature's coverage, which is the regime
@@ -56,8 +56,8 @@ import kotlin.math.sin
  *
  * Area coverage is defined for **opaque** geometry. A rect at alpha 0.4 has no area interpretation —
  * the exact answer to "what fraction of this pixel is covered" is still 1 if the rect fills it — so
- * [exactRaster] treats every visible rect as opaque and [measureCoverageBias] refuses a scene whose
- * rects are translucent rather than quietly comparing two different quantities.
+ * [exactRaster] treats every visible rect as opaque and [measureCoverageBias] throws on a scene
+ * whose rects are translucent, instead of returning a number that compares two different quantities.
  */
 
 /**
@@ -100,9 +100,9 @@ data class CoverageRect(
      * The exact signed distance from `(x, y)` to this rect in plain arithmetic — positive outside,
      * negative inside.
      *
-     * The untracked twin of [AdShapeFrame.distanceAt], and deliberately the *only* one: a test pins
-     * the two bit-for-bit over thousands of points, which turns what would be a duplicated formula
-     * into a checked pair. Nothing here samples or approximates.
+     * The untracked twin of [AdShapeFrame.distanceAt], and the *only* one: a test pins the two
+     * bit-for-bit over thousands of points, which turns what would be a duplicated formula into a
+     * checked pair. Nothing here samples or approximates.
      */
     fun signedDistance(x: Double, y: Double): Double {
         val qx = x - centreX
@@ -459,9 +459,9 @@ fun CoverageKernel.reachInPixels(
  * `d(coverage)/d(distance)` for this kernel, in closed form — the number
  * [CoverageBiasRow.gradientReach] thresholds.
  *
- * Exposed rather than hidden because it is the honest statement of what a kernel *costs*: the two
- * kernels with the least bias are exactly zero outside `beta/2`, and a pixel where this is zero
- * cannot move a fit no matter how wrong the picture is there. A test checks it against a central
+ * This is what a kernel *costs*: the two kernels with the least bias are exactly zero outside
+ * `beta/2`, and a pixel where this is zero cannot move a fit no matter how wrong the picture is
+ * there. A test checks it against a central
  * difference of [CoverageKernel.coverage], since a slope transcribed by hand beside a value is the
  * classic place for the two to drift apart.
  */

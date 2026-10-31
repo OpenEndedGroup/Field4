@@ -86,10 +86,19 @@ import kotlin.math.PI
  * one-sided behaviour a barrier needs comes from [max] and [barrierBelow] instead.
  */
 sealed interface CeresExpr {
+    /** Sum. The `Double` overload wraps the number as a constant node first. */
     operator fun plus(other: CeresExpr): CeresExpr = binary(ExprOp.ADD, this, other)
+
+    /** Difference. The `Double` overload wraps the number as a constant node first. */
     operator fun minus(other: CeresExpr): CeresExpr = binary(ExprOp.SUB, this, other)
+
+    /** Product. The `Double` overload wraps the number as a constant node first. */
     operator fun times(other: CeresExpr): CeresExpr = binary(ExprOp.MUL, this, other)
+
+    /** Quotient, with no check for a zero divisor. The `Double` overload wraps the number first. */
     operator fun div(other: CeresExpr): CeresExpr = binary(ExprOp.DIV, this, other)
+
+    /** Negation, as one instruction rather than a multiply by minus one. */
     operator fun unaryMinus(): CeresExpr = unary(ExprOp.NEG, this)
 
     operator fun plus(other: Double): CeresExpr = this + constant(other)
@@ -185,6 +194,7 @@ fun square(x: CeresExpr): CeresExpr = unary(ExprOp.SQUARE, x)
 /** `1 / x` as one instruction. Nothing checks for zero; see [sqrt] for what a NaN costs you. */
 fun reciprocal(x: CeresExpr): CeresExpr = unary(ExprOp.RECIP, x)
 
+/** `e` to the power `x`, as one instruction. The inverse of [ln]. */
 fun exp(x: CeresExpr): CeresExpr = unary(ExprOp.EXP, x)
 
 /** Natural log. Undefined at and below zero, and unguarded. */
@@ -193,7 +203,10 @@ fun ln(x: CeresExpr): CeresExpr = unary(ExprOp.LOG, x)
 /** Sine, in radians — as everything angular here is. [CERES_PI] is on hand for the literal. */
 fun sin(x: CeresExpr): CeresExpr = unary(ExprOp.SIN, x)
 
+/** Cosine, in radians. */
 fun cos(x: CeresExpr): CeresExpr = unary(ExprOp.COS, x)
+
+/** Tangent, in radians. Unbounded at the odd multiples of `pi/2`, and unguarded. */
 fun tan(x: CeresExpr): CeresExpr = unary(ExprOp.TAN, x)
 
 /** Not differentiable at zero; Ceres will use a subgradient. */
@@ -238,11 +251,20 @@ fun barrierAbove(x: CeresExpr, ceiling: CeresExpr): CeresExpr = max(0.0.c, x - c
  * 2.0` does not, because [div] only takes a [CeresExpr]. Write `vec / 2.0.c`.
  */
 data class CeresExprVec(val x: CeresExpr, val y: CeresExpr, val z: CeresExpr) {
+    /** Componentwise sum: three scalar additions, written once. */
     operator fun plus(o: CeresExprVec) = CeresExprVec(x + o.x, y + o.y, z + o.z)
+
+    /** Componentwise difference, which is how an edge or an offset is written. */
     operator fun minus(o: CeresExprVec) = CeresExprVec(x - o.x, y - o.y, z - o.z)
+
+    /** Scale all three components. The `Double` overload goes through [Double.c]. */
     operator fun times(k: CeresExpr) = CeresExprVec(x * k, y * k, z * k)
     operator fun times(k: Double) = times(k.c)
+
+    /** Divide all three components. There is no `Double` overload, so write `vec / 2.0.c`. */
     operator fun div(k: CeresExpr) = CeresExprVec(x / k, y / k, z / k)
+
+    /** Negate all three components, reversing the direction. */
     operator fun unaryMinus() = CeresExprVec(-x, -y, -z)
 
     /** Dot product — five instructions, and the basis of every angle and projection residual here. */
@@ -324,8 +346,11 @@ enum class CeresManifold(val code: Int) {
  * [CompiledCeresExpression.disassemble] and [SolveResult.variables] label things with.
  */
 data class CeresVariableDecl(
+    /** A label for this side only; it never crosses the ABI. Blank is rejected. */
     val name: String,
+    /** The starting value, one entry per component, and what fixes [dimension]. */
     val initial: List<Double>,
+    /** The geometry the solver steps the block on. Euclidean unless you say otherwise. */
     val manifold: CeresManifold = CeresManifold.NONE,
     /**
      * Per-component box constraints, `component to (lower .. upper)`. A component may appear once.
@@ -341,6 +366,7 @@ data class CeresVariableDecl(
      */
     val bounds: Map<Int, ClosedFloatingPointRange<Double>> = emptyMap(),
 ) {
+    /** How many scalars the block holds, which is [initial]`.size` and is capped by the wrapper. */
     val dimension: Int get() = initial.size
 
     init {
@@ -468,7 +494,10 @@ data class CeresVariableRef(val index: Int, val declaration: CeresVariableDecl) 
         require(index >= 0) { "variable index must be non-negative" }
     }
 
+    /** The declared name, forwarded from [declaration]. */
     val name: String get() = declaration.name
+
+    /** The declared component count, forwarded from [declaration]. */
     val dimension: Int get() = declaration.dimension
 }
 
@@ -481,9 +510,13 @@ data class CeresVariableRef(val index: Int, val declaration: CeresVariableDecl) 
  */
 class CeresExprVariable internal constructor(
     internal val block: Int,
+    /** What was declared at program scope: the name, the initial value and the manifold. */
     val declaration: CeresVariableDecl,
 ) {
+    /** The declared name, forwarded from [declaration]. */
     val name: String get() = declaration.name
+
+    /** How many components [get] will accept, forwarded from [declaration]. */
     val dimension: Int get() = declaration.dimension
 
     /** Component [component] of this variable. */
@@ -536,8 +569,11 @@ class CeresExprVariable internal constructor(
  * forbids a residual block naming the same parameter block twice.
  */
 data class CeresExpressionResidual(
+    /** The cloud points the expressions may read, distinct, and `ALL_POINTS` is not one of them. */
     val points: List<PointId>,
+    /** One expression per residual in the block. At least one is required. */
     val expressions: List<CeresExpr>,
+    /** Square-rooted into the functor like every other weight here, so the cost scales by `weight`. */
     override val weight: Double = 1.0,
     /**
      * The free variables these expressions read, in the order the expressions' [CeresExprVariable]
@@ -570,6 +606,10 @@ data class CeresExpressionResidual(
         compile()
     }
 
+    /**
+     * Append the `Expr` opcode and the whole compiled program (point and variable indices, residual
+     * slots, slot count, constants and instructions) to the bytecode being built.
+     */
     override fun encodeLegacy(out: MutableList<Double>) {
         val compiled = compile()
         out.op(CeresOpcode.Expr)
@@ -607,6 +647,7 @@ data class CeresExpressionResidual(
 data class CompiledCeresExpression(
     /** Four ints per instruction: `op, dst, a, b`. */
     val code: List<Int>,
+    /** The constant pool the `CONST` instructions index, deduplicated by the compiler. */
     val constants: List<Double>,
     /** Which slot each residual reads, in the order the expressions were given. */
     val residualSlots: List<Int>,
@@ -615,6 +656,7 @@ data class CompiledCeresExpression(
     /** The free variables this residual reads, in local (parameter-block) order. */
     val variables: List<CeresVariableDecl> = emptyList(),
 ) {
+    /** [code]`.size / 4`: the cost of one evaluation, and what [disassemble] prints a line each for. */
     val instructionCount: Int get() = code.size / 4
 
     /** A readable disassembly. The point of an expression VM is that you can look at the program. */
@@ -886,5 +928,70 @@ private class CeresExpressionCompiler(
         code += a
         code += b
         return dst
+    }
+}
+
+/**
+ * The free-variable blocks [this] reads, as `ExprVar.block` indices. A caller that builds expressions
+ * over a *program-wide* numbering of scalar variables (the spreadsheet does: variable `i` is
+ * `ExprVar(i, 0)`) uses this with [remapVariableBlocks] to hand each residual only the blocks it reads,
+ * which is what [CeresExpressionResidual] and Ceres require.
+ */
+internal fun CeresExpr.variableBlocksRead(): Set<Int> {
+    val out = linkedSetOf<Int>()
+    fun walk(e: CeresExpr) {
+        when (e) {
+            is ExprVar -> out += e.block
+            is ExprNode -> { walk(e.a); e.b?.let(::walk) }
+            is ExprConst, is ExprParam -> Unit
+        }
+    }
+    walk(this)
+    return out
+}
+
+/** [this] with every `ExprVar(block, c)` replaced by [replace]`(block, c)`; see [variableBlocksRead]. */
+internal fun CeresExpr.remapVariableBlocks(replace: (block: Int, component: Int) -> CeresExpr): CeresExpr = when (this) {
+    is ExprVar -> replace(block, component)
+    is ExprNode -> ExprNode(op, a.remapVariableBlocks(replace), b?.remapVariableBlocks(replace))
+    is ExprConst, is ExprParam -> this
+}
+
+/** A variable reference for [remapVariableBlocks]: component [component] of the residual's [block]-th variable. */
+internal fun ceresVariableComponent(block: Int, component: Int = 0): CeresExpr = ExprVar(block, component)
+
+/**
+ * Evaluate [this] on the JVM, with [variable] supplying free-variable components. The same arithmetic the
+ * native VM runs, for reading a residual back at a solution without a round trip. Point parameters are
+ * not supported (a sheet has none).
+ */
+internal fun CeresExpr.evaluateOnJvm(variable: (block: Int, component: Int) -> Double): Double = when (this) {
+    is ExprConst -> value
+    is ExprVar -> variable(block, component)
+    is ExprParam -> error("evaluateOnJvm does not bind point parameters")
+    is ExprNode -> {
+        val x = a.evaluateOnJvm(variable)
+        val y = b?.evaluateOnJvm(variable) ?: 0.0
+        when (op) {
+            ExprOp.ADD -> x + y
+            ExprOp.SUB -> x - y
+            ExprOp.MUL -> x * y
+            ExprOp.DIV -> x / y
+            ExprOp.NEG -> -x
+            ExprOp.SQRT -> kotlin.math.sqrt(x)
+            ExprOp.ABS -> kotlin.math.abs(x)
+            ExprOp.SIN -> kotlin.math.sin(x)
+            ExprOp.COS -> kotlin.math.cos(x)
+            ExprOp.TAN -> kotlin.math.tan(x)
+            ExprOp.EXP -> kotlin.math.exp(x)
+            ExprOp.LOG -> kotlin.math.ln(x)
+            ExprOp.POW -> Math.pow(x, y)
+            ExprOp.MIN -> kotlin.math.min(x, y)
+            ExprOp.MAX -> kotlin.math.max(x, y)
+            ExprOp.ATAN2 -> kotlin.math.atan2(x, y)
+            ExprOp.SQUARE -> x * x
+            ExprOp.RECIP -> 1.0 / x
+            ExprOp.CONST, ExprOp.PARAM, ExprOp.VAR -> error("leaf opcode $op in a node")
+        }
     }
 }

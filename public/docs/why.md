@@ -1,11 +1,13 @@
 # Why does this value resolve here?
 
-A box reads values it did not set: a setting through a `prop`, a variable a parent's code left
-behind, a `Renderer` through `fromContext()`. The value comes from the nearest box up the graph that
-has one, and when two boxes are equally near, `parents` order decides. [Property
-inheritance](running_code.md#property-inheritance-how-children-see-a-parents-values) describes that
-walk. `why.speed` asks the box to report it for `speed`: which box supplied the value, by what path,
-and which other boxes also had an answer. Nothing runs; it is the walk the box's own read performs.
+When a box reads a value inherited from another box, where did that value come from? Ask
+`why.speed` and Field will show you which box supplied `speed`, the path to it, and any other
+boxes that had an answer. You can inspect the lookup without running the code that uses it.
+
+This works for inherited properties, variables left by a parent's code, and context values such as
+`Renderer`. Field looks for the nearest answer up the graph; if two are equally near, their order
+in `parents` decides. For the full search, see [Property
+inheritance](running_code.md#property-inheritance-how-children-see-a-parents-values).
 
 ## A tie and a shadowed ancestor
 
@@ -24,11 +26,10 @@ Mover's code is one line:
 display("main", why.speed.h)
 ```
 
-Fast and Slow are both one edge from Mover and hold different values, so Slow is listed as
-**competing**, and the answer depends on the order the two parents were connected in. **Shadowed**
-lists every other box that also has an answer: Slow again, and Settings, which is farther away. The
-sentence under the table says the same, and names the preamble line that declared `speed` and the
-box it came from.
+Fast and Slow are both one edge from Mover and hold different values. Slow appears as
+**competing**: the answer depends on the order in which the parents were connected. **Shadowed**
+lists the other boxes with an answer, including Slow and the more distant Settings. The sentence
+under the table also names the preamble line that declared `speed` and where it came from.
 
 `why.speed` exists because `prop<Double>(speed)` writes three lines into the preamble, and children
 inherit all three: `var Box.speed by Inheritance<Double>()`, `val Once.speed by Onceing<Double>()`, and
@@ -36,10 +37,16 @@ inherit all three: `var Box.speed by Inheritance<Double>()`, `val Once.speed by 
 the card above; `.h2` is the explorer, with the whole answer under `json`; `print(why.speed)` prints
 the sentence.
 
+The walk goes one generation at a time, the box itself, then all its parents, then all of theirs,
+and stops at the first generation with an answer; that is why Settings, two edges up, never reaches
+Mover. Within a generation the earlier connection wins. Disconnect Mover from Fast and connect it
+again, and Fast is now the later connection: Slow answers from then on. A tie between different
+values also writes a warning on the `context` log channel.
+
 ## Names no `prop` declared
 
-A plain variable has no accessor in the preamble, so there is no `why.gear`. Ask
-`ContextResolution.explain` directly, which is what `why.speed` calls. Gearbox's code:
+A plain variable has no accessor in the preamble, so there is no `why.gear`. You can call
+`ContextResolution.explain` directly, as `why.speed` does. Here's Gearbox's code:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/why/gear.png" alt="Gearbox's main output, a card headed why gear: supplier Slow (variable) = 2; path Gearbox → Slow; competing and shadowed both empty; and the sentence saying Gearbox reads gear from variable gear of Slow" capture="box" open-outputs="true" wait="1.5" timeout="180" embed=true name="why-gear" macro-file="../../dev_docs/agents/transcripts/docs_capture/context_why_graph.yaml" capture-box="why_gearbox" w="760" h="200"}
 display("main", ContextResolution.explain(thisBox, "gear").h)
@@ -53,6 +60,35 @@ The answer is `ContextResolution.explain`'s JSON, which `.json` returns unchange
 `supplier`, `matchKind` (`PROPERTY`, `VARIABLE` or `SELF`), `matchedName`, `depth`, `path`, `value`,
 `valueType`, `ambiguous`, `competing`, `shadowed` (the first 24, with `shadowedCount`), the
 `declaration` and its `from:` tag, `stalePreambleLines`, `preambleConflicts`, and `summary`.
+
+## Found by type or by name
+
+`fromContext<T>()` finds the nearest value of a type, and `fromContextWithNameOrNull<T>("name")` the
+nearest value with a name. Both see the plain top-level variables of the boxes above, so a parent
+needs no `prop` at all. **Studio** has two variables:
+
+```diffstatic {data-lang=kotlin}
+val ink = java.awt.Color(200, 40, 40)
+val title = "Spring"
+```
+
+**Sketch**, beneath it, asks for the first `Color`, for `title`, and for `subtitle`, which nothing
+defines:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/why/context.png" capture="box" open-outputs="true" wait="1.5" timeout="180" embed=true name="why-fromcontext" macro-file="../../dev_docs/agents/transcripts/docs_capture/context_why_fromcontext.yaml" capture-box="bgc_sketch" w="620" h="80" alt="Sketch's main output, one line: ink = (200, 40, 40), title = Spring, subtitle = null"}
+val ink = fromContext<java.awt.Color>()
+val title = fromContextWithNameOrNull<String>("title")
+val missing = fromContextWithNameOrNull<String>("subtitle")
+markdown("ink = (${ink.red}, ${ink.green}, ${ink.blue}), title = $title, subtitle = $missing")
+```
+
+`fromContext<T>()` looks at the box itself, if it is a `T`; then the box's own properties; then each
+generation of ancestors, nearest first, at each box's properties and then its top-level variables.
+The asking box's own top-level variables are left out on purpose: Sketch's `val ink = fromContext<Color>()`
+leaves a `Color` among Sketch's variables, and if Sketch searched those it would find its own previous
+answer on every later run and never see Studio's again. Pass `includeLocalVariables = true` when a
+box does want a value it made itself. `fromContextWithNameOrNull` never matches the box itself, and
+returns `null` (or the `defaultValue` you pass) when nothing has the name.
 
 ## From outside the box
 

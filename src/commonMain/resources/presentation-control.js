@@ -10,19 +10,32 @@
   let groups = [];
   let rows = [];
   let savedOpen;
+  let choice = -1;
+  let filtered = [];
+  const textSearch = window.FieldPresentationSearch;
 
   for (const action of ['previous', 'next', 'reload', 'show-audience', 'fullscreen',
-    'show-guide', 'run-macro', 'start-guide', 'guide-previous', 'guide-next', 'stop-guide']) {
+    'show-guide', 'run-macro', 'start-guide', 'guide-previous', 'guide-next', 'stop-guide', 'reset-checkpoint', 'run-cue']) {
     document.getElementById(action).addEventListener('click', () => bridge.action(action));
   }
 
-  function filterSlides() {
-    const query = search.value.trim().toLocaleLowerCase();
+  function selectChoice(index, scroll = false) {
+    choice = index;
+    const selected = rows.find(row => row.index === choice);
+    rows.forEach(row => row.element.classList.toggle('search-choice', !!search.value.trim() && row.index === choice));
+    if (selected && search.value.trim()) search.setAttribute('aria-activedescendant', selected.element.id);
+    else search.removeAttribute('aria-activedescendant');
+    if (scroll) selected?.element.scrollIntoView({block: 'nearest'});
+  }
+
+  function filterSlides(resetChoice = false) {
+    const query = search.value.trim();
+    const terms = textSearch.terms(query);
     if (query && !savedOpen) savedOpen = new Map(groups.map(group => [group.key, group.element.open]));
-    let count = 0;
     for (const row of rows) {
-      row.element.hidden = !!query && !row.search.includes(query);
-      if (!row.element.hidden) count++;
+      row.element.hidden = !textSearch.matches(row.search, terms);
+      row.excerpt.textContent = query && !row.element.hidden ? textSearch.excerpt(row.body, terms) : '';
+      row.excerpt.hidden = !row.excerpt.textContent;
     }
     for (const group of [...groups].reverse()) {
       group.element.hidden = !group.rows.some(row => !row.element.hidden);
@@ -30,7 +43,10 @@
       else if (savedOpen) group.element.open = savedOpen.get(group.key) ?? false;
     }
     if (!query) savedOpen = undefined;
-    matches.textContent = query ? `${count} of ${rows.length} slides` : `${rows.length} slides`;
+    filtered = rows.filter(row => !row.element.hidden);
+    selectChoice(!resetChoice && filtered.some(row => row.index === choice) ? choice :
+      (!query && filtered.some(row => row.index === info?.index) ? info.index : filtered[0]?.index ?? -1));
+    matches.textContent = query ? `${filtered.length} of ${rows.length} slides` : `${rows.length} slides`;
   }
 
   function buildOutline() {
@@ -66,16 +82,24 @@
       }
       const element = document.createElement('button');
       element.className = 'slide';
+      element.id = `slide-result-${index}`;
       element.dataset.slideTitle = info.titles[index];
       const number = document.createElement('span');
       number.className = 'slide-number';
       number.textContent = String(index + 1).padStart(String(info.count).length, '0');
       const label = document.createElement('span');
       label.textContent = info.titles[index];
-      element.append(number, label);
+      const description = document.createElement('span');
+      description.className = 'slide-description';
+      const excerpt = document.createElement('span');
+      excerpt.className = 'slide-excerpt';
+      excerpt.hidden = true;
+      description.append(label, excerpt);
+      element.append(number, description);
       element.addEventListener('click', () => bridge.action('goto', id));
       (branch.at(-1)?.element || slides).append(element);
-      const row = {element, index, ancestors: [...branch], search: `${index + 1} ${path.join(' ')} ${info.titles[index]}`.toLocaleLowerCase()};
+      const body = info.searchTexts?.[index] || '';
+      const row = {element, index, excerpt, body, ancestors: [...branch], search: textSearch.fold(`${index + 1} ${path.join(' ')} ${info.titles[index]} ${body}`)};
       rows.push(row);
       branch.forEach(group => group.rows.push(row));
       lastPath = path;
@@ -85,26 +109,46 @@
     });
   }
 
-  search.addEventListener('input', filterSlides);
+  search.addEventListener('input', () => filterSlides(true));
   search.addEventListener('keydown', event => {
-    if (event.key === 'Escape') { search.value = ''; filterSlides(); }
+    if (event.isComposing) return;
+    if (['Escape', 'Enter', 'ArrowDown', 'ArrowUp'].includes(event.key)) { event.preventDefault(); event.stopPropagation(); }
+    if (event.key === 'Escape') {
+      search.value = ''; filterSlides(true);
+      const current = rows[info?.index];
+      current?.ancestors.forEach(group => { group.element.open = true; });
+      current?.element.focus();
+    }
+    if (['ArrowDown', 'ArrowUp'].includes(event.key) && filtered.length) {
+      const index = filtered.findIndex(row => row.index === choice);
+      const delta = event.key === 'ArrowDown' ? 1 : -1;
+      selectChoice(filtered[(index + delta + filtered.length) % filtered.length].index, true);
+    }
     if (event.key === 'Enter') {
-      const row = rows.find(row => !row.element.hidden);
+      const row = filtered.find(row => row.index === choice);
       if (row) row.element.click();
     }
   });
   bridge.onState(state => {
     info = state;
     document.getElementById('title').textContent = info.title;
-    document.getElementById('status').textContent = `${info.index + 1} / ${info.count} · ${info.titles[info.index]}`;
-    document.getElementById('previous').disabled = info.index === 0;
-    document.getElementById('next').disabled = info.index === info.count - 1;
+    const cueIndex = info.cueIndex || 0;
+    const cues = info.cueTitles || [];
+    document.getElementById('status').textContent = `${info.index + 1} / ${info.count} · ${info.titles[info.index]}` +
+      (cues.length ? ` · cue ${cueIndex} / ${cues.length}${cueIndex ? ': ' + cues[cueIndex - 1] : ''}` : '');
+    document.getElementById('previous').disabled = info.index === 0 && cueIndex === 0;
+    document.getElementById('next').disabled = info.index === info.count - 1 && cueIndex === cues.length;
+    document.getElementById('lesson-actions').hidden = !info.checkpoint && !info.cueAction;
+    document.getElementById('run-cue').hidden = !info.cueAction;
+    const reset = document.getElementById('reset-checkpoint');
+    reset.hidden = !info.checkpoint;
+    reset.textContent = info.checkpoint ? `Reset: ${info.checkpoint}` : 'Reset experiment';
     document.getElementById('field-actions').hidden = !info.field?.guide;
     document.getElementById('interactive-guide').hidden = !info.field?.interactiveGuide;
     const macro = document.getElementById('run-macro');
     macro.disabled = !info.field?.macro;
     macro.textContent = info.field?.macro ? `Run ${info.field.macro.name}` : 'Run cue macro';
-    const nextSignature = JSON.stringify([info.slides, info.titles, info.sectionPaths]);
+    const nextSignature = JSON.stringify([info.slides, info.titles, info.sectionPaths, info.searchTexts]);
     const rebuilt = signature !== nextSignature;
     if (rebuilt) { buildOutline(); signature = nextSignature; }
     rows.forEach(row => {
@@ -124,6 +168,12 @@
   });
   bridge.onError(message => { error.textContent = message; });
   addEventListener('keydown', event => {
+    if (event.isComposing || event.defaultPrevented) return;
+    const editing = event.target.closest('input, textarea, [contenteditable="true"]');
+    if (((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === 'f') ||
+        (event.key === '/' && !editing && !event.ctrlKey && !event.metaKey && !event.altKey)) {
+      event.preventDefault(); search.focus(); search.select(); filterSlides(); return;
+    }
     // Search and the native disclosure controls keep their own editing/navigation keys.
     if (event.target.closest('input, textarea, summary, [contenteditable="true"]')) return;
     if (event.target instanceof HTMLButtonElement && [' ', 'Enter'].includes(event.key)) return;

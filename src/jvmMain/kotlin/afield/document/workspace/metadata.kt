@@ -34,10 +34,23 @@ import java.io.File
 /** The box's YAML metadata text; empty by default. */
 var Box.metadata by Delegation<String>(defaultValue = { "" })
 
+/** The box uid a sidecar filename begins with, taken as everything before its first underscore. */
 fun idFromFilename(fn: String) = fn.split("_")[0]
 
-data class BoxReference(val document: String, val id: String)
+/** One box in one document, as [tagDatabase] names the boxes it found. */
+data class BoxReference(
+    /** The absolute path of the document folder, not the document's name. */
+    val document: String,
+    /** The box uid, read off the sidecar's filename by [idFromFilename]. */
+    val id: String
+)
 
+/**
+ * Every tagged box under a workspace root, as a box and the tags its `metadata` sidecar gives it. Reads each
+ * document folder's `<uid>_metadata_.yaml` files and takes their `tags` key, accepting a single value as a
+ * one-element list. A sidecar whose YAML is not a map, or which has no `tags`, is left out rather than
+ * reported; a YAML syntax error propagates, and so does a [root] that is not a directory.
+ */
 fun tagDatabase(root: String): List<Pair<BoxReference, List<String>>> {
     return File(root).listFiles {
         it.isDirectory
@@ -59,10 +72,25 @@ fun tagDatabase(root: String): List<Pair<BoxReference, List<String>>> {
     }
 }
 
+/**
+ * A box's YAML metadata as a map. Nothing is caught here: empty text loads as null and fails the cast, and
+ * YAML that is a list or a scalar does the same, so a caller that does not know the text is a map should
+ * wrap this.
+ */
 fun parseMetadata(s: String) = Yaml().load(s) as Map<String, Any?>
 
 
+/**
+ * [tagsForString] over a box's own `metadata` property. The [key] has no useful default: left out, the
+ * lookup asks for a null key and the result is null for all but the rare YAML that has one.
+ */
 fun tagsForBox(b: Box, key: String? = null) = tagsForString(b.metadata, key)
+
+/**
+ * One key of a YAML map as a list of strings, with a single value read as a one-element list and everything
+ * stringified. Null when the text is not a map, when the key is absent, and when its value is null, so a
+ * caller cannot tell those apart; callers in this repo pass `"tags"` and treat null as no tags.
+ */
 fun tagsForString(s: String, key: String? = null): List<String>? {
 
     try {

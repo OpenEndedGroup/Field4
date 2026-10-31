@@ -11,20 +11,20 @@ import kotlin.math.sqrt
 import kotlin.random.Random
 
 /**
- * The layout solver behind [PetriLayout.FORCE].
+ * The force-directed layout behind [PetriLayout.FORCE]: a spring relaxation run many times from
+ * different random starts, each scored for legibility, with the best drawing kept.
  *
- * A spring model finds *a* local minimum of its own energy, and that is not the same thing as a
- * drawing you can read. Thirty nodes of dining philosophers relax to a perfectly respectable energy
- * and come out as a hairball. So this does not trust the physics: it runs the relaxation many times
- * from different random starts and **scores the results**, on the things that actually make a graph
- * legible — edges that cross, nodes that overlap, and edges that pass under an unrelated node —
- * then keeps the best one.
+ * A spring model settles into *a* local minimum of its own energy, which is not the same thing as
+ * a drawing you can read: thirty nodes of dining philosophers reach a respectable energy and still
+ * come out as a hairball. So the energy is not the verdict. Each restart is scored on what makes a
+ * graph legible, crossings first, then overlapping nodes, then nodes standing on an edge, and the
+ * best-scoring drawing wins. A restart with none of the three ends the search early.
  *
- * Random, but not unpredictable. Every restart is seeded from a hash of the net's own structure, so
- * the same net always produces the same drawing, on every machine and every run. That matters more
- * than it might sound: docs captures are committed PNGs compared byte-for-byte, and a layout that
- * wobbles would churn them on every build.
+ * Random, but repeatable. Every restart is seeded from a hash of the net's own structure, so the
+ * same net draws the same way on every machine and every run.
  */
+
+/** Scored multi-restart force layout for a Petri net. */
 internal object PetriLayoutSolver {
 
     /** Centre-to-centre distance below which two nodes are counted as colliding. */

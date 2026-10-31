@@ -7,8 +7,8 @@ with one weight zeroed -- so the difference is attributable to that weight and n
 val n = 400
 val start = BoidFlock.random(n, 260.0, 260.0, speed = 1.4, seed = 4L)
 val params = BoidParams()
-println("random-heading baseline for " + n + " agents: " + "%.3f".format(randomPolarizationBaseline(n)))
-println("initial polarization: " + "%.3f".format(start.order()))
+println("random-heading baseline for " + n + " agents: " + randomPolarizationBaseline(n).f3)
+println("initial polarization: " + start.order().f3)
 
 val flock = start.copy()
 flock.stepTimes(params, 900)
@@ -18,25 +18,22 @@ val noSep = start.copy()
 noSep.stepTimes(params.copy(separationWeight = 0.0), 900)
 
 println(
-    "flock polarization " +
-        "%.3f".format(flock.order()) +
-        ", CONTROL with no alignment " +
-        "%.3f".format(noAlign.order()),
+    "flock polarization " + flock.order().f3 + ", CONTROL with no alignment " + noAlign.order().f3,
 )
 println(
     "5th-percentile nearest neighbour: flock " +
-        "%.2f".format(quantileOf(flock.neighborDistances(), 0.05)) +
+        quantileOf(flock.neighborDistances(), 0.05).f2 +
         ", CONTROL with no separation " +
-        "%.2f".format(quantileOf(noSep.neighborDistances(), 0.05)),
+        quantileOf(noSep.neighborDistances(), 0.05).f2,
 )
-println("mean speed " + "%.2f".format(flock.meanSpeed()) + " of a " + params.maxSpeed + " cap")
+println("mean speed " + flock.meanSpeed().f2 + " of a " + params.maxSpeed + " cap")
 
 showImg(
     montage(
         [
-            "gen 0: order " + "%.2f".format(start.order()) to start.toImg(1.4, tail = 5.0),
-            "900 steps: " + "%.2f".format(flock.order()) to flock.toImg(1.4, tail = 5.0),
-            "no alignment: " + "%.2f".format(noAlign.order()) to noAlign.toImg(1.4, tail = 5.0),
+            "gen 0: order " + start.order().f2 to start.toImg(1.4, tail = 5.0),
+            "900 steps: " + flock.order().f2 to flock.toImg(1.4, tail = 5.0),
+            "no alignment: " + noAlign.order().f2 to noAlign.toImg(1.4, tail = 5.0),
             "no separation" to noSep.toImg(1.4, tail = 5.0),
         ],
         columns = 2,

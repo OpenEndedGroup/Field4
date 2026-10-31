@@ -234,8 +234,8 @@ server.on("/types") { m ->
 oscClient("127.0.0.1", 57303).send("/types", sent)
 ```
 
-Each Kotlin type has one OSC type tag, and comes back as the same type. A blob, sent as a
-`ByteArray`, arrives as a read-only `java.nio.ByteBuffer`. `m.event.message.info.argumentTypeTags`
+The values carry OSC type tags. Most of the types in this example come back as the same Kotlin
+type; a blob sent as a `ByteArray` arrives as a read-only `java.nio.ByteBuffer`. `m.event.message.info.argumentTypeTags`
 is the type tag string itself, which is the first thing to look at when a peer's numbers arrive as
 the wrong type.
 
@@ -589,8 +589,8 @@ numeric argument and, after a short pause, runs the box being edited again, so a
 scrub a constant in your code. The *launch* and *stop* addresses (`/field/launch`, `/field/stop`)
 launch and stop the box being edited. It listens on 9001 by default, one up from `osc()`'s 9000.
 
-See also: [Mobile controllers](mobile_controllers.md) for building a control surface in Field
-itself, [OSCQuery](oscquery.md), and [Sonic Pi](sonic_pi.md).
+See also: [Field from your phone](mobile_controllers.md), whose [Pad](mobile_controllers.md#the-pad-scrubs-a-number-in-your-code) drives this same number-under-the-cursor editing from a browser, plus
+[OSCQuery](oscquery.md) and [Sonic Pi](sonic_pi.md).
 
 ??? aside "Which peers were run while writing this page"
     The Field side of every exchange here was run against python-osc 1.10.2, an OSC implementation

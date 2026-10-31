@@ -1,6 +1,12 @@
 # RectSL examples
 
-Every operator in the [cheatsheet](rectsl_cheatsheet.md) turns up somewhere on this page, and every example is a whole program you can paste into a `#rectsl` box and start pulling apart. The page starts with array primitives that multiply one shape across a wall, and emitters that split and cascade. Then come the same scenes lowered into a single GLSL distance function, the pattern language used to lay a scene out by rhythm, charts and plotted figures, and a longer gallery that covers the rest of the language. The host side is normal Field Kotlin calling `afield.lang.rectsl.*`.
+Make a rectangle, multiply it across a wall, and give the copies something to do. RectSL builds
+animated scenes from rectangles, groups and materials; the examples here are whole programs you
+can paste into a `#rectsl` box and pull apart. After the first wall, try emitters, rhythmic layouts,
+charts and the larger gallery.
+
+The [cheatsheet](rectsl_cheatsheet.md) describes the operators as you meet them. From Kotlin, the
+host-side API lives in `afield.lang.rectsl.*`.
 
 ## Rendered gallery
 
@@ -596,12 +602,10 @@ with(Functions) {
     val seed = gaussian(0.45, 0.20) + gaussian(0.60, 0.20) * 0.50
     val run = fitBest(target, seed, restarts = 12) // RMSE collapses toward ~0
 
-    val program =
-        compileRectSL(
-                source,
-                mapOf("target" to target, "seed" to seed, "fit" to run.fitted),
-            )
-            .program!!
+    val program = compileRectSL(
+        source,
+        mapOf("target" to target, "seed" to seed, "fit" to run.fitted),
+    ).program!!
     // ... render program like any other scene ...
 }
 ```

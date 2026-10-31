@@ -221,7 +221,7 @@ fun searchUpwards(f: HasHierarchy, name: String, found: (String?) -> Unit) {
  * the `import` lines and the lines tagged with the trailing inherit marker (an empty block comment;
  * spelled out rather than written here, because a comment marker inside a KDoc nests). `prop`,
  * `@exported` and the FieldML host bridge all tag what they mean to publish; `moduleHere`'s
- * generated shader accessors deliberately do not, so they stay in the box whose shader declared
+ * generated shader accessors do not, so they stay in the box whose shader declared
  * them. Documented for users in `public/docs/running_code.md` ("Property inheritance").
  *
  * The marker gate applies to every ancestor *uniformly*, including one whose `preamble` has never
@@ -291,13 +291,18 @@ fun gatherPreambleUpwardsReport(startingAt: Box): GatheredPreamble {
 
     val stale = mutableListOf<String>()
     var total = ""
+    // In the order they are met, so gathering a box's own preamble gives its imports back unchanged.
+    // Prepending each one reversed them, and since the gathered text is written back into the box's
+    // preamble, the order flipped on every launch: the K1 completion delegate, fingerprinted on that
+    // text, was rebuilt on every edit.
+    val imports = mutableListOf<String>()
     val entries = mutableListOf<Pair<String, Int>>() // inheritable line to its supplier rank, in text order
     for ((box, d) in depthOf) {
         val preamble = box.getPropertyRaw("preamble") as String? ?: continue
         val isFirstBox = d == 0
         preamble.split("\n").forEach { line ->
             if (line.trim().startsWith("import")) {
-                total = line + "\n" + total
+                imports += line
                 return@forEach
             }
             val marked = line.trimEnd().endsWith("/**/")
@@ -340,7 +345,7 @@ fun gatherPreambleUpwardsReport(startingAt: Box): GatheredPreamble {
         if (d == 0) continue
         for (line in propDeclarationsFromCode(box)) {
             if (line.trim().startsWith("import")) {
-                if (line !in total) total = line + "\n" + total
+                if (line !in imports) imports += line
                 continue
             }
             val name = declaredExtensionName(line) ?: continue
@@ -373,6 +378,7 @@ fun gatherPreambleUpwardsReport(startingAt: Box): GatheredPreamble {
         total = total.split("\n").filterNot { it in losers }.joinToString("\n")
     }
 
+    total = imports.joinToString("") { it + "\n" } + total
     total = total.replace("var Mesh.dim by Mesh.BoundFromStructure<afield.math.linalg.Vector2f>()", "\n")
 
     return GatheredPreamble(total, stale, conflicts)

@@ -2,6 +2,57 @@
 
 This document is both a talk and its live teaching material. Its default presentation path is Kotlin plus standard `kotlinx.html`, using Field's existing guide system. It needs no per-talk Node project, TSX or Motion Canvas installation.
 
+## Themes and builds
+
+The starter's `files/themes/black.css`, `paper.css`, `slate.css` and `lecture.css` are each standalone themes.
+Copy the chosen CSS into `files/presentation.css` to keep all authored slides on the same theme.
+Preserve the user's edited stylesheet unless asked to change it. Refresh reloads saved CSS.
+
+Use `fadeIn(durationMs = 350, delayMs = 0) { ... }` inside `audience` for text, an image or a group.
+Use `reveal("Explain", dimPrevious = 0.25) { fadeIn { ... } }` after an HTML audience view to add a
+cue retaining the previous composition underneath. Previous layers are inert and do not replay fades.
+Back/Refresh show the completed build. Native webpages and live documents use ordinary cues instead.
+For separate slides reuse `val figure = audienceFragment { ... }`, then `audience(figure)` and
+`audienceOver(figure, dimPrevious = 0.25) { ... }`. Media paths still refer to shared files.
+
+In `talk.slides.json`, a cue may set `retainPrevious: true`, `previousOpacity: 0.25`, `fadeMs: 350`.
+Defaults replace the body without an element fade. `PresentationWriteSlideRequest` accepts these
+fields as part of the slide; it still saves data without running code or showing it to an audience.
+
+## Lecture layouts
+
+`stylesheet("themes/lecture.css")` loads the ink-blue, warm-lettered lecture theme as one CSS file.
+It styles `fullScreenImage` and `imageBeside` directly, with quiet right-aligned citations.
+For a large banner, use `div(classes = "lecture-banner") { h1 { +"Mapping" }; p(classes = "lecture-tagline") { +"New physics" } }`.
+For the airy list, use `div(classes = "lecture-list") { h1 { +"Topics" }; ul { li { +"One idea" }; li { +"Another idea" } } }`.
+`files/examples/lecture.kt` is a complete four-slide example, with two editable SVG line studies.
+Paste it into a new box and run that box when asked to try the layouts.
+
+The theme automatically settles images, text, credits and individual list items in a short stagger
+on forward entry. It uses the host's `data-field-builds` crossfade release, so no `fadeIn` wrappers
+are needed. The incoming composition stays mostly visible while the crossfade runs. Back, Refresh,
+retained layers and reduced-motion mode show the finished composition. `--lecture-beat` controls
+spacing between arrivals; `--lecture-settle` controls duration; `--lecture-banner-size` controls
+large title size. Preserve the author's own stylesheet and talk when borrowing these layouts.
+
+## Install or update the presentation kit
+
+For a new managed talk, use Welcome's **Kits → Add presentation starter kit**, **Restart Field**, then
+**Presentations → Create document** beside **Teaching with Field**. The package starts **Teaching guide**,
+**Live Field** and **Presentation** in that order. Welcome's **Templates → presentation** is the
+standalone-copy route and does not register a managed package instance.
+
+An instance created through Kits has `.field-kit-instance.json`, recording its package, starting point,
+revision and file baselines. It belongs to the `kit-presentation` Project. Preserve that record and
+the author's files. To update the package, close the document, use **Check source for updates** and
+restart Field, then inspect **Your documents → Inspect update** before applying it. Conflicting local
+edits stop the update. Use **Run** to reopen and activate the updated document. On another machine,
+install the recorded package revision before running the instance.
+
+This is separate from the inner `kit.json` role kit described below. `showKit()` and AI4's
+`InspectKitRequest` inspect helper/style roles; they do not inspect or upgrade the outer package.
+Reading this guide does not authorize an update or restart: follow the user's current request.
+
 ## Find the working material
 
 Read the current boxes before editing them; preserve the author's steps and local changes.
@@ -53,7 +104,7 @@ Use saved operation transcripts for repeatable document changes. For step callba
 
 ## Keep the talk reusable
 
-The document folder, Kotlin sidecars, guides, macros and media can live together in Git. Shared files stay in `files/`; slides reference them instead of duplicating them. The starter's `kit.json` owns the teaching-guide helper and shared stylesheet. The authored talk and live example are outside those kit roles. Inspect the kit before replacing a shared helper; preserve the lecture when updating the kit.
+The document folder, Kotlin sidecars, guides, macros and media can live together in Git. Files shared by slides stay in the document's `files/` folder. Files shared across a course can instead live in the Project's `files/` folder or a package's declared `sharedResources`; `.file` checks those after document files. The starter's inner `kit.json` owns the teaching-guide helper and shared stylesheet. The authored talk and live example are outside those kit roles. Inspect the appropriate package or role update before replacing a shared helper; preserve the lecture when updating the kit.
 
 Motion Canvas remains an optional source for animation-heavy scenes. It is not required for ordinary slides, webpages, document demonstrations or guides.
 
@@ -64,3 +115,31 @@ Run the edited box and read its real compiler/runtime result. Check the audience
 ## Organize a long talk
 
 Wrap related steps in `section("Title") { ... }`; sections may nest. Playback stays in source order. The presenter outline has collapsible groups, slide numbers and **Find slide** for titles, section names or numbers. Enter opens the first search result; Escape clears the search. Current-slide ancestors open when you navigate, while other collapsed groups stay collapsed.
+
+## AI4: add or revise one Markdown slide
+
+Read `files/talk.slides.json` through `PresentationReadRequest` (outline first, then `slideId` for
+one body). The renderer supports CommonMark, not LaTeX: write short formulas in plain text or HTML. Use `PresentationWriteSlideRequest` with the returned `revision` and one complete slide:
+`id`, `title`, `markdown`, `notes`, `section` and `cues` (`title`, `markdown`). A new ID inserts after
+`afterId`, or appends if omitted. An existing ID updates in place. Preserve unrelated slides and
+notes; re-read and reconcile on conflict. These are content-only edits: no code or macros run.
+
+The Presentation box includes `slides("talk.slides.json")`. Refresh reloads an existing body;
+rerun Presentation for outline or cue-structure changes. To rehearse when the person asks,
+PresentationInspectRequest gives host UIDs and cue state; PresentationControlRequest navigates,
+refreshes or explicitly runs a reset. A successful JVM command is not proof of painted output:
+inspect/capture the actual audience window before claiming a visual result.
+
+The **Predict a wave** Kotlin step has two cues and an explicit reset. Its source checkpoint captures
+only Wave experiment's code at talk construction. Reset stops that box, restores the captured source
+and runs `run_wave`; unlisted boxes/files/notes remain outside the checkpoint. Back and Refresh do
+not replay cue actions. Rebuild from edited source only when you intend to establish a new baseline.
+
+## Keyboard search in the presenter
+
+Press `/` or Cmd/Ctrl+F in the live controls, type words from slide text or titles, then use Up/Down
+and Enter to visit a match. The query stays in place for repeated hops; Escape clears and returns to
+the current outline row. The audience stays put until Enter. Search includes image alt text and cue
+text, so write useful descriptions. It omits private presenter notes when there is an explicit
+HTML audience view, and never opens web/document guests or executes a cue while indexing.
+Refresh updates the cached text index after content edits; rerun Presentation after outline edits.

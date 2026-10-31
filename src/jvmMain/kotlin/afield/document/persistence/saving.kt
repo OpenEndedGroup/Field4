@@ -234,13 +234,41 @@ class SavingContext {
         }, upgradeOnLoad = false)
     }
 
+    /**
+     * [cloneInto] for inserting a template into an open document. The template's own `root` and
+     * `metaroot` entries are left out: a template that is a whole document (a workspace document, or a
+     * bundled template folder saved with its root) would otherwise write its root's frame, children,
+     * drawing and bookmarks over the receiving document's root and add a stray copy of its metaroot.
+     * Its top-level boxes still name `root` as their parent, which is the receiving document's root.
+     * A `metadata.json` template has no such entries to drop and goes through [cloneInto].
+     */
+    @OptIn(ExperimentalUuidApi::class)
+    fun cloneTemplateInto(path: String): Set<Box> {
+        val file = File(path)
+        val (transfers, directory) = when {
+            file.isFile && file.name.endsWith(".edn") -> {
+                val directory = file.absoluteFile.parentFile?.absolutePath ?: file.absolutePath
+                readEdnTransfersFromString(file.readText(), recordInto = directory) to directory
+            }
+            File(file, METADATA_EDN).exists() -> readEdnTransfers(file.path) to file.path
+            else -> return cloneInto(path)
+        }
+        val seen = mutableMapOf("root" to "root", METAROOT_ID to METAROOT_ID)
+        return instantiateTransfers(
+            transfers.filterNot { it.id == "root" || it.id == METAROOT_ID },
+            directory,
+            { id -> seen.computeIfAbsent(id) { Uuid.random().toString() } },
+            createBoxes = true
+        )
+    }
+
     var altered = false
 
     private fun withoutMetarootTopology(name: String, value: Any?): Any? {
         if (name != "parents" && name != "children") return value
         return when (value) {
-            is Set<*> -> value.filterNot { it is Box && it.id == METAROOT_ID }.toCollection(LinkedHashSet())
-            is List<*> -> value.filterNot { it is Box && it.id == METAROOT_ID }
+            is Set<*> -> value.filterNot { it is Box && (it.id == METAROOT_ID || afield.document.workspace.WorkspaceProjectScopes.isProjectRoot(it)) }.toCollection(LinkedHashSet())
+            is List<*> -> value.filterNot { it is Box && (it.id == METAROOT_ID || afield.document.workspace.WorkspaceProjectScopes.isProjectRoot(it)) }
             else -> value
         }
     }
@@ -1488,6 +1516,42 @@ class SavingContext {
         }
     }
 
+    /** The box ids a stored topology value (`children`, `parents`) names, or null when it names none. */
+    internal fun storedBoxRefIds(value: Any?): Set<String>? = when (value) {
+        null -> emptySet()
+        is BoxRef -> setOf(value.id)
+        is Collection<*> -> value.mapNotNullTo(LinkedHashSet()) { (it as? BoxRef)?.id }
+        else -> null
+    }
+
+    /**
+     * A sidecar's text at load, unless `metadata.edn` was written after it with a different inline
+     * copy: that is a hand edit of the inline text made while the document was closed, and it wins.
+     * The sidecar it replaces is copied into `backups/` first and the choice is logged, so neither
+     * edit is lost. Two seconds of slack keep a checkout, which writes both files at once, on the
+     * sidecar.
+     */
+    internal fun sidecarOrNewerInline(file: File, value: FileInline, directory: String): String {
+        val text = file.readText()
+        if (text == value.inline) return text
+        val metadata = File(directory, METADATA_EDN)
+        if (!metadata.isFile || metadata.lastModified() <= file.lastModified() + 2000) return text
+        runCatching {
+            val backup = File(directory, "backups/${file.name}.before-inline-${System.currentTimeMillis()}")
+            backup.parentFile.mkdirs()
+            file.copyTo(backup)
+            lprintln(
+                "warning,save",
+                "${value.path}: metadata.edn's inline copy is newer than the file and differs from it, so the inline " +
+                    "edit is loaded; the file's text is kept as backups/${backup.name}"
+            )
+        }.onFailure { e ->
+            lprintln("warning,save", "${value.path}: could not back up the file before loading the newer inline copy (${e.message}); keeping the file")
+            return text
+        }
+        return value.inline
+    }
+
     private fun resolveValue(
         value: Any?,
         directory: String,
@@ -1507,7 +1571,7 @@ class SavingContext {
         }
         is FileInline -> {
             val file = File(directory, value.path)
-            if (!preferInlineFiles && file.exists()) file.readText() else value.inline
+            if (!preferInlineFiles && file.exists()) sidecarOrNewerInline(file, value, directory) else value.inline
         }
 
         is BoxRef -> {

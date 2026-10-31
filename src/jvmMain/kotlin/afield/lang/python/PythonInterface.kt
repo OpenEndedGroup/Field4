@@ -95,8 +95,8 @@ import java.util.concurrent.TimeUnit
  *  - **[PythonExecution]**, the `BoxExecution`. Beyond the usual output proxying it carries the
  *    cooperative event loop: an `asyncio` loop implemented in Python that yields to Field's runloop
  *    instead of blocking it, so `await` inside a box does not stop the editor.
- *  - **Output.** Everything a box prints funnels through one formatter, and three cases are special
- *    on purpose: a `\r` becomes a Field progress bar (which is how `tqdm` renders as a real one),
+ *  - **Output.** Everything a box prints funnels through one formatter, and three cases are
+ *    special: a `\r` becomes a Field progress bar (which is how `tqdm` renders as a real one),
  *    an object exposing `HTML`/`Image`/`Markdown`/`Math`/`JSON` renders as itself, and a library
  *    that tries to open a browser page — plotly's `fig.show()`, bokeh, folium — is intercepted and
  *    the HTML delivered into the box as an iframe `srcdoc`. Nothing here opens a browser.
@@ -1014,7 +1014,7 @@ def clear_output(wait=False, channel=None):
     box = PythonInterface.thisBox
     if not box:
         return
-    from afield import OutputsKt
+    from afield.ui.output import OutputsKt
     if channel:
         OutputsKt.displayClear(box, channel)
     else:
@@ -1094,7 +1094,7 @@ class FileUpload:
     def value(self):
         ""${'"'}Returns uploaded files as a tuple of dicts with keys: name, type, size, content (bytes).""${'"'}
         if self._control_id:
-            from afield import OutputsKt
+            from afield.ui.output import OutputsKt
             entries = OutputsKt.getFileUploadData(self._control_id)
             if entries is not None:
                 result = []
@@ -1237,7 +1237,7 @@ _FIELD_EMBED_CHANNEL = "browser"
 def _field_embed_show(box, iframe_html):
     box.display(_FIELD_EMBED_CHANNEL, iframe_html)
     try:
-        from afield import OutputsKt
+        from afield.ui.output import OutputsKt
         OutputsKt.displayOpen(box, _FIELD_EMBED_CHANNEL)
     except Exception:
         pass

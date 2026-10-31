@@ -100,7 +100,9 @@ object PolytopeLayerContours {
         val geometry = polyhedron.triangulate(normals = NormalPolicy.Flat)
         // The triangulator cuts each polygon on its own, so a corner shared by three faces arrives as
         // three vertices. A manifold is an index property: weld before handing it over.
-        return geometry.mesh.weld(1e-6).toSolid()
+        // `check = false`: an inside-out realization is a finding here, and [arm] reports and refuses
+        // it by its signed volume, where toSolid's own check would throw before it could be measured.
+        return geometry.mesh.weld(1e-6).toSolid(check = false)
     }
 
     /**

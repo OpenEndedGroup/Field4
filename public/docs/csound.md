@@ -201,7 +201,7 @@ pluck.setInvalue("gain", 0.5) // invalue "gain"
 pluck.noteOn(0, 64, 90) // MIDI, to massign'ed instruments
 ```
 
-What each of these does, and on which thread:
+Here's how those calls work, and which thread they use:
 
 - **Control and string channels.** `setChannel`, `channel`, `setStringChannel` and `stringChannel`
   read and write Csound's channel bus directly. Csound locks the bus itself, so they are safe from
@@ -270,9 +270,8 @@ When the Kotlin is the larger part, `csound` compiles an orchestra and score ins
 returns a `CsoundLaunch`. Return it as the box's last expression to hear it:
 
 ```diffstatic {data-lang=kotlin}
-val drone =
-    csound(
-        """
+val drone = csound(
+    """
 chn_k "pitch", 1, 2, 110, 55, 440
 chn_k "cutoff", 1, 2, 1200, 200, 6000
 instr 1
@@ -285,8 +284,8 @@ instr 1
   outs a1, a1
 endin
 """,
-        "i1 0 z",
-    )
+    "i1 0 z",
+)
 csoundControls(drone)
 drone
 ```

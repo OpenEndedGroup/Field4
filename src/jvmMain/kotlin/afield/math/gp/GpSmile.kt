@@ -21,7 +21,13 @@ fun MercerKernel<DoubleArray>.asGpKernel(): GpKernel = GpKernel { a, b -> k(a, b
 
 /** Smile L-BFGS-B result. A small projected gradient indicates local stationarity, not a global optimum. */
 class GpSmileFitResult internal constructor(
-    val process: GaussianProcess, val parameters: Map<String, Double>, val evaluations: Int,
+    /** The process rebuilt at the best parameters seen, ranked by marginal likelihood rather than by where the optimizer stopped. */
+    val process: GaussianProcess,
+    /** Those parameters by name, exponentiated back out of log space and held inside their bounds. */
+    val parameters: Map<String, Double>,
+    /** How many times [fitGpHyperparametersWithSmile] called its build function, the finite differences included. */
+    val evaluations: Int,
+    /** The largest gradient component at the end, counting a component the optimizer is holding against a bound as zero. */
     val projectedGradientMax: Double
 )
 

@@ -136,6 +136,9 @@ class DefaultOutput : HasOutput {
     var displayProxy: (String, Any?) -> Unit = { _, _ -> }
     var errorProxy: (Any?, String, Int) -> Unit = { _, _, _ -> }
 
+    /** A compiler warning for the run being configured: message, line, start column, end line, end column (1-based, -1 unknown). */
+    var warningProxy: (String, Int, Int, Int, Int) -> Unit = { _, _, _, _, _ -> }
+
     override fun print(message: Any?) {
         proxy(message, false, -1)
     }
@@ -858,10 +861,11 @@ fun Box.marco_printlnHere(contents: List<String>): Insert? {
  * @param maxHeight the tallest the embed grows in the output panel before it scrolls, in pixels
  * @param includePrivate also list private properties (as `GraphWalkOptions(includePrivate = true)`;
  *   their paths then need that option in `graphPaths` too)
+ * @param width the panel width in pixels; null leaves the panel at its current width
  */
-fun Box.tree(channel: String = "debug", a : Any?, maxHeight: Int = 520, includePrivate: Boolean = false) {
+fun Box.tree(channel: String = "debug", a : Any?, maxHeight: Int = 520, includePrivate: Boolean = false, width: Int? = null) {
     val options = afield.data.query.graph.GraphWalkOptions(includePrivate = includePrivate)
-    display(channel, inspectorIframe(Inspector.linkFor(a ?: "null", "/tree", options = options), maxHeight))
+    display(channel, inspectorIframe(Inspector.linkFor(a ?: "null", "/tree", options = options), maxHeight, width))
 }
 
 /**
@@ -870,16 +874,25 @@ fun Box.tree(channel: String = "debug", a : Any?, maxHeight: Int = 520, includeP
  *
  * @param maxHeight the tallest a column grows before it scrolls, in pixels
  * @param includePrivate also list private properties, as for [tree]
+ * @param width the panel width in pixels, room for several columns side by side; null leaves the
+ *   panel at its current width and the columns scroll sideways
+ * @param open a row path (as the **path** button copies it, e.g. `"render/modules"`) to open the
+ *   columns down to when the browser loads, that row included
  */
-fun Box.column(channel: String = "debug", a : Any?, maxHeight: Int = 420, includePrivate: Boolean = false) {
+fun Box.column(channel: String = "debug", a : Any?, maxHeight: Int = 420, includePrivate: Boolean = false, width: Int? = null, open: String? = null) {
     val options = afield.data.query.graph.GraphWalkOptions(includePrivate = includePrivate)
-    display(channel, inspectorIframe(Inspector.linkFor(a ?: "null", "/browse", options = options), maxHeight))
+    val link = Inspector.linkFor(a ?: "null", "/browse", options = options) +
+        (open?.let { "&open=" + java.net.URLEncoder.encode(it, Charsets.UTF_8).replace("+", "%20") } ?: "")
+    display(channel, inspectorIframe(link, maxHeight, width))
 }
 
-/** The iframe for [tree] and [column]: full panel width, height from `iframe_autosize.js`. */
-internal fun inspectorIframe(link: String, maxHeight: Int): String =
+/**
+ * The iframe for [tree] and [column]: full panel width (or [width] pixels, which the output panel
+ * adopts), height from `iframe_autosize.js`.
+ */
+internal fun inspectorIframe(link: String, maxHeight: Int, width: Int? = null): String =
     "<iframe class='field-inspector' src='$link&maxh=${maxHeight.coerceAtLeast(80)}' " +
-        "style='border:none;padding:0;margin:0;display:block;width:100%;height:220px;'></iframe>"
+        "style='border:none;padding:0;margin:0;display:block;width:${width?.let { "${it.coerceAtLeast(120)}px" } ?: "100%"};height:220px;'></iframe>"
 
 /**
  * Embeds Field's RemoteJS / WebXR browser head in this box's output pane and opens it, so the
@@ -1397,7 +1410,8 @@ private fun buildVec2Html(
     yRange: Pair<Double, Double>,
     step: Double,
     decimalPlaces: Int,
-    initialValue: Vector2f
+    initialValue: Vector2f,
+    defaultValue: Vector2f = initialValue
 ): String {
     val viewSize = 150
     val padding = 10
@@ -1448,6 +1462,9 @@ private fun buildVec2Html(
              data-max-y="${yRange.second}"
              data-x="${initialValue.x}"
              data-y="${initialValue.y}"
+             data-default-x="${clamp(defaultValue.x.toDouble(), xRange)}"
+             data-default-y="${clamp(defaultValue.y.toDouble(), yRange)}"
+             tabindex="0" role="group" aria-label="${label.replace("&", "&amp;").replace("\"", "&quot;").replace("<", "&lt;").replace(">", "&gt;")}"
              data-step="$step"
              data-decimal-places="$decimalPlaces"
              data-view-size="$viewSize"
@@ -2092,6 +2109,10 @@ private fun Box.updateCachedControlGroupValueInMemory(control: ControllerControl
     val values = controlGroupValues()
     values[cacheKey] = controlGroupStoredValue(control)
     properties[controlGroupValuesProperty] = values
+    // No resync and no flight-recorder entry per frame, but the persisted value did change, so say
+    // so. Unmarked, the fingerprint still saved it on the next autosave tick and the tripwire named
+    // the box on `warning,persistence` each time (2026-10-24, `AutosaveSubsystemMarkingTest`).
+    notePersistentChange(controlGroupValuesProperty)
 }
 
 internal fun registerControllerControlGroup(box: Box, channel: String, controls: List<ControllerControl>) {
@@ -2460,7 +2481,7 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
             onUpdate(Vector2f(value))
         }
         val decimalPlaces = calculateDecimalPlaces(step)
-        htmlParts += buildVec2Html(controlId, label, xRange, yRange, step, decimalPlaces, value)
+        htmlParts += buildVec2Html(controlId, label, xRange, yRange, step, decimalPlaces, value, defaultValue = initialValue)
         val control = ControllerControl(
             id = controlId,
             type = "vec2",

@@ -1151,7 +1151,7 @@ the cursor on a line and the note beside it shows that line's stage, drawn alone
 as **Render this function alone** draws it, which the caption says. Both kinds of
 string are coloured as StackSL.
 
-```diffstatic_runner {data-lang=kotlin capture="ui" graphics-context=true region="window" clip-selector=".afield-suggest" screenshot="assets/stacksl/stackauto-in-string-completion.png" transcript="assets/transcripts/stackauto_numbers_setup.yaml" capture-box="stackauto_numbers" padding="6" wait="0" timeout="300" warm-completion=true embed=true hidden=true name="stackauto-in-string-completion" alt="The completion popup opened inside the slot's string, after the pal of palette. On the left, under WORDS, one row: palette, with its stack effect t a b c d — color. On the right, a square of blue, white, orange and violet cloud captioned line 7 · stack.auto.program, what it leaves on the stack, at t = 1.75 s · GPU (Apple M1 Max), drawn alone — not with your shader's input; under it the cheatsheet entry: cosine palette a + bcos(tc + d), and source StackSL cheatsheet."}
+```diffstatic_runner {data-lang=kotlin capture="ui" graphics-context=true region="window" clip-selector=".afield-suggest" screenshot="assets/stacksl/stackauto-in-string-completion.png" transcript="assets/transcripts/stackauto_numbers_setup.yaml" capture-box="stackauto_numbers" padding="6" wait="0" timeout="300" embed=true hidden=true name="stackauto-in-string-completion" alt="The completion popup opened inside the slot's string, after the pal of palette. On the left, under WORDS, one row: palette, with its stack effect t a b c d — color. On the right, a square of blue, white, orange and violet cloud captioned line 7 · stack.auto.program, what it leaves on the stack, at t = 1.75 s · GPU (Apple M1 Max), drawn alone — not with your shader's input; under it the cheatsheet entry: cosine palette a + bcos(tc + d), and source StackSL cheatsheet."}
 // In the slot's one-line string, with the caret after the `pal` of `palette`: ask for completion there.
 ui.eval("window.localStorage.removeItem('field.suggest.recency.v1'); return 'setup';")
 ui.openEditor("stackauto_numbers")
@@ -1242,8 +1242,8 @@ The 2D `fbm` falls slightly short of 1, so `fbm 0.5 -` is not quite centred on
 zero; used as a force, that small bias adds up to a drift. Use `fbm3` when the
 centre matters.
 
-`curl3` is divergence-free to rounding error, not approximately, so particles
-pushed by it do not bunch up over time.
+`curl3` is divergence-free to rounding error. A particle simulation can still accumulate
+error from its timestep and integration method.
 
 A particle force:
 

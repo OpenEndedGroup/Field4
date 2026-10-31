@@ -1,13 +1,13 @@
 # Studies
 
-A study is a piece of text that draws, kept with its history. The text can be a StackSL program, a
-RectSL scene, or three numbers in a box property; what makes it a study is that every accepted
-change to it is a checked revision, and anything that changes it or looks at it answers with
-pictures. The four conversation pages ([a function](function_conversation.md),
-[a shader](stacksl_conversation.md), [a scene](rectsl_conversation.md),
-[the StackSL in your shader](stackauto_conversation.md)) are a model working on a study through
-AI4 tools. This page is the layer underneath them: the ten verbs every study shares, and how a
-document's own box becomes a study with the same tools.
+A study lets you develop something that draws and keep a history of the changes. Its source might
+be a StackSL program, a RectSL scene, or three numbers in a box property. Each accepted change
+becomes a checked revision, and you can see pictures of the result as you work.
+
+You can work on a study with AI4: try the conversations about [a function](function_conversation.md),
+[a shader](stacksl_conversation.md), [a scene](rectsl_conversation.md), or
+[the StackSL in your shader](stackauto_conversation.md). Here we'll look at the operations those
+studies share, and how to turn a box in your own document into a study.
 
 Everything here is in `afield.study.source`: `LiveStudy` and `registerStudyTools` in `LiveStudy.kt`,
 `SourceFramesStudy` in `SourceFramesStudy.kt`.
@@ -340,8 +340,8 @@ val builds = studyBuilds(
         },
     ],
 ) {
-        mapOf("source" to design.liveSource())
-    }
+    mapOf("source" to design.liveSource())
+}
 showStudyBuilds("reports")
 ```
 
@@ -434,8 +434,14 @@ of them, so a chat that waited for the build resumes with a close-up of the held
 failureNotes = { failed ->
     val held = failed.problem?.details?.get("held") as? List<*>
     if (held.isNullOrEmpty()) emptyList()
-    else [StudyBuildNotice("${held.size} routes were held.", StudyBuildNoticeKind.ERROR,
-        StudyBuildView("Held routes", "each held route, close up") { showHeld(held) })]
+    else
+        [
+            StudyBuildNotice(
+                "${held.size} routes were held.",
+                StudyBuildNoticeKind.ERROR,
+                StudyBuildView("Held routes", "each held route, close up") { showHeld(held) },
+            ),
+        ]
 }
 ```
 
@@ -487,8 +493,8 @@ provenance and lifecycle; the recipe remains responsible for checking its own re
 
 ### Wait until a measurement passes
 
-Often a stage should wait until an earlier result is good enough, not just until it exists: loot
-placement should wait until every loot point can be reached. A `StudyBuildGate` turns that check
+A stage can wait for an earlier result to pass a check. For example, loot placement might wait
+until every loot point can be reached. A `StudyBuildGate` turns that check
 into an input. The check reads the current results of the stages the gate names, and returns `null`
 when the waiting stage may run, or a sentence saying what is still wrong. A stage waits on the gate
 by listing its name in `inputKeys`.

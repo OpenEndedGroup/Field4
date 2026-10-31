@@ -28,14 +28,13 @@ fun Box.explain(label: String, values: List<Double>): Histogram {
     val which = if (winner == hFd) "Freedman-Diaconis" else if (winner == hScott) "Scott" else "Sturges"
     val predicted = Math.round(range / winner).toInt().coerceIn(1, 2000)
     val actual = buildHistogram(values)
-    println("$label: iqr=${"%.3f".format(s.iqr)} sd=${"%.3f".format(s.sampleStdDev)} range=${"%.3f".format(range)}")
+    println("$label: iqr=${s.iqr.f3} sd=${s.sampleStdDev.f3} range=${range.f3}")
     println(
-        "  FD=${"%.4f".format(hFd)}  Scott=${"%.4f".format(hScott)}  Sturges=${"%.4f".format(hSturges)} (k=$kSturges)" +
-            "  -> $which wins",
+        "  FD=${hFd.f4}  Scott=${hScott.f4}  Sturges=${hSturges.f4} (k=$kSturges)" + "  -> $which wins",
     )
     println(
-        "  predicted ${predicted} bins of ${"%.5f".format(range / predicted)}; " +
-            "got ${actual.bins.size} of ${"%.5f".format(actual.binWidth)} -> agree=${predicted == actual.bins.size}",
+        "  predicted ${predicted} bins of ${(range / predicted).f5}; " +
+            "got ${actual.bins.size} of ${actual.binWidth.f5} -> agree=${predicted == actual.bins.size}",
     )
     println(
         "  counts sum to ${actual.count} of ${values.size}; " +

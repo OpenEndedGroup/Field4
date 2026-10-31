@@ -1,5 +1,6 @@
 package afield.graphics.render
 
+import afield.app.diagnostics.LatencySpans
 import afield.graphics.scene.main
 
 import afield.graphics.shader.Introspection
@@ -641,14 +642,16 @@ class MeshModule(val parameters: Parameters) : Renderable {
 
                 ds?.let { gp.pDepthStencilState(it) }
 
-                vkCheck(
-                    vkCreateGraphicsPipelines(
-                        parameters.renderer.device.vkDevice,
-                        parameters.renderer.pipelineCache.vkPipelineCache,
-                        gp, null, lp
-                    ),
-                    "Error creating graphics pipeline"
-                )
+                LatencySpans.time("pipeline.create", detail = "graphics") {
+                    vkCheck(
+                        vkCreateGraphicsPipelines(
+                            parameters.renderer.device.vkDevice,
+                            parameters.renderer.pipelineCache.vkPipelineCache,
+                            gp, null, lp
+                        ),
+                        "Error creating graphics pipeline"
+                    )
+                }
                 this.pipeline = lp[0]
                 pipelineDisposeToken.updateCleanup(snapshotPipelineCleanup())
                 parameters.renderer.device.nameObject(

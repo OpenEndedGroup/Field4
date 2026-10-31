@@ -33,6 +33,30 @@ expect:
   stdoutContains:
     - "DataFrame plugin cost probe complete"
 */
+
+/**
+ * Measures what wiring the Kotlin DataFrame compiler plugin adds to the cost of building a box's
+ * Kotlin engine.
+ *
+ * Field builds one [KotlinInterface2] per box, so a compiler plugin registered into the compilation
+ * state is paid for by every box in a document rather than by the boxes that use DataFrame. This
+ * entrypoint builds three engines in a row, times each one's construction and its first evaluation,
+ * and prints the per-engine total:
+ *
+ * ```bash
+ * run-jvm-main afield.runtime.kotlin.DataFramePluginCostProbe --arg off
+ * ```
+ *
+ * `--arg on` is the default and `--arg off` disables the plugin, by setting the
+ * `afield.dataframePlugin` property that `KotlinInterface2.compilerPluginArgs` reads through a
+ * `lazy`. The property has to be set before the first engine is built, which is why this is a
+ * jvm-main entrypoint rather than something a box can call. The other half of the cost, the
+ * `dataframe-core` jar every engine takes into its classpath snapshot, is fixed at build time, so
+ * the difference between an `on` run and an `off` run isolates the plugin's share.
+ * `dev_docs/DATAFRAME_PLUGIN.md` records the readings, and the different fix each of the two costs
+ * would need if one ever came to dominate.
+ */
+
 /**
  * What does wiring the DataFrame compiler plugin cost *every other box*?
  *

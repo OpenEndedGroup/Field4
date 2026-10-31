@@ -14,42 +14,47 @@ import kotlin.math.exp
 import kotlin.math.ln
 import kotlin.math.sin
 
-/*
-The central-path fan as a map from the (θ, log μ) plane into a polygon.
-
-For an objective direction c(θ) = (cos θ, sin θ) and barrier weight μ, the barrier maximiser
-x(θ, μ) solves  c(θ) = μ Σ wᵢ nᵢ / sᵢ(x). Write g(x) = Σ wᵢ nᵢ / sᵢ(x): the gradient of the
-(negated) barrier, a diffeomorphism from the polygon's interior onto the whole plane. Then
-g(x) = c(θ)/μ, so (θ, 1/μ) are polar coordinates of g(x) and the fan is the polar grid pulled
-back through g⁻¹: one-to-one onto the interior minus the weighted analytic centre (g = 0).
-
-Differentiating the optimality condition with M = μ Σ wᵢ nᵢnᵢᵀ / sᵢ² (the negated Hessian):
-  ∂x/∂θ     =  M⁻¹ c'(θ)
-  ∂x/∂log μ = −M⁻¹ c(θ)
-and det[∂x/∂θ, ∂x/∂log μ] = det(M⁻¹) · det[c', −c] = 1 / det M > 0. The map never folds; it only
-pinches, at both ends of the log μ axis.
-*/
+/**
+ * The central-path fan as a map from the (θ, log μ) plane into a polygon.
+ *
+ * For an objective direction c(θ) = (cos θ, sin θ) and barrier weight μ, the barrier maximiser
+ * x(θ, μ) solves  c(θ) = μ Σ wᵢ nᵢ / sᵢ(x). Write g(x) = Σ wᵢ nᵢ / sᵢ(x): the gradient of the
+ * (negated) barrier, a diffeomorphism from the polygon's interior onto the whole plane. Then
+ * g(x) = c(θ)/μ, so (θ, 1/μ) are polar coordinates of g(x) and the fan is the polar grid pulled
+ * back through g⁻¹: one-to-one onto the interior minus the weighted analytic centre (g = 0).
+ *
+ * Differentiating the optimality condition with M = μ Σ wᵢ nᵢnᵢᵀ / sᵢ² (the negated Hessian):
+ *
+ * ```text
+ * ∂x/∂θ     =  M⁻¹ c'(θ)
+ * ∂x/∂log μ = −M⁻¹ c(θ)
+ * ```
+ *
+ * and det[∂x/∂θ, ∂x/∂log μ] = det(M⁻¹) · det[c', −c] = 1 / det M > 0. The map never folds; it only
+ * pinches, at both ends of the log μ axis.
+ */
 
 /**
  * One point of an [LpFanMap]: where `(theta, logMu)` lands in the polygon, and the map's Jacobian
  * there.
- *
- * @property theta the objective direction's angle, radians.
- * @property logMu the natural logarithm of the barrier weight μ.
- * @property x the barrier maximiser's x.
- * @property y the barrier maximiser's y.
- * @property dxdTheta `∂x/∂θ`, how the point moves as the direction turns: `M⁻¹ c'(θ)`.
- * @property dxdLogMu `∂x/∂log μ`, how it moves as μ grows: `−M⁻¹ c(θ)`. Its negative points
- *   along the central path toward the optimal vertex.
- * @property newtonSteps the Newton steps this point took from its starting guess.
  */
 class LpFanPoint(
+    /** The objective direction's angle, radians. */
     val theta: Double,
+    /** The natural logarithm of the barrier weight μ. */
     val logMu: Double,
+    /** The barrier maximiser's x. */
     val x: Double,
+    /** The barrier maximiser's y. */
     val y: Double,
+    /** `∂x/∂θ`, how the point moves as the direction turns: `M⁻¹ c'(θ)`. */
     val dxdTheta: Vec2,
+    /**
+     * `∂x/∂log μ`, how it moves as μ grows: `−M⁻¹ c(θ)`. Its negative points along the central
+     * path toward the optimal vertex.
+     */
     val dxdLogMu: Vec2,
+    /** The Newton steps this point took from its starting guess. */
     val newtonSteps: Int,
 ) {
     /** The point, for drawing. */
@@ -87,11 +92,13 @@ class LpFanPoint(
  * Uses: [grid] for the curvilinear coordinate lines (θ lines are central paths, μ lines closed
  * rings round the centre), [warp] to carry any [FLine] drawn in the parameter plane into the
  * polygon, and [at] for particles moved along `∂x/∂log μ` or shaded by [LpFanPoint.jacobianDeterminant].
- *
- * @property polygon the polygon the map lands in.
- * @property weights each edge's barrier weight, as for [centralPath].
  */
-class LpFanMap(val polygon: LpPolygon, weights: DoubleArray? = null) {
+class LpFanMap(
+    /** The polygon the map lands in. */
+    val polygon: LpPolygon,
+    weights: DoubleArray? = null,
+) {
+    /** Each edge's barrier weight, as for [centralPath]. */
     val weights: DoubleArray = polygon.checkedWeights(weights)
 
     /**

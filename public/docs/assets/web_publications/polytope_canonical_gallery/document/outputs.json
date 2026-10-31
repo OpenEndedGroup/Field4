@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-31T03:51:21.119Z",
+  "documentName": "polytope_canonical_gallery",
+  "outputs": [
+    {
+      "uid": "polytope_canonical_gallery",
+      "channel": "polytope",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 480,
+      "height": 568,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "polytope_canonical_gallery",
+      "channel": "diagnostics",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 344,
+      "height": 521,
+      "path": "outputs/1.html"
+    }
+  ]
+}

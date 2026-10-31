@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-29T22:42:00.121Z",
+  "documentName": "three_inspector_wall",
+  "outputs": [
+    {
+      "uid": "three-inspector-wall",
+      "channel": "wall",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 480,
+      "height": 568,
+      "path": "outputs/0.html"
+    }
+  ]
+}

@@ -10,7 +10,7 @@ geometry {
         }
         val step = size / 3
         for (x in -1..1) for (y in -1..1) for (z in -1..1) {
-            val holes = listOf(x, y, z).count { it == 0 }
+            val holes = [x, y, z].count { it == 0 }
             if (holes >= 2) continue
             sponge(center + vec(x * step, y * step, z * step), step, depth - 1)
         }

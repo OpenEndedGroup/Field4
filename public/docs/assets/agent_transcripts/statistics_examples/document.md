@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 5 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 5 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. Histograms, and the rule that picks the bins
@@ -19,7 +19,7 @@ Freedman-Diaconis, Scott and Sturges widths, floored so the count cannot exceed 
 Re-derive the whole decision from the public stats and predict the bin count.
 
 ```edn [field-box id="stats_histogram" role="properties"]
-{"id" "stats_histogram" "index" 0 "name" "Histograms, and the rule that picks the bins" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Histograms, and the rule that picks the bins" "_tombstone" false "frame" #afield/rect [80.0 470.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stats_histogram_code_.kt" "lines" 69 "characters" 3064 "sha256" "28d4631af6d2062f3a416f876388fe53e3215b93a898ed161036109739520319"}]}
+{"id" "stats_histogram" "index" 0 "name" "Histograms, and the rule that picks the bins" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Histograms, and the rule that picks the bins" "_tombstone" false "frame" #afield/rect [80.0 470.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stats_histogram_code_.kt" "lines" 68 "characters" 2958 "sha256" "9457950c2b4d2c7a19a955aadaf6293746710187a6133140446a1e0334205fd0"}]}
 ```
 
 ```kotlin [field-property box="stats_histogram" name="code" path="stats_histogram_code_.kt"]
@@ -53,14 +53,13 @@ fun Box.explain(label: String, values: List<Double>): Histogram {
     val which = if (winner == hFd) "Freedman-Diaconis" else if (winner == hScott) "Scott" else "Sturges"
     val predicted = Math.round(range / winner).toInt().coerceIn(1, 2000)
     val actual = buildHistogram(values)
-    println("$label: iqr=${"%.3f".format(s.iqr)} sd=${"%.3f".format(s.sampleStdDev)} range=${"%.3f".format(range)}")
+    println("$label: iqr=${s.iqr.f3} sd=${s.sampleStdDev.f3} range=${range.f3}")
     println(
-        "  FD=${"%.4f".format(hFd)}  Scott=${"%.4f".format(hScott)}  Sturges=${"%.4f".format(hSturges)} (k=$kSturges)" +
-            "  -> $which wins",
+        "  FD=${hFd.f4}  Scott=${hScott.f4}  Sturges=${hSturges.f4} (k=$kSturges)" + "  -> $which wins",
     )
     println(
-        "  predicted ${predicted} bins of ${"%.5f".format(range / predicted)}; " +
-            "got ${actual.bins.size} of ${"%.5f".format(actual.binWidth)} -> agree=${predicted == actual.bins.size}",
+        "  predicted ${predicted} bins of ${(range / predicted).f5}; " +
+            "got ${actual.bins.size} of ${actual.binWidth.f5} -> agree=${predicted == actual.bins.size}",
     )
     println(
         "  counts sum to ${actual.count} of ${values.size}; " +
@@ -106,7 +105,7 @@ The whole reason StatsDependence has six coefficients instead of one. Six shapes
 coefficient on each, printed as one table so the disagreements line up in a row.
 
 ```edn [field-box id="stats_dependence" role="properties"]
-{"id" "stats_dependence" "index" 1 "name" "Six questions, six answers — and is the answer big?" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Six questions, six answers — and is the answer big?" "_tombstone" false "frame" #afield/rect [960.0 80.0 450.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stats_dependence_code_.kt" "lines" 93 "characters" 4500 "sha256" "65935734e88ec940a8abd4fd7d0242d2ce9265920eb6b342465c79a12cd4b10d"}]}
+{"id" "stats_dependence" "index" 1 "name" "Six questions, six answers — and is the answer big?" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Six questions, six answers — and is the answer big?" "_tombstone" false "frame" #afield/rect [960.0 80.0 450.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stats_dependence_code_.kt" "lines" 91 "characters" 4276 "sha256" "50b9495b9783c53cecc48f74bee5d0243ff33977226dec3e4ca6320556c71bbc"}]}
 ```
 
 ```kotlin [field-property box="stats_dependence" name="code" path="stats_dependence_code_.kt"]
@@ -145,22 +144,20 @@ val panels = cases.map { (label, y) ->
         color = vec(0.48, 0.85, 1.0, 0.8),
         pointSize = 1.1,
     )
-    val caption =
-        "r=${"%.3f".format(r)} rho=${"%.3f".format(rho)} tau=${"%.3f".format(tau)}" +
-            " xi=${"%.3f".format(xi)} dCor=${"%.3f".format(dcor)} MIC~=${"%.3f".format(mic)}"
+    val caption = "r=${r.f3} rho=${rho.f3} tau=${tau.f3}" + " xi=${xi.f3} dCor=${dcor.f3} MIC~=${mic.f3}"
     "$label\n$caption" to cloud
 }
 
 val parabola = cases[2].second
 println(
-    "xi is asymmetric on purpose: xi(x, x^2)=${"%.3f".format(StatsDependence.xi(x, parabola))} " +
-        "but xi(x^2, x)=${"%.3f".format(StatsDependence.xi(parabola, x))} — x is NOT a function of x^2.",
+    "xi is asymmetric on purpose: xi(x, x^2)=${StatsDependence.xi(x, parabola).f3} " +
+        "but xi(x^2, x)=${StatsDependence.xi(parabola, x).f3} — x is NOT a function of x^2.",
 )
 println(
     "dCor is 1 only for a STRAIGHT line, not for any perfect relationship: " +
-        "dCor(x, 3x+1)=${"%.6f".format(StatsDependence.distanceCorrelation(x, DoubleArray(n) { 3.0 * x[it] + 1.0 }))}, " +
-        "dCor(x, -2x+5)=${"%.6f".format(StatsDependence.distanceCorrelation(x, DoubleArray(n) { -2.0 * x[it] + 5.0 }))}, " +
-        "but dCor on the parabola is only ${"%.3f".format(StatsDependence.distanceCorrelation(x, parabola))}.",
+        "dCor(x, 3x+1)=${StatsDependence.distanceCorrelation(x, DoubleArray(n) { 3.0 * x[it] + 1.0 }).f6}, " +
+        "dCor(x, -2x+5)=${StatsDependence.distanceCorrelation(x, DoubleArray(n) { -2.0 * x[it] + 5.0 }).f6}, " +
+        "but dCor on the parabola is only ${StatsDependence.distanceCorrelation(x, parabola).f3}.",
 )
 
 // There are no p-values anywhere in this family, and dCor under independence is biased
@@ -182,13 +179,13 @@ for (rep in 0 until reps) {
 val sortedD = nullDcor.sortedArray()
 val sortedXi = nullXi.sortedArray()
 println(
-    "growing-spread case: observed dCor=${"%.4f".format(observedDcor)} against a null of " +
-        "mean ${"%.4f".format(sortedD.average())}, 95th pct ${"%.4f".format(sortedD[(reps * 0.95).toInt()])}, " +
-        "max ${"%.4f".format(sortedD.last())} — re-pairings reaching it: ${sortedD.count { it >= observedDcor }}/$reps",
+    "growing-spread case: observed dCor=${observedDcor.f4} against a null of " +
+        "mean ${sortedD.average().f4}, 95th pct ${sortedD[(reps * 0.95).toInt()].f4}, " +
+        "max ${sortedD.last().f4} — re-pairings reaching it: ${sortedD.count { it >= observedDcor }}/$reps",
 )
 println(
-    "                     observed xi  =${"%.4f".format(observedXi)} against a null 95th pct of " +
-        "${"%.4f".format(sortedXi[(reps * 0.95).toInt()])} — re-pairings reaching it: " +
+    "                     observed xi  =${observedXi.f4} against a null 95th pct of " +
+        "${sortedXi[(reps * 0.95).toInt()].f4} — re-pairings reaching it: " +
         "${sortedXi.count { it >= observedXi }}/$reps. xi correctly declines to call this functional.",
 )
 
@@ -217,7 +214,7 @@ buildSummaryStats hands back seventeen numbers. Three of them are routinely misr
 pin each one as arithmetic rather than trusting the label on the card.
 
 ```edn [field-box id="stats_summary" role="properties"]
-{"id" "stats_summary" "index" 2 "name" "Summary stats, and exactly how boring they are" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Summary stats, and exactly how boring they are" "_tombstone" false "frame" #afield/rect [80.0 80.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stats_summary_code_.kt" "lines" 55 "characters" 2792 "sha256" "fcd4c7a003c2d77236b3a7b9fd7aefe13adaed2bc08af41976d5be6ebfec2fa9"}]}
+{"id" "stats_summary" "index" 2 "name" "Summary stats, and exactly how boring they are" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Summary stats, and exactly how boring they are" "_tombstone" false "frame" #afield/rect [80.0 80.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stats_summary_code_.kt" "lines" 54 "characters" 2596 "sha256" "9bd92e27c261d13ab047c62dc9eb5eeb532eee5c53abbe9915b1455340ffd140"}]}
 ```
 
 ```kotlin [field-property box="stats_summary" name="code" path="stats_summary_code_.kt"]
@@ -235,14 +232,13 @@ val s = buf.snapshot()
 
 println("n=${s.count}  seen=${buf.samplesSeen}  refused=${buf.droppedNonFinite}  evicted=${buf.droppedByCapacity}")
 println(
-    "min=${"%.3f".format(s.min)}  q1=${"%.3f".format(s.q1)}  median=${"%.3f".format(s.median)}" +
-        "  q3=${"%.3f".format(s.q3)}  max=${"%.3f".format(s.max)}",
+    "min=${s.min.f3}  q1=${s.q1.f3}  median=${s.median.f3}" + "  q3=${s.q3.f3}  max=${s.max.f3}",
 )
 
 // 1. mean > median is the signature of a right skew, and skewness agrees in sign.
 println(
-    "mean=${"%.3f".format(s.mean)} vs median=${"%.3f".format(s.median)}: " +
-        "mean is larger = ${s.mean > s.median}, and skewness=${"%.3f".format(s.skewness)} > 0 = ${s.skewness > 0.0}",
+    "mean=${s.mean.f3} vs median=${s.median.f3}: " +
+        "mean is larger = ${s.mean > s.median}, and skewness=${s.skewness.f3} > 0 = ${s.skewness > 0.0}",
 )
 
 // 2. MAD is the median absolute deviation from the median, UNSCALED. Not sigma, and not
@@ -251,16 +247,16 @@ val sorted = signal.sorted()
 val medianAgain = (sorted[n / 2 - 1] + sorted[n / 2]) / 2.0
 val madByHand = signal.map { abs(it - medianAgain) }.sorted().let { (it[n / 2 - 1] + it[n / 2]) / 2.0 }
 println(
-    "MAD=${"%.4f".format(s.mad)} recomputed by hand=${"%.4f".format(madByHand)}  " +
-        "(that is ${"%.3f".format(s.mad / s.iqr)} x the IQR, and ${"%.3f".format(s.mad / s.sampleStdDev)} x the sd)",
+    "MAD=${s.mad.f4} recomputed by hand=${madByHand.f4}  " +
+        "(that is ${(s.mad / s.iqr).f3} x the IQR, and ${(s.mad / s.sampleStdDev).f3} x the sd)",
 )
 
 // 3. stddev/variance are the SAMPLE (n-1) forms; skew/kurtosis are the POPULATION (n)
 //    forms with no bias correction. Both live on the same card, which is a trap.
 val ratio = s.sampleStdDev / s.populationStdDev
 println(
-    "sampleStdDev/populationStdDev=${"%.6f".format(ratio)} vs sqrt(n/(n-1))=" +
-        "${"%.6f".format(sqrt(n / (n - 1.0)))}  -> stddev is the n-1 form",
+    "sampleStdDev/populationStdDev=${ratio.f6} vs sqrt(n/(n-1))=" +
+        "${sqrt(n / (n - 1.0)).f6}  -> stddev is the n-1 form",
 )
 
 // The guarded small-sample returns: zeros, not NaNs.
@@ -271,8 +267,8 @@ println("n=3 kurtosisExcess=${buildSummaryStats(listOf(1.0, 3.0, 10.0)).kurtosis
 // And the one field that is a genuine footgun: cv = sd/mean.
 val centred = signal.map { it - s.mean }
 println(
-    "cv on this signal=${"%.4f".format(s.coeffOfVariation)}; " +
-        "re-centred so the mean is ~0, cv=${"%.1f".format(buildSummaryStats(centred).coeffOfVariation)}",
+    "cv on this signal=${s.coeffOfVariation.f4}; " +
+        "re-centred so the mean is ~0, cv=${buildSummaryStats(centred).coeffOfVariation.f1}",
 )
 
 display("card", buf.summaryHtml(widthPx = 620, chartHeightPx = 150, decimals = 3))
@@ -283,7 +279,7 @@ display("card", buf.summaryHtml(widthPx = 620, chartHeightPx = 150, decimals = 3
 <!-- field-box id="stats_rolling" index="3" -->
 
 ```edn [field-box id="stats_rolling" role="properties"]
-{"id" "stats_rolling" "index" 3 "name" "Rolling dependence across a regime change" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Rolling dependence across a regime change" "_tombstone" false "frame" #afield/rect [960.0 580.0 390.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stats_rolling_code_.kt" "lines" 87 "characters" 3963 "sha256" "89933bcb8b547a2235e6041d268eedd23cc2e5fef884174810f040c70ca805dd"}]}
+{"id" "stats_rolling" "index" 3 "name" "Rolling dependence across a regime change" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Rolling dependence across a regime change" "_tombstone" false "frame" #afield/rect [960.0 580.0 390.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stats_rolling_code_.kt" "lines" 87 "characters" 3867 "sha256" "67e890bc91226e868d42e409304ae1da4afdd915a972bc25f58895f68ed85639"}]}
 ```
 
 ```kotlin [field-property box="stats_rolling" name="code" path="stats_rolling_code_.kt"]
@@ -364,11 +360,11 @@ markdown(
     """
     | window | dCor | xi | \|r\| |
     |--------|------|----|-------|
-    | window-full to the change (i=$w..${change - 1}) | ${"%.3f".format(dSeries.subList(w, change).average())} | ${"%.3f".format(xiSeries.subList(w, change).average())} | ${"%.3f".format(absR.subList(w, change).average())} |
-    | settled after the change (i=${change + w}..${total - 1}) | ${"%.3f".format(dSeries.subList(change + w, total).average())} | ${"%.3f".format(xiSeries.subList(change + w, total).average())} | ${"%.3f".format(absR.subList(change + w, total).average())} |
+    | window-full to the change (i=$w..${change - 1}) | ${dSeries.subList(w, change).average().f3} | ${xiSeries.subList(w, change).average().f3} | ${absR.subList(w, change).average().f3} |
+    | settled after the change (i=${change + w}..${total - 1}) | ${dSeries.subList(change + w, total).average().f3} | ${xiSeries.subList(change + w, total).average().f3} | ${absR.subList(change + w, total).average().f3} |
 
-    {muted:dCor null 95th pct ${"%.3f".format(threshold)}: $dCrossing.
-    xi null 95th pct ${"%.3f".format(xiThreshold)}: $xiCrossing.}
+    {muted:dCor null 95th pct ${threshold.f3}: $dCrossing.
+    xi null 95th pct ${xiThreshold.f3}: $xiCrossing.}
 
     {muted:incremental vs batch on the final window: |difference| = $agreement}
 """,
@@ -388,7 +384,7 @@ quantilewarp.kt does not measure anything. It fits a monotone 8-knot PCHIP curve
 the measured quantiles of recent samples onto the quantiles of a target distribution.
 
 ```edn [field-box id="stats_warp" role="properties"]
-{"id" "stats_warp" "index" 4 "name" "Reshaping a distribution with an 8-knot warp" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Reshaping a distribution with an 8-knot warp" "_tombstone" false "frame" #afield/rect [80.0 860.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stats_warp_code_.kt" "lines" 111 "characters" 4628 "sha256" "7cd9b8e255281c5b49d54c96827f5b76e707806948282adf960086aafe2f646d"}]}
+{"id" "stats_warp" "index" 4 "name" "Reshaping a distribution with an 8-knot warp" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Reshaping a distribution with an 8-knot warp" "_tombstone" false "frame" #afield/rect [80.0 860.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "stats_warp_code_.kt" "lines" 110 "characters" 4378 "sha256" "5243537cf8a17188ef752394b6fe7d6b8fb5334869c12963f4bd8170a9998b20"}]}
 ```
 
 ```kotlin [field-property box="stats_warp" name="code" path="stats_warp_code_.kt"]
@@ -409,15 +405,15 @@ println(
         QuantileWarpConfig().probabilities.joinToString() +
         " — more knots on the left tail.",
 )
-println("input knots : ${state.inputKnots.joinToString { "%.3f".format(it) }}")
-println("target knots: ${state.targetKnots.joinToString { "%.3f".format(it) }}")
+println("input knots : ${state.inputKnots.joinToString { it.f3 }}")
+println("target knots: ${state.targetKnots.joinToString { it.f3 }}")
 println(
-    "held-out BEFORE: mean ${"%.3f".format(before.mean)}  sd ${"%.3f".format(before.sampleStdDev)}" +
-        "  skew ${"%.3f".format(before.skewness)}  excess kurtosis ${"%.1f".format(before.kurtosisExcess)}",
+    "held-out BEFORE: mean ${before.mean.f3}  sd ${before.sampleStdDev.f3}" +
+        "  skew ${before.skewness.f3}  excess kurtosis ${before.kurtosisExcess.f1}",
 )
 println(
-    "held-out AFTER : mean ${"%.4f".format(after.mean)}  sd ${"%.4f".format(after.sampleStdDev)}" +
-        "  skew ${"%.4f".format(after.skewness)}  excess kurtosis ${"%.4f".format(after.kurtosisExcess)}",
+    "held-out AFTER : mean ${after.mean.f4}  sd ${after.sampleStdDev.f4}" +
+        "  skew ${after.skewness.f4}  excess kurtosis ${after.kurtosisExcess.f4}",
 )
 println("  (every number above is OUT OF SAMPLE — the curve was fitted on a different draw)")
 
@@ -442,18 +438,18 @@ val pchip = inputs.map { state.evaluate(it) }
 val exact = inputs.map { inverseStandardNormalCdf(empiricalCdf(it).coerceIn(1e-4, 1.0 - 1e-4)) }
 println(
     "worst |8-knot PCHIP - exact Phi^-1(Fhat)| over the 2nd..98th percentile: " +
-        "${"%.4f".format(pchip.indices.maxOf { abs(pchip[it] - exact[it]) })}",
+        "${pchip.indices.maxOf { abs(pchip[it] - exact[it]) }.f4}",
 )
 println(
-    "inverseStandardNormalCdf(0.975)=${"%.6f".format(inverseStandardNormalCdf(0.975))} " +
-        "(published 1.959964); (0.001)=${"%.6f".format(inverseStandardNormalCdf(0.001))} (published -3.090232)",
+    "inverseStandardNormalCdf(0.975)=${inverseStandardNormalCdf(0.975).f6} " +
+        "(published 1.959964); (0.001)=${inverseStandardNormalCdf(0.001).f6} (published -3.090232)",
 )
 
 // Sharp edge 1: outside the fitted knots, evaluate extrapolates linearly from the
 // endpoint tangent, and nothing clamps it.
 println(
-    "lowest input knot is ${"%.3f".format(state.inputKnots.first())}; " +
-        "evaluate(0.0)=${"%.2f".format(state.evaluate(0.0))}, evaluate(-1.0)=${"%.1f".format(state.evaluate(-1.0))} " +
+    "lowest input knot is ${state.inputKnots.first().f3}; " +
+        "evaluate(0.0)=${state.evaluate(0.0).f2}, evaluate(-1.0)=${state.evaluate(-1.0).f1} " +
         "— unbounded linear extrapolation, so clamp the input yourself.",
 )
 
@@ -470,8 +466,7 @@ val gaps = (1..12).map {
 println("median knot chasing a step to $step (smoothingAlpha=${QuantileWarpConfig().smoothingAlpha}):")
 [1, 2, 4, 8, 12].forEach { k ->
     println(
-        "  after $k updates gap=${"%.3f".format(gaps[k - 1])}  vs closed form ${step}*0.8^$k=" +
-            "${"%.3f".format(step * 0.8.pow(k))}",
+        "  after $k updates gap=${gaps[k - 1].f3}  vs closed form ${step}*0.8^$k=" + "${(step * 0.8.pow(k)).f3}",
     )
 }
 
@@ -491,7 +486,7 @@ val svgs = [
         heightPx = 220,
         padTop = 26,
         decimals = 2,
-        title = "held-out input: skew ${"%.1f".format(before.skewness)}",
+        title = "held-out input: skew ${before.skewness.f1}",
     ),
     histogramToSvg(
         buildHistogram(warped),
@@ -499,7 +494,7 @@ val svgs = [
         heightPx = 220,
         padTop = 26,
         decimals = 2,
-        title = "after the warp: skew ${"%.3f".format(after.skewness)}",
+        title = "after the warp: skew ${after.skewness.f3}",
     ),
 ]
 showRow("distributions", svgs)

@@ -1,22 +1,18 @@
-# Long way round
+# Examples that cross several parts of Field
 
-Most pages in these docs stay inside one part of Field: the pattern language, the Boolean kernel,
-the path tracer, the drawing layer. The pages in this section each take one thing and pass it
-through three or four of those parts, which were not written with each other in mind. A
-cellular automaton becomes a rhythm. A cloth simulation becomes a welded solid you can count the
-holes in, and then a render. A photograph becomes a plaque you could print. A drawing becomes a
-score and then a `.wav`, and the `.wav` is taken apart again and laid over the drawing.
+What happens when you connect things that weren't designed together? A cellular automaton becomes
+a rhythm. A cloth simulation becomes a welded solid whose holes you can count, and then a render.
+A photograph becomes a plaque you could print. A drawing becomes a score, then a `.wav`, and the
+sound is taken apart again and laid over the drawing.
 
-Each one is also a check. Every step has to hand the next one something it can use, and the
-pages say what that is, what gets lost on the way, and which number shows whether it arrived
-intact. When the areas of a sliced solid fail to add up to its volume, the surface passes through
-itself. A function played as sound comes back late, and the page measures by how much, to the
-sample.
+Each page here follows an idea through several parts of Field. Pick one that interests you and
+follow it as far as you like; the individual steps also lead to pages where you can learn more.
 
-Many of these pages begin as an [agent transcript](agent_transcripts.md): a short YAML macro
-that builds the whole document from a blank canvas. The [gallery](agent_transcripts.md) lists
-them all, and you can open any of them from the welcome screen as an editable copy and
-start from there.
+Each page also says what passes from one step to the next and what gets lost on the way.
+
+Many of these documents are built by a short recorded script that starts from a blank canvas.
+The [gallery](agent_transcripts.md) lists them all, and you can open any of them from the welcome
+screen as an editable copy and start from there.
 
 ## Ending in light
 
@@ -26,9 +22,10 @@ These chains end in the GPU path tracer, and each starts somewhere a renderer wo
 
 -   ![A path-traced truncated icosidodecahedron: brushed-gold decagons, deep blue hexagons and transparent squares](assets/chain_polytope_render/lineage.png)
 
-    **[A Polytope, Cut Open and Traced](chain_polytope_render.md).** Conway operators build the
-    shape and remember where every face came from. That record survives the Booleans, so the
-    render can colour each face by its origin.
+    **[A Polytope, Cut Open and Traced](chain_polytope_render.md).** Conway operators, rules
+    that grow a new polyhedron from an old one by cutting corners or adding faces, build the
+    shape and remember where every face came from. The render colours each face by its origin;
+    the page also follows what happens to that record when the solid is cut and joined.
 
 -   ![A lattice of pale gold rods draped over an unseen sphere and pooling on a floor](assets/chain_physics_render/drape.png)
 
@@ -43,7 +40,8 @@ These chains end in the GPU path tracer, and each starts somewhere a renderer wo
 
 -   ![A smooth sculpture: a twisted ribbon rising from a flat base, joined to a long wedge](assets/chain_rectsl_spacetime/solid.png)
 
-    **[A RectSL Animation as a Solid](chain_rectsl_spacetime.md).** Read the time input of an
+    **[A RectSL Animation as a Solid](chain_rectsl_spacetime.md).** RectSL is Field's small
+    language for 2D shapes. Read the time input of an
     animation's distance field as a third axis and the animation becomes a sculpture whose
     cross-sections are its frames.
 
@@ -56,7 +54,7 @@ These chains end in the GPU path tracer, and each starts somewhere a renderer wo
 -   ![Two cage-like sculptures of thin tubes over a dark floor, one tube in each glowing orange down to a red bead](assets/chain_petri_sculpture/sculpture.png)
 
     **[A Deadlock, Sculpted and Traced](chain_petri_sculpture.md).** Every marking the dining
-    philosophers' Petri net can reach becomes a glass bead, every firing a tube, and the shortest
+    philosophers' Petri net (a model of tokens moving between places) can reach becomes a glass bead, every firing a tube, and the shortest
     route to the deadlock glows.
 
 </div>
@@ -69,9 +67,9 @@ These chains end in something you can listen to, or start from it.
 
 -   ![Rule 30's space-time diagram, a fan of white cells spreading from one cell at the top](assets/chain_ca_sound/hero.png)
 
-    **[A Cellular Automaton You Can Hear](chain_ca_sound.md).** A row of an elementary CA
-    becomes a step mask. `patCondense` runs the mini-notation parser backwards to spell it,
-    and how short the spelling is tells you how structured the rule is.
+    **[A Cellular Automaton You Can Hear](chain_ca_sound.md).** A row of an elementary
+    cellular automaton, a line of on/off cells updated by a fixed rule, becomes a step mask. `patCondense` runs the mini-notation parser backwards to spell it,
+    and the length of the spelling gives you a way to compare the resulting rhythms.
 
 -   ![Four concentric rings of particles in blue, orange, green and amber](assets/chain_pattern_particles/rings.png)
 
@@ -127,7 +125,8 @@ These chains end in something you could print, mount, hang or light.
 
 -   ![A RectSL scene, the LED rig it drives and the matching received light values](assets/chain_scene_to_light/chain.png)
 
-    **[A RectSL Scene on a Light Rig](chain_scene_to_light.md).** Send a scene over sACN,
+    **[A RectSL Scene on a Light Rig](chain_scene_to_light.md).** Send a scene over sACN, the
+    network protocol stage lighting uses,
     receive it back, and check that what came back matches the pixels the rig was sent.
 
 -   ![An oil painting of a meadow at evening: a sky of horizontal strokes, low clouds, grass and red poppies](assets/chain_drawn_paint/meadow.png)
@@ -158,7 +157,8 @@ every box in the document does.
 
 -   ![Eight thick rings in teal, amber and blue, each with a pale dot at its centre, overlapping on a dark ground](assets/agent_transcripts_gallery/shadertrinket_flat_rings.png)
 
-    **[ShaderTrinket](agent_transcripts.md#shadertrinket).** A ShaderToy `mainImage` in a box,
+    **[ShaderTrinket](agent_transcripts.md#shadertrinket).** A ShaderToy-style `mainImage`
+    (a function that returns one pixel's colour) in a box,
     recompiled on alt-R with any error marked on its own line. Each preset is a box you launch,
     and the camera is one line away as `iChannel0`.
 

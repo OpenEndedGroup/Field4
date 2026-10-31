@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-31T00:21:43.953Z",
+  "documentName": "audio_ai_corpus_microscope",
+  "outputs": [
+    {
+      "uid": "corpus_microscope_guide",
+      "channel": "guide",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 200,
+      "height": 651,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "corpus_microscope_guide",
+      "channel": "all durable jobs",
+      "open": false,
+      "warnings": [],
+      "kinds": [],
+      "width": 200,
+      "height": 40,
+      "path": "outputs/1.html"
+    }
+  ]
+}

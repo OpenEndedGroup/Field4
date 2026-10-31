@@ -83,26 +83,18 @@ import java.nio.IntBuffer
 import kotlin.reflect.KProperty
 
 /**
- * The general-purpose helpers that every Field box already has in scope.
+ * `add` for `FloatBuffer` and `IntBuffer`: append components at the current position and return
+ * the buffer, so writes chain.
  *
- * Box code is compiled with the standard imports in `intro` in its preamble and with `Box` as an
- * implicit receiver, so everything here — including the `Box.` extensions — can be called
- * unqualified from inside a box.
+ * The vertex-writing idiom, `buf.add(x, y).add(x2, y2)`. There are fixed-arity overloads for two
+ * and three floats and for a [Vec2], [Vec3] or [Vec4], and a vararg one that converts any
+ * `Number`, which boxes each argument and is therefore the wrong one for a per-frame loop over
+ * thousands of vertices. `IntBuffer.add` is the index-buffer counterpart, truncating rather than
+ * rounding; it is called `add` because `IntBuffer.put(index, data)` already means writing at an
+ * absolute index.
  *
- * The substantial part is the property-delegate machinery that `prop` and `@exported` generate
- * against: [Delegation] (stores on the receiver's own property bag), [Inheritance] (walks up
- * `parents` until some ancestor has the property, otherwise throws
- * [MissingInheritedPropertyException] with a message naming the property and the box), and
- * [InheritanceFromContext] (same walk, but prefers each box's live Kotlin variables over raw
- * properties).
- *
- * The rest is small conveniences: graph access (`named`, `+=` / `-=` for
- * connect/disconnect, `__m` markers); execution control (`begin`, `end`, [start], [animate],
- * `aside`, `cell`); frame-presentation logging ([frameLogStart], [frameLogStop],
- * [frameLogMark], [frameLogLine]); matrix and buffer building ([mat4], [mat3], `FloatBuffer.add`,
- * `IntBuffer.add`, `ByteBuffer.putf16`); and terse numeric/collection/string shorthands
- * (`Number.f` / `.i` / `.l` / `.d`, [fa], [ia], `Int.alphas`, `String.times`, `List.m` / `.s`,
- * `String.r`, and [highlightSyntax] behind `String.h` / `String.ss`).
+ * One of the `stdlib` files, which the `intro` preamble star-imports into every box, so everything
+ * here can be called unqualified, with `Box` as the implicit receiver.
  */
 
 /**

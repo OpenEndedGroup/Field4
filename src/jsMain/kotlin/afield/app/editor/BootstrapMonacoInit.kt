@@ -287,6 +287,65 @@ internal fun monacoApplyPropertySelection(monaco: dynamic, editor: dynamic, inde
     }
 }
 
+private val cStyleCommentLanguages = setOf("kotlin", "glsl", "javascript", "typescript", "java", "c", "cpp", "slang", "rust", "swift", "scala", "csharp", "go")
+private var proseCacheKey: String? = null
+private var proseCache = BooleanArray(0)
+
+private fun lineNumberLabel(monaco: dynamic, n: Int): String {
+    val ed = monaco.editor.getEditors()[0] ?: return n.toString()
+    val model = ed.getModel() ?: return n.toString()
+    val key = "${model.uri}#${model.getVersionId()}"
+    if (key != proseCacheKey) {
+        val language = model.getLanguageId() as String
+        val text = model.getValue() as String
+        proseCache = proseLineFlags(text, language in cStyleCommentLanguages)
+        proseCacheKey = key
+    }
+    return if (n - 1 in proseCache.indices && proseCache[n - 1]) "" else n.toString()
+}
+
+/**
+ * Per line, whether it carries no code: whitespace only or, when [cStyle], nothing outside `//`
+ * and (nested, Kotlin-style) block comments. Strings are skipped, so a block-comment opener inside quotes opens nothing.
+ */
+internal fun proseLineFlags(text: String, cStyle: Boolean): BooleanArray {
+    val lines = text.split("\n")
+    val flags = BooleanArray(lines.size)
+    var depth = 0
+    var inString: String? = null
+    for ((li, line) in lines.withIndex()) {
+        var code = false
+        var comment = depth > 0 && line.isNotBlank()
+        var i = 0
+        while (i < line.length) {
+            val c = line[i]
+            if (inString != null) {
+                code = true
+                if (c == '\\' && inString == "\"") i++
+                else if (line.startsWith(inString, i)) { i += inString.length; inString = null; continue }
+                i++
+                continue
+            }
+            if (cStyle && depth == 0 && line.startsWith("//", i)) { comment = true; break }
+            if (cStyle && line.startsWith("/*", i)) { depth++; comment = true; i += 2; continue }
+            if (cStyle && depth > 0 && line.startsWith("*/", i)) { depth--; i += 2; continue }
+            if (depth == 0 && !c.isWhitespace()) {
+                code = true
+                if (line.startsWith("\"\"\"", i)) { inString = "\"\"\""; i += 3; continue }
+                if (c == '"') inString = "\""
+                if (c == '\'') {
+                    val close = line.indexOf('\'', i + if (line.getOrNull(i + 1) == '\\') 3 else 2)
+                    if (close > i) { i = close + 1; continue }
+                }
+            }
+            i++
+        }
+        if (inString == "\"") inString = null
+        flags[li] = !code && (comment || line.isBlank())
+    }
+    return flags
+}
+
 @OptIn(ExperimentalJsExport::class)
 @JsExport
 fun monacoInit(monaco: dynamic): dynamic {
@@ -317,6 +376,8 @@ fun monacoInit(monaco: dynamic): dynamic {
     options.automaticLayout = true
     options.scrollBeyondLastLine = false
     options.lineNumbersMinChars = 2
+    // Blank and comment-only lines show no number; see proseLineFlags.
+    options.lineNumbers = { n: Int -> lineNumberLabel(monaco, n) }
     options.lineDecorationsWidth = 12
     options.glyphMargin = false
     options.padding = js("{ top: 2, bottom: 2 }")
@@ -332,11 +393,29 @@ fun monacoInit(monaco: dynamic): dynamic {
 
     monaco.editor.create(container, options)
     val ed = monaco.editor.getEditors()[0]
+    // Monaco only redraws the gutter of lines it re-renders, so opening a block comment would leave the numbers
+    // below it stale. When the set of unnumbered lines changes, hand it a fresh callback to redraw all.
+    var lastFlags = ""
+    val refreshLineNumbers = {
+        lineNumberLabel(monaco, 1)
+        val flags = proseCache.joinToString("") { if (it) "1" else "0" }
+        if (flags != lastFlags) {
+            lastFlags = flags
+            val o = js("{}")
+            o.lineNumbers = { n: Int -> lineNumberLabel(monaco, n) }
+            ed.updateOptions(o)
+        }
+    }
+    ed.onDidChangeModelContent { refreshLineNumbers() }
+    ed.onDidChangeModel { refreshLineNumbers() }
 
     val fontOptions = js("{}")
     fontOptions.fontFamily = "Iosevka Web"
     fontOptions.fontWeight = "300"
-    fontOptions.fontSize = 15
+    // The phone controller's Edit tab is a narrow editor-only projection: 20% smaller text shows more code.
+    val bodyClasses = document.body?.classList
+    val phoneEditor = bodyClasses?.contains("mode-controller-mobile") == true && bodyClasses.contains("mode-editor-only")
+    fontOptions.fontSize = if (phoneEditor) 12 else 15
     fontOptions.fontLigatures = "\"liga\" on, \"calt\" on, \"dlig\" on, \"TXTR\" on"
     fontOptions.margin = "5px"
     ed.updateOptions(fontOptions)

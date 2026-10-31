@@ -1,16 +1,12 @@
 # Querying object graphs
 
-Most of the time you know exactly which field you want, and you write
-`rig.osc.filter.cutoff`. But sometimes you don't. You want *every* cutoff in a
-rig, or every string in a scene, or the four gains that happen to be above a
-threshold, and you want to move them all at once. Writing that by hand means
-knowing the shape of the graph in advance, which is precisely what you don't
-have while you're still building it.
+You can reach one value with a path such as `rig.osc.filter.cutoff`. What if you want *every*
+cutoff in a rig, every string in a scene, or all the gains above a threshold? You might not even
+know how many there are while you're still building the rig.
 
-`graphPaths` treats any live object as a tree of addressable slots and lets you
-ask for them by pattern, the way XPath asks a document. It is plain reflection
-over whatever you already have: no base class to inherit, no annotations, no
-registration.
+`graphPaths` lets you search a live object for values by pattern, rather like XPath searches a
+document. It uses reflection, so you can query objects you already have without adding a base
+class, annotations or registration.
 
 ## A graph, addressed
 

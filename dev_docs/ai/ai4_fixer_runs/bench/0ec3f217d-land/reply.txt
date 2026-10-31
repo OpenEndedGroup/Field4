@@ -1,0 +1,3 @@
+Added source citations within the flagged bullet in `dev_docs/SPREADSHEET_CONSTRAINTS.md`; both anchors are unique and match the guard’s accepted syntax. Gradle is unavailable, and no Python checker covers this contract, so the test was not rerun.
+
+FIXER-VERDICT: {"verdict": "fix", "culprit": "nightly/2026-10-26/4-sheet-constraints", "reason": "The branch introduced an unmarked impossibility claim, now supported by unique source citations within its own bullet."}

@@ -15,6 +15,29 @@ import afield.media.image.gaussianBlur
 import kotlin.math.hypot
 
 /**
+ * Following the topological features of a 2-D field from one moment to the next, so that a peak
+ * keeps its identity while it moves, and comparing two fields by their topology alone.
+ *
+ * A Morse–Smale complex says where the peaks, pits and passes of one field are; it says nothing
+ * about which peak of this frame is which peak of the last. That correspondence is an assignment
+ * problem, and [FeatureMatching] solves it exactly for each moment, with a cost per match and a
+ * fixed price for leaving a feature unmatched ([MatchingWeights]), so births and deaths are priced
+ * in the same optimisation as the matches. [FeatureTracker] drives it frame by
+ * frame and accumulates [Track]s; [ScaleSpace] runs the same matching over a blur series instead of
+ * over time, where the scale a feature survives to is a measure of its size.
+ *
+ * The input is a list of [Feature]s, which [MorseSmaleResult.features] reads off a Morse–Smale
+ * result and `VectorFieldTopology` supplies from a vector field's critical points, so the tracker
+ * itself is indifferent to where the features came from.
+ *
+ * [persistenceDiagramDistance] answers the other question, about whole fields rather than single
+ * features: how far apart two persistence diagrams are, exactly for diagrams of up to a few
+ * thousand pairs and entropically for larger ones. Everything here is plain Kotlin and needs no
+ * native library, though its usual source does. The worked account is
+ * `public/docs/topology_tracking.md`.
+ */
+
+/**
  * A topological feature at one moment: a minimum, saddle or maximum with its position, value and
  * persistence (how much it stands out: the persistence of the persistence pair it belongs to).
  * [sourceId] is its id in the source it came from, e.g. a Morse–Smale cell.

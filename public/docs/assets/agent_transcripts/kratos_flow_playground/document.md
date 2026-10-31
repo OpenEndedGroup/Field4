@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 1 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 1 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. Kratos flow playground
@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="kratos_flow" index="0" -->
 
 ```edn [field-box id="kratos_flow" role="properties"]
-{"id" "kratos_flow" "index" 0 "name" "Kratos flow playground" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Kratos flow playground" "_tombstone" false "frame" #afield/rect [60.0 140.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kratos_flow_code_.kt" "lines" 209 "characters" 10463 "sha256" "f14979616fa7de9c5c97c7ad746ac189535fd4b5fde216a106565b765a591db1"}]}
+{"id" "kratos_flow" "index" 0 "name" "Kratos flow playground" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Kratos flow playground" "_tombstone" false "frame" #afield/rect [60.0 140.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kratos_flow_code_.kt" "lines" 209 "characters" 10451 "sha256" "02ad18e6ac75a8d0525427d04a2f1c71ce238c7058da0763f1884830da21f036"}]}
 ```
 
 ```kotlin [field-property box="kratos_flow" name="code" path="kratos_flow_code_.kt"]
@@ -130,7 +130,7 @@ frames {
                 pending = worker.solveAsync(body(requested[0]), parameters)
                 resultText =
                     "Solving ${values[3].toInt()} steps at Re " +
-                        "${"%.0f".format(parameters.reynolds(2*values[0]))} on the obstacle…"
+                        "${parameters.reynolds(2*values[0]).f0} on the obstacle…"
             }
 
             val ready = pending

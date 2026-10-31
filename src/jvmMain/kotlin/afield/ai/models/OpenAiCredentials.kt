@@ -206,6 +206,18 @@ private fun readAiModelSettings(provider: String = configuredAiProvider()): AiMo
 
 fun configuredAiModelSettings(provider: String = configuredAiProvider()): AiModelSettings = readAiModelSettings(provider)
 
+/**
+ * The local inference server's context window in tokens: `AFIELD_LOCAL_AI_CONTEXT_TOKENS`, else
+ * `local.contextTokens` in `ai-models.properties`, else null, in which case the bridge learns it from the
+ * server's first refusal of an oversized request.
+ */
+fun configuredLocalAiContextTokens(): Int? {
+    System.getenv("AFIELD_LOCAL_AI_CONTEXT_TOKENS")?.trim()?.toIntOrNull()?.takeIf { it >= 2048 }?.let { return it }
+    val props = Properties()
+    runCatching { aiModelSettingsFile().takeIf { it.isFile }?.inputStream()?.use(props::load) }
+    return props.getProperty("local.contextTokens", "").trim().toIntOrNull()?.takeIf { it >= 2048 }
+}
+
 fun configuredAiBaseUrl(provider: String = configuredAiProvider()): String {
     System.getenv(AFIELD_AI_BASE_URL_ENV)?.trim()?.takeIf { it.isNotBlank() }?.let { return it.trimEnd('/') }
     if (provider == "local") {
@@ -368,6 +380,11 @@ fun activeAiProviderRuntimeConfig(): AiProviderRuntimeConfig {
     )
 }
 
+internal val localRequestTimeout: com.openai.core.Timeout = com.openai.core.Timeout.builder()
+    .request(java.time.Duration.ofMinutes(45))
+    .read(java.time.Duration.ofMinutes(5))
+    .build()
+
 fun openAiClientFromFieldConfig(): OpenAIClient {
     val config = activeAiProviderRuntimeConfig()
     return try {
@@ -375,6 +392,10 @@ fun openAiClientFromFieldConfig(): OpenAIClient {
             .apiKey(config.apiKey)
             .baseUrl(config.baseUrl)
             .apply {
+                // The SDK's default caps a whole request at 10 minutes. A local model at ~15 tokens/s cannot
+                // write a large tool call in that time: on 2026-10-28 a round was cut at 602 s, mid-answer.
+                // Allow a long generation, but fail one that goes silent between chunks.
+                if (config.provider == "local") timeout(localRequestTimeout)
                 if (config.isOpenRouter) {
                     putHeader("HTTP-Referer", "https://localhost:9092")
                     putHeader("X-OpenRouter-Title", "Field4")

@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-29T22:45:02.902Z",
+  "documentName": "aperture_playground",
+  "outputs": [
+    {
+      "uid": "agent_graphics_context",
+      "channel": "Vulkan window · still image",
+      "open": true,
+      "path": "outputs/0.html",
+      "width": 1920,
+      "height": 1440,
+      "kinds": [
+        "native-image"
+      ],
+      "warnings": []
+    }
+  ]
+}

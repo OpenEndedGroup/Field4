@@ -5,6 +5,7 @@ ToolPool notes remain with the house-machine agents. This change adds the eleven
 facilities; the later corpus edit pass will use them. The eight earlier approvals rediscovered by the sweep are implemented in the follow-up; see
 [their API contracts and evidence](OLDER_APPROVALS.md). Other earlier ideas remain in
 [BOX_CODE_HELPER_IDEAS.md](../BOX_CODE_HELPER_IDEAS.md).
+The corpus edit pass and its checker rules are recorded in [ADOPTION.md](ADOPTION.md).
 
 ## Small APIs
 

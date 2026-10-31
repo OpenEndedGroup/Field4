@@ -377,6 +377,13 @@
             line-height: 1.35;
         }
 
+        .ai-settings-hint {
+            margin: 6px 0;
+            color: var(--field-text-soft);
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
         .ai-settings-models {
             display: grid;
             grid-template-columns: 1fr;
@@ -1980,6 +1987,7 @@
     .welcome-source-view { margin-top: 6px; }
     .welcome-source-view-head { font-size: 10px; opacity: 0.6; margin-bottom: 2px; font-family: ui-monospace, monospace; }
     </style>
+<link rel="stylesheet" href="/kit-library.css">
 </head>
 <body class="field-webgl-page">
 <script src="/fieldWebglBackground.js"></script>
@@ -2062,6 +2070,24 @@
                 </div>
                 <div id="recent-list"></div>
                 <div id="starting-points-dock"></div>
+                <details class="starting-points-section" id="kit-library" aria-label="Kits">
+                    <summary class="starting-points-summary">
+                        <span class="starting-points-title">Kits</span>
+                        <span class="starting-points-count" data-kit-count>0</span>
+                        <span class="kit-meta" data-kit-restart-summary hidden>Restart needed</span>
+                    </summary>
+                    <div class="kit-library-body">
+                        <header><button data-kit-restart hidden>Restart Field</button></header>
+                        <p class="kit-meta">Reusable tools, runtime code and document starting points.</p>
+                        <div class="kit-add"><input data-kit-path aria-label="Kit folder" placeholder="Kit folder · contains field-kit.json"><button data-kit-browse hidden>Browse…</button><button data-kit-add>Add kit</button></div>
+                        <div data-kit-bundled></div>
+                        <input class="kit-search" data-kit-search type="search" aria-label="Find kit" placeholder="Find a kit">
+                        <p data-kit-status role="status"></p>
+                        <div data-kit-list></div>
+                        <dialog aria-label="Kit guide"><button data-kit-close>Close guide</button><iframe sandbox title="Kit guide"></iframe></dialog>
+                        <dialog data-kit-update-dialog aria-label="Kit update"><button data-kit-close>Close</button><pre></pre><button data-kit-apply>Apply update to closed document</button></dialog>
+                    </div>
+                </details>
             </section>
         </div>
 
@@ -2149,6 +2175,7 @@
                     <div class="runtime-info-body">
                         <div id="runtime-info-grid" class="runtime-info-grid"></div>
                         <pre id="runtime-info-args" class="runtime-info-args" hidden></pre>
+                        <label class="preference-toggle" title="Box code checks for an interrupt at every loop and call, so a box that never returns can be stopped (Interrupt Running Box, or automatically after 5 s). Applies to code compiled after the change."><input id="pref-box-interrupt" type="checkbox" checked> interruptible box code</label>
                     </div>
                 </details>
                 <details id="vulkan-details">
@@ -3839,12 +3866,14 @@
             "pref-openxr-debug-input": "openXRDebugInput",
             "pref-validate": "validate",
             "pref-quiet-mode": "quietMode",
-            "pref-auto-open-last": "autoOpenLastDocumentInDesktop"
+            "pref-auto-open-last": "autoOpenLastDocumentInDesktop",
+            "pref-box-interrupt": "boxInterrupt"
         };
         Object.entries(fields).forEach(([id, key]) => {
             const input = document.getElementById(id);
             if (!input) return;
-            input.checked = !!prefs[key];
+            // boxInterrupt defaults on, and a server that encodes without defaults omits it.
+            input.checked = key === "boxInterrupt" ? prefs[key] !== false : !!prefs[key];
         });
         document.querySelectorAll("[data-stickiness-value]").forEach((button) => {
             const active = button.getAttribute("data-stickiness-value") === stickiness;
@@ -3927,6 +3956,7 @@
             validate: !!document.getElementById("pref-validate")?.checked,
             quietMode: !!document.getElementById("pref-quiet-mode")?.checked,
             autoOpenLastDocumentInDesktop: !!document.getElementById("pref-auto-open-last")?.checked,
+            boxInterrupt: document.getElementById("pref-box-interrupt")?.checked !== false,
             editorPropertyStickiness: document.querySelector(".stickiness-segment.active")?.getAttribute("data-stickiness-value") || "none",
             oscEditorEnabled: !!document.getElementById("osc-editor-enabled")?.checked,
             oscEditorPort: Number.parseInt(document.getElementById("osc-editor-port")?.value || "9001", 10) || 9001,
@@ -7068,5 +7098,10 @@
     runSplashAnimation();
 </script>
 
+<script src="/kit-library.js"></script>
+<script type="module">
+    import { mountLocalAiFeedback } from "/localAiFeedback.js";
+    mountLocalAiFeedback(document.getElementById("local-ai-controls"));
+</script>
 </body>
 </html>

@@ -416,8 +416,7 @@ which of these apply to your own expression, beside `fieldNotes()` and `allRefus
 A distance field is full of kinks: `min` and `max` *are* CSG, `abs` is `Shell` and `Gyroid`,
 `sqrt` at zero is every radial primitive's own centre. `abs`, `min` and `max` split the derivative
 **0.5/0.5 at an exact tie**, so a sample that lands exactly where two CSG children meet gets half the
-gradient from each side rather than an arbitrary one of them, and the step it takes still decreases
-the loss.
+gradient from each side rather than an arbitrary one of them.
 
 `gradientNotes()` also flags the two places a smaller step cannot help. At a radial primitive's own
 centre `√·` has an infinite derivative, so a sample there gives `Infinity` in the *position* gradient
@@ -824,8 +823,7 @@ Primitives are centred on the origin. Everything else follows Manifold's convent
 
 - `cylinder` runs along **Z**.
 - `Profile.extruded(h)` runs from `z = 0` to `z = h` — *not* centred, because `Section.extruded` is not.
-- `Profile.revolved()` turns about **Z**, profile at `x ≥ 0`, counter-clockwise from `+X`. The mesh
-  lathe `revolveMesh` defaults to Y; pass `axis = RevolveAxis.Z` to get the same solid from it.
+- `Profile.revolved()` turns about **Z**, profile at `x ≥ 0`, counter-clockwise from `+X`.
 - `turned(x, y, z)` is in **degrees**, applied X then Y then Z.
 
 There is no `Torus` node:

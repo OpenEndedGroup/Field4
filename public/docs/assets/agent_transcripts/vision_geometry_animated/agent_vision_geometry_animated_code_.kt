@@ -2,15 +2,17 @@
 import kotlin.math.cos
 import kotlin.math.sin
 
-// Two ways to animate a mesh, and this box is the second one:
-//
-//   1. Keep the geometry still and move it in the shader from a uniform. Cheapest; use it
-//      whenever the motion is a transform (see visionos_start).
-//   2. Rebuild the mesh. Necessary when the *topology* or the spine changes — which is the
-//      case here, because the curve itself is being redrawn.
-//
-// At this size (~600 vertices) rebuilding every frame is comfortable. For a mesh in the
-// tens of thousands, rebuild on demand instead and let the shader do per-frame motion.
+/*
+Two ways to animate a mesh, and this box is the second one:
+
+  1. Keep the geometry still and move it in the shader from a uniform. Cheapest; use it
+     whenever the motion is a transform (see visionos_start).
+  2. Rebuild the mesh. Necessary when the *topology* or the spine changes — which is the
+     case here, because the curve itself is being redrawn.
+
+At this size (~600 vertices) rebuilding every frame is comfortable. For a mesh in the
+tens of thousands, rebuild on demand instead and let the shader do per-frame motion.
+*/
 onStart {
     uniform("light", 0.4, 0.85, 0.5)
 

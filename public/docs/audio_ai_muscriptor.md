@@ -1,11 +1,11 @@
 # Multi-instrument transcription with MuScriptor
 
-*To run the examples on this page, open the [audio_ai_muscriptor](agent_transcripts.md#audio_ai_muscriptor) starting point.*
-
 MuScriptor turns a mixed recording into a list of notes, each labelled with an instrument, and a
 MIDI file. Field shows the notes as a piano roll that plays in step with the recording, and hands
 them to your code as ordinary values. MuScriptor runs in its own Python environment, started
 separately from Field.
+
+*To run the examples on this page, open the [audio_ai_muscriptor](agent_transcripts.md#audio_ai_muscriptor) starting point.*
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/audio_ai_muscriptor/piano_roll.png" capture="box" open-outputs="true" wait="4" padding="16" timeout="180" w="1120" h="1100" hidden=true embed=true name="elsewhere-muscriptor" alt="Real Sonic Pi waveform and MuScriptor instrument-labelled piano roll with polyphony and onset lanes"}
 :::static
@@ -145,10 +145,10 @@ The waveform and piano roll share Field's general time bus. Playback moves the s
 click-to-seek, wheel zoom, and drag pan work in either view and are reflected in the other. Notes are
 coloured by instrument group, and the lower lane shows active polyphony against onset count.
 
-To use the notes in code, After the transcription finishes, run the next fragment in the same box. The typed
-`transcriptionResult` property retains its durable result; `client.musicTranscription(transcriptionResult)` downloads the compact
-MessagePack artifact and returns typed `MusicTranscriptionNote` values, so ordinary Field code can
-filter, group, transform, or feed the recovered notes into other music systems without parsing JSON:
+To use the notes in code, run the next fragment in the same box after transcription finishes.
+The `transcriptionResult` property retains the result; `client.musicTranscription(transcriptionResult)`
+downloads it and returns `MusicTranscriptionNote` values. You can filter, group and transform these,
+or pass them to another music system:
 
 ```diffstatic {data-lang=kotlin}
 import kotlinx.coroutines.*

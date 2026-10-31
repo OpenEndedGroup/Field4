@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-31T03:52:30.500Z",
+  "documentName": "solidsl_notation",
+  "outputs": [
+    {
+      "uid": "solidsl_part",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 728,
+      "height": 478,
+      "path": "outputs/0.html"
+    }
+  ]
+}

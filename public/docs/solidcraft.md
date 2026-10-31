@@ -1,10 +1,12 @@
 # SolidCraft: edit the design, then see the part
 
-[SolidCraft](https://github.com/tangency-labs/solidcraft) is a parametric CAD engine. Field's optional
-`afield.geometry.solid.solidcraft` binding opens a saved design or [builds one from code](#build-a-part-from-code), changes a named
-parameter, evaluates its feature tree, and returns B-rep measurements or a triangle mesh for display. It can also export STEP, binary
-STL, and the edited SolidCraft design. This is a small first binding across SolidCraft's geometry,
-kernel, document, and I/O crates (L0–L3), alongside Field's [Manifold](manifold.md) mesh-solid API.
+Open a parametric design, change a dimension in a box, and see the resulting part. Field's optional
+[SolidCraft](https://github.com/tangency-labs/solidcraft) binding can open a saved design or
+[build one from code](#build-a-part-from-code), evaluate its feature tree, and return B-rep
+measurements or a triangle mesh. You can export STEP, binary STL, or the edited design itself.
+
+The binding lives in `afield.geometry.solid.solidcraft`, alongside Field's
+[Manifold](manifold.md) mesh-solid API.
 
 Open [solidcraft_intro](agent_transcripts.md#solidcraft_intro) from the welcome screen. Its one box
 uses a design bundled with Field: a 40 × 30 mm sketch, an extrusion whose depth is `width / 2`, a
@@ -85,8 +87,8 @@ up a straight path while a guide rail runs from 4 to 12 mm off the path; the rai
 surface: a loft through three spline sections, which leaves an open, wavy sheet rather than a solid.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/solidcraft/building-three-parts.png" alt="An output panel of three grey triangle meshes side by side, each with a fact line beneath it. Left, 'sweep with a flaring rail': a square-sectioned solid that widens evenly from 8 to 24 mm as it rises 60 mm, extent 24 × 24 × 60, volume 16640. Middle, 'trefoil knot from an FLine': a round tube tied in a three-lobed knot, passing over and under itself, its two capped ends meeting at a seam at the bottom; watertight, genus 0, volume 4507.8. Right, 'surface loft': a single wavy open sheet." wait="4" capture="box" open-outputs="true" padding="20" requires="solidcraft" name="building-three-parts" embed=true}
-import afield.geometry.solid.solidcraft.solidCraft
 import afield.geometry.path.FLine
+import afield.geometry.solid.solidcraft.solidCraft
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin

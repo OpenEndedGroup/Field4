@@ -34,6 +34,7 @@ from __future__ import annotations
 import argparse
 import os
 import re
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -46,7 +47,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from check_staged_generated_artifacts import (  # noqa: E402
     _box_code_input,
     _compiled_transcript,
+    _formatted_box_code,
+    _demo_input,
+    _publication_input,
+    _python_tool_input,
     _reference_input,
+    _transcript_input,
 )
 
 REPO = Path(__file__).resolve().parents[1]
@@ -81,6 +87,11 @@ class Check:
     citation_test: str | None = None
     """A `citationGates` class to run with `--tests`, instead of all fifteen."""
     python: tuple[str, ...] = ()
+    """Python commands (a script and its arguments), run under the repo `uv` environment."""
+    jvm_tests: tuple[str, ...] = ()
+    """jvmTest classes to run with `--tests`: guards the lander does not run, so only precheck can."""
+    lander_guards: tuple[str, ...] = ()
+    """The tasks in the lander's `GUARDS` (check_staged_generated_artifacts.py) this check stands in for."""
 
 
 def _kotlin(path: str) -> bool:
@@ -157,18 +168,21 @@ CHECKS: tuple[Check, ...] = (
         "checkKDocAttachment (WebRTC: an annotation on the same line as its declaration)",
         lambda c: _paths(c, _kotlin),
         gradle=("checkKDocAttachment",),
+        lander_guards=("checkKDocAttachment",),
     ),
     Check(
         "server-surface",
         "ServerSurfaceLedgerTest (WebRTC: /ws commands missing from dev_docs/server_surface_inventory.md)",
         _server_surface,
         citation_test="afield.app.server.ServerSurfaceLedgerTest",
+        lander_guards=("citationGates",),
     ),
     Check(
         "documented-api",
         "DocumentedApiEvaluationTest (Fern: an API taught and never run; Splat: a stale ledger row)",
         _documented_api,
         citation_test="afield.tools.docs.DocumentedApiEvaluationTest",
+        lander_guards=("citationGates",),
     ),
     Check(
         "reference-nav",
@@ -184,6 +198,35 @@ CHECKS: tuple[Check, ...] = (
         "checkBoxCodeCompiles and checkBoxIdioms (WebRTC: a transcript box that did not compile)",
         lambda c: sorted(set(_paths(c, _compiled_transcript) + _paths(c, _box_code_input))),
         gradle=("checkBoxCodeCompiles", "checkBoxIdioms"),
+        lander_guards=("checkBoxCodeCompiles", "checkBoxIdioms"),
+    ),
+    Check(
+        "box-format",
+        "checkBoxCodeFormat (2026-10-31: box code and docs fences reformatted once; a branch that edits "
+        "them unformatted would drift them again)",
+        lambda c: _paths(c, _formatted_box_code),
+        gradle=("checkBoxCodeFormat",),
+        lander_guards=("checkBoxCodeFormat",),
+    ),
+    Check(
+        "demo-corpus",
+        "demo registration (2026-10-29, branches 2 and 3: a new dev_docs/agents/demos/* directory missing "
+        "from test_demo_build_scripts.py CORPUS and AgentDemoRegistrationTest.DEMO_CORPUS / "
+        "DemoTranscriptExecSmokeTest), checkAgentDemos and checkAgentTranscriptLayouts",
+        lambda c: [p for p in c.paths if _demo_input(p)],
+        gradle=("checkAgentDemos", "checkAgentTranscriptLayouts"),
+        # Not in the lander's guard at all (it runs no jvmTest), which is how main went red on it before.
+        jvm_tests=("afield.tools.docs.AgentDemoRegistrationTest",),
+        # test_demo_build_scripts.py (the CORPUS that bounced both branches) runs under python-tools,
+        # which the same paths select.
+        lander_guards=("checkAgentDemos", "checkAgentTranscriptLayouts"),
+    ),
+    Check(
+        "transcript-index",
+        "checkAgentTranscriptIndex (a transcript added or renamed without its public/docs/agent_transcripts.md entry)",
+        lambda c: [p for p in c.paths if _transcript_input(p)],
+        gradle=("checkAgentTranscriptIndex",),
+        lander_guards=("checkAgentTranscriptIndex",),
     ),
     Check(
         "js-module-imports",
@@ -192,12 +235,32 @@ CHECKS: tuple[Check, ...] = (
         python=("tools/check_module_imports.py",),
     ),
     Check(
+        "docs-publications",
+        "checkDocsPublications (a published page or transcript whose web publication is stale or uncovered)",
+        lambda c: [p for p in c.paths if _publication_input(p)],
+        gradle=("checkDocsPublications",),
+        lander_guards=("checkDocsPublications",),
+    ),
+    Check(
         "python-tools",
-        "checkPythonTools (a tools/ change that broke a tools/test_*.py suite)",
-        lambda c: [p for p in c.paths if (p.startswith("tools/") and p.endswith(".py")) or p in {"pyproject.toml", "uv.lock"}],
+        "checkPythonTools (a tools/ change that broke a tools/test_*.py suite; a demo, reference page or "
+        "build.gradle.kts change that broke a corpus contract one of them holds)",
+        # The lander's own selector, so precheck cannot select less than the landing does.
+        lambda c: [p for p in c.paths if _python_tool_input(p)],
         python=("tools/run_python_tests.py",),
+        lander_guards=("checkPythonTools",),
     ),
 )
+
+
+# Lander guards precheck leaves out on purpose, and why. Every other task in GUARDS must appear in some
+# check's `lander_guards` (test_land_precheck pins this both ways), so a guard added to the landing
+# cannot go unselected here without someone deciding it should.
+NOT_PRECHECKED: dict[str, str] = {
+    "checkCodebaseReference": "pure drift: the lander regenerates it first (reference-nav covers the nav half)",
+    "checkAgentTranscripts": "pure drift: the lander regenerates the starting-point bundle first",
+    "checkCompletionCorpusFixtures": "pure drift: the lander regenerates the fixtures first",
+}
 
 
 def select(change: Change) -> list[tuple[Check, list[str]]]:
@@ -218,6 +281,11 @@ def gradle_arguments(selected: list[Check], reference_out: Path) -> list[str]:
     args = ["--continue", *tasks]
     if any(c.key == "reference-nav" for c in selected):
         args.append(f"-Pout={reference_out}")
+    jvm_tests = [t for c in selected for t in c.jvm_tests]
+    if jvm_tests:
+        args += ["jvmTest", "--rerun"]
+        for test in dict.fromkeys(jvm_tests):
+            args += ["--tests", test]
     tests = [c.citation_test for c in selected if c.citation_test]
     if tests:
         args += ["citationGates", "--rerun"]
@@ -245,6 +313,62 @@ def missing_nav_entries(reference_dir: Path, nav_text: str) -> list[str]:
 def _git(*args: str, check: bool = True) -> subprocess.CompletedProcess:
     return subprocess.run(["git", *args], cwd=REPO, check=check, stdout=subprocess.PIPE,
                           stderr=subprocess.PIPE, text=True)
+
+
+def _patch_id(repo: Path, sha: str) -> str:
+    """One commit's `git patch-id --stable`. Per commit on purpose: fed a multi-commit `git log -p`,
+    patch-id gave the second commit of a branch a different id from the same commit shown alone
+    (observed 2026-10-30 on a real cherry-pick), so a batch run missed the duplicate."""
+    shown = subprocess.run(["git", "show", "--no-color", "--format=commit %H", sha], cwd=repo, check=True,
+                           stdout=subprocess.PIPE).stdout
+    out = subprocess.run(["git", "patch-id", "--stable"], cwd=repo, input=shown, check=True,
+                         stdout=subprocess.PIPE).stdout.decode().split()
+    return out[0] if out else ""
+
+
+@dataclass(frozen=True)
+class Duplicate:
+    commit: str
+    """The branch's commit."""
+    on_base: str
+    """The commit already on the base with the same patch."""
+    subject: str
+
+
+def duplicate_patches(repo: Path, base: str = BASE, head: str = "HEAD") -> list[Duplicate]:
+    """Commits on `head` whose patch `base` already has under another sha (a cherry-pick of a commit
+    that has since landed, or the same fix landed twice).
+
+    2026-10-29: a branch carried `8b68b8187`, a cherry-pick of a command-tool commit that landed on
+    main as `23018e9b6` during the night; the two then conflicted in IN_FIELD_AGENT_HARNESS.md and the
+    commit had to be found and dropped by hand. `git patch-id --stable` over merge-base..base and
+    merge-base..head finds it before any merge is tried.
+    """
+    def git(*args: str) -> str:
+        return subprocess.run(["git", *args], cwd=repo, check=True, stdout=subprocess.PIPE, text=True).stdout
+
+    # `git cherry` decides (it is git's own upstream-equivalence test); patch ids only name the twin,
+    # searched among the base commits that touch the same files.
+    merge_base = git("merge-base", base, head).strip()
+    duplicates = []
+    for line in git("cherry", base, head, merge_base).splitlines():
+        mark, _, sha = line.partition(" ")
+        if mark != "-":
+            continue
+        pid = _patch_id(repo, sha)
+        files = [f for f in git("show", "--format=", "--name-only", sha).splitlines() if f]
+        twin = next((c for c in git("log", "--no-merges", "--format=%H", f"{merge_base}..{base}", "--", *files).split()
+                     if _patch_id(repo, c) == pid), "")
+        duplicates.append(Duplicate(sha, twin or "(a commit on the base)", git("log", "-1", "--format=%s", sha).strip()))
+    return duplicates
+
+
+def describe_duplicates(duplicates: list[Duplicate], base: str = BASE) -> str:
+    lines = [f"{d.commit[:9]} \"{d.subject}\" is already on {base} as {d.on_base[:9]}" for d in duplicates]
+    first = duplicates[0].commit[:9]
+    fix = (f"fix: `git rebase --onto {first}^ {first}` drops that one commit; `git rebase {base}` drops "
+           "them all (rebase skips a commit whose patch is already upstream)")
+    return "\n  ".join(lines) + "\n  " + fix
 
 
 def conflicts_with(base: str) -> list[str] | None:
@@ -305,10 +429,10 @@ def _run_gradle(args: list[str], changed: list[str]) -> int:
         os.unlink(listing.name)
 
 
-def _run_python(script: str) -> int:
-    _say(f"$ uv run --project . --group backdoor python {script}")
+def _run_python(command: str) -> int:
+    _say(f"$ uv run --project . --group backdoor python {command}")
     return subprocess.run(
-        ["uv", "run", "--project", ".", "--group", "backdoor", "--frozen", "python", script], cwd=REPO
+        ["uv", "run", "--project", ".", "--group", "backdoor", "--frozen", "python", *shlex.split(command)], cwd=REPO
     ).returncode
 
 
@@ -342,6 +466,14 @@ def run(args: argparse.Namespace) -> int:
         _say(f"you are on {base}; precheck a topic branch")
         return 2
     started = time.time()
+
+    duplicates = duplicate_patches(REPO, base)
+    if duplicates:
+        _say(f"{len(duplicates)} commit(s) on {branch} repeat a patch {base} already has:\n  "
+             + describe_duplicates(duplicates, base))
+        _say("the lander would merge the same change twice; that conflicts wherever the two sides "
+             "drifted, or lands a redundant commit. Drop them, then precheck again.")
+        return 1
 
     conflicts = conflicts_with(base)
     if conflicts:
@@ -381,9 +513,21 @@ def run(args: argparse.Namespace) -> int:
             return 0
 
         checks = [c for c, _ in selected]
+        if merged and any(c.key == "python-tools" for c in checks):
+            # The lander regenerates this inventory on its merged tree. A trial merge can combine
+            # two individually current inventories into a stale one; checking it before refreshing
+            # only buys a false red. Stage the refreshed artifact so merge --abort restores it too.
+            _say("refreshing the guard inventory on the trial merge")
+            if subprocess.run(
+                [sys.executable, "tools/guard_corpora.py", "--write"], cwd=REPO
+            ).returncode != 0:
+                _git("restore", "--worktree", "--", "dev_docs/GUARD_CORPORA.md", check=False)
+                _say("guard inventory regeneration failed")
+                return 1
+            _git("add", "--", "dev_docs/GUARD_CORPORA.md")
         failed: list[str] = []
         with tempfile.TemporaryDirectory(prefix="precheck-reference-") as reference_out:
-            if any(c.gradle or c.citation_test for c in checks):
+            if any(c.gradle or c.citation_test or c.jvm_tests for c in checks):
                 if _run_gradle(gradle_arguments(checks, Path(reference_out)), change.paths) != 0:
                     failed.append("gradle (read the FAILED tasks and tests above)")
             if any(c.key == "reference-nav" for c in checks):

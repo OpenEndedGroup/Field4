@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-31T00:22:35.446Z",
+  "documentName": "chart_primitive",
+  "outputs": [
+    {
+      "uid": "chart_expect",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "chart_dataframe",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "chart_one_call",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "chart_pick",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/3.html"
+    }
+  ]
+}

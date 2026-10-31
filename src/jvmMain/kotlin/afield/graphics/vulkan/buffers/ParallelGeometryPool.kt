@@ -46,30 +46,56 @@ import java.util.concurrent.atomic.AtomicReference
  * [Renderer.beginGeometryWrites].
  */
 class ParallelGeometryPool(
+    /** The renderer whose geometry phase the pool follows. Constructing the pool registers it there, and [cleanup] is what takes it off again. */
     val renderer: Renderer = fromContext(),
+    /** Which window's swapchain images the channel buffers are sized for. Geometry tokens for any other window are ignored, so a pool only ever sees its own window's frames. */
     val targetWindowIndex: Int = 0,
+    /** How many frames a writer slot may go untouched before it is dropped at the next seal and its buffers queued on the renderer's cleanup list. A writer that is still publishing is never dropped; one that falls silent costs this many frames of buffers before it is reclaimed. */
     val idleRetainFrames: Long = 120,
     private val initialSizeBytes: Long = 4L * 1024L,
     private val usageFlags: Int = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT or VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
     private val memoryFlags: Int = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
 ) {
 
+    /**
+     * What one writer asked its fan-out invocation to draw or dispatch this frame. A null count is
+     * not zero: it leaves the module's own draw or dispatch dimension in place for that writer.
+     */
     data class WriterPublication(
+        /** Vertices to draw for this writer, or null to keep the module's own count. */
         val vertexCount: Int? = null,
+        /** Indices to draw for this writer, or null to keep the module's own count. */
         val indexCount: Int? = null,
+        /** Compute workgroups in x for this writer, or null to keep the module's own. */
         val dispatchX: Int? = null,
+        /** Compute workgroups in y for this writer, or null to keep the module's own. */
         val dispatchY: Int? = null,
+        /** Compute workgroups in z for this writer, or null to keep the module's own. */
         val dispatchZ: Int? = null
     )
 
+    /**
+     * One writer as the frame sealed it: its id, what it published, and the channel buffers it had
+     * at that moment. The channel map is copied at seal, so a later write cannot change what this
+     * frame's recording sees.
+     */
     class ActiveWriter internal constructor(
+        /** The id of the writer this invocation is for. */
         val writerId: Long,
+        /** The counts this writer published for the frame. */
         val publication: WriterPublication,
         internal val channels: Map<String, FrameBufferGroup>
     )
 
+    /**
+     * The whole sealed writer list for one frame, in ascending writer-id order, together with the
+     * frame and swapchain image it was sealed against. Recording for a different frame or image
+     * finds no snapshot rather than a stale one.
+     */
     data class SealedSnapshot(
+        /** The frame and image this list was sealed for. */
         val token: Renderer.GeometryFrameToken,
+        /** The writers that published this frame, by ascending id. */
         val writers: List<ActiveWriter>
     )
 
@@ -99,10 +125,22 @@ class ParallelGeometryPool(
         renderer.registerParallelGeometryPool(this)
     }
 
+    /**
+     * A handle for writing and publishing under one writer id, by default the calling thread's.
+     *
+     * The handle is free: it holds no buffers and claims no slot, so making one outside a geometry
+     * phase is fine and two handles with the same id are the same writer. The slot and its channel
+     * buffers appear on the first write or publish.
+     */
     fun writer(writerId: Long = Thread.currentThread().threadId()): ParallelGeometryWriter {
         return ParallelGeometryWriter(this, writerId)
     }
 
+    /**
+     * A reference to [channel] that resolves per writer at command-recording time, for binding to
+     * a `buffer_reference` push constant. Two references to the same channel of the same pool
+     * compare equal, so one can be rebuilt rather than held.
+     */
     fun ref(channel: String): ParallelGeometryRef {
         return ParallelGeometryRef(this, channel)
     }
@@ -220,6 +258,11 @@ class ParallelGeometryPool(
         }
     }
 
+    /**
+     * Takes the pool off the renderer, drops every writer slot, and queues all of their channel
+     * buffers on the renderer's cleanup list. The pool takes no further part in any frame; a write
+     * after this one fails for want of an active phase rather than silently going nowhere.
+     */
     fun cleanup() {
         renderer.unregisterParallelGeometryPool(this)
         currentToken.set(null)
@@ -270,6 +313,7 @@ class ParallelGeometryPool(
 /** A stable writer-id view into one [ParallelGeometryPool]. */
 class ParallelGeometryWriter internal constructor(
     private val pool: ParallelGeometryPool,
+    /** The id this handle writes under. It identifies the pool slot, and it orders this writer among the frame's fan-out invocations. */
     val writerId: Long
 ) {
     /** Replace this frame image's [channel] contents. */
@@ -302,23 +346,29 @@ class ParallelGeometryWriter internal constructor(
  * Resolving it outside that dispatch, or for a writer that lacks [channel], is an error.
  */
 class ParallelGeometryRef internal constructor(
+    /** The pool this reference resolves against. Every parallel reference in one push-constant block must name this same pool. */
     val pool: ParallelGeometryPool,
+    /** The channel name looked up in the writer being recorded. A writer that never wrote this channel fails its own invocation. */
     val channel: String
 ) : HasBuffer {
+    /** The current writer's buffer for [channel], for this frame's swapchain image. */
     override fun getBuffer(): Long {
         return pool.resolveRefBuffer(channel).getBuffer()
     }
 
+    /** The device address of the current writer's [channel] buffer, which is what the push constant carries. */
     override fun getGPUAddress(cmd: CommandBuffer): Long {
         return pool.resolveRefBuffer(channel).getGPUAddress(cmd)
     }
 
+    /** Same pool object and same channel name. The pool is compared by identity, the channel by value. */
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other !is ParallelGeometryRef) return false
         return pool === other.pool && channel == other.channel
     }
 
+    /** Built from the pool's identity hash and the channel name, to match [equals]. */
     override fun hashCode(): Int {
         return 31 * System.identityHashCode(pool) + channel.hashCode()
     }

@@ -1,0 +1,3 @@
+Removed the private-tree citation from `CREATURE_EVOLUTION.md`, preserving the public source reference. The test’s exact citation regex now finds zero matches in that document; Gradle was unavailable, so the JVM test was not run.
+
+FIXER-VERDICT: {"verdict": "fix", "culprit": "claude/genetic-algorithm-water-bug-cb6eff", "reason": "The branch introduced a private-source citation in its new documentation, and the minimal prose correction removes the reported violation."}

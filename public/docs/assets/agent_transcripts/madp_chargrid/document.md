@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 7 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 7 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. Life
@@ -22,7 +22,7 @@ Conway's Game of Life: PREV() reads the grid as the last tick left it. Only cell
 are SET, so the sound marks the births.
 
 ```edn [field-box id="madp_chargrid_life" role="properties"]
-{"id" "madp_chargrid_life" "index" 0 "name" "Life" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Life" "_tombstone" false "frame" #afield/rect [1240.0 60.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "madp_chargrid_life_notes_.md" "lines" 6 "characters" 375 "sha256" "ccb1e5853e7323f9fcda8dca7c68b559242ca0ee21d9f9603f7cbd9a796d4f5f"} {"name" "code" "language" "kotlin" "path" "madp_chargrid_life_code_.kt" "lines" 21 "characters" 1007 "sha256" "29566b91141d87d1ccbd73577078dfb4a7a74fbc6b92bcc7dcb4ad7b603052d1"}]}
+{"id" "madp_chargrid_life" "index" 0 "name" "Life" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Life" "_tombstone" false "frame" #afield/rect [1240.0 60.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "madp_chargrid_life_notes_.md" "lines" 6 "characters" 375 "sha256" "ccb1e5853e7323f9fcda8dca7c68b559242ca0ee21d9f9603f7cbd9a796d4f5f"} {"name" "code" "language" "kotlin" "path" "madp_chargrid_life_code_.kt" "lines" 27 "characters" 1035 "sha256" "d3ce46106bc1e057b8691ba982c130c2ee3ab9dbe8ff28a1e7a55f206ecb3ac6"}]}
 ```
 
 ```markdown [field-property box="madp_chargrid_life" name="notes" path="madp_chargrid_life_notes_.md"]
@@ -37,7 +37,13 @@ the madp original judged its seed in the same frame and drew nothing.
 ```kotlin [field-property box="madp_chargrid_life" name="code" path="madp_chargrid_life_code_.kt"]
 // Conway's Game of Life: PREV() reads the grid as the last tick left it. Only cells that change
 // are SET, so the sound marks the births.
-charGrid(glyphs = " █", sounds = listOf("", "/dough/play/note/57/duration/0.1/s/tri/fm/1.5/fmd/0.08/lpf/500/lpe/2/lpd/0.06/release/0.05/verb/0.2/chorus/0.1")) {
+charGrid(
+    glyphs = " █",
+    sounds = [
+        "",
+        "/dough/play/note/57/duration/0.1/s/tri/fm/1.5/fmd/0.08/lpf/500/lpe/2/lpd/0.06/release/0.05/verb/0.2/chorus/0.1",
+    ],
+) {
     if (frame == 0) {
         clearGrid()
         for (y in 0 until ROWS) for (x in 0 until COLS) if (rand() < 0.35) SET(x, y, 1, "#50fa7b")
@@ -135,7 +141,7 @@ charset are A minor from E2 to E4, so a taller bar is a higher note. Stream mode
 waits a tick and two waitFrame()s hold the note, three ticks a note.
 
 ```edn [field-box id="madp_chargrid_glass" role="properties"]
-{"id" "madp_chargrid_glass" "index" 2 "name" "Glass arpeggios" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Glass arpeggios" "_tombstone" false "frame" #afield/rect [640.0 660.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "madp_chargrid_glass_notes_.md" "lines" 6 "characters" 335 "sha256" "602e0119ba9e145803e83bff9fb6b41ccdd7f6fe43cb5f693b397ddf2d58431c"} {"name" "code" "language" "kotlin" "path" "madp_chargrid_glass_code_.kt" "lines" 33 "characters" 1358 "sha256" "4355c439735c54223d9664dc716e3827223b2e3f9453f425c72ba557cdd5e695"}]}
+{"id" "madp_chargrid_glass" "index" 2 "name" "Glass arpeggios" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Glass arpeggios" "_tombstone" false "frame" #afield/rect [640.0 660.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "madp_chargrid_glass_notes_.md" "lines" 6 "characters" 335 "sha256" "602e0119ba9e145803e83bff9fb6b41ccdd7f6fe43cb5f693b397ddf2d58431c"} {"name" "code" "language" "kotlin" "path" "madp_chargrid_glass_code_.kt" "lines" 36 "characters" 1299 "sha256" "9e473b13936f5b3da241b00f7fa8d4901046d44a36afb7a827ffe8ec7efab5fe"}]}
 ```
 
 ```markdown [field-property box="madp_chargrid_glass" name="notes" path="madp_chargrid_glass_notes_.md"]
@@ -148,23 +154,26 @@ score you can read. Stream mode: each `SET` waits a tick and two `waitFrame()`s 
 ```
 
 ```kotlin [field-property box="madp_chargrid_glass" name="code" path="madp_chargrid_glass_code_.kt"]
-// Philip Glass: minimalist additive arpeggios, and here the glyphs are notes. The eight bars of the
-// charset are A minor from E2 to E4, so a taller bar is a higher note. Stream mode: each SET
-// waits a tick and two waitFrame()s hold the note, three ticks a note.
-val notes = listOf(40, 45, 48, 52, 55, 57, 60, 64)
-val cutoffs = listOf(500, 550, 600, 650, 700, 750, 800, 900)
-val sounds = notes.indices.map { i ->
-    "/dough/play/note/${notes[i]}/duration/0.4/s/saw/attack/0.02/decay/0.15/sustain/0.3/release/0.2" +
-        "/vib/4/vibmod/0.15/lpf/${cutoffs[i]}/lpe/2/lpd/0.25/lpq/0.15/verb/0.3/verbdecay/0.5/chorus/0.05"
-}
-val patterns = listOf(
-    listOf(0, 2, 4, 5, 4, 2),       // i: A minor, low
-    listOf(1, 3, 5, 6, 5, 3),       // ii: rising
-    listOf(0, 2, 4, 6, 7, 6, 4, 2), // iii: the full sweep
-    listOf(2, 4, 5, 7, 5, 4),       // iv: upper
-    listOf(0, 3, 5, 7, 5, 3, 0, 2), // v: wide
-    listOf(1, 2, 4, 5, 7, 5, 4, 2), // vi: opening
-)
+/*
+Philip Glass: minimalist additive arpeggios, and here the glyphs are notes. The eight bars of the
+charset are A minor from E2 to E4, so a taller bar is a higher note. Stream mode: each SET
+waits a tick and two waitFrame()s hold the note, three ticks a note.
+*/
+val notes = [40, 45, 48, 52, 55, 57, 60, 64]
+val cutoffs = [500, 550, 600, 650, 700, 750, 800, 900]
+val sounds =
+    notes.indices.map { i ->
+        "/dough/play/note/${notes[i]}/duration/0.4/s/saw/attack/0.02/decay/0.15/sustain/0.3/release/0.2" +
+            "/vib/4/vibmod/0.15/lpf/${cutoffs[i]}/lpe/2/lpd/0.25/lpq/0.15/verb/0.3/verbdecay/0.5/chorus/0.05"
+    }
+val patterns = [
+    [0, 2, 4, 5, 4, 2], // i: A minor, low
+    [1, 3, 5, 6, 5, 3], // ii: rising
+    [0, 2, 4, 6, 7, 6, 4, 2], // iii: the full sweep
+    [2, 4, 5, 7, 5, 4], // iv: upper
+    [0, 3, 5, 7, 5, 3, 0, 2], // v: wide
+    [1, 2, 4, 5, 7, 5, 4, 2], // vi: opening
+]
 
 charStream(glyphs = "▁▂▃▄▅▆▇█", sounds = sounds) {
     clearGrid()
@@ -199,7 +208,7 @@ Per-cell rotation from a wave, plus one CSS variable that every cell adds to its
 whole field spins with a single CSSVAR call a tick.
 
 ```edn [field-box id="madp_chargrid_spinners" role="properties"]
-{"id" "madp_chargrid_spinners" "index" 3 "name" "spinners" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "spinners" "_tombstone" false "frame" #afield/rect [1240.0 660.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "madp_chargrid_spinners_notes_.md" "lines" 5 "characters" 234 "sha256" "694bef82a31b3f2d1924c85dbfb5e931517ab6061e5c73c8968243c9a5cfae6e"} {"name" "code" "language" "kotlin" "path" "madp_chargrid_spinners_code_.kt" "lines" 17 "characters" 882 "sha256" "06887afe80d0b06165bbc8ed5316bc0ec7be388d50b7262efbab05eb65631099"}]}
+{"id" "madp_chargrid_spinners" "index" 3 "name" "spinners" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "spinners" "_tombstone" false "frame" #afield/rect [1240.0 660.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "madp_chargrid_spinners_notes_.md" "lines" 5 "characters" 234 "sha256" "694bef82a31b3f2d1924c85dbfb5e931517ab6061e5c73c8968243c9a5cfae6e"} {"name" "code" "language" "kotlin" "path" "madp_chargrid_spinners_code_.kt" "lines" 25 "characters" 975 "sha256" "7abe87708cc46367b140f7ee0c5a62e02d5c22367618e7b89c8125c6255af571"}]}
 ```
 
 ```markdown [field-property box="madp_chargrid_spinners" name="notes" path="madp_chargrid_spinners_notes_.md"]
@@ -213,8 +222,10 @@ rising sine notes.
 ```kotlin [field-property box="madp_chargrid_spinners" name="code" path="madp_chargrid_spinners_code_.kt"]
 // Per-cell rotation from a wave, plus one CSS variable that every cell adds to its own angle, so the
 // whole field spins with a single CSSVAR call a tick.
-val notes = listOf(60, 62, 64, 65, 67, 69, 71, 72, 74, 76, 77, 79)
-val sounds = notes.mapIndexed { i, note -> "/dough/play/note/$note/duration/0.06/s/sine/lpf/${2000 + i * 200}/release/0.03/verb/0.3" }
+val notes = [60, 62, 64, 65, 67, 69, 71, 72, 74, 76, 77, 79]
+val sounds = notes.mapIndexed { i, note ->
+    "/dough/play/note/$note/duration/0.06/s/sine/lpf/${2000 + i * 200}/release/0.03/verb/0.3"
+}
 
 charGrid(glyphs = "|/-\\+×•◦○●★✶", sounds = sounds) {
     CSSVAR("--spin", "${frame * 6 % 360}deg")
@@ -224,7 +235,13 @@ charGrid(glyphs = "|/-\\+×•◦○●★✶", sounds = sounds) {
             val wave = sin(x * 0.4 + t) * cos(y * 0.3 + t * 0.6)
             val g = ((wave + 1) / 2 * glyphs.length).toInt()
             val hue = (x * 12 + y * 8 + frame * 3) % 360
-            SET(x, y, g, "hsl($hue,70%,50%)", "transform:rotate(calc(${(wave * 180).roundToInt()}deg + var(--spin,0deg)))")
+            SET(
+                x,
+                y,
+                g,
+                "hsl($hue,70%,50%)",
+                "transform:rotate(calc(${(wave * 180).roundToInt()}deg + var(--spin,0deg)))",
+            )
         }
     }
 }
@@ -247,7 +264,7 @@ Stream mode: one long program, and every SET waits for the next tick, so the maz
 out a cell at a time and scrolls when it reaches the bottom. Each diagonal is a note.
 
 ```edn [field-box id="madp_chargrid_10print" role="properties"]
-{"id" "madp_chargrid_10print" "index" 4 "name" "10 PRINT" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "10 PRINT" "_tombstone" false "frame" #afield/rect [640.0 60.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "madp_chargrid_10print_notes_.md" "lines" 6 "characters" 396 "sha256" "6f11e20d19f1dbe4773e7af55b7f1db7a1ab4a0b59d56deca8733516d3c465dd"} {"name" "code" "language" "kotlin" "path" "madp_chargrid_10print_code_.kt" "lines" 14 "characters" 630 "sha256" "82cd0a0bfd34041654787084455bc6912d4910e5d61ae17ccc30c5e453c07654"}]}
+{"id" "madp_chargrid_10print" "index" 4 "name" "10 PRINT" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "10 PRINT" "_tombstone" false "frame" #afield/rect [640.0 60.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "madp_chargrid_10print_notes_.md" "lines" 6 "characters" 396 "sha256" "6f11e20d19f1dbe4773e7af55b7f1db7a1ab4a0b59d56deca8733516d3c465dd"} {"name" "code" "language" "kotlin" "path" "madp_chargrid_10print_code_.kt" "lines" 16 "characters" 621 "sha256" "ed0746d2f82a65dc4653aac73a52b3863f2851117028daeb19007eaa93739dd5"}]}
 ```
 
 ```markdown [field-property box="madp_chargrid_10print" name="notes" path="madp_chargrid_10print_notes_.md"]
@@ -260,13 +277,15 @@ so the maze is also a random two-note melody. Try a third glyph, or `fps = 120.0
 ```
 
 ```kotlin [field-property box="madp_chargrid_10print" name="code" path="madp_chargrid_10print_code_.kt"]
-// 10 PRINT CHR$(205.5+RND(1)); : GOTO 10
-// Stream mode: one long program, and every SET waits for the next tick, so the maze types itself
-// out a cell at a time and scrolls when it reaches the bottom. Each diagonal is a note.
-val sounds = listOf(
+/*
+10 PRINT CHR$(205.5+RND(1)); : GOTO 10
+Stream mode: one long program, and every SET waits for the next tick, so the maze types itself
+out a cell at a time and scrolls when it reaches the bottom. Each diagonal is a note.
+*/
+val sounds = [
     "/dough/play/note/64/duration/0.08/s/pulse/pw/0.35/lpf/700/lpe/3/lpd/0.05/release/0.04/delay/0.15/delaytime/0.06",
     "/dough/play/note/67/duration/0.08/s/pulse/pw/0.45/lpf/700/lpe/3/lpd/0.05/release/0.04/delay/0.15/delaytime/0.08",
-)
+]
 
 charStream(glyphs = "╱╲", sounds = sounds) {
     clearGrid()
@@ -292,7 +311,7 @@ Matrix rain. The drops are ordinary Kotlin values declared above charGrid { }, s
 as the run (the demo keeps them in `state`). Each tick clears the grid and redraws every drop.
 
 ```edn [field-box id="madp_chargrid_rain" role="properties"]
-{"id" "madp_chargrid_rain" "index" 5 "name" "matrix rain" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "matrix rain" "_tombstone" false "frame" #afield/rect [40.0 660.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "madp_chargrid_rain_notes_.md" "lines" 6 "characters" 360 "sha256" "f54de1067ac0fb861c37a637cd7069cada09d11176c8d4f8e931f25fbe46a10b"} {"name" "code" "language" "kotlin" "path" "madp_chargrid_rain_code_.kt" "lines" 41 "characters" 2381 "sha256" "9ef93c3c724aa41fe0b6ffa8907e58d9b11153acbb707d2761ac717898610f4a"}]}
+{"id" "madp_chargrid_rain" "index" 5 "name" "matrix rain" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "matrix rain" "_tombstone" false "frame" #afield/rect [40.0 660.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "madp_chargrid_rain_notes_.md" "lines" 6 "characters" 360 "sha256" "f54de1067ac0fb861c37a637cd7069cada09d11176c8d4f8e931f25fbe46a10b"} {"name" "code" "language" "kotlin" "path" "madp_chargrid_rain_code_.kt" "lines" 42 "characters" 2391 "sha256" "c060325b2bc9f30488903163b23954a6904f808e057d3a4b6fec2173434064d3"}]}
 ```
 
 ```markdown [field-property box="madp_chargrid_rain" name="notes" path="madp_chargrid_rain_notes_.md"]
@@ -311,7 +330,7 @@ class Drop(var y: Int, var len: Int)
 
 val drops = mutableListOf<Drop>()
 // The sixteen digits and letters ring, high and bright; the nine symbols are silent.
-val sounds = listOf(
+val sounds = [
     "/dough/play/note/72/duration/0.06/s/sine/fm/1/fmd/0.03/lpf/3000/release/0.03/verb/0.4/verbdecay/0.6/pan/0.3",
     "/dough/play/note/74/duration/0.06/s/sine/fm/1/fmd/0.03/lpf/3200/release/0.03/verb/0.4/pan/0.35",
     "/dough/play/note/76/duration/0.06/s/sine/fm/1.5/fmd/0.03/lpf/3400/release/0.03/verb/0.4/pan/0.4",
@@ -328,7 +347,7 @@ val sounds = listOf(
     "/dough/play/note/95/duration/0.04/s/sine/lpf/5500/release/0.02/delay/0.15",
     "/dough/play/note/96/duration/0.04/s/sine/lpf/5500/release/0.02/delay/0.15",
     "/dough/play/note/98/duration/0.04/s/sine/lpf/6000/release/0.02/delay/0.1",
-)
+]
 
 charGrid(glyphs = "0123456789ABCDEF:.*+=@#$%", sounds = sounds) {
     if (drops.isEmpty()) repeat(COLS) { drops += Drop(-rand(25), 5 + rand(14)) }
@@ -337,7 +356,8 @@ charGrid(glyphs = "0123456789ABCDEF:.*+=@#$%", sounds = sounds) {
         val d = drops[x]
         for (i in 0 until d.len) {
             val y = d.y - i
-            if (y in 0 until ROWS) SET(x, y, rand(glyphs.length), if (i == 0) "#fff" else "hsl(120,80%,${max(15, 65 - i * 4)}%)")
+            if (y in 0 until ROWS)
+                SET(x, y, rand(glyphs.length), if (i == 0) "#fff" else "hsl(120,80%,${max(15, 65 - i * 4)}%)")
         }
         d.y++
         if (d.y - d.len > ROWS) {
@@ -375,7 +395,7 @@ charStream { } is the other time model: one long program in which every SET wait
 the 10 PRINT box). `sounds` gives each glyph index a dough path, so every SET of it plays.
 
 ```edn [field-box id="madp_chargrid_plasma" role="properties"]
-{"id" "madp_chargrid_plasma" "index" 6 "name" "charGrid · plasma" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "charGrid · plasma" "_tombstone" false "frame" #afield/rect [40.0 60.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "madp_chargrid_plasma_notes_.md" "lines" 51 "characters" 3086 "sha256" "d87f038bcf0f9811c2af8ae06a3cb938b278cb8e937877348b56394aa90fee86"} {"name" "code" "language" "kotlin" "path" "madp_chargrid_plasma_code_.kt" "lines" 40 "characters" 2449 "sha256" "2a42790e9eb38db8c4a44e9cca2f0ab5643d7f6a3cf173e523612bd9e9f96d5f"}]}
+{"id" "madp_chargrid_plasma" "index" 6 "name" "charGrid · plasma" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "charGrid · plasma" "_tombstone" false "frame" #afield/rect [40.0 60.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "madp_chargrid_plasma_notes_.md" "lines" 51 "characters" 3086 "sha256" "d87f038bcf0f9811c2af8ae06a3cb938b278cb8e937877348b56394aa90fee86"} {"name" "code" "language" "kotlin" "path" "madp_chargrid_plasma_code_.kt" "lines" 40 "characters" 2443 "sha256" "a43acc16d23d904c4a5aec7d90a650dd5b43a885c971430aa589cb6db0f56847"}]}
 ```
 
 ```markdown [field-property box="madp_chargrid_plasma" name="notes" path="madp_chargrid_plasma_notes_.md"]
@@ -448,7 +468,7 @@ charGrid { } runs its block once a tick (24 a second), and inside it:
 charStream { } is the other time model: one long program in which every SET waits a tick (see
 the 10 PRINT box). `sounds` gives each glyph index a dough path, so every SET of it plays.
 */
-val sounds = listOf(
+val sounds = [
     "/dough/play/note/48/duration/0.12/s/tri/fm/2/fmd/0.1/lpf/600/lpe/3/lpd/0.08/release/0.06/verb/0.3",
     "/dough/play/note/50/duration/0.12/s/tri/fm/2/fmd/0.1/lpf/700/lpe/3/lpd/0.08/release/0.06/verb/0.3",
     "/dough/play/note/53/duration/0.12/s/tri/fm/3/fmd/0.1/lpf/800/lpe/3/lpd/0.08/release/0.06/verb/0.3",
@@ -459,7 +479,7 @@ val sounds = listOf(
     "/dough/play/note/64/duration/0.08/s/pulse/pw/0.3/lpf/500/lpe/2/lpd/0.06/release/0.04",
     "/dough/play/note/65/duration/0.06/s/saw/lpf/400/lpe/4/lpd/0.05/release/0.03",
     "/dough/play/note/67/duration/0.06/s/saw/lpf/400/lpe/4/lpd/0.05/release/0.03",
-)
+]
 
 charGrid(glyphs = "░▒▓█╔╗╚╝║═", sounds = sounds) {
     for (y in 0 until ROWS) {

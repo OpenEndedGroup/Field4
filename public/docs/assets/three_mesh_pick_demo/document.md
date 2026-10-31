@@ -48,7 +48,7 @@ through both.
 With the ruler OFF, clicking either object prints its hit record below.
 
 ```edn [field-box id="mesh-pick-clearance" role="properties"]
-{"id" "mesh-pick-clearance" "index" 1 "name" "A solid you can measure to" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A solid you can measure to" "frame" #afield/rect [60.0 60.0 940.0 700.0] "nested" #{} "preamble" "" "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mesh-pick-clearance_code_.kt" "lines" 82 "characters" 2978 "sha256" "038f040b36801ea8d0118141b9f586f0385f9094494a8f66d5d78cb18b6cb254"}]}
+{"id" "mesh-pick-clearance" "index" 1 "name" "A solid you can measure to" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A solid you can measure to" "frame" #afield/rect [60.0 60.0 940.0 700.0] "nested" #{} "preamble" "" "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mesh-pick-clearance_code_.kt" "lines" 82 "characters" 2966 "sha256" "3419ca6244e474911df603db168ba4565808b13fd38aed34482c87a83683f25b"}]}
 ```
 
 ```kotlin [field-property box="mesh-pick-clearance" name="code" path="mesh-pick-clearance_code_.kt"]
@@ -79,7 +79,7 @@ val conduit = fline {
     pointSize = 8.0
     hoverColor = vec(1.0, 0.94, 0.66, 1.0)
     onClick = { hit ->
-        println("conduit hit: ${hit.kind} node ${hit.nodeIndex} u=${"%.3f".format(hit.u)} at ${hit.onElement}")
+        println("conduit hit: ${hit.kind} node ${hit.nodeIndex} u=${hit.u.f3} at ${hit.onElement}")
     }
 }
 

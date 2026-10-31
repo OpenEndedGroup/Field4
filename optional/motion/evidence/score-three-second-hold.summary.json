@@ -1,0 +1,67 @@
+{
+  "source": "kotlin-movement-score.f4motion",
+  "description": "Longer 2/3/3-second Kotlin score; retained negative trial.",
+  "events": [
+    {
+      "frameIndex": 60,
+      "appliedTime": 2.0000001043081284,
+      "requestedTime": 2.0000001043081284,
+      "payload": {
+        "engagementSeconds": 0.2,
+        "anchorVelocity": [
+          0,
+          0,
+          0
+        ],
+        "breakForce": null,
+        "damping": 120,
+        "breakError": null,
+        "body": "L_Ankle",
+        "stiffness": 8000,
+        "mode": "saturating",
+        "anchor": [
+          -0.2832411527633667,
+          0.07965646684169769,
+          0.32453984022140503
+        ],
+        "breakDuration": 0.1,
+        "localPoint": [
+          0,
+          0,
+          0
+        ],
+        "maximumForce": 2500,
+        "id": "left-foot"
+      },
+      "episode": 0,
+      "type": "applied",
+      "operation": "ATTACH",
+      "revision": 2
+    },
+    {
+      "frameIndex": 150,
+      "appliedTime": 5.000000260770321,
+      "requestedTime": 5.000000260770321,
+      "payload": {
+        "id": "left-foot"
+      },
+      "episode": 0,
+      "type": "applied",
+      "operation": "DETACH",
+      "revision": 3
+    },
+    {
+      "frameIndex": 170,
+      "episode": 0,
+      "time": 5.666666962206364,
+      "type": "termination"
+    },
+    {
+      "reason": "stock termination/episode-end",
+      "frameIndex": 170,
+      "episode": 1,
+      "time": 5.666666962206364,
+      "type": "reset"
+    }
+  ]
+}

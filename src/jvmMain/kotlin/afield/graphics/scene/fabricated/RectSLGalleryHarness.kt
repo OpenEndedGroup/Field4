@@ -46,24 +46,28 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 
 /**
- * The RectSL analogue of [StackSLGalleryHarness]. RectSL programs are whole
- * *scenes* (wall, duration, fps, rects, tracks, groups, StackSL materials) rather
- * than a single fullscreen fragment, so the render path is the one already used by
- * `afield.lang.rectsl.RectSLRenderRunner`: compile the program, lower each sampled frame
- * to a triangle mesh, and draw it through the [RECT_ANIMATION_VERTEX_SHADER] plus a
- * StackSL-compiled material fragment into an offscreen [RenderToTexture].
+ * The RectSL gallery on the docs site, rendered offscreen: the [StackSLGalleryHarness] shape,
+ * applied to programs that describe a whole scene rather than one fullscreen fragment.
  *
- * Both entry points keep **one** renderer / graphics context alive and walk the
- * program list — the "one Field document, many Field 4 renders" pattern. A
- * fresh target is built per example because each program's wall has its own aspect
- * ratio (unlike the fixed 512² StackSL fullscreen target).
+ * A RectSL program carries a wall, a duration, an fps, and its rects, tracks, groups and StackSL
+ * materials, so the render path here is the one `afield.lang.rectsl.RectSLRenderRunner` already
+ * uses: compile the program, lower each sampled frame to a triangle mesh, and draw it through
+ * `RECT_ANIMATION_VERTEX_SHADER` plus a StackSL-compiled material fragment into an offscreen
+ * [RenderToTexture].
  *
- * [renderGallery] reads back a single representative still per program.
- * [renderAnimations] sweeps the program's own timeline frame by frame and encodes
- * each `animate: true` program to an mp4 (the docs runner can screenshot the native
- * GPU window but never record it, so the harness owns the readback + ffmpeg encode).
- * The programs are editable Field content in [WORKSPACE_DIR], not literals here.
+ * Both entry points hold one renderer and one graphics context open and walk the program list,
+ * which is the "one Field document, many Field 4 renders" pattern. A fresh target is built per
+ * example, because each program's wall has its own aspect ratio; the StackSL gallery can reuse one
+ * fixed 512² target instead.
+ *
+ * [renderGallery] reads back a single representative still per program. [renderAnimations] sweeps
+ * the program's own timeline frame by frame and encodes each `animate: true` program to an mp4,
+ * since the docs runner can screenshot the native GPU window but never record it, which leaves the
+ * readback and the ffmpeg encode to the harness. The programs themselves are editable Field
+ * content under this harness's `WORKSPACE_DIR`, not literals in this file.
  */
+
+/** Renders the RectSL gallery stills and animations offscreen, one scene program at a time. */
 object RectSLGalleryHarness {
 
     private const val OUTPUT_LONG = 512      // longest output side in px

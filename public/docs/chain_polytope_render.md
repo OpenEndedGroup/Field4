@@ -1,9 +1,11 @@
 # A polytope, cut open, and traced
 
-One shape passes through three parts of Field here. `afield.geometry.polytope` builds polyhedra
-with Conway operators and remembers where each face came from. `afield.geometry.solid.manifold` does exact Booleans
-on closed solids. `afield.graphics.scene.fabricated` runs a GPU path tracer. The three are independent, and
-the page shows what to pass from one to the next.
+Let's build a polyhedron, cut it open, and render it. We'll also keep track of where its faces came
+from, so the finished image can colour the shape by its own history.
+
+Three parts of Field do the work: `afield.geometry.polytope` builds the shape with Conway
+operators, `afield.geometry.solid.manifold` cuts the closed solid, and
+`afield.graphics.scene.fabricated` renders it with a GPU path tracer.
 
 The shape is `bD`: bevel of the dodecahedron, better known as the truncated icosidodecahedron. It has
 62 faces, few enough to count and enough that a mistake shows.
@@ -136,8 +138,8 @@ left them, and ${plain.vertexCount} after welding.
 |---|---|---|
 | closed | `${solid.status}` | `${plain.isWatertight()}` |
 | genus | ${solid.genus} | ${plain.genus()} |
-| volume | ${"%.4f".format(solid.volume)} | ${"%.4f".format(plain.signedVolume())} |
-| surface area | ${"%.4f".format(solid.surfaceArea)} | |
+| volume | ${solid.volume.f4} | ${plain.signedVolume().f4} |
+| surface area | ${solid.surfaceArea.f4} | |
 
 They are ${"%.2e".format(volumeGap)} apart on the volume.
 
@@ -145,11 +147,11 @@ They are ${"%.2e".format(volumeGap)} apart on the volume.
 
 | | |
 |---|---|
-| wall volume | ${"%.4f".format(wall.volume)} |
-| area × thickness | ${"%.4f".format(solid.surfaceArea * thickness)}, so the ratio is ${"%.3f".format(ratio)} |
+| wall volume | ${wall.volume.f4} |
+| area × thickness | ${(solid.surfaceArea * thickness).f4}, so the ratio is ${ratio.f3} |
 | wall genus | ${wall.genus} |
 | wall triangles | ${wall.triangleCount} |
-| cut open | genus ${cut.genus}, volume ${"%.4f".format(cut.volume)} |
+| cut open | genus ${cut.genus}, volume ${cut.volume.f4} |
 """,
         width = 860,
     )
@@ -183,8 +185,9 @@ traces the lower half as a bowl.
 // Built and launched from dev_docs/agents/transcripts/polytope_manifold_path_trace.yaml.
 ```
 
-The rim is the same thickness the whole way round, which is how an erosion differs from a scale. The interior facets are rounded where the exterior ones are
-sharp, because eroding by a ball cannot reproduce a concave corner tighter than the ball.
+The rim is the same thickness the whole way round: erosion keeps the thickness constant. The
+interior facets are rounded where the exterior ones are sharp, because eroding by a ball cannot
+reproduce a concave corner tighter than the ball.
 
 Two details of the last hop are worth copying:
 

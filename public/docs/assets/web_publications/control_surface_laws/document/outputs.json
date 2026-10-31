@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-29T22:44:24.254Z",
+  "documentName": "control_surface_laws",
+  "outputs": [
+    {
+      "uid": "control_surface_meter",
+      "channel": "levels",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 536,
+      "height": 172,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "control_surface_laws",
+      "channel": "laws",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 536,
+      "height": 228,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "control_surface_button",
+      "channel": "gesture",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 536,
+      "height": 98,
+      "path": "outputs/2.html"
+    }
+  ]
+}

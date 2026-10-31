@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 5 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 5 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. Loot rule
@@ -18,7 +18,7 @@ The rule that places loot. It changes only after a replay on real placements: se
 "Change a rule without breaking what already works" in the Field docs.
 
 ```edn [field-box id="staged_rule" role="properties"]
-{"id" "staged_rule" "index" 0 "name" "Loot rule" "parents" ["root"] "children" ["staged_builds"] "properties" {"children" #{#afield/box "staged_builds"} "parents" #{#afield/box "root"} "name" "Loot rule" "_tombstone" false "frame" #afield/rect [1440.0 40.0 300.0 100.0] "autorun" true} "blockProperties" [{"name" "code" "language" "kotlin" "path" "staged_rule_code_.kt" "lines" 53 "characters" 2141 "sha256" "4255793dfe6f832fbc2d9829e1fc4d5a77dc4b644d090cab0b096be23082c6d9"}]}
+{"id" "staged_rule" "index" 0 "name" "Loot rule" "parents" ["root"] "children" ["staged_builds"] "properties" {"children" #{#afield/box "staged_builds"} "parents" #{#afield/box "root"} "name" "Loot rule" "_tombstone" false "frame" #afield/rect [1440.0 40.0 300.0 100.0] "autorun" true} "blockProperties" [{"name" "code" "language" "kotlin" "path" "staged_rule_code_.kt" "lines" 53 "characters" 2133 "sha256" "8873cb64b38a5e1cf1688955693d70dd0a790725c1000b19c6e746475b89bbdc"}]}
 ```
 
 ```kotlin [field-property box="staged_rule" name="code" path="staged_rule_code_.kt"]
@@ -73,8 +73,8 @@ val loot = qualifiedSource(
     },
     replayVersion = "loot-replay-1",
 ) { replay ->
-        QualifiedSource.evaluateKotlin(replay.source) as (String) -> Map<String, String>
-    }
+    QualifiedSource.evaluateKotlin(replay.source) as (String) -> Map<String, String>
+}
 ```
 
 ## 2. Level
@@ -308,7 +308,7 @@ Three stages derived from the level: blockout, traversal and placement.
 Each reads the level as it was when its build started, and reports what it measured.
 
 ```edn [field-box id="staged_builds" role="properties"]
-{"id" "staged_builds" "index" 2 "name" "Builds" "parents" ["root" "staged_level" "staged_rule"] "children" ["staged_corpus"] "properties" {"children" #{#afield/box "staged_corpus"} "parents" #{#afield/box "root" #afield/box "staged_level" #afield/box "staged_rule"} "name" "Builds" "_tombstone" false "frame" #afield/rect [640.0 40.0 300.0 100.0] "autorun" true} "blockProperties" [{"name" "code" "language" "kotlin" "path" "staged_builds_code_.kt" "lines" 315 "characters" 13996 "sha256" "195ca113e9f9f2bf3ae4b1d926d03df7d796f225d204610f986a5c535cc97ce3"}]}
+{"id" "staged_builds" "index" 2 "name" "Builds" "parents" ["root" "staged_level" "staged_rule"] "children" ["staged_corpus"] "properties" {"children" #{#afield/box "staged_corpus"} "parents" #{#afield/box "root" #afield/box "staged_level" #afield/box "staged_rule"} "name" "Builds" "_tombstone" false "frame" #afield/rect [640.0 40.0 300.0 100.0] "autorun" true} "blockProperties" [{"name" "code" "language" "kotlin" "path" "staged_builds_code_.kt" "lines" 315 "characters" 13518 "sha256" "94b2418756e37b56bea961e475e341a0bf74b36c5ce685b68c9af182b226aaa4"}]}
 ```
 
 ```kotlin [field-property box="staged_builds" name="code" path="staged_builds_code_.kt"]
@@ -351,58 +351,58 @@ val blockout = StudyBuildStage(
     setOf("level"),
     resultNotes = { r -> [StudyBuildNotice(r.facts["summary"].toString(), StudyBuildNoticeKind.INFO)] },
 ) { c ->
-        val g = Grid(c.inputs.getValue("level"))
-        // A floor slab per room, and a wall piece on every cell edge between two rooms, or a room and outside, that is
-        // not a door.
-        val pieces = mutableListOf<List<Double>>()
-        for ((_, r) in g.rooms) pieces +=
-            [r[0].toDouble(), r[1].toDouble(), -0.1, r[2].toDouble(), r[3].toDouble(), 0.1]
-        val walls = mutableSetOf<Pair<Cell, Cell>>()
-        for ((a, _) in g.room) for (b in
-            [
-                a.first + 1 to a.second,
-                a.first to a.second + 1,
-                a.first - 1 to a.second,
-                a.first to a.second - 1,
-            ]) if (g.room[b] != g.room[a] && (a to b) !in g.doors)
-            walls += [a, b].sortedWith(compareBy({ it.first }, { it.second })).let { it[0] to it[1] }
-        for ((a, b) in walls) pieces.add(
-            if (a.second == b.second) [b.first - 0.05, a.second.toDouble(), 0.0, 0.1, 1.0, 1.5]
-            else [a.first.toDouble(), b.second - 0.05, 0.0, 1.0, 0.1, 1.5],
-        )
-        val mesh =
-            pieces
-                .map { p -> boxMesh(p[3], p[4], p[5]).translated(p[0] + p[3] / 2, p[1] + p[4] / 2, p[2] + p[5] / 2) }
-                .reduce { m, n -> m + n }
-        c.file("blockout.obj").writeText(mesh.toObj("blockout"))
-        val area = g.rooms.values.sumOf { it[2] * it[3] }
-        // With Manifold installed, the pieces are also joined into one solid and measured.
-        val solid =
-            if (!afield.geometry.solid.manifold.ManifoldLibrary.isAvailable) null
-            else
-                afield.geometry.solid.manifold.Solid.scope {
-                    val joined = afield.geometry.solid.manifold.Solid.union(
-                        pieces.map { p ->
-                            afield.geometry.solid.manifold.Solid.cube(p[3], p[4], p[5]).translated(p[0], p[1], p[2])
-                        },
-                    )
-                    mapOf("status" to joined.status.toString(), "volume" to joined.volume)
-                }
-        val summary =
-            "${g.rooms.size} rooms, $area cells of floor, ${walls.size} wall pieces, ${g.doors.size / 2} door${if (g.doors.size == 2) "" else "s"}" +
-                (solid?.let { ", joined into one solid of volume ${"%.1f".format(it["volume"])} (${it["status"]})" }
-                    ?: "; install Manifold to check it as one solid")
-        StudyBuildProduct(
-            ["blockout.obj"],
-            mapOf(
-                "rooms" to g.rooms.size,
-                "floorCells" to area,
-                "wallPieces" to walls.size,
-                "solid" to solid,
-                "summary" to summary,
-            ),
-        )
-    }
+    val g = Grid(c.inputs.getValue("level"))
+    // A floor slab per room, and a wall piece on every cell edge between two rooms, or a room and outside, that is
+    // not a door.
+    val pieces = mutableListOf<List<Double>>()
+    for ((_, r) in g.rooms) pieces +=
+        listOf(r[0].toDouble(), r[1].toDouble(), -0.1, r[2].toDouble(), r[3].toDouble(), 0.1)
+    val walls = mutableSetOf<Pair<Cell, Cell>>()
+    for ((a, _) in g.room) for (b in
+        [
+            a.first + 1 to a.second,
+            a.first to a.second + 1,
+            a.first - 1 to a.second,
+            a.first to a.second - 1,
+        ]) if (g.room[b] != g.room[a] && (a to b) !in g.doors)
+        walls += [a, b].sortedWith(compareBy({ it.first }, { it.second })).let { it[0] to it[1] }
+    for ((a, b) in walls) pieces.add(
+        if (a.second == b.second) [b.first - 0.05, a.second.toDouble(), 0.0, 0.1, 1.0, 1.5]
+        else [a.first.toDouble(), b.second - 0.05, 0.0, 1.0, 0.1, 1.5],
+    )
+    val mesh =
+        pieces
+            .map { p -> boxMesh(p[3], p[4], p[5]).translated(p[0] + p[3] / 2, p[1] + p[4] / 2, p[2] + p[5] / 2) }
+            .reduce { m, n -> m + n }
+    c.file("blockout.obj").writeText(mesh.toObj("blockout"))
+    val area = g.rooms.values.sumOf { it[2] * it[3] }
+    // With Manifold installed, the pieces are also joined into one solid and measured.
+    val solid =
+        if (!afield.geometry.solid.manifold.ManifoldLibrary.isAvailable) null
+        else
+            afield.geometry.solid.manifold.Solid.scope {
+                val joined = afield.geometry.solid.manifold.Solid.union(
+                    pieces.map { p ->
+                        afield.geometry.solid.manifold.Solid.cube(p[3], p[4], p[5]).translated(p[0], p[1], p[2])
+                    },
+                )
+                mapOf("status" to joined.status.toString(), "volume" to joined.volume)
+            }
+    val summary =
+        "${g.rooms.size} rooms, $area cells of floor, ${walls.size} wall pieces, ${g.doors.size / 2} door${if (g.doors.size == 2) "" else "s"}" +
+            (solid?.let { ", joined into one solid of volume ${(it["volume"] as Number).f1} (${it["status"]})" }
+                ?: "; install Manifold to check it as one solid")
+    StudyBuildProduct(
+        ["blockout.obj"],
+        mapOf(
+            "rooms" to g.rooms.size,
+            "floorCells" to area,
+            "wallPieces" to walls.size,
+            "solid" to solid,
+            "summary" to summary,
+        ),
+    )
+}
 
 // The shortest walk on the grid from one cell to another, or null.
 fun rough(g: Grid, from: Cell, to: Cell): List<Cell>? {
@@ -486,59 +486,59 @@ val traversal = StudyBuildStage(
         }
     },
 ) { c ->
-        val g = Grid(c.inputs.getValue("level"))
-        val points = mapOf("spawn" to g.spawn) + g.loot.mapValues { it.value.first }
-        val paths = mutableMapOf<String, Map<String, Any?>>()
-        val measures = linkedMapOf<String, Map<String, Any?>>()
-        for ((id, target) in g.loot.toSortedMap()) {
-            val (cell, budget) = target
-            val walk = rough(g, g.spawn, cell)
-            if (walk == null) {
-                measures[id] = mapOf("reachable" to false, "budget" to budget)
-                continue
-            }
-            val tight = relaxed(g, walk)
-            fun r1(x: Double) = (x * 10).roundToInt() / 10.0
-            // The route-shape measure: a relaxed path should be no longer, and turn no more, than the walk it came
-            // from.
-            val shape = when {
-                length(tight) > length(walk) + 1e-9 -> "Its relaxed path is longer than its rough walk."
-                turn(tight) > turn(walk) + 1e-9 -> "Its relaxed path turns more than its rough walk."
-                else -> null
-            }
-            measures[id] = mapOf(
-                "reachable" to true,
-                "steps" to walk.size - 1,
-                "relaxed" to r1(length(tight)),
-                "budget" to budget,
-                "withinBudget" to (length(tight) <= budget),
-                "turn" to turn(tight).roundToInt(),
-                "roughTurn" to turn(walk).roundToInt(),
-                "doors" to walk.zipWithNext().count { (a, b) -> g.room[a] != g.room[b] },
-                "seenBy" to points.count { (other, p) -> other != id && clear(g, p, cell) },
-                "shape" to shape,
-            )
-            paths[id] = mapOf(
-                "rough" to walk.map { [it.first, it.second] },
-                "relaxed" to tight.map { [it.first, it.second] },
-            )
+    val g = Grid(c.inputs.getValue("level"))
+    val points = mapOf("spawn" to g.spawn) + g.loot.mapValues { it.value.first }
+    val paths = mutableMapOf<String, Map<String, Any?>>()
+    val measures = linkedMapOf<String, Map<String, Any?>>()
+    for ((id, target) in g.loot.toSortedMap()) {
+        val (cell, budget) = target
+        val walk = rough(g, g.spawn, cell)
+        if (walk == null) {
+            measures[id] = mapOf("reachable" to false, "budget" to budget)
+            continue
         }
-        val outOfReach =
-            measures
-                .filter { it.value["withinBudget"] != true }
-                .map { (id, m) ->
-                    if (m["reachable"] != true) "$id (no path)" else "$id (${m["relaxed"]} > ${m["budget"]})"
-                }
-        c.file("traversal.json").writeText(json.writeValueAsString(mapOf("loot" to measures, "paths" to paths)))
-        StudyBuildProduct(
-            ["traversal.json"],
-            mapOf(
-                "loot" to measures,
-                "outOfReach" to outOfReach,
-                "sightlines" to measures.values.sumOf { (it["seenBy"] as? Int) ?: 0 },
-            ),
+        val tight = relaxed(g, walk)
+        fun r1(x: Double) = (x * 10).roundToInt() / 10.0
+        // The route-shape measure: a relaxed path should be no longer, and turn no more, than the walk it came
+        // from.
+        val shape = when {
+            length(tight) > length(walk) + 1e-9 -> "Its relaxed path is longer than its rough walk."
+            turn(tight) > turn(walk) + 1e-9 -> "Its relaxed path turns more than its rough walk."
+            else -> null
+        }
+        measures[id] = mapOf(
+            "reachable" to true,
+            "steps" to walk.size - 1,
+            "relaxed" to r1(length(tight)),
+            "budget" to budget,
+            "withinBudget" to (length(tight) <= budget),
+            "turn" to turn(tight).roundToInt(),
+            "roughTurn" to turn(walk).roundToInt(),
+            "doors" to walk.zipWithNext().count { (a, b) -> g.room[a] != g.room[b] },
+            "seenBy" to points.count { (other, p) -> other != id && clear(g, p, cell) },
+            "shape" to shape,
+        )
+        paths[id] = mapOf(
+            "rough" to walk.map { [it.first, it.second] },
+            "relaxed" to tight.map { [it.first, it.second] },
         )
     }
+    val outOfReach =
+        measures
+            .filter { it.value["withinBudget"] != true }
+            .map { (id, m) ->
+                if (m["reachable"] != true) "$id (no path)" else "$id (${m["relaxed"]} > ${m["budget"]})"
+            }
+    c.file("traversal.json").writeText(json.writeValueAsString(mapOf("loot" to measures, "paths" to paths)))
+    StudyBuildProduct(
+        ["traversal.json"],
+        mapOf(
+            "loot" to measures,
+            "outOfReach" to outOfReach,
+            "sightlines" to measures.values.sumOf { (it["seenBy"] as? Int) ?: 0 },
+        ),
+    )
+}
 
 // Placement waits until every loot point can be reached within its path budget.
 val reachable =
@@ -567,22 +567,22 @@ val placement = StudyBuildStage(
         ]
     },
 ) { c ->
-        val measured =
-            json.readValue<Map<String, Any?>>(c.dependencyFile("traversal", "traversal.json"))["loot"]
-                as Map<String, Map<String, Any?>>
-        // The rule's input: each loot point with its relaxed path length and the doors on the way.
-        val input = measured.toSortedMap().entries.joinToString(", ") { (id, m) -> "$id ${m["relaxed"]} ${m["doors"]}" }
-        val place = compiledRules.getOrPut(c.inputs.getValue("rule")) {
-            QualifiedSource.evaluateKotlin(c.inputs.getValue("rule")) as (String) -> Map<String, String>
-        }
-        val placed = place(input)
-        c.file("rule-input.txt").writeText(input)
-        c.file("placement.json").writeText(json.writeValueAsString(placed))
-        StudyBuildProduct(
-            ["rule-input.txt", "placement.json"],
-            mapOf("placed" to placed, "encounters" to placed.values.count { "guarded" in it }),
-        )
+    val measured =
+        json.readValue<Map<String, Any?>>(c.dependencyFile("traversal", "traversal.json"))["loot"]
+            as Map<String, Map<String, Any?>>
+    // The rule's input: each loot point with its relaxed path length and the doors on the way.
+    val input = measured.toSortedMap().entries.joinToString(", ") { (id, m) -> "$id ${m["relaxed"]} ${m["doors"]}" }
+    val place = compiledRules.getOrPut(c.inputs.getValue("rule")) {
+        QualifiedSource.evaluateKotlin(c.inputs.getValue("rule")) as (String) -> Map<String, String>
     }
+    val placed = place(input)
+    c.file("rule-input.txt").writeText(input)
+    c.file("placement.json").writeText(json.writeValueAsString(placed))
+    StudyBuildProduct(
+        ["rule-input.txt", "placement.json"],
+        mapOf("placed" to placed, "encounters" to placed.values.count { "guarded" in it }),
+    )
+}
 
 val stages = [blockout, traversal, placement]
 val gates = [reachable]
@@ -634,7 +634,7 @@ go {
 <!-- field-box id="staged_corpus" index="3" -->
 
 ```edn [field-box id="staged_corpus" role="properties"]
-{"id" "staged_corpus" "index" 3 "name" "Corpus" "parents" ["root" "staged_builds"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "staged_builds"} "name" "Corpus" "_tombstone" false "frame" #afield/rect [1440.0 520.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "staged_corpus_code_.kt" "lines" 146 "characters" 6746 "sha256" "53946ca56e5fc4622f3a47f2f0a1d00d258bb8e569548e976267cb175df76775"}]}
+{"id" "staged_corpus" "index" 3 "name" "Corpus" "parents" ["root" "staged_builds"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "staged_builds"} "name" "Corpus" "_tombstone" false "frame" #afield/rect [1440.0 520.0 300.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "staged_corpus_code_.kt" "lines" 146 "characters" 6723 "sha256" "0a5b6b92c8d6b38acd8169cfa0af3b47adacaf7cb461ed829b864100e4274e88"}]}
 ```
 
 ```kotlin [field-property box="staged_corpus" name="code" path="staged_corpus_code_.kt"]
@@ -735,7 +735,7 @@ fun runCorpus(checkActive: () -> Unit) {
             if (seed == 0) "the level as it is"
             else "seed $seed · ${(json.readValue<Map<String, Any?>>(source)["rooms"] as Map<*, *>).size} rooms",
             "within budget ${measures.values.count { it["withinBudget"] == true }} of ${measures.size} · sightlines ${walk?.facts?.get("sightlines") ?: "–"}",
-            "longest relaxed/rough ${worst?.let { "%.2f".format(it) } ?: "–"}",
+            "longest relaxed/rough ${worst?.f2 ?: "–"}",
             when {
                 placed?.status == StudyBuildStatus.SUCCEEDED ->
                     "placed: " +

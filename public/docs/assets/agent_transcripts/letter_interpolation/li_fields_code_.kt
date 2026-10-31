@@ -61,13 +61,11 @@ fun align(contour: List<Vec3>): List<Vec3> {
 
 // The same seed in both calls. Smile's Xavier initialisation is drawn from a generator
 // that `flowMatch` reseeds, so this really is the same starting point twice.
-fun train(target: List<Vec3>) =
-    flowMatch(
-            target,
-            source,
-            FlowMatchOptions(steps = 9000, coupling = FlowCoupling.PAIRED, seed = 7, hidden = intArrayOf(64, 64)),
-        )
-        .export()
+fun train(target: List<Vec3>) = flowMatch(
+    target,
+    source,
+    FlowMatchOptions(steps = 9000, coupling = FlowCoupling.PAIRED, seed = 7, hidden = intArrayOf(64, 64)),
+).export()
 
 fieldA = train(align(glyph(LETTERS.first)))
 fieldB = train(align(glyph(LETTERS.second)))

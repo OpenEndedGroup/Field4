@@ -110,3 +110,5 @@ A.c.dispose();await run(1100);assert.ok(B.tt.driving());assert.ok(!F.tt.driving(
 y0=yaw(B.pose);await run(992);assert.ok(Math.abs((y0-yaw(B.pose))/deg-12)<.8);
 for(const x of [B,F])x.c.dispose();assert.ok(buses.every(b=>b.closed));
 console.log('PASS: link groups; turntable rate, clamp, hold, nudge, resume, election, takeover, visibility, settle and validation');
+
+await import("./test_three_camera_follow.mjs");

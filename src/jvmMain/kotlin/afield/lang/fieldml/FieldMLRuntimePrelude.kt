@@ -394,6 +394,36 @@ object FieldMLRuntimePrelude {
                     )
                 }
             },
+            // A `suspend` member: `hostLaunch "run" () renderer (fun result -> …)`. The last
+            // argument is the continuation, written out, and it runs when the member returns —
+            // immediately if it never suspended. FieldMLHostBridge.launchSuspendMember argues why
+            // this is sound. A failure before the first suspension is thrown here, in the calling
+            // box; a later one is printed, because there is no FieldML frame left to throw into.
+            "hostLaunch" to native4("hostLaunch") { name, arguments, target, then ->
+                val method = name.asString("method name")
+                var starting = true
+                var early: Throwable? = null
+                val job = FieldMLHostBridge.launchSuspendMember(
+                    method,
+                    target.asHost("target"),
+                    FieldMLHostBridge.spreadArguments(arguments),
+                    afield.runtime.lifecycle.Runloop.runLoop.main,
+                ) { result ->
+                    result.fold(
+                        { applyFieldMLFunction(then, hostToFieldMLValue(it)) },
+                        {
+                            if (starting) {
+                                early = it
+                            } else if (it !is kotlinx.coroutines.CancellationException) {
+                                System.err.println("hostLaunch \"$method\" failed: $it")
+                            }
+                        },
+                    )
+                }
+                starting = false
+                early?.let { throw it }
+                FieldMLValue.HostValue(job)
+            },
             "hostCall0" to native2("hostCall0") { name, target ->
                 FieldMLHostBridge.callMethod(name.asString("method name"), target.asHost("target"), emptyList())
             },
@@ -682,7 +712,7 @@ object FieldMLRuntimePrelude {
      */
     private fun missingPropMessage(target: Box, name: String): String =
         "No value for inherited property '$name' in '${target.name.ifBlank { target.id }}' or any of its " +
-            "${target.parents.size} parent boxes. Has the box that writes it run yet? " +
+            "${target.parents.count { !afield.document.context.ContextResolution.isStructuralAncestor(it) }} parent boxes. Has the box that writes it run yet? " +
             "`propOr \"$name\" fallback` reads it without failing."
 
     /**
@@ -965,7 +995,10 @@ object FieldMLRuntimePrelude {
                 }
                 usedInput = true
             } else {
-                out += parameter.defaultValue ?: return null
+                // A default this parser cannot evaluate (an expression, a constructor call) rules the
+                // candidate out, but a literal `= null` is a value like any other and is passed through.
+                if (!parameter.defaultIsLiteral) return null
+                out += parameter.defaultValue
             }
         }
         if (remaining.isNotEmpty()) return null
@@ -1047,6 +1080,8 @@ object FieldMLRuntimePrelude {
                 isVararg = isVararg,
                 hasDefault = defaultSource != null,
                 defaultValue = defaultSource?.let(::parseHostDefaultLiteral),
+                defaultIsLiteral = defaultSource != null &&
+                    (defaultSource.removeSuffix(",").trim() == "null" || parseHostDefaultLiteral(defaultSource) != null),
             )
         }
 
@@ -1155,6 +1190,7 @@ object FieldMLRuntimePrelude {
         val isVararg: Boolean,
         val hasDefault: Boolean,
         val defaultValue: Any?,
+        val defaultIsLiteral: Boolean,
     )
 
     private object HostInputPlaceholder {

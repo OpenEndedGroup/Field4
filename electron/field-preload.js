@@ -1,4 +1,4 @@
-const { contextBridge, ipcRenderer, sharedTexture } = require("electron");
+const { contextBridge, ipcRenderer, sharedTexture, webUtils } = require("electron");
 
 const linuxDrawTimes = new Map();
 const frameKey = m => `${m.viewId}:${m.generation}:${m.slot}:${m.seq}`;
@@ -52,6 +52,8 @@ ipcRenderer.on("field4-presentation-project", (_, paths) => {
 });
 
 contextBridge.exposeInMainWorld("fieldElectron", {
+  chooseKitFolder() { return ipcRenderer.invoke("field4-kit-folder"); },
+  filePath(file) { return webUtils.getPathForFile(file); },
   presentGuide(state) {
     ipcRenderer.send("field-presentation-native-state", state);
   },

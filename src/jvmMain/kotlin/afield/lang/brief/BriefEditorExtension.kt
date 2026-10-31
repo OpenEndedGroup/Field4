@@ -14,8 +14,16 @@ import java.io.File
 
 /** Access to `brief.js` and the vocabulary it declares. */
 object BriefEditorExtension {
+    /** The language id the editor registers under, which is [Brief.ID]. */
     const val id: String = Brief.ID
 
+    /**
+     * The text of `brief.js`, from the classpath if it is there and from the source tree otherwise.
+     *
+     * The on-disk fallback is relative to the working directory, so it answers for a run whose
+     * classpath has no resources; it throws rather than returning an empty extension when neither
+     * is reachable.
+     */
     fun javascript(): String {
         BriefEditorExtension::class.java.getResourceAsStream("/brief.js")?.use { stream ->
             return stream.readBytes().toString(Charsets.UTF_8)
@@ -46,4 +54,5 @@ object BriefEditorExtension {
     }
 }
 
+/** [BriefEditorExtension.javascript] as a top-level function, for a caller holding no receiver. */
 fun briefEditorExtensionJavascript(): String = BriefEditorExtension.javascript()

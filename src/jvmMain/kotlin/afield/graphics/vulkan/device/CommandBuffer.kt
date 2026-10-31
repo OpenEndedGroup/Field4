@@ -18,14 +18,23 @@ import org.lwjgl.vulkan.VK13.*
 class CommandBuffer(commandPool: CommandPool, primary: Boolean, oneTimeSubmit: Boolean) {
     private val commandPool: CommandPool
     private val oneTimeSubmit: Boolean
+    /** The raw `VkCommandBuffer` handle, for the LWJGL `vkCmd…` calls Field has no wrapper for. */
     var vkCommandBuffer: VkCommandBuffer
     private val primary: Boolean
 
-    // True while recording commands inside a render pass instance / dynamic rendering.
-    // This is used to avoid recording transfer ops (vkCmdCopyBuffer, etc.) in illegal contexts.
+    /**
+     * True while commands are being recorded inside a render pass instance or dynamic rendering.
+     * Vulkan forbids buffer and image barriers and transfer commands there, so code that needs one
+     * tests this and defers it; whoever ends the rendering clears the flag before flushing.
+     */
     var inRenderPassInstance: Boolean = false
     private val deferredGraphicsHostReadBuffers = LinkedHashSet<VulkanBuffer>()
 
+    /**
+     * The dynamic-rendering state a secondary buffer continues: the colour attachment formats, the
+     * depth and stencil formats, the multiview mask and the sample count. These have to match the
+     * `vkCmdBeginRendering` the primary buffer issued.
+     */
     data class DynamicRenderingInheritance(
         val colorFormats: IntArray = intArrayOf(),
         val depthFormat: Int = VK10.VK_FORMAT_UNDEFINED,
@@ -34,6 +43,11 @@ class CommandBuffer(commandPool: CommandPool, primary: Boolean, oneTimeSubmit: B
         val samples: Int = VK10.VK_SAMPLE_COUNT_1_BIT
     )
 
+    /**
+     * What a secondary buffer declares about the render pass it records into — either a render pass
+     * handle with its subpass and framebuffer, or `dynamicRendering` for the dynamic-rendering path.
+     * Either one makes [beginRecording] set the render-pass-continue flag and [inRenderPassInstance].
+     */
     data class SecondaryInheritance(
         val renderPass: Long = 0,
         val subPass: Int = 0,
@@ -63,6 +77,11 @@ class CommandBuffer(commandPool: CommandPool, primary: Boolean, oneTimeSubmit: B
         }
     }
 
+    /**
+     * Start recording, discarding anything a previous recording deferred. A secondary buffer has to
+     * pass `inheritanceInfo` and this throws without it; a primary buffer ignores the argument.
+     * One-time-submit is set from the flag the buffer was created with.
+     */
     @JvmOverloads
     fun beginRecording(inheritanceInfo: SecondaryInheritance? = null) {
         inRenderPassInstance = false
@@ -113,6 +132,7 @@ class CommandBuffer(commandPool: CommandPool, primary: Boolean, oneTimeSubmit: B
         }
     }
 
+    /** Return the buffer to the [CommandPool] it was allocated from. */
     fun cleanup() {
         lblock("info,vulkan", "freeing command buffer") {
             VK10.vkFreeCommandBuffers(
@@ -122,6 +142,12 @@ class CommandBuffer(commandPool: CommandPool, primary: Boolean, oneTimeSubmit: B
         }
     }
 
+    /**
+     * Finish recording. Any barrier left by [deferGraphicsHostReadBarrier] is emitted first, unless
+     * recording is still inside a render pass instance — where emitting one is illegal, so it is
+     * discarded instead. A secondary buffer that records a deferred barrier therefore needs the
+     * primary to flush after `vkCmdEndRendering`.
+     */
     fun endRecording() {
         if (!inRenderPassInstance) {
             flushDeferredGraphicsHostReadBarriers()
@@ -131,16 +157,32 @@ class CommandBuffer(commandPool: CommandPool, primary: Boolean, oneTimeSubmit: B
         deferredGraphicsHostReadBuffers.clear()
     }
 
+    /**
+     * Clear the buffer for re-recording, releasing the memory it held back to its pool rather than
+     * keeping it for the next recording. Any deferred barrier is dropped.
+     */
     fun reset() {
         VK10.vkResetCommandBuffer(vkCommandBuffer, VK10.VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT)
         inRenderPassInstance = false
         deferredGraphicsHostReadBuffers.clear()
     }
 
+    /**
+     * Ask for a graphics-write to host-read barrier on `buffer`, to be recorded once the render
+     * pass instance ends. This is how a shader's feedback buffer is made readable from Kotlin when
+     * the only place that knows about the read is inside the rendering, where a buffer barrier is
+     * not allowed. Repeated requests for the same buffer collapse into one.
+     */
     fun deferGraphicsHostReadBarrier(buffer: VulkanBuffer) {
         deferredGraphicsHostReadBuffers += buffer
     }
 
+    /**
+     * Record every barrier [deferGraphicsHostReadBarrier] asked for as a single
+     * `vkCmdPipelineBarrier2`, covering each buffer's whole requested size, and empty the list.
+     * Call it after `vkCmdEndRendering` and after clearing [inRenderPassInstance]; it does nothing
+     * when nothing was deferred.
+     */
     fun flushDeferredGraphicsHostReadBarriers() {
         if (deferredGraphicsHostReadBuffers.isEmpty()) return
 

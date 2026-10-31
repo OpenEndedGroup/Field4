@@ -1,5 +1,6 @@
 package afield.tools.automation
 
+import afield.app.protocol.Execute
 import afield.app.protocol.Rect
 import afield.app.server.SessionInformation
 import afield.app.server.thisSessionInfo
@@ -238,6 +239,32 @@ class MacroRecordReplayRoundTripTest {
         assertTrue(one.contains("One") && one.contains("x: 1.0"), yaml)
         val two = yaml.substringAfter("box: \"box-2\"")
         assertTrue(two.contains("two") && two.contains("x: 5.0"), yaml)
+    }
+
+    /**
+     * A recorded launch names the box rather than copying its code, so replaying it later
+     * launches the box as it is then (MacroReplayCodeTest covers the replay side). A fragment
+     * keeps its text as `recordedCode`, which the replay looks for in the box.
+     */
+    @Test
+    fun aRecordedLaunchNamesTheBoxAndAFragmentKeepsItsTextAsAReference() {
+        val session = document("launching")
+        thisSessionInfo.set(session)
+        OperationTranscript.markStart("launches")
+        val code = "val n = 3\nprintln(n)"
+        val target = canvasCreate(session, "box-l", "Launcher", Rect(0.0, 0.0, 100.0, 50.0), code = code)
+        OperationTranscript.recordLaunch(target, Execute("box-l", "launch", 0, code, false))
+        OperationTranscript.recordExecuteFragment(target, Execute("box-l", "fragment", 1, "println(n)", true))
+        OperationTranscript.recordLaunch(target, Execute("box-l", "launch", 0, "println(\"sent with the launch\")", false))
+        val yaml = File(OperationTranscript.markEndAndSave("launches").path).readText()
+
+        val ops = yaml.split(Regex("""(?m)^  - """)).drop(1)
+        val launches = ops.filter { it.startsWith("launch:") }
+        assertEquals(2, launches.size, yaml)
+        assertFalse(launches[0].contains("code:") || launches[0].contains("val n = 3"), "the box's own code is not copied into its launch\n$yaml")
+        assertTrue(launches[1].contains("recordedCode:") && launches[1].contains("sent with the launch"), "code that was not the box's is kept as a reference\n$yaml")
+        val execute = ops.single { it.startsWith("execute:") }
+        assertTrue(execute.contains("recordedCode:") && execute.contains("println(n)") && !Regex("""(?m)^\s+code:""").containsMatchIn(execute), yaml)
     }
 
     @Test

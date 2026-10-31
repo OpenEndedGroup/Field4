@@ -1,9 +1,9 @@
 # Moving around the canvas
 
-A Field document is usually bigger than the window. You can pan and zoom with the mouse or trackpad; split the canvas so headings or labels stay in view while the rest
-scrolls; step from box to box with the keyboard, by tapping `Cmd` twice and holding it; bring the
-selection into view with `alt/option-F`; hide layers you are not working on; or jump to one of nine views you have saved. All of them change
-what you are looking at and never the document itself.
+A Field document can grow well beyond the window. Pan and zoom to explore it, or split the canvas
+to keep headings and labels in view while the rest scrolls. You can also step between boxes with
+the keyboard, bring a selection into view, hide layers, and save views you want to return to.
+Let's start with moving around.
 
 ## Panning and zooming
 
@@ -41,12 +41,14 @@ ui.pause(500)
 val split = ui.eval("const s = window.canvasPanesState(); return s.rows + 'x' + s.columns").toString()
 check("2x2" in split) { "the grip did not split the canvas into four panes: " + split }
 // Scroll the body (the bottom-right pane) right and down, as a trackpad would.
-ui.eval("""
+ui.eval(
+    """
   const pane = document.querySelectorAll(".field-pane")[3];
   const r = pane.getBoundingClientRect();
   pane.dispatchEvent(new WheelEvent("wheel", { deltaX: 380, deltaY: 200, clientX: r.right - 40, clientY: r.bottom - 40, bubbles: true, cancelable: true }));
   return true;
-""")
+""",
+)
 ui.pause(900)
 ```
 
@@ -60,8 +62,8 @@ To split it:
   split canvas for more panes: up to three across and three down. The palette's preview for each of
   them is a small picture of what the canvas will look like, with the new dividers in cyan.
 
-Splitting changes nothing on screen until you scroll. Then panes in the same row scroll up and down
-together, panes in the same column scroll side to side together, and zooming zooms every pane.
+Once you've split the canvas, try scrolling a pane. Panes in the same row move up and down
+together, and panes in the same column move side to side together. Zoom applies to every pane.
 
 Each pane shows its own part of the document, on its side of the dividers: a box belongs to the pane
 that holds its top-left corner. Drag a box across a divider and it moves into the other pane, staying
@@ -75,11 +77,9 @@ nothing more of the document for that pane to show.
 - **Drag a divider to the edge of the window**, or double-click it, to remove it.
 - **Remove Canvas Split** in the command palette removes them all. Every box stays where it is.
 
-Connections between boxes in different panes are drawn straight across the dividers, and follow
-the boxes as the panes scroll. Here `keys 4` is selected, so its connections show: its parents are
-its instrument label and its bar heading, and its children are `mix` in the corner and two pattern
-boxes beside it. Then the body scrolls, and each connection stays attached to the box at its other
-end in whichever pane that box is in:
+Connections cross the dividers and follow their boxes as the panes scroll. Here `keys 4` is
+selected, showing connections to its instrument label, bar heading, `mix` and two neighbouring
+pattern boxes. Watch the lines follow their endpoints as the body scrolls:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x640" clip="0,0,1100,640" video="assets/moving_around_the_canvas/split_canvas_connections.mp4" fps="20" transcript="../../dev_docs/agents/transcripts/docs_capture/split_canvas_connections.yaml" padding="0" wait="0" timeout="300" hide-toasts=true embed=true hidden=true name="split-canvas-connections" alt="A sequencer-like document split into four panes by a black cross. The box keys 4 in the body is selected, with connections to keys in the label column, bar 4 in the heading row, mix in the corner and two pattern boxes beside it. The body scrolls right and down and then back: bar headings slide sideways and labels slide up with it, and the curved connections bend and settle as their ends move apart and together across the dividers."}
 // Split at the corner between the labels and the headings, the way a reader does: drag the grip.
@@ -101,16 +101,24 @@ ui.pause(1500)
 // Scroll the body (the bottom-right pane) in small steps, as a trackpad does, then back again,
 // pausing each time for the connections to settle.
 fun scrollBody(dx: Double, dy: Double) {
-    ui.eval("""
+    ui.eval(
+        """
       const pane = document.querySelectorAll(".field-pane")[3];
       const r = pane.getBoundingClientRect();
       pane.dispatchEvent(new WheelEvent("wheel", { deltaX: $dx, deltaY: $dy, clientX: r.right - 60, clientY: r.bottom - 60, bubbles: true, cancelable: true }));
       return true;
-    """)
+    """,
+    )
 }
-repeat(40) { scrollBody(9.0, 5.0); ui.pause(30) }
+repeat(40) {
+    scrollBody(9.0, 5.0)
+    ui.pause(30)
+}
 ui.pause(2500)
-repeat(40) { scrollBody(-6.0, -4.0); ui.pause(30) }
+repeat(40) {
+    scrollBody(-6.0, -4.0)
+    ui.pause(30)
+}
 ui.pause(2500)
 ```
 
@@ -143,12 +151,14 @@ val split = ui.eval("const s = window.canvasPanesState(); return s.rows + 'x' + 
 check("2x2" in split) { "the grip did not split the canvas into four panes: " + split }
 
 fun scrollPane(index: Int, dx: Double, dy: Double) {
-    ui.eval("""
+    ui.eval(
+        """
       const pane = document.querySelectorAll(".field-pane")[$index];
       const r = pane.getBoundingClientRect();
       pane.dispatchEvent(new WheelEvent("wheel", { deltaX: $dx, deltaY: $dy, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, bubbles: true, cancelable: true }));
       return true;
-    """)
+    """,
+    )
 }
 fun palette(command: String) {
     // The pane under the pointer is the one a pane command acts on: the labels, bottom left.
@@ -168,10 +178,16 @@ val free = ui.eval("return String(window.canvasPanesState().panes[2].freeY)").to
 check("true" in free) { "the labels pane was not unlinked: " + free }
 // The body scrolls down; the labels stay where they are.
 ui.moveMouse(700.0, 420.0, 6)
-repeat(30) { scrollPane(3, 0.0, 6.0); ui.pause(30) }
+repeat(30) {
+    scrollPane(3, 0.0, 6.0)
+    ui.pause(30)
+}
 ui.pause(900)
 // The labels scroll on their own.
-repeat(24) { scrollPane(2, 0.0, 5.0); ui.pause(30) }
+repeat(24) {
+    scrollPane(2, 0.0, 5.0)
+    ui.pause(30)
+}
 ui.pause(900)
 
 palette("relink pane")
@@ -232,38 +248,54 @@ A direction with no box in it is absent from the overlay, and pressing that arro
 // uid only in that case, and the F chips are drawn from those uids.
 ui.click("spatial_nav_north")
 ui.pause(250)
-ui.down("Meta"); ui.down("Shift"); ui.press("F2"); ui.up("Shift"); ui.up("Meta")
+ui.down("Meta")
+ui.down("Shift")
+ui.press("F2")
+ui.up("Shift")
+ui.up("Meta")
 ui.pause(250)
 ui.click("spatial_nav_east")
 ui.pause(250)
-ui.down("Meta"); ui.down("Shift"); ui.press("F5"); ui.up("Shift"); ui.up("Meta")
+ui.down("Meta")
+ui.down("Shift")
+ui.press("F5")
+ui.up("Shift")
+ui.up("Meta")
 ui.pause(250)
 
-// Stand on the anchor, then wait out the viewport animation. ensureBoxVisibleForNavigation runs a
-// 420ms animateViewportTranslation, and a shot fired inside that window catches the overlay at one
-// pan offset and the boxes at another. That is what made the previous capture of this page wrong.
+/*
+Stand on the anchor, then wait out the viewport animation. ensureBoxVisibleForNavigation runs a
+420ms animateViewportTranslation, and a shot fired inside that window catches the overlay at one
+pan offset and the boxes at another. That is what made the previous capture of this page wrong.
+*/
 ui.click("spatial_nav_center")
 ui.pause(1400)
 
 // The trigger: Meta down, up, down inside 360ms, with no other keydown between the taps and no
 // other modifier held. Meta stays down from here on, because its keyup tears the mode down again.
-ui.down("Meta"); ui.up("Meta"); ui.down("Meta")
+ui.down("Meta")
+ui.up("Meta")
+ui.down("Meta")
 ui.pause(400)
 
-// Wait for the overlay to agree with the canvas, then frame the shot. Every highlight is its box's
-// rect inflated by spatialNavPadding, so any other offset means the two disagree about where the
-// canvas is -- which is exactly the defect this figure replaces: ensureBoxVisibleForNavigation
-// animates the viewport for 420ms and the old capture fired inside that window. Polling rather
-// than sleeping a guessed interval is the point, since the pass below both measures the offset and,
-// only once it is zero, parks a zero-ink crop marker on the union of the overlay for
-// clip-selector to frame. That union is the one collectGuideScreenshotRects builds for the box
-// capture path, which cannot be used here because that path pans and drops the selection first.
+/*
+Wait for the overlay to agree with the canvas, then frame the shot. Every highlight is its box's
+rect inflated by spatialNavPadding, so any other offset means the two disagree about where the
+canvas is -- which is exactly the defect this figure replaces: ensureBoxVisibleForNavigation
+animates the viewport for 420ms and the old capture fired inside that window. Polling rather
+than sleeping a guessed interval is the point, since the pass below both measures the offset and,
+only once it is zero, parks a zero-ink crop marker on the union of the overlay for
+clip-selector to frame. That union is the one collectGuideScreenshotRects builds for the box
+capture path, which cannot be used here because that path pans and drops the selection first.
+*/
 var report = ""
 var tries = 0
 while (tries < 24 && !report.contains("overlay-settled")) {
     if (tries > 0) ui.pause(250)
     tries++
-    report = (ui.eval("""
+    report =
+        (ui.eval(
+                """
   const pad = 12;
   const boxes = Array.from(document.getElementsByClassName("box"));
   const uidOf = (el) => el.uid || el.getAttribute("uid") || el.getAttribute("data-uid") || "";
@@ -321,15 +353,19 @@ while (tries < 24 && !report.contains("overlay-settled")) {
   frame.setAttribute("style", "position:fixed;pointer-events:none;background:transparent;border:0;" +
     "left:" + x0 + "px;top:" + y0 + "px;width:" + (x1 - x0) + "px;height:" + (y1 - y0) + "px;");
   return "overlay-settled:" + summary;
-""") ?: "").toString()
+""",
+            ) ?: "")
+            .toString()
 }
 
-// Worth knowing how this reports: the runner appends its own ui.shotClip after this script, and a
-// thrown error here does not stop it -- the REPL runs the next top-level statement anyway, and the
-// error lands in `data.output` of the macro reply, which the runner's error extractor does not read
-// (it only scans `events`). So a give-up here does not fail the build by itself. What it does do is
-// leave the crop marker absent, and shotClip with a missing selector writes nothing and fails the
-// drive op, so the build reports the selector instead of committing a full-window PNG.
+/*
+Worth knowing how this reports: the runner appends its own ui.shotClip after this script, and a
+thrown error here does not stop it -- the REPL runs the next top-level statement anyway, and the
+error lands in `data.output` of the macro reply, which the runner's error extractor does not read
+(it only scans `events`). So a give-up here does not fail the build by itself. What it does do is
+leave the crop marker absent, and shotClip with a missing selector writes nothing and fails the
+drive op, so the build reports the selector instead of committing a full-window PNG.
+*/
 if (!report.contains("overlay-settled")) {
     error("spatial navigation overlay never settled after " + tries + " tries: " + report)
 }
@@ -350,7 +386,7 @@ a wide editor is not worth squinting at.
 
 ## Bookmarks
 
-Arrows reach neighbours. For everywhere else there are nine numbered slots.
+To return to a part of the document you visit often, save its view in one of nine numbered slots.
 
 - Save the current view: `ctrl/command-shift-F1` through `ctrl/command-shift-F9`
 - Restore a saved view: `shift-F1` through `shift-F9`
@@ -378,16 +414,27 @@ with a row for each of the nine slots, so you can see what a slot holds before y
 // Slot 1: `sketch` selected with its editor open. Slot 2: the same for `render`.
 ui.openEditor("bm_sketch")
 ui.pause(900)
-ui.down("Meta"); ui.down("Shift"); ui.press("F1"); ui.up("Shift"); ui.up("Meta")
+ui.down("Meta")
+ui.down("Shift")
+ui.press("F1")
+ui.up("Shift")
+ui.up("Meta")
 ui.pause(300)
 ui.openEditor("bm_render")
 ui.pause(900)
-ui.down("Meta"); ui.down("Shift"); ui.press("F2"); ui.up("Shift"); ui.up("Meta")
+ui.down("Meta")
+ui.down("Shift")
+ui.press("F2")
+ui.up("Shift")
+ui.up("Meta")
 ui.pause(300)
-ui.down("Alt"); ui.press("KeyB"); ui.up("Alt")
+ui.down("Alt")
+ui.press("KeyB")
+ui.up("Alt")
 ui.waitForSelector("#bookmarks-panel.is-visible", 8000.0)
 // Name the two slots through the panel's own name fields, the way a reader would.
-ui.eval("""
+ui.eval(
+    """
   const names = Array.from(document.querySelectorAll("#bookmarks-panel input[type=text]"));
   if (names.length < 2) return "only " + names.length + " saved slots";
   [["ideas", 0], ["render", 1]].forEach(([value, i]) => {
@@ -395,7 +442,8 @@ ui.eval("""
     names[i].dispatchEvent(new Event("change"));
   });
   return "named";
-""")
+""",
+)
 ui.pause(600)
 ```
 
@@ -439,7 +487,8 @@ quickest way to clear a crowded document down to the part you are working on. `a
 count. Click a layer's eye to show or hide it (shift-click to show only that one), and pick the
 active layer with its radio button. **Solo** shows only that layer and makes it active, **Show all**
 brings every layer back, and **Move selection to active layer** puts the selected boxes on the
-active layer. The last visible layer cannot be hidden. [Layers](layers.md) covers how a box names
+active layer. The last visible layer cannot be hidden. If the document has a drawing, it has a
+`drawing` row of its own, whose eye shows or hides it. [Layers](layers.md) covers how a box names
 its layers, and how each layer keeps its own layout.
 
 ## How the neighbours are chosen

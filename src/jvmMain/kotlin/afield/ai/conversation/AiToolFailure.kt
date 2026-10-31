@@ -1,6 +1,16 @@
 package afield.ai.conversation
 
 /**
+ * What a chat turn does when a tool throws. Three answers live here: which failures end the turn rather
+ * than becoming the call's output, what the model reads in place of a result, and what is written back
+ * for a call the turn ended before answering.
+ *
+ * The provider's thread has to hold an output for every call it made, so a turn that stops mid-round
+ * still writes one for each call left outstanding; without it, every later turn in that chat is refused
+ * for a function call with no output.
+ */
+
+/**
  * Whether a tool's [failure] must end the turn instead of becoming the call's output: the turn's own
  * cancellation, or a [VirtualMachineError] the JVM may not survive (OutOfMemoryError, InternalError, ...).
  * A [StackOverflowError] is not one of them: once it has unwound to the tool loop, the stack is back, so it

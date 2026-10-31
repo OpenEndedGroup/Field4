@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 8 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 8 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. renderer
@@ -47,7 +47,7 @@ Move the pointer over the renderer window and the vortex centre follows it; mous
 mouseInside are the pointer, in the same pixels as everything else.
 
 ```edn [field-box id="particles_vortex_brush" role="properties"]
-{"id" "particles_vortex_brush" "index" 1 "name" "vortex brush" "parents" ["root" "particles_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "particles_renderer"} "name" "vortex brush" "_tombstone" false "frame" #afield/rect [40.0 1120.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "particles_vortex_brush_notes_.md" "lines" 5 "characters" 282 "sha256" "5ced5ad6fef8634c00743707cf9731508eaeb91f57a06b186d77b361dca48506"} {"name" "code" "language" "kotlin" "path" "particles_vortex_brush_code_.kt" "lines" 25 "characters" 755 "sha256" "dcbe9f6e1d2fdd0b2a6e89bd02adec93786cabf07ea3b88646ed1a96b4c3c1a8"} {"name" "compute" "language" "glsl" "path" "particles_vortex_brush_compute_.glsl" "lines" 44 "characters" 1178 "sha256" "9197001c6e3002df58a3a425a9204cf4bff0432b50f52ac14ce771301c350005"}]}
+{"id" "particles_vortex_brush" "index" 1 "name" "vortex brush" "parents" ["root" "particles_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "particles_renderer"} "name" "vortex brush" "_tombstone" false "frame" #afield/rect [40.0 1120.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "particles_vortex_brush_notes_.md" "lines" 5 "characters" 282 "sha256" "5ced5ad6fef8634c00743707cf9731508eaeb91f57a06b186d77b361dca48506"} {"name" "code" "language" "kotlin" "path" "particles_vortex_brush_code_.kt" "lines" 27 "characters" 790 "sha256" "81c66b5d7baba3767819645e2ce3368393ac02008ce4ec8f8649ff2429a4a136"} {"name" "compute" "language" "glsl" "path" "particles_vortex_brush_compute_.glsl" "lines" 44 "characters" 1170 "sha256" "e3522a7fca84c76517dd0906a384a82dac5c21682735ea823d5ccfc96600604c"}]}
 ```
 
 ```markdown [field-property box="particles_vortex_brush" name="notes" path="particles_vortex_brush_notes_.md"]
@@ -78,10 +78,12 @@ showControls(sketch)
 // eight arcs around the middle; drag in the window for more
 if (sketch.isEmpty) {
     for (k in 0 until 8) {
-        sketch.paint((0..40).map { i ->
-            val a = k * PI / 4 + i / 40.0 * 2.2
-            vec(550 + cos(a) * (70 + k * 30), 380 + sin(a) * (70 + k * 30))
-        })
+        sketch.paint(
+            (0..40).map { i ->
+                val a = k * PI / 4 + i / 40.0 * 2.2
+                vec(550 + cos(a) * (70 + k * 30), 380 + sin(a) * (70 + k * 30))
+            },
+        )
     }
 }
 ```
@@ -106,8 +108,8 @@ void eachPair(Particle other, Pair pair) {
 
 void update() {
     vec2 anchor = mouseInside
-        ? mouse
-        : vec2(width * 0.5 + cos(t * 0.23) * 120.0, height * 0.5 + sin(t * 0.31) * 88.0);
+    ? mouse
+    : vec2(width * 0.5 + cos(t * 0.23) * 120.0, height * 0.5 + sin(t * 0.31) * 88.0);
 
     vec2 away = p.pos - anchor;
     float dist = length(away);
@@ -161,7 +163,7 @@ This one is a cruising school: flocking, a noise flow and a speed floor keep it 
 The world settings below are the demo's init().
 
 ```edn [field-box id="particles_boids" role="properties"]
-{"id" "particles_boids" "index" 2 "name" "boids ribbon" "parents" ["root" "particles_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "particles_renderer"} "name" "boids ribbon" "_tombstone" false "frame" #afield/rect [40.0 200.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "particles_boids_notes_.md" "lines" 85 "characters" 4943 "sha256" "186387f0bfe81dfaecb6c9334334d56e11a8392848a1fbc46ef525fc6f8af5b5"} {"name" "code" "language" "kotlin" "path" "particles_boids_code_.kt" "lines" 38 "characters" 1442 "sha256" "40aa111df0971e7c6735207103b18530596a11067f04d72abe8907852f345bc5"} {"name" "compute" "language" "glsl" "path" "particles_boids_compute_.glsl" "lines" 55 "characters" 1700 "sha256" "7fc2a3ee44febe54a8ca0373483c808fe23c42af67fb11799b617e36dc161eaf"}]}
+{"id" "particles_boids" "index" 2 "name" "boids ribbon" "parents" ["root" "particles_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "particles_renderer"} "name" "boids ribbon" "_tombstone" false "frame" #afield/rect [40.0 200.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "particles_boids_notes_.md" "lines" 85 "characters" 4943 "sha256" "186387f0bfe81dfaecb6c9334334d56e11a8392848a1fbc46ef525fc6f8af5b5"} {"name" "code" "language" "kotlin" "path" "particles_boids_code_.kt" "lines" 40 "characters" 1477 "sha256" "89c2ed280a9f1789190107607d3a151c3d4fc8d6477d0e206adba020ba707bdf"} {"name" "compute" "language" "glsl" "path" "particles_boids_compute_.glsl" "lines" 55 "characters" 1692 "sha256" "9dee72db57521ab74224621398df07de50cdf86d28956af6840a94c1285eb63d"}]}
 ```
 
 ````markdown [field-property box="particles_boids" name="notes" path="particles_boids_notes_.md"]
@@ -285,10 +287,12 @@ showControls(sketch)
 // The world starts empty; these loops are there so it isn't. Drag in the window for more.
 if (sketch.isEmpty) {
     for (k in 0 until 5) {
-        sketch.paint((0..40).map { i ->
-            val a = i / 40.0 * 2 * PI
-            vec(170 + k * 190 + cos(a) * 55, 380 + sin(a) * 150)
-        })
+        sketch.paint(
+            (0..40).map { i ->
+                val a = i / 40.0 * 2 * PI
+                vec(170 + k * 190 + cos(a) * 55, 380 + sin(a) * 150)
+            },
+        )
     }
 }
 ```
@@ -321,8 +325,8 @@ void update() {
     int neighbours = flock(82.0, 2.2, 0.82, 0.52, 125.0);
 
     float flow = noise2D(
-        p.pos.x * 0.004 + t * 0.18 + float(p.group) * 7.3,
-        p.pos.y * 0.004 - t * 0.14 + p.seed * 0.002
+    p.pos.x * 0.004 + t * 0.18 + float(p.group) * 7.3,
+    p.pos.y * 0.004 - t * 0.14 + p.seed * 0.002
     );
     float flowAngle = flow * TAU + float(p.group) * 1.4;
     vec2 along = vec2(cos(flowAngle), sin(flowAngle));
@@ -693,7 +697,7 @@ Sinusoidal motion needs no special case; oscillate() is just another force. No p
 here, so pairRadius stays 0 and eachPair never runs.
 
 ```edn [field-box id="particles_sine_garden" role="properties"]
-{"id" "particles_sine_garden" "index" 6 "name" "sine garden" "parents" ["root" "particles_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "particles_renderer"} "name" "sine garden" "_tombstone" false "frame" #afield/rect [640.0 660.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "particles_sine_garden_notes_.md" "lines" 5 "characters" 296 "sha256" "09c1ee8de95762625b480a4200819e27b200aac190640c23352727572ea4cf59"} {"name" "code" "language" "kotlin" "path" "particles_sine_garden_code_.kt" "lines" 25 "characters" 746 "sha256" "1b753245143817b2dfaa0261e36aeb882e1981c628981f67256133536cb7b29c"} {"name" "compute" "language" "glsl" "path" "particles_sine_garden_compute_.glsl" "lines" 33 "characters" 859 "sha256" "8a941292e3a07372e5861f2c6112a5c4a18a1cb5ff08814a00ee500a5a7a8bd4"}]}
+{"id" "particles_sine_garden" "index" 6 "name" "sine garden" "parents" ["root" "particles_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "particles_renderer"} "name" "sine garden" "_tombstone" false "frame" #afield/rect [640.0 660.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "particles_sine_garden_notes_.md" "lines" 5 "characters" 296 "sha256" "09c1ee8de95762625b480a4200819e27b200aac190640c23352727572ea4cf59"} {"name" "code" "language" "kotlin" "path" "particles_sine_garden_code_.kt" "lines" 27 "characters" 773 "sha256" "12779848b9b60c8081c08a131c067cfb15d383bd830b1ec664cc2cedd7373de9"} {"name" "compute" "language" "glsl" "path" "particles_sine_garden_compute_.glsl" "lines" 33 "characters" 859 "sha256" "8a941292e3a07372e5861f2c6112a5c4a18a1cb5ff08814a00ee500a5a7a8bd4"}]}
 ```
 
 ```markdown [field-property box="particles_sine_garden" name="notes" path="particles_sine_garden_notes_.md"]
@@ -723,10 +727,12 @@ showControls(sketch)
 
 // a ring and two diagonals; drag in the window for more
 if (sketch.isEmpty) {
-    sketch.paint((0..60).map { i ->
-        val a = i / 60.0 * 2 * PI
-        vec(550 + cos(a) * 160, 380 + sin(a) * 160)
-    })
+    sketch.paint(
+        (0..60).map { i ->
+            val a = i / 60.0 * 2 * PI
+            vec(550 + cos(a) * 160, 380 + sin(a) * 160)
+        },
+    )
     sketch.paint(250.0, 150.0, 850.0, 610.0)
     sketch.paint(850.0, 150.0, 250.0, 610.0)
 }

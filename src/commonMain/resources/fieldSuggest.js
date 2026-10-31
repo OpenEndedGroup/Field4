@@ -45,6 +45,7 @@ const CATEGORY_WEIGHT = new Map([
   // 12 / 8 / 4 is variant R2 of dev_docs/completion_rank_at_scale.md: +0.051 bare contested recall,
   // +0.120 recall on receivers this tree cannot annotate, owned recall unchanged.
   ["execution", 12],
+  ["output", 12],
   ["math", 12],
   ["audio", 12],
   ["audio ai", 12],
@@ -64,6 +65,7 @@ const CATEGORY_WEIGHT = new Map([
   ["lighting", 12],
   ["search", 12],
   ["video", 12],
+  ["animation", 12],
   ["kotlin", 8],
   ["external", 4],
   // Implementation detail and universal members: present, deliberately unweighted.

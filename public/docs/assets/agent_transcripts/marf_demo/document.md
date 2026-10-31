@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 4 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 4 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. one bank, three readers
@@ -207,7 +207,7 @@ A stage's value need not be a number. One Vector3f reader, drawn as its three co
 one stage structure carrying three values, so the osc:2 stage bumps all of them at once.
 
 ```edn [field-box id="marf_vector" role="properties"]
-{"id" "marf_vector" "index" 3 "name" "one Vector3f reader, three components" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "one Vector3f reader, three components" "_tombstone" false "frame" #afield/rect [60.0 226.0 340.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "marf_vector_code_.kt" "lines" 73 "characters" 2643 "sha256" "c04e983554fc11aa576fbcb75bc7becc5de99a67ca9c6e2ebfef9efe32f30a93"}]}
+{"id" "marf_vector" "index" 3 "name" "one Vector3f reader, three components" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "one Vector3f reader, three components" "_tombstone" false "frame" #afield/rect [60.0 226.0 340.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "marf_vector_code_.kt" "lines" 71 "characters" 2582 "sha256" "cabd5c2c0eebb4b00143c09d6fe2c4dff407e69060fc11dde58e69a4cd417851"}]}
 ```
 
 ```kotlin [field-property box="marf_vector" name="code" path="marf_vector_code_.kt"]
@@ -216,15 +216,13 @@ one stage structure carrying three values, so the osc:2 stage bumps all of them 
 displayClearAll() // drop anything a previous run left on another channel
 displayOpen("lines")
 
-val path =
-    marfBankIn(
-            MarfVector3f,
-            stageTo(Vector3f(0f, 0f, 0f), 1.0, label = "origin"),
-            stageTo(Vector3f(1f, 0f, 0f), 0.5, MarfCurve.Smooth, label = "x"),
-            stageTo(Vector3f(1f, 1f, 0f), 1.5, MarfCurve.Exp(3.0), label = "xy"),
-            stageTo(Vector3f(0f, 0.25f, 1f), 1.0, MarfCurve.Osc(2.0), label = "z"),
-        )
-        .read(pat("<0 1 2 3 2 1>").nums(), fields = MarfFieldClock.STAGES, name = "vec")
+val path = marfBankIn(
+    MarfVector3f,
+    stageTo(Vector3f(0f, 0f, 0f), 1.0, label = "origin"),
+    stageTo(Vector3f(1f, 0f, 0f), 0.5, MarfCurve.Smooth, label = "x"),
+    stageTo(Vector3f(1f, 1f, 0f), 1.5, MarfCurve.Exp(3.0), label = "xy"),
+    stageTo(Vector3f(0f, 0.25f, 1f), 1.0, MarfCurve.Osc(2.0), label = "z"),
+).read(pat("<0 1 2 3 2 1>").nums(), fields = MarfFieldClock.STAGES, name = "vec")
 
 val cycles = 6L
 val W = 1060.0

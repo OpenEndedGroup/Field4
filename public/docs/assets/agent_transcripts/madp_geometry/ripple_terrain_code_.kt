@@ -1,15 +1,17 @@
-// geometry { } is a recipe of triangles. Running the box runs the recipe and draws it.
-//
-//   mat(...)             the material for triangles that follow
-//   color(...)           the colour for vertices that follow
-//   tri(a, b, c)         one triangle
-//   quad(a, b, c, d)     two triangles
-//   surface(...)         a grid of triangles
-//   revolve, tube, box   more triangles
-//   push() / pop() with translate, rotateX/Y/Z, scale
-//
-// geometryAgent() teaches this document's AI4 chat the language and lets it look at every view here:
-// open the AI panel and ask for "a coral reef of tubes", or "make the terrain stormier".
+/*
+geometry { } is a recipe of triangles. Running the box runs the recipe and draws it.
+
+  mat(...)             the material for triangles that follow
+  color(...)           the colour for vertices that follow
+  tri(a, b, c)         one triangle
+  quad(a, b, c, d)     two triangles
+  surface(...)         a grid of triangles
+  revolve, tube, box   more triangles
+  push() / pop() with translate, rotateX/Y/Z, scale
+
+geometryAgent() teaches this document's AI4 chat the language and lets it look at every view here:
+open the AI panel and ask for "a coral reef of tubes", or "make the terrain stormier".
+*/
 geometryAgent()
 
 geometry {

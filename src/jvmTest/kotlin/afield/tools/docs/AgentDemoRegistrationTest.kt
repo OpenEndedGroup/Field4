@@ -1,5 +1,6 @@
 package afield.tools.docs
 
+import afield.document.workspace.BUNDLED_DOCUMENT_STARTING_POINTS
 import afield.examples.DemoTranscriptExecSmokeTest
 import java.io.File
 import java.nio.file.Files
@@ -88,6 +89,8 @@ class AgentDemoRegistrationTest {
             "certified_envelope",
             "chart_clip",
             "chart_primitive",
+            // 2026-10-29: controls renewal surface and a self-rebuilding slider; registered EXECUTE.
+            "controls_surface",
             "completion_rank_at_scale",
             "confluence_grid",
             // Transcript sources, registered COMPILE_ONLY with separate Vulkan GPU checks.
@@ -106,6 +109,8 @@ class AgentDemoRegistrationTest {
             "path_traced_reconstruction",
             "reconstruction_plumbing",
             "rr_plumbing",
+            // 2026-10-29: a slideshow tour over two existing boxes; registered EXECUTE.
+            "slideshow_own_tour",
             // Landed 2026-09-22 in `b5b9ad9e0`. Not a document — no `metadata.edn` — so it is named
             // here (this set is the directory listing) and is invisible to the two assertions that
             // range over `demoDocuments()`. It is verified: `flow_grain.yaml` under
@@ -143,6 +148,8 @@ class AgentDemoRegistrationTest {
             "pattern_condense",
             // 2026-10-18: the Clojure counterpart of python_box_parity.
             "clojure_box_parity",
+            // 2026-10-24: the RemoteJS counterpart (Javascript boxes running in a browser head).
+            "remotejs_box_parity",
             "python_box_parity",
             "python_cells",
             "read_only_session",
@@ -282,7 +289,6 @@ class AgentDemoRegistrationTest {
      */
     private val ASSET_DOCUMENTS_NOT_YET_STARTING_POINTS = setOf(
         "brief_house_demo",
-        "canonical_graphics",
         "fline_examples",
         "nano_examples",
         "rectsl_gallery",
@@ -473,7 +479,7 @@ class AgentDemoRegistrationTest {
             .sorted()
 
     private fun isStartingPoint(name: String): Boolean =
-        File("$TRANSCRIPTS/$name.yaml").isFile && name in registry() &&
+        name in BUNDLED_DOCUMENT_STARTING_POINTS || File("$TRANSCRIPTS/$name.yaml").isFile && name in registry() &&
             File("$DOCS_ASSETS/agent_transcripts/$name/metadata.edn").isFile
 
     /**

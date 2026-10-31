@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-29T22:45:18.373Z",
+  "documentName": "photo_mount_path_trace",
+  "outputs": [
+    {
+      "uid": "photo_mount_trace",
+      "channel": "Vulkan window · still image",
+      "open": true,
+      "path": "outputs/0.html",
+      "width": 6528,
+      "height": 3672,
+      "kinds": [
+        "native-image"
+      ],
+      "warnings": []
+    }
+  ]
+}

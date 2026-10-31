@@ -94,6 +94,14 @@ def regenerate(repo: Path, changed: set[str]) -> tuple[int, set[str]]:
             if roots:
                 _git(repo, "add", "-A", "--", *roots)
 
+    # Run after materialization and outside Gradle: capturing may need its own Field build.
+    if any(g.task == 'checkDocsPublications' for g in guards_for_paths(changed)):
+        code = subprocess.run([sys.executable, str(repo / 'tools/docs_publications.py'), 'sync'], cwd=repo).returncode
+        if code != 0:
+            print('merge_regen: publication refresh failed; merge remains uncommitted', file=sys.stderr)
+            return code, set()
+        _git(repo, 'add', '-A', '--', 'public/docs/assets/web_publications')
+
     # GUARD_CORPORA.md counts corpora across the whole tree, so any merge can move it. Cheap: no Gradle.
     print("merge_regen: regenerating dev_docs/GUARD_CORPORA.md")
     if subprocess.run([sys.executable, str(repo / "tools/guard_corpora.py"), "--write"], cwd=repo).returncode != 0:
@@ -189,12 +197,16 @@ def main(argv: list[str] | None = None) -> int:
     base = _git(repo, "merge-base", "HEAD", "MERGE_HEAD").strip()
     changed = set(_lines(_git(repo, "diff", "--name-only", base, "HEAD")))
     changed |= set(_lines(_git(repo, "diff", "--name-only", base, "MERGE_HEAD")))
-    code, _redundant = regenerate(repo, changed)
+    code, redundant = regenerate(repo, changed)
     if code != 0:
         return code
-    # The hooks only report now, so this is where the full guard runs: once, on the merged tree.
+    # As in regen_since, a pure drift check just regenerated is true by construction. Broader
+    # contracts such as citationGates still run; regenerate never marks them redundant.
     print("merge_regen: running the generated-artifact guards on the merged tree")
-    code = subprocess.run([sys.executable, str(repo / "tools/check_staged_generated_artifacts.py")], cwd=repo).returncode
+    code = subprocess.run(
+        [sys.executable, str(repo / "tools/check_staged_generated_artifacts.py"),
+         "--skip", ",".join(sorted(redundant))], cwd=repo
+    ).returncode
     if code != 0:
         print("merge_regen: a guard failed; the merge is left uncommitted for you to fix", file=sys.stderr)
         return code
@@ -207,4 +219,9 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
+    from field_python_env import ensure_repo_python
+
+    # Conversation packagers render Markdown after Gradle regeneration. Resolve their environment
+    # before doing that expensive work, including on a fresh checkout with only backdoor deps.
+    ensure_repo_python(("markdown", "yaml"), group="docs")
     raise SystemExit(main())

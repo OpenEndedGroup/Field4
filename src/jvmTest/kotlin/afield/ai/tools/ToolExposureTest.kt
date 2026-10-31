@@ -200,6 +200,8 @@ class ToolMetaPinTest {
                 "InspectGeometryViewRequest",
                 // New on 2026-10-09: which kit a document runs; asked rarely, when a provider seems out of date.
                 "InspectKitRequest",
+                // New on 2026-10-26: drives a running talk; rehearsal or an explicit reset only, on request.
+                "PresentationControlRequest",
             ),
             metas.filterValues { it.exposure == ToolExposure.DEFERRED }.keys
         )

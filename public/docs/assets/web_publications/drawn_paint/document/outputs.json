@@ -1,0 +1,79 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-29T22:43:58.422Z",
+  "documentName": "drawn_paint",
+  "outputs": [
+    {
+      "uid": "dp_pencil",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 449,
+      "height": 45,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "dp_strokes",
+      "channel": "pressure",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "plotly"
+      ],
+      "width": 712,
+      "height": 458,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "dp_strokes",
+      "channel": "table",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 388,
+      "height": 101,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "dp_paint",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 449,
+      "height": 45,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "dp_drying",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 449,
+      "height": 45,
+      "path": "outputs/4.html"
+    },
+    {
+      "uid": "dp_crossings",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 449,
+      "height": 45,
+      "path": "outputs/5.html"
+    },
+    {
+      "uid": "dp_meadow",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 449,
+      "height": 45,
+      "path": "outputs/6.html"
+    }
+  ]
+}

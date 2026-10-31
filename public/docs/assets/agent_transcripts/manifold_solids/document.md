@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. Manifold — a part, and whether it is manufacturable
@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="manifold_bracket" index="0" -->
 
 ```edn [field-box id="manifold_bracket" role="properties"]
-{"id" "manifold_bracket" "index" 0 "name" "Manifold — a part, and whether it is manufacturable" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Manifold — a part, and whether it is manufacturable" "_tombstone" false "frame" #afield/rect [80.0 80.0 460.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "manifold_bracket_code_.kt" "lines" 156 "characters" 7098 "sha256" "f1ec09d0b338bdd1910a67d9f710d8325ae9db60401cb2442c1174a58c10afbf"}]}
+{"id" "manifold_bracket" "index" 0 "name" "Manifold — a part, and whether it is manufacturable" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Manifold — a part, and whether it is manufacturable" "_tombstone" false "frame" #afield/rect [80.0 80.0 460.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "manifold_bracket_code_.kt" "lines" 155 "characters" 7014 "sha256" "90b60897a6baa0765693910fd3e7a96d22d0391252c446d178ca684bd41d85b0"}]}
 ```
 
 ```kotlin [field-property box="manifold_bracket" name="code" path="manifold_bracket_code_.kt"]
@@ -115,9 +115,9 @@ run {
     val mesh = part.toTriMesh()
     println("status      ${part.status}")
     println(
-        "volume      ${"%.3f".format(part.volume)} mm^3   (%.2f g in 6061 aluminium)".format(part.volume * 0.0027),
+        "volume      ${part.volume.f3} mm^3   (%.2f g in 6061 aluminium)".format(part.volume * 0.0027),
     )
-    println("area        ${"%.3f".format(part.surfaceArea)} mm^2")
+    println("area        ${part.surfaceArea.f3} mm^2")
     println("genus       ${part.genus}   — four bores plus the slot, so five holes through it")
     println("mesh        ${part.triangleCount} triangles, ${part.vertexCount} vertices")
 
@@ -131,8 +131,8 @@ run {
     println("  watertight  ${mesh.isWatertight()}")
     println("  genus       ${mesh.genus()}   — agreeing with Manifold's ${part.genus}")
     println(
-        "  volume      ${"%.3f".format(mesh.signedVolume())}   " +
-            "(Manifold said ${"%.3f".format(part.volume)}, differing by " +
+        "  volume      ${mesh.signedVolume().f3}   " +
+            "(Manifold said ${part.volume.f3}, differing by " +
             "${"%.2e".format(kotlin.math.abs(mesh.signedVolume() - part.volume))})",
     )
     println(
@@ -155,8 +155,7 @@ run {
     }
     println()
     println(
-        "wall between the slot and the nearest bore: " +
-            "${"%.3f".format(slotSolid.minGap(nearestBore, searchLength = 30.0))} mm",
+        "wall between the slot and the nearest bore: " + "${slotSolid.minGap(nearestBore, searchLength = 30.0).f3} mm",
     )
     nearestBore.close()
     slotSolid.close()
@@ -165,7 +164,7 @@ run {
         shaded,
         title = "60 x 40 x 8 plate, four bored bosses, a rounded slot, ${chamfer}mm chamfer",
         caption =
-            "genus ${part.genus} &middot; ${"%.1f".format(part.volume)} mm&sup3; &middot; " +
+            "genus ${part.genus} &middot; ${part.volume.f1} mm&sup3; &middot; " +
                 "${part.triangleCount} triangles &middot; every Boolean guaranteed to close",
         view = MeshView(yawDegrees = 34.0, pitchDegrees = 26.0, width = 760, height = 470),
     )
@@ -178,7 +177,7 @@ run {
 <!-- field-box id="manifold_levelset_slices" index="1" -->
 
 ```edn [field-box id="manifold_levelset_slices" role="properties"]
-{"id" "manifold_levelset_slices" "index" 1 "name" "Manifold — a Kotlin lambda as a level set, then sliced" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Manifold — a Kotlin lambda as a level set, then sliced" "_tombstone" false "frame" #afield/rect [80.0 230.0 460.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "manifold_levelset_slices_code_.kt" "lines" 125 "characters" 5278 "sha256" "b6524b617f7d7e05d757ae288d7729f5ed1fc7cdcce5258b08cc83a8612e10d5"}]}
+{"id" "manifold_levelset_slices" "index" 1 "name" "Manifold — a Kotlin lambda as a level set, then sliced" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Manifold — a Kotlin lambda as a level set, then sliced" "_tombstone" false "frame" #afield/rect [80.0 230.0 460.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "manifold_levelset_slices_code_.kt" "lines" 124 "characters" 5206 "sha256" "7b2adce9e29e1506239680bb2f380603cf04b0dcb27a3da684dcce6aa62978b2"}]}
 ```
 
 ```kotlin [field-property box="manifold_levelset_slices" name="code" path="manifold_levelset_slices_code_.kt"]
@@ -236,10 +235,10 @@ run {
     val solid = Solid.levelSet(bounds, edgeLength = 1.1, field = ::field)
     val marchMs = (System.nanoTime() - start) / 1e6
 
-    println("level set: ${"%.0f".format(marchMs)} ms")
+    println("level set: ${marchMs.f0} ms")
     println("status     ${solid.status}   — a valid closed manifold, whatever the field did")
     println("genus      ${solid.genus}")
-    println("volume     ${"%.1f".format(solid.volume)} mm^3")
+    println("volume     ${solid.volume.f1} mm^3")
     println("mesh       ${solid.triangleCount} triangles")
 
     /*
@@ -289,8 +288,7 @@ run {
 
     println()
     println(
-        "$layers layers between z=${"%.1f".format(zLow)} and ${"%.1f".format(zHigh)}, " +
-            "$totalContours contours in total",
+        "$layers layers between z=${zLow.f1} and ${zHigh.f1}, " + "$totalContours contours in total",
     )
     println("orange = the ${nozzle}mm nozzle path, offset inward from each layer's outline")
 
@@ -300,7 +298,7 @@ run {
         title = "A gyroid-thickened torus, marched from a Kotlin lambda",
         caption =
             "${solid.triangleCount} triangles &middot; genus ${solid.genus} &middot; " +
-                "${"%.0f".format(marchMs)} ms across Manifold's thread pool &middot; " +
+                "${marchMs.f0} ms across Manifold's thread pool &middot; " +
                 "guaranteed closed, so it can be cut",
         view = MeshView(yawDegrees = 24.0, pitchDegrees = 52.0, width = 700, height = 430),
     )

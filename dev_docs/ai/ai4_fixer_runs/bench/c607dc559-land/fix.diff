@@ -1,0 +1,12 @@
+diff --git a/dev_docs/handoffs/2026-10-15-make-the-keyframe-camera-target-reject-values-it-cannot-appl.md b/dev_docs/handoffs/2026-10-15-make-the-keyframe-camera-target-reject-values-it-cannot-appl.md
+index db73d0619..257531e35 100644
+--- a/dev_docs/handoffs/2026-10-15-make-the-keyframe-camera-target-reject-values-it-cannot-appl.md
++++ b/dev_docs/handoffs/2026-10-15-make-the-keyframe-camera-target-reject-values-it-cannot-appl.md
+@@ -4,6 +4,7 @@
+ - **Filed from:** https://openendedgroup.com/field4/keyframer_examples/
+ - **Filed by:** human, 2026-10-15 13:44
+ - **Close with:** `python tools/docs_notes.py handoff-close 9de9a0d2 "what happened"`
++- **Evidence:** `src/jvmMain/kotlin/afield/animation/keyframes/keyframer.kt:994#fun camera` dispatches only on `CameraPose` and `DualQuaternionf`.
+ 
+ Rule 25 sharp edge on keyframer_examples.md, aside "The camera target itself needs a renderer":
+ 

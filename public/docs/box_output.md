@@ -1,15 +1,20 @@
 # Box Output: print, display and channels
 
-A box has two places to put what its code produces. `print` and `println` write a short line of
-text beside the line of code that called them, in the editor. `display` and `markdown` put
-content (text, a table, a picture, any HTML) in a panel under the box, on the canvas. This page
-covers both, then how to name, open, close and remove panels from code and with the mouse.
+Want to check a value while your code runs? Use `print` or `println` and the result appears beside
+your code in the editor. For something larger—a table, a picture, or any HTML—use `display` or
+`markdown` to put it in a panel under the box.
+
+You can have several panels, each with a name, and open, close or remove them with the mouse or
+from code. Let's start with printing.
+
+If your panel has disappeared after reopening a document, jump to [When a panel is gone](#when-a-panel-is-gone).
+For drawing and inspecting values inside those panels, see [Visualizers & Controls](visualizers.md).
 
 ## Printing beside the code
 
-`println` is for checking a value while you work. What a run prints appears in the editor, in a
-block under the line that printed first. Close the block with its ×; it comes back on the next
-run that prints.
+Try printing a value and a few results from a loop. This run collects its output in a block under
+the first line that printed. Close the block with its ×; it comes back the next time the code
+prints.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/box_output/print_inline.png" capture="editor" outputs="inline" wait="3" padding="10" timeout="180" embed=true name="box-output-print-inline" w="560" h="200" alt="A box's four lines of code in Field's editor. Under the first println line sits a black block holding everything the run printed, one line each: petals: 7, then 0, 1 and 4 from the loop."}
 val petals = 7
@@ -45,8 +50,8 @@ display("raw", "<pre>tempo=122 voices=4 key=Dm</pre>")
 displayOpen("raw")
 ```
 
-The two calls behave differently in one way. A panel made by `display` starts closed, showing only
-its title; click the title to open it, or call `displayOpen`, as the last line does here.
+A panel made by `display` starts closed, showing only its title. Click the title to open it, or
+call `displayOpen`, as the last line does here.
 `markdown` opens its panel for you, unless you pass `open = false`.
 
 A few rules cover the rest:
@@ -118,9 +123,9 @@ the code displays into that channel.
 
 ## One-line channels
 
-A channel whose name starts with `*` is not a panel. It is a single line under the box, its name
-on the left (without the `*`) and its content on the right, always visible, with nothing to open or
-close. These suit a counter or a status that you want to see at a glance.
+Start a channel name with `*` and it appears as a single line under the box. Its name sits on the
+left, without the `*`, and its content on the right. It stays visible, which makes it handy for a
+counter or status you want to see at a glance.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/box_output/inline_channels.png" capture="box" wait="3" padding="40" timeout="180" embed=true name="box-output-inline-channels" w="420" h="80" alt="A Field box with two one-line outputs under it and no panels. The first line reads 'status' followed by 'converged' in green; the second reads 'done' followed by a horizontal progress bar about two thirds full."}
 display("*status", "<span style='color:#7fd77f'>converged</span>")
@@ -152,6 +157,35 @@ running anything. That memory keeps the most recent 128 panels per box.
 A few channel names belong to Field: `nested` holds a box's nested child boxes (the display
 functions never remove it), `ai-chat` is the box's AI chat, `layers` is the layers palette, and
 `editor:<property>` is an embedded editor for one property. Pick other names for your own output.
+
+## Publishing a document
+
+Run the boxes whose outputs you want to share, then choose **Publish document for the web (.zip)**
+from the command palette. The publication panel reports how many output channels were captured
+and lists any capture warnings. Download the archive, unzip it, and serve the folder with any
+static web host. Open its `index.html` to browse the boxes, notes, code and captured outputs.
+The published document works without Field or an internet connection once served locally.
+
+| Output | Published form |
+| --- | --- |
+| FLine and SVG drawings | Vector markup at the captured view |
+| HTML and `.h` values | Rendered contents, styles and images |
+| Plotly, including charts inside local iframes | Frozen trace data with browser zoom and hover |
+| `.h2`, tree and column inspectors | Current view and materialized rows |
+| Three.js | Frozen geometry with orbit, zoom, parts visibility, X-ray and local GLB download |
+
+Plots that depend on external image or map data are captured as still images and listed with a
+capture warning.
+
+Published Three.js views use the same renderer as Field. Drag to rotate, scroll to zoom, expand
+**Parts** to hide or restore geometry, or enable **X-ray** and adjust its opacity. Camera linking,
+review notes and editing controls are hidden because they need Field. A view with custom viewer
+tools or an animated shot falls back to a still image with its controls removed.
+
+Controls that call back into Field are disabled. Inspector rows that have not been loaded are
+outside the snapshot. A channel that cannot be captured is listed with its reason in the
+publication panel and in the published document. Cross-origin frames and live audio/video need
+their own exported media.
 
 ## See also
 

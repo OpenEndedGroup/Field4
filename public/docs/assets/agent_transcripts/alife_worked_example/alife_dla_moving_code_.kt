@@ -44,9 +44,9 @@ println(
         " x " +
         ch +
         " of 300 x 300, so " +
-        "%.1f".format(100.0 * dla.points.size / (cw * ch)) +
+        (100.0 * dla.points.size / (cw * ch)).f1 +
         "% of the panel is ever lit, against " +
-        "%.1f".format(100.0 * dla.points.size / 90000.0) +
+        (100.0 * dla.points.size / 90000.0).f1 +
         "% uncropped",
 )
 

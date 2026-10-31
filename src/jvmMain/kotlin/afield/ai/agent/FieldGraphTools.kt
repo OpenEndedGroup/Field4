@@ -46,8 +46,9 @@ import java.util.concurrent.TimeoutException
  * table's `-connect`, `-disconnect` and `-delete-box`), so box execution is not reimplemented here.
  *
  * A box that fails to compile or throws comes back as `success: false` with its diagnostics,
- * never as a silent success. [FieldGraphHost] is the seam to the server: [LiveFieldGraphHost] is
- * the real one, and tests such as `InFieldAgentHarnessTest` supply a scripted host.
+ * never as a silent success. [FieldGraphHost] is how these tools reach the server:
+ * [LiveFieldGraphHost] is the real one, and tests such as `InFieldAgentHarnessTest` supply a
+ * scripted host.
  */
 
 @JsonClassDescription("List every box in this Field document. Returns, per box: uid, name, parents, children, whether it is running, the length of its code, and the verdict of its last run. Use it when a box the task names is not one you know; other tools accept the names it lists (e.g. box = `Sun`). It takes no arguments and does not fail; an empty list means no boxes yet.")
@@ -216,13 +217,28 @@ data class BoxOutputView(
     @get:com.fasterxml.jackson.annotation.JsonIgnore
     override val toolImages: List<afield.ai.tools.ToolImage>
         get() = if (dataUrl.isBlank()) emptyList() else listOf(afield.ai.tools.ToolImage(dataUrl,
-            "Output of box '$name' (${channels.joinToString()}), ${width}x$height, captured in an independent browser" +
-                (if (note.isNotBlank()) " — looking for: $note" else "") +
-                ". Describe what you actually see, then say whether it matches what was asked for."))
+            "Output of box '$name' (${channels.joinToString()}), ${width}x$height, captured in an independent browser. " +
+                captureReadingInstruction(note)))
 
     override fun toolLogSummary(): String =
         "success=$success images=${toolImages.size} box=$name ${width}x$height ink=${"%.3f".format(inkFraction)} " +
             "colours=${dominantColours.take(3)} path=$path" + (if (!success) " message=${message.take(160)}" else "")
+}
+
+/**
+ * How a capture's caption asks to be read. The expectation comes *after* the request to describe, and is
+ * labelled as the model's own: on 2026-10-22 a local model's note said "diagonal lines", and it reported
+ * "the signature diagonal lines" of a picture whose strongest feature was a horizontal and vertical cross
+ * (its code had placed only odd numbers). Models also copy the instruction into the note, which then
+ * appeared twice; it is stripped here.
+ */
+internal fun captureReadingInstruction(note: String): String {
+    val instruction = "Describe what you actually see, then say whether it matches what was asked for."
+    val expectation = note.replace(instruction, "").trim().trimEnd('.', ' ')
+    return "First describe what the picture shows in your own words — shapes, lines and their directions, where colour falls, " +
+        "what is empty — then compare it with what was asked for" +
+        (if (expectation.isNotBlank()) " and with your own expectation, written before you saw it (\"$expectation\")" else "") +
+        ". Say plainly where they differ; a picture confirms what was drawn, not that the code computed the right thing."
 }
 
 // ---- host seam ---------------------------------------------------------------------------------
@@ -503,6 +519,12 @@ class FieldGraphTools(
         }
     }
 
+    /** [SymbolAtRequest]: the box is found where the graph lives; resolving runs off it, as the editor hover does. */
+    fun symbolAt(req: SymbolAtRequest): SymbolAtResult {
+        val box = host.onOwner(info) { resolve(req.box) }
+        return SymbolAt.describe(box, req)
+    }
+
     fun connect(req: ConnectBoxesRequest): FieldGraphResult = host.onOwner(info) {
         val parent = resolve(req.parent)
         val child = resolve(req.child)
@@ -566,9 +588,26 @@ class FieldGraphTools(
             property = "code", requestId = requestId)
         if (launch) host.launch(info, box, exec, reply) else host.run(info, box, exec, reply)
 
-        val report = try {
+        var report = try {
             verdict.get((timeoutSeconds.coerceIn(0.5, 600.0) * 1000).toLong(), TimeUnit.MILLISECONDS)
         } catch (_: TimeoutException) { null }
+        // No verdict: if the box's code is what holds the Runloop, throw out of it (BoxInterrupt) and
+        // give the interrupted run a moment to report, so the agent gets a verdict and Field moves again.
+        var interrupted = false
+        // The timeout may fall while the box is still compiling, so watch a little longer for its code
+        // to reach the Runloop before giving up.
+        if (report == null && !launch) {
+            val main = afield.runtime.lifecycle.Runloop.mainThread
+            val deadline = System.currentTimeMillis() + 8000
+            while (main != null && report == null && System.currentTimeMillis() < deadline) {
+                if (!interrupted && afield.runtime.lifecycle.BoxInterrupt.culprit(main.stackTrace) != null) {
+                    afield.runtime.lifecycle.BoxInterrupt.request("RunBox timeout after ${timeoutSeconds}s", main)
+                    interrupted = true
+                }
+                report = try { verdict.get(50, TimeUnit.MILLISECONDS) } catch (_: TimeoutException) { null }
+            }
+        }
+        if (report?.let { !it.success && "Box interrupted:" in it.error } == true) interrupted = true
         if (settleSeconds > 0) Thread.sleep((settleSeconds.coerceAtMost(10.0) * 1000).toLong())
 
         val page = BoxOutputLog.since(box, marker)
@@ -582,6 +621,12 @@ class FieldGraphTools(
             displays = displays, outputMarker = page.marker
         )
         return when {
+            interrupted -> common.copy(
+                stage = "interrupted", timedOut = true, error = report?.error?.take(4000) ?: "",
+                message = "The $verb of '${box.name}' did not return within ${timeoutSeconds}s, so Field interrupted it " +
+                    (if (report != null) "and it stopped. " else "but has no verdict yet. ") +
+                    "Look for a loop or recursion that never ends."
+            )
             report == null -> common.copy(
                 stage = "timeout", timedOut = true,
                 message = "No verdict for the $verb of '${box.name}' within ${timeoutSeconds}s. " +
@@ -683,6 +728,7 @@ internal fun registerFieldGraphTools(tools: ToolRegistry) {
     tools.register(LaunchBoxRequest::class.java, on) { ctx, req -> ctx.fieldGraph!!.launch(req) }
     tools.register(StopBoxRequest::class.java, on) { ctx, req -> ctx.fieldGraph!!.stop(req) }
     tools.register(ReadBoxOutputRequest::class.java, on) { ctx, req -> ctx.fieldGraph!!.readOutput(req) }
+    tools.register(SymbolAtRequest::class.java, on) { ctx, req -> ctx.fieldGraph!!.symbolAt(req) }
     tools.register(ViewBoxOutputRequest::class.java, { ctx -> ctx.fieldGraph?.seesOutput == true }) { ctx, req -> ctx.fieldGraph!!.viewOutput(req) }
 }
 
@@ -690,5 +736,5 @@ internal fun registerFieldGraphTools(tools: ToolRegistry) {
 val fieldGraphToolNames: List<String> = listOf(
     ListBoxesRequest::class, NewBoxRequest::class, DeleteBoxRequest::class, SetBoxPropertyRequest::class,
     GetBoxPropertyRequest::class, PatchBoxTextRequest::class, ConnectBoxesRequest::class, DisconnectBoxesRequest::class, RunBoxRequest::class,
-    LaunchBoxRequest::class, StopBoxRequest::class, ReadBoxOutputRequest::class, ViewBoxOutputRequest::class
+    LaunchBoxRequest::class, StopBoxRequest::class, ReadBoxOutputRequest::class, ViewBoxOutputRequest::class, SymbolAtRequest::class
 ).map { it.java.simpleName }

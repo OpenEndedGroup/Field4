@@ -3,12 +3,11 @@
 Five philosophers sit at a round table with one fork between each pair. Each reaches for the fork
 on their left, then the one on their right, eats, and puts both down. [Petri Nets](petri_nets.md)
 builds this table as a net and asks `stateSpace()` for every marking any order of firings can
-reach. This page builds that graph as an object: each marking is a glass bead, each firing is a
-metal tube, and the shortest route to the deadlock is a tube that glows. The GPU path tracer
-renders the result.
+reach. Let's turn the resulting graph into a sculpture: each marking becomes a glass bead, each
+firing a metal tube, and the shortest route to deadlock glows.
 
-`afield.simulation.petri` searches the state space, `tubeMesh` sweeps each firing into geometry, and
-`PathTraceScene` lights it. None of the three knows about the others.
+`afield.simulation.petri` searches the state space, `tubeMesh` makes the tubes, and the GPU path
+tracer lights and renders the result.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_petri_sculpture/sculpture.png" capture="native-window" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="petri sculpture converged" embed=true hidden=true timeout="400" name="chain-petri-sculpture" alt="Two cage-like sculptures of thin curved tubes in blue, teal and violet, hung over a dark reflective floor that fades into black. Each starts at a silver bead at the top and spreads downward through layers of small glass beads. In each, one thicker tube glows orange from the top bead down to a bright red bead. The left sculpture is dense; the right one has far fewer tubes" macro-file="../../dev_docs/agents/transcripts/petri_state_space_sculpture.yaml" capture-box="petri_sculpture_trace"}
 // Built and launched from dev_docs/agents/transcripts/petri_state_space_sculpture.yaml.

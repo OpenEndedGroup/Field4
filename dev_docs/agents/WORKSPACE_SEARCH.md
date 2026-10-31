@@ -18,6 +18,7 @@ Example tool arguments:
 | DOCUMENT_HISTORY | Attached document's `backups` directory | Raw saved backup text, with backup-file coordinates |
 | WORKSPACE_FILES | Configured `home` workspace | Saved workspace text, excluding backups throughout |
 | FIELD_KOTLIN_SOURCE | Configured `app/src` | Only `.kt` files across source sets |
+| FIELD_DOCS | Configured `app/public/docs` | Only `.md` pages; sees a page as soon as it is saved, unlike the semantic index |
 
 Missing roots fail; they never fall back to another scope or cwd. History is not automatically
 added to document/workspace results. Hidden entries, `build`, `node_modules`, and

@@ -101,3 +101,28 @@ test('native outline paths are optional, aligned and bounded', () => {
     assert.throws(() => validateGuideState({...state, sectionPaths}), /presentation sections/);
   }
 });
+
+test('native cue state accepts defaults and rejects impossible positions', () => {
+  const {validateGuideState} = require('../../../electron/presentation-cues.js');
+  const state = {slideshowId: 'lesson', hostUid: 'host', title: 'Lesson', index: 0,
+    titles: ['Predict'], content: {html: '<h1>Predict</h1>'}};
+  assert.equal(validateGuideState(state).cueIndex, 0);
+  assert.deepEqual(validateGuideState(state).cueTitles, []);
+  const cue = {...state, cueIndex: 1, cueTitles: ['Explain'], checkpoint: 'Baseline', cueAction: true};
+  assert.equal(validateGuideState(cue).cueIndex, 1);
+  for (const invalid of [{cueIndex: -1}, {cueIndex: 2, cueTitles: ['Explain']},
+    {cueTitles: [null]}, {cueAction: 'yes'}, {checkpoint: 12}]) {
+    assert.throws(() => validateGuideState({...state, ...invalid}), /cue state/);
+  }
+});
+
+test('native search text remains optional, aligned and bounded', () => {
+  const {validateGuideState} = require('../../../electron/presentation-cues.js');
+  const state = {slideshowId: 'search', hostUid: 'host', title: 'Talk', index: 0,
+    titles: ['One', 'Two'], content: {html: '<h1>One</h1>'}};
+  assert.doesNotThrow(() => validateGuideState(state));
+  assert.deepEqual(validateGuideState({...state, searchTexts: ['body one', 'body two']}).searchTexts, ['body one', 'body two']);
+  for (const searchTexts of ['bad', ['one'], [null, 'two'], ['x'.repeat(16385), 'two']]) {
+    assert.throws(() => validateGuideState({...state, searchTexts}), /search text/);
+  }
+});

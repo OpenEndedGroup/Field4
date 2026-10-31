@@ -1,5 +1,6 @@
 package afield.tools.docs
 
+import afield.document.workspace.BUNDLED_DOCUMENT_STARTING_POINTS
 import afield.examples.AgentTranscriptMaterializer
 import afield.examples.DemoTranscriptExecSmokeTest
 import java.io.File
@@ -24,16 +25,14 @@ expect:
  * ### The failure this exists to stop
  *
  * The page calls itself "the illustrated index" of the transcript corpus and is the public front door
- * to Field's agent-automation story. On `2026-08-06` it listed 28 of 52 transcripts while asserting
- * that *"every one of them is exercised end-to-end in CI"* — 42 % incomplete, in a sentence claiming
- * completeness. The shape of that failure is worth naming, because it is the argument for this file:
- * the *generated* half of the same system was fine. `AgentTranscriptMaterializer` and
- * `checkAgentTranscripts` guard the committed starting-point bundle byte-for-byte, so that stayed
- * current for months. The hand-curated page beside it, which nothing checked, drifted the moment
- * anybody added a transcript without remembering it existed.
+ * to Field's agent-automation story. The generated half of the same system cannot drift:
+ * `AgentTranscriptMaterializer` and `checkAgentTranscripts` guard the committed starting-point bundle
+ * byte-for-byte. The hand-curated page beside it has no such guard of its own, and goes stale the
+ * moment anybody adds a transcript without remembering the page exists — a page that claims to list
+ * every transcript, listing most of them.
  *
- * The page is deliberately **not** generated. Its entries quote the number a box prints and say why
- * that number is the interesting one — `0.985 forwards, 0.246 backwards on a parabola`; `473 diagonal
+ * The page is **not** generated, because its entries quote the number a box prints and say why that
+ * number is the interesting one — `0.985 forwards, 0.246 backwards on a parabola`; `473 diagonal
  * breaks against 0`. None of that is in the yaml, which carries op verbs, box ids, rects and Kotlin
  * source; a generator over it could emit a name and a box count, which would replace the writing with
  * a table. So the trade here is [KDocAttachmentGuard]'s, not [StdlibReferenceGenerator]'s: keep the
@@ -43,11 +42,11 @@ expect:
  * ### The five things it checks
  *
  * 1. **Completeness** — every `*.yaml` in the corpus has exactly one entry. An entry is a `###`
- *    heading whose whole text is the transcript's name, `### transcript_name`, at column zero.
- *    (Consequence worth knowing: `###` on that page is reserved for entries, so a sub-heading inside
- *    an entry has to be `####` or deeper; a `###` naming anything else is read as an entry for a
- *    transcript that does not exist. The entries were bold run-in lead-ins until `2026-09-13`, when
- *    102 of them had become one wall of text with no way to link or scroll to a single scene.)
+ *    heading whose whole text is the transcript's name, `### transcript_name`, at column zero. `###`
+ *    on that page is therefore reserved for entries: a sub-heading inside an entry has to be `####`
+ *    or deeper, and a `###` naming anything else is read as an entry for a transcript that does not
+ *    exist. A heading per entry is also what makes a hundred-odd scenes something a reader can link
+ *    to and scroll through one at a time.
  * 2. **No orphans** — every entry names a transcript that is still in the corpus, so deleting or
  *    renaming a yaml turns the stale paragraph red instead of leaving it to be read as current.
  * 3. **The CI claim, per entry** — each `##` section declares how CI verifies the scenes under it,
@@ -72,21 +71,27 @@ expect:
  *    ```
  *    <!-- transcript-index: totals -->
  *    ```
- *    must not quote a number. It used to have to quote four (the corpus size and each set's size), so
- *    every branch that added a transcript edited the same sentence. Any two such branches then conflicted
- *    there, and resolving it by hand was a recurring way to waste a landing. The counts live in
- *    `DemoTranscriptExecSmokeTest`, which prints them; the prose names the three depths without them.
+ *    must not quote a number. A paragraph that quoted the corpus size and each set's size would put
+ *    every branch that adds a transcript into the same sentence, and any two of them into a conflict
+ *    there. The counts live in `DemoTranscriptExecSmokeTest`, which prints them; the prose names the
+ *    three depths without them.
+ *
+ * One section is not about transcripts: the `##` section marked
+ * `<!-- transcript-index: bundled -->` lists the saved documents the welcome screen offers as they
+ * are ([BUNDLED_DOCUMENT_STARTING_POINTS]). Its entries are held to that map in both directions
+ * instead of to the corpus, each document must be committed, and checks 3 and 4 do not apply.
  *
  * ### Running it
  *
  * ```
- * ./gradlew checkAgentTranscriptIndex          # also runs as part of `check`
+ * ./gradlew checkAgentTranscriptIndex          # also runs as part of check
  * ```
- * Reads five kinds of text file and nothing else: no Field server, no runloop, no boxes, no GPU. That
- * is deliberate — its heavyweight sibling `checkAgentTranscripts` builds real boxes and costs ~25 s,
- * and a completeness check has no business being that expensive. See
- * `dev_docs/agent_transcript_index.md` for how to add an entry.
+ * Reads five kinds of text file and nothing else: no Field server, no runloop, no boxes, no GPU.
+ * Its heavyweight sibling `checkAgentTranscripts` builds real boxes and costs ~25 s; a completeness
+ * check needs none of that. See `dev_docs/agent_transcript_index.md` for how to add an entry.
  */
+
+/** Checks that `public/docs/agent_transcripts.md` lists every transcript, and only real ones. */
 object AgentTranscriptIndexGuard {
 
     private const val INDEX_REL = "public/docs/agent_transcripts.md"
@@ -104,11 +109,12 @@ object AgentTranscriptIndexGuard {
     private data class Entry(val name: String, val line: Int, val section: Section?, val openTarget: String?)
 
     /** One `##` heading, with the CI levels its marker line declares. */
-    private data class Section(val title: String, val line: Int, val levels: Set<Level>)
+    private data class Section(val title: String, val line: Int, val levels: Set<Level>, val bundled: Boolean = false)
 
     private val ENTRY = Regex("""^###\s+([a-z0-9_]+)\s*$""")
     private val HEADING = Regex("""^##\s+(.*\S)\s*$""")
     private val VERIFIED_BY = Regex("""<!--\s*transcript-index:\s*verified-by\s*=\s*([a-z, ]+?)\s*-->""")
+    private val BUNDLED = Regex("""<!--\s*transcript-index:\s*bundled\s*-->""")
     private val TOTALS = Regex("""<!--\s*transcript-index:\s*totals\s*-->""")
     // Deliberately prefix-agnostic: this guard answers "which transcript does the link name?", and
     // the *shape* of the link is `tools/check_doc_offline_links.py`'s question. Both halves have to
@@ -152,7 +158,8 @@ object AgentTranscriptIndexGuard {
             val heading = HEADING.find(raw)
             if (heading != null) {
                 val title = heading.groupValues[1]
-                current = Section(title, i + 1, declaredLevels(lines, i, title, problems))
+                val bundled = (i + 1 until minOf(i + 5, lines.size)).any { BUNDLED.containsMatchIn(lines[it]) }
+                current = Section(title, i + 1, if (bundled) emptySet() else declaredLevels(lines, i, title, problems), bundled)
                 sections.add(current)
             }
             val entry = ENTRY.find(raw)
@@ -163,6 +170,26 @@ object AgentTranscriptIndexGuard {
                 totalsParagraph = lines.drop(i + 1).takeWhile { it.isNotBlank() }.joinToString(" ")
             }
         }
+
+        // ---- bundled documents: their own section, held to BUNDLED_DOCUMENT_STARTING_POINTS ----
+        val bundledEntries = entries.filter { it.section?.bundled == true }
+        val bundledByName = bundledEntries.groupBy { it.name }
+        for ((name, rel) in BUNDLED_DOCUMENT_STARTING_POINTS) {
+            val found = bundledByName[name]
+            if (found == null) problems.add(
+                "$name: a bundled starting point (BUNDLED_DOCUMENT_STARTING_POINTS) with NO entry under the " +
+                    "`<!-- transcript-index: bundled -->` section of $INDEX_REL. Write a `### $name` entry there."
+            ) else if (found.size > 1) problems.add("$name: ${found.size} bundled entries on $INDEX_REL — keep one.")
+            if (!File(File(repo, "public/docs/assets/$rel").canonicalFile, "metadata.edn").isFile) problems.add(
+                "$name: BUNDLED_DOCUMENT_STARTING_POINTS points at public/docs/assets/$rel, which holds no metadata.edn."
+            )
+        }
+        for (entry in bundledEntries) if (entry.name !in BUNDLED_DOCUMENT_STARTING_POINTS) problems.add(
+            "line ${entry.line}: entry `### ${entry.name}` is in the bundled section but is not in " +
+                "BUNDLED_DOCUMENT_STARTING_POINTS, so the welcome screen does not offer it."
+        )
+        entries.removeAll(bundledEntries)
+        for (section in sections.filter { it.bundled }) sections.remove(section)
 
         // ---- 1 & 2: completeness and orphans ----
         val byName = entries.groupBy { it.name }

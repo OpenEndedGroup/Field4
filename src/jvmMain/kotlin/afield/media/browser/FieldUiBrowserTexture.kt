@@ -47,7 +47,7 @@ class FieldUiBrowserTexture(
     /**
      * Read frames back to the CPU and upload them, instead of importing Chromium's shared GPU
      * allocation. Costs about 110 MB/s at 1280x720/30 and exists because Chromium's Linux
-     * shared-texture export hands over a buffer it never fills (electron#53271). Opt-in on purpose:
+     * shared-texture export hands over a buffer it never fills (electron#53271). Off by default;
      * see [BitmapBrowserSurface].
      */
     private val cpuBitmapFallback: Boolean = false,
@@ -217,10 +217,11 @@ class FieldUiBrowserTexture(
          *
          * On Linux Chromium's shared-texture export hands over a well-formed dma-buf that it never
          * writes into (electron#53271), so the accelerated path produces a correct-looking,
-         * permanently black texture. Until that is fixed upstream the demos ask for the readback
-         * path here and keep the zero-copy one everywhere it works — which is why this is a
-         * platform question rather than the parameter's default: the default stays honest about
-         * what the class is for, and every call site that flips it says so in the open.
+         * permanently black texture. Until that is fixed upstream, a caller that has to show
+         * something on every platform passes this as the readback flag and so takes the readback
+         * path on Linux alone, keeping the zero-copy one everywhere it works. The flag's own
+         * default stays `false`, so every call site that turns readback on says so where it is
+         * written.
          */
         val cpuBitmapFallbackRequired: Boolean get() = OS == OSType.LINUX
 

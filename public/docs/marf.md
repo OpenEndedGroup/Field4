@@ -1,11 +1,10 @@
 # A pattern as a function generator
 
-A pattern says what happens and when. A function generator says what a value *does* while it is
-happening. `marf(...)` is the second one built out of the first, so that a sequence, an envelope, an
-LFO and a trajectory through stored material are four uses of one thing.
+A pattern says what happens and when. `marf(...)` uses patterns to make values move over time: as
+a sequence, an envelope, an LFO, or a trajectory through stored material.
 
-The idea comes from the Buchla 248 Multiple Arbitrary Function Generator. What is worth taking from
-it is not the step sequencer. It is the way the 248 keeps four things on separate patch points:
+The idea comes from the Buchla 248 Multiple Arbitrary Function Generator. The 248 keeps four things
+on separate patch points:
 
 * the **material** stored in a bank of stages,
 * the **address** that chooses which stage to read,
@@ -22,9 +21,9 @@ reader's output, sampled through the same calls you would use
 
 ## A stage, and the shape of it
 
-A stage has a destination, a length, and a curve. It has no starting value: it departs from wherever
-the output already was. That is what makes a run of stages an envelope rather than a list of
-unrelated ramps, and it is why the output never jumps when one stage hands over to the next.
+A stage has a destination, a length, and a curve. It starts from wherever the output already was,
+so successive stages can form an envelope. The curve determines what happens next: a smooth ramp
+moves from that starting value, while a hold can jump immediately to its destination.
 
 ```diffstatic {data-lang=kotlin}
 rampTo(0.9, duration = 0.5) // slew to 0.9 over half a cycle
@@ -229,15 +228,13 @@ there. The curve is still a single number from 0 to 1. It says how far through t
 and that fraction is the same for every component of the vector.
 
 ```diffstatic {data-lang=kotlin}
-val path =
-    marfBankIn(
-            MarfVector3f,
-            stageTo(Vector3f(0f, 0f, 0f), 1.0),
-            stageTo(Vector3f(1f, 0f, 0f), 0.5, MarfCurve.Smooth),
-            stageTo(Vector3f(1f, 1f, 0f), 1.5, MarfCurve.Exp(3.0)),
-            stageTo(Vector3f(0f, 0.25f, 1f), 1.0, MarfCurve.Osc(2.0)),
-        )
-        .read(pat("<0 1 2 3 2 1>").nums(), fields = MarfFieldClock.STAGES)
+val path = marfBankIn(
+    MarfVector3f,
+    stageTo(Vector3f(0f, 0f, 0f), 1.0),
+    stageTo(Vector3f(1f, 0f, 0f), 0.5, MarfCurve.Smooth),
+    stageTo(Vector3f(1f, 1f, 0f), 1.5, MarfCurve.Exp(3.0)),
+    stageTo(Vector3f(0f, 0.25f, 1f), 1.0, MarfCurve.Osc(2.0)),
+).read(pat("<0 1 2 3 2 1>").nums(), fields = MarfFieldClock.STAGES)
 
 path.at(3.5).value // a Vector3f
 path.signal { it.x.toDouble() } // any component, as an ordinary signal

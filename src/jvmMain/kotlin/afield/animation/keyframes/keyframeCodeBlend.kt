@@ -173,9 +173,8 @@ enum class CodeBlendMode {
      * push-constant convention for StackSL, and cannot reach sites whose grammar demands a literal.
      *
      * For a Kotlin blend the emitted block is a *rehydrating* `SourceBackedBlock`: it compiles its
-     * generated source in the box the two keyframes came from. Invoke it from a frame loop, a
-     * control callback or another box, and not from inside that box's own running code — see
-     * [SourceBackedBlock] for what happens if you do.
+     * generated source for the box the two keyframes came from, on first call, wherever it is called
+     * from — see [SourceBackedBlock].
      */
     RUNTIME,
 }

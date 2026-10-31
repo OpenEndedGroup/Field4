@@ -1,3 +1,25 @@
+/**
+ * Finding `field_principal_curves` on this machine, and calling into it once found.
+ *
+ * [PrincipalCurvesLibrary] is the half that answers without loading anything: the library's file
+ * name on this OS, the paths it is looked for in, whether one of them exists, and the Gradle task
+ * and per-OS shell commands that build it. `NativeGeometry` registers it as a
+ * [NativeGeometryCapability], so the welcome page's Geometry extensions panel can report on the
+ * library whether or not it is installed. The path is resolved afresh on every read, so a library
+ * built during a live session is picked up by the next box run.
+ *
+ * The other half, internal to the package, binds the C ABI declared in
+ * `native/field-principal-curves/src/field_principal_curves.h` with java.lang.foreign: one lazy
+ * downcall handle per `fpc_` entry point, the solver's parameter struct laid out by hand with its
+ * padding, and a 512-byte buffer that each call which can fail carries down and reads a message out
+ * of when it reports failure. Reading the fit back out (the node and edge arrays, the energies, the
+ * per-point assignments, the per-node statistics) takes no error buffer. The first symbol lookup
+ * checks `fpc_abi_version` against the version this binding expects and refuses a library that
+ * disagrees, naming the task that rebuilds it.
+ *
+ * [PrincipalCurves] is the API over it, and its only caller.
+ */
+
 package afield.geometry.curves.principal
 
 import afield.geometry.network.NativeGeometryCapability

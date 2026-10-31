@@ -30,7 +30,7 @@ operations:
             Set `FIELD_STREAMDIFFUSION_ROOT` before starting Field after completing the setup.
 
             [Setup and RTT integration](https://openendedgroup.com/Field4/streaming_diffusion/)
-        """
+            """
                 .trimIndent(),
         )
 - create:
@@ -44,18 +44,18 @@ operations:
     properties:
       code: |
         import afield.graphics.vulkan.util.Options
-        
+
         prop<Window>(window)
         prop<Renderer>(renderer)
-        
+
         Options.enableHDR = false
         Options.profiling = false
-        
+
         once.renderer {
             window = Window("Field")
             Renderer(window)
         }
-        
+
         println("agent graphics renderer ready")
         start(renderer::run)
 - create:

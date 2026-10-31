@@ -1,6 +1,7 @@
 # A λ-term you can hear
 
-This page reduces a λ-term step by step and turns the reduction into a rhythm you can listen to.
+What might a computation sound like as it runs? Let's reduce a λ-term step by step and turn its
+reactions into a rhythm you can listen to.
 [`lambdaterms.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/lang/lambda/lambdaterms.kt) parses the term and
 compiles it to an interaction net, and the `Reducer` in
 [`interactionnets.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/data/graph/interactionnets.kt) fires one reaction at a time, reporting each as a `ReductionStep`.
@@ -61,10 +62,10 @@ and the scheduler's job is to pick among them.
 
 ## The scheduler does not change how long it takes
 
-`Reducer` takes an `ActivationOrder`, which chooses the next active pair to fire. Whichever order
-you pick, a term takes the same number of reactions, and fires the same rules the same number of
-times; only the order differs. The box below reduces every term in the λ front end's corpus under
-all four schedulers and fails if any term breaks either rule.
+`Reducer` takes an `ActivationOrder`, which chooses the next active pair to fire. The order can
+change, but the reaction count and the number of times each rule fires stay the same. The box below
+reduces every term in the λ front end's corpus under all four schedulers and fails if any term
+breaks either rule.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_lambda_sound/sweep.png" wait="25" capture="box" open-outputs="true" w="1180" h="560" padding="18" timeout="300" name="chain-lambda-sweep" embed=true alt="A table of twenty-two corpus terms sorted by reaction count, from church-pred-three at 127 down to self-apply-identity at 10: every term but the last condenses to four distinct notations across the four schedulers, the last to three, and the FIRST_FOUND spellings are long mixtures of single strikes, rests and the odd replicate"}
 :::static
@@ -145,7 +146,7 @@ showPatRollOf(
 val rows =
     traces.entries.joinToString("\n") { (order, t) ->
         "| `${order.name}` | ${t.steps} | ${t.betas} | `${t.betaCondensation.notation}` | " +
-            "${"%.2f".format(t.betaCompression)} | ${t.betaCondensation.exact} |"
+            "${t.betaCompression.f2} | ${t.betaCondensation.exact} |"
     }
 markdown(
     "spellings",
@@ -177,7 +178,8 @@ Here is FIRST_FOUND's bar, three cycles at 0.4 cycles per second:
 // Offline-rendered by LambdaSoundDocs.renderWav("exp-first-found").
 ```
 
-And RIGHTMOST_BY_ID's, same term, same eighty-six reactions, same eight β-steps, same answer:
+Now listen to RIGHTMOST_BY_ID. It reaches the same answer with eighty-six reactions and eight
+β-steps, but fires them in a different order:
 
 ```diffstatic_runner {data-lang=kotlin audio="assets/chain_lambda_sound/exp-rightmost.wav" audio-spec="exp-rightmost" audio-renderer="afield.audio.synth.LambdaSoundDocs" embed=true hidden=true name="chain-lambda-rightmost-audio"}
 // Offline-rendered by LambdaSoundDocs.renderWav("exp-rightmost").

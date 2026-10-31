@@ -158,6 +158,12 @@ private data class XrEyeSwapchain(
  * This consumes the OpenXR bootstrap created in [afield.graphics.vulkan.device.Instance] when [Options.enableVR] is true.
  */
 class OpenXRHmdTarget(
+    /**
+     * The renderer whose Vulkan device the OpenXR session and its swapchains are created against,
+     * on that renderer's queue thread, at the first [renderFrame]. Found in the box graph by
+     * default. The `XrInstance` itself is older than any device and comes from the bootstrap
+     * [afield.graphics.vulkan.device.Instance] made at startup, which construction claims here.
+     */
     val renderer: Renderer = fromContext()
 ) {
 
@@ -515,10 +521,20 @@ class OpenXRHmdTarget(
             .rotate(Quaternionf(s.rotation.x, s.rotation.y, s.rotation.z, s.rotation.w))
     }
 
-    // public module lists (mirrors RenderTarget)
+    /**
+     * The graphics modules to draw, by name, the same way [RenderTarget] holds them. Every module
+     * here is rendered once per eye; adding a name that is already present replaces it.
+     */
     var modules = mutableMapOf<String, ModulePointer>()
+
+    /** The mesh-shader modules to draw, by name, rendered per eye alongside [modules]. */
     var meshModules = mutableMapOf<String, MeshModulePointer>()
-    // Clear color for the HMD swapchain (RGBA). Defaults to Options.openXRClearColor.
+
+    /**
+     * What each eye's swapchain image is cleared to, as RGBA, copied from `Options.openXRClearColor`
+     * at construction. An array of fewer than four is read channel by channel, with the missing
+     * channels taken from opaque magenta `(1, 0, 1, 1)` rather than from zero.
+     */
     var clearColor: FloatArray = Options.openXRClearColor.clone()
 
     fun setClearColor(r: Float, g: Float, b: Float, a: Float = 1f) {
@@ -657,6 +673,12 @@ class OpenXRHmdTarget(
     private companion object { const val READBACK_LAG = 3 }
 
     private var profilerState: XrProfilerState? = null
+    /**
+     * How many OpenXR frames this target has worked through, counted at the end of [renderFrame]'s
+     * queue-thread pass rather than by the renderer, so it does not follow `Runloop.frame` and does
+     * not advance while the target is disabled. It is the frame identity the GPU profiler pairs its
+     * readbacks with, and what the XR CPU-span report prints against.
+     */
     var xrFrameCounter = 0L
         private set
 
@@ -684,16 +706,35 @@ class OpenXRHmdTarget(
     }
 
     /**
-     * Render one OpenXR frame.
-     *
-     * Called by Renderer once per frame (see Renderer integration).
+     * Wait and locate this frame before [renderScene] records desktop/stereo work, then submit
+     * OpenXR using exactly those views and that predicted display time. The scene callback runs
+     * on the caller thread, outside the queue executor, so graphics workers can submit safely.
+     * It also runs when XR is inactive, keeping the desktop usable while a headset is asleep.
      */
-    fun renderFrame() {
-        if (disabledReason != null) return
+    fun renderFrame(renderScene: () -> Unit = {}) {
+        withOpenXRFrame(::prepareFrame, renderScene, ::submitFrame) { it.views.free() }
+    }
+
+    private class PreparedFrame(
+        val session: XrSession,
+        val space: XrSpace,
+        val displayTime: Long,
+        val views: XrView.Buffer,
+        var viewsLocated: Boolean = false,
+    )
+
+    /** Frame whose views scene render callbacks currently read; -1 before the first locate. */
+    var locatedViewFrameId: Long = -1L
+        private set
+
+    /** Predicted display time, in the runtime's clock, shared by scene rendering and submission. */
+    var locatedViewDisplayTime: Long = 0L
+        private set
+
+    private fun prepareFrame(): PreparedFrame? {
+        if (disabledReason != null) return null
         if (!initialized) {
-            renderer.runOnQueueThread {
-                initSessionAndSwapchains()
-            }
+            renderer.runOnQueueThread { initSessionAndSwapchains() }
             initialized = true
         }
 
@@ -711,17 +752,17 @@ class OpenXRHmdTarget(
             }
         }
 
-        renderer.runOnQueueThread {
+        return renderer.runOnQueueThread {
             // Fail closed even when events, frame waiting, view location or rendering are skipped.
             eyeGazeInteraction?.state?.invalidate()
             htcEyeTracker?.state?.invalidate()
             CPUSpan.time("xr_events") {
-                if (!pollEvents()) return@runOnQueueThread
+                if (!pollEvents()) return@runOnQueueThread null
             }
-            if (!sessionRunning) return@runOnQueueThread
+            if (!sessionRunning) return@runOnQueueThread null
 
-            val xrSessionLocal = xrSession ?: return@runOnQueueThread
-            val xrSpaceLocal = xrSpace ?: return@runOnQueueThread
+            val xrSessionLocal = xrSession ?: return@runOnQueueThread null
+            val xrSpaceLocal = xrSpace ?: return@runOnQueueThread null
 
             MemoryStack.stackPush().use { stack ->
                 // Wait for frame
@@ -732,7 +773,7 @@ class OpenXRHmdTarget(
                 CPUSpan.time("xr_waitFrame") {
                     res = xrWaitFrame(xrSessionLocal, frameWaitInfo, frameState)
                 }
-                if (res != XR_SUCCESS) return@use
+                if (res != XR_SUCCESS) return@use null
 
                 // Begin profiling for this frame
                 profilerState?.let { ps ->
@@ -748,45 +789,66 @@ class OpenXRHmdTarget(
                 CPUSpan.time("xr_beginFrame") {
                     res = xrBeginFrame(xrSessionLocal, frameBeginInfo)
                 }
-                if (res != XR_SUCCESS) return@use
+                if (res < 0) return@use null
 
+                val frame = PreparedFrame(xrSessionLocal, xrSpaceLocal, frameState.predictedDisplayTime(), XrView.calloc(viewCount))
+                for (i in 0 until viewCount) frame.views[i].type(XR_TYPE_VIEW)
+
+                try {
+                    if (frameState.shouldRender()) {
+                        // Locate views
+                        val viewLocateInfo = XrViewLocateInfo.calloc(stack)
+                            .type(XR_TYPE_VIEW_LOCATE_INFO)
+                            .viewConfigurationType(XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO)
+                            .displayTime(frameState.predictedDisplayTime())
+                            .space(xrSpaceLocal)
+
+                        val viewState = XrViewState.calloc(stack).type(XR_TYPE_VIEW_STATE)
+                        val viewCapacityBuf = stack.ints(viewCount)
+                        val viewsBuffer = frame.views
+
+                        CPUSpan.time("xr_locateViews") {
+                            res = xrLocateViews(xrSessionLocal, viewLocateInfo, viewState, viewCapacityBuf, viewsBuffer)
+                        }
+                        if (res == XR_SUCCESS) {
+                            updateEyeMatricesFromLocatedViews(viewsBuffer)
+
+                            CPUSpan.time("xr_controllers") {
+                                syncAndUpdateControllers(xrSessionLocal, xrSpaceLocal, frameState.predictedDisplayTime())
+                            }
+                            if (handTrackingEnabled) CPUSpan.time("xr_hand_tracking") {
+                                syncHandTracking(xrSessionLocal, xrSpaceLocal, frameState.predictedDisplayTime())
+                            }
+                            if (xdevList != 0L) CPUSpan.time("xr_body_tracking") {
+                                syncBodyTracking(xrSessionLocal, xrSpaceLocal, frameState.predictedDisplayTime())
+                            }
+                            if (htcEyeTracker != null && sessionState == XR_SESSION_STATE_FOCUSED) CPUSpan.time("xr_htc_eye_tracking") {
+                                htcEyeTracker?.update(xrSpaceLocal, frameState.predictedDisplayTime())
+                            }
+
+                            frame.viewsLocated = true
+                            locatedViewFrameId = xrFrameCounter
+                            locatedViewDisplayTime = frame.displayTime
+                        }
+                    }
+                    frame
+                } catch (failure: Throwable) {
+                    try { submitFrame(frame, false) }
+                    catch (endFailure: Throwable) { failure.addSuppressed(endFailure) }
+                    finally { frame.views.free() }
+                    throw failure
+                }
+            }
+        }
+    }
+
+    private fun submitFrame(frame: PreparedFrame, sceneRendered: Boolean) {
+        renderer.runOnQueueThread {
+            MemoryStack.stackPush().use { stack ->
                 var layerCount = 0
                 val layers = stack.callocPointer(1)
-
-                if (frameState.shouldRender()) {
-                    // Locate views
-                    val viewLocateInfo = XrViewLocateInfo.calloc(stack)
-                        .type(XR_TYPE_VIEW_LOCATE_INFO)
-                        .viewConfigurationType(XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO)
-                        .displayTime(frameState.predictedDisplayTime())
-                        .space(xrSpaceLocal)
-
-                    val viewState = XrViewState.calloc(stack).type(XR_TYPE_VIEW_STATE)
-                    val viewCapacityBuf = stack.ints(viewCount)
-                    val viewsBuffer = XrView.calloc(viewCount, stack)
-                    for (i in 0 until viewCount) {
-                        viewsBuffer[i].type(XR_TYPE_VIEW)
-                    }
-
-                    CPUSpan.time("xr_locateViews") {
-                        res = xrLocateViews(xrSessionLocal, viewLocateInfo, viewState, viewCapacityBuf, viewsBuffer)
-                    }
-                    if (res == XR_SUCCESS) {
-                        updateEyeMatricesFromLocatedViews(viewsBuffer)
-
-                        CPUSpan.time("xr_controllers") {
-                            syncAndUpdateControllers(xrSessionLocal, xrSpaceLocal, frameState.predictedDisplayTime())
-                        }
-                        if (handTrackingEnabled) CPUSpan.time("xr_hand_tracking") {
-                            syncHandTracking(xrSessionLocal, xrSpaceLocal, frameState.predictedDisplayTime())
-                        }
-                        if (xdevList != 0L) CPUSpan.time("xr_body_tracking") {
-                            syncBodyTracking(xrSessionLocal, xrSpaceLocal, frameState.predictedDisplayTime())
-                        }
-                        if (htcEyeTracker != null && sessionState == XR_SESSION_STATE_FOCUSED) CPUSpan.time("xr_htc_eye_tracking") {
-                            htcEyeTracker?.update(xrSpaceLocal, frameState.predictedDisplayTime())
-                        }
-
+                try {
+                    if (sceneRendered && frame.viewsLocated) {
                         // Acquire all swapchain images first (CPU), then render, then submit+wait, then release.
                         if (acquiredIndicesScratch.size != swapchains.size) {
                             acquiredIndicesScratch = IntArray(swapchains.size)
@@ -839,7 +901,7 @@ class OpenXRHmdTarget(
                         val projectionViews = XrCompositionLayerProjectionView.calloc(swapchains.size, stack)
                         for (i in swapchains.indices) {
                             val sc = swapchains[i]
-                            val view = viewsBuffer[i]
+                            val view = frame.views[i]
 
                             projectionViews[i]
                                 .type(XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW)
@@ -858,34 +920,27 @@ class OpenXRHmdTarget(
 
                         val projectionLayer = XrCompositionLayerProjection.calloc(stack)
                             .type(XR_TYPE_COMPOSITION_LAYER_PROJECTION)
-                            .space(xrSpaceLocal)
+                            .space(frame.space)
                             .views(projectionViews)
 
                         layers.put(0, projectionLayer)
                         layerCount = 1
                     }
+                } finally {
+                    // Even a failed scene/render must balance xrBeginFrame. Submit no layer on
+                    // failure instead of leaving the runtime waiting for an abandoned frame.
+                    val endInfo = XrFrameEndInfo.calloc(stack)
+                        .type(XR_TYPE_FRAME_END_INFO)
+                        .displayTime(frame.displayTime)
+                        .environmentBlendMode(XR_ENVIRONMENT_BLEND_MODE_OPAQUE)
+                        .layerCount(layerCount)
+                        .layers(if (layerCount > 0) layers else null)
+                    CPUSpan.time("xr_endFrame") { xrEndFrame(frame.session, endInfo) }
+                    profilerState?.pending?.addLast(Pending(xrFrameCounter))
+                    xrFrameCounter++
                 }
-
-                // End frame
-                val endInfo = XrFrameEndInfo.calloc(stack)
-                    .type(XR_TYPE_FRAME_END_INFO)
-                    .displayTime(frameState.predictedDisplayTime())
-                    .environmentBlendMode(XR_ENVIRONMENT_BLEND_MODE_OPAQUE)
-                    .layerCount(layerCount)
-                    .layers(if (layerCount > 0) layers else null)
-
-                CPUSpan.time("xr_endFrame") {
-                    xrEndFrame(xrSessionLocal, endInfo)
-                }
-
-                // Add to pending for profiling readback
-                profilerState?.pending?.addLast(Pending(xrFrameCounter))
             }
-
-            // Print profiling stats periodically
             CPUSpan.snapshotAndMaybePrint(everyNFrames = 120, frame = xrFrameCounter, header = "XR CPU")
-
-            xrFrameCounter++
         }
     }
 

@@ -154,8 +154,7 @@ changes nothing. The check refuses programs that do not compile, unbalanced defi
 
 A stage comparison (`mode=stage`) renders both programs only up to a chosen line and compares what
 that line produced. A recolour that leaves the field before the palette identical proves it did not
-move the geometry. A stage that leaves nothing but the program's input tells two programs apart
-from nothing, and the result says so.
+move the geometry. If the stage leaves only the program's input, it cannot distinguish the two programs; the result says so.
 
 ### Adding a tool of your own
 
@@ -574,16 +573,14 @@ its reply. The person's actions between turns are shown where they happened.
 | Zellige tiles | [Eight-point rosettes](assets/stacksl_conversation/tiles/01-zellige.html) · [Six, eight, ten or twelve points](assets/stacksl_conversation/tiles/02-symmetry.html) · [Recolour](assets/stacksl_conversation/tiles/03-recolour.html) · [The person's grout](assets/stacksl_conversation/tiles/04-grout.html) |
 | An aurora over hills | [Night sky and aurora](assets/stacksl_conversation/aurora/01-aurora.html) · [Still, black hills](assets/stacksl_conversation/aurora/02-still-hills.html) · [What is that mound?](assets/stacksl_conversation/aurora/03-mound.html) · [Folds like fabric](assets/stacksl_conversation/aurora/04-folds.html) · [Half speed, measured](assets/stacksl_conversation/aurora/05-slower.html) |
 
-The three documents ship with Field, under `dev_docs/agents/demos/stacksl_conversation_ink`,
-`…_tiles` and `…_aurora`. Each holds its revisions, its held variants, the tool I/O of every turn,
-and the chat. Copy one into your workspace rather than opening it in place, because continuing the
-conversation adds to its history:
+Each session is a starting point on the welcome screen:
+[ink](agent_transcripts.md#stacksl_conversation_ink),
+[tiles](agent_transcripts.md#stacksl_conversation_tiles) and
+[aurora](agent_transcripts.md#stacksl_conversation_aurora). Each holds its revisions, its held
+variants, the tool I/O of every turn, and the chat. Opening one puts a copy in your workspace, so
+continuing the conversation never changes the original.
 
-```diffstatic {data-lang=bash}
-cp -R dev_docs/agents/demos/stacksl_conversation_aurora ~/Documents/AFieldWorkspace/
-```
-
-Open the copy: the window opens and draws the finished program, and the program box shows its
+When it opens, the window draws the finished program, and the program box shows its
 card. The recorded turns are in the program box's AI4 chat. Opening the chat does not call a model;
 sending a message continues from the last revision.
 

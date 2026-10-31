@@ -101,8 +101,8 @@ object DualQuaternionfSmokeTest {
         val scope = KeyframeScope()
         val start = CameraPose.lookAlong(Vector3f(0f, 0f, 0f), Vector3f(0f, 0f, -1f), focusDistance = 2f)
         val end = CameraPose.lookAlong(Vector3f(0f, 0f, 10f), Vector3f(0f, 1f, 0f), focusDistance = 4f)
-        val keyA = scope.Key(mutableMapOf("camera" to start))
-        val keyB = scope.Key(mutableMapOf("camera" to end))
+        val keyA = scope.Key("camera" to start)
+        val keyB = scope.Key("camera" to end)
 
         val mid = scope.interpolate(keyA, keyB, 0.5)["camera"] as CameraPose
         require(abs(mid.focusDistance - 3f) < 1e-5f) { "Expected interpolated focus distance 3, got ${mid.focusDistance}" }

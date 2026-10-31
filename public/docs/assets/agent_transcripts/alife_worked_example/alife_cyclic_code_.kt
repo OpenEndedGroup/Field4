@@ -13,8 +13,8 @@ val predicted = 1.0 - Math.pow(1.0 - 1.0 / rule.states, 8.0)
 val early = cyclicAdvanceFraction(soup, soup.step(rule))
 val settled = soup.stepTimes(rule, 400)
 val late = cyclicAdvanceFraction(settled, settled.step(rule))
-println("soup advance fraction " + "%.4f".format(early) + ", closed form " + "%.4f".format(predicted))
-println("after 400 generations " + "%.4f".format(late) + " of cells advance every step")
+println("soup advance fraction " + early.f4 + ", closed form " + predicted.f4)
+println("after 400 generations " + late.f4 + " of cells advance every step")
 
 // The excitable corner of the parameter space (wider neighbourhood, higher threshold) is a
 // visibly different phase -- spiral cores -- and the difference is measurable as a length scale.
@@ -22,9 +22,9 @@ val ex = CYCLIC_EXCITABLE
 val exSettled = IntGrid.random(200, 200, states = ex.states, seed = 7L).stepTimes(ex, 200)
 println(
     "correlation length: labyrinth " +
-        "%.2f".format(settled.toImg(rule.states).correlationLength(maxLag = 30)) +
+        settled.toImg(rule.states).correlationLength(maxLag = 30).f2 +
         ", excitable " +
-        "%.2f".format(exSettled.toImg(ex.states).correlationLength(maxLag = 30)),
+        exSettled.toImg(ex.states).correlationLength(maxLag = 30).f2,
 )
 
 val palette = cyclicPalette(rule.states)

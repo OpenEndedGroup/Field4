@@ -1,0 +1,42 @@
+name: kith_controls
+description: >
+  Capture for public/docs/kotlin_in_the_head.md: a Kotlin box under a Kotlin-to-head root, compiled to Javascript and run in the browser head; the runner screenshots its outputs.
+operations:
+  - create:
+      box: kith_controls_root
+      name: "Javascript root"
+      frame: { x: 60.0, y: 40.0, w: 300.0, h: 90.0 }
+      properties:
+        mainLanguage: remotejs
+        isRemoteJSRoot: true
+        code: |
+          remoteAr(width = 480, height = 270)
+  - execute: { box: kith_controls_root, property: code }
+  - wait: { millis: 8000 }
+  - create:
+      box: kith_controls_kroot
+      name: "Kotlin to head root"
+      frame: { x: 420.0, y: 40.0, w: 300.0, h: 90.0 }
+      properties:
+        mainLanguage: kotlinjs
+        isKotlinJsRoot: true
+        code: |
+          // Children of this box are Kotlin compiled to Javascript.
+  - create:
+      box: kith_controls_box
+      name: "Kotlin: display, a slider and a checkbox"
+      frame: { x: 60.0, y: 700.0, w: 420.0, h: 120.0 }
+      properties:
+        code: |
+          // {{ remoteAR }}
+          var freq = 3.0
+
+          fun redraw() = display("main", "<b>sine</b> at $freq Hz")
+
+          slider("frequency", min = 1.0, max = 10.0, step = 0.1, initialValue = 3.0) { freq = it; redraw() }
+          checkbox("square wave") { println("square: $it") }
+          setTimeout({ println("half a second later") }, 500)
+          redraw()
+  - connect: { parent: kith_controls_root, child: kith_controls_kroot }
+  - connect: { parent: kith_controls_kroot, child: kith_controls_box }
+  - wait: { frames: 2 }

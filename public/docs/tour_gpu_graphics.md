@@ -1,9 +1,14 @@
 # Graphics on the GPU
 
-The "4" in Field·4 is its renderer: Vulkan, driven from boxes. Boxes on the GPU work the
-way the ones on the earlier pages do. You write a few lines of Kotlin, run the box, and the
-picture changes while it runs. The difference is that some of a box's properties are now shaders,
-and what the box draws usually appears in a native window rather than in its output panel.
+The "4" in Field·4 is its Vulkan renderer, driven from boxes. Write a few lines of Kotlin, launch
+the box, and you can change the picture while it runs. You'll also write shaders in box properties;
+the result usually appears in a native window, though you can draw into an output panel too.
+
+For the native window you'll need a working Vulkan driver and a desktop session. Welcome's
+**Vulkan** panel can check the machine; [installation](installation.md) has platform details.
+If you haven't connected boxes yet, [Connecting Boxes](tour_connecting_boxes.md) shows the gesture
+used below. The [first graphics starting point](first_steps.md#next-a-native-graphics-window) is a
+shorter way to open a window and draw a triangle.
 
 ## A renderer, and a box beneath it
 
@@ -11,12 +16,8 @@ One box opens the window and runs the frame loop. Its code publishes the window 
 as properties, builds them once, and starts the renderer:
 
 ```diffstatic {data-lang=kotlin}
-import afield.graphics.vulkan.util.Options
-
 prop<Window>(window)
 prop<Renderer>(renderer)
-
-Options.enableHDR = true
 
 once.renderer {
     window = Window("Field")
@@ -59,7 +60,7 @@ renderer += moduleHere {
 `moduleHere { }` makes a draw pipeline from this box's `vertex` and `fragment` properties, and
 `renderer += ...` puts it on screen. The names inside `set(4, 2) { }` are not part of a library:
 `pos` and `tc` exist because the vertex shader declares those two inputs, and `tri` is the index
-buffer every mesh has.
+buffer every mesh has. Here is the vertex shader, the box's `vertex` property:
 
 ```diffstatic {data-lang=glsl}
 #version 450
@@ -75,11 +76,11 @@ void main()
 }
 ```
 
-`time` comes from the fragment shader the same way. It is a member of the shader's push constants,
-so the mesh gets a `time` property, and the function assigned to it is called every frame: here,
+`time` comes from the fragment shader, shown below, the same way. It is a member of the shader's
+push constants, the small block of values the CPU hands the shader fresh each frame, so the mesh gets a `time` property, and the function assigned to it is called every frame: here,
 seconds since the box ran. The shader declares a `float`, and Field narrows the `Double` to it as it
-writes the value. The clock is the `AnimationClock` from [Frames and the Animation Loop](animation_time_model.md), so the rings drift
-outward at the same rate live and in a recording.
+writes the value. The clock is the `AnimationClock` from
+[Frames and the Animation Loop](animation_time_model.md), so the rings drift outward at the same rate live and in a recording.
 
 ```diffstatic {data-lang=glsl}
 #version 450
@@ -167,9 +168,8 @@ renderer += moduleHere {
 }
 ```
 
-It is the same pattern as the square, with more of it. The vertex shader now declares a colour
-input as well as a position, so the mesh has `col` beside `pos`. It also takes the camera's two
-matrices as push constants, so the mesh has `p` and `m`:
+The vertex shader now declares a colour input as well as a position, so the mesh has `col` beside
+`pos`. It also takes the camera's two matrices as push constants, giving the mesh `p` and `m`:
 
 ```diffstatic {data-lang=glsl}
 #version 450
@@ -194,8 +194,9 @@ surface is rebuilt.
 
 ## Drawing into the box itself
 
-In Field's desktop app a renderer can also draw into a box's output panel, next to its code. An
-`ElectronRTTView` is a render target that shows up in the panel. Give it the module from before, and
+In Field's desktop app a renderer can also draw into a box's output panel, so the live picture sits
+next to its code instead of in a separate window. An `ElectronRTTView` is that picture: a 640 × 360
+image the renderer draws into each frame, streamed to the panel. Give it the module from before, and
 the spiral turns inside the box:
 
 ```diffstatic_runner {data-lang=kotlin video="assets/tour_gpu_graphics/spiral-panel.mp4" alt="a box's output panel holding a 640 by 360 view of the blue and gold five-armed spiral, turning steadily, with a line of small grey frame timings under it" capture="box" capture-profile="macos-electron" graphics-context=true open-outputs="true" wait-output="true" wait-output-kind="display" duration="6" fps="20" wait="3" w="760" h="60" timeout="300" embed=true name="tour-gpu-panel" source-box="assets/tour_gpu_graphics/spiral" source-box-properties="vertex,fragment" source-box-wait="0.1"}
@@ -204,25 +205,27 @@ import afield.media.stream.ElectronRTTView
 val view = ElectronRTTView(640, 360)
 val started = AnimationClock.nowSeconds()
 
-view += "content" to moduleHere {
-    +view
-    +Mesh("square") {
-        set(4, 2) {
-            pos.add(-1, -1, 0, 1, -1, 0, 1, 1, 0, -1, 1, 0)
-            tc.add(0, 0, 1, 0, 1, 1, 0, 1)
-            tri.add(0, 1, 2)
-            tri.add(0, 2, 3)
+view +=
+    "content" to
+        moduleHere {
+            +view
+            +Mesh("square") {
+                set(4, 2) {
+                    pos.add(-1, -1, 0, 1, -1, 0, 1, 1, 0, -1, 1, 0)
+                    tc.add(0, 0, 1, 0, 1, 1, 0, 1)
+                    tri.add(0, 1, 2)
+                    tri.add(0, 2, 3)
+                }
+                time = { AnimationClock.nowSeconds() - started }
+            }
         }
-        time = { AnimationClock.nowSeconds() - started }
-    }
-}
 
 display("main", view.html())
 ```
 
 `+view` inside `moduleHere { }` sends the module's drawing into the view instead of the window,
-`view += ...` attaches the module to it, and `display` puts the view in the box's `main` output. A web browser, including Field's HTTP
-mirror, shows a message in place of the frames.
+`view += ...` attaches the module to it, and `display` puts the view in the box's `main` output.
+A web browser, including Field's HTTP mirror, shows a message in place of the frames.
 
 ## Where to go from here
 
@@ -234,3 +237,6 @@ mirror, shows a message in place of the frames.
   `LoadedTexture`, ...).
 - [Graphics in an Output Area](four_in_output_areas.md) has more on the view in the panel: sizes,
   re-running, sharing it between boxes, and Linux.
+
+Next on the Tour, [Looking at Data](tour_data.md) starts with values you can inspect in a box and
+works up to a live GPU probe.

@@ -1,10 +1,12 @@
 # A RectSL scene on a light rig
 
-A RectSL scene is a picture that changes over time, and an LED matrix is a screen with very few
-pixels. This page plays a RectSL scene on a light rig. `RectSLImager` draws the scene on the CPU into an `Img`. `Patch.mapImage` colours 128 RGB
-pixels and four RGBWA washes from that image. `DmxOutput` sends the resulting universes as sACN to
-this machine, and `DmxInput` receives them. Then `Fixture.decode` turns the received bytes back into
-colours, laid out as the rig is, so they can be checked against the pixels the rig was given.
+An LED matrix is a screen with very few pixels. Let's play a RectSL animation on one, then read
+the signal back to see what the lights received.
+
+`RectSLImager` draws the scene into an `Img`, and `Patch.mapImage` uses it to colour 128 RGB pixels
+and four RGBWA washes. `DmxOutput` sends those colours over sACN to this machine, where `DmxInput`
+receives them. `Fixture.decode` turns the received bytes back into colours so we can compare them
+with what was sent.
 
 The box below draws one frame, lights the rig from it, sends it over sACN, and draws what came back.
 
@@ -151,9 +153,8 @@ ${timing.ticks} looks computed; ${timing.arrivalMillis.size + 1} frames of unive
 :::endfold
 ```
 
-No slot byte changes on the way: sACN over loopback is lossless, so the network adds no error. What
-error remains is quantisation. An
-RGB pixel's colour is rounded to 8 bits once, so it comes back within half a level. A wash is
+In this run, no slot byte changes on its way over loopback. The remaining error comes from
+quantisation. An RGB pixel's colour is rounded to 8 bits once, so it comes back within half a level. A wash is
 further off because `writeInto` splits its colour into red, green, blue, white and amber, and
 rounds each of those separately. `decode` adds white back into all three primaries and amber into
 red and green, so up to three rounded values combine in the red channel. The washes in this scene
@@ -203,17 +204,17 @@ val k = point.peak.indexOfFirst { it < 0.01 }.coerceAtLeast(0)
 val frame = RectSLImager(SceneOnARig.LINE).frame(times[k], 256, 128, linear = true)
 val rig = SceneOnARig.Rig()
 rig.show(frame, area = false)
-showPatch(rig.patch, channel = "point samples at t = ${"%.3f".format(times[k])} s", w = 540.0, h = 300.0)
+showPatch(rig.patch, channel = "point samples at t = ${times[k].f3} s", w = 540.0, h = 300.0)
 rig.show(frame, area = true)
-showPatch(rig.patch, channel = "area average at t = ${"%.3f".format(times[k])} s", w = 540.0, h = 300.0)
+showPatch(rig.patch, channel = "area average at t = ${times[k].f3} s", w = 540.0, h = 300.0)
 
 markdown(
     "counts",
     """
 | route | frames with the rig dark | light on the rig, min – max | mean over the sweep | (max − min) / mean |
 |---|---|---|---|---|
-| point samples | ${point.darkFrames} of ${point.total.size} | ${"%.2f".format(point.min)} – ${"%.2f".format(point.max)} | ${"%.3f".format(point.mean)} | ${"%.2f".format(point.flicker)} |
-| area average | ${area.darkFrames} of ${area.total.size} | ${"%.3f".format(area.min)} – ${"%.3f".format(area.max)} | ${"%.3f".format(area.mean)} | ${"%.4f".format(area.flicker)} |
+| point samples | ${point.darkFrames} of ${point.total.size} | ${point.min.f2} – ${point.max.f2} | ${point.mean.f3} | ${point.flicker.f2} |
+| area average | ${area.darkFrames} of ${area.total.size} | ${area.min.f3} – ${area.max.f3} | ${area.mean.f3} | ${area.flicker.f4} |
 """,
     width = 1000,
 )

@@ -75,7 +75,7 @@ from leaf to saddle) one at a time, smallest first, and gives their pixels to th
 from. It is the same persistence that simplifies a [Morse–Smale complex](morse_smale.md): small
 bumps go first and the large structure stays.
 
-This example takes the brightness of the leaf print and simplifies its contour tree twice:
+This example takes the brightness of a photograph of a printed leaf, cropped from one of the docs' own pictures, and simplifies its contour tree twice:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/contour_trees/simplify.png" alt="three tall panels of the leaf print. Left, the photograph. Middle, its contour-tree regions after light simplification: a mosaic of many small coloured patches. Right, after strong simplification: a few large coloured regions following the leaf's lobes and the background" wait="5" timeout="240" capture="box" open-outputs="true" padding="20" name="contour-tree-simplify" embed=true}
 import afield.geometry.topology.trees.*

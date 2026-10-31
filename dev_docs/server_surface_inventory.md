@@ -25,9 +25,9 @@ the category, which is enough to decide whether the new door wanted a guard.
 It is not the whole story of Field's exposure, and two other guards own the parts it leaves
 out:
 
-- **state-changing HTTP routes** — 56 of them, 43 with a named verb and 13 that name no verb
+- **state-changing HTTP routes** — 64 of them, 51 with a named verb and 13 that name no verb
   at all — belong to `FieldApiCorsExposureTest.everyMutatingRouteAndItsGuardIsPinned`, which
-  has pinned them since 2026-08-12 and counts the routes without their own guard (**48 of 56**). The
+  has pinned them since 2026-08-12 and counts the routes without their own guard (**56 of 64**). The
   Local AI model-discovery probe has a same-site check and permits trusted remote Field clients. This
   page does not duplicate that table, but it does count the thirteen verbless routes below,
   because a door that answers every method has to appear in an inventory of doors;
@@ -37,7 +37,7 @@ What was uncovered before this page existed, and is what it adds:
 
 | surface | count | previously guarded by |
 | --- | --- | --- |
-| HTTP **read** routes | 45 | nothing — the mutating census skips `get` outright |
+| HTTP **read** routes | 51 | nothing — the mutating census skips `get` outright |
 | **all-method** routes (`route(…) { handle { … } }`) | 13 | nothing — they name no verb, so no verb regex saw them |
 | `staticFiles` directory mounts | 7 | nothing — invisible to every route regex in the tree |
 | `/ws` **command** names (`handlers`) | 130 | nothing |
@@ -69,7 +69,7 @@ default**. That inversion is the single most useful sentence on either page.
 
 ## HTTP read routes
 
-47 routes, 36 of them with no route-specific guard. `guard` is computed from the handler
+51 routes, 40 of them with no route-specific guard. `guard` is computed from the handler
 body by the docs-route vocabulary the mutating census also uses
 (`docsAnnotations.kt:739#fun ApplicationCall.refuseUnlessSameSiteDocsClient`,
 `docsAnnotations.kt:723#fun ApplicationCall.refuseUnlessLocalDocsClient`); there is no `install(Authentication)`
@@ -88,6 +88,7 @@ mutation; it is a different one.
 | route | declared in | guard |
 | --- | --- | --- |
 | `GET /api/agent-worktrees` | `Server.kt` | none |
+| `GET /api/ai-local-feedback` | `Server.kt` | none |
 | `GET /api/ai-tool-use-improvement` | `Server.kt` | none |
 | `GET /api/ai-tool-use-improvement/view` | `Server.kt` | none |
 | `GET /api/chatlog/blob` | `ChatlogRoutes.kt` | loopback + same-site |
@@ -107,9 +108,14 @@ mutation; it is a different one.
 | `GET /api/document-guide-asset` | `documentGuides.kt` | none |
 | `GET /api/export-tagged-documents` | `Server.kt` | none |
 | `GET /api/instance-info` | `Server.kt` | none |
+| `GET /api/kits` | `KitRoutes.kt` | none |
+| `GET /api/kits/guide` | `KitRoutes.kt` | none |
+| `GET /api/kits/instances` | `KitRoutes.kt` | none |
+| `GET /api/kits/restart-status` | `KitRoutes.kt` | none |
 | `GET /api/maven-classpath` | `Server.kt` | none |
 | `GET /api/maven-search` | `Server.kt` | none |
 | `GET /api/patchy-document/{binding}` | `PatchyWebStorage.kt` | same-site |
+| `GET /api/perf/spans` | `Server.kt` | none |
 | `GET /api/python-settings` | `Server.kt` | none |
 | `GET /api/semantic-search/model` | `Server.kt` | none |
 | `GET /api/semantic-search/settings` | `Server.kt` | none |
@@ -293,10 +299,10 @@ the file, and the reach is described per file below in prose that a human checke
 
 | declaring file | commands |
 | --- | --- |
-| `Server.kt` | 53 |
+| `Server.kt` | 55 |
 | `agent_backdoor.kt` | 26 |
-| `history.kt` | 13 |
-| `executing.kt` | 9 |
+| `history.kt` | 14 |
+| `executing.kt` | 10 |
 | `Ai4Installer.kt` | 10 |
 | `importing.kt` | 4 |
 | `NotationServer.kt` | 3 |
@@ -323,7 +329,7 @@ What each of those reaches, checked against the code rather than inferred from t
 | `Server.kt` | document and box state, the completion engine, clipboard, layers, FLine editing, `set-string`, which writes box source to disk, and the live output iframe ready/reply relay. The relay accepts client readiness and replies within the existing `/ws` trust boundary; a native client can claim readiness, and a matching pending reply is accepted only from the selected socket |
 | `agent_backdoor.kt` | the agent path: read/write boxes, run transcripts, screenshot, macros. The published automation surface |
 | `history.kt` | the document history store — versions, screenshots, restore |
-| `executing.kt` | **box execution.** `launch-all`, `launch-batch`, `launch-fragment`, `stop-box`, `stop-all`. This is arbitrary Kotlin in Field's own JVM |
+| `executing.kt` | **box execution.** `launch-all`, `launch-batch`, `launch-fragment`, `stop-box`, `stop-all`, `interrupt-box`. This is arbitrary Kotlin in Field's own JVM |
 | `Ai4Installer.kt` | AI chat sessions and tool use; reads or clears the attached document’s per-box saved chat, reports the last turn’s context metadata (`ai-chat-context`, no text), rewinds or switches a chat’s branches, and — when asked — undoes a rewound turn’s recorded edits and created boxes (`ai-chat-rewind-world`), reads the attached document’s saved state trees and bounded state details (`ai-state-tree`, including read/inspect callbacks registered by box code; no restore or fork), runs a document’s agent-extension chat commands (`ai-chat-command`, box code), and reads the saved document chat (`chat_history`, `<document>/ai4_document_chat.md`, which `chat_input` appends to), behind the existing `/ws` boundary |
 | `importing.kt` | notebook and EDN import — parses foreign documents into boxes |
 | `NotationServer.kt` | the attached document's drawing (the root box's `drawing` property): merges a client's scene into it, records the drawing-layer selection (memory only), anchors marks to boxes. No reach beyond what `set-string` on `root.drawing` already had; it runs box code only as the `onNotation` reactions that box code itself registered |
@@ -435,6 +441,7 @@ reach to a client that `agent-eval` and `launch-all` already let run arbitrary c
 | `execute-fragment` | `executing.kt` |
 | `execute-symbol` | `executing.kt` |
 | `export-document` | `Server.kt` |
+| `export-web-document` | `Server.kt` |
 | `export-ipynb` | `importing.kt` |
 | `file-upload-update` | `Server.kt` |
 | `fline-click` | `Server.kt` |
@@ -442,12 +449,14 @@ reach to a client that `agent-eval` and `launch-all` already let run arbitrary c
 | `fline-edit-append-line` | `Server.kt` |
 | `fline-edit-begin-line` | `Server.kt` |
 | `fline-edit-clear` | `Server.kt` |
+| `fline-edit-commit` | `Server.kt` |
 | `fline-edit-end-line` | `Server.kt` |
 | `fline-edit-translate` | `Server.kt` |
 | `get-all-layers` | `Server.kt` |
 | `glsl-context` | `Server.kt` |
 | `hello` | `Server.kt` |
 | `hello_chat` | `Ai4Installer.kt` |
+| `history-box-story` | `history.kt` |
 | `history-line-churn` | `history.kt` |
 | `history-property-version` | `history.kt` |
 | `history-rail-line-stats` | `history.kt` |
@@ -458,6 +467,7 @@ reach to a client that `agent-eval` and `launch-all` already let run arbitrary c
 | `replay-output-areas` | `Server.kt` |
 | `initialize` | `Server.kt` |
 | `insert-template` | `templating.kt` |
+| `interrupt-box` | `executing.kt` |
 | `launch-all` | `executing.kt` |
 | `launch-batch` | `executing.kt` |
 | `launch-fragment` | `executing.kt` |

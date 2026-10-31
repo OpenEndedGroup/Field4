@@ -1,10 +1,11 @@
 # A Drawn Score, Heard
 
-This page reads a drawing as a score and plays it. The drawing layer holds the score:
-rectangles, a pen stroke, a level line. `notation.space` reads it as time across and pitch up. A
-dozen lines of box code decide what each mark means as music and build a pattern from the notes,
-and `patRenderStereo` plays the pattern offline into a `.wav`. Then the `.wav` is taken apart again,
-onsets and pitches, and put next to what was drawn.
+Draw a score on Field's canvas and turn it into sound. Here the score is made of rectangles, a
+pen stroke and a level line. `notation.space` reads the drawing with time across and pitch up; a
+dozen lines of box code decide what the marks mean and build a pattern to play.
+
+We'll render that pattern to a `.wav`, then analyse its onsets and pitches and put them next to
+the original drawing.
 
 The score on this page is drawn by code, but a rectangle you draw by hand in the same frame is read
 the same way. Here is the score in Field with the drawing layer switched on:
@@ -17,12 +18,17 @@ ui.waitForSelector("#field-drawing-layer .excalidraw", 15000.0)
 var ready = ""
 for (i in 0 until 60) {
     ui.pause(250)
-    ready = ui.eval("""
-        const s = window.drawingLayerState()
-        const tools = document.querySelector("#field-drawing-layer .App-toolbar")
-        const shown = !!tools && tools.getBoundingClientRect().width > 0
-        return (s && s.active && shown) ? "ready" : "waiting: active=" + (s && s.active) + " toolbar=" + shown
-    """.trimIndent()).toString()
+    ready =
+        ui.eval(
+                """
+                const s = window.drawingLayerState()
+                const tools = document.querySelector("#field-drawing-layer .App-toolbar")
+                const shown = !!tools && tools.getBoundingClientRect().width > 0
+                return (s && s.active && shown) ? "ready" : "waiting: active=" + (s && s.active) + " toolbar=" + shown
+                """
+                    .trimIndent(),
+            )
+            .toString()
     if (ready.contains("ready")) break
 }
 check(ready.contains("ready")) { "the drawing layer's toolbar never showed: " + ready }
@@ -64,9 +70,9 @@ start at 6, and the playhead does not cross itself.
 
 ## From a reading to a pattern
 
-`score.events` gives every mark in the frame with where it starts and ends in beats, and the pitch
-at its two ends. What those mean as music is not the drawing's business, so it is written out here,
-in the box, where you can change it. This reading makes three decisions:
+`score.events` gives every mark in the frame, where it starts and ends in beats, and the pitch
+at each end. The box decides what those marks mean as music, and you can change its interpretation.
+This reading makes three decisions:
 
 * A **rectangle**, or a **stroke that stays level**, is one note: from its left edge to its right, at
   its pitch. "Level" is its two ends within half a semitone, so the held note's wobble does not make
@@ -202,9 +208,9 @@ markdown(
 | notes scheduled, two cycles | ${heard.scheduled} |
 | onsets detected, not told where | ${heard.onsetsDetected} |
 | onsets within 30 ms of a note | ${heard.matchedOnsets} |
-| worst onset error | ${"%.1f".format(heard.maxOnsetErrorMs)} ms |
+| worst onset error | ${heard.maxOnsetErrorMs.f1} ms |
 | notes with a voiced pitch | ${heard.pitched} |
-| worst pitch error | ${"%.3f".format(heard.maxPitchError)} semitones |
+| worst pitch error | ${heard.maxPitchError.f3} semitones |
 | the published clip reads the same notes | $same |
 """,
     width = 1000,

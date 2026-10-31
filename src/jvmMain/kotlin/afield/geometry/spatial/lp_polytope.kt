@@ -22,15 +22,15 @@ import kotlin.math.min
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-/*
-The three-dimensional companion of lp_trajectories.kt: the same linear-programming methods, as
-curve generators, on a convex polytope `{ x : nᵢ·x ≤ bᵢ }` in space. The methods are the 2-D ones
-with 3×3 linear algebra in place of 2×2 (the ellipsoid method's constants change with the
-dimension: centre step 1/(n+1) = 1/4, expansion n²/(n²−1) = 9/8). The simplex walk follows the
-polytope's edges, which the constructor finds by enumerating vertices.
-
-Pure math, independent of Box; doubles throughout, Vec3 only for drawing.
-*/
+/**
+ * The three-dimensional companion of lp_trajectories.kt: the same linear-programming methods, as
+ * curve generators, on a convex polytope `{ x : nᵢ·x ≤ bᵢ }` in space. The methods are the 2-D ones
+ * with 3×3 linear algebra in place of 2×2 (the ellipsoid method's constants change with the
+ * dimension: centre step 1/(n+1) = 1/4, expansion n²/(n²−1) = 9/8). The simplex walk follows the
+ * polytope's edges, which the constructor finds by enumerating vertices.
+ *
+ * Pure math, independent of Box; doubles throughout, Vec3 only for drawing.
+ */
 
 /**
  * A bounded convex polytope with an interior, held as its half-spaces `nᵢ·x ≤ bᵢ` (unit outward
@@ -306,19 +306,30 @@ private fun solveSym3(h: DoubleArray, g0: Double, g1: Double, g2: Double): Doubl
 
 /**
  * One step of a 3-D trajectory: the 3-D [LpSample].
- *
- * @property scale the method's own measure, as for [LpSample]: μ for [centralPath] and
- *   [primalDual], the dual norm for [pdhg], `√det P` for [ellipsoid], the remaining volume for
- *   [cuttingPlanes], `NaN` for [simplexWalk].
  */
 data class LpSample3(
+    /** The iterate's x. */
     val x: Double,
+    /** The iterate's y. */
     val y: Double,
+    /** The iterate's z. */
     val z: Double,
+    /** The step number, starting at 0. */
     val iteration: Int,
+    /** `c·x` with `c` the normalised objective direction. */
     val objective: Double,
+    /** The largest constraint violation, zero for a feasible iterate. */
     val violation: Double,
+    /**
+     * The method's own measure, as for [LpSample]: μ for [centralPath] and [primalDual], the dual
+     * norm for [pdhg], `√det P` for [ellipsoid], the remaining volume for [cuttingPlanes], `NaN`
+     * for [simplexWalk].
+     */
     val scale: Double,
+    /**
+     * What kind of step this is: the method's name, or for [ellipsoid] which cut was taken —
+     * `feasibility-cut`, `objective-cut`, or `final` at the last step.
+     */
     val tag: String,
 ) {
     /** The iterate as a [Vec3], for drawing. */
@@ -816,12 +827,85 @@ private fun gauss4(a: Array<DoubleArray>): DoubleArray? {
     return x
 }
 
+/*
+The 3-D form of `volumetricCenter` in lp_trajectories.kt: minimise ½ ln det H, H = Σ aᵢaᵢᵀ / sᵢ²,
+with Vaidya's Hessian approximation Q = Σ σᵢ aᵢaᵢᵀ / sᵢ² and backtracking, from a strictly
+feasible start.
+*/
+internal fun volumetricCenter3(
+    nx: DoubleArray, ny: DoubleArray, nz: DoubleArray, b: DoubleArray, start: DoubleArray, maxIterations: Int = 100,
+): DoubleArray {
+    val x = start.copyOf()
+    // symmetric 3x3 as (xx, xy, xz, yy, yz, zz)
+    fun sum(px: Double, py: Double, pz: Double, weight: (Int, Double) -> Double): DoubleArray? {
+        val m = DoubleArray(6)
+        for (i in nx.indices) {
+            val s = b[i] - nx[i] * px - ny[i] * py - nz[i] * pz
+            if (s <= 0.0) return null
+            val q = weight(i, s)
+            m[0] += q * nx[i] * nx[i]; m[1] += q * nx[i] * ny[i]; m[2] += q * nx[i] * nz[i]
+            m[3] += q * ny[i] * ny[i]; m[4] += q * ny[i] * nz[i]; m[5] += q * nz[i] * nz[i]
+        }
+        return m
+    }
+    fun det(m: DoubleArray) = m[0] * (m[3] * m[5] - m[4] * m[4]) - m[1] * (m[1] * m[5] - m[4] * m[2]) + m[2] * (m[1] * m[4] - m[3] * m[2])
+    // adjugate, so inverse = adj / det
+    fun adj(m: DoubleArray) = doubleArrayOf(
+        m[3] * m[5] - m[4] * m[4], m[2] * m[4] - m[1] * m[5], m[1] * m[4] - m[2] * m[3],
+        m[0] * m[5] - m[2] * m[2], m[1] * m[2] - m[0] * m[4], m[0] * m[3] - m[1] * m[1],
+    )
+    fun quad(a: DoubleArray, u: Double, v: Double, w: Double) =
+        a[0] * u * u + a[3] * v * v + a[5] * w * w + 2 * (a[1] * u * v + a[2] * u * w + a[4] * v * w)
+    fun value(px: Double, py: Double, pz: Double): Double {
+        val h = sum(px, py, pz) { _, s -> 1.0 / (s * s) } ?: return Double.POSITIVE_INFINITY
+        val d = det(h)
+        return if (d > 0.0) 0.5 * ln(d) else Double.POSITIVE_INFINITY
+    }
+    repeat(maxIterations) {
+        val h = sum(x[0], x[1], x[2]) { _, s -> 1.0 / (s * s) } ?: return x
+        val hd = det(h)
+        if (!(hd > 0.0)) return x
+        val hInv = adj(h)
+        val g = DoubleArray(3)
+        val q = sum(x[0], x[1], x[2]) { i, s ->
+            val leverage = quad(hInv, nx[i], ny[i], nz[i]) / hd / (s * s)
+            g[0] += leverage * nx[i] / s; g[1] += leverage * ny[i] / s; g[2] += leverage * nz[i] / s
+            leverage / (s * s)
+        } ?: return x
+        val qd = det(q)
+        if (!(qd > 0.0) || !qd.isFinite()) return x
+        val qa = adj(q)
+        val d = doubleArrayOf(
+            -(qa[0] * g[0] + qa[1] * g[1] + qa[2] * g[2]) / qd,
+            -(qa[1] * g[0] + qa[3] * g[1] + qa[4] * g[2]) / qd,
+            -(qa[2] * g[0] + qa[4] * g[1] + qa[5] * g[2]) / qd,
+        )
+        val decrement = -(g[0] * d[0] + g[1] * d[1] + g[2] * d[2])
+        if (decrement < 1e-18) return x
+        val before = value(x[0], x[1], x[2])
+        var alpha = 1.0
+        var accepted = false
+        for (tries in 0 until 80) {
+            val after = value(x[0] + alpha * d[0], x[1] + alpha * d[1], x[2] + alpha * d[2])
+            if (after.isFinite() && after <= before - 1e-4 * alpha * decrement) {
+                for (k in 0..2) x[k] += alpha * d[k]
+                accepted = true
+                break
+            }
+            alpha *= 0.5
+        }
+        if (!accepted) return x
+    }
+    return x
+}
+
 /**
  * A cutting-plane walk in 3-D: find a centre of the region still in play, cut it with the objective
  * (`c·x ≥ c·centre`), repeat. [center] is [LpCenter.ANALYTIC] (the analytic centre of every
  * constraint so far, cuts included), [LpCenter.CENTROID] (the centre of gravity, which removes at
  * least `1 − (3/4)³ ≈ 58%` of the volume each step) or [LpCenter.CHEBYSHEV] (the centre of the
- * largest inscribed ball). [LpCenter.VOLUMETRIC] is not implemented in 3-D and is refused.
+ * largest inscribed ball) or [LpCenter.VOLUMETRIC] (Vaidya's volumetric centre of every constraint
+ * so far, started from the analytic centre).
  * Stops when the remaining volume falls below [minVolume] or after [iterations].
  * [LpSample3.scale] is the remaining volume, and [LpCuttingPlaneTrace3.regions] holds each region.
  */
@@ -832,7 +916,6 @@ fun LpPolytope.cuttingPlanes(
     minVolume: Double = 1e-9,
 ): LpCuttingPlaneTrace3 {
     require(iterations >= 0) { "iterations must be non-negative, got $iterations" }
-    require(center != LpCenter.VOLUMETRIC) { "cuttingPlanes in 3-D supports ANALYTIC, CENTROID and CHEBYSHEV; VOLUMETRIC is 2-D only" }
     val c = unit3(direction)
     val normals = (0 until constraintCount).map { vec(normalX[it], normalY[it], normalZ[it]) }.toMutableList()
     val bounds = bound.toMutableList()
@@ -845,12 +928,14 @@ fun LpPolytope.cuttingPlanes(
         val p = when (center) {
             LpCenter.CENTROID -> mesh.solidCentroid().let { doubleArrayOf(it.x.toDouble(), it.y.toDouble(), it.z.toDouble()) }
             LpCenter.CHEBYSHEV -> chebyshevCenter3(region.normalX, region.normalY, region.normalZ, region.bound)
-            else -> {
+            LpCenter.ANALYTIC, LpCenter.VOLUMETRIC -> {
                 val s = region.center
-                barrierNewton3(
+                val analytic = barrierNewton3(
                     region.normalX, region.normalY, region.normalZ, region.bound, DoubleArray(region.constraintCount) { 1.0 },
                     doubleArrayOf(0.0, 0.0, 0.0), 1.0, s.x.toDouble(), s.y.toDouble(), s.z.toDouble(),
                 )
+                if (center == LpCenter.ANALYTIC) analytic
+                else volumetricCenter3(region.normalX, region.normalY, region.normalZ, region.bound, analytic)
             }
         }
         samples.add(sample(c, p[0], p[1], p[2], k, volume, "cutting-plane"))

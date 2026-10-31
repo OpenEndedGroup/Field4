@@ -38,11 +38,15 @@ class FromInput {
     }
 }
 
+/** The primitive-restart index: write it into a strip or fan index buffer to end the current run and begin another. Meshes index with `VK_INDEX_TYPE_UINT32`, so the value is all thirty-two bits set, and a module's pipeline turns restart on for exactly the strip and fan topologies. */
 val restart: Int
     get() = (0xFFFFFFFF).toInt()
 
 // this has to agree with the vertexbufferstructure that was used for this pipeline (right now)
-class Mesh(var renderer: Renderer = fromContext()) {
+class Mesh(
+    /** The renderer the vertex and index buffers are allocated on, and whose frame counter decides when [prepareForDraw] has already run for this frame. */
+    var renderer: Renderer = fromContext()
+) {
 
     constructor(renderer: Renderer = fromContext(), pointer: ModulePointer = fromContext()) : this(renderer) {
         this.inside = pointer
@@ -57,17 +61,28 @@ class Mesh(var renderer: Renderer = fromContext()) {
      */
     lateinit var inside: ModulePointer
 
+    /** The vertex buffers by the shader input location they feed. [resize] creates one per input the module declares, grows or trims it to the vertex count, and frees any whose input the current shaders do not declare. */
     var v = mutableMapOf<Int, VertexBuffer>()
+
+    /** The same buffers again, by input name — the map [input] reads, and the one to reach for from box code, where the shader's `position` is easier to name than its location. */
     var vn = mutableMapOf<String, VertexBuffer>()
 
+    /** The index buffer, or null when the mesh is not indexed. [resize] allocates it only for a non-zero triangle count, and drops it again when that count goes back to zero. */
     var t: VertexBuffer? = null
 
+    /** Primitives the last [resize] made room for, or -1 before the first one. Above zero it is an indexed draw of this many primitives; at zero the mesh draws [numVert] vertices straight through. */
     var numTriangle: Int = -1
+
+    /** Vertices the last [resize] made room for, or -1 before the first one. */
     var numVert: Int = -1
 
+    /** Named sequences advanced once per frame, from [prepareForDraw], before the buffers are flushed — which is where a mesh that rewrites its own vertices each frame puts that work. */
     var update = MapOfSequences<String>()
+
+    /** How many copies of the mesh each draw call asks for; reaches `vkCmdDraw` and `vkCmdDrawIndexed` directly, so the shader distinguishes them by `gl_InstanceIndex`. */
     var instanceCount = 1
 
+    /** The push constants for this draw, laid out to match the vertex and fragment members the current module declares. The `FromStructure` delegates read and write it by member name. */
     var push = Structure()
 
     class BoundFromStructure<T> {
@@ -121,8 +136,10 @@ class Mesh(var renderer: Renderer = fromContext()) {
 
     operator fun get(name: String) = input(name)
 
+    /** Whether [resize] has yet run. Only [input] reads it, to tell "there is no such input in this module" from "there are no inputs yet because nothing has been sized". */
     var notInitialized = true
 
+    /** The open-ended writer for this mesh's vertices and indices. [prepareForDraw] closes and applies it if the `builder { }` block left it open, so the contents land in the buffers before the draw that needs them. */
     var builder = MeshBuilder(this)
 
     fun builder(b: MeshBuilder.() -> Unit): MeshBuilder {

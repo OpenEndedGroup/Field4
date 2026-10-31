@@ -21,7 +21,8 @@ This box draws a fragment shader into a 640×360 render target and publishes it 
 ```diffstatic {data-lang=kotlin}
 import afield.media.webrtc.webrtcSink
 
-@exported val sink = webrtcSink("field-shader", 640, 360)
+@exported
+val sink = webrtcSink("field-shader", 640, 360)
 
 val module = moduleHere { +sink }
 val quad = Mesh()
@@ -112,8 +113,8 @@ the panels connect as `@you`. If you have already authorised aaaframe on GitHub,
 and closes without asking anything.
 
 Field remembers the class and your aaaframe login in `~/.afield/webrtc/aaaframe-sign-ins.json`,
-a file only your user account can read. It belongs to you, not to a document, so a document you
-share does not carry your login. When the login expires or the class server is restarted with a
+a file only your user account can read. The login stays with your account; sharing a document does
+not include it. When the login expires or the class server is restarted with a
 new key, aaaframe refuses it, and Field opens the sign-in window again. The publisher list and the
 line under a publishing view also have a **Sign in to aaaframe** button, which starts a fresh
 sign-in.
@@ -159,13 +160,12 @@ and corporate networks do), because Field has no relay server (TURN) for the vid
 
 ## How fast it is
 
-On one Apple silicon Mac, through a local aaaframe server, the time from Field rendering a frame
-to the receiving page presenting it was 46 ms at the median, 63 ms at the 90th percentile and
-71 ms at the 99th, while the machine was moderately busy. Under heavy load it rose to 59 ms
-median and 106 ms at the 90th percentile. The stream is captured at up to 30 frames a second, so
-a frame can wait up to 33 ms for its turn before it is encoded at all.
+On one machine, a frame takes about 50 ms from Field rendering it to the receiving page showing
+it, and around 100 ms under heavy load. The stream is captured at up to 30 frames a second. A
+source made with `measure = true` measures this for your own setup. The percentiles are in
+`dev_docs/WEBRTC_LATENCY_MEASUREMENTS.md`.
 
-??? aside "Agents: how this works and how it was measured"
+??? aside "How this works"
     The JVM never touches WebRTC. The sink's page script calls `canvas.captureStream(30)` on the
     output-area canvas `ElectronRTTView` draws into; the source is a hidden puppet Electron page
     (`webrtc-source.html`) playing the remote track in a `<video>`, whose paints become the texture
@@ -173,8 +173,5 @@ a frame can wait up to 33 ms for its turn before it is encoded at all.
     itself or copies frames to aaaframe's `/ws/shadertrinket-signaling` with the session cookie,
     which `electron/aaaframe-sign-in.js` reads from its sign-in window's cookie jar; the
     reasons (Lax cookie, separate Electron profile) are in `dev_docs/WEBRTC_SOURCES_SINKS.md`.
-    The latency figure comes from `dev_docs/webrtc_latency/`: a sink draws its wall clock as a
-    24-bit bar code, and a source with `measure = true` decodes every presented frame with
-    `requestVideoFrameCallback` and compares clocks. The browser end was driven with
-    `dev_docs/webrtc_latency/shadertrinket_driver.py`. The figures on this page are screenshots
-    of those runs, not docs-runner captures, because they need two running peers.
+    The figures on this page are screenshots, not docs-runner captures, because they need two
+    running peers.

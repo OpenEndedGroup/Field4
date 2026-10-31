@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-31T00:12:53.453Z",
+  "documentName": "stacksl_fit_demo",
+  "outputs": [
+    {
+      "uid": "stacksl-fit",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 798,
+      "height": 200,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "stacksl-roundtrip",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 402,
+      "height": 200,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "stacksl-wires",
+      "channel": "output",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 232,
+      "height": 228,
+      "path": "outputs/2.html"
+    }
+  ]
+}

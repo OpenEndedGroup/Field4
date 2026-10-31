@@ -1,10 +1,8 @@
 # Fabricate Renderer
 
-For the experimental raster-primary area lights, Vulkan ray-query shadows and optional RTXDI resampling, see [Direct lighting](direct_lighting.md).
-
 [`StandardRenderer`](reference/renderers.md#standardrenderer-kt-standardrenderer) is the quick path into the fabricated renderer: a scene you have only registered geometry into comes back lit, shadowed and ambient-occluded by the stock setup. Metalness changes the material, shadows land where objects touch the ground, and ambient occlusion darkens contacts. Tone mapping is the one thing you have to ask for (see [Tone mapping and bloom](#tone-mapping-and-bloom)).
 
-This page shows the renderer in use. The [Renderers](reference/renderers.md) reference page lists every public declaration in the fabricated package with its KDoc, including the scene graph and pass classes the examples below use, and the two renderers this page does not cover: the progressive path tracer and the Gaussian splat renderer.
+This page shows the renderer in use. For experimental area lights, Vulkan ray-query shadows and optional RTXDI resampling, see [Direct lighting](direct_lighting.md). The [Renderers](reference/renderers.md) reference page lists every public declaration in the fabricated package with its KDoc, including the scene graph and pass classes the examples below use, and the two renderers this page does not cover: the progressive path tracer and the Gaussian splat renderer.
 
 The most demanding scene on the page is `assets/fabricate_demo/ToyCar.glb`, paired with the `venice_sunset_1k.exr` environment. ToyCar carries transmission, clearcoat, sheen, tangent-space normal maps, texture transforms, and multiple texture semantics. Venice Sunset drives the image-based-lighting path through `LoadedTexture.fromExrFile(...)`, which decodes EXR channels into RGBA32F, can build GGX-prefiltered radiance mips, and samples that mip chain by roughness.
 
@@ -507,7 +505,7 @@ bundle.addShaderEffect(
         vec3 graded = mix(c.rgb, lifted, 0.72) * mix(0.38, 1.22, vignette);
         outColor = vec4(graded, c.a);
     }
-"""
+    """
         .trimIndent(),
     renderer = renderer,
 )

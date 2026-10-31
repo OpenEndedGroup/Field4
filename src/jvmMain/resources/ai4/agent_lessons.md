@@ -10,6 +10,9 @@ distilled: 2026-09-30T04:07:36.258513Z from agent-eval mode=live openai gpt-6-as
 
 ## Curated
 
+- To add lines with `PatchBoxTextRequest`, anchor on text, not a line number: `find` a unique existing line and `replace` it with that line plus the new ones. Line numbers counted in a `\n`-escaped string land in the wrong place (2026-10-22: an insert at startLine 36 went inside a `while` loop).
+- A capture shows what was drawn, not that the code computed the right thing. For a named construction (an Ulam spiral, a known sequence, a fractal), check the code against its definition, for example by printing the first values it placed, before calling the picture correct (2026-10-22: a spiral of odd numbers only was reported as "a textbook Ulam spiral" with diagonals it did not have).
+
 ## Distilled
 
 - `CaptureRenderWindowRequest` failed 8 times in 3 tasks (html-table, draw-sun, bars-sorted-red) answering "No capturable Field 4 render window is visible from this box.". No later call of it in those tasks worked.

@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-29T22:29:01.954Z",
+  "documentName": "spreadsheet_constraints",
+  "outputs": [
+    {
+      "uid": "spreadsheet_constraints_temperature",
+      "channel": "spreadsheet",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 330,
+      "height": 208,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "spreadsheet_constraints_rectangle",
+      "channel": "spreadsheet",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 330,
+      "height": 268,
+      "path": "outputs/1.html"
+    }
+  ]
+}

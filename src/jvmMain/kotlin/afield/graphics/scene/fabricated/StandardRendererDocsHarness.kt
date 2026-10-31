@@ -28,10 +28,23 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
- * Small native-render harness for docs and smoke tests. It renders deterministic
- * `StandardRenderer` scenes to PNGs and can turn those PNGs into HTML for display(...)
- * so the docs build can capture them through the normal backdoor screenshot path.
+ * The offscreen renders behind Field's graphics documentation: deterministic `StandardRenderer`
+ * scenes captured to PNG, plus the HTML wrapper that puts one in a box output.
+ *
+ * A page gets its figure by calling one of the `render` functions from a box, passing the returned
+ * file to [htmlForImage], and letting the docs build screenshot the result through the ordinary
+ * backdoor path. The scenes take the renderer's features one at a time: metalness, shadow and
+ * ambient-occlusion comparisons, a camera and depth study, glTF loading, blended transparency, and
+ * the post-stack vignette and tone-map passes. Each takes its renderer from the box's context by
+ * default, so a box connected beneath a renderer needs to pass only an output path.
+ *
+ * [renderStackSLGallery] and [renderRectSLGallery], with their animation counterparts, are
+ * wrappers rather than scenes of their own: the rendering belongs to [StackSLGalleryHarness] and
+ * [RectSLGalleryHarness], and the wrapper copies the hero image that harness produced to the path
+ * the docs fence checks.
  */
+
+/** Renders the graphics documentation's `StandardRenderer` figures offscreen, one scene per call. */
 object StandardRendererDocsHarness {
 
     private const val WAIT_FRAMES = 90

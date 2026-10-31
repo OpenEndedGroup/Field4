@@ -18,6 +18,31 @@ import java.nio.ByteBuffer
 import java.security.MessageDigest
 import kotlin.math.abs
 
+/**
+ * The three things the solid inspector measures off a part's boundary: which edges are worth
+ * drawing, which triangles belong to the same face, and one string that identifies the whole set of
+ * parts.
+ *
+ * A boundary arrives as a [SolidPlanarMesh] whose triangles carry the diagonals its triangulator
+ * needed and the coplanar edges its Boolean history left behind, so drawing every edge buries the
+ * shape under both. `solidOutlineEdges` keeps an edge unless exactly two triangles meet along it and
+ * those two are one flat face: normals parallel and facing the same way, and each triangle's
+ * vertices within tolerance of the other's plane. An edge where some other number of triangles meet,
+ * or where a triangle is too degenerate to have a normal, stays visible, so an open surface keeps
+ * its perimeter rather than reading as a closed solid. The tolerance is the mesh's own
+ * `nativeTolerance` or sixty-four ulps of the part's largest coordinate, whichever is larger, so a
+ * part modelled in metres and the same part in millimetres get the same answer.
+ *
+ * `solidPartTopology` groups the triangles into faces by merging across every edge that is not one
+ * of those creases. It keeps the canonical double-precision positions and the original triangle
+ * order, because a pick is resolved against this copy rather than against the render mesh, whose
+ * vertices shading has already split.
+ *
+ * `solidArtifactDigest` hashes part names, positions, indices and faces in sorted name order, so the
+ * same boundaries hash the same however the parts were collected. That digest is the geometry
+ * identity a review note is pinned to, which is what lets a note outlive a relaunch.
+ */
+
 /** Exact boundary identity, including part names and topology; independent of input map order. */
 fun solidArtifactDigest(parts: Map<String,SolidPlanarMesh>): String {
     val hash=MessageDigest.getInstance("SHA-256")

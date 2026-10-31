@@ -1,23 +1,20 @@
 # AI4 Paints
 
-*The document on this page is the [ai4_paint_studio](agent_transcripts.md#ai4_paint_studio)
-starting point. It needs the paint library (`./gradlew buildPaintNative`, see
-[Paint and pencil from FLines](paint_canvas.md#building-the-library)) and an AI provider.*
-
 The Studio is one box that turns the [paint simulator](paint_canvas.md), built on alice's
 [claude-paint](https://github.com/aliceisjustplaying/claude-paint), into a place where the AI chat
 can paint. The box puts an oil canvas on an easel and gives the agent tools to paint on it. You
 open the box's AI panel and ask for a painting, and the agent lays it in, looks at it, corrects it
 and hangs it in the box's gallery. The three paintings below came from one conversation with the
-Studio:
+Studio. Open the [ai4_paint_studio](agent_transcripts.md#ai4_paint_studio) starting point to try
+it yourself; it needs an AI provider and the paint library (`./gradlew buildPaintNative`, see
+[Paint and pencil from FLines](paint_canvas.md#building-the-library)).
 
 ![three paintings of the same harbour on a black ground. Left: dusk, a violet sky warming to apricot at the horizon, dark headlands on either side, three small moored boats with reflections on pale still water. Middle: the same harbour at night, deep blue sky and water, a pale moon, a broken column of silver reflections, and tiny amber lights on the boats. Right: a stormy morning, heavy grey-violet clouds over a pale band of light, dark teal water broken by white caps, the boats heeling](assets/ai4_painting/three.jpg)
 
-The first request asked for a quiet harbour at dusk. The second asked to turn that painting into
-night, and the agent painted over the dusk canvas. Then the chat was rewound to before the second
-request, and the canvas went back to the dusk painting with it. The new second request was for a
-stormy morning, so the storm was painted on top of dusk too. The night painting was not lost:
-`/branch` switches the conversation back to it, and the canvas comes back with it.
+The first request asked for a quiet harbour at dusk; the second turned it into night. Then the
+chat was rewound to before the second request, restoring the dusk canvas. A new request painted a
+stormy morning over it. The night painting remains on its own branch: `/branch` brings back both
+the conversation and the canvas.
 
 ## Asking for a painting
 
@@ -158,11 +155,10 @@ tool("paint.dab") {
     describe("Touch the brush down at points and lift it: dabs, petals, leaves, highlights. One load for all of them.")
     effects(ToolEffect.CONTROL_RUNTIME)
     val points by param<List<Double>>("[x0, y0, x1, y1, ...]")
-    val color by
-        param<String?>(
-            "#rrggbb, a tube name, or tubes by parts; null dabs a kept tool with what it carries",
-            default = null,
-        )
+    val color by param<String?>(
+        "#rrggbb, a tube name, or tubes by parts; null dabs a kept tool with what it carries",
+        default = null,
+    )
     val tool by param<String?>("a kept brush's name to dab with; null for a fresh brush", default = null)
     val brush by
         param<String>("Round, HogFlat, Filbert, Fan, Rigger, Badger or Stippler (a fresh brush)", default = "Round")
@@ -182,13 +178,14 @@ tool("paint.dab") {
 }
 ```
 
-Colours can be hex, or real tube paints mixed by parts, `"lead white:4, cadmium yellow:1"`, which
-mix the way paint does. The Studio's other tools are strokes along curves, whole regions worked
-with a painter's handling (`Broad`, `Body`, `Detail`, `Glaze`, `Scumble`, `Blend`), glazes, pencil
-and chalk lines, hatching, stippling, a painting knife, a rag, spatter, keeping a tool by name and
-loading it, timed gestures with a brush of moving hairs, watercolour washes, drops, wetting and
-tilting the board, drying time, a fresh canvas or sheet of paper, hanging, and an ageing tool the
-agent loads only when it asks for it.
+Colours can be hex values or tube paints mixed by parts, such as
+`"lead white:4, cadmium yellow:1"`. The Studio gives the agent tools for strokes, filled regions
+with painterly handling (`Broad`, `Body`, `Detail`, `Glaze`, `Scumble`, `Blend`), glazes, pencil,
+chalk, hatching and stippling, as well as a knife, rag and spatter.
+
+It can keep and reload a brush, make timed gestures with moving hairs, paint washes and drops,
+wet or tilt the paper, and wait for paint to dry. Other tools start a fresh surface, hang a painting
+or age it; the ageing tool is loaded when the agent asks for it.
 
 The agent also needs to know the canvas it is painting on. A `context` block is text the agent
 reads at the start of every request, computed then, so it describes the canvas as it is:

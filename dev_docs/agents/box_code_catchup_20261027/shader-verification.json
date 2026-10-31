@@ -1,0 +1,222 @@
+{
+  "status": "passed",
+  "standalone": [
+    {
+      "path": "dev_docs/agents/transcripts/demo_document.yaml",
+      "fixture": "/Users/marc/.codex/worktrees/docs-code-catchup-oct27/field4/build/box-code-revision/catchup-20261027/runtime/shader-0.glsl",
+      "kind": "VERTEX_SHADER",
+      "sha256": "9d436fbe6ce920d07c12fe0a650bcc9b94bf95c322ada019712f8575ac389fa7"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/demo_document.yaml",
+      "fixture": "/Users/marc/.codex/worktrees/docs-code-catchup-oct27/field4/build/box-code-revision/catchup-20261027/runtime/shader-1.glsl",
+      "kind": "FRAGMENT_SHADER",
+      "sha256": "683d125eba81059cab8d2a0711eb55a928d359bce34e3fd05be19546485a276c"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/demo_document.yaml",
+      "fixture": "/Users/marc/.codex/worktrees/docs-code-catchup-oct27/field4/build/box-code-revision/catchup-20261027/runtime/shader-2.glsl",
+      "kind": "VERTEX_SHADER",
+      "sha256": "2c8e11634cdf55e1666a96f3bd1411949e77074c7a19dbac24f48c5380aa07f1"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/demo_document.yaml",
+      "fixture": "/Users/marc/.codex/worktrees/docs-code-catchup-oct27/field4/build/box-code-revision/catchup-20261027/runtime/shader-3.glsl",
+      "kind": "FRAGMENT_SHADER",
+      "sha256": "ae99d429c903b7fc256d03b17d4cf5da7bc54971b51e820a15d561c546e90500"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/docs_capture/renderer_column.yaml",
+      "fixture": "/Users/marc/.codex/worktrees/docs-code-catchup-oct27/field4/build/box-code-revision/catchup-20261027/runtime/shader-4.glsl",
+      "kind": "VERTEX_SHADER",
+      "sha256": "0786269bdd841b7a894d38a9382444d70e52fe7b2a8c49fcb7e15ca0d38fb855"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/docs_capture/renderer_column.yaml",
+      "fixture": "/Users/marc/.codex/worktrees/docs-code-catchup-oct27/field4/build/box-code-revision/catchup-20261027/runtime/shader-5.glsl",
+      "kind": "FRAGMENT_SHADER",
+      "sha256": "a6663786f9a3e5144723c0435505bff863a92a858a5c09f615da9a110d14dcb3"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/webrtc_shader_jam.yaml",
+      "fixture": "/Users/marc/.codex/worktrees/docs-code-catchup-oct27/field4/build/box-code-revision/catchup-20261027/runtime/shader-6.glsl",
+      "kind": "VERTEX_SHADER",
+      "sha256": "7270a97f3cbaae098ffd43be2431591d87417f94d449cd9a01207a1c60fc2eb6"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/webrtc_shader_jam.yaml",
+      "fixture": "/Users/marc/.codex/worktrees/docs-code-catchup-oct27/field4/build/box-code-revision/catchup-20261027/runtime/shader-7.glsl",
+      "kind": "FRAGMENT_SHADER",
+      "sha256": "99d306b6c193e5f76a0982fc0149c26e701395cc049cbad515af4b428b177b6f"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/webrtc_shader_jam.yaml",
+      "fixture": "/Users/marc/.codex/worktrees/docs-code-catchup-oct27/field4/build/box-code-revision/catchup-20261027/runtime/shader-8.glsl",
+      "kind": "VERTEX_SHADER",
+      "sha256": "ba17dfa14020b0511f5632daad6bb904ff815014cb1504734d7c12283faa537d"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/webrtc_shader_jam.yaml",
+      "fixture": "/Users/marc/.codex/worktrees/docs-code-catchup-oct27/field4/build/box-code-revision/catchup-20261027/runtime/shader-9.glsl",
+      "kind": "FRAGMENT_SHADER",
+      "sha256": "96ff1ce71f270dc3ca242ecd7e93c902db2f0d18057971a3cadc81bfe9c3d5f7"
+    },
+    {
+      "path": "public/docs/tour_gpu_graphics.md",
+      "fixture": "/Users/marc/.codex/worktrees/docs-code-catchup-oct27/field4/build/box-code-revision/catchup-20261027/runtime/shader-10.glsl",
+      "kind": "VERTEX_SHADER",
+      "sha256": "c95b469b0f7e0a39a1e723bd033f2bc6f8b8aa1dfd7c93d313f263f61b01ba81"
+    }
+  ],
+  "domainTests": [
+    "ShadertoyChannelsTest",
+    "BoidSketchTest",
+    "IteratedSystemShaderTest",
+    "ParticleSketchShaderTest",
+    "SplatShaderTest"
+  ],
+  "domainTestLog": "/Users/marc/.codex/worktrees/docs-code-catchup-oct27/field4/build/box-code-revision/catchup-20261027/shader-tests.log",
+  "notes": [
+    {
+      "path": "dev_docs/agents/transcripts/demo_document.yaml",
+      "reason": "Probe macro/partial documentation fragment; no claim of standalone compilation"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/fern_iterated_systems.yaml",
+      "reason": "Domain tests compile authored presets with actual Field includes/preambles"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/fern_iterated_systems.yaml",
+      "reason": "Domain tests compile authored presets with actual Field includes/preambles"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/fern_iterated_systems.yaml",
+      "reason": "Domain tests compile authored presets with actual Field includes/preambles"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/fern_iterated_systems.yaml",
+      "reason": "Domain tests compile authored presets with actual Field includes/preambles"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/madp_boids.yaml",
+      "reason": "Domain tests compile authored presets with actual Field includes/preambles"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/madp_boids.yaml",
+      "reason": "Domain tests compile authored presets with actual Field includes/preambles"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/madp_boids.yaml",
+      "reason": "Domain tests compile authored presets with actual Field includes/preambles"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/madp_boids.yaml",
+      "reason": "Domain tests compile authored presets with actual Field includes/preambles"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/madp_boids.yaml",
+      "reason": "Domain tests compile authored presets with actual Field includes/preambles"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/madp_boids.yaml",
+      "reason": "Domain tests compile authored presets with actual Field includes/preambles"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/madp_boids.yaml",
+      "reason": "Domain tests compile authored presets with actual Field includes/preambles"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/particles_sketchbook.yaml",
+      "reason": "Domain tests compile authored presets with actual Field includes/preambles"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/particles_sketchbook.yaml",
+      "reason": "Domain tests compile authored presets with actual Field includes/preambles"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/particles_sketchbook.yaml",
+      "reason": "Domain tests compile authored presets with actual Field includes/preambles"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/particles_sketchbook.yaml",
+      "reason": "Domain tests compile authored presets with actual Field includes/preambles"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/particles_sketchbook.yaml",
+      "reason": "Domain tests compile authored presets with actual Field includes/preambles"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/particles_sketchbook.yaml",
+      "reason": "Domain tests compile authored presets with actual Field includes/preambles"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/particles_sketchbook.yaml",
+      "reason": "Domain tests compile authored presets with actual Field includes/preambles"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/shadertrinket.yaml",
+      "reason": "Domain tests compile authored presets with actual Field includes/preambles"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/shadertrinket.yaml",
+      "reason": "Domain tests compile authored presets with actual Field includes/preambles"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/shadertrinket.yaml",
+      "reason": "Domain tests compile authored presets with actual Field includes/preambles"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/shadertrinket.yaml",
+      "reason": "Domain tests compile authored presets with actual Field includes/preambles"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/shadertrinket.yaml",
+      "reason": "Domain tests compile authored presets with actual Field includes/preambles"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/shadertrinket.yaml",
+      "reason": "Domain tests compile authored presets with actual Field includes/preambles"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/shadertrinket.yaml",
+      "reason": "Domain tests compile authored presets with actual Field includes/preambles"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/splat_shader.yaml",
+      "reason": "Domain tests compile authored presets with actual Field includes/preambles"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/splat_shader.yaml",
+      "reason": "Domain tests compile authored presets with actual Field includes/preambles"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/splat_shader.yaml",
+      "reason": "Domain tests compile authored presets with actual Field includes/preambles"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/splat_shader.yaml",
+      "reason": "Domain tests compile authored presets with actual Field includes/preambles"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/splat_shader.yaml",
+      "reason": "Domain tests compile authored presets with actual Field includes/preambles"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/splat_shader.yaml",
+      "reason": "Domain tests compile authored presets with actual Field includes/preambles"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/splat_shader.yaml",
+      "reason": "Domain tests compile authored presets with actual Field includes/preambles"
+    },
+    {
+      "path": "dev_docs/agents/transcripts/splat_shader.yaml",
+      "reason": "Domain tests compile authored presets with actual Field includes/preambles"
+    },
+    {
+      "path": "public/docs/tour_data.md",
+      "reason": "Probe macro/partial documentation fragment; no claim of standalone compilation"
+    }
+  ],
+  "visualLimit": "No native GPU render was produced on this macOS host; compilation and numeric mask intent are verified separately from GPU appearance."
+}

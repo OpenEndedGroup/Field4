@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. window + renderer
@@ -56,7 +56,7 @@ motion blur — in exchange for fill, material and z order, because `min` is
 union and a union has no layers.
 
 ```edn [field-box id="rectsl_sdf_live" role="properties"]
-{"id" "rectsl_sdf_live" "index" 1 "name" "rectsl scene as a distance field" "parents" ["root" "rectsl_sdf_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "rectsl_sdf_renderer"} "name" "rectsl scene as a distance field" "_tombstone" false "frame" #afield/rect [300.0 140.0 330.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_sdf_live_code_.kt" "lines" 104 "characters" 4158 "sha256" "f14c41c00634637ed70df35eca8ac40ced698dddf0c21cfbdfcd3d0a4e9f9c11"}]}
+{"id" "rectsl_sdf_live" "index" 1 "name" "rectsl scene as a distance field" "parents" ["root" "rectsl_sdf_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "rectsl_sdf_renderer"} "name" "rectsl scene as a distance field" "_tombstone" false "frame" #afield/rect [300.0 140.0 330.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_sdf_live_code_.kt" "lines" 101 "characters" 4051 "sha256" "1dec76e5bea1ee13d886d5e8bd256ca65db3bcc3d1d16f26169f98e767de479a"}]}
 ```
 
 ```kotlin [field-property box="rectsl_sdf_live" name="code" path="rectsl_sdf_live_code_.kt"]
@@ -130,21 +130,18 @@ if (!field.ok) println("fidelity caveats: ${field.notes.joinToString("; ")}")
 
 // 4. One fullscreen triangle, no vertex attributes, and a clock. `time` is the
 //    only thing that changes per frame — the geometry never moves on the CPU.
-val module =
-    Module(
-            parameters(renderer) {
-                name = "rectsl-sdf-live"
-                vertex = RectSLSdfShader.VERTEX
-                fragment = fragmentSource
-                blend = false
-                depthTest = false
-                primitiveType = triangles
-            },
-        )
-        .pointer()
+val module = Module(
+    parameters(renderer) {
+        name = "rectsl-sdf-live"
+        vertex = RectSLSdfShader.VERTEX
+        fragment = fragmentSource
+        blend = false
+        depthTest = false
+        primitiveType = triangles
+    },
+).pointer()
 
-val mesh = Mesh(renderer, module)
-mesh.resize(3, 0, module)
+val mesh = fullscreenTriangle(module)
 
 val startedAt = System.nanoTime()
 mesh.push.bind("time") {

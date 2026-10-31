@@ -13,7 +13,6 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.components.resolveSymbol
 import org.jetbrains.kotlin.analysis.api.standalone.StandaloneAnalysisAPISession
 import org.jetbrains.kotlin.analysis.api.standalone.buildStandaloneAnalysisAPISession
@@ -524,7 +523,7 @@ private class K2SidecarAnalyzer(private val config: SidecarConfig) {
         val resolved = linkedMapOf<String, CodeUseSemanticUseRow>()
         val unresolved = mutableListOf<CodeUseSemanticUnresolvedRow>()
         val lineOffset = syntheticLineOffset(request)
-        analyze(ktFile) {
+        withAnalysis(ktFile) {
             ktFile.accept(object : PsiRecursiveElementWalkingVisitor() {
                 override fun visitElement(element: PsiElement) {
                     if (element.isImportOrPackageContext()) {

@@ -1,9 +1,12 @@
 # Looking at Data
 
-Field is meant for looking at data while you work on it. This stop takes one small, real dataset
-through the tools you will use most: get the data, browse it with `.h` and `.h2`, see its
-distribution next to the code that made it, plot it with Plotly, and then watch a value that is
-changing too fast to print.
+How is the world divided up by time zone? We'll take the zones already on your machine and look
+at their UTC offsets: first as values, then as a distribution beside the code, then as a plot.
+Along the way you'll use `.h`, `.h2` and Plotly. At the end we'll try a different kind of data:
+a value inside a GPU shader, changing too fast to print.
+
+The time-zone examples run without a GPU. The final probe looks inside a compute shader; you can
+read it as a preview and come back to it after trying [Graphics on the GPU](tour_gpu_graphics.md).
 
 ## Get some data
 
@@ -32,9 +35,11 @@ map of six hundred entries or six million.
 
 ## See the distribution
 
-A mean and a spread do not say what shape the data has. `__m("name")` makes a marker on the line
-it is written on, and `histogram` and `stats` draw what that marker has seen next to the line, in
-the editor. `stats` adds the median, quartiles, skew and the values in the order they arrived:
+A mean and a spread do not say what shape the data has. To see the shape, draw it in the editor
+beside the code. `__m("name")` makes a *marker*: a named place on the line it is written on, which
+remembers the values you hand it. `histogram(o, dur = ...)` adds `o` to the marker and draws a
+histogram of what it holds just under that line; `dur` is how many of the most recent values it
+keeps, so `dur = offsets.size` keeps them all. `stats` does the same and adds the median, quartiles, skew and the values in the order they arrived:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/tour_data/histogram.png" capture="editor" outputs="inline" wait="3" padding="10" timeout="120" embed=true name="tour-data-histogram" w="900" h="420" alt="The editor holding the snippet, with an inline panel under each marker line. Under histogram, twelve bins from min -12 to max 14 with the median at 1 and the quartiles at -5 and 5: one crowd of bins around -5, a taller one around +1, and a long low tail out to +14. Under stats, a summary headed n 604, mean 0.61, stddev 6.15, IQR 10.00, skew 0.27, the same histogram, and the series of offsets in alphabetical order of zone."}
 :::static
@@ -46,6 +51,7 @@ val zones = ZoneId.getAvailableZoneIds().sorted().associateWith {
     ZoneId.of(it).rules.getOffset(day).totalSeconds / 3600.0
 }
 val offsets = zones.values.toDoubleArray()
+
 :::endfold
 
 for (o in offsets) {
@@ -83,45 +89,46 @@ val counts = offsets.toList().groupingBy { it }.eachCount().toSortedMap()
 display(
     "plot",
     Plotly.plot {
-        bar {
-            x.set(counts.keys.toList())
-            y.set(counts.values.toList())
+            bar {
+                x.set(counts.keys.toList())
+                y.set(counts.values.toList())
+            }
+            layout {
+                title = "time zones per UTC offset"
+                xaxis { title = "hours from UTC" }
+                yaxis { title = "zones" }
+            }
         }
-        layout {
-            title = "time zones per UTC offset"
-            xaxis { title = "hours from UTC" }
-            yaxis { title = "zones" }
-        }
-    }
         .darkMode(),
 )
 ```
 
-For one-call plots there are `showSignals`, `linePlot`, `scatter` and `violin`. To draw a plot as
-FLines, so it can sit in the same drawing as your other geometry, use a `Chart`; see
+For a quick plot without the builder, `linePlot(values)` draws a list of numbers as a line and
+`violin(values)` draws their distribution; the [visualization reference](reference/visualization.md)
+lists these and the rest. To draw a plot as geometry in the same drawing as your other lines, see
 [Charts as FLines](chart.md).
 
 ## Probe a live value
 
-Some values cannot be printed at all. The particles of a compute shader live on the GPU, a
-hundred thousand of them, and change every frame. `fieldProbe` is one line in the shader that
-records a value:
+How do you inspect a value inside a compute shader? Its particles live on the GPU, and a hundred
+thousand of them might change every frame. Add `fieldProbe` to the shader to record a value:
 
 ```diffstatic {data-lang=glsl}
 :::static
-fieldProbe(length(delta)); // how far this particle moved this step
+vec2 delta = moved - seed.xy; // moved: the particle's new position; seed: where it started
+fieldProbe(length(delta));    // record how far it is from its start
 ```
 
-and one line in the box that turns it on and shows what it recorded:
+Then turn the probe on from the box and show what it recorded:
 
 ```diffstatic {data-lang=kotlin}
 :::static
 fieldProbeHere(samples = 4096).display("probe")
 ```
 
-The card counts every value the shader recorded, says whether any were NaN or infinite, and draws
-a sample of them with the same summary panel as `stats`, a few times a second while the particles
-move:
+The `probe` channel shows a panel that updates a few times a second while the particles move. It
+counts every value the shader recorded, says whether any were NaN or infinite, and draws a sample
+of them with the same summary panel as `stats`:
 
 ```diffstatic_runner {data-lang=kotlin video="assets/tour_data/probe.mp4" capture="box" open-outputs=true wait-output=true wait-output-kind=display wait-output-channel=probe embed=true hidden=true force=true timeout="180" duration="6" fps="10" restart-target=false name="tour-data-probe" alt="The probe channel of the particle system's compute box, updating as the particles move. A header line reads calls 100000, finite 100000, nan 0, inf 0, then exact min 0.0000, sample mean about 0.56, p95 about 1.13 and exact max about 1.95. Below it the same summary panel that stats draws, a fine-binned histogram of step lengths rising to a broad peak near 0.5 and tailing off to the right, and the sorted values as a curve that turns sharply up at the maximum." macro-file="../../dev_docs/agents/transcripts/threebox.yaml" capture-box="tb_compute"}
 // The "probe" display channel on the compute box of dev_docs/agents/transcripts/threebox.yaml
@@ -141,3 +148,5 @@ the same statistics on the GPU and hands them back to the shader.
   typed columns, shown with the same `.h` and `.h2`.
 - The *Drawing From Data* section starts at [Linear Algebra](linear_algebra.md) and goes on to
   functions, signals over time, simulation and spatial data.
+
+Next on the Tour, [Sound](sound.md) turns a pattern into something you can hear.

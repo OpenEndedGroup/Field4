@@ -17,9 +17,12 @@ history → Open browser** control on Welcome shows it. `AFIELD_CODE_USE_PATH` c
 Stop Field before deleting that database and its `-wal` and `-shm` companions; Field can create a new
 history when restarted. Deleting it does not delete document files or other logs.
 
-Field analyses that history in a helper process on your machine. If you set
-`AFIELD_CODE_USE_SEMANTIC_SIDECAR_URL` to another server, the code it analyses is sent there instead.
-**Quiet mode pauses background semantic analysis; it does not stop recording local code history.**
+In the background, Field also reads the code in that history to work out which Field functions and
+types each snippet uses, so AI tools can find related code by what it calls rather than by its text.
+This analysis runs in a separate helper program on your machine. If you point
+`AFIELD_CODE_USE_SEMANTIC_SIDECAR_URL` at a server elsewhere, the code is sent there to be analysed instead.
+To pause the background analysis, tick **quiet mode** under **Welcome → Preferences → Other**.
+**Quiet mode does not stop Field recording local code-use history.**
 Source and diagnostics can contain private information, so review them before attaching logs to an issue.
 
 ## What optional AI sends
