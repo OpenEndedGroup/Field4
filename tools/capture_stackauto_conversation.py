@@ -139,6 +139,10 @@ async def capture(port: int, workspace: Path) -> None:
         await c.open_playwright(timeout=90)
         await command(f"launch {RENDERER} --timeout 120")
         await command(f"wait-native-renderer {RENDERER} --frames 5 --timeout 120")
+        # The example document's boxes carry preambles saved before supplier tags; with them the box
+        # beneath the renderer no longer resolves `renderer` (Unresolved reference, 2026-10-31). Run
+        # this copy from a clean preamble, as a fresh document would; the bug is filed as a handoff.
+        await command(f'set {BOX} preamble --value ""')
         await command(f"run {BOX} --timeout 240")
         print(name, "card", await evaluate(CARD_READY), flush=True)
 
@@ -225,13 +229,15 @@ async def capture(port: int, workspace: Path) -> None:
               if (images.some(img => img.naturalWidth === 0)) throw new Error('A chat image did not load');
               window.disclosureInterface(document.querySelector('.stack-auto-card').closest('.disclosure-group')).close('stack.auto numbers');
               const content = panel.closest('.disclosure-content');
-              content.style.width = '640px'; content.style.height = '900px';
+              // Tall enough to show the user's last request (orange) above the reply it got.
+              content.style.width = '640px'; content.style.height = '1100px';
               content.dispatchEvent(new MouseEvent('mouseup', {bubbles: true}));
               await new Promise(r => setTimeout(r, 800));
               const turns = [...panel.querySelectorAll('.ai-chat-turn.you')];
               const reply = [...panel.querySelectorAll('.ai-chat-turn.ai')].find(t => t.textContent.includes('the live cycle now matches'));
               if (!reply) throw new Error('The recorded last reply is missing');
-              reply.scrollIntoView({block: 'end'});
+              const asked = turns.filter(t => t.compareDocumentPosition(reply) & Node.DOCUMENT_POSITION_FOLLOWING).at(-1);
+              (asked ?? reply).scrollIntoView({block: 'start'});
               return {turns: turns.length, images: images.length};
             }
             await new Promise(r => setTimeout(r, 100));

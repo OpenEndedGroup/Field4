@@ -426,7 +426,7 @@ Some panels look like the floating ones above but belong to one box. The
 `ai-chat` output: it reads the box's code and can propose edits to it. Here is one restored from a
 saved conversation, in [a worked example](stackauto_conversation.md):
 
-![The polytope box with its AI4 chat restored, at the model's last reply: yes, the live cycle now matches what you asked for](assets/stackauto_conversation/saved-chat.png)
+![The polytope box with its AI4 chat restored: the user's last request in orange, asking for ragged glowing frames at the burst and a whole solid at home, then a sheet of nine frames of the polytope bursting and healing, and the model's reply that the live cycle now matches what was asked for](assets/stackauto_conversation/saved-chat.png)
 
 Others are small tools of their own, such as
 the keyframe browser, which lists saved keyframes and closes with its own **×**. Below it reads

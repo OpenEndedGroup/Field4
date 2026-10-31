@@ -294,7 +294,7 @@ Simply put, we no longer expect to sit and write code without AI assistance, and
 
 In Field you can *talk* code and data structures into existence. Below, a polytope's vertex and fragment shaders each have a small StackSL program in them; six turns of chat made the faces burst outward in a wave and burn out to ragged glowing frames, and in its last reply the model is checking nine real frames of the window before saying yes. That whole conversation, step by step, is [Talking to the StackSL in your shader](stackauto_conversation.md). The same thing works for [a function](function_conversation.md), [a shader in a window of its own](stacksl_conversation.md) and [an animated RectSL scene](rectsl_conversation.md).
 
-![The polytope box with its AI4 chat restored: the last request, a sheet of nine frames of the polytope bursting and healing, and the model's reply that the live cycle now matches what was asked for](assets/stackauto_conversation/saved-chat.png)
+![The polytope box with its AI4 chat restored: the user's last request in orange, asking for ragged glowing frames at the burst and a whole solid at home, then a sheet of nine frames of the polytope bursting and healing, and the model's reply that the live cycle now matches what was asked for](assets/stackauto_conversation/saved-chat.png)
 
 ??? aside "How this documentation is made"
     This documentation is part of the agents' search context and Field's test system, and is mostly AI-generated. Almost every screenshot under a piece of code is produced by running that code, and reproduced when the codebase changes. Agents extend and revise the prose nightly; see [How Field is built](how_field_is_built.md).
