@@ -1,5 +1,6 @@
 {
   "id" : "r6-deb1b1738cb0",
+  "migratedSourceSha256" : "e48834715e83780db0a32650b590ead29a8d350940265d70c49706f563f80fc5",
   "parent" : "r5-2aa6023ddfca",
   "description" : "Instance-specific e3 y shoulder-clock lag: C2 bump peaking at 6 seconds, strictly advancing local time, recovered at 1605 before unchanged shared hold; preserve x/z and all other times.",
   "events" : [ {

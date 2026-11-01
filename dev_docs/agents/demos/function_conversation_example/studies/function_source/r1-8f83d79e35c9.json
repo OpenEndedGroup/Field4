@@ -1,5 +1,6 @@
 {
   "id" : "r1-8f83d79e35c9",
+  "migratedSourceSha256" : "e4e765cd30746339d734988f80bd8daf09f2ea749fef76f1ea02555ef40ae0d1",
   "parent" : null,
   "description" : "Blank page: three constant channels",
   "events" : [ ],
