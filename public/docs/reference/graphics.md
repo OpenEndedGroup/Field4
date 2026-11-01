@@ -4,7 +4,7 @@
 
 Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side.
 
-328 source file(s), 8025 public symbol(s), 5281 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+328 source file(s), 8026 public symbol(s), 5282 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -9163,7 +9163,7 @@ that shape.
 
 `src/jvmMain/kotlin/afield/graphics/render/Module.kt` — [read the source](source/jvmMain/afield/graphics/render/Module/)
 
-**Used in:** [Fabricate Renderer](../fabricate_renderer.md), [FieldML's JVM bridge](../fieldml_host_bridge.md)
+**Used in:** [Fabricate Renderer](../fabricate_renderer.md), [FieldML's JVM bridge](../fieldml_host_bridge.md), [A solid, written down: `afield.lang.solidsl`](../solid_notation.md)
 
 ### Top-level functions { #module-kt-functions }
 
@@ -19499,7 +19499,13 @@ particular expression has to be slowed down, and [`GlslSolid.notes`](graphics.md
 | Declaration | Summary |
 | --- | --- |
 | <a id="solidglsl-kt--toglsl"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">SolidExpr</span><span class="p">.</span><span class="nf">toGlsl</span><span class="p">(</span><span class="n">functionName</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;sdSolid&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">GlslSolid</span></code>](source/jvmMain/afield/lang/solidsl/SolidGlsl/#L99) | This shape as a GLSL distance function. |
-| <a id="solidglsl-kt--toraymarchfragment"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">SolidExpr</span><span class="p">.</span><span class="nf">toRaymarchFragment</span><span class="p">(</span><span class="n">maxSteps</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">128</span><span class="p">,</span> <span class="n">functionName</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;sdSolid&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/lang/solidsl/SolidGlsl/#L132) | A complete fragment shader that draws this shape: sphere tracing, a central-difference normal, two lights and a soft floor. Drop it into Field 4, or paste it into Shadertoy. |
+| <a id="solidglsl-kt--toraymarchfragment"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">SolidExpr</span><span class="p">.</span><span class="nf">toRaymarchFragment</span><span class="p">(</span><span class="n">maxSteps</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">128</span><span class="p">,</span> <span class="n">functionName</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;sdSolid&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/lang/solidsl/SolidGlsl/#L146) | A complete fragment shader that draws this shape: sphere tracing, a central-difference normal and two lights, on a flat dark background. |
+
+### Top-level values { #solidglsl-kt-values }
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="solidglsl-kt--solid-raymarch-vertex"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">SOLID&#95;RAYMARCH&#95;VERTEX</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/lang/solidsl/SolidGlsl/#L127) | The vertex shader that goes with [`toRaymarchFragment`](graphics.md#solidglsl-kt--toraymarchfragment): one triangle covering the target, its positions taken from `gl_VertexIndex`, so it needs no vertex buffers and suits `fullscreenTriangle`. |
 
 ### GlslSolid { #solidglsl-kt-glslsolid }
 

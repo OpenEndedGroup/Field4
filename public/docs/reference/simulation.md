@@ -1162,6 +1162,8 @@ why [`KratosStudy`](simulation.md#kratosstudy-kt-kratosstudy) drives a session s
 
 `src/jvmMain/kotlin/afield/simulation/kratos/KratosSession.kt` — [read the source](source/jvmMain/afield/simulation/kratos/KratosSession/)
 
+**Used in:** [Filling a solid: tetrahedral meshing with TetGen](../tetgen.md)
+
 ### KratosConfig { #kratossession-kt-kratosconfig }
 
 [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KratosConfig</span><span class="p">(</span><span class="k">val</span> <span class="n">python</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="nc">System</span><span class="p">.</span><span class="nf">getenv</span><span class="p">(</span><span class="s">&quot;AFIELD&#95;KRATOS&#95;PYTHON&quot;</span><span class="p">)</span> <span class="o">?</span><span class="p">:</span> <span class="s">&quot;optional/kratos/.venv/bin/python&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">worker</span><span class="p">:</span> <span class="nc">Path</span> <span class="o">=</span> <span class="nc">Path</span><span class="p">.</span><span class="nf">of</span><span class="p">(</span><span class="nc">System</span><span class="p">.</span><span class="nf">getenv</span><span class="p">(</span><span class="s">&quot;AFIELD&#95;KRATOS&#95;WORKER&quot;</span><span class="p">)</span> <span class="o">?</span><span class="p">:</span> <span class="s">&quot;optional/kratos/python/worker.py&quot;</span><span class="p">)</span><span class="p">.</span><span class="nf">toAbsolutePath</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">startupTimeoutMs</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">15</span><span class="n">&#95;000</span><span class="p">,</span> <span class="k">val</span> <span class="n">requestTimeoutMs</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">60</span><span class="n">&#95;000</span><span class="p">,</span> <span class="k">val</span> <span class="n">threads</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="k">val</span> <span class="n">setupScript</span><span class="p">:</span> <span class="nc">Path</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">launch</span><span class="p">:</span> <span class="nc">KratosLaunch</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>](source/jvmMain/afield/simulation/kratos/KratosSession/#L72)
@@ -1687,6 +1689,8 @@ Zero means Field meshed a body itself and sent it, in which case there is no (i,
 from and the index-based views are unavailable.
 
 `src/jvmMain/kotlin/afield/simulation/kratos/SimulationGeometry.kt` — [read the source](source/jvmMain/afield/simulation/kratos/SimulationGeometry/)
+
+**Used in:** [Filling a solid: tetrahedral meshing with TetGen](../tetgen.md)
 
 ### SimulationBounds { #simulationgeometry-kt-simulationbounds }
 

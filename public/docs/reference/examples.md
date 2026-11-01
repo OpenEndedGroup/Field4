@@ -4,7 +4,7 @@
 
 Runnable examples, galleries and verification programs. Read these for usage patterns; their entry points are not a promise of a reusable box API.
 
-218 source file(s), 692 public symbol(s), 306 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+219 source file(s), 695 public symbol(s), 308 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -2549,6 +2549,21 @@ Does a Field pattern lowered to Sonic Pi actually *play* where the pattern says 
 | Declaration | Summary |
 | --- | --- |
 | <a id="sonicpipatternprobe-kt--sonicpipatternprobe--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/sonicpi/SonicPiPatternProbe/#L128) |  |
+
+## SonicPiSoundDocs.kt { #sonicpisounddocs-kt }
+
+`src/jvmMain/kotlin/afield/examples/sonicpi/SonicPiSoundDocs.kt` — [read the source](source/jvmMain/afield/examples/sonicpi/SonicPiSoundDocs/)
+
+### SonicPiSoundDocs { #sonicpisounddocs-kt-sonicpisounddocs }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">SonicPiSoundDocs</span></code>](source/jvmMain/afield/examples/sonicpi/SonicPiSoundDocs/#L19)
+
+The sound on the [Sonic Pi](../sonic_pi.md) page, recorded from a real Sonic Pi.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="sonicpisounddocs-kt--sonicpisounddocs--bikes"></a>[<code class="highlight"><span class="k">val</span> <span class="nc">BIKES</span></code>](source/jvmMain/afield/examples/sonicpi/SonicPiSoundDocs/#L22) | The first box on the page, as the box sends it. |
+| <a id="sonicpisounddocs-kt--sonicpisounddocs--renderwav"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">renderWav</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">outPath</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/examples/sonicpi/SonicPiSoundDocs/#L38) |  |
 
 ## StackSLDocumentToolSmoke.kt { #stacksldocumenttoolsmoke-kt }
 

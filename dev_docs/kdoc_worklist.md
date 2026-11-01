@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 20857 of 35576 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 20860 of 35580 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**1971 undocumented entry points** (types, top-level functions and values) and 12084 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**1971 undocumented entry points** (types, top-level functions and values) and 12085 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -36,7 +36,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Signal.kt](../src/jvmMain/kotlin/afield/audio/synth/Signal.kt) | Synthesis | sound_paths, faust, chain_pattern_particles | 10 | 53 | 26% |
 | [RayTracingModule.kt](../src/jvmMain/kotlin/afield/graphics/render/RayTracingModule.kt) | Graphics | ray_tracing_examples | 10 | 46 | 4% |
 | [StackAutoStudyTools.kt](../src/jvmMain/kotlin/afield/lang/stacksl/study/StackAutoStudyTools.kt) | Languages | stackauto_conversation, stacksl_examples | 10 | 13 | 23% |
-| [Module.kt](../src/jvmMain/kotlin/afield/graphics/render/Module.kt) | Graphics | fabricate_renderer, fieldml_host_bridge | 9 | 135 | 8% |
+| [Module.kt](../src/jvmMain/kotlin/afield/graphics/render/Module.kt) | Graphics | fabricate_renderer, fieldml_host_bridge, solid_notation | 9 | 135 | 8% |
 | [Sequencing.kt](../src/jvmMain/kotlin/afield/audio/synth/Sequencing.kt) | Patterns | boolean_network_music_examples, visualizers | 9 | 38 | 7% |
 | [Logging.kt](../src/jvmMain/kotlin/afield/ai/diagnostics/Logging.kt) | Machine learning | logging, visualizers, agent_transcripts | 9 | 23 | 11% |
 | [RepoFileTools.kt](../src/jvmMain/kotlin/afield/ai/tools/RepoFileTools.kt) | Machine learning | ai4_tools | 9 | 19 | 15% |
@@ -57,6 +57,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Solver.kt](../src/jvmMain/kotlin/afield/simulation/physics/pressure/Solver.kt) | Simulation | pressure_membranes | 5 | 12 | 14% |
 | [nesting.kt](../src/jvmMain/kotlin/afield/document/graph/nesting.kt) | Workspace | visualizers | 5 | 0 | 50% |
 | [ParamQuery.kt](../src/jvmMain/kotlin/afield/audio/synth/ParamQuery.kt) | Synthesis | graph_query | 4 | 46 | 8% |
+| [KratosSession.kt](../src/jvmMain/kotlin/afield/simulation/kratos/KratosSession.kt) | Simulation | tetgen | 4 | 44 | 29% |
 | [ResonatorBank.kt](../src/jvmMain/kotlin/afield/audio/engine/ResonatorBank.kt) | Audio | spectral_examples | 4 | 39 | 10% |
 | [SignalViewer.kt](../src/jvmMain/kotlin/afield/ui/visualization/SignalViewer.kt) | Visualization | chain_fn_sound_roundtrip, visualizers | 4 | 19 | 34% |
 | [FabricateRenderPlan.kt](../src/jvmMain/kotlin/afield/graphics/scene/fabricated/FabricateRenderPlan.kt) | Renderers | fabricate_renderer | 4 | 15 | 9% |
@@ -247,7 +248,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [KeyCamera.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/util/KeyCamera.kt) | Graphics | afield_four_graphics | 0 | 1 | 91% |
 | [Mtc.kt](../src/jvmMain/kotlin/afield/io/timecode/Mtc.kt) | Networking | smpte_timecode | 0 | 1 | 93% |
 | [MorphoFLines.kt](../src/jvmMain/kotlin/afield/lang/morpho/MorphoFLines.kt) | Languages | morpho_examples, morpho_search | 0 | 1 | 91% |
-| [SolidGlsl.kt](../src/jvmMain/kotlin/afield/lang/solidsl/SolidGlsl.kt) | Graphics | solid_notation | 0 | 1 | 77% |
+| [SolidGlsl.kt](../src/jvmMain/kotlin/afield/lang/solidsl/SolidGlsl.kt) | Graphics | solid_notation | 0 | 1 | 80% |
 | [FieldRTTStreamer.kt](../src/jvmMain/kotlin/afield/media/stream/FieldRTTStreamer.kt) | Imaging | vision | 0 | 1 | 91% |
 | [PetriMusic.kt](../src/jvmMain/kotlin/afield/simulation/petri/PetriMusic.kt) | Audio | petri_nets, petri_cheatsheet | 0 | 1 | 94% |
 | [canvasFlight.kt](../src/jvmMain/kotlin/afield/ui/film/canvasFlight.kt) | Visualization | filming_the_canvas | 0 | 1 | 84% |
@@ -310,7 +311,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [controllers.kt](../src/jvmMain/kotlin/afield/app/server/controllers.kt) | Workspace | — | 5 | 0 | 16% |
 | [Introspection.kt](../src/jvmMain/kotlin/afield/graphics/shader/Introspection.kt) | Graphics | — | 5 | 0 | 89% |
 | [formatter.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/formatter.kt) | Workspace | — | 5 | 0 | 37% |
-| [KratosSession.kt](../src/jvmMain/kotlin/afield/simulation/kratos/KratosSession.kt) | Simulation | — | 4 | 44 | 29% |
 | [AgentTask.kt](../src/jvmMain/kotlin/afield/ai/agent/AgentTask.kt) | Machine learning | — | 4 | 40 | 44% |
 | [ExternalBrowserSurface.kt](../src/jvmMain/kotlin/afield/media/browser/ExternalBrowserSurface.kt) | Imaging | — | 4 | 32 | 28% |
 | [GlslIncludeLibraryIndex.kt](../src/jvmMain/kotlin/afield/ai/tools/GlslIncludeLibraryIndex.kt) | Machine learning | — | 4 | 27 | 6% |
@@ -982,6 +982,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [RectSLKotlinEscapeTest.kt](../src/jvmMain/kotlin/afield/examples/rectsl/RectSLKotlinEscapeTest.kt) | Examples | — | 0 | 1 | 50% |
 | [SonicPiLinkAudioProbe.kt](../src/jvmMain/kotlin/afield/examples/sonicpi/SonicPiLinkAudioProbe.kt) | Examples | — | 0 | 1 | 50% |
 | [SonicPiPatternProbe.kt](../src/jvmMain/kotlin/afield/examples/sonicpi/SonicPiPatternProbe.kt) | Examples | — | 0 | 1 | 50% |
+| [SonicPiSoundDocs.kt](../src/jvmMain/kotlin/afield/examples/sonicpi/SonicPiSoundDocs.kt) | Examples | — | 0 | 1 | 66% |
 | [StackSLEvolveGallery.kt](../src/jvmMain/kotlin/afield/examples/stacksl/StackSLEvolveGallery.kt) | Examples | — | 0 | 1 | 50% |
 | [VolumetricNoisePreview.kt](../src/jvmMain/kotlin/afield/examples/stacksl/VolumetricNoisePreview.kt) | Examples | — | 0 | 1 | 66% |
 | [AlifeEvolveGallery.kt](../src/jvmMain/kotlin/afield/examples/stdlib/AlifeEvolveGallery.kt) | Examples | — | 0 | 1 | 50% |

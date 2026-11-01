@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-31T22:32:35.185Z",
+  "capturedAt": "2026-11-01T22:34:06.450Z",
   "documentName": "canonical_graphics",
   "outputs": [
     {
@@ -66,17 +66,17 @@
       "path": "outputs/5.html"
     },
     {
-      "uid": "b42d7b13-680e-4f9b-b789-8e6e7d8c4a21",
-      "channel": "window",
+      "uid": "8b8d3306-5c31-49aa-ab27-659a992ebd09",
+      "channel": "trace",
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 440,
-      "height": 272,
+      "width": 259,
+      "height": 40,
       "path": "outputs/6.html"
     },
     {
-      "uid": "85e8478b-529b-406e-b835-7c00912848f2",
+      "uid": "b42d7b13-680e-4f9b-b789-8e6e7d8c4a21",
       "channel": "window",
       "open": true,
       "warnings": [],
@@ -86,7 +86,7 @@
       "path": "outputs/7.html"
     },
     {
-      "uid": "715eae62-197d-49a1-a202-464ae4465cd5",
+      "uid": "85e8478b-529b-406e-b835-7c00912848f2",
       "channel": "window",
       "open": true,
       "warnings": [],
@@ -94,6 +94,16 @@
       "width": 440,
       "height": 272,
       "path": "outputs/8.html"
+    },
+    {
+      "uid": "715eae62-197d-49a1-a202-464ae4465cd5",
+      "channel": "window",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 440,
+      "height": 272,
+      "path": "outputs/9.html"
     },
     {
       "uid": "176b09bd-6e1c-4cb4-9c8a-b046d54c6dde",
@@ -105,7 +115,7 @@
       ],
       "width": 560,
       "height": 427,
-      "path": "outputs/9.html"
+      "path": "outputs/10.html"
     },
     {
       "uid": "176b09bd-6e1c-4cb4-9c8a-b046d54c6dde",
@@ -115,7 +125,7 @@
       "kinds": [],
       "width": 440,
       "height": 272,
-      "path": "outputs/10.html"
+      "path": "outputs/11.html"
     },
     {
       "uid": "d9733b9a-73a8-4045-a756-2a6e28e08c21",
@@ -125,7 +135,7 @@
       "kinds": [],
       "width": 440,
       "height": 272,
-      "path": "outputs/11.html"
+      "path": "outputs/12.html"
     },
     {
       "uid": "fd8503ec-e5e2-4fa9-86fe-3d65ad96911f",
@@ -135,7 +145,7 @@
       "kinds": [],
       "width": 440,
       "height": 272,
-      "path": "outputs/12.html"
+      "path": "outputs/13.html"
     },
     {
       "uid": "e1d6dd17-1ebd-40e7-a0ef-309779c562ff",
@@ -147,7 +157,7 @@
       ],
       "width": 560,
       "height": 348,
-      "path": "outputs/13.html"
+      "path": "outputs/14.html"
     },
     {
       "uid": "e1d6dd17-1ebd-40e7-a0ef-309779c562ff",
@@ -157,7 +167,7 @@
       "kinds": [],
       "width": 440,
       "height": 272,
-      "path": "outputs/14.html"
+      "path": "outputs/15.html"
     },
     {
       "uid": "e39270ec-8faf-4d26-8f4e-ce4d23ec4af1",
@@ -167,7 +177,7 @@
       "kinds": [],
       "width": 440,
       "height": 272,
-      "path": "outputs/15.html"
+      "path": "outputs/16.html"
     },
     {
       "uid": "b2ba23e8-18e5-4f07-a709-2b89116a83b3",
@@ -177,7 +187,7 @@
       "kinds": [],
       "width": 440,
       "height": 272,
-      "path": "outputs/16.html"
+      "path": "outputs/17.html"
     },
     {
       "uid": "cc81ab4e-6c43-4908-bfff-7c8f827c927c",
@@ -187,7 +197,7 @@
       "kinds": [],
       "width": 440,
       "height": 272,
-      "path": "outputs/17.html"
+      "path": "outputs/18.html"
     },
     {
       "uid": "3cbcadc0-b279-470d-9a5f-afc120518829",
@@ -197,7 +207,7 @@
       "kinds": [],
       "width": 440,
       "height": 272,
-      "path": "outputs/18.html"
+      "path": "outputs/19.html"
     },
     {
       "uid": "9df25333-3cb1-4bba-b628-b34c7ba61909",
@@ -207,7 +217,7 @@
       "kinds": [],
       "width": 440,
       "height": 272,
-      "path": "outputs/19.html"
+      "path": "outputs/20.html"
     },
     {
       "uid": "57eb613c-90e0-46e1-b075-8e1578bc4934",
@@ -219,7 +229,7 @@
       ],
       "width": 560,
       "height": 427,
-      "path": "outputs/20.html"
+      "path": "outputs/21.html"
     },
     {
       "uid": "57eb613c-90e0-46e1-b075-8e1578bc4934",
@@ -229,7 +239,7 @@
       "kinds": [],
       "width": 440,
       "height": 272,
-      "path": "outputs/21.html"
+      "path": "outputs/22.html"
     },
     {
       "uid": "1b0f6eb5-b860-401d-913a-6469b4285774",
@@ -239,20 +249,10 @@
       "kinds": [],
       "width": 440,
       "height": 272,
-      "path": "outputs/22.html"
-    },
-    {
-      "uid": "72b68fa7-a8c3-4d4a-964d-2f66306692e3",
-      "channel": "window",
-      "open": true,
-      "warnings": [],
-      "kinds": [],
-      "width": 440,
-      "height": 272,
       "path": "outputs/23.html"
     },
     {
-      "uid": "628f3f96-42d0-48dd-93ea-ea4d9f03b865",
+      "uid": "72b68fa7-a8c3-4d4a-964d-2f66306692e3",
       "channel": "window",
       "open": true,
       "warnings": [],
