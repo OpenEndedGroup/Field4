@@ -176,6 +176,7 @@ val vr = FieldVrWorkspace(
     width = 2560,
     height = 1600,
 )
+
 // Construct after the initial renderer frame, then run the renderer normally.
 // Close vr when its owning box stops.
 ```
