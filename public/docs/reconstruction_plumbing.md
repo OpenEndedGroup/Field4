@@ -74,7 +74,7 @@ layout(location=2) out vec2 motion;
 
 Drawn side by side, the three colour attachments of one frame are the lit colour, the depth guide (shown here as red, brighter when nearer, background black) and the motion vectors (red and green for the horizontal and vertical motion, offset so that zero motion is olive):
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/reconstruction_plumbing/gbuffer_strip.png" capture="native-window" native-wait-frames="30" wait-output=true wait-output-kind="all" wait-output-contains="g-buffer strip ready" embed=true hidden=true timeout="180" name="reconstruction-plumbing-gbuffer" alt="The same frame three times: lit colour, depth shown as red brightening toward the camera, and motion vectors as a red-green gradient" macro-file="../../dev_docs/agents/transcripts/docs_capture/reconstruction_plumbing_gbuffer.yaml" capture-box="reconstruction_plumbing"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/reconstruction_plumbing/gbuffer_strip.png" capture="native-window" capture-profile="linux-nvidia" native-wait-frames="30" wait-output=true wait-output-kind="all" wait-output-contains="g-buffer strip ready" embed=true hidden=true timeout="180" name="reconstruction-plumbing-gbuffer" alt="The same frame three times: lit colour, depth shown as red brightening toward the camera, and motion vectors as a red-green gradient" macro-file="../../dev_docs/agents/transcripts/docs_capture/reconstruction_plumbing_gbuffer.yaml" capture-box="reconstruction_plumbing"}
 // Built and launched from dev_docs/agents/transcripts/docs_capture/reconstruction_plumbing_gbuffer.yaml.
 ```
 
