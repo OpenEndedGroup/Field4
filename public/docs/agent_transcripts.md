@@ -104,6 +104,8 @@ goes; one memory cell held high and low, changing the hand; a live magnifier on 
 its next-step ellipses; and a slider that colours the line by any of its 500 cells. Pure CPU and
 nothing to install. Launch the third box and draw.
 
+![Twelve copies of the same small yellow stroke in a grid, each followed by a different short run of pale blue handwriting](assets/learned_pen/futures.png)
+
 [Open →](offline.html?file=assets/agent_transcripts/learned_pen/metadata.edn)
 
 ### a_pen_that_sees
@@ -136,6 +138,8 @@ click to keep as a corpus, and the handwriting pen fine-tuned on its own curlies
 box loads the small model the page trained and deforms 400 particles and a coordinate lattice with
 it. Three sliders move transport time, movie time and the number of integration steps separately,
 so you can push the sheet past the times it was trained on and watch where it stops holding.
+
+![Field output with the loaded model: transport-time, movie-time and integration-step sliders above a transported particle sheet and its grid](assets/stipple_transport/field-sheet.png)
 
 [Open →](offline.html?file=assets/agent_transcripts/stipple_sheet/metadata.edn)
 
@@ -369,6 +373,10 @@ its parent and their difference. `try things` sweeps the ring count across five 
 candidates, 15 rings and lighter dark bands, without publishing either. All three run headless. See
 [Studies](studies.md).
 
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/studies_rings.png" capture="box" open-outputs="true" embed=true hidden=true timeout="300" padding="12" name="gallery-studies-rings" alt="The change it box's output: the rings study's new revision, blue rings, above its parent, the same rings in warm orange, and their difference image" macro-file="../../dev_docs/agents/transcripts/studies_rings.yaml" capture-box="rings_change"}
+// The transcript builds the three boxes and runs them; this is change it's output.
+```
+
 [Open →](offline.html?file=assets/agent_transcripts/studies_rings/metadata.edn)
 
 ### lua_demo
@@ -444,6 +452,10 @@ to the fitness that rewards distance and charges for stretching and effort. `gro
 in a floor and gravity and scores only horizontal distance, and nothing else changes. Evolution runs
 on its own thread and both loops draw the current champion; CI launches them, advances 90 frames,
 and stops them.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/evolving_water_bugs.png" capture="box" open-outputs="true" run-box="water_bug" execution="launch" wait="20" embed=true hidden=true timeout="300" padding="12" name="gallery-evolving-water-bugs" alt="The water bug box's output after twenty seconds of evolution, headed with its generation and best score: one bar per foot showing when it grips the surface, and below them the current champion, a chain of blue points with two orange gripping feet" macro-file="../../dev_docs/agents/transcripts/evolving_water_bugs.yaml" capture-box="water_bug"}
+// The transcript runs both loops for 90 frames and stops them; this relaunches water_bug and captures its champion.
+```
 
 [Open →](offline.html?file=assets/agent_transcripts/evolving_water_bugs/metadata.edn)
 
@@ -1189,6 +1201,10 @@ walk are recomputed twenty times a second. Change the weights or the PDHG step s
 choose the pencil tool and drag a corner, and the grid is redrawn for the new polygon when the drag
 ends.
 
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/lp_curves_routes.png" capture="box" open-outputs="true" wait="3.0" embed=true hidden=true timeout="300" padding="12" w="1220" h="640" name="gallery-lp-curves-routes" alt="Seven panels of the same pentagon, each captioned with its method and its numbers: the central path, a rainbow fan of central paths, the primal-dual steps, a PDHG spiral, the ellipsoid method's shrinking ellipses, the simplex walk along two edges, and the cutting planes, every route ending at the same right-hand vertex" macro-file="../../dev_docs/agents/transcripts/lp_curves.yaml" capture-box="lp_routes"}
+// The transcript runs every route and the fan map and launches the turning objective; this is every route's output.
+```
+
 [Open →](offline.html?file=assets/agent_transcripts/lp_curves/metadata.edn)
 
 ### lp_curves_3d
@@ -1366,6 +1382,10 @@ with its neighbours' labels, in **port order** — so the ordering is a structur
 reads an id or an insertion order. (A pose by BFS depth alone is not enough: on `3^3`, ten `DUP`s
 leave sibling order ambiguous.) The box does **not** use `frames { }`, because a frames loop in a box with no `Window`/`Renderer` gets
 *zero* ticks, so it drives its own clock with a sleep loop.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/confluence_grid.png" capture="box" open-outputs="true" wait="25" embed=true hidden=true timeout="300" padding="12" name="gallery-confluence-grid" alt="A Three.js view of twenty small interaction-net graphs in four columns of five, each at its final pose after reduction" macro-file="../../dev_docs/agents/transcripts/confluence_grid.yaml" capture-box="confluence_grid"}
+// The transcript launches the grid; this captures it after the reductions finish.
+```
 
 [Open →](offline.html?file=assets/agent_transcripts/confluence_grid/metadata.edn)
 
@@ -1978,6 +1998,8 @@ whose mean and draws all close without a seam; drag a pin's control and it redra
 measurements with sliders for the length scale and for how noisy one of them is. A field over the
 plane: its mean, two whole-field draws and its standard deviation. See
 [Drawing with Gaussian processes](gaussian_processes.md).
+
+![An orange closed loop through six white pins, with six blue closed draws that pinch in at every pin and bulge apart between them; the seam at the rightmost pin is as smooth as anywhere else](assets/gaussian_processes/loop.png)
 
 [Open →](offline.html?file=assets/agent_transcripts/gp_drawing/metadata.edn)
 
@@ -2767,6 +2789,10 @@ in realtime — so running it opens an audio device, and a `patSynth` launch out
 started it. The other three boxes would run in CI, but they stay in one document with the fourth,
 because the document shows that the bank does not know whether it is being drawn or heard.
 
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/marf_demo_readers.png" capture="box" open-outputs="true" embed=true hidden=true timeout="300" padding="12" name="gallery-marf-demo-readers" alt="Three lanes on one time scale, read from one bank of five stages: blue reads one address per stage, a ramp then oscillations; orange holds each address three stages, so its ramp and hold stretch out; green reads a fractional address and blends between slots. A legend underneath names the three readers" macro-file="../../dev_docs/agents/transcripts/marf_demo.yaml" capture-box="marf_readers"}
+// The transcript builds and runs all four boxes; this is the first box's three readers.
+```
+
 [Open →](offline.html?file=assets/agent_transcripts/marf_demo/metadata.edn)
 
 ### syphon_bridge
@@ -3226,6 +3252,8 @@ compute shader a Field probe plots; a keyframe curve plays with its playhead run
 visualizers when its editor is open; a time slider waits to be scrubbed across four cues; and a notes box
 draws on the drawing layer over all of it. Its film plays behind the home page, and the feel benchmark
 times the replay.
+
+<video controls muted loop playsinline preload="metadata" src="assets/demo_document/film.mp4" width="1280" height="720" style="max-width:100%;height:auto;aspect-ratio:1280/720" aria-label="The demo document filmed in Field's desktop app. It opens on the whole canvas, then glides to a palette box and drags one of its children, whose connection follows; orbits a white gyroid in a three.js panel; drags two points of a pink editable flower; holds on an orange and blue spiral streamed from Vulkan into a box's panel beside a probe's blue histogram; adds a key to a keyframe curve and drags it while the playhead runs; drags a red time slider across four cue boxes, whose coloured bars appear as it passes; draws a white loop on the drawing layer; and opens a box's editor, where a histogram, a history and a summary draw beside the code. It ends on the whole canvas again"></video>
 
 [Open →](offline.html?file=assets/agent_transcripts/demo_document/metadata.edn)
 

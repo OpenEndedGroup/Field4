@@ -73,7 +73,7 @@ operations:
   - create:
       box: lp_turning
       name: a turning objective (launch me)
-      frame: { x: 80.0, y: 560.0, w: 420.0, h: 120.0 }
+      frame: { x: 80.0, y: 1400.0, w: 420.0, h: 120.0 }
       properties:
         code: |
           // The objective turns once every `period` seconds while the hexagon breathes. Every route is
@@ -141,7 +141,7 @@ operations:
   - create:
       box: lp_fan_map
       name: drag the polygon, redraw the fan map
-      frame: { x: 560.0, y: 80.0, w: 420.0, h: 120.0 }
+      frame: { x: 1400.0, y: 80.0, w: 420.0, h: 120.0 }
       properties:
         code: |
           // Choose the pencil tool and drag a corner of the white outline. When the drag ends the
