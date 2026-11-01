@@ -94,6 +94,15 @@ objects.begin(renderer.frameCounter)
 objects.write("emitter", pose, previous, allow = history.available, revision = geometryRevision)
 ```
 
+The motion view, `flowLook.w = 4`, with the camera travelling. Each pixel shows how far it moved since the previous frame: the world shifts with the camera as one smooth tint, and the rotating marker, which also has motion of its own, stands out from it.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/flow_grain/motion.png" capture="native-window" native-wait-frames="60" embed=true hidden=true timeout="240" name="flow-grain-motion" alt="The motion view: a pink-to-peach field where the camera's travel tints the whole world evenly, and the rotating marker shows as a separate, more saturated bar near the centre." macro-file="../../dev_docs/agents/transcripts/docs_capture/flow_grain_displacement.yaml" capture-box="flow_renderer"}
+// The transcript runs the real flow_grain starting point in its motion view.
+```
+
+??? aside "How the motion figure is made"
+    It runs the `flow_grain` starting point with travel on and `flowLook.w = 4`, the renderer capped with `Options.maxFrameRate = 30`, and the view-4 displacement gain raised from 12 to 400. Uncapped, the hidden capture window ran at thousands of frames a second, and at 12 a frame's motion did not move the colour.
+
 Each object writes two `vec4`s: previous center, relative rotation/scale, validity,
 previous energy, previous softness and a reserved scalar. Change `revision` when topology
 or material correspondence changes. Disappearing for a frame, reappearing after a gap,
