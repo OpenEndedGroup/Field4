@@ -1,4 +1,4 @@
-# Syphon: sharing frames with other applications
+# Syphon: sharing frames on macOS
 
 [Syphon](https://syphon.info) is how video applications on a Mac hand frames to each other without
 encoding them: Resolume, TouchDesigner, MadMapper, VDMX, Max, OBS (through its Syphon source) and
