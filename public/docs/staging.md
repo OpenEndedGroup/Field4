@@ -25,7 +25,7 @@ The document itself: moving around it, finding things in it, and getting back wh
 - [Moving Around the Canvas](moving_around_the_canvas.md) is the one to read first: panning and zooming, `Cmd Cmd`-and-hold to see every box an arrow key can reach, and the function keys that jump to saved views.
 - [File Management](files_and_paths.md) is short and saves a lot of time: `"data.csv".file` resolves inside the document folder first and the workspace project second, so a path keeps working after the document is moved or handed to somebody else.
 - [Your History with Field](history_overview.md) says which of Field's kinds of history holds what, and which tool opens each. [Document History](document_history.md) is whole-document recovery from saved versions; [Code History](history_lens.md) shows what *this line* said a few saves ago, without leaving the editor.
-- [Snapping](snapping.md) is a toggle rather than a mode, for a moment of layout cleanup. The drawing layer over the canvas is on the Tour, in [Drawing and Notation](drawing_and_notation.md).
+- [Snapping](moving_around_the_canvas.md#snapping) is a toggle rather than a mode, for a moment of layout cleanup. The drawing layer over the canvas is on the Tour, in [Drawing and Notation](drawing_and_notation.md).
 - [The Semantic Index](semantic_index.md) adds search by meaning to the workspace search on `/welcome`, which otherwise matches words in document metadata and box text.
 - [Profiling](profiling_timeline.md) is the page to open when a piece stops keeping up. Its panel records how long each box took, so you can see which one is slowing things down.
 
