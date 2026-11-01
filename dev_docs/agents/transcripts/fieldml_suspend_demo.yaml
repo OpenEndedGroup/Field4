@@ -1,0 +1,106 @@
+# Generated from fieldml_suspend_demo/metadata.edn by afield.examples.DocumentToTranscript.
+name: "fieldml_suspend_demo"
+docs:
+  - page: fieldml_host_bridge.md#calling-a-suspend-method
+    why: "Explains starting the suspend member Renderer.run from FieldML with hostLaunch."
+operations:
+  - create:
+      box: "fieldml-mesh-root"
+      name: "FieldML - a mesh written every frame"
+      frame: { x: 40.0, y: 40.0, w: 300.0, h: 90.0 }
+      properties:
+        "isFieldMLRoot": true
+        "mainLanguage": "fieldml"
+  - create:
+      box: "fieldml-mesh-renderer"
+      name: "window and renderer (FieldML)"
+      frame: { x: 40.0, y: 180.0, w: 300.0, h: 120.0 }
+      properties:
+        "code": |
+          // The window and the renderer, from FieldML -- and the line that used to have to be Kotlin.
+          //
+          // `Renderer.run` is a `suspend` member: on the JVM it is `run(Continuation)`. `hostLaunch`
+          // starts it as its own coroutine on Field's runloop and calls the closure when it returns
+          // (when the window closes). Run this box once; running it again opens a second window.
+          let w = hostNew {title = "FieldML - a mesh written every frame"} (hostClass "afield.graphics.vulkan.util.Window")
+          let r = hostNew {mainWindow = w} (hostClass "afield.graphics.vulkan.Renderer")
+
+          // Publish it where the box below looks for it.
+          let _ = setProp "renderer" r
+
+          let job = hostLaunch "run" () r (fun ignored -> print "renderer stopped")
+
+          show job
+  - create:
+      box: "fieldml-mesh-ribbon"
+      name: "A ribbon rewritten every frame"
+      frame: { x: 400.0, y: 40.0, w: 560.0, h: 720.0 }
+      properties:
+        "code": |
+          // A ribbon whose VERTICES are rewritten every frame by FieldML.
+          //
+          // Run `window and renderer (FieldML)` first. The vertex shader takes real inputs -- `pos`
+          // and `col` -- and the per-frame body fills both buffers through `Mesh.write`.
+          // `prop` reads the way a Kotlin box's `renderer` does: here first, then up through the parents.
+          let renderer = prop "renderer"
+
+          let ModuleKt = hostClass "afield.graphics.render.ModuleKt"
+          let Phased = hostClass "afield.runtime.lifecycle.PhasedKt"
+          let Pair = hostClass "kotlin.Pair"
+
+          let vertexSource = "#version 450\nlayout(location = 0) in vec3 pos;\nlayout(location = 1) in vec4 col;\nlayout(location = 0) out vec4 fcol;\nvoid main() { fcol = col; gl_Position = vec4(pos, 1.0); }"
+          let fragmentSource = "#version 450\nlayout(location = 0) in vec4 fcol;\nlayout(location = 0) out vec4 o;\nvoid main() { o = fcol; }"
+
+          // 4 is VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP: two vertices per column make a ribbon.
+          let params =
+            hostStaticCall "parameters" (renderer, fun p ->
+              let _ = p |> hostSet "vertex" vertexSource in
+              let _ = p |> hostSet "fragment" fragmentSource in
+              let _ = p |> hostSet "primitiveType" 4 in
+              p |> hostSet "name" "fieldmlRibbon"
+            ) ModuleKt
+
+          let module = hostNew (params) (hostClass "afield.graphics.render.Module")
+          let pointer = module |> hostExt ModuleKt "pointer" Unit
+          let mesh = hostNew (renderer, pointer) (hostClass "afield.graphics.render.Mesh")
+          let _ = pointer |> hostCall1 "plusAssign" (hostNew ("ribbon", mesh) Pair)
+
+          let columns = 64
+          let _ = mesh |> hostCall "resize" (columns * 2, 0, pointer)
+          let target = renderer |> hostCall1 "renderTargetFor" 0
+          let _ = target |> hostCall1 "plusAssign_module" (hostNew ("fieldmlRibbon", module) Pair)
+
+          let indices = range 0 columns
+
+          // x across the window, y a travelling wave, the ribbon's width breathing with it.
+          let positions t =
+            concat (indices |> map (fun i ->
+              let u = toFloat i / toFloat (columns - 1) in
+              let x = u * 1.8 - 0.9 in
+              let y = 0.45 * sin (u * 9.0 + t) in
+              let h = 0.08 + 0.06 * cos (u * 5.0 - t * 1.3) in
+              [x, y - h, 0.0, x, y + h, 0.0]))
+
+          let colours t =
+            concat (indices |> map (fun i ->
+              let u = toFloat i / toFloat (columns - 1) in
+              let g = 0.5 + 0.5 * sin (u * 6.0 + t) in
+              [1.0, g, 0.2, 1.0, 0.2, g, 1.0, 1.0]))
+
+          // `Mesh.write(name, inside = default, builder: FloatBuffer.() -> Unit)`: a record makes it a
+          // named call, so the module defaults, and `fb` is the mapped staging buffer.
+          let write name values = mesh |> hostCall "write" {name = name, builder = fun fb -> fb |> hostCall1 "put" values}
+
+          let animation =
+            hostStaticCall "eachFrame" (fun f ->
+              let t = (f |> hostGet "frameNumber" |> toFloat) * 0.05 in
+              let _ = write "pos" (positions t) in
+              write "col" (colours t)
+            ) Phased
+
+          let job = thisBox |> hostExt Phased "launchFrames" (animation, "fieldml-ribbon", "frames", true)
+
+          { vertices = mesh |> hostGet "numVert", animating = show job }
+  - connect: { parent: "fieldml-mesh-root", child: "fieldml-mesh-renderer" }
+  - connect: { parent: "fieldml-mesh-renderer", child: "fieldml-mesh-ribbon" }
+  - connect: { parent: "fieldml-mesh-root", child: "fieldml-mesh-ribbon" }
