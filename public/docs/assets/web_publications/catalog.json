@@ -1249,12 +1249,12 @@
     },
     "assets/agent_transcripts/flow_grain/metadata.edn": {
       "captureDigest": "4d5add3a103558e3a45b0b09c14392b55f14042e4118c9d4d341d9a926c175b0",
-      "capturedAt": "2026-10-31T14:03:45.852Z",
+      "capturedAt": "2026-11-01T20:46:08.296Z",
       "channels": 1,
       "file": "assets/web_publications/flow_grain/document/metadata.edn",
       "files": {
         "assets/web_publications/flow_grain/document/metadata.edn": "5aabdfa4fa1633f068b7663d076f12871a5db05fdb34adc497f26fd3cb9359a9",
-        "assets/web_publications/flow_grain/document/outputs.json": "45fae00db7cfe229b18f3faedada5c5020dc192bdc2160e9b04bf6da33d8055c",
+        "assets/web_publications/flow_grain/document/outputs.json": "bda4356af7226afb45c5e0135300d13e158712fa0c46dd4d3db010f744d561cc",
         "assets/web_publications/flow_grain/outputs/0.html": "006e3f756152e8ef05869f3c3855ea95be0a02ad0685cecd5eb29983c6cda872"
       },
       "kinds": [
@@ -1292,7 +1292,7 @@
         "public/docs/assets/agent_transcripts/flow_grain/guides/flow_grain.md": "56160b69187499d364d7bd8c676343cc11254429bad60034797ad3f52914f978",
         "public/docs/assets/agent_transcripts/flow_grain/metadata.edn": "27c08ab3c00b3ce56af5daabdd188695e9bae68f807aaef4f9e1b74913a0289d",
         "public/docs/assets/flow_grain/flow.png": "1d8d69c9c7d4d7ca2dda29d2e3fd0755ac99926a0ab23cae9caed67c87c15e45",
-        "public/docs/flow_grain.md": "6080f5b64042e5437259eb6950758697608acc2d3b17639bb59d5ea43b1eef27"
+        "public/docs/flow_grain.md": "93e77fa972e0fb28577b1b32af31b80d6eba06a7b3ea55edf3d771368cb63f4a"
       },
       "supplementalSources": [
         "public/docs/assets/flow_grain/flow.png",
@@ -4263,12 +4263,12 @@
     },
     "assets/agent_transcripts/threebox/metadata.edn": {
       "captureDigest": "4d5add3a103558e3a45b0b09c14392b55f14042e4118c9d4d341d9a926c175b0",
-      "capturedAt": "2026-10-31T19:32:45.815Z",
+      "capturedAt": "2026-11-01T20:46:04.004Z",
       "channels": 1,
       "file": "assets/web_publications/threebox/document/metadata.edn",
       "files": {
         "assets/web_publications/threebox/document/metadata.edn": "1b2a2cd06ac0baa584c9268c1db2b7f4e849e34da4879a2c113c941b2079c6b2",
-        "assets/web_publications/threebox/document/outputs.json": "26df39401902c5231c8e88c8b9e22e644f87d9257e01ac9b152465f9c17316f5",
+        "assets/web_publications/threebox/document/outputs.json": "5366391f25858f8339cdd50be6fe887b1ee3ca1ba51f905b90f448b7e71d9334",
         "assets/web_publications/threebox/outputs/0.html": "845b72f6e5bcc73ab4319b6eb4a9783ed585192f04876443f0a1915515acb9d7"
       },
       "kinds": [
@@ -4287,7 +4287,7 @@
         "public/docs/assets/agent_transcripts/threebox/tb_draw_vertex_.glsl": "2c8e11634cdf55e1666a96f3bd1411949e77074c7a19dbac24f48c5380aa07f1",
         "public/docs/assets/agent_transcripts/threebox/tb_renderer_code_.kt": "5adb4383d6451544289629b5958e7ac4767f497841dc5b8c0797e2c4f4ea53af",
         "public/docs/assets/field_probes/particles-galaxy.png": "9d2e8a4211e378e71d767b9b1816551cdbac2cd5d4b95e4efb625385c4d5e46e",
-        "public/docs/field_probes.md": "5d4a3cc593320562a3d29d210add339e8d6a599b167e8c039e79f8fbdbb6fead"
+        "public/docs/field_probes.md": "214d79fb0449a59835365135705d4b4b7202fa2172fdf66f701fc2e8e9692a6b"
       },
       "supplementalSources": [
         "public/docs/assets/field_probes/particles-galaxy.png",
