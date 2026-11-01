@@ -4071,13 +4071,13 @@
     },
     "assets/agent_transcripts/stereo_rtt_composite/metadata.edn": {
       "captureDigest": "4d5add3a103558e3a45b0b09c14392b55f14042e4118c9d4d341d9a926c175b0",
-      "capturedAt": "2026-10-31T14:04:44.136Z",
+      "capturedAt": "2026-11-01T10:58:45.454Z",
       "channels": 1,
       "file": "assets/web_publications/stereo_rtt_composite/document/metadata.edn",
       "files": {
-        "assets/web_publications/stereo_rtt_composite/document/metadata.edn": "0d88b080e8d98bcf0f2ecf209ad5543d82b31899606a4198f5472fe3ae155287",
-        "assets/web_publications/stereo_rtt_composite/document/outputs.json": "ea1f7d964ac74b0cdb2e326a2295e8cc85346e3d68639b69e78800a8697b72d3",
-        "assets/web_publications/stereo_rtt_composite/outputs/0.html": "0ab654751e0e2699c61762a13471e431077d4a4e6bb48bed3466e34ff21573de"
+        "assets/web_publications/stereo_rtt_composite/document/metadata.edn": "03ac7a282303b5d344c465d1bc9db735739da6d178d65fae8fb4e50d0a4d3283",
+        "assets/web_publications/stereo_rtt_composite/document/outputs.json": "d40deb61d69b41abc285a443cf109e15e1893a6a58fed132294289f87e90b206",
+        "assets/web_publications/stereo_rtt_composite/outputs/0.html": "58f72468bd67b80700399dc87b08b94633a36c3af59dca4d50805ed77e4f8e31"
       },
       "kinds": [
         "native-image"
@@ -4098,7 +4098,7 @@
         "public/docs/assets/agent_transcripts/stereo_rtt_composite/stereo_scene_code_.kt": "08a1001e71d6d1894b7906d90cc916a6c230e1a388301a1af212665283a8990a",
         "public/docs/assets/agent_transcripts/stereo_rtt_composite/stereo_scene_fragment_.glsl": "09f2d517b9f20511becdbad44a079ab2444e197c15df7f90141a8a45c10d42de",
         "public/docs/assets/agent_transcripts/stereo_rtt_composite/stereo_scene_vertex_.glsl": "ba9c05a361b5dad4a7b25127970e926431dec660a338790f6adadfff1908afb0",
-        "public/docs/assets/stereo_rtt_composite/desktop.png": "66ef4988d5ca9b6617c8a5c4334595d4a0baab169ed32a6d3e4e56ce99ea149b",
+        "public/docs/assets/stereo_rtt_composite/desktop.png": "ab0061b15e0f627e4eb7e1dbd28e97bd6f032a5e835ce9af8379b192603577f5",
         "public/docs/stereo_rtt_composite.md": "0f062c206960891e14f5578e30587976268d7ab74ff0c551e7c1c59ff8c46738"
       },
       "supplementalSources": [
@@ -4837,6 +4837,117 @@
         "public/docs/assets/canonical_graphics/keyframer-look_fragment_.glsl": "6f8fc023a33fef826e7311fe58d5363e60656430defe306b0a0d5c4682194465",
         "public/docs/assets/canonical_graphics/keyframer-look_vertex_.glsl": "6ad7e49490b4aec645648594f0b0c0e218494022e139a1673eb5080970abddfc",
         "public/docs/assets/canonical_graphics/metadata.edn": "2cf7eccfc6d672c8922b3e6d0b161679b6da645eb94d9a50c6a2931c56234281"
+      }
+    },
+    "assets/fieldml_frames_demo/metadata.edn": {
+      "captureDigest": "4d5add3a103558e3a45b0b09c14392b55f14042e4118c9d4d341d9a926c175b0",
+      "capturedAt": "2026-11-01T10:58:23.584Z",
+      "channels": 2,
+      "file": "assets/web_publications/fieldml_frames_demo/document/metadata.edn",
+      "files": {
+        "assets/web_publications/fieldml_frames_demo/document/metadata.edn": "d35ee3717cdb1e21d27f2c1a683e7e745129d3d7b0ed03781d86125323a8e2c2",
+        "assets/web_publications/fieldml_frames_demo/document/outputs.json": "733180faca8f55ba5526e53b2cfe8b7fd4c28a1c83b4ef7b3637e8afd85e846d",
+        "assets/web_publications/fieldml_frames_demo/outputs/0.html": "2591602ba75a8744a11e0e04d9833b1e13e3504bec8166d71ab335f0691da857",
+        "assets/web_publications/fieldml_frames_demo/outputs/1.html": "07feb62263d7c86668a1a8594510893c5d358c1452fabface922f54c2a9b2e13"
+      },
+      "kinds": [
+        "native-image"
+      ],
+      "outputs": "assets/web_publications/fieldml_frames_demo/document/outputs.json",
+      "sources": {
+        "public/docs/assets/fieldml_frames_demo/metadata.edn": "5c444502b21048d41808287d6162213ec315a01e5369df10a3116a5f8f19ebbd",
+        "public/docs/assets/fieldml_frames_demo/spin-0.png": "976511c563ad833286126c7037b3d16b294ba399d6308ef010757dd27603dbfb",
+        "public/docs/assets/fieldml_frames_demo/spin-1.png": "f415df4b75e027a65a13bde975e37e67b3de84074a532bc18d96652f2dc38ea1",
+        "public/docs/assets/fieldml_frames_demo/spin-2.png": "e81e7e1c17bda48ee78cae40e67fe68577f929a2adc48e53e082d297471065b2",
+        "public/docs/assets/fieldml_frames_demo/spin-3.png": "7b1ec70627a8ff9a4b70bf420dde16769d02cd6bc0d4524994aaa208e37c426c",
+        "public/docs/assets/fieldml_frames_demo/spin-frames.png": "7ae7951db53b723aa6bd94f63cdd25f4c3e3c034bffdcf9f2bb888ef12ce1119"
+      }
+    },
+    "assets/fieldml_frames_sequence_demo/metadata.edn": {
+      "captureDigest": "4d5add3a103558e3a45b0b09c14392b55f14042e4118c9d4d341d9a926c175b0",
+      "capturedAt": "2026-11-01T10:58:16.666Z",
+      "channels": 2,
+      "file": "assets/web_publications/fieldml_frames_sequence_demo/document/metadata.edn",
+      "files": {
+        "assets/web_publications/fieldml_frames_sequence_demo/document/metadata.edn": "4cd5989ca248b67dc3f0eddbcda98842e1ad8f02be14610effbc9a8f43388261",
+        "assets/web_publications/fieldml_frames_sequence_demo/document/outputs.json": "7d1c655ec8b2dc30bb378d46c81e0ccfd0050a26a24bb1de8f1a2d3315bffd80",
+        "assets/web_publications/fieldml_frames_sequence_demo/outputs/0.html": "8500960192e19092570e0bd3e737ea6f6c77cc33d380d843e26dc594a4aedf6e",
+        "assets/web_publications/fieldml_frames_sequence_demo/outputs/1.html": "b15cf9709aa54391d4911b6d573b2d8baa61c11ac0a3762945f945494fd654ec"
+      },
+      "kinds": [
+        "native-image"
+      ],
+      "outputs": "assets/web_publications/fieldml_frames_sequence_demo/document/outputs.json",
+      "sources": {
+        "public/docs/assets/fieldml_frames_sequence_demo/metadata.edn": "677177fa9c4272f1d64af7e10afbce49fd5bc9b5ca90cc1872b7858cddd5c4f6",
+        "public/docs/assets/fieldml_frames_sequence_demo/sequence-0.png": "b41a1c0fed18dc466cdd138a844841f64aff19038b66cbf589848b0d32fd5fda",
+        "public/docs/assets/fieldml_frames_sequence_demo/sequence-1.png": "5f513141137cd8aaf0a8e13363e83ac9a987f62c158d86112879cfee65ad0260",
+        "public/docs/assets/fieldml_frames_sequence_demo/sequence-pair.png": "205772820f4784674c212b1ddeb98f783677c3da7b3503c35f844e15fe0fba6f"
+      }
+    },
+    "assets/fieldml_macro_module_demo/metadata.edn": {
+      "captureDigest": "4d5add3a103558e3a45b0b09c14392b55f14042e4118c9d4d341d9a926c175b0",
+      "capturedAt": "2026-11-01T10:58:38.563Z",
+      "channels": 2,
+      "file": "assets/web_publications/fieldml_macro_module_demo/document/metadata.edn",
+      "files": {
+        "assets/web_publications/fieldml_macro_module_demo/document/metadata.edn": "430f02a9be46eaf286d65cdeed72d5cef7ff8b5ce427f4b5a3561fe601050d41",
+        "assets/web_publications/fieldml_macro_module_demo/document/outputs.json": "336c281fdf366a46260894af0d48ad26725e579b67e4837336e2651eca7f9015",
+        "assets/web_publications/fieldml_macro_module_demo/outputs/0.html": "fbf95d14c02e5ce9c29c49eb83f9930f072bb4a3ce5779d66b8a0bd2df71af15",
+        "assets/web_publications/fieldml_macro_module_demo/outputs/1.html": "53806982631dfe0c7eec70055c12777267474b046f7b6e2c75b83f80fb17813e"
+      },
+      "kinds": [
+        "native-image"
+      ],
+      "outputs": "assets/web_publications/fieldml_macro_module_demo/document/outputs.json",
+      "sources": {
+        "public/docs/assets/fieldml_macro_module_demo/metadata.edn": "beab2b7b1a798ce30fca2a84cea5f07f63375fce392e87b46daf3a2e2dfe700e"
+      }
+    },
+    "assets/fieldml_mesh_demo/metadata.edn": {
+      "captureDigest": "4d5add3a103558e3a45b0b09c14392b55f14042e4118c9d4d341d9a926c175b0",
+      "capturedAt": "2026-11-01T10:58:30.210Z",
+      "channels": 2,
+      "file": "assets/web_publications/fieldml_mesh_demo/document/metadata.edn",
+      "files": {
+        "assets/web_publications/fieldml_mesh_demo/document/metadata.edn": "9c3f397ae10f831ea7fd3deeff6738c033989f291590191547fb5bd5413ac7a2",
+        "assets/web_publications/fieldml_mesh_demo/document/outputs.json": "b1b9e03781340ab672abb903b3f48bb9e29467b75fc359de4bdfa529f161cbf4",
+        "assets/web_publications/fieldml_mesh_demo/outputs/0.html": "dacad5915368570522ee599b5c308e877eeef217eead64f2fc36b608a0085e1a",
+        "assets/web_publications/fieldml_mesh_demo/outputs/1.html": "6ac25406a2435a6c2d6f60dac7433d9bd53414067cfde080815ce798d27b6545"
+      },
+      "kinds": [
+        "native-image"
+      ],
+      "outputs": "assets/web_publications/fieldml_mesh_demo/document/outputs.json",
+      "sources": {
+        "public/docs/assets/fieldml_mesh_demo/metadata.edn": "e8ba88a9bb3ff7d705103c4da3ca3e32e877160ea8d82fbb4434a654e80ccfcb",
+        "public/docs/assets/fieldml_mesh_demo/ring-0.png": "e39bfbdf9b562f9b7c1a0a508c8df0c2347665edb6e3e678c9ff55a144fc125a",
+        "public/docs/assets/fieldml_mesh_demo/ring-1.png": "1e47fc3acf3a1638dc187dfeb5f554b0938b94fd54f4423fe4d05ac3131b7421",
+        "public/docs/assets/fieldml_mesh_demo/ring-2.png": "f30b848e33929bace63b845697bdedc55c97bc114cb96b77e44e684f273cadad",
+        "public/docs/assets/fieldml_mesh_demo/ring-3.png": "57e4edc993d6748714d562922659c1a6a113000465085b6c3304329635ae5531",
+        "public/docs/assets/fieldml_mesh_demo/ring-frames.png": "ec6459e3b9cd877d8f072a7d501d67db86f9ccdbdef54ed6e126be89482c25b5"
+      }
+    },
+    "assets/fieldml_suspend_demo/metadata.edn": {
+      "captureDigest": "4d5add3a103558e3a45b0b09c14392b55f14042e4118c9d4d341d9a926c175b0",
+      "capturedAt": "2026-11-01T10:58:11.193Z",
+      "channels": 2,
+      "file": "assets/web_publications/fieldml_suspend_demo/document/metadata.edn",
+      "files": {
+        "assets/web_publications/fieldml_suspend_demo/document/metadata.edn": "0a5ed2f6ad6e9a73dfaccee2521a021028cc7ec4c7289091b8ddb68a39f73198",
+        "assets/web_publications/fieldml_suspend_demo/document/outputs.json": "ae52061bfc7047a1d7ae97cf08d24dc92de7395b407bd544f271b22e13b30c4e",
+        "assets/web_publications/fieldml_suspend_demo/outputs/0.html": "274f04b8e5731aab08c56d201e3c8ab5a33fceb8fd1a0b2ee9c3604b97545c7e",
+        "assets/web_publications/fieldml_suspend_demo/outputs/1.html": "e4701f91b8959816e78c2302a7fcca044c51e6b873866cf4494b824e17863ac5"
+      },
+      "kinds": [
+        "native-image"
+      ],
+      "outputs": "assets/web_publications/fieldml_suspend_demo/document/outputs.json",
+      "sources": {
+        "public/docs/assets/fieldml_suspend_demo/metadata.edn": "91b613aa21b4ace47cea1970aac062fe8bf1893434d0caf4ce06912dc6ceb881",
+        "public/docs/assets/fieldml_suspend_demo/ribbon-0.png": "821ca1a0dd8929734d789baa743f2ae8986a16e2dfecd2486c26b22ffa6084d0",
+        "public/docs/assets/fieldml_suspend_demo/ribbon-1.png": "ba953cbe2554ca5a747d1590cc1521ac298be1bc44dedd6326a11e73af700971",
+        "public/docs/assets/fieldml_suspend_demo/ribbon-pair.png": "729a75cac58cbdd2fee5bb4ecbf01e034d20dc3d8d4b6988f4d736e88b510a56"
       }
     },
     "assets/fline_examples/metadata.edn": {
