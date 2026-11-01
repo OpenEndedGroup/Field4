@@ -191,7 +191,17 @@ For graphics, sample directly. `at(cycle)` and `atSeconds(seconds, cps)` return 
 which carries the several notions of time that are live at once: the global cycle, the stage index,
 the time since this stage began, and that time normalised to `0..1`.
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/marf/two-readers-path.png" alt="a white path of straight horizontal, vertical and diagonal segments, traced by two readers of one bank used as x and y" wait="1.5" capture="box" open-outputs="true" padding="16" name="marf-two-readers-path" embed=true}
+:::fold the bank from above
+val b = marfBank(
+    rampTo(0.1, 1.0),
+    rampTo(0.9, 0.5),
+    holdAt(0.4, 2.0),
+    oscTo(0.7, 1.0, cycles = 3.0),
+    curveTo(0.2, 0.25, amount = 4.0),
+)
+:::endfold
+
 val x = b.read(pat("<0 1 2 3 4>").nums(), fields = MarfFieldClock.STAGES)
 val y = b.read(pat("<0 2 4 1 3>").nums().slow(3), fields = MarfFieldClock.STAGES)
 

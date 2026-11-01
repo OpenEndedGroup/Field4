@@ -149,6 +149,41 @@ genus 1. For a plain ring, sweep two halves and `JOIN` the second; the join remo
 they touch. In the SolidCraft version Field pins, that join works on arc paths but fails on a
 knot's freeform halves.
 
+```diffstatic_runner {data-lang=kotlin screenshot="assets/solidcraft/sweep-profile.png" alt="three meshes with fact lines. Left, an 8 mm square swept square to a 60 mm path: extent 8 × 8 × 60, volume 3840. Middle, the same square with the path 27° off: a sheared prism, volume 3421, which is 3840 × cos 27°. Right, a ring of two joined half sweeps: watertight, genus 1." wait="4" capture="box" open-outputs="true" padding="20" requires="solidcraft" name="solidcraft-sweep-profile" embed=true}
+import afield.geometry.solid.solidcraft.SolidCraftOperation
+import afield.geometry.solid.solidcraft.solidCraft
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
+
+// The same 8 mm square swept 60 mm, once square to the path and once with the path 27° off.
+val square = solidCraft("Square") {
+    sweep(sketch("XY") { rectangle(-4.0, -4.0, 4.0, 4.0) }, sketch("XZ") { line(0.0, 0.0, 0.0, 60.0) })
+}
+val tilt = 27 * PI / 180
+val skewed = solidCraft("Skewed") {
+    sweep(sketch("XY") { rectangle(-4.0, -4.0, 4.0, 4.0) }, sketch("XZ") { line(0.0, 0.0, 60 * sin(tilt), 60 * cos(tilt)) })
+}
+
+// A ring from two half sweeps, the second joined: the join removes the caps where they touch.
+val ring = solidCraft("Ring") {
+    sweep(sketch("XZ") { circle(20.0, 0.0, 2.5) }, sketch("XY") { arc(0.0, 0.0, 20.0, 0.0, -20.0, 0.0) })
+    sweep(sketch("XZ") { circle(-20.0, 0.0, 2.5) }, sketch("XY") { arc(0.0, 0.0, -20.0, 0.0, 20.0, 0.0) }, operation = SolidCraftOperation.JOIN)
+}
+
+fun mesh(design: afield.geometry.solid.solidcraft.SolidCraftBuilder) =
+    design.open().use { it.mesh(tolerance = 0.05).toTriMesh().weld() }
+
+showMeshGrid(
+    "square to the path" to mesh(square),
+    "path 27° off square" to mesh(skewed),
+    "two halves, joined" to mesh(ring),
+    columns = 3,
+)
+```
+
+The skewed sweep's volume is 3421, which is 3840 × cos 27°. The joined ring reads genus 1; the single-sweep knot in [Three parts](#three-parts) reads genus 0.
+
 Guide rails reshape the profile's far side to follow the rail: `railFit = SCALE` (the default)
 grows the whole section evenly, `STRETCH` only across to the rail. The rails then decide the
 profile's turn and size, so a railed sweep takes no `twist` or `scale`.
@@ -163,6 +198,36 @@ The surface features make open sheets, measured by area rather than volume:
     In the SolidCraft version Field pins (v0.15.0), `surfaceBoundary` builds a patch between two
     curves; three or four report "not supported yet". Draw both curves in the same direction:
     the patch joins start to start, so curves running opposite ways fold it over itself.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/solidcraft/surfaces.png" alt="three meshes with fact lines. Left, a boundary patch between two splines: an open curved sheet, depth 0. Middle, the same sheet thickened by 2: depth 2. Right, the patch with its second curve drawn backwards: two triangles meeting at a point, the sheet folded through itself." wait="4" capture="box" open-outputs="true" padding="20" requires="solidcraft" name="solidcraft-surfaces" embed=true}
+import afield.geometry.solid.solidcraft.SolidCraftBuilder
+import afield.geometry.solid.solidcraft.solidCraft
+
+// A boundary patch between two splines drawn the same way, left to right.
+fun patch(name: String, flipSecond: Boolean, thickness: String? = null, body: String = "") = solidCraft(name) {
+    val s = sketch("XY") {
+        spline(0.0, 0.0, 10.0, -3.0, 20.0, 0.0)
+        if (flipSecond) spline(20.0, 20.0, 10.0, 23.0, 0.0, 20.0) else spline(0.0, 20.0, 10.0, 23.0, 20.0, 20.0)
+    }
+    surfaceBoundary(s, crown = 0.5)
+    if (thickness != null) thicken([body], thickness)
+}
+
+// thicken names the sheet the way summary() lists it.
+val sheetName = patch("Sheet", false).open().use { it.summary().getJSONArray("bodies").getJSONObject(0).getString("name") }
+
+// body 0 is the sheet; thicken adds the solid as body 1.
+fun mesh(design: SolidCraftBuilder, body: Int = 0) = design.open().use { it.mesh(body, 0.05).toTriMesh().weld() }
+
+showMeshGrid(
+    "surfaceBoundary: an open sheet" to mesh(patch("Sheet", false)),
+    "thicken by 2" to mesh(patch("Thick", false, "2", sheetName), body = 1),
+    "second curve drawn backwards" to mesh(patch("Folded", true)),
+    columns = 3,
+)
+```
+
+The thickened sheet is 2 deep, though its welded mesh still reports two open boundary loops. Drawing the second curve backwards pinches the patch to a point in the middle.
 
 Any SolidCraft feature the builder does not name — shell, draft, chamfer, pattern, and the rest —
 can be added by its JSON fields with `feature("shell", JSONObject()...)`.
