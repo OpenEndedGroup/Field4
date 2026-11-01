@@ -654,7 +654,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**35575 public symbols across 1613 source files**, 20856 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**35576 public symbols across 1613 source files**, 20857 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -667,7 +667,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Video](video.md) | 14 | 192 | 192 (100%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 47 | 2162 | 1623 (75%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 26 | 1061 | 502 (47%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 328 | 8024 | 5280 (65%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 328 | 8025 | 5281 (65%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 46 | 797 | 427 (53%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 586 | 431 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 766 | 514 (67%) | Nonlinear least squares, aimed at geometry. |
@@ -1636,7 +1636,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>vision/<wbr></small> [OpticalFlowDemo.kt](imaging.md#opticalflowdemo-kt) | Imaging | 20 | 6 | A self-contained optical-flow demonstration that renders two warped test images, measures the motion between them, and drives a feedback image with it. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>vision/<wbr></small> [OpticalFlowOperation.kt](imaging.md#opticalflowoperation-kt) | Imaging | 18 | 10 | The shared contract for dense optical flow in Field: the `OpticalFlowOperation` interface, the `OpticalFlowBackend` choice, and the `opticalFlow` factory that picks a backend for a renderer. | [Optical flow](../optical_flow.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>vision/<wbr></small> [OpticalFlowSmoke.kt](imaging.md#opticalflowsmoke-kt) | Imaging | 2 | 0 |  |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>util/<wbr></small> [Options.kt](graphics.md#options-kt) | Graphics | 51 | 47 | Global switches for the Vulkan renderer, mostly read from system properties at startup, and the code that locates the Vulkan loader and driver. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>util/<wbr></small> [Options.kt](graphics.md#options-kt) | Graphics | 52 | 48 | Global switches for the Vulkan renderer, mostly read from system properties at startup, and the code that locates the Vulkan loader and driver. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>util/<wbr></small> [OrbitControls.kt](graphics.md#orbitcontrols-kt) | Graphics | 26 | 25 | Mouse orbit controls for a `Camera` in a Vulkan window: rotate, pan and dolly around the camera's target, after Three.js's OrbitControls. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>steamaudio/<wbr></small> [OrbitDemo.kt](examples.md#orbitdemo-kt) | Examples | 1 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [Orca.kt](patterns.md#orca-kt) | Patterns | 58 | 39 | ORCA, the two-dimensional livecoding sequencer, running in a box output with its notes, control changes, UDP and OSC messages delivered to Kotlin callbacks; start it with `orca`. | [ORCA](../orca.md) |

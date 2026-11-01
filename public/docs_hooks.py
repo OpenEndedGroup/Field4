@@ -876,6 +876,7 @@ class RunnerOptions:
     # `hide-toasts=true` (capture="ui" only): hide Field's toasts for the drive. They stay on screen
     # once shown, and in a small `viewport=` window they stack over the canvas being recorded.
     hide_toasts: bool = False
+    clip_at_end: bool = False
 
 
 # A profile names the host a capture needs. On any other host, or unless FIELD_DOCS_CAPTURE_PROFILES
@@ -3560,6 +3561,7 @@ def parse_runner_options(*, runner_name: str, open_line: str, page_path: Path, l
         scale=parse_capture_scale(first_attr(attrs, "scale")),
         fresh_document=parse_bool(first_attr(attrs, "fresh-document", "fresh_document"), default=False),
         hide_toasts=parse_bool(first_attr(attrs, "hide-toasts", "hide_toasts"), default=False),
+        clip_at_end=parse_bool(first_attr(attrs, "clip-at-end", "clip_at_end"), default=False),
         box_name=first_attr(attrs, "name") or f"{page_path.stem}-{block_index}",
         box_x=parse_float(first_attr(attrs, "x"), default=24.0),
         box_y=parse_float(first_attr(attrs, "y"), default=24.0),
@@ -4231,6 +4233,8 @@ def options_digest_payload(options: RunnerOptions) -> dict[str, Any]:
         payload["viewport"] = list(options.viewport)
     if options.hide_toasts:
         payload["hideToasts"] = True
+    if options.clip_at_end:
+        payload["clipAtEnd"] = True
     if options.scale is not None:
         payload["scale"] = options.scale
     if options.fresh_document:
@@ -5515,6 +5519,8 @@ def build_backdoor_command(
             drive_op["viewport"] = list(options.viewport)
         if options.hide_toasts:
             drive_op["hideToasts"] = True
+        if options.clip_at_end:
+            drive_op["clipAtEnd"] = True
         if options.warm_completion:
             drive_op["warmCompletion"] = True
         transcript_name = f"{safe_transcript_id(options.box_name)}_ui_drive"
