@@ -72,6 +72,15 @@ layout(location=1) out float depth;
 layout(location=2) out vec2 motion;
 ```
 
+Drawn side by side, the three colour attachments of one frame are the lit colour, the depth guide (shown here as red, brighter when nearer, background black) and the motion vectors (red and green for the horizontal and vertical motion, offset so that zero motion is olive):
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/reconstruction_plumbing/gbuffer_strip.png" capture="native-window" native-wait-frames="30" wait-output=true wait-output-kind="all" wait-output-contains="g-buffer strip ready" embed=true hidden=true timeout="180" name="reconstruction-plumbing-gbuffer" alt="The same frame three times: lit colour, depth shown as red brightening toward the camera, and motion vectors as a red-green gradient" macro-file="../../dev_docs/agents/transcripts/docs_capture/reconstruction_plumbing_gbuffer.yaml" capture-box="reconstruction_plumbing"}
+// Built and launched from dev_docs/agents/transcripts/docs_capture/reconstruction_plumbing_gbuffer.yaml.
+```
+
+??? aside "How the strip was made"
+    The capture runs the reconstruction_plumbing starting point with its single blit replaced by three `blitToScreen(attachment = …, viewport = …)` calls, one per attachment, each with a `ColorGrade` exposure and offset to bring depth and motion into a visible range. Without NGX (this Mac), the source is native resolution.
+
 This example writes depth into an R32F **color** attachment as well as using an ordinary depth-test attachment. That makes the sampled guide and its background convention explicit. A compatible sampled D32F depth image is also accepted by the adapter.
 
 | Image | What it contains | What it must not stand in for |
