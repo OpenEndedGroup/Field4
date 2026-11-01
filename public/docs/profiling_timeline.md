@@ -583,11 +583,12 @@ turn showed **314 resumes: 157 that allocated a mean of 229,712 bytes and 157 th
 allocated a mean of 208**. Its median resume allocated 208 bytes. Its mean allocated
 114,966. Neither number is wrong; only one of them is about your work.
 
-Zoomed to about a tenth of a second of that recording, the vector box's lane shows the
-pairs: a wide bar for each resume that builds the array, and a one-pixel sliver after it for
-the resume that wakes from `delay` and loops straight back.
+Zoomed to about a tenth of a second of that recording, the vector box's lane shows its
+resumes in pairs, two marks close together for every turn of the loop: one resume builds the
+array, the other wakes from `delay` and loops straight back. The summary line counts both, which
+is why six turns read as twelve spans.
 
-```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector="#profile-timeline" screenshot="assets/profiling_timeline/resume-pairs.png" transcript="../../dev_docs/agents/transcripts/profiling_timeline.yaml" padding="8" wait="0" timeout="180" embed=true hidden=true name="profiling-timeline-resume-pairs" alt="The profiling timeline zoomed to roughly 120 ms of a real capture. In the 'Allocate or reuse' lane, wide resumes that allocate the vector array alternate with near-zero-width resumes that only wake from delay and loop."}
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector="#profile-timeline" screenshot="assets/profiling_timeline/resume-pairs.png" transcript="../../dev_docs/agents/transcripts/profiling_timeline.yaml" padding="8" wait="0" timeout="180" embed=true hidden=true name="profiling-timeline-resume-pairs" alt="The profiling timeline zoomed to roughly 120 ms of a real capture. The 'Allocate or reuse' lane shows its resumes in close pairs, one per loop turn: the resume that allocates the vector array and the resume that only wakes from delay."}
 ui.eval("window.showProfilingTimeline(); return 'requested'")
 var ready = false
 repeat(40) {
@@ -609,11 +610,20 @@ ui.eval(
     """
     const metric=document.getElementById('profile-metric');
     metric.value='bytes'; metric.dispatchEvent(new Event('change'));
-    // Brush about 120 ms in the middle of the overview with pointer events.
-    const overview=document.getElementById('profile-overview');
-    const r=overview.getBoundingClientRect(), y=r.top+r.height/2, x0=r.left+r.width*0.5, x1=x0+r.width*0.04;
-    const ev=(t,x)=>overview.dispatchEvent(new PointerEvent(t,{clientX:x,clientY:y,pointerId:1,bubbles:true,isPrimary:true,pointerType:'mouse'}));
-    ev('pointerdown',x0); ev('pointermove',x1); ev('pointerup',x1);
+    return 'bytes'
+""",
+)
+// Brush about 120 ms in the middle of the overview with the real mouse.
+val r = ui.eval("const r=document.getElementById('profile-overview').getBoundingClientRect(); return [r.left, r.top, r.width, r.height]").toString().trim('[', ']').split(',').map { it.trim().toDouble() }
+val y = r[1] + r[3] / 2
+val x0 = r[0] + r[2] * 0.5
+ui.moveMouse(x0, y)
+ui.mouseDown()
+ui.moveMouse(x0 + r[2] * 0.04, y, 8)
+ui.mouseUp()
+ui.pause(200)
+ui.eval(
+    """
     document.getElementById('profile-zoom').click();
     const lane=[...document.querySelectorAll('.profile-labels button')].find(b=>b.textContent.includes('Allocate or reuse'));
     if(!lane) throw new Error('The vector workload has no lane');
