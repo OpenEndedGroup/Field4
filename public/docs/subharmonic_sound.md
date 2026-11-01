@@ -702,19 +702,49 @@ periodicity search helps it acquire a new note and escape octave errors.
 For example, partials at 220, 330 and 550 Hz repeat at 110 Hz even when there is no 110 Hz
 component. This sample-by-sample example gives that sound a new 55 Hz undertone:
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/subharmonic_sound/missing-fundamental.png" alt="two rows of spectrum bars from 20 to 700 Hz: the input has bars at 220, 330 and 550 Hz and none at 110; the output has one bar at 55 Hz" wait="1.5" capture="box" open-outputs="true" embed=true name="subharmonic-missing-fundamental"}
 val tracker = HarmonicPhaseTracker(initialHz = 70.0)
 val bank = TrackedPhaseBank(tracker, TrackedPhaseBank.ratios(0.5 to 0.7))
+val input = FloatArray(96_000)
 val output =
     FloatArray(96_000) { n ->
         val t = n / 48_000.0
-        val input =
+        val x =
             0.7 * kotlin.math.sin(2 * kotlin.math.PI * 220 * t + 0.31) +
                 0.48 * kotlin.math.sin(2 * kotlin.math.PI * 330 * t - 0.77) +
                 0.31 * kotlin.math.sin(2 * kotlin.math.PI * 550 * t + 1.13)
-        bank.process(input.toFloat())
+        input[n] = x.toFloat()
+        bank.process(x.toFloat())
     }
+
+:::fold measure and draw both spectra
+// Magnitude at each frequency from 20 to 700 Hz over the second second, once tracking has settled.
+fun spectrum(signal: FloatArray) = (4..140).map { k ->
+    val hz = k * 5.0
+    var re = 0.0
+    var im = 0.0
+    for (n in 48_000 until 96_000) {
+        val a = 2 * kotlin.math.PI * hz * n / 48_000.0
+        re += signal[n] * kotlin.math.cos(a)
+        im -= signal[n] * kotlin.math.sin(a)
+    }
+    hz to 2 * kotlin.math.hypot(re, im) / 48_000.0
+}
+fun bars(spec: List<Pair<Double, Double>>, tint: Vec4, dy: Double) = FLine().apply {
+    spec.forEach { (hz, mag) -> moveTo(hz, dy).lineTo(hz, dy - mag * 120.0) }
+    color = tint
+    thickness = 2.0
+}
+// Ticks under each row at 55, 110, 220, 330 and 550 Hz.
+val ticks = FLine().apply {
+    for (dy in [0.0, 140.0]) for (hz in [55.0, 110.0, 220.0, 330.0, 550.0]) moveTo(hz, dy + 4).lineTo(hz, dy + 14)
+    color = vec(1.0, 0.6, 0.2, 1.0)
+}
+display("tracked", "tracked fundamental: ${tracker.state.hz.f1} Hz · top: the input · bottom: the bank's output · orange ticks at 55, 110, 220, 330, 550 Hz")
+lines(bars(spectrum(input), vec(0.7, 0.7, 0.7, 1.0), 0.0), bars(spectrum(output), vec(0.3, 0.8, 1.0, 1.0), 140.0), ticks, w = 700.0, h = 300.0, fitToSize = true)
 ```
+
+The tracker reports 110 Hz, a pitch with no energy in the input, and the bank's output is one line at 55 Hz.
 
 Set `minHz..maxHz` to the expected fundamental range. `initialHz` seeds the search;
 `captureHz` controls the fine channels' bandwidth. Acquisition needs a window of input,
