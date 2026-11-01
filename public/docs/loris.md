@@ -299,6 +299,48 @@ A small hop cannot recover events blurred by a long window. Try a fine-time pass
 separate readings of the same source. When judging attacks, look at a waveform or spectrogram as
 well.
 
+This box reads the dialogue both ways and shows each reading with its resynthesis:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/loris/resolution.png" capture="box" open-outputs="true" requires="loris" wait="40" padding="14" timeout="300" w="1080" h="1700" embed=true name="loris-resolution" alt="Two Loris partial maps of the same film dialogue, 0 to 5000 Hz on an ERB axis, each above its reconstruction waveform and player. At windowWidthHz 160 the tracks are short steep strokes that start and stop with each syllable. At windowWidthHz 40 the low harmonics run as long, closely spaced horizontal lines and the syllable onsets blur."}
+import kotlinx.coroutines.*
+import kotlinx.coroutines.future.await
+
+val client = cached { LorisClient() }
+go {
+    try {
+        // The same recording read twice: a short window (fine time) and a long one (fine frequency).
+        for ((label, width) in listOf("fine time · windowWidthHz = 160" to 160.0, "fine frequency · windowWidthHz = 40" to 40.0)) {
+            val analyzed =
+                client
+                    .analyzeWavAsync(
+                        "%docs/assets/subharmonic_sound/notld-barbara-source.wav".path,
+                        options = LorisOptions(
+                            resolutionHz = width / 2,
+                            windowWidthHz = width,
+                            hopSeconds = 0.005,
+                            frequencyDriftHz = 50.0,
+                            amplitudeFloorDb = -55.0,
+                        ),
+                    )
+                    .await()
+            display(
+                label,
+                analyzed.visualizationHtml(
+                    LorisViewOptions(height = 300, maximumHz = 5000.0, syncGroup = "loris-resolution", label = label),
+                ),
+            )
+        }
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (failure: Throwable) {
+        markdown("error", "Loris failed: ${(failure.message ?: failure.toString()).md}")
+    }
+}
+```
+
+The short window keeps the onsets of syllables as sharp starts and stops but leaves the low
+harmonics ragged. The long window separates the low harmonics into long lines and smears the onsets.
+
 ## Label, align and morph two sounds
 
 Loris's best-known trick is the morph: one sound turns into another with frequency, amplitude

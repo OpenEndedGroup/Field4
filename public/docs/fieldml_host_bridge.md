@@ -69,14 +69,24 @@ A parameter of the same kind wins (floating point for a FieldML `Float`, integra
 
 A FieldML function can go wherever Kotlin expects a function: a Kotlin lambda parameter (`(Int, Int) -> Float`), a receiver lambda (`Box.() -> Unit`, whose receiver arrives as the first argument), or a Java interface such as `Runnable`, `Supplier` or `Comparator`. This one bends a line through `FLine.transform`:
 
-```diffstatic {data-lang=fieldml}
-fline
-  |> moveTo 0.0 0.0
-  |> lineTo 100.0 0.0
-  |> lineTo 100.0 60.0
+```diffstatic_runner {data-lang=fieldml screenshot="assets/fieldml_host_bridge/transform.png" wait="1.0" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="fieldml-host-bridge-transform" w="760" h="360" alt="An output channel labelled main: a grey L-shape, a horizontal stroke then a vertical one, and over it the same L in orange bent by a sine: the horizontal stroke rises and falls in a wave and the vertical stroke is shifted to where the wave ends."}
+// The L-shape as a point every 4 units, so the warp has points to move.
+let ell =
+  append
+    (linspace 0.0 100.0 26 |> map (fun x -> vec2 x 0.0))
+    (linspace 4.0 60.0 15 |> map (fun y -> vec2 100.0 y))
+    |> fold (fun line point -> line |> lineToV point) (fline |> moveTo 0.0 0.0)
+
+let style c line = line |> stroked true |> filled false |> color c |> thickness 2.0
+
+ell |> style (vec4 0.5 0.5 0.5 1.0) |> draw "main"
+
+ell
   |> hostCall1 "transform" (fun p ->
        vec3 (p.x) (p.y + 20.0 * sin (p.x / 25.0)) (p.z)
      )
+  |> style (vec4 1.0 0.55 0.2 1.0)
+  |> draw "main"
 ```
 
 `p` is a `Vec3` without you saying so. `FLine.transform` takes a Kotlin `(Vec3) -> Vec3`, and the type checker reads that signature, so `.x`, `.y` and `.z` are checked, `p.xx` is an error before the box runs, and completion works inside the body. The same goes for `Img.generate(w, h) { x, y -> … }` and `Img.mapIndexed { x, y, c, v -> … }`, where `x` and `y` are `Int`s and `x + y` is integer arithmetic, and for a receiver lambda (`BufferParameters.() -> Unit`), whose receiver is typed as its first parameter.

@@ -132,15 +132,33 @@ pits in the same places at the same heights score 0; small changes in shape scor
 solved exactly by default; with `epsilon` it uses the entropic Sinkhorn solver, which handles the
 tens of thousands of pairs a noisy image has.
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/topology_tracking/distance.png" alt="a table of persistence diagram distances from field A: A against itself 0 exact, B with its three hills moved a few pixels about 0.1, C with five hills about 0.8, the entropic column agreeing to within a few thousandths; below it the three viridis fields side by side" wait="4" timeout="240" capture="box" open-outputs="true" padding="20" requires="morse-smale" name="tracking-distance" embed=true}
 import afield.geometry.topology.morsesmale.*
 import afield.geometry.topology.tracking.*
 
-val a = MorseSmale.compute(frameA, persistence = 0.02).persistenceDiagram(dimension = 1)
-val b = MorseSmale.compute(frameB, persistence = 0.02).persistenceDiagram(dimension = 1)
-persistenceDiagramDistance(a, b) // exact
-persistenceDiagramDistance(a, b, epsilon = 1e-4) // entropic, for large diagrams
+// Three hills, the same hills nudged a few pixels, and a different set of five.
+fun hills(centres: List<Pair<Double, Double>>) =
+    Img.generate(160, 120) { x, y ->
+        centres.sumOf { (cx, cy) -> exp(-((x - cx).pow(2) + (y - cy).pow(2)) / 150.0) }.toFloat()
+    }
+val frameA = hills(listOf(40.0 to 40.0, 100.0 to 60.0, 70.0 to 95.0))
+val frameB = hills(listOf(43.0 to 41.0, 98.0 to 63.0, 72.0 to 92.0))
+val frameC = hills(listOf(30.0 to 30.0, 60.0 to 30.0, 120.0 to 40.0, 50.0 to 90.0, 110.0 to 95.0))
+
+fun diagram(f: Img) = MorseSmale.compute(f, persistence = 0.02).persistenceDiagram(dimension = 1)
+val a = diagram(frameA)
+val rows = listOf("A, the same field" to a, "B, hills moved" to diagram(frameB), "C, a different field" to diagram(frameC))
+markdown("distances", buildString {
+    appendLine("| A against | pairs | exact | entropic (ε = 1e-4) |")
+    appendLine("| --- | --- | --- | --- |")
+    for ((label, d) in rows) {
+        appendLine("| $label | ${d.size} | ${"%.4f".format(persistenceDiagramDistance(a, d))} | ${"%.4f".format(persistenceDiagramDistance(a, d, epsilon = 1e-4))} |")
+    }
+})
+showImgGrid("A" to frameA.normalized().colormap("viridis"), "B" to frameB.normalized().colormap("viridis"), "C" to frameC.normalized().colormap("viridis"), columns = 3, cellSide = 200)
 ```
+
+The moved hills score about a tenth of the different field. The entropic solver lands within a few thousandths of the exact distance, which is also why it gives A against itself a small positive number rather than 0.
 
 ## Real footage
 
