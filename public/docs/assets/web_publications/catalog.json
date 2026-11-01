@@ -4071,13 +4071,13 @@
     },
     "assets/agent_transcripts/stereo_rtt_composite/metadata.edn": {
       "captureDigest": "4d5add3a103558e3a45b0b09c14392b55f14042e4118c9d4d341d9a926c175b0",
-      "capturedAt": "2026-10-31T14:04:44.136Z",
+      "capturedAt": "2026-11-01T10:35:31.975Z",
       "channels": 1,
       "file": "assets/web_publications/stereo_rtt_composite/document/metadata.edn",
       "files": {
-        "assets/web_publications/stereo_rtt_composite/document/metadata.edn": "0d88b080e8d98bcf0f2ecf209ad5543d82b31899606a4198f5472fe3ae155287",
-        "assets/web_publications/stereo_rtt_composite/document/outputs.json": "ea1f7d964ac74b0cdb2e326a2295e8cc85346e3d68639b69e78800a8697b72d3",
-        "assets/web_publications/stereo_rtt_composite/outputs/0.html": "0ab654751e0e2699c61762a13471e431077d4a4e6bb48bed3466e34ff21573de"
+        "assets/web_publications/stereo_rtt_composite/document/metadata.edn": "03ac7a282303b5d344c465d1bc9db735739da6d178d65fae8fb4e50d0a4d3283",
+        "assets/web_publications/stereo_rtt_composite/document/outputs.json": "6d4aa70cb8ee88ce9607907725a8999ce162416472fec3107f17550626e0906d",
+        "assets/web_publications/stereo_rtt_composite/outputs/0.html": "58f72468bd67b80700399dc87b08b94633a36c3af59dca4d50805ed77e4f8e31"
       },
       "kinds": [
         "native-image"
@@ -4098,7 +4098,7 @@
         "public/docs/assets/agent_transcripts/stereo_rtt_composite/stereo_scene_code_.kt": "08a1001e71d6d1894b7906d90cc916a6c230e1a388301a1af212665283a8990a",
         "public/docs/assets/agent_transcripts/stereo_rtt_composite/stereo_scene_fragment_.glsl": "09f2d517b9f20511becdbad44a079ab2444e197c15df7f90141a8a45c10d42de",
         "public/docs/assets/agent_transcripts/stereo_rtt_composite/stereo_scene_vertex_.glsl": "ba9c05a361b5dad4a7b25127970e926431dec660a338790f6adadfff1908afb0",
-        "public/docs/assets/stereo_rtt_composite/desktop.png": "66ef4988d5ca9b6617c8a5c4334595d4a0baab169ed32a6d3e4e56ce99ea149b",
+        "public/docs/assets/stereo_rtt_composite/desktop.png": "ab0061b15e0f627e4eb7e1dbd28e97bd6f032a5e835ce9af8379b192603577f5",
         "public/docs/stereo_rtt_composite.md": "0f062c206960891e14f5578e30587976268d7ab74ff0c551e7c1c59ff8c46738"
       },
       "supplementalSources": [
