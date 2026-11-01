@@ -2198,7 +2198,7 @@ object StdlibReferenceGenerator {
             "Dimmed entries are identifiable internal plumbing or build/test harnesses; they remain linked and searchable. " +
             "Low-level APIs that a box can use, such as renderers and textures, retain full emphasis.")
         appendLine()
-        appendLine("<div class=\"codebase-reference\" markdown>")
+        appendLine("<div class=\"codebase-reference codebase-file-index\" markdown>")
         appendLine()
         appendLine("| File | Category | Symbols | Documented | What it is | Used in |")
         appendLine("| --- | --- | --- | --- | --- | --- |")

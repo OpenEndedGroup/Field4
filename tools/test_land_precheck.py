@@ -89,6 +89,79 @@ class SelectionTest(unittest.TestCase):
         tasks = {task for check in precheck.CHECKS for task in check.gradle}
         self.assertFalse({"checkCodebaseReference", "checkAgentTranscripts"} & tasks)
 
+    def test_a_new_demo_selects_the_demo_registration_guards(self) -> None:
+        # 2026-10-29, branches 2 and 3: each added a demo directory registered nowhere, passed precheck,
+        # and bounced on test_demo_build_scripts.py CORPUS. Positive control: this diff is that one.
+        change = Change({
+            "dev_docs/agents/demos/controls_surface/metadata.edn": "A",
+            "dev_docs/agents/demos/controls_surface/build.yaml": "A",
+        })
+        selected = dict((check.key, why) for check, why in precheck.select(change))
+        self.assertIn("demo-corpus", selected)
+        self.assertIn("python-tools", selected)
+        self.assertEqual(selected["demo-corpus"], sorted(change.paths))
+        demo = next(c for c in precheck.CHECKS if c.key == "demo-corpus")
+        args = precheck.gradle_arguments([demo], Path("/tmp/ref"))
+        self.assertIn("checkAgentDemos", args)
+        self.assertIn("checkAgentTranscriptLayouts", args)
+        tail = args[args.index("jvmTest"):]
+        self.assertEqual(tail, ["jvmTest", "--rerun", "--tests", "afield.tools.docs.AgentDemoRegistrationTest"])
+
+    def test_a_demo_outside_the_corpus_selects_no_demo_guard(self) -> None:
+        # Negative control: a transcript is not a demo.
+        self.assertNotIn("demo-corpus", keys(Change({"dev_docs/agents/transcripts/x.yaml": "A"})))
+        self.assertIn("transcript-index", keys(Change({"dev_docs/agents/transcripts/x.yaml": "A"})))
+
+    def test_a_docs_document_sidecar_selects_the_inline_copy_guard(self) -> None:
+        sidecar = "public/docs/assets/canonical_graphics/0e01f4b0_code_.kt"
+        self.assertIn("saved-document-inlines", keys(Change({sidecar: "M"})))
+        self.assertIn("saved-document-inlines", keys(Change({"templates/first-steps/metadata.edn": "M"})))
+        # Negative controls: a figure beside the documents, and a generated transcript document.
+        self.assertNotIn("saved-document-inlines", keys(Change({"public/docs/assets/afield_four_graphics/04c.png": "M"})))
+        self.assertNotIn("saved-document-inlines",
+                         keys(Change({"public/docs/assets/agent_transcripts/x/metadata.edn": "M"})))
+
+    def test_build_gradle_selects_the_python_suites_as_the_lander_does(self) -> None:
+        self.assertIn("python-tools", keys(Change({"build.gradle.kts": "M"})))
+
+    def test_every_lander_guard_is_prechecked_or_exempted(self) -> None:
+        # The family of gap behind N1029-1: a guard the lander runs that no precheck path selects.
+        from check_staged_generated_artifacts import GUARDS
+
+        lander = {guard.task for guard in GUARDS}
+        covered = {task for check in precheck.CHECKS for task in check.lander_guards}
+        exempt = set(precheck.NOT_PRECHECKED)
+        self.assertEqual(set(), lander - covered - exempt, "lander guards no precheck check stands in for")
+        self.assertEqual(set(), (covered | exempt) - lander, "names that are not lander guards")
+        self.assertEqual(set(), covered & exempt)
+
+    def test_each_check_selects_at_least_what_its_lander_guard_selects(self) -> None:
+        # For every lander guard a check stands in for wholly (not citationGates, which precheck runs a
+        # few classes of), a path that selects the guard selects the check. Sample paths, one per guard.
+        from check_staged_generated_artifacts import GUARDS
+
+        samples = [
+            "src/jvmMain/kotlin/afield/math/X.kt",
+            "dev_docs/agents/demos/new_demo/metadata.edn",
+            "dev_docs/agents/transcripts/new.yaml",
+            "public/docs/agent_transcripts.md",
+            "public/docs/some_page.md",
+            "public/docs/assets/web_publications/catalog.json",
+            "tools/land.py",
+            "build.gradle.kts",
+            "public/docs/reference/math.md",
+            "templates/WORKSPACE_AGENTS.md",
+        ]
+        by_task = {guard.task: guard for guard in GUARDS}
+        for check in precheck.CHECKS:
+            for task in check.lander_guards:
+                if task == "citationGates":
+                    continue
+                for path in samples:
+                    if by_task[task].is_relevant(path):
+                        self.assertTrue(check.selects(Change({path: "A"})),
+                                        f"{path} selects the lander's {task} but not precheck's {check.key}")
+
     def test_missing_nav_entries(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             for name in ("geometry.md", "animation.md", "math.md", "kdoc_worklist.md"):
@@ -226,6 +299,82 @@ class ConflictTest(unittest.TestCase):
         self._inventory_merge(generator_fails=True)
         self.assertEqual(self._run_inventory_precheck(), 1)
         self._assert_inventory_restored()
+
+
+
+class DuplicatePatchTest(unittest.TestCase):
+    """N1029-2: a cherry-pick whose patch already landed on main under another sha."""
+
+    def setUp(self) -> None:
+        self.tmp = tempfile.TemporaryDirectory()
+        self.repo = Path(self.tmp.name)
+
+        def git(*args: str) -> str:
+            return subprocess.run(["git", *args], cwd=self.repo, check=True, capture_output=True, text=True).stdout.strip()
+
+        self.git = git
+        git("init", "-q", "-b", "main")
+        git("config", "user.email", "t@example.com")
+        git("config", "user.name", "t")
+        (self.repo / "harness.md").write_text("one\n")
+        git("add", ".")
+        git("commit", "-qm", "base")
+        git("checkout", "-qb", "topic")
+        (self.repo / "mine.md").write_text("mine\n")
+        git("add", ".")
+        git("commit", "-qm", "my own work")
+        git("checkout", "-q", "main")
+        (self.repo / "harness.md").write_text("one\ncommand tool\n")
+        git("commit", "-qam", "command tool")
+        self.landed = git("rev-parse", "HEAD")
+        git("checkout", "-q", "topic")
+
+    def tearDown(self) -> None:
+        self.tmp.cleanup()
+
+    def test_a_cherry_pick_of_a_landed_commit_is_named_with_its_twin(self) -> None:
+        # Positive control: the 2026-10-29 shape (8b68b8187 cherry-picked, 23018e9b6 on main).
+        self.git("cherry-pick", self.landed)
+        pick = self.git("rev-parse", "HEAD")
+        self.assertNotEqual(pick, self.landed)
+        duplicates = precheck.duplicate_patches(self.repo, "main")
+        self.assertEqual([(d.commit, d.on_base) for d in duplicates], [(pick, self.landed)])
+        text = precheck.describe_duplicates(duplicates)
+        self.assertIn(pick[:9], text)
+        self.assertIn(self.landed[:9], text)
+        self.assertIn(f"git rebase --onto {pick[:9]}^ {pick[:9]}", text)
+
+    def test_the_suggested_rebase_drops_exactly_the_duplicate(self) -> None:
+        self.git("cherry-pick", self.landed)
+        pick = self.git("rev-parse", "HEAD")
+        self.git("rebase", "-q", "--onto", f"{pick}^", pick)
+        self.assertEqual([], precheck.duplicate_patches(self.repo, "main"))
+        self.assertEqual("my own work", self.git("log", "-1", "--format=%s"))
+
+    def test_distinct_work_is_not_a_duplicate(self) -> None:
+        # Negative control: the same file touched differently.
+        (self.repo / "harness.md").write_text("one\nsomething else\n")
+        self.git("commit", "-qam", "other")
+        self.assertEqual([], precheck.duplicate_patches(self.repo, "main"))
+
+    def test_after_merging_main_the_duplicate_is_no_longer_reported(self) -> None:
+        # Once main is merged in, the twin is an ancestor; nothing is left to conflict.
+        self.git("cherry-pick", self.landed)
+        self.git("merge", "-q", "--no-edit", "main")
+        self.assertEqual([], precheck.duplicate_patches(self.repo, "main"))
+
+    def test_precheck_refuses_a_duplicate_before_merging(self) -> None:
+        self.git("cherry-pick", self.landed)
+        saved, cwd = precheck.REPO, Path.cwd()
+        try:
+            os.chdir(self.repo)
+            with patch.object(precheck, "_say") as say:
+                code = precheck.run(argparse.Namespace(base="main", no_merge=False, plan=True, keep_merge=False))
+        finally:
+            os.chdir(cwd)
+            precheck.REPO = saved
+        self.assertEqual(1, code)
+        self.assertIn("already on main as " + self.landed[:9], say.call_args_list[0].args[0])
 
 
 if __name__ == "__main__":

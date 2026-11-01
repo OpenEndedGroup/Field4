@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. 3 · track a movie
@@ -45,23 +45,23 @@ particleVideoView(video, initialSeconds = 7.2, scale = 1, pointRadius = 1.5)
 <!-- field-box id="particle_video_guide" index="2" -->
 
 ```edn [field-box id="particle_video_guide" role="properties"]
-{"id" "particle_video_guide" "index" 2 "name" "1 · video particles" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · video particles" "_tombstone" false "frame" #afield/rect [40.0 40.0 400.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "particle_video_guide_code_.kt" "lines" 15 "characters" 548 "sha256" "cae0456e31f71fdbc88c609442374cb1f60367cb60fff250db4ce3121cff4d9a"}]}
+{"id" "particle_video_guide" "index" 2 "name" "1 · video particles" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · video particles" "_tombstone" false "frame" #afield/rect [40.0 40.0 400.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "particle_video_guide_code_.kt" "lines" 15 "characters" 580 "sha256" "8424964ed3651b0248472049d9e2346faf03ff17089194a95c4d75b0a8cc6b28"}]}
 ```
 
 ```kotlin [field-property box="particle_video_guide" name="code" path="particle_video_guide_code_.kt"]
 markdown(
     "guide",
     """
-# Video particles
-Box 2 scrubs recorded tracks without Python. Its portable example retains complete
-trajectories from a representative subset of the 24,000-particle dance run.
+    # Video particles
+    Box 2 scrubs recorded tracks without Python. Its portable example retains complete
+    trajectories from a representative subset of the 24,000-particle dance run.
 
-Prepare the optional environment before launching box 3, or set
-`FIELD_PARTICLE_TRACKER_PYTHON` to an existing Torch/Torchvision interpreter.
-Replace the movie filename to track your own footage. Width 0 retains native resolution.
+    Prepare the optional environment before launching box 3, or set
+    `FIELD_PARTICLE_TRACKER_PYTHON` to an existing Torch/Torchvision interpreter.
+    Replace the movie filename to track your own footage. Width 0 retains native resolution.
 
-[Video tracking and setup](https://openendedgroup.com/Field4/particle_video/)
-"""
+    [Video tracking and setup](https://openendedgroup.com/Field4/particle_video/)
+    """
         .trimIndent(),
 )
 ```

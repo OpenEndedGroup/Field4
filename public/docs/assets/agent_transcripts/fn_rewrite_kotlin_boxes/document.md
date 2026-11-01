@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. Host
@@ -39,29 +39,24 @@ WORKS. `rewriteFn` names the box to compile the `@{...}` snippets in, and that b
 idle, so hydrating there replays nothing. One pass, and the sampled signal really moves.
 
 ```edn [field-box id="fnrw_working" role="properties"]
-{"id" "fnrw_working" "index" 1 "name" "Two boxes - works" "parents" ["root" "fnrw_host"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "fnrw_host"} "name" "Two boxes - works" "_tombstone" false "frame" #afield/rect [60.0 250.0 560.0 170.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fnrw_working_code_.kt" "lines" 31 "characters" 1513 "sha256" "1e76a0024d3c58939185de53ffbef2262f20d98d166d089fe2d67313c614e80e"}]}
+{"id" "fnrw_working" "index" 1 "name" "Two boxes - works" "parents" ["root" "fnrw_host"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "fnrw_host"} "name" "Two boxes - works" "_tombstone" false "frame" #afield/rect [60.0 250.0 560.0 170.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fnrw_working_code_.kt" "lines" 26 "characters" 1214 "sha256" "f573d1b166191c91fb8818f7cff08abb3b1ab9492cb120dacf07d9c592723026"}]}
 ```
 
 ```kotlin [field-property box="fnrw_working" name="code" path="fnrw_working_code_.kt"]
 // WORKS. `rewriteFn` names the box to compile the `@{...}` snippets in, and that box is
 // idle, so hydrating there replays nothing. One pass, and the sampled signal really moves.
-val spec =
-    [
-            "#fnrewrite",
-            "sin/*/saw => op=triangle",
-            "sin/**/[tag=number][value>0.15] => *= @{1.0 + depth * 0.08}",
-            "**/[role=amplitude] => *= @{if (parentOp == \"sin\") 0.75 else 1.0}",
-        ]
-        .joinToString("\n")
+val spec = [
+    "#fnrewrite",
+    "sin/*/saw => op=triangle",
+    "sin/**/[tag=number][value>0.15] => *= @{1.0 + depth * 0.08}",
+    "**/[role=amplitude] => *= @{if (parentOp == \"sin\") 0.75 else 1.0}",
+].joinToString("\n")
 
 /*
 The host comes from TOPOLOGY, not from a hard-coded id: whatever this box is connected
 beneath is where the `@{...}` snippets get compiled. Drag a different parent in and the
 rewrite follows it.
 
-NOT `?: error(...)`. Inside a box, `error` is `HasOutput.error(message, property, line)`,
-which returns Unit, so the elvis widens this to `Any` and the failure surfaces as a
-baffling "receiver type mismatch" on rewriteFn below. Throw explicitly.
 */
 val host = parents.lastOrNull() ?: throw IllegalStateException("connect this box under a box to compile the @{...} in")
 println("compiling in parent: " + host.name)
@@ -89,7 +84,7 @@ The runtime refuses before replaying the body. Run this box to see that refusal;
 copy the two-box example above, whose parent host is idle.
 
 ```edn [field-box id="fnrw_broken" role="properties"]
-{"id" "fnrw_broken" "index" 2 "name" "One box - does not work" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "One box - does not work" "_tombstone" false "frame" #afield/rect [60.0 460.0 560.0 170.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fnrw_broken_code_.kt" "lines" 20 "characters" 655 "sha256" "177d503b1400448239c066fe643cbe930dcb4c09559808eedae5808235a64a03"}]}
+{"id" "fnrw_broken" "index" 2 "name" "One box - does not work" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "One box - does not work" "_tombstone" false "frame" #afield/rect [60.0 460.0 560.0 170.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fnrw_broken_code_.kt" "lines" 18 "characters" 602 "sha256" "b827f3874372f5cea20538279b2bcda841f3759f451ef7a73cf95f2b846ee096"}]}
 ```
 
 ```kotlin [field-property box="fnrw_broken" name="code" path="fnrw_broken_code_.kt"]
@@ -98,14 +93,12 @@ Intentionally wrong: source hydration would compile in this running box's own en
 The runtime refuses before replaying the body. Run this box to see that refusal;
 copy the two-box example above, whose parent host is idle.
 */
-val spec =
-    [
-            "#fnrewrite",
-            "sin/*/saw => op=triangle",
-            "sin/**/[tag=number][value>0.15] => *= @{1.0 + depth * 0.08}",
-            "**/[role=amplitude] => *= @{if (parentOp == \"sin\") 0.75 else 1.0}",
-        ]
-        .joinToString("\n")
+val spec = [
+    "#fnrewrite",
+    "sin/*/saw => op=triangle",
+    "sin/**/[tag=number][value>0.15] => *= @{1.0 + depth * 0.08}",
+    "**/[role=amplitude] => *= @{if (parentOp == \"sin\") 0.75 else 1.0}",
+].joinToString("\n")
 
 println("one box: body entered")
 

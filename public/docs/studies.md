@@ -340,8 +340,8 @@ val builds = studyBuilds(
         },
     ],
 ) {
-        mapOf("source" to design.liveSource())
-    }
+    mapOf("source" to design.liveSource())
+}
 showStudyBuilds("reports")
 ```
 
@@ -434,8 +434,14 @@ of them, so a chat that waited for the build resumes with a close-up of the held
 failureNotes = { failed ->
     val held = failed.problem?.details?.get("held") as? List<*>
     if (held.isNullOrEmpty()) emptyList()
-    else [StudyBuildNotice("${held.size} routes were held.", StudyBuildNoticeKind.ERROR,
-        StudyBuildView("Held routes", "each held route, close up") { showHeld(held) })]
+    else
+        [
+            StudyBuildNotice(
+                "${held.size} routes were held.",
+                StudyBuildNoticeKind.ERROR,
+                StudyBuildView("Held routes", "each held route, close up") { showHeld(held) },
+            ),
+        ]
 }
 ```
 
@@ -876,7 +882,8 @@ pictures.
 The starting point **studies_rings** (in the [agent transcript gallery](agent_transcripts.md#studies_rings), and
 on the welcome screen's starting points) is this page as a document: `rings` defines the study, and
 two boxes under it, `change it` and `try things`, drive its verbs. Open it and run the three boxes
-in order.
+in order, or [read it in the offline viewer ↗](offline.html?file=assets/agent_transcripts/studies_rings/metadata.edn)
+without starting Field.
 
 ??? aside "Agents: tests and design notes"
     `study.document.registrar` (`src/jvmMain/kotlin/afield/examples/ai/DocumentStudySmokeTest.kt`)

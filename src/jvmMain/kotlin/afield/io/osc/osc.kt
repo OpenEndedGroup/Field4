@@ -409,7 +409,7 @@ class OscServer(
         val owner = registration.owner ?: return
         if (registration.lastReported == text) return
         registration.lastReported = text
-        owner.error(text)
+        owner.displayError(text)
     }
 
     suspend fun run() {

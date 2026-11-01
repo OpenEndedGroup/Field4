@@ -145,12 +145,12 @@ showSignals(
     xTitle = "frequency (Hz)",
     yTitle = "magnitude",
     marks = [
-        "centroid ${"%.0f".format(centroid)} Hz" to centroid,
-        "85% rolloff ${"%.0f".format(rolloff)} Hz" to rolloff,
+        "centroid ${centroid.f0} Hz" to centroid,
+        "85% rolloff ${rolloff.f0} Hz" to rolloff,
     ],
 )
 println(
-    "peak=${"%.0f".format(peak)}Hz centroid=${"%.0f".format(centroid)}Hz rolloff=${"%.0f".format(rolloff)}Hz bins=${mag.size}",
+    "peak=${peak.f0}Hz centroid=${centroid.f0}Hz rolloff=${rolloff.f0}Hz bins=${mag.size}",
 )
 ```
 
@@ -204,7 +204,7 @@ val trace =
     }
 
 println(
-    "frames=${spec.numFrames} bins=${spec.numBins} centroid ${"%.0f".format(centroid.first())} -> ${"%.0f".format(centroid.last())} Hz",
+    "frames=${spec.numFrames} bins=${spec.numBins} centroid ${centroid.first().f0} -> ${centroid.last().f0} Hz",
 )
 // One showHeatmap call: transpose [frame][bin] to time × frequency, low frequency at the bottom
 // (flipY), the house cyan→orange ramp over a [-80, 0] dB range, with the centroid as a bright overlay.
@@ -423,7 +423,7 @@ showSignals(
     normalize = true,
 )
 println(
-    "centroid ${"%.0f".format(cTrace[3000])} -> ${"%.0f".format(cTrace[n - 200])} Hz, flux peak ${"%.3f".format(fTrace.maxOrNull() ?: 0f)}",
+    "centroid ${cTrace[3000].f0} -> ${cTrace[n - 200].f0} Hz, flux peak ${(fTrace.maxOrNull() ?: 0f).f3}",
 )
 ```
 

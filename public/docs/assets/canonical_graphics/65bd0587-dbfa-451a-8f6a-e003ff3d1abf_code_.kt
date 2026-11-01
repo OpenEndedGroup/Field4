@@ -1,54 +1,49 @@
-// First, we'll make a shader module associated with this box that draws filled triangles
+/*
+Slang: hello triangle. Run this in a box beneath the renderer (`window`) box.
+
+The Kotlin here is the same as "1. hello triangle"; what changes is the shader language. This box has a
+`vertex_fragment` property holding one Slang source with both stages (`vsMain` and `fsMain`); when it
+is non-blank it takes the place of the separate `vertex` and `fragment` shaders. Open `vertex_fragment`
+from the editor's property switcher (`f1` or `ctrl-P`) to read or edit it. Compiling it needs `slangc`
+on the machine.
+
+Nothing below depends on the language: reflection reads the compiled shader's interface, so the mesh
+accessors (`m.vertexData`) come out the same as they do for GLSL.
+*/
+
+// A shader module owned by this box that draws filled triangles
 var module = moduleHere { primitiveType = triangles }
 
-// ... and make a mesh, which runs the shader with some data
+// ... and a mesh, which runs that module's shaders over some data
 var m = Mesh()
 
-// Then we connect the mesh to the module under the name "someMesh"
+// Connect the mesh to the module under the name "someMesh"
 module += m named "someMesh"
 
 // ... and connect the module to the renderer (under the name of this box)
 renderer += module
 
 /*
-This gets us everything we need to start rendering things. In particular, we get a vertex shader:
-
-[[property vertex]]
+A buffer for the vertex positions.
+- `size = 3.vec4s` is a starting size. The loop below writes up to 150 vec4s, and the buffer grows to
+  fit what is written rather than failing.
+- `perFrame = true` gives one Vulkan buffer per frame in flight, so the CPU can write this frame's
+  data while the GPU is still reading an earlier frame's, without waiting.
 */
-
-// and a fragment shader:
-
-/*
-[[property fragment]]
-*/
-
-// you can edit these by switching to these properties in the editor `f1` or `ctrl-P`
-
-// <hr>
-
-// Now we need a place to put our data
 var vertexData = defaultBuffer {
     perFrame = true
     size = 3.vec4s
 }
     .buffer
 
-/* Two things:
-
-- we're free to guess the size we'll need (that's the `3.vec4s`), but if we're wrong, we'll get a dynamicly resizing buffer (I'm deliberately setting the size wrong on this buffer to make sure that the dynamic resizing works correctly. The size should be `30.vec4s`)
-
-- `perframe = true` means that we actually have a VulkanBuffer per frame-in-flight, so we can always write to a buffer (and GPU-read from it) without waiting.*/
-
-// now we connect this buffer to the mesh
-// `.vertexData` gets magically defined for us with the coorect type, because Field has read our vertex shader
+// Hand the buffer to the mesh. `m.vertexData` exists, with the right type, because Field reflected the
+// shader and found the `vertexData` pointer in its push constants.
 m.vertexData = { vertexData }
 
-// You'll note that we have not have written any data to any of the buffers buffer at this point, but this is ok,
-// because we don't size the mesh until later. Or we could write in here before.
+// Nothing has been written to the buffer yet. That is fine: the mesh draws nothing until it is given a
+// vertex count with `m.resize` below.
 
-// <hr>
-
-// Now a little demo, some triangles that move in circles
+// A small animation: a row of triangles turning in circles
 var t = 0.0
 fun polar(t: Double, r: Double) = vec(Math.sin(t), Math.cos(t)) * r.f
 
@@ -56,7 +51,8 @@ loop {
     t += 0.01
     var num = 0
 
-    var numVertToWrite = (Math.sin(t * 0.1) * 20 + 30).i // showing that we can add and remove verts in flight
+    // the number of triangles changes over time: vertices can be added and removed while running
+    var numVertToWrite = (Math.sin(t * 0.1) * 20 + 30).i
 
     vertexData.write {
         for (x in 0 until numVertToWrite) {
@@ -69,17 +65,13 @@ loop {
         }
     }
 
-    // it's important that we tell the mesh how many "vertices we want to draw", but, other than that turning into
-    // triangles, what that means is entirely up to our vertex shader
+    // Tell the mesh how many vertices to draw. With `primitiveType = triangles` every three make a
+    // triangle; where each vertex goes is up to the vertex shader.
     m.resize(num)
 
-    // loop forever:
+    // `loop` ignores this value and keeps running, once per frame, until the box is stopped
     true
 }
 
-// because `loop` is the last thing in this script, that code runs (once per animation frame) when you launch it
-// (`alt-mouse-swipe` or `alt-up`)
-
-// ultimately, we get something that looks like this:
-
-// [[render_clip]]
+// Because `loop` is the last expression in the box, its body runs once per animation frame when the box is
+// launched (`alt-mouse-swipe` or `alt-up`).

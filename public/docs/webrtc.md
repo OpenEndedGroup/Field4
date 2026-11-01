@@ -21,7 +21,8 @@ This box draws a fragment shader into a 640×360 render target and publishes it 
 ```diffstatic {data-lang=kotlin}
 import afield.media.webrtc.webrtcSink
 
-@exported val sink = webrtcSink("field-shader", 640, 360)
+@exported
+val sink = webrtcSink("field-shader", 640, 360)
 
 val module = moduleHere { +sink }
 val quad = Mesh()

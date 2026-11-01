@@ -32,5 +32,5 @@ showSignals(
     normalize = true,
 )
 println(
-    "centroid ${"%.0f".format(cTrace[3000])} -> ${"%.0f".format(cTrace[n - 200])} Hz, flux peak ${"%.3f".format(fTrace.maxOrNull() ?: 0f)}",
+    "centroid ${cTrace[3000].f0} -> ${cTrace[n - 200].f0} Hz, flux peak ${(fTrace.maxOrNull() ?: 0f).f3}",
 )

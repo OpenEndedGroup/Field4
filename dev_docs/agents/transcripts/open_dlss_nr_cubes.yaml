@@ -168,10 +168,10 @@ operations:
             float near = .1;
             float far = 100;
             return vec4(
-                dot(viewOffset, right) * 1.9 * pc.sizeJitter.y / pc.sizeJitter.x,
-                dot(viewOffset, up) * 1.9,
-                far / (far - near) * depth - far * near / (far - near),
-                depth
+            dot(viewOffset, right) * 1.9 * pc.sizeJitter.y / pc.sizeJitter.x,
+            dot(viewOffset, up) * 1.9,
+            far / (far - near) * depth - far * near / (far - near),
+            depth
             );
         }
         void main() {

@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 4 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 4 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. 4 - An assertion you can watch fail
@@ -20,7 +20,7 @@ the data outside recolours, and the footnote counts them. An unbounded side draw
 edge — that is the visual difference between "at most 1e-6" and "0 to 1e-6".
 
 ```edn [field-box id="chart_expect" role="properties"]
-{"id" "chart_expect" "index" 0 "name" "4 - An assertion you can watch fail" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - An assertion you can watch fail" "_tombstone" false "frame" #afield/rect [634.2 226.0 534.2 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chart_expect_code_.kt" "lines" 28 "characters" 1108 "sha256" "221a755fe7a57dea5c7900c850bc3acb9f7c6762c80839f745945ee421310883"}]}
+{"id" "chart_expect" "index" 0 "name" "4 - An assertion you can watch fail" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - An assertion you can watch fail" "_tombstone" false "frame" #afield/rect [634.2 226.0 534.2 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "chart_expect_code_.kt" "lines" 26 "characters" 1047 "sha256" "bdfb148144246c46d520f2f0a7aa40f0877077d0cc28bf1abf5ac412cb336633"}]}
 ```
 
 ```kotlin [field-property box="chart_expect" name="code" path="chart_expect_code_.kt"]
@@ -36,16 +36,14 @@ val residual = iterations.map { i ->
     if (i == 11 || i == 23) base + 2.4e-6 else base // two real overshoots
 }
 
-val c =
-    Chart(
-            title = "residual per iteration",
-            xLabel = "iteration",
-            yLabel = "|r|",
-            note = "Adam, lr 0.05",
-        )
-        .line("residual", iterations, residual)
-        .points("residual", iterations, residual)
-        .expect(max = 1e-6, because = "converged below 1e-6")
+val c = Chart(
+    title = "residual per iteration",
+    xLabel = "iteration",
+    yLabel = "|r|",
+    note = "Adam, lr 0.05",
+).line("residual", iterations, residual)
+    .points("residual", iterations, residual)
+    .expect(max = 1e-6, because = "converged below 1e-6")
 
 showChart(c)
 

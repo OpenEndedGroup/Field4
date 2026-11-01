@@ -65,6 +65,7 @@ const CATEGORY_WEIGHT = new Map([
   ["lighting", 12],
   ["search", 12],
   ["video", 12],
+  ["animation", 12],
   ["kotlin", 8],
   ["external", 4],
   // Implementation detail and universal members: present, deliberately unweighted.

@@ -118,8 +118,8 @@ displayAudioBytes(
 )
 
 fun row(label: String, t: FnSoundDocs.RoundTrip) =
-    "| $label | ${t.measured.size} of ${t.frames.size} | ${"%.5f".format(t.rmsError)} | ${"%.4f".format(t.maxAbsError)} at ${"%.3f".format(t.maxErrorAtSeconds)} s | " +
-        "${t.insideCount} of ${t.measured.size}, worst ${"%.1e".format(t.worstOutside)} outside | ${"%.2f".format(t.blip.survival)} |"
+    "| $label | ${t.measured.size} of ${t.frames.size} | ${t.rmsError.f5} | ${t.maxAbsError.f4} at ${t.maxErrorAtSeconds.f3} s | " +
+        "${t.insideCount} of ${t.measured.size}, worst ${"%.1e".format(t.worstOutside)} outside | ${t.blip.survival.f2} |"
 markdown(
     "readout",
     """
@@ -203,12 +203,12 @@ displaySignal(
 val rows =
     trips.joinToString("\n") { t ->
         "| ${t.encoding.name.lowercase()} | ${if (t.route == Route.PER_SAMPLE) "`toSignal()`" else "`Param { }`"} | " +
-            "${"%.5f".format(t.rmsError)} | ${t.bestLagSamples} | ${"%.5f".format(t.rmsErrorAtBestLag)} |"
+            "${t.rmsError.f5} | ${t.bestLagSamples} | ${t.rmsErrorAtBestLag.f5} |"
     }
 markdown(
     "delays",
     """
-One audio block is ${FnSoundDocs.BLOCK} samples, ${"%.2f".format(1000.0 * FnSoundDocs.BLOCK / FnSoundDocs.SR)} ms.
+One audio block is ${FnSoundDocs.BLOCK} samples, ${(1000.0 * FnSoundDocs.BLOCK / FnSoundDocs.SR).f2} ms.
 
 | encoding | bridge | RMS error | best delay, samples | RMS error at that delay |
 |---|---|---|---|---|

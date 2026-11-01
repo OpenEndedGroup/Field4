@@ -4,7 +4,7 @@
 
 Implementation details explicitly marked Internal by their source. They remain available to browse here, but are not intended as entry points for code written in a Field box.
 
-16 source file(s), 156 public symbol(s), 55 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+19 source file(s), 156 public symbol(s), 55 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -44,6 +44,10 @@ A named command shown for a box; `target` runs with the boxes it was invoked on.
 | <a id="extensions-kt--action--dochtml"></a><code class="highlight"><span class="k">val</span> <span class="n">docHtml</span><span class="p">:</span> <span class="nc">String</span></code> |  |
 | <a id="extensions-kt--action--docjs"></a><code class="highlight"><span class="k">val</span> <span class="n">docJs</span><span class="p">:</span> <span class="nc">String</span></code> |  |
 | <a id="extensions-kt--action--target"></a><code class="highlight"><span class="k">val</span> <span class="n">target</span><span class="p">:</span> <span class="p">(</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">Box</span><span class="p">&gt;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span></code> |  |
+
+## FieldBrowserHosts.kt { #fieldbrowserhosts-kt }
+
+`src/jvmMain/kotlin/afield/app/server/FieldBrowserHosts.kt` — [read the source](source/jvmMain/afield/app/server/FieldBrowserHosts/)
 
 ## binding.kt { #binding-kt }
 
@@ -381,6 +385,14 @@ Where to find the native wrapper.
 | --- | --- |
 | <a id="ffmceresbackend-kt--ceresnativelibrary--defaultpath"></a>[<code class="highlight"><span class="k">val</span> <span class="n">defaultPath</span><span class="p">:</span> <span class="nc">Path</span></code>](source/jvmMain/afield/math/optimization/ceres/FfmCeresBackend/#L467) |  |
 | <a id="ffmceresbackend-kt--ceresnativelibrary--how-to-build"></a>[<code class="highlight"><span class="k">val</span> <span class="nc">HOW&#95;TO&#95;BUILD</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/math/optimization/ceres/FfmCeresBackend/#L477) | What to tell someone whose [`defaultPath`](internal.md#ffmceresbackend-kt--ceresnativelibrary--defaultpath) is not there, in the shell they are actually in. |
+
+## WiVRnEvdev.kt { #wivrnevdev-kt }
+
+`src/jvmMain/kotlin/afield/media/browser/WiVRnEvdev.kt` — [read the source](source/jvmMain/afield/media/browser/WiVRnEvdev/)
+
+## WiVRnKeyboardMap.kt { #wivrnkeyboardmap-kt }
+
+`src/jvmMain/kotlin/afield/media/browser/WiVRnKeyboardMap.kt` — [read the source](source/jvmMain/afield/media/browser/WiVRnKeyboardMap/)
 
 ## NgxNative.kt { #ngxnative-kt }
 

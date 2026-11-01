@@ -172,7 +172,7 @@ with(Functions) {
     lines(guides + targetLine + fittedLine, channel = "fit-graph", w = 980.0, h = 440.0, fitToSize = false)
     markdown(
         "notes",
-        "**fit to target** — target (cyan) vs gradient-fitted (orange), RMSE ${"%.4f".format(run.finalError)}",
+        "**fit to target** — target (cyan) vs gradient-fitted (orange), RMSE ${run.finalError.f4}",
     )
     run
 }
@@ -245,7 +245,7 @@ with(Functions) {
     markdown(
         "notes",
         "**fitGradient, before and after**: target (orange), seed (grey, dashed), fitted (cyan); " +
-            "error ${"%.4f".format(run.initialError)} -> ${"%.4f".format(run.finalError)}",
+            "error ${run.initialError.f4} -> ${run.finalError.f4}",
     )
 }
 ```
@@ -315,7 +315,7 @@ loop {
             h = 440.0,
             fitToSize = false,
         )
-        markdown("iteration", "**iteration ${maxOf(k, 0)}**: error ${"%.4f".format(run.finalError)}")
+        markdown("iteration", "**iteration ${maxOf(k, 0)}**: error ${run.finalError.f4}")
     }
     if (k < 320) k += 8
     frame()
@@ -2532,9 +2532,9 @@ val samples = List(60) {
 val field = rbfField(samples)
 
 // how well each sample is predicted by the other 59: the way to compare kernels
-println("leave-one-out RMSE, thin plate: " + "%.4f".format(field.leaveOneOutRmse()))
+println("leave-one-out RMSE, thin plate: " + field.leaveOneOutRmse().f4)
 println(
-    "leave-one-out RMSE, gaussian(2): " + "%.4f".format(rbfField(samples, RbfKernels.gaussian(2.0)).leaveOneOutRmse()),
+    "leave-one-out RMSE, gaussian(2): " + rbfField(samples, RbfKernels.gaussian(2.0)).leaveOneOutRmse().f4,
 )
 
 fun image(g: (Double, Double) -> Double) = Img(
@@ -4156,7 +4156,7 @@ with(Functions) {
     )
     markdown(
         "notes",
-        "**evolve** — seed cosine (grey) → target sine (red); the evolved best (blue) tracks the target. score ${"%.4f".format(run.initialScore)} → ${"%.4f".format(run.bestScore)}",
+        "**evolve** — seed cosine (grey) → target sine (red); the evolved best (blue) tracks the target. score ${run.initialScore.f4} → ${run.bestScore.f4}",
     )
     run
 }
@@ -4266,7 +4266,7 @@ with(Functions) {
     lines(out, channel = "evolve-variety", w = 980.0, h = 440.0, fitToSize = false)
     markdown(
         "notes",
-        "**evolveVariety** — ${variety.results.size} behaviourally distinct gestures from one seed, meanPairwiseDistance ${"%.3f".format(variety.meanPairwiseDistance)} (normalized shape)",
+        "**evolveVariety** — ${variety.results.size} behaviourally distinct gestures from one seed, meanPairwiseDistance ${variety.meanPairwiseDistance.f3} (normalized shape)",
     )
     variety
 }

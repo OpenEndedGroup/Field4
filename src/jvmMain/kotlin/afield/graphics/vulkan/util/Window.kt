@@ -119,14 +119,30 @@ private object FieldWindowIcon {
 }
 
 class Window(val title : String, val fullscreen : Boolean = false, initialDimensions : Rect? = null) {
+    /** The `GLFWwindow*` this wraps, for GLFW calls this class does not cover. [cleanup] destroys it, after which it is stale. */
     @JvmField
     val windowHandle: Long
+
+    /** The framebuffer's height **in pixels**, which is what a swapchain or a render target is sized from. See [width]. */
     var height: Int
         private set
+
+    /**
+     * Set when the framebuffer size changes, and when a present reports that the swapchain is out of
+     * date. The renderer reads it to decide to rebuild the swapchain and calls [resetResized]; reading
+     * it does not clear it.
+     */
     var isResized: Boolean = false
+
+    /**
+     * The framebuffer's width **in pixels** — twice the points on a Retina display, so it is not the
+     * frame a pointer position is measured in. [size] gives the window's position and size in points,
+     * and [WindowPointer] reports the pointer in the same points as that.
+     */
     var width: Int
         private set
 
+    /** The renderer drawing into this window, which claims the slot when it builds its context here. A window nothing renders to leaves it null. */
     @Volatile
     var associatedRenderer: Renderer? = null
 
@@ -134,7 +150,10 @@ class Window(val title : String, val fullscreen : Boolean = false, initialDimens
     private var scrollAccumX = 0.0
     private var scrollAccumY = 0.0
 
+    /** The first [MouseEvents] built for this window, which puts itself here and is then what `OrbitControls` and the stereo targets reuse rather than opening a second poller. */
     var mouseEvents : MouseEvents? = null
+
+    /** The matching slot for keyboard handlers. [KeyEvents] does not claim it, so unless something assigns it this stays null — construct a [KeyEvents] and keep it yourself. */
     var keyEvents : KeyEvents? = null
     private val keyListeners = mutableListOf<(Int, Int, Int, Int) -> Unit>()
     private val charListeners = mutableListOf<(Int) -> Unit>()
@@ -143,6 +162,11 @@ class Window(val title : String, val fullscreen : Boolean = false, initialDimens
     private val scrollListeners = mutableListOf<(Double, Double) -> Unit>()
     private val focusListeners = mutableListOf<(Boolean) -> Unit>()
 
+    /**
+     * Where the pointer is now, in points from the window's top-left corner, asked of GLFW on every
+     * read. The position on its own does not say that the pointer is over this window, which is what
+     * [WindowPointer.inside] answers.
+     */
     val cursor: Vec2
         get() {
             MemoryStack.stackPush().use { stack ->
@@ -325,6 +349,20 @@ class Window(val title : String, val fullscreen : Boolean = false, initialDimens
         return v
     }
 
+    /**
+     * Per-frame work on the thread that polls this window, keyed by name. [pollEvents] drains GLFW's
+     * queue and then steps each sequence one step. This is how [MouseEvents], [KeyCamera] and
+     * [WindowPointer] get their frame, and it is the place to put a capture or a drag that has to see
+     * every frame rather than sample when it happens to look.
+     *
+     * It is a [MapOfSequences] and has no `add`: register with
+     *
+     * ```kotlin
+     * window.onPoll[name] = sequence { while (true) { ...; yield(true) } }
+     * ```
+     *
+     * and the same name replaces what was there, so re-running a box does not stack up pollers.
+     */
     var onPoll = MapOfSequences<String>()
 
     fun pollEvents() {
@@ -366,10 +404,9 @@ class Window(val title : String, val fullscreen : Boolean = false, initialDimens
      * `glReadPixels`-style source is the bottom-up case, and there is currently no such source
      * here.
      *
-     * This method used to claim the opposite as a general fact and tell callers not to correct it.
-     * It was wrong, and it was wrong in the direction that keeps you looking upstream: if the
-     * result looks upside-down, check the flip *here* first. [afield.graphics.vulkan.CaptureOrientation]
-     * carries the per-path table and the reasoning for each entry.
+     * So if a capture comes out upside-down, check the flip at this call before looking upstream.
+     * [afield.graphics.vulkan.CaptureOrientation] carries the per-path table and the reasoning for
+     * each entry.
      *
      * To fire a capture from a render loop, register a poll callback with the Sequence idiom
      * `window.onPoll[name] = sequence { while (true) { ...; yield(Unit) } }`

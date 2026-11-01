@@ -824,7 +824,9 @@ def recently_active(path: Path, hours: float, now_epoch: float) -> str | None:
     """The first file under [ACTIVITY_DIRS] modified within [hours], or None if the tree is quiet.
 
     Branch age is no use here: an agent session that never commits reads as ancient by reflog while
-    its build is running. File times are what a working session actually moves.
+    its build is running. File times are what a working session actually moves. ``.DS_Store`` is not
+    one of them: Finder rewrites it when someone merely looks at a folder, which held nine idle trees
+    back from a clean on 2026-10-31.
     """
     dirs = [str(path / d) for d in ACTIVITY_DIRS if (path / d).is_dir()]
     if not dirs:
@@ -833,7 +835,7 @@ def recently_active(path: Path, hours: float, now_epoch: float) -> str | None:
     # find accept it, which is how a shell test can pass while this call fails).
     cutoff = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(now_epoch - hours * 3600))
     found = subprocess.run(
-        ["find", *dirs, "-type", "f", "-newermt", cutoff, "-print", "-quit"],
+        ["find", *dirs, "-type", "f", "!", "-name", ".DS_Store", "-newermt", cutoff, "-print", "-quit"],
         capture_output=True, text=True, check=False,
     )
     hit = found.stdout.strip()

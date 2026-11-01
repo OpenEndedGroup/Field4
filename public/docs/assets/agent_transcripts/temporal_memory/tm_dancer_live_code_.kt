@@ -8,13 +8,26 @@ val dir = "public/docs/assets/temporal_memory/cmu_05"
 val takes = ["05_02", "05_07", "05_09", "05_12", "05_14", "05_18"].map { Bvh.read("$dir/$it.bvh.gz") }
 val dance = Trajectory.join(takes.map { it.toTrajectory(rate = 30.0).trimStill() })
 val memory = VariableMarkovOracle.build(dance)
-val colours = [vec(0.48, 0.85, 1.0, 1.0), vec(1.0, 0.62, 0.29, 1.0), vec(0.56, 1.0, 0.6, 1.0),
-               vec(1.0, 0.88, 0.4, 1.0), vec(0.77, 0.55, 1.0, 1.0), vec(1.0, 0.48, 0.62, 1.0)]
+val colours = [
+    vec(0.48, 0.85, 1.0, 1.0),
+    vec(1.0, 0.62, 0.29, 1.0),
+    vec(0.56, 1.0, 0.6, 1.0),
+    vec(1.0, 0.88, 0.4, 1.0),
+    vec(0.77, 0.55, 1.0, 1.0),
+    vec(1.0, 0.48, 0.62, 1.0),
+]
 
 // the continuation as a figure, stepped at 30 Hz; the floor square and an invisible point
 // above head height keep the framing still, with room for raised arms
 val player = Improviser(memory, seed = 2, reuseWeight = 3.0, reuseMemory = 60.0)
-val floor = fline { moveTo(-12.0, 0.0, -12.0); lineTo(12.0, 0.0, -12.0); lineTo(12.0, 0.0, 12.0); lineTo(-12.0, 0.0, 12.0); lineTo(-12.0, 0.0, -12.0); color = vec(1, 1, 1, 0.25) }
+val floor = fline {
+    moveTo(-12.0, 0.0, -12.0)
+    lineTo(12.0, 0.0, -12.0)
+    lineTo(12.0, 0.0, 12.0)
+    lineTo(-12.0, 0.0, 12.0)
+    lineTo(-12.0, 0.0, -12.0)
+    color = vec(1, 1, 1, 0.25)
+}
 frames {
     val period = (1e9 / 30).toLong()
     var next = System.nanoTime()
@@ -26,8 +39,22 @@ frames {
         val c = colours[take]
         three(name = "dancer", width = 640, height = 480) {
             // solid tubes rather than lines, so the figure stays visible at any size
-            mesh(takes[0].skeletonMesh(pose, dance.channels, radius = 0.6, color = doubleArrayOf(c.x.toDouble(), c.y.toDouble(), c.z.toDouble())), wireframe = false)
-            lines(floor, fline { moveTo(0.0, 48.0, 0.0); color = vec(0, 0, 0, 0) })
+            mesh(
+                takes[0].skeletonMesh(
+                    pose,
+                    dance.channels,
+                    radius = 0.6,
+                    color = doubleArrayOf(c.x.toDouble(), c.y.toDouble(), c.z.toDouble()),
+                ),
+                wireframe = false,
+            )
+            lines(
+                floor,
+                fline {
+                    moveTo(0.0, 48.0, 0.0)
+                    color = vec(0, 0, 0, 0)
+                },
+            )
             helpers(false)
             camera(yaw = 30.0, pitch = 12.0)
         }

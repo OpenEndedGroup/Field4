@@ -326,11 +326,34 @@ enum class ImageType(val vulkan_format: Int) {
 
 
 enum class PrimitiveType(
+    /**
+     * How many scalars the type holds. Matrices count every element, so `mat4` is 16 rather than 4
+     * columns.
+     */
     val components: Int,
+    /** Bytes per scalar: 4 for the 32-bit types, 2 for the `f16` ones, 8 for the 64-bit ones. */
     val componentsSizeInBytes: Int,
+    /**
+     * The `VK_FORMAT_*` a vertex attribute of this type is described with, and `-1` for the matrix
+     * and 64-bit types, which no single vertex format covers. Nothing substitutes a valid format
+     * for that `-1`.
+     */
     val bufferFormat: Int,
+    /**
+     * The fully-qualified Kotlin type a generated preamble declares for this, so a `vec3` uniform
+     * arrives as an `afield.math.linalg.Vector3f`.
+     */
     val kotlinTypeName: String,
+    /**
+     * The expression a generated declaration is initialised with. `vec4`'s is `vec(0,0,0,1)`,
+     * opaque black rather than four zeroes.
+     */
     val kotlinDefault: String,
+    /**
+     * A Kotlin statement to be pasted into generated vertex-writing code, with `x` for the value and
+     * `buffer` for the target. Its one consumer is `writeVertexData`, which nothing in the tree
+     * calls.
+     */
     val writeXToBuffer: String
 ) {
     float(1, 4, VK10.VK_FORMAT_R32_SFLOAT, "Float", "0f", "buffer.putFloat(x)"), vec2(
@@ -405,6 +428,10 @@ enum class PrimitiveType(
     );
 
 
+    /**
+     * The type's packed size: components times component size. This is the size of the value
+     * itself, not the stride a `std140` block would give it.
+     */
     val sizeInBytes: Long
         get() = (componentsSizeInBytes * components).toLong()
 }
@@ -416,7 +443,13 @@ enum class TextureType(val dimensions: Int) {
 
 open class Introspected {
 
+    /** Anything the shader reaches through a descriptor set: a name at a `set` and a `binding`. */
     open class Bindable(val name: String, val set: Int, val binding: Int)
+
+    /**
+     * One `in` or `out` variable of a stage, at a `location`. The type is a primitive, or the
+     * members of a struct passed between stages.
+     */
     data class Input(
         val name: String, val type: Either<PrimitiveType, List<Member>>, val location: Int
     ) {
@@ -424,6 +457,12 @@ open class Introspected {
             get() = type.fold({ it.sizeInBytes }, { it.sumOf { it.memberSize() } })
     }
 
+    /**
+     * One field of a block, struct or push-constant range, at the byte offset the compiler gave it.
+     * A member whose type is a list of members is a nested struct, and `arrayStride` above zero
+     * makes it an array; `physicalPointer` marks a buffer-reference field, which occupies eight
+     * bytes whatever its pointed-to type says.
+     */
     data class Member(
         val name: String,
         val offset: Int,
@@ -436,6 +475,12 @@ open class Introspected {
             else type.fold({ it.componentsSizeInBytes * it.components.toLong() }, { it.sumOf { it.memberSize() } })
     }
 
+    /**
+     * A block of members at a set and binding, in bytes. It stands for a uniform block *and* for a
+     * storage buffer — `ubos` and `ssbo` are both lists of this — so the kind of binding is which
+     * list it is in, not which type it is. A storage buffer reflected from Slang has `size` 0, since
+     * its length is not known from the declaration.
+     */
     class UBO(name: String, val size: Int, set: Int, binding: Int, val members: List<Member>) :
         Bindable(name, set, binding) {
         override fun toString(): String {
@@ -445,6 +490,11 @@ open class Introspected {
         fun memberSize(): Long = members.sumOf { it.memberSize() }
     }
 
+    /**
+     * A sampled texture, with `type` the sampler type the shader wrote (`sampler2D`,
+     * `sampler2DArray`, …). An `arrayCount` above zero means an array of bindings, a descriptor
+     * array, rather than an array texture, which is part of the type instead.
+     */
     class Texture(
         name: String,
         val type: String,
@@ -453,22 +503,66 @@ open class Introspected {
         val arrayCount: Int = 0 /*0 means not an array*/
     ) : Bindable(name, set, binding)
 
+    /** A storage image. Its `type` is the reflected image format, not a sampler type. */
     class Image(name: String, val type: String, set: Int, binding: Int) : Bindable(name, set, binding)
+
+    /** A ray-tracing acceleration structure the shader traces against. */
     class AccelerationStructure(name: String, val type: String, set: Int, binding: Int) : Bindable(name, set, binding)
 
+    /**
+     * A sampler declared on its own, apart from the texture it will be combined with. It is not a
+     * `Bindable`, and its `location` is filled with the reflected *binding*, so read that field as
+     * the binding number it is.
+     */
     data class Sampler(val name: String, val type: String, val set: Int, val location: Int)
+
+    /** A push-constant block: its members, and the size in bytes rounded up to a multiple of 16. */
     data class PushConstant(val name: String, val size: Int, val members: List<Member>)
+
+    /**
+     * A struct the shader declares, with `bufferReference` true for a `buffer_reference` block:
+     * a struct reached through a device address rather than bound to a set.
+     */
     data class StructureType(val name: String, val members: List<Member>, val size: Int, val bufferReference: Boolean = false)
 
+    /** The stage's `in` variables, by location. */
     val inputs = mutableListOf<Input>()
+
+    /** The stage's `out` variables, by location. */
     val outputs = mutableListOf<Input>()
+
+    /** The uniform blocks the stage declares. */
     val ubos = mutableListOf<UBO>()
+
+    /** The storage buffers, held as the same [UBO] type the uniform blocks use. */
     val ssbo = mutableListOf<UBO>()
+
+    /** The sampled textures: a `sampler2D` and friends, where image and sampler arrive as one. */
     val textures = mutableListOf<Texture>()
+
+    /** The storage images. */
     val images = mutableListOf<Image>()
+
+    /** The acceleration structures. */
     val accelerationStructures = mutableListOf<AccelerationStructure>()
+
+    /**
+     * The samplers declared apart from a texture. The *images* declared that way are not collected:
+     * the reflection reports them separately and nothing reads that, so a shader that splits image
+     * from sampler has the sampler here and the image nowhere.
+     */
     val samplers = mutableListOf<Sampler>()
+
+    /** The push-constant blocks this stage declares. */
     val pushConstants = mutableListOf<PushConstant>()
+
+    /**
+     * The structs the shader declares, named from the GLSL source, since reflection keeps the layout
+     * but not the name. Each struct is matched to its reflected members by its list of member names,
+     * and two structs with the same member names in the same order collapse to the first. A shader
+     * given as SPIR-V takes the reflection's own names instead. Empty for an interface read from
+     * Slang reflection.
+     */
     val structureTypes = mutableListOf<StructureType>()
 
     /**
@@ -506,7 +600,17 @@ open class Introspected {
         }
     }
 
+    /**
+     * The compiled SPIR-V the reflection was read from, which a pipeline then builds its shader
+     * module out of. It is assigned only once the compile has succeeded, so reading it after a
+     * failed introspection throws rather than returning nothing.
+     */
     lateinit var code: ShaderSPIRVUtils.SPIRV
+
+    /**
+     * A multi-line dump of the interface, for a log. It stops at the push constants: the declared
+     * structs, the member comments and any fixed workgroup size are not in it.
+     */
     override fun toString(): String {
         return "Introspected(\n\tinputs=$inputs, \n\toutputs=$outputs, \n\tubos=$ubos, \n\tssbo=$ssbo, \n\ttextures=$textures, \n\timages=$images, \n\taccelerationStructures=$accelerationStructures, \n" + "\tsamplers=$samplers, \n" + "\tpushConstants=$pushConstants)"
     }
@@ -752,6 +856,10 @@ fun Either<PrimitiveType, List<Introspected.Member>>.layoutSizeInBytes(): Int =
 fun Introspected.Member.layoutSizeInBytes(): Int =
     if (physicalPointer) PrimitiveType.deviceptr.sizeInBytes.toInt() else type.layoutSizeInBytes()
 
+/**
+ * Byte size of a list of members: the furthest offset+size any of them reaches, so a block's size is
+ * its last member's end rather than the sum of its members.
+ */
 fun List<Introspected.Member>.membersLayoutSizeInBytes(): Int =
     if (isEmpty()) 0 else maxOf { it.offset + it.layoutSizeInBytes() }
 
@@ -824,10 +932,24 @@ private fun slangStructuredBufferMembers(parameter: JSONObject): List<Introspect
 }
 
 class Introspection private constructor(
+    /**
+     * The GLSL that was compiled. It is also read lexically, for the struct names the reflection
+     * does not carry and for members' trailing comments, and that reading happens whether or not the
+     * compile succeeds. A shader handed over as SPIR-V has none, and falls back to the names in the
+     * reflection's own type table.
+     */
     val source: String,
+    /** Which stage this is, which decides how the source is compiled and how Slang reflection is read. */
     val kind: ShaderKind,
+    /**
+     * Where a compile or reflection failure goes. The default rethrows, so an introspection built
+     * without one either succeeds or throws; pass a handler to get an invalid introspection back
+     * instead of an exception.
+     */
     val errorHandler: (String, Throwable) -> Unit = { _, throwable -> throw throwable },
+    /** The name compiler errors are reported against, `VERTEX_SHADER.glsl` and the like by default. */
     val sourceName: String = kind.toString() + ".glsl",
+    /** Answers this source's `#include` lines during the compile. */
     val includeResolver: ShaderIncludeResolver? = null,
     private val precompiledSpirv: ShaderSPIRVUtils.SPIRV? = null,
     private val slangReflectionJson: String? = null
@@ -841,6 +963,11 @@ class Introspection private constructor(
         includeResolver: ShaderIncludeResolver? = null
     ) : this(source, kind, errorHandler, sourceName, includeResolver, null, null)
 
+    /**
+     * True once the compile and the reflection have both finished. While it is false every interface
+     * list is empty and `code` is unset. The member comments are there even so, since they are
+     * scraped from the source before anything is compiled.
+     */
     var valid = false
 
     init {

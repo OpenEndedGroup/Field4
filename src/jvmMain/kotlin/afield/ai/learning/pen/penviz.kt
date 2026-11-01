@@ -228,7 +228,10 @@ class DensityImage(val width: Int, val height: Int, val area: DoubleArray) {
     private fun segments(line: FLine, at: (Double, Double) -> Unit) {
         line.pieces().forEach { piece ->
             // curves are flattened at about a pixel, so a cubic is not drawn as its chord
-            val p = if (piece.nodes.any { it is FLine.CubicTo }) piece.sampleByDistance((1.0 / sx).toFloat()) else piece.nodes.map { it.to }
+            val p = if (piece.nodes.any { it is FLine.CubicTo }) piece.sampleByDistance((1.0 / sx).toFloat()) else {
+                // endPointOf resolves a Close to the start of the subpath it closes
+                piece.nodes.indices.map { piece.endPointOf(it) }
+            }
             for (i in 1 until p.size) {
                 val ax = (p[i - 1].x - area[0]) * sx
                 val ay = (p[i - 1].y - area[1]) * sy

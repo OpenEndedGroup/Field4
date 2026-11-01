@@ -4,7 +4,7 @@
 
 Runnable examples, galleries and verification programs. Read these for usage patterns; their entry points are not a promise of a reusable box API.
 
-218 source file(s), 690 public symbol(s), 304 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+218 source file(s), 692 public symbol(s), 306 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -152,14 +152,16 @@ The landing guard that box code still compiles: each named transcript goes down 
 
 ### BoxCodeFormat { #boxcodeformat-kt-boxcodeformat }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">BoxCodeFormat</span></code>](source/jvmMain/afield/examples/BoxCodeFormat/#L30)
+[<code class="highlight"><span class="k">object</span> <span class="nc">BoxCodeFormat</span></code>](source/jvmMain/afield/examples/BoxCodeFormat/#L35)
 
 Formats the box code in transcripts and `*_code_.kt` sidecars with the formatter the editor uses ([`formatCodeProperty`](workspace.md#formatter-kt--formatcodeproperty): ktfmt for `code`, Field's GLSL formatter for shader properties), in place.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="boxcodeformat-kt--boxcodeformat--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/BoxCodeFormat/#L37) |  |
-| <a id="boxcodeformat-kt--boxcodeformat--formatyaml"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">formatYaml</span><span class="p">(</span><span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/examples/BoxCodeFormat/#L63) |  |
+| <a id="boxcodeformat-kt--boxcodeformat--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/BoxCodeFormat/#L42) |  |
+| <a id="boxcodeformat-kt--boxcodeformat--allcorpora"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">allCorpora</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">File</span><span class="p">&gt;</span></code>](source/jvmMain/afield/examples/BoxCodeFormat/#L99) | Every corpus the formatter owns: transcripts, demo build scripts, tracked `*_code_.kt` sidecars outside `GENERATED_ROOT`, docs pages. |
+| <a id="boxcodeformat-kt--boxcodeformat--formatyaml"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">formatYaml</span><span class="p">(</span><span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/examples/BoxCodeFormat/#L121) |  |
+| <a id="boxcodeformat-kt--boxcodeformat--formatmarkdown"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">formatMarkdown</span><span class="p">(</span><span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/examples/BoxCodeFormat/#L226) | Format the Kotlin in a docs page's `diffstatic` / `diffstatic_runner` fences, in place. |
 
 ## BoxImportCensus.kt { #boximportcensus-kt }
 
@@ -321,7 +323,7 @@ Verification-integrity harness: executes / compiles the box bodies of *every* sh
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="demotranscriptexecsmoketest-kt--demotranscriptexecsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/DemoTranscriptExecSmokeTest/#L944) |  |
+| <a id="demotranscriptexecsmoketest-kt--demotranscriptexecsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/DemoTranscriptExecSmokeTest/#L950) |  |
 
 ## DocsPanelCodeLinksSmokeTest.kt { #docspanelcodelinkssmoketest-kt }
 
@@ -2089,23 +2091,23 @@ Verify negative caching and explicit recovery against a real idle box's Kotlin c
 
 ### SourceBackedBlockSelfBoxProbe { #fnrewritekotlinliveboxprobe-kt-sourcebackedblockselfboxprobe }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">SourceBackedBlockSelfBoxProbe</span></code>](source/jvmMain/afield/examples/functions/FnRewriteKotlinLiveBoxProbe/#L451)
+[<code class="highlight"><span class="k">object</span> <span class="nc">SourceBackedBlockSelfBoxProbe</span></code>](source/jvmMain/afield/examples/functions/FnRewriteKotlinLiveBoxProbe/#L454)
 
 [`afield.study.source.SourceBackedBlock`](internal.md#sourcebackedblock-kt-sourcebackedblock)'s own route into the self-box trap, measured rather than inferred.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="fnrewritekotlinliveboxprobe-kt--sourcebackedblockselfboxprobe--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/functions/FnRewriteKotlinLiveBoxProbe/#L453) |  |
+| <a id="fnrewritekotlinliveboxprobe-kt--sourcebackedblockselfboxprobe--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/functions/FnRewriteKotlinLiveBoxProbe/#L456) |  |
 
 ### SourceBackedBlockTwoBoxProbe { #fnrewritekotlinliveboxprobe-kt-sourcebackedblocktwoboxprobe }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">SourceBackedBlockTwoBoxProbe</span></code>](source/jvmMain/afield/examples/functions/FnRewriteKotlinLiveBoxProbe/#L471)
+[<code class="highlight"><span class="k">object</span> <span class="nc">SourceBackedBlockTwoBoxProbe</span></code>](source/jvmMain/afield/examples/functions/FnRewriteKotlinLiveBoxProbe/#L474)
 
 The same block hydrated in an idle parent box — the positive control for the one above.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="fnrewritekotlinliveboxprobe-kt--sourcebackedblocktwoboxprobe--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/functions/FnRewriteKotlinLiveBoxProbe/#L473) |  |
+| <a id="fnrewritekotlinliveboxprobe-kt--sourcebackedblocktwoboxprobe--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/functions/FnRewriteKotlinLiveBoxProbe/#L476) |  |
 
 ## FunctionsPlotGallery.kt { #functionsplotgallery-kt }
 

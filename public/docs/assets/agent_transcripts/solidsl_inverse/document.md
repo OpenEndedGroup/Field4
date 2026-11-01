@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. 2 - Inverse design - let a gradient find the numbers
@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="inverse" index="0" -->
 
 ```edn [field-box id="inverse" role="properties"]
-{"id" "inverse" "index" 0 "name" "2 - Inverse design - let a gradient find the numbers" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - Inverse design - let a gradient find the numbers" "_tombstone" false "frame" #afield/rect [700.0 60.0 600.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "inverse_code_.kt" "lines" 84 "characters" 3424 "sha256" "72da30943fa960e7da85734631533e13283407c7e124a90c3822034c12aa1946"}]}
+{"id" "inverse" "index" 0 "name" "2 - Inverse design - let a gradient find the numbers" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - Inverse design - let a gradient find the numbers" "_tombstone" false "frame" #afield/rect [700.0 60.0 600.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "inverse_code_.kt" "lines" 84 "characters" 3412 "sha256" "5805dfe22f850f6d3756d85aad2ce80fb22b34f57e39cc4d413e21fd1991420e"}]}
 ```
 
 ```kotlin [field-property box="inverse" name="code" path="inverse_code_.kt"]
@@ -48,7 +48,7 @@ println("The counterfactual is in the same object, measured in the same run: `in
 println("is the seed's loss, not a number somebody wrote down last week.")
 println()
 println("truth was  ${truth.joinToString(", ")}")
-println("recovered  ${fit.values.joinToString(", ") { "%.9f".format(it) }}")
+println("recovered  ${fit.values.joinToString(", ") { it.f9 }}")
 println("error      ${truth.indices.joinToString(", ") { "%.2e".format(kotlin.math.abs(fit.values[it] - truth[it])) }}")
 println()
 
@@ -203,7 +203,7 @@ part.gradientNotes().forEach { println("  - $it") }
 <!-- field-box id="refusals" index="2" -->
 
 ```edn [field-box id="refusals" role="properties"]
-{"id" "refusals" "index" 2 "name" "3 - What refuses, and the one that does not" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - What refuses, and the one that does not" "_tombstone" false "frame" #afield/rect [60.0 226.0 600.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "refusals_code_.kt" "lines" 71 "characters" 3636 "sha256" "0c72a3075912ddd6a01fe1231d00f0830f841d22502fc9b4e129605787193fc0"}]}
+{"id" "refusals" "index" 2 "name" "3 - What refuses, and the one that does not" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - What refuses, and the one that does not" "_tombstone" false "frame" #afield/rect [60.0 226.0 600.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "refusals_code_.kt" "lines" 69 "characters" 3531 "sha256" "41a2affc80da500b657183467de2a782771fd2d2efa514f1b621ed0329ab7ed3"}]}
 ```
 
 ```kotlin [field-property box="refusals" name="code" path="refusals_code_.kt"]
@@ -218,30 +218,28 @@ are not in the lowering. They are in the *parameterisation*, and there are seven
 */
 println("---- seven ways a binding can refuse, each with a reason ----")
 listOf<Pair<String, SolidLowering<*>>>(
-        "a path that does not exist" to body.parameterize { param("r", "Difference/0/Cuboid.w") },
-        "a predicate that matches nothing" to body.parameterize { param("r") { it.node == "Torus" } },
-        "one name declared twice" to
-            body.parameterize {
-                param("r", "Difference/0/Cuboid.x")
-                param("r", "Difference/0/Cuboid.y")
-            },
-        "two names for one number" to
-            body.parameterize {
-                param("a", "Difference/0/Cuboid.x")
-                param("b", "Difference/0/Cuboid.x")
-            },
-        "tied slots with different seeds" to body.parameterize { param("size") { it.node == "Cuboid" } },
-        "a Scale factor at zero" to
-            sphere(0.5).sized(1.0, 1.0, 1.0).parameterize { param("s", "Scale.x", seed = 1e-9) },
-        "a blend radius at zero" to
-            smoothUnion(sphere(0.4), sphere(0.4).at(0.5, 0.0, 0.0), 0.2).parameterize {
-                param("k", "SmoothUnion.k", seed = 0.0)
-            },
-    )
-    .forEach { (what, l) ->
-        println("  $what:")
-        println("    ${l.refusalOrNull()}")
-    }
+    "a path that does not exist" to body.parameterize { param("r", "Difference/0/Cuboid.w") },
+    "a predicate that matches nothing" to body.parameterize { param("r") { it.node == "Torus" } },
+    "one name declared twice" to
+        body.parameterize {
+            param("r", "Difference/0/Cuboid.x")
+            param("r", "Difference/0/Cuboid.y")
+        },
+    "two names for one number" to
+        body.parameterize {
+            param("a", "Difference/0/Cuboid.x")
+            param("b", "Difference/0/Cuboid.x")
+        },
+    "tied slots with different seeds" to body.parameterize { param("size") { it.node == "Cuboid" } },
+    "a Scale factor at zero" to sphere(0.5).sized(1.0, 1.0, 1.0).parameterize { param("s", "Scale.x", seed = 1e-9) },
+    "a blend radius at zero" to
+        smoothUnion(sphere(0.4), sphere(0.4).at(0.5, 0.0, 0.0), 0.2).parameterize {
+            param("k", "SmoothUnion.k", seed = 0.0)
+        },
+).forEach { (what, l) ->
+    println("  $what:")
+    println("    ${l.refusalOrNull()}")
+}
 println()
 println("A SolidLowering.Refused rather than a thrown exception, for SolidExact.kt's own")
 println("reason: a null invites a caller to substitute something plausible, and an exception")

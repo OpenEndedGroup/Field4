@@ -249,6 +249,15 @@ class DocumentDirectoryWriterLedgerTest {
                     "user actions on a different document than the one open, so a read-only policy " +
                     "for them is a separate decision, not a silent write-back."
             ),
+            // Arrived 2026-10-31 with the cmd+t precedence change (`6213b230d`), which added
+            // `insertTemplateInto(info, ...)`: `info.filename` there only keys the in-memory
+            // persistent-property header map, and the inserted boxes reach disk through
+            // SavingContext.save, behind the funnel guard.
+            "src/jvmMain/kotlin/afield/app/server/templating.kt" to exempt(
+                1,
+                "Its one write is save-as-template's mkdirs of \$home/templates, the workspace-level " +
+                    "templates folder outside every document; the document paths it reads are in-memory keys."
+            ),
             "src/jvmMain/kotlin/afield/tools/automation/transcript.kt" to exempt(
                 2,
                 "Writes <doc>/transcript.edn, but its only caller is reached from SavingContext.save, " +

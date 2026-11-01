@@ -33,6 +33,7 @@ RESOURCE_FILES = (
 GENERATED_DIRS = (
     "min",
     "woff2",
+    "katex",
     "assets/agent_transcripts",
 )
 
@@ -216,6 +217,7 @@ def sync_target(target: Path, *, metadata: bool, docs: bool) -> None:
 
     replace_dir(JS_RESOURCES / "monaco" / "min", target / "min")
     replace_dir(JS_RESOURCES / "woff2", target / "woff2")
+    replace_dir(JS_RESOURCES / "katex", target / "katex")
 
     if metadata:
         for name in BUNDLED_EXAMPLES:

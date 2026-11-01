@@ -3,10 +3,12 @@ description: >
   Field's own live frontend in a world-locked OpenXR browser panel. Either controller can point,
   trigger and drag; grip grabs and repositions the panel. Hands without an aim action use a wrist-to-knuckle ray and pinch. The in-panel
   keyboard preserves editor focus and includes Commands, Run, text, navigation and editing keys.
-  Opens the same document, with a front-on desktop companion and optional headset output. Requires Vulkan and Electron.
+  Opens the same document, with a front-on desktop companion and optional headset output.
+  Linux WiVRn keyboard and mouse input can operate without desktop focus; remote browsers share document edits.
+  Requires Vulkan and Electron.
 docs:
   - page: field_vr_ide.md
-    why: Launch order, headset setup, controller and hand input, keyboard and browser resolution.
+    why: Launch order, headset setup, controller and hand input, input focus, remote editing and browser resolution.
 operations:
   - create:
       box: vr_ide_renderer
@@ -30,7 +32,9 @@ operations:
               created
           }
           renderer.render()
-          display("guide", """
+          display(
+              "guide",
+              """
               <div style="width:420px;font:16px/1.6 system-ui">
               <b>Field in your headset</b><br>
               Launch 1, then 2. The browser opens this same document.<br>
@@ -41,9 +45,13 @@ operations:
               Select the Playground, edit its code, then Run box (Alt+Up).<br>
               Recenter brings the panel in front of your current head position.<br>
               The desktop companion accepts normal keyboard and mouse input when focused.<br>
+              Quest keyboard and mouse use WiVRn HID forwarding after setup; see the saved guide.<br>
+              Another browser can edit this same document with its own input focus.<br>
               Stop box 2 to close the browser. Restart Field to switch VR mode or eye size.
               </div>
-          """.trimIndent())
+              """
+                  .trimIndent(),
+          )
           displayOpen("guide")
   - create:
       box: vr_ide_panel
@@ -73,7 +81,8 @@ operations:
               ownedRenderer.window.pollEvents()
               ownedRenderer.render()
               frame()
-          }.end { vr.close() }
+          }
+              .end { vr.close() }
   - create:
       box: vr_ide_playground
       name: Playground - edit and run from VR
@@ -82,11 +91,15 @@ operations:
         code: |
           // Select this box, open its editor, change the colour or message, then Run box (Alt+Up).
           val colour = "#237bc2"
-          display("hello", """
+          display(
+              "hello",
+              """
               <div style="width:320px;padding:24px;background:$colour;color:white;font:24px system-ui">
               Hello from inside Field VR!
               </div>
-          """.trimIndent())
+          """
+                  .trimIndent(),
+          )
           displayOpen("hello")
           println("Code executed in the same Field document")
   - connect: { parent: vr_ide_renderer, child: vr_ide_panel }

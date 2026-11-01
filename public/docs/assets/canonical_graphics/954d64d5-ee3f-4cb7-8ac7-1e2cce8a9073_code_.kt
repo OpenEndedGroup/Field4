@@ -1,46 +1,47 @@
-/**
- * this is a little example that draws a triangle (using more conventional vertex attributes and adds a keyboard
- * controlled camera
- *
- * as usual we need a shader module and a mesh for the module:
- */
+/*
+2. hello keyboard camera
+
+One triangle, built from ordinary vertex attributes, seen through a Camera you can move with the keyboard
+while the renderer window has focus. Needs the renderer window box as its parent.
+
+The `vertex` property holds the vertex shader (open it with the editor's property switcher, `f1` or
+`ctrl-P`): it multiplies each position by the `p` and `m` push constants. The `fragment` shader paints
+one flat color.
+*/
+
+// As usual, a shader module and a mesh for it
 var module = moduleHere()
 var m = Mesh()
 
-/*
-This gets us everything we need to start rendering things. In particular, we get a vertex shader:
-
-[[property vertex]]
-*/
-
-// and a fragment shader:
-
-/*
-[[property fragment]]
-*/
-
-// and we connect these to together
+// Connect the mesh to the module, and the module to the renderer
 module += m named "mainMesh"
 renderer += module
 
-/**
- * now we make a camera. A Camera is really just a convient way of setting two matricies, `p` and `m`:
- *
- * `p` is the _projection matrix_ and it converts from the 3d space of the world to the 2d space of the screen in ways
- * that follow the laws of perspective (in particular, things further away are proprotionally smaller)
- *
- * `m` is the _model_view` matrix_ and this accounts for the rotation and translation of the camera _and_ the model
- */
+/*
+A Camera is a convenient way of producing two matrices, `p` and `m`:
+
+`p` is the projection matrix. It maps the 3D space of the world onto the screen following the rules of
+perspective (things further away are proportionally smaller).
+
+`m` is the model-view matrix. It accounts for the rotation and translation of the camera and the model.
+
+The mesh's `m.p` and `m.m` match the vertex shader's push constants. They are given the camera's matrix
+objects, which are read again every frame, so moving the camera needs no further code here.
+*/
 val camera = Camera()
+// The quad runs from (0, 0) to (1, 1): aim at its centre, close enough that it fills the window.
+camera.at = vec(0.5, 0.5, -0.8)
+camera.target = vec(0.5, 0.5, 0)
 m.p = camera.p
 m.m = camera.m
 
-/** here's our triangle, written using vertex attributes. `3` vertices and `1` triangle */
+// The triangle, written with vertex attributes: 3 vertices and 1 triangle
 m.set(3, 1) {
     val z = 0.0
     pos.add(0, 0, 0 + z, 1.0, 0.1, z, 1, 1, z)
     tri.add(0, 1, 2)
 }
 
-// and here's our handy keyboard control over the camera.
+// Keyboard control over the camera, read from the renderer window (R resets the camera). Because it is
+// registered under this property's name, re-running the box replaces the controls instead of adding more.
 var kc by keyCamera(camera = camera)

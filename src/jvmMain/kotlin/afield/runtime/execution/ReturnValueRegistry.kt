@@ -320,7 +320,7 @@ fun registerFramesReturnValue() {
                     }
                     val firstLine = if (firstLineInThisBox != -1) firstLineInThisBox else fallbackFirstLine
                     val message = t.message?.takeIf { it.isNotBlank() } ?: t.javaClass.name
-                    inside.error(message, line = firstLine)
+                    inside.displayError(message, line = firstLine)
                 } finally {
                     inside.jobs.remove(job)
                     if (inside.currentRunningStates[strand]?.watermark == generation) {

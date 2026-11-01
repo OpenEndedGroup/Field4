@@ -45,7 +45,7 @@ import kotlin.test.assertTrue
  * teach it, and — the part a transcripts-only scan cannot see —
  * `ContextSearchOrderLedgerSmokeTest.kt:84` evaluates `fromContext<AtomicInteger>()` in live box
  * Kotlin as the FIELD_TEST `examples.context.search-order-ledger`. The example was a false alarm. The
- * *class* of defect it described was real, and it is the five entries in [COMPILE_ONLY_REMAINDER].
+ * *class* of defect it described was real, and it is the remaining entries in [COMPILE_ONLY_REMAINDER].
  *
  * So the union of three exercise populations is the only honest denominator, and this class computes
  * it: `EXECUTE`/`KOTLINJS` transcripts, jvm-main FIELD_TEST smokes, and `jvmTest` sources.
@@ -314,14 +314,6 @@ class DocumentedApiEvaluationTest {
         "htcEyeState" to
             "vision.md; openxr_eye_intersection is COMPILE_ONLY. The target requires a live " +
                 "Vulkan/OpenXR session and HTC eye tracker. Native calls and triangulation have JVM tests.",
-        "appendChild" to
-            "puppet_browser.md reaches this inside JavaScript executed by the native Electron " +
-                "producer. The graphics transcript is COMPILE_ONLY because CI has no window or " +
-                "cross-process browser-texture transport to run it.",
-        "createElement" to
-            "puppet_browser.md reaches this inside JavaScript executed by the native Electron " +
-                "producer. The graphics transcript is COMPILE_ONLY because CI has no window or " +
-                "cross-process browser-texture transport to run it.",
         "enableDesktopInteraction" to
             "puppet_browser.md; youtube_vr_browser is COMPILE_ONLY because it creates a native " +
                 "Vulkan/OpenXR window and routes its live controller stand-in into Chromium.",

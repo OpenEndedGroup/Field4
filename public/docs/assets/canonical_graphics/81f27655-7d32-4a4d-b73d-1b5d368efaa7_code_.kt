@@ -1,3 +1,12 @@
+/*
+Debugging: printf from a shader. Run this in a box beneath the renderer (`window`) box.
+
+The Kotlin is a cut-down hello triangle; the lesson is in the vertex shader (open `vertex` from the
+editor's property switcher). It enables `GL_EXT_debug_printf` and calls `debugPrintfEXT` for vertex 0
+only, so one line per draw reaches the log. Printing goes through the Vulkan validation layer
+(`Options.validate`, on by default, or `Options.shaderDebugPrintf`).
+*/
+
 var module = moduleHere { primitiveType = triangles }
 
 var m = Mesh()
@@ -10,6 +19,7 @@ var vertexData = defaultBuffer {
 }
     .buffer
 
+// `m.vertexData` is reflected from the `vertexData` buffer reference in the vertex shader's push constants
 m.vertexData = { vertexData }
 var t = 0.0
 
@@ -19,6 +29,7 @@ loop {
 
     var numVertToWrite = 3
 
+    // writes the same triangle three times, so the three copies draw on top of one another
     vertexData.write {
         for (x in 0 until numVertToWrite) {
             put(vec(0, 0, 0))
@@ -28,6 +39,7 @@ loop {
         }
     }
 
+    // the number of vertices to draw
     m.resize(num)
     true
 }

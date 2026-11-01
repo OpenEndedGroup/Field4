@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 7 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 7 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. 4 — tokens that are rhythms
@@ -51,7 +51,7 @@ displayOpen("sound")
 <!-- field-box id="petri_demo_structure" index="1" -->
 
 ```edn [field-box id="petri_demo_structure" role="properties"]
-{"id" "petri_demo_structure" "index" 1 "name" "3 — song structure" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — song structure" "_tombstone" false "frame" #afield/rect [60.0 360.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_structure_code_.kt" "lines" 32 "characters" 954 "sha256" "67fb80384477223b3aa446eef94c669bce18c947ef5353c44ebced4df025bca6"}]}
+{"id" "petri_demo_structure" "index" 1 "name" "3 — song structure" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — song structure" "_tombstone" false "frame" #afield/rect [60.0 360.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_structure_code_.kt" "lines" 31 "characters" 942 "sha256" "7f6a769941ba85706f52d4099542ba8b6ca83d4d3664e9e4dfb23165de62689c"}]}
 ```
 
 ```kotlin [field-property box="petri_demo_structure" name="code" path="petri_demo_structure_code_.kt"]
@@ -62,9 +62,8 @@ Two nets in one. The fast ring plays the bar; the slow ring is the arrangement, 
 token walking verse -> verse -> chorus and back. Same mechanism at both timescales,
 which is the argument for using a net rather than a sequencer and a separate song mode.
 */
-val net =
-    petri(
-        """
+val net = petri(
+    """
     #petri
     !grid 1/4
 
@@ -79,7 +78,7 @@ val net =
     &chorus + beat  -[ cbeat @1/4 : sd ]-> beat2
     beat2 -[ off @1/4 : hh ]-> beat
 """,
-    )
+)
 
 showPetriNet(net, w = 760.0, h = 420.0)
 
@@ -94,7 +93,7 @@ displayOpen("sound")
 <!-- field-box id="petri_demo_live" index="2" -->
 
 ```edn [field-box id="petri_demo_live" role="properties"]
-{"id" "petri_demo_live" "index" 2 "name" "7 — play it live" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "7 — play it live" "_tombstone" false "frame" #afield/rect [60.0 960.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_live_code_.kt" "lines" 47 "characters" 1395 "sha256" "804384b830f2ea48dc916f106337a76cbcf8729d0a085b7d598adb35d3784f45"}]}
+{"id" "petri_demo_live" "index" 2 "name" "7 — play it live" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "7 — play it live" "_tombstone" false "frame" #afield/rect [60.0 960.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_live_code_.kt" "lines" 46 "characters" 1383 "sha256" "c58e744ae7118a0b64e518535573ecfd3113292295950cdf74a4b4dc3d730242"}]}
 ```
 
 ```kotlin [field-property box="petri_demo_live" name="code" path="petri_demo_live_code_.kt"]
@@ -111,9 +110,8 @@ println(
         ?: "no Dirt-Samples found — set ${DirtRender.ENV_VAR}, or install the SuperCollider quark",
 )
 
-val net =
-    petri(
-        """
+val net = petri(
+    """
     #petri
     !grid 1/8
     !conflict priority
@@ -126,7 +124,7 @@ val net =
     &mid   -[ build @1/8 pri=3      ]-> fill
     3*fill -[ crash @1/8 pri=1 : sd ]->
 """,
-    )
+)
 showPetriNet(net, w = 700.0, h = 360.0)
 
 /*
@@ -152,7 +150,7 @@ if (live && root != null) {
 <!-- field-box id="petri_demo_playground" index="3" -->
 
 ```edn [field-box id="petri_demo_playground" role="properties"]
-{"id" "petri_demo_playground" "index" 3 "name" "6 — playground" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — playground" "_tombstone" false "frame" #afield/rect [60.0 810.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_playground_code_.kt" "lines" 45 "characters" 1280 "sha256" "ba07baa3a8a84d411bcba7cdeae1f34d42b1951af78e518c14c7be0b5f7cac67"}]}
+{"id" "petri_demo_playground" "index" 3 "name" "6 — playground" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — playground" "_tombstone" false "frame" #afield/rect [60.0 810.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_playground_code_.kt" "lines" 44 "characters" 1268 "sha256" "3333bd1a4ae398b9bff02360aa45f6032e11707eed9bf0e7330fb6b950066762"}]}
 ```
 
 ```kotlin [field-property box="petri_demo_playground" name="code" path="petri_demo_playground_code_.kt"]
@@ -165,9 +163,8 @@ consuming it, and every third time it has counted, the weighted arc drains all
 three at once and you get a snare — `crash` has no output side, so it is a drain and
 the net stays bounded and periodic. Change a number and run the box again.
 */
-val net =
-    petri(
-        """
+val net = petri(
+    """
     #petri
     !grid 1/8
     !conflict priority
@@ -181,7 +178,7 @@ val net =
     &mid   -[ build @1/8 pri=3      ]-> fill
     3*fill -[ crash @1/8 pri=1 : sd ]->
 """,
-    )
+)
 
 showPetriNet(net, w = 760.0, h = 400.0)
 
@@ -273,7 +270,7 @@ for ((label, net) in
 <!-- field-box id="petri_demo_polyrhythm" index="5" -->
 
 ```edn [field-box id="petri_demo_polyrhythm" role="properties"]
-{"id" "petri_demo_polyrhythm" "index" 5 "name" "2 — five against three" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — five against three" "_tombstone" false "frame" #afield/rect [60.0 210.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_polyrhythm_code_.kt" "lines" 33 "characters" 939 "sha256" "b7b3ab36d02fa203282f5603f3d4a0f2cb2d44b09052936089fb00285111d0c6"}]}
+{"id" "petri_demo_polyrhythm" "index" 5 "name" "2 — five against three" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — five against three" "_tombstone" false "frame" #afield/rect [60.0 210.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_polyrhythm_code_.kt" "lines" 32 "characters" 927 "sha256" "29d71088f582b4f1612da0311949defc76eaa3f72d43dde27e77dca4a9dea922"}]}
 ```
 
 ```kotlin [field-property box="petri_demo_polyrhythm" name="code" path="petri_demo_polyrhythm_code_.kt"]
@@ -281,9 +278,8 @@ import afield.simulation.petri.*
 
 // Two independent rings, one five long and one three long, sharing a clock. Nothing in
 // this source says "fifteen" — that is a property of the net, and the net can tell you.
-val net =
-    petri(
-        """
+val net = petri(
+    """
     #petri
     !grid 1/15
 
@@ -299,7 +295,7 @@ val net =
     b1 -[ b1.go      ]-> b2
     b2 -[ b2.go : hh ]-> b0
 """,
-    )
+)
 
 showPetriNet(net, w = 700.0, h = 340.0)
 
@@ -317,7 +313,7 @@ displayOpen("sound")
 <!-- field-box id="petri_demo_loop" index="6" -->
 
 ```edn [field-box id="petri_demo_loop" role="properties"]
-{"id" "petri_demo_loop" "index" 6 "name" "1 — the smallest loop" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — the smallest loop" "_tombstone" false "frame" #afield/rect [60.0 60.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_loop_code_.kt" "lines" 38 "characters" 1008 "sha256" "9c56cf6be95a56f12ce306924f5360f439d169168d729225b2633bacc233e7d3"}]}
+{"id" "petri_demo_loop" "index" 6 "name" "1 — the smallest loop" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — the smallest loop" "_tombstone" false "frame" #afield/rect [60.0 60.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_demo_loop_code_.kt" "lines" 37 "characters" 996 "sha256" "e21956fc1d6ea4fd7ddb8c8cdaf7ac4329f9e1e746414734b99c70eff18f2897"}]}
 ```
 
 ```kotlin [field-property box="petri_demo_loop" name="code" path="petri_demo_loop_code_.kt"]
@@ -328,9 +324,8 @@ A place holds tokens; a transition fires when all its inputs have one. Give a
 transition a sound after the `:` and firing it plays that sound. That is the whole
 idea — everything else is more of it.
 */
-val net =
-    petri(
-        """
+val net = petri(
+    """
     #petri
     !timing step
     !grid 1/8
@@ -340,7 +335,7 @@ val net =
     kick -[ hit  @1/8 : bd ]-> hats
     hats -[ back @1/8 : sd ]-> kick
 """,
-    )
+)
 
 showPetriNet(net, w = 640.0, h = 300.0)
 

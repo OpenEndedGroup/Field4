@@ -494,16 +494,33 @@ if (typeof window !== 'undefined') window.addEventListener('DOMContentLoaded', a
         const params = new URLSearchParams(window.location.search);
         await window.FieldOfflineOutputs?.resolvePublication?.(params);
         ednFileUrl = params.get('file');
+        const zipParam = params.get('zip');
 
-        if (!ednFileUrl) {
-            showError('No file specified. Add ?file=path/to/metadata.edn to the URL');
+        if (!ednFileUrl && !zipParam) {
+            showError('No file specified. Add ?file=path/to/metadata.edn or ?zip=path/to/document.zip to the URL');
             return;
         }
 
-        // Load and parse the EDN file
-        const { text: ednText, url: resolvedUrl } = await fetchEdnFile(ednFileUrl);
+        // Load and parse the EDN file: from beside it, or out of the document zip.
+        let ednText;
+        let sidecarFetcher = fetchSidecarText;
+        if (ednFileUrl) {
+            const fetched = await fetchEdnFile(ednFileUrl);
+            ednText = fetched.text;
+            ednBaseUrl = new URL(fetched.url, window.location.href).href;
+        } else {
+            const documentZip = await loadDocumentZip(zipParam);
+            ednText = documentZip.text('metadata.edn');
+            if (ednText == null) throw new Error('the zip has no metadata.edn');
+            ednFileUrl = new URL(zipParam, window.location.href).href;
+            ednBaseUrl = ZIP_BASE_URL;
+            sidecarFetcher = async (url) => {
+                const text = documentZip.text(decodeURIComponent(new URL(url).pathname.slice(1)));
+                if (text == null) throw new Error('not in the zip');
+                return text;
+            };
+        }
         ednFileText = ednText;
-        ednBaseUrl = new URL(resolvedUrl, window.location.href).href;
         const data = parseEdn(ednText);
         currentDocumentData = data;
 
@@ -515,7 +532,7 @@ if (typeof window !== 'undefined') window.addEventListener('DOMContentLoaded', a
         }
 
         // `#afield/file` sidecars (too large to inline) live only beside metadata.edn.
-        const sidecarStatus = await resolveSidecars(data, ednBaseUrl, fetchSidecarText);
+        const sidecarStatus = await resolveSidecars(data, ednBaseUrl, sidecarFetcher);
 
         showDrawing = params.get('drawing') !== '0';
         activeLayer = params.get('layer');
@@ -565,7 +582,7 @@ if (typeof window !== 'undefined') window.addEventListener('DOMContentLoaded', a
         // Field loads a sidecar from its loose file and keeps the inline copy as a fallback; read
         // the loose files now, and refresh the open box if one of them differs.
         // Publications contain an immutable, fully inlined export from the live server.
-        if (!params.get('outputs')) resolveSidecars(data, ednBaseUrl, fetchSidecarText, { includeInline: true }).then(status => {
+        if (!params.get('outputs')) resolveSidecars(data, ednBaseUrl, sidecarFetcher, { includeInline: true }).then(status => {
             if (status.refreshed > 0) {
                 showDocumentInfo(data, ednFileUrl, { ...sidecarStatus, refreshed: status.refreshed });
                 if (selectedBox) showEditorForBox(selectedBox);
@@ -633,6 +650,50 @@ async function fetchEdnFile(url) {
     }
 
     throw new Error(`Failed to fetch ${url} (tried ${candidates.length}: ${failures.join('; ')})`);
+}
+
+// A document opened from `?zip=`: its sidecars resolve against this base and are read from the zip.
+const ZIP_BASE_URL = 'https://document.zip.invalid/';
+let loadedDocumentZip = null;
+
+/**
+ * Fetches and reads a document zip (stored or deflated entries, as Python's zipfile and Field's
+ * downloads write them). A zip whose entries share one top folder, the layout a download unzips
+ * to, is read as if that folder were its root.
+ */
+async function loadDocumentZip(zipUrl) {
+    const response = await fetch(new URL(zipUrl, window.location.href));
+    if (!response.ok) throw new Error(`could not fetch the document zip (HTTP ${response.status})`);
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    let end = bytes.length - 22;
+    while (end >= 0 && view.getUint32(end, true) !== 0x06054b50) end--;
+    if (end < 0) throw new Error('not a zip file');
+    const count = view.getUint16(end + 10, true);
+    let at = view.getUint32(end + 16, true);
+    const decoder = new TextDecoder();
+    const raw = [];
+    for (let i = 0; i < count; i++) {
+        const method = view.getUint16(at + 10, true);
+        const size = view.getUint32(at + 20, true);
+        const nameLength = view.getUint16(at + 28, true);
+        const extra = view.getUint16(at + 30, true);
+        const comment = view.getUint16(at + 32, true);
+        const local = view.getUint32(at + 42, true);
+        const name = decoder.decode(bytes.subarray(at + 46, at + 46 + nameLength));
+        at += 46 + nameLength + extra + comment;
+        if (name.endsWith('/')) continue;
+        const start = local + 30 + view.getUint16(local + 26, true) + view.getUint16(local + 28, true);
+        const packed = bytes.subarray(start, start + size);
+        const data = method === 0 ? packed
+            : new Uint8Array(await new Response(new Blob([packed]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer());
+        raw.push([name, data]);
+    }
+    const roots = new Set(raw.map(([name]) => name.includes('/') ? name.slice(0, name.indexOf('/')) : ''));
+    const prefix = roots.size === 1 && !roots.has('') ? `${[...roots][0]}/` : '';
+    const files = new Map(raw.map(([name, data]) => [name.startsWith(prefix) ? name.slice(prefix.length) : name, data]));
+    loadedDocumentZip = { bytes, files, text: (name) => files.has(name) ? decoder.decode(files.get(name)) : null };
+    return loadedDocumentZip;
 }
 
 async function fetchSidecarText(url) {
@@ -1324,6 +1385,7 @@ function loadProperty(box, property) {
     if (monacoEditor) {
         monaco.editor.setModelLanguage(monacoEditor.getModel(), language);
         monacoEditor.setValue(content);
+        monacoEditor.updateOptions({ lineNumbers: offlineLineNumberLabel });
     }
     renderLiterateView(content, language);
 }
@@ -1433,7 +1495,7 @@ async function initializeMonaco() {
                     fontFamily: '"Iosevka Web", monospace',
                     fontWeight: '300',
                     fontLigatures: '"liga" on, "calt" on, "dlig" on, "TXTR" on',
-                    lineNumbers: 'on',
+                    lineNumbers: offlineLineNumberLabel,
                     glyphMargin: false,
                     folding: true,
                     lineDecorationsWidth: 12,
@@ -1544,6 +1606,62 @@ function updateEditorVisibility() {
     }
 }
 
+// Line numbers only on lines that carry code, as in Field's editor (`proseLineFlags` in
+// BootstrapMonacoInit.kt): blank lines and comment-only lines get none.
+const cStyleCommentLanguages = new Set(['kotlin', 'glsl', 'javascript', 'typescript', 'java', 'c', 'cpp', 'slang', 'rust', 'swift', 'scala', 'csharp', 'go']);
+let proseCacheKey = null;
+let proseCache = [];
+
+function proseLineFlags(text, cStyle) {
+    const lines = text.split('\n');
+    const flags = new Array(lines.length).fill(false);
+    let depth = 0;
+    let inString = null;
+    lines.forEach((line, li) => {
+        const blank = line.trim() === '';
+        let code = false;
+        let comment = depth > 0 && !blank;
+        let i = 0;
+        while (i < line.length) {
+            const c = line[i];
+            if (inString != null) {
+                code = true;
+                if (c === '\\' && inString === '"') i++;
+                else if (line.startsWith(inString, i)) { i += inString.length; inString = null; continue; }
+                i++;
+                continue;
+            }
+            if (cStyle && depth === 0 && line.startsWith('//', i)) { comment = true; break; }
+            if (cStyle && line.startsWith('/*', i)) { depth++; comment = true; i += 2; continue; }
+            if (cStyle && depth > 0 && line.startsWith('*/', i)) { depth--; i += 2; continue; }
+            if (depth === 0 && !/\s/.test(c)) {
+                code = true;
+                if (line.startsWith('"""', i)) { inString = '"""'; i += 3; continue; }
+                if (c === '"') inString = '"';
+                if (c === "'") {
+                    const close = line.indexOf("'", i + (line[i + 1] === '\\' ? 3 : 2));
+                    if (close > i) { i = close + 1; continue; }
+                }
+            }
+            i++;
+        }
+        if (inString === '"') inString = null;
+        flags[li] = !code && (comment || blank);
+    });
+    return flags;
+}
+
+function offlineLineNumberLabel(n) {
+    const model = monacoEditor && monacoEditor.getModel();
+    if (!model) return String(n);
+    const key = `${model.uri}#${model.getVersionId()}`;
+    if (key !== proseCacheKey) {
+        proseCache = proseLineFlags(model.getValue(), cStyleCommentLanguages.has(model.getLanguageId()));
+        proseCacheKey = key;
+    }
+    return proseCache[n - 1] ? '' : String(n);
+}
+
 function parseLiterateSegments(text) {
     const lines = text.split(/\r?\n/);
     const segments = [];
@@ -1567,8 +1685,39 @@ function parseLiterateSegments(text) {
     // terminators, which would otherwise be yanked out as prose and desync the
     // code highlighting across the `"""` boundaries.
     let insideTriple = false;
+    // Inside a `/* ... */` block that began at the start of a line: its lines
+    // are prose, with the delimiters and any KDoc-style leading `*` removed.
+    let insideBlock = false;
+
+    const pushComment = (text) => {
+        if (current.type !== 'comment') pushCurrent();
+        current.type = 'comment';
+        current.lines.push(text);
+    };
 
     lines.forEach(line => {
+        if (insideBlock) {
+            const end = line.indexOf('*/');
+            const body = end >= 0 ? line.slice(0, end) : line;
+            if (end >= 0) insideBlock = false;
+            const text = body.replace(/^\s*\*(?!\/)/, '').trim();
+            if (end < 0 || text) pushComment(text);
+            return;
+        }
+        const trimmed = line.trim();
+        if (!insideTriple && trimmed.startsWith('/*')) {
+            const end = trimmed.indexOf('*/', 2);
+            // A block that closes and is followed by code on the same line stays code.
+            if (end < 0 || trimmed.slice(end + 2).trim() === '') {
+                const body = trimmed.slice(trimmed.startsWith('/**') ? 3 : 2, end < 0 ? undefined : end).trim();
+                if (end < 0) insideBlock = true;
+                if (body) pushComment(body);
+                else if (current.type !== 'comment') pushCurrent();
+                if (current.type === null) current.type = 'comment';
+                return;
+            }
+        }
+
         const startedInsideTriple = insideTriple;
         const tripleCount = (line.match(/"""/g) || []).length;
         if (tripleCount % 2 === 1) insideTriple = !insideTriple;
@@ -1809,12 +1958,27 @@ function fieldImportBases() {
     return bases;
 }
 
-async function importOfflineDocViaLocalhost(recommendedName, ednText) {
+/**
+ * The whole document as a zip, base64, when the page names one with `&zip=` (resolved against this
+ * page, like `file=`). Open in Field·4 sends it so the import keeps the document's sidecars and
+ * folders (saved chats, revisions); without one, only `metadata.edn` travels.
+ */
+async function documentZipBase64() {
+    const zip = new URLSearchParams(window.location.search).get('zip');
+    if (!zip) return null;
+    const bytes = (loadedDocumentZip ?? await loadDocumentZip(zip)).bytes;
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    return btoa(binary);
+}
+
+async function importOfflineDocViaLocalhost(recommendedName, ednText, zipBase64) {
     const bases = fieldImportBases();
     const body = JSON.stringify({
         recommendedName,
         ednText,
-        sourceUrl: window.location.href
+        sourceUrl: window.location.href,
+        ...(zipBase64 ? { zipBase64 } : {})
     });
 
     const unreachable = [];
@@ -1868,6 +2032,7 @@ function setupOpenLocalButton(fileUrl, ednText, data) {
         button.textContent = 'Sending to Field·4...';
         try {
             const recommendedName = deriveRecommendedName(fileUrl);
+            const zipBase64 = await documentZipBase64();
             let localBase = fieldImportBases()[0];
             let result = null;
             let hostOpened = false;
@@ -1877,12 +2042,13 @@ function setupOpenLocalButton(fileUrl, ednText, data) {
                     recommendedName,
                     ednText,
                     sourceUrl: window.location.href,
+                    ...(zipBase64 ? { zipBase64 } : {}),
                     openInHost: true
                 });
                 hostOpened = true;
             } catch (hostError) {
                 console.info('offline-viewer host import unavailable, falling back to localhost import', hostError);
-                const fallback = await importOfflineDocViaLocalhost(recommendedName, ednText);
+                const fallback = await importOfflineDocViaLocalhost(recommendedName, ednText, zipBase64);
                 localBase = fallback.localBase;
                 result = fallback.result;
             }
@@ -1933,7 +2099,7 @@ function nameFromPathSegments(segments) {
         const parent = segments[segments.length - 2];
         if (parent) return parent;
     }
-    return last.replace(/\.edn$/i, '') || null;
+    return last.replace(/\.(edn|zip)$/i, '') || null;
 }
 
 function deriveRecommendedName(fileUrl) {

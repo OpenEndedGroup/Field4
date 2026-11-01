@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 4 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 4 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. the same solid, marched
@@ -46,7 +46,7 @@ Solid.scope {
 <!-- field-box id="photo_plaque" index="1" -->
 
 ```edn [field-box id="photo_plaque" role="properties"]
-{"id" "photo_plaque" "index" 1 "name" "the depth map as a closed relief plaque" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the depth map as a closed relief plaque" "_tombstone" false "frame" #afield/rect [60.0 1100.0 420.0 90.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "photo_plaque_code_.kt" "lines" 24 "characters" 1228 "sha256" "33225ce200e7ad186fcc503dfbde792333023587233a771ca16d518ba96c9935"}]}
+{"id" "photo_plaque" "index" 1 "name" "the depth map as a closed relief plaque" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "the depth map as a closed relief plaque" "_tombstone" false "frame" #afield/rect [60.0 1100.0 420.0 90.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "photo_plaque_code_.kt" "lines" 24 "characters" 1216 "sha256" "efac2b47034b1fc668f4b9133b280c67c95d10833965666662403f2f393f485a"}]}
 ```
 
 ```kotlin [field-property box="photo_plaque" name="code" path="photo_plaque_code_.kt"]
@@ -60,7 +60,7 @@ val topo = relief.topology()
 println("relief ${relief.vertexCount} vertices, ${relief.triangleCount} triangles")
 println("watertight=${topo.isWatertight} manifold=${topo.isManifold} chi=${topo.eulerCharacteristic}")
 println("boundary loops=${topo.boundaryLoops.size} — a plaque has none, a heightfield has one")
-println("volume ${"%.6f".format(relief.volume())}, and Manifold agrees to the last digit")
+println("volume ${relief.volume().f6}, and Manifold agrees to the last digit")
 
 // The CPU rasteriser is AWT-free (PngEncoder), so it is safe inside a live box on macOS.
 // Three angles, because a relief read from one is a picture and read from three is a shape.

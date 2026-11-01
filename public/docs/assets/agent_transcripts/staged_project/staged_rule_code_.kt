@@ -49,5 +49,5 @@ val loot = qualifiedSource(
     },
     replayVersion = "loot-replay-1",
 ) { replay ->
-        QualifiedSource.evaluateKotlin(replay.source) as (String) -> Map<String, String>
-    }
+    QualifiedSource.evaluateKotlin(replay.source) as (String) -> Map<String, String>
+}

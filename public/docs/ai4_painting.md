@@ -155,11 +155,10 @@ tool("paint.dab") {
     describe("Touch the brush down at points and lift it: dabs, petals, leaves, highlights. One load for all of them.")
     effects(ToolEffect.CONTROL_RUNTIME)
     val points by param<List<Double>>("[x0, y0, x1, y1, ...]")
-    val color by
-        param<String?>(
-            "#rrggbb, a tube name, or tubes by parts; null dabs a kept tool with what it carries",
-            default = null,
-        )
+    val color by param<String?>(
+        "#rrggbb, a tube name, or tubes by parts; null dabs a kept tool with what it carries",
+        default = null,
+    )
     val tool by param<String?>("a kept brush's name to dab with; null for a fresh brush", default = null)
     val brush by
         param<String>("Round, HogFlat, Filbert, Fan, Rigger, Badger or Stippler (a fresh brush)", default = "Round")

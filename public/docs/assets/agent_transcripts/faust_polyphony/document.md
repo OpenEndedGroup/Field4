@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 6 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 6 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. offline, with a plot
@@ -23,7 +23,7 @@ makes an onset detector report envelope ripple as notes. FAUST_PATTERN_SUSTAIN d
 for exactly that reason.
 
 ```edn [field-box id="faust_polyphony_offline" role="properties"]
-{"id" "faust_polyphony_offline" "index" 0 "name" "offline, with a plot" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "offline, with a plot" "_tombstone" false "frame" #afield/rect [660.0 80.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_polyphony_offline_code_.kt" "lines" 45 "characters" 1514 "sha256" "3fca04df54e998d6b837dae44121c715ec72f137a62cd8c4f8bd91b2e329f3f9"}]}
+{"id" "faust_polyphony_offline" "index" 0 "name" "offline, with a plot" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "offline, with a plot" "_tombstone" false "frame" #afield/rect [660.0 80.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_polyphony_offline_code_.kt" "lines" 44 "characters" 1478 "sha256" "a5eb1bdf634c41b6b37c31331be3e0488e30cc1861f195b8673478d8ec830ec5"}]}
 ```
 
 ```kotlin [field-property box="faust_polyphony_offline" name="code" path="faust_polyphony_offline_code_.kt"]
@@ -36,9 +36,8 @@ and what you get is one continuous tone with a single attack — which sounds wr
 makes an onset detector report envelope ripple as notes. FAUST_PATTERN_SUSTAIN defaults to 0.9
 for exactly that reason.
 */
-val render =
-    showFaustPattern(
-        """
+val render = showFaustPattern(
+    """
 #faust
 import("stdfaust.lib");
 cutoff = hslider("cutoff [unit:Hz]", 2600, 120, 9000, 1);
@@ -49,13 +48,13 @@ env = en.adsr(0.004, 0.09, 0.55, 0.03, gate);
 process = (os.sawtooth(freq) + os.sawtooth(freq * 1.005)) * 0.5
         : fi.resonlp(cutoff, 1.4, 1) * env * gain <: _,_;
 """,
-        pat("c4 ef4 g4 bf4 c5 bf4 g4 ef4"),
-        cycles = 2,
-        cps = 1.0,
-        voices = 8,
-        sustain = 0.55,
-        automate = mapOf("cutoff" to pat("900 2600 1400 5200").nums()),
-    )
+    pat("c4 ef4 g4 bf4 c5 bf4 g4 ef4"),
+    cycles = 2,
+    cps = 1.0,
+    voices = 8,
+    sustain = 0.55,
+    automate = mapOf("cutoff" to pat("900 2600 1400 5200").nums()),
+)
 
 println(
     render.notes.size.toString() +
@@ -201,7 +200,7 @@ The first compile of a session is slow (13-22s of GraalVM warm-up, then ~600ms).
 `FaustEngine.warmInBackground()` in another box first if you would rather wait now.
 
 ```edn [field-box id="faust_polyphony_play" role="properties"]
-{"id" "faust_polyphony_play" "index" 2 "name" "Faust instrument" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Faust instrument" "_tombstone" false "frame" #afield/rect [80.0 80.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_polyphony_play_code_.kt" "lines" 47 "characters" 1901 "sha256" "d9cce406d8ba827df475927225336be7c50e870b53a7344433bc7b8515a6902b"}]}
+{"id" "faust_polyphony_play" "index" 2 "name" "Faust instrument" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Faust instrument" "_tombstone" false "frame" #afield/rect [80.0 80.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_polyphony_play_code_.kt" "lines" 46 "characters" 1885 "sha256" "91201268b74a625a23a2cd12233704dbc4ec04e2254bd7660286c276a8ecdd81"}]}
 ```
 
 ```kotlin [field-property box="faust_polyphony_play" name="code" path="faust_polyphony_play_code_.kt"]
@@ -219,9 +218,8 @@ never change a note.
 The first compile of a session is slow (13-22s of GraalVM warm-up, then ~600ms). Run
 `FaustEngine.warmInBackground()` in another box first if you would rather wait now.
 */
-val inst =
-    faustPoly(
-        """
+val inst = faustPoly(
+    """
 #faust
 import("stdfaust.lib");
 cutoff = hslider("cutoff [unit:Hz]", 2600, 120, 9000, 1);
@@ -232,8 +230,8 @@ env = en.adsr(0.004, 0.09, 0.55, 0.03, gate);
 process = (os.sawtooth(freq) + os.sawtooth(freq * 1.005)) * 0.5
         : fi.resonlp(cutoff, 1.4, 1) * env * gain <: _,_;
 """,
-        voices = 8,
-    )
+    voices = 8,
+)
 
 /*
 Two patterns, one timeline. The chords are notes; the cutoff is a parameter. Both are scheduled
@@ -273,7 +271,7 @@ Before believing any onset count: check the signal has onsets. faustSilentGaps m
 silence between the notes, or the "onsets" are envelope ripple in a continuous tone.
 
 ```edn [field-box id="faust_polyphony_timing" role="properties"]
-{"id" "faust_polyphony_timing" "index" 3 "name" "onsets, in samples" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "onsets, in samples" "_tombstone" false "frame" #afield/rect [660.0 470.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_polyphony_timing_code_.kt" "lines" 97 "characters" 4246 "sha256" "88f9fa53cffd4b81f676fca089b60fd40a0c42fd8640291d1a997503ddc8f171"}]}
+{"id" "faust_polyphony_timing" "index" 3 "name" "onsets, in samples" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "onsets, in samples" "_tombstone" false "frame" #afield/rect [660.0 470.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_polyphony_timing_code_.kt" "lines" 96 "characters" 4214 "sha256" "37f79ff6a38117c4b06264c94dfd6b8b5a362b89f3cebc8b356487a6a0eb2340"}]}
 ```
 
 ```kotlin [field-property box="faust_polyphony_timing" name="code" path="faust_polyphony_timing_code_.kt"]
@@ -288,9 +286,8 @@ one of those forward to the next boundary, up to 110 frames late.
 Before believing any onset count: check the signal has onsets. faustSilentGaps must find real
 silence between the notes, or the "onsets" are envelope ripple in a continuous tone.
 */
-val render =
-    faustPatternRender(
-        """
+val render = faustPatternRender(
+    """
 #faust
 import("stdfaust.lib");
 cutoff = hslider("cutoff [unit:Hz]", 2600, 120, 9000, 1);
@@ -301,12 +298,12 @@ env = en.adsr(0.004, 0.09, 0.55, 0.03, gate);
 process = (os.sawtooth(freq) + os.sawtooth(freq * 1.005)) * 0.5
         : fi.resonlp(cutoff, 1.4, 1) * env * gain <: _,_;
 """,
-        pat("c4 e4 g4 a4 c5 d5 e5"),
-        cycles = 2,
-        cps = 1.0,
-        voices = 8,
-        sustain = 0.5,
-    )
+    pat("c4 e4 g4 a4 c5 d5 e5"),
+    cycles = 2,
+    cps = 1.0,
+    voices = 8,
+    sustain = 0.5,
+)
 
 val mono = render.mono()
 val gaps = faustSilentGaps(mono, render.sampleRate)
@@ -392,7 +389,7 @@ is nothing in silence to read. So this refuses, and names what is missing, what 
 declare, and the line of Faust that would fix it.
 
 ```edn [field-box id="faust_polyphony_refusal" role="properties"]
-{"id" "faust_polyphony_refusal" "index" 4 "name" "what it refuses" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "what it refuses" "_tombstone" false "frame" #afield/rect [80.0 830.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_polyphony_refusal_code_.kt" "lines" 23 "characters" 1007 "sha256" "52f401aa8dd2dfc86e0c0dfcd30f0add6d1864bc7234d157e17a3718a4d77d9a"}]}
+{"id" "faust_polyphony_refusal" "index" 4 "name" "what it refuses" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "what it refuses" "_tombstone" false "frame" #afield/rect [80.0 830.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "faust_polyphony_refusal_code_.kt" "lines" 22 "characters" 995 "sha256" "241feaada9a30cab764711fe9be73960cb74fc3396f1b1f59a05d31828c8ded9"}]}
 ```
 
 ```kotlin [field-property box="faust_polyphony_refusal" name="code" path="faust_polyphony_refusal_code_.kt"]
@@ -404,16 +401,15 @@ Writing pitch to control index 0 and hoping would produce silence, or a filter s
 is nothing in silence to read. So this refuses, and names what is missing, what the program did
 declare, and the line of Faust that would fix it.
 */
-val program =
-    faustCompile(
-        """
+val program = faustCompile(
+    """
 #faust
 import("stdfaust.lib");
 cutoff = hslider("cutoff [unit:Hz]", 1200, 60, 8000, 1);
 freq   = hslider("freq [unit:Hz]", 220, 40, 4000, 0.001);
 process = os.sawtooth(freq) : fi.lowpass(2, cutoff) * 0.2 <: _,_;
 """,
-    )
+)
 
 println("it declares, in the order Faust lists them (alphabetical, not as written):")
 program.ui.writable.forEach { println("  " + it.displayLabel + "  " + it.type + "  index " + it.index) }

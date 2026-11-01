@@ -346,7 +346,7 @@ val ladder =
 :::fold draw the ladder on one shared window, so the rungs are comparable
 fun verdict(result: Triple<Cloth, Double, Int>): String {
     val (_, peak, blewUpAt) = result
-    return if (blewUpAt > 0) "NOT FINITE from frame $blewUpAt" else "${"%.0f".format(peak * 100)} %"
+    return if (blewUpAt > 0) "NOT FINITE from frame $blewUpAt" else "${(peak * 100).f0} %"
 }
 
 val window = fit(ladder.map { it.second.first })
@@ -354,7 +354,7 @@ showPlaneGrid(
     *ladder
         .map { (setting, bare, curved) ->
             val (k, iterations) = setting
-            "stiffness $k x $iterations  (product ${"%.0f".format(k * iterations)})\n" +
+            "stiffness $k x $iterations  (product ${(k * iterations).f0})\n" +
                 "peak strain ${verdict(bare)}  ·  with curvature 100: ${verdict(curved)}" to bare.first.sim.debugLines()
         }
         .toTypedArray(),

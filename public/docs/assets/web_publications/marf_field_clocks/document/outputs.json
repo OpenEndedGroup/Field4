@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-29T22:27:39.178Z",
+  "capturedAt": "2026-10-31T13:36:23.401Z",
   "documentName": "marf_field_clocks",
   "outputs": [
     {
@@ -9,8 +9,8 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 479,
-      "height": 695,
+      "width": 474,
+      "height": 768,
       "path": "outputs/0.html"
     },
     {
@@ -31,8 +31,8 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 465,
-      "height": 380,
+      "width": 480,
+      "height": 213,
       "path": "outputs/2.html"
     },
     {
@@ -42,7 +42,7 @@
       "warnings": [],
       "kinds": [],
       "width": 475,
-      "height": 348,
+      "height": 590,
       "path": "outputs/3.html"
     }
   ]

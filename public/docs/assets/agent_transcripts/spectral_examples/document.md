@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 7 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 7 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. filter chains as layered curves
@@ -57,7 +57,7 @@ From `code`
 Synthesise a rising linear chirp + two steady tones, FFT it, draw the one-sided spectrum.
 
 ```edn [field-box id="spectral_one_spectrum" role="properties"]
-{"id" "spectral_one_spectrum" "index" 1 "name" "one spectrum (chirp + tones)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "one spectrum (chirp + tones)" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_one_spectrum_code_.kt" "lines" 37 "characters" 1183 "sha256" "01e932c3d5ab9fce79b80d434d93fa900a311e36f1004ebddd8850af60c5079b"}]}
+{"id" "spectral_one_spectrum" "index" 1 "name" "one spectrum (chirp + tones)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "one spectrum (chirp + tones)" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_one_spectrum_code_.kt" "lines" 37 "characters" 1123 "sha256" "512f39f02b1c655b21bbe21b355fbeaf9289138c7ede3827f91a84c5e0fbfb8d"}]}
 ```
 
 ```kotlin [field-property box="spectral_one_spectrum" name="code" path="spectral_one_spectrum_code_.kt"]
@@ -91,12 +91,12 @@ showSignals(
     xTitle = "frequency (Hz)",
     yTitle = "magnitude",
     marks = [
-        "centroid ${"%.0f".format(centroid)} Hz" to centroid,
-        "85% rolloff ${"%.0f".format(rolloff)} Hz" to rolloff,
+        "centroid ${centroid.f0} Hz" to centroid,
+        "85% rolloff ${rolloff.f0} Hz" to rolloff,
     ],
 )
 println(
-    "peak=${"%.0f".format(peak)}Hz centroid=${"%.0f".format(centroid)}Hz rolloff=${"%.0f".format(rolloff)}Hz bins=${mag.size}",
+    "peak=${peak.f0}Hz centroid=${centroid.f0}Hz rolloff=${rolloff.f0}Hz bins=${mag.size}",
 )
 ```
 
@@ -105,7 +105,7 @@ println(
 <!-- field-box id="spectral_spectrogram" index="2" -->
 
 ```edn [field-box id="spectral_spectrogram" role="properties"]
-{"id" "spectral_spectrogram" "index" 2 "name" "spectrogram of a chirp" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "spectrogram of a chirp" "_tombstone" false "frame" #afield/rect [80.0 440.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_spectrogram_code_.kt" "lines" 46 "characters" 1418 "sha256" "d8bc19ca1957d4212289f090338f84c44646e9d650658ee8d30437e053885917"}]}
+{"id" "spectral_spectrogram" "index" 2 "name" "spectrogram of a chirp" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "spectrogram of a chirp" "_tombstone" false "frame" #afield/rect [80.0 440.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_spectrogram_code_.kt" "lines" 46 "characters" 1394 "sha256" "a680719aaea956107c10a683b885076bb69198acfdb86d5c7e49b63715004b75"}]}
 ```
 
 ```kotlin [field-property box="spectral_spectrogram" name="code" path="spectral_spectrogram_code_.kt"]
@@ -141,7 +141,7 @@ val trace =
     }
 
 println(
-    "frames=${spec.numFrames} bins=${spec.numBins} centroid ${"%.0f".format(centroid.first())} -> ${"%.0f".format(centroid.last())} Hz",
+    "frames=${spec.numFrames} bins=${spec.numBins} centroid ${centroid.first().f0} -> ${centroid.last().f0} Hz",
 )
 showHeatmap(
     dB,
@@ -162,7 +162,7 @@ showHeatmap(
 <!-- field-box id="spectral_streaming" index="3" -->
 
 ```edn [field-box id="spectral_streaming" role="properties"]
-{"id" "spectral_streaming" "index" 3 "name" "streaming spectral features" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "streaming spectral features" "_tombstone" false "frame" #afield/rect [80.0 1540.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_streaming_code_.kt" "lines" 36 "characters" 1256 "sha256" "8936c339c570cfb3f26bd92fdd412b11362705a7bc67a475453a9c271387c3f4"}]}
+{"id" "spectral_streaming" "index" 3 "name" "streaming spectral features" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "streaming spectral features" "_tombstone" false "frame" #afield/rect [80.0 1540.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_streaming_code_.kt" "lines" 36 "characters" 1222 "sha256" "fb212687bd9242eccb4eada23e3f28fbb818520513326450bd29268aef593ae9"}]}
 ```
 
 ```kotlin [field-property box="spectral_streaming" name="code" path="spectral_streaming_code_.kt"]
@@ -200,7 +200,7 @@ showSignals(
     normalize = true,
 )
 println(
-    "centroid ${"%.0f".format(cTrace[3000])} -> ${"%.0f".format(cTrace[n - 200])} Hz, flux peak ${"%.3f".format(fTrace.maxOrNull() ?: 0f)}",
+    "centroid ${cTrace[3000].f0} -> ${cTrace[n - 200].f0} Hz, flux peak ${(fTrace.maxOrNull() ?: 0f).f3}",
 )
 ```
 

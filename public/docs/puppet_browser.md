@@ -331,7 +331,7 @@ and uses barycentric distance for the narrow glass edge.
     path is covered by `HeadlessPuppetBrowserTest`, which loads a committed `file://` fixture in a
     real Chromium with no GPU or network.
 
-WebGL can apply a kaleidoscope to a cooperative `<video>` element. Here the source is the
+WebGL can apply a kaleidoscope to a cooperative `<video>` element. But here the source is the
 browser's fully composited tab (cross-origin video, consent UI, DOM, fonts, controls and later
 navigations), and it enters an arbitrary native Vulkan/OpenXR pipeline without
 canvas pixel access or cooperation from the page.

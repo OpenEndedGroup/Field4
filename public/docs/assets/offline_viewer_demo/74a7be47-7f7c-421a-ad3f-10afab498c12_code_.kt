@@ -1,6 +1,8 @@
-// Writes this document's drawing layer: a frame around the two boxes, an arrow between them,
-// a heading, and a hand-drawn underline. The marks belong to this box: run it again and they
-// are replaced in place.
+/*
+Writes this document's drawing layer: a frame around the two boxes, an arrow between them,
+a heading, and a hand-drawn underline. The marks belong to this box: run it again and they
+are replaced in place.
+*/
 val flock = inside.boxes.values.first { it.name == "flock" }
 val chart = inside.boxes.values.first { it.name == "chart" }
 notation {

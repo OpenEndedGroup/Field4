@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. 3. Measure: round trip and aliasing (run)
@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="rig_measure" index="0" -->
 
 ```edn [field-box id="rig_measure" role="properties"]
-{"id" "rig_measure" "index" 0 "name" "3. Measure: round trip and aliasing (run)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3. Measure: round trip and aliasing (run)" "_tombstone" false "frame" #afield/rect [60.0 560.0 380.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rig_measure_code_.kt" "lines" 17 "characters" 680 "sha256" "ed7915efa26d60778636dc236081ae79ae2db6c5479c6fcc954f4fe2c297aa1f"}]}
+{"id" "rig_measure" "index" 0 "name" "3. Measure: round trip and aliasing (run)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3. Measure: round trip and aliasing (run)" "_tombstone" false "frame" #afield/rect [60.0 560.0 380.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rig_measure_code_.kt" "lines" 17 "characters" 632 "sha256" "b5a1df3be5d954ee1063fe69396be562330ef37b06c7c26b602e7b6323e904d2"}]}
 ```
 
 ```kotlin [field-property box="rig_measure" name="code" path="rig_measure_code_.kt"]
@@ -27,10 +27,10 @@ println(trip)
 
 val (point, area) = SceneOnARig.aliasing()
 println(
-    "point samples: dark in ${point.darkFrames} of ${point.total.size} frames, light on the rig ${"%.2f".format(point.min)}..${"%.2f".format(point.max)}",
+    "point samples: dark in ${point.darkFrames} of ${point.total.size} frames, light on the rig ${point.min.f2}..${point.max.f2}",
 )
 println(
-    "area average:  dark in ${area.darkFrames} frames, light on the rig ${"%.3f".format(area.min)}..${"%.3f".format(area.max)} (the line is worth ${SceneOnARig.LINE_TRUTH})",
+    "area average:  dark in ${area.darkFrames} frames, light on the rig ${area.min.f3}..${area.max.f3} (the line is worth ${SceneOnARig.LINE_TRUTH})",
 )
 ```
 
@@ -67,7 +67,7 @@ loop {
 <!-- field-box id="scene_sender" index="2" -->
 
 ```edn [field-box id="scene_sender" role="properties"]
-{"id" "scene_sender" "index" 2 "name" "1. Scene on the rig: RectSL to sACN (launch)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1. Scene on the rig: RectSL to sACN (launch)" "_tombstone" false "frame" #afield/rect [60.0 60.0 380.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "scene_sender_code_.kt" "lines" 57 "characters" 1559 "sha256" "a551e672dfaa99177feb1bbff8290d178f299875a2d3300ac0671885739d1ba7"}]}
+{"id" "scene_sender" "index" 2 "name" "1. Scene on the rig: RectSL to sACN (launch)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1. Scene on the rig: RectSL to sACN (launch)" "_tombstone" false "frame" #afield/rect [60.0 60.0 380.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "scene_sender_code_.kt" "lines" 56 "characters" 1547 "sha256" "cef10dd32046be0438db4330abe9f005b66917f913dca5afd605c275a53d1371"}]}
 ```
 
 ```kotlin [field-property box="scene_sender" name="code" path="scene_sender_code_.kt"]
@@ -76,9 +76,8 @@ import afield.lang.rectsl.*
 
 // A RectSL scene, drawn on the CPU, on a light rig. Edit the scene and launch again: the receiver
 // box shows what arrives. (Try the line's width, 0.25 ->wh below, or area = false further down.)
-val scene =
-    RectSLImager(
-        """
+val scene = RectSLImager(
+    """
 #rectsl
 ->wall 16 8 abstract
 ->background 0x0c1024
@@ -105,7 +104,7 @@ val scene =
   '( 0=-8  4=8 ) linear ->x
 ;
 """,
-    )
+)
 
 // 16 x 8 RGB pixels in universe 1 and four RGBWA washes in universe 2: one fixture per wall unit.
 val rig = SceneOnARig.Rig()

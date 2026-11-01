@@ -24,55 +24,64 @@ operations:
       name: ingest
       frame: { x: 980.0, y: 570.0, w: 320.0, h: 100.0 }
       properties:
-        code: "// reads the raw files"
+        code: |-
+          // reads the raw files
   - create:
       box: bl_clean
       name: clean
       frame: { x: 240.0, y: 300.0, w: 300.0, h: 100.0 }
       properties:
-        code: "// drops the malformed rows"
+        code: |-
+          // drops the malformed rows
   - create:
       box: bl_features
       name: features
       frame: { x: 300.0, y: 660.0, w: 340.0, h: 100.0 }
       properties:
-        code: "// windows, deltas, rolling means"
+        code: |-
+          // windows, deltas, rolling means
   - create:
       box: bl_model
       name: model
       frame: { x: 900.0, y: 120.0, w: 290.0, h: 100.0 }
       properties:
-        code: "// fits the thing"
+        code: |-
+          // fits the thing
   - create:
       box: bl_eval
       name: eval
       frame: { x: 150.0, y: 120.0, w: 300.0, h: 100.0 }
       properties:
-        code: "// holdout scores"
+        code: |-
+          // holdout scores
   - create:
       box: bl_report
       name: report
       frame: { x: 720.0, y: 700.0, w: 310.0, h: 100.0 }
       properties:
-        code: "// the page someone actually reads"
+        code: |-
+          // the page someone actually reads
   - create:
       box: bl_plot
       name: plot
       frame: { x: 660.0, y: 300.0, w: 280.0, h: 100.0 }
       properties:
-        code: "// showSignals(...)"
+        code: |-
+          // showSignals(...)
   - create:
       box: bl_cache
       name: cache
       frame: { x: 420.0, y: 430.0, w: 280.0, h: 100.0 }
       properties:
-        code: "// parquet on disk"
+        code: |-
+          // parquet on disk
   - create:
       box: bl_alert
       name: alert
       frame: { x: 840.0, y: 400.0, w: 270.0, h: 100.0 }
       properties:
-        code: "// pings when a score drops"
+        code: |-
+          // pings when a score drops
   - connect: { parent: bl_ingest, child: bl_clean }
   - connect: { parent: bl_clean, child: bl_features }
   - connect: { parent: bl_clean, child: bl_cache }

@@ -708,7 +708,7 @@ object ReactiveRuns {
                         val message = "propDown: '${label(next)}' reran $MAX_RUNS_PER_CASCADE times in one cascade; stopping there (is there a cycle?)"
                         lprintln("warning,autorun", message)
                         // The server log is not where anyone is looking: say it on the box that stopped.
-                        runCatching { next.error(message) }
+                        runCatching { next.displayError(message) }
                         continue
                     }
                     // A reader still evaluating (or blocked in a pull) finishes first; it may be up to

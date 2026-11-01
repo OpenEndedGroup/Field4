@@ -41,8 +41,7 @@ operations:
                   val after = part.mesh(tolerance = tolerance).toTriMesh().weld()
 
                   println(
-                      "B-rep volume: ${"%.1f".format(original.getDouble("volume"))} → " +
-                          "${"%.1f".format(changed.getDouble("volume"))} mm³",
+                      "B-rep volume: ${original.getDouble("volume").f1} → " + "${changed.getDouble("volume").f1} mm³",
                   )
                   println("STEP ${part.exportStep().size} bytes; STL ${part.exportStl().size} bytes")
                   println("The hole is blind at width > 40 mm: its cut depth stays 20 mm.")

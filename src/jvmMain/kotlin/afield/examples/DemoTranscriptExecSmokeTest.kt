@@ -96,6 +96,8 @@ object DemoTranscriptExecSmokeTest {
 
     /** Pure-compute demos that are safe to run to completion headless. */
     internal val EXECUTE = setOf(
+        // visualizers.md's presets demo: a preset bar, record button and MIDI learn; the MIDI box feeds stand-in CCs.
+        "controls_presets_morph_midi",
         // Loads a committed glTF fixture through Assimp and opens column()/tree() on it; no renderer.
         "assimp_browsing",
         // stacksl_examples.md's fitting demo: fits a StackSL program's literals on the CPU.
@@ -411,6 +413,9 @@ object DemoTranscriptExecSmokeTest {
         // Controls renewal (2026-10-29): a five-control surface feeding a live figure and a slider
         // that re-renders itself mid-drag. Pure CPU, output-channel controls only.
         "controls_surface",
+        // History renewal (2026-10-30): one box edited three times with autosave waits between, so
+        // the document holds four versions for the history view's This Box list. Pure CPU.
+        "history_box_story",
         // Kolakoski counts crossed with Euclidean placement. Pure CPU: the figures are
         // `showPatRollOf` (SVG into an output channel) and the audio is `showDirtAudio` /
         // `patRenderStereoDirt`, which mixes samples into a buffer offline — no audio device, and

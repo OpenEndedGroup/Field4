@@ -57,6 +57,11 @@ class RollingCapture(
         .mipLevels(1)
         .usage(VK_IMAGE_USAGE_TRANSFER_DST_BIT or VK_IMAGE_USAGE_TRANSFER_SRC_BIT)
     private val snapshotImage = Image(renderer.device, snapshotImageData)
+    /**
+     * A view of the snapshot image itself, so a pass can sample the partly-rebuilt frame on the GPU
+     * without waiting for a CPU readback. Expect to see the strip boundary: the rows above
+     * [recordStrip]'s next row are from this sweep and the rows below are from the previous one.
+     */
     val snapshotView = ImageView(
         renderer.device,
         snapshotImage,
@@ -66,6 +71,11 @@ class RollingCapture(
             .mipLevels(1)
     )
 
+    /**
+     * Host-visible, host-coherent buffer holding one whole captured frame, tightly packed at the
+     * capture's own size after `downsample`. [copySnapshotToStaging] fills it; nothing here
+     * synchronises the read, so wait on that copy's fence before looking at the bytes.
+     */
     val stagingBuffer = VulkanBuffer(
         renderer = renderer,
         requestedSize = targetWidth.toLong() * targetHeight.toLong() * source.imageData.bytesPerPixel,
@@ -75,6 +85,11 @@ class RollingCapture(
 
     private var snapshotLayout: Int = VK_IMAGE_LAYOUT_UNDEFINED
     private var nextRow: Int = 0
+    /**
+     * True once the strips have covered the whole image and the snapshot is a complete frame. While
+     * it is true [recordStrip] does nothing, so capture pauses rather than overwriting a frame
+     * nobody has taken; [copySnapshotToStaging] clears it and the next strip starts a new sweep.
+     */
     var fullFrameReady: Boolean = false
         private set
 

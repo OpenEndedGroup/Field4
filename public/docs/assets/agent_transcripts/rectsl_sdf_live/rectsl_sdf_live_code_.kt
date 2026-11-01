@@ -68,21 +68,18 @@ if (!field.ok) println("fidelity caveats: ${field.notes.joinToString("; ")}")
 
 // 4. One fullscreen triangle, no vertex attributes, and a clock. `time` is the
 //    only thing that changes per frame — the geometry never moves on the CPU.
-val module =
-    Module(
-            parameters(renderer) {
-                name = "rectsl-sdf-live"
-                vertex = RectSLSdfShader.VERTEX
-                fragment = fragmentSource
-                blend = false
-                depthTest = false
-                primitiveType = triangles
-            },
-        )
-        .pointer()
+val module = Module(
+    parameters(renderer) {
+        name = "rectsl-sdf-live"
+        vertex = RectSLSdfShader.VERTEX
+        fragment = fragmentSource
+        blend = false
+        depthTest = false
+        primitiveType = triangles
+    },
+).pointer()
 
-val mesh = Mesh(renderer, module)
-mesh.resize(3, 0, module)
+val mesh = fullscreenTriangle(module)
 
 val startedAt = System.nanoTime()
 mesh.push.bind("time") {

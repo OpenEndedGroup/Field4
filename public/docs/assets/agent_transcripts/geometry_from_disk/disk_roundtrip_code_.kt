@@ -39,7 +39,7 @@ try {
     println(row("via ball.stl", viaStl))
     println(row("via ball.stl, welded", welded))
     println()
-    println("mean edge length ${"%.5f".format(source.meanEdgeLength())} — the scale that makes")
+    println("mean edge length ${source.meanEdgeLength().f5} — the scale that makes")
     println("$weldTolerance a safe weld tolerance rather than a guess")
     println()
     println("OBJ indexes positions, normals and uvs separately, so it keeps the structure and")

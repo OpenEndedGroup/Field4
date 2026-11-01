@@ -21,7 +21,7 @@ val sweep = KeyframeSweep(
         extrapolationProbability = 0.3,
     ),
     onRender = { m ->
-        println("${m.id} ${m.status} — " + m.parents.joinToString(", ") { "${it.key} ${"%.2f".format(it.weight)}" })
+        println("${m.id} ${m.status} — " + m.parents.joinToString(", ") { "${it.key} ${it.weight.f2}" })
     },
 )
 
@@ -56,5 +56,5 @@ frames {
     written `toString`.
     */
     println("$report")
-    println("that is ${"%.0f".format(report.rendersPerHour())} renders an hour")
+    println("that is ${report.rendersPerHour().f0} renders an hour")
 }

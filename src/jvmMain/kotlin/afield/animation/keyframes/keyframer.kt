@@ -119,6 +119,8 @@ import java.nio.file.Path
 import java.time.Instant
 import kotlin.io.path.createDirectories
 import kotlin.io.path.exists
+import kotlin.io.path.isDirectory
+import kotlin.io.path.isRegularFile
 import kotlin.io.path.listDirectoryEntries
 import kotlin.io.path.name
 import kotlin.math.roundToInt
@@ -1118,6 +1120,30 @@ class KeyframeScope(val schemaVersion: Int = 0) {
         schemaMissingKeys.getOrPut(schemaVersion) { mutableMapOf() }[name] = value
     }
 
+    private val delegatedControls = linkedMapOf<String, KeyframeControl<*>>()
+    private val controlChangeListeners = mutableListOf<(String) -> Unit>()
+
+    internal fun declareControl(control: KeyframeControl<*>) {
+        delegatedControls.remove(control.name)
+        delegatedControls[control.name] = control
+    }
+
+    internal fun declaredControls(): List<KeyframeControl<*>> = delegatedControls.values.toList()
+
+    internal fun fireControlChange(name: String) {
+        controlChangeListeners.toList().forEach { it(name) }
+    }
+
+    /**
+     * Call [listener] with the key name whenever a control declared with `by keys.slider(...)` (and the
+     * other [KeyframeControl] kinds) changes from outside the code: a hand on the control, or a recalled
+     * or morphed key. Assigning the local in code does not call it, and neither does a rerun: the local
+     * already holds the panel's last value from its declaration, so the body that follows sees it.
+     */
+    fun onChange(listener: (name: String) -> Unit) {
+        controlChangeListeners += listener
+    }
+
     /**
      * Read every registered target *right now* into a new [Key] — the snapshot call.
      *
@@ -1372,6 +1398,32 @@ class KeyframeScope(val schemaVersion: Int = 0) {
      * `.versions` directory exists but cannot be listed, rather than guess at a history it cannot see.
      */
     fun keyVersions(path: Path): List<KeyVersionInfo> = readKeyVersions(path)
+
+    /**
+     * The names of the keys saved directly in [dir] — each file [saveKey] wrote there, sorted, without
+     * the `.versions` histories beside them. Empty when [dir] does not exist yet. This is the list a
+     * preset strip shows; [KeyframeCollection.load] reads the same files with their contents.
+     */
+    fun savedKeyNames(dir: Path): List<String> {
+        if (!dir.isDirectory()) return emptyList()
+        return dir.listDirectoryEntries()
+            .filter { it.isRegularFile() && !it.name.startsWith(".") }
+            .map { it.name }
+            .sorted()
+    }
+
+    /**
+     * [interpolate] along a row of keys: they sit evenly along [t] in `0..1`, in order, and between
+     * two neighbours the blend is theirs. [t] is clamped here, since past either end there is no
+     * neighbour to extrapolate towards. One key comes back as itself; none is an error.
+     */
+    fun interpolateAlong(keys: List<Key>, t: Double): Key {
+        require(keys.isNotEmpty()) { "interpolateAlong needs at least one key" }
+        if (keys.size == 1) return keys[0]
+        val s = t.coerceIn(0.0, 1.0) * (keys.size - 1)
+        val i = s.toInt().coerceAtMost(keys.size - 2)
+        return interpolate(keys[i], keys[i + 1], s - i)
+    }
 
     private fun saveKeyVersion(path: Path, text: String, note: String?) {
         val dir = keyVersionsDir(path)

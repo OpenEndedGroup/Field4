@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. path tracing renderer
@@ -32,7 +32,7 @@ start(renderer::run)
 <!-- field-box id="rectsl_spacetime_trace" index="1" -->
 
 ```edn [field-box id="rectsl_spacetime_trace" role="properties"]
-{"id" "rectsl_spacetime_trace" "index" 1 "name" "a RectSL animation, as a solid" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "a RectSL animation, as a solid" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_spacetime_trace_code_.kt" "lines" 230 "characters" 8669 "sha256" "4112bf5f38787678dda3ff85f95785d61765141654465e85471265e1beeb579a"}]}
+{"id" "rectsl_spacetime_trace" "index" 1 "name" "a RectSL animation, as a solid" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "a RectSL animation, as a solid" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_spacetime_trace_code_.kt" "lines" 229 "characters" 8641 "sha256" "4327f8f9aec99538cc3eb6827cbbb169e95da64fff6d20390ecf80fadb3557d7"}]}
 ```
 
 ```kotlin [field-property box="rectsl_spacetime_trace" name="code" path="rectsl_spacetime_trace_code_.kt"]
@@ -61,21 +61,21 @@ a time, linearly interpolated, and `->x` takes one wherever it takes a number.
 */
 val source =
     """
-#rectsl
-->wall 8 8 abstract
-->duration 4
-->fps 30
+    #rectsl
+    ->wall 8 8 abstract
+    ->duration 4
+    ->fps 30
 
-"sweep" rect
-  0.7 2.4 ->wh
-  '( 0=-2.6  4=2.6 ) ->x
-  '( 0=0  4=3.14159 ) ->rot
+    "sweep" rect
+      0.7 2.4 ->wh
+      '( 0=-2.6  4=2.6 ) ->x
+      '( 0=0  4=3.14159 ) ->rot
 
-"pulse" rect
-  1.2 1.2 ->wh
-  1.6 -1.4 ->xy
-  '( 0=0.3  4=2.2 ) ->w
-"""
+    "pulse" rect
+      1.2 1.2 ->wh
+      1.6 -1.4 ->xy
+      '( 0=0.3  4=2.2 ) ->w
+    """
         .trimIndent()
 
 val program = compileRectSL(source).program
@@ -116,10 +116,9 @@ for (k in 0 until nt) {
     }
 }
 val sampleMs = (System.nanoTime() - sampledAt) / 1e6
-println("sampled ${inner.size} points, ${nt} tapes, ${"%.0f".format(sampleMs)} ms")
+println("sampled ${inner.size} points, ${nt} tapes, ${sampleMs.f0} ms")
 println(
-    "  ${inner.count { it < 0f }} of them inside, distances " +
-        "${"%.3f".format(inner.min())} to ${"%.3f".format(inner.max())}",
+    "  ${inner.count { it < 0f }} of them inside, distances " + "${inner.min().f3} to ${inner.max().f3}",
 )
 
 val innerBounds = boundsOf(
@@ -145,7 +144,7 @@ println(
 )
 println(
     "  levelSetOf:    ${cutSolid.triangleCount} triangles, status ${cutSolid.status}, " +
-        "genus ${cutSolid.genus}, volume ${"%.3f".format(cutSolid.volume)}",
+        "genus ${cutSolid.genus}, volume ${cutSolid.volume.f3}",
 )
 cutSolid.close()
 
@@ -177,13 +176,13 @@ println(
 val whole = Solid.levelSetOf(spacetime, bounds, edgeLength = 0.12)
 println(
     "  levelSetOf:    ${whole.triangleCount} triangles, status ${whole.status}, " +
-        "genus ${whole.genus}, volume ${"%.3f".format(whole.volume)}",
+        "genus ${whole.genus}, volume ${whole.volume.f3}",
 )
 
 val parts = whole.decompose()
 println(
     "  ${parts.size} component(s): volumes " +
-        parts.map { "%.2f".format(it.volume) }.joinToString(", ") +
+        parts.map { it.volume.f2 }.joinToString(", ") +
         " — connected because the two rects overlap on screen at some frame",
 )
 

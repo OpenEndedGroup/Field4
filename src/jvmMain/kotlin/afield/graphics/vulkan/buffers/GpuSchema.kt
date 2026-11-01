@@ -42,8 +42,11 @@ annotation class GpuIgnore
 
 /** The scalar/vector leaves understood by the first GPU-schema ABI. */
 enum class GpuPrimitiveKind(
+    /** How this leaf is spelled in the generated GLSL. */
     val glslType: String,
+    /** The std430 base alignment: a field of this kind starts at the next multiple of it. */
     val alignmentBytes: Int,
+    /** How many bytes the value occupies, which for `vec3` is 12 against an alignment of 16, so a scalar may follow it at +12. */
     val sizeBytes: Int
 ) {
     FLOAT("float", 4, 4),
@@ -58,11 +61,15 @@ enum class GpuPrimitiveKind(
 }
 
 sealed class GpuFieldType {
+    /** The std430 base alignment of this field, whether leaf or nested struct. */
     abstract val alignmentBytes: Int
+    /** How many bytes this field occupies. For a nested struct it is that struct's rounded size. */
     abstract val sizeBytes: Int
+    /** The GLSL type name written for this field: a built-in for a leaf, the struct's own name for a nested one. */
     abstract val glslType: String
     internal abstract val signature: String
 
+    /** A scalar or vector leaf, taking its layout straight from the kind. */
     data class Primitive(val kind: GpuPrimitiveKind) : GpuFieldType() {
         override val alignmentBytes: Int get() = kind.alignmentBytes
         override val sizeBytes: Int get() = kind.sizeBytes
@@ -70,6 +77,7 @@ sealed class GpuFieldType {
         override val signature: String get() = kind.name
     }
 
+    /** Another `@GpuStruct` laid out inline at this field's offset, by its own schema. It is the bytes, not a pointer to them. */
     data class Struct(val schema: GpuSchema<*>) : GpuFieldType() {
         override val alignmentBytes: Int get() = schema.alignmentBytes
         override val sizeBytes: Int get() = schema.sizeBytes
@@ -79,12 +87,17 @@ sealed class GpuFieldType {
 }
 
 data class GpuField(
+    /** The Kotlin property's name, which is used unchanged as the GLSL field name. */
     val name: String,
+    /** Where the field starts, in bytes from the beginning of the struct. */
     val offsetBytes: Int,
+    /** Whether this is a leaf or a nested struct, and the layout that follows from it. */
     val type: GpuFieldType,
     internal val property: KProperty1<Any, *>
 ) {
+    /** How many bytes the field occupies, from its [type]. */
     val sizeBytes: Int get() = type.sizeBytes
+    /** The field's std430 base alignment, from its [type]. */
     val alignmentBytes: Int get() = type.alignmentBytes
 }
 
@@ -96,10 +109,15 @@ data class GpuField(
  * layout implementations.
  */
 class GpuSchema<T : Any> internal constructor(
+    /** The annotated Kotlin class this layout was reflected from, and the key it is cached under. */
     val kotlinClass: KClass<T>,
+    /** The name of the generated GLSL struct: the one given to the annotation, or the class's simple name. */
     val glslName: String,
+    /** The fields in primary-constructor order, with `@GpuIgnore` ones left out. That order is the ABI, so reordering the constructor changes the layout. */
     val fields: List<GpuField>,
+    /** The struct's own base alignment, the largest of its fields', or 1 for a struct with no fields. */
     val alignmentBytes: Int,
+    /** The struct's size in bytes, the end of the last field rounded up to [alignmentBytes]. */
     val sizeBytes: Int
 ) {
     /** Struct arrays use the struct's rounded size as their std430 stride. */
@@ -108,26 +126,44 @@ class GpuSchema<T : Any> internal constructor(
     /** `buffer_reference_align` is a promise made by the shader; 16 is a conservative BDA baseline. */
     val referenceAlignmentBytes: Int = maxOf(16, alignmentBytes)
 
+    /**
+     * The layout written out in full: the struct's name, alignment and size, then every field's
+     * name, offset and type. Two schemas agree on memory exactly when these strings match, and
+     * comparing them says which field moved.
+     */
     val abiSignature: String by lazy {
         "$glslName[$alignmentBytes,$sizeBytes]:" +
             fields.joinToString(";") { "${it.name}@${it.offsetBytes}:${it.type.signature}" }
     }
 
+    /**
+     * The first eight bytes of the signature's SHA-256, as sixteen hex characters: short enough to
+     * carry in a shader template or a log line as a layout version.
+     */
     val abiHash: String by lazy {
         val digest = MessageDigest.getInstance("SHA-256").digest(abiSignature.toByteArray(Charsets.UTF_8))
         digest.take(8).joinToString("") { "%02x".format(it) }
     }
 
+    /** The named field. A name this struct does not have is an error that names the struct, not a null. */
     fun field(name: String): GpuField =
         fields.firstOrNull { it.name == name } ?: error("$glslName has no GPU field '$name'")
 
+    /** The named field's byte offset from the start of the struct. */
     fun offsetOf(name: String): Int = field(name).offsetBytes
 
+    /** The field's byte offset, named by property reference, so a renamed Kotlin property carries its GLSL field name with it. */
     fun offsetOf(property: KProperty1<T, *>): Int = offsetOf(property.name)
 
+    /**
+     * The device address of element [index] of an array of this struct starting at [baseAddress],
+     * at [strideBytes] spacing. [baseAddress] is taken as the start of the array itself; nothing
+     * here knows about an offset into a larger buffer.
+     */
     fun addressOf(baseAddress: Long, index: Int = 0): Long =
         baseAddress + index.toLong() * strideBytes.toLong()
 
+    /** The device address of one field of element [index], for a shader that reads a single member rather than the whole struct. */
     fun addressOf(baseAddress: Long, index: Int, field: String): Long =
         addressOf(baseAddress, index) + offsetOf(field)
 
@@ -146,6 +182,10 @@ class GpuSchema<T : Any> internal constructor(
         return i
     }
 
+    /**
+     * A bounds-checked view for writing [count] values into [target] at this struct's stride. The
+     * capacity is checked once, here, rather than on each write.
+     */
     fun arrayView(target: ByteBuffer, count: Int, baseOffset: Int = 0): GpuArrayView<T> =
         GpuArrayView(this, target, count, baseOffset)
 
@@ -160,6 +200,7 @@ class GpuSchema<T : Any> internal constructor(
     fun glslStructDeclarations(): String =
         declarationOrder().joinToString("\n\n") { it.renderStruct() }
 
+    /** The `buffer_reference` block for a pointer to a single value of this struct, named after it with `Ref` appended. */
     fun glslReferenceDeclaration(): String = buildString {
         append("layout(buffer_reference, std430, buffer_reference_align = ")
         append(referenceAlignmentBytes)
@@ -170,6 +211,7 @@ class GpuSchema<T : Any> internal constructor(
         append(" value;\n};")
     }
 
+    /** The `buffer_reference` block for a pointer to an unsized array of this struct, named after it with `Array` appended. */
     fun glslArrayReferenceDeclaration(): String = buildString {
         append("layout(buffer_reference, std430, buffer_reference_align = ")
         append(referenceAlignmentBytes)
@@ -263,9 +305,12 @@ class GpuSchema<T : Any> internal constructor(
 
 /** A CPU view over an array whose stride is governed by one [GpuSchema]. */
 class GpuArrayView<T : Any> internal constructor(
+    /** The layout every element is written with, and the stride between them. */
     val schema: GpuSchema<T>,
     private val target: ByteBuffer,
+    /** How many elements the view covers. Every index is checked against it. */
     val count: Int,
+    /** Where element zero starts, in bytes from the beginning of the target buffer. */
     val baseOffset: Int
 ) {
     init {
@@ -276,16 +321,22 @@ class GpuArrayView<T : Any> internal constructor(
         }
     }
 
+    /** Packs [value] over element [index], leaving the target buffer's own position and byte order alone. */
     operator fun set(index: Int, value: T) {
         checkIndex(index)
         schema.write(value, target, baseOffset + index * schema.strideBytes)
     }
 
+    /** Where element [index] starts, in bytes from the beginning of the target buffer, [baseOffset] included. */
     fun byteOffsetOf(index: Int): Int {
         checkIndex(index)
         return baseOffset + index * schema.strideBytes
     }
 
+    /**
+     * The device address of element [index], given the address the target buffer begins at. This
+     * counts [baseOffset] in, unlike the schema's own `addressOf`, which measures from the array.
+     */
     fun addressOf(baseAddress: Long, index: Int): Long {
         checkIndex(index)
         return baseAddress + byteOffsetOf(index).toLong()
@@ -302,8 +353,16 @@ fun <T : Any> Structure.bindGpu(schema: GpuSchema<T>, value: () -> T) {
     bindAll { writer }
 }
 
+/**
+ * The schema for [T], built on first use and cached by class thereafter.
+ *
+ * [T] must carry the `@GpuStruct` annotation and have a primary constructor of supported field
+ * types; anything else is an error naming the class. A struct that reaches itself through an
+ * inline field is refused too, since an inline layout cannot be recursive.
+ */
 inline fun <reified T : Any> gpuSchema(): GpuSchema<T> = gpuSchema(T::class)
 
+/** The schema for a class known only at runtime, built on first use and cached the same way as the reified form. */
 fun <T : Any> gpuSchema(type: KClass<T>): GpuSchema<T> = GpuSchemas.schema(type)
 
 private object GpuSchemas {

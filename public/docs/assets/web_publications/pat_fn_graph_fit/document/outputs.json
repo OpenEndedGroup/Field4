@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-29T22:30:53.126Z",
+  "capturedAt": "2026-10-31T13:40:54.679Z",
   "documentName": "pat_fn_graph_fit",
   "outputs": [
     {
@@ -35,7 +35,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 478,
+      "width": 433,
       "height": 67,
       "path": "outputs/2.html"
     },
@@ -45,7 +45,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 557,
+      "width": 509,
       "height": 314,
       "path": "outputs/3.html"
     }

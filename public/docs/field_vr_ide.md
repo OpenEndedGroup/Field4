@@ -59,6 +59,10 @@ document the panel displays.
 
 ## A real keyboard
 
+For a keyboard attached to the PC while OpenXR is active, set `headsetInput = false` in the
+`FieldVrWorkspace(...)` constructor in box 2, then stop and relaunch that box. This selects the
+desktop focus behaviour below. The default Linux/OpenXR mode uses the dedicated headset input path.
+
 A USB or Bluetooth keyboard attached to the desktop uses the native companion window's key and text
 callbacks, forwarded into the focused Chromium editor. The companion displays the same page front-on,
 with aspect-correct direct mouse input. **Real keyboard** explicitly requests desktop window focus.
@@ -97,7 +101,8 @@ sudo python3 tools/setup_wivrn_input.py --install --user "$USER" --serve-port 84
 
 This grants your user access only to WiVRn's two identified virtual devices, excludes them from desktop
 libinput, enables WiVRn HID forwarding, and adds a private Tailscale HTTPS listener on the unused
-port 8443. Existing listeners are preserved; an occupied or public target port is refused. Omit
+port 8443. It registers that exact hostname and port with Field's browser-origin guard; restart
+Field after installation so it loads the registration. Existing listeners are preserved; an occupied or public target port is refused. Omit
 `--serve-port 8443` when only input setup is wanted. Reconnect WiVRn afterwards so the desktop
 sees newly created devices with the rule applied. Stop the VR panel to release Field's grabs;
 the device rule continues excluding those forwarded devices from the desktop.
@@ -116,6 +121,14 @@ translated without relying on a desktop keyboard seat. For example, use layout `
 `intl` for international dead keys, or layout `fr` for a French keyboard.
 
 ## A remote browser on the same document
+
+If you installed the helper before hostname registration was added, register the existing private
+listener as your ordinary user, then restart Field. This does not change the listener:
+
+```diffstatic {data-lang=bash}
+python3 tools/setup_wivrn_input.py --register-serve-host 8443
+```
+
 
 The setup helper prints a **Private Field URL** after installing the listener. Open that address
 from a browser with access to the same tailnet. Set its `file` query parameter to the document
@@ -136,9 +149,9 @@ window on the PC. The helper adds a private listener while preserving existing l
 ## What has been verified
 
 As of **1 November 2026**, the reference Linux/NVIDIA setup has the device rule installed, WiVRn
-HID forwarding enabled and a responding private Tailscale HTTPS endpoint. Forty-two focused
-JVM/browser tests and four setup-helper tests pass. Two real Chromium clients exchanged edits
-through a live Field server, including one using the host's Tailscale address; the receiving
+HID forwarding enabled and a responding private Tailscale HTTPS endpoint. Automated input,
+browser, hostname-policy and setup-helper checks pass. Two real Chromium clients exchanged edits
+through the installed private Tailscale Serve listener and a live Field server; the receiving
 client kept its independent input focus. That collaboration check used two clients on one host.
 The updated Vulkan companion was also captured and inspected.
 
@@ -167,6 +180,7 @@ val vr = FieldVrWorkspace(
     width = 2560,
     height = 1600,
 )
+
 // Construct after the initial renderer frame, then run the renderer normally.
 // Close vr when its owning box stops.
 ```

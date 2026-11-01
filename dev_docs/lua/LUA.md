@@ -80,7 +80,7 @@ long decay (2 s) consecutive notes overlap and crossings go wrong too (348 for 3
 - Recording is bounded (50000 hook events per run), after which the run continues unobserved and the
   first unrecorded line says so. `AFIELD_LUA_LINE_NOTES=0` turns it off.
 - `lua_tolstring` converts a number in place (and confuses `lua_next`); `toKotlin` checks the type first.
-- Error lines: `box.error(message, "code", execute.line + chunkLine)` — `Execute.line` is 0-based and the
+- Error lines: `box.displayError(message, "code", execute.line + chunkLine)` — `Execute.line` is 0-based and the
   chunk line 1-based, the same sum Pd uses. Verified live: `print(t.missing.field)` on line 3 is marked on
   line 3; the runaway loop on line 4 of its box on line 4. Errors are painted after the run's output.
 - A box made outside a document has no `root` (`inside` is `lateinit`); `findBox`/`named` fall back to the

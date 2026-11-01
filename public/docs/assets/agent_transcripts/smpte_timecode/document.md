@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 4 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 4 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. 2 - LTC encode, mangle, decode
@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="tc_ltc_roundtrip" index="0" -->
 
 ```edn [field-box id="tc_ltc_roundtrip" role="properties"]
-{"id" "tc_ltc_roundtrip" "index" 0 "name" "2 - LTC encode, mangle, decode" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - LTC encode, mangle, decode" "_tombstone" false "frame" #afield/rect [520.0 60.0 400.0 140.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tc_ltc_roundtrip_code_.kt" "lines" 47 "characters" 2121 "sha256" "746aea5fabd802077c4ff5cc5bcb3fa3a23c5f1782c387f2d65859340dd62124"}]}
+{"id" "tc_ltc_roundtrip" "index" 0 "name" "2 - LTC encode, mangle, decode" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - LTC encode, mangle, decode" "_tombstone" false "frame" #afield/rect [520.0 60.0 400.0 140.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tc_ltc_roundtrip_code_.kt" "lines" 47 "characters" 2109 "sha256" "eec3513b833ac584dddf62d00518ec2baa96670b5fb556ebf22f15a9700f00c8"}]}
 ```
 
 ```kotlin [field-property box="tc_ltc_roundtrip" name="code" path="tc_ltc_roundtrip_code_.kt"]
@@ -53,7 +53,7 @@ display(
     <polyline points="$spd" fill="none" stroke="#c52" stroke-width="1.5"/>
     <text x="4" y="14" fill="#2a7">decoded frame (0 … ${fMax.toInt()})</text>
     <text x="4" y="${h - 6}" fill="#c52">measured speed (0.8 … 1.2)</text>
-    <text x="${w / 2 - 40}" y="${h + 22}" fill="#999">playback time, s (0 … ${"%.2f".format(tMax)})</text>
+    <text x="${w / 2 - 40}" y="${h + 22}" fill="#999">playback time, s (0 … ${tMax.f2})</text>
   </g></svg>""",
 )
 markdown(
@@ -69,7 +69,7 @@ markdown(
 <!-- field-box id="tc_arithmetic" index="1" -->
 
 ```edn [field-box id="tc_arithmetic" role="properties"]
-{"id" "tc_arithmetic" "index" 1 "name" "1 - Drop-frame arithmetic" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - Drop-frame arithmetic" "_tombstone" false "frame" #afield/rect [60.0 60.0 400.0 140.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tc_arithmetic_code_.kt" "lines" 7 "characters" 326 "sha256" "28cab6f99da0c271541e40e09ab6a079e7da89f8dffd125194237e65a97d0836"}]}
+{"id" "tc_arithmetic" "index" 1 "name" "1 - Drop-frame arithmetic" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - Drop-frame arithmetic" "_tombstone" false "frame" #afield/rect [60.0 60.0 400.0 140.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tc_arithmetic_code_.kt" "lines" 7 "characters" 314 "sha256" "789c0e69414db244b03029decba7e3ecad92d5e53f119baed46f75c72eb53c32"}]}
 ```
 
 ```kotlin [field-property box="tc_arithmetic" name="code" path="tc_arithmetic_code_.kt"]
@@ -78,7 +78,7 @@ import afield.io.timecode.*
 val t = Timecode.parse("00:00:59;29")
 markdown(
     "main",
-    "`$t` + 1 frame = `${t + 1}`  \n`${Timecode.parse("00:09:59;29")}` + 1 frame = `${Timecode.parse("00:09:59;29") + 1}`  \nan hour of drop-frame labels is ${"%.3f".format(Timecode.parse("01:00:00;00").totalSeconds)} s of wall time",
+    "`$t` + 1 frame = `${t + 1}`  \n`${Timecode.parse("00:09:59;29")}` + 1 frame = `${Timecode.parse("00:09:59;29") + 1}`  \nan hour of drop-frame labels is ${Timecode.parse("01:00:00;00").totalSeconds.f3} s of wall time",
 )
 ```
 
@@ -116,7 +116,7 @@ markdown(
 <!-- field-box id="tc_follow_ltc" index="3" -->
 
 ```edn [field-box id="tc_follow_ltc" role="properties"]
-{"id" "tc_follow_ltc" "index" 3 "name" "4 - A clock following LTC" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - A clock following LTC" "_tombstone" false "frame" #afield/rect [520.0 260.0 400.0 140.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tc_follow_ltc_code_.kt" "lines" 13 "characters" 649 "sha256" "23897bc5a6049838a441367eebec28f7ded5699ae4a19b12d85f89c4abd794eb"}]}
+{"id" "tc_follow_ltc" "index" 3 "name" "4 - A clock following LTC" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - A clock following LTC" "_tombstone" false "frame" #afield/rect [520.0 260.0 400.0 140.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "tc_follow_ltc_code_.kt" "lines" 12 "characters" 629 "sha256" "5351abb133e025f560d7664e0382e144f5cce23d7aa91e24ce54847b7f5a111e"}]}
 ```
 
 ```kotlin [field-property box="tc_follow_ltc" name="code" path="tc_follow_ltc_code_.kt"]
@@ -129,8 +129,7 @@ val readings = ArrayList<String>()
 for (i in ltc.indices step 512) {
     clock.feedLtc(ltc, i, minOf(512, ltc.size - i))
     Thread.sleep(10) // ~ the real duration of 512 samples
-    if (clock.locked && i % (512 * 16) == 0)
-        readings += "${clock.now()} (${clock.source}, speed ${"%.2f".format(clock.speed)})"
+    if (clock.locked && i % (512 * 16) == 0) readings += "${clock.now()} (${clock.source}, speed ${clock.speed.f2})"
 }
 markdown("main", readings.joinToString("  \n"))
 ```

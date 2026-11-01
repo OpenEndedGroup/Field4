@@ -479,9 +479,6 @@
   // are all plausible variable names in this corpus -- gating on the paren keeps a variable named
   // `normal` from reading as `normalize`'s cousin.
   //
-  // Deliberately not attempted: `/* … */` spanning lines. `highlightLine` colours one line at a
-  // time, so the continuation lines of a block comment are not knowable here -- the same limit the
-  // cpp alias had, and the reason the corpus uses `//`.
   function registerGlslLanguage() {
     if (!window.hljs || glslRegistered || hljs.getLanguage("glsl")) {
       glslRegistered = true;
@@ -1041,6 +1038,54 @@
     return line === "" ? html.replace(" ", "&nbsp;") : html;
   }
 
+  // Highlights the fence as one source so multi-line constructs (`/* … */`, raw strings) keep
+  // their scope on continuation lines, then splits hljs's HTML at newlines, closing the spans open
+  // at each break and reopening them on the next line so every line stays self-contained.
+  function highlightLines(lines, language) {
+    if (!window.hljs) return lines.map((line) => highlightLine(line, language));
+    registerFieldLanguages();
+    const resolved = resolveLanguage(language);
+    if (!resolved) return lines.map((line) => highlightLine(line, language));
+    const html = hljs.highlight(lines.join("\n"), { language: resolved, ignoreIllegals: true }).value;
+    const out = [];
+    const open = [];
+    let current = "";
+    const tag = /<span[^>]*>|<\/span>|\n/g;
+    let last = 0;
+    let m;
+    while ((m = tag.exec(html)) !== null) {
+      current += html.slice(last, m.index);
+      last = tag.lastIndex;
+      if (m[0] === "\n") {
+        out.push(current + "</span>".repeat(open.length));
+        current = open.join("");
+      } else if (m[0] === "</span>") {
+        open.pop();
+        current += m[0];
+      } else {
+        open.push(m[0]);
+        current += m[0];
+      }
+    }
+    out.push(current + html.slice(last));
+    return out.map((h, i) => (lines[i] === "" ? h + "&nbsp;" : h));
+  }
+
+  // A line that carries no code -- blank, or nothing but comment -- gets no line number, so the
+  // gutter counts only the lines a reader would step through. Numbering is not compacted: the
+  // numbered lines keep their real positions.
+  const proseProbe = typeof document !== "undefined" ? document.createElement("div") : null;
+  function isProseLine(line, html) {
+    if (line.trim() === "") return true;
+    if (!html || !proseProbe) return false;
+    proseProbe.innerHTML = html;
+    let commentText = "";
+    for (const c of proseProbe.querySelectorAll(".hljs-comment")) {
+      if (!c.parentElement.closest(".hljs-comment")) commentText += c.textContent;
+    }
+    return commentText.trim() !== "" && commentText.replace(/\s/g, "") === proseProbe.textContent.replace(/\s/g, "");
+  }
+
   function applyInlineToHighlighted(html, segments) {
     const container = document.createElement("div");
     container.innerHTML = html === "" ? "&nbsp;" : html;
@@ -1193,7 +1238,7 @@
       }
       const hasAnyMarker = markers.size > 0;
       const useHl = Boolean(window.hljs);
-      const highlightedLines = useHl ? lines.map((line) => highlightLine(line, this.language)) : null;
+      const highlightedLines = useHl ? highlightLines(lines, this.language) : null;
 
       const startIdx = this.foldTop ? this.prefixLen : 0;
       const endIdx = this.foldBottom ? lines.length - this.suffixLen : lines.length;
@@ -1222,7 +1267,8 @@
         const marker = markers.get(idx) || "";
         const markerHtml = marker ? `<span class="marker ${marker}"></span>` : "";
         cls += marker ? " with-marker" : " no-marker";
-        return `<div class="${cls}"><span class="line-no">${idx + this.startLine}</span>${markerHtml}<span class="code-text">${content}</span></div>`;
+        const lineNo = isProseLine(line, highlightedLines && highlightedLines[idx]) ? "" : idx + this.startLine;
+        return `<div class="${cls}"><span class="line-no">${lineNo}</span>${markerHtml}<span class="code-text">${content}</span></div>`;
       };
 
       // Explicit :::fold regions still collapsed, clipped to the visible [startIdx,endIdx) window.

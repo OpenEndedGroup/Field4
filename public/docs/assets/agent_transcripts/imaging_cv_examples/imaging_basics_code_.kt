@@ -29,13 +29,13 @@ showImgGrid(
     "hue channel" to hsv.channel(0),
     "saturation channel" to hsv.channel(1),
     "resize(600,450) then back up" to backUp,
-    "thresholdOtsu() @ ${"%.3f".format(t)}" to mask,
+    "thresholdOtsu() @ ${t.f3}" to mask,
     columns = 3,
     cellSide = 260,
 )
 println(
-    "Img ${card.width}x${card.height} x${card.channels} ch, mean ${"%.3f".format(card.mean())}, " +
-        "otsu ${"%.3f".format(t)}, foreground ${mask.data.count { it > 0.5f }} px",
+    "Img ${card.width}x${card.height} x${card.channels} ch, mean ${card.mean().f3}, " +
+        "otsu ${t.f3}, foreground ${mask.data.count { it > 0.5f }} px",
 )
 
 // The threshold is a mask; a mask has outlines; outlines are geometry. Everything the

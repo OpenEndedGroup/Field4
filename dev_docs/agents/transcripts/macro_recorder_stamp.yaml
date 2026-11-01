@@ -23,7 +23,8 @@ operations:
         code: |
           // A macro is YAML. This one is what the recorder writes when you make a box with code,
           // make another, and connect them with `g`.
-          val stamp = """
+          val stamp =
+              """
               name: stamp
               operations:
                 - create:
@@ -40,7 +41,8 @@ operations:
                 - connect:
                     parent: stamp_source
                     child: stamp_sink
-          """.trimIndent()
+              """
+                  .trimIndent()
           val saved = OperationTranscript.writeMacro(thisBox.inside.filename, "stamp", stamp)
           println("${saved.message} ${saved.operationCount} operations")
   - create:
@@ -54,13 +56,16 @@ operations:
           val document = thisBox.inside.filename
           (1..3).forEach { i ->
               val run = OperationTranscript.runMacro(
-                  document, "stamp",
-                  replay = OperationTranscript.MacroReplayOptions(asCopy = true, offsetY = 140.0 * i)
+                  document,
+                  "stamp",
+                  replay = OperationTranscript.MacroReplayOptions(asCopy = true, offsetY = 140.0 * i),
               )
               println(run.message + run.errors.joinToString("") { " " + it })
           }
           val sources = thisBox.inside.boxes.values.filter { it.name == "Source" }
-          println("${sources.size} Source boxes; Sinks wired to each: ${sources.map { s -> s.children.count { it.name == "Sink" } }}")
+          println(
+              "${sources.size} Source boxes; Sinks wired to each: ${sources.map { s -> s.children.count { it.name == "Sink" } }}",
+          )
   - create:
       box: mr_steps
       name: steps
@@ -71,8 +76,9 @@ operations:
           val document = thisBox.inside.filename
           (0 until 3).forEach { step ->
               val run = OperationTranscript.runMacro(
-                  document, "stamp",
-                  replay = OperationTranscript.MacroReplayOptions(step = step)
+                  document,
+                  "stamp",
+                  replay = OperationTranscript.MacroReplayOptions(step = step),
               )
               println("step ${step + 1}: ${run.message}" + run.errors.joinToString("") { " " + it })
           }

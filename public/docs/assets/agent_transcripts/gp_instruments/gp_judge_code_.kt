@@ -60,7 +60,7 @@ chart.height = 280.0
 showChart(chart, channel = "utility")
 snapshots.forEachIndexed { i, p ->
     println(
-        "after %2d answers: %s  utility %.3f".format(6 * (i + 1), p.mapValues { "%.2f".format(it.value) }, utility(p)),
+        "after %2d answers: %s  utility %.3f".format(6 * (i + 1), p.mapValues { it.value.f2 }, utility(p)),
     )
 }
 println(

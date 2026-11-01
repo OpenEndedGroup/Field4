@@ -6,8 +6,7 @@ val face = typeface("SansSerif", 120.0)
 // different AWT paths — accumulated positions versus per-glyph metrics — that must agree.
 val plain = layoutText("minimum", face.withKerning(false))
 println(
-    "advance width ${"%.4f".format(plain.advanceWidth)} vs sum of advances " +
-        "${"%.4f".format(plain.glyphs.sumOf { it.glyph.advance })}",
+    "advance width ${plain.advanceWidth.f4} vs sum of advances " + "${plain.glyphs.sumOf { it.glyph.advance }.f4}",
 )
 
 // Identity two: tracking adds one gap per INTER-GLYPH space, not one per glyph.
@@ -15,8 +14,8 @@ val t = 0.16 * face.size
 val tight = layoutText("TYPE", face)
 val loose = layoutText("TYPE", face, tracking = t)
 println(
-    "tracking ${"%.1f".format(t)} over ${tight.glyphs.size - 1} gaps widened the line by " +
-        "${"%.4f".format(loose.advanceWidth - tight.advanceWidth)} (expected ${"%.4f".format((tight.glyphs.size - 1) * t)})",
+    "tracking ${t.f1} over ${tight.glyphs.size - 1} gaps widened the line by " +
+        "${(loose.advanceWidth - tight.advanceWidth).f4} (expected ${((tight.glyphs.size - 1) * t).f4})",
 )
 
 // Kerning adjusts spacing for specific pairs and may widen or narrow them.
@@ -28,9 +27,9 @@ println("kerning: $off -> $on (width change ${on - off} units)")
 // The diagram of the decisions rather than the letters: baselines, ascent/descent guides and
 // one advance box per glyph — including for the space, which has no glyph to draw.
 showPlaneGrid(
-    "tracking 0 — ${"%.0f".format(tight.advanceWidth)} units wide" to
+    "tracking 0 — ${tight.advanceWidth.f0} units wide" to
         (tight.metricsFLines() + tight.advanceBoxFLines() + tight.toFLines(thickness = 1.0)),
-    "tracking 0.16em — ${"%.0f".format(loose.advanceWidth)} units wide" to
+    "tracking 0.16em — ${loose.advanceWidth.f0} units wide" to
         (loose.metricsFLines() + loose.advanceBoxFLines() + loose.toFLines(thickness = 1.0)),
     columns = 1,
     cellWidth = 820,
@@ -47,7 +46,7 @@ val prose = wrapText(
     maxWidth = 620.0,
 )
 println(
-    "wrapped to ${prose.lines().size} lines, widest ${"%.1f".format(prose.lines().maxOf { textWidth(it, face.atSize(44.0)) })} of 620",
+    "wrapped to ${prose.lines().size} lines, widest ${prose.lines().maxOf { textWidth(it, face.atSize(44.0)) }.f1} of 620",
 )
 displayOpen("alignment")
 showImgGrid(

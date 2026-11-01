@@ -20,6 +20,8 @@ box becomes a program, layered noise over slowly drifting coordinates, and draws
 program and press **ctrl/command-4** to open AI4 chat. Configure an AI provider through Field's
 welcome page if you have not already; see [AI features](aiFeatures.md).
 
+![A program box with its AI4 chat open: the model's reply explaining a blue mound in the aurora, followed by its trace of the program and the fix](assets/stacksl_conversation/saved-chat.png)
+
 The program box edits its `stackSL` property, and the window follows every edit that compiles; an
 edit with an error is marked on its line, and the window keeps the last program that compiled.
 Running the box (ctrl/command-return) checks your program in as a revision. The root holds no code:
@@ -29,9 +31,9 @@ the window, and a program whose window is closed still has its card's WebGL prev
 Language: StackSL** on a box you made yourself does the same, and every box beneath it is a program.
 
 The recorded sessions below started from a flat grey.
-[Download that starter](assets/stacksl_conversation/stacksl_conversation.zip) to begin from the same
-place: unzip it into your Field workspace, keeping the `stacksl_conversation` folder intact, and open
-it. It has two boxes:
+[Open that starter](offline.html?zip=assets/stacksl_conversation/stacksl_conversation.zip) to begin
+from the same place: it opens in the document viewer, and **Open in Field·4** copies it into your
+workspace as a new document. It has two boxes:
 
 | Box | What it is |
 | --- | --- |

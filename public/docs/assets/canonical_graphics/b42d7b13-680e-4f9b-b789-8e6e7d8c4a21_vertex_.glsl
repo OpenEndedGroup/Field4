@@ -1,5 +1,6 @@
 #version 460
 
+// Generated from the Kotlin Vertex class: the struct and the VertexArray buffer reference.
 {{ Vertex.all }}
 
 layout(push_constant) uniform Push {

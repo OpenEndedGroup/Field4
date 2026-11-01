@@ -108,22 +108,21 @@ for ((i, name) in names.withIndex()) {
     val above = f.certifiedNeverExceeds(1.0, 0.0, 3600.0)
     val witness = above.witness!!
     rows +=
-        [
+        listOf(
             name,
             "${FnIntervals.unsupportedOps(l)} / ${FnIntervals.unsupportedOps(f)}",
             "$mismatches of ${grid.size}",
             "$holds of ${events.size} PROVEN",
             f.certifiedNeverBelow(0.0, 0.0, 3600.0).kind.name,
             "${above.kind} at $witness: lambda ${l(witness)}",
-        ]
+        )
 }
 display(
     "claims",
     Table(
-            ["ch", "refused ops (lambda / formula)", "bit mismatches", "== 1 on plateau", ">= 0", "<= 1"],
-            title = "the worked example's claims, on its formula rewrite",
-        )
-        .rows(rows)
+        ["ch", "refused ops (lambda / formula)", "bit mismatches", "== 1 on plateau", ">= 0", "<= 1"],
+        title = "the worked example's claims, on its formula rewrite",
+    ).rows(rows)
         .role("<= 1", CellRole.WARN),
 )
 

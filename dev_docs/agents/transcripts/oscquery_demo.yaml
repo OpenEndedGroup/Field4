@@ -45,7 +45,7 @@ operations:
         "autorun": false
         "code": |
           import afield.io.osc.query.*
-          
+
           // Field controls that are also OSCQuery parameters, under /surface. Drag them here and every
           // listening remote sees the change; set them from a remote and the Field control moves.
           var gain = 0.5
@@ -81,7 +81,7 @@ operations:
         "autorun": false
         "code": |
           import afield.io.osc.query.*
-          
+
           // A slider or checkbox for every number and boolean the remote publishes. Moving one sets the
           // remote; when the remote moves (box 5 animates /demo/lfo), the slider follows over LISTEN.
           val remote = oscQueryRemote("127.0.0.1", 9020).refresh()
@@ -94,7 +94,7 @@ operations:
         "autorun": false
         "code": |
           import afield.io.osc.query.*
-          
+
           // A value Field changes by itself: every listener (box 4's slider, TouchDesigner) follows it.
           val q = oscQuery("Field demo")
           val lfo = q.float("/demo/lfo", 0.0..1.0, 0.5, "a slow sine, written by Field", access = OscAccess.READ)

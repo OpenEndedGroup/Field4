@@ -1,19 +1,6 @@
 import afield.simulation.flow.TileAtlasLayout
 
 // Dependencies are explicit graph exports; resources stay in their parent box.
-val tileHeaders = fromContextWithNameOrNull<FrameBufferGroup>("tileHeaders")!!
-val cameraHistory = fromContextWithNameOrNull<FrameBufferGroup>("cameraHistory")!!
-val itemHistory = fromContextWithNameOrNull<FrameBufferGroup>("itemHistory")!!
-val flowLook = fromContextWithNameOrNull<afield.math.linalg.Vec4>("flowLook")!!
-val flowClock = fromContextWithNameOrNull<afield.math.linalg.Vec4>("flowClock")!!
-val flowEmitter = fromContextWithNameOrNull<afield.math.linalg.Vec4>("flowEmitter")!!
-val force = fromContextWithNameOrNull<afield.ui.controls.EffectiveParameter>("force")!!
-val grainCell = fromContextWithNameOrNull<afield.ui.controls.EffectiveParameter>("grainCell")!!
-val strokeTime = fromContextWithNameOrNull<afield.ui.controls.EffectiveParameter>("strokeTime")!!
-val flowWidth = fromContextWithNameOrNull<afield.ui.controls.EffectiveParameter>("flowWidth")!!
-val resetFlow = fromContextWithNameOrNull<afield.runtime.lifecycle.SimulationReset>("resetFlow")!!
-val flowStep = fromContextWithNameOrNull<java.util.concurrent.atomic.AtomicLong>("flowStep")!!
-val travel = fromContextWithNameOrNull<java.util.concurrent.atomic.AtomicBoolean>("travel")!!
 
 val pool = TileResidency(5, 5, 4f)
 val layout = TileAtlasLayout(pool, 24)

@@ -1359,6 +1359,10 @@ private fun collectOutputScreenshotRects(box: HTMLElement): List<Rect> {
         return content.querySelector(".field-control, input, textarea, select, button") != null
     }
 
+    // A `.h` value view (`ValueVisualizer`, `.value-viz`) is text with SVG thumbnails inside it, so
+    // cropping to its SVGs, which suits a plot, cuts away the tree, captions and statistics.
+    fun holdsValueView(element: Element) = element.querySelector(".value-viz") != null
+
     fun disclosureScreenshotRect(disclosure: HTMLElement): Rect? {
         val disclosureRect = domRectToRect(disclosure.getBoundingClientRect())
         if (disclosureRect.w <= 2.0 || disclosureRect.h <= 2.0) return null
@@ -1368,7 +1372,7 @@ private fun collectOutputScreenshotRects(box: HTMLElement): List<Rect> {
             return if (disclosureTitleRect == null) bodyRect else unionRects(listOf(disclosureTitleRect, bodyRect))
                 ?: bodyRect
         }
-        val svgRects = disclosure.querySelectorAll("svg").asList()
+        val svgRects = if (holdsValueView(disclosure)) emptyList() else disclosure.querySelectorAll("svg").asList()
             .mapNotNull { node ->
                 val svg = node as? SVGElement ?: return@mapNotNull null
                 if (!isOverlayVisible(svg as Element)) return@mapNotNull null
@@ -1403,7 +1407,7 @@ private fun collectOutputScreenshotRects(box: HTMLElement): List<Rect> {
         ?.let(::disclosureScreenshotRect)
         ?.let { return listOf(it) }
 
-    val svgRects = outputArea.querySelectorAll("svg").asList()
+    val svgRects = if (holdsValueView(outputArea)) emptyList() else outputArea.querySelectorAll("svg").asList()
         .mapNotNull { node ->
             val svg = node as? SVGElement ?: return@mapNotNull null
             if (!isOverlayVisible(svg as Element)) return@mapNotNull null
@@ -3067,6 +3071,11 @@ private fun prepareBoxScreenshot(req: BoxScreenshotRequest): BoxScreenshotRespon
         ?: return BoxScreenshotResponse(uid = req.uid, success = false, message = "box ${req.uid} not found")
 
     if (!req.includeNotifications) hideNotificationsForScreenshot()
+    if (req.openDetails) {
+        // Before any measuring, so the clip and the readiness checks see the opened layout.
+        val details = box.querySelectorAll(".outputArea details")
+        for (i in 0 until details.length) details.item(i).asDynamic().open = true
+    }
     if (req.hideMonaco) {
         if (!req.preserveSelection) clearSelectionForScreenshot()
         runCatching { hideMonaco() }
@@ -3257,7 +3266,8 @@ private fun rawToBoxScreenshotRequest(raw: dynamic) = BoxScreenshotRequest(
     hideMonaco = dynamicBoolean(raw?.hideMonaco, true),
     openOutputs = dynamicBoolean(raw?.openOutputs, false),
     preserveSelection = dynamicBoolean(raw?.preserveSelection, false),
-    includeNotifications = dynamicBoolean(raw?.includeNotifications, false)
+    includeNotifications = dynamicBoolean(raw?.includeNotifications, false),
+    openDetails = dynamicBoolean(raw?.openDetails, false)
 )
 
 private fun rawToWindowScreenshotRequest(raw: dynamic) = WindowScreenshotRequest(
@@ -6909,22 +6919,23 @@ suspend fun main() {
 
         if (note.persistent) {
             val closeBtn = document.createElement("button") as HTMLElement
-            closeBtn.classList.add("close-btn")
-            closeBtn.innerHTML = "×"
+            // The shared FieldPanel close (fieldPanelTokens.css); only its place is set here.
+            closeBtn.classList.add("close-btn", "field-panel-icon")
+            closeBtn.textContent = "×"
+            closeBtn.setAttribute("type", "button")
+            closeBtn.title = "Close"
+            closeBtn.setAttribute("aria-label", "Close")
             closeBtn.style.apply {
                 position = "absolute"
                 top = "8px"
                 right = "8px"
-                background = "rgba(255, 255, 255, 0.2)"
-                border = "none"
-                borderRadius = "4px"
-                color = "#fff"
-                fontSize = "20px"
-                width = "24px"
-                height = "24px"
-                cursor = "pointer"
-                lineHeight = "20px"
-                textAlign = "center"
+            }
+            overlay.onkeydown = { event ->
+                if (event.key == "Escape" && overlay.style.display != "none") {
+                    event.stopPropagation()
+                    overlay.style.display = "none"
+                    clearSlideAnnotations()
+                }
             }
             closeBtn.onclick = {
                 overlay.style.display = "none"

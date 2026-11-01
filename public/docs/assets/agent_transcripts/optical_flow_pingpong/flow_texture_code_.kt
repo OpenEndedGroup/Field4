@@ -5,8 +5,7 @@ val view = moduleHere {
     depthWrite = false
     blend = false
 }
-val triangle = Mesh(renderer, view)
-triangle.resize(3, 0, view)
+val triangle = fullscreenTriangle(view)
 view += "display" to triangle
 renderer.renderList.modules["pingpong flow texture"] = view
 val owner = renderer

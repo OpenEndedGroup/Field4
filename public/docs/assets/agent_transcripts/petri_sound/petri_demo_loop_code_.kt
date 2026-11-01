@@ -5,9 +5,8 @@ A place holds tokens; a transition fires when all its inputs have one. Give a
 transition a sound after the `:` and firing it plays that sound. That is the whole
 idea — everything else is more of it.
 */
-val net =
-    petri(
-        """
+val net = petri(
+    """
     #petri
     !timing step
     !grid 1/8
@@ -17,7 +16,7 @@ val net =
     kick -[ hit  @1/8 : bd ]-> hats
     hats -[ back @1/8 : sd ]-> kick
 """,
-    )
+)
 
 showPetriNet(net, w = 640.0, h = 300.0)
 

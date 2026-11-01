@@ -1,6 +1,7 @@
 #version 450
 layout(location = 0) out vec4 uFragColor;
 
+// the interpolated color from the vertex shader's `fcol` output (location 0)
 layout(location = 0) in vec4 fcol;
 void main()
 {

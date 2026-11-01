@@ -4,8 +4,8 @@ Wave Function Collapse (WFC) is a constraint solver that is mostly used to make 
 grid, a set of tiles, and a table of which tiles may sit next to which, and it fills the grid: every
 cell starts holding *every* tile as a possibility, and the solver repeatedly picks the cell with the
 fewest options left, commits it to one tile chosen by weight, and then propagates the consequences
-outward until nothing else can be narrowed. Repeat until every cell is decided. The name is an analogy
-with quantum mechanics; there is no physics involved. Usually the constraints are *learned*: you
+outward until nothing else can be narrowed. Repeat until every cell is decided. The name is borrowed
+from quantum mechanics. Usually the constraints are *learned*: you
 draw one small example of the thing you want, and the solver reads the adjacency table off it and
 produces more.
 
@@ -995,7 +995,7 @@ display("b. contradicted", stuck.h)
 // And the numbers the panels are drawn from, so the picture can be checked against them.
 val readBack =
     "mid-collapse: ${solver}\n" +
-        "  entropy range drawn: 0 .. ${"%.3f".format(rules.fullSetEntropy())} nats" +
+        "  entropy range drawn: 0 .. ${rules.fullSetEntropy().f3} nats" +
         " (${solver.entropyHeatmap().nonFiniteCount} cells undefined)\n" +
         "contradicted: ${stuck}\n" +
         "  cells with no possibilities left: ${stuck.possibilityCountGrid().count { it == 0 }}"
@@ -1184,8 +1184,8 @@ val symLines =
         val g = grain(entry.second, outW, outH)
         "3x3 + D4 seed " +
             entry.first.toString().padEnd(3) +
-            " grain along rows ${"%.3f".format(g.first)} / down columns ${"%.3f".format(g.second)}" +
-            ", ratio ${"%.1f".format(maxOf(g.first, g.second) / maxOf(1e-6, minOf(g.first, g.second)))}x"
+            " grain along rows ${g.first.f3} / down columns ${g.second.f3}" +
+            ", ratio ${(maxOf(g.first, g.second) / maxOf(1e-6, minOf(g.first, g.second))).f1}x"
     }
 :::endfold
 
@@ -1193,11 +1193,11 @@ val symLines =
 val statsReport =
     "${tiles.tileCount} levels; ${patterns.tileCount} distinct 3x3 windows -> " +
         "${symmetric.tileCount} once closed under D4\n" +
-        "1x1 tiles          mean ${"%.2f".format(tiledHeights.average())}, " +
+        "1x1 tiles          mean ${tiledHeights.average().f2}, " +
         "${tiledOutcome.attempts} attempt(s)\n" +
-        "3x3 patterns       grain along rows ${"%.3f".format(plainGrain.first)} / down columns " +
-        "${"%.3f".format(plainGrain.second)}" +
-        ", ratio ${"%.1f".format(maxOf(plainGrain.first, plainGrain.second) / maxOf(1e-6, minOf(plainGrain.first, plainGrain.second)))}x\n" +
+        "3x3 patterns       grain along rows ${plainGrain.first.f3} / down columns " +
+        "${plainGrain.second.f3}" +
+        ", ratio ${(maxOf(plainGrain.first, plainGrain.second) / maxOf(1e-6, minOf(plainGrain.first, plainGrain.second))).f1}x\n" +
         symLines
 markdown(
     "stats",

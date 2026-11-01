@@ -227,6 +227,14 @@ def render(boxes: dict[str, Box]) -> str:
         "tools/test_canonical_graphics_index.py, which runs under ./gradlew checkPythonTools. -->"
     )
     out.append("")
+    out.append('!!! info "For agents"')
+    out.append(
+        "    This index is reference material for agents writing box-level graphics code: it maps "
+        "lesson names and API symbols to the uid-named files in this folder. To learn Field's "
+        "graphics yourself, start with [Graphics on the GPU](../../tour_gpu_graphics.md), then "
+        "work through [Field 4 Graphics](../../afield_four_graphics.md)."
+    )
+    out.append("")
     out.append(
         "This directory is a snapshot of a real Field document: the Field 4 graphics "
         "curriculum, worked lesson by lesson against the live renderer. Every file is named by "

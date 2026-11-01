@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 4 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 4 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. What can this machine see?
@@ -25,7 +25,7 @@ On macOS the IAC driver appears as two entries with the SAME name, one output an
 input, so a name alone does not identify a device: check the direction.
 
 ```edn [field-box id="midi_devices" role="properties"]
-{"id" "midi_devices" "index" 0 "name" "What can this machine see?" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "What can this machine see?" "_tombstone" false "frame" #afield/rect [60.0 2040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "midi_devices_code_.kt" "lines" 48 "characters" 1908 "sha256" "0784e3c7a0dac0d81185a824960c1e467a170813bf0e837c6ecfd371fa3781bb"}]}
+{"id" "midi_devices" "index" 0 "name" "What can this machine see?" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "What can this machine see?" "_tombstone" false "frame" #afield/rect [60.0 2040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "midi_devices_code_.kt" "lines" 46 "characters" 1855 "sha256" "4c683712fe158b39fc19932457d2e367467ae6864a90b1843cb3bb4a4428e094"}]}
 ```
 
 ```kotlin [field-property box="midi_devices" name="code" path="midi_devices_code_.kt"]
@@ -45,12 +45,10 @@ val hardware = MidiDevices.hardware()
 
 val rows =
     all.joinToString("\n") { d ->
-        val direction =
-            listOfNotNull(
-                    if (d.canReceive) "Field can send" else null,
-                    if (d.canTransmit) "Field can listen" else null,
-                )
-                .joinToString(" + ")
+        val direction = listOfNotNull(
+            if (d.canReceive) "Field can send" else null,
+            if (d.canTransmit) "Field can listen" else null,
+        ).joinToString(" + ")
         "| `${d.name}` | ${d.vendor} | ${d.implementation} | $direction |"
     }
 
@@ -84,7 +82,7 @@ markdown(
 <!-- field-box id="midi_audition" index="1" -->
 
 ```edn [field-box id="midi_audition" role="properties"]
-{"id" "midi_audition" "index" 1 "name" "Hear it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Hear it" "_tombstone" false "frame" #afield/rect [60.0 3040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "midi_audition_code_.kt" "lines" 65 "characters" 2029 "sha256" "fe84a69d5873d97144f0a0188ac56234384de3aa6fb9eb79348f139ce7b4b630"}]}
+{"id" "midi_audition" "index" 1 "name" "Hear it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Hear it" "_tombstone" false "frame" #afield/rect [60.0 3040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "midi_audition_code_.kt" "lines" 65 "characters" 1993 "sha256" "b1b7169ec59e80805b726e3a05badff4eaa35299a9fb6e1e1d0fdb4b928371ba"}]}
 ```
 
 ````kotlin [field-property box="midi_audition" name="code" path="midi_audition_code_.kt"]
@@ -123,9 +121,9 @@ val report =
     | | |
     |---|---|
     | file | `${r.file.absolutePath}` |
-    | length | ${"%.2f".format(r.seconds)}s |
-    | **peak amplitude** | **${"%.3f".format(r.peakAmplitude)}** |
-    | rms amplitude | ${"%.4f".format(r.rmsAmplitude)} |
+    | length | ${r.seconds.f2}s |
+    | **peak amplitude** | **${r.peakAmplitude.f3}** |
+    | rms amplitude | ${r.rmsAmplitude.f4} |
     | soundbank | ${r.soundbankName} |
 
     Peak amplitude is the check that matters: a WAV of pure silence is exactly as large
@@ -160,7 +158,7 @@ markdown("main", report)
 <!-- field-box id="midi_write" index="2" -->
 
 ```edn [field-box id="midi_write" role="properties"]
-{"id" "midi_write" "index" 2 "name" "Write a MIDI file" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Write a MIDI file" "_tombstone" false "frame" #afield/rect [60.0 40.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "midi_write_code_.kt" "lines" 55 "characters" 1699 "sha256" "7de4798fdd42eef3e833eec4cafb1a9e9a78092c9f026ea865d6eabe09d154ac"}]}
+{"id" "midi_write" "index" 2 "name" "Write a MIDI file" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Write a MIDI file" "_tombstone" false "frame" #afield/rect [60.0 40.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "midi_write_code_.kt" "lines" 55 "characters" 1687 "sha256" "c2ed342dcaf89158a78bd311c9939b3aa88bf718119fc40a438c91eac5fdef94"}]}
 ```
 
 ```kotlin [field-property box="midi_write" name="code" path="midi_write_code_.kt"]
@@ -213,7 +211,7 @@ markdown(
     | bytes | ${out.length()} |
     | tracks | ${clip.tracks.size} (${clip.tracks.joinToString { it.name ?: "?" }}) |
     | tempo | ${clip.bpmAt(0.0)} BPM |
-    | length | ${"%.2f".format(clip.durationSeconds)}s / ${clip.durationBeats} beats |
+    | length | ${clip.durationSeconds.f2}s / ${clip.durationBeats} beats |
 
     Format 1, with a real conductor track. Open it in any DAW, or run box 2.
     """
@@ -226,7 +224,7 @@ markdown(
 <!-- field-box id="midi_read" index="3" -->
 
 ```edn [field-box id="midi_read" role="properties"]
-{"id" "midi_read" "index" 3 "name" "Read it back" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Read it back" "_tombstone" false "frame" #afield/rect [60.0 1040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "midi_read_code_.kt" "lines" 41 "characters" 1486 "sha256" "f6dba57c10971e5fbccfb36413db3d2688ab48597576277a13f3484a43eb3235"}]}
+{"id" "midi_read" "index" 3 "name" "Read it back" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Read it back" "_tombstone" false "frame" #afield/rect [60.0 1040.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "midi_read_code_.kt" "lines" 41 "characters" 1474 "sha256" "6963b5f0a5a7f8ca80297beaad2127df9a57e1d5ebec06c5d4fe8a47ceb8bc18"}]}
 ```
 
 ```kotlin [field-property box="midi_read" name="code" path="midi_read_code_.kt"]
@@ -257,7 +255,7 @@ markdown(
     | | |
     |---|---|
     | PPQ | ${clip.ppq} |
-    | tempo | ${"%.2f".format(clip.bpmAt(0.0))} BPM |
+    | tempo | ${clip.bpmAt(0.0).f2} BPM |
     | tempo events | ${clip.tempoMap.size} |
     | time signature | ${clip.timeSignature.first}/${clip.timeSignature.second} |
     | tracks | ${clip.tracks.map { "${it.name} (${it.notes.size})" }.joinToString()} |

@@ -39,6 +39,7 @@ import afield.app.protocol.AgentDocumentSnapshot
 import afield.app.protocol.AgentGetPropertyRequest
 import afield.app.protocol.AgentGetPropertyResponse
 import afield.app.protocol.AgentGraphicsContextResponse
+import afield.app.protocol.AgentNativeWindowRecord
 import afield.app.protocol.AgentNativeWindowScreenshot
 import afield.app.protocol.AgentOpenDocument
 import afield.app.protocol.AgentOpenEditorRequest
@@ -125,6 +126,7 @@ import afield.tools.docs.captureWindowScreenshot
 import afield.tools.docs.captureWindowVideo
 import afield.tools.docs.openEditorForCapture
 import afield.tools.docs.performPlaywrightInput
+import afield.tools.docs.recordDirect
 import afield.tools.docs.raiseAndScreenshot
 import afield.ui.output.templates.filter
 import afield.graphics.vulkan.Renderer
@@ -1983,6 +1985,30 @@ fun installAgentBackdoorHandlers() {
                 )
             }
             reply(Message("agent-box-screenshot").payload(response))
+        }
+        Handled.yes
+    })
+
+    // The native window filmed by direct swapchain copies and encoded to MP4.
+    handlers["agent-native-window-record"] = mutableSetOf({ message, reply ->
+        val info = thisSessionInfo.get()
+        val request = Json.decodeFromJsonElement<AgentNativeWindowRecord>(message.payload!!)
+        val target = runCatching { nativeCaptureWindow(info, request.uid) }
+        agentBackdoorScope.launch {
+            val response = runCatching {
+                val window = target.getOrThrow()
+                File(request.path).parentFile?.mkdirs()
+                window.recordDirect(request.durationSec.toDouble(), request.path)
+                AgentScreenshotResponse(ok = true, kind = "native-window-video", path = request.path, uid = request.uid,
+                    documentName = info.documentName, scratch = info.ephemeral, sessionKey = info.filename, message = "")
+            }.getOrElse { throwable ->
+                lprintln("warning,agent_backdoor", "native window recording failed for ${request.path}: ${throwable.message}")
+                AgentScreenshotResponse(ok = false, kind = "native-window-video", path = request.path, uid = request.uid,
+                    documentName = info.documentName, scratch = info.ephemeral, sessionKey = info.filename,
+                    message = throwable.message ?: throwable::class.simpleName ?: "native window recording failed",
+                    terminal = throwable is NativeCaptureTargetException)
+            }
+            reply(Message("agent-native-window-record").payload(response))
         }
         Handled.yes
     })

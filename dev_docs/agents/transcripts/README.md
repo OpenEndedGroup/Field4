@@ -316,6 +316,9 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   started, which is why it is compile-only here.
 - `read_only_session.yaml`: **read-only mode from the inside** — a `saved{}` counter that cannot count,
   and what the flag refuses rather than silently drops. The reason every demo folder says `--read-only`.
+- `history_box_story.yaml`: **one box's code across every saved version** — four saved values of
+  `sketch` for the history view's This Box list (row click selects a version, Restore puts back that
+  property of that box only). Replay into a saving document, not `--scratch`; the waits are the autosave.
 - `controls_surface.yaml`: **a performer's control surface** from the `controlGroup` DSL (log-law
   slider, XY pad with keyboard nudges and reset, toggle, text, colour) feeding a live figure, and a
   slider whose callback rebuilds its own group mid-drag without dropping the drag.

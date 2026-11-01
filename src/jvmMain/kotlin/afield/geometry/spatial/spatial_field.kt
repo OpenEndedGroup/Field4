@@ -621,15 +621,15 @@ private fun escapePlaneHtml(text: String): String = text
 // ==============================================================================================
 
 private const val PLANE_FIGURE_CARD_STYLE =
-    "padding:12px 12px 16px 12px;background:linear-gradient(180deg,#0d1219,#090d12);" +
+    "padding:12px 12px 16px 12px;background:#090d12;" +
         "border:1px solid #202b38;border-radius:10px"
 
 private fun planeFigureTitleStyle(width: Int): String =
-    "font-family:monospace;font-size:12px;font-weight:700;letter-spacing:0.04em;" +
+    "font-family:'Iosevka Web',Iosevka,monospace;font-size:12px;font-weight:700;letter-spacing:0.04em;" +
         "color:#91a4ba;margin-bottom:8px;width:${width}px;overflow-wrap:break-word"
 
 private fun planeFigureCaptionStyle(width: Int): String =
-    "font-family:monospace;font-size:11px;line-height:1.5;color:#7f92a8;" +
+    "font-family:'Iosevka Web',Iosevka,monospace;font-size:11px;line-height:1.5;color:#7f92a8;" +
         "margin:-2px 0 8px 0;width:${width}px;overflow-wrap:break-word"
 
 /**

@@ -154,6 +154,13 @@ class FunctionStudy(
             val engine = createKotlinScriptEngine(filePrefix = "function_study_${System.nanoTime()}")
             val diagnostics = mutableListOf<String>()
             try {
+                // A study source is box code, which may leave out the imports a box gets by default
+                // (the corpus formatter removes them). This engine has none, so give it the study API
+                // as its own snippet first: imports carry over, and the source's line numbers stay put.
+                engine.execAndWait("import afield.math.functions.*",
+                    onCompileError = { ds -> diagnostics += ds.map { it.message } },
+                    onEvalError = { ds -> diagnostics += ds.map { it.message } },
+                    onEvalException = { throw it })
                 val value = engine.execAndWait(source,
                     onCompileError = { ds -> diagnostics += ds.map { it.message } },
                     onEvalError = { ds -> diagnostics += ds.map { it.message } },

@@ -49,13 +49,20 @@ import org.lwjgl.vulkan.VkImageCopy
  *   otherwise uses an internal stereo camera.
  */
 class SideBySideStereoTarget(
+    /** The renderer whose device owns the eye passes and the packed image. Found in the box graph by default. */
     val renderer: Renderer = fromContext(),
+    /** Width of one eye's pass in pixels. Defaults to half the swapchain's, so the pair fills the window. */
     val eyeWidth: Int = renderer.swapChain.swapChainExtent.width() / 2,
+    /** Height of one eye's pass in pixels. Defaults to the swapchain's full height. */
     val eyeHeight: Int = renderer.swapChain.swapChainExtent.height(),
+    /**
+     * The headset to take per-eye view and projection matrices from, and to hand [packed] to. Null
+     * renders the same stereo pair from [stereoCamera] instead, which is the desktop-window path.
+     */
     var openXR: OpenXRHmdTarget? = null
 ) : afield.graphics.vulkan.Target, HasImageView {
 
-    // Internal stereo camera for non-XR rendering paths.
+    /** The camera the eye passes use when neither [poseSource] nor [openXR] supplies a head. */
     val stereoCamera = StereoCamera(Camera(renderer).apply {
         // The target resizes this projection per eye; window auto-sizing would overwrite it.
         p.auto = {}
@@ -82,7 +89,11 @@ class SideBySideStereoTarget(
         clearColor = vec(0f, 0f, 0f, 1f)
     }
 
-    // Packed side-by-side output (left half, right half) suitable as OpenXR sideBySideSource.
+    /**
+     * The finished pair, `2 * eyeWidth` by [eyeHeight], left eye in the left half. This is what a
+     * desktop window samples and what [OpenXRHmdTarget.copySideBySideToEyes] copies halves out of;
+     * it carries both transfer usages so either path works.
+     */
     val packed = RenderToTexture(renderer) {
         width = eyeWidth * 2
         height = eyeHeight
@@ -94,9 +105,17 @@ class SideBySideStereoTarget(
         clearColor = vec(0f, 0f, 0f, 1f)
     }
 
+    /**
+     * The packed pair, so a [SideBySideStereoTarget] is itself usable anywhere a [HasImageView] is —
+     * a desktop window, a postprocess pass, an OpenXR side-by-side source.
+     */
     override val imageView = packed.imageView
 
-    // Active eye index during rendering (-1 when idle).
+    /**
+     * Which eye the modules are being drawn for right now: 0 left, 1 right, -1 between the two
+     * passes. Module code reads this to pick per-eye data, and it is the eye
+     * [currentEyeViewMatrix] and [currentEyeProjectionMatrix] answer for.
+     */
     var currentEyeIndex: Int = -1
         private set
 
@@ -394,17 +413,32 @@ private fun recordStereoEyeCopy(
  * not reliable for Field's current path.
  */
 class MultiviewSideBySideStereoTarget(
+    /**
+     * The renderer whose device owns the layered pass. Its device must report `supportsMultiview`,
+     * and construction fails on macOS outright.
+     */
     val renderer: Renderer = fromContext(),
+    /** Width of one eye's layer in pixels. Defaults to half the swapchain's. */
     val eyeWidth: Int = renderer.swapChain.swapChainExtent.width() / 2,
+    /** Height of one eye's layer in pixels. Defaults to the swapchain's full height. */
     val eyeHeight: Int = renderer.swapChain.swapChainExtent.height(),
+    /**
+     * The headset to take per-eye matrices from, and to hand [packed] to. Null renders both eyes
+     * from [stereoCamera] instead.
+     */
     var openXR: OpenXRHmdTarget? = null
 ) : afield.graphics.vulkan.Target, HasImageView {
 
+    /** The camera both views are derived from when [openXR] is unset. */
     val stereoCamera = StereoCamera(Camera(renderer).apply {
         // The target resizes this projection per eye; window auto-sizing would overwrite it.
         p.auto = {}
     })
 
+    /**
+     * The two-layer pass both eyes are drawn into at once, with `viewMask = 0b11`. Shaders select
+     * their eye from `gl_ViewIndex` rather than from a per-pass index.
+     */
     val layered = RenderToTexture(renderer) {
         width = eyeWidth
         height = eyeHeight
@@ -421,6 +455,11 @@ class MultiviewSideBySideStereoTarget(
         clearColor = vec(0f, 0f, 0f, 1f)
     }
 
+    /**
+     * [layered]'s two layers copied side by side, `2 * eyeWidth` by [eyeHeight], layer 0 in the left
+     * half. The copy is what lets the existing OpenXR side-by-side path consume a multiview render
+     * unchanged.
+     */
     val packed = RenderToTexture(renderer) {
         width = eyeWidth * 2
         height = eyeHeight
@@ -432,11 +471,21 @@ class MultiviewSideBySideStereoTarget(
         clearColor = vec(0f, 0f, 0f, 1f)
     }
 
+    /**
+     * The packed pair, so a [MultiviewSideBySideStereoTarget] is itself usable anywhere a
+     * [HasImageView] is: the layers are already copied into it by then.
+     */
     override val imageView = packed.imageView
 
+    /** The two-layer pass itself, for code that would rather sample the layers than the packed copy. */
     val layeredImageView: HasImageView
         get() = layered
 
+    /**
+     * Always -1 here. A multiview pass draws both eyes in one go, so there is no "current eye" to
+     * report; the field exists to mirror [SideBySideStereoTarget], and the current-eye matrix
+     * accessors consequently answer for the left eye.
+     */
     var currentEyeIndex: Int = -1
         private set
 
@@ -633,12 +682,23 @@ class MultiviewSideBySideStereoTarget(
  * and supports asymmetric frustum offsets through the base projection.
  */
 class StereoCamera(val base: Camera = Camera()) {
+    /**
+     * Interpupillary distance in world units, split half to each side of [base] along its right
+     * vector. The default 0.064 is the usual adult average in metres.
+     */
     var ipd: Float = 0.064f
     /**
      * Distance multiplier for the stereo convergence point, measured from the
      * base camera toward its target along the forward vector.
      */
     var convergenceDistance: Float = 1f
+
+    /**
+     * Shifts each eye's principal point instead of toeing its view in: the left eye gets
+     * `-asymmetricFrustumOffset` and the right `+asymmetricFrustumOffset` as the base projection's
+     * `ox`, so the units are half-widths of what that projection frames at its match depth. Zero
+     * leaves both frusta centred, and convergence is then [convergenceDistance]'s business alone.
+     */
     var asymmetricFrustumOffset: Double = 0.0
 
     data class EyePose(val eye: Camera)

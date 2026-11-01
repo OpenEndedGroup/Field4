@@ -25,7 +25,7 @@ From `code`
 Repair it, cut it, and be told what could not be done.
 
 ```edn [field-box id="mesh-repair-fix" role="properties"]
-{"id" "mesh-repair-fix" "index" 1 "name" "Mesh repair — fill the holes, then cut it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Mesh repair — fill the holes, then cut it" "frame" #afield/rect [620.0 60.0 520.0 430.0] "nested" #{} "preamble" "" "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mesh-repair-fix_code_.kt" "lines" 68 "characters" 2568 "sha256" "34e38c79b8b2ef2e1d5ab7c2ed4e37030ceb74916cb2f5eaa4cc9bdc8b81c2ef"}]}
+{"id" "mesh-repair-fix" "index" 1 "name" "Mesh repair — fill the holes, then cut it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Mesh repair — fill the holes, then cut it" "frame" #afield/rect [620.0 60.0 520.0 430.0] "nested" #{} "preamble" "" "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mesh-repair-fix_code_.kt" "lines" 68 "characters" 2532 "sha256" "8e8e75daee6a2c420ace7ebb1bd806d90cad918d6f8ab81782dcebc317e89eb0"}]}
 ```
 
 ```kotlin [field-property box="mesh-repair-fix" name="code" path="mesh-repair-fix_code_.kt"]
@@ -78,9 +78,9 @@ run {
         val knife = Solid.cube(4.0, 4.0, 4.0, center = true).translated(0.0, 0.0, 2.0)
         val lower = solid - knife
         println()
-        println("whole sphere     ${"%.5f".format(base.signedVolume())}")
-        println("repaired volume  ${"%.5f".format(solid.volume)}   (the flat cap loses a sliver)")
-        println("after the cut    ${"%.5f".format(lower.volume)}   (half, cut at the equator)")
+        println("whole sphere     ${base.signedVolume().f5}")
+        println("repaired volume  ${solid.volume.f5}   (the flat cap loses a sliver)")
+        println("after the cut    ${lower.volume.f5}   (half, cut at the equator)")
 
         showMeshGrid(
             "broken — an open hole" to broken,

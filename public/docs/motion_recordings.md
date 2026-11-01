@@ -1,12 +1,20 @@
 # Generative Mocap — ARDY and CLoSD
 
 Generate human movement from text, direct it along a Field curve, or apply forces to a simulated
-body. **ARDY** generates kinematic motion. **CLoSD** runs a motion planner and a physical humanoid.
-They are separate optional backends. Recordings play in Field without installing either one.
+body. Two separately installed tools do the work:
+
+- **ARDY**: you type a phrase such as "A person skips forward" and get a moving skeleton. The
+  poses are generated directly; nothing simulates weight or balance.
+- **CLoSD**: you type a phrase and a simulated body with mass and joints tries to perform it, so
+  it can be pushed, held back, or fall over.
+
+Recordings play in Field without installing either one.
 
 Start with [resistance and release](agent_transcripts.md#motion_resistance_replay): open the
-starting point and run the box. White bones are the executed body; cyan bones are its reference.
-Red marks a foot tether; amber shows the submitted force, scaled for drawing. This recording
+starting point and run the box. White bones are the body as it actually moved; cyan bones are the
+pose it was trying to follow. A tether is a spring that ties one body part to a fixed point; red
+marks that point and the spring, and amber shows the force the spring pulls with, scaled for
+drawing. This recording
 attaches the foot at two seconds and releases it at four, while the walking prompt stays unchanged.
 
 <video controls preload="metadata" style="max-width:100%;height:auto" src="assets/motion_recordings/resistance-follow.mp4"></video>
@@ -32,11 +40,10 @@ loop {
 }
 ```
 
-Recordings use metres, seconds and Field's Y-up coordinates. `clip()` loads all poses;
-`MotionRecording.frames()` streams a long recording. Sampling interpolates rotations along the
-shortest arc, holds the last pose at the end, and never blends across resets. Joint names come
-from the recording's skeleton. `snapshot.frame.executed.bones(clip.skeleton)` returns an ordinary
-FLine for use with your own renderer and camera.
+Recordings use metres, seconds and Field's Y-up coordinates. `clip()` loads every pose; for a long
+recording, `MotionRecording.frames()` reads poses one at a time instead.
+`snapshot.frame.executed.bones(clip.skeleton)` returns an ordinary FLine, so you can draw the body
+with your own renderer and camera.
 
 ## Run a live body
 
@@ -52,16 +59,16 @@ Open [live CLoSD](agent_transcripts.md#motion_closd_live), enable **Advance**, t
 stretch readout shows what reaches the simulator. A capped spring can stretch; it is not a hard pin.
 
 Change the prompt, move the anchor, make a tether break above a threshold, or apply a torso impulse.
-A fall may trigger the stock controller's reset, which releases its attachments. The status
-reports releases, breaks and resets separately. Stopping the box closes the worker. Each live
+If the body falls, CLoSD may reset it: the figure starts over from its initial pose and every
+tether is released. The status line reports releases, breaks and resets separately. Stopping the
+box shuts CLoSD down. Each live
 scene saves a new recording under `motion-recordings` in the document workspace.
 
 ## Write a movement score
 
 The [movement score starting point](agent_transcripts.md#motion_tether_score) runs this sequence:
 walk for two seconds, tether the left ankle for two, then release it and continue for three.
-The code needs the optional CLoSD environment. The MP4 replays an actual recorded run of this
-score in Field; you can watch or load its recording without installing the simulator.
+The code needs CLoSD installed.
 
 ```diffstatic {data-lang=kotlin}
 :::fold imports
@@ -77,7 +84,7 @@ frames {
                 overlays=dancer.telemetry.tethers().flatMap { it.overlays() })
             val foot = dancer.telemetry.tether("left-foot")
             markdown("status", when {
-                foot?.active == true -> "**TETHERED** · ${"%.0f".format(foot.forceN)} N"
+                foot?.active == true -> "**TETHERED** · ${foot.forceN.f0} N"
                 foot != null -> "**RELEASED**"
                 else -> "**WALKING**"
             })
@@ -132,11 +139,11 @@ loop {
         camera(yaw=35.0, pitch=12.0, padding=1.5)
         followCamera(vec(frame.executed.root[0],frame.executed.root[1],frame.executed.root[2]),
             halfLifeSeconds=.4, epoch="${(elapsed/duration).toInt()}:${frame.episode}")
-        title("CLoSD · movement score · ${"%.2f".format(time)} s")
+        title("CLoSD · movement score · ${time.f2} s")
         helpers(true)
     }
     val phase = when {
-        active -> "TETHERED · ${"%.0f".format(tether?.forceN ?: 0.0)} N"
+        active -> "TETHERED · ${(tether?.forceN ?: 0.0).f0} N"
         time >= release -> "RELEASED"
         else -> "WALKING"
     }
@@ -147,10 +154,9 @@ loop {
 }
 ```
 
-`awaitMotion()` suspends while the worker opens. `playMotion` advances the backend and draws
-interpolated snapshots without waiting for inference on the render thread. `body("L_Ankle")`
-uses the simulator's explicit body mapping and captures the current attachment point as its
-anchor. Keep the handle to change or release the same connection:
+`awaitMotion()` waits until CLoSD has started. `playMotion(dancer, 2.seconds, ::draw)` lets the
+body move for two seconds and calls `draw` every frame. `body("L_Ankle")` names a part of the
+simulated body, and `tether` fixes the spring's other end where that ankle is now. Keep the handle to change or release the same connection:
 
 ```diffstatic {data-lang=kotlin}
 foot.tune {
@@ -205,7 +211,7 @@ loop {
 For a live session, the call is simply:
 
 ```diffstatic {data-lang=kotlin}
-showMotion(snapshot.frame, dancer.skeleton, follow=true, followHalfLife=.4)
+showMotion(snapshot.frame, dancer.skeleton, follow = true, followHalfLife = .4)
 ```
 
 Use `followVertical=true` to follow all axes. On an ordinary Three view, call
@@ -220,9 +226,7 @@ Open [live ARDY](agent_transcripts.md#motion_ardy_intentions), enable **Advance*
 **Apply intention**. **Reset episode** starts a fresh motion history. Prompt embeddings are cached;
 new text needs the optional encoder service described in the setup guide.
 
-This skipping take comes from the interactive Field session, using four denoising steps. It is
-six uninterrupted seconds, not a new batch generation or a reconstruction. Open
-[the recorded ARDY demo](agent_transcripts.md#motion_ardy_demo_replay) without installing the model:
+Here is six seconds of skipping from a live session. Open [the recorded ARDY demo](agent_transcripts.md#motion_ardy_demo_replay) without installing the model:
 
 ```diffstatic_runner {data-lang=kotlin capture="box" execution="launch" video="assets/motion_recordings/ardy-live-skipping.mp4" duration="6" fps="15" open-outputs="true" wait-output="true" wait-output-kind="display" wait="0.2" timeout="240" w="700" h="80" embed=true name="motion-ardy-live-demo" alt="ARDY skipping, replayed in Field from an uninterrupted excerpt of the interactive session, with moving limbs and a following camera."}
 :::fold imports and recording
@@ -245,7 +249,7 @@ loop {
         camera(yaw=35.0, pitch=12.0, padding=2.6) // Room for the whole skipping gesture.
         followCamera(vec(pose.root[0], pose.root[1], pose.root[2]), halfLifeSeconds=.4,
             epoch="${(elapsed/duration).toInt()}:${snapshot.frame.episode}")
-        title("ARDY · skipping · ${"%.2f".format(snapshot.frame.time)} s")
+        title("ARDY · skipping · ${snapshot.frame.time.f2} s")
         helpers(true)
     }
     markdown("status", "**ARDY · skipping**\n\n" +
@@ -256,8 +260,8 @@ loop {
 }
 ```
 
-The prompt and motion history matter. This session produces lively skipping; the walking-route
-trials below slide. Use the live controls to explore a phrase and its transitions, then save the
+The prompt and the motion so far both shape what comes next. This session skips well; the route
+recordings further down walk badly, with the feet sliding over the ground instead of stepping. Use the live controls to explore a phrase and its transitions, then save the
 result you want.
 
 ## Give ARDY a route
@@ -375,7 +379,7 @@ loop {
         title(sources.joinToString("                 ") { it.first })
         helpers(true)
     }
-    markdown("status", "**${sources.joinToString(" · ") { it.first }}** · ${"%.2f".format(time)} s\n\n" +
+    markdown("status", "**${sources.joinToString(" · ") { it.first }}** · ${time.f2} s\n\n" +
         "Actual recorded poses; horizontal root travel removed separately in each lane. White: executed. Cyan: reference. " +
         when(experiment) {
             "closd" -> "Strong: 8000 N/m, 120 N s/m, 2500 N cap. Attach at 2 s; release at 4 s. Red: anchor; amber: force (scaled)."
@@ -456,7 +460,7 @@ loop {
         title(sources.joinToString("                 ") { it.first })
         helpers(true)
     }
-    markdown("status", "**${sources.joinToString(" · ") { it.first }}** · ${"%.2f".format(time)} s\n\n" +
+    markdown("status", "**${sources.joinToString(" · ") { it.first }}** · ${time.f2} s\n\n" +
         "Actual recorded poses; horizontal root travel removed separately in each lane. White: executed. Cyan: reference. " +
         when(experiment) {
             "closd" -> "Strong: 8000 N/m, 120 N s/m, 2500 N cap. Attach at 2 s; release at 4 s. Red: anchor; amber: force (scaled)."
@@ -536,7 +540,7 @@ loop {
         title(sources.joinToString("                 ") { it.first })
         helpers(true)
     }
-    markdown("status", "**${sources.joinToString(" · ") { it.first }}** · ${"%.2f".format(time)} s\n\n" +
+    markdown("status", "**${sources.joinToString(" · ") { it.first }}** · ${time.f2} s\n\n" +
         "Actual recorded poses; horizontal root travel removed separately in each lane. White: executed. Cyan: reference. " +
         when(experiment) {
             "closd" -> "Strong: 8000 N/m, 120 N s/m, 2500 N cap. Attach at 2 s; release at 4 s. Red: anchor; amber: force (scaled)."

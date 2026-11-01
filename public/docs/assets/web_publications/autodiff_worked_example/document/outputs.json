@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-29T22:37:11.592Z",
+  "capturedAt": "2026-10-31T13:48:55.285Z",
   "documentName": "autodiff_worked_example",
   "outputs": [
     {
@@ -49,7 +49,7 @@
       "kinds": [
         "plotly"
       ],
-      "width": 722,
+      "width": 712,
       "height": 458,
       "path": "outputs/3.html"
     },
@@ -62,7 +62,7 @@
         "svg"
       ],
       "width": 838,
-      "height": 398,
+      "height": 381,
       "path": "outputs/4.html"
     },
     {
@@ -86,7 +86,7 @@
         "svg"
       ],
       "width": 894,
-      "height": 304,
+      "height": 303,
       "path": "outputs/6.html"
     },
     {
@@ -109,7 +109,7 @@
       "kinds": [
         "plotly"
       ],
-      "width": 763,
+      "width": 733,
       "height": 458,
       "path": "outputs/8.html"
     }

@@ -79,14 +79,14 @@ val part = Solid.scope {
 // The plain mesh for measuring, because `normals = true` splits vertices at every crease and
 // Field's isWatertight()/genus() read indices. See "Two meshes" below.
 val mesh = part.toTriMesh()
-println("volume  ${"%.3f".format(part.volume)} mm³  (${"%.1f".format(part.volume * 0.0027)} g in 6061)")
-println("area    ${"%.3f".format(part.surfaceArea)} mm²")
+println("volume  ${part.volume.f3} mm³  (${(part.volume * 0.0027).f1} g in 6061)")
+println("area    ${part.surfaceArea.f3} mm²")
 println("genus   ${part.genus}   — four bores and the slot")
 println("status  ${part.status}")
 println()
 println("Field's own mesh family, which shares no code with Manifold, on the same surface:")
 println(
-    "  watertight ${mesh.isWatertight()},  genus ${mesh.genus()},  " + "volume ${"%.3f".format(mesh.signedVolume())}",
+    "  watertight ${mesh.isWatertight()},  genus ${mesh.genus()},  " + "volume ${mesh.signedVolume().f3}",
 )
 
 // A clearance check. This is the number a drawing would call out, and `minGap` is how you get it.
@@ -99,7 +99,7 @@ val slotSolid =
 println()
 println(
     "wall between the slot and the nearest bore: " +
-        "${"%.3f".format(slotSolid.minGap(nearestBore, searchLength = 30.0))} mm",
+        "${slotSolid.minGap(nearestBore, searchLength = 30.0).f3} mm",
 )
 
 /*
@@ -218,14 +218,14 @@ val wall = outline - outline.offset(-3.0, JoinType.ROUND, circularSegments = 128
 val opened2 =
     outline.offset(-2.5, JoinType.ROUND, circularSegments = 128).offset(2.5, JoinType.ROUND, circularSegments = 128)
 :::fold the numbers, then draw them
-println("outline area ${"%.4f".format(outline.area)}, ${outline.contourCount} contours")
+println("outline area ${outline.area.f4}, ${outline.contourCount} contours")
 joins.forEach { (join, grown) ->
     println(
-        "  offset +2.5 ${join.name.padEnd(6)} -> area ${"%.4f".format(grown.area)}, " + "${grown.vertexCount} verts",
+        "  offset +2.5 ${join.name.padEnd(6)} -> area ${grown.area.f4}, " + "${grown.vertexCount} verts",
     )
 }
 println()
-println("a 3mm wall is ${"%.4f".format(wall.area)} mm², in ${wall.contourCount} contours")
+println("a 3mm wall is ${wall.area.f4} mm², in ${wall.contourCount} contours")
 
 /*
 A closing (dilate then erode) is EXACTLY the identity on a convex region — the two offsets are
@@ -238,10 +238,10 @@ val closed =
 val opened =
     square.offset(-0.5, JoinType.ROUND, circularSegments = 512).offset(0.5, JoinType.ROUND, circularSegments = 512)
 println()
-println("closing a 2x2 square: ${"%.6f".format(closed.area)} (the identity, 4.0)")
+println("closing a 2x2 square: ${closed.area.f6} (the identity, 4.0)")
 println(
-    "opening it:           ${"%.6f".format(opened.area)} (4 - (4-pi)/4 = " +
-        "${"%.6f".format(4.0 - (4.0 - Math.PI) * 0.25)})",
+    "opening it:           ${opened.area.f6} (4 - (4-pi)/4 = " +
+        "${(4.0 - (4.0 - Math.PI) * 0.25).f6})",
 )
 
 fun white() = outline.toFLines().onEach {
@@ -252,7 +252,7 @@ fun white() = outline.toFLines().onEach {
 showPlaneGrid(
     *joins
         .map { (join, grown) ->
-            "offset +2.5 with ${join.name}\narea ${"%.4f".format(grown.area)}, ${grown.vertexCount} vertices" to
+            "offset +2.5 with ${join.name}\narea ${grown.area.f4}, ${grown.vertexCount} vertices" to
                 (grown.toFLines().onEach {
                     it.color = vec(0.45, 0.85, 1.0, 0.9)
                     it.thickness = 1.8
@@ -260,7 +260,7 @@ showPlaneGrid(
         }
         .toTypedArray(),
     "a 3mm wall, following every corner\noutline - outline.offset(-3.0)\n" +
-        "${"%.4f".format(wall.area)} mm² in ${wall.contourCount} contours" to
+        "${wall.area.f4} mm² in ${wall.contourCount} contours" to
         (wall.toFLines().onEach {
             it.color = vec(1.0, 0.72, 0.35, 0.85)
             it.filled = true
@@ -321,13 +321,13 @@ val marchMs = (System.nanoTime() - t0) / 1e6
 // These aggregate checks do not establish identical vertex/index arrays.
 val again = Solid.levelSet(bounds, edgeLength = 1.1, field = ::field)
 :::fold check it is reproducible, then draw it
-println("level set ${"%.0f".format(marchMs)} ms")
+println("level set ${marchMs.f0} ms")
 println(
     "same triangle count twice: ${solid.triangleCount == again.triangleCount} " + "(${solid.triangleCount})",
 )
 println("same volume to the last bit: ${solid.volume == again.volume}")
 println()
-println("status ${solid.status}, genus ${solid.genus}, volume ${"%.1f".format(solid.volume)} mm³")
+println("status ${solid.status}, genus ${solid.genus}, volume ${solid.volume.f1} mm³")
 // And Field's own topology code, which shares nothing with Manifold, agrees it is closed.
 println("watertight by Field's own reckoning: ${solid.toTriMesh().isWatertight()}")
 
@@ -398,16 +398,16 @@ for (i in 0 until 11) {
     }
 }
 :::fold and the projection, which is the union of every slice
-println("genus ${part.genus}, volume ${"%.1f".format(part.volume)} mm³")
+println("genus ${part.genus}, volume ${part.volume.f1} mm³")
 println("11 layers, $contours contours in total")
 println("orange = where a ${nozzle}mm nozzle centre may go")
 println()
 // project() is the shadow of the whole solid — the union of every slice, in one call.
 part.project().use { shadow ->
-    println("projected footprint ${"%.2f".format(shadow.area)} mm² in ${shadow.contourCount} contours")
+    println("projected footprint ${shadow.area.f2} mm² in ${shadow.contourCount} contours")
 }
 part.slice(0.0).use { mid ->
-    println("the mid slice alone is ${"%.2f".format(mid.area)} mm² in ${mid.contourCount} contours")
+    println("the mid slice alone is ${mid.area.f2} mm² in ${mid.contourCount} contours")
 }
 
 /*

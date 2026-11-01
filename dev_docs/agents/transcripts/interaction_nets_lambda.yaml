@@ -79,25 +79,24 @@ operations:
           println()
           println("term                                       normal form                   steps  fans  agents")
           [
-                  "\\x. x",
-                  "(\\x y z. x z (y z)) (\\x y. x) (\\x y. x)",
-                  "(\\n f x. f (n f x)) (\\f x. f (f x))",
-                  "(\\m n f. m (n f)) (\\f x. f (f x)) (\\f x. f (f (f x)))",
-                  "(\\f x. f (f (f x))) (\\f x. f (f x))",
-                  "(\\n f x. n (\\g h. h (g f)) (\\u. x) (\\u. u)) (\\f x. f (f (f x)))",
-                  "(\\x. x x) (\\y. ((\\x. x) (\\x. x)) y)",
-                  "(\\x y. x) (\\x. x) ((\\m n f. m (n f)) (\\f x. f (f x)) (\\f x. f (f (f x))))",
-              ]
-              .forEach { source ->
-                  val each = LambdaTerms.normalise(source)
-                  val ok = LambdaTerms.alphaEquivalent(each.result, LambdaTerms.referenceNormalOrder(each.term))
-                  println(
-                      source.take(40).padEnd(42) +
-                          each.printed.take(28).padEnd(30) +
-                          "%5d %5d %7d".format(each.steps, each.fans, each.remainingNodes) +
-                          (if (ok) "" else "   ORACLE DISAGREES"),
-                  )
-              }
+              "\\x. x",
+              "(\\x y z. x z (y z)) (\\x y. x) (\\x y. x)",
+              "(\\n f x. f (n f x)) (\\f x. f (f x))",
+              "(\\m n f. m (n f)) (\\f x. f (f x)) (\\f x. f (f (f x)))",
+              "(\\f x. f (f (f x))) (\\f x. f (f x))",
+              "(\\n f x. n (\\g h. h (g f)) (\\u. x) (\\u. u)) (\\f x. f (f (f x)))",
+              "(\\x. x x) (\\y. ((\\x. x) (\\x. x)) y)",
+              "(\\x y. x) (\\x. x) ((\\m n f. m (n f)) (\\f x. f (f x)) (\\f x. f (f (f x))))",
+          ].forEach { source ->
+              val each = LambdaTerms.normalise(source)
+              val ok = LambdaTerms.alphaEquivalent(each.result, LambdaTerms.referenceNormalOrder(each.term))
+              println(
+                  source.take(40).padEnd(42) +
+                      each.printed.take(28).padEnd(30) +
+                      "%5d %5d %7d".format(each.steps, each.fans, each.remainingNodes) +
+                      (if (ok) "" else "   ORACLE DISAGREES"),
+              )
+          }
 
           /*
           Read the `agents` column against the `normal form` column on the exponentiation row — `three two`,

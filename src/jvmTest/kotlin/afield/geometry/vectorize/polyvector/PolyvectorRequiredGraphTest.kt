@@ -46,7 +46,12 @@ class PolyvectorRequiredGraphTest {
         assertEquals(listOf(1), missingCurves)
         assertEquals(listOf(2), missingNodes)
         // A walk through another required node does not count: 0 — 2 only via 1 is not a 0–2 curve.
-        val via = GeometryNetwork(2, required.nodes, listOf(GeometryCurve(0, 2, doubleArrayOf(10.0, 10.0, 50.0, 50.0), 0, 2)))
+        // Node 1 has to end a required curve (0 — 1 here) to be required at all; a node no required
+        // curve ends at constrains nothing, and a walk through it would count.
+        val via = GeometryNetwork(2, required.nodes, listOf(
+            GeometryCurve(0, 2, doubleArrayOf(10.0, 10.0, 50.0, 50.0), 0, 2),
+            GeometryCurve(1, 2, doubleArrayOf(10.0, 10.0, 50.0, 10.0), 0, 1),
+        ))
         val (_, m, _) = constrainToRequired(listOf(floatArrayOf(10f, 10f, 50f, 10f), floatArrayOf(50f, 10f, 50f, 50f)), via, 3.0)
         assertEquals(listOf(0), m)
     }

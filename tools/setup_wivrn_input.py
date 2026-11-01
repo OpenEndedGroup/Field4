@@ -95,6 +95,32 @@ def configure_private_serve(port: int, field_port: int) -> None:
     print(f'Private Field URL: https://{host}:{port}/index.html?file=Field-VR-IDE')
 
 
+def register_private_serve_host(port: int, field_port: int, home: Path | None = None) -> None:
+    """Trust one existing private Serve authority, without trusting forwarded request headers."""
+    before = json.loads(subprocess.check_output(['tailscale', 'serve', 'status', '--json'], text=True))
+    host = json.loads(subprocess.check_output(['tailscale', 'status', '--json'], text=True))['Self']['DNSName'].rstrip('.')
+    authority = f'{host}:{port}'
+    expected = f'https+insecure://localhost:{field_port}'
+    listener = before.get('TCP', {}).get(str(port), {})
+    handler = before.get('Web', {}).get(authority, {}).get('Handlers', {}).get('/', {})
+    if (listener.get('HTTPS') is not True or before.get('AllowFunnel', {}).get(authority, False) is not False
+            or handler.get('Proxy', '').rstrip('/') != expected):
+        raise RuntimeError('Register only an existing private HTTPS Serve listener pointing to this Field port')
+    home = home or Path(pwd.getpwuid(os.getuid()).pw_dir)
+    config = home / '.afield/browser-hosts.json'
+    hosts = json.loads(config.read_text()) if config.exists() else []
+    if not isinstance(hosts, list) or not all(isinstance(item, str) for item in hosts):
+        raise ValueError(f'{config} must contain a JSON array of browser host authorities')
+    config.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(mode='w', dir=config.parent, delete=False) as handle:
+        json.dump(sorted(set(hosts + [authority])), handle, indent=2)
+        handle.write('\n')
+        temporary = Path(handle.name)
+    os.chmod(temporary, 0o600)
+    os.replace(temporary, config)
+    print(f'Registered browser host {authority}. Restart Field to load {config}.')
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--install', action='store_true', help='Install the rule, reload it, and enable WiVRn HID forwarding')
@@ -102,7 +128,16 @@ def main() -> int:
     parser.add_argument('--enable-forwarding', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('--serve-port', type=int, help='Also add a new private Tailscale HTTPS listener on this unused port')
     parser.add_argument('--field-port', type=int, default=9092)
+    parser.add_argument('--register-serve-host', type=int, metavar='PORT',
+                        help='Register an existing private Serve listener for browser access (no sudo)')
     args = parser.parse_args()
+    if args.register_serve_host is not None:
+        if os.getuid() == 0:
+            parser.error('--register-serve-host runs as the Field user, without sudo')
+        if not 1024 <= args.register_serve_host <= 65535 or not 1 <= args.field_port <= 65535:
+            parser.error('Invalid Serve or Field port')
+        register_private_serve_host(args.register_serve_host, args.field_port)
+        return 0
     if args.enable_forwarding:
         enable_forwarding()
         return 0
@@ -137,6 +172,9 @@ def main() -> int:
                     str(Path(__file__).resolve()), '--enable-forwarding'], env=env, check=True)
     if args.serve_port is not None:
         configure_private_serve(args.serve_port, args.field_port)
+        subprocess.run(['runuser', '--user', account.pw_name, '--', sys.executable,
+                        str(Path(__file__).resolve()), '--register-serve-host', str(args.serve_port),
+                        '--field-port', str(args.field_port)], env=env, check=True)
     print(f'Installed for {account.pw_name}. No physical input devices or input-group membership changed.')
     return 0
 

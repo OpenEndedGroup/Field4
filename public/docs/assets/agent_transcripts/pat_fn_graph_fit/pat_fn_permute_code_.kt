@@ -13,7 +13,7 @@ with(Functions) {
         """
     mirrored seed  ${mirrored.graphNode().strings["source"]}
     ended at       ${run.fitted.graphNode().strings["source"]}
-    RMSE           ${"%.4f".format(run.initialError)} -> ${"%.4f".format(run.finalError)}
+    RMSE           ${run.initialError.f4} -> ${run.finalError.f4}
 
     It descends, but not to the answer: it escapes into wide kernels, where a
     normalised blend flattens toward the mean of its atom values. Structure search

@@ -21,7 +21,7 @@ operations:
       properties:
         code: |
           val width = (gain * 300).toInt()
-          display("main", "<div style='width:${width}px;height:14px;background:#4a90d9'></div><p>gain ${"%.2f".format(gain)}</p>")
+          display("main", "<div style='width:${width}px;height:14px;background:#4a90d9'></div><p>gain ${gain.f2}</p>")
   - connect: { parent: rp_gain, child: rp_meter }
   - execute: { box: rp_gain, property: code }
   - execute: { box: rp_meter, property: code }

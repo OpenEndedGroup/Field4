@@ -20,16 +20,14 @@ val model = GltfSupport.loadGltfBasic(
 )
 val inst = model.meshes.first { it.skin != null }
 
-val module =
-    Module(
-            Parameters(
-                renderer = renderer,
-                vertex = GpuSkinning.skinnedVertexShader,
-                fragment = GpuSkinning.skinnedFragmentShader,
-                name = "gpu twist, lbs vs dqs",
-            ),
-        )
-        .pointer()
+val module = Module(
+    Parameters(
+        renderer = renderer,
+        vertex = GpuSkinning.skinnedVertexShader,
+        fragment = GpuSkinning.skinnedFragmentShader,
+        name = "gpu twist, lbs vs dqs",
+    ),
+).pointer()
 
 val m = Mesh(renderer, module)
 module += "twist" to m

@@ -166,15 +166,13 @@ operations:
           displayClearAll() // drop anything a previous run left on another channel
           displayOpen("lines")
 
-          val path =
-              marfBankIn(
-                      MarfVector3f,
-                      stageTo(Vector3f(0f, 0f, 0f), 1.0, label = "origin"),
-                      stageTo(Vector3f(1f, 0f, 0f), 0.5, MarfCurve.Smooth, label = "x"),
-                      stageTo(Vector3f(1f, 1f, 0f), 1.5, MarfCurve.Exp(3.0), label = "xy"),
-                      stageTo(Vector3f(0f, 0.25f, 1f), 1.0, MarfCurve.Osc(2.0), label = "z"),
-                  )
-                  .read(pat("<0 1 2 3 2 1>").nums(), fields = MarfFieldClock.STAGES, name = "vec")
+          val path = marfBankIn(
+              MarfVector3f,
+              stageTo(Vector3f(0f, 0f, 0f), 1.0, label = "origin"),
+              stageTo(Vector3f(1f, 0f, 0f), 0.5, MarfCurve.Smooth, label = "x"),
+              stageTo(Vector3f(1f, 1f, 0f), 1.5, MarfCurve.Exp(3.0), label = "xy"),
+              stageTo(Vector3f(0f, 0.25f, 1f), 1.0, MarfCurve.Osc(2.0), label = "z"),
+          ).read(pat("<0 1 2 3 2 1>").nums(), fields = MarfFieldClock.STAGES, name = "vec")
 
           val cycles = 6L
           val W = 1060.0

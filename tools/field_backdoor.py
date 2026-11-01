@@ -1561,6 +1561,7 @@ class FieldBackdoor:
         preserve_selection: bool = False,
         include_notifications: bool = False,
         scale: float | None = None,
+        open_details: bool = False,
     ) -> dict[str, Any]:
         resolved_uid, _ = self.require_box_reference(uid)
         normalized_path = str(Path(path).expanduser().resolve())
@@ -1585,6 +1586,7 @@ class FieldBackdoor:
                 "expectOutputs": expect_outputs,
                 "preserveSelection": preserve_selection,
                 "includeNotifications": include_notifications,
+                "openDetails": open_details,
                 **({"deviceScaleFactor": scale} if scale is not None else {}),
             },
             timeout=timeout,
@@ -3547,6 +3549,8 @@ def build_command_parser() -> argparse.ArgumentParser:
     screenshot_box.add_argument("--expect-outputs", dest="expect_outputs", default="panel", choices=["panel", "inline", "none"])
     screenshot_box.add_argument("--no-open-outputs", dest="open_outputs", action="store_false")
     screenshot_box.add_argument("--no-pan", action="store_true")
+    screenshot_box.add_argument("--open-details", action="store_true",
+                                help="open every <details> in the box's output before the shot")
     screenshot_box.add_argument("--preserve-selection", action="store_true")
     screenshot_box.add_argument("--include-notifications", action="store_true")
     screenshot_box.add_argument("--scale", type=float, default=None,
@@ -3558,6 +3562,12 @@ def build_command_parser() -> argparse.ArgumentParser:
     native_screenshot.add_argument("--uid")
     native_screenshot.add_argument("--wait-frames", type=int, default=30)
     native_screenshot.add_argument("--timeout", type=float)
+
+    record_native = subparsers.add_parser("record-native", add_help=False)
+    record_native.add_argument("path", help="The .mp4 to write")
+    record_native.add_argument("--uid")
+    record_native.add_argument("--duration", type=float, default=6.0, help="Seconds of the window to record")
+    record_native.add_argument("--timeout", type=float)
 
     wait_native_renderer = subparsers.add_parser("wait-native-renderer", add_help=False)
     wait_native_renderer.add_argument("uid", nargs="?")
@@ -4372,6 +4382,7 @@ async def dispatch_command(
             preserve_selection=args.preserve_selection,
             include_notifications=args.include_notifications,
             scale=args.scale,
+            open_details=args.open_details,
         )
         data = attach_capture_warnings(client, data, args.uid, editor=False)
         data = await annotate_screenshot_size(client, data)
@@ -4394,6 +4405,21 @@ async def dispatch_command(
         data = await annotate_screenshot_size(client, data, browser=False)
         ok = bool(data.get("ok"))
         result = command_result(command_line, ok, data=data, events=[])
+        client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"])
+        return result
+
+    if args.command == "record-native":
+        # The native window filmed in real time by the server (macOS screencapture), cropped and encoded to
+        # MP4. The browser recorders (record-window, record-box) cannot see this window.
+        timeout = command_timeout(args.timeout, client.default_timeout)
+        event = await client.call_for_single_reply(
+            "agent-native-window-record",
+            {"path": os.path.abspath(args.path), "durationSec": max(1, round(args.duration)),
+             "uid": client.require_box_reference(args.uid)[0] if args.uid else None},
+            timeout=max(timeout, args.duration + 60.0),
+        )
+        data = event.get("payload") or {}
+        result = command_result(command_line, bool(data.get("ok")), data=data, events=[])
         client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"])
         return result
 
@@ -5260,7 +5286,7 @@ async def repl(
             return 0
         if line == "help":
             client.logger.log("repl_help")
-            print("Commands: open, status, snapshot, lifecycle-census, why, boxes, sleep, playwright-open, editor-open, inspect-view, review-note, reply-note, page-eval, screenshot-window, screenshot-editor, screenshot-box, native-screenshot, wait-native-renderer, viewport, canvas-flight, film-page, record-window, record-editor, record-box, new-box, delete-box, connect, disconnect, set, macro, transcript, run, launch, launch-batch, continue, wait-running, action, stop, wait-file, output, wait-output, agent-task, ai-chat, raw-send, run-jvm-main, exit")
+            print("Commands: open, status, snapshot, lifecycle-census, why, boxes, sleep, playwright-open, editor-open, inspect-view, review-note, reply-note, page-eval, screenshot-window, screenshot-editor, screenshot-box, native-screenshot, record-native, wait-native-renderer, viewport, canvas-flight, film-page, record-window, record-editor, record-box, new-box, delete-box, connect, disconnect, set, macro, transcript, run, launch, launch-batch, continue, wait-running, action, stop, wait-file, output, wait-output, agent-task, ai-chat, raw-send, run-jvm-main, exit")
             continue
         try:
             parsed = parse_command(line)
