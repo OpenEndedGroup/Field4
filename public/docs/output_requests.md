@@ -28,6 +28,38 @@ server, or pass `{base: fieldOrigin}` as the second argument. Keep the iframe on
 Resolve the document's assets with [FileManager](files_and_paths.md), such as
 `"editor/index.html".file`; serve them through Field's existing document asset routes.
 
+Both halves in one box: the box registers the callback and displays a page that sends one request
+when it loads and prints the reply under it.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/output_requests/round_trip.png" capture="box" open-outputs="true" wait-output=true wait-output-kind="display" wait="2" padding="12" embed=true name="output-requests-round-trip" alt="The box's editor output: the request it sent, operation inspect, and below it in green the JSON reply from the box's Kotlin callback, echoing the request and giving the box's name"}
+import kotlinx.serialization.json.*
+
+val endpoint =
+    outputRequests("editor") { request ->
+        buildJsonObject {
+            put("received", request)
+            put("box", thisBox.name)
+        }
+    }
+
+// The page asks once when it loads and writes the box's reply under its question.
+display(
+    "editor",
+    """
+    <div style="font-family: monospace; color: #ccc; padding: 8px">
+      <div>asked: {"operation": "inspect"}</div>
+      <pre id="reply-${endpoint.id}" style="color: #8f8">waiting…</pre>
+    </div>
+    <script type="module">
+      import {outputRequests} from '/output_requests.js';
+      const model = outputRequests('${endpoint.id}');
+      const response = await model.request({operation: 'inspect'});
+      document.getElementById('reply-${endpoint.id}').textContent = 'reply: ' + JSON.stringify(response, null, 2);
+    </script>
+    """.trimIndent(),
+)
+```
+
 Kotlin tools can call `sourceBox.outputRequests("editor").request(json)` directly from a suspend
 function. Browser and tool requests join the same queue, so they share ordering and validation.
 The handler starts with its box and document context on the Runloop. Move expensive work to a
