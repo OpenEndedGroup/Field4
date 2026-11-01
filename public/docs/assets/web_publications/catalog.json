@@ -1507,12 +1507,12 @@
     },
     "assets/agent_transcripts/gpu_state/metadata.edn": {
       "captureDigest": "4d5add3a103558e3a45b0b09c14392b55f14042e4118c9d4d341d9a926c175b0",
-      "capturedAt": "2026-11-01T22:05:59.672Z",
+      "capturedAt": "2026-11-01T22:43:25.251Z",
       "channels": 1,
       "file": "assets/web_publications/gpu_state/document/metadata.edn",
       "files": {
         "assets/web_publications/gpu_state/document/metadata.edn": "b072304aa3d5b9e4e214a8702e1e2f801130652042131f0bd80da681ab82a942",
-        "assets/web_publications/gpu_state/document/outputs.json": "5a4e19c9dcee955e086bfeda0ad92baf074793802a2d45c4ffb801b10d375b5f",
+        "assets/web_publications/gpu_state/document/outputs.json": "7fddb08c44502c9f2b10b0a3f643c753e022955cabe1af40608d47880482ebd8",
         "assets/web_publications/gpu_state/outputs/0.html": "cfc99e7e362f870d9f7fe98d2137f5136f2b60d47304221ba6a9322f04015623"
       },
       "kinds": [
@@ -1530,7 +1530,7 @@
         "public/docs/assets/agent_transcripts/gpu_state/guides/gpu_state.md": "e238fb0603255df494c776a9f2955a71038185b6dea921f641f1265a6afb7497",
         "public/docs/assets/agent_transcripts/gpu_state/metadata.edn": "f7fd6f975538fde5e86fdd8c54ae6b4149bc8cdbe34d5fd2696a218f23b06396",
         "public/docs/assets/gpu_state/particle-field.png": "b681ca428b78db68868670021e51ab4df5526b804189ff1f5220ea854a1f3919",
-        "public/docs/gpu_state.md": "faeb6f1a170ff7acbbf9ed9dcdb8f1aa12d769f3a4ebd680aeaa2464d69d2f79"
+        "public/docs/gpu_state.md": "338604429c5947ba1bf26f1c5ea1fdcd6225abc9ebac8b2a46698a5cd4095c9d"
       },
       "supplementalSources": [
         "public/docs/assets/gpu_state/particle-field.png",
