@@ -3626,10 +3626,13 @@ with(Functions) {
 
 The final plot answers “what shape did I make?” `browseGraph()` answers “how did each occurrence become part of that shape?” It keeps the root function’s x-axis fixed while you select nodes in the structural graph:
 
-```diffstatic {data-lang=kotlin}
-val gesture = (sin(2.0).shift(0.12) * tween(0.15, 1.0, 0.0..1.0, Functions.Easing.CUBIC_IN_OUT)).softClip(0.8)
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/browse_graph.png" capture="box" open-outputs="true" wait="2.0" w="1200" embed=true name="functions-browse-graph" alt="The component browser: a sidebar tree of the gesture's occurrences, softClip over multiply over shift, sin and tween with their params, with multiply selected; beside it the effect view plotting that occurrence's contextual effect in cyan on the final x-axis, with local, effect, muted final, cascade and sensitivity buttons above"}
+:::static
+with(Functions) {
+    val gesture = (sin(2.0).shift(0.12) * tween(0.15, 1.0, 0.0..1.0, Functions.Easing.CUBIC_IN_OUT)).softClip(0.8)
 
-gesture.browseGraph(channel = "components")
+    gesture.browseGraph(channel = "components")
+}
 ```
 
 The browser always leaves the final curve visible in gray. The selected cyan trace has five views:
@@ -3661,15 +3664,20 @@ Effect is called *contextual effect* rather than contribution. For addition it b
 
 The occurrence browser answers "how did each piece become the final shape?"; `browseRewrite(...)` answers "what did each rewrite do to that shape?" It applies the rules one at a time and steps through the result on the same time-base, drawing *before* (dashed), *after* (cyan), and *delta* (orange) for each rule:
 
-```diffstatic {data-lang=kotlin}
-gesture.browseRewrite(
-    """
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/browse_rewrite.png" capture="box" open-outputs="true" wait="2.0" w="1200" embed=true name="functions-browse-rewrite" alt="The rewrite browser at step 1 of 2, sin => op=triangle: the gesture before the rule dashed in grey, after it in cyan with the sine replaced by straight triangle segments, and the delta between them dotted in orange, above a step slider"}
+:::static
+with(Functions) {
+    val gesture = (sin(2.0).shift(0.12) * tween(0.15, 1.0, 0.0..1.0, Functions.Easing.CUBIC_IN_OUT)).softClip(0.8)
+
+    gesture.browseRewrite(
+        """
 #fnrewrite
-saw => op=triangle
+sin => op=triangle
 **/[role=amplitude] => *= 0.5
 """,
-    channel = "rewrite",
-)
+        channel = "rewrite",
+    )
+}
 ```
 
 `graphRewriteTrace(...)` is the non-HTML form, and it also accepts a `List<FnGraphRule>`, so the same before/after lanes work for the pattern rules and programmatic rules described below, not just the string DSL. Together, the two browsers close the loop between structural editing and perceptual confirmation: rewrite the graph, then watch exactly which occurrence moved and by how much.
