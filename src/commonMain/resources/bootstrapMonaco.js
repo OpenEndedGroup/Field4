@@ -1316,7 +1316,121 @@ const isDocsIframeVisible = () => {
         return style.visibility !== "hidden" && style.opacity !== "0"
 }
 
+// Back/forward for the docs iframe. The browser's iframe history is joint with the top-level
+// page's, so a bare history.back() at the iframe's first page would navigate Field itself. We keep
+// our own record of the pages the iframe has shown and only step within it.
+const docsIframeHistory = { entries: [], index: -1, pending: 0 }
+
+const updateDocsIframeNavButtons = () => {
+        const h = docsIframeHistory
+        const back = document.querySelector('.docs-iframe-nav-back')
+        const forward = document.querySelector('.docs-iframe-nav-forward')
+        if (back) back.disabled = h.index <= 0
+        if (forward) forward.disabled = h.index < 0 || h.index >= h.entries.length - 1
+}
+
+const noteDocsIframeLocation = (href) => {
+        const h = docsIframeHistory
+        if (!href || href === "about:blank") return
+        const pending = h.pending
+        h.pending = 0
+        if (h.entries[h.index] === href) {
+                // same page (hash-less reload or replaceState)
+        } else if (pending !== 0 && h.entries[h.index + pending] === href) {
+                h.index += pending
+        } else if (h.entries[h.index - 1] === href) {
+                h.index -= 1
+        } else if (h.entries[h.index + 1] === href) {
+                h.index += 1
+        } else {
+                h.entries = h.entries.slice(0, h.index + 1)
+                h.entries.push(href)
+                h.index = h.entries.length - 1
+        }
+        updateDocsIframeNavButtons()
+}
+
+const docsIframeGo = (delta) => {
+        const h = docsIframeHistory
+        const target = h.index + delta
+        if (target < 0 || target >= h.entries.length) return
+        const iframe = document.getElementById('docs-iframe')
+        const win = iframe && iframe.contentWindow
+        if (!win) return
+        h.pending = delta
+        try {
+                win.history.go(delta)
+        } catch (err) {
+                h.pending = 0
+                iframe.src = h.entries[target]
+        }
+}
+window.docsIframeGo = docsIframeGo
+
+const docsIframeNavDelta = (e) => {
+        const key = e.key || ""
+        if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey) {
+                if (key === "[") return -1
+                if (key === "]") return 1
+        }
+        if (e.altKey && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
+                if (key === "ArrowLeft") return -1
+                if (key === "ArrowRight") return 1
+        }
+        return 0
+}
+
+const isTextEntryTarget = (target) => {
+        const tag = target && target.tagName ? target.tagName.toLowerCase() : ""
+        return tag === "input" || tag === "textarea" || tag === "select" || !!target?.isContentEditable
+}
+
+const watchDocsIframeWindow = (win) => {
+        const note = () => {
+                try { noteDocsIframeLocation(win.location.href) } catch (_) {}
+        }
+        // Zensical's instant navigation changes pages with pushState, which fires no load event.
+        for (const name of ["pushState", "replaceState"]) {
+                const original = win.history[name]
+                if (original.__fieldWrapped) continue
+                const wrapped = function (...args) {
+                        const result = original.apply(this, args)
+                        note()
+                        return result
+                }
+                wrapped.__fieldWrapped = true
+                win.history[name] = wrapped
+        }
+        win.addEventListener('popstate', note)
+        win.addEventListener('hashchange', note)
+        // Mouse back/forward buttons.
+        win.addEventListener('mouseup', (e) => {
+                if (e.button === 3 || e.button === 4) {
+                        e.preventDefault()
+                        docsIframeGo(e.button === 3 ? -1 : 1)
+                }
+        }, true)
+        note()
+}
+
+window.addEventListener("keydown", (e) => {
+        if (!isDocsIframeVisible()) return
+        const delta = docsIframeNavDelta(e)
+        if (!delta) return
+        if (isMonacoTextFocused() || isTextEntryTarget(e.target)) return
+        e.preventDefault()
+        e.stopImmediatePropagation()
+        docsIframeGo(delta)
+}, {capture: true})
+
 const docsIframeKeydownHandler = (e) => {
+        const navDelta = docsIframeNavDelta(e)
+        if (navDelta && !isTextEntryTarget(e.target)) {
+                e.preventDefault()
+                e.stopPropagation()
+                docsIframeGo(navDelta)
+                return
+        }
         const key = (e.key || "").toLowerCase()
         const isCtrlOrCmdP = (e.ctrlKey || e.metaKey) && !e.altKey && key === 'p'
         const isCommandPaletteShortcut = e.key === "F1" || (isCtrlOrCmdP && e.shiftKey)
@@ -1355,6 +1469,7 @@ const wireDocsIframeKeyForwarding = () => {
                         if (!win) return
                         win.removeEventListener('keydown', docsIframeKeydownHandler, true)
                         win.addEventListener('keydown', docsIframeKeydownHandler, true)
+                        watchDocsIframeWindow(win)
                 } catch (err) {
                         console.warn('Unable to attach key handler to docs iframe', err)
                 }
