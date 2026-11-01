@@ -145,8 +145,13 @@ object DocsAudioProvenance {
         // Both of its figures are one Faust program rendered offline, so the family is the same at
         // eight voices and at one — the difference between them is voice allocation, not origin.
         "afield.audio.synth.FaustPolySoundDocs" to Origin.FAUST,
+        // One Faust program each, rendered offline through FaustDsp/FaustNode; the dry clip is the
+        // reverb's input on its own, Field's SawOsc pair, so it is Faust's page but not Faust's sound.
+        "afield.audio.synth.FaustSoundDocs" to Origin.FAUST,
         "afield.audio.synth.PatSpatialSoundDocs" to Origin.DOUGH_WASM,
         "afield.audio.synth.PatSpatialHeadTrackedDocs" to Origin.STEAM_AUDIO_HRTF,
+        // The page's two placed patterns through patSpatial and Steam Audio, with a still listener.
+        "afield.audio.synth.PatSpatialPlacementDocs" to Origin.STEAM_AUDIO_HRTF,
         // Boolean-network note streams played through the pinned Dirt-Samples subset, strictly:
         // no token falls back, so the family is the pure one. See boolean_network_music_examples.md.
         "afield.audio.synth.BooleanNetworkSoundDocs" to Origin.DIRT_SAMPLES,

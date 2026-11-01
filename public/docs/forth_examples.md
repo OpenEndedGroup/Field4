@@ -277,7 +277,7 @@ n @ println
 
 When something fails, ForthField errors include the current token, a stack snapshot, and the word call stack. For example:
 
-```diffstatic {data-lang=forth}
+```diffstatic_runner {data-lang=forth execution="launch" capture="editor" outputs="inline" expect-error=true screenshot="assets/forth_examples/error.png" wait="3" padding="10" timeout="180" embed=true name="forth-error" w="900" h="200" alt="The three-line ForthField box in Field's editor, with a red error marker naming the unknown word nope, the data stack holding 10, and the call stack inner inside outer."}
 : inner nope ;
 : outer 10 inner ;
 outer

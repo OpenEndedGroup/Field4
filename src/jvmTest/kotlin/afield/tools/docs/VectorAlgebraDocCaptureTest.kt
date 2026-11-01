@@ -240,6 +240,33 @@ class VectorAlgebraDocCaptureTest {
                 )
             }
 
+            // 6. Cross product: perpendicular to both inputs, sign set by the order.
+            run {
+                val a = vec(1, 0, 0)
+                val b = vec(0, 1, 0)
+                capture(
+                    "cross",
+                    linkedMapOf(
+                        "a" to vec(a),
+                        "b" to vec(b),
+                        "a x b" to (a x b),
+                        "b x a" to (b x a),
+                        "a x a (parallel)" to (a x a)
+                    )
+                )
+            }
+
+            // 7. lerp: points along (and past) the segment from start to end.
+            run {
+                val start = vec(0, 0, 0)
+                val end = vec(100, 40, 0)
+                val rows = linkedMapOf<String, Any?>()
+                for (t in listOf(0f, 0.25f, 0.5f, 1f, 1.5f, -0.5f)) {
+                    rows["start.lerp(end, $t)"] = start.lerp(end, t, vec(0, 0, 0))
+                }
+                capture("lerp", rows)
+            }
+
             ctx.close()
         } finally {
             runCatching { browser.close() }

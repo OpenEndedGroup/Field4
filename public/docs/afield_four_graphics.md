@@ -12,13 +12,15 @@ Launch the **window** box first, then the lesson you want to explore. The bundle
 original stays unchanged, and opening it again makes another fresh copy.
 
 
-`Field 4` is Field's direct Vulkan path. A graphics box usually has three parts:
+`Field 4` is Field's direct Vulkan path. Vulkan is a powerful, low-level graphics API that is notorious for how hard it is to write code for. Field turns it into something that is pleasant to hack on in real time. But [p5.js](https://p5js.org) it ain't.
+
+A graphics box usually has three parts:
 
 - Kotlin code that creates modules, meshes, buffers, cameras, textures, and renderer connections.
 - Shader properties: properties of the box, such as `vertex`, `fragment`, `compute`, or `vertex_fragment`, that hold GLSL code. You switch the code editor to one of them and edit it like the box's Kotlin.
 - Reflected accessors that Field generates by reading the shader interface. Field compiles the shaders, reads which inputs, buffers, uniforms and push constants they declare, and gives the box Kotlin properties with the same names, so you never write binding numbers or byte offsets by hand.
 
-In any graphics engine, the GLSL view of how to talk to the GPU and the Kotlin view of it have to match. In Field the GLSL drives that conversation, and the Kotlin side follows it. If a vertex shader declares `layout(location = 0) in vec3 pos`, the Kotlin side can write `pos.add(...)` inside `m.set { ... }`. If a shader declares a push constant member named `vertexData`, the Kotlin side can assign `m.vertexData = { vertexData }`. A shader is both the code that runs on the GPU and the contract that shapes the Kotlin API for its box.
+In any graphics engine, the low-level view that the GPU has of the data and the high-level CPU view of it have to match. In Field the low-level view is written in GLSL (or [Slang](#slang)), and the high-level view in Kotlin (or another of Field's languages). The GLSL drives that conversation, and the Kotlin side follows it. If a vertex shader declares `layout(location = 0) in vec3 pos`, the Kotlin side can write `pos.add(...)` inside `m.set { ... }`. If a shader declares a push constant member named `vertexData`, the Kotlin side can assign `m.vertexData = { vertexData }`. A shader is both the code that runs on the GPU and the contract that shapes the Kotlin API for its box.
 
 <iframe
   src="offline.html?file=assets/canonical_graphics/metadata.edn"
@@ -688,7 +690,11 @@ var kc by keyCamera(camera = camera)
 m.set(4, 2) {
     val z = 0.0
 
-    pos.add(0, 0, 0 + z, 1.0, 0.1, z, 1, 1, z, 0, 1, z)
+    // four corners of the unit square, and the texture coordinate at each
+    pos.add(0, 0, z)
+    pos.add(1, 0, z)
+    pos.add(1, 1, z)
+    pos.add(0, 1, z)
     tc.add(0, 0, 1, 0, 1, 1, 0, 1)
 
     tri.add(0, 1, 2)
@@ -709,8 +715,14 @@ layout(set = 0, binding = 0) uniform sampler2D ta[3];
 
 void main()
 {
-    vec4 c = texture(ta[0], ftc.yx);
-    uFragColor = vec4(c.rgb/1.0, 1.0);
+    // Each third of the quad, left to right, shows one entry of the array. Every entry is sampled and the
+    // result chosen afterwards, so the array index stays a constant.
+    // ftc.yx swaps the texture coordinates, which transposes the image on the quad.
+    vec4 c0 = texture(ta[0], ftc.yx);
+    vec4 c1 = texture(ta[1], ftc.yx);
+    vec4 c2 = texture(ta[2], ftc.yx);
+    vec4 c = ftc.x < 1.0 / 3.0 ? c0 : (ftc.x < 2.0 / 3.0 ? c1 : c2);
+    uFragColor = vec4(c.rgb, 1.0);
 }
 ```
 

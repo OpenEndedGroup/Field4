@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-01T22:06:09.156Z",
+  "documentName": "openxr_eye_intersection",
+  "outputs": [
+    {
+      "uid": "eye_ray_renderer",
+      "channel": "Vulkan window · still image",
+      "open": true,
+      "path": "outputs/0.html",
+      "width": 4112,
+      "height": 2524,
+      "kinds": [
+        "native-image"
+      ],
+      "warnings": []
+    }
+  ]
+}

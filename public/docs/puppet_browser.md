@@ -224,6 +224,61 @@ trip, and a condition that throws fails at once instead of being retried until t
 `column` and `numbers` read a table's columns out side by side, which is what a Plotly or FLine box
 wants: labels down one and values down another.
 
+This box writes a three-row page to a temporary file, opens it in a headless browser, and turns
+the table into a Markdown table and a bar per station:
+
+```diffstatic_runner {data-lang=kotlin requires="browser-bridge,electron-runtime" screenshot="assets/puppet_browser/pages-as-data.png" wait="3" timeout="120" capture="box" open-outputs="true" padding="14" w="900" h="900" embed=true name="puppet-browser-pages-as-data" alt="Two output panels. readings: the page heading Survey readings over a table of station, depth and count, alpha 12.0 4.0, beta 48.0 9.0, gamma 93.0 null. depth: three blue bars growing downward, short, medium and long."}
+import afield.media.browser.*
+import java.util.concurrent.TimeUnit
+
+// A small page with a table, written to a temporary file and read by a browser nobody draws.
+val page =
+    java.io.File.createTempFile("readings", ".html").apply {
+        writeText(
+            """
+            <h1>Survey readings</h1>
+            <table id="readings">
+              <thead><tr><th>station</th><th>depth</th><th>count</th></tr></thead>
+              <tbody>
+                <tr><td>alpha</td><td>12</td><td>4</td></tr>
+                <tr><td>beta</td><td>48</td><td>9</td></tr>
+                <tr><td>gamma</td><td>93</td><td>n/a</td></tr>
+              </tbody>
+            </table>
+            """
+                .trimIndent(),
+        )
+    }
+val browser = HeadlessPuppetBrowser(page.toURI().toString())
+try {
+    browser.loaded.get(30, TimeUnit.SECONDS)
+    val readings = browser.table("#readings").get(10, TimeUnit.SECONDS)
+    val stations = readings.column("station")
+    val depths = readings.numbers("depth")
+    markdown(
+        "readings",
+        "**${browser.text("h1").get(10, TimeUnit.SECONDS)}**\n\n" +
+            "| station | depth | count |\n| --- | --- | --- |\n" +
+            stations.indices.joinToString("\n") { i ->
+                "| ${stations[i]} | ${depths[i]} | ${readings.numbers("count")[i]} |"
+            },
+    )
+    // One bar per station, depth downwards.
+    val bars =
+        stations.indices.map { i ->
+            FLine().rect(i * 60.0, 0.0, 40.0, depths[i] ?: 0.0).apply {
+                filled = true
+                color = vec(0.3, 0.7, 1.0, 1.0)
+            }
+        }
+    lines(*bars.toTypedArray(), channel = "depth", w = 300.0, h = 200.0, fitToSize = true)
+} finally {
+    browser.close()
+}
+```
+
+The page's `n/a` count comes back as `null`.
+
 ## How desktop events land on the page
 
 `PuppetBrowserWindowInput` (`src/jvmMain/kotlin/afield/media/browser/PuppetBrowserInteraction.kt`)

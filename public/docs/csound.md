@@ -271,7 +271,10 @@ fun wave(a: FloatArray, tint: Vec4) = FLine().apply {
     color = tint
     thickness = 1.5
 }
-markdown("gain", "Csound `butterlp` at 500 Hz on a 1 kHz sine: measured gain **${gain.f4}**, Butterworth predicts **${(1 / kotlin.math.sqrt(17.0)).f4}**")
+markdown(
+    "gain",
+    "Csound `butterlp` at 500 Hz on a 1 kHz sine: measured gain **${gain.f4}**, Butterworth predicts **${(1 / kotlin.math.sqrt(17.0)).f4}**",
+)
 lines(wave(dry, vec(0.6, 0.6, 0.6, 1.0)), wave(low, vec(0.3, 0.8, 1.0, 1.0)), w = 640.0, h = 220.0, fitToSize = true)
 ```
 

@@ -166,6 +166,10 @@ A density curve is an analysis-and-ranking target rather than a direct MusicGen 
 service measures every candidate, persists per-lane scores, and the Field browser presents them
 alongside listening and human ratings.
 
+![A gesture board: an eighteen-second timeline whose prompt is assembled from three timed regions, a row of chips marking each term DIRECT, COMPILED or EVALUATIVE, and four curves (breath, event density, register drift and surface light) with two salience events drawn as dashed orange verticals](assets/audio_ai_gesture_board/gesture_board.png)
+
+Each chip under the prompt names how its term reaches the sound, and each curve carries its score weight. The board is captured from the box on the [gesture board](audio_ai_gesture_board.md) page.
+
 ## The rest of Field Audio AI
 
 Start with the [gesture board](audio_ai_gesture_board.md): it is the shortest runnable path from a
