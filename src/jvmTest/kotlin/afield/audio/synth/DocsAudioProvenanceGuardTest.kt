@@ -61,7 +61,7 @@ class DocsAudioProvenanceGuardTest {
         val byOrigin: Map<Origin?, Int> = published.groupingBy { DocsAudioProvenance.originOf(it) }.eachCount()
         val expected: Map<Origin?, Int> = mapOf(
             Origin.STAND_IN_SYNTH to 16,
-            Origin.DIRT_SAMPLES to 36,
+            Origin.DIRT_SAMPLES to 37,
             Origin.MIXED_SAMPLES_AND_STAND_IN to 1,
             Origin.DOUGH_DSP to 18,
             Origin.FAUST to 3,
@@ -258,7 +258,10 @@ class DocsAudioProvenanceGuardTest {
          * `pat_spatial.md` added one (2026-10-09), [Origin.STEAM_AUDIO_HRTF]:
          * [PatSpatialHeadTrackedDocs] renders `HeadTrackedPatternDemo`'s four movements binaurally,
          * re-rendered here only where `libphonon` loads.
+         *
+         * `petri_nets.md` added one (2026-10-31), [Origin.DIRT_SAMPLES]: [PetriSoundDocs] plays the
+         * page's two-place loop's `emits()` through the pinned subset with `strict = true`.
          */
-        const val EXPECTED_FENCE_COUNT = 77
+        const val EXPECTED_FENCE_COUNT = 78
     }
 }

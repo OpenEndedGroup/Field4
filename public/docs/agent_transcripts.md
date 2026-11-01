@@ -2908,6 +2908,14 @@ Sixteen triangles whose vertex data a FieldML box writes every frame, from
 
 [Open →](offline.html?file=assets/agent_transcripts/fieldml_mesh_demo/metadata.edn)
 
+### fieldml_suspend_demo
+
+A ribbon rewritten every frame by a scene with no Kotlin box: a FieldML box opens the window and
+starts `Renderer.run` with `hostLaunch`, from [FieldML and the JVM](fieldml_host_bridge.md). Run
+`window and renderer (FieldML)` first.
+
+[Open →](offline.html?file=assets/agent_transcripts/fieldml_suspend_demo/metadata.edn)
+
 ## visionOS device scenes
 
 <!-- transcript-index: verified-by = kotlinjs, execute -->

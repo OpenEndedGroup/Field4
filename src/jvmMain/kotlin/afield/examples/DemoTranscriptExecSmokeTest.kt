@@ -904,6 +904,7 @@ object DemoTranscriptExecSmokeTest {
         "fieldml_frames_demo",
         "fieldml_macro_module_demo",
         "fieldml_mesh_demo",
+        "fieldml_suspend_demo",
         // stacksl_examples.md's gallery draws into a native window.
         "stacksl_gallery",
         // ShaderTrinket: shadertoyHere boxes drawing into a shadertoyCanvas the renderer window shows,
