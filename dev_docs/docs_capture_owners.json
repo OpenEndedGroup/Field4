@@ -26,6 +26,14 @@
       "artifact": "spin-0.png … spin-3.png, four captures a second apart, joined into spin-frames.png. Needs a real Vulkan device: the subject is a triangle spinning under a Frames loop, so consecutive frames must *differ* — measured up to 28.5% of pixels on 2026-08-19. An identical set of four means the per-frame body did not run."
     },
     {
+      "asset": "public/docs/assets/fieldml_frames_sequence_demo/sequence-pair.png",
+      "page": "fieldml_host_bridge.md",
+      "owner": "fieldml.frames.sequence.demo",
+      "generator": "public/docs/assets/fieldml_frames_sequence_demo/metadata.edn",
+      "command": "magick sequence-0.png \\( -size 16x614 xc:black \\) sequence-1.png +append sequence-pair.png (in public/docs/assets/fieldml_frames_sequence_demo)",
+      "artifact": "sequence-0.png and sequence-1.png, two native-window captures 0.6 s apart, joined side by side with a 16px black gutter as ribbon-pair.png is. Needs a real Vulkan device; the band must be longer in the second."
+    },
+    {
       "asset": "public/docs/assets/fieldml_suspend_demo/ribbon-pair.png",
       "page": "fieldml_host_bridge.md",
       "owner": "fieldml.suspend.demo",

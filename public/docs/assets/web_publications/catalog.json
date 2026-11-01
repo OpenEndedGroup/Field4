@@ -4839,6 +4839,117 @@
         "public/docs/assets/canonical_graphics/metadata.edn": "2cf7eccfc6d672c8922b3e6d0b161679b6da645eb94d9a50c6a2931c56234281"
       }
     },
+    "assets/fieldml_frames_demo/metadata.edn": {
+      "captureDigest": "4d5add3a103558e3a45b0b09c14392b55f14042e4118c9d4d341d9a926c175b0",
+      "capturedAt": "2026-11-01T10:08:17.192Z",
+      "channels": 2,
+      "file": "assets/web_publications/fieldml_frames_demo/document/metadata.edn",
+      "files": {
+        "assets/web_publications/fieldml_frames_demo/document/metadata.edn": "d35ee3717cdb1e21d27f2c1a683e7e745129d3d7b0ed03781d86125323a8e2c2",
+        "assets/web_publications/fieldml_frames_demo/document/outputs.json": "d84cd608ce9058a494d460d88cf5c6dd80fde3d9e3698f12492a069d2531e2c5",
+        "assets/web_publications/fieldml_frames_demo/outputs/0.html": "1b41f873a5878e3734d46497dbb34c93e8db1f00806955b00c54188e74953332",
+        "assets/web_publications/fieldml_frames_demo/outputs/1.html": "2d9991b75e859faef220890cbbfecf81191834d5a3256a302c1e17644c5e7a97"
+      },
+      "kinds": [
+        "native-image"
+      ],
+      "outputs": "assets/web_publications/fieldml_frames_demo/document/outputs.json",
+      "sources": {
+        "public/docs/assets/fieldml_frames_demo/metadata.edn": "5c444502b21048d41808287d6162213ec315a01e5369df10a3116a5f8f19ebbd",
+        "public/docs/assets/fieldml_frames_demo/spin-0.png": "976511c563ad833286126c7037b3d16b294ba399d6308ef010757dd27603dbfb",
+        "public/docs/assets/fieldml_frames_demo/spin-1.png": "f415df4b75e027a65a13bde975e37e67b3de84074a532bc18d96652f2dc38ea1",
+        "public/docs/assets/fieldml_frames_demo/spin-2.png": "e81e7e1c17bda48ee78cae40e67fe68577f929a2adc48e53e082d297471065b2",
+        "public/docs/assets/fieldml_frames_demo/spin-3.png": "7b1ec70627a8ff9a4b70bf420dde16769d02cd6bc0d4524994aaa208e37c426c",
+        "public/docs/assets/fieldml_frames_demo/spin-frames.png": "7ae7951db53b723aa6bd94f63cdd25f4c3e3c034bffdcf9f2bb888ef12ce1119"
+      }
+    },
+    "assets/fieldml_frames_sequence_demo/metadata.edn": {
+      "captureDigest": "4d5add3a103558e3a45b0b09c14392b55f14042e4118c9d4d341d9a926c175b0",
+      "capturedAt": "2026-11-01T10:08:09.178Z",
+      "channels": 2,
+      "file": "assets/web_publications/fieldml_frames_sequence_demo/document/metadata.edn",
+      "files": {
+        "assets/web_publications/fieldml_frames_sequence_demo/document/metadata.edn": "568487f986100a83f512f3c0a4699138738f1b8e53060d05c5d98ef8b910f633",
+        "assets/web_publications/fieldml_frames_sequence_demo/document/outputs.json": "4b758f1318d47fbfc2bbefe636b9a17f662f056d2bc537a08debdc4873f88f9b",
+        "assets/web_publications/fieldml_frames_sequence_demo/outputs/0.html": "c9d7fe7bbe226024cf9ae077ca87c5d6c4c0dc50919da8a3467cf6afcf475ff2",
+        "assets/web_publications/fieldml_frames_sequence_demo/outputs/1.html": "4fb821efd7ce1a249966ceb434224c6d041aa70084254bc5f5d23c9a703de0ad"
+      },
+      "kinds": [
+        "native-image"
+      ],
+      "outputs": "assets/web_publications/fieldml_frames_sequence_demo/document/outputs.json",
+      "sources": {
+        "public/docs/assets/fieldml_frames_sequence_demo/metadata.edn": "677177fa9c4272f1d64af7e10afbce49fd5bc9b5ca90cc1872b7858cddd5c4f6",
+        "public/docs/assets/fieldml_frames_sequence_demo/sequence-0.png": "b41a1c0fed18dc466cdd138a844841f64aff19038b66cbf589848b0d32fd5fda",
+        "public/docs/assets/fieldml_frames_sequence_demo/sequence-1.png": "5f513141137cd8aaf0a8e13363e83ac9a987f62c158d86112879cfee65ad0260",
+        "public/docs/assets/fieldml_frames_sequence_demo/sequence-pair.png": "205772820f4784674c212b1ddeb98f783677c3da7b3503c35f844e15fe0fba6f"
+      }
+    },
+    "assets/fieldml_macro_module_demo/metadata.edn": {
+      "captureDigest": "4d5add3a103558e3a45b0b09c14392b55f14042e4118c9d4d341d9a926c175b0",
+      "capturedAt": "2026-11-01T10:08:34.604Z",
+      "channels": 2,
+      "file": "assets/web_publications/fieldml_macro_module_demo/document/metadata.edn",
+      "files": {
+        "assets/web_publications/fieldml_macro_module_demo/document/metadata.edn": "fd6e11e8d7db75460c24be350f1648dc899fc6a92344eb0d4f020120b32f9a17",
+        "assets/web_publications/fieldml_macro_module_demo/document/outputs.json": "81f2ab7c135a5a4a3fad56dc3608ffcd7069f9d859733b0d2628d30cb9e71def",
+        "assets/web_publications/fieldml_macro_module_demo/outputs/0.html": "229e176746246dd87a2d3055c3cb0fe1ad37c738f647260457ef7f39a9835838",
+        "assets/web_publications/fieldml_macro_module_demo/outputs/1.html": "a44d43b313eade79dfe1936d337f2b65dbb8ce2305cde3b15abdef15def6360a"
+      },
+      "kinds": [
+        "native-image"
+      ],
+      "outputs": "assets/web_publications/fieldml_macro_module_demo/document/outputs.json",
+      "sources": {
+        "public/docs/assets/fieldml_macro_module_demo/metadata.edn": "beab2b7b1a798ce30fca2a84cea5f07f63375fce392e87b46daf3a2e2dfe700e"
+      }
+    },
+    "assets/fieldml_mesh_demo/metadata.edn": {
+      "captureDigest": "4d5add3a103558e3a45b0b09c14392b55f14042e4118c9d4d341d9a926c175b0",
+      "capturedAt": "2026-11-01T10:08:26.421Z",
+      "channels": 2,
+      "file": "assets/web_publications/fieldml_mesh_demo/document/metadata.edn",
+      "files": {
+        "assets/web_publications/fieldml_mesh_demo/document/metadata.edn": "9c3f397ae10f831ea7fd3deeff6738c033989f291590191547fb5bd5413ac7a2",
+        "assets/web_publications/fieldml_mesh_demo/document/outputs.json": "88afc6f47a5ce0b06e4658987358cbb0d4ed36a363fb55b1c9fd301007daa402",
+        "assets/web_publications/fieldml_mesh_demo/outputs/0.html": "0d577b88cfd03fa4742bfe2f12cd2ead75be306cf93b87e6dfc3c90db8679db2",
+        "assets/web_publications/fieldml_mesh_demo/outputs/1.html": "7063b726fc887ba86ec42c7a9501a68de8a3f5eb00a67c621b1467b535b602e3"
+      },
+      "kinds": [
+        "native-image"
+      ],
+      "outputs": "assets/web_publications/fieldml_mesh_demo/document/outputs.json",
+      "sources": {
+        "public/docs/assets/fieldml_mesh_demo/metadata.edn": "e8ba88a9bb3ff7d705103c4da3ca3e32e877160ea8d82fbb4434a654e80ccfcb",
+        "public/docs/assets/fieldml_mesh_demo/ring-0.png": "e39bfbdf9b562f9b7c1a0a508c8df0c2347665edb6e3e678c9ff55a144fc125a",
+        "public/docs/assets/fieldml_mesh_demo/ring-1.png": "1e47fc3acf3a1638dc187dfeb5f554b0938b94fd54f4423fe4d05ac3131b7421",
+        "public/docs/assets/fieldml_mesh_demo/ring-2.png": "f30b848e33929bace63b845697bdedc55c97bc114cb96b77e44e684f273cadad",
+        "public/docs/assets/fieldml_mesh_demo/ring-3.png": "57e4edc993d6748714d562922659c1a6a113000465085b6c3304329635ae5531",
+        "public/docs/assets/fieldml_mesh_demo/ring-frames.png": "ec6459e3b9cd877d8f072a7d501d67db86f9ccdbdef54ed6e126be89482c25b5"
+      }
+    },
+    "assets/fieldml_suspend_demo/metadata.edn": {
+      "captureDigest": "4d5add3a103558e3a45b0b09c14392b55f14042e4118c9d4d341d9a926c175b0",
+      "capturedAt": "2026-11-01T10:08:02.275Z",
+      "channels": 2,
+      "file": "assets/web_publications/fieldml_suspend_demo/document/metadata.edn",
+      "files": {
+        "assets/web_publications/fieldml_suspend_demo/document/metadata.edn": "0a5ed2f6ad6e9a73dfaccee2521a021028cc7ec4c7289091b8ddb68a39f73198",
+        "assets/web_publications/fieldml_suspend_demo/document/outputs.json": "df33d0775c506d8422aa534d3b1a980a955fe25282a943a8ec0f60d824793b61",
+        "assets/web_publications/fieldml_suspend_demo/outputs/0.html": "5024b3523a41a621ddea469a55de25cf8255059ba6575a46f231743308ea930d",
+        "assets/web_publications/fieldml_suspend_demo/outputs/1.html": "40fd495d689c5f4b840dccc018ac2fc75457f3dcc9f1d9066b995a5609432633"
+      },
+      "kinds": [
+        "native-image"
+      ],
+      "outputs": "assets/web_publications/fieldml_suspend_demo/document/outputs.json",
+      "sources": {
+        "public/docs/assets/fieldml_suspend_demo/metadata.edn": "91b613aa21b4ace47cea1970aac062fe8bf1893434d0caf4ce06912dc6ceb881",
+        "public/docs/assets/fieldml_suspend_demo/ribbon-0.png": "821ca1a0dd8929734d789baa743f2ae8986a16e2dfecd2486c26b22ffa6084d0",
+        "public/docs/assets/fieldml_suspend_demo/ribbon-1.png": "ba953cbe2554ca5a747d1590cc1521ac298be1bc44dedd6326a11e73af700971",
+        "public/docs/assets/fieldml_suspend_demo/ribbon-pair.png": "729a75cac58cbdd2fee5bb4ecbf01e034d20dc3d8d4b6988f4d736e88b510a56"
+      }
+    },
     "assets/fline_examples/metadata.edn": {
       "captureDigest": "4d5add3a103558e3a45b0b09c14392b55f14042e4118c9d4d341d9a926c175b0",
       "capturedAt": "2026-10-31T14:05:53.973Z",

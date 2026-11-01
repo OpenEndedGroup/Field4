@@ -233,9 +233,17 @@ openWindow
 
 `hostCall` refuses a suspend method, and `hostLaunch` refuses one that is not suspend.
 
-The suspend demo has no Kotlin box: one FieldML box opens the window and starts the renderer this way, and a second rewrites a ribbon's vertices every frame. Run `window and renderer (FieldML)`, then `A ribbon rewritten every frame`. The renderer box wraps the window in `once "renderer" (fun u -> …)`, which makes it the first time the box runs and returns the same renderer on every later run, so running the box again does not open a second window.
+The suspend demo has no Kotlin box: one FieldML box opens the window and starts the renderer this way, and a second rewrites a ribbon's vertices every frame. Run `window and renderer (FieldML)`, then `A ribbon rewritten every frame`. The renderer box wraps the window in `once "renderer" (fun u -> …)`, which makes it the first time the box runs and returns the same renderer on every later run, so running the box again does not open a second window. The ribbon box ends by calling `snapshotWindow`, which puts a picture of the window in the box's `window` output, so the preview below shows what the window drew.
 
 [Open ↗](offline.html?file=assets/fieldml_suspend_demo/metadata.edn)
+
+<iframe
+    src="offline.html?file=assets/fieldml_suspend_demo/metadata.edn&amp;focus=outputs"
+    title="FieldML suspend demo — offline viewer"
+    style="width:100%; height:560px; border:1px solid #444; border-radius:8px; background:#111;"
+    loading="lazy"
+    allowfullscreen>
+</iframe>
 
 ![two captures of a native Vulkan window a second apart: a thick colour-graded ribbon on black, following a sine wave whose phase has moved between them](assets/fieldml_suspend_demo/ribbon-pair.png)
 
@@ -297,9 +305,15 @@ The frames sequence demo raises a band one column at a time, holds it, and start
 
 [Open ↗](offline.html?file=assets/fieldml_frames_sequence_demo/metadata.edn)
 
-![a native Vulkan window, captured while the script runs: an orange band that has risen across the left third of the window, its lower edge a sine curve](assets/fieldml_frames_sequence_demo/sequence-0.png)
+<iframe
+    src="offline.html?file=assets/fieldml_frames_sequence_demo/metadata.edn&amp;focus=outputs"
+    title="FieldML frames sequence demo — offline viewer"
+    style="width:100%; height:560px; border:1px solid #444; border-radius:8px; background:#111;"
+    loading="lazy"
+    allowfullscreen>
+</iframe>
 
-![the same window 0.6 s later: the band now reaches three quarters of the way across](assets/fieldml_frames_sequence_demo/sequence-1.png)
+![two captures of a native Vulkan window 0.6 s apart, side by side: on the left an orange band that has risen across the left third of the window, its lower edge a sine curve; on the right the same band reaching three quarters of the way across](assets/fieldml_frames_sequence_demo/sequence-pair.png)
 
 ## What it still will not do
 
@@ -365,6 +379,14 @@ The frames demo is the same scene with a `Frames` loop on it, the spinning trian
 
 [Open ↗](offline.html?file=assets/fieldml_frames_demo/metadata.edn), or open the [`fieldml_frames_demo`](agent_transcripts.md#fieldml_frames_demo) starting point from the welcome screen.
 
+<iframe
+    src="offline.html?file=assets/fieldml_frames_demo/metadata.edn&amp;focus=outputs"
+    title="FieldML frames demo — offline viewer"
+    style="width:100%; height:560px; border:1px solid #444; border-radius:8px; background:#111;"
+    loading="lazy"
+    allowfullscreen>
+</iframe>
+
 | In | Change | What happens |
 | --- | --- | --- |
 | the FieldML box | `* 0.04` → `* 0.2` | it spins five times faster, and the colour cycles with it |
@@ -378,6 +400,14 @@ In the macro module demo, a macro builds the scene: instead of hand-writing `par
 Then run the fourth box while it is spinning. It writes `spinRate` with `setRootProp`, and the scene reads that slot on *every frame*, so another box changes the speed of the running scene.
 
 [Open ↗](offline.html?file=assets/fieldml_macro_module_demo/metadata.edn), or open the [`fieldml_macro_module_demo`](agent_transcripts.md#fieldml_macro_module_demo) starting point from the welcome screen.
+
+<iframe
+    src="offline.html?file=assets/fieldml_macro_module_demo/metadata.edn&amp;focus=outputs"
+    title="FieldML moduleHere demo — offline viewer"
+    style="width:100%; height:560px; border:1px solid #444; border-radius:8px; background:#111;"
+    loading="lazy"
+    allowfullscreen>
+</iframe>
 
 <div class="field-data-table" markdown>
 
@@ -396,6 +426,14 @@ Its output record says what the macro did: `builtBy = "_moduleHere"` names the f
 The mesh demo has a vertex shader with real inputs, whose data FieldML recomputes every frame: two `layout(location = …) in` variables, both written through `Mesh.write`, one positionally and one by name, leaving out `Mesh.write`'s `inside` default. Like the frames demo, it opens its own window.
 
 [Open ↗](offline.html?file=assets/fieldml_mesh_demo/metadata.edn), or open the [`fieldml_mesh_demo`](agent_transcripts.md#fieldml_mesh_demo) starting point from the welcome screen.
+
+<iframe
+    src="offline.html?file=assets/fieldml_mesh_demo/metadata.edn&amp;focus=outputs"
+    title="FieldML mesh demo — offline viewer"
+    style="width:100%; height:560px; border:1px solid #444; border-radius:8px; background:#111;"
+    loading="lazy"
+    allowfullscreen>
+</iframe>
 
 ![four captures of a native Vulkan window a second apart, each a ring of coloured triangles on black, the hues rotating between frames](assets/fieldml_mesh_demo/ring-frames.png)
 
