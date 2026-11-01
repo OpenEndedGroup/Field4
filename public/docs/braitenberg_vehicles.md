@@ -266,8 +266,7 @@ for (d in [8.0, 12.0, 16.0, 20.0]) {
         canvas.record()
     }
     println(
-        "tuned " + d.f2 + ": median radius " + radii.median().f2 +
-            ", middle half " + radii.quantile(0.25).f2 + " to " + radii.quantile(0.75).f2,
+        "tuned ${d.f2}: median ${radii.median().f2}, middle half ${radii.quantile(0.25).f2} to ${radii.quantile(0.75).f2}",
     )
     panels += ("tuned " + d.f2) to canvas.image()
     panels += ("median " + radii.median().f2) to radii.toImg(maxDistance = 60.0, mark = d, width = 300, height = 300)
@@ -308,7 +307,9 @@ for (cost in [0.0, 0.2, 0.5, 1.0]) {
         light += world.meanLight() / 2000
         speed += world.meanSpeed() / 2000
     }
-    println("speedCost " + cost.f2 + ": light " + light.f3 + ", speed " + speed.f3 + ", summed weight " + (world.w.sum() / world.count).f2)
+    println(
+        "speedCost ${cost.f2}: light ${light.f3}, speed ${speed.f3}, summed weight ${(world.w.sum() / world.count).f2}",
+    )
     panels += ("cost " + cost.f2 + ": " + speed.f2) to canvas.image()
 }
 showImg(montage(panels, columns = 4, cellSide = 240))
@@ -375,7 +376,8 @@ the stopping for them.
 ## 8. Moving lights
 
 A `Light` takes a velocity, `vx` and `vy` in units per step, and `VehicleWorld.step` moves it across the
-torus. The box below trains the section 4 population on still lamps for 15 000 steps, freezes its
+torus, and `withLights` moves a population onto a different set of lamps. The box below trains the
+section 4 population on still lamps for 15 000 steps, freezes its
 weights, then sets every lamp drifting at 0.1 units per step in a different direction. Beside it are
 Braitenberg's lovers on the same moving lamps.
 
@@ -386,12 +388,8 @@ val p = VehicleParams(neuron = NeuronParams(bias = -1.0))
 
 val trained = VehicleWorld.random(80, still, seed = 5L)
 trained.stepTimes(p.copy(plasticity = PlasticityParams(learningRate = 3.0)), 15000)
-fun onMoving(src: VehicleWorld) = VehicleWorld(
-    src.width, src.height, moving, src.x.copyOf(), src.y.copyOf(), src.heading.copyOf(),
-    src.w.copyOf(), src.neurons.copyOf(), src.traces.copyOf(), src.baseline.copyOf(), 11L,
-)
-val learned = onMoving(trained)
-val lovers = onMoving(VehicleWorld.random(80, still, wiring = VehicleWorld.LOVER, seed = 5L))
+val learned = trained.withLights(moving, seed = 11L)
+val lovers = VehicleWorld.random(80, still, wiring = VehicleWorld.LOVER, seed = 5L).withLights(moving, seed = 11L)
 val canvasA = VehicleCanvas(learned, scale = 1.2, fade = 0.98f)
 val canvasB = VehicleCanvas(lovers, scale = 1.2, fade = 0.98f)
 
@@ -440,7 +438,8 @@ val ops = VehicleWiringGenome()
 val objective = vehicleForageObjective(lights)
 
 val control = PopulationSearch.random(ops, objective, 300, seed = 13L, label = "random")
-val evolved = PopulationSearch.evolve(ops, objective, 300, seed = 13L, mu = 6, lambda = 12, crossoverRate = 0.3, label = "evolve")
+val evolved =
+    PopulationSearch.evolve(ops, objective, 300, seed = 13L, mu = 6, lambda = 12, crossoverRate = 0.3, label = "evolve")
 println(control.summary())
 println(evolved.summary())
 println("lover " + objective.evaluate(VehicleWorld.LOVER).fitness.f3)

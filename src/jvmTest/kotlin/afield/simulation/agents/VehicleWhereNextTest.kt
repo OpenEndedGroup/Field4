@@ -80,8 +80,7 @@ class VehicleWhereNextTest {
         trained.stepTimes(base.copy(plasticity = PlasticityParams(learningRate = 3.0)), 15000)
         val moving = lights.mapIndexed { k, l -> l.copy(vx = 0.1 * kotlin.math.cos(k * 1.7), vy = 0.1 * kotlin.math.sin(k * 1.7)) }
         fun meanLight(src: VehicleWorld): Double {
-            val w = VehicleWorld(src.width, src.height, moving, src.x.copyOf(), src.y.copyOf(), src.heading.copyOf(),
-                src.w.copyOf(), src.neurons.copyOf(), src.traces.copyOf(), src.baseline.copyOf(), 11L)
+            val w = src.withLights(moving, seed = 11L)
             w.stepTimes(base, 1000)
             var s = 0.0
             repeat(2000) { w.step(base); s += w.meanLight() }

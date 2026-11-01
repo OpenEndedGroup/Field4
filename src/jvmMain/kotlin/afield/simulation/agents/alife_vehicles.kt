@@ -497,6 +497,15 @@ class VehicleWorld(
         neurons.copyOf(), traces.copyOf(), baseline.copyOf(), seed,
     )
 
+    /**
+     * An independent copy of the vehicles (positions, wiring, neuron state) among a different set of
+     * [lights] — a trained population moved onto moving lamps, say.
+     */
+    fun withLights(lights: List<Light>, seed: Long = 1L): VehicleWorld = VehicleWorld(
+        width, height, lights, x.copyOf(), y.copyOf(), heading.copyOf(), w.copyOf(),
+        neurons.copyOf(), traces.copyOf(), baseline.copyOf(), seed,
+    )
+
     private fun gaussian(): Double {
         val u1 = max(1e-12, rng.nextDouble())
         val u2 = rng.nextDouble()
