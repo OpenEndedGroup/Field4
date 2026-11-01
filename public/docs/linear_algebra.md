@@ -271,6 +271,8 @@ vec(1, 0, 0) x vec(0, 1, 0) // vec3(0, 0, 1)  — right-hand rule
 vec(0, 1, 0) x vec(1, 0, 0) // vec3(0, 0, -1) — order flips the sign
 ```
 
+![a = vec3(1, 0, 0) along x, b = vec3(0, 1, 0) along y, a x b = vec3(0, 0, 1) along z, b x a = vec3(0, 0, -1) pointing the other way along z, and a x a = vec3(0, 0, 0) drawn as a dot](assets/vector_algebra/cross.png)
+
 That is the standard way to find a triangle's surface normal:
 
 ```diffstatic {data-lang=kotlin}
@@ -289,6 +291,12 @@ val start = vec(0, 0, 0)
 val end = vec(100, 40, 0)
 start.lerp(end, 0.5f, vec(0, 0, 0)) // vec3(50, 20, 0) — halfway
 ```
+
+Each arrow is scaled to its own box, so read the distance along the segment from the numbers:
+`t = 1.5` lands past the end at `vec3(150, 60, 0)`, and `t = -0.5` behind the start, pointing the
+other way.
+
+![start.lerp(end, t) for t = 0, 0.25, 0.5, 1, 1.5 and -0.5: vec3(0, 0, 0) as a dot, then vec3(25, 10, 0), vec3(50, 20, 0), vec3(100, 40, 0), vec3(150, 60, 0) all pointing the same way, and vec3(-50, -20, 0) pointing back](assets/vector_algebra/lerp.png)
 
 For the repeated “position plus direction times amount” pattern, `fma` expresses
 the whole step without a temporary vector:
