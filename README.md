@@ -1,5 +1,11 @@
 # Field 4
 
+[![License: AGPL v3+](https://img.shields.io/badge/license-AGPL--3.0--or--later-blue)](LICENSE)
+![Kotlin](https://img.shields.io/badge/Kotlin-JVM%20%2B%20JS-7F52FF?logo=kotlin&logoColor=white)
+![Vulkan](https://img.shields.io/badge/graphics-Vulkan-AC162C?logo=vulkan&logoColor=white)
+![Platforms](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey)
+[![Docs](https://img.shields.io/badge/docs-openendedgroup.com%2Ffield4-success)](https://openendedgroup.com/field4)
+
 Field 4 is a live-coding environment for graphics, sound, exploratory data visualization, and new media art.
 
 Project site and user documentation: https://openendedgroup.com/field4
