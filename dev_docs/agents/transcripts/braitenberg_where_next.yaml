@@ -1,0 +1,219 @@
+name: braitenberg_where_next
+description: >
+  Five pure-CPU boxes extending public/docs/braitenberg_vehicles.md: Activation.BUMP aggressors tuned
+  with orbitBias() circling lamps (OrbitRadii histograms), a speedCost in the learning reward, learning
+  and homeostasis in one population, lamps that move (Light.vx/vy, a launched animateEvolution clip,
+  learned wiring against lovers) and VehicleWiringGenome on PopulationSearch against a random control.
+  None opens a Window or a Renderer.
+docs:
+  - page: braitenberg_vehicles.md
+    why: "Sections 5-9 of the page, one box each."
+operations:
+  - create:
+      box: orbits
+      name: "5 — BUMP vehicles circle at a set distance"
+      frame:
+        x: 60.0
+        y: 60.0
+        w: 420.0
+        h: 100.0
+      properties:
+        code: |
+          val lights = [Light(60.0, 60.0), Light(180.0, 70.0), Light(120.0, 180.0), Light(200.0, 200.0)]
+          val panels = mutableListOf<Pair<String, Img>>()
+          for (d in [8.0, 12.0, 16.0, 20.0]) {
+              val p = VehicleParams(
+                  neuron = NeuronParams(activation = Activation.BUMP, gain = 4.0, tauMembrane = 1.0, bias = orbitBias(d)),
+              )
+              val world = VehicleWorld.random(60, lights, wiring = VehicleWorld.AGGRESSOR, seed = 3L)
+              val canvas = VehicleCanvas(world, scale = 1.2, fade = 0.99f)
+              world.stepTimes(p, 6000)
+              val radii = OrbitRadii()
+              repeat(2000) {
+                  world.step(p)
+                  radii.observe(world)
+                  canvas.record()
+              }
+              println(
+                  "tuned " + d.f2 + ": median radius " + radii.median().f2 +
+                      ", middle half " + radii.quantile(0.25).f2 + " to " + radii.quantile(0.75).f2,
+              )
+              panels += ("tuned " + d.f2) to canvas.image()
+              panels += ("median " + radii.median().f2) to radii.toImg(maxDistance = 60.0, mark = d, width = 300, height = 300)
+          }
+          showImg(montage(panels, columns = 4, cellSide = 240))
+  - create:
+      box: speed_cost
+      name: "6 — a price on speed"
+      frame:
+        x: 520.0
+        y: 60.0
+        w: 420.0
+        h: 100.0
+      properties:
+        code: |
+          val lights = [Light(60.0, 60.0), Light(180.0, 70.0), Light(120.0, 180.0), Light(200.0, 200.0)]
+          val panels = mutableListOf<Pair<String, Img>>()
+          for (cost in [0.0, 0.2, 0.5, 1.0]) {
+              val p = VehicleParams(
+                  neuron = NeuronParams(bias = -1.0),
+                  plasticity = PlasticityParams(learningRate = 3.0, speedCost = cost),
+              )
+              val world = VehicleWorld.random(80, lights, seed = 5L)
+              val canvas = VehicleCanvas(world, scale = 1.2)
+              world.stepTimes(p, 15000)
+              var light = 0.0
+              var speed = 0.0
+              repeat(2000) {
+                  world.step(p)
+                  canvas.record()
+                  light += world.meanLight() / 2000
+                  speed += world.meanSpeed() / 2000
+              }
+              println("speedCost " + cost.f2 + ": light " + light.f3 + ", speed " + speed.f3 + ", summed weight " + (world.w.sum() / world.count).f2)
+              panels += ("cost " + cost.f2 + ": " + speed.f2) to canvas.image()
+          }
+          showImg(montage(panels, columns = 4, cellSide = 240))
+  - create:
+      box: combined
+      name: "7 — learning and homeostasis together"
+      frame:
+        x: 980.0
+        y: 60.0
+        w: 420.0
+        h: 100.0
+      properties:
+        code: |
+          val lights = [Light(60.0, 60.0), Light(180.0, 70.0), Light(120.0, 180.0), Light(200.0, 200.0)]
+          val base = VehicleParams(neuron = NeuronParams(bias = -1.0))
+
+          fun arm(name: String, adaptation: Double, learning: Double): Pair<String, Img> {
+              val p = base.copy(
+                  neuron = base.neuron.copy(adaptationRate = adaptation),
+                  plasticity = PlasticityParams(learningRate = learning),
+              )
+              val world = VehicleWorld.random(80, lights, seed = 5L)
+              val canvas = VehicleCanvas(world, scale = 1.2, fade = 0.998f)
+              world.stepTimes(p, 15000)
+              val visits = LightVisits(world)
+              var light = 0.0
+              repeat(5000) {
+                  world.step(p)
+                  visits.observe(world)
+                  canvas.record()
+                  light += world.meanLight() / 5000
+              }
+              println(name + ": light " + light.f3 + ", lights visited " + visits.mean().f2)
+              return (name + ": " + light.f2) to canvas.image()
+          }
+
+          showImg(
+              montage(
+                  [
+                      arm("neither", 0.0, 0.0),
+                      arm("homeostasis", 0.002, 0.0),
+                      arm("learning", 0.0, 3.0),
+                      arm("both", 0.002, 3.0),
+                  ],
+                  columns = 4,
+                  cellSide = 240,
+              ),
+          )
+  - create:
+      box: moving_lights
+      name: "8 — moving lights (launch it)"
+      frame:
+        x: 1440.0
+        y: 60.0
+        w: 420.0
+        h: 100.0
+      properties:
+        code: |
+          val still = [Light(60.0, 60.0), Light(180.0, 70.0), Light(120.0, 180.0), Light(200.0, 200.0)]
+          val moving = still.mapIndexed { k, l -> l.copy(vx = 0.1 * cos(k * 1.7), vy = 0.1 * sin(k * 1.7)) }
+          val p = VehicleParams(neuron = NeuronParams(bias = -1.0))
+
+          val trained = VehicleWorld.random(80, still, seed = 5L)
+          trained.stepTimes(p.copy(plasticity = PlasticityParams(learningRate = 3.0)), 15000)
+          fun onMoving(src: VehicleWorld) = VehicleWorld(
+              src.width, src.height, moving, src.x.copyOf(), src.y.copyOf(), src.heading.copyOf(),
+              src.w.copyOf(), src.neurons.copyOf(), src.traces.copyOf(), src.baseline.copyOf(), 11L,
+          )
+          val learned = onMoving(trained)
+          val lovers = onMoving(VehicleWorld.random(80, still, wiring = VehicleWorld.LOVER, seed = 5L))
+          val canvasA = VehicleCanvas(learned, scale = 1.2, fade = 0.98f)
+          val canvasB = VehicleCanvas(lovers, scale = 1.2, fade = 0.98f)
+
+          animateEvolution(
+              Unit,
+              totalSteps = 3000,
+              seconds = 12.0,
+              framesTarget = 240,
+              columns = 2,
+              cellSide = 300,
+              step = {
+                  learned.step(p)
+                  lovers.step(p)
+                  canvasA.record()
+                  canvasB.record()
+              },
+              panels = { _, n ->
+                  [
+                      "learned " + n + ": " + learned.meanLight().f2 to canvasA.image(),
+                      "lovers " + n + ": " + lovers.meanLight().f2 to canvasB.image(),
+                  ]
+              },
+          )
+  - create:
+      box: evolved_wiring
+      name: "9 — searching for a wiring"
+      frame:
+        x: 1900.0
+        y: 60.0
+        w: 420.0
+        h: 100.0
+      properties:
+        code: |
+          val lights = [Light(60.0, 60.0), Light(180.0, 70.0), Light(120.0, 180.0), Light(200.0, 200.0)]
+          val ops = VehicleWiringGenome()
+          val objective = vehicleForageObjective(lights)
+
+          val control = PopulationSearch.random(ops, objective, 300, seed = 13L, label = "random")
+          val evolved = PopulationSearch.evolve(ops, objective, 300, seed = 13L, mu = 6, lambda = 12, crossoverRate = 0.3, label = "evolve")
+          println(control.summary())
+          println(evolved.summary())
+          println("lover " + objective.evaluate(VehicleWorld.LOVER).fitness.f3)
+          val best = evolved.best!!.genome
+          println("evolved wiring " + best.joinToString { it.f2 })
+
+          fun trails(name: String, wiring: DoubleArray): Pair<String, Img> {
+              val world = VehicleWorld.random(30, lights, wiring = wiring, seed = 1L)
+              val canvas = VehicleCanvas(world, scale = 1.2)
+              repeat(3000) {
+                  world.step(VehicleParams(neuron = NeuronParams(bias = -1.0)))
+                  canvas.record()
+              }
+              return (name + ": " + world.meanLight().f2) to canvas.image()
+          }
+          showImg(montage([trails("lover", VehicleWorld.LOVER), trails("evolved", best)], columns = 2, cellSide = 300))
+  - execute:
+      box: orbits
+      property: code
+      type: fragment
+  - execute:
+      box: speed_cost
+      property: code
+      type: fragment
+  - execute:
+      box: combined
+      property: code
+      type: fragment
+  - launch: { box: moving_lights, property: code }
+  - execute:
+      box: evolved_wiring
+      property: code
+      type: fragment
+  - await:
+      wait: pending
+  - wait:
+      millis: 400
