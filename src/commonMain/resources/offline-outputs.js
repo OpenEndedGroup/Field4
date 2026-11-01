@@ -51,8 +51,7 @@
                 const url = new URL(output.path,base);
                 if (manifest.capturedAt) url.searchParams.set('v',manifest.capturedAt);
                 frame.src = url.href;
-                const width = Math.max(160,Math.min(4096,Number(output.width) || 640));
-                const height = Math.max(40,Math.min(8192,Number(output.height) || 420));
+                const {width, height} = shown(output, parseFloat(box.style.width));
                 details.style.width = `${width}px`; frame.style.height = `${height}px`;
                 // Canvas transforms and overlapping boxes can leave lazy frames asleep even
                 // though their open output is visible. Open panels must initialize eagerly.
@@ -68,12 +67,24 @@
         container.addEventListener('mousedown',e => e.stopPropagation());
         box.append(container);
     }
+    // A native window capture is recorded at the device's pixel size (4000 pixels wide on a Retina
+    // display); shown that large it covers the boxes beside it. Fit it to its box, keeping its aspect.
+    function shown(output, boxWidth) {
+        let width = Math.max(160,Math.min(4096,Number(output.width) || 640));
+        let height = Math.max(40,Math.min(8192,Number(output.height) || 420));
+        if (output.kinds?.includes('native-image')) {
+            const fit = Math.max(320, Number(boxWidth) || 0);
+            if (width > fit) { height = Math.max(40, Math.round(height * fit / width)); width = fit; }
+        }
+        return {width, height};
+    }
     function bounds(box) {
         const outputs = forBox(box.id); const [x,y,w,h] = box.properties?.frame || [0,0,300,200];
         let width = w, height = h;
         for (const output of outputs) {
-            width = Math.max(width,Math.min(4096,Number(output.width) || 640));
-            height += 30 + (output.open ? Math.min(8192,Number(output.height) || 420) : 0);
+            const size = shown(output, w);
+            width = Math.max(width,size.width);
+            height += 30 + (output.open ? size.height : 0);
         }
         return {x,y,w:width,h:height};
     }

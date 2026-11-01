@@ -22,7 +22,11 @@ ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "public/docs"
 PUBLICATIONS = DOCS / "assets/web_publications"
 CATALOG = PUBLICATIONS / "catalog.json"
-PILOTS = ("fline_examples", "three_output_gallery", "canonical_graphics")
+# FieldML demos that draw into a native window; each ends with `snapshotWindow`, which puts a
+# picture of that window in its own output area. Their boxes run parents first (renderer, then scene).
+FIELDML_DEMOS = ("fieldml_suspend_demo", "fieldml_frames_sequence_demo", "fieldml_frames_demo",
+                 "fieldml_mesh_demo", "fieldml_macro_module_demo")
+PILOTS = ("fline_examples", "three_output_gallery", "canonical_graphics") + FIELDML_DEMOS
 
 
 def publication_node() -> str | None:
@@ -319,6 +323,17 @@ def install(archive: Path, *, name: str, source: str, sources: dict[str, str]) -
     return entry
 
 
+def fieldml_parents(path: Path) -> dict[str, set[str]]:
+    """Each box's parents in a FieldML demo's `metadata.edn`, by uid."""
+    text = path.read_text()
+    starts = [(m.start(), m[1]) for m in re.finditer(r'\{:id "([^"]+)" :properties', text)]
+    result = {}
+    for (start, uid), end in zip(starts, [s for s, _ in starts[1:]] + [len(text)]):
+        found = re.search(r':parents #\{([^}]*)\}', text[start:end])
+        result[uid] = set(re.findall(r'#afield/box "([^"]+)"', found[1])) if found else set()
+    return result
+
+
 def recipes(group: str) -> list[dict]:
     if group == "pilot":
         return [{"name": name, "source": f"assets/{name}/metadata.edn"} for name in PILOTS]
@@ -578,9 +593,34 @@ async def capture(selected: list[dict], *, port: int | None, force: bool) -> lis
                         snapshot = await client.refresh_snapshot(60)
                         boxes = sorted((b for b in snapshot["boxes"] if b.get("code", "").strip()),
                                        key=lambda b: (b["frame"]["y"], b["frame"]["x"]))
+                        if name in FIELDML_DEMOS:
+                            # The renderer box first: the snapshot carries no parents, the document does.
+                            parents = fieldml_parents(DOCS / source)
+                            coded = {b["uid"] for b in boxes}
+                            boxes.sort(key=lambda b: bool(parents.get(b["uid"], set()) & coded))
                         for i, box in enumerate(boxes):
                             print(f"RUN {name} {i+1}/{len(boxes)}: {box['name']}", flush=True)
-                            await command(client, f"run {box['uid']} --timeout 180")
+                            if name not in FIELDML_DEMOS:
+                                await command(client, f"run {box['uid']} --timeout 180")
+                                continue
+                            # `start(renderer::run)` / `hostLaunch` draw only in a launched box.
+                            await command(client, f"launch {box['uid']} --timeout 180")
+                            if i == 0:
+                                await command(client, f"wait-native-renderer {box['uid']} --frames 5 --timeout 120")
+                        if name in FIELDML_DEMOS:
+                            # `snapshotWindow` waits 60 renderer frames, then fills the `window` channel,
+                            # which opens at its default 200 pixels; give the picture room, as lessons do.
+                            await client.wait_frames(240, timeout=90)
+                            await client.playwright_input(action="pageEval", script_mode="body", timeout=60, script="""
+                                for (const img of document.querySelectorAll('img[alt="the renderer window"]')) {
+                                    const content = img.closest('.disclosure-content');
+                                    if (!content) continue;
+                                    content.style.width = '440px'; content.style.height = '272px';
+                                    content.dispatchEvent(new MouseEvent('mouseup', {bubbles: true}));
+                                }
+                                return true;
+                            """)
+                            await client.wait_frames(15, timeout=30)
                     # Render closed panels before sampling, and retain them open for the reader.
                     await client.playwright_input(action="pageEval", script_mode="body", timeout=60, script="""
                         for(const box of document.querySelectorAll('.box')){

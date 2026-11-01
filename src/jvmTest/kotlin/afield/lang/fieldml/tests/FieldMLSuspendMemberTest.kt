@@ -111,6 +111,31 @@ class FieldMLSuspendMemberTest {
     }
 
     @Test
+    fun aLaterFailureIsPaintedOnTheCallingBoxsErrorOutput() {
+        // N1031-2: after the first suspension the box's evaluation is over, so there is nothing to
+        // throw into; the failure goes to the box's error output, where its author is looking.
+        val errors = mutableListOf<Any?>()
+        val output = object : afield.ui.output.HasOutput {
+            override fun print(message: Any?) = Unit
+            override fun println(message: Any?) = Unit
+            override fun display(message: Any?) = Unit
+            override fun display(channel: String, message: Any?) = Unit
+            override fun displayError(message: Any?, property: String, line: Int) {
+                errors += message
+            }
+        }
+        val source = "$prefix\n\nhostLaunch \"brokenLater\" () s (fun r -> s |> hostCall1 \"record\" r)"
+        val result = FieldMLCompiler.compile(source)
+        assertTrue(result.successful)
+        Evaluator(FieldMLRuntimePrelude.values(output = output, box = box)).evaluate(result.core!!)
+        assertTrue(errors.isEmpty(), "nothing has failed yet")
+        suspender.pending!!.resumeWithException(IllegalStateException("late"))
+        Runloop.runLoop.main.frame()
+        assertEquals(1, errors.size, "got $errors")
+        assertTrue("brokenLater" in errors.single().toString() && "late" in errors.single().toString(), "got $errors")
+    }
+
+    @Test
     fun aPlainMemberIsRefusedByHostLaunchWithAPointerToHostCall() {
         val failure = assertFailsWith<IllegalStateException> {
             evaluate("""hostLaunch "plain" 1 s (fun r -> r)""")

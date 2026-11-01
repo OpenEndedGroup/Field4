@@ -914,6 +914,7 @@ object FieldMLCompletionEngine {
         "hostCall1",
         "hostCall2",
         "hostLaunch",
+        "hostAwait",
         "hostExt",
         "hostClass",
         "hostAs",

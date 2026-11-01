@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-01T10:08:09.178Z",
+  "documentName": "fieldml_frames_sequence_demo",
+  "outputs": [
+    {
+      "uid": "fieldml-seq-script",
+      "channel": "window",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 440,
+      "height": 272,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "fieldml-seq-renderer",
+      "channel": "Vulkan window · still image",
+      "open": true,
+      "path": "outputs/1.html",
+      "width": 4112,
+      "height": 2524,
+      "kinds": [
+        "native-image"
+      ],
+      "warnings": []
+    }
+  ]
+}

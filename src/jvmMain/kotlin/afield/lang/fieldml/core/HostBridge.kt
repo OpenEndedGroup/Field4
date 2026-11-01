@@ -135,17 +135,7 @@ object FieldMLHostBridge {
         dispatcher: kotlin.coroutines.CoroutineContext = kotlin.coroutines.EmptyCoroutineContext,
         onResult: (Result<Any?>) -> Unit,
     ): kotlinx.coroutines.Job {
-        val candidates = instanceMethods(target.javaClass, name, arguments.size + 1)
-            .filter { !it.isVarArgs && it.parameterTypes.last() == Continuation::class.java }
-        val shaped = arguments + continuationPlaceholder
-        val chosen = choose(candidates, shaped)
-            ?: error(
-                if (candidates.isEmpty() && instanceMethods(target.javaClass, name, arguments.size).isNotEmpty()) {
-                    "${target.javaClass.simpleName}.$name is not a suspend member; call it with hostCall"
-                } else {
-                    refusal("suspend method", name, target.javaClass, candidates, shaped)
-                },
-            )
+        val chosen = chooseSuspendMember(name, target, arguments)
         val job = kotlinx.coroutines.Job()
         val block: suspend () -> Any? = {
             kotlin.coroutines.intrinsics.suspendCoroutineUninterceptedOrReturn { continuation ->
@@ -166,6 +156,38 @@ object FieldMLHostBridge {
             completion.resumeWith(first)
         }
         return job
+    }
+
+    private fun chooseSuspendMember(name: String, target: Any, arguments: List<Any?>): Executable {
+        val candidates = instanceMethods(target.javaClass, name, arguments.size + 1)
+            .filter { !it.isVarArgs && it.parameterTypes.last() == Continuation::class.java }
+        val shaped = arguments + continuationPlaceholder
+        return choose(candidates, shaped)
+            ?: error(
+                if (candidates.isEmpty() && instanceMethods(target.javaClass, name, arguments.size).isNotEmpty()) {
+                    "${target.javaClass.simpleName}.$name is not a suspend member; call it with hostCall"
+                } else {
+                    refusal("suspend method", name, target.javaClass, candidates, shaped)
+                },
+            )
+    }
+
+    /**
+     * Calls a Kotlin `suspend` member of [target] *from inside a suspending FieldML walk* and
+     * returns its result — `hostAwait "frame" () f`. Unlike [launchSuspendMember] this starts no
+     * coroutine: it passes the caller's own continuation, so when `Frames.frame()` suspends, the
+     * FieldML body that called it suspends with it, and resumes at this call when the frame turns.
+     *
+     * Reachable only through [evalFieldMLSuspending], which is reachable only from a [samProxy] that
+     * was handed a real [Continuation]; the soundness argument is "Suspendable bodies" in
+     * `dev_docs/FIELDML_HOST_BRIDGE.md`.
+     */
+    suspend fun awaitSuspendMember(name: String, target: Any, arguments: List<Any?>): FieldMLValue {
+        val chosen = chooseSuspendMember(name, target, arguments)
+        val result = kotlin.coroutines.intrinsics.suspendCoroutineUninterceptedOrReturn<Any?> { continuation ->
+            invoke(chosen, target, arguments + continuation)
+        }
+        return hostToFieldMLValue(result)
     }
 
     /** Stands in for the continuation while scoring: it is a [Continuation], which is all `choose` asks. */
@@ -984,6 +1006,28 @@ object FieldMLHostBridge {
                 called.name == "toString" && called.parameterCount == 0 -> "<FieldML function as ${iface.simpleName}>"
                 else -> {
                     val arrived = rawArguments?.toList().orEmpty()
+                    val continuation = arrived.lastOrNull() as? Continuation<*>
+                    if (suspend != null && continuation != null) {
+                        // A suspend slot that really got a continuation: walk the body suspendingly
+                        // and hand Kotlin either the result or COROUTINE_SUSPENDED. The body can now
+                        // `hostAwait` (`Frames.frame()`); a body that never does completes here,
+                        // exactly as before. "Suspendable bodies" in FIELDML_HOST_BRIDGE.md.
+                        val incoming = arrived.dropLast(1)
+                        val body: suspend () -> Any? = {
+                            var current = function
+                            if (incoming.isEmpty()) {
+                                if (isFieldMLFunction(current)) current = applyFieldMLFunctionSuspending(current, FieldMLValue.UnitValue)
+                            } else {
+                                for (argument in incoming) current = applyFieldMLFunctionSuspending(current, hostToFieldMLValue(argument))
+                            }
+                            when (resultType) {
+                                Void.TYPE, Unit::class.java -> Unit
+                                else -> coerce(resultType, null, fieldMLValueToHost(current))
+                            }
+                        }
+                        @Suppress("UNCHECKED_CAST")
+                        return@InvocationHandler body.startCoroutineUninterceptedOrReturn(continuation as Continuation<Any?>)
+                    }
                     // Drop the continuation, and only when one really arrived: a proxy is reachable
                     // from Kotlin that erased the type differently, and silently eating a real
                     // argument would be far worse than passing an extra one.

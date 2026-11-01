@@ -35,10 +35,11 @@ import kotlin.test.assertTrue
  * times, and the JVM got the value it declared". A test that only builds a proxy would have passed
  * before this work as well as after it.
  *
- * The bound is tested too, in [aBodyThatWouldHaveToSuspendIsStillOutOfReach]. The adapter is sound
- * because a suspend function that never suspends returns its value directly — the ordinary
- * completed-synchronously path — and a FieldML body genuinely never suspends. Which means a FieldML
- * body cannot call `Frames.frame()` either, and saying where that line falls is part of the claim.
+ * The bound is tested too, in [aBodyThatWouldHaveToSuspendIsStillOutOfReach]. A suspend function that
+ * never suspends returns its value directly — the ordinary completed-synchronously path — and that is
+ * still what a body that never reaches `hostAwait` does. Since 2026-11-01 a body *can* suspend, but
+ * only through `hostAwait` on the suspending walk (`FieldMLSuspendableBodyTest`); `hostCall0 "frame"`
+ * is still refused, and saying where that line falls is part of the claim.
  */
 class FieldMLSuspendCallbackTest {
     /** Parenthesised: FieldML is curried, so a bare `hostClass "…"` here would be two more arguments. */
@@ -289,13 +290,11 @@ class FieldMLSuspendCallbackTest {
 
     @Test
     fun aBodyThatWouldHaveToSuspendIsStillOutOfReach() {
-        // The honest half. `Frames.frame()` is `suspend`, so on the JVM it is `frame(Continuation)`
-        // — arity one — and the bridge has no continuation to pass, so no candidate matches at
-        // arity zero. That refusal is correct rather than unfortunate: this adapter is sound *only*
-        // because a FieldML body never suspends, and being able to call `frame()` from FieldML is
-        // exactly the thing that would make it unsound. `frames { }`, whose contract is that the
-        // body drives `frame()` itself, therefore stays out of reach; `eachFrame`/`loop`/`forever`,
-        // where the enclosing Kotlin owns the suspension, do not.
+        // `Frames.frame()` is `suspend`, so on the JVM it is `frame(Continuation)` — arity one — and
+        // `hostCall` has no continuation to pass, so no candidate matches at arity zero. That stays
+        // correct: the only sound route to `frame()` is `hostAwait "frame" () f`, which passes the
+        // continuation of the *suspending* walk ("Suspendable bodies", FIELDML_HOST_BRIDGE.md;
+        // FieldMLSuspendableBodyTest). A synchronous `hostCall` must never be that route.
         val failure = runCatching {
             evaluateSource("""hostStaticCall "eachFrame" (fun f -> f |> hostCall0 "frame") $phased""")
         }
