@@ -1828,6 +1828,59 @@ loop {
 }
 ```
 
+```diffstatic_runner {data-lang=kotlin capture="ui" region="box" capture-box="record_toggle" clip-at-end="true" video="assets/visualizers-record-toggle.mp4" fps="20" transcript="../../dev_docs/agents/transcripts/docs_capture/record_toggle.yaml" padding="8" wait="0" timeout="240" embed=true hidden=true name="record-toggle" alt="The presets panel. The pointer presses rec size, sweeps the size slider up, back down and up again while the blue circle grows and shrinks, presses rec size again, and a keyframe curve named size opens under the panel with its keys along the up-down-up sweep."}
+ui.waitForSelector(".field-slider-visual", 8000.0)
+ui.eval("document.body.classList.add('mode-no-editor'); return true")
+ui.pause(300)
+
+// Presses the panel button whose label contains `label`, with the real pointer.
+fun press(label: String) {
+    val c = ui.eval("""
+        const row = [...document.querySelectorAll('.field-button')].find(b => b.textContent.toLowerCase().includes('$label'));
+        if (!row) return 'missing';
+        // The row carries the label; the pressable part is the HOLD button inside it.
+        const b = row.querySelector('button') || row;
+        const r = b.getBoundingClientRect();
+        return [r.left + r.width / 2, r.top + r.height / 2].join(',');
+    """).toString().trim('"')
+    check(c != "missing") { "no '$label' button" }
+    val (x, y) = c.split(',').map { it.toDouble() }
+    ui.moveMouse(x, y, 6)
+    ui.mouseDown()
+    ui.pause(80)
+    ui.mouseUp()
+}
+
+fun point(fraction: Double): Pair<Double, Double> {
+    val c = ui.eval("""
+        const r = [...document.querySelectorAll('.field-slider-visual')].map(e => e.getBoundingClientRect()).find(r => r.width > 0);
+        return [r.left + r.width * $fraction, r.top + r.height / 2].join(',');
+    """).toString().trim('"').split(',').map { it.toDouble() }
+    return c[0] to c[1]
+}
+
+// Record one slow sweep of the size slider: up, back down, and up again.
+press("rec size")
+ui.pause(300)
+val start = point(0.33)
+val hit = ui.eval("const e = document.elementFromPoint(${start.first}, ${start.second}); return [e?.tagName, e?.className?.baseVal || e?.className, !!e?.closest('.field-slider-visual'), window.innerWidth, window.innerHeight].join(' / ')").toString()
+check("true" in hit) { "slider start is covered at $start: $hit" }
+ui.moveMouse(start.first, start.second, 8)
+ui.mouseDown()
+for (step in 0..60) {
+    val f = 0.33 + 0.55 * kotlin.math.sin(step / 60.0 * 1.5 * Math.PI).let { it * it }
+    val p = point(f)
+    ui.moveMouse(p.first, p.second, 1)
+    ui.pause(40)
+}
+ui.mouseUp()
+ui.pause(200)
+press("rec size")
+ui.pause(4000)
+val after = ui.eval("return [...document.querySelectorAll('.field-slider')].find(e => e.getBoundingClientRect().width > 0).dataset.value").toString()
+check(after.trim('"').toDouble() > 0.8) { "the sweep did not move size: $after" }
+```
+
 `playControl` moves the slider and runs its callback, so the playback drives whatever the slider drives. `recordControl(label, channel)` is the same recording without the button: it returns a recording whose `stop()` writes the curve.
 
 ### Presets and morphing
