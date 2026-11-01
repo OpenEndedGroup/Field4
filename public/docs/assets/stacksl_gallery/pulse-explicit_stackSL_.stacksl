@@ -1,5 +1,5 @@
 p length
-time sin 0.25 * 0.5 +
+time sin 0.15 * 0.3 +
 0.035
 pulse
 palette

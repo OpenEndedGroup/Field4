@@ -685,7 +685,7 @@ With explicit `x center width`:
 
 ```diffstatic {data-lang=stacksl}
 p length
-time sin 0.25 * 0.5 +
+time sin 0.15 * 0.3 +
 0.035
 pulse
 palette
@@ -711,12 +711,11 @@ palette
 
 <p>
 <img src="../assets/stacksl/stacksl-pulse-default.png" alt="p length pulse: a white ring on black" style="width:32%;max-width:240px;border-radius:6px;">
+<video src="../assets/stacksl/stacksl-pulse-explicit.mp4" poster="../assets/stacksl/stacksl-pulse-explicit.png" autoplay loop muted playsinline aria-label="Explicit pulse: a thin blue and white ring on cream whose radius swings in and out with time" style="width:32%;max-width:240px;border-radius:6px;"></video>
 <img src="../assets/stacksl/stacksl-fm-palette.png" alt="Short-form fm: flowing horizontal bands in cream, blue and brown" style="width:32%;max-width:240px;border-radius:6px;">
 <img src="../assets/stacksl/stacksl-fm-explicit.png" alt="Explicit fm: a cyan and magenta plaid" style="width:32%;max-width:240px;border-radius:6px;">
 </p>
 
-??? aside "No tile for the explicit pulse"
-    The explicit `x center width` pulse program rendered as a single flat colour in the gallery harness (one distinct pixel value in 512²), so it is left without a tile until that is understood.
 
 ## Modifiers, ranges, and memories
 
