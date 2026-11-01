@@ -1,0 +1,29 @@
+#rectsl
+->wall 16 9 abstract
+->tempo 120
+->beats-per-cycle 4
+->duration-cycles 4
+->fps 30
+->background 0x0a0a12
+
+# The figure in space: thirty-two slots; the first sixteen light as before.
+"slot" rect
+  0.27 1.8 ->wh
+  0x7cf5d0 solid ->fill
+  32 '( f 15 *  7.5 -  2.8 ->xy ) array
+  32 0 ->kolakoski
+;
+
+# The same figure in time: one copy per onset, each alive for its own step.
+"run" rect
+  0.4 ->square
+  0xe0af68 solid ->fill
+  32 0 kolakoski '( f 15 *  7.5 -  0 ->xy ) pat
+;
+
+# The gap reading of the same word, a step later so the two rows can be compared.
+"gap" rect
+  0.4 ->square
+  0xff5a3c solid ->fill
+  32 1 kolakoski-gaps '( f 15 *  7.5 -  -2.8 ->xy ) pat
+;

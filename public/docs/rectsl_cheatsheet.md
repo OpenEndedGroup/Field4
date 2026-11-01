@@ -781,6 +781,11 @@ first event, which is where that opacity comes from.
 ;
 ```
 
+<video src="../assets/rectsl/rectsl-cheat-pat.mp4" poster="../assets/rectsl/rectsl-cheat-pat.png"
+       autoplay loop muted playsinline aria-label="Red kick squares dropping and flashing as they march across the wall, with a small rect stepping through the second pattern"
+       style="width:100%;max-width:640px;border-radius:8px;">
+</video>
+
 Worked: [Four to the floor](rectsl_examples.md#four-to-the-floor) is `pat` at its plainest
 against a clock; [The rest of the surface](rectsl_examples.md#the-rest-of-the-surface)
 puts every per-event context word on screen at once.
@@ -830,6 +835,11 @@ and centre seeded Perlin noise around zero.
 "quantised" rect  0.8 ->square  saw 0.25 quantise 16 * 8 -  ->x   -4.6 ->y ;
 "noisy"     rect  0.8 ->square  7 perlin bipolar 6 *  ->x   4.4 ->y ;
 ```
+
+<video src="../assets/rectsl/rectsl-cheat-patterns-as-values.mp4" poster="../assets/rectsl/rectsl-cheat-patterns-as-values.png"
+       autoplay loop muted playsinline aria-label="Seven white squares moving across the wall, some easing, some holding and jumping"
+       style="width:100%;max-width:640px;border-radius:8px;">
+</video>
 
 Worked: [Signals, stepped and smooth](rectsl_examples.md#signals-stepped-and-smooth), and
 [Kolakoski rhythms](rectsl_examples.md#kolakoski-rhythms) for `kolakoski`/`kolakoski-gaps`
@@ -987,6 +997,11 @@ which stay lit. The off-steps are hidden rather than deleted; RectSL has no node
   16 0 ->kolakoski        # or `5 16 0 ->euclid`
 ;
 ```
+
+<video src="../assets/rectsl/rectsl-cheat-strip.mp4" poster="../assets/rectsl/rectsl-cheat-strip.png"
+       autoplay loop muted playsinline aria-label="The Kolakoski slots lit across the top; along the bottom the strip marks sit edge to edge, so the seven events read as one grey bar"
+       style="width:100%;max-width:640px;border-radius:8px;">
+</video>
 
 Worked: [Four to the floor](rectsl_examples.md#four-to-the-floor) reads `pat` and `strip`
 side by side on the same string; [Kolakoski rhythms](rectsl_examples.md#kolakoski-rhythms)

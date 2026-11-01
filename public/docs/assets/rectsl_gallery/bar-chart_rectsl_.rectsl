@@ -1,0 +1,8 @@
+#rectsl
+->wall 18 8 abstract
+->duration 5
+->fps 30
+
+'( 3 7 2 9 5 8 4 6 1 6 ) data  normalize  "magma" bars
+  '( '( 0=0 0.6=1 ) ease-out ->alpha ) each
+  0.07 ->stagger-time
