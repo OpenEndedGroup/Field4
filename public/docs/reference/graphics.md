@@ -18850,7 +18850,7 @@ already exists ([`SyphonServer.publishIOSurface`](graphics.md#syphon-kt--syphons
 
 `src/jvmMain/kotlin/afield/io/syphon/Syphon.kt` — [read the source](source/jvmMain/afield/io/syphon/Syphon/)
 
-**Used in:** [Syphon: sharing frames with other applications](../syphon.md)
+**Used in:** [Syphon: sharing frames on macOS](../syphon.md)
 
 ### Top-level functions { #syphon-kt-functions }
 
