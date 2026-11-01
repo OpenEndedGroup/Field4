@@ -214,9 +214,9 @@ for ((time, flow) in frames) tracker.add(time, VectorFieldTopology.compute(flow,
 Over the eagle film, from its approach to the landing, the tracker follows the swirls frame by frame. Only one lasts twelve frames or more: a saddle that rides the banking wing.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/vector_field_topology/eagle_tracks.png" alt="the last frame of the eagle clip, darkened, with one white zigzag track over the eagle's near wing, labelled 1 track over frames 150 to 270" wait="5" timeout="300" capture="box" open-outputs="true" padding="20" name="vector-field-eagle-tracks" embed=true}
+import afield.geometry.topology.morsesmale.CriticalType
 import afield.geometry.topology.tracking.*
 import afield.geometry.topology.vectorfield.*
-import afield.geometry.topology.morsesmale.CriticalType
 
 val flow = loadParticleFlow("public/docs/assets/vector_field_topology/eagle.flow.gz")
 val film = videoFrames("public/docs/assets/vector_field_topology/eagle.mp4", width = 480).toList()
@@ -224,7 +224,11 @@ val film = videoFrames("public/docs/assets/vector_field_topology/eagle.mp4", wid
 // The bird's own motion, frame by frame from its approach to the landing, into one tracker.
 val tracker = FeatureTracker(MatchingWeights(birthDistance = 10.0, maxDistance = 30.0))
 for (frame in 150..270) {
-    val topology = VectorFieldTopology.compute(flow.at(frame, window = 1, camera = CameraMotion.AFFINE), minStrength = 0.005, minSpeed = 0.5)
+    val topology = VectorFieldTopology.compute(
+        flow.at(frame, window = 1, camera = CameraMotion.AFFINE),
+        minStrength = 0.005,
+        minSpeed = 0.5,
+    )
     tracker.add(frame.toDouble(), topology.features())
 }
 
@@ -242,5 +246,10 @@ val lines = long.map { track ->
 }
 val picture = film[270]
 val dark = Img(picture.width, picture.height, 3, FloatArray(picture.width * picture.height * 3))
-showImgGrid("${long.size} track${if (long.size == 1) "" else "s"} over frames 150 to 270" to picture.overlay(dark, 0.6).drawFLines(lines, scale = 2.0), columns = 1, cellSide = 720)
+showImgGrid(
+    "${long.size} track${if (long.size == 1) "" else "s"} over frames 150 to 270" to
+        picture.overlay(dark, 0.6).drawFLines(lines, scale = 2.0),
+    columns = 1,
+    cellSide = 720,
+)
 ```

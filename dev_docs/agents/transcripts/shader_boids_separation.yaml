@@ -3,7 +3,7 @@ description: |
   Two ShaderBoids flocks of 12,000 on one renderer, with the default weights and no driver. They
   differ only in `separationRadiusFraction`: 1 on the left, where separation reaches as far as
   alignment and cohesion and the flock spreads into one even disc, and 0.25 on the right, where
-  separation is short-range and the flock gathers into groups. Used by neural_particles.md.
+  separation is short-range and the flock packs into one dense clump. Used by neural_particles.md.
 docs:
   - page: neural_particles.md
     why: "Shows the separationRadiusFraction contrast in section 5."

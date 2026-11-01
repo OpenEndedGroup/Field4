@@ -162,13 +162,20 @@ val square = solidCraft("Square") {
 }
 val tilt = 27 * PI / 180
 val skewed = solidCraft("Skewed") {
-    sweep(sketch("XY") { rectangle(-4.0, -4.0, 4.0, 4.0) }, sketch("XZ") { line(0.0, 0.0, 60 * sin(tilt), 60 * cos(tilt)) })
+    sweep(
+        sketch("XY") { rectangle(-4.0, -4.0, 4.0, 4.0) },
+        sketch("XZ") { line(0.0, 0.0, 60 * sin(tilt), 60 * cos(tilt)) },
+    )
 }
 
 // A ring from two half sweeps, the second joined: the join removes the caps where they touch.
 val ring = solidCraft("Ring") {
     sweep(sketch("XZ") { circle(20.0, 0.0, 2.5) }, sketch("XY") { arc(0.0, 0.0, 20.0, 0.0, -20.0, 0.0) })
-    sweep(sketch("XZ") { circle(-20.0, 0.0, 2.5) }, sketch("XY") { arc(0.0, 0.0, -20.0, 0.0, 20.0, 0.0) }, operation = SolidCraftOperation.JOIN)
+    sweep(
+        sketch("XZ") { circle(-20.0, 0.0, 2.5) },
+        sketch("XY") { arc(0.0, 0.0, -20.0, 0.0, 20.0, 0.0) },
+        operation = SolidCraftOperation.JOIN,
+    )
 }
 
 fun mesh(design: afield.geometry.solid.solidcraft.SolidCraftBuilder) =
@@ -214,7 +221,8 @@ fun patch(name: String, flipSecond: Boolean, thickness: String? = null, body: St
 }
 
 // thicken names the sheet the way summary() lists it.
-val sheetName = patch("Sheet", false).open().use { it.summary().getJSONArray("bodies").getJSONObject(0).getString("name") }
+val sheetName =
+    patch("Sheet", false).open().use { it.summary().getJSONArray("bodies").getJSONObject(0).getString("name") }
 
 // body 0 is the sheet; thicken adds the solid as body 1.
 fun mesh(design: SolidCraftBuilder, body: Int = 0) = design.open().use { it.mesh(body, 0.05).toTriMesh().weld() }

@@ -237,13 +237,16 @@ import kotlinx.coroutines.delay
 // A clock line at the top re-renders the panel five times a second.
 val tall = (1..14).joinToString("") { "<div>line $it of a tall list</div>" }
 val short = "<div>one short line</div>"
-val wide = "<table>" + (1..3).joinToString("") { r ->
-    "<tr>" + (1..12).joinToString("") { c -> "<td style='padding:2px 10px'>r${r}c$c</td>" } + "</tr>"
-} + "</table>"
+val wide =
+    "<table>" +
+        (1..3).joinToString("") { r ->
+            "<tr>" + (1..12).joinToString("") { c -> "<td style='padding:2px 10px'>r${r}c$c</td>" } + "</tr>"
+        } +
+        "</table>"
 go {
-    for ((name, content) in listOf("tall" to tall, "short" to short, "wide" to wide, "short" to short)) {
+    for ((name, content) in ["tall" to tall, "short" to short, "wide" to wide, "short" to short]) {
         repeat(8) { tick ->
-            display("main", "<div style='color:#8ab'>$name · ${"%.1f".format(tick * 0.2)} s</div>$content")
+            display("main", "<div style='color:#8ab'>$name · ${(tick * 0.2).f1} s</div>$content")
             delay(200)
         }
     }

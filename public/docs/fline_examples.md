@@ -2967,7 +2967,8 @@ val rough = fline {
         if (i == 0) moveTo(60 + r * Math.cos(a), 60 + r * Math.sin(a))
         else lineTo(60 + r * Math.cos(a), 60 + r * Math.sin(a))
     }
-}.apply { color = vec(1.0, 1.0, 1.0, 0.8) }
+}
+    .apply { color = vec(1.0, 1.0, 1.0, 0.8) }
 
 val (centre, radius, error) = rough.fitCircle(samples = 80)
 val fitted = FLine().circle(centre.x.toDouble(), centre.y.toDouble(), radius.toDouble()).apply {
@@ -2980,16 +2981,26 @@ val wave = fline {
     moveTo(0, 60)
     cubicTo(30, -10, 70, 130, 100, 60)
 }
-val levels = (0..2).flatMap { level ->
-    val at = vec(170.0 + level * 150.0, 0.0)
-    val sub = wave.bySubdividing(level)
-    [
-        sub.copy().apply { color = vec(0.32, 0.82, 1.0, 1.0) } + at,
-        sub.copy().apply { stroked = false; pointed = true; pointSize = 1.2; color = vec(1.0, 0.5, 0.25, 1.0) } + at,
-    ]
-}
+val levels =
+    (0..2).flatMap { level ->
+        val at = vec(170.0 + level * 150.0, 0.0)
+        val sub = wave.bySubdividing(level)
+        [
+            sub.copy().apply { color = vec(0.32, 0.82, 1.0, 1.0) } + at,
+            sub.copy().apply {
+                stroked = false
+                pointed = true
+                pointSize = 1.2
+                color = vec(1.0, 0.5, 0.25, 1.0)
+            } + at,
+        ]
+    }
 
-display("fit", "fitCircle: centre (%.1f, %.1f), radius %.1f, error %.2f · bySubdividing levels 0, 1, 2".format(centre.x, centre.y, radius, error))
+display(
+    "fit",
+    "fitCircle: centre (%.1f, %.1f), radius %.1f, error %.2f · bySubdividing levels 0, 1, 2"
+        .format(centre.x, centre.y, radius, error),
+)
 lines([rough, fitted] + levels, w = 720.0, h = 220.0, fitToSize = true)
 ```
 

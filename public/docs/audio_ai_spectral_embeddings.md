@@ -284,7 +284,13 @@ display(
         [
             preview.withSpectralProjection(frames.mds(dimensions = 4, distance = distance)),
             preview.withSpectralProjection(
-                frames.tsne(dimensions = 4, distance = distance, perplexity = 30.0, maxIterations = 750, seed = 184921L),
+                frames.tsne(
+                    dimensions = 4,
+                    distance = distance,
+                    perplexity = 30.0,
+                    maxIterations = 750,
+                    seed = 184921L,
+                ),
             ),
         ],
         width = 1040,

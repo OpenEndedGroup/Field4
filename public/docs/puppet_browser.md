@@ -232,21 +232,23 @@ import afield.media.browser.*
 import java.util.concurrent.TimeUnit
 
 // A small page with a table, written to a temporary file and read by a browser nobody draws.
-val page = java.io.File.createTempFile("readings", ".html").apply {
-    writeText(
-        """
-        <h1>Survey readings</h1>
-        <table id="readings">
-          <thead><tr><th>station</th><th>depth</th><th>count</th></tr></thead>
-          <tbody>
-            <tr><td>alpha</td><td>12</td><td>4</td></tr>
-            <tr><td>beta</td><td>48</td><td>9</td></tr>
-            <tr><td>gamma</td><td>93</td><td>n/a</td></tr>
-          </tbody>
-        </table>
-        """.trimIndent(),
-    )
-}
+val page =
+    java.io.File.createTempFile("readings", ".html").apply {
+        writeText(
+            """
+            <h1>Survey readings</h1>
+            <table id="readings">
+              <thead><tr><th>station</th><th>depth</th><th>count</th></tr></thead>
+              <tbody>
+                <tr><td>alpha</td><td>12</td><td>4</td></tr>
+                <tr><td>beta</td><td>48</td><td>9</td></tr>
+                <tr><td>gamma</td><td>93</td><td>n/a</td></tr>
+              </tbody>
+            </table>
+            """
+                .trimIndent(),
+        )
+    }
 val browser = HeadlessPuppetBrowser(page.toURI().toString())
 try {
     browser.loaded.get(30, TimeUnit.SECONDS)
@@ -262,12 +264,13 @@ try {
             },
     )
     // One bar per station, depth downwards.
-    val bars = stations.indices.map { i ->
-        FLine().rect(i * 60.0, 0.0, 40.0, depths[i] ?: 0.0).apply {
-            filled = true
-            color = vec(0.3, 0.7, 1.0, 1.0)
+    val bars =
+        stations.indices.map { i ->
+            FLine().rect(i * 60.0, 0.0, 40.0, depths[i] ?: 0.0).apply {
+                filled = true
+                color = vec(0.3, 0.7, 1.0, 1.0)
+            }
         }
-    }
     lines(*bars.toTypedArray(), channel = "depth", w = 300.0, h = 200.0, fitToSize = true)
 } finally {
     browser.close()

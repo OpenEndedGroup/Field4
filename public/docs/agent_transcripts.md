@@ -4081,6 +4081,15 @@ number of panels with no extra training and no extra shaders.
 
 [Open →](offline.html?file=assets/agent_transcripts/letter_interpolation_panels/metadata.edn)
 
+### shader_boids_separation
+
+**Two ShaderBoids flocks of 12,000 on one renderer, differing only in `separationRadiusFraction`.**
+With the default weights and no driver, a fraction of 1 lets separation reach as far as alignment and
+cohesion, and the flock spreads into one even disc; at 0.25 separation is short-range and the flock
+packs into one dense clump. The pair is the figure on [Neural particle systems](neural_particles.md).
+
+[Open →](offline.html?file=assets/agent_transcripts/shader_boids_separation/metadata.edn)
+
 ### skinned_characters
 
 **A rigged mesh you can bend, and a crowd of sixty-four of them.** Skeletal animation for

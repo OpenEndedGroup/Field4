@@ -621,7 +621,13 @@ import afield.simulation.physics.*
 
 fun sheet() =
     SimdVerlet(SimdVerlet.State3.empty())
-        .addCloth(width = 20, height = 12, spacing = 0.5f, stiffness = 60f, pinned = { col, row -> row == 0 && col % 4 == 0 })
+        .addCloth(
+            width = 20,
+            height = 12,
+            spacing = 0.5f,
+            stiffness = 60f,
+            pinned = { col, row -> row == 0 && col % 4 == 0 },
+        )
 
 val snapped = sheet()
 val followed = sheet()
@@ -646,10 +652,11 @@ repeat(30) { k ->
 fun drawn(c: Cloth) = c.lines().onEach {
     it.color = vec(0.74, 0.82, 0.94, 0.8)
     it.thickness = 1.2
-} + hand.also {
-    it.color = vec(1.0, 0.55, 0.2, 1.0)
-    it.thickness = 2.0
-}
+} +
+        hand.also {
+            it.color = vec(1.0, 0.55, 0.2, 1.0)
+            it.thickness = 2.0
+        }
 showPlaneGrid(
     "teleport: the corner is moved out of the sheet each step" to drawn(snapped),
     "grabNearest: a PID controller pulls the corner through the solve" to drawn(followed),

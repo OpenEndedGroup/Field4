@@ -223,7 +223,8 @@ showSignals(
 // Where else does the wiggle happen? The distance from one copy of it to every window of the walk.
 val query = DoubleArray(60) { series[500 + it] }
 val dp = distanceProfile(query, DoubleArray(series.size) { series[it] })
-val found = dp.indices.filter { i -> dp[i] < 1.0 && (i == 0 || dp[i] <= dp[i - 1]) && (i == dp.size - 1 || dp[i] <= dp[i + 1]) }
+val found =
+    dp.indices.filter { i -> dp[i] < 1.0 && (i == 0 || dp[i] <= dp[i - 1]) && (i == dp.size - 1 || dp[i] <= dp[i + 1]) }
 showSignals(
     "series" to series,
     "distanceProfile of the wiggle at 500" to dp.toList(),

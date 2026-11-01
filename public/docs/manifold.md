@@ -582,9 +582,14 @@ val drawn = bounds.flatMapIndexed { i, bound ->
         points.forEachIndexed { k, p -> if (k == 0) moveTo(p.x + dx, p.y) else lineTo(p.x + dx, p.y) }
         color = vec(0.32, 0.82, 1.0, 1.0)
     }
-    val dots = chord.copy().apply { stroked = false; pointed = true; pointSize = 0.9; color = vec(1.0, 0.5, 0.25, 1.0) }
+    val dots = chord.copy().apply {
+        stroked = false
+        pointed = true
+        pointSize = 0.9
+        color = vec(1.0, 0.5, 0.25, 1.0)
+    }
     counts += "maximumDeviation $bound: ${points.size} vertices"
-    listOf(chord, dots)
+    [chord, dots]
 }
 display("vertices", counts.joinToString(" · "))
 lines(drawn, w = 720.0, h = 260.0, fitToSize = true)

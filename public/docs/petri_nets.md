@@ -316,8 +316,8 @@ count climbs a step at a time until all eight are in `tension`, and the cutoff c
 evenly in octaves because `rangex` is exponential:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/petri_nets/tension_signals.png" wait="3.0" capture="box" open-outputs="true" w="1080" h="1400" padding="14" embed=true name="petri-tension-signals" alt="Two plots over three cycles. Tokens in tension: the stepped signal climbs from 1 to 8 a quarter cycle at a time and holds at 8 from cycle 1.75, with the SMOOTH version easing between the same steps. Cutoff in Hz: steps from about 300 up to 8000, each larger than the last."}
-import afield.simulation.petri.*
 import afield.audio.synth.*
+import afield.simulation.petri.*
 
 val net = petri(
     """
@@ -331,8 +331,9 @@ val run = net.run()
 
 // Sample each signal 32 times a cycle over the first three cycles.
 val steps = 0 until 96
-fun sampled(p: PatPattern<Double>) =
-    steps.map { k -> p.events(PatArc(PatQ.of(k, 32), PatQ.of(k + 1, 32))).firstOrNull()?.value ?: 0.0 }
+fun sampled(p: PatPattern<Double>) = steps.map { k ->
+    p.events(PatArc(PatQ.of(k, 32), PatQ.of(k + 1, 32))).firstOrNull()?.value ?: 0.0
+}
 val x = steps.map { it / 32.0 }
 showSignals(
     "signal" to sampled(run.signal("tension")),

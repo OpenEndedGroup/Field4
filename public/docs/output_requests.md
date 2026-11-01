@@ -56,7 +56,8 @@ display(
       const response = await model.request({operation: 'inspect'});
       document.getElementById('reply-${endpoint.id}').textContent = 'reply: ' + JSON.stringify(response, null, 2);
     </script>
-    """.trimIndent(),
+    """
+        .trimIndent(),
 )
 ```
 

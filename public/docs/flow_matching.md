@@ -568,7 +568,7 @@ val panels = settings.flatMapIndexed { i, (label, options) ->
         if (k == 0) ring.moveTo(vec(100 * cos(a), 100 * sin(a), 0.0) + shift) else ring.lineTo(vec(100 * cos(a), 100 * sin(a), 0.0) + shift)
     }
     ring.color = vec(0.55, 0.55, 0.62, 0.9)
-    listOf(ring, cloud(samples, 1.4, vec(0.44, 0.83, 0.78, 1.0), shift))
+    [ring, cloud(samples, 1.4, vec(0.44, 0.83, 0.78, 1.0), shift)]
 }
 lines(panels, w = 1000.0, h = 280.0, fitToSize = true)
 markdown("spread", "~~~\n" + report.joinToString("\n") + "\n~~~")

@@ -116,8 +116,19 @@ Give a plot or sampler an explicit window when you have one, and rely on the fal
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions/finite-sweep-explicit-vs-fallback.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" timeout="120" name="functions-finite-sweep-explicit-vs-fallback"}
 with(Functions) {
-    sin(3.0).plot("tone", domain(0.0..2.0), title = "sin(3.0) with domain(0.0..2.0): exactly 0..2", heightPx = 150) // explicit window
-    sin(3.0).plot("fallback", title = "sin(3.0) with no window: the plotSafe() fallback", heightPx = 150) // previews the fallback
+    sin(3.0)
+        .plot(
+            "tone",
+            domain(0.0..2.0),
+            title = "sin(3.0) with domain(0.0..2.0): exactly 0..2",
+            heightPx = 150,
+        ) // explicit window
+    sin(3.0)
+        .plot(
+            "fallback",
+            title = "sin(3.0) with no window: the plotSafe() fallback",
+            heightPx = 150,
+        ) // previews the fallback
 }
 ```
 
@@ -145,7 +156,12 @@ with(Functions) {
 
     bump.plot("bump", window, title = "gaussian(): stops at the edge of its own domain", heightPx = 130)
     wave.plot("wave", window, title = "sin(3.0): Domain.ALL, fills the window", heightPx = 130)
-    (bump * wave).plot("product", window, title = "gaussian() * sin(3.0): the intersection, clipped to the bump", heightPx = 130)
+    (bump * wave).plot(
+        "product",
+        window,
+        title = "gaussian() * sin(3.0): the intersection, clipped to the bump",
+        heightPx = 130,
+    )
 }
 ```
 
