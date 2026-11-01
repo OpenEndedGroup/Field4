@@ -376,7 +376,6 @@ directly:
 
 [Open ↗](offline.html?file=assets/agent_transcripts/gpu_state/metadata.edn).
 
-
 Three boxes appear and a window opens. The knobs worth turning, in the order they teach something:
 
 - **`simModule.force`** on the *simulate* box, a live `stack.auto` StackSL slot. Retype it while it
