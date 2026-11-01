@@ -153,6 +153,9 @@ object DocsAudioProvenance {
         // A Petri net's emits() played through the pinned Dirt-Samples subset, strictly. See
         // chain_petri_sparks.md.
         "afield.audio.synth.PetriSparksDocs" to Origin.DIRT_SAMPLES,
+        // A page net from petri_nets.md, its emits() played through the pinned Dirt-Samples
+        // subset with strict = true: no synth voice, no fallback. See petri_nets.md.
+        "afield.audio.synth.PetriSoundDocs" to Origin.DIRT_SAMPLES,
         // ORCA's own operators run in OrcaHeadless, each note voiced by a PatSynthBank of patVoice
         // voices — no samples anywhere on the path. See orca.md.
         "afield.audio.synth.OrcaSoundDocs" to Origin.STAND_IN_SYNTH,
