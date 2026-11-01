@@ -1,0 +1,19 @@
+name: faust_completion_setup
+description: >
+  Setup for the faust.md completion capture: one Kotlin box holding a #faust region whose process
+  line is left open, for the drive op to type a library prefix into. A capture=ui fence creates no
+  boxes of its own (see public/docs/faust.md).
+operations:
+  - create:
+      box: faust_completion
+      name: completion
+      frame: { x: 80, y: 120, w: 640, h: 220 }
+      properties:
+        code: |
+          faust(
+              """
+          #faust
+          import("stdfaust.lib");
+          process = 
+          """,
+          )

@@ -12,8 +12,7 @@ under a second per compile once warm (see [Nothing to install](#nothing-to-insta
 
 This box plays a sawtooth through a low-pass filter, with three sliders:
 
-```diffstatic {data-lang=kotlin}
-:::static
+```diffstatic_runner {data-lang=kotlin screenshot="assets/faust/lowpass_controls.png" capture="box" open-outputs="true" wait="2.0" wait-output="true" wait-output-kind="display" wait-output-channel="controls" execution="launch" w="760" timeout="240" embed=true name="faust-lowpass-controls" alt="the box's controls channel: three sliders, CUTOFF (HZ) at 1200, FREQ (HZ) at 220.0 and GAIN at 0.200"}
 faust(
     """
 #faust
@@ -31,7 +30,14 @@ while the processor runs, and stopping the box stops the sound and releases the 
 Field audio launch.
 
 The three sliders appear in the box's control area, with the ranges, defaults and steps the
-`hslider` declarations asked for. Moving one changes the running sound immediately.
+`hslider` declarations asked for. Moving one changes the running sound immediately. Here is the
+same program rendered offline for four seconds, with `cutoff` moved from 1200 Hz down to 300 Hz
+halfway through:
+
+```diffstatic_runner {data-lang=kotlin audio="assets/faust/saw-lowpass.wav" audio-spec="saw-lowpass" audio-renderer="afield.audio.synth.FaustSoundDocs" embed=true hidden=true name="faust-saw-lowpass-audio"}
+// FaustSoundDocs.renderWav("saw-lowpass", …): the program above through FaustDsp, offline,
+// with the cutoff control set to 300 Hz at two seconds
+```
 
 ### The marker is not part of the program
 
@@ -43,8 +49,7 @@ error lands on the line you wrote.
 
 Faust's compiler errors appear as markers in the editor. Running this misspelled oscillator
 
-```diffstatic {data-lang=kotlin}
-:::static
+```diffstatic_runner {data-lang=kotlin screenshot="assets/faust/error.png" capture="editor" outputs="inline" expect-error=true wait="4" padding="10" timeout="240" embed=true name="faust-error" w="900" h="260" alt="the six-line box in the editor, with the error undefined symbol : sawtoothX shown on the process line"}
 faust(
     """
 #faust
@@ -71,6 +76,37 @@ Completion follows the way Faust is written, by library prefix:
   and the library prefixes.
 * The UI primitives insert as snippets with their arguments in order, because Faust puts `init`
   *before* `min`.
+
+The popup below was opened by typing `os.` after `process = `:
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".afield-suggest" screenshot="assets/faust/completion.png" transcript="assets/transcripts/faust_completion_setup.yaml" padding="6" wait="0" timeout="240" embed=true hidden=true name="faust-completion" alt="Field's completion popup inside a #faust region at the prefix os., listing Faust oscillators from the os library with their signatures, and a panel beside it with the selected oscillator's documentation"}
+ui.eval(
+    "window.localStorage.removeItem('field.suggest.recency.v1'); var s=document.createElement('style');s.textContent='.tick_text{display:none !important}';document.head.appendChild(s);return 'setup';",
+)
+ui.openEditor("faust_completion")
+ui.pause(900)
+ui.waitForSelector(".monaco-editor", 15000.0)
+ui.clickSelector(".monaco-editor")
+ui.pause(300)
+// Put the caret at the end of the open `process = ` line, inside the #faust region.
+ui.eval(
+    """
+    const ed = monaco.editor.getEditors().find(e => (e.getModel()?.getValue() ?? '').includes('#faust'));
+    if (!ed) throw new Error('no editor holds the #faust box');
+    const line = ed.getModel().getLinesContent().findIndex(l => l.startsWith('process')) + 1;
+    ed.focus();
+    ed.setPosition({ lineNumber: line, column: ed.getModel().getLineMaxColumn(line) });
+    return 'caret ' + line;
+""",
+)
+ui.type("os.")
+ui.pause(400)
+ui.press("Escape")
+ui.pause(200)
+ui.press("Control+Space")
+ui.waitForSelector(".afield-suggest-row:has-text('sawtooth')", 30000.0)
+ui.pause(1400)
+```
 
 Hovering a qualified name shows its signature, summary and parameters.
 
@@ -100,6 +136,25 @@ slider back to its default. Each Faust declaration becomes:
 | `hgroup`, `vgroup`, `tgroup` | a qualified label, `filter/cutoff` |
 | `[unit:Hz]` | appended to the label |
 | `[scale:log]`, `[scale:exp]` | a logarithmic or exponential slider over the same range |
+
+This program declares a button, a slider with a unit, and a checkbox and a log-scaled slider
+inside an `hgroup`:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/faust/declared_controls.png" capture="box" open-outputs="true" wait="2.0" wait-output="true" wait-output-kind="display" wait-output-channel="controls" execution="launch" w="760" timeout="240" embed=true name="faust-declared-controls" alt="the controls channel: a FILTER/BYPASS checkbox, a FILTER/CUTOFF (HZ) slider at 1800 drawn well past the middle because its scale is logarithmic, a FREQ (HZ) slider at 220.00 and a GATE button labelled HOLD"}
+faust(
+    """
+#faust
+import("stdfaust.lib");
+gate   = button("gate");
+freq   = hslider("freq [unit:Hz]", 220, 50, 1000, 0.01);
+cutoff = hgroup("filter", hslider("cutoff [unit:Hz] [scale:log]", 1800, 80, 8000, 1));
+bypass = hgroup("filter", checkbox("bypass"));
+env    = en.adsr(0.01, 0.1, 0.7, 0.4, gate);
+voice  = os.sawtooth(freq) * env * 0.3;
+process = voice : ba.bypass1(bypass, fi.lowpass(2, cutoff)) <: _,_;
+""",
+)
+```
 
 One of those differs from Faust: `hbargraph` and `vbargraph` are outputs, so they are not in the
 control group; `launch.meter("level")` reads the latest value, updated once per audio block. From
@@ -298,8 +353,7 @@ counted in `lateNotes`. For the same reason, `clearSchedule()` takes effect with
 Faust can draw a program as a block diagram of its signal flow. Pass `diagram = true` and Field shows
 it in the box's output:
 
-```diffstatic {data-lang=kotlin}
-:::static
+```diffstatic_runner {data-lang=kotlin screenshot="assets/faust/diagram.png" capture="box" open-outputs="true" wait="2.0" wait-output="true" wait-output-kind="display" execution="launch" w="760" timeout="240" embed=true name="faust-diagram" alt="a Faust block diagram inside a dashed box labelled process: sawtooth(220) feeds lowpass(2)(1200), whose output and a constant 0.2f feed a multiply block, which splits into two outputs"}
 faust(
     """
 #faust
@@ -335,6 +389,19 @@ process = _,_ : re.zita_rev1_stereo(20, 200, 2000, 3.0, 2.0, 48000) : *(room), *
 ```
 
 Without an `input` argument the effect hears silence, and so does not make a sound.
+
+Rendered offline, the pair plays for two seconds and then stops, so the reverb's tail can be heard.
+First the pair on its own:
+
+```diffstatic_runner {data-lang=kotlin audio="assets/faust/reverb-dry.wav" audio-spec="reverb-dry" audio-renderer="afield.audio.synth.FaustSoundDocs" embed=true hidden=true name="faust-reverb-dry-audio"}
+// FaustSoundDocs.renderWav("reverb-dry", …): the dry StereoSignal pair alone, stopped at 2 s
+```
+
+Then the same pair through the reverb, at the default `room`:
+
+```diffstatic_runner {data-lang=kotlin audio="assets/faust/reverb-wet.wav" audio-spec="reverb-wet" audio-renderer="afield.audio.synth.FaustSoundDocs" embed=true hidden=true name="faust-reverb-wet-audio"}
+// FaustSoundDocs.renderWav("reverb-wet", …): the same pair as the program's input, through FaustDsp
+```
 
 ## What it costs
 

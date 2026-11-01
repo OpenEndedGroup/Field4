@@ -151,7 +151,7 @@ the control without calling it. The programmatic UI update refreshes the box's l
 does not emit one document operation per animation frame, and when the box runs again each local
 holds the value the control last held from its declaration onward, without calling `onChange`.
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/shared_value_before.png" capture="box" open-outputs="true" wait="1.0" wait-output="true" wait-output-kind="display" w="760" timeout="120" embed=true name="keyframer-shared-value-before" alt="a control group titled projected light: a GAIN slider at 0.35 near the left end, and an unticked PROJECTED ONLY checkbox"}
 val keys = KeyframeScope()
 var gain by keys.slider(0.35f, 0.0..4.0)
 var projectedOnly by keys.checkbox(false, label = "projected only")
@@ -159,6 +159,33 @@ keys.onChange { name -> println("$name moved: gain $gain, projected only $projec
 
 controlGroup("projected light") { keys.controls() }
 ```
+
+Recalling a saved key moves both controls. This box saves a key at a brighter look, puts the locals
+back to their defaults, and applies the key:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/shared_value_after.png" capture="box" open-outputs="true" wait="1.0" wait-output="true" wait-output-kind="display" w="760" timeout="120" embed=true name="keyframer-shared-value-after" alt="the same projected light control group after the key is applied: the GAIN slider at 2.50, well past the middle, and PROJECTED ONLY ticked"}
+val keys = KeyframeScope()
+var gain by keys.slider(0.35f, 0.0..4.0)
+var projectedOnly by keys.checkbox(false, label = "projected only")
+keys.onChange { name -> println("$name moved: gain $gain, projected only $projectedOnly") }
+
+controlGroup("projected light") { keys.controls() }
+
+:::fold save a key at a brighter look, then go back to the defaults
+gain = 2.5f
+projectedOnly = true
+val saved = keys.capture()
+gain = 0.35f
+projectedOnly = false
+
+:::endfold
+// Recall the saved key: the slider, the checkbox and both locals follow it.
+saved.applyKey()
+```
+
+Applying the key calls `onChange` once per lane, so the box prints `gain moved: gain 2.5, projected
+only false` and then `projectedOnly moved: gain 2.5, projected only true`. Assigning the locals in
+the fold moved the controls without printing anything.
 
 `keys.slider(0.4, ...)` with a `Double` gives a `Double` local; there are also `keys.vec2`,
 `keys.color` and `keys.text`. Each is built by an explicit helper — `keyframeSlider`,
@@ -1169,7 +1196,17 @@ to an `Int`, and a hexadecimal or unsigned literal is left alone.
 
 A blend that stepped looks exactly like a blend that is not working, so the plan is the thing to
 read. `plan.describe()` is the text above; `display(plan)` renders the same breakdown as a table of
-sites with each one's midpoint. `scope.codeBlendPlans(a, b)` returns a plan per code slot for a pair
+sites with each one's midpoint:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/code_blend_plan.png" capture="box" open-outputs="true" wait="1.0" wait-output="true" wait-output-kind="display" w="760" timeout="120" embed=true name="keyframer-code-blend-plan" alt="a table headed stacksl, RUNTIME to RUNTIME, 3 moving of 3 paired sites, with columns site, left, right and at t=0.5: number 3.0 to 8.0 at 5.5, number 0.15 to 0.45 at 0.3, vector [1.0,0.55,0.2] to [0.2,0.5,1.0] at [0.6,0.525,0.6], and a collapsed runtime program row"}
+val warm = "uv 3.0 * fbm 0.15 + [1.0,0.55,0.2] *"
+val cool = "uv 8.0 * fbm 0.45 + [0.2,0.5,1.0] *"
+
+val plan = planStackSLCodeBlend(warm, cool, CodeBlendOptions(mode = CodeBlendMode.RUNTIME))
+display(plan)
+```
+
+`scope.codeBlendPlans(a, b)` returns a plan per code slot for a pair
 of keys, and the [keyframe collection browser](#browsing-saved-keys)'s **Code blend** button does that for the
 two keys you have selected there.
 
