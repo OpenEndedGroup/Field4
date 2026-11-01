@@ -560,6 +560,36 @@ val polyline = curve.flatten(maximumDeviation = 0.01)
 val radiusBound = curve.minimumRadiusBound(minimum = 9.0)
 ```
 
+Tightening the bound adds vertices only where the curve needs them. The same cubic at three bounds:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/manifold/flatten_bounds.png" capture="box" open-outputs="true" wait="1.5" padding="12" embed=true name="manifold-flatten-bounds" alt="The same quarter-turn cubic drawn three times as a polyline with its vertices as orange dots: 5 vertices at maximumDeviation 1.0, 9 at 0.1 and 33 at 0.01, the last indistinguishable from the curve; a line above gives the three counts"}
+import afield.geometry.path.planning.*
+
+val curve = CubicBezier3D(
+    Point3D(10.0, 0.0, 0.0),
+    Point3D(10.0, 5.5, 0.0),
+    Point3D(5.5, 10.0, 0.0),
+    Point3D(0.0, 10.0, 0.0),
+)
+
+// The same quarter-turn flattened at three bounds, side by side, each with its vertices as dots.
+val bounds = [1.0, 0.1, 0.01]
+val counts = mutableListOf<String>()
+val drawn = bounds.flatMapIndexed { i, bound ->
+    val points = curve.flatten(maximumDeviation = bound)
+    val dx = i * 14.0
+    val chord = FLine().apply {
+        points.forEachIndexed { k, p -> if (k == 0) moveTo(p.x + dx, p.y) else lineTo(p.x + dx, p.y) }
+        color = vec(0.32, 0.82, 1.0, 1.0)
+    }
+    val dots = chord.copy().apply { stroked = false; pointed = true; pointSize = 0.9; color = vec(1.0, 0.5, 0.25, 1.0) }
+    counts += "maximumDeviation $bound: ${points.size} vertices"
+    listOf(chord, dots)
+}
+display("vertices", counts.joinToString(" · "))
+lines(drawn, w = 720.0, h = 260.0, fitToSize = true)
+```
+
 `minimumRadiusBound` recursively bounds speed and the derivative cross product using
 Bernstein control hulls. It returns a conservative numerical lower bound on radius,
 or throws if it cannot establish the requested minimum within its subdivision budget.
