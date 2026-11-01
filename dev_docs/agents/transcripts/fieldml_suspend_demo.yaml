@@ -34,7 +34,7 @@ operations:
   - create:
       box: "fieldml-mesh-ribbon"
       name: "A ribbon rewritten every frame"
-      frame: { x: 400.0, y: 40.0, w: 560.0, h: 720.0 }
+      frame: { x: 400.0, y: 40.0, w: 300.0, h: 120.0 }
       properties:
         "code": |
           // A ribbon whose VERTICES are rewritten every frame by FieldML.

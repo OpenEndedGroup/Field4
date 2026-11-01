@@ -64,7 +64,7 @@ and `col` -- and the per-frame body fills both buffers through `Mesh.write`.
 `prop` reads the way a Kotlin box's `renderer` does: here first, then up through the parents.
 
 ```edn [field-box id="fieldml-mesh-ribbon" role="properties"]
-{"id" "fieldml-mesh-ribbon" "index" 2 "name" "A ribbon rewritten every frame" "parents" ["root" "fieldml-mesh-renderer" "fieldml-mesh-root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "fieldml-mesh-renderer" #afield/box "fieldml-mesh-root"} "name" "A ribbon rewritten every frame" "_tombstone" false "frame" #afield/rect [400.0 40.0 560.0 720.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fieldml-mesh-ribbon_code_.kt" "lines" 64 "characters" 2926 "sha256" "204dcabfc4606e03871433ad50013baf9e91f48b2c73997cba30e4ce6a9d65ac"}]}
+{"id" "fieldml-mesh-ribbon" "index" 2 "name" "A ribbon rewritten every frame" "parents" ["root" "fieldml-mesh-renderer" "fieldml-mesh-root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "fieldml-mesh-renderer" #afield/box "fieldml-mesh-root"} "name" "A ribbon rewritten every frame" "_tombstone" false "frame" #afield/rect [400.0 40.0 300.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fieldml-mesh-ribbon_code_.kt" "lines" 64 "characters" 2926 "sha256" "204dcabfc4606e03871433ad50013baf9e91f48b2c73997cba30e4ce6a9d65ac"}]}
 ```
 
 ```kotlin [field-property box="fieldml-mesh-ribbon" name="code" path="fieldml-mesh-ribbon_code_.kt"]
