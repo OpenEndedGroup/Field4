@@ -429,6 +429,16 @@ Replace `my-example` with a document that exists in the running workspace, and `
 
 At a Field-document step, **Document notes** opens its Markdown guide. **Start document guide** starts its interactive guide, with separate **Guide next** and **Guide back** controls. A box in that document must have built a `slideShow { ... }` first; the starter's **Teaching guide** box does this. The outer presentation and inner document guide have separate navigation. Pass `interactiveGuide = false` to `audienceDocument` if it has no interactive guide.
 
+The starter's **A live Field document** step opens the talk's own document in the audience window.
+Its boxes are live: the **Live Field** box shows its output, and **Wave experiment** draws its wave.
+
+![The audience window at the starter's "A live Field document" step: the talk's Field document with its Presentation, Live Field, Teaching guide and Wave experiment boxes, and the wave output drawn below.](assets/presentation_studio/live-document-audience.png)
+
+At the same step the presenter gains **Document notes**, **Run reveal_wave** (the step's `macro`)
+and the document-guide controls above the outline.
+
+![Presenter controls at the live-document step, with Document notes, Run reveal_wave, Start document guide, Guide back, Guide next and Close document guide above the slide outline.](assets/presentation_studio/live-document-controls.png)
+
 **Run reset-example** runs the named saved macro only when pressed. It uses Field's normal macro runner in the displayed document. The audience can edit and run its real boxes, use the editor and interact with output panels. The starter's **Run reveal_wave** demonstrates a macro that creates and runs a wave box.
 
 Each live surface fills the audience window by default. Pass `rect = listOf(0.04, 0.16, 0.92, 0.80)` to place it within a fraction of the window: `[x, y, width, height]`.
