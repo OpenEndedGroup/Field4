@@ -5856,6 +5856,10 @@ def build_backdoor_command(
             ]
             if options.open_outputs:
                 parts.append("--open-outputs")
+            elif options.expect_outputs == "none":
+                # screenshot-box opens outputs by default and then clips to the (empty) output
+                # handle, a 32x32 crop below the box; a handle-only capture must say so.
+                parts.append("--no-open-outputs")
             if options.open_details:
                 parts.append("--open-details")
             parts.extend(["--expect-outputs", options.expect_outputs])
