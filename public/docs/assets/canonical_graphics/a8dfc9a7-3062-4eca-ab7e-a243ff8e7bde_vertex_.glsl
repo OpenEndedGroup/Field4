@@ -2,12 +2,11 @@
 layout (location = 0) in vec3 pos;
 
 layout(push_constant) uniform matrices {
-    mat4 p;
-    mat4 m;
-    vec4 finalColor;
+    float time;
 } pc;
 
 void main()
 {
-    gl_Position = pc.p * pc.m * vec4(pos, 1);
+    // One triangle that covers the whole target, in clip space: no camera, so every pixel is drawn.
+    gl_Position = vec4(pos.xy, 0, 1);
 }

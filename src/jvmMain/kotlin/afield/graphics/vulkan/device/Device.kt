@@ -24,6 +24,12 @@ import org.lwjgl.vulkan.VK11.vkGetPhysicalDeviceProperties2
 class Device(val physicalDevice: PhysicalDevice, private val instance: Instance) {
     private val ngxDelegate = lazy { afield.media.reconstruction.NgxRuntime.open(this, instance) }
     internal val ngxRuntime by ngxDelegate
+    /**
+     * The device's ray-tracing and acceleration-structure limits, read off it once when the
+     * acceleration path is usable. Shader-binding-table layout needs the three handle sizes and
+     * alignments; geometry building needs the scratch alignment and the geometry, instance and
+     * primitive ceilings.
+     */
     data class RayTracingLimits(
         val shaderGroupHandleSize: Int,
         val shaderGroupHandleAlignment: Int,
@@ -39,9 +45,20 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
         val maxDescriptorSetAccelerationStructures: Int
     )
 
+    /**
+     * Why DLSS ray reconstruction could not be prepared on this device, or null when it was. The
+     * extensions it asked for are already in [enabledExtensions] by then, so this is the message to
+     * show rather than a reason to re-probe.
+     */
     val openDlssNrFeatureFailure: String?
 
+    /** The raw `VkDevice` handle, which every LWJGL call in the engine takes as its first argument. */
     val vkDevice: VkDevice
+
+    /**
+     * `VK_KHR_push_descriptor` is available. A descriptor set layout built for push descriptors
+     * requires this, and refuses by name without it rather than failing inside Vulkan.
+     */
     val supportsPushDescriptors: Boolean
     /**
      * The query features GPU profiling can use, enabled whenever the device has them so that
@@ -49,32 +66,119 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
      * to enable, so they are only there when profiling was on at startup.
      */
     val pipelineStatisticsQueryEnabled: Boolean
+
+    /**
+     * `VK_KHR_performance_query` is available **and** profiling was on at startup. Unlike
+     * [pipelineStatisticsQueryEnabled] this cannot be switched later, because the counters cost
+     * something to enable. The renderer reads it together with a Windows-only test.
+     */
     val performanceQueryEnabled: Boolean
+
+    /**
+     * The device's `maxPushDescriptors`, or 0 when push descriptors are unavailable. A layout
+     * asking for more than this is refused with both numbers named.
+     */
     val pushDescriptorMax: Int
+
+    /**
+     * `VK_EXT_extended_dynamic_state3` is available **and** offers dynamic depth-clamp. Field sets
+     * only that one EDS3 state, so that one feature decides support; polygon mode is asked for
+     * separately where offered, since KosmicKrisp has EDS3 without it and requesting it anyway
+     * fails device creation.
+     */
     val supportsExtendedDynamicState3: Boolean
+
+    /** `VK_EXT_extended_dynamic_state` is available. Unlike EDS3 this needs no feature beyond the extension. */
     val supportsExtendedDynamicState: Boolean
+
+    /**
+     * `VK_KHR_maintenance7` is available and its feature enabled. Secondary graphics command
+     * buffers are used only where this and the option asking for them both hold.
+     */
     val supportsMaintenance7: Boolean
+
+    /**
+     * `VK_KHR_maintenance11` is available and its feature enabled. It is what lets a single array
+     * layer of an image be aliased as its own descriptor.
+     */
     val supportsMaintenance11: Boolean
+
+    /**
+     * `VK_EXT_dynamic_rendering_unused_attachments` is available and its feature enabled, which is
+     * also the condition under which Field asks for it. Nothing in the engine branches on it: it
+     * relaxes which attachment formats a pipeline may declare rather than adding a call to make.
+     */
     val supportsDynamicRenderingUnusedAttachments: Boolean
     /** The device offers `unifiedImageLayouts`; [usesUnifiedImageLayouts] says whether Field turned it on. */
     val supportsUnifiedImageLayouts: Boolean
     /** `VK_KHR_unified_image_layouts` is enabled and [ImageLayouts] sends `GENERAL`. */
     val usesUnifiedImageLayouts: Boolean
+    /**
+     * `VK_KHR_multiview` is available, which is how one draw reaches both eyes. A render-to-texture
+     * given a multiview view mask requires it, as does the multiview side-by-side stereo target;
+     * both refuse by name without it.
+     */
     val supportsMultiview: Boolean
+
+    /**
+     * What the hardware offers for ray tracing, before any of Field's own opt-in. The
+     * `supports…` flags beside this are this probe and the ray-tracing option together.
+     */
     val raySupport: RayDeviceSupport
+
+    /**
+     * Exactly the extensions `vkCreateDevice` was given, deduplicated. This is what Field asked
+     * for; [PhysicalDevice.hasDeviceExtension] is what the device offers.
+     */
     val enabledExtensions: Set<String>
+
+    /** Acceleration structures can be built: ray tracing is opted into and the hardware path is complete. */
     val supportsAccelerationStructures: Boolean
+
+    /** Ray-tracing pipelines — raygen, hit and miss stages — are available and opted into. */
     val supportsRayTracing: Boolean
+
+    /** Ray queries from an ordinary compute or fragment shader are available and opted into. */
     val supportsRayQuery: Boolean
+
+    /** The device's ray-tracing limits, or null when the acceleration path is unusable. */
     val rayTracingLimits: RayTracingLimits?
     /** Optional shader/vision features. SDKs are not required to enable these Vulkan features. */
     val supportsOpticalFlow: Boolean
+    /**
+     * In-shader cooperative vectors, which learned shaders infer with. It takes three features
+     * together — cooperative vectors, replicated composites and the Vulkan memory model — and can
+     * be turned off with the system property `afield.cooperativeVector.disabled`.
+     */
     val supportsCooperativeVector: Boolean
+
+    /** Cooperative-vector training as well as inference. Offline shader training stays available without it. */
     val supportsCooperativeVectorTraining: Boolean
+
+    /**
+     * `VK_NV_cluster_acceleration_structure`, which needs acceleration structures underneath it.
+     * Switched off by the system property `afield.clusterAccelerationStructure.disabled`.
+     */
     val supportsClusterAccelerationStructure: Boolean
 
+    /**
+     * Presents are tagged with an id and waited on, which is Windows-only and needs both
+     * `VK_KHR_present_id` and `VK_KHR_present_wait`. Construction answers this for the real device,
+     * so the value here is only what holds until then.
+     */
     var usePresentIndexing = !Options.isMac
+
+    /**
+     * Mesh and task shader stages are enabled, which is Windows-only and needs `VK_EXT_mesh_shader`.
+     * Construction overwrites the value here the same way [usePresentIndexing] does.
+     */
     var enableMeshShading = !Options.isMac
+
+    /**
+     * Whether ray-tracing pipelines were enabled at device creation. [supportsRayTracing] is the
+     * same answer as a read-only property and is what the engine reads; construction overwrites the
+     * value here as it does for [usePresentIndexing].
+     */
     var enableRayTracing = !Options.isMac
     /** True when VK_EXT_present_timing was successfully enabled on the device. Never true on macOS/MoltenVK. */
     var usesPresentTiming = false
@@ -109,9 +213,10 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
     }
 
     /**
-     * Refuse, naming the way out, when [supportsMetalObjects] is false. That is KosmicKrisp — the
-     * default Mac driver since 2026-09-29. The two live IOSurface paths no longer need it there
-     * (they go through [supportsExternalMemoryHost]); image-level IOSurface import/export still does.
+     * Refuse, naming the way out, when [supportsMetalObjects] is false — which is the case on
+     * KosmicKrisp, the driver Field picks on Apple silicon with macOS 26 and a recent SDK. Field's
+     * two live IOSurface paths go through [supportsExternalMemoryHost] and work there; image-level
+     * IOSurface import and export is what needs this extension.
      */
     fun requireMetalObjects(what: String) = check(supportsMetalObjects) {
         "$what needs VK_EXT_metal_objects, which the ${physicalDevice.driverName.ifEmpty { "current" }} Vulkan driver " +
@@ -705,6 +810,10 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
         }
     }
 
+    /**
+     * Block until every queue on this device is idle. The blunt instrument teardown and swapchain
+     * rebuilds use; a per-queue or per-fence wait is what a frame should use.
+     */
     fun waitIdle() {
         vkDeviceWaitIdle(vkDevice)
     }
@@ -722,6 +831,11 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
         synchronized(Queue.globalQueueLock) { acceptingSubmissions = false }
     }
 
+    /**
+     * Close the reconstruction runtime if one was ever opened, then destroy the device. Everything
+     * allocated from the device has to be gone first; [closeSubmissions] and [waitIdle] are how a
+     * renderer gets there.
+     */
     fun cleanup() {
         if (ngxDelegate.isInitialized()) ngxRuntime.getOrNull()?.close()
         vkDestroyDevice(vkDevice, null)

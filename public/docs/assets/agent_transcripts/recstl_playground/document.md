@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. window + renderer
@@ -51,7 +51,7 @@ time  — scrub to a frame (while paused); moving it freezes the clock there
 See the "RectSL examples" docs page / rectsl_cheatsheet.md for the language.
 
 ```edn [field-box id="recstl_playground" role="properties"]
-{"id" "recstl_playground" "index" 1 "name" "recstl" "parents" ["root" "recstl_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "recstl_renderer"} "name" "recstl" "_tombstone" false "frame" #afield/rect [300.0 140.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "recstl_playground_code_.kt" "lines" 103 "characters" 3126 "sha256" "8f2a4653c5967b7551c2ce7f86841877e95e082f67c58e625522ec28481b74ac"}]}
+{"id" "recstl_playground" "index" 1 "name" "recstl" "parents" ["root" "recstl_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "recstl_renderer"} "name" "recstl" "_tombstone" false "frame" #afield/rect [300.0 140.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "recstl_playground_code_.kt" "lines" 104 "characters" 3108 "sha256" "e359ebd54b9c4d6859e74cd285f9c6f46f94a59e4ceeb106d33802cbc5bcf7a3"}]}
 ```
 
 ```kotlin [field-property box="recstl_playground" name="code" path="recstl_playground_code_.kt"]
@@ -70,6 +70,7 @@ See the "RectSL examples" docs page / rectsl_cheatsheet.md for the language.
 import afield.lang.rectsl.RECT_ANIMATION_VERTEX_SHADER
 import afield.lang.rectsl.RectAnimationOracle
 import afield.lang.rectsl.rectMaterialShaderCode
+import afield.lang.rectsl.worldToClip
 import afield.lang.rectsl.writeFrameToMesh
 
 val rectsl =
@@ -127,7 +128,7 @@ renderer += "rectsl" to module
 
 val ww = program.wall.width.toFloat()
 val wh = program.wall.height.toFloat()
-m.push["worldToClip"] = afield.math.linalg.Matrix4f().ortho(-ww / 2f, ww / 2f, -wh / 2f, wh / 2f, -1f, 1f)
+m.push["worldToClip"] = program.wall.worldToClip()
 m.push["wallWidth"] = ww
 m.push["wallHeight"] = wh
 

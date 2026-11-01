@@ -38,9 +38,19 @@ enum class ShaderBindingChange { KEPT, ADDED, REMOVED, RENAMED, RESIZED, RETYPED
 
 /** A member of a uniform block, storage buffer or push-constant block, old to new, by name. */
 data class ShaderMemberTransition(
+    /** The member's name, which is what the two interfaces were matched on. */
     val name: String,
+    /**
+     * `KEPT`, `ADDED`, `REMOVED` or `RETYPED`: the four a member can be. Moving to a different
+     * offset counts as `RETYPED`, and members are never classified as renamed or resized.
+     */
     val change: ShaderBindingChange,
+    /**
+     * The member's type in the old interface, written the way a shader author would: `vec3`,
+     * `float[]`, `struct`, `pointer`. Null when the member is new.
+     */
     val oldType: String? = null,
+    /** Its type in the new interface; null when it was removed. */
     val newType: String? = null,
 )
 
@@ -51,14 +61,37 @@ data class ShaderMemberTransition(
  * offset changed, or that came or went.
  */
 data class ShaderBindingTransition(
+    /** Which sort of binding this is, and so how a summary line names it. */
     val kind: ShaderBindingKind,
+    /** What the reload did to it. */
     val change: ShaderBindingChange,
+    /**
+     * The binding's name in the new interface. A removed binding has no new name, so this carries
+     * the old one.
+     */
     val name: String,
+    /** Its name in the old interface, equal to the new name except for a rename. */
     val oldName: String = name,
+    /**
+     * The old size in bytes, for a uniform block or storage buffer. Null for the other kinds, which
+     * have no size of their own, and for a block that is only in the new interface.
+     */
     val oldSize: Int? = null,
+    /** The new size in bytes, on the same terms; null for a block that is only in the old interface. */
     val newSize: Int? = null,
+    /**
+     * The old type, for the kinds a type describes: a texture (with its array count, as
+     * `sampler2D[4]`), an image, an acceleration structure, or a push-constant member. Blocks say
+     * their sizes and members instead, so both type fields stay null for them.
+     */
     val oldType: String? = null,
+    /** The new type, on the same terms. */
     val newType: String? = null,
+    /**
+     * For a block kept under the same name, only those of its members that did not stay the same.
+     * Empty for every other case, a renamed block included — a rename is only recognised when the
+     * layout matches, so there is nothing to list.
+     */
     val members: List<ShaderMemberTransition> = emptyList(),
 ) {
     /** Kept, with no member changed. */
@@ -71,8 +104,19 @@ data class ShaderBindingTransition(
  * across by — see `dev_docs/stdlib_behaviour_changes.md`, "Full shader reload diffs the interface".
  */
 data class ShaderInterfaceTransition(
+    /**
+     * Every binding either interface declares, each appearing once, grouped in a fixed order:
+     * uniform blocks, storage buffers, textures, images, acceleration structures, then
+     * push-constant members. Kept bindings are in here too; [changes] is the filtered view.
+     */
     val bindings: List<ShaderBindingTransition>,
+    /**
+     * Stages the new module has and the old one did not. A ray-tracing module's stage list varies
+     * with what it declares, and a repeated stage is numbered (`closesthit#2`), so adding a second
+     * hit shader arrives here.
+     */
     val stagesAdded: List<String> = emptyList(),
+    /** Stages the old module had and the new one does not. */
     val stagesRemoved: List<String> = emptyList(),
 ) {
     /** Everything that is not simply kept. */

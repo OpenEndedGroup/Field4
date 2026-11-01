@@ -4,7 +4,7 @@
 
 Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. `SoundPathMap.kt` is the one to read first: the declared, re-derived-from-the-code map of every route Field has from a box to something audible, which [Making a sound in Field: every path there is](../sound_paths.md) renders as a page. [Sonic Pi](../sonic_pi.md) covers owned mode in full.
 
-77 source file(s), 2092 public symbol(s), 1013 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+78 source file(s), 2099 public symbol(s), 1018 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -3380,7 +3380,7 @@ downloads, so a clip is made from the same bytes on every machine or not made at
 
 `src/jvmMain/kotlin/afield/audio/synth/DirtRender.kt` — [read the source](source/jvmMain/afield/audio/synth/DirtRender/)
 
-**Used in:** [Sound: from a pattern to something you can hear](../sound.md), [How to make sound in Field](../sound_paths.md)
+**Used in:** [How to make sound in Field](../sound_paths.md)
 
 ### Top-level functions { #dirtrender-kt-functions }
 
@@ -4195,6 +4195,25 @@ Renders the two `pat_spatial.md` source clips, asserts the three claims about th
 | <a id="patspatialsounddocs-kt--patspatialsounddocs--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/PatSpatialSoundDocs/#L280) | Renders both figures, asserts the three claims, and writes them. |
 | <a id="patspatialsounddocs-kt--patspatialsounddocs--right-channel-ceiling"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">RIGHT&#95;CHANNEL&#95;CEILING</span></code>](source/jvmMain/afield/audio/synth/PatSpatialSoundDocs/#L438) | How much of the signal may appear in the right channel before `pan/0` is not a tap. |
 | <a id="patspatialsounddocs-kt--patspatialsounddocs--forwarding-centroid-ceiling"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">FORWARDING&#95;CENTROID&#95;CEILING</span></code>](source/jvmMain/afield/audio/synth/PatSpatialSoundDocs/#L441) | How far below the plain figure's centroid the `lpf` figure's has to sit to be the filter. |
+
+## PetriSoundDocs.kt { #petrisounddocs-kt }
+
+`src/jvmMain/kotlin/afield/audio/synth/PetriSoundDocs.kt` — [read the source](source/jvmMain/afield/audio/synth/PetriSoundDocs/)
+
+### PetriSoundDocs { #petrisounddocs-kt-petrisounddocs }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">PetriSoundDocs</span></code>](source/jvmMain/afield/audio/synth/PetriSoundDocs/#L34)
+
+The clips on `petri_nets.md`: a page net's firings played through the pinned Tidal Dirt-Samples.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="petrisounddocs-kt--petrisounddocs--scene"></a>[<code class="highlight"><span class="k">class</span> <span class="nf">Scene</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">listenFor</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">cycles</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">cps</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/PetriSoundDocs/#L37) | One page net as sound: its source, and how many cycles to play at what tempo. |
+| <a id="petrisounddocs-kt--petrisounddocs--scenes"></a>[<code class="highlight"><span class="k">val</span> <span class="nc">SCENES</span></code>](source/jvmMain/afield/audio/synth/PetriSoundDocs/#L39) |  |
+| <a id="petrisounddocs-kt--petrisounddocs--scene-2"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">scene</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Scene</span></code>](source/jvmMain/afield/audio/synth/PetriSoundDocs/#L59) | Looks a scene up by name, with a message that lists the alternatives. |
+| <a id="petrisounddocs-kt--petrisounddocs--render"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">render</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">DirtRender</span><span class="p">.</span><span class="nc">DirtRenderResult</span></code>](source/jvmMain/afield/audio/synth/PetriSoundDocs/#L63) | Renders `name` through the pinned Dirt-Samples, strictly. |
+| <a id="petrisounddocs-kt--petrisounddocs--renderwav"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">renderWav</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">outPath</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/PetriSoundDocs/#L78) | Offline-renders scene `name` to a stereo 16-bit WAV at `outPath`: the `renderWav(name, path)` contract the docs runner's `audio="…"` fence drives. |
+| <a id="petrisounddocs-kt--petrisounddocs--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/PetriSoundDocs/#L86) |  |
 
 ## PetriSparksDocs.kt { #petrisparksdocs-kt }
 

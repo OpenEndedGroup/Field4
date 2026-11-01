@@ -52,8 +52,7 @@ val guideModule = moduleHere {
     blend = false
     textureResolver = { texture -> inputs[texture.name]?.let { fromViews([it], texture.name, sampler) } }
 }
-val quad = Mesh(renderer, guideModule)
-quad.resize(3, 0, guideModule)
+val quad = fullscreenTriangle(guideModule)
 guideModule += "convert" to quad
 guides += "guides" to guideModule
 

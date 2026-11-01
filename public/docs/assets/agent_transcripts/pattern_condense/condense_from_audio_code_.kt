@@ -62,7 +62,7 @@ markdown(
     | | |
     |---|---|
     | played | `$bar` |
-    | rendered | ${audio.mono.size} samples, ${"%.2f".format(audio.mono.size.toDouble() / PatSoundDocs.SR)} s |
+    | rendered | ${audio.mono.size} samples, ${(audio.mono.size.toDouble() / PatSoundDocs.SR).f2} s |
     | grid recovered | ${heard.grid?.describe() ?: "none"} |
     | heard | `${heard.miniNotation}` |
     | **condensed** | **`${condensed.notation}`** |

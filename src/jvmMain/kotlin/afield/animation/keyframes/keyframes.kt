@@ -115,6 +115,10 @@ class KeyframeEvaluator(jsonString: String) {
         keyframes = json.decodeFromString<List<Keyframe>>(jsonString).sortedBy { it.time }
     }
 
+    /**
+     * Replaces every keyframe with those in [jsonString], a JSON list in the same form the
+     * constructor takes. They are sorted by time; fields this class does not know are ignored.
+     */
     fun set(jsonString: String) {
         val json = Json { ignoreUnknownKeys = true }
         keyframes = json.decodeFromString<List<Keyframe>>(jsonString).sortedBy { it.time }

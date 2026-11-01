@@ -109,23 +109,22 @@ runAsync(
             }
             preview.thenCombineAsync(frames) { summary, samples ->
                 [
-                        SpectralEmbeddingDistance.MEL_WASSERSTEIN,
-                        SpectralEmbeddingDistance.LOG_MEL_COSINE,
-                        SpectralEmbeddingDistance.MFCC_EUCLIDEAN,
-                    ]
-                    .mapIndexed { index, distance ->
-                        // The fitter has no interrupt hook; stop suppresses output and skips later fits.
-                        if (future.isDone) throw CancellationException("run ended")
-                        summary.withSpectralProjection(
-                            samples.tsne(
-                                dimensions = 4,
-                                distance = distance,
-                                perplexity = perplexity,
-                                maxIterations = iterations,
-                                seed = seed + index,
-                            ),
-                        )
-                    }
+                    SpectralEmbeddingDistance.MEL_WASSERSTEIN,
+                    SpectralEmbeddingDistance.LOG_MEL_COSINE,
+                    SpectralEmbeddingDistance.MFCC_EUCLIDEAN,
+                ].mapIndexed { index, distance ->
+                    // The fitter has no interrupt hook; stop suppresses output and skips later fits.
+                    if (future.isDone) throw CancellationException("run ended")
+                    summary.withSpectralProjection(
+                        samples.tsne(
+                            dimensions = 4,
+                            distance = distance,
+                            perplexity = perplexity,
+                            maxIterations = iterations,
+                            seed = seed + index,
+                        ),
+                    )
+                }
             }
         }
 }

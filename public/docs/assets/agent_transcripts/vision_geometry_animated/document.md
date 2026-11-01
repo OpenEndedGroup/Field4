@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole" "mainLanguage" "isKotlinJsRoot"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole" "mainLanguage" "isKotlinJsRoot"]}
 ```
 
 ## 1. KotlinJS → visionOS
@@ -29,7 +29,7 @@ From `msl`
 Note how little this shader does: all the motion is in the geometry, rebuilt in Kotlin.
 
 ```edn [field-box id="agent_vision_geometry_animated" role="properties"]
-{"id" "agent_vision_geometry_animated" "index" 1 "name" "Geometry — rebuilt per frame" "parents" ["root" "agent_vision_geometry_animated_root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_vision_geometry_animated_root"} "name" "Geometry — rebuilt per frame" "_tombstone" false "frame" #afield/rect [90.0 150.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_vision_geometry_animated_code_.kt" "lines" 41 "characters" 1562 "sha256" "6c871bbd8e29a52d9592186299f22b91ccd9982f9e4e38b1507da42d350bd96f"} {"name" "msl" "language" "msl" "path" "agent_vision_geometry_animated_msl_.metal" "lines" 30 "characters" 1141 "sha256" "9f85a62b10b0e213f2924cb73bfce954af9b19175ec6de47781de091036c1a2d"}]}
+{"id" "agent_vision_geometry_animated" "index" 1 "name" "Geometry — rebuilt per frame" "parents" ["root" "agent_vision_geometry_animated_root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_vision_geometry_animated_root"} "name" "Geometry — rebuilt per frame" "_tombstone" false "frame" #afield/rect [90.0 150.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_vision_geometry_animated_code_.kt" "lines" 43 "characters" 1543 "sha256" "d593ed2e244ddbc112a0917b044af2a7a23b0230d0f52ccf1225cf8ea360ff0b"} {"name" "msl" "language" "msl" "path" "agent_vision_geometry_animated_msl_.metal" "lines" 30 "characters" 1141 "sha256" "9f85a62b10b0e213f2924cb73bfce954af9b19175ec6de47781de091036c1a2d"}]}
 ```
 
 ```kotlin [field-property box="agent_vision_geometry_animated" name="code" path="agent_vision_geometry_animated_code_.kt"]
@@ -37,15 +37,17 @@ Note how little this shader does: all the motion is in the geometry, rebuilt in 
 import kotlin.math.cos
 import kotlin.math.sin
 
-// Two ways to animate a mesh, and this box is the second one:
-//
-//   1. Keep the geometry still and move it in the shader from a uniform. Cheapest; use it
-//      whenever the motion is a transform (see visionos_start).
-//   2. Rebuild the mesh. Necessary when the *topology* or the spine changes — which is the
-//      case here, because the curve itself is being redrawn.
-//
-// At this size (~600 vertices) rebuilding every frame is comfortable. For a mesh in the
-// tens of thousands, rebuild on demand instead and let the shader do per-frame motion.
+/*
+Two ways to animate a mesh, and this box is the second one:
+
+  1. Keep the geometry still and move it in the shader from a uniform. Cheapest; use it
+     whenever the motion is a transform (see visionos_start).
+  2. Rebuild the mesh. Necessary when the *topology* or the spine changes — which is the
+     case here, because the curve itself is being redrawn.
+
+At this size (~600 vertices) rebuilding every frame is comfortable. For a mesh in the
+tens of thousands, rebuild on demand instead and let the shader do per-frame motion.
+*/
 onStart {
     uniform("light", 0.4, 0.85, 0.5)
 

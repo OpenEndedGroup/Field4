@@ -74,9 +74,8 @@ data class TemplateMetadata(
  * environment variable is absent, `afield.templateServers`.
  *
  * [templating] starts one background fetch of each `/list` endpoint. The cache is not refreshed
- * afterwards, and failed or empty responses do not create cache entries. Template insertion checks
- * `$home/templates`, then bundled templates, then cached remote servers; it does not insert the
- * document entries that [SavingContext.listTemplates] finds directly beneath `$home`.
+ * afterwards, and failed or empty responses do not create cache entries. Template insertion uses the local
+ * templates first, in [templateRoots] order, then cached remote servers.
  */
 val templateServers: List<String> by lazy {
     val serversEnv = System.getenv("AFIELD_TEMPLATE_SERVERS") ?: System.getProperty("afield.templateServers") ?: ""
@@ -329,59 +328,88 @@ private fun initializeTemplateServers() {
     }
 }
 
+/** One folder the `cmd+t` palette reads templates from; [suffix] renames a template a higher folder shadows. */
+internal data class TemplateRoot(val dir: String, val source: String, val suffix: String)
+
+/** A local template the palette offers under [name], read from [path] (an `.edn` file or a document folder). */
+internal data class TemplateEntry(val name: String, val path: String, val source: String)
+
 /**
- * Every template the palette offers, with its documentation: documents directly beneath `$home`,
- * `$home/templates`, bundled templates and cached remote names. Reads every document's
- * `metadata.edn` and sidecars, so in a real workspace this is hundreds of files.
+ * The folders `cmd+t` reads, highest precedence first:
+ *
+ * 1. `$home/templates` — saved with **Save as template** in this workspace ("Workspace template");
+ * 2. the bundled `$app/templates` ("Bundled template");
+ * 3. `src/personal/templates` in Field's working directory ("Personal template");
+ * 4. [afield.document.workspace.personalTemplatesDir], normally `~/.afield/templates` ("Personal template");
+ * 5. the documents directly in the workspace [home] ("Workspace file").
+ *
+ * Remote servers come after all of these. Bundled outranks personal for the same reason as on the
+ * Welcome screen ([afield.document.workspace.documentTemplateRoots]): a name means the same thing in
+ * every checkout. Labels, documentation and the inserted copy all come from the same entry.
  */
-internal fun listTemplatesWithMetadata(): Directory {
-    val templates2 = SavingContext().listTemplates(app + "/templates/")
-    val templates = SavingContext().listTemplates(home)
-    val templatesHome = SavingContext().listTemplates("$home/templates")
+internal fun templateRoots(
+    home: String,
+    app: String,
+    checkoutPersonal: String = File(System.getProperty("user.dir"), "src/personal/templates").path,
+    personal: String = afield.document.workspace.personalTemplatesDir().path,
+): List<TemplateRoot> = listOf(
+    TemplateRoot("$home/templates", "workspace-template", "workspace-template"),
+    TemplateRoot("$app/templates", "bundled-template", "bundled"),
+    TemplateRoot(checkoutPersonal, "personal-template", "checkout"),
+    TemplateRoot(personal, "personal-template", "personal"),
+    TemplateRoot(home, "workspace", "workspace"),
+)
 
-    // Include remote templates from all configured servers
-    val remoteTemplates = remoteTemplatesCache.values.flatten()
-
-    val sourceByName = mutableMapOf<String, String>()
-    templates.forEach { sourceByName.putIfAbsent(it, "workspace") }
-    templatesHome.forEach { sourceByName.putIfAbsent(it, "workspace-template") }
-    templates2.forEach { sourceByName.putIfAbsent(it, "bundled-template") }
-    remoteTemplates.forEach { sourceByName.putIfAbsent(it, "remote-template") }
-
-    val allTemplateNames = templates + templatesHome + templates2 + remoteTemplates
-
-    // Extract metadata for each template
-    val templateMetadataList = allTemplateNames.mapNotNull { templateName ->
-        val source = sourceByName[templateName] ?: "template"
-        // Try to find the template file in order of preference
-        val paths = listOf(
-            "$home/$templateName.edn" to "$home",
-            "$home/$templateName/metadata.edn" to "$home/$templateName",
-            "$home/templates/$templateName.edn" to "$home/templates",
-            "$home/templates/$templateName/metadata.edn" to "$home/templates/$templateName",
-            "$app/templates/$templateName.edn" to "$app/templates",
-            "$app/templates/$templateName/metadata.edn" to "$app/templates/$templateName"
-        )
-
-        for ((templateFile, directory) in paths) {
-            val file = File(templateFile)
-            if (file.exists()) {
-                return@mapNotNull extractTemplateMetadata(templateFile, templateName, source)
-            }
+/**
+ * Every local template in [roots], one entry per name. The first root holding a name owns it; the
+ * same name in a later root is offered as `<name>-<suffix>` (`greeter-personal`) unless that is taken
+ * too, so nothing is listed twice and nothing personal silently vanishes. A root reached twice (the
+ * personal folder pointed at the workspace's `templates/`, say) is read once. [currentDocument], a
+ * document folder, is left out: inserting it would copy the document into itself.
+ */
+internal fun localTemplateEntries(roots: List<TemplateRoot>, currentDocument: String? = null): List<TemplateEntry> {
+    val current = currentDocument?.let { File(it).absoluteFile.normalize() }
+    val seenRoots = HashSet<String>()
+    val byName = LinkedHashMap<String, TemplateEntry>()
+    for (root in roots) {
+        val dir = File(root.dir)
+        if (!dir.isDirectory || !seenRoots.add(dir.canonicalPath)) continue
+        for (found in SavingContext().listTemplates(dir.path)) {
+            val path = resolveTemplatePath(dir.path, found)
+            if (current != null && File(path).absoluteFile.normalize() == current) continue
+            val name = if (found !in byName) found else "$found-${root.suffix}"
+            if (name !in byName) byName[name] = TemplateEntry(name, path, root.source)
         }
+    }
+    return byName.values.toList()
+}
 
+/**
+ * Every template the palette offers, with its documentation: [localTemplateEntries] over
+ * [templateRoots], then cached remote names no local template already claims. Reads every
+ * document's `metadata.edn` and sidecars, so in a real workspace this is hundreds of files.
+ */
+internal fun listTemplatesWithMetadata(
+    currentDocument: String? = null,
+    roots: List<TemplateRoot> = templateRoots(home, app),
+    remote: List<String> = remoteTemplatesCache.values.flatten(),
+): Directory {
+    val local = localTemplateEntries(roots, currentDocument)
+    val taken = local.mapTo(HashSet()) { it.name }
+    val remoteNames = remote.filter { taken.add(it) }
+
+    val templateMetadataList = local.map { entry ->
+        val metadataFile = File(entry.path).let { if (it.isFile) it else File(it, SavingContext.METADATA_EDN) }
+        extractTemplateMetadata(metadataFile.path, entry.name, entry.source)
+            ?: TemplateMetadata(name = entry.name, lastModified = 0, boxDocumentation = "", source = entry.source)
+    } + remoteNames.map {
         // For remote templates, we don't have metadata yet
-        TemplateMetadata(
-            name = templateName,
-            lastModified = 0,
-            boxDocumentation = "",
-            source = source
-        )
+        TemplateMetadata(name = it, lastModified = 0, boxDocumentation = "", source = "remote-template")
     }
 
     return Directory(
         command = "list",
-        value = allTemplateNames,
+        value = local.map { it.name } + remoteNames,
         metadata = Json.encodeToJsonElement(templateMetadataList)
     )
 }
@@ -401,8 +429,9 @@ fun templating() {
         // This runs on the Netty event loop serving the page's websocket, and the listing reads every
         // document in the workspace. It touches no session state, so it runs off the loop and replies
         // from there; a throw still replies, with an empty list, so the palette is never left waiting.
+        val currentDocument = thisSessionInfo.get()?.filename
         templateIoScope.launch {
-            reply(Message("list").payload(templateListingOrEmpty()))
+            reply(Message("list").payload(templateListingOrEmpty { listTemplatesWithMetadata(currentDocument) }))
         }
         Handled.yes
     })
@@ -411,8 +440,7 @@ fun templating() {
 
         val exec = Json.decodeFromJsonElement<Directory>(message.payload!!)
 
-        val templatesHome = SavingContext().listTemplates("$home/templates")
-        val templatesApp = SavingContext().listTemplates("$app/templates")
+        val localTemplates = localTemplateEntries(templateRoots(home, app)).associateBy { it.name }
 
         val session = thisSession.get()
         val si = thisSessionInfo.get()
@@ -421,24 +449,14 @@ fun templating() {
         // `downloaded` holds each remote template's (server, metadata.edn), or null when no server served it.
         fun insert(downloaded: Map<String, Pair<String, String>?>) {
             val loadedBoxes = exec.value.flatMap { templateName ->
-                // Try local templates first
-                // A template's header names become the receiving document's, so its boxes keep saving them.
-                fun cloneTemplate(path: String): Set<afield.document.graph.Box> =
-                    SavingContext().cloneInto(path).also {
-                        afield.document.graph.Box.recordDocumentPersistentProperties(
-                            si.filename,
-                            // `load` records a standalone `.edn` template's header against its folder
-                            afield.document.graph.Box.persistentPropertiesFor(
-                                File(path).let { if (it.isFile) it.absoluteFile.parent else it.path }))
-                    }
-                val boxes = if (templatesHome.contains(templateName)) {
-                    cloneTemplate(resolveTemplatePath("$home/templates", templateName))
-                } else if (templatesApp.contains(templateName)) {
-                    cloneTemplate(resolveTemplatePath("$app/templates", templateName))
+                val local = localTemplates[templateName]
+                val boxes = if (local != null) {
+                    insertTemplateInto(si, templateName, local.path)
                 } else {
                     val remote = downloaded[templateName]
                     if (remote == null) {
                         if (templateName in downloaded) notify("Could not download template '$templateName'", "error")
+                        else notify("No template named '$templateName'", "error")
                         emptySet()
                     } else {
                         val (serverUrl, ednContent) = remote
@@ -502,7 +520,7 @@ fun templating() {
         }
 
         val remoteNames = exec.value.filter { name ->
-            name !in templatesHome && name !in templatesApp && remoteTemplatesCache.values.any { name in it }
+            name !in localTemplates && remoteTemplatesCache.values.any { name in it }
         }
         if (remoteNames.isEmpty()) {
             insert(emptyMap())
@@ -553,6 +571,25 @@ fun templating() {
         Handled.yes
     })
 }
+
+/**
+ * Clones the local template at [path] into [info] (the session's current document) under fresh ids and
+ * tags each box with `templateId = name`. A template's header names become the receiving document's,
+ * so its boxes keep saving them. Leaves resync, placement and autorun to the caller.
+ */
+internal fun insertTemplateInto(info: SessionInformation, name: String, path: String): Set<afield.document.graph.Box> =
+    SavingContext().cloneTemplateInto(path).also { boxes ->
+        afield.document.graph.Box.recordDocumentPersistentProperties(
+            info.filename,
+            // `load` records a standalone `.edn` template's header against its folder
+            afield.document.graph.Box.persistentPropertiesFor(
+                File(path).let { if (it.isFile) it.absoluteFile.parent else it.path }))
+        boxes.forEach { it.templateId = name }
+    }
+
+/** Where `insert-template` reads the local template [name] from, or null (which leaves the remote servers). */
+internal fun localTemplatePath(name: String, roots: List<TemplateRoot>): String? =
+    localTemplateEntries(roots).firstOrNull { it.name == name }?.path
 
 private fun resolveTemplatePath(baseDir: String, name: String): String {
     val base = baseDir.trimEnd('/')

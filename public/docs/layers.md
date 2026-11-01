@@ -80,7 +80,7 @@ remembers where every box on the old layer is, then moves each box on the new la
 the last time that layer was active. So a box on two layers can sit in one place on one and
 somewhere else on the other.
 
-Below, `draft` is active and the three drum boxes are dragged into a row. Then `final` is made
+Below, `draft` is active and the three drum boxes, `kick`, `snare` and `hats`, are dragged into a row. Then `final` is made
 active and they are dragged into a diagonal. After that, choosing `draft` and `final` in turn in
 the panel moves them between the two layouts. `notes` and `mix` are on neither layer, so they stay
 put:
@@ -143,8 +143,8 @@ it.
 
 !!! note "Leaving every layer inactive"
     No layer is active when a document opens. Positions are only remembered while a layer is
-    active, and only for boxes on it. Choosing a layer and then going back to no active layer
-    leaves boxes where they were last, not where they started.
+    active, and only for boxes on it. Hiding the active layer with its eye leaves no layer active,
+    and the boxes stay where they were last, not where they started.
 
 ## What layers do not change
 

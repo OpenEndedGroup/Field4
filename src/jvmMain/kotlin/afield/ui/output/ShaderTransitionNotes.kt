@@ -146,7 +146,7 @@ fun markShaderReferenceLines(box: Box, names: Map<String, String>): Int {
     names.forEach { (name, why) ->
         kotlinLinesReferencing(code, name).take(12).forEach { line ->
             runCatching {
-                box.error("$why. This line uses `$name`, which was generated for the shader's old interface; re-run the box to compile it against the new one.", "code", line)
+                box.displayError("$why. This line uses `$name`, which was generated for the shader's old interface; re-run the box to compile it against the new one.", "code", line)
             }
             marked++
         }

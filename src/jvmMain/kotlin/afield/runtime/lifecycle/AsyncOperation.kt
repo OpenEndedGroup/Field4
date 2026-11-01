@@ -147,7 +147,7 @@ class AsyncOperation<T> internal constructor(
 
     private fun release(resource: AutoCloseable) {
         runCatching { resource.close() }.onFailure { failure ->
-            scope?.box?.error("Async resource cleanup failed: ${failure.message}")
+            scope?.box?.displayError("Async resource cleanup failed: ${failure.message}")
                 ?: System.err.println("Async resource cleanup failed: $failure")
         }
     }
@@ -171,7 +171,7 @@ fun <T> runAsync(
 ): AsyncOperation<T> {
     val scope = RunScope.current()
     val operation = AsyncOperation(scope, onResult, onError ?: { failure ->
-        scope?.box?.error("Async operation failed: ${failure.message ?: failure.javaClass.simpleName}")
+        scope?.box?.displayError("Async operation failed: ${failure.message ?: failure.javaClass.simpleName}")
             ?: System.err.println("Async operation failed: $failure")
     })
     scope?.own(operation)

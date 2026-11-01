@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 8 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 8 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. 0 - a window and a renderer, which gpu_skin needs
@@ -57,7 +57,7 @@ every pose, which costs 2.8 ms for a 50,000-vertex character and cannot be done 
 EDIT `count` AND RE-RUN. The per-frame CPU cost is `count x bones` matrices, so 2 here.
 
 ```edn [field-box id="gpu_crowd" role="properties"]
-{"id" "gpu_crowd" "index" 1 "name" "6 - skinning in the vertex shader, and a crowd of 64" "parents" ["root" "skin_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "skin_renderer"} "name" "6 - skinning in the vertex shader, and a crowd of 64" "_tombstone" false "frame" #afield/rect [40.0 520.0 600.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gpu_crowd_code_.kt" "lines" 88 "characters" 3371 "sha256" "bcefde44996a9ed099352d857dea66e6439cdf7c06158316955bb2bfde18c904"}]}
+{"id" "gpu_crowd" "index" 1 "name" "6 - skinning in the vertex shader, and a crowd of 64" "parents" ["root" "skin_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "skin_renderer"} "name" "6 - skinning in the vertex shader, and a crowd of 64" "_tombstone" false "frame" #afield/rect [40.0 520.0 600.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gpu_crowd_code_.kt" "lines" 86 "characters" 3302 "sha256" "b7477f06ad91e08a84976ba789d7da7f4a4f15e1cdeed29857ac48598e0d5d7d"}]}
 ```
 
 ```kotlin [field-property box="gpu_crowd" name="code" path="gpu_crowd_code_.kt"]
@@ -89,16 +89,14 @@ The shaders come straight from the library constants, so this box cannot drift f
 bundled glTF fragment shader never reads vColor -- it outputs the normal -- so the per-instance
 tint would be invisible and "the crowd is varied" would be unfalsifiable.
 */
-val module =
-    Module(
-            Parameters(
-                renderer = renderer,
-                vertex = GpuSkinning.skinnedVertexShader,
-                fragment = GpuSkinning.skinnedFragmentShader,
-                name = "gpu skinned crowd",
-            ),
-        )
-        .pointer()
+val module = Module(
+    Parameters(
+        renderer = renderer,
+        vertex = GpuSkinning.skinnedVertexShader,
+        fragment = GpuSkinning.skinnedFragmentShader,
+        name = "gpu skinned crowd",
+    ),
+).pointer()
 
 val m = Mesh(renderer, module)
 module += "crowd" to m
@@ -240,7 +238,7 @@ showMeshGrid(
 <!-- field-box id="gpu_twist" index="3" -->
 
 ```edn [field-box id="gpu_twist" role="properties"]
-{"id" "gpu_twist" "index" 3 "name" "7 - the candy wrapper on the GPU, linear and dual quaternion in one draw" "parents" ["root" "skin_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "skin_renderer"} "name" "7 - the candy wrapper on the GPU, linear and dual quaternion in one draw" "_tombstone" false "frame" #afield/rect [680.0 520.0 600.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gpu_twist_code_.kt" "lines" 83 "characters" 3207 "sha256" "c73d527a4fd9d0825b0c6c0f0b242a5670fba03c3349293a5be2af164659eba7"}]}
+{"id" "gpu_twist" "index" 3 "name" "7 - the candy wrapper on the GPU, linear and dual quaternion in one draw" "parents" ["root" "skin_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "skin_renderer"} "name" "7 - the candy wrapper on the GPU, linear and dual quaternion in one draw" "_tombstone" false "frame" #afield/rect [680.0 520.0 600.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gpu_twist_code_.kt" "lines" 81 "characters" 3138 "sha256" "e09496b6d017100e47fc2701f376a06f77a31cd0a41c57061908e1812a930aaa"}]}
 ```
 
 ```kotlin [field-property box="gpu_twist" name="code" path="gpu_twist_code_.kt"]
@@ -266,16 +264,14 @@ val model = GltfSupport.loadGltfBasic(
 )
 val inst = model.meshes.first { it.skin != null }
 
-val module =
-    Module(
-            Parameters(
-                renderer = renderer,
-                vertex = GpuSkinning.skinnedVertexShader,
-                fragment = GpuSkinning.skinnedFragmentShader,
-                name = "gpu twist, lbs vs dqs",
-            ),
-        )
-        .pointer()
+val module = Module(
+    Parameters(
+        renderer = renderer,
+        vertex = GpuSkinning.skinnedVertexShader,
+        fragment = GpuSkinning.skinnedFragmentShader,
+        name = "gpu twist, lbs vs dqs",
+    ),
+).pointer()
 
 val m = Mesh(renderer, module)
 module += "twist" to m

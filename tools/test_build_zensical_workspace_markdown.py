@@ -87,6 +87,47 @@ class WorkspaceMarkdownDetectionTests(unittest.TestCase):
                 self.assertFalse(is_workspace_markdown(Path(relative)))
 
 
+class WorkspaceFurnitureTests(unittest.TestCase):
+    """Everything else Field writes into a workspace is furniture as well, given the docs root.
+
+    The bug this guards: a starting point's `guides/keyframer_examples.md` redirect, titled with the
+    keyframer page's own heading, was built as a page and indexed, so a search for the keyframer
+    found 1 real page and a crowd of redirects; box `*_notes_.md` sidecars did the same.
+    """
+
+    def setUp(self):
+        self._tmp = TemporaryDirectory()
+        self.docs = Path(self._tmp.name)
+        workspace = self.docs / "assets/agent_transcripts/demo"
+        (workspace / "guides").mkdir(parents=True)
+        (workspace / "metadata.edn").write_text("{}\n")
+        (workspace / "guides/keyframer_examples.md").write_text("# Keyframer\n")
+        (workspace / "box_notes_.md").write_text("notes\n")
+        (workspace / "LESSONS.md").write_text("# Lessons\n")
+        loose = self.docs / "assets/fabricate_demo"
+        loose.mkdir(parents=True)
+        (loose / "ATTRIBUTION.md").write_text("# Credits\n")
+        (self.docs / "graphics.md").write_text("[the lesson index](assets/agent_transcripts/demo/LESSONS.md)\n")
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_guides_and_notes_inside_a_workspace_are_furniture(self):
+        for relative in ("assets/agent_transcripts/demo/guides/keyframer_examples.md",
+                         "assets/agent_transcripts/demo/box_notes_.md"):
+            with self.subTest(relative=relative):
+                self.assertTrue(is_workspace_markdown(Path(relative), self.docs))
+                # Without the root the old name-only rule applies, so they read as pages.
+                self.assertFalse(is_workspace_markdown(Path(relative)))
+
+    def test_a_workspace_file_a_page_links_to_stays_a_page(self):
+        self.assertFalse(is_workspace_markdown(Path("assets/agent_transcripts/demo/LESSONS.md"), self.docs))
+
+    def test_prose_outside_any_workspace_stays_a_page(self):
+        self.assertFalse(is_workspace_markdown(Path("assets/fabricate_demo/ATTRIBUTION.md"), self.docs))
+        self.assertFalse(is_workspace_markdown(Path("graphics.md"), self.docs))
+
+
 class CopyWorkspaceMarkdownTests(unittest.TestCase):
     def setUp(self):
         import tempfile

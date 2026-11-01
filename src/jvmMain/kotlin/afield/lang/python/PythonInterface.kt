@@ -258,7 +258,7 @@ class PythonUnavailableExecution : BoxExecution {
             configureOutputProxies(inside, trace.reply, origin)
             val message = "Python unavailable: no interpreter with JEP was found when Field started. " +
                 PythonInterface.pythonConfigMessage + " (see the Python page, python.md)"
-            inside.error(message)
+            inside.displayError(message)
             trace.finish(false, message)
         }
     }
@@ -1365,7 +1365,7 @@ _orig_print(" python interpreter has finished starting up ")
             }
             deliverErr = {
                 // Errors are HTML-escaped downstream by errorProxy, so only truncate here.
-                inside.error(truncateOutput(it.trimEnd('\n')))
+                inside.displayError(truncateOutput(it.trimEnd('\n')))
                 hasHadOutput = true
             }
             deliverProgress = { deliverProgressText(inside, it) }
@@ -1446,26 +1446,26 @@ _orig_print(" python interpreter has finished starting up ")
                 val located = lastErrorLocation(inside, execute)
                 val f = syntaxError.find(n)
                 if (located != null) {
-                    inside.error(located.second, "code", located.first)
+                    inside.displayError(located.second, "code", located.first)
                 } else if (f != null) {
-                    inside.error(f.groupValues[1] + ":" + f.groupValues[2], "code", f.groupValues[3].toInt())
+                    inside.displayError(f.groupValues[1] + ":" + f.groupValues[2], "code", f.groupValues[3].toInt())
                 } else {
                     val f2 = otherError.find(n)
 
                     //j.stackTrace[0].lineNumber appears to always be 1 when using exec?? — disappointing
                     if (f2 != null) {
-                        inside.error(
+                        inside.displayError(
                             f2.groupValues[1] + ":" + f2.groupValues[2],
                             "code",
                             j.stackTrace[0].lineNumber + execute.line
                         )
                     } else {
-                        inside.error(j.message!!, "code", -1)
+                        inside.displayError(j.message!!, "code", -1)
                     }
                 }
             } finally {
                 runCatching { PythonInterface.flushPythonControls(interpreter(inside), inside) }
-                    .onFailure { inside.error(truncateOutput("controls: ${it.message ?: it}")) }
+                    .onFailure { inside.displayError(truncateOutput("controls: ${it.message ?: it}")) }
                 if (!withholdEndNotification) send(
                     Message("is-running").payload(
                         IsRunning(
@@ -1812,7 +1812,7 @@ class PythonInterface {
                     i.set("_field_control_value", value)
                     i.exec("_field_control_call('$id', _field_control_value)")
                 } catch (j: JepException) {
-                    box.error(truncateOutput(j.message ?: j.toString()))
+                    box.displayError(truncateOutput(j.message ?: j.toString()))
                 } finally {
                     thisBox = previous
                 }

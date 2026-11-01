@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-29T22:41:26.401Z",
+  "capturedAt": "2026-10-31T13:57:04.543Z",
   "documentName": "polytope_conway_demo",
   "outputs": [
     {
@@ -21,7 +21,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 254,
+      "width": 274,
       "height": 781,
       "path": "outputs/1.html"
     }

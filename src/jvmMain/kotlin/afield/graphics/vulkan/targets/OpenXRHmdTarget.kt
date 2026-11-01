@@ -158,6 +158,12 @@ private data class XrEyeSwapchain(
  * This consumes the OpenXR bootstrap created in [afield.graphics.vulkan.device.Instance] when [Options.enableVR] is true.
  */
 class OpenXRHmdTarget(
+    /**
+     * The renderer whose Vulkan device the OpenXR session and its swapchains are created against,
+     * on that renderer's queue thread, at the first [renderFrame]. Found in the box graph by
+     * default. The `XrInstance` itself is older than any device and comes from the bootstrap
+     * [afield.graphics.vulkan.device.Instance] made at startup, which construction claims here.
+     */
     val renderer: Renderer = fromContext()
 ) {
 
@@ -515,10 +521,20 @@ class OpenXRHmdTarget(
             .rotate(Quaternionf(s.rotation.x, s.rotation.y, s.rotation.z, s.rotation.w))
     }
 
-    // public module lists (mirrors RenderTarget)
+    /**
+     * The graphics modules to draw, by name, the same way [RenderTarget] holds them. Every module
+     * here is rendered once per eye; adding a name that is already present replaces it.
+     */
     var modules = mutableMapOf<String, ModulePointer>()
+
+    /** The mesh-shader modules to draw, by name, rendered per eye alongside [modules]. */
     var meshModules = mutableMapOf<String, MeshModulePointer>()
-    // Clear color for the HMD swapchain (RGBA). Defaults to Options.openXRClearColor.
+
+    /**
+     * What each eye's swapchain image is cleared to, as RGBA, copied from `Options.openXRClearColor`
+     * at construction. An array of fewer than four is read channel by channel, with the missing
+     * channels taken from opaque magenta `(1, 0, 1, 1)` rather than from zero.
+     */
     var clearColor: FloatArray = Options.openXRClearColor.clone()
 
     fun setClearColor(r: Float, g: Float, b: Float, a: Float = 1f) {
@@ -657,6 +673,12 @@ class OpenXRHmdTarget(
     private companion object { const val READBACK_LAG = 3 }
 
     private var profilerState: XrProfilerState? = null
+    /**
+     * How many OpenXR frames this target has worked through, counted at the end of [renderFrame]'s
+     * queue-thread pass rather than by the renderer, so it does not follow `Runloop.frame` and does
+     * not advance while the target is disabled. It is the frame identity the GPU profiler pairs its
+     * readbacks with, and what the XR CPU-span report prints against.
+     */
     var xrFrameCounter = 0L
         private set
 

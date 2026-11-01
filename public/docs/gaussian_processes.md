@@ -90,7 +90,7 @@ val fastMean = gp.mean(0.5) // avoids the uncertainty solve
 `gp.posterior(grid)` returns a `GpJoint`. Its `mean`, `variance` and full `covariance` arrays use
 the same order as `grid`. It caches its sampling factor, so `posterior.samples(20, seed = 19)`
 factors once and draws twenty functions. Repeated query positions have the same value in every
-latent draw. A seed reproduces the result for the same model and query order.
+draw. A seed reproduces the result for the same model and query order.
 
 An interval is **pointwise**: it describes one position at a time. A 95% pointwise band does not
 contain 95% of whole functions. Draws can leave that band somewhere without anything being wrong.
@@ -101,8 +101,9 @@ For a 1D plot, `posterior.intervalFLines(grid)` returns its lower and upper boun
 The covariance kernel specifies how values at different positions relate. Its length scale sets
 the distance over which they remain related; its variance sets the squared output amplitude.
 Look at prior samples before fitting: they show the assumptions you are imposing. These are
-three draws each, before any observation, from RBF, Matérn 3/2, Matérn 1/2 and periodic kernels
-with the same length scale:
+three draws each, before any observation, from four kernels with the same length scale: RBF
+(radial basis function, also called squared exponential), the smoothest; Matérn 3/2 and 1/2, a
+family whose number sets how rough the curves are, lower being rougher; and periodic:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/gaussian_processes/kernels.png" wait="1.5" capture="box" open-outputs="true" padding="20"}
 :::static
@@ -143,7 +144,7 @@ lines(rows, w = 700.0, h = 560.0, fitToSize = true)
 | --- | --- |
 | `GpKernels.rbf(lengthScale, variance)` | Very smooth motion, deformation and fields. |
 | `GpKernels.matern(2.5, lengthScale, variance)` | Smooth curves with less rigid local behaviour than RBF. |
-| `GpKernels.matern(1.5, lengthScale, variance)` | Rougher curves; once mean-square differentiable. |
+| `GpKernels.matern(1.5, lengthScale, variance)` | Rougher curves; they have a slope, but the slope itself is rough. |
 | `GpKernels.matern(0.5, lengthScale, variance)` | Continuous but rough fluctuations. |
 | `GpKernels.periodic(period, lengthScale, variance)` | Exact repetition, including the connection across a loop boundary. |
 | `GpKernels.octavePeriodic(centerPeriod)` | Repetition whose period is uncertain within an octave; `periodicMixture` for your own candidates. |
@@ -164,7 +165,7 @@ val functions = prior.posterior(DoubleArray(300) { it / 60.0 }).samples(6, seed 
 ```
 
 For a nonzero baseline use a mean function. `gp1D(..., mean = { x -> 0.2 * x })` fits residuals
-around that line. Stationary kernels such as RBF return towards the prior mean and variance far
+around that line. Kernels that depend only on the distance between two positions, such as RBF, return towards the prior mean and variance far
 from observations. Inputs and outputs are used as given; nothing is rescaled.
 
 ## Pins, measurements and uncertainty
@@ -258,7 +259,7 @@ colour scale. The panel below is the standard deviation, dark at the observation
 ![Three square panels in a blue-white-red scale: a soft mean with two warm and two cool patches, then two blotchier draws that agree with it at four places; below, a standard-deviation panel with four dark holes on a bright background](assets/gaussian_processes/field2d.png)
 
 For a large uncertainty map, use `field.marginals(queries)`. It computes individual predictions
-without allocating the square query covariance. For a large *sample*, use a feature path below;
+without allocating the square query covariance. For a large *sample*, use the feature model in the next section;
 sampling each tile independently would break correlations across tile boundaries.
 
 ## A field through space
@@ -706,8 +707,9 @@ Non-Gaussian likelihoods are not provided by this API.
 
 `logMarginalLikelihood` scores a model's explanation of the observations, balancing fit with the
 volume of functions its prior allows. It can help select length scales, amplitude and noise.
-The model builder below makes their units explicit. Smile's bounded L-BFGS optimizer searches
-in log space, using finite differences of Field's own likelihood:
+The model builder below makes their units explicit, and each `GpParameter` gives a starting value
+and lower and upper bounds. An optimiser from Smile, the Java machine-learning library Field
+bundles, searches within those bounds:
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -726,8 +728,8 @@ val stationarity = fit.projectedGradientMax
 ```
 
 Try several initial settings and inspect the fitted functions. Periodic models in particular can
-have different plausible periods. A small projected gradient is a local stationarity diagnostic,
-not proof of a global best fit. `fitGpHyperparameters` is a portable bounded pattern-search
+have different plausible periods. Stopping where the likelihood no longer improves nearby is not proof that no better fit exists
+elsewhere. `fitGpHyperparameters` is a portable bounded pattern-search
 alternative with a `converged` flag; it needs no Smile optimizer. Both propagate fitting failures.
 
 When one assumption matters most, such as a period, look at the evidence for each candidate
@@ -871,7 +873,7 @@ Use a richer kernel or justified measurement noise. Check `jitterUsed` and the l
 ## Smile and further reading
 
 Use any suitable immutable Smile `MercerKernel<DoubleArray>` through `.asGpKernel()`. The covariance
-is reused directly, with Field retaining control of heteroscedastic noise, seeded sampling and
+is reused directly, with Field retaining control of per-observation noise, seeded sampling and
 semidefinite query distributions. The `smileGaussianProcess` wrapper also exposes
 `predictWithVariance` and `posterior`, and propagates fitting failures. Its `noise` option
 is a **variance**, in normalised output units when normalisation is enabled, whereas the rest of

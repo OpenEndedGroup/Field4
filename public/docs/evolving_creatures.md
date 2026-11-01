@@ -2,7 +2,9 @@
 
 `afield.simulation.creatures` evolves small 2D creatures: bodies of points joined by springs, where
 every point is a foot that steps on its own cycle and the joints between edges bend to cyclic target
-curves. A genetic algorithm breeds the shape, the foot timing and the joint curves together.
+curves. A genetic algorithm breeds the shape, the foot timing and the joint curves together. The
+idea comes from Karl Sims'
+[Evolved Virtual Creatures](https://www.karlsims.com/evolved-virtual-creatures.html) (1994).
 
 You supply the world: write how a foot meets its surroundings in a `ContactModel`, and what counts
 as doing well in a `fitness`. The same search can then evolve water bugs, floor crawlers or another

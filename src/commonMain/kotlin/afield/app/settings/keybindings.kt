@@ -397,6 +397,12 @@ data class UserKeybindings(
     /** Command id -> specs. An explicit empty list means "unbind this command". */
     val bindings: Map<String, List<String>> = emptyMap(),
     val path: String = "",
+    /**
+     * [path] as a person should read it: `~/…` under the home directory, and the default
+     * `~/.afield/keybindings.yaml` for the stand-in file an automated server watches. [path] stays the
+     * file actually watched, for opening it and for tooltips.
+     */
+    val displayPath: String = "",
     val lastModified: Long = 0L,
     /** Human-readable parse problems, surfaced in the log and as a notification. */
     val problems: List<String> = emptyList(),

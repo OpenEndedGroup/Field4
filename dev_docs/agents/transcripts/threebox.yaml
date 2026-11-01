@@ -29,7 +29,7 @@ operations:
   - create:
       box: tb_compute
       name: compute particles
-      frame: { x: 340.0, y: 40.0, w: 300.0, h: 100.0 }
+      frame: { x: 40.0, y: 200.0, w: 300.0, h: 100.0 }
       properties:
         compute: |
           #version 450
@@ -97,7 +97,7 @@ operations:
   - create:
       box: tb_draw
       name: draw particles
-      frame: { x: 640.0, y: 40.0, w: 300.0, h: 100.0 }
+      frame: { x: 40.0, y: 360.0, w: 300.0, h: 100.0 }
       properties:
         vertex: |
           #version 450

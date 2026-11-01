@@ -53,7 +53,7 @@ fun formatKotlinCode(code: String, blockifyComments: Boolean = true): String {
     val endsInComment = code.lines().lastOrNull { it.isNotBlank() }?.trim()?.startsWith("//") == true
     val input = if (endsInComment) code.trimEnd() + "\n" + END_SENTINEL + "\n" else code
     var formatted = restoreFragmentBreaks(
-        Formatter.format(Formatter.KOTLINLANG_FORMAT.copy(maxWidth = MAX_WIDTH), KotlinCode(input, FileType.SCRIPT))
+        Formatter.format(FORMAT_OPTIONS, KotlinCode(input, FileType.SCRIPT))
     )
     if (endsInComment) formatted = formatted.trimEnd().removeSuffix(END_SENTINEL).trimEnd() + "\n"
     formatted = restoreStatementSpacing(code, formatted)
@@ -112,6 +112,12 @@ fun joinAssignmentBreaks(code: String): String {
 // Box code is read in an editor beside a canvas and in a docs column, and it was mostly written
 // to about 100. At 200, ktfmt joined deliberately wrapped string concatenations into one line.
 private const val MAX_WIDTH = 120
+
+// ktfmt's kotlinlang style on its experimental engine, the one that keeps a block-like call or
+// collection literal on the line it starts (`val xs = [` ... `]`, `foo(` ... `)`) instead of breaking
+// after `=` and indenting the whole call. The stock engine indents `[`/`listOf(` chains twice.
+private val FORMAT_OPTIONS =
+    Formatter.KOTLINLANG_FORMAT.copy(maxWidth = MAX_WIDTH, experimentalEngine = true)
 
 private val BLANK_LINE = Regex("""\n[ \t]*\n""")
 
@@ -210,6 +216,8 @@ private class LineCommentLine(val end: Int, val lineStart: Int, val indent: Stri
 //
 // Run this on ktfmt's output, not its input: the indentation is already canonical, and ktfmt
 // never gets a second look at what we emit.
+private val HEAD_MARKER = Regex("""^//\s*\{\{.*\}\}\s*$""")
+
 fun blockifyLineCommentRuns(code: String): String {
     // If ktfmt handed us something we can't re-parse, the transform simply doesn't apply.
     val file = try {
@@ -225,6 +233,8 @@ fun blockifyLineCommentRuns(code: String): String {
             // Fragment markers are execution boundaries. Leave them as line comments,
             // separating prose runs on either side so the splitter still sees them.
             if (isFragmentBreak(comment.text)) return@mapNotNull null
+            // A `// {{ name }}` head marker is read as a line comment (KotlinJsHeadProfiles.resolve).
+            if (HEAD_MARKER.matches(comment.text)) return@mapNotNull null
             val start = comment.startOffset
             val lineStart = code.lastIndexOf('\n', start - 1) + 1
             val indent = code.substring(lineStart, start)

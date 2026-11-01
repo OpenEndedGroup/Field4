@@ -49,6 +49,6 @@ loop {
         title = "a sphere tearing through a pinned sheet",
         caption =
             "frame $frames · ${tear.brokenTotal} edges torn · ${sim.liveEdgeCount()} left · " +
-                "peak strain ${"%.2f".format(sim.peakStrain())}",
+                "peak strain ${sim.peakStrain().f2}",
     )
 }

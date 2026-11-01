@@ -10,19 +10,22 @@ import java.lang.invoke.MethodHandle
 
 /**
  * Checks every FFM descriptor [ManifoldNative] binds against the prototypes in the installed
- * `manifoldc.h` (and the structs and enums in its `types.h`): the same number of arguments, and at
- * every position, and for the return, the same kind of value — pointer, `double`, `float`, 32- or
- * 64-bit integer (`size_t` is 64), `void`, or a struct passed by value of the same size.
+ * `manifoldc.h`, and against the structs and enums in its `types.h`. A descriptor has to declare the
+ * same number of arguments, and at every position, and for the return, the same kind of value:
+ * pointer, `double`, `float`, 32- or 64-bit integer (`size_t` is 64), `void`, or a struct passed by
+ * value of the same size.
  *
  * A descriptor that disagrees with the header still links and still returns a number, so this is
  * the only thing that notices one. `ManifoldSmokeTest` runs it first.
  *
- * Pointer *types* are not compared — FFM has one `ADDRESS` — which is why the two places where the
- * pointee matters are handled once in the wrapper rather than at each call: [Solid.slice] and
- * [Solid.project] build the `ManifoldPolygons` that `manifold_slice` and `manifold_project` return
- * (`Solid.sectionFromPolygons`), and [Solid.raycast] turns the C API's segment fraction into a
- * distance in the solid's units.
+ * Pointer *types* are not compared, since FFM has one `ADDRESS`. The two places where the pointee
+ * matters are handled once in the wrapper rather than at each call: [Solid.slice] and
+ * [Solid.project] convert the `ManifoldPolygons` that `manifold_slice` and `manifold_project`
+ * return into a `Section` in one place, and [Solid.raycast] turns the C API's segment fraction
+ * into a distance in the solid's units.
  */
+
+/** Every bound FFM descriptor against the installed `manifoldc.h`; [check] returns what disagrees. */
 object ManifoldHeaderCheck {
     /** One C prototype: its return type and argument types, as written. */
     data class Prototype(val name: String, val returns: String, val arguments: List<String>)
@@ -36,6 +39,7 @@ object ManifoldHeaderCheck {
         File("/usr/include/manifold/manifoldc.h"),
     )
 
+    /** The first of [headerCandidates] that exists, or null when none of them does. */
     fun header(): File? = headerCandidates().firstOrNull { it.isFile }
 
     /** Every problem with the bound descriptors, or empty. Binds every handle [ManifoldNative] declares first. */

@@ -73,11 +73,8 @@ ivec2 slug_CalcBandLoc(ivec2 glyphLoc, uint offset) {
 	return bandLoc;
 }
 
-// 2026-08-30: re-derive a curve's second texel location the same way slug_CalcBandLoc()
-// re-derives a band fetch's row, instead of flat-adding to curveLoc.x. Packing today always
-// aligns a curve's 2 texels to start at an even X so they never straddle a row, making this a
-// no-op -- but endpoint-shared curve packing (planned) removes that alignment, so a curve's
-// second texel CAN legitimately land at the start of the next row.
+// Location of a curve's later texel, wrapping to the next row of the 512-wide data layout the same
+// way slug_CalcBandLoc() does, since a curve's texels may straddle a row boundary.
 ivec2 slug_CalcCurveLoc(ivec2 curveLoc, int offset) {
 	ivec2 loc = ivec2(curveLoc.x + offset, curveLoc.y);
 	loc.y += loc.x >> TEX_WIDTH;
@@ -108,22 +105,14 @@ float slug_Render(vec2 renderCoord, vec4 bandTransform, ivec2 glyphLoc, ivec2 ba
 	uvec2 hbandData = bandFetch(ivec2(glyphLoc.x + 2 * SLUG_INDIRECTION_SIZE + bandY, glyphLoc.y)).xy;
 
 	for(int ci = 0; ci < int(hbandData.x); ci++) {
-		// Re-derive this fetch's row every iteration (instead of computing hbandLoc once
-		// and flat-adding ci to its X) so a band's curve-index list can span more than one
-		// texture row -- removes the old "count > texWidth" hard limit on shape complexity.
-		// Costs up to ~10us on complex scenes vs. the single-fetch version; worth it.
+		// Compute each curve index's location separately, so a band's curve list may span
+		// more than one row of the data layout.
 		ivec2 hbandLoc = slug_CalcBandLoc(glyphLoc, hbandData.y + uint(ci));
 		ivec2 curveLoc = ivec2(bandFetch(hbandLoc).xy);
 		vec4 p12 = curveFetch(curveLoc) - vec4(renderCoord, renderCoord);
 
-		// 2026-08-31: same re-derive-per-fetch pattern as slug_CalcBandLoc above, now applied to
-		// a curve's own second texel -- needed once packTextures() (slughorn.cpp) started
-		// sharing texels between connected curves (Lengyel's Slug convention: a chain of N
-		// connected curves costs N+1 texels instead of 2N), which packs densely with no
-		// per-curve row alignment. Adds a handful of ALU ops per curve iteration; negligible
-		// next to the texture fetch and sqrt-based polynomial solve already in this loop.
-		// Shipped as the default (no opt-in flag) -- lossless, and verified bit-identical
-		// against the pre-sharing renderer at real CJK-atlas scale.
+		// A curve's third control point is the next texel. Connected curves share endpoint
+		// texels, so that texel can sit at the start of the next row.
 		vec2 p3 = curveFetch(slug_CalcCurveLoc(curveLoc, 1)).xy - renderCoord;
 
 		if(max(max(p12.x, p12.z), p3.x) * pixelsPerEm.x < -0.5) break;
@@ -146,7 +135,7 @@ float slug_Render(vec2 renderCoord, vec4 bandTransform, ivec2 glyphLoc, ivec2 ba
 		ivec2 curveLoc = ivec2(bandFetch(vbandLoc).xy);
 		vec4 p12 = curveFetch(curveLoc) - vec4(renderCoord, renderCoord);
 
-		// See the matching endpoint-sharing tradeoff comment in the horizontal-band loop above.
+		// See the matching comment in the horizontal-band loop above.
 		vec2 p3 = curveFetch(slug_CalcCurveLoc(curveLoc, 1)).xy - renderCoord;
 
 		if(max(max(p12.y, p12.w), p3.y) * pixelsPerEm.y < -0.5) break;
@@ -163,7 +152,7 @@ float slug_Render(vec2 renderCoord, vec4 bandTransform, ivec2 glyphLoc, ivec2 ba
 }
 
 
-// Replace this function with a Field procedural fill. Coverage remains independent.
+// The fill colour. Replace it with any procedural fill; coverage is computed independently of it.
 vec3 shade(vec2 q) { return pc.tint.rgb * (0.7 + 0.3*cos(vec3(0,2,4)+q.x*4.0+q.y*3.0)); }
 void main() {
     ivec2 loc = ivec2(pc.slugData.words[16], pc.slugData.words[17]);

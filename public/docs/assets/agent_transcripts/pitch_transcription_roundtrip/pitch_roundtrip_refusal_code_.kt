@@ -7,14 +7,12 @@ val notation = "[60,64,67] ~ [62,65,69] ~"
 val cycles = 2
 val cps = 0.75
 val sustain = 0.85
-val audio =
-    patRenderStereo(
-            pat(notation),
-            cycles,
-            cps,
-            patVoice(sustain = sustain, decay = 0.03),
-        )
-        .mono
+val audio = patRenderStereo(
+    pat(notation),
+    cycles,
+    cps,
+    patVoice(sustain = sustain, decay = 0.03),
+).mono
 
 val heard = showPatTranscriptionOf(
     audio,
@@ -37,6 +35,6 @@ display(
     separates a chord (a few discrete partials) from a snare (a continuum).
     Compare: a sawtooth is a full harmonic stack on ONE note and is NOT refused,
     because timbre is not polyphony.
-"""
+    """
         .trimIndent(),
 )

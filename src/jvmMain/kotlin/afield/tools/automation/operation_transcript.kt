@@ -1728,9 +1728,27 @@ object OperationTranscript {
     private fun macroNames(dir: File): List<String> =
         dir.takeIf { it.exists() }
             ?.listFiles { file -> file.isFile && file.extension.lowercase() in setOf("yaml", "yml") }
+            ?.filterNot { isInternalMacro(it) }
             ?.map { it.nameWithoutExtension }
             ?.sorted()
             .orEmpty()
+
+    private val internalMacroMarker = Regex("""(?m)^internal:\s*true\s*$|^\s*\{.*"internal"\s*:\s*true""")
+
+    /**
+     * A macro with a top-level `internal: true` (in YAML, or `"internal":true` in a one-line JSON
+     * transcript) is plumbing, not something a person saved: the docs runner's capture drives and
+     * test fixtures. It still runs by name; it is left out of every macro list (the Macro Recorder
+     * panel, the palette's Run macro entries, `macro list`).
+     */
+    internal fun isInternalMacro(file: File): Boolean =
+        runCatching {
+            file.bufferedReader().use { reader ->
+                val head = CharArray(4096)
+                val n = reader.read(head)
+                n > 0 && internalMacroMarker.containsMatchIn(String(head, 0, n))
+            }
+        }.getOrDefault(false)
 
     private fun macroFile(location: MacroLocation, name: String): File =
         File(location.dir, sanitizeMacroName(name) + ".yaml")

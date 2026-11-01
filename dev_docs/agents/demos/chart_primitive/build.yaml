@@ -125,16 +125,14 @@ operations:
               if (i == 11 || i == 23) base + 2.4e-6 else base // two real overshoots
           }
 
-          val c =
-              Chart(
-                      title = "residual per iteration",
-                      xLabel = "iteration",
-                      yLabel = "|r|",
-                      note = "Adam, lr 0.05",
-                  )
-                  .line("residual", iterations, residual)
-                  .points("residual", iterations, residual)
-                  .expect(max = 1e-6, because = "converged below 1e-6")
+          val c = Chart(
+              title = "residual per iteration",
+              xLabel = "iteration",
+              yLabel = "|r|",
+              note = "Adam, lr 0.05",
+          ).line("residual", iterations, residual)
+              .points("residual", iterations, residual)
+              .expect(max = 1e-6, because = "converged below 1e-6")
 
           showChart(c)
 

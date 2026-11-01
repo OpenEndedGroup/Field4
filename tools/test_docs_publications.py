@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import hashlib
 import tempfile
 import unittest
@@ -124,6 +125,23 @@ class DocsPublicationsTest(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, 'no captured'):
                     publications.install(archive, name='sample', source='assets/sample/metadata.edn', sources={})
             self.assertEqual((target/'keep').read_text(), 'previous capture')
+
+    def test_gitignored_runtime_state_is_not_a_source(self):
+        # 2026-11-01: five gitignored backups/*.before-inline-* copies, written when Field opened the
+        # document in the primary checkout, made canonical_graphics stale there and the docs build fail.
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            subprocess.run(['git', 'init', '-q', str(root)], check=True)
+            (root/'.gitignore').write_text('**/backups/\n')
+            folder = root/'public/docs/assets/example'
+            (folder/'backups').mkdir(parents=True)
+            (folder/'metadata.edn').write_text('document')
+            (folder/'box_code_.kt').write_text('println(1)')
+            (folder/'backups/box_code_.kt.before-inline-1').write_text('println(0)')
+            with patch.multiple(publications, ROOT=root, DOCS=root/'public/docs'):
+                sources = publications.source_files('assets/example/metadata.edn')
+            self.assertIn('public/docs/assets/example/box_code_.kt', sources)  # untracked but not ignored
+            self.assertNotIn('public/docs/assets/example/backups/box_code_.kt.before-inline-1', sources)
 
 
 class PublicationRefreshTest(unittest.TestCase):

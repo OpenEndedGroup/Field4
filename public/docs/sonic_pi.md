@@ -154,19 +154,23 @@ installed app.
 Here is a region in the editor, with the vocabulary in play:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="editor" screenshot="assets/sonic_pi/sonicpi_region.png" wait="0" timeout="120" embed=true hidden=true name="sonicpi-region"}
-ui.eval("var s=document.createElement('style');s.textContent='.tick_text.ok{display:none !important}';document.head.appendChild(s);return 'setup';")
+ui.eval(
+    "var s=document.createElement('style');s.textContent='.tick_text.ok{display:none !important}';document.head.appendChild(s);return 'setup';",
+)
 ui.openEditor(id)
 ui.pause(700)
-// Set the model rather than typing it. Typing leaves Monaco's auto-indent and auto-close in the
-// picture, and the region only exists once its *closing* triple quote does — a half-typed literal
-// has nothing for the extension to highlight, which is exactly what the first attempt captured.
-// The triple quote is built from a char code so it does not have to survive three levels of quoting.
+/*
+Set the model rather than typing it. Typing leaves Monaco's auto-indent and auto-close in the
+picture, and the region only exists once its *closing* triple quote does — a half-typed literal
+has nothing for the extension to highlight, which is exactly what the first attempt captured.
+The triple quote is built from a char code so it does not have to survive three levels of quoting.
+*/
 ui.eval(
     "var q = String.fromCharCode(34).repeat(3);" +
-    "var code = ['sonicPi(' + q, '#sonicpi', 'live_loop :bikes do', '  use_synth :dsaw'," +
-    " '  with_fx :reverb, room: 0.5 do', '    play :e2, amp: 0.4, release: 8'," +
-    " '    sample :bd_haus', '  end', '  sleep 8', 'end', q + ')'].join('\\n');" +
-    "window.globalEditor.getModel().setValue(code); return 'set';"
+        "var code = ['sonicPi(' + q, '#sonicpi', 'live_loop :bikes do', '  use_synth :dsaw'," +
+        " '  with_fx :reverb, room: 0.5 do', '    play :e2, amp: 0.4, release: 8'," +
+        " '    sample :bd_haus', '  end', '  sleep 8', 'end', q + ')'].join('\\n');" +
+        "window.globalEditor.getModel().setValue(code); return 'set';",
 )
 ui.pause(1500)
 ```

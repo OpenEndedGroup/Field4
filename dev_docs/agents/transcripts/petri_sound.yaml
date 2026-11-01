@@ -47,9 +47,8 @@ operations:
           transition a sound after the `:` and firing it plays that sound. That is the whole
           idea — everything else is more of it.
           */
-          val net =
-              petri(
-                  """
+          val net = petri(
+              """
               #petri
               !timing step
               !grid 1/8
@@ -59,7 +58,7 @@ operations:
               kick -[ hit  @1/8 : bd ]-> hats
               hats -[ back @1/8 : sd ]-> kick
           """,
-              )
+          )
 
           showPetriNet(net, w = 640.0, h = 300.0)
 
@@ -89,9 +88,8 @@ operations:
 
           // Two independent rings, one five long and one three long, sharing a clock. Nothing in
           // this source says "fifteen" — that is a property of the net, and the net can tell you.
-          val net =
-              petri(
-                  """
+          val net = petri(
+              """
               #petri
               !grid 1/15
 
@@ -107,7 +105,7 @@ operations:
               b1 -[ b1.go      ]-> b2
               b2 -[ b2.go : hh ]-> b0
           """,
-              )
+          )
 
           showPetriNet(net, w = 700.0, h = 340.0)
 
@@ -132,9 +130,8 @@ operations:
           token walking verse -> verse -> chorus and back. Same mechanism at both timescales,
           which is the argument for using a net rather than a sequencer and a separate song mode.
           */
-          val net =
-              petri(
-                  """
+          val net = petri(
+              """
               #petri
               !grid 1/4
 
@@ -149,7 +146,7 @@ operations:
               &chorus + beat  -[ cbeat @1/4 : sd ]-> beat2
               beat2 -[ off @1/4 : hh ]-> beat
           """,
-              )
+          )
 
           showPetriNet(net, w = 760.0, h = 420.0)
 
@@ -270,9 +267,8 @@ operations:
           three at once and you get a snare — `crash` has no output side, so it is a drain and
           the net stays bounded and periodic. Change a number and run the box again.
           */
-          val net =
-              petri(
-                  """
+          val net = petri(
+              """
               #petri
               !grid 1/8
               !conflict priority
@@ -286,7 +282,7 @@ operations:
               &mid   -[ build @1/8 pri=3      ]-> fill
               3*fill -[ crash @1/8 pri=1 : sd ]->
           """,
-              )
+          )
 
           showPetriNet(net, w = 760.0, h = 400.0)
 
@@ -326,9 +322,8 @@ operations:
                   ?: "no Dirt-Samples found — set ${DirtRender.ENV_VAR}, or install the SuperCollider quark",
           )
 
-          val net =
-              petri(
-                  """
+          val net = petri(
+              """
               #petri
               !grid 1/8
               !conflict priority
@@ -341,7 +336,7 @@ operations:
               &mid   -[ build @1/8 pri=3      ]-> fill
               3*fill -[ crash @1/8 pri=1 : sd ]->
           """,
-              )
+          )
           showPetriNet(net, w = 700.0, h = 360.0)
 
           /*

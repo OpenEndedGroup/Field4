@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 9 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 9 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. 2 - beside a line, seeing and blind
@@ -224,7 +224,7 @@ lines(
 <!-- field-box id="ps_doodle" index="4" -->
 
 ```edn [field-box id="ps_doodle" role="properties"]
-{"id" "ps_doodle" "index" 4 "name" "9 - hatch your drawing (launch)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "9 - hatch your drawing (launch)" "_tombstone" false "frame" #afield/rect [60.0 5460.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ps_doodle_code_.kt" "lines" 66 "characters" 2004 "sha256" "ffd5a4be5e87df0b34e074b7052e6a836308fda868a1859ce446acab8ff51eef"}]}
+{"id" "ps_doodle" "index" 4 "name" "9 - hatch your drawing (launch)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "9 - hatch your drawing (launch)" "_tombstone" false "frame" #afield/rect [60.0 5460.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ps_doodle_code_.kt" "lines" 64 "characters" 1895 "sha256" "0119cd4c2edef0643a2d5bff420c183f4d67bbbadfff1b008c61120ea253173c"}]}
 ```
 
 ```kotlin [field-property box="ps_doodle" name="code" path="ps_doodle_code_.kt"]
@@ -240,21 +240,19 @@ val border = fline {
     lineTo(0, 0)
     color = vec(1, 1, 1, 0.2)
 }
-val starter =
-    [
-            fline {
-                moveTo(90, 60)
-                cubicTo(200, 20, 260, 220, 400, 160)
-            },
-            fline {
-                moveTo(150, 250)
-                cubicTo(180, 150, 300, 300, 330, 230)
-            },
-        ]
-        .onEach {
-            it.color = vec(1.0, 0.85, 0.3, 1.0)
-            it.thickness = 2.0
-        }
+val starter = [
+    fline {
+        moveTo(90, 60)
+        cubicTo(200, 20, 260, 220, 400, 160)
+    },
+    fline {
+        moveTo(150, 250)
+        cubicTo(180, 150, 300, 300, 330, 230)
+    },
+].onEach {
+    it.color = vec(1.0, 0.85, 0.3, 1.0)
+    it.thickness = 2.0
+}
 val canvas = lines([border] + starter, channel = "draw here", w = 520.0, h = 320.0, editable = true, drawing = true)!!
 val hands = ["echoes", "michaux"]
 var hand = 0

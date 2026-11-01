@@ -9,9 +9,8 @@ Macros are written in a small YAML language called **OperationTranscript**. Each
 agents can also use the command-line **backdoor** to build documents, run code, inspect output
 and errors, and take screenshots.
 
-The backdoor reaches Field over the same command channel Field's own editor uses, so it can do
-whatever that channel can do. Which defences stand in front of that channel, and what each one
-actually stops, is [What Field Exposes, and What Stops It](server_surface.md).
+The backdoor can do anything Field's editor can do. Who is allowed to connect to it is covered
+in [What Field Exposes, and What Stops It](server_surface.md).
 
 ## Operations as data
 
@@ -37,12 +36,19 @@ operations:
       path: MyWorkspace/greeter
 ```
 
-The verbs you will use most: `create`, `edit`, `move`, `connect` (wire a parent box to a
-child), `execute` (run once), `launch` (start a running job), `stop`, `await` (wait for
-everything to settle), and `save` (write a document you can open again later). A `launch`
-or `execute` with no inline code simply runs the code the box already has. A `launch` always
-runs the box's code as it is when the macro runs, so a macro that launches boxes keeps working
-after you edit them; an `execute` with its own `code:` runs that snippet in the box.
+The verbs you will use most:
+
+| Verb | What it does |
+| --- | --- |
+| `create`, `edit`, `move` | make a box, change its properties, move it |
+| `connect` | wire a parent box to a child |
+| `execute` | run code once |
+| `launch`, `stop` | start and stop a running job |
+| `await` | wait for everything to settle |
+| `save` | write a document you can open again later |
+
+Without inline code, `launch` and `execute` run the code the box has when the macro runs, so a macro keeps working
+after you edit its boxes.
 
 You can open a transcript, see what it does, change a name or value, and run your version. Or
 record a sequence as you work and replay it elsewhere. The
@@ -62,8 +68,8 @@ beside a readable list of its steps; edit the YAML there and **Save** to keep yo
 **Promote** copies a macro to a wider scope.
 
 In a read-only document, existing macros remain readable and runnable, but saving, renaming or
-deleting document-scoped macros is refused. The operation transcript stays in memory. You can
-still save a macro explicitly to project or workspace scope, outside the document.
+deleting the macros saved in that document is refused. You can still save a macro to project or
+workspace scope, outside the document.
 
 Replaying a recording in a fresh document rebuilds the same document. To use a recording as a
 stamp instead, tick **as a copy**: the boxes it creates get new identities, so every run makes
@@ -71,17 +77,53 @@ another set, shifted by the **offset** you give. **Step** replays one operation 
 marks where you are in the list, which is the easiest way to see what a macro does before you
 trust it with a document.
 
-```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".macro-recorder-panel" screenshot="assets/automating_field/macro-panel.png" transcript="assets/transcripts/greeter_macro.yaml" alt="Field's Macro Recorder panel listing recorded operations" padding="8" wait="0" timeout="90" embed=true hidden=true name="macro-panel"}
-ui.eval("window.macroTranscriptPanel()")
-ui.waitForSelector(".macro-recorder-panel", 8000.0)
-ui.pause(1800)
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".macro-recorder-panel" screenshot="assets/automating_field/macro-panel.png" transcript="assets/transcripts/greeter_macro.yaml" alt="The Macro Recorder after recording one macro: the name move_hello_right with Record, Save and Run, the saved macro in the document list, its YAML beside the readable step, one move of the hello sketch box, and the transcript of the recorded move below." padding="8" wait="0" timeout="150" document="docs-automating-macro-panel" fresh-document=true hide-toasts=true embed=true hidden=true name="macro-panel"}
+ui.eval(
+    "const a = (window.lastActions || []).find(a => a.id === 'macro-transcript-panel'); if (!a) throw new Error('no action macro-transcript-panel'); a.run(); return true",
+)
+ui.pause(1000)
+// Record a real macro: Record, close the panel so the canvas is clear, drag the hello sketch box to the
+// right with the pointer, reopen the panel, name the recording and Save.
+ui.clickSelector("#macro-recorder-panel [data-action='start']")
+ui.pause(600)
+ui.clickSelector("#macro-recorder-panel [data-action='close']")
+ui.pause(400)
+val r =
+    ui.eval(
+            "const b = [...document.querySelectorAll('.box')].find(b => b.uid === 'hello_box'); const q = b.getBoundingClientRect(); return [q.x + q.width / 2, q.y + q.height / 2]",
+        )
+        .toString()
+        .trim('[', ']')
+        .split(",")
+        .map { it.trim().toDouble() }
+ui.moveMouse(r[0], r[1])
+ui.mouseDown()
+ui.moveMouse(r[0] + 160.0, r[1], steps = 12)
+ui.mouseUp()
+ui.pause(1000)
+ui.eval("const a = (window.lastActions || []).find(a => a.id === 'macro-transcript-panel'); a.run(); return true")
+ui.pause(1000)
+ui.clickSelector("#macro-recorder-panel [data-role='name']")
+ui.type("move_hello_right")
+ui.clickSelector("#macro-recorder-panel [data-action='save']")
+ui.pause(2000)
+val listed =
+    ui.eval(
+            "return [...document.querySelectorAll('#macro-recorder-panel [data-role=document-list] [data-macro-name]')].map(b => b.getAttribute('data-macro-name'))",
+        )
+        .toString()
+check("move_hello_right" in listed) { "the recorded macro is not listed: " + listed }
+check(!listed.contains("_ui_")) { "runner plumbing is listed: " + listed }
+val ops = ui.eval("return document.querySelector('#macro-recorder-panel [data-role=content]')?.value || ''").toString()
+check("- move:" in ops) { "the recorded macro has no move: " + ops }
 ```
 
 ## Driving Field from a script or agent
 
 The backdoor (`tools/field_backdoor.py` in the Field repository) attaches to a running
 Field — or starts one — and applies transcripts, then hands back a machine-readable
-result. Write the transcript above to a macro and run it:
+result. Save the transcript above as `greeter.yaml` in the root of the Field repository, and
+run this there:
 
 ```diffstatic {data-lang=bash}
 uv run --project . --group backdoor python tools/field_backdoor.py --json --scratch \
@@ -89,13 +131,18 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json --scra
   --command 'macro run greeter'
 ```
 
+`uv run` runs the backdoor in the Python environment the repository declares
+([uv](https://docs.astral.sh/uv/) installs it on first use). `--scratch` works in a new, throwaway
+document rather than one of yours. `macro write` stores the file as a macro named `greeter`, and
+`macro run` plays it.
+
 The result reports how many operations applied and whether any failed. Its `output` list contains
 what each box printed, tagged by box and line, along with compile errors and exceptions. If a box
 is missing or has no code, the failure names it.
 
 The backdoor also captures pictures of a single box, the editor, the whole window, or the
-native Field 4 graphics window. Many of this site's figures are made this way. It
-records short videos of the first three. The native graphics window is stills only.
+native Field 4 graphics window. It can also record short videos of a box, the editor or the
+window, but not of the graphics window.
 
 [What a Capture Can and Cannot Show](capture_limits.md) lists what a capture cannot see, and
 the reply fields that tell you when you have hit one of those limits.
@@ -103,7 +150,7 @@ the reply fields that tell you when you have hit one of those limits.
 ## Where to go next
 
 - [Where to Go Next](staging.md) completes the Tour with a map of the rest of the documentation.
-- [How these pages are built](staging.md#how-these-pages-are-built) says how the docs
+- [Building the Docs & Running the Tests](building_and_testing.md) says how the docs
   build itself uses this machinery.
 - [Building & Testing](building_and_testing.md) covers the backdoor as a test harness.
 - For the complete reference — every operation, the observable results, and worked
@@ -111,5 +158,8 @@ the reply fields that tell you when you have hit one of those limits.
   [operation transcript reference](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/agents/OPERATION_TRANSCRIPT.md)
   and the [backdoor reference](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/agents/FIELD_BACKDOOR.md)
   in the Field repository. The [agent transcript gallery](agent_transcripts.md) has a worked
-  entry for every transcript Field ships. Field's default
-  workspace setup also writes a short `AGENTS.md` for agents working inside that workspace.
+  entry for every transcript Field ships.
+
+When Field opens a workspace it writes an `AGENTS.md` file there if none exists. Coding agents
+read that file automatically; it tells an agent working in the folder how documents are stored
+and points it at transcripts and the backdoor.

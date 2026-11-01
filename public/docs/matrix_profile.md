@@ -246,9 +246,9 @@ answers it from two sets of examples.
 positives it subtracts the distance to its nearest neighbour among the positives from the distance
 to its nearest neighbour among the negatives, and divides by `√(2m)`. The higher the value, the closer
 the shape's twin in the positives compared with anything like it in the negatives; near zero or
-below, the negatives have it too. `platos(count)` picks
-out the best of them (the paper's name for the top candidate), each with the example and offset it
-came from.
+below, the negatives have it too. The best of these
+shapes is what the paper calls a *plato*; `platos(count)` picks out the best `count` of them, each
+with the example and offset it came from.
 
 <!--
 FIELD_TEST

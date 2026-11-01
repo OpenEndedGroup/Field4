@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-29T22:34:19.309Z",
+  "capturedAt": "2026-10-31T13:45:22.555Z",
   "documentName": "alife_evolution",
   "outputs": [
     {
@@ -31,7 +31,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 478,
+      "width": 484,
       "height": 412,
       "path": "outputs/2.html"
     },

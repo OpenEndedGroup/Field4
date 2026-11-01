@@ -3,10 +3,13 @@
 val document = thisBox.inside.filename
 (1..3).forEach { i ->
     val run = OperationTranscript.runMacro(
-        document, "stamp",
-        replay = OperationTranscript.MacroReplayOptions(asCopy = true, offsetY = 140.0 * i)
+        document,
+        "stamp",
+        replay = OperationTranscript.MacroReplayOptions(asCopy = true, offsetY = 140.0 * i),
     )
     println(run.message + run.errors.joinToString("") { " " + it })
 }
 val sources = thisBox.inside.boxes.values.filter { it.name == "Source" }
-println("${sources.size} Source boxes; Sinks wired to each: ${sources.map { s -> s.children.count { it.name == "Sink" } }}")
+println(
+    "${sources.size} Source boxes; Sinks wired to each: ${sources.map { s -> s.children.count { it.name == "Sink" } }}",
+)

@@ -35,22 +35,21 @@ terminal a line inside an lblock is prefixed by a raw 36-character UUID.
 display(
     "main",
     Table(
-            ["depth", "boundary", "block", "message"],
-            title = "two nested lblocks, as the dispatcher saw them",
-            note =
-                "the deepest line's raw indent: '" +
-                    (deepest?.indent?.replace("\t", "\\t") ?: "") +
-                    "' — block ids and tabs, not spaces",
-        )
-        .rows(
-            mine.map { e ->
-                [
-                    e.indent.split("\t").count { it.isNotEmpty() },
-                    e.boundary?.name ?: "—",
-                    e.blockId?.take(8) ?: "—",
-                    e.message.substringBefore(" - '"),
-                ]
-            },
-        )
+        ["depth", "boundary", "block", "message"],
+        title = "two nested lblocks, as the dispatcher saw them",
+        note =
+            "the deepest line's raw indent: '" +
+                (deepest?.indent?.replace("\t", "\\t") ?: "") +
+                "' — block ids and tabs, not spaces",
+    ).rows(
+        mine.map { e ->
+            [
+                e.indent.split("\t").count { it.isNotEmpty() },
+                e.boundary?.name ?: "—",
+                e.blockId?.take(8) ?: "—",
+                e.message.substringBefore(" - '"),
+            ]
+        },
+    )
         .role("message", CellRole.ACCENT),
 )

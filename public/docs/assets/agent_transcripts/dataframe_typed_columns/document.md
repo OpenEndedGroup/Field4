@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 4 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 4 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. 1 - Typed columns, no strings
@@ -38,7 +38,7 @@ println("mean age: " + people.age.toList().average())
 <!-- field-box id="dataframe_derived" index="1" -->
 
 ```edn [field-box id="dataframe_derived" role="properties"]
-{"id" "dataframe_derived" "index" 1 "name" "2 - A schema that changes" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - A schema that changes" "_tombstone" false "frame" #afield/rect [480.0 40.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dataframe_derived_code_.kt" "lines" 21 "characters" 582 "sha256" "101174cde8c94d0b59c503e535b381f3c4defbb49167ed9c16a723a0b8c629f7"}]}
+{"id" "dataframe_derived" "index" 1 "name" "2 - A schema that changes" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - A schema that changes" "_tombstone" false "frame" #afield/rect [480.0 40.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dataframe_derived_code_.kt" "lines" 19 "characters" 509 "sha256" "d39e356d3819a5b75eccd52a95b0fd30f3fb732bf400e1c11fc2e41cb0dfd661"}]}
 ```
 
 ```kotlin [field-property box="dataframe_derived" name="code" path="dataframe_derived_code_.kt"]
@@ -49,17 +49,15 @@ import org.jetbrains.kotlinx.dataframe.api.*
 schema, and the plugin worked out what that schema is. `age` resolving inside both
 lambdas is the same mechanism one step earlier.
 */
-val adults =
-    dataFrameOf("name", "age")(
-            "Alice",
-            15,
-            "Bob",
-            30,
-            "Cara",
-            45,
-        )
-        .filter { age >= 18 }
-        .add("decade") { age / 10 }
+val adults = dataFrameOf("name", "age")(
+    "Alice",
+    15,
+    "Bob",
+    30,
+    "Cara",
+    45,
+).filter { age >= 18 }
+    .add("decade") { age / 10 }
 
 println("kept: " + adults.name.toList())
 println("decade: " + adults.decade.toList())
@@ -70,7 +68,7 @@ println("decade: " + adults.decade.toList())
 <!-- field-box id="dataframe_live" index="2" -->
 
 ```edn [field-box id="dataframe_live" role="properties"]
-{"id" "dataframe_live" "index" 2 "name" "4 - Typed across the boundary" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - Typed across the boundary" "_tombstone" false "frame" #afield/rect [480.0 190.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dataframe_live_code_.kt" "lines" 27 "characters" 823 "sha256" "e3c931afe14e881f54fe8cfd8567e05327798fdcc7f958468f3dbc4c05f589e3"}]}
+{"id" "dataframe_live" "index" 2 "name" "4 - Typed across the boundary" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 - Typed across the boundary" "_tombstone" false "frame" #afield/rect [480.0 190.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dataframe_live_code_.kt" "lines" 25 "characters" 754 "sha256" "2911671391a29b5266da9d8c7cba8d3a6a9c6df7f28bb71701ff313f3687605b"}]}
 ```
 
 ```kotlin [field-property box="dataframe_live" name="code" path="dataframe_live_code_.kt"]
@@ -81,16 +79,14 @@ typed() reads the loaded columns and writes a named schema into this box's pream
 @DataSchema interface Peach { val name: String; val age: Int }
 That named type lets later fragments use the columns as Kotlin properties.
 */
-val people =
-    dataFrameOf("name", "age")(
-            "Alice",
-            15,
-            "Bob",
-            30,
-            "Cara",
-            45,
-        )
-        .typed("Peach")
+val people = dataFrameOf("name", "age")(
+    "Alice",
+    15,
+    "Bob",
+    30,
+    "Cara",
+    45,
+).typed("Peach")
 
 /*
 Keep this break: the first fragment writes Peach, then Field reloads the preamble
@@ -108,7 +104,7 @@ println("adults: " + p.filter { age >= 18 }.name.toList())
 <!-- field-box id="dataframe_one_pass" index="3" -->
 
 ```edn [field-box id="dataframe_one_pass" role="properties"]
-{"id" "dataframe_one_pass" "index" 3 "name" "3 - The whole chain in one pass" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - The whole chain in one pass" "_tombstone" false "frame" #afield/rect [40.0 190.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dataframe_one_pass_code_.kt" "lines" 17 "characters" 471 "sha256" "4f8b91ff6ad227e6714f171150fa367f8b076d762d809d32949a91d2edce33c3"}]}
+{"id" "dataframe_one_pass" "index" 3 "name" "3 - The whole chain in one pass" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - The whole chain in one pass" "_tombstone" false "frame" #afield/rect [40.0 190.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dataframe_one_pass_code_.kt" "lines" 15 "characters" 398 "sha256" "0e8ebee04d9b93a4ed5858168bf0631f2c1b1d4b4d13fc1043ac5e0b81ab8ad0"}]}
 ```
 
 ```kotlin [field-property box="dataframe_one_pass" name="code" path="dataframe_one_pass_code_.kt"]
@@ -116,17 +112,15 @@ import org.jetbrains.kotlinx.dataframe.api.*
 
 // The shape that works: derive and consume inside a single execution, so the refined
 // type never has to outlive the expression that created it.
-val summary =
-    dataFrameOf("name", "age")(
-            "Alice",
-            15,
-            "Bob",
-            30,
-            "Cara",
-            45,
-        )
-        .add("adult") { age >= 18 }
-        .let { d -> d.name.toList().zip(d.adult.toList()) }
+val summary = dataFrameOf("name", "age")(
+    "Alice",
+    15,
+    "Bob",
+    30,
+    "Cara",
+    45,
+).add("adult") { age >= 18 }
+    .let { d -> d.name.toList().zip(d.adult.toList()) }
 
 println(summary)
 ```

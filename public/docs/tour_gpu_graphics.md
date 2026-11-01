@@ -16,12 +16,8 @@ One box opens the window and runs the frame loop. Its code publishes the window 
 as properties, builds them once, and starts the renderer:
 
 ```diffstatic {data-lang=kotlin}
-import afield.graphics.vulkan.util.Options
-
 prop<Window>(window)
 prop<Renderer>(renderer)
-
-Options.enableHDR = true
 
 once.renderer {
     window = Window("Field")
@@ -36,6 +32,12 @@ second window. Every box you connect beneath it (select the renderer box, then t
 press `g`) can use `renderer` directly, the same way a child box sees any property its parent
 publishes. The canonical_graphics starting point (**Welcome → Starting points →
 canonical_graphics**) already has this box, named **window**; launch it first.
+
+The **first-graphics** starting point from [First steps](first_steps.md#next-a-native-graphics-window)
+is this pair: the renderer box with its code open on the right, and the box beneath it, joined by the
+arrow `g` draws.
+
+![Two connected boxes, 1 · Launch the renderer above 2 · Launch the triangle, joined by an arrow from the renderer down to the box beneath it; the renderer's Kotlin is open on the right](assets/first_steps/first-graphics.png)
 
 ## A shader-driven result
 
@@ -64,7 +66,7 @@ renderer += moduleHere {
 `moduleHere { }` makes a draw pipeline from this box's `vertex` and `fragment` properties, and
 `renderer += ...` puts it on screen. The names inside `set(4, 2) { }` are not part of a library:
 `pos` and `tc` exist because the vertex shader declares those two inputs, and `tri` is the index
-buffer every mesh has.
+buffer every mesh has. Here is the vertex shader, the box's `vertex` property:
 
 ```diffstatic {data-lang=glsl}
 #version 450
@@ -80,8 +82,8 @@ void main()
 }
 ```
 
-`time` comes from the fragment shader the same way. It is a member of the shader's push constants,
-so the mesh gets a `time` property, and the function assigned to it is called every frame: here,
+`time` comes from the fragment shader, shown below, the same way. It is a member of the shader's
+push constants, the small block of values the CPU hands the shader fresh each frame, so the mesh gets a `time` property, and the function assigned to it is called every frame: here,
 seconds since the box ran. The shader declares a `float`, and Field narrows the `Double` to it as it
 writes the value. The clock is the `AnimationClock` from
 [Frames and the Animation Loop](animation_time_model.md), so the rings drift outward at the same rate live and in a recording.
@@ -114,7 +116,7 @@ property and add the angle around the centre to the line that makes the rings:
     float rings = 0.5 + 0.5 * sin(24.0 * r - 3.0 * pc.time + 5.0 * atan(p.y, p.x));
 ```
 
-Press Alt-Enter in the GLSL editor and the rings become a five-armed spiral, still turning. You do
+Press `Alt-Enter` in the GLSL editor and the rings become a five-armed spiral, still turning. You do
 not need to run the box again: Field recompiles the shader in place, the window stays open, and
 the renderer keeps its frame loop.
 
@@ -198,11 +200,12 @@ surface is rebuilt.
 
 ## Drawing into the box itself
 
-In Field's desktop app a renderer can also draw into a box's output panel, next to its code. An
-`ElectronRTTView` is a render target that shows up in the panel. Give it the module from before, and
+In Field's desktop app a renderer can also draw into a box's output panel, so the live picture sits
+next to its code instead of in a separate window. An `ElectronRTTView` is that picture: a 640 × 360
+image the renderer draws into each frame, streamed to the panel. Give it the module from before, and
 the spiral turns inside the box:
 
-```diffstatic_runner {data-lang=kotlin video="assets/tour_gpu_graphics/spiral-panel.mp4" alt="a box's output panel holding a 640 by 360 view of the blue and gold five-armed spiral, turning steadily, with a line of small grey frame timings under it" capture="box" capture-profile="macos-electron" graphics-context=true open-outputs="true" wait-output="true" wait-output-kind="display" duration="6" fps="20" wait="3" w="760" h="60" timeout="300" embed=true name="tour-gpu-panel" source-box="assets/tour_gpu_graphics/spiral" source-box-properties="vertex,fragment" source-box-wait="0.1"}
+```diffstatic_runner {data-lang=kotlin video="assets/tour_gpu_graphics/spiral-panel.mp4" alt="a box's output panel holding a 640 by 360 view of the blue and gold five-armed spiral, turning steadily, with a line of small grey frame timings under it" capture="box" capture-profile="macos-electron" graphics-context=true open-outputs="true" wait-output="true" wait-output-kind="display" duration="6" fps="20" wait="3" w="760" h="60" x="24" y="180" timeout="300" embed=true name="tour-gpu-panel" source-box="assets/tour_gpu_graphics/spiral" source-box-properties="vertex,fragment" source-box-wait="0.1"}
 import afield.media.stream.ElectronRTTView
 
 val view = ElectronRTTView(640, 360)
@@ -234,10 +237,9 @@ A web browser, including Field's HTTP mirror, shows a message in place of the fr
 
 - [Field 4 Graphics](afield_four_graphics.md) is the full walkthrough: buffers, cameras, compute
   shaders and particles, textures, glTF, render-to-texture and blur, each with its picture.
-- The [lesson index](https://github.com/OpenEndedGroup/Field4/blob/main/public/docs/assets/canonical_graphics/LESSONS.md)
-  lists every lesson in the canonical_graphics starting point, with the parent each one runs
-  under, and which lesson uses which call (`RenderToTexture`, `computeModuleHere`,
-  `LoadedTexture`, ...).
+- [canonical_graphics](offline.html?file=assets/canonical_graphics/metadata.edn) is that
+  walkthrough's document: one box per lesson, each with its code, its shaders and the picture its
+  window drew. Open **Welcome → Starting points → canonical_graphics** in Field to run them.
 - [Graphics in an Output Area](four_in_output_areas.md) has more on the view in the panel: sizes,
   re-running, sharing it between boxes, and Linux.
 

@@ -18,12 +18,17 @@ ui.waitForSelector("#field-drawing-layer .excalidraw", 15000.0)
 var ready = ""
 for (i in 0 until 60) {
     ui.pause(250)
-    ready = ui.eval("""
-        const s = window.drawingLayerState()
-        const tools = document.querySelector("#field-drawing-layer .App-toolbar")
-        const shown = !!tools && tools.getBoundingClientRect().width > 0
-        return (s && s.active && shown) ? "ready" : "waiting: active=" + (s && s.active) + " toolbar=" + shown
-    """.trimIndent()).toString()
+    ready =
+        ui.eval(
+                """
+                const s = window.drawingLayerState()
+                const tools = document.querySelector("#field-drawing-layer .App-toolbar")
+                const shown = !!tools && tools.getBoundingClientRect().width > 0
+                return (s && s.active && shown) ? "ready" : "waiting: active=" + (s && s.active) + " toolbar=" + shown
+                """
+                    .trimIndent(),
+            )
+            .toString()
     if (ready.contains("ready")) break
 }
 check(ready.contains("ready")) { "the drawing layer's toolbar never showed: " + ready }
@@ -203,9 +208,9 @@ markdown(
 | notes scheduled, two cycles | ${heard.scheduled} |
 | onsets detected, not told where | ${heard.onsetsDetected} |
 | onsets within 30 ms of a note | ${heard.matchedOnsets} |
-| worst onset error | ${"%.1f".format(heard.maxOnsetErrorMs)} ms |
+| worst onset error | ${heard.maxOnsetErrorMs.f1} ms |
 | notes with a voiced pitch | ${heard.pitched} |
-| worst pitch error | ${"%.3f".format(heard.maxPitchError)} semitones |
+| worst pitch error | ${heard.maxPitchError.f3} semitones |
 | the published clip reads the same notes | $same |
 """,
     width = 1000,

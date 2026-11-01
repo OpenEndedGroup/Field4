@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. 3 — every composite chains now
@@ -84,7 +84,7 @@ From `code`
 **** CHANGE THIS LINE ***** the hole's half-width; strictly between 0 and 1.
 
 ```edn [field-box id="polytope_plate_with_and_without" role="properties"]
-{"id" "polytope_plate_with_and_without" "index" 1 "name" "2 — the same plate, with the ring and without it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — the same plate, with the ring and without it" "_tombstone" false "frame" #afield/rect [80.0 220.0 430.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_plate_with_and_without_code_.kt" "lines" 80 "characters" 3395 "sha256" "d9e86ba5521dc91ecbfc6fb5ccf3a44d0fa29f66eccda2fec5feddef6b117584"}]}
+{"id" "polytope_plate_with_and_without" "index" 1 "name" "2 — the same plate, with the ring and without it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — the same plate, with the ring and without it" "_tombstone" false "frame" #afield/rect [80.0 220.0 430.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_plate_with_and_without_code_.kt" "lines" 80 "characters" 3385 "sha256" "cb49698612489660fc8449518b55404b54d4322505db2a72b4c4a456e3ef6b80"}]}
 ```
 
 ```kotlin [field-property box="polytope_plate_with_and_without" name="code" path="polytope_plate_with_and_without_code_.kt"]
@@ -156,7 +156,7 @@ val cells =
                 "${object3.topology.elements(0).size}v ${object3.topology.elements(1).size}e" +
                     " · holes ${object3.topology.faceHoles(face.id).size}" +
                     " · ${mesh.triangleCount} triangles" +
-                    " · area ${"%.3f".format(4.0 - if (withRing) 4.0 * hole * hole else 0.0)}",
+                    " · area ${(4.0 - if (withRing) 4.0 * hole * hole else 0.0).f3}",
         )
     }
 threeGrid(cells, channel = "plates", name = "plates", columns = 2, height = 260, cellWidth = 300, view = view)
@@ -181,7 +181,7 @@ From `code`
 **** CHANGE THIS LINE ***** the window's half-width, anywhere inside (0, 1).
 
 ```edn [field-box id="polytope_face_with_a_hole" role="properties"]
-{"id" "polytope_face_with_a_hole" "index" 2 "name" "1 — a face with a hole, end to end" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — a face with a hole, end to end" "_tombstone" false "frame" #afield/rect [80.0 80.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_face_with_a_hole_code_.kt" "lines" 78 "characters" 3226 "sha256" "7f6cad6e7f7164376e2c2dfaca9adf28c65aa2b42378b2f6323fc886761f02f6"}]}
+{"id" "polytope_face_with_a_hole" "index" 2 "name" "1 — a face with a hole, end to end" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — a face with a hole, end to end" "_tombstone" false "frame" #afield/rect [80.0 80.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_face_with_a_hole_code_.kt" "lines" 76 "characters" 3157 "sha256" "53eb45ff5e65e491473c0db6ba695fe815a125af9219658688a82d18ab322b7e"}]}
 ```
 
 ```kotlin [field-property box="polytope_face_with_a_hole" name="code" path="polytope_face_with_a_hole_code_.kt"]
@@ -198,16 +198,14 @@ Everything a holed face refuses, and the message it refuses with. These are valu
 accidents: a Conway operator, a dualization and an OFF export are all defined for closed
 manifolds, and a face with a hole is a surface with boundary.
 */
-val refusals =
-    listOf<Pair<String, () -> Any>>(
-            "topology.dual()" to { topology.dual() },
-            "solid.bevel()" to { solid.bevel() },
-            "solid.toOff()" to { solid.toOff() },
-            "triangulate(FanFaceTriangulator)" to { solid.triangulate(FanFaceTriangulator) },
-        )
-        .map { (name, call) ->
-            name to (runCatching { call() }.exceptionOrNull()?.message ?: "DID NOT THROW")
-        }
+val refusals = listOf<Pair<String, () -> Any>>(
+    "topology.dual()" to { topology.dual() },
+    "solid.bevel()" to { solid.bevel() },
+    "solid.toOff()" to { solid.toOff() },
+    "triangulate(FanFaceTriangulator)" to { solid.triangulate(FanFaceTriangulator) },
+).map { (name, call) ->
+    name to (runCatching { call() }.exceptionOrNull()?.message ?: "DID NOT THROW")
+}
 
 println(
     """

@@ -97,9 +97,8 @@ val report = { name: String, line: FLine ->
 }
 
 [
-        report("S-curve", bent),
-        report("collinear", straight),
-        "",
-        "flatness alone stops at one leaf whenever it reads 0.000, and no tolerance can beat 0.",
-    ]
-    .joinToString("\n")
+    report("S-curve", bent),
+    report("collinear", straight),
+    "",
+    "flatness alone stops at one leaf whenever it reads 0.000, and no tolerance can beat 0.",
+].joinToString("\n")

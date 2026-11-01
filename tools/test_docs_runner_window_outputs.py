@@ -58,11 +58,18 @@ class WindowOutputsTests(unittest.TestCase):
 
 
 class NativeWindowVideoTests(unittest.TestCase):
-    """No recorder records the native window, so asking for one is an error, not a browser video."""
+    """A native-window video films the renderer's own window with `record-native`, never a browser recorder."""
 
-    def test_native_window_with_video_is_refused(self):
-        with self.assertRaisesRegex(RuntimeError, "cannot take video="):
-            _options('capture="native-window" video="assets/x.mp4"')
+    def test_native_window_with_video_records_the_native_window(self):
+        options = _options('capture="native-window" graphics-context=true video="assets/x.mp4" duration="8"')
+        invocation = docs_hooks.build_backdoor_command(
+            repo_root=REPO_ROOT, page_path=PAGE, block_index=0,
+            screenshot_path=PAGE.parent / "assets" / "x.mp4", options=options, code="println(1)", is_video=True,
+        )
+        commands = [shlex.split(line) for line in invocation.backdoor_commands]
+        recorders = [c for c in commands if c and c[0].startswith("record-")]
+        self.assertEqual([c[0] for c in recorders], ["record-native"])
+        self.assertEqual(recorders[0][recorders[0].index("--duration") + 1], "8.0")
 
     def test_native_window_screenshot_still_parses(self):
         self.assertEqual(_options('capture="native-window" screenshot="assets/x.png"').capture, "native-window")

@@ -1,7 +1,9 @@
 // {{ visionmetal uniforms=phase,amount,tint }}
-// Open Live Metal in Field4Vision. Launch again after editing to hot-reload.
-// The shader lives in this box's `msl` property — edit it and press alt-r to
-// recompile on the headset without restarting any of this.
+/*
+Open Live Metal in Field4Vision. Launch again after editing to hot-reload.
+The shader lives in this box's `msl` property — edit it and press alt-r to
+recompile on the headset without restarting any of this.
+*/
 onStart {
     // Geometry is built here, in the headset, and handed to Metal in one call.
     geometry {

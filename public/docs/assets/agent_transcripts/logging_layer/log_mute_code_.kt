@@ -13,11 +13,10 @@ val spellings = ["info,boxes", "boxes,info", "info,boxes,extra", "info,Boxes", "
 display(
     "main",
     Table(
-            ["channel string", "isMuted"],
-            title = "ConsoleMute compares the whole channel string",
-            note = "the set this JVM booted with: " + ConsoleMute.channels.sorted().joinToString(", "),
-        )
-        .rows(spellings.map { [it, ConsoleMute.isMuted(it)] })
+        ["channel string", "isMuted"],
+        title = "ConsoleMute compares the whole channel string",
+        note = "the set this JVM booted with: " + ConsoleMute.channels.sorted().joinToString(", "),
+    ).rows(spellings.map { [it, ConsoleMute.isMuted(it)] })
         .role("channel string", CellRole.ACCENT)
         .roleBy("isMuted") { if (it == true) CellRole.WARN else CellRole.OK },
 )

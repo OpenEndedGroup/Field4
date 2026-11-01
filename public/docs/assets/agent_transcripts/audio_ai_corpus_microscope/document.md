@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. 2 · index Nancy and Candlestick, then explore
@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="index_and_explore_corpus" index="0" -->
 
 ```edn [field-box id="index_and_explore_corpus" role="properties"]
-{"id" "index_and_explore_corpus" "index" 0 "name" "2 · index Nancy and Candlestick, then explore" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · index Nancy and Candlestick, then explore" "_tombstone" false "frame" #afield/rect [520.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "index_and_explore_corpus_code_.kt" "lines" 82 "characters" 3938 "sha256" "841259739ae23055da48c4a5589fc2c49ea4b0e1d9d1a5dc818197f856551749"}]}
+{"id" "index_and_explore_corpus" "index" 0 "name" "2 · index Nancy and Candlestick, then explore" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · index Nancy and Candlestick, then explore" "_tombstone" false "frame" #afield/rect [520.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "index_and_explore_corpus_code_.kt" "lines" 80 "characters" 3784 "sha256" "c64fcf9505c2987c7d3e1cad1a650dec61b90cb996c0b137ddc16fd6ba05270d"}]}
 ```
 
 ```kotlin [field-property box="index_and_explore_corpus" name="code" path="index_and_explore_corpus_code_.kt"]
@@ -57,21 +57,20 @@ runAsync<Pair<AudioAsset, CorpusPreview>>(
                 val duration = requireNotNull(asset.durationSeconds) { "asset has no duration" }
                 val whole = AssetRegion(asset.id, 0.0, duration)
                 tracked(
-                        "source ${index + 1} segments",
-                        segmentCorpus(
+                    "source ${index + 1} segments",
+                    segmentCorpus(
+                        whole,
+                        requestedBy = "field:corpus-microscope/index",
+                    ),
+                ).thenCompose {
+                    tracked(
+                        "source ${index + 1} descriptors",
+                        embedCorpus(
                             whole,
                             requestedBy = "field:corpus-microscope/index",
                         ),
                     )
-                    .thenCompose {
-                        tracked(
-                            "source ${index + 1} descriptors",
-                            embedCorpus(
-                                whole,
-                                requestedBy = "field:corpus-microscope/index",
-                            ),
-                        )
-                    }
+                }
             }
             CompletableFuture.allOf(*indexes.toTypedArray()).thenApply { assets.first() }
         }
@@ -79,22 +78,21 @@ runAsync<Pair<AudioAsset, CorpusPreview>>(
             if (future.isDone) throw CancellationException("run ended")
             val query = AssetRegion(nancy.id, startSeconds = queryStartSeconds, durationSeconds = queryDurationSeconds)
             tracked(
-                    "Nancy neighbour query",
-                    findCorpusNeighbours(
-                        query,
-                        limit = neighbourCount,
-                        includeSameAsset = false,
-                        weights = weights,
-                        requestedBy = "field:corpus-microscope/query",
-                    ),
-                )
-                .thenCompose { result ->
-                    if (future.isDone) throw CancellationException("run ended")
-                    client
-                        .corpusPreview(result.id)
-                        .also { pending -> onCancel { pending.cancel(true) } }
-                        .thenApply { preview -> nancy to preview }
-                }
+                "Nancy neighbour query",
+                findCorpusNeighbours(
+                    query,
+                    limit = neighbourCount,
+                    includeSameAsset = false,
+                    weights = weights,
+                    requestedBy = "field:corpus-microscope/query",
+                ),
+            ).thenCompose { result ->
+                if (future.isDone) throw CancellationException("run ended")
+                client
+                    .corpusPreview(result.id)
+                    .also { pending -> onCancel { pending.cancel(true) } }
+                    .thenApply { preview -> nancy to preview }
+            }
         }
 }
 ```

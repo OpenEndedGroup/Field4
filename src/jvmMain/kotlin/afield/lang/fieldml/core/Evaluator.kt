@@ -107,7 +107,17 @@ sealed interface FieldMLValue {
      * Multi-argument prelude entries are curried into nested ones, so they compose with FieldML's
      * own one-argument application and partial application works on them unchanged.
      */
-    data class NativeFunctionValue(val name: String, val apply: (FieldMLValue) -> FieldMLValue) : FieldMLValue
+    data class NativeFunctionValue(
+        val name: String,
+        val apply: (FieldMLValue) -> FieldMLValue,
+        /**
+         * Present only on a prelude entry that may *suspend* — `hostAwait`'s last argument. The
+         * suspending walk ([applyFieldMLFunctionSuspending]) calls this; the ordinary walk calls
+         * [apply], which for such an entry refuses with the reason. See "Suspendable bodies" in
+         * `dev_docs/FIELDML_HOST_BRIDGE.md`.
+         */
+        val suspendApply: (suspend (FieldMLValue) -> FieldMLValue)? = null,
+    ) : FieldMLValue
 
     /**
      * A prelude entry that is a new value on every mention rather than a shared one.
@@ -280,6 +290,107 @@ private fun evalFieldML(expr: CoreExpr, env: RuntimeEnv): FieldMLValue =
             else -> vectorComponents(value)?.let { parts -> vectorValue(FloatArray(parts.size) { -parts[it] }) }
                 ?: error("Cannot negate ${renderFieldMLValue(value)}")
         }
+    }
+
+/**
+ * The same walk as [evalFieldML], as a Kotlin `suspend` function: a FieldML body run this way can
+ * stop half-way — at a `hostAwait` — hand `COROUTINE_SUSPENDED` back to the Kotlin that called it,
+ * and carry on from that point when the host resumes it. Kotlin's own CPS transform of this
+ * function *is* the evaluator continuation; nothing here saves or restores a FieldML stack by hand.
+ *
+ * Kept as a line-for-line mirror rather than the only walk because a suspend call allocates a
+ * continuation per frame of recursion, which the hot synchronous path (every `map` callback, every
+ * vertex) should not pay. `FieldMLSuspendableBodyTest.bothWalksAgreeOnEveryCoreShape` keeps the two
+ * honest. Only *closures* are walked suspendingly: a [FieldMLValue.NativeFunctionValue] runs its
+ * synchronous Kotlin, so a FieldML function called back from inside one (`map`, `Mesh.write`'s
+ * builder) is back on the ordinary walk and cannot suspend there — `hostAwait` refuses, by name.
+ */
+internal suspend fun evalFieldMLSuspending(expr: CoreExpr, env: RuntimeEnv): FieldMLValue =
+    when (expr) {
+        is CInt -> FieldMLValue.IntValue(expr.value)
+        is CFloat -> FieldMLValue.FloatValue(expr.value)
+        is CBool -> FieldMLValue.BoolValue(expr.value)
+        is CString -> FieldMLValue.StringValue(expr.value)
+        is CVar -> env.lookup(expr.name)
+        is CTuple -> FieldMLValue.TupleValue(expr.elements.map { evalFieldMLSuspending(it, env) })
+        is CList -> FieldMLValue.ListValue(expr.elements.map { evalFieldMLSuspending(it, env) })
+        is CTypeDecl -> {
+            val local = env.child()
+            expr.constructors.forEach { constructor ->
+                local.define(
+                    constructor.name,
+                    if (constructor.arity == 0) {
+                        FieldMLValue.AdtValue(constructor.name, emptyList())
+                    } else {
+                        FieldMLValue.ConstructorValue(constructor.name, constructor.arity)
+                    },
+                )
+            }
+            evalFieldMLSuspending(expr.body, local)
+        }
+        is CLet -> {
+            val local = env.child()
+            // A recursive `let f x = ...` evaluates its own body in the scope that will hold `f`, so the
+            // closure can find itself by the time it is called. Plain bindings evaluate in the parent
+            // scope, which keeps `let x = x + 1` referring to the outer `x`.
+            local.define(expr.name, evalFieldMLSuspending(expr.value, if (expr.recursive) local else env))
+            evalFieldMLSuspending(expr.body, local)
+        }
+        is CLam -> FieldMLValue.ClosureValue(expr.parameter, expr.body, env)
+        is CApp -> applyFieldMLFunctionSuspending(evalFieldMLSuspending(expr.function, env), evalFieldMLSuspending(expr.argument, env))
+        is CIf -> if (evalFieldMLSuspending(expr.condition, env).asBool()) evalFieldMLSuspending(expr.thenBranch, env) else evalFieldMLSuspending(expr.elseBranch, env)
+        is CMatch -> {
+            val value = evalFieldMLSuspending(expr.scrutinee, env)
+            for (case in expr.cases) {
+                val local = env.child()
+                if (matchPattern(case.pattern, value, local)) {
+                    return evalFieldMLSuspending(case.body, local)
+                }
+            }
+            error("Non-exhaustive FieldML match")
+        }
+        is CRecord -> FieldMLValue.RecordValue(expr.fields.associate { (name, value) -> name to evalFieldMLSuspending(value, env) })
+        is CField -> when (val target = evalFieldMLSuspending(expr.target, env)) {
+            is FieldMLValue.RecordValue -> target.fields[expr.field] ?: error("No such field: ${expr.field}")
+            // Vector components first: they are the hot path and read straight off the value. Anything
+            // else on a host value is a JVM member, which is what makes `img.width` work.
+            is FieldMLValue.HostValue -> readVectorComponent(target.value, expr.field)
+                ?: target.value?.let { FieldMLHostBridge.readMember(expr.field, it) }
+                ?: error("No such field: ${expr.field}")
+            else -> error("Field access on non-record value")
+        }
+        is CBinary -> when (expr.op) {
+            // Short circuiting: the right-hand side is only evaluated when it can change the answer.
+            BinaryOp.AND ->
+                if (!evalFieldMLSuspending(expr.left, env).asBool()) FieldMLValue.BoolValue(false)
+                else FieldMLValue.BoolValue(evalFieldMLSuspending(expr.right, env).asBool())
+            BinaryOp.OR ->
+                if (evalFieldMLSuspending(expr.left, env).asBool()) FieldMLValue.BoolValue(true)
+                else FieldMLValue.BoolValue(evalFieldMLSuspending(expr.right, env).asBool())
+            else -> evalBinary(expr.op, evalFieldMLSuspending(expr.left, env), evalFieldMLSuspending(expr.right, env))
+        }
+        is CNegate -> when (val value = evalFieldMLSuspending(expr.value, env)) {
+            is FieldMLValue.IntValue -> FieldMLValue.IntValue(-value.value)
+            is FieldMLValue.FloatValue -> FieldMLValue.FloatValue(-value.value)
+            else -> vectorComponents(value)?.let { parts -> vectorValue(FloatArray(parts.size) { -parts[it] }) }
+                ?: error("Cannot negate ${renderFieldMLValue(value)}")
+        }
+    }
+
+/**
+ * [applyFieldMLFunction] for the suspending walk: a closure's body is walked by
+ * [evalFieldMLSuspending], and a native that can suspend ([FieldMLValue.NativeFunctionValue.suspendApply])
+ * is called as one. Everything else is the synchronous application.
+ */
+suspend fun applyFieldMLFunctionSuspending(function: FieldMLValue, argument: FieldMLValue): FieldMLValue =
+    when (function) {
+        is FieldMLValue.ClosureValue -> {
+            val local = function.env.child()
+            local.define(function.parameter, argument)
+            evalFieldMLSuspending(function.body, local)
+        }
+        is FieldMLValue.NativeFunctionValue -> function.suspendApply?.invoke(argument) ?: function.apply(argument)
+        else -> applyFieldMLFunction(function, argument)
     }
 
 /**

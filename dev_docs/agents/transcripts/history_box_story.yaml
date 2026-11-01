@@ -1,0 +1,59 @@
+name: history_box_story
+description: >
+  The history view's This Box list (2026-10-30 history renewal). One box, sketch, saved with four
+  successive values of its code (radius 40, 64, a ring of points, radius 80), each edit left for the
+  5 s autosave so the document's backups hold real versions. Replay into a saving document (not
+  --scratch), select sketch, then run Show Document History: the sidebar's This Box lists the four
+  values newest first; click a row to select its version, Restore to put that value back into sketch
+  alone. Replay with
+  `field_backdoor.py --document history_box_story --command 'macro write history_box_story --file dev_docs/agents/transcripts/history_box_story.yaml' --command 'macro run history_box_story'`.
+operations:
+  - create:
+      box: history_sketch
+      name: sketch
+      frame: { x: 60.0, y: 60.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          // A ring of points, saved four times.
+          val radius = 40.0
+          println("radius " + radius)
+  - wait: { seconds: 7 }
+  - edit:
+      box: history_sketch
+      property: code
+      from: |
+        // A ring of points, saved four times.
+        val radius = 40.0
+        println("radius " + radius)
+      to: |
+        // A ring of points, saved four times.
+        val radius = 64.0
+        println("radius " + radius)
+  - wait: { seconds: 7 }
+  - edit:
+      box: history_sketch
+      property: code
+      from: |
+        // A ring of points, saved four times.
+        val radius = 64.0
+        println("radius " + radius)
+      to: |
+        // A ring of points, saved four times.
+        val radius = 64.0
+        val ring = (0 until 12).map { it * 30.0 }
+        println("radius " + radius + ", " + ring.size + " points")
+  - wait: { seconds: 7 }
+  - edit:
+      box: history_sketch
+      property: code
+      from: |
+        // A ring of points, saved four times.
+        val radius = 64.0
+        val ring = (0 until 12).map { it * 30.0 }
+        println("radius " + radius + ", " + ring.size + " points")
+      to: |
+        // A ring of points, saved four times.
+        val radius = 80.0
+        val ring = (0 until 12).map { it * 30.0 }
+        println("radius " + radius + ", " + ring.size + " points")
+  - wait: { seconds: 7 }

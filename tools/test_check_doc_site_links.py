@@ -1,6 +1,6 @@
 """Regression guard for the prefix-aware link resolver in `check_doc_site_links.py`.
 
-Background: `public/zensical.yml` publishes under `site_url: http://openendedgroup.com/Field4/`,
+Background: `public/zensical.yml` publishes under `site_url: https://openendedgroup.com/field4/`,
 a path prefix. Under a prefix a relative reference that climbs one level too far is a 404; served
 at `/` the same reference works, because `..` clamps at the server root. On 2026-09-16,
 `rectsl_examples.md` shipped 50 such references -- every figure and video on the page -- and
@@ -82,7 +82,8 @@ class PrefixDerivation(unittest.TestCase):
         site_url, site_dir = read_config(CONFIG)
         # Pinned because the whole guard is meaningless if the site stops being prefixed and
         # nobody notices that the guard silently started checking nothing interesting.
-        self.assertEqual(prefix_from_site_url(site_url), "/Field4/")
+        self.assertEqual(site_url, "https://openendedgroup.com/field4/")
+        self.assertEqual(prefix_from_site_url(site_url), "/field4/")
         self.assertEqual(site_dir, "field4")
 
     def test_config_with_python_tags_is_parsed_without_importing_them(self) -> None:

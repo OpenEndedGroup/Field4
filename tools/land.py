@@ -172,6 +172,16 @@ def cmd_enqueue(args: argparse.Namespace) -> int:
     if _ok(here, "merge-base", "--is-ancestor", sha, "refs/heads/main"):
         print(f"land: {branch} ({sha[:9]}) is already on main; nothing to land")
         return 0
+    try:
+        # Warn, not refuse: a clean duplicate lands harmlessly, and precheck is where it is refused.
+        from land_precheck import describe_duplicates, duplicate_patches  # noqa: PLC0415
+
+        duplicates = duplicate_patches(here, "refs/heads/main", sha)
+    except (ImportError, subprocess.CalledProcessError):
+        duplicates = []
+    if duplicates:
+        print(f"land: warning: {len(duplicates)} commit(s) on {branch} repeat a patch main already has:\n  "
+              + describe_duplicates(duplicates, "main"), file=sys.stderr)
     replaced: dict | None = None
     for item in _items(queue, PENDING):
         # An item the lander has started stays: removing its file mid-landing hid it from status

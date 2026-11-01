@@ -2756,7 +2756,7 @@ private fun requestStackAutoShaderUpdate(box: Box, type: ShaderReloadType) {
                     )
                     if (isCurrentShaderGeneration(key, generation)) {
                         withContext(Runloop.runLoop.main) {
-                            box.error(t.message ?: "stack.auto $label update failed", "code", -1)
+                            box.displayError(t.message ?: "stack.auto $label update failed", "code", -1)
                         }
                     }
                     false
@@ -2874,7 +2874,7 @@ private fun reportShaderStageError(
     lprintln("error,graphics", "error during $logLabel $trimmed")
     throwable?.let { lprintln("error,graphics", it.stackTraceToString()) }
     if (currentShaderReloadMayReport()) {
-        box.error(trimmed, propertyForUI, lineOverride ?: numberFromErrorMessage(trimmed) ?: 0)
+        box.displayError(trimmed, propertyForUI, lineOverride ?: numberFromErrorMessage(trimmed) ?: 0)
     }
 }
 
@@ -3006,7 +3006,7 @@ private fun compileStage(
         lprintln("error,graphics", "error during ${stage.logLabel} compilation $message$throwableMsg")
         lprintln("error,graphics", throwable.stackTraceToString())
         if (currentShaderReloadMayReport()) {
-            box.error(message, stage.sourceProperty, numberFromErrorMessage(message) ?: 0)
+            box.displayError(message, stage.sourceProperty, numberFromErrorMessage(message) ?: 0)
         }
         hadError = true
     }
@@ -3445,7 +3445,7 @@ fun applyInsertToPreamble(box: Box, e: Insert) {
 private fun clearShaderErrors(box: Box, vararg properties: String) {
     if (!currentShaderReloadMayReport()) return
     properties.forEach { property ->
-        box.error(null, property, -1)
+        box.displayError(null, property, -1)
     }
 }
 
@@ -3467,7 +3467,7 @@ private fun runShaderReloadAction(
                 "error,graphics",
                 "unexpected error reloading shader in '${selected.name}' (${selected.id}): ${t.message}"
             )
-            selected.error(t.message ?: "shader reload failed", "code", -1)
+            selected.displayError(t.message ?: "shader reload failed", "code", -1)
             false
         }
         LatencySpans.record("shader.reload", start, box = selected.id, detail = "success=$success")
@@ -3499,7 +3499,7 @@ private fun runShaderUpdateAction(
                 )
                 if (isCurrentShaderGeneration(key, generation)) {
                     withContext(Runloop.runLoop.main) {
-                        box.error(t.message ?: "shader update failed", "code", -1)
+                        box.displayError(t.message ?: "shader update failed", "code", -1)
                     }
                 }
                 false
@@ -3539,7 +3539,7 @@ private fun runComputeShaderUpdateAction(
                 )
                 if (isCurrentShaderGeneration(key, generation)) {
                     withContext(Runloop.runLoop.main) {
-                        box.error(t.message ?: "compute shader update failed", "code", -1)
+                        box.displayError(t.message ?: "compute shader update failed", "code", -1)
                     }
                 }
                 false
@@ -5198,7 +5198,7 @@ private fun reportShadersAssignedInModuleBlock(box: Box, p: Parameters) {
     val stages = dropped.joinToString(" and ") { "`$it`" }
     val noun = if (dropped.size == 1) "property" else "properties"
     val shaders = if (dropped.size == 1) "shader" else "shaders"
-    box.error(
+    box.displayError(
         "moduleHere ignored the $stages $shaders assigned inside its block. The module is built from this " +
             "box's $stages $noun, which moduleHere seeds with a default shader when empty. Put the GLSL in " +
             "the $noun (or set it with `once.${dropped.first()} { … }` in an earlier `//%-` fragment), or " +
@@ -5275,11 +5275,11 @@ fun Box._moduleHere(p: Parameters = parameters {}): ModulePointer {
     p.textureResolver = textureResolverFor(previousResolver)
 
     globalAsyncDebugHandler = { message ->
-        this.error(message, "code", numberFromErrorMessage(message) ?: 0)
+        this.displayError(message, "code", numberFromErrorMessage(message) ?: 0)
     }
 
     p.errorHandler = { message, throwable ->
-        this.error(message, "code", numberFromErrorMessage(message) ?: 0)
+        this.displayError(message, "code", numberFromErrorMessage(message) ?: 0)
         throwable?.let { lprintln("error,graphics", it.stackTraceToString()) }
     }
 
@@ -5578,7 +5578,7 @@ fun Box._computeModuleHere(p: Parameters): ComputeModulePointer {
     p.textureResolver = textureResolverFor(p.textureResolver)
 
     p.errorHandler = { message, throwable ->
-        this.error(message, "code", numberFromErrorMessage(message) ?: 0)
+        this.displayError(message, "code", numberFromErrorMessage(message) ?: 0)
         throwable?.let { lprintln("error,graphics", it.stackTraceToString()) }
     }
 
@@ -5752,7 +5752,7 @@ fun Box._meshModuleHere(p: Parameters = parameters {}): MeshModulePointer {
     p.fragmentIncludeResolver = shaderIncludeResolverFor(this, fragmentSourceProperty)
 
     p.errorHandler = { message, throwable ->
-        this.error(message, "code", numberFromErrorMessage(message) ?: 0)
+        this.displayError(message, "code", numberFromErrorMessage(message) ?: 0)
         throwable?.let { lprintln("error,graphics", it.stackTraceToString()) }
     }
 
@@ -5886,7 +5886,7 @@ fun Box._rayTracingModuleHere(p: Parameters = parameters {}): RayTracingModulePo
     p.textureResolver = textureResolverFor(p.textureResolver)
 
     p.errorHandler = { message, throwable ->
-        this.error(message, "code", numberFromErrorMessage(message) ?: 0)
+        this.displayError(message, "code", numberFromErrorMessage(message) ?: 0)
         throwable?.let { lprintln("error,graphics", it.stackTraceToString()) }
     }
 

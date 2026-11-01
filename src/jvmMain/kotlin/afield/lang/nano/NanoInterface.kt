@@ -117,7 +117,7 @@ class NanoExecution(val inside: Box) : BoxExecution {
             inside.output.proxy(value.toString(), true, executeLine)
         }
         vm.onError = { msg, pcVal ->
-            inside.error(msg, line = executeLine, property = "code")
+            inside.displayError(msg, line = executeLine, property = "code")
             lprintln("error,nano", "Nano VM error at PC=0x${pcVal.toString(16)}: $msg")
         }
     }
@@ -185,7 +185,7 @@ class NanoExecution(val inside: Box) : BoxExecution {
             }
             vm.onError = { msg, pcVal ->
                 runtimeError = "Nano VM error at PC=0x${pcVal.toString(16).padStart(2, '0')}: $msg"
-                inside.error(msg, line = execute.line, property = "code")
+                inside.displayError(msg, line = execute.line, property = "code")
                 lprintln("error,nano", runtimeError)
             }
 
@@ -193,7 +193,7 @@ class NanoExecution(val inside: Box) : BoxExecution {
             if (result is NanoAssembler.AssemblyDebugResult.Err) {
                 clearStepDecoration()
                 result.errors.forEach { e ->
-                    inside.error(e.message, line = execute.line + e.line - 1, property = "code")
+                    inside.displayError(e.message, line = execute.line + e.line - 1, property = "code")
                 }
                 trace.finish(false, "the program did not assemble")
                 send(Message("is-running").payload(IsRunning(execute.uid, false, wm, strand)))
@@ -382,7 +382,7 @@ class NanoExecution(val inside: Box) : BoxExecution {
         when (result) {
             is NanoAssembler.AssemblyDebugResult.Err -> {
                 result.errors.forEach { e ->
-                    inside.error(e.message, line = executeLine + e.line - 1, property = "code")
+                    inside.displayError(e.message, line = executeLine + e.line - 1, property = "code")
                 }
                 result.errors.firstOrNull()?.let { e ->
                     LastRunNotes.record(inside, "code", code, executeLine, emptyList(), stoppedAt = e.line, stopReason = e.message)

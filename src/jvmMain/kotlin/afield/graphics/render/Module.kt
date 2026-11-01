@@ -207,6 +207,14 @@ data class Parameters(
 
 
     /**
+     * The depth format the pipeline is built for: [depthFormat] when the module has a depth
+     * attachment (`depth > 0`), otherwise `VK_FORMAT_UNDEFINED`. `depth = 0` alone leaves
+     * [depthFormat] at its default, and a pipeline declaring that format would not match a pass
+     * that supplies no depth view.
+     */
+    val pipelineDepthFormat: Int get() = if (depth > 0) depthFormat else VK_FORMAT_UNDEFINED
+
+    /**
      * Inside `moduleHere { }`: this module draws into this target. `+target` gives the module the
      * target's colour formats, depth and viewports, which it needs before it can be attached with
      * `target += module`.
@@ -1017,7 +1025,7 @@ class Module(val parameters: Parameters) : Renderable {
                 colorAttachmentFormats.flip()
 
                 renderInfo.colorAttachmentCount(colorCount).pColorAttachmentFormats(colorAttachmentFormats)
-                    .depthAttachmentFormat(parameters.depthFormat)
+                    .depthAttachmentFormat(parameters.pipelineDepthFormat)
                     .stencilAttachmentFormat(0)
                     .viewMask(parameters.viewMask)
 
@@ -1160,7 +1168,7 @@ class Module(val parameters: Parameters) : Renderable {
                 colorAttachmentFormats.flip()
 
                 renderInfo.colorAttachmentCount(colorCount).pColorAttachmentFormats(colorAttachmentFormats)
-                    .depthAttachmentFormat(parameters.depthFormat)
+                    .depthAttachmentFormat(parameters.pipelineDepthFormat)
                     .stencilAttachmentFormat(0)
                     .viewMask(parameters.viewMask)
 

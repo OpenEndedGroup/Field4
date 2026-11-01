@@ -39,7 +39,9 @@ STUDY = "studies/rectsl_source"
 STARTER_FILES = ("README.md", "AGENTS.md", "metadata.edn", SCENE_FILE)
 TOOLS_SOURCE = ROOT / "src/jvmMain/kotlin/afield/lang/rectsl/study/RectSLStudyTools.kt"
 # Screenshots of Field itself, taken by tools/capture_rectsl_conversation.py rather than built here.
-CAPTURED = ("card.png", "saved-chat.png", "window.png", "outline.png")
+CAPTURED = ("card.png", "saved-chat.png", "window.png", "outline.png",
+            # One live AI4 turn on the starter (2026-10-31); recapturing it calls a model, so no script does.
+            "start-chat.png")
 IMAGE_REF = re.compile(r"\]\((images/[0-9a-f]{20}\.(?:png|jpg))\)")
 
 EXAMPLES = {

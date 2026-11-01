@@ -1313,7 +1313,9 @@ data class BoxScreenshotRequest(
     val preserveSelection: Boolean = false,
     val includeNotifications: Boolean = false,
     /** One of [ExpectedOutputs]; what this capture asserts the box's output is. */
-    val expectOutputs: String = ExpectedOutputs.PANEL
+    val expectOutputs: String = ExpectedOutputs.PANEL,
+    /** Open every `<details>` in the box's output before measuring, as a reader clicking each one would. */
+    val openDetails: Boolean = false
 )
 
 @Serializable
@@ -1378,6 +1380,8 @@ data class AgentBoxScreenshot(
     val includeNotifications: Boolean = false,
     /** One of [ExpectedOutputs]; what this capture asserts the box's output is. */
     val expectOutputs: String = ExpectedOutputs.PANEL,
+    /** Open every `<details>` in the box's output before measuring; see [BoxScreenshotRequest.openDetails]. */
+    val openDetails: Boolean = false,
     /**
      * Device pixels per CSS pixel for this one screenshot; null keeps the capture page's own (2).
      * A docs figure of a narrow output panel takes a higher one so it can be shown wider than its
@@ -1391,6 +1395,15 @@ data class AgentNativeWindowScreenshot(
     val path: String,
     val waitFrames: Int = 30,
     val captureTimeoutMs: Long = 15_000L,
+    val uid: String? = null
+)
+
+/** Film a native renderer window for [durationSec] seconds into the MP4 at [path] (the `record-native` backdoor command). */
+@Serializable
+data class AgentNativeWindowRecord(
+    val path: String,
+    val durationSec: Int = 6,
+    val waitFrames: Int = 30,
     val uid: String? = null
 )
 
@@ -2079,6 +2092,45 @@ data class HistorySearchResult(
     val query: String,
     val basis: String = "previous",
     val versionIndexes: List<Int> = emptyList()
+)
+
+/** Ask for one box property's story: every distinct value it had across the saved versions. */
+@Serializable
+data class HistoryBoxStoryRequest(
+    val uid: String,
+    val property: String = "code"
+)
+
+/**
+ * One stretch of versions over which a box property held the same text. [fromVersion]..[toVersion]
+ * are version indexes; [exists] is false where the box was not in those versions. [added] and
+ * [removed] count lines against the previous stretch; [sample] is the first line that changed.
+ */
+@Serializable
+data class HistoryBoxStoryEntry(
+    val fromVersion: Int,
+    val toVersion: Int,
+    // Encoded even at their defaults: the panel reads a missing `exists` as false.
+    @EncodeDefault
+    val exists: Boolean = true,
+    @EncodeDefault
+    val lineCount: Int = 0,
+    @EncodeDefault
+    val added: Int = 0,
+    @EncodeDefault
+    val removed: Int = 0,
+    @EncodeDefault
+    val sample: String = ""
+)
+
+@Serializable
+data class HistoryBoxStoryResult(
+    val uid: String,
+    val property: String,
+    @EncodeDefault
+    val versionCount: Int = 0,
+    @EncodeDefault
+    val entries: List<HistoryBoxStoryEntry> = emptyList()
 )
 
 @Serializable

@@ -46,7 +46,7 @@ class ImpossibilityClaimContractTest {
             "dev_docs/CERES.md" to 2,
             "dev_docs/DOCS_IMPROVEMENT_AGENT.md" to 1,
             "dev_docs/DOCS_RUNNER_GPU_CAPTURES.md" to 5,
-            "dev_docs/FIELDML_HOST_BRIDGE.md" to 4,
+            "dev_docs/FIELDML_HOST_BRIDGE.md" to 3,
             "dev_docs/NVFLOW_BINDINGS.md" to 1,
             "dev_docs/brief_notation.md" to 2,
             "dev_docs/chart_primitive.md" to 1,

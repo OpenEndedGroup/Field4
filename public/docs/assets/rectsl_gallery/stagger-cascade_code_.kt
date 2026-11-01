@@ -39,18 +39,16 @@ Built directly, not with `moduleHere { }`: that takes its shaders from this box'
 `vertex`/`fragment` properties and ignores the ones assigned in its block, and this
 fragment shader is regenerated from the program's materials on every run.
 */
-val module =
-    Module(
-            parameters(renderer) {
-                name = "rectsl"
-                vertex = RECT_ANIMATION_VERTEX_SHADER
-                fragment = shader.exampleFragmentShader
-                blend = true
-                depthTest = false
-                primitiveType = triangles
-            },
-        )
-        .pointer()
+val module = Module(
+    parameters(renderer) {
+        name = "rectsl"
+        vertex = RECT_ANIMATION_VERTEX_SHADER
+        fragment = shader.exampleFragmentShader
+        blend = true
+        depthTest = false
+        primitiveType = triangles
+    },
+).pointer()
 val m = Mesh(renderer, module)
 module += "scene" to m
 renderer += "rectsl" to module

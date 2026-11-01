@@ -34,15 +34,39 @@ private data class SlangExecutableCandidate(
 )
 
 data class SlangEntryPoint(
+    /**
+     * The function's name, as the reflection JSON spells it. It is what reaches `slangc` as
+     * `-entry` on the compile that follows.
+     */
     val name: String,
+    /**
+     * The stage the function is written for, lowercased: `vertex`, `fragment`, `compute`, `mesh`,
+     * `task`, or one of the ray-tracing stages such as `closesthit`. Compiling a stage matches this
+     * against the `slangc` stage word for the shader kind asked for.
+     */
     val stage: String
 )
 
 data class SlangStageArtifacts(
+    /** The shader kind this stage was compiled as, which chose the profile and the stage word. */
     val kind: ShaderKind,
+    /**
+     * The one entry point in the source that claimed this stage. A file with none, or with more
+     * than one, does not compile.
+     */
     val entryPoint: SlangEntryPoint,
+    /**
+     * The GLSL `slangc` emitted for this stage, with parameter names and layout preserved
+     * (`-no-mangle`, `-preserve-params`, column-major matrices) so that introspecting it recovers
+     * the names the Slang source used.
+     */
     val glslSource: String,
+    /**
+     * `slangc`'s reflection JSON, as emitted beside the SPIR-V rather than beside the GLSL, so it
+     * describes the SPIR-V binding numbers.
+     */
     val reflectionJson: String,
+    /** The compiled SPIR-V, already in the off-heap buffer the Vulkan calls want. */
     val spirv: ShaderSPIRVUtils.SPIRV
 )
 
@@ -90,6 +114,11 @@ object SlangCompiler {
         return bin.resolve(if (isWindows) "slangc.exe" else "slangc").takeIf { it.canExecute() }?.absolutePath
     }
 
+    /**
+     * Translates [source] to GLSL for one stage and returns the text, with no entry point named and
+     * no SPIR-V or reflection asked for. For a stage that will be introspected and loaded, use
+     * [compileSharedStage] instead.
+     */
     fun compileToGlsl(source: String, kind: ShaderKind, entryFileName: String): String {
         val options = targetOptionsFor(kind)
         return withTempSource(entryFileName, source) { candidate, tempDir, inputFile ->
@@ -121,12 +150,23 @@ object SlangCompiler {
         }
     }
 
+    /**
+     * Compiles both halves of a graphics shader out of one Slang file, which is where Slang differs
+     * from Field's GLSL pair: one source holds a vertex entry point and a fragment one, and the
+     * structs they pass between them are written once. The file is compiled twice, once per stage.
+     */
     fun compileVertexFragment(source: String, entryFileName: String = "vertex_fragment.slang"): Pair<SlangStageArtifacts, SlangStageArtifacts> {
         val vertex = compileSharedStage(source, ShaderKind.VERTEX_SHADER, entryFileName)
         val fragment = compileSharedStage(source, ShaderKind.FRAGMENT_SHADER, entryFileName)
         return vertex to fragment
     }
 
+    /**
+     * Compiles one stage of a Slang source and returns everything Field needs to load it. Three
+     * `slangc` runs: one with `-no-codegen` to list the file's entry points, then one for GLSL and
+     * one for SPIR-V and reflection. The source must declare exactly one entry point for this stage.
+     * None, or two, is a [CompilerError] naming the ones it found.
+     */
     fun compileSharedStage(source: String, kind: ShaderKind, entryFileName: String): SlangStageArtifacts {
         return withTempSource(entryFileName, source) { candidate, tempDir, inputFile ->
             val entryPoints = inventoryEntryPoints(candidate, tempDir, inputFile)

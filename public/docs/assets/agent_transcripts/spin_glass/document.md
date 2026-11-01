@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 4 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 4 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. renderer
@@ -43,7 +43,7 @@ Rebuild update, measure and view after changing the lattice size or bond model.
 Periodic checkerboard neighbours need a positive, even side length.
 
 ```edn [field-box id="sg_update" role="properties"]
-{"id" "sg_update" "index" 1 "name" "metropolis update" "parents" ["root" "sg_renderer"] "children" ["sg_measure"] "properties" {"children" #{#afield/box "sg_measure"} "parents" #{#afield/box "root" #afield/box "sg_renderer"} "name" "metropolis update" "_tombstone" false "frame" #afield/rect [340.0 40.0 300.0 100.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "sg_update_compute_.glsl" "lines" 81 "characters" 2130 "sha256" "2f37f71d5e9956c485d968d3cbdf58d384923914ec9b458d460699546062963e"} {"name" "code" "language" "kotlin" "path" "sg_update_code_.kt" "lines" 96 "characters" 3403 "sha256" "ff1a5e610c9d1b329b61b119978dbe5b1ff6b8c66a17a5cfcab50ef9d5ddaa64"}]}
+{"id" "sg_update" "index" 1 "name" "metropolis update" "parents" ["root" "sg_renderer"] "children" ["sg_measure"] "properties" {"children" #{#afield/box "sg_measure"} "parents" #{#afield/box "root" #afield/box "sg_renderer"} "name" "metropolis update" "_tombstone" false "frame" #afield/rect [340.0 40.0 300.0 100.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "sg_update_compute_.glsl" "lines" 81 "characters" 2130 "sha256" "2f37f71d5e9956c485d968d3cbdf58d384923914ec9b458d460699546062963e"} {"name" "code" "language" "kotlin" "path" "sg_update_code_.kt" "lines" 96 "characters" 3383 "sha256" "01aa40580a64d86bdd100ec9b61ffd4d19591f00be2515f8c70e2701d5d70f02"}]}
 ```
 
 ```glsl [field-property box="sg_update" name="compute" path="sg_update_compute_.glsl"]
@@ -222,9 +222,9 @@ bindPush(even, odd) {
 }
 even.color = { 0 }
 odd.color = { 1 }
-even.seed = { seed.toUInt() }
+even.seed = { seed }
 // Offset the seed so the two passes draw different randoms.
-odd.seed = { (seed + 100003).toUInt() }
+odd.seed = { seed + 100003 }
 
 println("update launched L=" + latticeSide + " N=" + N + " groups=" + groups)
 ```

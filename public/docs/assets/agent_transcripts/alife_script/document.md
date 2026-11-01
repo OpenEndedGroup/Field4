@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. A division of labour one global rule does not buy
@@ -242,7 +242,7 @@ each agent runs its own suspending program, and the clock is a fixed step, so th
 same every time you press play.
 
 ```edn [field-box id="one_agent" role="properties"]
-{"id" "one_agent" "index" 2 "name" "One agent, one program" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "One agent, one program" "_tombstone" false "frame" #afield/rect [60.0 40.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "one_agent_code_.kt" "lines" 26 "characters" 1263 "sha256" "637513b44ef5bd5bf918e08517fe17cc62bc005328906820fbe782df1ce4e49b"}]}
+{"id" "one_agent" "index" 2 "name" "One agent, one program" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "One agent, one program" "_tombstone" false "frame" #afield/rect [60.0 40.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "one_agent_code_.kt" "lines" 32 "characters" 1294 "sha256" "8c4ee62c5b08c24b75364f351adda666c4c26fb542c14211ac0965ad2814b348"}]}
 ```
 
 ```kotlin [field-property box="one_agent" name="code" path="one_agent_code_.kt"]
@@ -260,17 +260,23 @@ w.spawn(100.0, 60.0, maxSpeed = 50.0) {
     forever { moveFor(4.0) { orbit(centre, distance = 40.0) } }
 }
 w.run(480)
-lines(*w.trailFLines().toTypedArray(), channel = "orbit", w = 440.0, h = 240.0, fitToSize = true)
+lines(
+    *w.trailFLines().toTypedArray(),
+    channel = "orbit",
+    w = 440.0,
+    h = 240.0,
+    fitToSize = true,
+)
 
 /*
-Try this: change `distance = 40.0` to 20.0 and re-run — the circle tightens.
-Then swap `orbit(centre, ...)` for `wander(turn = 30.0)` and the same lines draw a random walk
-instead. The program is the agent's, so changing it changes one agent and nobody else.
+ Try this: change `distance = 40.0` to 20.0 and re-run — the circle tightens.
+ Then swap `orbit(centre, ...)` for `wander(turn = 30.0)` and the same lines draw a random walk
+ instead. The program is the agent's, so changing it changes one agent and nobody else.
 
-Why `centre` is hoisted out of the steering block: `point()` belongs to the behaviour scope,
-and inside `moveFor { }` the receiver is the steering builder, which does not expose it. Written
-inline it fails to compile with "cannot be called in this context with an implicit receiver" —
-so build targets where the program can see them, and pass them in.
-*/
+ Why `centre` is hoisted out of the steering block: `point()` belongs to the behaviour scope,
+ and inside `moveFor { }` the receiver is the steering builder, which does not expose it. Written
+ inline it fails to compile with "cannot be called in this context with an implicit receiver" —
+ so build targets where the program can see them, and pass them in.
+ */
 ```
 

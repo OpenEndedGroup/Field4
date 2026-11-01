@@ -57,17 +57,15 @@ operations:
           schema, and the plugin worked out what that schema is. `age` resolving inside both
           lambdas is the same mechanism one step earlier.
           */
-          val adults =
-              dataFrameOf("name", "age")(
-                      "Alice",
-                      15,
-                      "Bob",
-                      30,
-                      "Cara",
-                      45,
-                  )
-                  .filter { age >= 18 }
-                  .add("decade") { age / 10 }
+          val adults = dataFrameOf("name", "age")(
+              "Alice",
+              15,
+              "Bob",
+              30,
+              "Cara",
+              45,
+          ).filter { age >= 18 }
+              .add("decade") { age / 10 }
 
           println("kept: " + adults.name.toList())
           println("decade: " + adults.decade.toList())
@@ -85,17 +83,15 @@ operations:
 
           // The shape that works: derive and consume inside a single execution, so the refined
           // type never has to outlive the expression that created it.
-          val summary =
-              dataFrameOf("name", "age")(
-                      "Alice",
-                      15,
-                      "Bob",
-                      30,
-                      "Cara",
-                      45,
-                  )
-                  .add("adult") { age >= 18 }
-                  .let { d -> d.name.toList().zip(d.adult.toList()) }
+          val summary = dataFrameOf("name", "age")(
+              "Alice",
+              15,
+              "Bob",
+              30,
+              "Cara",
+              45,
+          ).add("adult") { age >= 18 }
+              .let { d -> d.name.toList().zip(d.adult.toList()) }
 
           println(summary)
   - create:
@@ -115,16 +111,14 @@ operations:
           @DataSchema interface Peach { val name: String; val age: Int }
           That named type lets later fragments use the columns as Kotlin properties.
           */
-          val people =
-              dataFrameOf("name", "age")(
-                      "Alice",
-                      15,
-                      "Bob",
-                      30,
-                      "Cara",
-                      45,
-                  )
-                  .typed("Peach")
+          val people = dataFrameOf("name", "age")(
+              "Alice",
+              15,
+              "Bob",
+              30,
+              "Cara",
+              45,
+          ).typed("Peach")
 
           /*
           Keep this break: the first fragment writes Peach, then Field reloads the preamble

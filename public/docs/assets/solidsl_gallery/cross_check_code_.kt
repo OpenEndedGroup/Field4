@@ -67,8 +67,8 @@ Solid.scope {
     val coarse = part.buildSolid(SolidQuality(segments = quality, edgeLengthFraction = 1.0 / 40.0))
     val fine = part.buildSolid(SolidQuality(segments = quality, edgeLengthFraction = 1.0 / 110.0))
     val unmoved = coarse.solid.volume == fine.solid.volume && coarse.solid.triangleCount == fine.solid.triangleCount
-    println("side B at h/40:  volume ${"%.9f".format(coarse.solid.volume)}, ${coarse.solid.triangleCount} triangles")
-    println("side B at h/110: volume ${"%.9f".format(fine.solid.volume)}, ${fine.solid.triangleCount} triangles")
+    println("side B at h/40:  volume ${coarse.solid.volume.f9}, ${coarse.solid.triangleCount} triangles")
+    println("side B at h/110: volume ${fine.solid.volume.f9}, ${fine.solid.triangleCount} triangles")
     println(
         if (coarse.isExact && fine.isExact) "side B is exact CSG at both resolutions: an independent evaluation"
         else "side B uses field fallback: agreement is self-consistency, not independent cross-validation",
@@ -96,7 +96,7 @@ Solid.scope {
     val marched = part.marchedMesh(q)
     println(
         "Field's own topology on the marched surface: watertight ${marched.isWatertight()}, " +
-            "genus ${marched.genus()}, signed volume ${"%.5f".format(marched.signedVolume())}",
+            "genus ${marched.genus()}, signed volume ${marched.signedVolume().f5}",
     )
 
     val reference = fine.solid
@@ -105,7 +105,7 @@ Solid.scope {
         channel = "exact",
         title = if (fine.isExact) "B — Manifold's exact CSG" else "B — native solid with field fallback",
         caption =
-            "${reference.triangleCount} triangles · volume ${"%.5f".format(reference.volume)} · " +
+            "${reference.triangleCount} triangles · volume ${reference.volume.f5} · " +
                 "genus ${reference.genus} · native solid guaranteed closed",
         view = MeshView(yawDegrees = 34.0, pitchDegrees = 24.0, width = 700, height = 440),
     )
@@ -115,9 +115,9 @@ Solid.scope {
         title = "A — the same expression, marched from its distance field",
         caption =
             "${marched.triangleCount} triangles · volume " +
-                "${"%.5f".format(marched.signedVolume())} · the two disagree by " +
+                "${marched.signedVolume().f5} · the two disagree by " +
                 "${"%.3e".format(agreement.relativeVolumeError)} relative; largest sampled surface deviation " +
-                "${"%.4f".format(agreement.deviation)} model units",
+                "${agreement.deviation.f4} model units",
         view = MeshView(yawDegrees = 34.0, pitchDegrees = 24.0, width = 700, height = 440),
     )
     // Mesh viewers keep copied arrays; native solids close on every exit.

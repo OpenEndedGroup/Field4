@@ -60,7 +60,7 @@ sim.state = { if (renderer.frameCounter % 2L == 0L) stateA else stateB }
 sim.prevState = { if (renderer.frameCounter % 2L == 0L) stateB else stateA }
 sim.anchors = { anchors }
 sim.heat = { heat }
-sim.count = { N.toUInt() }
+sim.count = { N }
 sim.dt = {
     1f / 60f
 } // FIXED, not measured: stability depends on it

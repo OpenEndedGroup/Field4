@@ -17,11 +17,21 @@ import java.util.concurrent.TimeUnit
 /** One physical device as the loader reports it. */
 @Serializable
 data class VulkanDeviceInfo(
+    /** The device name the driver reports, which is what the Vulkan panel lists. */
     val name: String,
+    /** `discrete`, `integrated`, `virtual`, `cpu` or `other`. A machine whose only device is `cpu` has a software rasteriser and no GPU driver. */
     val type: String,
+    /** The highest Vulkan version this device supports, as `major.minor.patch`. */
     val apiVersion: String,
+    /** The driver's own name, from `VkPhysicalDeviceDriverProperties`. Empty on a driver that does not fill it in. */
     val driverName: String = "",
+    /** The driver's version string, from the same properties and equally optional. */
     val driverInfo: String = "",
+    /**
+     * The `VK_DRIVER_ID_*` the driver reports, which is what tells a MoltenVK device from a
+     * KosmicKrisp one on macOS. 0 when the driver reports none. `PhysicalDevice` matches this number
+     * against [Options.MacVulkanDriver] when it picks a device.
+     */
     val driverId: Int = 0,
 )
 
@@ -35,23 +45,40 @@ data class VulkanDeviceInfo(
  */
 @Serializable
 data class VulkanStatus(
+    /** `macos`, `windows` or `linux`. */
     val os: String,
+    /** The JVM's `os.arch`. On macOS it is one of the conditions on KosmicKrisp, which runs on Apple silicon only. */
     val arch: String,
+    /** A loader, an instance, and at least one device with a platform surface. False leaves [error] saying which of those was missing. */
     val ok: Boolean = false,
     /** `sdk` (a LunarG SDK's loader), `system` (whatever the OS resolves), `lwjgl-moltenvk` (the MoltenVK
      *  inside LWJGL's jar, no loader), or `none`. */
     val loaderSource: String = "none",
+    /** The loader `Options` pinned, on macOS. Null everywhere else, where the loader is whatever the OS resolves and has no path worth printing. */
     val loaderPath: String? = null,
+    /** The SDK root the probe found: `Options.macVulkanSdk` on macOS, `VULKAN_SDK` elsewhere. Null when there is none, which is not by itself a failure. */
     val sdkPath: String? = null,
+    /** The version read out of [sdkPath]'s own directory name or its parent's, whichever looks like a version. Null for an SDK installed under a path that names none. */
     val sdkVersion: String? = null,
+    /** The highest instance API version the loader supports, as `major.minor.patch`. Null when the loader did not load. */
     val instanceVersion: String? = null,
+    /** The platform surface extension the instance offers beside `VK_KHR_surface`, such as `VK_EXT_metal_surface`. Null means no window can be opened, and is one of the two things that clears [ok]. */
     val surfaceExtension: String? = null,
+    /** Whether `VK_LAYER_KHRONOS_validation` is installed. Field asks for it by default and runs without it, so false is a weaker diagnostic story rather than a broken one. */
     val validationLayer: Boolean = false,
+    /** Every physical device the instance enumerated. Empty is the other thing that clears [ok]: a loader loaded, and no GPU driver offered it an ICD. */
     val devices: List<VulkanDeviceInfo> = emptyList(),
     /** macOS: the driver `Options` asked the loader for, and whether that SDK has a KosmicKrisp to ask for. */
     val requestedDriver: String? = null,
+    /** Whether the SDK at [sdkPath] ships a KosmicKrisp manifest to ask for. That it is there does not mean it is in use — [requestedDriver] says which one was asked for. */
     val kosmicKrispAvailable: Boolean = false,
+    /**
+     * What went wrong, phrased for the Vulkan panel to show, or null when nothing did. A probe that
+     * crashed loading a driver, or ran past its timeout, reports it here rather than throwing, so a
+     * failed probe still returns a status.
+     */
     val error: String? = null,
+    /** How long the probe took, in milliseconds. A cached status carries the duration of the probe that produced it, not of the lookup. */
     val probeMs: Long = 0,
 )
 

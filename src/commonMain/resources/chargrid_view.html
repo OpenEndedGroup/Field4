@@ -6,8 +6,10 @@
   <!-- The output view of a Field char grid (afield.ui.output.charGrid / charStream): it asks the box
        for the cells that changed since it last asked and applies them to a CSS grid of spans, as the
        madp charGrid demo draws. Nothing a student writes runs here. -->
+  <link rel="stylesheet" href="/fieldPanelTokens.css">
+  <script src="/fieldPanelHost.js"></script>
   <style>
-    html, body { margin: 0; padding: 0; background: #0d0d0d; overflow: hidden; width: 100%; height: 100%; }
+    html, body { margin: 0; padding: 0; background: var(--fp-bg, #0d0d0d); overflow: hidden; width: 100%; height: 100%; }
     #pane { position: absolute; inset: 0 0 20px 0; overflow: hidden; }
     #grid {
       position: absolute; left: 0; top: 0;
@@ -22,8 +24,8 @@
       transform-origin: 0 0;
     }
     #grid .cell { display: inline-block; width: 1ch; height: 1.2em; text-align: center; white-space: pre; }
-    #status { position: absolute; left: 10px; bottom: 4px; font: 11px "Iosevka Web", Iosevka, monospace;
-      color: #3a3a3a; letter-spacing: 1px; text-transform: uppercase; pointer-events: none; white-space: nowrap; }
+    #status { position: absolute; left: 10px; bottom: 4px; font: var(--fp-font-size, 11px) "Iosevka Web", Iosevka, monospace;
+      color: var(--fp-dim, #3a3a3a); pointer-events: none; white-space: nowrap; }
   </style>
   <style id="cssvars"></style>
 </head>

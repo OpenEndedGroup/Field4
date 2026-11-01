@@ -7,7 +7,7 @@ var InputBuffer = buffer {
 }
 var VertexData = buffer {
     size = numVec4 * 4 * 4L
-    //notHosted()
+    // notHosted()
     hosted()
     storage()
 }
@@ -16,8 +16,9 @@ var DrawingControl = buffer {
 }
 
 //%-
-var module = computeModuleHere(parameters {
-})
+var module = computeModuleHere(
+    parameters {},
+)
 
 var m = ComputeMesh()
 var localSize = 16
@@ -31,31 +32,29 @@ renderer += "runCompute" to module
 // prop<VulkanBuffer>(buffer) = module.InputBuffer.proxying!!
 prop<VulkanBuffer>(buffer) = module.VertexData.proxying!!
 
-
 var fr = 0
-module.InputBuffer.mapAndWrite  {
+module.InputBuffer.mapAndWrite {
     this.clear()
     for (n in 0 until numVec4) {
-        this.put(Math.random().toFloat()*8)
-        this.put(Math.random().toFloat()*8)
-        this.put((Math.random().toFloat()-0.5)*8)
-        this.put((Math.random().toFloat()-0.5)*8)
+        this.put(Math.random().toFloat() * 8)
+        this.put(Math.random().toFloat() * 8)
+        this.put((Math.random().toFloat() - 0.5) * 8)
+        this.put((Math.random().toFloat() - 0.5) * 8)
     }
     this.clear()
 }
 
 frames {
-    while(true) {
+    while (true) {
         fr++
 
-         module.InputBuffer.mapAndRead {
+        module.InputBuffer.mapAndRead {
             var s = "${fr}:: "
             this.clear()
-            for(n in 0 until 2)
-                s+=this.get(100+n).toString()+" "
+            for (n in 0 until 2) s += this.get(100 + n).toString() + " "
             _print(s)
-        }   
+        }
 
         frame()
-    }    
+    }
 }

@@ -88,8 +88,15 @@ import java.nio.IntBuffer
  */
 class DynamicBuffer(var target: FloatBuffer, var onOverrun: (FloatBuffer, Int) -> FloatBuffer) {
 
+    /** How far the cursor has been written, counted in floats rather than bytes. */
     val at: Int get() = target.position()
 
+    /**
+     * Copies a buffer's remaining contents in bulk, after padding to a four-float boundary unless
+     * [padding] is false. A copy that would run past the end grows the target and is replayed, so
+     * it is never partial. The `IntBuffer` overload copies the integers' bits into the same float
+     * slots rather than converting them.
+     */
     fun put(f: FloatBuffer, padding: Boolean = true): DynamicBuffer {
         if (padding) pad4(0f)
         val a = target.position()
@@ -105,6 +112,7 @@ class DynamicBuffer(var target: FloatBuffer, var onOverrun: (FloatBuffer, Int) -
         return this
     }
 
+    /** Copies a float array from [offset] onwards, padding to a four-float boundary first unless [padding] is false. */
     fun put(f: FloatArray, padding: Boolean = true, offset : Int = 0): DynamicBuffer {
         if (padding) pad4(0f)
         val a = target.position()
@@ -135,11 +143,16 @@ class DynamicBuffer(var target: FloatBuffer, var onOverrun: (FloatBuffer, Int) -
         return this
     }
 
+    /** Writes each double narrowed to a float, one at a time, with no padding anywhere. */
     fun put(d: DoubleArray): DynamicBuffer {
         d.forEach { put(it.f) }
         return this
     }
 
+    /**
+     * Writes each integer's bits into its own float slot, one after another, with no padding before
+     * or between them. The shader side reads them as a run of `int` or `uint` members.
+     */
     fun putInt(d: List<Int>): DynamicBuffer {
         d.forEach { putInt(it) }
         return this
@@ -157,6 +170,7 @@ class DynamicBuffer(var target: FloatBuffer, var onOverrun: (FloatBuffer, Int) -
         }
     }
 
+    /** Writes one integer's thirty-two bits into the next float slot, with no padding. The shader reads the slot as an `int` or `uint`. */
     fun putInt(n: Int): DynamicBuffer {
         try {
             target.put(Float.fromBits(n))
@@ -177,6 +191,7 @@ class DynamicBuffer(var target: FloatBuffer, var onOverrun: (FloatBuffer, Int) -
         return this
     }
 
+    /** Writes one float at the cursor, with no padding. The `Vec2` and `Vec4` overloads grouped here pad to their own alignment first. */
     fun put(n: Float): DynamicBuffer {
         return putScalar(n)
     }
@@ -196,11 +211,13 @@ class DynamicBuffer(var target: FloatBuffer, var onOverrun: (FloatBuffer, Int) -
         return this
     }
 
+    /** Writes one value, narrowed to a float, wherever the cursor is. No alignment and no padding, which is what makes it the scalar case. */
     fun putScalar(n: Double): DynamicBuffer {
         putScalar(n.f)
         return this
     }
 
+    /** Writes a `vec2`: pads to a two-float boundary, then the two values narrowed to floats. */
     fun put(n: Double, m: Double): DynamicBuffer {
         pad2(0f)
         putScalar(n.f)
@@ -208,6 +225,11 @@ class DynamicBuffer(var target: FloatBuffer, var onOverrun: (FloatBuffer, Int) -
         return this
     }
 
+    /**
+     * Writes three floats after padding to a four-float boundary, leaving the fourth slot of the
+     * `vec4` for whatever is written next. The `Float` overload grouped with it is not the same:
+     * it does no padding, and it does write a fourth value, [zero].
+     */
     fun put(n: Double, m: Double, p: Double, zero: Float = 0f): DynamicBuffer {
         pad4(zero)
         putScalar(n.f)
@@ -216,6 +238,7 @@ class DynamicBuffer(var target: FloatBuffer, var onOverrun: (FloatBuffer, Int) -
         return this
     }
 
+    /** Writes a padded `vec3`: aligns to a four-float boundary, then x, y, z and [zero] in the fourth slot, as std430 expects. */
     fun put(n: Vec3, zero: Float = 0f): DynamicBuffer {
         pad4(zero)
         putScalar(n.x.f)
@@ -245,12 +268,21 @@ class DynamicBuffer(var target: FloatBuffer, var onOverrun: (FloatBuffer, Int) -
         return this
     }
 
+    /**
+     * Advances the cursor to the next four-float boundary by writing up to three copies of [zero],
+     * and writes nothing when it is already there. This is the alignment a `vec4` or a `vec3` needs,
+     * and the bulk `put` overloads call it for you unless passed `padding = false`.
+     */
     fun pad4(zero: Float = 0f) {
         for (n in 0 until (4 - this.target.position() % 4) % 4) {
             this.putScalar(zero)
         }
     }
 
+    /**
+     * Advances the cursor to the next two-float boundary, writing one [zero] when it is at an odd
+     * position. This is the alignment a `vec2` needs, and the `vec2` overloads of `put` call it.
+     */
     fun pad2(zero: Float = 0f) {
         if (this.target.position() % 2 == 1)
             this.putScalar(zero)

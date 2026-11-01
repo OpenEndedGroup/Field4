@@ -32,16 +32,14 @@ operations:
           accidents: a Conway operator, a dualization and an OFF export are all defined for closed
           manifolds, and a face with a hole is a surface with boundary.
           */
-          val refusals =
-              listOf<Pair<String, () -> Any>>(
-                      "topology.dual()" to { topology.dual() },
-                      "solid.bevel()" to { solid.bevel() },
-                      "solid.toOff()" to { solid.toOff() },
-                      "triangulate(FanFaceTriangulator)" to { solid.triangulate(FanFaceTriangulator) },
-                  )
-                  .map { (name, call) ->
-                      name to (runCatching { call() }.exceptionOrNull()?.message ?: "DID NOT THROW")
-                  }
+          val refusals = listOf<Pair<String, () -> Any>>(
+              "topology.dual()" to { topology.dual() },
+              "solid.bevel()" to { solid.bevel() },
+              "solid.toOff()" to { solid.toOff() },
+              "triangulate(FanFaceTriangulator)" to { solid.triangulate(FanFaceTriangulator) },
+          ).map { (name, call) ->
+              name to (runCatching { call() }.exceptionOrNull()?.message ?: "DID NOT THROW")
+          }
 
           println(
               """
@@ -171,7 +169,7 @@ operations:
                           "${object3.topology.elements(0).size}v ${object3.topology.elements(1).size}e" +
                               " · holes ${object3.topology.faceHoles(face.id).size}" +
                               " · ${mesh.triangleCount} triangles" +
-                              " · area ${"%.3f".format(4.0 - if (withRing) 4.0 * hole * hole else 0.0)}",
+                              " · area ${(4.0 - if (withRing) 4.0 * hole * hole else 0.0).f3}",
                   )
               }
           threeGrid(cells, channel = "plates", name = "plates", columns = 2, height = 260, cellWidth = 300, view = view)

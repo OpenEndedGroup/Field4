@@ -1339,7 +1339,7 @@ class SpatialGeometryTest {
             listOf(pointCloudFLine(points)),
             title = "delaunay", caption = "9 sites", width = 320, height = 240,
         )
-        for (token in listOf("#0d1219", "#202b38", "#91a4ba", "#7f92a8", "width:320px")) {
+        for (token in listOf("#090d12", "#202b38", "#91a4ba", "#7f92a8", "width:320px")) {
             assertTrue(token in html, "the interactive chrome lost `$token`")
             assertTrue(token in card, "the still card lost `$token`")
         }

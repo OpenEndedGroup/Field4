@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole" "mainLanguage" "isKotlinJsRoot"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole" "mainLanguage" "isKotlinJsRoot"]}
 ```
 
 ## 1. KotlinJS → visionOS
@@ -23,9 +23,6 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 From `code`
 
 {{ visionmetal uniforms=phase,amount,tint }}
-Open Live Metal in Field4Vision. Launch again after editing to hot-reload.
-The shader lives in this box's `msl` property — edit it and press alt-r to
-recompile on the headset without restarting any of this.
 
 From `msl` tags: `#define`
 
@@ -33,14 +30,16 @@ Uniforms are read by name: the head generates `#define u_phase frame.user[0]`
 and so on from the `uniforms=` list on the marker in the code property.
 
 ```edn [field-box id="agent_visionos_start" role="properties"]
-{"id" "agent_visionos_start" "index" 1 "name" "visionOS Starter" "parents" ["root" "agent_visionos_start_root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_visionos_start_root"} "name" "visionOS Starter" "_tombstone" false "frame" #afield/rect [90.0 150.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_visionos_start_code_.kt" "lines" 24 "characters" 716 "sha256" "a5cf1e01a68741218dcd077df16bf1b11f381c75238440479c240c703f95dd1e"} {"name" "msl" "language" "msl" "path" "agent_visionos_start_msl_.metal" "lines" 38 "characters" 1349 "sha256" "88d0efd7d55751118876a2806e3bd79ac51c05cc4ba67a2326b5b60fecb58747"}]}
+{"id" "agent_visionos_start" "index" 1 "name" "visionOS Starter" "parents" ["root" "agent_visionos_start_root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_visionos_start_root"} "name" "visionOS Starter" "_tombstone" false "frame" #afield/rect [90.0 150.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_visionos_start_code_.kt" "lines" 26 "characters" 713 "sha256" "b0899ad87799d73e731619efabf5f46fd39f3d9feed74d94220855dd8b083169"} {"name" "msl" "language" "msl" "path" "agent_visionos_start_msl_.metal" "lines" 38 "characters" 1349 "sha256" "88d0efd7d55751118876a2806e3bd79ac51c05cc4ba67a2326b5b60fecb58747"}]}
 ```
 
 ```kotlin [field-property box="agent_visionos_start" name="code" path="agent_visionos_start_code_.kt"]
 // {{ visionmetal uniforms=phase,amount,tint }}
-// Open Live Metal in Field4Vision. Launch again after editing to hot-reload.
-// The shader lives in this box's `msl` property — edit it and press alt-r to
-// recompile on the headset without restarting any of this.
+/*
+Open Live Metal in Field4Vision. Launch again after editing to hot-reload.
+The shader lives in this box's `msl` property — edit it and press alt-r to
+recompile on the headset without restarting any of this.
+*/
 onStart {
     // Geometry is built here, in the headset, and handed to Metal in one call.
     geometry {

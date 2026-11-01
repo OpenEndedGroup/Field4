@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 8 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole" "mainLanguage"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 8 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole" "mainLanguage"]}
 ```
 
 ## 1. python
@@ -37,7 +37,7 @@ print(f"{r['width']}x{r['height']} frames, "
 <!-- field-box id="cv_renderer" index="2" -->
 
 ```edn [field-box id="cv_renderer" role="properties"]
-{"id" "cv_renderer" "index" 2 "name" "0 · window" "parents" ["root"] "children" ["cv_camera" "cv_inset" "cv_overlay"] "properties" {"children" #{#afield/box "cv_camera" #afield/box "cv_inset" #afield/box "cv_overlay"} "parents" #{#afield/box "root"} "name" "0 · window" "_tombstone" false "frame" #afield/rect [40.0 40.0 260.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cv_renderer_code_.kt" "lines" 14 "characters" 280 "sha256" "a8748e49030fe553568abb5631049eeed12984c1aa5fc552bf3fb32f949bf99c"}]}
+{"id" "cv_renderer" "index" 2 "name" "0 · window" "parents" ["root"] "children" ["cv_camera" "cv_inset" "cv_overlay"] "properties" {"children" #{#afield/box "cv_camera" #afield/box "cv_inset" #afield/box "cv_overlay"} "parents" #{#afield/box "root"} "name" "0 · window" "_tombstone" false "frame" #afield/rect [40.0 40.0 260.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cv_renderer_code_.kt" "lines" 14 "characters" 279 "sha256" "43161e777be8d148c0a4f297d051bfeab6a8357d8d1334c0caf241796e88d246"}]}
 ```
 
 ```kotlin [field-property box="cv_renderer" name="code" path="cv_renderer_code_.kt"]
@@ -68,7 +68,7 @@ From `code`
 every polyline channel box 1 publishes, and the colour it is drawn in
 
 ```edn [field-box id="cv_overlay" role="properties"]
-{"id" "cv_overlay" "index" 3 "name" "lines (Kotlin)" "parents" ["root" "cv_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "cv_renderer"} "name" "lines (Kotlin)" "_tombstone" false "frame" #afield/rect [460.0 360.0 260.0 60.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "cv_overlay_vertex_.glsl" "lines" 8 "characters" 181 "sha256" "c4222f41dcce2fbab85e7adb89fe1b7b8c0e692f3194f1f48400981dd3179ac2"} {"name" "fragment" "language" "glsl" "path" "cv_overlay_fragment_.glsl" "lines" 6 "characters" 129 "sha256" "47627ad6bdc35ad421f1a7eb51a212f00b29bb4cec121d8ed03e5afb9bc14036"} {"name" "code" "language" "kotlin" "path" "cv_overlay_code_.kt" "lines" 51 "characters" 2122 "sha256" "3e49a71a1aa5d2f5c1c608aa2d517a791fb46d5975272596e632f449b93e4233"}]}
+{"id" "cv_overlay" "index" 3 "name" "lines (Kotlin)" "parents" ["root" "cv_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "cv_renderer"} "name" "lines (Kotlin)" "_tombstone" false "frame" #afield/rect [460.0 360.0 260.0 60.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "cv_overlay_vertex_.glsl" "lines" 8 "characters" 181 "sha256" "c4222f41dcce2fbab85e7adb89fe1b7b8c0e692f3194f1f48400981dd3179ac2"} {"name" "fragment" "language" "glsl" "path" "cv_overlay_fragment_.glsl" "lines" 6 "characters" 129 "sha256" "47627ad6bdc35ad421f1a7eb51a212f00b29bb4cec121d8ed03e5afb9bc14036"} {"name" "code" "language" "kotlin" "path" "cv_overlay_code_.kt" "lines" 49 "characters" 2053 "sha256" "b5bfe9ffe94a0f326b96316a9a9465fac88f9e492bef9856803d1ec54205accc"}]}
 ```
 
 ```glsl [field-property box="cv_overlay" name="vertex" path="cv_overlay_vertex_.glsl"]
@@ -93,16 +93,14 @@ void main() {
 
 ```kotlin [field-property box="cv_overlay" name="code" path="cv_overlay_code_.kt"]
 // every polyline channel box 1 publishes, and the colour it is drawn in
-val channels =
-    [
-            "tracks" to vec(0.2, 1.0, 0.3, 0.8),
-            "skeleton" to vec(1.0, 0.3, 0.8, 1.0),
-            "hands" to vec(1.0, 0.9, 0.2, 1.0),
-            "face" to vec(0.3, 0.9, 1.0, 0.9),
-            "contours" to vec(1.0, 0.55, 0.1, 1.0),
-            "strokes" to vec(1.0, 1.0, 1.0, 1.0),
-        ]
-        .map { (name, colour) -> NumpyShared.lines(name) to colour }
+val channels = [
+    "tracks" to vec(0.2, 1.0, 0.3, 0.8),
+    "skeleton" to vec(1.0, 0.3, 0.8, 1.0),
+    "hands" to vec(1.0, 0.9, 0.2, 1.0),
+    "face" to vec(0.3, 0.9, 1.0, 0.9),
+    "contours" to vec(1.0, 0.55, 0.1, 1.0),
+    "strokes" to vec(1.0, 1.0, 1.0, 1.0),
+].map { (name, colour) -> NumpyShared.lines(name) to colour }
 
 var module = moduleHere {}
 var m = Mesh()

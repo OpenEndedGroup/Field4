@@ -21,6 +21,8 @@ becomes a scene, a wall with one turning gold square, and plays in it. Select th
 **ctrl/command-4** to open AI4 chat. Configure an AI provider through Field's welcome page if you have
 not already; see [AI features](aiFeatures.md).
 
+![The scene box with its AI4 chat open: the request "Put two squares on the wall: a gold one turning slowly in the middle, and a smaller cool blue one beside it turning the other way", a filmstrip at 0, 2, 4 and 6 seconds of a gold square and a smaller blue one tilting in opposite directions, and the reply that both are added and the six-second loop is seamless](assets/rectsl_conversation/start-chat.png)
+
 The scene box edits its `rectSL` property, and the window follows every edit that compiles; a
 problem is marked on its line (`Unknown word: ->yy (did you mean '->xy' or '->y'?)`) and the window
 keeps the last scene that compiled. Running the box (ctrl/command-return) checks your scene in as a
@@ -30,9 +32,9 @@ it; running one again reopens the window. **Set Main Language: RectSL** on a box
 does the same, and every box beneath it is a scene.
 
 The recorded sessions below started from a blank wall.
-[Download that starter](assets/rectsl_conversation/rectsl_conversation.zip) to begin from the same
-place: unzip it into your Field workspace, keeping the `rectsl_conversation` folder intact, and open
-it. It has two boxes:
+[Open that starter](offline.html?zip=assets/rectsl_conversation/rectsl_conversation.zip) to begin
+from the same place: it opens in the document viewer, and **Open in Field·4** copies it into your
+workspace as a new document. It has two boxes:
 
 | Box | What it is |
 | --- | --- |

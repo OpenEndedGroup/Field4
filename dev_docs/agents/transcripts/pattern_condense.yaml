@@ -52,7 +52,7 @@ operations:
           val rows =
               rhythms.zip(found).joinToString("\n") { (source, c) ->
                   "| `$source` | `${c.notation}` | ${c.notation.length}/${c.flat.length} | " +
-                      "${"%.2f".format(c.compression)} | ${c.structure.joinToString(", ")} |"
+                      "${c.compression.f2} | ${c.structure.joinToString(", ")} |"
               }
 
           markdown(
@@ -139,10 +139,10 @@ operations:
               |---|---|
               | read as a single whole-span figure | **$named** |
               | of those, wrong | **$wrong** |
-              | median compression | ${"%.3f".format(median)} |
-              | the same number for `kolakoskiMask(16)` | ${"%.3f".format(structured)} |
+              | median compression | ${median.f3} |
+              | the same number for `kolakoskiMask(16)` | ${structured.f3} |
 
-              Noise compresses about ${"%.1f".format(median / structured)} times worse than the figure
+              Noise compresses about ${(median / structured).f1} times worse than the figure
               it is up against. That separation is the claim. If random masks compressed as well as
               structured ones, the search would be finding figures in nothing.
 
@@ -222,7 +222,7 @@ operations:
               | | |
               |---|---|
               | played | `$bar` |
-              | rendered | ${audio.mono.size} samples, ${"%.2f".format(audio.mono.size.toDouble() / PatSoundDocs.SR)} s |
+              | rendered | ${audio.mono.size} samples, ${(audio.mono.size.toDouble() / PatSoundDocs.SR).f2} s |
               | grid recovered | ${heard.grid?.describe() ?: "none"} |
               | heard | `${heard.miniNotation}` |
               | **condensed** | **`${condensed.notation}`** |

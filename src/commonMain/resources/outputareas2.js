@@ -1171,6 +1171,10 @@ function disclosureInterface(container) {
                                 subtree: true,
                                 characterData: true
                         });
+                        // Opening a <details> changes an attribute, which the observer above does not
+                        // watch, so the panel would keep its closed size and clip what just opened.
+                        // `toggle` does not bubble; listen in the capture phase.
+                        d.cw.addEventListener("toggle", () => markContentChanged(id, "toggle"), true);
                 }
 
                 if (!d.contentResizeObserver && typeof ResizeObserver !== "undefined") {

@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 4 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 4 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. Bubble against odd-even merge
@@ -147,7 +147,7 @@ display(
 <!-- field-box id="sorting_anneal_regimes" index="2" -->
 
 ```edn [field-box id="sorting_anneal_regimes" role="properties"]
-{"id" "sorting_anneal_regimes" "index" 2 "name" "Starting networks and schedules" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Starting networks and schedules" "_tombstone" false "frame" #afield/rect [1460.0 960.0 420.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sorting_anneal_regimes_code_.kt" "lines" 130 "characters" 4177 "sha256" "3d1cfe139ad4e7f65d30420f15400e1751c70a06024db6b69f0b3dfc5b7b81d4"}]}
+{"id" "sorting_anneal_regimes" "index" 2 "name" "Starting networks and schedules" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Starting networks and schedules" "_tombstone" false "frame" #afield/rect [1460.0 960.0 420.0 100.0] "autorun" false} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sorting_anneal_regimes_code_.kt" "lines" 128 "characters" 4034 "sha256" "d177fb78e4c6e370d4f2291d3b1fde7e47c20fad7abbe5bd4835d064430292ff"}]}
 ```
 
 ```kotlin [field-property box="sorting_anneal_regimes" name="code" path="sorting_anneal_regimes_code_.kt"]
@@ -174,34 +174,32 @@ val merge = SortingNetwork.oddEvenMerge(8)
 val mergeDense = SortingNetwork(
     8,
     merge.comparators +
-        [
+        listOf(
             SortingComparator(0, 1),
             SortingComparator(2, 3),
             SortingComparator(4, 5),
             SortingComparator(6, 7),
-        ],
+        ),
 )
 
-val configs =
-    [
-            Triple("bubble", SortingNetwork.bubble(8), "#8ad6ff"),
-            Triple("merge+", mergeDense, "#ffb857"),
-            Triple("merge", merge, "#94ffad"),
-        ]
-        .flatMapIndexed { familyIndex, (family, initial, hue) ->
-            [0.7 to 0.05, 1.5 to 0.02, 3.2 to 0.01].flatMapIndexed { tempIndex, (startTemp, endTemp) ->
-                (0 until 3).map { seed ->
-                    RunConfig(
-                        family = family,
-                        initial = initial,
-                        initialTemp = startTemp,
-                        finalTemp = endTemp,
-                        seed = (familyIndex * 100 + tempIndex * 10 + seed).toLong(),
-                        hue = hue,
-                    )
-                }
-            }
+val configs = [
+    Triple("bubble", SortingNetwork.bubble(8), "#8ad6ff"),
+    Triple("merge+", mergeDense, "#ffb857"),
+    Triple("merge", merge, "#94ffad"),
+].flatMapIndexed { familyIndex, (family, initial, hue) ->
+    [0.7 to 0.05, 1.5 to 0.02, 3.2 to 0.01].flatMapIndexed { tempIndex, (startTemp, endTemp) ->
+        (0 until 3).map { seed ->
+            RunConfig(
+                family = family,
+                initial = initial,
+                initialTemp = startTemp,
+                finalTemp = endTemp,
+                seed = (familyIndex * 100 + tempIndex * 10 + seed).toLong(),
+                hue = hue,
+            )
         }
+    }
+}
 
 val iterations = 2_000
 val progressEvery = 80

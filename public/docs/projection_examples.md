@@ -123,13 +123,13 @@ for (a in words.indices) for (b in 0 until a) {
     if (a / 5 == b / 5) within += distances[a][b] else between += distances[a][b]
 }
 println(
-    "input edit distance: within-family mean ${"%.3f".format(within.average())}, " +
-        "between-family mean ${"%.3f".format(between.average())} (smallest between-family ${between.min()})",
+    "input edit distance: within-family mean ${within.average().f3}, " +
+        "between-family mean ${between.average().f3} (smallest between-family ${between.min()})",
 )
-println("retained eigenvalues ${projection.scores.joinToString { "%.3f".format(it) }}")
+println("retained eigenvalues ${projection.scores.joinToString { it.f3 }}")
 println(
-    "plane vs input: r = ${"%.4f".format(projection.distanceCorrelation)}, " +
-        "stress-1 = ${"%.4f".format(projection.stress1)}",
+    "plane vs input: r = ${projection.distanceCorrelation.f4}, " +
+        "stress-1 = ${projection.stress1.f4}",
 )
 println(
     "nearest neighbour in own family: ${ownFamily(distances)}/20 by edit distance, " +
@@ -265,11 +265,11 @@ println(
         " (a shortcut between arms would be large); diameter ${hops.maxOf { it.max() }.toInt()} hops",
 )
 println("coordinate 1 vs position along the spiral, Spearman rho:")
-println("  from hop counts        ${"%.4f".format(StatsDependence.spearman(t, geodesicAxis))}")
-println("  from straight-line d   ${"%.4f".format(StatsDependence.spearman(t, straightAxis))}")
+println("  from hop counts        ${StatsDependence.spearman(t, geodesicAxis).f4}")
+println("  from straight-line d   ${StatsDependence.spearman(t, straightAxis).f4}")
 println(
-    "stress-1 against each fit's own matrix: hops ${"%.4f".format(geodesic.stress1)}, " +
-        "straight-line ${"%.4f".format(straight.stress1)}",
+    "stress-1 against each fit's own matrix: hops ${geodesic.stress1.f4}, " +
+        "straight-line ${straight.stress1.f4}",
 )
 :::fold the spiral and the two recovered coordinates
 val normalise = { values: DoubleArray ->
@@ -424,17 +424,17 @@ val recall = { coordinates: Array<DoubleArray>, k: Int ->
 }
 
 println(
-    "true    0-1 ${"%.3f".format(gap(vectors, 0, 1))}  0-2 ${"%.3f".format(gap(vectors, 0, 2))}  ratio ${"%.4f".format(ratio(vectors))}",
+    "true    0-1 ${gap(vectors, 0, 1).f3}  0-2 ${gap(vectors, 0, 2).f3}  ratio ${ratio(vectors).f4}",
 )
 println(
-    "MDS     0-1 ${"%.3f".format(gap(mds.coordinates, 0, 1))}  0-2 ${"%.3f".format(gap(mds.coordinates, 0, 2))}  ratio ${"%.4f".format(ratio(mds.coordinates))}",
+    "MDS     0-1 ${gap(mds.coordinates, 0, 1).f3}  0-2 ${gap(mds.coordinates, 0, 2).f3}  ratio ${ratio(mds.coordinates).f4}",
 )
 println(
-    "t-SNE   0-1 ${"%.3f".format(gap(tsne.coordinates, 0, 1))}  0-2 ${"%.3f".format(gap(tsne.coordinates, 0, 2))}  ratio ${"%.4f".format(ratio(tsne.coordinates))}",
+    "t-SNE   0-1 ${gap(tsne.coordinates, 0, 1).f3}  0-2 ${gap(tsne.coordinates, 0, 2).f3}  ratio ${ratio(tsne.coordinates).f4}",
 )
 println(
-    "10-nearest-neighbour recall: MDS ${"%.4f".format(recall(mds.coordinates, 10))}, " +
-        "t-SNE ${"%.4f".format(recall(tsne.coordinates, 10))}",
+    "10-nearest-neighbour recall: MDS ${recall(mds.coordinates, 10).f4}, " +
+        "t-SNE ${recall(tsne.coordinates, 10).f4}",
 )
 
 // Perplexity is the dial between the two, so sweep it rather than describing it.
@@ -445,7 +445,7 @@ val sweep =
     }
 sweep.forEach { (perplexity, gapRatio, knn) ->
     println(
-        "t-SNE perplexity ${"%.0f".format(perplexity)}: ratio ${"%.4f".format(gapRatio)}, recall ${"%.4f".format(knn)}",
+        "t-SNE perplexity ${perplexity.f0}: ratio ${gapRatio.f4}, recall ${knn.f4}",
     )
 }
 
@@ -457,8 +457,8 @@ val drift = { a: Array<DoubleArray>, b: Array<DoubleArray> ->
 }
 println("refit at the default seed: worst coordinate difference ${drift(tsne.coordinates, again.coordinates)}")
 println(
-    "refit at seed 7: worst coordinate difference ${"%.4f".format(drift(tsne.coordinates, other.coordinates))}, " +
-        "cost ${"%.4f".format(tsne.cost)} vs ${"%.4f".format(other.cost)}",
+    "refit at seed 7: worst coordinate difference ${drift(tsne.coordinates, other.coordinates).f4}, " +
+        "cost ${tsne.cost.f4} vs ${other.cost.f4}",
 )
 :::fold the two planes, side by side
 val palette = ["#7ad9ff", "#ff9e4a", "#8fff9a"]
@@ -489,12 +489,12 @@ display(
     "mds",
     panel(
         mds.coordinates,
-        "MDS: centre 0-2 is ${"%.2f".format(ratio(mds.coordinates))}x centre 0-1 (truth: ${"%.2f".format(ratio(vectors))}x)",
+        "MDS: centre 0-2 is ${ratio(mds.coordinates).f2}x centre 0-1 (truth: ${ratio(vectors).f2}x)",
     ),
 )
 display(
     "tsne",
-    panel(tsne.coordinates, "t-SNE, perplexity 30: the same ratio reads ${"%.2f".format(ratio(tsne.coordinates))}x"),
+    panel(tsne.coordinates, "t-SNE, perplexity 30: the same ratio reads ${ratio(tsne.coordinates).f2}x"),
 )
 :::endfold
 ```
@@ -611,7 +611,7 @@ val spectra =
 spectra.forEach { (result, refusal) ->
     val (correction, accepted, scores) = result
     println("positiveCorrection = $correction: largest usable dimensions = $accepted")
-    println("  spectrum ${scores.joinToString { "%.2f".format(it) }}")
+    println("  spectrum ${scores.joinToString { it.f2 }}")
     println("  $refusal")
 }
 
@@ -620,7 +620,7 @@ spectra.forEach { (result, refusal) ->
     val fit = smileMdsDistances(distances, dimensions = 2, positiveCorrection = correction)
     println(
         "two dimensions, positiveCorrection = $correction: " +
-            "r = ${"%.4f".format(fit.distanceCorrelation)}, stress-1 = ${"%.4f".format(fit.stress1)}",
+            "r = ${fit.distanceCorrelation.f4}, stress-1 = ${fit.stress1.f4}",
     )
 }
 :::fold the two spectra

@@ -87,8 +87,8 @@ up a straight path while a guide rail runs from 4 to 12 mm off the path; the rai
 surface: a loft through three spline sections, which leaves an open, wavy sheet rather than a solid.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/solidcraft/building-three-parts.png" alt="An output panel of three grey triangle meshes side by side, each with a fact line beneath it. Left, 'sweep with a flaring rail': a square-sectioned solid that widens evenly from 8 to 24 mm as it rises 60 mm, extent 24 × 24 × 60, volume 16640. Middle, 'trefoil knot from an FLine': a round tube tied in a three-lobed knot, passing over and under itself, its two capped ends meeting at a seam at the bottom; watertight, genus 0, volume 4507.8. Right, 'surface loft': a single wavy open sheet." wait="4" capture="box" open-outputs="true" padding="20" requires="solidcraft" name="building-three-parts" embed=true}
-import afield.geometry.solid.solidcraft.solidCraft
 import afield.geometry.path.FLine
+import afield.geometry.solid.solidcraft.solidCraft
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin

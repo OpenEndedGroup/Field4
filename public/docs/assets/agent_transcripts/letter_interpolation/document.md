@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. renderer
@@ -34,7 +34,7 @@ start(renderer::run)
 <!-- field-box id="li_fields" index="1" -->
 
 ```edn [field-box id="li_fields" role="properties"]
-{"id" "li_fields" "index" 1 "name" "train both letters" "parents" ["root" "li_renderer"] "children" ["li_sweep"] "properties" {"children" #{#afield/box "li_sweep"} "parents" #{#afield/box "root" #afield/box "li_renderer"} "name" "train both letters" "_tombstone" false "frame" #afield/rect [380.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "li_fields_code_.kt" "lines" 76 "characters" 3030 "sha256" "b25269e6ad36441565b7225531216db9038f16da47f6fb6656e12b1d670b021c"}]}
+{"id" "li_fields" "index" 1 "name" "train both letters" "parents" ["root" "li_renderer"] "children" ["li_sweep"] "properties" {"children" #{#afield/box "li_sweep"} "parents" #{#afield/box "root" #afield/box "li_renderer"} "name" "train both letters" "_tombstone" false "frame" #afield/rect [380.0 40.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "li_fields_code_.kt" "lines" 74 "characters" 2985 "sha256" "f52a99b415d3ba1030a2555512153eb11d9eaa8320fe59621d1dd7b03b4fcc24"}]}
 ```
 
 ```kotlin [field-property box="li_fields" name="code" path="li_fields_code_.kt"]
@@ -101,13 +101,11 @@ fun align(contour: List<Vec3>): List<Vec3> {
 
 // The same seed in both calls. Smile's Xavier initialisation is drawn from a generator
 // that `flowMatch` reseeds, so this really is the same starting point twice.
-fun train(target: List<Vec3>) =
-    flowMatch(
-            target,
-            source,
-            FlowMatchOptions(steps = 9000, coupling = FlowCoupling.PAIRED, seed = 7, hidden = intArrayOf(64, 64)),
-        )
-        .export()
+fun train(target: List<Vec3>) = flowMatch(
+    target,
+    source,
+    FlowMatchOptions(steps = 9000, coupling = FlowCoupling.PAIRED, seed = 7, hidden = intArrayOf(64, 64)),
+).export()
 
 fieldA = train(align(glyph(LETTERS.first)))
 fieldB = train(align(glyph(LETTERS.second)))

@@ -34,7 +34,7 @@ function build() {
         button("Latch", ()=>request("stop"), "profile-stop"));
     const stackLabel=el("label","profile-stack-toggle","JVM stacks ");const stacks=el("input");stacks.type="checkbox";stacks.id="profile-enable-stacks";stackLabel.prepend(stacks);stackLabel.title="Sample CPU and allocations across the JVM, including background threads and other documents";header.append(stackLabel);
     status=el("span", "profile-status", "Ready"); status.id="profile-status"; status.setAttribute("role","status"); header.append(status);
-    const closeButton=button("×",close,"profile-close");closeButton.className="macro-recorder-icon";closeButton.title="Close";closeButton.setAttribute("aria-label","Close profiling");
+    const closeButton=button("×",close,"profile-close");closeButton.className="field-panel-icon";closeButton.title="Close";closeButton.setAttribute("aria-label","Close");
     header.append(button("Save capture", save, "profile-save"), closeButton);
     const toolbar=el("div", "profile-toolbar");
     filter=el("input"); filter.type="search"; filter.placeholder="Find a box or coroutine"; filter.id="profile-filter"; filter.setAttribute("aria-label",filter.placeholder);

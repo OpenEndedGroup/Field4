@@ -39,14 +39,13 @@ Solid.scope {
     // The catalogue, and why the last two refusals are a different kind from the first two.
     println("The catalogue, in full — try each of these:")
     listOf<Pair<String, SolidExpr>>(
-            "smoothUnion(a, b, k)" to smoothUnion(sphere(1.0), cuboid(1.0, 1.0, 1.0), k = 0.2),
-            "gyroid()" to gyroid(),
-            "sphere(1).rounded(0.1)" to sphere(1.0).rounded(0.1),
-            "sphere(1).shelled(0.05)" to sphere(1.0).shelled(0.05),
-        )
-        .forEach { (label, e) ->
-            println("  %-24s %s".format(label, e.exactRefusal()!!.why.take(96) + "…"))
-        }
+        "smoothUnion(a, b, k)" to smoothUnion(sphere(1.0), cuboid(1.0, 1.0, 1.0), k = 0.2),
+        "gyroid()" to gyroid(),
+        "sphere(1).rounded(0.1)" to sphere(1.0).rounded(0.1),
+        "sphere(1).shelled(0.05)" to sphere(1.0).shelled(0.05),
+    ).forEach { (label, e) ->
+        println("  %-24s %s".format(label, e.exactRefusal()!!.why.take(96) + "…"))
+    }
     println()
     println("The last two are the interesting ones. They are NOT 'we did not get to it': an")
     println("exact-looking answer is available — Minkowski sum with a sphere — and it is the")
@@ -80,7 +79,7 @@ Solid.scope {
     println("hybrid  ${build.solid.triangleCount} triangles")
     println("naive   ${naive.triangleCount} triangles for the same shape at the same edge length")
     println(
-        "        — ${"%.2f".format(naive.triangleCount.toDouble() / build.solid.triangleCount)}x, and " +
+        "        — ${(naive.triangleCount.toDouble() / build.solid.triangleCount).f2}x, and " +
             "the plate's six faces stay six faces",
     )
     println()

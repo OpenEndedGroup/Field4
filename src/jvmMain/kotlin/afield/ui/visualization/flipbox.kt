@@ -101,7 +101,7 @@ private fun Marker.flipboxClicked() {
             if (block != null) Box.withBoxContextNow(box) { flipboxRun(block) }
         } catch (t: Throwable) {
             lprintln("warning,box", "flipbox ${name} in box ${box.id} threw: $t")
-            box.error("flipbox: $t", "code", locationInSource()?.line ?: -1)
+            box.displayError("flipbox: $t", "code", locationInSource()?.line ?: -1)
         } finally {
             flipboxDraw()
         }

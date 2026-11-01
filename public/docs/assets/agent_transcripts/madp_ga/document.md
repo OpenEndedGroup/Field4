@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 4 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 4 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. ga · run me
@@ -41,7 +41,7 @@ These two parents are the demo's starters. Edit them and run the box again (Alt+
 parents you pick are printed under the grid, ready to paste back in here.
 
 ```edn [field-box id="madp_ga_lead" role="properties"]
-{"id" "madp_ga_lead" "index" 0 "name" "ga · run me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "ga · run me" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "madp_ga_lead_notes_.md" "lines" 86 "characters" 4964 "sha256" "27470a954493906b457efb9d5c747b404d1f8e892fe046cc5b13d61302c662b2"} {"name" "code" "language" "kotlin" "path" "madp_ga_lead_code_.kt" "lines" 39 "characters" 1536 "sha256" "55d4513fc84b297a8bc7ea5ea4be5ce3699f56ee70d12335e89557ad82dfcaa7"}]}
+{"id" "madp_ga_lead" "index" 0 "name" "ga · run me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "ga · run me" "_tombstone" false "frame" #afield/rect [40.0 40.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "madp_ga_lead_notes_.md" "lines" 86 "characters" 4964 "sha256" "27470a954493906b457efb9d5c747b404d1f8e892fe046cc5b13d61302c662b2"} {"name" "code" "language" "kotlin" "path" "madp_ga_lead_code_.kt" "lines" 38 "characters" 1516 "sha256" "64171412dd8bd174c47c3629632bf75198a0e0642b9b973d005bf991aa28e8d6"}]}
 ```
 
 ```markdown [field-property box="madp_ga_lead" name="notes" path="madp_ga_lead_notes_.md"]
@@ -157,22 +157,21 @@ An empty stack reads 0.5 and unknown words are skipped, so every program draws s
 These two parents are the demo's starters. Edit them and run the box again (Alt+Enter); the
 parents you pick are printed under the grid, ready to paste back in here.
 */
-val ga =
-    colorRpnEvolution(
-        """
+val ga = colorRpnEvolution(
+    """
     x 9 * sin 0.18 +
     y 0.55 +
     0.62
     hsl
     """,
-        """
+    """
     a 14 * cos 0.14 +
     r 0.78 * 0.12 +
     0.48
     hsl
     """,
-        ColorRpnBreeding(mutationRate = 0.12, targetLength = 18),
-    )
+    ColorRpnBreeding(mutationRate = 0.12, targetLength = 18),
+)
 ```
 
 ## 2. fbm bands × noise hues

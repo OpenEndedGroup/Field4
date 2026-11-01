@@ -279,3 +279,14 @@ the same way (`MissingInheritedPropertyCountTest`).
 - Ctrl-C in a real terminal. There the JVM is in the foreground process group, receives SIGINT
   itself, and also gets SIGTERM from `field.sh`'s trap.
 - Windows. `InterruptSignal` does nothing there.
+
+## Template inserts (backlog N1030-4 d, 2026-10-31)
+
+The templates guide recorded a template insert on disk in only 2 of 4 runs. Re-measured on port
+9540 (backdoor-managed): a fresh document, a warm `Killer` box, `raw-send insert-template` of a
+personal template, then `Killer` sending `kill -INT` to its own JVM 4 ms after the insert was
+dispatched (plus one compile). The inserted box was in `metadata.edn` in 4 of 4 trials. Insertion
+marks the document pending like any box creation, so the shutdown flush saves it:
+`AutosaveDirtyTrackingTest.aTemplateInsertIsSaved` inserts through `insertTemplateInto` and runs
+only the flush. Verdict: no loss on this path. The earlier 2 of 4 was not reproduced; its runs
+were not recorded closely enough to say which document they read.

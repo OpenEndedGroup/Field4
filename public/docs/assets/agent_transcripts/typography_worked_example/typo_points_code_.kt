@@ -8,7 +8,7 @@ val coarse = layout.samplePoints(spacing = 18.0)
 val fine = layout.samplePoints(spacing = 4.5)
 println(
     "spacing 18 -> ${coarse.size} points, spacing 4.5 -> ${fine.size} points " +
-        "(${"%.2f".format(fine.size.toDouble() / coarse.size)}x for 4x finer)",
+        "(${(fine.size.toDouble() / coarse.size).f2}x for 4x finer)",
 )
 
 // Delaunay over the outline samples: the triangulation of a word.
@@ -21,7 +21,7 @@ val km = vec2KMedoids(coarse, k = 6, options = KMedoidsOptions(randomSeed = 11L)
 val layer = ClusterLayer("outline strokes", km.labels)
 println(
     "k-medoids k=6: sizes ${km.labels.toList().groupingBy { it }.eachCount().values.sorted()}, " +
-        "distortion ${"%.1f".format(km.distortion)}, converged ${km.converged}",
+        "distortion ${km.distortion.f1}, converged ${km.converged}",
 )
 
 // Every panel shares one window, so the four views of the same word line up.

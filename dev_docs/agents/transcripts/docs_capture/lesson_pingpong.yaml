@@ -1,0 +1,223 @@
+name: lesson_pingpong
+description: >
+  The ping-pong render-to-texture lessons of canonical_graphics, rebuilt from their sidecars: window, 5. PingPongTT, 5. draw pingpoing. For the docs video the window is smaller.
+docs:
+  - page: afield_four_graphics.md
+    why: "Rebuilds the lesson chain this page captures, from the canonical_graphics sidecars."
+operations:
+  - create:
+      box: lesson_pingpong_0
+      name: 'window'
+      frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          /*
+          The renderer window: the parent box every graphics lesson runs beneath.
+
+          It opens a native Window, builds a Renderer for it and runs the frame loop. Connect a lesson box below
+          this one and that box can use `renderer` directly; the two `prop` lines below publish `window` and
+          `renderer` to every box beneath this one in the graph.
+          */
+          import afield.graphics.vulkan.util.Options
+
+          prop<Window>(window)
+          prop<Renderer>(renderer)
+
+          // Ask for an HDR swapchain where the display supports one.
+          Options.enableHDR = true
+
+          // `once` builds the Window and Renderer the first time this box runs and keeps them on later runs, so
+          // re-running the box does not open a second window.
+          once.renderer {
+              window = Window("Field", initialDimensions = Rect(80.0, 80.0, 640.0, 393.0))
+              Renderer(window)
+          }
+
+          // Run the renderer's frame loop until this box is stopped.
+          start(renderer::run)
+  - create:
+      box: lesson_pingpong_1
+      name: '5. PingPongTT'
+      frame: { x: 40.0, y: 200.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          /*
+          Ping-pong render to texture: feedback from one frame to the next.
+
+          A pass cannot read the image it is writing, so PingPongRenderToTexture keeps two images and swaps
+          their roles every frame. The fragment shader (open "fragment" in the property switcher) samples
+          last frame's image as `otherView`, blurs and fades it a little, and stamps a moving dot into it, so
+          the dot leaves a trail that spreads out and dies away. The child box `5. draw pingpoing` displays it.
+          Run this box beneath the renderer (`window`) box.
+          */
+          import org.lwjgl.vulkan.VK10.*
+
+          prop<PingPongRenderToTexture>(target) = PingPongRenderToTexture {
+              clearFirst = false
+              useDepth = false
+          }
+
+          // The image that is not being drawn into this frame, i.e. the previous frame's result.
+          prop<HasImageView>(otherView) = target.otherImageView
+
+          renderer.renderList += "target" to target
+
+          var module = moduleHere {
+              /*
+              A disabled alternative: a 16-bit float colour format for the module.
+               imageFormat = VK_FORMAT_R16G16B16A16_SFLOAT
+              Match this module's attachments to the target it draws into.
+              */
+              +target
+          }
+          var m = Mesh()
+          module += "mainMesh" to m
+          target += "boo" to module
+
+          // The shaders read this push constant to move the dot. It advances a fixed 1/60 s each frame rather
+          // than following the clock, so a slow frame slows the animation instead of making it jump.
+          var time = 0f
+          m.time = {
+              time += 1f / 60
+              time
+          }
+
+          // One triangle covering the target in clip space (the vertex shader ignores any camera).
+          m.set(3, 1) {
+              pos.add(-1, -1, 0, 3, -1, 0, -1, 3, 0)
+              tri.add(0, 1, 2)
+          }
+        vertex: |
+          #version 450
+          layout (location = 0) in vec3 pos;
+
+          layout(push_constant) uniform matrices {
+              float time;
+          } pc;
+
+          void main()
+          {
+              // One triangle that covers the whole target, in clip space: no camera, so every pixel is drawn.
+              gl_Position = vec4(pos.xy, 0, 1);
+          }
+        fragment: |
+          #version 450
+          layout(location = 0) out vec4 uFragColor;
+
+          layout(push_constant) uniform matrices {
+              float time;
+          } pc;
+
+          layout(set=0, binding = 0) uniform sampler2D otherView;
+
+          void main()
+          {
+              // 1024 is the target's default size, so this maps pixels to texture coordinates.
+              vec2 tc = gl_FragCoord.xy / 1024.0;
+              vec2 px = vec2(1.0 / 1024.0);
+
+              // Last frame, blurred hard and faded a little: a 3 x 3 kernel reaching 5 pixels out each way, so
+              // whatever was drawn spreads out visibly from one frame to the next and slowly dies away.
+              vec3 c = vec3(0);
+              float total = 0.0;
+              for (int y = -1; y <= 1; y++)
+                  for (int x = -1; x <= 1; x++) {
+                      float w = (x == 0 && y == 0) ? 4.0 : ((x == 0 || y == 0) ? 2.0 : 1.0);
+                      c += w * texture(otherView, tc + 5.0 * px * vec2(x, y)).rgb;
+                      total += w;
+                  }
+              c = c / total * 0.996;
+
+              // A dot moving on a Lissajous path, its colour cycling, stamped into the feedback every frame.
+              vec2 at = vec2(0.5) + 0.32 * vec2(cos(pc.time * 0.9), sin(pc.time * 1.3));
+              vec3 ink = 0.5 + 0.5 * cos(pc.time + vec3(0, 2, 4));
+              c = max(c, ink * smoothstep(0.025, 0.0, length(tc - at)));
+
+              uFragColor = vec4(c, 1.0);
+          }
+  - create:
+      box: lesson_pingpong_2
+      name: '5. draw pingpoing'
+      frame: { x: 40.0, y: 360.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          /*
+          Display a ping-pong target. Run this box as a child of `5. PingPongTT`, whose `target` it reads.
+
+          A ping-pong target is two images, so its halves are handed out as HasImageView rather than as a
+          RenderToTexture. thisImageView is the half most recently written; it is bound to the fragment
+          shader's `sampler2D bbc` (open "fragment" in the property switcher).
+          */
+          prop<HasImageView>(bbc) = target.thisImageView
+
+          var module = moduleHere()
+          var mesh = Mesh()
+          module += "mainMesh" to mesh
+          renderer += "boo" to module
+
+          val camera = Camera()
+          // The quad runs from (-1, -1) to (1, 1): close enough that it fills the window.
+          camera.at = vec(0, 0, -1.6)
+          mesh.p = camera.p
+          mesh.m = camera.m
+
+          var kc by keyCamera(camera = camera)
+          // A textured quad from (-1, -1) to (1, 1).
+          mesh.set(4, 2) {
+              val z = 0.0
+              pos.add(
+                  -1,
+                  -1,
+                  z,
+                  1.0,
+                  -1.0,
+                  z,
+                  1,
+                  1,
+                  z,
+                  -1.0,
+                  1,
+                  z,
+              )
+              tc.add(0, 0, 1, 0, 1, 1, 0, 1)
+              tri.add(0, 1, 2)
+              tri.add(0, 2, 3)
+          }
+        vertex: |
+          #version 450
+          layout (location = 0) in vec3 pos;
+          layout (location = 1) in vec2 tc;
+
+          layout (location = 1) out vec2 ftc;
+
+          layout(push_constant) uniform matrices {
+              mat4 p;
+              mat4 m;
+          } pc;
+
+          void main()
+          {
+              gl_Position = pc.p * pc.m * vec4(pos, 1);
+              ftc = tc;
+          }
+        fragment: |
+          #version 450
+          layout(location = 0) out vec4 uFragColor;
+          layout(location = 1) in vec2 ftc;
+
+          layout(set=0, binding = 0) uniform sampler2D bbc;
+
+          void main()
+          {
+              // ftc.yx swaps the texture coordinates, which transposes the image on the quad.
+              vec4 c = texture(bbc, ftc.yx);
+              uFragColor = vec4(c.rgb, 1.0);
+          }
+  - connect: { parent: lesson_pingpong_0, child: lesson_pingpong_1 }
+  - connect: { parent: lesson_pingpong_1, child: lesson_pingpong_2 }
+  - launch: { box: lesson_pingpong_0, property: code, strand: renderer }
+  - await: {}
+  - launch: { box: lesson_pingpong_1, property: code }
+  - await: {}
+  - launch: { box: lesson_pingpong_2, property: code }
+  - await: {}

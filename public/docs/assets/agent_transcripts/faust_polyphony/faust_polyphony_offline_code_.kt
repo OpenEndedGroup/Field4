@@ -7,9 +7,8 @@ and what you get is one continuous tone with a single attack — which sounds wr
 makes an onset detector report envelope ripple as notes. FAUST_PATTERN_SUSTAIN defaults to 0.9
 for exactly that reason.
 */
-val render =
-    showFaustPattern(
-        """
+val render = showFaustPattern(
+    """
 #faust
 import("stdfaust.lib");
 cutoff = hslider("cutoff [unit:Hz]", 2600, 120, 9000, 1);
@@ -20,13 +19,13 @@ env = en.adsr(0.004, 0.09, 0.55, 0.03, gate);
 process = (os.sawtooth(freq) + os.sawtooth(freq * 1.005)) * 0.5
         : fi.resonlp(cutoff, 1.4, 1) * env * gain <: _,_;
 """,
-        pat("c4 ef4 g4 bf4 c5 bf4 g4 ef4"),
-        cycles = 2,
-        cps = 1.0,
-        voices = 8,
-        sustain = 0.55,
-        automate = mapOf("cutoff" to pat("900 2600 1400 5200").nums()),
-    )
+    pat("c4 ef4 g4 bf4 c5 bf4 g4 ef4"),
+    cycles = 2,
+    cps = 1.0,
+    voices = 8,
+    sustain = 0.55,
+    automate = mapOf("cutoff" to pat("900 2600 1400 5200").nums()),
+)
 
 println(
     render.notes.size.toString() +

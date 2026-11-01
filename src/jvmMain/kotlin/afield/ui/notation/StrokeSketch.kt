@@ -431,7 +431,7 @@ class StrokeSketch internal constructor(val info: SessionInformation) {
         val message = t.message ?: t.toString()
         if (message != stroke.lastError) {
             stroke.lastError = message
-            stroke.box.error("stroke ${stroke.index} threw: $message")
+            stroke.box.displayError("stroke ${stroke.index} threw: $message")
         }
         null
     }

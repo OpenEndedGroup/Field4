@@ -5,25 +5,37 @@ import java.io.File
 import kotlin.system.exitProcess
 
 /**
- * Checks that each loadable document under `dev_docs/agents/demos/` agrees with the loose source
- * files beside it.
+ * Checks that each committed, authored document agrees with the loose source files beside it: every
+ * document under `dev_docs/agents/demos/`, and every document directly under [AUTHORED_ROOTS] that
+ * carries inline copies.
  *
  * A `#afield/file-inline` property has two copies: the fallback embedded in `metadata.edn`, and the
- * loose file beside it. Field prefers the loose file, so an edited demo can run correctly while the
- * metadata that is supposed to be canonical stays stale. This guard compares the two
- * byte-for-byte. `--write` refreshes the inline fallbacks through the EDN codec in [SavingContext].
+ * loose file beside it. Field loads the loose file, unless `metadata.edn` is the newer of the two and
+ * says something else ([SavingContext.sidecarOrNewerInline] takes that as a hand edit of the inline
+ * copy). So a stale inline copy is a trap: an edited sidecar runs fine until someone touches
+ * `metadata.edn` for any other reason, and from then on the old code loads instead. On 2026-10-31
+ * that put the Khronos `Box.gltf` lesson back into canonical_graphics, whose inline copies were stale
+ * for 77 sidecars. This guard compares the two byte-for-byte. `--write` refreshes the inline
+ * fallbacks through the EDN codec in [SavingContext].
  *
  * `--write` rewrites `metadata.edn` for every document it visits, and re-encoding is not always
  * byte-identical to what is committed — a hand-edited artifact can carry `\uXXXX` escapes that the
  * codec re-emits as the literal character. That turns "add one demo" into a diff against unrelated
  * documents, which is an invitation to a merge conflict between two branches that each added one.
- * `--only <document>[,<document>…]` narrows the run to the documents named after the directory
- * under `dev_docs/agents/demos`, so adding a demo touches that demo alone.
+ * `--only <document>[,<document>…]` narrows the run to the documents named, by directory name or by
+ * path from the checkout root, so adding a demo touches that demo alone.
  */
 
-/** Compares each demo's `#afield/file-inline` fallbacks with the loose files beside them. */
+/** Compares each authored document's `#afield/file-inline` fallbacks with the loose files beside them. */
 object AgentDemoDriftGuard {
     private const val DEMOS_REL = "dev_docs/agents/demos"
+
+    /**
+     * Authored documents outside the demo corpus. Generated copies (`public/docs/assets/web_publications`,
+     * `public/docs/assets/agent_transcripts`) sit one level deeper and are written by Field, so they are
+     * not visited.
+     */
+    private val AUTHORED_ROOTS = listOf("public/docs/assets", "templates", "tools/presentation/example")
 
     private const val USAGE = "usage: AgentDemoDriftGuard [--write] [--only <document>[,<document>...]]"
 
@@ -51,11 +63,21 @@ object AgentDemoDriftGuard {
         val root = repoRoot()
         val demosRoot = File(root, DEMOS_REL)
         require(demosRoot.isDirectory) { "no agent demo directory at ${demosRoot.absolutePath}" }
-        val all = (demosRoot.listFiles() ?: emptyArray())
+        val demoDocuments = (demosRoot.listFiles() ?: emptyArray())
             .filter { it.isDirectory && File(it, SavingContext.METADATA_EDN).isFile }
             .sortedBy { it.name }
-        require(all.isNotEmpty()) { "no Field documents under ${demosRoot.absolutePath}" }
-        val demos = select(all, only)
+        require(demoDocuments.isNotEmpty()) { "no Field documents under ${demosRoot.absolutePath}" }
+        // A document outside the demo corpus need not have sidecars at all; only one that has them can drift.
+        val authored = AUTHORED_ROOTS.flatMap { rel ->
+            (File(root, rel).listFiles() ?: emptyArray())
+                .filter { File(it, SavingContext.METADATA_EDN).let { m -> m.isFile && "#afield/file-inline" in m.readText() } }
+                .sortedBy { it.name }
+        }
+        val all = demoDocuments + authored
+        val demos = select(root, all, only)
+        // A demo keeps every sidecar beside it. Another document may hold a property only inline (no file
+        // beside it), which is what Field then loads; with one copy there is nothing to drift.
+        fun inlineOnlyAllowed(document: File) = document !in demoDocuments
 
         val saving = SavingContext()
         if (write) {
@@ -67,12 +89,12 @@ object AgentDemoDriftGuard {
                 System.err.println("AgentDemoDriftGuard: refusing to regenerate over edits made in metadata.edn:")
                 lost.forEach { System.err.println("  - $it") }
                 System.err.println("Make the edit in the named sidecar (or in Field), restore metadata.edn " +
-                    "(git checkout -- <demo>/metadata.edn), then regenerate.")
+                    "(git checkout -- <document>/metadata.edn), then regenerate.")
                 exitProcess(1)
             }
             demos.forEach { demo ->
-                val refreshed = saving.refreshInlineFilesFromDisk(demo.absolutePath)
-                println("[regenerate] ${demo.name}: ${refreshed.size} inline file(s)")
+                val refreshed = saving.refreshInlineFilesFromDisk(demo.absolutePath, inlineOnlyAllowed(demo))
+                println("[regenerate] ${label(root, demo)}: ${refreshed.size} inline file(s)")
             }
         }
 
@@ -82,18 +104,19 @@ object AgentDemoDriftGuard {
             val documentRoot = demo.canonicalFile.toPath().normalize()
             val snapshots = saving.readInlineFileSnapshots(demo.absolutePath)
             if (snapshots.isEmpty()) {
-                problems += "${demo.name}: metadata.edn has no #afield/file-inline properties"
+                problems += "${label(root, demo)}: metadata.edn has no #afield/file-inline properties"
                 continue
             }
             inlineFiles += snapshots.size
             for (snapshot in snapshots) {
                 val target = File(demo, snapshot.path).canonicalFile
                 if (!target.toPath().normalize().startsWith(documentRoot)) {
-                    problems += "${demo.name}/${snapshot.boxId}.${snapshot.property}: path escapes the demo (${snapshot.path})"
+                    problems += "${label(root, demo)}/${snapshot.boxId}.${snapshot.property}: path escapes the demo (${snapshot.path})"
                     continue
                 }
                 if (!target.isFile) {
-                    problems += "${demo.name}/${snapshot.boxId}.${snapshot.property}: missing ${snapshot.path}"
+                    if (inlineOnlyAllowed(demo)) continue
+                    problems += "${label(root, demo)}/${snapshot.boxId}.${snapshot.property}: missing ${snapshot.path}"
                     continue
                 }
                 val loose = target.readText()
@@ -102,7 +125,7 @@ object AgentDemoDriftGuard {
                     val looseLines = loose.lines()
                     val at = (0 until maxOf(inlineLines.size, looseLines.size))
                         .firstOrNull { inlineLines.getOrNull(it) != looseLines.getOrNull(it) } ?: 0
-                    problems += "${demo.name}/${snapshot.boxId}.${snapshot.property}: ${snapshot.path} " +
+                    problems += "${label(root, demo)}/${snapshot.boxId}.${snapshot.property}: ${snapshot.path} " +
                         "differs from metadata.edn at line ${at + 1} — the sidecar is the copy to edit; " +
                         "regenerating copies it into metadata.edn\n" +
                         "      metadata: ${inlineLines.getOrNull(at)}\n" +
@@ -117,11 +140,11 @@ object AgentDemoDriftGuard {
             // with it modified. Require the committed bytes to be the codec's own output, so a
             // regenerate on a clean tree is a no-op and a demo cannot go back to hand-spelled EDN.
             val committed = File(demo, SavingContext.METADATA_EDN).readText()
-            val canonical = saving.canonicalInlineMetadata(demo.absolutePath).metadataEdn
+            val canonical = saving.canonicalInlineMetadata(demo.absolutePath, inlineOnlyAllowed(demo)).metadataEdn
             if (committed != canonical) {
                 val at = (0 until maxOf(committed.length, canonical.length))
                     .firstOrNull { committed.getOrNull(it) != canonical.getOrNull(it) } ?: 0
-                problems += "${demo.name}: metadata.edn is not what Field's EDN codec writes, " +
+                problems += "${label(root, demo)}: metadata.edn is not what Field's EDN codec writes, " +
                     "first difference at character ${at + 1}\n" +
                     "      committed: ${excerpt(committed, at)}\n" +
                     "      codec:     ${excerpt(canonical, at)}"
@@ -156,7 +179,7 @@ object AgentDemoDriftGuard {
             val sidecar = File(demo, snapshot.path)
             if (!sidecar.isFile || sidecar.readText() == snapshot.inline) return@mapNotNull null
             if (changed(sidecar) != false) return@mapNotNull null
-            "${demo.name}/${snapshot.boxId}.${snapshot.property}: edit ${demo.name}/${snapshot.path}, not metadata.edn"
+            "${label(root, demo)}/${snapshot.boxId}.${snapshot.property}: edit ${label(root, demo)}/${snapshot.path}, not metadata.edn"
         }
     }
 
@@ -172,16 +195,27 @@ object AgentDemoDriftGuard {
     private fun splitNames(raw: String): List<String> =
         raw.split(',').map(String::trim).filter(String::isNotEmpty)
 
-    /** Resolves `--only` names against the documents on disk, naming the alternatives on a typo. */
-    private fun select(all: List<File>, only: Set<String>): List<File> {
+    /** How messages name [document]: a demo by its directory, any other document by its path from [root]. */
+    private fun label(root: File, document: File): String =
+        if (document.parentFile.name == File(DEMOS_REL).name) document.name else document.relativeTo(root).path
+
+    /**
+     * Resolves `--only` names, each a directory name or a path from [root], against the documents on
+     * disk, naming the alternatives on a typo and refusing a directory name two documents share.
+     */
+    private fun select(root: File, all: List<File>, only: Set<String>): List<File> {
         if (only.isEmpty()) return all
-        val byName = all.associateBy { it.name }
-        val unknown = only - byName.keys
-        require(unknown.isEmpty()) {
-            "no such demo document: ${unknown.joinToString(", ")} — " +
-                "have ${all.joinToString(", ") { it.name }}"
-        }
-        return all.filter { it.name in only }
+        val chosen = only.map { name ->
+            val matches = all.filter { it.name == name || it.relativeTo(root).path == name }
+            require(matches.isNotEmpty()) {
+                "no such document: $name — have ${all.joinToString(", ") { label(root, it) }}"
+            }
+            require(matches.size == 1) {
+                "$name names ${matches.size} documents (${matches.joinToString(", ") { it.relativeTo(root).path }}); give its path"
+            }
+            matches.single()
+        }.toSet()
+        return all.filter { it in chosen }
     }
 
     private fun repoRoot(): File {

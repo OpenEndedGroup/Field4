@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 1 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 1 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. Kratos parameter study
@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="kratos_study" index="0" -->
 
 ```edn [field-box id="kratos_study" role="properties"]
-{"id" "kratos_study" "index" 0 "name" "Kratos parameter study" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Kratos parameter study" "_tombstone" false "frame" #afield/rect [60.0 60.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kratos_study_code_.kt" "lines" 247 "characters" 11590 "sha256" "64dd4e4c543a961a254ee6d847dbf014b048d19126fd8357625a8738472764e5"}]}
+{"id" "kratos_study" "index" 0 "name" "Kratos parameter study" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Kratos parameter study" "_tombstone" false "frame" #afield/rect [60.0 60.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kratos_study_code_.kt" "lines" 247 "characters" 11484 "sha256" "cd17edc62c721d2777d08d788683665c1dbc7fb76192676695978ca4bdf73498"}]}
 ```
 
 ```kotlin [field-property box="kratos_study" name="code" path="kratos_study_code_.kt"]
@@ -200,11 +200,11 @@ frames {
                             """
                             ### Best design
 
-                            - Arm ${"%.3f".format(design.armEnd)} m · conductivity ${"%.3f".format(design.conductivity)} W/(m K)
-                            - Probe ${"%.4f".format(probe)} K · asked for ${"%.2f".format(target)} K · miss ${"%.4f".format(winner.objective ?: Double.NaN)} K
-                            - Peak in the part ${"%.4f".format(peak)} K
-                            - Closed form says this arm wants k = ${if (predicted == null) "?" else "%.3f".format(predicted)} W/(m K)
-                            - ${study.solveCount} solves · ${study.cacheHits} served from cache · mean ${"%.0f".format(study.meanSolveMs)} ms
+                            - Arm ${design.armEnd.f3} m · conductivity ${design.conductivity.f3} W/(m K)
+                            - Probe ${probe.f4} K · asked for ${target.f2} K · miss ${(winner.objective ?: Double.NaN).f4} K
+                            - Peak in the part ${peak.f4} K
+                            - Closed form says this arm wants k = ${if (predicted == null) "?" else predicted.f3} W/(m K)
+                            - ${study.solveCount} solves · ${study.cacheHits} served from cache · mean ${study.meanSolveMs.f0} ms
                         """
                                 .trimIndent() +
                                 (landscape?.let { "\n- ${it.feasible.size}/${it.samples.size} feasible" } ?: "") +
@@ -233,7 +233,7 @@ frames {
 
                 Background ${mdEscape(worker.domain.id)} · builds ${worker.domain.buildCount} · ${worker.domain.nodeCount} nodes · ${worker.domain.cellCount} tetrahedra
 
-                Asking for ${"%.2f".format(values[1])} K at (${KratosStudyDemo.PROBE.x}, ${KratosStudyDemo.PROBE.y}, ${KratosStudyDemo.PROBE.z}) m
+                Asking for ${values[1].f2} K at (${KratosStudyDemo.PROBE.x}, ${KratosStudyDemo.PROBE.y}, ${KratosStudyDemo.PROBE.z}) m
 
                 $resultText
 

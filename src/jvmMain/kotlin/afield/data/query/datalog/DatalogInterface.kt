@@ -106,9 +106,9 @@ class DatalogExecution(val inside: Box) : BoxExecution {
                 ok = true
             } catch (e: DlException) {
                 val line = if (e.line >= 0) execute.line + e.line - 1 else execute.line
-                inside.error(e.message ?: "datalog error", line = line, property = "code")
+                inside.displayError(e.message ?: "datalog error", line = line, property = "code")
             } catch (e: Throwable) {
-                inside.error(e.message ?: e.javaClass.simpleName, line = execute.line, property = "code")
+                inside.displayError(e.message ?: e.javaClass.simpleName, line = execute.line, property = "code")
             } finally {
                 trace.finish(ok)
                 send(Message("is-running").payload(IsRunning(execute.uid, false, watermark, "__fragment__")))

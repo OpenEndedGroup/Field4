@@ -227,7 +227,7 @@ class FieldMLInteropTest {
             displays += channel to message
         }
 
-        override fun error(message: Any?, property: String, line: Int) {
+        override fun displayError(message: Any?, property: String, line: Int) {
             errors += message
         }
     }

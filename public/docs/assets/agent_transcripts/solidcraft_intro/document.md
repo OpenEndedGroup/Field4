@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 1 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 1 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. SolidCraft — a parameter changes the part
@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="solidcraft_compare" index="0" -->
 
 ```edn [field-box id="solidcraft_compare" role="properties"]
-{"id" "solidcraft_compare" "index" 0 "name" "SolidCraft — a parameter changes the part" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "SolidCraft — a parameter changes the part" "_tombstone" false "frame" #afield/rect [80.0 80.0 500.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "solidcraft_compare_code_.kt" "lines" 44 "characters" 1887 "sha256" "2c63f8d297c7fb8e5d70440d2a6e48c643de02296d7a69fdfece3d35d0b90137"}]}
+{"id" "solidcraft_compare" "index" 0 "name" "SolidCraft — a parameter changes the part" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "SolidCraft — a parameter changes the part" "_tombstone" false "frame" #afield/rect [80.0 80.0 500.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "solidcraft_compare_code_.kt" "lines" 43 "characters" 1847 "sha256" "48b4f0503a0b510bb47cc5752eb6a187555bc262056d60bfe7b1ee119cafc1b0"}]}
 ```
 
 ```kotlin [field-property box="solidcraft_compare" name="code" path="solidcraft_compare_code_.kt"]
@@ -42,8 +42,7 @@ run {
         val after = part.mesh(tolerance = tolerance).toTriMesh().weld()
 
         println(
-            "B-rep volume: ${"%.1f".format(original.getDouble("volume"))} → " +
-                "${"%.1f".format(changed.getDouble("volume"))} mm³",
+            "B-rep volume: ${original.getDouble("volume").f1} → " + "${changed.getDouble("volume").f1} mm³",
         )
         println("STEP ${part.exportStep().size} bytes; STL ${part.exportStl().size} bytes")
         println("The hole is blind at width > 40 mm: its cut depth stays 20 mm.")

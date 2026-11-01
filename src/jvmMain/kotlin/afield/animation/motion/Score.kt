@@ -163,7 +163,7 @@ class ScoreTransport internal constructor(
                 val message = t.message ?: t.toString()
                 if (message != b.lastError) {
                     b.lastError = message
-                    b.box.error("score { } threw: $message")
+                    b.box.displayError("score { } threw: $message")
                 }
             }
             if (exited) b.subdivisions.clear()

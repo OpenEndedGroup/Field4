@@ -133,7 +133,7 @@ ${row("linear blend, 179.9°", 179.9f, SkinningMethod.LINEAR_BLEND)}
 ${row("linear blend, 180°", 180f, SkinningMethod.LINEAR_BLEND)}
 ${row("dual quaternion, 180°", 180f, SkinningMethod.DUAL_QUATERNION)}
 
-Closed forms: rest ${CappedTwistFixture.REST_VOLUME}; linear blend at 180°, 0.75 × (2 + 2/3) = ${"%.6f".format(0.75 * (2.0 + 2.0 / 3.0))}.
+Closed forms: rest ${CappedTwistFixture.REST_VOLUME}; linear blend at 180°, 0.75 × (2 + 2/3) = ${(0.75 * (2.0 + 2.0 / 3.0)).f6}.
 """,
     width = 1000,
 )

@@ -244,11 +244,11 @@ FieldML box.
 
 ## Limits
 
-A FieldML body cannot call `Frames.frame()`. You can pass FieldML functions to Kotlin functions
-that take a `suspend` block, such as `eachFrame`, `loop`, `forever` and `animate`, and they run every
-frame. This works because a FieldML body never suspends. `Frames.frame()` suspends, so FieldML
-refuses to call it, and `frames { }`, whose body is expected to call `frame()` itself, cannot take a
-FieldML function. See the [FieldML JVM Bridge](fieldml_host_bridge.md).
+A FieldML function that Kotlin calls as a `suspend` block, such as the body of `frames`, `eachFrame`,
+`loop` or `animate`, can wait. `hostAwait "frame" () f` calls `Frames.frame()` and continues on the
+next line one frame later, and `hostAwait "delay" 40 f` continues 40 ms later. A function called from
+inside an ordinary Kotlin callback, such as the function you give `map`, cannot wait, and `hostAwait`
+there stops the box with an error saying so. See the [FieldML JVM Bridge](fieldml_host_bridge.md#waiting-inside-a-frames-body).
 
 There is no stage after core: no bytecode and no optimiser. The evaluator walks the core tree
 directly, which is why a box responds to an edit immediately. For code that needs to be fast, call

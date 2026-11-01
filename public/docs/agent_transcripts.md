@@ -1,6 +1,6 @@
 # Agent transcript gallery
 
-<div data-field-transcript-gallery hidden></div>
+<div data-field-transcript-gallery="entries" hidden></div>
 
 These are documents built from a blank canvas by agents working in Field. Open one to see the
 result, try it in Field, or take it apart and make it your own.
@@ -522,7 +522,7 @@ Each box evaluates one `afield.math.linalg` value; on execute its
 output shows the terse text head plus a small inline SVG thumbnail the `ValueVisualizer` draws: an
 auto-scaled arrow for vectors (isometric for `vec3`), a diverging heatmap grid for matrices.
 
-![A map of mat3, mat4 and quaternion values, each with its terse text head and a diverging heatmap grid beside it](assets/value_visualizers/linalg_map.png)
+![A map of mat3, mat4 and quaternion values, each with its terse text head and a diverging heatmap grid beside it](assets/visualizers-linalg-map.png)
 
 [Open →](offline.html?file=assets/agent_transcripts/linalg_thumbnails_demo/metadata.edn)
 
@@ -1093,7 +1093,7 @@ caption admits it) and once as accumulator peaks. `FlowField` draws failed track
 rather than hiding them, and `ComponentLabelling` rotates hue by the golden ratio so adjacent label
 ids get unrelated colours.
 
-![An image with a NaN block and one infinity, both painted magenta, counted in the card and excluded from the statistics that set the range](assets/imaging_visualizers/img_non_finite.png)
+![An image with a NaN block and one infinity, both painted magenta, counted in the card and excluded from the statistics that set the range](assets/visualizers-img-non-finite.png)
 
 [Open →](offline.html?file=assets/agent_transcripts/imaging_visualizers_demo/metadata.edn)
 
@@ -2060,6 +2060,17 @@ which is why every demo under `dev_docs/agents/demos/` tells you to pass the fla
 
 [Open →](offline.html?file=assets/agent_transcripts/read_only_session/metadata.edn)
 
+### history_box_story
+
+**One box's code across every saved version.** A transcript, not a saved document: replay it into a
+saving document (not `--scratch`) and it edits one box, `sketch`, three times, waiting for the autosave
+after each edit, so the document's backups hold four real versions. Select `sketch`, run **Show Document
+History**, and the sidebar's **This Box** list shows its four values newest first. Click a row to select
+that version, or choose **Restore** to put that value back into `sketch` alone. See
+[Document History](document_history.md#one-box-edit-by-edit).
+
+[Open →](offline.html?file=assets/agent_transcripts/history_box_story/metadata.edn)
+
 ### controls_surface
 
 **A performer's control surface.** Two pure-CPU boxes built from the `controlGroup` DSL. The first
@@ -2070,6 +2081,19 @@ the wheel. The second box's slider rebuilds its own group once dragged past 0.5,
 under the pointer, and the drag carries on. `dev_docs/CONTROLS_RENEWAL.md` is the write-up.
 
 [Open →](offline.html?file=assets/agent_transcripts/controls_surface/metadata.edn)
+
+### controls_presets_morph_midi
+
+**Presets you can morph between, a recorded slider, and a MIDI knob.** Two pure-CPU boxes. The
+first declares its controls as locals delegated to a `KeyframeScope` and adds `presetBar(keys)`:
+two keys, `calm` and `storm`, are saved on its first run, so its buttons recall them and the
+**preset morph** slider blends between them, moving the circle it draws. A **rec size** button
+records the size slider into a keyframe curve. The second box binds a log-law cutoff slider and a
+checkbox to MIDI controller numbers and feeds them stand-in knob values, printing the cutoff as the
+knob goes from 0 to 127. These are the two examples from
+[Presets and morphing](visualizers.md#presets-and-morphing) and [MIDI learn](visualizers.md#midi-learn).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/controls_presets_morph_midi/metadata.edn)
 
 ### certified_envelope
 
@@ -2617,10 +2641,10 @@ for (i in 0 until 240) {
     at =
         ui.eval(
                 """
-        const f = document.querySelector("iframe[src*='score_view']")
-        const s = f && f.contentDocument && f.contentDocument.getElementById("status")
-        return s ? s.textContent : "no score view yet"
-    """
+                const f = document.querySelector("iframe[src*='score_view']")
+                const s = f && f.contentDocument && f.contentDocument.getElementById("status")
+                return s ? s.textContent : "no score view yet"
+                """
                     .trimIndent(),
             )
             .toString()
@@ -4262,9 +4286,10 @@ replayed: a lesson sequence, or a conversation's revisions, variants and chat.
 ### canonical_graphics
 
 The graphics lessons: cameras, compute shaders and particles, texturing, render-to-texture, blur
-kernels, a GPU radix sort and more, one box per lesson, each running against a live renderer. Its
-index is [the lesson list](assets/canonical_graphics/LESSONS.md), and
-[Field 4 graphics](afield_four_graphics.md) walks through it.
+kernels, a GPU radix sort and more, one box per lesson, each running against a live renderer.
+[Field 4 graphics](afield_four_graphics.md) walks through it, and
+[the viewer](offline.html?file=assets/canonical_graphics/metadata.edn) shows every lesson with its
+code and the picture its window drew.
 
 ### stacksl_conversation_ink
 

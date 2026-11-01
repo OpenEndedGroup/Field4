@@ -45,8 +45,8 @@ function build() {
     const header = el('header', 'guide-header');
     header.append(el('strong', '', 'Document Guide'));
     title = el('span', 'guide-title'); title.id = 'guide-title'; header.append(title);
-    const closeButton = button('×', 'guide-close', close); closeButton.className = 'macro-recorder-icon';
-    closeButton.title = 'Close'; closeButton.setAttribute('aria-label', 'Close document guide'); header.append(closeButton);
+    const closeButton = button('×', 'guide-close', close); closeButton.className = 'field-panel-icon';
+    closeButton.title = 'Close'; closeButton.setAttribute('aria-label', 'Close'); header.append(closeButton);
     const toolbar = el('div', 'guide-toolbar');
     controls = {
         back: button('←', 'guide-back', back),

@@ -9,6 +9,10 @@ as the [Presentations starter](presentation_studio.md#start-a-presentation).
 each managed document records the revision it received. Updates are explicit and compare your local
 changes before replacing anything.
 
+A [staged project](staged_projects.md) is something a kit can carry, not another kind of kit. It
+is one document whose stages track which results an edit has made stale. Once it works, you can
+make it a kit's starting point so other documents start from it and receive its updates.
+
 A starting point can also carry a smaller **role kit**, described by `kit.json`, for shared box code,
 box-held sources and assets. That model remains useful inside a package. The Welcome workflow comes
 first below; [Make a kit from a document](#make-a-kit-from-a-document) covers the finer role model and

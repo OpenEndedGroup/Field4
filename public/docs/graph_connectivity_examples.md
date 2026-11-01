@@ -220,6 +220,12 @@ the edge of a cluster facing another cluster has an empty quadrant on its own
 side, so its nearest neighbor in that direction is across the gap. The example
 draws both graphs over three clusters.
 
+When no two points share an x or a y coordinate, the orthant graph is always
+connected: it is the four-cone Yao graph, which is known to be a spanner. The
+quadrants are open, though, so a point lying exactly on another point's axis is
+in none of its quadrants. Points on a grid, or a row with equal y values, can
+come out with missing edges or no edges at all; jitter them slightly first.
+
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/graph_connectivity_examples/orthant_vs_knn.png" wait="1.0" capture="window" open-outputs="true"}
 :::static
 val centers = [vec(250.0, 550.0), vec(600.0, 250.0), vec(950.0, 520.0)]

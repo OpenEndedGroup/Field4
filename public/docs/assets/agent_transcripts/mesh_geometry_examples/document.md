@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 7 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 7 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. Marching cubes — a watertight surface from a field
@@ -504,7 +504,7 @@ Build something worth looking at: a sphere with a hole drilled through it, so th
 genus to report, then smooth it so the drill rim is not a hard edge.
 
 ```edn [field-box id="mesh_inline_view" role="properties"]
-{"id" "mesh_inline_view" "index" 5 "name" "The inline view — evaluate a mesh, look at it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The inline view — evaluate a mesh, look at it" "_tombstone" false "frame" #afield/rect [80.0 1400.0 410.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mesh_inline_view_code_.kt" "lines" 34 "characters" 1697 "sha256" "2e91d58819474d5bf5f399e29a318e230d1160b27bf4aae7d1a3361dbf76d81f"}]}
+{"id" "mesh_inline_view" "index" 5 "name" "The inline view — evaluate a mesh, look at it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The inline view — evaluate a mesh, look at it" "_tombstone" false "frame" #afield/rect [80.0 1400.0 410.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mesh_inline_view_code_.kt" "lines" 32 "characters" 1652 "sha256" "f554bd4b31d47178fe997f03d80204281bf5430657e8b2885475a99602378e56"}]}
 ```
 
 ```kotlin [field-property box="mesh_inline_view" name="code" path="mesh_inline_view_code_.kt"]
@@ -526,13 +526,11 @@ stay the real mesh's.
 
 // Build something worth looking at: a sphere with a hole drilled through it, so the card has a
 // genus to report, then smooth it so the drill rim is not a hard edge.
-val drilled =
-    marchingCubes(
-            sdfSubtract(sdfSphere(0.8), sdfCylinder(0.32, 2.0)),
-            boundsAround(radius = 1.0),
-            48,
-        )
-        .taubinSmooth(12)
+val drilled = marchingCubes(
+    sdfSubtract(sdfSphere(0.8), sdfCylinder(0.32, 2.0)),
+    boundsAround(radius = 1.0),
+    48,
+).taubinSmooth(12)
 
 println(drilled.summary())
 println("the card below reports the same numbers; the drill added a handle, so genus is 1")
