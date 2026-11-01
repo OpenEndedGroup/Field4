@@ -365,6 +365,7 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
             if(hasExt(NVCooperativeVector.VK_NV_COOPERATIVE_VECTOR_EXTENSION_NAME))probeExtra(vectorFeatures.address())
             if(hasExt(EXTShaderReplicatedComposites.VK_EXT_SHADER_REPLICATED_COMPOSITES_EXTENSION_NAME))probeExtra(replicatedFeatures.address())
             probeExtra(memoryModelFeatures.address())
+            val supportedMemoryModelDeviceScope = memoryModelFeatures.vulkanMemoryModelDeviceScope()
             if(hasExt(NVClusterAccelerationStructure.VK_NV_CLUSTER_ACCELERATION_STRUCTURE_EXTENSION_NAME))probeExtra(clusterFeatures.address())
             supportsClusterAccelerationStructure=supportsAccelerationStructures && clusterFeatures.clusterAccelerationStructure() &&
                 !java.lang.Boolean.getBoolean("afield.clusterAccelerationStructure.disabled")
@@ -546,6 +547,8 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                 // Core in 1.2; GPU profiling resets its query pools from the host (see timing.kt).
                 hostQueryReset(true)
                 vulkanMemoryModel(supportsCooperativeVector)
+                // Ordinary atomic shaders also use Device scope when this memory model is active.
+                vulkanMemoryModelDeviceScope(supportsCooperativeVector && supportedMemoryModelDeviceScope)
 
                 // Descriptor indexing (promoted to 1.2) — bindless-friendly bits
                 descriptorIndexing(true)
@@ -614,7 +617,7 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                 memPutAddress(featureTail + VkBaseOutStructure.PNEXT, descriptorIndexing.address())
                 featureTail = descriptorIndexing.address()
                 if(supportsCooperativeVector) {
-                    memoryModelFeatures.vulkanMemoryModelDeviceScope(false).vulkanMemoryModelAvailabilityVisibilityChains(false).pNext(0L)
+                    memoryModelFeatures.vulkanMemoryModelDeviceScope(supportedMemoryModelDeviceScope).vulkanMemoryModelAvailabilityVisibilityChains(false).pNext(0L)
                     memPutAddress(featureTail+VkBaseOutStructure.PNEXT,memoryModelFeatures.address());featureTail=memoryModelFeatures.address()
                 }
             } else {

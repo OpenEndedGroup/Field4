@@ -350,7 +350,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
     - [logging](workspace.md#pinnedconsole-kt)
 - [notifications](workspace.md#server-notifications-kt)
 - <span class="reference-internal">[protocol](workspace.md#server-protocol-kt)</span>
-- <span class="reference-internal">*server* — [Graphics](graphics.md#patchyweb-kt) · [Workspace](workspace.md#buttoncontrolhandler-kt)</span>
+- <span class="reference-internal">*server* — [Graphics](graphics.md#patchyweb-kt) · [Internal](internal.md#fieldbrowserhosts-kt) · [Workspace](workspace.md#buttoncontrolhandler-kt)</span>
 - [settings](workspace.md#personallayer-kt)
 
 </div>
@@ -564,7 +564,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ### media
 
-- [browser](imaging.md#bitmapbrowsersurface-kt)
+- *browser* — [Imaging](imaging.md#bitmapbrowsersurface-kt) · [Internal](internal.md#wivrnevdev-kt)
 - [capture](imaging.md#nativecapturetarget-kt)
 - [image](imaging.md#imaging-kt)
     - [util](imaging.md#nodetool-kt)
@@ -650,25 +650,25 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**35522 public symbols across 1611 source files**, 20815 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**35581 public symbols across 1618 source files**, 20832 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
 | Category | Files | Symbols | Documented | Covers |
 | --- | --- | --- | --- | --- |
 | [Examples](examples.md) | 218 | 692 | 306 (44%) | Runnable examples, galleries and verification programs. |
-| [Internal](internal.md) | 16 | 156 | 55 (35%) | Implementation details explicitly marked Internal by their source. |
+| [Internal](internal.md) | 19 | 156 | 55 (35%) | Implementation details explicitly marked Internal by their source. |
 | [Lighting](lighting.md) | 8 | 206 | 206 (100%) | Light sources, fixtures and control protocols for working with physical and rendered lighting. |
 | [Networking](networking.md) | 16 | 366 | 213 (58%) | OSC messages, discovery and query interfaces for connecting Field to other applications and devices. |
 | [Video](video.md) | 14 | 192 | 192 (100%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 47 | 2162 | 1623 (75%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 26 | 1061 | 502 (47%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 328 | 8024 | 5280 (65%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 328 | 8025 | 5281 (65%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 46 | 797 | 427 (53%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 586 | 431 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 766 | 514 (67%) | Nonlinear least squares, aimed at geometry. |
 | [Simulation](simulation.md) | 48 | 1449 | 815 (56%) | Making a shape behave. |
-| [Imaging](imaging.md) | 51 | 826 | 434 (52%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
+| [Imaging](imaging.md) | 55 | 884 | 450 (50%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
 | [ALife](alife.md) | 14 | 803 | 729 (90%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization), plus the measurement layer every one of them makes its claims through. |
 | [Function](function.md) | 16 | 611 | 405 (66%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
 | [Search](search.md) | 9 | 433 | 433 (100%) | Optimisation over a space you can only sample. |
@@ -1115,6 +1115,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [FieldAudioEngine.kt](synthesis.md#fieldaudioengine-kt) | Synthesis | 22 | 15 | The file that opens an audio device: the OpenAL output stream Field plays through, the optional capture stream `audioInput()` reads from, and the mixer that sums every registered patch into it. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [fieldAudioProxy.kt](workspace.md#fieldaudioproxy-kt) | Workspace · internal | 1 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [FieldBackdoorCatalogExamples.kt](examples.md#fieldbackdoorcatalogexamples-kt) | Examples | 0 | 0 |  |  |
+| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [FieldBrowserHosts.kt](internal.md#fieldbrowserhosts-kt) | Internal · internal | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>stream/<wbr></small> [FieldEncodeProcess.kt](imaging.md#fieldencodeprocess-kt) | Imaging | 14 | 8 | The JVM side of the `field-encode` helper, which encodes Field render targets (VideoToolbox on macOS, the `field-encode-linux` build on Linux) and streams them to the visionOS app. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>agent/<wbr></small> [FieldGraphTools.kt](machine-learning.md#fieldgraphtools-kt) | Machine learning | 131 | 20 | The box graph and execution tools of Field's own agent: list, create, delete, edit, connect, run, launch, stop and read the output of boxes in the current document. | [AI4's built-in tools](../ai4_tools.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>kotlin/<wbr></small> [FieldKtParser.kt](workspace.md#fieldktparser-kt) | Workspace · internal | 3 | 2 | Kotlin source to a parse tree, without compiling it. |  |
@@ -1132,6 +1133,8 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>util/<wbr></small> [FieldStats.kt](graphics.md#fieldstats-kt) | Graphics | 56 | 56 | Computes streaming statistics of shader values on the GPU and reads the results back to box code. | [Field Probes: instrumenting shaders](../field_probes.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [FieldStatsSmokeTest.kt](examples.md#fieldstatssmoketest-kt) | Examples · internal | 1 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>browser/<wbr></small> [FieldUiBrowserTexture.kt](imaging.md#fielduibrowsertexture-kt) | Imaging | 29 | 1 | A live web page as a Field texture: a hidden Electron window renders offscreen and its paints become an `ExternalBrowserSurface` a shader can sample. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>browser/<wbr></small> [FieldVrKeyboard.kt](imaging.md#fieldvrkeyboard-kt) | Imaging | 5 | 2 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>browser/<wbr></small> [FieldVrWorkspace.kt](imaging.md#fieldvrworkspace-kt) | Imaging | 17 | 2 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>workspace/<wbr></small> [FileManager.kt](data.md#filemanager-kt) | Data | 33 | 33 | Path resolution for the running Field session: turns a short spec into a real `File` or `Path`. | [File management](../files_and_paths.md) |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>stdlib/<wbr></small> [FileManagerSmokeTest.kt](examples.md#filemanagersmoketest-kt) | Examples · internal | 3 | 0 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [fileproxy.kt](workspace.md#fileproxy-kt) | Workspace · internal | 5 | 2 | File proxy boxes: a box whose `contents` mirror a text file, given by an absolute path or by a path under the workspace or the document folder. |  |
@@ -1556,7 +1559,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>mocap/<wbr></small> [MotionScoreSmoke.kt](animation.md#motionscoresmoke-kt) | Animation | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>mocap/<wbr></small> [MotionSession.kt](animation.md#motionsession-kt) | Animation | 29 | 6 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>mocap/<wbr></small> [MotionView.kt](animation.md#motionview-kt) | Animation | 2 | 2 |  | [Generative Mocap — ARDY and CLoSD](../motion_recordings.md) |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>util/<wbr></small> [MouseEvents.kt](graphics.md#mouseevents-kt) | Graphics | 23 | 14 | Mouse input from a Vulkan renderer's window, delivered to named callbacks. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>util/<wbr></small> [MouseEvents.kt](graphics.md#mouseevents-kt) | Graphics | 24 | 15 | Mouse input from a Vulkan renderer's window, delivered to named callbacks. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>motion/<wbr></small> [movement.kt](simulation.md#movement-kt) | Simulation | 41 | 31 | Springs, dampers, and a steerable character built out of four of them. | [Springs, dampers, and a character with mass](../movement_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>io/<wbr>mqtt/<wbr></small> [MqttBox.kt](networking.md#mqttbox-kt) | Networking | 29 | 25 | The box-facing MQTT surface: `mqtt` and `mqtt(url)` return a `BoxMqtt` for publishing and subscribing, and `mqttBroker(port)` starts an embedded broker. | [MQTT: sensors, devices and brokers](../mqtt.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>io/<wbr>mqtt/<wbr></small> [MqttBroker.kt](networking.md#mqttbroker-kt) | Networking | 12 | 8 | An embedded MQTT 3.1.1 broker, `MqttBroker`, for talking MQTT inside Field with nothing else installed. |  |
@@ -1803,11 +1806,12 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [ProvideDelegateReplSmokeTest.kt](examples.md#providedelegatereplsmoketest-kt) | Examples · internal | 5 | 3 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>workspace/<wbr></small> [provisional.kt](workspace.md#provisional-kt) | Workspace | 18 | 18 | Provisional edits: proposed text for a box property, typically from AI4, held per document until someone accepts or rejects it. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>browser/<wbr></small> [PuppetBrowser.kt](imaging.md#puppetbrowser-kt) | Imaging | 90 | 9 | The control vocabulary for an offscreen Chromium tab driven from Field: its state, events, and the pointer, key, touch and JavaScript requests a box sends it. | [Chromium as a native Field surface](../puppet_browser.md) |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>browser/<wbr></small> [PuppetBrowserInteraction.kt](imaging.md#puppetbrowserinteraction-kt) | Imaging | 31 | 5 | Input adapters that route mouse, keyboard and controller rays into a `PuppetBrowser`. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>browser/<wbr></small> [PuppetBrowserInteraction.kt](imaging.md#puppetbrowserinteraction-kt) | Imaging | 37 | 7 | Input adapters that route mouse, keyboard and controller rays into a `PuppetBrowser`. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>browser/<wbr></small> [PuppetBrowserKaleidoscope.kt](imaging.md#puppetbrowserkaleidoscope-kt) | Imaging | 12 | 4 | A Vulkan effect that draws a live puppet browser page through a grid of moving, mirrored triangular shards. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>browser/<wbr></small> [PuppetBrowserPage.kt](imaging.md#puppetbrowserpage-kt) | Imaging | 10 | 10 | Page queries on a puppet browser: an element's text or attribute, a count, a table as rows, and a wait for a condition. | [Chromium as a native Field surface](../puppet_browser.md) |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>browser/<wbr></small> [PuppetBrowserVrPanel.kt](imaging.md#puppetbrowservrpanel-kt) | Imaging | 13 | 2 | Shows a puppet browser page as a clickable, scrollable quad in VR or in the desktop stereo stand-in. |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>browser/<wbr></small> [PuppetBrowserWindowPanel.kt](imaging.md#puppetbrowserwindowpanel-kt) | Imaging | 13 | 2 | Shows a puppet browser page letterboxed inside a Field render window, with mouse hit-testing back into page coordinates. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>browser/<wbr></small> [PuppetBrowserVrInput.kt](imaging.md#puppetbrowservrinput-kt) | Imaging | 18 | 5 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>browser/<wbr></small> [PuppetBrowserVrPanel.kt](imaging.md#puppetbrowservrpanel-kt) | Imaging | 15 | 3 | Shows a puppet browser page as a clickable, scrollable quad in VR or in the desktop stereo stand-in. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>browser/<wbr></small> [PuppetBrowserWindowPanel.kt](imaging.md#puppetbrowserwindowpanel-kt) | Imaging | 14 | 2 | Shows a puppet browser page letterboxed inside a Field render window, with mouse hit-testing back into page coordinates. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>vision/<wbr></small> [PyramidOpticalFlow.kt](imaging.md#pyramidopticalflow-kt) | Imaging | 14 | 4 | The portable optical-flow backend: coarse-to-fine Lucas–Kanade built from ordinary fragment passes, for devices without a hardware motion engine. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>python/<wbr></small> [PythonErrors.kt](languages.md#pythonerrors-kt) | Languages | 4 | 3 | Error locations for Python boxes: the cell line that raised, read from the exception's traceback. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>python/<wbr></small> [PythonInterface.kt](languages.md#pythoninterface-kt) | Languages | 50 | 3 | Python as a Field main language: a box whose source is Python, executed **in this process** by CPython through JEP. |  |
@@ -2299,6 +2303,9 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>util/<wbr></small> [WindowPointer.kt](graphics.md#windowpointer-kt) | Graphics | 11 | 11 | The pointer over a renderer window and the window's size, in window points, read once a frame. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>browser/<wbr></small> [WindowsExternalBrowserSurface.kt](imaging.md#windowsexternalbrowsersurface-kt) | Imaging | 3 | 1 | Windows import path for Electron browser frames: wraps a D3D11 shared texture, passed as an NT handle, in a Vulkan image that Field can copy from. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>kotlin/<wbr></small> [WitherSmokeTest.kt](workspace.md#withersmoketest-kt) | Workspace · internal | 3 | 0 | Smoke for the experiment that wires the Wither compiler plugin (kyay10/wither) into the K2 REPL (`KotlinInterface2`). |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>browser/<wbr></small> [WiVRnBrowserInput.kt](imaging.md#wivrnbrowserinput-kt) | Imaging | 9 | 4 |  |  |
+| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>browser/<wbr></small> [WiVRnEvdev.kt](internal.md#wivrnevdev-kt) | Internal · internal | 0 | 0 |  |  |
+| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>browser/<wbr></small> [WiVRnKeyboardMap.kt](internal.md#wivrnkeyboardmap-kt) | Internal · internal | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>workspace/<wbr></small> [WorkspaceLastDocument.kt](workspace.md#workspacelastdocument-kt) | Workspace | 0 | 0 | Where Field remembers the document you had open, keyed by workspace rather than by checkout. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>workspace/<wbr></small> [WorkspaceProjectScope.kt](workspace.md#workspaceprojectscope-kt) | Workspace | 11 | 11 | The shared box and the persistent preferences a workspace project gives every document in it. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>tools/<wbr></small> [WorkspaceSearch.kt](machine-learning.md#workspacesearch-kt) | Machine learning | 34 | 2 | `WorkspaceSearchRequest` is the agent tool that finds literal text in exactly one `WorkspaceSearchScope`: the current document's files, its history, the whole workspace, or Field's own Kotlin source. |  |

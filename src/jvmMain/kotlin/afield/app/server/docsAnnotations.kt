@@ -236,10 +236,11 @@ internal fun refuseDocsAnnotationRequest(policy: DocsAccessPolicy, remoteAddress
  * loopback to get this far. An `Origin` with no `Host` is a shape no real client produces,
  * so it fails closed.
  */
-internal fun isSameSiteRequest(secFetchSite: String?, origin: String?, hostHeader: String?): Boolean {
+internal fun isSameSiteRequest(secFetchSite: String?, origin: String?, hostHeader: String?,
+    browserHosts: Set<String> = fieldBrowserHosts()): Boolean {
     val fetchSite = secFetchSite?.trim()?.lowercase().orEmpty()
     val presented = origin?.trim().orEmpty()
-    if ((fetchSite.isNotEmpty() || presented.isNotEmpty()) && !isAllowedFieldHost(hostHeader)) return false
+    if ((fetchSite.isNotEmpty() || presented.isNotEmpty()) && !isAllowedFieldHost(hostHeader, browserHosts)) return false
     when (fetchSite) {
         "same-origin", "none" -> return true
         "" -> Unit
@@ -255,8 +256,9 @@ internal fun isSameSiteRequest(secFetchSite: String?, origin: String?, hostHeade
 /**
  * The authorities Field can safely recognise without asking DNS: its conventional
  * `localhost` name and literal IPv4/IPv6 addresses, each optionally carrying a port.
+ * A local operator can additionally register exact DNS authorities through [fieldBrowserHosts].
  */
-internal fun isAllowedFieldHost(hostHeader: String?): Boolean {
+internal fun isAllowedFieldHost(hostHeader: String?, browserHosts: Set<String> = fieldBrowserHosts()): Boolean {
     val authority = hostHeader?.trim().orEmpty()
     if (authority.isEmpty()) return false
     val host = when {
@@ -273,7 +275,8 @@ internal fun isAllowedFieldHost(hostHeader: String?): Boolean {
         else -> return false // Browsers bracket an IPv6 Host; an unbracketed one is not an authority.
     }
     if (host.equals("localhost", ignoreCase = true)) return true
-    return runCatching { InetAddress.ofLiteral(host) }.isSuccess
+    return runCatching { InetAddress.ofLiteral(host) }.isSuccess ||
+        (validFieldDnsAuthority(authority) && browserHosts.any { it.equals(authority, ignoreCase = true) })
 }
 
 private fun isValidAuthorityPort(suffix: String): Boolean =

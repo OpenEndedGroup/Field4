@@ -4275,6 +4275,17 @@ without opening a window in CI, with a real desktop capture on the walkthrough p
 
 [Open →](offline.html?file=assets/agent_transcripts/stereo_rtt_composite/metadata.edn)
 
+### field_vr_ide
+
+[Field inside VR](field_vr_ide.md): the live canvas, editor and command palette in a world-locked
+browser panel. Either controller can point, click and drag; grip moves and rotates the panel.
+Tracked hands provide a pinch fallback.
+An in-panel keyboard preserves editor focus and includes text, Commands and Run. Linux WiVRn
+headset input can bypass desktop focus, and another browser can edit the same document independently.
+Launch 1 then 2; the default is a front-on desktop companion. Requires Vulkan and Electron.
+
+[Open →](offline.html?file=assets/agent_transcripts/field_vr_ide/metadata.edn)
+
 ## Saved documents
 
 <!-- transcript-index: bundled -->

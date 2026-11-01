@@ -5,6 +5,12 @@ collaborating with users, observing websocket events, and asking Field's JVM-own
 Playwright browser for DOM state or captures. This page records the few contracts 
 that are easy to misunderstand. It is not a second command reference.
 
+For a managed server, `AFIELD_BACKDOOR_GRADLE_ARGS` supplies additional Gradle arguments, parsed
+as an argument list rather than a shell command. This also applies when another tool imports the
+backdoor client, including docs publication capture. For example, `-x personalJar` excludes an
+optional extension build; an explicit `-I` init script can adjust that run's JVM configuration.
+The docs screenshot runner has its own equivalent, `FIELD_DOCS_RUNNER_GRADLE_ARGS`.
+
 ## Code ownership
 
 - CLI options, command syntax, and dispatch:
