@@ -1,0 +1,126 @@
+name: shader_boids_separation
+description: |
+  Two ShaderBoids flocks of 12,000 on one renderer, with the default weights and no driver. They
+  differ only in `separationRadiusFraction`: 1 on the left, where separation reaches as far as
+  alignment and cohesion and the flock spreads into one even disc, and 0.25 on the right, where
+  separation is short-range and the flock gathers into groups. Used by neural_particles.md.
+docs:
+  - page: neural_particles.md
+    why: "Shows the separationRadiusFraction contrast in section 5."
+operations:
+  - create:
+      box: sb_renderer
+      name: renderer
+      frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.graphics.vulkan.util.Options
+
+          prop<Window>(window)
+          prop<Renderer>(renderer)
+          Options.enableHDR = false
+          Options.profiling = false
+          once.renderer {
+              window = Window("Shader boids")
+              Renderer(window)
+          }
+          println("renderer ready")
+          start(renderer::run)
+  - create:
+      box: sb_even
+      name: separation reaches the whole radius
+      frame: { x: 380.0, y: 40.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.simulation.physics.ShaderBoids
+
+          prop<afield.simulation.physics.ShaderBoids>(even)
+
+          once.even {
+              val grid = GpuNeighbourGrid(
+                  capacity = 12000,
+                  cellsPerSide = 64,
+                  domainMin = Vector2f(-1f, -1f),
+                  domainSize = 2f,
+                  renderer = renderer,
+                  name = "evenGrid",
+              )
+              ShaderBoids(grid, 12000, renderer) {
+                      name = "even"
+                      radius = 2f / 64f
+                  }
+                  .also {
+                      it.reset(Vector2f(-0.95f, -0.5f), 1.0f, speed = 0.2f, seed = 3)
+                      it.install(renderer.renderList.others)
+                      it.installDrawInto()
+                  }
+          }
+
+          // The default weights; only separation's reach differs between the two boxes.
+          even.settings.separation = 0.02f
+          even.settings.separationRadiusFraction = 1.0f
+          even.settings.alignment = 3.0f
+          even.settings.cohesion = 200f
+          even.settings.maxSpeed = 0.25f
+          even.settings.containment = 1.5f
+          even.settings.containmentRadius = 0.44f
+          even.settings.containmentCenter = Vector2f(-0.45f, 0f)
+          even.settings.dt = 1f / 60f
+          even.settings.pointSize = 3f
+          even.settings.intensity = 1.5f
+          // No driver: left alone, the flock settles into the shape its rule makes.
+          even.settings.driverStrength = 0f
+          println("even: separationRadiusFraction = ${even.settings.separationRadiusFraction}")
+  - create:
+      box: sb_groups
+      name: separation reaches a quarter
+      frame: { x: 720.0, y: 40.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.simulation.physics.ShaderBoids
+
+          prop<afield.simulation.physics.ShaderBoids>(groups)
+
+          once.groups {
+              val grid = GpuNeighbourGrid(
+                  capacity = 12000,
+                  cellsPerSide = 64,
+                  domainMin = Vector2f(-1f, -1f),
+                  domainSize = 2f,
+                  renderer = renderer,
+                  name = "groupsGrid",
+              )
+              ShaderBoids(grid, 12000, renderer) {
+                      name = "groups"
+                      radius = 2f / 64f
+                  }
+                  .also {
+                      it.reset(Vector2f(-0.05f, -0.5f), 1.0f, speed = 0.2f, seed = 3)
+                      it.install(renderer.renderList.others)
+                      it.installDrawInto()
+                  }
+          }
+
+          // The default weights; only separation's reach differs between the two boxes.
+          groups.settings.separation = 0.02f
+          groups.settings.separationRadiusFraction = 0.25f
+          groups.settings.alignment = 3.0f
+          groups.settings.cohesion = 200f
+          groups.settings.maxSpeed = 0.25f
+          groups.settings.containment = 1.5f
+          groups.settings.containmentRadius = 0.44f
+          groups.settings.containmentCenter = Vector2f(0.45f, 0f)
+          groups.settings.dt = 1f / 60f
+          groups.settings.pointSize = 3f
+          groups.settings.intensity = 1.5f
+          // No driver: left alone, the flock settles into the shape its rule makes.
+          groups.settings.driverStrength = 0f
+          println("groups: separationRadiusFraction = ${groups.settings.separationRadiusFraction}")
+  - connect: { parent: sb_renderer, child: sb_even }
+  - connect: { parent: sb_renderer, child: sb_groups }
+  - launch: { box: sb_renderer, property: code }
+  - await: { wait: pending }
+  - launch: { box: sb_even, property: code }
+  - await: { wait: pending }
+  - launch: { box: sb_groups, property: code }
+  - await: { wait: pending }

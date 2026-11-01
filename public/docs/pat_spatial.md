@@ -74,6 +74,14 @@ patSpatial(
 )
 ```
 
+Here it is rendered offline through Steam Audio, six seconds with the listener still. Listen on
+headphones:
+
+```diffstatic_runner {data-lang=kotlin audio="assets/pat_spatial/kit-hats.wav" audio-spec="kit-hats" audio-renderer="afield.audio.synth.PatSpatialPlacementDocs" requires="steam-audio" embed=true hidden=true name="pat-spatial-kit-hats"}
+// PatSpatialPlacementDocs.renderWav("kit-hats", …): the example above through patSpatial and
+// Steam Audio's HRTF, listener at the origin facing ahead
+```
+
 Because `az` takes a *continuous* pattern, `sine()` sampled per event is a source that moves between
 notes. The placement belongs to the group, not to the note, so a group's next event moves everything
 that group is playing.
@@ -111,7 +119,7 @@ tools/run_field_tests.py --id synth.pat-spatial.engine
 `showPatSpatial` plays a pattern and shows a live waveform and spectrum in the box's output. This
 example moves a four-note line between two groups:
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/pat_spatial/show_pat_spatial.png" capture="box" open-outputs="true" execution="launch" wait="4.0" wait-output="true" wait-output-kind="display" requires="steam-audio" w="760" timeout="240" embed=true name="pat-spatial-show" alt="the box output of showPatSpatial while the line plays: a live waveform and a spectrum"}
 showPatSpatial(
     pat("60 64 67 71")
         .with(
@@ -122,6 +130,12 @@ showPatSpatial(
         ),
     cps = 2.0,
 )
+```
+
+Rendered offline through Steam Audio, with the listener still:
+
+```diffstatic_runner {data-lang=kotlin audio="assets/pat_spatial/four-note-line.wav" audio-spec="four-note-line" audio-renderer="afield.audio.synth.PatSpatialPlacementDocs" requires="steam-audio" embed=true hidden=true name="pat-spatial-four-note-line"}
+// PatSpatialPlacementDocs.renderWav("four-note-line", …): the example above, six seconds
 ```
 
 It returns a `PatSpatialLaunch`. As the box's last expression, that ties the sound to the box: the
