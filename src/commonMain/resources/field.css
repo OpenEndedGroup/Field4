@@ -3249,6 +3249,35 @@ body.field-pane-resizing-h * {
     transform: translateY(-1px);
 }
 
+.docs-iframe-nav {
+    position: absolute;
+    bottom: 12px;
+    left: 56px;
+    z-index: 20;
+    display: flex;
+    gap: 4px;
+}
+
+.docs-iframe-nav button {
+    background: var(--field-accent-panel);
+    border: 1px solid var(--field-accent);
+    color: var(--field-accent-text-soft);
+    padding: 6px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: var(--field-font);
+    font-size: 12px;
+}
+
+.docs-iframe-nav button:hover:not(:disabled) {
+    background: var(--field-accent-panel-hover);
+}
+
+.docs-iframe-nav button:disabled {
+    opacity: 0.35;
+    cursor: default;
+}
+
 .history-iframe-container {
     left: 10px;
     right: auto;
