@@ -301,7 +301,7 @@ well.
 
 This box reads the dialogue both ways and shows each reading with its resynthesis:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/loris/resolution.png" capture="box" open-outputs="true" requires="loris" wait="40" padding="14" timeout="300" w="1080" h="1700" embed=true name="loris-resolution" alt="Two Loris partial maps of the same film dialogue, 0 to 5000 Hz on an ERB axis, each above its reconstruction waveform and player. At windowWidthHz 160 the tracks are short steep strokes that start and stop with each syllable. At windowWidthHz 40 the low harmonics run as long, closely spaced horizontal lines and the syllable onsets blur."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/loris/resolution.png" capture="box" open-outputs="true" requires="loris" wait="40" padding="14" timeout="300" w="1080" h="2400" embed=true name="loris-resolution" alt="Two Loris partial maps of the same film dialogue, 0 to 5000 Hz on an ERB axis, each above its reconstruction waveform and player. At windowWidthHz 160 the tracks are short steep strokes that start and stop with each syllable. At windowWidthHz 40 the low harmonics run as long, closely spaced horizontal lines and the syllable onsets blur."}
 import kotlinx.coroutines.*
 import kotlinx.coroutines.future.await
 

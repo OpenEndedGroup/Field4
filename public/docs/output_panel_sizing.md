@@ -230,7 +230,7 @@ This box puts a tall list, a short line, a wide table and the short line again i
 second and a half each. Watch the panel grow at once for the list and the table, and wait before
 it comes back down to the short line:
 
-```diffstatic_runner {data-lang=kotlin video="assets/output_panel_sizing/follow-down.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="6.5" fps="10" timeout="180" w="1040" embed=true name="output-panel-sizing-follow-down" alt="One output panel labelled main. A fourteen-line list fills it, then a single short line replaces the list and the panel shrinks to fit a moment later, then a three-row table twelve columns wide widens the panel, then the short line returns and the panel shrinks back."}
+```diffstatic_runner {data-lang=kotlin video="assets/output_panel_sizing/follow-down.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="14" fps="10" timeout="180" w="1040" embed=true name="output-panel-sizing-follow-down" alt="One output panel labelled main. A fourteen-line list fills it, then a single short line replaces the list and the panel shrinks to fit a moment later, then a three-row table twelve columns wide widens the panel, then the short line returns and the panel shrinks back."}
 import kotlinx.coroutines.delay
 
 // One panel, three contents in turn: tall, then short, then a wide table, then short again.
