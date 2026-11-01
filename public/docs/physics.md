@@ -612,6 +612,52 @@ particle rather than teleporting it. The difference matters: a teleport moves on
 sheet and lets the solve fight it back, while a controller pulls *through* the constraint solve, so
 the sheet follows the hand instead of snapping at it.
 
+Here two copies of the same hanging sheet have their bottom-centre corner carried four units to the
+right over thirty steps (the orange line is the hand's path). One is teleported each step and one is
+held by `grabNearest`:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/physics/cloth_grab.png" wait="4.0" capture="box" open-outputs="true" w="1080" h="560" padding="14" name="physics-cloth-grab" alt="Two panels of the same pinned cloth after its bottom-centre corner has been carried right along an orange line. On the left, teleported, a fan of long stretched constraints runs from the middle of the sheet to the corner. On the right, grabbed, the grid stays even and the corner region folds after the hand."}
+import afield.simulation.physics.*
+
+fun sheet() =
+    SimdVerlet(SimdVerlet.State3.empty())
+        .addCloth(width = 20, height = 12, spacing = 0.5f, stiffness = 60f, pinned = { col, row -> row == 0 && col % 4 == 0 })
+
+val snapped = sheet()
+val followed = sheet()
+repeat(120) {
+    snapped.step(dt = 1f / 60f, damping = 0.99f, gravity = 2f, iterations = 16)
+    followed.step(dt = 1f / 60f, damping = 0.99f, gravity = 2f, iterations = 16)
+}
+
+// The bottom-centre corner of each sheet, and a hand that carries it 4 units right over 30 steps.
+val start = followed.position(10, 11)
+followed.grabNearest(start.x(), start.y(), start.z())
+val hand = FLine()
+repeat(30) { k ->
+    val target = vec(start.x() + 4.0 * (k + 1) / 30, start.y().toDouble(), start.z().toDouble())
+    hand.lineTo(target.x, target.y)
+    snapped.teleport(10, 11, target)
+    followed.moveGrabbed(target.x.toFloat(), target.y.toFloat(), target.z.toFloat())
+    snapped.step(dt = 1f / 60f, damping = 0.99f, gravity = 2f, iterations = 16)
+    followed.step(dt = 1f / 60f, damping = 0.99f, gravity = 2f, iterations = 16)
+}
+
+fun drawn(c: Cloth) = c.lines().onEach {
+    it.color = vec(0.74, 0.82, 0.94, 0.8)
+    it.thickness = 1.2
+} + hand.also {
+    it.color = vec(1.0, 0.55, 0.2, 1.0)
+    it.thickness = 2.0
+}
+showPlaneGrid(
+    "teleport: the corner is moved out of the sheet each step" to drawn(snapped),
+    "grabNearest: a PID controller pulls the corner through the solve" to drawn(followed),
+    columns = 2,
+    cellWidth = 480,
+)
+```
+
 ---
 
 ## The debug view draws what the solver holds
