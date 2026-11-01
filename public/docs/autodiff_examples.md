@@ -77,9 +77,9 @@ $agreement
 
 ![Three curves over minus one to one: the small oscillating function, its larger-amplitude slope, and its much larger curvature, all in phase relationships that follow from differentiation](assets/autodiff_examples/derivatives.png)
 
-Check it by hand. `∂f/∂x = -2(1-x) - 400x(y-x²)` and `∂f/∂y = 200(y-x²)`, so at `(-1.2, 1)` the
+Check it by hand. \( \partial f/\partial x = -2(1-x) - 400x(y-x^2) \) and \( \partial f/\partial y = 200(y-x^2) \), so at `(-1.2, 1)` the
 gradient is `[-215.6, -88]`, which is what the panel reads. The Hessian is
-`[[2 - 400(y-x²) + 800x², -400x], [-400x, 200]]` = `[[1330, 480], [480, 200]]`, which is what
+\( \begin{bmatrix} 2 - 400(y-x^2) + 800x^2 & -400x \\ -400x & 200 \end{bmatrix} \) = `[[1330, 480], [480, 200]]`, which is what
 `hessian` prints. Forward and reverse mode agree to rounding error. The larger disagreement with the
 central difference on the last line comes from the finite difference.
 

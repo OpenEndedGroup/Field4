@@ -141,7 +141,7 @@ followed by a high left profile is a shape that is about to stop happening.
 `m` is the length of the shapes you are asking about, in samples. Too short and every wiggle has
 a twin; too long and a motif is diluted by whatever surrounds it. Start with the length of one
 occurrence of the thing you are looking for (a beat, a stride, a gesture), then try half and
-double. Distances run from 0 (identical shapes) to `2√m` (one is the other upside down), so
+double. Distances run from 0 (identical shapes) to \( 2\sqrt{m} \) (one is the other upside down), so
 compare distances only between profiles with the same `m`.
 
 ## Comparing two signals
@@ -157,7 +157,7 @@ subsequence of a signal, computed with an FFT (Mueen's MASS algorithm). It is th
 
 ## Big signals, and answers before the end
 
-The profile is exact. The cost is proportional to `n²`, where `n` is the length of the signal,
+The profile is exact. The cost is proportional to \( n^2 \), where `n` is the length of the signal,
 but with a small constant: each cell of the distance matrix is a few multiplications, updated
 along the matrix's diagonals (the SCAMP formulation), and the diagonals are shared across all
 cores. On a ten-core laptop a signal of 10 000 samples takes about 20 ms and one of 100 000 about 1.5 s.
@@ -244,7 +244,7 @@ answers it from two sets of examples.
 
 `contrastProfile(positive, negative, m)` takes two lists of signals. For each subsequence of the
 positives it subtracts the distance to its nearest neighbour among the positives from the distance
-to its nearest neighbour among the negatives, and divides by `√(2m)`. The higher the value, the closer
+to its nearest neighbour among the negatives, and divides by \( \sqrt{2m} \). The higher the value, the closer
 the shape's twin in the positives compared with anything like it in the negatives; near zero or
 below, the negatives have it too. The best of these
 shapes is what the paper calls a *plato*; `platos(count)` picks out the best `count` of them, each
@@ -302,7 +302,7 @@ subsequence that spans two examples is no subsequence at all.
 - A subsequence containing NaN has no neighbour: its distance is `+∞` (`NaN` in `profile`, so it
   plots as a gap) and its index is `-1`. Mark missing data with NaN rather than zero.
 - A perfectly flat subsequence has no shape to compare, so it counts as uncorrelated with
-  everything, at distance `√(2m)`. A signal that sits at a constant level for long stretches will
+  everything, at distance \( \sqrt{2m} \). A signal that sits at a constant level for long stretches will
   show a plateau in its profile there.
 - `m` must be at least 3 and no longer than the signal.
 - There is no streaming (append-one-sample) profile and no GPU evaluation, and `k` for the

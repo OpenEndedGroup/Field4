@@ -333,7 +333,7 @@ position.
 `ThreeCameraSpec` has the same fields as `MeshView` and `VisionGeometryPreview.Camera`, the
 CPU rasterizer's camera:
 
-- **`yawDegrees`** — orbit around `+y`. `0` looks straight down `−z`.
+- **`yawDegrees`** — orbit around `+y`. `0` looks straight down \( -z \).
 - **`pitchDegrees`** — lift above the horizon. Positive looks down on the geometry.
 - **`distance`** — in multiples of the bounding-sphere radius, so one spec frames a 2 cm mesh and a
   2 m one. The rasterizer uses it; the viewer zooms to fit instead.
@@ -495,7 +495,7 @@ lists them all, and what each is for:
 Two entries in that table are commonly misread:
 
 **`Box.lines(...)` draws in 2D.** Given a 3D FLine, it uses `x` and `y` for an orthographic view
-down `−z`, with no depth sorting or hidden-line removal. The `z` coordinate is retained for
+down \( -z \), with no depth sorting or hidden-line removal. The `z` coordinate is retained for
 picking, so a click can still report the 3D position. For perspective, project first with
 `FLine.byPerspectiveProjecting(...)` or use `threeLines`.
 

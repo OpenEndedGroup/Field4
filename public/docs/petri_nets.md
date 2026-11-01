@@ -723,7 +723,7 @@ net.stateSpace(reduction = PetriReduction.STUBBORN)
 
 At each marking it explores a *stubborn set*, a subset of the enabled transitions chosen so that
 the transitions it skips cannot change whether a deadlock is reachable. On the philosophers the
-number of markings grows as `2n² − 2n + 2` instead of about `2.41ⁿ`:
+number of markings grows as \( 2n^2 - 2n + 2 \) instead of about `2.41ⁿ`:
 
 | philosophers | full | reduced |
 | ---: | ---: | ---: |

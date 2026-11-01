@@ -233,7 +233,7 @@ val blended = fieldA.blendWith(fieldB, t) // t from 0 to 1
 particles.updateWeights(blended.network) // a buffer write; nothing recompiles
 ```
 
-Interpolating the *targets*, sending point `i` to `(1-t)·A_i + t·B_i`, is a straight-line
+Interpolating the *targets*, sending point `i` to \( (1-t)\,A_i + t\,B_i \), is a straight-line
 crossfade that needs no network. Interpolating the weights gives a field that was **never trained
 on anything**, and where it sends a particle is a nonlinear function of `t`.
 

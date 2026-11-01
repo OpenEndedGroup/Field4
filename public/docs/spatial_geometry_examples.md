@@ -254,7 +254,7 @@ cell with holes, not a polygon, and not even simply connected.
 That is why `CellBoundary.toFLines(...)` returns **one `FLine` per piece rather than one per cell**.
 Joining them into a single path would misrepresent the topology. The supporting circle has a closed
 form: for two sites at `p_i`, `p_j` with weight ratio `k = w_j/w_i`, the Apollonius circle is
-centred at `(k² p_i − p_j) / (k² − 1)`, which is what `arc.support.center` returns.
+centred at \( (k^2 p_i - p_j) / (k^2 - 1) \), which is what `arc.support.center` returns.
 
 ### Sweeping one site's weight
 
@@ -366,7 +366,7 @@ The other kind of boundary is a level set. `contours.kt` samples a `ScalarField2
 `(Double, Double) -> Double`) on a grid with marching squares and stitches the crossings into
 polylines.
 
-A Voronoi diagram is itself a level set: the set of ties in `argmin_i |x − p_i|`. Marching squares
+A Voronoi diagram is itself a level set: the set of ties in \( \operatorname{argmin}_i \lvert x - p_i \rvert \). Marching squares
 finds the level sets of any scalar you like, so you can get a soft, rounded Voronoi by contouring a
 difference of distances, and an exact one by triangulating. The example below does the first, then
 uses the same machinery to outline a stroke.
@@ -461,10 +461,10 @@ showPlaneGrid(
 
 ![Three panels: the Voronoi cells of six sites recovered as an iso-contour at 0.05, four nested iso levels shrinking each cell inwards, and a cubic FLine outlined by two tube radii](assets/spatial_geometry_examples/contours.png)
 
-The left panel contours `d₂ − d₁` at a *small positive* level, which recovers the Voronoi diagram of
+The left panel contours \( d_2 - d_1 \) at a *small positive* level, which recovers the Voronoi diagram of
 the six sites (**15 contours, 868 points**) by a different algorithm from the Delaunay figure above.
 Contour the same field at **exactly zero** and you get **0 contours**, which is correct. Marching
-squares locates *sign changes*, and `d₂ − d₁` is never negative (over that window its range is
+squares locates *sign changes*, and \( d_2 - d_1 \) is never negative (over that window its range is
 `1.6e-8 … 2.0`), so it touches zero along the cell boundaries without crossing it. A marcher cannot
 see a level that the field only touches, and a smaller epsilon will not help. Every distance gap,
 absolute value or `min`-of-distances field behaves this way, so contour such fields at a small
@@ -602,40 +602,40 @@ ways to pair them, and the two choices give *different topology*: either the ins
 connected through the middle of the cell or the outside one is. Picking arbitrarily means two cells
 sharing an edge can disagree, and the contour tears there. The resolution is the **asymptotic
 decider**: the cell's bilinear interpolant has exactly one saddle, at value
-`(s₀s₂ − s₁s₃) / (s₀ + s₂ − s₁ − s₃)` with every `s` measured from `iso`, and whichever diagonal pair
+\( (s_0 s_2 - s_1 s_3) / (s_0 + s_2 - s_1 - s_3) \) with every `s` measured from `iso`, and whichever diagonal pair
 of corners shares a side with that saddle is the pair the centre connects. It depends only on the
 cell's own four corner values, so neighbouring cells always agree, which an arbitrary pairing
 cannot guarantee.
 
-The third panel is the case where the decider has nothing to say. `x·y = 0` is the two axes
+The third panel is the case where the decider has nothing to say. \( xy = 0 \) is the two axes
 crossing, and a marcher cannot draw an X, so at the saddle cell it joins the four crossings in pairs
-and the zero set comes back as two right-angled branches meeting at the origin. But `x·y` is *itself*
+and the zero set comes back as two right-angled branches meeting at the origin. But \( xy \) is *itself*
 bilinear, so the cell's interpolant reproduces it exactly and the saddle value is exactly `iso`. Both
 pairings are equally correct, and the decider is looking at a numerator that is zero in exact
 arithmetic and ±10⁻²⁰ in doubles, that is, at rounding error. The marcher breaks the tie
 deterministically instead, and `nx = 8` gives **8 and 10** points. The two branches are not
 expected to be equal: the sampling
-window is `[-1.05, 1.03] × [-1.02, 1.07]`, so the origin sits at cell `(4.04, 3.90)` and the two arms
+window is \( [-1.05, 1.03] \times [-1.02, 1.07] \), so the origin sits at cell `(4.04, 3.90)` and the two arms
 of the X are cut by the grid at different places.
 
 The decider matters in any cell whose saddle value is genuinely off `iso`, and there it reads the
 corner **magnitudes** as well as their signs. Give one cell the values
-`(−3, +1, −3, +1)`: the saddle is at `−1`, on the same side as the `−3` diagonal, so those two corners
-join through the centre and the crossings cut the two `+1` corners off. Now keep the same sign pattern
-and swap which diagonal is the deep one, `(−1, +3, −1, +3)`. Exactly the same corners are inside, but
-the saddle is now `+1`, the *outside* is what joins, and the cuts must move to the other diagonal. An
+\( (-3, +1, -3, +1) \): the saddle is at \( -1 \), on the same side as the \( -3 \) diagonal, so those two corners
+join through the centre and the crossings cut the two \( +1 \) corners off. Now keep the same sign pattern
+and swap which diagonal is the deep one, \( (-1, +3, -1, +3) \). Exactly the same corners are inside, but
+the saddle is now \( +1 \), the *outside* is what joins, and the cuts must move to the other diagonal. An
 implementation that looked only at which corners are inside would answer both the same way, drawing
 long diagonals across one of the two cells where the decider draws short corner elbows.
 
 There is a matching invariant in the other direction:
-**negating every corner value must leave the crossing exactly where it was.** `{f = 0}` and
-`{−f = 0}` are the same set of points, so a marcher that moved the curve would be reporting two
+**negating every corner value must leave the crossing exactly where it was.** \( \{f = 0\} \) and
+\( \{-f = 0\} \) are the same set of points, so a marcher that moved the curve would be reporting two
 different answers for one curve. The two flips cancel: negation swaps which corners are inside
 *and* flips the sign of the saddle value, and the decider compares the two.
 
 The next figure shows both the decision and the tie. A single grid cell with four prescribed corner
 values is a complete input to `generateIsoContours`, so the top row feeds it the two cells above;
-the bottom row is `x·y` at two resolutions.
+the bottom row is \( xy \) at two resolutions.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/spatial_geometry_examples/saddle_decider.png" wait="3.0" capture="box" open-outputs="true" w="1040" h="980" padding="14"}
 :::static
@@ -968,12 +968,12 @@ The four strategies disagree, and each disagreement is a reason to pick one over
 **Ward spends a whole cluster on one point.** The k=3 cut is **1 / 28 / 56**: the stray alone, one blob
 intact, and *two genuine blobs merged into one*. That follows from Ward's objective. Agglomerative
 Ward merges whichever pair raises the within-cluster sum of squares least, and merging clusters of
-`n₁`, `n₂` whose centroids are `d` apart costs `n₁n₂/(n₁+n₂) · d²`. Merging two 28-point blobs 2.408
-apart costs `14 · 5.80 = 81.2`. Absorbing the stray into its nearest blob (9.72 away) costs
-`28/29 · 94.5 = 91.2`. **91.2 > 81.2**, so the stray stays out and two real clusters pay for it. It
+\( n_1 \), \( n_2 \) whose centroids are `d` apart costs \( \frac{n_1 n_2}{n_1 + n_2} d^2 \). Merging two 28-point blobs 2.408
+apart costs \( 14 \cdot 5.80 = 81.2 \). Absorbing the stray into its nearest blob (9.72 away) costs
+\( \tfrac{28}{29} \cdot 94.5 = 91.2 \). **91.2 > 81.2**, so the stray stays out and two real clusters pay for it. It
 all comes from the *squaring*: a point three times further away is nine times as expensive.
 
-The same arithmetic predicts where the behaviour changes: at `d = √(81.2 / 0.966) = 9.17`. Moving the
+The same arithmetic predicts where the behaviour changes: at \( d = \sqrt{81.2 / 0.966} = 9.17 \). Moving the
 stray inward, the cut flips from `1 / 28 / 56` to `28 / 28 / 29` between **d = 8.32 and d = 9.72**,
 the two sampled distances that bracket 9.17.
 
@@ -1001,7 +1001,7 @@ Two more things about `vec2KMedoids`:
 
 ??? aside "Why not Smile's KMedoids"
     Smile 5's `KMedoids` is CLARANS and floors an internal `maxNeighbor` at `min(100, k·(n−k))`,
-    reachable through no option, then rejects any value above *n*, so for `k ≥ 2` it throws
+    reachable through no option, then rejects any value above *n*, so for \( k \ge 2 \) it throws
     `IllegalArgumentException: Too large maxNeighbor: 100` for every sample count below about a
     hundred.
 
@@ -1319,7 +1319,7 @@ bridge does its own repair.
 | the outline of a point set | `polylineFrom(vec2ConvexHull(points).hullPoints, closed = true)` | Finds the convex envelope and closes it as a polyline. Concavities in the original point set are not retained. |
 | Voronoi with sites of different importance | `CircularDirichlet.build(sites).toFLines(clip = box)` | Builds multiplicatively weighted cells with curved boundaries. A clip box makes unbounded cells drawable. |
 | …one cell of it, as arcs you can inspect | `diagram[i].pieces.map { it.support }` | Exposes the supporting circle or line for each boundary piece. This preserves analytic geometry before tessellation. |
-| soft, rounded Voronoi cells | contour `d₂ − d₁` at a *positive* iso level (zero finds nothing) | Contours the gap between the two nearest-site distances. A positive level gives rounded inset cells; zero has no interior band to extract. |
+| soft, rounded Voronoi cells | contour \( d_2 - d_1 \) at a *positive* iso level (zero finds nothing) | Contours the gap between the two nearest-site distances. A positive level gives rounded inset cells; zero has no interior band to extract. |
 | the level set of any 2D function | `generateIsoContours(field, xMin, xMax, yMin, yMax, nx, ny, iso)` | Samples a scalar field on an nx by ny grid and extracts the chosen level. Bounds and sample density determine the visible region and detail. |
 | …by cell size instead of cell count | `generateIsoContoursWithStep(field, …, spatialStep, iso)` | Sets contour resolution by world-space sample spacing. Smaller steps cost more field evaluations. |
 | a smooth outline around an `FLine` | `generateSmoothIsoContours(line, radius, spatialStep)` | Builds a smooth influence field around a line and contours it. Radius controls the outline’s reach and spatial step controls sampling. |

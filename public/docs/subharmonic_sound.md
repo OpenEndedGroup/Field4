@@ -737,27 +737,29 @@ remove the extra harmonics of a sharp waveform or a strong phase warp.
 
 ## Inside the quadrature PLL
 
-The plain PLL's phase detector multiplies the input `A·sin θ` by the cosine of its own phase
-estimate `φ̂`:
+The plain PLL's phase detector multiplies the input \( A\sin\theta \) by the cosine of its own phase
+estimate \( \hat\varphi \):
 
-`A·sin θ · cos φ̂ = ½A·sin(θ − φ̂) + ½A·sin(θ + φ̂)`
+\[
+A\sin\theta\cos\hat\varphi = \tfrac{1}{2}A\sin(\theta - \hat\varphi) + \tfrac{1}{2}A\sin(\theta + \hat\varphi)
+\]
 
-The first term is the phase error the loop wants, scaled by the input level `A`. The second is a
+The first term is the phase error the loop wants, scaled by the input level \( A \). The second is a
 ripple at twice the input frequency, which the loop only partly averages away.
 
-The quadrature PLL starts by splitting the input into two copies that stay 90° apart, `i ≈ A·sin θ`
-and `q ≈ A·cos θ`. `HilbertPair` does this with two chains of four allpass filters, which keep the
+The quadrature PLL starts by splitting the input into two copies that stay 90° apart, \( i \approx A\sin\theta \)
+and \( q \approx A\cos\theta \). `HilbertPair` does this with two chains of four allpass filters, which keep the
 two outputs within a degree of 90° from 30 Hz to 5 kHz at 48 kHz. From the pair:
 
-- `(i·cos φ̂ − q·sin φ̂) / A = sin(θ − φ̂)`, the phase error with no ripple term and no `A`, because
-  `A = √(i² + q²)` is known and divided out;
-- the same `A` is a level that does not ripple, so the generated tone is not amplitude-modulated at
+- \( (i\cos\hat\varphi - q\sin\hat\varphi) / A = \sin(\theta - \hat\varphi) \), the phase error with no ripple term and no \( A \), because
+  \( A = \sqrt{i^2 + q^2} \) is known and divided out;
+- the same \( A \) is a level that does not ripple, so the generated tone is not amplitude-modulated at
   the input frequency, as a rectified follower would make it;
-- the phase advance from one `(i, q)` sample to the next is the input's instantaneous frequency.
+- the phase advance from one \( (i, q) \) sample to the next is the input's instantaneous frequency.
 
 That last measurement is the frequency discriminator. While the loop is out of phase, it pulls the
 frequency estimate straight to what it measures, with a time constant of `acquisitionTimeSeconds`
-(20 ms by default). Once the smoothed `cos(θ − φ̂)` passes 0.9, the loop counts as locked and the
+(20 ms by default). Once the smoothed \( \cos(\theta - \hat\varphi) \) passes 0.9, the loop counts as locked and the
 discriminator stops: any harmonics left in the input bias the instantaneous frequency, and the
 phase loop holds the pitch more accurately on its own. Set `acquisitionTimeSeconds = 0.0` to hear
 the loop without it. On the bassline it then takes over twice as long to reach each note.

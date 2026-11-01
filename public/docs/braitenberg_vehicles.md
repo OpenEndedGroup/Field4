@@ -23,7 +23,7 @@ it is modelled on, and like them it runs on the CPU.
 
 ## 1. One neuron, swept up and back
 
-Per step, a motor neuron with input `I`, rate `r` and threshold `θ` does
+Per step, a motor neuron with input `I`, rate `r` and threshold \( \theta \) does
 
 ```diffstatic {data-lang=text}
 u += (−u + I + selfExcitation·r − θ − bias) / tauMembrane
@@ -32,7 +32,7 @@ r  = activation(gain · u)
 ```
 
 The activation is one of four `Activation` values. `SIGMOID`, `TANH` and `RELU` are switches of
-different shapes; `BUMP` (`e^(−x²)`) is tuned to a preferred input and is quiet above and below it.
+different shapes; `BUMP` (\( e^{-x^2} \)) is tuned to a preferred input and is quiet above and below it.
 
 With `selfExcitation = 0` the neuron is a smoothed function of its input. Feed enough of its own
 output back, and a sigmoid becomes bistable: once on, the neuron's own rate holds it on after the input

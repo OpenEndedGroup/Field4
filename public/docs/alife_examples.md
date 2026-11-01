@@ -364,11 +364,11 @@ neighbourhood gives the **smaller** correlation length, because the spiral arms 
 ??? note "This statistic's floor is 0.632, not 0"
     [`correlationLength`](reference/alife.md#alife-kt) is the lag at which the direction-averaged
     autocorrelation first falls to `1/e`, linearly interpolated. For a field with *no* correlation at all
-    the interpolation runs from `ac(0) = 1` straight to `ac(1) ≈ 0`, so the answer is `1 − 1/e = 0.632`:
+    the interpolation runs from `ac(0) = 1` straight to `ac(1) ≈ 0`, so the answer is \( 1 - 1/e = 0.632 \):
     a floor, reached from below by nothing. So compare a settled field against its own pixels
     *shuffled*, which lands on that floor to six decimal places, rather than against a chosen
     constant. A checkerboard, the shortest wavelength a lattice holds, reads exactly
-    `(1 − 1/e)/(4/3) = 0.4741`, which is as low as this statistic can go.
+    \( (1 - 1/e)/(4/3) = 0.4741 \), which is as low as this statistic can go.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/cyclic.png" wait="6.0" capture="box" open-outputs="true" padding="20"}
 :::static
@@ -487,7 +487,7 @@ morphogenesis model.
 Spots and a labyrinth can have *identical* coverage, identical mean and identical variance. Nothing in a
 histogram separates them. What does separate them is the **shape** of their features, and
 [`morphology()`](reference/alife.md#alife-continuous-kt-morphologyreport) measures it: the
-isoperimetric ratio `P²/4πA` (1 for a disc, growing without bound as a region gets thinner and more
+isoperimetric ratio \( P^2/4\pi A \) (1 for a disc, growing without bound as a region gets thinner and more
 convoluted) and the share of the covered area held by the single largest connected feature.
 
 The numbers below, from the run in the box: the spots preset gives 329 separate features with a median
@@ -496,8 +496,8 @@ features with ratios of **2.5** and **2.4** and largest shares of **0.64** and *
 less round, and dominated by one connected structure. The `holes` preset is the inverse morphology and
 reads as a single blob at 0.78 coverage with a ratio of **90**.
 
-??? note "The `4/π` perimeter correction"
-    The digital "crack perimeter" over-estimates a smooth boundary by about `4/π`, so `blobShapes`
+??? note "The \( 4/\pi \) perimeter correction"
+    The digital "crack perimeter" over-estimates a smooth boundary by about \( 4/\pi \), so `blobShapes`
     applies that correction, and the gallery measures a synthetic 40-cell disc to confirm it lands at
     1.00. The correction is asymptotic, so a 10-cell blob reads slightly **under** 1 (hence 0.80 for the
     spots). That bias points toward "round", which makes a *stripe* verdict conservative.
@@ -594,7 +594,7 @@ Those five events are not spread evenly through the 6000 steps, so the clip is n
 
     So [`animateEvolution`](reference/alife.md#alife-animate-kt) takes a `ramp`, and the one visible line
     of the fence below sets it to 40, meaning the last displayed frame advances forty times as many steps
-    as the first, on the geometric schedule `done(t) = 6000 · (40^t − 1) / 39`. The mid-point of the
+    as the first, on the geometric schedule \( \mathrm{done}(t) = 6000 \cdot (40^t - 1) / 39 \). The mid-point of the
     *schedule* is then step **819** rather than step 3000, and half the clip's change has arrived at 47.8 %
     of its length rather than at 14.5 %.
 
@@ -818,8 +818,8 @@ evidence about the *rules*.
 
 A flock is two things at once, and both are measured here:
 
-- **Aligned.** The order parameter `|Σ v̂| / N` is 0.692 after 900 steps. That needs a scale, so
-  [`randomPolarizationBaseline`](reference/alife.md#alife-kt) gives it: `√π / 2√N` is the expected value
+- **Aligned.** The order parameter \( \lvert \sum \hat{v} \rvert / N \) is 0.692 after 900 steps. That needs a scale, so
+  [`randomPolarizationBaseline`](reference/alife.md#alife-kt) gives it: \( \sqrt{\pi} / 2\sqrt{N} \) is the expected value
   for `N` *independent* headings, which for 400 agents is 0.044. The measured value is 15.6× that. And
   the same initial state with `alignmentWeight = 0`, nothing else changed, reaches 0.073.
 - **Spaced.** The 5th-percentile nearest-neighbour distance is 1.37 cells; with `separationWeight = 0`
@@ -828,7 +828,7 @@ A flock is two things at once, and both are measured here:
 
 0.692 rather than something near 1 is the *correct* answer, not a weak one: the population settles into
 several separate flocks with different headings (visible in the figure), and the global order parameter
-of `k` independent flocks tops out near `1/√k`.
+of `k` independent flocks tops out near \( 1/\sqrt{k} \).
 
 ??? aside "A stalled flock can still score well on alignment"
     The three steering terms are written as *desired-minus-current* velocities, so in a settled flock
@@ -1090,9 +1090,9 @@ dendrite.
 
 It is the one system in the family with a quantitative number to hit: the **mass–radius dimension**,
 fitted as `N(r) ∝ r^D` in log–log space by
-[`massRadiusDimension`](reference/alife.md#alife-kt), which also reports `r²`, because a slope through a
+[`massRadiusDimension`](reference/alife.md#alife-kt), which also reports \( r^2 \), because a slope through a
 curve is not a dimension. Planar DLA's asymptotic value is about 1.71; the cluster below measures
-**1.597** with `r² = 0.9965`.
+**1.597** with \( r^2 = 0.9965 \).
 
 The two controls are what make that number mean something. An **Eden cluster** uses the same
 neighbourhood and the same particle count, and differs only in that the growth site is chosen
@@ -1107,8 +1107,8 @@ it is not simply reading the bounded support.
     and clearly not 2".
 
     "The cluster reads low" and "the estimator reads low" are different claims, and the second one is
-    checkable. A point set placed at radii `R·(i/n)^(1/D)` has
-    `N(r) = n·(r/R)^D` **by construction** for any real `D`, and `massRadiusDimension` recovers
+    checkable. A point set placed at radii \( R\,(i/n)^{1/D} \) has
+    \( N(r) = n\,(r/R)^D \) **by construction** for any real `D`, and `massRadiusDimension` recovers
     `1.000, 1.262, 1.711, 2.002` from sets built with `D = 1.00, 1.2619, 1.71, 2.00`. Handed something
     whose exponent *is* 1.71 it returns 1.71. Separately, a straight line of lattice points reads 0.993
     and a filled lattice disc 1.986, the same 0.7 % low, because a staircase `N(r)` is not a power law.
@@ -1265,12 +1265,12 @@ be checked **exactly and combinatorially**.
 
 - Lindenmayer's original algae system (`A → AB`, `B → A`) has derivation lengths that are the Fibonacci
   numbers. Exactly.
-- The Koch snowflake has exactly `3 · 4^n` forward symbols at generation `n`.
-- Its turtle path **closes**: the pen returns to where it started, to `2.3 × 10⁻¹⁴` of a step.
+- The Koch snowflake has exactly \( 3 \cdot 4^n \) forward symbols at generation `n`.
+- Its turtle path **closes**: the pen returns to where it started, to \( 2.3 \times 10^{-14} \) of a step.
 - Its drawn length grows by exactly **4×** per generation at constant step size. (The textbook `4/3` is
   the ratio when the figure is held at constant *diameter*; this turtle holds the step constant, so the
   figure triples in size each generation. Same identity, stated for what is actually drawn.)
-- And its enclosed area matches the closed form `9^n · A₀ · (1 + 3/5(1 − (4/9)^n))` to `3 × 10⁻⁸`
+- And its enclosed area matches the closed form \( 9^n \cdot A_0 \cdot \bigl(1 + \tfrac{3}{5}(1 - (4/9)^n)\bigr) \) to \( 3 \times 10^{-8} \)
   relative, a second independent geometric identity from the same turtle. (`FLine` stores
   single-precision coordinates; that residual is the float, not the identity.)
 
@@ -1367,7 +1367,7 @@ it, so a plant is drawn **depth-first**: the pen runs all the way out to the tip
 back to a fork it remembered and runs out to the next. You can watch it do exactly that, and the jumps are
 the stack. The Koch snowflake on the left has no brackets at all and is therefore one
 continuous stroke: 768 segments at generation 4, traced without the pen ever leaving the paper, closing
-back on its start to `2.3 × 10⁻¹⁴` of a step.
+back on its start to \( 2.3 \times 10^{-14} \) of a step.
 
 !!! note "The framing has to be pinned, or nothing moves"
     [`rasterizeFLines`](reference/alife.md#alife-lsystem-kt) fits its raster to the bounds of what it is
@@ -1423,10 +1423,10 @@ bridges, all into machinery that was already here:
    marching-squares extractor in `contours.kt` over the `v` field, so a Gray–Scott result becomes
    drawable, animatable, exportable geometry: 195 contours at `v = 0.25` below. That count is checked
    against a second measurement rather than printed: CI asserts at least one loop per thresholded blob,
-   and pins the extractor itself against circle geometry (a disc's contour encloses `πr²` to 0.16 %).
+   and pins the extractor itself against circle geometry (a disc's contour encloses \( \pi r^2 \) to 0.16 %).
 2. **Space colonization → a tree of `FLine`s.** Grown into an *annulus*, which no
    upward-with-noise heuristic reaches, so the branching really is following the space.
-   `ColonizationTree.isTree()` checks the thing a picture cannot show (one root, `n − 1` edges, no
+   `ColonizationTree.isTree()` checks the thing a picture cannot show (one root, \( n - 1 \) edges, no
    cycles) because a growth algorithm that produces a cycle looks identical.
 3. **A 3-D life-like automaton → a [`TriMesh`](mesh_examples.md).** `IntVolume.toMesh` smooths the
    occupancy and runs `mesh_sdf.kt`'s marching cubes, so the automaton's surface is a real mesh you can

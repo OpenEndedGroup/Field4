@@ -1353,7 +1353,7 @@ markdown("counts", counts.h)
 
 ![An orbitable wireframe of the tesseract under a rotated perspective projection — a cube inside a cube with the eight connecting edges, visibly mid-rotation so the inner cell is turning out. Below it a table of the four rank-4 seeds with their vertex, edge, polygon and cell counts, all showing V minus E plus F minus C equal to zero, the polygons-per-cell histogram, and every one reporting false for closed 2-manifold](assets/polytope_examples/rank4.png)
 
-Every row satisfies `V − E + F − C = 0`, the Euler relation for a convex 4-polytope, and every row
+Every row satisfies \( V - E + F - C = 0 \), the Euler relation for a convex 4-polytope, and every row
 reports `false` for the closed-2-manifold check, since a 4-polytope is not a surface.
 
 There is no `triangulate()` for rank 4: a projected 4-polytope's polygons do not bound a surface,

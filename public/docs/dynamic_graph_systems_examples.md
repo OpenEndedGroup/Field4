@@ -176,7 +176,7 @@ points were laid out on.
 ## Strengthening and forgetting
 
 Decay is what makes these graphs remember. `decayExponential(dt, λ)` multiplies each weight by
-`e^(−λ dt)`, so the weight after a given time does not depend on how many frames it took.
+\( e^{-\lambda\,dt} \), so the weight after a given time does not depend on how many frames it took.
 `decayLinear(dt, rate)` subtracts `rate × dt` instead. The example steps one edge under each law
 and plots both curves.
 
@@ -206,7 +206,7 @@ showSignals(
 
 ![two decay curves over four seconds of simulated time: the exponential one falls smoothly and is still above 0.2 at the end, the linear one reaches zero at about 2.9 seconds and stays there](assets/dynamic_graph_systems_examples/decay.png)
 
-The two laws give different memories. Under exponential decay a weight halves every `ln 2 / λ`
+The two laws give different memories. Under exponential decay a weight halves every \( \ln 2 / \lambda \)
 seconds and approaches zero. Under linear decay it reaches zero at a fixed time, and the edge is
 removed then. `ttl` is separate from both: an edge expires when its `ttl` runs out, whatever its
 weight, so an edge that keeps being proposed at the ceiling still dies eventually.

@@ -883,8 +883,8 @@ noise settings fixed.
 Read [MacKay's *Information Theory, Inference, and Learning Algorithms*](https://www.inference.org.uk/mackay/itila/book.html),
 chapter 45, for the relationship between finite parameter models and distributions over functions.
 [Rasmussen and Williams, chapter 2](https://gaussianprocess.org/gpml/chapters/RW2.pdf) gives the
-regression equations and Cholesky algorithm. In Field, with A = K(X,X) + diag(noiseStd²) and residual
-r = y − mean(X), the implementation computes:
+regression equations and Cholesky algorithm. In Field, with \( A = K(X,X) + \operatorname{diag}(\texttt{noiseStd}^2) \) and residual
+\( r = y - m(X) \), the implementation computes:
 
 \[
 \mu_* = m(X_*) + K(X_*,X)A^{-1}r,\qquad
