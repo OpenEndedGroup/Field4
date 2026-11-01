@@ -589,7 +589,8 @@ val drawn = bounds.flatMapIndexed { i, bound ->
         color = vec(1.0, 0.5, 0.25, 1.0)
     }
     counts += "maximumDeviation $bound: ${points.size} vertices"
-    [chord, dots]
+    val pair: List<FLine> = [chord, dots]
+    pair
 }
 display("vertices", counts.joinToString(" · "))
 lines(drawn, w = 720.0, h = 260.0, fitToSize = true)

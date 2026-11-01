@@ -616,7 +616,7 @@ Here two copies of the same hanging sheet have their bottom-centre corner carrie
 right over thirty steps (the orange line is the hand's path). One is teleported each step and one is
 held by `grabNearest`:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/physics/cloth_grab.png" wait="4.0" capture="box" open-outputs="true" w="1080" h="560" padding="14" name="physics-cloth-grab" alt="Two panels of the same pinned cloth after its bottom-centre corner has been carried right along an orange line. On the left, teleported, a fan of long stretched constraints runs from the middle of the sheet to the corner. On the right, grabbed, the grid stays even and the corner region folds after the hand."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/physics/cloth_grab.png" embed=true wait="4.0" capture="box" open-outputs="true" w="1080" h="560" padding="14" name="physics-cloth-grab" alt="Two panels of the same pinned cloth after its bottom-centre corner has been carried right along an orange line. On the left, teleported, a fan of long stretched constraints runs from the middle of the sheet to the corner. On the right, grabbed, the grid stays even and the corner region folds after the hand."}
 import afield.simulation.physics.*
 
 fun sheet() =
