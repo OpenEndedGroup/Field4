@@ -1979,9 +1979,14 @@ class Renderer(
         while (running && runInvocation.get() == invocation && windows.any { !it.shouldClose() }) {
             afield.app.diagnostics.logging.PinnedConsole.beat("render")
             windows.forEach { it.pollEvents() }
+            val renderStart = System.nanoTime()
             update()
             render()
             frame++
+            Options.maxFrameRate.takeIf { it > 0.0 }?.let { cap ->
+                val remaining = (1_000_000_000.0 / cap).toLong() - (System.nanoTime() - renderStart)
+                if (remaining > 0) Thread.sleep(remaining / 1_000_000)
+            }
             val now = System.nanoTime()
             if (now - initialTime >= PERF_LOG_INTERVAL_NS) {
                 lprintln("info,perf,fps", "fps=${1_000_000_000.0 * frame / (now - initialTime)}")
@@ -2004,6 +2009,10 @@ class Renderer(
             val renderStart = System.nanoTime()
             logTime("render") { render() }
             frame++
+            Options.maxFrameRate.takeIf { it > 0.0 }?.let { cap ->
+                val remaining = (1_000_000_000.0 / cap).toLong() - (System.nanoTime() - renderStart)
+                if (remaining > 0) kotlinx.coroutines.delay(remaining / 1_000_000)
+            }
             if (frame == 1) {
                 LatencySpans.record("renderer.firstRender", renderStart, detail = "invocation=$invocation")
                 if (invocation == 1L) LatencySpans.record("renderer.toFirstFrame", constructedAtNanos)

@@ -2198,7 +2198,12 @@ object OperationTranscript {
                             else computeDriveClip(page, capture, captureUid, padding)
                         }
                     }.getOrNull()
-                    DocsUiRecorder(page, clip, fps).also { driver.recorder = it; it.start() }
+                    // clipAtEnd: measure the frame when the recording stops, for a box that grows
+                    // while the drive runs (a recordToggle opens its curve under the panel).
+                    val clipAtEnd = if (payload["clipAtEnd"].asBooleanOrDefault(false) && clipRect == null) {
+                        { computeDriveClip(page, capture, captureUid, padding) }
+                    } else null
+                    DocsUiRecorder(page, clip, fps, clipAtEnd).also { driver.recorder = it; it.start() }
                 } else null
 
                 try {
