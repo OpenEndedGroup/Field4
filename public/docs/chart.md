@@ -189,7 +189,7 @@ ways:
 Clipping only matters when you set an explicit `xDomain` or `yDomain`, because a derived domain
 always covers its own data.
 
-The same marks in an explicit window, with  off and then on:
+The same marks in an explicit window, with `clip` off and then on:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chart_gallery/chart-clip-pair.png" capture="box" open-outputs="true" wait="2" padding="12" embed=true name="chart-clip-pair" alt="Two charts of an area, a line and points over x 8 to 32 and y 0 to 20. With clip = false the marks run far past the axes and the whole figure shrinks to fit them, the plot a small rectangle in the middle. With clip = true every mark stops at the plot rectangle and the figure fills its frame"}
 // The same marks in an explicit window, with clip off and then on.
