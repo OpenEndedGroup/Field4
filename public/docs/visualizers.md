@@ -1814,7 +1814,7 @@ To edit a take key by key, bake it into keyframe lanes with `bakeGesture(pad)`, 
 
 ### Recording a slider into keyframes
 
-A gesture records an XY pad take, kept on the pad, which you bake into keyframes afterwards with `bakeGesture`. `recordToggle` records a single control straight into a keyframe curve. In the presets example below, `recordToggle("size")` adds a **rec size** button. Press it, move the size slider, and press it again: what you played becomes a [keyframe curve](keyframe_editor.md) named `size`, opened under the panel. The take is thinned to the keys needed to stay within half a percent of the slider's range, so a slow sweep becomes a handful of keys you can edit, not a key per mouse event.
+A gesture records an XY pad take, kept on the pad, which you bake into keyframes afterwards with `bakeGesture`. `recordToggle` records a single control straight into a keyframe curve. In the presets example below, `recordToggle("size")` adds a **rec size** button. Press it, move the size slider, and press it again: what you played becomes a [keyframe curve](keyframe_editor.md) named `size`, opened under the panel. The take is thinned to the keys needed to stay within half a percent of the slider's range, so a three-second up-down-up sweep of 62 slider changes comes back as 35 keys you can edit, not one per mouse event.
 
 To play the curve back into the slider, read it in a `loop` and hand it to `playControl`:
 
