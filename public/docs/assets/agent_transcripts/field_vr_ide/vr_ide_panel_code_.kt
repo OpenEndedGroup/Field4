@@ -20,4 +20,5 @@ loop {
     ownedRenderer.window.pollEvents()
     ownedRenderer.render()
     frame()
-}.end { vr.close() }
+}
+    .end { vr.close() }

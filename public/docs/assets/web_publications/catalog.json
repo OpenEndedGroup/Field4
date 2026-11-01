@@ -1145,12 +1145,12 @@
     },
     "assets/agent_transcripts/field_vr_ide/metadata.edn": {
       "captureDigest": "4d5add3a103558e3a45b0b09c14392b55f14042e4118c9d4d341d9a926c175b0",
-      "capturedAt": "2026-11-01T13:42:14.693Z",
+      "capturedAt": "2026-11-01T13:50:44.879Z",
       "channels": 1,
       "file": "assets/web_publications/field_vr_ide/document/metadata.edn",
       "files": {
-        "assets/web_publications/field_vr_ide/document/metadata.edn": "5630cf42bf73624d9d87e9119a120be92000f94c2241c69e0fa735edefcd8123",
-        "assets/web_publications/field_vr_ide/document/outputs.json": "16576067f6d47aa46e3671fa91245f04c19522000153063321cc330c154b4445",
+        "assets/web_publications/field_vr_ide/document/metadata.edn": "2c1399dc77c9b8c1ad44984c480c8817c104ec467564400152f8d0f845a173d2",
+        "assets/web_publications/field_vr_ide/document/outputs.json": "34049f039ab3844dd0288c234287d7856d16e98235845c3de968720395df043e",
         "assets/web_publications/field_vr_ide/outputs/0.html": "4eb1c0f193e4ada9f8d17001e24a01e40469b5d57dd50c608bfd0eeb66ebbd8e"
       },
       "kinds": [
@@ -1159,11 +1159,11 @@
       "outputs": "assets/web_publications/field_vr_ide/document/outputs.json",
       "sources": {
         "dev_docs/agents/transcripts/field_vr_ide.yaml": "93436c4b88fedfe047ed51167f9204e6ee0836c29c6c1fc8b8b6325a352eba20",
-        "public/docs/assets/agent_transcripts/field_vr_ide/guides/field_vr_ide.md": "897719db0e3daa1a52e25f07c8c7eaff6f94ef0978756c7cb28e502130a01b90",
-        "public/docs/assets/agent_transcripts/field_vr_ide/metadata.edn": "3cb53c40200ef1ca5c0b41cb6a2c0e914a47a2fcac9dc4bb31187cef3f19e79d",
-        "public/docs/assets/agent_transcripts/field_vr_ide/vr_ide_panel_code_.kt": "91b26da800fc54a2b02a238b6eecb7a236c754c19479ac1ee9950b19029d10b1",
-        "public/docs/assets/agent_transcripts/field_vr_ide/vr_ide_playground_code_.kt": "3ea79f511fa8214363d3cfccc42f1972fa8e9d05461fee5d0877ab67fafcc964",
-        "public/docs/assets/agent_transcripts/field_vr_ide/vr_ide_renderer_code_.kt": "966d7c73147749d9001cb821c0df5e6560dde69c0a787783dcdc405fa66ba659",
+        "public/docs/assets/agent_transcripts/field_vr_ide/guides/field_vr_ide.md": "4839a5b7d7f3a082e395e848fbac5398b13225d94cc20aa40ac6c26ca002a513",
+        "public/docs/assets/agent_transcripts/field_vr_ide/metadata.edn": "ab23ca20a1d136b48f2421eab529aebc265e2d0f34a13cef68df35eb8afb0526",
+        "public/docs/assets/agent_transcripts/field_vr_ide/vr_ide_panel_code_.kt": "5552403af8ef31ea4c8dc27e097ddf57ebfb377bd96a567f39c82d8b6ff257f5",
+        "public/docs/assets/agent_transcripts/field_vr_ide/vr_ide_playground_code_.kt": "c45441dd78ad57a39384759b8d42d803b88253dd664e8b302fff0a21c7ed9ed2",
+        "public/docs/assets/agent_transcripts/field_vr_ide/vr_ide_renderer_code_.kt": "db3bb2491242b052478d237e9bae09f2338df6d6327bd6a6592f30fe449c5488",
         "public/docs/assets/field_vr_ide/companion.png": "5c9f6e9b292f662544a084b54aa072e51d01c51bd4ef8efcc2a35ee69cffbbff",
         "public/docs/field_vr_ide.md": "93b26b63980df2ca36ee84f697e1a527beb11e6707635217a801a731bc93ee93"
       },
