@@ -100,6 +100,12 @@ harmony:
 o.onCell(4, 4, "bass harmony") { note -> o[4, 7] = if (note == 'G' || note == 'A') 'F' else 'C' }
 ```
 
+With that line the bass moves to F under the G and A of the melody and back to C:
+
+```diffstatic_runner {data-lang=kotlin audio="assets/orca/bass.wav" audio-spec="bass" audio-renderer="afield.audio.synth.OrcaSoundDocs" embed=true hidden=true name="orca-bass-audio"}
+// OrcaSoundDocs.render("bass"): the first grid with the onCell line, run by ORCA's own operators
+```
+
 `variable(name, value)` holds an ORCA variable every frame, so a `V` on the grid reads it as if
 another `V` had written it. `o.variable('o', '5')` makes a `Vo` output `5`; give `null` to let it go.
 A Field slider that calls `variable` is a knob on the grid.
@@ -129,6 +135,12 @@ go {
     """,
     )
 }
+```
+
+Eight seconds of the first grid with that patch in place: the melody and the bass both drone on G.
+
+```diffstatic_runner {data-lang=kotlin audio="assets/orca/drone.wav" audio-spec="drone" audio-renderer="afield.audio.synth.OrcaSoundDocs" embed=true hidden=true name="orca-drone-audio"}
+// OrcaSoundDocs.render("drone"): the first grid after the patch above, run in ORCA's own JavaScript
 ```
 
 `eval` is a suspending call, so it goes in a coroutine (`go { }`). A JavaScript error comes back as
