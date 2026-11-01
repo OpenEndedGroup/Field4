@@ -187,7 +187,9 @@ fun violin(vararg data: List<Number>): Plot {
  * radius against the measured radii, a set point against the readings.
  *
  * Pass `"label" to values` pairs; each pair becomes one violin at category `label`, coloured in
- * [signalPalette] order, with its inner box and mean line as in the unnamed overload. [references],
+ * [signalPalette] order, with its inner box and mean line as in the unnamed overload but no
+ * individual points: with thousands of samples per group the outlier strip draws as a solid bar,
+ * and the violin's own outline already reaches the extremes. [references],
  * when given, holds one number per group in the same order (a NaN skips that group) and is drawn in
  * [referenceColor] as a dashed horizontal segment spanning that violin's slot only, so four groups
  * with four different targets read as four comparisons rather than one shared threshold. [yRange]
@@ -216,7 +218,7 @@ fun violin(
                 name = label
                 box.visible = true
                 meanline.visible = true
-                points = ViolinPoints.outliers
+                points = ViolinPoints.`false`
                 line.color(signalPalette[i % signalPalette.size])
             }
         }

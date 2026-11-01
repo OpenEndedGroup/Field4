@@ -53,7 +53,7 @@ animateEvolution(
 <!-- field-box id="orbits" index="1" -->
 
 ```edn [field-box id="orbits" role="properties"]
-{"id" "orbits" "index" 1 "name" "5 — BUMP vehicles circle at a set distance" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 — BUMP vehicles circle at a set distance" "_tombstone" false "frame" #afield/rect [60.0 60.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "orbits_code_.kt" "lines" 27 "characters" 1199 "sha256" "73e8a47f90b67e3213222171be564e0f87b246a5d31eaf8c681f06f1014beed9"}]}
+{"id" "orbits" "index" 1 "name" "5 — BUMP vehicles circle at a set distance" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 — BUMP vehicles circle at a set distance" "_tombstone" false "frame" #afield/rect [60.0 60.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "orbits_code_.kt" "lines" 32 "characters" 1222 "sha256" "44f2b92bc044305fa5d2e4d3d2660a13dd55d82ff41a49aefcbe9d9942cbc336"}]}
 ```
 
 ```kotlin [field-property box="orbits" name="code" path="orbits_code_.kt"]
@@ -76,13 +76,18 @@ for (d in [8.0, 12.0, 16.0, 20.0]) {
     println(
         "tuned ${d.f2}: median ${radii.median().f2}, middle half ${radii.quantile(0.25).f2} to ${radii.quantile(0.75).f2}",
     )
-    panels += ("tuned " + d.f2 + ": median " + radii.median().f2) to canvas.image()
+    panels += (d.f2 + " -> " + radii.median().f2) to canvas.image()
     groups += ("tuned " + d.f2) to radii.distances(every = 40)
 }
 showImg(montage(panels, columns = 2, cellSide = 300))
 display(
     "radii",
-    violin(*groups.toTypedArray(), references = [8.0, 12.0, 16.0, 20.0], yRange = 0.0..60.0, yTitle = "distance to nearest lamp"),
+    violin(
+        *groups.toTypedArray(),
+        references = [8.0, 12.0, 16.0, 20.0],
+        yRange = 0.0..60.0,
+        yTitle = "distance to nearest lamp",
+    ),
 )
 ```
 

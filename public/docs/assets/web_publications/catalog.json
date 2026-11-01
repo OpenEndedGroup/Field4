@@ -572,28 +572,31 @@
     },
     "assets/agent_transcripts/braitenberg_where_next/metadata.edn": {
       "captureDigest": "4d5add3a103558e3a45b0b09c14392b55f14042e4118c9d4d341d9a926c175b0",
-      "capturedAt": "2026-11-01T00:30:24.397Z",
-      "channels": 5,
+      "capturedAt": "2026-11-01T10:47:01.738Z",
+      "channels": 6,
       "file": "assets/web_publications/braitenberg_where_next/document/metadata.edn",
       "files": {
-        "assets/web_publications/braitenberg_where_next/document/metadata.edn": "0f9498631107a370900673c7e171d8e43b2b3e9fed13da76dc5cc50dfb10170f",
-        "assets/web_publications/braitenberg_where_next/document/outputs.json": "0349cbe4ecf8f21f6cffcbdbe2dcb4cb2c52690fae83de83f516746dcf124149",
-        "assets/web_publications/braitenberg_where_next/outputs/0.html": "cff62b88c37dcb612354f7aeb236131af1cf2d2bcab6fad90a04d564aab26ceb",
-        "assets/web_publications/braitenberg_where_next/outputs/1.html": "6ccd6cd67a6039b6138c6e6a8b804686c3aea38afccba866f6c2bb2f2b0ba6ee",
-        "assets/web_publications/braitenberg_where_next/outputs/2.html": "02249d75b1d6977c68576da8bad740f0a14a4574248e6d633bb79c7e06748eb8",
-        "assets/web_publications/braitenberg_where_next/outputs/3.html": "63eaf2cfa27d20770827924f7a1367d131dcae4ce4987ba64243235817c6476a",
-        "assets/web_publications/braitenberg_where_next/outputs/4.html": "06c5617e9c19c05d0f77207b0a120079d95a34034be2d741a3a61a7f656eb53f"
+        "assets/web_publications/braitenberg_where_next/document/metadata.edn": "adf2b38e76a7940d3086631e68bf5f6a4649841f7518168ddf251c48effc87ea",
+        "assets/web_publications/braitenberg_where_next/document/outputs.json": "a7e56c7baacaeb280b860d1132c2f0066bfe1eaf3ce8c24f11e8ef67703c565f",
+        "assets/web_publications/braitenberg_where_next/outputs/0.html": "fae041e96fcddcf8126236c61197d530c46bc117d06c91a2580e7d997f531b3b",
+        "assets/web_publications/braitenberg_where_next/outputs/1.html": "a46d494c3d60e7d3f91bb8a2fe54b23fff90fc81e1af87a22bbec1544094ace7",
+        "assets/web_publications/braitenberg_where_next/outputs/2.html": "e3c357cadb7a8ac45b3d8c193e64eab929a31bcbffa5cba81886047763a3edff",
+        "assets/web_publications/braitenberg_where_next/outputs/3.html": "30996c681c90c28e3ba5a40e57b7bf6d4d1ec5db56a3bb42b91a651353f1627a",
+        "assets/web_publications/braitenberg_where_next/outputs/4.html": "784cf19d16cb4734b30a471770589f4b5d5e473b9be02f464d40fa150bbe8099",
+        "assets/web_publications/braitenberg_where_next/outputs/5.html": "24608e692d0bf37ed9d9ebbe6d8d20a1933243e43a3650e4eb79c04d8d7bc648"
       },
-      "kinds": [],
+      "kinds": [
+        "plotly"
+      ],
       "outputs": "assets/web_publications/braitenberg_where_next/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/braitenberg_where_next.yaml": "5ebfebf84ca45a6f051bb801f497e23d5ca665fd222398ef4729990703f344cf",
-        "public/docs/assets/agent_transcripts/braitenberg_where_next/combined_code_.kt": "725459fd71de0b18c64f4ceaa1ca8272c0b8dd00f4b71202359da24aef1c1413",
+        "dev_docs/agents/transcripts/braitenberg_where_next.yaml": "b4216a7460094587d33810bc54876476989ada4f9fb15bc6367233a9622b0e2b",
+        "public/docs/assets/agent_transcripts/braitenberg_where_next/combined_code_.kt": "294443832cb93fb48c8ddda27c228e2bdd158d640bf48c6c933c7ea9b75c4163",
         "public/docs/assets/agent_transcripts/braitenberg_where_next/evolved_wiring_code_.kt": "127ba9f3c3e1422de61fa4440009434441e784f61ffadd46c2abb7828a5bf9bc",
         "public/docs/assets/agent_transcripts/braitenberg_where_next/guides/braitenberg_vehicles.md": "3196418678ddc9712892ee7192db55fc8995f00003833a658de71c62b99b974a",
-        "public/docs/assets/agent_transcripts/braitenberg_where_next/metadata.edn": "a8d960434de8cd0e556c3736b17fbfac838cac246dcee5f9972f04995058af50",
+        "public/docs/assets/agent_transcripts/braitenberg_where_next/metadata.edn": "eb4ce29a97e43d200da5ce3722c4bc4e560c3fe0a6ff6054259677fdb50dd27b",
         "public/docs/assets/agent_transcripts/braitenberg_where_next/moving_lights_code_.kt": "e3f441cf62de145c8bd6acbd2653ce08ce22a2a7f39e59fd71dd25466798d6a2",
-        "public/docs/assets/agent_transcripts/braitenberg_where_next/orbits_code_.kt": "2be19d959f0fb5a752df1500faa725dc91b21ae7f4bef16a2691c3c04195a301",
+        "public/docs/assets/agent_transcripts/braitenberg_where_next/orbits_code_.kt": "44f2b92bc044305fa5d2e4d3d2660a13dd55d82ff41a49aefcbe9d9942cbc336",
         "public/docs/assets/agent_transcripts/braitenberg_where_next/speed_cost_code_.kt": "d644122081fdf3ed4dceee58a49d56e12336f65d70649d7a8e2227616acc649d"
       }
     },

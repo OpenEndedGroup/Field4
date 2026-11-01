@@ -245,7 +245,8 @@ of lag the vehicle has driven past the ring before its neurons notice, and the p
 again.
 
 `OrbitRadii` records every vehicle's distance to its nearest lamp once per step. The box tunes four
-populations to four distances, lets them settle for 6000 steps, draws each population's trails and
+populations to four distances, lets them settle for 6000 steps, draws each population's trails
+(captioned tuned distance -> median) and
 hands the last 2000 steps of distances to `violin`, one violin per tuned distance on a shared 0 to 60
 axis, with the tuned distance as a dashed yellow line across its own violin.
 
@@ -269,13 +270,18 @@ for (d in [8.0, 12.0, 16.0, 20.0]) {
     println(
         "tuned ${d.f2}: median ${radii.median().f2}, middle half ${radii.quantile(0.25).f2} to ${radii.quantile(0.75).f2}",
     )
-    panels += ("tuned " + d.f2 + ": median " + radii.median().f2) to canvas.image()
+    panels += (d.f2 + " -> " + radii.median().f2) to canvas.image()
     groups += ("tuned " + d.f2) to radii.distances(every = 40)
 }
 showImg(montage(panels, columns = 2, cellSide = 300))
 display(
     "radii",
-    violin(*groups.toTypedArray(), references = [8.0, 12.0, 16.0, 20.0], yRange = 0.0..60.0, yTitle = "distance to nearest lamp"),
+    violin(
+        *groups.toTypedArray(),
+        references = [8.0, 12.0, 16.0, 20.0],
+        yRange = 0.0..60.0,
+        yTitle = "distance to nearest lamp",
+    ),
 )
 ```
 
