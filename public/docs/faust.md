@@ -77,9 +77,10 @@ Completion follows the way Faust is written, by library prefix:
 * The UI primitives insert as snippets with their arguments in order, because Faust puts `init`
   *before* `min`.
 
-The popup below was opened by typing `os.` after `process = `:
+The popup below was opened by typing `os.` after `process = `. The list is alphabetical, so the
+Casio CZ emulations come first:
 
-```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".afield-suggest" screenshot="assets/faust/completion.png" transcript="assets/transcripts/faust_completion_setup.yaml" padding="6" wait="0" timeout="240" embed=true hidden=true name="faust-completion" alt="Field's completion popup inside a #faust region at the prefix os., listing Faust oscillators from the os library with their signatures, and a panel beside it with the selected oscillator's documentation"}
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".afield-suggest" screenshot="assets/faust/completion.png" transcript="assets/transcripts/faust_completion_setup.yaml" padding="6" wait="0" timeout="240" embed=true hidden=true name="faust-completion" alt="Field's completion popup inside a #faust region at the prefix os., listing the os library's oscillators with their signatures, starting with the Casio CZ emulations CZhalfSine, CZpulse and CZresSaw, and a panel beside it documenting CZhalfSine(fund,index): its two parameters and oscillators.lib"}
 ui.eval(
     "window.localStorage.removeItem('field.suggest.recency.v1'); var s=document.createElement('style');s.textContent='.tick_text{display:none !important}';document.head.appendChild(s);return 'setup';",
 )
