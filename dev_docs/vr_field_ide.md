@@ -112,3 +112,16 @@ capture and refreshing this starter's web publication. Live proof JSON is retain
 The updated application was restarted on 9092 and its actual Vulkan companion was inspected
 at `/tmp/field-vr-input-ready.png`, including the new input-status footer. The desktop preview
 is running; no headset was connected. Existing Playground source edits were preserved.
+
+
+## Installed setup confirmed (2026-11-01)
+
+The user ran the administrator helper successfully. The exact two-device udev rule is now
+installed for uid 1000. Live WiVRn JsonConfiguration reports hid-forwarding=true, and the private
+Tailscale Serve listener on 8443 proxies to Field 9092. Both the local and private /health routes
+returned ok. The existing public Funnel 443 remained unchanged; 8443 is absent from AllowFunnel.
+The earlier pending-administrator notes above describe the initial implementation session, not
+current setup status. The headset was disconnected at this check; physical input and on-headset
+IDE interaction are still pending. The public walkthrough now gives portable setup commands,
+explains pointer and focus ownership, and separates software evidence from outstanding hardware
+and second-machine checks.

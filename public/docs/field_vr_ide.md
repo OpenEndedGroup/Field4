@@ -2,7 +2,9 @@
 
 Field's frontend can run inside its own Vulkan scene: the real canvas, Monaco editor, outputs and
 command palette, connected to the same document as the desktop app. Edits and code execution go to
-the usual Field server. A world-locked browser panel lets you use it with the headset on.
+the usual Field server. A world-locked browser panel lets you use it with the headset on. Controllers can position the
+panel and operate the interface; a keyboard and mouse connected to the Quest can use a dedicated
+WiVRn input path without desktop window focus. Another browser can edit the same document remotely.
 
 ```diffstatic_runner {data-lang=kotlin requires="electron-runtime" screenshot="assets/field_vr_ide/companion.png" capture="native-window" native-wait-frames="20" trim-native=true wait="8" embed=true hidden=true timeout="180" name="field-vr-ide-companion" alt="Field's live document and VR keyboard toolbar, sampled from Chromium into the Vulkan desktop companion" macro-file="../../dev_docs/agents/transcripts/field_vr_ide.yaml" capture-box="vr_ide_renderer"}
 // Runs the complete starter in desktop mode and captures the actual Vulkan companion.
@@ -42,6 +44,19 @@ has focus. The virtual keyboard is a basic ray keyboard; there is no dictation o
 as you move your head. Stop box 2 to close the offscreen browser and remove the panel's input hooks.
 Restart Field to change OpenXR mode or eye dimensions.
 
+## Choose your input
+
+| Input | What receives it | Desktop window focus |
+| --- | --- | --- |
+| Controller trigger or hand pinch | The control under the ray on the VR panel | Not required |
+| Keyboard and mouse attached to the PC | The front-on companion window | Required |
+| Keyboard and mouse attached to the Quest | The VR browser through WiVRn HID forwarding | Not required after setup |
+
+The headset mouse has a cursor confined to the browser page. It does not steer the Linux desktop
+pointer or the other browser client's pointer. Clicking a text field or editor in the panel chooses
+where the headset keyboard types. Switching between these inputs does not change which Field
+document the panel displays.
+
 ## A real keyboard
 
 A USB or Bluetooth keyboard attached to the desktop uses the native companion window's key and text
@@ -60,8 +75,8 @@ ownership until release or an explicit controller press.
 ## Headset keyboard and mouse, without desktop focus
 
 On Linux/OpenXR, `FieldVrWorkspace` automatically listens for WiVRn's virtual **WiVRn Keyboard**
-and **WiVRn Mouse** devices. Field verifies their USB bus/vendor/product identities, takes an
-exclusive evdev grab, and sends their events directly to this Chromium panel. A headset mouse
+and **WiVRn Mouse** devices. It captures those identified virtual devices and sends their events
+directly to this Chromium panel. A headset mouse
 moves a cursor inside the page; clicks, held drags and vertical/horizontal scrolling use that
 cursor. Moving the panel leaves the cursor at the same page coordinates. An explicit controller
 press can take over; controller hover cannot interrupt a mouse drag.
@@ -73,13 +88,14 @@ input overflow release held keys/buttons; reconnecting does not replay already-h
 The desktop-connected devices still use the ordinary companion-window focus described above.
 
 Install the narrowly scoped Linux device rule once, as the user who runs Field. The command is a
-dry run unless `--install` is present. On this machine:
+dry run unless `--install` is present. From the Field repository, inspect the plan, then install:
 
-```bash
-sudo python3 /home/marc/Field4/tools/setup_wivrn_input.py --install --user marc --serve-port 8443
+```diffstatic {data-lang=bash}
+python3 tools/setup_wivrn_input.py --user "$USER" --serve-port 8443
+sudo python3 tools/setup_wivrn_input.py --install --user "$USER" --serve-port 8443
 ```
 
-This grants Marc access only to WiVRn's two identified virtual devices, excludes them from desktop
+This grants your user access only to WiVRn's two identified virtual devices, excludes them from desktop
 libinput, enables WiVRn HID forwarding, and adds a private Tailscale HTTPS listener on the unused
 port 8443. Existing listeners are preserved; an occupied or public target port is refused. Omit
 `--serve-port 8443` when only input setup is wanted. Reconnect WiVRn afterwards so the desktop
@@ -101,21 +117,35 @@ translated without relying on a desktop keyboard seat. For example, use layout `
 
 ## A remote browser on the same document
 
-After the administrator command has successfully installed the private listener, open:
+The setup helper prints a **Private Field URL** after installing the listener. Open that address
+from a browser with access to the same tailnet. Set its `file` query parameter to the document
+shown in your VR panel; for example, `?file=Field-VR-IDE`. If Field runs on a different port, pass
+`--field-port` with that port to the helper when configuring the listener.
 
-```text
-https://a0.finch-eel.ts.net:8443/index.html?file=Field-VR-IDE
-```
-
-Use the same Tailscale account/tailnet access and document name. Each browser retains its own
+Use the same document name in both clients. Each browser retains its own
 selection, caret, scroll and keyboard/mouse focus while edits flow through the shared Field
 server. Remote text updates preserve focus in another input or palette; they must not pull focus
 back into Monaco. This is shared document editing, not a streamed desktop or remote mouse.
 
 Nobody needs to operate the PC display. Field still requires a working graphics/display session
 for Vulkan and Chromium, and WiVRn must be running and paired. This workflow does not remove the
-Linux display-session requirement. The private URL is unavailable until the one-time administrator
-setup succeeds; it does not replace the machine's existing public listener.
+Linux display-session requirement. Start Field, connect WiVRn and launch the two starter boxes
+before working from the headset. These can be managed remotely; no person needs to operate a
+window on the PC. The helper adds a private listener while preserving existing listeners.
+
+## What has been verified
+
+As of **1 November 2026**, the reference Linux/NVIDIA setup has the device rule installed, WiVRn
+HID forwarding enabled and a responding private Tailscale HTTPS endpoint. Forty-two focused
+JVM/browser tests and four setup-helper tests pass. Two real Chromium clients exchanged edits
+through a live Field server, including one using the host's Tailscale address; the receiving
+client kept its independent input focus. That collaboration check used two clients on one host.
+The updated Vulkan companion was also captured and inspected.
+
+The input tests replay Linux device events through Field's real keyboard translator and Chromium
+input path. Physical Quest USB/Bluetooth keyboard and mouse capture, controller/hand interaction
+with this IDE panel, and use from a second remote machine remain to be checked. The starting point
+is ready for those hardware checks; software tests and the desktop capture do not establish them.
 
 ## Readable text
 
