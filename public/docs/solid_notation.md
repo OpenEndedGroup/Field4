@@ -291,6 +291,41 @@ println(scene.toRaymarchFragment()) // sphere tracing, a normal, two lights, rea
 gradient. `toGlsl()` is the function alone, if you have a pipeline of
 your own to put it in.
 
+The fragment shader reads three push constants: the target's size in pixels, a time that turns the
+camera about the part, and a camera distance in multiples of the part's radius. A box beneath a
+renderer draws it on a fullscreen triangle with `SOLID_RAYMARCH_VERTEX`, the vertex shader that goes
+with it, and binds the three on the triangle. This is the plate and boss from the hybrid section,
+sphere-traced on the GPU instead of meshed:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/solid_notation/raymarched.png" alt="the hybrid section's part sphere-traced in a native render window: a pale blue-grey rectangular plate seen from above at an angle, four round bores through its corners showing the dark background through the nearest one, and the smooth domed boss rising from its centre, lit by a key light from the upper left" wait="4" timeout="120" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="solid-raymarched"}
+import afield.lang.solidsl.*
+
+val plate = cuboid(3.2, 2.2, 0.42)
+val bores = unionOf(
+    [-1.1 to -0.7, 1.1 to -0.7, -1.1 to 0.7, 1.1 to 0.7].map { (x, y) ->
+        cylinder(2.0, 0.30).at(x, y, 0.0)
+    },
+)
+val boss = smoothUnion(sphere(0.42).at(0.0, 0.0, 0.62), cylinder(1.1, 0.26).at(0.0, 0.0, 0.30), k = 0.22)
+val part = (plate - bores) + boss
+
+// the generated GLSL is this module's fragment shader
+val shader = Module(
+    parameters(renderer) {
+        vertex = SOLID_RAYMARCH_VERTEX
+        fragment = part.toRaymarchFragment()
+        depthTest = false
+    },
+).pointer()
+
+val quad = fullscreenTriangle(shader)
+shader += "quad" to quad
+quad.push.bind("uResolution") { vec(window.width.toFloat(), window.height.toFloat()) }
+quad.push.bind("uTime") { 1.2f }
+quad.push.bind("uCameraDistance") { 1.6f }
+renderer += "solid" to shader
+```
+
 The emitted code is straight-line, single-assignment and entirely scalar — no `vec3` locals, no
 swizzles, no loops. GPU drivers re-vectorise it anyway, and code that plain is easy to parse back,
 which is how the emitter is tested.

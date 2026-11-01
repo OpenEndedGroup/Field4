@@ -135,6 +135,24 @@ class SolidSLGlslTest {
         assertEquals(subjects.size, compiled)
     }
 
+    /**
+     * The raymarch fragment has to be drawable by a box with nothing but `fullscreenTriangle` and
+     * `push.bind`: no varyings the fullscreen vertex shader does not write, and no descriptor
+     * bindings nobody fills. Its three values come from one push-constant block.
+     */
+    @Test
+    fun `the raymarch fragment reads only a push-constant block`() {
+        val source = sphere(1.0).toRaymarchFragment()
+        assertTrue("layout(push_constant) uniform Params" in source, source)
+        assertTrue(Regex("""\bin\s+vec""").find(source) == null, "the fragment declares a varying:\n$source")
+        assertTrue("binding" !in source, "the fragment declares a descriptor binding:\n$source")
+        listOf("params.uResolution", "params.uTime", "params.uCameraDistance").forEach {
+            assertTrue(it in source, "$it is never read")
+        }
+        val vertex = ShaderSPIRVUtils.compileShader("solidsl-raymarch.vert", SOLID_RAYMARCH_VERTEX, ShaderKind.VERTEX_SHADER)
+        assertTrue((vertex.bytecode()?.remaining() ?: 0) > 0, "the companion vertex shader produced no SPIR-V")
+    }
+
     @Test
     fun `the step scale says when the field cannot be sphere-traced at full speed`() {
         // A true distance field marches at 1.0. Anything else has to be told to slow down, and the
