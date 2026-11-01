@@ -106,6 +106,10 @@ prop<RenderToTexture>(motionConfidence) = flow.consistencyMap!!
 
 The hardware engine has no equivalent output.
 
+![The ping-pong starting point with consistency = true on the M1 Max: previous and current frames above, motion below left, and the forward–backward error below right, black across the interior and bright only along the edges where content leaves the frame](assets/optical_flow/macos_consistency.png)
+
+The figure is the [optical_flow_pingpong](agent_transcripts.md#optical_flow_pingpong) starting point with `PyramidOpticalFlow(..., consistency = true)` and the matching-cost panel replaced by `consistencyMap.x`, white at 4 pixels of error.
+
 ## Keep the previous frame with ping-pong
 
 Open the [optical_flow_pingpong](agent_transcripts.md#optical_flow_pingpong) starting point for the complete editable example. The parent box renders one `moduleHere()` into a `PingPongRenderToTexture`; its child samples the previous image, current image, and motion texture. The four panels show **previous / current** above **motion / matching cost**.
