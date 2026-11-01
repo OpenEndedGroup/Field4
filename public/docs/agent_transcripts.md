@@ -4286,9 +4286,10 @@ replayed: a lesson sequence, or a conversation's revisions, variants and chat.
 ### canonical_graphics
 
 The graphics lessons: cameras, compute shaders and particles, texturing, render-to-texture, blur
-kernels, a GPU radix sort and more, one box per lesson, each running against a live renderer. Its
-index is [the lesson list](assets/canonical_graphics/LESSONS.md), and
-[Field 4 graphics](afield_four_graphics.md) walks through it.
+kernels, a GPU radix sort and more, one box per lesson, each running against a live renderer.
+[Field 4 graphics](afield_four_graphics.md) walks through it, and
+[the viewer](offline.html?file=assets/canonical_graphics/metadata.edn) shows every lesson with its
+code and the picture its window drew.
 
 ### stacksl_conversation_ink
 

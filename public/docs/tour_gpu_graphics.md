@@ -237,10 +237,9 @@ A web browser, including Field's HTTP mirror, shows a message in place of the fr
 
 - [Field 4 Graphics](afield_four_graphics.md) is the full walkthrough: buffers, cameras, compute
   shaders and particles, textures, glTF, render-to-texture and blur, each with its picture.
-- The [lesson index](https://github.com/OpenEndedGroup/Field4/blob/main/public/docs/assets/canonical_graphics/LESSONS.md)
-  lists every lesson in the canonical_graphics starting point, with the parent each one runs
-  under, and which lesson uses which call (`RenderToTexture`, `computeModuleHere`,
-  `LoadedTexture`, ...).
+- [canonical_graphics](offline.html?file=assets/canonical_graphics/metadata.edn) is that
+  walkthrough's document: one box per lesson, each with its code, its shaders and the picture its
+  window drew. Open **Welcome → Starting points → canonical_graphics** in Field to run them.
 - [Graphics in an Output Area](four_in_output_areas.md) has more on the view in the panel: sizes,
   re-running, sharing it between boxes, and Linux.
 
