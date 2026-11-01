@@ -1854,16 +1854,19 @@ freed buffer, is refused the same way. Stop that work yourself, from a box you c
 
 ## Where these examples come from
 
-Every example on this page is a box in a real Field document, `canonical_graphics`, which is
-committed under `public/docs/assets/canonical_graphics/` and is what the viewer at the top of this
-page is showing: click a box there to read its code and shaders. To run and edit the lessons, open
-**Welcome → Starting points → canonical_graphics** in Field, which makes you an editable copy;
-launch its **window** box first, then a lesson. If you want to read the code rather than the prose, or you are an agent about to
-write Field 4 graphics code and want a known-good pattern to adapt, start from
-[the lesson index](assets/canonical_graphics/LESSONS.md). It lists every lesson with its Kotlin and
-shader files, records the parent chain each one needs in order to run, and carries a reverse index
-from Field API name (`RenderToTexture`, `LoadedTexture`, `computeModuleHere`, `GpuRadixSort`, …) to
-the lessons that use it.
+Every example on this page is a box in a real Field document, `canonical_graphics`, which is what
+the viewer at the top of this page is showing. To read the code rather than the prose, click a box
+there for its Kotlin, its shaders and the picture its window drew, or
+[open the document full-page](offline.html?file=assets/canonical_graphics/metadata.edn). To run and
+edit the lessons, open **Welcome → Starting points → canonical_graphics** in Field, which makes you
+an editable copy; launch its **window** box first, then a lesson.
+
+??? aside "Agents: the lesson index"
+    Before writing Field 4 graphics code, adapt a lesson from
+    [`LESSONS.md`](assets/canonical_graphics/LESSONS.md). It lists every lesson with its Kotlin and
+    shader files, records the parent chain each one needs in order to run, and carries a reverse
+    index from Field API name (`RenderToTexture`, `LoadedTexture`, `computeModuleHere`,
+    `GpuRadixSort`, …) to the lessons that use it.
 
 Each image is the lesson's own output, captured from a live Vulkan window. Sections without an
 image say why under the code: the lesson needs two boxes wired together, needs a file or tool the
