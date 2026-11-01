@@ -53,12 +53,13 @@ animateEvolution(
 <!-- field-box id="orbits" index="1" -->
 
 ```edn [field-box id="orbits" role="properties"]
-{"id" "orbits" "index" 1 "name" "5 — BUMP vehicles circle at a set distance" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 — BUMP vehicles circle at a set distance" "_tombstone" false "frame" #afield/rect [60.0 60.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "orbits_code_.kt" "lines" 22 "characters" 1008 "sha256" "2be19d959f0fb5a752df1500faa725dc91b21ae7f4bef16a2691c3c04195a301"}]}
+{"id" "orbits" "index" 1 "name" "5 — BUMP vehicles circle at a set distance" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 — BUMP vehicles circle at a set distance" "_tombstone" false "frame" #afield/rect [60.0 60.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "orbits_code_.kt" "lines" 27 "characters" 1199 "sha256" "73e8a47f90b67e3213222171be564e0f87b246a5d31eaf8c681f06f1014beed9"}]}
 ```
 
 ```kotlin [field-property box="orbits" name="code" path="orbits_code_.kt"]
 val lights = [Light(60.0, 60.0), Light(180.0, 70.0), Light(120.0, 180.0), Light(200.0, 200.0)]
 val panels = mutableListOf<Pair<String, Img>>()
+val groups = mutableListOf<Pair<String, List<Double>>>()
 for (d in [8.0, 12.0, 16.0, 20.0]) {
     val p = VehicleParams(
         neuron = NeuronParams(activation = Activation.BUMP, gain = 4.0, tauMembrane = 1.0, bias = orbitBias(d)),
@@ -75,10 +76,14 @@ for (d in [8.0, 12.0, 16.0, 20.0]) {
     println(
         "tuned ${d.f2}: median ${radii.median().f2}, middle half ${radii.quantile(0.25).f2} to ${radii.quantile(0.75).f2}",
     )
-    panels += ("tuned " + d.f2) to canvas.image()
-    panels += ("median " + radii.median().f2) to radii.toImg(maxDistance = 60.0, mark = d, width = 300, height = 300)
+    panels += ("tuned " + d.f2 + ": median " + radii.median().f2) to canvas.image()
+    groups += ("tuned " + d.f2) to radii.distances(every = 40)
 }
-showImg(montage(panels, columns = 4, cellSide = 240))
+showImg(montage(panels, columns = 2, cellSide = 300))
+display(
+    "radii",
+    violin(*groups.toTypedArray(), references = [8.0, 12.0, 16.0, 20.0], yRange = 0.0..60.0, yTitle = "distance to nearest lamp"),
+)
 ```
 
 ## 3. 7 — learning and homeostasis together
@@ -86,7 +91,7 @@ showImg(montage(panels, columns = 4, cellSide = 240))
 <!-- field-box id="combined" index="2" -->
 
 ```edn [field-box id="combined" role="properties"]
-{"id" "combined" "index" 2 "name" "7 — learning and homeostasis together" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "7 — learning and homeostasis together" "_tombstone" false "frame" #afield/rect [980.0 60.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "combined_code_.kt" "lines" 35 "characters" 1144 "sha256" "725459fd71de0b18c64f4ceaa1ca8272c0b8dd00f4b71202359da24aef1c1413"}]}
+{"id" "combined" "index" 2 "name" "7 — learning and homeostasis together" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "7 — learning and homeostasis together" "_tombstone" false "frame" #afield/rect [980.0 60.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "combined_code_.kt" "lines" 35 "characters" 1144 "sha256" "294443832cb93fb48c8ddda27c228e2bdd158d640bf48c6c933c7ea9b75c4163"}]}
 ```
 
 ```kotlin [field-property box="combined" name="code" path="combined_code_.kt"]
@@ -121,8 +126,8 @@ showImg(
             arm("learning", 0.0, 3.0),
             arm("both", 0.002, 3.0),
         ],
-        columns = 4,
-        cellSide = 240,
+        columns = 2,
+        cellSide = 300,
     ),
 )
 ```

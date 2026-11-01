@@ -1,5 +1,6 @@
 val lights = [Light(60.0, 60.0), Light(180.0, 70.0), Light(120.0, 180.0), Light(200.0, 200.0)]
 val panels = mutableListOf<Pair<String, Img>>()
+val groups = mutableListOf<Pair<String, List<Double>>>()
 for (d in [8.0, 12.0, 16.0, 20.0]) {
     val p = VehicleParams(
         neuron = NeuronParams(activation = Activation.BUMP, gain = 4.0, tauMembrane = 1.0, bias = orbitBias(d)),
@@ -16,7 +17,11 @@ for (d in [8.0, 12.0, 16.0, 20.0]) {
     println(
         "tuned ${d.f2}: median ${radii.median().f2}, middle half ${radii.quantile(0.25).f2} to ${radii.quantile(0.75).f2}",
     )
-    panels += ("tuned " + d.f2) to canvas.image()
-    panels += ("median " + radii.median().f2) to radii.toImg(maxDistance = 60.0, mark = d, width = 300, height = 300)
+    panels += ("tuned " + d.f2 + ": median " + radii.median().f2) to canvas.image()
+    groups += ("tuned " + d.f2) to radii.distances(every = 40)
 }
-showImg(montage(panels, columns = 4, cellSide = 240))
+showImg(montage(panels, columns = 2, cellSide = 300))
+display(
+    "radii",
+    violin(*groups.toTypedArray(), references = [8.0, 12.0, 16.0, 20.0], yRange = 0.0..60.0, yTitle = "distance to nearest lamp"),
+)

@@ -621,30 +621,12 @@ class OrbitRadii {
     fun fractionWithin(lo: Double, hi: Double): Double = samples.count { it in lo..hi }.toDouble() / max(1, samples.size)
 
     /**
-     * A histogram of the distances from 0 to [maxDistance] in [bins] bars, as a small RGB image, with
-     * an optional [mark] drawn as a vertical line (the radius the vehicles were tuned for).
+     * The recorded distances, every [every]th one, in recording order — for handing to a distribution
+     * plot such as the named `violin` overload, which serialises every value it is given.
      */
-    fun toImg(maxDistance: Double = 60.0, bins: Int = 60, mark: Double = Double.NaN, width: Int = 300, height: Int = 160): Img {
-        val counts = IntArray(bins)
-        for (d in samples) if (d < maxDistance) counts[(d / maxDistance * bins).toInt().coerceIn(0, bins - 1)]++
-        val top = max(1, counts.max())
-        val out = Img.filled(width, height, 3, 0.06f)
-        for (px in 0 until width) {
-            val b = (px * bins / width).coerceIn(0, bins - 1)
-            val barH = (counts[b].toDouble() / top * (height - 6)).roundToInt()
-            for (py in height - barH until height) {
-                val o = (py * width + px) * 3
-                out.data[o] = 1f; out.data[o + 1] = 0.6f; out.data[o + 2] = 0.2f
-            }
-        }
-        if (!mark.isNaN() && mark < maxDistance) {
-            val px = (mark / maxDistance * width).roundToInt().coerceIn(0, width - 1)
-            for (py in 0 until height) {
-                val o = (py * width + px) * 3
-                out.data[o] = 0.4f; out.data[o + 1] = 0.75f; out.data[o + 2] = 1f
-            }
-        }
-        return out
+    fun distances(every: Int = 1): List<Double> {
+        require(every >= 1) { "every must be at least 1, got $every" }
+        return samples.filterIndexed { i, _ -> i % every == 0 }
     }
 }
 

@@ -1,7 +1,7 @@
 name: braitenberg_where_next
 description: >
   Five pure-CPU boxes extending public/docs/braitenberg_vehicles.md: Activation.BUMP aggressors tuned
-  with orbitBias() circling lamps (OrbitRadii histograms), a speedCost in the learning reward, learning
+  with orbitBias() circling lamps (OrbitRadii radii as violins against the tuned distance), a speedCost in the learning reward, learning
   and homeostasis in one population, lamps that move (Light.vx/vy, a launched animateEvolution clip,
   learned wiring against lovers) and VehicleWiringGenome on PopulationSearch against a random control.
   None opens a Window or a Renderer.
@@ -21,6 +21,7 @@ operations:
         code: |
           val lights = [Light(60.0, 60.0), Light(180.0, 70.0), Light(120.0, 180.0), Light(200.0, 200.0)]
           val panels = mutableListOf<Pair<String, Img>>()
+          val groups = mutableListOf<Pair<String, List<Double>>>()
           for (d in [8.0, 12.0, 16.0, 20.0]) {
               val p = VehicleParams(
                   neuron = NeuronParams(activation = Activation.BUMP, gain = 4.0, tauMembrane = 1.0, bias = orbitBias(d)),
@@ -37,10 +38,14 @@ operations:
               println(
                   "tuned ${d.f2}: median ${radii.median().f2}, middle half ${radii.quantile(0.25).f2} to ${radii.quantile(0.75).f2}",
               )
-              panels += ("tuned " + d.f2) to canvas.image()
-              panels += ("median " + radii.median().f2) to radii.toImg(maxDistance = 60.0, mark = d, width = 300, height = 300)
+              panels += ("tuned " + d.f2 + ": median " + radii.median().f2) to canvas.image()
+              groups += ("tuned " + d.f2) to radii.distances(every = 40)
           }
-          showImg(montage(panels, columns = 4, cellSide = 240))
+          showImg(montage(panels, columns = 2, cellSide = 300))
+          display(
+              "radii",
+              violin(*groups.toTypedArray(), references = [8.0, 12.0, 16.0, 20.0], yRange = 0.0..60.0, yTitle = "distance to nearest lamp"),
+          )
   - create:
       box: speed_cost
       name: "6 — a price on speed"
@@ -116,8 +121,8 @@ operations:
                       arm("learning", 0.0, 3.0),
                       arm("both", 0.002, 3.0),
                   ],
-                  columns = 4,
-                  cellSide = 240,
+                  columns = 2,
+                  cellSide = 300,
               ),
           )
   - create:

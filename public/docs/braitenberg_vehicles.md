@@ -245,13 +245,14 @@ of lag the vehicle has driven past the ring before its neurons notice, and the p
 again.
 
 `OrbitRadii` records every vehicle's distance to its nearest lamp once per step. The box tunes four
-populations to four distances, lets them settle for 6000 steps and draws the last 2000 steps of
-distances as a histogram from 0 to 60, with the tuned distance as a blue line and the median as its
-caption.
+populations to four distances, lets them settle for 6000 steps, draws each population's trails and
+hands the last 2000 steps of distances to `violin`, one violin per tuned distance on a shared 0 to 60
+axis, with the tuned distance as a dashed yellow line across its own violin.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/braitenberg_vehicles/orbits.png" embed=true wait="20.0" timeout="300" capture="box" open-outputs="true" padding="20"}
 val lights = [Light(60.0, 60.0), Light(180.0, 70.0), Light(120.0, 180.0), Light(200.0, 200.0)]
 val panels = mutableListOf<Pair<String, Img>>()
+val groups = mutableListOf<Pair<String, List<Double>>>()
 for (d in [8.0, 12.0, 16.0, 20.0]) {
     val p = VehicleParams(
         neuron = NeuronParams(activation = Activation.BUMP, gain = 4.0, tauMembrane = 1.0, bias = orbitBias(d)),
@@ -268,10 +269,14 @@ for (d in [8.0, 12.0, 16.0, 20.0]) {
     println(
         "tuned ${d.f2}: median ${radii.median().f2}, middle half ${radii.quantile(0.25).f2} to ${radii.quantile(0.75).f2}",
     )
-    panels += ("tuned " + d.f2) to canvas.image()
-    panels += ("median " + radii.median().f2) to radii.toImg(maxDistance = 60.0, mark = d, width = 300, height = 300)
+    panels += ("tuned " + d.f2 + ": median " + radii.median().f2) to canvas.image()
+    groups += ("tuned " + d.f2) to radii.distances(every = 40)
 }
-showImg(montage(panels, columns = 4, cellSide = 240))
+showImg(montage(panels, columns = 2, cellSide = 300))
+display(
+    "radii",
+    violin(*groups.toTypedArray(), references = [8.0, 12.0, 16.0, 20.0], yRange = 0.0..60.0, yTitle = "distance to nearest lamp"),
+)
 ```
 
 Tuned to 8, 12, 16 or 20, the vehicles settle on rings of median radius 10.2, 14.4, 19.2 and 24.5:
@@ -358,8 +363,8 @@ showImg(
             arm("learning", 0.0, 3.0),
             arm("both", 0.002, 3.0),
         ],
-        columns = 4,
-        cellSide = 240,
+        columns = 2,
+        cellSide = 300,
     ),
 )
 ```

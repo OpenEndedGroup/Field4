@@ -181,6 +181,73 @@ fun violin(vararg data: List<Number>): Plot {
     }.darkMode()
 }
 
+/**
+ * Named violins side by side, each with an optional reference value drawn as a dashed line across
+ * its own violin — for "what was asked for against what came out" over several groups: a target
+ * radius against the measured radii, a set point against the readings.
+ *
+ * Pass `"label" to values` pairs; each pair becomes one violin at category `label`, coloured in
+ * [signalPalette] order, with its inner box and mean line as in the unnamed overload. [references],
+ * when given, holds one number per group in the same order (a NaN skips that group) and is drawn in
+ * [referenceColor] as a dashed horizontal segment spanning that violin's slot only, so four groups
+ * with four different targets read as four comparisons rather than one shared threshold. [yRange]
+ * pins the value axis; [yTitle] names it.
+ *
+ * Every value is serialised into the page, so thin a very large sample (tens of thousands of points
+ * per group) before plotting; the shape survives decimation long before Plotly's payload does.
+ * [darkMode] is applied and the `Plot` is returned, not displayed.
+ */
+@JvmName("violin_named")
+fun violin(
+    vararg groups: Pair<String, List<Number>>,
+    references: List<Number> = emptyList(),
+    referenceColor: String = "#ffe066",
+    yRange: ClosedFloatingPointRange<Double>? = null,
+    yTitle: String? = null,
+): Plot {
+    require(references.isEmpty() || references.size == groups.size) {
+        "violin got ${groups.size} groups and ${references.size} references; give one per group or none"
+    }
+    return Plotly.plot {
+        groups.forEachIndexed { i, (label, values) ->
+            violin {
+                x.set(List(values.size) { label })
+                y.set(values)
+                name = label
+                box.visible = true
+                meanline.visible = true
+                points = ViolinPoints.outliers
+                line.color(signalPalette[i % signalPalette.size])
+            }
+        }
+        layout {
+            showlegend = false
+            yaxis {
+                yTitle?.let { title = it }
+                yRange?.let { range = it }
+            }
+            references.forEachIndexed { i, ref ->
+                val v = ref.toDouble()
+                if (v.isNaN()) return@forEachIndexed
+                figure {
+                    type = ShapeType.line
+                    xref = "x"
+                    yref = "y"
+                    x0 = (i - 0.45).asValue()
+                    x1 = (i + 0.45).asValue()
+                    y0 = v.asValue()
+                    y1 = v.asValue()
+                    line {
+                        color(referenceColor)
+                        width = 1.5
+                        dash = Dash.dash
+                    }
+                }
+            }
+        }
+    }.darkMode()
+}
+
 /** A labelled x-span for [showSignals]' `regions`: a translucent band from [from] to [to]. */
 data class SignalRegion(val label: String, val from: Number, val to: Number, val color: String = "#ffe066")
 

@@ -29,7 +29,7 @@ showImg(
             arm("learning", 0.0, 3.0),
             arm("both", 0.002, 3.0),
         ],
-        columns = 4,
-        cellSide = 240,
+        columns = 2,
+        cellSide = 300,
     ),
 )
