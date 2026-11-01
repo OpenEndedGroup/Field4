@@ -41,6 +41,7 @@ import space.kscience.plotly.*
 import space.kscience.plotly.models.Dash
 import space.kscience.plotly.models.ScatterMode
 import space.kscience.plotly.models.ViolinPoints
+import space.kscience.plotly.models.SpanMode
 import space.kscience.plotly.models.XAnchor
 import space.kscience.plotly.models.YAnchor
 import space.kscience.plotly.models.ShapeLayer
@@ -176,6 +177,91 @@ fun violin(vararg data: List<Number>): Plot {
                 box.visible = true
                 meanline.visible = true
                 points = ViolinPoints.outliers
+            }
+        }
+    }.darkMode()
+}
+
+/**
+ * Named violins side by side, each with an optional reference value drawn as a dashed line across
+ * its own violin — for "what was asked for against what came out" over several groups: a target
+ * radius against the measured radii, a set point against the readings.
+ *
+ * Pass `"label" to values` pairs; each pair becomes one violin at category `label`, coloured in
+ * [signalPalette] order, with its inner box and mean line as in the unnamed overload.
+ * [spanQuantiles] clips each violin's density outline to that quantile range of its own group
+ * (Plotly `spanmode: "manual"`), so a handful of stragglers does not stretch a thin tail across the
+ * whole axis; `null` keeps Plotly's soft span over the full data. Nothing is dropped: values outside
+ * the box whiskers are drawn as small faint points at [outlierOpacity]. [references],
+ * when given, holds one number per group in the same order (a NaN skips that group) and is drawn in
+ * [referenceColor] as a dashed horizontal segment spanning that violin's slot only, so four groups
+ * with four different targets read as four comparisons rather than one shared threshold. [yRange]
+ * pins the value axis; [yTitle] names it.
+ *
+ * Every value is serialised into the page, so thin a very large sample (tens of thousands of points
+ * per group) before plotting; the shape survives decimation long before Plotly's payload does.
+ * [darkMode] is applied and the `Plot` is returned, not displayed.
+ */
+@JvmName("violin_named")
+fun violin(
+    vararg groups: Pair<String, List<Number>>,
+    references: List<Number> = emptyList(),
+    referenceColor: String = "#ffe066",
+    yRange: ClosedFloatingPointRange<Double>? = null,
+    yTitle: String? = null,
+    spanQuantiles: ClosedFloatingPointRange<Double>? = 0.01..0.99,
+    outlierOpacity: Double = 0.25,
+): Plot {
+    require(references.isEmpty() || references.size == groups.size) {
+        "violin got ${groups.size} groups and ${references.size} references; give one per group or none"
+    }
+    return Plotly.plot {
+        groups.forEachIndexed { i, (label, values) ->
+            violin {
+                x.set(List(values.size) { label })
+                y.set(values)
+                name = label
+                box.visible = true
+                meanline.visible = true
+                points = ViolinPoints.outliers
+                marker {
+                    size = 2.0
+                    opacity = outlierOpacity
+                }
+                spanQuantiles?.let { q ->
+                    val sorted = values.map { it.toDouble() }.filter { it.isFinite() }.sorted()
+                    if (sorted.isNotEmpty()) {
+                        fun at(f: Double) = sorted[((sorted.size - 1) * f.coerceIn(0.0, 1.0)).toInt()]
+                        spanmode = SpanMode.manual
+                        span(listOf(at(q.start), at(q.endInclusive)))
+                    }
+                }
+                line.color(signalPalette[i % signalPalette.size])
+            }
+        }
+        layout {
+            showlegend = false
+            yaxis {
+                yTitle?.let { title = it }
+                yRange?.let { range = it }
+            }
+            references.forEachIndexed { i, ref ->
+                val v = ref.toDouble()
+                if (v.isNaN()) return@forEachIndexed
+                figure {
+                    type = ShapeType.line
+                    xref = "x"
+                    yref = "y"
+                    x0 = (i - 0.45).asValue()
+                    x1 = (i + 0.45).asValue()
+                    y0 = v.asValue()
+                    y1 = v.asValue()
+                    line {
+                        color(referenceColor)
+                        width = 1.5
+                        dash = Dash.dash
+                    }
+                }
             }
         }
     }.darkMode()

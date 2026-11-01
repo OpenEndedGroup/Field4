@@ -333,6 +333,9 @@ object DemoTranscriptExecSmokeTest {
         // Ten independent pure-CPU spatial-ALife boxes; nothing opens a Window or a Renderer.
         "alife_evolution",
         "alife_worked_example",
+        // Five pure-CPU Braitenberg-vehicle boxes (braitenberg_vehicles.md sections 5-9); the
+        // moving-lights box is an animateEvolution clip and is launched. No Window, no Renderer.
+        "braitenberg_where_next",
         // Five independent pure-CPU statistics boxes; showPlaneGrid is drawToSVG -> display,
         // showSignals is a plotly HTML fragment -> display, histogramToSvg is just a string.
         "statistics_examples",

@@ -992,6 +992,20 @@ rather than run: a `Frames` that is only built never runs. None of the twenty op
 
 [Open →](offline.html?file=assets/agent_transcripts/alife_worked_example/metadata.edn)
 
+### braitenberg_where_next
+
+Sections 5 to 9 of [Braitenberg vehicles with memory](braitenberg_vehicles.md) as five boxes. Box 1
+tunes `Activation.BUMP` aggressors with `orbitBias` to circle the lamps at four distances and draws
+each population's `OrbitRadii` histogram. Box 2 puts a `speedCost` into the learning reward at four
+prices. Box 3 runs learning and homeostasis separately and together from one seed. Box 4 is launched:
+it trains a population on still lamps, then sets the lamps drifting and plays it beside Braitenberg's
+lovers. Box 5 searches the four wiring weights with `VehicleWiringGenome` on `PopulationSearch`, with a
+random-sampling control at the same budget. All five run on the CPU.
+
+![Four populations of vehicles circling four lamps on rings of increasing size, each beside a histogram of distance to the nearest lamp](assets/braitenberg_vehicles/orbits.png)
+
+[Open →](offline.html?file=assets/agent_transcripts/braitenberg_where_next/metadata.edn)
+
 ### statistics_examples
 
 [Measuring dependence between two signals](statistics_examples.md)
