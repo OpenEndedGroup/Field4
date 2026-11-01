@@ -4,7 +4,7 @@ from unittest.mock import patch
 import unittest
 from pathlib import Path
 
-from tools.setup_wivrn_input import matching_nodes, rules, configure_private_serve
+from tools.setup_wivrn_input import matching_nodes, rules, configure_private_serve, register_private_serve_host
 
 
 class WiVRnInputSetupTests(unittest.TestCase):
@@ -52,3 +52,23 @@ class WiVRnInputSetupTests(unittest.TestCase):
                 with self.assertRaises(RuntimeError):
                     configure_private_serve(8443, 9092)
                 run.assert_not_called()
+
+    def test_existing_private_listener_registers_exact_host_and_preserves_prior_hosts(self):
+        config = {'TCP': {'8443': {'HTTPS': True}}, 'Web': {'node.test:8443': {'Handlers': {'/': {'Proxy': 'https+insecure://localhost:9092'}}}}, 'AllowFunnel': {}}
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            path = home / '.afield/browser-hosts.json'
+            path.parent.mkdir()
+            path.write_text('["other.test:9443"]')
+            with patch('tools.setup_wivrn_input.subprocess.check_output', side_effect=[json.dumps(config), json.dumps({'Self': {'DNSName': 'node.test.'}})]):
+                register_private_serve_host(8443, 9092, home)
+            self.assertEqual(json.loads(path.read_text()), ['node.test:8443', 'other.test:9443'])
+            self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+
+    def test_host_registration_refuses_public_listener_and_wrong_upstream(self):
+        for public, target in [(True, 'https+insecure://localhost:9092'), (False, 'https+insecure://localhost:8792')]:
+            config = {'TCP': {'8443': {'HTTPS': True}}, 'Web': {'node.test:8443': {'Handlers': {'/': {'Proxy': target}}}}, 'AllowFunnel': {'node.test:8443': public}}
+            with tempfile.TemporaryDirectory() as directory, patch('tools.setup_wivrn_input.subprocess.check_output', side_effect=[json.dumps(config), json.dumps({'Self': {'DNSName': 'node.test.'}})]):
+                with self.assertRaises(RuntimeError):
+                    register_private_serve_host(8443, 9092, Path(directory))
+                self.assertFalse((Path(directory) / '.afield/browser-hosts.json').exists())

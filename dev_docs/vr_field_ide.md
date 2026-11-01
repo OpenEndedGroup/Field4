@@ -125,3 +125,23 @@ current setup status. The headset was disconnected at this check; physical input
 IDE interaction are still pending. The public walkthrough now gives portable setup commands,
 explains pointer and focus ownership, and separates software evidence from outstanding hardware
 and second-machine checks.
+
+
+### Private DNS hostname correction
+
+An end-to-end check through the installed Tailscale Serve listener found that /health alone was
+insufficient: Field's default browser-host policy rejects DNS authorities, so frontend assets were
+refused even though the proxy was reachable. This is a hostname policy issue, not a need to trust
+forwarded headers. The helper now registers only the exact local node hostname/port after checking
+that the listener is private HTTPS and targets the requested Field port. The registration is a
+user-owned ~/.afield/browser-hosts.json array loaded at Field startup; AFIELD_BROWSER_HOSTS is an
+explicit alternative. Unknown DNS authorities, wrong ports and cross-site browser requests remain
+refused, and agent routes retain their separate localhost-only host gate. Existing installations
+can register their private listener without sudo using --register-serve-host.
+
+After registration and a clean Field restart, the live collaboration test passed through the
+actual private Serve URL (HTTPS 8443), including real frontend asset loading, command WebSocket
+traffic, two-way Monaco edits and independent remote focus. This is still two browser clients on
+one machine, with replayed input; physical Quest and second-machine checks remain pending.
+Focused HTTP/command-WebSocket/annotation origin-policy tests passed, as did the server-surface
+CORS census and six setup-helper tests. The cross-site protection remained enabled.
