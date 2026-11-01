@@ -867,7 +867,7 @@ fun animated(x: Double, y: Double, z: Double, phase: Double): Double {
 
 The same rotation drawn live: the z = 0 slice of the volume, one turn of phase every four seconds.
 
-```diffstatic_runner {data-lang=kotlin capture="box" execution="launch" video="assets/gaussian_processes/coherent_in_time.mp4" duration="4" fps="15" open-outputs="true" wait-output="true" wait-output-kind="display" wait="1" timeout="240" padding="20" embed=true name="gp-coherent-in-time" alt="A coolwarm heatmap of one slice of the sampled field, its warm and cool patches drifting and reshaping smoothly as the phase turns, returning to where it started after four seconds"}
+```diffstatic_runner {data-lang=kotlin capture="box" execution="launch" video="assets/gaussian_processes/coherent_in_time.mp4" duration="4" fps="15" open-outputs="true" wait-output="true" wait-output-kind="display" wait="3" timeout="240" padding="20" embed=true name="gp-coherent-in-time" alt="A coolwarm heatmap of one slice of the sampled field, its warm and cool patches drifting and reshaping smoothly as the phase turns, returning to where it started after four seconds"}
 :::static
 val observations = arrayOf(
     doubleArrayOf(-0.7, -0.4, -0.5),

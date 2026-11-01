@@ -48,15 +48,15 @@ operations:
         val ring =
             (0 until n).map { i ->
                 val theta = i.toDouble() / n * 2.0 * kotlin.math.PI
-                // five units in front of the head's camera, which looks down -z from the origin
-                val here = vec(kotlin.math.cos(theta) * 2.0, kotlin.math.sin(theta) * 2.0, -5.0)
-                val box = addBox("ring-$i", 0.25).mesh
+                // four units in front of the head's camera, which looks down -z from the origin
+                val here = vec(kotlin.math.cos(theta) * 2.0, kotlin.math.sin(theta) * 2.0, -4.0)
+                val box = addBox("ring-$i", 0.5).mesh
                 box.position.set(here.x, here.y, here.z)
                 box
             }
         onFrame { frame ->
             ring.forEachIndexed { i, box ->
-                box.rotation.y = frame.time + i.toDouble() * 0.2
+                box.rotation.y = frame.time * 2.0 + i.toDouble() * 0.5
             }
         }
         log("ring installed: ${ring.size} boxes")
