@@ -395,16 +395,16 @@ If none of the uncovered space could show the selection at even half the size th
 could, it uses the whole window instead and lets the editor cover part of it. A narrow strip beside
 a wide editor is not worth squinting at.
 
-Below, `target` is selected with its editor open, far down and to the right of the other boxes.
-Before alt-F it is off the canvas; after, it and its open output panel sit in the space left of the
-editor:
+Below, `target` is selected with its editor open. Opening the editor brought the box into view,
+but its open output panel runs under the editor. After alt-F the canvas zooms out until the box
+and its panel both fit in the strip the editor leaves:
 
-```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x640" clip="0,0,1100,640" transcript="../../dev_docs/agents/transcripts/docs_capture/frame_selected.yaml" padding="0" wait="0" timeout="240" hide-toasts=true embed=true hidden=true screenshot="assets/moving_around_the_canvas/frame_selected_before.png" name="frame-selected-before" alt="Field's canvas with the code editor open on the right for the box target. Three boxes, sketch, mix and notes, are scattered on the left; target itself is nowhere in view."}
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x640" clip="0,0,1100,640" transcript="../../dev_docs/agents/transcripts/docs_capture/frame_selected.yaml" padding="0" wait="0" timeout="240" hide-toasts=true embed=true hidden=true screenshot="assets/moving_around_the_canvas/frame_selected_before.png" name="frame-selected-before" alt="Field's canvas with the code editor open on the right for the box target. target sits at the left edge of the uncovered strip, and its open output panel, labelled main, runs off under the editor."}
 ui.openEditor("fs_target")
 ui.pause(900)
 ```
 
-```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x640" clip="0,0,1100,640" transcript="../../dev_docs/agents/transcripts/docs_capture/frame_selected.yaml" padding="0" wait="0" timeout="240" hide-toasts=true embed=true hidden=true screenshot="assets/moving_around_the_canvas/frame_selected_after.png" name="frame-selected-after" alt="The same canvas after alt-F. The editor is still open on the right; target and its open output panel are now in the middle of the uncovered area to its left, and the other boxes have moved off view."}
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x640" clip="0,0,1100,640" transcript="../../dev_docs/agents/transcripts/docs_capture/frame_selected.yaml" padding="0" wait="0" timeout="240" hide-toasts=true embed=true hidden=true screenshot="assets/moving_around_the_canvas/frame_selected_after.png" name="frame-selected-after" alt="The same canvas after alt-F. The editor is still open on the right; the canvas has zoomed out so that target and the whole of its output panel fit in the strip to the left of the editor."}
 ui.openEditor("fs_target")
 ui.pause(900)
 ui.eval("if (document.activeElement) document.activeElement.blur(); return 'blurred'")
