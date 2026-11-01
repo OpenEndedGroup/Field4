@@ -80,3 +80,14 @@ increasing list delays. It also checks completed Back/Refresh and the real reduc
 preference. `lecture.json` records source hashes, motion samples and image hashes. Inspect the four
 `lecture-*.png` captures; `lecture.css` is the matching downloadable theme, not a screenshot asset.
 The example uses Field's own editable SVG studies rather than reproductions of reference artworks.
+
+## Live-document step
+
+With the same disposable starter open in this checkout's Electron, run
+`node tools/presentation/capture-live-document.mjs <CDP URL> <disposable starter directory> public/docs/assets/presentation_studio`.
+It visits **A real webpage** first so the audience document opens fresh, then selects
+**A live Field document**, waits for the **Run reveal_wave** and **Start document guide** controls
+and the guest document's boxes, and captures `live-document-audience.png` and
+`live-document-controls.png` with hashes in `live-document.json`. The audience picture is taken
+1.5 s after the boxes draw; by about 3.5 s the canvas has dimmed, so do not lengthen that pause to
+lose the loading toasts.

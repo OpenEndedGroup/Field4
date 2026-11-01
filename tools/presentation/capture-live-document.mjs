@@ -52,7 +52,13 @@ const save = async (page, file) => {
 };
 
 try {
-  const list = await until(targets, xs => xs.some(x => x.url.endsWith('/presentation-control.html')), 'presenter');
+  let list = await until(targets, xs => xs.some(x => x.url.endsWith('/presentation-control.html')), 'presenter');
+  // Start from another step so the live document opens fresh, even on a rerun.
+  const first = await connect(list.find(x => x.url.endsWith('/presentation-control.html')));
+  await first.evaluate(`[...document.querySelectorAll('#slides button.slide')].find(b=>b.dataset.slideTitle==='A real webpage').click()`);
+  await until(() => first.evaluate('document.getElementById("status").textContent'), x => x.includes('A real webpage'), 'webpage step');
+  await pause(1500);
+  list = await targets();
   const sourceIds = new Set(list.filter(x => x.url.includes('/index.html?file=')).map(x => x.id));
   const control = await connect(list.find(x => x.url.endsWith('/presentation-control.html')));
   const status = () => control.evaluate('document.getElementById("status").textContent');
