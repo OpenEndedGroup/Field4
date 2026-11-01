@@ -380,14 +380,6 @@ directly:
 
 [Open ↗](offline.html?file=assets/agent_transcripts/gpu_state/metadata.edn).
 
-<iframe
-    src="offline.html?file=assets/agent_transcripts/gpu_state/metadata.edn"
-    title="GPU state document — offline viewer"
-    style="width:100%; height:560px; border:1px solid #444; border-radius:8px; background:#111;"
-    loading="lazy"
-    allowfullscreen>
-</iframe>
-
 Three boxes appear and a window opens. The knobs worth turning, in the order they teach something:
 
 - **`simModule.force`** on the *simulate* box, a live `stack.auto` StackSL slot. Retype it while it
