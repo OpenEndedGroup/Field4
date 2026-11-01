@@ -1,0 +1,6 @@
+uv 7.0 * time + fbm palette   # current
+prev                          # previous state
+0.04
+ema-diff
+abs
+saturation
