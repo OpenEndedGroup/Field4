@@ -70,6 +70,15 @@ object BoxOutputChannelGuard {
      * `RemoteJsBoxSurface.applyControls` groups them by channel.
      */
     private val GROUPED_CONTROLS = setOf("slider", "checkbox")
+
+    /**
+     * Helpers that take a `channel` to *address* a control group rather than to write to it:
+     * `presetDirectory(channel)` names the folder a `presetBar` on that channel keeps its keys in, and
+     * `midiLearn(channel)` looks up that group's MIDI map. Neither displays anything, and both must
+     * name the same channel as the `controlGroup` they serve, so counting them as emitters reports
+     * the correct shape (`controls_presets_morph_midi`) as a lost figure.
+     */
+    private val CHANNEL_ADDRESSERS = setOf("presetDirectory", "midiLearn")
     private val HEAD_ROOT_FLAGS = setOf("isRemoteJSRoot", "isKotlinJsRoot")
 
     private val CALL_AT = Regex("""([A-Za-z_]\w*)\s*\(""")
@@ -171,7 +180,7 @@ object BoxOutputChannelGuard {
                 seen.getOrPut(match.groupValues[1]) { mutableSetOf() }.add(default)
             }
         }
-        return seen.mapValues { (_, defaults) -> defaults.singleOrNull() }
+        return (seen - CHANNEL_ADDRESSERS).mapValues { (_, defaults) -> defaults.singleOrNull() }
     }
 
     /**

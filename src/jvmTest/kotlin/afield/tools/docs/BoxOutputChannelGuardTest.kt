@@ -55,6 +55,24 @@ class BoxOutputChannelGuardTest {
     }
 
     /**
+     * `controls_presets_morph_midi`: `midiLearn("synth")` names the `controlGroup("synth")` it binds,
+     * and writes no output, so the group is the only figure on that channel.
+     */
+    @Test
+    fun aChannelAddressingHelperIsNotAnEmitter() {
+        val repo = repoWithDemo(
+            """
+            showThing("synth", 1)
+            val midi = midiLearn("synth")
+            """.trimIndent()
+        )
+        File(repo, "src/jvmMain/kotlin/FakeHelpers.kt").appendText(
+            "fun Box.midiLearn(channel: String = \"controls\"): Any = TODO()\n"
+        )
+        assertEquals(emptyList(), BoxOutputChannelGuard.audit(repo).problems)
+    }
+
+    /**
      * `orca_duet`: a helper whose first parameter is `channel` names it positionally, so
      * `showThing("a", 1)` and `showThing("b", 2)` are two channels, not two writes of the default.
      */
