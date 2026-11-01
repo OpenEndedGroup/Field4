@@ -89,11 +89,17 @@ use. That rasterizer draws the background, blends the rectangles the way the GPU
 an 8-bit target, and runs StackSL materials through the StackSL interpreter. No window or graphics
 context is involved, so the lights keep running on a machine whose display is asleep.
 
-```diffstatic {data-lang=kotlin}
-val scene = RectSLImager(source)
+```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_scene_to_light/typed-vs-linear.png" alt="the same frame twice: as typed, a navy background, an orange square, a white line and a light blue band; linear, a near-black background, a red-orange square and a deeper blue band" wait="1.5" capture="box" open-outputs="true" padding="16" name="chain-typed-vs-linear" embed=true}
+import afield.io.dmx.*
+import afield.lang.rectsl.*
+
+val scene = RectSLImager(SceneOnARig.SCENE)
 val img = scene.frame(1.5, 256, 128) // colours as typed: 0x808080 is 0.502
 val light = scene.frame(1.5, 256, 128, linear = true) // the light that stands for: 0.216
+showImgGrid("as typed" to img, "linear = true" to light, columns = 2, cellSide = 400)
 ```
+
+The linear frame is darker everywhere except at full white and the saturated channels: the navy background goes nearly black.
 
 There are two choices of value. A frame holds colours *as typed* by default, which is what the
 RectSL pictures show and what an 8-bit target stores. `linear = true` gives the light those values

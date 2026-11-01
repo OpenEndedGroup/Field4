@@ -226,6 +226,33 @@ re-rendered faster than that, such as a build panel ticking through its progress
 the content changes and shrinks once when it settles
 (`src/commonMain/resources/outputareas2.js:644#function settleShrink`).
 
+This box puts a tall list, a short line, a wide table and the short line again into one panel, a
+second and a half each. Watch the panel grow at once for the list and the table, and wait before
+it comes back down to the short line:
+
+```diffstatic_runner {data-lang=kotlin video="assets/output_panel_sizing/follow-down.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="14" fps="10" timeout="180" w="1040" embed=true name="output-panel-sizing-follow-down" alt="One output panel labelled main. A fourteen-line list fills it, then a single short line replaces the list and the panel shrinks to fit a moment later, then a three-row table twelve columns wide widens the panel, then the short line returns and the panel shrinks back."}
+import kotlinx.coroutines.delay
+
+// One panel, three contents in turn: tall, then short, then a wide table, then short again.
+// A clock line at the top re-renders the panel five times a second.
+val tall = (1..14).joinToString("") { "<div>line $it of a tall list</div>" }
+val short = "<div>one short line</div>"
+val wide =
+    "<table>" +
+        (1..3).joinToString("") { r ->
+            "<tr>" + (1..12).joinToString("") { c -> "<td style='padding:2px 10px'>r${r}c$c</td>" } + "</tr>"
+        } +
+        "</table>"
+go {
+    for ((name, content) in ["tall" to tall, "short" to short, "wide" to wide, "short" to short]) {
+        repeat(8) { tick ->
+            display("main", "<div style='color:#8ab'>$name · ${(tick * 0.2).f1} s</div>$content")
+            delay(200)
+        }
+    }
+}
+```
+
 A panel whose content reaches its bottom edge without having a height of its own keeps the height it
 has. That covers a `height:100%` wrapper, a `flex:1` column, and any iframe, since
 `.disclosure-content iframe` is `height:100%`

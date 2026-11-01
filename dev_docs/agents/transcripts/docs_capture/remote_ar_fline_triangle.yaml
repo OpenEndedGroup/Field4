@@ -1,0 +1,37 @@
+name: remote_ar_fline_triangle
+description: >
+  Capture for docs/ar_reference.md, "FLine graphics". A Javascript language root embeds the
+  RemoteJS head on the canvas with remoteAr(); a Javascript child assigns a filled FLine triangle
+  into stage, and the runner screenshots the root's output pane.
+operations:
+  - create:
+      box: remote_ar_fline_root
+      name: "Javascript root"
+      frame: { x: 40.0, y: 40.0, w: 300.0, h: 90.0 }
+      properties:
+        mainLanguage: remotejs
+        isRemoteJSRoot: true
+        code: |
+          remoteAr(width = 960, height = 400)
+  - execute: { box: remote_ar_fline_root, property: code }
+  - wait: { millis: 8000 }
+  - create:
+      box: remote_ar_fline_box
+      name: "FLine triangle"
+      frame: { x: 1180.0, y: 40.0, w: 360.0, h: 200.0 }
+      properties:
+        code_language: Javascript
+        code: |
+          var triangle = new FLine()
+          triangle.moveTo(0, 1.5, -1)
+          triangle.lineTo(0.25, 1.5, -1)
+          triangle.lineTo(0, 1.75, -1)
+          triangle.lineTo(0, 1.5, -1)
+          triangle.color = vec(0.9, 0.9, 1.0, 1.0)
+          triangle.filled = true
+
+          stage.triangle = triangle
+  - connect: { parent: remote_ar_fline_root, child: remote_ar_fline_box }
+  - wait: { frames: 2 }
+  - execute: { box: remote_ar_fline_box, property: code }
+  - wait: { millis: 3000 }

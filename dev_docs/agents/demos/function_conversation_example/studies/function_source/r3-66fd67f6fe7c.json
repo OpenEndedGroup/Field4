@@ -1,5 +1,6 @@
 {
   "id" : "r3-66fd67f6fe7c",
+  "migratedSourceSha256" : "65688b851524f1c6d167a9e762d82d0aeeb451025ba620667c97df6169e6b0f8",
   "parent" : "r2-8f83d79e35c9",
   "description" : "One-hour drifting three-channel background with six smooth chirp crescendos, exact holds and mirrored decrescendos; qualify scalar trigonometry.",
   "events" : [ {

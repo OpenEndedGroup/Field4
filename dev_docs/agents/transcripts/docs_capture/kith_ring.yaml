@@ -1,0 +1,70 @@
+name: kith_ring
+description: 'Capture for public/docs/kotlin_in_the_head.md: the ring of twelve THREE boxes, Kotlin compiled to Javascript and spun in the browser head the root box displays.'
+operations:
+- create:
+    box: kith_ring_root
+    name: Javascript root
+    frame:
+      x: 60.0
+      y: 40.0
+      w: 300.0
+      h: 90.0
+    properties:
+      mainLanguage: remotejs
+      isRemoteJSRoot: true
+      code: |
+        remoteAr(width = 480, height = 270)
+- execute:
+    box: kith_ring_root
+    property: code
+- wait:
+    millis: 8000
+- create:
+    box: kith_ring_kroot
+    name: Kotlin to head root
+    frame:
+      x: 420.0
+      y: 40.0
+      w: 300.0
+      h: 90.0
+    properties:
+      mainLanguage: kotlinjs
+      isKotlinJsRoot: true
+      code: |
+        // Children of this box are Kotlin compiled to Javascript.
+- create:
+    box: kith_ring_box
+    name: 'Kotlin: a ring of THREE boxes'
+    frame:
+      x: 60.0
+      y: 700.0
+      w: 420.0
+      h: 120.0
+    properties:
+      code: |
+        // {{ remoteAR }}
+        clearAll()
+        val n = 12
+        val ring =
+            (0 until n).map { i ->
+                val theta = i.toDouble() / n * 2.0 * kotlin.math.PI
+                // four units in front of the head's camera, which looks down -z from the origin
+                val here = vec(kotlin.math.cos(theta) * 2.0, kotlin.math.sin(theta) * 2.0, -4.0)
+                val box = addBox("ring-$i", 0.5).mesh
+                box.position.set(here.x, here.y, here.z)
+                box
+            }
+        onFrame { frame ->
+            ring.forEachIndexed { i, box ->
+                box.rotation.y = frame.time * 2.0 + i.toDouble() * 0.5
+            }
+        }
+        log("ring installed: ${ring.size} boxes")
+- connect:
+    parent: kith_ring_root
+    child: kith_ring_kroot
+- connect:
+    parent: kith_ring_kroot
+    child: kith_ring_box
+- wait:
+    frames: 2

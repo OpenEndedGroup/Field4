@@ -27,6 +27,10 @@ launch its **window** box, then **5e. Slug filled paths**. The lesson draws a cu
 outline with a square hole. Focus the renderer window and use WASD/arrow keys to
 move, E/C to rise or fall, and R to reset the camera. There is no automatic orbit.
 
+```diffstatic_runner {data-lang=kotlin capture="native-window" native-wait-frames="4" trim-native=true screenshot="assets/slug_paths/lesson_5e.png" macro-file="../../dev_docs/agents/transcripts/docs_capture/slug_paths_native.yaml" capture-box="slug_paths" wait="0.5" timeout="180" embed=true hidden=true name="slug-paths-lesson-5e" alt="The renderer window: a filled shape with three straight sides and one bulging cubic side, a square hole cut through its middle, shaded with diagonal pastel rainbow bands, its curved edge smooth"}
+// The transcript launches a renderer and lesson 5e beneath it; this is the renderer window.
+```
+
 The lesson uses `"field-slug".file`. FileManager registers the helper relative to
 Field's loaded installation/checkout; a document or project `files/field-slug` can
 override it. This is the compiler executable; `SlugPath.compile` creates and

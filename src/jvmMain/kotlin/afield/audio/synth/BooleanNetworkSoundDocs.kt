@@ -6,6 +6,7 @@ import afield.simulation.automata.BoolNode
 import afield.simulation.automata.BooleanNetwork
 import afield.simulation.automata.findAttractors
 import afield.simulation.automata.kauffmanNetwork
+import afield.simulation.automata.repeatedCycle
 import java.io.File
 import kotlin.math.PI
 import kotlin.math.ceil
@@ -150,6 +151,52 @@ object BooleanNetworkSoundDocs {
         }.sortedWith(compareBy<ScheduledNote> { it.start }.thenBy { it.pitch })
     }
 
+    /**
+     * `boolean_networks_examples.md`'s drum-grid fence: the same rhythm candidate, the same
+     * `step % 4` gating into kick / snare / hat / clap / percussion lanes, played at eight steps a
+     * second for two passes of the 16-step grid the figure draws.
+     */
+    fun drumGridNotes(): List<ScheduledNote> {
+        class Candidate(val net: BooleanNetwork, val attr: afield.simulation.automata.Attractor, val score: Double)
+        fun activity(attr: afield.simulation.automata.Attractor, net: BooleanNetwork): Double =
+            attr.cycle.sumOf { state -> state.count { it } }.toDouble() / (attr.period * net.size).toDouble()
+        val candidate = (0..240).mapNotNull { seed ->
+            val net = kauffmanNetwork(n = 5, k = 2, seed = seed.toLong())
+            net.findAttractors().filter { it.period in 5..10 }.map { attr ->
+                val density = activity(attr, net)
+                val periodScore = 1.0 - kotlin.math.abs(attr.period - 8) / 8.0
+                val densityScore = 1.0 - kotlin.math.abs(density - 0.42)
+                val basinScore = attr.basin.size.toDouble() / (1 shl net.size).toDouble()
+                Candidate(net, attr, periodScore * 1.6 + densityScore * 1.2 + basinScore)
+            }.maxByOrNull { it.score }
+        }.maxByOrNull { it.score }!!
+        val natural = candidate.attr.repeatedCycle(16)
+        val gated = natural.mapIndexed { step, state ->
+            booleanArrayOf(
+                state[0] && step % 4 == 0,
+                state[1] && step % 4 == 2,
+                state[2] && step % 2 == 0,
+                state[3] && (step % 8 == 4 || step % 8 == 12),
+                state[4] && (step % 4 == 1 || step % 4 == 3),
+            )
+        }
+        val tokens = listOf("bd", "sn", "hh", "cp", "perc")
+        val stepSeconds = 0.125
+        return (0 until 2).flatMap { pass ->
+            gated.flatMapIndexed { step, lanes ->
+                lanes.indices.filter { lanes[it] }.map { lane ->
+                    ScheduledNote(
+                        start = (pass * gated.size + step) * stepSeconds,
+                        duration = stepSeconds * 0.8,
+                        pitch = (36 + lane * 5).toFloat(),
+                        velocity = if (lane == 2) 0.6f else 0.9f,
+                        label = tokens[lane],
+                    )
+                }
+            }
+        }
+    }
+
     /** The fourth fence: a hand-built network with node 0 forced by a sine-derived square wave. */
     fun drivenNotes(): List<ScheduledNote> {
         val net = BooleanNetwork(
@@ -208,6 +255,12 @@ object BooleanNetworkSoundDocs {
             // quiet sixteenth under it does not start a new transient. The kick and snare do.
             mustHear = { !it.label.orEmpty().startsWith("hh") },
             mustHearWhy = "kick and snare; the hh shimmer is a wash of long crash samples",
+        ),
+        Scene(
+            name = "drum-grid",
+            listenFor = "the gated attractor: kick on the beat, snare on the off-beat, hats in eighths, two bars twice",
+            seconds = 4.0,
+            notes = ::drumGridNotes,
         ),
         Scene(
             name = "driven",
@@ -352,7 +405,7 @@ object BooleanNetworkSoundDocs {
             WavFloatArrayWriter.writeStereo16(file, audio.left, audio.right, PatSoundDocs.SR, normalizePeak = 0.9f)
             println("  wrote ${file.absolutePath} (${file.length()} bytes)")
         }
-        // After every scene is written, so a failure leaves all four clips on disk to listen to.
+        // After every scene is written, so a failure leaves every clip on disk to listen to.
         println("boolean network sound docs rendered: ${SCENES.size} scene(s)")
     }
 }

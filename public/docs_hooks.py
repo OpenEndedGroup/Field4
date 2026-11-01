@@ -881,10 +881,13 @@ class RunnerOptions:
 # A profile names the host a capture needs. On any other host, or unless FIELD_DOCS_CAPTURE_PROFILES
 # names it, the committed capture is kept. `macos-electron` captures from this checkout's Field
 # Electron app instead of the capture Chromium (`playwright-open --electron`), for output that only
-# exists there, such as the RTT view's shared-texture frames.
+# exists there, such as the RTT view's shared-texture frames. `macos-native` is an ordinary capture
+# that needs a macOS-only native library (Syphon).
 CAPTURE_PROFILE_PLATFORMS = {
     "linux-nvidia": "linux",
     "macos-electron": "darwin",
+    # Output that needs a macOS-only native library and nothing else: Syphon's shared surfaces.
+    "macos-native": "darwin",
     "patchy-web": "",  # optional WebAssembly site; available on any host when explicitly selected
 }
 

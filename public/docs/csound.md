@@ -243,7 +243,7 @@ of Field's graph. Two things to know about timing:
 The same holds offline. `renderSignalsOffline` advances any number of signals through the same audio
 blocks, without a device, which is how this box measures a Csound filter on a Field sine:
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/csound/filter_gain.png" capture="box" open-outputs="true" requires="csound" wait="2" timeout="180" padding="12" embed=true name="csound-filter-gain" alt="The box's output: a line reading Csound butterlp at 500 Hz on a 1 kHz sine, measured gain 0.2420, Butterworth predicts 0.2425; below it four cycles of the dry sine in grey and the much smaller filtered sine in blue"}
 val cs =
     afield.audio.csound.CsoundInstance(
         """
@@ -258,11 +258,28 @@ endin
 val node = cs.node(audioIn = mapOf("in" to SineOsc(Param(1000f))))
 val (dry, low) = renderSignalsOffline(0.5, SineOsc(Param(1000f)), node.audioOut("low"))
 cs.close()
+
+// Gain from the second half, once the filter has settled; then 4 ms of both as lines.
+fun rms(a: FloatArray) = kotlin.math.sqrt(a.drop(a.size / 2).sumOf { it * it.toDouble() } / (a.size / 2))
+val gain = rms(low) / rms(dry)
+fun wave(a: FloatArray, tint: Vec4) = FLine().apply {
+    for (i in 0 until 192) {
+        val x = i * 3.0
+        val y = -a[a.size / 2 + i] * 80.0
+        if (i == 0) moveTo(x, y) else lineTo(x, y)
+    }
+    color = tint
+    thickness = 1.5
+}
+markdown(
+    "gain",
+    "Csound `butterlp` at 500 Hz on a 1 kHz sine: measured gain **${gain.f4}**, Butterworth predicts **${(1 / kotlin.math.sqrt(17.0)).f4}**",
+)
+lines(wave(dry, vec(0.6, 0.6, 0.6, 1.0)), wave(low, vec(0.3, 0.8, 1.0, 1.0)), w = 640.0, h = 220.0, fitToSize = true)
 ```
 
-This excerpt returns the dry and lowpass sample arrays. The full `csound_demo` starting point
-measures their RMS ratio and prints a gain of 0.2420. A second-order Butterworth lowpass
-passes a signal at twice its cutoff with gain 1/√(1 + 2⁴) = 0.2425.
+The ratio of their RMS levels is the filter's gain. A second-order Butterworth lowpass passes a
+signal at twice its cutoff with gain 1/√(1 + 2⁴) = 0.2425.
 
 ## Csound inside a Kotlin box
 

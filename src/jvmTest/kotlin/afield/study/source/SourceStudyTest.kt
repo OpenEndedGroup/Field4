@@ -48,6 +48,16 @@ class SourceStudyTest {
         try { block(dir) } finally { dir.deleteRecursively() }
     }
 
+    @Test fun aRewrittenRevisionLoadsOnlyWhenItsMetadataRecordsTheRewrite() = withDir { dir ->
+        val r1 = study(dir, Editor("start")).edit(SourceStudy.EMPTY, SourceStudy.hash("start"), "first", "one")
+        File(dir, "${r1.id}.txt").writeText("first, renamed")
+        assertFailsWith<StudyRejection> { study(dir, Editor("first")).revision(r1.id) }
+        val meta = File(dir, "${r1.id}.json")
+        meta.writeText(meta.readText().replaceFirst("{", "{\"migratedSourceSha256\": \"${SourceStudy.hash("first, renamed")}\","))
+        assertEquals("first, renamed", study(dir, Editor("first")).revision(r1.id).source)
+        assertEquals("first, renamed", study(dir, Editor("first")).savedSource(r1.id))
+    }
+
     @Test fun editsAreTransactionsAgainstTheRevisionAndTheLiveText() = withDir { dir ->
         val editor = Editor("start")
         val s = study(dir, editor)

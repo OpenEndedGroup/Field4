@@ -186,6 +186,27 @@ FieldLanguageExtensions.register({
 })
 ```
 
+Field ships this extension. A Kotlin box holding a `#rectsl` string, open in the editor:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/language_extensions/rectsl-embedded.png" alt="a Kotlin box in Field's editor: the triple-quoted string from #rectsl to the closing quotes is highlighted as RectSL, with ->words in violet, numbers in yellow and rect names in green, while the Kotlin around it keeps Kotlin colours" capture="editor" outputs="inline" wait="3" padding="10" timeout="180" embed=true name="language-extensions-rectsl-embedded" w="900"}
+val scene =
+    """
+#rectsl
+->wall 16 8 abstract
+->background 0x0c1024
+
+"sun" rect
+  4 4 ->wh
+  0xff7a1a solid ->fill
+  '( 0=-5  2=5  4=-5 ) ->x
+
+"band" rect
+  16 1 ->wh
+  0x2a8cff solid ->fill
+"""
+println(scene.lines().size)
+```
+
 ## Flow and context lenses
 
 `updateFlowLens(...)` draws relationships in the text: which word consumes a

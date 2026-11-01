@@ -1,0 +1,16 @@
+name: layers_hidden
+description: >
+  Seven boxes on three layers, for the "Showing and hiding layers" figure on
+  `public/docs/moving_around_the_canvas.md`: the drive script shows every layer, then hides `notes`
+  through its eye, so the canvas beside the layers panel holds only the drums and synth boxes.
+
+  Capture-only, so it lives under transcripts/docs_capture/.
+operations:
+  - create: { box: lh_kick, name: kick, frame: { x: 80.0, y: 100.0, w: 140.0, h: 60.0 }, properties: { layers: drums } }
+  - create: { box: lh_snare, name: snare, frame: { x: 80.0, y: 190.0, w: 140.0, h: 60.0 }, properties: { layers: drums } }
+  - create: { box: lh_hats, name: hats, frame: { x: 80.0, y: 280.0, w: 140.0, h: 60.0 }, properties: { layers: drums } }
+  - create: { box: lh_bass, name: bass, frame: { x: 300.0, y: 100.0, w: 140.0, h: 60.0 }, properties: { layers: synth } }
+  - create: { box: lh_pad, name: pad, frame: { x: 300.0, y: 190.0, w: 140.0, h: 60.0 }, properties: { layers: synth } }
+  - create: { box: lh_todo, name: todo, frame: { x: 80.0, y: 420.0, w: 180.0, h: 60.0 }, properties: { layers: notes } }
+  - create: { box: lh_ideas, name: ideas, frame: { x: 300.0, y: 420.0, w: 180.0, h: 60.0 }, properties: { layers: notes } }
+  - wait: { frames: 4 }
