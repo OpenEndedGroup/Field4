@@ -502,14 +502,6 @@ active layer. The last visible layer cannot be hidden. If the document has a dra
 `drawing` row of its own, whose eye shows or hides it. [Layers](layers.md) covers how a box names
 its layers, and how each layer keeps its own layout.
 
-## Limits
-
-- one target per direction, so the overlay never offers a choice between two boxes on the same side
-- a slot stores a single selected box, so a multi-selection is not restored as a set
-- a slot with no saved zoom restores the pan position at whatever zoom you are at now
-- there are nine slots and the numbering is fixed
-- restoring a slot you have not set yet shows a notification and leaves the view alone
-
 ## Related features
 
 - [Keyboard Shortcuts](keybindings.md) covers rebinding, and lists both commands for all nine slots.
