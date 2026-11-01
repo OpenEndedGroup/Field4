@@ -49,6 +49,32 @@ Returning the result as the box's last expression is what ties the music to the 
 for as long as the `live_loop` runs, and stopping the box stops the music: Sonic Pi's job is cancelled
 through the same path as any other Field launch.
 
+Here it is running: the box lit, and sixteen seconds recorded from Sonic Pi, two passes of the loop, each a different chord note:
+
+```diffstatic_runner {data-lang=kotlin capture="box" execution="launch" outputs="none" w="260" h="120" wait="6" timeout="180" embed=true hidden=true screenshot="assets/sonic_pi/bikes_box.png" name="sonicpi-bikes-box" alt="The bikes box lit with running stripes while its live_loop plays"}
+sonicPi(
+    """
+#sonicpi
+live_loop :bikes do
+  with_synth :dsaw do
+    with_fx :reverb, room: 0.5, mix: 0.3 do
+      start_note = chord([:b1, :e2, :b3].choose, :minor).choose
+      play start_note, release: 8, cutoff: 90, detune: rrand(0, 0.2)
+    end
+  end
+  sleep 8
+end
+""",
+)
+```
+
+```diffstatic_runner {data-lang=kotlin audio="assets/sonic_pi/bikes.wav" audio-spec="bikes" audio-renderer="afield.examples.sonicpi.SonicPiSoundDocs" timeout="240" embed=true hidden=true name="sonicpi-bikes-audio"}
+// Recorded from a real Sonic Pi by SonicPiSoundDocs.renderWav("bikes").
+```
+
+??? aside "How the recording was made"
+    `SonicPiSoundDocs.renderWav("bikes", …)` runs the same program in a real Sonic Pi and records it through Sonic Pi's own recorder (the path `SonicPiPatternProbe` measures). `choose` and `rrand` make every recording different.
+
 Write the music as a `live_loop` for the same reason. A loop never finishes on its own, so the box
 stays lit and stays stoppable. A bare sequence of `play` calls flashes green for a few milliseconds
 and goes idle, and whatever it scheduled keeps sounding with no box left to stop.
@@ -103,6 +129,26 @@ editor can show the music moving through the code.
 
 A lit line fades over about half a second after its last report. A line lights when it triggers a
 note, whether or not you can hear it: a `play` at `amp: 0` still lights its line.
+
+Here a drum loop that triggers every half second runs beside a bass loop that triggers once a second, so the bass lines dim between their notes while the drum lines barely do:
+
+```diffstatic_runner {data-lang=kotlin video="assets/sonic_pi/line_activity.mp4" capture="editor" outputs="inline" execution="launch" wait="3" duration="4" fps="20" timeout="180" embed=true hidden=true name="sonicpi-line-activity" alt="The editor running two Sonic Pi live_loops: the drum loop's lines stay lit, the bass loop's lines light on each note and fade between them"}
+sonicPi(
+    """
+#sonicpi
+live_loop :drums do
+  sample :bd_haus, amp: 0.4
+  sleep 0.5
+end
+
+live_loop :bass do
+  use_synth :tb303
+  play :e1, release: 0.4, amp: 0.4
+  sleep 1
+end
+""",
+)
+```
 
 The same reports are available from code. `activity()` counts triggers per line, and
 `activeLines` lists the lines that triggered recently:
