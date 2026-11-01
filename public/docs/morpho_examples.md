@@ -282,7 +282,7 @@ Brent–Kung reaches its brightest wires after a handful of tree levels and then
 gates in parallel, which is why it costs three times as many gates (190 against 64) to be three times
 shallower.
 
-A ripple carry is exactly linear in width. Brent–Kung is `2·log₂(N) + 1`. And at four bits the
+A ripple carry is exactly linear in width. Brent–Kung is \( 2\log_2 N + 1 \). And at four bits the
 parallel-prefix adder is **worse** (5 against 4) because its prefix tree costs two levels that a
 four-stage carry chain never pays for. The crossover is between 4 and 8 bits. That is the real
 shape of the tradeoff, and measuring it is one line of Kotlin once the language runs inside your

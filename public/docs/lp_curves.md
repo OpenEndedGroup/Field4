@@ -3,7 +3,7 @@
 <!-- capture-sources: src/jvmMain/kotlin/afield/geometry/spatial/lp_trajectories.kt src/jvmMain/kotlin/afield/geometry/spatial/lp_polytope.kt -->
 
 A two-dimensional linear program asks for the point of a convex polygon that goes furthest in one
-direction: maximise `c·x` over the polygon. An optimum can be found at a vertex, though an entire
+direction: maximise \( c \cdot x \) over the polygon. An optimum can be found at a vertex, though an entire
 edge can tie. The methods here take different routes towards it. The barrier method follows a smooth arc out
 of the polygon's centre, the primal-dual method takes a few long strides, PDHG spirals in from
 outside, the ellipsoid method shrinks a sequence of ellipses around the answer, and the simplex
@@ -51,7 +51,7 @@ showPlaneGrid(
 ![Three copies of a pentagon. In the first a smooth orange arc leaves the middle and curves into the right-hand vertex; in the second a few green strides cover the same ground; in the third a blue line runs along two edges to the same vertex](assets/lp_curves/three_routes.png)
 
 Each route is an `LpTrajectory`: a list of `LpSample`s, each carrying its position, its iteration
-number, its objective value `c·x`, its constraint violation, a `scale` and a `tag`. What `scale`
+number, its objective value \( c \cdot x \), its constraint violation, a `scale` and a `tag`. What `scale`
 measures depends on the method: μ for the two interior-point methods, the dual norm for PDHG, the
 ellipse's size for the ellipsoid method, the remaining area for cutting planes. `toFLine()` draws the
 route; `positions` gives the points.
@@ -61,7 +61,7 @@ route; `positions` gives the points.
 Turn the objective direction through a full circle and you get one central path per direction. All
 of them leave the same point (the polygon's *analytic centre*, where the barrier alone balances)
 and each ends at the vertex that wins for its direction. `centralFan` returns the whole family; it
-is a sampling of a surface `x(θ, μ)` whose two parameters are the direction's angle and the barrier
+is a sampling of a surface \( x(\theta, \mu) \) whose two parameters are the direction's angle and the barrier
 weight.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/lp_curves/fan.png" wait="3.0" capture="box" open-outputs="true" w="900" h="420" padding="14"}
@@ -87,7 +87,7 @@ showPlaneGrid(
 
 ## Weights and redundant constraints
 
-The barrier is a sum of `wᵢ · ln(slackᵢ)`, one term per edge. Giving an edge weight 3 is exactly the
+The barrier is a sum of \( w_i \ln(\mathrm{slack}_i) \), one term per edge. Giving an edge weight 3 is exactly the
 same as listing that edge three times: the polygon is unchanged, but the path is not. That makes
 the weights a drawing control. The left panel below follows one direction with three different
 weightings; the right panel sweeps the weight on one edge from 1 to 40 and plots where the path
@@ -171,7 +171,7 @@ showPlaneGrid(*panels.toTypedArray(), columns = 3, cellWidth = 310, cellHeight =
 The ellipsoid method keeps an ellipse known to contain the answer. At each step it cuts the ellipse
 in half through its centre (on the most violated edge if the centre is outside the polygon, on the
 objective if it is inside) and replaces it with the smallest ellipse containing the half it keeps.
-In two dimensions every cut multiplies the area by `√(16/27) ≈ 0.77`. `ellipsoid` returns both the
+In two dimensions every cut multiplies the area by \( \sqrt{16/27} \approx 0.77 \). `ellipsoid` returns both the
 centres and the ellipses (`LpEllipse`, a centre and a 2×2 shape matrix, with `toFLine()`).
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/lp_curves/ellipsoid.png" wait="3.0" capture="box" open-outputs="true" w="900" h="420" padding="14"}
@@ -384,16 +384,16 @@ bulge should count. For a polytope in space, built the same way from a point clo
 
 A fan of central paths is a sampling of a map with two inputs: the objective direction's angle θ
 and the barrier weight μ. Give it any pair and it returns one point inside the polygon, the
-barrier maximiser `x(θ, μ)`. `polygon.fanMap()` hands you that map as an object, `LpFanMap`. It
-takes `log μ` rather than μ, because the interesting range of μ spans several powers of ten.
+barrier maximiser \( x(\theta, \mu) \). `polygon.fanMap()` hands you that map as an object, `LpFanMap`. It
+takes \( \log \mu \) rather than μ, because the interesting range of μ spans several powers of ten.
 
 Each point it returns, an `LpFanPoint`, carries the map's derivatives as well as its position:
 `dxdTheta`, how the point moves as the direction turns, and `dxdLogMu`, how it moves as μ grows.
-They are exact, not differences: at the maximiser `c(θ) = μ Σ wᵢ nᵢ / sᵢ`, and differentiating that
-gives `∂x/∂θ = M⁻¹ c'(θ)` and `∂x/∂log μ = −M⁻¹ c(θ)`, where `M = μ Σ wᵢ nᵢnᵢᵀ / sᵢ²` is the
+They are exact, not differences: at the maximiser \( c(\theta) = \mu \sum w_i n_i / s_i \), and differentiating that
+gives \( \partial x/\partial\theta = M^{-1} c'(\theta) \) and \( \partial x/\partial \log\mu = -M^{-1} c(\theta) \), where \( M = \mu \sum w_i n_i n_i^{\mathsf T} / s_i^2 \) is the
 barrier's curvature. `jacobianDeterminant` is the area a unit square of (θ, log μ) covers at that
-point, and it works out to `1 / det M`, which is always positive. So the map never folds: each
-interior point except the analytic centre is hit by exactly one (θ, μ). In fact θ and `1/μ` are
+point, and it works out to \( 1 / \det M \), which is always positive. So the map never folds: each
+interior point except the analytic centre is hit by exactly one (θ, μ). In fact θ and \( 1/\mu \) are
 the polar angle and radius of the barrier's gradient, so the fan is polar coordinates, carried
 into the polygon.
 
@@ -401,7 +401,7 @@ into the polygon.
 `thetaLines()` are central paths, one per angle, and `muLines()` are closed rings, one per value of
 μ. Each grid point starts Newton from an already solved neighbour, so a grid of a few thousand
 points takes a few milliseconds. `warp(line)` carries an `FLine` drawn in the (θ, log μ) plane,
-x as θ and y as `log μ`, into the polygon. The example draws the grid, then a set of waves and
+x as θ and y as \( \log \mu \), into the polygon. The example draws the grid, then a set of waves and
 spirals drawn in the parameter plane and warped, and then a regular lattice of dots in (θ, log μ),
 mapped and coloured by the determinant, in six bands of equal count from blue (smallest) to
 yellow (largest).
@@ -486,7 +486,7 @@ angular step draws that crossing as one straight chord. Neither effect is a samp
 grid shows the same thing, closer to the boundary.
 
 The same map moves particles. Below, 900 points start at random positions in (θ, log μ) and slide
-down in `log μ` at a steady rate, wrapping back to the top when they reach the bottom. Mapped into
+down in \( \log \mu \) at a steady rate, wrapping back to the top when they reach the bottom. Mapped into
 the polygon, each one follows its own central path out of the centre and into a corner, slowing as
 it goes, because the corners take up so little of the polygon. Each frame starts every point's
 Newton from where it was in the last frame.
@@ -565,7 +565,7 @@ size that takes a few milliseconds. The flat SVG view takes the same callback:
 
 ## In three dimensions
 
-Everything above works in space too. A three-dimensional linear program maximises `c·x` over a
+Everything above works in space too. A three-dimensional linear program maximises \( c \cdot x \) over a
 convex polytope, the answer is again a vertex, and the same methods walk there by their own
 routes, now through a solid. `LpPolytope` holds the solid, and each method returns its walk as a
 3-D trajectory that draws as an `FLine` in a `three { }` scene.
@@ -573,7 +573,7 @@ routes, now through a solid. `LpPolytope` holds the solid, and each method retur
 ### A polytope from a point cloud
 
 `LpPolytope.hull(points)` takes the convex hull of any point cloud and turns each face of the hull
-into a half-space, the constraint `n·x ≤ b`. The triangles of one flat face become one constraint,
+into a half-space, the constraint \( n \cdot x \le b \). The triangles of one flat face become one constraint,
 so a cube has six, not twelve. `LpPolytope.of(mesh)` does the same for a mesh's vertices, and
 `LpPolytope(normals, bounds)` takes the half-spaces directly.
 
@@ -713,8 +713,8 @@ The trajectories are `LpTrajectory3`s of `LpSample3`s, carrying the same per-ste
 The ellipsoid method keeps an ellipsoid known to contain the answer, halves it through its centre
 at each step, and replaces it by the smallest ellipsoid containing the half it keeps. The
 constants depend on the dimension. In three dimensions the centre moves a quarter of the way
-across (`1/(n+1)`), the shape matrix grows by `n²/(n²−1) = 9/8`, and each step multiplies the
-volume by `27/32 ≈ 0.84`, a slower shrink than the plane's `0.77`. `LpEllipsoid.toFLine()` draws an
+across (`1/(n+1)`), the shape matrix grows by \( n^2/(n^2-1) = 9/8 \), and each step multiplies the
+volume by \( 27/32 \approx 0.84 \), a slower shrink than the plane's `0.77`. `LpEllipsoid.toFLine()` draws an
 ellipsoid as a wireframe of latitude and longitude rings.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/lp_curves_3d/ellipsoids.png" wait="6.0" capture="box" open-outputs="true" padding="20"}
@@ -746,10 +746,10 @@ three(name = "ellipsoids", width = 760, height = 470) {
 ### Cutting planes
 
 A cutting-plane method keeps the region still in play, finds a centre of it, and cuts away the half
-where `c·x` is worse than at the centre. `cuttingPlanes` returns the region at every step as an
+where \( c \cdot x \) is worse than at the centre. `cuttingPlanes` returns the region at every step as an
 `LpPolytope` of its own. In three dimensions the centre is `ANALYTIC`, `CENTROID`, `CHEBYSHEV`
 (the centre of the largest ball inside) or `VOLUMETRIC`, as in the plane. The example cuts toward the cube's top corner through centroids, each of
-which removes at least `1 − (3/4)³ ≈ 58%` of the volume.
+which removes at least \( 1 - (3/4)^3 \approx 58\% \) of the volume.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/lp_curves_3d/cutting_planes.png" wait="6.0" capture="box" open-outputs="true" padding="20"}
 :::static
@@ -792,7 +792,7 @@ in one box and the turning fan in another.
 | `polygon.centralPath(direction, weights, samples, muHigh, muLow, start, warm)` | the log-barrier central path, `LpTrajectory`; `warm` reuses a previous path's samples as Newton starts |
 | `LpContinuation().centralPath(polygon, direction, ...)` | a central path warm-started from the previous call's, for animation |
 | `polygon.centralFan(angles, samples, weights)` | one central path per direction round the circle, `List<LpTrajectory>` |
-| `polygon.fanMap(weights)` | `LpFanMap`, the fan as a map `x(θ, log μ)`: `at(theta, logMu, near)` gives an `LpFanPoint` with `dxdTheta`, `dxdLogMu` and `jacobianDeterminant` |
+| `polygon.fanMap(weights)` | `LpFanMap`, the fan as a map \( x(\theta, \log\mu) \): `at(theta, logMu, near)` gives an `LpFanPoint` with `dxdTheta`, `dxdLogMu` and `jacobianDeterminant` |
 | `fanMap.grid(thetas, logMus, logMuHigh, logMuLow)` | `LpFanGrid`: `thetaLines()` (central paths) and `muLines()` (rings) as `FLine`s |
 | `fanMap.warp(line, stepsPerSegment)` | an `FLine` drawn in the (θ, log μ) plane, carried into the polygon |
 | `polygon.primalDual(direction)` | Mehrotra predictor–corrector iterates, `LpTrajectory` |
@@ -811,7 +811,7 @@ In three dimensions:
 | Entry point | What it returns |
 |---|---|
 | `LpPolytope.hull(points)`, `LpPolytope.of(mesh)` | the convex hull as half-spaces, one per flat face |
-| `LpPolytope(normals, bounds)`, `LpPolytope.box(...)`, `LpPolytope.cube(half)` | a polytope from half-spaces `n·x ≤ b`; refused when unbounded or flat |
+| `LpPolytope(normals, bounds)`, `LpPolytope.box(...)`, `LpPolytope.cube(half)` | a polytope from half-spaces \( n \cdot x \le b \); refused when unbounded or flat |
 | `polytope.vertices`, `.edges`, `.vertexPlanes`, `.center`, `.volume` | the solid's vertices, its edges as vertex pairs, the faces tight at each vertex |
 | `polytope.centralPath(direction, weights, samples, muHigh, muLow, start)` | the log-barrier central path, `LpTrajectory3` |
 | `polytope.centralFan(directions, samples, weights)`, `sphereDirections(n)` | one central path per direction, spread over the sphere |
@@ -828,7 +828,7 @@ In three dimensions:
     `src/jvmTest/kotlin/afield/geometry/spatial/LpTrajectoriesTest.kt` asserts what the captions
     show: strict feasibility of the central path and primal-dual iterates, convergence of every
     method to the optimal vertex, the `16/27` determinant ratio of successive ellipses (the 2-D
-    central-cut factor is `n²/(n²−1) = 4/3`, not `16/9`), that each ellipse still contains the
+    central-cut factor is \( n^2/(n^2-1) = 4/3 \), not `16/9`), that each ellipse still contains the
     optimum, that weights move the path, the Chebyshev centre against a rectangle and a 3-4-5
     triangle, the volumetric centre's vanishing gradient, and that a warm-started path matches the
     cold one in at most 85% of the Newton steps, and that `LpPolygon.hull` drops interior, repeated
@@ -843,9 +843,9 @@ In three dimensions:
     `src/jvmTest/kotlin/afield/geometry/spatial/LpPolytopeTest.kt` asserts what the captions show:
     a cube's six faces, eight vertices and twelve edges, and the same from a box mesh's hull (its
     twelve triangles merged back into six faces); that a random hull contains its cloud, has one
-    vertex per hull point and satisfies Euler's `V − E + F = 2`; strict feasibility and convergence
+    vertex per hull point and satisfies Euler's \( V - E + F = 2 \); strict feasibility and convergence
     of the central path and primal-dual iterates on the cube and the hull; one fan path per sphere
-    direction; PDHG leaving the solid and returning; the `(27/32)²` determinant ratio of successive
+    direction; PDHG leaving the solid and returning; the \( (27/32)^2 \) determinant ratio of successive
     ellipsoids and that every ellipsoid contains the optimum; the simplex walk reaching the optimum
     from every vertex; and the three cutting-plane centres shrinking the volume. Vertices are found
     by intersecting every triple of planes, so construction is `O(m⁴)` in the face count. The

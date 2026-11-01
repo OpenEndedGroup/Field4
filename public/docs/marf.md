@@ -141,7 +141,7 @@ these lanes use `"0 1 2 3"` and four stages a cycle.
 
 The address is a `PatPattern<Double>`, not a pattern of integers. A fractional address evaluates the
 two stages it lies between over the same local phase and mixes their outputs,
-`(1-α)·f(i) + α·f(i+1)`, blending their durations the same way. The entry value is shared between
+\( (1-\alpha)\,f(i) + \alpha\,f(i+1) \), blending their durations the same way. The entry value is shared between
 the two, so the output stays continuous across a boundary exactly as it does for a whole address.
 
 ![a stepped address, a gliding one, and one that aliases to four slots](assets/marf/marf-continuous-address.svg)

@@ -437,7 +437,7 @@ r.determinant() // 1.0 — a rotation preserves volume
 ![A Y-rotation as a heatmap; header reads mat4 [det=1, t=(0, 0, 0)], cells show 0.83 / 0.56 / -0.56](assets/matrix_algebra/rotate_mat4f.png)
 
 The header now reads `mat4` rather than `mat4d`, because the visualizer
-distinguishes the two precisions. The `cos 0.6 ≈ 0.83` on the diagonal and `±sin 0.6 ≈ ±0.56`
+distinguishes the two precisions. The \( \cos 0.6 \approx 0.83 \) on the diagonal and \( \pm\sin 0.6 \approx \pm 0.56 \)
 off-diagonal are the classic Y-rotation entries. Transforming a point is likewise
 a `Matrix4f` operation: `*` on a `vec3` calls `transformPosition` (translation
 included) and returns a fresh `Vector3f`:

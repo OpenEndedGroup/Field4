@@ -394,7 +394,7 @@ refusals fall into three groups you can act on:
 - **two names, one number** — a name declared twice, two names claiming the same slot, or one name
   tying slots that currently hold different values, which would make the seed ambiguous.
 - **the seed is singular before the first step** — a `Scale` factor at zero (the field divides by it
-  and the derivative goes as `1/s²`) or a blend `k` at zero (its field clamps at `1e-9`, below which
+  and the derivative goes as \( 1/s^2 \)) or a blend `k` at zero (its field clamps at `1e-9`, below which
   the blend is a hard boolean with no derivative in `k`, so the parameter would never move).
 
 Which nodes are *good* to fit is the inverse of which nodes lower exactly:
@@ -668,7 +668,7 @@ so it walks all the way down. Stopped at iteration 500, this fit reports a reaso
 At the end the cylinder is recovered: `2.197225` against a true `2.20`, `0.281335` against a true
 `0.28`, and `barTilt`, seeded 25° off, back to `-0.009525°`. The cube settled at `0.855279`. No side
 length makes a cube a sphere, but there is a sensible range: a cube that fits a sphere of radius `R` at all has a side between the inscribed
-`2R/√3 = 0.7159` and the circumscribed `2R = 1.2400`. `0.855279` sits inside it, nearer the inscribed
+\( 2R/\sqrt{3} = 0.7159 \) and the circumscribed `2R = 1.2400`. `0.855279` sits inside it, nearer the inscribed
 end, which is where a least-squares fit on a *field* belongs.
 
 Adding the tilt does not change the final loss: the four-parameter residual and the three-parameter
@@ -731,7 +731,7 @@ val cloud = target.samplePointCloud(count = 3000, seed = 4, noise = 0.004)
 val fit = template.fitToPointCloud(cloud, start = doubleArrayOf(0.3, 1.1, 0.4))
 ```
 
-The loss is `f(pᵢ)²` averaged over the cloud, and everything that goes wrong follows from what it
+The loss is \( f(p_i)^2 \) averaged over the cloud, and everything that goes wrong follows from what it
 leaves out. Nothing in it wants the interior filled, so a shape that puts *some* surface through the
 points scores as well as the one that generated them. A cloud that surrounds a closed surface pins it
 from every side and recovers well; crop it to one hemisphere and every parameter that only shows
@@ -823,7 +823,7 @@ Primitives are centred on the origin. Everything else follows Manifold's convent
 
 - `cylinder` runs along **Z**.
 - `Profile.extruded(h)` runs from `z = 0` to `z = h` — *not* centred, because `Section.extruded` is not.
-- `Profile.revolved()` turns about **Z**, profile at `x ≥ 0`, counter-clockwise from `+X`.
+- `Profile.revolved()` turns about **Z**, profile at \( x \ge 0 \), counter-clockwise from `+X`.
 - `turned(x, y, z)` is in **degrees**, applied X then Y then Z.
 
 There is no `Torus` node:

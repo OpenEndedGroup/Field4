@@ -41,7 +41,7 @@ vector could express.
 Some limits first. None of these projections is invertible, and none can
 place a new point without refitting everything, so this is not dimensionality reduction for a model.
 Nothing here assigns labels either: a picture with visible clumps is a picture, not a partition. And
-none of it is cheap at scale, because the proximity matrix is `n²` doubles
+none of it is cheap at scale, because the proximity matrix is \( n^2 \) doubles
 (`smile_mds.kt:111#val proximity = Array(vectors.size) { DoubleArray(vectors.size) }`), 191 MiB at
 5000 rows and 3.0 GiB at 20 000, before Smile allocates its own.
 
@@ -354,7 +354,7 @@ rank, the graph coordinate is linear at Pearson **0.9852** against **0.3238**.
 Both fits are the same call with the same options; only the distance matrix differs. Change the
 matrix and the projection answers a different question.
 
-The thing to check is the graph, and the fence checks it: **worst `|i − j|` over an edge = 4**,
+The thing to check is the graph, and the fence checks it: **worst \( \lvert i - j \rvert \) over an edge = 4**,
 so no edge has jumped between arms. A single shortcut edge would collapse two arms into one and the
 rho above would fall off a cliff. Raise `k` until that happens and you can watch it go.
 
@@ -653,7 +653,7 @@ tenth eigenvalue" is a worse first experience than losing 0.015 of a correlation
 
 ## Sharp edges
 
-- **The proximity matrix is `n²` doubles, and Smile allocates more on top.** 7.6 MiB at n = 1000,
+- **The proximity matrix is \( n^2 \) doubles, and Smile allocates more on top.** 7.6 MiB at n = 1000,
   191 MiB at 5000, 3.0 GiB at 20 000, 19 GiB at 50 000. A long trajectory has to be sampled before
   it is projected. `smileMds` builds the matrix itself
   (`smile_mds.kt:111#val proximity = Array(vectors.size) { DoubleArray(vectors.size) }`), so the cost

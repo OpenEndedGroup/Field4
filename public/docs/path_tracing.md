@@ -544,7 +544,7 @@ break energy conservation silently. The packaged pair holds it to within 0.00001
 
 A medium whose density varies through space is not a phase-function change:
 `sampleMediumDistance` inverts the closed-form CDF for a constant extinction and
-`mediumTransmittance` is `exp(-σt · span)`, so substituting a `density(p)` lookup into the
+`mediumTransmittance` is \( \exp(-\sigma_t \cdot \mathrm{span}) \), so substituting a `density(p)` lookup into the
 shader makes both wrong without any visible sign. Varying density needs delta or ratio
 tracking in place of both, which Field does not provide; see
 `dev_docs/PARTICIPATING_MEDIA.md`.

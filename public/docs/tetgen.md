@@ -126,7 +126,7 @@ bores would not come through it round.
 ## Sizing
 
 `targetEdgeLength` is in the surface's own units and is translated to the only size control TetGen
-takes, a maximum element volume: `h³ / (6 sqrt 2)`, the volume of a regular tetrahedron of that edge.
+takes, a maximum element volume: \( h^3 / (6\sqrt{2}) \), the volume of a regular tetrahedron of that edge.
 
 The input surface sets the coarsest mesh you can get. TetGen keeps every triangle it is given, and
 this bracket's 618 triangles are already about 10 mm across, so asking for larger elements than that

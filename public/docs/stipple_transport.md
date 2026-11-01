@@ -21,7 +21,7 @@ Target image pixels contribute mass proportional to darkness. Stochastic stipple
 then training adds Gaussian target jitter with standard deviation `sigma`. The stipples represent
 small blobs rather than literal delta functions. Image coordinates are normalized, y points down,
 and the longest image dimension spans `[-1,1]`; other dimensions preserve aspect ratio. The default
-source is the full `[-1,1]²` uniform rectangle.
+source is the full \( [-1,1]^2 \) uniform rectangle.
 
 Training samples source and target points, draws transport time uniformly, and regresses
 `v((1-t)*x0+t*x1,t,tau)` toward `x1-x0`. Static models omit the movie-time input. Temporal models
@@ -114,7 +114,7 @@ Two equal-budget 8,000-step fine-tunes from the same longer-trained checkpoint s
 | Largest per-particle movie step | 0.3779 | 0.2472 |
 
 Regularization makes the movie motion smoother and the density less accurate. The movie above uses
-the regularized model. Its penalty approximates `∂v/∂tau` at fixed `(x,y,t)`; it is distinct from
+the regularized model. Its penalty approximates \( \partial v/\partial\tau \) at fixed `(x,y,t)`; it is distinct from
 the trajectory measures above. Held-out targets are freshly stippled samples of the known
 procedural density movie, which makes an interpolation check possible for this example.
 The [measurement record](assets/stipple_transport/measurements.json) includes per-frame results,

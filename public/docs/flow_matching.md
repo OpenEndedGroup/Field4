@@ -8,7 +8,7 @@ second.
 
 The method is short enough to state completely. Pick a point `x0` from where you are starting and a
 point `x1` from where you want to end up, and declare that the straight line between them is the
-path a particle should take: at time `t` it sits at `xt = (1-t)·x0 + t·x1` travelling at `x1 - x0`.
+path a particle should take: at time `t` it sits at \( x_t = (1-t)\,x_0 + t\,x_1 \) travelling at \( x_1 - x_0 \).
 Then fit a network `v(x, t)` to that velocity by least squares over many random `(x0, x1, t)`
 triples. No two straight lines agree where they cross, so the fit cannot reproduce any one of them;
 the fit seeks the average velocity through each point at each time. In the ideal case, integrating
@@ -303,7 +303,7 @@ two bands come out roughly 10–17% narrow, which is where the source's constant
 most.
 
 Because the correspondence is explicit, the exact answer is known at every `t`, not only at the end:
-particle `i` should be at `(1-t)·x0ᵢ + t·x1ᵢ`. Comparing the integrated path against that straight
+particle `i` should be at \( (1-t)\,x_{0,i} + t\,x_{1,i} \). Comparing the integrated path against that straight
 line measures the field directly.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/flow_matching/tube_paths.png" wait="3.0" capture="box" open-outputs="true" w="1000" h="420" padding="16"}

@@ -128,7 +128,7 @@ Two things to do with a plan:
 - `plan.barycentricMap(to)` gives each source the weighted mean of the targets it sends mass to:
   where it goes, on average. With a small `epsilon` that is close to its single partner, so it is a
   way to move points that copes with the sets being different sizes.
-- `plan.f` and `plan.g` are the dual potentials. The plan is `exp((f[i] + g[j] − cost[i][j]) / ε)`,
+- `plan.f` and `plan.g` are the dual potentials. The plan is \( \exp\bigl((f_i + g_j - \mathrm{cost}_{ij}) / \varepsilon\bigr) \),
   so they are a compact description of it, and `sinkhorn(..., initialF = f, initialG = g)` starts a
   new solve from them.
 
@@ -143,7 +143,7 @@ takes fewer sweeps over the full-size cost matrix to get there.
 weighted point sets are. It is the regularised cost of moving `a` onto `b`, minus half the cost of
 moving each onto itself, which removes the blur's own contribution: the divergence is zero when the
 sets are the same, and close to the real transport cost when they are not. A cloud shifted by `t`
-costs `t²` to move back:
+costs \( t^2 \) to move back:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/optimal_transport/divergence.png" capture="box" open-outputs="true" wait-output="true" embed="true" padding="12" name="optimal-transport-divergence" alt="four lines of text: shift 0.0 gives divergence 0.00, shift 5.0 gives 24.99, shift 10.0 gives 99.95 and shift 20.0 gives 399.86, each beside t squared"}
 // The Sinkhorn divergence between a cloud and the same cloud shifted by t is close to t²,

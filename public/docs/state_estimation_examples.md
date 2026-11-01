@@ -73,7 +73,7 @@ mean and covariance:
 | --- | --- | --- |
 | `alpha` | `0.5` | spread of the sigma points around the mean. Small `alpha` clusters them tight (good for mild nonlinearity); larger `alpha` spreads them out. Must be `> 0`. |
 | `beta` | `2.0` | folds prior knowledge of the distribution into the covariance weight. `2.0` is optimal for Gaussians and is almost always the right choice. |
-| `kappa` | `0.0` | secondary scaling. Usually left at `0`; raise it if the sigma-point scale `n + λ` would otherwise go non-positive. |
+| `kappa` | `0.0` | secondary scaling. Usually left at `0`; raise it if the sigma-point scale \( n + \lambda \) would otherwise go non-positive. |
 | `jitter` | `1e-9` | tiny diagonal added when a covariance is not quite positive-definite, so the internal Cholesky step stays numerically safe. Must be `> 0`. |
 
 </div>

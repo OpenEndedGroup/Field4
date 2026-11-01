@@ -388,7 +388,7 @@ says so.
 
     `concentration` is that `α`. `KeyframeSweepTest` pins what it buys, over five participants, by
     measuring the mean largest weight: **0.81 at `α = 0.1`** (a blend is mostly one key), **0.46 at
-    `α = 1`** — which has a closed form, `(1/n)·Σᵢ 1/i` — and **0.23 at `α = 50`** (every blend is
+    `α = 1`** — which has a closed form, \( \tfrac{1}{n}\sum_i 1/i \) — and **0.23 at `α = 50`** (every blend is
     the average). Start at 0.6 if the point is variety you can still attribute to something.
 
 ## What a night survives

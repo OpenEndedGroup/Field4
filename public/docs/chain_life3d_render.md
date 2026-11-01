@@ -122,12 +122,12 @@ markdown("spacing", "#### The same field at three spacings each way\n\n" + sweep
 The readout marches the field twice, once with Field's `marchingCubes` and once with
 Manifold's `levelSet`, and the two report different genus. Both are right about different things.
 
-Field's `genus()` reads one Euler characteristic and solves `χ = 2 − 2g`, which is the genus of a
+Field's `genus()` reads one Euler characteristic and solves \( \chi = 2 - 2g \), which is the genus of a
 **connected** surface. Handed forty-eight disjoint closed surfaces it returns the genus of the one it
 implicitly assumes, and says nothing about the other forty-seven.
 
 Manifold's `genus` is computed over the whole boundary. For *k* disjoint genus-zero spheres,
-χ is `2k`, so the formula gives `g = 1 − k`. Here that gives `1 − 48 = −47`: the value reflects
+χ is \( 2k \), so the formula gives \( g = 1 - k \). Here that gives \( 1 - 48 = -47 \): the value reflects
 the number of disconnected pieces rather than a count of holes.
 
 `decompose()` turns that back into the number you wanted: the separate pieces, sorted largest

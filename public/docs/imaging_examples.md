@@ -223,7 +223,7 @@ panel is those edges as 57 `FLine`s drawn back over the source.
 Three detectors, all on a square whose corners are at exactly known coordinates, so each detector's
 answer can be measured against the truth.
 
-- `harrisResponse()` — `det(M) - k·trace(M)²` over the structure tensor. Large and positive at a
+- `harrisResponse()` — \( \det(M) - k\,\operatorname{trace}(M)^2 \) over the structure tensor. Large and positive at a
   corner, **negative along an edge**, near zero on flat ground; the diverging colour map in the
   figure is showing exactly that sign structure.
 - `shiTomasiResponse()` — the smaller eigenvalue of the same tensor. No magic `k`, and directly
@@ -307,7 +307,7 @@ println("distance-transform peak ${dt.max().f1} (largest planted radius ${discs.
 ![](assets/imaging_examples/morphology.png)
 
 Three discs in, three components out, with areas of 2419, 1226 and 584 against the analytic
-`πr²` of 2463, 1257 and 616 (the shortfall is the `open(2)` erosion), and centroids at (54.8, 60.1),
+\( \pi r^2 \) of 2463, 1257 and 616 (the shortfall is the `open(2)` erosion), and centroids at (54.8, 60.1),
 (150.1, 55.0) and (110.2, 134.9) against planted centres of (55, 60), (150, 55) and (110, 135).
 
 For sub-pixel-smooth contours rather than a pixel-staircase boundary, `isoContourFLines(iso)` adapts

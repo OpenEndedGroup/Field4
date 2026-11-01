@@ -277,7 +277,7 @@ Before you bind one, note two things about re-solving:
 
 `InertialEasing` is the arithmetic underneath, exposed for driving a blend by hand
 in a game loop, or on something the interpolant cannot carry — a quaternion, say.
-`smoothstep(t, s)` is the scaled cubic `s · (3t² − 2t³)` indexed by its own time
+`smoothstep(t, s)` is the scaled cubic \( s\,(3t^2 - 2t^3) \) indexed by its own time
 rather than the GLSL function of the same name, `smoothstepDt` is its derivative,
 and `solve(x, v)` is the one you enter a curve part-way with: it returns the `t`
 and `s` whose curve is `x` away from its destination *and* moving at velocity `v`. Advance `t` to 1
@@ -517,7 +517,7 @@ showSignals(
 Both source signals are drawn alongside the metrics computed from them, so you can
 see what each rolling window is actually looking at. In the first third `y` tracks
 `x`; in the second it is independent noise; in the third it is a nonlinear function
-of `x` (`y = 2x² − 1`). Both `RollingDistanceCorrelation` and `RollingXiCorrelation`
+of `x` (\( y = 2x^2 - 1 \)). Both `RollingDistanceCorrelation` and `RollingXiCorrelation`
 climb on the two *dependent* stretches and collapse across the noise band, so the
 dependence visibly comes and goes (the grey guides mark the regime changes), which
 a single summary number would smear into one lukewarm value.
