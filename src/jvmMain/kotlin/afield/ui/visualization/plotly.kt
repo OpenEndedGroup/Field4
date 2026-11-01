@@ -41,6 +41,7 @@ import space.kscience.plotly.*
 import space.kscience.plotly.models.Dash
 import space.kscience.plotly.models.ScatterMode
 import space.kscience.plotly.models.ViolinPoints
+import space.kscience.plotly.models.SpanMode
 import space.kscience.plotly.models.XAnchor
 import space.kscience.plotly.models.YAnchor
 import space.kscience.plotly.models.ShapeLayer
@@ -187,9 +188,11 @@ fun violin(vararg data: List<Number>): Plot {
  * radius against the measured radii, a set point against the readings.
  *
  * Pass `"label" to values` pairs; each pair becomes one violin at category `label`, coloured in
- * [signalPalette] order, with its inner box and mean line as in the unnamed overload but no
- * individual points: with thousands of samples per group the outlier strip draws as a solid bar,
- * and the violin's own outline already reaches the extremes. [references],
+ * [signalPalette] order, with its inner box and mean line as in the unnamed overload.
+ * [spanQuantiles] clips each violin's density outline to that quantile range of its own group
+ * (Plotly `spanmode: "manual"`), so a handful of stragglers does not stretch a thin tail across the
+ * whole axis; `null` keeps Plotly's soft span over the full data. Nothing is dropped: values outside
+ * the box whiskers are drawn as small faint points at [outlierOpacity]. [references],
  * when given, holds one number per group in the same order (a NaN skips that group) and is drawn in
  * [referenceColor] as a dashed horizontal segment spanning that violin's slot only, so four groups
  * with four different targets read as four comparisons rather than one shared threshold. [yRange]
@@ -206,6 +209,8 @@ fun violin(
     referenceColor: String = "#ffe066",
     yRange: ClosedFloatingPointRange<Double>? = null,
     yTitle: String? = null,
+    spanQuantiles: ClosedFloatingPointRange<Double>? = 0.01..0.99,
+    outlierOpacity: Double = 0.25,
 ): Plot {
     require(references.isEmpty() || references.size == groups.size) {
         "violin got ${groups.size} groups and ${references.size} references; give one per group or none"
@@ -218,7 +223,19 @@ fun violin(
                 name = label
                 box.visible = true
                 meanline.visible = true
-                points = ViolinPoints.`false`
+                points = ViolinPoints.outliers
+                marker {
+                    size = 2.0
+                    opacity = outlierOpacity
+                }
+                spanQuantiles?.let { q ->
+                    val sorted = values.map { it.toDouble() }.filter { it.isFinite() }.sorted()
+                    if (sorted.isNotEmpty()) {
+                        fun at(f: Double) = sorted[((sorted.size - 1) * f.coerceIn(0.0, 1.0)).toInt()]
+                        spanmode = SpanMode.manual
+                        span(listOf(at(q.start), at(q.endInclusive)))
+                    }
+                }
                 line.color(signalPalette[i % signalPalette.size])
             }
         }

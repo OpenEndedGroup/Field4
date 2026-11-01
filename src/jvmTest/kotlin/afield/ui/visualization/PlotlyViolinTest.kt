@@ -28,6 +28,17 @@ class PlotlyViolinTest {
         assertTrue("\"y0\":16.0" in layout || "\"y0\":16" in layout, layout)
         assertTrue("radius" in layout, layout)
         assertTrue("\"showlegend\":false" in layout, layout)
+        assertEquals(3, Regex("\"spanmode\":\"manual\"").findAll(layout).count(), layout)
+    }
+
+    /** The span is clipped to the group's own quantiles, so one straggler cannot stretch it. */
+    @Test
+    fun spanFollowsQuantilesNotStragglers() {
+        val bulk = List(99) { 10.0 + it * 0.01 } + 60.0
+        val html = violin("g" to bulk, spanQuantiles = 0.0..0.98).toHtml().replace(" ", "").replace("\n", "")
+        assertTrue("\"span\":[10.0,10.97]" in html, html)
+        val soft = violin("g" to bulk, spanQuantiles = null).toHtml()
+        assertTrue("manual" !in soft, soft)
     }
 
     /** A reference list that does not match the groups is refused rather than silently misaligned. */
