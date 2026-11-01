@@ -2072,6 +2072,37 @@ display(
 )
 ```
 
+The two players below share `syncGroup = "two-players"`; the second holds the source from 1 s, so it is given `syncOffsetSeconds = 1.0`. Pressing play on the first moves both playheads, a second apart in local time:
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="box" capture-box="sync_group" video="assets/visualizers-sync-group.mp4" fps="12" transcript="../../dev_docs/agents/transcripts/docs_capture/sync_group.yaml" padding="8" wait="0" timeout="240" embed=true hidden=true name="sync-group" alt="Two audio players, source 0 to 4 s and excerpt from 1 s. Play is pressed on the source; gold playheads move across both waveforms together, the excerpt's reading one second less than the source's."}
+// Finds the source player's <audio> through the output iframes and returns its play button's page position.
+fun playButton(): Pair<Double, Double> {
+    val c = ui.eval("""
+        function find(doc, ox, oy) {
+            const a = doc.querySelector('audio');
+            if (a) { const r = a.getBoundingClientRect(); return [ox + r.left + 24, oy + r.top + r.height / 2]; }
+            for (const f of doc.querySelectorAll('iframe')) {
+                try { const r = f.getBoundingClientRect(); const hit = find(f.contentDocument, ox + r.left, oy + r.top); if (hit) return hit; } catch (e) {}
+            }
+            return null;
+        }
+        const hit = find(document, 0, 0);
+        return hit ? hit.join(',') : 'missing';
+    """).toString().trim('"')
+    check(c != "missing") { "no audio player in the outputs" }
+    val (x, y) = c.split(',').map { it.toDouble() }
+    return x to y
+}
+ui.pause(800)
+val (x, y) = playButton()
+ui.moveMouse(x, y, 8)
+ui.pause(200)
+ui.mouseDown()
+ui.pause(60)
+ui.mouseUp()
+ui.pause(3500)
+```
+
 This synchronizes across separate `display(...)` output documents. Playback publishes a gold
 playhead to every joined view; hover publishes a temporary cursor; click publishes a seek; and zoom
 or pan publishes a visible time window. The callback protocol is small, and is also available
