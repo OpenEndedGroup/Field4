@@ -1,7 +1,7 @@
 /*
 3. compute shader
 
-Runs a compute shader every frame over a small storage buffer and prints the results back on the CPU.
+Runs a compute shader every frame over a small storage buffer and reads the results back on the CPU into the box's `trace` output channel.
 Needs the renderer window box as its parent.
 
 The shader is in the `compute` property (open it with the editor's property switcher, `f1` or `ctrl-P`).
@@ -41,12 +41,12 @@ module.InputBuffer.mapAndWrite {
 frames {
     while (true) {
 
-        // read the first 10 floats of the output back and print them
+        // read the first 10 floats of the output back and show them in the `trace` output channel
         module.OutputBuffer.mapAndRead {
             var s = "${fr}:: "
             this.clear()
             for (n in 0 until 10) s += this.get(n).toString() + " "
-            print(s)
+            display("trace", s)
         }
 
         fr++
