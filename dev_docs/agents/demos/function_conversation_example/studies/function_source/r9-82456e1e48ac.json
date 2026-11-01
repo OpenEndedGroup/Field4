@@ -1,5 +1,6 @@
 {
   "id" : "r9-82456e1e48ac",
+  "migratedSourceSha256" : "21e05c780bfd0ccfb9f57a8558512dbb4064ba7a547a26b0e0311c544c00f01f",
   "parent" : "r8-e4aea058bc8b",
   "description" : "Restore unwarped background using historical r7 source passage; new child of r8 preserving all current events, e3 y lag and e4 deletion; retain warp experiment in history.",
   "events" : [ {

@@ -13,13 +13,24 @@ retained message.
 
 This subscribes to every room's temperature and shows the latest one:
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/mqtt/sensor_feed.png" execution="run" wait="2.0" wait-output="true" wait-output-kind="display" capture="box" open-outputs="true" w="700" timeout="90" embed=true name="mqtt-sensor-feed" alt="A box output reading: sensors/hall/temp = 18.25"}
 import afield.io.mqtt.*
 
 mqtt.subscribe("sensors/+/temp") { topic, message ->
     markdown("**$topic** = ${message.number}")
 }
+
+:::fold two rooms report a temperature, and one a humidity the wildcard skips
+mqtt.publish("sensors/kitchen/temp", 21.5)
+mqtt.publish("sensors/kitchen/humidity", 64)
+mqtt.publish("sensors/hall/temp", 18.25)
+
+:::endfold
 ```
+
+The box publishes three messages to Field's broker after it subscribes. The kitchen temperature
+arrives first and is replaced by the hall's; the kitchen humidity does not match `sensors/+/temp`,
+so it never reaches the callback.
 
 `+` stands for exactly one level of the topic, so this matches `sensors/kitchen/temp` and
 `sensors/hall/temp` but not `sensors/kitchen/humidity`. `#`, as the last level, matches everything

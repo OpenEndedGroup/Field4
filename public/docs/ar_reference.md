@@ -87,12 +87,15 @@ onStart {
 
 `FLine` is a small path representation backed by Three.js `BufferGeometry`. Assigning an FLine into `stage` creates or updates its stroke, fill, and/or point geometry.
 
-```diffstatic {data-lang=javascript}
+The head's camera stands at eye height, 1.6 m up, so this triangle is drawn at 1.5 m, a metre in
+front of it:
+
+```diffstatic_runner {data-lang=javascript screenshot="assets/ar_reference/remote-ar-fline-triangle.png" capture="box" name="ar-reference-fline-triangle" macro-file="../../dev_docs/agents/transcripts/docs_capture/remote_ar_fline_triangle.yaml" capture-box="remote_ar_fline_root" wait="2" timeout="180" open-outputs="true" padding="18" embed=true alt="The embedded Remote AR head with its status panel reporting one successful execution, and in the middle of the black scene a filled pale lavender right triangle." w="1000" h="440"}
 var triangle = new FLine()
-triangle.moveTo(0, 0, -1)
-triangle.lineTo(0.25, 0, -1)
-triangle.lineTo(0, 0.25, -1)
-triangle.lineTo(0, 0, -1)
+triangle.moveTo(0, 1.5, -1)
+triangle.lineTo(0.25, 1.5, -1)
+triangle.lineTo(0, 1.75, -1)
+triangle.lineTo(0, 1.5, -1)
 triangle.color = vec(0.9, 0.9, 1.0, 1.0)
 triangle.filled = true
 

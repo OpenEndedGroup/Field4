@@ -18,7 +18,7 @@ The objective turns once every `period` seconds while the hexagon breathes. Ever
 recomputed for each picture; they are cheap.
 
 ```edn [field-box id="lp_turning" role="properties"]
-{"id" "lp_turning" "index" 0 "name" "a turning objective (launch me)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a turning objective (launch me)" "_tombstone" false "frame" #afield/rect [80.0 560.0 420.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lp_turning_code_.kt" "lines" 62 "characters" 2079 "sha256" "5cff722b025dd2e89e5427511012a76d3eab5144d9d7c35ec8c1d23ae64774a5"}]}
+{"id" "lp_turning" "index" 0 "name" "a turning objective (launch me)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a turning objective (launch me)" "_tombstone" false "frame" #afield/rect [80.0 1400.0 420.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lp_turning_code_.kt" "lines" 62 "characters" 2079 "sha256" "5cff722b025dd2e89e5427511012a76d3eab5144d9d7c35ec8c1d23ae64774a5"}]}
 ```
 
 ```kotlin [field-property box="lp_turning" name="code" path="lp_turning_code_.kt"]
@@ -151,7 +151,7 @@ Choose the pencil tool and drag a corner of the white outline. When the drag end
 grid is recomputed for the convex hull of the edited outline.
 
 ```edn [field-box id="lp_fan_map" role="properties"]
-{"id" "lp_fan_map" "index" 2 "name" "drag the polygon, redraw the fan map" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "drag the polygon, redraw the fan map" "_tombstone" false "frame" #afield/rect [560.0 80.0 420.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lp_fan_map_code_.kt" "lines" 20 "characters" 806 "sha256" "e3cf55bf1d4c143abb7b10a06afac0970021cbe868a000c557751e6eed613324"}]}
+{"id" "lp_fan_map" "index" 2 "name" "drag the polygon, redraw the fan map" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "drag the polygon, redraw the fan map" "_tombstone" false "frame" #afield/rect [1400.0 80.0 420.0 120.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lp_fan_map_code_.kt" "lines" 20 "characters" 806 "sha256" "e3cf55bf1d4c143abb7b10a06afac0970021cbe868a000c557751e6eed613324"}]}
 ```
 
 ```kotlin [field-property box="lp_fan_map" name="code" path="lp_fan_map_code_.kt"]

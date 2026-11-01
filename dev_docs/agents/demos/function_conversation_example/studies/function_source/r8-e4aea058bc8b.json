@@ -1,5 +1,6 @@
 {
   "id" : "r8-e4aea058bc8b",
+  "migratedSourceSha256" : "588277954ded84573db1ffe8f7d513b406a27d6920cb4ae447eb4f4599de2677",
   "parent" : "r7-ebc54198e3ae",
   "description" : "Warp only background passage 1100..1250 with a 6-second C2 delay bump: slow first half, catch up second, positive clock rate and pinned endpoints; preserve all events and other times.",
   "events" : [ {

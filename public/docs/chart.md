@@ -160,6 +160,14 @@ people.chart(x = "name", y = ["age"]) // choose both axes explicitly
 showChart(people) // straight from a frame to the screen
 ```
 
+```diffstatic_runner {data-lang=kotlin screenshot="assets/chart_gallery/chart-dataframe-auto.png" capture="box" open-outputs="true" wait="2" padding="12" embed=true name="chart-dataframe-auto" alt="Three light blue bars, age per name: Alice 15, Bob 30, Cara 45, with name along x and age up y, and a caption reading 3 rows by 2 columns"}
+import org.jetbrains.kotlinx.dataframe.api.*
+
+val people = dataFrameOf("name", "age")("Alice", 15, "Bob", 30, "Cara", 45)
+
+showChart(people) // bars: age per name, chosen by chart()
+```
+
 Series are capped for auto-selection, because a legend stops being readable past a handful of
 entries, and the per-datum dots are dropped automatically for a frame with more rows than `pickLimit`. See
 [DataFrames in a Box](dataframe.md).
@@ -180,6 +188,25 @@ ways:
 
 Clipping only matters when you set an explicit `xDomain` or `yDomain`, because a derived domain
 always covers its own data.
+
+The same marks in an explicit window, with `clip` off and then on:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/chart_gallery/chart-clip-pair.png" capture="box" open-outputs="true" wait="2" padding="12" embed=true name="chart-clip-pair" alt="Two charts of an area, a line and points over x 8 to 32 and y 0 to 20. With clip = false the marks run far past the axes and the whole figure shrinks to fit them, the plot a small rectangle in the middle. With clip = true every mark stops at the plot rectangle and the figure fills its frame"}
+// The same marks in an explicit window, with clip off and then on.
+fun figure(clipped: Boolean) =
+    Chart(title = if (clipped) "clip = true" else "clip = false", xLabel = "x", yLabel = "y")
+        .area("area", (0..40).toList(), (0..40).map { it * 0.6 - 6.0 })
+        .line("line", (0..40).toList(), (0..40).map { 22.0 - it * 0.9 })
+        .points("points", (0..40).toList(), (0..40).map { 4.0 + it * 0.4 })
+        .apply {
+            xDomain = 8.0 to 32.0
+            yDomain = 0.0 to 20.0
+            clip = clipped
+        }
+
+showChart(figure(false), channel = "unclipped")
+showChart(figure(true), channel = "clipped")
+```
 
 Set `clip = false` when you are composing a chart with other
 FLine geometry under a shared transform and want the overflow.

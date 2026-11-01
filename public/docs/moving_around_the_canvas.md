@@ -395,6 +395,25 @@ If none of the uncovered space could show the selection at even half the size th
 could, it uses the whole window instead and lets the editor cover part of it. A narrow strip beside
 a wide editor is not worth squinting at.
 
+Below, `target` is selected with its editor open. Opening the editor brought the box into view,
+but its open output panel runs under the editor. After alt-F the canvas zooms out until the box
+and its panel both fit in the strip the editor leaves:
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x640" clip="0,0,1100,640" transcript="../../dev_docs/agents/transcripts/docs_capture/frame_selected.yaml" padding="0" wait="0" timeout="240" hide-toasts=true embed=true hidden=true screenshot="assets/moving_around_the_canvas/frame_selected_before.png" name="frame-selected-before" alt="Field's canvas with the code editor open on the right for the box target. target sits at the left edge of the uncovered strip, and its open output panel, labelled main, runs off under the editor."}
+ui.openEditor("fs_target")
+ui.pause(900)
+```
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x640" clip="0,0,1100,640" transcript="../../dev_docs/agents/transcripts/docs_capture/frame_selected.yaml" padding="0" wait="0" timeout="240" hide-toasts=true embed=true hidden=true screenshot="assets/moving_around_the_canvas/frame_selected_after.png" name="frame-selected-after" alt="The same canvas after alt-F. The editor is still open on the right; the canvas has zoomed out so that target and the whole of its output panel fit in the strip to the left of the editor."}
+ui.openEditor("fs_target")
+ui.pause(900)
+ui.eval("if (document.activeElement) document.activeElement.blur(); return 'blurred'")
+ui.down("Alt")
+ui.press("KeyF")
+ui.up("Alt")
+ui.pause(1200)
+```
+
 ## Bookmarks
 
 To return to a part of the document you visit often, save its view in one of nine numbered slots.
@@ -501,6 +520,35 @@ brings every layer back, and **Move selection to active layer** puts the selecte
 active layer. The last visible layer cannot be hidden. If the document has a drawing, it has a
 `drawing` row of its own, whose eye shows or hides it. [Layers](layers.md) covers how a box names
 its layers, and how each layer keeps its own layout.
+
+Here the `notes` layer is hidden, so its two boxes are off the canvas and only the drums and synth
+boxes remain beside the panel:
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x640" clip="0,0,1100,640" screenshot="assets/moving_around_the_canvas/layers_hidden.png" transcript="../../dev_docs/agents/transcripts/docs_capture/layers_hidden.yaml" padding="0" wait="0" timeout="240" hide-toasts=true embed=true hidden=true name="layers-hidden" alt="Field's canvas with the layers panel open. The panel lists default, drums, notes and synth with their box counts; the notes eye is closed. On the canvas, kick, snare and hats stand in one column and bass and pad in the next, and the two notes boxes below them are gone."}
+ui.eval("if (document.activeElement) document.activeElement.blur(); return 'blurred'")
+ui.down("Alt")
+ui.press("KeyL")
+ui.up("Alt")
+ui.waitForSelector("#layers-panel.is-visible", 8000.0)
+ui.eval(
+    """
+  const all = Array.from(document.querySelectorAll("#layers-panel button")).find(b => b.textContent === "Show all");
+  all.click();
+  return "showed all";
+""",
+)
+ui.pause(700)
+ui.eval(
+    """
+  const rows = Array.from(document.querySelectorAll("#layers-panel .layer-row"));
+  const notes = rows.find(r => r.querySelector(".layer-name").textContent === "notes");
+  if (!notes) return "rows: " + rows.map(r => r.querySelector(".layer-name").textContent).join(",");
+  notes.querySelector(".layer-eye").click();
+  return "hid notes";
+""",
+)
+ui.pause(900)
+```
 
 ## Snapping
 

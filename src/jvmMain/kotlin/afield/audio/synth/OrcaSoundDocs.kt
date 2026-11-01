@@ -59,7 +59,9 @@ object OrcaSoundDocs {
     fun render(name: String): Rendered = when (name) {
         "hello" -> hello(seconds = 8.0)
         "duet" -> duet(seconds = 16.0)
-        else -> throw IllegalArgumentException("No ORCA scene '$name'; there are 'hello' and 'duet'")
+        "bass" -> bass(seconds = 8.0)
+        "drone" -> drone(seconds = 8.0)
+        else -> throw IllegalArgumentException("No ORCA scene '$name'; there are 'hello', 'duet', 'bass' and 'drone'")
     }
 
     fun renderWav(name: String, outPath: String) {
@@ -74,6 +76,32 @@ object OrcaSoundDocs {
         o.orca.onNote { voice.play(it) }
         voice.run(seconds) { o.step() }
     }
+
+    // orca.md's "Playing a part in the grid": the hello grid with its one onCell line.
+    private fun bass(seconds: Double): Rendered = OrcaHeadless(HELLO, rows = 12).use { o ->
+        val voice = Voicing(o)
+        o.orca.onNote { voice.play(it) }
+        o.orca.onCell(4, 4) { note -> o.orca[4, 7] = if (note == 'G' || note == 'A') 'F' else 'C' }
+        voice.run(seconds) { o.step() }
+    }
+
+    // orca.md's "Patching ORCA itself": the hello grid after the page's patch makes every `:` play G.
+    private fun drone(seconds: Double): Rendered = OrcaHeadless(HELLO, rows = 12).use { o ->
+        o.evaluate(DRONE_PATCH)
+        val voice = Voicing(o)
+        o.orca.onNote { voice.play(it) }
+        voice.run(seconds) { o.step() }
+    }
+
+    val DRONE_PATCH = """
+        const Midi = library[':']
+        library[':'] = function (orca, x, y, passive) {
+          Midi.call(this, orca, x, y, passive)
+          const listen = this.listen
+          this.listen = (port, value) => port === this.ports.note ? 'G' : listen.call(this, port, value)
+        }
+        true
+    """.trimIndent()
 
     private fun duet(seconds: Double): Rendered = OrcaHeadless(LEAD, cols = 40, rows = 10).use { leadEngine ->
         OrcaHeadless(ECHO, cols = 40, rows = 10).use { echoEngine ->

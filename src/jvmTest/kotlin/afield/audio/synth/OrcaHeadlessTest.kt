@@ -69,6 +69,19 @@ class OrcaHeadlessTest {
         assertEquals(duet.notes.map { it.frame to it.midi }, OrcaSoundDocs.render("duet").notes.map { it.frame to it.midi })
     }
 
+    @Test fun theBassFollowsTheMelodyAndTheDroneIsAllG() {
+        val hello = OrcaSoundDocs.render("hello").notes.filter { it.channel == 1 }.map { it.note }.toSet()
+        val bass = OrcaSoundDocs.render("bass").notes.filter { it.channel == 1 }.map { it.note }.toSet()
+        assertEquals(setOf("C"), hello, "without the onCell line the bass holds C")
+        assertTrue("F" in bass && "C" in bass, "with it the bass moves between C and F: $bass")
+        val drone = OrcaSoundDocs.render("drone").notes
+        assertTrue(drone.isNotEmpty() && drone.all { it.note == "G" }, "every : plays G: ${drone.map { it.note }.toSet()}")
+        // The page shows the same patch.
+        val root = generateSequence(File("").absoluteFile) { it.parentFile }.first { File(it, "dev_docs").isDirectory }
+        val page = File(root, "public/docs/orca.md").readText()
+        for (line in OrcaSoundDocs.DRONE_PATCH.lines().dropLast(1)) assertTrue(line.trim() in page, "orca.md has patch line $line")
+    }
+
     // The renderer's copies of the duet and of the page's first box must match the originals.
     @Test fun theRendererPlaysTheSameGridsAndExchangeAsTheBoxes() {
         val root = generateSequence(File("").absoluteFile) { it.parentFile }.first { File(it, "dev_docs").isDirectory }

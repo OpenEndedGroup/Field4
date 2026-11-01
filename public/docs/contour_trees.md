@@ -64,6 +64,42 @@ does the same from the top down, with islands. Each sees only half the story: th
 records joins and the split tree splits. `ContourTrees.contourTree` merges the two by Carr,
 Snoeyink and Axen's method (2003), peeling off one leaf at a time, so it records both.
 
+```diffstatic_runner {data-lang=kotlin screenshot="assets/contour_trees/join-split-contour.png" alt="three tree plots of one landscape of seven hills and three hollows: the join tree branches only at the bottom, the split tree only at the top, and the contour tree branches at both ends" wait="5" timeout="240" capture="box" open-outputs="true" padding="20" name="contour-tree-join-split" embed=true}
+import afield.geometry.topology.trees.*
+
+// Seven hills and three hollows.
+val bumps = [
+    Triple(40.0, 40.0, 1.0),
+    Triple(150.0, 35.0, 0.8),
+    Triple(100.0, 80.0, 0.6),
+    Triple(30.0, 120.0, 0.7),
+    Triple(170.0, 120.0, 0.9),
+    Triple(120.0, 130.0, 0.5),
+    Triple(70.0, 60.0, 0.45),
+    Triple(100.0, 30.0, -0.5),
+    Triple(60.0, 100.0, -0.4),
+    Triple(150.0, 80.0, -0.45),
+]
+val field =
+    Img.generate(200, 150) { x, y ->
+        bumps.sumOf { (cx, cy, a) -> a * exp(-((x - cx).pow(2) + (y - cy).pow(2)) / 300.0) }.toFloat()
+    }
+
+:::fold draw the three trees
+// The two halves and their merge, each simplified the same way and drawn as a plot.
+fun drawn(tree: ScalarTree) =
+    Img(200, 150, 3, FloatArray(200 * 150 * 3)).drawFLines(tree.simplify(persistence = 0.03).plot(200.0, 150.0, margin = 15.0), scale = 2.0)
+showImgGrid(
+    "join tree" to drawn(ContourTrees.joinTree(field)),
+    "split tree" to drawn(ContourTrees.splitTree(field)),
+    "contour tree" to drawn(ContourTrees.contourTree(field)),
+    columns = 3,
+    cellSide = 300,
+)
+```
+
+The join tree has a leaf for every pit and a single top; the split tree has a leaf for every peak and a single bottom. Only the contour tree has both.
+
 Use a merge tree on its own when only one direction matters: the split tree of a density map is
 the hierarchy of its clusters, and the join tree of a distance field is the hierarchy of its basins.
 

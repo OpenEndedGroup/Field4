@@ -311,6 +311,47 @@ Use `level` rather than `signal` when the value is going into `range` or `rangex
 `0..1` onto their interval and *extrapolate* outside it, so a raw count of 3 would send a sweep
 three times past the top.
 
+This box samples the same run over three cycles. `build` moves one token every quarter cycle, so the
+count climbs a step at a time until all eight are in `tension`, and the cutoff climbs with it,
+evenly in octaves because `rangex` is exponential:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/petri_nets/tension_signals.png" wait="3.0" capture="box" open-outputs="true" w="1080" h="1400" padding="14" embed=true name="petri-tension-signals" alt="Two plots over three cycles. Tokens in tension: the stepped signal climbs from 1 to 8 a quarter cycle at a time and holds at 8 from cycle 1.75, with the SMOOTH version easing between the same steps. Cutoff in Hz: steps from about 300 up to 8000, each larger than the last."}
+import afield.audio.synth.*
+import afield.simulation.petri.*
+
+val net = petri(
+    """
+    !grid 1/4
+    src     : 8
+    tension : 0 ^8
+    src -[ build @1/4 ]-> tension
+""",
+)
+val run = net.run()
+
+// Sample each signal 32 times a cycle over the first three cycles.
+val steps = 0 until 96
+fun sampled(p: PatPattern<Double>) = steps.map { k ->
+    p.events(PatArc(PatQ.of(k, 32), PatQ.of(k + 1, 32))).firstOrNull()?.value ?: 0.0
+}
+val x = steps.map { it / 32.0 }
+showSignals(
+    "signal" to sampled(run.signal("tension")),
+    "signal, SMOOTH" to sampled(run.signal("tension", PetriInterp.SMOOTH)),
+    x = x,
+    title = "tokens in tension",
+    xTitle = "cycles",
+    channel = "count",
+)
+showSignals(
+    "level.rangex(200, 8000)" to sampled(run.level("tension").rangex(200, 8000)),
+    x = x,
+    title = "cutoff, Hz",
+    xTitle = "cycles",
+    channel = "cutoff",
+)
+```
+
 ---
 
 ## Playing a net live

@@ -475,6 +475,10 @@ frames {
 }
 ```
 
+```diffstatic_runner {data-lang=kotlin screenshot="assets/field_probes/stats_readback.png" capture="box" open-outputs=true wait="2" timeout="240" padding="12" embed=true hidden=true name="field-probes-stats-readback" alt="The box's stats output: speed, channel 0, computed on the GPU, as one table row of n, mean, sigma, min, median and max over 16384 particles" macro-file="../../dev_docs/agents/transcripts/docs_capture/field_stats_readback.yaml" capture-box="fs_readback"}
+// The transcript launches a renderer and this box beneath it, with the compute shader above in its compute property.
+```
+
 ---
 
 ## Choosing between them

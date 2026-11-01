@@ -1,0 +1,121 @@
+name: field_stats_readback
+description: 'Capture for public/docs/field_probes.md "Reading it back on the CPU": a renderer, and beneath it the page''s compute box (its compute shader and Kotlin, verbatim) showing fieldStats channel
+  0 as a table.'
+operations:
+- create:
+    box: fs_renderer
+    name: Renderer
+    frame:
+      x: 70.0
+      y: 70.0
+      w: 300.0
+      h: 100.0
+    properties:
+      code: |
+        prop<Window>(window)
+        prop<Renderer>(renderer)
+        once.renderer {
+            window = Window("Field · fieldStats")
+            Renderer(window)
+        }
+        start(renderer::run)
+- create:
+    box: fs_readback
+    name: fieldStats read back
+    frame:
+      x: 70.0
+      y: 270.0
+      w: 300.0
+      h: 100.0
+    properties:
+      compute: |
+        #version 450
+        #extension GL_EXT_buffer_reference : require
+        layout(local_size_x = 64) in;
+        layout(std430, buffer_reference) buffer Positions {
+            vec4 a[];
+        };
+        layout(std430, buffer_reference) buffer Velocities {
+            vec4 a[];
+        };
+        layout(push_constant) uniform Step {
+            Positions positions;
+            Velocities velocities;
+            float dt; // seconds per step
+            uint particleCount;
+        } pc;
+        {% property "fieldStats" %}
+
+        void main() {
+            uint i = gl_GlobalInvocationID.x;
+            if (i >= pc.particleCount) return;
+            vec4 p = pc.positions.a[i];
+            vec3 acceleration = vec3(-p.y, p.x, 0.0) * 0.15 - p.xyz * 0.03;
+            vec3 velocity = (pc.velocities.a[i].xyz + acceleration * pc.dt) * 0.995;
+            pc.positions.a[i] = vec4(p.xyz + velocity * pc.dt, p.w);
+            pc.velocities.a[i] = vec4(velocity, 0.0);
+            fieldStatsRecord(0u, length(velocity));
+        }
+      code: |
+        // Requires the matching compute property above and an inherited renderer.
+        val N = 16384
+
+        val stats = fieldStatsHere(channels = 1)
+
+        val positions = defaultBuffer { size = N.vec4s }.buffer
+        val velocities = defaultBuffer { size = N.vec4s }.buffer
+        positions.write {
+            for (i in 0 until N) {
+                val a = Math.random() * Math.PI * 2.0
+                val r = 0.15 + 0.75 * Math.random()
+                put(vec(Math.cos(a) * r, Math.sin(a) * r, 0.0, 1.0))
+            }
+        }
+        velocities.write { for (i in 0 until N) put(vec(0.0, 0.0, 0.0, 0.0)) }
+
+        val compute = computeModuleHere {}
+        val step = ComputeMesh()
+        compute += "step" to step
+        renderer += "compute" to compute
+        // Reflected push-constant members resolve once the mesh is attached to its module.
+        step.positions = { positions }
+        step.velocities = { velocities }
+        step.dt = { 0.016f }
+        step.particleCount = { N }
+        step.x = (N + 63) / 64
+        step.y = 1
+        step.z = 1
+
+        // show the GPU-computed aggregates as a small table
+        frames {
+            while (true) {
+                stats.latest(0)?.let { s ->
+                    markdown(
+                        "stats",
+                        """
+                        #### speed — channel 0 (GPU)
+
+                        | n | mean | σ | min | median | max |
+                        |---|------|---|-----|--------|-----|
+                        | ${s.finiteCount} | ${s.mean.f4} | ${s.standardDeviation.f4} | ${s.min.f4} | ${s.quantile(0.5).f4} | ${s.max.f4} |
+                    """,
+                    )
+                }
+                frame()
+            }
+        }
+- connect:
+    parent: fs_renderer
+    child: fs_readback
+- launch:
+    box: fs_renderer
+    property: code
+    type: code
+- wait:
+    frames: 3
+- launch:
+    box: fs_readback
+    property: code
+    type: code
+- wait:
+    frames: 30
