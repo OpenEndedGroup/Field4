@@ -1835,14 +1835,19 @@ ui.pause(300)
 
 // Presses the panel button whose label contains `label`, with the real pointer.
 fun press(label: String) {
-    val c = ui.eval("""
+    val c =
+        ui.eval(
+                """
         const row = [...document.querySelectorAll('.field-button')].find(b => b.textContent.toLowerCase().includes('$label'));
         if (!row) return 'missing';
         // The row carries the label; the pressable part is the HOLD button inside it.
         const b = row.querySelector('button') || row;
         const r = b.getBoundingClientRect();
         return [r.left + r.width / 2, r.top + r.height / 2].join(',');
-    """).toString().trim('"')
+    """,
+            )
+            .toString()
+            .trim('"')
     check(c != "missing") { "no '$label' button" }
     val (x, y) = c.split(',').map { it.toDouble() }
     ui.moveMouse(x, y, 6)
@@ -1852,10 +1857,17 @@ fun press(label: String) {
 }
 
 fun point(fraction: Double): Pair<Double, Double> {
-    val c = ui.eval("""
+    val c =
+        ui.eval(
+                """
         const r = [...document.querySelectorAll('.field-slider-visual')].map(e => e.getBoundingClientRect()).find(r => r.width > 0);
         return [r.left + r.width * $fraction, r.top + r.height / 2].join(',');
-    """).toString().trim('"').split(',').map { it.toDouble() }
+    """,
+            )
+            .toString()
+            .trim('"')
+            .split(',')
+            .map { it.toDouble() }
     return c[0] to c[1]
 }
 
@@ -1863,7 +1875,11 @@ fun point(fraction: Double): Pair<Double, Double> {
 press("rec size")
 ui.pause(300)
 val start = point(0.33)
-val hit = ui.eval("const e = document.elementFromPoint(${start.first}, ${start.second}); return [e?.tagName, e?.className?.baseVal || e?.className, !!e?.closest('.field-slider-visual'), window.innerWidth, window.innerHeight].join(' / ')").toString()
+val hit =
+    ui.eval(
+            "const e = document.elementFromPoint(${start.first}, ${start.second}); return [e?.tagName, e?.className?.baseVal || e?.className, !!e?.closest('.field-slider-visual'), window.innerWidth, window.innerHeight].join(' / ')",
+        )
+        .toString()
 check("true" in hit) { "slider start is covered at $start: $hit" }
 ui.moveMouse(start.first, start.second, 8)
 ui.mouseDown()
@@ -1877,7 +1893,11 @@ ui.mouseUp()
 ui.pause(200)
 press("rec size")
 ui.pause(4000)
-val after = ui.eval("return [...document.querySelectorAll('.field-slider')].find(e => e.getBoundingClientRect().width > 0).dataset.value").toString()
+val after =
+    ui.eval(
+            "return [...document.querySelectorAll('.field-slider')].find(e => e.getBoundingClientRect().width > 0).dataset.value",
+        )
+        .toString()
 check(after.trim('"').toDouble() > 0.8) { "the sweep did not move size: $after" }
 ```
 
@@ -2130,7 +2150,9 @@ The two players below share `syncGroup = "two-players"`; the second holds the so
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="box" capture-box="sync_group" video="assets/visualizers-sync-group.mp4" fps="12" transcript="../../dev_docs/agents/transcripts/docs_capture/sync_group.yaml" padding="8" wait="0" timeout="240" embed=true hidden=true name="sync-group" alt="Two audio players, source 0 to 4 s and excerpt from 1 s. Play is pressed on the source; gold playheads move across both waveforms together, the excerpt's reading one second less than the source's."}
 // Finds the source player's <audio> through the output iframes and returns its play button's page position.
 fun playButton(): Pair<Double, Double> {
-    val c = ui.eval("""
+    val c =
+        ui.eval(
+                """
         function find(doc, ox, oy) {
             const a = doc.querySelector('audio');
             if (a) { const r = a.getBoundingClientRect(); return [ox + r.left + 24, oy + r.top + r.height / 2]; }
@@ -2141,7 +2163,10 @@ fun playButton(): Pair<Double, Double> {
         }
         const hit = find(document, 0, 0);
         return hit ? hit.join(',') : 'missing';
-    """).toString().trim('"')
+    """,
+            )
+            .toString()
+            .trim('"')
     check(c != "missing") { "no audio player in the outputs" }
     val (x, y) = c.split(',').map { it.toDouble() }
     return x to y
