@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 20836 of 35552 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 20856 of 35575 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**1971 undocumented entry points** (types, top-level functions and values) and 12081 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**1971 undocumented entry points** (types, top-level functions and values) and 12084 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -669,6 +669,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [BoxOutputLog.kt](../src/jvmMain/kotlin/afield/app/diagnostics/BoxOutputLog.kt) | Workspace | — | 0 | 7 | 46% |
 | [Scene.kt](../src/jvmMain/kotlin/afield/audio/spatial/steamaudio/Scene.kt) | Audio | — | 0 | 7 | 73% |
 | [HarmonicPhaseTracker.kt](../src/jvmMain/kotlin/afield/audio/synth/HarmonicPhaseTracker.kt) | Synthesis | — | 0 | 7 | 74% |
+| [OrcaSoundDocs.kt](../src/jvmMain/kotlin/afield/audio/synth/OrcaSoundDocs.kt) | Patterns | — | 0 | 7 | 22% |
 | [PropertyDependencies.kt](../src/jvmMain/kotlin/afield/document/properties/PropertyDependencies.kt) | Workspace | — | 0 | 7 | 69% |
 | [FLineInstructionTrajectories.kt](../src/jvmMain/kotlin/afield/geometry/path/FLineInstructionTrajectories.kt) | Graphics | — | 0 | 7 | 56% |
 | [FLineThickening.kt](../src/jvmMain/kotlin/afield/geometry/path/FLineThickening.kt) | Graphics | — | 0 | 7 | 60% |
@@ -691,7 +692,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [DoughDspPlotGallery.kt](../src/jvmMain/kotlin/afield/audio/synth/DoughDspPlotGallery.kt) | Audio | — | 0 | 6 | 25% |
 | [FaustDsp.kt](../src/jvmMain/kotlin/afield/audio/synth/FaustDsp.kt) | Synthesis | — | 0 | 6 | 53% |
 | [MidiPat.kt](../src/jvmMain/kotlin/afield/audio/synth/MidiPat.kt) | Audio | — | 0 | 6 | 66% |
-| [OrcaSoundDocs.kt](../src/jvmMain/kotlin/afield/audio/synth/OrcaSoundDocs.kt) | Patterns | — | 0 | 6 | 25% |
 | [PatOnsetDetection.kt](../src/jvmMain/kotlin/afield/audio/synth/PatOnsetDetection.kt) | Patterns | — | 0 | 6 | 57% |
 | [jsonparsing.kt](../src/jvmMain/kotlin/afield/data/formats/jsonparsing.kt) | Data | — | 0 | 6 | 66% |
 | [growing.kt](../src/jvmMain/kotlin/afield/data/graph/growing.kt) | Data | — | 0 | 6 | 57% |
@@ -802,7 +802,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Hrtf.kt](../src/jvmMain/kotlin/afield/audio/spatial/steamaudio/Hrtf.kt) | Audio | — | 0 | 2 | 50% |
 | [Serialization.kt](../src/jvmMain/kotlin/afield/audio/spatial/steamaudio/Serialization.kt) | Audio | — | 0 | 2 | 71% |
 | [AbletonSetSmokeTest.kt](../src/jvmMain/kotlin/afield/audio/synth/AbletonSetSmokeTest.kt) | Audio | — | 0 | 2 | 33% |
-| [BooleanNetworkSoundDocs.kt](../src/jvmMain/kotlin/afield/audio/synth/BooleanNetworkSoundDocs.kt) | Audio | — | 0 | 2 | 85% |
+| [BooleanNetworkSoundDocs.kt](../src/jvmMain/kotlin/afield/audio/synth/BooleanNetworkSoundDocs.kt) | Audio | — | 0 | 2 | 86% |
 | [CaSoundDocs.kt](../src/jvmMain/kotlin/afield/audio/synth/CaSoundDocs.kt) | Patterns | — | 0 | 2 | 85% |
 | [DoughDspSmokeTest.kt](../src/jvmMain/kotlin/afield/audio/synth/DoughDspSmokeTest.kt) | Audio | — | 0 | 2 | 33% |
 | [DoughLive.kt](../src/jvmMain/kotlin/afield/audio/synth/DoughLive.kt) | Synthesis | — | 0 | 2 | 92% |
@@ -885,12 +885,14 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [WavFloatArrayWriter.kt](../src/jvmMain/kotlin/afield/audio/engine/WavFloatArrayWriter.kt) | Audio | — | 0 | 1 | 85% |
 | [SteamAudioException.kt](../src/jvmMain/kotlin/afield/audio/spatial/steamaudio/SteamAudioException.kt) | Audio | — | 0 | 1 | 66% |
 | [FM.kt](../src/jvmMain/kotlin/afield/audio/synth/FM.kt) | Synthesis | — | 0 | 1 | 90% |
+| [FaustSoundDocs.kt](../src/jvmMain/kotlin/afield/audio/synth/FaustSoundDocs.kt) | Audio | — | 0 | 1 | 92% |
 | [HeadTrackedSpatialSmokeTest.kt](../src/jvmMain/kotlin/afield/audio/synth/HeadTrackedSpatialSmokeTest.kt) | Patterns | — | 0 | 1 | 50% |
 | [MarfSmokeTest.kt](../src/jvmMain/kotlin/afield/audio/synth/MarfSmokeTest.kt) | Patterns | — | 0 | 1 | 50% |
 | [OrcaHeadless.kt](../src/jvmMain/kotlin/afield/audio/synth/OrcaHeadless.kt) | Patterns | — | 0 | 1 | 83% |
 | [PatSpatialBudgetProbe.kt](../src/jvmMain/kotlin/afield/audio/synth/PatSpatialBudgetProbe.kt) | Patterns | — | 0 | 1 | 50% |
 | [PatSpatialEngineSmoke.kt](../src/jvmMain/kotlin/afield/audio/synth/PatSpatialEngineSmoke.kt) | Patterns | — | 0 | 1 | 50% |
 | [PatSpatialHeadTrackedDocs.kt](../src/jvmMain/kotlin/afield/audio/synth/PatSpatialHeadTrackedDocs.kt) | Audio | — | 0 | 1 | 85% |
+| [PatSpatialPlacementDocs.kt](../src/jvmMain/kotlin/afield/audio/synth/PatSpatialPlacementDocs.kt) | Audio | — | 0 | 1 | 87% |
 | [PatSpatialSmokeTest.kt](../src/jvmMain/kotlin/afield/audio/synth/PatSpatialSmokeTest.kt) | Patterns | — | 0 | 1 | 50% |
 | [SoundRenderPathDocs.kt](../src/jvmMain/kotlin/afield/audio/synth/SoundRenderPathDocs.kt) | Audio | — | 0 | 1 | 95% |
 | [TrackedPhaseSignal.kt](../src/jvmMain/kotlin/afield/audio/synth/TrackedPhaseSignal.kt) | Synthesis | — | 0 | 1 | 66% |

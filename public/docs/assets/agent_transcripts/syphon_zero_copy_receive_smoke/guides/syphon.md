@@ -1,6 +1,6 @@
 ---
 docs: syphon/
 ---
-# Syphon: sharing frames with other applications
+# Syphon: sharing frames on macOS
 
 Explains Syphon receive, including zero-copy textures.
