@@ -555,6 +555,10 @@ nav:
 markdown_extensions:
   - admonition                    # `!!! note` / `!!! warning` callouts
   - pymdownx.details              # `??? aside` — collapsed, margin-dwelling asides
+  - pymdownx.arithmatex:          # `\(…\)` and `\[…\]`, typeset by assets/docs-math.js
+      generic: true
+      inline_syntax: [round]
+      block_syntax: [square]
   - pymdownx.superfences:         # required extension
       custom_fences:
         - name: diff
@@ -607,6 +611,7 @@ extra_javascript:
   - assets/sticky-headings.js
   - assets/lesswrong-rail.js
   - assets/image-lightbox.js
+  - assets/docs-math.js
   - assets/transcript-viewer.js
   - assets/code-diff-player/fence-upgrade.js
   - assets/code-diff-player/code-diff-player.js

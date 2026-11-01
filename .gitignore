@@ -180,6 +180,7 @@ public/iosevka.css
 public/iosevka-*.woff2
 public/min/
 public/woff2/
+public/katex/
 public/metadata_store/
 dev_docs/edn-parser.js
 dev_docs/examples-gallery.html
@@ -192,6 +193,7 @@ dev_docs/iosevka.css
 dev_docs/iosevka-*.woff2
 dev_docs/min/
 dev_docs/woff2/
+dev_docs/katex/
 dev_docs/metadata_store/
 
 ### JVM / Kotlin generated resources
