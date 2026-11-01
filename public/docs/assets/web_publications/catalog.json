@@ -1121,12 +1121,12 @@
     },
     "assets/agent_transcripts/field_vr_ide/metadata.edn": {
       "captureDigest": "d1d480e4a96ffb92bbe0276a6b4e731b8ded2572574a83bb2e39cd347acff689",
-      "capturedAt": "2026-11-01T12:43:14.038Z",
+      "capturedAt": "2026-11-01T13:09:45.950Z",
       "channels": 1,
       "file": "assets/web_publications/field_vr_ide/document/metadata.edn",
       "files": {
         "assets/web_publications/field_vr_ide/document/metadata.edn": "94eba03ec6b1d3af878cf65b862b6599fbee2ba86d467881b41374c4b8be5928",
-        "assets/web_publications/field_vr_ide/document/outputs.json": "e408e424d50df3f5ae5c5328fe6a9d7a4b34b43a4d04aa755985a2176683b80e",
+        "assets/web_publications/field_vr_ide/document/outputs.json": "773961e9b00a3aac467a671da12fe2e8c27e01088618b1d6cac43e18ebecef5d",
         "assets/web_publications/field_vr_ide/outputs/0.html": "9fa217bfcbea4c8247a983670f199942e6b46ca2815f5a31b9d762167e9e4a06"
       },
       "kinds": [
@@ -1141,7 +1141,7 @@
         "public/docs/assets/agent_transcripts/field_vr_ide/vr_ide_playground_code_.kt": "3ea79f511fa8214363d3cfccc42f1972fa8e9d05461fee5d0877ab67fafcc964",
         "public/docs/assets/agent_transcripts/field_vr_ide/vr_ide_renderer_code_.kt": "966d7c73147749d9001cb821c0df5e6560dde69c0a787783dcdc405fa66ba659",
         "public/docs/assets/field_vr_ide/companion.png": "155381a379b1497e492a329e5a0cfc7b70e3386bc42131396d58e932112c06e1",
-        "public/docs/field_vr_ide.md": "7a5da1e14c093ce1161b334c1b169f4e53b916c380c322f7bbd6a625521f9f12"
+        "public/docs/field_vr_ide.md": "3a0b80a1c0a653e5c1aed910a36ad07ee9a54031fcf30b6b20d1a0ecd3f46382"
       },
       "supplementalSources": [
         "public/docs/assets/field_vr_ide/companion.png",
