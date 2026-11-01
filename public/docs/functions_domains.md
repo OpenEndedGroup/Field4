@@ -114,10 +114,14 @@ So a bounded function samples over exactly the interval you would expect, while 
 
 Give a plot or sampler an explicit window when you have one, and rely on the fallback only for a quick look:
 
-```diffstatic {data-lang=kotlin}
-sin(3.0).plot("tone", domain(0.0..2.0)) // explicit window — samples 0..2
-sin(3.0).toFLine() // no window — previews the fallback
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions/finite-sweep-explicit-vs-fallback.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" timeout="120" name="functions-finite-sweep-explicit-vs-fallback"}
+with(Functions) {
+    sin(3.0).plot("tone", domain(0.0..2.0), title = "sin(3.0) with domain(0.0..2.0): exactly 0..2", heightPx = 150) // explicit window
+    sin(3.0).plot("fallback", title = "sin(3.0) with no window: the plotSafe() fallback", heightPx = 150) // previews the fallback
+}
 ```
+
+The explicit window samples `0..2`; with no window the same oscillator previews over `0..1`.
 
 ??? aside "Serialization keeps the declared domain"
     Graph serialization and rebuild keep the original domain, unbounded or not, so it is part of a function's fingerprint and survives a round-trip unchanged by whatever window last previewed it.
@@ -129,6 +133,20 @@ Not every generator is periodic. `gaussian` is a localized bump: it has meaningf
 ```diffstatic {data-lang=kotlin}
 val bump = gaussian() // Domain.DEFAULT — a local feature, not a signal
 val wave = sin() // Domain.ALL — genuinely everywhere
+```
+
+Plotted over the same explicit window, the product stops where the bump does:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions/gaussian-local-intersection.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" timeout="120" name="functions-gaussian-local-intersection"}
+with(Functions) {
+    val bump = gaussian() // Domain.DEFAULT
+    val wave = sin(3.0) // Domain.ALL
+    val window = domain((-1.0)..2.0)
+
+    bump.plot("bump", window, title = "gaussian(): stops at the edge of its own domain", heightPx = 130)
+    wave.plot("wave", window, title = "sin(3.0): Domain.ALL, fills the window", heightPx = 130)
+    (bump * wave).plot("product", window, title = "gaussian() * sin(3.0): the intersection, clipped to the bump", heightPx = 130)
+}
 ```
 
 The question a constructor has to answer is whether its function is defined everywhere or only somewhere. A signal that oscillates forever answers *everywhere* and takes `Domain.ALL`. A shape that lives in a region, a window or a bump or a ramp, answers *somewhere* and carries a finite domain, which constrains any expression it enters.
