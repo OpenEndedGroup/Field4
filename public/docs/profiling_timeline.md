@@ -614,7 +614,14 @@ ui.eval(
 """,
 )
 // Brush about 120 ms in the middle of the overview with the real mouse.
-val r = ui.eval("const r=document.getElementById('profile-overview').getBoundingClientRect(); return [r.left, r.top, r.width, r.height]").toString().trim('[', ']').split(',').map { it.trim().toDouble() }
+val r =
+    ui.eval(
+            "const r=document.getElementById('profile-overview').getBoundingClientRect(); return [r.left, r.top, r.width, r.height]",
+        )
+        .toString()
+        .trim('[', ']')
+        .split(',')
+        .map { it.trim().toDouble() }
 val y = r[1] + r[3] / 2
 val x0 = r[0] + r[2] * 0.5
 ui.moveMouse(x0, y)

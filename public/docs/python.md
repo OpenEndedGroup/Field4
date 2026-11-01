@@ -208,22 +208,29 @@ the column, one above the code cells and one below:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" hide-toasts=true viewport="1400x760" clip="0,0,640,680" screenshot="assets/python/notebook_import.png" padding="0" wait="0" timeout="180" embed=true hidden=true name="python-notebook-import" alt="The canvas after importing a four-cell notebook: a box named python root, two boxes named Python connected beneath it for the code cells, and two unnamed notes boxes, set slightly to the right, where the Markdown cells were, one above the code and one below."}
 // Drop the committed notebook on the canvas the way a file drag does, then pick the menu entry.
-val notebook = generateSequence(java.io.File(".").absoluteFile) { it.parentFile }
-    .map { java.io.File(it, "dev_docs/examples/notebook_roundtrip_demo.ipynb") }
-    .firstOrNull { it.isFile }
+val notebook =
+    generateSequence(java.io.File(".").absoluteFile) { it.parentFile }
+        .map { java.io.File(it, "dev_docs/examples/notebook_roundtrip_demo.ipynb") }
+        .firstOrNull { it.isFile }
 check(notebook != null) { "notebook_roundtrip_demo.ipynb not found" }
 val text = kotlinx.serialization.json.JsonPrimitive(notebook!!.readText()).toString()
 ui.eval(
-    "const dt=new DataTransfer(); dt.items.add(new File([" + text + "], 'notebook_roundtrip_demo.ipynb', {type:'application/x-ipynb+json'}));" +
+    "const dt=new DataTransfer(); dt.items.add(new File([" +
+        text +
+        "], 'notebook_roundtrip_demo.ipynb', {type:'application/x-ipynb+json'}));" +
         "document.body.dispatchEvent(new DragEvent('drop',{dataTransfer:dt,clientX:260,clientY:160,pageX:260,pageY:160,bubbles:true,cancelable:true})); return 'dropped'",
 )
 var at: List<Double> = emptyList()
 repeat(40) {
     if (at.isEmpty()) {
         ui.pause(150)
-        val found = ui.eval(
-            "const b=[...document.querySelectorAll('.markingButton')].find(d=>d.textContent.includes('Import as Python cells')); if(!b) return ''; const r=b.getBoundingClientRect(); return (r.left+r.width/2)+','+(r.top+r.height/2)",
-        )?.toString()?.trim('"').orEmpty()
+        val found =
+            ui.eval(
+                    "const b=[...document.querySelectorAll('.markingButton')].find(d=>d.textContent.includes('Import as Python cells')); if(!b) return ''; const r=b.getBoundingClientRect(); return (r.left+r.width/2)+','+(r.top+r.height/2)",
+                )
+                ?.toString()
+                ?.trim('"')
+                .orEmpty()
         if (found.isNotEmpty()) at = found.split(',').map { it.toDouble() }
     }
 }
