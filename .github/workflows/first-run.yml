@@ -45,8 +45,8 @@ jobs:
       - name: Real launcher and default API protection
         env:
           # Private-repository Ubuntu runners have 8 GB RAM. Keep the compiler and JS build
-          # from competing for a 10 GB compiler heap; the launcher and API defaults stay intact.
-          GRADLE_OPTS: ${{ matrix.os == 'ubuntu-24.04' && '-Dorg.gradle.project.kotlin.daemon.jvmargs=-Xmx4g -Dorg.gradle.workers.max=1 -Dorg.gradle.parallel=false' || '' }}
+          # from competing for a 10 GB compiler heap (4 GB stopped fitting in 2026-11); the launcher and API defaults stay intact.
+          GRADLE_OPTS: ${{ matrix.os == 'ubuntu-24.04' && '-Dorg.gradle.project.kotlin.daemon.jvmargs=-Xmx6g -Dorg.gradle.workers.max=1 -Dorg.gradle.parallel=false' || '' }}
         run: python tools/ci_first_run.py --timeout 1800
       - name: Desktop GPU selection policy
         run: node --test electron/tests/gpu-policy.test.cjs
