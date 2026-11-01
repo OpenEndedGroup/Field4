@@ -114,26 +114,14 @@ When neither is on, dragging and resizing stay freeform.
 
 ## What snaps
 
-A box snaps to the edges and centres of nearby boxes, and to even spacing between its neighbours.
-Each axis snaps on its own, so one drag can line a box up horizontally and vertically at once. Cyan
-guide lines and tick marks show what the box has snapped to.
+A box snaps to the edges and centres of nearby boxes. Each axis snaps on its own, so one drag can
+line a box up horizontally and vertically at once. Cyan guide lines show what it has snapped to.
 
-## Edge and center alignment
+Drag a box between two others and it snaps to even spacing, with ticks marking the equal gaps.
+Gaps under 5 px don't count, so a very tight cluster won't offer this snap.
 
-- Drag near the left or right edge of another box to align vertical edges.
-- Drag near the top or bottom edge of another box to align horizontal edges.
-- Drag near another box's center line to align centers.
-
-## Even spacing
-
-Drag a box between two others and Field offers to space them evenly, marking the gaps with ticks
-on the guide line. This makes it easy to lay out a row or column without measuring. Gaps under
-5 px don't count as spacing, so a very tight cluster won't offer this snap.
-
-## Resize snapping
-
-With snapping on, the edge you drag while resizing snaps to nearby box edges, so adjacent boxes
-can share a boundary.
+While resizing, the edge you drag snaps to nearby box edges, so adjacent boxes can share a
+boundary.
 
 ## Thresholds
 
@@ -150,12 +138,6 @@ an alignment guide appears before the box will jump.
 </div>
 
 Resizing uses the same 10 px as alignment.
-
-## When to use it
-
-Snapping helps when you arrange a document for presentation, or tidy a graph after a run of
-exploratory edits. It gets in the way while sketching, which is why it is off until you turn
-it on.
 
 ## Related features
 
