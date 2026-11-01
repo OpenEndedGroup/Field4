@@ -177,15 +177,15 @@ The `remoteAR` head installs the THREE.js scene graph. The vector types carry Ko
 overloads (`+`, `-`, `*`), and Field adds scene helpers (`vec`, `addBox`, `scene`, `clearAll`). This
 box builds a ring of little boxes and spins each one on the head's frame clock:
 
-```diffstatic {data-lang=kotlin}
-:::static
+```diffstatic_runner {data-lang=kotlin capture="box" video="assets/kotlin_in_the_head/ring.mp4" duration="4" fps="15" macro-file="../../dev_docs/agents/transcripts/docs_capture/kith_ring.yaml" run-box="kith_ring_box" capture-box="kith_ring_root" open-outputs="true" wait="3" timeout="240" padding="18" embed=true name="kith-ring" alt="The browser head's view: twelve small white boxes in a ring in front of the camera, each turning about its vertical axis a little behind its neighbour"}
 // {{ remoteAR }}
 clearAll()
 val n = 12
 val ring =
     (0 until n).map { i ->
         val theta = i.toDouble() / n * 2.0 * kotlin.math.PI
-        val here = vec(kotlin.math.cos(theta) * 2.0, kotlin.math.sin(theta) * 2.0, 0.0)
+        // five units in front of the head's camera, which looks down -z from the origin
+        val here = vec(kotlin.math.cos(theta) * 2.0, kotlin.math.sin(theta) * 2.0, -5.0)
         val box = addBox("ring-$i", 0.25).mesh
         box.position.set(here.x, here.y, here.z)
         box
