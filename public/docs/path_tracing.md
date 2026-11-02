@@ -997,7 +997,7 @@ patch of ceiling the lamp brightens, and a path finds that light only when its s
 happens to hit the lamp. After 16 samples per pixel with the clamp off, those rare hits are
 the specks:
 
-```diffstatic_runner {capture-profile="linux-nvidia" data-lang=kotlin screenshot="assets/path_tracing/clamp_off.png" capture="native-window" graphics-context=true execution="launch" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="clamp_off done" embed=true hidden=true timeout="180" name="path-tracing-clamp-off" alt="TODO"}
+```diffstatic_runner {capture-profile="linux-nvidia" data-lang=kotlin screenshot="assets/path_tracing/clamp_off.png" capture="native-window" graphics-context=true execution="launch" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="clamp_off done" embed=true hidden=true timeout="180" name="path-tracing-clamp-off" alt="The material study after 16 samples with indirectClamp off: thousands of bright white specks over the floor and all three spheres"}
 import afield.graphics.scene.fabricated.*
 import afield.graphics.vulkan.util.Camera
 
@@ -1036,11 +1036,12 @@ frames {
 }
 ```
 
-With `indirectClamp = 1f`, each speck is capped at a luminance of 1 before it is averaged
-in. Most of the lamp's light on the floor is carried by exactly those hits, so the clamp
-removes it along with the noise:
+With `indirectClamp = 1f`, each of those samples is capped at a luminance of 1 before it
+is averaged in. The specks go, and with them most of the light the lamp sends by way of
+the ceiling: that light is carried by exactly those rare samples, which is the bias the
+clamp trades for a clean image.
 
-```diffstatic_runner {capture-profile="linux-nvidia" data-lang=kotlin screenshot="assets/path_tracing/clamp_on.png" capture="native-window" graphics-context=true execution="launch" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="clamp_on done" embed=true hidden=true timeout="180" name="path-tracing-clamp-on" alt="TODO"}
+```diffstatic_runner {capture-profile="linux-nvidia" data-lang=kotlin screenshot="assets/path_tracing/clamp_on.png" capture="native-window" graphics-context=true execution="launch" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="clamp_on done" embed=true hidden=true timeout="180" name="path-tracing-clamp-on" alt="The same view after 16 samples with indirectClamp = 1f: the specks are gone, leaving fine grain on the floor and spheres"}
 import afield.graphics.scene.fabricated.*
 import afield.graphics.vulkan.util.Camera
 
