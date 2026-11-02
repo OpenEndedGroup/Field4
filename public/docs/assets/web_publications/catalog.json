@@ -1145,13 +1145,13 @@
     },
     "assets/agent_transcripts/field_ui_browser_texture/metadata.edn": {
       "captureDigest": "4d5add3a103558e3a45b0b09c14392b55f14042e4118c9d4d341d9a926c175b0",
-      "capturedAt": "2026-11-02T06:35:47.667Z",
+      "capturedAt": "2026-11-02T14:51:14.866Z",
       "channels": 1,
       "file": "assets/web_publications/field_ui_browser_texture/document/metadata.edn",
       "files": {
         "assets/web_publications/field_ui_browser_texture/document/metadata.edn": "651f093dcfff15d750dfbfe87b1d3936a04526625b2ce7c2fc8ab8258a560d40",
-        "assets/web_publications/field_ui_browser_texture/document/outputs.json": "93b3bf2425f58cc85c43bfd86eeb4e445481bd1a1ff84422e37f18c6d69e9efa",
-        "assets/web_publications/field_ui_browser_texture/outputs/0.html": "35b577154b694cf124e904c12a2c6f9448958756b76e2f9859295ddaba2d7e37"
+        "assets/web_publications/field_ui_browser_texture/document/outputs.json": "80cb0e20552b02ae7236a3df58bb8b5f561d8ab0d85042a3cd53efd08ebdc988",
+        "assets/web_publications/field_ui_browser_texture/outputs/0.html": "734abf543e47d293cb86f273b55d0501e448b448fc70ccf6ff3c59a2c1deea91"
       },
       "kinds": [
         "native-image"
@@ -1165,7 +1165,7 @@
         "public/docs/assets/agent_transcripts/field_ui_browser_texture/field_ui_texture_renderer_code_.kt": "95a7fcd446443698e199da68d238487f1c74890c923133c559d17cc96f956b8c",
         "public/docs/assets/agent_transcripts/field_ui_browser_texture/guides/puppet_browser.md": "1cf93dd6e995f5ce137c3d99bbbce5ec1b821c59be77f14a917f7cb63a2a5343",
         "public/docs/assets/agent_transcripts/field_ui_browser_texture/metadata.edn": "2ec54b593549d4e611bb872864886ef6e90c8ac8a7b15d83e478e7016a245940",
-        "public/docs/assets/browser_texture/field-ui-on-texture.png": "25f295b797a985b2eda675846a847be54296baebfea429dfdce1164323c57645",
+        "public/docs/assets/browser_texture/field-ui-on-texture.png": "628b996f31fc7321f761aaabc51820fbc27a108938a489667531812bbb7051fd",
         "public/docs/puppet_browser.md": "93fd01c3d78f390fef93fbe816ee214742aa83128c963797460be223900724e8"
       },
       "supplementalSources": [
@@ -1175,26 +1175,26 @@
     },
     "assets/agent_transcripts/field_vr_ide/metadata.edn": {
       "captureDigest": "4d5add3a103558e3a45b0b09c14392b55f14042e4118c9d4d341d9a926c175b0",
-      "capturedAt": "2026-11-02T06:35:40.169Z",
+      "capturedAt": "2026-11-02T14:51:04.960Z",
       "channels": 1,
       "file": "assets/web_publications/field_vr_ide/document/metadata.edn",
       "files": {
-        "assets/web_publications/field_vr_ide/document/metadata.edn": "be22c2214b715855b5b373526ed7f93a45151f53c117effe5cff9e75f6602184",
-        "assets/web_publications/field_vr_ide/document/outputs.json": "c6ffbb01484c6c4860e8cd17ecb1db66b9a4855fbe5c153a82a1d20845360e21",
-        "assets/web_publications/field_vr_ide/outputs/0.html": "4eb1c0f193e4ada9f8d17001e24a01e40469b5d57dd50c608bfd0eeb66ebbd8e"
+        "assets/web_publications/field_vr_ide/document/metadata.edn": "29b5e24b8272726f8812b13d52c5f9da54403914e09cb228afdaa66b30ec1f4c",
+        "assets/web_publications/field_vr_ide/document/outputs.json": "a21820a96ca2c95afffd9ae74a755ec430246b5b002a92bbe48dc7431c7a8cbf",
+        "assets/web_publications/field_vr_ide/outputs/0.html": "b6f499756d6ebaed9759576a0176cd4899be08f43c7cc908508655b847999c28"
       },
       "kinds": [
         "native-image"
       ],
       "outputs": "assets/web_publications/field_vr_ide/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/field_vr_ide.yaml": "93436c4b88fedfe047ed51167f9204e6ee0836c29c6c1fc8b8b6325a352eba20",
+        "dev_docs/agents/transcripts/field_vr_ide.yaml": "8494a77e24f2645e9b395cc35b0844f575439d5bc081dcbaf59178d6caf6db76",
         "public/docs/assets/agent_transcripts/field_vr_ide/guides/field_vr_ide.md": "4839a5b7d7f3a082e395e848fbac5398b13225d94cc20aa40ac6c26ca002a513",
-        "public/docs/assets/agent_transcripts/field_vr_ide/metadata.edn": "ab23ca20a1d136b48f2421eab529aebc265e2d0f34a13cef68df35eb8afb0526",
-        "public/docs/assets/agent_transcripts/field_vr_ide/vr_ide_panel_code_.kt": "5552403af8ef31ea4c8dc27e097ddf57ebfb377bd96a567f39c82d8b6ff257f5",
+        "public/docs/assets/agent_transcripts/field_vr_ide/metadata.edn": "2cc32049dd07979ff98089ba6132f5c6ecda280144dea72c0e96af0f8e39245d",
+        "public/docs/assets/agent_transcripts/field_vr_ide/vr_ide_panel_code_.kt": "f4ff83549f14b42b802082dcc71df797fea216074d2785d22ce56d5843fb92ea",
         "public/docs/assets/agent_transcripts/field_vr_ide/vr_ide_playground_code_.kt": "c45441dd78ad57a39384759b8d42d803b88253dd664e8b302fff0a21c7ed9ed2",
         "public/docs/assets/agent_transcripts/field_vr_ide/vr_ide_renderer_code_.kt": "db3bb2491242b052478d237e9bae09f2338df6d6327bd6a6592f30fe449c5488",
-        "public/docs/assets/field_vr_ide/companion.png": "5c9f6e9b292f662544a084b54aa072e51d01c51bd4ef8efcc2a35ee69cffbbff",
+        "public/docs/assets/field_vr_ide/companion.png": "31de11747e364ce725f36b88027c64ccd04b70070f9511b7faa262ba6c169ab9",
         "public/docs/field_vr_ide.md": "93b26b63980df2ca36ee84f697e1a527beb11e6707635217a801a731bc93ee93"
       },
       "supplementalSources": [
@@ -4567,13 +4567,13 @@
     },
     "assets/agent_transcripts/youtube_kaleidoscope/metadata.edn": {
       "captureDigest": "4d5add3a103558e3a45b0b09c14392b55f14042e4118c9d4d341d9a926c175b0",
-      "capturedAt": "2026-11-02T06:35:50.045Z",
+      "capturedAt": "2026-11-02T14:51:17.693Z",
       "channels": 1,
       "file": "assets/web_publications/youtube_kaleidoscope/document/metadata.edn",
       "files": {
         "assets/web_publications/youtube_kaleidoscope/document/metadata.edn": "01993bdf67284506e460d2bf5b0c210e1471a8228a43934ba9479575c50ad934",
-        "assets/web_publications/youtube_kaleidoscope/document/outputs.json": "f72f694c872c460ea1da6075c019f7c34371fd754916afc197c63ec61372729c",
-        "assets/web_publications/youtube_kaleidoscope/outputs/0.html": "60a19941a445118f46f9a9b0c6e59e7ca2910e08aa06de80bd2f3598a87b117d"
+        "assets/web_publications/youtube_kaleidoscope/document/outputs.json": "319a488b2cd34c3e9e3bef378df1ed8e99d3c3373c2535b2d2a9b30cd3d7acdb",
+        "assets/web_publications/youtube_kaleidoscope/outputs/0.html": "a374e1182f0989f52eed491aedcc14f080b0c85b988bd4726de69bd9ec489665"
       },
       "kinds": [
         "native-image"
@@ -4585,7 +4585,7 @@
         "public/docs/assets/agent_transcripts/youtube_kaleidoscope/metadata.edn": "953dfdc18deace8d8e9ec797db0b650b341df395e8488e7dd697a01ea1bda950",
         "public/docs/assets/agent_transcripts/youtube_kaleidoscope/youtube_kaleidoscope_renderer_code_.kt": "64daf720c8211e7d59a3a79723fda489d4f33749164253020cbd975c0f8b9170",
         "public/docs/assets/agent_transcripts/youtube_kaleidoscope/youtube_kaleidoscope_shards_code_.kt": "3471bcb95e54c850e248927f85d287c5507400cad6e17e9ba0e4ffa3616df9d5",
-        "public/docs/assets/puppet_browser/youtube-kaleidoscope.png": "4b3047f70f30319c37ad66eb74d6a9b1dd36222574e22d5832aadf1690ffc969",
+        "public/docs/assets/puppet_browser/youtube-kaleidoscope.png": "a855d33de7368a33ff0bedbfba43d90067c15dcabf0c7315bbb251e847ef0114",
         "public/docs/puppet_browser.md": "93fd01c3d78f390fef93fbe816ee214742aa83128c963797460be223900724e8"
       },
       "supplementalSources": [
@@ -4595,13 +4595,13 @@
     },
     "assets/agent_transcripts/youtube_mouse_keyboard_browser/metadata.edn": {
       "captureDigest": "4d5add3a103558e3a45b0b09c14392b55f14042e4118c9d4d341d9a926c175b0",
-      "capturedAt": "2026-11-02T06:35:42.544Z",
+      "capturedAt": "2026-11-02T14:51:08.019Z",
       "channels": 1,
       "file": "assets/web_publications/youtube_mouse_keyboard_browser/document/metadata.edn",
       "files": {
         "assets/web_publications/youtube_mouse_keyboard_browser/document/metadata.edn": "bc87d0d9b90b8cbf361efdfc8461b3f67128cdd800b667e80f1ca71f2c764cc3",
-        "assets/web_publications/youtube_mouse_keyboard_browser/document/outputs.json": "1863d809b87c77d925d8c802a020816bf6a56c8f7d82cc2e08138ce270f56fbc",
-        "assets/web_publications/youtube_mouse_keyboard_browser/outputs/0.html": "5c29e583432d9286be3fd711626a5ac999829d3d0b5b0d2b8c6a75c6c16c3473"
+        "assets/web_publications/youtube_mouse_keyboard_browser/document/outputs.json": "fde43cb404dedd078711121f6d81d6933047c8f357e96b3dc48e9e3d4be2d04e",
+        "assets/web_publications/youtube_mouse_keyboard_browser/outputs/0.html": "e2208e2af707466d80b35bac00781d4c0051f4c0e40eef18d63915dfe6e272d5"
       },
       "kinds": [
         "native-image"
@@ -4613,7 +4613,7 @@
         "public/docs/assets/agent_transcripts/youtube_mouse_keyboard_browser/metadata.edn": "4b900a5aa948f654716e10bc9710a3c671dc6fd28ab090759399a54f7b8fc8c5",
         "public/docs/assets/agent_transcripts/youtube_mouse_keyboard_browser/youtube_desktop_panel_code_.kt": "1c29e0f8711256788d98cd04e56a17d3fd6345b810106594debc022a22918542",
         "public/docs/assets/agent_transcripts/youtube_mouse_keyboard_browser/youtube_desktop_renderer_code_.kt": "53af4900d8eb44bd30c235869088104ad7e91cff42abb1c7ff2e1a86fbbcd8ae",
-        "public/docs/assets/puppet_browser/youtube-desktop.png": "6521abaa0cdbea74c4ab574b973cc68e9747f3e7c8fe9672e598292c67f04386",
+        "public/docs/assets/puppet_browser/youtube-desktop.png": "ee6ba51355a99f375a99058f1c0c9f78dad4694ae9a22fb1ee319e914d3e19ab",
         "public/docs/puppet_browser.md": "93fd01c3d78f390fef93fbe816ee214742aa83128c963797460be223900724e8"
       },
       "supplementalSources": [
@@ -4623,25 +4623,25 @@
     },
     "assets/agent_transcripts/youtube_vr_browser/metadata.edn": {
       "captureDigest": "4d5add3a103558e3a45b0b09c14392b55f14042e4118c9d4d341d9a926c175b0",
-      "capturedAt": "2026-11-02T06:35:45.422Z",
+      "capturedAt": "2026-11-02T14:51:11.074Z",
       "channels": 1,
       "file": "assets/web_publications/youtube_vr_browser/document/metadata.edn",
       "files": {
-        "assets/web_publications/youtube_vr_browser/document/metadata.edn": "912e475891df64cb8f5fd82575b46e6f71c2f8fd00e05a17299f3015addb527d",
-        "assets/web_publications/youtube_vr_browser/document/outputs.json": "d72a7162da78327cc74479caf861d28baf254f0cadf24e4404b0bdd8ee6e26fc",
-        "assets/web_publications/youtube_vr_browser/outputs/0.html": "e0e99efd2b48974f30334cdb46903d9f75efec3f30e25ee21e5bd576e0605149"
+        "assets/web_publications/youtube_vr_browser/document/metadata.edn": "9205688c83bea193950cf994da7348f7e5f89358ac5c64c0d437c87dfc24e4ee",
+        "assets/web_publications/youtube_vr_browser/document/outputs.json": "edc1dc8c1d1ca0c9eeb085a7a730b85151442cb4348457bb6ba8fd9e71a5a350",
+        "assets/web_publications/youtube_vr_browser/outputs/0.html": "4ffe1841c28dcf2d75d16f4f5dc9058d4cfba0df2e2f82d83998ca1dc8327762"
       },
       "kinds": [
         "native-image"
       ],
       "outputs": "assets/web_publications/youtube_vr_browser/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/youtube_vr_browser.yaml": "0cb46647831f0d6a86d19aa4294219e6c9f3673d2a25744c0990762a4c597588",
+        "dev_docs/agents/transcripts/youtube_vr_browser.yaml": "4161b36071d7082ab0812a97ce60b45810df0eeadcb3f3448d2be18d054fa04d",
         "public/docs/assets/agent_transcripts/youtube_vr_browser/guides/puppet_browser.md": "db403a8d5281bf52c113e4e7bd919fd88594ae559054cab07cc89ffbc01813a2",
-        "public/docs/assets/agent_transcripts/youtube_vr_browser/metadata.edn": "3f0da918e003d2b1e7789afd484031bb8e4dae9ec6185cb832bd720022906fe5",
-        "public/docs/assets/agent_transcripts/youtube_vr_browser/youtube_vr_panel_code_.kt": "a52099e0b7fa4fb26b1de3a1f488422bcf121fcf383082a5e2c00cdc470b7311",
+        "public/docs/assets/agent_transcripts/youtube_vr_browser/metadata.edn": "26d3bd0a5def726464df85406b748aa7fa5f5ba7f5f713f0fd389146ac1fcdeb",
+        "public/docs/assets/agent_transcripts/youtube_vr_browser/youtube_vr_panel_code_.kt": "3722ddac58f13d2b712ff11a35b25a6b5bbb98bb8a3280e484021b7406e18e4f",
         "public/docs/assets/agent_transcripts/youtube_vr_browser/youtube_vr_renderer_code_.kt": "d7b86120583e7054b2a123d01f70d92b40b44b8bf67c2e811b8b5369ca924926",
-        "public/docs/assets/puppet_browser/youtube-stereo.png": "0611e9fec4060a353a772620b460617a32defdd57cb700b82acf88e3a3657771",
+        "public/docs/assets/puppet_browser/youtube-stereo.png": "60ac92c33cd2c2654a546556063837a1531c288d7dacb6d2f0d2f42fe8d00c39",
         "public/docs/puppet_browser.md": "93fd01c3d78f390fef93fbe816ee214742aa83128c963797460be223900724e8"
       },
       "supplementalSources": [
