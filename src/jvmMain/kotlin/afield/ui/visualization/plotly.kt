@@ -243,7 +243,7 @@ fun violin(
             showlegend = false
             yaxis {
                 yTitle?.let { title = it }
-                yRange?.let { range = it }
+                yRange?.let { range(it) }
             }
             references.forEachIndexed { i, ref ->
                 val v = ref.toDouble()
