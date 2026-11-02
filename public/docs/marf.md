@@ -37,7 +37,7 @@ A curve is a shaping function on the stage's own local phase, `0..1`. The reader
 output with `from + (to - from) * shape(phase)`, so a curve never needs to know which values it is
 moving between.
 
-![eight stage curves, one per lane, each moving from 0 to 1 and back](assets/marf/marf-curves.svg)
+![eight stage curves, one per lane, each moving from 0 to 1 and back](assets/marf/marf-curves.svg){ .field-docs-figure-full }
 
 `hold` is the sample-and-hold case: it arrives at once and stays, which is the step in the top lane.
 `step:5` is a staircase in five treads. `osc` takes a whole number of oscillations and returns to
@@ -60,7 +60,7 @@ val env = marf(
 )
 ```
 
-![three lanes: equal stages, then patterned durations, then patterned curves](assets/marf/marf-stage-durations.svg)
+![three lanes: equal stages, then patterned durations, then patterned curves](assets/marf/marf-stage-durations.svg){ .field-docs-figure-full }
 
 The middle lane's four stages are one, four, a quarter and two cycles long. Those numbers are exact:
 stage time accumulates in `PatQ` rationals, never in `Double`, so a reader is still phase-locked to
@@ -96,7 +96,7 @@ val c = b.read(pat("<0 2 4 1 3>").nums().slow(3), fields = MarfFieldClock.STAGES
 val d = b.read(pat("<0 4>").nums(), speed = constant(4.0), fields = MarfFieldClock.STAGES)
 ```
 
-![three readers over one bank, following three different trajectories](assets/marf/marf-two-readers.svg)
+![three readers over one bank, following three different trajectories](assets/marf/marf-two-readers.svg){ .field-docs-figure-full }
 
 Three voices reading one score. `slow(3)` holds each address for three stages; `speed = 4`
 divides every duration, so the third lane's stages are a quarter as long as the bank wrote them.
@@ -116,7 +116,7 @@ explains the three readings.
 Once the address is a pattern, sequential reading is one case among many, and the pattern algebra
 does the work that a list of traversal modes would otherwise have to.
 
-![four readers over one bank with four different address patterns](assets/marf/marf-address-transforms.svg)
+![four readers over one bank with four different address patterns](assets/marf/marf-address-transforms.svg){ .field-docs-figure-full }
 
 ```diffstatic {data-lang=kotlin}
 val steps = MarfFieldClock.STEPS
@@ -144,7 +144,7 @@ two stages it lies between over the same local phase and mixes their outputs,
 \( (1-\alpha)\,f(i) + \alpha\,f(i+1) \), blending their durations the same way. The entry value is shared between
 the two, so the output stays continuous across a boundary exactly as it does for a whole address.
 
-![a stepped address, a gliding one, and one that aliases to four slots](assets/marf/marf-continuous-address.svg)
+![a stepped address, a gliding one, and one that aliases to four slots](assets/marf/marf-continuous-address.svg){ .field-docs-figure-full }
 
 The bank stops being five slots and becomes a sampled one-dimensional family of functions.
 
@@ -191,7 +191,7 @@ For graphics, sample directly. `at(cycle)` and `atSeconds(seconds, cps)` return 
 which carries the several notions of time that are live at once: the global cycle, the stage index,
 the time since this stage began, and that time normalised to `0..1`.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/marf/two-readers-path.png" alt="a white path of straight horizontal, vertical and diagonal segments, traced by two readers of one bank used as x and y" wait="1.5" capture="box" open-outputs="true" padding="16" name="marf-two-readers-path" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/marf/two-readers-lanes.png" alt="two lanes over eight cycles, each a line coloured by the bank slot it is reading: the top lane passes through all five slots, the bottom one through two" wait="1.5" capture="box" open-outputs="true" padding="16" name="marf-two-readers-lanes" embed=true}
 :::fold the bank from above
 val b = marfBank(
     rampTo(0.1, 1.0),
@@ -202,26 +202,60 @@ val b = marfBank(
 )
 :::endfold
 
-val x = b.read(pat("<0 1 2 3 4>").nums(), fields = MarfFieldClock.STAGES)
-val y = b.read(pat("<0 2 4 1 3>").nums().slow(3), fields = MarfFieldClock.STAGES)
+val walk = b.read(pat("<0 1 2 3 4>").nums(), fields = MarfFieldClock.STAGES)
+val slowWalk = b.read(pat("<0 2 4 1 3>").nums().slow(3), fields = MarfFieldClock.STAGES)
 
-// The path those two readers trace together over eight cycles.
-val path = fline {
-    breakNext()
-    for (i in 0..800) {
-        val t = i / 100.0
-        lineTo(x.at(t).value * 300.0, y.at(t).value * 300.0)
+// One colour per slot of the bank.
+val slotColors = listOf(
+    vec(0.95, 0.45, 0.35, 1.0),
+    vec(0.95, 0.80, 0.30, 1.0),
+    vec(0.45, 0.80, 0.45, 1.0),
+    vec(0.35, 0.65, 0.95, 1.0),
+    vec(0.75, 0.50, 0.95, 1.0),
+)
+
+// A reader against time over eight cycles: a new line at each stage, in the colour of its slot.
+fun lane(r: MarfReader<Double>, top: Double): List<FLine> {
+    val out = mutableListOf<FLine>()
+    var stage = -1L
+    var line = fline {}
+    for (i in 0..1600) {
+        val s = r.at(i / 200.0)
+        val px = i * 600.0 / 1600
+        val py = top + (1.0 - s.value) * 80.0
+        if (s.stageIndex != stage) {
+            stage = s.stageIndex
+            line = fline {
+                stroked = true
+                thickness = 2.0
+                color = slotColors[s.address.toInt()]
+            }
+            line.moveTo(px, py)
+            out += line
+        } else line.lineTo(px, py)
     }
-    stroked = true
-    thickness = 1.0
-    color = vec(1.0, 1.0, 1.0, 0.7)
+    return out
 }
-lines(path, w = 320.0, h = 170.0, fitToSize = true)
+
+// Cycle boundaries, shared by both lanes.
+val grid = (0..8).map { c ->
+    fline {
+        moveTo(c * 75.0, 0.0)
+        lineTo(c * 75.0, 200.0)
+        stroked = true
+        thickness = 0.5
+        color = vec(1.0, 1.0, 1.0, 0.2)
+    }
+}
+
+lines(grid + lane(walk, 0.0) + lane(slowWalk, 120.0), w = 640.0, h = 220.0, fitToSize = true)
 ```
 
-Two readers of one bank as two coordinates. The path stays coherent without the coordinates being
-synchronised, because both are reading the same material on their own clocks. A third reader on
-`radius` or on a colour channel joins in on the same terms.
+`walk` on top, `slowWalk` below, each stage coloured by the slot it reads. Both take their stage
+lengths from the bank, so a slot lasts as long in one lane as in the other: the hold (green) is two
+cycles wherever it appears. `walk` moves to the next slot every stage and has been through all five
+by cycle 4.75. `slowWalk`'s address changes every three cycles but is read only when a stage begins,
+so in eight cycles it reaches two slots, and the oscillation (blue) never shows up in it.
 
 A curve is written against `stagePhase` and never has to reconstruct it, which makes the comparison
 with a shader a useful one to keep: a fragment shader computes over `uv`, a stage computes over its
@@ -250,7 +284,7 @@ path.at(3.5).value // a Vector3f
 path.signal { it.x.toDouble() } // any component, as an ordinary signal
 ```
 
-![one Vector3f reader drawn as its three components, sharing one stage structure](assets/marf/marf-vector-stages.svg)
+![one Vector3f reader drawn as its three components, sharing one stage structure](assets/marf/marf-vector-stages.svg){ .field-docs-figure-full }
 
 Three lanes, one reader. The dashed boundaries fall in the same places in all three, because there
 is one stage structure carrying three values; the `osc:2` stage at cycle 3 puts its double bump
@@ -285,7 +319,7 @@ pat("0 .5 1 .25").nums().ramp() // linear between onsets
 pat("0 .5 1 .25").nums().interp(MarfCurve.Smooth) // any curve between onsets
 ```
 
-![hold, ramp and interp over one four-step pattern](assets/marf/marf-discrete-to-continuous.svg)
+![hold, ramp and interp over one four-step pattern](assets/marf/marf-discrete-to-continuous.svg){ .field-docs-figure-full }
 
 Unlike `segment`, these do not change the rhythm; they remove it. The result is analog, with no
 onsets at all, and `segment(n)` is how you get onsets back.
@@ -303,7 +337,7 @@ A field is a pattern, and a pattern can mean two different things here: a **sequ
 or a **value you sample**, one that exists at every instant the way a modular synthesizer's control
 voltage does. `MarfFieldClock` says which you meant.
 
-![the same two fields under both readings: a stepped address collapses under CYCLES, and a saw freezes under STEPS](assets/marf/marf-field-clocks.svg)
+![the same two fields under both readings: a stepped address collapses under CYCLES, and a saw freezes under STEPS](assets/marf/marf-field-clocks.svg){ .field-docs-figure-full }
 
 ```diffstatic {data-lang=kotlin}
 // A stepped field. CYCLES cannot reach the `1`; STEPS walks 0 1 3 1.

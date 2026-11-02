@@ -13,7 +13,7 @@ Project site and user documentation: https://openendedgroup.com/field4
 [![A moving drawing in Field, with its editable Kotlin and inline petal count](public/docs/assets/first_steps/preview.gif)](https://openendedgroup.com/field4/first_steps/)
 
 [Watch the short recording](https://openendedgroup.com/field4/assets/first_steps/first-look.mp4) ·
-[Your first five minutes](public/docs/first_steps.md)
+[Your first five minutes](https://openendedgroup.com/field4/first_steps/)
 
 ## Status
 
@@ -27,7 +27,7 @@ The core of Field runs on Apple silicon macOS, glibc Linux (x86-64; ARM64 experi
   dependencies,
 - Several GB of downloads/build storage; allow 10 GB free and 16 GB RAM for the source build
 
-See the [installation guide](public/docs/installation.md) for package commands and platform limits.
+See the [installation guide](https://openendedgroup.com/field4/installation/) for package commands and platform limits.
 Java, Gradle and Node are provisioned by the launchers. Python, AI keys and optional submodules
 are not required for the default launch.
 
@@ -91,7 +91,7 @@ Windows accepts the same options through `field.bat`.
 
 The server binds localhost and enables browser-origin protection by default. Remote devices
 such as Vision Pro require an explicit `AFIELD_BIND_HOST=0.0.0.0` setting and a trusted network
-or firewall: the LAN API has no authentication. See [server access](public/docs/server_surface.md).
+or firewall: the LAN API has no authentication. See [server access](https://openendedgroup.com/field4/server_surface/).
 
 ## OpenAI Features
 
@@ -250,7 +250,7 @@ The consolidated testing guide is `dev_docs/testing/TESTING_STRATEGY.md`.
 ## License & Privacy
 
 **AGPL-3.0-or-later.** See [LICENSE](LICENSE). Field runs locally; optional AI uses your own
-provider/account. [What stays local and what leaves](public/docs/privacy.md).
+provider/account. [What stays local and what leaves](https://openendedgroup.com/field4/privacy/).
 
 ## Repository Map
 
