@@ -1015,7 +1015,13 @@ scene.sphere(Vector3f(0f, 0.8f, 0f), 0.8f, gold, 48, 24)
 scene.sphere(Vector3f(1.7f, 0.8f, 0f), 0.8f, rough, 48, 24)
 // A ceiling out of frame, and a lamp the size of a coin just under it
 scene.quad(Vector3f(-4f, 4f, -4f), Vector3f(4f, 4f, -4f), Vector3f(4f, 4f, 4f), Vector3f(-4f, 4f, 4f), ceiling)
-scene.quad(Vector3f(-0.1f, 3.8f, -0.1f), Vector3f(-0.1f, 3.8f, 0.1f), Vector3f(0.1f, 3.8f, 0.1f), Vector3f(0.1f, 3.8f, -0.1f), lamp)
+scene.quad(
+    Vector3f(-0.1f, 3.8f, -0.1f),
+    Vector3f(-0.1f, 3.8f, 0.1f),
+    Vector3f(0.1f, 3.8f, 0.1f),
+    Vector3f(0.1f, 3.8f, -0.1f),
+    lamp,
+)
 val camera = Camera(renderer).also {
     it.at.set(3.5f, 2.4f, 7.5f)
     it.target.set(0f, 0.65f, 0f)
@@ -1059,7 +1065,13 @@ scene.sphere(Vector3f(0f, 0.8f, 0f), 0.8f, gold, 48, 24)
 scene.sphere(Vector3f(1.7f, 0.8f, 0f), 0.8f, rough, 48, 24)
 // A ceiling out of frame, and a lamp the size of a coin just under it
 scene.quad(Vector3f(-4f, 4f, -4f), Vector3f(4f, 4f, -4f), Vector3f(4f, 4f, 4f), Vector3f(-4f, 4f, 4f), ceiling)
-scene.quad(Vector3f(-0.1f, 3.8f, -0.1f), Vector3f(-0.1f, 3.8f, 0.1f), Vector3f(0.1f, 3.8f, 0.1f), Vector3f(0.1f, 3.8f, -0.1f), lamp)
+scene.quad(
+    Vector3f(-0.1f, 3.8f, -0.1f),
+    Vector3f(-0.1f, 3.8f, 0.1f),
+    Vector3f(0.1f, 3.8f, 0.1f),
+    Vector3f(0.1f, 3.8f, -0.1f),
+    lamp,
+)
 val camera = Camera(renderer).also {
     it.at.set(3.5f, 2.4f, 7.5f)
     it.target.set(0f, 0.65f, 0f)
