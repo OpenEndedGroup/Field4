@@ -37,9 +37,12 @@ internal data class EvdevEvent(val micros: Long, val type: Int, val code: Int, v
 
 internal data class WiVRnDeviceEvent(val device: WiVRnDevice, val event: EvdevEvent)
 
+/** Keyboard and mouse events in evdev form; [WiVRnDevice] names the channel, not necessarily the device. */
 internal interface WiVRnEventSource : AutoCloseable {
     val captured: Set<WiVRnDevice>
     val problem: String?
+    /** The line shown in the VR toolbar, for sources that are not WiVRn's evdev devices. */
+    val status: String? get() = null
     fun poll(): List<WiVRnDeviceEvent>
     fun takeResets(): Map<WiVRnDevice, Set<Int>>
 }
