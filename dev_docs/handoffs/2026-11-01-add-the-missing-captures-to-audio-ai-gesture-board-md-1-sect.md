@@ -18,3 +18,5 @@ From the 2026-11-01 punchline audit: each section of the site was checked for wh
 ## Done when
 
 Every section above shows its result through a runner capture (or reused committed media that exercises the real code), or this handoff records why that section stays without one.
+
+Done 2026-11-02: "Generate from the sketch" is now a `capture-profile="linux-nvidia"` runner block (sketch folded, `runAsync` instead of the blocking `.get()`, backend pinned to `audiocraft.musicgen_style` for the same reason as the field_audio_ai handoff). It captures the 'gesture' channel with per-candidate fit scores and the 'audition' board from a real eight-seed MusicGen-Style run: `public/docs/assets/audio_ai_gesture_board/gesture_candidates.png`. The board's own players are the audition; no separate audio= exports were committed.

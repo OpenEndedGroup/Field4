@@ -35,9 +35,9 @@ objects, states, and error vocabulary, and needs none of the above.
 ## Variations of a source
 
 This box takes four and a half seconds of a recording, asks MusicGen-Style for eight
-twelve-second variations, one per seed, and shows them as a candidate board when they arrive:
+twelve-second variations, one per seed, and shows the source window while it waits and a candidate board when they arrive:
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/field_audio_ai/style_candidates.png" capture="box" capture-profile="linux-nvidia" open-outputs="true" wait="4" wait-output="true" wait-output-channel="candidates" timeout="900" w="1120" h="40" padding="16" embed=true name="style-candidates" alt="A candidate board of eight MusicGen-Style variations of Nancy from 18 to 22.5 seconds, one row per seed with a waveform and player"}
 val client = cached { FieldAudioClient() }
 runAsync(
     onResult = { result: CandidateSet ->
@@ -47,17 +47,32 @@ runAsync(
         markdown("generation error", "Generation failed: ${(failure.message ?: failure.toString()).md}")
     },
 ) {
+    val showSource = progress<String> { display("source", it) }
     val lookup = client.assetByFilename("*Nancy*")
     onCancel { lookup.cancel(false) }
     lookup.thenCompose { source ->
         if (future.isDone) throw java.util.concurrent.CancellationException("run ended")
         val region = AssetRegion(source.id, startSeconds = 18.0, durationSeconds = 4.5)
+        val canonical = source.representations.first { it.role == "canonical_project" }
+        showSource(
+            canonical.audioVisualizerHtml(
+                label = "Nancy · 18–22.5 s",
+                options = AudioVisualizerOptions(
+                    width = 1100,
+                    waveformHeight = 110,
+                    initialStartSeconds = 18.0,
+                    initialDurationSeconds = 4.5,
+                    initialPositionSeconds = 18.0,
+                ),
+            ),
+        )
 
         val request = styleCandidates(
             source = region,
             prompt = "sparse suspended orchestral tension",
             durationSeconds = 12.0,
             seeds = 0L until 8L,
+            backend = "audiocraft.musicgen_style",
             controls = MusicGenStyleControls(
                 temperature = 1.1,
                 topK = 180,
