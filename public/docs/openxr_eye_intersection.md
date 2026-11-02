@@ -59,10 +59,10 @@ Vergence depth becomes noisy at distance, so a rejected sample is a useful diagn
 ## On the desktop
 
 The desktop preview has no simulated eyes, so `NO_TRACKING` is the right answer there and the
-binocular marker stays hidden; the grey reference cubes and the EXT dashed ray are what you can
-check. On a Mac the starter looks like this:
+binocular marker stays hidden. So does the dashed EXT ray, which needs a runtime that reports a
+combined gaze. What you can check is the floor grid and the three grey reference cubes. On a Mac the starter looks like this:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/openxr_eye_intersection/desktop.png" capture="native-window" wait="60" native-wait-frames="30" embed=true hidden=true timeout="600" duration="0" name="openxr-eye-desktop" alt="the desktop reference preview: three grey cubes at one, two and four metres ahead, and the dashed EXT ray, with no binocular marker" macro-file="../../dev_docs/agents/transcripts/openxr_eye_intersection.yaml" capture-box="eye_ray_renderer"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/openxr_eye_intersection/desktop.png" capture="native-window" wait="60" native-wait-frames="30" embed=true hidden=true timeout="600" duration="0" name="openxr-eye-desktop" alt="the desktop reference preview: looking down a grey floor grid at three wireframe cubes, one, two and four metres ahead and smaller with distance, with no ray and no binocular marker" macro-file="../../dev_docs/agents/transcripts/openxr_eye_intersection.yaml" capture-box="eye_ray_renderer"}
 // dev_docs/agents/transcripts/openxr_eye_intersection.yaml on macOS: the renderer without OpenXR,
 // and the scene drawing its reference cubes and desktop ray
 ```
