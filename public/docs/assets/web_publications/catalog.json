@@ -86,18 +86,18 @@
     },
     "assets/agent_transcripts/ai4_iframe_hello/metadata.edn": {
       "captureDigest": "4d5add3a103558e3a45b0b09c14392b55f14042e4118c9d4d341d9a926c175b0",
-      "capturedAt": "2026-10-31T13:38:12.031Z",
+      "capturedAt": "2026-11-02T14:43:12.697Z",
       "channels": 1,
       "file": "assets/web_publications/ai4_iframe_hello/document/metadata.edn",
       "files": {
-        "assets/web_publications/ai4_iframe_hello/document/metadata.edn": "968b2ba84597520c9bc2f8903e77bd83272c006cf47f981fabf90a336f776447",
-        "assets/web_publications/ai4_iframe_hello/document/outputs.json": "358aa8b7bc3ba1e4186cbf3781a201d6647a88e11a45bb3df8d87727dd8cbacb",
-        "assets/web_publications/ai4_iframe_hello/outputs/0.html": "f6de7863c9b1f8230195ef034d4410b1d6a4cb4dc89f80b6f83acea7a28ca417"
+        "assets/web_publications/ai4_iframe_hello/document/metadata.edn": "6d057d942631dfddfd8c48ea97cd785bbef247b6e005c8d7dfa54319c4721741",
+        "assets/web_publications/ai4_iframe_hello/document/outputs.json": "eca13973b0c2ba1d8c1f216c2b9e9ba715cf47bfca097390c629c8fafd811126",
+        "assets/web_publications/ai4_iframe_hello/outputs/0.html": "75142a76faec34fb935ea92cd1e2ef58242560d7e460c6da85b14afbcbc6cefb"
       },
       "kinds": [],
       "outputs": "assets/web_publications/ai4_iframe_hello/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/ai4_iframe_hello.yaml": "96250546b655b95055950f03cd0a25bdedc48b8e37da6745e3798f299dff11b7",
+        "dev_docs/agents/transcripts/ai4_iframe_hello.yaml": "3d9edbd18963d9677c431c40c8bdfa42d1eeb4c35028c2698ed07946eb0f135c",
         "public/docs/assets/agent_transcripts/ai4_iframe_hello/ai4_iframe_hello_code_.kt": "6635ccf45e6a417d4f0ee893917496117550fc4230826981de49f4bd88c8057f",
         "public/docs/assets/agent_transcripts/ai4_iframe_hello/guides/ai4_live_iframe.md": "c98d88e49f509f302578f2909ab5def41129f31f551a5776730cf95710308fd5",
         "public/docs/assets/agent_transcripts/ai4_iframe_hello/metadata.edn": "fd6d62b95b70e0abf1f2a82542f7efffde5b0fd6a4e309d985e5c4977ab0552f"
