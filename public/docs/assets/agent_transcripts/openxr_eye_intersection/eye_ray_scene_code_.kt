@@ -29,8 +29,9 @@ val markerWorld = Vec3()
 var hasPlacement = false
 var held = false
 
-val previewView = Matrix4f().translate(0f, -0.15f, -0.5f)
-val previewProjection = Matrix4f().setPerspective(1.15f, 1.5f, 0.01f, 100f, true)
+// The desktop preview stands 60 cm up, looking down the floor at the reference cubes.
+val previewView = Matrix4f().rotateX(0.4f).rotateY(0.2f).translate(0f, -0.6f, -0.2f)
+val previewProjection = Matrix4f().setPerspective(0.7f, 1.5f, 0.01f, 100f, true)
 val module = moduleHere {
     primitiveType = lines
     depthTest = true

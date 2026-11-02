@@ -44,7 +44,7 @@ resolve to, which is not a coincidence -- a measurement you pick in the viewer
 produces exactly these.
 
 ```edn [field-box id="three-inspector-wall" role="properties"]
-{"id" "three-inspector-wall" "index" 0 "name" "The 3D output area as an instrument" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The 3D output area as an instrument" "_tombstone" false "frame" #afield/rect [60.0 60.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "three-inspector-wall_code_.kt" "lines" 108 "characters" 4320 "sha256" "d2a70ad8df481301fad229ea1ef1bbcd8b91aad510a98df7ee661c7d7dd513a8"}]}
+{"id" "three-inspector-wall" "index" 0 "name" "The 3D output area as an instrument" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The 3D output area as an instrument" "_tombstone" false "frame" #afield/rect [60.0 60.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "three-inspector-wall_code_.kt" "lines" 108 "characters" 4329 "sha256" "533fa1018d3aed41a981341dc04701776e3f17a2871ae0fed13e9135bcb57a22"}]}
 ```
 
 ```kotlin [field-property box="three-inspector-wall" name="code" path="three-inspector-wall_code_.kt"]

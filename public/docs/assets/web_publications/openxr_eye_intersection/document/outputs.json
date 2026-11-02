@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-01T22:06:09.156Z",
+  "capturedAt": "2026-11-02T15:09:12.771Z",
   "documentName": "openxr_eye_intersection",
   "outputs": [
     {
@@ -8,8 +8,8 @@
       "channel": "Vulkan window · still image",
       "open": true,
       "path": "outputs/0.html",
-      "width": 4112,
-      "height": 2524,
+      "width": 1440,
+      "height": 960,
       "kinds": [
         "native-image"
       ],
