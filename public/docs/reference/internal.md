@@ -4,7 +4,7 @@
 
 Implementation details explicitly marked Internal by their source. They remain available to browse here, but are not intended as entry points for code written in a Field box.
 
-19 source file(s), 156 public symbol(s), 55 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+20 source file(s), 156 public symbol(s), 55 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -385,6 +385,10 @@ Where to find the native wrapper.
 | --- | --- |
 | <a id="ffmceresbackend-kt--ceresnativelibrary--defaultpath"></a>[<code class="highlight"><span class="k">val</span> <span class="n">defaultPath</span><span class="p">:</span> <span class="nc">Path</span></code>](source/jvmMain/afield/math/optimization/ceres/FfmCeresBackend/#L467) |  |
 | <a id="ffmceresbackend-kt--ceresnativelibrary--how-to-build"></a>[<code class="highlight"><span class="k">val</span> <span class="nc">HOW&#95;TO&#95;BUILD</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/math/optimization/ceres/FfmCeresBackend/#L477) | What to tell someone whose [`defaultPath`](internal.md#ffmceresbackend-kt--ceresnativelibrary--defaultpath) is not there, in the shell they are actually in. |
+
+## PairedHeadsetInput.kt { #pairedheadsetinput-kt }
+
+`src/jvmMain/kotlin/afield/media/browser/PairedHeadsetInput.kt` — [read the source](source/jvmMain/afield/media/browser/PairedHeadsetInput/)
 
 ## WiVRnEvdev.kt { #wivrnevdev-kt }
 

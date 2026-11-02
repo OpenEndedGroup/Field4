@@ -1,7 +1,8 @@
 package afield.media.browser
 
 /**
- * Exclusive, focus-independent Linux input from WiVRn's virtual keyboard and mouse. The mouse
+ * Exclusive, focus-independent Linux input from WiVRn's virtual keyboard and mouse (or, through the
+ * internal source constructor, from a paired headset app; see [PairedInputSource]). The mouse
  * lives in browser coordinates, so moving a VR panel never moves its cursor onto another app.
  * Call [poll] once per graphics frame; [close] releases keys, buttons and evdev grabs.
  * See `tools/setup_wivrn_input.py` for the narrowly scoped device permissions.
@@ -16,6 +17,17 @@ class WiVRnBrowserInput internal constructor(
     private val pointerActivity: () -> Unit,
     private val otherModifiers: () -> Set<BrowserModifier>,
 ) : AutoCloseable {
+    /** Another evdev-shaped source, such as [PairedInputSource], through the same layout and cursor path. */
+    internal constructor(
+        browser: PuppetBrowserControl,
+        viewport: ExternalBrowserSurfaceSpec,
+        source: WiVRnEventSource,
+        pointerActivity: () -> Unit,
+        otherModifiers: () -> Set<BrowserModifier>,
+    ) : this(browser, viewport, source, System.getenv("FIELD_VR_KEYBOARD_LAYOUT") ?: "us",
+        System.getenv("FIELD_VR_KEYBOARD_VARIANT") ?: "", System.getenv("FIELD_VR_KEYBOARD_OPTIONS") ?: "",
+        pointerActivity, otherModifiers)
+
     constructor(
         browser: PuppetBrowserControl,
         viewport: ExternalBrowserSurfaceSpec,
@@ -50,6 +62,7 @@ class WiVRnBrowserInput internal constructor(
     val status: String get() = when {
         closed -> "Headset input closed"
         failure != null -> "Headset input: $failure"
+        source.status != null -> source.status!!
         source.problem != null -> source.problem!!
         source.captured.size == 2 -> "Headset keyboard + mouse captured · desktop focus independent"
         source.captured.isNotEmpty() -> "Captured ${capturedDevices.joinToString()} · waiting for the other device"

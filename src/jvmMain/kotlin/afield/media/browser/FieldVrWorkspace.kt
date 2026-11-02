@@ -23,6 +23,7 @@ class FieldVrWorkspace(
     val distanceMeters: Float = 1.35f,
     cpuBitmapFallback: Boolean = FieldUiBrowserTexture.cpuBitmapFallbackRequired,
     headsetInput: Boolean = defaultHeadsetInput(renderer.openXRHmdTarget != null),
+    pairedInput: Boolean = defaultPairedInput(),
 ) : AutoCloseable {
     companion object {
         /** ALVR has no WiVRn HID devices; its launcher selects the desktop focus path. */
@@ -32,12 +33,24 @@ class FieldVrWorkspace(
             osName: String = System.getProperty("os.name"),
         ): Boolean = when (mode?.trim()?.lowercase()) {
             null, "", "auto" -> openXR && osName.startsWith("Linux")
-            "desktop" -> false
+            "desktop", "paired" -> false
             "wivrn" -> {
                 require(openXR && osName.startsWith("Linux")) { "WiVRn input requires Linux/OpenXR" }
                 true
             }
-            else -> error("FIELD_VR_INPUT must be auto, desktop or wivrn (got '$mode')")
+            else -> error("FIELD_VR_INPUT must be auto, desktop, wivrn or paired (got '$mode')")
+        }
+
+        /**
+         * `FIELD_VR_INPUT=paired`: keyboard and mouse sent by a paired headset app (the patched visionOS
+         * ALVR client) to a port this panel opens; see [PairedInputSource]. Never chosen automatically.
+         */
+        internal fun defaultPairedInput(
+            mode: String? = System.getenv("FIELD_VR_INPUT"),
+            osName: String = System.getProperty("os.name"),
+        ): Boolean = (mode?.trim()?.lowercase() == "paired").also {
+            // The layout path is the same XKB keymap WiVRn input uses.
+            if (it) require(osName.startsWith("Linux")) { "Paired headset input requires Linux (libxkbcommon)" }
         }
     }
 
@@ -105,19 +118,24 @@ class FieldVrWorkspace(
             rayAnchors.clear()
         }
         companion.build()
+        require(!(headsetInput && pairedInput)) { "Choose WiVRn or paired headset input, not both" }
+        val pointerActivity = {
+            if (!headsetPointer) {
+                val hit = panel.lastHit
+                input.cancel()
+                grab.cancel()
+                companion.input.releasePointer()
+                if (hit?.onPanel == true) headsetDevices?.placeCursor(hit.u, hit.v)
+                headsetPointer = true
+                desktopPointer = false
+                rayAnchors.clear()
+            }
+        }
+        val otherModifiers = { companion.input.uv.modifiers }
         if (headsetInput) headsetDevices = WiVRnBrowserInput(browser, browser.spec,
-            pointerActivity = {
-                if (!headsetPointer) {
-                    val hit = panel.lastHit
-                    input.cancel()
-                    grab.cancel()
-                    companion.input.releasePointer()
-                    if (hit?.onPanel == true) headsetDevices?.placeCursor(hit.u, hit.v)
-                    headsetPointer = true
-                    desktopPointer = false
-                    rayAnchors.clear()
-                }
-            }, otherModifiers = { companion.input.uv.modifiers })
+            pointerActivity = pointerActivity, otherModifiers = otherModifiers)
+        else if (pairedInput) headsetDevices = WiVRnBrowserInput(browser, browser.spec,
+            PairedInputSource.fromEnvironment(), pointerActivity, otherModifiers)
     }
 
     /** Keep the panel in the room; call this to bring it in front of the current head position. */
