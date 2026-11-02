@@ -570,19 +570,19 @@ look(
 :::endfold
 
 // Three keys at fixed weights, then the same blend pushed away from flat-and-acid twice.
-val blend = listOf("high-and-cool", "low-and-warm", "flat-and-acid")
-val base = listOf(0.4, 0.35, 0.25)
+val blend = ["high-and-cool", "low-and-warm", "flat-and-acid"]
+val base = [0.4, 0.35, 0.25]
 val archive = Files.createTempDirectory("autosweep-past-the-hull")
 val sweep = KeyframeSweep(
     keys,
     pool,
     archive,
     SweepConfig(
-        draws = listOf(
+        draws = [
             SweepDraw(blend, base),
             SweepDraw(blend, base, pole = "flat-and-acid", gain = 1.0),
             SweepDraw(blend, base, pole = "flat-and-acid", gain = 1.5),
-        ),
+        ],
     ),
 )
 
