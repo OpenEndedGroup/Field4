@@ -26,5 +26,4 @@ If you do have Field open on your machine while reading these docs, many of the 
 
 Field's code is AGPL-3.0-or-later; [your code, AI and local history](privacy.md) explains the local services and optional external providers.
 
-??? aside "How this site is made"
-    Agents wrote much of this text, using a harness that is part of Field, and the site is part of Field's build: almost every one of the 2000 screenshots here is captured by running the code beside it. Even the video behind this page is automatically generated and regenerated too. Field has lots of other tests and build infrastructure, but these excersize in agent-driven literate programming is a large part of its test suite.
+Agents wrote much of this text, using a harness that is part of Field, and the site is part of Field's build: almost every one of the 2000 screenshots here is captured by running the code beside it. Even the video behind this page is automatically generated and regenerated too. Field has lots of other tests and build infrastructure, but these excersize in agent-driven literate programming is a large part of its test suite.
