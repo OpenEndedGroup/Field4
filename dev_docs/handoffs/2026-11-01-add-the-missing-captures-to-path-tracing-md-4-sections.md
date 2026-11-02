@@ -33,3 +33,6 @@ From the 2026-11-01 punchline audit: each section of the site was checked for wh
 ## Done when
 
 Every section above shows its result through a runner capture (or reused committed media that exercises the real code), or this handoff records why that section stays without one.
+
+
+Done 2026-11-02: All four sections now have runner captures (linux-nvidia, native window, real tracer). Reducing bright specks: clamp_off.png / clamp_on.png, the material study at 16 samples with indirectClamp 0 and 1f (10f barely changed the frame at this budget, so the comparison uses a lower limit and says so). Keeping convergence during camera motion: motion_no_reuse.png / motion_reuse.png, the last frame of a scripted 24-frame orbit after 256 samples. No video, because the native window has no agent-side recorder (capture_limits.md), so these are stills taken mid-move. More persistence: motion_persistent.png, the same orbit with the high-persistence settings, set against motion_reuse.png. Replacing the integrator: direct_only.png, the material study after reloadIntegrator with the direct-only source, set against the page-top materials.png.

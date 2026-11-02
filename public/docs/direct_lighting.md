@@ -127,6 +127,41 @@ product of the edges points toward its emitting side. Change the edge lengths to
 shadow softness. The emitter supplies illumination; it is not automatically drawn as a
 visible rectangle.
 
+The one-light study with ray-query shadows, first with a 0.2 × 0.2 emitter and then with a
+2.5 × 2.5 one. Radiance is scaled by the inverse of the area, so both deliver the same power:
+
+```diffstatic_runner {capture-profile="linux-nvidia" data-lang=kotlin screenshot="assets/direct_lighting/emitter-small.png" capture="native-window" graphics-context=true execution="launch" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="emitter-small ready" embed=true hidden=true timeout="180" name="direct-lighting-emitter-small" alt="The one-light study with a 0.2 by 0.2 area emitter: the three boxes cast crisp, hard-edged shadows on the floor"}
+import afield.graphics.render.lighting.*
+
+val study = DirectLightingDemo(renderer, 1280, 720)
+study.lighting.samples = 32
+study.lighting.mode = DirectLighting.Mode.RAY_QUERY
+// Same emitted power as the default 1 x 1 emitter at radiance 60.
+study.lighting.emitter.edgeU.set(0.2f, 0f, 0f)
+study.lighting.emitter.edgeV.set(0f, 0f, 0.2f)
+study.lighting.emitter.radiance.set(1500f)
+frames {
+    repeat(30) { frame() }
+    println("emitter-small ready")
+}
+```
+
+```diffstatic_runner {capture-profile="linux-nvidia" data-lang=kotlin screenshot="assets/direct_lighting/emitter-large.png" capture="native-window" graphics-context=true execution="launch" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="emitter-large ready" embed=true hidden=true timeout="180" name="direct-lighting-emitter-large" alt="The same scene with a 2.5 by 2.5 emitter of equal power: the shadows have wide, soft penumbrae"}
+import afield.graphics.render.lighting.*
+
+val study = DirectLightingDemo(renderer, 1280, 720)
+study.lighting.samples = 32
+study.lighting.mode = DirectLighting.Mode.RAY_QUERY
+// Same emitted power as the default 1 x 1 emitter at radiance 60.
+study.lighting.emitter.edgeU.set(2.5f, 0f, 0f)
+study.lighting.emitter.edgeV.set(0f, 0f, 2.5f)
+study.lighting.emitter.radiance.set(9.6f)
+frames {
+    repeat(30) { frame() }
+    println("emitter-large ready")
+}
+```
+
 Keep each light's ID across movement and reordering. After editing lights, call
 `settings.commitLights(...)` between frames; it copies the list and its vectors. Deleted
 IDs are rejected from history. Use `settings.resetHistory("material edit")` after changing

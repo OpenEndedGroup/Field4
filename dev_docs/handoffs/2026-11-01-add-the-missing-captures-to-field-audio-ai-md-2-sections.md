@@ -23,3 +23,5 @@ From the 2026-11-01 punchline audit: each section of the site was checked for wh
 ## Done when
 
 Every section above shows its result through a runner capture (or reused committed media that exercises the real code), or this handoff records why that section stays without one.
+
+Done 2026-11-02: "Variations of a source" is now a `capture-profile="linux-nvidia"` runner block that submits the real MusicGen-Style job (AudioCraft worker on the RTX 4090) and captures the source window plus the eight-candidate board: `public/docs/assets/field_audio_ai/style_candidates.png`. The snippet now names `backend = "audiocraft.musicgen_style"`: with the default `null` backend the service resolved `generate.style` to `development.source_granulator`, which is not what the page describes (and failed on the float WAV with "unknown format: 3"). The board's own players are the audition; no separate audio= exports were committed. "Gestures and how strongly they are enforced" already embedded the real `audio_ai_gesture_board/gesture_board.png`; it was recaptured with the gesture-board page.
