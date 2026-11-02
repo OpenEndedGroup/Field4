@@ -800,14 +800,14 @@ object StandardRendererDocsHarness {
             renderer,
             StandardRenderer.Config(
                 environmentTexture = environment,
-                environmentStrength = 1.4f,
+                environmentStrength = 3.0f,
                 environmentRotation = 0.3f,
                 backgroundColor = srgbGray(0.05f)
             )
         )
         bundle.scene.camera.at.set(0f, 0.8f, -3.6f)
         bundle.scene.camera.target.set(0f, -0.15f, 0f)
-        bundle.scene.lightIntensity = 6.0f
+        bundle.scene.lightIntensity = 24.0f
         bundle.scene.shadowStrength = 0.8f
         bundle.scene.aoStrength = 0.7f
         bundle.scene.shadowExtent = 6.0f
@@ -839,7 +839,7 @@ object StandardRendererDocsHarness {
 
         // Left: raw HDR (highlights clip to white). Right: bloom + ACES tone mapping.
         val raw = captureScene(tempPng("fabricate-tonemap-off"), bundle, renderer) {}
-        bundle.addBloom(threshold = 1.0f, intensity = 0.85f, radius = 3.2f, renderer = renderer)
+        bundle.addBloom(threshold = 1.0f, intensity = 1.8f, radius = 4.0f, renderer = renderer)
         bundle.setToneMapping(FabricateToneMap.ACES, exposure = 1.0f, renderer = renderer)
         bundle.attachTo(renderer)
         val graded = captureScene(tempPng("fabricate-tonemap-on"), bundle, renderer) {}

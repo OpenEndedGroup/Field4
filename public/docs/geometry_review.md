@@ -25,9 +25,39 @@ to select what is behind it.
 
 Rectangles describe a patch in a particular view. Their saved reference retains that view even if you orbit before writing the note; the dashed rectangle disappears while you are looking from another angle. Selection works in a single view, not in a [contact sheet](three_output.md) of several views side by side.
 
-![A rotated rectangular selection on the front of two stacked meshes, with its note saved to Field.](assets/geometry_review/rotated-region.png)
+Here two squares stand one behind the other, and a rectangle turned 25° is selected on the front one:
 
-The second mesh lies behind this one. The selected region contains only the front surface.
+```diffstatic_runner {data-lang=kotlin capture="ui" region="box" capture-box="gr_region" screenshot="assets/geometry_review/rotated-region.png" transcript="dev_docs/agents/transcripts/docs_capture/geometry_review_region.yaml" padding="0" wait="2" timeout="240" embed=true hidden=true name="geometry-review-rotated-region" alt="Two grey squares in a 3D view, one standing behind and to the right of the other. A dashed rectangle turned 25 degrees sits on the front square, and the note panel below reads front, region, 1 visible part, with the note Only the visible surface in this rotated rectangle saved to Field."}
+// Select a rotated rectangle on the front square through the viewer's inspector, then type and save the note.
+ui.pause(3000)
+ui.eval(
+    """
+    const frame = [...document.querySelectorAll("iframe")].find(f => f.src.includes("_features"))
+    const api = frame.contentWindow.FieldInspector
+    const front = api.sources().find(s => s.source.id === "front")
+    const p = api.project(front.id, [0, 24, 0])
+    api.region({ cx: p.x, cy: p.y, width: 0.16, height: 0.09, angle: 25 })
+    return true
+    """
+        .trimIndent(),
+)
+ui.pause(500)
+ui.eval(
+    """
+    const frame = [...document.querySelectorAll("iframe")].find(f => f.src.includes("_features"))
+    const doc = frame.contentDocument
+    const note = doc.getElementById("feature-note")
+    note.value = "Only the visible surface in this rotated rectangle."
+    note.dispatchEvent(new frame.contentWindow.Event("input"))
+    doc.getElementById("feature-save").click()
+    return true
+    """
+        .trimIndent(),
+)
+ui.pause(1000)
+```
+
+The selected region contains only the front surface, even where the square behind lies under it.
 
 ## Leave a note
 

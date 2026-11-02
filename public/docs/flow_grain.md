@@ -94,9 +94,9 @@ objects.begin(renderer.frameCounter)
 objects.write("emitter", pose, previous, allow = history.available, revision = geometryRevision)
 ```
 
-The motion view, `flowLook.w = 4`, with the camera travelling. Each pixel shows how far it moved since the previous frame: the world shifts with the camera as one smooth tint, and the rotating marker, which also has motion of its own, stands out from it.
+The motion view, `flowLook.w = 4`, with the camera travelling and zooming. Each pixel shows how far it moved since the previous frame, measured against one fixed point of the frame, so the camera's even sideways travel cancels out. What is left is the zoom, which moves pixels near the edges further than pixels near the middle and spreads the colour from corner to corner, and the rotating marker, which has motion of its own and stands out from the world around it. The grain and the obstacles do not show here: they are fixed in the world, so they move exactly as the camera does.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/flow_grain/motion.png" capture="native-window" native-wait-frames="60" embed=true hidden=true timeout="240" name="flow-grain-motion" alt="The motion view: a pink-to-peach field where the camera's travel tints the whole world evenly, and the rotating marker shows as a separate, more saturated bar near the centre." macro-file="../../dev_docs/agents/transcripts/docs_capture/flow_grain_displacement.yaml" capture-box="flow_renderer"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/flow_grain/motion.png" capture="native-window" native-wait-frames="60" embed=true hidden=true timeout="240" name="flow-grain-motion" alt="The motion view: a smooth field of colour running from grey-blue at the top left through grey to pink at the top right and green and cream along the bottom, the zoom pulling each pixel by a different amount, and the rotating marker as a small saturated blue bar near the centre." macro-file="../../dev_docs/agents/transcripts/docs_capture/flow_grain_displacement.yaml" capture-box="flow_renderer"}
 // The transcript runs the real flow_grain starting point in its motion view.
 ```
 
