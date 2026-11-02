@@ -202,6 +202,54 @@ root too, which is fine: a cell is Python while
 To go the other way, select the python root and choose *Export notebook (.ipynb)*. It writes the
 column top to bottom as a standard notebook. Import also reads older notebooks (nbformat 3).
 
+Here is `dev_docs/examples/notebook_roundtrip_demo.ipynb`, two code cells between two Markdown
+cells, dropped on an empty canvas and imported. The notes boxes keep the Markdown cells' places in
+the column, one above the code cells and one below:
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" hide-toasts=true viewport="1400x760" clip="0,0,640,680" screenshot="assets/python/notebook_import.png" padding="0" wait="0" timeout="180" embed=true hidden=true name="python-notebook-import" alt="The canvas after importing a four-cell notebook: a box named python root, two boxes named Python connected beneath it for the code cells, and two unnamed notes boxes, set slightly to the right, where the Markdown cells were, one above the code and one below."}
+// Drop the committed notebook on the canvas the way a file drag does, then pick the menu entry.
+val notebook =
+    generateSequence(java.io.File(".").absoluteFile) { it.parentFile }
+        .map { java.io.File(it, "dev_docs/examples/notebook_roundtrip_demo.ipynb") }
+        .firstOrNull { it.isFile }
+check(notebook != null) { "notebook_roundtrip_demo.ipynb not found" }
+val text = kotlinx.serialization.json.JsonPrimitive(notebook!!.readText()).toString()
+ui.eval(
+    "const dt=new DataTransfer(); dt.items.add(new File([" +
+        text +
+        "], 'notebook_roundtrip_demo.ipynb', {type:'application/x-ipynb+json'}));" +
+        "document.body.dispatchEvent(new DragEvent('drop',{dataTransfer:dt,clientX:260,clientY:160,pageX:260,pageY:160,bubbles:true,cancelable:true})); return 'dropped'",
+)
+var at: List<Double> = emptyList()
+repeat(40) {
+    if (at.isEmpty()) {
+        ui.pause(150)
+        val found =
+            ui.eval(
+                    "const b=[...document.querySelectorAll('.markingButton')].find(d=>d.textContent.includes('Import as Python cells')); if(!b) return ''; const r=b.getBoundingClientRect(); return (r.left+r.width/2)+','+(r.top+r.height/2)",
+                )
+                ?.toString()
+                ?.trim('"')
+                .orEmpty()
+        if (found.isNotEmpty()) at = found.split(',').map { it.toDouble() }
+    }
+}
+check(at.isNotEmpty()) { "The notebook drop menu did not appear" }
+ui.moveMouse(at[0], at[1], 4)
+ui.pause(150)
+ui.mouseDown()
+ui.mouseUp()
+var cells = 0
+repeat(40) {
+    if (cells < 5) {
+        ui.pause(150)
+        cells = ui.eval("return document.querySelectorAll('.box').length")?.toString()?.toDoubleOrNull()?.toInt() ?: 0
+    }
+}
+check(cells >= 5) { "The import made $cells boxes" }
+ui.pause(800)
+```
+
 [funFeatures](funFeatures.md#python) has the round-trip in context.
 
 ## What each line came to

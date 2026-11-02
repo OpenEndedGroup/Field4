@@ -259,8 +259,27 @@ uses `EXT_meshopt_compression`, which three.js, Blender 4.2 and later, and most 
 light, sky fill, a cool rim light, ambient occlusion and a dark ground with a faint grid. Give the
 mesh a material to go with it:
 
-```diffstatic {data-lang=kotlin}
-three {
+```diffstatic_runner {data-lang=kotlin screenshot="assets/three_output/studio.png" alt="the same grey vase twice. Above, plain: flat grey shading on black. Below, with studio(): a bright specular highlight down its belly, a soft shadow on a dark ground plane that recedes to a horizon" wait="6.0" capture="box" open-outputs="true" padding="20" name="three-studio-look"}
+:::fold a revolved vase
+// A vase: a profile of radius against height, revolved around y.
+val vase = revolveMesh(
+    (0..40).map { i ->
+        val y = -1.25 + i / 40.0 * 2.5
+        vec(0.45 + 0.3 * sin(i / 40.0 * 5.0) + 0.15 * (i / 40.0), y)
+    },
+    RevolveAxis.Y,
+    segments = 64,
+)
+
+:::endfold
+
+// The same vase with no look, then with studio().
+three(name = "plain", channel = "plain", width = 560, height = 420) {
+    mesh(vase, wireframe = false, cullBackFaces = false)
+    camera(pitch = 22.0, padding = 1.6)
+    background("#060807")
+}
+three(name = "studio", channel = "studio", width = 560, height = 420) {
     mesh(
         vase,
         wireframe = false,
@@ -268,9 +287,12 @@ three {
         material = ThreeSurfaceMaterial(roughness = 0.4f, metalness = 0.6f),
     )
     studio(groundY = -1.25)
+    camera(pitch = 22.0, padding = 1.6)
     background("#060807")
 }
 ```
+
+![The same vase plain and under studio(): the studio view adds a metallic highlight, a contact shadow and a dark ground](assets/three_output/studio.png)
 
 `studio()` switches off the reference grid and axis tripod. Ambient occlusion draws in a single
 view. A contact sheet and X-ray draw without it, and `studio(ambientOcclusion = false)` turns it off.
@@ -333,7 +355,7 @@ position.
 `ThreeCameraSpec` has the same fields as `MeshView` and `VisionGeometryPreview.Camera`, the
 CPU rasterizer's camera:
 
-- **`yawDegrees`** — orbit around `+y`. `0` looks straight down `−z`.
+- **`yawDegrees`** — orbit around `+y`. `0` looks straight down \( -z \).
 - **`pitchDegrees`** — lift above the horizon. Positive looks down on the geometry.
 - **`distance`** — in multiples of the bounding-sphere radius, so one spec frames a 2 cm mesh and a
   2 m one. The rasterizer uses it; the viewer zooms to fit instead.
@@ -495,7 +517,7 @@ lists them all, and what each is for:
 Two entries in that table are commonly misread:
 
 **`Box.lines(...)` draws in 2D.** Given a 3D FLine, it uses `x` and `y` for an orthographic view
-down `−z`, with no depth sorting or hidden-line removal. The `z` coordinate is retained for
+down \( -z \), with no depth sorting or hidden-line removal. The `z` coordinate is retained for
 picking, so a click can still report the 3D position. For perspective, project first with
 `FLine.byPerspectiveProjecting(...)` or use `threeLines`.
 

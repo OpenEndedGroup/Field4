@@ -1,0 +1,4 @@
+sample
+uv 3.0 * fbm palette
+0.025 ema
+tonemap

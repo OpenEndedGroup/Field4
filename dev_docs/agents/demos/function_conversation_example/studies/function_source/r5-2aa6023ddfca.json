@@ -1,5 +1,6 @@
 {
   "id" : "r5-2aa6023ddfca",
+  "migratedSourceSha256" : "180c6bbeccfebab721f4c5f0f9038d04e989bdbf1326f4a133c4574b29c7fb7e",
   "parent" : "r4-f7f9ef4f2f47",
   "description" : "Double selected e3 rise to 200 seconds with start pinned at 1425; keep 30-second hold, 100-second fall and Hz endpoints; no changes to other events or background.",
   "events" : [ {

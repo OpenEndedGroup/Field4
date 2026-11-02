@@ -419,7 +419,7 @@ input fbmd3 yzw normalize          # a surface normal from the noise field
 These words make noise whose phase you can turn, separately for each frequency. Use them when you
 need several fields that belong together: two eyes of a stereo pair, three colour channels, species
 of particles, or one field at two moments. Turn the phase of every frequency and the second field
-correlates with the first by `cos(2π·turns)`: `0` gives the same field, `0.25` an uncorrelated
+correlates with the first by \( \cos(2\pi\cdot\mathrm{turns}) \): `0` gives the same field, `0.25` an uncorrelated
 partner with the same character, and `0.5` its negative. Turn only the fine frequencies and the two
 fields share their large forms exactly while their detail differs.
 

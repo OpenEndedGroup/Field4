@@ -1,5 +1,6 @@
 {
   "id" : "r7-ebc54198e3ae",
+  "migratedSourceSha256" : "a64deb8e4decdf4a41d992e7804a889aac64551937c197ccfdada3ec802b1e69",
   "parent" : "r6-deb1b1738cb0",
   "description" : "Delete fourth interruption resolved as e4 only, exposing absolute-time background at 1985..2215; retain all other events including e3 timing and y lag, with r6 retained as parent.",
   "events" : [ {

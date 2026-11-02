@@ -143,7 +143,11 @@
 
 <div class="monaco-editor-container"></div>
 <div class="docs-iframe-container">
-    <button class="docs-iframe-back" type="button" onclick="exitDocsIframe()">←</button>
+    <button class="docs-iframe-back" type="button" onclick="exitDocsIframe()" title="Close documentation">✕</button>
+    <div class="docs-iframe-nav">
+        <button class="docs-iframe-nav-back" type="button" onclick="docsIframeGo(-1)" title="Back (⌘[ / Alt+←)" disabled>←</button>
+        <button class="docs-iframe-nav-forward" type="button" onclick="docsIframeGo(1)" title="Forward (⌘] / Alt+→)" disabled>→</button>
+    </div>
     <iframe id="docs-iframe" sandbox="allow-scripts allow-same-origin allow-forms" allow="clipboard-read; clipboard-write"></iframe>
 </div>
 <div class="history-iframe-container">

@@ -1,0 +1,22 @@
+name: frame_selected
+description: >
+  A scattered document for the "Framing the selection" figures on
+  `public/docs/moving_around_the_canvas.md`. `target` sits far to the right, where the code editor
+  will cover it, with an open output panel; the drive scripts open its editor and, in the second
+  figure, press alt-F.
+
+  Capture-only, so it lives under transcripts/docs_capture/.
+operations:
+  - create: { box: fs_a, name: sketch, frame: { x: 80.0, y: 90.0, w: 160.0, h: 60.0 } }
+  - create: { box: fs_b, name: mix, frame: { x: 320.0, y: 260.0, w: 160.0, h: 60.0 } }
+  - create: { box: fs_c, name: notes, frame: { x: 140.0, y: 460.0, w: 160.0, h: 60.0 } }
+  - create:
+      box: fs_target
+      name: target
+      frame: { x: 1500.0, y: 700.0, w: 200.0, h: 70.0 }
+      properties:
+        code: |
+          display("main", "<div style='width:340px;height:160px;padding:12px;color:#ddd;background:#1b2330'>the selected box's open output panel</div>")
+          displayOpen("main")
+  - launch: { box: fs_target }
+  - wait: { millis: 800 }

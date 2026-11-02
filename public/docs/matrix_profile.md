@@ -141,8 +141,42 @@ followed by a high left profile is a shape that is about to stop happening.
 `m` is the length of the shapes you are asking about, in samples. Too short and every wiggle has
 a twin; too long and a motif is diluted by whatever surrounds it. Start with the length of one
 occurrence of the thing you are looking for (a beat, a stride, a gesture), then try half and
-double. Distances run from 0 (identical shapes) to `2√m` (one is the other upside down), so
+double. Distances run from 0 (identical shapes) to \( 2\sqrt{m} \) (one is the other upside down), so
 compare distances only between profiles with the same `m`.
+
+The walk from [Motifs](#motifs) at half, once and twice the hidden wiggle's 60 samples:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/matrix_profile/choosing-m.png" alt="three panels of the same walk and its profile at m = 30, 60 and 120, each with its top motif shaded; at 30 and 60 the shading falls on the three planted wiggles, at 120 on five unrelated places" wait="1.5" capture="box" open-outputs="true" padding="0" name="mp-choosing-m" embed=true}
+import afield.math.matrixprofile.*
+
+// The walk from Motifs, with the same 60-sample wiggle hidden in it three times.
+val rnd = java.util.Random(4)
+var level = 0.0
+val series = 3000 {
+    level += rnd.nextGaussian() * 0.1
+    level
+}
+    .toMutableList()
+for (at in [500, 1400, 2500]) for (k in 0 until 60) series[at + k] += 2 * sin(2 * PI * k / 60)
+
+// Half, once and twice the wiggle's length, each with its top motif shaded.
+for (m in [30, 60, 120]) {
+    val mp = matrixProfile(series, m = m)
+    val motif = mp.motifs(1).first()
+    showSignals(
+        "series" to series,
+        "profile, m = $m" to mp.profile,
+        regions = motif.indices.map { SignalRegion("motif", it, it + m, "#8fff9a") },
+        title = "m = $m: motif at ${motif.indices}",
+        channel = "m = $m",
+        normalize = true,
+        width = 1000,
+        height = 240,
+    )
+}
+```
+
+At `m = 30` and `m = 60` the top motif is the three planted wiggles. At `m = 120` each window is half wiggle and half walk, and the top motif lands somewhere else.
 
 ## Comparing two signals
 
@@ -155,9 +189,59 @@ match from `a`, with `seed` giving where in `a` it came from.
 subsequence of a signal, computed with an FFT (Mueen's MASS algorithm). It is the way to ask
 "where else does *this* happen?" once you have a shape in hand.
 
+Below, `b` is the walk with a square step added at 1900 that `a` never makes, and the query is the wiggle at 500:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/matrix_profile/join-distance.png" alt="top: signal b and its join profile against a, zero everywhere except a spike around the added step at 1900, which is shaded; bottom: the walk and the distance profile of the wiggle at 500, whose only value below 1.0 is at 500" wait="1.5" capture="box" open-outputs="true" padding="0" name="mp-join-distance" embed=true}
+import afield.math.matrixprofile.*
+
+// The walk from Motifs, with the same 60-sample wiggle hidden in it three times.
+val rnd = java.util.Random(4)
+var level = 0.0
+val series = 3000 {
+    level += rnd.nextGaussian() * 0.1
+    level
+}
+    .toMutableList()
+for (at in [500, 1400, 2500]) for (k in 0 until 60) series[at + k] += 2 * sin(2 * PI * k / 60)
+
+// b is a's walk with a square step added at 1900 that a never makes.
+val b = series.toMutableList()
+for (k in 0 until 60) b[1900 + k] += if (k < 30) 2.0 else -2.0
+val join = matrixProfile(b, series, m = 60)
+val unusual = join.discords(1).first()
+showSignals(
+    "b" to b,
+    "join profile of b against a" to join.profile,
+    regions = [SignalRegion("only in b", unusual.index, unusual.index + 60, "#ff7a9e")],
+    title = "b against a: highest at ${unusual.index}",
+    channel = "join",
+    normalize = true,
+    width = 1000,
+    height = 300,
+)
+
+// Where else does the wiggle happen? The distance from one copy of it to every window of the walk.
+val query = DoubleArray(60) { series[500 + it] }
+val dp = distanceProfile(query, DoubleArray(series.size) { series[it] })
+val found =
+    dp.indices.filter { i -> dp[i] < 1.0 && (i == 0 || dp[i] <= dp[i - 1]) && (i == dp.size - 1 || dp[i] <= dp[i + 1]) }
+showSignals(
+    "series" to series,
+    "distanceProfile of the wiggle at 500" to dp.toList(),
+    regions = found.map { SignalRegion("match", it, it + 60, "#8fff9a") },
+    title = "distance below 1.0 at $found",
+    channel = "distance",
+    normalize = true,
+    width = 1000,
+    height = 300,
+)
+```
+
+The join profile is zero wherever `b` copies `a` and rises only over the step. The distance profile drops to zero at the query's own position.
+
 ## Big signals, and answers before the end
 
-The profile is exact. The cost is proportional to `n²`, where `n` is the length of the signal,
+The profile is exact. The cost is proportional to \( n^2 \), where `n` is the length of the signal,
 but with a small constant: each cell of the distance matrix is a few multiplications, updated
 along the matrix's diagonals (the SCAMP formulation), and the diagonals are shared across all
 cores. On a ten-core laptop a signal of 10 000 samples takes about 20 ms and one of 100 000 about 1.5 s.
@@ -165,8 +249,35 @@ cores. On a ten-core laptop a signal of 10 000 samples takes about 20 ms and one
 For a signal too long to wait for, `fraction` evaluates only that share of the diagonals, picked at
 random (the SCRIMP "anytime" idea):
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/matrix_profile/anytime.png" alt="four overlaid profiles of the walk at fraction 0.01, 0.05, 0.2 and 1.0; each lies on or above the next, and the exact profile is shaded at its motif and discord" wait="1.5" capture="box" open-outputs="true" padding="0" name="mp-anytime" embed=true}
+import afield.math.matrixprofile.*
+
+// The walk from Motifs, with the same 60-sample wiggle hidden in it three times.
+val rnd = java.util.Random(4)
+var level = 0.0
+val series = 3000 {
+    level += rnd.nextGaussian() * 0.1
+    level
+}
+    .toMutableList()
+for (at in [500, 1400, 2500]) for (k in 0 until 60) series[at + k] += 2 * sin(2 * PI * k / 60)
+
 val quick = matrixProfile(series, m = 60, fraction = 0.05)
+
+:::fold overlay four fractions
+// The anytime profile at four fractions of the diagonals, overlaid: it only comes down.
+val fractions = [0.01, 0.05, 0.2, 1.0]
+val profiles = fractions.map { f -> matrixProfile(series, m = 60, fraction = f, seed = 1) }
+val exact = profiles.last()
+showSignals(
+    *profiles.mapIndexed { i, p -> "fraction ${fractions[i]}" to p.profile }.toTypedArray(),
+    regions = exact.motifs(1).first().indices.map { SignalRegion("motif", it, it + 60, "#8fff9a") } +
+        SignalRegion("discord", exact.discords(1).first().index, exact.discords(1).first().index + 60, "#ff7a9e"),
+    title = "first motif index ${profiles.map { it.motifs(1).first().indices.first() }} · discord ${profiles.map { it.discords(1).first().index }}, fraction 0.01 to 1.0",
+    channel = "anytime",
+    width = 1000,
+    height = 360,
+)
 ```
 
 Every value of a partial profile is at least the exact value, so the profile can only come down as
@@ -244,7 +355,7 @@ answers it from two sets of examples.
 
 `contrastProfile(positive, negative, m)` takes two lists of signals. For each subsequence of the
 positives it subtracts the distance to its nearest neighbour among the positives from the distance
-to its nearest neighbour among the negatives, and divides by `√(2m)`. The higher the value, the closer
+to its nearest neighbour among the negatives, and divides by \( \sqrt{2m} \). The higher the value, the closer
 the shape's twin in the positives compared with anything like it in the negatives; near zero or
 below, the negatives have it too. The best of these
 shapes is what the paper calls a *plato*; `platos(count)` picks out the best `count` of them, each
@@ -302,7 +413,7 @@ subsequence that spans two examples is no subsequence at all.
 - A subsequence containing NaN has no neighbour: its distance is `+∞` (`NaN` in `profile`, so it
   plots as a gap) and its index is `-1`. Mark missing data with NaN rather than zero.
 - A perfectly flat subsequence has no shape to compare, so it counts as uncorrelated with
-  everything, at distance `√(2m)`. A signal that sits at a constant level for long stretches will
+  everything, at distance \( \sqrt{2m} \). A signal that sits at a constant level for long stretches will
   show a plateau in its profile there.
 - `m` must be at least 3 and no longer than the signal.
 - There is no streaming (append-one-sample) profile and no GPU evaluation, and `k` for the

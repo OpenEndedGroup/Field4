@@ -1275,7 +1275,7 @@ file Assimp reads), and `column(...)` or `tree(...)` lists its root node with it
 children, then its meshes, materials and animations. A `GltfModel` loaded for drawing browses as its
 meshes, each with its buffers, material, texture slots and transform.
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-gltf-browse.png" capture="box" open-outputs="true" wait="3.0" w="1300" embed=true name="gltf-browse" alt="Two output panels browsing a glTF scene loaded with GltfSupport.loadModel: a column browser listing the Assimp scene's root node, its meshes (1 entry), materials (2) and animations (0), and below it the same four entries as a collapsible tree"}
 import afield.graphics.scene.GltfSupport
 
 val scene = GltfSupport.loadModel("dev_docs/agents/fixtures/path_tracing/transforms.gltf")!!
@@ -1814,7 +1814,7 @@ To edit a take key by key, bake it into keyframe lanes with `bakeGesture(pad)`, 
 
 ### Recording a slider into keyframes
 
-A gesture records an XY pad take, kept on the pad, which you bake into keyframes afterwards with `bakeGesture`. `recordToggle` records a single control straight into a keyframe curve. In the presets example below, `recordToggle("size")` adds a **rec size** button. Press it, move the size slider, and press it again: what you played becomes a [keyframe curve](keyframe_editor.md) named `size`, opened under the panel. The take is thinned to the keys needed to stay within half a percent of the slider's range, so a slow sweep becomes a handful of keys you can edit, not a key per mouse event.
+A gesture records an XY pad take, kept on the pad, which you bake into keyframes afterwards with `bakeGesture`. `recordToggle` records a single control straight into a keyframe curve. In the presets example below, `recordToggle("size")` adds a **rec size** button. Press it, move the size slider, and press it again: what you played becomes a [keyframe curve](keyframe_editor.md) named `size`, opened under the panel. The take is thinned to the keys needed to stay within half a percent of the slider's range, so a three-second up-down-up sweep of 62 slider changes comes back as 35 keys you can edit, not one per mouse event.
 
 To play the curve back into the slider, read it in a `loop` and hand it to `playControl`:
 
@@ -1826,6 +1826,79 @@ loop {
     take.setTime(t)
     playControl("size", take, t, channel = "look")
 }
+```
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="box" capture-box="record_toggle" clip-at-end="true" video="assets/visualizers-record-toggle.mp4" fps="20" transcript="../../dev_docs/agents/transcripts/docs_capture/record_toggle.yaml" padding="8" wait="0" timeout="240" embed=true hidden=true name="record-toggle" alt="The presets panel. The pointer presses rec size, sweeps the size slider up, back down and up again while the blue circle grows and shrinks, presses rec size again, and a keyframe curve named size opens under the panel with its keys along the up-down-up sweep."}
+ui.waitForSelector(".field-slider-visual", 8000.0)
+ui.eval("document.body.classList.add('mode-no-editor'); return true")
+ui.pause(300)
+
+// Presses the panel button whose label contains `label`, with the real pointer.
+fun press(label: String) {
+    val c =
+        ui.eval(
+                """
+        const row = [...document.querySelectorAll('.field-button')].find(b => b.textContent.toLowerCase().includes('$label'));
+        if (!row) return 'missing';
+        // The row carries the label; the pressable part is the HOLD button inside it.
+        const b = row.querySelector('button') || row;
+        const r = b.getBoundingClientRect();
+        return [r.left + r.width / 2, r.top + r.height / 2].join(',');
+    """,
+            )
+            .toString()
+            .trim('"')
+    check(c != "missing") { "no '$label' button" }
+    val (x, y) = c.split(',').map { it.toDouble() }
+    ui.moveMouse(x, y, 6)
+    ui.mouseDown()
+    ui.pause(80)
+    ui.mouseUp()
+}
+
+fun point(fraction: Double): Pair<Double, Double> {
+    val c =
+        ui.eval(
+                """
+        const r = [...document.querySelectorAll('.field-slider-visual')].map(e => e.getBoundingClientRect()).find(r => r.width > 0);
+        return [r.left + r.width * $fraction, r.top + r.height / 2].join(',');
+    """,
+            )
+            .toString()
+            .trim('"')
+            .split(',')
+            .map { it.toDouble() }
+    return c[0] to c[1]
+}
+
+// Record one slow sweep of the size slider: up, back down, and up again.
+press("rec size")
+ui.pause(300)
+val start = point(0.33)
+val hit =
+    ui.eval(
+            "const e = document.elementFromPoint(${start.first}, ${start.second}); return [e?.tagName, e?.className?.baseVal || e?.className, !!e?.closest('.field-slider-visual'), window.innerWidth, window.innerHeight].join(' / ')",
+        )
+        .toString()
+check("true" in hit) { "slider start is covered at $start: $hit" }
+ui.moveMouse(start.first, start.second, 8)
+ui.mouseDown()
+for (step in 0..60) {
+    val f = 0.33 + 0.55 * kotlin.math.sin(step / 60.0 * 1.5 * Math.PI).let { it * it }
+    val p = point(f)
+    ui.moveMouse(p.first, p.second, 1)
+    ui.pause(40)
+}
+ui.mouseUp()
+ui.pause(200)
+press("rec size")
+ui.pause(4000)
+val after =
+    ui.eval(
+            "return [...document.querySelectorAll('.field-slider')].find(e => e.getBoundingClientRect().width > 0).dataset.value",
+        )
+        .toString()
+check(after.trim('"').toDouble() > 0.8) { "the sweep did not move size: $after" }
 ```
 
 `playControl` moves the slider and runs its callback, so the playback drives whatever the slider drives. `recordControl(label, channel)` is the same recording without the button: it returns a recording whose `stop()` writes the curve.
@@ -2070,6 +2143,42 @@ display(
         timeOffsetSeconds = 18.0,
     ),
 )
+```
+
+The two players below share `syncGroup = "two-players"`; the second holds the source from 1 s, so it is given `syncOffsetSeconds = 1.0`. Pressing play on the first moves both playheads, a second apart in local time:
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="box" capture-box="sync_group" video="assets/visualizers-sync-group.mp4" fps="12" transcript="../../dev_docs/agents/transcripts/docs_capture/sync_group.yaml" padding="8" wait="0" timeout="240" embed=true hidden=true name="sync-group" alt="Two audio players, source 0 to 4 s and excerpt from 1 s. Play is pressed on the source; gold playheads move across both waveforms together, the excerpt's reading one second less than the source's."}
+// Finds the source player's <audio> through the output iframes and returns its play button's page position.
+fun playButton(): Pair<Double, Double> {
+    val c =
+        ui.eval(
+                """
+        function find(doc, ox, oy) {
+            const a = doc.querySelector('audio');
+            if (a) { const r = a.getBoundingClientRect(); return [ox + r.left + 24, oy + r.top + r.height / 2]; }
+            for (const f of doc.querySelectorAll('iframe')) {
+                try { const r = f.getBoundingClientRect(); const hit = find(f.contentDocument, ox + r.left, oy + r.top); if (hit) return hit; } catch (e) {}
+            }
+            return null;
+        }
+        const hit = find(document, 0, 0);
+        return hit ? hit.join(',') : 'missing';
+    """,
+            )
+            .toString()
+            .trim('"')
+    check(c != "missing") { "no audio player in the outputs" }
+    val (x, y) = c.split(',').map { it.toDouble() }
+    return x to y
+}
+ui.pause(800)
+val (x, y) = playButton()
+ui.moveMouse(x, y, 8)
+ui.pause(200)
+ui.mouseDown()
+ui.pause(60)
+ui.mouseUp()
+ui.pause(3500)
 ```
 
 This synchronizes across separate `display(...)` output documents. Playback publishes a gold

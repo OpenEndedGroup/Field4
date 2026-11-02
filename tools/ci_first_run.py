@@ -17,6 +17,7 @@ import shutil
 import socket
 import ssl
 import subprocess
+import sys
 import tempfile
 import time
 import urllib.error
@@ -49,6 +50,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--timeout", type=int, default=1800)
     args = parser.parse_args()
+    # Windows runners default stdout to cp1252; the relayed launcher log is UTF-8.
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     root = Path(__file__).resolve().parent.parent
     with socket.socket() as probe:
         probe.bind(("127.0.0.1", 0))

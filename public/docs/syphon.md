@@ -1,4 +1,4 @@
-# Syphon: sharing frames with other applications
+# Syphon: sharing frames on macOS
 
 [Syphon](https://syphon.info) is how video applications on a Mac hand frames to each other without
 encoding them: Resolume, TouchDesigner, MadMapper, VDMX, Max, OBS (through its Syphon source) and
@@ -103,6 +103,28 @@ The [`syphon_bridge`](agent_transcripts.md#syphon_bridge) starting point has thr
 publishes an animated picture as "Field pattern", and one receives "Field pattern" back through
 Syphon and shows it, so you can see the whole round trip with nothing else installed. Change the
 name in the third box to receive another application.
+
+Here is the third box after a second of the round trip, showing the second box's picture as it
+came back through Syphon:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/syphon/round-trip.png" capture="box" capture-profile="macos-native" name="syphon-round-trip" macro-file="../../dev_docs/agents/transcripts/syphon_bridge.yaml" capture-box="syphon_receive" wait="2" timeout="180" open-outputs="true" padding="14" embed=true w="900" h="560" alt="An output panel labelled main holding the frame received from the Syphon server Field pattern: twelve rainbow-coloured rings on dark navy, arranged in a figure of eight, with the caption Field over Syphon and the publisher's frame count at the bottom left."}
+import afield.io.syphon.*
+
+// without the library this stops here and says how to build it
+check(Syphon.isAvailable) { Syphon.describe() }
+
+/*
+Match a server name, app name or UUID; "" takes the first announced server.
+This named client is shared across reruns; a closed client is recreated on lookup.
+Stop ends this receive loop while leaving the shared connection available.
+*/
+val inp = syphonClient("Field pattern")
+
+loop {
+    inp.png()?.let { display("main", it) }
+    delay(250)
+}
+```
 
 ??? aside "How this was checked"
     `SyphonTest` runs both directions against `field_syphon_probe`, a separate process built next to

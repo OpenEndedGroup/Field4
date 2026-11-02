@@ -567,6 +567,7 @@ object SoundPathMap {
                 "src/jvmMain/kotlin/afield/audio/synth/SoundRenderPathDocs.kt" to "dirt-samples",
                 "src/jvmMain/kotlin/afield/audio/synth/BooleanNetworkSoundDocs.kt" to "dirt-samples",
                 "src/jvmMain/kotlin/afield/audio/synth/PetriSparksDocs.kt" to "dirt-samples",
+                "src/jvmMain/kotlin/afield/audio/synth/PetriSoundDocs.kt" to "dirt-samples",
                 "src/jvmMain/kotlin/afield/audio/synth/FaustPolySoundDocs.kt" to "faust-poly",
                 // The *mono source* pat-spatial hands Steam Audio, which needs no uncommitted binary.
                 "src/jvmMain/kotlin/afield/audio/synth/PatSpatialSoundDocs.kt" to "pat-spatial",

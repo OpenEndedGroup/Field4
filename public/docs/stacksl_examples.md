@@ -506,6 +506,11 @@ uv fbm
 palette
 ```
 
+<p>
+<img src="../assets/stacksl/stacksl-fbm-palette.png" alt="The default palette: an fbm field in blues, browns and cream" style="width:32%;max-width:240px;border-radius:6px;">
+<img src="../assets/stacksl/stacksl-full-palette.png" alt="The full five-vector palette: the same kind of field in muted purples and browns" style="width:32%;max-width:240px;border-radius:6px;">
+</p>
+
 ## Reusable StackSL definitions
 
 Definitions are written with `: name ... ;`. Inside StackSL, a definition behaves like a word that consumes one `vec4` and pushes one `vec4`. In GLSL, it becomes `prefix_name(vec4 prefix_in)`.
@@ -591,6 +596,10 @@ ema
 saturate
 ```
 
+<p>
+<video src="../assets/stacksl/stacksl-pingpong-ema.mp4" poster="../assets/stacksl/stacksl-pingpong-ema.png" autoplay loop muted playsinline aria-label="The explicit-ema program in the ping-pong harness: a drifting fbm field whose changes lag behind as soft blurred trails" style="width:48%;max-width:320px;border-radius:6px;"></video>
+</p>
+
 Relative sampling uses the top stack value as an offset:
 
 ```diffstatic {data-lang=stacksl}
@@ -655,6 +664,11 @@ uv 3.0 * fbm palette
 tonemap
 ```
 
+<p>
+<video src="../assets/stacksl/stacksl-ema-diff.mp4" poster="../assets/stacksl/stacksl-ema-diff.png" autoplay loop muted playsinline aria-label="ema-diff in the ping-pong harness: a pale washed field where the frame changes against its running average" style="width:48%;max-width:320px;border-radius:6px;"></video>
+<video src="../assets/stacksl/stacksl-soft-trail.mp4" poster="../assets/stacksl/stacksl-soft-trail.png" autoplay loop muted playsinline aria-label="The softer trail: an fbm palette field settling slowly through a 0.025 ema" style="width:48%;max-width:320px;border-radius:6px;"></video>
+</p>
+
 ## Pulses, rings, and FM
 
 `pulse` can be used as `x pulse`, defaulting center and width:
@@ -671,7 +685,7 @@ With explicit `x center width`:
 
 ```diffstatic {data-lang=stacksl}
 p length
-time sin 0.25 * 0.5 +
+time sin 0.15 * 0.3 +
 0.035
 pulse
 palette
@@ -694,6 +708,14 @@ uv y tau * 3.0 *
 fm
 palette
 ```
+
+<p>
+<img src="../assets/stacksl/stacksl-pulse-default.png" alt="p length pulse: a white ring on black" style="width:32%;max-width:240px;border-radius:6px;">
+<video src="../assets/stacksl/stacksl-pulse-explicit.mp4" poster="../assets/stacksl/stacksl-pulse-explicit.png" autoplay loop muted playsinline aria-label="Explicit pulse: a thin blue and white ring on cream whose radius swings in and out with time" style="width:32%;max-width:240px;border-radius:6px;"></video>
+<img src="../assets/stacksl/stacksl-fm-palette.png" alt="Short-form fm: flowing horizontal bands in cream, blue and brown" style="width:32%;max-width:240px;border-radius:6px;">
+<img src="../assets/stacksl/stacksl-fm-explicit.png" alt="Explicit fm: a cyan and magenta plaid" style="width:32%;max-width:240px;border-radius:6px;">
+</p>
+
 
 ## Modifiers, ranges, and memories
 
@@ -839,6 +861,16 @@ uv fbm palette
 0.35
 saturation
 ```
+
+<p>
+<img src="../assets/stacksl/stacksl-grade-base.png" alt="The base uv fbm palette field" style="width:32%;max-width:240px;border-radius:6px;">
+<img src="../assets/stacksl/stacksl-grade-oneword.png" alt="The one-word chain: saturation contrast grade tonemap flattens it to a soft grey" style="width:32%;max-width:240px;border-radius:6px;">
+<img src="../assets/stacksl/stacksl-saturation-low.png" alt="0.35 saturation: the base field nearly desaturated" style="width:32%;max-width:240px;border-radius:6px;">
+</p>
+
+<p>
+<img src="../assets/stacksl/stacksl-grade-fields.png" alt="Explicit lift, gain and gamma grade on a finer fbm field" style="width:32%;max-width:240px;border-radius:6px;">
+</p>
 
 ## Color spaces
 

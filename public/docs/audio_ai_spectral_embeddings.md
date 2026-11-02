@@ -259,5 +259,45 @@ geometry have no stable meaning. Either algorithm can use any of the distances a
 mel Wasserstein, which is the integral of the absolute difference between two cumulative mel distributions, on a shared
 0–1 mel-bin axis.
 
+The same ten seconds, pooled at 200 ms with a 40 ms hop, compared by log-mel cosine and laid out
+both ways. MDS on top keeps most of the trajectory in one dense knot with a few long excursions;
+t-SNE below spreads the same frames into separate loops:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/audio_ai_spectral_embeddings/mds_vs_tsne.png" capture="box" open-outputs="true" wait="4" padding="16" timeout="180" w="1120" h="1100" embed=true name="spectral-mds-vs-tsne" alt="two dashboards of the same 250 log-mel cosine frames: the MDS projection on top, a dense tangle with long straight excursions, and the t-SNE projection below, the same trajectory opened into rounded loops; each has an energy, flux and centroid strip beneath"}
+import java.io.File
+
+val json = FieldAudioClient.json
+val folder = File("public/docs/assets/audio_ai_spectral_embeddings")
+val preview = json.decodeFromString<AnalysisPreview>(File(folder, "result-preview.json").readText())
+val frames = decodeSpectralEmbeddingMessagePack(
+    File(folder, "frames.msgpack").readBytes(),
+    maxFrames = 600,
+    durationSeconds = 10.0,
+    poolMillis = 200.0,
+    hopMillis = 40.0,
+)
+// The same frames and the same distance, laid out two ways.
+val distance = SpectralEmbeddingDistance.LOG_MEL_COSINE
+display(
+    "mds and t-sne",
+    spectralEmbeddingPreviewDashboardHtml(
+        [
+            preview.withSpectralProjection(frames.mds(dimensions = 4, distance = distance)),
+            preview.withSpectralProjection(
+                frames.tsne(
+                    dimensions = 4,
+                    distance = distance,
+                    perplexity = 30.0,
+                    maxIterations = 750,
+                    seed = 184921L,
+                ),
+            ),
+        ],
+        width = 1040,
+        phaseHeight = 210,
+    ),
+)
+```
+
 See also: [Audio AI analysis](audio_ai_analysis.md) for beats and pitch, and
 [Visualizers](visualizers.md#short-time-spectral-phase-portraits) for how the panels share a cursor.

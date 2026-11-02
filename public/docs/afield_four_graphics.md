@@ -12,13 +12,15 @@ Launch the **window** box first, then the lesson you want to explore. The bundle
 original stays unchanged, and opening it again makes another fresh copy.
 
 
-`Field 4` is Field's direct Vulkan path. A graphics box usually has three parts:
+`Field 4` is Field's direct Vulkan path. Vulkan is a powerful, low-level graphics API that is notorious for how hard it is to write code for. Field turns it into something that is pleasant to hack on in real time. But [p5.js](https://p5js.org) it ain't.
+
+A graphics box usually has three parts:
 
 - Kotlin code that creates modules, meshes, buffers, cameras, textures, and renderer connections.
 - Shader properties: properties of the box, such as `vertex`, `fragment`, `compute`, or `vertex_fragment`, that hold GLSL code. You switch the code editor to one of them and edit it like the box's Kotlin.
 - Reflected accessors that Field generates by reading the shader interface. Field compiles the shaders, reads which inputs, buffers, uniforms and push constants they declare, and gives the box Kotlin properties with the same names, so you never write binding numbers or byte offsets by hand.
 
-In any graphics engine, the GLSL view of how to talk to the GPU and the Kotlin view of it have to match. In Field the GLSL drives that conversation, and the Kotlin side follows it. If a vertex shader declares `layout(location = 0) in vec3 pos`, the Kotlin side can write `pos.add(...)` inside `m.set { ... }`. If a shader declares a push constant member named `vertexData`, the Kotlin side can assign `m.vertexData = { vertexData }`. A shader is both the code that runs on the GPU and the contract that shapes the Kotlin API for its box.
+In any graphics engine, the low-level view that the GPU has of the data and the high-level CPU view of it have to match. In Field the low-level view is written in GLSL (or [Slang](#slang)), and the high-level view in Kotlin (or another of Field's languages). The GLSL drives that conversation, and the Kotlin side follows it. If a vertex shader declares `layout(location = 0) in vec3 pos`, the Kotlin side can write `pos.add(...)` inside `m.set { ... }`. If a shader declares a push constant member named `vertexData`, the Kotlin side can assign `m.vertexData = { vertexData }`. A shader is both the code that runs on the GPU and the contract that shapes the Kotlin API for its box.
 
 <iframe
   src="offline.html?file=assets/canonical_graphics/metadata.edn"
@@ -340,9 +342,9 @@ Re-running the box replaces the controls rather than adding a second set, becaus
 
 ## Compute shader
 
-Compute modules use the same box model, but instead of drawing vertices they dispatch workgroups: groups of GPU threads that run the same shader together. This example writes an input buffer, dispatches a `ComputeMesh`, reads the output buffer, and prints a trace. It does not draw to the graphics window, so there is no screenshot for this section.
+Compute modules use the same box model, but instead of drawing vertices they dispatch workgroups: groups of GPU threads that run the same shader together. This example writes an input buffer, dispatches a `ComputeMesh`, reads the output buffer back every frame, and shows the first ten floats in the box's `trace` output channel. Nothing is drawn to the graphics window; the trace is the result:
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/03-compute-trace.png" alt="the box's trace output channel holding one line, the frame counter followed by the first ten floats of the output buffer: 3.0 13.0 26.0 39.0 56.0 44.0 81.0 95.0 109.0 75.0" capture="box" graphics-context=true execution="launch" open-outputs="true" wait-output="true" wait-output-kind="display" wait="2" w="400" h="60" x="24" y="180" timeout="120" embed=true name="four-compute-trace" source-box="assets/canonical_graphics/8b8d3306-5c31-49aa-ab27-659a992ebd09" source-box-properties="compute" source-box-wait="0.1"}
 var numVec4 = 16
 
 var module = computeModuleHere {
@@ -376,7 +378,7 @@ frames {
             var s = "${fr}:: "
             this.clear()
             for (n in 0 until 10) s += this.get(n).toString() + " "
-            print(s)
+            display("trace", s)
         }
 
         fr++
@@ -688,7 +690,11 @@ var kc by keyCamera(camera = camera)
 m.set(4, 2) {
     val z = 0.0
 
-    pos.add(0, 0, 0 + z, 1.0, 0.1, z, 1, 1, z, 0, 1, z)
+    // four corners of the unit square, and the texture coordinate at each
+    pos.add(0, 0, z)
+    pos.add(1, 0, z)
+    pos.add(1, 1, z)
+    pos.add(0, 1, z)
     tc.add(0, 0, 1, 0, 1, 1, 0, 1)
 
     tri.add(0, 1, 2)
@@ -709,8 +715,14 @@ layout(set = 0, binding = 0) uniform sampler2D ta[3];
 
 void main()
 {
-    vec4 c = texture(ta[0], ftc.yx);
-    uFragColor = vec4(c.rgb/1.0, 1.0);
+    // Each third of the quad, left to right, shows one entry of the array. Every entry is sampled and the
+    // result chosen afterwards, so the array index stays a constant.
+    // ftc.yx swaps the texture coordinates, which transposes the image on the quad.
+    vec4 c0 = texture(ta[0], ftc.yx);
+    vec4 c1 = texture(ta[1], ftc.yx);
+    vec4 c2 = texture(ta[2], ftc.yx);
+    vec4 c = ftc.x < 1.0 / 3.0 ? c0 : (ftc.x < 2.0 / 3.0 ? c1 : c2);
+    uFragColor = vec4(c.rgb, 1.0);
 }
 ```
 
@@ -836,7 +848,10 @@ prop<RenderToTexture>(target) = RenderToTexture {
 
 renderer.renderList += "target" to target
 
-var module = moduleHere {}
+var module = moduleHere {
+    // Match the module's pipeline (colour format, depth) to the target it draws into.
+    +target
+}
 var m = Mesh()
 
 module += "mainMesh" to m
@@ -845,7 +860,6 @@ target += "boo" to module
 val camera = Camera()
 m.p = camera.p
 m.m = camera.m
-m.finalColor = { vec(Math.random(), Math.random(), Math.random(), 1.0) }
 
 // we can set this live and after the fact
 target.parameters.clearFirst = true
@@ -874,6 +888,7 @@ module += "mainMesh" to mesh
 renderer += "boo" to module
 
 val camera = Camera()
+camera.at = vec(0, 0, -1.2)
 mesh.p = camera.p
 mesh.m = camera.m
 
@@ -901,6 +916,10 @@ void main()
     vec4 c = texture(bbc, ftc.yx);
     uFragColor = vec4(c.rgb, 1.0);
 }
+```
+
+```diffstatic_runner {data-lang=kotlin capture="native-window" capture-box="lesson_rtt_0" transcript="dev_docs/agents/transcripts/docs_capture/lesson_rtt.yaml" screenshot="assets/afield_four_graphics/05-rtt.png" wait="6" timeout="240" native-wait-frames="4" trim-native=true embed=true hidden=true name="four-rtt" alt="the window showing the consumer's quad, which fills it: black where the offscreen target was cleared, with the producer's one large white triangle sampled from the target as a wedge across the middle, transposed by the shader's ftc.yx"}
+// The transcript builds window, 5. RTT and 5. draw rtt from the canonical_graphics sidecars.
 ```
 
 Compare that with the texturing fragment shader: it is the same shader. From the consumer's side there is no difference between sampling a file loaded from disk and sampling the output of another box. Two boxes and one renamed property are the smallest complete statement of how `Field 4` composes.
@@ -1320,8 +1339,8 @@ Two things are required. `#extension GL_EXT_debug_printf : enable` has to be the
 
 The other debugging tool goes the other way: instead of printing text, it samples a value out of a running shader and draws it. `fieldProbeHere()` creates the probe and `{% property "fieldProbe" %}` brings the shader side in:
 
-```diffstatic {data-lang=kotlin}
-prop<LoadedTexture>(bbc) = LoadedTexture("bbc.jpg")
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/06-texture-probe.png" alt="the probe card in the box's output area: 600 calls, all finite and in range, then a vec3 table of each post-projection component. x runs from -0.4482 to 0.4482 and y from -0.7301 to 0.7301, both centred on zero, while z sits between 0.9988 and 1.0000, so every vertex lands at the far end of the depth range" capture="box" graphics-context=true open-outputs="true" wait-output="true" wait-output-kind="display" wait="2" w="400" h="60" x="24" y="180" timeout="120" embed=true name="four-texture-probe" source-box="assets/canonical_graphics/e1d6dd17-1ebd-40e7-a0ef-309779c562ff" source-box-properties="vertex,fragment" source-box-wait="0.1"}
+prop<LoadedTexture>(bbc) = LoadedTexture("public/docs/assets/afield_four_graphics/docs-checker-texture.png")
 bbc.transferNow()
 
 var module = moduleHere {}
@@ -1333,6 +1352,8 @@ module += "mainMesh" to m
 renderer += "boo" to module
 
 val camera = Camera()
+camera.at = vec(0.5, 0.5, -0.8)
+camera.target = vec(0.5, 0.5, 0)
 m.p = camera.p
 m.m = camera.m
 

@@ -124,7 +124,7 @@ operations:
   - create:
       box: marf_path
       name: two readers as two coordinates
-      frame: { x: 440.0, y: 60.0, w: 340.0, h: 136.0 }
+      frame: { x: 2000.0, y: 60.0, w: 340.0, h: 136.0 }
       properties:
         code: |
           // Two readers of one bank as two coordinates. The path stays coherent without the
@@ -158,7 +158,7 @@ operations:
   - create:
       box: marf_vector
       name: one Vector3f reader, three components
-      frame: { x: 60.0, y: 226.0, w: 340.0, h: 136.0 }
+      frame: { x: 60.0, y: 1500.0, w: 340.0, h: 136.0 }
       properties:
         code: |
           // A stage's value need not be a number. One Vector3f reader, drawn as its three components:
@@ -235,7 +235,7 @@ operations:
   - create:
       box: marf_sound
       name: the same bank, heard
-      frame: { x: 440.0, y: 226.0, w: 340.0, h: 136.0 }
+      frame: { x: 2000.0, y: 1500.0, w: 340.0, h: 136.0 }
       properties:
         code: |
           /*

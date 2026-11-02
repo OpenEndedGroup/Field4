@@ -1162,6 +1162,19 @@ the rest. The two pattern words push events instead, for `pat` to lay out one co
 ;
 ```
 
+<video src="../assets/rectsl/rectsl-kolakoski.mp4" poster="../assets/rectsl/rectsl-kolakoski.png"
+       autoplay loop muted playsinline aria-label="Sixteen slots of which eight stay lit, an amber square stepping through the run reading and a red square through the gap reading"
+       style="width:100%;max-width:640px;border-radius:8px;">
+</video>
+
+The same program with `steps` turned up to 32 (slots and squares made narrower to fit). The figure
+grows rather than redistributing: its first sixteen steps are still `x..xx.x..x..xx.x`.
+
+<video src="../assets/rectsl/rectsl-kolakoski-32.mp4" poster="../assets/rectsl/rectsl-kolakoski-32.png"
+       autoplay loop muted playsinline aria-label="The same three rows at 32 steps: the first sixteen slots light exactly as in the 16-step version"
+       style="width:100%;max-width:640px;border-radius:8px;">
+</video>
+
 ## Data visualization
 
 Dense data is an explicit target for RectSL. Three pieces compose it: a **colormap**
@@ -1191,6 +1204,11 @@ draw a colour bar, which is how you actually *see* a colormap:
 ;
 ```
 
+<video src="../assets/rectsl/rectsl-colormap-legend.mp4" poster="../assets/rectsl/rectsl-colormap-legend.png"
+       autoplay loop muted playsinline aria-label="A 24-swatch viridis colour bar from dark purple to yellow"
+       style="width:100%;max-width:640px;border-radius:8px;">
+</video>
+
 ### Bar chart from data
 
 `data` collects the numbers a quote leaves; `bars` normalizes them by their own extent
@@ -1208,6 +1226,11 @@ through `each` plus `->stagger-time` gives a staggered fade-in:
   0.07 ->stagger-time
 ```
 
+<video src="../assets/rectsl/rectsl-bar-chart.mp4" poster="../assets/rectsl/rectsl-bar-chart.png"
+       autoplay loop muted playsinline aria-label="Ten magma bars fading in one after another"
+       style="width:100%;max-width:640px;border-radius:8px;">
+</video>
+
 ### Heatmap of a computed field
 
 `linspace` lays down evenly spaced samples; `data-map` runs each value through a quote
@@ -1224,6 +1247,11 @@ through `each` plus `->stagger-time` gives a staggered fade-in:
   0.03 ->stagger-time
 ```
 
+<video src="../assets/rectsl/rectsl-heatmap-field.mp4" poster="../assets/rectsl/rectsl-heatmap-field.png"
+       autoplay loop muted playsinline aria-label="An eight by six turbo heatmap of a sine field fading in cell by cell"
+       style="width:100%;max-width:640px;border-radius:8px;">
+</video>
+
 `heatmap` is an alias for `heat`.
 
 ### Scatter plot
@@ -1238,6 +1266,11 @@ through `each` plus `->stagger-time` gives a staggered fade-in:
 
 0 1 40 linspace  dup  '( 7 * sin ) data-map  "plasma" scatter
 ```
+
+<video src="../assets/rectsl/rectsl-scatter-plot.mp4" poster="../assets/rectsl/rectsl-scatter-plot.png"
+       autoplay loop muted playsinline aria-label="Forty plasma-coloured points tracing a sine across the wall"
+       style="width:100%;max-width:640px;border-radius:8px;">
+</video>
 
 ### Reading a Data value
 
@@ -1292,6 +1325,11 @@ axes
 5 "turbo" legend
 ```
 
+<video src="../assets/rectsl/rectsl-plotted-figure.mp4" poster="../assets/rectsl/rectsl-plotted-figure.png"
+       autoplay loop muted playsinline aria-label="A viridis area, a plasma line and turbo points overlaid in one domain, with axes, rect numerals, a colour bar and a swatch legend"
+       style="width:100%;max-width:640px;border-radius:8px;">
+</video>
+
 You can set the axes by hand instead of `->frame`/`->domain`: `->xdomain`/`->ydomain` set one axis
 each, and `->margins` reserves the frame explicitly (left/right/bottom/top as wall fractions).
 `plot` is an alias for `line`:
@@ -1308,6 +1346,11 @@ each, and `->margins` reserves the frame explicitly (left/right/bottom/top as wa
 axes
 0 6 30 linspace  dup '( sin 1 + 2 / ) data-map  "turbo" plot
 ```
+
+<video src="../assets/rectsl/rectsl-plotted-hand-axes.mp4" poster="../assets/rectsl/rectsl-plotted-hand-axes.png"
+       autoplay loop muted playsinline aria-label="A turbo-coloured sine plotted from 0 to 6 against hand-set axes with rect-drawn numerals"
+       style="width:100%;max-width:640px;border-radius:8px;">
+</video>
 
 ## Rendered gallery — more examples
 

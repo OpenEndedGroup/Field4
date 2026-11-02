@@ -431,6 +431,42 @@ tools.save(file) // every bristle's paint, the knife's bead, the rag's faces
 val again = PaintToolbox.load(file) // carries on exactly as the tools would have
 ```
 
+Here the sky brush paints once clean, is dragged through a wet band of earth, and the toolbox is
+saved. Topped up with blue without wiping, the brush paints a greyer second stroke; the same brush
+loaded back from the file paints the third, just as grey:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/dirty.png" alt="four horizontal hog-flat strokes on cream. The top is a clean mid blue. The bottom is a band of brown earth with a streak dragged along it by the blue brush. Between them, two blue strokes dulled to grey-violet by the earth the brush carried, one from the brush itself and one from the same brush loaded back from a saved toolbox, matching each other" wait="10" capture="box" open-outputs="true" padding="20" requires="paint" name="dirty-brush" embed=true}
+:::static
+val canvas = PaintCanvas(900, aspect = 1.6, groundColor = rgb(0.97, 0.96, 0.92))
+val tools = PaintToolbox()
+tools["sky"] = canvas.brush(BrushKind.HogFlat, 45.0)
+tools["earth"] = canvas.brush(BrushKind.HogFlat, 70.0)
+
+// A wet band of earth along the bottom.
+tools.brush("earth").load(rgb(0.45, 0.28, 0.12))
+canvas.stroke(FLine().moveTo(60, 500).lineTo(940, 500), tools.brush("earth"))
+
+// The clean sky brush: its first stroke, then dragged along through the wet earth.
+tools.brush("sky").load(rgb(0.45, 0.55, 0.75))
+canvas.stroke(FLine().moveTo(60, 90).lineTo(940, 90), tools.brush("sky"))
+canvas.stroke(FLine().moveTo(300, 480).lineTo(700, 520), tools.brush("sky"))
+
+// Keep the toolbox as it is now, dirty brush and all.
+val file = java.io.File.createTempFile("toolbox", ".bin")
+tools.save(file)
+
+// Topped up with the same blue without wiping, the brush paints a dirtier horizon.
+tools.brush("sky").load(rgb(0.45, 0.55, 0.75), amount = 0.5, wipe = 0.0)
+canvas.stroke(FLine().moveTo(60, 230).lineTo(940, 230), tools.brush("sky"))
+
+// The saved toolbox, loaded and topped up the same way, paints the same dirty stroke.
+val again = PaintToolbox.load(file)
+again.brush("sky").load(rgb(0.45, 0.55, 0.75), amount = 0.5, wipe = 0.0)
+canvas.stroke(FLine().moveTo(60, 360).lineTo(940, 360), again.brush("sky"))
+
+display("main", canvas.png())
+```
+
 `canvas.carried(brush)` reports the colour and volume of the paint in a brush, and
 `tools.describe(canvas)` says the same for every tool. Each tool also snapshots on its own:
 `brush.state()` and `PaintBrush.restore(state)`. [AI4 paints](ai4_painting.md) keeps its painter's
@@ -480,6 +516,44 @@ Looking at it, and keeping it:
 
 A canvas and its brushes hold native memory. It is freed when they are garbage-collected, or straight
 away with `close()` (both are `AutoCloseable`, so `use { }` works).
+
+
+The same thin blue stroke and stiff orange one on each ground, then one oil-ground canvas under the four views:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_canvas/grounds.png" alt="six small canvases, each with a thin blue stroke above a stiff orange one: Bare is flat cream; Oil is warm red-brown with a faint weave that dulls the thin blue; OilRedGround is pale and knifed; Linen is a fine pale weave; RawCotton and RawLinen are bare cloth, the linen a darker khaki the thin blue sinks into. Below, the oil canvas four ways: render, render wet, PaintLight.Raking with the weave and the orange ridges in relief, and PaintLight.Gallery" wait="10" capture="box" open-outputs="true" padding="20" requires="paint" name="grounds" embed=true}
+:::static
+// One thin stroke and one impasto stroke, painted the same way on each ground.
+fun paintOn(ground: PaintGround): PaintCanvas {
+    val canvas = PaintCanvas(360, aspect = 1.4, ground = ground, groundColor = rgb(0.95, 0.94, 0.9), sizeMm = 200.0)
+    val brush = canvas.brush(BrushKind.HogFlat, width = 90.0)
+    brush.load(rgb(0.15, 0.3, 0.6), amount = 0.3, turps = 0.6)
+    canvas.stroke(FLine().moveTo(80, 230).cubicTo(330, 150, 630, 330, 920, 230), brush)
+    brush.load(rgb(0.9, 0.55, 0.15), stiff = 0.95, amount = 1.0)
+    canvas.stroke(FLine().moveTo(80, 520).cubicTo(330, 440, 630, 620, 920, 520), brush, pressure = 0.9..0.6)
+    return canvas
+}
+
+fun cell(label: String, png: ByteArray) =
+    "<figure style='margin:0'><img width='300' src='data:image/png;base64,${java.util.Base64.getEncoder().encodeToString(png)}'/>" +
+        "<figcaption style='font:12px monospace;color:#ccc'>$label</figcaption></figure>"
+fun grid(cells: List<String>) = "<div style='display:grid;grid-template-columns:repeat(3,300px);gap:10px'>${cells.joinToString("")}</div>"
+
+display("grounds", grid(PaintGround.entries.map { cell(it.name, paintOn(it).png()) }))
+
+// One canvas, four ways of looking at it.
+val oil = paintOn(PaintGround.Oil)
+display(
+    "views",
+    grid(
+        [
+            cell("render()", oil.png(relief = 0.0)),
+            cell("render(wet = true)", oil.png(relief = 0.0, wet = true)),
+            cell("PaintLight.Raking", oil.png(light = PaintLight.Raking)),
+            cell("PaintLight.Gallery", oil.png(light = PaintLight.Gallery)),
+        ],
+    ),
+)
+```
 
 ## Building the library
 

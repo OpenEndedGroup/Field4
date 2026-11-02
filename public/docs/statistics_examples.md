@@ -84,7 +84,7 @@ markdown("read this off the card", "{muted:$note}", width = 620)
 Each label on the card names its convention: `stddev (n−1)` and `variance (n−1)` are the
 **sample** forms, `skew (pop.)` and `kurtosis(ex, pop.)` the **population** forms, with no bias
 correction. If you are comparing against another tool, the mapping onto NumPy and SciPy is exact: `q1`/`median`/`q3` are
-`numpy.percentile`'s default linear interpolation, `mad` is `median(|y − median(y)|)` unscaled,
+`numpy.percentile`'s default linear interpolation, `mad` is \( \operatorname{median}(\lvert y - \operatorname{median}(y) \rvert) \) unscaled,
 `sampleStdDev` is `numpy.std(ddof=1)`, and `skewness`/`kurtosisExcess` are `scipy.stats.skew` and
 `scipy.stats.kurtosis` at their *default* `bias=True`. `StatsSummaryTest` pins that mapping to ten
 decimal places against SciPy 1.15.2 on a tie-heavy ten-point sample.
@@ -190,7 +190,7 @@ skewed signal Freedman–Diaconis is the finest at 0.2162 and it decides. On the
 comes out at **1.0065** and Scott at **0.9077** (both much coarser) because both are driven by
 global spread, and here the spread is the *distance between* the modes (IQR 3.99, sample sd 2.06)
 rather than the spread within them (0.4). Which leaves **Sturges** winning at 0.6329, and Sturges is
-the one rule of the three that looks at nothing but n: `ceil(log₂ n + 1)` is 10 bins for *any*
+the one rule of the three that looks at nothing but n: \( \lceil \log_2 n + 1 \rceil \) is 10 bins for *any*
 500-point sample whatever its shape. So a multi-modal signal falls back to the crudest of the three
 estimates and its two obvious modes get about one bin each. `buildHistogram` takes no bin-count
 argument (`stats.kt:1214#There is no bin-count parameter`), so if you need finer bins for a signal
@@ -294,7 +294,7 @@ Pearson limitation *after* the ranking.
 **Chatterjee's xi answers "is `y` a function of `x`", and it is the only asymmetric coefficient
 here.** It reads 0.985 on the parabola and 0.955 on the sine, the two cases the rank coefficients
 miss entirely. Swap the arguments and it changes its mind: `xi(x, parabola) = 0.985` but
-`xi(parabola, x) = 0.246`, because `x` genuinely is *not* a function of `x²` — each `y` has two
+`xi(parabola, x) = 0.246`, because `x` genuinely is *not* a function of \( x^2 \) — each `y` has two
 possible `x`. Cheap, too: O(n log n) against the O(n²) of `kendallTauB` and `distanceCorrelation`.
 
 **Distance correlation answers "is there any dependence at all".** It is the only entry in the
@@ -320,7 +320,7 @@ measures to describe what you found.
     is deterministic, reproducible, and invariant to the order you hand the pairs over in.
 
     Two consequences. A **constant predictor reads 0**: for a single tie group the numerator's
-    expectation is `(n²−1)/3` against a denominator of `n(n²−1)/3`, so the closed form is exactly
+    expectation is \( (n^2-1)/3 \) against a denominator of \( n(n^2-1)/3 \), so the closed form is exactly
     zero for every `n`. In `Double` it is zero to within one ulp rather than bit-exact, so compare
     it against a tolerance, not against `0.0`; [`dev_docs/STATISTICS_MEASUREMENTS.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/STATISTICS_MEASUREMENTS.md) has the sweep
     that bound comes from. And a quantised predictor (a bucketed index, an integer
@@ -448,11 +448,11 @@ Read the verdict line. The observed 0.1934 is beyond every one of 400 random re-
 even though `pearson` reads −0.002. And in the same run xi reads 0.0263 against its own null's 95th
 percentile of 0.0520, with **76 / 400** re-pairings doing at least as well: this run does not give strong evidence from xi.
 
-The second figure gives you the shortcut for next time. Plotted against `1/√n` rather than `n`, the
+The second figure gives you the shortcut for next time. Plotted against \( 1/\sqrt{n} \) rather than `n`, the
 measured 95th percentile falls on a **straight line through the origin**, and the line's slope is
 about 2.5. Read the measured-against-predicted pairs off the bottom of the figure: 0.335/0.354 at
 n = 50 through 0.123/0.125 at n = 400, with the rule erring safely high at n = 25 (0.466 measured
-against 0.500 predicted). For these independent Gaussian samples, `2.5/√n` is a useful rough reference, not a universal
+against 0.500 predicted). For these independent Gaussian samples, \( 2.5/\sqrt{n} \) is a useful rough reference, not a universal
 significance threshold. Measure the null for your own data. Note what the example means
 for short signals. At n = 50 the threshold is around 0.34, so anything short of a strong
 relationship is invisible; distance correlation needs a few hundred samples before it can see a
@@ -686,7 +686,7 @@ measured on the disjoint `held`. Skewness goes from **11.68** to **0.0074**, exc
 **254.8** to **−0.170**, mean to −0.0024 and standard deviation to 1.0096. Eight knots and a PCHIP
 is enough to turn a log-normal into something you can treat as normal, and the first figure says how
 much is lost doing it: over the 2nd-to-98th percentile the 8-knot curve is within **0.047** of the
-exact `Φ⁻¹(F̂(v))` it is approximating. The left histogram in the same figure is the reason you
+exact \( \Phi^{-1}(\hat{F}(v)) \) it is approximating. The left histogram in the same figure is the reason you
 would bother: with a maximum of 72.98 against a median of 0.98, the raw distribution is one spike
 and a tail, and no amount of binning makes it readable. Nothing in `quantilewarp.kt` computes that
 exact answer, so the oracle is built in the fence out of `inverseStandardNormalCdf`
@@ -705,7 +705,7 @@ Three things to watch for:
   knots 20% of the way to the new ones
   (`quantilewarp.kt:357#lerp(previous.inputKnots[index], strictInputKnots[index], config.smoothingAlpha)`).
   Feed a signal whose median jumps from 0 to 10 and the median knot goes
-  0.009 → 2.016 → 3.608 → 4.879 → … → 9.310 after twelve updates, tracking `10·(1 − 0.20)ᵏ`: 0.690
+  0.009 → 2.016 → 3.608 → 4.879 → … → 9.310 after twelve updates, tracking \( 10\cdot(1 - 0.20)^k \): 0.690
   remaining against a predicted 0.687. Convergence is geometric, so a step change takes a couple of
   dozen frames to follow.
 - **The knots are forced strictly increasing after smoothing**

@@ -1,0 +1,5 @@
+uv 4.0 * time + fbm palette   # current
+prev                          # previous at input.xy
+0.06                          # alpha
+ema
+saturate

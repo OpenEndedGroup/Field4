@@ -126,7 +126,7 @@ bores would not come through it round.
 ## Sizing
 
 `targetEdgeLength` is in the surface's own units and is translated to the only size control TetGen
-takes, a maximum element volume: `h³ / (6 sqrt 2)`, the volume of a regular tetrahedron of that edge.
+takes, a maximum element volume: \( h^3 / (6\sqrt{2}) \), the volume of a regular tetrahedron of that edge.
 
 The input surface sets the coarsest mesh you can get. TetGen keeps every triangle it is given, and
 this bracket's 618 triangles are already about 10 mm across, so asking for larger elements than that
@@ -156,6 +156,43 @@ the Euler–Bernoulli tip deflection at 1,080 elements, still 38% short; the 10-
 5% at thirty. If you are bending anything, pass `order = 2` and mesh coarsely, rather than
 passing `order = 1` and refining. [`optional/kratos/VERIFICATION.md`](https://github.com/OpenEndedGroup/Field4/blob/main/optional/kratos/VERIFICATION.md) has the per-mesh numbers, the
 axial-extension control, and why landing just under 100% is right.
+
+Here is that cantilever solved by Kratos at both orders on the same 864 tetrahedra, each drawn from
+the side with its deflection scaled 500 times and coloured by displacement. The 4-node beam stops
+well short of beam theory; the 10-node one reaches it:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/tetgen/kratos_orders.png" capture="box" open-outputs="true" wait-output="true" wait-output-kind="all" wait-output-contains="quadratic" wait="2" padding="12" timeout="1500" embed=true name="tetgen-kratos-orders" alt="Two cantilevers seen from the side, drooping from a clamped left end, blue at the clamp shading to orange at the tip. The left, 4-node, is labelled with about 70% of the beam-theory tip deflection; the right, 10-node, with about 100%."}
+import afield.geometry.mesh.tetgen.*
+import afield.simulation.kratos.*
+import java.util.concurrent.TimeUnit
+
+// A 1 m cantilever, 0.1 m square, clamped at x = 0 and bending under its own weight.
+val beam = SimulationBox("beam", SimulationBounds(0.0, -0.05, -0.05, 1.0, 0.05, 0.05))
+val parameters = StructuralParameters(
+    youngModulus = 2.0e9, poissonRatio = 0.3, density = 1000.0,
+    gravity = Triple(0.0, 0.0, -9.81),
+    clamp = SimulationBounds(-1e-9, -1.0, -1.0, 1e-9, 1.0, 1.0),
+)
+// Euler-Bernoulli tip deflection of a uniformly loaded cantilever, w L^4 / 8 E I.
+val analytic = 1000.0 * 9.81 * 0.01 / (8 * 2.0e9 * 0.1.pow(4) / 12.0)
+:::fold solve at order 1 and order 2, then draw both
+val config = Kratos.probeAny().get(900, TimeUnit.SECONDS).config
+val views = [1, 2].map { order ->
+    val mesh = Tetgen.tetrahedralize(beam.surface(), targetEdgeLength = 0.06, order = order)
+    KratosSession.openMeshAsync(mesh, config).get(600, TimeUnit.SECONDS).use { session ->
+        val result = session.solveAsync(parameters).get(600, TimeUnit.SECONDS)!!
+        val displacement = result.named("displacement")
+        val tip = (0 until result.domain.nodeCount).filter { result.domain.positions[3 * it] > 1.0 - 1e-9 }
+        val reached = tip.sumOf { abs(displacement[3 * it + 2]) } / tip.size / analytic
+        val name = if (order == 1) "linear" else "quadratic"
+        println("$name  ${mesh.nodesPerCell}-node, ${mesh.cellCount} elements: tip at ${(100 * reached).f1}% of beam theory")
+        "${mesh.nodesPerCell}-node · ${mesh.cellCount} elements · ${(100 * reached).f1}% of theory" to
+            result.deformedMesh(displacementScale = 500.0, field = "displacement")
+    }
+}
+showMeshGrid(*views.toTypedArray(), columns = 2, cellWidth = 420,
+    view = MeshView(yawDegrees = 0.0, pitchDegrees = -90.0, distance = 2.2, width = 420, height = 260))
+```
 
 ### Asking for 10-node elements
 

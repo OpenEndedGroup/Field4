@@ -52,6 +52,11 @@ var speed = 0.5 // edit to 2.0, then Alt/Option-Enter on this line
 
 The running loop picks up the new value without restarting. A `val` stays fixed.
 
+The [First steps](first_steps.md) drawing does exactly this: its `var petals = 5` changes to 8 and
+alt/option-Enter on that line changes the running drawing.
+
+<video controls muted loop playsinline preload="metadata" src="assets/first_steps/first-look.mp4" width="2400" height="1440" style="max-width:100%;height:auto;aspect-ratio:2400/1440" aria-label="Field's editor launches a cyan moving FLine drawing, changes its petal count from five to eight and runs that one line with Alt+Enter while the drawing keeps moving, relaunches it, and shows the value eight inline before stopping the animation."></video>
+
 ### Types and type inference
 
 Types describe what kind of value something is (number, text, true/false, etc.). In Kotlin you can write a type after a name using `: Type`, but most of the time Kotlin figures it out for you.

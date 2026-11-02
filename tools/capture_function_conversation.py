@@ -112,5 +112,5 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--port", type=int, default=9796)
     args = parser.parse_args()
-    with tempfile.TemporaryDirectory(prefix="field-function-chat-capture-") as workspace:
+    with tempfile.TemporaryDirectory(prefix="field-function-chat-capture-", ignore_cleanup_errors=True) as workspace:
         asyncio.run(capture(args.port, workspace))

@@ -145,6 +145,32 @@ output. The lights therefore keep time whether or not anything else in Field is 
 what an installation that runs without a window wants. There is one animation per output, so
 re-running the box replaces it, and it ends when the box is stopped.
 
+Here the wave runs along the 200-pixel tape from above, sent as Art-Net to this machine and
+received again, so the lower panel is drawn from the packets that arrived. Launch it:
+
+```diffstatic_runner {data-lang=kotlin capture="box" execution="launch" video="assets/dmx_lighting/animate_wave.mp4" duration="4" fps="15" open-outputs="true" wait-output="true" wait-output-kind="display" wait-output-channel="universe 1" wait="1" timeout="240" w="760" h="560" embed=true name="dmx-animate-wave" alt="The tape of 200 pixels with a pink-to-blue hue wave travelling along it, and below it universe 1 as received over Art-Net, the same colours moving through the grid of slots"}
+import afield.io.dmx.*
+
+val input = artnetIn() // Field as a node on UDP 6454, receiving what the box sends
+
+val tape = FLine().moveTo(0, 0).cubicTo(x0 = 150, y0 = -160, x1 = 250, y1 = 160, x = 400, y = 0)
+val patch = Patch(startUniverse = 1)
+patch.stripAlong(tape, 200)
+val out = artnetOut("127.0.0.1")
+
+// A hue wave travelling along the tape, computed on the sender's clock.
+patch.animate(out) { t ->
+    map(t) { x, _, time -> vec(0.5 + 0.5 * sin(x * 0.03 - time * 2.0), 0.3, 0.6) }
+}
+
+loop {
+    if (frameNumber % 4 == 0) {
+        showPatch(patch, channel = "lights", w = 480.0, h = 220.0)
+        showUniverse(input, 1, w = 480.0, h = 220.0)
+    }
+}
+```
+
 ## Seeing the rig without the rig
 
 `showPatch(patch)` draws the patched fixtures in their current colours into the box's output;

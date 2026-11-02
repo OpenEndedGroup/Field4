@@ -289,7 +289,7 @@ piecewise definition. An identity supplies each.
 **`Fn` has no "apply a unary function to another `Fn`'s value" op.** Its differentiable value
 transforms are `flip`, `abs`, `exp`, `log`, `pow`, `clamp`, `scaleY`, `offsetY` and pointwise
 arithmetic. There is no `sin`: `Functions.sin` is an *oscillator* over the sample position,
-`offset + amplitude·sin(2π·frequency·x + phase)`, which is not a composition. But its `phase` child
+\( \mathrm{offset} + \mathrm{amplitude}\cdot\sin(2\pi\cdot\mathrm{frequency}\cdot x + \mathrm{phase}) \), which is not a composition. But its `phase` child
 is evaluated at x, so a zero-frequency oscillator is a composition. The box below checks that
 `sin(frequency = 0, phase = u)` matches `sin(u(x))` across a range of x:
 
@@ -324,18 +324,18 @@ markdown(
 )
 ```
 
-The two agree exactly, because `0 + 1·sin(2π·0·x + u)` involves no rounding. This identity covers
+The two agree exactly, because \( 0 + 1\cdot\sin(2\pi\cdot 0\cdot x + u) \) involves no rounding. This identity covers
 the trigonometric functions, and with them most of the Penner easings.
 
 **`Fn` has no piecewise-in-x op, and every keyframed track is piecewise.** A sum of clamped ramps
-stands in for it. For keys `(tᵢ, vᵢ)` and any segment shape `Sᵢ` with `Sᵢ(0) = vᵢ` and `Sᵢ(1) = vᵢ₊₁`,
+stands in for it. For keys \( (t_i, v_i) \) and any segment shape \( S_i \) with \( S_i(0) = v_i \) and \( S_i(1) = v_{i+1} \),
 
 ```diffstatic {data-lang=text}
 v(t)  =  v₀ + Σᵢ [ Sᵢ(clamp01((t - tᵢ) / (tᵢ₊₁ - tᵢ))) - vᵢ ]
 ```
 
 is *identically* the clamped piecewise interpolant. Inside span *j* every earlier term is
-`vᵢ₊₁ - vᵢ` and every later one is zero, so the sum telescopes to `vⱼ + (vⱼ₊₁ - vⱼ)·Sⱼ(u)`; before
+\( v_{i+1} - v_i \) and every later one is zero, so the sum telescopes to \( v_j + (v_{j+1} - v_j)\,S_j(u) \); before
 the first key everything is 0 and after the last everything is 1, which is exactly what the sampler's
 clamping does. It needs only clamp, divide, multiply and add, so linear, eased and TCB tracks all
 lower, and so do the `*-in-out` easings, which are piecewise but continuous.

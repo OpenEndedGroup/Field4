@@ -378,6 +378,237 @@ larger the push needed to leave the hull at all, and past about 0.9 that push is
 an exploration. Such a render keeps convex weights, and the null `extrapolationGain` in its manifest
 says so.
 
+The figure below makes three renders from the same three keys with the same base weights, using
+`SweepConfig.draws` to choose each render instead of drawing it: once convex, then pushed away from
+`flat-and-acid` at gain 1.0 and at 1.5. The scene and keys are the ones above.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframe_autosweep/past-the-hull.png" capture="box" open-outputs="true" execution="launch" wait="30" timeout="300" graphics-context=true name="keyframe-autosweep-past-the-hull" padding="16" w="900" h="560"}
+:::fold imports
+import afield.graphics.scene.fabricated.StandardRenderer
+import afield.graphics.scene.fabricated.applyScenePlan
+import java.nio.file.Files
+import java.util.Base64
+import kotlin.io.path.readBytes
+import kotlin.io.path.writeText
+
+:::endfold
+
+val dim = 420
+
+:::fold the same scene and lanes as above
+/*
+The half you would replace with your own sketch: a grid of spheres on a floor, and a
+`KeyframeScope` over ten places in it. Nothing below this block ever writes those ten places —
+only a blended key does, which is what makes the contact sheet evidence rather than decoration.
+*/
+val bundle = StandardRenderer.build(
+    renderer,
+    StandardRenderer.Config(renderWidth = dim, renderHeight = dim, backgroundColor = Vector3f(0.02f, 0.02f, 0.03f)),
+)
+val scene = bundle.scene
+
+/*
+A square target must be projected square. `Projection(renderer)`'s `auto` lambda re-resizes to the
+*window* inside every evaluateUniform, so a one-off `resize` is overwritten on the next frame and
+every sphere comes out an ellipse. Replace the lambda; do not call `resize` once.
+*/
+scene.projection.auto = { scene.projection.resize(dim, dim) }
+scene.projection.resize(dim, dim)
+
+scene.camera.at.set(0f, 2.0f, -3.2f)
+scene.camera.target.set(0f, 0f, 0f)
+scene.lightDirection.set(Vector3f(-0.5f, -1f, -0.3f).normalize())
+scene.lightIntensity = 3.4f
+
+val grid = 3
+val spheres = (0 until grid * grid).map {
+    bundle.registerSphere(name = "ball-$it", radius = 0.3f, slices = 24, stacks = 24, renderer = renderer)
+}
+/*
+A floor, and not for decoration: `shadow.strength` and `ao.strength` are two of the ten lanes, and
+with nothing under the spheres to receive a shadow they are two lanes a sweep could move all night
+without changing a pixel.
+*/
+bundle
+    .registerCube(name = "floor", size = 1f, renderer = renderer)
+    .setModel(Matrix4f().translate(0f, -0.34f, 0f).scale(11f, 0.04f, 11f))
+bundle.applyScenePlan()
+
+var spread = 0.85f
+var visible = grid * grid
+// Hidden from the outside in. Hiding the tail of a row-major grid takes its last row away and shoves
+// the rest off to one side, which would make `grid.visible` half a camera move as well as a count.
+val centreOut = (0 until grid * grid).sortedBy {
+    val ix = it / grid - (grid - 1) / 2
+    val iz = it % grid - (grid - 1) / 2
+    ix * ix + iz * iz
+}
+val layout = {
+    centreOut.forEachIndexed { rank, i ->
+        val ix = i / grid - (grid - 1) / 2
+        val iz = i % grid - (grid - 1) / 2
+        spheres[i].setModel(
+            if (rank >= visible) Matrix4f().scale(0f) else Matrix4f().translate(ix * spread, 0f, iz * spread),
+        )
+    }
+}
+layout()
+
+val palettes = mapOf(
+    "warm" to (Vector3f(0.10f, 0.05f, 0.03f) to Vector3f(1.0f, 0.78f, 0.55f)),
+    "cool" to (Vector3f(0.03f, 0.05f, 0.11f) to Vector3f(0.62f, 0.78f, 1.0f)),
+    "acid" to (Vector3f(0.04f, 0.10f, 0.04f) to Vector3f(0.75f, 1.0f, 0.35f)),
+)
+var palette = "warm"
+val applyPalette = { name: String ->
+    val chosen = palettes[name] ?: palettes.getValue("warm")
+    scene.ambientColor.set(chosen.first)
+    scene.lightColor.set(chosen.second)
+    palette = name
+}
+applyPalette(palette)
+
+val keys = KeyframeScope(schemaVersion = 1).apply {
+    vector3Target("camera.at", { scene.camera.at }) { scene.camera.at.set(it) }
+    vector3Target("camera.target", { scene.camera.target }) { scene.camera.target.set(it) }
+    vector3Target("light.direction", { scene.lightDirection }) {
+        scene.lightDirection.set(if (it.lengthSquared() > 1e-8f) Vector3f(it).normalize() else it)
+    }
+    floatTarget("light.intensity", { scene.lightIntensity }) { scene.lightIntensity = it }
+    vector3Target("background", { scene.backgroundColor }) { scene.backgroundColor.set(it) }
+    floatTarget("ao.strength", { scene.aoStrength }) { scene.aoStrength = it }
+    floatTarget("shadow.strength", { scene.shadowStrength }) { scene.shadowStrength = it }
+    floatTarget("grid.spread", { spread }) {
+        spread = it
+        layout()
+    }
+    // An `Int` lane, because a subdivision level or an instance count is one, and it interpolates
+    // as a float lane so it can travel smoothly between two looks.
+    intTarget("grid.visible", { visible }, 1..(grid * grid)) {
+        visible = it
+        layout()
+    }
+    // The discrete lane: a name that selects a whole sub-state. There is no midpoint between "warm"
+    // and "acid", which is the case the sweep has to have a policy about.
+    stringTarget("palette", { palette }) { applyPalette(it) }
+}
+
+bundle.present(renderer = renderer)
+bundle.attachTo(renderer)
+
+:::endfold
+
+:::fold the same four keys
+/*
+In your own document these are files you saved with `scope.capture().save(…)`. The fourth is
+deliberately *incomplete* — it predates two of the lanes, the way a key saved three weeks ago
+does — because that is the case the blend has to have an answer for.
+*/
+val pool = Files.createTempDirectory("autosweep-pool")
+val look = { name: String, values: Map<String, Any?> ->
+    pool.resolve(name).writeText(keys.encodeKeyJson(keys.Key(values.toMutableMap())))
+}
+look(
+    "high-and-cool",
+    mapOf(
+        "camera.at" to Vector3f(0f, 3.0f, -3.0f),
+        "camera.target" to Vector3f(0f, 0f, 0f),
+        "light.direction" to Vector3f(-0.5f, -1f, -0.3f).normalize(),
+        "light.intensity" to 3.4f,
+        "background" to Vector3f(0.012f, 0.020f, 0.050f),
+        "ao.strength" to 0.85f,
+        "shadow.strength" to 1.0f,
+        "grid.spread" to 0.85f,
+        "grid.visible" to 9,
+        "palette" to "cool",
+    ),
+)
+look(
+    "low-and-warm",
+    mapOf(
+        "camera.at" to Vector3f(1.8f, 1.2f, -2.6f),
+        "camera.target" to Vector3f(0f, 0.1f, 0f),
+        "light.direction" to Vector3f(0.7f, -0.4f, -0.5f).normalize(),
+        "light.intensity" to 6.2f,
+        "background" to Vector3f(0.050f, 0.025f, 0.012f),
+        "ao.strength" to 0.35f,
+        "shadow.strength" to 0.6f,
+        "grid.spread" to 1.45f,
+        "grid.visible" to 4,
+        "palette" to "warm",
+    ),
+)
+look(
+    "flat-and-acid",
+    mapOf(
+        "camera.at" to Vector3f(-2.2f, 1.8f, -2.4f),
+        "camera.target" to Vector3f(0.2f, 0.2f, 0f),
+        "light.direction" to Vector3f(-0.1f, -0.95f, 0.1f).normalize(),
+        "light.intensity" to 1.9f,
+        "background" to Vector3f(0.010f, 0.045f, 0.015f),
+        "ao.strength" to 1.0f,
+        "shadow.strength" to 0.15f,
+        "grid.spread" to 0.55f,
+        "grid.visible" to 9,
+        "palette" to "acid",
+    ),
+)
+look(
+    "older-partial-key",
+    mapOf(
+        "camera.at" to Vector3f(0f, 1.6f, -3.6f),
+        "camera.target" to Vector3f(0f, 0f, 0f),
+        "light.direction" to Vector3f(-0.8f, -0.6f, 0.1f).normalize(),
+        "light.intensity" to 4.6f,
+        "background" to Vector3f(0.020f, 0.020f, 0.020f),
+        "shadow.strength" to 0.8f,
+        "grid.spread" to 1.05f,
+        "grid.visible" to 6,
+    ),
+)
+
+:::endfold
+
+// Three keys at fixed weights, then the same blend pushed away from flat-and-acid twice.
+val blend = ["high-and-cool", "low-and-warm", "flat-and-acid"]
+val base = [0.4, 0.35, 0.25]
+val archive = Files.createTempDirectory("autosweep-past-the-hull")
+val sweep = KeyframeSweep(
+    keys,
+    pool,
+    archive,
+    SweepConfig(
+        draws = [
+            SweepDraw(blend, base),
+            SweepDraw(blend, base, pole = "flat-and-acid", gain = 1.0),
+            SweepDraw(blend, base, pole = "flat-and-acid", gain = 1.5),
+        ],
+    ),
+)
+
+frames {
+    sweep.run { render ->
+        renderer.awaitFrames(6)
+        render.captureStill(renderer, bundle.postStack.output(), settleFrames = 0)
+    }
+
+:::fold show each still with the weights and gain its manifest recorded
+    val cells =
+        readSweepArchive(archive).sortedBy { it.index }.joinToString("") { m ->
+            val still = archive.resolve("renders/${m.id}/still.png")
+            val weights = m.parents.joinToString("<br>") { "${it.key} ${it.weight.f2}" }
+            val gain = m.extrapolationGain?.let { "extrapolationGain ${it.f2}" } ?: "convex"
+            "<div style='display:inline-block;vertical-align:top;margin:4px;font:11px Iosevka,monospace;color:#aaa'>" +
+                "<img src='data:image/png;base64,${Base64.getEncoder().encodeToString(still.readBytes())}' " +
+                "width='260' style='border:1px solid #333;display:block'/><b>$gain</b><br>$weights</div>"
+        }
+    display("past the hull", "<div style='width:820px'>$cells</div>")
+:::endfold
+}
+```
+
+![Three GPU renders of the sphere grid side by side: a convex blend of high-and-cool, low-and-warm and flat-and-acid, the same blend at gain 1.0 with flat-and-acid at weight zero, and at gain 1.5 with flat-and-acid at minus one half, each captioned with its weights](assets/keyframe_autosweep/past-the-hull.png)
+
 ??? aside "Why the weights are Dirichlet and not just normalised uniforms"
 
     Drawing `n` weights by normalising `n` uniforms — the obvious thing — concentrates hard on the
@@ -388,7 +619,7 @@ says so.
 
     `concentration` is that `α`. `KeyframeSweepTest` pins what it buys, over five participants, by
     measuring the mean largest weight: **0.81 at `α = 0.1`** (a blend is mostly one key), **0.46 at
-    `α = 1`** — which has a closed form, `(1/n)·Σᵢ 1/i` — and **0.23 at `α = 50`** (every blend is
+    `α = 1`** — which has a closed form, \( \tfrac{1}{n}\sum_i 1/i \) — and **0.23 at `α = 50`** (every blend is
     the average). Start at 0.6 if the point is variety you can still attribute to something.
 
 ## What a night survives

@@ -545,6 +545,15 @@ object Options {
      * the headset at the monitor's rate.
      */
     var vsync = true
+
+    /**
+     * Upper bound on renderer frames per second; 0 (the default) leaves the loop uncapped. A
+     * window the compositor is not showing is not throttled by [vsync] and can run at thousands of
+     * frames a second, so anything measured per frame (motion vectors, frame-to-frame
+     * displacement) shrinks towards zero. A capture that shows per-frame motion sets this, in its
+     * renderer box or through `AFIELD_MAX_FRAME_RATE`.
+     */
+    var maxFrameRate: Double = System.getenv("AFIELD_MAX_FRAME_RATE")?.toDoubleOrNull()?.takeIf { it > 0.0 } ?: 0.0
     /**
      * Default vertical field of view, in **radians** — [Projection] and [SuperProjection] hand it
      * straight to `setPerspective(fovy, …)` and `tan(fov / 2)` respectively.

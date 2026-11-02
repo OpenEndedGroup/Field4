@@ -2955,6 +2955,55 @@ This is the same morph with `spatialSpinAngle = 1f` in the interpolator config, 
 
 Use fitting to summarize a shape, and subdivision when later editing needs more segments without changing its geometry.
 
+Here a jittered ring is fitted, and one cubic is subdivided zero, one and two times, with its nodes drawn as dots:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fline_fit_circle_subdivide.png" capture="box" open-outputs="true" wait="1.5" padding="12" embed=true name="fline-fit-circle-subdivide" alt="Left, a jagged grey ring with the orange circle fitCircle found drawn through it; right, the same blue S-curve three times, with two, three and five orange nodes on it, the curve unchanged; above, a line giving the fitted centre, radius and error"}
+// A rough, hand-drawn-looking circle: 40 points at a jittered radius around (60, 60).
+val rnd = java.util.Random(4)
+val rough = fline {
+    for (i in 0..40) {
+        val a = 2 * Math.PI * i / 40
+        val r = 50 + 6 * rnd.nextGaussian()
+        if (i == 0) moveTo(60 + r * Math.cos(a), 60 + r * Math.sin(a))
+        else lineTo(60 + r * Math.cos(a), 60 + r * Math.sin(a))
+    }
+}
+    .apply { color = vec(1.0, 1.0, 1.0, 0.8) }
+
+val (centre, radius, error) = rough.fitCircle(samples = 80)
+val fitted = FLine().circle(centre.x.toDouble(), centre.y.toDouble(), radius.toDouble()).apply {
+    color = vec(1.0, 0.55, 0.2, 1.0)
+    thickness = 2.0
+}
+
+// One cubic, subdivided 0, 1 and 2 times: the nodes multiply, the curve does not move.
+val wave = fline {
+    moveTo(0, 60)
+    cubicTo(30, -10, 70, 130, 100, 60)
+}
+val levels =
+    (0..2).flatMap { level ->
+        val at = vec(170.0 + level * 150.0, 0.0)
+        val sub = wave.bySubdividing(level)
+        [
+            sub.copy().apply { color = vec(0.32, 0.82, 1.0, 1.0) } + at,
+            sub.copy().apply {
+                stroked = false
+                pointed = true
+                pointSize = 1.2
+                color = vec(1.0, 0.5, 0.25, 1.0)
+            } + at,
+        ]
+    }
+
+display(
+    "fit",
+    "fitCircle: centre (%.1f, %.1f), radius %.1f, error %.2f · bySubdividing levels 0, 1, 2"
+        .format(centre.x, centre.y, radius, error),
+)
+lines([rough, fitted] + levels, w = 720.0, h = 220.0, fitToSize = true)
+```
+
 ## Advanced / experimental curves (FLineGeometry)
 
 These are more specialized tools that are still extremely useful when you need them.

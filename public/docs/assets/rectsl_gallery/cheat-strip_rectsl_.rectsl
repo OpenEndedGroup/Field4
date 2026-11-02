@@ -1,0 +1,17 @@
+#rectsl
+->wall 16 9 abstract
+->duration 4
+->fps 30
+->tempo 120
+->duration-cycles 2
+
+# the same notation, spent on *where* instead of on *when*
+"tick" rect  0.34 ->square
+  "bd [sd sd] hh*4" '( -3.9 ->y  0.55 ->alpha ) strip
+;
+
+# sixteen slots laid out in space; the figure decides which stay lit
+"slot" rect  0.55 1.8 ->wh
+  16 '( f 15 *  7.5 -  2.8 ->xy ) array
+  16 0 ->kolakoski        # or `5 16 0 ->euclid`
+;

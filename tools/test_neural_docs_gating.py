@@ -32,7 +32,7 @@ class HardwareDocsGatingTest(unittest.TestCase):
                 with self.subTest(page=name):
                     docs_hooks.process_markdown(markdown=page.read_text(),page_path=page,state=state,files=[])
         state.capture_with_environment.assert_not_called()
-        self.assertEqual(state.assets_reused,10)
+        self.assertEqual(state.assets_reused,11)
         self.assertEqual(state.missing_assets,0)
 
     def test_linux_always_mode_also_requires_explicit_opt_in(self):

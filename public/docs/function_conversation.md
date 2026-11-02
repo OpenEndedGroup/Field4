@@ -117,8 +117,8 @@ the saved chat and viewer does not make a model call.
 This is Field's chat panel, restored from the recorded run. Here the chat is
 scrolled back to the move-and-stretch exchange; the viewer shows the final saved
 revision. The starter is still blank; the developed example carries this history.
-The older turns predate model badges, so they show **Model not recorded**; the
-archive names the run's provider and model.
+Each reply is labelled with the model that wrote it, taken from the run's
+record.
 
 ### From constants to a composition
 

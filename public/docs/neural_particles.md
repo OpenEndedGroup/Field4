@@ -233,7 +233,7 @@ val blended = fieldA.blendWith(fieldB, t) // t from 0 to 1
 particles.updateWeights(blended.network) // a buffer write; nothing recompiles
 ```
 
-Interpolating the *targets*, sending point `i` to `(1-t)·A_i + t·B_i`, is a straight-line
+Interpolating the *targets*, sending point `i` to \( (1-t)\,A_i + t\,B_i \), is a straight-line
 crossfade that needs no network. Interpolating the weights gives a field that was **never trained
 on anything**, and where it sends a particle is a nonlinear function of `t`.
 
@@ -350,6 +350,16 @@ same order rather than adjusting the weights until it looks right.
 `separationRadiusFraction` is the other dial that decides the shape. One radius for all three terms
 cannot clump: separation wants to be short-range while alignment and cohesion want the whole
 neighbourhood. Shrinking separation's reach to a quarter turns one even disc into groups.
+
+Two flocks of 12,000 at the default weights, with nothing driving them, after a few seconds:
+`separationRadiusFraction = 1` on the left spreads into one wide, evenly spaced disc that overruns
+its soft wall; `0.25` on the right packs into a dense, grainy clump. Undriven, this run did not split
+the clump into separate groups.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/neural_particles/separation.png" capture="native-window" wait="120" native-wait-frames="30" embed=true hidden=true timeout="900" duration="0" name="neural-particles-separation" alt="Two flocks of points on black: lower left a large, evenly spaced disc of faint points; upper right, overlapping its edge, a smaller, much denser and grainier oval clump" macro-file="../../dev_docs/agents/transcripts/shader_boids_separation.yaml" capture-box="sb_renderer"}
+// dev_docs/agents/transcripts/shader_boids_separation.yaml: one renderer, two ShaderBoids flocks
+// that differ only in separationRadiusFraction (1 and 0.25), no driver
+```
 
 `ShaderBoids` works on its own as a fast flocking system. Its force also generates tier two's
 training data and is what the learned rule is compared against, which is why it is a written rule

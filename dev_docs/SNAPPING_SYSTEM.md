@@ -1,6 +1,6 @@
 # Box snapping: code ownership and verification
 
-The user workflow is documented in `public/docs/snapping.md`. The complete algorithmic contract —
+The user workflow is documented in the Snapping section of `public/docs/moving_around_the_canvas.md`. The complete algorithmic contract —
 Caps Lock state, candidate and apply thresholds, axis independence, resize behavior, guides, and
 complexity — is colocated on `BoxSnappingSystem` in
 `src/jsMain/kotlin/afield/app/canvas/BoxSnapping.kt`. Drag and resize integration lives in
@@ -20,5 +20,5 @@ Manual invariants:
    row never comes between them.
 6. Guides remain non-interactive, follow the overlay coordinate system, and disappear on gesture end.
 
-If thresholds or SVG styling change, update the KDoc and rebuild `snapping.md` with
+If thresholds or SVG styling change, update the KDoc and rebuild `moving_around_the_canvas.md` with
 `FIELD_DOCS_RUNNER_MODE=always` (its `capture="ui"` fence drives the real UI); do not preserve numeric details in a second prose specification here.

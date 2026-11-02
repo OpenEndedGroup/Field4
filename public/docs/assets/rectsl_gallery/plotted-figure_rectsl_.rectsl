@@ -1,0 +1,18 @@
+#rectsl
+->wall 16 10 abstract
+->duration 3
+->fps 30
+
+# shared coordinate ->frame: explicit ->domain + auto ->margins, then axes underneath
+0 10  0 1  ->domain
+->frame
+axes
+
+# three series overlaid in the ONE shared ->domain
+0 10 40 linspace  dup '( 0.7 * sin 1 + 2 / ) data-map   "viridis" area
+0 10 40 linspace  dup '( 0.55 * cos 1 + 2 / ) data-map  "plasma"  line
+0 10 12 linspace  dup '( 0.9 * sin 1 + 2 / ) data-map   "turbo"   points
+
+# a colour-bar legend (numeric labels) and a discrete swatch key
+"viridis" colorbar
+5 "turbo" legend
