@@ -212,26 +212,37 @@ loop {
             }
 
         val perSecond = gapsUs.size / elapsed
-        val median = gapsUs.sorted()[gapsUs.size / 2]
+        val sorted = gapsUs.sorted()
+        val median = sorted[sorted.size / 2]
+
+        // Cap the axis at three times the 99th percentile, so one long stall does not flatten the
+        // band; the title says how many gaps went over and how long the worst one was.
+        val cap = sorted[(sorted.size * 0.99).toInt()] * 3.0
+        val over = gapsUs.count { it > cap }
         showSignals(
-            "gap between frames (µs)" to gapsUs,
+            "gap between frames (µs), capped at %,.0f".format(cap) to gapsUs.map { minOf(it, cap) },
             "100-frame running mean" to smooth,
             channel = "main",
             title =
-                "%,d frames in %.2f s — %,.0f a second, median gap %,.0f µs"
+                "%,d frames in %.2f s, %,.0f a second · median gap %,.0f µs · %d over the cap, worst %,.0f µs"
                     .format(
                         gapsUs.size,
                         elapsed,
                         perSecond,
                         median,
+                        over,
+                        sorted.last(),
                     ),
             xTitle = "frame",
             yTitle = "µs",
+            width = 1000,
+            height = 420,
+            floatingLegend = true,
         )
     }
 ```
 
-![A per-frame interval plot titled 1,407 frames in 1.95 s. A dense band of gaps filling everything between zero and about 1,700 microseconds, five spikes reaching 2,500 to 3,500, and a 100-frame running mean that wanders between 1,200 and 1,500 rather than holding any constant value](assets/animation_time_model/cadence.png)
+![A per-frame interval plot titled 1,416 frames in 1.99 s, 710 a second, median gap 1,588 µs. The gaps form a dense band from near zero up to about 1,600 µs, with a burst up to 4,400 µs in the first hundred frames, and the orange 100-frame running mean settles around 1,300 to 1,400 µs without holding any one value. The y axis is capped at three times the 99th-percentile gap so a single stall cannot flatten the band; in this run no gap went over it](assets/animation_time_model/cadence.png)
 
 Run it yourself and the count in the title will be different, and different again the second time.
 There is no frame *rate* in that plot to schedule against, which is why motion goes on the clock.
