@@ -59,6 +59,8 @@ Restart Field to change OpenXR mode or eye dimensions.
 
 ## Choose your input
 
+For Apple Vision Pro through ALVR, see [the SteamVR launch setup below](#apple-vision-pro-through-alvr).
+
 | Input | What receives it | Desktop window focus |
 | --- | --- | --- |
 | Controller trigger, A/X or hand pinch | The control under the ray on the VR panel | Not required |
@@ -75,6 +77,9 @@ document the panel displays.
 For a keyboard attached to the PC while OpenXR is active, set `headsetInput = false` in the
 `FieldVrWorkspace(...)` constructor in box 2, then stop and relaunch that box. This selects the
 desktop focus behaviour below. The default Linux/OpenXR mode uses the dedicated headset input path.
+`FIELD_VR_INPUT=desktop` selects this default for all panels in a Field process;
+`FIELD_VR_INPUT=wivrn` explicitly selects WiVRn on Linux/OpenXR. An explicit constructor argument
+overrides the environment choice.
 
 A USB or Bluetooth keyboard attached to the desktop uses the native companion window's key and text
 callbacks, forwarded into the focused Chromium editor. The companion displays the same page front-on,
@@ -158,6 +163,42 @@ for Vulkan and Chromium, and WiVRn must be running and paired. This workflow doe
 Linux display-session requirement. Start Field, connect WiVRn and launch the two starter boxes
 before working from the headset. These can be managed remotely; no person needs to operate a
 window on the PC. The helper adds a private listener while preserving existing listeners.
+
+## Apple Vision Pro through ALVR
+
+The host path is **Field OpenXR → SteamVR → ALVR → Vision Pro**. Use the same starting point
+and high-resolution browser panel. This is a prepared integration path; Vision Pro rendering,
+controller bindings and hand interaction have not yet been tested with Field.
+
+Install the [visionOS ALVR client](https://github.com/alvr-org/alvr-visionos) and a compatible
+[Linux ALVR streamer](https://github.com/alvr-org/ALVR/wiki/Installation-guide) on the rendering PC.
+Install SteamVR, start the ALVR dashboard, register its driver and connect/trust the headset.
+Follow ALVR's version compatibility instructions for the client you actually have installed.
+The dashboard manages the connection; Field's launcher does not install or start ALVR.
+
+Stop the existing Field process before replacing a server on the same port. From the Field checkout:
+
+```diffstatic {data-lang=bash}
+# Read-only: find SteamVR and print the exact environment and command.
+uv run python tools/field_alvr.py --check -- /path/to/workspace -d Field-VR-IDE
+# Once ALVR is connected, launch Field with the SteamVR runtime for this process.
+uv run python tools/field_alvr.py -- /path/to/workspace -d Field-VR-IDE
+```
+
+For a Steam library that discovery cannot find, add `--steamvr /path/to/SteamVR` before `--`.
+The launcher sets `XR_RUNTIME_JSON` for Field and `FIELD_VR_INPUT=desktop`; it leaves the system's
+default OpenXR runtime and the WiVRn configuration untouched. Set `useHeadset = true` in starter
+box 1, then launch box 1 followed by box 2. Restart Field when changing runtimes.
+
+Use the PC's keyboard and mouse with the companion window focused, or the in-panel virtual
+keyboard. **Headset-attached keyboard and mouse forwarding is not provided by this integration.**
+The inspected visionOS client has an unfinished keyboard handler and does not expose WiVRn's HID
+devices ([client source](https://github.com/alvr-org/alvr-visionos/blob/583d33acabfa8bbbeabe802ecc79d963557a8b91/ALVRClient/WorldTracker.swift#L1998-L2009)).
+The Quest udev helper does not apply to ALVR. Full focus-independent headset typing and mouse
+input needs an additional visionOS input bridge. Hand joints and emulated controller actions
+also depend on what ALVR and SteamVR expose; the Quest interaction results below do not verify them.
+
+This streamed Linux renderer is separate from Field's [native visionOS frontend](vision.md).
 
 ## What has been verified
 
