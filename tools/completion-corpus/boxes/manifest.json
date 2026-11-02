@@ -14,7 +14,7 @@
   {"doc": "ai4_chat_archive", "box": "chat-archive-outline", "codeSha256": "2160a918e2b97e56", "codeLines": 6, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "ai4_chat_archive", "box": "chat-archive-read", "codeSha256": "768e0c2592007ea8", "codeLines": 7, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "ai4_chat_archive", "box": "chat-lens-viewer", "codeSha256": "1a6da6ff1e7b8fa0", "codeLines": 6, "receivers": ["afield.document.graph.Box"], "preamble": ""},
-  {"doc": "ai4_iframe_hello", "box": "ai4_iframe_hello", "codeSha256": "e986d5472306127a", "codeLines": 5, "receivers": ["afield.document.graph.Box"], "preamble": ""},
+  {"doc": "ai4_iframe_hello", "box": "ai4_iframe_hello", "codeSha256": "b551686ee47f585f", "codeLines": 5, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "ai4_paint_studio", "box": "ai4_paint_scribbler", "codeSha256": "a8a7d1598c3bc187", "codeLines": 72, "receivers": ["afield.document.graph.Box"], "preamble": "ai4_paint_studio__ai4_paint_scribbler.preamble.kt"},
   {"doc": "ai4_paint_studio", "box": "ai4_paint_studio", "codeSha256": "4251f9eb3ddd3f92", "codeLines": 946, "receivers": ["afield.document.graph.Box"], "preamble": "ai4_paint_studio__ai4_paint_studio.preamble.kt"},
   {"doc": "ai4_repo_tools", "box": "ai4-repo-tools-scope", "codeSha256": "d7f0a09eac85786c", "codeLines": 43, "receivers": ["afield.document.graph.Box"], "preamble": ""},
