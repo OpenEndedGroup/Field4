@@ -2934,6 +2934,15 @@ A FieldML triangle that spins, driven by `eachFrame`, from
 
 [Open →](offline.html?file=assets/agent_transcripts/fieldml_frames_demo/metadata.edn)
 
+### fieldml_frames_sequence_demo
+
+A band raised one column at a time, held, and started again in the other colour, all from one
+FieldML `frames` body that waits between steps, from
+[FieldML and the JVM](fieldml_host_bridge.md#waiting-inside-a-frames-body). Run
+`window and renderer (FieldML)`, then `a script across frames`.
+
+[Open →](offline.html?file=assets/agent_transcripts/fieldml_frames_sequence_demo/metadata.edn)
+
 ### fieldml_macro_module_demo
 
 A scene built by calling the `moduleHere` source macro from FieldML, with a live parameter beside
