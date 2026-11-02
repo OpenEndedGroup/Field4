@@ -1290,7 +1290,7 @@ identical system with its clock pinned at zero (which holds exactly 590 edges fo
 *morphogenesis* grows a 64-point ring into a branching filament beside the same nine-stage pipeline with
 tip growth removed. Every box is pure CPU; no `Window`, no `Renderer`.
 
-![Six graphs built over the same 220-point phyllotaxis disc: a bright mutual k-nearest-neighbour mesh, a sparse pinwheel of flowline arcs, a dense fully triangulated tangent fan, a sparse dim proximity mesh, a dim forest of routing chains, and a dim fully triangulated alpha-event graph](assets/dynamic_graph_systems_examples/six_systems.png)
+![six graphs built over the same 220-point phyllotaxis disc: a bright mutual k-nearest-neighbour mesh, a sparse pinwheel of flowline arcs, a dense fully triangulated tangent fan, a sparse purple proximity mesh, purple routing chains, and a purple alpha-event graph made of small separate triangles](assets/dynamic_graph_systems_examples/six_systems.png)
 
 [Open →](offline.html?file=assets/agent_transcripts/dynamic_graph_systems_examples/metadata.edn)
 
