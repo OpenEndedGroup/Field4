@@ -2668,7 +2668,7 @@ shapes swell with the notes. Drag a box to move it in time, stretch it to make i
 run it again after an edit. A port of the madp score demo; the design notes are in
 `dev_docs/madp/score.md`.
 
-```diffstatic_runner {data-lang=kotlin capture="ui" region="window" hide-toasts=true viewport="1900x660" clip="0,0,1900,660" screenshot="assets/agent_transcripts_gallery/madp_score.png" macro-file="../../dev_docs/agents/transcripts/madp_score.yaml" padding="0" wait="0" timeout="300" embed=true hidden=true name="gallery-madp-score" alt="Field's canvas as a score: seven dark boxes spread left to right and an orange playhead line crossing the two Glass phase boxes, which are lit red and olive; under the first box, a dark panel shows what they draw, a row of thin orange bars above a row of blue ones"}
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" hide-toasts=true viewport="1900x660" clip="20,20,1400,600" screenshot="assets/agent_transcripts_gallery/madp_score.png" macro-file="../../dev_docs/agents/transcripts/madp_score.yaml" padding="0" wait="0" timeout="300" embed=true hidden=true name="gallery-madp-score" alt="Field's canvas as a score: dark boxes spread left to right and an orange playhead line crossing the two Glass phase boxes, which are lit red and olive; under the first box, a dark panel shows what they draw, a row of thin orange bars above a row of blue ones"}
 // The transcript builds the score and runs its first box. Wait until the playhead is about seven
 // seconds in, where the two Glass phase boxes overlap, then take the picture.
 var at = ""
@@ -4211,6 +4211,10 @@ who else is publishing, and hands the stream you pick to its program as a second
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/stacktrinket_feedback_pulse_ring.png" capture="native-window" native-wait-frames="90" trim-native=true wait="3.0" embed=true hidden=true timeout="300" name="gallery-stacktrinket-feedback" alt="The pulse ring in the native window: a soft white ring on black, centred, its radius half the window's width, fading smoothly to black on both sides" macro-file="../../dev_docs/agents/transcripts/stacktrinket_feedback.yaml" capture-box="stacktrinket_renderer"}
 // The transcript builds every box and launches the renderer and the pulse ring.
+```
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/stacktrinket_feedback_fog.png" capture="native-window" native-wait-frames="600" trim-native=true wait="8.0" embed=false hidden=true timeout="300" name="gallery-stacktrinket-feedback-fog" macro-file="../../dev_docs/agents/transcripts/stacktrinket_feedback.yaml" run-box="stacktrinket_feedback_fog" execution="launch" capture-box="stacktrinket_renderer"}
+// After the transcript, launch the feedback fog box and let its trails build for a few seconds.
 ```
 
 [Open →](offline.html?file=assets/agent_transcripts/stacktrinket_feedback/metadata.edn)
