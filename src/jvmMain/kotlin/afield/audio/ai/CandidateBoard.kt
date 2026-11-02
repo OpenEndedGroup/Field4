@@ -104,7 +104,7 @@ fun candidateBoardHtml(
       <style>
         .field-audio-board { color:#d8d8dc; background:#17181b; padding:14px; font:12px/1.35 system-ui,sans-serif; }
         .field-audio-board h3 { margin:0 0 12px; font-size:14px; font-weight:550; }
-        .fa-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(310px,1fr)); gap:10px; }
+        .fa-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(500px,1fr)); gap:10px; }
         .fa-card { background:#202227; border:1px solid #353840; border-radius:7px; padding:10px; }
         .fa-card header { display:flex; justify-content:space-between; color:#aeb2bd; margin-bottom:6px; }
         .fa-card header strong { color:#f0c674; font-size:16px; }

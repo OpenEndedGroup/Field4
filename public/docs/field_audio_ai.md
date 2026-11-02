@@ -37,7 +37,7 @@ objects, states, and error vocabulary, and needs none of the above.
 This box takes four and a half seconds of a recording, asks MusicGen-Style for eight
 twelve-second variations, one per seed, and shows the source window while it waits and a candidate board when they arrive:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/field_audio_ai/style_candidates.png" capture="box" capture-profile="linux-nvidia" open-outputs="true" wait="4" wait-output="true" wait-output-channel="candidates" timeout="900" w="1120" h="40" padding="16" embed=true name="style-candidates" alt="A candidate board of eight MusicGen-Style variations of Nancy from 18 to 22.5 seconds, one row per seed with a waveform and player"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/field_audio_ai/style_candidates.png" capture="box" capture-profile="linux-nvidia" open-outputs="true" wait="4" wait-output="true" wait-output-channel="candidates" timeout="900" w="1280" h="40" padding="16" embed=true name="style-candidates" alt="A candidate board of eight MusicGen-Style variations of Nancy from 18 to 22.5 seconds, two cards per row, each with a candidate waveform, a splice player and rating controls"}
 val client = cached { FieldAudioClient() }
 runAsync(
     onResult = { result: CandidateSet ->
