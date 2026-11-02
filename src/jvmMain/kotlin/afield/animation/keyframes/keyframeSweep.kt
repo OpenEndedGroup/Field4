@@ -328,7 +328,17 @@ data class SweepConfig(
     val resume: Boolean = true,
 
     /** Keep the directory of a failed render, with its manifest and partial output, for forensics. */
-    val keepFailedRenders: Boolean = true
+    val keepFailedRenders: Boolean = true,
+
+    /**
+     * Renders to make exactly as written, instead of drawing them at random.
+     *
+     * Empty, the default, is a sweep. Non-empty, render `i` is `draws[i]` — its keys, weights, pole
+     * and gain — and the run stops after the last one, whatever [count] says. Each still goes through
+     * the same blend, discrete-lane resolution, callback and manifest as a random render, so a fixed
+     * draw is the way to put two gains side by side with nothing else changing between them.
+     */
+    val draws: List<SweepDraw> = emptyList()
 ) {
     init {
         require(minArity >= 1) { "minArity must be at least 1, not $minArity" }
@@ -346,8 +356,58 @@ data class SweepConfig(
         require(maxConsecutiveFailures >= 1) { "maxConsecutiveFailures must be at least 1" }
     }
 
+    /** How many renders the run attempts: [count], or the number of [draws] when there are any. */
+    val renders: Int get() = if (draws.isEmpty()) count else draws.size
+
     /** [minArity]`..`[maxArity], for reading. */
     val arity: IntRange get() = minArity..maxArity
+}
+
+/**
+ * One render chosen rather than drawn: which keys take part, their convex weights, and optionally
+ * a pole to push away from and how far.
+ *
+ * [weights] are normalised, so `listOf(1.0, 1.0, 2.0)` means a quarter, a quarter and a half. With
+ * a [pole] and a [gain] the push is the sweep's own: the other weights are scaled to sum to `gain`
+ * and the pole's becomes `1 - gain`, so `gain = 1.0` sits on the hull's far face and `1.5` is half
+ * as far again beyond it. Unlike a random draw, a fixed one may ask for exactly `1.0`.
+ *
+ * ```kotlin
+ * val keys = listOf("low-and-warm.json", "high-and-cool.json", "busy.json")
+ * val base = listOf(0.5, 0.3, 0.2)
+ * SweepConfig(draws = listOf(
+ *     SweepDraw(keys, base),
+ *     SweepDraw(keys, base, pole = "low-and-warm.json", gain = 1.0),
+ *     SweepDraw(keys, base, pole = "low-and-warm.json", gain = 1.5),
+ * ))
+ * ```
+ */
+@Serializable
+data class SweepDraw(
+    /** Keys by their path relative to the pool, as [SweepParent.key] names them. */
+    val keys: List<String>,
+    /** One non-negative weight per key, normalised before use. */
+    val weights: List<Double>,
+    /** The key to push away from, one of [keys]; null for a convex blend. */
+    val pole: String? = null,
+    /** Hull-crossings to push; at least `1.0`, and given exactly when [pole] is. */
+    val gain: Double? = null,
+    /** Whose discrete lanes and numeric kinds the blend takes; null for the largest final weight. */
+    val anchor: String? = null
+) {
+    init {
+        require(keys.isNotEmpty() && keys.size == weights.size) {
+            "a SweepDraw needs one weight per key: ${keys.size} keys, ${weights.size} weights"
+        }
+        require(keys.toSet().size == keys.size) { "a SweepDraw names a key twice: $keys" }
+        require(weights.all { it >= 0.0 } && weights.sum() > 0.0) {
+            "SweepDraw weights must be non-negative and not all zero: $weights"
+        }
+        require((pole == null) == (gain == null)) { "a SweepDraw's pole and gain come together: $pole, $gain" }
+        require(pole == null || pole in keys) { "pole $pole is not one of $keys" }
+        require(gain == null || gain >= 1.0) { "gain must be at least 1.0 (1.0 is the hull's face), not $gain" }
+        require(anchor == null || anchor in keys) { "anchor $anchor is not one of $keys" }
+    }
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -646,7 +706,7 @@ class KeyframeSweep(
 
         try {
             var index = 0
-            while (index < config.count) {
+            while (index < config.renders) {
                 val budget = budgetStop(startedAtNs)
                 if (budget != null) {
                     stoppedBecause = budget
@@ -664,7 +724,8 @@ class KeyframeSweep(
                 }
                 if (dir.exists()) deleteTree(dir)
 
-                val draw = draw(index, renderSeed, loaded.keys)
+                val draw = config.draws.getOrNull(index)?.let { fixed(it, renderSeed, loaded.keys) }
+                    ?: draw(index, renderSeed, loaded.keys)
                 val blended = blend(draw, live)
                 dir.createDirectories()
 
@@ -861,15 +922,7 @@ class KeyframeSweep(
             // and past about 0.9 that push is a blast rather than an exploration. Such a render
             // stays convex, and the null gain in its manifest says so.
             if (away >= 0.1) {
-                // Push along the ray from the pole through the convex point, measured in
-                // *hull-crossings*: scale the other weights to sum to `g` and give the pole `1 - g`.
-                // The weights still sum to 1, so this is the same affine blend with the hull lifted —
-                // and the pole's weight passes through exactly zero at `g == 1`, which is the far
-                // face. So `g` reads directly: 1.0 is the boundary, 1.5 is half as far again beyond
-                // it, and anything above 1 is genuinely outside.
-                val scale = g / away
-                for (i in weights.indices) weights[i] *= scale
-                weights[candidate] = 1.0 - g
+                push(weights, candidate, g)
                 pole = candidate
                 gain = g
             }
@@ -879,6 +932,36 @@ class KeyframeSweep(
         // weights by magnitude, so the key that actually dominates the picture usually owns them.
         val anchor = roulette(rng, weights)
         return Draw(seed, participants, weights, anchor, pole, gain)
+    }
+
+    /** A [SweepDraw] made into the same [Draw] a random one would be, against the loaded pool. */
+    private fun fixed(spec: SweepDraw, seed: Long, keys: List<PoolKey>): Draw {
+        val byName = keys.associateBy { it.relative }
+        val participants = spec.keys.map {
+            byName[it] ?: throw IllegalArgumentException("SweepDraw key $it is not in the pool ${byName.keys.sorted()}")
+        }
+        val total = spec.weights.sum()
+        val weights = DoubleArray(spec.weights.size) { spec.weights[it] / total }
+        val pole = spec.pole?.let { spec.keys.indexOf(it) } ?: -1
+        if (pole >= 0) {
+            require(1.0 - weights[pole] > 0.0) { "pole ${spec.pole} holds all the weight, so there is nothing to push it from" }
+            push(weights, pole, spec.gain!!)
+        }
+        val anchor = spec.anchor?.let { spec.keys.indexOf(it) } ?: weights.indices.maxBy { weights[it] }
+        return Draw(seed, participants, weights, anchor, pole, spec.gain)
+    }
+
+    /**
+     * Push along the ray from the pole through the convex point, measured in *hull-crossings*: scale
+     * the other weights to sum to `gain` and give the pole `1 - gain`. The weights still sum to 1, so
+     * this is the same affine blend with the hull lifted — and the pole's weight passes through
+     * exactly zero at `gain == 1`, which is the far face. So `gain` reads directly: 1.0 is the
+     * boundary, 1.5 is half as far again beyond it, and anything above 1 is genuinely outside.
+     */
+    private fun push(weights: DoubleArray, pole: Int, gain: Double) {
+        val scale = gain / (1.0 - weights[pole])
+        for (i in weights.indices) weights[i] *= scale
+        weights[pole] = 1.0 - gain
     }
 
     // ---- the blend ----------------------------------------------------------------------------
