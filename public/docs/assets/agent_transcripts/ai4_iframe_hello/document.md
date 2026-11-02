@@ -11,13 +11,13 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="ai4_iframe_hello" index="0" -->
 
 ```edn [field-box id="ai4_iframe_hello" role="properties"]
-{"id" "ai4_iframe_hello" "index" 0 "name" "Iframe hello · run me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Iframe hello · run me" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ai4_iframe_hello_code_.kt" "lines" 5 "characters" 177 "sha256" "6635ccf45e6a417d4f0ee893917496117550fc4230826981de49f4bd88c8057f"}]}
+{"id" "ai4_iframe_hello" "index" 0 "name" "Iframe hello · run me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Iframe hello · run me" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ai4_iframe_hello_code_.kt" "lines" 5 "characters" 246 "sha256" "18df18a8d7cc8c3216fe47a16009919b23e35782f4c9b8e4b83db30252dd94db"}]}
 ```
 
 ```kotlin [field-property box="ai4_iframe_hello" name="code" path="ai4_iframe_hello_code_.kt"]
 display(
     "page",
-    """<iframe src="/iframe-ai4-demo.html" style="border:0;width:640px;height:380px;display:block"></iframe>""",
+    """<iframe src="/iframe-ai4-demo.html" data-afield-intrinsic-width="720" data-afield-intrinsic-height="380" style="border:0;width:720px;height:380px;display:block"></iframe>""",
 )
 exposeOutputIframeTools("page", "hello")
 ```

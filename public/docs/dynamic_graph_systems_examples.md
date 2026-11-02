@@ -129,9 +129,10 @@ val panels = systems.map { (name, system) ->
             ),
     )
     // One FLine per edge, drawn as vector graphics. Weight sets both colour and stroke width,
-    // against `ceiling`.
+    // against `ceiling`. A weight near zero starts 40% up the ramp, so the low-weight systems stay
+    // visible on the dark card.
     "%s: %de %d%%tri".format(name, edges.values().size, Math.round(100.0 * fraction)) to
-        dynamicGraphFLines(state.points, edges.values(), maxWeight = ceiling, colormap = "magma")
+        dynamicGraphFLines(state.points, edges.values(), maxWeight = ceiling, colormap = "magma", minEdgeIntensity = 0.4)
 }
 
 // One shared window for all six panels, so nothing but the topology differs between them.
@@ -144,11 +145,12 @@ showPlaneGrid(
 )
 ```
 
-![six graphs built over the same 220-point phyllotaxis disc: a bright mutual k-nearest-neighbour mesh, a sparse pinwheel of flowline arcs, a dense fully triangulated tangent fan, a sparse dim proximity mesh, a dim forest of routing chains, and a dim fully triangulated alpha-event graph](assets/dynamic_graph_systems_examples/six_systems.png)
+![six graphs built over the same 220-point phyllotaxis disc: a bright mutual k-nearest-neighbour mesh, a sparse pinwheel of flowline arcs, a dense fully triangulated tangent fan, a sparse purple proximity mesh, purple routing chains, and a purple alpha-event graph made of small separate triangles](assets/dynamic_graph_systems_examples/six_systems.png)
 
 `dynamicGraphFLines` makes one `FLine` per edge, and `showPlaneGrid` draws them as SVG. Each edge's
 colour and stroke width come from its weight as a fraction of the shared ceiling, on the same scale in
-every panel, so a faint, thin panel is a system whose weights stayed low. The table gives the numbers
+every panel, so a purple, thin panel is a system whose weights stayed low. A weight of zero starts
+40 % up the ramp, so even the faintest edges show. The table gives the numbers
 behind the panels:
 
 | system | edges | in a triangle | mean degree | max weight reached |

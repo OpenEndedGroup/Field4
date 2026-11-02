@@ -3,10 +3,10 @@
 A webpage in a box's output can be a place for you and AI4 to work together. In this example the
 page has a textbox; ask the agent to fill it and watch the result in Field's Electron app.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/ai4_live_iframe/hello.png" alt="A Field box with a dark webpage in its page output: a heading A textbox for AI4, an empty Message textbox, and a line saying Nothing typed yet" capture="box" open-outputs="true" wait-output=true wait-output-kind=display wait-output-channel="page" wait="2" timeout="180" embed=true name="ai4-iframe-hello" w="800" h="470" padding="18"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/ai4_live_iframe/hello.png" alt="A Field box with a dark webpage in its page output: a heading A textbox for AI4, an empty Message textbox, and a line saying Nothing typed yet" capture="box" open-outputs="true" wait-output=true wait-output-kind=display wait-output-channel="page" wait="2" timeout="180" embed=true name="ai4-iframe-hello" w="820" h="470" padding="18"}
 display(
     "page",
-    """<iframe src="/iframe-ai4-demo.html" style="border:0;width:640px;height:380px;display:block"></iframe>""",
+    """<iframe src="/iframe-ai4-demo.html" data-afield-intrinsic-width="720" data-afield-intrinsic-height="380" style="border:0;width:720px;height:380px;display:block"></iframe>""",
 )
 exposeOutputIframeTools("page", "hello")
 Unit

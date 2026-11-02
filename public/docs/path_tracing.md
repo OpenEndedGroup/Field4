@@ -990,20 +990,49 @@ obtrusive; raise it if reflected or transmitted light becomes too dim. Set it to
 With temporal reuse disabled, use `tracer.samples` to compare views at the same sample count, and adjust
 `tracer.exposure` separately for display brightness.
 
-The material study after 16 samples per pixel, first with the clamp off and then at `1f`, well below the suggested starting point so the difference shows at this size:
+The clamp is easiest to see on light that paths find only by chance after a bounce. Here
+the material study has a ceiling just out of frame and, under it, a lamp the size of a coin
+that shines only upward, with `emitterSampling` off. The floor and spheres are lit by the
+patch of ceiling the lamp brightens, and a path finds that light only when its second bounce
+happens to hit the lamp. After 16 samples per pixel with the clamp off, those rare hits are
+the specks:
 
-```diffstatic_runner {capture-profile="linux-nvidia" data-lang=kotlin screenshot="assets/path_tracing/clamp_off.png" capture="native-window" graphics-context=true execution="launch" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="clamp_off done" embed=true hidden=true timeout="180" name="path-tracing-clamp-off" alt="The material study after 16 samples with indirectClamp off: bright isolated specks scattered over the spheres and floor"}
+```diffstatic_runner {capture-profile="linux-nvidia" data-lang=kotlin screenshot="assets/path_tracing/clamp_off.png" capture="native-window" graphics-context=true execution="launch" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="clamp_off done" embed=true hidden=true timeout="180" name="path-tracing-clamp-off" alt="The material study after 16 samples with indirectClamp off: thousands of bright white specks over the floor and all three spheres"}
 import afield.graphics.scene.fabricated.*
+import afield.graphics.vulkan.util.Camera
 
-val tracer = PathTraceDemo.install(
-    renderer,
-    width = 1280,
-    height = 720,
-    environmentPath = "public/docs/assets/fabricate_demo/venice_sunset_1k.exr",
+val scene = PathTraceScene()
+val floor = scene.material(PathTraceMaterial.diffuse(0.48f, 0.48f, 0.48f))
+val red = scene.material(PathTraceMaterial.plastic(0.65f, 0.055f, 0.025f, 0.22f))
+val gold = scene.material(PathTraceMaterial.metal(0.95f, 0.7f, 0.3f, 0.12f))
+val rough = scene.material(PathTraceMaterial.metal(0.55f, 0.65f, 0.8f, 0.55f))
+val ceiling = scene.material(PathTraceMaterial.diffuse(0.7f, 0.7f, 0.7f))
+// One-sided, facing up: the lamp lights only the ceiling above it.
+val lamp = scene.material(PathTraceMaterial.emissive(2000f, 1800f, 1500f).copy(doubleSided = false))
+scene.quad(Vector3f(-15f, 0f, -15f), Vector3f(-15f, 0f, 15f), Vector3f(15f, 0f, 15f), Vector3f(15f, 0f, -15f), floor)
+scene.sphere(Vector3f(-1.7f, 0.8f, 0f), 0.8f, red, 48, 24)
+scene.sphere(Vector3f(0f, 0.8f, 0f), 0.8f, gold, 48, 24)
+scene.sphere(Vector3f(1.7f, 0.8f, 0f), 0.8f, rough, 48, 24)
+// A ceiling out of frame, and a lamp the size of a coin just under it
+scene.quad(Vector3f(-4f, 4f, -4f), Vector3f(4f, 4f, -4f), Vector3f(4f, 4f, 4f), Vector3f(-4f, 4f, 4f), ceiling)
+scene.quad(
+    Vector3f(-0.1f, 3.8f, -0.1f),
+    Vector3f(-0.1f, 3.8f, 0.1f),
+    Vector3f(0.1f, 3.8f, 0.1f),
+    Vector3f(0.1f, 3.8f, -0.1f),
+    lamp,
 )
+val camera = Camera(renderer).also {
+    it.at.set(3.5f, 2.4f, 7.5f)
+    it.target.set(0f, 0.65f, 0f)
+    it.p.fov = 0.62
+}
+val env = PathTraceEnvironment.fromFile("public/docs/assets/fabricate_demo/venice_sunset_1k.exr")
+val tracer = PathTracingRenderer(renderer, scene, env, 1280, 720, camera).install()
 tracer.samplesPerFrame = 1
 tracer.maxBounces = 5
 tracer.exposure = 1.5f
+tracer.emitterSampling = false
 tracer.indirectClamp = 0f
 tracer.blitToScreen()
 frames {
@@ -1013,18 +1042,47 @@ frames {
 }
 ```
 
-```diffstatic_runner {capture-profile="linux-nvidia" data-lang=kotlin screenshot="assets/path_tracing/clamp_on.png" capture="native-window" graphics-context=true execution="launch" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="clamp_on done" embed=true hidden=true timeout="180" name="path-tracing-clamp-on" alt="The same view after 16 samples with indirectClamp = 1f: the bright specks on the floor and spheres are gone, and the indirect light is slightly dimmer"}
-import afield.graphics.scene.fabricated.*
+With `indirectClamp = 1f`, each of those samples is capped at a luminance of 1 before it
+is averaged in. The specks go, and with them most of the light the lamp sends by way of
+the ceiling: that light is carried by exactly those rare samples, which is the bias the
+clamp trades for a clean image.
 
-val tracer = PathTraceDemo.install(
-    renderer,
-    width = 1280,
-    height = 720,
-    environmentPath = "public/docs/assets/fabricate_demo/venice_sunset_1k.exr",
+```diffstatic_runner {capture-profile="linux-nvidia" data-lang=kotlin screenshot="assets/path_tracing/clamp_on.png" capture="native-window" graphics-context=true execution="launch" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="clamp_on done" embed=true hidden=true timeout="180" name="path-tracing-clamp-on" alt="The same view after 16 samples with indirectClamp = 1f: the specks are gone, leaving fine grain on the floor and spheres"}
+import afield.graphics.scene.fabricated.*
+import afield.graphics.vulkan.util.Camera
+
+val scene = PathTraceScene()
+val floor = scene.material(PathTraceMaterial.diffuse(0.48f, 0.48f, 0.48f))
+val red = scene.material(PathTraceMaterial.plastic(0.65f, 0.055f, 0.025f, 0.22f))
+val gold = scene.material(PathTraceMaterial.metal(0.95f, 0.7f, 0.3f, 0.12f))
+val rough = scene.material(PathTraceMaterial.metal(0.55f, 0.65f, 0.8f, 0.55f))
+val ceiling = scene.material(PathTraceMaterial.diffuse(0.7f, 0.7f, 0.7f))
+// One-sided, facing up: the lamp lights only the ceiling above it.
+val lamp = scene.material(PathTraceMaterial.emissive(2000f, 1800f, 1500f).copy(doubleSided = false))
+scene.quad(Vector3f(-15f, 0f, -15f), Vector3f(-15f, 0f, 15f), Vector3f(15f, 0f, 15f), Vector3f(15f, 0f, -15f), floor)
+scene.sphere(Vector3f(-1.7f, 0.8f, 0f), 0.8f, red, 48, 24)
+scene.sphere(Vector3f(0f, 0.8f, 0f), 0.8f, gold, 48, 24)
+scene.sphere(Vector3f(1.7f, 0.8f, 0f), 0.8f, rough, 48, 24)
+// A ceiling out of frame, and a lamp the size of a coin just under it
+scene.quad(Vector3f(-4f, 4f, -4f), Vector3f(4f, 4f, -4f), Vector3f(4f, 4f, 4f), Vector3f(-4f, 4f, 4f), ceiling)
+scene.quad(
+    Vector3f(-0.1f, 3.8f, -0.1f),
+    Vector3f(-0.1f, 3.8f, 0.1f),
+    Vector3f(0.1f, 3.8f, 0.1f),
+    Vector3f(0.1f, 3.8f, -0.1f),
+    lamp,
 )
+val camera = Camera(renderer).also {
+    it.at.set(3.5f, 2.4f, 7.5f)
+    it.target.set(0f, 0.65f, 0f)
+    it.p.fov = 0.62
+}
+val env = PathTraceEnvironment.fromFile("public/docs/assets/fabricate_demo/venice_sunset_1k.exr")
+val tracer = PathTracingRenderer(renderer, scene, env, 1280, 720, camera).install()
 tracer.samplesPerFrame = 1
 tracer.maxBounces = 5
 tracer.exposure = 1.5f
+tracer.emitterSampling = false
 tracer.indirectClamp = 1f
 tracer.blitToScreen()
 frames {

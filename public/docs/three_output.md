@@ -800,8 +800,7 @@ A scene can opt into a tool without making that tool part of Field. Tools are tr
 ES modules served by the same Field server. The default viewer loads none.
 This small example adds a reference-axis toggle:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/three_output/tools.png" wait="6.0" capture="box" open-outputs="true" padding="20"}
-:::static
+```diffstatic {data-lang=kotlin}
 three(name = "tools-example") {
     tools("/threejs_tools_demo.js")
     lines(
@@ -814,7 +813,31 @@ three(name = "tools-example") {
 }
 ```
 
-![The Three.js viewer showing one straight line, with the tool's "Reference axes" button in the toolbar after the built-in X-ray and Export GLB buttons.](assets/three_output/tools.png)
+```diffstatic_runner {data-lang=kotlin capture="ui" region="box" capture-box="three_tools" screenshot="assets/three_output/tools.png" transcript="assets/transcripts/three_output_tools_setup.yaml" padding="20" wait="0" timeout="240" embed=true hidden=true name="three-output-tools" alt="The Three.js viewer after pressing the tool's Reference axes button: the straight line, and at the origin the red, green and blue axes the tool adds, with the button shown pressed in the toolbar after the built-in X-ray and Export GLB buttons."}
+// Press the tool's own button inside the viewer's frame, then let it render.
+var pressed = "waiting"
+for (i in 0 until 120) {
+    ui.pause(250)
+    pressed =
+        ui.eval(
+                """
+                for (const f of document.querySelectorAll("iframe")) {
+                    const d = f.contentDocument
+                    const b = d && [...d.querySelectorAll("button")].find(e => e.textContent === "Reference axes")
+                    if (!b) continue
+                    if (b.getAttribute("aria-pressed") !== "true") b.click()
+                    return b.getAttribute("aria-pressed")
+                }
+                return "waiting"
+                """
+                    .trimIndent(),
+            )
+            .toString()
+    if (pressed.contains("true")) break
+}
+check(pressed.contains("true")) { "Reference axes button never appeared: " + pressed }
+ui.pause(1500)
+```
 
 Each module exports a default factory returning a descriptor with a unique `id`.
 `mount(context)` receives a toolbar element, `THREE`, the camera and controls,

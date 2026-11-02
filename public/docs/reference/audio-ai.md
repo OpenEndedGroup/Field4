@@ -271,7 +271,7 @@ beginning or the very end of its recording shows up there.
 | Declaration | Summary |
 | --- | --- |
 | <a id="corpusmicroscope-kt--corpusmicroscopehtml"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">corpusMicroscopeHtml</span><span class="p">(</span><span class="n">preview</span><span class="p">:</span> <span class="nc">CorpusPreview</span><span class="p">,</span> <span class="n">queryAudio</span><span class="p">:</span> <span class="nc">AssetRepresentation</span><span class="p">,</span> <span class="n">serviceBaseUrl</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;/field-audio&quot;</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1100</span><span class="p">,</span> <span class="n">cardWidth</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">510</span><span class="p">,</span> <span class="n">syncGroup</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;corpus-${preview.query.assetId.takeLast(12)}-${preview.query.startSeconds}&quot;</span><span class="p">,</span> <span class="n">placeControlIds</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/audio/ai/CorpusMicroscope/#L56) | A source-relative audition board for [`CorpusPreview.neighbours`](audio-ai.md#protocol-kt--corpuspreview--neighbours). |
-| <a id="corpusmicroscope-kt--showcorpusmicroscope"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">showCorpusMicroscope</span><span class="p">(</span><span class="n">preview</span><span class="p">:</span> <span class="nc">CorpusPreview</span><span class="p">,</span> <span class="n">queryAudio</span><span class="p">:</span> <span class="nc">AssetRepresentation</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;microscope&quot;</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1100</span><span class="p">,</span> <span class="n">cardWidth</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">510</span><span class="p">)</span></code>](source/jvmMain/afield/audio/ai/CorpusMicroscope/#L177) | [`corpusMicroscopeHtml`](audio-ai.md#corpusmicroscope-kt--corpusmicroscopehtml) in `channel`, with a **place** button on every neighbour card: pressing it makes a box beside this one whose code plays that neighbour's window ([`placeCorpusNeighbour`](audio-ai.md#corpusclip-kt--placecorpusneighbour)). |
+| <a id="corpusmicroscope-kt--showcorpusmicroscope"></a>[<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">showCorpusMicroscope</span><span class="p">(</span><span class="n">preview</span><span class="p">:</span> <span class="nc">CorpusPreview</span><span class="p">,</span> <span class="n">queryAudio</span><span class="p">:</span> <span class="nc">AssetRepresentation</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;microscope&quot;</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1100</span><span class="p">,</span> <span class="n">cardWidth</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">510</span><span class="p">)</span></code>](source/jvmMain/afield/audio/ai/CorpusMicroscope/#L180) | [`corpusMicroscopeHtml`](audio-ai.md#corpusmicroscope-kt--corpusmicroscopehtml) in `channel`, with a **place** button on every neighbour card: pressing it makes a box beside this one whose code plays that neighbour's window ([`placeCorpusNeighbour`](audio-ai.md#corpusclip-kt--placecorpusneighbour)). |
 
 ## CorpusOperations.kt { #corpusoperations-kt }
 
@@ -469,14 +469,16 @@ candidate against them rather than passing them as native model controls.
 [`compileGestureBoard`](audio-ai.md#gestureboard-kt--compilegestureboard) previews the protocol locally and returns a [`GestureCompilation`](audio-ai.md#protocol-kt-gesturecompilation) that lists
 how each board element is wired to the backend. Example:
 
-    val board = gestureBoard(8.0, "acoustic guitar, warm") {
-        prompt(0.0, 4.0, "sparse, arpeggiated")
-        event(3.5, "accent")
-        curve("energy", GestureCurveKind.ACTIVITY) {
-            point(0.0, 0.2); point(4.0, 0.8); point(8.0, 0.3)
-        }
+```diffstatic {data-lang=kotlin}
+val board = gestureBoard(8.0, "acoustic guitar, warm") {
+    prompt(0.0, 4.0, "sparse, arpeggiated")
+    event(3.5, "accent")
+    curve("energy", GestureCurveKind.ACTIVITY) {
+        point(0.0, 0.2); point(4.0, 0.8); point(8.0, 0.3)
     }
-    val operation = gestureCandidates(source, board, seeds = 0L until 4L)
+}
+val operation = gestureCandidates(source, board, seeds = 0L until 4L)
+```
 
 `src/jvmMain/kotlin/afield/audio/ai/GestureBoard.kt` — [read the source](source/jvmMain/afield/audio/ai/GestureBoard/)
 
@@ -1300,9 +1302,11 @@ completes with a [`RenderedAudioAnalysis`](audio-ai.md#renderedaudioanalysis-kt-
 the others rather than returning a partial result. [`RenderedAudioAnalysis.visualizationHtml`](audio-ai.md#renderedaudioanalysis-kt--renderedaudioanalysis--visualizationhtml)
 renders the waveform and all analysis lanes on a shared, bidirectional time cursor.
 
-    val wav = renderPatWav(tmp, pattern, cycles = 4, cps = 1.5)
-    val analysis = client.analyzeRenderedAudio(wav).get()
-    display(analysis.visualizationHtml())
+```diffstatic {data-lang=kotlin}
+val wav = renderPatWav(tmp, pattern, cycles = 4, cps = 1.5)
+val analysis = client.analyzeRenderedAudio(wav).get()
+display(analysis.visualizationHtml())
+```
 
 `src/jvmMain/kotlin/afield/audio/ai/RenderedAudioAnalysis.kt` — [read the source](source/jvmMain/afield/audio/ai/RenderedAudioAnalysis/)
 
@@ -1395,9 +1399,11 @@ families.
 Temporal pooling and hop length are independent: overlapping perceptual windows can still sample
 at display rate. Sampling to `maxFrames` happens after pooling and retains time order. Example:
 
-    val frames = client.spectralEmbeddingFrames(result).get()
-    val projection = frames.mds()
-    val preview = preview.withSpectralProjection(projection)
+```diffstatic {data-lang=kotlin}
+val frames = client.spectralEmbeddingFrames(result).get()
+val projection = frames.mds()
+val preview = preview.withSpectralProjection(projection)
+```
 
 `src/jvmMain/kotlin/afield/audio/ai/SpectralEmbeddingProjection.kt` — [read the source](source/jvmMain/afield/audio/ai/SpectralEmbeddingProjection/)
 
@@ -1496,9 +1502,11 @@ runs as a rolling sum, so a window covering many source rows costs one pass over
 instead of one pass per output row, and `maxFrames` sampling happens after pooling and keeps time
 order.
 
-    client.speechEmbeddingSmileTsnePreview(result).thenAccept { preview ->
-        display("speech space", speechEmbeddingPreviewVisualizationHtml(preview))
-    }
+```diffstatic {data-lang=kotlin}
+client.speechEmbeddingSmileTsnePreview(result).thenAccept { preview ->
+    display("speech space", speechEmbeddingPreviewVisualizationHtml(preview))
+}
+```
 
 `withSpeechMds` and `withSpeechTsne` replace a preview's projection axes with the locally fitted
 ones and stamp the owner, library and method into both the series metadata and the preview's

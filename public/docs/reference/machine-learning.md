@@ -3214,7 +3214,9 @@ around it, fitted by autodiff from examples of any rule that can already be eval
 a cloud onto a shape, and it is blind to the other particles. An interaction is the other kind
 of rule:
 
-    a_i = phi( v_i, SUM_j psi(x_j - x_i, v_j - v_i), MEAN_j psi(...) )
+```diffstatic {data-lang=kotlin}
+a_i = phi( v_i, SUM_j psi(x_j - x_i, v_j - v_i), MEAN_j psi(...) )
+```
 
 two small networks and a reduction over neighbours. This is the Deep Sets form, and its
 aggregation is permutation-invariant over any number of neighbours, so one set of weights works

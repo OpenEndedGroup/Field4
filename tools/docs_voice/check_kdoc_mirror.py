@@ -93,6 +93,58 @@ def file_overview(source: Path) -> list[str] | None:
     return None
 
 
+LIST_ITEM = re.compile(r"^\s*([-*+]|\d+[.)])\s+")
+
+
+def indented_blocks_to_fences(lines: list[str]) -> list[str]:
+    """Mirror of `StdlibReferenceGenerator.indentedBlocksToFences`.
+
+    The generator publishes an indented code block as a fence, dedented by the
+    block's smallest indent, so that it gets the house `diffstatic` treatment. An
+    indented run after a list item is list continuation, and nothing inside an
+    existing fence is touched.
+    """
+    def indent(line: str) -> int:
+        return len(line) - len(line.lstrip(" "))
+
+    out: list[str] = []
+    in_fence = in_list = False
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if line.lstrip().startswith("```"):
+            in_fence = not in_fence
+            out.append(line)
+            i += 1
+            continue
+        if in_fence:
+            out.append(line)
+            i += 1
+            continue
+        prev_blank = not out or not out[-1].strip()
+        if line.strip() and indent(line) >= 4 and prev_blank and not in_list:
+            end = j = i
+            while j < len(lines) and (not lines[j].strip() or indent(lines[j]) >= 4):
+                if lines[j].strip():
+                    end = j
+                j += 1
+            block = lines[i:end + 1]
+            strip = min(indent(b) for b in block if b.strip())
+            out.append("```")
+            out.extend(b[strip:] if b.strip() else "" for b in block)
+            out.append("```")
+            i = end + 1
+            continue
+        if line.strip():
+            if LIST_ITEM.match(line):
+                in_list = True
+            elif indent(line) == 0:
+                in_list = False
+        out.append(line)
+        i += 1
+    return out
+
+
 def _body(block: list[str]) -> list[str]:
     # de-prefix first, so a `#` comment inside a fence can be told from a heading
     plain = []
@@ -115,7 +167,7 @@ def _body(block: list[str]) -> list[str]:
             cut = i
             continue
         break
-    plain = plain[:cut]
+    plain = indented_blocks_to_fences(plain[:cut])
 
     # Which lines are headings, and which are `#` comments inside a code fence --
     # `RectSLFit.kt`'s overview has a fenced `# a bar whose height is unknown`.

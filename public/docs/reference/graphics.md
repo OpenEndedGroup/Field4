@@ -5652,9 +5652,11 @@ perpendicular to the parent.
 The counts are equal by construction, not because the two clouds occupy the same cells, so clouds
 of very different density still match completely.
 
-    val result = matchPoints(from, to)            // two List<Vec2> of the same size
-    val destination = result.reorder(to)          // destination[`i`](workspace.md#stdlib-kt--i) is where from[`i`](workspace.md#stdlib-kt--i) goes
-    val halfway = from.indices.map { from`it` + (destination`it` - from`it`) * 0.5f }
+```diffstatic {data-lang=kotlin}
+val result = matchPoints(from, to)            // two List<Vec2> of the same size
+val destination = result.reorder(to)          // destination[i] is where from[i] goes
+val halfway = from.indices.map { from[it] + (destination[it] - from[it]) * 0.5f }
+```
 
 For raw `FloatArray`s, call [`BspOt2D.match`](graphics.md#bspot-kt--bspot2d--match) directly. A previous permutation can be passed as
 `initial` and is improved rather than replaced, which suits matching successive frames of a

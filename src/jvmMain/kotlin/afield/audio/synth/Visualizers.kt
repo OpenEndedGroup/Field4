@@ -796,8 +796,13 @@ private fun renderWaveformSvg(
     val y0 = padTop
     val centerY = y0 + innerH / 2.0
 
+    // Quiet audio drawn on a fixed ±1 axis is a flat line, so a signal peaking below half scale is
+    // drawn with enough gain to reach 0.9; the gain is printed as a badge so the scale stays honest.
+    val peak = max(stats.peakLeft, stats.peakRight ?: 0f)
+    val gain = if (peak > 1e-6f && peak < 0.5f) min(0.9f / peak, 1000f) else 1f
+
     fun yFor(sample: Float): Double {
-        val normalized = (sample.coerceIn(-1.05f, 1.05f) + 1.05f) / 2.10f
+        val normalized = ((sample * gain).coerceIn(-1.05f, 1.05f) + 1.05f) / 2.10f
         return y0 + innerH - normalized * innerH
     }
 
@@ -823,12 +828,14 @@ private fun renderWaveformSvg(
             SvgBadge("${formatFloat(stats.durationMs)} ms"),
             SvgBadge("pk ${formatFloat(stats.peakLeft)}"),
             if (stats.peakRight != null) SvgBadge("R ${formatFloat(stats.peakRight)}", secondaryColor) else null,
-            SvgBadge("rms ${formatFloat(stats.rmsLeft)}")
+            SvgBadge("rms ${formatFloat(stats.rmsLeft)}"),
+            if (gain != 1f) SvgBadge("×${formatFloat(gain)}") else null
         ),
         widthPx = widthPx,
         startX = widthPx - 8,
         y = 13,
-        fontFamily = fontFamily
+        fontFamily = fontFamily,
+        title = title
     )
 
     val legend = if (snapshot.isStereo) """
@@ -929,7 +936,8 @@ private fun renderSpectrumSvg(
         widthPx = widthPx,
         startX = widthPx - 8,
         y = 13,
-        fontFamily = fontFamily
+        fontFamily = fontFamily,
+        title = title
     )
 
     return """
@@ -1008,7 +1016,7 @@ private fun renderCompactTraceSvg(
         }
     }
 
-    val badgeMarkup = buildBadges(badges, widthPx = widthPx, startX = widthPx - 8, y = 13, fontFamily = fontFamily)
+    val badgeMarkup = buildBadges(badges, widthPx = widthPx, startX = widthPx - 8, y = 13, fontFamily = fontFamily, title = title)
 
     return """
         <svg xmlns="http://www.w3.org/2000/svg" width="$widthPx" height="$heightPx" viewBox="0 0 $widthPx $heightPx">
@@ -1155,23 +1163,30 @@ private fun buildBadges(
     widthPx: Int,
     startX: Int,
     y: Int,
-    fontFamily: String
+    fontFamily: String,
+    title: String = "",
 ): String {
     if (badges.isEmpty()) return ""
 
+    // Badges are laid out right to left and stop before they reach the panel's title, which is
+    // drawn from x = 8 at the same baseline; a narrow panel drops its leftmost badges instead of
+    // printing them over the title.
+    val leftLimit = max(widthPx * 0.35, 8.0 + estimatedTextWidth(title) + 8.0)
     var cursor = startX.toDouble()
     val parts = mutableListOf<String>()
-    badges.asReversed().forEach { badge ->
-        val estimatedWidth = badge.text.length * 6.2 + 10.0
+    for (badge in badges.asReversed()) {
+        val estimatedWidth = estimatedTextWidth(badge.text) + 10.0
+        if (cursor - estimatedWidth < leftLimit) break
         cursor -= estimatedWidth
         parts += """
             <text x="${cursor.f2()}" y="$y" font-family="$fontFamily" font-size="10" fill="${badge.color}" opacity="0.92">${escapeXml(badge.text)}</text>
         """.trimIndent()
         cursor -= 8.0
-        if (cursor < widthPx * 0.35) return@forEach
     }
-    return parts.joinToString("\n")
+    return parts.asReversed().joinToString("\n")
 }
+
+private fun estimatedTextWidth(text: String): Double = text.length * 6.2
 
 private fun findPeakFrequency(curve: SpectrumCurve): Float {
     if (curve.frequencies.isEmpty()) return 0f

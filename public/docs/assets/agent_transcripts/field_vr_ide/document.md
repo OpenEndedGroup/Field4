@@ -60,7 +60,7 @@ displayOpen("guide")
 <!-- field-box id="vr_ide_panel" index="1" -->
 
 ```edn [field-box id="vr_ide_panel" role="properties"]
-{"id" "vr_ide_panel" "index" 1 "name" "2 - Live IDE in VR" "parents" ["root" "vr_ide_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "vr_ide_renderer"} "name" "2 - Live IDE in VR" "_tombstone" false "frame" #afield/rect [580.0 60.0 350.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "vr_ide_panel_code_.kt" "lines" 24 "characters" 729 "sha256" "5552403af8ef31ea4c8dc27e097ddf57ebfb377bd96a567f39c82d8b6ff257f5"}]}
+{"id" "vr_ide_panel" "index" 1 "name" "2 - Live IDE in VR" "parents" ["root" "vr_ide_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "vr_ide_renderer"} "name" "2 - Live IDE in VR" "_tombstone" false "frame" #afield/rect [580.0 60.0 350.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "vr_ide_panel_code_.kt" "lines" 24 "characters" 729 "sha256" "f4ff83549f14b42b802082dcc71df797fea216074d2785d22ce56d5843fb92ea"}]}
 ```
 
 ```kotlin [field-property box="vr_ide_panel" name="code" path="vr_ide_panel_code_.kt"]
@@ -73,8 +73,8 @@ val ownedRenderer = renderer
 val vr = FieldVrWorkspace(
     renderer = ownedRenderer,
     url = FieldUiBrowserTexture.fieldDocumentUrl(thisBox),
-    width = 2560,
-    height = 1600,
+    width = 1600,
+    height = 1000,
     readyBoxUid = thisBox.id,
     widthMeters = 2.0f,
     distanceMeters = 1.35f,

@@ -69,8 +69,8 @@ operations:
           val vr = FieldVrWorkspace(
               renderer = ownedRenderer,
               url = FieldUiBrowserTexture.fieldDocumentUrl(thisBox),
-              width = 2560,
-              height = 1600,
+              width = 1600,
+              height = 1000,
               readyBoxUid = thisBox.id,
               widthMeters = 2.0f,
               distanceMeters = 1.35f,

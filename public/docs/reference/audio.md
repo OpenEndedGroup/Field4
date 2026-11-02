@@ -3265,17 +3265,19 @@ each one passes.
 synth graph a second time. What comes back is one `Double` per band in the order the centres were
 given, which is the shape a frame's worth of code can hand to a shader or a particle force.
 
-    val launch = patSynth(stack(pat("bd*4"), pat("hh*16")), cps = 2.0)
-    val split = logBands(4, lowHz = 70.0, highHz = 8000.0, sampleRate = launch.bank.sampleRate)
-    val perFrame = launch.bank.sampleRate / 60
-    frames {
-        while (frame()) {
-            launch.advanceOffline(perFrame)
-            val energy = split.measure(launch.tap.snapshot())
-            // energy[0] is the lowest band, and hears the kick; energy[3] is the highest, and
-            // hears the hats
-        }
+```diffstatic {data-lang=kotlin}
+val launch = patSynth(stack(pat("bd*4"), pat("hh*16")), cps = 2.0)
+val split = logBands(4, lowHz = 70.0, highHz = 8000.0, sampleRate = launch.bank.sampleRate)
+val perFrame = launch.bank.sampleRate / 60
+frames {
+    while (frame()) {
+        launch.advanceOffline(perFrame)
+        val energy = split.measure(launch.tap.snapshot())
+        // energy[0] is the lowest band, and hears the kick; energy[3] is the highest, and
+        // hears the hats
     }
+}
+```
 
 Something has to be pulling the bank, or the tap stays empty and every band reads zero. Above the
 box pulls it, which measures without sounding and does not depend on there being an output
@@ -4565,12 +4567,14 @@ There are two routes, good at different things, and both are here.
 
 **compile** — turn a pattern into a Sonic Pi program.
 
-    sonicPiProgram(
-        "drums" to pat("bd [hh hh] sd hh"),
-        "bass" to pat("<e1 g1> ~ e2 ~").every(4) { it.rev() } on "tb303",
-        cps = 0.5,
-        cycles = 4
-    ).source
+```diffstatic {data-lang=kotlin}
+sonicPiProgram(
+    "drums" to pat("bd [hh hh] sd hh"),
+    "bass" to pat("<e1 g1> ~ e2 ~").every(4) { it.rev() } on "tb303",
+    cps = 0.5,
+    cycles = 4
+).source
+```
 
 gives you a `live_loop` per layer, with `sleep`s that are the pattern's own rational cycle
 positions. The result is ordinary Sonic Pi source: paste it into a `#sonicpi` region and edit it by
@@ -4584,7 +4588,9 @@ would round, and a decimal where it would not.
 
 **drive** — Field's clock sequences, Sonic Pi sounds.
 
-    pat("bd*4, [~ cp]*2").sonicPiLive(cps = 0.5)
+```diffstatic {data-lang=kotlin}
+pat("bd*4, [~ cp]*2").sonicPiLive(cps = 0.5)
+```
 
 One `/run-code` per event, dispatched by the same `PatResponseSpec` machinery that drives every
 other live pattern in Field, so `.every`, `.degradeBy` and a signal on `gain(...)` stay live while

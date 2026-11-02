@@ -1,0 +1,23 @@
+name: three_output_tools_setup
+description: >
+  Setup for the custom-tool capture on three_output.md: the page's tools example, one line in a
+  Three.js viewer with the demo Reference axes tool installed. The capture's drive script presses
+  the tool's button so the axes it adds appear.
+operations:
+  - create:
+      box: three_tools
+      name: tools-example
+      frame: { x: 80, y: 60, w: 400, h: 100 }
+      properties:
+        code: |
+          three(name = "tools-example") {
+              tools("/threejs_tools_demo.js")
+              lines(
+                  fline {
+                      moveTo(0.0, 0.0, 0.0)
+                      lineTo(2.0, 1.0, 0.0)
+                  },
+              )
+              helpers(false) // so the grid's own tripod is not mistaken for the tool's axes
+          }
+  - execute: { box: three_tools, property: code }

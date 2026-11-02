@@ -3001,10 +3001,12 @@ Reusable [`OctreeBarnesHut`](simulation.md#octreebarneshut-kt-octreebarneshut) i
 
 PointDriver -- position in, force out.
 
-    val drv = PointDriver(DriverConfig(dt = 1.0 / 120.0, worldScale = 1.0))
-    drv.grab(target)                     // may be called every frame; target can move
-    val f = drv.update(pos)              // per frame, fixed dt
-    drv.releaseGrab()                    // then keep calling update() -- see below
+```diffstatic {data-lang=kotlin}
+val drv = PointDriver(DriverConfig(dt = 1.0 / 120.0, worldScale = 1.0))
+drv.grab(target)                     // may be called every frame; target can move
+val f = drv.update(pos)              // per frame, fixed dt
+drv.releaseGrab()                    // then keep calling update() -- see below
+```
 
 Vectors are Field's ordinary Vector3f; every scalar the controller reasons
 about -- gains, timescales, the identified plant -- stays Double. The file is otherwise standalone.
@@ -3700,7 +3702,9 @@ a [`Cloth`](simulation.md#cloth-kt-cloth) is a contiguous row-major grid, so the
 it takes the normal from the diagonals, the area from half that normal's length, the relative
 velocity from the mean of the four corners, and applies
 
-    F = 0.5 * rho * Cd * A * (n . v_rel) * |n . v_rel| * n
+```diffstatic {data-lang=kotlin}
+F = 0.5 * rho * Cd * A * (n . v_rel) * |n . v_rel| * n
+```
 
 quartered onto the corners, plus an optional tangential term. Flutter comes out of the signed
 `n . v_rel` factor: a quad turning edge-on stops being pushed, overshoots, catches the wind on
@@ -3810,10 +3814,12 @@ shape of thing. `sim.addStrand(...)` (or `Strand.addTo`) appends `count` particl
 simulation that may already contain others, chains them through a
 [`SimdVerlet.DirectedConstraints4`](simulation.md#simdverlet-kt--simdverlet--directedconstraints4), and hands back a handle that speaks node indices.
 
-    val sim = SimdVerlet(SimdVerlet.State3.empty())
-    val rope = sim.addStrand(count = 40, spacing = 0.12f, stiffness = 60f)
-    rope.pin(0)
-    while (true) { rope.step(gravity = 9.8f, iterations = 16); draw(rope.lines()) }
+```diffstatic {data-lang=kotlin}
+val sim = SimdVerlet(SimdVerlet.State3.empty())
+val rope = sim.addStrand(count = 40, spacing = 0.12f, stiffness = 60f)
+rope.pin(0)
+while (true) { rope.step(gravity = 9.8f, iterations = 16); draw(rope.lines()) }
+```
 
 ### Why every node has two spare slots
 

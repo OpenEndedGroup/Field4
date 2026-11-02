@@ -252,23 +252,25 @@ with(Functions) {
 
 ![Three curves: a thick orange target, a dashed grey seed at about a fifth of the amplitude and offset the wrong way, and a cyan fitted curve lying exactly on the target](assets/functions_examples/fit_before_after_box.png)
 
-And the descent itself, one frame every 8 iterations from 0 to 320. Each frame is its own
+And the descent itself, from iteration 0 to 320, with the early iterations shown longest because that is where the curve moves. Each frame is its own
 `fitGradient` run, truncated at that iteration count, so the error printed under it belongs to that run:
 
-```diffstatic_runner {data-lang=kotlin video="assets/functions_examples/fit_convergence.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="3" fps="20" timeout="240" w="1200" embed=true name="functions-fit-convergence" alt="a cyan curve starting far below a thick orange target sine, growing in amplitude and sliding into place over successive iterations until it lies exactly on the target, the iteration count and its error printed under it"}
+```diffstatic_runner {data-lang=kotlin video="assets/functions_examples/fit_convergence.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="4.5" fps="20" timeout="240" w="1200" embed=true name="functions-fit-convergence" alt="a cyan curve starting at a fifth of the amplitude of a thick orange target sine, growing in amplitude by iteration 8 and then sliding up into place over the following iterations until it lies on the target at 320, the iteration count and its error printed under it"}
 :::static
 /*
-One frame every 8 iterations, from 0 to 320, then the last frame held. Each frame is its own
-fitGradient run, truncated at that iteration count, so the error under it belongs to that run.
-k starts a step early because the recording begins on the launch's second frame.
+Iteration counts bunched where the curve moves, each held for three frames, then the last held.
+Each is its own fitGradient run, truncated at that count, so the error belongs to that run.
 */
-var k = -8
+val steps = [0, 1, 2, 3, 4, 5, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 27, 30, 34, 38, 42, 48, 56, 64, 80, 96, 128, 160, 224, 320]
+var frameIndex = 0
 loop {
+    val k = steps[minOf(frameIndex / 3, steps.size - 1)]
+    frameIndex++
     with(Functions) {
         val target = sin(frequency = 2.0, amplitude = 0.8, offset = 0.12)
         val seed = sin(frequency = 2.0, amplitude = 0.30, offset = -0.15)
         val run =
-            fitGradient(target = target, seed = seed, iterations = maxOf(k, 0), lr = 0.05, samples = 160, rngSeed = 0L)
+            fitGradient(target = target, seed = seed, iterations = k, lr = 0.05, samples = 160, rngSeed = 0L)
         :::fold the plot frame: 900 x 380 px, y up, values -1.1..1.1
         val x0 = 40.0
         val x1 = 940.0
@@ -315,9 +317,8 @@ loop {
             h = 440.0,
             fitToSize = false,
         )
-        markdown("iteration", "**iteration ${maxOf(k, 0)}**: error ${run.finalError.f4}")
+        markdown("iteration", "**iteration $k**: error ${run.finalError.f4}")
     }
-    if (k < 320) k += 8
     frame()
 }
 ```
@@ -4294,7 +4295,7 @@ This example rewrites a nested graph in two ways: it changes a descendant `saw` 
 // finished: go { } starts once this run returns.
 go {
     with(Functions) {
-        val base = (sin(sin(saw(0.18))) * 0.45) over (0.0..3.0)
+        val base = (sin(sin(saw(0.18))) * 0.45) over (0.0..0.4)
         val changed =
             base.rewriteKotlin(
                 """
@@ -4304,16 +4305,16 @@ sin/**/[tag=number][value>0.15] => *= @{1.0 + depth * 0.08}
 **/[role=amplitude] => *= @{if (parentOp == "sin") 0.75 else 1.0}
 """,
             )
-        base.withName("before rewrite").plot(0.0..3.0, channel = "before", heightPx = 240, title = "before rewrite")
-        changed.withName("after rewrite").plot(0.0..3.0, channel = "after", heightPx = 240, title = "after rewrite")
+        base.withName("before rewrite").plot(0.0..0.4, channel = "before", heightPx = 240, title = "before rewrite")
+        changed.withName("after rewrite").plot(0.0..0.4, channel = "after", heightPx = 240, title = "after rewrite")
         (changed - base)
             .withName("rewrite delta")
-            .plot(0.0..3.0, channel = "delta", heightPx = 220, title = "after - before")
+            .plot(0.0..0.4, channel = "delta", heightPx = 220, title = "after - before")
     }
 }
 ```
 
-The selectors talk about structure, not sample values. The rules do not ask "where is the waveform high?"; they ask "which function graph nodes sit under this ancestry, role, or metadata condition?" Plotting the source, result, and delta puts the structural edit on screen: the graph rewrite is not only metadata, it changes the sampled signal.
+The selectors talk about structure, not sample values. The rules do not ask "where is the waveform high?"; they ask "which function graph nodes sit under this ancestry, role, or metadata condition?" Plotting the source, result, and delta over the first 0.4 units, before the nested `sin` starts oscillating faster than the plot can draw, puts the structural edit on screen: the graph rewrite is not only metadata, it changes the sampled signal.
 
 ### Rewrite limitations
 

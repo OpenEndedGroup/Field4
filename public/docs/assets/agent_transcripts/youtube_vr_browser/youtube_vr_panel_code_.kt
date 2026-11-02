@@ -30,7 +30,7 @@ val panel = PuppetBrowserVrPanel(
     stereo = stereo,
     browser = browser,
     widthMeters = 1.6f,
-    distanceMeters = 1.7f,
+    distanceMeters = 1.3f,
     name = "youtube-browser-panel",
 )
 panel.build()

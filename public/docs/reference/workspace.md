@@ -6949,8 +6949,10 @@ Runnable-object test style, matching [`ReplBootstrapGateTest`](workspace.md#repl
 
 `testReceiverInjection` failed with an `IrErrorCallExpression` reaching codegen:
 
-    Unresolved reference: this@R|<local>/<with holder>|
-    AssertionError: Unexpected IR element found during code generation ... or it should have been lowered
+```diffstatic {data-lang=kotlin}
+Unresolved reference: this@R|<local>/<with holder>|
+AssertionError: Unexpected IR element found during code generation ... or it should have been lowered
+```
 
 fir2ir emitting that error call is expected. Wither's FIR half binds the injected receiver to a
 synthetic holder that fir2ir cannot translate, and its IR half (`WitherReceiverTransformer`) exists
@@ -6958,7 +6960,9 @@ to patch it: it removes each `with(...)` statement, stores the argument in a tem
 replaces each `<with holder>` error call with a read of that temporary. The bug was that the pass
 never matched the `with(...)` call. The IR dump in the failure still held
 
-    CALL 'public final fun with (vararg values: kotlin.Any?): kotlin.Unit `companion` declared in io.github.kyay10.wither.WithKt'
+```diffstatic {data-lang=kotlin}
+CALL 'public final fun with (vararg values: kotlin.Any?): kotlin.Unit [companion] declared in io.github.kyay10.wither.WithKt'
+```
 
 The callee comes from `libs/wither-annotations.jar`, and in IR its parent is the JVM file facade
 class, not the package fragment. A temporary probe in the pass printed `parent=IrClassImpl
