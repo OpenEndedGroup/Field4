@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-02T14:51:04.960Z",
+  "capturedAt": "2026-11-02T15:49:34.641Z",
   "documentName": "field_vr_ide",
   "outputs": [
     {
@@ -8,8 +8,8 @@
       "channel": "Vulkan window · still image",
       "open": true,
       "path": "outputs/0.html",
-      "width": 2880,
-      "height": 1600,
+      "width": 2448,
+      "height": 1360,
       "kinds": [
         "native-image"
       ],
