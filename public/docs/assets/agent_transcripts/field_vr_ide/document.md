@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="vr_ide_renderer" index="0" -->
 
 ```edn [field-box id="vr_ide_renderer" role="properties"]
-{"id" "vr_ide_renderer" "index" 0 "name" "1 - VR IDE renderer" "parents" ["root"] "children" ["vr_ide_panel"] "properties" {"children" #{#afield/box "vr_ide_panel"} "parents" #{#afield/box "root"} "name" "1 - VR IDE renderer" "_tombstone" false "frame" #afield/rect [60.0 60.0 330.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "vr_ide_renderer_code_.kt" "lines" 37 "characters" 1589 "sha256" "db3bb2491242b052478d237e9bae09f2338df6d6327bd6a6592f30fe449c5488"}]}
+{"id" "vr_ide_renderer" "index" 0 "name" "1 - VR IDE renderer" "parents" ["root"] "children" ["vr_ide_panel"] "properties" {"children" #{#afield/box "vr_ide_panel"} "parents" #{#afield/box "root"} "name" "1 - VR IDE renderer" "_tombstone" false "frame" #afield/rect [60.0 60.0 330.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "vr_ide_renderer_code_.kt" "lines" 38 "characters" 1688 "sha256" "03d5dbf817154489d89da0a843e73f1e2661e9e4249af96b30442008d034f4f0"}]}
 ```
 
 ```kotlin [field-property box="vr_ide_renderer" name="code" path="vr_ide_renderer_code_.kt"]
@@ -37,12 +37,13 @@ display(
     <div style="width:420px;font:16px/1.6 system-ui">
     <b>Field in your headset</b><br>
     Launch 1, then 2. The browser opens this same document.<br>
-    Point with either controller; trigger clicks and drags, stick scrolls.<br>
+    Point with either controller; trigger or A/X clicks, stick scrolls in both axes.<br>
     Aim at the panel and hold grip to move and rotate it; release to leave it there.<br>
+    Hold both grips and spread your hands to resize the panel.<br>
     With tracked hands, point the hand and pinch to click.<br>
     Keyboard opens text and editing keys; Commands opens the palette.<br>
     Select the Playground, edit its code, then Run box (Alt+Up).<br>
-    Recenter brings the panel in front of your current head position.<br>
+    The bottom toolbar Recenter button brings the panel in front of you and keeps its size.<br>
     The desktop companion accepts normal keyboard and mouse input when focused.<br>
     Quest keyboard and mouse use WiVRn HID forwarding after setup; see the saved guide.<br>
     Another browser can edit this same document with its own input focus.<br>
