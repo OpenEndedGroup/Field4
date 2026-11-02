@@ -324,6 +324,7 @@ class PuppetBrowserPanel(
         triggerPressed: Boolean,
         scrollY: Double = 0.0,
         pointerType: BrowserPointerType = BrowserPointerType.MOUSE,
+        scrollX: Double = 0.0,
     ): Hit? {
         val hit = raycast(origin, direction)
         if (hit != null) lastHit = hit
@@ -341,7 +342,7 @@ class PuppetBrowserPanel(
             if (releaseAt != null) uv.up(BrowserMouseButton.LEFT, releaseAt.u, releaseAt.v, pointerType)
             captured = false
         }
-        if (scrollY != 0.0 && at != null) uv.wheel(0.0, scrollY, at.u, at.v)
+        if ((scrollX != 0.0 || scrollY != 0.0) && at != null) uv.wheel(scrollX, scrollY, at.u, at.v)
         pressed = triggerPressed
         return hit
     }

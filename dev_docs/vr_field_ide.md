@@ -159,3 +159,33 @@ https://docs.vulkan.org/refpages/latest/refpages/source/VkPhysicalDeviceVulkanMe
 Unchanged upstream publication snapshots were restored from the guarded main commit, preserving
 their real captured data and provenance. Their source and capture digests matched this tree; only
 changed publications need replay. No capture pixels or output values were synthesized or edited.
+
+
+## Headset development workflow confirmed (2026-11-02)
+
+The user confirmed that keyboard and mouse connected to Quest 3 provide a usable VR development
+environment, then confirmed the startup rendering, scrolling and controller click fixes. After
+two-controller resizing was added, the user confirmed that workflow too and requested publication.
+This supersedes the earlier pending-hardware status above. A second physical remote computer has
+not been checked; prior real two-browser collaboration evidence used one host.
+
+The startup bug was reproduced in real offscreen CPU bitmap pixels at 2560 by 1600. The WebGL
+background's state claimed a frame while a background pixel was transparent (0,0,0,0); a redraw
+made it opaque. A DOM resize alone ran before Chromium had reset its backing surface. The fix waits
+for the overridden viewport's first paint, invalidates the background renderer's cached frame and
+redraws it. The ready-frame watermark is taken before that redraw, so a static correct frame can
+satisfy Field's readiness check. Final direct producer probes found (37,37,37,255) on initial load,
+before scrolling, and a frame newer than the readiness watermark.
+
+Continuous move and wheel input now shares a bounded batch. Wheel deltas sum on both axes, and
+buttons, keyboard input and modifier changes seal a batch to retain event order. Real Chromium
+received a 120-sample motion/wheel burst promptly with the full displacement. Touch has a native
+OpenXR binding set; analog trigger input uses press/release hysteresis, and A/X also clicks.
+
+Two grips scale uniformly around the panel centre, with translation from the hands' midpoint.
+Releasing either hand rebases the surviving grip without snapping; loss of both leaves the panel
+in place. Physical width is bounded to 0.4 through 8 metres, and Recenter retains the scale.
+Browser pixel resolution stays unchanged. Fourteen controller/hand/grab tests, fifteen real
+Chromium tests and two deterministic input-queue tests passed; the new resize cases cover aspect,
+hit testing, scale limits and either-hand handoff. The browser tests need the existing display
+session supplied explicitly. No unrelated GPU owner or physical desktop input device was changed.

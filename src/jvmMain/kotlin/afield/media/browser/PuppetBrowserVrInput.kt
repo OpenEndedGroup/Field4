@@ -16,6 +16,7 @@ data class BrowserVrPointer(
     val scrollY: Double = 0.0,
     val gripPressed: Boolean = false,
     val orientation: Quaternionf = Quaternionf(),
+    val scrollX: Double = 0.0,
 )
 
 /**
@@ -56,7 +57,7 @@ class PuppetBrowserVrInput(val panel: PuppetBrowserPanel) {
         val hit = selected?.let {
             // Moving onto the panel with a button already held must not synthesize a new click.
             val down = it.pressed && (it.id == capturedPointer || it.id !in previousPressed)
-            panel.interact(it.origin, it.direction, down, it.scrollY)
+            panel.interact(it.origin, it.direction, down, it.scrollY, scrollX = it.scrollX)
         }
         if (selected == null) panel.releasePointer()
         capturedPointer = if (panel.uv.buttons != 0) selected?.id else null
@@ -75,15 +76,17 @@ class PuppetBrowserVrInput(val panel: PuppetBrowserPanel) {
     /** Prefer the runtime's aim pose. Invalid poses never fall back to an untracked mouse. */
     fun controller(id: String, state: ControllerState, elapsedSeconds: Double): BrowserVrPointer? {
         if (!state.active || !state.poseValid) return null
-        val axis = when {
-            kotlin.math.abs(state.thumbstickY) > 0.12f -> state.thumbstickY
-            kotlin.math.abs(state.trackpadY) > 0.12f -> state.trackpadY
-            else -> 0f
+        fun axis(stick: Float, pad: Float): Double {
+            val raw = if (kotlin.math.abs(stick) > 0.12f) stick else pad
+            val magnitude = ((kotlin.math.abs(raw) - 0.12) / 0.88).coerceIn(0.0, 1.0)
+            return kotlin.math.sign(raw.toDouble()) * magnitude * magnitude
         }
+        val seconds = elapsedSeconds.coerceIn(0.0, 0.05)
         val (origin, direction) = PuppetBrowserPanel.controllerRay(state, Vector3f(0f, 0f, -1f))
-        return BrowserVrPointer(id, origin, direction, state.selectPressed || state.triggerPressed,
-            -axis * 1200.0 * elapsedSeconds.coerceIn(0.0, 0.05),
-            gripPressed = state.squeezePressed, orientation = Quaternionf(state.rotation))
+        return BrowserVrPointer(id, origin, direction, state.selectPressed || state.triggerPressed || state.aPressed,
+            -axis(state.thumbstickY, state.trackpadY) * 1200.0 * seconds,
+            gripPressed = state.squeezePressed, orientation = Quaternionf(state.rotation),
+            scrollX = axis(state.thumbstickX, state.trackpadX) * 1200.0 * seconds)
     }
 
     /** Joint-based fallback when the runtime supplies hands without a controller aim action. */
@@ -105,18 +108,54 @@ class PuppetBrowserVrInput(val panel: PuppetBrowserPanel) {
     }
 }
 
-/** Grip attaches the panel rigidly to the grabbing aim pose, preserving its initial offset. */
-class PuppetBrowserVrGrab(private val panel: PuppetBrowserPanel) {
+/** One grip moves the panel; two grips resize around its centre and translate with the hands. */
+class PuppetBrowserVrGrab(
+    private val panel: PuppetBrowserPanel,
+    private val minimumWidthMeters: Float = 0.4f,
+    private val maximumWidthMeters: Float = 8f,
+) {
     var owner: String? = null
         private set
     private val offset = Matrix4f()
     private var previousGrips = emptySet<String>()
+    private data class Resize(
+        val first: String, val second: String, val midpoint: Vector3f,
+        val distance: Float, val width: Float, val model: Matrix4f,
+    )
+    private var resize: Resize? = null
+
+    init {
+        require(minimumWidthMeters > 0f && maximumWidthMeters >= minimumWidthMeters)
+    }
 
     fun update(pointers: List<BrowserVrPointer>, enabled: Boolean = true): Boolean {
         if (!enabled) {
             owner = null
+            resize = null
             previousGrips = pointers.filter { it.gripPressed }.map { it.id }.toSet()
             return false
+        }
+        resize?.let { gesture ->
+            val first = pointers.firstOrNull { it.id == gesture.first && it.gripPressed }
+            val second = pointers.firstOrNull { it.id == gesture.second && it.gripPressed }
+            if (first != null && second != null) {
+                val midpoint = Vector3f(first.origin).add(second.origin).mul(0.5f)
+                val scale = (first.origin.distance(second.origin) / gesture.distance)
+                    .coerceIn(minimumWidthMeters / gesture.width, maximumWidthMeters / gesture.width)
+                val centre = gesture.model.getTranslation(Vector3f())
+                val translated = Vector3f(midpoint).sub(gesture.midpoint).add(centre)
+                panel.model.identity().translate(translated.x, translated.y, translated.z).scale(scale)
+                    .translate(-centre.x, -centre.y, -centre.z).mul(gesture.model)
+            } else {
+                // Releasing either hand resumes a one-handed grab without jumping. Tracking
+                // loss follows the same rule; with neither hand tracked the panel stays put.
+                resize = null
+                val remaining = first ?: second
+                owner = remaining?.id
+                if (remaining != null) offset.set(pose(remaining).invert().mul(panel.model))
+            }
+            previousGrips = pointers.filter { it.gripPressed }.map { it.id }.toSet()
+            return owner != null
         }
         val held = pointers.firstOrNull { it.id == owner && it.gripPressed }
         if (held != null) {
@@ -131,12 +170,24 @@ class PuppetBrowserVrGrab(private val panel: PuppetBrowserPanel) {
                 offset.set(pose(start).invert().mul(panel.model))
             }
         }
+        val first = pointers.firstOrNull { it.id == owner && it.gripPressed }
+        val second = pointers.firstOrNull {
+            it.id != owner && it.gripPressed && it.id !in previousGrips &&
+                panel.raycast(it.origin, it.direction)?.onPanel == true
+        }
+        if (first != null && second != null && first.origin.distance(second.origin) >= 0.08f) {
+            resize = Resize(first.id, second.id, Vector3f(first.origin).add(second.origin).mul(0.5f),
+                first.origin.distance(second.origin),
+                panel.model.transformDirection(Vector3f(panel.halfWidth * 2, 0f, 0f)).length(),
+                Matrix4f(panel.model))
+        }
         previousGrips = pointers.filter { it.gripPressed }.map { it.id }.toSet()
         return owner != null
     }
 
     fun cancel() {
         owner = null
+        resize = null
         previousGrips = emptySet()
     }
 
