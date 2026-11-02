@@ -239,7 +239,7 @@ Annotations let a note point at an exact target.
 
 Add a callout wherever it will help the reader find what the note describes.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/interactive_guides/annotations.png" wait="5" capture="window-editor" outputs="none" embed=true name="guide-annotations" w="240" h="60" padding="12" alt="The Field window. On the left the small guide box, selected, with a green arrowhead at its top-right corner, and beside it the note headed Annotation Lines with its two bullets. An orange dashed line runs from the note across the canvas and curves down to the editor's left edge, ending at the top of line 17. On the right the editor shows the snippet, with a red mark in the gutter at line 17, the selectBox call."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/interactive_guides/annotations.png" wait="5" capture="window-editor" viewport="1300x560" outputs="none" embed=true name="guide-annotations" w="240" h="60" padding="12" alt="On the left the guide box, selected, with a green arrowhead at its corner where the box annotation lands; beside it the note headed Annotation Lines with its two bullets, laid over the top of the editor. An orange dashed line drops from the note down the editor's gutter to line 17, the selectBox call, which has a red mark beside it."}
 :::static
 name = "guide-annotations"
 
