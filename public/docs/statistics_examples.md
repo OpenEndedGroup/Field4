@@ -602,7 +602,7 @@ distribution, so a signal of the wrong shape becomes one of the right shape. The
 (`quantilewarp.kt:46#private val defaultQuantileWarpProbabilities = doubleArrayOf(`), so the fit spends more knots on the left tail than the
 right.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/statistics_examples/quantile_warp.png" wait="3.0" capture="box" open-outputs="true" w="1000" h="820" padding="16"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/statistics_examples/quantile_warp.png" wait="3.0" capture="box" open-outputs="true" w="1000" h="1080" padding="16"}
 :::static
 val rng = java.util.Random(5)
 val fit = DoubleArray(4000) { exp(rng.nextGaussian()) } // log-normal: violently right-skewed
@@ -645,6 +645,21 @@ showSignals(
     title = "The warp, against the exact answer it is approximating",
     xTitle = "quantile of the fitting sample",
     yTitle = "warped value",
+    width = 900,
+    height = 300,
+)
+// The two curves above are too close to tell apart, so plot their difference.
+showSignals(
+    "PCHIP − exact" to pchip.indices.map { pchip[it] - exact[it] },
+    x = probes,
+    channel = "the error",
+    title = "How far the 8-knot warp is from the exact one",
+    xTitle = "quantile of the fitting sample",
+    yTitle = "PCHIP − exact",
+    // The knots inside the plotted range, where the error must be zero.
+    marks = QuantileWarpConfig().probabilities.filter { it in 0.02..0.98 }.map { "knot at $it" to it },
+    width = 900,
+    height = 260,
 )
 val svgs = [
     histogramToSvg(
@@ -685,12 +700,12 @@ markdown(
 :::endfold
 ```
 
-![The fitted 8-knot warp lying almost on top of the exact inverse-normal curve, and the held-out distribution going from violently right-skewed to symmetric](assets/statistics_examples/quantile_warp.png)
+![The 8-knot PCHIP warp drawn over the exact inverse-normal curve, too close to tell apart; below it their difference, which stays within about ±0.03 between the knots, crosses zero at each knot, and swings to about 0.05 only past the last knot at 0.95; then the held-out distribution going from violently right-skewed to symmetric](assets/statistics_examples/quantile_warp.png)
 
 It works, and it works **out of sample**: the curve is fitted on `fit` and every number reported is
 measured on the disjoint `held`. Skewness goes from **11.68** to **0.0074**, excess kurtosis from
 **254.8** to **−0.170**, mean to −0.0024 and standard deviation to 1.0096. Eight knots and a PCHIP
-is enough to turn a log-normal into something you can treat as normal, and the first figure says how
+is enough to turn a log-normal into something you can treat as normal, and the second plot says how
 much is lost doing it: over the 2nd-to-98th percentile the 8-knot curve is within **0.047** of the
 exact \( \Phi^{-1}(\hat{F}(v)) \) it is approximating. The left histogram in the same figure is the reason you
 would bother: with a maximum of 72.98 against a median of 0.98, the raw distribution is one spike

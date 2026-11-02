@@ -519,10 +519,10 @@ val view = threeInspect(
             ThreeMeasureElement.face(wall[3]),
             "build-up ",
         ),
-        // the clearance from a conduit to the inside of the lining: 152 - 120 = 32,
+        // the clearance from the second conduit to the inside of the lining: 152 - 120 = 32,
         // which is written down nowhere in the geometry
         ThreeMeasurement(
-            ThreeMeasureElement.segment(120.0, 840.0, 80.0, 120.0, 840.0, 1720.0),
+            ThreeMeasureElement.segment(120.0, 520.0, 80.0, 120.0, 520.0, 1720.0),
             ThreeMeasureElement.face(wall[3]),
             "clear ",
         ),
@@ -545,8 +545,6 @@ view.clearMeasurements()
 println("wall: ${view.inspector().groups.size} assembly groups, ${view.inspector().measurements.size} dimensions")
 println("drag the explode slider; press the ruler and click two things")
 ```
-
-![The three-inspector demo document, opened](assets/three_inspector_demo/opened.png)
 
 ### Callbacks: `onClick` and `hoverColor`
 

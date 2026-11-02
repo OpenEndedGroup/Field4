@@ -40,7 +40,7 @@ The checked-in `remote` and `advanced_remote` templates contain examples of FLin
 You do not need a phone or headset to see the head. `remoteAr()` embeds it in a box's output pane and opens it, so the live A-Frame/Three.js scene renders right on the canvas beside your code. On a desktop browser it runs in flat mode; the same embed enters AR/VR on a device or the Endrun iOS app.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/ar_reference/remote-ar-head.png" capture="box" name="ar-reference-remote-ar-head" wait="8" timeout="120" open-outputs="true" padding="18" embed=true alt="The RemoteJS/WebXR head embedded in a Field box output pane, connected and self-tested" w="1000" h="220"}
-remoteAr(debug = true, selfTest = true)
+remoteAr(debug = true, selfTest = true, width = 560, height = 150)
 ```
 
 `debug = true` shows the status panel (connection, A-Frame/Three.js versions, XR platform); `selfTest = true` runs the head's in-browser self-test on boot and reports pass/fail. The iframe carries the class `field-remote-ar-head` so page scripts and tests can target it. `remoteAr()` is a thin convenience over assigning the iframe into a box output channel yourself and opening it:

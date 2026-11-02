@@ -44,7 +44,7 @@ start(renderer::run)
 <!-- field-box id="youtube_vr_panel" index="1" -->
 
 ```edn [field-box id="youtube_vr_panel" role="properties"]
-{"id" "youtube_vr_panel" "index" 1 "name" "YouTube — interactive Chromium panel" "parents" ["root" "youtube_vr_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "youtube_vr_renderer"} "name" "YouTube — interactive Chromium panel" "_tombstone" false "frame" #afield/rect [320.0 140.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "youtube_vr_panel_code_.kt" "lines" 66 "characters" 2291 "sha256" "a52099e0b7fa4fb26b1de3a1f488422bcf121fcf383082a5e2c00cdc470b7311"}]}
+{"id" "youtube_vr_panel" "index" 1 "name" "YouTube — interactive Chromium panel" "parents" ["root" "youtube_vr_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "youtube_vr_renderer"} "name" "YouTube — interactive Chromium panel" "_tombstone" false "frame" #afield/rect [320.0 140.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "youtube_vr_panel_code_.kt" "lines" 66 "characters" 2291 "sha256" "3722ddac58f13d2b712ff11a35b25a6b5bbb98bb8a3280e484021b7406e18e4f"}]}
 ```
 
 ```kotlin [field-property box="youtube_vr_panel" name="code" path="youtube_vr_panel_code_.kt"]
@@ -80,7 +80,7 @@ val panel = PuppetBrowserVrPanel(
     stereo = stereo,
     browser = browser,
     widthMeters = 1.6f,
-    distanceMeters = 1.7f,
+    distanceMeters = 1.3f,
     name = "youtube-browser-panel",
 )
 panel.build()

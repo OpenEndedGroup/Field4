@@ -235,7 +235,10 @@ answer can be measured against the truth.
   16-pixel circle. Much faster, and it scores each corner by the largest threshold at which it would
   still qualify.
 
-![](assets/imaging_gallery/04-corners.png)
+![Four panels. The Harris response is blue along the square's edges and red at its four corners; the Shi–Tomasi response is dark except for a bright spot at each corner; Harris and FAST corners are marked on the square with crosses and boxes](assets/imaging_gallery/04-corners.png)
+
+The two response maps are drawn from a 240 px copy of the square, shown 1:1, and raised to the 0.25
+power so the weak values show.
 
 Run headless, Harris and Shi–Tomasi each return exactly four corners, and the worst of the four sits
 **0.94 px** from the true corner of the square (sub-pixel refinement is on by default, via a
@@ -320,10 +323,10 @@ becomes a smooth curve with no glue code.
 `gaussianPyramid(levels)` halves each octave (blurring first, so it does not alias);
 `laplacianPyramid(levels)` splits the image into band-pass detail plus a coarse residual, and
 `reconstruct()` inverts it. The round-trip is exact to within float precision, at a maximum
-absolute error of **1.49e-08** on the figure below. That is small enough to build multiband
+absolute error of **5.96e-08** on the figure below. That is small enough to build multiband
 blending and detail transfer on, rather than only to look at.
 
-![](assets/imaging_gallery/07-pyramids.png)
+![A 240 px test image with a finely checked disc, a striped square, a row of dots and a thin bar, taken down a four-level Gaussian pyramid: the check is gone at 120 px, the stripes at 60 px, and at 30 px only the shapes are left. The three Laplacian bands hold the check and the sharp edges, then the stripes, then the broad outlines](assets/imaging_gallery/07-pyramids.png)
 
 (Levels below the base are magnified by integer pixel replication for display; each caption states
 the real size and the zoom factor.)

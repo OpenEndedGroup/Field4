@@ -90,7 +90,7 @@ These chains end in something you can listen to, or start from it.
     layer, read as time across and pitch up, then played and analysed again so you can put
     what you hear next to what you drew.
 
--   ![Agent and reducible-pair counts over twenty-six interaction-net reactions](assets/chain_lambda_sound/one_reduction.png)
+-   ![Agent and reducible-pair counts over the eighty-six interaction-net reactions of three applied to two](assets/chain_lambda_sound/one_reduction.png)
 
     **[A λ-Term You Can Hear](chain_lambda_sound.md).** The order in which an interaction net
     fires its reactions becomes a rhythm, so changing the scheduler is something you can hear.
@@ -171,7 +171,7 @@ every box in the document does.
     through a transform stack with a current colour and material, drawn in a studio-lit view you
     can orbit and export as GLB. The presets run from a rippled terrain to a Menger sponge.
 
--   ![Field's canvas as a score: boxes spread left to right, an orange playhead crossing two lit boxes, and a dark panel under the first box showing rows of thin orange and blue bars](assets/agent_transcripts_gallery/madp_score.png)
+-   ![Field's canvas as a score: the score box and its output panel on the left, with a row of thin orange bars above a row of blue ones, the McLaren scratches and Fischinger orbits boxes in the middle, and on the right an orange playhead crossing the two lit Glass phase boxes](assets/agent_transcripts_gallery/madp_score.png)
 
     **[Score](agent_transcripts.md#madp_score).** The canvas is the score: a playhead sweeps the
     boxes, and each one draws and plays sound while the playhead is over it. Drag a box to move
@@ -208,7 +208,7 @@ every box in the document does.
     coloured blob; a few thousand of them make a 3D scene.) The edit runs before the
     depth sort, so splats thrown outward still draw in the right order.
 
--   ![A soft white ring on black, centred, fading smoothly to black on both sides](assets/agent_transcripts_gallery/stacktrinket_feedback_pulse_ring.png)
+-   ![The feedback fog program after it has run a few seconds: smeared clouds of white, cyan, deep blue, red and yellow, blurred into each other by many frames of reading the previous picture](assets/agent_transcripts_gallery/stacktrinket_feedback_fog.png)
 
     **[StackTrinket](agent_transcripts.md#stacktrinket_feedback).** Programs in a stack-based
     shader language that read their own previous frame, so a few words leave trails, fog and
