@@ -541,6 +541,16 @@ async function announceLoaded() {
       return;
     }
   }
+  // Do this after navigation/readiness: attaching DevTools before the initial renderer has a
+  // document can stall startup. Native Wayland sizing may also arrive during the initial load.
+  await cdp("Emulation.setDeviceMetricsOverride", {
+    width: Math.max(1, Math.round(textureWidth / deviceScaleFactor)),
+    height: Math.max(1, Math.round(textureHeight / deviceScaleFactor)),
+    deviceScaleFactor,
+    mobile: false,
+    screenWidth: Math.max(1, Math.round(textureWidth / deviceScaleFactor)),
+    screenHeight: Math.max(1, Math.round(textureHeight / deviceScaleFactor)),
+  });
   send({ type: "loaded", afterFrameId: frameId.toString(), url: contents.getURL(), state: stateSnapshot() });
 }
 

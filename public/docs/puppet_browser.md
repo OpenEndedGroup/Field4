@@ -7,6 +7,9 @@ Chromium's composited pixels arrive in Field as a sampled Vulkan image.
 You can click and type into that tab with the mouse and keyboard, aim at it with an OpenXR
 controller, drive it from code, and hand it to any ordinary mesh, shader or render pass.
 
+[Field inside VR](field_vr_ide.md) combines these pieces into a live IDE panel, with either-hand
+pointer input, a focus-preserving virtual keyboard and runtime-sized OpenXR eye targets.
+
 You can also drive the tab without rendering its pixels: navigation, input, JavaScript, CDP and the
 page bridge work without a renderer or GPU. That lets a test,
 a docs build or a data box use a browser. See [a browser you do not have to

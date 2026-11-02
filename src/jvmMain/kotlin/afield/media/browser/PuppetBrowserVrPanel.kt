@@ -7,7 +7,6 @@ import afield.graphics.render.parameters
 import afield.graphics.render.pointer
 import afield.graphics.vulkan.targets.SideBySideStereoTarget
 import afield.graphics.texture.TextureSampler
-import afield.graphics.vulkan.util.updateForever
 import afield.graphics.shader.fromViews
 import afield.math.linalg.Matrix4f
 import afield.math.linalg.Vector3f
@@ -33,6 +32,7 @@ class PuppetBrowserVrPanel(
     val widthMeters: Float = 1.6f,
     val distanceMeters: Float = 1.7f,
     val name: String = "puppet-browser-panel",
+    val automaticInteraction: Boolean = true,
 ) {
     val aspect: Float = browser.spec.width.toFloat() / browser.spec.height.toFloat()
     val panel = PuppetBrowserPanel(browser, widthMeters * 0.5f, widthMeters * 0.5f / aspect)
@@ -46,6 +46,7 @@ class PuppetBrowserVrPanel(
 
     private val sampler = TextureSampler(renderer, mipLevels = 1, anisotropyEnable = true)
     private var removeDesktopScroll: (() -> Unit)? = null
+    private var removeDesktopMouse: (() -> Unit)? = null
 
     init {
         require(widthMeters > 0f) { "widthMeters must be positive" }
@@ -101,13 +102,13 @@ class PuppetBrowserVrPanel(
             mesh.v[1]!!.mapAndWrite { uvs.forEach(::put); rewind() }
             mesh.t!!.mapAndWrite_ints { indices.forEach(::put); rewind() }
 
-            mesh.update["mvp"] = updateForever {
+            // Update sequences are prefetched; input must run at an actual draw boundary instead.
+            module.before["browser-input"] = afield.graphics.vulkan.Target { _, _ ->
+                if (automaticInteraction && stereo.currentEyeIndex == 0) updateInteraction()
                 mesh.push["mvp"] = panel.panelMvp(
                     stereo.currentEyeViewMatrix(Matrix4f()),
                     stereo.currentEyeProjectionMatrix(Matrix4f()),
                 )
-                // This factory is instantiated once per eye. Input belongs to the frame, not the eye.
-                if (stereo.currentEyeIndex == 0) updateInteraction()
                 val hit = lastHit
                 mesh.push["pointer"] = Vector4f(
                     hit?.u?.toFloat() ?: -1f,
@@ -115,7 +116,6 @@ class PuppetBrowserVrPanel(
                     if (hit?.onPanel == true) 1f else 0f,
                     if (pointerPressed) 1f else 0f,
                 )
-                true
             }
             pointer
         }
@@ -123,7 +123,8 @@ class PuppetBrowserVrPanel(
 
     /** Install the desktop preview's mouse ray. A headset controller automatically supersedes it. */
     fun enableDesktopInteraction() {
-        stereo.enableMouseController(name = "$name-mouse", distanceMeters = 0.001f)
+        removeDesktopMouse?.invoke()
+        removeDesktopMouse = stereo.enableMouseController(name = "$name-mouse", distanceMeters = 0.001f)
         removeDesktopScroll?.invoke()
         removeDesktopScroll = renderer.window.addScrollListener { deltaX, deltaY ->
             lastHit?.takeIf { it.onPanel }?.let { hit ->
@@ -140,10 +141,20 @@ class PuppetBrowserVrPanel(
             else -> 0f
         }
         pointerPressed = controller.selectPressed || controller.triggerPressed
-        lastHit = panel.interact(controller, scrollY = -axis * 22.0)
+        lastHit = panel.interact(controller, scrollY = -axis * 22.0,
+            localForward = Vector3f(0f, 0f, if (stereo.openXR == null) 1f else -1f))
+    }
+
+    /** Publish a cursor driven by an external input arbiter, shared by both eye passes. */
+    fun showPointer(hit: PuppetBrowserPanel.Hit?, pressed: Boolean) {
+        lastHit = hit
+        pointerPressed = pressed
     }
 
     fun cleanup() {
+        panel.releasePointer()
+        removeDesktopMouse?.invoke()
+        removeDesktopMouse = null
         removeDesktopScroll?.invoke()
         removeDesktopScroll = null
         sampler.cleanup()

@@ -27,6 +27,7 @@ from tools.field_backdoor import (
     build_command_parser,
     exception_message,
     parse_command,
+    gradle_command,
 )
 from tools.verification_runtime import automation_workspace
 
@@ -39,6 +40,19 @@ class _Logger:
 
     def log(self, _event: str, **_fields) -> None:
         pass
+
+
+class ManagedGradleArgumentsTests(unittest.TestCase):
+    def test_optional_arguments_preserve_argv_boundaries(self) -> None:
+        with mock.patch.dict("os.environ", {
+            "AFIELD_BACKDOOR_GRADLE_ARGS": '-x personalJar -I "/tmp/core only.gradle"'
+        }), mock.patch("tools.field_backdoor.pinned_graalvm_args", return_value=[]):
+            command = gradle_command("runJvm")
+        self.assertEqual(command[-5:], ["-x", "personalJar", "-I", "/tmp/core only.gradle", "runJvm"])
+
+    def test_unset_arguments_preserve_the_normal_task(self) -> None:
+        with mock.patch.dict("os.environ", {"AFIELD_BACKDOOR_GRADLE_ARGS": ""}):
+            self.assertEqual(gradle_command("runJvm")[-1], "runJvm")
 
 
 class McpPaintGestureTests(unittest.IsolatedAsyncioTestCase):

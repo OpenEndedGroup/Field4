@@ -9,7 +9,8 @@ code-execution environment. The defaults are intended for a desktop application 
   the default listener.
 - Browser-origin protection is **enabled** for API reads and writes, and for the `/ws` and
   `/controllers/ws` command channels. Foreign browser origins and DNS-rebinding browser requests
-  are refused. The origin check recognises localhost and literal IP addresses.
+  are refused. The origin check recognises localhost, literal IP addresses and exact DNS
+  authorities explicitly registered by the local user.
 - The local development HTTPS certificate is self-signed. Electron trusts it; a normal browser
   may ask for a local exception.
 - A loopback-only HTTP mirror is available for local automation, at `PORT + 10000` by default.
@@ -62,8 +63,17 @@ There are deliberate exceptions:
   and the visionOS shell rely on this; it does not imply that the caller has authenticated.
 
 Do not turn off the origin guard simply to acknowledge a self-signed certificate: those are
-separate things. A reverse proxy or custom hostname also needs deliberate integration work;
-the default browser policy recognises localhost and literal IP addresses without DNS lookup.
+separate things. For a reverse proxy or custom DNS name, register only the authority you actually
+serve, including its port. `AFIELD_BROWSER_HOSTS` accepts a comma-separated list of exact browser
+authorities; `~/.afield/browser-hosts.json` accepts a JSON array of the same strings. Field reads
+these at startup. There are no wildcards, DNS lookups or trusted forwarded headers in this policy.
+Unregistered DNS names and cross-site browser requests remain refused. Agent execution routes
+retain their separate localhost-only host check.
+
+For a private Tailscale Serve listener, the [VR setup helper](field_vr_ide.md#headset-keyboard-and-mouse-without-desktop-focus)
+registers the exact local node hostname and port after verifying an existing private HTTPS listener
+points to the requested Field port. Registration does not enable public Funnel or disable the
+origin guard.
 
 ## Route inventory
 

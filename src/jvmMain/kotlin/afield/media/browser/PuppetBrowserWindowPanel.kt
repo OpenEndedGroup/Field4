@@ -66,7 +66,7 @@ class PuppetBrowserWindowPanel(
         private set
 
     private val sampler = TextureSampler(renderer, mipLevels = 1, anisotropyEnable = true)
-    private val input = PuppetBrowserWindowInput(browser, renderer.window) { x, y -> viewport.hitTest(x, y) }
+    val input = PuppetBrowserWindowInput(browser, renderer.window) { x, y -> viewport.hitTest(x, y) }
     private var pointer: ModulePointer? = null
     private var mesh: Mesh? = null
     private var lastWindowWidth = -1.0

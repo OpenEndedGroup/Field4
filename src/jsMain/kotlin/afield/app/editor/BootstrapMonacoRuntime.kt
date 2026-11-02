@@ -15,6 +15,7 @@ import afield.app.client.showMonaco
 import afield.app.protocol.ProvisionalEntry
 import afield.app.protocol.payload
 import afield.app.protocol.send
+import kotlinx.browser.document
 import kotlinx.browser.window
 
 private var currentSelectedCode: dynamic = js("[]")
@@ -425,6 +426,20 @@ fun notifyPotentialEditedPropertyHasEditorStateRemoteUpdated(uid: String, proper
     if (w.currentSelectedProperty != property) return
 }
 
+/** Monaco can focus its hidden textarea while restoring a selection after setValue. A remote
+ * client's edit must preserve focus in this client's palette, output input or other control. */
+private fun updateEditorPreservingOtherControlFocus(update: () -> Unit) {
+    val focused = document.activeElement
+    try {
+        update()
+    } finally {
+        if (focused != null && focused.isConnected && document.activeElement != focused) {
+            document.activeElement?.asDynamic()?.blur()
+            focused.asDynamic().focus(js("({preventScroll: true})"))
+        }
+    }
+}
+
 private fun forceEditedPropertyToRemoteValue(w: dynamic, selected: dynamic, editor: dynamic, property: String, value: String) {
     val normalized = value.replace("\r\n", "\n")
     if (w.AIDiff != null && w.AIDiff != undefined) {
@@ -435,17 +450,16 @@ private fun forceEditedPropertyToRemoteValue(w: dynamic, selected: dynamic, edit
     if (w.pauseLineTracking != null && w.pauseLineTracking != undefined) {
         w.pauseLineTracking()
     }
-    editor.setValue(normalized)
-    editor.getModel().setEOL(0)
-    if (w.unpauseLineTracking != null && w.unpauseLineTracking != undefined) {
-        w.unpauseLineTracking()
-    }
-    runCatching {
-        if (selection != null && selection != undefined) {
-            editor.setSelection(selection)
+    updateEditorPreservingOtherControlFocus {
+        editor.setValue(normalized)
+        editor.getModel().setEOL(0)
+        if (w.unpauseLineTracking != null && w.unpauseLineTracking != undefined) {
+            w.unpauseLineTracking()
+        }
+        runCatching {
+            if (selection != null && selection != undefined) editor.setSelection(selection)
         }
     }
-
     selected[0][property] = normalized
     currentValueAtOrigination = normalized
     recentChangeCache.add(normalized)
@@ -483,8 +497,10 @@ fun notifyPotentialEditedPropertyHasBeenRemoteUpdated(uid: String, property: Str
     if (result == currentValue) return
 
     val selection = editor.getSelection()
-    editor.setValue(result)
-    editor.setSelection(selection)
+    updateEditorPreservingOtherControlFocus {
+        editor.setValue(result)
+        editor.setSelection(selection)
+    }
     currentValueAtOrigination = result
     selected[0][property] = result
     if (property == "notes" || property == "contents") {
