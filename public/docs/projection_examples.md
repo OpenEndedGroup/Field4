@@ -52,7 +52,7 @@ the same five shapes on `render`, `listen` and `sample`. The distance is Levensh
 single-character insertions, deletions and substitutions between two strings. There is no vector
 anywhere; a word is not a point in any space until this call gives it one.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/projection_examples/edit_distance_words.png" wait="2.0" capture="box" open-outputs="true" w="980" h="720" padding="16"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/projection_examples/edit_distance_words.png" wait="2.0" capture="box" open-outputs="true" w="980" h="1060" padding="16"}
 :::static
 import space.kscience.plotly.*
 import space.kscience.plotly.models.ScatterMode
@@ -140,28 +140,45 @@ val palette = ["#7ad9ff", "#ff9e4a", "#8fff9a", "#c58cff"]
 display(
     "plane",
     Plotly.plot {
+            // Words in one family land close together, so each of the five puts its label on a
+            // different side of its marker.
+            val sides = [
+                TextPosition.`top center`,
+                TextPosition.`bottom center`,
+                TextPosition.`middle right`,
+                TextPosition.`middle left`,
+                TextPosition.`top right`,
+            ]
             families.forEachIndexed { family, members ->
-                val rows = members.indices.map { family * 5 + it }
-                scatter {
-                    name = members.first()
-                    mode = ScatterMode.`markers+text`
-                    x.set(rows.map { projection.coordinates[it][0] })
-                    y.set(rows.map { projection.coordinates[it][1] })
-                    text.set(rows.map { words[it] })
-                    textposition = TextPosition.`top center`
-                    marker {
-                        size = 9.0
-                        color(palette[family])
-                    }
-                    textfont {
-                        color(palette[family])
-                        size = 11
+                members.indices.forEach { i ->
+                    val row = family * 5 + i
+                    scatter {
+                        name = members.first()
+                        legendgroup = members.first()
+                        showlegend = i == 0
+                        mode = ScatterMode.`markers+text`
+                        x.set([projection.coordinates[row][0]])
+                        y.set([projection.coordinates[row][1]])
+                        text.set([words[row]])
+                        textposition = sides[i]
+                        marker {
+                            size = 9.0
+                            color(palette[family])
+                        }
+                        textfont {
+                            color(palette[family])
+                            size = 13
+                        }
                     }
                 }
             }
             layout {
                 title = "Twenty words placed by edit distance alone (classical MDS)"
-                xaxis { title = "coordinate 1" }
+                height = 1000 // tall, so labels inside a clump have room
+                xaxis {
+                    title = "coordinate 1"
+                    range = -8.0..8.5 // room for the labels at either edge
+                }
                 yaxis { title = "coordinate 2" }
             }
         }

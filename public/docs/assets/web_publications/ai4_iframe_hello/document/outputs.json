@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-31T13:38:12.031Z",
+  "capturedAt": "2026-11-02T15:41:43.479Z",
   "documentName": "ai4_iframe_hello",
   "outputs": [
     {
@@ -9,7 +9,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 648,
+      "width": 728,
       "height": 388,
       "path": "outputs/0.html"
     }
