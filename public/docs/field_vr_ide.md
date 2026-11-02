@@ -1,13 +1,16 @@
 # Field inside VR
 
-Field's frontend can run inside its own Vulkan scene: the real canvas, Monaco editor, outputs and
-command palette, connected to the same document as the desktop app. Edits and code execution go to
-the usual Field server. A world-locked browser panel lets you use it with the headset on. Controllers can position the
-panel and operate the interface; a keyboard and mouse connected to the Quest can use a dedicated
-WiVRn input path without desktop window focus. Another browser can edit the same document remotely.
+Use Field with the headset on: edit Kotlin in Monaco, run a box, inspect its output and move
+between boxes on the live canvas. The same document stays open in the desktop app and any other
+connected browser.
 
-```diffstatic_runner {data-lang=kotlin requires="electron-runtime" screenshot="assets/field_vr_ide/companion.png" capture="native-window" native-wait-frames="20" trim-native=true wait="8" embed=true hidden=true timeout="180" name="field-vr-ide-companion" alt="Field's live document and VR keyboard toolbar, sampled from Chromium into the Vulkan desktop companion" macro-file="../../dev_docs/agents/transcripts/field_vr_ide.yaml" capture-box="vr_ide_renderer"}
-// Runs the complete starter in desktop mode and captures the actual Vulkan companion.
+The IDE is a high-resolution browser panel inside Field's Vulkan/OpenXR scene. Controllers point,
+click, scroll, move and resize it. On Quest 3 with WiVRn, a keyboard and mouse connected to the
+headset provide ordinary text editing and a cursor inside the panel, without desktop window focus.
+This workflow has been used for development in the headset on the Linux/NVIDIA setup below.
+
+```diffstatic_runner {data-lang=kotlin requires="electron-runtime" screenshot="assets/field_vr_ide/companion.png" capture="native-window" native-wait-frames="20" trim-native=true wait="8" embed=true hidden=true timeout="180" name="field-vr-ide-companion" alt="Field's live canvas, executed Playground output and VR toolbar, sampled from Chromium into the Vulkan desktop companion" macro-file="../../dev_docs/agents/transcripts/field_vr_ide.yaml" capture-box="vr_ide_renderer" run-box="vr_ide_playground"}
+// Runs the starter and Playground in desktop mode, then captures the actual Vulkan companion.
 ```
 
 [Open the starting point →](offline.html?file=assets/agent_transcripts/field_vr_ide/metadata.edn)
@@ -24,15 +27,24 @@ panel toolbar. The result appears as an ordinary Field output.
 
 ## Point, edit and run
 
-Either controller can hover over the panel. Pull the trigger to click or drag; the hand that starts
-a drag keeps control until release. The thumbstick or trackpad scrolls. Losing tracking releases a
+Either controller can hover over the panel. Pull the trigger to click or drag; **A** on the right controller or **X** on the left also clicks.
+The hand that starts a drag keeps control until release. The thumbstick or trackpad scrolls in both
+axes: a small deflection moves slowly, and a full deflection moves faster. Release it to stop. Losing tracking releases a
 held mouse button. When controller aim input is unavailable, tracked hands use a wrist-to-index-knuckle
 ray and thumb/index pinch, with hysteresis to avoid repeated clicks near the pinch threshold.
+Pinch works, but hand tracking on the tested Quest setup was less precise than controllers or a mouse
+for small interface controls. Use the headset keyboard and mouse for sustained editing.
 
 Aim at any part of the panel and hold **grip** to pick it up. Moving and rotating that controller
 moves and rotates the whole panel, preserving the initial attachment offset. Release grip to leave
 it in place. Browser clicks are suspended while moving the panel; losing tracking drops it safely
-at its last pose. The other controller cannot steal an active grab.
+at its last pose.
+
+While holding the panel, aim the other controller at it and squeeze its grip too. Move your hands
+apart to enlarge the panel or together to shrink it. Its aspect ratio stays fixed, and moving both
+hands together moves its centre. Release either grip to continue moving it with the remaining
+hand, or release both to leave it in place. Recenter preserves the resized dimensions. This changes
+the plane's physical size; the browser's pixel resolution stays the same.
 
 The toolbar's **Keyboard** button opens text, punctuation, arrows, selection, clipboard and undo
 keys. It keeps the editor or palette search focused while you click its keys. **Run line** executes
@@ -40,7 +52,8 @@ the current line or selection (Alt+Enter); **Run box** launches the whole select
 Field's palette; **Esc** dismisses it. A physical keyboard also works while the native mirror window
 has focus. The virtual keyboard is a basic ray keyboard; there is no dictation or predictive typing.
 
-**Recenter** places the upright panel in front of your current head position. It stays in the room
+Click **Recenter** in the toolbar along the bottom of the panel to place it upright in front of
+your current head position, keeping its chosen size. It stays in the room
 as you move your head. Stop box 2 to close the offscreen browser and remove the panel's input hooks.
 Restart Field to change OpenXR mode or eye dimensions.
 
@@ -48,7 +61,7 @@ Restart Field to change OpenXR mode or eye dimensions.
 
 | Input | What receives it | Desktop window focus |
 | --- | --- | --- |
-| Controller trigger or hand pinch | The control under the ray on the VR panel | Not required |
+| Controller trigger, A/X or hand pinch | The control under the ray on the VR panel | Not required |
 | Keyboard and mouse attached to the PC | The front-on companion window | Required |
 | Keyboard and mouse attached to the Quest | The VR browser through WiVRn HID forwarding | Not required after setup |
 
@@ -109,8 +122,8 @@ the device rule continues excluding those forwarded devices from the desktop.
 
 Attach the keyboard and mouse to the Quest by USB-C hub or Bluetooth. WiVRn must capture and
 forward the devices; its Android client forwards relative mouse events, rather than an absolute
-Android system pointer. The physical Quest USB/Bluetooth path still needs an on-headset check;
-software replay establishes the Field routing, not Quest firmware/device compatibility.
+Android system pointer. Headset-connected keyboard and mouse input has been tested on Quest 3 with this setup.
+The keyboard layout settings below apply to these forwarded devices.
 See [WiVRn's HID configuration](https://github.com/WiVRn/WiVRn/blob/v26.6.2/docs/configuration.md#hid-forwarding)
 and [its Android input handler](https://github.com/WiVRn/WiVRn/blob/v26.6.2/client/android/hid.cpp).
 
@@ -148,17 +161,24 @@ window on the PC. The helper adds a private listener while preserving existing l
 
 ## What has been verified
 
-As of **1 November 2026**, the reference Linux/NVIDIA setup has the device rule installed, WiVRn
-HID forwarding enabled and a responding private Tailscale HTTPS endpoint. Automated input,
-browser, hostname-policy and setup-helper checks pass. Two real Chromium clients exchanged edits
-through the installed private Tailscale Serve listener and a live Field server; the receiving
-client kept its independent input focus. That collaboration check used two clients on one host.
-The updated Vulkan companion was also captured and inspected.
+The **Quest 3, WiVRn and Linux/NVIDIA** workflow was tested on-headset on **2 November 2026**.
+Keyboard and mouse attached to the headset supported editing and running Field code without
+interacting with a desktop window. Controller clicks, two-axis scrolling, grip positioning and
+two-controller grip resizing were also confirmed usable in the headset. Hand pinch input works,
+with the precision limitation described above.
 
-The input tests replay Linux device events through Field's real keyboard translator and Chromium
-input path. Physical Quest USB/Bluetooth keyboard and mouse capture, controller/hand interaction
-with this IDE panel, and use from a second remote machine remain to be checked. The starting point
-is ready for those hardware checks; software tests and the desktop capture do not establish them.
+The private Tailscale listener also served two real Chromium clients that exchanged document
+edits while preserving independent focus. That check used two clients on one host; a second
+physical remote computer has not yet been checked. Field still needs the graphics/display session
+described above, even when nobody is using the PC screen.
+
+??? aside "Rendering and input checks"
+    The companion figure is captured from the real Chromium-to-Vulkan browser path. It shows the
+    desktop companion; it is not a through-the-lens headset photograph. Automated checks cover
+    pointer ownership, keyboard translation, scroll batching, grip handoff, resized hit testing
+    and browser-origin policy. A separate pixel check confirmed the background is opaque on first
+    load, before scrolling. The source browser normally runs at 30 frames per second on Linux;
+    head tracking and stereo rendering continue at the headset's rate.
 
 ## Readable text
 
@@ -168,7 +188,8 @@ headset's eye targets. Increasing only one can leave the other as the limiting f
 constructor's `width`/`height`, `widthMeters` and `distanceMeters` to suit your setup.
 
 The browser viewport is set explicitly after page readiness so desktop scaling or a native window
-size limit cannot silently change the texture extent. The panel samples Chromium directly without FXAA or temporal filtering of the text. On Linux this
+size limit cannot silently change the texture extent. The background is repainted after Chromium
+finishes changing the viewport, so no initial scroll is needed to make the canvas draw correctly. The panel samples Chromium directly without FXAA or temporal filtering of the text. On Linux this
 checkout uses the explicit bitmap browser fallback, normally at 30 browser frames per second;
 head tracking and stereo rendering continue at the headset's rate. On macOS the existing IOSurface
 transport stays on the GPU. See [the browser transport](puppet_browser.md).

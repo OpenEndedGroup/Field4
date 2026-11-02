@@ -65,9 +65,36 @@ class PuppetBrowserVrInputTest {
         val state = ControllerState(active = true, poseValid = true, thumbstickY = 0.5f)
         val pointer = assertNotNull(input.controller("right", state, 1.0 / 120))
         assertTrue(assertNotNull(panel.raycast(pointer.origin, pointer.direction)).onPanel)
-        assertEquals(-5.0, pointer.scrollY, 1e-6)
+        assertEquals(-10.0 * Math.pow((0.5 - 0.12) / 0.88, 2.0), pointer.scrollY, 1e-6)
         state.poseValid = false
         assertNull(input.controller("right", state, 0.01))
+    }
+
+    @Test fun `stick has a deadzone two analog axes and no tail after release`() {
+        val state = ControllerState(active = true, poseValid = true, thumbstickX = 1f, thumbstickY = 0.1f)
+        val horizontal = assertNotNull(input.controller("right", state, 1.0 / 120))
+        assertEquals(10.0, horizontal.scrollX, 1e-6)
+        assertEquals(0.0, horizontal.scrollY, 1e-9)
+        input.update(listOf(horizontal))
+        assertEquals(10.0, events.last { it.type == BrowserPointerEventType.WHEEL }.deltaX, 1e-6)
+        state.thumbstickX = 0f
+        val stopped = assertNotNull(input.controller("right", state, 1.0 / 120))
+        assertEquals(0.0, stopped.scrollX, 1e-9)
+        input.update(listOf(stopped))
+        assertEquals(1, events.count { it.type == BrowserPointerEventType.WHEEL })
+        state.thumbstickY = 1f
+        val full = assertNotNull(input.controller("right", state, 1.0 / 120))
+        state.thumbstickY = 0.5f
+        assertTrue(kotlin.math.abs(assertNotNull(input.controller("right", state, 1.0 / 120)).scrollY) < kotlin.math.abs(full.scrollY) / 2)
+    }
+
+    @Test fun `controller primary face button clicks and releases the panel`() {
+        val state = ControllerState(active = true, poseValid = true, aPressed = true)
+        input.update(listOf(assertNotNull(input.controller("right", state, 0.01))))
+        state.aPressed = false
+        input.update(listOf(assertNotNull(input.controller("right", state, 0.01))))
+        assertEquals(listOf(BrowserPointerEventType.DOWN, BrowserPointerEventType.UP),
+            events.filter { it.type != BrowserPointerEventType.MOVE }.map { it.type })
     }
 
     @Test fun `pinch has hysteresis and rejects missing joints`() {
@@ -107,7 +134,7 @@ class PuppetBrowserVrInputTest {
         for (i in 0 until 16) assertEquals(initial[i], panel.model[i], 1e-6f, "Starting a grab must not snap the panel")
         val moved = down.copy(origin = Vector3f(0.5f, 0.2f, 0f),
             orientation = afield.math.linalg.Quaternionf().rotateY(0.3f))
-        grab.update(listOf(moved, ray("right").copy(gripPressed = true)))
+        grab.update(listOf(moved, ray("right")))
         assertEquals("left", grab.owner)
         val expected = afield.math.linalg.Matrix4f().translate(moved.origin.x, moved.origin.y, moved.origin.z)
             .rotate(moved.orientation).mul(initial)
@@ -115,6 +142,62 @@ class PuppetBrowserVrInputTest {
         grab.update(listOf(moved.copy(gripPressed = false)))
         assertNull(grab.owner)
         for (i in 0 until 16) assertEquals(expected[i], panel.model[i], 1e-5f, "Dropping must preserve the room transform")
+    }
+
+    private fun grip(id: String, x: Float, down: Boolean = true) = BrowserVrPointer(
+        id, Vector3f(x, 0f, 0f), Vector3f(-x, 0f, -2f).normalize(), false, gripPressed = down)
+
+    @Test fun `two grips resize without snapping changing aspect or moving the panel away`() {
+        val grab = PuppetBrowserVrGrab(panel)
+        val initial = afield.math.linalg.Matrix4f(panel.model)
+        grab.update(listOf(grip("left", -0.2f), grip("right", 0.2f, false)))
+        grab.update(listOf(grip("left", -0.2f), grip("right", 0.2f)))
+        for (i in 0 until 16) assertEquals(initial[i], panel.model[i], 1e-6f, "Second grip must not snap")
+        grab.update(listOf(grip("left", -0.4f), grip("right", 0.4f)))
+        assertEquals(2f, panel.model.transformDirection(Vector3f(1f, 0f, 0f)).length(), 1e-5f)
+        assertEquals(2f, panel.model.transformDirection(Vector3f(0f, 1f, 0f)).length(), 1e-5f)
+        assertEquals(-2f, panel.model.getTranslation(Vector3f()).z, 1e-5f, "Growing the screen must not move it away")
+        val hit = assertNotNull(panel.raycast(Vector3f(), Vector3f(0.5f, 0f, -2f)))
+        assertTrue(hit.onPanel)
+        assertEquals(0.625, hit.u, 1e-6, "Hit testing must follow the resized screen")
+        grab.update(listOf(grip("left", -0.2f), grip("right", 0.6f)))
+        assertEquals(0.2f, panel.model.getTranslation(Vector3f()).x, 1e-5f)
+    }
+
+    @Test fun `either hand can release a resize and the remaining hand keeps its size without jumping`() {
+        for (releaseLeft in listOf(false, true)) {
+            panel.faceToward(Vector3f(0f, 0f, -2f), Vector3f())
+            val grab = PuppetBrowserVrGrab(panel)
+            grab.update(listOf(grip("left", -0.2f), grip("right", 0.2f)))
+            grab.update(listOf(grip("left", -0.4f), grip("right", 0.4f)))
+            val resized = afield.math.linalg.Matrix4f(panel.model)
+            grab.update(listOf(grip("left", -0.4f, !releaseLeft), grip("right", 0.4f, releaseLeft)))
+            assertEquals(if (releaseLeft) "right" else "left", grab.owner)
+            for (i in 0 until 16) assertEquals(resized[i], panel.model[i], 1e-5f)
+            val survivor = if (releaseLeft) grip("right", 0.5f) else grip("left", -0.3f)
+            grab.update(listOf(survivor))
+            assertEquals(0.1f, panel.model.getTranslation(Vector3f()).x, 1e-5f)
+            assertEquals(2f, panel.model.transformDirection(Vector3f(1f, 0f, 0f)).length(), 1e-5f)
+            grab.update(emptyList())
+            assertNull(grab.owner)
+        }
+    }
+
+    @Test fun `resize clamps its size rejects coincident starts and safely loses tracking`() {
+        val grab = PuppetBrowserVrGrab(panel, minimumWidthMeters = 0.5f, maximumWidthMeters = 3f)
+        grab.update(listOf(grip("left", -0.2f), grip("right", 0.2f)))
+        grab.update(listOf(grip("left", -10f), grip("right", 10f)))
+        assertEquals(3f, panel.model.transformDirection(Vector3f(2f, 0f, 0f)).length(), 1e-5f)
+        grab.update(listOf(grip("left", 0f), grip("right", 0f)))
+        assertEquals(0.5f, panel.model.transformDirection(Vector3f(2f, 0f, 0f)).length(), 1e-5f)
+        val final = afield.math.linalg.Matrix4f(panel.model)
+        assertFalse(grab.update(emptyList()))
+        for (i in 0 until 16) assertEquals(final[i], panel.model[i], 1e-5f)
+        grab.update(listOf(grip("left", 0f), grip("right", 0f)))
+        grab.update(listOf(grip("left", 0f), grip("right", 0f)))
+        assertTrue(panel.model[0].isFinite())
+        grab.cancel()
+        assertNull(grab.owner)
     }
 
     @Test fun `tracking loss ends a grab and moving never sends browser clicks`() {
