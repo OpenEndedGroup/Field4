@@ -98,10 +98,12 @@ object SolidCraftBuilderSmokeTest {
             check(v > 8.0 * 8.0 * 60.0 * 1.2) { "rail did not widen the sweep: $v" }
         }
 
-        // Sweep along a 3D wire made from a Field FLine: a closed trefoil knot. The profile is drawn
-        // on the plane square to the knot's start, so the tube is true: volume = πr² × length.
+        // Sweep along a 3D wire made from a Field FLine: a trefoil knot stopped one step short of its
+        // start. Since v0.30 a closed path is sewn shut, which needs the profile to come back unturned,
+        // and a knot turns it (about 127°); the open knot is a capped tube. The profile is drawn on the
+        // plane square to the knot's start, so the tube is true: volume = πr² × length.
         val knot = FLine().moveTo(0f, -8f, 0f).also { l ->
-            for (i in 1..240) {
+            for (i in 1..239) {
                 val t = i / 240.0 * 2 * PI
                 l.lineTo(8 * (sin(t) + 2 * sin(2 * t)), 8 * (cos(t) - 2 * cos(2 * t)), -8 * sin(3 * t))
             }
@@ -162,8 +164,7 @@ object SolidCraftBuilderSmokeTest {
             check(body(d).getDouble("area") > 2 * PI * 8.0 * 20.0)
         }
 
-        // A boundary patch bridging two curves (v0.15.0 builds two boundaries; three or four
-        // are SolidCraft issue #763), with a crown lifting its middle.
+        // A boundary patch bridging two curves, with a crown lifting its middle.
         case("surface boundary", solidCraft {
             val s = sketch("XY") {
                 spline(0.0, 0.0, 10.0, -3.0, 20.0, 0.0)
@@ -171,6 +172,17 @@ object SolidCraftBuilderSmokeTest {
             }
             surfaceBoundary(s, crown = 0.5)
         }) { d -> check(body(d).getDouble("area") > 400.0) { "boundary patch ${d.summary()}" } }
+
+        // Three curves in loop order (each ends where the next begins) give a flat-sided patch;
+        // a crown is refused there.
+        case("surface boundary of three curves", solidCraft {
+            val s = sketch("XY") {
+                spline(0.0, 0.0, 10.0, -3.0, 20.0, 0.0)
+                spline(20.0, 0.0, 13.0, 10.0, 10.0, 17.0)
+                spline(10.0, 17.0, 3.0, 10.0, 0.0, 0.0)
+            }
+            surfaceBoundary(s)
+        }) { d -> check(body(d).getDouble("area") > 150.0) { "three-curve patch ${d.summary()}" } }
 
         // A failing feature reports SolidCraft's reason instead of producing a model.
         val bad = runCatching { solidCraft { extrude(sketch { line(0.0, 0.0, 10.0, 0.0) }, "5") }.open() }.exceptionOrNull()
