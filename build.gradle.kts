@@ -1553,6 +1553,9 @@ val jvmTestTask = tasks.named<org.gradle.api.tasks.testing.Test>("jvmTest") {
     inputs.file("electron/browser-texture-preload.js")
         .withPropertyName("browserTexturePreload")
         .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.file("electron/browser-input-queue.cjs")
+        .withPropertyName("browserInputQueue")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
 }
 
 // A known red recorded only in CI prose has been misgraded three times: once as an ordinary

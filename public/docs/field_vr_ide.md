@@ -32,7 +32,13 @@ ray and thumb/index pinch, with hysteresis to avoid repeated clicks near the pin
 Aim at any part of the panel and hold **grip** to pick it up. Moving and rotating that controller
 moves and rotates the whole panel, preserving the initial attachment offset. Release grip to leave
 it in place. Browser clicks are suspended while moving the panel; losing tracking drops it safely
-at its last pose. The other controller cannot steal an active grab.
+at its last pose.
+
+While holding the panel, aim the other controller at it and squeeze its grip too. Move your hands
+apart to enlarge the panel or together to shrink it. Its aspect ratio stays fixed, and moving both
+hands together moves its centre. Release either grip to continue moving it with the remaining
+hand, or release both to leave it in place. Recenter preserves the resized dimensions. This changes
+the plane's physical size; the browser's pixel resolution stays the same.
 
 The toolbar's **Keyboard** button opens text, punctuation, arrows, selection, clipboard and undo
 keys. It keeps the editor or palette search focused while you click its keys. **Run line** executes

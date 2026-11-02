@@ -115,7 +115,8 @@ class FieldVrWorkspace(
         direction.y = 0f
         if (direction.lengthSquared() < 1e-6f) direction.set(0f, 0f, -1f)
         direction.normalize()
-        panel.panel.faceToward(Vector3f(eye).fma(distanceMeters, direction), eye)
+        val scale = panel.panel.model.transformDirection(Vector3f(1f, 0f, 0f)).length()
+        panel.panel.faceToward(Vector3f(eye).fma(distanceMeters, direction), eye).scale(scale)
     }
 
     private fun update() {
