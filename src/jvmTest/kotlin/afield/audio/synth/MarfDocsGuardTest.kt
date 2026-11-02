@@ -40,6 +40,11 @@ class MarfDocsGuardTest {
 
     private fun assetName(id: String) = "marf-$id.svg"
 
+    /** Assets the docs runner captures from a fence on the page (`screenshot="assets/marf/..."` and kin). */
+    private fun capturedAssets(): Set<String> =
+        Regex("""(?:screenshot|video|audio)="assets/marf/([A-Za-z0-9_.-]+)"""")
+            .findAll(page.readText()).map { it.groupValues[1] }.toSet()
+
     @Test
     fun `every figure on the page has an asset behind it`() {
         assertTrue(assetDir.isDirectory, "${assetDir.path} is missing — run the synth.marf.gallery capture")
@@ -53,9 +58,9 @@ class MarfDocsGuardTest {
     @Test
     fun `nothing stale is left in the asset directory`() {
         assertTrue(assetDir.isDirectory, "${assetDir.path} is missing")
-        // Not filtered to the `marf-` prefix first: this directory exists for these figures and
-        // nothing else, so a scratch preview file left behind is an orphan too.
-        val expected = MarfGallery.FIGURES.map { assetName(it.id) }.toSet()
+        // Not filtered to the `marf-` prefix first: this directory exists for these figures and the
+        // page's own runner captures, so a scratch preview file left behind is an orphan too.
+        val expected = MarfGallery.FIGURES.map { assetName(it.id) }.toSet() + capturedAssets()
         val orphans = (assetDir.listFiles() ?: emptyArray())
             .filterNot { it.isDirectory }
             .map { it.name }
@@ -94,7 +99,7 @@ class MarfDocsGuardTest {
         )
 
         val referenced = Regex("""assets/marf/([A-Za-z0-9_.-]+)""").findAll(text).map { it.groupValues[1] }.toSet()
-        val known = MarfGallery.FIGURES.map { assetName(it.id) }.toSet()
+        val known = MarfGallery.FIGURES.map { assetName(it.id) }.toSet() + capturedAssets()
         assertEquals(
             emptySet(),
             referenced - known,
