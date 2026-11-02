@@ -1,7 +1,8 @@
 # A polytope, canonicalised, and sliced into layers
 
 Start with a polytope in Conway notation and you can turn it into a stack of slices, like the
-layers a 3D printer would print. Along the way we'll make the shape canonical and check what the
+layers a 3D printer would print. Along the way we'll make the shape canonical (every edge touching one common sphere; see
+[below](#canonicalisation-scale-and-orientation)) and check what the
 slices tell us about the resulting solid.
 
 `afield.geometry.polytope` builds and canonicalises the shape; `afield.geometry.solid.manifold`
@@ -339,7 +340,8 @@ Manifold's `volume` works on the surface in 3D. Comparing them can reveal a prob
 Every form above sums correctly. `kkC` (kis applied twice to the cube) is a polytope that
 `canonicalize()` cannot make canonical, and
 [Polytopes & the Conway Algebra](polytope_examples.md) uses it as its counter-example. The Ceres
-solver, `relaxWithCeres`, does reach a canonical form. This box tries both and slices each result.
+solver, `relaxWithCeres`, does meet every canonical condition, though, as the bottom row shows,
+not as a solid. This box tries both and slices each result.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_ceres_manifold_contours/kkc.png" wait="14" capture="box" open-outputs="true" w="1240" h="820" padding="16" timeout="360" name="chain-contours-kkc" requires="ceres,manifold" alt="A three-row table of the kkC embeddings, with what canonicalDiagnostics() says of each, and a convergence plot. The plot has two traces against layer count: kkC as built climbing to 1.00000, and relaxWithCeres() flattening out at 0.90029 and staying there" embed=true}
 :::static

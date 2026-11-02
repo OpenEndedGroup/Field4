@@ -1,6 +1,7 @@
 # A pattern that moves particles
 
-Can a rhythm move a picture? Here `pat("bd*4, ~ 52 ~ 52, hh*16")` drives a GPU compute shader.
+Can a rhythm move a picture? Here `pat("bd*4, ~ 52 ~ 52, hh*16")`, in mini-notation (four kick
+drums, a note 52 on beats two and four, sixteen hi-hats per cycle, all at once), drives a GPU compute shader.
 The pattern language schedules the notes, `patSynth` turns the schedule into samples in real time,
 four band-pass filters turn the samples into four numbers, and the renderer hands those numbers to a
 shader that moves 24,000 particles.

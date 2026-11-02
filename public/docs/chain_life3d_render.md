@@ -1,7 +1,8 @@
 # Three-dimensional Life, counted and traced
 
 Run a cellular automaton in three dimensions and you get a volume of ones and zeros. How many
-separate things are left inside it? Here we'll run `LIFE3D_BLOB` for eight generations, turn the
+separate things are left inside it? Here we'll run `LIFE3D_BLOB` (a 3D Life rule: a dead cell with exactly five live neighbours is
+born, a live one with four or five survives) for eight generations, turn the
 surviving cells into a Manifold solid, count its separate parts, and render them.
 
 `alife_ca.kt` runs the automaton, `afield.geometry.solid.manifold` turns it into closed solids and counts them,

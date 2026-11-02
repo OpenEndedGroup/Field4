@@ -1,7 +1,7 @@
 # A Petri net that throws sparks
 
 A Petri net can play a drum part and throw sparks at the same time. Each time a transition fires
-in this example, you hear a sample from Dirt-Samples and see a burst of particles leave the place
+in this example, you hear a sample from Dirt-Samples (the drum library TidalCycles uses) and see a burst of particles leave the place
 its token came from.
 
 A box connects the net to the GPU particle system: it asks what has fired recently and writes the
