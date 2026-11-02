@@ -734,7 +734,7 @@ fun spectrum(signal: FloatArray) = (4..140).map { k ->
 fun spectrumChart(title: String, signal: FloatArray, tint: Vec4) = Chart(title = title, xLabel = "Hz").apply {
     val spec = spectrum(signal)
     width = 700.0
-    height = 170.0
+    height = 300.0
     xDomain = 0.0 to 700.0
     yDomain = 0.0 to 0.8
     for (hz in [55, 220, 330, 550]) vrule(hz, "$hz")
@@ -742,8 +742,8 @@ fun spectrumChart(title: String, signal: FloatArray, tint: Vec4) = Chart(title =
     line("magnitude", spec.map { it.first }, spec.map { it.second }, color = tint, thickness = 3.0)
 }
 display("tracked", "tracked fundamental: ${tracker.state.hz.f1} Hz")
-display("input", spectrumChart("input: 220, 330 and 550 Hz", input, vec(0.7, 0.7, 0.7, 1.0)))
-display("output", spectrumChart("the bank's output", output, vec(0.3, 0.8, 1.0, 1.0)))
+display("input", spectrumChart("input: peaks at 220, 330 and 550 Hz, nothing at 110 (orange)", input, vec(0.7, 0.7, 0.7, 1.0)))
+display("output", spectrumChart("the bank's output: one peak at 55 Hz", output, vec(0.3, 0.8, 1.0, 1.0)))
 ```
 
 The tracker reports 110 Hz, a pitch with no energy in the input, and the bank's output is one line at 55 Hz.

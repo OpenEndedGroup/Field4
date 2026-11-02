@@ -990,10 +990,12 @@ obtrusive; raise it if reflected or transmitted light becomes too dim. Set it to
 With temporal reuse disabled, use `tracer.samples` to compare views at the same sample count, and adjust
 `tracer.exposure` separately for display brightness.
 
-The clamp is easiest to see on a lamp that paths find only by chance. Here the material
-study has a lamp the size of a coin hanging above it, with `emitterSampling` off so that
-the floor and spheres see the lamp only when a bounce happens to hit it. After 16 samples
-per pixel with the clamp off, those rare hits are the specks:
+The clamp is easiest to see on light that paths find only by chance after a bounce. Here
+the material study has a ceiling just out of frame and, under it, a lamp the size of a coin
+that shines only upward, with `emitterSampling` off. The floor and spheres are lit by the
+patch of ceiling the lamp brightens, and a path finds that light only when its second bounce
+happens to hit the lamp. After 16 samples per pixel with the clamp off, those rare hits are
+the specks:
 
 ```diffstatic_runner {capture-profile="linux-nvidia" data-lang=kotlin screenshot="assets/path_tracing/clamp_off.png" capture="native-window" graphics-context=true execution="launch" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="clamp_off done" embed=true hidden=true timeout="180" name="path-tracing-clamp-off" alt="TODO"}
 import afield.graphics.scene.fabricated.*
@@ -1004,13 +1006,16 @@ val floor = scene.material(PathTraceMaterial.diffuse(0.48f, 0.48f, 0.48f))
 val red = scene.material(PathTraceMaterial.plastic(0.65f, 0.055f, 0.025f, 0.22f))
 val gold = scene.material(PathTraceMaterial.metal(0.95f, 0.7f, 0.3f, 0.12f))
 val rough = scene.material(PathTraceMaterial.metal(0.55f, 0.65f, 0.8f, 0.55f))
-val lamp = scene.material(PathTraceMaterial.emissive(2000f, 1800f, 1500f))
+val ceiling = scene.material(PathTraceMaterial.diffuse(0.7f, 0.7f, 0.7f))
+// One-sided, facing up: the lamp lights only the ceiling above it.
+val lamp = scene.material(PathTraceMaterial.emissive(2000f, 1800f, 1500f).copy(doubleSided = false))
 scene.quad(Vector3f(-15f, 0f, -15f), Vector3f(-15f, 0f, 15f), Vector3f(15f, 0f, 15f), Vector3f(15f, 0f, -15f), floor)
 scene.sphere(Vector3f(-1.7f, 0.8f, 0f), 0.8f, red, 48, 24)
 scene.sphere(Vector3f(0f, 0.8f, 0f), 0.8f, gold, 48, 24)
 scene.sphere(Vector3f(1.7f, 0.8f, 0f), 0.8f, rough, 48, 24)
-// a lamp the size of a coin, high above the spheres
-scene.quad(Vector3f(-0.1f, 3f, -0.1f), Vector3f(0.1f, 3f, -0.1f), Vector3f(0.1f, 3f, 0.1f), Vector3f(-0.1f, 3f, 0.1f), lamp)
+// A ceiling out of frame, and a lamp the size of a coin just under it
+scene.quad(Vector3f(-4f, 4f, -4f), Vector3f(4f, 4f, -4f), Vector3f(4f, 4f, 4f), Vector3f(-4f, 4f, 4f), ceiling)
+scene.quad(Vector3f(-0.1f, 3.8f, -0.1f), Vector3f(-0.1f, 3.8f, 0.1f), Vector3f(0.1f, 3.8f, 0.1f), Vector3f(0.1f, 3.8f, -0.1f), lamp)
 val camera = Camera(renderer).also {
     it.at.set(3.5f, 2.4f, 7.5f)
     it.target.set(0f, 0.65f, 0f)
@@ -1044,13 +1049,16 @@ val floor = scene.material(PathTraceMaterial.diffuse(0.48f, 0.48f, 0.48f))
 val red = scene.material(PathTraceMaterial.plastic(0.65f, 0.055f, 0.025f, 0.22f))
 val gold = scene.material(PathTraceMaterial.metal(0.95f, 0.7f, 0.3f, 0.12f))
 val rough = scene.material(PathTraceMaterial.metal(0.55f, 0.65f, 0.8f, 0.55f))
-val lamp = scene.material(PathTraceMaterial.emissive(2000f, 1800f, 1500f))
+val ceiling = scene.material(PathTraceMaterial.diffuse(0.7f, 0.7f, 0.7f))
+// One-sided, facing up: the lamp lights only the ceiling above it.
+val lamp = scene.material(PathTraceMaterial.emissive(2000f, 1800f, 1500f).copy(doubleSided = false))
 scene.quad(Vector3f(-15f, 0f, -15f), Vector3f(-15f, 0f, 15f), Vector3f(15f, 0f, 15f), Vector3f(15f, 0f, -15f), floor)
 scene.sphere(Vector3f(-1.7f, 0.8f, 0f), 0.8f, red, 48, 24)
 scene.sphere(Vector3f(0f, 0.8f, 0f), 0.8f, gold, 48, 24)
 scene.sphere(Vector3f(1.7f, 0.8f, 0f), 0.8f, rough, 48, 24)
-// a lamp the size of a coin, high above the spheres
-scene.quad(Vector3f(-0.1f, 3f, -0.1f), Vector3f(0.1f, 3f, -0.1f), Vector3f(0.1f, 3f, 0.1f), Vector3f(-0.1f, 3f, 0.1f), lamp)
+// A ceiling out of frame, and a lamp the size of a coin just under it
+scene.quad(Vector3f(-4f, 4f, -4f), Vector3f(4f, 4f, -4f), Vector3f(4f, 4f, 4f), Vector3f(-4f, 4f, 4f), ceiling)
+scene.quad(Vector3f(-0.1f, 3.8f, -0.1f), Vector3f(-0.1f, 3.8f, 0.1f), Vector3f(0.1f, 3.8f, 0.1f), Vector3f(0.1f, 3.8f, -0.1f), lamp)
 val camera = Camera(renderer).also {
     it.at.set(3.5f, 2.4f, 7.5f)
     it.target.set(0f, 0.65f, 0f)
