@@ -23,3 +23,5 @@ From the 2026-11-01 punchline audit: each section of the site was checked for wh
 ## Done when
 
 Every section above shows its result through a runner capture (or reused committed media that exercises the real code), or this handoff records why that section stays without one.
+
+Done 2026-11-02: "One half-frame per eye" now embeds the existing real runner capture `public/docs/assets/stereo_rtt_composite/desktop.png`, a side-by-side frame packed by `SideBySideStereoTarget`, the target `FieldRTTStreamer` streams from; it is captured from the desktop preview, not read back after encoding. "Streaming the rendered scene as video" stays without a capture: it needs a Vision Pro recording of the cinema screen, and this pass ran on a Linux box with no headset. A hand-captured asset from the device is still wanted.
