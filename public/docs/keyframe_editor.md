@@ -812,7 +812,7 @@ controlGroup("gesture") {
 }
 ```
 
-Here it is in a box given a shakier take, with the lanes above the pad. Pressing **smooth take** thins out both lanes and redraws the pad's trail without the shake:
+Here it is in the box from the [gesture_to_keyframes](agent_transcripts.md#gesture_to_keyframes) starting point, given a shakier take, with the lanes above the pad. Pressing **smooth take** thins out both lanes and redraws the pad's trail without the shake:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="600x1110" clip="0,0,600,1110" hide-toasts=true video="assets/keyframe_editor/smooth_take.mp4" transcript="../../dev_docs/agents/transcripts/docs_capture/gesture_smooth_take.yaml" fps="15" padding="0" wait="0" timeout="240" embed=true hidden=true name="gesture-smooth-take" alt="Two keyframe lanes, lanes/x and lanes/y, packed with keys that follow a shaky sine in x and a shaky double wave in y, above a gesture pad whose trail is a figure eight with a ragged, trembling outline. Playheads sweep both lanes while a dot travels the eight. The hold button beside smooth take is pressed: both lanes thin out to a few smooth keys along the same waves, and the pad's trail redraws as a clean figure eight"}
 ui.waitForSelector("iframe[src*='/keyframe?']", 20000.0)
