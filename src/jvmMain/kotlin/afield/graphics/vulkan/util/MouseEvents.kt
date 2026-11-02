@@ -127,6 +127,16 @@ class MouseEvents(
     }
     fun onScroll(name: String, callback: (MouseEvent) -> Boolean) { scroll[name] = callback }
 
+    /** Remove only the callbacks installed under this name, leaving other tools' input intact. */
+    fun remove(name: String) {
+        move.remove(name)
+        drag.remove(name)
+        scroll.remove(name)
+        down.values.forEach { it.remove(name) }
+        up.values.forEach { it.remove(name) }
+        buttonDrag.values.forEach { it.remove(name) }
+    }
+
     private val wasDown = mutableSetOf<String>()
     private var lastPos = Vec2()
 

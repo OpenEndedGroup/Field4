@@ -320,6 +320,108 @@ class HeadlessPuppetBrowserTest {
 
     private fun browser(): HeadlessPuppetBrowser = shared ?: fail("no headless browser")
 
+    @Test
+    fun `headset input types clicks and scrolls in its own Chromium page while another client has focus`() {
+        Assume.assumeTrue("WiVRn keyboard translation requires Linux/libxkbcommon", System.getProperty("os.name").startsWith("Linux"))
+        val observer = HeadlessPuppetBrowser(url = fixtureUrl, width = 900, height = 600, projectRoot = root)
+        val source = QueuedWiVRnSource()
+        val input = WiVRnBrowserInput(browser(), browser().viewport, source, "us", "", "", {}, { emptySet() })
+        try {
+            observer.loaded.get(30, TimeUnit.SECONDS)
+            // A separate browser is focused. Routing must still address the original page.
+            observer.evaluate("document.getElementById('entry').focus(); true").get(15, TimeUnit.SECONDS)
+            value("document.getElementById('entry').focus(); true")
+            observer.focus().get(15, TimeUnit.SECONDS)
+            source.key(42,1);source.key(30,1);source.key(30,0);source.key(42,0)
+            input.poll();browser().flushInput().get(15, TimeUnit.SECONDS)
+            assertEquals("A", value("document.getElementById('entry').value").jsonPrimitive.content)
+            assertEquals("", observer.evaluate("document.getElementById('entry').value").get(15,TimeUnit.SECONDS).value.jsonPrimitive.content)
+
+            source.key(29,1);source.key(30,1);source.key(30,0);source.key(29,0) // Ctrl+A
+            source.key(48,1);source.key(48,0) // b replaces the selection
+            input.poll();browser().flushInput().get(15,TimeUnit.SECONDS)
+            assertEquals("b", value("document.getElementById('entry').value").jsonPrimitive.content)
+
+            value("""(() => { const button=document.createElement('button');button.id='vr-pointer-target';
+                button.style.cssText='position:fixed;left:20px;top:80px;width:120px;height:40px';
+                button.textContent='Click';button.onclick=()=>{document.getElementById('entry').value+=' clicked';};
+                document.body.appendChild(button);return true; })()""")
+            input.placeCursor(80.0/900,100.0/600)
+            source.mouse(1,272,1);source.mouse(1,272,0);source.syn();input.poll()
+            browser().flushInput().get(15,TimeUnit.SECONDS)
+            assertEquals("b clicked", value("document.getElementById('entry').value").jsonPrimitive.content)
+
+            value("""(() => { const t=document.createElement('textarea');t.id='vr-multiline';
+                document.body.appendChild(t);t.focus();return true; })()""")
+            source.key(30,1);source.key(30,0);source.key(28,1);source.key(28,0);source.key(30,1);source.key(30,0)
+            input.poll();browser().flushInput().get(15,TimeUnit.SECONDS)
+            assertEquals("a\na",value("document.getElementById('vr-multiline').value").jsonPrimitive.content)
+            value("""(() => { const scroll=document.createElement('div');scroll.id='vr-scroll';
+                scroll.style.cssText='position:fixed;left:300px;top:50px;width:200px;height:150px;overflow:auto';
+                const content=document.createElement('div');content.style.height='2000px';
+                content.textContent='Scroll input target';scroll.appendChild(content);document.body.appendChild(scroll);return true; })()""")
+            input.placeCursor(400.0/900,100.0/600)
+            source.mouse(2,8,-3);source.syn();input.poll()
+            browser().flushInput().get(15,TimeUnit.SECONDS)
+            waitUntil("document.getElementById('vr-scroll').scrollTop > 0")
+        } finally { input.close();observer.close() }
+    }
+
+    @Test
+    fun `VR keyboard pointer clicks preserve text field focus and deliver real input`() {
+        val keyboard = FieldVrKeyboard(browser(), recenter = {})
+        try {
+            assertEquals(900, value("innerWidth").jsonPrimitive.int)
+            assertEquals(600, value("innerHeight").jsonPrimitive.int)
+            assertEquals(1, value("devicePixelRatio").jsonPrimitive.int)
+            keyboard.install().get(15, TimeUnit.SECONDS)
+            // Real CDP mouse presses, rather than element.click(), exercise focus suppression.
+            fun click(label: String) {
+                val quoted = JsonPrimitive(label).toString()
+                val rect = value("""
+                    (() => {
+                        const b = [...document.getElementById('field-vr-tools').shadowRoot.querySelectorAll('button')]
+                            .find(b => b.textContent === $quoted);
+                        const r = b.getBoundingClientRect();
+                        return {x:r.x+r.width/2, y:r.y+r.height/2};
+                    })()
+                """).jsonObject
+                val x = rect["x"]!!.jsonPrimitive.content.toDouble()
+                val y = rect["y"]!!.jsonPrimitive.content.toDouble()
+                browser().pointer(BrowserPointerEvent(BrowserPointerEventType.DOWN, x, y,
+                    button = BrowserMouseButton.LEFT, buttons = 1, clickCount = 1))
+                browser().pointer(BrowserPointerEvent(BrowserPointerEventType.UP, x, y,
+                    button = BrowserMouseButton.LEFT, clickCount = 1))
+                browser().flushInput().get(15, TimeUnit.SECONDS)
+            }
+            click("Keyboard")
+            value("""
+                (() => { const t = document.createElement('textarea'); t.id = 'vr-text';
+                    t.style.cssText = 'position:fixed;top:0;left:0;width:200px;height:40px';
+                    document.body.appendChild(t); t.focus(); return true; })()
+            """)
+            click("q")
+            assertEquals("q", value("""
+                new Promise((resolve, reject) => {
+                    const t = document.getElementById('vr-text');
+                    const done = () => { if(t.value === 'q') resolve(t.value); };
+                    t.addEventListener('input', done); done();
+                    setTimeout(() => reject(new Error('virtual key did not insert text')), 3000);
+                })
+            """).jsonPrimitive.content)
+            assertEquals("vr-text", value("document.activeElement.id").jsonPrimitive.content)
+            click("⌫")
+            assertEquals("", value("""
+                new Promise((resolve, reject) => {
+                    const t = document.getElementById('vr-text');
+                    const done = () => { if(t.value === '') resolve(t.value); };
+                    t.addEventListener('input', done); done();
+                    setTimeout(() => reject(new Error('virtual backspace did not delete text')), 3000);
+                })
+            """).jsonPrimitive.content)
+        } finally { keyboard.close() }
+    }
+
     companion object {
         private val root = locateFieldProjectRoot()
         private val fixtures = File(root, "src/jvmTest/resources/puppetBrowser")

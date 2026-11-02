@@ -280,6 +280,7 @@ def gradle_command(*tasks_and_args: str) -> list[str]:
         str(GRADLE_WRAPPER),
         f"-Dorg.gradle.jvmargs={GRADLE_JVMARGS}",
         *pinned_graalvm_args(REPO_ROOT),
+        *shlex.split(os.environ.get("AFIELD_BACKDOOR_GRADLE_ARGS", "")),
         *tasks_and_args,
     ]
 
