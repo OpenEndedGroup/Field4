@@ -126,6 +126,11 @@ data class AudioVisualizerOptions(
     val syncOffsetSeconds: Double = 0.0,
     /** CSS colour for the first channel's trace and the focus highlights. The second channel is amber. */
     val accent: String = "#63c7dc",
+    /**
+     * Scale a quiet clip's lane to its own peak instead of ±1. A clip peaking at or above 0.5 keeps
+     * the ±1 axis; the axis ticks print whichever range is drawn.
+     */
+    val normalize: Boolean = false,
 )
 
 /**
@@ -171,6 +176,7 @@ object AudioVisualizer {
                     "waveformUrl" to source.waveformUrl, "inlineWav" to source.inlineWaveformWavBase64,
                     "showPlayhead" to options.showPlayhead, "follow" to options.followPlayhead,
                     "zoomAtPlayhead" to true, "initialPosition" to options.initialPositionSeconds,
+                    "normalize" to options.normalize,
                 ),
             ),
             widthPx = options.width,

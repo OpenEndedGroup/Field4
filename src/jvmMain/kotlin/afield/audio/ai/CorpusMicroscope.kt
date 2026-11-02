@@ -93,6 +93,9 @@ fun corpusMicroscopeHtml(
             syncGroup = if (synchronized) syncGroup else null,
             syncOffsetSeconds = if (synchronized) -start else 0.0,
             followPlayhead = true,
+            // Corpus windows are often quiet; each view is scaled to its own peak so the query and
+            // its neighbours can be compared by shape.
+            normalize = true,
         ),
     )
 
