@@ -1388,6 +1388,25 @@ class OpenXRHmdTarget(
             val rightAPath = stringToPath(xrInstanceLocal, stack, "/user/hand/right/input/a/click")
             val rightBPath = stringToPath(xrInstanceLocal, stack, "/user/hand/right/input/b/click")
 
+            // Touch exposes an analog trigger, not /input/trigger/click. Suggest its native
+            // profile rather than relying on runtime remapping from Index or Vive bindings.
+            val touchBindings = listOf(
+                poseAction to leftGripPosePath, poseAction to rightGripPosePath,
+                aimAction to leftAimPosePath, aimAction to rightAimPosePath,
+                triggerValueAction to leftTriggerValuePath, triggerValueAction to rightTriggerValuePath,
+                squeezeValueAction to leftSqueezeValuePath, squeezeValueAction to rightSqueezeValuePath,
+                thumbstickAction to leftThumbstickPath, thumbstickAction to rightThumbstickPath,
+                thumbstickClickAction to leftThumbstickClickPath, thumbstickClickAction to rightThumbstickClickPath,
+                thumbstickTouchAction to leftThumbstickTouchPath, thumbstickTouchAction to rightThumbstickTouchPath,
+                aAction to stringToPath(xrInstanceLocal, stack, "/user/hand/left/input/x/click"),
+                aAction to rightAPath,
+                bAction to stringToPath(xrInstanceLocal, stack, "/user/hand/left/input/y/click"),
+                bAction to rightBPath,
+                menuAction to stringToPath(xrInstanceLocal, stack, "/user/hand/left/input/menu/click"),
+                hapticAction to leftHapticPath, hapticAction to rightHapticPath,
+            )
+            suggestWithFallback("oculus/touch_controller", profileOculusTouch, listOf(touchBindings))
+
             val indexFull = listOf(
                 poseAction to leftGripPosePath,
                 poseAction to rightGripPosePath,
@@ -2048,7 +2067,7 @@ class OpenXRHmdTarget(
 
                 anyActive = anyActive || valueActive || clickActive
                 out.triggerValue = if (valueActive) value else 0f
-                out.triggerPressed = pressed
+                out.triggerPressed = pressed || (valueActive && value >= if (out.triggerPressed) 0.45f else 0.55f)
             }
 
             // Squeeze / grip

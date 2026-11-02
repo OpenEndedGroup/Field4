@@ -218,6 +218,28 @@ class HeadlessPuppetBrowserTest {
     }
 
     @Test
+    fun `a controller rate move and wheel burst settles without a scroll backlog`() {
+        value("""(() => {
+            window.wheelTotal = [0, 0]; window.wheelEvents = 0;
+            document.addEventListener('wheel', e => {
+                window.wheelTotal[0] += e.deltaX; window.wheelTotal[1] += e.deltaY;
+                window.wheelEvents++; e.preventDefault();
+            }, {passive:false}); return true;
+        })()""")
+        repeat(120) {
+            browser().pointer(BrowserPointerEvent(type = BrowserPointerEventType.MOVE, x = 400.0, y = 300.0))
+            browser().pointer(BrowserPointerEvent(type = BrowserPointerEventType.WHEEL, x = 400.0, y = 300.0,
+                deltaX = 2.0, deltaY = 3.0))
+        }
+        // The producer paints at 8 fps here. Queuing each move/wheel takes many seconds;
+        // a bounded continuous batch must settle promptly and retain both axes' displacement.
+        browser().flushInput().get(5, TimeUnit.SECONDS)
+        assertEquals("[240,360]", value("window.wheelTotal").toString())
+        val delivered = value("window.wheelEvents").jsonPrimitive.int
+        assertTrue(delivered in 1..8, "wheel burst delivered $delivered separate events")
+    }
+
+    @Test
     fun `a raw CDP command reaches the same tab`() {
         val tree = browser().cdp("Page.getFrameTree").get(15, TimeUnit.SECONDS)
         val url = tree.jsonObject["frameTree"]!!.jsonObject["frame"]!!.jsonObject["url"]!!.jsonPrimitive.content

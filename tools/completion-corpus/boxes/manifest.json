@@ -238,7 +238,7 @@
   {"doc": "field_ui_browser_texture", "box": "field_ui_texture_renderer", "codeSha256": "c9cc7966d2ce6345", "codeLines": 15, "receivers": ["afield.document.graph.Box"], "preamble": "field_ui_browser_texture__field_ui_texture_renderer.preamble.kt"},
   {"doc": "field_vr_ide", "box": "vr_ide_panel", "codeSha256": "ee9a97bad5ba5f40", "codeLines": 24, "receivers": ["afield.document.graph.Box"], "preamble": "field_vr_ide__vr_ide_panel.preamble.kt"},
   {"doc": "field_vr_ide", "box": "vr_ide_playground", "codeSha256": "81bef2b00a1efa0f", "codeLines": 13, "receivers": ["afield.document.graph.Box"], "preamble": ""},
-  {"doc": "field_vr_ide", "box": "vr_ide_renderer", "codeSha256": "bb17d55e52b15fbe", "codeLines": 37, "receivers": ["afield.document.graph.Box"], "preamble": "field_vr_ide__vr_ide_renderer.preamble.kt"},
+  {"doc": "field_vr_ide", "box": "vr_ide_renderer", "codeSha256": "db42fe00415af492", "codeLines": 38, "receivers": ["afield.document.graph.Box"], "preamble": "field_vr_ide__vr_ide_renderer.preamble.kt"},
   {"doc": "fieldcv_webcam", "box": "cv_camera", "codeSha256": "3bf0e89250fe26cf", "codeLines": 14, "receivers": ["afield.document.graph.Box"], "preamble": "fieldcv_webcam__cv_camera.preamble.kt"},
   {"doc": "fieldcv_webcam", "box": "cv_inset", "codeSha256": "8ac7085b88e84208", "codeLines": 14, "receivers": ["afield.document.graph.Box"], "preamble": "fieldcv_webcam__cv_inset.preamble.kt"},
   {"doc": "fieldcv_webcam", "box": "cv_overlay", "codeSha256": "177ad73e1a9906a7", "codeLines": 49, "receivers": ["afield.document.graph.Box"], "preamble": "fieldcv_webcam__cv_overlay.preamble.kt"},
