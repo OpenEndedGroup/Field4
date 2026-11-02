@@ -285,7 +285,13 @@
             if (!config.fixed && window.ResizeObserver) {
                 new ResizeObserver(rerender).observe(host);
             }
-            window.addEventListener("resize", rerender);
+            window.addEventListener("resize", function () {
+                // Chromium can reset the offscreen backing surface during a viewport override
+                // without changing the canvas extent. The cached dimensions do not prove that
+                // its pixels survived; repaint even when every logical parameter is unchanged.
+                state.hasFrame = false;
+                rerender();
+            });
             state.render(state.tx, state.ty, state.dotSmall, state.dotLarge, state.axis);
             return state;
         } catch (error) {

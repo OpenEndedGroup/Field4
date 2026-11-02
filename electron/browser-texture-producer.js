@@ -1,5 +1,6 @@
 const net = require("node:net");
 const path = require("node:path");
+const { createBrowserInputQueue } = require("./browser-input-queue.cjs");
 const { app, BrowserWindow, ipcMain } = require("electron");
 
 const required = (name) => {
@@ -74,7 +75,10 @@ let forwardAllCdpEvents = false;
 let crashed = false;
 let unresponsive = false;
 let cursor = "default";
-let inputTail = Promise.resolve();
+const inputQueue = createBrowserInputQueue(
+  (method, params) => cdp(method, params),
+  (error) => emit("input-error", { error: errorObject(error) }),
+);
 // The initial load, which `createProducer` starts without awaiting. A caller that navigates the
 // moment the control channel is up would otherwise race it: Chromium aborts the in-flight
 // navigation, and Electron reports that abort (net error -3) against the *new* `loadURL`, which
@@ -82,10 +86,6 @@ let inputTail = Promise.resolve();
 // test of HeadlessPuppetBrowserTest, which does exactly that. It settles once, so every later
 // navigation is unaffected, and `stop` is a separate command that can still cancel a slow one.
 let initialLoad = Promise.resolve();
-// The newest mouse move not yet handed to Chromium, and whether a link of the chain is already
-// waiting to take it. See queueInput for why a move is the one input we are allowed to drop.
-let pendingMove = null;
-let moveScheduled = false;
 const leases = new Map();
 const pendingPageRequests = new Map();
 
@@ -248,54 +248,9 @@ async function evaluate(params) {
   return result;
 }
 
-function dispatchInput(method, params) {
-  inputTail = inputTail
-    .then(() => cdp(method, params))
-    .catch((error) => emit("input-error", { method, error: errorObject(error) }));
-}
-
-/**
- * Hand one input event to Chromium, in order, coalescing mouse motion.
- *
- * `Input.dispatchMouseEvent` does not resolve until the renderer has taken the event, and for
- * `mouseMoved` that acknowledgement is gated on the renderer's next frame: measured here at 33ms
- * against a 30fps offscreen tab and 16.5ms against a 60fps one, while a press/release pair costs
- * 0.7ms and is not gated at all. So the chain can absorb at most one move per frame, and a mouse
- * produces them far faster than that. Appending every one made the queue grow without bound —
- * seconds of it, and still growing, with clicks stuck behind motion the user had long finished.
- *
- * A move that a newer move has already superseded carries no information, so it is the one input
- * we can drop: keep at most one in flight and one pending, and the backlog is bounded at two
- * frames no matter how fast the mouse moves. Everything else — buttons, wheel, keys, text,
- * composition, touch — keeps its exact order, and flushes the pending move ahead of itself so a
- * click still lands after the motion that preceded it.
- */
+// Continuous motion and wheel samples share a bounded batch; discrete input seals it.
 function queueInput(method, params) {
-  if (method === "Input.dispatchMouseEvent" && params.type === "mouseMoved") {
-    pendingMove = params;
-    if (moveScheduled) return;
-    moveScheduled = true;
-    inputTail = inputTail
-      .then(() => {
-        moveScheduled = false;
-        const next = pendingMove;
-        pendingMove = null;
-        // Null when a non-move flushed it while this link was waiting its turn.
-        return next ? cdp(method, next) : undefined;
-      })
-      .catch((error) => emit("input-error", { method, error: errorObject(error) }));
-    return;
-  }
-  flushPendingMove();
-  dispatchInput(method, params);
-}
-
-/** Puts any coalesced move into the chain now, so what follows it is genuinely after it. */
-function flushPendingMove() {
-  if (!pendingMove) return;
-  const params = pendingMove;
-  pendingMove = null;
-  dispatchInput("Input.dispatchMouseEvent", params);
+  inputQueue.queue(method, params);
 }
 
 async function command(name, params = {}) {
@@ -324,8 +279,7 @@ async function command(name, params = {}) {
       contents.blur();
       return stateSnapshot();
     case "flush-input":
-      flushPendingMove();
-      await inputTail;
+      await inputQueue.flush();
       return {};
     case "evaluate":
       return evaluate(params);
@@ -551,7 +505,33 @@ async function announceLoaded() {
     screenWidth: Math.max(1, Math.round(textureWidth / deviceScaleFactor)),
     screenHeight: Math.max(1, Math.round(textureHeight / deviceScaleFactor)),
   });
-  send({ type: "loaded", afterFrameId: frameId.toString(), url: contents.getURL(), state: stateSnapshot() });
+  // Wait for the compositor to allocate/paint the overridden viewport before redrawing WebGL.
+  // A DOM resize/animation frame alone can precede that reset, losing the freshly drawn pixels.
+  if (!noFrames) await new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      contents.removeListener('paint', painted);
+      reject(new Error('Timed out waiting for the overridden browser viewport to paint'));
+    }, 10000);
+    const painted = (_event, _dirty, image) => {
+      const size = image?.getSize();
+      if (cpuBitmap && (!size ||
+          size.width !== Math.round(textureWidth / deviceScaleFactor) ||
+          size.height !== Math.round(textureHeight / deviceScaleFactor))) return;
+      clearTimeout(timeout);
+      contents.removeListener('paint', painted);
+      resolve();
+    };
+    contents.on('paint', painted);
+    contents.invalidate();
+  });
+  // Metrics can reset Chromium's backing surface without changing CSS/canvas dimensions.
+  // Notify viewport renderers after that reset, then let their pixels reach the compositor.
+  const readyAfterFrameId = frameId;
+  await contents.executeJavaScript(`new Promise(resolve => requestAnimationFrame(() => {
+    window.dispatchEvent(new Event('resize'));
+    requestAnimationFrame(() => resolve(true));
+  }))`);
+  send({ type: "loaded", afterFrameId: readyAfterFrameId.toString(), url: contents.getURL(), state: stateSnapshot() });
 }
 
 let warnedAboutHandle = false;
