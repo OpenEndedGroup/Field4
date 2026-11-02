@@ -249,7 +249,7 @@ cores. On a ten-core laptop a signal of 10 000 samples takes about 20 ms and one
 For a signal too long to wait for, `fraction` evaluates only that share of the diagonals, picked at
 random (the SCRIMP "anytime" idea):
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/matrix_profile/anytime.png" alt="four overlaid profiles of the walk at fraction 0.01, 0.05, 0.2 and 1.0; each lies on or above the next, and the exact profile is shaded at its motif and discord" wait="1.5" capture="box" open-outputs="true" padding="0" name="mp-anytime" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/matrix_profile/anytime.png" alt="the partial profiles at fraction 0.01, 0.05 and 0.2 drawn as their distance above the exact profile: every curve stays at or above zero, fraction 0.01 reaches 5, 0.05 mostly stays under 2, and 0.2 sits on zero for most of the walk; the exact profile's motif and discord are shaded" wait="1.5" capture="box" open-outputs="true" padding="0" name="mp-anytime" embed=true}
 import afield.math.matrixprofile.*
 
 // The walk from Motifs, with the same 60-sample wiggle hidden in it three times.
@@ -265,12 +265,16 @@ for (at in [500, 1400, 2500]) for (k in 0 until 60) series[at + k] += 2 * sin(2 
 val quick = matrixProfile(series, m = 60, fraction = 0.05)
 
 :::fold overlay four fractions
-// The anytime profile at four fractions of the diagonals, overlaid: it only comes down.
+// How far each partial profile sits above the exact one. The gap is never negative, and it
+// shrinks as the fraction grows.
 val fractions = [0.01, 0.05, 0.2, 1.0]
 val profiles = fractions.map { f -> matrixProfile(series, m = 60, fraction = f, seed = 1) }
 val exact = profiles.last()
 showSignals(
-    *profiles.mapIndexed { i, p -> "fraction ${fractions[i]}" to p.profile }.toTypedArray(),
+    *profiles.dropLast(1).mapIndexed { i, p ->
+        "fraction ${fractions[i]} − exact" to p.profile.zip(exact.profile) { a, b -> a - b }
+    }.toTypedArray(),
+    yTitle = "distance above the exact profile",
     regions = exact.motifs(1).first().indices.map { SignalRegion("motif", it, it + 60, "#8fff9a") } +
         SignalRegion("discord", exact.discords(1).first().index, exact.discords(1).first().index + 60, "#ff7a9e"),
     title = "first motif index ${profiles.map { it.motifs(1).first().indices.first() }} · discord ${profiles.map { it.discords(1).first().index }}, fraction 0.01 to 1.0",
@@ -280,8 +284,8 @@ showSignals(
 )
 ```
 
-Every value of a partial profile is at least the exact value, so the profile can only come down as
-`fraction` grows. Motifs show up early, because a shape with several twins needs only one of its
+The plot shows each partial profile minus the exact one. No curve goes below zero: every value of a
+partial profile is at least the exact value, so the profile can only come down as `fraction` grows. Motifs show up early, because a shape with several twins needs only one of its
 diagonals to be sampled. Discords are the slowest to settle: a subsequence can look unique only
 because its twin's diagonal has not been visited yet.
 

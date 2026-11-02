@@ -183,6 +183,30 @@ object ImagingGallery {
     // attesting that it works at the size someone would actually use, and the panels look the same
     // because they were always a downsampled view of a larger truth.
 
+    /**
+     * A corner response for display: divided by its largest magnitude, then raised to the 0.25
+     * power with its sign kept. On a linear ramp everything but the corner peaks is near zero, and
+     * the gamma brings up the weaker edge response around them.
+     */
+    private fun gammaSigned(response: Img): Img {
+        val peak = response.data.maxOf { abs(it) }.takeIf { it > 0f } ?: 1f
+        return response.map { v -> val n = v / peak; (if (n < 0f) -1f else 1f) * Math.pow(abs(n).toDouble(), 0.25).toFloat() }
+    }
+
+    /**
+     * The pyramid source, sized to show 1:1 in a tile: a gradient ground (survives every level), a
+     * disc and a square with sharp edges, fine 6 px texture inside the disc (gone after one
+     * halving), 18 px stripes inside the square (gone after two), a row of small dots and a thin bar.
+     */
+    private fun multiscale(w: Int = 240, h: Int = 240): Img = Img.generate(w, h) { x, y ->
+        var v = 0.12 + 0.18 * (x + y) / (w + h).toDouble()
+        if (hypot(x - 80.0, y - 85.0) <= 60.0) v = 0.70 + 0.18 * sin(x * 1.05) * sin(y * 1.05)
+        if (x in 150..225 && y in 25..140) v = 0.55 + 0.25 * sin((x + y) * 0.35)
+        for (k in 0 until 8) if (hypot(x - (25.0 + k * 27), y - 180.0) <= 5.0) v = 0.92
+        if (y in 212..215 && x in 15..225) v = 0.90
+        v.toFloat()
+    }
+
     /** A bright rounded-corner-free square on a dark ground; corners at exactly (x0,y0)…(x1,y1). */
     private fun squareImg(w: Int = 1600, h: Int = 1600, x0: Int = 400, y0: Int = 400, x1: Int = 1199, y1: Int = 1199) =
         Img.generate(w, h) { x, y -> if (x in x0..x1 && y in y0..y1) 0.92f else 0.08f }
@@ -350,10 +374,14 @@ object ImagingGallery {
                 check(fast.any { hypot(it.x - ex, it.y - ey) < 5.0 }) { "no FAST corner near ($ex, $ey)" }
             }
             val worst = truth.maxOf { (ex, ey) -> harris.minOf { hypot(it.x - ex, it.y - ey) } }
+            // The response maps are drawn from the same square at tile size (240 px), so they show
+            // 1:1: a corner peak is a few pixels across, and shrinking a 1600 px map to a tile
+            // averages it away.
+            val small = squareImg(240, 240, 60, 60, 179, 179)
             Figure(
                 listOf(
-                    Tile("harrisResponse (coolwarm, signed)", src.harrisResponse().colormapDiverging("coolwarm")),
-                    Tile("shiTomasiResponse (viridis)", src.shiTomasiResponse().normalized().colormap("viridis")),
+                    Tile("harrisResponse 240px (signed, ^0.25)", gammaSigned(small.harrisResponse()).colormapDiverging("coolwarm")),
+                    Tile("shiTomasiResponse 240px (^0.25)", gammaSigned(small.shiTomasiResponse()).map { it.coerceAtLeast(0f) }.colormap("viridis")),
                     Tile(
                         "harrisCorners -> ${harris.size}", src,
                         listOf(Overlay(afield.media.image.cornersToFLines(harris, 70.0), ORANGE, 2f))
@@ -429,32 +457,28 @@ object ImagingGallery {
         },
 
         Panel("07-pyramids", "Multiscale — Gaussian pyramid and an invertible Laplacian pyramid") {
-            val src = textured(1920, 1920)
-            val gp = src.gaussianPyramid(levels = 5, minSize = 120)
-            val lp = src.laplacianPyramid(levels = 4, minSize = 120)
+            val src = multiscale(240, 240)
+            val gp = src.gaussianPyramid(levels = 4, minSize = 24)
+            val lp = src.laplacianPyramid(levels = 3, minSize = 24)
             val back = lp.reconstruct()
             var worst = 0f
             for (i in src.data.indices) worst = maxOf(worst, abs(src.data[i] - back.data[i]))
             check(worst < 1e-4f) { "Laplacian pyramid round-trip error $worst" }
-            // Display zoom only: each level is pixel-replicated up to ~the base size so the
-            // coarsening reads as blockiness instead of as a 12x12 speck. Real sizes in captions.
-            fun zoomFor(im: Img) = maxOf(1, 1920 / maxOf(im.width, im.height))
+            // Display zoom only: each level is pixel-replicated up to the base size so the
+            // coarsening reads as blockiness instead of as a speck. Real sizes in captions.
+            fun zoomFor(im: Img) = maxOf(1, src.width / maxOf(im.width, im.height))
             val tiles = ArrayList<Tile>()
             gp.levels.forEachIndexed { i, l ->
-                tiles.add(Tile("gaussian L$i — ${l.width}x${l.height}" + zoomNote(zoomFor(l)), l, zoom = zoomFor(l)))
+                tiles.add(Tile("gaussian L$i ${l.width}px" + zoomNote(zoomFor(l)), l, zoom = zoomFor(l)))
             }
             lp.bands.forEachIndexed { i, b ->
-                val cm = b.colormapDiverging()
-                tiles.add(Tile("laplacian band $i — ${b.width}x${b.height}" + zoomNote(zoomFor(b)), cm, zoom = zoomFor(b)))
+                // Each band normalised to its own range, so the coarse bands are as visible as the fine one.
+                tiles.add(Tile("laplacian $i ${b.width}px" + zoomNote(zoomFor(b)), b.colormapDiverging(), zoom = zoomFor(b)))
             }
             tiles.add(
-                Tile(
-                    "residual — ${lp.residual.width}x${lp.residual.height}" + zoomNote(zoomFor(lp.residual)),
-                    lp.residual, zoom = zoomFor(lp.residual)
-                )
+                Tile("residual ${lp.residual.width}px" + zoomNote(zoomFor(lp.residual)), lp.residual, zoom = zoomFor(lp.residual))
             )
-            tiles.add(Tile("reconstruct() (err ${"%.1e".format(worst)})", back))
-            Figure(tiles, "pyramid ${gp.levels.map { "${it.width}" }.joinToString("->")}; reconstruction max error ${"%.2e".format(worst)}")
+            Figure(tiles, "pyramid ${gp.levels.map { "${it.width}" }.joinToString("->")}; reconstruct() max error ${"%.2e".format(worst)}")
         },
 
         Panel("08-warps", "Geometry — affine warps, and a homography rectifying a perspective view") {

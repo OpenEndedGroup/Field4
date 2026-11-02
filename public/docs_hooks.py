@@ -5900,7 +5900,14 @@ def build_backdoor_command(
             parts.extend(["--expect-outputs", options.expect_outputs])
             if options.with_editor:
                 parts.append("--with-editor")
+            # `viewport="WxH"` lays the page out at that size for the shot, as it does for `ui`
+            # captures, so a window capture can be framed tighter than the default page.
+            if options.viewport is not None:
+                size = f"{options.viewport[0]}x{options.viewport[1]}"
+                backdoor_commands.append(shlex.join(["viewport", size, "--timeout", str(options.timeout)]))
             backdoor_commands.append(shlex.join(parts))
+            if options.viewport is not None:
+                backdoor_commands.append(shlex.join(["viewport", "default", "--timeout", str(options.timeout)]))
 
     if options.execution == "launch" and not options.macro_file:
         backdoor_commands.append(shlex.join([

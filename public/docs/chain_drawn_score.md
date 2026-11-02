@@ -10,7 +10,7 @@ the original drawing.
 The score on this page is drawn by code, but a rectangle you draw by hand in the same frame is read
 the same way. Here is the score in Field with the drawing layer switched on:
 
-```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x520" clip="0,0,1100,520" screenshot="assets/chain_drawn_score/hero.png" transcript="assets/transcripts/drawn_score_hero_setup.yaml" padding="0" wait="0" timeout="120" embed=true hidden=true name="chain-drawn-score-hero" alt="Field with the drawing layer switched on: Excalidraw's toolbar across the top of the window, over the score frame with its blue piano-roll rectangles, the red glissando and its label, the green held note and the orange playhead, and the box that drew them to the left."}
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" hide-toasts=true viewport="1400x560" clip="0,0,1400,560" screenshot="assets/chain_drawn_score/hero.png" transcript="assets/transcripts/drawn_score_hero_setup.yaml" padding="0" wait="0" timeout="120" embed=true hidden=true name="chain-drawn-score-hero" alt="Field with the drawing layer switched on: Excalidraw's toolbar across the top of the window, over the score frame with its blue piano-roll rectangles, the red glissando and its label, the green held note and the orange playhead, and the box that drew them to the left."}
 // The marks come from the setup transcript's box. Switching the drawing layer on is what Alt-D
 // does; with it on, Excalidraw owns the mouse and keyboard and shows its toolbar.
 ui.eval("window.toggleDrawingLayer(); return window.drawingLayerState()")

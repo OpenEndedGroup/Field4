@@ -547,7 +547,7 @@ bundle.attachTo(renderer)
 bundle.present(renderer = renderer)
 ```
 
-The comparison below is the same strongly-lit scene captured twice: raw HDR on the left (highlights blow out to flat white), bloom + ACES on the right (highlights roll off and glow).
+The comparison below is the same strongly lit scene captured twice. On the left is the raw HDR output with no tone mapping: every floor tile clips to flat white, and the brightest parts of the rings go white too. On the right, with bloom and ACES, the tiles keep a little shading, each one carries a soft halo, and the rings hold more of their colour.
 
 <!--
 FIELD_TEST
@@ -567,7 +567,7 @@ expect:
         b: [0.55, 0.20, 0.40, 0.55]
         meanAbsDiffGt: 5
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-tonemap-bloom.png" alt="the same pink and blue torii on a bright white tiled floor, rendered twice side by side. With tone mapping alone the two rings hold their colour and the tiles stay white without spreading. With bloom added the highlights bleed into soft haloes, the blue ring glows along its upper edge, the floor reads brighter overall, and small out-of-focus flecks of light scatter across the black above the scene" source-image="/tmp/docs-fabricate-tonemap-bloom-native.png" wait="30.0" timeout="240" execution="launch" embed=true graphics-context=true name="fabricate-tonemap-bloom" hidden=true fabricate-scene="tonemap-bloom"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fabricate-tonemap-bloom.png" alt="the same pink and blue metal torii over a floor of white tiles, rendered twice side by side. Left, raw HDR: the tiles are flat white with hard edges and the rings are bright and pale. Right, bloom with ACES tone mapping: the tiles are slightly shaded and each has a soft glow around its edges, and the rings are a little deeper in colour on a darker background" source-image="/tmp/docs-fabricate-tonemap-bloom-native.png" wait="30.0" timeout="240" execution="launch" embed=true graphics-context=true name="fabricate-tonemap-bloom" hidden=true fabricate-scene="tonemap-bloom"}
 ```
 
 ## glTF loading and animation

@@ -1,0 +1,27 @@
+name: geometry_review_region
+description: >
+  Two square meshes, one behind the other, in a three() view at an angle so both show; the
+  geometry_review page selects a rotated rectangle on the front one and saves a note.
+docs:
+  - page: geometry_review.md
+    why: "Builds the scene the rotated-region capture selects on."
+operations:
+  - create:
+      box: gr_region
+      name: 'two meshes'
+      frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          fun square(x: Float, y: Float, z: Float, s: Float) = TriMesh(
+              floatArrayOf(x - s, y - s, z, x + s, y - s, z, x + s, y + s, z, x - s, y + s, z),
+              intArrayOf(0, 1, 2, 0, 2, 3),
+          )
+
+          three(name = "features", width = 760, height = 620) {
+              camera(yaw = 32.0, pitch = 18.0, distance = 2.2)
+              helpers(false)
+              mesh(square(0f, 0f, 0f, 40f), id = "front", wireframe = false, edges = true)
+              mesh(square(25f, 20f, -45f, 40f), id = "behind", wireframe = false, edges = true)
+          }
+  - launch: { box: gr_region, property: code }
+  - await: {}
