@@ -316,12 +316,14 @@ legibility and expressiveness during rapid change.
 The next high-leverage extension is per-node state:
 Adding a small mutable state record to each node would make the substrate much richer. Examples:
 
-    data class State(
-        var energy: Double = 1.0,
-        var phase: Double = 0.0,
-        var hue: Double = 0.0,
-        var age: Double = 0.0
-    )
+```diffstatic {data-lang=kotlin}
+data class State(
+    var energy: Double = 1.0,
+    var phase: Double = 0.0,
+    var hue: Double = 0.0,
+    var age: Double = 0.0
+)
+```
 
 Then rewrite rules can split energy on DUP, accumulate age, drift hue, mutate phase, and directly map
 these quantities to radius, stroke weight, opacity, curvature, synthesis parameters, or triggering.
@@ -868,9 +870,11 @@ Lambda calculus as an interaction net: the agent types, and rules for beta-reduc
 
 The shortest useful thing is `LambdaTerms.normalise`, which runs parse, compile, reduce and readback in one call:
 
-    val run = LambdaTerms.normalise("(\\m n f x. m f (n f x)) (\\f x. f x) (\\f x. f (f x))")
-    run.printed   // "λa. λb. a (a (a b))", Church three, from add one two
-    run.steps     // how many reactions it took
+```diffstatic {data-lang=kotlin}
+val run = LambdaTerms.normalise("(\\m n f x. m f (n f x)) (\\f x. f x) (\\f x. f (f x))")
+run.printed   // "λa. λb. a (a (a b))", Church three, from add one two
+run.steps     // how many reactions it took
+```
 
 Two public names sit behind that. [`Term`](visualization.md#lambdaterms-kt-term) is the syntax tree, with `Var`, `Lam` and `App` nested inside it so that
 `Term.Lam("x", Term.Var("x"))` reads as what it is and none of the three short names leaks into `afield.lang.lambda`.

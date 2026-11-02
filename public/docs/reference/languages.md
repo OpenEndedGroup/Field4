@@ -4336,7 +4336,9 @@ when it is deciding which line to highlight.
 
 `DisasmLine.toString` is the printable form:
 
-    addr:  hex  hex   mnemonic  operands    ; optional annotation
+```diffstatic {data-lang=kotlin}
+addr:  hex  hex   mnemonic  operands    ; optional annotation
+```
 
 The annotation is the part the bytes do not say: the signed offset behind a relative branch, and
 the absolute address behind `jmpa` or `calla`. A byte that decodes to no instruction prints as
@@ -8255,8 +8257,10 @@ This mirrors what JetBrains' `kotlin-compiler-server` (KotlinToJSTranslator) doe
 K2 compile of a self-contained Kotlin snippet into a single, eval-able JS module that the existing
 RemoteJS transport ships to the browser / visionOS "graphics head" over the WebSocket bus.
 
-    phase 1:  source.kt      --( -Xir-produce-klib-file )-->                 <module>.klib
-    phase 2:  <module>.klib  --( -Xir-produce-js, -Xinclude, -Xir-dce )-->   <module>.js
+```diffstatic {data-lang=kotlin}
+phase 1:  source.kt      --( -Xir-produce-klib-file )-->                 <module>.klib
+phase 2:  <module>.klib  --( -Xir-produce-js, -Xinclude, -Xir-dce )-->   <module>.js
+```
 
 What this buys a box author is Kotlin: real types, completion, and native `operator fun plus`
 vector and matrix math, so a Kotlin box needs none of the operator rewriting `Asta.kt` does for a

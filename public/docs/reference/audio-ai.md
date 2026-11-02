@@ -469,14 +469,16 @@ candidate against them rather than passing them as native model controls.
 [`compileGestureBoard`](audio-ai.md#gestureboard-kt--compilegestureboard) previews the protocol locally and returns a [`GestureCompilation`](audio-ai.md#protocol-kt-gesturecompilation) that lists
 how each board element is wired to the backend. Example:
 
-    val board = gestureBoard(8.0, "acoustic guitar, warm") {
-        prompt(0.0, 4.0, "sparse, arpeggiated")
-        event(3.5, "accent")
-        curve("energy", GestureCurveKind.ACTIVITY) {
-            point(0.0, 0.2); point(4.0, 0.8); point(8.0, 0.3)
-        }
+```diffstatic {data-lang=kotlin}
+val board = gestureBoard(8.0, "acoustic guitar, warm") {
+    prompt(0.0, 4.0, "sparse, arpeggiated")
+    event(3.5, "accent")
+    curve("energy", GestureCurveKind.ACTIVITY) {
+        point(0.0, 0.2); point(4.0, 0.8); point(8.0, 0.3)
     }
-    val operation = gestureCandidates(source, board, seeds = 0L until 4L)
+}
+val operation = gestureCandidates(source, board, seeds = 0L until 4L)
+```
 
 `src/jvmMain/kotlin/afield/audio/ai/GestureBoard.kt` — [read the source](source/jvmMain/afield/audio/ai/GestureBoard/)
 
@@ -1300,9 +1302,11 @@ completes with a [`RenderedAudioAnalysis`](audio-ai.md#renderedaudioanalysis-kt-
 the others rather than returning a partial result. [`RenderedAudioAnalysis.visualizationHtml`](audio-ai.md#renderedaudioanalysis-kt--renderedaudioanalysis--visualizationhtml)
 renders the waveform and all analysis lanes on a shared, bidirectional time cursor.
 
-    val wav = renderPatWav(tmp, pattern, cycles = 4, cps = 1.5)
-    val analysis = client.analyzeRenderedAudio(wav).get()
-    display(analysis.visualizationHtml())
+```diffstatic {data-lang=kotlin}
+val wav = renderPatWav(tmp, pattern, cycles = 4, cps = 1.5)
+val analysis = client.analyzeRenderedAudio(wav).get()
+display(analysis.visualizationHtml())
+```
 
 `src/jvmMain/kotlin/afield/audio/ai/RenderedAudioAnalysis.kt` — [read the source](source/jvmMain/afield/audio/ai/RenderedAudioAnalysis/)
 
@@ -1395,9 +1399,11 @@ families.
 Temporal pooling and hop length are independent: overlapping perceptual windows can still sample
 at display rate. Sampling to `maxFrames` happens after pooling and retains time order. Example:
 
-    val frames = client.spectralEmbeddingFrames(result).get()
-    val projection = frames.mds()
-    val preview = preview.withSpectralProjection(projection)
+```diffstatic {data-lang=kotlin}
+val frames = client.spectralEmbeddingFrames(result).get()
+val projection = frames.mds()
+val preview = preview.withSpectralProjection(projection)
+```
 
 `src/jvmMain/kotlin/afield/audio/ai/SpectralEmbeddingProjection.kt` — [read the source](source/jvmMain/afield/audio/ai/SpectralEmbeddingProjection/)
 
@@ -1496,9 +1502,11 @@ runs as a rolling sum, so a window covering many source rows costs one pass over
 instead of one pass per output row, and `maxFrames` sampling happens after pooling and keeps time
 order.
 
-    client.speechEmbeddingSmileTsnePreview(result).thenAccept { preview ->
-        display("speech space", speechEmbeddingPreviewVisualizationHtml(preview))
-    }
+```diffstatic {data-lang=kotlin}
+client.speechEmbeddingSmileTsnePreview(result).thenAccept { preview ->
+    display("speech space", speechEmbeddingPreviewVisualizationHtml(preview))
+}
+```
 
 `withSpeechMds` and `withSpeechTsne` replace a preview's projection axes with the locally fitted
 ones and stamp the owner, library and method into both the series metadata and the preview's

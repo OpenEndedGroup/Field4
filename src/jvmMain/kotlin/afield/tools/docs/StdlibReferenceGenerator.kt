@@ -2022,7 +2022,7 @@ object StdlibReferenceGenerator {
         // "```diffstatic {data-lang=…}", which FENCE_OPENER no longer matches, so a demotion run
         // afterwards mistakes the *closing* fence for an opening one and stops demoting from there on.
         doc.overview?.let {
-            appendLine(fencesToDiffstatic(demoteHeadings(linkify(it, typeAnchors, doc)))); appendLine()
+            appendLine(fencesToDiffstatic(demoteHeadings(linkify(indentedBlocksToFences(it), typeAnchors, doc)))); appendLine()
         }
         val source = sourcePageUrl(doc)
         if (source == null) {
@@ -2052,7 +2052,7 @@ object StdlibReferenceGenerator {
             appendLine(linkToSource(doc, type.symbol.line, highlightSignature(type.symbol.signature)))
             appendLine()
             if (type.symbol.summary.isNotBlank()) {
-                appendLine(fencesToDiffstatic(linkify(type.symbol.summary, typeAnchors, doc)))
+                appendLine(fencesToDiffstatic(linkify(indentedBlocksToFences(type.symbol.summary), typeAnchors, doc)))
                 appendLine()
             }
             if (type.enumConstants.isNotEmpty()) {
@@ -2623,11 +2623,14 @@ object StdlibReferenceGenerator {
      *
      * A fence with no language is treated as Kotlin, which is what those blocks have always been in
      * practice. Closing fences are left alone, and an already-`diffstatic` fence is passed through.
+     * An indented code block — the shape most file overviews use, see [indentedBlocksToFences] — is
+     * fenced first, so it gets the same treatment.
      */
     internal fun fencesToDiffstatic(text: String): String {
-        if (!text.contains("```")) return text
+        val fenced = indentedBlocksToFences(text)
+        if (!fenced.contains("```")) return fenced
         var open = false
-        return text.split("\n").joinToString("\n") { line ->
+        return fenced.split("\n").joinToString("\n") { line ->
             val match = FENCE_OPENER.matchEntire(line) ?: return@joinToString line
             if (open) {
                 open = false
@@ -2638,6 +2641,55 @@ object StdlibReferenceGenerator {
                 if (lang.startsWith("diff")) line else "${match.groupValues[1]}```diffstatic {data-lang=$lang}"
             }
         }
+    }
+
+    /**
+     * Rewrites markdown indented code blocks as bare triple-backtick fences, dedented by the block's
+     * smallest indent, so [fencesToDiffstatic] can give them the `diffstatic` treatment.
+     *
+     * A block is a run of lines indented four or more spaces that follows a blank line (or opens the
+     * text), with blank lines allowed inside it. Markdown's own rules are kept where they bite: an
+     * indented run after a list item is list continuation, not code, and nothing inside an existing
+     * fence is touched. Trailing blank lines stay outside the new fence.
+     */
+    internal fun indentedBlocksToFences(text: String): String {
+        val lines = text.split("\n")
+        val out = ArrayList<String>(lines.size)
+        fun indent(l: String) = l.length - l.trimStart(' ').length
+        val listItem = Regex("""^\s*([-*+]|\d+[.)])\s+.*""")
+        var inFence = false
+        var inList = false
+        var i = 0
+        while (i < lines.size) {
+            val line = lines[i]
+            if (FENCE_OPENER.matchEntire(line) != null || line.trimStart().startsWith("```")) {
+                inFence = !inFence
+                out += line; i++; continue
+            }
+            if (inFence) { out += line; i++; continue }
+            val prevBlank = out.isEmpty() || out.last().isBlank()
+            if (line.isNotBlank() && indent(line) >= 4 && prevBlank && !inList) {
+                var end = i
+                var j = i
+                while (j < lines.size && (lines[j].isBlank() || indent(lines[j]) >= 4)) {
+                    if (lines[j].isNotBlank()) end = j
+                    j++
+                }
+                val block = lines.subList(i, end + 1)
+                val strip = block.filter { it.isNotBlank() }.minOf { indent(it) }
+                out += "```"
+                block.forEach { out += if (it.isBlank()) "" else it.substring(strip) }
+                out += "```"
+                i = end + 1
+                continue
+            }
+            if (line.isNotBlank()) {
+                if (listItem.matches(line)) inList = true
+                else if (indent(line) == 0) inList = false
+            }
+            out += line; i++
+        }
+        return out.joinToString("\n")
     }
 
     /** A whole-line triple-backtick fence: leading indent, then an optional bare language word. */
@@ -2667,6 +2719,22 @@ object StdlibReferenceGenerator {
         locals: Set<String> = emptySet(),
     ): String {
         if (text.isBlank()) return text
+        // Code in a fence is code: `destination[i]` must not become a link to a symbol named `i`.
+        if (text.contains("```")) {
+            val segments = mutableListOf(mutableListOf<String>())
+            var inFence = false
+            text.split("\n").forEach { line ->
+                val isFence = line.trimStart().startsWith("```")
+                if (isFence && !inFence) segments += mutableListOf<String>()
+                segments.last() += line
+                if (isFence && inFence) segments += mutableListOf<String>()
+                if (isFence) inFence = !inFence
+            }
+            return segments.filter { it.isNotEmpty() }.joinToString("\n") { seg ->
+                val joined = seg.joinToString("\n")
+                if (seg.first().trimStart().startsWith("```")) joined else linkify(joined, typeAnchors, doc, locals)
+            }
+        }
         val alternate = Regex("""\[([^\]\[]+)]\[([A-Za-z_][\w.]*)]""")
         val simple = Regex("""\[([A-Za-z_][\w.]*)](?!\()""")
         var out = alternate.replace(text) { m ->
