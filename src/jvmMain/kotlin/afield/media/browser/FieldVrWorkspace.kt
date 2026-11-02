@@ -22,8 +22,25 @@ class FieldVrWorkspace(
     val widthMeters: Float = 2.0f,
     val distanceMeters: Float = 1.35f,
     cpuBitmapFallback: Boolean = FieldUiBrowserTexture.cpuBitmapFallbackRequired,
-    headsetInput: Boolean = renderer.openXRHmdTarget != null && System.getProperty("os.name").startsWith("Linux"),
+    headsetInput: Boolean = defaultHeadsetInput(renderer.openXRHmdTarget != null),
 ) : AutoCloseable {
+    companion object {
+        /** ALVR has no WiVRn HID devices; its launcher selects the desktop focus path. */
+        internal fun defaultHeadsetInput(
+            openXR: Boolean,
+            mode: String? = System.getenv("FIELD_VR_INPUT"),
+            osName: String = System.getProperty("os.name"),
+        ): Boolean = when (mode?.trim()?.lowercase()) {
+            null, "", "auto" -> openXR && osName.startsWith("Linux")
+            "desktop" -> false
+            "wivrn" -> {
+                require(openXR && osName.startsWith("Linux")) { "WiVRn input requires Linux/OpenXR" }
+                true
+            }
+            else -> error("FIELD_VR_INPUT must be auto, desktop or wivrn (got '$mode')")
+        }
+    }
+
     private val closed = AtomicBoolean(false)
     private val recenterRequested = AtomicBoolean(false)
     private val keyboardFocusRequested = AtomicBoolean(false)

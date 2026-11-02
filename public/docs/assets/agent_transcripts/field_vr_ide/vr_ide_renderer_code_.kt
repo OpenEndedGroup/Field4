@@ -3,7 +3,7 @@ import afield.graphics.vulkan.util.Options
 
 prop<Window>(window)
 prop<Renderer>(renderer)
-// Start with the desktop companion. Connect WiVRn, set true and restart Field for VR.
+// Start with the desktop companion. Connect OpenXR, set true and restart Field for VR.
 val useHeadset = false
 Options.enableVR = useHeadset
 Options.enableHDR = false

@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="vr_ide_renderer" index="0" -->
 
 ```edn [field-box id="vr_ide_renderer" role="properties"]
-{"id" "vr_ide_renderer" "index" 0 "name" "1 - VR IDE renderer" "parents" ["root"] "children" ["vr_ide_panel"] "properties" {"children" #{#afield/box "vr_ide_panel"} "parents" #{#afield/box "root"} "name" "1 - VR IDE renderer" "_tombstone" false "frame" #afield/rect [60.0 60.0 330.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "vr_ide_renderer_code_.kt" "lines" 38 "characters" 1688 "sha256" "03d5dbf817154489d89da0a843e73f1e2661e9e4249af96b30442008d034f4f0"}]}
+{"id" "vr_ide_renderer" "index" 0 "name" "1 - VR IDE renderer" "parents" ["root"] "children" ["vr_ide_panel"] "properties" {"children" #{#afield/box "vr_ide_panel"} "parents" #{#afield/box "root"} "name" "1 - VR IDE renderer" "_tombstone" false "frame" #afield/rect [60.0 60.0 330.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "vr_ide_renderer_code_.kt" "lines" 38 "characters" 1689 "sha256" "219a6e908d8719dd0e6bff5d219bca98666bb8579338d916d511ee4be117a30d"}]}
 ```
 
 ```kotlin [field-property box="vr_ide_renderer" name="code" path="vr_ide_renderer_code_.kt"]
@@ -20,7 +20,7 @@ import afield.graphics.vulkan.util.Options
 
 prop<Window>(window)
 prop<Renderer>(renderer)
-// Start with the desktop companion. Connect WiVRn, set true and restart Field for VR.
+// Start with the desktop companion. Connect OpenXR, set true and restart Field for VR.
 val useHeadset = false
 Options.enableVR = useHeadset
 Options.enableHDR = false
