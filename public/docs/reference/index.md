@@ -568,7 +568,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ### media
 
-- *browser* — [Imaging](imaging.md#bitmapbrowsersurface-kt) · [Internal](internal.md#wivrnevdev-kt)
+- *browser* — [Imaging](imaging.md#bitmapbrowsersurface-kt) · [Internal](internal.md#pairedheadsetinput-kt)
 - [capture](imaging.md#nativecapturetarget-kt)
 - [image](imaging.md#imaging-kt)
     - [util](imaging.md#nodetool-kt)
@@ -654,14 +654,14 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**35649 public symbols across 1621 source files**, 20886 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**35649 public symbols across 1622 source files**, 20886 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
 | Category | Files | Symbols | Documented | Covers |
 | --- | --- | --- | --- | --- |
 | [Examples](examples.md) | 219 | 695 | 308 (44%) | Runnable examples, galleries and verification programs. |
-| [Internal](internal.md) | 19 | 156 | 55 (35%) | Implementation details explicitly marked Internal by their source. |
+| [Internal](internal.md) | 20 | 156 | 55 (35%) | Implementation details explicitly marked Internal by their source. |
 | [Lighting](lighting.md) | 8 | 206 | 206 (100%) | Light sources, fixtures and control protocols for working with physical and rendered lighting. |
 | [Networking](networking.md) | 16 | 366 | 213 (58%) | OSC messages, discovery and query interfaces for connecting Field to other applications and devices. |
 | [Video](video.md) | 14 | 192 | 192 (100%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
@@ -1666,6 +1666,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>paint/<wbr></small> [PaintNoise.kt](graphics.md#paintnoise-kt) | Graphics | 3 | 3 | Smooth 1D noise that varies a stroke along its length, the same for the same seed, so the two eyes of a stereo pair can share it: `PaintNoise`. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>paint/<wbr></small> [PaintToolbox.kt](graphics.md#painttoolbox-kt) | Graphics | 17 | 16 | Named painting tools that keep their state between strokes, and can be saved to a file and loaded back: `PaintToolbox`. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>paint/<wbr></small> [PaintTools.kt](graphics.md#painttools-kt) | Graphics | 104 | 98 | The tools and materials a `PaintCanvas` is worked with: grounds, brushes, knives, rags, pencils, and tubes of paint. | [Paint and pencil from FLines](../paint_canvas.md), [Drawn Strokes Become Paint](../chain_drawn_paint.md), [Brushes with moving hairs](../paint_gestures.md) |
+| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>browser/<wbr></small> [PairedHeadsetInput.kt](internal.md#pairedheadsetinput-kt) | Internal · internal | 0 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>buffers/<wbr></small> [ParallelGeometryPool.kt](graphics.md#parallelgeometrypool-kt) | Graphics | 22 | 22 | ParallelGeometryPool lets several writers produce geometry for the same frame, each into its own per-swapchain-image buffers, and dispatches a module once per writer that published. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>polytope/<wbr></small> [Parameters.kt](polytopes.md#parameters-kt) | Polytopes | 29 | 22 | Naming a subset of elements, and attaching a number to each one. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [ParamQuery.kt](synthesis.md#paramquery-kt) | Synthesis | 57 | 5 | The synth-facing head of the graph-query layer: turn a `PathSet` into a set of *drivable parameters*. | [Querying object graphs](../graph_query.md) |
