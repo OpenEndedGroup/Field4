@@ -18,3 +18,6 @@ From the 2026-11-01 punchline audit: each section of the site was checked for wh
 ## Done when
 
 Every section above shows its result through a runner capture (or reused committed media that exercises the real code), or this handoff records why that section stays without one.
+
+
+Done 2026-11-02: Edit the scene now shows emitter-small.png (0.2 x 0.2) and emitter-large.png (2.5 x 2.5): DirectLightingDemo with RAY_QUERY shadows and radiance scaled to equal power. The penumbra difference is plain.
