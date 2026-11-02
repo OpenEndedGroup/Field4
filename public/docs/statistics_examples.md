@@ -86,8 +86,11 @@ Each label on the card names its convention: `stddev (n−1)` and `variance (n�
 correction. If you are comparing against another tool, the mapping onto NumPy and SciPy is exact: `q1`/`median`/`q3` are
 `numpy.percentile`'s default linear interpolation, `mad` is \( \operatorname{median}(\lvert y - \operatorname{median}(y) \rvert) \) unscaled,
 `sampleStdDev` is `numpy.std(ddof=1)`, and `skewness`/`kurtosisExcess` are `scipy.stats.skew` and
-`scipy.stats.kurtosis` at their *default* `bias=True`. `StatsSummaryTest` pins that mapping to ten
-decimal places against SciPy 1.15.2 on a tie-heavy ten-point sample.
+`scipy.stats.kurtosis` at their *default* `bias=True`.
+
+??? aside "Agents: what pins the SciPy mapping"
+    `StatsSummaryTest` pins that mapping to ten decimal places against SciPy 1.15.2 on a
+    tie-heavy ten-point sample.
 
 Three more edges, guarded rather than propagated inside `buildSummaryStats`
 (`stats.kt:1004#val sampleVariance = if (n > 1) m2 / (n - 1).toDouble() else 0.0`), so you get a
@@ -584,7 +587,10 @@ and double-centres them (`correlations.kt:419#matrices, which puts the practical
 to **5×10⁻¹⁵**. The KDoc warns that the maintained sums accumulate floating-point drift over a
 long run (`correlations.kt:674#recomputed, so a very long run accumulates floating-point drift`),
 and they do, though not far: over **200 000** pushes with a window of 64, the largest disagreement
-sampled against the batch call was **8.6×10⁻¹⁴**. `RollingDependenceTest` pins both bounds.
+sampled against the batch call was **8.6×10⁻¹⁴**.
+
+??? aside "Agents: what pins the rolling bounds"
+    `RollingDependenceTest` pins both bounds.
 
 ## Reshaping a distribution: `quantilewarp.kt`
 
