@@ -23,7 +23,10 @@ val harbour = File("public/docs/assets/ai4_chat_archive/chats/harbour")
 val tree = ChatArchive.tree(ChatArchive.chats(harbour).single())
 // The header and the first turn; the whole outline goes on to the second turn and the rewound branches.
 val firstTurn = ChatLogViews.outline(tree).substringBefore("\n## Turn 2")
-display("outline", "<pre style='margin:8px;max-width:720px;white-space:pre-wrap'>" + firstTurn.replace("<", "&lt;") + "</pre>")
+display(
+    "outline",
+    "<pre style='margin:8px;max-width:720px;white-space:pre-wrap'>" + firstTurn.replace("<", "&lt;") + "</pre>",
+)
 ```
 
 Each block has an **address**, `<turn>.b<index>`, such as `t-5e7076a8-acf.b8`. A turn's id is never reused, so an address stays valid as the chat grows, and blocks on a rewound branch (the night turn, `t-23d59848-f38`, here) have addresses too. Tool calls are grouped into **rounds**, one line each, and named by what they do: `edit`, `look`, `build steps`, `note`. These are the same round lines the chat panel shows.
