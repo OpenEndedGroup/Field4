@@ -8,7 +8,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * The CPU backend against 31 frames a real GPU drew.
+ * The CPU backend against the frames a real GPU drew: 41 gallery entries, 36 of them stills.
  *
  * `public/docs/assets/stacksl_gallery/` holds each program and the fragment template it was
  * rendered through; `public/docs/assets/stacksl/stacksl-<name>.png` is the 512x512 still the GPU
@@ -66,7 +66,7 @@ class StackSLCpuGalleryTest {
         stats.sortedWith(compareBy({ it.tier.ordinal }, { -it.maxLevels })).forEach { println(it) }
 
         // The oracle itself. If the gallery shrinks, this test quietly stops testing most of it.
-        assertEquals(29, stats.size, "expected 29 non-feedback gallery entries with a GPU still")
+        assertEquals(36, stats.size, "expected 36 non-feedback gallery entries with a GPU still")
 
         fun tier(t: AgreementTier) = stats.filter { it.tier == t }
 
@@ -86,7 +86,7 @@ class StackSLCpuGalleryTest {
         // One pixel may miss by more: the 2026-10-28 recapture of `fm-palette` changed exactly one
         // GPU pixel, (284,126), from blue 218 to 172, while the CPU still matches the 09-27 still.
         // That is the GPU disagreeing with itself between captures, not the CPU drifting.
-        tier(AgreementTier.SMOOTH_TRANSCENDENTAL).also { assertEquals(5, it.size) }.forEach {
+        tier(AgreementTier.SMOOTH_TRANSCENDENTAL).also { assertEquals(8, it.size) }.forEach {
             assertTrue(it.overTwoPixels <= 1, "$it: a smooth transcendental should move at most one stray pixel by more than two levels (${it.overTwoPixels} did)")
             assertTrue(it.withinOneFraction > 0.9999, "$it: at most a stray dark pixel may miss by more than a level")
         }
@@ -95,27 +95,29 @@ class StackSLCpuGalleryTest {
         // worst within-one 96.14% (`subroutine-ridges`); the bounds are just outside those, and the
         // *mean* is the thing being bounded because the max legitimately reaches 255 on a hard
         // threshold.
-        val hash21 = tier(AgreementTier.HASH21_AMPLIFIED).also { assertEquals(21, it.size) }
+        val hash21 = tier(AgreementTier.HASH21_AMPLIFIED).also { assertEquals(25, it.size) }
         hash21.forEach {
             assertTrue(it.meanLevels < 0.20, "$it: mean disagreement should stay far below one level")
             assertTrue(it.withinOneFraction > 0.96, "$it: nearly every pixel should agree to within a level")
         }
-        // And most of them do not merely nearly agree — they agree everywhere. Measured: 15 of 21.
+        // And most of them do not merely nearly agree — they agree everywhere. Measured: 18 of 25
+        // (15 of 21 before 4342d1fe5 added four, all of which agree everywhere).
         // (17 when the stills were linear; `tonemap-grade` and `sigmoid-punch` dropped out, each
         // missing only where a channel sits at linear 1/255, which sRGB stores eleven levels finer.)
         val perfect = hash21.count { it.maxLevels <= 1 }
         println("hash21 programs agreeing at EVERY pixel to within one level: $perfect of ${hash21.size}")
-        assertTrue(perfect >= 15, "expected at least 15 of ${hash21.size} to agree everywhere, got $perfect")
+        assertTrue(perfect >= 18, "expected at least 18 of ${hash21.size} to agree everywhere, got $perfect")
 
-        // Across the whole gallery: measured 21 of 29 agree at every pixel to within one level
+        // Across the whole gallery: measured 27 of 36 agree at every pixel to within one level
+        // (21 of 29 before 4342d1fe5)
         // (24 when linear: the same dark-end magnification, on `phasor-noise` as well as the two above).
         val everywhere = stats.count { it.maxLevels <= 1 }
         println("gallery programs agreeing at EVERY pixel to within one level: $everywhere of ${stats.size}")
-        assertTrue(everywhere >= 21, "expected at least 21 of ${stats.size}, got $everywhere")
+        assertTrue(everywhere >= 27, "expected at least 27 of ${stats.size}, got $everywhere")
 
-        // And 28 of 29 agree at 96% of pixels or better — everything except `sample-hold`.
+        // And 35 of 36 agree at 96% of pixels or better — everything except `sample-hold`.
         val nearlyAll = stats.count { it.withinOneFraction > 0.96 }
-        assertTrue(nearlyAll >= 28, "expected at least 28 of ${stats.size} at >96% within one level, got $nearlyAll")
+        assertTrue(nearlyAll >= 35, "expected at least 35 of ${stats.size} at >96% within one level, got $nearlyAll")
     }
 
     /**
@@ -203,7 +205,7 @@ class StackSLCpuGalleryTest {
     }
 
     /**
-     * The two feedback entries are excluded, and this says why rather than leaving a silent gap.
+     * The five feedback entries are excluded, and this says why rather than leaving a silent gap.
      *
      * They sample the previous frame, so a still is the end of a 60-frame ping-pong and not a
      * function of `fragUV`. The CPU backend can run them — [CpuTexture2D] exists and the word
@@ -216,9 +218,12 @@ class StackSLCpuGalleryTest {
     @Test
     fun `feedback entries are excluded, from two facts that agree`() {
         val entries = StackSLCpuGallery.load(root)
-        assertEquals(31, entries.size)
+        assertEquals(41, entries.size)
         val feedback = entries.filter { StackSLCpuGallery.tierOf(entry = it) == AgreementTier.FEEDBACK }
-        assertEquals(listOf("diffusion-feedback", "feedback-trails"), feedback.map { it.name }.sorted())
+        assertEquals(
+            listOf("diffusion-feedback", "ema-diff", "feedback-trails", "pingpong-ema", "soft-trail"),
+            feedback.map { it.name }.sorted(),
+        )
         feedback.forEach { assertTrue(it.feedback, "${it.name} samples a texture but is not marked feedback") }
     }
 

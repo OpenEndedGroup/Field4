@@ -110,7 +110,10 @@ class StackSLCpuFloatPathManifestTest {
         const val MANIFEST_PATH = "src/jvmTest/resources/stacksl/float_path_manifest.txt"
         const val DIM = 64
 
-        /** The gallery had 31 entries when this fence went in. */
-        const val POPULATION = 31
+        /**
+         * The gallery had 31 entries when this fence went in, and 41 after 4342d1fe5 (2026-11-01)
+         * added ten clips and tiles; the 31 original hashes were unchanged by the re-fence.
+         */
+        const val POPULATION = 41
     }
 }

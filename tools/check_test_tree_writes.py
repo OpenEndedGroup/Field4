@@ -185,6 +185,11 @@ ESCAPES = (
         paths=("src/jvmTest/resources/rectsl/track_characterization.txt",),
         note="rewrites the track-sampling golden",
     ),
+    Escape(
+        "afield.stacksl.manifest.write", "flag", value="true", source="prop",
+        paths=("src/jvmTest/resources/stacksl/float_path_manifest.txt",),
+        note="re-fences the StackSL CPU Float-path manifest",
+    ),
     Escape("afield.rectsl.softRasterOut", "dir", source="prop",
            note="soft-raster figure destination, resolved against the repo root"),
     Escape("afield.tessellation.render.out", "dir", source="prop",
