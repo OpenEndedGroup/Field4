@@ -18,3 +18,6 @@ From the 2026-11-01 punchline audit: each section of the site was checked for wh
 ## Done when
 
 Every section above shows its result through a runner capture (or reused committed media that exercises the real code), or this handoff records why that section stays without one.
+
+
+Done 2026-11-02: Put a material shader in the box now shows stripes-8.png (frequency 8.0, roughness .3) and stripes-3.png (frequency 3.0, roughness .05), captured through RR from transcripts path_traced_reconstruction_stripes_{8,3}.yaml, with the striped compute hook as the box compute property. The capture exposed a real bug: the documented pathTracingHere(...) + PathTracedReconstruction(tracer).install() combination threw "Pass an uninstalled tracer" from the constructor, even though install() was changed (a44fab872) to take over the standalone passes. I removed that constructor require.

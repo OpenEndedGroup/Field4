@@ -2683,12 +2683,12 @@
     },
     "assets/agent_transcripts/path_tracing_camera/metadata.edn": {
       "captureDigest": "4d5add3a103558e3a45b0b09c14392b55f14042e4118c9d4d341d9a926c175b0",
-      "capturedAt": "2026-11-01T11:25:16.829Z",
+      "capturedAt": "2026-11-02T08:45:35.950Z",
       "channels": 1,
       "file": "assets/web_publications/path_tracing_camera/document/metadata.edn",
       "files": {
         "assets/web_publications/path_tracing_camera/document/metadata.edn": "d2c5d973ad40d0b68b5266acc708180790e7e89bc1ef7571c209f0dbfc47f0c3",
-        "assets/web_publications/path_tracing_camera/document/outputs.json": "57ec4283eaf102f738ae360f09d6fc19f769af54b4ef7b5952dc66eeb03ddae9",
+        "assets/web_publications/path_tracing_camera/document/outputs.json": "3144633cb884868c0075336f446d4c1517f2005b28d5e2517e527069ef50ee1e",
         "assets/web_publications/path_tracing_camera/outputs/0.html": "7ffbd30cd77a76a72e5e0922a4fc82d90fd7a6e1339dd7bd1f20461c83b53ebc"
       },
       "kinds": [
@@ -2702,7 +2702,7 @@
         "public/docs/assets/agent_transcripts/path_tracing_camera/path_trace_camera_code_.kt": "c46a97f10e01dcb933f2e7556f1c65a26085baa3d281accbe33b38b16f0c9952",
         "public/docs/assets/agent_transcripts/path_tracing_camera/path_trace_renderer_code_.kt": "d9a523d21baae9bd403e31097aeb6360849ac2629258b04f0145cc3d54c4d2a9",
         "public/docs/assets/path_tracing/camera.png": "05d07aed612d29a79e715148bf8bd4f0ed199746bbdf70213a9d4f44fe7965e8",
-        "public/docs/path_tracing.md": "1fae5794f8a2614c15a93cb969cd80869a9965dc932795ab0f238bc23ca3d29c"
+        "public/docs/path_tracing.md": "f9f2ef83129e9805c61a0e15d83f9e03a4c90b364bf77b9711ef7e0df477dfaf"
       },
       "supplementalSources": [
         "public/docs/assets/path_tracing/camera.png",
@@ -2711,12 +2711,12 @@
     },
     "assets/agent_transcripts/path_tracing_glass/metadata.edn": {
       "captureDigest": "4d5add3a103558e3a45b0b09c14392b55f14042e4118c9d4d341d9a926c175b0",
-      "capturedAt": "2026-11-01T11:25:26.173Z",
+      "capturedAt": "2026-11-02T08:45:46.735Z",
       "channels": 1,
       "file": "assets/web_publications/path_tracing_glass/document/metadata.edn",
       "files": {
         "assets/web_publications/path_tracing_glass/document/metadata.edn": "839b8944488b8d598be06ba7509090ee811c1f5b7d89c766a5386774090d1c03",
-        "assets/web_publications/path_tracing_glass/document/outputs.json": "f9ea1a216e87e000e78c230fac09d9a5967a89cb38bcb4790fb5e8610c6bec3d",
+        "assets/web_publications/path_tracing_glass/document/outputs.json": "f52c5fe077562354772c342975294307af9596c16d5c2bd032d40990850d18fa",
         "assets/web_publications/path_tracing_glass/outputs/0.html": "3578073bafd88ac384d0406ea879a299738bb3e07c5dca0d85c4cbcefa69cea7"
       },
       "kinds": [
@@ -2730,7 +2730,7 @@
         "public/docs/assets/agent_transcripts/path_tracing_glass/path_trace_glass_code_.kt": "5d766ed17986573226a0406b6120e31ee11b6ed1da9dc5e97d841f543361de1a",
         "public/docs/assets/agent_transcripts/path_tracing_glass/path_trace_renderer_code_.kt": "d9a523d21baae9bd403e31097aeb6360849ac2629258b04f0145cc3d54c4d2a9",
         "public/docs/assets/path_tracing/glass.png": "e1ddfca6419232da0f8ee007a1210d5040885ca3b019d4caa3855ad9d3ed2201",
-        "public/docs/path_tracing.md": "1fae5794f8a2614c15a93cb969cd80869a9965dc932795ab0f238bc23ca3d29c"
+        "public/docs/path_tracing.md": "f9f2ef83129e9805c61a0e15d83f9e03a4c90b364bf77b9711ef7e0df477dfaf"
       },
       "supplementalSources": [
         "public/docs/assets/path_tracing/glass.png",
@@ -2739,12 +2739,12 @@
     },
     "assets/agent_transcripts/path_tracing_gltf/metadata.edn": {
       "captureDigest": "4d5add3a103558e3a45b0b09c14392b55f14042e4118c9d4d341d9a926c175b0",
-      "capturedAt": "2026-11-01T11:25:20.109Z",
+      "capturedAt": "2026-11-02T08:45:39.146Z",
       "channels": 1,
       "file": "assets/web_publications/path_tracing_gltf/document/metadata.edn",
       "files": {
         "assets/web_publications/path_tracing_gltf/document/metadata.edn": "9a63c4189f7b31b89369f39b9d902e949c21deab24e21cce2345cbe5fb77dbd0",
-        "assets/web_publications/path_tracing_gltf/document/outputs.json": "51b18b73ec1cbfa6445aa842428d4b085d306f54310b98fa5c89d37589aa047a",
+        "assets/web_publications/path_tracing_gltf/document/outputs.json": "72c7b2f0fe3dd52ffd4f5a5235649813247cea2aefa9ae6a947b4d0f6eb763c4",
         "assets/web_publications/path_tracing_gltf/outputs/0.html": "e2c53b38e3929e4496e5cc79248f6ea3fa208b0c7c6c3a4eeb2b0bfda91b2b23"
       },
       "kinds": [
@@ -2758,7 +2758,7 @@
         "public/docs/assets/agent_transcripts/path_tracing_gltf/path_trace_gltf_code_.kt": "80e3d6c31114b060cad63d67c30386cf7c2304b3e4564de59487dafa826084fa",
         "public/docs/assets/agent_transcripts/path_tracing_gltf/path_trace_renderer_code_.kt": "d9a523d21baae9bd403e31097aeb6360849ac2629258b04f0145cc3d54c4d2a9",
         "public/docs/assets/path_tracing/gltf.png": "9ac785000f30199ab443d0c79373264346be8575c17674b74df4a38c2d05d0b3",
-        "public/docs/path_tracing.md": "1fae5794f8a2614c15a93cb969cd80869a9965dc932795ab0f238bc23ca3d29c"
+        "public/docs/path_tracing.md": "f9f2ef83129e9805c61a0e15d83f9e03a4c90b364bf77b9711ef7e0df477dfaf"
       },
       "supplementalSources": [
         "public/docs/assets/path_tracing/gltf.png",
@@ -2767,12 +2767,12 @@
     },
     "assets/agent_transcripts/path_tracing_hidden_environment/metadata.edn": {
       "captureDigest": "4d5add3a103558e3a45b0b09c14392b55f14042e4118c9d4d341d9a926c175b0",
-      "capturedAt": "2026-11-01T11:25:23.022Z",
+      "capturedAt": "2026-11-02T08:45:42.413Z",
       "channels": 1,
       "file": "assets/web_publications/path_tracing_hidden_environment/document/metadata.edn",
       "files": {
         "assets/web_publications/path_tracing_hidden_environment/document/metadata.edn": "3444ee73aefe2b06f444e561bf0646341269d4006d54d655e32da7262117b0a0",
-        "assets/web_publications/path_tracing_hidden_environment/document/outputs.json": "a04663a0783657dee1b5f29d4ed13b3ad72cfa212c1243135f70877076569cbe",
+        "assets/web_publications/path_tracing_hidden_environment/document/outputs.json": "115444b4eeea716b58eded384d838a85271d411f39329e50b206721e42b2de07",
         "assets/web_publications/path_tracing_hidden_environment/outputs/0.html": "e7339915787232375d6f43d824e139d6aa32d0533fe9312313a4d9ceff3be372"
       },
       "kinds": [
@@ -2786,7 +2786,7 @@
         "public/docs/assets/agent_transcripts/path_tracing_hidden_environment/path_trace_hidden_environment_code_.kt": "9803893402681c2315563f5cc5824e6dd72b7a3aee4da57acdebdd592c8d13bb",
         "public/docs/assets/agent_transcripts/path_tracing_hidden_environment/path_trace_renderer_code_.kt": "d9a523d21baae9bd403e31097aeb6360849ac2629258b04f0145cc3d54c4d2a9",
         "public/docs/assets/path_tracing/hidden_environment.png": "ea82ef83a13340703ce9727e2da410e33ca0526a107dbcdf6acc70a769757041",
-        "public/docs/path_tracing.md": "1fae5794f8a2614c15a93cb969cd80869a9965dc932795ab0f238bc23ca3d29c"
+        "public/docs/path_tracing.md": "f9f2ef83129e9805c61a0e15d83f9e03a4c90b364bf77b9711ef7e0df477dfaf"
       },
       "supplementalSources": [
         "public/docs/assets/path_tracing/hidden_environment.png",
@@ -2795,12 +2795,12 @@
     },
     "assets/agent_transcripts/path_tracing_materials/metadata.edn": {
       "captureDigest": "4d5add3a103558e3a45b0b09c14392b55f14042e4118c9d4d341d9a926c175b0",
-      "capturedAt": "2026-11-01T11:25:00.511Z",
+      "capturedAt": "2026-11-02T08:45:32.004Z",
       "channels": 1,
       "file": "assets/web_publications/path_tracing_materials/document/metadata.edn",
       "files": {
         "assets/web_publications/path_tracing_materials/document/metadata.edn": "e47201c152f28b72890b64a79f4dcedfa51ec17e5ce99af2287805ba1a9b9495",
-        "assets/web_publications/path_tracing_materials/document/outputs.json": "a75a69c55b260b24c29e6017b6dea7e3d9df9dc362d890b3c534d456a4cbfc21",
+        "assets/web_publications/path_tracing_materials/document/outputs.json": "1109be6899928fe188d7e182be8d58ba8eeee188c6b984531e947f47adc2ebbb",
         "assets/web_publications/path_tracing_materials/outputs/0.html": "805a869c8252ecaef24e8268c23108ae5b592d333d05a6ee11dd75ab84d12bf7"
       },
       "kinds": [
@@ -2814,7 +2814,7 @@
         "public/docs/assets/agent_transcripts/path_tracing_materials/path_trace_materials_code_.kt": "43b0c2afd59e91e76808f6fe30172b00cc83d4a995062bc0ccda805436b22075",
         "public/docs/assets/agent_transcripts/path_tracing_materials/path_trace_renderer_code_.kt": "d9a523d21baae9bd403e31097aeb6360849ac2629258b04f0145cc3d54c4d2a9",
         "public/docs/assets/path_tracing/materials.png": "e92f815e8636e9c55e6231751dffbcf9837c7b77220ee2880053b4d4f913c3b8",
-        "public/docs/path_tracing.md": "1fae5794f8a2614c15a93cb969cd80869a9965dc932795ab0f238bc23ca3d29c"
+        "public/docs/path_tracing.md": "f9f2ef83129e9805c61a0e15d83f9e03a4c90b364bf77b9711ef7e0df477dfaf"
       },
       "supplementalSources": [
         "public/docs/assets/path_tracing/materials.png",
