@@ -105,6 +105,15 @@ object DocsAudioProvenance {
         /** A Faust program compiled at runtime and rendered offline. See [SoundPathMap]. */
         FAUST("a Faust program compiled at runtime and rendered with no audio device"),
 
+        /**
+         * A live recording of a real Sonic Pi, made by `SonicPiSoundDocs`.
+         *
+         * Not sample-reproducible: Sonic Pi schedules against its own clock and the capture starts
+         * when the recorder does, so two takes of the same loop correlate weakly even when nothing
+         * changed. [audit] reports it [Finding.skipped] with that reason and never as reproduced.
+         */
+        SONIC_PI("a live recording of a real Sonic Pi — not sample-reproducible"),
+
         /** Present in the tree, no producing code found. Must be in [UNDERIVABLE]. */
         UNDERIVABLE("no producing code found in the repository"),
     }
@@ -164,6 +173,7 @@ object DocsAudioProvenance {
         // ORCA's own operators run in OrcaHeadless, each note voiced by a PatSynthBank of patVoice
         // voices — no samples anywhere on the path. See orca.md.
         "afield.audio.synth.OrcaSoundDocs" to Origin.STAND_IN_SYNTH,
+        "afield.examples.sonicpi.SonicPiSoundDocs" to Origin.SONIC_PI,
     )
 
     /** The renderer a fence gets when it does not name one, matching `docs_hooks.py`. */
@@ -336,6 +346,14 @@ object DocsAudioProvenance {
         val peak = PatSoundDocs.peak(committed.mono)
         val rms = PatSoundDocs.rms(committed.mono)
         val channels = channelsOf(committedFile)
+
+        if (origin == Origin.SONIC_PI) {
+            return Finding(
+                published, origin, Double.NaN, Double.NaN, committed.frames, channels,
+                sampleRateOf(committedFile), peak, rms,
+                skipped = "a live Sonic Pi recording; a fresh take is not expected to match sample for sample",
+            )
+        }
 
         if (origin == Origin.STEAM_AUDIO_HRTF && !SteamAudioNatives.isAvailable) {
             return Finding(

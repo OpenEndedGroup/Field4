@@ -60,13 +60,14 @@ class DocsAudioProvenanceGuardTest {
 
         val byOrigin: Map<Origin?, Int> = published.groupingBy { DocsAudioProvenance.originOf(it) }.eachCount()
         val expected: Map<Origin?, Int> = mapOf(
-            Origin.STAND_IN_SYNTH to 16,
-            Origin.DIRT_SAMPLES to 37,
+            Origin.STAND_IN_SYNTH to 18,
+            Origin.DIRT_SAMPLES to 38,
             Origin.MIXED_SAMPLES_AND_STAND_IN to 1,
             Origin.DOUGH_DSP to 18,
-            Origin.FAUST to 3,
+            Origin.FAUST to 6,
             Origin.DOUGH_WASM to 2,
-            Origin.STEAM_AUDIO_HRTF to 1,
+            Origin.STEAM_AUDIO_HRTF to 3,
+            Origin.SONIC_PI to 1,
         )
         assertEquals(
             expected,
@@ -261,7 +262,13 @@ class DocsAudioProvenanceGuardTest {
          *
          * `petri_nets.md` added one (2026-10-31), [Origin.DIRT_SAMPLES]: [PetriSoundDocs] plays the
          * page's two-place loop's `emits()` through the pinned subset with `strict = true`.
+         *
+         * Nine more arrived on 2026-11-01, counted on 2026-11-02 when this guard caught them:
+         * three [FaustSoundDocs] clips ([Origin.FAUST]), two [PatSpatialPlacementDocs] placements
+         * ([Origin.STEAM_AUDIO_HRTF]), two [Origin.STAND_IN_SYNTH] and one [Origin.DIRT_SAMPLES]
+         * clip, and `sonic_pi.md`'s `bikes.wav`, the first [Origin.SONIC_PI]: a take recorded from
+         * a real Sonic Pi, which the audit skips rather than compares.
          */
-        const val EXPECTED_FENCE_COUNT = 78
+        const val EXPECTED_FENCE_COUNT = 87
     }
 }

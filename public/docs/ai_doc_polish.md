@@ -176,11 +176,14 @@ seeded on first use from the machine-global `~/.afield/filestore`, and relocated
 `AFIELD_FILESTORE_DIR` or `-Dafield.filestore.dir`. Each record carries the declaration's name,
 path, line and source hash alongside the draft, the model that wrote it, and when.
 
-A record's key hashes the prompt version together with the declaration name, source path, line
-and source hash, so a record survives only while all of those still match. Editing the
-declaration retires its record, and bumping `COMPLETION_DOC_PROMPT_VERSION` retires every record
-at once. Drafts the pass declined are listed by key in
-`generated_completion_docs.declined.json` beside the cache.
+Editing a declaration retires its draft, so a draft always describes the code as it is. Drafts
+the pass declined are listed in `generated_completion_docs.declined.json` beside the cache.
+
+??? aside "Agents: draft cache keys"
+    A record's key hashes the prompt version together with the declaration name, source path,
+    line and source hash, so a record survives only while all of those still match. Bumping
+    `COMPLETION_DOC_PROMPT_VERSION` (in `afield/ai/completion/Ai4CompletionDoc.kt`) retires
+    every record at once. Declined drafts are listed by key.
 
 ??? aside "Design notes"
     Why polishing runs inside the revision pass, rather than as a task of its own, is in

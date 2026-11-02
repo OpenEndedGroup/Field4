@@ -83,10 +83,12 @@ The box below builds three designs and shows their meshes side by side. The firs
 up a straight path while a guide rail runs from 4 to 12 mm off the path; the rail's default
 `SCALE` fit grows the whole square evenly with it, from 8 mm across to 24. The second draws a trefoil knot as a Field
 `FLine`, turns it into a 3D wire with `wire(knot)`, and sweeps a circle along it into a knotted tube;
-`planeSquareTo(knot)` puts the circle's sketch square to the knot where it starts. The third is a
+`planeSquareTo(knot)` puts the circle's sketch square to the knot where it starts. The loop stops one
+step short of closing: a sweep along a closed path is sewn into a seamless ring only when the profile
+comes back unturned, and going round a knot turns it, so SolidCraft refuses the closed knot. The third is a
 surface: a loft through three spline sections, which leaves an open, wavy sheet rather than a solid.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/solidcraft/building-three-parts.png" alt="An output panel of three grey triangle meshes side by side, each with a fact line beneath it. Left, 'sweep with a flaring rail': a square-sectioned solid that widens evenly from 8 to 24 mm as it rises 60 mm, extent 24 × 24 × 60, volume 16640. Middle, 'trefoil knot from an FLine': a round tube tied in a three-lobed knot, passing over and under itself, its two capped ends meeting at a seam at the bottom; watertight, genus 0, volume 4507.8. Right, 'surface loft': a single wavy open sheet." wait="4" capture="box" open-outputs="true" padding="20" requires="solidcraft" name="building-three-parts" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/solidcraft/building-three-parts.png" alt="An output panel of three grey triangle meshes side by side, each with a fact line beneath it. Left, 'sweep with a flaring rail': a square-sectioned solid that widens evenly from 8 to 24 mm as it rises 60 mm, extent 24 × 24 × 60, volume 16640. Middle, 'trefoil knot from an FLine': a round tube tied in a three-lobed knot, passing over and under itself, its two capped ends almost touching at the bottom; watertight, genus 0, volume 4479.4. Right, 'surface loft': a single wavy open sheet." wait="4" capture="box" open-outputs="true" padding="20" requires="solidcraft" name="building-three-parts" embed=true}
 import afield.geometry.path.FLine
 import afield.geometry.solid.solidcraft.solidCraft
 import kotlin.math.PI
@@ -101,7 +103,7 @@ val flared = solidCraft("Flared") {
 }
 
 val knot = FLine().moveTo(0, -8, 0)
-for (i in 1..240) {
+for (i in 1..239) {
     val t = i / 240.0 * 2 * PI
     knot.lineTo(8 * (sin(t) + 2 * sin(2 * t)), 8 * (cos(t) - 2 * cos(2 * t)), -8 * sin(3 * t))
 }
@@ -201,10 +203,10 @@ The surface features make open sheets, measured by area rather than volume:
 `surfaceSweep` (with rails, as `sweep`), `surfaceLoft` (`start`/`end` continuity `G0` to `G3`),
 `surfaceRevolve`, and `surfaceBoundary`. `thicken` turns a sheet into a solid.
 
-!!! note "A boundary patch bridges two curves"
-    In the SolidCraft version Field pins (v0.15.0), `surfaceBoundary` builds a patch between two
-    curves; three or four report "not supported yet". Draw both curves in the same direction:
-    the patch joins start to start, so curves running opposite ways fold it over itself.
+!!! note "Boundary patches through two, three or four curves"
+    `surfaceBoundary` bridges two curves, or spans three or four given in loop order (each ends
+    where the next begins). `crown` works only on the two-curve bridge. Draw a bridge's two curves in the
+    same direction: it joins start to start, so curves running opposite ways fold it over itself.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/solidcraft/surfaces.png" alt="three meshes with fact lines. Left, a boundary patch between two splines: an open curved sheet, depth 0. Middle, the same sheet thickened by 2: depth 2. Right, the patch with its second curve drawn backwards: two triangles meeting at a point, the sheet folded through itself." wait="4" capture="box" open-outputs="true" padding="20" requires="solidcraft" name="solidcraft-surfaces" embed=true}
 import afield.geometry.solid.solidcraft.SolidCraftBuilder

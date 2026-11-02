@@ -908,6 +908,7 @@ object DemoTranscriptExecSmokeTest {
         "fieldml_lambda_demo",
         "fieldml_afield_four_demo",
         "fieldml_frames_demo",
+        "fieldml_frames_sequence_demo",
         "fieldml_macro_module_demo",
         "fieldml_mesh_demo",
         "fieldml_suspend_demo",

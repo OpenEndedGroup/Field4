@@ -1417,7 +1417,7 @@ val square = Elements.solutions { prop46(ab) }.nearest(mouse)
 
 A cited proposition counts as one choice among its own distinct solutions, so the search grows
 with the number of different answers, not with every crossing inside them. The deepest
-constructions on these pages, the pentagon and the fifteen-sided figure, take about a tenth of a
+constructions on this page, the pentagon and the fifteen-sided figure, take about a tenth of a
 second.
 
 ## How a construction is styled

@@ -542,7 +542,10 @@ fragment's macro can read state an earlier fragment set at runtime. Seeding a sh
 `moduleHere` is the common case, and Field inserts that break for you; the DataFrame case below
 needs it written.
 
-A single Kotlin box launched through the transcript/multi-box path is also awaited fragment by fragment; mixed-language launch groups do not promise the same first-frame ordering across boxes.
+??? aside "Agents: fragment ordering in launch groups"
+    A single Kotlin box launched through the transcript/multi-box path is also awaited fragment by
+    fragment; mixed-language launch groups do not promise the same first-frame ordering across
+    boxes.
 
 The preamble and setup blocks also re-run between fragments, so a fragment that *writes* to the box's preamble at runtime has published a real source declaration by the time the next fragment is compiled. That is how `DataFrame.typed("People")` makes typed columns survive into the second half of the same execution; see [DataFrames in a Box](dataframe.md#fragment-marker).
 

@@ -150,9 +150,8 @@ the reply fields that tell you when you have hit one of those limits.
 ## Where to go next
 
 - [Where to Go Next](staging.md) completes the Tour with a map of the rest of the documentation.
-- [Building the Docs & Running the Tests](building_and_testing.md) says how the docs
-  build itself uses this machinery.
-- [Building & Testing](building_and_testing.md) covers the backdoor as a test harness.
+- [Building the Docs & Running the Tests](building_and_testing.md) covers the backdoor as a
+  test harness and how the docs build uses it.
 - For the complete reference — every operation, the observable results, and worked
   examples on the canvas and in Field 4 Vulkan graphics — see the
   [operation transcript reference](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/agents/OPERATION_TRANSCRIPT.md)

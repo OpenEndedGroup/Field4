@@ -283,7 +283,7 @@ requirements from native graphics examples.
 ## Your workspace and local server
 
 With no arguments, a new installation creates `~/Documents/AFieldWorkspace` (or the equivalent under
-your Windows home directory). Field remembers the last workspace across checkouts and prints its choice at
+your Windows home directory). Each checkout remembers the last workspace it used, and Field prints its choice at
 launch. To choose a new directory, create it first and then pass it:
 
 ```diffstatic {data-lang=bash}
