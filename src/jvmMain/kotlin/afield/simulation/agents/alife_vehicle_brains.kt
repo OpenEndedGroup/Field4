@@ -121,6 +121,8 @@ private fun sigmoid(x: Double) = 1.0 / (1.0 + exp(-x))
  * [VehicleWorld]'s; hidden neurons are leaky (`τ = 3`) sigmoid units with full recurrence, so a brain
  * with hidden neurons has memory a four-wire vehicle does not. Noise-free: a run is a function of the
  * brain and the start positions.
+ *
+ * @param seed seed for start positions and headings
  */
 class VehicleBrainWorld(
     /** The controller every vehicle runs. */
@@ -128,7 +130,6 @@ class VehicleBrainWorld(
     lights: List<Light>,
     /** How many vehicles. */
     val count: Int,
-    /** Seed for start positions and headings. */
     seed: Long = 1L,
     /** Domain width. */
     val width: Double = 240.0,
