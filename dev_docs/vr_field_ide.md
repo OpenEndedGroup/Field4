@@ -177,3 +177,41 @@ The local `dust_five` document has this setup in boxes 1 and 2, with **Side-by-s
 capture, the real Electron stereo checkbox, and closing/reopening checks while the main renderer
 advanced. Both the 1700 × 1360 one-eye and stereo swapchain captures were visually inspected.
 `jvmJar dumpFieldLaunch -x personalJar` passed; headset verification remains separate.
+
+## Shared graphics slots across eye modules (2026-11-03)
+
+A box that calls `moduleHere` once per eye registers two graphics pointers, while `box._shader`
+retains the last one. StackSL changes previously rebuilt only that pointer. A live trail check
+found the left eye still executing the zero-output placeholder while the right eye held the
+compiled program; this was update ownership rather than a history-buffer barrier failure.
+
+Graphics updates now prepare ABI-compatible pipelines for the primary pointer and every other
+enabled graphics pointer registered to that box. Preparation failure discards the pending set;
+stale generations discard it before installation. Successful updates install the set together on
+the Runloop, retaining each module's meshes and parameters. Normal single-module behavior remains.
+The current `dust_five` verification confirms both eye sources after installation and captures
+actual circle-shaped trails. Separate ring tests exercise interval changes, wraparound, clearing,
+and sampling pause/resume through the real compute shader.
+
+## Multiview direction, investigated 2026-11-03
+
+The local NVIDIA driver reports `multiview = true` and `maxMultiviewViewCount = 32`.
+`MultiviewSideBySideStereoTarget` already renders modules once into a two-layer color/depth RTT
+with view mask 3, then packs its layers for the current OpenXR copy API. `FieldVrWorkspace`
+currently constructs the separate-eye `SideBySideStereoTarget`; the multiview class is not yet
+integrated into this browser workspace and has no remote pose-source hook. No multiview speedup
+was measured in this session, and the running document retains the verified separate-eye path.
+
+A useful migration would expose a common stereo-target interface, keep simulation/history/browser
+production once per frame, put both eye matrices and camera axes in a shared UBO, and select them
+with `gl_ViewIndex`. Expensive view-independent trail shaping can move to a compute buffer reused
+by both eyes and adjacent segment endpoints. The desktop mirror can sample an array layer. Extending
+the OpenXR copy path to read array layers directly would remove the intermediate side-by-side
+packing copy; rendering directly into acquired runtime images is a later optimization with extra
+ownership/lifetime constraints. Measure CPU recording, GPU passes and headset latency separately.
+
+Specification references:
+
+- https://docs.vulkan.org/refpages/latest/refpages/source/VK_KHR_multiview.html
+- https://registry.khronos.org/OpenXR/specs/1.0/man/html/XrSwapchainCreateInfo.html
+- https://registry.khronos.org/OpenXR/specs/1.0/man/html/XrSwapchainSubImage.html

@@ -3696,30 +3696,36 @@ private suspend fun updateShader(box: Box, key: ShaderReloadKey, generation: Lon
         reportShaderStageError(box, "code", "shader update", "No graphics shader is attached to this box.")
         return false
     }
-    val current = pointer.current
-
-    val abiCheck = graphicsShaderAbiCheck(
-        current.parameters.vertexIntrospection ?: current.vi,
-        current.parameters.fragmentIntrospection ?: current.fi,
-        vi,
-        fi
-    )
-    if (!abiCheck.compatible) {
-        val transition = runCatching {
-            graphicsShaderInterfaceTransition(
-                current.parameters.vertexIntrospection ?: current.vi,
-                current.parameters.fragmentIntrospection ?: current.fi,
-                vi,
-                fi
-            )
-        }.getOrNull()
-        reportAbiRefusalOnShader(box, "shader update", abiCheck.message, transition, "vertex", "fragment")
-        return false
+    // One box can own a module per eye. Update every live pointer as one transaction.
+    val pointers = (listOf(pointer) + stackAutoModulesOf(box).filterIsInstance<ModulePointer>().filter { it.current.enabled })
+        .distinct()
+    val currents = pointers.map { it to it.current }
+    for ((_, current) in currents) {
+        val abiCheck = graphicsShaderAbiCheck(
+            current.parameters.vertexIntrospection ?: current.vi,
+            current.parameters.fragmentIntrospection ?: current.fi,
+            vi,
+            fi
+        )
+        if (!abiCheck.compatible) {
+            val transition = runCatching {
+                graphicsShaderInterfaceTransition(
+                    current.parameters.vertexIntrospection ?: current.vi,
+                    current.parameters.fragmentIntrospection ?: current.fi,
+                    vi,
+                    fi
+                )
+            }.getOrNull()
+            reportAbiRefusalOnShader(box, "shader update", abiCheck.message, transition, "vertex", "fragment")
+            return false
+        }
     }
 
-    val pipelineUpdate = try {
-        current.buildPipelineUpdate(vi, fi)
+    val updates = mutableListOf<Pair<Module, Module.PipelineUpdate>>()
+    try {
+        for ((_, current) in currents) updates += current to current.buildPipelineUpdate(vi, fi)
     } catch (t: Throwable) {
+        updates.forEach { (current, update) -> current.destroyUnusedPipelineUpdate(update) }
         reportShaderStageError(
             box,
             "code",
@@ -3731,24 +3737,25 @@ private suspend fun updateShader(box: Box, key: ShaderReloadKey, generation: Lon
     }
 
     return withContext(Runloop.runLoop.main) {
-        if (!isCurrentShaderGeneration(key, generation) || box._shader !== pointer || pointer.current !== current) {
-            current.destroyUnusedPipelineUpdate(pipelineUpdate)
+        if (!isCurrentShaderGeneration(key, generation) || box._shader !== pointer ||
+            currents.any { (target, current) -> target.current !== current }) {
+            updates.forEach { (current, update) -> current.destroyUnusedPipelineUpdate(update) }
             return@withContext false
         }
 
         assignPreparedShaderStage(box, vertexStage)
         assignPreparedShaderStage(box, fragmentStage)
-
-        current.parameters.vertex = vertexStage.glslSource
-        current.parameters.fragment = fragmentStage.glslSource
-        current.parameters.vertexSourceName = vertexStage.sourceName
-        current.parameters.fragmentSourceName = fragmentStage.sourceName
-        current.parameters.vertexIncludeResolver = shaderIncludeResolverFor(box, vertexStage.sourceProperty)
-        current.parameters.fragmentIncludeResolver = shaderIncludeResolverFor(box, fragmentStage.sourceProperty)
-
-        FramePresentationLog.mark("graphics shader update install begin box=${box.name} module=${current.parameters.name}")
-        current.installPipelineUpdate(pipelineUpdate)
-        FramePresentationLog.mark("graphics shader update install end box=${box.name} module=${current.parameters.name}")
+        for ((current, update) in updates) {
+            current.parameters.vertex = vertexStage.glslSource
+            current.parameters.fragment = fragmentStage.glslSource
+            current.parameters.vertexSourceName = vertexStage.sourceName
+            current.parameters.fragmentSourceName = fragmentStage.sourceName
+            current.parameters.vertexIncludeResolver = shaderIncludeResolverFor(box, vertexStage.sourceProperty)
+            current.parameters.fragmentIncludeResolver = shaderIncludeResolverFor(box, fragmentStage.sourceProperty)
+            FramePresentationLog.mark("graphics shader update install begin box=${box.name} module=${current.parameters.name}")
+            current.installPipelineUpdate(update)
+            FramePresentationLog.mark("graphics shader update install end box=${box.name} module=${current.parameters.name}")
+        }
         clearShaderErrorsForBaseProperties(box, "vertex", "fragment")
         true
     }
