@@ -336,6 +336,8 @@ object DemoTranscriptExecSmokeTest {
         // Five pure-CPU Braitenberg-vehicle boxes (braitenberg_vehicles.md sections 5-9); the
         // moving-lights box is an animateEvolution clip and is launched. No Window, no Renderer.
         "braitenberg_where_next",
+        // Two pure-CPU section 10 boxes (equal-budget search comparison), about 11-13 s each.
+        "braitenberg_brain_search",
         // Five independent pure-CPU statistics boxes; showPlaneGrid is drawToSVG -> display,
         // showSignals is a plotly HTML fragment -> display, histogramToSvg is just a string.
         "statistics_examples",
