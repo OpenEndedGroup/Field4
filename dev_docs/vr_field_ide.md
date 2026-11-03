@@ -233,3 +233,41 @@ Specification references:
 - https://docs.vulkan.org/refpages/latest/refpages/source/VK_KHR_multiview.html
 - https://registry.khronos.org/OpenXR/specs/1.0/man/html/XrSwapchainCreateInfo.html
 - https://registry.khronos.org/OpenXR/specs/1.0/man/html/XrSwapchainSubImage.html
+
+## Same-frame layered blur compositor in dust_five (2026-11-03)
+
+The private document now has two additional renderer boxes. **13 · Float scene + blur cascade**
+retargets the existing point/trail modules to an RGBA16F array RTT using `ModulePointer.reload`
+with the new attachment formats, preserving their meshes, bindings, controls and world transform.
+Its four multiview passes produce a half-size H/V blur, then a quarter-size H/V blur of that result.
+The normalized Gaussian approximation uses five bilinear fetches per pass, output-texel kernel
+steps and clamp-to-edge sampling. Every target has two separate eye layers. Green is retained as
+linear floating-point control data through this chain; there is no bloom threshold.
+
+**14 · Green-driven compositor** exposes `blurWeights(medium.g)` in its editable fragment shader.
+The initial effective LUT is a piecewise linear sharp → medium → broad blend. Afterwards green
+is reconstructed from weighted red/blue, with editable reconstruction weight and exposure. The
+browser renders sharply last, with its original RGB, as requested by the user. The final output
+remains `workspace.stereo.layered`; the OpenXR layer copies and native mirror need no change.
+
+The compositor's `Module.before` hook records scene and blur passes. `RenderToTexture` invokes it
+before beginning dynamic rendering, after `MultiviewStereoTarget` has written the current eye UBO.
+The six stages therefore record sequentially in one command buffer and one renderer frame.
+There is no temporal history, additional queue submission or explicit wait in this chain. Existing
+frame acquisition/release and predicted OpenXR poses retain their ordering. Added GPU work still
+has a cost: no physical latency claim or comparative benchmark accompanies this change.
+
+The live check verifies one execution of every stage, matching frame/command-buffer stamps,
+point/trail/browser sharing the eye UBO, and its actual matrices exactly matching current OpenXR
+view/projection products (maximum error 0). Reload Shader was exercised for both the compositor
+and the four-module blur box. The separate offscreen GPU check uses the active shader strings and
+checks six selector cases across both layers with an alternating per-frame source signal. Its
+196,608 pixel comparisons match the medium-green selection / weighted reconstruction within
+1/255; red variance falls from 0.02570 to 0.01264 to 0.000217 across the two blur scales. Constant,
+different blue values per eye check layer isolation. The test target and temporary box were removed.
+
+The current 3508 × 3675 eye image produces 1754 × 1837 and 877 × 918 blur levels. Sources, active
+shader snapshots, a native preview capture and verification reports are saved under the private
+`dust_five/files/postprocess/` folder. Its `dust5_launch_scene` macro launches the complete graph
+on a fresh Field JVM. For allocation changes, stop 14 then 13, then launch 13 and 14; shader-only
+edits use normal reload. This uses existing rendering APIs and required no core source change.
