@@ -109,7 +109,7 @@ showSignals(
 
 Sixteen kicks in two seconds in the lowest band, which is `bd*4` at two cycles per second. The 340 Hz
 band spikes with them rather than with the offbeat stabs, because a kick's attack is broadband and
-sixteen kicks are louder in that band than four stabs. The top two bands stay busy and comparatively
+sixteen kicks are louder in that band than eight stabs. The top two bands stay busy and comparatively
 flat, because sixteen hats a cycle never leave a gap. That is why the rings look different from each
 other.
 

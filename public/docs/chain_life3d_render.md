@@ -121,7 +121,7 @@ markdown("spacing", "#### The same field at three spacings each way\n\n" + sweep
 ## Why the two marchers disagree about genus
 
 The readout marches the field twice, once with Field's `marchingCubes` and once with
-Manifold's `levelSet`, and the two report different genus. Both are right about different things.
+Manifold's `levelSet`, and the two report different genus (the number of holes through a surface). Both are right about different things.
 
 Field's `genus()` reads one Euler characteristic and solves \( \chi = 2 - 2g \), which is the genus of a
 **connected** surface. Handed forty-eight disjoint closed surfaces it returns the genus of the one it

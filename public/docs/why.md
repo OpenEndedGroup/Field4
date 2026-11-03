@@ -29,7 +29,8 @@ display("main", why.speed.h)
 Fast and Slow are both one edge from Mover and hold different values. Slow appears as
 **competing**: the answer depends on the order in which the parents were connected. **Shadowed**
 lists the other boxes with an answer, including Slow and the more distant Settings. The sentence
-under the table also names the preamble line that declared `speed` and where it came from.
+under the table also names the preamble line (the preamble is the block of declarations Field compiles ahead of
+every box's code) that declared `speed` and where it came from.
 
 `why.speed` exists because `prop<Double>(speed)` writes three lines into the preamble, and children
 inherit all three: `var Box.speed by Inheritance<Double>()`, `val Once.speed by Onceing<Double>()`, and

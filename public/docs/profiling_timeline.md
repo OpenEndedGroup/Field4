@@ -190,7 +190,7 @@ Short work may
 fall between samples, and JIT optimization can affect line attribution.
 
 Select a hot row to read its source. Box source is copied from Field's compiled
-snippet records. **Open box with gutter heatmap** takes you to the box in Monaco.
+snippet records. **Open box with gutter heatmap** takes you to the box in the editor.
 With **Box gutter heatmap** enabled, sampled lines carry a gutter stripe: cyan for CPU,
 amber for estimated allocation, with brightness relative to the hottest mapped line
 in that box. Hover a marked line for its sample count or byte estimate and the selected

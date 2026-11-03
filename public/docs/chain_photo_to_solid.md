@@ -66,7 +66,7 @@ resolution, as a closed surface with no holes should be.
 | --- | --- | --- | --- |
 | photograph to depth | [`DepthAnything.infer`](reference/machine-learning.md) | one single-channel map, in the model's own arbitrary units | the photograph's colours, and any absolute scale. The output is *inverse relative* depth and needs a normalisation window |
 | depth to a surface | [`Img.toReliefMesh`](reference/graphics.md) | positions, on one grid vertex per sampled pixel | every pixel between samples. `step` and the resample before it are where the resolution decision lives |
-| a surface to a solid | [`TriMesh.toSolid`](reference/graphics.md) | positions and indices | normals, uvs, colours. The binding hands Manifold three doubles per vertex and nothing else |
+| a surface to a solid | [`TriMesh.toSolid`](reference/graphics.md) | positions and indices | normals, uvs, colours. The binding hands Manifold three floats per vertex and nothing else |
 | a solid through a Boolean | [`Solid.plus`](reference/graphics.md) | a closed surface | any correspondence with the triangles that went in. A Boolean retriangulates |
 | a solid to triangles | [`Solid.toTriMesh`](reference/graphics.md) | positions, indices, optionally split normals | watertightness, *if* you ask for normals — see below |
 

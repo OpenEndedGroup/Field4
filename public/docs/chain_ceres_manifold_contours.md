@@ -337,7 +337,7 @@ As the layers get thinner, a midpoint Riemann sum over their areas should approa
 the solid. The two calculations share no code: the area integral works on regions in 2D, while
 Manifold's `volume` works on the surface in 3D. Comparing them can reveal a problem with the solid.
 
-Every form above sums correctly. `kkC` (kis applied twice to the cube) is a polytope that
+Every form above sums correctly. `kkC` (kis, which raises a pyramid on every face, applied twice to the cube) is a polytope that
 `canonicalize()` cannot make canonical, and
 [Polytopes & the Conway Algebra](polytope_examples.md) uses it as its counter-example. The Ceres
 solver, `relaxWithCeres`, does meet every canonical condition, though, as the bottom row shows,

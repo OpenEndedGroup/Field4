@@ -105,7 +105,7 @@ A template with no `doc` anywhere shows "No documentation available".
 Every inserted box records two properties, and both are saved with the document:
 
 - `templateId` is the name of the template it was inserted from (`greeter`).
-- `source_id` is the uid the box had inside the template, which is the uid of the box you saved.
+- `source_id` is the uid (the unique id every box carries) the box had inside the template, which is the uid of the box you saved.
 
 So two copies of `greeter` share a `templateId` and a `source_id`, but have their own uids.
 Here `Greeter` was saved as `greeter` and two copies were inserted below it with `cmd+t`:

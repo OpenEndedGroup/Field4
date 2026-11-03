@@ -79,7 +79,8 @@ In RectSL it reads:
 ```
 
 The second panel is the rig in its sent colours. The third is the same rig lit only by what the
-receiver decoded from the two universes that came back. The wall is 16 units by 8, which gives one
+receiver decoded from the two universes that came back (a DMX universe is one packet of 512 channel
+bytes; the rig needs two). The wall is 16 units by 8, which gives one
 fixture per unit, and the frame is drawn at 16 pixels per unit, so each fixture stands for a
 16 × 16 block of pixels.
 
