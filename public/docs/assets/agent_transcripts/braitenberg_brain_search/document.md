@@ -35,7 +35,7 @@ for (h in [0, 16]) {
 <!-- field-box id="brain_search" index="1" -->
 
 ```edn [field-box id="brain_search" role="properties"]
-{"id" "brain_search" "index" 1 "name" "10 — evolution vs random sampling, orbit task" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "10 — evolution vs random sampling, orbit task" "_tombstone" false "frame" #afield/rect [60.0 60.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "brain_search_code_.kt" "lines" 25 "characters" 914 "sha256" "584a564f34a6f40158e420fe59c5836f9618ce5fb381d1ebe1e9036cd6b5a126"}]}
+{"id" "brain_search" "index" 1 "name" "10 — evolution vs random sampling, orbit task" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "10 — evolution vs random sampling, orbit task" "_tombstone" false "frame" #afield/rect [60.0 60.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "brain_search_code_.kt" "lines" 27 "characters" 1102 "sha256" "1098da0d06270ac73396eb9a510368efb8f408daff624c7d9c087f207b4fc145"}]}
 ```
 
 ```kotlin [field-property box="brain_search" name="code" path="brain_search_code_.kt"]
@@ -47,20 +47,22 @@ val wide =
 println(narrow.table() + narrow.perSeed())
 println(wide.table())
 
-fun trails(name: String, genes: DoubleArray): Pair<String, Img> {
-    val world = task.world(genes, hidden = 4, seed = 7L, vehicles = 12)
-    world.stepTimes(1000)
-    return name to world.trails(600)
+val range = 0.0..1.0
+fun trails(name: String, run: SearchRun<DoubleArray>): Pair<String, Img> {
+    val world = task.world(run.best!!.genome, hidden = 4, seed = 7L, vehicles = 12)
+    world.stepTimes(1200)
+    return (name + " " + run.bestFitness.f2) to world.trails(300)
 }
 showImg(
     montage(
         [
-            "mu 6, lambda 12" to narrow.plot(),
-            "mu 12 + immigrants" to wide.plot(),
-            trails("best random", wide.champion(VehicleSearchDriver.RANDOM)),
-            trails("best evolved", wide.champion(VehicleSearchDriver.EVOLVE)),
+            "mu 6, lambda 12" to narrow.plot(yRange = range),
+            "mu 12 + immigrants" to wide.plot(yRange = range),
+            trails("median random", wide.medianRun(VehicleSearchDriver.RANDOM)),
+            trails("median mu 6", narrow.medianRun(VehicleSearchDriver.EVOLVE)),
+            trails("median mu 12+imm", wide.medianRun(VehicleSearchDriver.EVOLVE)),
         ],
-        columns = 2,
+        columns = 3,
         cellSide = 300,
     ),
 )
