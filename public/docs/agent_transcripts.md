@@ -2883,7 +2883,7 @@ the 306 frames; the second box renders the whole clip as a movie. From
 ### runaway_box_interrupt
 
 **Stopping a runaway box**, in two boxes: the first spins in a loop that never ends, and Field
-throws out of it after about five seconds (or sooner, with Interrupt Running Box); the second then
+throws out of it after about thirty seconds (or sooner, with Interrupt Running Box); the second then
 runs normally to show Field is responsive again. CI compiles it but cannot evaluate a box whose
 point is that it never finishes. See [Running code](running_code.md).
 

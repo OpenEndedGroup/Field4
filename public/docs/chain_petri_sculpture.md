@@ -2,7 +2,8 @@
 
 Five philosophers sit at a round table with one fork between each pair. Each reaches for the fork
 on their left, then the one on their right, eats, and puts both down. [Petri Nets](petri_nets.md)
-builds this table as a net and asks `stateSpace()` for every marking any order of firings can
+builds this table as a net and asks `stateSpace()` for every marking (a count of tokens in each place, the net's
+state) any order of firings can
 reach. Let's turn the resulting graph into a sculpture: each marking becomes a glass bead, each
 firing a metal tube, and the shortest route to deadlock glows.
 

@@ -564,7 +564,7 @@ while (true) {
 ```
 
 Field notices. After about a second and a half with no frame, the log names the box that is
-running and where it is. After five seconds Field throws out of that box's code: the run ends with
+running and where it is. After thirty seconds Field throws out of that box's code: the run ends with
 the error `Box interrupted: ...`, and everything else carries on. To get out sooner, run
 **Interrupt Running Box** from the command palette.
 

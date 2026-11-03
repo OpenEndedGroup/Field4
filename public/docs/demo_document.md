@@ -12,7 +12,7 @@ On it:
   `sketch` holds two more boxes nested inside it, in its `nested` panel. See [Connecting
   Boxes](tour_connecting_boxes.md).
 - **3D and 2D in output panels.** `gyroid` shows a marched gyroid surface and its open rims in a
-  three.js view you can orbit ([3D Output](three_output.md)). `editable flower` shows FLines you can
+  three.js view you can orbit ([3D Output](three_output.md)). `editable flower` shows FLines (Field's line-and-curve type) you can
   edit: drag a point and the curve changes ([FLine Examples](fline_examples.md)).
 - **Vulkan, streamed into the page.** `renderer` owns a Vulkan window. `streamed spiral` draws a
   turning spiral with it and shows the frames in its own output panel ([Graphics in an Output

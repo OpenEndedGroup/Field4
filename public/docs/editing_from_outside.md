@@ -44,8 +44,7 @@ files: its properties live in `metadata.edn`.
 
 Save the file. Within about two seconds the box's `code` holds what you wrote. Field sends the new text to any
 editor showing that box, a notification says *Reloaded external change to code in ...*, and Field's
-next autosave updates the copy in `metadata.edn`. Saving three times, a second apart, gave three
-reloads, each within two seconds.
+next autosave updates the copy in `metadata.edn`.
 
 Field reloads the code but does not run it. A box that is not running runs your version the
 next time you run it. A box that is running carries on with the code it started with: a `loop`
@@ -61,9 +60,7 @@ printed without touching Field. Leave the property unset to keep reloading witho
 
 A `.glsl` file works the same way: the box's `fragment` (or `vertex`, ...) property is replaced,
 and the shader on screen does not change. The renderer recompiles a shader only when you ask it
-to, so after saving the file, select the box and use **Reload Shader** (`alt r`). In a test with
-the *hello triangle* lesson, the triangles kept their colours after the fragment file was changed
-to solid red, and turned red after **Reload Shader**. Setting the box's `onExternalEdit` property
+to, so after saving the file, select the box and use **Reload Shader** (`alt r`). Setting the box's `onExternalEdit` property
 to `reload-shader` runs **Reload Shader** for you after each reloaded file.
 
 ## Add a box by writing a file

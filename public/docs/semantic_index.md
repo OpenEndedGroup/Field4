@@ -16,7 +16,8 @@ ones.
 
 A rebuild creates three selectable corpora:
 
-- **workspace**: current sidecar-backed source/text properties found in documents
+- **workspace**: current source and text properties saved as their own files (code, shaders and so on,
+  see [Editing From Outside Field](editing_from_outside.md#find-the-file)) found in documents
   under the configured workspace root, split into box/property and declaration
   fragments;
 - **field-internals**: declarations from Field's indexed Kotlin source roots;

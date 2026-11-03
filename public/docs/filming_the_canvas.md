@@ -2,7 +2,8 @@
 
 A canvas flight moves the camera smoothly through a document's bookmarks, and Field can record it
 to an MP4. The same flight replays the same way every time, so you can film a demo, change a box
-and film it again. Every three.js view on the canvas turns slowly while the canvas flies, then goes
+and film it again. Every three.js view on the canvas (a box's interactive 3D output, see
+[3D Output](three_output.md)) turns slowly while the canvas flies, then goes
 back to its own camera.
 
 ## Fly through your bookmarks
@@ -70,8 +71,8 @@ Field renders the film one frame at a time. It sets the flight's clock to the fr
 until the window has drawn that frame, captures it, and hands it to ffmpeg. Nothing depends on how
 fast the machine is: a frame that takes a second to capture shows the same thing as one that takes
 ten milliseconds, so the film never drops or repeats a frame. When the file is written, the box
-prints how many frames it holds and where it is. Any `shot()` a three.js view plays (the dolly,
-explode and x-ray loop) runs on the film's clock too.
+prints how many frames it holds and where it is. Any `shot()` a three.js view plays (its scripted camera move, such as the dolly,
+explode and x-ray loop on [3D Output](three_output.md)) runs on the film's clock too.
 
 This is the flight above, filmed:
 
