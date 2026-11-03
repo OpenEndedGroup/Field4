@@ -130,6 +130,13 @@ class Window(val title : String, val fullscreen : Boolean = false, initialDimens
     @Volatile
     var associatedRenderer: Renderer? = null
 
+    /** Stop submitting this window while retaining its swapchain, for an optional preview. */
+    @Volatile
+    var presentationEnabled: Boolean = true
+
+    /** Optional mirrors skip busy swapchain images instead of pacing the other windows or OpenXR. Set before constructing the renderer. */
+    var bestEffortPresentation: Boolean = false
+
     // --- Scroll accumulator (since last poll)
     private var scrollAccumX = 0.0
     private var scrollAccumY = 0.0

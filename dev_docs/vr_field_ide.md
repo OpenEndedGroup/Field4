@@ -145,3 +145,35 @@ traffic, two-way Monaco edits and independent remote focus. This is still two br
 one machine, with replayed input; physical Quest and second-machine checks remain pending.
 Focused HTTP/command-WebSocket/annotation origin-policy tests passed, as did the server-surface
 CORS census and six setup-helper tests. The cross-site protection remained enabled.
+
+## Optional desktop scene mirror (2026-11-03)
+
+The native window that `FieldVrWorkspace` uses is the interactive browser companion. A scene
+mirror can use a second window owned by the same `Renderer`, sampling `workspace.stereo.packed`.
+That is the packed eye image supplied to OpenXR; the mirror does not run the scene or particle
+compute a second time. Keep its window separate from the companion so desktop clicks and typing
+retain their existing browser focus behavior.
+
+Create the preview `Window` before the renderer, set `bestEffortPresentation = true`, and pass it
+in `Renderer(mainWindow, additionalWindows = listOf(previewWindow))`. Attach its fullscreen copy
+module to `renderer.renderTargetFor(1)`. Poll events for all renderer windows. Crop the packed
+texture to one eye for a normal preview or sample both halves for a stereo pair; preserve the
+source aspect ratio when fitting the window.
+
+Best-effort windows skip unsignalled reuse fences and use zero-timeout image acquisition. They
+also omit explicit display-completion waits and request a non-vsync presentation mode, including
+after resize. If a preview cannot acquire an image, the other windows and OpenXR can advance.
+This bounds the preview's acquisition wait, not all GPU/presentation costs. A supported headset
+is still required to measure on-headset latency.
+
+For a closeable/reopenable preview, set `presentationEnabled = false` before hiding it; this skips
+its entire window submission while keeping its swapchain. On reopen, clear GLFW's should-close
+flag, show it and restore `presentationEnabled`. This flag defaults to true and best-effort mode
+defaults to false, preserving normal window behavior. A hidden companion remains a separate
+concern: it still owns the stereo preTargets in the existing workspace implementation.
+
+The local `dust_five` document has this setup in boxes 1 and 2, with **Side-by-side eyes** and
+**Show headset preview** controls in box 2. Its saved verification artifacts record desktop GPU
+capture, the real Electron stereo checkbox, and closing/reopening checks while the main renderer
+advanced. Both the 1700 × 1360 one-eye and stereo swapchain captures were visually inspected.
+`jvmJar dumpFieldLaunch -x personalJar` passed; headset verification remains separate.
