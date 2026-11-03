@@ -57,6 +57,18 @@ class FieldMLWalkParityTest {
 
     @Test
     fun everyProgramInTheCorpusAgreesOnBothWalks() {
+        // `deep 2000` is not a tail call, so both walks spend JVM stack on it, and the suspending
+        // walk spends more per level. On the test worker's default stack whether it fits depends on
+        // JIT state (red in a full `check`, green alone, 2026-11-03). A fixed, generous stack makes the
+        // comparison about the walks, not about the worker thread.
+        var failure: Throwable? = null
+        val worker = Thread(null, { failure = runCatching { compareCorpus() }.exceptionOrNull() }, "fieldml-walk-parity", 256L shl 20)
+        worker.start()
+        worker.join()
+        failure?.let { throw it }
+    }
+
+    private fun compareCorpus() {
         val uncompiled = mutableListOf<String>()
         for (source in corpus) {
             val core = FieldMLCompiler.compile(source).core ?: run { uncompiled += source; null } ?: continue
