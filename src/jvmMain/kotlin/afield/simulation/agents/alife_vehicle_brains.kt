@@ -227,6 +227,9 @@ class VehicleBrainWorld(
         }
     }
 
+    /** [step] [n] times. */
+    fun stepTimes(n: Int) { repeat(n) { step() } }
+
     /**
      * Trails of [steps] steps from here, drawn over the light field as it stands at the end, at
      * [scale] pixels per unit. Moving lights leave a faint track of their own.
@@ -528,7 +531,7 @@ class VehicleSearchComparison(
 /**
  * Random sampling, hill climbing and evolution on [task] with a [hidden]-neuron [VehicleBrainGenome],
  * each for exactly [budget] objective calls at every seed in [seeds]. Deterministic given its
- * arguments. Evolution is (µ=[mu] + λ=[lambda]) with tournament 2, [crossoverRate] and
+ * arguments (seeds run in parallel; the result does not depend on it). Evolution is (µ=[mu] + λ=[lambda]) with tournament 2, [crossoverRate] and
  * [immigrantRate] (the fraction of children that are fresh random draws); the hill climber restarts
  * after [patience] non-improving steps.
  */
@@ -546,14 +549,17 @@ fun compareVehicleSearch(
     require(budget >= 1) { "budget must be >= 1" }
     val ops = VehicleBrainGenome(hidden)
     val objective = task.objective(hidden)
-    val cells = ArrayList<VehicleSearchCell>()
-    for (s in seeds) {
-        cells += VehicleSearchCell(VehicleSearchDriver.RANDOM, s, PopulationSearch.random(ops, objective, budget, seed = s))
-        cells += VehicleSearchCell(VehicleSearchDriver.HILL_CLIMB, s, PopulationSearch.hillClimb(ops, objective, budget, seed = s, patience = patience))
-        cells += VehicleSearchCell(
-            VehicleSearchDriver.EVOLVE, s,
-            PopulationSearch.evolve(ops, objective, budget, seed = s, mu = mu, lambda = lambda, crossoverRate = crossoverRate, immigrantRate = immigrantRate),
+    // Seeds are independent runs, so they go to the common pool; results are gathered in seed order and
+    // each run is a pure function of its seed, so parallelism cannot change a number.
+    val cells = seeds.parallelStream().map { s ->
+        listOf(
+            VehicleSearchCell(VehicleSearchDriver.RANDOM, s, PopulationSearch.random(ops, objective, budget, seed = s)),
+            VehicleSearchCell(VehicleSearchDriver.HILL_CLIMB, s, PopulationSearch.hillClimb(ops, objective, budget, seed = s, patience = patience)),
+            VehicleSearchCell(
+                VehicleSearchDriver.EVOLVE, s,
+                PopulationSearch.evolve(ops, objective, budget, seed = s, mu = mu, lambda = lambda, crossoverRate = crossoverRate, immigrantRate = immigrantRate),
+            ),
         )
-    }
+    }.toList().flatten()
     return VehicleSearchComparison(task.name, hidden, ops.size, budget, cells)
 }
