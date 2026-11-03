@@ -26,8 +26,8 @@ panel toolbar. The result appears as an ordinary Field output.
 
 Either controller can hover over the panel. Pull the trigger to click or drag; the hand that starts
 a drag keeps control until release. The thumbstick or trackpad scrolls. Losing tracking releases a
-held mouse button. When controller aim input is unavailable, tracked hands use a wrist-to-index-knuckle
-ray and thumb/index pinch, with hysteresis to avoid repeated clicks near the pinch threshold.
+held mouse button. Tracked hands do not point or click in the IDE, so moving your hands over the
+keyboard or mouse cannot reclaim its cursor through the hand-tracking fallback.
 
 Aim at any part of the panel and hold **grip** to pick it up. Moving and rotating that controller
 moves and rotates the whole panel, preserving the initial attachment offset. Release grip to leave
@@ -54,7 +54,7 @@ Restart Field to change OpenXR mode or eye dimensions.
 
 | Input | What receives it | Desktop window focus |
 | --- | --- | --- |
-| Controller trigger or hand pinch | The control under the ray on the VR panel | Not required |
+| Controller trigger | The control under the ray on the VR panel | Not required |
 | Keyboard and mouse attached to the PC | The front-on companion window | Required |
 | Keyboard and mouse attached to the Quest | The VR browser through WiVRn HID forwarding | Not required after setup |
 

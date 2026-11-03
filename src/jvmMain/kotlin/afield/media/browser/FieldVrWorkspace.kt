@@ -131,10 +131,10 @@ class FieldVrWorkspace(
         headsetDevices?.poll(deliver = browser.pageReady && !browser.state.loading)
         val xr = renderer.openXRHmdTarget
         val pointers = if (xr == null) emptyList() else {
-            // Use raw runtime states: the desktop mock must never appear when tracking drops.
+            // Controller aim only. Tracked hands resting on a keyboard/mouse must not
+            // reclaim its page cursor through hover movement or an incidental pinch.
             listOf(Hand.RIGHT, Hand.LEFT).mapNotNull { hand ->
                 input.controller("$hand-controller", xr.controllerState(hand), elapsed)
-                    ?: input.hand("$hand-hand", xr.handState(hand))
             }
         }
         val worldPress = pointers.any {

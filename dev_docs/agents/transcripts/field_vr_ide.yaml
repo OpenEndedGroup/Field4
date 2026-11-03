@@ -1,12 +1,12 @@
 name: field_vr_ide
 description: >
   Field's own live frontend in a world-locked OpenXR browser panel. Either controller can point,
-  trigger and drag; grip grabs and repositions the panel. Hands without an aim action use a wrist-to-knuckle ray and pinch. The in-panel
+  trigger and drag; grip grabs and repositions the panel. Tracked hands do not point or click. The in-panel
   keyboard preserves editor focus and includes Commands, Run, text, navigation and editing keys.
   Opens the same document, with a front-on desktop companion and optional headset output. Requires Vulkan and Electron.
 docs:
   - page: field_vr_ide.md
-    why: Launch order, headset setup, controller and hand input, keyboard and browser resolution.
+    why: Launch order, headset setup, controller and mouse input, keyboard and browser resolution.
 operations:
   - create:
       box: vr_ide_renderer
@@ -36,7 +36,7 @@ operations:
               Launch 1, then 2. The browser opens this same document.<br>
               Point with either controller; trigger clicks and drags, stick scrolls.<br>
               Aim at the panel and hold grip to move and rotate it; release to leave it there.<br>
-              With tracked hands, point the hand and pinch to click.<br>
+              Tracked hands do not point or click; use a controller or mouse.<br>
               Keyboard opens text and editing keys; Commands opens the palette.<br>
               Select the Playground, edit its code, then Run box (Alt+Up).<br>
               Recenter brings the panel in front of your current head position.<br>
