@@ -39,8 +39,8 @@ import afield.math.linalg.Vector4f
  * case it tries, and a value matching no case fails at this point: nothing earlier checks
  * exhaustiveness, and this runtime error is the only mention of it in FieldML.
  *
- * Two failures here have their cause somewhere else. The walk is directly recursive with no
- * trampoline, so deep FieldML recursion arrives as a JVM `StackOverflowError` and not as a FieldML
+ * Two failures here have their cause somewhere else. Tail positions loop, but every other call
+ * recurses, so deep non-tail FieldML recursion arrives as a JVM `StackOverflowError` and not as a FieldML
  * diagnostic. And an unknown runtime name means the two halves of the prelude have drifted apart:
  * [Inferencer] already rejects any name `FieldMLTypePrelude.schemes` does not list, so a name that
  * type-checked and then went missing is one `FieldMLRuntimePrelude.values` does not define.
