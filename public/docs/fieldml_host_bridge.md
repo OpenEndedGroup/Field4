@@ -320,6 +320,8 @@ script
 
 A loop that waits can run for as long as the box does, provided the call that goes round again is the last thing the function does, as `grow (k + 1)` is above. Such a loop holds the same small amount of memory on its hundred-thousandth turn as on its first. A loop that does more work after the recursive call returns keeps every turn alive until it ends.
 
+The same holds for a loop that does not wait. A function that calls itself last, with no way to stop, runs forever: the box does not fail with a stack overflow, it keeps running until you stop it. Give such a loop a condition that ends it.
+
 The frames sequence demo raises a band one column at a time, holds it, and starts again in the other colour, all from one FieldML `frames` body. Run `window and renderer (FieldML)`, then `a script across frames`.
 
 [Open ↗](offline.html?file=assets/fieldml_frames_sequence_demo/metadata.edn)

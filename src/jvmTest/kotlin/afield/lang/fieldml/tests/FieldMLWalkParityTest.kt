@@ -6,6 +6,7 @@ import afield.lang.fieldml.FieldMLRuntimePrelude
 import afield.lang.fieldml.core.Evaluator
 import afield.lang.fieldml.core.FieldMLValue
 import afield.lang.fieldml.core.RuntimeEnv
+import afield.lang.fieldml.core.StepFuel
 import afield.lang.fieldml.core.evalFieldMLSuspending
 import afield.lang.fieldml.core.renderFieldMLValue
 import kotlin.coroutines.Continuation
@@ -113,6 +114,38 @@ p |> hostCall1 "start" (fun u ->
         assertEquals(100001, parker.depths.size)
         println("FieldMLWalkParityTest continuation depth: turn 1=${parker.depths[1]}, turn 1000=${parker.depths[1000]}, turn 100000=${parker.depths[100000]}")
         assertEquals(parker.depths[1], parker.depths[100000], "continuation chain grew across turns")
+    }
+
+    @Test
+    fun bothWalksRunOutOfStepsAtTheSameStep() {
+        // A runaway tail loop no longer overflows the stack, so it would run forever: the step limit
+        // turns it into an error, with the same message on either walk.
+        val forever = compile("let spin n = spin (n + 1) in spin 0")
+        val (syncForever, suspendingForever) = bothWalks(forever, 100_000)
+        assertTrue("step limit reached: 100000" in syncForever, syncForever)
+        assertEquals(syncForever, suspendingForever)
+
+        // And they count steps identically: find the exact budget a program needs on the
+        // synchronous walk, then check the suspending walk succeeds with it and fails with one less.
+        val fact = compile("let fact n = if n <= 1 then 1 else n * fact (n - 1) in fact 10")
+        val needed = (1L..100_000L).first { !bothWalks(fact, it).first.startsWith("failure") }
+        assertEquals(bothWalks(fact, needed).first, bothWalks(fact, needed).second)
+        assertEquals("value: 3628800", bothWalks(fact, needed).second)
+        assertEquals(bothWalks(fact, needed - 1).first, bothWalks(fact, needed - 1).second)
+        assertTrue(bothWalks(fact, needed - 1).second.startsWith("failure"))
+        println("FieldMLWalkParityTest: fact 10 takes $needed steps on both walks")
+    }
+
+    private fun compile(source: String) =
+        FieldMLCompiler.compile(source).also { assertTrue(it.successful, source) }.core!!
+
+    private fun bothWalks(core: afield.lang.fieldml.core.CoreExpr, limit: Long): Pair<String, String> {
+        val sync = runCatching { renderFieldMLValue(Evaluator(prelude(), stepLimit = limit).evaluate(core)) }
+        var suspending: Result<String>? = null
+        val env = RuntimeEnv(fuel = StepFuel(limit)).also { e -> prelude().forEach { (k, v) -> e.define(k, v) } }
+        suspend { renderFieldMLValue(evalFieldMLSuspending(core, env)) }
+            .startCoroutine(Continuation(EmptyCoroutineContext) { suspending = it })
+        return outcome(sync) to outcome(suspending!!)
     }
 
     private fun prelude() = FieldMLRuntimePrelude.values(box = box)

@@ -155,6 +155,8 @@ sealed interface FieldMLValue {
 class RuntimeEnv(
     private val parent: RuntimeEnv? = null,
     private val values: MutableMap<String, FieldMLValue> = mutableMapOf(),
+    /** The step budget this scope's evaluation draws on; every child scope shares its parent's. */
+    val fuel: StepFuel? = parent?.fuel,
 ) {
     /** A new scope that falls back on this one. */
     fun child(): RuntimeEnv = RuntimeEnv(this)
@@ -179,11 +181,35 @@ class RuntimeEnv(
 }
 
 /**
+ * A budget of evaluator steps, shared by every scope of one evaluation. Both walks spend one step per
+ * node they visit (a tail call that loops counts as a visit), so a program runs out at the same point
+ * on either walk.
+ */
+class StepFuel(val limit: Long) {
+    private var spent = 0L
+
+    /** Spends one step, failing with a FieldML error once [limit] steps have been spent. */
+    fun spend() {
+        if (++spent > limit) {
+            error("FieldML step limit reached: $limit evaluation steps. The program may loop forever; a loop that never ends is not an error FieldML can see otherwise.")
+        }
+    }
+}
+
+/**
  * Evaluates lowered FieldML trees against one prelude.
  *
  * Cheap to construct and safe to reuse: the prelude is read per call, not held as mutable state.
  */
-class Evaluator(private val prelude: Map<String, FieldMLValue> = emptyMap()) {
+class Evaluator(
+    private val prelude: Map<String, FieldMLValue> = emptyMap(),
+    /**
+     * When set, an evaluation that visits more than this many nodes stops with a FieldML error
+     * instead of running on; null (the default) is no limit. A `suspend` body Kotlin calls later
+     * shares the budget of the evaluation that made its closure.
+     */
+    private val stepLimit: Long? = null,
+) {
     /**
      * Walks [expr] and returns what it evaluates to, starting from a fresh scope holding the
      * prelude.
@@ -195,7 +221,7 @@ class Evaluator(private val prelude: Map<String, FieldMLValue> = emptyMap()) {
      * `match` case, the closure a call enters) loop instead of recursing, so tail recursion does not.
      */
     fun evaluate(expr: CoreExpr): FieldMLValue {
-        val env = RuntimeEnv()
+        val env = RuntimeEnv(fuel = stepLimit?.let(::StepFuel))
         prelude.forEach { (name, value) -> env.define(name, value) }
         val observe = onTopLevelLet ?: return evalFieldML(expr, env)
         // The program's spine of top-level lets, walked here rather than by recursion so each binding's
@@ -225,6 +251,7 @@ private fun evalFieldML(expr0: CoreExpr, env0: RuntimeEnv): FieldMLValue {
     var expr = expr0
     var env = env0
     while (true) {
+        env.fuel?.spend()
         return when (expr) {
             is CInt -> FieldMLValue.IntValue(expr.value)
             is CFloat -> FieldMLValue.FloatValue(expr.value)
@@ -332,6 +359,7 @@ internal suspend fun evalFieldMLSuspending(expr0: CoreExpr, env0: RuntimeEnv): F
     var expr = expr0
     var env = env0
     while (true) {
+        env.fuel?.spend()
         return when (expr) {
             is CInt -> FieldMLValue.IntValue(expr.value)
             is CFloat -> FieldMLValue.FloatValue(expr.value)
