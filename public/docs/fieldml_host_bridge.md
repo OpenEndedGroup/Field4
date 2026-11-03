@@ -318,6 +318,8 @@ script
 
 `hostAwait "frame" () f` waits exactly one frame. A function that Kotlin calls in the ordinary way cannot wait: the function given to `map`, or to `Mesh.write` as its builder, runs to the end before Kotlin continues, so `hostAwait` inside it stops the box with an error naming the problem. Use `hostLaunch` there to start the method without waiting.
 
+A loop that waits can run for as long as the box does, provided the call that goes round again is the last thing the function does, as `grow (k + 1)` is above. Such a loop holds the same small amount of memory on its hundred-thousandth turn as on its first. A loop that does more work after the recursive call returns keeps every turn alive until it ends.
+
 The frames sequence demo raises a band one column at a time, holds it, and starts again in the other colour, all from one FieldML `frames` body. Run `window and renderer (FieldML)`, then `a script across frames`.
 
 [Open ↗](offline.html?file=assets/fieldml_frames_sequence_demo/metadata.edn)
