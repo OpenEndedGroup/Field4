@@ -1018,6 +1018,18 @@ random-sampling control at the same budget. All five run on the CPU.
 
 [Open →](offline.html?file=assets/agent_transcripts/braitenberg_where_next/metadata.edn)
 
+### braitenberg_brain_search
+
+Section 10 of [Braitenberg vehicles with memory](braitenberg_vehicles.md) as two boxes. Box 1 gives
+each vehicle a small recurrent brain (`VehicleBrainGenome`) and compares random sampling, hill
+climbing and two evolver settings on the orbit task at an equal budget over many seeds, then draws
+each arm's best-so-far curve and the trails of its median seed. Box 2 repeats the comparison at 8 and
+344 genes on moving lamps. Both run on the CPU.
+
+![Best-so-far curves for three search methods beside the trails of each method's median-seed vehicles circling a lamp](assets/braitenberg_vehicles/brain_search.png)
+
+[Open →](offline.html?file=assets/agent_transcripts/braitenberg_brain_search/metadata.edn)
+
 ### statistics_examples
 
 [Measuring dependence between two signals](statistics_examples.md)
