@@ -20,8 +20,10 @@ genomes of any arm, the rest stay on a flat ~0.1 plateau where vehicles never re
 mu 12, lambda 24 with immigrantRate 0.25 beats random at 8-11 of 12 seeds on every task and size
 measured (8, 44, 344 genes). Genome size is not where it flips; escaping the plateau is.
 
-Not done: budgets other than 300; immigrant setting at 22 and 112 genes; novelty search / MAP-Elites
-on the same genome.
+Budget sweep (orbit, 4 hidden, 100/300/1000): nothing beats random at 100; at 1000 the hill climber
+and the immigrant evolver beat it at 11/12 while the mu 6 evolver stays bimodal.
+
+Not done: novelty search / MAP-Elites on the same genome; budgets above 1000.
 
 ## Setting `true` (mu 6, lambda 12, crossover 0.3)
 
@@ -462,5 +464,153 @@ seed    random  hillclimb   evolve
   10    0.5873    0.7817    0.7752
   11    0.5126    0.1897    0.3536
   12    0.6393    0.8158    0.8889
+
+```
+
+## Setting `immigrants-mid` (as `immigrants`, 2 and 8 hidden)
+
+```
+forage, 2 hidden (22 genes), 300 evals x 12 seeds
+  random     median 0.6100  IQR 0.5520..0.6783  range 0.3664..0.8148
+  hill_climb median 0.3585  IQR 0.2841..0.5646  range 0.2718..0.6900  beats random at 2/12
+  evolve     median 0.7661  IQR 0.7083..0.8555  range 0.3423..0.9012  beats random at 9/12
+seed    random  hillclimb   evolve
+   1    0.3664    0.2718    0.7134
+   2    0.6727    0.2812    0.6928
+   3    0.6952    0.2750    0.7983
+   4    0.5532    0.3407    0.8921
+   5    0.6129    0.5840    0.8696
+   6    0.6071    0.5422    0.7649
+   7    0.6675    0.3764    0.9012
+   8    0.8148    0.2851    0.6670
+   9    0.5484    0.6258    0.3423
+  10    0.3743    0.6900    0.7674
+  11    0.7312    0.3178    0.7218
+  12    0.5625    0.5581    0.8508
+
+forage, 8 hidden (112 genes), 300 evals x 12 seeds
+  random     median 0.5671  IQR 0.5448..0.6087  range 0.3303..0.6792
+  hill_climb median 0.5528  IQR 0.3239..0.6554  range -0.1157..0.7011  beats random at 7/12
+  evolve     median 0.6912  IQR 0.6203..0.8205  range 0.5801..0.9265  beats random at 12/12
+seed    random  hillclimb   evolve
+   1    0.3303    0.3871    0.8164
+   2    0.5660    0.2666    0.6072
+   3    0.6792    0.4551    0.7583
+   4    0.5550    0.2889    0.5801
+   5    0.5876    0.6622    0.6247
+   6    0.5330    0.3355    0.6274
+   7    0.5488    0.7011    0.6062
+   8    0.5949    0.6524    0.6810
+   9    0.6501    0.6506    0.7014
+  10    0.5682    0.6706    0.8328
+  11    0.6564   -0.1157    0.9265
+  12    0.5301    0.6531    0.9264
+
+orbit, 2 hidden (22 genes), 300 evals x 12 seeds
+  random     median 0.6520  IQR 0.4962..0.6891  range 0.4425..0.7571
+  hill_climb median 0.7293  IQR 0.0961..0.7730  range 0.0906..0.9060  beats random at 6/12
+  evolve     median 0.8758  IQR 0.7889..0.9160  range 0.7806..0.9385  beats random at 12/12
+seed    random  hillclimb   evolve
+   1    0.6832    0.9060    0.7866
+   2    0.6094    0.7296    0.8896
+   3    0.7571    0.7436    0.7806
+   4    0.6707    0.6526    0.8663
+   5    0.4964    0.8304    0.9354
+   6    0.7327    0.0962    0.9127
+   7    0.6551    0.0959    0.9261
+   8    0.4953    0.7539    0.8145
+   9    0.4425    0.8625    0.7896
+  10    0.4892    0.0906    0.7837
+  11    0.6488    0.0947    0.9385
+  12    0.7071    0.7291    0.8853
+
+orbit, 8 hidden (112 genes), 300 evals x 12 seeds
+  random     median 0.6799  IQR 0.5867..0.7610  range 0.3582..0.7965
+  hill_climb median 0.6372  IQR 0.0991..0.8609  range 0.0714..0.9307  beats random at 6/12
+  evolve     median 0.8654  IQR 0.8440..0.8953  range 0.7815..0.9352  beats random at 12/12
+seed    random  hillclimb   evolve
+   1    0.3582    0.5808    0.9248
+   2    0.6321    0.2834    0.8564
+   3    0.4488    0.8572    0.8801
+   4    0.7792    0.1000    0.8492
+   5    0.7965    0.8800    0.8659
+   6    0.6855    0.0714    0.8937
+   7    0.7607    0.8721    0.8022
+   8    0.6409    0.9307    0.9000
+   9    0.7429    0.8308    0.8285
+  10    0.4506    0.0962    0.7815
+  11    0.6744    0.0961    0.9352
+  12    0.7621    0.6936    0.8650
+
+track, 2 hidden (22 genes), 300 evals x 12 seeds
+  random     median 0.4401  IQR 0.3824..0.6387  range 0.3211..1.0435
+  hill_climb median 0.3413  IQR 0.2366..0.5005  range 0.1883..0.7565  beats random at 3/12
+  evolve     median 0.6636  IQR 0.5383..0.8698  range 0.3680..1.0636  beats random at 11/12
+seed    random  hillclimb   evolve
+   1    0.3397    0.2857    0.3680
+   2    0.3656    0.3215    0.6887
+   3    0.5944    0.7565    0.4602
+   4    0.4127    0.2256    0.5639
+   5    0.8063    0.4327    0.9316
+   6    0.4471    0.2164    0.5503
+   7    0.4331    0.3611    0.8748
+   8    0.5593    0.2402    0.7899
+   9    1.0435    0.3705    1.0636
+  10    0.3211    0.7549    0.6384
+  11    0.7716    0.1883    0.8681
+  12    0.3880    0.7041    0.5023
+
+track, 8 hidden (112 genes), 300 evals x 12 seeds
+  random     median 0.5277  IQR 0.4634..0.6456  range 0.3776..0.7014
+  hill_climb median 0.2481  IQR 0.2184..0.5387  range 0.2023..0.7334  beats random at 2/12
+  evolve     median 0.5758  IQR 0.5291..0.6732  range 0.3410..1.0223  beats random at 6/12
+seed    random  hillclimb   evolve
+   1    0.6520    0.2367    0.5435
+   2    0.3776    0.2485    0.6280
+   3    0.5281    0.7334    0.4858
+   4    0.5021    0.2478    0.6412
+   5    0.4726    0.5216    0.6023
+   6    0.3992    0.2065    0.8045
+   7    0.5954    0.2127    0.3410
+   8    0.5272    0.4037    0.3618
+   9    0.6434    0.5902    0.5493
+  10    0.6581    0.2204    0.5477
+  11    0.4357    0.2023    1.0223
+  12    0.7014    0.6412    0.7694
+
+```
+
+## Setting `budgets` (orbit, 4 hidden)
+
+```
+[mu 6, lambda 12] orbit, 4 hidden (44 genes), 100 evals x 12 seeds
+  random     median 0.5599  IQR 0.4137..0.6449  range 0.2435..0.7205
+  hill_climb median 0.0950  IQR 0.0819..0.1049  range 0.0298..0.8498  beats random at 2/12
+  evolve     median 0.0962  IQR 0.0947..0.5610  range 0.0719..0.8581  beats random at 4/12
+
+[mu 12, lambda 24, immigrants 0.25] orbit, 4 hidden (44 genes), 100 evals x 12 seeds
+  random     median 0.5599  IQR 0.4137..0.6449  range 0.2435..0.7205
+  hill_climb median 0.0950  IQR 0.0819..0.1049  range 0.0298..0.8498  beats random at 2/12
+  evolve     median 0.3252  IQR 0.2111..0.5889  range 0.0872..0.7381  beats random at 6/12
+
+[mu 6, lambda 12] orbit, 4 hidden (44 genes), 300 evals x 12 seeds
+  random     median 0.6504  IQR 0.6033..0.7520  range 0.5651..0.8720
+  hill_climb median 0.0982  IQR 0.0961..0.4203  range 0.0946..0.8596  beats random at 3/12
+  evolve     median 0.2089  IQR 0.0958..0.8814  range 0.0949..0.9550  beats random at 5/12
+
+[mu 12, lambda 24, immigrants 0.25] orbit, 4 hidden (44 genes), 300 evals x 12 seeds
+  random     median 0.6504  IQR 0.6033..0.7520  range 0.5651..0.8720
+  hill_climb median 0.0982  IQR 0.0961..0.4203  range 0.0946..0.8596  beats random at 3/12
+  evolve     median 0.8472  IQR 0.7841..0.8756  range 0.1896..0.9484  beats random at 9/12
+
+[mu 6, lambda 12] orbit, 4 hidden (44 genes), 1000 evals x 12 seeds
+  random     median 0.7141  IQR 0.6866..0.7609  range 0.6115..0.8720
+  hill_climb median 0.8539  IQR 0.8314..0.8735  range 0.0964..0.9512  beats random at 11/12
+  evolve     median 0.6498  IQR 0.0965..0.9559  range 0.0960..0.9635  beats random at 6/12
+
+[mu 12, lambda 24, immigrants 0.25] orbit, 4 hidden (44 genes), 1000 evals x 12 seeds
+  random     median 0.7141  IQR 0.6866..0.7609  range 0.6115..0.8720
+  hill_climb median 0.8539  IQR 0.8314..0.8735  range 0.0964..0.9512  beats random at 11/12
+  evolve     median 0.9523  IQR 0.9460..0.9587  range 0.8634..0.9648  beats random at 11/12
 
 ```

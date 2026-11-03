@@ -11,7 +11,7 @@ import kotlin.test.assertTrue
  * the comparison is a pure function of its arguments, and the brain genome decodes as laid out.
  *
  * With `-Dafield.vehicleBrainSweep=true` (or `=immigrants`, µ=12 λ=24 with a quarter of the children
- * fresh draws) it also runs the page's sweep and writes the tables to `build/vehicle-brain-sweep-<mode>.txt`; that is how the page's numbers were measured, and it takes minutes.
+ * fresh draws; `=immigrants-mid` for 2 and 8 hidden; `=budgets` for orbit at 100/300/1000) it also runs the page's sweep and writes the tables to `build/vehicle-brain-sweep-<mode>.txt`; that is how the page's numbers were measured, and it takes minutes.
  */
 class VehicleBrainSearchTest {
     private val small = VehicleBrainTask.forage().let {
@@ -45,10 +45,25 @@ class VehicleBrainSearchTest {
 
     @Test fun fullSweep() {
         val mode = System.getProperty("afield.vehicleBrainSweep") ?: return
-        val immigrants = mode == "immigrants"
+        val immigrants = mode.startsWith("immigrants")
         val out = StringBuilder()
+        if (mode == "budgets") {
+            // Orbit, 4 hidden: does the ranking change with the budget?
+            for (b in listOf(100, 300, 1000)) {
+                for (wide in listOf(false, true)) {
+                    val c = if (wide) {
+                        compareVehicleSearch(VehicleBrainTask.orbit(), 4, budget = b, seeds = (1L..12L).toList(), mu = 12, lambda = 24, immigrantRate = 0.25)
+                    } else {
+                        compareVehicleSearch(VehicleBrainTask.orbit(), 4, budget = b, seeds = (1L..12L).toList())
+                    }
+                    out.append(if (wide) "[mu 12, lambda 24, immigrants 0.25] " else "[mu 6, lambda 12] ").append(c.table()).append('\n')
+                    File("build/vehicle-brain-sweep-$mode.txt").writeText(out.toString())
+                }
+            }
+            return
+        }
         for (task in listOf(VehicleBrainTask.forage(), VehicleBrainTask.orbit(), VehicleBrainTask.track())) {
-            for (h in if (immigrants) listOf(0, 4, 16) else listOf(0, 2, 4, 8, 16)) {
+            for (h in if (mode == "immigrants-mid") listOf(2, 8) else if (immigrants) listOf(0, 4, 16) else listOf(0, 2, 4, 8, 16)) {
                 val c = if (immigrants) {
                     compareVehicleSearch(task, h, budget = 300, seeds = (1L..12L).toList(), mu = 12, lambda = 24, immigrantRate = 0.25)
                 } else {

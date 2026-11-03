@@ -2,7 +2,9 @@
 
 package afield.simulation.agents
 
+import afield.graphics.color.Color4
 import afield.media.image.Img
+import afield.media.image.withLabel
 import afield.study.search.Evaluation
 import afield.study.search.GenomeOps
 import afield.study.search.Objective
@@ -249,7 +251,7 @@ class VehicleBrainWorld(
         }
         repeat(steps) { t ->
             step()
-            val a = 0.08f + 0.5f * t / steps
+            val a = 0.3f + 0.7f * t / steps
             for (i in 0 until count) dot(trail, x[i], y[i], a, 0.8f * a, 0.35f * a, 0)
             for (l in lights) if (l.moving) dot(trail, l.x, l.y, 0f, 0.05f, 0.12f, 0)
         }
@@ -484,27 +486,62 @@ class VehicleSearchComparison(
         }
     }
 
-    /**
-     * Best-so-far fitness against evaluations: each driver's median as a line and its interquartile
-     * range as a band. Random is grey, hill climbing blue, evolution orange.
-     */
-    fun plot(width: Int = 420, height: Int = 260): Img {
-        val out = Img.filled(width, height, 3, 0.06f)
-        val curves = VehicleSearchDriver.values().associateWith { curve(it) }
-        val all = curves.values.flatMap { c -> c.flatMap { it.toList() } }.filter { it.isFinite() }
+    /** The run of [d] whose best fitness is the median over seeds (the lower middle for an even count). */
+    fun medianRun(d: VehicleSearchDriver): SearchRun<DoubleArray> {
+        val runs = of(d).sortedBy { it.run.bestFitness }
+        return runs[(runs.size - 1) / 2].run
+    }
+
+    /** The fitness range [plot] uses when none is given: every arm's quartile band, padded. */
+    fun fitnessRange(): ClosedFloatingPointRange<Double> {
+        val all = VehicleSearchDriver.values().flatMap { d -> curve(d).flatMap { it.toList() } }.filter { it.isFinite() }
         val lo = all.minOrNull() ?: 0.0
         val hi = max(lo + 1e-9, all.maxOrNull() ?: 1.0)
+        return lo..hi
+    }
+
+    /**
+     * Best-so-far fitness against evaluations: each driver's median as a line, its interquartile range
+     * as a band, and its final median written at the right. Random is grey, hill climbing blue,
+     * evolution orange. Pass the same [yRange] to two plots to put them on one scale.
+     */
+    fun plot(width: Int = 300, height: Int = 300, yRange: ClosedFloatingPointRange<Double> = fitnessRange()): Img {
+        var out = Img.filled(width, height, 3, 0.06f)
+        val curves = VehicleSearchDriver.values().associateWith { curve(it) }
+        val lo = yRange.start
+        val hi = max(lo + 1e-9, yRange.endInclusive)
         val colours = mapOf(
             VehicleSearchDriver.RANDOM to floatArrayOf(0.7f, 0.7f, 0.7f),
             VehicleSearchDriver.HILL_CLIMB to floatArrayOf(0.3f, 0.6f, 1f),
             VehicleSearchDriver.EVOLVE to floatArrayOf(1f, 0.55f, 0.15f),
         )
-        fun px(t: Int) = (6 + t.toDouble() / (budget - 1).coerceAtLeast(1) * (width - 13)).roundToInt()
-        fun py(v: Double) = (height - 7 - (v - lo) / (hi - lo) * (height - 13)).roundToInt().coerceIn(0, height - 1)
+        val left = 32
+        val right = width - 40
+        val top = 8
+        val bottom = height - 18
+        fun px(t: Int) = (left + t.toDouble() / (budget - 1).coerceAtLeast(1) * (right - left)).roundToInt()
+        fun py(v: Double) = (bottom - (v - lo) / (hi - lo) * (bottom - top)).roundToInt().coerceIn(top, bottom)
         fun put(x: Int, y: Int, c: FloatArray, a: Float) {
             if (x !in 0 until width || y !in 0 until height) return
             val o = (y * width + x) * 3
             for (k in 0..2) out.data[o + k] = out.data[o + k] * (1 - a) + c[k] * a
+        }
+        val axis = floatArrayOf(0.45f, 0.46f, 0.5f)
+        for (y in top..bottom) put(left - 1, y, axis, 1f)
+        for (x in left..right) put(x, bottom + 1, axis, 1f)
+        val labels = ArrayList<Triple<String, Int, Int>>()
+        for (k in 0..4) {
+            val v = lo + (hi - lo) * k / 4
+            val y = py(v)
+            for (x in left - 4 until left - 1) put(x, y, axis, 1f)
+            for (x in left..right step 4) put(x, y, axis, 0.25f)
+            labels += Triple("%.2f".format(v), 1, y - 3)
+        }
+        for (n in listOf(0, budget / 2, budget)) {
+            val x = px((n - 1).coerceAtLeast(0))
+            for (y in bottom + 2..bottom + 4) put(x, y, axis, 1f)
+            val text = n.toString()
+            labels += Triple(text, (x - 3 * text.length).coerceIn(0, width - 6 * text.length), bottom + 7)
         }
         for ((d, c) in curves) for (t in 0 until budget) {
             val x = px(t)
@@ -514,6 +551,16 @@ class VehicleSearchComparison(
             val y0 = py(c[t][1])
             val y1 = if (t + 1 < budget) py(c[t + 1][1]) else y0
             for (y in min(y0, y1)..max(y0, y1)) for (dx in 0..1) put(px(t) + dx, y, colours[d]!!, 1f)
+        }
+        for (l in labels) out = out.withLabel(l.first, l.second, l.third, scale = 1, color = Color4(0.6, 0.62, 0.68))
+        // End-of-run medians, nudged apart so they never overprint.
+        val ends = curves.map { (d, c) -> Triple(d, c[budget - 1][1], py(c[budget - 1][1])) }.sortedBy { it.third }
+        var lastY = -100
+        for ((d, v, y) in ends) {
+            val yy = max(y - 3, lastY + 9)
+            lastY = yy
+            val c = colours[d]!!
+            out = out.withLabel("%.2f".format(v), right + 4, yy, scale = 1, color = Color4(c[0].toDouble(), c[1].toDouble(), c[2].toDouble()))
         }
         return out
     }
