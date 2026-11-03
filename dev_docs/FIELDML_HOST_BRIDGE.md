@@ -763,6 +763,24 @@ with the real `Frames.frame()`; a recursive loop writes once per frame for five 
 `CoreExpr` shape gives the same value under both walks. Pixels:
 `public/docs/assets/fieldml_frames_sequence_demo/`.
 
+**Keeping the two walks in step, and what a waiting loop costs (2026-11-03).** `evalFieldML` and
+`evalFieldMLSuspending` are still two hand-written walks. Which node kinds each handles is the
+compiler's check, not a test's: both are exhaustive `when` expressions over the sealed `CoreExpr`, so
+a new kind added to one and not the other does not build. Whether they handle a kind *the same way*
+is `FieldMLWalkParityTest.everyProgramInTheCorpusAgreesOnBothWalks`: 21 programs (literals, ADTs and
+match, cons patterns, short-circuit operators guarding a failing match, vectors, a 2,000-deep
+non-tail recursion, and failures, compared by message) through both walks. Breaking AND's
+short-circuit in the suspending walk alone fails it, naming the program.
+
+Before that date a FieldML loop that waits — `let go i = let _ = hostAwait "park" () p in go (i + 1)`
+— kept every turn's suspended evaluator frames alive on the continuation chain, which only unwinds
+when the loop ends: 15 frames at turn 1, 4,011 at turn 1,000, 400,011 at turn 100,000. The two walks
+now loop rather than recurse in tail position (a `let`/`type` body, an `if` branch, a `match` case,
+and the closure a call enters), so the chain the host holds is 8 frames at turns 1, 1,000 and
+100,000 (`anEndlessHostAwaitLoopHoldsAConstantContinuationChain`). The synchronous walk gains the
+same: tail recursion no longer uses JVM stack. Recursion that is not in tail position
+(`n + sum (n - 1)`) still grows both, as it must. Write a waiting loop with the recursive call last.
+
 **Stretch items closed with it.** N1031-1: FieldML already had `once "slot" (fun u -> …)` (the
 `Onceing` mirror in the runtime prelude, storing in the box's own property), so no new form was
 needed; both FieldML renderer boxes now wrap window + renderer + `hostLaunch "run"` in it, so re-running
