@@ -473,7 +473,7 @@ the Kotlin on the Mac.
 | Where a remote pose overrides OpenXR and the mock | `SideBySideStereoTarget.kt:96` | `var poseSource` |
 | What the target recorded it drew from | `SideBySideStereoTarget.kt:105` | `var renderedPoseFrameId` |
 | …and that pose's display time | `SideBySideStereoTarget.kt:109` | `var renderedPoseDisplayTime` |
-| The multiview sibling, with no pose source | `SideBySideStereoTarget.kt:501` | `class MultiviewSideBySideStereoTarget` |
+| OpenXR/browser multiview target, without a remote pose source | `MultiviewStereoTarget.kt` | `class MultiviewStereoTarget` |
 | The desktop mock a remote pose replaces | `SideBySideStereoTarget.kt:883` | `class StereoCamera` |
 | …and the eye separation it invents | `SideBySideStereoTarget.kt:884` | `var ipd` |
 | Tagging a stream's frames with the latched pose | `FieldRTTStreamer.kt:106` | `fun tagPosesFrom` |

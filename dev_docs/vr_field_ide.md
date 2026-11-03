@@ -5,8 +5,8 @@ The public walkthrough and runnable starter are `public/docs/field_vr_ide.md` an
 `useHeadset = true` in its renderer box enables the existing OpenXR runtime on a fresh Field launch.
 
 `FieldVrWorkspace` composes the existing browser texture, runtime-sized stereo target and browser
-panel. The browser upload/input hook precedes stereo packing, and each eye's MVP/cursor uniforms
-are set at the actual module draw boundary. Browser pixels are sampled without text antialiasing
+panel. Browser upload/input runs once before the multiview pass. Both eyes share a view UBO;
+the panel model and cursor are set at the actual module draw boundary. Browser pixels are sampled without text antialiasing
 postprocessing. Chromium's viewport is explicitly set after document readiness: on the tested
 Wayland desktop a requested 2560 × 1600 hidden window initially produced a different extent,
 causing the fixed-size resident texture to reject every frame. Setting metrics before initial
@@ -149,16 +149,15 @@ CORS census and six setup-helper tests. The cross-site protection remained enabl
 ## Optional desktop scene mirror (2026-11-03)
 
 The native window that `FieldVrWorkspace` uses is the interactive browser companion. A scene
-mirror can use a second window owned by the same `Renderer`, sampling `workspace.stereo.packed`.
-That is the packed eye image supplied to OpenXR; the mirror does not run the scene or particle
+mirror can use a second window owned by the same `Renderer`, sampling `workspace.stereo.layered`.
+That is the two-layer eye image supplied to OpenXR; the mirror does not run the scene or particle
 compute a second time. Keep its window separate from the companion so desktop clicks and typing
 retain their existing browser focus behavior.
 
 Create the preview `Window` before the renderer, set `bestEffortPresentation = true`, and pass it
-in `Renderer(mainWindow, additionalWindows = listOf(previewWindow))`. Attach its fullscreen copy
-module to `renderer.renderTargetFor(1)`. Poll events for all renderer windows. Crop the packed
-texture to one eye for a normal preview or sample both halves for a stereo pair; preserve the
-source aspect ratio when fitting the window.
+in `Renderer(mainWindow, additionalWindows = listOf(previewWindow))`. Use `workspace.stereo.mirrorToScreen(windowIndex = 1)`
+for an aspect-correct left-eye preview, or pass `stereoPair = { true }` for both array layers.
+Poll events for all renderer windows. The mirror samples the layered image directly.
 
 Best-effort windows skip unsignalled reuse fences and use zero-timeout image acquisition. They
 also omit explicit display-completion waits and request a non-vsync presentation mode, including
@@ -193,22 +192,41 @@ The current `dust_five` verification confirms both eye sources after installatio
 actual circle-shaped trails. Separate ring tests exercise interval changes, wraparound, clearing,
 and sampling pause/resume through the real compute shader.
 
-## Multiview direction, investigated 2026-11-03
+## Multiview changeover (2026-11-03)
 
-The local NVIDIA driver reports `multiview = true` and `maxMultiviewViewCount = 32`.
-`MultiviewSideBySideStereoTarget` already renders modules once into a two-layer color/depth RTT
-with view mask 3, then packs its layers for the current OpenXR copy API. `FieldVrWorkspace`
-currently constructs the separate-eye `SideBySideStereoTarget`; the multiview class is not yet
-integrated into this browser workspace and has no remote pose-source hook. No multiview speedup
-was measured in this session, and the running document retains the verified separate-eye path.
+`FieldVrWorkspace` now uses `MultiviewStereoTarget`: one color/depth array image with two layers
+and view mask 3. Browser, particle and trail graphics each own one module/mesh, with
+`gl_ViewIndex` selecting the eye. Call `stereo.configure(this)` inside graphics parameters and
+include `MultiviewStereoTarget.VIEWS_GLSL` after the GLSL version directive. The target supplies
+`stereoViewProjection()`, camera right/up and projection/viewport dimensions through a shared
+224-byte, host-visible per-frame `StereoViews` UBO at set 0, binding 7. Keep that binding reserved.
+Per-draw push constants contain model/material values. Register an already configured module
+with `stereo += "name" to module`; factories use `stereo.registerModule("name") { ... }`.
 
-A useful migration would expose a common stereo-target interface, keep simulation/history/browser
-production once per frame, put both eye matrices and camera axes in a shared UBO, and select them
-with `gl_ViewIndex`. Expensive view-independent trail shaping can move to a compute buffer reused
-by both eyes and adjacent segment endpoints. The desktop mirror can sample an array layer. Extending
-the OpenXR copy path to read array layers directly would remove the intermediate side-by-side
-packing copy; rendering directly into acquired runtime images is a later optimization with extra
-ownership/lifetime constraints. Measure CPU recording, GPU passes and headset latency separately.
+OpenXR copies array layer 0/1 directly to its existing runtime-owned per-eye swapchains. There is
+no side-by-side packing target in this path. The optional desktop mirror samples an array layer
+or displays both layers side by side. Remote Vision pose rendering still uses the separate
+`SideBySideStereoTarget`; this change does not change that transport.
+
+In `dust_five`, physics and history recording remain compute work once per frame. Box 11 prepares
+trail positions/colors once per visible sample, including normalization, circularization and
+StackSL `trailWarp`/`trailColor`; box 12 projects the shared geometry in one multiview draw.
+Its default draw budget traces roughly 2,500 particles independently of simulation count, with
+storage bounded at 10,000 traces × 64 samples × 32 bytes. Increase that allocation explicitly if
+needed. Invalid/unwritten segments stay clipped in both eyes.
+
+The first real GPU run exposed a preexisting RTT depth barrier that transitioned only layer 0.
+It now transitions the depth view's complete layer range. The corrected run has no Vulkan
+validation errors. Actual native-window captures verify distinct red/green eye layers, upright
+mirror sampling, the live browser and particle scene, and a live compute StackSL edit with
+finite geometry and the expected 0.08 position shift / 0.2 red multiplier. The scene has one
+browser, one particle and one trail graphics module sharing the eye UBO. Evidence and source
+snapshots are in the private document's `files/multiview/` folder.
+
+28 focused JVM tests cover copy regions, panel orientation and controller/WiVRn input. The
+orientation fixture was repaired to supply the surface dimensions now required by the panel.
+No comparative benchmarks were run, as requested. The headset was disconnected: live OpenXR
+submission and motion-to-photon latency still need the next connected-headset session.
 
 Specification references:
 

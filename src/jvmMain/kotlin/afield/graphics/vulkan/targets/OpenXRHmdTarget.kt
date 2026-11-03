@@ -163,6 +163,8 @@ class OpenXRHmdTarget(
 
     @Volatile
     private var sideBySideSource: HasImageView? = null
+    @Volatile
+    private var layeredSource: HasImageView? = null
 
     // Scratch arrays to avoid per-frame allocations.
     private var acquiredIndicesScratch: IntArray = IntArray(0)
@@ -567,6 +569,19 @@ class OpenXRHmdTarget(
      */
     fun copySideBySideToEyes(source: HasImageView) {
         sideBySideSource = source
+        layeredSource = null
+    }
+
+    /** Copy array layer zero/one directly into the acquired left/right OpenXR images. */
+    fun copyLayersToEyes(source: HasImageView) {
+        require(source.imageView.imageViewData.layerCount >= 2) { "Stereo source needs two array layers" }
+        layeredSource = source
+        sideBySideSource = null
+    }
+
+    fun clearEyeSource(source: HasImageView) {
+        if (layeredSource === source) layeredSource = null
+        if (sideBySideSource === source) sideBySideSource = null
     }
 
     fun disableSideBySideCopy() {
@@ -2310,8 +2325,10 @@ class OpenXRHmdTarget(
             }
         }
 
-        val sbs = sideBySideSource
-        if (sbs == null) {
+        val arraySource = layeredSource
+        val sourceIsLayered = arraySource != null
+        val eyeSource = arraySource ?: sideBySideSource
+        if (eyeSource == null) {
             // Upload dirty mesh buffers once per frame BEFORE beginning dynamic rendering.
             // This keeps VertexBuffer transfers outside the render pass instance.
             modules.forEach { (_, mp) ->
@@ -2322,8 +2339,8 @@ class OpenXRHmdTarget(
         }
 
         MemoryStack.stackPush().use { stack ->
-            if (sbs != null) {
-                // Copy side-by-side source into both eyes.
+            if (eyeSource != null) {
+                // Copy the two source views into runtime-owned eye swapchains.
                 check(swapchains.size >= 2) { "Need at least two swapchains for stereo" }
 
                 val left = swapchains[0]
@@ -2334,15 +2351,15 @@ class OpenXRHmdTarget(
                     "Expected stereo eyes to share the same size; got L=${left.width}x${left.height}, R=${right.width}x${right.height}"
                 }
 
-                val srcView = sbs.imageView
+                val srcView = eyeSource.imageView
                 val srcImage = srcView.image
                 val srcUnderlying = srcView.underlyingImage
 
                 srcUnderlying?.let { img ->
                     val w = img.imageData.width
                     val h = img.imageData.height
-                    require(w >= eyeW * 2 && h >= eyeH) {
-                        "Side-by-side source too small: got ${w}x${h}, need at least ${eyeW * 2}x${eyeH}"
+                    require(w >= eyeW * (if (sourceIsLayered) 1 else 2) && h >= eyeH) {
+                        "Stereo source too small: got ${w}x${h}, need at least ${eyeW * (if (sourceIsLayered) 1 else 2)}x${eyeH}"
                     }
                 }
 
@@ -2351,7 +2368,7 @@ class OpenXRHmdTarget(
                     .baseMipLevel(0)
                     .levelCount(1)
                     .baseArrayLayer(0)
-                    .layerCount(1)
+                    .layerCount(if (sourceIsLayered) 2 else 1)
 
                 // The source may be a sampled RTT (SHADER_READ_ONLY_OPTIMAL) or a storage/render
                 // image (commonly GENERAL). Preserve the producer's tracked layout rather than
@@ -2428,18 +2445,19 @@ class OpenXRHmdTarget(
                         dstRange
                     )
 
+                    val sourceEye = StereoEyeCopy.source(eye, eyeW, sourceIsLayered)
                     val region = VkImageCopy.calloc(1, stack)
                     region[0].srcSubresource()
                         .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
                         .mipLevel(0)
-                        .baseArrayLayer(0)
+                        .baseArrayLayer(sourceEye.layer)
                         .layerCount(1)
                     region[0].dstSubresource()
                         .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
                         .mipLevel(0)
                         .baseArrayLayer(0)
                         .layerCount(1)
-                    region[0].srcOffset().set(eye * eyeW, 0, 0)
+                    region[0].srcOffset().set(sourceEye.x, 0, 0)
                     region[0].dstOffset().set(0, 0, 0)
                     region[0].extent().set(eyeW, eyeH, 1)
 

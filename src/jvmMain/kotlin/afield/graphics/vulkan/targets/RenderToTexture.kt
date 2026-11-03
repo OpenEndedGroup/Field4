@@ -1488,7 +1488,7 @@ open class RenderToTexture(
                     .baseMipLevel(0)
                     .levelCount(1)
                     .baseArrayLayer(0)
-                    .layerCount(1)
+                    .layerCount(depthImageView!!.imageViewData.layerCount)
 
                 val (srcStage, srcAccess) = when (depthLayout) {
                     VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL ->

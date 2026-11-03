@@ -186,3 +186,13 @@ val vr = FieldVrWorkspace(
 // Construct after the initial renderer frame, then run the renderer normally.
 // Close vr when its owning box stops.
 ```
+
+## Multiview scene rendering
+
+This path requires Vulkan multiview support; the current functional check used Linux/NVIDIA.
+The workspace uses one multiview scene pass for both eye layers. Browser upload/input runs once
+per frame, and graphics modules share eye matrices through a uniform buffer. OpenXR copies the
+two layers directly to its eye swapchains. `workspace.stereo.mirrorToScreen(windowIndex = 1)`
+adds an aspect-correct left-eye preview to an existing second renderer window; pass
+`stereoPair = { true }` to show both eyes. Controller, grip-resize and keyboard/mouse focus
+behavior use the same input path.

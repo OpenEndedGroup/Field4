@@ -10,10 +10,15 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class PuppetBrowserPanelOrientationTest {
-    // Geometry must not call a browser or require GPU/native resources.
+    // Geometry needs surface dimensions, but no browser process or GPU/native resources.
     private fun panel(): PuppetBrowserPanel {
         val browser = Proxy.newProxyInstance(PuppetBrowser::class.java.classLoader,
-            arrayOf(PuppetBrowser::class.java)) { _, method, _ -> error("Unexpected browser call: ${method.name}") } as PuppetBrowser
+            arrayOf(PuppetBrowser::class.java)) { _, method, _ ->
+                when (method.name) {
+                    "getSpec" -> ExternalBrowserSurfaceSpec(1920, 1200)
+                    else -> error("Unexpected browser call: ${method.name}")
+                }
+            } as PuppetBrowser
         return PuppetBrowserPanel(browser, 0.8f, 0.45f).also {
             PuppetBrowserVrPanel.placeInitialPanel(it, Vector3f(), 1.7f)
         }

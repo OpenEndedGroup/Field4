@@ -242,7 +242,9 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
             supportsExtendedDynamicState = hasExtDynamicState
             supportsExtendedDynamicState3 = hasExtDynamicState3 && eds3Supported.extendedDynamicState3DepthClampEnable()
             val eds3PolygonMode = eds3Supported.extendedDynamicState3PolygonMode()
-            supportsMultiview = hasExt(KHRMultiview.VK_KHR_MULTIVIEW_EXTENSION_NAME)
+            val multiviewSupported = VkPhysicalDeviceMultiviewFeatures.calloc(stack).`sType$Default`()
+            probeFeatures(stack, multiviewSupported.address())
+            supportsMultiview = multiviewSupported.multiview()
             raySupport = RayDeviceSupport.probe(physicalDevice.vkPhysicalDevice, supportedExtensions)
             supportsAccelerationStructures = Options.enableRayTracing && raySupport.accelerationUsable
             enableRayTracing = Options.enableRayTracing && raySupport.pipelineUsable
