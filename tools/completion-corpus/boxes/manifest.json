@@ -106,6 +106,8 @@
   {"doc": "box_layout_demo", "box": "bl_model", "codeSha256": "c5f573ea61765c6c", "codeLines": 1, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "box_layout_demo", "box": "bl_plot", "codeSha256": "b557f1ffb90e1b9f", "codeLines": 1, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "box_layout_demo", "box": "bl_report", "codeSha256": "bfdb1309e10e75ff", "codeLines": 1, "receivers": ["afield.document.graph.Box"], "preamble": ""},
+  {"doc": "braitenberg_brain_search", "box": "brain_search", "codeSha256": "b78b10974352cb8c", "codeLines": 27, "receivers": ["afield.document.graph.Box"], "preamble": ""},
+  {"doc": "braitenberg_brain_search", "box": "brain_sizes", "codeSha256": "9a9e5988d5039f97", "codeLines": 13, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "braitenberg_where_next", "box": "combined", "codeSha256": "eedcad53000f9577", "codeLines": 35, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "braitenberg_where_next", "box": "evolved_wiring", "codeSha256": "6c86c60d3cc0448d", "codeLines": 23, "receivers": ["afield.document.graph.Box"], "preamble": ""},
   {"doc": "braitenberg_where_next", "box": "moving_lights", "codeSha256": "0010022416228958", "codeLines": 31, "receivers": ["afield.document.graph.Box"], "preamble": ""},

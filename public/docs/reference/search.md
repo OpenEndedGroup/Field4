@@ -976,7 +976,7 @@ the property away. It says nothing about thread safety, and it holds only if the
 
 `src/jvmMain/kotlin/afield/study/search/PopulationSearch.kt` — [read the source](source/jvmMain/afield/study/search/PopulationSearch/)
 
-**Used in:** [Spatial artificial life](../alife_examples.md)
+**Used in:** [Spatial artificial life](../alife_examples.md), [Braitenberg vehicles with memory](../braitenberg_vehicles.md)
 
 ### Top-level functions { #populationsearch-kt-functions }
 
