@@ -1945,12 +1945,12 @@
     },
     "assets/agent_transcripts/life3d_manifold_path_trace/metadata.edn": {
       "captureDigest": "4d5add3a103558e3a45b0b09c14392b55f14042e4118c9d4d341d9a926c175b0",
-      "capturedAt": "2026-11-01T11:24:47.183Z",
+      "capturedAt": "2026-11-03T00:00:46.006Z",
       "channels": 1,
       "file": "assets/web_publications/life3d_manifold_path_trace/document/metadata.edn",
       "files": {
         "assets/web_publications/life3d_manifold_path_trace/document/metadata.edn": "32b4db9827c29a0bdab852b7e5ae6e392d6d0e526610c9f5eceac3da84fad7fa",
-        "assets/web_publications/life3d_manifold_path_trace/document/outputs.json": "0e534f561ef3173c9cb08b0b74156b60814723983f340d002ea44dd820af660f",
+        "assets/web_publications/life3d_manifold_path_trace/document/outputs.json": "986ce328ccf543ebc11cf7099ce17b39ca3e5c709b5218bd7a689d6b5d7a80fc",
         "assets/web_publications/life3d_manifold_path_trace/outputs/0.html": "f7ac7d827e4a15c0d119fec74238307f5fb4cae6e9b2617104956d8b34ee5183"
       },
       "kinds": [
@@ -1964,7 +1964,7 @@
         "public/docs/assets/agent_transcripts/life3d_manifold_path_trace/life3d_manifold_trace_code_.kt": "9465c04731ed5c6e2d0c8fd57b33dcae44347df2d9ea2e0ef05f7116cca79479",
         "public/docs/assets/agent_transcripts/life3d_manifold_path_trace/metadata.edn": "249ef9e8818a149074ed18fb4f4a5fd00027675a5a51aaff1ff5a17fd3fa8f4d",
         "public/docs/assets/chain_life3d_render/clusters.png": "b5db8bce31f63ded807f4b1f406d53c3bb79d688b624b87c8ffb20270e7f9efe",
-        "public/docs/chain_life3d_render.md": "5179d8bff707411dde5b988825262a1baa1a6caa68c2f0e494a919b0e45b7741"
+        "public/docs/chain_life3d_render.md": "0b240ee4a0f75f952f466fb607c4cdee95e1e69c2ebcfbf72da18d02e2c990cb"
       },
       "supplementalSources": [
         "public/docs/assets/chain_life3d_render/clusters.png",
@@ -2897,12 +2897,12 @@
     },
     "assets/agent_transcripts/pattern_particles/metadata.edn": {
       "captureDigest": "4d5add3a103558e3a45b0b09c14392b55f14042e4118c9d4d341d9a926c175b0",
-      "capturedAt": "2026-10-31T14:03:01.318Z",
+      "capturedAt": "2026-11-03T00:00:49.114Z",
       "channels": 1,
       "file": "assets/web_publications/pattern_particles/document/metadata.edn",
       "files": {
         "assets/web_publications/pattern_particles/document/metadata.edn": "01ee946dc2d274232ff8becefce91151c919a9da130ed389c06113f972b0d482",
-        "assets/web_publications/pattern_particles/document/outputs.json": "ccd282ef06c5fd66a37996c4d10818305f41147188d4fcf7dc538a8005969400",
+        "assets/web_publications/pattern_particles/document/outputs.json": "8e1d4ab348eea561cf0da16de7aeff45daef472154dcb9034d0c88afe49852c2",
         "assets/web_publications/pattern_particles/outputs/0.html": "0aceca55a3720bc7bf61ccfc299323e1dcb930c6ba23f7def44868442007ba22"
       },
       "kinds": [
@@ -2921,7 +2921,7 @@
         "public/docs/assets/agent_transcripts/pattern_particles/pp_draw_vertex_.glsl": "52679ce317cf4a862f056885473ac55b4cbcac8b22beb20c9ea97f7678f42e19",
         "public/docs/assets/agent_transcripts/pattern_particles/pp_renderer_code_.kt": "08fed8b8e5f7e7325ccee01a9323429230d3de8e10c3f08ef0b05ec4e89832cb",
         "public/docs/assets/chain_pattern_particles/rings.png": "95def232186a46685f09a688268509f7b2179315901be625d2f748b3484538aa",
-        "public/docs/chain_pattern_particles.md": "97724b4b5711e3af5db4850baacb570b91dbeaf32d33f888596d064a2438cce4"
+        "public/docs/chain_pattern_particles.md": "21677efa6c20808d912954edec06cefebad235924562c4acff31f15e13dfa253"
       },
       "supplementalSources": [
         "public/docs/assets/chain_pattern_particles/rings.png",
@@ -2975,12 +2975,12 @@
     },
     "assets/agent_transcripts/petri_sparks/metadata.edn": {
       "captureDigest": "4d5add3a103558e3a45b0b09c14392b55f14042e4118c9d4d341d9a926c175b0",
-      "capturedAt": "2026-10-31T14:03:07.521Z",
+      "capturedAt": "2026-11-03T00:00:51.928Z",
       "channels": 1,
       "file": "assets/web_publications/petri_sparks/document/metadata.edn",
       "files": {
         "assets/web_publications/petri_sparks/document/metadata.edn": "d2ca786f37ed060c83c086b90a76da959a99920ec2b53fea9b5a84117ffdabae",
-        "assets/web_publications/petri_sparks/document/outputs.json": "1b4ffa09d0878f3c16fd2fa8ddf06f1cb26b50322b4e62b8cc4d31da6c8d0dbb",
+        "assets/web_publications/petri_sparks/document/outputs.json": "9e2a1a2955e1869281f95c35058e009b73a4962e6a52e18cf63e61a442ad6d75",
         "assets/web_publications/petri_sparks/outputs/0.html": "9358a98bf0d8f26612cd9ebd06261eb1473fb2ccff968638746be980f7d419cc"
       },
       "kinds": [
@@ -2997,7 +2997,7 @@
         "public/docs/assets/agent_transcripts/petri_sparks/ps_sparks_fragment_.glsl": "32533ff454fe2a8e91c1c79fafaf0425966187df654994df6c08e0618b7299ca",
         "public/docs/assets/agent_transcripts/petri_sparks/ps_sparks_vertex_.glsl": "9426d325c7c81a66df1a0704fab09e68b61e222d49f81b33bba4ba5b21dbbd37",
         "public/docs/assets/chain_petri_sparks/sparks.png": "8c35eb8b4137aea9618b4838bd381771d62d4a4f72b7fee8beb7691b48de9333",
-        "public/docs/chain_petri_sparks.md": "99877ddd9335d04f11adb21b4dd611ec88971320d6ee1e6fb18fafe2466a5ae8"
+        "public/docs/chain_petri_sparks.md": "1d02b0a2c43c9164696e23f33a890718186d78aadd2507e9aad07afe4aa16cbf"
       },
       "supplementalSources": [
         "public/docs/assets/chain_petri_sparks/sparks.png",
@@ -3344,12 +3344,12 @@
     },
     "assets/agent_transcripts/polytope_layer_stack_path_trace/metadata.edn": {
       "captureDigest": "4d5add3a103558e3a45b0b09c14392b55f14042e4118c9d4d341d9a926c175b0",
-      "capturedAt": "2026-11-01T11:24:44.583Z",
+      "capturedAt": "2026-11-03T00:00:42.474Z",
       "channels": 1,
       "file": "assets/web_publications/polytope_layer_stack_path_trace/document/metadata.edn",
       "files": {
         "assets/web_publications/polytope_layer_stack_path_trace/document/metadata.edn": "b0e752e6dc11302dbf2d60716bfa7653c2718bd44335cdff7c2f4c7d8c467f68",
-        "assets/web_publications/polytope_layer_stack_path_trace/document/outputs.json": "8e9bc5bad1dd82372c4e54d07fbd4e20286ed1eee4fcff96995fe1a60aa0ecf1",
+        "assets/web_publications/polytope_layer_stack_path_trace/document/outputs.json": "7ee23bb84dee42342c9867dcc1e6f1266d518090bdcd69f18d01005e3b709f55",
         "assets/web_publications/polytope_layer_stack_path_trace/outputs/0.html": "5f5102de1a62bc5e07eefe255abac404319946f973b816112465e205ee67d635"
       },
       "kinds": [
@@ -3363,7 +3363,7 @@
         "public/docs/assets/agent_transcripts/polytope_layer_stack_path_trace/layer_stack_trace_code_.kt": "52a57064b5a7660a283822ed38d573352f0f15cadd2c39eef13b2eb66494f695",
         "public/docs/assets/agent_transcripts/polytope_layer_stack_path_trace/metadata.edn": "44a9146b346ee0a14ef90af593fc4eccfde0de5e4a0fabc2b5646d1157abdd25",
         "public/docs/assets/chain_ceres_manifold_contours/stack.png": "77d27b3b1740d297289f3c4147ab37b76df1f73f8ad0049d814d9711b186513e",
-        "public/docs/chain_ceres_manifold_contours.md": "be631e6b103096154ca4334088a617396c1a7b4bc85e774021b28dbe64441009"
+        "public/docs/chain_ceres_manifold_contours.md": "eb348ee2b534d2c31d590806e601a026635890b59c089869c2632803a3877487"
       },
       "supplementalSources": [
         "public/docs/assets/chain_ceres_manifold_contours/stack.png",
@@ -3646,12 +3646,12 @@
     },
     "assets/agent_transcripts/skinned_volume_path_trace/metadata.edn": {
       "captureDigest": "4d5add3a103558e3a45b0b09c14392b55f14042e4118c9d4d341d9a926c175b0",
-      "capturedAt": "2026-11-01T11:24:52.062Z",
+      "capturedAt": "2026-11-03T00:00:54.410Z",
       "channels": 1,
       "file": "assets/web_publications/skinned_volume_path_trace/document/metadata.edn",
       "files": {
         "assets/web_publications/skinned_volume_path_trace/document/metadata.edn": "5a87e7e329b7a50e377c18f9f413d6466ceb587e7a3cdf4f6ea9ddd71a3f2a5f",
-        "assets/web_publications/skinned_volume_path_trace/document/outputs.json": "c5fff1c3758bfabdcdfc221ce5d695716a0719bb8890d16210afdf7d3c5e8843",
+        "assets/web_publications/skinned_volume_path_trace/document/outputs.json": "c4568c4e8aac37fa01ee3eef27c576b95ee8574c6a568f953bc1f7337403c4f7",
         "assets/web_publications/skinned_volume_path_trace/outputs/0.html": "8a356d0c59931bbf6b3f78342cb3548aab9e0e971c80405d2ac0915defedb2dc"
       },
       "kinds": [
@@ -3665,7 +3665,7 @@
         "public/docs/assets/agent_transcripts/skinned_volume_path_trace/metadata.edn": "daeed98ad6c8f8a18fed88a42722a11c987728aa0d799c348cd4a2d2b9d68163",
         "public/docs/assets/agent_transcripts/skinned_volume_path_trace/skinned_volume_trace_code_.kt": "b296faf30cc8a2bae0ec97800cd0991b17a179e1b2f7da1a634893970d5b9127",
         "public/docs/assets/chain_skinned_volume/twist.png": "c24f7084ae8892d80d9f94ebdf5d8e9a6ceaad9c29c13ffd1668c12850714c92",
-        "public/docs/chain_skinned_volume.md": "4119246b02921b8c56f8c366abf6fa9f4d581fbfd6d5489b481d6079a368ba75"
+        "public/docs/chain_skinned_volume.md": "ff118c03746f5626187c0cb8d0292c4596fee54c608a721e76f2f89dfcf26474"
       },
       "supplementalSources": [
         "public/docs/assets/chain_skinned_volume/twist.png",
