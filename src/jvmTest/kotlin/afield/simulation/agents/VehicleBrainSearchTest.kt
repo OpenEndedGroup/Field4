@@ -10,8 +10,8 @@ import kotlin.test.assertTrue
  * Pins `compareVehicleSearch` (braitenberg_vehicles.md §10): every driver spends exactly the budget,
  * the comparison is a pure function of its arguments, and the brain genome decodes as laid out.
  *
- * With `-Dafield.vehicleBrainSweep=true` it also runs the page's full sweep and writes the tables to
- * `build/vehicle-brain-sweep.txt`; that is how the page's numbers were measured, and it takes minutes.
+ * With `-Dafield.vehicleBrainSweep=true` (or `=immigrants`, µ=12 λ=24 with a quarter of the children
+ * fresh draws) it also runs the page's sweep and writes the tables to `build/vehicle-brain-sweep-<mode>.txt`; that is how the page's numbers were measured, and it takes minutes.
  */
 class VehicleBrainSearchTest {
     private val small = VehicleBrainTask.forage().let {
@@ -44,13 +44,18 @@ class VehicleBrainSearchTest {
     }
 
     @Test fun fullSweep() {
-        if (System.getProperty("afield.vehicleBrainSweep") != "true") return
+        val mode = System.getProperty("afield.vehicleBrainSweep") ?: return
+        val immigrants = mode == "immigrants"
         val out = StringBuilder()
         for (task in listOf(VehicleBrainTask.forage(), VehicleBrainTask.orbit(), VehicleBrainTask.track())) {
-            for (h in listOf(0, 2, 4, 8, 16)) {
-                val c = compareVehicleSearch(task, h, budget = 300, seeds = (1L..12L).toList())
+            for (h in if (immigrants) listOf(0, 4, 16) else listOf(0, 2, 4, 8, 16)) {
+                val c = if (immigrants) {
+                    compareVehicleSearch(task, h, budget = 300, seeds = (1L..12L).toList(), mu = 12, lambda = 24, immigrantRate = 0.25)
+                } else {
+                    compareVehicleSearch(task, h, budget = 300, seeds = (1L..12L).toList())
+                }
                 out.append(c.table()).append(c.perSeed()).append('\n')
-                File("build/vehicle-brain-sweep.txt").writeText(out.toString())
+                File("build/vehicle-brain-sweep-$mode.txt").writeText(out.toString())
             }
         }
     }
