@@ -1,0 +1,54 @@
+name: braitenberg_brain_search
+description: >
+  Two pure-CPU boxes for public/docs/braitenberg_vehicles.md section 10: VehicleBrainGenome (sensor angle and
+  gain, motor biases, recurrent hidden neurons) searched by random sampling, hill climbing and
+  PopulationSearch.evolve at an equal evaluation budget over several seeds with compareVehicleSearch.
+  The first box is the page's figure (orbit task, two evolver settings, best-so-far plots and trails);
+  the second compares an 8-gene and a 344-gene brain on the moving-lamp task.
+docs:
+  - page: braitenberg_vehicles.md
+    why: "Section 10 of the page."
+operations:
+  - create:
+      box: brain_search
+      name: "10 — evolution vs random sampling, orbit task"
+      frame:
+          x: 60.0
+          y: 60.0
+          w: 420.0
+          h: 100.0
+      properties:
+        code: |
+          val task = VehicleBrainTask.orbit(radius = 20.0)
+          val seeds = [1L, 2L, 3L, 4L, 5L, 6L]
+          val narrow = compareVehicleSearch(task, hidden = 4, budget = 300, seeds = seeds)
+          val wide = compareVehicleSearch(task, hidden = 4, budget = 300, seeds = seeds, mu = 12, lambda = 24, immigrantRate = 0.25)
+          println(narrow.table() + narrow.perSeed())
+          println(wide.table())
+
+          fun trails(name: String, genes: DoubleArray): Pair<String, Img> {
+              val world = task.world(genes, hidden = 4, seed = 7L, vehicles = 12)
+              world.stepTimes(1000)
+              return name to world.trails(600)
+          }
+          showImg(montage([
+              "mu 6, lambda 12" to narrow.plot(),
+              "mu 12, lambda 24, immigrants" to wide.plot(),
+              trails("best random", wide.champion(VehicleSearchDriver.RANDOM)),
+              trails("best evolved", wide.champion(VehicleSearchDriver.EVOLVE)),
+          ], columns = 2, cellSide = 300))
+  - create:
+      box: brain_sizes
+      name: "10 — 8 genes vs 344 genes, moving lamps"
+      frame:
+          x: 520.0
+          y: 60.0
+          w: 420.0
+          h: 100.0
+      properties:
+        code: |
+          val task = VehicleBrainTask.track()
+          for (h in [0, 16]) {
+              val c = compareVehicleSearch(task, hidden = h, budget = 300, seeds = [1L, 2L, 3L, 4L], mu = 12, lambda = 24, immigrantRate = 0.25)
+              println(c.table() + c.perSeed())
+          }
