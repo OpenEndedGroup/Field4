@@ -32,7 +32,7 @@ html.field-transcript-open body { overflow-x:visible !important; }
 
 /* ── palette ─────────────────────────────────────────────────── */
 :root {
-    --mono-bg: #0e0e0e;
+    --mono-bg: #1a1a1a;
     --mono-panel: #050505;
     --mono-text: rgba(255, 255, 255, 0.8);
     --mono-text-faint: rgba(255, 255, 255, 0.4);
@@ -1317,7 +1317,7 @@ button.md-search__icon[aria-label="Clear"] {
     border: 1px solid rgba(255, 255, 255, 0.62);
     background: var(--mono-bg);
     transform: translate(-50%, -50%);
-    box-shadow: 0 0 0 0.2rem #0e0e0e;
+    box-shadow: 0 0 0 0.2rem var(--mono-bg);
 }
 
 .field-reading-rail__dot--title {
@@ -1326,7 +1326,7 @@ button.md-search__icon[aria-label="Clear"] {
     border-radius: 2px;
     border-color: rgba(255, 255, 255, 0.85);
     background-color: white;
-    box-shadow: 0 0 0 0.2rem #0e0e0e;
+    box-shadow: 0 0 0 0.2rem var(--mono-bg);
 }
 
 .field-reading-rail__link {
