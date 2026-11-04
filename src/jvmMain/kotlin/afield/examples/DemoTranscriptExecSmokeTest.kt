@@ -214,6 +214,8 @@ object DemoTranscriptExecSmokeTest {
         "hello_display",
         "hello_display_capture",
         "ai4_iframe_hello",
+        // Registers two box tools and prints where stalls go; no model and no git call on replay.
+        "ai4_cold_reader",
         // Two boxes, no Window: the rates box's variables and the sheet box, whose `sheet { }` seeds
         // its property and displays the editor iframe. Replaying it runs the real seeding path.
         "spreadsheet_tour",

@@ -167,6 +167,16 @@ explains the opt-in and the tools.
 
 [Open →](offline.html?file=assets/agent_transcripts/ai4_iframe_hello/metadata.edn)
 
+### ai4_cold_reader
+
+One box gives AI4 two tools for reading this site as a newcomer: `cold_read_page` shows a page as it
+stood at a git revision, and `report_stall` records each place the reader gets stuck. Run the box,
+then ask its AI Chat panel to cold-read a page. [Scoring AI4 as a reader of these
+docs](ai4_experiments.md#scoring-ai4-as-a-reader-of-these-docs) compares its stalls with an earlier
+review.
+
+[Open →](offline.html?file=assets/agent_transcripts/ai4_cold_reader/metadata.edn)
+
 ### spreadsheet_tour
 
 A bill kept as a spreadsheet in one box, priced by `tax` and `discount` variables in a second. Run
