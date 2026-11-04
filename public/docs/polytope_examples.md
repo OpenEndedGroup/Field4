@@ -1645,7 +1645,7 @@ Polytope values have registered printers, so a topology, a transform result or a
 shows a readable summary when you `viz` it or leave it as a box's last expression. This example
 shows a selective kis and its triangulation:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/value_printers.png" wait="2.5" capture="box" open-outputs="true" w="1100" h="720" padding="14" scale="3"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/value_printers.png" wait="2.5" capture="box" open-outputs="true" w="1100" h="720" padding="14"}
 :::static
 var seed = cube()
 seed.topology.elements(2).take(2).forEach { seed = seed.withAttribute(it.id, "lift", 0.4) }

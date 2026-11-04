@@ -4,12 +4,14 @@
   const ENHANCED_ATTR = "data-field-docs-image-enhanced";
   const SKIP_ATTR = "data-no-lightbox";
   const NATIVE_SIZED_CLASS = "field-docs-image-native-sized";
-  // An image shows at this many CSS pixels per image pixel. Captures are taken at two device pixels
-  // per CSS pixel, so a capture shows at 1.5 times its size in Field, where its type reads beside
-  // the body text. It is a property of the image, not of the reader's screen: dividing by the
-  // reader's devicePixelRatio showed small captures at their Field size on a Retina screen and at
-  // twice that everywhere else.
-  const DISPLAY_SCALE = 0.75;
+  // A capture shows at 1.5 times its size in Field, where its type reads beside the body text. Its
+  // size in Field is its pixel width over the scale it was taken at: `data-capture-scale` when the
+  // docs runner wrote one (box stills, taken at 3, which this draws one image pixel per device pixel
+  // on a Retina screen), otherwise the capture page's 2. It is a property of the image, not of the
+  // reader's screen: dividing by the reader's devicePixelRatio showed small captures at their Field
+  // size on a Retina screen and at twice that everywhere else.
+  const FIELD_SIZE_MULTIPLE = 1.5;
+  const DEFAULT_CAPTURE_SCALE = 2;
   let lightbox = null;
   let overlay = null;
   let image = null;
@@ -131,7 +133,8 @@
     if (node.hasAttribute("width")) return;
     if (!node.complete || !node.naturalWidth) return;
 
-    const preferredWidth = Math.round(node.naturalWidth * DISPLAY_SCALE);
+    const captureScale = parseFloat(node.dataset.captureScale) || DEFAULT_CAPTURE_SCALE;
+    const preferredWidth = Math.round(node.naturalWidth * FIELD_SIZE_MULTIPLE / captureScale);
 
     node.classList.add(NATIVE_SIZED_CLASS);
     node.style.setProperty("--field-docs-native-max-width", preferredWidth + "px");

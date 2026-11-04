@@ -864,9 +864,8 @@ class RunnerOptions:
     # (the editor pane is 40vw), so a smaller window is how a figure shows box and editor together
     # at a legible scale.
     viewport: tuple[int, int] | None = None
-    # `scale="3"` (capture="box" only): device pixels per CSS pixel for this still; the capture
-    # page's own is 2. The site shows an image at three quarters of its pixel width, so a narrow
-    # output panel stretched to the column needs more pixels than that to stay sharp.
+    # `scale="4"` (capture="box" only): device pixels per CSS pixel for this still, instead of
+    # BOX_STILL_SCALE. The still records it and the site sizes by it, so this only adds pixels.
     scale: float | None = None
     # `fresh-document=true`: run in a new, uniquely named document (the `document=` name, or
     # "docs-fresh", plus a random suffix) instead of a scratch session. Scratch sessions never save,
@@ -2952,11 +2951,24 @@ class RunnerState:
         cache_key = str(screenshot_path)
         cached_digest = self.cache.get(cache_key)
         cached_metadata = self.cache_metadata.get(cache_key)
+        # A box still's PNG records the scale it was taken at, so one at another scale than its fence
+        # asks for is out of date whatever the cache says. A fresh checkout has no cache entries and
+        # adopts every committed asset, so this is the only thing that brings an old still up to a
+        # new default.
+        wanted_scale = box_still_scale(options)
+        if wanted_scale is not None and is_png_file(screenshot_path):
+            found_scale = png_pixel_scale(screenshot_path)
+            if found_scale != wanted_scale:
+                LOG.info(
+                    "Field docs runner recapturing %s: taken at scale %g, fence asks for %g",
+                    screenshot_path, found_scale, wanted_scale,
+                )
+                cache_allowed = False
         if cache_allowed and not options.force and screenshot_path.exists() and cached_digest == digest:
             LOG.info("Field docs runner cache hit: %s", screenshot_path)
             self.cache_hits += 1
             return
-        if reuse_existing_asset_for_incremental(
+        if cache_allowed and reuse_existing_asset_for_incremental(
             runner_mode=self.runner_mode,
             output_path=screenshot_path,
             options=options,
@@ -3134,6 +3146,9 @@ class RunnerState:
             )
         clip_screenshot(screenshot_path=screenshot_path, options=options, backdoor_stdout=completed.stdout)
         trim_screenshot_border(screenshot_path=screenshot_path, options=options)
+        # A child that wrote nothing fails when the capture transaction publishes, as before.
+        if wanted_scale is not None and screenshot_path.is_file():
+            write_png_pixel_scale(screenshot_path, wanted_scale)
         visual_gap = validate_screenshot_pixels(screenshot_path=screenshot_path, options=options)
         if visual_gap is not None:
             raise RuntimeError(
@@ -3407,7 +3422,12 @@ def process_markdown(*, markdown: str, page_path: Path, state: RunnerState, file
         if fence_name in RUNNER_FENCES and options.embed:
             if options.screenshot and screenshot_available:
                 out.append("\n")
-                out.append(f"![{options.alt or options.box_name}]({markdown_path_for(page_path, options.screenshot)})\n")
+                image_markdown = f"![{options.alt or options.box_name}]({markdown_path_for(page_path, options.screenshot)})"
+                taken_at = png_pixel_scale(resolve_output_path(page_path, options.screenshot))
+                if taken_at != CAPTURE_PAGE_SCALE:
+                    # image-lightbox.js sizes an image by the scale it was taken at.
+                    image_markdown += f'{{ data-capture-scale="{taken_at:g}" }}'
+                out.append(image_markdown + "\n")
             if options.video and video_available:
                 # Emit a docs-root-relative path (e.g. "assets/foo.mp4"), the same
                 # convention used for the screenshot embed above. zensical rewrites
@@ -4235,8 +4255,8 @@ def options_digest_payload(options: RunnerOptions) -> dict[str, Any]:
         payload["hideToasts"] = True
     if options.clip_at_end:
         payload["clipAtEnd"] = True
-    if options.scale is not None:
-        payload["scale"] = options.scale
+    if box_still_scale(options) is not None:
+        payload["scale"] = box_still_scale(options)
     if options.fresh_document:
         payload["freshDocument"] = True
     if options.wait_output:
@@ -4894,6 +4914,85 @@ def parse_clip(value: str | None) -> tuple[float, float, float, float] | None:
     if w <= 0 or h <= 0:
         raise ValueError(f"clip width and height must be positive (got {value!r})")
     return (x, y, w, h)
+
+
+# Device pixels per CSS pixel on the capture page, and what a PNG without a recorded scale is taken
+# to be: every capture made before stills recorded theirs, and every capture that is not a box still.
+CAPTURE_PAGE_SCALE = 2.0
+# Box stills are taken at 3, so that a page showing a capture at 1.5 times its size in Field (see
+# image-lightbox.js) draws one image pixel per device pixel on a Retina screen.
+BOX_STILL_SCALE = 3.0
+_PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+_METRES_PER_INCH = 0.0254
+
+
+def box_still_scale(options: RunnerOptions) -> float | None:
+    """The scale a fence's box still is taken at, or None when the fence makes no box still.
+
+    A `source-image=` fence replaces the screenshot with a renderer's own image, whose pixels the
+    capture page's scale never touches, so it has none.
+    """
+    if effective_capture_mode(options) != "box" or options.video or not options.screenshot:
+        return None
+    if options.source_image:
+        return None
+    return options.scale if options.scale is not None else BOX_STILL_SCALE
+
+
+def is_png_file(path: Path) -> bool:
+    try:
+        with path.open("rb") as handle:
+            return handle.read(8) == _PNG_SIGNATURE
+    except OSError:
+        return False
+
+
+def png_pixel_scale(path: Path) -> float:
+    """Device pixels per CSS pixel recorded in a PNG's pHYs chunk (72 dpi is 1), else CAPTURE_PAGE_SCALE."""
+    try:
+        with path.open("rb") as handle:
+            if handle.read(8) != _PNG_SIGNATURE:
+                return CAPTURE_PAGE_SCALE
+            while True:
+                header = handle.read(8)
+                if len(header) < 8:
+                    return CAPTURE_PAGE_SCALE
+                length = int.from_bytes(header[:4], "big")
+                kind = header[4:]
+                if kind == b"pHYs":
+                    body = handle.read(length)
+                    per_metre, unit = int.from_bytes(body[:4], "big"), body[8]
+                    if unit != 1 or per_metre <= 0:
+                        return CAPTURE_PAGE_SCALE
+                    return round(per_metre * _METRES_PER_INCH / 72.0, 2)
+                if kind == b"IDAT":
+                    return CAPTURE_PAGE_SCALE
+                handle.seek(length + 4, 1)
+    except OSError:
+        return CAPTURE_PAGE_SCALE
+
+
+def write_png_pixel_scale(path: Path, scale: float) -> None:
+    """Record `scale` in a PNG as its pHYs density (72 dpi per device pixel per CSS pixel)."""
+    data = path.read_bytes()
+    if not data.startswith(_PNG_SIGNATURE):
+        raise RuntimeError(f"{path} is not a PNG; cannot record its capture scale")
+    per_metre = round(scale * 72.0 / _METRES_PER_INCH)
+    body = per_metre.to_bytes(4, "big") * 2 + b"\x01"
+    chunk = len(body).to_bytes(4, "big") + b"pHYs" + body + zlib.crc32(b"pHYs" + body).to_bytes(4, "big")
+    out = bytearray(data[:8])
+    position, inserted = 8, False
+    while position < len(data):
+        length = int.from_bytes(data[position:position + 4], "big")
+        kind = data[position + 4:position + 8]
+        end = position + 12 + length
+        if kind == b"IDAT" and not inserted:
+            out += chunk
+            inserted = True
+        if kind != b"pHYs":
+            out += data[position:end]
+        position = end
+    path.write_bytes(bytes(out))
 
 
 def parse_capture_scale(value: str | None) -> float | None:
@@ -5869,8 +5968,8 @@ def build_backdoor_command(
             if options.open_details:
                 parts.append("--open-details")
             parts.extend(["--expect-outputs", options.expect_outputs])
-            if options.scale is not None:
-                parts.extend(["--scale", str(options.scale)])
+            if box_still_scale(options) is not None:
+                parts.extend(["--scale", str(box_still_scale(options))])
             backdoor_commands.append(shlex.join(parts))
         elif capture_mode == "editor":
             target_uid = default_target_uid
