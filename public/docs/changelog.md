@@ -744,7 +744,7 @@ tabs are capitalised and tinted.
 *10 October 2026*
 
 - **Box imports**: Format Kotlin now drops redundant and unused imports, and the editor folds the
-  import block.
+  imports away.
 - **Drawing with Gaussian processes** gained a closed loop with draggable pins and conditioning
   sliders ([gp_drawing](agent_transcripts.md#gp_drawing)).
 - The [StackSL examples](stacksl_examples.md), [RectSL cheatsheet](rectsl_cheatsheet.md) and
@@ -862,7 +862,7 @@ tabs are capitalised and tinted.
   apply lenses to it, let AI4 write lenses, and browse them in the lens viewer.
 - **Meshes inside `moduleHere`**: `moduleHere { +Mesh("name") { ... } }` declares meshes in the
   module block.
-- `prop<>` keeps the box's imports, and `onDrag` can tell mouse buttons apart and report UVs.
+- `prop<>` keeps the box's imports, and drag handlers can tell mouse buttons apart and report UVs.
 
 <!-- changelog: 3369bdca7a..f489078115 -->
 ### Gesture takes become keyframes, and a faster Three.js viewer
