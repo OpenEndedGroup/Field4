@@ -6367,7 +6367,7 @@ share.
 
 `src/jvmMain/kotlin/afield/runtime/kotlin/KotlinScriptEngine.kt` — [read the source](source/jvmMain/afield/runtime/KotlinScriptEngine/)
 
-**Used in:** [Running code in a box](../running_code.md), [Agent transcript gallery](../agent_transcripts.md)
+**Used in:** [What's new](../changelog.md), [Running code in a box](../running_code.md), [Agent transcript gallery](../agent_transcripts.md)
 
 ### Top-level functions { #kotlinscriptengine-kt-functions }
 
