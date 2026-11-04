@@ -4927,8 +4927,14 @@ _METRES_PER_INCH = 0.0254
 
 
 def box_still_scale(options: RunnerOptions) -> float | None:
-    """The scale a fence's box still is taken at, or None when the fence makes no box still."""
+    """The scale a fence's box still is taken at, or None when the fence makes no box still.
+
+    A `source-image=` fence replaces the screenshot with a renderer's own image, whose pixels the
+    capture page's scale never touches, so it has none.
+    """
     if effective_capture_mode(options) != "box" or options.video or not options.screenshot:
+        return None
+    if options.source_image:
         return None
     return options.scale if options.scale is not None else BOX_STILL_SCALE
 

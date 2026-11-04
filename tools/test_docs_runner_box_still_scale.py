@@ -68,7 +68,8 @@ class BoxStillScaleTests(unittest.TestCase):
         self.assertEqual(docs_hooks.box_still_scale(options), 3.0)
 
     def test_other_captures_keep_the_capture_page_scale_and_their_digest(self):
-        for attrs in ('capture="ui" screenshot="assets/x.png"', 'capture="box" video="assets/x.mp4"'):
+        for attrs in ('capture="ui" screenshot="assets/x.png"', 'capture="box" video="assets/x.mp4"',
+                      'capture="box" screenshot="assets/x.png" source-image="/tmp/render.png"'):
             options = _options(attrs)
             self.assertIsNone(docs_hooks.box_still_scale(options), attrs)
             self.assertNotIn("scale", docs_hooks.options_digest_payload(options), attrs)
