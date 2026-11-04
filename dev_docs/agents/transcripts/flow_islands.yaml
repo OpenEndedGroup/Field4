@@ -1,0 +1,133 @@
+name: flow_islands
+description: |
+  Three boxes, and a flow-matching generator is graded by a Datalog program, neither knowing
+  about the other.
+
+    - `fi_cloud` samples two interlocking half-moons, 200 points, trains `flowMatch` on them and
+      draws 200 new points from the field. It publishes both clouds as inherited properties.
+    - `fi_islands` hands both clouds to a `Datalog` program as `pt` and `tgt` facts. The rules
+      count how many target points lie near each generated one, call a point with none a stray,
+      join points closer than 18 units and label each connected piece by its smallest id. It
+      runs the same rules twice, once over every generated point and once with the strays left
+      out, and publishes the second model.
+    - `fi_draw` reads the model back and draws the generated cloud coloured by island, the strays
+      in red, over the target in grey.
+
+  Pure CPU, no Window and no Renderer. Replayed end to end in CI.
+docs:
+  - page: chain_flow_islands.md
+    why: "Walks through this generator-to-Datalog chain."
+operations:
+  - create:
+      box: fi_cloud
+      name: "two moons, and a generator"
+      frame: { x: 40.0, y: 40.0, w: 260.0, h: 50.0 }
+      properties:
+        code: |
+          prop<List<Vec3>>(moonTarget)
+          prop<List<Vec3>>(moonSamples)
+
+          // Two half-moons that interlock without touching: a target in two separate pieces.
+          val rnd = java.util.Random(3)
+          fun moon(i: Int, upper: Boolean): Vec3 {
+              val a = PI * i / 99.0
+              val jitter = vec(rnd.nextDouble() - 0.5, rnd.nextDouble() - 0.5, 0.0) * 14.0
+              return if (upper) vec(100 * cos(a), 100 * sin(a), 0.0) + jitter
+              else vec(100 - 100 * cos(a), 40 - 100 * sin(a), 0.0) + jitter
+          }
+          moonTarget = [true, false].flatMap { upper -> (0 until 100).map { moon(it, upper) } }
+
+          // From a Gaussian to the moons, then 200 points that were never in the training data.
+          val field = flowMatch(moonTarget, options = FlowMatchOptions(steps = 6000, seed = 11))
+          moonSamples = field.sample(200, seed = 12)
+          println("${moonSamples.size} generated, chamfer to target ${chamferDistance(moonSamples, moonTarget).f2}")
+  - create:
+      box: fi_islands
+      name: "islands, by Datalog"
+      frame: { x: 40.0, y: 120.0, w: 260.0, h: 50.0 }
+      properties:
+        code: |
+          import afield.data.query.datalog.Datalog
+
+          prop<Datalog>(islandModel)
+
+          val rules =
+              """
+              #datalog
+              % how many target points lie within 12 units of each generated one
+              support(A, N) :- pt(A, X, Y), N = count : { tgt(_, U, V), hypot(X - U, Y - V) < 12 }.
+              stray(A) :- support(A, 0).
+
+              % join kept points closer than 18, and label each piece by its smallest id
+              near(A, B) :- kept(A), kept(B), pt(A, X, Y), pt(B, U, V), A != B, hypot(X - U, Y - V) < 18.
+              reach(A, A) :- kept(A).
+              reach(A, C) :- reach(A, B), near(B, C).
+              island(A, L) :- kept(A), L = min B : { reach(A, B) }.
+              size(L, N) :- island(_, L), N = count : { island(B, L) }.
+          """
+
+          fun model(keep: String): Datalog {
+              val d = Datalog()
+              d.facts("pt", moonSamples.mapIndexed { i, p -> [i, p.x.toDouble(), p.y.toDouble()] })
+              d.facts("tgt", moonTarget.mapIndexed { i, p -> [i, p.x.toDouble(), p.y.toDouble()] })
+              d.add(rules)
+              d.add(keep)
+              return d
+          }
+          fun sizes(d: Datalog) = d.query("size(L, N)").rows.map { it[1] as Long }.sortedDescending()
+
+          val everything = model("kept(A) :- pt(A, _, _).")
+          islandModel = model("kept(A) :- pt(A, _, _), !stray(A).")
+
+          val strays = islandModel.query("stray(A)").size
+          markdown(
+              "islands",
+              """
+              ~~~
+          strays (no target point within 12)   $strays of ${moonSamples.size}
+          every point                          ${sizes(everything).size} islands, sizes ${sizes(everything)}
+          strays left out                      ${sizes(islandModel).size} islands, sizes ${sizes(islandModel)}
+              ~~~
+          """,
+          )
+          println("islands counted: $strays strays")
+  - create:
+      box: fi_draw
+      name: "drawn by island"
+      frame: { x: 40.0, y: 420.0, w: 260.0, h: 50.0 }
+      properties:
+        code: |
+          fun dots(points: List<Vec3>, size: Double, c: Vec4) = fline {
+              points.forEach { moveTo(it) }
+              pointed = true
+              pointSize = size
+              color = c
+          }
+
+          val island = islandModel.query("island(A, L)").rows.associate { (it[0] as Long).toInt() to it[1] as Long }
+          val labels = island.values.toSortedSet().toList()
+          val palette = [vec(0.44, 0.83, 0.78, 1.0), vec(0.98, 0.80, 0.35, 1.0), vec(0.6, 0.5, 0.95, 1.0)]
+          val strays = islandModel.query("stray(A)").column("A").map { moonSamples[(it as Long).toInt()] }
+
+          val byIsland = labels.mapIndexed { k, label ->
+              dots(moonSamples.filterIndexed { i, _ -> island[i] == label }, 1.8, palette[k % palette.size])
+          }
+          lines(
+              buildList {
+                  add(dots(moonTarget, 3.2, vec(0.45, 0.45, 0.52, 0.9)))
+                  addAll(byIsland)
+                  add(dots(strays, 2.6, vec(0.95, 0.30, 0.30, 1.0)))
+              },
+              w = 900.0,
+              h = 440.0,
+              fitToSize = true,
+          )
+          println("drawn: ${labels.size} islands and ${strays.size} strays")
+  - connect: { parent: fi_cloud, child: fi_islands }
+  - connect: { parent: fi_islands, child: fi_draw }
+  - execute: { box: fi_cloud, property: code }
+  - await: { wait: pending }
+  - execute: { box: fi_islands, property: code }
+  - await: { wait: pending }
+  - execute: { box: fi_draw, property: code }
+  - await: { wait: pending }
