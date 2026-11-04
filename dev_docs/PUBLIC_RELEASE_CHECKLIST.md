@@ -5,10 +5,15 @@ open until a named release candidate records evidence for them.
 
 ## Repository Hygiene
 
-- Decide whether the remaining untracked source-like paths should be committed,
-  moved to external packages, or removed from the release workspace:
-  - `src/commonMain/resources/extensions/`
-  - `templates/note/`
+- `src/commonMain/resources/extensions/` is retained in the repository: its tracked
+  `remote_ar` files provide the RemoteJS/WebXR browser head used by `remoteAr()`.
+  Its vendored A-Frame and Tone.js packages include their upstream licenses and
+  are maintained by `tools/vendor_remote_ar_runtime.py`. A local ignored `.vscode/`
+  directory is editor configuration and is not part of the release.
+  On 2026-11-04, the `remote-ar-head` and `remote-ar-embed` browser regressions
+  passed against checkout `df169880f`; this did not test a physical XR device.
+- Decide whether `templates/note/`, if present in the release workspace, should be
+  committed, moved to an external package, or removed.
 - Keep generated docs output (`public/field4/`) and local Field browser state
   out of commits.
 
