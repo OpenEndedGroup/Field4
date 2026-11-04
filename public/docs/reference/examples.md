@@ -4,7 +4,7 @@
 
 Runnable examples, galleries and verification programs. Read these for usage patterns; their entry points are not a promise of a reusable box API.
 
-219 source file(s), 695 public symbol(s), 308 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+220 source file(s), 697 public symbol(s), 309 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -1900,6 +1900,20 @@ That a [`ParticleSketch`](simulation.md#particlesketch-kt-particlesketch) step o
 | Declaration | Summary |
 | --- | --- |
 | <a id="particlesketchsmoke-kt--particlesketchsmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/ParticleSketchSmoke/#L145) |  |
+
+## PingPongRestoreSmoke.kt { #pingpongrestoresmoke-kt }
+
+`src/jvmMain/kotlin/afield/examples/four/PingPongRestoreSmoke.kt` — [read the source](source/jvmMain/afield/examples/four/PingPongRestoreSmoke/)
+
+### PingPongRestoreSmoke { #pingpongrestoresmoke-kt-pingpongrestoresmoke }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">PingPongRestoreSmoke</span></code>](source/jvmMain/afield/examples/four/PingPongRestoreSmoke/#L41)
+
+Real transfers through every slot of ordinary and cadenced, two-attachment, two-layer rings.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="pingpongrestoresmoke-kt--pingpongrestoresmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/PingPongRestoreSmoke/#L106) |  |
 
 ## PlyLoaderTest.kt { #plyloadertest-kt }
 
