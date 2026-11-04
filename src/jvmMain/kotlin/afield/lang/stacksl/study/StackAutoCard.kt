@@ -110,7 +110,7 @@ object StackAutoCard {
         val registered = mutableListOf<String>()
         // Every bound slot has a section — its picture in the shader is worth having without a number to turn.
         val slots = StackAutoNumbers.slots(box).values.filter { it.source.isNotBlank() }.sortedBy { it.name }.map { it to knobs(it) }
-        if (slots.isEmpty()) return "<div style='font:13px Iosevka,monospace;color:#8a8a90;padding:8px'>No stack.auto slot of this box has a program yet.</div>"
+        if (slots.isEmpty()) return "<div style='font:13px var(--field-font-code, var(--field-font, monospace));font-stretch:inherit;font-feature-settings:inherit;color:#8a8a90;padding:8px'>No stack.auto slot of this box has a program yet.</div>"
         val keysConfig = mutableMapOf<String, Any?>()
         val body = buildString {
             slots.forEach { (slot, knobs) ->
@@ -169,7 +169,7 @@ object StackAutoCard {
         return buildString {
             append("<div id='$id' class='stack-auto-card' onpointerdown='event.stopPropagation()' onmousedown='event.stopPropagation()' onclick='event.stopPropagation()' onwheel='event.stopPropagation()'>")
             append("""<style>
-                #$id{font:13px/1.45 Iosevka,ui-monospace,monospace;color:#ddd;background:#0b0b0d;padding:12px 14px;width:640px;border-radius:6px}
+                #$id{font:13px/1.45 var(--field-font-code, var(--field-font, monospace));font-stretch:inherit;font-feature-settings:inherit;color:#ddd;background:#0b0b0d;padding:12px 14px;width:640px;border-radius:6px}
                 #$id .muted{color:#8a8a90} #$id .warn{color:#e5b35f} #$id .status{margin-top:8px;color:#9c9}
                 #$id h4{font-weight:400;margin:12px 0 6px;color:#aaa;letter-spacing:.06em;text-transform:uppercase;font-size:11px}
                 #$id .slot+.slot{margin-top:14px;border-top:1px solid #333;padding-top:10px}
