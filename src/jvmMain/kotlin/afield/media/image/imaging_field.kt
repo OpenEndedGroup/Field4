@@ -77,6 +77,16 @@ import afield.geometry.path.FLine
 import afield.geometry.path.polylineFrom
 import afield.graphics.color.Color4
 import afield.graphics.color.Colormaps
+import org.jetbrains.skia.Bitmap
+import org.jetbrains.skia.Canvas
+import org.jetbrains.skia.Data
+import org.jetbrains.skia.Font
+import org.jetbrains.skia.FontEdging
+import org.jetbrains.skia.FontHinting
+import org.jetbrains.skia.FontMgr
+import org.jetbrains.skia.ImageInfo
+import org.jetbrains.skia.Paint
+import org.jetbrains.skia.Typeface
 import java.util.Base64
 import kotlin.math.abs
 import kotlin.math.atan2
@@ -484,15 +494,15 @@ private fun escapeCaptionHtml(text: String): String = text
  * domain while out-of-range panels use one common range across the whole montage. Pass an explicit
  * signed range such as `-1f..1f` when the domain itself carries meaning.
  *
- * Captions are drawn with a built-in 5x7 bitmap font, **not AWT** — see [drawLabels] for why that
- * matters inside a live Field box. A montage is display output, not analysis input; keep the float
+ * Captions are anti-aliased Iosevka drawn by Skia, **not AWT** — see [drawLabels] and the note above
+ * [FONT_5X7] for why that matters inside a live Field box. A montage is display output, not analysis input; keep the float
  * [Img]s you built it from rather than feeding a montage back into a filter chain.
  *
  * @param columns tiles per row
  * @param cellSide the longest edge a tile is allowed to occupy
  * @param displayRange an optional sample domain shared by every panel and mapped to display values
  *   `0..1`; `null` chooses `0..1` for ordinary imagery or one common range for out-of-range panels
- * @param textScale how many pixels each pixel of the caption font takes: 2 by default, more for a
+ * @param textScale caption size: capitals stand 7 × [textScale] pixels tall; 2 by default, more for a
  *   montage of large tiles that will be shown scaled down
  */
 fun montage(
@@ -555,16 +565,18 @@ fun montage(
 }
 
 // ----------------------------------------------------------------------------------------------
-// A tiny built-in bitmap font, so captions can be burned in with NO AWT.
+// Caption text, burned in with NO AWT.
 //
 // Why not `Graphics2D.drawString`? Because this code runs inside a live Field box, and Field's
 // `Server.main` deliberately does *not* initialise the AWT toolkit (the eager-init block there is
 // commented out on purpose). On macOS, touching the AWT font manager pulls in AppKit, which
 // competes with GLFW for the main run loop. A stdlib call that every box might make must not be
-// able to take the process down, so text here is drawn from a table, not from a font engine.
+// able to take the process down.
 //
-// The classic public-domain 5x7 LCD font, ASCII 0x20..0x7E: five bytes per glyph, one byte per
-// column, bit 0 = top row.
+// So captions are drawn by Skia, which rasterises a font it was handed as bytes without going near
+// AWT, from the Iosevka subset on the classpath. The table below is the fallback for when Skia or
+// that font cannot load: the classic public-domain 5x7 LCD font, ASCII 0x20..0x7E, five bytes per
+// glyph, one byte per column, bit 0 = top row.
 // ----------------------------------------------------------------------------------------------
 
 private val FONT_5X7: IntArray = intArrayOf(
@@ -700,9 +712,46 @@ private fun toFontAscii(s: String): String {
 private fun textWidth(s: String, scale: Int): Int = toFontAscii(s).length * GLYPH_ADVANCE * scale
 
 /**
- * Burn text labels into an [Img] using the built-in bitmap font — **no AWT, no font manager, no
- * AppKit**. `(text, x, yTop)` triples in image coordinates; text longer than [maxWidth] is
- * ellipsised. Mutates and returns [img].
+ * The caption face: the same Iosevka subset Field's UI uses, read from the classpath into Skia.
+ * Skia shapes and rasterises it in-process, so this needs neither AWT nor AppKit. `null` when the
+ * font or Skia's native library cannot be loaded, and captions fall back to [FONT_5X7].
+ */
+private val captionTypeface: Typeface? by lazy {
+    runCatching {
+        val bytes = Img::class.java.getResourceAsStream("/IosevkaField-Light.ttf")?.use { it.readBytes() }
+            ?: return@runCatching null
+        FontMgr.default.makeFromData(Data.makeFromBytes(bytes))
+    }.getOrNull()
+}
+
+/** Cap height per em of [captionTypeface], so a caption's capitals stand [GLYPH_HEIGHT] × scale tall. */
+private val captionCapHeightPerEm: Float by lazy {
+    val face = captionTypeface ?: return@lazy 0.7f
+    Font(face, 100f).use { it.metrics.capHeight / 100f }.takeIf { it > 0f } ?: 0.7f
+}
+
+/**
+ * [s] with each character the caption face has no glyph for folded to ASCII by [toFontAscii], so a
+ * missing glyph reads as its nearest ASCII rather than as a box.
+ */
+private fun captionText(s: String, face: Typeface): String {
+    val b = StringBuilder(s.length)
+    var i = 0
+    while (i < s.length) {
+        val cp = s.codePointAt(i)
+        val n = Character.charCount(cp)
+        if (face.getUTF32Glyph(cp) != 0.toShort()) b.append(s, i, i + n) else b.append(toFontAscii(s.substring(i, i + n)))
+        i += n
+    }
+    return b.toString()
+}
+
+/**
+ * Burn text labels into an [Img] — **no AWT, no font manager, no AppKit**. `(text, x, yTop)`
+ * triples in image coordinates, `yTop` being the top of the capitals; text longer than [maxWidth]
+ * is ellipsised. Text is anti-aliased Iosevka drawn by Skia, with [scale] setting the cap height to
+ * [GLYPH_HEIGHT] × [scale] pixels; if Skia or the font is unavailable, the built-in 5x7 bitmap font
+ * is used at [scale] instead. Mutates and returns [img].
  */
 private fun drawLabels(
     img: Img,
@@ -713,46 +762,111 @@ private fun drawLabels(
     g: Float = 0.62f,
     b: Float = 0.68f
 ): Img {
-    val advance = GLYPH_ADVANCE * scale
+    val face = captionTypeface
     for ((raw, x0, yTop) in labels) {
-        var s = toFontAscii(raw)
-        if (s.length * advance > maxWidth) {
-            val fits = max(1, maxWidth / advance - 3)
-            s = s.take(fits) + "..."
-        }
-        var penX = x0
-        for (ch in s) {
-            val gi = (ch.code - 0x20) * 5
-            if (gi >= 0 && gi + 4 < FONT_5X7.size) {
-                for (col in 0 until 5) {
-                    val bits = FONT_5X7[gi + col]
-                    for (row in 0 until GLYPH_HEIGHT) {
-                        if ((bits shr row) and 1 == 0) continue
-                        for (sy in 0 until scale) for (sx in 0 until scale) {
-                            val px = penX + col * scale + sx
-                            val py = yTop + row * scale + sy
-                            if (px < 0 || py < 0 || px >= img.width || py >= img.height) continue
-                            val i = img.index(px, py, 0)
-                            if (img.channels >= 3) {
-                                img.data[i] = r; img.data[i + 1] = g; img.data[i + 2] = b
-                            } else {
-                                img.data[i] = (r + g + b) / 3f
-                            }
-                        }
-                    }
-                }
-            }
-            penX += advance
-        }
+        val drawn = face != null && runCatching {
+            drawSkiaLabel(img, raw, x0, yTop, maxWidth, scale, face, r, g, b)
+        }.isSuccess
+        if (!drawn) drawBitmapLabel(img, raw, x0, yTop, maxWidth, scale, r, g, b)
     }
     return img
 }
 
+/** One label through Skia: rasterise its coverage into an A8 bitmap, then blend [r], [g], [b] by it. */
+private fun drawSkiaLabel(
+    img: Img, raw: String, x0: Int, yTop: Int, maxWidth: Int, scale: Int,
+    face: Typeface, r: Float, g: Float, b: Float,
+) {
+    Font(face, GLYPH_HEIGHT * scale / captionCapHeightPerEm).use { font ->
+        font.edging = FontEdging.ANTI_ALIAS
+        font.hinting = FontHinting.SLIGHT
+        font.isSubpixel = true
+        var text = captionText(raw, face)
+        if (font.measureTextWidth(text) > maxWidth) {
+            val ellipsis = captionText("…", face)
+            while (text.isNotEmpty() && font.measureTextWidth(text + ellipsis) > maxWidth) text = text.dropLast(1)
+            text += ellipsis
+        }
+        val metrics = font.metrics
+        val baseline = yTop + metrics.capHeight
+        val top = kotlin.math.floor(baseline + metrics.ascent).toInt()
+        val w = min(kotlin.math.ceil(font.measureTextWidth(text)).toInt() + 2, img.width - x0)
+        val h = kotlin.math.ceil(metrics.descent - metrics.ascent).toInt() + 2
+        if (w <= 0 || h <= 0 || x0 < 0) return
+        Bitmap().use { bitmap ->
+            check(bitmap.allocPixels(ImageInfo.makeA8(w, h))) { "Skia could not allocate a caption bitmap" }
+            bitmap.erase(0)
+            Canvas(bitmap).use { canvas ->
+                Paint().use { paint ->
+                    paint.color = 0xffffffff.toInt()
+                    paint.isAntiAlias = true
+                    canvas.drawString(text, 0f, baseline - top, font, paint)
+                }
+            }
+            val coverage = bitmap.readPixels() ?: error("Skia could not read the caption bitmap")
+            val rowBytes = bitmap.rowBytes
+            for (y in 0 until h) {
+                val py = top + y
+                if (py < 0 || py >= img.height) continue
+                for (x in 0 until w) {
+                    val a = (coverage[y * rowBytes + x].toInt() and 0xff) / 255f
+                    if (a == 0f) continue
+                    val i = img.index(x0 + x, py, 0)
+                    if (img.channels >= 3) {
+                        img.data[i] += (r - img.data[i]) * a
+                        img.data[i + 1] += (g - img.data[i + 1]) * a
+                        img.data[i + 2] += (b - img.data[i + 2]) * a
+                    } else {
+                        img.data[i] += ((r + g + b) / 3f - img.data[i]) * a
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** One label in the built-in 5x7 bitmap font, each font pixel a [scale] × [scale] block. */
+private fun drawBitmapLabel(
+    img: Img, raw: String, x0: Int, yTop: Int, maxWidth: Int, scale: Int,
+    r: Float, g: Float, b: Float,
+) {
+    val advance = GLYPH_ADVANCE * scale
+    var s = toFontAscii(raw)
+    if (s.length * advance > maxWidth) {
+        val fits = max(1, maxWidth / advance - 3)
+        s = s.take(fits) + "..."
+    }
+    var penX = x0
+    for (ch in s) {
+        val gi = (ch.code - 0x20) * 5
+        if (gi >= 0 && gi + 4 < FONT_5X7.size) {
+            for (col in 0 until 5) {
+                val bits = FONT_5X7[gi + col]
+                for (row in 0 until GLYPH_HEIGHT) {
+                    if ((bits shr row) and 1 == 0) continue
+                    for (sy in 0 until scale) for (sx in 0 until scale) {
+                        val px = penX + col * scale + sx
+                        val py = yTop + row * scale + sy
+                        if (px < 0 || py < 0 || px >= img.width || py >= img.height) continue
+                        val i = img.index(px, py, 0)
+                        if (img.channels >= 3) {
+                            img.data[i] = r; img.data[i + 1] = g; img.data[i + 2] = b
+                        } else {
+                            img.data[i] = (r + g + b) / 3f
+                        }
+                    }
+                }
+            }
+        }
+        penX += advance
+    }
+}
+
 /**
- * Draw a caption into an [Img] at `(x, y)` with the built-in AWT-free bitmap font — useful on its
- * own for labelling a frame before you write it out.
+ * Draw a caption into an [Img] at `(x, y)`, anti-aliased and without AWT — useful on its own for
+ * labelling a frame before you write it out.
  *
- * @param scale integer pixel scale; 1 gives a 5x7 glyph, 2 gives 10x14
+ * @param scale text size: capitals stand 7 × [scale] pixels tall, so 2 gives 14 px capitals
  */
 fun Img.withLabel(
     text: String,
