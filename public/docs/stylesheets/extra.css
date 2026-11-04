@@ -1910,3 +1910,71 @@ html .md-typeset details.aside > :last-child {
 .md-typeset .reference-map .reference-internal:focus-within {
     opacity: 1;
 }
+
+/* ── What's new (changelog.md) ───────────────────────────────────────────────
+   tools/docs_changelog.py `render` turns each entry's heading and date line into a row: the
+   headline on the left, the date and a link to the last commit it covers stacked on the right,
+   with one rule under both, over a picture cropped from the entry's first linked page. The
+   page's body type is 10% smaller than the rest of the site: it is read as a list, not a page. */
+.md-typeset .changelog-head {
+    position: relative;
+    display: flex;
+    align-items: flex-end;
+    gap: 1rem;
+    margin-top: 40px;
+    padding: 0 0.5rem;
+    border-bottom: 0.5px solid white;
+}
+.md-typeset .changelog-head h3 {
+    position: relative;
+    flex: 1;
+    margin: 0;
+    border-bottom: 0;
+}
+.md-typeset .changelog-head h3,
+.md-typeset .changelog-meta {
+    text-shadow: 0 0 4px rgba(0, 0, 0, 0.9), 0 0 12px rgba(0, 0, 0, 0.7);
+}
+.md-typeset .changelog-meta {
+    position: relative;
+    flex: none;
+    text-align: right;
+    line-height: 1.35;
+    padding-bottom: 6px;
+    font-size: 0.6rem;
+    font-style: italic;
+    color: #ddd;
+}
+.md-typeset .changelog-date,
+.md-typeset .changelog-commit {
+    display: block;
+}
+.md-typeset .changelog-commit {
+    font-style: normal;
+    font-family: var(--md-code-font-family);
+    font-size: 0.55rem;
+    color: #bbb;
+}
+.md-typeset .changelog-tease {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+}
+/* !important against the site's image rules (native sizing from image-lightbox.js, and the 50px
+   left gutter at wide viewports): the picture is always exactly the row. */
+.md-typeset .changelog-tease img {
+    display: block;
+    box-sizing: border-box;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    object-fit: cover;
+    opacity: 0.8;
+}
+.md-typeset:has(.changelog-head) p,
+.md-typeset:has(.changelog-head) li {
+    font-size: 0.675rem;
+}
