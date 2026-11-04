@@ -84,6 +84,25 @@
         "public/docs/assets/agent_transcripts/ai4_chat_archive/metadata.edn": "65e2f98c5340811543086298b38fab589cd5c4657fcbf28743b4f92acdf3701c"
       }
     },
+    "assets/agent_transcripts/ai4_cold_reader/metadata.edn": {
+      "captureDigest": "4d5add3a103558e3a45b0b09c14392b55f14042e4118c9d4d341d9a926c175b0",
+      "capturedAt": "2026-11-04T00:37:13.174Z",
+      "channels": 1,
+      "file": "assets/web_publications/ai4_cold_reader/document/metadata.edn",
+      "files": {
+        "assets/web_publications/ai4_cold_reader/document/metadata.edn": "e879784afb0c3663fee6e30e47ab78ed8f5475f5a6eca828f415774048dd36ff",
+        "assets/web_publications/ai4_cold_reader/document/outputs.json": "9807c412c3e40d101b7135ce94fef9b8ffb60b75a582d04008fa9b14cd04d173",
+        "assets/web_publications/ai4_cold_reader/outputs/0.html": "8ab183df475f5ee7ca93f236f318bcd1c6a6716677b4b425fb98ab85cbf51b83"
+      },
+      "kinds": [],
+      "outputs": "assets/web_publications/ai4_cold_reader/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/ai4_cold_reader.yaml": "b08537780e516590897e5c5ba39932ba7e7cf547eb3a15c74a2c18bd1686d1ae",
+        "public/docs/assets/agent_transcripts/ai4_cold_reader/ai4_cold_reader_code_.kt": "591aa97e780539f16dc72829ba64ef16c56975da71c37834487897b64bfc686b",
+        "public/docs/assets/agent_transcripts/ai4_cold_reader/guides/ai4_experiments.md": "8fc1cc679a5d425a5b95e0d429a3ed5aee961ddcf92d1199052373c9673d1ea0",
+        "public/docs/assets/agent_transcripts/ai4_cold_reader/metadata.edn": "ecfaace14690fa8a11075649186933d9192c0d897ab9b810b621f82a39404e02"
+      }
+    },
     "assets/agent_transcripts/ai4_iframe_hello/metadata.edn": {
       "captureDigest": "4d5add3a103558e3a45b0b09c14392b55f14042e4118c9d4d341d9a926c175b0",
       "capturedAt": "2026-11-02T16:03:51.077Z",
