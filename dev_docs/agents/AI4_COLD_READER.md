@@ -42,6 +42,26 @@ cluster on page openings and Tour links (sound.md lines 4, 22; installation.md l
 
 Cost: 2-9 rounds, 49k-158k input tokens, 33-48 s per page.
 
+## Control: the same model without Field (2026-11-04)
+
+`tools/cold_reader_naked.py` gives `gpt-6.1-sol` the same goal text, the same two tools (same
+descriptions and parameters) and the same numbered page text through the bare Responses API at
+medium effort (AI4's setting), with no Field system prompt or AI4 loop. Two runs; raw stalls in
+`ai4_cold_reader/stalls_2026-11-04_naked-gpt-6.1-sol_run{1,2}.jsonl`.
+
+| arm | stalls | matched (by quote) | precision | recall | category agreed |
+| --- | --- | --- | --- | --- | --- |
+| AI4 | 47 | 14 (13) | 0.30 | 0.37 | 7 |
+| naked, run 1 | 46 | 14 (14) | 0.30 | 0.37 | 7 |
+| naked, run 2 | 44 | 14 (13) | 0.32 | 0.37 | 5 |
+
+Scored against each other with the same rule, naked run 1 finds 38 of AI4's 47 stalls (0.83 / 0.81),
+and naked run 2 finds 38 of run 1's 46 (0.86 / 0.83). AI4 and the bare model differ by no more than
+the bare model differs from itself. For a docs pass, AI4 adds nothing measurable over the model it
+calls; what it adds is that the pass runs inside Field (a box, a chat, stalls in an output). The
+bare runs took 11-17 rounds and 45-80 s per page, against AI4's 2-9 rounds and 33-48 s; the bare
+loop makes one `report_stall` call per round, which accounts for the difference.
+
 ## Traps
 
 - Box tools live for one backdoor invocation: run the transcript and the `agent-task` in the same
@@ -57,7 +77,4 @@ Cost: 2-9 rounds, 49k-158k input tokens, 33-48 s per page.
 - Stretch (AI4 proposing the edit per stall, compared with the external fix commits
   `fa010301d`/`540646ec2`/`9422b14dd`): not attempted.
 - Repeat runs (variance) and a second model.
-- The comparison that decides whether AI4 should do docs passes: the same model (`gpt-6.1-sol`)
-  without Field, given the same pages, prompt and category list through the plain API, scored
-  against the same ledger. The ledger here came from a different agent, so these numbers mix the
-  model and the harness together and cannot say what AI4 itself adds.
+

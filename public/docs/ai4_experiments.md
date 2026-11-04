@@ -175,6 +175,11 @@ complaints about the page's own making, and one was an `??? aside` reported as b
 page was made, which is where such text belongs. Each
 page took one turn of two to nine rounds and under a minute.
 
+The same model given the same prompt, tools and pages through the plain OpenAI API, without Field,
+scored the same: 0.30 and 0.32 precision and 0.37 recall in two runs, and its stalls overlapped
+AI4's about as much as its two runs overlapped each other. For reading a page, running inside Field
+does not make the model a better reader; it puts the reading in a box you can open and continue.
+
 ## Where it stops
 
 - A program is not a transaction. Edits made before a failure stay. They are recorded and undoable
