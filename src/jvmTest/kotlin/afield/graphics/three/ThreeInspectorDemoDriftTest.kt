@@ -98,6 +98,6 @@ class ThreeInspectorDemoDriftTest {
             File("public/docs/assets/three_inspector_demo/opened.png").length() > 10_000,
             "the demo's capture is missing or empty",
         )
-        assertTrue(page.readText().contains("![The three-inspector demo document, opened]("), "the capture is not shown")
+        assertTrue(page.readText().contains("screenshot=\"assets/three_inspector_demo/opened.png\""), "the capture is not shown")
     }
 }

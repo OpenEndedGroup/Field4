@@ -7,7 +7,9 @@ it to a `.wav`.
 
 `patCondense` is the mini-notation parser run backwards. A rhythm with structure gets a much
 shorter spelling than one without, so the length of what it returns tells you something about the
-rule, and the audio is that notation played.
+rule, and the audio is that notation played. The page measures it as a compression ratio: the
+length of the condensed spelling divided by the length of the flat, step-by-step one, so smaller
+means more structure.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_ca_sound/hero.png" wait="8" capture="box" open-outputs="true" w="1040" h="530" padding="18" timeout="120" name="chain-ca-hero" embed=true hidden=true alt="Rule 30's space-time diagram, live cells white on black: a fan spreading from one cell at the top centre until it fills the width at the bottom, regular diagonal stripes down its left edge and irregular triangles of every size everywhere else"}
 // 241 cells is exactly the light cone of 120 generations, so the fan touches both edges at the
@@ -80,7 +82,8 @@ markdown(
 :::endfold
 ```
 
-Rule 90's row condenses to two Euclidean figures with a rest between them, and the second is the
+Rule 90's row condenses to two Euclidean figures (`x(k,n)` spreads *k* hits as evenly as
+possible over *n* steps; a third number rotates the figure) with a rest between them, and the second is the
 first turned: `x(2,7)` and `x(2,7,5)` are the same two-in-seven pattern at two rotations. Pascal's
 triangle is symmetric in *k*, so the bar reads the same backwards, and the condenser finds that
 symmetry without knowing anything about binomial coefficients.

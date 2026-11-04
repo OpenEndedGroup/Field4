@@ -315,7 +315,7 @@ FOOT = (
 # between neighbours, keeps one red for the band that is not a language, and takes the site's
 # fonts and transparent background. Values still ride the legend, so no band needs its own hue.
 DOCS_VARS = (
-    "color-scheme: dark; --surface-1:#0e0e0e; --text-primary:rgba(255,255,255,0.86); "
+    "color-scheme: dark; --surface-1:#141414; --text-primary:rgba(255,255,255,0.86); "
     "--text-secondary:rgba(255,255,255,0.6); --text-muted:rgba(255,255,255,0.4); "
     "--grid:rgba(255,255,255,0.07); --axis:rgba(255,255,255,0.22); "
     "--hairline:rgba(255,255,255,0.12); --s1:#c4c4c4; --s2:#5e5e5e; --s3:#a2a2a2; "

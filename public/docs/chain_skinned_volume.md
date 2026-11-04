@@ -1,7 +1,7 @@
 # A twisted limb, weighed and traced
 
-Twist a skinned limb about its own bone and linear blend skinning squeezes the joint into what
-animators call a candy wrapper. How much volume does the limb lose? Let's pose a rigged glTF, turn
+Twist a skinned limb about its own bone and linear blend skinning (each vertex follows a weighted average of
+its bones' transforms) squeezes the joint into a pinched waist that animators call a candy wrapper. How much volume does the limb lose? Let's pose a rigged glTF, turn
 its mesh into a Manifold solid, measure it, and send the same solid to the path tracer.
 
 Field can also measure the narrowest ring with `DualQuaternionSkinning.candyWrapperRadius`.

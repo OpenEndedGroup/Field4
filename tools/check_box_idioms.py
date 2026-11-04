@@ -28,7 +28,8 @@ This is the check that retires the prose. The rules:
   lines is a note, since a literal takes no spread and this line-by-line check cannot see one on a
   later line. ``listOf()``, ``listOf<T>(...)``, a spread (``listOf(*xs)``) and an operand of an
   arithmetic operator (``xs + listOf(a)``, ``xs -= listOf(a)``: no expected type, so ``plus`` is
-  ambiguous) are left alone.
+  ambiguous) and a call that is a lambda's last expression (the line before its closing ``}``: no
+  expected type, so ``[a, b]`` does not compile) are left alone.
 
 - Approved helpers (``dev_docs/agents/box_code_helpers/ADOPTION.md``), each replacing the verbose form
   the corpus used before the helper existed:
@@ -392,9 +393,12 @@ def _spread(args: str) -> bool:
     return False
 
 
-def list_literals(line: str, prev: str = "") -> tuple[str, bool] | None:
+def list_literals(line: str, prev: str = "", next: str = "") -> tuple[str, bool] | None:
     """`(rewritten line, every call converted)` if the line holds a `listOf(...)` with arguments.
-    `prev` is the line before, whose trailing operator makes a call opening this line an operand."""
+    `prev` is the line before, whose trailing operator makes a call opening this line an operand.
+    `next` is the line after: a call that is the whole statement right before a closing `}` is a
+    lambda's result, which has no expected type, so a literal there does not compile (11-02's
+    flow_matching capture failure, reintroduced by a lander fixup on 11-03)."""
     out, pos, found, complete = [], 0, False, True
     while m := LIST_OF.search(line, pos):
         close = _closing_paren(line, m.end() - 1)
@@ -402,7 +406,9 @@ def list_literals(line: str, prev: str = "") -> tuple[str, bool] | None:
         before = line[:m.start()]
         operand = bool(OPERATOR_BEFORE.search(before) or
                        (not before.strip() and OPERATOR_BEFORE.search(prev.split("//")[0])))
-        if operand or (close >= 0 and (not args.strip() or _spread(args))):
+        result = (close >= 0 and not before.strip() and not line[close + 1:].split("//")[0].strip()
+                  and next.strip().startswith("}"))
+        if operand or result or (close >= 0 and (not args.strip() or _spread(args))):
             out.append(line[pos:m.end()])
             pos = m.end()
             continue
@@ -493,7 +499,8 @@ def check_block(lines: list[str], start: int, end: int, literals: bool = False,
                         "write `//%-`, the documented spelling of a fragment break", True))
         if helpers:
             out.extend(_helper_findings(lines, i, end, makes_push))
-        if literals and (lit := list_literals(line, lines[i - 1] if i > start else "")):
+        if literals and (lit := list_literals(line, lines[i - 1] if i > start else "",
+                                                    lines[i + 1] if i + 1 < end else "")):
             out.append((i, "list-literal",
                         "write the list as a collection literal, `[a, b, c]`" if lit[1] else
                         "if no argument is a spread (`*xs`), write the list as a collection literal: change "
@@ -545,7 +552,8 @@ def fix_block(lines: list[str], start: int, end: int, literals: bool = False, he
         if BOX_CONTEXT.search(line):
             out.append(BOX_CONTEXT.sub("thisBox", line))
             continue
-        if literals and (lit := list_literals(line, block[k - 1] if k else "")) and lit[1]:
+        if literals and (lit := list_literals(line, block[k - 1] if k else "",
+                                                    block[k + 1] if k + 1 < len(block) else "")) and lit[1]:
             line = lit[0]
         out.append(line)
     if removed_renderer:

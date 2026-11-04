@@ -2,10 +2,11 @@
 
 Turn a function into sound, then analyse the recording and compare what you recover with the
 original. We'll play the same curve as loudness and as pitch, and put the recording, measurements
-and a certified range on one timeline.
+and a certified range (bounds on the function's values that interval arithmetic proves, not
+samples) on one timeline.
 
 `afield.math.functions.Functions` builds the function and `FnInterval` certifies its range. A Dough
-graph plays it, rendered offline to a 16-bit `.wav`; `PatOnsetDetection` and `PatPitchDetection`
+graph (Field's audio signal graph) plays it, rendered offline to a 16-bit `.wav`; `PatOnsetDetection` and `PatPitchDetection`
 read the file back. The time-axis viewer brings the results together.
 
 Most of what changes on the way is delay: one from how the function reaches the signal graph and

@@ -4,7 +4,7 @@ Want to get back to an earlier version of a document, or see what a line of code
 before you changed it? Field keeps saved versions on disk, and lets you browse them without leaving
 the editor. A running box can also keep a short in-memory history of the values it produces.
 
-There are other ways back into your work, too. AI4 records its tool calls, which Field can use to
+There are other ways back into your work, too. AI4, Field's built-in AI assistant, records its tool calls, which Field can use to
 suggest improvements for future work. The semantic index helps you find indexed workspace code by
 describing what it does. Each of these tools keeps its own record:
 

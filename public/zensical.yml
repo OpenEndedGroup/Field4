@@ -5,6 +5,9 @@ site_name: OpenEndedGroup | Field·4
 
 nav:
   - Home: index.md
+  # Linked from the front page. Written from main's history with tools/docs_changelog.py; how to
+  # keep it current is dev_docs/agents/DOCS_CHANGELOG.md.
+  - What's New: changelog.md
   # The front of the site, read in order: install it, learn the survival moves, learn enough Kotlin
   # to read an example, then take the Tour. The Tour is nested *inside* this section rather than
   # sitting beside it, because "Start Here" is the only heading a first-time reader goes looking
@@ -103,6 +106,7 @@ nav:
     - A Drawn Score, Heard: chain_drawn_score.md
     - A Drawn Morph, Heard: chain_drawn_morph.md
     - Drawn Strokes Become Paint: chain_drawn_paint.md
+    - A Generator, Graded by Datalog: chain_flow_islands.md
   - Working in a Document:
     # First in the section: panning, zooming, Cmd Cmd-and-hold between boxes and the nine bookmark
     # slots, i.e. how you get around a document before you do anything in it. It absorbed the old

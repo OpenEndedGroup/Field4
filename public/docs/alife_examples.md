@@ -1875,6 +1875,62 @@ make, mutate and recombine one) plus an `Objective` that scores it. Evolving the
 for animation runs on the same engine; see [evolving and optimizing
 functions](functions_examples.md#evolving-and-optimizing-functions).
 
+### Does search beat random?
+
+One seed of evolution beside one seed of random sampling says little: the gap between two seeds of
+the same method is often larger than the gap between the methods. `compareSearch` runs every method
+on the same genome and objective for exactly the same number of evaluations, at many seeds, and
+reports the spread. Its four default arms are random sampling, a restarting hill climber, (µ6 + λ12)
+evolution, and (µ12 + λ24) evolution where a quarter of each generation are fresh random draws
+("immigrants"). Any `GenomeOps` and `Objective` will do:
+
+```diffstatic {data-lang=kotlin}
+val soups = [randomSoup(48, 48, density = 0.35, seed = 101L), randomSoup(48, 48, density = 0.12, seed = 202L)]
+val c = compareSearch(
+    LifeRuleGenome(radius = 2),
+    caEdgeOfChaosObjective(soups, warmup = 20, scored = 30),
+    budget = 120,
+    seeds = [1L, 2L, 3L, 4L],
+    label = "life rule, edge of chaos",
+)
+println(c.table() + c.budgetTable([30, 60, 120]))
+showImg(c.plot(360, 260))
+```
+
+`table()` gives each arm's median, interquartile range and range of per-seed bests, and how many
+seeds it beat random at. `budgetTable` reads the same runs at smaller budgets, which gives the same
+numbers as running those budgets separately. `plot` draws each arm's median best-so-far as a line
+with its interquartile band: random in grey, hill climbing blue, evolution orange, immigrants green.
+`SearchArm` builds other arms, and the first arm in the list is the one the others are counted
+against.
+
+At 1000 evaluations and 12 seeds per arm, on the three genomes this section uses (medians of the
+per-seed best; in brackets, the seeds out of 12 where the arm beat random):
+
+```diffstatic {data-lang=text}
+                      evals  random   hillclimb      evolve         immigrants
+life rule, edge of    100    0.412    0.423 (7)      0.458 (9)      0.429 (5)
+  chaos               300    0.426    0.470 (9)      0.486 (9)      0.470 (9)
+                      1000   0.481    0.483 (7)      0.491 (6)      0.498 (8)
+lenia, soliton        100    1.686    1.673 (6)      1.645 (5)      1.715 (8)
+                      300    1.790    1.919 (9)      1.747 (4)      1.907 (8)
+                      1000   1.899    2.197 (11)     2.037 (8)      2.135 (8)
+l-system,             100    0.239    0.240 (6)      0.237 (7)      0.241 (6)
+  dimension 1.7       300    0.242    0.245 (10)     0.246 (10)     0.247 (9)
+                      1000   0.247    0.247 (6)      0.248 (8)      0.247 (7)
+```
+
+Searching helps on Lenia, and the hill climber helps most: at 1000 evaluations it beats random at 11
+of 12 seeds, and three arms reach the objective's ceiling of 2.5 at their best seed. Plain evolution
+loses to random at 300 evaluations on Lenia and catches up only later. On Life-like rules every arm
+edges out random by a small median margin, but the spread is wide: random's upper quartile (0.58) is
+above every searcher's median, and one or two seeds of each searcher find a rule scoring above 0.95 that
+random never does. The L-system objective is saturated: every arm, random included, sits within 0.002
+of 0.25, its practical ceiling (an exact dimension plus the straightness bonus), so this objective
+cannot tell the methods apart. A harder target or a finer score would be needed before it could.
+The vehicle brains of [Braitenberg vehicles §10](braitenberg_vehicles.md) run through the same
+`compareSearch`.
+
 ## 12. Agents with their own programs
 
 Every system above moves its whole population with one rule: `BoidFlock.step(p)` applies the same

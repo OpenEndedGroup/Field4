@@ -477,4 +477,116 @@ on top of the lamp it found instead of parking in front of it. Evolution does no
 by much here (at seeds 17 and 19 the two are within 0.01), for the reason the
 radius-1 Life rules gave on the ALife page: four numbers is a space a few hundred independent draws
 cover on their own. A genome that carried the neuron parameters as well, or a test with moving lamps,
-would give the search something to do.
+would give the search something to do; §10 tries both.
+
+## 10. A larger genome: does evolution beat random sampling?
+
+`VehicleBrainGenome(hidden)` gives the search everything the vehicle can express besides its four
+wires: the angle the sensors point at, a gain on what they read, a bias on each motor, and `hidden`
+recurrent neurons between the sensors and the motors, each with its own inputs, bias, outputs and a
+weight from every other hidden neuron. With no hidden neurons that is 8 numbers; with 4 it is 44; with
+16 it is 344. Three tasks from earlier sections score it: `forage` (§9's four lamps with §6's price on
+speed, light − 0.5 × speed), `orbit` (circle one lamp at distance 20 while moving, the §5 behaviour)
+and `track` (two drifting lamps, §8). `compareVehicleSearch` runs random sampling, a hill climber and
+the evolver at exactly the same number of evaluations at every seed, and reports the spread across
+seeds rather than one best.
+
+The box below runs it on the orbit task with 4 hidden neurons and six seeds, twice: once with the
+evolver set up as in §9 (6 parents, 12 children), once with 12 parents, 24 children and a quarter of
+the children drawn fresh. The plots are best-so-far fitness against evaluations, the median of the six
+seeds as a line, the middle half as a band and the final median written at the right: random sampling
+grey, hill climbing blue, evolution orange; both plots share one scale. The trails are the median
+seed's best brain from three arms (random sampling, and each evolver setting), twelve vehicles
+released from new positions and drawn for their last 300 steps.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/braitenberg_vehicles/brain_search.png" embed=true wait="30.0" timeout="300" capture="box" open-outputs="true" padding="20"}
+val task = VehicleBrainTask.orbit(radius = 20.0)
+val seeds = [1L, 2L, 3L, 4L, 5L, 6L]
+val narrow = compareVehicleSearch(task, hidden = 4, budget = 300, seeds = seeds)
+val wide =
+    compareVehicleSearch(task, hidden = 4, budget = 300, seeds = seeds, mu = 12, lambda = 24, immigrantRate = 0.25)
+println(narrow.table() + narrow.perSeed())
+println(wide.table())
+
+val range = 0.0..1.0
+fun trails(name: String, run: SearchRun<DoubleArray>): Pair<String, Img> {
+    val world = task.world(run.best!!.genome, hidden = 4, seed = 7L, vehicles = 12)
+    world.stepTimes(1200)
+    return (name + " " + run.bestFitness.f2) to world.trails(300)
+}
+showImg(
+    montage(
+        [
+            "mu 6, lambda 12" to narrow.plot(yRange = range),
+            "mu 12 + immigrants" to wide.plot(yRange = range),
+            trails("median random", wide.medianRun(VehicleSearchDriver.RANDOM)),
+            trails("median mu 6", narrow.medianRun(VehicleSearchDriver.EVOLVE)),
+            trails("median mu 12+imm", wide.medianRun(VehicleSearchDriver.EVOLVE)),
+        ],
+        columns = 3,
+        cellSide = 300,
+    ),
+)
+```
+
+The §9 setting loses to random sampling. At six seeds its median best is 0.10 against random's 0.68,
+and the per-seed table shows why: four of the six runs end at about 0.095, the score of vehicles that
+drive past the lamp and never come back, while the other two reach 0.88 and 0.32. Six random
+starting genomes all landed on that flat region, every mutation of them scored the same, and an
+elitist population with nothing to tell its members apart stays where it is. In the trails the median §9 brain is the
+stuck one: its vehicles sit still wherever they started. Random sampling never gets stuck, because it
+never builds on anything, and its median brain gathers its vehicles close around the lamp, inside the
+ring of 20 it is scored on. The wider population with immigrants keeps drawing
+fresh genomes, and once one of them lands on the slope the population climbs it: median 0.86, ahead
+of random at five seeds of six, and its median brain holds the ring.
+
+Over twelve seeds (1–12), 300 evaluations each, the medians of the per-seed bests (the number in
+brackets is how many of the twelve seeds beat random sampling at the same seed):
+
+| Task | Hidden (genes) | Random | Hill climb | Evolve, µ 6 λ 12 | Evolve, µ 12 λ 24, immigrants |
+| --- | --- | --- | --- | --- | --- |
+| forage | 0 (8) | 0.51 | 0.39 (5/12) | 0.30 (3/12) | 0.63 (9/12) |
+| forage | 4 (44) | 0.50 | 0.29 (3/12) | 0.34 (4/12) | 0.65 (8/12) |
+| forage | 16 (344) | 0.60 | 0.33 (2/12) | 0.51 (4/12) | 0.66 (8/12) |
+| orbit | 0 (8) | 0.48 | 0.78 (7/12) | 0.10 (3/12) | 0.85 (11/12) |
+| orbit | 4 (44) | 0.65 | 0.10 (3/12) | 0.21 (5/12) | 0.85 (9/12) |
+| orbit | 16 (344) | 0.67 | 0.38 (4/12) | 0.56 (5/12) | 0.89 (11/12) |
+| track | 0 (8) | 0.36 | 0.37 (5/12) | 0.40 (7/12) | 0.59 (11/12) |
+| track | 4 (44) | 0.44 | 0.31 (3/12) | 0.35 (5/12) | 0.61 (11/12) |
+| track | 16 (344) | 0.57 | 0.27 (3/12) | 0.30 (2/12) | 0.75 (8/12) |
+
+The answer does not depend on genome size the way §9 guessed it would. The population with immigrants
+beats random sampling on the median at every size and on every task, at 8 genes as well as at 344.
+The small elitist population loses to it in eight of these nine rows, and the hill climber in seven;
+the exceptions (orbit at 8 genes for the climber, track at 8 genes for both, and the §9 setting on
+orbit at 112 genes, in the dev notes) do not line up with size either. Both losing searches are
+bimodal: their best seeds match or beat anything random sampling finds, and their other seeds stay on
+the plateau where they started. What decides the comparison is whether the search can leave that
+plateau, not how many numbers it is searching over. Random sampling's own
+median creeps up with size (0.48 to 0.67 on orbit), because a larger brain has more ways to be
+roughly right.
+
+The wider setting at the two sizes the table leaves out holds the pattern: at 22 and 112 genes it
+beats random sampling at 9 and 12 seeds of 12 on forage, 12 and 12 on orbit, and 11 and 6 on track
+(medians 0.77, 0.69; 0.88, 0.87; 0.66, 0.58, against random's 0.61, 0.57; 0.65, 0.68; 0.44, 0.53).
+
+The budget does change the picture. On orbit with 4 hidden neurons, over the same twelve seeds:
+
+| Evaluations | Random | Hill climb | Evolve, µ 6 λ 12 | Evolve, µ 12 λ 24, immigrants |
+| --- | --- | --- | --- | --- |
+| 100 | 0.56 | 0.10 (2/12) | 0.10 (4/12) | 0.33 (6/12) |
+| 300 | 0.65 | 0.10 (3/12) | 0.21 (5/12) | 0.85 (9/12) |
+| 1000 | 0.71 | 0.85 (11/12) | 0.65 (6/12) | 0.95 (11/12) |
+
+At 100 evaluations nothing beats random sampling: a search needs time to find the slope before it can
+climb it. At 1000 the hill climber, whose restarts eventually land somewhere useful, beats random at
+11 seeds of 12, while the §9 evolver is still split between seeds near 0.96 and seeds stuck at 0.10.
+Random sampling gains only 0.15 from ten times the budget.
+
+??? aside "How these numbers were measured"
+    The twelve-seed tables are `VehicleBrainSearchTest.fullSweep`, run with
+    `-Dafield.vehicleBrainSweep=true`, `=immigrants`, `=immigrants-mid` and `=budgets`; the 2- and 8-hidden rows, measured only
+    for the §9 setting, are in `dev_docs/vehicle_brain_search.md` with every per-seed value. The
+    random and hill-climb arms are identical in both runs (same seeds, same genome). The box's six
+    seeds reproduce the first six rows of the twelve-seed per-seed table exactly; the seeds run in
+    parallel and `theComparisonIsDeterministic` pins that this changes nothing.

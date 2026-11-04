@@ -105,6 +105,23 @@ class DocsAudioProvenanceGuardTest {
         )
     }
 
+    /**
+     * Steam Audio's HRTF render is deterministic on one platform and not across them: on 2026-11-03
+     * the macOS render matched the macOS-made clips at R=1.0000 and the a0 (Linux) recaptures at
+     * 0.35-0.94. So a clip names the platform that made it, and is compared only there.
+     */
+    @Test
+    fun `cross-platform clips carry the profile they were captured under`() {
+        assertEquals("linux", DocsAudioProvenance.profilePlatform("linux-nvidia"))
+        assertEquals("mac", DocsAudioProvenance.profilePlatform("macos-electron"))
+        val hrtf = DocsAudioProvenance.scan().filter { DocsAudioProvenance.originOf(it) == Origin.STEAM_AUDIO_HRTF }
+        assertEquals(
+            hrtf.map { it.id to "linux-nvidia" }.toSet(),
+            hrtf.map { it.id to it.captureProfile }.toSet(),
+            "a Steam Audio clip with no capture-profile is compared on every platform, and fails on all but one",
+        )
+    }
+
     /** Real audio, not a valid-but-empty file. */
     @Test
     fun `every committed audio asset is audible`() {

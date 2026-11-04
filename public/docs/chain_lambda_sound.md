@@ -3,7 +3,8 @@
 What might a computation sound like as it runs? Let's reduce a λ-term step by step and turn its
 reactions into a rhythm you can listen to.
 [`lambdaterms.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/lang/lambda/lambdaterms.kt) parses the term and
-compiles it to an interaction net, and the `Reducer` in
+compiles it to an interaction net (a graph of agents that rewrites itself one
+connected pair, a *reaction*, at a time), and the `Reducer` in
 [`interactionnets.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/data/graph/interactionnets.kt) fires one reaction at a time, reporting each as a `ReductionStep`.
 [`LambdaSoundDocs`](reference/patterns.md#lambdasounddocs-kt-lambdasounddocs) records those steps
 as a time series. `patCondense`, which runs the mini-notation parser backwards, finds the shortest
@@ -16,7 +17,8 @@ what changes when you change the scheduler.
 ## One reduction, recorded
 
 `three two` is Church exponentiation the other way round: the numeral three applied to the numeral
-two, which is 2³. Most of its reactions are not β-steps but the bookkeeping that keeps sharing
+two, which is 2³. Most of its reactions are not β-steps (applying a function to its argument)
+but the bookkeeping that keeps sharing
 correct: fans copying, and scope delimiters (the agents that mark where a shared function body
 begins and ends) moving and closing. The box below reduces it and plots the size of the net after
 each reaction.

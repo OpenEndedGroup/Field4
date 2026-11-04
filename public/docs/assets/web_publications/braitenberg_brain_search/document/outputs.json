@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-03T09:27:27.059Z",
+  "documentName": "braitenberg_brain_search",
+  "outputs": [
+    {
+      "uid": "brain_search",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 912,
+      "height": 653,
+      "path": "outputs/0.html"
+    }
+  ]
+}

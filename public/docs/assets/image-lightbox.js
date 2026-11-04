@@ -4,7 +4,14 @@
   const ENHANCED_ATTR = "data-field-docs-image-enhanced";
   const SKIP_ATTR = "data-no-lightbox";
   const NATIVE_SIZED_CLASS = "field-docs-image-native-sized";
-  const SMALL_IMAGE_MAX_WIDTH = 560;
+  // A capture shows at 1.5 times its size in Field, where its type reads beside the body text. Its
+  // size in Field is its pixel width over the scale it was taken at: `data-capture-scale` when the
+  // docs runner wrote one (box stills, taken at 3, which this draws one image pixel per device pixel
+  // on a Retina screen), otherwise the capture page's 2. It is a property of the image, not of the
+  // reader's screen: dividing by the reader's devicePixelRatio showed small captures at their Field
+  // size on a Retina screen and at twice that everywhere else.
+  const FIELD_SIZE_MULTIPLE = 1.5;
+  const DEFAULT_CAPTURE_SCALE = 2;
   let lightbox = null;
   let overlay = null;
   let image = null;
@@ -126,14 +133,8 @@
     if (node.hasAttribute("width")) return;
     if (!node.complete || !node.naturalWidth) return;
 
-    const deviceScale = Math.max(window.devicePixelRatio || 1, 1);
-    const preferredWidth = Math.round(node.naturalWidth / deviceScale);
-
-    if (preferredWidth <= 0 || preferredWidth > SMALL_IMAGE_MAX_WIDTH) {
-      node.classList.remove(NATIVE_SIZED_CLASS);
-      node.style.removeProperty("--field-docs-native-max-width");
-      return;
-    }
+    const captureScale = parseFloat(node.dataset.captureScale) || DEFAULT_CAPTURE_SCALE;
+    const preferredWidth = Math.round(node.naturalWidth * FIELD_SIZE_MULTIPLE / captureScale);
 
     node.classList.add(NATIVE_SIZED_CLASS);
     node.style.setProperty("--field-docs-native-max-width", preferredWidth + "px");
@@ -195,14 +196,6 @@
   } else {
     setTimeout(mountAll, 0);
   }
-
-  window.addEventListener("resize", () => {
-    const roots = Array.from(document.querySelectorAll(ROOT_SELECTOR));
-    for (const root of roots) {
-      const images = root.querySelectorAll("img");
-      images.forEach((node) => syncImageDisplaySize(node));
-    }
-  }, { passive: true });
 
   if (window.document$ && typeof window.document$.subscribe === "function") {
     window.document$.subscribe(() => {

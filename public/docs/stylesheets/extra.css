@@ -32,7 +32,7 @@ html.field-transcript-open body { overflow-x:visible !important; }
 
 /* ── palette ─────────────────────────────────────────────────── */
 :root {
-    --mono-bg: #0e0e0e;
+    --mono-bg: #141414;
     --mono-panel: #050505;
     --mono-text: rgba(255, 255, 255, 0.8);
     --mono-text-faint: rgba(255, 255, 255, 0.4);
@@ -129,7 +129,7 @@ h3 {
 }
 
 .md-typeset > h1:first-child {
-    margin-top: 0.4rem;
+    margin-top: 100px;
 }
 
 /* A second `#` on a page starts a part of it ("Making bigger things" on the tour), and it groups with
@@ -170,8 +170,17 @@ h3 {
     display: none !important;
 }
 
+/* image-lightbox.js sets the width from the image's own pixels. The width is the picture's: at wide
+   viewports every image is border-box with a 50px left padding (below), which an unadjusted
+   `width` took out of the picture, so a 318px capture meant to show at 159px showed at 109px. */
 .md-typeset img.field-docs-image-native-sized {
     width: min(100%, var(--field-docs-native-max-width));
+}
+
+@media screen and (min-width: 76.234375em) {
+    .md-typeset img.field-docs-image-native-sized {
+        width: min(calc(100% + 50px), calc(var(--field-docs-native-max-width) + 50px));
+    }
 }
 
 /* A vector figure scales cleanly, so it takes the whole column instead of
@@ -1317,7 +1326,7 @@ button.md-search__icon[aria-label="Clear"] {
     border: 1px solid rgba(255, 255, 255, 0.62);
     background: var(--mono-bg);
     transform: translate(-50%, -50%);
-    box-shadow: 0 0 0 0.2rem #0e0e0e;
+    box-shadow: 0 0 0 0.2rem var(--mono-bg);
 }
 
 .field-reading-rail__dot--title {
@@ -1326,7 +1335,7 @@ button.md-search__icon[aria-label="Clear"] {
     border-radius: 2px;
     border-color: rgba(255, 255, 255, 0.85);
     background-color: white;
-    box-shadow: 0 0 0 0.2rem #0e0e0e;
+    box-shadow: 0 0 0 0.2rem var(--mono-bg);
 }
 
 .field-reading-rail__link {
@@ -1900,4 +1909,75 @@ html .md-typeset details.aside > :last-child {
 .md-typeset .reference-map .reference-internal:hover,
 .md-typeset .reference-map .reference-internal:focus-within {
     opacity: 1;
+}
+
+/* ── What's new (changelog.md) ───────────────────────────────────────────────
+   tools/docs_changelog.py `render` turns each entry's heading and date line into a row: the
+   headline on the left, the date and a link to the last commit it covers stacked on the right,
+   with one rule under both, over a picture cropped from the entry's first linked page. The
+   page's body type is 10% smaller than the rest of the site: it is read as a list, not a page. */
+.md-typeset .changelog-head {
+    position: relative;
+    display: flex;
+    align-items: flex-end;
+    gap: 1rem;
+    margin-top: 40px;
+    padding: 0 0.5rem;
+    border-bottom: 0.5px solid white;
+}
+.md-typeset .changelog-head h3 {
+    position: relative;
+    flex: 1;
+    margin: 0;
+    border-bottom: 0;
+}
+.md-typeset .changelog-head h3,
+.md-typeset .changelog-meta {
+    text-shadow: 0 0 4px rgba(0, 0, 0, 0.9), 0 0 12px rgba(0, 0, 0, 0.7);
+}
+.md-typeset .changelog-meta {
+    position: relative;
+    flex: none;
+    text-align: right;
+    line-height: 1.35;
+    padding-bottom: 6px;
+    font-size: 0.6rem;
+    font-style: italic;
+    color: #ddd;
+}
+.md-typeset .changelog-date,
+.md-typeset .changelog-commit {
+    display: block;
+}
+.md-typeset .changelog-commit {
+    font-style: normal;
+    font-family: var(--md-code-font-family);
+    font-size: 0.55rem;
+    color: #bbb;
+}
+.md-typeset .changelog-tease {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+}
+/* !important against the site's image rules (native sizing from image-lightbox.js, and the 50px
+   left gutter at wide viewports): the picture is always exactly the row. */
+.md-typeset .changelog-tease img {
+    display: block;
+    box-sizing: border-box;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    object-fit: cover;
+    /* Into the black, not just fainter: the page behind is grey, so opacity alone greys the
+       picture out, where a little less brightness keeps its colour and the headline's contrast. */
+    opacity: 0.5;
+    filter: brightness(0.8);
+}
+.md-typeset:has(.changelog-head) p,
+.md-typeset:has(.changelog-head) li {
+    font-size: 0.675rem;
 }

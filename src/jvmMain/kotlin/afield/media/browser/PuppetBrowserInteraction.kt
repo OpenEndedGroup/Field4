@@ -255,7 +255,8 @@ class PuppetBrowserPanel(
     var halfHeight: Float,
 ) {
     val model = Matrix4f()
-    val uv = PuppetBrowserUvInput(browser)
+    // Lazy: placing and hit-testing the panel must not ask the browser for its viewport.
+    val uv by lazy { PuppetBrowserUvInput(browser) }
 
     data class Hit(
         val worldPoint: Vector3f,

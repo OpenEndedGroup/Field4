@@ -602,7 +602,7 @@ object MarfGallery {
 
     // ── rendering ─────────────────────────────────────────────────────────────────────────
 
-    private const val BG = "#0e0e0e"
+    private const val BG = "#141414"
     private const val LANE_BG = "#050505"
     private const val GRID = "#1f1f1f"
     private const val GRID_STRONG = "#3a3a3a"

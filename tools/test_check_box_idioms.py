@@ -200,6 +200,13 @@ class ListLiteralTests(unittest.TestCase):
         self.assertEqual(self.fixed(code), code.replace("{ x -> listOf(x) }", "{ x -> [x] }"))
         self.assertEqual(self.fixed("val e = listOf(1) + listOf(2)\n"), "val e = [1] + listOf(2)\n")
 
+    def test_a_lambdas_last_expression_keeps_listOf(self):
+        # A lambda's result has no expected type: `[ring, cloud]` there does not compile (flow_matching, 11-02/11-03).
+        code = ("val panels = xs.flatMapIndexed { i, x ->\n    val ring = x\n    listOf(ring, x)\n}\n"
+                "val q = xs.map {\n    listOf(it, it) // pair\n}\n")
+        self.assertEqual(self.fixed(code), code)
+        self.assertEqual(self.fixed("val r = run {\n    val p = listOf(1, 2)\n}\n"), "val r = run {\n    val p = [1, 2]\n}\n")
+
     def test_a_call_spanning_lines_is_a_note_not_a_rewrite(self):
         code = "```kotlin\nval xs = listOf(\n    1,\n    2,\n)\n```\n"
         f = Fixture({self.PATH: code})

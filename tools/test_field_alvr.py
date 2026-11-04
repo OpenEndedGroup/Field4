@@ -15,7 +15,9 @@ class FieldAlvrTest(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
-        self.home = Path(self.temp.name)
+        # Resolved: the launcher reports real paths, and macOS's temp directory
+        # sits behind the /var -> /private/var symlink.
+        self.home = Path(self.temp.name).resolve()
         self.steam = self.home / 'Steam library/SteamVR'
         self.steam.mkdir(parents=True)
         (self.steam / 'vrclient.so').touch()
@@ -62,6 +64,9 @@ class FieldAlvrTest(unittest.TestCase):
         self.assertEqual(json.loads(result.stdout), {
             'argv': args[1:], 'runtime': str(self.manifest), 'input': 'desktop', 'keep': 'preserved'})
         self.assertEqual(default.read_text(), 'WiVRn default must stay here')
+        paired = subprocess.run([*command, '--paired-input', *args], env=env, text=True,
+                                capture_output=True, check=True)
+        self.assertEqual(json.loads(paired.stdout)['input'], 'paired')
 
 
 if __name__ == '__main__':

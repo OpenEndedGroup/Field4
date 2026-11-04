@@ -1,0 +1,69 @@
+name: alife_search_comparison
+description: >
+  Three pure-CPU boxes for public/docs/alife_examples.md "Does search beat random?": the generic
+  compareSearch (afield.study.search) runs random sampling, hill climbing, evolution and evolution
+  with immigrants at an equal evaluation budget over several seeds, on a Life-like rule genome
+  (edge of chaos), an L-system genome (fractal dimension 1.7) and a Lenia genome (soliton). Each box
+  prints the median/IQR table, the same runs read at smaller budgets, and draws the best-so-far plot.
+docs:
+  - page: alife_examples.md
+    why: "Section 11, Does search beat random?"
+operations:
+  - create:
+      box: compare_life
+      name: "11 — search vs random: Life-like rules"
+      frame:
+          x: 60.0
+          y: 60.0
+          w: 420.0
+          h: 100.0
+      properties:
+        code: |
+          val soups = [randomSoup(48, 48, density = 0.35, seed = 101L), randomSoup(48, 48, density = 0.12, seed = 202L)]
+          val c = compareSearch(
+              LifeRuleGenome(radius = 2),
+              caEdgeOfChaosObjective(soups, warmup = 20, scored = 30),
+              budget = 120,
+              seeds = [1L, 2L, 3L, 4L],
+              label = "life rule, edge of chaos",
+          )
+          println(c.table() + c.budgetTable([30, 60, 120]))
+          showImg(c.plot(360, 260))
+  - create:
+      box: compare_lsystem
+      name: "11 — search vs random: L-systems"
+      frame:
+          x: 520.0
+          y: 60.0
+          w: 420.0
+          h: 100.0
+      properties:
+        code: |
+          val c = compareSearch(
+              LSystemGenome(),
+              lSystemDimensionObjective(),
+              budget = 120,
+              seeds = [1L, 2L, 3L, 4L],
+              label = "l-system, dimension 1.7",
+          )
+          println(c.table() + c.budgetTable([30, 60, 120]))
+          showImg(c.plot(360, 260))
+  - create:
+      box: compare_lenia
+      name: "11 — search vs random: Lenia solitons"
+      frame:
+          x: 980.0
+          y: 60.0
+          w: 420.0
+          h: 100.0
+      properties:
+        code: |
+          val c = compareSearch(
+              LeniaGenome(radius = 6, dt = 0.1, shells = 3),
+              leniaSolitonObjective(width = 48, height = 48, steps = 90, initialSeed = 5L, driftScale = 8.0),
+              budget = 60,
+              seeds = [1L, 2L, 3L],
+              label = "lenia, soliton",
+          )
+          println(c.table())
+          showImg(c.plot(360, 260))

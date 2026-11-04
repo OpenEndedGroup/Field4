@@ -193,6 +193,8 @@ object DemoTranscriptExecSmokeTest {
         // BSP-OT matching: two still boxes executed (one of them a million points a side, a few
         // seconds) and a launched morph loop stopped after 90 frames.
         "point_matching",
+        // flowMatch samples graded by a Datalog program and drawn by island; three CPU boxes, all executed.
+        "flow_islands",
         "fn_differentiable_fit_demo",
         // The two ways to run a `@{...}` Kotlin right-hand side, side by side; all three boxes execute.
         // `fnrw_broken` is the one-box form, which used to re-enter its own box 172 levels deep and
@@ -214,6 +216,8 @@ object DemoTranscriptExecSmokeTest {
         "hello_display",
         "hello_display_capture",
         "ai4_iframe_hello",
+        // Registers two box tools and prints where stalls go; no model and no git call on replay.
+        "ai4_cold_reader",
         // Two boxes, no Window: the rates box's variables and the sheet box, whose `sheet { }` seeds
         // its property and displays the editor iframe. Replaying it runs the real seeding path.
         "spreadsheet_tour",
@@ -336,6 +340,10 @@ object DemoTranscriptExecSmokeTest {
         // Five pure-CPU Braitenberg-vehicle boxes (braitenberg_vehicles.md sections 5-9); the
         // moving-lights box is an animateEvolution clip and is launched. No Window, no Renderer.
         "braitenberg_where_next",
+        // Two pure-CPU section 10 boxes (equal-budget search comparison), about 11-13 s each.
+        "braitenberg_brain_search",
+        // Three pure-CPU alife_examples.md "Does search beat random?" boxes (compareSearch), under 20 s each.
+        "alife_search_comparison",
         // Five independent pure-CPU statistics boxes; showPlaneGrid is drawToSVG -> display,
         // showSignals is a plotly HTML fragment -> display, histogramToSvg is just a string.
         "statistics_examples",

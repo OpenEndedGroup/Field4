@@ -206,6 +206,12 @@ object DocsAudioProvenance {
         val assetRef: String,
         val spec: String,
         val renderer: String,
+        /**
+         * The fence's `capture-profile`, when the clip was made on one platform's host
+         * (`linux-nvidia`, `macos-*`). Some producers are deterministic on one platform and not
+         * across platforms, so [audit] compares such a clip only where its profile's platform runs.
+         */
+        val captureProfile: String? = null,
     ) {
         /** The asset on disk. */
         val file: File get() = File(DOCS_DIR, assetRef)
@@ -239,6 +245,7 @@ object DocsAudioProvenance {
                         assetRef = normalise(relative, audio),
                         spec = attr("audio-spec", "audio_spec", "audioSpec", "sound", "scene").orEmpty(),
                         renderer = attr("audio-renderer", "audio_renderer", "audioRenderer") ?: DEFAULT_RENDERER,
+                        captureProfile = attr("capture-profile", "capture_profile"),
                     )
                 }
             }
@@ -326,6 +333,17 @@ object DocsAudioProvenance {
     }
 
     /**
+     * The `os.name` prefix a docs capture profile runs on, mirroring `CAPTURE_PROFILE_PLATFORMS` in
+     * `public/docs_hooks.py` (`linux-*` is Linux, `macos-*` is macOS); null for a profile with no
+     * platform of its own.
+     */
+    fun profilePlatform(profile: String): String? = when {
+        profile.startsWith("linux") -> "linux"
+        profile.startsWith("macos") -> "mac"
+        else -> null
+    }
+
+    /**
      * Re-renders [published] through its declared producer and measures it against the committed
      * asset.
      *
@@ -352,6 +370,16 @@ object DocsAudioProvenance {
                 published, origin, Double.NaN, Double.NaN, committed.frames, channels,
                 sampleRateOf(committedFile), peak, rms,
                 skipped = "a live Sonic Pi recording; a fresh take is not expected to match sample for sample",
+            )
+        }
+
+        val profilePlatform = published.captureProfile?.let { profilePlatform(it) }
+        if (profilePlatform != null && !System.getProperty("os.name").lowercase().startsWith(profilePlatform)) {
+            return Finding(
+                published, origin, Double.NaN, Double.NaN, committed.frames, channels,
+                sampleRateOf(committedFile), peak, rms,
+                skipped = "captured under capture-profile=\"${published.captureProfile}\" on $profilePlatform; " +
+                    "compared only there (Steam Audio's HRTF renders R=1.0 on one platform, 0.35-0.94 across them)",
             )
         }
 

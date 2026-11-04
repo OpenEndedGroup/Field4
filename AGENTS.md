@@ -524,6 +524,11 @@ code, and a landing runs it on what it changed.
   <page>`, `sync`, `resolve`/`question`/`memory`, and `revise`, which runs one agent per page in
   parallel). Each note is anchored to its Markdown or KDoc lines by `git blame` origin, so line
   numbers stay right after other edits. See `public/docs/docs_notes.md`.
+- The public changelog, `public/docs/changelog.md` ("What's New", linked from the front page), is
+  written from `main`'s history: `tools/docs_changelog.py status` says how far behind it is,
+  `brief` prints the next ~10 landings to condense into an entry, `check` (also run by
+  `tools/test_docs_changelog.py`) holds every landing to exactly one entry and every link to a
+  real page and heading. How to write one: `dev_docs/agents/DOCS_CHANGELOG.md`.
 - **What goes on a page:** [`dev_docs/agents/DOCS_WRITING_RULES.md`](dev_docs/agents/DOCS_WRITING_RULES.md),
   distilled from the human's notes on the published site. In short: write for the user (how a
   page was made and internal mechanism go in an aside or `dev_docs/`). No lab-notebook voice or

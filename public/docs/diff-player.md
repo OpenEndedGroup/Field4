@@ -168,7 +168,7 @@ Runner attributes, by what they decide. Hyphenated names also answer to an under
 - `viewport="760x560"` — lays the page out at this size for a `ui` capture, then puts it back. Field's layout follows the window, so a smaller one shows a box and its editor together at a readable scale.
 - `hide-toasts=true` — hides Field's toasts for a `ui` capture. They stay on screen once shown, and in a small `viewport=` window they stack over the canvas being recorded.
 - `padding="16"` — insets a `box` or `editor` crop.
-- `scale="3"` — on a `box` still, rasterises the shot at this many device pixels per CSS pixel instead of the capture page's 2, so a narrow output panel can be shown wider than its CSS size and stay sharp.
+- `scale="4"` — on a `box` still, rasterises the shot at this many device pixels per CSS pixel instead of the default 3. The page shows every capture at 1.5 times its size in Field whatever its scale (the still records it), so a higher one only adds pixels, for a narrow panel that is shown stretched to the column.
 - `trim=true` — crops the uniform background off any finished capture.
 - `trim-native=true` — the older, narrower form of the same thing, and only for a `native-window` graphics capture.
 

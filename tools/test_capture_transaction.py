@@ -277,6 +277,28 @@ class RunnerCaptureTransactionTests(unittest.TestCase):
                         "audio": "audio_run", "ui_drive": "ui_drives_run"}[kind], 1)
                 self.assertEqual(list(self.root.glob(".field-capture-*")), [])
 
+    def test_incremental_fresh_cache_recaptures_a_box_still_taken_at_another_scale(self):
+        # The one exception to adopting committed assets: a box still whose PNG records a scale
+        # other than its fence asks for (untagged reads as 2; stills are taken at 3).
+        from PIL import Image
+        self.state.runner_mode = "incremental"
+        destinations, capture, kwargs = self.prepare("screenshot")
+        Image.new("RGB", (10, 10), "white").save(destinations[0])
+        def child(command, **_):
+            for staged in self.state._active_capture_transaction.outputs.values():
+                image = Image.new("RGB", (100, 100), "white")
+                image.paste("black", (0, 0, 50, 100))
+                image.save(staged)
+            return subprocess.CompletedProcess(command, 0, "[]", "")
+        self.state._run_capture_child.side_effect = child
+        capture(**kwargs)
+        self.assertEqual(self.state._run_capture_child.call_count, 1)
+        self.assertEqual(docs_hooks.png_pixel_scale(destinations[0]), docs_hooks.BOX_STILL_SCALE)
+        # Now at the asked-for scale, the same committed still is adopted.
+        self.state.cache, self.state.cache_metadata = {}, {}
+        capture(**kwargs)
+        self.assertEqual(self.state._run_capture_child.call_count, 1)
+
     def test_incremental_fresh_cache_reuses_committed_outputs_for_every_capture_kind(self):
         # A fresh worktree has the committed assets but no runner cache. Incremental must adopt
         # them, not re-capture: capture="ui" once re-drove every UI fence on the site this way.

@@ -4,7 +4,9 @@ An LED matrix is a screen with very few pixels. Let's play a RectSL animation on
 the signal back to see what the lights received.
 
 `RectSLImager` draws the scene into an `Img`, and `Patch.mapImage` uses it to colour 128 RGB pixels
-and four RGBWA washes. `DmxOutput` sends those colours over sACN to this machine, where `DmxInput`
+and four RGBWA washes (wide lights with red, green, blue, white and amber channels). `DmxOutput`
+sends those colours as DMX, the standard lighting-control protocol, carried over the network by
+sACN; here it goes to this machine, where `DmxInput`
 receives them. `Fixture.decode` turns the received bytes back into colours so we can compare them
 with what was sent.
 
@@ -77,7 +79,8 @@ In RectSL it reads:
 ```
 
 The second panel is the rig in its sent colours. The third is the same rig lit only by what the
-receiver decoded from the two universes that came back. The wall is 16 units by 8, which gives one
+receiver decoded from the two universes that came back (a DMX universe is one packet of 512 channel
+bytes; the rig needs two). The wall is 16 units by 8, which gives one
 fixture per unit, and the frame is drawn at 16 pixels per unit, so each fixture stands for a
 16 × 16 block of pixels.
 

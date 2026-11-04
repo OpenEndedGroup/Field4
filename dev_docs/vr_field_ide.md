@@ -314,3 +314,17 @@ Browser pixel resolution stays unchanged. Fourteen controller/hand/grab tests, f
 Chromium tests and two deterministic input-queue tests passed; the new resize cases cover aspect,
 hit testing, scale limits and either-hand handoff. The browser tests need the existing display
 session supplied explicitly. No unrelated GPU owner or physical desktop input device was changed.
+
+## Paired headset input (2026-11-02)
+
+For Vision Pro through ALVR there are no WiVRn devices, so `FIELD_VR_INPUT=paired` (or
+`tools/field_alvr.py --paired-input`) gives the panel a `PairedInputSource` instead: a TCP
+listener, open only while the `FieldVrWorkspace` is, that accepts one authenticated session from
+the patched visionOS ALVR client and emits the same evdev-shaped events `WiVRnDeviceReader`
+does. `WiVRnBrowserInput` is unchanged apart from taking any `WiVRnEventSource` and showing the
+source's own status line, so layout, Compose, modifiers, cursor ownership and release-on-reset
+are the Quest path. The source adds what the kernel would otherwise provide: autorepeat for a
+held key, and a release of everything on silence, a new session, a bad frame or overflow.
+Wire format and threat model: the header of `PairedHeadsetInput.kt`. The client side, the Mac
+build and what is still unverified on hardware:
+`dev_docs/handoffs/2026-11-02-alvr-vision-pro-keyboard-mouse-mac-results.md`.
