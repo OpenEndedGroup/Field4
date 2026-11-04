@@ -1972,7 +1972,10 @@ html .md-typeset details.aside > :last-child {
     margin: 0 !important;
     padding: 0 !important;
     object-fit: cover;
-    opacity: 0.8;
+    /* Into the black, not just fainter: the page behind is grey, so opacity alone greys the
+       picture out, where a little less brightness keeps its colour and the headline's contrast. */
+    opacity: 0.5;
+    filter: brightness(0.8);
 }
 .md-typeset:has(.changelog-head) p,
 .md-typeset:has(.changelog-head) li {
