@@ -77,7 +77,7 @@ patSpatial(
 Here it is rendered offline through Steam Audio, six seconds with the listener still. Listen on
 headphones:
 
-```diffstatic_runner {data-lang=kotlin audio="assets/pat_spatial/kit-hats.wav" audio-spec="kit-hats" audio-renderer="afield.audio.synth.PatSpatialPlacementDocs" requires="steam-audio" embed=true hidden=true name="pat-spatial-kit-hats"}
+```diffstatic_runner {data-lang=kotlin audio="assets/pat_spatial/kit-hats.wav" audio-spec="kit-hats" audio-renderer="afield.audio.synth.PatSpatialPlacementDocs" requires="steam-audio" capture-profile="linux-nvidia" embed=true hidden=true name="pat-spatial-kit-hats"}
 // PatSpatialPlacementDocs.renderWav("kit-hats", …): the example above through patSpatial and
 // Steam Audio's HRTF, listener at the origin facing ahead
 ```
@@ -134,7 +134,7 @@ showPatSpatial(
 
 Rendered offline through Steam Audio, with the listener still:
 
-```diffstatic_runner {data-lang=kotlin audio="assets/pat_spatial/four-note-line.wav" audio-spec="four-note-line" audio-renderer="afield.audio.synth.PatSpatialPlacementDocs" requires="steam-audio" embed=true hidden=true name="pat-spatial-four-note-line"}
+```diffstatic_runner {data-lang=kotlin audio="assets/pat_spatial/four-note-line.wav" audio-spec="four-note-line" audio-renderer="afield.audio.synth.PatSpatialPlacementDocs" requires="steam-audio" capture-profile="linux-nvidia" embed=true hidden=true name="pat-spatial-four-note-line"}
 // PatSpatialPlacementDocs.renderWav("four-note-line", …): the example above, six seconds
 ```
 
@@ -181,7 +181,7 @@ each side, and leaning in toward the kick and back. Listen on headphones. While 
 hat passes behind you to your right; while it steps, the kick sweeps across; while it leans in, the
 kick grows as the hat and snare fall away behind.
 
-```diffstatic_runner {data-lang=kotlin audio="assets/pat_spatial/head-tracked.wav" audio-spec="head-tracked" audio-renderer="afield.audio.synth.PatSpatialHeadTrackedDocs" requires="steam-audio" embed=true hidden=true name="pat-spatial-head-tracked"}
+```diffstatic_runner {data-lang=kotlin audio="assets/pat_spatial/head-tracked.wav" audio-spec="head-tracked" audio-renderer="afield.audio.synth.PatSpatialHeadTrackedDocs" requires="steam-audio" capture-profile="linux-nvidia" embed=true hidden=true name="pat-spatial-head-tracked"}
 // PatSpatialHeadTrackedDocs.renderWav("head-tracked", …)
 // HeadTrackedPatternDemo's four movements through Steam Audio's HRTF, 5 s each
 ```
