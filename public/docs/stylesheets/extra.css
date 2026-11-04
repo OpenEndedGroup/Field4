@@ -170,8 +170,17 @@ h3 {
     display: none !important;
 }
 
+/* image-lightbox.js sets the width from the image's own pixels. The width is the picture's: at wide
+   viewports every image is border-box with a 50px left padding (below), which an unadjusted
+   `width` took out of the picture, so a 318px capture meant to show at 159px showed at 109px. */
 .md-typeset img.field-docs-image-native-sized {
     width: min(100%, var(--field-docs-native-max-width));
+}
+
+@media screen and (min-width: 76.234375em) {
+    .md-typeset img.field-docs-image-native-sized {
+        width: min(calc(100% + 50px), calc(var(--field-docs-native-max-width) + 50px));
+    }
 }
 
 /* A vector figure scales cleanly, so it takes the whole column instead of

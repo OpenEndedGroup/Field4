@@ -4,7 +4,12 @@
   const ENHANCED_ATTR = "data-field-docs-image-enhanced";
   const SKIP_ATTR = "data-no-lightbox";
   const NATIVE_SIZED_CLASS = "field-docs-image-native-sized";
-  const SMALL_IMAGE_MAX_WIDTH = 560;
+  // An image shows at this many CSS pixels per image pixel. Captures are taken at two device pixels
+  // per CSS pixel, so a capture shows at 1.5 times its size in Field, where its type reads beside
+  // the body text. It is a property of the image, not of the reader's screen: dividing by the
+  // reader's devicePixelRatio showed small captures at their Field size on a Retina screen and at
+  // twice that everywhere else.
+  const DISPLAY_SCALE = 0.75;
   let lightbox = null;
   let overlay = null;
   let image = null;
@@ -126,14 +131,7 @@
     if (node.hasAttribute("width")) return;
     if (!node.complete || !node.naturalWidth) return;
 
-    const deviceScale = Math.max(window.devicePixelRatio || 1, 1);
-    const preferredWidth = Math.round(node.naturalWidth / deviceScale);
-
-    if (preferredWidth <= 0 || preferredWidth > SMALL_IMAGE_MAX_WIDTH) {
-      node.classList.remove(NATIVE_SIZED_CLASS);
-      node.style.removeProperty("--field-docs-native-max-width");
-      return;
-    }
+    const preferredWidth = Math.round(node.naturalWidth * DISPLAY_SCALE);
 
     node.classList.add(NATIVE_SIZED_CLASS);
     node.style.setProperty("--field-docs-native-max-width", preferredWidth + "px");
@@ -195,14 +193,6 @@
   } else {
     setTimeout(mountAll, 0);
   }
-
-  window.addEventListener("resize", () => {
-    const roots = Array.from(document.querySelectorAll(ROOT_SELECTOR));
-    for (const root of roots) {
-      const images = root.querySelectorAll("img");
-      images.forEach((node) => syncImageDisplaySize(node));
-    }
-  }, { passive: true });
 
   if (window.document$ && typeof window.document$.subscribe === "function") {
     window.document$.subscribe(() => {
