@@ -26,8 +26,15 @@ operations:
           val repo = File((thisBox.properties["coldReader.repo"] as? String) ?: System.getProperty("user.dir"))
           val out = File(repo, "build/cold_reader/stalls.jsonl")
           val categories: List<String> = [
-              "undefined-term", "fence-unintroduced", "page-meta", "mechanism-first",
-              "dense", "unparseable", "ceremony", "broken-markup", "false-claim",
+              "undefined-term",
+              "fence-unintroduced",
+              "page-meta",
+              "mechanism-first",
+              "dense",
+              "unparseable",
+              "ceremony",
+              "broken-markup",
+              "false-claim",
           ]
 
           val seen = mutableListOf<String>()
@@ -42,8 +49,10 @@ operations:
               val page by param<String>("the page under public/docs, e.g. staging.md")
               val revision by param<String>("a git revision, e.g. a commit hash; HEAD for the current page", default = "HEAD")
               action {
-                  val p = ProcessBuilder("git", "-C", repo.path, "show", "${revision()}:public/docs/${page()}")
-                      .redirectErrorStream(true).start()
+                  val p =
+                      ProcessBuilder("git", "-C", repo.path, "show", "${revision()}:public/docs/${page()}")
+                          .redirectErrorStream(true)
+                          .start()
                   val text = p.inputStream.bufferedReader().readText()
                   if (p.waitFor() != 0) return@action toolError(text.trim())
                   text.lines().mapIndexed { i, l -> "${i + 1}: $l" }.joinToString("\n")
@@ -53,7 +62,8 @@ operations:
           aiTool("report_stall") {
               describe(
                   "Record one place a newcomer reading the page would stall. Quote the page exactly. Categories: " +
-                      categories.joinToString(", ") + ". Report only what the page itself shows; one call per stall.",
+                      categories.joinToString(", ") +
+                      ". Report only what the page itself shows; one call per stall.",
               )
               effects(ToolEffect.FILESYSTEM_WRITE)
               val page by param<String>("the page, e.g. staging.md")
