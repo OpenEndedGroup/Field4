@@ -1010,6 +1010,11 @@ def preprocess_docs(*, public_dir: Path, generated_docs: Path, page_filters: tup
             )
             for before, after in repairs:
                 reseated_refs.append((relative.as_posix(), before, after))
+            if relative.as_posix() == "changelog.md":
+                # Dates, commit links and picture strips come from main's history and the linked
+                # pages, so the authored page stays plain markdown (tools/docs_changelog.py).
+                from docs_changelog import render as render_changelog
+                processed = render_changelog(processed)
             destination.write_text(processed, encoding="utf-8")
     finally:
         state.runner_mode = runner_mode

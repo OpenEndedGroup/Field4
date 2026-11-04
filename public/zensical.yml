@@ -5,6 +5,9 @@ site_name: OpenEndedGroup | Field·4
 
 nav:
   - Home: index.md
+  # Linked from the front page. Written from main's history with tools/docs_changelog.py; how to
+  # keep it current is dev_docs/agents/DOCS_CHANGELOG.md.
+  - What's New: changelog.md
   # The front of the site, read in order: install it, learn the survival moves, learn enough Kotlin
   # to read an example, then take the Tour. The Tour is nested *inside* this section rather than
   # sitting beside it, because "Start Here" is the only heading a first-time reader goes looking
