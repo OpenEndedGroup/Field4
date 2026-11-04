@@ -485,6 +485,16 @@ launches them, advances 90 frames, and stops them.
 
 [Open →](offline.html?file=assets/agent_transcripts/inertial_movement/metadata.edn)
 
+### flow_islands
+
+Three boxes, and a flow-matching generator graded by a Datalog program. `fi_cloud` trains
+`flowMatch` on two interlocking half-moons and samples 200 new points; `fi_islands` hands both
+clouds to `Datalog` as facts, counts the target points near each sample, calls a sample with none a
+stray, and labels the connected pieces with and without the strays; `fi_draw` draws the samples
+coloured by piece, strays in red. See [the walkthrough](chain_flow_islands.md).
+
+[Open →](offline.html?file=assets/agent_transcripts/flow_islands/metadata.edn)
+
 ### point_matching
 
 One-to-one matching between point clouds, a million points a side, with `matchPoints` and the
