@@ -17,7 +17,9 @@ browserControl = vr.browser
 // Sample the eye layers already rendered for OpenXR; do not render the scene again.
 var stereoPreview = false
 val previewModule = vr.stereo.mirrorToScreen(
-    windowIndex = 1, name = "headset-preview", stereoPair = { stereoPreview },
+    windowIndex = 1,
+    name = "headset-preview",
+    stereoPair = { stereoPreview },
 )
 val previewWindow = ownedRenderer.windows[1]
 controlGroup("desktop preview") {

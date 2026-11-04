@@ -65,7 +65,7 @@ displayOpen("guide")
 <!-- field-box id="vr_ide_panel" index="1" -->
 
 ```edn [field-box id="vr_ide_panel" role="properties"]
-{"id" "vr_ide_panel" "index" 1 "name" "2 - Live IDE in VR" "parents" ["root" "vr_ide_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "vr_ide_renderer"} "name" "2 - Live IDE in VR" "_tombstone" false "frame" #afield/rect [580.0 60.0 350.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "vr_ide_panel_code_.kt" "lines" 47 "characters" 1749 "sha256" "35a3a8601b0bb789040ff89c33c9890e1cc40e8d6c308dbc5527aaabad732ff1"}]}
+{"id" "vr_ide_panel" "index" 1 "name" "2 - Live IDE in VR" "parents" ["root" "vr_ide_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "vr_ide_renderer"} "name" "2 - Live IDE in VR" "_tombstone" false "frame" #afield/rect [580.0 60.0 350.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "vr_ide_panel_code_.kt" "lines" 49 "characters" 1757 "sha256" "e3f136e0837cb1c56ce59f60c51f22f0e8fb7f37bcd523d320dcb9f7ce7cfea4"}]}
 ```
 
 ```kotlin [field-property box="vr_ide_panel" name="code" path="vr_ide_panel_code_.kt"]
@@ -88,7 +88,9 @@ browserControl = vr.browser
 // Sample the eye layers already rendered for OpenXR; do not render the scene again.
 var stereoPreview = false
 val previewModule = vr.stereo.mirrorToScreen(
-    windowIndex = 1, name = "headset-preview", stereoPair = { stereoPreview },
+    windowIndex = 1,
+    name = "headset-preview",
+    stereoPair = { stereoPreview },
 )
 val previewWindow = ownedRenderer.windows[1]
 controlGroup("desktop preview") {

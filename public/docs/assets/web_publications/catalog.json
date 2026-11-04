@@ -1175,12 +1175,12 @@
     },
     "assets/agent_transcripts/field_vr_ide/metadata.edn": {
       "captureDigest": "4d5add3a103558e3a45b0b09c14392b55f14042e4118c9d4d341d9a926c175b0",
-      "capturedAt": "2026-11-04T13:40:04.924Z",
+      "capturedAt": "2026-11-04T13:59:56.266Z",
       "channels": 1,
       "file": "assets/web_publications/field_vr_ide/document/metadata.edn",
       "files": {
-        "assets/web_publications/field_vr_ide/document/metadata.edn": "bd385e4bc6acd14c3ae26228e498c756ae167c0bd19e94179107c283bf46ace0",
-        "assets/web_publications/field_vr_ide/document/outputs.json": "26e37363f7ce167bfbc058c5edbc8313bc5f811a71b841fe520fffb48769a230",
+        "assets/web_publications/field_vr_ide/document/metadata.edn": "ec688f99f7cffbff67c56b58237aadcbf0093a6bdeaef03b1ad5d33ac4d8bf71",
+        "assets/web_publications/field_vr_ide/document/outputs.json": "bd210a30398656d7ad1fa5d597de045013ac7e3ba210944eea2ef02e5e6b9e2f",
         "assets/web_publications/field_vr_ide/outputs/0.html": "1541ec76abed9f4714070f990a9403a0268144d473d1ff9541cfefe21857147e"
       },
       "kinds": [
@@ -1188,10 +1188,10 @@
       ],
       "outputs": "assets/web_publications/field_vr_ide/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/field_vr_ide.yaml": "cfb2b9b682186925106b08d55d1ed25f0ca8f21a00c0e86326755b7ab5e2f941",
+        "dev_docs/agents/transcripts/field_vr_ide.yaml": "eac7acf96a6aded101da26f76ea557e08971bda3c92ca8ffb2d82fe7222b091b",
         "public/docs/assets/agent_transcripts/field_vr_ide/guides/field_vr_ide.md": "2b8e81644076686a636d3bfdb26e3f7acb7ba82fda30922197eeb1f4dac7a2b2",
-        "public/docs/assets/agent_transcripts/field_vr_ide/metadata.edn": "64b0704be06d056bd6d1dd97300187e2926a0fe9e2a43fa886de54c25133e7c0",
-        "public/docs/assets/agent_transcripts/field_vr_ide/vr_ide_panel_code_.kt": "35a3a8601b0bb789040ff89c33c9890e1cc40e8d6c308dbc5527aaabad732ff1",
+        "public/docs/assets/agent_transcripts/field_vr_ide/metadata.edn": "a246cc36f95252c8087825e23c2ee0677e60d7fec7da29c5ed60fb2bb927bf5f",
+        "public/docs/assets/agent_transcripts/field_vr_ide/vr_ide_panel_code_.kt": "e3f136e0837cb1c56ce59f60c51f22f0e8fb7f37bcd523d320dcb9f7ce7cfea4",
         "public/docs/assets/agent_transcripts/field_vr_ide/vr_ide_playground_code_.kt": "c45441dd78ad57a39384759b8d42d803b88253dd664e8b302fff0a21c7ed9ed2",
         "public/docs/assets/agent_transcripts/field_vr_ide/vr_ide_renderer_code_.kt": "eb3a49f3f5e485500925e44ffab68367c321941c92f46d1a2b0ca201056c2fff",
         "public/docs/assets/field_vr_ide/companion.png": "9dbc1a325886b8d95384e5a7d4094fbbfeaa938c2485e31ce91747c3399517c7",
