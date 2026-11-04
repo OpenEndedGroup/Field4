@@ -137,6 +137,43 @@ Measured this way, on OpenAI `gpt-6-astra`, one or two runs per arm:
 These are small samples on one model, on tasks chosen to need those features. Repeat them on your own
 work before relying on them.
 
+## Scoring AI4 as a reader of these docs
+
+A measurement does not have to be about boxes. The
+[ai4_cold_reader](agent_transcripts.md#ai4_cold_reader) starting point is one box with two tools:
+`cold_read_page` returns a page of this site as it stood at a git revision, with numbered lines, and
+`report_stall` records one place a newcomer would get stuck: a term used before it is explained, code
+shown before the text says what it does, a sentence about how the page was made. Each stall is a
+line of JSON with the page, line, category, the quoted words and a note. Run the box, then ask its
+chat to cold-read a page, or hand the same request to `agent-task` in the backdoor invocation that ran
+the box:
+
+```diffstatic {data-lang=bash}
+uv run --project . --group backdoor python tools/field_backdoor.py --json --document coldreader \
+  --command 'transcript run ai4_cold_reader' \
+  --command "agent-task --goal-file cold_read_staging.txt --max-rounds 48 --check tool-used:report_stall"
+```
+
+`tools/cold_reader_score.py` compares the stalls with a list someone else made of the same page at
+the same revision. A stall counts as found when the quoted words overlap (one quote contains the
+other, or they share four words in a row), or when it is within a line and has the same category.
+Four pages, read by OpenAI `gpt-6.1-sol` at the revision an earlier review of them used, once each:
+
+| page | stalls reported | stalls in the review | found in both | precision | recall |
+| --- | --- | --- | --- | --- | --- |
+| `installation.md` | 10 | 6 | 1 | 0.10 | 0.17 |
+| `staging.md` | 8 | 12 | 6 | 0.75 | 0.50 |
+| `sound.md` | 13 | 10 | 2 | 0.15 | 0.20 |
+| `kotlin_overview.md` | 16 | 10 | 5 | 0.31 | 0.50 |
+| all four | 47 | 38 | 14 | 0.30 | 0.37 |
+
+The earlier review is not a complete list of what is wrong with a page, so low precision here
+mostly means the two readers stopped at different places. Of the 20 stalls on `installation.md` and
+`sound.md` the review did not have, 16 read as real on a second look: terms such as JEP,
+`personalJar` and onset recall used without a word of what they are. One of the misses was an
+`??? aside` reported as being about how the page was made, which is where such text belongs. Each
+page took one turn of two to nine rounds and under a minute.
+
 ## Where it stops
 
 - A program is not a transaction. Edits made before a failure stay. They are recorded and undoable
