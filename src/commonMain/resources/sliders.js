@@ -2623,6 +2623,30 @@ const controlTrackObserver = typeof ResizeObserver !== 'undefined'
     ? new ResizeObserver((entries) => entries.forEach((entry) => fitControlTrack(entry.target)))
     : null;
 
+// Keep the full text in the DOM and tooltip; only its visual middle is clipped by CSS.
+// Segment on grapheme boundaries so an accent or joined emoji stays attached to its character.
+const controlLabelSegmenter = typeof Intl.Segmenter === 'function'
+    ? new Intl.Segmenter(undefined, { granularity: 'grapheme' }) : null;
+function prepareControlLabel(label) {
+    if (!label || label.classList.contains('field-label-middle')) return;
+    const text = label.textContent || '';
+    if (!text) return;
+    const characters = controlLabelSegmenter
+        ? Array.from(controlLabelSegmenter.segment(text), (part) => part.segment) : Array.from(text);
+    const middle = Math.ceil(characters.length / 2);
+    const start = document.createElement('span');
+    start.className = 'field-label-start';
+    start.textContent = characters.slice(0, middle).join('');
+    const end = document.createElement('span');
+    end.className = 'field-label-end';
+    const ending = document.createElement('span');
+    ending.textContent = characters.slice(middle).join('');
+    end.appendChild(ending);
+    label.title = label.title || text;
+    label.replaceChildren(start, end);
+    label.classList.add('field-label-middle');
+}
+
 function refreshControls(root = document) {
     if (controlTrackObserver && root.querySelectorAll) {
         root.querySelectorAll('.field-slider-visual, .alpha-visual').forEach((svg) => {
@@ -2636,6 +2660,7 @@ function refreshControls(root = document) {
         if (!Number.isNaN(initial)) updateMeter(container, initial);
     });
     root.querySelectorAll('.field-slider').forEach((container) => {
+        prepareControlLabel(container.querySelector('.field-label'));
         const initial = parseFloat(container.dataset.value);
         if (!Number.isNaN(initial)) {
             updateSlider(container, initial, { send: false });
