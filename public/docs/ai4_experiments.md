@@ -169,9 +169,10 @@ Four pages, read by OpenAI `gpt-6.1-sol` at the revision an earlier review of th
 
 The earlier review is not a complete list of what is wrong with a page, so low precision here
 mostly means the two readers stopped at different places. Of the 20 stalls on `installation.md` and
-`sound.md` the review did not have, 16 read as real on a second look: terms such as JEP,
-`personalJar` and onset recall used without a word of what they are. One of the misses was an
-`??? aside` reported as being about how the page was made, which is where such text belongs. Each
+`sound.md` the review did not have, 17 read as real on a second look: terms such as JEP,
+`personalJar` and onset recall used without a word of what they are. Of the other three, two were weak
+complaints about the page's own making, and one was an `??? aside` reported as being about how the
+page was made, which is where such text belongs. Each
 page took one turn of two to nine rounds and under a minute.
 
 ## Where it stops

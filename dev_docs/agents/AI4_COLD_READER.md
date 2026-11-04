@@ -31,11 +31,12 @@ This moves the reader inside Field: the `ai4_cold_reader` starting point
 
 Category agreed on 7 of the 14 matches. AI4 leans hard on `undefined-term` (27 of 47).
 
-Hand judgement (one judge, the agent that wrote the harness, so biased toward it): of the 20 AI4
-stalls on installation.md and sound.md the ledger lacks, 16 are plausible real stalls (JEP,
-`personalJar`/`reloadPersonal`, "register", "onset recall", `respondAhead`, an undescribed OSC
-editor); 4 are weak or wrong, including a `??? aside` flagged as page-meta (rule 1 says that is where
-such text belongs) and an unverified numeric contradiction on sound.md line 279. Ledger-relative
+Hand judgement, per stall in `ai4_cold_reader/stalls_2026-11-04_gpt-6.1-sol.judged.jsonl`
+(judge: Opus 5.5, approved by Marc without a per-stall review): of the 20 AI4 stalls on
+installation.md and sound.md the ledger lacks, 17 are real (JEP, `personalJar`/`reloadPersonal`,
+"register", "onset recall", `respondAhead`, an undescribed OSC editor; the sound.md line 279
+contradiction checks out at `0ea33f01e`), 2 are weak (page-meta complaints on lines 150 and 297), and
+1 is wrong (a `??? aside` flagged as page-meta, which is where such text belongs). Ledger-relative
 precision is therefore a floor; the two readers mostly stop in different places. Recall misses
 cluster on page openings and Tour links (sound.md lines 4, 22; installation.md lines 3, 13).
 
@@ -56,3 +57,7 @@ Cost: 2-9 rounds, 49k-158k input tokens, 33-48 s per page.
 - Stretch (AI4 proposing the edit per stall, compared with the external fix commits
   `fa010301d`/`540646ec2`/`9422b14dd`): not attempted.
 - Repeat runs (variance) and a second model.
+- The comparison that decides whether AI4 should do docs passes: the same model (`gpt-6.1-sol`)
+  without Field, given the same pages, prompt and category list through the plain API, scored
+  against the same ledger. The ledger here came from a different agent, so these numbers mix the
+  model and the harness together and cannot say what AI4 itself adds.
