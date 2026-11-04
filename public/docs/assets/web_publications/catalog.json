@@ -1127,12 +1127,12 @@
     },
     "assets/agent_transcripts/fern_iterated_systems/metadata.edn": {
       "captureDigest": "4d5add3a103558e3a45b0b09c14392b55f14042e4118c9d4d341d9a926c175b0",
-      "capturedAt": "2026-11-03T09:27:35.102Z",
+      "capturedAt": "2026-11-04T07:06:58.367Z",
       "channels": 1,
       "file": "assets/web_publications/fern_iterated_systems/document/metadata.edn",
       "files": {
         "assets/web_publications/fern_iterated_systems/document/metadata.edn": "d6d622283e0aaeeddedeea36c614ba77315f55df3598a37a45ba940110fcd081",
-        "assets/web_publications/fern_iterated_systems/document/outputs.json": "a2cb5db5dd8b64b627ac8e300fbeb8909bd2d5c880ab1bb83dcfcd63a5056b5f",
+        "assets/web_publications/fern_iterated_systems/document/outputs.json": "7626b259fd61bbf88810bb437cf188adb4139a38b045e567118e2a8a6817c524",
         "assets/web_publications/fern_iterated_systems/outputs/0.html": "cfa1c09ad45b78e9a97f03e982fc8349dbb7956280eeb76a4d5606630ce8aedc"
       },
       "kinds": [
@@ -1141,7 +1141,7 @@
       "outputs": "assets/web_publications/fern_iterated_systems/document/outputs.json",
       "sources": {
         "dev_docs/agents/transcripts/fern_iterated_systems.yaml": "13bc05524ca8237f3b57d80eb49e52791ceb598c47ee4e6e711f36a8303f86a4",
-        "public/docs/agent_transcripts.md": "d2be1c1d02dab148a48a7b4d25da0f38207ca9d752bb58fb9728392a05f9f41b",
+        "public/docs/agent_transcripts.md": "5a8025bb22c58ccaddd5f4aff4e6a02e8876f8b46a403263a0b5c8b85345bd6e",
         "public/docs/assets/agent_transcripts/fern_iterated_systems/fern_barnsley_code_.kt": "465350835ba6b09747ec8601dc4cc9e52a769a222658aa11312db7f4c3daec9e",
         "public/docs/assets/agent_transcripts/fern_iterated_systems/fern_barnsley_compute_.glsl": "32b40c7b0f4ad43154427cd5a02875a9261a9a52c115e3f6f9356b161ec08b23",
         "public/docs/assets/agent_transcripts/fern_iterated_systems/fern_barnsley_notes_.md": "e52fceb04c29422e455753e00be039fc1bc5ca402627ee33bcec34cd25c23daf",
@@ -1347,6 +1347,30 @@
         "public/docs/assets/flow_grain/flow.png",
         "public/docs/flow_grain.md"
       ]
+    },
+    "assets/agent_transcripts/flow_islands/metadata.edn": {
+      "captureDigest": "4d5add3a103558e3a45b0b09c14392b55f14042e4118c9d4d341d9a926c175b0",
+      "capturedAt": "2026-11-04T07:06:51.305Z",
+      "channels": 2,
+      "file": "assets/web_publications/flow_islands/document/metadata.edn",
+      "files": {
+        "assets/web_publications/flow_islands/document/metadata.edn": "5e73b601dd18666844902b1e7908e4298eea390dfe1226ad3c8b5d542cd7a5cd",
+        "assets/web_publications/flow_islands/document/outputs.json": "4c2213138708dd86d1b4b9d32ae18f5fff1a6045c99525191903a7497999425e",
+        "assets/web_publications/flow_islands/outputs/0.html": "2975f4590891096d5427948e79ca3fcf28ad11d7aad5b5447882299c2a672e65",
+        "assets/web_publications/flow_islands/outputs/1.html": "b072a311ec8ebeed72ec1cb86abbbe426289969aa4ee44a31f8821d126bf5640"
+      },
+      "kinds": [
+        "svg"
+      ],
+      "outputs": "assets/web_publications/flow_islands/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/flow_islands.yaml": "3e0c0670c54d4c3bbcc45f08cc0872f75accdeb6d1467e1fb0c50f1fba519b67",
+        "public/docs/assets/agent_transcripts/flow_islands/fi_cloud_code_.kt": "fe8e4370097d09c6ca68900a9caa8a446a31416262f0081c3a28843a1fc093d0",
+        "public/docs/assets/agent_transcripts/flow_islands/fi_draw_code_.kt": "356361994efea889ca280e60b723228a62a0084ef80694e830d954e0d8adac8f",
+        "public/docs/assets/agent_transcripts/flow_islands/fi_islands_code_.kt": "91e187d449b9a7d7d4a31ea43f45520831c1eebe3f0b86a58b1c65555a57b177",
+        "public/docs/assets/agent_transcripts/flow_islands/guides/chain_flow_islands.md": "05c121732f0b571162ad3e6061a1e42fb348194b859ddf0b18a71fb87bbc486a",
+        "public/docs/assets/agent_transcripts/flow_islands/metadata.edn": "1e6bd5c1454420309bbe06e34eaaa78a4212168b3defe274edba61e7d7bdc0ed"
+      }
     },
     "assets/agent_transcripts/fn_differentiable_fit_demo/metadata.edn": {
       "captureDigest": "4d5add3a103558e3a45b0b09c14392b55f14042e4118c9d4d341d9a926c175b0",
@@ -2071,12 +2095,12 @@
     },
     "assets/agent_transcripts/madp_boids/metadata.edn": {
       "captureDigest": "4d5add3a103558e3a45b0b09c14392b55f14042e4118c9d4d341d9a926c175b0",
-      "capturedAt": "2026-11-03T09:27:44.220Z",
+      "capturedAt": "2026-11-04T07:07:04.585Z",
       "channels": 1,
       "file": "assets/web_publications/madp_boids/document/metadata.edn",
       "files": {
         "assets/web_publications/madp_boids/document/metadata.edn": "1ceed1d15727f94926eb231c9f87f49b0e6bf24ac07d61f7959baf0e2c9960dc",
-        "assets/web_publications/madp_boids/document/outputs.json": "0d9a7482d93699e485376557d80b246738fc9a78a2fadde231b07f3cd5385da8",
+        "assets/web_publications/madp_boids/document/outputs.json": "e1948abaf0fe6b733c809826f10bd89e7a31fc876802618cce1939243a21dc85",
         "assets/web_publications/madp_boids/outputs/0.html": "afa366e23e216305533777e8fff00ad7356bb094776ffd47a48cfbc280125ae8"
       },
       "kinds": [
@@ -2085,7 +2109,7 @@
       "outputs": "assets/web_publications/madp_boids/document/outputs.json",
       "sources": {
         "dev_docs/agents/transcripts/madp_boids.yaml": "631ae33bad0aea35ca5a32076a932b47e89b7ae7c13c3c010ca7dff74784cb2a",
-        "public/docs/agent_transcripts.md": "d2be1c1d02dab148a48a7b4d25da0f38207ca9d752bb58fb9728392a05f9f41b",
+        "public/docs/agent_transcripts.md": "5a8025bb22c58ccaddd5f4aff4e6a02e8876f8b46a403263a0b5c8b85345bd6e",
         "public/docs/assets/agent_transcripts/madp_boids/boids_bait_ball_code_.kt": "f0ea1e6f2ad52df552cda83b6ebb855407a0faeeb4791c5eb6382323b06a2248",
         "public/docs/assets/agent_transcripts/madp_boids/boids_bait_ball_compute_.glsl": "69e860072ee2490be04021ef5d5c4629f97bf3f0ab63fba355515584646c3812",
         "public/docs/assets/agent_transcripts/madp_boids/boids_bait_ball_notes_.md": "3d8b9ea07067fddb4c997ead04d91520fa7667142c2ceea197f1965a3b3ca573",
@@ -2629,12 +2653,12 @@
     },
     "assets/agent_transcripts/particles_sketchbook/metadata.edn": {
       "captureDigest": "4d5add3a103558e3a45b0b09c14392b55f14042e4118c9d4d341d9a926c175b0",
-      "capturedAt": "2026-11-03T09:27:39.413Z",
+      "capturedAt": "2026-11-04T07:07:01.766Z",
       "channels": 1,
       "file": "assets/web_publications/particles_sketchbook/document/metadata.edn",
       "files": {
         "assets/web_publications/particles_sketchbook/document/metadata.edn": "0df50c08d6b56d5e2b213ffecaa8ab34c78358b2825b30571072da634e9fe528",
-        "assets/web_publications/particles_sketchbook/document/outputs.json": "f3a4fa55612afd22dde87b6787012f6a66ddcfb8da0d73182dd9d40f83aa4bb3",
+        "assets/web_publications/particles_sketchbook/document/outputs.json": "427cbc32ce8af12dfb555e00d7e62296811e4918ecd3dd104f111f5ded8c65d5",
         "assets/web_publications/particles_sketchbook/outputs/0.html": "960702e73d5198045cd10c95417e12a5e8a8c578b74ca5e8379884c218831edf"
       },
       "kinds": [
@@ -2643,7 +2667,7 @@
       "outputs": "assets/web_publications/particles_sketchbook/document/outputs.json",
       "sources": {
         "dev_docs/agents/transcripts/particles_sketchbook.yaml": "2be7bfe425ae340f289bd3e0deb041a286ab5f975e127a275bf8abd4f57a59cc",
-        "public/docs/agent_transcripts.md": "d2be1c1d02dab148a48a7b4d25da0f38207ca9d752bb58fb9728392a05f9f41b",
+        "public/docs/agent_transcripts.md": "5a8025bb22c58ccaddd5f4aff4e6a02e8876f8b46a403263a0b5c8b85345bd6e",
         "public/docs/assets/agent_transcripts/particles_sketchbook/metadata.edn": "d43842c083bfba64e9048d1b56e5020476b8c4eae1be3716973b35a6dd870566",
         "public/docs/assets/agent_transcripts/particles_sketchbook/particles_boids_code_.kt": "89c2ed280a9f1789190107607d3a151c3d4fc8d6477d0e206adba020ba707bdf",
         "public/docs/assets/agent_transcripts/particles_sketchbook/particles_boids_compute_.glsl": "9dee72db57521ab74224621398df07de50cdf86d28956af6840a94c1285eb63d",
@@ -3566,12 +3590,12 @@
     },
     "assets/agent_transcripts/shadertrinket/metadata.edn": {
       "captureDigest": "4d5add3a103558e3a45b0b09c14392b55f14042e4118c9d4d341d9a926c175b0",
-      "capturedAt": "2026-11-03T09:27:51.831Z",
+      "capturedAt": "2026-11-04T07:07:10.253Z",
       "channels": 1,
       "file": "assets/web_publications/shadertrinket/document/metadata.edn",
       "files": {
-        "assets/web_publications/shadertrinket/document/metadata.edn": "fcfa33fe69863fb27fee3489d15299f47504473e8281f138bb5379b9b55db7e4",
-        "assets/web_publications/shadertrinket/document/outputs.json": "025e88e6b6dbad66feafe8703388e8d0376e8cefeaaff417ca1f78542dcd5b9a",
+        "assets/web_publications/shadertrinket/document/metadata.edn": "96e2343142f3d244d62f756d03b8a79e4e2260f05f4fe1d77cbbce31f9c9b729",
+        "assets/web_publications/shadertrinket/document/outputs.json": "07100ab9941a6af34d34954cf8097bdcabd16297e812a0ae990fd2becad2f041",
         "assets/web_publications/shadertrinket/outputs/0.html": "85a3fee21e538b88ce67dafe3f14a9b71b248b1e6d8c04878647acdd3e9abdda"
       },
       "kinds": [
@@ -3580,7 +3604,7 @@
       "outputs": "assets/web_publications/shadertrinket/document/outputs.json",
       "sources": {
         "dev_docs/agents/transcripts/shadertrinket.yaml": "9afa02fecc07031fe00c05c778817ea944e898856c1744b7cbca4c2fc8c507e9",
-        "public/docs/agent_transcripts.md": "d2be1c1d02dab148a48a7b4d25da0f38207ca9d752bb58fb9728392a05f9f41b",
+        "public/docs/agent_transcripts.md": "5a8025bb22c58ccaddd5f4aff4e6a02e8876f8b46a403263a0b5c8b85345bd6e",
         "public/docs/assets/agent_transcripts/shadertrinket/metadata.edn": "a0450d69603395a6876e355e42abfcbee3363cd9fab341846548821ade1ed202",
         "public/docs/assets/agent_transcripts/shadertrinket/shadertrinket_camera_code_.kt": "051b81079a5fcec105de568de0f6d103979aa4c7bc515be1b9326acacf4fe293",
         "public/docs/assets/agent_transcripts/shadertrinket/shadertrinket_camera_fragment_.glsl": "91bc60be7eb8a3d1a9d8aee6de734f5d049fb632bc53bb34a431d6ca4089b170",
@@ -3959,12 +3983,12 @@
     },
     "assets/agent_transcripts/splat_shader/metadata.edn": {
       "captureDigest": "4d5add3a103558e3a45b0b09c14392b55f14042e4118c9d4d341d9a926c175b0",
-      "capturedAt": "2026-11-03T09:27:30.829Z",
+      "capturedAt": "2026-11-04T07:06:54.669Z",
       "channels": 1,
       "file": "assets/web_publications/splat_shader/document/metadata.edn",
       "files": {
         "assets/web_publications/splat_shader/document/metadata.edn": "0cb861a46b1dbe33d707ad9e62e19d3d7107cc016d7cc8188d80263b67c97002",
-        "assets/web_publications/splat_shader/document/outputs.json": "cb0534ab8901db4c954f9ed42ff5c492e0b80703399fcc7f6fc02ad6a21d0596",
+        "assets/web_publications/splat_shader/document/outputs.json": "edfd6a99a6c3aa291256a0c54b13e7fef7c20f1130330c42db115f1a7d28acb5",
         "assets/web_publications/splat_shader/outputs/0.html": "83ccb94eb22ca537f40adf61ce3df6f20230c7424536bc5390631ede57a5b48f"
       },
       "kinds": [
@@ -3973,7 +3997,7 @@
       "outputs": "assets/web_publications/splat_shader/document/outputs.json",
       "sources": {
         "dev_docs/agents/transcripts/splat_shader.yaml": "9c1c31d705d0ee0173745ae3fb8bb2d79d617e7386d6afb29804f67e7eb232c8",
-        "public/docs/agent_transcripts.md": "d2be1c1d02dab148a48a7b4d25da0f38207ca9d752bb58fb9728392a05f9f41b",
+        "public/docs/agent_transcripts.md": "5a8025bb22c58ccaddd5f4aff4e6a02e8876f8b46a403263a0b5c8b85345bd6e",
         "public/docs/assets/agent_transcripts/splat_shader/metadata.edn": "dcd6686e31d3b05aa3c0322ba0de32f79c0079fec38b0390ddb59aec1b9ccfd6",
         "public/docs/assets/agent_transcripts/splat_shader/splat_dissolve_code_.kt": "915b087b839a258bd256d6bd1104a50b9a16b1f5e2d6a66f2691f3ff47a318d2",
         "public/docs/assets/agent_transcripts/splat_shader/splat_dissolve_compute_.glsl": "ed4c69f3f194f5b3996c4ec92972f2ef3e5834776c0025939082ee5492ea52c3",
@@ -4097,12 +4121,12 @@
     },
     "assets/agent_transcripts/stacktrinket_feedback/metadata.edn": {
       "captureDigest": "4d5add3a103558e3a45b0b09c14392b55f14042e4118c9d4d341d9a926c175b0",
-      "capturedAt": "2026-11-03T09:27:56.990Z",
+      "capturedAt": "2026-11-04T07:07:13.405Z",
       "channels": 2,
       "file": "assets/web_publications/stacktrinket_feedback/document/metadata.edn",
       "files": {
         "assets/web_publications/stacktrinket_feedback/document/metadata.edn": "d3ebefadede8cc57660cf3f0f85557bbeebef1da1d97e5c99521c08e264ed35f",
-        "assets/web_publications/stacktrinket_feedback/document/outputs.json": "5fdd7844a8dfac0d7df8cee73c3e16caf0f20de57fcc3dcf6e2864849bdfcd36",
+        "assets/web_publications/stacktrinket_feedback/document/outputs.json": "9363fea0df9fc5a52f49fc0d45066128c097f712c4b7af30e31a90d302600b24",
         "assets/web_publications/stacktrinket_feedback/outputs/0.html": "1bb4016cbd60e516d25378f0128a9b0278db7c7098ed6cd1070c80af917b44de",
         "assets/web_publications/stacktrinket_feedback/outputs/1.html": "3cb10594b9b5792d1c1c64545e239d05acb6f8f18dd1406a974d990a88cf3043"
       },
@@ -4112,7 +4136,7 @@
       "outputs": "assets/web_publications/stacktrinket_feedback/document/outputs.json",
       "sources": {
         "dev_docs/agents/transcripts/stacktrinket_feedback.yaml": "e849bdc1d68ddac3f499ade62117c6c13c158f3a8af8922207419da06a1a6cbb",
-        "public/docs/agent_transcripts.md": "d2be1c1d02dab148a48a7b4d25da0f38207ca9d752bb58fb9728392a05f9f41b",
+        "public/docs/agent_transcripts.md": "5a8025bb22c58ccaddd5f4aff4e6a02e8876f8b46a403263a0b5c8b85345bd6e",
         "public/docs/assets/agent_transcripts/stacktrinket_feedback/metadata.edn": "c2f9823c758d2022bb7cf72cc816a82987f085a2a7590b0661ea7d6bf91fd8bb",
         "public/docs/assets/agent_transcripts/stacktrinket_feedback/stacktrinket_feedback_fog_code_.kt": "a97a1b0a1788d92d535c74325b2993bc27ac2970a3ff020d2ed97a300db43a22",
         "public/docs/assets/agent_transcripts/stacktrinket_feedback/stacktrinket_feedback_fog_notes_.md": "a0fb802b1d8a564e06f2be941c72813124e2f219b61faff44a35cb64cf6386d2",
@@ -4517,12 +4541,12 @@
     },
     "assets/agent_transcripts/webrtc_shader_jam/metadata.edn": {
       "captureDigest": "4d5add3a103558e3a45b0b09c14392b55f14042e4118c9d4d341d9a926c175b0",
-      "capturedAt": "2026-11-03T09:27:47.137Z",
+      "capturedAt": "2026-11-04T07:07:06.906Z",
       "channels": 1,
       "file": "assets/web_publications/webrtc_shader_jam/document/metadata.edn",
       "files": {
         "assets/web_publications/webrtc_shader_jam/document/metadata.edn": "f0c6275f20724cdfd01715dadb1a493b3029366df034edf610e29aeb64a73c20",
-        "assets/web_publications/webrtc_shader_jam/document/outputs.json": "dde762d0871dead3f5a8ab2fa5472cf7b320ba24aef1c0a4c4e622844a15c609",
+        "assets/web_publications/webrtc_shader_jam/document/outputs.json": "9a984ba7d82636e683ed95c474d7c0a291ea3141bb401839ea9c6df5fbe314df",
         "assets/web_publications/webrtc_shader_jam/outputs/0.html": "7084f74efc5f112bdd9bb5a7d11d79faae9131f7c56676be6f379671f7df2d2c"
       },
       "kinds": [
@@ -4531,7 +4555,7 @@
       "outputs": "assets/web_publications/webrtc_shader_jam/document/outputs.json",
       "sources": {
         "dev_docs/agents/transcripts/webrtc_shader_jam.yaml": "f618fab78e824b8d6e0397e83a940bbf8daed2918f8c217ca54977225b5d3bd7",
-        "public/docs/agent_transcripts.md": "d2be1c1d02dab148a48a7b4d25da0f38207ca9d752bb58fb9728392a05f9f41b",
+        "public/docs/agent_transcripts.md": "5a8025bb22c58ccaddd5f4aff4e6a02e8876f8b46a403263a0b5c8b85345bd6e",
         "public/docs/assets/agent_transcripts/webrtc_shader_jam/metadata.edn": "a2df407b528af7bad149e969d6d59ef520f169e0730bb134e5f78b5a99b35f1b",
         "public/docs/assets/agent_transcripts/webrtc_shader_jam/webrtc_publish_shader_code_.kt": "ba8bc0901bbcf1d8eed804928ebd373d53ec01846d70d8019744fcc9c65a8bf7",
         "public/docs/assets/agent_transcripts/webrtc_shader_jam/webrtc_publish_shader_fragment_.glsl": "99d306b6c193e5f76a0982fc0149c26e701395cc049cbad515af4b428b177b6f",
