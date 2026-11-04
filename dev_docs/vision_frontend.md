@@ -190,8 +190,8 @@ Adding this needed no `VISION_POSE_VERSION` bump: on a JSON channel with
 `ignoreUnknownKeys`, an optional field is compatible in both directions. Bump only
 for a change that would make an old message *misread*.
 
-`MultiviewSideBySideStereoTarget` deliberately has no pose source: remote-head
-rendering is the macOS path, which is where MoltenVK multiview is the awkward one.
+`MultiviewStereoTarget` serves the OpenXR/browser workspace and has no remote pose-source hook.
+Remote-head rendering retains `SideBySideStereoTarget` and its `StereoPoseSource`.
 
 Hands stay a separate concept and are not implemented. Controllers are device-only
 to verify: `AccessoryTrackingProvider.isSupported` is false on the simulator.

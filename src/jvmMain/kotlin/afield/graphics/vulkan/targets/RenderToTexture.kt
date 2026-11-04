@@ -11,6 +11,7 @@ import afield.graphics.vulkan.device.CommandBuffer
 import afield.graphics.vulkan.buffers.MissingRefException
 import afield.graphics.render.Module
 import afield.graphics.render.ModulePointer
+import afield.graphics.render.MeshModulePointer
 import afield.document.context.fromContext
 import afield.graphics.render.pointer
 import afield.graphics.texture.*
@@ -241,7 +242,10 @@ open class RenderToTexture(
     protected val sampledReadStageMask: Long =
         VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT or
                 VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT or
-                VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT
+                VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT or
+                (if (renderer.device.enableMeshShading)
+                    EXTMeshShader.VK_PIPELINE_STAGE_TASK_SHADER_BIT_EXT.toLong() or EXTMeshShader.VK_PIPELINE_STAGE_MESH_SHADER_BIT_EXT.toLong()
+                else 0L)
 
     // Track whether mips (levels 1..N-1) have ever been initialized (affects oldLayout for barriers)
     protected var colorMipsInitialized: BooleanArray = booleanArrayOf()
@@ -277,6 +281,8 @@ open class RenderToTexture(
      * here replaces it without moving it in the order.
      */
     var modules = mutableMapOf<String, ModulePointer>()
+    /** Procedural geometry, drawn after conventional modules in this same rendering instance. */
+    var meshModules = mutableMapOf<String, MeshModulePointer>()
 
     private data class FileSaveRequest(
         val outputPath: String,
@@ -1488,7 +1494,7 @@ open class RenderToTexture(
                     .baseMipLevel(0)
                     .levelCount(1)
                     .baseArrayLayer(0)
-                    .layerCount(1)
+                    .layerCount(depthImageView!!.imageViewData.layerCount)
 
                 val (srcStage, srcAccess) = when (depthLayout) {
                     VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL ->
@@ -1595,12 +1601,28 @@ open class RenderToTexture(
                 }
             }
 
+            meshModules.values.forEach { mp ->
+                mp.current.meshes.values.forEach { mesh ->
+                    mesh.prepareForDraw(command)
+                    mesh.push.primeBufferReferences(command) {
+                        throw MissingRefException(afield.graphics.vulkan.buffers.unassignedMemberMessage(it))
+                    }
+                }
+                mp.current.liveUniformStructures.values.forEach { structure ->
+                    structure.primeBufferReferences(command) {
+                        throw MissingRefException(afield.graphics.vulkan.buffers.unassignedMemberMessage(it))
+                    }
+                }
+                mp.current.before.values.forEach { it.render(command, index) }
+            }
+
             // Allow subclasses to enqueue additional transfers/uploads before rendering begins.
             prepareAdditionalResources(command, index)
 
             // Texture providers may need layout transitions before descriptors are pushed.
             // Dynamic rendering does not allow image barriers inside the rendering instance.
             modules.values.forEach { it.prepareSampledImagesFor(command) }
+            meshModules.values.forEach { it.prepareSampledImagesFor(command) }
 
             command.inRenderPassInstance = true
             KHRDynamicRendering.vkCmdBeginRenderingKHR(command.vkCommandBuffer, renderInfo)
@@ -1609,6 +1631,10 @@ open class RenderToTexture(
             else listOf(Rect(0.0, 0.0, width.toDouble(), height.toDouble()))
 
             modules.values.forEach {
+                setViewportAndScissorArray(command.vkCommandBuffer, targetViewports, stack)
+                it.render(command, Rectanglef(0f, 0f, width.toFloat(), height.toFloat()))
+            }
+            meshModules.values.forEach {
                 setViewportAndScissorArray(command.vkCommandBuffer, targetViewports, stack)
                 it.render(command, Rectanglef(0f, 0f, width.toFloat(), height.toFloat()))
             }
@@ -1704,22 +1730,30 @@ open class RenderToTexture(
         modules[m.first] = m.second.pointer()
     }
 
-    private fun validateModule(module: Module) {
-        val moduleFormats = if (module.parameters.colorFormats.isNotEmpty())
-            module.parameters.colorFormats else List(module.parameters.color) { module.parameters.imageFormat }
+    @JvmName("plusAssign_meshModule")
+    operator fun plusAssign(m: Pair<String, MeshModulePointer>) {
+        validateModuleParameters(m.second.current.parameters)
+        meshModules.putOwned(m.first, m.second, renderer)
+    }
+
+    private fun validateModule(module: Module) = validateModuleParameters(module.parameters)
+
+    private fun validateModuleParameters(p: afield.graphics.render.Parameters) {
+        val moduleFormats = if (p.colorFormats.isNotEmpty())
+            p.colorFormats else List(p.color) { p.imageFormat }
         val moduleColorCount = moduleFormats.size
         require(moduleColorCount == colorImageHandles.size) {
-            "RenderToTexture expects ${colorImageHandles.size} color attachments, but module '${module.parameters.name}' declares ${moduleColorCount}"
+            "RenderToTexture expects ${colorImageHandles.size} color attachments, but module '${p.name}' declares ${moduleColorCount}"
         }
         require(moduleFormats == colorFormats) {
-            "RenderToTexture color format mismatch for module '${module.parameters.name}': module=$moduleFormats target=$colorFormats. Add +target inside the module's parameters."
+            "RenderToTexture color format mismatch for module '${p.name}': module=$moduleFormats target=$colorFormats. Add +target inside the module's parameters."
         }
-        require(module.parameters.viewMask == parameters.multiviewViewMask) {
-            "RenderToTexture viewMask mismatch for module '${module.parameters.name}': module=0x${module.parameters.viewMask.toString(16)} target=0x${parameters.multiviewViewMask.toString(16)}. Add +target inside the module's parameters."
+        require(p.viewMask == parameters.multiviewViewMask) {
+            "RenderToTexture viewMask mismatch for module '${p.name}': module=0x${p.viewMask.toString(16)} target=0x${parameters.multiviewViewMask.toString(16)}. Add +target inside the module's parameters."
         }
         val expectedViewportCount = parameters.viewports.size.coerceAtLeast(1)
-        require(module.parameters.viewportCount >= expectedViewportCount) {
-            "RenderToTexture viewport count mismatch for module '${module.parameters.name}': module=${module.parameters.viewportCount} target=$expectedViewportCount. Add +target inside the module's parameters."
+        require(p.viewportCount >= expectedViewportCount) {
+            "RenderToTexture viewport count mismatch for module '${p.name}': module=${p.viewportCount} target=$expectedViewportCount. Add +target inside the module's parameters."
         }
     }
 

@@ -5,8 +5,8 @@ The public walkthrough and runnable starter are `public/docs/field_vr_ide.md` an
 `useHeadset = true` in its renderer box enables the existing OpenXR runtime on a fresh Field launch.
 
 `FieldVrWorkspace` composes the existing browser texture, runtime-sized stereo target and browser
-panel. The browser upload/input hook precedes stereo packing, and each eye's MVP/cursor uniforms
-are set at the actual module draw boundary. Browser pixels are sampled without text antialiasing
+panel. Browser upload/input runs once before the multiview pass. Both eyes share a view UBO;
+the panel model and cursor are set at the actual module draw boundary. Browser pixels are sampled without text antialiasing
 postprocessing. Chromium's viewport is explicitly set after document readiness: on the tested
 Wayland desktop a requested 2560 × 1600 hidden window initially produced a different extent,
 causing the fixed-size resident texture to reject every frame. Setting metrics before initial
@@ -146,6 +146,131 @@ one machine, with replayed input; physical Quest and second-machine checks remai
 Focused HTTP/command-WebSocket/annotation origin-policy tests passed, as did the server-surface
 CORS census and six setup-helper tests. The cross-site protection remained enabled.
 
+## Optional desktop scene mirror (2026-11-03)
+
+The native window that `FieldVrWorkspace` uses is the interactive browser companion. A scene
+mirror can use a second window owned by the same `Renderer`, sampling `workspace.stereo.layered`.
+That is the two-layer eye image supplied to OpenXR; the mirror does not run the scene or particle
+compute a second time. Keep its window separate from the companion so desktop clicks and typing
+retain their existing browser focus behavior.
+
+Create the preview `Window` before the renderer, set `bestEffortPresentation = true`, and pass it
+in `Renderer(mainWindow, additionalWindows = listOf(previewWindow))`. Use `workspace.stereo.mirrorToScreen(windowIndex = 1)`
+for an aspect-correct left-eye preview, or pass `stereoPair = { true }` for both array layers.
+Poll events for all renderer windows. The mirror samples the layered image directly.
+
+Best-effort windows skip unsignalled reuse fences and use zero-timeout image acquisition. They
+also omit explicit display-completion waits and request a non-vsync presentation mode, including
+after resize. If a preview cannot acquire an image, the other windows and OpenXR can advance.
+This bounds the preview's acquisition wait, not all GPU/presentation costs. A supported headset
+is still required to measure on-headset latency.
+
+For a closeable/reopenable preview, set `presentationEnabled = false` before hiding it; this skips
+its entire window submission while keeping its swapchain. On reopen, clear GLFW's should-close
+flag, show it and restore `presentationEnabled`. This flag defaults to true and best-effort mode
+defaults to false, preserving normal window behavior. A hidden companion remains a separate
+concern: it still owns the stereo preTargets in the existing workspace implementation.
+
+The local `dust_five` document has this setup in boxes 1 and 2, with **Side-by-side eyes** and
+**Show headset preview** controls in box 2. Its saved verification artifacts record desktop GPU
+capture, the real Electron stereo checkbox, and closing/reopening checks while the main renderer
+advanced. Both the 1700 × 1360 one-eye and stereo swapchain captures were visually inspected.
+`jvmJar dumpFieldLaunch -x personalJar` passed; headset verification remains separate.
+
+## Shared graphics slots across eye modules (2026-11-03)
+
+A box that calls `moduleHere` once per eye registers two graphics pointers, while `box._shader`
+retains the last one. StackSL changes previously rebuilt only that pointer. A live trail check
+found the left eye still executing the zero-output placeholder while the right eye held the
+compiled program; this was update ownership rather than a history-buffer barrier failure.
+
+Graphics updates now prepare ABI-compatible pipelines for the primary pointer and every other
+enabled graphics pointer registered to that box. Preparation failure discards the pending set;
+stale generations discard it before installation. Successful updates install the set together on
+the Runloop, retaining each module's meshes and parameters. Normal single-module behavior remains.
+The current `dust_five` verification confirms both eye sources after installation and captures
+actual circle-shaped trails. Separate ring tests exercise interval changes, wraparound, clearing,
+and sampling pause/resume through the real compute shader.
+
+## Multiview changeover (2026-11-03)
+
+`FieldVrWorkspace` now uses `MultiviewStereoTarget`: one color/depth array image with two layers
+and view mask 3. Browser, particle and trail graphics each own one module/mesh, with
+`gl_ViewIndex` selecting the eye. Call `stereo.configure(this)` inside graphics parameters and
+include `MultiviewStereoTarget.VIEWS_GLSL` after the GLSL version directive. The target supplies
+`stereoViewProjection()`, camera right/up and projection/viewport dimensions through a shared
+224-byte, host-visible per-frame `StereoViews` UBO at set 0, binding 7. Keep that binding reserved.
+Per-draw push constants contain model/material values. Register an already configured module
+with `stereo += "name" to module`; factories use `stereo.registerModule("name") { ... }`.
+
+OpenXR copies array layer 0/1 directly to its existing runtime-owned per-eye swapchains. There is
+no side-by-side packing target in this path. The optional desktop mirror samples an array layer
+or displays both layers side by side. Remote Vision pose rendering still uses the separate
+`SideBySideStereoTarget`; this change does not change that transport.
+
+In `dust_five`, physics and history recording remain compute work once per frame. Box 11 prepares
+trail positions/colors once per visible sample, including normalization, circularization and
+StackSL `trailWarp`/`trailColor`; box 12 projects the shared geometry in one multiview draw.
+Its default draw budget traces roughly 2,500 particles independently of simulation count, with
+storage bounded at 10,000 traces × 64 samples × 32 bytes. Increase that allocation explicitly if
+needed. Invalid/unwritten segments stay clipped in both eyes.
+
+The first real GPU run exposed a preexisting RTT depth barrier that transitioned only layer 0.
+It now transitions the depth view's complete layer range. The corrected run has no Vulkan
+validation errors. Actual native-window captures verify distinct red/green eye layers, upright
+mirror sampling, the live browser and particle scene, and a live compute StackSL edit with
+finite geometry and the expected 0.08 position shift / 0.2 red multiplier. The scene has one
+browser, one particle and one trail graphics module sharing the eye UBO. Evidence and source
+snapshots are in the private document's `files/multiview/` folder.
+
+28 focused JVM tests cover copy regions, panel orientation and controller/WiVRn input. The
+orientation fixture was repaired to supply the surface dimensions now required by the panel.
+No comparative benchmarks were run, as requested. The headset was disconnected: live OpenXR
+submission and motion-to-photon latency still need the next connected-headset session.
+
+Specification references:
+
+- https://docs.vulkan.org/refpages/latest/refpages/source/VK_KHR_multiview.html
+- https://registry.khronos.org/OpenXR/specs/1.0/man/html/XrSwapchainCreateInfo.html
+- https://registry.khronos.org/OpenXR/specs/1.0/man/html/XrSwapchainSubImage.html
+
+## Same-frame layered blur compositor in dust_five (2026-11-03)
+
+The private document now has two additional renderer boxes. **13 · Float scene + blur cascade**
+retargets the existing point/trail modules to an RGBA16F array RTT using `ModulePointer.reload`
+with the new attachment formats, preserving their meshes, bindings, controls and world transform.
+Its four multiview passes produce a half-size H/V blur, then a quarter-size H/V blur of that result.
+The normalized Gaussian approximation uses five bilinear fetches per pass, output-texel kernel
+steps and clamp-to-edge sampling. Every target has two separate eye layers. Green is retained as
+linear floating-point control data through this chain; there is no bloom threshold.
+
+**14 · Green-driven compositor** exposes `blurWeights(medium.g)` in its editable fragment shader.
+The initial effective LUT is a piecewise linear sharp → medium → broad blend. Afterwards green
+is reconstructed from weighted red/blue, with editable reconstruction weight and exposure. The
+browser renders sharply last, with its original RGB, as requested by the user. The final output
+remains `workspace.stereo.layered`; the OpenXR layer copies and native mirror need no change.
+
+The compositor's `Module.before` hook records scene and blur passes. `RenderToTexture` invokes it
+before beginning dynamic rendering, after `MultiviewStereoTarget` has written the current eye UBO.
+The six stages therefore record sequentially in one command buffer and one renderer frame.
+There is no temporal history, additional queue submission or explicit wait in this chain. Existing
+frame acquisition/release and predicted OpenXR poses retain their ordering. Added GPU work still
+has a cost: no physical latency claim or comparative benchmark accompanies this change.
+
+The live check verifies one execution of every stage, matching frame/command-buffer stamps,
+point/trail/browser sharing the eye UBO, and its actual matrices exactly matching current OpenXR
+view/projection products (maximum error 0). Reload Shader was exercised for both the compositor
+and the four-module blur box. The separate offscreen GPU check uses the active shader strings and
+checks six selector cases across both layers with an alternating per-frame source signal. Its
+196,608 pixel comparisons match the medium-green selection / weighted reconstruction within
+1/255; red variance falls from 0.02570 to 0.01264 to 0.000217 across the two blur scales. Constant,
+different blue values per eye check layer isolation. The test target and temporary box were removed.
+
+The current 3508 × 3675 eye image produces 1754 × 1837 and 877 × 918 blur levels. Sources, active
+shader snapshots, a native preview capture and verification reports are saved under the private
+`dust_five/files/postprocess/` folder. Its `dust5_launch_scene` macro launches the complete graph
+on a fresh Field JVM. For allocation changes, stop 14 then 13, then launch 13 and 14; shader-only
+edits use normal reload. This uses existing rendering APIs and required no core source change.
 
 The publication refresh also exposed a Vulkan memory-model feature mismatch in the upstream
 canonical graphics example: ordinary atomic shaders used Device scope while the cooperative-vector

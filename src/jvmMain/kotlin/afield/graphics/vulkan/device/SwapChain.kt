@@ -32,6 +32,7 @@ class SwapChain(
     device: Device, surface: Surface, window: Window, requestedImages: Int, vsync: Boolean,
     presentationQueue: PresentQueue, concurrentQueues: Array<Queue>?
 ) {
+    private val bestEffortPresentation = window.bestEffortPresentation
     /** The logical device this chain's images and semaphores belong to. */
     val device: Device
 
@@ -294,7 +295,7 @@ class SwapChain(
             // Drain any completed scanout-timing entries before we block on the next acquire.
             drainPastTimings()
 
-            if (device.usePresentIndexing && !FramePresentationLog.waitAfterPresent) {
+            if (!bestEffortPresentation && device.usePresentIndexing && !FramePresentationLog.waitAfterPresent) {
                 val idToWait = nextPresentId - 1
                 if (idToWait > 0) waitForPresent(idToWait, "before-acquire")
             }
@@ -302,7 +303,7 @@ class SwapChain(
             val err = KHRSwapchain.vkAcquireNextImageKHR(
                 // Hidden Wayland surfaces may stop producing images indefinitely. Keep the
                 // Runloop responsive so the compositor, UI and other windows can make progress.
-                device.vkDevice, vkSwapChain, 16_000_000L,
+                device.vkDevice, vkSwapChain, if (bestEffortPresentation) 0L else 16_000_000L,
                 syncSemaphoresList[currentFrame].imgAcquisitionSemaphore.vkSemaphore, MemoryUtil.NULL, ip
             )
             if (err == VK10.VK_TIMEOUT || err == VK10.VK_NOT_READY) {
@@ -687,7 +688,7 @@ class SwapChain(
                 throw RuntimeException("Failed to present KHR: $err")
             }
 
-            if (FramePresentationLog.waitAfterPresent && device.usePresentIndexing && presentIdValue != null) {
+            if (!bestEffortPresentation && FramePresentationLog.waitAfterPresent && device.usePresentIndexing && presentIdValue != null) {
                 waitForPresent(presentIdValue, "after-present")
             }
         }

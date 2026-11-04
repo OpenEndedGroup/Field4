@@ -44,7 +44,7 @@ start(renderer::run)
 <!-- field-box id="youtube_vr_panel" index="1" -->
 
 ```edn [field-box id="youtube_vr_panel" role="properties"]
-{"id" "youtube_vr_panel" "index" 1 "name" "YouTube — interactive Chromium panel" "parents" ["root" "youtube_vr_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "youtube_vr_renderer"} "name" "YouTube — interactive Chromium panel" "_tombstone" false "frame" #afield/rect [320.0 140.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "youtube_vr_panel_code_.kt" "lines" 66 "characters" 2291 "sha256" "3722ddac58f13d2b712ff11a35b25a6b5bbb98bb8a3280e484021b7406e18e4f"}]}
+{"id" "youtube_vr_panel" "index" 1 "name" "YouTube — interactive Chromium panel" "parents" ["root" "youtube_vr_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "youtube_vr_renderer"} "name" "YouTube — interactive Chromium panel" "_tombstone" false "frame" #afield/rect [320.0 140.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "youtube_vr_panel_code_.kt" "lines" 62 "characters" 2242 "sha256" "afba5dd0d27255da79579846c76bb145867b94cf930a9b1927fe0f6e1e5292fc"}]}
 ```
 
 ```kotlin [field-property box="youtube_vr_panel" name="code" path="youtube_vr_panel_code_.kt"]
@@ -74,7 +74,7 @@ renderer.renderList.preTargets["youtube-browser-upload"] = Target { command, _ -
     browser.prepareSampledImagesFor(command)
 }
 
-val stereo = SideBySideStereoTarget(renderer, openXR = renderer.openXRHmdTarget)
+val stereo = MultiviewStereoTarget(renderer, openXR = renderer.openXRHmdTarget)
 val panel = PuppetBrowserVrPanel(
     renderer = renderer,
     stereo = stereo,
@@ -92,11 +92,7 @@ val keyboard = PuppetBrowserWindowInput(browser, renderer.window) { _, _ -> null
 keyboard.takeFocus()
 
 // Desktop mirror of the same stereo texture that can be handed to OpenXR eye swapchains.
-stereo.packed.blitToScreen(
-    renderer = renderer,
-    target = renderer.renderList,
-    name = "youtube-stereo-screen",
-)
+stereo.mirrorToScreen(name = "youtube-stereo-screen", stereoPair = { true })
 
 var announced = false
 loop {

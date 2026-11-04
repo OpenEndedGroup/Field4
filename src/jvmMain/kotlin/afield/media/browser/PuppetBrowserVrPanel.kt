@@ -5,7 +5,7 @@ import afield.graphics.render.Mesh
 import afield.graphics.render.Module
 import afield.graphics.render.parameters
 import afield.graphics.render.pointer
-import afield.graphics.vulkan.targets.SideBySideStereoTarget
+import afield.graphics.vulkan.targets.MultiviewStereoTarget
 import afield.graphics.texture.TextureSampler
 import afield.graphics.shader.fromViews
 import afield.math.linalg.Matrix4f
@@ -21,13 +21,13 @@ import kotlin.math.abs
 /**
  * Presents a [PuppetBrowser] as an aspect-correct, interactive world-space quad.
  *
- * [SideBySideStereoTarget] supplies either real OpenXR poses/controllers or its mouse-driven desktop
+ * [MultiviewStereoTarget] supplies either real OpenXR poses/controllers or its mouse-driven desktop
  * stand-in. Trigger/select becomes a primary click; the touched thumbstick or trackpad scrolls the
  * page. Keyboard events can independently be routed with [PuppetBrowserWindowInput].
  */
 class PuppetBrowserVrPanel(
     val renderer: Renderer,
-    val stereo: SideBySideStereoTarget,
+    val stereo: MultiviewStereoTarget,
     val browser: PuppetBrowser,
     val widthMeters: Float = 1.6f,
     val distanceMeters: Float = 1.7f,
@@ -56,9 +56,7 @@ class PuppetBrowserVrPanel(
     fun build() {
         stereo.stereoCamera.base.at.set(0f, 0f, 0f)
         stereo.stereoCamera.base.target.set(0f, 0f, 1f)
-        // The desktop fallback renders each eye into half of a wide window. Camera's default
-        // projection is square; matching it to the actual eye target keeps physical and pixel
-        // aspect ratios honest. OpenXR supplies its own per-eye projection when attached.
+        // Match the desktop camera to each eye layer. OpenXR supplies its own projection.
         val eyeAspect = stereo.eyeWidth.toFloat() / stereo.eyeHeight.toFloat()
         stereo.stereoCamera.base.p.auto = {
             stereo.stereoCamera.base.p.matchDepth = stereo.stereoCamera.base.p.autoMatchDistance()
@@ -78,9 +76,10 @@ class PuppetBrowserVrPanel(
         val uvs = floatArrayOf(0f, 0f, 0f, 1f, 1f, 1f, 1f, 0f)
         val indices = intArrayOf(0, 1, 2, 0, 2, 3)
 
-        stereo += name to {
+        stereo.registerModule(name) {
             val module = Module(parameters(renderer) {
                 this.name = this@PuppetBrowserVrPanel.name
+                stereo.configure(this)
                 color = 1
                 depth = 1
                 depthTest = true
@@ -104,18 +103,15 @@ class PuppetBrowserVrPanel(
 
             // Update sequences are prefetched; input must run at an actual draw boundary instead.
             module.before["browser-input"] = afield.graphics.vulkan.Target { _, _ ->
-                if (automaticInteraction && stereo.currentEyeIndex == 0) updateInteraction()
-                mesh.push["mvp"] = panel.panelMvp(
-                    stereo.currentEyeViewMatrix(Matrix4f()),
-                    stereo.currentEyeProjectionMatrix(Matrix4f()),
-                )
+                if (automaticInteraction) updateInteraction()
+                mesh.push["model"] = Matrix4f(panel.model) // panel local-to-world transform
                 val hit = lastHit
                 mesh.push["pointer"] = Vector4f(
                     hit?.u?.toFloat() ?: -1f,
                     hit?.v?.toFloat() ?: -1f,
                     if (hit?.onPanel == true) 1f else 0f,
                     if (pointerPressed) 1f else 0f,
-                )
+                ) // pointer UV, hover and pressed state
             }
             pointer
         }
@@ -170,13 +166,17 @@ class PuppetBrowserVrPanel(
 
         private val vertexShader = """
             #version 460
+            ${MultiviewStereoTarget.VIEWS_GLSL}
             layout(location = 0) in vec3 inPosition;
             layout(location = 1) in vec2 inUV;
             layout(location = 0) out vec2 fragUV;
-            layout(push_constant) uniform Push { mat4 mvp; vec4 pointer; } push;
+            layout(push_constant) uniform Push {
+                mat4 model; // panel local-to-world transform
+                vec4 pointer; // cursor UV, visibility and pressed state
+            } push;
             void main() {
                 fragUV = inUV;
-                gl_Position = push.mvp * vec4(inPosition, 1.0);
+                gl_Position = stereoViewProjection() * push.model * vec4(inPosition, 1.0);
             }
         """.trimIndent()
 
@@ -185,7 +185,10 @@ class PuppetBrowserVrPanel(
             layout(location = 0) in vec2 fragUV;
             layout(location = 0) out vec4 outColor;
             layout(set = 0, binding = 0) uniform sampler2D browserTexture;
-            layout(push_constant) uniform Push { mat4 mvp; vec4 pointer; } push;
+            layout(push_constant) uniform Push {
+                mat4 model; // panel local-to-world transform
+                vec4 pointer; // cursor UV, visibility and pressed state
+            } push;
             void main() {
                 vec4 browser = texture(browserTexture, fragUV);
                 float edge = min(min(fragUV.x, 1.0 - fragUV.x), min(fragUV.y, 1.0 - fragUV.y));

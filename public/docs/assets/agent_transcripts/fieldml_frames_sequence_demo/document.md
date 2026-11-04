@@ -69,7 +69,7 @@ stops at that line and carries on from it 40 ms later -- inside a recursive loop
 (`eachFrame` would call a body afresh every frame; this one is a script with a middle.)
 
 ```edn [field-box id="fieldml-seq-script" role="properties"]
-{"id" "fieldml-seq-script" "index" 2 "name" "a script across frames" "parents" ["root" "fieldml-seq-renderer" "fieldml-seq-root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "fieldml-seq-renderer" #afield/box "fieldml-seq-root"} "name" "a script across frames" "_tombstone" false "frame" #afield/rect [400.0 40.0 560.0 720.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fieldml-seq-script_code_.kt" "lines" 79 "characters" 3583 "sha256" "a7580098c8c49ff76eb0ff69b7567d687907d95ccc45eb1b0b99e39d21637fe0"}]}
+{"id" "fieldml-seq-script" "index" 2 "name" "a script across frames" "parents" ["root" "fieldml-seq-renderer" "fieldml-seq-root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "fieldml-seq-renderer" #afield/box "fieldml-seq-root"} "name" "a script across frames" "_tombstone" false "frame" #afield/rect [400.0 40.0 560.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fieldml-seq-script_code_.kt" "lines" 79 "characters" 3583 "sha256" "a7580098c8c49ff76eb0ff69b7567d687907d95ccc45eb1b0b99e39d21637fe0"}]}
 ```
 
 ```kotlin [field-property box="fieldml-seq-script" name="code" path="fieldml-seq-script_code_.kt"]

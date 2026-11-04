@@ -154,12 +154,12 @@ class StackSLStudyViewer(
 
     private fun esc(text: String) = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;")
 
-    private fun errorCard(e: Throwable) = "<div style='font:13px Iosevka,monospace;color:#e88'>StackSL viewer: ${esc(e.message ?: e.toString())}</div>"
+    private fun errorCard(e: Throwable) = "<div style='font:13px var(--field-font-code, var(--field-font, monospace));font-stretch:inherit;font-feature-settings:inherit;color:#e88'>StackSL viewer: ${esc(e.message ?: e.toString())}</div>"
 
     /** The card's HTML for the study's current state. */
     fun html(): String {
         val current = study.currentId()
-        if (current == SourceStudy.EMPTY) return "<div style='font:14px Iosevka,monospace;color:#bbb;padding:12px'>No checked program yet.</div>"
+        if (current == SourceStudy.EMPTY) return "<div style='font:14px var(--field-font-code, var(--field-font, monospace));font-stretch:inherit;font-feature-settings:inherit;color:#bbb;padding:12px'>No checked program yet.</div>"
         val r = study.revisions.revision()
         val live = study.revisions.liveState()
         val dirty = live["dirty"] == true
@@ -201,7 +201,7 @@ class StackSLStudyViewer(
         return buildString {
             append("<div id='$id' class='stacksl-study' onpointerdown='event.stopPropagation()' onmousedown='event.stopPropagation()' onclick='event.stopPropagation()' onwheel='event.stopPropagation()'>")
             append("""<style>
-                #$id{font:13px/1.45 Iosevka,ui-monospace,monospace;color:#ddd;background:#0b0b0d;padding:14px 16px;width:${previewSize + 720}px;border-radius:6px}
+                #$id{font:13px/1.45 var(--field-font-code, var(--field-font, monospace));font-stretch:inherit;font-feature-settings:inherit;color:#ddd;background:#0b0b0d;padding:14px 16px;width:${previewSize + 720}px;border-radius:6px}
                 #$id .row{display:flex;gap:16px;align-items:flex-start}
                 #$id .muted{color:#8a8a90} #$id .warn{color:#e5b35f} #$id .bad{color:#ec8a74}
                 #$id h4{font-weight:400;margin:14px 0 6px;color:#aaa;letter-spacing:.06em;text-transform:uppercase;font-size:11px}

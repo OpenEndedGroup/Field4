@@ -568,7 +568,7 @@ class Instance(private val validate: Boolean) {
         }
 
         private fun enabledOpenXRApiLayers(): List<String> {
-            if (!Options.validate) return emptyList()
+            if (!Options.validateOpenXR) return emptyList()
             val supported = enumerateOpenXRApiLayers()
             val selected = openXRValidationLayerCandidates.firstOrNull { it in supported }
             if (selected == null) {

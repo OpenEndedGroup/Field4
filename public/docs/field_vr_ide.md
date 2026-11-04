@@ -25,15 +25,25 @@ The browser opens this same document, including ephemeral session identity when 
 **Playground**, open its editor, change the message or colour and press **Run box** in the
 panel toolbar. The result appears as an ordinary Field output.
 
+## Desktop headset preview
+
+The starting point opens a second native window, **Field · headset preview**, alongside the
+interactive browser companion. It shows an aspect-correct left-eye view of the scene. In box 2,
+**Side-by-side eyes** shows both eyes instead. The preview samples the same eye layers sent to
+OpenXR; it does not run the scene a second time.
+
+Close the preview window to hide it and suspend its presentation. **Show headset preview** in
+box 2 reopens it. Its presentation uses a best-effort path so an unavailable desktop image does
+not hold up headset rendering. Keyboard and mouse focus still belong to the front-on companion;
+the scene preview is for viewing the headset image.
+
 ## Point, edit and run
 
 Either controller can hover over the panel. Pull the trigger to click or drag; **A** on the right controller or **X** on the left also clicks.
 The hand that starts a drag keeps control until release. The thumbstick or trackpad scrolls in both
 axes: a small deflection moves slowly, and a full deflection moves faster. Release it to stop. Losing tracking releases a
-held mouse button. When controller aim input is unavailable, tracked hands use a wrist-to-index-knuckle
-ray and thumb/index pinch, with hysteresis to avoid repeated clicks near the pinch threshold.
-Pinch works, but hand tracking on the tested Quest setup was less precise than controllers or a mouse
-for small interface controls. Use the headset keyboard and mouse for sustained editing.
+held mouse button. Tracked hands do not point or click in the IDE, so moving your hands over the
+keyboard or mouse cannot reclaim its cursor through the hand-tracking fallback.
 
 Aim at any part of the panel and hold **grip** to pick it up. Moving and rotating that controller
 moves and rotates the whole panel, preserving the initial attachment offset. Release grip to leave
@@ -63,7 +73,7 @@ For Apple Vision Pro through ALVR, see [the SteamVR launch setup below](#apple-v
 
 | Input | What receives it | Desktop window focus |
 | --- | --- | --- |
-| Controller trigger, A/X or hand pinch | The control under the ray on the VR panel | Not required |
+| Controller trigger | The control under the ray on the VR panel | Not required |
 | Keyboard and mouse attached to the PC | The front-on companion window | Required |
 | Keyboard and mouse attached to the Quest | The VR browser through WiVRn HID forwarding | Not required after setup |
 
@@ -205,8 +215,7 @@ This streamed Linux renderer is separate from Field's [native visionOS frontend]
 The **Quest 3, WiVRn and Linux/NVIDIA** workflow was tested on-headset on **2 November 2026**.
 Keyboard and mouse attached to the headset supported editing and running Field code without
 interacting with a desktop window. Controller clicks, two-axis scrolling, grip positioning and
-two-controller grip resizing were also confirmed usable in the headset. Hand pinch input works,
-with the precision limitation described above.
+two-controller grip resizing were also confirmed usable in the headset. Hand pointing and pinch are disabled in the IDE to preserve mouse ownership.
 
 The private Tailscale listener also served two real Chromium clients that exchanged document
 edits while preserving independent focus. That check used two clients on one host; a second
@@ -246,3 +255,13 @@ val vr = FieldVrWorkspace(
 // Construct after the initial renderer frame, then run the renderer normally.
 // Close vr when its owning box stops.
 ```
+
+## Multiview scene rendering
+
+This path requires Vulkan multiview support; the current functional check used Linux/NVIDIA.
+The workspace uses one multiview scene pass for both eye layers. Browser upload/input runs once
+per frame, and graphics modules share eye matrices through a uniform buffer. OpenXR copies the
+two layers directly to its eye swapchains. `workspace.stereo.mirrorToScreen(windowIndex = 1)`
+adds an aspect-correct left-eye preview to an existing second renderer window; pass
+`stereoPair = { true }` to show both eyes. Controller, grip-resize and keyboard/mouse focus
+behavior use the same input path.

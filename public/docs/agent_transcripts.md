@@ -4351,11 +4351,12 @@ without opening a window in CI, with a real desktop capture on the walkthrough p
 
 [Field inside VR](field_vr_ide.md): the live canvas, editor and command palette in a world-locked
 browser panel. Either controller can point, click and drag; one grip moves the panel and two
-grips resize it. Analog stick scrolling supports both axes. Tracked hands provide a pinch fallback.
+grips resize it. Analog stick scrolling supports both axes. Hand pointing is disabled to preserve mouse input.
 An in-panel keyboard preserves editor focus and includes text, Commands and Run. Linux WiVRn
 headset keyboard and mouse input works without desktop focus, and another browser can edit the
 same document independently. The Quest 3 workflow has been tested in the headset.
-Launch 1 then 2; the default is a front-on desktop companion. Requires Vulkan and Electron.
+Launch 1 then 2; the default is a front-on desktop companion plus a closeable headset scene preview.
+The preview can show one eye or both eyes side by side. Requires Vulkan and Electron.
 
 [Open →](offline.html?file=assets/agent_transcripts/field_vr_ide/metadata.edn)
 

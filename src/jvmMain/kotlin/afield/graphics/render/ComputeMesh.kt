@@ -66,7 +66,7 @@ fun zeroBuffer(v: VulkanBuffer, barrier: Boolean = true) = computeTask { _, cmd,
     transferMemoryBarrier(cmd, v)
 }
 
-/** TRANSFER->SHADER-READ (vertex/fragment/compute). Falls back to a MemoryBarrier2 if buffer==null. */
+/** TRANSFER->SHADER-READ (including task/mesh, fragment and compute). Falls back to a MemoryBarrier2 if buffer==null. */
 fun transferMemoryBarrier(cmd: CommandBuffer, buffer: VulkanBuffer? = null) {
     MemoryStack.stackPush().use { stack ->
         val dep = VkDependencyInfo.calloc(stack).sType(VK_STRUCTURE_TYPE_DEPENDENCY_INFO)
@@ -78,7 +78,7 @@ fun transferMemoryBarrier(cmd: CommandBuffer, buffer: VulkanBuffer? = null) {
                 .srcStageMask(VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT)
                 .srcAccessMask(VK_ACCESS_2_TRANSFER_WRITE_BIT)
                 .dstStageMask(
-                    VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT or
+                    VK_PIPELINE_STAGE_2_PRE_RASTERIZATION_SHADERS_BIT or
                             VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT or
                             VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT
                 )
@@ -98,7 +98,7 @@ fun transferMemoryBarrier(cmd: CommandBuffer, buffer: VulkanBuffer? = null) {
                 .srcStageMask(VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT)
                 .srcAccessMask(VK_ACCESS_2_TRANSFER_WRITE_BIT)
                 .dstStageMask(
-                    VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT or
+                    VK_PIPELINE_STAGE_2_PRE_RASTERIZATION_SHADERS_BIT or
                             VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT or
                             VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT
                 )
@@ -317,6 +317,9 @@ fun graphicsHostReadBarrier(cmd: CommandBuffer, buffer: VulkanBuffer? = null) {
 
 // this has to agree with the vertexbufferstructure that was used for this pipeline (right now)
 class ComputeMesh(var renderer: Renderer = fromContext()) : ComputeTask {
+    /** Optional GPU-written VkDispatchIndirectCommand; no CPU count readback. */
+    var indirect: afield.graphics.vulkan.buffers.FrameBufferGroup? = null
+    var indirectOffset: Long = 0L
 
     class FromUniform {
         operator fun getValue(inside: ComputeModulePointer, property: KProperty<*>): Structure {
@@ -410,6 +413,13 @@ class ComputeMesh(var renderer: Renderer = fromContext()) : ComputeTask {
             }
 
             fun dispatchForCurrentWriter(dispatchX: Int?, dispatchY: Int?, dispatchZ: Int?) {
+                indirect?.let {
+                    require(indirectOffset >= 0L && indirectOffset % 4L == 0L)
+                    it.getGPUAddress(cmd)
+                    require(indirectOffset + 12L <= it.getLastWritten().requestedSize)
+                    vkCmdDispatchIndirect(cmd.vkCommandBuffer, it.getLastWritten().buffer, indirectOffset)
+                    return
+                }
                 val xx = dispatchX ?: x
                 val yy = dispatchY ?: y
                 val zz = dispatchZ ?: z

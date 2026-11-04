@@ -271,6 +271,10 @@ class DocumentedApiEvaluationTest {
         "takeFocus" to
             "puppet_browser.md; PuppetBrowserKeyboard needs a native Window and browser producer. " +
                 "youtube_vr_browser compiles this focus handoff but does not execute it in CI.",
+        "mirrorToScreen" to
+            "field_vr_ide.md; samples live multiview Vulkan eye layers into a native window. " +
+                "The VR IDE transcript compiles in CI; rendering and close/reopen need a live device " +
+                "and were checked locally, as described in dev_docs/vr_field_ide.md.",
         "cvtColor" to
             "imaging_examples.md names OpenCV's conversion as a comparison. onnx_webcam_live " +
                 "calls it but is COMPILE_ONLY because it needs a camera. A synthetic Mat test " +
