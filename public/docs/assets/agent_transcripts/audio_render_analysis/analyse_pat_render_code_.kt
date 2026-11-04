@@ -9,7 +9,7 @@ val render = renderDirtWav(
     cps = 1.6,
     provenance = mapOf("field_box" to "analyse_pat_render", "pattern" to "pitched chord + drums"),
 )
-display("render", "rendered ${render.path} · ${"%.2f".format(render.durationSeconds)} s")
+display("render", "rendered ${render.path} · ${render.durationSeconds?.f2} s")
 
 client
     .analyzeRenderedAudio(

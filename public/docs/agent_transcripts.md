@@ -1,6 +1,6 @@
 # Agent transcript gallery
 
-<div data-field-transcript-gallery hidden></div>
+<div data-field-transcript-gallery="entries" hidden></div>
 
 These are documents built from a blank canvas by agents working in Field. Open one to see the
 result, try it in Field, or take it apart and make it your own.
@@ -104,6 +104,8 @@ goes; one memory cell held high and low, changing the hand; a live magnifier on 
 its next-step ellipses; and a slider that colours the line by any of its 500 cells. Pure CPU and
 nothing to install. Launch the third box and draw.
 
+![Twelve copies of the same small yellow stroke in a grid, each followed by a different short run of pale blue handwriting](assets/learned_pen/futures.png)
+
 [Open →](offline.html?file=assets/agent_transcripts/learned_pen/metadata.edn)
 
 ### a_pen_that_sees
@@ -136,6 +138,8 @@ click to keep as a corpus, and the handwriting pen fine-tuned on its own curlies
 box loads the small model the page trained and deforms 400 particles and a coordinate lattice with
 it. Three sliders move transport time, movie time and the number of integration steps separately,
 so you can push the sheet past the times it was trained on and watch where it stops holding.
+
+![Field output with the loaded model: transport-time, movie-time and integration-step sliders above a transported particle sheet and its grid](assets/stipple_transport/field-sheet.png)
 
 [Open →](offline.html?file=assets/agent_transcripts/stipple_sheet/metadata.edn)
 
@@ -369,6 +373,10 @@ its parent and their difference. `try things` sweeps the ring count across five 
 candidates, 15 rings and lighter dark bands, without publishing either. All three run headless. See
 [Studies](studies.md).
 
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/studies_rings.png" capture="box" open-outputs="true" embed=true hidden=true timeout="300" padding="12" name="gallery-studies-rings" alt="The change it box's output: the rings study's new revision, blue rings, above its parent, the same rings in warm orange, and their difference image" macro-file="../../dev_docs/agents/transcripts/studies_rings.yaml" capture-box="rings_change"}
+// The transcript builds the three boxes and runs them; this is change it's output.
+```
+
 [Open →](offline.html?file=assets/agent_transcripts/studies_rings/metadata.edn)
 
 ### lua_demo
@@ -444,6 +452,10 @@ to the fitness that rewards distance and charges for stretching and effort. `gro
 in a floor and gravity and scores only horizontal distance, and nothing else changes. Evolution runs
 on its own thread and both loops draw the current champion; CI launches them, advances 90 frames,
 and stops them.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/evolving_water_bugs.png" capture="box" open-outputs="true" run-box="water_bug" execution="launch" wait="20" embed=true hidden=true timeout="300" padding="12" name="gallery-evolving-water-bugs" alt="The water bug box's output after twenty seconds of evolution, headed with its generation and best score: one bar per foot showing when it grips the surface, and below them the current champion, a chain of blue points with two orange gripping feet" macro-file="../../dev_docs/agents/transcripts/evolving_water_bugs.yaml" capture-box="water_bug"}
+// The transcript runs both loops for 90 frames and stops them; this relaunches water_bug and captures its champion.
+```
 
 [Open →](offline.html?file=assets/agent_transcripts/evolving_water_bugs/metadata.edn)
 
@@ -522,7 +534,7 @@ Each box evaluates one `afield.math.linalg` value; on execute its
 output shows the terse text head plus a small inline SVG thumbnail the `ValueVisualizer` draws: an
 auto-scaled arrow for vectors (isometric for `vec3`), a diverging heatmap grid for matrices.
 
-![A map of mat3, mat4 and quaternion values, each with its terse text head and a diverging heatmap grid beside it](assets/value_visualizers/linalg_map.png)
+![A map of mat3, mat4 and quaternion values, each with its terse text head and a diverging heatmap grid beside it](assets/visualizers-linalg-map.png)
 
 [Open →](offline.html?file=assets/agent_transcripts/linalg_thumbnails_demo/metadata.edn)
 
@@ -992,6 +1004,20 @@ rather than run: a `Frames` that is only built never runs. None of the twenty op
 
 [Open →](offline.html?file=assets/agent_transcripts/alife_worked_example/metadata.edn)
 
+### braitenberg_where_next
+
+Sections 5 to 9 of [Braitenberg vehicles with memory](braitenberg_vehicles.md) as five boxes. Box 1
+tunes `Activation.BUMP` aggressors with `orbitBias` to circle the lamps at four distances and draws
+each population's `OrbitRadii` histogram. Box 2 puts a `speedCost` into the learning reward at four
+prices. Box 3 runs learning and homeostasis separately and together from one seed. Box 4 is launched:
+it trains a population on still lamps, then sets the lamps drifting and plays it beside Braitenberg's
+lovers. Box 5 searches the four wiring weights with `VehicleWiringGenome` on `PopulationSearch`, with a
+random-sampling control at the same budget. All five run on the CPU.
+
+![Four populations of vehicles circling four lamps on rings of increasing size, each beside a histogram of distance to the nearest lamp](assets/braitenberg_vehicles/orbits.png)
+
+[Open →](offline.html?file=assets/agent_transcripts/braitenberg_where_next/metadata.edn)
+
 ### statistics_examples
 
 [Measuring dependence between two signals](statistics_examples.md)
@@ -1093,7 +1119,7 @@ caption admits it) and once as accumulator peaks. `FlowField` draws failed track
 rather than hiding them, and `ComponentLabelling` rotates hue by the golden ratio so adjacent label
 ids get unrelated colours.
 
-![An image with a NaN block and one infinity, both painted magenta, counted in the card and excluded from the statistics that set the range](assets/imaging_visualizers/img_non_finite.png)
+![An image with a NaN block and one infinity, both painted magenta, counted in the card and excluded from the statistics that set the range](assets/visualizers-img-non-finite.png)
 
 [Open →](offline.html?file=assets/agent_transcripts/imaging_visualizers_demo/metadata.edn)
 
@@ -1174,6 +1200,10 @@ walk are recomputed twenty times a second. Change the weights or the PDHG step s
 *Drag the polygon* draws the [fan as a map](lp_curves.md#the-fan-as-a-map) in an editable viewer:
 choose the pencil tool and drag a corner, and the grid is redrawn for the new polygon when the drag
 ends.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/lp_curves_routes.png" capture="box" open-outputs="true" wait="3.0" embed=true hidden=true timeout="300" padding="12" w="1220" h="640" name="gallery-lp-curves-routes" alt="Seven panels of the same pentagon, each captioned with its method and its numbers: the central path, a rainbow fan of central paths, the primal-dual steps, a PDHG spiral, the ellipsoid method's shrinking ellipses, the simplex walk along two edges, and the cutting planes, every route ending at the same right-hand vertex" macro-file="../../dev_docs/agents/transcripts/lp_curves.yaml" capture-box="lp_routes"}
+// The transcript runs every route and the fan map and launches the turning objective; this is every route's output.
+```
 
 [Open →](offline.html?file=assets/agent_transcripts/lp_curves/metadata.edn)
 
@@ -1260,7 +1290,7 @@ identical system with its clock pinned at zero (which holds exactly 590 edges fo
 *morphogenesis* grows a 64-point ring into a branching filament beside the same nine-stage pipeline with
 tip growth removed. Every box is pure CPU; no `Window`, no `Renderer`.
 
-![Six graphs built over the same 220-point phyllotaxis disc: a bright mutual k-nearest-neighbour mesh, a sparse pinwheel of flowline arcs, a dense fully triangulated tangent fan, a sparse dim proximity mesh, a dim forest of routing chains, and a dim fully triangulated alpha-event graph](assets/dynamic_graph_systems_examples/six_systems.png)
+![six graphs built over the same 220-point phyllotaxis disc: a bright mutual k-nearest-neighbour mesh, a sparse pinwheel of flowline arcs, a dense fully triangulated tangent fan, a sparse purple proximity mesh, purple routing chains, and a purple alpha-event graph made of small separate triangles](assets/dynamic_graph_systems_examples/six_systems.png)
 
 [Open →](offline.html?file=assets/agent_transcripts/dynamic_graph_systems_examples/metadata.edn)
 
@@ -1352,6 +1382,10 @@ with its neighbours' labels, in **port order** — so the ordering is a structur
 reads an id or an insertion order. (A pose by BFS depth alone is not enough: on `3^3`, ten `DUP`s
 leave sibling order ambiguous.) The box does **not** use `frames { }`, because a frames loop in a box with no `Window`/`Renderer` gets
 *zero* ticks, so it drives its own clock with a sleep loop.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/confluence_grid.png" capture="box" open-outputs="true" wait="25" embed=true hidden=true timeout="300" padding="12" name="gallery-confluence-grid" alt="A Three.js view of twenty small interaction-net graphs in four columns of five, each at its final pose after reduction" macro-file="../../dev_docs/agents/transcripts/confluence_grid.yaml" capture-box="confluence_grid"}
+// The transcript launches the grid; this captures it after the reductions finish.
+```
 
 [Open →](offline.html?file=assets/agent_transcripts/confluence_grid/metadata.edn)
 
@@ -1965,6 +1999,8 @@ measurements with sliders for the length scale and for how noisy one of them is.
 plane: its mean, two whole-field draws and its standard deviation. See
 [Drawing with Gaussian processes](gaussian_processes.md).
 
+![An orange closed loop through six white pins, with six blue closed draws that pinch in at every pin and bulge apart between them; the seam at the rightmost pin is as smooth as anywhere else](assets/gaussian_processes/loop.png)
+
 [Open →](offline.html?file=assets/agent_transcripts/gp_drawing/metadata.edn)
 
 ### chart_primitive
@@ -2060,6 +2096,17 @@ which is why every demo under `dev_docs/agents/demos/` tells you to pass the fla
 
 [Open →](offline.html?file=assets/agent_transcripts/read_only_session/metadata.edn)
 
+### history_box_story
+
+**One box's code across every saved version.** A transcript, not a saved document: replay it into a
+saving document (not `--scratch`) and it edits one box, `sketch`, three times, waiting for the autosave
+after each edit, so the document's backups hold four real versions. Select `sketch`, run **Show Document
+History**, and the sidebar's **This Box** list shows its four values newest first. Click a row to select
+that version, or choose **Restore** to put that value back into `sketch` alone. See
+[Document History](document_history.md#one-box-edit-by-edit).
+
+[Open →](offline.html?file=assets/agent_transcripts/history_box_story/metadata.edn)
+
 ### controls_surface
 
 **A performer's control surface.** Two pure-CPU boxes built from the `controlGroup` DSL. The first
@@ -2070,6 +2117,19 @@ the wheel. The second box's slider rebuilds its own group once dragged past 0.5,
 under the pointer, and the drag carries on. `dev_docs/CONTROLS_RENEWAL.md` is the write-up.
 
 [Open →](offline.html?file=assets/agent_transcripts/controls_surface/metadata.edn)
+
+### controls_presets_morph_midi
+
+**Presets you can morph between, a recorded slider, and a MIDI knob.** Two pure-CPU boxes. The
+first declares its controls as locals delegated to a `KeyframeScope` and adds `presetBar(keys)`:
+two keys, `calm` and `storm`, are saved on its first run, so its buttons recall them and the
+**preset morph** slider blends between them, moving the circle it draws. A **rec size** button
+records the size slider into a keyframe curve. The second box binds a log-law cutoff slider and a
+checkbox to MIDI controller numbers and feeds them stand-in knob values, printing the cutoff as the
+knob goes from 0 to 127. These are the two examples from
+[Presets and morphing](visualizers.md#presets-and-morphing) and [MIDI learn](visualizers.md#midi-learn).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/controls_presets_morph_midi/metadata.edn)
 
 ### certified_envelope
 
@@ -2608,7 +2668,7 @@ shapes swell with the notes. Drag a box to move it in time, stretch it to make i
 run it again after an edit. A port of the madp score demo; the design notes are in
 `dev_docs/madp/score.md`.
 
-```diffstatic_runner {data-lang=kotlin capture="ui" region="window" hide-toasts=true viewport="1900x660" clip="0,0,1900,660" screenshot="assets/agent_transcripts_gallery/madp_score.png" macro-file="../../dev_docs/agents/transcripts/madp_score.yaml" padding="0" wait="0" timeout="300" embed=true hidden=true name="gallery-madp-score" alt="Field's canvas as a score: seven dark boxes spread left to right and an orange playhead line crossing the two Glass phase boxes, which are lit red and olive; under the first box, a dark panel shows what they draw, a row of thin orange bars above a row of blue ones"}
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" hide-toasts=true viewport="1900x660" clip="20,20,1400,600" screenshot="assets/agent_transcripts_gallery/madp_score.png" macro-file="../../dev_docs/agents/transcripts/madp_score.yaml" padding="0" wait="0" timeout="300" embed=true hidden=true name="gallery-madp-score" alt="Field's canvas as a score: dark boxes spread left to right and an orange playhead line crossing the two Glass phase boxes, which are lit red and olive; under the first box, a dark panel shows what they draw, a row of thin orange bars above a row of blue ones"}
 // The transcript builds the score and runs its first box. Wait until the playhead is about seven
 // seconds in, where the two Glass phase boxes overlap, then take the picture.
 var at = ""
@@ -2617,10 +2677,10 @@ for (i in 0 until 240) {
     at =
         ui.eval(
                 """
-        const f = document.querySelector("iframe[src*='score_view']")
-        const s = f && f.contentDocument && f.contentDocument.getElementById("status")
-        return s ? s.textContent : "no score view yet"
-    """
+                const f = document.querySelector("iframe[src*='score_view']")
+                const s = f && f.contentDocument && f.contentDocument.getElementById("status")
+                return s ? s.textContent : "no score view yet"
+                """
                     .trimIndent(),
             )
             .toString()
@@ -2728,6 +2788,10 @@ same bank into `patSpatial` as azimuth, filter cutoff and distance — pat → D
 in realtime — so running it opens an audio device, and a `patSynth` launch outlives the box that
 started it. The other three boxes would run in CI, but they stay in one document with the fourth,
 because the document shows that the bank does not know whether it is being drawn or heard.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/marf_demo_readers.png" capture="box" open-outputs="true" embed=true hidden=true timeout="300" padding="12" name="gallery-marf-demo-readers" alt="Three lanes on one time scale, read from one bank of five stages: blue reads one address per stage, a ramp then oscillations; orange holds each address three stages, so its ramp and hold stretch out; green reads a fractional address and blends between slots. A legend underneath names the three readers" macro-file="../../dev_docs/agents/transcripts/marf_demo.yaml" capture-box="marf_readers"}
+// The transcript builds and runs all four boxes; this is the first box's three readers.
+```
 
 [Open →](offline.html?file=assets/agent_transcripts/marf_demo/metadata.edn)
 
@@ -2870,6 +2934,15 @@ A FieldML triangle that spins, driven by `eachFrame`, from
 
 [Open →](offline.html?file=assets/agent_transcripts/fieldml_frames_demo/metadata.edn)
 
+### fieldml_frames_sequence_demo
+
+A band raised one column at a time, held, and started again in the other colour, all from one
+FieldML `frames` body that waits between steps, from
+[FieldML and the JVM](fieldml_host_bridge.md#waiting-inside-a-frames-body). Run
+`window and renderer (FieldML)`, then `a script across frames`.
+
+[Open →](offline.html?file=assets/agent_transcripts/fieldml_frames_sequence_demo/metadata.edn)
+
 ### fieldml_macro_module_demo
 
 A scene built by calling the `moduleHere` source macro from FieldML, with a live parameter beside
@@ -2883,6 +2956,14 @@ Sixteen triangles whose vertex data a FieldML box writes every frame, from
 [FieldML and the JVM](fieldml_host_bridge.md). Run the `window and renderer` box first.
 
 [Open →](offline.html?file=assets/agent_transcripts/fieldml_mesh_demo/metadata.edn)
+
+### fieldml_suspend_demo
+
+A ribbon rewritten every frame by a scene with no Kotlin box: a FieldML box opens the window and
+starts `Renderer.run` with `hostLaunch`, from [FieldML and the JVM](fieldml_host_bridge.md). Run
+`window and renderer (FieldML)` first.
+
+[Open →](offline.html?file=assets/agent_transcripts/fieldml_suspend_demo/metadata.edn)
 
 ## visionOS device scenes
 
@@ -3180,6 +3261,8 @@ compute shader a Field probe plots; a keyframe curve plays with its playhead run
 visualizers when its editor is open; a time slider waits to be scrubbed across four cues; and a notes box
 draws on the drawing layer over all of it. Its film plays behind the home page, and the feel benchmark
 times the replay.
+
+<video controls muted loop playsinline preload="metadata" src="assets/demo_document/film.mp4" width="1280" height="720" style="max-width:100%;height:auto;aspect-ratio:1280/720" aria-label="The demo document filmed in Field's desktop app. It opens on the whole canvas, then glides to a palette box and drags one of its children, whose connection follows; orbits a white gyroid in a three.js panel; drags two points of a pink editable flower; holds on an orange and blue spiral streamed from Vulkan into a box's panel beside a probe's blue histogram; adds a key to a keyframe curve and drags it while the playhead runs; drags a red time slider across four cue boxes, whose coloured bars appear as it passes; draws a white loop on the drawing layer; and opens a box's editor, where a histogram, a history and a summary draw beside the code. It ends on the whole canvas again"></video>
 
 [Open →](offline.html?file=assets/agent_transcripts/demo_document/metadata.edn)
 
@@ -4007,6 +4090,15 @@ number of panels with no extra training and no extra shaders.
 
 [Open →](offline.html?file=assets/agent_transcripts/letter_interpolation_panels/metadata.edn)
 
+### shader_boids_separation
+
+**Two ShaderBoids flocks of 12,000 on one renderer, differing only in `separationRadiusFraction`.**
+With the default weights and no driver, a fraction of 1 lets separation reach as far as alignment and
+cohesion, and the flock spreads into one even disc; at 0.25 separation is short-range and the flock
+packs into one dense clump. The pair is the figure on [Neural particle systems](neural_particles.md).
+
+[Open →](offline.html?file=assets/agent_transcripts/shader_boids_separation/metadata.edn)
+
 ### skinned_characters
 
 **A rigged mesh you can bend, and a crowd of sixty-four of them.** Skeletal animation for
@@ -4119,6 +4211,10 @@ who else is publishing, and hands the stream you pick to its program as a second
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/stacktrinket_feedback_pulse_ring.png" capture="native-window" native-wait-frames="90" trim-native=true wait="3.0" embed=true hidden=true timeout="300" name="gallery-stacktrinket-feedback" alt="The pulse ring in the native window: a soft white ring on black, centred, its radius half the window's width, fading smoothly to black on both sides" macro-file="../../dev_docs/agents/transcripts/stacktrinket_feedback.yaml" capture-box="stacktrinket_renderer"}
 // The transcript builds every box and launches the renderer and the pulse ring.
+```
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/stacktrinket_feedback_fog.png" capture="native-window" native-wait-frames="600" trim-native=true wait="8.0" embed=false hidden=true timeout="300" name="gallery-stacktrinket-feedback-fog" macro-file="../../dev_docs/agents/transcripts/stacktrinket_feedback.yaml" run-box="stacktrinket_feedback_fog" execution="launch" capture-box="stacktrinket_renderer"}
+// After the transcript, launch the feedback fog box and let its trails build for a few seconds.
 ```
 
 [Open →](offline.html?file=assets/agent_transcripts/stacktrinket_feedback/metadata.edn)
@@ -4254,10 +4350,13 @@ without opening a window in CI, with a real desktop capture on the walkthrough p
 ### field_vr_ide
 
 [Field inside VR](field_vr_ide.md): the live canvas, editor and command palette in a world-locked
-browser panel. Either controller can point, click and drag; grip moves and rotates the panel.
-Tracked hands provide a pinch fallback.
-An in-panel keyboard preserves editor focus and includes text, Commands and Run. Launch 1 then 2;
-the default is a front-on desktop companion. Requires Vulkan and Electron.
+browser panel. Either controller can point, click and drag; one grip moves the panel and two
+grips resize it. Analog stick scrolling supports both axes. Hand pointing is disabled to preserve mouse input.
+An in-panel keyboard preserves editor focus and includes text, Commands and Run. Linux WiVRn
+headset keyboard and mouse input works without desktop focus, and another browser can edit the
+same document independently. The Quest 3 workflow has been tested in the headset.
+Launch 1 then 2; the default is a front-on desktop companion plus a closeable headset scene preview.
+The preview can show one eye or both eyes side by side. Requires Vulkan and Electron.
 
 [Open →](offline.html?file=assets/agent_transcripts/field_vr_ide/metadata.edn)
 
@@ -4272,9 +4371,10 @@ replayed: a lesson sequence, or a conversation's revisions, variants and chat.
 ### canonical_graphics
 
 The graphics lessons: cameras, compute shaders and particles, texturing, render-to-texture, blur
-kernels, a GPU radix sort and more, one box per lesson, each running against a live renderer. Its
-index is [the lesson list](assets/canonical_graphics/LESSONS.md), and
-[Field 4 graphics](afield_four_graphics.md) walks through it.
+kernels, a GPU radix sort and more, one box per lesson, each running against a live renderer.
+[Field 4 graphics](afield_four_graphics.md) walks through it, and
+[the viewer](offline.html?file=assets/canonical_graphics/metadata.edn) shows every lesson with its
+code and the picture its window drew.
 
 ### stacksl_conversation_ink
 

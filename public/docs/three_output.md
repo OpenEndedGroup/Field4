@@ -259,8 +259,27 @@ uses `EXT_meshopt_compression`, which three.js, Blender 4.2 and later, and most 
 light, sky fill, a cool rim light, ambient occlusion and a dark ground with a faint grid. Give the
 mesh a material to go with it:
 
-```diffstatic {data-lang=kotlin}
-three {
+```diffstatic_runner {data-lang=kotlin screenshot="assets/three_output/studio.png" alt="the same grey vase twice. Above, plain: flat grey shading on black. Below, with studio(): a bright specular highlight down its belly, a soft shadow on a dark ground plane that recedes to a horizon" wait="6.0" capture="box" open-outputs="true" padding="20" name="three-studio-look"}
+:::fold a revolved vase
+// A vase: a profile of radius against height, revolved around y.
+val vase = revolveMesh(
+    (0..40).map { i ->
+        val y = -1.25 + i / 40.0 * 2.5
+        vec(0.45 + 0.3 * sin(i / 40.0 * 5.0) + 0.15 * (i / 40.0), y)
+    },
+    RevolveAxis.Y,
+    segments = 64,
+)
+
+:::endfold
+
+// The same vase with no look, then with studio().
+three(name = "plain", channel = "plain", width = 560, height = 420) {
+    mesh(vase, wireframe = false, cullBackFaces = false)
+    camera(pitch = 22.0, padding = 1.6)
+    background("#060807")
+}
+three(name = "studio", channel = "studio", width = 560, height = 420) {
     mesh(
         vase,
         wireframe = false,
@@ -268,9 +287,12 @@ three {
         material = ThreeSurfaceMaterial(roughness = 0.4f, metalness = 0.6f),
     )
     studio(groundY = -1.25)
+    camera(pitch = 22.0, padding = 1.6)
     background("#060807")
 }
 ```
+
+![The same vase plain and under studio(): the studio view adds a metallic highlight, a contact shadow and a dark ground](assets/three_output/studio.png)
 
 `studio()` switches off the reference grid and axis tripod. Ambient occlusion draws in a single
 view. A contact sheet and X-ray draw without it, and `studio(ambientOcclusion = false)` turns it off.
@@ -333,7 +355,7 @@ position.
 `ThreeCameraSpec` has the same fields as `MeshView` and `VisionGeometryPreview.Camera`, the
 CPU rasterizer's camera:
 
-- **`yawDegrees`** — orbit around `+y`. `0` looks straight down `−z`.
+- **`yawDegrees`** — orbit around `+y`. `0` looks straight down \( -z \).
 - **`pitchDegrees`** — lift above the horizon. Positive looks down on the geometry.
 - **`distance`** — in multiples of the bounding-sphere radius, so one spec frames a 2 cm mesh and a
   2 m one. The rasterizer uses it; the viewer zooms to fit instead.
@@ -495,7 +517,7 @@ lists them all, and what each is for:
 Two entries in that table are commonly misread:
 
 **`Box.lines(...)` draws in 2D.** Given a 3D FLine, it uses `x` and `y` for an orthographic view
-down `−z`, with no depth sorting or hidden-line removal. The `z` coordinate is retained for
+down \( -z \), with no depth sorting or hidden-line removal. The `z` coordinate is retained for
 picking, so a click can still report the 3D position. For perspective, project first with
 `FLine.byPerspectiveProjecting(...)` or use `threeLines`.
 
@@ -778,8 +800,7 @@ A scene can opt into a tool without making that tool part of Field. Tools are tr
 ES modules served by the same Field server. The default viewer loads none.
 This small example adds a reference-axis toggle:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/three_output/tools.png" wait="6.0" capture="box" open-outputs="true" padding="20"}
-:::static
+```diffstatic {data-lang=kotlin}
 three(name = "tools-example") {
     tools("/threejs_tools_demo.js")
     lines(
@@ -792,7 +813,31 @@ three(name = "tools-example") {
 }
 ```
 
-![The Three.js viewer showing one straight line, with the tool's "Reference axes" button in the toolbar after the built-in X-ray and Export GLB buttons.](assets/three_output/tools.png)
+```diffstatic_runner {data-lang=kotlin capture="ui" region="box" capture-box="three_tools" screenshot="assets/three_output/tools.png" transcript="assets/transcripts/three_output_tools_setup.yaml" padding="20" wait="0" timeout="240" embed=true hidden=true name="three-output-tools" alt="The Three.js viewer after pressing the tool's Reference axes button: the straight line, and at the origin the red, green and blue axes the tool adds, with the button shown pressed in the toolbar after the built-in X-ray and Export GLB buttons."}
+// Press the tool's own button inside the viewer's frame, then let it render.
+var pressed = "waiting"
+for (i in 0 until 120) {
+    ui.pause(250)
+    pressed =
+        ui.eval(
+                """
+                for (const f of document.querySelectorAll("iframe")) {
+                    const d = f.contentDocument
+                    const b = d && [...d.querySelectorAll("button")].find(e => e.textContent === "Reference axes")
+                    if (!b) continue
+                    if (b.getAttribute("aria-pressed") !== "true") b.click()
+                    return b.getAttribute("aria-pressed")
+                }
+                return "waiting"
+                """
+                    .trimIndent(),
+            )
+            .toString()
+    if (pressed.contains("true")) break
+}
+check(pressed.contains("true")) { "Reference axes button never appeared: " + pressed }
+ui.pause(1500)
+```
 
 Each module exports a default factory returning a descriptor with a unique `id`.
 `mount(context)` receives a toolbar element, `THREE`, the camera and controls,

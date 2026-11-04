@@ -11,11 +11,11 @@ val side = 300
 val dla = dlaCluster(side, side, particles = 6000, seed = 2L)
 val fit = dla.fractalDimension(rMin = 5.0, rMaxFraction = 0.75)
 println(dla)
-println("DLA mass dimension " + "%.3f".format(fit.dimension) + " (r2 = " + "%.4f".format(fit.rSquared) + ")")
+println("DLA mass dimension " + fit.dimension.f3 + " (r2 = " + fit.rSquared.f4 + ")")
 
 val eden = edenCluster(side, side, particles = dla.points.size, seed = 2L)
 val edenFit = eden.fractalDimension(rMin = 5.0, rMaxFraction = 0.75)
-println("CONTROL Eden dimension " + "%.3f".format(edenFit.dimension))
+println("CONTROL Eden dimension " + edenFit.dimension.f3)
 val sprinkle = sprinkleCluster(side, side, dla.points.size, dla.maxRadius, seed = 2L)
 val sprinkleFit = massRadiusDimension(
     sprinkle.points,
@@ -24,14 +24,14 @@ val sprinkleFit = massRadiusDimension(
     rMax = sprinkle.maxRadius * 0.75,
     minCount = 60,
 )
-println("CONTROL uniform sprinkle dimension " + "%.3f".format(sprinkleFit.dimension) + " (exactly 2 by construction)")
+println("CONTROL uniform sprinkle dimension " + sprinkleFit.dimension.f3 + " (exactly 2 by construction)")
 
 showImg(
     montage(
         [
-            "DLA: D = " + "%.2f".format(fit.dimension) to dla.arrivalOrderImg().colormap("turbo"),
-            "Eden: D = " + "%.2f".format(edenFit.dimension) to eden.arrivalOrderImg().colormap("turbo"),
-            "sprinkle: D = " + "%.2f".format(sprinkleFit.dimension) to sprinkle.mask,
+            "DLA: D = " + fit.dimension.f2 to dla.arrivalOrderImg().colormap("turbo"),
+            "Eden: D = " + edenFit.dimension.f2 to eden.arrivalOrderImg().colormap("turbo"),
+            "sprinkle: D = " + sprinkleFit.dimension.f2 to sprinkle.mask,
         ],
         columns = 3,
         cellSide = 280,

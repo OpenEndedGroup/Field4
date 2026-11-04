@@ -21,7 +21,7 @@ val back = cs.table(1)!!
 val (left, _) = cs.renderOffline()
 cs.close()
 println(
-    "wrote ${wave.size} values; read back equal: ${wave.contentEquals(back)}; rendered ${left.size} frames, peak ${"%.3f".format(left.maxOf { abs(it) })}",
+    "wrote ${wave.size} values; read back equal: ${wave.contentEquals(back)}; rendered ${left.size} frames, peak ${left.maxOf { abs(it) }.f3}",
 )
 showSignals(
     "ftable 1, read back" to (0 until 4096 step 8).map { back[it] },

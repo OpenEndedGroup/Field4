@@ -48,7 +48,8 @@ operations:
           Field's own relay. A browser ShaderTrinket receives it by that name. To join a class,
           run WebRTCNetwork.join("https://<your aaaframe>") once; Field asks you to sign in.
           */
-          @exported val sink = webrtcSink("field-shader", 640, 360)
+          @exported
+          val sink = webrtcSink("field-shader", 640, 360)
 
           val module = moduleHere { +sink }
           val quad = Mesh()

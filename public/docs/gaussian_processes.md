@@ -90,7 +90,7 @@ val fastMean = gp.mean(0.5) // avoids the uncertainty solve
 `gp.posterior(grid)` returns a `GpJoint`. Its `mean`, `variance` and full `covariance` arrays use
 the same order as `grid`. It caches its sampling factor, so `posterior.samples(20, seed = 19)`
 factors once and draws twenty functions. Repeated query positions have the same value in every
-latent draw. A seed reproduces the result for the same model and query order.
+draw. A seed reproduces the result for the same model and query order.
 
 An interval is **pointwise**: it describes one position at a time. A 95% pointwise band does not
 contain 95% of whole functions. Draws can leave that band somewhere without anything being wrong.
@@ -101,8 +101,9 @@ For a 1D plot, `posterior.intervalFLines(grid)` returns its lower and upper boun
 The covariance kernel specifies how values at different positions relate. Its length scale sets
 the distance over which they remain related; its variance sets the squared output amplitude.
 Look at prior samples before fitting: they show the assumptions you are imposing. These are
-three draws each, before any observation, from RBF, Matérn 3/2, Matérn 1/2 and periodic kernels
-with the same length scale:
+three draws each, before any observation, from four kernels with the same length scale: RBF
+(radial basis function, also called squared exponential), the smoothest; Matérn 3/2 and 1/2, a
+family whose number sets how rough the curves are, lower being rougher; and periodic:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/gaussian_processes/kernels.png" wait="1.5" capture="box" open-outputs="true" padding="20"}
 :::static
@@ -143,7 +144,7 @@ lines(rows, w = 700.0, h = 560.0, fitToSize = true)
 | --- | --- |
 | `GpKernels.rbf(lengthScale, variance)` | Very smooth motion, deformation and fields. |
 | `GpKernels.matern(2.5, lengthScale, variance)` | Smooth curves with less rigid local behaviour than RBF. |
-| `GpKernels.matern(1.5, lengthScale, variance)` | Rougher curves; once mean-square differentiable. |
+| `GpKernels.matern(1.5, lengthScale, variance)` | Rougher curves; they have a slope, but the slope itself is rough. |
 | `GpKernels.matern(0.5, lengthScale, variance)` | Continuous but rough fluctuations. |
 | `GpKernels.periodic(period, lengthScale, variance)` | Exact repetition, including the connection across a loop boundary. |
 | `GpKernels.octavePeriodic(centerPeriod)` | Repetition whose period is uncertain within an octave; `periodicMixture` for your own candidates. |
@@ -164,7 +165,7 @@ val functions = prior.posterior(DoubleArray(300) { it / 60.0 }).samples(6, seed 
 ```
 
 For a nonzero baseline use a mean function. `gp1D(..., mean = { x -> 0.2 * x })` fits residuals
-around that line. Stationary kernels such as RBF return towards the prior mean and variance far
+around that line. Kernels that depend only on the distance between two positions, such as RBF, return towards the prior mean and variance far
 from observations. Inputs and outputs are used as given; nothing is rescaled.
 
 ## Pins, measurements and uncertainty
@@ -186,6 +187,41 @@ val noisyJoint = posterior.withObservationNoise(DoubleArray(grid.size) { 0.2 })
 With kernel, mean and noise held fixed, moving the measured values changes the posterior mean
 but not its variance. Changing observation positions or their noise changes the variance. Fitting
 kernel parameters from the data can change both.
+
+Three posteriors over the same four positions: exact pins, the same values measured with noise
+0.2, and those measurements moved. The interval closes to nothing at a pin and only narrows at a
+measurement; moving the measured values moves the mean and leaves the interval the same width.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/gaussian_processes/pins_vs_measurements.png" wait="1.5" capture="box" open-outputs="true" padding="20" embed=true name="gp-pins-vs-measurements" alt="Three panels of an orange mean between two thin orange 95% interval lines, through four white dots. Left, exact pins: the interval closes to a point at every dot. Middle, the same values as noisy measurements: the interval narrows near the dots but stays open. Right, the measurements moved to new values: the mean follows them and the interval has the same width as in the middle panel"}
+:::static
+val xs = doubleArrayOf(-1.2, -0.35, 0.1, 0.95)
+val ys = doubleArrayOf(-0.7, 0.8, 0.35, -0.4)
+val moved = doubleArrayOf(0.4, -0.5, 0.9, 0.3)
+val grid = DoubleArray(181) { -1.8 + 3.6 * it / 180 }
+val kernel = GpKernels.rbf(lengthScale = 0.48)
+
+// One panel: the mean, its 95% interval and the observations, shifted right by `dx`.
+fun panel(values: DoubleArray, noise: Double, dx: Double): List<FLine> {
+    val posterior = gp1D(xs, values, noiseStd = DoubleArray(xs.size) { noise }, kernel = kernel).posterior(grid)
+    fun plot(line: FLine) = line.transform { vec(it.x * 100 + dx, -it.y * 90, 0) }
+    val (lower, upper) = posterior.intervalFLines(grid)
+    val band = [lower, upper].map { plot(it).apply { color = vec(1, 0.5, 0.2, 0.5) } }
+    val mean = plot(posterior.meanFLine(grid)).apply {
+        color = vec(1, 0.5, 0.2, 1)
+        thickness = 2.5
+    }
+    val dots = plot(FLine().apply { xs.indices.forEach { moveTo(xs[it], values[it]) } }).apply {
+        stroked = false
+        pointed = true
+        pointSize = 3.0
+        color = vec(1, 1, 1, 1)
+    }
+    return band + mean + dots
+}
+
+// Exact pins; the same points as measurements with noise 0.2; those measurements moved.
+lines(panel(ys, 0.0, 0.0) + panel(ys, 0.2, 420.0) + panel(moved, 0.2, 840.0), w = 900.0, h = 260.0, fitToSize = true)
+```
 
 Add another observation by conditioning again. This creates a new fitted model; it does not
 change the old one or any samples already drawn from it.
@@ -258,7 +294,7 @@ colour scale. The panel below is the standard deviation, dark at the observation
 ![Three square panels in a blue-white-red scale: a soft mean with two warm and two cool patches, then two blotchier draws that agree with it at four places; below, a standard-deviation panel with four dark holes on a bright background](assets/gaussian_processes/field2d.png)
 
 For a large uncertainty map, use `field.marginals(queries)`. It computes individual predictions
-without allocating the square query covariance. For a large *sample*, use a feature path below;
+without allocating the square query covariance. For a large *sample*, use the feature model in the next section;
 sampling each tile independently would break correlations across tile boundaries.
 
 ## A field through space
@@ -706,8 +742,9 @@ Non-Gaussian likelihoods are not provided by this API.
 
 `logMarginalLikelihood` scores a model's explanation of the observations, balancing fit with the
 volume of functions its prior allows. It can help select length scales, amplitude and noise.
-The model builder below makes their units explicit. Smile's bounded L-BFGS optimizer searches
-in log space, using finite differences of Field's own likelihood:
+The model builder below makes their units explicit, and each `GpParameter` gives a starting value
+and lower and upper bounds. An optimiser from Smile, the Java machine-learning library Field
+bundles, searches within those bounds:
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -726,8 +763,8 @@ val stationarity = fit.projectedGradientMax
 ```
 
 Try several initial settings and inspect the fitted functions. Periodic models in particular can
-have different plausible periods. A small projected gradient is a local stationarity diagnostic,
-not proof of a global best fit. `fitGpHyperparameters` is a portable bounded pattern-search
+have different plausible periods. Stopping where the likelihood no longer improves nearby is not proof that no better fit exists
+elsewhere. `fitGpHyperparameters` is a portable bounded pattern-search
 alternative with a `converged` flag; it needs no Smile optimizer. Both propagate fitting failures.
 
 When one assumption matters most, such as a period, look at the evidence for each candidate
@@ -828,6 +865,41 @@ fun animated(x: Double, y: Double, z: Double, phase: Double): Double {
 }
 ```
 
+The same rotation drawn live: the z = 0 slice of the volume, one turn of phase every four seconds.
+
+```diffstatic_runner {data-lang=kotlin capture="box" execution="launch" video="assets/gaussian_processes/coherent_in_time.mp4" duration="4" fps="15" open-outputs="true" wait-output="true" wait-output-kind="display" wait="3" timeout="240" padding="20" embed=true name="gp-coherent-in-time" alt="A coolwarm heatmap of one slice of the sampled field, its warm and cool patches drifting and reshaping smoothly as the phase turns, returning to where it started after four seconds"}
+:::static
+val observations = arrayOf(
+    doubleArrayOf(-0.7, -0.4, -0.5),
+    doubleArrayOf(0.6, 0.4, 0.5),
+    doubleArrayOf(-0.5, 0.6, 0.0),
+    doubleArrayOf(0.6, -0.6, 0.0),
+)
+val featureModel =
+    GpRbfFeatures(lengthScales = doubleArrayOf(0.7, 0.7, 0.9), frequencyCount = 512, seed = 77)
+        .fit(observations, doubleArrayOf(0.8, -0.8, -0.5, 0.6), DoubleArray(4) { 0.04 })
+
+val a = featureModel.samplePath(101)
+val b = featureModel.samplePath(202)
+fun animated(x: Double, y: Double, z: Double, phase: Double): Double {
+    val m = featureModel.mean(x, y, z)
+    return m + kotlin.math.cos(phase) * (a(x, y, z) - m) + kotlin.math.sin(phase) * (b(x, y, z) - m)
+}
+
+// The z = 0 slice, one full turn of phase every four seconds.
+val side = 48
+val start = System.nanoTime()
+loop {
+    if (frameNumber % 2 == 0) {
+        val phase = 2 * Math.PI * ((System.nanoTime() - start) / 4e9)
+        val slice = Array(side) { row ->
+            DoubleArray(side) { col -> animated(-1.0 + 2.0 * col / (side - 1), -1.0 + 2.0 * row / (side - 1), 0.0, phase) }
+        }
+        showHeatmap(slice, vmin = -2.0, vmax = 2.0, normalize = false, colormap = "coolwarm", width = 360, channel = "z = 0")
+    }
+}
+```
+
 This is a loop through two sampled deviations, not new independent randomness every frame.
 Query the same world-space function for both stereo eyes to keep the field spatially consistent.
 Ordinary linear interpolation between two independent samples reduces their variance halfway;
@@ -871,7 +943,7 @@ Use a richer kernel or justified measurement noise. Check `jitterUsed` and the l
 ## Smile and further reading
 
 Use any suitable immutable Smile `MercerKernel<DoubleArray>` through `.asGpKernel()`. The covariance
-is reused directly, with Field retaining control of heteroscedastic noise, seeded sampling and
+is reused directly, with Field retaining control of per-observation noise, seeded sampling and
 semidefinite query distributions. The `smileGaussianProcess` wrapper also exposes
 `predictWithVariance` and `posterior`, and propagates fitting failures. Its `noise` option
 is a **variance**, in normalised output units when normalisation is enabled, whereas the rest of
@@ -881,8 +953,8 @@ noise settings fixed.
 Read [MacKay's *Information Theory, Inference, and Learning Algorithms*](https://www.inference.org.uk/mackay/itila/book.html),
 chapter 45, for the relationship between finite parameter models and distributions over functions.
 [Rasmussen and Williams, chapter 2](https://gaussianprocess.org/gpml/chapters/RW2.pdf) gives the
-regression equations and Cholesky algorithm. In Field, with A = K(X,X) + diag(noiseStd²) and residual
-r = y − mean(X), the implementation computes:
+regression equations and Cholesky algorithm. In Field, with \( A = K(X,X) + \operatorname{diag}(\texttt{noiseStd}^2) \) and residual
+\( r = y - m(X) \), the implementation computes:
 
 \[
 \mu_* = m(X_*) + K(X_*,X)A^{-1}r,\qquad

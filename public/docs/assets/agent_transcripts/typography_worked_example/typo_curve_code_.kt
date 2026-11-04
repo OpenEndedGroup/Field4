@@ -11,7 +11,7 @@ val ring = layoutText("AROUND AND AROUND", face, tracking = 7.0)
 // the layout's width means the string closes exactly.
 val circle = textCircle(radius = ring.advanceWidth / (2 * Math.PI))
 val onCircle = ring.onCurve(circle, align = TextAlign.CENTER)
-println("circle circumference ${"%.1f".format(circle.arcLength())} vs layout width ${"%.1f".format(ring.advanceWidth)}")
+println("circle circumference ${circle.arcLength().f1} vs layout width ${ring.advanceWidth.f1}")
 println(
     "${onCircle.glyphs.count { kotlin.math.abs(it.rotation) > 0.05 }} of ${onCircle.glyphs.size} glyphs turned with the curve",
 )

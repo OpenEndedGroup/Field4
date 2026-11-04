@@ -46,7 +46,7 @@ println(
     "best after 30 tries: misfit %.2e at %s"
         .format(
             opt.best!!.value,
-            opt.best!!.parameters.mapValues { "%.3f".format(it.value) },
+            opt.best!!.parameters.mapValues { it.value.f3 },
         ),
 )
-println("first five tries (blue, left): " + opt.history.take(5).joinToString { "%.3f".format(it.value) })
+println("first five tries (blue, left): " + opt.history.take(5).joinToString { it.value.f3 })

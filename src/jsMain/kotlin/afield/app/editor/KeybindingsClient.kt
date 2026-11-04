@@ -516,6 +516,7 @@ object Keybindings {
         chordCache.clear()
         path = next.path
         window.asDynamic().fieldUserKeybindingsPath = next.path
+        window.asDynamic().fieldUserKeybindingsDisplayPath = next.displayPath.ifEmpty { next.path }
 
         reregisterAll()
         // A reload can land before Monaco is up (the server pushes on connect); keep watching.

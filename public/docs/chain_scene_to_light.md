@@ -89,11 +89,17 @@ use. That rasterizer draws the background, blends the rectangles the way the GPU
 an 8-bit target, and runs StackSL materials through the StackSL interpreter. No window or graphics
 context is involved, so the lights keep running on a machine whose display is asleep.
 
-```diffstatic {data-lang=kotlin}
-val scene = RectSLImager(source)
+```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_scene_to_light/typed-vs-linear.png" alt="the same frame twice: as typed, a navy background, an orange square, a white line and a light blue band; linear, a near-black background, a red-orange square and a deeper blue band" wait="1.5" capture="box" open-outputs="true" padding="16" name="chain-typed-vs-linear" embed=true}
+import afield.io.dmx.*
+import afield.lang.rectsl.*
+
+val scene = RectSLImager(SceneOnARig.SCENE)
 val img = scene.frame(1.5, 256, 128) // colours as typed: 0x808080 is 0.502
 val light = scene.frame(1.5, 256, 128, linear = true) // the light that stands for: 0.216
+showImgGrid("as typed" to img, "linear = true" to light, columns = 2, cellSide = 400)
 ```
+
+The linear frame is darker everywhere except at full white and the saturated channels: the navy background goes nearly black.
 
 There are two choices of value. A frame holds colours *as typed* by default, which is what the
 RectSL pictures show and what an 8-bit target stores. `linear = true` gives the light those values
@@ -204,17 +210,17 @@ val k = point.peak.indexOfFirst { it < 0.01 }.coerceAtLeast(0)
 val frame = RectSLImager(SceneOnARig.LINE).frame(times[k], 256, 128, linear = true)
 val rig = SceneOnARig.Rig()
 rig.show(frame, area = false)
-showPatch(rig.patch, channel = "point samples at t = ${"%.3f".format(times[k])} s", w = 540.0, h = 300.0)
+showPatch(rig.patch, channel = "point samples at t = ${times[k].f3} s", w = 540.0, h = 300.0)
 rig.show(frame, area = true)
-showPatch(rig.patch, channel = "area average at t = ${"%.3f".format(times[k])} s", w = 540.0, h = 300.0)
+showPatch(rig.patch, channel = "area average at t = ${times[k].f3} s", w = 540.0, h = 300.0)
 
 markdown(
     "counts",
     """
 | route | frames with the rig dark | light on the rig, min – max | mean over the sweep | (max − min) / mean |
 |---|---|---|---|---|
-| point samples | ${point.darkFrames} of ${point.total.size} | ${"%.2f".format(point.min)} – ${"%.2f".format(point.max)} | ${"%.3f".format(point.mean)} | ${"%.2f".format(point.flicker)} |
-| area average | ${area.darkFrames} of ${area.total.size} | ${"%.3f".format(area.min)} – ${"%.3f".format(area.max)} | ${"%.3f".format(area.mean)} | ${"%.4f".format(area.flicker)} |
+| point samples | ${point.darkFrames} of ${point.total.size} | ${point.min.f2} – ${point.max.f2} | ${point.mean.f3} | ${point.flicker.f2} |
+| area average | ${area.darkFrames} of ${area.total.size} | ${area.min.f3} – ${area.max.f3} | ${area.mean.f3} | ${area.flicker.f4} |
 """,
     width = 1000,
 )

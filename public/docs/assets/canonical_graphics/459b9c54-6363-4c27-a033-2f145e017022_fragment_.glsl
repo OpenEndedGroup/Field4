@@ -6,6 +6,7 @@ layout(set=0, binding = 0) uniform sampler2D bbc;
 
 void main()
 {
+    // ftc.yx swaps the texture coordinates, which transposes the image on the quad.
     vec4 c = texture(bbc, ftc.yx);
     uFragColor = vec4(c.rgb, 1.0);
 }

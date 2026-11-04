@@ -1,0 +1,8 @@
+#rectsl
+->wall 12 8 abstract
+->duration 4
+->fps 30
+
+0 1 48 linspace  '( 6 * sin 1 + ) data-map  8 6 "turbo" heat
+  '( '( 0=0 0.5=1 ) ease-in-out ->alpha ) each
+  0.03 ->stagger-time

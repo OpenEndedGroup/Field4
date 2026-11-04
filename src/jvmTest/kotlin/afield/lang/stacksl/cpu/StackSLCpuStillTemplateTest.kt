@@ -14,7 +14,7 @@ import kotlin.test.assertTrue
  * host shader would be missing the point. So the copy is pinned by comparison against the
  * **committed workspace files** — which are neither copy, but the text a real GPU was handed.
  *
- * 29 of the 31 gallery entries carry a byte-identical still template; the other two are the
+ * 36 of the 41 gallery entries carry a byte-identical still template; the other five are the
  * feedback template. That is checked too, because "they all match each other" is the fact that
  * makes one comparison stand for all of them.
  */
@@ -35,7 +35,7 @@ class StackSLCpuStillTemplateTest {
         assertEquals(2, templates.size, "expected exactly two distinct templates (still and feedback)")
         val still = StackSLCpu.stillTemplate(1.75f).trim()
         val sharing = templates[still] ?: error("no committed template matches the built-in still template")
-        assertEquals(29, sharing.size, "expected 29 entries on the still template")
+        assertEquals(36, sharing.size, "expected 36 entries on the still template")
         val feedback = templates.keys.single { it != still }
         assertTrue("sampler2D source" in feedback, "the other template should be the feedback one")
     }

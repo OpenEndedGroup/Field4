@@ -41,12 +41,14 @@ ui.pause(500)
 val split = ui.eval("const s = window.canvasPanesState(); return s.rows + 'x' + s.columns").toString()
 check("2x2" in split) { "the grip did not split the canvas into four panes: " + split }
 // Scroll the body (the bottom-right pane) right and down, as a trackpad would.
-ui.eval("""
+ui.eval(
+    """
   const pane = document.querySelectorAll(".field-pane")[3];
   const r = pane.getBoundingClientRect();
   pane.dispatchEvent(new WheelEvent("wheel", { deltaX: 380, deltaY: 200, clientX: r.right - 40, clientY: r.bottom - 40, bubbles: true, cancelable: true }));
   return true;
-""")
+""",
+)
 ui.pause(900)
 ```
 
@@ -99,16 +101,24 @@ ui.pause(1500)
 // Scroll the body (the bottom-right pane) in small steps, as a trackpad does, then back again,
 // pausing each time for the connections to settle.
 fun scrollBody(dx: Double, dy: Double) {
-    ui.eval("""
+    ui.eval(
+        """
       const pane = document.querySelectorAll(".field-pane")[3];
       const r = pane.getBoundingClientRect();
       pane.dispatchEvent(new WheelEvent("wheel", { deltaX: $dx, deltaY: $dy, clientX: r.right - 60, clientY: r.bottom - 60, bubbles: true, cancelable: true }));
       return true;
-    """)
+    """,
+    )
 }
-repeat(40) { scrollBody(9.0, 5.0); ui.pause(30) }
+repeat(40) {
+    scrollBody(9.0, 5.0)
+    ui.pause(30)
+}
 ui.pause(2500)
-repeat(40) { scrollBody(-6.0, -4.0); ui.pause(30) }
+repeat(40) {
+    scrollBody(-6.0, -4.0)
+    ui.pause(30)
+}
 ui.pause(2500)
 ```
 
@@ -141,12 +151,14 @@ val split = ui.eval("const s = window.canvasPanesState(); return s.rows + 'x' + 
 check("2x2" in split) { "the grip did not split the canvas into four panes: " + split }
 
 fun scrollPane(index: Int, dx: Double, dy: Double) {
-    ui.eval("""
+    ui.eval(
+        """
       const pane = document.querySelectorAll(".field-pane")[$index];
       const r = pane.getBoundingClientRect();
       pane.dispatchEvent(new WheelEvent("wheel", { deltaX: $dx, deltaY: $dy, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, bubbles: true, cancelable: true }));
       return true;
-    """)
+    """,
+    )
 }
 fun palette(command: String) {
     // The pane under the pointer is the one a pane command acts on: the labels, bottom left.
@@ -166,10 +178,16 @@ val free = ui.eval("return String(window.canvasPanesState().panes[2].freeY)").to
 check("true" in free) { "the labels pane was not unlinked: " + free }
 // The body scrolls down; the labels stay where they are.
 ui.moveMouse(700.0, 420.0, 6)
-repeat(30) { scrollPane(3, 0.0, 6.0); ui.pause(30) }
+repeat(30) {
+    scrollPane(3, 0.0, 6.0)
+    ui.pause(30)
+}
 ui.pause(900)
 // The labels scroll on their own.
-repeat(24) { scrollPane(2, 0.0, 5.0); ui.pause(30) }
+repeat(24) {
+    scrollPane(2, 0.0, 5.0)
+    ui.pause(30)
+}
 ui.pause(900)
 
 palette("relink pane")
@@ -180,10 +198,11 @@ ui.pause(1500)
 
 ### What box code sees
 
-A box reads what the canvas shows from two properties, both in world units at any zoom.
-`viewport` is the main (bottom-right) pane, the world rect `(-x, -y, w, h)`, and
-`onViewportChange` callbacks fire when it moves. `viewports` lists every pane's visible world rect
-`(x, y, w, h)`, main pane last.
+A box reads what the canvas shows from two properties. Both are in world units, the units a box's
+`frame` is in, so they do not change with zoom. `viewport` is the main (bottom-right) pane, as the
+rect `(-x, -y, w, h)`: its first two numbers are the negated world position of the pane's top-left
+corner. `onViewportChange` callbacks fire when it moves. Note the different sign from
+`viewports`, which lists every pane's visible world rect as `(x, y, w, h)`, main pane last.
 
 ```diffstatic {data-lang=kotlin}
 viewports.forEach { println("${it.x}, ${it.y}: ${it.w} × ${it.h}") }
@@ -221,7 +240,7 @@ While the mode is up, Field draws over the canvas:
 - a solid outline around the box you are on
 - a dashed outline around each box you can reach, up to four, one per direction
 - a line from your box to each of those, and an arrow badge on the far side of each one
-- an `F` chip on any box that a bookmark slot points at
+- an `F` chip on any box that a [bookmark](#bookmarks) slot points at
 
 A direction with no box in it is absent from the overlay, and pressing that arrow does nothing.
 
@@ -230,38 +249,54 @@ A direction with no box in it is absent from the overlay, and pressing that arro
 // uid only in that case, and the F chips are drawn from those uids.
 ui.click("spatial_nav_north")
 ui.pause(250)
-ui.down("Meta"); ui.down("Shift"); ui.press("F2"); ui.up("Shift"); ui.up("Meta")
+ui.down("Meta")
+ui.down("Shift")
+ui.press("F2")
+ui.up("Shift")
+ui.up("Meta")
 ui.pause(250)
 ui.click("spatial_nav_east")
 ui.pause(250)
-ui.down("Meta"); ui.down("Shift"); ui.press("F5"); ui.up("Shift"); ui.up("Meta")
+ui.down("Meta")
+ui.down("Shift")
+ui.press("F5")
+ui.up("Shift")
+ui.up("Meta")
 ui.pause(250)
 
-// Stand on the anchor, then wait out the viewport animation. ensureBoxVisibleForNavigation runs a
-// 420ms animateViewportTranslation, and a shot fired inside that window catches the overlay at one
-// pan offset and the boxes at another. That is what made the previous capture of this page wrong.
+/*
+Stand on the anchor, then wait out the viewport animation. ensureBoxVisibleForNavigation runs a
+420ms animateViewportTranslation, and a shot fired inside that window catches the overlay at one
+pan offset and the boxes at another. That is what made the previous capture of this page wrong.
+*/
 ui.click("spatial_nav_center")
 ui.pause(1400)
 
 // The trigger: Meta down, up, down inside 360ms, with no other keydown between the taps and no
 // other modifier held. Meta stays down from here on, because its keyup tears the mode down again.
-ui.down("Meta"); ui.up("Meta"); ui.down("Meta")
+ui.down("Meta")
+ui.up("Meta")
+ui.down("Meta")
 ui.pause(400)
 
-// Wait for the overlay to agree with the canvas, then frame the shot. Every highlight is its box's
-// rect inflated by spatialNavPadding, so any other offset means the two disagree about where the
-// canvas is -- which is exactly the defect this figure replaces: ensureBoxVisibleForNavigation
-// animates the viewport for 420ms and the old capture fired inside that window. Polling rather
-// than sleeping a guessed interval is the point, since the pass below both measures the offset and,
-// only once it is zero, parks a zero-ink crop marker on the union of the overlay for
-// clip-selector to frame. That union is the one collectGuideScreenshotRects builds for the box
-// capture path, which cannot be used here because that path pans and drops the selection first.
+/*
+Wait for the overlay to agree with the canvas, then frame the shot. Every highlight is its box's
+rect inflated by spatialNavPadding, so any other offset means the two disagree about where the
+canvas is -- which is exactly the defect this figure replaces: ensureBoxVisibleForNavigation
+animates the viewport for 420ms and the old capture fired inside that window. Polling rather
+than sleeping a guessed interval is the point, since the pass below both measures the offset and,
+only once it is zero, parks a zero-ink crop marker on the union of the overlay for
+clip-selector to frame. That union is the one collectGuideScreenshotRects builds for the box
+capture path, which cannot be used here because that path pans and drops the selection first.
+*/
 var report = ""
 var tries = 0
 while (tries < 24 && !report.contains("overlay-settled")) {
     if (tries > 0) ui.pause(250)
     tries++
-    report = (ui.eval("""
+    report =
+        (ui.eval(
+                """
   const pad = 12;
   const boxes = Array.from(document.getElementsByClassName("box"));
   const uidOf = (el) => el.uid || el.getAttribute("uid") || el.getAttribute("data-uid") || "";
@@ -319,19 +354,33 @@ while (tries < 24 && !report.contains("overlay-settled")) {
   frame.setAttribute("style", "position:fixed;pointer-events:none;background:transparent;border:0;" +
     "left:" + x0 + "px;top:" + y0 + "px;width:" + (x1 - x0) + "px;height:" + (y1 - y0) + "px;");
   return "overlay-settled:" + summary;
-""") ?: "").toString()
+""",
+            ) ?: "")
+            .toString()
 }
 
-// Worth knowing how this reports: the runner appends its own ui.shotClip after this script, and a
-// thrown error here does not stop it -- the REPL runs the next top-level statement anyway, and the
-// error lands in `data.output` of the macro reply, which the runner's error extractor does not read
-// (it only scans `events`). So a give-up here does not fail the build by itself. What it does do is
-// leave the crop marker absent, and shotClip with a missing selector writes nothing and fails the
-// drive op, so the build reports the selector instead of committing a full-window PNG.
+/*
+Worth knowing how this reports: the runner appends its own ui.shotClip after this script, and a
+thrown error here does not stop it -- the REPL runs the next top-level statement anyway, and the
+error lands in `data.output` of the macro reply, which the runner's error extractor does not read
+(it only scans `events`). So a give-up here does not fail the build by itself. What it does do is
+leave the crop marker absent, and shotClip with a missing selector writes nothing and fails the
+drive op, so the build reports the selector instead of committing a full-window PNG.
+*/
 if (!report.contains("overlay-settled")) {
     error("spatial navigation overlay never settled after " + tries + " tries: " + report)
 }
 ```
+
+### How the neighbours are chosen
+
+Field sorts the visible boxes by the dominant axis of their offset from the current one. A box
+further to the left than it is above counts as west, and so on. Within each direction it takes the
+nearest, counting sideways distance as a fifth of distance along the direction of travel, so a box
+that is slightly off-axis does not beat one that is directly ahead.
+
+Only one box per direction is offered, so a dense column collapses to its nearest member. Boxes that
+are hidden, deleted, or drawn at zero size are not candidates.
 
 ## Framing the selection
 
@@ -345,6 +394,25 @@ selection fits.
 If none of the uncovered space could show the selection at even half the size the whole window
 could, it uses the whole window instead and lets the editor cover part of it. A narrow strip beside
 a wide editor is not worth squinting at.
+
+Below, `target` is selected with its editor open. Opening the editor brought the box into view,
+but its open output panel runs under the editor. After alt-F the canvas zooms out until the box
+and its panel both fit in the strip the editor leaves:
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x640" clip="0,0,1100,640" transcript="../../dev_docs/agents/transcripts/docs_capture/frame_selected.yaml" padding="0" wait="0" timeout="240" hide-toasts=true embed=true hidden=true screenshot="assets/moving_around_the_canvas/frame_selected_before.png" name="frame-selected-before" alt="Field's canvas with the code editor open on the right for the box target. target sits at the left edge of the uncovered strip, and its open output panel, labelled main, runs off under the editor."}
+ui.openEditor("fs_target")
+ui.pause(900)
+```
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x640" clip="0,0,1100,640" transcript="../../dev_docs/agents/transcripts/docs_capture/frame_selected.yaml" padding="0" wait="0" timeout="240" hide-toasts=true embed=true hidden=true screenshot="assets/moving_around_the_canvas/frame_selected_after.png" name="frame-selected-after" alt="The same canvas after alt-F. The editor is still open on the right; the canvas has zoomed out so that target and the whole of its output panel fit in the strip to the left of the editor."}
+ui.openEditor("fs_target")
+ui.pause(900)
+ui.eval("if (document.activeElement) document.activeElement.blur(); return 'blurred'")
+ui.down("Alt")
+ui.press("KeyF")
+ui.up("Alt")
+ui.pause(1200)
+```
 
 ## Bookmarks
 
@@ -364,7 +432,7 @@ A slot stores a view rather than a box reference. Restoring one reapplies, in th
 - the size of each output panel that was open, and the open or closed state of every output
   panel. A panel that did not exist when the slot was saved, or no longer exists, is left as it is
 - the selected box, when exactly one box was selected at save time
-- the property that was open in Monaco
+- the property that was open in the editor
 - the editor cursor line and column
 
 ### The bookmarks panel
@@ -376,16 +444,27 @@ with a row for each of the nine slots, so you can see what a slot holds before y
 // Slot 1: `sketch` selected with its editor open. Slot 2: the same for `render`.
 ui.openEditor("bm_sketch")
 ui.pause(900)
-ui.down("Meta"); ui.down("Shift"); ui.press("F1"); ui.up("Shift"); ui.up("Meta")
+ui.down("Meta")
+ui.down("Shift")
+ui.press("F1")
+ui.up("Shift")
+ui.up("Meta")
 ui.pause(300)
 ui.openEditor("bm_render")
 ui.pause(900)
-ui.down("Meta"); ui.down("Shift"); ui.press("F2"); ui.up("Shift"); ui.up("Meta")
+ui.down("Meta")
+ui.down("Shift")
+ui.press("F2")
+ui.up("Shift")
+ui.up("Meta")
 ui.pause(300)
-ui.down("Alt"); ui.press("KeyB"); ui.up("Alt")
+ui.down("Alt")
+ui.press("KeyB")
+ui.up("Alt")
 ui.waitForSelector("#bookmarks-panel.is-visible", 8000.0)
 // Name the two slots through the panel's own name fields, the way a reader would.
-ui.eval("""
+ui.eval(
+    """
   const names = Array.from(document.querySelectorAll("#bookmarks-panel input[type=text]"));
   if (names.length < 2) return "only " + names.length + " saved slots";
   [["ideas", 0], ["render", 1]].forEach(([value, i]) => {
@@ -393,7 +472,8 @@ ui.eval("""
     names[i].dispatchEvent(new Event("change"));
   });
   return "named";
-""")
+""",
+)
 ui.pause(600)
 ```
 
@@ -441,28 +521,160 @@ active layer. The last visible layer cannot be hidden. If the document has a dra
 `drawing` row of its own, whose eye shows or hides it. [Layers](layers.md) covers how a box names
 its layers, and how each layer keeps its own layout.
 
-## How the neighbours are chosen
+Here the `notes` layer is hidden, so its two boxes are off the canvas and only the drums and synth
+boxes remain beside the panel:
 
-Field sorts the visible boxes by the dominant axis of their offset from the current one. A box
-further to the left than it is above counts as west, and so on. Within each direction it takes the
-nearest, counting sideways distance as a fifth of distance along the direction of travel, so a box
-that is slightly off-axis does not beat one that is directly ahead.
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x640" clip="0,0,1100,640" screenshot="assets/moving_around_the_canvas/layers_hidden.png" transcript="../../dev_docs/agents/transcripts/docs_capture/layers_hidden.yaml" padding="0" wait="0" timeout="240" hide-toasts=true embed=true hidden=true name="layers-hidden" alt="Field's canvas with the layers panel open. The panel lists default, drums, notes and synth with their box counts; the notes eye is closed. On the canvas, kick, snare and hats stand in one column and bass and pad in the next, and the two notes boxes below them are gone."}
+ui.eval("if (document.activeElement) document.activeElement.blur(); return 'blurred'")
+ui.down("Alt")
+ui.press("KeyL")
+ui.up("Alt")
+ui.waitForSelector("#layers-panel.is-visible", 8000.0)
+ui.eval(
+    """
+  const all = Array.from(document.querySelectorAll("#layers-panel button")).find(b => b.textContent === "Show all");
+  all.click();
+  return "showed all";
+""",
+)
+ui.pause(700)
+ui.eval(
+    """
+  const rows = Array.from(document.querySelectorAll("#layers-panel .layer-row"));
+  const notes = rows.find(r => r.querySelector(".layer-name").textContent === "notes");
+  if (!notes) return "rows: " + rows.map(r => r.querySelector(".layer-name").textContent).join(",");
+  notes.querySelector(".layer-eye").click();
+  return "hid notes";
+""",
+)
+ui.pause(900)
+```
 
-Only one box per direction is offered, so a dense column collapses to its nearest member. Boxes that
-are hidden, deleted, or drawn at zero size are not candidates.
+## Snapping
 
-## Limits
+Boxes can snap to each other while you drag or resize them. Snapping is on while Caps Lock is on, or
+after **Toggle Box Snapping** in the command palette, which stays on until you run it again. With
+neither, dragging and resizing are freeform, which is what you want while sketching.
 
-- one target per direction, so the overlay never offers a choice between two boxes on the same side
-- a slot stores a single selected box, so a multi-selection is not restored as a set
-- a slot with no saved zoom restores the pan position at whatever zoom you are at now
-- there are nine slots and the numbering is fixed
-- restoring a slot you have not set yet shows a notification and leaves the view alone
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x330" clip="0,0,460,330" hide-toasts=true video="assets/snapping/snapping.mp4" fps="20" transcript="assets/transcripts/snapping_setup.yaml" padding="0" wait="0" timeout="180" embed=true hidden=true name="snapping-guide" alt="Four boxes: left and right in a row with a wide gap between them, mover below them, and narrow at the bottom. F1 opens the command palette and Toggle Box Snapping turns snapping on. Mover is dragged left until a cyan guide line joins its left edge to left's, and it snaps into line. Then it is dragged up into the gap: guides show its top level with the other two, with tick marks for the equal gaps either side, and it lands evenly spaced. Last, narrow's right edge is dragged out until a guide meets mover's right edge, and it snaps to that width."}
+/*
+The setup transcript makes left and right (a row with a gap), mover and narrow. The window is
+wider than the clip so a selected box's editor opens beside the boxes, as on a real screen; lay
+it out for this window, since screenshot prep pins it to a size meant for a larger page.
+*/
+fun freeEditorLayout() {
+    ui.eval(
+        """
+        const c = document.querySelector(".monaco-editor-container")
+        if (c) for (const k of ["width", "height", "top", "right", "left", "bottom", "transform"]) c.style[k] = ""
+        if (window.globalEditor && window.globalEditor.layout) window.globalEditor.layout()
+        return true
+        """
+            .trimIndent(),
+    )
+}
+fun rect(name: String): List<Double> =
+    ui.eval(
+            """
+    const b = [...document.querySelectorAll(".box")].find(b => (b.name || "") === "$name" || (b.textContent || "").trim() === "$name")
+    if (!b) return null
+    const r = b.getBoundingClientRect()
+    return [r.left, r.top, r.right, r.bottom].join(",")
+"""
+                .trimIndent(),
+        )
+        .toString()
+        .trim('"')
+        .split(",")
+        .map { it.toDouble() }
+fun guides(): Int = ui.eval("return document.querySelectorAll('#snap-guides > *').length").toString().toDouble().toInt()
+// A hand-paced drag from (x0, y0) to (x1, y1), held at the end so the guides can be read.
+fun drag(x0: Double, y0: Double, x1: Double, y1: Double, what: String) {
+    ui.moveMouse(x0, y0, 6)
+    ui.pause(300)
+    val under = ui.eval("return !!document.elementFromPoint($x0, $y0)?.closest('.box')").toString()
+    check(under == "true") { "something covers the box at ($x0, $y0) before dragging $what" }
+    ui.mouseDown()
+    for (i in 1..24) {
+        ui.moveMouse(x0 + (x1 - x0) * i / 24, y0 + (y1 - y0) * i / 24)
+        ui.pause(35)
+    }
+    ui.pause(900)
+    check(guides() > 0) { "no snap guides while dragging $what" }
+    ui.mouseUp()
+    ui.pause(500)
+    // Deselect, so the selected box's editor does not cover the next drag.
+    ui.clickAt(440.0, 320.0)
+    ui.pause(500)
+}
+fun toggleSnapping() {
+    ui.press("F1")
+    ui.waitForSelector(".afield-palette-shell", 8000.0)
+    ui.pause(500)
+    ui.typeSlowly("box snapping", 90)
+    ui.pause(600)
+    ui.press("Enter")
+    ui.pause(700)
+}
+freeEditorLayout()
+// Click the empty canvas so the palette opens for the document, then turn snapping on.
+ui.moveMouse(420.0, 300.0, 8)
+ui.clickAt(420.0, 300.0)
+ui.pause(500)
+toggleSnapping()
+// Edge alignment: bring mover's left edge to within a few px of left's.
+var m = rect("mover")
+val l = rect("left")
+drag(
+    (m[0] + m[2]) / 2,
+    (m[1] + m[3]) / 2,
+    (m[0] + m[2]) / 2 + (l[0] + 6 - m[0]),
+    (m[1] + m[3]) / 2 - 10,
+    "mover to left's edge",
+)
+check(kotlin.math.abs(rect("mover")[0] - l[0]) < 1.0) { "mover did not snap to left's edge" }
+// Even spacing: into the gap, a little off centre and a little low.
+m = rect("mover")
+val r = rect("right")
+val w = m[2] - m[0]
+val centred = l[2] + (r[0] - l[2] - w) / 2
+drag(
+    (m[0] + m[2]) / 2,
+    (m[1] + m[3]) / 2,
+    (m[0] + m[2]) / 2 + (centred + 6 - m[0]),
+    (m[1] + m[3]) / 2 + (l[1] + 4 - m[1]),
+    "mover into the gap",
+)
+m = rect("mover")
+check(kotlin.math.abs((m[0] - l[2]) - (r[0] - m[2])) < 1.0) { "mover is not evenly spaced: $m" }
+// Resize: narrow's right edge out to just short of mover's.
+val n = rect("narrow")
+drag(n[2] - 3, (n[1] + n[3]) / 2, m[2] - 5, (n[1] + n[3]) / 2, "narrow's right edge")
+check(kotlin.math.abs(rect("narrow")[2] - m[2]) < 1.0) { "narrow's right edge did not snap to mover's" }
+ui.pause(800)
+```
+
+A dragged box snaps to the edges and centres of nearby boxes, each axis on its own, and cyan guides
+show what it has snapped to. Dragged between two boxes it snaps to even spacing, with ticks marking
+the equal gaps (gaps under 5 px don't count). A resized edge snaps to nearby box edges, so
+neighbours can share a boundary.
+
+A guide appears before the box jumps:
+
+<div class="field-data-table" markdown>
+
+| Snap | guide is drawn within | box jumps within |
+| --- | --- | --- |
+| edge and centre alignment | 20 px | 10 px |
+| even spacing | 30 px | 30 px |
+
+</div>
+
+A resized edge jumps within 10 px.
 
 ## Related features
 
 - [Keyboard Shortcuts](keybindings.md) covers rebinding, and lists both commands for all nine slots.
 - [Filming the canvas](filming_the_canvas.md) flies through the bookmarks, and films the flight.
 - [Layers](layers.md) decides which boxes are on the canvas, and where, per layer.
-- [Snapping](snapping.md) is the other half of arranging a document you intend to navigate this way.
 - [Document History](document_history.md) saves the document's content rather than your view of it.

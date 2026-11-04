@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. 2 - the branching tree
@@ -154,7 +154,7 @@ groups. Try `kolakoskiWord(8, a = 2, b = 3)` with a group of 4 - no group is eve
 and none is ever full, so the bar keeps moving without ever locking to the grid.
 
 ```edn [field-box id="kolakoski_x_euclid" role="properties"]
-{"id" "kolakoski_x_euclid" "index" 1 "name" "1 - counts and placement" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - counts and placement" "_tombstone" false "frame" #afield/rect [60.0 60.0 405.3 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kolakoski_x_euclid_code_.kt" "lines" 71 "characters" 3083 "sha256" "c1bc8a383f6934e5af201316c785cae6b50f8a7a693ba98e97e5015ca5440baa"}]}
+{"id" "kolakoski_x_euclid" "index" 1 "name" "1 - counts and placement" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - counts and placement" "_tombstone" false "frame" #afield/rect [60.0 60.0 405.3 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kolakoski_x_euclid_code_.kt" "lines" 71 "characters" 3073 "sha256" "b795bc43c110e51002f257501707257c296326462b08b50f416a5d3a16957954"}]}
 ```
 
 ```kotlin [field-property box="kolakoski_x_euclid" name="code" path="kolakoski_x_euclid_code_.kt"]
@@ -203,7 +203,7 @@ val audio = dirt.audio
 val wav = "kolakoski-flat.wav".file
 afield.audio.engine.WavFloatArrayWriter.writeStereo16(wav, audio.left, audio.right, PatSoundDocs.SR, 0.9f)
 println(
-    "wrote $wav — ${"%.1f".format(12 * cps)} hits/s, samples: ${dirt.usedSamples}, matched ${dirt.matched}, synth fallback ${dirt.unmatched}",
+    "wrote $wav — ${(12 * cps).f1} hits/s, samples: ${dirt.usedSamples}, matched ${dirt.matched}, synth fallback ${dirt.unmatched}",
 )
 
 markdown(

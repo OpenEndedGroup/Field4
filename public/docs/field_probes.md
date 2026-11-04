@@ -465,7 +465,7 @@ frames {
 
                 | n | mean | σ | min | median | max |
                 |---|------|---|-----|--------|-----|
-                | ${s.finiteCount} | ${"%.4f".format(s.mean)} | ${"%.4f".format(s.standardDeviation)} | ${"%.4f".format(s.min)} | ${"%.4f".format(s.quantile(0.5))} | ${"%.4f".format(s.max)} |
+                | ${s.finiteCount} | ${s.mean.f4} | ${s.standardDeviation.f4} | ${s.min.f4} | ${s.quantile(0.5).f4} | ${s.max.f4} |
             """,
             )
             :::endfold
@@ -473,6 +473,10 @@ frames {
         frame()
     }
 }
+```
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/field_probes/stats_readback.png" capture="box" open-outputs=true wait="2" timeout="240" padding="12" embed=true hidden=true name="field-probes-stats-readback" alt="The box's stats output: speed, channel 0, computed on the GPU, as one table row of n, mean, sigma, min, median and max over 16384 particles" macro-file="../../dev_docs/agents/transcripts/docs_capture/field_stats_readback.yaml" capture-box="fs_readback"}
+// The transcript launches a renderer and this box beneath it, with the compute shader above in its compute property.
 ```
 
 ---

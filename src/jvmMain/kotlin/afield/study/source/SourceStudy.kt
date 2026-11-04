@@ -222,12 +222,22 @@ class SourceStudy<T>(
         val sourceFile = revisionSourceFile(key)
         if (!sourceFile.isFile) throw StudyRejection("Unknown revision '$key'")
         val source = sourceFile.readText()
-        if (key.substringAfter('-') != hash(source).take(12)) throw StudyRejection("Revision source changed on disk: $key")
+        if (!sourceMatches(key, source)) throw StudyRejection("Revision source changed on disk: $key")
         val meta = readMeta(key)
         val admitted = load?.invoke(source) ?: admit(source) { false }
         val result = SourceRevision(key, meta.parent, meta.description, source, admitted.value, admitted.facts)
         revisions[key] = result
         return result
+    }
+
+    // An id names its source's hash at check-in. A repository-wide rewrite (a package rename) may change
+    // saved bytes afterwards without renaming revisions that recorded conversations cite; it records the
+    // rewritten bytes' full SHA-256 as `migratedSourceSha256` in the revision's metadata.
+    private fun sourceMatches(id: String, source: String): Boolean {
+        val digest = hash(source)
+        if (id.substringAfter('-') == digest.take(12)) return true
+        val metaFile = File(directory, "$id.json")
+        return metaFile.isFile && mapper.readTree(metaFile)["migratedSourceSha256"]?.asText() == digest
     }
 
     private data class Meta(val parent: String?, val description: String, val created: String?)
@@ -243,7 +253,7 @@ class SourceStudy<T>(
     fun savedSource(id: String): String {
         require(id.matches(REVISION_ID)) { "Unknown revision '$id'" }
         val source = revisionSourceFile(id).readText()
-        check(id.substringAfter('-') == hash(source).take(12)) { "Revision source changed on disk: $id" }
+        check(sourceMatches(id, source)) { "Revision source changed on disk: $id" }
         return source
     }
 

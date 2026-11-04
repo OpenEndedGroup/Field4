@@ -823,6 +823,7 @@ class RunnerOptions:
     box_w: float
     box_h: float
     open_outputs: bool
+    open_details: bool
     expect_outputs: str
     wait_output: bool
     wait_output_kind: str
@@ -875,15 +876,19 @@ class RunnerOptions:
     # `hide-toasts=true` (capture="ui" only): hide Field's toasts for the drive. They stay on screen
     # once shown, and in a small `viewport=` window they stack over the canvas being recorded.
     hide_toasts: bool = False
+    clip_at_end: bool = False
 
 
 # A profile names the host a capture needs. On any other host, or unless FIELD_DOCS_CAPTURE_PROFILES
 # names it, the committed capture is kept. `macos-electron` captures from this checkout's Field
 # Electron app instead of the capture Chromium (`playwright-open --electron`), for output that only
-# exists there, such as the RTT view's shared-texture frames.
+# exists there, such as the RTT view's shared-texture frames. `macos-native` is an ordinary capture
+# that needs a macOS-only native library (Syphon).
 CAPTURE_PROFILE_PLATFORMS = {
     "linux-nvidia": "linux",
     "macos-electron": "darwin",
+    # Output that needs a macOS-only native library and nothing else: Syphon's shared surfaces.
+    "macos-native": "darwin",
     "patchy-web": "",  # optional WebAssembly site; available on any host when explicitly selected
 }
 
@@ -1947,7 +1952,15 @@ class RunnerState:
         # The warm-session daemon holds a WebSocket to this server; it is now stale.
         self._stop_session(reason="shared server restart")
         self._stop_shared_field_server()
+        self._remove_fresh_documents_again()
         self._ensure_shared_field_server()
+
+    def _remove_fresh_documents_again(self) -> None:
+        """A stopping Field saves every document it still holds, so the fresh documents the captures
+        already removed come back when the shared server stops; remove them once more."""
+        workspace = runner_workspace(self.repo_root)
+        for document in sorted(getattr(self, "_fresh_documents", set())):
+            remove_fresh_document(workspace, document, settle=0)
 
     # ----- Warm-session daemon (opt-in) -------------------------------------
     def _ensure_session(self) -> Path | None:
@@ -2299,6 +2312,7 @@ class RunnerState:
             finally:
                 try:
                     self._stop_shared_field_server()
+                    self._remove_fresh_documents_again()
                 finally:
                     self._stop_semantic_sidecar()
                     if self.environment is not None:
@@ -2426,19 +2440,31 @@ class RunnerState:
         # Remember which backdoor invocation this was, so a failure diagnosis can find
         # *its* client log instead of whichever recent one happens to contain an error.
         self._last_capture_child_pid = None
-        completed, duration_ms, timed_out = run_with_watchdog(
-            command,
-            cwd=self.repo_root,
-            timeout=outer_timeout,
-            heartbeat_interval=8.0,
-            heartbeat=lambda message: LOG.info("Field docs runner%s", message),
-            label=label,
-            completion_probe=commands_complete,
-            exit_grace=10.0,
-            input_text=input_text,
-            on_start=self._remember_capture_child_pid,
-            check_environment=getattr(self, "_capture_environment_check", None),
-        )
+        try:
+            completed, duration_ms, timed_out = run_with_watchdog(
+                command,
+                cwd=self.repo_root,
+                timeout=outer_timeout,
+                heartbeat_interval=8.0,
+                heartbeat=lambda message: LOG.info("Field docs runner%s", message),
+                label=label,
+                completion_probe=commands_complete,
+                exit_grace=10.0,
+                input_text=input_text,
+                on_start=self._remember_capture_child_pid,
+                check_environment=getattr(self, "_capture_environment_check", None),
+            )
+        finally:
+            # A fresh-document capture made a real document in the runner's workspace. Left there it
+            # shows up in that workspace's lists (the cmd+t palette offers every document as a
+            # "Workspace file"), so the next capture photographs it.
+            if options.fresh_document:
+                document = command_document(command)
+                if document:
+                    if not hasattr(self, "_fresh_documents"):
+                        self._fresh_documents = set()
+                    self._fresh_documents.add(document)
+                remove_fresh_document(runner_workspace(self.repo_root), document)
         if timed_out:
             emitted = len(parse_backdoor_results(completed.stdout))
             reason = (
@@ -3440,13 +3466,8 @@ def parse_runner_options(*, runner_name: str, open_line: str, page_path: Path, l
     capture = (first_attr(attrs, "capture", "mode") or "box").strip().lower()
     if capture not in {"box", "window", "window-editor", "editor", "native-window", "ui"}:
         raise RuntimeError(f"{page_path}:{line_number} unsupported capture={capture!r}")
-    if capture == "native-window" and video:
-        # The video recorders all record the browser page; recording "the native window" through
-        # them would silently capture the wrong surface (capture_limits.md).
-        raise RuntimeError(
-            f"{page_path}:{line_number} capture=\"native-window\" cannot take video=: no recorder "
-            "records the native window; use screenshot= or a browser capture for the video"
-        )
+    # capture="native-window" with video= films the renderer's own window through `record-native`
+    # (direct swapchain copies on the server); the browser recorders cannot see that window.
 
     # capture="ui" runs the fence body as a `drive` transcript that scripts the live
     # editor (keypresses/clicks) via Playwright and captures a video and/or still. The
@@ -3540,12 +3561,14 @@ def parse_runner_options(*, runner_name: str, open_line: str, page_path: Path, l
         scale=parse_capture_scale(first_attr(attrs, "scale")),
         fresh_document=parse_bool(first_attr(attrs, "fresh-document", "fresh_document"), default=False),
         hide_toasts=parse_bool(first_attr(attrs, "hide-toasts", "hide_toasts"), default=False),
+        clip_at_end=parse_bool(first_attr(attrs, "clip-at-end", "clip_at_end"), default=False),
         box_name=first_attr(attrs, "name") or f"{page_path.stem}-{block_index}",
         box_x=parse_float(first_attr(attrs, "x"), default=24.0),
         box_y=parse_float(first_attr(attrs, "y"), default=24.0),
         box_w=parse_float(first_attr(attrs, "w"), default=default_box_w),
         box_h=parse_float(first_attr(attrs, "h"), default=default_box_h),
         open_outputs=open_outputs,
+        open_details=parse_bool(first_attr(attrs, "open-details", "open_details"), default=False),
         expect_outputs=expect_outputs,
         wait_output=wait_output,
         wait_output_kind=wait_output_kind,
@@ -4210,6 +4233,8 @@ def options_digest_payload(options: RunnerOptions) -> dict[str, Any]:
         payload["viewport"] = list(options.viewport)
     if options.hide_toasts:
         payload["hideToasts"] = True
+    if options.clip_at_end:
+        payload["clipAtEnd"] = True
     if options.scale is not None:
         payload["scale"] = options.scale
     if options.fresh_document:
@@ -5351,6 +5376,58 @@ def build_audio_backdoor_command(
     return command
 
 
+FRESH_DOCUMENT_NAME = re.compile(r"[A-Za-z0-9._-]+-[0-9a-f]{8}")
+
+
+def runner_workspace(repo_root: Path) -> Path:
+    """The workspace the runner's Field serves: `RUNNER_WORKSPACE_ENV`, else the checkout's automation workspace."""
+    return Path(os.environ.get(RUNNER_WORKSPACE_ENV) or str(automation_workspace(repo_root)))
+
+
+def command_document(command: list[str]) -> str | None:
+    """The `--document` a backdoor command line names, if any."""
+    for i, arg in enumerate(command[:-1]):
+        if arg == "--document":
+            return command[i + 1]
+    return None
+
+
+def remove_fresh_document(workspace: Path, document: str | None, settle: float = 6.0) -> bool:
+    """Delete the document folder a `fresh-document=true` capture created: only a name shaped like
+    [invocation_document]'s (`<name>-<8 hex>`), and only directly inside [workspace]."""
+    if not document or not FRESH_DOCUMENT_NAME.fullmatch(document):
+        return False
+    root = workspace.resolve()
+    target = (root / document).resolve()
+    if target.parent != root or not target.is_dir():
+        return False
+    # Field writes a document again after the capture process exits: when its last client detaches,
+    # and on the next tick of the 5 s autosave. Either puts the folder back, so remove it, then keep
+    # removing it until it has stayed gone for [settle] seconds, longer than one autosave period.
+    deadline = time.monotonic() + settle
+    while True:
+        if target.exists():
+            shutil.rmtree(target, ignore_errors=True)
+            deadline = time.monotonic() + settle
+        if time.monotonic() >= deadline:
+            break
+        time.sleep(0.25)
+    LOG.info("Field docs runner removed fresh document %s", target)
+    return not target.exists()
+
+
+def fresh_document_release_commands(options: RunnerOptions) -> list[str]:
+    """Last commands of a `fresh-document=true` capture: take the shared capture page off the document.
+
+    The page outlives the capture, and while it is still connected the document stays open; Field
+    writes it again when the page finally leaves it, during the *next* capture, after the runner has
+    removed it. Leaving it here makes that last write happen before [remove_fresh_document] runs.
+    """
+    if not options.fresh_document:
+        return []
+    return [shlex.join(["page-eval", "--body", "location.href = 'about:blank'; return true", "--wait-ms", "500"])]
+
+
 def invocation_document(options: RunnerOptions) -> str | None:
     """The document a capture runs in: `document=`, or a new uniquely named one for `fresh-document`."""
     if not options.fresh_document:
@@ -5411,6 +5488,11 @@ def build_backdoor_command(
             backdoor_commands.append(shlex.join([
                 "macro", "run", setup_name, "--timeout", str(options.timeout),
             ]))
+            # The setup is plumbing, not a macro the page's reader saved: remove it before the drive,
+            # so a capture of the Macro Recorder or the palette does not show it.
+            backdoor_commands.append(shlex.join([
+                "macro", "delete", setup_name, "--timeout", str(options.timeout),
+            ]))
         # Run the fence body as a single `drive` transcript op: it scripts the live
         # editor via Playwright (the `ui` driver is in scope) and produces the video
         # and/or still itself, so no separate screenshot-/record- command is appended.
@@ -5437,12 +5519,17 @@ def build_backdoor_command(
             drive_op["viewport"] = list(options.viewport)
         if options.hide_toasts:
             drive_op["hideToasts"] = True
+        if options.clip_at_end:
+            drive_op["clipAtEnd"] = True
         if options.warm_completion:
             drive_op["warmCompletion"] = True
         transcript_name = f"{safe_transcript_id(options.box_name)}_ui_drive"
         transcript = {
             "name": transcript_name,
             "description": "Generated by public/docs_hooks.py capture=ui drive.",
+            # Unlisted (OperationTranscript.isInternalMacro): it is running while the capture is
+            # taken, and must not appear in a captured macro list.
+            "internal": True,
             "operations": [{"drive": drive_op}],
         }
         backdoor_commands.append(shlex.join([
@@ -5454,6 +5541,10 @@ def build_backdoor_command(
             "macro", "run", transcript_name,
             "--timeout", str(options.timeout),
         ]))
+        backdoor_commands.append(shlex.join([
+            "macro", "delete", transcript_name, "--timeout", str(options.timeout),
+        ]))
+        backdoor_commands.extend(fresh_document_release_commands(options))
         for command_line in backdoor_commands:
             command.extend(["--command", command_line])
         return BackdoorInvocation(
@@ -5680,7 +5771,15 @@ def build_backdoor_command(
 
     if is_video:
         # Use record-* commands instead of screenshot-*
-        if capture_mode == "box":
+        if capture_mode == "native-window":
+            backdoor_commands.append(shlex.join([
+                "record-native",
+                str(screenshot_path),
+                "--uid", default_target_uid,
+                "--duration", str(options.duration),
+                "--timeout", str(capture_timeout),
+            ]))
+        elif capture_mode == "box":
             target_uid = default_target_uid
             parts = [
                 "record-box",
@@ -5763,6 +5862,12 @@ def build_backdoor_command(
             ]
             if options.open_outputs:
                 parts.append("--open-outputs")
+            elif options.expect_outputs == "none":
+                # screenshot-box opens outputs by default and then clips to the (empty) output
+                # handle, a 32x32 crop below the box; a handle-only capture must say so.
+                parts.append("--no-open-outputs")
+            if options.open_details:
+                parts.append("--open-details")
             parts.extend(["--expect-outputs", options.expect_outputs])
             if options.scale is not None:
                 parts.extend(["--scale", str(options.scale)])
@@ -5795,7 +5900,14 @@ def build_backdoor_command(
             parts.extend(["--expect-outputs", options.expect_outputs])
             if options.with_editor:
                 parts.append("--with-editor")
+            # `viewport="WxH"` lays the page out at that size for the shot, as it does for `ui`
+            # captures, so a window capture can be framed tighter than the default page.
+            if options.viewport is not None:
+                size = f"{options.viewport[0]}x{options.viewport[1]}"
+                backdoor_commands.append(shlex.join(["viewport", size, "--timeout", str(options.timeout)]))
             backdoor_commands.append(shlex.join(parts))
+            if options.viewport is not None:
+                backdoor_commands.append(shlex.join(["viewport", "default", "--timeout", str(options.timeout)]))
 
     if options.execution == "launch" and not options.macro_file:
         backdoor_commands.append(shlex.join([
@@ -5805,6 +5917,7 @@ def build_backdoor_command(
         ]))
     if options.expects_error:
         backdoor_commands = [waive_execution_verdict(line) for line in backdoor_commands]
+    backdoor_commands.extend(fresh_document_release_commands(options))
     for command_line in backdoor_commands:
         command.extend(["--command", command_line])
     session_eligible = (

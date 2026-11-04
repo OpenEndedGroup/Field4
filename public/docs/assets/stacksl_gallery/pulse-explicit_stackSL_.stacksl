@@ -1,0 +1,5 @@
+p length
+time sin 0.15 * 0.3 +
+0.035
+pulse
+palette

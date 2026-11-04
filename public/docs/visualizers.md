@@ -40,7 +40,7 @@ readable properties — and it walks the members into an indented tree. Numbers,
 booleans, strings, and nested values are each rendered by the same rules,
 recursively.
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-reflective-tree.png" alt="an output channel named cam holding a tree headed Camera: position as vec3(0, 1.5, -4) with a small axis drawing of the vector, fieldOfView 55, active true, and layers as the list dots, lines, labels with its count of 3" wait="1.0" capture="box" open-outputs="true" w="640" h="200" embed=true name="reflective-tree"}
 :::static
 data class Camera(
     val position: Vector3f,
@@ -50,10 +50,8 @@ data class Camera(
 )
 
 val cam = Camera(Vector3f(0f, 1.5f, -4f), 55.0, true, ["dots", "lines", "labels"])
-cam.h
+display("cam", cam.h)
 ```
-
-![Reflective tree for a Camera data class](assets/value_visualizers/reflective_tree.png){ width="516" }
 
 The nested `position` is drawn as a `vec3`, and `layers` collapses to a list with a size count.
 For a larger object, open the "… +N more fields" expander to see the rest.
@@ -64,13 +62,11 @@ Arrays and lists of numbers get a preview plus a one-line statistical summary �
 mean, standard deviation, and range — so you can judge a buffer without scrolling
 through it. Long collections elide the middle:
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-double-array.png" alt="an output channel named samples holding the first values of a sine, 0, 0.131, 0.259 up to 1 and back, then '… +28 more items' with mu 8.90e-17, sigma 0.707 and range -1 to 1, the count 48, and a small sparkline of the wave" wait="1.0" capture="box" open-outputs="true" w="900" h="120" embed=true name="double-array"}
 :::static
 val samples = DoubleArray(48) { i -> sin(i / 48.0 * 2.0 * Math.PI) }
-samples.h
+display("samples", samples.h)
 ```
-
-![DoubleArray preview with mean, sigma and range](assets/value_visualizers/double_array.png)
 
 The tail reads `… +28 more items [μ=8.90e-17, σ=0.707, range=−1…1] (48)`: the
 sampled sine averages to ~0, has the expected 0.707 RMS spread, and spans −1…1 —
@@ -81,34 +77,33 @@ visible immediately, without a plot. The same treatment applies to `IntArray`,
 
 Vectors render as compact, colour-coded tokens, making their components easy to pick out:
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-vectors.png" alt="an output channel named vectors holding a list of three: vec2(0.5, 1.5), vec3(1, 2, 3) and vec4(0.25, 0.5, 1, 2), each with a small drawing, arrows for the first two and a four-bar chart for the vec4" wait="1.0" capture="box" open-outputs="true" w="400" h="200" embed=true name="vectors"}
 :::static
-[vec(0.5, 1.5), vec(1.0, 2.0, 3.0), vec(0.25, 0.5, 1.0, 2.0)].h
+display("vectors", [vec(0.5, 1.5), vec(1.0, 2.0, 3.0), vec(0.25, 0.5, 1.0, 2.0)].h)
 ```
-
-![vec2, vec3 and vec4 rendered as compact tokens](assets/value_visualizers/vectors.png){ width="324" }
 
 Matrices summarise rather than dump every cell: a `mat3` shows its determinant, a
 `mat4` shows determinant plus extracted translation, and a quaternion shows its
 four components. Here they are keyed by a map, which the visualizer renders as a
 tree — a good way to label several related values at once:
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-linalg-map.png" alt="an output channel named transforms holding a map: scale (mat3) with det=6 and a 3 by 3 heatmap grid, translate (mat4) with det=1 and t=(5, -2, 1) and a 4 by 4 grid, and spin (quat) as quat(0, 0.296, 0, 0.955)" wait="1.0" capture="box" open-outputs="true" w="640" h="200" embed=true name="linalg-map"}
 :::static
-linkedMapOf(
-        "scale (mat3)" to Matrix3f().set(2f, 0f, 0f, 0f, 3f, 0f, 0f, 0f, 1f),
-        "translate (mat4)" to
-            Matrix4f().identity().apply {
-                set(3, 0, 5f)
-                set(3, 1, -2f)
-                set(3, 2, 1f)
-            },
-        "spin (quat)" to Quaternionf().rotateY(0.6f),
-    )
-    .h
+display(
+    "transforms",
+    linkedMapOf(
+            "scale (mat3)" to Matrix3f().set(2f, 0f, 0f, 0f, 3f, 0f, 0f, 0f, 1f),
+            "translate (mat4)" to
+                Matrix4f().identity().apply {
+                    set(3, 0, 5f)
+                    set(3, 1, -2f)
+                    set(3, 2, 1f)
+                },
+            "spin (quat)" to Quaternionf().rotateY(0.6f),
+        )
+        .h,
+)
 ```
-
-![A map of mat3, mat4 and quaternion values](assets/value_visualizers/linalg_map.png){ width="564" }
 
 The `mat3` reports `det=6` (2 × 3 × 1), the `mat4` reports `det=1, t=(5, -2, 1)`,
 and the quaternion shows its normalized components. For the algebra behind these
@@ -119,7 +114,7 @@ types, see [Linear Algebra](linear_algebra.md).
 For an [`FLine`](fline_examples.md), Field shows the node counts, bounding box, length and a
 compressed path signature, followed by a small SVG drawing of the path:
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-fline-spiral.png" alt="an output channel named spiral headed FLine (141 nodes), then M=1 L=140 C=0, bounds 130x124 and length 1.19e+03, the signature M(Lx41) … (Lx22), and a thumbnail of a five-turn spiral" wait="1.0" capture="box" open-outputs="true" w="640" h="200" embed=true name="fline-spiral"}
 :::static
 val spiral = FLine()
 val steps = 140
@@ -132,10 +127,8 @@ for (i in 0..steps) {
     val y = 80.0 + Math.sin(a) * r
     spiral.lineTo(x, y)
 }
-spiral.h
+display("spiral", spiral.h)
 ```
-
-![FLine node stats, path signature, and an SVG spiral thumbnail](assets/value_visualizers/fline_spiral.png){ width="552" }
 
 The header reads `FLine (141 nodes)`, then `M=1 L=140 C=0 · b=130×124 ·
 len=1.19e+03`, then the run-compressed signature `M(Lx41) … (Lx22)`, and finally
@@ -150,15 +143,13 @@ full reflective tree — its `domain`, `evalFn`, `graph`, and `name` — because
 graph is the function's rebuildable structure. Then, below it, it appends a safe
 SVG line plot of the function sampled over a finite window of its domain:
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-fn-sin-plot.png" alt="an output channel named fn holding the tree of an Fn, its domain 0..3, name sin, the graph node with its op, children and maps, and evalFn, then a line plot of sin(10x) over 0 to 3 between labels 1.159 and -1.159" wait="1.0" capture="box" open-outputs="true" w="640" h="200" embed=true name="fn-sin-plot"}
 :::static
 with(Functions) {
     val fn = sin(10) over (0.0..3.0)
-    fn.h
+    display("fn", fn.h)
 }
 ```
-
-![Fn reflective tree with an appended SVG sine plot](assets/value_visualizers/fn_sin_plot.png){ width="612" }
 
 The plot mirrors `Fn`'s own sampling rules: an unbounded domain falls back to a
 preview window, non-finite samples become gaps in the curve rather than spikes, a
@@ -177,13 +168,39 @@ Evaluate an `Img` and you get the actual pixels, aspect-correct, plus a `<detail
 disclosure holding the per-channel strip, a per-channel histogram computed over the
 *full-resolution* samples, and the numbers:
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-img-rgb.png" alt="an output channel named scene holding the 240 by 180 test scene, a gradient with a yellow rectangle, a cyan disc, two white rulings and a pink checker patch, captioned Img, 240x180, rgb, range 0.1 to 0.98; below it the open disclosure with the R, G and B channels, a three-channel histogram, and min 0.1, max 0.98, mean 0.3426, mode direct" wait="1.0" capture="box" open-outputs="true" open-details="true" w="640" h="200" embed=true name="img-rgb"}
 :::static
-val scene = Img.generateRGB(240, 180) { x, y -> /* … */ }
-scene.h
+:::fold the scene: a gradient, a bright rectangle, a disc, two rulings and a checker patch
+val scene =
+    Img.generateRGB(240, 180) { x, y ->
+        var r = 0.10f + 0.30f * (x / 239f)
+        var g = 0.12f + 0.22f * (y / 179f)
+        var b = 0.34f - 0.20f * (x / 239f)
+        if (x in 30..90 && y in 26..76) {
+            r = 0.94f
+            g = 0.86f
+            b = 0.42f
+        }
+        if (hypot(x - 172.0, y - 62.0) <= 30.0) {
+            r = 0.30f
+            g = 0.80f
+            b = 0.92f
+        }
+        if (x in 150..152 || y in 140..142) {
+            r = 0.98f
+            g = 0.98f
+            b = 0.98f
+        }
+        if (x in 24..104 && y in 104..164 && (x / 8 + y / 8) % 2 == 0) {
+            r = 0.88f
+            g = 0.30f
+            b = 0.55f
+        }
+        Triple(r, g, b)
+    }
+:::endfold
+display("scene", scene.h)
 ```
-
-![An RGB Img with its channel strip, histogram and statistics](assets/imaging_visualizers/img_rgb.png){ width="564" }
 
 #### The range policy
 
@@ -200,12 +217,39 @@ to put it, and a 1-channel image is run through the `coolwarm` diverging ramp fr
 [`Colormaps`](rectsl_cheatsheet.md) — blue negative, pale zero, red positive.
 Grey simply cannot carry a sign:
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-img-signed-dx.png" alt="an output channel named dx holding the scene's Sobel dx, mostly pale with red left edges and blue right edges, captioned range -0.4083 to 0.4088, signed, coolwarm; the open disclosure shows it in grey and viridis, a histogram spiking at zero, and mean 0.0002, sigma 0.052" wait="1.0" capture="box" open-outputs="true" open-details="true" w="640" h="200" embed=true name="img-signed-dx"}
 :::static
-scene.luma().sobel().dx.h
+:::fold the scene: a gradient, a bright rectangle, a disc, two rulings and a checker patch
+val scene =
+    Img.generateRGB(240, 180) { x, y ->
+        var r = 0.10f + 0.30f * (x / 239f)
+        var g = 0.12f + 0.22f * (y / 179f)
+        var b = 0.34f - 0.20f * (x / 239f)
+        if (x in 30..90 && y in 26..76) {
+            r = 0.94f
+            g = 0.86f
+            b = 0.42f
+        }
+        if (hypot(x - 172.0, y - 62.0) <= 30.0) {
+            r = 0.30f
+            g = 0.80f
+            b = 0.92f
+        }
+        if (x in 150..152 || y in 140..142) {
+            r = 0.98f
+            g = 0.98f
+            b = 0.98f
+        }
+        if (x in 24..104 && y in 104..164 && (x / 8 + y / 8) % 2 == 0) {
+            r = 0.88f
+            g = 0.30f
+            b = 0.55f
+        }
+        Triple(r, g, b)
+    }
+:::endfold
+display("dx", scene.luma().sobel().dx.h)
 ```
-
-![A signed Sobel dx rendered with a coolwarm diverging map](assets/imaging_visualizers/img_signed_dx.png){ width="752" }
 
 Read it: the rectangle's left edge is red (dark→bright going right, so `dx > 0`)
 and its right edge is blue; the disc is warm on its left limb and cool on its
@@ -217,17 +261,55 @@ one response image.
 `auto-ranged` — non-negative, but the maximum is above 1. Rescaled for display
 with the **true range printed**, so a bright pixel is never mistaken for 1.0:
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-img-autoranged.png" alt="an output channel named edges holding the scene's edge magnitude, white outlines on black, captioned range 0 to 10.2584, auto-ranged for display; the open disclosure shows grey and viridis readings, a histogram and max 10.2584, mode auto-ranged" wait="1.0" capture="box" open-outputs="true" open-details="true" w="640" h="200" embed=true name="img-autoranged"}
 :::static
-(scene.luma().sobelMagnitude() * 25f).h
+:::fold the scene: a gradient, a bright rectangle, a disc, two rulings and a checker patch
+val scene =
+    Img.generateRGB(240, 180) { x, y ->
+        var r = 0.10f + 0.30f * (x / 239f)
+        var g = 0.12f + 0.22f * (y / 179f)
+        var b = 0.34f - 0.20f * (x / 239f)
+        if (x in 30..90 && y in 26..76) {
+            r = 0.94f
+            g = 0.86f
+            b = 0.42f
+        }
+        if (hypot(x - 172.0, y - 62.0) <= 30.0) {
+            r = 0.30f
+            g = 0.80f
+            b = 0.92f
+        }
+        if (x in 150..152 || y in 140..142) {
+            r = 0.98f
+            g = 0.98f
+            b = 0.98f
+        }
+        if (x in 24..104 && y in 104..164 && (x / 8 + y / 8) % 2 == 0) {
+            r = 0.88f
+            g = 0.30f
+            b = 0.55f
+        }
+        Triple(r, g, b)
+    }
+:::endfold
+display("edges", (scene.luma().sobelMagnitude() * 25f).h)
 ```
-
-![An unnormalised response, auto-ranged with its true 0…10.26 range printed](assets/imaging_visualizers/img_autoranged.png){ width="752" }
 
 And non-finite samples — NaN, ±∞ — are counted, excluded from every statistic, and
 painted **magenta**:
 
-![An image with a NaN block and one infinity, painted magenta](assets/imaging_visualizers/img_non_finite.png){ width="752" }
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-img-non-finite.png" alt="an output channel named ramp holding a 96 by 72 grey ramp with an 8 by 8 magenta block and one magenta pixel, captioned 65 non-finite (magenta); the open disclosure shows grey and viridis readings, a histogram, mean 0.5003 and non-finite=65" wait="1.0" capture="box" open-outputs="true" open-details="true" w="640" h="200" embed=true name="img-non-finite"}
+:::static
+val ramp =
+    Img.generate(96, 72) { x, y ->
+        when {
+            x in 40..47 && y in 30..37 -> Float.NaN
+            x == 70 && y == 20 -> Float.POSITIVE_INFINITY
+            else -> (x + y) / 166f
+        }
+    }
+display("ramp", ramp.h)
+```
 
 The magenta pixels make missing or invalid values visible, and the count tells you how many
 samples need attention.
@@ -235,7 +317,20 @@ samples need attention.
 Four-channel images sit on a checkerboard, so transparent black and opaque black
 are different pictures:
 
-![An RGBA image over a checkerboard, with its alpha channel broken out](assets/imaging_visualizers/img_rgba.png){ width="732" }
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-img-rgba.png" alt="an output channel named glow holding an orange disc fading to transparent over a checkerboard, captioned Img, 140x140, rgba; the open disclosure shows the R, G, B and A channels, the last a white radial falloff, with a histogram and statistics" wait="1.0" capture="box" open-outputs="true" open-details="true" w="640" h="200" embed=true name="img-rgba"}
+:::static
+val w = 140
+val h = 140
+val data = FloatArray(w * h * 4)
+for (y in 0 until h) for (x in 0 until w) {
+    val i = (y * w + x) * 4
+    data[i] = 0.95f
+    data[i + 1] = 0.55f
+    data[i + 2] = 0.20f
+    data[i + 3] = (1.0 - hypot(x - 70.0, y - 70.0) / 66.0).coerceIn(0.0, 1.0).toFloat()
+}
+display("glow", Img(w, h, 4, data).h)
+```
 
 #### Gradients and pyramids
 
@@ -243,14 +338,110 @@ A `Gradient` is two signed images and a direction, so it shows all of it — `dx
 `dy`, the magnitude, and the hue-by-direction image the type already knows how to
 build:
 
-![A Gradient shown as dx, dy, magnitude and hue-by-direction](assets/imaging_visualizers/gradient.png){ width="752" }
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-gradient.png" alt="an output channel named gradient holding four small images of the scene: dx and dy in the coolwarm map, the magnitude in grey and hue = direction, captioned Gradient, 240x180, max gradient magnitude 0.4103" wait="1.0" capture="box" open-outputs="true" open-details="true" w="640" h="200" embed=true name="gradient"}
+:::static
+:::fold the scene: a gradient, a bright rectangle, a disc, two rulings and a checker patch
+val scene =
+    Img.generateRGB(240, 180) { x, y ->
+        var r = 0.10f + 0.30f * (x / 239f)
+        var g = 0.12f + 0.22f * (y / 179f)
+        var b = 0.34f - 0.20f * (x / 239f)
+        if (x in 30..90 && y in 26..76) {
+            r = 0.94f
+            g = 0.86f
+            b = 0.42f
+        }
+        if (hypot(x - 172.0, y - 62.0) <= 30.0) {
+            r = 0.30f
+            g = 0.80f
+            b = 0.92f
+        }
+        if (x in 150..152 || y in 140..142) {
+            r = 0.98f
+            g = 0.98f
+            b = 0.98f
+        }
+        if (x in 24..104 && y in 104..164 && (x / 8 + y / 8) % 2 == 0) {
+            r = 0.88f
+            g = 0.30f
+            b = 0.55f
+        }
+        Triple(r, g, b)
+    }
+:::endfold
+display("gradient", scene.luma().sobel().h)
+```
 
 A pyramid is drawn as a **ladder of rungs at true relative scale**, bottom-aligned,
 so you can see each level halve in size:
 
-![A GaussianPyramid as five rungs at true relative scale](assets/imaging_visualizers/gaussian_pyramid.png){ width="752" }
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-gaussian-pyramid.png" alt="an output channel named pyramid holding five rungs of the scene, bottom-aligned and halving in size, labelled L0 240x180 down to L4 15x11, captioned GaussianPyramid, 5 levels" wait="1.0" capture="box" open-outputs="true" open-details="true" w="640" h="200" embed=true name="gaussian-pyramid"}
+:::static
+:::fold the scene: a gradient, a bright rectangle, a disc, two rulings and a checker patch
+val scene =
+    Img.generateRGB(240, 180) { x, y ->
+        var r = 0.10f + 0.30f * (x / 239f)
+        var g = 0.12f + 0.22f * (y / 179f)
+        var b = 0.34f - 0.20f * (x / 239f)
+        if (x in 30..90 && y in 26..76) {
+            r = 0.94f
+            g = 0.86f
+            b = 0.42f
+        }
+        if (hypot(x - 172.0, y - 62.0) <= 30.0) {
+            r = 0.30f
+            g = 0.80f
+            b = 0.92f
+        }
+        if (x in 150..152 || y in 140..142) {
+            r = 0.98f
+            g = 0.98f
+            b = 0.98f
+        }
+        if (x in 24..104 && y in 104..164 && (x / 8 + y / 8) % 2 == 0) {
+            r = 0.88f
+            g = 0.30f
+            b = 0.55f
+        }
+        Triple(r, g, b)
+    }
+:::endfold
+display("pyramid", scene.gaussianPyramid(5).h)
+```
 
-![A LaplacianPyramid: signed band rungs plus a tagged residual](assets/imaging_visualizers/laplacian_pyramid.png){ width="752" }
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-laplacian-pyramid.png" alt="an output channel named bands holding four signed band rungs in the coolwarm map, L0 240x180 down to L3 30x22, and a small rung labelled residual 15x11, captioned LaplacianPyramid, 4 bands, reconstructs to 240x180" wait="1.0" capture="box" open-outputs="true" open-details="true" w="640" h="200" embed=true name="laplacian-pyramid"}
+:::static
+:::fold the scene: a gradient, a bright rectangle, a disc, two rulings and a checker patch
+val scene =
+    Img.generateRGB(240, 180) { x, y ->
+        var r = 0.10f + 0.30f * (x / 239f)
+        var g = 0.12f + 0.22f * (y / 179f)
+        var b = 0.34f - 0.20f * (x / 239f)
+        if (x in 30..90 && y in 26..76) {
+            r = 0.94f
+            g = 0.86f
+            b = 0.42f
+        }
+        if (hypot(x - 172.0, y - 62.0) <= 30.0) {
+            r = 0.30f
+            g = 0.80f
+            b = 0.92f
+        }
+        if (x in 150..152 || y in 140..142) {
+            r = 0.98f
+            g = 0.98f
+            b = 0.98f
+        }
+        if (x in 24..104 && y in 104..164 && (x / 8 + y / 8) % 2 == 0) {
+            r = 0.88f
+            g = 0.30f
+            b = 0.55f
+        }
+        Triple(r, g, b)
+    }
+:::endfold
+display("bands", scene.luma().laplacianPyramid(4).h)
+```
 
 The Laplacian bands are signed, so they get the diverging treatment, and the one
 rung that is *not* a band is labelled `residual`.
@@ -263,11 +454,43 @@ points' own bounding box unioned with the origin — image coordinates start at
 `(0, 0)`, and including it keeps the points where they actually sit in the frame.
 The caption states the inferred extent:
 
-![Harris corners as a strength-coded scatter](assets/imaging_visualizers/corners.png){ width="752" }
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-corners.png" alt="an output channel named corners holding 13 Harris corners as dots on black, larger and brighter for stronger responses, captioned with the response range and an inferred extent of 157.86x144.81; the open disclosure lists the strongest, led by (148.66, 138.65) and the rectangle's corners" wait="1.0" capture="box" open-outputs="true" open-details="true" w="640" h="200" embed=true name="corners"}
+:::static
+:::fold the scene: a gradient, a bright rectangle, a disc, two rulings and a checker patch
+val scene =
+    Img.generateRGB(240, 180) { x, y ->
+        var r = 0.10f + 0.30f * (x / 239f)
+        var g = 0.12f + 0.22f * (y / 179f)
+        var b = 0.34f - 0.20f * (x / 239f)
+        if (x in 30..90 && y in 26..76) {
+            r = 0.94f
+            g = 0.86f
+            b = 0.42f
+        }
+        if (hypot(x - 172.0, y - 62.0) <= 30.0) {
+            r = 0.30f
+            g = 0.80f
+            b = 0.92f
+        }
+        if (x in 150..152 || y in 140..142) {
+            r = 0.98f
+            g = 0.98f
+            b = 0.98f
+        }
+        if (x in 24..104 && y in 104..164 && (x / 8 + y / 8) % 2 == 0) {
+            r = 0.88f
+            g = 0.30f
+            b = 0.55f
+        }
+        Triple(r, g, b)
+    }
+:::endfold
+display("corners", scene.luma().harrisCorners(minDistance = 8, maxCount = 40).h)
+```
 
-The four strongest here read back as `(30.7, 26.7)`, `(89.3, 26.7)`,
-`(30.7, 75.3)`, `(89.3, 75.3)` — the four corners of a rectangle planted at
-`x 30…90, y 26…76` — and the single strongest is where the two rulings cross.
+The strongest corner, `(148.7, 138.7)`, is where the two rulings cross. Next come
+`(30.7, 26.7)` and `(89.3, 26.7)`, and further down the list `(30.7, 75.3)` and
+`(89.3, 75.3)`: the four corners of the rectangle planted at `x 30…90, y 26…76`.
 
 A `HoughLine` is `(rho, theta)`: an **infinite** line with no extent of its own,
 which is why `toFLine` insists on being handed the image dimensions. With no image
@@ -276,17 +499,118 @@ still cross, says which square that was, and points at `linesToFLines` for the
 in-place version. The right panel needs no extent at all and is therefore exact:
 ρ against θ, sized by votes.
 
-![Hough lines in an inferred square, beside their (theta, rho) accumulator peaks](assets/imaging_visualizers/hough_lines.png){ width="752" }
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-hough-lines.png" alt="an output channel named lines holding two panels: the two detected lines, one vertical and one horizontal, clipped into an inferred 211x211 square, and their theta-rho peaks; the caption reads 2 lines, votes 140, no image extent known, and the open disclosure lists both lines" wait="1.0" capture="box" open-outputs="true" open-details="true" w="640" h="200" embed=true name="hough-lines"}
+:::static
+:::fold the scene: a gradient, a bright rectangle, a disc, two rulings and a checker patch
+val scene =
+    Img.generateRGB(240, 180) { x, y ->
+        var r = 0.10f + 0.30f * (x / 239f)
+        var g = 0.12f + 0.22f * (y / 179f)
+        var b = 0.34f - 0.20f * (x / 239f)
+        if (x in 30..90 && y in 26..76) {
+            r = 0.94f
+            g = 0.86f
+            b = 0.42f
+        }
+        if (hypot(x - 172.0, y - 62.0) <= 30.0) {
+            r = 0.30f
+            g = 0.80f
+            b = 0.92f
+        }
+        if (x in 150..152 || y in 140..142) {
+            r = 0.98f
+            g = 0.98f
+            b = 0.98f
+        }
+        if (x in 24..104 && y in 104..164 && (x / 8 + y / 8) % 2 == 0) {
+            r = 0.88f
+            g = 0.30f
+            b = 0.55f
+        }
+        Triple(r, g, b)
+    }
+:::endfold
+val edges = scene.luma().canny(0.10, 0.25)
+display("lines", houghLines(edges, maxLines = 8, threshold = 40).h)
+```
 
 A circle *does* have an extent, so no assumption is needed:
 
-![Hough circles drawn over their own extent](assets/imaging_visualizers/hough_circles.png){ width="752" }
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-hough-circles.png" alt="an output channel named circles holding one detected circle drawn as a green ring with its centre, captioned 1 circle, r 30, 98 votes; the open disclosure gives centre (172, 62), r=30" wait="1.0" capture="box" open-outputs="true" open-details="true" w="640" h="200" embed=true name="hough-circles"}
+:::static
+:::fold the scene: a gradient, a bright rectangle, a disc, two rulings and a checker patch
+val scene =
+    Img.generateRGB(240, 180) { x, y ->
+        var r = 0.10f + 0.30f * (x / 239f)
+        var g = 0.12f + 0.22f * (y / 179f)
+        var b = 0.34f - 0.20f * (x / 239f)
+        if (x in 30..90 && y in 26..76) {
+            r = 0.94f
+            g = 0.86f
+            b = 0.42f
+        }
+        if (hypot(x - 172.0, y - 62.0) <= 30.0) {
+            r = 0.30f
+            g = 0.80f
+            b = 0.92f
+        }
+        if (x in 150..152 || y in 140..142) {
+            r = 0.98f
+            g = 0.98f
+            b = 0.98f
+        }
+        if (x in 24..104 && y in 104..164 && (x / 8 + y / 8) % 2 == 0) {
+            r = 0.88f
+            g = 0.30f
+            b = 0.55f
+        }
+        Triple(r, g, b)
+    }
+:::endfold
+val edges = scene.luma().canny(0.10, 0.25)
+display("circles", houghCircles(edges, minRadius = 20, maxRadius = 40, maxCircles = 4).h)
+```
 
 A `FlowField` shows one arrow per converged track, coloured by direction; grey crosses mark tracks
 that failed. Displacements are drawn at their pixel scale unless the median motion is too small to
 see. In that case the view enlarges them and reports the factor:
 
-![An optical-flow field as a hue-coded quiver, tracing a planted rotation](assets/imaging_visualizers/flow_field.png){ width="752" }
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-flow-field.png" alt="an output channel named flow holding an optical-flow quiver, arrows coloured by direction around the disc and across the checker patch, captioned FlowField, 60 of 61 tracked, median displacement 4.27 px, arrows drawn at twice their length" wait="1.0" capture="box" open-outputs="true" open-details="true" w="640" h="200" embed=true name="flow-field"}
+:::static
+:::fold the scene: a gradient, a bright rectangle, a disc, two rulings and a checker patch
+val scene =
+    Img.generateRGB(240, 180) { x, y ->
+        var r = 0.10f + 0.30f * (x / 239f)
+        var g = 0.12f + 0.22f * (y / 179f)
+        var b = 0.34f - 0.20f * (x / 239f)
+        if (x in 30..90 && y in 26..76) {
+            r = 0.94f
+            g = 0.86f
+            b = 0.42f
+        }
+        if (hypot(x - 172.0, y - 62.0) <= 30.0) {
+            r = 0.30f
+            g = 0.80f
+            b = 0.92f
+        }
+        if (x in 150..152 || y in 140..142) {
+            r = 0.98f
+            g = 0.98f
+            b = 0.98f
+        }
+        if (x in 24..104 && y in 104..164 && (x / 8 + y / 8) % 2 == 0) {
+            r = 0.88f
+            g = 0.30f
+            b = 0.55f
+        }
+        Triple(r, g, b)
+    }
+:::endfold
+val before = scene.luma()
+val after = scene.rotate(0.06).luma()
+val seeds = before.goodFeaturesToTrack(maxCount = 90, minDistance = 9)
+display("flow", opticalFlowLK(before, after, seeds.map { it.toVec2() }, levels = 3).h)
+```
 
 The frames here differ by a 0.06 rad rotation about the centre, and that is exactly
 what the arrows trace: little motion near the middle, tangential motion at the
@@ -297,18 +621,81 @@ rotation — adjacent label ids get unrelated colours, which is what makes two
 touching blobs distinguishable at thumbnail size — with the per-blob areas and
 centroids behind the disclosure:
 
-![A connected-component label map with one hue per blob](assets/imaging_visualizers/components.png){ width="752" }
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-components.png" alt="an output channel named blobs holding a label map of the thresholded scene, the rectangle, disc, rulings and small blobs each in their own hue, captioned 7 components; the open disclosure lists each component's area, bounding box and centroid" wait="1.0" capture="box" open-outputs="true" open-details="true" w="640" h="200" embed=true name="components"}
+:::static
+:::fold the scene: a gradient, a bright rectangle, a disc, two rulings and a checker patch
+val scene =
+    Img.generateRGB(240, 180) { x, y ->
+        var r = 0.10f + 0.30f * (x / 239f)
+        var g = 0.12f + 0.22f * (y / 179f)
+        var b = 0.34f - 0.20f * (x / 239f)
+        if (x in 30..90 && y in 26..76) {
+            r = 0.94f
+            g = 0.86f
+            b = 0.42f
+        }
+        if (hypot(x - 172.0, y - 62.0) <= 30.0) {
+            r = 0.30f
+            g = 0.80f
+            b = 0.92f
+        }
+        if (x in 150..152 || y in 140..142) {
+            r = 0.98f
+            g = 0.98f
+            b = 0.98f
+        }
+        if (x in 24..104 && y in 104..164 && (x / 8 + y / 8) % 2 == 0) {
+            r = 0.88f
+            g = 0.30f
+            b = 0.55f
+        }
+        Triple(r, g, b)
+    }
+:::endfold
+display("blobs", scene.luma().gaussianBlur(1.2).thresholdOtsu().connectedComponents().h)
+```
 
 A plain `List<Img>` becomes a filmstrip, which is the shape a frame sequence or a
 parameter sweep already has:
 
-![A List<Img> as a filmstrip of a blur sweep](assets/imaging_visualizers/filmstrip.png){ width="752" }
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-filmstrip.png" alt="an output channel named sweep holding a filmstrip of five copies of the scene, numbered 0 to 4, each more blurred than the last, captioned List<Img>, 5 images, 240x180" wait="1.0" capture="box" open-outputs="true" open-details="true" w="640" h="200" embed=true name="filmstrip"}
+:::static
+:::fold the scene: a gradient, a bright rectangle, a disc, two rulings and a checker patch
+val scene =
+    Img.generateRGB(240, 180) { x, y ->
+        var r = 0.10f + 0.30f * (x / 239f)
+        var g = 0.12f + 0.22f * (y / 179f)
+        var b = 0.34f - 0.20f * (x / 239f)
+        if (x in 30..90 && y in 26..76) {
+            r = 0.94f
+            g = 0.86f
+            b = 0.42f
+        }
+        if (hypot(x - 172.0, y - 62.0) <= 30.0) {
+            r = 0.30f
+            g = 0.80f
+            b = 0.92f
+        }
+        if (x in 150..152 || y in 140..142) {
+            r = 0.98f
+            g = 0.98f
+            b = 0.98f
+        }
+        if (x in 24..104 && y in 104..164 && (x / 8 + y / 8) % 2 == 0) {
+            r = 0.88f
+            g = 0.30f
+            b = 0.55f
+        }
+        Triple(r, g, b)
+    }
+:::endfold
+display("sweep", (0 until 5).map { i -> scene.gaussianBlur(0.001 + i * 1.6) }.h)
+```
 
-#### All of it, in a real box
+#### A whole pipeline in one box
 
-Everything above is a fragment rendered on its own. Here is the same renderer
-inside an actual Field box, in Field's own output areas: a whole pipeline, with
-`.h` doing all the work.
+Each figure above is one value in its own box. Several values can share one output channel: here
+four stages of a pipeline sit in two rows of two, with `.h` doing all the work.
 
 <!--
 FIELD_TEST
@@ -321,10 +708,10 @@ waitSec: 1.5
 # box frame — setting w/h here moved the box but not the pane. `showRow` lays the panels out
 # with `:::row`, which is a grid of equal-width columns (grid-auto-flow:column, 1fr) and
 # never wraps, so the wrap-collapse the hand-rolled flex row had to avoid cannot happen here.
-# The columns still share the width, so four panels is the count that stays readable, and
-# ComponentLabelling has its own figure above.
-w: 1120
-h: 420
+# The columns share the width, so the four panels go in two rows of two: one row of four
+# was too wide to read at the docs column width.
+w: 760
+h: 700
 expect:
   outputContains:
     - "imaging visualizers ready"
@@ -334,7 +721,7 @@ expect:
     kind: box
     padding: 16
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-imaging-panels.png" alt="four imaging panels in a row, each a thumbnail over a line of metadata and a row of disclosure links. An RGB image of a yellow rectangle and a cyan disc on a four-way colour gradient, labelled 180x132, rgb, range 0.1 to 0.98; a signed Sobel response of the same scene painted in the blue-white-red coolwarm map, labelled range -0.4083 to 0.4089, signed; a GaussianPyramid as four rungs at true relative scale, 180x132 down to 22x16; and a List of 9 Corners as coloured dots on black, labelled with its response range and an inferred extent of 118.23 by 106.17" wait="1.5" capture="box" open-outputs="true" padding="8" w="1200" h="700" embed=true name="imaging-panels"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-imaging-panels.png" alt="four imaging panels in two rows of two in one output channel: the RGB scene, captioned 180x132, rgb, range 0.1 to 0.98; its signed Sobel response in the coolwarm map, range -0.4083 to 0.4089; a GaussianPyramid of four rungs from 180x132 down to 22x16; and a List of 9 Corners as coloured dots on black, with an inferred extent of 118.23 by 106.17" wait="1.5" capture="box" open-outputs="true" padding="8" w="760" h="700" embed=true name="imaging-panels"}
 :::static
 val scene =
     Img.generateRGB(180, 132) { x, y ->
@@ -360,15 +747,15 @@ val scene =
     }
 val gray = scene.luma()
 
-// Four stages of one pipeline, four different value types, one `.h` each. showRow keeps
-// them in a single output channel instead of four tall ones.
+// Four stages of one pipeline, four different value types, one `.h` each, laid out as
+// two rows of two in a single output channel.
 val panels = [
     scene.h, // direct mode, 3 channels
     gray.sobel().dx.h, // signed -> coolwarm diverging
     gray.gaussianPyramid(4).h, // rungs at true relative scale
     gray.harrisCorners(minDistance = 6, maxCount = 20).h, // scatter, strength-coded
 ]
-showRow("panels", panels)
+markdown("panels", FieldMarkdown.row(panels.take(2)) + "\n\n" + FieldMarkdown.row(panels.drop(2)))
 
 println("imaging visualizers ready")
 ```
@@ -888,7 +1275,7 @@ file Assimp reads), and `column(...)` or `tree(...)` lists its root node with it
 children, then its meshes, materials and animations. A `GltfModel` loaded for drawing browses as its
 meshes, each with its buffers, material, texture slots and transform.
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-gltf-browse.png" capture="box" open-outputs="true" wait="3.0" w="1300" embed=true name="gltf-browse" alt="Two output panels browsing a glTF scene loaded with GltfSupport.loadModel: a column browser listing the Assimp scene's root node, its meshes (1 entry), materials (2) and animations (0), and below it the same four entries as a collapsible tree"}
 import afield.graphics.scene.GltfSupport
 
 val scene = GltfSupport.loadModel("dev_docs/agents/fixtures/path_tracing/transforms.gltf")!!
@@ -1092,17 +1479,27 @@ value the callback received.
 ui.waitForSelector(".vec2-visual", 8000.0)
 ui.pause(300)
 fun at(fx: Double, fy: Double): Pair<Double, Double> {
-    val c = ui.eval(
-        """
+    val c =
+        ui.eval(
+                """
         const r = [...document.querySelectorAll('.vec2-visual')].find((s) => s.getBoundingClientRect().width > 0).getBoundingClientRect();
         return [r.left + r.width * $fx, r.top + r.height * $fy].join(',');
         """,
-    ).toString().trim('"').split(',').map { it.toDouble() }
+            )
+            .toString()
+            .trim('"')
+            .split(',')
+            .map { it.toDouble() }
     return c[0] to c[1]
 }
 fun xy(): List<Double> =
-    ui.eval("const p = [...document.querySelectorAll('.field-vec2')].find((s) => s.getBoundingClientRect().width > 0); return p.dataset.x + ',' + p.dataset.y")
-        .toString().trim('"').split(',').map { it.toDouble() }
+    ui.eval(
+            "const p = [...document.querySelectorAll('.field-vec2')].find((s) => s.getBoundingClientRect().width > 0); return p.dataset.x + ',' + p.dataset.y",
+        )
+        .toString()
+        .trim('"')
+        .split(',')
+        .map { it.toDouble() }
 
 val press = at(0.8, 0.2)
 ui.moveMouse(press.first, press.second, 10)
@@ -1111,7 +1508,10 @@ ui.mouseUp()
 ui.pause(200)
 val pressed = xy()
 check(pressed[0] > 0.4 && pressed[1] > 0.4) { "press did not move the handle: $pressed" }
-repeat(5) { ui.press("ArrowLeft"); ui.pause(120) }
+repeat(5) {
+    ui.press("ArrowLeft")
+    ui.pause(120)
+}
 val nudged = xy()
 check(kotlin.math.abs(nudged[0] - (pressed[0] - 0.05)) < 0.006) { "arrows did not nudge: $pressed -> $nudged" }
 
@@ -1412,6 +1812,174 @@ loop {
 
 To edit a take key by key, bake it into keyframe lanes with `bakeGesture(pad)`, and send the edited lanes back with `pad.setTake(x, y)`: see [From a performed gesture](keyframe_editor.md#from-a-performed-gesture).
 
+### Recording a slider into keyframes
+
+A gesture records an XY pad take, kept on the pad, which you bake into keyframes afterwards with `bakeGesture`. `recordToggle` records a single control straight into a keyframe curve. In the presets example below, `recordToggle("size")` adds a **rec size** button. Press it, move the size slider, and press it again: what you played becomes a [keyframe curve](keyframe_editor.md) named `size`, opened under the panel. The take is thinned to the keys needed to stay within half a percent of the slider's range, so a three-second up-down-up sweep of 62 slider changes comes back as 35 keys you can edit, not one per mouse event.
+
+To play the curve back into the slider, read it in a `loop` and hand it to `playControl`:
+
+```diffstatic {data-lang=kotlin}
+val take = keyframes(name = "size")
+val start = System.nanoTime()
+loop {
+    val t = ((System.nanoTime() - start) / 1e9) % 2.0
+    take.setTime(t)
+    playControl("size", take, t, channel = "look")
+}
+```
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="box" capture-box="record_toggle" clip-at-end="true" video="assets/visualizers-record-toggle.mp4" fps="20" transcript="../../dev_docs/agents/transcripts/docs_capture/record_toggle.yaml" padding="8" wait="0" timeout="240" embed=true hidden=true name="record-toggle" alt="The presets panel. The pointer presses rec size, sweeps the size slider up, back down and up again while the blue circle grows and shrinks, presses rec size again, and a keyframe curve named size opens under the panel with its keys along the up-down-up sweep."}
+ui.waitForSelector(".field-slider-visual", 8000.0)
+ui.eval("document.body.classList.add('mode-no-editor'); return true")
+ui.pause(300)
+
+// Presses the panel button whose label contains `label`, with the real pointer.
+fun press(label: String) {
+    val c =
+        ui.eval(
+                """
+        const row = [...document.querySelectorAll('.field-button')].find(b => b.textContent.toLowerCase().includes('$label'));
+        if (!row) return 'missing';
+        // The row carries the label; the pressable part is the HOLD button inside it.
+        const b = row.querySelector('button') || row;
+        const r = b.getBoundingClientRect();
+        return [r.left + r.width / 2, r.top + r.height / 2].join(',');
+    """,
+            )
+            .toString()
+            .trim('"')
+    check(c != "missing") { "no '$label' button" }
+    val (x, y) = c.split(',').map { it.toDouble() }
+    ui.moveMouse(x, y, 6)
+    ui.mouseDown()
+    ui.pause(80)
+    ui.mouseUp()
+}
+
+fun point(fraction: Double): Pair<Double, Double> {
+    val c =
+        ui.eval(
+                """
+        const r = [...document.querySelectorAll('.field-slider-visual')].map(e => e.getBoundingClientRect()).find(r => r.width > 0);
+        return [r.left + r.width * $fraction, r.top + r.height / 2].join(',');
+    """,
+            )
+            .toString()
+            .trim('"')
+            .split(',')
+            .map { it.toDouble() }
+    return c[0] to c[1]
+}
+
+// Record one slow sweep of the size slider: up, back down, and up again.
+press("rec size")
+ui.pause(300)
+val start = point(0.33)
+val hit =
+    ui.eval(
+            "const e = document.elementFromPoint(${start.first}, ${start.second}); return [e?.tagName, e?.className?.baseVal || e?.className, !!e?.closest('.field-slider-visual'), window.innerWidth, window.innerHeight].join(' / ')",
+        )
+        .toString()
+check("true" in hit) { "slider start is covered at $start: $hit" }
+ui.moveMouse(start.first, start.second, 8)
+ui.mouseDown()
+for (step in 0..60) {
+    val f = 0.33 + 0.55 * kotlin.math.sin(step / 60.0 * 1.5 * Math.PI).let { it * it }
+    val p = point(f)
+    ui.moveMouse(p.first, p.second, 1)
+    ui.pause(40)
+}
+ui.mouseUp()
+ui.pause(200)
+press("rec size")
+ui.pause(4000)
+val after =
+    ui.eval(
+            "return [...document.querySelectorAll('.field-slider')].find(e => e.getBoundingClientRect().width > 0).dataset.value",
+        )
+        .toString()
+check(after.trim('"').toDouble() > 0.8) { "the sweep did not move size: $after" }
+```
+
+`playControl` moves the slider and runs its callback, so the playback drives whatever the slider drives. `recordControl(label, channel)` is the same recording without the button: it returns a recording whose `stop()` writes the curve.
+
+### Presets and morphing
+
+`presetBar(keys)` adds a preset bar over a [`KeyframeScope`](keyframer_examples.md): a preset is a keyframer key. Declare the values as delegated locals (`var size by keys.slider(0.4, 0.1..1.0)`) and add them to the group with `keys.controls()`, as in [One value shared by a local, a control and a key](keyframer_examples.md#one-value-shared-by-a-local-a-control-and-a-key). Here two keys, `calm` and `storm`, are saved the first time the box runs, so there is something to morph between straight away:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-preset-bar.png" capture="box" open-outputs="true" wait="2.0" w="700" embed=true name="controls-preset-bar" alt="A control group: a size slider at 0.40, an offset pad, a blue tint colour picker, a ring checkbox, then a row with a preset name field reading storm and store and recall buttons, a row of calm and storm buttons, a preset morph slider at 0, a rec size button and a MIDI learn button. Below it a dark square holding a blue circle"}
+:::static
+val keys = KeyframeScope()
+var size by keys.slider(0.4, 0.1..1.0)
+var offset by keys.vec2(Vector2f(0f, 0f))
+var tint by keys.color(Vector4f(0.2f, 0.6f, 1f, 1f))
+var ring by keys.checkbox(false)
+
+fun draw() {
+    val r = (20 + size * 60).toInt()
+    val cx = 110 + (offset.x * 60).toInt()
+    val cy = 90 - (offset.y * 50).toInt()
+    val fill = "rgba(${(tint.x * 255).toInt()},${(tint.y * 255).toInt()},${(tint.z * 255).toInt()},${tint.w})"
+    val stroke = if (ring) "stroke='white' stroke-width='6'" else ""
+    display("main", "<svg width='220' height='180' style='background:#222'><circle cx='$cx' cy='$cy' r='$r' fill='$fill' $stroke/></svg>")
+}
+keys.onChange { draw() }
+
+val dir = presetDirectory("look")
+
+// Two keys to start from, written once; after that the stored ones are used.
+if (keys.savedKeyNames(dir).isEmpty()) {
+    keys.Key("size" to 0.25, "offset" to Vector2f(-0.5f, 0.3f), "tint" to Vector4f(0.2f, 0.6f, 1f, 1f), "ring" to 0f)
+        .save(dir.resolve("calm"))
+    keys.Key("size" to 0.95, "offset" to Vector2f(0.6f, -0.4f), "tint" to Vector4f(1f, 0.25f, 0.1f, 1f), "ring" to 1f)
+        .save(dir.resolve("storm"))
+}
+
+controlGroup("look") {
+    keys.controls()
+    presetBar(keys)
+    recordToggle("size")
+    midiLearnButton()
+}
+
+draw()
+```
+
+**store** saves the panel as a key under the name in the field. **recall**, or a key's own button, applies it: the locals change, the controls move and `onChange` runs. **preset morph** blends across the saved keys in name order. With `calm` and `storm`, the morph at 0.5 gives a mid-size purple circle with the ring on. `presetBar` returns the bar, whose `store(name)`, `recall(name)` and `morph(t, between)` do the same from code.
+
+The presets are ordinary key files in `presetDirectory("look")`. For their history, browsing and how each kind of value blends, see [Saving: every save is history](keyframer_examples.md#saving-every-save-is-history), [Browsing saved keys](keyframer_examples.md#browsing-saved-keys) and [What a scope watches](keyframer_examples.md#what-a-scope-watches).
+
+### MIDI learn
+
+`midiLearnButton()` adds a **MIDI learn** button. Press it, touch the control you want, and turn a knob on your controller (or turn the knob first, then touch the control). From then on that knob moves that control. A knob follows the control's own response, so on a logarithmic frequency slider the middle of the knob is the middle of the slider, not 10 kHz. A knob bound to a checkbox switches it on above halfway. Learning a knob that is already bound moves the binding, and the bindings are saved with the box.
+
+`midiLearn(channel)` does the same from code. `bind` attaches a knob by its controller number, `attach` listens to a MIDI input, and `feed` hands it a controller value from anywhere else — a test, an OSC message, or the loop below, which stands in for a knob:
+
+```diffstatic {data-lang=kotlin}
+var cutoff = 1000.0
+var bright = false
+controlGroup("synth") {
+    slider("cutoff", 20.0, 20000.0, initialValue = cutoff, law = ControlLaw.LOGARITHMIC) { cutoff = it }
+    checkbox("bright", bright) { bright = it }
+    midiLearnButton()
+}
+val midi = midiLearn("synth")
+midi.bind("cutoff", cc = 74)
+midi.bind("bright", cc = 64)
+// What a knob sends; with hardware, midi.attach(MidiDevices.openInput(MidiDevices.inputs().first())).
+for (v in [0, 32, 64, 96, 127]) {
+    midi.feed(0, 74, v)
+    println("CC74 = $v  ->  cutoff ${cutoff.f1}")
+}
+midi.feed(0, 64, 127)
+midi.feed(0, 74, 80)
+println("bright = $bright, bindings = ${midi.bindings}")
+```
+
+It prints the cutoff at 20, 114, 650, 3705 and 20000 as the stand-in knob goes from 0 to 127: the middle of the knob lands near the middle of the log scale.
+
+To hear hardware, open an input with `MidiDevices` and attach it: `midi.attach(MidiDevices.openInput(MidiDevices.inputs().first()))`, or pass the input to `midiLearnButton(input)`.
+
 ### Choosing the right control
 
 - Use `slider(...)` for one bounded numeric value.
@@ -1424,6 +1992,7 @@ To edit a take key by key, bake it into keyframe lanes with `bakeGesture(pad)`, 
 - Use `rangeSlider(...)` for an interval, such as a band, a window or a velocity range. Use `polar = true` when the value wraps around, like a phase or a hue.
 - Use `menu(...)` for choosing one of a few named options.
 - Use `gesture(...)` for a two-axis movement you want to perform once and loop.
+- Use `recordToggle(...)` to perform one control's movement into a keyframe curve, and `presetBar(keys)` to store and morph between whole settings of a panel.
 - For a curve over time you shape by hand, an envelope, use the keyframe editor, `keyframes(...)`: see [Keyframes and timelines](funFeatures.md#keyframes-and-timelines).
 
 The `vec2Control(...)` includes an XY pad, a vector line, and magnitude readout, so it works well for motion and layout values where two sliders would hide the relationship between axes.
@@ -1574,6 +2143,42 @@ display(
         timeOffsetSeconds = 18.0,
     ),
 )
+```
+
+The two players below share `syncGroup = "two-players"`; the second holds the source from 1 s, so it is given `syncOffsetSeconds = 1.0`. Pressing play on the first moves both playheads, a second apart in local time:
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="box" capture-box="sync_group" video="assets/visualizers-sync-group.mp4" fps="12" transcript="../../dev_docs/agents/transcripts/docs_capture/sync_group.yaml" padding="8" wait="0" timeout="240" embed=true hidden=true name="sync-group" alt="Two audio players, source 0 to 4 s and excerpt from 1 s. Play is pressed on the source; gold playheads move across both waveforms together, the excerpt's reading one second less than the source's."}
+// Finds the source player's <audio> through the output iframes and returns its play button's page position.
+fun playButton(): Pair<Double, Double> {
+    val c =
+        ui.eval(
+                """
+        function find(doc, ox, oy) {
+            const a = doc.querySelector('audio');
+            if (a) { const r = a.getBoundingClientRect(); return [ox + r.left + 24, oy + r.top + r.height / 2]; }
+            for (const f of doc.querySelectorAll('iframe')) {
+                try { const r = f.getBoundingClientRect(); const hit = find(f.contentDocument, ox + r.left, oy + r.top); if (hit) return hit; } catch (e) {}
+            }
+            return null;
+        }
+        const hit = find(document, 0, 0);
+        return hit ? hit.join(',') : 'missing';
+    """,
+            )
+            .toString()
+            .trim('"')
+    check(c != "missing") { "no audio player in the outputs" }
+    val (x, y) = c.split(',').map { it.toDouble() }
+    return x to y
+}
+ui.pause(800)
+val (x, y) = playButton()
+ui.moveMouse(x, y, 8)
+ui.pause(200)
+ui.mouseDown()
+ui.pause(60)
+ui.mouseUp()
+ui.pause(3500)
 ```
 
 This synchronizes across separate `display(...)` output documents. Playback publishes a gold
@@ -1772,13 +2377,12 @@ client
         ),
     ) { preview, frames ->
         [
-                SpectralEmbeddingDistance.MEL_WASSERSTEIN,
-                SpectralEmbeddingDistance.LOG_MEL_COSINE,
-                SpectralEmbeddingDistance.MFCC_EUCLIDEAN,
-            ]
-            .map { distance ->
-                preview.withSpectralProjection(frames.tsne(distance = distance, dimensions = 4))
-            }
+            SpectralEmbeddingDistance.MEL_WASSERSTEIN,
+            SpectralEmbeddingDistance.LOG_MEL_COSINE,
+            SpectralEmbeddingDistance.MFCC_EUCLIDEAN,
+        ].map { distance ->
+            preview.withSpectralProjection(frames.tsne(distance = distance, dimensions = 4))
+        }
     }
     .thenAccept { previews ->
         display("spaces", spectralEmbeddingPreviewDashboardHtml(previews, syncGroup = "recording"))

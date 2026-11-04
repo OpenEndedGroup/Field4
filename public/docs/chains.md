@@ -1,4 +1,4 @@
-# Long way round
+# Examples that cross several parts of Field
 
 What happens when you connect things that weren't designed together? A cellular automaton becomes
 a rhythm. A cloth simulation becomes a welded solid whose holes you can count, and then a render.
@@ -8,16 +8,11 @@ sound is taken apart again and laid over the drawing.
 Each page here follows an idea through several parts of Field. Pick one that interests you and
 follow it as far as you like; the individual steps also lead to pages where you can learn more.
 
-Each one is also a check. Every step has to hand the next one something it can use, and the
-pages say what that is, what gets lost on the way, and which number shows whether it arrived
-intact. Comparing the areas of a sliced solid with its volume can reveal a surface that passes
-through itself. A function played as sound can come back late; the page measures the delay to the
-sample.
+Each page also says what passes from one step to the next and what gets lost on the way.
 
-Many of these pages begin as an [agent transcript](agent_transcripts.md): a short YAML macro
-that builds the whole document from a blank canvas. The [gallery](agent_transcripts.md) lists
-them all, and you can open any of them from the welcome screen as an editable copy and
-start from there.
+Many of these documents are built by a short recorded script that starts from a blank canvas.
+The [gallery](agent_transcripts.md) lists them all, and you can open any of them from the welcome
+screen as an editable copy and start from there.
 
 ## Ending in light
 
@@ -27,9 +22,10 @@ These chains end in the GPU path tracer, and each starts somewhere a renderer wo
 
 -   ![A path-traced truncated icosidodecahedron: brushed-gold decagons, deep blue hexagons and transparent squares](assets/chain_polytope_render/lineage.png)
 
-    **[A Polytope, Cut Open and Traced](chain_polytope_render.md).** Conway operators build the
+    **[A Polytope, Cut Open and Traced](chain_polytope_render.md).** Conway operators, rules
+    that grow a new polyhedron from an old one by cutting corners or adding faces, build the
     shape and remember where every face came from. The render colours each face by its origin;
-    the page also follows what happens to that record through the Boolean operations.
+    the page also follows what happens to that record when the solid is cut and joined.
 
 -   ![A lattice of pale gold rods draped over an unseen sphere and pooling on a floor](assets/chain_physics_render/drape.png)
 
@@ -44,20 +40,21 @@ These chains end in the GPU path tracer, and each starts somewhere a renderer wo
 
 -   ![A smooth sculpture: a twisted ribbon rising from a flat base, joined to a long wedge](assets/chain_rectsl_spacetime/solid.png)
 
-    **[A RectSL Animation as a Solid](chain_rectsl_spacetime.md).** Read the time input of an
+    **[A RectSL Animation as a Solid](chain_rectsl_spacetime.md).** RectSL is Field's small
+    language for 2D shapes. Read the time input of an
     animation's distance field as a third axis and the animation becomes a sculpture whose
     cross-sections are its frames.
 
 -   ![A blue limb pinched by twisting, in front of an undeformed gold limb](assets/chain_skinned_volume/twist.png)
 
-    **[A Twisted Limb, Weighed and Traced](chain_skinned_volume.md).** Linear blend skinning
-    squeezes a twisted joint into a candy wrapper. Turn the posed mesh into a solid to measure
+    **[A Twisted Limb, Weighed and Traced](chain_skinned_volume.md).** Linear blend skinning, the
+    usual way a skeleton bends a mesh, squeezes a twisted joint into a candy wrapper. Turn the posed mesh into a solid to measure
     how much of the limb is lost.
 
 -   ![Two cage-like sculptures of thin tubes over a dark floor, one tube in each glowing orange down to a red bead](assets/chain_petri_sculpture/sculpture.png)
 
     **[A Deadlock, Sculpted and Traced](chain_petri_sculpture.md).** Every marking the dining
-    philosophers' Petri net can reach becomes a glass bead, every firing a tube, and the shortest
+    philosophers' Petri net (a model of tokens moving between places) can reach becomes a glass bead, every firing a tube, and the shortest
     route to the deadlock glows.
 
 </div>
@@ -70,8 +67,9 @@ These chains end in something you can listen to, or start from it.
 
 -   ![Rule 30's space-time diagram, a fan of white cells spreading from one cell at the top](assets/chain_ca_sound/hero.png)
 
-    **[A Cellular Automaton You Can Hear](chain_ca_sound.md).** A row of an elementary CA
-    becomes a step mask. `patCondense` runs the mini-notation parser backwards to spell it,
+    **[A Cellular Automaton You Can Hear](chain_ca_sound.md).** A row of an elementary
+    cellular automaton, a line of on/off cells updated by a fixed rule, becomes a step mask. `patCondense` runs the pattern mini-notation (the short text syntax
+    for rhythms that Field borrows from TidalCycles) backwards to spell it,
     and the length of the spelling gives you a way to compare the resulting rhythms.
 
 -   ![Four concentric rings of particles in blue, orange, green and amber](assets/chain_pattern_particles/rings.png)
@@ -83,7 +81,7 @@ These chains end in something you can listen to, or start from it.
 -   ![Three rings of dust with bursts of coloured sparks leaving them](assets/chain_petri_sparks/sparks.png)
 
     **[A Petri Net That Throws Sparks](chain_petri_sparks.md).** One Petri net plays a drum part
-    from the Dirt-Samples, and every transition that fires throws a burst of GPU sparks in its own
+    from the Dirt-Samples drum library, and every transition that fires throws a burst of GPU sparks in its own
     colour.
 
 -   ![A drawn score: blue piano-roll rectangles, a red glissando, a green held note and an orange playhead](assets/chain_drawn_score/hero.png)
@@ -92,7 +90,7 @@ These chains end in something you can listen to, or start from it.
     layer, read as time across and pitch up, then played and analysed again so you can put
     what you hear next to what you drew.
 
--   ![Agent and reducible-pair counts over twenty-six interaction-net reactions](assets/chain_lambda_sound/one_reduction.png)
+-   ![Agent and reducible-pair counts over the eighty-six interaction-net reactions of three applied to two](assets/chain_lambda_sound/one_reduction.png)
 
     **[A λ-Term You Can Hear](chain_lambda_sound.md).** The order in which an interaction net
     fires its reactions becomes a rhythm, so changing the scheduler is something you can hear.
@@ -106,7 +104,7 @@ These chains end in something you can listen to, or start from it.
 
     **[A Function, Played and Read Back](chain_fn_sound_roundtrip.md).** Play a function,
     detect its pitch and onsets in the recording, and draw both on one timeline next to the
-    function's certified range.
+    range interval arithmetic proves the function stays within.
 
 </div>
 
@@ -118,8 +116,9 @@ These chains end in something you could print, mount, hang or light.
 
 -   ![Forty-eight extruded layers of canonical gC, coloured by height](assets/chain_ceres_manifold_contours/stack.png)
 
-    **[A Polytope, Canonicalised and Sliced](chain_ceres_manifold_contours.md).** Make a Conway
-    polytope canonical with a Ceres solve and slice it into the layers a 3D printer would print.
+    **[A Polytope, Canonicalised and Sliced](chain_ceres_manifold_contours.md).** Solve for the
+    canonical form of a Conway polytope, where every edge is tangent to one sphere, with the Ceres
+    optimiser, and slice it into the layers a 3D printer would print.
 
 -   ![A relief plaque and its frame rendered with the path tracer](assets/chain_photo_to_solid/mounted_path_trace.png)
 
@@ -128,7 +127,8 @@ These chains end in something you could print, mount, hang or light.
 
 -   ![A RectSL scene, the LED rig it drives and the matching received light values](assets/chain_scene_to_light/chain.png)
 
-    **[A RectSL Scene on a Light Rig](chain_scene_to_light.md).** Send a scene over sACN,
+    **[A RectSL Scene on a Light Rig](chain_scene_to_light.md).** Send a scene over sACN, the
+    network protocol stage lighting uses,
     receive it back, and check that what came back matches the pixels the rig was sent.
 
 -   ![An oil painting of a meadow at evening: a sky of horizontal strokes, low clouds, grass and red poppies](assets/chain_drawn_paint/meadow.png)
@@ -138,9 +138,10 @@ These chains end in something you could print, mount, hang or light.
 
 </div>
 
-## MADP Practice Core
+## Studio tools from MADP
 
-The MADP tools are single-page browser sketchbooks for a studio class: code on the left, art on
+MADP is Media Arts and Design Practice at the University of Chicago. Its tools are single-page
+browser sketchbooks for a studio class: code on the left, art on
 the right, and a program short enough to read in one sitting. Each card below is one of those
 tools rebuilt in Field. The program the student writes keeps its shape and its names, but it
 lives in boxes, so it can run beside other boxes, take their output and hand on its own. Each is
@@ -159,7 +160,8 @@ every box in the document does.
 
 -   ![Eight thick rings in teal, amber and blue, each with a pale dot at its centre, overlapping on a dark ground](assets/agent_transcripts_gallery/shadertrinket_flat_rings.png)
 
-    **[ShaderTrinket](agent_transcripts.md#shadertrinket).** A ShaderToy `mainImage` in a box,
+    **[ShaderTrinket](agent_transcripts.md#shadertrinket).** A ShaderToy-style `mainImage`
+    (a function that returns one pixel's colour) in a box,
     recompiled on alt-R with any error marked on its own line. Each preset is a box you launch,
     and the camera is one line away as `iChannel0`.
 
@@ -169,7 +171,7 @@ every box in the document does.
     through a transform stack with a current colour and material, drawn in a studio-lit view you
     can orbit and export as GLB. The presets run from a rippled terrain to a Menger sponge.
 
--   ![Field's canvas as a score: boxes spread left to right, an orange playhead crossing two lit boxes, and a dark panel under the first box showing rows of thin orange and blue bars](assets/agent_transcripts_gallery/madp_score.png)
+-   ![Field's canvas as a score: the score box and its output panel on the left, with a row of thin orange bars above a row of blue ones, the McLaren scratches and Fischinger orbits boxes in the middle, and on the right an orange playhead crossing the two lit Glass phase boxes](assets/agent_transcripts_gallery/madp_score.png)
 
     **[Score](agent_transcripts.md#madp_score).** The canvas is the score: a playhead sweeps the
     boxes, and each one draws and plays sound while the playhead is over it. Drag a box to move
@@ -202,10 +204,11 @@ every box in the document does.
 -   ![A sphere of about a thousand small glowing splats on black, coloured by longitude from cyan through chartreuse to red and orange](assets/agent_transcripts_gallery/splat_shader_passthrough.png)
 
     **[Splat Shader](agent_transcripts.md#splat_shader).** A few lines of GLSL run once per
-    Gaussian splat each frame and may move, resize, recolour or turn it. The edit runs before the
+    Gaussian splat each frame and may move, resize, recolour or turn it. (A Gaussian splat is a soft
+    coloured blob; a few thousand of them make a 3D scene.) The edit runs before the
     depth sort, so splats thrown outward still draw in the right order.
 
--   ![A soft white ring on black, centred, fading smoothly to black on both sides](assets/agent_transcripts_gallery/stacktrinket_feedback_pulse_ring.png)
+-   ![The feedback fog program after it has run a few seconds: smeared clouds of white, cyan, deep blue, red and yellow, blurred into each other by many frames of reading the previous picture](assets/agent_transcripts_gallery/stacktrinket_feedback_fog.png)
 
     **[StackTrinket](agent_transcripts.md#stacktrinket_feedback).** Programs in a stack-based
     shader language that read their own previous frame, so a few words leave trails, fog and
@@ -225,7 +228,7 @@ every box in the document does.
 
 -   ![Photographs of a cat, a dog, a tiger and a red car above a tetrahedron whose edges are labelled with the distances between them](assets/agent_transcripts_gallery/madp_tetra.png)
 
-    **[Tetra](agent_transcripts.md#madp_tetra).** CLIP turns four pictures into four points, and
+    **[Tetra](agent_transcripts.md#madp_tetra).** CLIP, an image-and-text model, turns four pictures into four points, and
     the six distances between them become the edges of a tetrahedron. Any four such points fit
     in three dimensions, so the shape keeps all six distances exactly. Drop in your own pictures.
 

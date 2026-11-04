@@ -15,13 +15,45 @@ operations:
       w: 300.0
       h: 100.0
     properties:
-      code: "import afield.graphics.vulkan.util.Options\n\nprop<Window>(window)\nprop<Renderer>(renderer)\n\nOptions.enableVR = false\nOptions.enableHDR = false\nOptions.profiling = false\n\nonce.renderer {\n    window = Window(\"Field\")\n    Renderer(window)\n}\n\nprintln(\"agent graphics renderer ready\")\nstart(renderer::run)\n"
+      code: |-
+        import afield.graphics.vulkan.util.Options
+
+        prop<Window>(window)
+        prop<Renderer>(renderer)
+
+        Options.enableVR = false
+        Options.enableHDR = false
+        Options.profiling = false
+
+        once.renderer {
+            window = Window("Field")
+            Renderer(window)
+        }
+
+        println("agent graphics renderer ready")
+        start(renderer::run)
 - launch:
     box: agent_graphics_context
     property: code
     type: code
     strand: renderer
-    code: "import afield.graphics.vulkan.util.Options\n\nprop<Window>(window)\nprop<Renderer>(renderer)\n\nOptions.enableVR = false\nOptions.enableHDR = false\nOptions.profiling = false\n\nonce.renderer {\n    window = Window(\"Field\")\n    Renderer(window)\n}\n\nprintln(\"agent graphics renderer ready\")\nstart(renderer::run)\n"
+    code: |-
+      import afield.graphics.vulkan.util.Options
+
+      prop<Window>(window)
+      prop<Renderer>(renderer)
+
+      Options.enableVR = false
+      Options.enableHDR = false
+      Options.profiling = false
+
+      once.renderer {
+          window = Window("Field")
+          Renderer(window)
+      }
+
+      println("agent graphics renderer ready")
+      start(renderer::run)
 - wait:
     frames: 3
 - create:

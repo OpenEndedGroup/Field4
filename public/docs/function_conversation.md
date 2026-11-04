@@ -27,9 +27,9 @@ StackSL program drawn live in a window, and
 start the same way, with **Make a StackSL Program** and **Make a RectSL Scene**.
 
 The recorded conversation below started from the same source, in a document of its
-own. [Download that starter](assets/function_conversation/function_conversation.zip)
-to begin from the same place: unzip it into your Field workspace, keeping the
-`function_conversation` folder intact, and open it. It has one box,
+own. [Open that starter](offline.html?zip=assets/function_conversation/function_conversation.zip)
+to begin from the same place: it opens in the document viewer, and **Open in Field·4**
+copies it into your workspace as a new document. It has one box,
 **The function — talk here (AI4)**; opening the document checks its source in and
 draws the viewer.
 
@@ -45,7 +45,7 @@ model reads before editing, includes the line your editor's cursor is on, so
 
 ### The starting Kotlin
 
-This is the complete code in the downloadable starter's **function_source** box.
+This is the complete code in the starter's **function_source** box.
 Each `fn` receives a time in seconds and currently returns `0.0`; `StudyComposition`
 collects the three channels. The conversation replaces and extends this same code.
 
@@ -101,9 +101,10 @@ entirely. Zoom in before you judge a detail.
 
 ## A worked conversation
 
-[Download the developed example](assets/function_conversation/function_conversation_example.zip)
-to open **function_conversation_example**. It contains the finished source, all
-nine saved revisions, and the recorded conversations and plots. Opening it restores
+[Open the developed example](offline.html?zip=assets/function_conversation/function_conversation_example.zip)
+and press **Open in Field·4**. The copy it makes in your workspace has the finished
+source, the box's saved chat, all nine saved revisions, and the recorded
+conversations and plots. Opening it restores
 the checked composition and draws the viewer. Then select **The function — talk
 here (AI4)** and press **ctrl/command-4**.
 The seven recorded turns are already in that box's chat, with their original
@@ -116,8 +117,8 @@ the saved chat and viewer does not make a model call.
 This is Field's chat panel, restored from the recorded run. Here the chat is
 scrolled back to the move-and-stretch exchange; the viewer shows the final saved
 revision. The starter is still blank; the developed example carries this history.
-The older turns predate model badges, so they show **Model not recorded**; the
-archive names the run's provider and model.
+Each reply is labelled with the model that wrote it, taken from the run's
+record.
 
 ### From constants to a composition
 

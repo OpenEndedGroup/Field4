@@ -228,11 +228,20 @@
     try { return await context.decodeAudioData((await (await fetch(audio.currentSrc || audio.src)).arrayBuffer()).slice(0)); }
     finally { context.close(); }
   })());
+  // With audio.normalize, a quiet clip's lane spans its own peak instead of ±1, so its shape is
+  // visible; the axis ticks print the range, so the scale stays readable.
+  const audioRange = (low, high) => {
+    if (!config.audio?.normalize) return [-1, 1];
+    let peak = 0; for (const v of low) peak = Math.max(peak, Math.abs(v)); for (const v of high) peak = Math.max(peak, Math.abs(v));
+    if (!(peak > 0) || peak >= 0.5) return [-1, 1];
+    const r = Math.max(peak * 1.1, 1e-4); return [-r, r];
+  };
+  const audioLane = (name, low, high) => { const [minimum, maximum] = audioRange(low, high); return {name, minimum, maximum, current: {low, high}}; };
   const envelopeWindow = (e, s, d) => ({start: s, end: s + d, sampleSpacing: 1 / (e.sample_rate || 1),
     // A service that answers a close zoom with one sample per point sends min == max: that is the waveform.
     mode: e.minimum.every((lo, ch) => lo.every((v, i) => v === e.maximum[ch][i])) ? 'waveform' : 'envelope',
-    lanes: Array.from({length: Math.max(1, e.channels || e.minimum.length)}, (_, ch) => ({name: (e.channels || e.minimum.length) > 1 ? 'ch ' + (ch + 1) : 'audio',
-      minimum: -1, maximum: 1, current: {low: (e.minimum[ch] || e.minimum[0]).map(Number), high: (e.maximum[ch] || e.maximum[0]).map(Number)}}))});
+    lanes: Array.from({length: Math.max(1, e.channels || e.minimum.length)}, (_, ch) => audioLane((e.channels || e.minimum.length) > 1 ? 'ch ' + (ch + 1) : 'audio',
+      (e.minimum[ch] || e.minimum[0]).map(Number), (e.maximum[ch] || e.maximum[0]).map(Number)))});
   const audioLanes = n => Array.from({length: n}, (_, ch) => ({color: ch % 2 ? '#d6a85f' : (colors.primary || '#63c7dc'), shape: 'linear', width: 1.3, markers: true,
     fill: ch % 2 ? 'rgba(214,168,95,.82)' : (colors.fill || 'rgba(99,199,220,.82)'), zeroLine: true}));
   const fetchAudio = async (s, d, points, signal, overview = false) => {
@@ -250,7 +259,7 @@
     if (frames <= points * 1.5) {
       // Close enough to see samples: draw the waveform itself, a line through every sample.
       const lanes = Array.from({length: decoded.numberOfChannels}, (_, ch) => { const v = Array.from(decoded.getChannelData(ch).subarray(begin, end));
-        return {name: decoded.numberOfChannels > 1 ? 'ch ' + (ch + 1) : 'audio', minimum: -1, maximum: 1, current: {low: v, high: v}}; });
+        return audioLane(decoded.numberOfChannels > 1 ? 'ch ' + (ch + 1) : 'audio', v, v); });
       return fromWindow({start: begin / rate, end: (end - 1) / rate, mode: 'waveform', sampleSpacing: 1 / rate, lanes}, audioLanes(decoded.numberOfChannels));
     }
     // A true min/max per bin: bins partition [begin, end) with no gaps, so no sample is skipped.

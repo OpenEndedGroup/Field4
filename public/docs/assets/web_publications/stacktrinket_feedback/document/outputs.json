@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-31T20:31:30.542Z",
+  "capturedAt": "2026-11-04T13:40:02.115Z",
   "documentName": "stacktrinket_feedback",
   "outputs": [
     {
@@ -8,6 +8,18 @@
       "channel": "Vulkan window · still image",
       "open": true,
       "path": "outputs/0.html",
+      "width": 1520,
+      "height": 1520,
+      "kinds": [
+        "native-image"
+      ],
+      "warnings": []
+    },
+    {
+      "uid": "stacktrinket_renderer",
+      "channel": "Vulkan window · still image",
+      "open": true,
+      "path": "outputs/1.html",
       "width": 1520,
       "height": 1520,
       "kinds": [

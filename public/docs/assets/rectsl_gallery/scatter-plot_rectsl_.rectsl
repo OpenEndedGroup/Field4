@@ -1,0 +1,6 @@
+#rectsl
+->wall 10 10 abstract
+->duration 4
+->fps 30
+
+0 1 40 linspace  dup  '( 7 * sin ) data-map  "plasma" scatter

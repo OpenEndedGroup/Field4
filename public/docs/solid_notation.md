@@ -291,6 +291,41 @@ println(scene.toRaymarchFragment()) // sphere tracing, a normal, two lights, rea
 gradient. `toGlsl()` is the function alone, if you have a pipeline of
 your own to put it in.
 
+The fragment shader reads three push constants: the target's size in pixels, a time that turns the
+camera about the part, and a camera distance in multiples of the part's radius. A box beneath a
+renderer draws it on a fullscreen triangle with `SOLID_RAYMARCH_VERTEX`, the vertex shader that goes
+with it, and binds the three on the triangle. This is the plate and boss from the hybrid section,
+sphere-traced on the GPU instead of meshed:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/solid_notation/raymarched.png" alt="the hybrid section's part sphere-traced in a native render window: a pale blue-grey rectangular plate seen from above at an angle, four round bores through its corners showing the dark background through the nearest one, and the smooth domed boss rising from its centre, lit by a key light from the upper left" wait="4" timeout="120" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="solid-raymarched"}
+import afield.lang.solidsl.*
+
+val plate = cuboid(3.2, 2.2, 0.42)
+val bores = unionOf(
+    [-1.1 to -0.7, 1.1 to -0.7, -1.1 to 0.7, 1.1 to 0.7].map { (x, y) ->
+        cylinder(2.0, 0.30).at(x, y, 0.0)
+    },
+)
+val boss = smoothUnion(sphere(0.42).at(0.0, 0.0, 0.62), cylinder(1.1, 0.26).at(0.0, 0.0, 0.30), k = 0.22)
+val part = (plate - bores) + boss
+
+// the generated GLSL is this module's fragment shader
+val shader = Module(
+    parameters(renderer) {
+        vertex = SOLID_RAYMARCH_VERTEX
+        fragment = part.toRaymarchFragment()
+        depthTest = false
+    },
+).pointer()
+
+val quad = fullscreenTriangle(shader)
+shader += "quad" to quad
+quad.push.bind("uResolution") { vec(window.width.toFloat(), window.height.toFloat()) }
+quad.push.bind("uTime") { 1.2f }
+quad.push.bind("uCameraDistance") { 1.6f }
+renderer += "solid" to shader
+```
+
 The emitted code is straight-line, single-assignment and entirely scalar — no `vec3` locals, no
 swizzles, no loops. GPU drivers re-vectorise it anyway, and code that plain is easy to parse back,
 which is how the emitter is tested.
@@ -394,7 +429,7 @@ refusals fall into three groups you can act on:
 - **two names, one number** — a name declared twice, two names claiming the same slot, or one name
   tying slots that currently hold different values, which would make the seed ambiguous.
 - **the seed is singular before the first step** — a `Scale` factor at zero (the field divides by it
-  and the derivative goes as `1/s²`) or a blend `k` at zero (its field clamps at `1e-9`, below which
+  and the derivative goes as \( 1/s^2 \)) or a blend `k` at zero (its field clamps at `1e-9`, below which
   the blend is a hard boolean with no derivative in `k`, so the parameter would never move).
 
 Which nodes are *good* to fit is the inverse of which nodes lower exactly:
@@ -668,7 +703,7 @@ so it walks all the way down. Stopped at iteration 500, this fit reports a reaso
 At the end the cylinder is recovered: `2.197225` against a true `2.20`, `0.281335` against a true
 `0.28`, and `barTilt`, seeded 25° off, back to `-0.009525°`. The cube settled at `0.855279`. No side
 length makes a cube a sphere, but there is a sensible range: a cube that fits a sphere of radius `R` at all has a side between the inscribed
-`2R/√3 = 0.7159` and the circumscribed `2R = 1.2400`. `0.855279` sits inside it, nearer the inscribed
+\( 2R/\sqrt{3} = 0.7159 \) and the circumscribed `2R = 1.2400`. `0.855279` sits inside it, nearer the inscribed
 end, which is where a least-squares fit on a *field* belongs.
 
 Adding the tilt does not change the final loss: the four-parameter residual and the three-parameter
@@ -731,7 +766,7 @@ val cloud = target.samplePointCloud(count = 3000, seed = 4, noise = 0.004)
 val fit = template.fitToPointCloud(cloud, start = doubleArrayOf(0.3, 1.1, 0.4))
 ```
 
-The loss is `f(pᵢ)²` averaged over the cloud, and everything that goes wrong follows from what it
+The loss is \( f(p_i)^2 \) averaged over the cloud, and everything that goes wrong follows from what it
 leaves out. Nothing in it wants the interior filled, so a shape that puts *some* surface through the
 points scores as well as the one that generated them. A cloud that surrounds a closed surface pins it
 from every side and recovers well; crop it to one hemisphere and every parameter that only shows
@@ -823,7 +858,7 @@ Primitives are centred on the origin. Everything else follows Manifold's convent
 
 - `cylinder` runs along **Z**.
 - `Profile.extruded(h)` runs from `z = 0` to `z = h` — *not* centred, because `Section.extruded` is not.
-- `Profile.revolved()` turns about **Z**, profile at `x ≥ 0`, counter-clockwise from `+X`.
+- `Profile.revolved()` turns about **Z**, profile at \( x \ge 0 \), counter-clockwise from `+X`.
 - `turned(x, y, z)` is in **degrees**, applied X then Y then Z.
 
 There is no `Torus` node:

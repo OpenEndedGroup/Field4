@@ -11,8 +11,7 @@ then try [building a path](#building-paths-moveto-lineto-cubicto-close) and chan
 need it. To draw a stroke by hand and have code read it, continue to
 [Drawing and Notation](drawing_and_notation.md).
 
-The document below includes captured drawings. Pan and zoom to explore them, or click a box to
-read its code. **Open in Field·4** imports an editable copy into a running Field.
+Every example on this page is also in the document below; click a box to read its code.
 
 <iframe
     src="offline.html?file=assets/fline_examples/metadata.edn&amp;focus=outputs"
@@ -255,9 +254,7 @@ fun Box.threeInspect(
 
 #### Measuring
 
-A `ThreeMeasurement` is a dimension the figure carries from the moment it is drawn: two elements, and the **closest approach** between them. That is not centroid to centroid, which on a panel drawing is a different number. The dimension is drawn in the scene with witness lines and a legible number, so it orbits with the figure.
-
-You can also click the ruler in the viewer's toolbar and pick two elements yourself.
+To put a dimension on the drawing, pass `measurements`. Each `ThreeMeasurement` names two elements (a face, a segment) and draws the shortest distance between them as a number with a line to each element, so it turns with the figure. The example below dimensions a wall's thickness and a conduit's clearance.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fline_examples/three_inspect_measure.png" wait="3.0" capture="box" open-outputs="true" w="1200"}
 :::static
@@ -316,13 +313,16 @@ threeInspect(
 
 ![Two dimensions drawn in the Three.js inspector](assets/fline_examples/three_inspect_measure.png)
 
-A measurement is in **model space**: it reads the real distance between the two things, which is what you want on a drawing, and it is not moved by the explode slider. Scrub the explode back to zero to read a dimension against the geometry it dimensions.
+The distance is closest approach, not centre to centre, which on a panel drawing is a different number. It is measured on the unexploded geometry, so the explode slider does not change it; scrub the explode back to zero to read a dimension against what it dimensions. You can also click the ruler in the viewer's toolbar and pick two elements yourself.
 
 #### Exploding
 
-`ThreeExplode` has two modes. `radial` slides every group away from the figure's centre, which reads well on an irregular assembly like a routed conduit run. `axis` slides every group along one direction, spaced by its **rank** in that direction rather than by its distance. A layered wall needs the rank version: four skins 12 mm apart stay in a clump under a distance-proportional explode, while the far one leaves the frame.
+Exploding pulls the parts of an assembly apart with a slider, so you can see the layers hidden inside it. `ThreeExplode` has two modes:
 
-The ranks are centred, so the assembly stays put as the slider moves instead of walking out of view.
+- `radial` moves each part away from the figure's centre. It suits an irregular assembly, like a routed conduit run.
+- `axis` moves the parts along one direction, evenly spaced in their order along it rather than in proportion to their distance. A layered wall needs this: with proportional spacing, four skins 12 mm apart stay in a clump while the far one leaves the frame.
+
+The spacing is centred on the middle part, so the assembly stays in view as the slider moves.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fline_examples/three_inspect_explode.png" wait="3.0" capture="box" open-outputs="true" w="1200"}
 :::static
@@ -519,10 +519,10 @@ val view = threeInspect(
             ThreeMeasureElement.face(wall[3]),
             "build-up ",
         ),
-        // the clearance from a conduit to the inside of the lining: 152 - 120 = 32,
+        // the clearance from the second conduit to the inside of the lining: 152 - 120 = 32,
         // which is written down nowhere in the geometry
         ThreeMeasurement(
-            ThreeMeasureElement.segment(120.0, 840.0, 80.0, 120.0, 840.0, 1720.0),
+            ThreeMeasureElement.segment(120.0, 520.0, 80.0, 120.0, 520.0, 1720.0),
             ThreeMeasureElement.face(wall[3]),
             "clear ",
         ),
@@ -546,11 +546,11 @@ println("wall: ${view.inspector().groups.size} assembly groups, ${view.inspector
 println("drag the explode slider; press the ruler and click two things")
 ```
 
-![The three-inspector demo document, opened](assets/three_inspector_demo/opened.png)
-
 ### Callbacks: `onClick` and `hoverColor`
 
 `FLine` can also be interactive without being editable. If you set `onClick`, Field registers a callback for that line. If you set `hoverColor`, the line brightens or changes color when the pointer moves over it.
+
+The callback receives an `FLineIntersection`, a record of what was clicked: which line, which part of it (a node, a segment, or the inside of a closed shape), and where. Most callbacks only need `closestVertexIndex` or `label`:
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -588,27 +588,9 @@ var FLine.label: String?
 
 This works in both the 2D `lines(...)` renderer and the Three.js `threeLines(...)` renderer.
 
-**What the record tells you.** Both renderers fill all of it in: which element you hit (a node, one
-segment, or the inside of a closed subpath), which line of the several you may have drawn, and *where*
-on that element — `u` along a segment (the curve parameter, for a cubic), and `(u, v)` across a face,
-which for a four-corner face are true bilinear coordinates, so they are a position **on a panel**.
-`onElement` is the point on the element itself rather than where the pointer was, so its `z` is
-interpolated along the element: a 3D line drawn into the flat 2D output still reports a depth. Every field
-past `position` is defaulted, so a two-field callback still compiles.
-
-Two cautions before you read a number off it. `u` on a **cubic** is the Bézier parameter, not
-arc length, and on a curve whose control points crowd its start the two can be far apart: `u = 0.5`
-can sit well short of halfway along. And `(u, v)` on a face means different things on different faces, so the record says
-which: `faceCoordinates` is `BILINEAR` only for a four-corner face whose solve is checked and passes,
-`BOUNDING_BOX` for anything else, and `NONE` (with `NaN`) for a face with no plane. The Three.js
-renderer fills in the same record, working in each face's own plane.
-
-`lineIndex` and `label` are what let **one** closure serve a whole figure instead of one closure per
-part. `Box.inspect(lines)` is that pattern packaged: it renders exactly what `lines(...)` renders and
-names whatever you click. The [`fline_hit_records`](agent_transcripts.md#fline_hit_records) starting
-point is a wall of panels to try it on.
-
 #### 2D callbacks
+
+This draws a triangle and a closed curve. Hover over either to see it brighten, and click it to print its name and the nearest vertex below the drawing.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fline_examples/callbacks_2d.png" wait="1.0" capture="box" open-outputs="true" w="1200" embed=true name="fline-callbacks-2d"}
 :::static
@@ -651,6 +633,8 @@ In practice this is useful for picking diagram elements, selecting generated for
 
 #### 3D callbacks
 
+This stacks three rings at different depths in the Three.js viewer. Orbit the view, then click a ring to print which one you hit.
+
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fline_examples/callbacks_3d.png" wait="1.0" capture="box" open-outputs="true" w="1200" name="fline-callbacks-3d" embed=true}
 :::static
 val status: (String) -> Unit = { message ->
@@ -684,6 +668,27 @@ threeLines(stack, channel = "callbacks3d", height = 430, editable = false)
 ```
 
 The 3D version is the same idea, just with ray-picking instead of SVG hit testing. That makes it useful for picking generated layers, debugging spatial structures, or attaching lightweight behavior to procedural geometry.
+
+#### Where on the element you clicked
+
+Both renderers fill in the whole `FLineIntersection`. Past `closestVertexIndex` and `position` it says
+*where* on the element you clicked: `u` runs along a segment (for a cubic, the curve parameter), and
+`(u, v)` runs across a face. `onElement` is the point on the element itself rather than under the
+pointer, so its `z` is interpolated along the element: a 3D line drawn into the flat 2D output still
+reports a depth. Every field past `position` is defaulted, so a two-field callback still compiles.
+
+Two cautions before you read a number off it. `u` on a **cubic** is the Bézier parameter, not
+arc length, and on a curve whose control points crowd its start the two can be far apart: `u = 0.5`
+can sit well short of halfway along. And `(u, v)` means different things on different faces, so the
+record's `faceCoordinates` says which. It is `BILINEAR` for a four-corner face, where `(u, v)` is a
+position on that panel (Field checks the solve, and falls back if it fails); `BOUNDING_BOX` for any
+other face, where it is a position in the face's bounding box; and `NONE` (with `NaN`) for a face with
+no plane.
+
+`lineIndex` and `label` let **one** closure serve a whole figure instead of one closure per
+part. `Box.inspect(lines)` is that pattern packaged: it renders exactly what `lines(...)` renders and
+names whatever you click. The [`fline_hit_records`](agent_transcripts.md#fline_hit_records) starting
+point is a wall of panels to try it on.
 
 ## Styling: `color`, `stroked`, `filled`, `pointed`
 
@@ -1826,7 +1831,7 @@ Both space their points evenly along the curve. `sampleByNumber(12)` (top) alway
 
 ## Geometry operations (simple → complex)
 
-These functions take an existing `FLine` and return new geometry: smoothing/simplifying (cleanup), offsetting (stroke outlines), and dashing (segmenting). For all of the gesture-style filters (EMA / One Euro / alpha-beta / One-Dollar) and Gaussian-process interpolation, see [Filtering + interpolation](#filters-and-gp).
+These functions take an existing `FLine` and return new geometry: smoothing/simplifying (cleanup), offsetting (stroke outlines), and dashing (segmenting). For all of the gesture-style filters (EMA / One Euro / alpha-beta / One-Dollar) and Gaussian-process interpolation, see [Smoothing a hand-drawn stroke](#filters-and-gp).
 
 ### Simplify and smooth
 
@@ -1968,9 +1973,9 @@ lines(ghost(0.0), gauss, ghost(110.0), oriented, ghost(220.0), perlin, w = 420.0
 
 Top to bottom: `byGaussianNoising`, `byOrientedGaussianNoising` (mostly across the curve), `byPerlinNoising`.
 
-### Filtering + interpolation (Gaussian process / EMA / One Euro / alpha-beta / driver pursuit) {#filters-and-gp}
+### Smoothing a hand-drawn stroke {#filters-and-gp}
 
-These all take a sampled version of your path and return a regularized polyline:
+These functions resample your path and return a smoothed polyline. `byGaussianProcessInterpolating` fits a smooth curve through samples of the path; `byEmaFiltering` averages each point with the ones before it (an exponential moving average); `byOneEuroFiltering` smooths slow parts of the stroke heavily and fast parts lightly, so it removes jitter without lagging behind quick movements; `byAlphaBetaFiltering` tracks position and velocity together; and `byDriverSmoothing` steers a point that follows the path, rounding off its corners.
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -2948,6 +2953,55 @@ This is the same morph with `spatialSpinAngle = 1f` in the interpolator config, 
 
 Use fitting to summarize a shape, and subdivision when later editing needs more segments without changing its geometry.
 
+Here a jittered ring is fitted, and one cubic is subdivided zero, one and two times, with its nodes drawn as dots:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fline_fit_circle_subdivide.png" capture="box" open-outputs="true" wait="1.5" padding="12" embed=true name="fline-fit-circle-subdivide" alt="Left, a jagged grey ring with the orange circle fitCircle found drawn through it; right, the same blue S-curve three times, with two, three and five orange nodes on it, the curve unchanged; above, a line giving the fitted centre, radius and error"}
+// A rough, hand-drawn-looking circle: 40 points at a jittered radius around (60, 60).
+val rnd = java.util.Random(4)
+val rough = fline {
+    for (i in 0..40) {
+        val a = 2 * Math.PI * i / 40
+        val r = 50 + 6 * rnd.nextGaussian()
+        if (i == 0) moveTo(60 + r * Math.cos(a), 60 + r * Math.sin(a))
+        else lineTo(60 + r * Math.cos(a), 60 + r * Math.sin(a))
+    }
+}
+    .apply { color = vec(1.0, 1.0, 1.0, 0.8) }
+
+val (centre, radius, error) = rough.fitCircle(samples = 80)
+val fitted = FLine().circle(centre.x.toDouble(), centre.y.toDouble(), radius.toDouble()).apply {
+    color = vec(1.0, 0.55, 0.2, 1.0)
+    thickness = 2.0
+}
+
+// One cubic, subdivided 0, 1 and 2 times: the nodes multiply, the curve does not move.
+val wave = fline {
+    moveTo(0, 60)
+    cubicTo(30, -10, 70, 130, 100, 60)
+}
+val levels =
+    (0..2).flatMap { level ->
+        val at = vec(170.0 + level * 150.0, 0.0)
+        val sub = wave.bySubdividing(level)
+        [
+            sub.copy().apply { color = vec(0.32, 0.82, 1.0, 1.0) } + at,
+            sub.copy().apply {
+                stroked = false
+                pointed = true
+                pointSize = 1.2
+                color = vec(1.0, 0.5, 0.25, 1.0)
+            } + at,
+        ]
+    }
+
+display(
+    "fit",
+    "fitCircle: centre (%.1f, %.1f), radius %.1f, error %.2f · bySubdividing levels 0, 1, 2"
+        .format(centre.x, centre.y, radius, error),
+)
+lines([rough, fitted] + levels, w = 720.0, h = 220.0, fitToSize = true)
+```
+
 ## Advanced / experimental curves (FLineGeometry)
 
 These are more specialized tools that are still extremely useful when you need them.
@@ -3517,7 +3571,7 @@ head.apply {
     color = vec(1.0, 0.6, 0.2, 1.0)
 }
 
-print("total ${"%.1f".format(total)} = ${"%.1f".format(head.length())} + ${"%.1f".format(tail.length())}")
+print("total ${total.f1} = ${head.length().f1} + ${tail.length().f1}")
 
 lines(curve, head, middle, w = 420.0, h = 260.0, fitToSize = true)
 ```
@@ -3663,7 +3717,7 @@ lines(poly, center, w = 420.0, h = 260.0, fitToSize = true)
 
 ## Java2D bridge
 
-These let you round-trip between `FLine` and Java2D shapes (and pick up a ton of 2D computational geometry “for free”). You’ll see them used internally for booleans, insetting/outsetting, and intersections.
+Java's standard 2D library (`java.awt.geom`) already has shapes such as ellipses, rounded rectangles and arcs, and operations on them. These functions turn a Java2D `Shape` into an `FLine` and back, so you can draw any of them, or run an `FLine` through a Java2D operation. `intersect` returns the points where two lines cross.
 
 ```diffstatic {data-lang=kotlin}
 :::static

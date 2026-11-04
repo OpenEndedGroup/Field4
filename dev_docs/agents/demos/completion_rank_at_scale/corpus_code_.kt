@@ -44,7 +44,7 @@ val report = buildString {
     appendLine("${corpus.name}  ${corpus.length() / 1024} KB on disk")
     appendLine(
         "${cases.size} carets, ${payloadSize.sum()} payload rows, ${rows.size} distinct " +
-            "(${"%.1f".format(payloadSize.sum().toDouble() / rows.size)}x interning)",
+            "(${(payloadSize.sum().toDouble() / rows.size).f1}x interning)",
     )
     appendLine()
     for ((form, group) in byForm) {

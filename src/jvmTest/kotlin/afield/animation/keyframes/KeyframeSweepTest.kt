@@ -238,6 +238,59 @@ class KeyframeSweepTest {
     }
 
     @Test
+    fun fixedDrawsRenderTheBlendAskedForAtTheGainAskedFor() {
+        val root = tempDir()
+        val pool = root.resolve("pool")
+        val live = mutableMapOf("gain" to 0f, "size" to 0f)
+        val scope = scopeOver(live, "gain", "size")
+        simplePool(scope, pool)
+
+        val keys = listOf("a", "b", "c")
+        val base = listOf(1.0, 1.0, 2.0)
+        val out = root.resolve("archive")
+        val report = runBlocking {
+            KeyframeSweep(
+                scope, pool, out,
+                // `count` is ignored once there are draws: three draws, three renders.
+                SweepConfig(
+                    count = 50,
+                    draws = listOf(
+                        SweepDraw(keys, base),
+                        SweepDraw(keys, base, pole = "c", gain = 1.0),
+                        SweepDraw(keys, base, pole = "c", gain = 1.5),
+                    )
+                )
+            ).run(Counting().body)
+        }
+        assertEquals(3, report.completed)
+
+        val rows = readSweepArchive(out).sortedBy { it.index }
+        fun weights(i: Int) = rows[i].parents.associate { it.key to it.weight }
+        assertEquals(null, rows[0].extrapolationGain, "the first draw is convex")
+        assertEquals(mapOf("a" to 0.25, "b" to 0.25, "c" to 0.5), weights(0), "weights are normalised")
+        assertEquals(listOf(null, 1.0, 1.5), rows.map { it.extrapolationGain })
+        assertEquals(listOf(null, "c", "c"), rows.map { it.extrapolationPole })
+        // 1.0 is the hull's face: the pole drops out and a and b share everything, still 1:1.
+        assertEquals(mapOf("a" to 0.5, "b" to 0.5, "c" to 0.0), weights(1))
+        assertEquals(mapOf("a" to 0.75, "b" to 0.75, "c" to -0.5), weights(2))
+
+        // a, b, c hold gain 0, 10, 100: the face is 5, and half as far again past it is -42.5.
+        val gains = rows.map { (scope.loadKey(out.resolve("renders/${it.id}/key.json"))["gain"] as Float).toDouble() }
+        assertEquals(listOf(52.5, 5.0, -42.5), gains.map { Math.round(it * 10) / 10.0 })
+        // The anchor is the heaviest weight unless named, so the convex draw wears c and the pushed ones a.
+        assertEquals(listOf("c", "a", "a"), rows.map { it.anchor })
+
+        assertFailsWith<IllegalArgumentException> { SweepDraw(keys, base, pole = "c", gain = 0.9) }
+        assertFailsWith<IllegalArgumentException> { SweepDraw(keys, base, pole = "d", gain = 1.2) }
+        assertFailsWith<IllegalArgumentException> {
+            runBlocking {
+                KeyframeSweep(scope, pool, root.resolve("missing"), SweepConfig(draws = listOf(SweepDraw(listOf("z"), listOf(1.0)))))
+                    .run(Counting().body)
+            }
+        }
+    }
+
+    @Test
     fun arityOneReplaysOneKeyExactly() {
         val root = tempDir()
         val pool = root.resolve("pool")

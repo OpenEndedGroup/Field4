@@ -126,13 +126,13 @@ operations:
                   """
                   <img src="data:image/png;base64,$b64" style="width:100%;border-radius:3px"/>
 
-                  {muted:${w}x$h · depth ${depth.lastInferenceMs}ms, raw [${"%.2f".format(stats.rawMin)}, ${"%.2f".format(stats.rawMax)}] · brighter = nearer}
+                  {muted:${w}x$h · depth ${depth.lastInferenceMs}ms, raw [${stats.rawMin.f2}, ${stats.rawMax.f2}] · brighter = nearer}
 
                   ${top.h}
               """,
               )
               println(
-                  "depth ${depth.lastInferenceMs}ms  best=${ranked.first().first} ${"%.1f".format(ranked.first().second * 100)}%",
+                  "depth ${depth.lastInferenceMs}ms  best=${ranked.first().first} ${(ranked.first().second * 100).f1}%",
               )
           } finally {
               runCatching { grabber.stop() }

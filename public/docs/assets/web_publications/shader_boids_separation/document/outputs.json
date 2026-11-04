@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-01T22:06:05.976Z",
+  "documentName": "shader_boids_separation",
+  "outputs": [
+    {
+      "uid": "sb_renderer",
+      "channel": "Vulkan window · still image",
+      "open": true,
+      "path": "outputs/0.html",
+      "width": 4112,
+      "height": 2524,
+      "kinds": [
+        "native-image"
+      ],
+      "warnings": []
+    }
+  ]
+}

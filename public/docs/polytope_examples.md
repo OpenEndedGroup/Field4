@@ -812,7 +812,7 @@ markdown(
     "field",
     """
     kis deployed over ${deployed.size} faces ·
-    heightScale resolved ${"%.3f".format(lo)} … ${"%.3f".format(hi)}
+    heightScale resolved ${lo.f3} … ${hi.f3}
 
     output ${out.topology.elements(0).size}v ${out.topology.elements(1).size}e ${out.topology.elements(2).size}f ·
     ${g.triangleCount} triangles over ${g.triangleFaceIds.toSet().size} source polygons
@@ -932,7 +932,7 @@ val metrics =
                 row("after solveRealization()", solved.finalDiagnostics),
             ],
         )
-        .format("edge mean") { "%.5f".format(it) }
+        .format("edge mean") { (it as Number).f5 }
         .format("edge RMS dev", sci)
         .format("max planarity err", sci)
         .format("planarity RMS", sci)
@@ -1031,7 +1031,7 @@ val metrics =
         .format("tangency radius spread", sci)
         .format("tangency centroid offset", sci)
         .format("max planarity err", sci)
-        .format("dihedral mean") { "%.4f".format(it) }
+        .format("dihedral mean") { (it as Number).f4 }
         .format("dihedral spread", sci)
 
 markdown(
@@ -1137,7 +1137,7 @@ val metrics =
         .format("tangency radius spread", sci)
         .format("tangency centroid offset", sci)
         .format("max planarity err", sci)
-        .format("min dihedral") { "%.3f".format(it) }
+        .format("min dihedral") { (it as Number).f3 }
 
 markdown(
     "kkc",
@@ -1223,7 +1223,7 @@ val routes =
             ],
         )
         .format("tangency spread", sci)
-        .format("dihedral mean (rad)") { "%.4f".format(it) }
+        .format("dihedral mean (rad)") { (it as Number).f4 }
 
 markdown(
     "spectral",
@@ -1353,7 +1353,7 @@ markdown("counts", counts.h)
 
 ![An orbitable wireframe of the tesseract under a rotated perspective projection — a cube inside a cube with the eight connecting edges, visibly mid-rotation so the inner cell is turning out. Below it a table of the four rank-4 seeds with their vertex, edge, polygon and cell counts, all showing V minus E plus F minus C equal to zero, the polygons-per-cell histogram, and every one reporting false for closed 2-manifold](assets/polytope_examples/rank4.png)
 
-Every row satisfies `V − E + F − C = 0`, the Euler relation for a convex 4-polytope, and every row
+Every row satisfies \( V - E + F - C = 0 \), the Euler relation for a convex 4-polytope, and every row
 reports `false` for the closed-2-manifold check, since a 4-polytope is not a surface.
 
 There is no `triangulate()` for rank 4: a projected 4-polytope's polygons do not bound a surface,

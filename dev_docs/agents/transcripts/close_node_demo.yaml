@@ -134,11 +134,10 @@ operations:
           }
 
           [
-                  "grey = the original, cyan = its reversal",
-                  "square   reverse-twice: ${roundTrip(square)}",
-                  "glyph    reverse-twice: ${roundTrip(glyph)}",
-              ]
-              .joinToString("\n")
+              "grey = the original, cyan = its reversal",
+              "square   reverse-twice: ${roundTrip(square)}",
+              "glyph    reverse-twice: ${roundTrip(glyph)}",
+          ].joinToString("\n")
   - create:
       box: close_node_arrow
       name: the shipped primitive that has an interior Close in it

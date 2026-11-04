@@ -67,17 +67,34 @@ A parameter of the same kind wins (floating point for a FieldML `Float`, integra
 
 ## Passing a function
 
-A FieldML function can go wherever Kotlin expects a function: a Kotlin lambda parameter (`(Int, Int) -> Float`), a receiver lambda (`Box.() -> Unit`, whose receiver arrives as the first argument), or a Java interface such as `Runnable`, `Supplier` or `Comparator`. This one bends a line through `FLine.transform`:
+A FieldML function can go wherever Kotlin expects a function: a Kotlin lambda parameter (`(Int, Int) -> Float`), a receiver lambda (`Box.() -> Unit`, whose receiver arrives as the first argument), or a Java interface such as `Runnable`, `Supplier` or `Comparator`. This one moves the points of a line through `FLine.transform`, and draws the line before and after:
 
-```diffstatic {data-lang=fieldml}
-fline
-  |> moveTo 0.0 0.0
-  |> lineTo 100.0 0.0
-  |> lineTo 100.0 60.0
-  |> hostCall1 "transform" (fun p ->
-       vec3 (p.x) (p.y + 20.0 * sin (p.x / 25.0)) (p.z)
-     )
+```diffstatic_runner {data-lang=fieldml screenshot="assets/fieldml_host_bridge/transform.png" wait="1.0" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="fieldml-host-bridge-transform" w="760" h="360" alt="An output channel labelled main: a grey L-shape, a horizontal stroke then a vertical one, and over it the orange transformed copy: the same three points, with the corner lifted, so the horizontal stroke becomes a straight slope and the vertical stroke ends higher."}
+let straight =
+  fline
+    |> moveTo 0.0 0.0
+    |> lineTo 100.0 0.0
+    |> lineTo 100.0 60.0
+    |> stroked true
+    |> filled false
+    |> color (vec4 0.5 0.5 0.5 1.0)
+    |> thickness 2.0
+
+let warped =
+  straight
+    |> hostCall1 "transform" (fun p ->
+         vec3 (p.x) (p.y + 20.0 * sin (p.x / 25.0)) (p.z)
+       )
+    |> color (vec4 1.0 0.55 0.2 1.0)
+
+hostStaticCall "lines"
+  (thisBox, [straight, warped], "main", 360.0, 240.0, true, false, false, false, hostNull)
+  (hostClass "afield.ui.visualization.SomeSkikoKt")
 ```
+
+`transform` calls the function once for each stored point, so this three-point line keeps its three
+points: the corner and the end move, and the segments between them stay straight. Sample the line
+more finely first if you want the sine to show along it.
 
 `p` is a `Vec3` without you saying so. `FLine.transform` takes a Kotlin `(Vec3) -> Vec3`, and the type checker reads that signature, so `.x`, `.y` and `.z` are checked, `p.xx` is an error before the box runs, and completion works inside the body. The same goes for `Img.generate(w, h) { x, y -> … }` and `Img.mapIndexed { x, y, c, v -> … }`, where `x` and `y` are `Int`s and `x + y` is integer arithmetic, and for a receiver lambda (`BufferParameters.() -> Unit`), whose receiver is typed as its first parameter.
 
@@ -213,6 +230,40 @@ These are four frames of the spinning-triangle demo [below](#open-it), a second 
 
 ![four captures of a native Vulkan window, a second apart: a large filled triangle in the middle of a black frame, at a different rotation in each and shading from green-teal through cyan](assets/fieldml_frames_demo/spin-frames.png)
 
+
+## Calling a suspend method
+
+A Kotlin `suspend` method, such as `Renderer.run`, is called with `hostLaunch`: the method name, its arguments, the object, and then a function that receives the result once the method returns.
+
+```diffstatic {data-lang=fieldml}
+let openWindow title =
+  let w = hostNew {title = title} (hostClass "afield.graphics.vulkan.util.Window") in
+  let r = hostNew {mainWindow = w} (hostClass "afield.graphics.vulkan.Renderer") in
+  let _ = setProp "renderer" r in
+  // `run` renders until the window closes; the function runs then.
+  hostLaunch "run" () r (fun ignored -> print "renderer stopped")
+
+openWindow
+```
+
+`hostLaunch` returns at once with the call's `Job`, which you can `cancel`. The method starts inside the `hostLaunch` call, so one that returns without suspending hands its result to your function before `hostLaunch` returns, and an error it throws before suspending is reported on your box. After its first suspension it continues on Field's main loop, as `start(renderer::run)` does in a Kotlin box. An error after that point is shown on your box as an error, because the box that called it has already finished.
+
+`hostCall` refuses a suspend method, and `hostLaunch` refuses one that is not suspend.
+
+The suspend demo has no Kotlin box: one FieldML box opens the window and starts the renderer this way, and a second rewrites a ribbon's vertices every frame. Run `window and renderer (FieldML)`, then `A ribbon rewritten every frame`. The renderer box wraps the window in `once "renderer" (fun u -> …)`, which makes it the first time the box runs and returns the same renderer on every later run, so running the box again does not open a second window. The ribbon box ends by calling `snapshotWindow`, which puts a picture of the window in the box's `window` output, so the preview below shows what the window drew.
+
+[Open ↗](offline.html?file=assets/fieldml_suspend_demo/metadata.edn)
+
+<iframe
+    src="offline.html?file=assets/fieldml_suspend_demo/metadata.edn&amp;focus=outputs"
+    title="FieldML suspend demo — offline viewer"
+    style="width:100%; height:560px; border:1px solid #444; border-radius:8px; background:#111;"
+    loading="lazy"
+    allowfullscreen>
+</iframe>
+
+![two captures of a native Vulkan window a second apart: a thick colour-graded ribbon on black, following a sine wave whose phase has moved between them](assets/fieldml_suspend_demo/ribbon-pair.png)
+
 ## By name
 
 To pass arguments by name, and leave out the ones with Kotlin defaults, write a record where a tuple would go. A positional call cannot skip a parameter, so named arguments are the only way to use a default:
@@ -241,12 +292,52 @@ This works with `hostCall`, `hostStaticCall`, `hostExt` and `hostNew` alike: a t
 
 A name the method does not have is an error where it is written. When two overloads both accept the names you gave, the call is refused with the candidates listed, and a `?` on each parameter that has a default.
 
+## Waiting inside a frames body
+
+`hostAwait` calls a `suspend` method and waits for it: the method name, its arguments, and the object. The result is the value of the expression, as with `hostCall`. It works inside a function that Kotlin calls as a `suspend` block, which is what `frames`, `eachFrame`, `loop`, `forever` and `Box.launchFrames` take. Inside `frames`, whose body runs once and moves the frame clock itself, that means a FieldML script can have a middle:
+
+```diffstatic {data-lang=fieldml}
+let raiseColumn k = print k
+
+let script =
+  hostStaticCall "frames" (fun f ->
+    let grow k =
+      if k <= 48 then
+        let _ = raiseColumn k in
+        // Continue on the next line 40 ms (and at least one frame) later.
+        let _ = hostAwait "delay" 40 f in
+        grow (k + 1)
+      else Unit
+    in grow 0
+  ) (hostClass "afield.runtime.lifecycle.PhasedKt")
+
+script
+```
+
+`frames` only builds the script. Start it with `thisBox |> hostExt (hostClass "afield.runtime.lifecycle.PhasedKt") "launchFrames" (script, "script", "frames", true)`, which runs it on Field's main loop and stops it when the box is stopped.
+
+`hostAwait "frame" () f` waits exactly one frame. A function that Kotlin calls in the ordinary way cannot wait: the function given to `map`, or to `Mesh.write` as its builder, runs to the end before Kotlin continues, so `hostAwait` inside it stops the box with an error naming the problem. Use `hostLaunch` there to start the method without waiting.
+
+The frames sequence demo raises a band one column at a time, holds it, and starts again in the other colour, all from one FieldML `frames` body. Run `window and renderer (FieldML)`, then `a script across frames`.
+
+[Open ↗](offline.html?file=assets/fieldml_frames_sequence_demo/metadata.edn)
+
+<iframe
+    src="offline.html?file=assets/fieldml_frames_sequence_demo/metadata.edn&amp;focus=outputs"
+    title="FieldML frames sequence demo — offline viewer"
+    style="width:100%; height:560px; border:1px solid #444; border-radius:8px; background:#111;"
+    loading="lazy"
+    allowfullscreen>
+</iframe>
+
+![two captures of a native Vulkan window 0.6 s apart, side by side: on the left an orange band that has risen across the left third of the window, its lower edge a sine curve; on the right the same band reaching three quarters of the way across](assets/fieldml_frames_sequence_demo/sequence-pair.png)
+
 ## What it still will not do
 
 - A JVM `Map` comes back as a FieldML record, so passing one to `hostCall` as one argument needs `hostCall1`, which never spreads. Lists work the same way.
 - A callback written inside a helper has untyped parameters. `line |> hostCall1 "transform" (fun p -> …)` in a pipeline is typed; the same call inside `let warp line = …` is not, because `line` is a function parameter with no known class. Use `hostAs "Vec3"` there.
 - A lambda's result is not checked against what Kotlin wants. It is converted, which is why `fun x y -> 0` satisfies a function returning `Float`, but a result of the wrong shape fails when it runs.
-- A `suspend` method cannot be called. Passing a FieldML function as a suspend lambda works (see [Every frame](#every-frame)), but calling `Renderer.run`, which is `suspend`, does not. The box that owns your window and renderer is still a Kotlin box.
+- A `suspend` method is called with `hostLaunch`, not `hostCall`, and its result arrives in a function rather than as the value of the expression (see [Calling a suspend method](#calling-a-suspend-method)). `hostAwait` waits for one, but only inside a body Kotlin calls as a `suspend` block (see [Waiting inside a frames body](#waiting-inside-a-frames-body)).
 - `internal` Kotlin members cannot be reached by their source names, because the compiler renames them.
 - Buffers, kernels and anchors, which FieldML cannot build and which have no constructor to call, are out of reach.
 
@@ -305,6 +396,14 @@ The frames demo is the same scene with a `Frames` loop on it, the spinning trian
 
 [Open ↗](offline.html?file=assets/fieldml_frames_demo/metadata.edn), or open the [`fieldml_frames_demo`](agent_transcripts.md#fieldml_frames_demo) starting point from the welcome screen.
 
+<iframe
+    src="offline.html?file=assets/fieldml_frames_demo/metadata.edn&amp;focus=outputs"
+    title="FieldML frames demo — offline viewer"
+    style="width:100%; height:560px; border:1px solid #444; border-radius:8px; background:#111;"
+    loading="lazy"
+    allowfullscreen>
+</iframe>
+
 | In | Change | What happens |
 | --- | --- | --- |
 | the FieldML box | `* 0.04` → `* 0.2` | it spins five times faster, and the colour cycles with it |
@@ -318,6 +417,14 @@ In the macro module demo, a macro builds the scene: instead of hand-writing `par
 Then run the fourth box while it is spinning. It writes `spinRate` with `setRootProp`, and the scene reads that slot on *every frame*, so another box changes the speed of the running scene.
 
 [Open ↗](offline.html?file=assets/fieldml_macro_module_demo/metadata.edn), or open the [`fieldml_macro_module_demo`](agent_transcripts.md#fieldml_macro_module_demo) starting point from the welcome screen.
+
+<iframe
+    src="offline.html?file=assets/fieldml_macro_module_demo/metadata.edn&amp;focus=outputs"
+    title="FieldML moduleHere demo — offline viewer"
+    style="width:100%; height:560px; border:1px solid #444; border-radius:8px; background:#111;"
+    loading="lazy"
+    allowfullscreen>
+</iframe>
 
 <div class="field-data-table" markdown>
 
@@ -336,6 +443,14 @@ Its output record says what the macro did: `builtBy = "_moduleHere"` names the f
 The mesh demo has a vertex shader with real inputs, whose data FieldML recomputes every frame: two `layout(location = …) in` variables, both written through `Mesh.write`, one positionally and one by name, leaving out `Mesh.write`'s `inside` default. Like the frames demo, it opens its own window.
 
 [Open ↗](offline.html?file=assets/fieldml_mesh_demo/metadata.edn), or open the [`fieldml_mesh_demo`](agent_transcripts.md#fieldml_mesh_demo) starting point from the welcome screen.
+
+<iframe
+    src="offline.html?file=assets/fieldml_mesh_demo/metadata.edn&amp;focus=outputs"
+    title="FieldML mesh demo — offline viewer"
+    style="width:100%; height:560px; border:1px solid #444; border-radius:8px; background:#111;"
+    loading="lazy"
+    allowfullscreen>
+</iframe>
 
 ![four captures of a native Vulkan window a second apart, each a ring of coloured triangles on black, the hues rotating between frames](assets/fieldml_mesh_demo/ring-frames.png)
 

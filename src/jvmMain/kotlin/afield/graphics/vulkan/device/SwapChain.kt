@@ -33,13 +33,38 @@ class SwapChain(
     presentationQueue: PresentQueue, concurrentQueues: Array<Queue>?
 ) {
     private val bestEffortPresentation = window.bestEffortPresentation
+    /** The logical device this chain's images and semaphores belong to. */
     val device: Device
+
+    /** The window surface being presented to. One swapchain presents to exactly one surface. */
     val surface: Surface
+
+    /**
+     * A view per swapchain image, in the order the driver reports them. The driver decides how many
+     * images there are, so this array's length is the count that matters and [numImages] reads it.
+     */
     val imageViews: Array<ImageView>
+
+    /** The pixel format and colour space chosen for the swapchain images. */
     var surfaceFormat: SurfaceFormat
+
+    /** The size of the swapchain images in pixels, as agreed with the surface at creation. */
     var swapChainExtent: VkExtent2D
+
+    /**
+     * One acquire and render-complete semaphore pair per swapchain image. Acquisition takes the
+     * pair at [currentFrame]; presentation waits on the pair belonging to the image being shown.
+     */
     val syncSemaphoresList: Array<SyncSemaphores>
+
+    /**
+     * The surface allows its images to be used as a transfer source, which is what lets a presented
+     * frame be copied out for a screenshot. Requested in the image usage flags only when true,
+     * since asking for an unsupported usage fails swapchain creation.
+     */
     val supportsTransferSrc: Boolean
+
+    /** The raw `VkSwapchainKHR` handle, for the LWJGL calls Field has no wrapper for. */
     var vkSwapChain: Long = 0
 
     /** True when VK_EXT_present_timing is active on this swapchain (never on macOS/MoltenVK). */
@@ -49,6 +74,11 @@ class SwapChain(
     var refreshDurationNs: Long = 0L
         private set
 
+    /**
+     * Which [syncSemaphoresList] pair the next acquisition will use, advanced by [presentImage]
+     * rather than by acquisition. It counts presents modulo the image count, so it is not the
+     * image index Vulkan hands back and not a frame number.
+     */
     var currentFrame: Int = 0
         private set
 
@@ -140,11 +170,20 @@ class SwapChain(
         }
     }
 
+    /**
+     * The id the next present will be tagged with, counting from 1 because Vulkan reads 0 as
+     * untagged. It advances only while [Device.usePresentIndexing] holds, which is why the
+     * wait-for-present path has nothing to wait on before the first present.
+     */
     var nextPresentId: Long = 1 // must be > 0
 
     /** Rate-limits the "persistent SUBOPTIMAL at a matching extent" warning to once per swapchain. */
     private var loggedSuboptimal = false
 
+    /**
+     * What [presentImage] reports: whether the caller should rebuild the swapchain, the present id
+     * the frame was tagged with (null when present indexing is off) and the raw `VkResult`.
+     */
     data class PresentResult(val resize: Boolean, val presentId: Long?, val result: Int)
 
     // ---------------------------------------------------------------------------
@@ -243,6 +282,13 @@ class SwapChain(
     }
 
 
+    /**
+     * Take the next image to render into, returning its index, or `-1` when the swapchain is out of
+     * date and the caller should rebuild it. The acquire is given 16 ms rather than forever, because
+     * a hidden Wayland surface can stop producing images indefinitely and the Runloop has other
+     * windows to serve; a timeout raises a retryable `Renderer.ImageNotAvailable` instead of
+     * blocking the frame.
+     */
     fun acquireNextImage() = logTime("ani") {
         var imageIndex: Int
         MemoryStack.stackPush().use { stack ->
@@ -485,6 +531,10 @@ class SwapChain(
         }
     }
 
+    /**
+     * Destroy the swapchain along with every image view and semaphore pair it owns. The caller is
+     * responsible for having waited the device idle first; this issues no wait of its own.
+     */
     fun cleanup() {
         swapChainExtent.free()
         Arrays.asList(*imageViews).forEach(Consumer { obj: ImageView -> obj.cleanup() })
@@ -524,9 +574,21 @@ class SwapChain(
         return result
     }
 
+    /**
+     * How many images the swapchain has, counted from what the driver created rather than from what
+     * was asked for. On a surface reporting no maximum the request is dropped and only the surface
+     * minimum is asked for, so this is the number to read before assuming a frame depth.
+     */
     val numImages: Int
         get() = imageViews.size
 
+    /**
+     * Present the image at `imageIndex`, waiting on its render-complete semaphore, and advance
+     * [currentFrame]. `frameId` and `windowIndex` only label the entry written to
+     * `FramePresentationLog`. `VK_ERROR_OUT_OF_DATE_KHR` comes back as a resize; `VK_SUBOPTIMAL_KHR`
+     * asks for one only when the surface extent has really changed, since some drivers report
+     * suboptimal at a matching extent every frame and rebuilding on each would spin.
+     */
     fun presentImage(queue: Queue, imageIndex: Int, frameId: Long = -1L, windowIndex: Int = 0): PresentResult {
         var resize = false
         var presentIdValue: Long? = null
@@ -634,9 +696,14 @@ class SwapChain(
         return PresentResult(resize, presentIdValue, result)
     }
 
+    /** A `VkFormat` and `VkColorSpaceKHR` pair, as offered by the surface and chosen at creation. */
     @JvmRecord
     data class SurfaceFormat(val imageFormat: Int, val colorSpace: Int)
 
+    /**
+     * The two binary semaphores one swapchain image needs: one the presentation engine signals when
+     * the image is ready to draw into, one the rendering signals when it is ready to show.
+     */
     @JvmRecord
     data class SyncSemaphores(val imgAcquisitionSemaphore: Semaphore, val renderCompleteSemaphore: Semaphore) {
         constructor(device: Device) : this(Semaphore(device, timeline = false), Semaphore(device, timeline = false))

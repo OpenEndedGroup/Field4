@@ -147,7 +147,7 @@ the segments you named, one property read each. A pattern with a literal prefix
 descends that prefix directly and then searches only the subtree below it. On a
 graph of any size that is a large difference, and you can measure it:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/graph_query/cost.png" alt="an output panel holding one line of text, the two measurements the example prints: naming a path: 4 edge reads — walking all 4443 slots: 1666 edge reads" wait="1.5" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="graph-query-cost" w="760" h="220"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/graph_query/cost.png" alt="a two-row table, the two measurements the example prints: naming a path, 4 edge reads; walking all 4443 slots, 1666 edge reads" wait="1.5" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="graph-query-cost" w="520" h="120"}
 :::static
 var reads = 0
 
@@ -190,7 +190,12 @@ val everything = reads
 
 display(
     "main",
-    "naming a path: $named edge reads — " + "walking all ${all.size} slots: $everything edge reads",
+    """
+    <table style="font-size:20px;border-spacing:24px 8px">
+      <tr><td>naming a path</td><td style="text-align:right">$named edge reads</td></tr>
+      <tr><td>walking all ${all.size} slots</td><td style="text-align:right">$everything edge reads</td></tr>
+    </table>
+    """,
 )
 ```
 

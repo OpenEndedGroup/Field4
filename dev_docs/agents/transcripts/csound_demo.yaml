@@ -156,7 +156,7 @@ operations:
 
           pluck.setChannel("cutoff", 900) // chnget "cutoff" reads it next k-cycle
           pluck.setStringChannel("voice", "from Kotlin") // an S channel; Reverb outvalues it back
-          println("level now: ${"%.4f".format(pluck.channel("level"))}")
+          println("level now: ${pluck.channel("level").f4}")
 
           // Every channel the orchestra allocated, with the range chn_k declared for it.
           pluck.channels().forEach { c ->
@@ -174,7 +174,7 @@ operations:
           var n = 0
           run.own(
               pluck.onOutvalue("level") { v ->
-                  if (n++ % 40 == 0) display("level", "<div style='padding:8px'>Reverb rms ${"%.4f".format(v as Double)}</div>")
+                  if (n++ % 40 == 0) display("level", "<div style='padding:8px'>Reverb rms ${(v as Double).f4}</div>")
               },
           )
   - create:
@@ -235,7 +235,7 @@ operations:
           fun rms(x: FloatArray) = sqrt(x.drop(4800).sumOf { it.toDouble() * it } / (x.size - 4800))
           val expected = 1.0 / sqrt(1.0 + 16.0) // a 2nd-order Butterworth at twice its cutoff
           println(
-              "in rms ${"%.4f".format(rms(dry))}, out rms ${"%.4f".format(rms(low))}: gain ${"%.4f".format(rms(low) / rms(dry))}, Butterworth says ${"%.4f".format(expected)}",
+              "in rms ${rms(dry).f4}, out rms ${rms(low).f4}: gain ${(rms(low) / rms(dry)).f4}, Butterworth says ${expected.f4}",
           )
           val window = 4800 until 5040
           showSignals(
@@ -275,7 +275,7 @@ operations:
           val (left, _) = cs.renderOffline()
           cs.close()
           println(
-              "wrote ${wave.size} values; read back equal: ${wave.contentEquals(back)}; rendered ${left.size} frames, peak ${"%.3f".format(left.maxOf { abs(it) })}",
+              "wrote ${wave.size} values; read back equal: ${wave.contentEquals(back)}; rendered ${left.size} frames, peak ${left.maxOf { abs(it) }.f3}",
           )
           showSignals(
               "ftable 1, read back" to (0 until 4096 step 8).map { back[it] },

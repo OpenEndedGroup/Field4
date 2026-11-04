@@ -47,14 +47,14 @@ val plaque = depth.toReliefMesh(scale = 0.35, baseThickness = 0.12) // χ = 2, n
 plaque.toSolid() // legal
 ```
 
-You can predict the size of the mesh before you build it. With `P = 2·nx + 2·nz` rim vertices, a
-relief has `(nx+1)(nz+1) + P + 1` vertices (the grid, the rim at the base, and one centre vertex the
-floor fans out from) and `2·nx·nz + 3·P` triangles. Its Euler characteristic is `2` at every
+You can predict the size of the mesh before you build it. With \( P = 2n_x + 2n_z \) rim vertices, a
+relief has \( (n_x+1)(n_z+1) + P + 1 \) vertices (the grid, the rim at the base, and one centre vertex the
+floor fans out from) and \( 2n_x n_z + 3P \) triangles. Its Euler characteristic is `2` at every
 resolution, as a closed surface with no holes should be.
 
 ??? aside "The rim winds clockwise in `(x, z)`"
 
-    The rim runs clockwise in `(x, z)`, because `x̂ × ẑ = −ŷ`: a clockwise loop in those two
+    The rim runs clockwise in `(x, z)`, because \( \hat{x} \times \hat{z} = -\hat{y} \): a clockwise loop in those two
     coordinates is the one whose right-hand normal points `+y`. That matches the way the grid quads
     wind, so each wall crosses its shared rim edge in the opposite direction, as a consistently
     oriented closed mesh requires. Wound the other way, the mesh still renders, with a negative
@@ -99,7 +99,7 @@ vol(A ∪ B) + vol(A ∩ B) = vol(A) + vol(B)
 
 It is a quick check on any Boolean. A union that dropped a component, a difference that kept a
 coincident face, or an intersection that misclassified a shell changes one side and not the other.
-The companion `vol(A − B) = vol(A) − vol(A ∩ B)` is checked in the same box.
+The companion \( \mathrm{vol}(A - B) = \mathrm{vol}(A) - \mathrm{vol}(A \cap B) \) is checked in the same box.
 
 The renders come from `TriMesh.renderPng`, a CPU rasteriser with a depth-tested wireframe. It does
 not use AWT, so it is safe to call from a box on macOS. For a lit picture instead of a wireframe,
@@ -144,8 +144,8 @@ the entry point to the second. This box builds both and compares them.
 
 ## Why Manifold reports a negative genus
 
-Genus is computed from the Euler characteristic of the whole surface, `g = (2 − χ)/2`, and χ adds
-across disjoint components, so `k` separate pieces report `1 − k`. A negative genus is a
+Genus is computed from the Euler characteristic of the whole surface, \( g = (2 - \chi)/2 \), and χ adds
+across disjoint components, so `k` separate pieces report \( 1 - k \). A negative genus is a
 component count in disguise, not an error: composing `k` translated plaques for `k = 1..4` gives
 genus `0, −1, −2, −3` while `decompose()` gives `1, 2, 3, 4` parts.
 

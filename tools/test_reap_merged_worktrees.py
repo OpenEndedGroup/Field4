@@ -613,6 +613,19 @@ class CleanBuildsTests(unittest.TestCase):
         os.utime(path / "build/js/a/b.js", (now - 60, now - 60))
         self.assertIsNotNone(reaper.recently_active(path, 12, now))
 
+    def test_a_fresh_ds_store_does_not_mark_the_tree_active(self) -> None:
+        """Finder rewrites .DS_Store when a folder is merely viewed; that is not a working session."""
+        path = self.built_tree()
+        now = time.time()
+        for f in path.rglob("*"):
+            if f.is_file():
+                os.utime(f, (now - 48 * 3600, now - 48 * 3600))
+        (path / "build/.DS_Store").write_text("")
+        self.assertIsNone(reaper.recently_active(path, 12, now))
+        # Control: an ordinary file at the same moment does mark it, so the name is what excused it.
+        (path / "build/js/a/b.js").touch()
+        self.assertIsNotNone(reaper.recently_active(path, 12, now))
+
     def test_a_find_that_cannot_answer_reads_as_active(self) -> None:
         """It failed open once: BSD find rejected "@<epoch>", printed nothing, and every tree read
         as quiet. An error must keep the tree."""

@@ -80,9 +80,9 @@ module.face_decay =
 
 ## Start
 
-[Download the starter](assets/stackauto_conversation/stackauto_conversation.zip), the document as
-the recording began. Unzip it into your Field workspace, keeping the `stackauto_conversation` folder
-intact, and open it. It has two boxes:
+[Open the starter](offline.html?zip=assets/stackauto_conversation/stackauto_conversation.zip), the
+document as the recording began: it opens in the document viewer, and **Open in Field·4** copies it
+into your workspace as a new document. It has two boxes:
 
 | Box | What it is |
 | --- | --- |
@@ -452,7 +452,7 @@ cp -R dev_docs/agents/demos/stackauto_conversation_polytope ~/Documents/AFieldWo
 Launch the renderer, run the polytope, and the finished burst plays. The recorded turns are in the
 polytope box's AI4 chat. Opening the chat does not call a model.
 
-![The polytope box with its AI4 chat restored, at the model's last reply: yes, the live cycle now matches what you asked for](assets/stackauto_conversation/saved-chat.png)
+![The polytope box with its AI4 chat restored: the user's last request in orange, asking for ragged glowing frames at the burst and a whole solid at home, then a sheet of nine frames of the polytope bursting and healing, and the model's reply that the live cycle now matches what was asked for](assets/stackauto_conversation/saved-chat.png)
 
 ## Limits
 

@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "capturedAt": "2026-10-31T13:33:29.758Z",
+  "documentName": "controls_presets_morph_midi",
+  "outputs": [
+    {
+      "uid": "controls_presets_demo",
+      "channel": "look",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 536,
+      "height": 646,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "controls_presets_demo",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 236,
+      "height": 191,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "controls_midi_demo",
+      "channel": "synth",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 536,
+      "height": 154,
+      "path": "outputs/2.html"
+    }
+  ]
+}

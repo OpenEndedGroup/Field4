@@ -1,0 +1,20 @@
+{
+  "passed": true,
+  "controls": [
+    "Document notes",
+    "Run reveal_wave",
+    "Start document guide",
+    "Close document guide"
+  ],
+  "sourceSha256": "bdf44fd671a59345d59b4a9650567f9448a1fb0c59c8e39268b0569d7799f171",
+  "pictures": [
+    {
+      "file": "live-document-audience.png",
+      "sha256": "16a91e44d0a159aff268799a30aecabeff686269036371abe12f0aece7ac1a0b"
+    },
+    {
+      "file": "live-document-controls.png",
+      "sha256": "2415aaf42e57e2d2fd50b3cfa771e505be3b84cb2f38cb2bdd162d79c05878be"
+    }
+  ]
+}

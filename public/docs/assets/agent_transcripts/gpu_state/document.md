@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. renderer
@@ -34,7 +34,7 @@ start(renderer::run)
 <!-- field-box id="gs_sim" index="1" -->
 
 ```edn [field-box id="gs_sim" role="properties"]
-{"id" "gs_sim" "index" 1 "name" "simulate" "parents" ["root" "gs_renderer"] "children" ["gs_draw"] "properties" {"children" #{#afield/box "gs_draw"} "parents" #{#afield/box "root" #afield/box "gs_renderer"} "name" "simulate" "_tombstone" false "frame" #afield/rect [340.0 40.0 300.0 100.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "gs_sim_compute_.glsl" "lines" 58 "characters" 1856 "sha256" "0a4d10ae493ee9e931ba3192ec6988cd7fd89ed350fd5863486ab9e6b0acbd01"} {"name" "code" "language" "kotlin" "path" "gs_sim_code_.kt" "lines" 128 "characters" 5080 "sha256" "35d919970c4b8c7d2c47079f1bee4753973fe3e2013dffa8ad47cf12bcda7905"}]}
+{"id" "gs_sim" "index" 1 "name" "simulate" "parents" ["root" "gs_renderer"] "children" ["gs_draw"] "properties" {"children" #{#afield/box "gs_draw"} "parents" #{#afield/box "root" #afield/box "gs_renderer"} "name" "simulate" "_tombstone" false "frame" #afield/rect [340.0 40.0 300.0 100.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "gs_sim_compute_.glsl" "lines" 58 "characters" 1856 "sha256" "0a4d10ae493ee9e931ba3192ec6988cd7fd89ed350fd5863486ab9e6b0acbd01"} {"name" "code" "language" "kotlin" "path" "gs_sim_code_.kt" "lines" 128 "characters" 5071 "sha256" "b1f1694632c9c4111828ef2782272b50679de27ae984fa6a799104f2766ad1fe"}]}
 ```
 
 ```glsl [field-property box="gs_sim" name="compute" path="gs_sim_compute_.glsl"]
@@ -161,7 +161,7 @@ sim.state = { if (renderer.frameCounter % 2L == 0L) stateA else stateB }
 sim.prevState = { if (renderer.frameCounter % 2L == 0L) stateB else stateA }
 sim.anchors = { anchors }
 sim.heat = { heat }
-sim.count = { N.toUInt() }
+sim.count = { N }
 sim.dt = {
     1f / 60f
 } // FIXED, not measured: stability depends on it

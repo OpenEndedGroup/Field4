@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. path tracing renderer
@@ -32,7 +32,7 @@ start(renderer::run)
 <!-- field-box id="polytope_manifold_trace" index="1" -->
 
 ```edn [field-box id="polytope_manifold_trace" role="properties"]
-{"id" "polytope_manifold_trace" "index" 1 "name" "polytope, eroded into a shell, cut open, traced" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "polytope, eroded into a shell, cut open, traced" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_manifold_trace_code_.kt" "lines" 126 "characters" 5408 "sha256" "f4c811d7f918af481add9f85fc4d90ebd2ef4e5cf745434abba0419de866dd50"}]}
+{"id" "polytope_manifold_trace" "index" 1 "name" "polytope, eroded into a shell, cut open, traced" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "polytope, eroded into a shell, cut open, traced" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_manifold_trace_code_.kt" "lines" 125 "characters" 5316 "sha256" "31a7d9797da983d00b1aafca06a17bb6b19925215e925a3c8eb731ddba9cfd46"}]}
 ```
 
 ```kotlin [field-property box="polytope_manifold_trace" name="code" path="polytope_manifold_trace_code_.kt"]
@@ -80,10 +80,10 @@ val shaded = Solid.scope {
     val solid = plain.toSolid()
     println(
         "Manifold: status ${solid.status}, genus ${solid.genus}, " +
-            "volume ${"%.4f".format(solid.volume)}, area ${"%.4f".format(solid.surfaceArea)}",
+            "volume ${solid.volume.f4}, area ${solid.surfaceArea.f4}",
     )
     println(
-        "   Field says volume ${"%.4f".format(plain.signedVolume())}, " +
+        "   Field says volume ${plain.signedVolume().f4}, " +
             "differing by ${"%.2e".format(kotlin.math.abs(plain.signedVolume() - solid.volume))}",
     )
 
@@ -97,13 +97,13 @@ val shaded = Solid.scope {
     val inner = solid.minkowskiDifference(ball)
     val wall = solid - inner
     println(
-        "shell: volume ${"%.4f".format(wall.volume)}, genus ${wall.genus}, " + "${wall.triangleCount} triangles",
+        "shell: volume ${wall.volume.f4}, genus ${wall.genus}, " + "${wall.triangleCount} triangles",
     )
     // A constant-thickness wall over a convex body has volume area*t minus a curvature
     // term, so the ratio lands a little under one and says how much the corners take back.
     println(
-        "   area * thickness = ${"%.4f".format(solid.surfaceArea * thickness)}, " +
-            "ratio ${"%.3f".format(wall.volume / (solid.surfaceArea * thickness))}",
+        "   area * thickness = ${(solid.surfaceArea * thickness).f4}, " +
+            "ratio ${(wall.volume / (solid.surfaceArea * thickness)).f3}",
     )
 
     /*
@@ -116,8 +116,7 @@ val shaded = Solid.scope {
     // shallow ones average together and the polytope stops reading as one.
     val shaded = cut.toTriMesh(normals = true, minSharpAngle = 20.0)
     println(
-        "cut: genus ${cut.genus}, volume ${"%.4f".format(cut.volume)}, " +
-            "${shaded.triangleCount} triangles for the render",
+        "cut: genus ${cut.genus}, volume ${cut.volume.f4}, " + "${shaded.triangleCount} triangles for the render",
     )
 
     shaded

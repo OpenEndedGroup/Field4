@@ -44,8 +44,8 @@ markdown(
 |---|---|
 | points drawn, circle and heart | ${drawnFrom.size} and ${drawnTo.size} |
 | points after resampling | ${from.size} and ${to.size} |
-| squared travel, matched (left) | ${"%.0f".format(match.squaredCost)} |
-| squared travel, by list index (right) | ${"%.0f".format(byIndex)} |
+| squared travel, matched (left) | ${match.squaredCost.f0} |
+| squared travel, by list index (right) | ${byIndex.f0} |
 """,
     width = 420,
 )

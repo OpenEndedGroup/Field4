@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. Out to a file and back — what each format keeps
@@ -18,7 +18,7 @@ What comes back from a file is not what went out, and this is the round trip tha
 Nothing here writes into the repository: a temp directory, deleted at the end.
 
 ```edn [field-box id="disk_roundtrip" role="properties"]
-{"id" "disk_roundtrip" "index" 0 "name" "Out to a file and back — what each format keeps" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Out to a file and back — what each format keeps" "_tombstone" false "frame" #afield/rect [80.0 210.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "disk_roundtrip_code_.kt" "lines" 61 "characters" 2874 "sha256" "a9d22845368b09c885220bf7e064f5e46f4f6316c12f5982710a800573ed4486"}]}
+{"id" "disk_roundtrip" "index" 0 "name" "Out to a file and back — what each format keeps" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Out to a file and back — what each format keeps" "_tombstone" false "frame" #afield/rect [80.0 210.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "disk_roundtrip_code_.kt" "lines" 61 "characters" 2862 "sha256" "58349068c234aed8a157f9514be803d3700499d1c941fee29c1e97203bb73e3e"}]}
 ```
 
 ```kotlin [field-property box="disk_roundtrip" name="code" path="disk_roundtrip_code_.kt"]
@@ -63,7 +63,7 @@ try {
     println(row("via ball.stl", viaStl))
     println(row("via ball.stl, welded", welded))
     println()
-    println("mean edge length ${"%.5f".format(source.meanEdgeLength())} — the scale that makes")
+    println("mean edge length ${source.meanEdgeLength().f5} — the scale that makes")
     println("$weldTolerance a safe weld tolerance rather than a guess")
     println()
     println("OBJ indexes positions, normals and uvs separately, so it keeps the structure and")

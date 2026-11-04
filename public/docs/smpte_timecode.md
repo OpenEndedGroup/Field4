@@ -44,7 +44,7 @@ val hour = Timecode.parse("01:00:00;00").totalSeconds
 markdown(
     "main",
     "`$t` + 1 frame = `${t + 1}`  \n`$tenth` + 1 frame = `${tenth + 1}`  \n" +
-        "an hour of drop-frame labels is ${"%.3f".format(hour)} s of wall time",
+        "an hour of drop-frame labels is ${hour.f3} s of wall time",
 )
 ```
 
@@ -127,7 +127,7 @@ display(
     <polyline points="$spd" fill="none" stroke="#c52" stroke-width="1.5"/>
     <text x="4" y="14" fill="#2a7">decoded frame (0 … ${fMax.toInt()})</text>
     <text x="4" y="${h - 6}" fill="#c52">measured speed (0.8 … 1.2)</text>
-    <text x="${w / 2 - 40}" y="${h + 22}" fill="#999">playback time, s (0 … ${"%.2f".format(tMax)})</text>
+    <text x="${w / 2 - 40}" y="${h + 22}" fill="#999">playback time, s (0 … ${tMax.f2})</text>
   </g></svg>""",
 )
 markdown(
@@ -188,6 +188,57 @@ import afield.io.timecode.*
 
 val clock = TimecodeClock(TimecodeRate.FPS_30).generate(Timecode.parse("00:59:50:00", TimecodeRate.FPS_30))
 println(clock.now()) // 00:59:50:00, counting from the moment generate was called
+```
+
+This box follows LTC delivered in 512-sample blocks at the pace audio would bring them, stops the
+source after a second and a half, and reads the clock 60 times a second throughout:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/smpte_timecode/clock_freewheel.png" alt="a plot of clock.seconds read at 60 Hz against wall time: a straight, smooth ramp of green dots, which carries on for half a second past the dashed line where the LTC stops, then flattens into a row of grey dots once the clock is no longer locked; below, the reading count and the timecode it held at" wait-output=true wait-output-kind=display wait-output-channel="info" capture="box" embed=true name="smpte-clock-freewheel" w="760" h="420"}
+:::static
+import afield.io.timecode.*
+
+// LTC at 24 fps, delivered in 512-sample blocks at the pace audio would bring them, for 1.5 s; then
+// the source stops. The clock is read every 1/60 s throughout, as a draw loop would.
+val clock = TimecodeClock(TimecodeRate.FPS_24).followLtc(48000)
+val ltc = LtcEncoder.render(Timecode.parse("01:00:00:00", TimecodeRate.FPS_24), 2.0)
+val stopAt = 1.5
+val t0 = System.nanoTime()
+var fed = 0
+val readings = ArrayList<Triple<Double, Double, Boolean>>()
+while (true) {
+    val now = (System.nanoTime() - t0) / 1e9
+    if (now > 3.0) break
+    while (now < stopAt && fed < ltc.size && fed / 48000.0 < now) {
+        clock.feedLtc(ltc, fed, minOf(512, ltc.size - fed))
+        fed += 512
+    }
+    readings += Triple(now, clock.seconds, clock.locked)
+    Thread.sleep(16)
+}
+
+// clock.seconds (from the first locked reading) against wall time, green while locked, grey after.
+val first = readings.first { it.third }
+val w = 640.0
+val h = 220.0
+fun x(t: Double) = t / 3.0 * w
+fun y(s: Double) = h - (s - first.second) / 2.0 * h
+val dots = readings.filter { it.first >= first.first }.joinToString("") { (t, s, locked) ->
+    "<circle cx='${x(t).f1}' cy='${y(s).f1}' r='1.6' fill='${if (locked) "#2a7" else "#999"}'/>"
+}
+display(
+    "main",
+    """<svg width="${w + 60}" height="${h + 40}" style="font: 12px sans-serif">
+  <g transform="translate(40,10)">
+    <rect width="$w" height="$h" fill="none" stroke="#999"/>
+    <line x1="${x(stopAt).f1}" x2="${x(stopAt).f1}" y1="0" y2="$h" stroke="#c52" stroke-dasharray="4 3"/>
+    <text x="${x(stopAt) + 4}" y="14" fill="#c52">LTC stops</text>
+    $dots
+    <text x="4" y="14" fill="#2a7">clock.seconds, read at 60 Hz</text>
+    <text x="${w / 2 - 40}" y="${h + 22}" fill="#999">wall time, s (0 … 3)</text>
+  </g></svg>""",
+)
+val last = readings.last()
+markdown("info", "${readings.size} readings; held at **${clock.now()}**, locked: ${last.third}")
 ```
 
 Feed `feedLtc` from the thread that owns the audio buffers. The decoder holds per-sample state and

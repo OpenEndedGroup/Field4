@@ -1,6 +1,6 @@
 # Presenting with Field
 
-A Field presentation is a document you can teach from. Its Kotlin code combines HTML slides, real webpages, YouTube video and live Field documents. The audience gets a separate window; your Field document keeps the source and guide notes. Saved macros and interactive guides work inside the live document on the audience display.
+With a few lines of Kotlin, Field can produce presentations that combine HTML slides, real webpages, YouTube video and live Field documents ([show a live document](#bring-the-working-material-on-screen)). A presentation is itself a document you can teach from. The audience gets a separate window; your Field document keeps the source and guide notes. Saved macros and interactive guides work inside the live document on the audience display.
 
 ## Start a presentation
 
@@ -10,13 +10,14 @@ With [Field running](installation.md) in its Electron app, open Welcome:
 2. Press **Restart Field**. Field prepares the registered kit before restarting; the same Electron window reconnects.
 3. Expand **Kits → Presentations** and press **Create document** beside **Teaching with Field**.
 
-Field copies the starting point into your workspace and records its kit revision. Its **Teaching guide**, **Live Field** and **Presentation** boxes start in order, opening the audience and presenter windows. Each new talk is an editable document; the installed starting point stays unchanged. See [Kits and Starting Points](kits.md#add-a-self-contained-kit-in-welcome) for adding a kit from another folder.
+Field copies the starting point into your workspace as a new document, and notes which version of
+the kit it came from so the talk can be updated later ([Reuse the starter as a kit](#reuse-the-starter-as-a-kit)). Its **Teaching guide**, **Live Field** and **Presentation** boxes start in order, opening the audience and presenter windows. Each new talk is an editable document; the installed starting point stays unchanged. See [Kits and Starting Points](kits.md#add-a-self-contained-kit-in-welcome) for adding a kit from another folder.
 
 Use **Next**, **Previous** or a named step in the presenter controls. **Show audience** brings the audience window forward; **Fullscreen audience** makes that window fullscreen. In the audience, the arrow keys, Page Up/Down and Space navigate slides. F8 and F9 navigate backwards and forwards while a live webpage or Field document has focus, leaving their ordinary editing keys available.
 
 Edit the **Presentation** box and run it again to update the talk. It keeps the current step where possible. **Refresh slide** redraws the current step; it does not rerun the box's source. Close the audience or controller to stop presenting.
 
-There is no per-talk Node project or package installation. The presentation is an ordinary document folder with Kotlin sidecars, guides, macros and files. Keep that folder in Git if you want version history and collaboration. Put shared media in `files/` and refer to it by filename, for example `img { src = mediaName }`, rather than copying it into each slide.
+Nothing needs installing for each talk: the presentation is an ordinary document folder with Kotlin sidecars, guides, macros and files. Keep that folder in Git if you want version history and collaboration. Put shared media in `files/` and refer to it by filename, for example `img { src = mediaName }`, rather than copying it into each slide.
 
 For a standalone copy, the starter remains available as **presentation** under **Templates** on Welcome. That route does not register the package or create a managed package instance. In a browser, the document and its guides remain usable; the separate audience display requires the Electron app.
 
@@ -39,6 +40,8 @@ presentation(title = "A lesson about motion") {
     }
     .present()
 ```
+
+`audienceDocument("wave-study")` puts the live Field document named `wave-study` on the audience display; [Bring the working material on screen](#bring-the-working-material-on-screen) covers its macros and guides.
 
 ### Keyboard search
 
@@ -310,7 +313,7 @@ presentation {
 The image remains one shared file. `durationMs` accepts 0–10000 and the optional `delayMs`
 accepts 0–60000. Layout is ordinary HTML/CSS; the fade does not move or reflow the content.
 In an AI4-authored slide's JSON cue, use `retainPrevious: true`, `previousOpacity: 0.25`
-and `fadeMs: 350`. Leaving these fields out keeps the original replacement behaviour.
+and `fadeMs: 350`. Without these fields, a cue replaces the previous view.
 
 ## Let AI4 help write a slide
 
@@ -318,7 +321,7 @@ The starter also loads `files/talk.slides.json` with `slides("talk.slides.json")
 presentation. That file holds ordinary Markdown slides, presenter notes, section paths and reveals.
 Each slide has a stable ID. Kotlin still describes the live experiments and their actions.
 
-Open AI4 in the presentation document and try:
+Open [AI4](ai4_tools.md), Field's AI chat, in the presentation document and try:
 
 > Add a short slide about frequency after `ask-a-question`. Give it a prediction and a reveal.
 > Keep the existing style and slides. Save the slide, but don't present it yet.
@@ -366,7 +369,7 @@ presentation(title = "A prediction") {
 
 A cue action runs once on forward entry in this built talk. Back, Refresh and revisiting that cue do
 not replay it. **Run cue again** explicitly repeats the current action. Rebuilding or stopping a talk
-starts a new run. Ordinary step `onEnter`/`onExit` callbacks retain their existing behavior.
+starts a new run. A step's own `onEnter` and `onExit` callbacks run every time the step is entered or left.
 
 ![The wave lesson’s explanation reveal, rendered in the real audience window.](assets/presentation_studio/wave-reveal.png)
 
@@ -426,6 +429,16 @@ Replace `my-example` with a document that exists in the running workspace, and `
 
 At a Field-document step, **Document notes** opens its Markdown guide. **Start document guide** starts its interactive guide, with separate **Guide next** and **Guide back** controls. A box in that document must have built a `slideShow { ... }` first; the starter's **Teaching guide** box does this. The outer presentation and inner document guide have separate navigation. Pass `interactiveGuide = false` to `audienceDocument` if it has no interactive guide.
 
+The starter's **A live Field document** step opens the talk's own document in the audience window.
+Its boxes are live: the **Live Field** box shows its output, and **Wave experiment** draws its wave.
+
+![The audience window at the starter's "A live Field document" step: the talk's Field document with its Presentation, Live Field, Teaching guide and Wave experiment boxes, and the wave output drawn below.](assets/presentation_studio/live-document-audience.png)
+
+At the same step the presenter gains **Document notes**, **Run reveal_wave** (the step's `macro`)
+and the document-guide controls above the outline.
+
+![Presenter controls at the live-document step, with Document notes, Run reveal_wave, Start document guide, Guide back, Guide next and Close document guide above the slide outline.](assets/presentation_studio/live-document-controls.png)
+
 **Run reset-example** runs the named saved macro only when pressed. It uses Field's normal macro runner in the displayed document. The audience can edit and run its real boxes, use the editor and interact with output panels. The starter's **Run reveal_wave** demonstrates a macro that creates and runs a wave box.
 
 Each live surface fills the audience window by default. Pass `rect = listOf(0.04, 0.16, 0.92, 0.80)` to place it within a fraction of the window: `[x, y, width, height]`.
@@ -438,13 +451,13 @@ The [Presentations package](kits.md#add-a-self-contained-kit-in-welcome) is decl
 
 To update a managed talk, close it, use **Check source for updates** on Welcome's Presentations card, then restart Field. Under **Your documents**, choose **Inspect update** before **Apply update to closed document** and **Run**. Package updates compare the original starting files, your current files and the new starting point. They preserve unrelated edits and refuse conflicts, including changes to the same talk source or `metadata.edn`. Updates are explicit; installing a new package never silently rewrites a lecture.
 
-Inside the document, the smaller `kit.json` role kit owns the teaching-guide helper and shared stylesheet. `roles/` holds their source, and `files/kit.json` records the document's role revision. The authored **Presentation** box and **Live Field** example are outside those roles. `showKit()` reports both: this inner helper/style kit, item by item, and a line for the outer package with the revision the talk was made from, the installed revision and what an update would change.
+A talk also contains a second, smaller kit of its own, described by `kit.json`: it supplies the teaching-guide helper and the shared stylesheet. Their source is in `roles/`, and `files/kit.json` records which version of them the document has. The authored **Presentation** box and **Live Field** example are outside those roles. `showKit()` reports both: this inner helper/style kit, item by item, and a line for the outer package with the revision the talk was made from, the installed revision and what an update would change.
 
 Keep the document folder, including `.field-kit-instance.json` when present, in Git. On another machine, add the package revision that instance records and restart Field before using **Run**. Keep package source versions in Git too, so that revision can be installed again. The [kit guide](kits.md#starting-point-revisions-and-instance-updates) explains package snapshots, shared Project resources and recovery.
 
 ## Optional Motion Canvas scenes
 
-[Motion Canvas](https://motioncanvas.io/) remains available for talks that need its animation system. Its TypeScript/TSX project is an optional scene source. It is not required by the Kotlin starter.
+[Motion Canvas](https://motioncanvas.io/) can supply scenes for talks that need its animation system. Its TypeScript/TSX project is an optional scene source. It is not required by the Kotlin starter.
 
 For a Motion Canvas talk, install Node.js 22 or newer with npm, then create and install the separate example from your Field checkout:
 

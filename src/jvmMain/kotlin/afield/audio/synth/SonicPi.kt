@@ -550,7 +550,7 @@ class SonicPi private constructor(
                     flashTimes.remove(workspace)
                     // A fresh run means the previous run's marker is stale.
                     reportTargets[workspace]?.let { target ->
-                        inMain { runCatching { target.box.error(null, "code", -1) } }
+                        inMain { runCatching { target.box.displayError(null, "code", -1) } }
                     }
                 }
             }
@@ -615,7 +615,7 @@ class SonicPi private constructor(
             // readable without a second channel. Sonic Pi and Field both count lines from one.
             inMain {
                 runCatching {
-                    target.box.error(error.toString(), "code", sonicPiErrorBoxLine(error.line, target.lineOffset))
+                    target.box.displayError(error.toString(), "code", sonicPiErrorBoxLine(error.line, target.lineOffset))
                 }
             }
         } else if (reportErrors) {

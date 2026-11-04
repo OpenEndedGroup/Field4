@@ -40,7 +40,7 @@ The checked-in `remote` and `advanced_remote` templates contain examples of FLin
 You do not need a phone or headset to see the head. `remoteAr()` embeds it in a box's output pane and opens it, so the live A-Frame/Three.js scene renders right on the canvas beside your code. On a desktop browser it runs in flat mode; the same embed enters AR/VR on a device or the Endrun iOS app.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/ar_reference/remote-ar-head.png" capture="box" name="ar-reference-remote-ar-head" wait="8" timeout="120" open-outputs="true" padding="18" embed=true alt="The RemoteJS/WebXR head embedded in a Field box output pane, connected and self-tested" w="1000" h="220"}
-remoteAr(debug = true, selfTest = true)
+remoteAr(debug = true, selfTest = true, width = 560, height = 150)
 ```
 
 `debug = true` shows the status panel (connection, A-Frame/Three.js versions, XR platform); `selfTest = true` runs the head's in-browser self-test on boot and reports pass/fail. The iframe carries the class `field-remote-ar-head` so page scripts and tests can target it. `remoteAr()` is a thin convenience over assigning the iframe into a box output channel yourself and opening it:
@@ -49,10 +49,10 @@ remoteAr(debug = true, selfTest = true)
 display(
     "remote-ar",
     """
-<iframe src="/extensions/remote_ar/index.html?debug=1"
-        allow="xr-spatial-tracking; fullscreen"
-        style="display:block;width:960px;height:540px;border:0;background:#000"></iframe>
-"""
+    <iframe src="/extensions/remote_ar/index.html?debug=1"
+            allow="xr-spatial-tracking; fullscreen"
+            style="display:block;width:960px;height:540px;border:0;background:#000"></iframe>
+    """
         .trimIndent(),
 )
 displayOpen("remote-ar")
@@ -87,12 +87,15 @@ onStart {
 
 `FLine` is a small path representation backed by Three.js `BufferGeometry`. Assigning an FLine into `stage` creates or updates its stroke, fill, and/or point geometry.
 
-```diffstatic {data-lang=javascript}
+The head's camera stands at eye height, 1.6 m up, so this triangle is drawn at 1.5 m, a metre in
+front of it:
+
+```diffstatic_runner {data-lang=javascript screenshot="assets/ar_reference/remote-ar-fline-triangle.png" capture="box" name="ar-reference-fline-triangle" macro-file="../../dev_docs/agents/transcripts/docs_capture/remote_ar_fline_triangle.yaml" capture-box="remote_ar_fline_root" wait="2" timeout="180" open-outputs="true" padding="18" embed=true alt="The embedded Remote AR head with its status panel reporting one successful execution, and in the middle of the black scene a filled pale lavender right triangle." w="1000" h="440"}
 var triangle = new FLine()
-triangle.moveTo(0, 0, -1)
-triangle.lineTo(0.25, 0, -1)
-triangle.lineTo(0, 0.25, -1)
-triangle.lineTo(0, 0, -1)
+triangle.moveTo(0, 1.5, -1)
+triangle.lineTo(0.25, 1.5, -1)
+triangle.lineTo(0, 1.75, -1)
+triangle.lineTo(0, 1.5, -1)
 triangle.color = vec(0.9, 0.9, 1.0, 1.0)
 triangle.filled = true
 

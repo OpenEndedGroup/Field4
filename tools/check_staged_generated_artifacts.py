@@ -153,12 +153,45 @@ def _demo_input(path: str) -> bool:
     return _under(path, "dev_docs/agents/demos")
 
 
+# The authored documents AgentDemoDriftGuard visits beside the demos: each directory directly under
+# one of these roots. Keep in step with AUTHORED_ROOTS there.
+_AUTHORED_DOCUMENT_ROOTS = ("public/docs/assets", "templates", "tools/presentation/example")
+_SIDECAR_SUFFIXES = (".edn", ".kt", ".glsl", ".js", ".yaml")
+
+
+def _saved_document_input(path: str) -> bool:
+    # metadata.edn or a sidecar directly in an authored document: either side of an inline copy.
+    if _demo_input(path):
+        return True
+    return path.endswith(_SIDECAR_SUFFIXES) and any(
+        path.startswith(root + "/") and path.count("/") == root.count("/") + 2 for root in _AUTHORED_DOCUMENT_ROOTS
+    )
+
+
 def _box_code_input(path: str) -> bool:
     # The checker's own definition of its corpus, so the two cannot disagree about a path.
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from check_box_idioms import in_corpus
 
     return in_corpus(path)
+
+
+_PACKAGED_PAGES = frozenset(
+    f"public/docs/{name}_conversation.md" for name in ("function", "rectsl", "stacksl", "stackauto")
+)
+
+
+def _formatted_box_code(path: str) -> bool:
+    # BoxCodeFormat.allCorpora: top-level transcripts, *_code_.kt sidecars outside the generated
+    # starting points, and the docs pages directly under public/docs.
+    if path.startswith(("public/docs/assets/agent_transcripts/", "dev_docs/agents/demos/function_conversation_example/")) or path in _PACKAGED_PAGES:
+        return False
+    return (
+        _compiled_transcript(path)
+        or path.endswith("_code_.kt")
+        or (_demo_input(path) and path.count("/") == 4 and path.endswith(("/build.yaml", "/verify.yaml")))
+        or (path.startswith("public/docs/") and path.count("/") == 2 and path.endswith(".md"))
+    )
 
 
 def _compiled_transcript(path: str) -> bool:
@@ -437,7 +470,7 @@ GUARDS = (
     Guard("checkAgentTranscriptIndex", "agent transcript index", _transcript_input),
     Guard("checkDocsPublications", "published document freshness and coverage", _publication_input),
     Guard("checkAgentTranscriptLayouts", "agent transcript and demo layouts", _demo_input),
-    Guard("checkAgentDemos", "saved demo consistency", _demo_input),
+    Guard("checkAgentDemos", "saved document inline copies", _saved_document_input),
     Guard("checkPythonTools", "Python tools and their corpus contracts", _python_tool_input),
     Guard(
         "checkCompletionCorpusFixtures",
@@ -446,6 +479,7 @@ GUARDS = (
         ("tools/completion-corpus/boxes",),
     ),
     Guard("checkBoxIdioms", "box-code idioms", _box_code_input),
+    Guard("checkBoxCodeFormat", "box code and docs fences formatted", _formatted_box_code),
     Guard("checkBoxCodeCompiles", "box code compiles", _compiled_transcript),
     Guard(
         "citationGates",

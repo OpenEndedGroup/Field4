@@ -4,7 +4,7 @@
 
 Musical time, as a value. A `PatPattern<A>` is a function from a span of cycles to the events inside it, so it is queried rather than stored, and a pattern that never repeats costs no more to hold than one that does. Time is kept as an exact rational (`PatQ`, `BigInteger` over `BigInteger`) all the way through the transforms and is only converted to seconds at the boundary where something has to be scheduled, which is why a third of a cycle survives `fast`, `rev` and `every` without drifting. The notation and much of the vocabulary is Tidal's — `pat("bd [hh hh] sd")`, `stack`, `jux`, `off`, `degradeBy`, the `|+|` operator family — but an atom here means whatever you want it to mean, not a sample name, which is what lets the same pattern drive a note process, a Field `Fn`, a set of signal-graph parameters or an arbitrary side effect. `Sequencing.kt` is the note-and-piano-roll layer patterns bridge into, and `BeatLaunch.kt` is `.onBeat { … }`, which holds any launchable value until the next musical boundary. [Patterns: writing rhythm as a function of time](../pattern_language.md) is the prose for all of it.
 
-40 source file(s), 1316 public symbol(s), 721 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+40 source file(s), 1317 public symbol(s), 721 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -25,10 +25,12 @@ The handler registered at the bottom of this file recognises that spec when it a
 box's last expression, waits, and then hands the value it was wrapping back to the normal launch
 machinery. A bundle wrapped once therefore starts as a unit:
 
-    (audio { saw * 0.05f } +
-        pat("bd [hh hh] sd").respond(cps = 0.5) { event ->
-            __m("pat").patHighlight(event)
-        }).onBeat(every = 4, preroll = 0.02)
+```diffstatic {data-lang=kotlin}
+(audio { saw * 0.05f } +
+    pat("bd [hh hh] sd").respond(cps = 0.5) { event ->
+        __m("pat").patHighlight(event)
+    }).onBeat(every = 4, preroll = 0.02)
+```
 
 Because the wait runs as a job owned by the box, stopping the box before the boundary arrives
 cancels the launch rather than deferring it.
@@ -628,7 +630,9 @@ That recurrence is why this is not a sequencer: the reader's own traversal gener
 so the duration pattern is consulted at instants the duration pattern chose. Give four values a
 `"<1 4 .25 2>"` duration and you get
 
-    |--0--|--------.7--------|-.2-|----1----|
+```diffstatic {data-lang=kotlin}
+|--0--|--------.7--------|-.2-|----1----|
+```
 
 rather than four equal steps. Give the address a period of 6 and the duration a period of 4 and
 the two drift against each other with a period of 12 — which is the whole reason to keep them
@@ -670,7 +674,9 @@ are live at once. `cycle` is the global coordinate, `stageIndex` counts stages, 
 cycles since this stage began and `stagePhase` is that normalised to `0..1`. A curve is written
 against `stagePhase` and never has to reconstruct it:
 
-       MarfCurve.Shape("chirp") { p -> 0.5 + 0.5 * kotlin.math.sin(p * p * 40.0) }
+```diffstatic {data-lang=kotlin}
+MarfCurve.Shape("chirp") { p -> 0.5 + 0.5 * kotlin.math.sin(p * p * 40.0) }
+```
 
 The analogy worth keeping is a shader. A fragment shader computes over `uv`; a stage computes
 over `stagePhase`, inside a structure the pattern algebra laid out.
@@ -681,7 +687,9 @@ The address is a `PatPattern<Double>`, not a `PatPattern<Int>`, and a fractional
 At address `1.35` the reader evaluates stages 1 and 2 over the same local phase and mixes the
 outputs `(1-α)·f₁(p) + α·f₂(p)` with `α = 0.35`, blending their durations the same way. So
 
-       b.read(sine().range(0.0, 4.0))
+```diffstatic {data-lang=kotlin}
+b.read(sine().range(0.0, 4.0))
+```
 
 glides through the bank instead of stepping through it, and the bank stops being five slots and
 starts being a sampled one-dimensional family of functions. The entry value is shared between
@@ -691,7 +699,9 @@ does for an integer address.
 There is a catch, and it is arithmetic rather than a bug. A periodic address is **latched once
 per stage**, so a reader with periodic durations visits exactly
 
-    lcm(address period, stage period) / stage period
+```diffstatic {data-lang=kotlin}
+lcm(address period, stage period) / stage period
+```
 
 distinct addresses and then repeats forever. `sine().range(0, 4)` against quarter-cycle stages is
 four of them — the address cycles `2, 4, 2, 0, 2, 4, 2, 0, …` and the "glide" is a four-step
@@ -712,14 +722,16 @@ one value toward another: [`MarfSpace.sub`](patterns.md#marf-kt--marfspace--sub)
 it, [`MarfSpace.add`](patterns.md#marf-kt--marfspace--add) to arrive. The curve stays scalar, because a stage's shape is
 one-dimensional however many dimensions its value has.
 
-       val path = marfBankIn(
-           MarfVector3f,
-           stageTo(Vector3f(0f, 0f, 0f), 1.0),
-           stageTo(Vector3f(1f, 0.5f, 0f), 0.5, MarfCurve.Smooth)
-       ).read(pat("<0 1>").nums(), fields = MarfFieldClock.STAGES)
+```diffstatic {data-lang=kotlin}
+val path = marfBankIn(
+    MarfVector3f,
+    stageTo(Vector3f(0f, 0f, 0f), 1.0),
+    stageTo(Vector3f(1f, 0.5f, 0f), 0.5, MarfCurve.Smooth)
+).read(pat("<0 1>").nums(), fields = MarfFieldClock.STAGES)
 
-       path.at(1.5).value               // a Vector3f
-       path.signal { it.x.toDouble() }  // any component, as an ordinary signal
+path.at(1.5).value               // a Vector3f
+path.signal { it.x.toDouble() }  // any component, as an ordinary signal
+```
 
 `marf(...)` and `marfBank(...)` are the scalar spellings and give a `MarfReader<Double>`;
 [`marfIn`](patterns.md#marf-kt--marfin) and [`marfBankIn`](patterns.md#marf-kt--marfbankin) take a space. Instances for Field's generated linalg vectors are in
@@ -996,22 +1008,22 @@ Add a figure by appending one [`Figure`](patterns.md#marfgallery-kt--marfgallery
 
 ### MarfGallery { #marfgallery-kt-marfgallery }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">MarfGallery</span></code>](source/jvmMain/afield/audio/synth/MarfGallery/#L83)
+[<code class="highlight"><span class="k">object</span> <span class="nc">MarfGallery</span></code>](source/jvmMain/afield/audio/synth/MarfGallery/#L84)
 
 Renders every [`Figure`](patterns.md#marfgallery-kt--marfgallery--figure) in [`FIGURES`](patterns.md#marfgallery-kt--marfgallery--figures) to SVG and asserts each one against the readers that drew it.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="marfgallery-kt--marfgallery--samples-per-cycle"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">SAMPLES&#95;PER&#95;CYCLE</span></code>](source/jvmMain/afield/audio/synth/MarfGallery/#L86) | Output samples per cycle. Fine enough that an `osc:3` stage reads as three oscillations. |
-| <a id="marfgallery-kt--marfgallery--lane"></a>[<code class="highlight"><span class="k">class</span> <span class="nc">Lane</span> <span class="k">private</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">key</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">reader</span><span class="p">:</span> <span class="nc">MarfReader</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">signal</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">stagesFrom</span><span class="p">:</span> <span class="nc">MarfReader</span><span class="p">&lt;</span><span class="o">&#42;</span><span class="p">&gt;</span><span class="o">?</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/MarfGallery/#L100) | One lane of a figure: something to plot, and the label the figure puts beside it. |
-| <a id="marfgallery-kt--marfgallery--figure"></a>[<code class="highlight"><span class="k">class</span> <span class="nf">Figure</span><span class="p">(</span><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">subtitle</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">cycles</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">lanes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Lane</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">distinctLanes</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="k">val</span> <span class="n">verify</span><span class="p">:</span> <span class="p">(</span><span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">MarfResolvedStage</span><span class="p">&lt;</span><span class="o">&#42;</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span> <span class="o">=</span> <span class="p">{</span><span class="p">}</span><span class="p">,</span> <span class="k">val</span> <span class="n">snippet</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/MarfGallery/#L147) | One figure of the gallery, and everything published about it. |
-| <a id="marfgallery-kt--marfgallery--bank"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">bank</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">MarfBank</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span></code>](source/jvmMain/afield/audio/synth/MarfGallery/#L181) | The bank every bank-reading figure on the page uses. |
-| <a id="marfgallery-kt--marfgallery--figures"></a>[<code class="highlight"><span class="k">val</span> <span class="nc">FIGURES</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Figure</span><span class="p">&gt;</span> <span class="k">by</span> <span class="n">lazy</span></code>](source/jvmMain/afield/audio/synth/MarfGallery/#L191) |  |
-| <a id="marfgallery-kt--marfgallery--vectorpath"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">vectorPath</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">MarfReader</span><span class="p">&lt;</span><span class="nc">Vector3f</span><span class="p">&gt;</span></code>](source/jvmMain/afield/audio/synth/MarfGallery/#L596) | A `Vector3f` reader over four vector stages, for the vector figure. |
-| <a id="marfgallery-kt--marfgallery--drawn"></a>[<code class="highlight"><span class="k">class</span> <span class="nf">Drawn</span><span class="p">(</span><span class="k">val</span> <span class="n">svg</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">stages</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">MarfResolvedStage</span><span class="p">&lt;</span><span class="o">&#42;</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">samples</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">boundaries</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Int</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">pulses</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Int</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/MarfGallery/#L631) | The geometry a figure drew, so the checks can count it rather than trust it. |
-| <a id="marfgallery-kt--marfgallery--render"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">render</span><span class="p">(</span><span class="n">figure</span><span class="p">:</span> <span class="nc">Figure</span><span class="p">)</span><span class="p">:</span> <span class="nc">Drawn</span></code>](source/jvmMain/afield/audio/synth/MarfGallery/#L647) |  |
-| <a id="marfgallery-kt--marfgallery--checkfigure"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">checkFigure</span><span class="p">(</span><span class="n">figure</span><span class="p">:</span> <span class="nc">Figure</span><span class="p">,</span> <span class="n">drawn</span><span class="p">:</span> <span class="nc">Drawn</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/MarfGallery/#L770) | Asserts a rendered figure against the readers and signals that produced it. |
-| <a id="marfgallery-kt--marfgallery--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/MarfGallery/#L840) |  |
+| <a id="marfgallery-kt--marfgallery--samples-per-cycle"></a>[<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">SAMPLES&#95;PER&#95;CYCLE</span></code>](source/jvmMain/afield/audio/synth/MarfGallery/#L87) | Output samples per cycle. Fine enough that an `osc:3` stage reads as three oscillations. |
+| <a id="marfgallery-kt--marfgallery--lane"></a>[<code class="highlight"><span class="k">class</span> <span class="nc">Lane</span> <span class="k">private</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">key</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">reader</span><span class="p">:</span> <span class="nc">MarfReader</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">signal</span><span class="p">:</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">stagesFrom</span><span class="p">:</span> <span class="nc">MarfReader</span><span class="p">&lt;</span><span class="o">&#42;</span><span class="p">&gt;</span><span class="o">?</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/MarfGallery/#L101) | One lane of a figure: something to plot, and the label the figure puts beside it. |
+| <a id="marfgallery-kt--marfgallery--figure"></a>[<code class="highlight"><span class="k">class</span> <span class="nf">Figure</span><span class="p">(</span><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">subtitle</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">cycles</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">lanes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Lane</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">distinctLanes</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="k">val</span> <span class="n">verify</span><span class="p">:</span> <span class="p">(</span><span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">MarfResolvedStage</span><span class="p">&lt;</span><span class="o">&#42;</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span> <span class="o">=</span> <span class="p">{</span><span class="p">}</span><span class="p">,</span> <span class="k">val</span> <span class="n">snippet</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/MarfGallery/#L148) | One figure of the gallery, and everything published about it. |
+| <a id="marfgallery-kt--marfgallery--bank"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">bank</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">MarfBank</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span></code>](source/jvmMain/afield/audio/synth/MarfGallery/#L182) | The bank every bank-reading figure on the page uses. |
+| <a id="marfgallery-kt--marfgallery--figures"></a>[<code class="highlight"><span class="k">val</span> <span class="nc">FIGURES</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Figure</span><span class="p">&gt;</span> <span class="k">by</span> <span class="n">lazy</span></code>](source/jvmMain/afield/audio/synth/MarfGallery/#L192) |  |
+| <a id="marfgallery-kt--marfgallery--vectorpath"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">vectorPath</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">MarfReader</span><span class="p">&lt;</span><span class="nc">Vector3f</span><span class="p">&gt;</span></code>](source/jvmMain/afield/audio/synth/MarfGallery/#L595) | A `Vector3f` reader over four vector stages, for the vector figure. |
+| <a id="marfgallery-kt--marfgallery--drawn"></a>[<code class="highlight"><span class="k">class</span> <span class="nf">Drawn</span><span class="p">(</span><span class="k">val</span> <span class="n">svg</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">stages</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">MarfResolvedStage</span><span class="p">&lt;</span><span class="o">&#42;</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">samples</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">boundaries</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Int</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">pulses</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Int</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/MarfGallery/#L646) | The geometry a figure drew, so the checks can count it rather than trust it. |
+| <a id="marfgallery-kt--marfgallery--render"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">render</span><span class="p">(</span><span class="n">figure</span><span class="p">:</span> <span class="nc">Figure</span><span class="p">)</span><span class="p">:</span> <span class="nc">Drawn</span></code>](source/jvmMain/afield/audio/synth/MarfGallery/#L662) |  |
+| <a id="marfgallery-kt--marfgallery--checkfigure"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">checkFigure</span><span class="p">(</span><span class="n">figure</span><span class="p">:</span> <span class="nc">Figure</span><span class="p">,</span> <span class="n">drawn</span><span class="p">:</span> <span class="nc">Drawn</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/MarfGallery/#L786) | Asserts a rendered figure against the readers and signals that produced it. |
+| <a id="marfgallery-kt--marfgallery--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/MarfGallery/#L856) |  |
 
 ## MarfSmokeTest.kt { #marfsmoketest-kt }
 
@@ -1034,31 +1046,35 @@ not.
 The same patch in a box, driving sound. `marfBank` is the material; the three readers are three
 journeys through it; nothing about the bank knows it is being read three times:
 
-    val b = marfBank(
-        rampTo(0.1, 1.0), rampTo(0.9, 0.5), holdAt(0.4, 2.0),
-        oscTo(0.7, 1.0, cycles = 3.0), curveTo(0.2, 0.25, amount = 4.0)
-    )
+```diffstatic {data-lang=kotlin}
+val b = marfBank(
+    rampTo(0.1, 1.0), rampTo(0.9, 0.5), holdAt(0.4, 2.0),
+    oscTo(0.7, 1.0, cycles = 3.0), curveTo(0.2, 0.25, amount = 4.0)
+)
 
-    val slowArc  = b.read(pat("<0 1 2 1 3 4>").nums(), name = "arc")
-    val fastArc  = b.read(pat("<0 2 4 1 3>").nums().slow(3), speed = constant(4.0), name = "fast")
-    val glide    = b.read(sine().range(0.0, 4.0), duration = constant(0.25), name = "glide")
+val slowArc  = b.read(pat("<0 1 2 1 3 4>").nums(), name = "arc")
+val fastArc  = b.read(pat("<0 2 4 1 3>").nums().slow(3), speed = constant(4.0), name = "fast")
+val glide    = b.read(sine().range(0.0, 4.0), duration = constant(0.25), name = "glide")
 
-    // Continuous out: three readers of one bank as three parameters of one voice.
-    val voice = pat("bd*8")
-        .with(gain(fastArc.signal().range(0.25, 1.0)))
-        .with(pan(glide.signal()))
-        .with(speed(slowArc.signal().range(0.5, 2.0)))
+// Continuous out: three readers of one bank as three parameters of one voice.
+val voice = pat("bd*8")
+    .with(gain(fastArc.signal().range(0.25, 1.0)))
+    .with(pan(glide.signal()))
+    .with(speed(slowArc.signal().range(0.5, 2.0)))
 
-    voice.respond(cps = 1.0) { patVoice(it) }
+voice.respond(cps = 1.0) { patVoice(it) }
 
-    // Discrete out, from the same temporal structure: one pulse per stage.
-    slowArc.triggers().respond(cps = 1.0) { println("stage ${it.value}") }
+// Discrete out, from the same temporal structure: one pulse per stage.
+slowArc.triggers().respond(cps = 1.0) { println("stage ${it.value}") }
+```
 
 Then change one line and nothing else:
 
-    val slowArc = b.read(pat("<0 1 2 1 3 4>").nums().every(4) { it.rev() })   // periodic reversal
-    val slowArc = b.read(struct(euclid(5, 8), pat("0 4 2 3").nums()))         // euclidean trajectory
-    val slowArc = b.read(sine().range(0.0, 5.0))                              // glide, not step
+```diffstatic {data-lang=kotlin}
+val slowArc = b.read(pat("<0 1 2 1 3 4>").nums().every(4) { it.rev() })   // periodic reversal
+val slowArc = b.read(struct(euclid(5, 8), pat("0 4 2 3").nums()))         // euclidean trajectory
+val slowArc = b.read(sine().range(0.0, 5.0))                              // glide, not step
+```
 
 ### The graphics version
 
@@ -1066,15 +1082,17 @@ Driving geometry shows the architecture more directly than driving notes does. T
 share one bank and become three coordinates, so the shapes are related without being
 synchronised:
 
-    val x = b.read(pat("<0 1 2 3 4>").nums(), name = "x")
-    val y = b.read(pat("<0 2 4 1 3>").nums().slow(3), name = "y")
-    val r = b.read(sine().range(0.0, 4.0), duration = constant(0.5), name = "r")
+```diffstatic {data-lang=kotlin}
+val x = b.read(pat("<0 1 2 3 4>").nums(), name = "x")
+val y = b.read(pat("<0 2 4 1 3>").nums().slow(3), name = "y")
+val r = b.read(sine().range(0.0, 4.0), duration = constant(0.5), name = "r")
 
-    frames {
-        val t = musicClock().now
-        val p = vec2(x.atSeconds(t).value, y.atSeconds(t).value) * 400.0
-        ln.clear().circle(p, 10.0 + 60.0 * r.atSeconds(t).value)
-    }
+frames {
+    val t = musicClock().now
+    val p = vec2(x.atSeconds(t).value, y.atSeconds(t).value) * 400.0
+    ln.clear().circle(p, 10.0 + 60.0 * r.atSeconds(t).value)
+}
+```
 
 A `frames { }` block needs a renderer to tick at all, so that last one belongs in a box with a
 graphics parent rather than here, which stays headless.
@@ -1101,17 +1119,19 @@ for the three types most stage material actually is. The reason it is a file of 
 dependency direction: the core layer needs nothing but `PatPattern`, and keeping `afield.math.linalg`
 out of it means a reader over some other type costs one object rather than an edit to the layer.
 
-    val trajectory = marfBankIn(
-        MarfVector3f,
-        stageTo(Vector3f(0f, 0f, 0f), 1.0),
-        stageTo(Vector3f(1f, 0.5f, 0f), 0.5, MarfCurve.Smooth),
-        stageTo(Vector3f(0f, 1f, 1f), 2.0, MarfCurve.Exp(3.0))
-    )
+```diffstatic {data-lang=kotlin}
+val trajectory = marfBankIn(
+    MarfVector3f,
+    stageTo(Vector3f(0f, 0f, 0f), 1.0),
+    stageTo(Vector3f(1f, 0.5f, 0f), 0.5, MarfCurve.Smooth),
+    stageTo(Vector3f(0f, 1f, 1f), 2.0, MarfCurve.Exp(3.0))
+)
 
-    val path = trajectory.read(pat("<0 1 2>").nums(), fields = MarfFieldClock.STAGES)
+val path = trajectory.read(pat("<0 1 2>").nums(), fields = MarfFieldClock.STAGES)
 
-    path.at(3.5).value              // a Vector3f
-    path.signal { it.x.toDouble() } // and any component as an ordinary signal
+path.at(3.5).value              // a Vector3f
+path.signal { it.x.toDouble() } // and any component as an ordinary signal
+```
 
 ### Every instance copies before it writes
 
@@ -1121,8 +1141,10 @@ and `/` resolves to the mutating member operator rather than to the allocating e
 target lives in a bank and is read once per stage for as long as the reader runs, so a single
 in-place write would corrupt the material rather than produce a wrong frame:
 
-    a.add(b)                // WRONG: mutates a, which is the bank's stored target
-    a.add(b, Vector3f())    // right: fresh destination, a and b untouched
+```diffstatic {data-lang=kotlin}
+a.add(b)                // WRONG: mutates a, which is the bank's stored target
+a.add(b, Vector3f())    // right: fresh destination, a and b untouched
+```
 
 Every method below uses the out-parameter form. `MarfVectorSpaceTest` reads a bank twice and
 requires the second pass to agree with the first, which is the property that a mutating
@@ -1357,7 +1379,8 @@ The sound on the [ORCA](../orca.md) page, rendered offline: ORCA's own operators
 | <a id="orcasounddocs-kt--orcasounddocs--echo"></a>[<code class="highlight"><span class="k">val</span> <span class="nc">ECHO</span></code>](source/jvmMain/afield/audio/synth/OrcaSoundDocs/#L48) |  |
 | <a id="orcasounddocs-kt--orcasounddocs--rendered"></a>[<code class="highlight"><span class="k">class</span> <span class="nf">Rendered</span><span class="p">(</span><span class="k">val</span> <span class="n">left</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">right</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">notes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">OrcaNote</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/OrcaSoundDocs/#L57) | A rendered scene: the notes ORCA played, and the audio they made. |
 | <a id="orcasounddocs-kt--orcasounddocs--render"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">render</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Rendered</span></code>](source/jvmMain/afield/audio/synth/OrcaSoundDocs/#L59) |  |
-| <a id="orcasounddocs-kt--orcasounddocs--renderwav"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">renderWav</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">outPath</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/OrcaSoundDocs/#L65) |  |
+| <a id="orcasounddocs-kt--orcasounddocs--renderwav"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">renderWav</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">outPath</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/audio/synth/OrcaSoundDocs/#L67) |  |
+| <a id="orcasounddocs-kt--orcasounddocs--drone-patch"></a>[<code class="highlight"><span class="k">val</span> <span class="nc">DRONE&#95;PATCH</span></code>](source/jvmMain/afield/audio/synth/OrcaSoundDocs/#L96) |  |
 
 ## PatAlgebra.kt { #patalgebra-kt }
 
@@ -1531,8 +1554,10 @@ can pause or seek.
 Each method synchronises on one lock and returns the clock, so a setup line reads as one
 expression:
 
-    val clock = musicClock().reset(started = true)
-    val sixteenths = clock.subdivide(4.0, label = "16ths")
+```diffstatic {data-lang=kotlin}
+val clock = musicClock().reset(started = true)
+val sixteenths = clock.subdivide(4.0, label = "16ths")
+```
 
 `src/jvmMain/kotlin/afield/audio/synth/PatClock.kt` — [read the source](source/jvmMain/afield/audio/synth/PatClock/)
 
@@ -1941,14 +1966,18 @@ one step at a time, for as many steps as you ask for.
 
 The Kolakoski word over {1, 2} begins
 
-    1 2 2 1 1 2 1 2 2 1 2 2 1 1 2 1 1 2 2 1 …
+```diffstatic {data-lang=kotlin}
+1 2 2 1 1 2 1 2 2 1 2 2 1 1 2 1 1 2 2 1 …
+```
 
 and it is the only sequence over {1, 2} starting with 1 that is its own run-length encoding: one
 1, two 2s, two 1s, one 2, one 1, two 2s, … — reading the runs off gives 1, 2, 2, 1, 1, 2, … back.
 [`kolakoskiWord`](patterns.md#patkolakoski-kt--kolakoskiword) generates it; [`KolakoskiReading`](patterns.md#patkolakoski-kt-kolakoskireading) is the choice of how to hear it.
 
-    kolakoski(16)                          // x..xx.x..x..xx.x   — runs, the self-describing one
-    kolakoski(16, KolakoskiReading.GAPS)   // xx.x.xxx.xx.x.xx   — gaps between onsets
+```diffstatic {data-lang=kotlin}
+kolakoski(16)                          // x..xx.x..x..xx.x   — runs, the self-describing one
+kolakoski(16, KolakoskiReading.GAPS)   // xx.x.xxx.xx.x.xx   — gaps between onsets
+```
 
 `RUNS` reads the terms as alternating on- and off-runs, starting with an on-run, so the rhythm's
 own run lengths spell out the word that made it. `GAPS` reads each term as the distance to the
@@ -3740,15 +3769,17 @@ Read the surface from the outside in:
 
 You can also map the parsed atom text immediately:
 
-       data class Cue(val color: String, val gain: Float)
+```diffstatic {data-lang=kotlin}
+data class Cue(val color: String, val gain: Float)
 
-       val cues = pat("calm bright danger") { atom ->
-           when (atom) {
-               "calm" -> Cue("#0af", 0.15f)
-               "bright" -> Cue("#fff", 0.4f)
-               else -> Cue("#f80", 0.8f)
-           }
-       }
+val cues = pat("calm bright danger") { atom ->
+    when (atom) {
+        "calm" -> Cue("#0af", 0.15f)
+        "bright" -> Cue("#fff", 0.4f)
+        else -> Cue("#f80", 0.8f)
+    }
+}
+```
 
 Important units and expectations:
 

@@ -15,7 +15,7 @@ for (n in [4, 8, 16]) {
             .format(
                 n,
                 notes.size,
-                notes.joinToString(" ") { "%.0f".format(it.num("cutoff")) },
+                notes.joinToString(" ") { it.num("cutoff").f0 },
             ),
     )
 }

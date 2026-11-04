@@ -18,7 +18,8 @@ work on a Petri net as they do on any other pattern.
 
 This net has one token, two places and two transitions. Each transition plays a sound when it
 fires. The token can only be in one place at a time, so the two transitions take turns, and that
-alternation is the rhythm. The example draws the net and prints the first few steps.
+alternation is the rhythm. The example draws the net and prints the first few steps; a recording
+of it playing follows the figure.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/petri_nets/two_place_loop.png" alt="three stacked output channels. The drawing is a diamond: the place kick at the top holding one token, hats at the bottom holding none, and between them the transitions hit (green, ready to fire) and back (grey). The summary panel lists kick 1, hats 0, two places, two transitions, step at grid 1/8. The text panel below tabulates six steps at 0, 1/8, 1/4, 3/8, 1/2 and 5/8 with the token alternating between the two places, then reports period 1/4 cycles, the single T-invariant back + hit, and a state space of two markings that is deadlock-free, safe, quasi-live, live and reversible" wait="2.0" capture="box" open-outputs="true" embed=true name="petri-two-place-loop" w="1240" padding="12"}
 :::static
@@ -58,6 +59,15 @@ displayOpen("main")
 
 Places are circles, tokens are dots inside them, transitions are bars: bright when they are ready
 to fire, dim when they are not. A net that is a single cycle is drawn as a ring.
+
+Here is the same net played: `hit` fires the `bd` sample and `back` fires `sd`, through the
+Dirt-Samples the pattern language uses. Four cycles at half a cycle a second, eight seconds of kick and
+snare taking turns.
+
+```diffstatic_runner {data-lang=kotlin audio="assets/petri_nets/two-place-loop.wav" audio-spec="two-place-loop" audio-renderer="afield.audio.synth.PetriSoundDocs" requires="dirt-samples" embed=true hidden=true name="petri-two-place-loop-audio"}
+// Offline-rendered by PetriSoundDocs.renderWav("two-place-loop"): this net's emits(), through real
+// Dirt-Samples.
+```
 
 The report ends with the net's period, worked out from the net itself: nothing in the source says
 how long a bar is.
@@ -126,13 +136,12 @@ net.willDeadlock() // false — it loops
 net.deadTransitions() // [] — every voice is sounding
 
 petri(
-        """
+    """
     armed : 1
     src   : 4
     ~armed + src -[ blocked : bd ]-> dst
 """,
-    )
-    .willDeadlock() // true — nothing can ever empty 'armed'
+).willDeadlock() // true — nothing can ever empty 'armed'
 ```
 
 `~armed` is an inhibitor arc: the transition is enabled only while that place is empty. Nothing
@@ -279,15 +288,14 @@ can use like any other. Here tokens pile up in `tension` and open a filter on th
 previous section:
 
 ```diffstatic {data-lang=kotlin}
-val net =
-    petri(
-        """
+val net = petri(
+    """
     !grid 1/4
     src     : 8
     tension : 0 ^8
     src -[ build @1/4 ]-> tension
 """,
-    )
+)
 val run = net.run()
 
 // `level` normalises against the place's declared capacity, which is the form `rangex` wants.
@@ -302,6 +310,47 @@ run.signal("tension", PetriInterp.SMOOTH) // no corners, safe on a cutoff
 Use `level` rather than `signal` when the value is going into `range` or `rangex`: those map
 `0..1` onto their interval and *extrapolate* outside it, so a raw count of 3 would send a sweep
 three times past the top.
+
+This box samples the same run over three cycles. `build` moves one token every quarter cycle, so the
+count climbs a step at a time until all eight are in `tension`, and the cutoff climbs with it,
+evenly in octaves because `rangex` is exponential:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/petri_nets/tension_signals.png" wait="3.0" capture="box" open-outputs="true" w="1080" h="1400" padding="14" embed=true name="petri-tension-signals" alt="Two plots over three cycles. Tokens in tension: the stepped signal climbs from 1 to 8 a quarter cycle at a time and holds at 8 from cycle 1.75, with the SMOOTH version easing between the same steps. Cutoff in Hz: steps from about 300 up to 8000, each larger than the last."}
+import afield.audio.synth.*
+import afield.simulation.petri.*
+
+val net = petri(
+    """
+    !grid 1/4
+    src     : 8
+    tension : 0 ^8
+    src -[ build @1/4 ]-> tension
+""",
+)
+val run = net.run()
+
+// Sample each signal 32 times a cycle over the first three cycles.
+val steps = 0 until 96
+fun sampled(p: PatPattern<Double>) = steps.map { k ->
+    p.events(PatArc(PatQ.of(k, 32), PatQ.of(k + 1, 32))).firstOrNull()?.value ?: 0.0
+}
+val x = steps.map { it / 32.0 }
+showSignals(
+    "signal" to sampled(run.signal("tension")),
+    "signal, SMOOTH" to sampled(run.signal("tension", PetriInterp.SMOOTH)),
+    x = x,
+    title = "tokens in tension",
+    xTitle = "cycles",
+    channel = "count",
+)
+showSignals(
+    "level.rangex(200, 8000)" to sampled(run.level("tension").rangex(200, 8000)),
+    x = x,
+    title = "cutoff, Hz",
+    xTitle = "cycles",
+    channel = "cutoff",
+)
+```
 
 ---
 
@@ -715,7 +764,7 @@ net.stateSpace(reduction = PetriReduction.STUBBORN)
 
 At each marking it explores a *stubborn set*, a subset of the enabled transitions chosen so that
 the transitions it skips cannot change whether a deadlock is reachable. On the philosophers the
-number of markings grows as `2n² − 2n + 2` instead of about `2.41ⁿ`:
+number of markings grows as \( 2n^2 - 2n + 2 \) instead of about `2.41ⁿ`:
 
 | philosophers | full | reduced |
 | ---: | ---: | ---: |

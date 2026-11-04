@@ -514,6 +514,8 @@ return {
 MACRO_TRANSCRIPT_PANEL_BATCH_MACRO = """\
 name: ui-regression-panel-batch
 description: Browser regression fixture for macro launch batch completion.
+# The 1.2 s sleep lives in box A's own code: since 275522630 a whole-box launch runs the box's
+# current code and ignores a `code:` on the op, so a sleep there never ran.
 operations:
   - create:
       box: ui_regression_macro_batch_a
@@ -525,6 +527,7 @@ operations:
         h: 120.0
       properties:
         code: |
+          Thread.sleep(1200)
           println("batch macro fixture a")
   - create:
       box: ui_regression_macro_batch_b
@@ -541,9 +544,6 @@ operations:
       box: ui_regression_macro_batch_a
       property: code
       line: 0
-      code: |
-        Thread.sleep(1200)
-        println("batch macro launch a")
       singleLine: false
       type: launch
       strand: default
@@ -551,8 +551,6 @@ operations:
       box: ui_regression_macro_batch_b
       property: code
       line: 0
-      code: |
-        println("batch macro launch b")
       singleLine: false
       type: launch
       strand: default

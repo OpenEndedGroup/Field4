@@ -31,7 +31,7 @@ println("The counterfactual is in the same object, measured in the same run: `in
 println("is the seed's loss, not a number somebody wrote down last week.")
 println()
 println("truth was  ${truth.joinToString(", ")}")
-println("recovered  ${fit.values.joinToString(", ") { "%.9f".format(it) }}")
+println("recovered  ${fit.values.joinToString(", ") { it.f9 }}")
 println("error      ${truth.indices.joinToString(", ") { "%.2e".format(kotlin.math.abs(fit.values[it] - truth[it])) }}")
 println()
 

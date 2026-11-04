@@ -172,7 +172,7 @@ with(Functions) {
     lines(guides + targetLine + fittedLine, channel = "fit-graph", w = 980.0, h = 440.0, fitToSize = false)
     markdown(
         "notes",
-        "**fit to target** — target (cyan) vs gradient-fitted (orange), RMSE ${"%.4f".format(run.finalError)}",
+        "**fit to target** — target (cyan) vs gradient-fitted (orange), RMSE ${run.finalError.f4}",
     )
     run
 }
@@ -245,30 +245,32 @@ with(Functions) {
     markdown(
         "notes",
         "**fitGradient, before and after**: target (orange), seed (grey, dashed), fitted (cyan); " +
-            "error ${"%.4f".format(run.initialError)} -> ${"%.4f".format(run.finalError)}",
+            "error ${run.initialError.f4} -> ${run.finalError.f4}",
     )
 }
 ```
 
 ![Three curves: a thick orange target, a dashed grey seed at about a fifth of the amplitude and offset the wrong way, and a cyan fitted curve lying exactly on the target](assets/functions_examples/fit_before_after_box.png)
 
-And the descent itself, one frame every 8 iterations from 0 to 320. Each frame is its own
+And the descent itself, from iteration 0 to 320, with the early iterations shown longest because that is where the curve moves. Each frame is its own
 `fitGradient` run, truncated at that iteration count, so the error printed under it belongs to that run:
 
-```diffstatic_runner {data-lang=kotlin video="assets/functions_examples/fit_convergence.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="3" fps="20" timeout="240" w="1200" embed=true name="functions-fit-convergence" alt="a cyan curve starting far below a thick orange target sine, growing in amplitude and sliding into place over successive iterations until it lies exactly on the target, the iteration count and its error printed under it"}
+```diffstatic_runner {data-lang=kotlin video="assets/functions_examples/fit_convergence.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="4.5" fps="20" timeout="240" w="1200" embed=true name="functions-fit-convergence" alt="a cyan curve starting at a fifth of the amplitude of a thick orange target sine, growing in amplitude by iteration 8 and then sliding up into place over the following iterations until it lies on the target at 320, the iteration count and its error printed under it"}
 :::static
 /*
-One frame every 8 iterations, from 0 to 320, then the last frame held. Each frame is its own
-fitGradient run, truncated at that iteration count, so the error under it belongs to that run.
-k starts a step early because the recording begins on the launch's second frame.
+Iteration counts bunched where the curve moves, each held for three frames, then the last held.
+Each is its own fitGradient run, truncated at that count, so the error belongs to that run.
 */
-var k = -8
+val steps = [0, 1, 2, 3, 4, 5, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 27, 30, 34, 38, 42, 48, 56, 64, 80, 96, 128, 160, 224, 320]
+var frameIndex = 0
 loop {
+    val k = steps[minOf(frameIndex / 3, steps.size - 1)]
+    frameIndex++
     with(Functions) {
         val target = sin(frequency = 2.0, amplitude = 0.8, offset = 0.12)
         val seed = sin(frequency = 2.0, amplitude = 0.30, offset = -0.15)
         val run =
-            fitGradient(target = target, seed = seed, iterations = maxOf(k, 0), lr = 0.05, samples = 160, rngSeed = 0L)
+            fitGradient(target = target, seed = seed, iterations = k, lr = 0.05, samples = 160, rngSeed = 0L)
         :::fold the plot frame: 900 x 380 px, y up, values -1.1..1.1
         val x0 = 40.0
         val x1 = 940.0
@@ -315,9 +317,8 @@ loop {
             h = 440.0,
             fitToSize = false,
         )
-        markdown("iteration", "**iteration ${maxOf(k, 0)}**: error ${"%.4f".format(run.finalError)}")
+        markdown("iteration", "**iteration $k**: error ${run.finalError.f4}")
     }
-    if (k < 320) k += 8
     frame()
 }
 ```
@@ -2532,9 +2533,9 @@ val samples = List(60) {
 val field = rbfField(samples)
 
 // how well each sample is predicted by the other 59: the way to compare kernels
-println("leave-one-out RMSE, thin plate: " + "%.4f".format(field.leaveOneOutRmse()))
+println("leave-one-out RMSE, thin plate: " + field.leaveOneOutRmse().f4)
 println(
-    "leave-one-out RMSE, gaussian(2): " + "%.4f".format(rbfField(samples, RbfKernels.gaussian(2.0)).leaveOneOutRmse()),
+    "leave-one-out RMSE, gaussian(2): " + rbfField(samples, RbfKernels.gaussian(2.0)).leaveOneOutRmse().f4,
 )
 
 fun image(g: (Double, Double) -> Double) = Img(
@@ -3626,10 +3627,13 @@ with(Functions) {
 
 The final plot answers “what shape did I make?” `browseGraph()` answers “how did each occurrence become part of that shape?” It keeps the root function’s x-axis fixed while you select nodes in the structural graph:
 
-```diffstatic {data-lang=kotlin}
-val gesture = (sin(2.0).shift(0.12) * tween(0.15, 1.0, 0.0..1.0, Functions.Easing.CUBIC_IN_OUT)).softClip(0.8)
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/browse_graph.png" capture="box" open-outputs="true" wait="2.0" w="1200" embed=true name="functions-browse-graph" alt="The component browser: a sidebar tree of the gesture's occurrences, softClip over multiply over shift, sin and tween with their params, with multiply selected; beside it the effect view plotting that occurrence's contextual effect in cyan on the final x-axis, with local, effect, muted final, cascade and sensitivity buttons above"}
+:::static
+with(Functions) {
+    val gesture = (sin(2.0).shift(0.12) * tween(0.15, 1.0, 0.0..1.0, Functions.Easing.CUBIC_IN_OUT)).softClip(0.8)
 
-gesture.browseGraph(channel = "components")
+    gesture.browseGraph(channel = "components")
+}
 ```
 
 The browser always leaves the final curve visible in gray. The selected cyan trace has five views:
@@ -3661,15 +3665,20 @@ Effect is called *contextual effect* rather than contribution. For addition it b
 
 The occurrence browser answers "how did each piece become the final shape?"; `browseRewrite(...)` answers "what did each rewrite do to that shape?" It applies the rules one at a time and steps through the result on the same time-base, drawing *before* (dashed), *after* (cyan), and *delta* (orange) for each rule:
 
-```diffstatic {data-lang=kotlin}
-gesture.browseRewrite(
-    """
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/browse_rewrite.png" capture="box" open-outputs="true" wait="2.0" w="1200" embed=true name="functions-browse-rewrite" alt="The rewrite browser at step 1 of 2, sin => op=triangle: the gesture before the rule dashed in grey, after it in cyan with the sine replaced by straight triangle segments, and the delta between them dotted in orange, above a step slider"}
+:::static
+with(Functions) {
+    val gesture = (sin(2.0).shift(0.12) * tween(0.15, 1.0, 0.0..1.0, Functions.Easing.CUBIC_IN_OUT)).softClip(0.8)
+
+    gesture.browseRewrite(
+        """
 #fnrewrite
-saw => op=triangle
+sin => op=triangle
 **/[role=amplitude] => *= 0.5
 """,
-    channel = "rewrite",
-)
+        channel = "rewrite",
+    )
+}
 ```
 
 `graphRewriteTrace(...)` is the non-HTML form, and it also accepts a `List<FnGraphRule>`, so the same before/after lanes work for the pattern rules and programmatic rules described below, not just the string DSL. Together, the two browsers close the loop between structural editing and perceptual confirmation: rewrite the graph, then watch exactly which occurrence moved and by how much.
@@ -4156,7 +4165,7 @@ with(Functions) {
     )
     markdown(
         "notes",
-        "**evolve** — seed cosine (grey) → target sine (red); the evolved best (blue) tracks the target. score ${"%.4f".format(run.initialScore)} → ${"%.4f".format(run.bestScore)}",
+        "**evolve** — seed cosine (grey) → target sine (red); the evolved best (blue) tracks the target. score ${run.initialScore.f4} → ${run.bestScore.f4}",
     )
     run
 }
@@ -4266,7 +4275,7 @@ with(Functions) {
     lines(out, channel = "evolve-variety", w = 980.0, h = 440.0, fitToSize = false)
     markdown(
         "notes",
-        "**evolveVariety** — ${variety.results.size} behaviourally distinct gestures from one seed, meanPairwiseDistance ${"%.3f".format(variety.meanPairwiseDistance)} (normalized shape)",
+        "**evolveVariety** — ${variety.results.size} behaviourally distinct gestures from one seed, meanPairwiseDistance ${variety.meanPairwiseDistance.f3} (normalized shape)",
     )
     variety
 }
@@ -4286,7 +4295,7 @@ This example rewrites a nested graph in two ways: it changes a descendant `saw` 
 // finished: go { } starts once this run returns.
 go {
     with(Functions) {
-        val base = (sin(sin(saw(0.18))) * 0.45) over (0.0..3.0)
+        val base = (sin(sin(saw(0.18))) * 0.45) over (0.0..0.4)
         val changed =
             base.rewriteKotlin(
                 """
@@ -4296,16 +4305,16 @@ sin/**/[tag=number][value>0.15] => *= @{1.0 + depth * 0.08}
 **/[role=amplitude] => *= @{if (parentOp == "sin") 0.75 else 1.0}
 """,
             )
-        base.withName("before rewrite").plot(0.0..3.0, channel = "before", heightPx = 240, title = "before rewrite")
-        changed.withName("after rewrite").plot(0.0..3.0, channel = "after", heightPx = 240, title = "after rewrite")
+        base.withName("before rewrite").plot(0.0..0.4, channel = "before", heightPx = 240, title = "before rewrite")
+        changed.withName("after rewrite").plot(0.0..0.4, channel = "after", heightPx = 240, title = "after rewrite")
         (changed - base)
             .withName("rewrite delta")
-            .plot(0.0..3.0, channel = "delta", heightPx = 220, title = "after - before")
+            .plot(0.0..0.4, channel = "delta", heightPx = 220, title = "after - before")
     }
 }
 ```
 
-The selectors talk about structure, not sample values. The rules do not ask "where is the waveform high?"; they ask "which function graph nodes sit under this ancestry, role, or metadata condition?" Plotting the source, result, and delta puts the structural edit on screen: the graph rewrite is not only metadata, it changes the sampled signal.
+The selectors talk about structure, not sample values. The rules do not ask "where is the waveform high?"; they ask "which function graph nodes sit under this ancestry, role, or metadata condition?" Plotting the source, result, and delta over the first 0.4 units, before the nested `sin` starts oscillating faster than the plot can draw, puts the structural edit on screen: the graph rewrite is not only metadata, it changes the sampled signal.
 
 ### Rewrite limitations
 

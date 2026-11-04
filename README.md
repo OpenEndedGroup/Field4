@@ -1,13 +1,19 @@
 # Field 4
 
+[![License: AGPL v3+](https://img.shields.io/badge/license-AGPL--3.0--or--later-blue)](LICENSE)
+![Kotlin](https://img.shields.io/badge/Kotlin-JVM%20%2B%20JS-7F52FF?logo=kotlin&logoColor=white)
+![Vulkan](https://img.shields.io/badge/graphics-Vulkan-AC162C?logo=vulkan&logoColor=white)
+![Platforms](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey)
+[![Docs](https://img.shields.io/badge/docs-openendedgroup.com%2Ffield4-success)](https://openendedgroup.com/field4)
+
 Field 4 is a live-coding environment for graphics, sound, exploratory data visualization, and new media art.
+
+Project site and user documentation: https://openendedgroup.com/field4
 
 [![A moving drawing in Field, with its editable Kotlin and inline petal count](public/docs/assets/first_steps/preview.gif)](https://openendedgroup.com/field4/first_steps/)
 
 [Watch the short recording](https://openendedgroup.com/field4/assets/first_steps/first-look.mp4) ·
-[Your first five minutes](public/docs/first_steps.md)
-
-Project site and user documentation: https://openendedgroup.com/field4
+[Your first five minutes](https://openendedgroup.com/field4/first_steps/)
 
 ## Status
 
@@ -21,7 +27,7 @@ The core of Field runs on Apple silicon macOS, glibc Linux (x86-64; ARM64 experi
   dependencies,
 - Several GB of downloads/build storage; allow 10 GB free and 16 GB RAM for the source build
 
-See the [installation guide](public/docs/installation.md) for package commands and platform limits.
+See the [installation guide](https://openendedgroup.com/field4/installation/) for package commands and platform limits.
 Java, Gradle and Node are provisioned by the launchers. Python, AI keys and optional submodules
 are not required for the default launch.
 
@@ -85,11 +91,11 @@ Windows accepts the same options through `field.bat`.
 
 The server binds localhost and enables browser-origin protection by default. Remote devices
 such as Vision Pro require an explicit `AFIELD_BIND_HOST=0.0.0.0` setting and a trusted network
-or firewall: the LAN API has no authentication. See [server access](public/docs/server_surface.md).
+or firewall: the LAN API has no authentication. See [server access](https://openendedgroup.com/field4/server_surface/).
 
 ## OpenAI Features
 
-Some experimental AI-assisted editing, documentation search, and autocomplete
+Some AI-assisted editing, documentation search, and autocomplete
 features use the OpenAI API. Field reads the standard `OPENAI_API_KEY`
 environment variable through the OpenAI client libraries.
 
@@ -122,10 +128,11 @@ Optional model override environment variables:
 - `AFIELD_DOCS_SEARCH_FALLBACK_MODEL`
 - `AFIELD_COMPLETION_DOC_MODEL`
 
+Alternatively, you can configure your model preferences (including the use of a local model) from the /welcome screen.
+
 ## Workspace
 
-Field documents are stored on disk in a workspace directory. Name one when you
-launch:
+Field documents are stored on disk in a workspace directory, which defaults to ~/Documents/AFieldWorkspace. Alternatively, name one when you launch:
 
 ```bash
 ./field.sh /path/to/AFieldWorkspace
@@ -147,11 +154,7 @@ ask without launching:
 ```
 
 Naming a workspace also makes it the remembered one, so the next bare `./field.sh`
-comes back to it. The Gradle entry points take the same flag:
-
-```bash
-./gradlew runDesktop --args="--workspace /path/to/AFieldWorkspace"
-```
+comes back to it. 
 
 ## Opening a document
 
@@ -247,7 +250,7 @@ The consolidated testing guide is `dev_docs/testing/TESTING_STRATEGY.md`.
 ## License & Privacy
 
 **AGPL-3.0-or-later.** See [LICENSE](LICENSE). Field runs locally; optional AI uses your own
-provider/account. [What stays local and what leaves](public/docs/privacy.md).
+provider/account. [What stays local and what leaves](https://openendedgroup.com/field4/privacy/).
 
 ## Repository Map
 

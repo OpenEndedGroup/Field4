@@ -32,7 +32,7 @@ class HardwareDocsGatingTest(unittest.TestCase):
                 with self.subTest(page=name):
                     docs_hooks.process_markdown(markdown=page.read_text(),page_path=page,state=state,files=[])
         state.capture_with_environment.assert_not_called()
-        self.assertEqual(state.assets_reused,10)
+        self.assertEqual(state.assets_reused,21)
         self.assertEqual(state.missing_assets,0)
 
     def test_linux_always_mode_also_requires_explicit_opt_in(self):
@@ -42,7 +42,7 @@ class HardwareDocsGatingTest(unittest.TestCase):
                 page=state.docs_dir/(name+'.md')
                 docs_hooks.process_markdown(markdown=page.read_text(),page_path=page,state=state,files=[])
         state.capture_with_environment.assert_not_called()
-        self.assertEqual(state.assets_reused,10)
+        self.assertEqual(state.assets_reused,16)
 
     def test_profile_is_explicit_and_unknown_names_fail(self):
         with patch.object(docs_hooks.sys,'platform','linux'),patch.dict(os.environ,{'FIELD_DOCS_CAPTURE_PROFILES':'linux-nvidia'}):

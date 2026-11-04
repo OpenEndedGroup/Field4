@@ -10,7 +10,8 @@ layout(location = 2) in vec4 weights;
 
 void main()
 {
-    // Choose three sample radii proportionally spaced within the radius
+    // Seven-tap horizontal Gaussian: the centre plus three symmetric pairs, at the radii and with the
+    // weights the vertex shader computed. radii.w is the sum of the weights, used to normalise.
 
     vec2 texel = 1.0 / vec2(textureSize(b0, 0));
     vec2 dx1 = texel * vec2(radii.x, 0.0);
@@ -24,6 +25,7 @@ void main()
     + weights.w * (texture(b0, ftc + dx3) + texture(b0, ftc - dx3));
 
     uFragColor = vec4(c.rgb / radii.w, 1.0);
+    // A second output, one per colour attachment of b1; this one has red and blue swapped.
     uFragColor1 = vec4(c.bgr / radii.w, 1.0);
 
 }

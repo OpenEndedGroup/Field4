@@ -1,3 +1,5 @@
+// Shared declarations for `5. included`, spliced into its vertex shader by the property
+// directive there that names this box. A fragment of GLSL: no #version and no main().
 layout (location = 0) in vec3 pos;
 layout (location = 1) in vec4 col;
 layout(push_constant) uniform matrices {

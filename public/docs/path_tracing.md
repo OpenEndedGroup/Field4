@@ -88,16 +88,14 @@ val camera = Camera(renderer).also {
     it.at.set(0f, 2f, 7f)
     it.target.set(0f, 1f, 0f)
 }
-val tracer =
-    PathTracingRenderer(
-            renderer,
-            scene,
-            env,
-            width = 1280,
-            height = 720,
-            camera = camera,
-        )
-        .install()
+val tracer = PathTracingRenderer(
+    renderer,
+    scene,
+    env,
+    width = 1280,
+    height = 720,
+    camera = camera,
+).install()
 ```
 
 `PathTraceEnvironment` accepts OpenEXR, Radiance HDR, STB-supported ordinary image
@@ -495,42 +493,42 @@ val twoLobe =
         .integratorSource()
         .replace(
             """
-        float phase(float mu,float g) {
-            if (abs(g)<1e-4) return 1.0/(4.0*PI);
-            float d=1.0+g*g-2.0*g*clamp(mu,-1.0,1.0);
-            return (1.0-g*g)/(4.0*PI*max(d,1e-12)*sqrt(max(d,1e-12)));
-        }
-    """
+            float phase(float mu,float g) {
+                if (abs(g)<1e-4) return 1.0/(4.0*PI);
+                float d=1.0+g*g-2.0*g*clamp(mu,-1.0,1.0);
+                return (1.0-g*g)/(4.0*PI*max(d,1e-12)*sqrt(max(d,1e-12)));
+            }
+            """
                 .trimIndent(),
             """
-        const float BACK_G=-0.55;   // the backward lobe
-        const float BACK_W=0.3;     // its share of the mixture
-        float hg(float mu,float g) {
-            if (abs(g)<1e-4) return 1.0/(4.0*PI);
-            float d=1.0+g*g-2.0*g*clamp(mu,-1.0,1.0);
-            return (1.0-g*g)/(4.0*PI*max(d,1e-12)*sqrt(max(d,1e-12)));
-        }
-        // The MIXTURE is the density. Evaluating one lobe while sampling two is the
-        // classic way to bias this, and it looks plausible on screen.
-        float phase(float mu,float g) {
-            return (1.0-BACK_W)*hg(mu,g)+BACK_W*hg(mu,BACK_G);
-        }
-    """
+            const float BACK_G=-0.55;   // the backward lobe
+            const float BACK_W=0.3;     // its share of the mixture
+            float hg(float mu,float g) {
+                if (abs(g)<1e-4) return 1.0/(4.0*PI);
+                float d=1.0+g*g-2.0*g*clamp(mu,-1.0,1.0);
+                return (1.0-g*g)/(4.0*PI*max(d,1e-12)*sqrt(max(d,1e-12)));
+            }
+            // The MIXTURE is the density. Evaluating one lobe while sampling two is the
+            // classic way to bias this, and it looks plausible on screen.
+            float phase(float mu,float g) {
+                return (1.0-BACK_W)*hg(mu,g)+BACK_W*hg(mu,BACK_G);
+            }
+            """
                 .trimIndent(),
         )
         .replace(
             "float mu;\n    if (abs(g)<1e-4) mu=1.0-2.0*xi.y;",
             """
-        float mu;
-        // Pick a lobe with xi.x, then remap it back to uniform for phi — conditional on
-        // each branch the remapped value is exactly uniform, the same argument
-        // sampleMediumDistance uses to share its dimension.
-        float g2=g;
-        if (xi.x<BACK_W) { g2=BACK_G; xi.x=xi.x/BACK_W; }
-        else             { xi.x=(xi.x-BACK_W)/(1.0-BACK_W); }
-        g=g2;
-        if (abs(g)<1e-4) mu=1.0-2.0*xi.y;
-    """
+            float mu;
+            // Pick a lobe with xi.x, then remap it back to uniform for phi — conditional on
+            // each branch the remapped value is exactly uniform, the same argument
+            // sampleMediumDistance uses to share its dimension.
+            float g2=g;
+            if (xi.x<BACK_W) { g2=BACK_G; xi.x=xi.x/BACK_W; }
+            else             { xi.x=(xi.x-BACK_W)/(1.0-BACK_W); }
+            g=g2;
+            if (abs(g)<1e-4) mu=1.0-2.0*xi.y;
+            """
                 .trimIndent(),
         )
 
@@ -546,7 +544,7 @@ break energy conservation silently. The packaged pair holds it to within 0.00001
 
 A medium whose density varies through space is not a phase-function change:
 `sampleMediumDistance` inverts the closed-form CDF for a constant extinction and
-`mediumTransmittance` is `exp(-σt · span)`, so substituting a `density(p)` lookup into the
+`mediumTransmittance` is \( \exp(-\sigma_t \cdot \mathrm{span}) \), so substituting a `density(p)` lookup into the
 shader makes both wrong without any visible sign. Varying density needs delta or ratio
 tracking in place of both, which Field does not provide; see
 `dev_docs/PARTICIPATING_MEDIA.md`.
@@ -769,6 +767,75 @@ tracer.temporalReuse = true
 tracer.temporalMaxSamples = 16 // maximum old sample weight carried across a camera move
 ```
 
+Both pictures below converge the material study to 256 samples, orbit the camera for 24 frames, and hold the last moving frame. Without reuse, every move restarts the image:
+
+```diffstatic_runner {capture-profile="linux-nvidia" data-lang=kotlin screenshot="assets/path_tracing/motion_no_reuse.png" capture="native-window" graphics-context=true execution="launch" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="motion_no_reuse done" embed=true hidden=true timeout="180" name="path-tracing-motion-no-reuse" alt="The material study mid-orbit with temporalReuse off: one sample per pixel, heavy noise everywhere"}
+import afield.graphics.scene.fabricated.*
+
+val tracer = PathTraceDemo.install(
+    renderer,
+    width = 1280,
+    height = 720,
+    environmentPath = "public/docs/assets/fabricate_demo/venice_sunset_1k.exr",
+)
+tracer.samplesPerFrame = 1
+tracer.maxBounces = 5
+tracer.exposure = 1.5f
+tracer.temporalReuse = false
+tracer.indirectClamp = 10f
+tracer.blitToScreen()
+frames {
+    while (tracer.samples < 256) frame()
+    // Orbit the camera about its target for 24 frames, then hold the last moving frame.
+    val c = tracer.camera
+    repeat(24) {
+        val dx = c.at.x - c.target.x
+        val dz = c.at.z - c.target.z
+        val a = 0.01f
+        c.at.x = c.target.x + dx * kotlin.math.cos(a) - dz * kotlin.math.sin(a)
+        c.at.z = c.target.z + dx * kotlin.math.sin(a) + dz * kotlin.math.cos(a)
+        frame()
+    }
+    tracer.paused = true
+    println("motion_no_reuse done")
+}
+```
+
+With `temporalReuse = true`, the rough floor and rough metal keep their history; the glossy red and gold spheres fall below the default roughness cutoff and restart:
+
+```diffstatic_runner {capture-profile="linux-nvidia" data-lang=kotlin screenshot="assets/path_tracing/motion_reuse.png" capture="native-window" graphics-context=true execution="launch" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="motion_reuse done" embed=true hidden=true timeout="180" name="path-tracing-motion-reuse" alt="The same orbit with temporalReuse on: the floor and rough metal sphere stay smooth while the red and gold spheres are noisy"}
+import afield.graphics.scene.fabricated.*
+
+val tracer = PathTraceDemo.install(
+    renderer,
+    width = 1280,
+    height = 720,
+    environmentPath = "public/docs/assets/fabricate_demo/venice_sunset_1k.exr",
+)
+tracer.samplesPerFrame = 1
+tracer.maxBounces = 5
+tracer.exposure = 1.5f
+tracer.temporalReuse = true
+tracer.temporalMaxSamples = 16
+tracer.indirectClamp = 10f
+tracer.blitToScreen()
+frames {
+    while (tracer.samples < 256) frame()
+    // Orbit the camera about its target for 24 frames, then hold the last moving frame.
+    val c = tracer.camera
+    repeat(24) {
+        val dx = c.at.x - c.target.x
+        val dz = c.at.z - c.target.z
+        val a = 0.01f
+        c.at.x = c.target.x + dx * kotlin.math.cos(a) - dz * kotlin.math.sin(a)
+        c.at.z = c.target.z + dx * kotlin.math.sin(a) + dz * kotlin.math.cos(a)
+        frame()
+    }
+    tracer.paused = true
+    println("motion_reuse done")
+}
+```
+
 The [keyboard camera example](#camera-jitter-and-depth-of-field) enables this already.
 Each pixel stores its first hit's world position, triangle identity, normal, base
 colour and effective sample weight beside its linear HDR colour. On the next camera
@@ -811,6 +878,44 @@ tracer.temporalMotionSensitivity = 0f
 tracer.temporalRoughnessSensitivity = 0f
 // Optional: permit more defocus in the history match.
 tracer.temporalMaxBlurRadius = 2f
+```
+
+The same orbit as above with these settings. The red and gold spheres now keep history too, and their reflections are carried with the surface rather than re-traced:
+
+```diffstatic_runner {capture-profile="linux-nvidia" data-lang=kotlin screenshot="assets/path_tracing/motion_persistent.png" capture="native-window" graphics-context=true execution="launch" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="motion_persistent done" embed=true hidden=true timeout="180" name="path-tracing-motion-persistent" alt="The orbit with high-persistence reuse: all spheres look smooth mid-motion, with reflections that lag the camera"}
+import afield.graphics.scene.fabricated.*
+
+val tracer = PathTraceDemo.install(
+    renderer,
+    width = 1280,
+    height = 720,
+    environmentPath = "public/docs/assets/fabricate_demo/venice_sunset_1k.exr",
+)
+tracer.samplesPerFrame = 1
+tracer.maxBounces = 5
+tracer.exposure = 1.5f
+tracer.temporalReuse = true
+tracer.temporalMaxSamples = 128
+tracer.temporalMotionSensitivity = 0f
+tracer.temporalRoughnessSensitivity = 0f
+tracer.temporalMaxBlurRadius = 2f
+tracer.indirectClamp = 10f
+tracer.blitToScreen()
+frames {
+    while (tracer.samples < 256) frame()
+    // Orbit the camera about its target for 24 frames, then hold the last moving frame.
+    val c = tracer.camera
+    repeat(24) {
+        val dx = c.at.x - c.target.x
+        val dz = c.at.z - c.target.z
+        val a = 0.01f
+        c.at.x = c.target.x + dx * kotlin.math.cos(a) - dz * kotlin.math.sin(a)
+        c.at.z = c.target.z + dx * kotlin.math.sin(a) + dz * kotlin.math.cos(a)
+        frame()
+    }
+    tracer.paused = true
+    println("motion_persistent done")
+}
 ```
 
 <div data-code-lang="kotlin" markdown>
@@ -884,6 +989,108 @@ obtrusive; raise it if reflected or transmitted light becomes too dim. Set it to
 `0f` when preserving the unclamped lighting matters more than fast convergence.
 With temporal reuse disabled, use `tracer.samples` to compare views at the same sample count, and adjust
 `tracer.exposure` separately for display brightness.
+
+The clamp is easiest to see on light that paths find only by chance after a bounce. Here
+the material study has a ceiling just out of frame and, under it, a lamp the size of a coin
+that shines only upward, with `emitterSampling` off. The floor and spheres are lit by the
+patch of ceiling the lamp brightens, and a path finds that light only when its second bounce
+happens to hit the lamp. After 16 samples per pixel with the clamp off, those rare hits are
+the specks:
+
+```diffstatic_runner {capture-profile="linux-nvidia" data-lang=kotlin screenshot="assets/path_tracing/clamp_off.png" capture="native-window" graphics-context=true execution="launch" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="clamp_off done" embed=true hidden=true timeout="180" name="path-tracing-clamp-off" alt="The material study after 16 samples with indirectClamp off: thousands of bright white specks over the floor and all three spheres"}
+import afield.graphics.scene.fabricated.*
+import afield.graphics.vulkan.util.Camera
+
+val scene = PathTraceScene()
+val floor = scene.material(PathTraceMaterial.diffuse(0.48f, 0.48f, 0.48f))
+val red = scene.material(PathTraceMaterial.plastic(0.65f, 0.055f, 0.025f, 0.22f))
+val gold = scene.material(PathTraceMaterial.metal(0.95f, 0.7f, 0.3f, 0.12f))
+val rough = scene.material(PathTraceMaterial.metal(0.55f, 0.65f, 0.8f, 0.55f))
+val ceiling = scene.material(PathTraceMaterial.diffuse(0.7f, 0.7f, 0.7f))
+// One-sided, facing up: the lamp lights only the ceiling above it.
+val lamp = scene.material(PathTraceMaterial.emissive(2000f, 1800f, 1500f).copy(doubleSided = false))
+scene.quad(Vector3f(-15f, 0f, -15f), Vector3f(-15f, 0f, 15f), Vector3f(15f, 0f, 15f), Vector3f(15f, 0f, -15f), floor)
+scene.sphere(Vector3f(-1.7f, 0.8f, 0f), 0.8f, red, 48, 24)
+scene.sphere(Vector3f(0f, 0.8f, 0f), 0.8f, gold, 48, 24)
+scene.sphere(Vector3f(1.7f, 0.8f, 0f), 0.8f, rough, 48, 24)
+// A ceiling out of frame, and a lamp the size of a coin just under it
+scene.quad(Vector3f(-4f, 4f, -4f), Vector3f(4f, 4f, -4f), Vector3f(4f, 4f, 4f), Vector3f(-4f, 4f, 4f), ceiling)
+scene.quad(
+    Vector3f(-0.1f, 3.8f, -0.1f),
+    Vector3f(-0.1f, 3.8f, 0.1f),
+    Vector3f(0.1f, 3.8f, 0.1f),
+    Vector3f(0.1f, 3.8f, -0.1f),
+    lamp,
+)
+val camera = Camera(renderer).also {
+    it.at.set(3.5f, 2.4f, 7.5f)
+    it.target.set(0f, 0.65f, 0f)
+    it.p.fov = 0.62
+}
+val env = PathTraceEnvironment.fromFile("public/docs/assets/fabricate_demo/venice_sunset_1k.exr")
+val tracer = PathTracingRenderer(renderer, scene, env, 1280, 720, camera).install()
+tracer.samplesPerFrame = 1
+tracer.maxBounces = 5
+tracer.exposure = 1.5f
+tracer.emitterSampling = false
+tracer.indirectClamp = 0f
+tracer.blitToScreen()
+frames {
+    while (tracer.samples < 16) frame()
+    tracer.paused = true
+    println("clamp_off done")
+}
+```
+
+With `indirectClamp = 1f`, each of those samples is capped at a luminance of 1 before it
+is averaged in. The specks go, and with them most of the light the lamp sends by way of
+the ceiling: that light is carried by exactly those rare samples, which is the bias the
+clamp trades for a clean image.
+
+```diffstatic_runner {capture-profile="linux-nvidia" data-lang=kotlin screenshot="assets/path_tracing/clamp_on.png" capture="native-window" graphics-context=true execution="launch" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="clamp_on done" embed=true hidden=true timeout="180" name="path-tracing-clamp-on" alt="The same view after 16 samples with indirectClamp = 1f: the specks are gone, leaving fine grain on the floor and spheres"}
+import afield.graphics.scene.fabricated.*
+import afield.graphics.vulkan.util.Camera
+
+val scene = PathTraceScene()
+val floor = scene.material(PathTraceMaterial.diffuse(0.48f, 0.48f, 0.48f))
+val red = scene.material(PathTraceMaterial.plastic(0.65f, 0.055f, 0.025f, 0.22f))
+val gold = scene.material(PathTraceMaterial.metal(0.95f, 0.7f, 0.3f, 0.12f))
+val rough = scene.material(PathTraceMaterial.metal(0.55f, 0.65f, 0.8f, 0.55f))
+val ceiling = scene.material(PathTraceMaterial.diffuse(0.7f, 0.7f, 0.7f))
+// One-sided, facing up: the lamp lights only the ceiling above it.
+val lamp = scene.material(PathTraceMaterial.emissive(2000f, 1800f, 1500f).copy(doubleSided = false))
+scene.quad(Vector3f(-15f, 0f, -15f), Vector3f(-15f, 0f, 15f), Vector3f(15f, 0f, 15f), Vector3f(15f, 0f, -15f), floor)
+scene.sphere(Vector3f(-1.7f, 0.8f, 0f), 0.8f, red, 48, 24)
+scene.sphere(Vector3f(0f, 0.8f, 0f), 0.8f, gold, 48, 24)
+scene.sphere(Vector3f(1.7f, 0.8f, 0f), 0.8f, rough, 48, 24)
+// A ceiling out of frame, and a lamp the size of a coin just under it
+scene.quad(Vector3f(-4f, 4f, -4f), Vector3f(4f, 4f, -4f), Vector3f(4f, 4f, 4f), Vector3f(-4f, 4f, 4f), ceiling)
+scene.quad(
+    Vector3f(-0.1f, 3.8f, -0.1f),
+    Vector3f(-0.1f, 3.8f, 0.1f),
+    Vector3f(0.1f, 3.8f, 0.1f),
+    Vector3f(0.1f, 3.8f, -0.1f),
+    lamp,
+)
+val camera = Camera(renderer).also {
+    it.at.set(3.5f, 2.4f, 7.5f)
+    it.target.set(0f, 0.65f, 0f)
+    it.p.fov = 0.62
+}
+val env = PathTraceEnvironment.fromFile("public/docs/assets/fabricate_demo/venice_sunset_1k.exr")
+val tracer = PathTracingRenderer(renderer, scene, env, 1280, 720, camera).install()
+tracer.samplesPerFrame = 1
+tracer.maxBounces = 5
+tracer.exposure = 1.5f
+tracer.emitterSampling = false
+tracer.indirectClamp = 1f
+tracer.blitToScreen()
+frames {
+    while (tracer.samples < 16) frame()
+    tracer.paused = true
+    println("clamp_on done")
+}
+```
 
 ## Sampling the lamps directly
 
@@ -1099,6 +1306,31 @@ val directOnly = tracer.integratorSource().replace("return vec4(radiance+indirec
 println(tracer.reloadIntegrator(directOnly))
 
 // integrator reloaded (30326 chars); accumulation restarts, camera and scene preserved
+```
+
+The material study at the top of this page, after the swap:
+
+```diffstatic_runner {capture-profile="linux-nvidia" data-lang=kotlin screenshot="assets/path_tracing/direct_only.png" capture="native-window" graphics-context=true execution="launch" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="direct_only done" embed=true hidden=true timeout="180" name="path-tracing-direct-only" alt="The material study after swapping in the direct-only integrator: spheres and floor lit only by the first environment bounce, with darker shadows and no inter-reflection"}
+import afield.graphics.scene.fabricated.*
+
+val tracer = PathTraceDemo.install(
+    renderer,
+    width = 1280,
+    height = 720,
+    environmentPath = "public/docs/assets/fabricate_demo/venice_sunset_1k.exr",
+)
+tracer.samplesPerFrame = 1
+tracer.maxBounces = 5
+tracer.exposure = 1.5f
+tracer.indirectClamp = 10f
+tracer.blitToScreen()
+val directOnly = tracer.integratorSource().replace("return vec4(radiance+indirect,1);", "return vec4(radiance,1);")
+println(tracer.reloadIntegrator(directOnly))
+frames {
+    while (tracer.samples < 1024) frame()
+    tracer.paused = true
+    println("direct_only done")
+}
 ```
 
 The scene, the environment, the accumulation buffers, the camera pose and every tuning

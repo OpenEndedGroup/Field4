@@ -211,7 +211,7 @@ class MorphoExecution(val inside: Box) : BoxExecution {
     private fun fail(execute: Execute, e: Throwable, directiveLine: Int) {
         val reported = (e as? MorphoException)?.line
         val line = if (reported != null) execute.line + reported - 1 else execute.line + directiveLine
-        inside.error(e.message ?: e.javaClass.simpleName, line = line, property = "code")
+        inside.displayError(e.message ?: e.javaClass.simpleName, line = line, property = "code")
     }
 
     private fun describe(circuit: MorphoCircuit): String {
@@ -304,7 +304,7 @@ class MorphoExecution(val inside: Box) : BoxExecution {
             try {
                 val directive = parseDirective(execute.code)
                 if (directive == null) {
-                    inside.error(missingDirectiveMessage(execute.code), line = execute.line, property = "code")
+                    inside.displayError(missingDirectiveMessage(execute.code), line = execute.line, property = "code")
                     return@inMain
                 }
                 try {
@@ -351,7 +351,7 @@ class MorphoExecution(val inside: Box) : BoxExecution {
 
             val directive = parseDirective(code)
             if (directive == null) {
-                inside.error(missingDirectiveMessage(code), line = execute.line, property = "code")
+                inside.displayError(missingDirectiveMessage(code), line = execute.line, property = "code")
                 trace.finish(false, "the box named no design directive")
                 return@inMain
             }

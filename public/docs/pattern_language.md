@@ -27,15 +27,13 @@ language is functions from queries to lists of events.
 // Nothing is stored. Ask the same pattern three different questions.
 val drums = pat("bd sd hh hh")
 
-val answers =
-    [
-            "one cycle" to PatArc(PatQ.ZERO, PatQ.ONE),
-            "second half" to PatArc(PatQ.of(1, 2), PatQ.ONE),
-            "cycle 97" to PatArc(PatQ.of(97), PatQ.of(98)),
-        ]
-        .joinToString("\n") { (label, arc) ->
-            "%-12s %s".format(label, drums.events(arc).joinToString("  ") { "${it.value}@${it.arc.start}" })
-        }
+val answers = [
+    "one cycle" to PatArc(PatQ.ZERO, PatQ.ONE),
+    "second half" to PatArc(PatQ.of(1, 2), PatQ.ONE),
+    "cycle 97" to PatArc(PatQ.of(97), PatQ.of(98)),
+].joinToString("\n") { (label, arc) ->
+    "%-12s %s".format(label, drums.events(arc).joinToString("  ") { "${it.value}@${it.arc.start}" })
+}
 println(answers)
 display("<pre>" + answers + "</pre>")
 ```
@@ -932,7 +930,7 @@ with(Functions) {
         """
     seed    ${seed.graphNode().strings["source"]}
     fitted  ${run.fitted.graphNode().strings["source"]}
-    RMSE    ${"%.4f".format(run.initialError)} -> ${"%.4f".format(run.finalError)}
+    RMSE    ${run.initialError.f4} -> ${run.finalError.f4}
     """
             .trimIndent()
     println(report)
@@ -976,11 +974,15 @@ Four names to know if you are coming from Tidal:
 `eventSequence` gives you the events in playing order. `scheduled(cps)` turns them into
 wall-clock times. `respond {}` calls you back as each one arrives.
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin execution="launch" capture="editor" outputs="inline" screenshot="assets/pattern_language/respond.png" wait="2" padding="10" timeout="180" embed=true name="pat-doc-respond" w="900" h="360" alt="The three-line respond box in Field's editor. Below it, one printed line per event, an eighth of a second apart: bd, sd, hh, hh, then bd again, each with gain=0.0."}
 pat("bd sd hh hh").respond(cps = 2.0) { event ->
     println("${event.start}s  ${event.value}  gain=${event.num("gain")}")
 }
 ```
+
+At two cycles a second, four steps land an eighth of a second apart. The onsets are times on
+Field's shared pattern clock, so they count from when that clock started rather than from 0. The
+pattern sets no `gain`, so `num("gain")` reads 0.
 
 Because a note is scheduled at its onset and carries its whole length, a pattern that
 crosses bar lines plays correctly without the consumer knowing anything about cycles.

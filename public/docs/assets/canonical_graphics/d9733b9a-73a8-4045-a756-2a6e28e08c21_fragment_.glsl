@@ -7,6 +7,7 @@ layout(set=0, binding = 1) uniform sampler2DArray back;
 
 void main()
 {
+    // The third coordinate picks the array layer; the last argument is a mip bias.
     vec4 c = texture(back, vec3(ftc.yx,1.0), 0.0);
     uFragColor = vec4(c.rgb, 1.0);
 }

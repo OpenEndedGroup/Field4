@@ -702,19 +702,51 @@ periodicity search helps it acquire a new note and escape octave errors.
 For example, partials at 220, 330 and 550 Hz repeat at 110 Hz even when there is no 110 Hz
 component. This sample-by-sample example gives that sound a new 55 Hz undertone:
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/subharmonic_sound/missing-fundamental.png" alt="two spectra from 0 to 700 Hz with labelled rules at 55, 110, 220, 330 and 550 Hz: the input has peaks at 220, 330 and 550 Hz and nothing at the orange 110 Hz rule; the output has one peak at 55 Hz" wait="1.5" capture="box" open-outputs="true" embed=true name="subharmonic-missing-fundamental"}
 val tracker = HarmonicPhaseTracker(initialHz = 70.0)
 val bank = TrackedPhaseBank(tracker, TrackedPhaseBank.ratios(0.5 to 0.7))
+val input = FloatArray(96_000)
 val output =
     FloatArray(96_000) { n ->
         val t = n / 48_000.0
-        val input =
+        val x =
             0.7 * kotlin.math.sin(2 * kotlin.math.PI * 220 * t + 0.31) +
                 0.48 * kotlin.math.sin(2 * kotlin.math.PI * 330 * t - 0.77) +
                 0.31 * kotlin.math.sin(2 * kotlin.math.PI * 550 * t + 1.13)
-        bank.process(input.toFloat())
+        input[n] = x.toFloat()
+        bank.process(x.toFloat())
     }
+
+:::fold measure and draw both spectra
+// Magnitude at each frequency from 20 to 700 Hz over the second second, once tracking has settled.
+fun spectrum(signal: FloatArray) = (4..140).map { k ->
+    val hz = k * 5.0
+    var re = 0.0
+    var im = 0.0
+    for (n in 48_000 until 96_000) {
+        val a = 2 * kotlin.math.PI * hz * n / 48_000.0
+        re += signal[n] * kotlin.math.cos(a)
+        im -= signal[n] * kotlin.math.sin(a)
+    }
+    hz to 2 * kotlin.math.hypot(re, im) / 48_000.0
+}
+// One short chart per signal, with the five frequencies that matter ruled and labelled.
+fun spectrumChart(title: String, signal: FloatArray, tint: Vec4) = Chart(title = title, xLabel = "Hz").apply {
+    val spec = spectrum(signal)
+    width = 700.0
+    height = 300.0
+    xDomain = 0.0 to 700.0
+    yDomain = 0.0 to 0.8
+    for (hz in [55, 220, 330, 550]) vrule(hz, "$hz")
+    vrule(110, "110: no energy here", color = vec(1.0, 0.6, 0.2, 1.0))
+    line("magnitude", spec.map { it.first }, spec.map { it.second }, color = tint, thickness = 3.0)
+}
+display("tracked", "tracked fundamental: ${tracker.state.hz.f1} Hz")
+display("input", spectrumChart("input: peaks at 220, 330 and 550 Hz, nothing at 110 (orange)", input, vec(0.7, 0.7, 0.7, 1.0)))
+display("output", spectrumChart("the bank's output: one peak at 55 Hz", output, vec(0.3, 0.8, 1.0, 1.0)))
 ```
+
+The tracker reports 110 Hz, a pitch with no energy in the input, and the bank's output is one line at 55 Hz.
 
 Set `minHz..maxHz` to the expected fundamental range. `initialHz` seeds the search;
 `captureHz` controls the fine channels' bandwidth. Acquisition needs a window of input,
@@ -737,27 +769,29 @@ remove the extra harmonics of a sharp waveform or a strong phase warp.
 
 ## Inside the quadrature PLL
 
-The plain PLL's phase detector multiplies the input `A·sin θ` by the cosine of its own phase
-estimate `φ̂`:
+The plain PLL's phase detector multiplies the input \( A\sin\theta \) by the cosine of its own phase
+estimate \( \hat\varphi \):
 
-`A·sin θ · cos φ̂ = ½A·sin(θ − φ̂) + ½A·sin(θ + φ̂)`
+\[
+A\sin\theta\cos\hat\varphi = \tfrac{1}{2}A\sin(\theta - \hat\varphi) + \tfrac{1}{2}A\sin(\theta + \hat\varphi)
+\]
 
-The first term is the phase error the loop wants, scaled by the input level `A`. The second is a
+The first term is the phase error the loop wants, scaled by the input level \( A \). The second is a
 ripple at twice the input frequency, which the loop only partly averages away.
 
-The quadrature PLL starts by splitting the input into two copies that stay 90° apart, `i ≈ A·sin θ`
-and `q ≈ A·cos θ`. `HilbertPair` does this with two chains of four allpass filters, which keep the
+The quadrature PLL starts by splitting the input into two copies that stay 90° apart, \( i \approx A\sin\theta \)
+and \( q \approx A\cos\theta \). `HilbertPair` does this with two chains of four allpass filters, which keep the
 two outputs within a degree of 90° from 30 Hz to 5 kHz at 48 kHz. From the pair:
 
-- `(i·cos φ̂ − q·sin φ̂) / A = sin(θ − φ̂)`, the phase error with no ripple term and no `A`, because
-  `A = √(i² + q²)` is known and divided out;
-- the same `A` is a level that does not ripple, so the generated tone is not amplitude-modulated at
+- \( (i\cos\hat\varphi - q\sin\hat\varphi) / A = \sin(\theta - \hat\varphi) \), the phase error with no ripple term and no \( A \), because
+  \( A = \sqrt{i^2 + q^2} \) is known and divided out;
+- the same \( A \) is a level that does not ripple, so the generated tone is not amplitude-modulated at
   the input frequency, as a rectified follower would make it;
-- the phase advance from one `(i, q)` sample to the next is the input's instantaneous frequency.
+- the phase advance from one \( (i, q) \) sample to the next is the input's instantaneous frequency.
 
 That last measurement is the frequency discriminator. While the loop is out of phase, it pulls the
 frequency estimate straight to what it measures, with a time constant of `acquisitionTimeSeconds`
-(20 ms by default). Once the smoothed `cos(θ − φ̂)` passes 0.9, the loop counts as locked and the
+(20 ms by default). Once the smoothed \( \cos(\theta - \hat\varphi) \) passes 0.9, the loop counts as locked and the
 discriminator stops: any harmonics left in the input bias the instantaneous frequency, and the
 phase loop holds the pitch more accurately on its own. Set `acquisitionTimeSeconds = 0.0` to hear
 the loop without it. On the bassline it then takes over twice as long to reach each note.

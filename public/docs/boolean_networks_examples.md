@@ -176,14 +176,14 @@ fun markers(values: List<Double>, color: Vec4, size: Double): FLine = fline {
 
 lines(
     guides() +
-        [
+        listOf(
             curve(rows.map { it.attractors }, vec(0.56, 0.92, 1.0, 0.95), 3.0),
             curve(rows.map { it.period }, vec(1.0, 0.74, 0.38, 0.92), 3.0),
             curve(rows.map { it.fixed }, vec(0.58, 1.0, 0.68, 0.92), 3.0),
             markers(rows.map { it.attractors }, vec(0.56, 0.92, 1.0, 0.95), 5.0),
             markers(rows.map { it.period }, vec(1.0, 0.74, 0.38, 0.92), 5.0),
             markers(rows.map { it.fixed }, vec(0.58, 1.0, 0.68, 0.92), 5.0),
-        ],
+        ),
     channel = "boolean-kauffman",
     w = 1180.0,
     h = 660.0,
@@ -271,9 +271,17 @@ lines(
 )
 ```
 
-The middle grid is the raw attractor repeated over two bars. The right grid is the same cycle clock-gated into five kick / snare / hat / clap / percussion lanes, ready to hand to a sampler. Nothing on this page makes a sound; the grids repeat exactly, so you can read them off the page before playing them.
+The middle grid is the raw attractor repeated over two bars. The right grid is the same cycle clock-gated into five kick / snare / hat / clap / percussion lanes, ready to hand to a sampler. The grids repeat exactly, so you can read them off the page.
 
 ![three panels. The blue-tinted left panel holds five blue discs in a ring with six lines between them, two of them crossing the middle. The middle panel is a five-lane step grid with orange bar-lines every four steps, each lane in its own colour, and two bars' worth of the same pattern repeated. The brown-tinted right panel is the same five lanes much more sparsely filled, a handful of triggers per lane instead of a dense run](assets/boolean_networks_examples/rhythm_cycles.png)
+
+Here is the right-hand grid played through Field's Dirt-Samples, eight steps a second, kick, snare,
+hat, clap and percussion lanes as `bd`, `sn`, `hh`, `cp` and `perc`. The 16 steps play twice:
+
+```diffstatic_runner {data-lang=kotlin audio="assets/boolean_networks_examples/drum-grid.wav" audio-spec="drum-grid" audio-renderer="afield.audio.synth.BooleanNetworkSoundDocs" requires="dirt-samples" embed=true hidden=true name="boolean-networks-drum-grid-audio"}
+// Offline-rendered by BooleanNetworkSoundDocs.renderWav("drum-grid"): the same candidate and the same
+// gating as the fence above, each trigger one Dirt-Samples one-shot.
+```
 
 For the next step, where those grids become `NoteProcess` objects and live Dirt triggers, continue with [Boolean network music examples](boolean_network_music_examples.md). For related work where static structure and measured behavior are plotted together, continue with [Values over time (interpolants, keyframes, correlations & estimation)](interpolants_examples.md) and [Sorting networks examples](sorting_networks_examples.md).
 

@@ -3158,6 +3158,11 @@ class KotlinInterface2(
         implicits: List<Any>,
         onCompileError: (List<ScriptDiagnostic>) -> Unit
     ): K2PreparedSnippet? {
+        // Never compile before the stdlib intro has, either (see [bootstrapReady]): a snippet
+        // compiled first resolves against an engine with no default imports, so every `vec`,
+        // `loop` and `.f2` is unresolved. The compile-only guard compiles a box's code while the
+        // box's async intro may still be queued on the runloop, and lost that race under load.
+        LatencySpans.time("engine.bootstrapWait", box = (associatedBox as? Box)?.id) { bootstrapReady.await() }
         return when (val r = compile(s)) {
             is ResultWithDiagnostics.Success -> {
                 K2PreparedSnippet(r.value, implicits)

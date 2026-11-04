@@ -14,8 +14,23 @@ import org.lwjgl.vulkan.VK
 import org.lwjgl.vulkan.VK10.VK_SUCCESS
 import org.lwjgl.vulkan.VK13.VK_API_VERSION_1_3
 
+/**
+ * The live VMA allocator handles, one per [Renderer] that has allocated a buffer.
+ *
+ * A renderer is absent until something asks [allocatorForRenderer] for it, and absent again once
+ * the renderer has been cleaned up. The map is a plain unsynchronised one, so two threads first
+ * asking for the same renderer's allocator at the same moment is not safe.
+ */
 val allocators = mutableMapOf<Renderer, Long>()
 
+/**
+ * The VMA allocator for [d], created on the first ask and shared by every [VulkanBuffer] allocated
+ * on that renderer afterwards.
+ *
+ * The allocator is created against the renderer's own instance, physical device and device, for
+ * Vulkan 1.3 and with buffer device addresses enabled — which is what lets a buffer hand a shader a
+ * pointer rather than a descriptor. A failure to create one throws rather than returning zero.
+ */
 fun allocatorForRenderer(d : Renderer): Long {
 
     return allocators.computeIfAbsent(d) {

@@ -4,6 +4,7 @@ package afield.audio.synth
 
 import afield.math.linalg.Vector3f
 import java.io.File
+import java.util.Base64
 import java.util.Locale
 
 /*
@@ -551,15 +552,13 @@ object MarfGallery {
                 },
                 distinctLanes = true,
                 snippet = """
-                    val path =
-                        marfBankIn(
-                                MarfVector3f,
-                                stageTo(Vector3f(0f, 0f, 0f), 1.0),
-                                stageTo(Vector3f(1f, 0f, 0f), 0.5, MarfCurve.Smooth),
-                                stageTo(Vector3f(1f, 1f, 0f), 1.5, MarfCurve.Exp(3.0)),
-                                stageTo(Vector3f(0f, 0.25f, 1f), 1.0, MarfCurve.Osc(2.0)),
-                            )
-                            .read(pat("<0 1 2 3 2 1>").nums(), fields = MarfFieldClock.STAGES)
+                    val path = marfBankIn(
+                        MarfVector3f,
+                        stageTo(Vector3f(0f, 0f, 0f), 1.0),
+                        stageTo(Vector3f(1f, 0f, 0f), 0.5, MarfCurve.Smooth),
+                        stageTo(Vector3f(1f, 1f, 0f), 1.5, MarfCurve.Exp(3.0)),
+                        stageTo(Vector3f(0f, 0.25f, 1f), 1.0, MarfCurve.Osc(2.0)),
+                    ).read(pat("<0 1 2 3 2 1>").nums(), fields = MarfFieldClock.STAGES)
 
                     path.at(3.5).value // a Vector3f
                     path.signal { it.x.toDouble() } // any component, as an ordinary signal
@@ -603,15 +602,31 @@ object MarfGallery {
 
     // ── rendering ─────────────────────────────────────────────────────────────────────────
 
-    private const val BG = "#14161c"
-    private const val LANE_BG = "#191c24"
-    private const val GRID = "#2a2f3a"
-    private const val GRID_STRONG = "#454d5e"
-    private const val BOUND = "#5c6478"
-    private const val TEXT = "#c9d1e0"
-    private const val TEXT_DIM = "#7d879b"
+    private const val BG = "#0e0e0e"
+    private const val LANE_BG = "#050505"
+    private const val GRID = "#1f1f1f"
+    private const val GRID_STRONG = "#3a3a3a"
+    private const val BOUND = "#5a5a5a"
+    private const val TEXT = "#cccccc"
+    private const val TEXT_DIM = "#808080"
     private const val CURVE = "#7fd4ff"
     private const val PULSE = "#ffb347"
+
+    // Iosevka as the site sets code: light, with semibold for titles. An SVG shown through <img>
+    // cannot reach the page's web fonts, so the glyphs it uses travel inside it, subset to ASCII
+    // plus the few symbols the labels use (about 5 kB per weight). Regenerate a subset with
+    // `uv run --with brotli pyftsubset src/jsMain/resources/woff2/iosevka-light.woff2
+    // --unicodes="U+0020-007E,U+00B7,U+2014,U+2190-2193,U+2212,U+00D7" --flavor=woff2
+    // --layout-features="" --output-file=src/jvmMain/resources/afield/audio/synth/marf_fonts/iosevka-light-subset.woff2`.
+    private const val FONT_FAMILY = "MarfIosevka, Iosevka, Menlo, monospace"
+    private val FONT_STYLE: String by lazy {
+        fun face(weight: Int, file: String): String {
+            val bytes = MarfGallery::class.java.getResourceAsStream("/afield/audio/synth/marf_fonts/$file")!!.use { it.readBytes() }
+            return "@font-face{font-family:MarfIosevka;font-weight:$weight;" +
+                "src:url(data:font/woff2;base64,${Base64.getEncoder().encodeToString(bytes)}) format('woff2')}"
+        }
+        "<style>" + face(300, "iosevka-light-subset.woff2") + face(600, "iosevka-semibold-subset.woff2") + "</style>"
+    }
 
     // Proportioned for the docs column (about 680-740 CSS px), so a figure draws near 1:1 there
     // and its text lands at the size written here. At the old 1100 units wide the column drew it
@@ -651,7 +666,8 @@ object MarfGallery {
 
         val sb = StringBuilder(1 shl 16)
         sb.append("""<svg xmlns="http://www.w3.org/2000/svg" width="$WIDTH" height="$height" """)
-        sb.append("""viewBox="0 0 $WIDTH $height" font-family="Iosevka, Menlo, monospace">""").append('\n')
+        sb.append("""viewBox="0 0 $WIDTH $height" font-family="$FONT_FAMILY">""").append('\n')
+        sb.append(FONT_STYLE).append('\n')
         sb.append("""<rect x="0" y="0" width="$WIDTH" height="$height" fill="$BG"/>""").append('\n')
         sb.append(text(LEFT, 26, figure.title, TEXT, 18, weight = "600")).append('\n')
         sb.append(text(LEFT, 46, figure.subtitle, TEXT_DIM, 12)).append('\n')
@@ -864,7 +880,7 @@ object MarfGallery {
         content: String,
         fill: String,
         size: Int,
-        weight: String = "400",
+        weight: String = "300",
         anchor: String = "start"
     ): String =
         """<text x="${fmt(x.toDouble())}" y="${fmt(y.toDouble())}" fill="$fill" font-size="$size" """ +

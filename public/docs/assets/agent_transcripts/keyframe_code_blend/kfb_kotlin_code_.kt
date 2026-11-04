@@ -16,8 +16,8 @@ val scope = KeyframeScope()
 scope.target("amount", get = { amount }, set = { v -> amount = v })
 scope.codeBlend = CodeBlendOptions(mode = CodeBlendMode.RUNTIME)
 
-val a = scope.Key(mutableMapOf<String, Any?>("amount" to quiet))
-val b = scope.Key(mutableMapOf<String, Any?>("amount" to loud))
+val a = scope.Key("amount" to quiet)
+val b = scope.Key("amount" to loud)
 
 val plan = scope.codeBlendPlans(a, b).getValue("amount")
 println(plan.describe())

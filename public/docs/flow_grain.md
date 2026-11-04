@@ -94,6 +94,15 @@ objects.begin(renderer.frameCounter)
 objects.write("emitter", pose, previous, allow = history.available, revision = geometryRevision)
 ```
 
+The motion view, `flowLook.w = 4`, with the camera travelling and zooming. Each pixel shows how far it moved since the previous frame, measured against one fixed point of the frame, so the camera's even sideways travel cancels out. What is left is the zoom, which moves pixels near the edges further than pixels near the middle and spreads the colour from corner to corner, and the rotating marker, which has motion of its own and stands out from the world around it. The grain and the obstacles do not show here: they are fixed in the world, so they move exactly as the camera does.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/flow_grain/motion.png" capture="native-window" native-wait-frames="60" embed=true hidden=true timeout="240" name="flow-grain-motion" alt="The motion view: a smooth field of colour running from grey-blue at the top left through grey to pink at the top right and green and cream along the bottom, the zoom pulling each pixel by a different amount, and the rotating marker as a small saturated blue bar near the centre." macro-file="../../dev_docs/agents/transcripts/docs_capture/flow_grain_displacement.yaml" capture-box="flow_renderer"}
+// The transcript runs the real flow_grain starting point in its motion view.
+```
+
+??? aside "How the motion figure is made"
+    It runs the `flow_grain` starting point with travel on and `flowLook.w = 4`, the renderer capped with `Options.maxFrameRate = 30`, and the view-4 displacement gain raised from 12 to 400. Uncapped, the hidden capture window ran at thousands of frames a second, and at 12 a frame's motion did not move the colour.
+
 Each object writes two `vec4`s: previous center, relative rotation/scale, validity,
 previous energy, previous softness and a reserved scalar. Change `revision` when topology
 or material correspondence changes. Disappearing for a frame, reappearing after a gap,

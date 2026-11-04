@@ -14,6 +14,7 @@ import java.lang.reflect.Proxy
 import java.lang.reflect.TypeVariable
 import java.lang.reflect.WildcardType
 import kotlin.coroutines.Continuation
+import kotlin.coroutines.intrinsics.startCoroutineUninterceptedOrReturn
 import kotlin.reflect.KFunction
 import kotlin.reflect.KParameter
 import kotlin.reflect.jvm.isAccessible
@@ -100,6 +101,101 @@ object FieldMLHostBridge {
             ?: error(refusal("method", name, target.javaClass, candidates, arguments))
         return hostToFieldMLValue(invoke(chosen, target, arguments))
     }
+
+    /**
+     * Calls a Kotlin `suspend` **member** of [target] by name — `Renderer.run`, `Frames.frame` —
+     * and hands its eventual result to [onResult]. This is the calling-*into* half of mechanism D in
+     * `dev_docs/FIELDML_HOST_BRIDGE.md`; [samProxy] is the being-called half.
+     *
+     * A suspend member is, to reflection, a method with one extra trailing [Continuation]
+     * parameter that returns either its value or `COROUTINE_SUSPENDED`. The bridge could not call
+     * one because it had no continuation to pass and nowhere to resume. The answer here is that it
+     * does not need to resume *FieldML*: the call is started as a fresh coroutine
+     * ([startCoroutineUninterceptedOrReturn]) whose completion is [onResult], so the FieldML closure that wants the
+     * result is itself the continuation, written explicitly. Nothing blocks, no FieldML stack frame
+     * is ever suspended (FieldML still has no suspension points), and the host resumes on whatever
+     * thread its own machinery resumes on — where a Kotlin
+     * `launch(Dispatchers.Unconfined) { target.name(args) }` would continue.
+     *
+     * **Where it resumes is [dispatcher], and that is not optional in a live Field.** The first step
+     * runs undispatched, inside this call, so a member that never suspends hands its value over
+     * before `hostLaunch` returns. Every later resumption goes through [dispatcher]; the prelude
+     * passes Field's runloop (`Runloop.runLoop.main`). Without an interceptor `yield()` does not
+     * suspend at all, and `Renderer.run` — `while (running) { render(); yield() }` — would spin
+     * forever on the thread that called it.
+     *
+     * Returns the coroutine's [kotlinx.coroutines.Job], so the caller can cancel it. Only methods
+     * whose last parameter really is a [Continuation] are candidates: a plain method of arity
+     * `n + 1` is refused here, and a suspend member is still refused by [callMethod].
+     */
+    fun launchSuspendMember(
+        name: String,
+        target: Any,
+        arguments: List<Any?>,
+        dispatcher: kotlin.coroutines.CoroutineContext = kotlin.coroutines.EmptyCoroutineContext,
+        onResult: (Result<Any?>) -> Unit,
+    ): kotlinx.coroutines.Job {
+        val chosen = chooseSuspendMember(name, target, arguments)
+        val job = kotlinx.coroutines.Job()
+        val block: suspend () -> Any? = {
+            kotlin.coroutines.intrinsics.suspendCoroutineUninterceptedOrReturn { continuation ->
+                invoke(chosen, target, arguments + continuation)
+            }
+        }
+        val completion = object : Continuation<Any?> {
+            override val context = job + dispatcher
+            override fun resumeWith(result: Result<Any?>) {
+                result.fold({ job.complete() }, { job.completeExceptionally(it) })
+                onResult(result)
+            }
+        }
+        // Undispatched first step, as `inMain` does on the runloop: a member that never suspends
+        // finishes inside this call, and one that fails before suspending fails here.
+        val first = runCatching { block.startCoroutineUninterceptedOrReturn(completion) }
+        if (first.isFailure || first.getOrNull() !== kotlin.coroutines.intrinsics.COROUTINE_SUSPENDED) {
+            completion.resumeWith(first)
+        }
+        return job
+    }
+
+    private fun chooseSuspendMember(name: String, target: Any, arguments: List<Any?>): Executable {
+        val candidates = instanceMethods(target.javaClass, name, arguments.size + 1)
+            .filter { !it.isVarArgs && it.parameterTypes.last() == Continuation::class.java }
+        val shaped = arguments + continuationPlaceholder
+        return choose(candidates, shaped)
+            ?: error(
+                if (candidates.isEmpty() && instanceMethods(target.javaClass, name, arguments.size).isNotEmpty()) {
+                    "${target.javaClass.simpleName}.$name is not a suspend member; call it with hostCall"
+                } else {
+                    refusal("suspend method", name, target.javaClass, candidates, shaped)
+                },
+            )
+    }
+
+    /**
+     * Calls a Kotlin `suspend` member of [target] *from inside a suspending FieldML walk* and
+     * returns its result — `hostAwait "frame" () f`. Unlike [launchSuspendMember] this starts no
+     * coroutine: it passes the caller's own continuation, so when `Frames.frame()` suspends, the
+     * FieldML body that called it suspends with it, and resumes at this call when the frame turns.
+     *
+     * Reachable only through [evalFieldMLSuspending], which is reachable only from a [samProxy] that
+     * was handed a real [Continuation]; the soundness argument is "Suspendable bodies" in
+     * `dev_docs/FIELDML_HOST_BRIDGE.md`.
+     */
+    suspend fun awaitSuspendMember(name: String, target: Any, arguments: List<Any?>): FieldMLValue {
+        val chosen = chooseSuspendMember(name, target, arguments)
+        val result = kotlin.coroutines.intrinsics.suspendCoroutineUninterceptedOrReturn<Any?> { continuation ->
+            invoke(chosen, target, arguments + continuation)
+        }
+        return hostToFieldMLValue(result)
+    }
+
+    /** Stands in for the continuation while scoring: it is a [Continuation], which is all `choose` asks. */
+    private val continuationPlaceholder: Continuation<Any?> =
+        object : Continuation<Any?> {
+            override val context = kotlin.coroutines.EmptyCoroutineContext
+            override fun resumeWith(result: Result<Any?>) = Unit
+        }
 
     /**
      * Calls a static method of [owner] by name.
@@ -910,6 +1006,28 @@ object FieldMLHostBridge {
                 called.name == "toString" && called.parameterCount == 0 -> "<FieldML function as ${iface.simpleName}>"
                 else -> {
                     val arrived = rawArguments?.toList().orEmpty()
+                    val continuation = arrived.lastOrNull() as? Continuation<*>
+                    if (suspend != null && continuation != null) {
+                        // A suspend slot that really got a continuation: walk the body suspendingly
+                        // and hand Kotlin either the result or COROUTINE_SUSPENDED. The body can now
+                        // `hostAwait` (`Frames.frame()`); a body that never does completes here,
+                        // exactly as before. "Suspendable bodies" in FIELDML_HOST_BRIDGE.md.
+                        val incoming = arrived.dropLast(1)
+                        val body: suspend () -> Any? = {
+                            var current = function
+                            if (incoming.isEmpty()) {
+                                if (isFieldMLFunction(current)) current = applyFieldMLFunctionSuspending(current, FieldMLValue.UnitValue)
+                            } else {
+                                for (argument in incoming) current = applyFieldMLFunctionSuspending(current, hostToFieldMLValue(argument))
+                            }
+                            when (resultType) {
+                                Void.TYPE, Unit::class.java -> Unit
+                                else -> coerce(resultType, null, fieldMLValueToHost(current))
+                            }
+                        }
+                        @Suppress("UNCHECKED_CAST")
+                        return@InvocationHandler body.startCoroutineUninterceptedOrReturn(continuation as Continuation<Any?>)
+                    }
                     // Drop the continuation, and only when one really arrived: a proxy is reachable
                     // from Kotlin that erased the type differently, and silently eating a real
                     // argument would be far worse than passing an extra one.

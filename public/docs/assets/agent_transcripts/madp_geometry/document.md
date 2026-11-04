@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 11 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 11 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. fungal tree
@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="fungal_tree" index="0" -->
 
 ```edn [field-box id="fungal_tree" role="properties"]
-{"id" "fungal_tree" "index" 0 "name" "fungal tree" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "fungal tree" "_tombstone" false "frame" #afield/rect [80.0 2000.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "fungal_tree_notes_.md" "lines" 1 "characters" 253 "sha256" "a5bafe6ef1ffdd94d40c681c01860c243810847743a63fc8d7f3188b5fdf8f63"} {"name" "code" "language" "kotlin" "path" "fungal_tree_code_.kt" "lines" 57 "characters" 2161 "sha256" "ba1e5c73beea95d145ac9d6d8a66ded8a36f5901b9fc2abb2840f9fb48e0947a"}]}
+{"id" "fungal_tree" "index" 0 "name" "fungal tree" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "fungal tree" "_tombstone" false "frame" #afield/rect [80.0 2000.0 300.0 100.0]} "blockProperties" [{"name" "notes" "language" "markdown" "path" "fungal_tree_notes_.md" "lines" 1 "characters" 253 "sha256" "a5bafe6ef1ffdd94d40c681c01860c243810847743a63fc8d7f3188b5fdf8f63"} {"name" "code" "language" "kotlin" "path" "fungal_tree_code_.kt" "lines" 55 "characters" 2092 "sha256" "85c3a5dcde733cea5374b6cb489fbc1753ab53ea8a89d4c5bc2fa6c75687595e"}]}
 ```
 
 ```markdown [field-property box="fungal_tree" name="notes" path="fungal_tree_notes_.md"]
@@ -63,13 +63,11 @@ geometry {
         for (i in 0 until branches) {
             val turn = i.toDouble() / branches * TAU + rand(-0.5, 0.5)
             val lift = 0.48 + rand(0.0, 0.32)
-            val next =
-                vec(
-                        dir.x * 0.62 + cos(turn) * (0.45 + rand(0.0, 0.22)),
-                        dir.y * 0.52 + lift,
-                        dir.z * 0.62 + sin(turn) * (0.45 + rand(0.0, 0.22)),
-                    )
-                    .normalize()
+            val next = vec(
+                dir.x * 0.62 + cos(turn) * (0.45 + rand(0.0, 0.22)),
+                dir.y * 0.52 + lift,
+                dir.z * 0.62 + sin(turn) * (0.45 + rand(0.0, 0.22)),
+            ).normalize()
             branch(end - (radius * 0.6) * dir, next, length * rand(0.56, 0.76), radius * rand(0.58, 0.72), depth - 1)
         }
     }

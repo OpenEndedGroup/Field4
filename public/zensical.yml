@@ -29,8 +29,11 @@ nav:
     # these are moved here rather than aliased, and their former sections were rebalanced to suit.
     - A Tour:
       - What Field Is: funFeatures.md
+      # Second, before any subject: every later stop opens a panel or presses a shortcut, and this
+      # page shows each panel once with its shortcut and its close. A new tour_ page rather than a
+      # section of survivalGuide.md, which teaches the first box and the editor and links here.
+      - The Interface: tour_interface.md
       - Frames and the Animation Loop: animation_time_model.md
-      - Generative Mocap — ARDY and CLoSD: motion_recordings.md
       - Drawing with FLines: fline_examples.md
       # Straight after FLines, because a stroke read from the drawing is an FLine: the box that
       # listens turns each pen stroke into one and draws an answer back. The drawing layer (Alt+D)
@@ -114,7 +117,8 @@ nav:
     # Beside moving_around_the_canvas.md: which boxes are on the canvas at all, and where each one
     # sits, per layer.
     - Layers: layers.md
-    - Snapping: snapping.md
+    # Beside layers.md: putting boxes on the canvas, here copies of saved ones (cmd+t).
+    - Templates: templates.md
     - File Management: files_and_paths.md
     # Beside files_and_paths.md: both are about the document folder on disk, this one from the
     # side of an editor or script writing into it while Field has it open.
@@ -185,6 +189,10 @@ nav:
       # model for a target that keeps moving. Filed under Time & Signals rather than beside
       # physics.md because nothing here is a solve — it is arithmetic on a value over time.
       - Springs & Character Movement: movement_examples.md
+      # After springs and steering, its bigger cousin: recorded and generated human motion, read
+      # as MotionRecording clips, values over time. Moved out of the Tour, which reads in order
+      # from first contact; this page needs ARDY and CLoSD installed separately.
+      - Generative Mocap — ARDY and CLoSD: motion_recordings.md
       # Short because the long title wrapped in the sidebar; the page's own H1 still says what a
       # keyframe is for (capturing, persisting and replaying live state).
       - Keyframes: keyframer_examples.md
@@ -299,6 +307,7 @@ nav:
     - Boolean Network Music Examples: boolean_network_music_examples.md
     - Wave Function Collapse Examples: wfc_examples.md
     - Spatial Artificial Life: alife_examples.md
+    - Braitenberg Vehicles with Memory: braitenberg_vehicles.md
     - Evolving Creatures: evolving_creatures.md
     - Neighbors & Graphs Examples: graph_connectivity_examples.md
     - Graphs That Change While You Watch: dynamic_graph_systems_examples.md
@@ -546,6 +555,10 @@ nav:
 markdown_extensions:
   - admonition                    # `!!! note` / `!!! warning` callouts
   - pymdownx.details              # `??? aside` — collapsed, margin-dwelling asides
+  - pymdownx.arithmatex:          # `\(…\)` and `\[…\]`, typeset by assets/docs-math.js
+      generic: true
+      inline_syntax: [round]
+      block_syntax: [square]
   - pymdownx.superfences:         # required extension
       custom_fences:
         - name: diff
@@ -598,11 +611,12 @@ extra_javascript:
   - assets/sticky-headings.js
   - assets/lesswrong-rail.js
   - assets/image-lightbox.js
+  - assets/docs-math.js
   - assets/transcript-viewer.js
   - assets/code-diff-player/fence-upgrade.js
   - assets/code-diff-player/code-diff-player.js
   - assets/code-diff-player/field-doc-export.js
 
-site_url: http://openendedgroup.com/Field4/
+site_url: https://openendedgroup.com/field4/
 site_dir: field4
   

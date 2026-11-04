@@ -56,7 +56,9 @@ class GalleryAgreement(
     /** Fraction of pixels that quantise to exactly the same three bytes. */
     val exactFraction: Double,
     val worstPixel: Pair<Int, Int>,
-    val pixels: Int
+    val pixels: Int,
+    /** How many pixels have a channel more than two 8-bit levels apart. */
+    val overTwoPixels: Int = 0
 ) {
     override fun toString(): String =
         "%-22s %-11s mean=%7.4f max=%3d within1=%7.4f%% exact=%7.4f%% worst=(%d,%d)".format(
@@ -221,6 +223,7 @@ object StackSLCpuGallery {
         var worst = 0
         var within = 0
         var exact = 0
+        var overTwo = 0
         for (i in cpuArgb.indices) {
             val a = cpuArgb[i]
             val b = gpuArgb[i]
@@ -232,6 +235,7 @@ object StackSLCpuGallery {
             if (worstHere > max) { max = worstHere; worst = i }
             if (worstHere <= 1) within++
             if (worstHere == 0) exact++
+            if (worstHere > 2) overTwo++
         }
         val n = cpuArgb.size
         return GalleryAgreement(
@@ -242,7 +246,8 @@ object StackSLCpuGallery {
             withinOneFraction = within.toDouble() / n,
             exactFraction = exact.toDouble() / n,
             worstPixel = (worst % gpuWidth) to (worst / gpuWidth),
-            pixels = n
+            pixels = n,
+            overTwoPixels = overTwo
         )
     }
 

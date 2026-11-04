@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-01T11:24:25.357Z",
+  "documentName": "braitenberg_where_next",
+  "outputs": [
+    {
+      "uid": "moving_lights",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 618,
+      "height": 338,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "orbits",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 618,
+      "height": 658,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "orbits",
+      "channel": "radii",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "plotly"
+      ],
+      "width": 712,
+      "height": 458,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "combined",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 618,
+      "height": 658,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "speed_cost",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 912,
+      "height": 259,
+      "path": "outputs/4.html"
+    },
+    {
+      "uid": "evolved_wiring",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 618,
+      "height": 338,
+      "path": "outputs/5.html"
+    }
+  ]
+}

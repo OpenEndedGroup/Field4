@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. path tracing renderer
@@ -32,7 +32,7 @@ start(renderer::run)
 <!-- field-box id="life3d_manifold_trace" index="1" -->
 
 ```edn [field-box id="life3d_manifold_trace" role="properties"]
-{"id" "life3d_manifold_trace" "index" 1 "name" "3D life, decomposed, traced" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "3D life, decomposed, traced" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "life3d_manifold_trace_code_.kt" "lines" 174 "characters" 7388 "sha256" "2ed9fc6cac8c388e455ae0589f3f9249171a6e027f82f4e3b58b572ad2911c4e"}]}
+{"id" "life3d_manifold_trace" "index" 1 "name" "3D life, decomposed, traced" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "3D life, decomposed, traced" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "life3d_manifold_trace_code_.kt" "lines" 173 "characters" 7262 "sha256" "9465c04731ed5c6e2d0c8fd57b33dcae44347df2d9ea2e0ef05f7116cca79479"}]}
 ```
 
 ```kotlin [field-property box="life3d_manifold_trace" name="code" path="life3d_manifold_trace_code_.kt"]
@@ -102,8 +102,8 @@ val (scene, sceneLo, sceneHi) = Solid.scope {
     val levelSetMs = (System.nanoTime() - t0) / 1e6
     println(
         "Manifold's levelSet:   ${whole.triangleCount} triangles, status ${whole.status}, " +
-            "genus ${whole.genus}, volume ${"%.4f".format(whole.volume)}, " +
-            "${"%.0f".format(levelSetMs)} ms",
+            "genus ${whole.genus}, volume ${whole.volume.f4}, " +
+            "${levelSetMs.f0} ms",
     )
 
     /*
@@ -117,12 +117,11 @@ val (scene, sceneLo, sceneHi) = Solid.scope {
     println()
     println("${parts.size} separate clusters survived ${generations} generations")
     println(
-        "  largest ${"%.2f".format(volumes.first())}, smallest ${"%.3f".format(volumes.last())}, " +
-            "median ${"%.3f".format(volumes[volumes.size / 2])}",
+        "  largest ${volumes.first().f2}, smallest ${volumes.last().f3}, " +
+            "median ${volumes[volumes.size / 2].f3}",
     )
     println(
-        "  they sum to ${"%.2f".format(volumes.sum())} against the whole solid's " +
-            "${"%.2f".format(whole.volume)}",
+        "  they sum to ${volumes.sum().f2} against the whole solid's " + "${whole.volume.f2}",
     )
     println("  and each one on its own has genus ${parts.take(6).map { it.genus }} ...")
 
@@ -160,8 +159,8 @@ val (scene, sceneLo, sceneHi) = Solid.scope {
     println()
     println("scene: $appended triangles from ${parts.size} clusters, $dropped dropped")
     println(
-        "  occupying ${"%.2f".format(sceneHi.x - sceneLo.x)} x " +
-            "${"%.2f".format(sceneHi.y - sceneLo.y)} x ${"%.2f".format(sceneHi.z - sceneLo.z)} " +
+        "  occupying ${(sceneHi.x - sceneLo.x).f2} x " +
+            "${(sceneHi.y - sceneLo.y).f2} x ${(sceneHi.z - sceneLo.z).f2} " +
             "of the 2.40-unit cube the volume was scaled into",
     )
     Triple(scene, sceneLo, sceneHi)

@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 9 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole" "mainLanguage"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 9 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole" "mainLanguage"]}
 ```
 
 ## 1. keys
@@ -49,7 +49,7 @@ From `code`
 A wavetable computed in Kotlin, copied into ftable 1, played by poscil, and read back.
 
 ```edn [field-box id="cs_table" role="properties"]
-{"id" "cs_table" "index" 1 "name" "a table from Kotlin" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a table from Kotlin" "_tombstone" false "frame" #afield/rect [610.0 180.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cs_table_code_.kt" "lines" 31 "characters" 1081 "sha256" "16428e75533c28a03f2fde3f24dd6cdd72c1c76b6b6304a5cff89660e72f54f0"}]}
+{"id" "cs_table" "index" 1 "name" "a table from Kotlin" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a table from Kotlin" "_tombstone" false "frame" #afield/rect [610.0 180.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cs_table_code_.kt" "lines" 31 "characters" 1069 "sha256" "e27ea53ccdddd3d5807961472f16691c065d1f9917df70bba60e96f4f8627caa"}]}
 ```
 
 ```kotlin [field-property box="cs_table" name="code" path="cs_table_code_.kt"]
@@ -76,7 +76,7 @@ val back = cs.table(1)!!
 val (left, _) = cs.renderOffline()
 cs.close()
 println(
-    "wrote ${wave.size} values; read back equal: ${wave.contentEquals(back)}; rendered ${left.size} frames, peak ${"%.3f".format(left.maxOf { abs(it) })}",
+    "wrote ${wave.size} values; read back equal: ${wave.contentEquals(back)}; rendered ${left.size} frames, peak ${left.maxOf { abs(it) }.f3}",
 )
 showSignals(
     "ftable 1, read back" to (0 until 4096 step 8).map { back[it] },
@@ -236,7 +236,7 @@ From `code`
 Launch "pluck" first. Every line here talks to the Csound it is playing.
 
 ```edn [field-box id="cs_talk" role="properties"]
-{"id" "cs_talk" "index" 6 "name" "talk to pluck" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "talk to pluck" "_tombstone" false "frame" #afield/rect [40.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cs_talk_code_.kt" "lines" 26 "characters" 1127 "sha256" "5ed66367e7757e5bd01a7aedc549525868ab40355fd9a266fe07a5ba7b54b781"}]}
+{"id" "cs_talk" "index" 6 "name" "talk to pluck" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "talk to pluck" "_tombstone" false "frame" #afield/rect [40.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cs_talk_code_.kt" "lines" 26 "characters" 1105 "sha256" "0d4caf53486f44fe1e9a9dc7ed28b5e65cad9397f5393563326be0c8c4f90881"}]}
 ```
 
 ```kotlin [field-property box="cs_talk" name="code" path="cs_talk_code_.kt"]
@@ -245,7 +245,7 @@ val pluck = csoundOf("pluck").csound
 
 pluck.setChannel("cutoff", 900) // chnget "cutoff" reads it next k-cycle
 pluck.setStringChannel("voice", "from Kotlin") // an S channel; Reverb outvalues it back
-println("level now: ${"%.4f".format(pluck.channel("level"))}")
+println("level now: ${pluck.channel("level").f4}")
 
 // Every channel the orchestra allocated, with the range chn_k declared for it.
 pluck.channels().forEach { c ->
@@ -263,7 +263,7 @@ run.own(pluck.onOutvalue("said") { println("Csound said: $it") })
 var n = 0
 run.own(
     pluck.onOutvalue("level") { v ->
-        if (n++ % 40 == 0) display("level", "<div style='padding:8px'>Reverb rms ${"%.4f".format(v as Double)}</div>")
+        if (n++ % 40 == 0) display("level", "<div style='padding:8px'>Reverb rms ${(v as Double).f4}</div>")
     },
 )
 ```
@@ -303,7 +303,7 @@ From `code`
 Offline: a Field 1 kHz sine through Csound's butterlp at 500 Hz, and back.
 
 ```edn [field-box id="cs_measured" role="properties"]
-{"id" "cs_measured" "index" 8 "name" "through Csound, measured" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "through Csound, measured" "_tombstone" false "frame" #afield/rect [610.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cs_measured_code_.kt" "lines" 30 "characters" 1070 "sha256" "9aabcc8fad3cf726011ca1deeb6684109871e9027f8f092e1985d98127de2ef4"}]}
+{"id" "cs_measured" "index" 8 "name" "through Csound, measured" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "through Csound, measured" "_tombstone" false "frame" #afield/rect [610.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cs_measured_code_.kt" "lines" 30 "characters" 1024 "sha256" "72d0c86f40563caf308fe82a11450e76033b786f02be5a1540967fa48d3ae0ab"}]}
 ```
 
 ```kotlin [field-property box="cs_measured" name="code" path="cs_measured_code_.kt"]
@@ -326,7 +326,7 @@ cs.close()
 fun rms(x: FloatArray) = sqrt(x.drop(4800).sumOf { it.toDouble() * it } / (x.size - 4800))
 val expected = 1.0 / sqrt(1.0 + 16.0) // a 2nd-order Butterworth at twice its cutoff
 println(
-    "in rms ${"%.4f".format(rms(dry))}, out rms ${"%.4f".format(rms(low))}: gain ${"%.4f".format(rms(low) / rms(dry))}, Butterworth says ${"%.4f".format(expected)}",
+    "in rms ${rms(dry).f4}, out rms ${rms(low).f4}: gain ${(rms(low) / rms(dry)).f4}, Butterworth says ${expected.f4}",
 )
 val window = 4800 until 5040
 showSignals(

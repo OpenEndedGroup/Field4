@@ -1,22 +1,17 @@
 // WORKS. `rewriteFn` names the box to compile the `@{...}` snippets in, and that box is
 // idle, so hydrating there replays nothing. One pass, and the sampled signal really moves.
-val spec =
-    [
-            "#fnrewrite",
-            "sin/*/saw => op=triangle",
-            "sin/**/[tag=number][value>0.15] => *= @{1.0 + depth * 0.08}",
-            "**/[role=amplitude] => *= @{if (parentOp == \"sin\") 0.75 else 1.0}",
-        ]
-        .joinToString("\n")
+val spec = [
+    "#fnrewrite",
+    "sin/*/saw => op=triangle",
+    "sin/**/[tag=number][value>0.15] => *= @{1.0 + depth * 0.08}",
+    "**/[role=amplitude] => *= @{if (parentOp == \"sin\") 0.75 else 1.0}",
+].joinToString("\n")
 
 /*
 The host comes from TOPOLOGY, not from a hard-coded id: whatever this box is connected
 beneath is where the `@{...}` snippets get compiled. Drag a different parent in and the
 rewrite follows it.
 
-NOT `?: error(...)`. Inside a box, `error` is `HasOutput.error(message, property, line)`,
-which returns Unit, so the elvis widens this to `Any` and the failure surfaces as a
-baffling "receiver type mismatch" on rewriteFn below. Throw explicitly.
 */
 val host = parents.lastOrNull() ?: throw IllegalStateException("connect this box under a box to compile the @{...} in")
 println("compiling in parent: " + host.name)

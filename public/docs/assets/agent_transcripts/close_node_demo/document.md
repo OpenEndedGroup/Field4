@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. the shipped primitive that has an interior Close in it
@@ -108,7 +108,7 @@ the start and the reversal below comes out right — the defect only shows on a 
 where the Close is carrying a segment nothing else draws.
 
 ```edn [field-box id="close_node_reversal" role="properties"]
-{"id" "close_node_reversal" "index" 1 "name" "reversing a closed contour" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "reversing a closed contour" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "close_node_reversal_code_.kt" "lines" 101 "characters" 3694 "sha256" "24fdbb77da905e0b988a2a769638bef65ed1412fcaf4825dd4162c8ca925120e"}]}
+{"id" "close_node_reversal" "index" 1 "name" "reversing a closed contour" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "reversing a closed contour" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "close_node_reversal_code_.kt" "lines" 100 "characters" 3673 "sha256" "8f8754ca955955763405424c2bf074b2b84d41ae002cf11781b13d828d4a5d9d"}]}
 ```
 
 ```kotlin [field-property box="close_node_reversal" name="code" path="close_node_reversal_code_.kt"]
@@ -208,10 +208,9 @@ val roundTrip = { l: FLine ->
 }
 
 [
-        "grey = the original, cyan = its reversal",
-        "square   reverse-twice: ${roundTrip(square)}",
-        "glyph    reverse-twice: ${roundTrip(glyph)}",
-    ]
-    .joinToString("\n")
+    "grey = the original, cyan = its reversal",
+    "square   reverse-twice: ${roundTrip(square)}",
+    "glyph    reverse-twice: ${roundTrip(glyph)}",
+].joinToString("\n")
 ```
 

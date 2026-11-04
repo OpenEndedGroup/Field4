@@ -7,8 +7,8 @@ val layout = layoutText("SDF", typeface("SansSerif", 170.0))
 val sdf = layout.toSdf(depth = 0.24, gridResolution = 340)
 val grid = sdf.distanceField
 println(
-    "grid ${grid.nx}x${grid.ny} over ${"%.0f".format(grid.bounds.w)}x${"%.0f".format(grid.bounds.h)} units; " +
-        "deepest inside the ink ${"%.1f".format(grid.deepestInside())} units",
+    "grid ${grid.nx}x${grid.ny} over ${grid.bounds.w.f0}x${grid.bounds.h.f0} units; " +
+        "deepest inside the ink ${grid.deepestInside().f1} units",
 )
 
 val marched = sdf.march(resolution = 130)

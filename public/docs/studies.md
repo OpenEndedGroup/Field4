@@ -328,7 +328,18 @@ explicit **Build** button. The editable source stays in its existing study.
 For an existing `SourceStudy` named `design`, this small stage writes a report from the exact
 source it captured when the build started:
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/studies/builds.png" capture="box" open-outputs="true" wait="1.5" wait-output="true" wait-output-kind="display" wait-output-channel="builds" w="760" timeout="120" embed=true name="studies-builds" alt="the builds channel: a card with one stage, Source report, marked Current beside a Rebuild button, after its first attempt finished"}
+:::fold a SourceStudy called design, over one property of this box
+prop<String>(rings)
+rings = "7 rings 0.05 ink 0.8 warmth"
+val design = sourceFramesStudy(
+    "rings",
+    studyFrames("rings, drawn on the CPU") { source: String, w: Int, h: Int, t: Double ->
+        afield.lang.stacksl.cpu.CpuRaster(w, h, FloatArray(w * h * 4) { 1f })
+    },
+).revisions
+
+:::endfold
 val builds = studyBuilds(
     "reports",
     [
@@ -340,10 +351,20 @@ val builds = studyBuilds(
         },
     ],
 ) {
-        mapOf("source" to design.liveSource())
-    }
+    mapOf("source" to design.liveSource())
+}
 showStudyBuilds("reports")
+
+:::fold press Build once, and wait for the attempt to finish
+val stage = builds.stages().single()
+val done = builds.await(builds.start("summary", stage.fingerprint!!).id, 60.0)
+println("${done.status}: " + builds.currentFile("summary", "summary.txt").readText())
+
+:::endfold
 ```
+
+The fold at the end presses **Build** from code and waits for the attempt, so the card above shows
+the stage after one successful build: **Current**, with the button now reading **Rebuild**.
 
 The card lives in this box's output. It shows progress, elapsed time, cancellation and selectable
 error text. Progress reflects the worker's completed work; it is not a time estimate. While a build
@@ -434,8 +455,14 @@ of them, so a chat that waited for the build resumes with a close-up of the held
 failureNotes = { failed ->
     val held = failed.problem?.details?.get("held") as? List<*>
     if (held.isNullOrEmpty()) emptyList()
-    else [StudyBuildNotice("${held.size} routes were held.", StudyBuildNoticeKind.ERROR,
-        StudyBuildView("Held routes", "each held route, close up") { showHeld(held) })]
+    else
+        [
+            StudyBuildNotice(
+                "${held.size} routes were held.",
+                StudyBuildNoticeKind.ERROR,
+                StudyBuildView("Held routes", "each held route, close up") { showHeld(held) },
+            ),
+        ]
 }
 ```
 
@@ -876,7 +903,8 @@ pictures.
 The starting point **studies_rings** (in the [agent transcript gallery](agent_transcripts.md#studies_rings), and
 on the welcome screen's starting points) is this page as a document: `rings` defines the study, and
 two boxes under it, `change it` and `try things`, drive its verbs. Open it and run the three boxes
-in order.
+in order, or [read it in the offline viewer ↗](offline.html?file=assets/agent_transcripts/studies_rings/metadata.edn)
+without starting Field.
 
 ??? aside "Agents: tests and design notes"
     `study.document.registrar` (`src/jvmMain/kotlin/afield/examples/ai/DocumentStudySmokeTest.kt`)

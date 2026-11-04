@@ -35,7 +35,7 @@ fun cut(what: String, solid: Solid, z: Double) {
     solid.slice(z).use { s ->
         // Nine decimals, because two of these cuts are one part in a billion apart and a
         // table that printed both as 1.000000 would read as a contradiction.
-        rows += [what, "%.9f".format(z), if (s.isEmpty) "—" else "%.4f".format(s.area), s.contourCount]
+        rows += [what, z.f9, if (s.isEmpty) "—" else s.area.f4, s.contourCount]
     }
 }
 
@@ -77,12 +77,12 @@ Solid.scope {
     pair.slice(0.5).use { s ->
         val centre = (s.bounds.first.x + s.bounds.second.x) / 2.0
         rows +=
-            [
+            listOf(
                 "two unit cubes meeting along one edge, cut on it",
                 "0.500000000",
-                "%.4f".format(s.area) + " centred at x = %.4f".format(centre),
+                s.area.f4 + " centred at x = %.4f".format(centre),
                 s.contourCount,
-            ]
+            )
     }
     Unit
 }
@@ -95,7 +95,7 @@ The cuts all follow one rule:
 > `slice(z)` returns the cross-section of the material **at and above** `z`. A face lying in the
 > cutting plane counts when the solid is above it and does not count when the solid is below it.
 
-So a cube spanning `[−1, 1]` returns its whole bottom face at `z = −1` and nothing at `z = +1`. Cut
+So a cube spanning \( [-1, 1] \) returns its whole bottom face at \( z = -1 \) and nothing at `z = +1`. Cut
 a hair below the top and the top face is back. On the step, a cut just below `z = 1` returns the
 wide slab, and a cut at exactly `z = 1` returns only the narrow block above it. Two cubes stacked
 corner to corner return only the upper one's square at the plane where they touch.
@@ -108,7 +108,7 @@ its two horizontal edges. A point and a segment have no area, so there is no reg
     Put the cuts at layer *midpoints*, not at layer boundaries. Boundaries land on face planes on
     exactly the parts most likely to have them — anything designed flat — and a boundary ladder on
     a part whose height is an exact multiple of the layer height loses its top layer outright.
-    Every stack below is `z = zₘᵢₙ + h·(i + ½)/n`.
+    Every stack below is \( z = z_{\min} + h\,(i + \tfrac{1}{2})/n \).
 
 ## Canonicalisation, scale and orientation
 
@@ -264,12 +264,12 @@ for (expression in ["gC", "gD"]) {
             rows.add(
                 [
                     "$expression, $label",
-                    "%.6f".format(height),
-                    "%.6f".format(solid.surfaceArea),
+                    height.f6,
+                    solid.surfaceArea.f6,
                     "%.6f".format(a.sumOf { it } * height / LAYERS),
                     layers.sumOf { it.size },
-                    "%.6f".format(a.min()),
-                    "%.6f".format(a.max()),
+                    a.min().f6,
+                    a.max().f6,
                     if (label == "raw") "" else "%.2f° / %.2f°".format(turn.first, turn.second),
                 ],
             )
@@ -409,17 +409,17 @@ Solid.scope {
         // Scaling an inside-out body onto the bed would mirror it into looking like one.
         if (d.signedVolume <= 0.0) {
             rows +=
-                [
+                listOf(
                     label,
                     "%.3e".format(d.tangencyRadiusSpread),
                     verdict,
                     "${bare.status}",
                     bare.genus,
-                    "%.4f".format(bare.volume),
+                    bare.volume.f4,
                     "—",
                     "—",
                     "—",
-                ]
+                )
             continue
         }
         val solid = onTheBed(bare)
@@ -427,17 +427,17 @@ Solid.scope {
         val (disagreeing, over) = overlap(solid)
         sweeps += label to sweep
         rows +=
-            [
+            listOf(
                 label,
                 "%.3e".format(d.tangencyRadiusSpread),
                 verdict,
                 "${bare.status}",
                 bare.genus,
-                "%.4f".format(bare.volume),
-                "%.5f".format(sweep.last()),
+                bare.volume.f4,
+                sweep.last().f5,
                 "$disagreeing / 192, %.6f".format(over),
-                "%.5f".format(1.0 - 2.0 * over),
-            ]
+                (1.0 - 2.0 * over).f5,
+            )
     }
     Unit
 }

@@ -105,6 +105,15 @@ object DocsAudioProvenance {
         /** A Faust program compiled at runtime and rendered offline. See [SoundPathMap]. */
         FAUST("a Faust program compiled at runtime and rendered with no audio device"),
 
+        /**
+         * A live recording of a real Sonic Pi, made by `SonicPiSoundDocs`.
+         *
+         * Not sample-reproducible: Sonic Pi schedules against its own clock and the capture starts
+         * when the recorder does, so two takes of the same loop correlate weakly even when nothing
+         * changed. [audit] reports it [Finding.skipped] with that reason and never as reproduced.
+         */
+        SONIC_PI("a live recording of a real Sonic Pi — not sample-reproducible"),
+
         /** Present in the tree, no producing code found. Must be in [UNDERIVABLE]. */
         UNDERIVABLE("no producing code found in the repository"),
     }
@@ -145,17 +154,26 @@ object DocsAudioProvenance {
         // Both of its figures are one Faust program rendered offline, so the family is the same at
         // eight voices and at one — the difference between them is voice allocation, not origin.
         "afield.audio.synth.FaustPolySoundDocs" to Origin.FAUST,
+        // One Faust program each, rendered offline through FaustDsp/FaustNode; the dry clip is the
+        // reverb's input on its own, Field's SawOsc pair, so it is Faust's page but not Faust's sound.
+        "afield.audio.synth.FaustSoundDocs" to Origin.FAUST,
         "afield.audio.synth.PatSpatialSoundDocs" to Origin.DOUGH_WASM,
         "afield.audio.synth.PatSpatialHeadTrackedDocs" to Origin.STEAM_AUDIO_HRTF,
+        // The page's two placed patterns through patSpatial and Steam Audio, with a still listener.
+        "afield.audio.synth.PatSpatialPlacementDocs" to Origin.STEAM_AUDIO_HRTF,
         // Boolean-network note streams played through the pinned Dirt-Samples subset, strictly:
         // no token falls back, so the family is the pure one. See boolean_network_music_examples.md.
         "afield.audio.synth.BooleanNetworkSoundDocs" to Origin.DIRT_SAMPLES,
         // A Petri net's emits() played through the pinned Dirt-Samples subset, strictly. See
         // chain_petri_sparks.md.
         "afield.audio.synth.PetriSparksDocs" to Origin.DIRT_SAMPLES,
+        // A page net from petri_nets.md, its emits() played through the pinned Dirt-Samples
+        // subset with strict = true: no synth voice, no fallback. See petri_nets.md.
+        "afield.audio.synth.PetriSoundDocs" to Origin.DIRT_SAMPLES,
         // ORCA's own operators run in OrcaHeadless, each note voiced by a PatSynthBank of patVoice
         // voices — no samples anywhere on the path. See orca.md.
         "afield.audio.synth.OrcaSoundDocs" to Origin.STAND_IN_SYNTH,
+        "afield.examples.sonicpi.SonicPiSoundDocs" to Origin.SONIC_PI,
     )
 
     /** The renderer a fence gets when it does not name one, matching `docs_hooks.py`. */
@@ -328,6 +346,14 @@ object DocsAudioProvenance {
         val peak = PatSoundDocs.peak(committed.mono)
         val rms = PatSoundDocs.rms(committed.mono)
         val channels = channelsOf(committedFile)
+
+        if (origin == Origin.SONIC_PI) {
+            return Finding(
+                published, origin, Double.NaN, Double.NaN, committed.frames, channels,
+                sampleRateOf(committedFile), peak, rms,
+                skipped = "a live Sonic Pi recording; a fresh take is not expected to match sample for sample",
+            )
+        }
 
         if (origin == Origin.STEAM_AUDIO_HRTF && !SteamAudioNatives.isAvailable) {
             return Finding(

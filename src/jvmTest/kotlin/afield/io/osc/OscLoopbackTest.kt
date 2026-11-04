@@ -40,6 +40,7 @@ import com.illposed.osc.OSCMessage
 import com.illposed.osc.OSCPacket
 import com.illposed.osc.argument.OSCTimeTag64
 import com.illposed.osc.transport.OSCPortOutBuilder
+import java.net.DatagramSocket
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.util.Collections
@@ -65,10 +66,15 @@ import kotlin.test.assertTrue
  *
  * It also pins that a handler's exception is shown on the box that registered it, not only printed.
  *
- * Ports 57388–57399 are this file's; `OscServer` is serviced with [OscServer.tick] because a jvmTest
- * has no Field runloop.
+ * Each test binds a port the OS hands out ([freeUdpPort]) rather than a fixed one: a fixed port
+ * fails the test whenever anything else on the machine (another Field, Max, TouchOSC Bridge, a
+ * sibling test JVM) holds it, which on 2026-11-02 looked like a regression in the receiver.
+ * `OscServer` is serviced with [OscServer.tick] because a jvmTest has no Field runloop.
  */
 class OscLoopbackTest {
+
+    /** A UDP port nothing is bound to right now, chosen by the OS. */
+    private fun freeUdpPort(): Int = DatagramSocket(0).use { it.localPort }
 
     private fun pumpUntil(server: OscServer, timeoutMs: Long = 3_000, done: () -> Boolean) {
         val deadline = System.currentTimeMillis() + timeoutMs
@@ -81,11 +87,12 @@ class OscLoopbackTest {
 
     @Test
     fun argumentsRoundTripWithTheirKotlinTypes() {
-        OscServer(57390).use { server ->
+        val port = freeUdpPort()
+        OscServer(port).use { server ->
             server.debug = false
             val got = Collections.synchronizedList(mutableListOf<List<Any?>>())
             server.on("/types") { m -> gather<OscServer.Message> { got += m.arguments } }
-            OscClient("127.0.0.1", 57390).use { it.send("/types", 1, 0.5f, 0.5, 2L, true, false, "s", null) }
+            OscClient("127.0.0.1", port).use { it.send("/types", 1, 0.5f, 0.5, 2L, true, false, "s", null) }
             pumpUntil(server) { got.isNotEmpty() }
             val args = got.single()
             assertEquals(listOf<Any?>(1, 0.5f, 0.5, 2L, true, false, "s", null), args)
@@ -98,11 +105,12 @@ class OscLoopbackTest {
 
     @Test
     fun argumentsAfterABlobAreDecodedFromTheirOwnBytes() {
-        OscServer(57391).use { server ->
+        val port = freeUdpPort()
+        OscServer(port).use { server ->
             server.debug = false
             val got = Collections.synchronizedList(mutableListOf<List<Any?>>())
             server.on("/blob") { m -> gather<OscServer.Message> { got += m.arguments } }
-            OscClient("127.0.0.1", 57391).use { it.send("/blob", byteArrayOf(1, 2, 3), 9, 0.1) }
+            OscClient("127.0.0.1", port).use { it.send("/blob", byteArrayOf(1, 2, 3), 9, 0.1) }
             pumpUntil(server) { got.isNotEmpty() }
             val args = got.single()
             val blob = args[0] as ByteBuffer
@@ -115,7 +123,8 @@ class OscLoopbackTest {
 
     @Test
     fun theHandlerLambdaRunsOnReceiptAndTheGeneratorOnlyWhenTicked() {
-        OscServer(57392).use { server ->
+        val port = freeUdpPort()
+        OscServer(port).use { server ->
             server.debug = false
             val lambdaRuns = Collections.synchronizedList(mutableListOf<String>())
             val steps = Collections.synchronizedList(mutableListOf<String>())
@@ -129,7 +138,7 @@ class OscLoopbackTest {
                     steps += "done"
                 }
             }
-            OscClient("127.0.0.1", 57392).use { it.send("/steps", 1) }
+            OscClient("127.0.0.1", port).use { it.send("/steps", 1) }
             val deadline = System.currentTimeMillis() + 3_000
             while (lambdaRuns.isEmpty() && System.currentTimeMillis() < deadline) Thread.sleep(2)
             assertEquals(1, lambdaRuns.size, "the handler lambda runs when the message arrives, untouched by tick()")
@@ -160,11 +169,12 @@ class OscLoopbackTest {
     /** JavaOSC 0.9 alone: `/fader/{1,10}` matched `/fader/1` and never `/fader/10`. */
     @Test
     fun anAlternativeThatExtendsAnotherStillMatches() {
-        OscServer(57398).use { server ->
+        val port = freeUdpPort()
+        OscServer(port).use { server ->
             server.debug = false
             val fired = Collections.synchronizedList(mutableListOf<String>())
             server.on("/fader/{1,10}") { m -> fired += m.address; gather<OscServer.Message> { } }
-            OscClient("127.0.0.1", 57398).use { c ->
+            OscClient("127.0.0.1", port).use { c ->
                 for (a in listOf("/fader/1", "/fader/2", "/fader/10", "/fader/100")) c.send(a, 1f)
             }
             pumpUntil(server) { fired.size >= 2 }
@@ -176,12 +186,13 @@ class OscLoopbackTest {
 
     @Test
     fun aHandlerRegisteredUnderAnotherPatternStaysLiveUntilRemoved() {
-        OscServer(57393).use { server ->
+        val port = freeUdpPort()
+        OscServer(port).use { server ->
             server.debug = false
             val fired = Collections.synchronizedList(mutableListOf<String>())
             server.on("/old") { _ -> gather<OscServer.Message> { fired += "old" } }
             server.on("/new") { _ -> gather<OscServer.Message> { fired += "new" } }
-            OscClient("127.0.0.1", 57393).use { c ->
+            OscClient("127.0.0.1", port).use { c ->
                 c.send("/old"); c.send("/new")
                 pumpUntil(server) { fired.size >= 2 }
                 assertEquals(setOf("old", "new"), fired.toSet())
@@ -197,10 +208,11 @@ class OscLoopbackTest {
 
     @Test
     fun oscHandsBackAFreshServerAfterClose() {
-        val first = osc(57394)
+        val port = freeUdpPort()
+        val first = osc(port)
         first.close()
         assertTrue(first.isClosed)
-        val second = osc(57394)
+        val second = osc(port)
         try {
             assertNotSame(first, second, "a closed server must not stay cached")
             assertFalse(second.isClosed)
@@ -220,14 +232,15 @@ class OscLoopbackTest {
 
     @Test
     fun aFutureBundleIsHeldUntilItsTimetag() {
-        OscServer(57395).use { server ->
+        val port = freeUdpPort()
+        OscServer(port).use { server ->
             server.debug = false
             val arrivals = Collections.synchronizedMap(mutableMapOf<Int, Long>())
             server.on("/when") { m ->
                 arrivals[m.arguments[0] as Int] = System.currentTimeMillis()
                 gather<OscServer.Message> { }
             }
-            val out = OSCPortOutBuilder().setRemoteSocketAddress(InetSocketAddress("127.0.0.1", 57395)).build()
+            val out = OSCPortOutBuilder().setRemoteSocketAddress(InetSocketAddress("127.0.0.1", port)).build()
             try {
                 val sent = System.currentTimeMillis()
                 out.send(OSCBundle(listOf<OSCPacket>(OSCMessage("/when", listOf(0))), OSCTimeTag64.IMMEDIATE))
@@ -246,11 +259,12 @@ class OscLoopbackTest {
     /** What a re-run box does: build and start a second receiver without closing the first. */
     @Test
     fun startingASecondTuioReceiverOnAPortClosesTheFirst() {
+        val port = freeUdpPort()
         val firstFrames = Collections.synchronizedList(mutableListOf<Int>())
         val secondFrames = Collections.synchronizedList(mutableListOf<Int>())
-        val first = TuioReceiver(57397) { firstFrames += it.fseq }
-        val second = TuioReceiver(57397) { secondFrames += it.fseq }
-        val out = OSCPortOutBuilder().setRemoteSocketAddress(InetSocketAddress("127.0.0.1", 57397)).build()
+        val first = TuioReceiver(port) { firstFrames += it.fseq }
+        val second = TuioReceiver(port) { secondFrames += it.fseq }
+        val out = OSCPortOutBuilder().setRemoteSocketAddress(InetSocketAddress("127.0.0.1", port)).build()
         try {
             first.start()
             second.start()
@@ -277,11 +291,12 @@ class OscLoopbackTest {
      */
     @Test
     fun aThrowingHandlerIsReportedOnTheBoxThatRegisteredIt() {
+        val port = freeUdpPort()
         val owner = Box("osc-error-owner")
         val errors = Collections.synchronizedList(mutableListOf<String>())
         owner.output.errorProxy = { content, _, _ -> if (content != null) errors += content.toString() }
 
-        OscServer(57388).use { server ->
+        OscServer(port).use { server ->
             server.debug = false
             Box.context.set(owner)
             try {
@@ -293,7 +308,7 @@ class OscLoopbackTest {
             // Registered outside any box: nowhere to report but the console, and it must not throw.
             server.on("/orphan") { _ -> throw IllegalStateException("no owner") }
 
-            OscClient("127.0.0.1", 57388).use { out ->
+            OscClient("127.0.0.1", port).use { out ->
                 out.send("/lambda"); out.send("/lambda"); out.send("/gen"); out.send("/orphan")
                 pumpUntil(server) { errors.size >= 2 }
                 Thread.sleep(100)
@@ -319,10 +334,11 @@ class OscLoopbackTest {
 
     @Test
     fun tuioReceiverStartsAndReportsCursorDeltasPerFrame() {
+        val port = freeUdpPort()
         val frames = Collections.synchronizedList(mutableListOf<TuioReceiver.Frame>())
-        val receiver = TuioReceiver(57396) { frames += it }
+        val receiver = TuioReceiver(port) { frames += it }
         receiver.start()
-        val out = OSCPortOutBuilder().setRemoteSocketAddress(InetSocketAddress("127.0.0.1", 57396)).build()
+        val out = OSCPortOutBuilder().setRemoteSocketAddress(InetSocketAddress("127.0.0.1", port)).build()
         fun frame(fseq: Int, alive: List<Int>, sets: List<List<Any>>) {
             val msgs = mutableListOf<OSCPacket>(
                 OSCMessage("/tuio/2Dcur", listOf("source", "test@127.0.0.1")),

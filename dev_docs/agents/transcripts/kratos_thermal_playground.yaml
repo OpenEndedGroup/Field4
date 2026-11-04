@@ -124,11 +124,11 @@ operations:
                                               "data-revision='${result.revision.simulation}' data-arm='${submitted[0]}' " +
                                               "data-changed='$changed' data-delta='$delta'>" +
                                               "Result revision ${result.revision} · arm ${submitted[0]} m<br>" +
-                                              "Changed classification vs first: $changed nodes · max ΔT ${"%.4f".format(delta)} K<br>" +
+                                              "Changed classification vs first: $changed nodes · max ΔT ${delta.f4} K<br>" +
                                               "Temperature ${safe(d["temperatureMin"])}–${safe(d["temperatureMax"])} K<br>" +
                                               "Classification ${safe(d["classificationMs"])} ms (${safe(d["classificationScope"])}) · " +
                                               "model ${safe(d["modelUpdateMs"])} ms<br>Assembly ${safe(d["assemblyMs"])} ms · solve ${safe(d["solveMs"])} ms<br>" +
-                                              "Transfer out/in ${safe(d["geometryTransferMs"])}/${safe(d["resultTransferMs"])} ms · view ${"%.1f".format(visualMs)} ms<br>" +
+                                              "Transfer out/in ${safe(d["geometryTransferMs"])}/${safe(d["resultTransferMs"])} ms · view ${visualMs.f1} ms<br>" +
                                               "Relative residual ${safe(d["relativeLinearResidual"])}<br>" +
                                               "Blue → red: each slice uses its own temperature range; grey means no active support.</span>"
                                   }

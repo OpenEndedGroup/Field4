@@ -192,13 +192,13 @@ member's arity counts the continuation the bridge cannot construct, so it never 
 FieldML closure therefore *always* completes synchronously, and the proxy can never need to return
 the marker or resume the continuation it dropped.
 
-**And the bound that buys, which is real.** The FieldML body cannot itself suspend. `Frames.frame()`
-and `Frames.delay()` stay out of reach, so `frames { }` — whose whole contract is that the body drives
-`frame()` — is expressible but useless, while `eachFrame`, `loop`, `forever`, `Frames.end` and
-`Box.launchFrames`, where the enclosing Kotlin owns the suspension points and the block is a plain
-per-frame body, are exactly right. `FieldMLSuspendCallbackTest.aBodyThatWouldHaveToSuspendIsStillOutOfReach`
-is that line as a test, and it is a test of a *refusal* on purpose: the day someone makes `frame()`
-callable from FieldML, this argument stops holding and that test is where they will find out.
+**And the bound that bought, which was real until 2026-11-01.** The FieldML body could not itself
+suspend, so `Frames.frame()` and `Frames.delay()` were out of reach and `frames { }` was expressible but
+useless. That bound is lifted by "Suspendable bodies (2026-11-01)" below, and the argument above is
+now the argument for the *completes-synchronously* path only: a body that never reaches a
+`hostAwait` still returns its value directly, exactly as described. A body that does reach one is
+covered by the new section's argument, not this one. `FieldMLSuspendCallbackTest.aBodyThatWouldHaveToSuspendIsStillOutOfReach`
+still passes, because `hostCall0 "frame"` is still refused at arity zero; the route in is `hostAwait`.
 
 The measurement is `everySuspendCallbackSlotOnFieldsPerFrameSurfaceReportsTheWrittenArity` in the same
 file: 16 suspend-typed callback slots across `PhasedKt`, `Stdlib_executionKt` and `Frames`, all 16 reporting the
@@ -360,7 +360,7 @@ after `interpolant` was registered.
 | A | **Source macros.** Box-code names that are rewrites over Kotlin *source*, applied before the compiler runs: `moduleHere`, `meshModuleHere`, `computeModuleHere`, `fieldStatsHere`, `shadertoyHere`, `prop`, `rootProp`, `sourceBlock`, `print`/`println`, and the ones registered further out — `gltfModelHere`, `plyModelHere`, `jsonParser`, `graphLens`, `ai` | **DONE, 2026-08-20 — and it turned out not to be a language-design question.** 15 of the 19 macros `MacroRegistry` registers at run time are reachable | `afield.lang.fieldml.FieldMLMacroLayer`, and the two prelude names `hostMacroExpand` / `hostMacro`. Measured and floored in `FieldMLSourceMacroTest.theReachableFractionOfTheMacroSurfaceIsFloored`: 15 of 19 (78.9%), floored at 15, with the four that are not reachable pinned as an exact **set** rather than a count. Every call-shaped route is resolved by reflection in `everyCallShapedRouteIsARealBoxExtension`, which certifies `moduleHere` without a device. Pixels and a live Field: `public/docs/assets/fieldml_macro_demo/spiral.png` | **Yes, two different ways, and the difference matters.** The **call-shaped** macros rewrite to an ordinary `Box` extension function — `moduleHere` to `_moduleHere` (`shaders.kt:4242#var here = "$resolvesToCall${args[0]}"`), `println` to `_printlnHere` (`outputs.kt:727#here = "_printlnHere(__line__+1, $args)"`). So `hostMacro` runs the **expansion** — which is where a macro does its work: seeding shader properties, compiling both stages (`shaders.kt:4039#fun Box.macro_moduleHereWithDefaultShaders`), building a `ShaderFieldStats` block — and then calls that function reflectively with the box as receiver. The **declaration** macros have no call to make, and `prop`'s delegate is now shared code: `afield.document.properties.inheritedPropertyRaw` (`document/properties/stdlib_properties.kt:240#fun inheritedPropertyRaw`) is called both by `Inheritance.getValue` and by FieldML's `prop`, so a Kotlin box's `speed` and a FieldML box's `prop "speed"` are one property by construction. What is left is four macros that generate Kotlin *declarations* — `sourceBlock`, `jsonParser`, `graphLens`, `ai` — and `hostMacroExpand` still hands their generated source back as text |
 | B | **Kotlin default arguments** are invisible to reflection | **DONE, 2026-08-19 — and B and C turned out to be one mechanism** | `FieldMLHostBridge.callMethodNamed` (`HostBridge.kt:123#fun callMethodNamed(name: String, target: Any`), `FieldMLHostTypes.namedMethodResultType` (`HostTypes.kt:214#fun namedMethodResultType(receiver: Type`). Measured and floored in `FieldMLNamedArgumentTest.everyKotlinDefaultOnTheCoveredSurfaceCanBeOmittedByName`: 60 defaulted members over the coverage test's seven types, all 60 omittable. Original citations: `Renderer(Window, List)` (`Renderer.kt:147#class Renderer(`), `ComputeMesh(Renderer)` (`ComputeMesh.kt:295#class ComputeMesh(var renderer`) | **Yes — a record of arguments is a named call, and a named call is the only shape that can leave a default unwritten.** `hostNew {mainWindow = w} Renderer` needs no `additionalWindows`. The positional form is unchanged, and `hostNull` still covers the nullable parameters you *do* want to pass |
 | C | **Named arguments** are invisible for the same reason | **DONE, 2026-08-19 — the same change; see B** | `img \|> hostCall "index" {x = 1, y = 0}`, and the refusals in `FieldMLNamedArgumentTest`. The cited case, `fieldProbeHere(samples = 100000)`, is *still* out of reach — but as a source macro (A), not as a named argument | **Yes, by name.** Order is not position, and a name reflection does not know is a compile error naming what was given |
-| D | **`suspend` function types.** ~~erase to a `Function` taking a `Continuation`, which a dynamic proxy cannot satisfy~~ — **that cause was false, struck 2026-09-18.** `eachFrame(block: suspend Frames.() -> Unit)` compiles to `Function2<? super Frames, ? super Continuation<? super Unit>, ? extends Object>`, an ordinary functional interface that `samProxy` was already willing to proxy. What actually went wrong was narrower: the continuation was curried into the FieldML closure as a second argument, and the declared result — which survives only *inside* `Continuation<? super R>` — was read off the erased `Object` return. See `FieldMLSuspendCallbackTest`'s KDoc, which states this directly, and `public/docs/fieldml_stages.md` for where the boundary falls for a reader | **DONE, 2026-08-19 — for satisfying one. Calling *into* a suspend member is the part that remains, and it is a different problem** | `FieldMLHostBridge.suspendShape` (`HostBridge.kt:624#fun suspendShape(iface: Class<*>, generic:`) and the drop in `samProxy` (`HostBridge.kt:701#Drop the continuation, and only when one really arrived`); the type-level twin in `FieldMLHostTypes.samParameterTypes` (`HostTypes.kt:447#fun samParameterTypes(parameter: HostParameter)`). Sixteen suspend callback slots measured and floored in `FieldMLSuspendCallbackTest.everySuspendCallbackSlotOnFieldsPerFrameSurfaceReportsTheWrittenArity`. Pixels: `public/docs/assets/fieldml_frames_demo/spin-frames.png` | **Yes, and it was.** `eachFrame`, `loop`, `forever`, `Frames.end`, `Frames.body`/`atEnd`, `animate`, both `start`s and `Box.launchFrames` all take a FieldML closure now, and a FieldML box drives a spinning, colour-cycling triangle on a real device. What is *not* reachable is a suspend **member** — `Renderer.run` is `run(Continuation)`, arity one, and the bridge has no continuation to pass and nowhere to resume |
+| D | **`suspend` function types.** ~~erase to a `Function` taking a `Continuation`, which a dynamic proxy cannot satisfy~~ — **that cause was false, struck 2026-09-18.** `eachFrame(block: suspend Frames.() -> Unit)` compiles to `Function2<? super Frames, ? super Continuation<? super Unit>, ? extends Object>`, an ordinary functional interface that `samProxy` was already willing to proxy. What actually went wrong was narrower: the continuation was curried into the FieldML closure as a second argument, and the declared result — which survives only *inside* `Continuation<? super R>` — was read off the erased `Object` return. See `FieldMLSuspendCallbackTest`'s KDoc, which states this directly, and `public/docs/fieldml_stages.md` for where the boundary falls for a reader | **DONE, 2026-08-19 for satisfying one; DONE, 2026-10-31 for calling into one (`hostLaunch`); DONE, 2026-11-01 for a body that waits inside one (`hostAwait`, suspending evaluator walk)** | `FieldMLHostBridge.suspendShape` (`HostBridge.kt:624#fun suspendShape(iface: Class<*>, generic:`) and the drop in `samProxy` (`HostBridge.kt:701#Drop the continuation, and only when one really arrived`); the type-level twin in `FieldMLHostTypes.samParameterTypes` (`HostTypes.kt:447#fun samParameterTypes(parameter: HostParameter)`). Sixteen suspend callback slots measured and floored in `FieldMLSuspendCallbackTest.everySuspendCallbackSlotOnFieldsPerFrameSurfaceReportsTheWrittenArity`. Pixels: `public/docs/assets/fieldml_frames_demo/spin-frames.png` | **Yes, and it was.** `eachFrame`, `loop`, `forever`, `Frames.end`, `Frames.body`/`atEnd`, `animate`, both `start`s and `Box.launchFrames` all take a FieldML closure now, and a FieldML box drives a spinning, colour-cycling triangle on a real device. A suspend **member** is reachable too since 2026-10-31, through `hostLaunch` (`FieldMLHostBridge.launchSuspendMember`; `FieldMLSuspendMemberTest`, 8 cases). The FieldML closure the caller writes *is* the continuation; see "Calling into a suspend member" below. Pixels: `public/docs/assets/fieldml_suspend_demo/`, where a FieldML box starts `Renderer.run` itself. Since 2026-11-01 a FieldML body *does* suspend: `frames { }` takes a FieldML body that calls `hostAwait "frame" () f` / `hostAwait "delay" ms f` and continues on the next line later (`FieldMLSuspendableBodyTest`; "Suspendable bodies" below; pixels `public/docs/assets/fieldml_frames_sequence_demo/`) |
 | E | **A Vulkan device.** `Window`, `Renderer`, `.buffer`, `Mesh`, `Module` cannot be *run* in a headless test JVM | **DONE, 2026-08-08** | `public/docs/assets/fieldml_afield_four_demo/` — captured, and the capture is `triangle.png` beside it | **Yes, and it was.** A FieldML box in a `field_backdoor.py --graphics-context` session built `parameters(renderer) { vertex = …; fragment = … }`, a `Module`, a `ModulePointer`, a `Mesh` resized on the device, and attached it to `renderer.renderTargetFor(0)`. A light blue triangle came out of the native window. No `hostAs` anywhere |
 
 Two smaller findings from the same walk, both fixed:
@@ -567,15 +567,11 @@ error rather than a first-run one. Asserted in
   there is a JDK buffer.
 - **Buffers, kernels and anchors** — types FieldML can neither construct nor obtain — are most of
   the remaining 5% in the coverage measurement.
-- **A `suspend` *member* cannot be called**, which is the other half of decision 5 and a genuinely
-  harder problem than the one that was solved. `Renderer.run` is `run(Continuation)` — arity one — so
-  no candidate matches at arity zero and the refusal is automatic
-  (reproducer: `FieldMLSuspendCallbackTest.kt#fun aBodyThatWouldHaveToSuspendIsStillOutOfReach`).
-  It is also *correct*: satisfying a
-  suspend type is sound because a FieldML closure always completes synchronously, and `Renderer.run`
-  never completes at all. Calling it would mean returning `COROUTINE_SUSPENDED` to a caller with
-  nowhere to resume. Doing this properly needs the FieldML evaluator to be suspendable, not another
-  proxy trick.
+- **A `suspend` *member* is called with `hostLaunch`, closed 2026-10-31.** `hostCall` still refuses
+  one — `Renderer.run` is `run(Continuation)`, arity one, so nothing matches at arity zero
+  (`FieldMLSuspendCallbackTest.kt#fun aBodyThatWouldHaveToSuspendIsStillOutOfReach`). The earlier
+  conclusion here was that calling one "needs the FieldML evaluator to be suspendable". It does not,
+  once the FieldML side writes its continuation out. See "Calling into a suspend member" below.
 - **A parameter typed `Any` gets no narrowing, and the failure is silent at the far end.** A FieldML
   `Float` is a JVM `Double`; `coerce` sees an `Object` slot, finds the argument already assignable and
   passes it straight through. That is right, and it is also how `Structure.set("spin", 0.5)` writes
@@ -693,3 +689,129 @@ One layout gotcha, learned the hard way: a `drawSized`/`showImg` output canvas i
 below* its box in world coordinates and is as tall as the size you asked for, so a child box placed
 under a drawing box will be hidden behind that canvas. Leave the drawn height plus a margin between
 rows.
+
+## Suspendable bodies (2026-11-01)
+
+`hostAwait "name" args target` — `FieldMLHostBridge.awaitSuspendMember`, prelude entry in
+`FieldMLRuntimePrelude`, type `String -> 'a -> 'b -> Host`. Backlog N1031-3.
+
+**Mechanism.** The evaluator has a second walk, `evalFieldMLSuspending` /
+`applyFieldMLFunctionSuspending` in `core/Evaluator.kt`: the same `when` over `CoreExpr`, line for
+line, written as a Kotlin `suspend fun`. Kotlin's CPS transform of that function *is* the evaluator
+continuation — every pending `let`, the rest of every `if` branch, the call stack of a recursive FieldML
+`let` — so nothing saves or restores FieldML state by hand. Two places enter it:
+
+- `samProxy`, when the interface has a suspend shape **and** a real `Continuation` arrived as the last
+  argument. The proxy starts `{ coerce(apply-suspending(body, args)) }` with
+  `startCoroutineUninterceptedOrReturn(thatContinuation)` and returns what that returns: the value if
+  the body never waited, `COROUTINE_SUSPENDED` if it did. Before, the continuation was dropped.
+- `NativeFunctionValue.suspendApply`, a new optional field. Only `hostAwait`'s last argument has one.
+  The suspending walk calls it; the ordinary walk calls `apply`, which for `hostAwait` throws an error
+  naming where it does work.
+
+`awaitSuspendMember` resolves the member exactly as `launchSuspendMember` does (the shared
+`chooseSuspendMember`), then calls it inside `suspendCoroutineUninterceptedOrReturn` with the
+*caller's* continuation. No new coroutine, no `Job`: when `Frames.frame()` yields, the FieldML body
+yields with it.
+
+**The soundness argument.** Three claims, each checkable.
+
+1. *A suspension marker never reaches code that cannot handle it.* `COROUTINE_SUSPENDED` is produced
+   only by a host suspend member called through `awaitSuspendMember`, which runs only from
+   `suspendApply`, which runs only from `applyFieldMLFunctionSuspending`. That function is called only
+   from `evalFieldMLSuspending` and from the `samProxy` branch, which runs only when Kotlin itself
+   passed a `Continuation` into a suspend-shaped slot. Every frame between the marker and that proxy is
+   a `suspend fun` the Kotlin compiler transformed, so the marker propagates by the ordinary protocol
+   and the proxy hands it to Kotlin code that asked for a suspend call. The synchronous walk
+   (`evalFieldML`) never calls `suspendApply`; a synchronous native (`map`, `fold`, a SAM proxy for a
+   non-suspend interface such as `Mesh.write`'s builder) calls the synchronous walk; so a `hostAwait`
+   below one of those reaches `apply` and throws instead of returning a marker into a frame that would
+   treat it as a value. That is the line §5 drew, moved: it used to be "FieldML never suspends", it is
+   now "FieldML suspends only through frames the Kotlin compiler built".
+2. *Resumption continues the right evaluation.* The continuation handed to the host is the one the
+   compiler built for the suspending walk at that call site; resuming it returns the member's result
+   to that `awaitSuspendMember` call, which converts it with `hostToFieldMLValue` and returns into the
+   pending `let`. `RuntimeEnv` chains are immutable after a binding is defined, except recursive `let`,
+   which defines its name before the body runs and never again — so a scope captured before the
+   suspension is the scope seen after it.
+3. *Threads and context are the host's.* The body runs in the caller's coroutine context (for
+   `launchFrames`, Field's runloop dispatcher), so `yield()` really parks, `coroutineContext[Job]`
+   inside `Frames.frame()` is the frames job, and cancellation arrives as a `CancellationException`
+   thrown out of `awaitSuspendMember`, which unwinds the FieldML walk like any other exception.
+   FieldML values are immutable, and the only mutable state a body touches is the host's, so a
+   resumption on a different thread is as safe as the host makes it — the same as a Kotlin body.
+
+**What it costs, measured where cheap.** The suspending walk allocates a continuation per FieldML call
+frame that *actually* suspends and a small state object per `suspend fun` call that does not. It is
+used only inside suspend-shaped bodies; the synchronous walk is unchanged, and every `map` callback
+and vertex helper called from a body runs on it. A recursive FieldML loop that waits every
+iteration is not tail-call-optimised: each pass keeps its caller's continuation, so `again (n + 1)`
+in the demo holds one continuation chain link per pass (about two per second there). After the first
+suspension the JVM stack is shallow again — resumption unwinds through `BaseContinuationImpl`'s loop
+— so this is heap growth, not a `StackOverflowError`, but it is unbounded for an infinite loop. A
+bounded loop, or `loop`/`forever` driving a body that waits once per call, does not grow.
+
+**What it is not.** A body Kotlin calls *synchronously* still cannot wait, and that is by
+construction (claim 1). There is no `await` syntax; `hostAwait` is a prelude function, so the type
+checker treats it as `String -> 'a -> 'b -> Host` and cannot see that it is only legal in suspend
+context — that refusal is at run time, by name.
+
+**Evidence.** `FieldMLSuspendableBodyTest`: a body parks at `hostAwait` and resumes with the value the
+host passes; a `frames` body writes 1, waits, 2, waits, 3, observed across two real runloop frames
+with the real `Frames.frame()`; a recursive loop writes once per frame for five frames;
+`hostAwait` inside `map` and outside any body are refused by name; one program touching every
+`CoreExpr` shape gives the same value under both walks. Pixels:
+`public/docs/assets/fieldml_frames_sequence_demo/`.
+
+**Stretch items closed with it.** N1031-1: FieldML already had `once "slot" (fun u -> …)` (the
+`Onceing` mirror in the runtime prelude, storing in the box's own property), so no new form was
+needed; both FieldML renderer boxes now wrap window + renderer + `hostLaunch "run"` in it, so re-running
+one does not open a second window, and `FieldMLSmokeExamplesTest` pins `once "renderer"` in both.
+N1031-2: a `hostLaunch` failure after the first suspension is also
+sent to the calling box's `displayError`, not only stderr
+(`FieldMLSuspendMemberTest.aLaterFailureIsPaintedOnTheCallingBoxsErrorOutput`).
+
+## Calling into a suspend member (2026-10-31)
+
+`hostLaunch "name" args target k` — `FieldMLHostBridge.launchSuspendMember`, prelude entry in
+`FieldMLRuntimePrelude`, type `String -> 'a -> 'b -> (Host -> 'c) -> Host`.
+
+**Mechanism.** Candidates are the instance methods of arity `n + 1` whose last parameter is exactly
+`kotlin.coroutines.Continuation`; they are scored by the ordinary `choose` with a placeholder
+continuation in the last slot. The call is wrapped in a fresh coroutine
+(`suspendCoroutineUninterceptedOrReturn` inside a `suspend` lambda) whose completion completes a
+`Job` and then applies `k` to the result. The first step is started undispatched
+(`startCoroutineUninterceptedOrReturn`), and the coroutine's context is `Job + Runloop.runLoop.main`.
+
+**Why it is sound.** Row D's satisfying half is sound because a FieldML closure never suspends. This
+half keeps that invariant instead of breaking it: no FieldML frame is ever suspended, because
+the FieldML code that wants the result is handed over as `k`, a closure, which is ordinary
+continuation-passing style. The bridge never returns `COROUTINE_SUSPENDED` to FieldML; `hostLaunch`
+always returns a `Job`. The host member gets a real continuation with a real context, so it
+can suspend, resume and be cancelled exactly as under `launch(Runloop.runLoop.main, UNDISPATCHED)`.
+
+**The dispatcher is required.** With no `ContinuationInterceptor` in the context `yield()` does not
+suspend, and `Renderer.run` (`while (running) { render(); yield() }`) spins forever on the thread
+that called it, which is the runloop. The first draft had no dispatcher and would have hung Field.
+`FieldMLSuspendMemberTest.yieldReallySuspendsBecauseTheCoroutineHasTheRunloopAsItsDispatcher` pins
+the fix.
+
+**Errors.** A throw before the first suspension surfaces synchronously in the calling box (the
+prelude rethrows it). A later failure completes the `Job` exceptionally, skips `k`, and is printed
+to stderr and painted on the calling box's error output (`displayError`, since 2026-11-01) unless it is
+a cancellation, because the calling box's evaluation is already over.
+
+**What it is not.** It is not `await`. A FieldML body still cannot *wait* for a suspend member.
+`hostLaunch "frame" () f k` inside an `eachFrame` body starts a *second* coroutine calling
+`f.frame()`, and the body returns without waiting, so `frames { }` is still not FieldML-writable.
+Making that possible needed a suspendable evaluator; it has one since 2026-11-01 — see
+"Suspendable bodies" above, and `hostAwait`.
+
+**Evidence.** `FieldMLSuspendMemberTest` (8 tests: immediate completion, real suspension resumed
+through the runloop, `yield()` parking until a runloop frame, early failure thrown, late failure
+completing the job, plain member refused by `hostLaunch`, suspend member refused by `hostCall`, wrong
+arity refused). Pixels: `public/docs/assets/fieldml_suspend_demo/`. Two FieldML boxes, no Kotlin.
+The first constructs `Window` and `Renderer` by name and starts `Renderer.run` with `hostLaunch`. The
+second writes 128 vertices of `pos` and `col` through `Mesh.write` every frame. Captured on the Mac's
+device through `field_backdoor.py native-screenshot` a second apart, and the two captures differ.
+

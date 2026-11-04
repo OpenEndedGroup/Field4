@@ -21,8 +21,11 @@ import org.lwjgl.glfw.GLFW
  * [name] on a window replaces the first.
  */
 class WindowPointer(
+    /** The window whose pointer and size are read. Registering adds a sequence to its poll map, so nothing is read until the window is polled. */
     val window: Window,
+    /** The key this registration takes in the window's poll map; a second pointer under the same name on the same window replaces the first. */
     val name: String,
+    /** Run on every poll, after the fields below are updated, for pointer logic that has to see each frame rather than sample whenever it happens to look. */
     var onPoll: (WindowPointer) -> Unit = {},
 ) {
     /** The window's width in points; its framebuffer width until the first poll. */
@@ -40,6 +43,7 @@ class WindowPointer(
     var x: Float = 0f
         private set
 
+    /** The pointer's distance down from the window's top edge, in points. */
     @Volatile
     var y: Float = 0f
         private set

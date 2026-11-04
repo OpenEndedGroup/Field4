@@ -8,7 +8,7 @@ second.
 
 The method is short enough to state completely. Pick a point `x0` from where you are starting and a
 point `x1` from where you want to end up, and declare that the straight line between them is the
-path a particle should take: at time `t` it sits at `xt = (1-t)·x0 + t·x1` travelling at `x1 - x0`.
+path a particle should take: at time `t` it sits at \( x_t = (1-t)\,x_0 + t\,x_1 \) travelling at \( x_1 - x_0 \).
 Then fit a network `v(x, t)` to that velocity by least squares over many random `(x0, x1, t)`
 triples. No two straight lines agree where they cross, so the fit cannot reproduce any one of them;
 the fit seeks the average velocity through each point at each time. In the ideal case, integrating
@@ -78,9 +78,9 @@ markdown(
     "fit",
     """
     ~~~
-generated radius   ${"%.1f".format(mean)} +/- ${"%.1f".format(sd)}   (target: 100)
-chamfer to target  ${"%.2f".format(chamferDistance(samples, target))}
-training loss      ${"%.4f".format(field.loss(200))} over ${field.parameterCount} parameters
+generated radius   ${mean.f1} +/- ${sd.f1}   (target: 100)
+chamfer to target  ${chamferDistance(samples, target).f2}
+training loss      ${field.loss(200).f4} over ${field.parameterCount} parameters
     ~~~
 """,
 )
@@ -172,8 +172,8 @@ markdown(
     "miss",
     """
     ~~~
-closed source (circle -> ring)    mean landing error ${"%.2f".format(miss(fromCircle, circleSource))}
-open source   (segment -> ring)   mean landing error ${"%.2f".format(miss(fromSegment, segmentSource))}
+closed source (circle -> ring)    mean landing error ${miss(fromCircle, circleSource).f2}
+open source   (segment -> ring)   mean landing error ${miss(fromSegment, segmentSource).f2}
     ~~~
 """,
 )
@@ -303,7 +303,7 @@ two bands come out roughly 10–17% narrow, which is where the source's constant
 most.
 
 Because the correspondence is explicit, the exact answer is known at every `t`, not only at the end:
-particle `i` should be at `(1-t)·x0ᵢ + t·x1ᵢ`. Comparing the integrated path against that straight
+particle `i` should be at \( (1-t)\,x_{0,i} + t\,x_{1,i} \). Comparing the integrated path against that straight
 line measures the field directly.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/flow_matching/tube_paths.png" wait="3.0" capture="box" open-outputs="true" w="1000" h="420" padding="16"}
@@ -431,7 +431,7 @@ markdown(
     "knot",
     """
     ~~~
-mean landing error ${"%.2f".format(miss)} on a knot about 150 units across
+mean landing error ${miss.f2} on a knot about 150 units across
     ~~~
 """,
 )
@@ -521,14 +521,60 @@ defaults that may surprise you.
 
 `activation` defaults to `leaky` rather than `tanh`. A velocity field has to keep growing away from
 the data — near `t = 0` the right answer is roughly `-x`, without bound — and a saturating unit
-cannot, so it bends the far field back on itself. On the ring above, `tanh` gives about four times
-the radial spread of `leaky` or `relu` at equal cost, more than any other setting changes it.
+cannot, so it bends the far field back on itself. On the ring above, `tanh` gives about ten times
+the radial spread of `leaky` at equal cost, more than any other setting changes it.
 
 `finalLearningRate` decays the rate linearly across the run, and defaults to doing so. RMSProp
 rescales the gradient to roughly unit length, so a constant rate keeps taking same-sized steps
 however close to the answer it already is, and the fit settles at a floor set by the rate. At a
 constant rate, more steps can leave the result *further* from its target; with the decay, more
-steps help, and the ring's radial spread drops from 9.2 to 3.6.
+steps help. At 6000 steps on the ring, the decay takes the radial spread from 6.3 to 3.0:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/flow_matching/settings.png" alt="four ring fits side by side, each over a thin grey circle of the true ring: leaky with the decaying rate hugs the circle, tanh fills the disc, leaky at a constant rate hugs it a little more loosely, tanh at a constant rate fills it; a table under them gives each radius and spread" wait="3.0" capture="box" open-outputs="true" w="1000" padding="16" name="flow-matching-settings"}
+fun cloud(points: List<Vec3>, size: Double, c: Vec4, shift: Vec3 = vec(0, 0, 0)): FLine {
+    val f = FLine()
+    points.forEach { f.moveTo(it + shift) }
+    f.pointed = true
+    f.pointSize = size
+    f.color = c
+    return f
+}
+
+val target = (0 until 500).map {
+    val a = random() * 2 * PI
+    vec(100 * cos(a), 100 * sin(a), 0.0)
+}
+
+// The ring above, fitted four ways at the same cost; each panel reports its radial spread.
+val settings = [
+    "leaky, decaying rate (the defaults)" to FlowMatchOptions(steps = 6000, seed = 11),
+    "tanh" to FlowMatchOptions(steps = 6000, seed = 11, activation = "tanh"),
+    "leaky, constant rate" to FlowMatchOptions(steps = 6000, seed = 11, finalLearningRate = null),
+    "tanh, constant rate" to FlowMatchOptions(steps = 6000, seed = 11, activation = "tanh", finalLearningRate = null),
+]
+:::fold fit four ways, draw them and report the spread
+val report = ArrayList<String>()
+val panels = settings.flatMapIndexed { i, (label, options) ->
+    val samples = flowMatch(target, options = options).sample(300, seed = 12)
+    val radii = samples.map { hypot(it.x.toDouble(), it.y.toDouble()) }
+    val mean = radii.average()
+    val sd = sqrt(radii.sumOf { (it - mean) * (it - mean) } / radii.size)
+    report += "${i + 1}. %-38s radius %5.1f +/- %4.1f".format(label, mean, sd)
+    val shift = vec(i * 260, 0, 0)
+    // The true ring as a thin circle, the samples as dots.
+    val ring = FLine()
+    for (k in 0..96) {
+        val a = k * 2 * PI / 96
+        if (k == 0) ring.moveTo(vec(100 * cos(a), 100 * sin(a), 0.0) + shift) else ring.lineTo(vec(100 * cos(a), 100 * sin(a), 0.0) + shift)
+    }
+    ring.color = vec(0.55, 0.55, 0.62, 0.9)
+    [ring, cloud(samples, 1.4, vec(0.44, 0.83, 0.78, 1.0), shift)]
+}
+lines(panels, w = 1000.0, h = 280.0, fitToSize = true)
+markdown("spread", "~~~\n" + report.joinToString("\n") + "\n~~~")
+```
+
+![Four ring fits: the leaky ones hug the true circle, the tanh ones fill the disc; the spread under each is about 3 and 6 for leaky, 33 and 36 for tanh](assets/flow_matching/settings.png)
 
 `steps` is then the quality knob worth reaching for first, and the dominant cost: roughly 0.08 ms
 per step at the default batch, so 6000 steps is about half a second. `hidden` defaults to two layers

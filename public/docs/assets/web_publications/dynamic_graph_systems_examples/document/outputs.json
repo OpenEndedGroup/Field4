@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-29T22:37:06.714Z",
+  "capturedAt": "2026-10-31T13:48:47.968Z",
   "documentName": "dynamic_graph_systems_examples",
   "outputs": [
     {
@@ -12,7 +12,7 @@
         "svg"
       ],
       "width": 1314,
-      "height": 928,
+      "height": 926,
       "path": "outputs/0.html"
     },
     {
@@ -23,7 +23,7 @@
       "kinds": [
         "plotly"
       ],
-      "width": 736,
+      "width": 712,
       "height": 458,
       "path": "outputs/1.html"
     },
@@ -36,7 +36,7 @@
         "svg"
       ],
       "width": 998,
-      "height": 523,
+      "height": 522,
       "path": "outputs/2.html"
     },
     {
@@ -48,7 +48,7 @@
         "svg"
       ],
       "width": 938,
-      "height": 988,
+      "height": 986,
       "path": "outputs/3.html"
     }
   ]

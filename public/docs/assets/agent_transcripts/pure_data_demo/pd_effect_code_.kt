@@ -1,7 +1,6 @@
 // A Field sawtooth through a Pd lowpass: `input` feeds the patch's [adc~]. Launch it.
-val fx =
-    pd(
-        """
+val fx = pd(
+    """
 #X obj 20 20 adc~;
 #X obj 20 60 lop~ 600;
 #X obj 20 100 *~ 0.15;
@@ -15,11 +14,10 @@ val fx =
 #X connect 2 0 4 0;
 #X connect 4 0 5 0;
 """,
-        input = SawOsc(Param(110f)).pan(),
-    )
+    input = SawOsc(Param(110f)).pan(),
+)
 var n = 0
 fx.receive("level") { m ->
-    if (n++ % 10 == 0)
-        display("level", "<div style='padding:8px'>after the lowpass: ${"%.1f".format(m.float ?: 0f)} dB</div>")
+    if (n++ % 10 == 0) display("level", "<div style='padding:8px'>after the lowpass: ${(m.float ?: 0f).f1} dB</div>")
 }
 fx

@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. Ceres — a plane per face, solved as a free variable
@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="ceres_free_variables_planes" index="0" -->
 
 ```edn [field-box id="ceres_free_variables_planes" role="properties"]
-{"id" "ceres_free_variables_planes" "index" 0 "name" "Ceres — a plane per face, solved as a free variable" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Ceres — a plane per face, solved as a free variable" "_tombstone" false "frame" #afield/rect [80.0 80.0 450.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ceres_free_variables_planes_code_.kt" "lines" 230 "characters" 9265 "sha256" "ccf2c31e89aaf63d45c27481a3a1929ca0e3993482fe0f0cb416e75fbaa06bf4"}]}
+{"id" "ceres_free_variables_planes" "index" 0 "name" "Ceres — a plane per face, solved as a free variable" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Ceres — a plane per face, solved as a free variable" "_tombstone" false "frame" #afield/rect [80.0 80.0 450.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ceres_free_variables_planes_code_.kt" "lines" 228 "characters" 9144 "sha256" "441720fc0ab2bfe5dd8f9386ab5654c7e910b58c0fafb2f39d2c2f62ba5d240d"}]}
 ```
 
 ````kotlin [field-property box="ceres_free_variables_planes" name="code" path="ceres_free_variables_planes_code_.kt"]
@@ -39,21 +39,19 @@ val expression = "tI"
 // Nothing is committed, so look where each build task puts its artifact. Constructing the
 // backend is what refuses a missing or too-old library, so that is the check.
 val backendFailures = mutableListOf<String>()
-val backend =
-    [
-            Path.of("build/ken-ceres-redistributable/libken_ceres_jvm.dylib"),
-            Path.of("build/ken-ceres/libken_ceres_jvm.dylib"),
-        ]
-        .filter { Files.exists(it) }
-        .firstNotNullOfOrNull { path ->
-            runCatching { FfmCeresBackend(path) }
-                .onFailure { failure ->
-                    val detail = "$path: ${failure.javaClass.simpleName}: ${failure.message}"
-                    backendFailures += detail
-                    println("Ceres load failed: $detail")
-                }
-                .getOrNull()
-        }
+val backend = [
+    Path.of("build/ken-ceres-redistributable/libken_ceres_jvm.dylib"),
+    Path.of("build/ken-ceres/libken_ceres_jvm.dylib"),
+].filter { Files.exists(it) }
+    .firstNotNullOfOrNull { path ->
+        runCatching { FfmCeresBackend(path) }
+            .onFailure { failure ->
+                val detail = "$path: ${failure.javaClass.simpleName}: ${failure.message}"
+                backendFailures += detail
+                println("Ceres load failed: $detail")
+            }
+            .getOrNull()
+    }
 val backendStatus = when {
     backend != null -> "Loaded a compatible Ceres wrapper."
     backendFailures.isEmpty() -> "No Ceres wrapper found in build/ken-ceres-redistributable or build/ken-ceres."
@@ -190,8 +188,8 @@ if (backend == null) {
 
                 Its plane is two free variables Ceres solved for, not geometry anyone supplied:
 
-                - normal `n` = `(${"%.6f".format(n.x)}, ${"%.6f".format(n.y)}, ${"%.6f".format(n.z)})`, on a sphere manifold
-                - offset `d` = `${"%.6f".format(d)}`
+                - normal `n` = `(${n.x.f6}, ${n.y.f6}, ${n.z.f6})`, on a sphere manifold
+                - offset `d` = `${d.f6}`
                 - `|n|` = `${"%.15f".format(kotlin.math.sqrt(n.x * n.x + n.y * n.y + n.z * n.z))}`
                 - worst corner off this plane: `${"%.3e".format(worst)}`
 
@@ -252,7 +250,7 @@ if (backend == null) {
 <!-- field-box id="ceres_free_variables_sphere" index="1" -->
 
 ```edn [field-box id="ceres_free_variables_sphere" role="properties"]
-{"id" "ceres_free_variables_sphere" "index" 1 "name" "Ceres — unknowns that are not points" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Ceres — unknowns that are not points" "_tombstone" false "frame" #afield/rect [580.0 80.0 350.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ceres_free_variables_sphere_code_.kt" "lines" 258 "characters" 10150 "sha256" "32a8ebeb9acb6c4566b4e80846ab3bf31b05c0f49a204fcab11b3fe3af50179a"}]}
+{"id" "ceres_free_variables_sphere" "index" 1 "name" "Ceres — unknowns that are not points" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Ceres — unknowns that are not points" "_tombstone" false "frame" #afield/rect [580.0 80.0 350.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ceres_free_variables_sphere_code_.kt" "lines" 256 "characters" 9981 "sha256" "69394ae2970cd2cd7c6153e5ca90a088abd734257264e12d72f04dbebd800de6"}]}
 ```
 
 ````kotlin [field-property box="ceres_free_variables_sphere" name="code" path="ceres_free_variables_sphere_code_.kt"]
@@ -285,21 +283,19 @@ val data = [
 // Nothing is committed, so look where each build task puts its artifact. Constructing the
 // backend is what refuses a missing or too-old library, so that is the check.
 val backendFailures = mutableListOf<String>()
-val backend =
-    [
-            Path.of("build/ken-ceres-redistributable/libken_ceres_jvm.dylib"),
-            Path.of("build/ken-ceres/libken_ceres_jvm.dylib"),
-        ]
-        .filter { Files.exists(it) }
-        .firstNotNullOfOrNull { path ->
-            runCatching { FfmCeresBackend(path) }
-                .onFailure { failure ->
-                    val detail = "$path: ${failure.javaClass.simpleName}: ${failure.message}"
-                    backendFailures += detail
-                    println("Ceres load failed: $detail")
-                }
-                .getOrNull()
-        }
+val backend = [
+    Path.of("build/ken-ceres-redistributable/libken_ceres_jvm.dylib"),
+    Path.of("build/ken-ceres/libken_ceres_jvm.dylib"),
+].filter { Files.exists(it) }
+    .firstNotNullOfOrNull { path ->
+        runCatching { FfmCeresBackend(path) }
+            .onFailure { failure ->
+                val detail = "$path: ${failure.javaClass.simpleName}: ${failure.message}"
+                backendFailures += detail
+                println("Ceres load failed: $detail")
+            }
+            .getOrNull()
+    }
 val backendStatus = when {
     backend != null -> "Loaded a compatible Ceres wrapper."
     backendFailures.isEmpty() -> "No Ceres wrapper found in build/ken-ceres-redistributable or build/ken-ceres."
@@ -412,8 +408,8 @@ if (backend == null) {
     println(
         """
         ${data.size} fixed points, two free variables, no point unknowns at all
-        ceres       centre (${"%.9f".format(centre.x)}, ${"%.9f".format(centre.y)}, ${"%.9f".format(centre.z)})  radius ${"%.9f".format(radius)}
-        closed form centre (${"%.9f".format(trueCentre.x)}, ${"%.9f".format(trueCentre.y)}, ${"%.9f".format(trueCentre.z)})  radius ${"%.9f".format(trueRadius)}
+        ceres       centre (${centre.x.f9}, ${centre.y.f9}, ${centre.z.f9})  radius ${radius.f9}
+        closed form centre (${trueCentre.x.f9}, ${trueCentre.y.f9}, ${trueCentre.z.f9})  radius ${trueRadius.f9}
         centre off by ${"%.2e".format(centreError)}, radius off by ${"%.2e".format(kotlin.math.abs(radius - trueRadius))}
         ${result.summary}
         """

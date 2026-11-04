@@ -159,6 +159,10 @@ The capture and encode path produces **side-by-side stereo frames**, and a Camer
 ShaderGraph material samples the left half of the frame for the left eye and the right half for the
 right.
 
+![A side-by-side stereo frame: the same three wireframe cubes, colour chart and floor grid drawn twice, the right half seen from a slightly offset eye](assets/stereo_rtt_composite/desktop.png)
+
+This is what such a frame looks like: the left eye's view in the left half, the right eye's in the right. It is packed by the same `SideBySideStereoTarget` the sender streams from, and captured from the desktop preview on the [stereo RTT composite](stereo_rtt_composite.md) page.
+
 Confirming that needs a real Vision Pro, because the simulator renders a single mono view: true
 per-eye separation, the thing that makes stereo *stereo*, is invisible there. It is confirmed on
 hardware.

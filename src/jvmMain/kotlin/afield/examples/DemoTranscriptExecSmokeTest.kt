@@ -96,6 +96,8 @@ object DemoTranscriptExecSmokeTest {
 
     /** Pure-compute demos that are safe to run to completion headless. */
     internal val EXECUTE = setOf(
+        // visualizers.md's presets demo: a preset bar, record button and MIDI learn; the MIDI box feeds stand-in CCs.
+        "controls_presets_morph_midi",
         // Loads a committed glTF fixture through Assimp and opens column()/tree() on it; no renderer.
         "assimp_browsing",
         // stacksl_examples.md's fitting demo: fits a StackSL program's literals on the CPU.
@@ -331,6 +333,9 @@ object DemoTranscriptExecSmokeTest {
         // Ten independent pure-CPU spatial-ALife boxes; nothing opens a Window or a Renderer.
         "alife_evolution",
         "alife_worked_example",
+        // Five pure-CPU Braitenberg-vehicle boxes (braitenberg_vehicles.md sections 5-9); the
+        // moving-lights box is an animateEvolution clip and is launched. No Window, no Renderer.
+        "braitenberg_where_next",
         // Five independent pure-CPU statistics boxes; showPlaneGrid is drawToSVG -> display,
         // showSignals is a plotly HTML fragment -> display, histogramToSvg is just a string.
         "statistics_examples",
@@ -411,6 +416,9 @@ object DemoTranscriptExecSmokeTest {
         // Controls renewal (2026-10-29): a five-control surface feeding a live figure and a slider
         // that re-renders itself mid-drag. Pure CPU, output-channel controls only.
         "controls_surface",
+        // History renewal (2026-10-30): one box edited three times with autosave waits between, so
+        // the document holds four versions for the history view's This Box list. Pure CPU.
+        "history_box_story",
         // Kolakoski counts crossed with Euclidean placement. Pure CPU: the figures are
         // `showPatRollOf` (SVG into an output channel) and the audio is `showDirtAudio` /
         // `patRenderStereoDirt`, which mixes samples into a buffer offline — no audio device, and
@@ -696,6 +704,8 @@ object DemoTranscriptExecSmokeTest {
         // Real Vulkan/OpenXR rendering; binocular depth additionally requires HTC eye hardware.
         "openxr_eye_intersection",
         "afield_four_traditional_triangle",
+        // Two ShaderBoids flocks on their own native Window + Renderer; captured by neural_particles.md.
+        "shader_boids_separation",
         // Needs a live Vulkan renderer; the column it opens is captured by visualizers.md (graphics context).
         "renderer_browsing",
         // Streams a splat sequence into a native window, and wants a directory of .compressed.ply
@@ -898,8 +908,10 @@ object DemoTranscriptExecSmokeTest {
         "fieldml_lambda_demo",
         "fieldml_afield_four_demo",
         "fieldml_frames_demo",
+        "fieldml_frames_sequence_demo",
         "fieldml_macro_module_demo",
         "fieldml_mesh_demo",
+        "fieldml_suspend_demo",
         // stacksl_examples.md's gallery draws into a native window.
         "stacksl_gallery",
         // ShaderTrinket: shadertoyHere boxes drawing into a shadertoyCanvas the renderer window shows,

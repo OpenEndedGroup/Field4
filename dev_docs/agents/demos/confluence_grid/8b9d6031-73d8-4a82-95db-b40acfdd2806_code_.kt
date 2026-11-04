@@ -231,12 +231,10 @@ class Cell(val row: Int, val col: Int, val src: String, order: ActivationOrder) 
         val nodes = compiled.net.nodes.map { "node:" + nodeKey(it) }
         val edges =
             compiled.net.edges.map { edge ->
-                val endpoints =
-                    [
-                            nodeKey(edge.a.node) + ":" + edge.a.index,
-                            nodeKey(edge.b.node) + ":" + edge.b.index,
-                        ]
-                        .sorted()
+                val endpoints = [
+                    nodeKey(edge.a.node) + ":" + edge.a.index,
+                    nodeKey(edge.b.node) + ":" + edge.b.index,
+                ].sorted()
                 "edge:" + endpoints.joinToString("--")
             }
         return (nodes + edges).sorted()

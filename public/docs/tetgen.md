@@ -85,7 +85,7 @@ for (t in 0 until half.cellCount) {
     colors[3 * t + 2] = c.b.toFloat()
 }
 :::fold measure it, then draw the three views
-println("Manifold  ${"%.4f".format(part.volume)} mm³, ${part.triangleCount} triangles, genus ${part.genus}")
+println("Manifold  ${part.volume.f4} mm³, ${part.triangleCount} triangles, genus ${part.genus}")
 // The surface's own digest, printed because the element count below depends on it and on nothing
 // else — see "the count moves between sessions" under Sizing.
 println(
@@ -93,7 +93,7 @@ println(
         "digest ${surface.positions.contentHashCode()}/${surface.indices.contentHashCode()}",
 )
 println("TetGen    $mesh")
-println("          volume ${"%.4f".format(mesh.volume())} mm³")
+println("          volume ${mesh.volume().f4} mm³")
 println("          inverted elements ${mesh.volumes().count { it <= 0.0 }}")
 println()
 println(
@@ -101,7 +101,7 @@ println(
         "${half.boundary().triangleCount} boundary triangles",
 )
 println(
-    "quality   min ${"%.4f".format(quality.min())}, median " + "${"%.4f".format(quality.sorted()[quality.size / 2])}",
+    "quality   min ${quality.min().f4}, median " + "${quality.sorted()[quality.size / 2].f4}",
 )
 
 // Pitch well over the horizon, because the cut plane is horizontal in this frame and a low camera
@@ -126,7 +126,7 @@ bores would not come through it round.
 ## Sizing
 
 `targetEdgeLength` is in the surface's own units and is translated to the only size control TetGen
-takes, a maximum element volume: `h³ / (6 sqrt 2)`, the volume of a regular tetrahedron of that edge.
+takes, a maximum element volume: \( h^3 / (6\sqrt{2}) \), the volume of a regular tetrahedron of that edge.
 
 The input surface sets the coarsest mesh you can get. TetGen keeps every triangle it is given, and
 this bracket's 618 triangles are already about 10 mm across, so asking for larger elements than that
@@ -156,6 +156,43 @@ the Euler–Bernoulli tip deflection at 1,080 elements, still 38% short; the 10-
 5% at thirty. If you are bending anything, pass `order = 2` and mesh coarsely, rather than
 passing `order = 1` and refining. [`optional/kratos/VERIFICATION.md`](https://github.com/OpenEndedGroup/Field4/blob/main/optional/kratos/VERIFICATION.md) has the per-mesh numbers, the
 axial-extension control, and why landing just under 100% is right.
+
+Here is that cantilever solved by Kratos at both orders on the same 864 tetrahedra, each drawn from
+the side with its deflection scaled 500 times and coloured by displacement. The 4-node beam stops
+well short of beam theory; the 10-node one reaches it:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/tetgen/kratos_orders.png" capture="box" open-outputs="true" wait-output="true" wait-output-kind="all" wait-output-contains="quadratic" wait="2" padding="12" timeout="1500" embed=true name="tetgen-kratos-orders" alt="Two cantilevers seen from the side, drooping from a clamped left end, blue at the clamp shading to orange at the tip. The left, 4-node, is labelled with about 70% of the beam-theory tip deflection; the right, 10-node, with about 100%."}
+import afield.geometry.mesh.tetgen.*
+import afield.simulation.kratos.*
+import java.util.concurrent.TimeUnit
+
+// A 1 m cantilever, 0.1 m square, clamped at x = 0 and bending under its own weight.
+val beam = SimulationBox("beam", SimulationBounds(0.0, -0.05, -0.05, 1.0, 0.05, 0.05))
+val parameters = StructuralParameters(
+    youngModulus = 2.0e9, poissonRatio = 0.3, density = 1000.0,
+    gravity = Triple(0.0, 0.0, -9.81),
+    clamp = SimulationBounds(-1e-9, -1.0, -1.0, 1e-9, 1.0, 1.0),
+)
+// Euler-Bernoulli tip deflection of a uniformly loaded cantilever, w L^4 / 8 E I.
+val analytic = 1000.0 * 9.81 * 0.01 / (8 * 2.0e9 * 0.1.pow(4) / 12.0)
+:::fold solve at order 1 and order 2, then draw both
+val config = Kratos.probeAny().get(900, TimeUnit.SECONDS).config
+val views = [1, 2].map { order ->
+    val mesh = Tetgen.tetrahedralize(beam.surface(), targetEdgeLength = 0.06, order = order)
+    KratosSession.openMeshAsync(mesh, config).get(600, TimeUnit.SECONDS).use { session ->
+        val result = session.solveAsync(parameters).get(600, TimeUnit.SECONDS)!!
+        val displacement = result.named("displacement")
+        val tip = (0 until result.domain.nodeCount).filter { result.domain.positions[3 * it] > 1.0 - 1e-9 }
+        val reached = tip.sumOf { abs(displacement[3 * it + 2]) } / tip.size / analytic
+        val name = if (order == 1) "linear" else "quadratic"
+        println("$name  ${mesh.nodesPerCell}-node, ${mesh.cellCount} elements: tip at ${(100 * reached).f1}% of beam theory")
+        "${mesh.nodesPerCell}-node · ${mesh.cellCount} elements · ${(100 * reached).f1}% of theory" to
+            result.deformedMesh(displacementScale = 500.0, field = "displacement")
+    }
+}
+showMeshGrid(*views.toTypedArray(), columns = 2, cellWidth = 420,
+    view = MeshView(yawDegrees = 0.0, pitchDegrees = -90.0, distance = 2.2, width = 420, height = 260))
+```
 
 ### Asking for 10-node elements
 
@@ -259,32 +296,32 @@ val slivers = mesh.filtered { it in worst }
 val sorted = quality.sorted()
 println("${mesh.cellCount} elements at targetEdgeLength = 3.0")
 println(
-    "radius ratio     min ${"%.4f".format(sorted.first())}  " +
-        "1st pct ${"%.4f".format(sorted[sorted.size / 100])}  " +
-        "median ${"%.4f".format(sorted[sorted.size / 2])}  max ${"%.4f".format(sorted.last())}",
+    "radius ratio     min ${sorted.first().f4}  " +
+        "1st pct ${sorted[sorted.size / 100].f4}  " +
+        "median ${sorted[sorted.size / 2].f4}  max ${sorted.last().f4}",
 )
 println("below 0.05       ${sorted.count { it < 0.05 }}   (slivers)")
 println("below 0.10       ${sorted.count { it < 0.10 }}")
 println()
 println(
-    "radius-edge      min ${"%.4f".format(radiusEdge.min())}  " +
-        "(the regular tetrahedron's floor is ${"%.4f".format(Math.sqrt(6.0) / 4.0)})",
+    "radius-edge      min ${radiusEdge.min().f4}  " +
+        "(the regular tetrahedron's floor is ${(Math.sqrt(6.0) / 4.0).f4})",
 )
 println(
-    "                 max ${"%.4f".format(radiusEdge.max())}, " +
+    "                 max ${radiusEdge.max().f4}, " +
         "${radiusEdge.count { it > 1.2 }} above the 1.2 bound that was asked for",
 )
 println()
 // The point of printing these together: the two measures do not rank the same elements. The worst
 // element by radius-edge is a perfectly usable one, and most of the bad ones are inside the bound.
 println(
-    "worst by radius-edge: ${"%.4f".format(radiusEdge.max())}, whose radius ratio is " +
-        "${"%.4f".format(quality[radiusEdge.indices.maxBy { radiusEdge[it] }])} — a fine element",
+    "worst by radius-edge: ${radiusEdge.max().f4}, whose radius ratio is " +
+        "${quality[radiusEdge.indices.maxBy { radiusEdge[it] }].f4} — a fine element",
 )
 val inBound = quality.indices.filter { radiusEdge[it] <= 1.2 }
 println(
     "of the ${inBound.size} elements inside the bound, ${inBound.count { quality[it] < 0.10 }} " +
-        "are below radius ratio 0.10; the worst is ${"%.5f".format(inBound.minOf { quality[it] })}",
+        "are below radius ratio 0.10; the worst is ${inBound.minOf { quality[it] }.f5}",
 )
 
 showChart(
@@ -299,7 +336,7 @@ showMesh(
     slivers.boundary(),
     title = "the 400 worst elements, in place",
     caption =
-        "radius ratio ${"%.4f".format(sorted.first())} to ${"%.4f".format(sorted[399])} · " +
+        "radius ratio ${sorted.first().f4} to ${sorted[399].f4} · " +
             "densest around the three bores, and scattered everywhere else",
     view = MeshView(yawDegrees = 34.0, pitchDegrees = 22.0, width = 760, height = 420),
 )
@@ -567,9 +604,9 @@ for (h in sizes) {
     boxError += worstError(coordinates(b.toTriMesh()), ::boxDistance)
     sphereError += worstError(coordinates(s.toTriMesh()), ::sphereDistance)
     println(
-        "${"%.2f".format(h)}   ${"%.6f".format(boxError.last())} = " +
-            "${"%.4f".format(boxError.last() / h)} h    " +
-            "${"%.6f".format(sphereError.last())} = ${"%.4f".format(sphereError.last() / h)} h",
+        "${h.f2}   ${boxError.last().f6} = " +
+            "${(boxError.last() / h).f4} h    " +
+            "${sphereError.last().f6} = ${(sphereError.last() / h).f4} h",
     )
     // A real cross section through the marched body, at z = 0. The rounding is 1.5% of the body at
     // h = 0.4: plain in a cross section, invisible in a render of the whole box.

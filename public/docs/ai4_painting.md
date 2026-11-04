@@ -61,6 +61,15 @@ retrieve that state's recorded contents when asked. **Keep for comparison**, fol
 by **Discuss differences** on another node, prepares references to both in your draft.
 The inspector shows saved text and ancestry; it does not reconstruct a canvas preview.
 
+![The States panel for the harbour conversation: the Studio · Conversation history with 11 saved states drawn as a branching graph, each request a turn node followed by append nodes; the earlier "Harbour at dusk" node is selected, and the inspector beside it lists its parent turn, the registered canvas snapshot branch:ai4_paint_studio:studio:canvas, and the start of its saved transcript, with Reference in chat and Keep for comparison above](assets/ai4_painting/states.png)
+
+??? aside "How this picture is made"
+    `tools/capture_ai4_painting_states.py` restores the saved harbour conversation from
+    `assets/ai4_chat_archive/chats/harbour` on a Field it starts, checks the restored chat matches
+    the saved one, opens **States**, selects *Harbour at dusk*, and crops the window to the panel.
+    It calls no model, so it can be rerun; the docs build cannot, because the conversation itself
+    came from a paid live run, so the PNG is committed.
+
 For a named alternative, ask AI4 to fork a saved state under a name such as
 *Harbour at dusk*. The fork is saved without switching the easel to it, and AI4 can read it
 back later by that exact name. Continue the alternative
@@ -155,11 +164,10 @@ tool("paint.dab") {
     describe("Touch the brush down at points and lift it: dabs, petals, leaves, highlights. One load for all of them.")
     effects(ToolEffect.CONTROL_RUNTIME)
     val points by param<List<Double>>("[x0, y0, x1, y1, ...]")
-    val color by
-        param<String?>(
-            "#rrggbb, a tube name, or tubes by parts; null dabs a kept tool with what it carries",
-            default = null,
-        )
+    val color by param<String?>(
+        "#rrggbb, a tube name, or tubes by parts; null dabs a kept tool with what it carries",
+        default = null,
+    )
     val tool by param<String?>("a kept brush's name to dab with; null for a fresh brush", default = null)
     val brush by
         param<String>("Round, HogFlat, Filbert, Fan, Rigger, Badger or Stippler (a fresh brush)", default = "Round")

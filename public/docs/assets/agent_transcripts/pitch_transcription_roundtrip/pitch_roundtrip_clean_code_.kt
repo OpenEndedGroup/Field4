@@ -19,11 +19,11 @@ val heard = showPatTranscriptionOf(
 )
 
 display("authored", "pat(\"$notation\") × $cycles cycles at cps $cps")
-display("recovered", "pat(\"${heard.miniNotation}\") at cps ${"%.3f".format(heard.cps)}")
+display("recovered", "pat(\"${heard.miniNotation}\") at cps ${heard.cps.f3}")
 display(
     "pitch error",
     heard.notes.joinToString("\n") {
-        "MIDI ${it.midi}  ${"%+.1f".format(it.centsOffset)} cents  conf ${"%.2f".format(it.confidence)}"
+        "MIDI ${it.midi}  ${"%+.1f".format(it.centsOffset)} cents  conf ${it.confidence.f2}"
     },
 )
 display("summary", heard.describe())

@@ -1,0 +1,94 @@
+name: path_traced_reconstruction_stripes_3
+description: The path_traced_reconstruction Starting Point with a striped GLSL floor material (frequency 3.0, roughness .05) seen through Ray Reconstruction.
+docs:
+  - page: path_traced_reconstruction.md#put-a-material-shader-in-the-box
+    why: "Captures the striped floor that section's material hook produces."
+operations:
+  - create:
+      box: agent_graphics_context
+      name: renderer
+      frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.graphics.vulkan.util.Options
+
+          prop<Window>(window)
+          prop<Renderer>(renderer)
+
+          Options.enableRayTracing = true
+          Options.enableVR = false
+          Options.enableHDR = false
+          Options.profiling = false
+
+          once.renderer {
+              window = Window("Field")
+              Renderer(window)
+          }
+
+          println("agent graphics renderer ready")
+          start(renderer::run)
+  - launch: { box: agent_graphics_context, property: code, strand: renderer }
+  - await: { wait: pending }
+  - wait: { frames: 3 }
+  - create:
+      box: rr_stripes_3
+      name: path traced reconstruction
+      frame: { x: 400.0, y: 160.0, w: 420.0, h: 100.0 }
+      properties:
+        compute: |
+          {{ pathTracing.preamble }}
+
+          Material shadeMaterial(Material material, PathTraceSurface surface) {
+              if (surface.materialId == 0) {
+                  float stripe = smoothstep(.35, .65,
+                  .5 + .5 * sin(surface.position.x * 3.0));
+                  material.base.rgb = mix(vec3(.06, .12, .3), vec3(.8, .18, .04), stripe);
+                  material.base.w = 0.0; // metallic
+                  material.emission.w = .05; // roughness
+              }
+              return material;
+          }
+
+          {{ pathTracing.integrator }}
+        code: |
+          import afield.graphics.scene.fabricated.*
+          import afield.media.reconstruction.*
+
+          prop<PathTracedReconstruction>(lab)
+          NgxSupport.rayReconstructionAvailability(renderer.device).getOrThrow()
+          val scene = PathTraceScene().apply {
+              val floor = material(PathTraceMaterial.diffuse(.45f, .5f, .55f))
+              val red = material(PathTraceMaterial.plastic(.65f, .055f, .025f, .22f))
+              val gold = material(PathTraceMaterial.metal(.95f, .7f, .3f, .12f))
+              val blue = material(PathTraceMaterial.metal(.3f, .5f, .8f, .5f))
+              val light = material(PathTraceMaterial.emissive(12f, 8f, 5f))
+              quad(Vector3f(-15f, 0f, -15f), Vector3f(-15f, 0f, 15f), Vector3f(15f, 0f, 15f), Vector3f(15f, 0f, -15f), floor)
+              sphere(Vector3f(-1.7f, .8f, 0f), .8f, red, 48, 24)
+              sphere(Vector3f(0f, .8f, 0f), .8f, gold, 48, 24)
+              sphere(Vector3f(1.7f, .8f, 0f), .8f, blue, 48, 24)
+              quad(Vector3f(-2f, 4f, -1f), Vector3f(0f, 4f, -1f), Vector3f(0f, 4f, 1f), Vector3f(-2f, 4f, 1f), light)
+          }
+          val camera = Camera(renderer).also {
+              it.at.set(3.5f, 2.4f, 7.5f)
+              it.target.set(0f, .65f, 0f)
+              it.p.fov = .62
+          }
+          val tracer = pathTracingHere(
+              scene,
+              PathTraceEnvironment.constant(.08f, .1f, .15f),
+              width = 1920,
+              height = 1080,
+              camera = camera,
+              name = "rr-materials",
+          )
+          // install() takes over the standalone passes pathTracingHere scheduled.
+          val ownedLab = PathTracedReconstruction(tracer).install()
+          lab = ownedLab
+          ownedLab.view = PathTracedReconstruction.View.RECONSTRUCTED
+          frames {
+              repeat(60) { frame() }
+              println("rr stripes 3 ready")
+              }
+  - connect: { parent: agent_graphics_context, child: rr_stripes_3 }
+  - launch: { box: rr_stripes_3, property: code }
+  - await: { wait: pending }

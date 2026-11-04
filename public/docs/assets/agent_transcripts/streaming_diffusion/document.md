@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. 2 · renderer
@@ -156,7 +156,7 @@ if (!support.available) {
 <!-- field-box id="diffusion_guide" index="2" -->
 
 ```edn [field-box id="diffusion_guide" role="properties"]
-{"id" "diffusion_guide" "index" 2 "name" "1 · streaming diffusion" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · streaming diffusion" "_tombstone" false "frame" #afield/rect [40.0 40.0 360.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "diffusion_guide_code_.kt" "lines" 18 "characters" 734 "sha256" "a83899629cce2fb37e04bee59e38dc955e4781320d3e2c56c573d14c6e998c5e"}]}
+{"id" "diffusion_guide" "index" 2 "name" "1 · streaming diffusion" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · streaming diffusion" "_tombstone" false "frame" #afield/rect [40.0 40.0 360.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "diffusion_guide_code_.kt" "lines" 18 "characters" 738 "sha256" "6aa0eef134434b5745dbfcf31135427e1bd6b55996b1fd322ccd28e032c446d6"}]}
 ```
 
 ```kotlin [field-property box="diffusion_guide" name="code" path="diffusion_guide_code_.kt"]
@@ -175,7 +175,7 @@ markdown(
     Set `FIELD_STREAMDIFFUSION_ROOT` before starting Field after completing the setup.
 
     [Setup and RTT integration](https://openendedgroup.com/Field4/streaming_diffusion/)
-"""
+    """
         .trimIndent(),
 )
 ```

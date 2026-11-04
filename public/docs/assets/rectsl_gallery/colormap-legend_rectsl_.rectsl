@@ -1,0 +1,8 @@
+#rectsl
+->wall 24 4 abstract
+->duration 4
+->fps 30
+
+"swatch" rect  0.7 3 ->wh
+  24 '( fc 11 *  0 ->offset  "viridis" f colormap solid ->fill ) array
+;

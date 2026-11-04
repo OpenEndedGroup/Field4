@@ -73,7 +73,7 @@ mean and covariance:
 | --- | --- | --- |
 | `alpha` | `0.5` | spread of the sigma points around the mean. Small `alpha` clusters them tight (good for mild nonlinearity); larger `alpha` spreads them out. Must be `> 0`. |
 | `beta` | `2.0` | folds prior knowledge of the distribution into the covariance weight. `2.0` is optimal for Gaussians and is almost always the right choice. |
-| `kappa` | `0.0` | secondary scaling. Usually left at `0`; raise it if the sigma-point scale `n + λ` would otherwise go non-positive. |
+| `kappa` | `0.0` | secondary scaling. Usually left at `0`; raise it if the sigma-point scale \( n + \lambda \) would otherwise go non-positive. |
 | `jitter` | `1e-9` | tiny diagonal added when a covariance is not quite positive-definite, so the internal Cholesky step stays numerically safe. Must be `> 0`. |
 
 </div>
@@ -344,6 +344,7 @@ and the cloud has to find it again from a population that had already settled.
 :::static
 import kotlin.random.Random
 import space.kscience.plotly.*
+import space.kscience.plotly.models.Dash
 import space.kscience.plotly.models.ScatterMode
 
 data class MackeyGlassHypothesis(val beta: Double)
@@ -475,25 +476,33 @@ repeat(3200) { i ->
 
 val sample = trueX.indices.toList()
 
+// Over all 3,200 steps the oscillation is a solid block, so show 100 steps of it.
+val window = (1000 until 1100).toList()
 val statePlot =
     Plotly.plot {
-            trace {
+            layout {
+                title = "State tracking, steps 1000 to 1100"
+                xaxis { title = "time step" }
+            }
+            scatter {
                 name = "measurement"
-                x.set(sample)
-                y.set(measuredX)
-                line.width = 0.75
+                x.set(window)
+                y.set(window.map { measuredX[it] })
+                mode = ScatterMode.markers
+                marker { size = 4.0 }
             }
             trace {
                 name = "hidden x"
-                x.set(sample)
-                y.set(trueX)
-                line.width = 0.5
+                x.set(window)
+                y.set(window.map { trueX[it] })
+                line.width = 2.0
             }
             trace {
                 name = "PF estimate"
-                x.set(sample)
-                y.set(estimatedX)
-                line.width = 0.5
+                x.set(window)
+                y.set(window.map { estimatedX[it] })
+                line.width = 1.5
+                line.dash = Dash.dash
             }
         }
         .darkMode()
@@ -570,9 +579,10 @@ display("model estimate", betaPlot)
 display("particles", particlePlot)
 ```
 
-![Particle-filter panels: state tracking, beta estimate with a weighted envelope, and the particle beta cloud over time](assets/state_estimation_examples/ukf_particle_filter.png)
+![Particle-filter panels. The top one zooms to steps 1000 to 1100: the hidden x wobbles near 1.02, then jumps into an oscillation between 1.0 and 1.45 when beta changes, and the dashed PF estimate stays on it with the measurement dots scattered around both. Below, the beta estimate with a weighted envelope, and the particle beta cloud over time](assets/state_estimation_examples/ukf_particle_filter.png)
 
-The state panel repeats the hidden/measurement/estimate comparison; the beta
+The state panel shows 100 steps around the change in `beta`, since all 3,200 steps of the
+oscillation would draw as a solid block; the beta
 panel shows the true `beta`, the weighted particle estimate, and a weighted
 one-standard-deviation envelope; the particle panel scatters each hypothesis at
 saved time steps, and because the markers are translucent, a bright saturated band

@@ -1,6 +1,7 @@
 # Installation
 
-Field is distributed as source. The checkout is the installation; the launcher downloads its own
+Field is distributed as source code. The checkout is the installation; the launcher script in it (`./field.sh`, or `field.bat` on
+Windows) downloads its own
 Java and Node runtimes, builds Field, and opens the desktop app. You do not need to install Java,
 Gradle, Node, Python, an AI API key, or the optional submodules to get started.
 
@@ -8,14 +9,15 @@ Once Field opens, [Your First Five Minutes](first_steps.md) takes you from the W
 moving drawing you can edit. If you are choosing a machine or troubleshooting an installation,
 the platform requirements and recovery steps are on this page.
 
-## Before cloning
+## Before you clone
 
-Install **Git and Git LFS**, and run `git lfs install` before cloning. The compiler fork is stored
-in LFS: without it, Git leaves a small text pointer where the compiler JAR should be. GitHub's
+Install **Git and Git LFS**, and run `git lfs install` before cloning. Field ships its own modified
+Kotlin compiler as a large file, and Git LFS (Large File Storage) is how Git downloads large files:
+without it, Git leaves a small text pointer where the compiler JAR should be. GitHub's
 **Download ZIP** is not the recommended installation route.
 
 Start with at least **10 GB of free space** for the checkout, downloaded runtimes, dependency
-caches and build output, and **16 GB of RAM**. The Kotlin compiler is allowed a 10 GB heap, and
+caches and build output, and at least **16 GB of RAM**. The Kotlin compiler is allowed a 10 GB heap, and
 desktop and graphics work on 8 GB machines has not been tested.
 
 The first launch needs internet access to download dependencies and compile the project; allow
@@ -71,7 +73,7 @@ cd Field4
 ```
 
 The shallow clone reduces history downloads and supports ordinary `git pull` updates. Use a full
-clone, or `git fetch --unshallow`, if you want the entire development history. You do not need
+clone, or run `git fetch --unshallow`, if you want the entire development history. You do not need
 `--recurse-submodules`: those services and experiments are optional.
 
 On Windows, from PowerShell:
@@ -89,7 +91,7 @@ bypass. You can also run `.\field.ps1` directly when your PowerShell policy perm
 
 Before a full build, `./field.sh --check-install` (Windows: `.\field.bat --check-install`) checks
 the platform, required tools and LFS content without downloading or compiling anything. If you
-already cloned without LFS, install it and run `git lfs install` followed by `git lfs pull` in
+already cloned without Git LFS, install it and run `git lfs install` followed by `git lfs pull` in
 this checkout; there is no need to clone again.
 
 Downloads come from the Java distribution providers, GitHub releases, Gradle, Maven repositories,
@@ -98,47 +100,45 @@ A proxy or blocked download host can prevent the first build. Later launches reu
 runtimes and Gradle's incremental outputs. `./field.sh --offline` uses the cache; it cannot prepare
 a machine that has never completed an online build.
 
-On the first **interactive** launch, a small Kotlin welcome tool runs before Field's full build.
-Choose the recommended desktop app or browser/server mode, then select optional features from
-the checkbox list: **Up/Down** moves, **Space** toggles and **Enter** reviews your choices.
-Prerequisites appear at the right. Features with missing tools are disabled unless Windows
-setup can install every missing tool through winget; install the other prerequisites and rerun
+On the first launch from a terminal, Field asks two things before it builds: whether you want the
+desktop app (recommended) or [browser/server-only mode](#browser-or-server-only-use), and which
+optional features to prepare. Accepting the defaults and leaving every feature unchecked is a
+complete installation; Kotlin, JavaScript, Faust, ordinary audio and browser drawing need no extras.
+
+In the checkbox list, **Up/Down** moves, **Space** toggles a checkbox and **Enter** reviews your
+choices. Each feature's prerequisites appear on the right. Features with missing tools are
+disabled (on Windows, unless setup can install them, below); install the prerequisites and rerun
 setup. Features your platform does not support, and NVIDIA-only features without a working
 `nvidia-smi`, are left out. Limited terminals use numbered checkboxes:
-type numbers or names to toggle, then Enter to review. Leave everything unchecked to skip extras.
-Setup then shows the exact package-manager commands and requires typing `INSTALL`
+type numbers or names to toggle them, then press Enter to review. Leave everything unchecked to skip extras.
+Setup then shows the exact package-manager commands and requires you to type `INSTALL`
 before running them. Administrator authentication belongs to your OS package manager; no API keys
 are requested. You can leave the commands for later and install them yourself.
 
-Python prerequisites do not include a configured JEP runtime: complete that in the welcome page's
-**Python** panel. Vulkan diagnostics do not install your GPU driver. AI features, model services
-and agent tooling have their own guides and prerequisites.
+The setup list itself is the full catalogue of optional features; most have their own guide in
+these docs. Installing Python prerequisites does not finish [Python boxes](python.md): choose the
+interpreter in the Welcome page's **Python** panel. Vulkan diagnostics do not install your GPU
+driver.
 
-The menu covers Python/JEP, computer vision and voice; Vulkan/OpenXR and shader tools;
-Ceres, TetGen, Manifold, [SolidCraft](solidcraft.md), paint and the [Patchy layered editor](patchy.md); the geometry extensions
-([Morse–Smale complexes](morse_smale.md), [principal curves](principal_curves.md) and [polyvector vectorization](polyvector.md),
-whose OpenCV, Boost and Eigen packages setup installs on macOS and Linux); Pure Data, Csound and LuaJIT; and optional
-physics, video, audio-AI and training workers, guide/template services and audio samples. It also includes agent and documentation tooling.
-Kotlin, JavaScript, Faust, ordinary audio and browser drawing work without selecting any extras.
+??? note "Windows: what setup installs through winget"
+    On Windows, setup uses winget when it is available. It offers missing CPython 3.12, uv,
+    CMake, Rustup and Git LFS with exact package IDs, interactive installers and no upgrades to
+    existing installations. Selectable rows marked **install:** need those prerequisites first.
+    After `INSTALL`, open a fresh terminal and rerun `.\field.bat --setup` before optional builds
+    so the new PATH is visible. In the Python installer, enable **Add python.exe to PATH**.
+    Visual Studio C++ Build Tools, GPU drivers and Vulkan SDK setup remain in their feature guides.
+    Without winget, install or update Microsoft's App Installer, or follow the manual instructions.
 
-On Windows, setup uses winget when it is available. It offers missing CPython 3.12, uv,
-CMake, Rustup and Git LFS with exact package IDs, interactive installers and no upgrades to
-existing installations. Selectable rows marked **install:** need those prerequisites first.
-After `INSTALL`, open a fresh terminal and rerun `.\field.bat --setup` before optional builds
-so the new PATH is visible. In Python's installer, enable **Add python.exe to PATH**.
-Visual Studio C++ Build Tools, GPU drivers and Vulkan SDK setup remain in their feature guides.
-Without winget, install or update Microsoft's App Installer, or follow the manual instructions.
-
-For the native libraries and learned shaders that Field has a preparation task for, setup shows
+For native libraries and learned shaders with a Field preparation task, setup shows
 that task and checks its build tools. Type **BUILD** to run it, or leave it for later. **INSTALL**
 approves the displayed system packages only. Windows native-library builds need Visual Studio
 C++ Build Tools and a Developer PowerShell; the default Windows app launch does not.
 
-Large model downloads, GPU SDKs, containers, choosing a Python interpreter and granting
-permissions are steps in each feature's own guide; setup lists them. Once a feature is prepared,
+Large model downloads, GPU SDKs, containers, Python interpreter selection and permission
+requests are covered in each feature's own guide; setup lists them. Once a feature is prepared,
 run its example to check that it works on your machine.
 
-Your choices live in `~/.field4/first-run.properties`. Reopen the tool with `./field.sh --setup`
+Your choices are saved in `~/.field4/first-run.properties`. Reopen the tool with `./field.sh --setup`
 (Windows: `.\field.bat --setup`); this command configures setup and exits. Noninteractive launches
 skip the questionnaire. Automation may also set `AFIELD_FIRST_RUN=skip`; prerequisite checks still
 apply. The helper builds on the wrapper's Java 17, independently of Field's compiler fork.
@@ -180,7 +180,7 @@ ui.eval(
     f.setAttribute("style", "position:fixed;left:0;top:0;width:1100px;height:1240px;border:0;background:#111;z-index:2147483000")
     document.body.appendChild(f)
     return true
-"""
+    """
         .trimIndent(),
 )
 // Wait for the parts that load after the page: the starting-points dock and every panel summary.
@@ -190,13 +190,13 @@ for (i in 0 until 60) {
     state =
         ui.eval(
                 """
-        const d = document.getElementById("docs-welcome-frame")?.contentDocument
-        if (!d || !d.getElementById("starting-points-dock")) return "loading"
-        const splash = d.getElementById("splash-screen")
-        if (splash && !splash.classList.contains("hidden")) return "splash"
-        const pending = [...d.querySelectorAll("details > summary")].filter(s => /loading|checking/i.test(s.textContent)).length
-        return pending === 0 ? "ready" : "pending:" + pending
-    """
+                const d = document.getElementById("docs-welcome-frame")?.contentDocument
+                if (!d || !d.getElementById("starting-points-dock")) return "loading"
+                const splash = d.getElementById("splash-screen")
+                if (splash && !splash.classList.contains("hidden")) return "splash"
+                const pending = [...d.querySelectorAll("details > summary")].filter(s => /loading|checking/i.test(s.textContent)).length
+                return pending === 0 ? "ready" : "pending:" + pending
+                """
                     .trimIndent(),
             )
             .toString()
@@ -217,18 +217,18 @@ ui.eval(
     const response = await f.contentWindow.fetch("/api/kits", {cache: "no-store"})
     if (!response.ok) throw new Error("Kit library failed to load: " + response.status)
     return true
-"""
+    """
         .trimIndent(),
 )
 ```
 
-The left side is your documents. Type a name into the box at the top and press **Create** to make
+The left side lists your documents. Type a name into the box at the top and press **Create** to make
 a new one; the search box above the list searches the text of every document in the workspace as
 well as their names. Below the list, **Starting points** and **Templates** are curated scenes and
 scaffolds; opening one gives you an editable copy in your workspace, which is the quickest way to
 see what Field does.
 
-The **Kits** disclosure below them adds reusable packages and their document starting points.
+The **Kits** disclosure below them provides reusable packages and their document starting points.
 Add a kit folder there; packages that add runtime code become available after a restart. See
 [Kits and Starting Points](kits.md#add-a-self-contained-kit-in-welcome) for installation and updates.
 
@@ -257,10 +257,17 @@ is left alone, and copies you made earlier are not updated. Opening a copy does 
 To keep your templates somewhere else, start Field with
 `-Dafield.personalTemplates.dir=/path/to/templates`. If one of your templates has the same name
 as a bundled one, both are listed: yours gets `-checkout` (from `src/personal`) or `-personal`
-(from your own directory) added to its name. Git ignores `src/personal`, so back those templates
-up yourself.
+(from your own directory) added to its name. Git ignores `src/personal`, so back up those templates
+yourself.
+
+The same templates are offered by `cmd+t` inside a document, which inserts a copy of their boxes
+there rather than making a new document; see [Templates](templates.md#insert-a-template), which
+also says what happens to two templates with the same name.
 
 ## Browser or server-only use
+
+Use server-only mode when you want Field in your own browser instead of the desktop app, or on a
+machine you reach over SSH:
 
 ```diffstatic {data-lang=bash}
 ./field.sh --server-only
@@ -275,8 +282,8 @@ requirements from native graphics examples.
 
 ## Your workspace and local server
 
-With no arguments, a new installation creates `~/Documents/AFieldWorkspace` (the equivalent under
-your Windows home). Field remembers the last workspace across checkouts and prints its choice at
+With no arguments, a new installation creates `~/Documents/AFieldWorkspace` (or the equivalent under
+your Windows home directory). Each checkout remembers the last workspace it used, and Field prints its choice at
 launch. To choose a new directory, create it first and then pass it:
 
 ```diffstatic {data-lang=bash}
@@ -285,7 +292,7 @@ mkdir -p ~/Documents/MyFieldWorkspace
 ```
 
 Field saves documents there, outside the checkout. Close Field before updating with `git pull`.
-**Ctrl+C**, closing the desktop app, or **Shut down Field** on the welcome page stops the server;
+**Ctrl+C**, closing the desktop app, or clicking **Shut down Field** on the Welcome page stops the server;
 normal shutdown saves pending edits.
 
 By default, the server listens on **127.0.0.1** and refuses cross-site browser API requests.
@@ -330,10 +337,10 @@ To update Field, pull the latest source into your checkout:
 git pull
 ```
 
-and then start it again, which rebuilds whatever changed.
+Then start Field again; it will rebuild whatever has changed.
 
-The command palette (`ctrl/command-shift-P`) includes **Check for updates**, which tells you whether that is worth
-doing. It reports how many commits you are behind `origin`, and any local commits of your own that
+The command palette (`ctrl/command-shift-P`) includes **Check for updates**, which tells you whether updating is worth
+doing. It reports how many commits you are behind `origin`, and any local commits that
 `origin` does not have.
 
 It does not pull or change your checkout. If the answer is "7 new commits on origin/main", run
@@ -341,8 +348,8 @@ It does not pull or change your checkout. If the answer is "7 new commits on ori
 
 ![Field's command palette open over the canvas: an empty search box above four commands — New Box, Delete Box, Insert document from workspace, and Check for updates, that last one highlighted in blue as the selected row](assets/screenshot_17.png)
 
-If it cannot answer (Field was unpacked from an archive, `HEAD` is detached, there is no `origin`,
-or the network is down) it says which, rather than reporting that you are up to date.
+If it cannot answer (because Field was unpacked from an archive, `HEAD` is detached, there is no `origin`,
+or the network is down), it explains why rather than reporting that you are up to date.
 
 ??? aside "Agents: making an update announce itself"
     Most commits should pass without comment — the count is enough. When a commit needs everyone

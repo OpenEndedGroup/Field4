@@ -14,9 +14,9 @@ lprintln("info,mypage", "something happened")
 
 `"info,mypage"` is a **channel**: a comma-separated list of *tags* that consumers use to select
 messages. There
-are **1096**<!--count:lprintlnChannelCallSites--> places in `src/jvmMain` that call
+are **1105**<!--count:lprintlnChannelCallSites--> places in `src/jvmMain` that call
 `lprintln` with the channel written out as a literal, spelling
-**254**<!--count:logChannelStrings--> distinct channel strings between them.
+**256**<!--count:logChannelStrings--> distinct channel strings between them.
 
 By convention the first tag is a severity, drawn from six the console knows how to colour
 (`PinnedConsole.kt:1024#val LEVELS = listOf("error", "warning", "warn", "info", "debug", "trace")`),

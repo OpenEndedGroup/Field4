@@ -1,0 +1,97 @@
+name: controls_presets_morph_midi
+description: Two boxes for the controls page - delegated keyframe controls (var size by keys.slider(...)) with a preset bar over their KeyframeScope (calm and storm keys), a morph slider, a record button and MIDI learn; and a log-law cutoff slider driven by a stand-in MIDI knob.
+docs:
+  - page: visualizers.md
+    why: "The page's two examples, ready to open: store, recall and morph presets as keyframer keys, record the size slider into keyframes, bind a knob."
+operations:
+  - create:
+      box: controls_presets_demo
+      name: Presets · morph · record · run me
+      frame:
+        x: 80.0
+        y: 80.0
+        w: 300.0
+        h: 60.0
+      properties:
+        code: |
+          // Each control is a local delegated to `keys`, so a preset is a key of that scope.
+          val keys = KeyframeScope()
+          var size by keys.slider(0.4, 0.1..1.0)
+          var offset by keys.vec2(Vector2f(0f, 0f))
+          var tint by keys.color(Vector4f(0.2f, 0.6f, 1f, 1f))
+          var ring by keys.checkbox(false)
+
+          fun draw() {
+              val r = (20 + size * 60).toInt()
+              val cx = 110 + (offset.x * 60).toInt()
+              val cy = 90 - (offset.y * 50).toInt()
+              val fill = "rgba(${(tint.x * 255).toInt()},${(tint.y * 255).toInt()},${(tint.z * 255).toInt()},${tint.w})"
+              val stroke = if (ring) "stroke='white' stroke-width='6'" else ""
+              display(
+                  "main",
+                  "<svg width='220' height='180' style='background:#222'><circle cx='$cx' cy='$cy' r='$r' fill='$fill' $stroke/></svg>",
+              )
+          }
+
+          keys.onChange { draw() }
+
+          val dir = presetDirectory("look")
+
+          // Two keys to start from, written once; after that the stored ones are used.
+          if (keys.savedKeyNames(dir).isEmpty()) {
+              keys
+                  .Key("size" to 0.25, "offset" to Vector2f(-0.5f, 0.3f), "tint" to Vector4f(0.2f, 0.6f, 1f, 1f), "ring" to 0f)
+                  .save(dir.resolve("calm"), "seeded by the demo")
+              keys
+                  .Key("size" to 0.95, "offset" to Vector2f(0.6f, -0.4f), "tint" to Vector4f(1f, 0.25f, 0.1f, 1f), "ring" to 1f)
+                  .save(dir.resolve("storm"), "seeded by the demo")
+          }
+
+          var presets: PresetBar? = null
+          controlGroup("look") {
+              keys.controls()
+              presets = presetBar(keys)
+              recordToggle("size")
+              midiLearnButton()
+          }
+
+          draw()
+          println("presets: ${presets!!.names} in $dir")
+  - execute:
+      box: controls_presets_demo
+      property: code
+      type: fragment
+  - create:
+      box: controls_midi_demo
+      name: MIDI learn · run me
+      frame:
+        x: 80.0
+        y: 200.0
+        w: 300.0
+        h: 60.0
+      properties:
+        code: |
+          var cutoff = 1000.0
+          var bright = false
+          controlGroup("synth") {
+              slider("cutoff", 20.0, 20000.0, initialValue = cutoff, law = ControlLaw.LOGARITHMIC) { cutoff = it }
+              checkbox("bright", bright) { bright = it }
+              midiLearnButton()
+          }
+          val midi = midiLearn("synth")
+          midi.bind("cutoff", cc = 74)
+          midi.bind("bright", cc = 64)
+          // What a knob sends; with hardware, midi.attach(MidiDevices.openInput(MidiDevices.inputs().first())).
+          for (v in [0, 32, 64, 96, 127]) {
+              midi.feed(0, 74, v)
+              println("CC74 = $v  ->  cutoff ${cutoff.f1}")
+          }
+          midi.feed(0, 64, 127)
+          midi.feed(0, 74, 80)
+          println("bright = $bright, bindings = ${midi.bindings}")
+  - execute:
+      box: controls_midi_demo
+      property: code
+      type: fragment
+  - wait:
+      millis: 500

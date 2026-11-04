@@ -4206,11 +4206,15 @@ object Functions {
             gain: Any? = null,
             advanceCursor: Boolean = true
         ): TimelineChunk {
-            val dur = normalizeDuration(duration, sourceDomain)
+            // An oscillator's Domain.ALL has min = -inf, so DIRECT mapping would read the
+            // source at -inf and the chunk would plot nothing (or a constant). Place an
+            // unbounded source from its finite preview window instead, as sequence() does.
+            val source0 = sourceDomain.finiteSweep()
+            val dur = normalizeDuration(duration, source0)
             val target = Domain.of(at, at + dur)
             val chunk = TimelineChunk(
                 source = source,
-                sourceDomain = sourceDomain,
+                sourceDomain = source0,
                 domain = target,
                 mapMode = mapMode,
                 blend = blend,

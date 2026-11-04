@@ -77,22 +77,22 @@ property that makes a page like this checkable by a person at all.
 | family | count | how | what it selects |
 | --- | --- | --- | --- |
 | `tools/check_*.py` | 12 | `ls -1 tools/check_*.py` | standalone checker scripts |
-| `tools/test_*.py` | 97 | `ls -1 tools/test_*.py` | unittest suites, all of them in `check` via `checkPythonTools` |
+| `tools/test_*.py` | 102 | `ls -1 tools/test_*.py` | unittest suites, all of them in `check` via `checkPythonTools` |
 | `*Guard*.kt` + `*ContractTest.kt` | 31 | `find src -name '*Guard*.kt' -o -name '*ContractTest.kt'` | a **half-corpus by construction** — see the paragraph under this table |
-| Gradle `check…` JavaExec guards | 11 | `grep -o 'tasks.register<JavaExec>("check[A-Za-z]*' build.gradle.kts` | the guards `check` reaches by spawning a JVM main |
+| Gradle `check…` JavaExec guards | 12 | `grep -o 'tasks.register<JavaExec>("check[A-Za-z]*' build.gradle.kts` | the guards `check` reaches by spawning a JVM main |
 
 ### The corpora those guards are stated over
 
 | family | count | how | what it selects |
 | --- | --- | --- | --- |
-| transcripts, top level | 289 | `ls -1 dev_docs/agents/transcripts/*.yaml` | what `AgentTranscriptIndexGuard` and the three verification registries count |
-| transcripts, recursive | 340 | `find dev_docs/agents/transcripts -name '*.yaml' -o -name '*.yml'` | what `AgentTranscriptLayoutGuard` walks; the difference is the `docs_capture/` variants |
+| transcripts, top level | 296 | `ls -1 dev_docs/agents/transcripts/*.yaml` | what `AgentTranscriptIndexGuard` and the three verification registries count |
+| transcripts, recursive | 368 | `find dev_docs/agents/transcripts -name '*.yaml' -o -name '*.yml'` | what `AgentTranscriptLayoutGuard` walks; the difference is the `docs_capture/` variants |
 | demo directories | 57 | `git ls-files dev_docs/agents/demos/ \| cut -d/ -f4 \| sort -u` | the COMMITTED demo directories, which is what a ledger can be stated over. `ls -1d` was the derivation until 2026-09-25, and it counts anything on disk — so an ignored scratch folder under `demos/` read as an undeclared demo and failed this guard in a working tree while the committed corpus was correct. held as a named set by `AgentDemoRegistrationTest.DEMO_CORPUS` and `test_demo_build_scripts.CORPUS`. **Directories, not documents** — one of them (`flow_grain`, 2026-09-22) has no `metadata.edn` and is transcript *source* rather than a saved document, so the loadable-document population is one smaller and is what `AgentDemoRegistrationTest.demoDocuments` filters to |
 | demos shipping a `build.yaml` | 12 | `git ls-files 'dev_docs/agents/demos/*/build.yaml'` | the population `test_demo_build_scripts.py` diffs against its `_code_.kt` sidecars |
-| entries on `public/docs/agent_transcripts.md` | 293 | `grep -oE '^### [a-z0-9_]+$' public/docs/agent_transcripts.md` | must equal the top-level transcript count, both directions |
-| materialized starting-point bundles | 283 | `ls -1d public/docs/assets/agent_transcripts/*/` | transcripts minus `AgentTranscriptMaterializer.EXCLUDE` |
+| entries on `public/docs/agent_transcripts.md` | 300 | `grep -oE '^### [a-z0-9_]+$' public/docs/agent_transcripts.md` | must equal the top-level transcript count, both directions |
+| materialized starting-point bundles | 290 | `ls -1d public/docs/assets/agent_transcripts/*/` | transcripts minus `AgentTranscriptMaterializer.EXCLUDE` |
 
-The two transcript counts are both right and they are not the same measurement: 340 = 289 + 51 under `docs_capture/`. If you quote one of them, say which.
+The two transcript counts are both right and they are not the same measurement: 368 = 296 + 72 under `docs_capture/`. If you quote one of them, say which.
 
 <!-- guard-corpora: generated end -->
 
@@ -142,7 +142,7 @@ inside a day. A command you can run beats a number somebody typed.
 | `AgentDemoRegistrationTest` | `dev_docs/agents/demos` against the three registries in `DemoTranscriptExecSmokeTest` | its assertion messages name the documents; the registry sizes are the harness's last line | named set both ways, plus a floor on demos and on transcripts |
 | `DemoTranscriptExecSmokeTest` | every transcript, at one of three depths | `DemoTranscriptExecSmokeTest ok — N demos verified (E executed, C compiled, J kotlinjs)` | an unclassified transcript fails on purpose |
 | `AgentTranscriptMaterializer` | every transcript not in `EXCLUDE`, against the committed bundle | `AgentTranscriptMaterializer ok — materialized N document(s)` (`./gradlew checkAgentTranscripts`) | byte-for-byte against the committed starting points |
-| `AgentDemoDriftGuard` | inline-vs-loose file pairs in the demo documents | documents and inline files, on its run line | an empty inline set per document is a problem |
+| `AgentDemoDriftGuard` | inline-vs-loose file pairs in the demo documents, and in the authored documents directly under `public/docs/assets`, `templates` and `tools/presentation/example` that carry inline copies | documents and inline files, on its run line | an empty inline set per demo is a problem; outside the demos an inline-only copy (no file beside it) is allowed |
 | `DocumentedApiEvaluationTest` | documented APIs reached by the transcript corpus | `evaluated … / compiled but never run, anywhere … (ledger: N)` | floors on documented and on evaluated APIs, plus a two-way ledger |
 | `tools/test_demo_build_scripts.py` | the demo `build.yaml` scripts against their `_code_.kt` sidecars | the `CORPUS` set difference, by name | named set (was a bare count until 2026-09-20) |
 | `SourcePartitionGuard` | every Kotlin source file | files, lines, declarations | ratchets on unattributed lines and index over-reports |

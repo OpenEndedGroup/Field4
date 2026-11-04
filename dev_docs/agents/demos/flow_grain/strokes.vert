@@ -9,10 +9,14 @@ layout(std430, buffer_reference) readonly buffer History {
     FlowFrameHistory frame;
 };
 layout(push_constant) uniform Push {
-    Field particles; // Pairs of position/generation and smoothed velocity.
-    History history; // Camera matrices and target resolution.
-    vec4 viewport; // xy current window dimensions; zw reserved.
-    vec4 look; // x seconds of stroke; y half-width pixels; z gain; w reserved.
+    Field particles;
+    // Pairs of position/generation and smoothed velocity.
+    History history;
+    // Camera matrices and target resolution.
+    vec4 viewport;
+    // xy current window dimensions; zw reserved.
+    vec4 look;
+    // x seconds of stroke; y half-width pixels; z gain; w reserved.
 } pc;
 layout(location=0) out vec2 edge;
 layout(location=1) out vec2 world;

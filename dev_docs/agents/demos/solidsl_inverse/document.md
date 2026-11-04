@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="inverse" index="0" -->
 
 ```edn [field-box id="inverse" role="properties"]
-{"id" "inverse" "index" 0 "name" "2 - Inverse design - let a gradient find the numbers" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - Inverse design - let a gradient find the numbers" "_tombstone" false "frame" #afield/rect [780.0 40.0 700.0 470.0] "preamble" ""} "blockProperties" [{"name" "code" "language" "kotlin" "path" "inverse_code_.kt" "lines" 84 "characters" 3439 "sha256" "f8805f74bde38b69dd17e578e54820f1da1f178fa4a2cd0cd8a5fb2551a0d653"}]}
+{"id" "inverse" "index" 0 "name" "2 - Inverse design - let a gradient find the numbers" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - Inverse design - let a gradient find the numbers" "_tombstone" false "frame" #afield/rect [780.0 40.0 700.0 470.0] "preamble" ""} "blockProperties" [{"name" "code" "language" "kotlin" "path" "inverse_code_.kt" "lines" 84 "characters" 3427 "sha256" "cdec1cd178f71d7c36590289ed7c99746f0969fbd7526be03f1fc9b84872245b"}]}
 ```
 
 ```kotlin [field-property box="inverse" name="code" path="inverse_code_.kt"]
@@ -48,7 +48,7 @@ println("The counterfactual is in the same object, measured in the same run: `in
 println("is the seed's loss, not a number somebody wrote down last week.")
 println()
 println("truth was  ${truth.joinToString(", ")}")
-println("recovered  ${fit.values.joinToString(", ") { "%.9f".format(it) }}")
+println("recovered  ${fit.values.joinToString(", ") { it.f9 }}")
 println("error      ${truth.indices.joinToString(", ") { "%.2e".format(kotlin.math.abs(fit.values[it] - truth[it])) }}")
 println()
 

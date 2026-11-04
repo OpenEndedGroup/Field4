@@ -83,13 +83,13 @@ showImgGrid(
     "hue channel" to hsv.channel(0),
     "saturation channel" to hsv.channel(1),
     "resize(60,45) then back up" to backUp,
-    "thresholdOtsu() @ ${"%.3f".format(t)}" to gray.threshold(t),
+    "thresholdOtsu() @ ${t.f3}" to gray.threshold(t),
     columns = 3,
     cellSide = 260,
 )
 println(
-    "Img ${card.width}x${card.height} x${card.channels} ch, mean ${"%.3f".format(card.mean())}, " +
-        "otsu ${"%.3f".format(t)}, foreground ${gray.threshold(t).data.count { it > 0.5f }} px",
+    "Img ${card.width}x${card.height} x${card.channels} ch, mean ${card.mean().f3}, " +
+        "otsu ${t.f3}, foreground ${gray.threshold(t).data.count { it > 0.5f }} px",
 )
 ```
 
@@ -141,9 +141,9 @@ showImgGrid(
     cellSide = 260,
 )
 println(
-    "residual vs clean — gaussian ${"%.4f".format(gauss.meanAbsDiff(clean))}, " +
-        "median ${"%.4f".format(med.meanAbsDiff(clean))}, " +
-        "bilateral ${"%.4f".format(bil.meanAbsDiff(clean))}",
+    "residual vs clean — gaussian ${gauss.meanAbsDiff(clean).f4}, " +
+        "median ${med.meanAbsDiff(clean).f4}, " +
+        "bilateral ${bil.meanAbsDiff(clean).f4}",
 )
 ```
 
@@ -193,7 +193,7 @@ showImgGrid(
     cellSide = 260,
 )
 println(
-    "|grad| max ${"%.3f".format(grad.magnitude().max())}; " +
+    "|grad| max ${grad.magnitude().max().f3}; " +
         "canny ${edges.data.count { it > 0.5f }} px, cannyAuto ${auto.data.count { it > 0.5f }} px; " +
         "${flines.size} FLines, ${flines.sumOf { it.nodes.size }} nodes total",
 )
@@ -223,7 +223,7 @@ panel is those edges as 57 `FLine`s drawn back over the source.
 Three detectors, all on a square whose corners are at exactly known coordinates, so each detector's
 answer can be measured against the truth.
 
-- `harrisResponse()` — `det(M) - k·trace(M)²` over the structure tensor. Large and positive at a
+- `harrisResponse()` — \( \det(M) - k\,\operatorname{trace}(M)^2 \) over the structure tensor. Large and positive at a
   corner, **negative along an edge**, near zero on flat ground; the diverging colour map in the
   figure is showing exactly that sign structure.
 - `shiTomasiResponse()` — the smaller eigenvalue of the same tensor. No magic `k`, and directly
@@ -235,7 +235,10 @@ answer can be measured against the truth.
   16-pixel circle. Much faster, and it scores each corner by the largest threshold at which it would
   still qualify.
 
-![](assets/imaging_gallery/04-corners.png)
+![Four panels. The Harris response is blue along the square's edges and red at its four corners; the Shi–Tomasi response is dark except for a bright spot at each corner; Harris and FAST corners are marked on the square with crosses and boxes](assets/imaging_gallery/04-corners.png)
+
+The two response maps are drawn from a 240 px copy of the square, shown 1:1, and raised to the 0.25
+power so the weak values show.
 
 Run headless, Harris and Shi–Tomasi each return exactly four corners, and the worst of the four sits
 **0.94 px** from the true corner of the square (sub-pixel refinement is on by default, via a
@@ -297,17 +300,17 @@ cc.components
     .sortedByDescending { it.area }
     .forEach {
         println(
-            "  area=${it.area} centroid=(${"%.1f".format(it.centroidX)}, ${"%.1f".format(it.centroidY)}) " +
-                "bbox=${it.boundingWidth}x${it.boundingHeight} fill=${"%.2f".format(it.fillRatio)}",
+            "  area=${it.area} centroid=(${it.centroidX.f1}, ${it.centroidY.f1}) " +
+                "bbox=${it.boundingWidth}x${it.boundingHeight} fill=${it.fillRatio.f2}",
         )
     }
-println("distance-transform peak ${"%.1f".format(dt.max())} (largest planted radius ${discs.maxOf { it.third }})")
+println("distance-transform peak ${dt.max().f1} (largest planted radius ${discs.maxOf { it.third }})")
 ```
 
 ![](assets/imaging_examples/morphology.png)
 
 Three discs in, three components out, with areas of 2419, 1226 and 584 against the analytic
-`πr²` of 2463, 1257 and 616 (the shortfall is the `open(2)` erosion), and centroids at (54.8, 60.1),
+\( \pi r^2 \) of 2463, 1257 and 616 (the shortfall is the `open(2)` erosion), and centroids at (54.8, 60.1),
 (150.1, 55.0) and (110.2, 134.9) against planted centres of (55, 60), (150, 55) and (110, 135).
 
 For sub-pixel-smooth contours rather than a pixel-staircase boundary, `isoContourFLines(iso)` adapts
@@ -320,10 +323,10 @@ becomes a smooth curve with no glue code.
 `gaussianPyramid(levels)` halves each octave (blurring first, so it does not alias);
 `laplacianPyramid(levels)` splits the image into band-pass detail plus a coarse residual, and
 `reconstruct()` inverts it. The round-trip is exact to within float precision, at a maximum
-absolute error of **1.49e-08** on the figure below. That is small enough to build multiband
+absolute error of **5.96e-08** on the figure below. That is small enough to build multiband
 blending and detail transfer on, rather than only to look at.
 
-![](assets/imaging_gallery/07-pyramids.png)
+![A 240 px test image with a finely checked disc, a striped square, a row of dots and a thin bar, taken down a four-level Gaussian pyramid: the check is gone at 120 px, the stripes at 60 px, and at 30 px only the shapes are left. The three Laplacian bands hold the check and the sharp edges, then the stripes, then the broad outlines](assets/imaging_gallery/07-pyramids.png)
 
 (Levels below the base are magnified by integer pixel replication for display; each caption states
 the real size and the zoom factor.)
@@ -401,10 +404,10 @@ showImgGrid(
 val (mdx, mdy) = flow.medianDisplacement()
 println(
     "${flow.tracked().size}/${seeds.size} tracked; median displacement " +
-        "(${"%.2f".format(mdx)}, ${"%.2f".format(mdy)}) px",
+        "(${mdx.f2}, ${mdy.f2}) px",
 )
 println("RANSAC ${fit.inlierCount} inliers of ${flow.tracked().size} after ${fit.iterations} iterations")
-println("recovered model agrees with the planted transform to ${"%.3f".format(worst)} px over the probe grid")
+println("recovered model agrees with the planted transform to ${worst.f3} px over the probe grid")
 println(fit.homography.toString())
 ```
 

@@ -126,8 +126,12 @@ interface HasOutput {
      */
     fun display(channel: String, message: Any?)
 
-    // an error of null,,-1 means 'clear errors'
-    fun error(message: Any?, property: String = "code", line: Int = -1)
+    /**
+     * Paints [message] as an error diagnostic on [property] at [line] of this box; a null message at
+     * line -1 clears the errors. Named `displayError` rather than `error` so that, inside a box and in
+     * `Box` extensions, `error("...")` is Kotlin's and throws (`?: error(...)` narrows as it should).
+     */
+    fun displayError(message: Any?, property: String = "code", line: Int = -1)
 }
 
 class DefaultOutput : HasOutput {
@@ -155,7 +159,7 @@ class DefaultOutput : HasOutput {
         proxy(message, true, -1)
     }
 
-    override fun error(message: Any?, property: String, line: Int) {
+    override fun displayError(message: Any?, property: String, line: Int) {
         errorProxy(message, property, line)
     }
 }
@@ -1730,11 +1734,13 @@ internal fun getButtonCallback(controlId: String): ((Boolean) -> Unit)? = button
  * listeners that stop a pointer released elsewhere from leaving the button held down.
  */
 internal fun buildButtonHtml(controlId: String, label: String, hit: String = "hold"): String {
-    val escaped = label.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    fun esc(t: String) = t.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    val escaped = esc(label)
+    val hitText = esc(hit)
     return """
         <div class="field-control field-button" data-control-id="$controlId">
-            <span class="field-label">$escaped</span>
-            <button type="button" class="field-button-hit" id="$controlId" aria-pressed="false">$hit</button>
+            ${if (escaped.isEmpty()) "" else "<span class=\"field-label\">$escaped</span>"}
+            <button type="button" class="field-button-hit" id="$controlId" aria-pressed="false">$hitText</button>
         </div>
     """.trimIndent()
 }
@@ -2059,6 +2065,26 @@ private fun Box.cachedControlGroupValue(cacheKey: String, id: String): Controlle
     return control
 }
 
+/**
+ * What the control group last held for the [ordinal]-th control of [type] and [label] on [box], in
+ * whichever channel shows it. A delegated keyframe control (`var size by keys.slider(...)`) reads this
+ * when it is declared, before any `controlGroup { }` of the run has named its channel. It is the same
+ * cache `controlGroup` restores from, so the value is stored once.
+ *
+ * Null when nothing is stored, and when two channels of the box each hold such a control: the channel
+ * is then ambiguous, and the value is restored once `controlGroup` names it.
+ */
+internal fun lastControlGroupValue(box: Box, type: String, label: String, ordinal: Int): ControllerControl? {
+    val keys = LinkedHashSet<String>()
+    box.existingControlGroupCache()?.keys?.let { keys += it }
+    keys += box.controlGroupValues().keys
+    val cacheKey = keys.filter {
+        val parts = it.split('\u0000')
+        parts.size == 4 && parts[1] == type && parts[2] == label && parts[3] == ordinal.toString()
+    }.singleOrNull() ?: return null
+    return box.cachedControlGroupValue(cacheKey, stableControlId(type, box.id, cacheKey))
+}
+
 private fun Box.storeControlGroupValue(cacheKey: String, control: ControllerControl) {
     controlGroupCache()[cacheKey] = control
     val values = controlGroupValues()
@@ -2135,19 +2161,37 @@ internal fun updateControllerControlValueInMemory(
 
 internal fun updateControllerControlValue(controlId: String, update: (ControllerControl) -> ControllerControl): List<ControllerControl> {
     val updated = mutableListOf<ControllerControl>()
+    val owners = mutableListOf<Box>()
     controllerControlGroups.replaceAll { groupKey, controls ->
         controls.map { control ->
             if (control.id == controlId) {
                 update(control).also {
                     updated += it
-                    controllerControlGroupBoxes[groupKey]?.updateCachedControlGroupValue(it)
+                    controllerControlGroupBoxes[groupKey]?.let { box -> box.updateCachedControlGroupValue(it); owners += box }
                 }
             } else {
                 control
             }
         }
     }
+    // Every person-made change (browser, tablet) arrives here; recordToggle and MIDI learn listen.
+    updated.zip(owners).forEach { (control, box) -> notifyControlGestureListeners(box, control) }
     return updated
+}
+
+/**
+ * The live controls of [box]'s [channel] group, each with its control key — `type/label#ordinal`, the
+ * label-derived part of its cache key, so a key names the same control after a rerun.
+ */
+internal fun controlGroupControlsWithKeys(box: Box, channel: String): List<Pair<String, ControllerControl>> {
+    val live = controllerControlGroups[controllerControlGroupKey(box.id, channel)] ?: return emptyList()
+    val keyById = box.existingControlGroupCache()?.entries?.associate { it.value.id to it.key } ?: emptyMap()
+    return live.mapNotNull { control ->
+        val cacheKey = keyById[control.id] ?: return@mapNotNull null
+        val parts = cacheKey.split('\u0000')
+        if (parts.size < 4 || parts[0] != channel) return@mapNotNull null
+        "${parts[1]}/${parts[2]}#${parts[3]}" to control
+    }
 }
 
 /** The programmatic counterpart of [updateControllerControlValue]: live cache, no operation log. */
@@ -2204,6 +2248,17 @@ class ControlValueHandle<T> internal constructor(
 }
 
 class ControlGroupBuilder(private val box: Box, private val channel: String) {
+    /** The box this group belongs to — for builder extensions such as `presetBar` (ControlPresets.kt). */
+    internal val ownerBox: Box get() = box
+    /** The output channel this group is shown in. */
+    internal val ownerChannel: String get() = channel
+
+    /**
+     * Add every control declared on this scope with `var size by keys.slider(...)` (and `vec2`,
+     * `color`, `checkbox`, `text`), in declaration order — see `KeyframeControl`.
+     */
+    fun afield.animation.keyframes.KeyframeScope.controls() =
+        afield.animation.keyframes.addKeyframeControls(this@ControlGroupBuilder, this)
     private val afterShown = mutableListOf<() -> Unit>()
     private val htmlParts = mutableListOf<String>()
     private val controls = mutableListOf<ControllerControl>()
@@ -2479,12 +2534,15 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
      * @param label text shown beside the button
      * @param onUpdate called with `true` on the way down and `false` on the way up
      */
-    fun button(label: String, onUpdate: (Boolean) -> Unit) {
+    fun button(label: String, onUpdate: (Boolean) -> Unit) = button(label, "hold", onUpdate)
+
+    /** [button] whose hit area reads [hit]; for compact strips, where the hit text is the label. */
+    internal fun button(label: String, hit: String, onUpdate: (Boolean) -> Unit) {
         // The id is still derived from the label and ordinal, so both control surfaces name the same
         // button and a rerun does not orphan the one on a tablet — only the *value* is uncached.
         val identity = controlIdentity("button", "button", label)
         registerButtonCallback(identity.id, onUpdate)
-        htmlParts += buildButtonHtml(identity.id, label)
+        htmlParts += buildButtonHtml(identity.id, if (hit == "hold") label else "", hit)
         controls += ControllerControl(
             id = identity.id,
             type = "button",
@@ -2649,6 +2707,13 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
     }
 
     internal fun runAfterShown() = afterShown.forEach { it() }
+
+    /** Lays the controls [block] declares side by side, wrapping (`.field-control-row` in field.css). */
+    internal fun inlineRow(block: ControlGroupBuilder.() -> Unit) {
+        htmlParts += """<div class="field-control-row">"""
+        block()
+        htmlParts += "</div>"
+    }
 
     /** A write-only, uncached driver for the `value` of control [controlId] — see `visualizers.kt` playheads. */
     internal fun playheadHandle(controlId: String) =

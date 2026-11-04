@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. renderer
@@ -38,7 +38,7 @@ start(renderer::run)
 <!-- field-box id="rr_plumbing" index="1" -->
 
 ```edn [field-box id="rr_plumbing" role="properties"]
-{"id" "rr_plumbing" "index" 1 "name" "rr plumbing" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "rr plumbing" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rr_plumbing_code_.kt" "lines" 155 "characters" 5913 "sha256" "5d92848563fc7101e1370f739094dfe5183fc9178778ca27548eb55eb395c27d"} {"name" "vertex" "language" "glsl" "path" "rr_plumbing_vertex_.glsl" "lines" 5 "characters" 119 "sha256" "f5f928935456f7b96462d2257491aa9db6746aea0bb37e84df323e8399a26dc9"} {"name" "fragment" "language" "glsl" "path" "rr_plumbing_fragment_.glsl" "lines" 35 "characters" 1459 "sha256" "fc8dfabf4148c7534aac7bf9bbb2a95c879201c90c3c4a316fe90352106611aa"}]}
+{"id" "rr_plumbing" "index" 1 "name" "rr plumbing" "parents" ["root" "agent_graphics_context"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "rr plumbing" "_tombstone" false "frame" #afield/rect [400.0 160.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rr_plumbing_code_.kt" "lines" 154 "characters" 5886 "sha256" "34c938b59e06a0887de1e66cd7f0d42977eadd90293e0ef68a8d0ba7aede6e07"} {"name" "vertex" "language" "glsl" "path" "rr_plumbing_vertex_.glsl" "lines" 5 "characters" 119 "sha256" "f5f928935456f7b96462d2257491aa9db6746aea0bb37e84df323e8399a26dc9"} {"name" "fragment" "language" "glsl" "path" "rr_plumbing_fragment_.glsl" "lines" 35 "characters" 1459 "sha256" "fc8dfabf4148c7534aac7bf9bbb2a95c879201c90c3c4a316fe90352106611aa"}]}
 ```
 
 ```kotlin [field-property box="rr_plumbing" name="code" path="rr_plumbing_code_.kt"]
@@ -96,8 +96,7 @@ val guideModule = moduleHere {
     blend = false
     textureResolver = { texture -> inputs[texture.name]?.let { fromViews([it], texture.name, sampler) } }
 }
-val quad = Mesh(renderer, guideModule)
-quad.resize(3, 0, guideModule)
+val quad = fullscreenTriangle(guideModule)
 guideModule += "convert" to quad
 guides += "guides" to guideModule
 

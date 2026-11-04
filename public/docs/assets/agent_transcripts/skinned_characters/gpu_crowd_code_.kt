@@ -26,16 +26,14 @@ The shaders come straight from the library constants, so this box cannot drift f
 bundled glTF fragment shader never reads vColor -- it outputs the normal -- so the per-instance
 tint would be invisible and "the crowd is varied" would be unfalsifiable.
 */
-val module =
-    Module(
-            Parameters(
-                renderer = renderer,
-                vertex = GpuSkinning.skinnedVertexShader,
-                fragment = GpuSkinning.skinnedFragmentShader,
-                name = "gpu skinned crowd",
-            ),
-        )
-        .pointer()
+val module = Module(
+    Parameters(
+        renderer = renderer,
+        vertex = GpuSkinning.skinnedVertexShader,
+        fragment = GpuSkinning.skinnedFragmentShader,
+        name = "gpu skinned crowd",
+    ),
+).pointer()
 
 val m = Mesh(renderer, module)
 module += "crowd" to m

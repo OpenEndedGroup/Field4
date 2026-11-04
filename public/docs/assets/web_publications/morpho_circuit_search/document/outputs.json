@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-29T22:41:08.220Z",
+  "capturedAt": "2026-10-31T13:56:11.381Z",
   "documentName": "morpho_circuit_search",
   "outputs": [
     {
@@ -12,7 +12,7 @@
         "svg"
       ],
       "width": 1014,
-      "height": 380,
+      "height": 362,
       "path": "outputs/0.html"
     },
     {
@@ -24,7 +24,7 @@
         "svg"
       ],
       "width": 938,
-      "height": 499,
+      "height": 498,
       "path": "outputs/1.html"
     },
     {
@@ -36,7 +36,7 @@
         "svg"
       ],
       "width": 742,
-      "height": 506,
+      "height": 505,
       "path": "outputs/2.html"
     },
     {
@@ -48,7 +48,7 @@
         "svg"
       ],
       "width": 938,
-      "height": 519,
+      "height": 517,
       "path": "outputs/3.html"
     }
   ]

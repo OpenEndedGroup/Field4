@@ -124,7 +124,7 @@ operations:
   - create:
       box: marf_path
       name: two readers as two coordinates
-      frame: { x: 440.0, y: 60.0, w: 340.0, h: 136.0 }
+      frame: { x: 2000.0, y: 60.0, w: 340.0, h: 136.0 }
       properties:
         code: |
           // Two readers of one bank as two coordinates. The path stays coherent without the
@@ -158,7 +158,7 @@ operations:
   - create:
       box: marf_vector
       name: one Vector3f reader, three components
-      frame: { x: 60.0, y: 226.0, w: 340.0, h: 136.0 }
+      frame: { x: 60.0, y: 1500.0, w: 340.0, h: 136.0 }
       properties:
         code: |
           // A stage's value need not be a number. One Vector3f reader, drawn as its three components:
@@ -166,15 +166,13 @@ operations:
           displayClearAll() // drop anything a previous run left on another channel
           displayOpen("lines")
 
-          val path =
-              marfBankIn(
-                      MarfVector3f,
-                      stageTo(Vector3f(0f, 0f, 0f), 1.0, label = "origin"),
-                      stageTo(Vector3f(1f, 0f, 0f), 0.5, MarfCurve.Smooth, label = "x"),
-                      stageTo(Vector3f(1f, 1f, 0f), 1.5, MarfCurve.Exp(3.0), label = "xy"),
-                      stageTo(Vector3f(0f, 0.25f, 1f), 1.0, MarfCurve.Osc(2.0), label = "z"),
-                  )
-                  .read(pat("<0 1 2 3 2 1>").nums(), fields = MarfFieldClock.STAGES, name = "vec")
+          val path = marfBankIn(
+              MarfVector3f,
+              stageTo(Vector3f(0f, 0f, 0f), 1.0, label = "origin"),
+              stageTo(Vector3f(1f, 0f, 0f), 0.5, MarfCurve.Smooth, label = "x"),
+              stageTo(Vector3f(1f, 1f, 0f), 1.5, MarfCurve.Exp(3.0), label = "xy"),
+              stageTo(Vector3f(0f, 0.25f, 1f), 1.0, MarfCurve.Osc(2.0), label = "z"),
+          ).read(pat("<0 1 2 3 2 1>").nums(), fields = MarfFieldClock.STAGES, name = "vec")
 
           val cycles = 6L
           val W = 1060.0
@@ -237,7 +235,7 @@ operations:
   - create:
       box: marf_sound
       name: the same bank, heard
-      frame: { x: 440.0, y: 226.0, w: 340.0, h: 136.0 }
+      frame: { x: 2000.0, y: 1500.0, w: 340.0, h: 136.0 }
       properties:
         code: |
           /*

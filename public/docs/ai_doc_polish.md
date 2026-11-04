@@ -14,7 +14,8 @@ declarations under `src/`, and how many files they are spread over:
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector="#docs-kdoc-drafts-card-crop" screenshot="assets/ai_doc_polish/kdoc_drafts_card.png" padding="0" wait="0" timeout="120" embed=true hidden=true name="kdoc-drafts-card" alt="The KDoc drafts card from the AI panel on the Welcome page: the number of drafts waiting and the files they are in, with a Review in docs pass button."}
 // /welcome is its own page: load it into a frame, open the AI panel the way a click on its summary
 // does, and mark the KDoc drafts card.
-ui.eval("""
+ui.eval(
+    """
     document.getElementById("docs-welcome-frame")?.remove()
     const f = document.createElement("iframe")
     f.id = "docs-welcome-frame"
@@ -22,23 +23,31 @@ ui.eval("""
     f.setAttribute("style", "position:fixed;left:0;top:0;width:1700px;height:2000px;border:0;background:#111;z-index:2147483000")
     document.body.appendChild(f)
     return true
-""".trimIndent())
+    """
+        .trimIndent(),
+)
 var state = ""
 for (i in 0 until 80) {
     ui.pause(250)
-    state = ui.eval("""
-        const d = document.getElementById("docs-welcome-frame")?.contentDocument
-        const panel = d && d.getElementById("ai-settings-details")
-        if (!panel) return "loading"
-        if (!panel.open) panel.querySelector("summary").click()
-        const s = d.getElementById("completion-doc-polish-state")?.textContent || "checking"
-        return /checking/i.test(s) ? "pending" : "ready"
-    """.trimIndent()).toString()
+    state =
+        ui.eval(
+                """
+                const d = document.getElementById("docs-welcome-frame")?.contentDocument
+                const panel = d && d.getElementById("ai-settings-details")
+                if (!panel) return "loading"
+                if (!panel.open) panel.querySelector("summary").click()
+                const s = d.getElementById("completion-doc-polish-state")?.textContent || "checking"
+                return /checking/i.test(s) ? "pending" : "ready"
+                """
+                    .trimIndent(),
+            )
+            .toString()
     if (state.contains("ready")) break
 }
 check(state.contains("ready")) { "the welcome AI panel did not finish loading: " + state }
 ui.pause(1000)
-ui.eval("""
+ui.eval(
+    """
     const f = document.getElementById("docs-welcome-frame")
     const card = f.contentDocument.getElementById("completion-doc-polish-state").closest(".ai-docs-panel")
     card.scrollIntoView({ block: "start" })
@@ -51,7 +60,9 @@ ui.eval("""
         "left:" + (o.left + r.left - 8) + "px;top:" + (o.top + r.top - 4) + "px;width:" + (r.width + 16) + "px;height:" + (r.height + 12) + "px")
     document.body.appendChild(m)
     return [r.width, r.height]
-""".trimIndent())
+    """
+        .trimIndent(),
+)
 ui.pause(300)
 ```
 
@@ -62,7 +73,8 @@ finishes, the queue counts the drafts among its open notes:
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector="#docs-pass-drafts-crop" screenshot="assets/ai_doc_polish/docs_pass_imported.png" padding="0" wait="0" timeout="240" embed=true hidden=true name="docs-pass-imported-drafts" alt="Step 2 of the documentation revision pass page, Drain the queue, after Import completion KDoc drafts: the chips count the open notes and how many of them are KDoc drafts, above the agent, tag and page filters and the drain, stop and import buttons."}
 // Load /docs-pass.html into a frame, press Import completion KDoc drafts, and wait until the
 // queue's counts include the imported drafts. Then mark step 2.
-ui.eval("""
+ui.eval(
+    """
     document.getElementById("docs-pass-frame")?.remove()
     const f = document.createElement("iframe")
     f.id = "docs-pass-frame"
@@ -70,37 +82,53 @@ ui.eval("""
     f.setAttribute("style", "position:fixed;left:0;top:0;width:900px;height:1400px;border:0;background:#111;z-index:2147483000")
     document.body.appendChild(f)
     return true
-""".trimIndent())
+    """
+        .trimIndent(),
+)
 var state = ""
 for (i in 0 until 240) {
     ui.pause(250)
-    state = ui.eval("""
-        const d = document.getElementById("docs-pass-frame")?.contentDocument
-        if (!d || !d.getElementById("posture")) return "loading"
-        if (/Loading/.test(d.getElementById("posture").textContent)) return "posture"
-        if (!d.getElementById("counts")?.children.length) return "counts"
-        return "ready"
-    """.trimIndent()).toString()
+    state =
+        ui.eval(
+                """
+                const d = document.getElementById("docs-pass-frame")?.contentDocument
+                if (!d || !d.getElementById("posture")) return "loading"
+                if (/Loading/.test(d.getElementById("posture").textContent)) return "posture"
+                if (!d.getElementById("counts")?.children.length) return "counts"
+                return "ready"
+                """
+                    .trimIndent(),
+            )
+            .toString()
     if (state.contains("ready")) break
 }
 check(state.contains("ready")) { "the revision pass page did not finish loading: " + state }
-ui.eval("""
+ui.eval(
+    """
     document.getElementById("docs-pass-frame").contentDocument.getElementById("import-drafts").click()
     return true
-""".trimIndent())
+    """
+        .trimIndent(),
+)
 for (i in 0 until 600) {
     ui.pause(250)
-    state = ui.eval("""
-        const d = document.getElementById("docs-pass-frame").contentDocument
-        const running = /running/.test(d.getElementById("job-panel").className)
-        const drafts = /KDoc drafts/.test(d.getElementById("counts").textContent)
-        return !running && drafts ? "imported" : "importing"
-    """.trimIndent()).toString()
+    state =
+        ui.eval(
+                """
+                const d = document.getElementById("docs-pass-frame").contentDocument
+                const running = /running/.test(d.getElementById("job-panel").className)
+                const drafts = /KDoc drafts/.test(d.getElementById("counts").textContent)
+                return !running && drafts ? "imported" : "importing"
+                """
+                    .trimIndent(),
+            )
+            .toString()
     if (state.contains("imported")) break
 }
 check(state.contains("imported")) { "the drafts did not appear in the queue's counts" }
 ui.pause(800)
-ui.eval("""
+ui.eval(
+    """
     const f = document.getElementById("docs-pass-frame")
     const s = f.contentDocument.getElementById("counts").closest("section").getBoundingClientRect()
     const o = f.getBoundingClientRect()
@@ -114,7 +142,9 @@ ui.eval("""
         "left:" + (o.left + r.left) + "px;top:" + (o.top + r.top) + "px;width:" + r.width + "px;height:" + r.height + "px")
     document.body.appendChild(m)
     return [r.width, r.height]
-""".trimIndent())
+    """
+        .trimIndent(),
+)
 ui.pause(300)
 ```
 
@@ -146,11 +176,14 @@ seeded on first use from the machine-global `~/.afield/filestore`, and relocated
 `AFIELD_FILESTORE_DIR` or `-Dafield.filestore.dir`. Each record carries the declaration's name,
 path, line and source hash alongside the draft, the model that wrote it, and when.
 
-A record's key hashes the prompt version together with the declaration name, source path, line
-and source hash, so a record survives only while all of those still match. Editing the
-declaration retires its record, and bumping `COMPLETION_DOC_PROMPT_VERSION` retires every record
-at once. Drafts the pass declined are listed by key in
-`generated_completion_docs.declined.json` beside the cache.
+Editing a declaration retires its draft, so a draft always describes the code as it is. Drafts
+the pass declined are listed in `generated_completion_docs.declined.json` beside the cache.
+
+??? aside "Agents: draft cache keys"
+    A record's key hashes the prompt version together with the declaration name, source path,
+    line and source hash, so a record survives only while all of those still match. Bumping
+    `COMPLETION_DOC_PROMPT_VERSION` (in `afield/ai/completion/Ai4CompletionDoc.kt`) retires
+    every record at once. Declined drafts are listed by key.
 
 ??? aside "Design notes"
     Why polishing runs inside the revision pass, rather than as a task of its own, is in

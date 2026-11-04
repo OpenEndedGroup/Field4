@@ -44,8 +44,8 @@ showImgGrid(
     columns = 3,
     cellSide = 420,
 )
-println("ink with the convention  : ${"%.2f".format(100 * withConvention.inkFraction())}%")
+println("ink with the convention  : ${(100 * withConvention.inkFraction()).f2}%")
 println(
-    "ink without it           : ${"%.2f".format(100 * withoutConvention.inkFraction())}%  <- the counters closed up",
+    "ink without it           : ${(100 * withoutConvention.inkFraction()).f2}%  <- the counters closed up",
 )
 println("worst NON_ZERO vs EVEN_ODD difference over the correct rings: $worst (0.0 means the two rules agree exactly)")

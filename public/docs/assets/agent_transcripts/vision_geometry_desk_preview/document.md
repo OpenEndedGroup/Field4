@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. Vision geometry — desk preview
@@ -18,7 +18,7 @@ Exactly what you would paste into a `// {{ visionmetal }}` box — a lantern bui
 the shape helpers and a hand-written ring of quads on top.
 
 ```edn [field-box id="agent_vision_geometry_desk_preview" role="properties"]
-{"id" "agent_vision_geometry_desk_preview" "index" 0 "name" "Vision geometry — desk preview" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Vision geometry — desk preview" "_tombstone" false "frame" #afield/rect [60.0 60.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_vision_geometry_desk_preview_code_.kt" "lines" 76 "characters" 3009 "sha256" "dca8c44fc4f5847b2e89a8f301f1ba2656c2fee80b80b0a1e3cda6a035bd5eb7"}]}
+{"id" "agent_vision_geometry_desk_preview" "index" 0 "name" "Vision geometry — desk preview" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Vision geometry — desk preview" "_tombstone" false "frame" #afield/rect [60.0 60.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_vision_geometry_desk_preview_code_.kt" "lines" 70 "characters" 2901 "sha256" "71088fed1e5b4bdd06cc6d6688943014a7861f42fe2fb09f5c7c1e905055e233"}]}
 ```
 
 ```kotlin [field-property box="agent_vision_geometry_desk_preview" name="code" path="agent_vision_geometry_desk_preview_code_.kt"]
@@ -70,7 +70,7 @@ val program =
         }
         onFrame { frame -> uniform("spin", frame.time * 0.5) }
     }
-"""
+    """
         .trimIndent()
 
 // This really compiles the Kotlin above to JavaScript and really runs it; the mesh drawn
@@ -88,15 +88,9 @@ capture?.mesh()?.let { mesh ->
     println("built " + mesh.vertexCount + " vertices, " + mesh.triangleCount + " triangles")
     val b = mesh.bounds()
     println(
-        "extent " +
-            "%.3f".format(b[3] - b[0]) +
-            " x " +
-            "%.3f".format(b[4] - b[1]) +
-            " x " +
-            "%.3f".format(b[5] - b[2]) +
-            " m",
+        "extent " + (b[3] - b[0]).f3 + " x " + (b[4] - b[1]).f3 + " x " + (b[5] - b[2]).f3 + " m",
     )
-    println("winding agreement " + "%.0f".format(mesh.windingAgreement() * 100) + "%")
+    println("winding agreement " + (mesh.windingAgreement() * 100).f0 + "%")
 }
 ```
 
@@ -113,7 +107,7 @@ outward; only the winding changed. The head culls back faces, so on the device t
 ring you can only see from the inside — and from any normal viewing position, nothing.
 
 ```edn [field-box id="agent_vision_geometry_desk_preview_inverted" role="properties"]
-{"id" "agent_vision_geometry_desk_preview_inverted" "index" 1 "name" "… and the same mesh wound backwards" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "… and the same mesh wound backwards" "_tombstone" false "frame" #afield/rect [60.0 400.0 350.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_vision_geometry_desk_preview_inverted_code_.kt" "lines" 48 "characters" 1653 "sha256" "2163f912225b0dc51e2f1db8d64e1f66064a92fa4afcf6a1fae6675f28182b7d"}]}
+{"id" "agent_vision_geometry_desk_preview_inverted" "index" 1 "name" "… and the same mesh wound backwards" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "… and the same mesh wound backwards" "_tombstone" false "frame" #afield/rect [60.0 400.0 350.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_vision_geometry_desk_preview_inverted_code_.kt" "lines" 48 "characters" 1647 "sha256" "5c52bb8a6777f9facbd96b15c489b709143ae34d2d4f051425932573ad9505cd"}]}
 ```
 
 ```kotlin [field-property box="agent_vision_geometry_desk_preview_inverted" name="code" path="agent_vision_geometry_desk_preview_inverted_code_.kt"]
@@ -146,7 +140,7 @@ val inverted =
             }
         }
     }
-"""
+    """
         .trimIndent()
 
 val capture = try {
@@ -160,7 +154,7 @@ capture?.mesh()?.let { mesh ->
     val agreement = mesh.windingAgreement()
     println(
         "winding agreement " +
-            "%.0f".format(agreement * 100) +
+            (agreement * 100).f0 +
             "% — " +
             (if (agreement < 0.5) "wound inside-out; the head would cull this away" else "consistent"),
     )

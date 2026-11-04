@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 5 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 5 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. 4 · POKE THIS — the register is the whole lever
@@ -17,7 +17,7 @@ From `code`
 Sixteen notes in half a second: 31 ms each.
 
 ```edn [field-box id="pitch_roundtrip_register" role="properties"]
-{"id" "pitch_roundtrip_register" "index" 0 "name" "4 · POKE THIS — the register is the whole lever" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 · POKE THIS — the register is the whole lever" "_tombstone" false "frame" #afield/rect [520.0 190.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pitch_roundtrip_register_code_.kt" "lines" 53 "characters" 2047 "sha256" "17f991ca6f01066dd0e123245ce23402f318618f73ff9e7924695f9e07ccbe35"}]}
+{"id" "pitch_roundtrip_register" "index" 0 "name" "4 · POKE THIS — the register is the whole lever" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 · POKE THIS — the register is the whole lever" "_tombstone" false "frame" #afield/rect [520.0 190.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pitch_roundtrip_register_code_.kt" "lines" 51 "characters" 1950 "sha256" "2dc1cb9e86e55025163a8468fe7aedeace61ca4f26c7a458f0c861afa93ec45e"}]}
 ```
 
 ```kotlin [field-property box="pitch_roundtrip_register" name="code" path="pitch_roundtrip_register_code_.kt"]
@@ -26,14 +26,12 @@ val notation = "60 62 64 65 67 69 71 72 72 71 69 67 65 64 62 60"
 val cycles = 2
 val cps = 2.0
 val sustain = 0.9
-val audio =
-    patRenderStereo(
-            pat(notation),
-            cycles,
-            cps,
-            patVoice(sustain = sustain, decay = 0.01),
-        )
-        .mono
+val audio = patRenderStereo(
+    pat(notation),
+    cycles,
+    cps,
+    patVoice(sustain = sustain, decay = 0.01),
+).mono
 val reference = patReferenceNotes(notation, cycles, cps, sustain = sustain)
 
 /*
@@ -61,14 +59,14 @@ val heard = showPatTranscriptionOf(
     minGapSeconds = (1.0 / cps) / 16,
     minHz = minHz,
     maxHz = patMidiToHz(73.0),
-    label = "31 ms notes, minHz = ${"%.0f".format(minHz)} Hz",
+    label = "31 ms notes, minHz = ${minHz.f0} Hz",
 )
 
 display(
     "resolution",
     """
-    minHz ${"%.1f".format(minHz)} Hz → analysis window $window samples (${"%.1f".format(1000.0 * window / PatSoundDocs.SR)} ms)
-    the notes are ${"%.1f".format(1000.0 / cps / 16)} ms long
+    minHz ${minHz.f1} Hz → analysis window $window samples (${(1000.0 * window / PatSoundDocs.SR).f1} ms)
+    the notes are ${(1000.0 / cps / 16).f1} ms long
 """
         .trimIndent(),
 )
@@ -166,7 +164,7 @@ inability, not the loudest note. `~` is the only thing mini-notation can say for
 that sounded and was not named, so the refusal lives in the warnings and the verdict.
 
 ```edn [field-box id="pitch_roundtrip_refusal" role="properties"]
-{"id" "pitch_roundtrip_refusal" "index" 2 "name" "5 · a chord, refused rather than guessed at" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 · a chord, refused rather than guessed at" "_tombstone" false "frame" #afield/rect [40.0 340.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pitch_roundtrip_refusal_code_.kt" "lines" 42 "characters" 1530 "sha256" "58406ea28b081eeb75fe9193f237ddff8945101b670977c133f6a13c1b2c07c8"}]}
+{"id" "pitch_roundtrip_refusal" "index" 2 "name" "5 · a chord, refused rather than guessed at" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 · a chord, refused rather than guessed at" "_tombstone" false "frame" #afield/rect [40.0 340.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pitch_roundtrip_refusal_code_.kt" "lines" 40 "characters" 1481 "sha256" "a7555f084b78fd4e6c1b2e82a77cf875b33970c438e07402e146a6bfdf1b9c3d"}]}
 ```
 
 ```kotlin [field-property box="pitch_roundtrip_refusal" name="code" path="pitch_roundtrip_refusal_code_.kt"]
@@ -179,14 +177,12 @@ val notation = "[60,64,67] ~ [62,65,69] ~"
 val cycles = 2
 val cps = 0.75
 val sustain = 0.85
-val audio =
-    patRenderStereo(
-            pat(notation),
-            cycles,
-            cps,
-            patVoice(sustain = sustain, decay = 0.03),
-        )
-        .mono
+val audio = patRenderStereo(
+    pat(notation),
+    cycles,
+    cps,
+    patVoice(sustain = sustain, decay = 0.03),
+).mono
 
 val heard = showPatTranscriptionOf(
     audio,
@@ -209,7 +205,7 @@ display(
     separates a chord (a few discrete partials) from a snare (a continuum).
     Compare: a sawtooth is a full harmonic stack on ONE note and is NOT refused,
     because timbre is not polyphony.
-"""
+    """
         .trimIndent(),
 )
 ```
@@ -225,7 +221,7 @@ From `code`
 The notation, and the ground truth Field already owns because it wrote it.
 
 ```edn [field-box id="pitch_roundtrip_clean" role="properties"]
-{"id" "pitch_roundtrip_clean" "index" 3 "name" "2 · notate → render → hear it back" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · notate → render → hear it back" "_tombstone" false "frame" #afield/rect [520.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pitch_roundtrip_clean_code_.kt" "lines" 29 "characters" 1037 "sha256" "64491da63e1788412831706d5ce183b2e4e87c3da2106ba406b69e6fedcabf17"}]}
+{"id" "pitch_roundtrip_clean" "index" 3 "name" "2 · notate → render → hear it back" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · notate → render → hear it back" "_tombstone" false "frame" #afield/rect [520.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pitch_roundtrip_clean_code_.kt" "lines" 29 "characters" 1013 "sha256" "9457b1a6aae01d7c3f45cf2befd8f1aaa4fd25b5d51129fe8dfc86a1d5b75c17"}]}
 ```
 
 ```kotlin [field-property box="pitch_roundtrip_clean" name="code" path="pitch_roundtrip_clean_code_.kt"]
@@ -250,11 +246,11 @@ val heard = showPatTranscriptionOf(
 )
 
 display("authored", "pat(\"$notation\") × $cycles cycles at cps $cps")
-display("recovered", "pat(\"${heard.miniNotation}\") at cps ${"%.3f".format(heard.cps)}")
+display("recovered", "pat(\"${heard.miniNotation}\") at cps ${heard.cps.f3}")
 display(
     "pitch error",
     heard.notes.joinToString("\n") {
-        "MIDI ${it.midi}  ${"%+.1f".format(it.centsOffset)} cents  conf ${"%.2f".format(it.confidence)}"
+        "MIDI ${it.midi}  ${"%+.1f".format(it.centsOffset)} cents  conf ${it.confidence.f2}"
     },
 )
 display("summary", heard.describe())
@@ -265,32 +261,32 @@ display("summary", heard.describe())
 <!-- field-box id="pitch_roundtrip_guide" index="4" -->
 
 ```edn [field-box id="pitch_roundtrip_guide" role="properties"]
-{"id" "pitch_roundtrip_guide" "index" 4 "name" "1 · hearing pitch — the loop and its last arrow" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · hearing pitch — the loop and its last arrow" "_tombstone" false "frame" #afield/rect [40.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pitch_roundtrip_guide_code_.kt" "lines" 36 "characters" 2290 "sha256" "3d76e62261377bc2e97e9d199ffc511b6a66bce2fee612f0da3a8ad046b82b6d"}]}
+{"id" "pitch_roundtrip_guide" "index" 4 "name" "1 · hearing pitch — the loop and its last arrow" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · hearing pitch — the loop and its last arrow" "_tombstone" false "frame" #afield/rect [40.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pitch_roundtrip_guide_code_.kt" "lines" 36 "characters" 2346 "sha256" "0327076a102683d8bf152dcab3f2f1749c01347dd61344c719b272da032e2ca7"}]}
 ```
 
 ```kotlin [field-property box="pitch_roundtrip_guide" name="code" path="pitch_roundtrip_guide_code_.kt"]
 display(
     "guide",
     """
-<section style="width:1040px;max-width:100%;box-sizing:border-box;background:#151a20;color:#dbe3e9;padding:18px;border:1px solid #303c46;border-radius:8px;font:13px/1.55 system-ui,sans-serif">
-  <h2 style="margin:0 0 8px;color:#7fcbd7">notation → sound → notation</h2>
-  <p>Field already rendered notation to sound exactly, and already heard <b>rhythm</b> back
-  (<code>PatOnsetDetection.kt</code>). What it could not do was hear <b>pitch</b>, or write
-  what it heard back out as something it can re-render. These boxes are that half.</p>
-  <p>Every box below is pure CPU: <code>patRenderStereo</code> or <code>doughRenderMono</code>
-  makes a finite buffer, <code>patTranscribe</code> reads it, and the figure overlays the
-  notation Field authored (hollow outline) on what the detector heard (solid bar) on one
-  shared MIDI axis. Nothing here talks to <code>services/field-audio-ai</code>, opens an audio
-  device, or needs model weights.</p>
-  <p>The measurement is unusually cheap to trust: the reference is not somebody's annotation
-  of the audio, it <i>is</i> the audio's cause. Box 2 is the clean case. Boxes 3 and 5 are
-  the two ways this fails on purpose. <b>Box 4 is the one to poke</b> — it has the single
-  parameter that matters most, and a comment saying what should happen when you change it.</p>
-  <p style="margin:12px 0 0;color:#98a6b3">Pitch error is reported in <b>cents</b>, not in note
-  names. One of the corpus cases is exactly 50 cents from equal temperament, where the correct
-  note name genuinely does not exist — a measurement 0.1 cents out flips it a semitone.</p>
-</section>
-"""
+    <section style="width:1040px;max-width:100%;box-sizing:border-box;background:#151a20;color:#dbe3e9;padding:18px;border:1px solid #303c46;border-radius:8px;font:13px/1.55 system-ui,sans-serif">
+      <h2 style="margin:0 0 8px;color:#7fcbd7">notation → sound → notation</h2>
+      <p>Field already rendered notation to sound exactly, and already heard <b>rhythm</b> back
+      (<code>PatOnsetDetection.kt</code>). What it could not do was hear <b>pitch</b>, or write
+      what it heard back out as something it can re-render. These boxes are that half.</p>
+      <p>Every box below is pure CPU: <code>patRenderStereo</code> or <code>doughRenderMono</code>
+      makes a finite buffer, <code>patTranscribe</code> reads it, and the figure overlays the
+      notation Field authored (hollow outline) on what the detector heard (solid bar) on one
+      shared MIDI axis. Nothing here talks to <code>services/field-audio-ai</code>, opens an audio
+      device, or needs model weights.</p>
+      <p>The measurement is unusually cheap to trust: the reference is not somebody's annotation
+      of the audio, it <i>is</i> the audio's cause. Box 2 is the clean case. Boxes 3 and 5 are
+      the two ways this fails on purpose. <b>Box 4 is the one to poke</b> — it has the single
+      parameter that matters most, and a comment saying what should happen when you change it.</p>
+      <p style="margin:12px 0 0;color:#98a6b3">Pitch error is reported in <b>cents</b>, not in note
+      names. One of the corpus cases is exactly 50 cents from equal temperament, where the correct
+      note name genuinely does not exist — a measurement 0.1 cents out flips it a semitone.</p>
+    </section>
+    """
         .trimIndent(),
 )
 
@@ -299,8 +295,8 @@ display(
     """
     the analysis window is 2·(sampleRate/minHz) of frame plus one longest lag,
     so the register you admit sets the shortest note you can resolve:
-      minHz  65 Hz (the wide default) → ${patPitchFrameSpan(PatSoundDocs.SR, 65.0)} samples = ${"%.1f".format(1000.0 * patPitchFrameSpan(PatSoundDocs.SR, 65.0) / PatSoundDocs.SR)} ms
-      minHz 261 Hz (a treble line)    → ${patPitchFrameSpan(PatSoundDocs.SR, 261.0)} samples = ${"%.1f".format(1000.0 * patPitchFrameSpan(PatSoundDocs.SR, 261.0) / PatSoundDocs.SR)} ms
+      minHz  65 Hz (the wide default) → ${patPitchFrameSpan(PatSoundDocs.SR, 65.0)} samples = ${(1000.0 * patPitchFrameSpan(PatSoundDocs.SR, 65.0) / PatSoundDocs.SR).f1} ms
+      minHz 261 Hz (a treble line)    → ${patPitchFrameSpan(PatSoundDocs.SR, 261.0)} samples = ${(1000.0 * patPitchFrameSpan(PatSoundDocs.SR, 261.0) / PatSoundDocs.SR).f1} ms
     That ratio is what box 4 is about.
 """
         .trimIndent(),

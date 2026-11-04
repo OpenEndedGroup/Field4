@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-01T10:58:38.563Z",
+  "documentName": "fieldml_macro_module_demo",
+  "outputs": [
+    {
+      "uid": "fieldml-macromod-scene",
+      "channel": "window",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 440,
+      "height": 272,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "fieldml-macromod-renderer",
+      "channel": "Vulkan window · still image",
+      "open": true,
+      "path": "outputs/1.html",
+      "width": 4112,
+      "height": 2524,
+      "kinds": [
+        "native-image"
+      ],
+      "warnings": []
+    }
+  ]
+}

@@ -21,8 +21,7 @@ val scene = moduleHere {
     depthWrite = false
     blend = false
 }
-val triangle = Mesh(renderer, scene)
-triangle.resize(3, 0, scene)
+val triangle = fullscreenTriangle(scene)
 triangle.push.setMembers(scene.current.fi.pushConstants.single().members)
 scene += "image" to triangle
 history += "image" to scene

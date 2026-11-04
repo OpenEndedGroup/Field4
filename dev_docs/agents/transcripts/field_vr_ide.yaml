@@ -1,12 +1,15 @@
 name: field_vr_ide
 description: >
   Field's own live frontend in a world-locked OpenXR browser panel. Either controller can point,
-  trigger and drag; grip grabs and repositions the panel. Tracked hands do not point or click. The in-panel
+  trigger and drag; one grip moves the panel and two grips resize it. Tracked hands do not point or click. The in-panel
   keyboard preserves editor focus and includes Commands, Run, text, navigation and editing keys.
-  Opens the same document, with a front-on desktop companion and optional headset output. Requires Vulkan and Electron.
+  Opens the same document, with a front-on desktop companion, a closeable headset scene preview
+  and optional headset output. The preview can show one eye or both eyes side by side.
+  Linux WiVRn keyboard and mouse input can operate without desktop focus; remote browsers share document edits.
+  Requires Vulkan and Electron.
 docs:
   - page: field_vr_ide.md
-    why: Launch order, headset setup, controller and mouse input, keyboard and browser resolution.
+    why: Launch order, headset setup, controller and mouse input, input focus, two-controller resizing, remote editing and browser resolution.
 operations:
   - create:
       box: vr_ide_renderer
@@ -19,31 +22,43 @@ operations:
 
           prop<Window>(window)
           prop<Renderer>(renderer)
-          // Start with the desktop companion. Connect WiVRn, set true and restart Field for VR.
+          // Start with the desktop companion. Connect OpenXR, set true and restart Field for VR.
           val useHeadset = false
           Options.enableVR = useHeadset
           Options.enableHDR = false
           once.renderer {
               window = Window("Field · VR IDE", initialDimensions = Rect(80.0, 80.0, 1440.0, 800.0))
-              val created = Renderer(window)
+              val preview = Window("Field · headset preview", initialDimensions = Rect(1540.0, 80.0, 1000.0, 800.0))
+              // Let the headset advance even when the desktop preview cannot present.
+              preview.bestEffortPresentation = true
+              val created = Renderer(window, additionalWindows = listOf(preview))
               if (useHeadset) created.openXRHmdTarget = OpenXRHmdTarget(created)
               created
           }
           renderer.render()
-          display("guide", """
+          display(
+              "guide",
+              """
               <div style="width:420px;font:16px/1.6 system-ui">
               <b>Field in your headset</b><br>
               Launch 1, then 2. The browser opens this same document.<br>
-              Point with either controller; trigger clicks and drags, stick scrolls.<br>
+              Point with either controller; trigger or A/X clicks, stick scrolls in both axes.<br>
               Aim at the panel and hold grip to move and rotate it; release to leave it there.<br>
+              Hold both grips and spread your hands to resize the panel.<br>
               Tracked hands do not point or click; use a controller or mouse.<br>
               Keyboard opens text and editing keys; Commands opens the palette.<br>
               Select the Playground, edit its code, then Run box (Alt+Up).<br>
-              Recenter brings the panel in front of your current head position.<br>
+              The bottom toolbar Recenter button brings the panel in front of you and keeps its size.<br>
               The desktop companion accepts normal keyboard and mouse input when focused.<br>
+              A separate headset preview shows one eye; box 2 can switch to both eyes.<br>
+              Close the preview to hide it, then use Show headset preview to reopen it.<br>
+              Quest keyboard and mouse use WiVRn HID forwarding after setup; see the saved guide.<br>
+              Another browser can edit this same document with its own input focus.<br>
               Stop box 2 to close the browser. Restart Field to switch VR mode or eye size.
               </div>
-          """.trimIndent())
+              """
+                  .trimIndent(),
+          )
           displayOpen("guide")
   - create:
       box: vr_ide_panel
@@ -60,20 +75,46 @@ operations:
           val vr = FieldVrWorkspace(
               renderer = ownedRenderer,
               url = FieldUiBrowserTexture.fieldDocumentUrl(thisBox),
-              width = 2560,
-              height = 1600,
+              width = 1600,
+              height = 1000,
               readyBoxUid = thisBox.id,
               widthMeters = 2.0f,
               distanceMeters = 1.35f,
           )
           browserControl = vr.browser
+          // Sample the eye layers already rendered for OpenXR; do not render the scene again.
+          var stereoPreview = false
+          val previewModule = vr.stereo.mirrorToScreen(
+              windowIndex = 1,
+              name = "headset-preview",
+              stereoPair = { stereoPreview },
+          )
+          val previewWindow = ownedRenderer.windows[1]
+          controlGroup("desktop preview") {
+              checkbox("Side-by-side eyes", initialValue = false) { stereoPreview = it }
+              button("Show headset preview") { down ->
+                  if (down) {
+                      org.lwjgl.glfw.GLFW.glfwSetWindowShouldClose(previewWindow.windowHandle, false)
+                      org.lwjgl.glfw.GLFW.glfwShowWindow(previewWindow.windowHandle)
+                      previewWindow.presentationEnabled = true
+                  }
+              }
+          }
           println("Live IDE: ${vr.url}; ${vr.stereo.eyeWidth} × ${vr.stereo.eyeHeight} per eye")
           // Capture the renderer before entering the asynchronous scope.
           loop {
-              ownedRenderer.window.pollEvents()
+              ownedRenderer.windows.forEach { it.pollEvents() }
+              if (previewWindow.shouldClose() && previewWindow.presentationEnabled) {
+                  previewWindow.presentationEnabled = false
+                  org.lwjgl.glfw.GLFW.glfwHideWindow(previewWindow.windowHandle)
+              }
               ownedRenderer.render()
               frame()
-          }.end { vr.close() }
+          }
+              .end {
+                  ownedRenderer.renderTargetFor(1).modules.remove("headset-preview", previewModule)
+                  vr.close()
+              }
   - create:
       box: vr_ide_playground
       name: Playground - edit and run from VR
@@ -82,11 +123,15 @@ operations:
         code: |
           // Select this box, open its editor, change the colour or message, then Run box (Alt+Up).
           val colour = "#237bc2"
-          display("hello", """
+          display(
+              "hello",
+              """
               <div style="width:320px;padding:24px;background:$colour;color:white;font:24px system-ui">
               Hello from inside Field VR!
               </div>
-          """.trimIndent())
+          """
+                  .trimIndent(),
+          )
           displayOpen("hello")
           println("Code executed in the same Field document")
   - connect: { parent: vr_ide_renderer, child: vr_ide_panel }

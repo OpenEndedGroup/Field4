@@ -162,7 +162,7 @@ sim.state = { if (renderer.frameCounter % 2L == 0L) stateA else stateB }
 sim.prevState = { if (renderer.frameCounter % 2L == 0L) stateB else stateA }
 sim.anchors = { anchors }
 sim.heat = { heat }
-sim.count = { N.toUInt() }
+sim.count = { N }
 sim.dt = { 1f / 60f }
 sim.knobs = { vec(renderer.frameCounter / 60.0, 1.0, 0.0, 0.0) }
 ```
@@ -352,6 +352,10 @@ fieldProbeHere(samples = 4096).display("probe")
 displayOpen("probe")
 ```
 
+```diffstatic_runner {data-lang=kotlin screenshot="assets/gpu_state/probe-card.png" capture="box" capture-box="gs_sim" open-outputs="true" wait-output=true wait-output-kind="display" wait="8" embed=true hidden=true force=true timeout="150" name="gpu-state-probe-card" alt="the probe card on the simulate box: calls, finite and NaN counts, the reservoir size, mean and maximum speed, and a histogram of speed" macro-file="../../dev_docs/agents/transcripts/gpu_state.yaml"}
+// The simulate box from dev_docs/agents/transcripts/gpu_state.yaml, after the scene settles.
+```
+
 plus one call in the shader, `fieldProbe(speed)`, next to the value while it is in scope. The shader
 keeps exact counts and exact min/max with atomics and reservoir-samples the raw values, so what comes
 back per snapshot is a few thousand numbers rather than a few hundred thousand. The reservoir is
@@ -361,7 +365,7 @@ including the GPU-only sibling `fieldStats`.
 
 For the scene above, that card reports 40,000 calls, all finite, none NaN, over a reservoir of 4,096.
 Those four never move. The mean per-particle speed and the exact maximum do, because the noise field
-does: on one run they sat near 0.05 and 0.16, and `dev_docs/GPU_STATE_MEASUREMENTS.md` has the range
+does: in the card above they read 0.047 and 0.21, and `dev_docs/GPU_STATE_MEASUREMENTS.md` has the range
 they held over it. What you do with them is turn the force gain up and watch the mean leave that
 range, or watch the maximum
 *not* move because a clamp is firing, while you are still typing. A readback would tell you the same

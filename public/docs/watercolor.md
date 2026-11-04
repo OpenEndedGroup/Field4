@@ -327,7 +327,7 @@ sheet.wet(wash, microns = 60.0, paint = Watercolors.ultramarine * 2.0 + Watercol
 sheet.dry()
 
 val w = sheet.water!!
-fun f(x: Double) = "%.2f".format(x)
+fun f(x: Double) = x.f2
 markdown(
     """
 | water, mm³ | added | evaporated | run off | on the sheet | imbalance |

@@ -1,61 +1,62 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="760" height="404" viewBox="0 0 760 404" font-family="Iosevka, Menlo, monospace">
-<rect x="0" y="0" width="760" height="404" fill="#14161c"/>
-<text x="52" y="26" fill="#c9d1e0" font-size="18" font-weight="600" text-anchor="start">One bank, three readers</text>
-<text x="52" y="46" fill="#7d879b" font-size="12" font-weight="400" text-anchor="start">The same five stages, three trajectories. The bank has no position of its own.</text>
-<rect x="52" y="84" width="694" height="74" fill="#191c24"/>
-<line x1="52" y1="84" x2="52" y2="158" stroke="#454d5e" stroke-width="1.2"/>
-<line x1="73.69" y1="84" x2="73.69" y2="158" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="95.38" y1="84" x2="95.38" y2="158" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="117.06" y1="84" x2="117.06" y2="158" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="138.75" y1="84" x2="138.75" y2="158" stroke="#454d5e" stroke-width="1.2"/>
-<line x1="160.44" y1="84" x2="160.44" y2="158" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="182.13" y1="84" x2="182.13" y2="158" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="203.81" y1="84" x2="203.81" y2="158" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="225.50" y1="84" x2="225.50" y2="158" stroke="#454d5e" stroke-width="1.2"/>
-<line x1="247.19" y1="84" x2="247.19" y2="158" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="268.88" y1="84" x2="268.88" y2="158" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="290.56" y1="84" x2="290.56" y2="158" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="312.25" y1="84" x2="312.25" y2="158" stroke="#454d5e" stroke-width="1.2"/>
-<line x1="333.94" y1="84" x2="333.94" y2="158" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="355.63" y1="84" x2="355.63" y2="158" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="377.31" y1="84" x2="377.31" y2="158" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="399" y1="84" x2="399" y2="158" stroke="#454d5e" stroke-width="1.2"/>
-<line x1="420.69" y1="84" x2="420.69" y2="158" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="442.38" y1="84" x2="442.38" y2="158" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="464.06" y1="84" x2="464.06" y2="158" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="485.75" y1="84" x2="485.75" y2="158" stroke="#454d5e" stroke-width="1.2"/>
-<line x1="507.44" y1="84" x2="507.44" y2="158" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="529.13" y1="84" x2="529.13" y2="158" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="550.81" y1="84" x2="550.81" y2="158" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="572.50" y1="84" x2="572.50" y2="158" stroke="#454d5e" stroke-width="1.2"/>
-<line x1="594.19" y1="84" x2="594.19" y2="158" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="615.88" y1="84" x2="615.88" y2="158" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="637.56" y1="84" x2="637.56" y2="158" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="659.25" y1="84" x2="659.25" y2="158" stroke="#454d5e" stroke-width="1.2"/>
-<line x1="680.94" y1="84" x2="680.94" y2="158" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="702.63" y1="84" x2="702.63" y2="158" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="724.31" y1="84" x2="724.31" y2="158" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="746" y1="84" x2="746" y2="158" stroke="#454d5e" stroke-width="1.2"/>
-<text x="52" y="78" fill="#c9d1e0" font-size="13" font-weight="400" text-anchor="start">read &quot;&lt;0 1 2 1 3 4&gt;&quot;</text>
-<line x1="52" y1="86" x2="52" y2="156" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="138.75" y1="86" x2="138.75" y2="156" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="182.13" y1="86" x2="182.13" y2="156" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="355.63" y1="86" x2="355.63" y2="156" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="399" y1="86" x2="399" y2="156" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="485.75" y1="86" x2="485.75" y2="156" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="507.44" y1="86" x2="507.44" y2="156" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="594.19" y1="86" x2="594.19" y2="156" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="637.56" y1="86" x2="637.56" y2="156" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="404" viewBox="0 0 760 404" font-family="MarfIosevka, Iosevka, Menlo, monospace">
+<style>@font-face{font-family:MarfIosevka;font-weight:300;src:url(data:font/woff2;base64,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) format('woff2')}@font-face{font-family:MarfIosevka;font-weight:600;src:url(data:font/woff2;base64,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) format('woff2')}</style>
+<rect x="0" y="0" width="760" height="404" fill="#0e0e0e"/>
+<text x="52" y="26" fill="#cccccc" font-size="18" font-weight="600" text-anchor="start">One bank, three readers</text>
+<text x="52" y="46" fill="#808080" font-size="12" font-weight="300" text-anchor="start">The same five stages, three trajectories. The bank has no position of its own.</text>
+<rect x="52" y="84" width="694" height="74" fill="#050505"/>
+<line x1="52" y1="84" x2="52" y2="158" stroke="#3a3a3a" stroke-width="1.2"/>
+<line x1="73.69" y1="84" x2="73.69" y2="158" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="95.38" y1="84" x2="95.38" y2="158" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="117.06" y1="84" x2="117.06" y2="158" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="138.75" y1="84" x2="138.75" y2="158" stroke="#3a3a3a" stroke-width="1.2"/>
+<line x1="160.44" y1="84" x2="160.44" y2="158" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="182.13" y1="84" x2="182.13" y2="158" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="203.81" y1="84" x2="203.81" y2="158" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="225.50" y1="84" x2="225.50" y2="158" stroke="#3a3a3a" stroke-width="1.2"/>
+<line x1="247.19" y1="84" x2="247.19" y2="158" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="268.88" y1="84" x2="268.88" y2="158" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="290.56" y1="84" x2="290.56" y2="158" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="312.25" y1="84" x2="312.25" y2="158" stroke="#3a3a3a" stroke-width="1.2"/>
+<line x1="333.94" y1="84" x2="333.94" y2="158" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="355.63" y1="84" x2="355.63" y2="158" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="377.31" y1="84" x2="377.31" y2="158" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="399" y1="84" x2="399" y2="158" stroke="#3a3a3a" stroke-width="1.2"/>
+<line x1="420.69" y1="84" x2="420.69" y2="158" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="442.38" y1="84" x2="442.38" y2="158" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="464.06" y1="84" x2="464.06" y2="158" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="485.75" y1="84" x2="485.75" y2="158" stroke="#3a3a3a" stroke-width="1.2"/>
+<line x1="507.44" y1="84" x2="507.44" y2="158" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="529.13" y1="84" x2="529.13" y2="158" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="550.81" y1="84" x2="550.81" y2="158" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="572.50" y1="84" x2="572.50" y2="158" stroke="#3a3a3a" stroke-width="1.2"/>
+<line x1="594.19" y1="84" x2="594.19" y2="158" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="615.88" y1="84" x2="615.88" y2="158" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="637.56" y1="84" x2="637.56" y2="158" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="659.25" y1="84" x2="659.25" y2="158" stroke="#3a3a3a" stroke-width="1.2"/>
+<line x1="680.94" y1="84" x2="680.94" y2="158" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="702.63" y1="84" x2="702.63" y2="158" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="724.31" y1="84" x2="724.31" y2="158" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="746" y1="84" x2="746" y2="158" stroke="#3a3a3a" stroke-width="1.2"/>
+<text x="52" y="78" fill="#cccccc" font-size="13" font-weight="300" text-anchor="start">read &quot;&lt;0 1 2 1 3 4&gt;&quot;</text>
+<line x1="52" y1="86" x2="52" y2="156" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="138.75" y1="86" x2="138.75" y2="156" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="182.13" y1="86" x2="182.13" y2="156" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="355.63" y1="86" x2="355.63" y2="156" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="399" y1="86" x2="399" y2="156" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="485.75" y1="86" x2="485.75" y2="156" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="507.44" y1="86" x2="507.44" y2="156" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="594.19" y1="86" x2="594.19" y2="156" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="637.56" y1="86" x2="637.56" y2="156" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
 <polyline points="52,149 52.90,148.94 53.81,148.87 54.71,148.81 55.61,148.74 56.52,148.68 57.42,148.61 58.33,148.55 59.23,148.48 60.13,148.42 61.04,148.35 61.94,148.29 62.84,148.22 63.75,148.16 64.65,148.09 65.55,148.03 66.46,147.96 67.36,147.90 68.27,147.83 69.17,147.77 70.07,147.70 70.98,147.64 71.88,147.57 72.78,147.51 73.69,147.44 74.59,147.38 75.49,147.31 76.40,147.25 77.30,147.19 78.21,147.12 79.11,147.06 80.01,146.99 80.92,146.93 81.82,146.86 82.72,146.80 83.63,146.73 84.53,146.67 85.43,146.60 86.34,146.54 87.24,146.47 88.15,146.41 89.05,146.34 89.95,146.28 90.86,146.21 91.76,146.15 92.66,146.08 93.57,146.02 94.47,145.95 95.38,145.89 96.28,145.82 97.18,145.76 98.09,145.69 98.99,145.63 99.89,145.56 100.80,145.50 101.70,145.44 102.60,145.37 103.51,145.31 104.41,145.24 105.32,145.18 106.22,145.11 107.12,145.05 108.03,144.98 108.93,144.92 109.83,144.85 110.74,144.79 111.64,144.72 112.54,144.66 113.45,144.59 114.35,144.53 115.26,144.46 116.16,144.40 117.06,144.33 117.97,144.27 118.87,144.20 119.77,144.14 120.68,144.07 121.58,144.01 122.48,143.94 123.39,143.88 124.29,143.81 125.20,143.75 126.10,143.69 127.00,143.62 127.91,143.56 128.81,143.49 129.71,143.43 130.62,143.36 131.52,143.30 132.42,143.23 133.33,143.17 134.23,143.10 135.14,143.04 136.04,142.97 136.94,142.91 137.85,142.84 138.75,142.78 139.65,141.74 140.56,140.70 141.46,139.67 142.36,138.63 143.27,137.59 144.17,136.56 145.08,135.52 145.98,134.48 146.88,133.44 147.79,132.41 148.69,131.37 149.59,130.33 150.50,129.30 151.40,128.26 152.30,127.22 153.21,126.19 154.11,125.15 155.02,124.11 155.92,123.07 156.82,122.04 157.73,121 158.63,119.96 159.53,118.93 160.44,117.89 161.34,116.85 162.24,115.81 163.15,114.78 164.05,113.74 164.96,112.70 165.86,111.67 166.76,110.63 167.67,109.59 168.57,108.56 169.47,107.52 170.38,106.48 171.28,105.44 172.18,104.41 173.09,103.37 173.99,102.33 174.90,101.30 175.80,100.26 176.70,99.22 177.61,98.19 178.51,97.15 179.41,96.11 180.32,95.07 181.22,94.04 182.13,124.11 183.03,124.11 183.93,124.11 184.84,124.11 185.74,124.11 186.64,124.11 187.55,124.11 188.45,124.11 189.35,124.11 190.26,124.11 191.16,124.11 192.07,124.11 192.97,124.11 193.87,124.11 194.78,124.11 195.68,124.11 196.58,124.11 197.49,124.11 198.39,124.11 199.29,124.11 200.20,124.11 201.10,124.11 202.01,124.11 202.91,124.11 203.81,124.11 204.72,124.11 205.62,124.11 206.52,124.11 207.43,124.11 208.33,124.11 209.23,124.11 210.14,124.11 211.04,124.11 211.95,124.11 212.85,124.11 213.75,124.11 214.66,124.11 215.56,124.11 216.46,124.11 217.37,124.11 218.27,124.11 219.17,124.11 220.08,124.11 220.98,124.11 221.89,124.11 222.79,124.11 223.69,124.11 224.60,124.11 225.50,124.11 226.40,124.11 227.31,124.11 228.21,124.11 229.11,124.11 230.02,124.11 230.92,124.11 231.83,124.11 232.73,124.11 233.63,124.11 234.54,124.11 235.44,124.11 236.34,124.11 237.25,124.11 238.15,124.11 239.05,124.11 239.96,124.11 240.86,124.11 241.77,124.11 242.67,124.11 243.57,124.11 244.48,124.11 245.38,124.11 246.28,124.11 247.19,124.11 248.09,124.11 248.99,124.11 249.90,124.11 250.80,124.11 251.71,124.11 252.61,124.11 253.51,124.11 254.42,124.11 255.32,124.11 256.22,124.11 257.13,124.11 258.03,124.11 258.93,124.11 259.84,124.11 260.74,124.11 261.65,124.11 262.55,124.11 263.45,124.11 264.36,124.11 265.26,124.11 266.16,124.11 267.07,124.11 267.97,124.11 268.88,124.11 269.78,124.11 270.68,124.11 271.59,124.11 272.49,124.11 273.39,124.11 274.30,124.11 275.20,124.11 276.10,124.11 277.01,124.11 277.91,124.11 278.82,124.11 279.72,124.11 280.62,124.11 281.53,124.11 282.43,124.11 283.33,124.11 284.24,124.11 285.14,124.11 286.04,124.11 286.95,124.11 287.85,124.11 288.76,124.11 289.66,124.11 290.56,124.11 291.47,124.11 292.37,124.11 293.27,124.11 294.18,124.11 295.08,124.11 295.98,124.11 296.89,124.11 297.79,124.11 298.70,124.11 299.60,124.11 300.50,124.11 301.41,124.11 302.31,124.11 303.21,124.11 304.12,124.11 305.02,124.11 305.92,124.11 306.83,124.11 307.73,124.11 308.64,124.11 309.54,124.11 310.44,124.11 311.35,124.11 312.25,124.11 313.15,124.11 314.06,124.11 314.96,124.11 315.86,124.11 316.77,124.11 317.67,124.11 318.58,124.11 319.48,124.11 320.38,124.11 321.29,124.11 322.19,124.11 323.09,124.11 324.00,124.11 324.90,124.11 325.80,124.11 326.71,124.11 327.61,124.11 328.52,124.11 329.42,124.11 330.32,124.11 331.23,124.11 332.13,124.11 333.03,124.11 333.94,124.11 334.84,124.11 335.74,124.11 336.65,124.11 337.55,124.11 338.46,124.11 339.36,124.11 340.26,124.11 341.17,124.11 342.07,124.11 342.97,124.11 343.88,124.11 344.78,124.11 345.68,124.11 346.59,124.11 347.49,124.11 348.40,124.11 349.30,124.11 350.20,124.11 351.11,124.11 352.01,124.11 352.91,124.11 353.82,124.11 354.72,124.11 355.63,124.11 356.53,123.46 357.43,122.81 358.34,122.17 359.24,121.52 360.14,120.87 361.05,120.22 361.95,119.57 362.85,118.93 363.76,118.28 364.66,117.63 365.57,116.98 366.47,116.33 367.37,115.69 368.28,115.04 369.18,114.39 370.08,113.74 370.99,113.09 371.89,112.44 372.79,111.80 373.70,111.15 374.60,110.50 375.51,109.85 376.41,109.20 377.31,108.56 378.22,107.91 379.12,107.26 380.02,106.61 380.93,105.96 381.83,105.31 382.73,104.67 383.64,104.02 384.54,103.37 385.45,102.72 386.35,102.07 387.25,101.43 388.16,100.78 389.06,100.13 389.96,99.48 390.87,98.83 391.77,98.19 392.67,97.54 393.58,96.89 394.48,96.24 395.39,95.59 396.29,94.94 397.19,94.30 398.10,93.65 399,93 399.90,93.12 400.81,93.47 401.71,94.05 402.61,94.82 403.52,95.77 404.42,96.84 405.33,98.01 406.23,99.22 407.13,100.44 408.04,101.60 408.94,102.68 409.84,103.62 410.75,104.40 411.65,104.97 412.55,105.32 413.46,105.44 414.36,105.32 415.27,104.97 416.17,104.40 417.07,103.62 417.98,102.68 418.88,101.60 419.78,100.44 420.69,99.22 421.59,98.01 422.49,96.84 423.40,95.77 424.30,94.82 425.21,94.05 426.11,93.47 427.01,93.12 427.92,93.00 428.82,93.12 429.72,93.47 430.63,94.05 431.53,94.82 432.43,95.77 433.34,96.84 434.24,98.01 435.15,99.22 436.05,100.44 436.95,101.60 437.86,102.68 438.76,103.62 439.66,104.40 440.57,104.97 441.47,105.32 442.38,105.44 443.28,105.32 444.18,104.97 445.09,104.40 445.99,103.62 446.89,102.68 447.80,101.60 448.70,100.44 449.60,99.22 450.51,98.01 451.41,96.84 452.32,95.77 453.22,94.82 454.12,94.05 455.03,93.47 455.93,93.12 456.83,93.00 457.74,93.12 458.64,93.47 459.54,94.05 460.45,94.82 461.35,95.77 462.26,96.84 463.16,98.01 464.06,99.22 464.97,100.44 465.87,101.60 466.77,102.68 467.68,103.62 468.58,104.40 469.48,104.97 470.39,105.32 471.29,105.44 472.20,105.32 473.10,104.97 474.00,104.40 474.91,103.62 475.81,102.68 476.71,101.60 477.62,100.44 478.52,99.22 479.42,98.01 480.33,96.84 481.23,95.77 482.14,94.82 483.04,94.05 483.94,93.47 484.85,93.12 485.75,93 486.65,93.00 487.56,93.00 488.46,93.01 489.36,93.03 490.27,93.08 491.17,93.17 492.08,93.32 492.98,93.54 493.88,93.86 494.79,94.31 495.69,94.92 496.59,95.72 497.50,96.75 498.40,98.04 499.30,99.65 500.21,101.60 501.11,103.96 502.02,106.78 502.92,110.11 503.82,114.00 504.73,118.53 505.63,123.75 506.53,129.74 507.44,136.56 508.34,136.62 509.24,136.69 510.15,136.75 511.05,136.81 511.96,136.88 512.86,136.94 513.76,137.01 514.67,137.07 515.57,137.14 516.47,137.20 517.38,137.27 518.28,137.33 519.18,137.40 520.09,137.46 520.99,137.53 521.90,137.59 522.80,137.66 523.70,137.72 524.61,137.79 525.51,137.85 526.41,137.92 527.32,137.98 528.22,138.05 529.13,138.11 530.03,138.18 530.93,138.24 531.84,138.31 532.74,138.37 533.64,138.44 534.55,138.50 535.45,138.56 536.35,138.63 537.26,138.69 538.16,138.76 539.07,138.82 539.97,138.89 540.87,138.95 541.78,139.02 542.68,139.08 543.58,139.15 544.49,139.21 545.39,139.28 546.29,139.34 547.20,139.41 548.10,139.47 549.01,139.54 549.91,139.60 550.81,139.67 551.72,139.73 552.62,139.80 553.52,139.86 554.43,139.93 555.33,139.99 556.23,140.06 557.14,140.12 558.04,140.19 558.95,140.25 559.85,140.31 560.75,140.38 561.66,140.44 562.56,140.51 563.46,140.57 564.37,140.64 565.27,140.70 566.17,140.77 567.08,140.83 567.98,140.90 568.89,140.96 569.79,141.03 570.69,141.09 571.60,141.16 572.50,141.22 573.40,141.29 574.31,141.35 575.21,141.42 576.11,141.48 577.02,141.55 577.92,141.61 578.83,141.68 579.73,141.74 580.63,141.81 581.54,141.87 582.44,141.94 583.34,142 584.25,142.06 585.15,142.13 586.05,142.19 586.96,142.26 587.86,142.32 588.77,142.39 589.67,142.45 590.57,142.52 591.48,142.58 592.38,142.65 593.28,142.71 594.19,142.78 595.09,141.74 595.99,140.70 596.90,139.67 597.80,138.63 598.71,137.59 599.61,136.56 600.51,135.52 601.42,134.48 602.32,133.44 603.22,132.41 604.13,131.37 605.03,130.33 605.93,129.30 606.84,128.26 607.74,127.22 608.65,126.19 609.55,125.15 610.45,124.11 611.36,123.07 612.26,122.04 613.16,121 614.07,119.96 614.97,118.93 615.88,117.89 616.78,116.85 617.68,115.81 618.59,114.78 619.49,113.74 620.39,112.70 621.30,111.67 622.20,110.63 623.10,109.59 624.01,108.56 624.91,107.52 625.82,106.48 626.72,105.44 627.62,104.41 628.53,103.37 629.43,102.33 630.33,101.30 631.24,100.26 632.14,99.22 633.04,98.19 633.95,97.15 634.85,96.11 635.76,95.07 636.66,94.04 637.56,124.11 638.47,124.11 639.37,124.11 640.27,124.11 641.18,124.11 642.08,124.11 642.98,124.11 643.89,124.11 644.79,124.11 645.70,124.11 646.60,124.11 647.50,124.11 648.41,124.11 649.31,124.11 650.21,124.11 651.12,124.11 652.02,124.11 652.92,124.11 653.83,124.11 654.73,124.11 655.64,124.11 656.54,124.11 657.44,124.11 658.35,124.11 659.25,124.11 660.15,124.11 661.06,124.11 661.96,124.11 662.86,124.11 663.77,124.11 664.67,124.11 665.58,124.11 666.48,124.11 667.38,124.11 668.29,124.11 669.19,124.11 670.09,124.11 671.00,124.11 671.90,124.11 672.80,124.11 673.71,124.11 674.61,124.11 675.52,124.11 676.42,124.11 677.32,124.11 678.23,124.11 679.13,124.11 680.03,124.11 680.94,124.11 681.84,124.11 682.74,124.11 683.65,124.11 684.55,124.11 685.46,124.11 686.36,124.11 687.26,124.11 688.17,124.11 689.07,124.11 689.97,124.11 690.88,124.11 691.78,124.11 692.68,124.11 693.59,124.11 694.49,124.11 695.40,124.11 696.30,124.11 697.20,124.11 698.11,124.11 699.01,124.11 699.91,124.11 700.82,124.11 701.72,124.11 702.63,124.11 703.53,124.11 704.43,124.11 705.34,124.11 706.24,124.11 707.14,124.11 708.05,124.11 708.95,124.11 709.85,124.11 710.76,124.11 711.66,124.11 712.57,124.11 713.47,124.11 714.37,124.11 715.28,124.11 716.18,124.11 717.08,124.11 717.99,124.11 718.89,124.11 719.79,124.11 720.70,124.11 721.60,124.11 722.51,124.11 723.41,124.11 724.31,124.11 725.22,124.11 726.12,124.11 727.02,124.11 727.93,124.11 728.83,124.11 729.73,124.11 730.64,124.11 731.54,124.11 732.45,124.11 733.35,124.11 734.25,124.11 735.16,124.11 736.06,124.11 736.96,124.11 737.87,124.11 738.77,124.11 739.67,124.11 740.58,124.11 741.48,124.11 742.39,124.11 743.29,124.11 744.19,124.11 745.10,124.11 746,124.11" fill="none" stroke="#7fd4ff" stroke-width="1.6"/>
-<text x="55" y="97" fill="#7d879b" font-size="10" font-weight="400" text-anchor="start">0</text>
-<text x="141.75" y="97" fill="#7d879b" font-size="10" font-weight="400" text-anchor="start">1</text>
-<text x="185.13" y="97" fill="#7d879b" font-size="10" font-weight="400" text-anchor="start">2</text>
-<text x="358.63" y="97" fill="#7d879b" font-size="10" font-weight="400" text-anchor="start">1</text>
-<text x="402" y="97" fill="#7d879b" font-size="10" font-weight="400" text-anchor="start">3</text>
-<text x="488.75" y="97" fill="#7d879b" font-size="10" font-weight="400" text-anchor="start">4</text>
-<text x="510.44" y="97" fill="#7d879b" font-size="10" font-weight="400" text-anchor="start">0</text>
-<text x="597.19" y="97" fill="#7d879b" font-size="10" font-weight="400" text-anchor="start">1</text>
-<text x="640.56" y="97" fill="#7d879b" font-size="10" font-weight="400" text-anchor="start">2</text>
+<text x="55" y="97" fill="#808080" font-size="10" font-weight="300" text-anchor="start">0</text>
+<text x="141.75" y="97" fill="#808080" font-size="10" font-weight="300" text-anchor="start">1</text>
+<text x="185.13" y="97" fill="#808080" font-size="10" font-weight="300" text-anchor="start">2</text>
+<text x="358.63" y="97" fill="#808080" font-size="10" font-weight="300" text-anchor="start">1</text>
+<text x="402" y="97" fill="#808080" font-size="10" font-weight="300" text-anchor="start">3</text>
+<text x="488.75" y="97" fill="#808080" font-size="10" font-weight="300" text-anchor="start">4</text>
+<text x="510.44" y="97" fill="#808080" font-size="10" font-weight="300" text-anchor="start">0</text>
+<text x="597.19" y="97" fill="#808080" font-size="10" font-weight="300" text-anchor="start">1</text>
+<text x="640.56" y="97" fill="#808080" font-size="10" font-weight="300" text-anchor="start">2</text>
 <line x1="52" y1="152" x2="52" y2="157" stroke="#ffb347" stroke-width="1.6"/>
 <line x1="138.75" y1="152" x2="138.75" y2="157" stroke="#ffb347" stroke-width="1.6"/>
 <line x1="182.13" y1="152" x2="182.13" y2="157" stroke="#ffb347" stroke-width="1.6"/>
@@ -65,177 +66,177 @@
 <line x1="507.44" y1="152" x2="507.44" y2="157" stroke="#ffb347" stroke-width="1.6"/>
 <line x1="594.19" y1="152" x2="594.19" y2="157" stroke="#ffb347" stroke-width="1.6"/>
 <line x1="637.56" y1="152" x2="637.56" y2="157" stroke="#ffb347" stroke-width="1.6"/>
-<text x="46" y="98" fill="#7d879b" font-size="10" font-weight="400" text-anchor="end">0.9</text>
-<text x="46" y="154" fill="#7d879b" font-size="10" font-weight="400" text-anchor="end">0</text>
-<rect x="52" y="186" width="694" height="74" fill="#191c24"/>
-<line x1="52" y1="186" x2="52" y2="260" stroke="#454d5e" stroke-width="1.2"/>
-<line x1="73.69" y1="186" x2="73.69" y2="260" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="95.38" y1="186" x2="95.38" y2="260" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="117.06" y1="186" x2="117.06" y2="260" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="138.75" y1="186" x2="138.75" y2="260" stroke="#454d5e" stroke-width="1.2"/>
-<line x1="160.44" y1="186" x2="160.44" y2="260" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="182.13" y1="186" x2="182.13" y2="260" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="203.81" y1="186" x2="203.81" y2="260" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="225.50" y1="186" x2="225.50" y2="260" stroke="#454d5e" stroke-width="1.2"/>
-<line x1="247.19" y1="186" x2="247.19" y2="260" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="268.88" y1="186" x2="268.88" y2="260" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="290.56" y1="186" x2="290.56" y2="260" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="312.25" y1="186" x2="312.25" y2="260" stroke="#454d5e" stroke-width="1.2"/>
-<line x1="333.94" y1="186" x2="333.94" y2="260" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="355.63" y1="186" x2="355.63" y2="260" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="377.31" y1="186" x2="377.31" y2="260" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="399" y1="186" x2="399" y2="260" stroke="#454d5e" stroke-width="1.2"/>
-<line x1="420.69" y1="186" x2="420.69" y2="260" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="442.38" y1="186" x2="442.38" y2="260" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="464.06" y1="186" x2="464.06" y2="260" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="485.75" y1="186" x2="485.75" y2="260" stroke="#454d5e" stroke-width="1.2"/>
-<line x1="507.44" y1="186" x2="507.44" y2="260" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="529.13" y1="186" x2="529.13" y2="260" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="550.81" y1="186" x2="550.81" y2="260" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="572.50" y1="186" x2="572.50" y2="260" stroke="#454d5e" stroke-width="1.2"/>
-<line x1="594.19" y1="186" x2="594.19" y2="260" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="615.88" y1="186" x2="615.88" y2="260" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="637.56" y1="186" x2="637.56" y2="260" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="659.25" y1="186" x2="659.25" y2="260" stroke="#454d5e" stroke-width="1.2"/>
-<line x1="680.94" y1="186" x2="680.94" y2="260" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="702.63" y1="186" x2="702.63" y2="260" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="724.31" y1="186" x2="724.31" y2="260" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="746" y1="186" x2="746" y2="260" stroke="#454d5e" stroke-width="1.2"/>
-<text x="52" y="180" fill="#c9d1e0" font-size="13" font-weight="400" text-anchor="start">read slow 3 &quot;&lt;0 2 4 1 3&gt;&quot;</text>
-<line x1="52" y1="188" x2="52" y2="258" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="138.75" y1="188" x2="138.75" y2="258" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="225.50" y1="188" x2="225.50" y2="258" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="312.25" y1="188" x2="312.25" y2="258" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="485.75" y1="188" x2="485.75" y2="258" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="659.25" y1="188" x2="659.25" y2="258" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
+<text x="46" y="98" fill="#808080" font-size="10" font-weight="300" text-anchor="end">0.9</text>
+<text x="46" y="154" fill="#808080" font-size="10" font-weight="300" text-anchor="end">0</text>
+<rect x="52" y="186" width="694" height="74" fill="#050505"/>
+<line x1="52" y1="186" x2="52" y2="260" stroke="#3a3a3a" stroke-width="1.2"/>
+<line x1="73.69" y1="186" x2="73.69" y2="260" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="95.38" y1="186" x2="95.38" y2="260" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="117.06" y1="186" x2="117.06" y2="260" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="138.75" y1="186" x2="138.75" y2="260" stroke="#3a3a3a" stroke-width="1.2"/>
+<line x1="160.44" y1="186" x2="160.44" y2="260" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="182.13" y1="186" x2="182.13" y2="260" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="203.81" y1="186" x2="203.81" y2="260" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="225.50" y1="186" x2="225.50" y2="260" stroke="#3a3a3a" stroke-width="1.2"/>
+<line x1="247.19" y1="186" x2="247.19" y2="260" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="268.88" y1="186" x2="268.88" y2="260" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="290.56" y1="186" x2="290.56" y2="260" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="312.25" y1="186" x2="312.25" y2="260" stroke="#3a3a3a" stroke-width="1.2"/>
+<line x1="333.94" y1="186" x2="333.94" y2="260" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="355.63" y1="186" x2="355.63" y2="260" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="377.31" y1="186" x2="377.31" y2="260" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="399" y1="186" x2="399" y2="260" stroke="#3a3a3a" stroke-width="1.2"/>
+<line x1="420.69" y1="186" x2="420.69" y2="260" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="442.38" y1="186" x2="442.38" y2="260" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="464.06" y1="186" x2="464.06" y2="260" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="485.75" y1="186" x2="485.75" y2="260" stroke="#3a3a3a" stroke-width="1.2"/>
+<line x1="507.44" y1="186" x2="507.44" y2="260" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="529.13" y1="186" x2="529.13" y2="260" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="550.81" y1="186" x2="550.81" y2="260" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="572.50" y1="186" x2="572.50" y2="260" stroke="#3a3a3a" stroke-width="1.2"/>
+<line x1="594.19" y1="186" x2="594.19" y2="260" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="615.88" y1="186" x2="615.88" y2="260" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="637.56" y1="186" x2="637.56" y2="260" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="659.25" y1="186" x2="659.25" y2="260" stroke="#3a3a3a" stroke-width="1.2"/>
+<line x1="680.94" y1="186" x2="680.94" y2="260" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="702.63" y1="186" x2="702.63" y2="260" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="724.31" y1="186" x2="724.31" y2="260" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="746" y1="186" x2="746" y2="260" stroke="#3a3a3a" stroke-width="1.2"/>
+<text x="52" y="180" fill="#cccccc" font-size="13" font-weight="300" text-anchor="start">read slow 3 &quot;&lt;0 2 4 1 3&gt;&quot;</text>
+<line x1="52" y1="188" x2="52" y2="258" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="138.75" y1="188" x2="138.75" y2="258" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="225.50" y1="188" x2="225.50" y2="258" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="312.25" y1="188" x2="312.25" y2="258" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="485.75" y1="188" x2="485.75" y2="258" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="659.25" y1="188" x2="659.25" y2="258" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
 <polyline points="52,251 52.90,250.94 53.81,250.87 54.71,250.81 55.61,250.74 56.52,250.68 57.42,250.61 58.33,250.55 59.23,250.48 60.13,250.42 61.04,250.35 61.94,250.29 62.84,250.22 63.75,250.16 64.65,250.09 65.55,250.03 66.46,249.96 67.36,249.90 68.27,249.83 69.17,249.77 70.07,249.70 70.98,249.64 71.88,249.57 72.78,249.51 73.69,249.44 74.59,249.38 75.49,249.31 76.40,249.25 77.30,249.19 78.21,249.12 79.11,249.06 80.01,248.99 80.92,248.93 81.82,248.86 82.72,248.80 83.63,248.73 84.53,248.67 85.43,248.60 86.34,248.54 87.24,248.47 88.15,248.41 89.05,248.34 89.95,248.28 90.86,248.21 91.76,248.15 92.66,248.08 93.57,248.02 94.47,247.95 95.38,247.89 96.28,247.82 97.18,247.76 98.09,247.69 98.99,247.63 99.89,247.56 100.80,247.50 101.70,247.44 102.60,247.37 103.51,247.31 104.41,247.24 105.32,247.18 106.22,247.11 107.12,247.05 108.03,246.98 108.93,246.92 109.83,246.85 110.74,246.79 111.64,246.72 112.54,246.66 113.45,246.59 114.35,246.53 115.26,246.46 116.16,246.40 117.06,246.33 117.97,246.27 118.87,246.20 119.77,246.14 120.68,246.07 121.58,246.01 122.48,245.94 123.39,245.88 124.29,245.81 125.20,245.75 126.10,245.69 127.00,245.62 127.91,245.56 128.81,245.49 129.71,245.43 130.62,245.36 131.52,245.30 132.42,245.23 133.33,245.17 134.23,245.10 135.14,245.04 136.04,244.97 136.94,244.91 137.85,244.84 138.75,244.78 139.65,244.78 140.56,244.78 141.46,244.78 142.36,244.78 143.27,244.78 144.17,244.78 145.08,244.78 145.98,244.78 146.88,244.78 147.79,244.78 148.69,244.78 149.59,244.78 150.50,244.78 151.40,244.78 152.30,244.78 153.21,244.78 154.11,244.78 155.02,244.78 155.92,244.78 156.82,244.78 157.73,244.78 158.63,244.78 159.53,244.78 160.44,244.78 161.34,244.78 162.24,244.78 163.15,244.78 164.05,244.78 164.96,244.78 165.86,244.78 166.76,244.78 167.67,244.78 168.57,244.78 169.47,244.78 170.38,244.78 171.28,244.78 172.18,244.78 173.09,244.78 173.99,244.78 174.90,244.78 175.80,244.78 176.70,244.78 177.61,244.78 178.51,244.78 179.41,244.78 180.32,244.78 181.22,244.78 182.13,244.78 183.03,244.78 183.93,244.78 184.84,244.78 185.74,244.78 186.64,244.78 187.55,244.78 188.45,244.78 189.35,244.78 190.26,244.78 191.16,244.78 192.07,244.78 192.97,244.78 193.87,244.78 194.78,244.78 195.68,244.78 196.58,244.78 197.49,244.78 198.39,244.78 199.29,244.78 200.20,244.78 201.10,244.78 202.01,244.78 202.91,244.78 203.81,244.78 204.72,244.78 205.62,244.78 206.52,244.78 207.43,244.78 208.33,244.78 209.23,244.78 210.14,244.78 211.04,244.78 211.95,244.78 212.85,244.78 213.75,244.78 214.66,244.78 215.56,244.78 216.46,244.78 217.37,244.78 218.27,244.78 219.17,244.78 220.08,244.78 220.98,244.78 221.89,244.78 222.79,244.78 223.69,244.78 224.60,244.78 225.50,244.78 226.40,244.78 227.31,244.78 228.21,244.78 229.11,244.78 230.02,244.78 230.92,244.78 231.83,244.78 232.73,244.78 233.63,244.78 234.54,244.78 235.44,244.78 236.34,244.78 237.25,244.78 238.15,244.78 239.05,244.78 239.96,244.78 240.86,244.78 241.77,244.78 242.67,244.78 243.57,244.78 244.48,244.78 245.38,244.78 246.28,244.78 247.19,244.78 248.09,244.78 248.99,244.78 249.90,244.78 250.80,244.78 251.71,244.78 252.61,244.78 253.51,244.78 254.42,244.78 255.32,244.78 256.22,244.78 257.13,244.78 258.03,244.78 258.93,244.78 259.84,244.78 260.74,244.78 261.65,244.78 262.55,244.78 263.45,244.78 264.36,244.78 265.26,244.78 266.16,244.78 267.07,244.78 267.97,244.78 268.88,244.78 269.78,244.78 270.68,244.78 271.59,244.78 272.49,244.78 273.39,244.78 274.30,244.78 275.20,244.78 276.10,244.78 277.01,244.78 277.91,244.78 278.82,244.78 279.72,244.78 280.62,244.78 281.53,244.78 282.43,244.78 283.33,244.78 284.24,244.78 285.14,244.78 286.04,244.78 286.95,244.78 287.85,244.78 288.76,244.78 289.66,244.78 290.56,244.78 291.47,244.78 292.37,244.78 293.27,244.78 294.18,244.78 295.08,244.78 295.98,244.78 296.89,244.78 297.79,244.78 298.70,244.78 299.60,244.78 300.50,244.78 301.41,244.78 302.31,244.78 303.21,244.78 304.12,244.78 305.02,244.78 305.92,244.78 306.83,244.78 307.73,244.78 308.64,244.78 309.54,244.78 310.44,244.78 311.35,244.78 312.25,226.11 313.15,226.11 314.06,226.11 314.96,226.11 315.86,226.11 316.77,226.11 317.67,226.11 318.58,226.11 319.48,226.11 320.38,226.11 321.29,226.11 322.19,226.11 323.09,226.11 324.00,226.11 324.90,226.11 325.80,226.11 326.71,226.11 327.61,226.11 328.52,226.11 329.42,226.11 330.32,226.11 331.23,226.11 332.13,226.11 333.03,226.11 333.94,226.11 334.84,226.11 335.74,226.11 336.65,226.11 337.55,226.11 338.46,226.11 339.36,226.11 340.26,226.11 341.17,226.11 342.07,226.11 342.97,226.11 343.88,226.11 344.78,226.11 345.68,226.11 346.59,226.11 347.49,226.11 348.40,226.11 349.30,226.11 350.20,226.11 351.11,226.11 352.01,226.11 352.91,226.11 353.82,226.11 354.72,226.11 355.63,226.11 356.53,226.11 357.43,226.11 358.34,226.11 359.24,226.11 360.14,226.11 361.05,226.11 361.95,226.11 362.85,226.11 363.76,226.11 364.66,226.11 365.57,226.11 366.47,226.11 367.37,226.11 368.28,226.11 369.18,226.11 370.08,226.11 370.99,226.11 371.89,226.11 372.79,226.11 373.70,226.11 374.60,226.11 375.51,226.11 376.41,226.11 377.31,226.11 378.22,226.11 379.12,226.11 380.02,226.11 380.93,226.11 381.83,226.11 382.73,226.11 383.64,226.11 384.54,226.11 385.45,226.11 386.35,226.11 387.25,226.11 388.16,226.11 389.06,226.11 389.96,226.11 390.87,226.11 391.77,226.11 392.67,226.11 393.58,226.11 394.48,226.11 395.39,226.11 396.29,226.11 397.19,226.11 398.10,226.11 399,226.11 399.90,226.11 400.81,226.11 401.71,226.11 402.61,226.11 403.52,226.11 404.42,226.11 405.33,226.11 406.23,226.11 407.13,226.11 408.04,226.11 408.94,226.11 409.84,226.11 410.75,226.11 411.65,226.11 412.55,226.11 413.46,226.11 414.36,226.11 415.27,226.11 416.17,226.11 417.07,226.11 417.98,226.11 418.88,226.11 419.78,226.11 420.69,226.11 421.59,226.11 422.49,226.11 423.40,226.11 424.30,226.11 425.21,226.11 426.11,226.11 427.01,226.11 427.92,226.11 428.82,226.11 429.72,226.11 430.63,226.11 431.53,226.11 432.43,226.11 433.34,226.11 434.24,226.11 435.15,226.11 436.05,226.11 436.95,226.11 437.86,226.11 438.76,226.11 439.66,226.11 440.57,226.11 441.47,226.11 442.38,226.11 443.28,226.11 444.18,226.11 445.09,226.11 445.99,226.11 446.89,226.11 447.80,226.11 448.70,226.11 449.60,226.11 450.51,226.11 451.41,226.11 452.32,226.11 453.22,226.11 454.12,226.11 455.03,226.11 455.93,226.11 456.83,226.11 457.74,226.11 458.64,226.11 459.54,226.11 460.45,226.11 461.35,226.11 462.26,226.11 463.16,226.11 464.06,226.11 464.97,226.11 465.87,226.11 466.77,226.11 467.68,226.11 468.58,226.11 469.48,226.11 470.39,226.11 471.29,226.11 472.20,226.11 473.10,226.11 474.00,226.11 474.91,226.11 475.81,226.11 476.71,226.11 477.62,226.11 478.52,226.11 479.42,226.11 480.33,226.11 481.23,226.11 482.14,226.11 483.04,226.11 483.94,226.11 484.85,226.11 485.75,226.11 486.65,226.11 487.56,226.11 488.46,226.11 489.36,226.11 490.27,226.11 491.17,226.11 492.08,226.11 492.98,226.11 493.88,226.11 494.79,226.11 495.69,226.11 496.59,226.11 497.50,226.11 498.40,226.11 499.30,226.11 500.21,226.11 501.11,226.11 502.02,226.11 502.92,226.11 503.82,226.11 504.73,226.11 505.63,226.11 506.53,226.11 507.44,226.11 508.34,226.11 509.24,226.11 510.15,226.11 511.05,226.11 511.96,226.11 512.86,226.11 513.76,226.11 514.67,226.11 515.57,226.11 516.47,226.11 517.38,226.11 518.28,226.11 519.18,226.11 520.09,226.11 520.99,226.11 521.90,226.11 522.80,226.11 523.70,226.11 524.61,226.11 525.51,226.11 526.41,226.11 527.32,226.11 528.22,226.11 529.13,226.11 530.03,226.11 530.93,226.11 531.84,226.11 532.74,226.11 533.64,226.11 534.55,226.11 535.45,226.11 536.35,226.11 537.26,226.11 538.16,226.11 539.07,226.11 539.97,226.11 540.87,226.11 541.78,226.11 542.68,226.11 543.58,226.11 544.49,226.11 545.39,226.11 546.29,226.11 547.20,226.11 548.10,226.11 549.01,226.11 549.91,226.11 550.81,226.11 551.72,226.11 552.62,226.11 553.52,226.11 554.43,226.11 555.33,226.11 556.23,226.11 557.14,226.11 558.04,226.11 558.95,226.11 559.85,226.11 560.75,226.11 561.66,226.11 562.56,226.11 563.46,226.11 564.37,226.11 565.27,226.11 566.17,226.11 567.08,226.11 567.98,226.11 568.89,226.11 569.79,226.11 570.69,226.11 571.60,226.11 572.50,226.11 573.40,226.11 574.31,226.11 575.21,226.11 576.11,226.11 577.02,226.11 577.92,226.11 578.83,226.11 579.73,226.11 580.63,226.11 581.54,226.11 582.44,226.11 583.34,226.11 584.25,226.11 585.15,226.11 586.05,226.11 586.96,226.11 587.86,226.11 588.77,226.11 589.67,226.11 590.57,226.11 591.48,226.11 592.38,226.11 593.28,226.11 594.19,226.11 595.09,226.11 595.99,226.11 596.90,226.11 597.80,226.11 598.71,226.11 599.61,226.11 600.51,226.11 601.42,226.11 602.32,226.11 603.22,226.11 604.13,226.11 605.03,226.11 605.93,226.11 606.84,226.11 607.74,226.11 608.65,226.11 609.55,226.11 610.45,226.11 611.36,226.11 612.26,226.11 613.16,226.11 614.07,226.11 614.97,226.11 615.88,226.11 616.78,226.11 617.68,226.11 618.59,226.11 619.49,226.11 620.39,226.11 621.30,226.11 622.20,226.11 623.10,226.11 624.01,226.11 624.91,226.11 625.82,226.11 626.72,226.11 627.62,226.11 628.53,226.11 629.43,226.11 630.33,226.11 631.24,226.11 632.14,226.11 633.04,226.11 633.95,226.11 634.85,226.11 635.76,226.11 636.66,226.11 637.56,226.11 638.47,226.11 639.37,226.11 640.27,226.11 641.18,226.11 642.08,226.11 642.98,226.11 643.89,226.11 644.79,226.11 645.70,226.11 646.60,226.11 647.50,226.11 648.41,226.11 649.31,226.11 650.21,226.11 651.12,226.11 652.02,226.11 652.92,226.11 653.83,226.11 654.73,226.11 655.64,226.11 656.54,226.11 657.44,226.11 658.35,226.11 659.25,226.11 660.15,226.11 661.06,226.11 661.96,226.11 662.86,226.11 663.77,226.11 664.67,226.11 665.58,226.11 666.48,226.11 667.38,226.11 668.29,226.11 669.19,226.11 670.09,226.11 671.00,226.11 671.90,226.11 672.80,226.11 673.71,226.11 674.61,226.11 675.52,226.11 676.42,226.11 677.32,226.11 678.23,226.11 679.13,226.11 680.03,226.11 680.94,226.11 681.84,226.11 682.74,226.11 683.65,226.11 684.55,226.11 685.46,226.11 686.36,226.11 687.26,226.11 688.17,226.11 689.07,226.11 689.97,226.11 690.88,226.11 691.78,226.11 692.68,226.11 693.59,226.11 694.49,226.11 695.40,226.11 696.30,226.11 697.20,226.11 698.11,226.11 699.01,226.11 699.91,226.11 700.82,226.11 701.72,226.11 702.63,226.11 703.53,226.11 704.43,226.11 705.34,226.11 706.24,226.11 707.14,226.11 708.05,226.11 708.95,226.11 709.85,226.11 710.76,226.11 711.66,226.11 712.57,226.11 713.47,226.11 714.37,226.11 715.28,226.11 716.18,226.11 717.08,226.11 717.99,226.11 718.89,226.11 719.79,226.11 720.70,226.11 721.60,226.11 722.51,226.11 723.41,226.11 724.31,226.11 725.22,226.11 726.12,226.11 727.02,226.11 727.93,226.11 728.83,226.11 729.73,226.11 730.64,226.11 731.54,226.11 732.45,226.11 733.35,226.11 734.25,226.11 735.16,226.11 736.06,226.11 736.96,226.11 737.87,226.11 738.77,226.11 739.67,226.11 740.58,226.11 741.48,226.11 742.39,226.11 743.29,226.11 744.19,226.11 745.10,226.11 746,226.11" fill="none" stroke="#7fd4ff" stroke-width="1.6"/>
-<text x="55" y="199" fill="#7d879b" font-size="10" font-weight="400" text-anchor="start">0</text>
-<text x="141.75" y="199" fill="#7d879b" font-size="10" font-weight="400" text-anchor="start">0</text>
-<text x="228.50" y="199" fill="#7d879b" font-size="10" font-weight="400" text-anchor="start">0</text>
-<text x="315.25" y="199" fill="#7d879b" font-size="10" font-weight="400" text-anchor="start">2</text>
-<text x="488.75" y="199" fill="#7d879b" font-size="10" font-weight="400" text-anchor="start">2</text>
-<text x="662.25" y="199" fill="#7d879b" font-size="10" font-weight="400" text-anchor="start">2</text>
+<text x="55" y="199" fill="#808080" font-size="10" font-weight="300" text-anchor="start">0</text>
+<text x="141.75" y="199" fill="#808080" font-size="10" font-weight="300" text-anchor="start">0</text>
+<text x="228.50" y="199" fill="#808080" font-size="10" font-weight="300" text-anchor="start">0</text>
+<text x="315.25" y="199" fill="#808080" font-size="10" font-weight="300" text-anchor="start">2</text>
+<text x="488.75" y="199" fill="#808080" font-size="10" font-weight="300" text-anchor="start">2</text>
+<text x="662.25" y="199" fill="#808080" font-size="10" font-weight="300" text-anchor="start">2</text>
 <line x1="52" y1="254" x2="52" y2="259" stroke="#ffb347" stroke-width="1.6"/>
 <line x1="138.75" y1="254" x2="138.75" y2="259" stroke="#ffb347" stroke-width="1.6"/>
 <line x1="225.50" y1="254" x2="225.50" y2="259" stroke="#ffb347" stroke-width="1.6"/>
 <line x1="312.25" y1="254" x2="312.25" y2="259" stroke="#ffb347" stroke-width="1.6"/>
 <line x1="485.75" y1="254" x2="485.75" y2="259" stroke="#ffb347" stroke-width="1.6"/>
 <line x1="659.25" y1="254" x2="659.25" y2="259" stroke="#ffb347" stroke-width="1.6"/>
-<text x="46" y="200" fill="#7d879b" font-size="10" font-weight="400" text-anchor="end">0.9</text>
-<text x="46" y="256" fill="#7d879b" font-size="10" font-weight="400" text-anchor="end">0</text>
-<rect x="52" y="288" width="694" height="74" fill="#191c24"/>
-<line x1="52" y1="288" x2="52" y2="362" stroke="#454d5e" stroke-width="1.2"/>
-<line x1="73.69" y1="288" x2="73.69" y2="362" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="95.38" y1="288" x2="95.38" y2="362" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="117.06" y1="288" x2="117.06" y2="362" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="138.75" y1="288" x2="138.75" y2="362" stroke="#454d5e" stroke-width="1.2"/>
-<line x1="160.44" y1="288" x2="160.44" y2="362" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="182.13" y1="288" x2="182.13" y2="362" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="203.81" y1="288" x2="203.81" y2="362" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="225.50" y1="288" x2="225.50" y2="362" stroke="#454d5e" stroke-width="1.2"/>
-<line x1="247.19" y1="288" x2="247.19" y2="362" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="268.88" y1="288" x2="268.88" y2="362" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="290.56" y1="288" x2="290.56" y2="362" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="312.25" y1="288" x2="312.25" y2="362" stroke="#454d5e" stroke-width="1.2"/>
-<line x1="333.94" y1="288" x2="333.94" y2="362" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="355.63" y1="288" x2="355.63" y2="362" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="377.31" y1="288" x2="377.31" y2="362" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="399" y1="288" x2="399" y2="362" stroke="#454d5e" stroke-width="1.2"/>
-<line x1="420.69" y1="288" x2="420.69" y2="362" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="442.38" y1="288" x2="442.38" y2="362" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="464.06" y1="288" x2="464.06" y2="362" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="485.75" y1="288" x2="485.75" y2="362" stroke="#454d5e" stroke-width="1.2"/>
-<line x1="507.44" y1="288" x2="507.44" y2="362" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="529.13" y1="288" x2="529.13" y2="362" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="550.81" y1="288" x2="550.81" y2="362" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="572.50" y1="288" x2="572.50" y2="362" stroke="#454d5e" stroke-width="1.2"/>
-<line x1="594.19" y1="288" x2="594.19" y2="362" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="615.88" y1="288" x2="615.88" y2="362" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="637.56" y1="288" x2="637.56" y2="362" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="659.25" y1="288" x2="659.25" y2="362" stroke="#454d5e" stroke-width="1.2"/>
-<line x1="680.94" y1="288" x2="680.94" y2="362" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="702.63" y1="288" x2="702.63" y2="362" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="724.31" y1="288" x2="724.31" y2="362" stroke="#2a2f3a" stroke-width="0.5"/>
-<line x1="746" y1="288" x2="746" y2="362" stroke="#454d5e" stroke-width="1.2"/>
-<text x="52" y="282" fill="#c9d1e0" font-size="13" font-weight="400" text-anchor="start">read &quot;&lt;0 4&gt;&quot;, speed 4</text>
-<line x1="52" y1="290" x2="52" y2="360" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="73.69" y1="290" x2="73.69" y2="360" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="79.11" y1="290" x2="79.11" y2="360" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="100.80" y1="290" x2="100.80" y2="360" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="106.22" y1="290" x2="106.22" y2="360" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="127.91" y1="290" x2="127.91" y2="360" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="133.33" y1="290" x2="133.33" y2="360" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="155.02" y1="290" x2="155.02" y2="360" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="160.44" y1="290" x2="160.44" y2="360" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="182.13" y1="290" x2="182.13" y2="360" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="187.55" y1="290" x2="187.55" y2="360" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="209.23" y1="290" x2="209.23" y2="360" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="214.66" y1="290" x2="214.66" y2="360" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="236.34" y1="290" x2="236.34" y2="360" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="241.77" y1="290" x2="241.77" y2="360" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="263.45" y1="290" x2="263.45" y2="360" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="268.88" y1="290" x2="268.88" y2="360" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="290.56" y1="290" x2="290.56" y2="360" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="295.98" y1="290" x2="295.98" y2="360" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="317.67" y1="290" x2="317.67" y2="360" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="323.09" y1="290" x2="323.09" y2="360" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="344.78" y1="290" x2="344.78" y2="360" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="350.20" y1="290" x2="350.20" y2="360" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="371.89" y1="290" x2="371.89" y2="360" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="377.31" y1="290" x2="377.31" y2="360" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="399" y1="290" x2="399" y2="360" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="404.42" y1="290" x2="404.42" y2="360" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="426.11" y1="290" x2="426.11" y2="360" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="431.53" y1="290" x2="431.53" y2="360" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="453.22" y1="290" x2="453.22" y2="360" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="458.64" y1="290" x2="458.64" y2="360" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="480.33" y1="290" x2="480.33" y2="360" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="485.75" y1="290" x2="485.75" y2="360" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="507.44" y1="290" x2="507.44" y2="360" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="512.86" y1="290" x2="512.86" y2="360" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="534.55" y1="290" x2="534.55" y2="360" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="539.97" y1="290" x2="539.97" y2="360" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="561.66" y1="290" x2="561.66" y2="360" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="567.08" y1="290" x2="567.08" y2="360" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="588.77" y1="290" x2="588.77" y2="360" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="594.19" y1="290" x2="594.19" y2="360" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="615.88" y1="290" x2="615.88" y2="360" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="621.30" y1="290" x2="621.30" y2="360" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="642.98" y1="290" x2="642.98" y2="360" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="648.41" y1="290" x2="648.41" y2="360" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="670.09" y1="290" x2="670.09" y2="360" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="675.52" y1="290" x2="675.52" y2="360" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="697.20" y1="290" x2="697.20" y2="360" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="702.63" y1="290" x2="702.63" y2="360" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="724.31" y1="290" x2="724.31" y2="360" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
-<line x1="729.73" y1="290" x2="729.73" y2="360" stroke="#5c6478" stroke-width="1" stroke-dasharray="2 2"/>
+<text x="46" y="200" fill="#808080" font-size="10" font-weight="300" text-anchor="end">0.9</text>
+<text x="46" y="256" fill="#808080" font-size="10" font-weight="300" text-anchor="end">0</text>
+<rect x="52" y="288" width="694" height="74" fill="#050505"/>
+<line x1="52" y1="288" x2="52" y2="362" stroke="#3a3a3a" stroke-width="1.2"/>
+<line x1="73.69" y1="288" x2="73.69" y2="362" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="95.38" y1="288" x2="95.38" y2="362" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="117.06" y1="288" x2="117.06" y2="362" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="138.75" y1="288" x2="138.75" y2="362" stroke="#3a3a3a" stroke-width="1.2"/>
+<line x1="160.44" y1="288" x2="160.44" y2="362" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="182.13" y1="288" x2="182.13" y2="362" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="203.81" y1="288" x2="203.81" y2="362" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="225.50" y1="288" x2="225.50" y2="362" stroke="#3a3a3a" stroke-width="1.2"/>
+<line x1="247.19" y1="288" x2="247.19" y2="362" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="268.88" y1="288" x2="268.88" y2="362" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="290.56" y1="288" x2="290.56" y2="362" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="312.25" y1="288" x2="312.25" y2="362" stroke="#3a3a3a" stroke-width="1.2"/>
+<line x1="333.94" y1="288" x2="333.94" y2="362" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="355.63" y1="288" x2="355.63" y2="362" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="377.31" y1="288" x2="377.31" y2="362" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="399" y1="288" x2="399" y2="362" stroke="#3a3a3a" stroke-width="1.2"/>
+<line x1="420.69" y1="288" x2="420.69" y2="362" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="442.38" y1="288" x2="442.38" y2="362" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="464.06" y1="288" x2="464.06" y2="362" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="485.75" y1="288" x2="485.75" y2="362" stroke="#3a3a3a" stroke-width="1.2"/>
+<line x1="507.44" y1="288" x2="507.44" y2="362" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="529.13" y1="288" x2="529.13" y2="362" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="550.81" y1="288" x2="550.81" y2="362" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="572.50" y1="288" x2="572.50" y2="362" stroke="#3a3a3a" stroke-width="1.2"/>
+<line x1="594.19" y1="288" x2="594.19" y2="362" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="615.88" y1="288" x2="615.88" y2="362" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="637.56" y1="288" x2="637.56" y2="362" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="659.25" y1="288" x2="659.25" y2="362" stroke="#3a3a3a" stroke-width="1.2"/>
+<line x1="680.94" y1="288" x2="680.94" y2="362" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="702.63" y1="288" x2="702.63" y2="362" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="724.31" y1="288" x2="724.31" y2="362" stroke="#1f1f1f" stroke-width="0.5"/>
+<line x1="746" y1="288" x2="746" y2="362" stroke="#3a3a3a" stroke-width="1.2"/>
+<text x="52" y="282" fill="#cccccc" font-size="13" font-weight="300" text-anchor="start">read &quot;&lt;0 4&gt;&quot;, speed 4</text>
+<line x1="52" y1="290" x2="52" y2="360" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="73.69" y1="290" x2="73.69" y2="360" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="79.11" y1="290" x2="79.11" y2="360" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="100.80" y1="290" x2="100.80" y2="360" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="106.22" y1="290" x2="106.22" y2="360" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="127.91" y1="290" x2="127.91" y2="360" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="133.33" y1="290" x2="133.33" y2="360" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="155.02" y1="290" x2="155.02" y2="360" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="160.44" y1="290" x2="160.44" y2="360" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="182.13" y1="290" x2="182.13" y2="360" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="187.55" y1="290" x2="187.55" y2="360" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="209.23" y1="290" x2="209.23" y2="360" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="214.66" y1="290" x2="214.66" y2="360" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="236.34" y1="290" x2="236.34" y2="360" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="241.77" y1="290" x2="241.77" y2="360" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="263.45" y1="290" x2="263.45" y2="360" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="268.88" y1="290" x2="268.88" y2="360" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="290.56" y1="290" x2="290.56" y2="360" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="295.98" y1="290" x2="295.98" y2="360" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="317.67" y1="290" x2="317.67" y2="360" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="323.09" y1="290" x2="323.09" y2="360" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="344.78" y1="290" x2="344.78" y2="360" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="350.20" y1="290" x2="350.20" y2="360" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="371.89" y1="290" x2="371.89" y2="360" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="377.31" y1="290" x2="377.31" y2="360" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="399" y1="290" x2="399" y2="360" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="404.42" y1="290" x2="404.42" y2="360" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="426.11" y1="290" x2="426.11" y2="360" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="431.53" y1="290" x2="431.53" y2="360" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="453.22" y1="290" x2="453.22" y2="360" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="458.64" y1="290" x2="458.64" y2="360" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="480.33" y1="290" x2="480.33" y2="360" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="485.75" y1="290" x2="485.75" y2="360" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="507.44" y1="290" x2="507.44" y2="360" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="512.86" y1="290" x2="512.86" y2="360" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="534.55" y1="290" x2="534.55" y2="360" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="539.97" y1="290" x2="539.97" y2="360" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="561.66" y1="290" x2="561.66" y2="360" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="567.08" y1="290" x2="567.08" y2="360" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="588.77" y1="290" x2="588.77" y2="360" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="594.19" y1="290" x2="594.19" y2="360" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="615.88" y1="290" x2="615.88" y2="360" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="621.30" y1="290" x2="621.30" y2="360" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="642.98" y1="290" x2="642.98" y2="360" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="648.41" y1="290" x2="648.41" y2="360" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="670.09" y1="290" x2="670.09" y2="360" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="675.52" y1="290" x2="675.52" y2="360" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="697.20" y1="290" x2="697.20" y2="360" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="702.63" y1="290" x2="702.63" y2="360" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="724.31" y1="290" x2="724.31" y2="360" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
+<line x1="729.73" y1="290" x2="729.73" y2="360" stroke="#5a5a5a" stroke-width="1" stroke-dasharray="2 2"/>
 <polyline points="52,353 52.90,352.74 53.81,352.48 54.71,352.22 55.61,351.96 56.52,351.70 57.42,351.44 58.33,351.19 59.23,350.93 60.13,350.67 61.04,350.41 61.94,350.15 62.84,349.89 63.75,349.63 64.65,349.37 65.55,349.11 66.46,348.85 67.36,348.59 68.27,348.33 69.17,348.07 70.07,347.81 70.98,347.56 71.88,347.30 72.78,347.04 73.69,346.78 74.59,346.77 75.49,346.70 76.40,346.39 77.30,345.55 78.21,343.78 79.11,340.56 80.01,340.81 80.92,341.07 81.82,341.33 82.72,341.59 83.63,341.85 84.53,342.11 85.43,342.37 86.34,342.63 87.24,342.89 88.15,343.15 89.05,343.41 89.95,343.67 90.86,343.93 91.76,344.19 92.66,344.44 93.57,344.70 94.47,344.96 95.38,345.22 96.28,345.48 97.18,345.74 98.09,346 98.99,346.26 99.89,346.52 100.80,346.78 101.70,346.77 102.60,346.70 103.51,346.39 104.41,345.55 105.32,343.78 106.22,340.56 107.12,340.81 108.03,341.07 108.93,341.33 109.83,341.59 110.74,341.85 111.64,342.11 112.54,342.37 113.45,342.63 114.35,342.89 115.26,343.15 116.16,343.41 117.06,343.67 117.97,343.93 118.87,344.19 119.77,344.44 120.68,344.70 121.58,344.96 122.48,345.22 123.39,345.48 124.29,345.74 125.20,346 126.10,346.26 127.00,346.52 127.91,346.78 128.81,346.77 129.71,346.70 130.62,346.39 131.52,345.55 132.42,343.78 133.33,340.56 134.23,340.81 135.14,341.07 136.04,341.33 136.94,341.59 137.85,341.85 138.75,342.11 139.65,342.37 140.56,342.63 141.46,342.89 142.36,343.15 143.27,343.41 144.17,343.67 145.08,343.93 145.98,344.19 146.88,344.44 147.79,344.70 148.69,344.96 149.59,345.22 150.50,345.48 151.40,345.74 152.30,346 153.21,346.26 154.11,346.52 155.02,346.78 155.92,346.77 156.82,346.70 157.73,346.39 158.63,345.55 159.53,343.78 160.44,340.56 161.34,340.81 162.24,341.07 163.15,341.33 164.05,341.59 164.96,341.85 165.86,342.11 166.76,342.37 167.67,342.63 168.57,342.89 169.47,343.15 170.38,343.41 171.28,343.67 172.18,343.93 173.09,344.19 173.99,344.44 174.90,344.70 175.80,344.96 176.70,345.22 177.61,345.48 178.51,345.74 179.41,346 180.32,346.26 181.22,346.52 182.13,346.78 183.03,346.77 183.93,346.70 184.84,346.39 185.74,345.55 186.64,343.78 187.55,340.56 188.45,340.81 189.35,341.07 190.26,341.33 191.16,341.59 192.07,341.85 192.97,342.11 193.87,342.37 194.78,342.63 195.68,342.89 196.58,343.15 197.49,343.41 198.39,343.67 199.29,343.93 200.20,344.19 201.10,344.44 202.01,344.70 202.91,344.96 203.81,345.22 204.72,345.48 205.62,345.74 206.52,346 207.43,346.26 208.33,346.52 209.23,346.78 210.14,346.77 211.04,346.70 211.95,346.39 212.85,345.55 213.75,343.78 214.66,340.56 215.56,340.81 216.46,341.07 217.37,341.33 218.27,341.59 219.17,341.85 220.08,342.11 220.98,342.37 221.89,342.63 222.79,342.89 223.69,343.15 224.60,343.41 225.50,343.67 226.40,343.93 227.31,344.19 228.21,344.44 229.11,344.70 230.02,344.96 230.92,345.22 231.83,345.48 232.73,345.74 233.63,346 234.54,346.26 235.44,346.52 236.34,346.78 237.25,346.77 238.15,346.70 239.05,346.39 239.96,345.55 240.86,343.78 241.77,340.56 242.67,340.81 243.57,341.07 244.48,341.33 245.38,341.59 246.28,341.85 247.19,342.11 248.09,342.37 248.99,342.63 249.90,342.89 250.80,343.15 251.71,343.41 252.61,343.67 253.51,343.93 254.42,344.19 255.32,344.44 256.22,344.70 257.13,344.96 258.03,345.22 258.93,345.48 259.84,345.74 260.74,346 261.65,346.26 262.55,346.52 263.45,346.78 264.36,346.77 265.26,346.70 266.16,346.39 267.07,345.55 267.97,343.78 268.88,340.56 269.78,340.81 270.68,341.07 271.59,341.33 272.49,341.59 273.39,341.85 274.30,342.11 275.20,342.37 276.10,342.63 277.01,342.89 277.91,343.15 278.82,343.41 279.72,343.67 280.62,343.93 281.53,344.19 282.43,344.44 283.33,344.70 284.24,344.96 285.14,345.22 286.04,345.48 286.95,345.74 287.85,346 288.76,346.26 289.66,346.52 290.56,346.78 291.47,346.77 292.37,346.70 293.27,346.39 294.18,345.55 295.08,343.78 295.98,340.56 296.89,340.81 297.79,341.07 298.70,341.33 299.60,341.59 300.50,341.85 301.41,342.11 302.31,342.37 303.21,342.63 304.12,342.89 305.02,343.15 305.92,343.41 306.83,343.67 307.73,343.93 308.64,344.19 309.54,344.44 310.44,344.70 311.35,344.96 312.25,345.22 313.15,345.48 314.06,345.74 314.96,346 315.86,346.26 316.77,346.52 317.67,346.78 318.58,346.77 319.48,346.70 320.38,346.39 321.29,345.55 322.19,343.78 323.09,340.56 324.00,340.81 324.90,341.07 325.80,341.33 326.71,341.59 327.61,341.85 328.52,342.11 329.42,342.37 330.32,342.63 331.23,342.89 332.13,343.15 333.03,343.41 333.94,343.67 334.84,343.93 335.74,344.19 336.65,344.44 337.55,344.70 338.46,344.96 339.36,345.22 340.26,345.48 341.17,345.74 342.07,346 342.97,346.26 343.88,346.52 344.78,346.78 345.68,346.77 346.59,346.70 347.49,346.39 348.40,345.55 349.30,343.78 350.20,340.56 351.11,340.81 352.01,341.07 352.91,341.33 353.82,341.59 354.72,341.85 355.63,342.11 356.53,342.37 357.43,342.63 358.34,342.89 359.24,343.15 360.14,343.41 361.05,343.67 361.95,343.93 362.85,344.19 363.76,344.44 364.66,344.70 365.57,344.96 366.47,345.22 367.37,345.48 368.28,345.74 369.18,346 370.08,346.26 370.99,346.52 371.89,346.78 372.79,346.77 373.70,346.70 374.60,346.39 375.51,345.55 376.41,343.78 377.31,340.56 378.22,340.81 379.12,341.07 380.02,341.33 380.93,341.59 381.83,341.85 382.73,342.11 383.64,342.37 384.54,342.63 385.45,342.89 386.35,343.15 387.25,343.41 388.16,343.67 389.06,343.93 389.96,344.19 390.87,344.44 391.77,344.70 392.67,344.96 393.58,345.22 394.48,345.48 395.39,345.74 396.29,346 397.19,346.26 398.10,346.52 399,346.78 399.90,346.77 400.81,346.70 401.71,346.39 402.61,345.55 403.52,343.78 404.42,340.56 405.33,340.81 406.23,341.07 407.13,341.33 408.04,341.59 408.94,341.85 409.84,342.11 410.75,342.37 411.65,342.63 412.55,342.89 413.46,343.15 414.36,343.41 415.27,343.67 416.17,343.93 417.07,344.19 417.98,344.44 418.88,344.70 419.78,344.96 420.69,345.22 421.59,345.48 422.49,345.74 423.40,346 424.30,346.26 425.21,346.52 426.11,346.78 427.01,346.77 427.92,346.70 428.82,346.39 429.72,345.55 430.63,343.78 431.53,340.56 432.43,340.81 433.34,341.07 434.24,341.33 435.15,341.59 436.05,341.85 436.95,342.11 437.86,342.37 438.76,342.63 439.66,342.89 440.57,343.15 441.47,343.41 442.38,343.67 443.28,343.93 444.18,344.19 445.09,344.44 445.99,344.70 446.89,344.96 447.80,345.22 448.70,345.48 449.60,345.74 450.51,346 451.41,346.26 452.32,346.52 453.22,346.78 454.12,346.77 455.03,346.70 455.93,346.39 456.83,345.55 457.74,343.78 458.64,340.56 459.54,340.81 460.45,341.07 461.35,341.33 462.26,341.59 463.16,341.85 464.06,342.11 464.97,342.37 465.87,342.63 466.77,342.89 467.68,343.15 468.58,343.41 469.48,343.67 470.39,343.93 471.29,344.19 472.20,344.44 473.10,344.70 474.00,344.96 474.91,345.22 475.81,345.48 476.71,345.74 477.62,346 478.52,346.26 479.42,346.52 480.33,346.78 481.23,346.77 482.14,346.70 483.04,346.39 483.94,345.55 484.85,343.78 485.75,340.56 486.65,340.81 487.56,341.07 488.46,341.33 489.36,341.59 490.27,341.85 491.17,342.11 492.08,342.37 492.98,342.63 493.88,342.89 494.79,343.15 495.69,343.41 496.59,343.67 497.50,343.93 498.40,344.19 499.30,344.44 500.21,344.70 501.11,344.96 502.02,345.22 502.92,345.48 503.82,345.74 504.73,346 505.63,346.26 506.53,346.52 507.44,346.78 508.34,346.77 509.24,346.70 510.15,346.39 511.05,345.55 511.96,343.78 512.86,340.56 513.76,340.81 514.67,341.07 515.57,341.33 516.47,341.59 517.38,341.85 518.28,342.11 519.18,342.37 520.09,342.63 520.99,342.89 521.90,343.15 522.80,343.41 523.70,343.67 524.61,343.93 525.51,344.19 526.41,344.44 527.32,344.70 528.22,344.96 529.13,345.22 530.03,345.48 530.93,345.74 531.84,346 532.74,346.26 533.64,346.52 534.55,346.78 535.45,346.77 536.35,346.70 537.26,346.39 538.16,345.55 539.07,343.78 539.97,340.56 540.87,340.81 541.78,341.07 542.68,341.33 543.58,341.59 544.49,341.85 545.39,342.11 546.29,342.37 547.20,342.63 548.10,342.89 549.01,343.15 549.91,343.41 550.81,343.67 551.72,343.93 552.62,344.19 553.52,344.44 554.43,344.70 555.33,344.96 556.23,345.22 557.14,345.48 558.04,345.74 558.95,346 559.85,346.26 560.75,346.52 561.66,346.78 562.56,346.77 563.46,346.70 564.37,346.39 565.27,345.55 566.17,343.78 567.08,340.56 567.98,340.81 568.89,341.07 569.79,341.33 570.69,341.59 571.60,341.85 572.50,342.11 573.40,342.37 574.31,342.63 575.21,342.89 576.11,343.15 577.02,343.41 577.92,343.67 578.83,343.93 579.73,344.19 580.63,344.44 581.54,344.70 582.44,344.96 583.34,345.22 584.25,345.48 585.15,345.74 586.05,346 586.96,346.26 587.86,346.52 588.77,346.78 589.67,346.77 590.57,346.70 591.48,346.39 592.38,345.55 593.28,343.78 594.19,340.56 595.09,340.81 595.99,341.07 596.90,341.33 597.80,341.59 598.71,341.85 599.61,342.11 600.51,342.37 601.42,342.63 602.32,342.89 603.22,343.15 604.13,343.41 605.03,343.67 605.93,343.93 606.84,344.19 607.74,344.44 608.65,344.70 609.55,344.96 610.45,345.22 611.36,345.48 612.26,345.74 613.16,346 614.07,346.26 614.97,346.52 615.88,346.78 616.78,346.77 617.68,346.70 618.59,346.39 619.49,345.55 620.39,343.78 621.30,340.56 622.20,340.81 623.10,341.07 624.01,341.33 624.91,341.59 625.82,341.85 626.72,342.11 627.62,342.37 628.53,342.63 629.43,342.89 630.33,343.15 631.24,343.41 632.14,343.67 633.04,343.93 633.95,344.19 634.85,344.44 635.76,344.70 636.66,344.96 637.56,345.22 638.47,345.48 639.37,345.74 640.27,346 641.18,346.26 642.08,346.52 642.98,346.78 643.89,346.77 644.79,346.70 645.70,346.39 646.60,345.55 647.50,343.78 648.41,340.56 649.31,340.81 650.21,341.07 651.12,341.33 652.02,341.59 652.92,341.85 653.83,342.11 654.73,342.37 655.64,342.63 656.54,342.89 657.44,343.15 658.35,343.41 659.25,343.67 660.15,343.93 661.06,344.19 661.96,344.44 662.86,344.70 663.77,344.96 664.67,345.22 665.58,345.48 666.48,345.74 667.38,346 668.29,346.26 669.19,346.52 670.09,346.78 671.00,346.77 671.90,346.70 672.80,346.39 673.71,345.55 674.61,343.78 675.52,340.56 676.42,340.81 677.32,341.07 678.23,341.33 679.13,341.59 680.03,341.85 680.94,342.11 681.84,342.37 682.74,342.63 683.65,342.89 684.55,343.15 685.46,343.41 686.36,343.67 687.26,343.93 688.17,344.19 689.07,344.44 689.97,344.70 690.88,344.96 691.78,345.22 692.68,345.48 693.59,345.74 694.49,346 695.40,346.26 696.30,346.52 697.20,346.78 698.11,346.77 699.01,346.70 699.91,346.39 700.82,345.55 701.72,343.78 702.63,340.56 703.53,340.81 704.43,341.07 705.34,341.33 706.24,341.59 707.14,341.85 708.05,342.11 708.95,342.37 709.85,342.63 710.76,342.89 711.66,343.15 712.57,343.41 713.47,343.67 714.37,343.93 715.28,344.19 716.18,344.44 717.08,344.70 717.99,344.96 718.89,345.22 719.79,345.48 720.70,345.74 721.60,346 722.51,346.26 723.41,346.52 724.31,346.78 725.22,346.77 726.12,346.70 727.02,346.39 727.93,345.55 728.83,343.78 729.73,340.56 730.64,340.81 731.54,341.07 732.45,341.33 733.35,341.59 734.25,341.85 735.16,342.11 736.06,342.37 736.96,342.63 737.87,342.89 738.77,343.15 739.67,343.41 740.58,343.67 741.48,343.93 742.39,344.19 743.29,344.44 744.19,344.70 745.10,344.96 746,345.22" fill="none" stroke="#7fd4ff" stroke-width="1.6"/>
-<text x="55" y="301" fill="#7d879b" font-size="10" font-weight="400" text-anchor="start">0</text>
-<text x="82.11" y="301" fill="#7d879b" font-size="10" font-weight="400" text-anchor="start">0</text>
-<text x="109.22" y="301" fill="#7d879b" font-size="10" font-weight="400" text-anchor="start">0</text>
-<text x="136.33" y="301" fill="#7d879b" font-size="10" font-weight="400" text-anchor="start">0</text>
-<text x="163.44" y="301" fill="#7d879b" font-size="10" font-weight="400" text-anchor="start">0</text>
-<text x="190.55" y="301" fill="#7d879b" font-size="10" font-weight="400" text-anchor="start">0</text>
-<text x="217.66" y="301" fill="#7d879b" font-size="10" font-weight="400" text-anchor="start">0</text>
-<text x="244.77" y="301" fill="#7d879b" font-size="10" font-weight="400" text-anchor="start">0</text>
-<text x="271.88" y="301" fill="#7d879b" font-size="10" font-weight="400" text-anchor="start">0</text>
-<text x="298.98" y="301" fill="#7d879b" font-size="10" font-weight="400" text-anchor="start">0</text>
-<text x="326.09" y="301" fill="#7d879b" font-size="10" font-weight="400" text-anchor="start">0</text>
-<text x="353.20" y="301" fill="#7d879b" font-size="10" font-weight="400" text-anchor="start">0</text>
-<text x="380.31" y="301" fill="#7d879b" font-size="10" font-weight="400" text-anchor="start">0</text>
-<text x="407.42" y="301" fill="#7d879b" font-size="10" font-weight="400" text-anchor="start">0</text>
-<text x="434.53" y="301" fill="#7d879b" font-size="10" font-weight="400" text-anchor="start">0</text>
-<text x="461.64" y="301" fill="#7d879b" font-size="10" font-weight="400" text-anchor="start">0</text>
-<text x="488.75" y="301" fill="#7d879b" font-size="10" font-weight="400" text-anchor="start">0</text>
-<text x="515.86" y="301" fill="#7d879b" font-size="10" font-weight="400" text-anchor="start">0</text>
-<text x="542.97" y="301" fill="#7d879b" font-size="10" font-weight="400" text-anchor="start">0</text>
-<text x="570.08" y="301" fill="#7d879b" font-size="10" font-weight="400" text-anchor="start">0</text>
-<text x="597.19" y="301" fill="#7d879b" font-size="10" font-weight="400" text-anchor="start">0</text>
-<text x="624.30" y="301" fill="#7d879b" font-size="10" font-weight="400" text-anchor="start">0</text>
-<text x="651.41" y="301" fill="#7d879b" font-size="10" font-weight="400" text-anchor="start">0</text>
-<text x="678.52" y="301" fill="#7d879b" font-size="10" font-weight="400" text-anchor="start">0</text>
-<text x="705.63" y="301" fill="#7d879b" font-size="10" font-weight="400" text-anchor="start">0</text>
-<text x="732.73" y="301" fill="#7d879b" font-size="10" font-weight="400" text-anchor="start">0</text>
+<text x="55" y="301" fill="#808080" font-size="10" font-weight="300" text-anchor="start">0</text>
+<text x="82.11" y="301" fill="#808080" font-size="10" font-weight="300" text-anchor="start">0</text>
+<text x="109.22" y="301" fill="#808080" font-size="10" font-weight="300" text-anchor="start">0</text>
+<text x="136.33" y="301" fill="#808080" font-size="10" font-weight="300" text-anchor="start">0</text>
+<text x="163.44" y="301" fill="#808080" font-size="10" font-weight="300" text-anchor="start">0</text>
+<text x="190.55" y="301" fill="#808080" font-size="10" font-weight="300" text-anchor="start">0</text>
+<text x="217.66" y="301" fill="#808080" font-size="10" font-weight="300" text-anchor="start">0</text>
+<text x="244.77" y="301" fill="#808080" font-size="10" font-weight="300" text-anchor="start">0</text>
+<text x="271.88" y="301" fill="#808080" font-size="10" font-weight="300" text-anchor="start">0</text>
+<text x="298.98" y="301" fill="#808080" font-size="10" font-weight="300" text-anchor="start">0</text>
+<text x="326.09" y="301" fill="#808080" font-size="10" font-weight="300" text-anchor="start">0</text>
+<text x="353.20" y="301" fill="#808080" font-size="10" font-weight="300" text-anchor="start">0</text>
+<text x="380.31" y="301" fill="#808080" font-size="10" font-weight="300" text-anchor="start">0</text>
+<text x="407.42" y="301" fill="#808080" font-size="10" font-weight="300" text-anchor="start">0</text>
+<text x="434.53" y="301" fill="#808080" font-size="10" font-weight="300" text-anchor="start">0</text>
+<text x="461.64" y="301" fill="#808080" font-size="10" font-weight="300" text-anchor="start">0</text>
+<text x="488.75" y="301" fill="#808080" font-size="10" font-weight="300" text-anchor="start">0</text>
+<text x="515.86" y="301" fill="#808080" font-size="10" font-weight="300" text-anchor="start">0</text>
+<text x="542.97" y="301" fill="#808080" font-size="10" font-weight="300" text-anchor="start">0</text>
+<text x="570.08" y="301" fill="#808080" font-size="10" font-weight="300" text-anchor="start">0</text>
+<text x="597.19" y="301" fill="#808080" font-size="10" font-weight="300" text-anchor="start">0</text>
+<text x="624.30" y="301" fill="#808080" font-size="10" font-weight="300" text-anchor="start">0</text>
+<text x="651.41" y="301" fill="#808080" font-size="10" font-weight="300" text-anchor="start">0</text>
+<text x="678.52" y="301" fill="#808080" font-size="10" font-weight="300" text-anchor="start">0</text>
+<text x="705.63" y="301" fill="#808080" font-size="10" font-weight="300" text-anchor="start">0</text>
+<text x="732.73" y="301" fill="#808080" font-size="10" font-weight="300" text-anchor="start">0</text>
 <line x1="52" y1="356" x2="52" y2="361" stroke="#ffb347" stroke-width="1.6"/>
 <line x1="73.69" y1="356" x2="73.69" y2="361" stroke="#ffb347" stroke-width="1.6"/>
 <line x1="79.11" y1="356" x2="79.11" y2="361" stroke="#ffb347" stroke-width="1.6"/>
@@ -287,15 +288,15 @@
 <line x1="702.63" y1="356" x2="702.63" y2="361" stroke="#ffb347" stroke-width="1.6"/>
 <line x1="724.31" y1="356" x2="724.31" y2="361" stroke="#ffb347" stroke-width="1.6"/>
 <line x1="729.73" y1="356" x2="729.73" y2="361" stroke="#ffb347" stroke-width="1.6"/>
-<text x="46" y="302" fill="#7d879b" font-size="10" font-weight="400" text-anchor="end">0.9</text>
-<text x="46" y="358" fill="#7d879b" font-size="10" font-weight="400" text-anchor="end">0</text>
-<text x="52" y="382" fill="#7d879b" font-size="11" font-weight="400" text-anchor="start">cycle 0</text>
-<text x="138.75" y="382" fill="#7d879b" font-size="11" font-weight="400" text-anchor="start">1</text>
-<text x="225.50" y="382" fill="#7d879b" font-size="11" font-weight="400" text-anchor="start">2</text>
-<text x="312.25" y="382" fill="#7d879b" font-size="11" font-weight="400" text-anchor="start">3</text>
-<text x="399" y="382" fill="#7d879b" font-size="11" font-weight="400" text-anchor="start">4</text>
-<text x="485.75" y="382" fill="#7d879b" font-size="11" font-weight="400" text-anchor="start">5</text>
-<text x="572.50" y="382" fill="#7d879b" font-size="11" font-weight="400" text-anchor="start">6</text>
-<text x="659.25" y="382" fill="#7d879b" font-size="11" font-weight="400" text-anchor="start">7</text>
-<text x="746" y="382" fill="#7d879b" font-size="11" font-weight="400" text-anchor="end">8</text>
+<text x="46" y="302" fill="#808080" font-size="10" font-weight="300" text-anchor="end">0.9</text>
+<text x="46" y="358" fill="#808080" font-size="10" font-weight="300" text-anchor="end">0</text>
+<text x="52" y="382" fill="#808080" font-size="11" font-weight="300" text-anchor="start">cycle 0</text>
+<text x="138.75" y="382" fill="#808080" font-size="11" font-weight="300" text-anchor="start">1</text>
+<text x="225.50" y="382" fill="#808080" font-size="11" font-weight="300" text-anchor="start">2</text>
+<text x="312.25" y="382" fill="#808080" font-size="11" font-weight="300" text-anchor="start">3</text>
+<text x="399" y="382" fill="#808080" font-size="11" font-weight="300" text-anchor="start">4</text>
+<text x="485.75" y="382" fill="#808080" font-size="11" font-weight="300" text-anchor="start">5</text>
+<text x="572.50" y="382" fill="#808080" font-size="11" font-weight="300" text-anchor="start">6</text>
+<text x="659.25" y="382" fill="#808080" font-size="11" font-weight="300" text-anchor="start">7</text>
+<text x="746" y="382" fill="#808080" font-size="11" font-weight="300" text-anchor="end">8</text>
 </svg>

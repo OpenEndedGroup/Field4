@@ -567,11 +567,16 @@ object SoundPathMap {
                 "src/jvmMain/kotlin/afield/audio/synth/SoundRenderPathDocs.kt" to "dirt-samples",
                 "src/jvmMain/kotlin/afield/audio/synth/BooleanNetworkSoundDocs.kt" to "dirt-samples",
                 "src/jvmMain/kotlin/afield/audio/synth/PetriSparksDocs.kt" to "dirt-samples",
+                "src/jvmMain/kotlin/afield/audio/synth/PetriSoundDocs.kt" to "dirt-samples",
                 "src/jvmMain/kotlin/afield/audio/synth/FaustPolySoundDocs.kt" to "faust-poly",
+                "src/jvmMain/kotlin/afield/audio/synth/FaustSoundDocs.kt" to "faust",
+                // A take recorded from a real Sonic Pi; not sample-reproducible, so the audit skips it.
+                "src/jvmMain/kotlin/afield/examples/sonicpi/SonicPiSoundDocs.kt" to "sonic-pi",
                 // The *mono source* pat-spatial hands Steam Audio, which needs no uncommitted binary.
                 "src/jvmMain/kotlin/afield/audio/synth/PatSpatialSoundDocs.kt" to "pat-spatial",
                 // The binaural output itself; needs libphonon (./gradlew fetchSteamAudioNatives).
                 "src/jvmMain/kotlin/afield/audio/synth/PatSpatialHeadTrackedDocs.kt" to "pat-spatial",
+                "src/jvmMain/kotlin/afield/audio/synth/PatSpatialPlacementDocs.kt" to "pat-spatial",
             ),
         ),
         Marker(

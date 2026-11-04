@@ -43,7 +43,7 @@ image is exactly the geometry the rest of this page works with.
 A counter (the hole in `o`, `e`, `a`, `B`) is only a hole if something says so. Field's text
 contours follow one rule:
 
-> A ring's signed area is `½Σ(xᵢyᵢ₊₁ − xᵢ₊₁yᵢ)` in text space. **Outer contours are positive; holes
+> A ring's signed area is \( \tfrac{1}{2}\sum_i (x_i y_{i+1} - x_{i+1} y_i) \) in text space. **Outer contours are positive; holes
 > are negative.** Nesting depth, how many other rings of the same glyph contain this one, is
 > authoritative: even depth is an outer ring, odd depth is a hole. A ring whose area sign disagrees
 > with its depth is reversed on the way out.

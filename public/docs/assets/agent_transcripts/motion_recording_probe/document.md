@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 1 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 1 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. Motion — coordinate probe
@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="motion_recording_probe" index="0" -->
 
 ```edn [field-box id="motion_recording_probe" role="properties"]
-{"id" "motion_recording_probe" "index" 0 "name" "Motion — coordinate probe" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Motion — coordinate probe" "_tombstone" false "frame" #afield/rect [80.0 80.0 600.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "motion_recording_probe_code_.kt" "lines" 49 "characters" 2045 "sha256" "7f9974398b9580ea31b5f5ef997cfb0eab614673ca324882e1867c46edd8f8b2"}]}
+{"id" "motion_recording_probe" "index" 0 "name" "Motion — coordinate probe" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Motion — coordinate probe" "_tombstone" false "frame" #afield/rect [80.0 80.0 600.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "motion_recording_probe_code_.kt" "lines" 54 "characters" 2092 "sha256" "f528678c80c8bbf709abe1d5cbca51b3b60795137dd85b28df87195f5a303359"}]}
 ```
 
 ```kotlin [field-property box="motion_recording_probe" name="code" path="motion_recording_probe_code_.kt"]
@@ -25,8 +25,8 @@ val clip = MotionExamples.contractClip()
 val play = AtomicBoolean(false)
 val scrub = AtomicReference(1.35)
 controlGroup {
-    slider("Session time (seconds)", 0.0, 4.0, initialValue=1.35) { scrub.set(it) }
-    checkbox("Play recording", initialValue=false) { play.set(it) }
+    slider("Session time (seconds)", 0.0, 4.0, initialValue = 1.35) { scrub.set(it) }
+    checkbox("Play recording", initialValue = false) { play.set(it) }
 }
 val started = AnimationClock.nowSeconds()
 
@@ -54,15 +54,20 @@ loop {
         color = vec(0.85, 0.9, 1.0, 1.0)
         filled = true
     }
-    val border = fline { rect(0.0, 0.0, 600.0, 300.0); color = vec(0.2, 0.25, 0.3, 1.0) }
-    lines(border, drawing, points, w=600.0, h=300.0, channel="motion")
-    markdown("status", "**Coordinate probe** · no network inference\n\n" +
-        "Time ${"%.2f".format(time)} s · episode ${snapshot.frame.episode} · " +
-        if (snapshot.held) "holding before reset" else "recorded pose")
+    val border = fline {
+        rect(0.0, 0.0, 600.0, 300.0)
+        color = vec(0.2, 0.25, 0.3, 1.0)
+    }
+    lines(border, drawing, points, w = 600.0, h = 300.0, channel = "motion")
+    markdown(
+        "status",
+        "**Coordinate probe** · no network inference\n\n" +
+            "Time ${time.f2} s · episode ${snapshot.frame.episode} · " +
+            if (snapshot.held) "holding before reset" else "recorded pose",
+    )
     displayOpen("motion")
     displayOpen("status")
     delay(16) // Yield without flooding the UI transport.
-
 }
 ```
 

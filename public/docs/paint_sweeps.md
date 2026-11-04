@@ -3,7 +3,7 @@
 The [moving-hairs brush](paint_gestures.md) has many settings, and most of them interact. The
 figures on this page each paint one gesture over and over, changing one setting from left to right
 and keeping everything else as it is in the [black Elegy](paint_gestures.md#a-finished-piece): a
-soft house painter's brush 10 cm wide, laying a thin film of fat black paint. Most settings are
+soft house painter's brush 10 cm wide, laying a thin film of fat (oily) black paint. Most settings are
 taken well past their usual range, where they stop behaving and start doing something else. Where a
 setting also belongs to an [ordinary brush](paint_canvas.md#brushes-made-to-order), a second row
 paints the same path with one, at the same pressures. Click a figure to see it full size.
@@ -14,6 +14,15 @@ each faster and lighter than the one before (100, 200, 350 and 600 mm/s) and lif
 at the end. The code that paints it is
 folded inside every example below; open it to see or change it. Each figure takes 10 to 20 seconds
 to paint.
+
+The settings live in four places, and the folded code passes each one where it belongs: the brush's
+build (`BrushConfig`: `stiffness`, `ragged`, `splay`, `lay`, `run`, `pickup`, `push`, `hair`,
+`bristles`), its load of paint (`load(...)`: `amount`, `thinner`, `hiding`, `stiff`, `oil`,
+`drying`), the moving brush's liquid (`brush.set(...)`: `cohesion`, `clumping`, `splayFan`,
+`splayScatter`) and the gesture itself (`tilt`, `faster`, `facets`). Lengths such as `width`, `run`
+and `facets` are in canvas units; this canvas is 50 cm wide and 1000 units across, so a unit is
+half a millimetre and the 10 cm brush is `width` 200. A *flat* is a brush with a flat, square end,
+here a hog-bristle flat (`BrushKind.HogFlat`).
 
 ## The paint
 
@@ -1117,7 +1126,8 @@ showImg(sheet)
 sheet.savePng("/tmp/field-docs-paint-sweep-stiffness.png")
 ```
 
-`hairs` is how many guide hairs are simulated. Even two give a whole stroke on this flat. With few,
+`hairs` is how many guide hairs are simulated: the hairs whose bending the brush works out, which
+the rest of its bristles follow. Even two give a whole stroke on this flat. With few,
 the loop drags a dark wedge across the ring where it crosses itself; from about 48 the ring is evenly
 striped, and more hairs change little.
 
@@ -2377,7 +2387,8 @@ of hairs that are neighbours at the root together. At 1 it joins any two wet hai
 each other with a bridge of paint, which pulls them together and snaps when they are pulled a few
 spacings apart, so the brush gathers into clumps that splay can tear apart, and the bristles they
 carry gather with them. Between, the two pull together; past 1 the bridges pull harder, and below 0
-the old model pulls harder while the bridges push. The sweep runs from -1 to 2 at cohesion 4,
+the neighbour model pulls harder while the bridges push. The sweep runs from -1 to 2 at `cohesion`
+4 (how strongly the liquid pulls, the next sweep),
 unsplayed and at splay 2.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/paint_sweeps/clumping.png" source-image="/tmp/field-docs-paint-sweep-clumping.png" alt="Two rows of 6 columns of the same black brushstroke on off-white: a long vertical bar, a loop that crosses itself into a ring, a zigzag scrub, and a last straight that speeds up and lifts away, painted with moving hairs at cohesion 4 and clumping from -1 to 2; unsplayed above, at splay 2 below. From -1 to 1 the strokes look much alike, the ring at 1 gathered into firmer concentric bands; at 1.5 and 2 the brush draws into narrower, sharper bands and the ring and last stroke go paler. In the splayed row the two halves of the bar get ragged inner edges as clumping rises, and the loop folds into an off-centre spiral." wait="10" timeout="900" capture="box" open-outputs="true" padding="20" requires="paint" name="sweep-clumping" embed=true}

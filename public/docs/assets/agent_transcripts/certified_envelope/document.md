@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 5 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 5 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. 3 - certifiedRange, with witnesses
@@ -18,7 +18,7 @@ Branch-and-bound over the hour: the true maximum is at least the value reached a
 witness, and at most the proven bound. The same for the minimum.
 
 ```edn [field-box id="range" role="properties"]
-{"id" "range" "index" 0 "name" "3 - certifiedRange, with witnesses" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - certifiedRange, with witnesses" "_tombstone" false "frame" #afield/rect [60.0 1480.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "range_code_.kt" "lines" 33 "characters" 1276 "sha256" "a17ed87488669cebe11491fc7d6c2ebd355a081728f0b7e3c51cb6e9f974f251"}]}
+{"id" "range" "index" 0 "name" "3 - certifiedRange, with witnesses" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - certifiedRange, with witnesses" "_tombstone" false "frame" #afield/rect [60.0 1480.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "range_code_.kt" "lines" 32 "characters" 1255 "sha256" "4afc38ecc555a206da277aac1b07dd460833388dfbfdd6202e0b031171bdf6a1"}]}
 ```
 
 ```kotlin [field-property box="range" name="code" path="range_code_.kt"]
@@ -33,10 +33,9 @@ val min = range.min!!
 display(
     "range",
     Table(
-            ["side", "reached", "at x", "proven bound", "enclosures"],
-            title = "certifiedRange(0, 3600): certified = ${range.certified}",
-        )
-        .row("max", max.value, max.witness, max.bound, max.enclosures)
+        ["side", "reached", "at x", "proven bound", "enclosures"],
+        title = "certifiedRange(0, 3600): certified = ${range.certified}",
+    ).row("max", max.value, max.witness, max.bound, max.enclosures)
         .row("min", min.value, min.witness, min.bound, min.enclosures)
         .role("at x", CellRole.ACCENT),
 )
@@ -118,7 +117,7 @@ a lambda was the piecewise event selection; here it is exact 0/1 `step` indicato
 product and sum in the lambda's order, so the two agree bit for bit.
 
 ```edn [field-box id="workbench" role="properties"]
-{"id" "workbench" "index" 2 "name" "5 - The worked example, certified" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 - The worked example, certified" "_tombstone" false "frame" #afield/rect [60.0 2120.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "workbench_code_.kt" "lines" 140 "characters" 6173 "sha256" "5ddcbd9fbe17544576485cca94838ccc9181fc278d86b8c73b83f66de1b497a2"}]}
+{"id" "workbench" "index" 2 "name" "5 - The worked example, certified" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 - The worked example, certified" "_tombstone" false "frame" #afield/rect [60.0 2120.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "workbench_code_.kt" "lines" 139 "characters" 6158 "sha256" "764beaf3a8fce7f6eb07de14a2c13daef71a66b7ded3055a6a64d3a28452b8ed"}]}
 ```
 
 ```kotlin [field-property box="workbench" name="code" path="workbench_code_.kt"]
@@ -232,22 +231,21 @@ for ((i, name) in names.withIndex()) {
     val above = f.certifiedNeverExceeds(1.0, 0.0, 3600.0)
     val witness = above.witness!!
     rows +=
-        [
+        listOf(
             name,
             "${FnIntervals.unsupportedOps(l)} / ${FnIntervals.unsupportedOps(f)}",
             "$mismatches of ${grid.size}",
             "$holds of ${events.size} PROVEN",
             f.certifiedNeverBelow(0.0, 0.0, 3600.0).kind.name,
             "${above.kind} at $witness: lambda ${l(witness)}",
-        ]
+        )
 }
 display(
     "claims",
     Table(
-            ["ch", "refused ops (lambda / formula)", "bit mismatches", "== 1 on plateau", ">= 0", "<= 1"],
-            title = "the worked example's claims, on its formula rewrite",
-        )
-        .rows(rows)
+        ["ch", "refused ops (lambda / formula)", "bit mismatches", "== 1 on plateau", ">= 0", "<= 1"],
+        title = "the worked example's claims, on its formula rewrite",
+    ).rows(rows)
         .role("<= 1", CellRole.WARN),
 )
 

@@ -1,9 +1,9 @@
 import afield.examples.four.VirtualTexturingDemo
 
 val camera = Camera()
-camera.at = vec(-10,2,0)
-KeyCamera(camera=camera)
+camera.at = vec(-10, 2, 0)
+KeyCamera(camera = camera)
 
-var vt = VirtualTexturingDemo(camera=camera)
+var vt = VirtualTexturingDemo(camera = camera)
 
 vt.vt.setDebugFlags(true, false, false)

@@ -694,3 +694,80 @@ fun lSystemDimensionObjective(
         )
     }
 }
+
+// ==============================================================================================
+// 4 — Braitenberg vehicle wirings
+// ==============================================================================================
+
+/**
+ * A Braitenberg vehicle's four sensor→motor weights as a genome, laid out as [VehicleWorld.w] lays out
+ * one vehicle (`w[2m + s]`, sensor `s` to motor `m`), each within `±maxWeight`.
+ *
+ * Four numbers is a small genome, and the space is easy to read: [VehicleWorld.AGGRESSOR],
+ * [VehicleWorld.LOVER] and the rest are its corners. [crossover] swaps whole motor neurons, since a
+ * neuron's two weights only mean something together.
+ */
+class VehicleWiringGenome(val maxWeight: Double = 3.0) : GenomeOps<DoubleArray> {
+    init {
+        require(maxWeight > 0.0) { "maxWeight must be > 0, got $maxWeight" }
+    }
+
+    override fun random(rng: Random): DoubleArray = DoubleArray(4) { (rng.nextDouble() * 2.0 - 1.0) * maxWeight }
+
+    override val mutations: List<Variation<DoubleArray>> = listOf(
+        Variation("jitterOne") { g, rng ->
+            g.copyOf().also { val i = rng.nextInt(4); it[i] = clampW(it[i] + (rng.nextDouble() * 2.0 - 1.0) * 0.5) }
+        },
+        Variation("jitterAll") { g, rng -> DoubleArray(4) { clampW(g[it] + (rng.nextDouble() * 2.0 - 1.0) * 0.25) } },
+        Variation("mirror") { g, _ -> doubleArrayOf(g[3], g[2], g[1], g[0]) },
+    )
+
+    override fun crossover(a: DoubleArray, b: DoubleArray, rng: Random): DoubleArray {
+        val left = if (rng.nextBoolean()) a else b
+        val right = if (rng.nextBoolean()) a else b
+        return doubleArrayOf(left[0], left[1], right[2], right[3])
+    }
+
+    /** Rounded to two decimals: weights closer than that drive indistinguishably over a fitness run. */
+    override fun signature(g: DoubleArray): String = g.joinToString(",") { "%.2f".format(it) }
+
+    private fun clampW(v: Double) = v.coerceIn(-maxWeight, maxWeight)
+}
+
+/**
+ * "Hold the light": every vehicle in a population of [count] is given the candidate wiring, the
+ * population is run for [steps] steps among [lights] under [params] from the same [initialSeed], and
+ * the fitness is the mean light at the bodies over the last [scored] steps, minus `speedCost` times
+ * the mean speed over the same steps when [params] carries one.
+ *
+ * Plasticity in [params] is switched off: this scores a fixed wiring, and the learning level on the
+ * docs page is the thing it is compared with.
+ *
+ * @return an [Evaluation] whose [Evaluation.behaviour] is `[meanLight, meanSpeed]`.
+ */
+fun vehicleForageObjective(
+    lights: List<Light>,
+    params: VehicleParams = VehicleParams(neuron = NeuronParams(bias = -1.0)),
+    count: Int = 30,
+    steps: Int = 3000,
+    scored: Int = 1000,
+    initialSeed: Long = 1L,
+): Objective<DoubleArray> {
+    require(scored in 1..steps) { "scored must be in 1..steps, got $scored" }
+    val fixed = params.copy(plasticity = params.plasticity.copy(learningRate = 0.0))
+    val cost = params.plasticity.speedCost
+    return Objective { wiring ->
+        val world = VehicleWorld.random(count, lights, wiring = wiring, seed = initialSeed)
+        world.stepTimes(fixed, steps - scored)
+        var light = 0.0
+        var speed = 0.0
+        repeat(scored) {
+            world.step(fixed)
+            light += world.meanLight()
+            speed += world.meanSpeed()
+        }
+        light /= scored
+        speed /= scored
+        Evaluation(light - cost * speed, behaviour = doubleArrayOf(light, speed))
+    }
+}

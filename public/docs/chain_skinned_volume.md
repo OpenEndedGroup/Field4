@@ -38,7 +38,7 @@ than downloaded:
   is linear in time and `secondsFor(degrees)` converts.
 
 At rest the tube is a straight prism over a regular 12-gon, and the volume has a closed form: area
-`½ · 12 · 0.5² · sin 30° = 0.75`, times height 4, is **3.0**.
+\( \tfrac{1}{2} \cdot 12 \cdot 0.5^2 \cdot \sin 30^\circ = 0.75 \), times height 4, is **3.0**.
 
 ## Volume against twist
 
@@ -133,7 +133,7 @@ ${row("linear blend, 179.9°", 179.9f, SkinningMethod.LINEAR_BLEND)}
 ${row("linear blend, 180°", 180f, SkinningMethod.LINEAR_BLEND)}
 ${row("dual quaternion, 180°", 180f, SkinningMethod.DUAL_QUATERNION)}
 
-Closed forms: rest ${CappedTwistFixture.REST_VOLUME}; linear blend at 180°, 0.75 × (2 + 2/3) = ${"%.6f".format(0.75 * (2.0 + 2.0 / 3.0))}.
+Closed forms: rest ${CappedTwistFixture.REST_VOLUME}; linear blend at 180°, 0.75 × (2 + 2/3) = ${(0.75 * (2.0 + 2.0 / 3.0)).f6}.
 """,
     width = 1000,
 )
@@ -146,11 +146,11 @@ half-edge solid in double precision, the other sums signed tetrahedra over the f
 Where they agree, the skinned mesh reached Manifold intact.
 
 The two thirds that linear blending keeps at 180° can be worked out by hand. At the 50/50 ring the blend
-averages the identity with its own half turn, `½·diag(1,1,1) + ½·diag(−1,1,−1) = diag(0,1,0)`, so
+averages the identity with its own half turn, \( \tfrac{1}{2}\operatorname{diag}(1,1,1) + \tfrac{1}{2}\operatorname{diag}(-1,1,-1) = \operatorname{diag}(0,1,0) \), so
 every vertex of that ring lands on the axis. In general, a ring whose weight is `w` gets
-`diag(1 − 2w, 1, 1 − 2w)`: a pure scale with no rotation left in it. Its scale `1 − 2w = 2 − y`
+\( \operatorname{diag}(1 - 2w, 1, 1 - 2w) \): a pure scale with no rotation left in it. Its scale \( 1 - 2w = 2 - y \)
 is linear in `y`, so each band of the joint zone is a frustum of two similar 12-gons. The zone then
-integrates exactly to `0.75 · ∫₁³ (2 − y)² dy = 0.75 · ⅔`, and the two unblended units keep their
+integrates exactly to \( 0.75 \cdot \int_1^3 (2 - y)^2\,dy = 0.75 \cdot \tfrac{2}{3} \), and the two unblended units keep their
 0.75 each. The total is 2.0, so a third of the limb is gone, and none of that loss comes from how
 the tube happens to be triangulated.
 
@@ -191,7 +191,7 @@ tubes in the render is that `method` argument.
 
     `RiggedFixture`'s tube has five rings, and only the middle one is blended. At a half turn, dual
     quaternions rotate that ring 90° against each neighbour, and a straight triangulated band
-    between two 12-gons 90° apart passes within `r/√2` of the axis, so the triangulation alone
+    between two 12-gons 90° apart passes within \( r/\sqrt{2} \) of the axis, so the triangulation alone
     would lose about a third of those bands' volume. Seventeen rings spread the joint's rotation
     over eight bands, 22.5° each at the worst pose, so the volume measures the skinning and not the
     mesh.

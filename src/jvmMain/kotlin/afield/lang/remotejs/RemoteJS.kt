@@ -224,7 +224,7 @@ fun install() {
             if (fn == "unknown") {
                 val message = v.getString("message")
                     notify("Event handler got an error '${message}'", "remotejs_error")
-                lastBoxExec?.error(message, "code", v.getInt("line"))
+                lastBoxExec?.displayError(message, "code", v.getInt("line"))
             } else {
                 val uid = fn.substringAfter("|", "")
                 val box =
@@ -235,7 +235,7 @@ fun install() {
                     notify("Event handler got an error '${message}'", "remotejs_error")
                 } else {
                     notify("Event handler got an error", "remotejs_error")
-                    box.error(message, "code", v.getInt("line"))
+                    box.displayError(message, "code", v.getInt("line"))
                 }
             }
         } else if (RemoteJsBoxSurface.handle(o)) {

@@ -30,7 +30,7 @@ go {
         display(
             "source",
             audio.audioVisualizerHtml(
-                label = "near_drowning.wav · ${"%.2f".format(duration)} s · ${audio.sampleRate} Hz",
+                label = "near_drowning.wav · ${duration.f2} s · ${audio.sampleRate} Hz",
                 options = AudioVisualizerOptions(
                     width = 1100,
                     waveformHeight = 150,

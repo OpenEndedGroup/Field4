@@ -216,6 +216,18 @@ lander themselves when none is running.
 **Bringing `main` into a branch** is `uv run python tools/merge_regen.py main`: it merges,
 regenerates over both sides' changes, runs the full staged guard and commits.
 
+**Before enqueueing**, `uv run python tools/land.py precheck` (`tools/land_precheck.py`) refuses a
+branch commit that `git cherry` finds already on `main` under another sha (a cherry-pick of
+something that has since landed), naming both commits and the `git rebase --onto <sha>^ <sha>` that
+drops it; `enqueue` prints the same as a warning. It then reports conflicts, merges `main` in
+uncommitted, and runs the `CHECKS` the diff selects. Each check lists the lander guards (`GUARDS` in
+`tools/check_staged_generated_artifacts.py`) it stands in for, and `NOT_PRECHECKED` names the pure
+drift guards it skips; `tools/test_land_precheck.py` fails when a lander guard is in neither, or
+when a path selects a lander guard but not its precheck check. Demo paths select `demo-corpus`
+(`checkAgentDemos`, `checkAgentTranscriptLayouts`, and `jvmTest --tests AgentDemoRegistrationTest`,
+which the lander does not run) and `python-tools` (where `test_demo_build_scripts.py`'s
+`CORPUS` lives).
+
 **Track record.** 256 `Land` commits on `main` (232 first-parent), all but one since the queue
 went in on 2026-10-03. The queue directory holds 238 landed and 67 bounced items. Median landing
 time is 9.2 minutes (p90 34 minutes); 144 items landed in a batch of one and 24 in a batch of
@@ -545,7 +557,7 @@ automatically.
 | `AgentTranscriptIndexGuard` (`checkAgentTranscriptIndex`) | `public/docs/agent_transcripts.md` has exactly one entry per transcript (206), an Open link exactly when materialized (200), section markers that match the registry, and no hand-written totals |
 | `AgentTranscriptLayoutGuard` (`checkAgentTranscriptLayouts`) | positive frames inside the canvas, ordinary boxes at most 620 by 170, unique ids; exceptions in `transcript_layout_exceptions.yaml`, and a stale exception fails |
 | `AgentDemoRegistrationTest` | every demo document under `dev_docs/agents/demos/` has a transcript and a verification level or a written reason; every docs-asset document is a starting point or on a list that may only shrink |
-| `AgentDemoDriftGuard` (`checkAgentDemos`) | demo `metadata.edn` is byte-for-byte codec output and inline code equals its sidecar |
+| `AgentDemoDriftGuard` (`checkAgentDemos`) | demo and authored docs/template `metadata.edn` is byte-for-byte codec output and inline code equals its sidecar (a stale inline copy loads instead of the sidecar once `metadata.edn` is the newer file) |
 | `check_box_idioms.py` (`checkBoxIdioms`) | published box code avoids known non-idioms (redundant renderer lookups and similar) |
 
 **Conversation demos.** The AI4 "talk a study into existence" demos (function, StackSL, RectSL,
@@ -666,6 +678,9 @@ they can be fixed or turned into handoffs:
   docstring's step 3 still describes per-item `merge_regen.py` calls. `checkAgentTranscriptLayouts`
   is selected only by demo paths, so a transcript-only edit reaches the layout guard nightly, not
   at landing.
+- **`AgentDemoRegistrationTest` is in no landing guard.** It is a plain `jvmTest`, and the lander
+  runs no `jvmTest`; only `land.py precheck` (on demo paths) and a full `check` run it. Listing it
+  in `citationGuardTestClasses` would put it in the landing guard.
 - **`field.sh`** builds `jvmJar dumpFieldLaunch` and execs `java` directly; `AGENTS.md` says it
   wraps `./gradlew runJvm`.
 - **Bare `uv`.** `checkPythonTools`, `checkBoxIdioms` and the `fieldAudio*` tasks call `"uv"`

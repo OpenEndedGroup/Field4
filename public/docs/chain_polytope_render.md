@@ -138,8 +138,8 @@ left them, and ${plain.vertexCount} after welding.
 |---|---|---|
 | closed | `${solid.status}` | `${plain.isWatertight()}` |
 | genus | ${solid.genus} | ${plain.genus()} |
-| volume | ${"%.4f".format(solid.volume)} | ${"%.4f".format(plain.signedVolume())} |
-| surface area | ${"%.4f".format(solid.surfaceArea)} | |
+| volume | ${solid.volume.f4} | ${plain.signedVolume().f4} |
+| surface area | ${solid.surfaceArea.f4} | |
 
 They are ${"%.2e".format(volumeGap)} apart on the volume.
 
@@ -147,11 +147,11 @@ They are ${"%.2e".format(volumeGap)} apart on the volume.
 
 | | |
 |---|---|
-| wall volume | ${"%.4f".format(wall.volume)} |
-| area × thickness | ${"%.4f".format(solid.surfaceArea * thickness)}, so the ratio is ${"%.3f".format(ratio)} |
+| wall volume | ${wall.volume.f4} |
+| area × thickness | ${(solid.surfaceArea * thickness).f4}, so the ratio is ${ratio.f3} |
 | wall genus | ${wall.genus} |
 | wall triangles | ${wall.triangleCount} |
-| cut open | genus ${cut.genus}, volume ${"%.4f".format(cut.volume)} |
+| cut open | genus ${cut.genus}, volume ${cut.volume.f4} |
 """,
         width = 860,
     )

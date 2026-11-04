@@ -237,6 +237,13 @@ object FieldMLTypePrelude {
         "hostClass" to Scheme(emptySet(), fn(TString, hostAny)),
         "hostNew" to Scheme(setOf(-43), fn(TVar(-43), fn(hostAny, hostAny))),
         "hostNew0" to Scheme(emptySet(), fn(hostAny, hostAny)),
+        // name, arguments, target, then the continuation that receives the member's result.
+        "hostLaunch" to Scheme(
+            setOf(-65, -66, -67),
+            fn(TString, fn(TVar(-65), fn(TVar(-66), fn(TFun(hostAny, TVar(-67)), hostAny)))),
+        ),
+        // name, arguments, target: a suspend member waited for inside a suspending body.
+        "hostAwait" to Scheme(setOf(-68, -69), fn(TString, fn(TVar(-68), fn(TVar(-69), hostAny)))),
         "hostCall" to Scheme(setOf(-44, -45), fn(TString, fn(TVar(-44), fn(TVar(-45), hostAny)))),
         "hostCall0" to Scheme(setOf(-2), fn(TString, fn(TVar(-2), hostAny))),
         "hostCall1" to Scheme(setOf(-3, -4), fn(TString, fn(TVar(-3), fn(TVar(-4), hostAny)))),

@@ -1,0 +1,29 @@
+name: sync_group
+description: Two audio players in one syncGroup, the second offset by 1 s, for the shared-time-cursor capture in visualizers.md.
+operations:
+  - create:
+      box: sync_group
+      name: shared time cursors
+      frame: { x: 80.0, y: 100.0, w: 230.0, h: 105.0 }
+      properties:
+        code: |
+          import kotlin.math.*
+          val sync = "two-players"
+          val rate = 8_000
+          val ping = { t: Double -> sin(2 * PI * 220 * t) * exp(-6.0 * (t % 0.5)) }
+          displayAudioSamples(
+              FloatArray(4 * rate) { ping(it / rate.toDouble()).toFloat() }, rate,
+              channel = "source", label = "source, 0 to 4 s",
+              options = AudioVisualizerOptions(width = 760, syncGroup = sync),
+          )
+          // This one starts 1 s into the source: its local 0 s is shared time 1 s.
+          displayAudioSamples(
+              FloatArray(2 * rate) { ping(1.0 + it / rate.toDouble()).toFloat() }, rate,
+              channel = "excerpt", label = "excerpt, from 1 s",
+              options = AudioVisualizerOptions(width = 760, syncGroup = sync, syncOffsetSeconds = 1.0),
+          )
+          displayOpen("source")
+          displayOpen("excerpt")
+  - launch: { box: sync_group }
+  - wait:
+      millis: 1500

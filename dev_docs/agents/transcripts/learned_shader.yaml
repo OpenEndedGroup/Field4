@@ -209,8 +209,7 @@ operations:
             depthWrite = false
             blend = false
         }
-        val triangle = Mesh(owner, material)
-        triangle.resize(3, 0, material)
+        val triangle = fullscreenTriangle(material)
         material += "fullscreen" to triangle
 
         // Compute and resolve run before this ordinary fragment shader samples their RTT.

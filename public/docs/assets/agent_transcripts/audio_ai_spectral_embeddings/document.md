@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. 1 · spectral spaces guide and jobs
@@ -34,7 +34,7 @@ display("all durable jobs", fieldAudioJobMonitor(heightPixels = 430))
 <!-- field-box id="analyse_near_drowning_spectral" index="1" -->
 
 ```edn [field-box id="analyse_near_drowning_spectral" role="properties"]
-{"id" "analyse_near_drowning_spectral" "index" 1 "name" "3 · import, submit, monitor, project near_drowning" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · import, submit, monitor, project near_drowning" "_tombstone" false "frame" #afield/rect [40.0 190.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_near_drowning_spectral_code_.kt" "lines" 131 "characters" 5803 "sha256" "cdf0a1ea78e1f31939915e3dff4b465eadcab4091d25467175d67cfe07fc1e30"}]}
+{"id" "analyse_near_drowning_spectral" "index" 1 "name" "3 · import, submit, monitor, project near_drowning" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · import, submit, monitor, project near_drowning" "_tombstone" false "frame" #afield/rect [40.0 190.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "analyse_near_drowning_spectral_code_.kt" "lines" 130 "characters" 5718 "sha256" "581a6dc364df40d73f06bc568959100358c9daea263451cebb221b90a76a637b"}]}
 ```
 
 ```kotlin [field-property box="analyse_near_drowning_spectral" name="code" path="analyse_near_drowning_spectral_code_.kt"]
@@ -149,23 +149,22 @@ runAsync(
             }
             preview.thenCombineAsync(frames) { summary, samples ->
                 [
-                        SpectralEmbeddingDistance.MEL_WASSERSTEIN,
-                        SpectralEmbeddingDistance.LOG_MEL_COSINE,
-                        SpectralEmbeddingDistance.MFCC_EUCLIDEAN,
-                    ]
-                    .mapIndexed { index, distance ->
-                        // The fitter has no interrupt hook; stop suppresses output and skips later fits.
-                        if (future.isDone) throw CancellationException("run ended")
-                        summary.withSpectralProjection(
-                            samples.tsne(
-                                dimensions = 4,
-                                distance = distance,
-                                perplexity = perplexity,
-                                maxIterations = iterations,
-                                seed = seed + index,
-                            ),
-                        )
-                    }
+                    SpectralEmbeddingDistance.MEL_WASSERSTEIN,
+                    SpectralEmbeddingDistance.LOG_MEL_COSINE,
+                    SpectralEmbeddingDistance.MFCC_EUCLIDEAN,
+                ].mapIndexed { index, distance ->
+                    // The fitter has no interrupt hook; stop suppresses output and skips later fits.
+                    if (future.isDone) throw CancellationException("run ended")
+                    summary.withSpectralProjection(
+                        samples.tsne(
+                            dimensions = 4,
+                            distance = distance,
+                            perplexity = perplexity,
+                            maxIterations = iterations,
+                            seed = seed + index,
+                        ),
+                    )
+                }
             }
         }
 }
@@ -176,7 +175,7 @@ runAsync(
 <!-- field-box id="spectral_embedding_visualizer_gallery" index="2" -->
 
 ```edn [field-box id="spectral_embedding_visualizer_gallery" role="properties"]
-{"id" "spectral_embedding_visualizer_gallery" "index" 2 "name" "2 · real cached spectral projections" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · real cached spectral projections" "_tombstone" false "frame" #afield/rect [520.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_embedding_visualizer_gallery_code_.kt" "lines" 30 "characters" 1079 "sha256" "1b3003373c48d544b0dba43da957e26196117a2d21ba9a420d93f4efbb41d13e"}]}
+{"id" "spectral_embedding_visualizer_gallery" "index" 2 "name" "2 · real cached spectral projections" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · real cached spectral projections" "_tombstone" false "frame" #afield/rect [520.0 40.0 440.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_embedding_visualizer_gallery_code_.kt" "lines" 28 "characters" 954 "sha256" "0bcb4072b92d21f29641eb2e7595b2d37a6e63350348752608ac7a8684c8abc7"}]}
 ```
 
 ```kotlin [field-property box="spectral_embedding_visualizer_gallery" name="code" path="spectral_embedding_visualizer_gallery_code_.kt"]
@@ -192,23 +191,21 @@ val frames = decodeSpectralEmbeddingMessagePack(
     poolMillis = 200.0,
     hopMillis = 40.0,
 )
-val previews =
-    [
-            SpectralEmbeddingDistance.MEL_WASSERSTEIN,
-            SpectralEmbeddingDistance.LOG_MEL_COSINE,
-            SpectralEmbeddingDistance.MFCC_EUCLIDEAN,
-        ]
-        .mapIndexed { index, distance ->
-            preview.withSpectralProjection(
-                frames.tsne(
-                    dimensions = 4,
-                    distance = distance,
-                    perplexity = 30.0,
-                    maxIterations = 750,
-                    seed = 184921L + index,
-                ),
-            )
-        }
+val previews = [
+    SpectralEmbeddingDistance.MEL_WASSERSTEIN,
+    SpectralEmbeddingDistance.LOG_MEL_COSINE,
+    SpectralEmbeddingDistance.MFCC_EUCLIDEAN,
+].mapIndexed { index, distance ->
+    preview.withSpectralProjection(
+        frames.tsne(
+            dimensions = 4,
+            distance = distance,
+            perplexity = 30.0,
+            maxIterations = 750,
+            seed = 184921L + index,
+        ),
+    )
+}
 display("spectral spaces", spectralEmbeddingPreviewDashboardHtml(previews, width = 1040, phaseHeight = 210))
 ```
 

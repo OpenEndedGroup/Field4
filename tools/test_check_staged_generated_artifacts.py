@@ -127,6 +127,7 @@ class GeneratedArtifactSelectionTests(unittest.TestCase):
                 "checkAgentTranscriptIndex", "checkDocsPublications",
                 "checkCompletionCorpusFixtures",
                 "checkBoxIdioms",
+                "checkBoxCodeFormat",
                 "checkBoxCodeCompiles",
                 "citationGates",
             ],
@@ -140,8 +141,14 @@ class GeneratedArtifactSelectionTests(unittest.TestCase):
         # A build script is box code, so it also selects the idiom check.
         self.assertEqual(
             task_names(["dev_docs/agents/demos/new_demo/build.yaml"]),
-            ["checkAgentTranscriptLayouts", "checkAgentDemos", "checkPythonTools", "checkBoxIdioms", "citationGates"],
+            ["checkAgentTranscriptLayouts", "checkAgentDemos", "checkPythonTools", "checkBoxIdioms",
+             "checkBoxCodeFormat", "citationGates"],
         )
+
+    def test_docs_document_sidecar_selects_the_inline_copy_guard(self) -> None:
+        self.assertIn("checkAgentDemos", task_names(["public/docs/assets/canonical_graphics/metadata.edn"]))
+        self.assertIn("checkAgentDemos", task_names(["tools/presentation/example/field-demo/a_code_.kt"]))
+        self.assertNotIn("checkAgentDemos", task_names(["public/docs/assets/agent_transcripts/x/metadata.edn"]))
 
     def test_unrelated_agent_document_does_not_select_demo_guards(self) -> None:
         self.assertEqual(task_names(["dev_docs/agents/notes.md"]), ["citationGates"])
@@ -151,8 +158,18 @@ class GeneratedArtifactSelectionTests(unittest.TestCase):
         # code, and the canonical_graphics bundle is where a private import once shipped.
         self.assertEqual(
             task_names(["public/docs/assets/canonical_graphics/abc_code_.kt"]),
-            ["checkBoxIdioms", "citationGates"],
+            ["checkAgentDemos", "checkBoxIdioms", "checkBoxCodeFormat", "citationGates"],
         )
+
+    def test_box_code_format_covers_authored_code_not_generated_or_recorded_copies(self) -> None:
+        for path in ("dev_docs/agents/transcripts/hello.yaml", "templates/remote/_code_.kt", "public/docs/tour_data.md"):
+            with self.subTest(path=path):
+                self.assertIn("checkBoxCodeFormat", task_names([path]))
+        for path in ("public/docs/assets/agent_transcripts/hello/abc_code_.kt", "public/docs/function_conversation.md",
+                     "dev_docs/agents/demos/function_conversation_example/function_source_code_.kt",
+                     "public/docs/reference/graphics.md"):
+            with self.subTest(path=path):
+                self.assertNotIn("checkBoxCodeFormat", task_names([path]))
 
     def test_materialized_transcript_also_selects_completion_corpus(self) -> None:
         self.assertEqual(
@@ -170,7 +187,7 @@ class GeneratedArtifactSelectionTests(unittest.TestCase):
         # the three committed forms PersonalBoundaryTest reads.
         self.assertEqual(
             task_names(["templates/hello/metadata.edn"]),
-            ["checkCompletionCorpusFixtures", "citationGates"],
+            ["checkAgentDemos", "checkCompletionCorpusFixtures", "citationGates"],
         )
 
     def test_unrelated_change_selects_nothing(self) -> None:

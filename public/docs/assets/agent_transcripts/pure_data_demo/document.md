@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 8 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole" "mainLanguage"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 8 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole" "mainLanguage"]}
 ```
 
 ## 1. status — children of this box are Pure Data
@@ -58,14 +58,13 @@ From `code`
 A Field sawtooth through a Pd lowpass: `input` feeds the patch's [adc~]. Launch it.
 
 ```edn [field-box id="pd_effect" role="properties"]
-{"id" "pd_effect" "index" 2 "name" "as an effect" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "as an effect" "_tombstone" false "frame" #afield/rect [230.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pd_effect_code_.kt" "lines" 25 "characters" 603 "sha256" "afd8dbaeec5697bd936ecd63f5330c9a2b115a4f538d57c365210aa1a6cadda2"}]}
+{"id" "pd_effect" "index" 2 "name" "as an effect" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "as an effect" "_tombstone" false "frame" #afield/rect [230.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pd_effect_code_.kt" "lines" 23 "characters" 569 "sha256" "2ad12538db6b4f3aba1f97fdef92ccd236764d9fb740327bf7a4b4e9127b7371"}]}
 ```
 
 ```kotlin [field-property box="pd_effect" name="code" path="pd_effect_code_.kt"]
 // A Field sawtooth through a Pd lowpass: `input` feeds the patch's [adc~]. Launch it.
-val fx =
-    pd(
-        """
+val fx = pd(
+    """
 #X obj 20 20 adc~;
 #X obj 20 60 lop~ 600;
 #X obj 20 100 *~ 0.15;
@@ -79,12 +78,11 @@ val fx =
 #X connect 2 0 4 0;
 #X connect 4 0 5 0;
 """,
-        input = SawOsc(Param(110f)).pan(),
-    )
+    input = SawOsc(Param(110f)).pan(),
+)
 var n = 0
 fx.receive("level") { m ->
-    if (n++ % 10 == 0)
-        display("level", "<div style='padding:8px'>after the lowpass: ${"%.1f".format(m.float ?: 0f)} dB</div>")
+    if (n++ % 10 == 0) display("level", "<div style='padding:8px'>after the lowpass: ${(m.float ?: 0f).f1} dB</div>")
 }
 fx
 ```
@@ -100,14 +98,13 @@ From `code`
 A Pd patch as a Kotlin value. Launch it; move the Pitch slider.
 
 ```edn [field-box id="pd_kotlin" role="properties"]
-{"id" "pd_kotlin" "index" 3 "name" "from Kotlin" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "from Kotlin" "_tombstone" false "frame" #afield/rect [40.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pd_kotlin_code_.kt" "lines" 44 "characters" 1320 "sha256" "2410a88fe22ceec5906162aae113eabb40db7b2b68c8e3198ae3fbd05f5585d1"}]}
+{"id" "pd_kotlin" "index" 3 "name" "from Kotlin" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "from Kotlin" "_tombstone" false "frame" #afield/rect [40.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pd_kotlin_code_.kt" "lines" 43 "characters" 1298 "sha256" "811615c14f6256f65ce63a6436300ea1c19ba3e7ddccc0c81c1ff6de1beaaa3f"}]}
 ```
 
 ```kotlin [field-property box="pd_kotlin" name="code" path="pd_kotlin_code_.kt"]
 // A Pd patch as a Kotlin value. Launch it; move the Pitch slider.
-val patch =
-    pd(
-        """
+val patch = pd(
+    """
 #N canvas 0 0 520 300 12;
 #X obj 20 20 hsl 128 15 55 440 0 0 empty pitch Pitch -2 -8 0 10 #fcfcfc #000000 #000000 0 1;
 #X msg 20 50 \$1 40;
@@ -127,7 +124,7 @@ val patch =
 #X connect 4 0 7 0;
 #X connect 7 0 8 0;
 """,
-    )
+)
 
 // tabosc4~ wants 2^n + 3 points: one guard point before, two after.
 val partials = [1.0, 0.5, 0.33, 0.25, 0.2, 0.16]
@@ -145,7 +142,7 @@ patch.send("pitch", 110)
 var n = 0
 patch.receive("level") { m ->
     // env~ reports in dB, 100 = full scale; this lambda runs on Field's main thread.
-    if (n++ % 10 == 0) display("level", "<div style='padding:8px'>[s level] ${"%.1f".format(m.float ?: 0f)} dB</div>")
+    if (n++ % 10 == 0) display("level", "<div style='padding:8px'>[s level] ${(m.float ?: 0f).f1} dB</div>")
 }
 patch
 ```
@@ -161,7 +158,7 @@ From `code`
 No audio device: render one second, measure it, read back what Pd recorded.
 
 ```edn [field-box id="pd_offline" role="properties"]
-{"id" "pd_offline" "index" 4 "name" "offline" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "offline" "_tombstone" false "frame" #afield/rect [610.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pd_offline_code_.kt" "lines" 28 "characters" 1093 "sha256" "c4e5b4c3608d937c12301e3680c94ff6b9ccbe1914caea6975305aa527b64635"}]}
+{"id" "pd_offline" "index" 4 "name" "offline" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "offline" "_tombstone" false "frame" #afield/rect [610.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pd_offline_code_.kt" "lines" 28 "characters" 1081 "sha256" "90678b6fecabb5b0fa39cb626ef469c588b42f072ec1126d1dbe70d99fcbeddb"}]}
 ```
 
 ```kotlin [field-property box="pd_offline" name="code" path="pd_offline_code_.kt"]
@@ -190,7 +187,7 @@ pd.close()
 
 val ups = (1 until left.size).count { left[it - 1] < 0f && left[it] >= 0f }
 val peak = left.maxOf { abs(it) }
-println("$ups upward zero crossings in 1 s, peak ${"%.4f".format(peak)}, channels equal: ${left.contentEquals(right)}")
+println("$ups upward zero crossings in 1 s, peak ${peak.f4}, channels equal: ${left.contentEquals(right)}")
 showSignals("tabwrite~ scope" to scope.toList(), channel = "scope", title = "[table scope], recorded by Pd")
 lines(afield.audio.pd.PdPatchGraph.parse(text).toFLines(), channel = "patch", w = 420.0, h = 200.0, fitToSize = true)
 ```

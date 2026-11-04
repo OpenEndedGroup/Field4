@@ -268,6 +268,48 @@ class FieldMLSmokeExamplesTest {
     }
 
     /**
+     * The demo with no Kotlin box at all: the renderer box starts `Renderer.run` through
+     * `hostLaunch`, and the ribbon box rewrites `pos` and `col` through `Mesh.write` every frame.
+     * Type-checked only here, because both boxes need a device. Run on 2026-10-31 against the
+     * Mac's Vulkan device; `ribbon-0.png` and `ribbon-1.png` beside it differ.
+     */
+    @Test
+    fun theSuspendDemoTypeChecksAndKeepsItsSubject() {
+        val demo = Path.of("public/docs/assets/fieldml_suspend_demo/metadata.edn")
+        val sources = ednCodeStrings(demo.toFile().readText())
+        assertEquals(2, sources.size, "expected two FieldML boxes in $demo")
+        val (rendererBox, ribbonBox) = sources
+        sources.forEachIndexed { i, source -> assertNotNull(compileOk("$demo box $i", source).core) }
+        assertTrue("hostLaunch \"run\"" in rendererBox, "$demo no longer starts Renderer.run from FieldML")
+        // N1031-1: re-running the renderer box must not open a second window.
+        assertTrue("once \"renderer\"" in rendererBox, "$demo's renderer box no longer guards its window with once")
+        listOf("eachFrame", "launchFrames", "\"write\"").forEach { name ->
+            assertTrue(name in ribbonBox, "$demo no longer calls $name, so it no longer writes the mesh per frame")
+        }
+    }
+
+    /**
+     * The demo for a FieldML `frames` body that **suspends** ("Suspendable bodies" in
+     * `dev_docs/FIELDML_HOST_BRIDGE.md`): the script box raises a band one column at a time with
+     * `hostAwait "delay" 40 f` between columns, inside a recursive loop, then holds and recolours.
+     * Its subject is the waiting, so the guard is on `frames` + `hostAwait` and on *not* being an
+     * `eachFrame` body. Run 2026-11-01 against the Mac's Vulkan device; see the PNGs beside it.
+     */
+    @Test
+    fun theFramesSequenceDemoTypeChecksAndKeepsItsSubject() {
+        val demo = Path.of("public/docs/assets/fieldml_frames_sequence_demo/metadata.edn")
+        val sources = ednCodeStrings(demo.toFile().readText())
+        assertEquals(2, sources.size, "expected two FieldML boxes in $demo")
+        val (rendererBox, scriptBox) = sources
+        sources.forEachIndexed { i, source -> assertNotNull(compileOk("$demo box $i", source).core) }
+        assertTrue("once \"renderer\"" in rendererBox && "hostLaunch \"run\"" in rendererBox, rendererBox)
+        listOf("hostStaticCall \"frames\"", "hostAwait \"delay\"", "launchFrames", "let grow k n").forEach { name ->
+            assertTrue(name in scriptBox, "$demo no longer uses $name, so its body no longer waits between steps")
+        }
+        assertTrue("\"eachFrame\"" !in scriptBox, "$demo's subject is a body that waits, not one called every frame")
+    }
+
+    /**
      * The demo where a **source macro** builds the whole scene — mechanism A on a real device, and the
      * thing `dev_docs/FIELDML_HOST_BRIDGE.md` named as the prize for closing it.
      *

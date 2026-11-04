@@ -29,30 +29,92 @@ import java.io.File
 
 /** The seed revision and file baselines this document actually received. */
 @Serializable
-data class KitInstanceRecord(val kit: String, val revision: String, val runtimeRevision: String,
-    val startingPoint: String, val project: String, val files: Map<String, String>)
+data class KitInstanceRecord(
+    /** The kit id this document came from, which must still be installed for an update to be offered. */
+    val kit: String,
+    /**
+     * The package revision the copy was taken from. Shared resources and the starting point are read back
+     * through this revision, so a newer installed one does not change an existing document.
+     */
+    val revision: String,
+    /** The runtime revision the copy was taken against; [KitRuntime.activate] refuses any other. */
+    val runtimeRevision: String,
+    /** Which of the kit's starting points was copied, by its key in [KitPackageManifest.startingPoints]. */
+    val startingPoint: String,
+    /** The `kit-<id>` workspace project this document was added to. */
+    val project: String,
+    /**
+     * Path to content hash for every file the copy began from, which is the baseline arm of the three-way
+     * comparison in [KitInstances.inspect]. [KitInstances.migrate] rewrites it on a successful update.
+     */
+    val files: Map<String, String>
+)
 
 /** One path and what an update would do to it: `update`, `edited-here`, `remove` or `conflict`. */
 @Serializable
-data class KitInstanceChange(val path: String, val state: String)
+data class KitInstanceChange(
+    /** The document-relative path, which is also its path inside the starting point. */
+    val path: String,
+    /**
+     * `update` for a file only the kit changed, `edited-here` for one only the document changed, `remove`
+     * for one absent from the installed starting point, and `conflict` for one both changed since the
+     * baseline.
+     */
+    val state: String
+)
 
 /** An update preview: the revision on offer, every path that differs, and the conflicts that block it. */
 @Serializable
-data class KitInstanceInspection(val document: String, val record: KitInstanceRecord, val availableRevision: String,
-    val changes: List<KitInstanceChange>, val conflicts: List<String>)
+data class KitInstanceInspection(
+    /** The document folder's name. */
+    val document: String,
+    /** The record as it stands, so a caller can compare [KitInstanceRecord.revision] with [availableRevision]. */
+    val record: KitInstanceRecord,
+    /** The installed revision an update would move to, and empty when the kit is not installed at all. */
+    val availableRevision: String,
+    /**
+     * Every path that differs, sorted, and empty both when the document already matches the installed
+     * starting point and when there was nothing to compare it against.
+     */
+    val changes: List<KitInstanceChange>,
+    /**
+     * What blocks an update, which [KitInstances.migrate] refuses while this is non-empty. Ordinarily these
+     * are the `conflict` paths from [changes]; when the kit is not installed, or the recorded starting point
+     * is gone from the installed revision, it is instead a single sentence saying so.
+     */
+    val conflicts: List<String>
+)
 
 /** Starting-point copies and all-or-nothing three-way file migration. Runtime snapshots remain immutable. */
 object KitInstances {
+    /**
+     * The filename of the record, in the document folder beside `metadata.edn`. A document carrying one is a
+     * kit instance everywhere Field asks, so it has to travel with the document's other files.
+     */
     const val RECORD = ".field-kit-instance.json"
+
+    /**
+     * The filename of the marker [create] leaves in a fresh copy. The document-ready hook deletes it on the
+     * first open, and decides what to launch from [RECORD] rather than from this.
+     */
     const val FIRST_OPEN = ".field-kit-first-open"
     private val mapper = jacksonObjectMapper()
     private val skip = setOf(RECORD, FIRST_OPEN, KitFirstOpen.MARKER, "backups", "backup", ".git", "versions.edn", ".DS_Store", KitPackages.MANIFEST)
 
+    /**
+     * The kit record in [document], or null for an ordinary workspace document. A record whose kit id or
+     * revision is not of the right shape throws rather than reading as absent.
+     */
     fun record(document: File): KitInstanceRecord? = File(document, RECORD).takeIf { it.isFile }
         ?.let { mapper.readValue(it, KitInstanceRecord::class.java) }?.also {
             require(Regex("[A-Za-z0-9][A-Za-z0-9._-]{0,127}").matches(it.kit) && Regex("[a-f0-9]{64}").matches(it.revision)) { "Invalid kit instance identity" }
         }
 
+    /**
+     * Relative path to content hash for every file under [seed] that a copy would carry, sorted by path and
+     * leaving out backups, version history, the kit markers and the manifest itself. This is what a baseline
+     * is made of and what a fresh starting point is compared against.
+     */
     fun files(seed: File): Map<String, String> = seed.walkTopDown().onEnter { it == seed || it.name !in skip }
         .filter { it.isFile && it.name !in skip }.associate { file ->
             val relative = file.relativeTo(seed).invariantSeparatorsPath
@@ -60,6 +122,13 @@ object KitInstances {
             relative to KitPackages.hash(file)
         }.toSortedMap()
 
+    /**
+     * Copies one of an installed kit's starting points into [workspace] as a new document called [name],
+     * falling back to the starting point's own key when that is blank. Creates the `kit-<id>` project and
+     * seeds its preferences the first time the kit is used, then writes the record and the first-open
+     * marker. Refuses a kit this host has not loaded, and a dedicated-host kit, whose documents are made in
+     * its own host; a failure part way deletes the half-made document.
+     */
     @Synchronized
     fun create(workspace: File, id: String, startingPoint: String, name: String): DuplicateDocumentResponse {
         val kit = KitPackages.installed().singleOrNull { it.id == id } ?: error("Kit is not installed: $id")
@@ -85,6 +154,12 @@ object KitInstances {
         return result
     }
 
+    /**
+     * What an update to the installed revision would do, without doing any of it. Compares three hashes per
+     * path and labels each difference, reporting a path both sides changed as a conflict. Throws for a
+     * document with no record; a kit that is not installed, or a recorded starting point the installed
+     * revision does not have, comes back as a blocked inspection rather than an error.
+     */
     fun inspect(document: File): KitInstanceInspection {
         val record = record(document) ?: error("This document has no kit package record")
         val kit = KitPackages.installed().singleOrNull { it.id == record.kit }
@@ -146,6 +221,11 @@ object KitInstances {
         return inspect(document)
     }
 
+    /**
+     * The kit's shared resources folder as this document sees it, which is the one inside the package
+     * revision the record names rather than the newest installed one. Null for a document with no record and
+     * for a kit that declares no [KitPackageManifest.sharedResources].
+     */
     fun sharedResources(document: File): File? {
         val record = record(document) ?: return null
         val snapshot = File(KitPackages.directory, "packages/${record.kit}/${record.revision}")

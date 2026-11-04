@@ -77,9 +77,9 @@ $agreement
 
 ![Three curves over minus one to one: the small oscillating function, its larger-amplitude slope, and its much larger curvature, all in phase relationships that follow from differentiation](assets/autodiff_examples/derivatives.png)
 
-Check it by hand. `∂f/∂x = -2(1-x) - 400x(y-x²)` and `∂f/∂y = 200(y-x²)`, so at `(-1.2, 1)` the
+Check it by hand. \( \partial f/\partial x = -2(1-x) - 400x(y-x^2) \) and \( \partial f/\partial y = 200(y-x^2) \), so at `(-1.2, 1)` the
 gradient is `[-215.6, -88]`, which is what the panel reads. The Hessian is
-`[[2 - 400(y-x²) + 800x², -400x], [-400x, 200]]` = `[[1330, 480], [480, 200]]`, which is what
+\( \begin{bmatrix} 2 - 400(y-x^2) + 800x^2 & -400x \\ -400x & 200 \end{bmatrix} \) = `[[1330, 480], [480, 200]]`, which is what
 `hessian` prints. Forward and reverse mode agree to rounding error. The larger disagreement with the
 central difference on the last line comes from the finite difference.
 
@@ -164,15 +164,30 @@ with(Functions) {
     // loss grid before switching over. Ask it why a piecewise oscillator is refused.
     val refusal = exactFitRefusal(target, valueNoise(3L, 2.0, 0.8), Functions.Domain.DEFAULT)
 :::fold draw target, fit and both loss trajectories
-    plot(target, channel = "1 target", title = "target   cos(2) * sin(1.5)")
-    plot(exact.fitted, channel = "2 fitted", title = "fitted, exact reverse-mode gradients")
+    plot(target, channel = "1 target", title = "target   cos(2) * sin(1.5)", heightPx = 180)
+    plot(exact.fitted, channel = "2 fitted", title = "fitted, exact reverse-mode gradients", heightPx = 180)
+    /*
+    Per Adam step the two runs fall together. What differs is what each step costs, so put the loss
+    against loss evaluations: both curves on one x axis, the exact run finishing far to the left.
+    log10, so the tail below 0.05 is not squashed onto the axis.
+    */
+    val fdPerStep = fd.evaluations.toDouble() / fd.losses.size
+    val exactPerStep = exact.evaluations.toDouble() / exact.losses.size
+    val evals = (0..fd.evaluations step 10).toList()
+    fun at(losses: List<Double>, perStep: Double, e: Int): Double {
+        val step = (e / perStep).toInt()
+        return if (step < losses.size) log10(losses[step]) else Double.NaN
+    }
     showSignals(
-        "finite differences" to fd.losses,
-        "exact reverse mode" to exact.losses,
+        "finite differences" to evals.map { at(fd.losses, fdPerStep, it) },
+        "exact reverse mode" to evals.map { at(exact.losses, exactPerStep, it) },
+        x = evals,
         channel = "3 loss",
-        title = "RMSE per Adam step - same optimiser, different gradient",
-        xTitle = "step",
-        yTitle = "RMSE",
+        title = "RMSE against loss evaluations - same optimiser, different gradient",
+        xTitle = "loss evaluations",
+        yTitle = "log10 RMSE",
+        width = 900,
+        height = 320,
     )
     /*
     The refusal names every differentiable op, which is one ~700-character line. Left unwrapped it
@@ -223,7 +238,7 @@ $numbers
 }
 ```
 
-![The target signal, a visually indistinguishable fitted signal, and two overlapping RMSE-versus-step curves that both fall from 0.36 to under 0.015](assets/autodiff_examples/exact_fit.png)
+![The target signal, a visually indistinguishable fitted signal, and log10 RMSE against loss evaluations: both runs fall from about −0.45 to about −2, but the exact reverse-mode curve gets there within its 801 evaluations while the finite-difference curve takes the whole 6,801](assets/autodiff_examples/exact_fit.png)
 
 The exact run reaches a lower error with an eighth of the loss evaluations. It is somewhat faster,
 though not eight times faster, because recording the derivative costs time too. It also leaves no

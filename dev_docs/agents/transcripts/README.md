@@ -86,7 +86,7 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
 ## Files
 
 - `stereo_rtt_composite.yaml`: desktop-first stereo cubes, resolution chart, editable per-eye-safe FXAA RTT, and optional OpenXR presentation. Launch 1, 2, 2b, 3, 4; the last box owns the render loop. See `public/docs/stereo_rtt_composite.md`.
-- `field_vr_ide.yaml`: Field's live frontend in an OpenXR panel, with either-hand rays, pinch fallback, and an in-panel keyboard. Launch 1 then 2; desktop preview is the default. See `public/docs/field_vr_ide.md`.
+- `field_vr_ide.yaml`: Field's live frontend in an OpenXR panel, with either-hand rays, two-grip resizing, pinch fallback, and headset keyboard/mouse input. The Quest 3 workflow is headset-tested. Launch 1 then 2; desktop preview is the default. See `public/docs/field_vr_ide.md`.
 
 - `profiling_timeline.yaml`: three editable CPU/allocation workloads plus a capture box. Replay to
   get a checked, latched three-second capture in **Show Profiling Timeline**. Workers stop at the
@@ -316,6 +316,9 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   started, which is why it is compile-only here.
 - `read_only_session.yaml`: **read-only mode from the inside** — a `saved{}` counter that cannot count,
   and what the flag refuses rather than silently drops. The reason every demo folder says `--read-only`.
+- `history_box_story.yaml`: **one box's code across every saved version** — four saved values of
+  `sketch` for the history view's This Box list (row click selects a version, Restore puts back that
+  property of that box only). Replay into a saving document, not `--scratch`; the waits are the autosave.
 - `controls_surface.yaml`: **a performer's control surface** from the `controlGroup` DSL (log-law
   slider, XY pad with keyboard nudges and reset, toggle, text, colour) feeding a live figure, and a
   slider whose callback rebuilds its own group mid-drag without dropping the drag.

@@ -107,6 +107,9 @@ class KeyframerCoverageTest {
         val SURFACE: Map<String, Entry> = mapOf(
             // ---- KeyframeScope: registration -------------------------------------------------
             "KeyframeScope::target(String, Structure)" to covered(),
+            "KeyframeScope::interpolateAlong(List<Key>, Double)" to covered(),
+            "KeyframeScope::onChange((String) -> Unit)" to covered(),
+            "KeyframeScope::savedKeyNames(Path)" to covered(),
             "KeyframeScope::target(String, () -> Structure?)" to covered(),
             "KeyframeScope::target(String, () -> Any?, (Any?) -> Unit)" to covered(),
             "KeyframeScope::floatTarget(String, () -> Float, (Float) -> Unit)" to covered(),
@@ -415,8 +418,8 @@ class KeyframerCoverageTest {
 
         // The exact numbers published on public/docs/keyframer_examples.md. If this test has to
         // change, that page has to change in the same commit.
-        assertEquals(124, total, "total public behavioural declarations")
-        assertEquals(113, covered, "declarations covered by KeyframerTest")
+        assertEquals(127, total, "total public behavioural declarations")
+        assertEquals(116, covered, "declarations covered by KeyframerTest")
         assertEquals(11, unreachable, "declarations unreachable in a headless unit test")
 
         // Every uncovered declaration must carry a reason — no silent gaps.

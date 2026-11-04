@@ -36,7 +36,7 @@
                     '<div class="field-tray__chrome">' +
                     '  <div class="field-tray__header">' +
                     '    <span class="field-tray__title"></span>' +
-                    '    <button class="field-tray__close" type="button" title="Close tray">X</button>' +
+                    '    <button class="field-tray__close field-panel-icon" type="button" title="Close" aria-label="Close">×</button>' +
                     '  </div>' +
                     '  <div class="field-tray__body">' +
                     '    <iframe class="field-tray__frame" src="about:blank" loading="lazy"></iframe>' +
@@ -49,6 +49,11 @@
                 const closeBtn = tray.querySelector('.field-tray__close');
                 closeBtn.addEventListener('click', function () {
                         closeTray(side);
+                });
+
+                // Escape closes the tray, as it does every panel with a close button.
+                tray.addEventListener('keydown', function (event) {
+                        if (event.key === 'Escape') { event.stopPropagation(); closeTray(side); }
                 });
 
                 attachResizeHandler(tray, side);

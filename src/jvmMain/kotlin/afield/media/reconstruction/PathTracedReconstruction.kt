@@ -20,17 +20,14 @@ import afield.graphics.render.Module
 import afield.graphics.texture.TextureSampler
 import afield.graphics.shader.fromViews
 
-/** One ordered path-trace -> raw guides -> NGX pass. Pass an uninstalled tracer: this owner records
- * it exactly once, and closes it. The raw and progressive sources remain inspectable at all times.
+/** One ordered path-trace -> raw guides -> NGX pass. This owner records the tracer exactly once, and
+ * closes it; [install] takes a tracer from pathTracingHere(...) off its standalone passes. The raw and progressive sources remain inspectable at all times.
  * Camera motion reprojects; call [reset] on cuts and appearance changes. Tracer property and
  * shader revisions reset RR automatically. Recreate this owner to change input/output sizes.
  */
 class PathTracedReconstruction(val tracer: PathTracingRenderer,
     val outputSize: ReconstructionSize=ReconstructionSize(tracer.width,tracer.height),
     val mode: ReconstructionMode=ReconstructionMode.DLAA,val name: String="path-reconstruction") : Target,AutoCloseable {
-    init {
-        require(tracer.renderer.computeList.others.values.none { it===tracer }) { "Pass an uninstalled tracer; this adapter owns dispatch order" }
-    }
     enum class View { RAW, PROGRESSIVE, RECONSTRUCTED }
     private val renderer=tracer.renderer
     val source=tracer.enableFrameOutput()

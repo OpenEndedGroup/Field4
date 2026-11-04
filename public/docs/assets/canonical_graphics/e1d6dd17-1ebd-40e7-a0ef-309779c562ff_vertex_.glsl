@@ -1,5 +1,6 @@
 #version 450
 
+// pulls in the shader side of the probe created by fieldProbeHere() in the box code
 {% property "fieldProbe" %}
 
 layout (location = 0) in vec3 pos;
@@ -16,6 +17,7 @@ void main()
 {
     gl_Position = pc.p * pc.m * vec4(pos, 1);
 
+    // record the position after projection and perspective divide
     fieldProbe(gl_Position.xyz/gl_Position.w);
 
     ftc = tc;

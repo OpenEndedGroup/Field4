@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-10-29T22:40:20.182Z",
+  "capturedAt": "2026-10-31T13:53:45.206Z",
   "documentName": "kolakoski_euclid",
   "outputs": [
     {
@@ -45,7 +45,7 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 473,
+      "width": 463,
       "height": 67,
       "path": "outputs/3.html"
     },
@@ -91,8 +91,8 @@
       "open": true,
       "warnings": [],
       "kinds": [],
-      "width": 455,
-      "height": 133,
+      "width": 475,
+      "height": 151,
       "path": "outputs/7.html"
     }
   ]

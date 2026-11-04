@@ -20,13 +20,12 @@ LogDispatcher.withSink(probe) {
 display(
     "main",
     Table(
-            ["channel", "muted on the console", "reached my sink"],
-            title = "muting keeps a line off the console, not out of the layer",
-            note =
-                "${arrived.size} of ${channels.size} arrived. Mute is for a channel too chatty " +
-                    "for a terminal, not for one you want gone.",
-        )
-        .rows(channels.map { [it, ConsoleMute.isMuted(it), it in arrived] })
+        ["channel", "muted on the console", "reached my sink"],
+        title = "muting keeps a line off the console, not out of the layer",
+        note =
+            "${arrived.size} of ${channels.size} arrived. Mute is for a channel too chatty " +
+                "for a terminal, not for one you want gone.",
+    ).rows(channels.map { [it, ConsoleMute.isMuted(it), it in arrived] })
         .role("channel", CellRole.ACCENT)
         .roleBy("muted on the console") { if (it == true) CellRole.WARN else CellRole.DIM }
         .roleBy("reached my sink") { if (it == true) CellRole.OK else CellRole.BAD },

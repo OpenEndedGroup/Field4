@@ -842,6 +842,8 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "layers",
             "layerFrames",
             "_controlGroupValues",
+            // MIDI-learn bindings of control-group controls (afield/ui/output/ControlPresets.kt).
+            "_controlMidi",
             // The keys a keyframes(...) editor holds, as {name: [key, ...]} JSON (afield/math/keyframes.kt).
             // Without this entry an edited curve lived only as long as the Field process.
             "keyframeData",

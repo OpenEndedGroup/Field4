@@ -54,7 +54,7 @@ REAL_CARD_COVERAGE = 0.9944
 REAL_CARD_GRID = 0.8770
 
 # The closest *real* capture in the tree to the card's palette: a dark 512x512 figure,
-# `assets/value_visualizers/reflective_tree.png`. It has no grid at all.
+# the reflective-tree figure on the visualizers page (since replaced by a box capture). It has no grid at all.
 NEAREST_REAL_COVERAGE = 0.8492
 NEAREST_REAL_GRID = 0.0
 

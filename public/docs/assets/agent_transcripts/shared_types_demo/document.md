@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 4 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 4 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. 4 - Receive it, still typed
@@ -110,13 +110,14 @@ From `code`
 it. Before shared types the *value* crossed but its type did not.
 
 ```edn [field-box id="shared_types_export" role="properties"]
-{"id" "shared_types_export" "index" 3 "name" "3 - Export a value" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - Export a value" "_tombstone" false "frame" #afield/rect [40.0 190.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "shared_types_export_code_.kt" "lines" 5 "characters" 258 "sha256" "5a7baaee7298f082324406cc73a4968012eebbf1af1e71fc5858c3a1037d9ab8"}]}
+{"id" "shared_types_export" "index" 3 "name" "3 - Export a value" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - Export a value" "_tombstone" false "frame" #afield/rect [40.0 190.0 380.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "shared_types_export_code_.kt" "lines" 6 "characters" 258 "sha256" "9a22fdffaa22d6ac95a206bcb1b2f033fde02ff86a98a2e25bd3e121744947de"}]}
 ```
 
 ```kotlin [field-property box="shared_types_export" name="code" path="shared_types_export_code_.kt"]
 // @rootExported publishes the value to the document root, so any box can reach
 // it. Before shared types the *value* crossed but its type did not.
-@rootExported val particle = shared.Particle(x = 1.5, y = 2.5, mass = 4.0)
+@rootExported
+val particle = shared.Particle(x = 1.5, y = 2.5, mass = 4.0)
 
 println("exported: " + particle)
 ```

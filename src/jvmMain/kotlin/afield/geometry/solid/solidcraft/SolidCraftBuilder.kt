@@ -193,8 +193,8 @@ class SolidCraftBuilder internal constructor(private val name: String, private v
 
     /**
      * One patch through the boundary curves of `sketch`, given in loop order (each ends where
-     * the next begins). SolidCraft v0.15.0 builds two boundaries, the bridge between them; three
-     * or four report "not supported yet" (its issue #763). Draw both curves in the same direction:
+     * the next begins). Two curves give the bridge between them; three or four give the patch
+     * their sides span, which takes no `crown`. Draw both curves in the same direction:
      * the bridge joins start to start, so opposed curves give a patch folded over itself.
      * `orders` is the continuity across each boundary; `crown` fills the middle (0 plain, up to
      * 3 fuller, down to -0.9 flatter).

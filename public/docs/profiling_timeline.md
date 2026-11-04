@@ -56,14 +56,21 @@ var ready = false
 repeat(40) {
     if (!ready) {
         ui.pause(150)
-        ready = ui.eval("return document.getElementById('profile-status')?.textContent.startsWith('Latched') && Number(document.getElementById('profile-timeline')?.dataset.selectedCount) > 30")?.toString() == "true"
+        ready =
+            ui.eval(
+                    "return document.getElementById('profile-status')?.textContent.startsWith('Latched') && Number(document.getElementById('profile-timeline')?.dataset.selectedCount) > 30",
+                )
+                ?.toString() == "true"
     }
 }
 check(ready) { "The real profiling demo did not produce a latched capture" }
 // Frame the actual panel at a readable width; all content and plotted data come from the capture.
-ui.eval("const p=document.getElementById('profile-timeline'); p.style.width='1180px'; p.style.right='auto'; p.style.height='500px'; return 'framed'")
+ui.eval(
+    "const p=document.getElementById('profile-timeline'); p.style.width='1180px'; p.style.right='auto'; p.style.height='500px'; return 'framed'",
+)
 ui.pause(300)
-ui.eval("""
+ui.eval(
+    """
     const metric=document.getElementById('profile-metric');
     metric.value='bytes'; metric.dispatchEvent(new Event('change'));
     const overview=document.getElementById('profile-overview');
@@ -75,7 +82,8 @@ ui.eval("""
     const count=Number(document.getElementById('profile-timeline').dataset.selectedCount);
     if(count<=0) throw new Error('The brushed interval has no observed resumes');
     return count;
-""")
+""",
+)
 ui.pause(300)
 ```
 
@@ -203,11 +211,16 @@ var stacksReady = false
 repeat(100) {
     if (!stacksReady) {
         ui.pause(150)
-        stacksReady = ui.eval("return !document.getElementById('profile-save').disabled && Number(document.getElementById('profile-stacks').dataset.sampleCount)>0")?.toString() == "true"
+        stacksReady =
+            ui.eval(
+                    "return !document.getElementById('profile-save').disabled && Number(document.getElementById('profile-stacks').dataset.sampleCount)>0",
+                )
+                ?.toString() == "true"
     }
 }
 check(stacksReady) { "Real JVM stack capture did not finish" }
-ui.eval("""
+ui.eval(
+    """
     const p=document.getElementById('profile-timeline');
     Object.assign(p.style,{width:'1180px',right:'auto',height:'560px'});
     const kind=document.getElementById('profile-stack-kind');kind.value='allocation';kind.dispatchEvent(new Event('change'));
@@ -219,7 +232,8 @@ ui.eval("""
     row.click();
     if(!document.getElementById('profile-hot-source').textContent.includes('captured compiled box source'))throw new Error('Box source did not resolve');
     return 'sampled source';
-""")
+""",
+)
 ui.pause(300)
 ```
 
@@ -300,11 +314,17 @@ var ready = false
 repeat(60) {
     if (!ready) {
         ui.pause(150)
-        ready = ui.eval("return document.getElementById('profile-status')?.textContent.startsWith('Latched') && !!document.querySelector('.profile-frame-card') && !document.getElementById('profile-save').disabled")?.toString() == "true"
+        ready =
+            ui.eval(
+                    "return document.getElementById('profile-status')?.textContent.startsWith('Latched') && !!document.querySelector('.profile-frame-card') && !document.getElementById('profile-save').disabled",
+                )
+                ?.toString() == "true"
     }
 }
 check(ready) { "Frame capture did not finish" }
-ui.eval("const p=document.getElementById('profile-timeline'); p.style.width='1180px'; p.style.right='auto'; p.style.height='520px'; return 'framed'")
+ui.eval(
+    "const p=document.getElementById('profile-timeline'); p.style.width='1180px'; p.style.right='auto'; p.style.height='520px'; return 'framed'",
+)
 ui.pause(250)
 ```
 
@@ -491,9 +511,9 @@ display(
             title = "one deliberate hitch, seen through a 500-sample window",
             note =
                 "across those 500 spans p99 moved by " +
-                    "%.2f".format(after.p99Ms - withHitch.p99Ms) +
+                    (after.p99Ms - withHitch.p99Ms).f2 +
                     "ms while max fell by " +
-                    "%.2f".format(withHitch.maxMs - after.maxMs) +
+                    (withHitch.maxMs - after.maxMs).f2 +
                     "ms. Over a full window p99 is the sixth " +
                     "worst sample and there was only one bad one, so it never saw the hitch at all; max is now " +
                     (if (after.maxMs > 10) "somehow still holding it" else "back among the short spans") +
@@ -504,9 +524,9 @@ display(
                 [
                     when_,
                     s.n,
-                    "%.2f".format(s.p50Ms),
-                    "%.2f".format(s.p99Ms),
-                    "%.2f".format(s.maxMs),
+                    s.p50Ms.f2,
+                    s.p99Ms.f2,
+                    s.maxMs.f2,
                 ]
             },
         )
@@ -562,6 +582,67 @@ resume rather than per frame. In a three-second recording of the
 turn showed **314 resumes: 157 that allocated a mean of 229,712 bytes and 157 that
 allocated a mean of 208**. Its median resume allocated 208 bytes. Its mean allocated
 114,966. Neither number is wrong; only one of them is about your work.
+
+Zoomed to about a tenth of a second of that recording, the vector box's lane shows its
+resumes in pairs, two marks close together for every turn of the loop: one resume builds the
+array, the other wakes from `delay` and loops straight back. The summary line counts both, which
+is why six turns read as twelve spans.
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector="#profile-timeline" screenshot="assets/profiling_timeline/resume-pairs.png" transcript="../../dev_docs/agents/transcripts/profiling_timeline.yaml" padding="8" wait="0" timeout="180" embed=true hidden=true name="profiling-timeline-resume-pairs" alt="The profiling timeline zoomed to roughly 120 ms of a real capture. The 'Allocate or reuse' lane shows its resumes in close pairs, one per loop turn: the resume that allocates the vector array and the resume that only wakes from delay."}
+ui.eval("window.showProfilingTimeline(); return 'requested'")
+var ready = false
+repeat(40) {
+    if (!ready) {
+        ui.pause(150)
+        ready =
+            ui.eval(
+                    "return document.getElementById('profile-status')?.textContent.startsWith('Latched') && Number(document.getElementById('profile-timeline')?.dataset.selectedCount) > 30",
+                )
+                ?.toString() == "true"
+    }
+}
+check(ready) { "The real profiling demo did not produce a latched capture" }
+ui.eval(
+    "const p=document.getElementById('profile-timeline'); p.style.width='1180px'; p.style.right='auto'; p.style.height='500px'; return 'framed'",
+)
+ui.pause(300)
+ui.eval(
+    """
+    const metric=document.getElementById('profile-metric');
+    metric.value='bytes'; metric.dispatchEvent(new Event('change'));
+    return 'bytes'
+""",
+)
+// Brush about 120 ms in the middle of the overview with the real mouse.
+val r =
+    ui.eval(
+            "const r=document.getElementById('profile-overview').getBoundingClientRect(); return [r.left, r.top, r.width, r.height]",
+        )
+        .toString()
+        .trim('[', ']')
+        .split(',')
+        .map { it.trim().toDouble() }
+val y = r[1] + r[3] / 2
+val x0 = r[0] + r[2] * 0.5
+ui.moveMouse(x0, y)
+ui.mouseDown()
+ui.moveMouse(x0 + r[2] * 0.04, y, 8)
+ui.mouseUp()
+ui.pause(200)
+ui.eval(
+    """
+    document.getElementById('profile-zoom').click();
+    const lane=[...document.querySelectorAll('.profile-labels button')].find(b=>b.textContent.includes('Allocate or reuse'));
+    if(!lane) throw new Error('The vector workload has no lane');
+    lane.click();
+    const p=document.getElementById('profile-timeline');
+    const width=Number(p.dataset.rangeEnd)-Number(p.dataset.rangeStart);
+    if(!(width>40 && width<300)) throw new Error('Zoom window is '+width+' ms');
+    return width;
+""",
+)
+ui.pause(300)
+```
 
 **A gap is not CPU time, and not proof of idleness either.** Empty space between spans
 means that coroutine was not being resumed by the Runloop. It might be suspended in

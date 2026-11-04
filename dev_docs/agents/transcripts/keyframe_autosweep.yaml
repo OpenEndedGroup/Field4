@@ -43,18 +43,18 @@ operations:
       properties:
         code: |
           import afield.graphics.vulkan.util.Options
-          
+
           prop<Window>(window)
           prop<Renderer>(renderer)
-          
+
           Options.enableHDR = false
           Options.profiling = false
-          
+
           once.renderer {
               window = Window("Keyframe sweep")
               Renderer(window)
           }
-          
+
           println("renderer ready")
           start(renderer::run)
   - create:
@@ -300,7 +300,7 @@ operations:
                   extrapolationProbability = 0.3,
               ),
               onRender = { m ->
-                  println("${m.id} ${m.status} — " + m.parents.joinToString(", ") { "${it.key} ${"%.2f".format(it.weight)}" })
+                  println("${m.id} ${m.status} — " + m.parents.joinToString(", ") { "${it.key} ${it.weight.f2}" })
               },
           )
 
@@ -335,7 +335,7 @@ operations:
               written `toString`.
               */
               println("$report")
-              println("that is ${"%.0f".format(report.rendersPerHour())} renders an hour")
+              println("that is ${report.rendersPerHour().f0} renders an hour")
           }
   - create:
       box: ks_archive
@@ -378,8 +378,8 @@ operations:
               | # | parents and weights | pushed past the hull | discrete lane from |
               |---|---------------------|----------------------|--------------------|
               ${rows.joinToString("\n") { m ->
-                  "| ${m.index} | ${m.parents.joinToString("<br>") { "${it.key} ${"%.2f".format(it.weight)}" }} " +
-                      "| ${m.extrapolationGain?.let { g -> "x${"%.2f".format(g)} away from ${m.extrapolationPole}" } ?: "—"} " +
+                  "| ${m.index} | ${m.parents.joinToString("<br>") { "${it.key} ${it.weight.f2}" }} " +
+                      "| ${m.extrapolationGain?.let { g -> "x${g.f2} away from ${m.extrapolationPole}" } ?: "—"} " +
                       "| ${m.discreteLanes.values.distinct().joinToString(", ")} |"
               }}
           """,

@@ -78,23 +78,7 @@ Temporary Items
 *.iml
 *.ipr
 *.iws
-/.idea/*
-
-# Exclude non-user-specific stuff
-!.idea/codeInsightSettings.xml
-!.idea/codeStyles/
-!.idea/copyright/
-!.idea/dataSources.xml
-!.idea/detekt.xml
-!.idea/encodings.xml
-!.idea/externalDependencies.xml
-!.idea/file.template.settings.xml
-!.idea/fileTemplates/
-!.idea/icon.svg
-!.idea/inspectionProfiles/
-!.idea/runConfigurations/
-!.idea/scopes/
-!.idea/vcs.xml
+/.idea/
 
 ### Kotlin template
 # Compiled class file
@@ -196,6 +180,7 @@ public/iosevka.css
 public/iosevka-*.woff2
 public/min/
 public/woff2/
+public/katex/
 public/metadata_store/
 dev_docs/edn-parser.js
 dev_docs/examples-gallery.html
@@ -208,6 +193,7 @@ dev_docs/iosevka.css
 dev_docs/iosevka-*.woff2
 dev_docs/min/
 dev_docs/woff2/
+dev_docs/katex/
 dev_docs/metadata_store/
 
 ### JVM / Kotlin generated resources

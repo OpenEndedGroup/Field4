@@ -17,7 +17,7 @@ cs.close()
 fun rms(x: FloatArray) = sqrt(x.drop(4800).sumOf { it.toDouble() * it } / (x.size - 4800))
 val expected = 1.0 / sqrt(1.0 + 16.0) // a 2nd-order Butterworth at twice its cutoff
 println(
-    "in rms ${"%.4f".format(rms(dry))}, out rms ${"%.4f".format(rms(low))}: gain ${"%.4f".format(rms(low) / rms(dry))}, Butterworth says ${"%.4f".format(expected)}",
+    "in rms ${rms(dry).f4}, out rms ${rms(low).f4}: gain ${(rms(low) / rms(dry)).f4}, Butterworth says ${expected.f4}",
 )
 val window = 4800 until 5040
 showSignals(

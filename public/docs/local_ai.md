@@ -32,7 +32,7 @@ ui.eval(
     frame.style.cssText = "position:fixed;left:0;top:0;width:1400px;height:1300px;border:0;background:#111;z-index:2147483000"
     document.body.appendChild(frame)
     return true
-"""
+    """
         .trimIndent(),
 )
 var localReady = false
@@ -41,20 +41,20 @@ for (i in 0 until 80) {
     localReady =
         ui.eval(
                 """
-        const d = document.getElementById("docs-local-ai-frame")?.contentDocument
-        const panel = d?.getElementById("ai-settings-details")
-        if (!panel || /checking/i.test(d.getElementById("ai-settings-summary").textContent)) return false
-        const splash = d.getElementById("splash-screen")
-        if (splash && !splash.classList.contains("hidden")) return false
-        if (!panel.open) panel.querySelector("summary").click()
-        panel.querySelector('[data-ai-provider="local"]').click()
-        d.getElementById("local-ai-base-url").value = "http://gpu-host:8081/v1"
-        d.getElementById("ai-flagship-model").value = "qwen3.8-27b"
-        d.getElementById("ai-fast-model").value = ""
-        d.getElementById("ai-fallback-model").value = ""
-        panel.scrollIntoView({block:"start"})
-        return !d.getElementById("local-ai-controls").hidden
-    """
+                const d = document.getElementById("docs-local-ai-frame")?.contentDocument
+                const panel = d?.getElementById("ai-settings-details")
+                if (!panel || /checking/i.test(d.getElementById("ai-settings-summary").textContent)) return false
+                const splash = d.getElementById("splash-screen")
+                if (splash && !splash.classList.contains("hidden")) return false
+                if (!panel.open) panel.querySelector("summary").click()
+                panel.querySelector('[data-ai-provider="local"]').click()
+                d.getElementById("local-ai-base-url").value = "http://gpu-host:8081/v1"
+                d.getElementById("ai-flagship-model").value = "qwen3.8-27b"
+                d.getElementById("ai-fast-model").value = ""
+                d.getElementById("ai-fallback-model").value = ""
+                panel.scrollIntoView({block:"start"})
+                return !d.getElementById("local-ai-controls").hidden
+                """
                     .trimIndent(),
             )
             .toString() == "true"
@@ -76,7 +76,7 @@ ui.eval(
         "px;height:" + (last.bottom - panel.top + 4) + "px"
     document.body.appendChild(crop)
     return true
-"""
+    """
         .trimIndent(),
 )
 ```
@@ -169,6 +169,13 @@ your inference machine when its optional monitor is running: GPU temperature,
 load and used/total VRAM, model readiness or sleep, queued requests and generation
 speed. GPU readings include other applications using that GPU. The context window
 shown is its capacity, not the amount currently used by your conversation.
+
+![AI4's chat on a box with Local selected. Its status line reads: Local, Processing request, GPU 0 at 93% load, 47°C, 22.4 of 24.0 GiB VRAM, 128K context window, while the model answers the prompt above it](assets/local_ai/live-feedback.png)
+
+??? aside "How this picture was made"
+    The docs build has no inference machine, so it keeps this committed capture.
+    `tools/capture_local_ai_feedback.py --base-url http://<gpu-host>:8081/v1` retakes it from a
+    running llama.cpp server and monitor; this one is Qwen3.8-27B on an RTX 4090.
 
 On the GPU machine, run the monitor from a Field checkout in a second terminal:
 

@@ -358,7 +358,7 @@ for (target in [2000, 600, 150]) {
                 small.isWatertight(),
             ),
     )
-    budgets.add("decimate($target) — deviation ${"%.4f".format(deviation)}" to small)
+    budgets.add("decimate($target) — deviation ${deviation.f4}" to small)
 }
 :::fold draw the original beside the three budgets
 showMeshGrid(
@@ -775,7 +775,7 @@ Measure a surface or query where points and rays meet it.
 | `fun TriMesh.centroid(): Vec3` | The **area-weighted centroid of the surface** — where a hollow shell of this shape would balance. [API](reference/graphics.md#mesh-measure-kt). |
 | `fun TriMesh.solidCentroid(): Vec3` | The centre of mass of the **enclosed solid**, assuming uniform density — the volume-weighted sum of the same tetrahedra `signedVolume` uses. [API](reference/graphics.md#mesh-measure-kt). |
 | `fun TriMesh.mixedVertexAreas(): DoubleArray` | Per-vertex **mixed Voronoi area** — the area each vertex "owns", the denominator both curvatures need. [API](reference/graphics.md#mesh-measure-kt). |
-| `fun TriMesh.gaussianCurvature(): DoubleArray` | Discrete Gaussian curvature per vertex: the angle deficit `2π - Σθ` divided by the vertex's mixed area. [API](reference/graphics.md#mesh-measure-kt). |
+| `fun TriMesh.gaussianCurvature(): DoubleArray` | Discrete Gaussian curvature per vertex: the angle deficit \( 2\pi - \sum\theta \) divided by the vertex's mixed area. [API](reference/graphics.md#mesh-measure-kt). |
 | `fun TriMesh.meanCurvature(): DoubleArray` | Discrete mean curvature per vertex, signed against the surface normal: half the magnitude of the cotangent Laplacian, divided by the mixed area. [API](reference/graphics.md#mesh-measure-kt). |
 | `MeshBvh` | A bounding-volume hierarchy over a mesh's triangles: build once, query many times. [API](reference/graphics.md#mesh-measure-kt). |
 | `fun TriMesh.bvh(leafSize: Int = 8): MeshBvh` | Build a [`MeshBvh`](reference/graphics.md#mesh-measure-kt-meshbvh) over this mesh. Hold on to it — building is the expensive part. [API](reference/graphics.md#mesh-measure-kt). |

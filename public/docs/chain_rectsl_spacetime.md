@@ -149,9 +149,9 @@ disagreement between the autodiff channels and `Fn.eval` was `${field.worstChann
 | the volume ends | marcher | triangles | closed | detail |
 |---|---|---|---|---|
 | at the first and last frame | `marchingCubes` | ${cutMarch.triangleCount} | **${cutMarch.isWatertight()}** | ${cutMarch.diagnose().boundaryLoops.size} boundary loops |
-| at the first and last frame | `levelSetOf` | ${cutSolid.triangleCount} | ${cutSolid.status == afield.geometry.solid.manifold.ManifoldStatus.NO_ERROR} | genus ${cutSolid.genus}, volume ${"%.3f".format(cutSolid.volume)} |
+| at the first and last frame | `levelSetOf` | ${cutSolid.triangleCount} | ${cutSolid.status == afield.geometry.solid.manifold.ManifoldStatus.NO_ERROR} | genus ${cutSolid.genus}, volume ${cutSolid.volume.f3} |
 | one empty slice beyond each | `marchingCubes` | ${closedMarch.triangleCount} | **${closedMarch.isWatertight()}** | genus ${closedMarch.genus()} |
-| one empty slice beyond each | `levelSetOf` | ${closedSolid.triangleCount} | ${closedSolid.status == afield.geometry.solid.manifold.ManifoldStatus.NO_ERROR} | genus ${closedSolid.genus}, volume ${"%.3f".format(closedSolid.volume)} |
+| one empty slice beyond each | `levelSetOf` | ${closedSolid.triangleCount} | ${closedSolid.status == afield.geometry.solid.manifold.ManifoldStatus.NO_ERROR} | genus ${closedSolid.genus}, volume ${closedSolid.volume.f3} |
 
 `decompose()` finds **${parts.size}** component, because the bar passes over the square at some
 frame and two shapes that touch on screen are one solid in space-time.

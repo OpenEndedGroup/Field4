@@ -1,4 +1,7 @@
-/* One document beside its gallery entry. Ordinary links still work without JavaScript. */
+/* One document beside the entry that links it, on any page carrying the gallery marker
+   (`<div data-field-transcript-gallery hidden></div>`): an `offline.html?file=` or `?zip=` link
+   opens the offline viewer, with the document's captured outputs and its Open in Field·4 button,
+   in a panel at the right instead of a new page. Ordinary links still work without JavaScript. */
 (() => {
     let panel = null, activeLink = null;
     const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -28,7 +31,10 @@
         panel.classList.remove('field-transcript-viewer--below');
         document.body.append(panel);
         const article = activeLink.closest('.md-content__inner') || activeLink.closest('article');
-        const heading = entryHeading(activeLink);
+        // A gallery entry is its h3 section; a link in running prose sits beside its own paragraph.
+        const paragraph = activeLink.closest('p');
+        const standalone = paragraph?.textContent.trim() === activeLink.textContent.trim();
+        const heading = standalone ? entryHeading(activeLink) : null;
         const entry = heading?.closest('.field-sticky-section[data-level="3"]') || heading || activeLink.closest('p');
         const rect = article.getBoundingClientRect(), entryRect = entry.getBoundingClientRect();
         panel.style.left = `${scrollX + rect.right + 28}px`;
@@ -40,13 +46,13 @@
         const link = event.target.closest('a[href]');
         if (!link || panel?.contains(link)) return;
         const url = new URL(link.href);
-        if (url.origin !== location.origin || !url.pathname.endsWith('/offline.html') || !url.searchParams.get('file')?.startsWith('assets/agent_transcripts/')) return;
+        const documentPath = url.searchParams.get('file') || url.searchParams.get('zip');
+        if (url.origin !== location.origin || !url.pathname.endsWith('/offline.html') || !documentPath?.startsWith('assets/')) return;
         event.preventDefault(); close(); activeLink = link;
         url.searchParams.set('focus','outputs');
         link.setAttribute('aria-expanded','true');
-        const heading = entryHeading(link)?.cloneNode(true);
-        heading?.querySelector('.headerlink')?.remove();
-        const name = heading?.textContent.trim() || url.searchParams.get('file').split('/').at(-2);
+        // The document's own name: its folder beside metadata.edn, or the zip's name.
+        const name = documentPath.endsWith('.zip') ? documentPath.split('/').at(-1).slice(0, -4) : documentPath.split('/').at(-2);
         panel = document.createElement('aside'); panel.className = 'field-transcript-viewer';
         panel.setAttribute('aria-label',`${name} document`);
         const header = document.createElement('div'); header.className = 'field-transcript-viewer__header';

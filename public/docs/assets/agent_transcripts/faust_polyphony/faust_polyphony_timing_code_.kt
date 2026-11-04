@@ -9,9 +9,8 @@ one of those forward to the next boundary, up to 110 frames late.
 Before believing any onset count: check the signal has onsets. faustSilentGaps must find real
 silence between the notes, or the "onsets" are envelope ripple in a continuous tone.
 */
-val render =
-    faustPatternRender(
-        """
+val render = faustPatternRender(
+    """
 #faust
 import("stdfaust.lib");
 cutoff = hslider("cutoff [unit:Hz]", 2600, 120, 9000, 1);
@@ -22,12 +21,12 @@ env = en.adsr(0.004, 0.09, 0.55, 0.03, gate);
 process = (os.sawtooth(freq) + os.sawtooth(freq * 1.005)) * 0.5
         : fi.resonlp(cutoff, 1.4, 1) * env * gain <: _,_;
 """,
-        pat("c4 e4 g4 a4 c5 d5 e5"),
-        cycles = 2,
-        cps = 1.0,
-        voices = 8,
-        sustain = 0.5,
-    )
+    pat("c4 e4 g4 a4 c5 d5 e5"),
+    cycles = 2,
+    cps = 1.0,
+    voices = 8,
+    sustain = 0.5,
+)
 
 val mono = render.mono()
 val gaps = faustSilentGaps(mono, render.sampleRate)

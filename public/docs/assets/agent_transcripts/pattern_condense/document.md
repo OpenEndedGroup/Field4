@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. 3 - Close the loop
@@ -26,7 +26,7 @@ POKE THIS: change `bar`. Anything on an eight-step grid at MIDI 60 will be heard
 single figure and comes back as two halves.
 
 ```edn [field-box id="condense_from_audio" role="properties"]
-{"id" "condense_from_audio" "index" 0 "name" "3 - Close the loop" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - Close the loop" "_tombstone" false "frame" #afield/rect [60.0 940.0 400.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "condense_from_audio_code_.kt" "lines" 80 "characters" 2914 "sha256" "00d1dee84cef8e5866068a6056419d8ecf5117899ed50f66b3c2016f8bfb2b28"}]}
+{"id" "condense_from_audio" "index" 0 "name" "3 - Close the loop" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - Close the loop" "_tombstone" false "frame" #afield/rect [60.0 940.0 400.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "condense_from_audio_code_.kt" "lines" 80 "characters" 2904 "sha256" "52ed89bfbdae940edb3e9766ef20364afa3b08b3ff206b3511de19d9afede096"}]}
 ```
 
 ```kotlin [field-property box="condense_from_audio" name="code" path="condense_from_audio_code_.kt"]
@@ -94,7 +94,7 @@ markdown(
     | | |
     |---|---|
     | played | `$bar` |
-    | rendered | ${audio.mono.size} samples, ${"%.2f".format(audio.mono.size.toDouble() / PatSoundDocs.SR)} s |
+    | rendered | ${audio.mono.size} samples, ${(audio.mono.size.toDouble() / PatSoundDocs.SR).f2} s |
     | grid recovered | ${heard.grid?.describe() ?: "none"} |
     | heard | `${heard.miniNotation}` |
     | **condensed** | **`${condensed.notation}`** |
@@ -133,7 +133,7 @@ a named figure - x(p,s) for Euclidean, x(kN) / x(gN) for Kolakoski - or spelled 
 which one you get is decided by character count and nothing else.
 
 ```edn [field-box id="condense_basics" role="properties"]
-{"id" "condense_basics" "index" 1 "name" "1 - Condense a rhythm" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - Condense a rhythm" "_tombstone" false "frame" #afield/rect [60.0 60.0 400.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "condense_basics_code_.kt" "lines" 48 "characters" 1904 "sha256" "73d22932936e339062790f9a93fe14fe7a823a9abbeb6e1ef3c9c087e1b8d72a"}]}
+{"id" "condense_basics" "index" 1 "name" "1 - Condense a rhythm" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 - Condense a rhythm" "_tombstone" false "frame" #afield/rect [60.0 60.0 400.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "condense_basics_code_.kt" "lines" 48 "characters" 1892 "sha256" "40e20b44fa0f5f717fc664d8fc5f88ef144c5a9cb8e04c702cadb17da28da84c"}]}
 ```
 
 ```kotlin [field-property box="condense_basics" name="code" path="condense_basics_code_.kt"]
@@ -162,7 +162,7 @@ val found = showPatCondense(*rhythms.toTypedArray(), channel = "roll")
 val rows =
     rhythms.zip(found).joinToString("\n") { (source, c) ->
         "| `$source` | `${c.notation}` | ${c.notation.length}/${c.flat.length} | " +
-            "${"%.2f".format(c.compression)} | ${c.structure.joinToString(", ")} |"
+            "${c.compression.f2} | ${c.structure.joinToString(", ")} |"
     }
 
 markdown(
@@ -192,7 +192,7 @@ markdown(
 <!-- field-box id="condense_invents_nothing" index="2" -->
 
 ```edn [field-box id="condense_invents_nothing" role="properties"]
-{"id" "condense_invents_nothing" "index" 2 "name" "2 - Invent nothing" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - Invent nothing" "_tombstone" false "frame" #afield/rect [60.0 500.0 400.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "condense_invents_nothing_code_.kt" "lines" 71 "characters" 2653 "sha256" "15106a0a9a5e214bf21767466fb257e24a0a566fe73ea51a83a987865fe06f78"}]}
+{"id" "condense_invents_nothing" "index" 2 "name" "2 - Invent nothing" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - Invent nothing" "_tombstone" false "frame" #afield/rect [60.0 500.0 400.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "condense_invents_nothing_code_.kt" "lines" 71 "characters" 2619 "sha256" "3ef4106539fa7dc3e74eab5dbd5e8a1b546eb8c1f43e50f47c1712712d563a78"}]}
 ```
 
 ```kotlin [field-property box="condense_invents_nothing" name="code" path="condense_invents_nothing_code_.kt"]
@@ -254,10 +254,10 @@ markdown(
     |---|---|
     | read as a single whole-span figure | **$named** |
     | of those, wrong | **$wrong** |
-    | median compression | ${"%.3f".format(median)} |
-    | the same number for `kolakoskiMask(16)` | ${"%.3f".format(structured)} |
+    | median compression | ${median.f3} |
+    | the same number for `kolakoskiMask(16)` | ${structured.f3} |
 
-    Noise compresses about ${"%.1f".format(median / structured)} times worse than the figure
+    Noise compresses about ${(median / structured).f1} times worse than the figure
     it is up against. That separation is the claim. If random masks compressed as well as
     structured ones, the search would be finding figures in nothing.
 

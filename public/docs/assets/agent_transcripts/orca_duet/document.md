@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 1 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 1 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. ORCA duet · run me
@@ -19,7 +19,7 @@ Echo, which plays the last eight back in threes, an octave up; every eighth note
 plays, Kotlin moves one note of Lead's tune a step up the scale. Click a grid to join in.
 
 ```edn [field-box id="orca_duet" role="properties"]
-{"id" "orca_duet" "index" 0 "name" "ORCA duet · run me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "ORCA duet · run me" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "orca_duet_code_.kt" "lines" 77 "characters" 2181 "sha256" "99e5b617c44fb2700b501d0509822eefc5a4dc0e8aef07b2b0d94f2f1c6feb4d"}]}
+{"id" "orca_duet" "index" 0 "name" "ORCA duet · run me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "ORCA duet · run me" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "orca_duet_code_.kt" "lines" 75 "characters" 2125 "sha256" "2cfe83e53bfd89a6cfbdbb6a2cf91e0ee9f99267d6465434bc387870efafdeeb"}]}
 ```
 
 ```kotlin [field-property box="orca_duet" name="code" path="orca_duet_code_.kt"]
@@ -29,13 +29,12 @@ Echo, which plays the last eight back in threes, an octave up; every eighth note
 plays, Kotlin moves one note of Lead's tune a step up the scale. Click a grid to join in.
 */
 val synth = PatSynthBank()
-val lead =
-    orca(
-        "lead",
-        cols = 40,
-        rows = 10,
-        grid =
-            """
+val lead = orca(
+    "lead",
+    cols = 40,
+    rows = 10,
+    grid =
+        """
     #.LEAD.#
     .
     .2C8
@@ -45,21 +44,20 @@ val lead =
     D8
     .:12C
 """,
-    )
-val echo =
-    orca(
-        "echo",
-        cols = 40,
-        rows = 10,
-        grid =
-            """
+)
+val echo = orca(
+    "echo",
+    cols = 40,
+    rows = 10,
+    grid =
+        """
     #.ECHO.#
     .
     .3C8
     D3.8TCCCCCCCC
     .:25
 """,
-    )
+)
 val up = mapOf('C' to 'D', 'D' to 'E', 'E' to 'G', 'G' to 'A', 'A' to 'C')
 val heard = ArrayDeque("CCCCCCCC".toList())
 var echoes = 0

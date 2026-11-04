@@ -239,6 +239,28 @@ lowering and codegen. Both of the first two are per-snippet rebuilds of things t
 between snippets, in `K2ReplCompiler.compileImpl` / `FirJvmSessionFactory.createSourceSession` in
 the compiler fork.
 
+## A warm compile: lazy IR the REPL lowering asked for, 2026-10-29
+
+The paragraph above blamed the per-snippet composite symbol provider. That was tested and is
+wrong: putting one long-lived composite in front of the library providers, so that every snippet
+session saw warm caches, moved nothing (interleaved A/B, within 1 ms). The composite's self time
+is the snippet session's own walk over its providers, not cold library caches. Splitting the
+`getDeclarations` samples by caller instead found two fixed costs every snippet paid:
+
+- `ReplSnippetAccessCallsGenerator` listed the REPL state object's functions to find `get` and
+  `put`. After the first snippet that object is a lazy class over `HashMap`, so listing them built
+  every member and fake override of the `HashMap` hierarchy: 921 of 5,424 compile samples.
+- `JvmSymbols`, built per compilation, eagerly listed the members of the four unsigned-array
+  classes for their `size` and `get`: 459 samples.
+
+Fork commits `a25d783b7205` (look `get`/`put` up by name on the builtin `Map`/`MutableMap`) and
+`dc80a11a734e` (make the two unsigned-array maps `by lazy`), on `field/repl-fir-session-reuse`
+over `field/repl-snippet-class-receiver`. `getDeclarations` fell from 1,567 samples to 375 (29% →
+7% of a compile). Wall-clock A/B, 400 compiles per engine at load 15–25: 3–6 ms (~10%) faster at
+nearly every history depth, too noisy for a firmer number; the nightly run will give one. What is
+left: resolution ~25%, lowering and codegen ~35%, and the smaller callers `PropertyReferenceLowering`
+(its constructor lists a class's functions) and `MappedEnumWhenLowering`.
+
 ## What the baseline says to fix next
 
 1. **The first run of a box builds its engine on the spot.** The engine the box made when it was

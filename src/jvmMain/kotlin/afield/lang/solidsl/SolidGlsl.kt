@@ -121,11 +121,25 @@ fun SolidExpr.toGlsl(functionName: String = "sdSolid"): GlslSolid {
 }
 
 /**
- * A complete fragment shader that draws this shape: sphere tracing, a central-difference normal, two
- * lights and a soft floor. Drop it into Field 4, or paste it into Shadertoy.
+ * The vertex shader that goes with [toRaymarchFragment]: one triangle covering the target, its
+ * positions taken from `gl_VertexIndex`, so it needs no vertex buffers and suits `fullscreenTriangle`.
+ */
+const val SOLID_RAYMARCH_VERTEX: String = """#version 450
+void main() {
+    vec2 pos = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+    gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
+}
+"""
+
+/**
+ * A complete fragment shader that draws this shape: sphere tracing, a central-difference normal and
+ * two lights, on a flat dark background.
  *
- * It takes three conventional uniforms and no others — `uResolution`, `uTime`, `uCameraDistance` —
- * so a preview is a copy and paste rather than a plumbing exercise.
+ * It reads three values from a push-constant block, `params`: `uResolution` (the target's size in
+ * pixels, which `gl_FragCoord` is measured in), `uTime` (turns the camera about the shape's
+ * vertical axis) and `uCameraDistance` (in multiples of the shape's bounding radius, at least 1.5).
+ * In a box beneath a renderer, pair it with [SOLID_RAYMARCH_VERTEX], draw it with
+ * `fullscreenTriangle`, and `push.bind` each of the three on that mesh.
  *
  * @param maxSteps sphere-tracing iterations before the ray gives up.
  */
@@ -139,14 +153,13 @@ fun SolidExpr.toRaymarchFragment(maxSteps: Int = 128, functionName: String = "sd
     return """
         #version 450
 
-        layout(location = 0) in vec2 vUv;
         layout(location = 0) out vec4 fragColor;
 
-        layout(binding = 0) uniform Params {
+        layout(push_constant) uniform Params {
             vec2 uResolution;
             float uTime;
             float uCameraDistance;
-        };
+        } params;
 
         ${f.glsl.trimEnd()}
 
@@ -166,10 +179,12 @@ fun SolidExpr.toRaymarchFragment(maxSteps: Int = 128, functionName: String = "sd
         }
 
         void main() {
-            vec2 uv = (gl_FragCoord.xy * 2.0 - uResolution) / uResolution.y;
+            // gl_FragCoord counts rows from the top, so flip y to make +y up on screen
+            vec2 uv = (gl_FragCoord.xy * 2.0 - params.uResolution) / params.uResolution.y;
+            uv.y = -uv.y;
 
-            float a = uTime * 0.35;
-            float dist = RADIUS * max(uCameraDistance, 1.5);
+            float a = params.uTime * 0.35;
+            float dist = RADIUS * max(params.uCameraDistance, 1.5);
             vec3 eye = CENTRE + vec3(sin(a) * dist, cos(a) * dist, dist * 0.55);
             vec3 forward = normalize(CENTRE - eye);
             vec3 right = normalize(cross(forward, vec3(0.0, 0.0, 1.0)));

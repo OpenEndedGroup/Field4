@@ -304,7 +304,7 @@ private fun updateOutputControlVisibility(output: dynamic) {
     } else {
         ""
     }
-    domNodeControl.innerHTML = "<div class='closeBox hoverable' onclick='removeArea(\"$id\")'>&#215;</div>$toggle"
+    domNodeControl.innerHTML = "<button type='button' class='closeBox hoverable' title='Close' aria-label='Close' onclick='removeArea(\"$id\")'>×</button>$toggle"
 }
 
 private fun recomputeOutputHeight(editor: dynamic, output: dynamic) {

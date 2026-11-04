@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. SolidSL — the same value, lowered to GLSL
@@ -88,7 +88,7 @@ println("  after simplifying:  ${noBlend.simplified().exactRefusal()?.why ?: "(n
 <!-- field-box id="solidsl_part" index="1" -->
 
 ```edn [field-box id="solidsl_part" role="properties"]
-{"id" "solidsl_part" "index" 1 "name" "SolidSL — a part, and what the notation knows before it meshes" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "SolidSL — a part, and what the notation knows before it meshes" "_tombstone" false "frame" #afield/rect [80.0 80.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "solidsl_part_code_.kt" "lines" 94 "characters" 4096 "sha256" "08e53158dee271c260ff19325294f82519d79a5d9e165c657a904a518b968958"}]}
+{"id" "solidsl_part" "index" 1 "name" "SolidSL — a part, and what the notation knows before it meshes" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "SolidSL — a part, and what the notation knows before it meshes" "_tombstone" false "frame" #afield/rect [80.0 80.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "solidsl_part_code_.kt" "lines" 94 "characters" 4084 "sha256" "140fdbcbbfbaaa70bf7c4d168f17016b9d9e184d004ac95ac613daddbfa0092b"}]}
 ```
 
 ```kotlin [field-property box="solidsl_part" name="code" path="solidsl_part_code_.kt"]
@@ -172,7 +172,7 @@ run {
     // Field's own topology, which shares no code with Manifold's.
     val mesh = build.solid.toTriMesh()
     println("watertight       ${mesh.isWatertight()}")
-    println("volume           ${"%.6f".format(mesh.signedVolume())}")
+    println("volume           ${mesh.signedVolume().f6}")
     println("genus            ${mesh.genus()}")
     println("status           ${build.solid.status} — closed however the field behaved")
 

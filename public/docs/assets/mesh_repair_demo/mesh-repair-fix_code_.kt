@@ -47,9 +47,9 @@ run {
         val knife = Solid.cube(4.0, 4.0, 4.0, center = true).translated(0.0, 0.0, 2.0)
         val lower = solid - knife
         println()
-        println("whole sphere     ${"%.5f".format(base.signedVolume())}")
-        println("repaired volume  ${"%.5f".format(solid.volume)}   (the flat cap loses a sliver)")
-        println("after the cut    ${"%.5f".format(lower.volume)}   (half, cut at the equator)")
+        println("whole sphere     ${base.signedVolume().f5}")
+        println("repaired volume  ${solid.volume.f5}   (the flat cap loses a sliver)")
+        println("after the cut    ${lower.volume.f5}   (half, cut at the equator)")
 
         showMeshGrid(
             "broken — an open hole" to broken,

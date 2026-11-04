@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 8 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 8 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. 7 — Not pixels: WFC on a scalar field
@@ -19,7 +19,7 @@ sliceIntoOverlappingPatterns2D learn from a row-major FloatArray, so the same ma
 synthesises numbers -- and numbers in Field are geometry waiting to happen.
 
 ```edn [field-box id="wfc_scalar_field" role="properties"]
-{"id" "wfc_scalar_field" "index" 0 "name" "7 — Not pixels: WFC on a scalar field" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "7 — Not pixels: WFC on a scalar field" "_tombstone" false "frame" #afield/rect [1060.0 60.0 360.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "wfc_scalar_field_code_.kt" "lines" 107 "characters" 4623 "sha256" "47a20215d92ecb010caa5c03053d1f999db56756773568ab9a612ba79adbe15e"}]}
+{"id" "wfc_scalar_field" "index" 0 "name" "7 — Not pixels: WFC on a scalar field" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "7 — Not pixels: WFC on a scalar field" "_tombstone" false "frame" #afield/rect [1060.0 60.0 360.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "wfc_scalar_field_code_.kt" "lines" 107 "characters" 4579 "sha256" "0eddcf93136eca57f967ee730143b7f7ca43bab281d4ce97f0b2806cd2c4e8b4"}]}
 ```
 
 ```kotlin [field-property box="wfc_scalar_field" name="code" path="wfc_scalar_field_code_.kt"]
@@ -102,12 +102,12 @@ fun roughness(values: FloatArray): String {
             vn++
         }
     }
-    return "h=" + "%.3f".format(hs / hn) + " v=" + "%.3f".format(vs / vn)
+    return "h=" + (hs / hn).f3 + " v=" + (vs / vn).f3
 }
 
 println(tiles.tileCount.toString() + " levels, " + patterns.tileCount + " distinct 3x3 value patterns")
-println("1x1 tiles:    mean " + "%.2f".format(tiledHeights.average()) + ", roughness " + roughness(tiledHeights))
-println("3x3 patterns: mean " + "%.2f".format(patternHeights.average()) + ", roughness " + roughness(patternHeights))
+println("1x1 tiles:    mean " + tiledHeights.average().f2 + ", roughness " + roughness(tiledHeights))
+println("3x3 patterns: mean " + patternHeights.average().f2 + ", roughness " + roughness(patternHeights))
 
 // The payoff: iso-contours of the synthesised field are FLines, not a picture of them.
 val smooth = floatsToImg(patternHeights, outW, outH).gaussianBlur(1.2)
@@ -146,7 +146,7 @@ solvers at once. Nothing here arranges a view: no colormap call, no montage, no 
 plumbing beyond display().
 
 ```edn [field-box id="wfc_inline_view" role="properties"]
-{"id" "wfc_inline_view" "index" 1 "name" "8 — The solver's own inline view" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "8 — The solver's own inline view" "_tombstone" false "frame" #afield/rect [1060.0 260.0 330.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "wfc_inline_view_code_.kt" "lines" 72 "characters" 2862 "sha256" "b2e8ef2f657f9c8119d798da4f20e4461a783e52f92c3d06b99c86ba032d6e44"}]}
+{"id" "wfc_inline_view" "index" 1 "name" "8 — The solver's own inline view" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "8 — The solver's own inline view" "_tombstone" false "frame" #afield/rect [1060.0 260.0 330.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "wfc_inline_view_code_.kt" "lines" 72 "characters" 2850 "sha256" "5e84368ddd8e2c6fa3b3dc88106f50f1d31ca740eb0c93a22e0c17fdb20cf1b6"}]}
 ```
 
 ```kotlin [field-property box="wfc_inline_view" name="code" path="wfc_inline_view_code_.kt"]
@@ -215,7 +215,7 @@ display("b. contradicted", stuck.h)
 println(solver.toString())
 println(
     "  entropy range drawn: 0 .. " +
-        "%.3f".format(rules.fullSetEntropy()) +
+        rules.fullSetEntropy().f3 +
         " nats, " +
         solver.entropyHeatmap().nonFiniteCount +
         " cell(s) undefined",
@@ -397,7 +397,7 @@ waveToImg averages each cell's remaining possibilities -- undecided cells are a 
 they might become. possibilityCountImg is the remaining option count as a scalar field.
 
 ```edn [field-box id="wfc_collapse" role="properties"]
-{"id" "wfc_collapse" "index" 4 "name" "6 — Watching the collapse" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — Watching the collapse" "_tombstone" false "frame" #afield/rect [560.0 460.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "wfc_collapse_code_.kt" "lines" 70 "characters" 2631 "sha256" "bebeacb34705e060dea24e9aeef5995cd43841460306859641bbd76b3aeb917a"}]}
+{"id" "wfc_collapse" "index" 4 "name" "6 — Watching the collapse" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — Watching the collapse" "_tombstone" false "frame" #afield/rect [560.0 460.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "wfc_collapse_code_.kt" "lines" 69 "characters" 2606 "sha256" "b27217c4bc322546797b651d40e828f40e983c6c299d0afbaa20eb894006f801"}]}
 ```
 
 ```kotlin [field-property box="wfc_collapse" name="code" path="wfc_collapse_code_.kt"]
@@ -465,11 +465,10 @@ println("magma is mapped with an explicit lo/hi so the colours mean the same thi
 display(
     "main",
     vstack(
-            montage(waves, columns = 4, cellSide = 260),
-            montage(entropy, columns = 4, cellSide = 260),
-            gap = 14,
-        )
-        .toPngBytes(),
+        montage(waves, columns = 4, cellSide = 260),
+        montage(entropy, columns = 4, cellSide = 260),
+        gap = 14,
+    ).toPngBytes(),
 )
 ```
 

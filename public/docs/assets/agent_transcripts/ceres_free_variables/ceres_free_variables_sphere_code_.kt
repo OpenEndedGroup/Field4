@@ -27,21 +27,19 @@ val data = [
 // Nothing is committed, so look where each build task puts its artifact. Constructing the
 // backend is what refuses a missing or too-old library, so that is the check.
 val backendFailures = mutableListOf<String>()
-val backend =
-    [
-            Path.of("build/ken-ceres-redistributable/libken_ceres_jvm.dylib"),
-            Path.of("build/ken-ceres/libken_ceres_jvm.dylib"),
-        ]
-        .filter { Files.exists(it) }
-        .firstNotNullOfOrNull { path ->
-            runCatching { FfmCeresBackend(path) }
-                .onFailure { failure ->
-                    val detail = "$path: ${failure.javaClass.simpleName}: ${failure.message}"
-                    backendFailures += detail
-                    println("Ceres load failed: $detail")
-                }
-                .getOrNull()
-        }
+val backend = [
+    Path.of("build/ken-ceres-redistributable/libken_ceres_jvm.dylib"),
+    Path.of("build/ken-ceres/libken_ceres_jvm.dylib"),
+].filter { Files.exists(it) }
+    .firstNotNullOfOrNull { path ->
+        runCatching { FfmCeresBackend(path) }
+            .onFailure { failure ->
+                val detail = "$path: ${failure.javaClass.simpleName}: ${failure.message}"
+                backendFailures += detail
+                println("Ceres load failed: $detail")
+            }
+            .getOrNull()
+    }
 val backendStatus = when {
     backend != null -> "Loaded a compatible Ceres wrapper."
     backendFailures.isEmpty() -> "No Ceres wrapper found in build/ken-ceres-redistributable or build/ken-ceres."
@@ -154,8 +152,8 @@ if (backend == null) {
     println(
         """
         ${data.size} fixed points, two free variables, no point unknowns at all
-        ceres       centre (${"%.9f".format(centre.x)}, ${"%.9f".format(centre.y)}, ${"%.9f".format(centre.z)})  radius ${"%.9f".format(radius)}
-        closed form centre (${"%.9f".format(trueCentre.x)}, ${"%.9f".format(trueCentre.y)}, ${"%.9f".format(trueCentre.z)})  radius ${"%.9f".format(trueRadius)}
+        ceres       centre (${centre.x.f9}, ${centre.y.f9}, ${centre.z.f9})  radius ${radius.f9}
+        closed form centre (${trueCentre.x.f9}, ${trueCentre.y.f9}, ${trueCentre.z.f9})  radius ${trueRadius.f9}
         centre off by ${"%.2e".format(centreError)}, radius off by ${"%.2e".format(kotlin.math.abs(radius - trueRadius))}
         ${result.summary}
         """

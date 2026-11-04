@@ -588,7 +588,8 @@ private fun BoxScreenshotRequest.toPlaywrightArg(): Map<String, Any?> = mapOf(
     "openOutputs" to openOutputs,
     "expectOutputs" to expectOutputs,
     "preserveSelection" to preserveSelection,
-    "includeNotifications" to includeNotifications
+    "includeNotifications" to includeNotifications,
+    "openDetails" to openDetails
 )
 
 private fun WindowScreenshotRequest.toPlaywrightArg(): Map<String, Any?> = mapOf(
@@ -1660,7 +1661,8 @@ suspend fun captureBoxScreenshot(info: SessionInformation, request: AgentBoxScre
                 openOutputs = request.openOutputs,
                 expectOutputs = request.expectOutputs,
                 preserveSelection = request.preserveSelection,
-                includeNotifications = request.includeNotifications
+                includeNotifications = request.includeNotifications,
+                openDetails = request.openDetails
             )
         )
     }.getOrElse {
@@ -2805,6 +2807,13 @@ class DocsUiRecorder(
     private val page: Page,
     private val clip: Rect?,
     private val fps: Int,
+    /**
+     * When set, frames are grabbed unclipped and every frame is cropped, at [stopAndEncode], to the
+     * rectangle this returns then. For a drive whose subject grows while it runs (a box whose
+     * script opens a new output panel), a clip measured at the start would cut the result off.
+     * Runs on the Playwright dispatcher.
+     */
+    private val clipAtEnd: (() -> Rect?)? = null,
 ) {
     private val frames = java.util.concurrent.ConcurrentLinkedQueue<ByteArray>()
     @Volatile private var running = false
@@ -2816,7 +2825,7 @@ class DocsUiRecorder(
         val safeFps = fps.coerceAtLeast(1)
         val frameIntervalMs = (1000.0 / safeFps.toDouble()).toLong().coerceAtLeast(1L)
         val options = Page.ScreenshotOptions().setType(ScreenshotType.JPEG).setQuality(90)
-        if (clip != null) {
+        if (clip != null && clipAtEnd == null) {
             options.setClip(Clip(clip.x, clip.y, clip.w, clip.h))
         }
         job = playwrightScope.launch {
@@ -2848,13 +2857,34 @@ class DocsUiRecorder(
         job?.join()
         val all = frames.toList()
         val leadIn = (fps.coerceAtLeast(1) / 2).coerceAtLeast(1)
-        val captured = if (scriptStartFrame > leadIn) all.drop(scriptStartFrame - leadIn) else all
+        val kept = if (scriptStartFrame > leadIn) all.drop(scriptStartFrame - leadIn) else all
+        val captured = clipAtEnd?.let { measure -> cropFramesTo(kept, measure) } ?: kept
         outputPath.parent?.let { Files.createDirectories(it) }
         encodeJpegFramesToMp4(captured, outputPath, fps)
         return captured.size
     }
 
     val frameCount: Int get() = frames.size
+
+    /** Crops unclipped frames to the CSS-px rectangle [measure] returns now, scaled by the page's pixel ratio. */
+    private suspend fun cropFramesTo(source: List<ByteArray>, measure: () -> Rect?): List<ByteArray> {
+        if (source.isEmpty()) return source
+        val (rect, ratio) = withContext(playwrightDispatcher) {
+            measure() to ((page.evaluate("() => window.devicePixelRatio") as? Number)?.toDouble() ?: 1.0)
+        }
+        rect ?: return source
+        return source.map { bytes ->
+            val image = ImageIO.read(java.io.ByteArrayInputStream(bytes)) ?: return@map bytes
+            val x = (rect.x * ratio).toInt().coerceIn(0, image.width - 2)
+            val y = (rect.y * ratio).toInt().coerceIn(0, image.height - 2)
+            // Even sides, as the yuv420 encode needs.
+            val w = ((rect.w * ratio).toInt().coerceAtMost(image.width - x) / 2 * 2).coerceAtLeast(2)
+            val h = ((rect.h * ratio).toInt().coerceAtMost(image.height - y) / 2 * 2).coerceAtLeast(2)
+            val cropped = java.awt.image.BufferedImage(w, h, java.awt.image.BufferedImage.TYPE_INT_RGB)
+            cropped.createGraphics().apply { drawImage(image.getSubimage(x, y, w, h), 0, 0, null); dispose() }
+            java.io.ByteArrayOutputStream().also { ImageIO.write(cropped, "jpg", it) }.toByteArray()
+        }
+    }
 
     /** True once the drive's script has filmed its own video ([DocsUiDriver.filmCanvasFlight]): nothing to encode. */
     @Volatile

@@ -203,7 +203,9 @@ also request AI candidates in the background and add at most three of them to
 the same list when they arrive.
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="editor" warm-completion=true screenshot="assets/ai-autocomplete.png" wait="0" timeout="90" embed=true hidden=true name="ai-autocomplete"}
-ui.eval("window.localStorage.removeItem('field.suggest.recency.v1'); var s=document.createElement('style');s.textContent='.tick_text.ok{display:none !important}';document.head.appendChild(s);return 'setup';")
+ui.eval(
+    "window.localStorage.removeItem('field.suggest.recency.v1'); var s=document.createElement('style');s.textContent='.tick_text.ok{display:none !important}';document.head.appendChild(s);return 'setup';",
+)
 ui.openEditor(id)
 ui.pause(700)
 ui.waitForSelector(".monaco-editor", 15000.0)

@@ -1,0 +1,10 @@
+#rectsl
+->wall 14 8 abstract
+->duration 2
+->fps 30
+
+0 6 ->xdomain
+0 1 ->ydomain
+0.12 0.06 0.14 0.06 ->margins
+axes
+0 6 30 linspace  dup '( sin 1 + 2 / ) data-map  "turbo" plot

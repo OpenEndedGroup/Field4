@@ -10,11 +10,10 @@ shows the last note it heard:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/orca/hello.png" alt="A Field box with two outputs. The orca output is ORCA's black grid: a comment reading ORCA IN FIELD, a clock C8 feeding a track operator T that holds the notes CDEGAGED, two MIDI operators lit in teal under a pair of delays, and ORCA's status lines along the bottom. Below it, the heard output reads the note, channel and MIDI number of the last note Kotlin received." capture="box" open-outputs="true" wait-output=true wait-output-kind=display wait-output-channel="heard" wait="3" timeout="180" embed=true name="orca-hello" w="760" h="560" padding="18"}
 val synth = PatSynthBank()
-val o =
-    orca(
-        rows = 12,
-        grid =
-            """
+val o = orca(
+    rows = 12,
+    grid =
+        """
     #.ORCA.IN.FIELD.#
     .
     .2C8
@@ -24,7 +23,7 @@ val o =
     D8
     .:12C
 """,
-    )
+)
 o.onNote("sound") {
     synth.play(it)
     markdown("heard", "`${it.note}${it.octave}` on channel ${it.channel}, MIDI ${it.midi}")
@@ -101,6 +100,12 @@ harmony:
 o.onCell(4, 4, "bass harmony") { note -> o[4, 7] = if (note == 'G' || note == 'A') 'F' else 'C' }
 ```
 
+With that line the bass moves to F under the G and A of the melody and back to C:
+
+```diffstatic_runner {data-lang=kotlin audio="assets/orca/bass.wav" audio-spec="bass" audio-renderer="afield.audio.synth.OrcaSoundDocs" embed=true hidden=true name="orca-bass-audio"}
+// OrcaSoundDocs.render("bass"): the first grid with the onCell line, run by ORCA's own operators
+```
+
 `variable(name, value)` holds an ORCA variable every frame, so a `V` on the grid reads it as if
 another `V` had written it. `o.variable('o', '5')` makes a `Vo` output `5`; give `null` to let it go.
 A Field slider that calls `variable` is a knob on the grid.
@@ -132,6 +137,12 @@ go {
 }
 ```
 
+Eight seconds of the first grid with that patch in place: the melody and the bass both drone on G.
+
+```diffstatic_runner {data-lang=kotlin audio="assets/orca/drone.wav" audio-spec="drone" audio-renderer="afield.audio.synth.OrcaSoundDocs" embed=true hidden=true name="orca-drone-audio"}
+// OrcaSoundDocs.render("drone"): the first grid after the patch above, run in ORCA's own JavaScript
+```
+
 `eval` is a suspending call, so it goes in a coroutine (`go { }`). A JavaScript error comes back as
 an exception carrying the page's stack trace. Each ORCA operator is a constructor in `library`,
 keyed by its lowercase glyph, and `client` holds the grid (`client.orca`), the clock, the theme and
@@ -154,13 +165,12 @@ Echo, which plays the last eight back in threes, an octave up; every eighth note
 plays, Kotlin moves one note of Lead's tune a step up the scale. Click a grid to join in.
 */
 val synth = PatSynthBank()
-val lead =
-    orca(
-        "lead",
-        cols = 40,
-        rows = 10,
-        grid =
-            """
+val lead = orca(
+    "lead",
+    cols = 40,
+    rows = 10,
+    grid =
+        """
     #.LEAD.#
     .
     .2C8
@@ -170,21 +180,20 @@ val lead =
     D8
     .:12C
 """,
-    )
-val echo =
-    orca(
-        "echo",
-        cols = 40,
-        rows = 10,
-        grid =
-            """
+)
+val echo = orca(
+    "echo",
+    cols = 40,
+    rows = 10,
+    grid =
+        """
     #.ECHO.#
     .
     .3C8
     D3.8TCCCCCCCC
     .:25
 """,
-    )
+)
 val up = mapOf('C' to 'D', 'D' to 'E', 'E' to 'G', 'G' to 'A', 'A' to 'C')
 val heard = ArrayDeque("CCCCCCCC".toList())
 var echoes = 0

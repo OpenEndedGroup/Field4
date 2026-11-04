@@ -22,7 +22,11 @@ ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "public/docs"
 PUBLICATIONS = DOCS / "assets/web_publications"
 CATALOG = PUBLICATIONS / "catalog.json"
-PILOTS = ("fline_examples", "three_output_gallery")
+# FieldML demos that draw into a native window; each ends with `snapshotWindow`, which puts a
+# picture of that window in its own output area. Their boxes run parents first (renderer, then scene).
+FIELDML_DEMOS = ("fieldml_suspend_demo", "fieldml_frames_sequence_demo", "fieldml_frames_demo",
+                 "fieldml_mesh_demo", "fieldml_macro_module_demo")
+PILOTS = ("fline_examples", "three_output_gallery", "canonical_graphics") + FIELDML_DEMOS
 
 
 def publication_node() -> str | None:
@@ -57,10 +61,26 @@ def capture_digest() -> str:
     return hashlib.sha256(b''.join(p.read_bytes() for p in paths if p.is_file())).hexdigest()
 
 
+def ignored_files(folder: Path) -> set[Path]:
+    """The gitignored files under [folder], or none outside a git checkout.
+
+    Field writes runtime state into a document folder (`backups/`, including the
+    `*.before-inline-*` copies it keeps when it loads a newer inline copy), and that state differs from
+    checkout to checkout: counting it made a publication stale in the one checkout that had opened the
+    document, and fresh in every other."""
+    result = subprocess.run(['git', '-C', str(ROOT), 'ls-files', '-z', '--others', '--ignored', '--exclude-standard',
+                             '--', str(folder)], capture_output=True)
+    if result.returncode != 0:
+        return set()
+    return {ROOT / name for name in result.stdout.decode().split('\0') if name}
+
+
 def source_files(source: str, transcript: str | None = None) -> dict[str, str]:
     folder = (DOCS / source).parent
+    ignored = ignored_files(folder)
     files = [p for p in folder.rglob("*") if p.is_file() and p.name not in
-             {"AGENTS.md", "README.md", "document.md"} and not any(s.startswith(".") for s in p.relative_to(folder).parts)]
+             {"AGENTS.md", "README.md", "document.md"} and not any(s.startswith(".") for s in p.relative_to(folder).parts)
+             and p not in ignored]
     if transcript:
         files.append(ROOT / transcript)
     return {str(p.relative_to(ROOT)): digest(p) for p in sorted(files)}
@@ -303,6 +323,17 @@ def install(archive: Path, *, name: str, source: str, sources: dict[str, str]) -
     return entry
 
 
+def fieldml_parents(path: Path) -> dict[str, set[str]]:
+    """Each box's parents in a FieldML demo's `metadata.edn`, by uid."""
+    text = path.read_text()
+    starts = [(m.start(), m[1]) for m in re.finditer(r'\{:id "([^"]+)" :properties', text)]
+    result = {}
+    for (start, uid), end in zip(starts, [s for s, _ in starts[1:]] + [len(text)]):
+        found = re.search(r':parents #\{([^}]*)\}', text[start:end])
+        result[uid] = set(re.findall(r'#afield/box "([^"]+)"', found[1])) if found else set()
+    return result
+
+
 def recipes(group: str) -> list[dict]:
     if group == "pilot":
         return [{"name": name, "source": f"assets/{name}/metadata.edn"} for name in PILOTS]
@@ -343,6 +374,98 @@ def recipes(group: str) -> list[dict]:
             result.append(recipe)
         recipe['nativeCaptures'] = images
     return result
+
+
+# A box beneath the renderer that takes each lesson's picture; it never reaches the publication.
+SNAPSHOT_HELPER = "lesson-snapshot"
+# Lessons that need something the publishing run does not have (a network peer to stream to).
+LESSONS_NOT_RUN = {"6. RTT - sending", "6. RTT- draw rtt"}
+
+
+async def run_lessons(client, snapshot: dict) -> None:
+    """Every canonical_graphics lesson, one at a time beneath the `window` box, each ending with a
+    picture of what it drew in its own `window` output channel.
+
+    A depth-first walk from `window`: a box is launched after its parent, a box with no children is
+    pictured by the helper box (`snapshotWindow`, 90 frames after it starts) so the lesson's own code
+    is published unchanged, and each box is stopped once everything beneath it is done, so the next
+    lesson draws alone. Most lessons register their module under the same name and would replace
+    the last one anyway; stopping covers the ones that do not.
+    """
+    boxes = {b["uid"]: b for b in snapshot["boxes"]}
+    window = next(b for b in boxes.values() if b.get("name", "").strip() == "window")
+    await command(client, f"launch {window['uid']} --timeout 180")
+    await command(client, "wait-native-renderer " + window["uid"] + " --frames 5 --timeout 120")
+    await command(client, f"new-box --name {SNAPSHOT_HELPER}")
+    await command(client, f"connect {window['uid']} @last")
+
+    def ordered(uids):
+        return sorted((boxes[u] for u in uids if u in boxes), key=lambda b: (b["frame"]["x"], b["frame"]["y"]))
+
+    # The document's graph is not a tree: a lesson can list `window` among its children. Visit each
+    # box once, and never `window` again.
+    seen = {window["uid"]}
+
+    async def visit(box):
+        if box["uid"] in seen:
+            return
+        seen.add(box["uid"])
+        if box.get("name", "").strip() in LESSONS_NOT_RUN or not box.get("code", "").strip():
+            return
+        print(f"LESSON {box['name'].strip()}", flush=True)
+        try:
+            await command(client, f"launch {box['uid']} --timeout 180")
+        except RuntimeError as failed:
+            # A lesson that cannot run here (a file it reads is not in the tree) keeps its code and
+            # simply has no picture; the boxes beneath it need it, so they are skipped too.
+            detail = re.findall(r'"errors": \[([^\]]*)\]', str(failed))
+            print(f"SKIP {box['name'].strip()}: {(detail[0] if detail else str(failed))[:600]}", flush=True)
+            await command(client, f"stop {box['uid']}")
+            return
+        children = ordered(box.get("children") or [])
+        if not children:
+            code = ("fun Box.under(seen: MutableSet<Box> = mutableSetOf()): Sequence<Box> = sequence { "
+                    "for (c in children) if (seen.add(c)) { yield(c); yieldAll(c.under(seen)) } }; "
+                    f"parents.first().under().first {{ it.id == \"{box['uid']}\" }}.snapshotWindow(renderer, frames = 90, skipBlank = true)")
+            await command(client, f"run {SNAPSHOT_HELPER} --value {json.dumps(code)} --timeout 60")
+            await client.wait_frames(150, timeout=60)
+        for child in children:
+            await visit(child)
+        await command(client, f"stop {box['uid']}")
+
+    # Stopping a box leaves what it launched drawing (by design), so each lesson starts from an empty
+    # render list: otherwise every lesson registered under its own name piles into the next picture.
+    clear = ("renderer.renderList.modules.clear(); renderer.renderList.meshModules.clear(); "
+             "renderer.renderList.others.clear(); renderer.renderList.preTargets.clear()")
+    for child in ordered(window.get("children") or []):
+        await command(client, f"run {SNAPSHOT_HELPER} --value {json.dumps(clear)} --timeout 60")
+        await client.wait_frames(5, timeout=30)
+        await visit(child)
+    await command(client, f"delete-box {SNAPSHOT_HELPER}")
+    # Every lesson now carries its own picture, so the window's own last frame is not published.
+    await command(client, f"stop {window['uid']}")
+    # The document's own layout, spread out from its top-left corner: 1.4 times wider (columns 340 apart
+    # become 476, room for a 440-pixel picture) and 3.3 times taller (rows 120 apart become 396, room for
+    # the box and the picture under it). Every box keeps its place relative to the others.
+    after = await client.refresh_snapshot(60)
+    placed = [b for b in after["boxes"] if b.get("code", "").strip() and b.get("name", "").strip() != SNAPSHOT_HELPER]
+    x0 = min(b["frame"]["x"] for b in placed); y0 = min(b["frame"]["y"] for b in placed)
+    for b in placed:
+        frame = b["frame"]
+        try:
+            await client.set_frame(b["uid"], {**frame, "x": x0 + 1.4 * (frame["x"] - x0), "y": y0 + 3.3 * (frame["y"] - y0)})
+        except Exception as gone:  # a box the snapshot still lists but the document no longer has
+            print(f"LAYOUT skipped {b['uid'][:8]}: {gone}", flush=True)
+    await client.playwright_input(action="pageEval", script_mode="body", timeout=60, script="""
+        for (const img of document.querySelectorAll('img[alt="the renderer window"]')) {
+            const content = img.closest('.disclosure-content');
+            if (!content) continue;
+            content.style.width = '440px'; content.style.height = '272px';
+            content.dispatchEvent(new MouseEvent('mouseup', {bubbles: true}));
+        }
+        return true;
+    """)
+    await client.wait_frames(15, timeout=30)
 
 
 async def command(client, text: str) -> dict:
@@ -464,13 +587,40 @@ async def capture(selected: list[dict], *, port: int | None, force: bool) -> lis
                                 created = op.get('create', {})
                                 if created.get('properties', {}).get('code', '').strip():
                                     await command(client, f"run {created['box']} --timeout 180")
+                    elif name == "canonical_graphics":
+                        await run_lessons(client, await client.refresh_snapshot(60))
                     else:
                         snapshot = await client.refresh_snapshot(60)
                         boxes = sorted((b for b in snapshot["boxes"] if b.get("code", "").strip()),
                                        key=lambda b: (b["frame"]["y"], b["frame"]["x"]))
+                        if name in FIELDML_DEMOS:
+                            # The renderer box first: the snapshot carries no parents, the document does.
+                            parents = fieldml_parents(DOCS / source)
+                            coded = {b["uid"] for b in boxes}
+                            boxes.sort(key=lambda b: bool(parents.get(b["uid"], set()) & coded))
                         for i, box in enumerate(boxes):
                             print(f"RUN {name} {i+1}/{len(boxes)}: {box['name']}", flush=True)
-                            await command(client, f"run {box['uid']} --timeout 180")
+                            if name not in FIELDML_DEMOS:
+                                await command(client, f"run {box['uid']} --timeout 180")
+                                continue
+                            # `start(renderer::run)` / `hostLaunch` draw only in a launched box.
+                            await command(client, f"launch {box['uid']} --timeout 180")
+                            if i == 0:
+                                await command(client, f"wait-native-renderer {box['uid']} --frames 5 --timeout 120")
+                        if name in FIELDML_DEMOS:
+                            # `snapshotWindow` waits 60 renderer frames, then fills the `window` channel,
+                            # which opens at its default 200 pixels; give the picture room, as lessons do.
+                            await client.wait_frames(240, timeout=90)
+                            await client.playwright_input(action="pageEval", script_mode="body", timeout=60, script="""
+                                for (const img of document.querySelectorAll('img[alt="the renderer window"]')) {
+                                    const content = img.closest('.disclosure-content');
+                                    if (!content) continue;
+                                    content.style.width = '440px'; content.style.height = '272px';
+                                    content.dispatchEvent(new MouseEvent('mouseup', {bubbles: true}));
+                                }
+                                return true;
+                            """)
+                            await client.wait_frames(15, timeout=30)
                     # Render closed panels before sampling, and retain them open for the reader.
                     await client.playwright_input(action="pageEval", script_mode="body", timeout=60, script="""
                         for(const box of document.querySelectorAll('.box')){

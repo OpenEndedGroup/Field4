@@ -203,7 +203,7 @@ class FieldMLExecution(private val owner: Box) : BoxExecution {
                         inside.currentRunningStates.remove(strand)
                     }
                     send(Message("is-running").payload(IsRunning(execute.uid, false, generation, strand, FIELDML_PENDING_LAUNCH_MODE)))
-                    inside.output.error(fieldMLErrorMessage(t), execute.property, execute.line)
+                    inside.output.displayError(fieldMLErrorMessage(t), execute.property, execute.line)
                     trace.finish(false)
                 }
             }
@@ -294,7 +294,7 @@ class FieldMLExecution(private val owner: Box) : BoxExecution {
                     ok = true
                 }
             } catch (t: Throwable) {
-                inside.output.error(t.message ?: t.javaClass.simpleName, execute.property, execute.line)
+                inside.output.displayError(t.message ?: t.javaClass.simpleName, execute.property, execute.line)
             } finally {
                 trace.finish(ok)
                 send(Message("is-running").payload(IsRunning(execute.uid, false, watermark, "__fragment__")))
@@ -365,7 +365,7 @@ class FieldMLExecution(private val owner: Box) : BoxExecution {
 
         errors.forEach { diagnostic ->
             val line = diagnostic.range?.start?.line?.let { execute.line + it - 1 } ?: execute.line
-            inside.output.error(diagnostic.message, execute.property, line)
+            inside.output.displayError(diagnostic.message, execute.property, line)
         }
         return true
     }
@@ -454,8 +454,8 @@ private class TrackingOutput(private val delegate: HasOutput) : HasOutput {
         delegate.display(channel, message)
     }
 
-    override fun error(message: Any?, property: String, line: Int) {
-        delegate.error(message, property, line)
+    override fun displayError(message: Any?, property: String, line: Int) {
+        delegate.displayError(message, property, line)
     }
 }
 

@@ -70,9 +70,9 @@ Three things the card reports that are easy to misread, pinned here as arithmeti
 val madOverIqr = s.mad / s.iqr
 val note =
     "n=${s.count}, dropped=${s.droppedCount}; " +
-        "median=${"%.3f".format(s.median)}  mean=${"%.3f".format(s.mean)} (mean > median: right-skewed); " +
-        "MAD=${"%.3f".format(s.mad)} = ${"%.3f".format(madOverIqr)} x IQR; " +
-        "skew=${"%.3f".format(s.skewness)}  excess kurtosis=${"%.3f".format(s.kurtosisExcess)}"
+        "median=${s.median.f3}  mean=${s.mean.f3} (mean > median: right-skewed); " +
+        "MAD=${s.mad.f3} = ${madOverIqr.f3} x IQR; " +
+        "skew=${s.skewness.f3}  excess kurtosis=${s.kurtosisExcess.f3}"
 :::fold render the card
 display("card", buf.summaryHtml(widthPx = 620, chartHeightPx = 150, decimals = 3))
 markdown("read this off the card", "{muted:$note}", width = 620)
@@ -84,10 +84,13 @@ markdown("read this off the card", "{muted:$note}", width = 620)
 Each label on the card names its convention: `stddev (n−1)` and `variance (n−1)` are the
 **sample** forms, `skew (pop.)` and `kurtosis(ex, pop.)` the **population** forms, with no bias
 correction. If you are comparing against another tool, the mapping onto NumPy and SciPy is exact: `q1`/`median`/`q3` are
-`numpy.percentile`'s default linear interpolation, `mad` is `median(|y − median(y)|)` unscaled,
+`numpy.percentile`'s default linear interpolation, `mad` is \( \operatorname{median}(\lvert y - \operatorname{median}(y) \rvert) \) unscaled,
 `sampleStdDev` is `numpy.std(ddof=1)`, and `skewness`/`kurtosisExcess` are `scipy.stats.skew` and
-`scipy.stats.kurtosis` at their *default* `bias=True`. `StatsSummaryTest` pins that mapping to ten
-decimal places against SciPy 1.15.2 on a tie-heavy ten-point sample.
+`scipy.stats.kurtosis` at their *default* `bias=True`.
+
+??? aside "Agents: what pins the SciPy mapping"
+    `StatsSummaryTest` pins that mapping to ten decimal places against SciPy 1.15.2 on a
+    tie-heavy ten-point sample.
 
 Three more edges, guarded rather than propagated inside `buildSummaryStats`
 (`stats.kt:1004#val sampleVariance = if (n > 1) m2 / (n - 1).toDouble() else 0.0`), so you get a
@@ -142,10 +145,10 @@ fun explain(name: String, values: List<Double>): String {
     }
     val predicted = Math.round(range / winner).toInt().coerceIn(1, 2000)
     val actual = buildHistogram(values)
-    return "$name: FD=${"%.4f".format(hFd)}  Scott=${"%.4f".format(hScott)}  " +
-        "Sturges=${"%.4f".format(hSturges)} (k=$kSturges) -> $which wins; " +
-        "predicted ${predicted} bins of ${"%.5f".format(range / predicted)}, " +
-        "got ${actual.bins.size} of ${"%.5f".format(actual.binWidth)}; counts sum to ${actual.count}"
+    return "$name: FD=${hFd.f4}  Scott=${hScott.f4}  " +
+        "Sturges=${hSturges.f4} (k=$kSturges) -> $which wins; " +
+        "predicted ${predicted} bins of ${(range / predicted).f5}, " +
+        "got ${actual.bins.size} of ${actual.binWidth.f5}; counts sum to ${actual.count}"
 }
 
 val skewedNote = explain("skewed", skewed)
@@ -190,7 +193,7 @@ skewed signal Freedman–Diaconis is the finest at 0.2162 and it decides. On the
 comes out at **1.0065** and Scott at **0.9077** (both much coarser) because both are driven by
 global spread, and here the spread is the *distance between* the modes (IQR 3.99, sample sd 2.06)
 rather than the spread within them (0.4). Which leaves **Sturges** winning at 0.6329, and Sturges is
-the one rule of the three that looks at nothing but n: `ceil(log₂ n + 1)` is 10 bins for *any*
+the one rule of the three that looks at nothing but n: \( \lceil \log_2 n + 1 \rceil \) is 10 bins for *any*
 500-point sample whatever its shape. So a multi-modal signal falls back to the crudest of the three
 estimates and its two obvious modes get about one bin each. `buildHistogram` takes no bin-count
 argument (`stats.kt:1214#There is no bin-count parameter`), so if you need finer bins for a signal
@@ -294,7 +297,7 @@ Pearson limitation *after* the ranking.
 **Chatterjee's xi answers "is `y` a function of `x`", and it is the only asymmetric coefficient
 here.** It reads 0.985 on the parabola and 0.955 on the sine, the two cases the rank coefficients
 miss entirely. Swap the arguments and it changes its mind: `xi(x, parabola) = 0.985` but
-`xi(parabola, x) = 0.246`, because `x` genuinely is *not* a function of `x²` — each `y` has two
+`xi(parabola, x) = 0.246`, because `x` genuinely is *not* a function of \( x^2 \) — each `y` has two
 possible `x`. Cheap, too: O(n log n) against the O(n²) of `kendallTauB` and `distanceCorrelation`.
 
 **Distance correlation answers "is there any dependence at all".** It is the only entry in the
@@ -320,7 +323,7 @@ measures to describe what you found.
     is deterministic, reproducible, and invariant to the order you hand the pairs over in.
 
     Two consequences. A **constant predictor reads 0**: for a single tie group the numerator's
-    expectation is `(n²−1)/3` against a denominator of `n(n²−1)/3`, so the closed form is exactly
+    expectation is \( (n^2-1)/3 \) against a denominator of \( n(n^2-1)/3 \), so the closed form is exactly
     zero for every `n`. In `Double` it is zero to within one ulp rather than bit-exact, so compare
     it against a tolerance, not against `0.0`; [`dev_docs/STATISTICS_MEASUREMENTS.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/STATISTICS_MEASUREMENTS.md) has the sweep
     that bound comes from. And a quantised predictor (a bucketed index, an integer
@@ -409,8 +412,8 @@ showSignals(
     xTitle = "distance correlation",
     yTitle = "count",
     marks = [
-        "null 95th pct = ${"%.3f".format(p95)}" to p95,
-        "observed = ${"%.3f".format(observedDcor)}" to observedDcor,
+        "null 95th pct = ${p95.f3}" to p95,
+        "observed = ${observedDcor.f3}" to observedDcor,
     ],
 )
 showSignals(
@@ -425,16 +428,16 @@ showSignals(
 markdown(
     "verdict",
     """
-    {muted:observed dCor = ${"%.4f".format(observedDcor)}; null mean ${"%.4f".format(nullDcor.average())},
-    95th pct ${"%.4f".format(p95)}, max ${"%.4f".format(sortedD.last())};
+    {muted:observed dCor = ${observedDcor.f4}; null mean ${nullDcor.average().f4},
+    95th pct ${p95.f4}, max ${sortedD.last().f4};
     re-pairings reaching the observed value: $exceed / $reps}
 
-    {muted:observed xi = ${"%.4f".format(observedXi)}; xi null 95th pct
-    ${"%.4f".format(nullXi.sortedArray()[(reps * 0.95).toInt()])};
+    {muted:observed xi = ${observedXi.f4}; xi null 95th pct
+    ${nullXi.sortedArray()[(reps * 0.95).toInt()].f4};
     re-pairings reaching it: $xiExceed / $reps}
 
     {muted:null 95th pct vs n (measured / 2.5-over-root-n):
-    ${sizes.indices.joinToString(" · ") { "n=${sizes[it]} ${"%.3f".format(thresholds[it])}/${"%.3f".format(fitted[it])}" }}}
+    ${sizes.indices.joinToString(" · ") { "n=${sizes[it]} ${thresholds[it].f3}/${fitted[it].f3}" }}}
 """,
     width = 900,
 )
@@ -448,11 +451,11 @@ Read the verdict line. The observed 0.1934 is beyond every one of 400 random re-
 even though `pearson` reads −0.002. And in the same run xi reads 0.0263 against its own null's 95th
 percentile of 0.0520, with **76 / 400** re-pairings doing at least as well: this run does not give strong evidence from xi.
 
-The second figure gives you the shortcut for next time. Plotted against `1/√n` rather than `n`, the
+The second figure gives you the shortcut for next time. Plotted against \( 1/\sqrt{n} \) rather than `n`, the
 measured 95th percentile falls on a **straight line through the origin**, and the line's slope is
 about 2.5. Read the measured-against-predicted pairs off the bottom of the figure: 0.335/0.354 at
 n = 50 through 0.123/0.125 at n = 400, with the rule erring safely high at n = 25 (0.466 measured
-against 0.500 predicted). For these independent Gaussian samples, `2.5/√n` is a useful rough reference, not a universal
+against 0.500 predicted). For these independent Gaussian samples, \( 2.5/\sqrt{n} \) is a useful rough reference, not a universal
 significance threshold. Measure the null for your own data. Note what the example means
 for short signals. At n = 50 the threshold is around 0.34, so anything short of a strong
 relationship is invisible; distance correlation needs a few hundred samples before it can see a
@@ -546,11 +549,11 @@ markdown(
     """
     | window | dCor | xi | \|r\| |
     |--------|------|----|-------|
-    | window-full to the change (i=$w..${change - 1}) | ${"%.3f".format(dSeries.subList(w, change).average())} | ${"%.3f".format(xiSeries.subList(w, change).average())} | ${"%.3f".format(absR.subList(w, change).average())} |
-    | settled after the change (i=${change + w}..${total - 1}) | ${"%.3f".format(dSeries.subList(change + w, total).average())} | ${"%.3f".format(xiSeries.subList(change + w, total).average())} | ${"%.3f".format(absR.subList(change + w, total).average())} |
+    | window-full to the change (i=$w..${change - 1}) | ${dSeries.subList(w, change).average().f3} | ${xiSeries.subList(w, change).average().f3} | ${absR.subList(w, change).average().f3} |
+    | settled after the change (i=${change + w}..${total - 1}) | ${dSeries.subList(change + w, total).average().f3} | ${xiSeries.subList(change + w, total).average().f3} | ${absR.subList(change + w, total).average().f3} |
 
-    {muted:dCor null 95th pct ${"%.3f".format(threshold)}: $dCrossing.
-    xi null 95th pct ${"%.3f".format(xiThreshold)}: $xiCrossing.}
+    {muted:dCor null 95th pct ${threshold.f3}: $dCrossing.
+    xi null 95th pct ${xiThreshold.f3}: $xiCrossing.}
 
     {muted:incremental vs batch on the final window: |difference| = $agreement}
 """,
@@ -584,7 +587,10 @@ and double-centres them (`correlations.kt:419#matrices, which puts the practical
 to **5×10⁻¹⁵**. The KDoc warns that the maintained sums accumulate floating-point drift over a
 long run (`correlations.kt:674#recomputed, so a very long run accumulates floating-point drift`),
 and they do, though not far: over **200 000** pushes with a window of 64, the largest disagreement
-sampled against the batch call was **8.6×10⁻¹⁴**. `RollingDependenceTest` pins both bounds.
+sampled against the batch call was **8.6×10⁻¹⁴**.
+
+??? aside "Agents: what pins the rolling bounds"
+    `RollingDependenceTest` pins both bounds.
 
 ## Reshaping a distribution: `quantilewarp.kt`
 
@@ -596,7 +602,7 @@ distribution, so a signal of the wrong shape becomes one of the right shape. The
 (`quantilewarp.kt:46#private val defaultQuantileWarpProbabilities = doubleArrayOf(`), so the fit spends more knots on the left tail than the
 right.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/statistics_examples/quantile_warp.png" wait="3.0" capture="box" open-outputs="true" w="1000" h="820" padding="16"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/statistics_examples/quantile_warp.png" wait="3.0" capture="box" open-outputs="true" w="1000" h="1080" padding="16"}
 :::static
 val rng = java.util.Random(5)
 val fit = DoubleArray(4000) { exp(rng.nextGaussian()) } // log-normal: violently right-skewed
@@ -639,6 +645,21 @@ showSignals(
     title = "The warp, against the exact answer it is approximating",
     xTitle = "quantile of the fitting sample",
     yTitle = "warped value",
+    width = 900,
+    height = 300,
+)
+// The two curves above are too close to tell apart, so plot their difference.
+showSignals(
+    "PCHIP − exact" to pchip.indices.map { pchip[it] - exact[it] },
+    x = probes,
+    channel = "the error",
+    title = "How far the 8-knot warp is from the exact one",
+    xTitle = "quantile of the fitting sample",
+    yTitle = "PCHIP − exact",
+    // The knots inside the plotted range, where the error must be zero.
+    marks = QuantileWarpConfig().probabilities.filter { it in 0.02..0.98 }.map { "knot at $it" to it },
+    width = 900,
+    height = 260,
 )
 val svgs = [
     histogramToSvg(
@@ -647,7 +668,7 @@ val svgs = [
         heightPx = 250,
         padTop = 26,
         decimals = 2,
-        title = "held-out input: skew ${"%.1f".format(before.skewness)}",
+        title = "held-out input: skew ${before.skewness.f1}",
     ),
     histogramToSvg(
         buildHistogram(warped),
@@ -655,7 +676,7 @@ val svgs = [
         heightPx = 250,
         padTop = 26,
         decimals = 2,
-        title = "after the warp: skew ${"%.3f".format(after.skewness)}",
+        title = "after the warp: skew ${after.skewness.f3}",
     ),
 ]
 showRow("distributions", svgs)
@@ -665,28 +686,28 @@ markdown(
     """
     | held-out | mean | sd | skew | excess kurtosis |
     |----------|------|----|------|-----------------|
-    | before | ${"%.3f".format(before.mean)} | ${"%.3f".format(before.sampleStdDev)} | ${"%.3f".format(before.skewness)} | ${"%.1f".format(before.kurtosisExcess)} |
-    | after | ${"%.4f".format(after.mean)} | ${"%.4f".format(after.sampleStdDev)} | ${"%.4f".format(after.skewness)} | ${"%.4f".format(after.kurtosisExcess)} |
+    | before | ${before.mean.f3} | ${before.sampleStdDev.f3} | ${before.skewness.f3} | ${before.kurtosisExcess.f1} |
+    | after | ${after.mean.f4} | ${after.sampleStdDev.f4} | ${after.skewness.f4} | ${after.kurtosisExcess.f4} |
 
-    {muted:input knots: ${state.inputKnots.joinToString { "%.3f".format(it) }}}
+    {muted:input knots: ${state.inputKnots.joinToString { it.f3 }}}
 
-    {muted:target knots: ${state.targetKnots.joinToString { "%.3f".format(it) }}}
+    {muted:target knots: ${state.targetKnots.joinToString { it.f3 }}}
 
-    {muted:worst |PCHIP - exact| over the 2nd..98th percentile: ${"%.4f".format(worst)}}
+    {muted:worst |PCHIP - exact| over the 2nd..98th percentile: ${worst.f4}}
 """,
     width = 900,
 )
 :::endfold
 ```
 
-![The fitted 8-knot warp lying almost on top of the exact inverse-normal curve, and the held-out distribution going from violently right-skewed to symmetric](assets/statistics_examples/quantile_warp.png)
+![The 8-knot PCHIP warp drawn over the exact inverse-normal curve, too close to tell apart; below it their difference, which stays within about ±0.03 between the knots, crosses zero at each knot, and swings to about 0.05 only past the last knot at 0.95; then the held-out distribution going from violently right-skewed to symmetric](assets/statistics_examples/quantile_warp.png)
 
 It works, and it works **out of sample**: the curve is fitted on `fit` and every number reported is
 measured on the disjoint `held`. Skewness goes from **11.68** to **0.0074**, excess kurtosis from
 **254.8** to **−0.170**, mean to −0.0024 and standard deviation to 1.0096. Eight knots and a PCHIP
-is enough to turn a log-normal into something you can treat as normal, and the first figure says how
+is enough to turn a log-normal into something you can treat as normal, and the second plot says how
 much is lost doing it: over the 2nd-to-98th percentile the 8-knot curve is within **0.047** of the
-exact `Φ⁻¹(F̂(v))` it is approximating. The left histogram in the same figure is the reason you
+exact \( \Phi^{-1}(\hat{F}(v)) \) it is approximating. The left histogram in the same figure is the reason you
 would bother: with a maximum of 72.98 against a median of 0.98, the raw distribution is one spike
 and a tail, and no amount of binning makes it readable. Nothing in `quantilewarp.kt` computes that
 exact answer, so the oracle is built in the fence out of `inverseStandardNormalCdf`
@@ -705,7 +726,7 @@ Three things to watch for:
   knots 20% of the way to the new ones
   (`quantilewarp.kt:357#lerp(previous.inputKnots[index], strictInputKnots[index], config.smoothingAlpha)`).
   Feed a signal whose median jumps from 0 to 10 and the median knot goes
-  0.009 → 2.016 → 3.608 → 4.879 → … → 9.310 after twelve updates, tracking `10·(1 − 0.20)ᵏ`: 0.690
+  0.009 → 2.016 → 3.608 → 4.879 → … → 9.310 after twelve updates, tracking \( 10\cdot(1 - 0.20)^k \): 0.690
   remaining against a predicted 0.687. Convergence is geometric, so a step change takes a couple of
   dozen frames to follow.
 - **The knots are forced strictly increasing after smoothing**

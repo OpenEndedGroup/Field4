@@ -234,6 +234,34 @@ class SavingContext {
         }, upgradeOnLoad = false)
     }
 
+    /**
+     * [cloneInto] for inserting a template into an open document. The template's own `root` and
+     * `metaroot` entries are left out: a template that is a whole document (a workspace document, or a
+     * bundled template folder saved with its root) would otherwise write its root's frame, children,
+     * drawing and bookmarks over the receiving document's root and add a stray copy of its metaroot.
+     * Its top-level boxes still name `root` as their parent, which is the receiving document's root.
+     * A `metadata.json` template has no such entries to drop and goes through [cloneInto].
+     */
+    @OptIn(ExperimentalUuidApi::class)
+    fun cloneTemplateInto(path: String): Set<Box> {
+        val file = File(path)
+        val (transfers, directory) = when {
+            file.isFile && file.name.endsWith(".edn") -> {
+                val directory = file.absoluteFile.parentFile?.absolutePath ?: file.absolutePath
+                readEdnTransfersFromString(file.readText(), recordInto = directory) to directory
+            }
+            File(file, METADATA_EDN).exists() -> readEdnTransfers(file.path) to file.path
+            else -> return cloneInto(path)
+        }
+        val seen = mutableMapOf("root" to "root", METAROOT_ID to METAROOT_ID)
+        return instantiateTransfers(
+            transfers.filterNot { it.id == "root" || it.id == METAROOT_ID },
+            directory,
+            { id -> seen.computeIfAbsent(id) { Uuid.random().toString() } },
+            createBoxes = true
+        )
+    }
+
     var altered = false
 
     private fun withoutMetarootTopology(name: String, value: Any?): Any? {
@@ -1401,9 +1429,12 @@ class SavingContext {
      * Only `metadata.edn` is rewritten; source sidecars, history and generated prose are untouched.
      * Paths are confined to the document directory so a malformed artifact cannot read elsewhere.
      * Returns the refreshed relative paths in document order.
+     *
+     * A missing loose file is an error unless [allowInlineOnly]: then the inline copy is the only one,
+     * which is what Field loads, and it is kept as it is.
      */
-    fun refreshInlineFilesFromDisk(directory: String): List<String> {
-        val refreshed = canonicalInlineMetadata(directory)
+    fun refreshInlineFilesFromDisk(directory: String, allowInlineOnly: Boolean = false): List<String> {
+        val refreshed = canonicalInlineMetadata(directory, allowInlineOnly)
         File(File(directory).canonicalFile, METADATA_EDN)
             .safeSave(refreshed.metadataEdn, createBackup = false, atomic = true)
         return refreshed.paths
@@ -1419,7 +1450,7 @@ class SavingContext {
      * document merely decodes to the same values" — the second one makes `--write` dirty a file
      * nobody touched.
      */
-    fun canonicalInlineMetadata(directory: String): InlineMetadata {
+    fun canonicalInlineMetadata(directory: String, allowInlineOnly: Boolean = false): InlineMetadata {
         val root = File(directory).canonicalFile
         val metadata = File(root, METADATA_EDN)
         require(metadata.isFile) { "missing $METADATA_EDN in ${root.path}" }
@@ -1432,16 +1463,20 @@ class SavingContext {
                 require(target.toPath().normalize().startsWith(rootPath)) {
                     "inline file escapes document directory: ${value.path}"
                 }
-                require(target.isFile) { "missing inline sidecar ${value.path} in ${root.path}" }
-                refreshedPaths += value.path
-                value.copy(inline = target.readText())
+                if (!target.isFile && allowInlineOnly) value else {
+                    require(target.isFile) { "missing inline sidecar ${value.path} in ${root.path}" }
+                    refreshedPaths += value.path
+                    value.copy(inline = target.readText())
+                }
             }
 
             // What Field would save: a large sidecar is referenced, not inlined (see referencingLargeSidecars).
             is Map<*, *> -> LinkedHashMap<Any?, Any?>().also { out ->
                 value.forEach { (key, item) ->
                     val refreshedItem = refresh(item)
-                    out[refresh(key)] = if (refreshedItem is FileInline && key is String && referencesSidecar(key, refreshedItem.inline)) FileRef(refreshedItem.path) else refreshedItem
+                    // An inline-only copy stays inline: a reference to a file that is not there would load as empty.
+                    out[refresh(key)] = if (refreshedItem is FileInline && key is String && referencesSidecar(key, refreshedItem.inline) &&
+                        File(root, refreshedItem.path).isFile) FileRef(refreshedItem.path) else refreshedItem
                 }
             }
 

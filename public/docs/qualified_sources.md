@@ -78,8 +78,8 @@ val loot = qualifiedSource(
     ),
     replayVersion = "loot-replay-1",
 ) { replay ->
-        QualifiedSource.evaluateKotlin(replay.source) as (String) -> Map<String, String>
-    }
+    QualifiedSource.evaluateKotlin(replay.source) as (String) -> Map<String, String>
+}
 ```
 
 The rule lives in the box's `lootRule` property and the fixtures in `lootFixtures`. Builds that use

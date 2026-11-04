@@ -25,7 +25,7 @@ markdown(
     | | |
     |---|---|
     | PPQ | ${clip.ppq} |
-    | tempo | ${"%.2f".format(clip.bpmAt(0.0))} BPM |
+    | tempo | ${clip.bpmAt(0.0).f2} BPM |
     | tempo events | ${clip.tempoMap.size} |
     | time signature | ${clip.timeSignature.first}/${clip.timeSignature.second} |
     | tracks | ${clip.tracks.map { "${it.name} (${it.notes.size})" }.joinToString()} |

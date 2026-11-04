@@ -68,23 +68,76 @@ compiled, evaluative or transformative.
 
 ## Generate from the sketch
 
-Use the same typed board in a normal Field request:
+Use the same typed board in a normal Field request. The box submits eight seeds and shows the board again, now with each candidate's measured lanes, next to the audition board:
 
-```diffstatic {data-lang=kotlin}
-val client = FieldAudioClient()
-val source = client.assetByFilename("*Nancy*").get()
-val region = AssetRegion(source.id, startSeconds = 18.0, durationSeconds = 4.5)
+```diffstatic_runner {data-lang=kotlin screenshot="assets/audio_ai_gesture_board/gesture_candidates.png" capture="box" capture-profile="linux-nvidia" open-outputs="true" wait="4" wait-output="true" wait-output-channel="audition" timeout="900" w="1120" h="40" padding="16" embed=true name="gesture-candidates" alt="The gesture board with eight generated candidates scored against its lanes, above an audition board of the eight candidates"}
+:::fold the sketch from above
+val sketch = gestureBoard(18.0, "uneasy nocturnal orchestra, old optical-film texture") {
+    prompt(0.0, 5.0, "almost motionless low strings")
+    prompt(5.0, 8.0, "woodwind fragments begin to circle")
+    prompt(13.0, 5.0, "brass shadow, then an unresolved decay")
 
-val operation = gestureCandidates(
-    source = region,
-    board = sketch,
-    seeds = 0L until 8L,
-    controls = MusicGenStyleControls(temperature = 1.08, topK = 180, cfg = 3.1),
-)
+    event(5.2, "first disturbance", strength = 0.45)
+    event(13.1, "dark accent", strength = 0.92, weight = 1.6)
 
-client.submit(operation).thenCompose(client::awaitCandidates).thenAccept { candidates ->
-    display("gesture", gestureBoardHtml(sketch, candidates = candidates))
-    display("audition", candidateBoardHtml(candidates))
+    curve("breath", GestureCurveKind.ACTIVITY) {
+        point(0.0, 0.08)
+        point(5.0, 0.16)
+        point(10.0, 0.55)
+        point(13.1, 0.94)
+        point(18.0, 0.12)
+    }
+    curve("event density", GestureCurveKind.DENSITY, weight = 1.25) {
+        point(0.0, 0.05)
+        point(7.0, 0.22)
+        point(12.5, 0.78)
+        point(18.0, 0.08)
+    }
+    curve("register drift", GestureCurveKind.REGISTER, weight = 0.7) {
+        point(0.0, 0.18)
+        point(9.0, 0.48)
+        point(14.0, 0.72)
+        point(18.0, 0.31)
+    }
+    curve("surface light", GestureCurveKind.BRIGHTNESS, weight = 0.6) {
+        point(0.0, 0.13)
+        point(11.0, 0.27)
+        point(13.1, 0.68)
+        point(18.0, 0.16)
+    }
+}
+:::endfold
+val client = cached { FieldAudioClient() }
+runAsync(
+    onResult = { candidates: CandidateSet ->
+        display("gesture", gestureBoardHtml(sketch, candidates = candidates))
+        display("audition", candidateBoardHtml(candidates))
+    },
+    onError = { failure ->
+        markdown("generation error", "Generation failed: ${(failure.message ?: failure.toString()).md}")
+    },
+) {
+    val lookup = client.assetByFilename("*Nancy*")
+    onCancel { lookup.cancel(false) }
+    lookup.thenCompose { source ->
+        if (future.isDone) throw java.util.concurrent.CancellationException("run ended")
+        val region = AssetRegion(source.id, startSeconds = 18.0, durationSeconds = 4.5)
+
+        val operation = gestureCandidates(
+            source = region,
+            board = sketch,
+            seeds = 0L until 8L,
+            backend = "audiocraft.musicgen_style",
+            controls = MusicGenStyleControls(temperature = 1.08, topK = 180, cfg = 3.1),
+        )
+
+        val submitted = client.submit(operation)
+        onCancel { submitted.cancel(false) }
+        submitted.thenCompose { accepted ->
+            if (future.isDone) throw java.util.concurrent.CancellationException("run ended")
+            client.awaitCandidates(accepted).also { polling -> onCancel { polling.cancel(false) } }
+        }
+    }
 }
 ```
 

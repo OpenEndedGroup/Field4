@@ -63,13 +63,13 @@ operations:
               "hue channel" to hsv.channel(0),
               "saturation channel" to hsv.channel(1),
               "resize(600,450) then back up" to backUp,
-              "thresholdOtsu() @ ${"%.3f".format(t)}" to mask,
+              "thresholdOtsu() @ ${t.f3}" to mask,
               columns = 3,
               cellSide = 260,
           )
           println(
-              "Img ${card.width}x${card.height} x${card.channels} ch, mean ${"%.3f".format(card.mean())}, " +
-                  "otsu ${"%.3f".format(t)}, foreground ${mask.data.count { it > 0.5f }} px",
+              "Img ${card.width}x${card.height} x${card.channels} ch, mean ${card.mean().f3}, " +
+                  "otsu ${t.f3}, foreground ${mask.data.count { it > 0.5f }} px",
           )
 
           // The threshold is a mask; a mask has outlines; outlines are geometry. Everything the
@@ -120,9 +120,9 @@ operations:
           )
           // The median is the right tool for impulse noise; the numbers say so, not the picture.
           println(
-              "residual vs clean — gaussian ${"%.4f".format(gauss.meanAbsDiff(clean))}, " +
-                  "median ${"%.4f".format(med.meanAbsDiff(clean))}, " +
-                  "bilateral ${"%.4f".format(bil.meanAbsDiff(clean))}",
+              "residual vs clean — gaussian ${gauss.meanAbsDiff(clean).f4}, " +
+                  "median ${med.meanAbsDiff(clean).f4}, " +
+                  "bilateral ${bil.meanAbsDiff(clean).f4}",
           )
   - create:
       box: imaging_edges
@@ -161,7 +161,7 @@ operations:
               cellSide = 260,
           )
           println(
-              "|grad| max ${"%.3f".format(grad.magnitude().max())}; " +
+              "|grad| max ${grad.magnitude().max().f3}; " +
                   "canny ${edges.data.count { it > 0.5f }} px, cannyAuto ${auto.data.count { it > 0.5f }} px; " +
                   "${flines.size} FLines, ${flines.sumOf { it.nodes.size }} nodes total",
           )
@@ -209,7 +209,7 @@ operations:
               columns = 3,
               cellSide = 260,
           )
-          println("harris ${harris.size} corners, worst ${"%.2f".format(worst)} px from the true square corners")
+          println("harris ${harris.size} corners, worst ${worst.f2} px from the true square corners")
           println(
               "fast ${fast.size} corners at " +
                   fast.sortedBy { it.y * 1000 + it.x }.joinToString(", ") { "(${it.x.toInt()},${it.y.toInt()})" },
@@ -217,7 +217,7 @@ operations:
           println(
               "hough " +
                   houghs.joinToString(", ") {
-                      "(rho=${"%.0f".format(it.rho)}, theta=${"%.2f".format(it.theta)}, votes=${it.votes})"
+                      "(rho=${it.rho.f0}, theta=${it.theta.f2}, votes=${it.votes})"
                   },
           )
 
@@ -267,11 +267,11 @@ operations:
               .sortedByDescending { it.area }
               .forEach {
                   println(
-                      "  area=${it.area} centroid=(${"%.1f".format(it.centroidX)}, ${"%.1f".format(it.centroidY)}) " +
-                          "bbox=${it.boundingWidth}x${it.boundingHeight} fill=${"%.2f".format(it.fillRatio)}",
+                      "  area=${it.area} centroid=(${it.centroidX.f1}, ${it.centroidY.f1}) " +
+                          "bbox=${it.boundingWidth}x${it.boundingHeight} fill=${it.fillRatio.f2}",
                   )
               }
-          println("distance-transform peak ${"%.1f".format(dt.max())} (largest planted radius ${discs.maxOf { it.third }})")
+          println("distance-transform peak ${dt.max().f1} (largest planted radius ${discs.maxOf { it.third }})")
 
           // Connected components are blobs; blobs have outlines. Same story as Canny — the raster
           // is the evidence, the FLines are the result you can actually build on.
@@ -336,11 +336,10 @@ operations:
           )
           val (mdx, mdy) = flow.medianDisplacement()
           println(
-              "${flow.tracked().size}/${seeds.size} tracked; median displacement " +
-                  "(${"%.2f".format(mdx)}, ${"%.2f".format(mdy)}) px",
+              "${flow.tracked().size}/${seeds.size} tracked; median displacement " + "(${mdx.f2}, ${mdy.f2}) px",
           )
           println("RANSAC ${fit.inlierCount} inliers of ${flow.tracked().size} after ${fit.iterations} iterations")
-          println("recovered model agrees with the planted transform to ${"%.3f".format(worst)} px over the probe grid")
+          println("recovered model agrees with the planted transform to ${worst.f3} px over the probe grid")
           println(fit.homography.toString())
 
           // One arrow FLine per track. This is the whole family's shape in one line: raster in,

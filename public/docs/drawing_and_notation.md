@@ -26,7 +26,7 @@ can also attach marks to boxes so they move together:
 
 ## A box that listens
 
-This box waits for you to draw. Each time you finish a pen stroke, it reads the stroke as an [`FLine`](fline_examples.md), draws a green copy of it offset to one side, and reports how long the stroke was:
+Make a box and name it `listen`. It waits for you to draw. Each time you finish a pen stroke, it reads the stroke as an [`FLine`](fline_examples.md), draws a green copy of it offset to one side, and reports how long the stroke was:
 
 ```diffstatic {data-lang=kotlin}
 notation.onStroke { s ->
@@ -39,7 +39,7 @@ notation.onStroke { s ->
 }
 ```
 
-A second box, `tell`, draws an arrow from itself to the first. Its ends sit on the two boxes' edges, so dragging either box takes the arrow with it:
+A second box, named `tell`, draws an arrow from itself to the first. `thisBox.named("listen")` finds the box called `listen` in this document. The arrow's ends sit on the two boxes' edges, so dragging either box takes the arrow with it:
 
 ```diffstatic {data-lang=kotlin}
 val listen = thisBox.named("listen")
@@ -49,7 +49,7 @@ notation {
 }
 ```
 
-Run both, press `alt/option-D`, pick the pen and draw. Below, the stroke was drawn with the mouse, and the green copy is the box's answer:
+Run both, press `alt/option-D`, pick the pen and draw. When you lift the pen, a green copy of your stroke appears beside it, and `listen` reports the stroke's size:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1400x560" clip="0,0,1400,380" hide-toasts=true screenshot="assets/drawing_and_notation/listen.png" transcript="assets/transcripts/notation_listen_setup.yaml" padding="0" wait="0" timeout="120" embed=true hidden=true name="notation-listen" alt="The drawing layer switched on over two boxes, 'listen' and 'tell', joined by a blue arrow labelled 'tells'. A pale wave drawn with the pen runs across the canvas below them, a green copy of it runs alongside, and the listen box's output reports the stroke's point count and length."}
 /*
@@ -65,11 +65,11 @@ for (i in 0 until 60) {
     ready =
         ui.eval(
                 """
-        const s = window.drawingLayerState()
-        const tools = document.querySelector("#field-drawing-layer .App-toolbar")
-        const shown = !!tools && tools.getBoundingClientRect().width > 0
-        return (s && s.active && shown) ? "ready" : "waiting"
-    """
+                const s = window.drawingLayerState()
+                const tools = document.querySelector("#field-drawing-layer .App-toolbar")
+                const shown = !!tools && tools.getBoundingClientRect().width > 0
+                return (s && s.active && shown) ? "ready" : "waiting"
+                """
                     .trimIndent(),
             )
             .toString()
@@ -93,9 +93,9 @@ for (i in 0 until 80) {
     echoed =
         ui.eval(
                 """
-        const els = window.drawingLayerScene()
-        return els.some(e => !e.isDeleted && e.customData && e.customData.fieldKey === "echo") ? "echoed" : "waiting"
-    """
+                const els = window.drawingLayerScene()
+                return els.some(e => !e.isDeleted && e.customData && e.customData.fieldKey === "echo") ? "echoed" : "waiting"
+                """
                     .trimIndent(),
             )
             .toString()
@@ -124,11 +124,13 @@ notation {
 markdown("marks", "${notation.mine.size} marks drawn")
 ```
 
-`rect`, `ellipse`, `diamond`, `text`, `line`, `arrow`, `stroke` (a freehand stroke, from points or an `FLine`) and `frame` are all there. `arrow(from = thisBox, to = otherBox)` puts the ends on the two boxes' edges, and they stay there when either box moves. Give a block a key, `notation("overlay") { … }`, to keep a second set of marks that is replaced on its own.
+Inside the block, `frame` is still the box's own frame, its position and size on the canvas, which is how the ellipse circles the box. `label =` writes text on a shape, and `notation.mine` is the list of marks this box owns.
+
+The block can make a `rect`, `ellipse`, `diamond`, `text`, `line`, `arrow`, `stroke` (a freehand stroke, from points or an `FLine`), or an Excalidraw frame with `frame(name, x, y, w, h)`, a named region that holds other marks; the call with arguments makes one, the bare `frame` is the box's. `arrow(from = thisBox, to = otherBox)` puts the ends on the two boxes' edges, and they stay there when either box moves. Give a block a key, `notation("overlay") { … }`, to keep a second set of marks that is replaced on its own.
 
 A stroke can carry pen pressure, as one drawn with a tablet pen does: `stroke(line, pressure = { t -> 0.2 + 0.8 * t })` gives the pressure, 0 to 1, as a function of how far along the stroke the pen is. `mark.pressures` reads it back, from code-drawn and hand-drawn strokes alike, and [Drawn Strokes Become Paint](chain_drawn_paint.md) paints with it.
 
-Marks made inside a `frame { }` block belong to that frame, so Excalidraw clips them to it and drags them with it, and `notation.inside(frame)` finds them. Marks made inside `group { }` are grouped the way Ctrl+G groups them: select one and you have them all. Shapes take a `fillStyle` (`"solid"`, `"hachure"`, `"cross-hatch"`, `"zigzag"`) and an `opacity`, and the block's `roughness` and `dashed` set how the lines after them are drawn:
+Marks made inside a `frame(name, x, y, w, h) { }` block belong to that frame, so Excalidraw clips them to it and drags them with it, and `notation.inside(frame)` finds them. Marks made inside `group { }` are grouped the way Ctrl+G groups them: select one and you have them all. `name =` gives a mark a label that code can find it by with `notation.named(...)`. Shapes take a `fillStyle` (`"solid"`, `"hachure"`, `"cross-hatch"`, `"zigzag"`) and an `opacity`, and the block's `roughness` and `dashed` set how the lines after them are drawn:
 
 ```diffstatic {data-lang=kotlin}
 notation {
@@ -169,7 +171,7 @@ notation.arrowsTo(thisBox) // arrows that end on it
 notation.selected // what is selected in the drawing right now
 ```
 
-Each mark knows its `kind`, `bounds`, `points` (in canvas coordinates, the same ones a box's `frame` uses), `stroke` and `fill` colours, and its `label`: its own text, the text written inside it, or a name given from code. `toFLine()` turns any mark into an `FLine`, and from there everything Field can do with geometry applies.
+Each mark knows its shape, position, colours and label (listed in the [Reference](#reference)), in the same canvas coordinates a box's `frame` uses, and `toFLine()` turns it into an `FLine` for everything Field can do with geometry.
 
 ## Listening to the drawing
 
@@ -199,7 +201,7 @@ Field sits in the middle of all this. A box can draw, which is LeWitt's directio
 
 ## Reading by intersection
 
-Cutting a drawing with a line is a good way to read it. It also makes a drawn line a value over time, the freehand counterpart of placing keys in [the keyframe editor](keyframe_editor.md). A vertical line through a score picks out an instant, and a horizontal one picks out a pitch. `notation.space` names a region and says what its axes mean. The region can be a frame, a box, or a rectangle:
+Draw a score, then lay a vertical line across it at beat 2: wherever the line crosses a mark, that mark is sounding at beat 2, at the pitch where they meet. A horizontal line does the same for one pitch, giving the beats at which something passes through it. Reading a drawing this way, by cutting it with a line, also makes a drawn line a value over time, the freehand counterpart of placing keys in [the keyframe editor](keyframe_editor.md). `notation.space` names a region and says what its axes mean. The region can be a frame, a box, or a rectangle:
 
 ```diffstatic {data-lang=kotlin}
 val score = notation.space("score", x = 0.0..8.0, y = 84.0..48.0) // eight beats; MIDI 84 at the top
@@ -212,7 +214,7 @@ A cut returns hits. A stroke crosses it at points, so a line that doubles back g
 
 ### Fontana Mix
 
-Here is Cage's kit drawn by code: six curves, a grid, a point, and the straight line from the point inside the grid to one outside it. The box cuts the curves with the line and reports where the line meets each one:
+*Fontana Mix* is a kit of overlaid sheets: the performer draws a straight line from a point inside a grid to a point outside it and measures where it crosses a set of curves. Here is that kit drawn by code: six curves, a grid, a point, and the straight line from the point inside the grid to one outside it. The box cuts the curves with the line and reports where the line meets each one:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/drawing_and_notation/fontana.png" capture="window" embed=true open-outputs="false" clip="0,0,1060,510" w="180" h="50" wait="3.0" timeout="90" name="notation-fontana" alt="Six coloured curves across a frame labelled 'fontana mix', a grey grid and point, a straight line from the point to the frame's corner, and the box's readout listing where the line crosses four of the curves"}
 val colors = ["#e03131", "#1971c2", "#2f9e44", "#f08c00", "#9c36b5", "#0c8599"]
@@ -318,7 +320,7 @@ Open [drawing_notation](agent_transcripts.md#drawing_notation) from the welcome 
 | `notation.vertical(x)`, `.horizontal(y)`, `.intersect(a, b)` | cut the canvas |
 | `notation.space(region, x = …, y = …)` | a region with its own axes; the region is a name, a mark, a box or a rect, and the mark that defines it is not read as a note |
 | `space.vertical(t)`, `.horizontal(v)`, `.events`, `.between(t0, t1)`, `.sounding(t)` | read it |
-| `mark.kind`, `.bounds`, `.points`, `.label`, `.box`, `.fromBox`, `.toBox`, `.toFLine()`, `.yAt(x)`, `.xAt(y)` | one mark |
+| `mark.kind`, `.bounds`, `.points`, `.stroke`, `.fill`, `.label`, `.box`, `.fromBox`, `.toBox`, `.toFLine()`, `.yAt(x)`, `.xAt(y)` | one mark; `points` are in canvas coordinates, and `label` is the mark's own text, the text written inside it, or a name given from code |
 
 !!! note "Colours"
     Field shows the drawing in Excalidraw's dark theme, which draws every colour through an inversion. A colour given from code is stored adjusted for it, so greys, greens and blues appear as asked, and `stroke` and `fill` read back the colour you gave. The default ink, `#1e1e1e`, still follows the theme, so it shows light on dark. Warm and pale colours (`#e03131`, `#ffec99`) lie outside what the inversion can show and appear duller or shifted.

@@ -87,6 +87,18 @@ Material shadeMaterial(Material material, PathTraceSurface surface) {
 {{ pathTracing.integrator }}
 ```
 
+After the update, through RR:
+
+```diffstatic_runner {capture-profile="linux-nvidia" data-lang=kotlin screenshot="assets/path_traced_reconstruction/stripes-8.png" capture="native-window" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="rr stripes 8 ready" embed=true hidden=true timeout="240" name="path-traced-reconstruction-stripes-8" alt="The Starting Point through Ray Reconstruction with the striped material: the floor carries blue and orange stripes, reflected in the gold and blue spheres" macro-file="../../dev_docs/agents/transcripts/docs_capture/path_traced_reconstruction_stripes_8.yaml" capture-box="rr_stripes_8"}
+// Built and launched from dev_docs/agents/transcripts/docs_capture/path_traced_reconstruction_stripes_8.yaml.
+```
+
+With `3.0` for the frequency and `.05` for the roughness, the stripes widen and the floor turns glossy, mirroring the spheres and the emitter:
+
+```diffstatic_runner {capture-profile="linux-nvidia" data-lang=kotlin screenshot="assets/path_traced_reconstruction/stripes-3.png" capture="native-window" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="rr stripes 3 ready" embed=true hidden=true timeout="240" name="path-traced-reconstruction-stripes-3" alt="The same scene with frequency 3.0 and roughness .05: wider stripes on a glossy floor that reflects the spheres" macro-file="../../dev_docs/agents/transcripts/docs_capture/path_traced_reconstruction_stripes_3.yaml" capture-box="rr_stripes_3"}
+// Built and launched from dev_docs/agents/transcripts/docs_capture/path_traced_reconstruction_stripes_3.yaml.
+```
+
 Use **Update Compute Shader**, then change `8.0` to vary the stripe frequency or `.3` to change roughness. The function runs at surface hits, so the material affects direct light, indirect light and reflections; the primary-surface RR guides use its result too. Successful reload resets accumulation and reconstruction history; a compile error preserves the working pipeline. Keep materials opaque for this adapter. If you later animate a material uniform, call `lab.reset("material parameter changed")` when its value changes—geometric motion vectors do not describe that appearance change. See [material shaders](path_tracing.md#material-shaders-in-a-field-box) for the full `Material` and `PathTraceSurface` contracts.
 
 ## Quality and cost

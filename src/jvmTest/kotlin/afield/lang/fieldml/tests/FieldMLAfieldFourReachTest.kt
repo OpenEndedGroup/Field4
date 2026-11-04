@@ -360,8 +360,9 @@ class FieldMLAfieldFourReachTest {
                 "it (FieldMLHostBridge.suspendShape). RUNS — see theFramesBuildersThatDriveALiveSceneRunHeadlessly. " +
                 "Two residues, both named rather than waved at: `start` itself is declared twice " +
                 "(stdlib.kt:516, :527) and the overloads tie, so the shape written here is `eachFrame`, " +
-                "which is declared once; and `renderer::run` is a suspend *member*, which FieldML still " +
-                "cannot call into — see theOverloadThatThreeboxActuallyWritesStaysAmbiguous",
+                "which is declared once; and `renderer::run` is a suspend *member*, which since " +
+                "2026-10-31 is `hostLaunch \"run\" () renderer (fun r -> …)` (FieldMLSuspendMemberTest) " +
+                "— see also theOverloadThatThreeboxActuallyWritesStaysAmbiguous",
         ),
         Statement(
             "computeModuleHere {}",

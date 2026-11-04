@@ -191,7 +191,7 @@ class ForthExecution(val inside: Box) : BoxExecution {
                 } else if (diagnostics.isNotEmpty()) {
                     diagnostics.forEach { diag ->
                         val errLine = if (diag.line >= 0) execute.line + diag.line else execute.line
-                        inside.error(diag.message, line = errLine, property = "code")
+                        inside.displayError(diag.message, line = errLine, property = "code")
                     }
                 }
                 ok = diagnostics.isEmpty()
@@ -246,7 +246,7 @@ class ForthExecution(val inside: Box) : BoxExecution {
             if (setupDiags.isNotEmpty()) {
                 setupDiags.forEach { diag ->
                     val errLine = if (diag.line >= 0) execute.line + diag.line else execute.line
-                    inside.error(diag.message, line = errLine, property = "code")
+                    inside.displayError(diag.message, line = errLine, property = "code")
                 }
                 trace.finish(false, "the box did not define its words without a diagnostic")
                 send(Message("is-running").payload(IsRunning(execute.uid, false, wm, strand)))
@@ -289,11 +289,11 @@ class ForthExecution(val inside: Box) : BoxExecution {
                                 // Cooperative per-tick yield requested by `frame`.
                             } catch (e: ForthError) {
                                 val diag = forth.diagnosticFor(e)
-                                inside.error(diag.message, line = diag.line, property = "code")
+                                inside.displayError(diag.message, line = diag.line, property = "code")
                                 break
                             } catch (e: Throwable) {
                                 lprintln("error,forth", e.stackTraceToString())
-                                inside.error(
+                                inside.displayError(
                                     e.message ?: e.javaClass.simpleName,
                                     line = if (forth.currentLine >= 0) forth.currentLine else -1,
                                     property = "code"
