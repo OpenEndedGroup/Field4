@@ -4282,7 +4282,7 @@ private fun buildMeshInsert(ti: Introspection, mi: Introspection, fi: Introspect
     (ti.ubos + mi.ubos + fi.ubos).distinctBy { it.name }.forEach { ubo ->
         postImport += prefixed(
             "mesh-ubo:${ubo.name}",
-            "val MeshModulePointer.${ubo.name} by FromUniform()"
+            "val MeshModulePointer.${ubo.name} by MeshMesh.FromUniform()"
         ) + "\n"
         postImport += prefixed(
             "mesh-ubo-mesh:${ubo.name}",

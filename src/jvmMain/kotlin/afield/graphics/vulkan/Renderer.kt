@@ -320,6 +320,9 @@ class Renderer(
     /** Stop external GPU consumers before queue/device retirement. Callbacks must join their owner. */
     internal val beforeDeviceCleanup = java.util.concurrent.CopyOnWriteArrayList<Runnable>()
 
+    internal val isRecordingGraphicsFrame: Boolean
+        get() = graphicsRecordingContext.get() != null
+
     internal fun afterCurrentGraphicsFrameComplete(callback: () -> Unit) {
         val key = graphicsRecordingContext.get()
             ?: throw IllegalStateException("afterCurrentGraphicsFrameComplete must be called while recording a graphics frame")

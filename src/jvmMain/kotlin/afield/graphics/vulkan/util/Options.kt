@@ -358,6 +358,10 @@ object Options {
     )?.trim()?.takeIf { it.isNotEmpty() }?.toBooleanStrictOrNull()
 
     var validate = if (captureCompatibility) false else validateOverride ?: true
+    /** Separate from Vulkan validation: vendor OpenXR extensions can outpace installed API layers. */
+    var validateOpenXR = System.getProperty(
+        "afield.openxr.validate", System.getenv("AFIELD_OPENXR_VALIDATE")
+    )?.trim()?.toBooleanStrictOrNull() ?: validate
     var shaderDebugPrintf = !captureCompatibility && System.getProperty(
         "afield.four.shaderDebugPrintf",
         System.getenv("AFIELD_FOUR_SHADER_DEBUG_PRINTF") ?: "false"

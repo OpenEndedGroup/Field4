@@ -89,6 +89,9 @@ class MultiviewStereoTarget(
     fun eyeProjectionMatrix(eye: Int, out: Matrix4f = Matrix4f()): Matrix4f =
         openXR?.eyeProjectionMatrix(eye, out) ?: out.set(stereoCamera.projectionMatrices()[eye])
 
+    /** GPU work that needs the current predicted eyes, recorded once before the stereo scene. */
+    val beforeScene = linkedMapOf<String, afield.graphics.vulkan.Target>()
+
     override fun render(command: CommandBuffer, index: Int) {
         mouseControllerPos?.let { updateMockControllerFromScreen(it.x, it.y, mouseControllerDistance) }
         stereoCamera.base.p.resize(eyeWidth, eyeHeight)
@@ -115,6 +118,7 @@ class MultiviewStereoTarget(
             }
             buffer.clean(false, null)
         }
+        beforeScene.values.forEach { it.render(command, index) }
         layered.render(command, index)
     }
 

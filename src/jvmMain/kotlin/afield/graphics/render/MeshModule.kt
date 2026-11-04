@@ -359,21 +359,21 @@ class MeshModule(val parameters: Parameters) : Renderable {
                     val sz = it.size.toLong()
                     val bp = buffer(it, it.name) { size = sz; source = it; uniform(); hosted() }
                     val buf = ReloadCarryOver.resolve(bp, parameters.uboResolver) ?: throw IllegalArgumentException("can't link UBO ${it.name}")
-                    uniforms[it.name] = Module.Uniform(it.name, it, source = buf, buf.toBuffer(), VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+                    uniforms[it.name] = Module.Uniform(it.name, it, source = buf, buf.toBuffer(parameters.renderer), VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
                 } }
                 mi.ubos.forEach { if (it.set == set) {
                     found = true
                     val sz = it.size.toLong()
                     val bp = buffer(it, it.name) { size = sz; source = it; uniform(); hosted() }
                     val buf = ReloadCarryOver.resolve(bp, parameters.uboResolver) ?: throw IllegalArgumentException("can't link UBO ${it.name}")
-                    uniforms[it.name] = Module.Uniform(it.name, it, source = buf, buf.toBuffer(), VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+                    uniforms[it.name] = Module.Uniform(it.name, it, source = buf, buf.toBuffer(parameters.renderer), VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
                 } }
                 fi.ubos.forEach { if (it.set == set) {
                     found = true
                     val sz = it.size.toLong()
                     val bp = buffer(it, it.name) { size = sz; source = it; uniform(); hosted() }
                     val buf = ReloadCarryOver.resolve(bp, parameters.uboResolver) ?: throw IllegalArgumentException("can't link UBO ${it.name}")
-                    uniforms[it.name] = Module.Uniform(it.name, it, source = buf, buf.toBuffer(), VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+                    uniforms[it.name] = Module.Uniform(it.name, it, source = buf, buf.toBuffer(parameters.renderer), VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
                 } }
                 if (!found) return@forEach
             }

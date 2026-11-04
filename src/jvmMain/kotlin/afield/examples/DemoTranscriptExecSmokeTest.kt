@@ -950,6 +950,19 @@ object DemoTranscriptExecSmokeTest {
         // glyph outline — `sun.font.CFontManager.loadFonts` dispatches there and waits. Headless AWT
         // does not, and this harness has no use for a screen. See `Typefaces.warm`.
         System.setProperty("java.awt.headless", "true")
+        // Exercise an authored local document through the same macro/preamble/K2 path without
+        // registering private documents in the public demo catalog or evaluating their GPU code.
+        val localFile = args.indexOf("--compile-file")
+        if (localFile >= 0) {
+            val yaml = File(args.getOrNull(localFile + 1) ?: error("--compile-file needs a transcript path"))
+            require(yaml.isFile) { "Transcript not found: $yaml" }
+            startRunloopDaemon()
+            val failures = mutableListOf<String>()
+            runCompileOnlyDemo(yaml, yaml.nameWithoutExtension, failures)
+            check(failures.isEmpty()) { failures.joinToString("\n") }
+            println("COMPILE_ONLY_PASS ${yaml.absolutePath} (GPU evaluation skipped)")
+            return
+        }
         val transcriptsDir = locateTranscriptsDir()
         println("DemoTranscriptExecSmokeTest: transcripts dir = ${transcriptsDir.absolutePath}")
 
