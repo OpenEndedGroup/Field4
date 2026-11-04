@@ -2,14 +2,15 @@
 
 package afield.simulation.agents
 
-import afield.graphics.color.Color4
 import afield.media.image.Img
-import afield.media.image.withLabel
 import afield.study.search.Evaluation
 import afield.study.search.GenomeOps
 import afield.study.search.Objective
 import afield.study.search.PopulationSearch
+import afield.study.search.SearchArm
+import afield.study.search.SearchComparison
 import afield.study.search.SearchRun
+import afield.study.search.compareSearch
 import afield.study.search.Variation
 import kotlin.math.PI
 import kotlin.math.cos
@@ -411,9 +412,14 @@ class VehicleBrainTask(
 // ==============================================================================================
 // The comparison
 // ==============================================================================================
+// The comparison — a thin caller of the generic afield.study.search.compareSearch
+// ==============================================================================================
 
-/** The three searches [compareVehicleSearch] runs. */
-enum class VehicleSearchDriver { RANDOM, HILL_CLIMB, EVOLVE }
+/** The three searches [compareVehicleSearch] runs, by their [SearchArm] names. */
+enum class VehicleSearchDriver(
+    /** The [SearchArm.name] this driver runs as. */
+    val arm: String,
+) { RANDOM("random"), HILL_CLIMB("hillclimb"), EVOLVE("evolve") }
 
 /** One driver's result for one seed. */
 class VehicleSearchCell(
@@ -426,7 +432,8 @@ class VehicleSearchCell(
 )
 
 /**
- * [compareVehicleSearch]'s result: every driver at every seed, all at [budget] evaluations.
+ * [compareVehicleSearch]'s result: every driver at every seed, all at [budget] evaluations. The
+ * statistics and the plot are [general]'s, the [SearchComparison] any genome gets.
  */
 class VehicleSearchComparison(
     /** The task. */
@@ -435,153 +442,64 @@ class VehicleSearchComparison(
     val hidden: Int,
     /** Genes. */
     val genes: Int,
-    /** Evaluations each run was allowed. */
-    val budget: Int,
-    /** Every run. */
-    val cells: List<VehicleSearchCell>,
+    /** The generic comparison this wraps. */
+    val general: SearchComparison<DoubleArray>,
 ) {
+    /** Evaluations each run was allowed. */
+    val budget: Int get() = general.budget
+
+    /** Every run. */
+    val cells: List<VehicleSearchCell> = general.cells.map { c ->
+        VehicleSearchCell(VehicleSearchDriver.values().first { it.arm == c.arm }, c.seed, c.run)
+    }
+
     /** The runs of one driver, in seed order. */
     fun of(d: VehicleSearchDriver): List<VehicleSearchCell> = cells.filter { it.driver == d }
 
     /** Best fitness of each seed's run of [d]. */
-    fun best(d: VehicleSearchDriver): DoubleArray = of(d).map { it.run.bestFitness }.toDoubleArray()
+    fun best(d: VehicleSearchDriver): DoubleArray = general.best(d.arm)
 
     /** Seeds at which [a] ended strictly above [b]. */
-    fun wins(a: VehicleSearchDriver, b: VehicleSearchDriver): Int {
-        val x = of(a)
-        val y = of(b)
-        return x.indices.count { x[it].run.bestFitness > y[it].run.bestFitness }
-    }
+    fun wins(a: VehicleSearchDriver, b: VehicleSearchDriver): Int = general.wins(a.arm, b.arm)
 
     /** The best genome any run of [d] found. */
-    fun champion(d: VehicleSearchDriver): DoubleArray = of(d).maxBy { it.run.bestFitness }.run.best!!.genome
+    fun champion(d: VehicleSearchDriver): DoubleArray = general.champion(d.arm)
 
     /** One line per driver: median, IQR, min, max of the per-seed bests, and wins against random. */
-    fun table(): String = buildString {
-        append("%s, %d hidden (%d genes), %d evals x %d seeds\n".format(task, hidden, genes, budget, of(VehicleSearchDriver.RANDOM).size))
-        for (d in VehicleSearchDriver.values()) {
-            val b = best(d).sortedArray()
-            append("  %-10s median %.4f  IQR %.4f..%.4f  range %.4f..%.4f".format(
-                d.name.lowercase(), quantile(b, 0.5), quantile(b, 0.25), quantile(b, 0.75), b.first(), b.last()))
-            if (d != VehicleSearchDriver.RANDOM) append("  beats random at %d/%d".format(wins(d, VehicleSearchDriver.RANDOM), b.size))
-            append('\n')
-        }
-    }
+    fun table(): String =
+        "%s, %d hidden (%d genes), %d evals x %d seeds\n".format(task, hidden, genes, budget, general.seeds) + general.rows()
 
     /** Per-seed bests, one row per seed. */
-    fun perSeed(): String = buildString {
-        append("seed    random  hillclimb   evolve\n")
-        val r = of(VehicleSearchDriver.RANDOM)
-        val h = of(VehicleSearchDriver.HILL_CLIMB)
-        val e = of(VehicleSearchDriver.EVOLVE)
-        for (i in r.indices) append("%4d  %8.4f  %8.4f  %8.4f\n".format(r[i].seed, r[i].run.bestFitness, h[i].run.bestFitness, e[i].run.bestFitness))
-    }
+    fun perSeed(): String = general.perSeed()
 
     /** Median best-so-far of [d] after each evaluation, with its quartiles: `[q25, median, q75]` rows. */
-    fun curve(d: VehicleSearchDriver): Array<DoubleArray> {
-        val runs = of(d)
-        return Array(budget) { t ->
-            val v = runs.map { it.run.trace[min(t, it.run.trace.size - 1)] }.sorted().toDoubleArray()
-            doubleArrayOf(quantile(v, 0.25), quantile(v, 0.5), quantile(v, 0.75))
-        }
-    }
+    fun curve(d: VehicleSearchDriver): Array<DoubleArray> = general.curve(d.arm)
 
     /** The run of [d] whose best fitness is the median over seeds (the lower middle for an even count). */
-    fun medianRun(d: VehicleSearchDriver): SearchRun<DoubleArray> {
-        val runs = of(d).sortedBy { it.run.bestFitness }
-        return runs[(runs.size - 1) / 2].run
-    }
+    fun medianRun(d: VehicleSearchDriver): SearchRun<DoubleArray> = general.medianRun(d.arm)
 
-    /** The fitness range [plot] uses when none is given: every arm's quartile band, padded. */
-    fun fitnessRange(): ClosedFloatingPointRange<Double> {
-        val all = VehicleSearchDriver.values().flatMap { d -> curve(d).flatMap { it.toList() } }.filter { it.isFinite() }
-        val lo = all.minOrNull() ?: 0.0
-        val hi = max(lo + 1e-9, all.maxOrNull() ?: 1.0)
-        return lo..hi
-    }
+    /** The fitness range [plot] uses when none is given: every arm's quartile band. */
+    fun fitnessRange(): ClosedFloatingPointRange<Double> = general.fitnessRange()
 
     /**
      * Best-so-far fitness against evaluations: each driver's median as a line, its interquartile range
      * as a band, and its final median written at the right. Random is grey, hill climbing blue,
      * evolution orange. Pass the same [yRange] to two plots to put them on one scale.
      */
-    fun plot(width: Int = 300, height: Int = 300, yRange: ClosedFloatingPointRange<Double> = fitnessRange()): Img {
-        var out = Img.filled(width, height, 3, 0.06f)
-        val curves = VehicleSearchDriver.values().associateWith { curve(it) }
-        val lo = yRange.start
-        val hi = max(lo + 1e-9, yRange.endInclusive)
-        val colours = mapOf(
-            VehicleSearchDriver.RANDOM to floatArrayOf(0.7f, 0.7f, 0.7f),
-            VehicleSearchDriver.HILL_CLIMB to floatArrayOf(0.3f, 0.6f, 1f),
-            VehicleSearchDriver.EVOLVE to floatArrayOf(1f, 0.55f, 0.15f),
-        )
-        val left = 32
-        val right = width - 40
-        val top = 8
-        val bottom = height - 18
-        fun px(t: Int) = (left + t.toDouble() / (budget - 1).coerceAtLeast(1) * (right - left)).roundToInt()
-        fun py(v: Double) = (bottom - (v - lo) / (hi - lo) * (bottom - top)).roundToInt().coerceIn(top, bottom)
-        fun put(x: Int, y: Int, c: FloatArray, a: Float) {
-            if (x !in 0 until width || y !in 0 until height) return
-            val o = (y * width + x) * 3
-            for (k in 0..2) out.data[o + k] = out.data[o + k] * (1 - a) + c[k] * a
-        }
-        val axis = floatArrayOf(0.45f, 0.46f, 0.5f)
-        for (y in top..bottom) put(left - 1, y, axis, 1f)
-        for (x in left..right) put(x, bottom + 1, axis, 1f)
-        val labels = ArrayList<Triple<String, Int, Int>>()
-        for (k in 0..4) {
-            val v = lo + (hi - lo) * k / 4
-            val y = py(v)
-            for (x in left - 4 until left - 1) put(x, y, axis, 1f)
-            for (x in left..right step 4) put(x, y, axis, 0.25f)
-            labels += Triple("%.2f".format(v), 1, y - 3)
-        }
-        for (n in listOf(0, budget / 2, budget)) {
-            val x = px((n - 1).coerceAtLeast(0))
-            for (y in bottom + 2..bottom + 4) put(x, y, axis, 1f)
-            val text = n.toString()
-            labels += Triple(text, (x - 3 * text.length).coerceIn(0, width - 6 * text.length), bottom + 7)
-        }
-        for ((d, c) in curves) for (t in 0 until budget) {
-            val x = px(t)
-            for (y in py(c[t][2])..py(c[t][0])) put(x, y, colours[d]!!, 0.12f)
-        }
-        for ((d, c) in curves) for (t in 0 until budget) {
-            val y0 = py(c[t][1])
-            val y1 = if (t + 1 < budget) py(c[t + 1][1]) else y0
-            for (y in min(y0, y1)..max(y0, y1)) for (dx in 0..1) put(px(t) + dx, y, colours[d]!!, 1f)
-        }
-        for (l in labels) out = out.withLabel(l.first, l.second, l.third, scale = 1, color = Color4(0.6, 0.62, 0.68))
-        // End-of-run medians, nudged apart so they never overprint.
-        val ends = curves.map { (d, c) -> Triple(d, c[budget - 1][1], py(c[budget - 1][1])) }.sortedBy { it.third }
-        var lastY = -100
-        for ((d, v, y) in ends) {
-            val yy = max(y - 3, lastY + 9)
-            lastY = yy
-            val c = colours[d]!!
-            out = out.withLabel("%.2f".format(v), right + 4, yy, scale = 1, color = Color4(c[0].toDouble(), c[1].toDouble(), c[2].toDouble()))
-        }
-        return out
-    }
+    fun plot(width: Int = 300, height: Int = 300, yRange: ClosedFloatingPointRange<Double> = fitnessRange()): Img =
+        general.plot(width, height, yRange)
 
+    /** [table]. */
     override fun toString(): String = table()
-
-    private fun quantile(sorted: DoubleArray, q: Double): Double {
-        if (sorted.isEmpty()) return Double.NaN
-        val p = q * (sorted.size - 1)
-        val i = p.toInt()
-        val f = p - i
-        return if (i + 1 < sorted.size) sorted[i] * (1 - f) + sorted[i + 1] * f else sorted[i]
-    }
 }
 
 /**
  * Random sampling, hill climbing and evolution on [task] with a [hidden]-neuron [VehicleBrainGenome],
- * each for exactly [budget] objective calls at every seed in [seeds]. Deterministic given its
- * arguments (seeds run in parallel; the result does not depend on it). Evolution is (µ=[mu] + λ=[lambda]) with tournament 2, [crossoverRate] and
- * [immigrantRate] (the fraction of children that are fresh random draws); the hill climber restarts
- * after [patience] non-improving steps.
+ * each for exactly [budget] objective calls at every seed in [seeds], through [compareSearch].
+ * Deterministic given its arguments. Evolution is (µ=[mu] + λ=[lambda]) with tournament 2,
+ * [crossoverRate] and [immigrantRate] (the fraction of children that are fresh random draws); the hill
+ * climber restarts after [patience] non-improving steps. For a fourth arm, or another genome, call
+ * [compareSearch] directly.
  */
 fun compareVehicleSearch(
     task: VehicleBrainTask,
@@ -596,18 +514,11 @@ fun compareVehicleSearch(
 ): VehicleSearchComparison {
     require(budget >= 1) { "budget must be >= 1" }
     val ops = VehicleBrainGenome(hidden)
-    val objective = task.objective(hidden)
-    // Seeds are independent runs, so they go to the common pool; results are gathered in seed order and
-    // each run is a pure function of its seed, so parallelism cannot change a number.
-    val cells = seeds.parallelStream().map { s ->
-        listOf(
-            VehicleSearchCell(VehicleSearchDriver.RANDOM, s, PopulationSearch.random(ops, objective, budget, seed = s)),
-            VehicleSearchCell(VehicleSearchDriver.HILL_CLIMB, s, PopulationSearch.hillClimb(ops, objective, budget, seed = s, patience = patience)),
-            VehicleSearchCell(
-                VehicleSearchDriver.EVOLVE, s,
-                PopulationSearch.evolve(ops, objective, budget, seed = s, mu = mu, lambda = lambda, crossoverRate = crossoverRate, immigrantRate = immigrantRate),
-            ),
-        )
-    }.toList().flatten()
-    return VehicleSearchComparison(task.name, hidden, ops.size, budget, cells)
+    val arms = listOf(
+        SearchArm.random<DoubleArray>(),
+        SearchArm.hillClimb(patience),
+        SearchArm.evolve(mu, lambda, crossoverRate, immigrantRate, name = "evolve"),
+    )
+    val general = compareSearch(ops, task.objective(hidden), budget, seeds, arms, label = "${task.name}, $hidden hidden")
+    return VehicleSearchComparison(task.name, hidden, ops.size, general)
 }

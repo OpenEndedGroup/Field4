@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-04T13:51:27.371Z",
+  "documentName": "flow_islands",
+  "outputs": [
+    {
+      "uid": "fi_draw",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "fi_islands",
+      "channel": "islands",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 397,
+      "height": 94,
+      "path": "outputs/1.html"
+    }
+  ]
+}

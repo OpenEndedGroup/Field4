@@ -32,7 +32,7 @@ html.field-transcript-open body { overflow-x:visible !important; }
 
 /* ── palette ─────────────────────────────────────────────────── */
 :root {
-    --mono-bg: #1a1a1a;
+    --mono-bg: #141414;
     --mono-panel: #050505;
     --mono-text: rgba(255, 255, 255, 0.8);
     --mono-text-faint: rgba(255, 255, 255, 0.4);

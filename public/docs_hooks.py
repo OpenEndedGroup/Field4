@@ -2956,7 +2956,7 @@ class RunnerState:
         # adopts every committed asset, so this is the only thing that brings an old still up to a
         # new default.
         wanted_scale = box_still_scale(options)
-        if wanted_scale is not None and screenshot_path.exists():
+        if wanted_scale is not None and is_png_file(screenshot_path):
             found_scale = png_pixel_scale(screenshot_path)
             if found_scale != wanted_scale:
                 LOG.info(
@@ -3146,7 +3146,8 @@ class RunnerState:
             )
         clip_screenshot(screenshot_path=screenshot_path, options=options, backdoor_stdout=completed.stdout)
         trim_screenshot_border(screenshot_path=screenshot_path, options=options)
-        if wanted_scale is not None:
+        # A child that wrote nothing fails when the capture transaction publishes, as before.
+        if wanted_scale is not None and screenshot_path.is_file():
             write_png_pixel_scale(screenshot_path, wanted_scale)
         visual_gap = validate_screenshot_pixels(screenshot_path=screenshot_path, options=options)
         if visual_gap is not None:
@@ -4930,6 +4931,14 @@ def box_still_scale(options: RunnerOptions) -> float | None:
     if effective_capture_mode(options) != "box" or options.video or not options.screenshot:
         return None
     return options.scale if options.scale is not None else BOX_STILL_SCALE
+
+
+def is_png_file(path: Path) -> bool:
+    try:
+        with path.open("rb") as handle:
+            return handle.read(8) == _PNG_SIGNATURE
+    except OSError:
+        return False
 
 
 def png_pixel_scale(path: Path) -> float:

@@ -167,6 +167,16 @@ explains the opt-in and the tools.
 
 [Open →](offline.html?file=assets/agent_transcripts/ai4_iframe_hello/metadata.edn)
 
+### ai4_cold_reader
+
+One box gives AI4 two tools for reading this site as a newcomer: `cold_read_page` shows a page as it
+stood at a git revision, and `report_stall` records each place the reader gets stuck. Run the box,
+then ask its AI Chat panel to cold-read a page. [Scoring AI4 as a reader of these
+docs](ai4_experiments.md#scoring-ai4-as-a-reader-of-these-docs) compares its stalls with an earlier
+review.
+
+[Open →](offline.html?file=assets/agent_transcripts/ai4_cold_reader/metadata.edn)
+
 ### spreadsheet_tour
 
 A bill kept as a spreadsheet in one box, priced by `tax` and `discount` variables in a second. Run
@@ -474,6 +484,16 @@ one coroutine at a time, so a plain `var` per control is enough. All three are `
 launches them, advances 90 frames, and stops them.
 
 [Open →](offline.html?file=assets/agent_transcripts/inertial_movement/metadata.edn)
+
+### flow_islands
+
+Three boxes, and a flow-matching generator graded by a Datalog program. `fi_cloud` trains
+`flowMatch` on two interlocking half-moons and samples 200 new points; `fi_islands` hands both
+clouds to `Datalog` as facts, counts the target points near each sample, calls a sample with none a
+stray, and labels the connected pieces with and without the strays; `fi_draw` draws the samples
+coloured by piece, strays in red. See [the walkthrough](chain_flow_islands.md).
+
+[Open →](offline.html?file=assets/agent_transcripts/flow_islands/metadata.edn)
 
 ### point_matching
 
@@ -979,6 +999,17 @@ counterfactual is its own `initialLoss`, measured in the same run. None of the f
 ![A contact sheet of twenty small greyscale automaton boards in a six-column grid, each labelled with its two bin indices and score: the top-left cells are near-empty, the bottom-right cells are dense static, and the middle band holds boards with visible structure](assets/alife_examples/evolve-mapelites.png)
 
 [Open →](offline.html?file=assets/agent_transcripts/alife_evolution/metadata.edn)
+
+### alife_search_comparison
+
+The "Does search beat random?" part of [spatial artificial life](alife_examples.md#does-search-beat-random)
+as three boxes. Each runs `compareSearch` (random sampling, hill climbing, evolution, and evolution
+with immigrants, all at the same evaluation budget over several seeds) on one genome: Life-like rules
+scored for the edge of chaos, L-systems scored for fractal dimension, and Lenia rules scored as
+solitons. Each prints the median and quartile table and draws every method's best-so-far curve. All
+three run on the CPU in under 20 seconds.
+
+[Open →](offline.html?file=assets/agent_transcripts/alife_search_comparison/metadata.edn)
 
 ### alife_worked_example
 
