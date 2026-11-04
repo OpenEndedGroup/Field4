@@ -865,8 +865,8 @@ class RunnerOptions:
     # at a legible scale.
     viewport: tuple[int, int] | None = None
     # `scale="3"` (capture="box" only): device pixels per CSS pixel for this still; the capture
-    # page's own is 2. For a narrow output panel the page wants to show wider than its CSS size
-    # without upscaling the raster.
+    # page's own is 2. The site shows an image at three quarters of its pixel width, so a narrow
+    # output panel stretched to the column needs more pixels than that to stay sharp.
     scale: float | None = None
     # `fresh-document=true`: run in a new, uniquely named document (the `document=` name, or
     # "docs-fresh", plus a random suffix) instead of a scratch session. Scratch sessions never save,
