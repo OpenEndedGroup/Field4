@@ -3418,7 +3418,7 @@ the field then has to learn to collapse.
 
 `src/jvmMain/kotlin/afield/ai/learning/flowmatching.kt` — [read the source](source/jvmMain/afield/ai/learning/flowmatching/)
 
-**Used in:** [Flow Matching](../flow_matching.md), [Neural particle systems](../neural_particles.md)
+**Used in:** [Flow Matching](../flow_matching.md), [Neural particle systems](../neural_particles.md), [A Generator, Graded by Datalog](../chain_flow_islands.md)
 
 ### Top-level functions { #flowmatching-kt-functions }
 
