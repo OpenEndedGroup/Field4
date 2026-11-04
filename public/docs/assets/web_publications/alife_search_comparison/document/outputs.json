@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-04T00:28:56.598Z",
+  "documentName": "alife_search_comparison",
+  "outputs": [
+    {
+      "uid": "compare_life",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 372,
+      "height": 268,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "compare_lenia",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 372,
+      "height": 268,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "compare_lsystem",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 372,
+      "height": 268,
+      "path": "outputs/2.html"
+    }
+  ]
+}

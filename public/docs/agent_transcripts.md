@@ -990,6 +990,17 @@ counterfactual is its own `initialLoss`, measured in the same run. None of the f
 
 [Open →](offline.html?file=assets/agent_transcripts/alife_evolution/metadata.edn)
 
+### alife_search_comparison
+
+The "Does search beat random?" part of [spatial artificial life](alife_examples.md#does-search-beat-random)
+as three boxes. Each runs `compareSearch` (random sampling, hill climbing, evolution, and evolution
+with immigrants, all at the same evaluation budget over several seeds) on one genome: Life-like rules
+scored for the edge of chaos, L-systems scored for fractal dimension, and Lenia rules scored as
+solitons. Each prints the median and quartile table and draws every method's best-so-far curve. All
+three run on the CPU in under 20 seconds.
+
+[Open →](offline.html?file=assets/agent_transcripts/alife_search_comparison/metadata.edn)
+
 ### alife_worked_example
 
 [Spatial artificial life](alife_examples.md) as twenty boxes: ten that
