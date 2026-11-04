@@ -995,6 +995,25 @@ And the feedback running in the window: a dot moving through the target leaves a
 // The transcript builds window, 5. PingPongTT and 5. draw pingpoing from their sidecars and launches each.
 ```
 
+### Replacing carried history at a playback cut
+
+For a prepared cut, `target.recordReplaceHistory(command, attachment) { image -> … }`
+records a transfer into every slot of one attachment's history ring. The callback records a
+buffer-to-image or image-to-image copy into the supplied Vulkan image, in
+`TRANSFER_DST_OPTIMAL`, covering mip 0 and every array layer. Its source must be separate from
+the ring. Create the target with `colorTransferDst = true`, `colorSampled = true` and one mip
+level, and call outside a render pass on the graphics recording thread.
+
+Replacing all slots prevents an earlier frame from reappearing in feedback after the cut.
+The other attachments, ring indices, bound attachment and cadence stay as they were. This
+works on both `PingPongRenderToTexture` and `FrameCadencedPingPongRenderToTexture`.
+
+`renderer.whenCurrentGraphicsFrameComplete { … }`, called while recording that graphics
+frame, reports completion after its submission fence signals. Keep the callback short: complete
+a future or hand work to an IO worker. The transfer method records commands without waiting;
+prepare source resources before the cut. Neither method loads a snapshot from disk or captures
+the rest of an application's simulation state.
+
 ## A blur kernel across three boxes
 
 The blur chain is the longest topology in the corpus (`window → 5. Bluring → 5. kernel → 5. draw blur`), and it reads best as a whole, because each box does exactly one thing.

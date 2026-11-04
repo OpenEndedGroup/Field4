@@ -331,6 +331,13 @@ class Renderer(
         }
     }
 
+    /**
+     * Finish a GPU-side capture without waiting in the render callback. Call while recording a
+     * graphics frame; [callback] runs after that submission's fence signals. It must stay short
+     * (complete a future or queue IO), because frame retirement also runs other cleanup work.
+     */
+    fun whenCurrentGraphicsFrameComplete(callback: () -> Unit) = afterCurrentGraphicsFrameComplete(callback)
+
     data class ExternalSemaphorePoint(val semaphore: Long, val value: Long)
     private data class ExternalFrameSync(
         val waits: MutableList<ExternalSemaphorePoint> = mutableListOf(),
@@ -827,6 +834,13 @@ class Renderer(
         presentQueue.waitIdle()
         graphQueue.waitIdle()
         device.waitIdle()
+        // A final capture must complete even when no subsequent frame polls its fence.
+        // Run before deferred buffer releases and before the device/fences disappear.
+        windowContexts.forEachIndexed { contextIndex, ctx ->
+            ctx.fences.indices.forEach { imageIndex ->
+                drainCompletedGraphicsCallbacks(ctx, contextIndex, imageIndex)
+            }
+        }
         // Pending releases normally wait for later frames. Shutdown has no later frame;
         // release them now, before their fences, command pools and device disappear.
         var deferredFailure = drainDeferredCleanup(cleanup, cleanupStack)
