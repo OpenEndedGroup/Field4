@@ -24,7 +24,7 @@ renderer.renderList.preTargets["youtube-browser-upload"] = Target { command, _ -
     browser.prepareSampledImagesFor(command)
 }
 
-val stereo = SideBySideStereoTarget(renderer, openXR = renderer.openXRHmdTarget)
+val stereo = MultiviewStereoTarget(renderer, openXR = renderer.openXRHmdTarget)
 val panel = PuppetBrowserVrPanel(
     renderer = renderer,
     stereo = stereo,
@@ -42,11 +42,7 @@ val keyboard = PuppetBrowserWindowInput(browser, renderer.window) { _, _ -> null
 keyboard.takeFocus()
 
 // Desktop mirror of the same stereo texture that can be handed to OpenXR eye swapchains.
-stereo.packed.blitToScreen(
-    renderer = renderer,
-    target = renderer.renderList,
-    name = "youtube-stereo-screen",
-)
+stereo.mirrorToScreen(name = "youtube-stereo-screen", stereoPair = { true })
 
 var announced = false
 loop {

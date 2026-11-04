@@ -143,6 +143,17 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
 
     /** The device's ray-tracing limits, or null when the acceleration path is unusable. */
     val rayTracingLimits: RayTracingLimits?
+    /** Mesh-stage multiview is a separate feature from ordinary multiview. */
+    val supportsMultiviewMeshShader: Boolean
+    data class MeshShaderLimits(
+        val outputVertices: Int,
+        val outputPrimitives: Int,
+        val taskPayloadBytes: Int,
+        val multiviewViews: Int,
+        val meshInvocations: Int,
+        val taskInvocations: Int,
+    )
+    val meshShaderLimits: MeshShaderLimits?
     /** Optional shader/vision features. SDKs are not required to enable these Vulkan features. */
     val supportsOpticalFlow: Boolean
     /**
@@ -255,7 +266,7 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                 hasExt(KHRPresentId.VK_KHR_PRESENT_ID_EXTENSION_NAME) &&
                 hasExt(KHRPresentWait.VK_KHR_PRESENT_WAIT_EXTENSION_NAME)
             enableMeshShading =
-                OS == OSType.WINDOWS && hasExt(EXTMeshShader.VK_EXT_MESH_SHADER_EXTENSION_NAME)
+                OS != OSType.MACOS && hasExt(EXTMeshShader.VK_EXT_MESH_SHADER_EXTENSION_NAME)
 
             // VK_EXT_present_timing has a strict dependency bundle. Enabling the extension
             // without every member is invalid even if presentTiming itself is supported.
@@ -347,7 +358,24 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
             supportsExtendedDynamicState = hasExtDynamicState
             supportsExtendedDynamicState3 = hasExtDynamicState3 && eds3Supported.extendedDynamicState3DepthClampEnable()
             val eds3PolygonMode = eds3Supported.extendedDynamicState3PolygonMode()
-            supportsMultiview = hasExt(KHRMultiview.VK_KHR_MULTIVIEW_EXTENSION_NAME)
+            val multiviewSupported = VkPhysicalDeviceMultiviewFeatures.calloc(stack).`sType$Default`()
+            probeFeatures(stack, multiviewSupported.address())
+            supportsMultiview = multiviewSupported.multiview()
+            val meshSupported = VkPhysicalDeviceMeshShaderFeaturesEXT.calloc(stack).`sType$Default`()
+            if (enableMeshShading) {
+                VK11.vkGetPhysicalDeviceFeatures2(physicalDevice.vkPhysicalDevice,
+                    VkPhysicalDeviceFeatures2.calloc(stack).`sType$Default`().pNext(meshSupported.address()))
+                enableMeshShading = meshSupported.meshShader() && meshSupported.taskShader()
+            }
+            supportsMultiviewMeshShader = enableMeshShading && supportsMultiview && meshSupported.multiviewMeshShader()
+            meshShaderLimits = if (enableMeshShading) {
+                val limits = VkPhysicalDeviceMeshShaderPropertiesEXT.calloc(stack).`sType$Default`()
+                vkGetPhysicalDeviceProperties2(physicalDevice.vkPhysicalDevice,
+                    VkPhysicalDeviceProperties2.calloc(stack).`sType$Default`().pNext(limits.address()))
+                MeshShaderLimits(limits.maxMeshOutputVertices(), limits.maxMeshOutputPrimitives(),
+                    limits.maxTaskPayloadSize(), limits.maxMeshMultiviewViewCount(),
+                    limits.maxMeshWorkGroupInvocations(), limits.maxTaskWorkGroupInvocations())
+            } else null
             raySupport = RayDeviceSupport.probe(physicalDevice.vkPhysicalDevice, supportedExtensions)
             supportsAccelerationStructures = Options.enableRayTracing && raySupport.accelerationUsable
             enableRayTracing = Options.enableRayTracing && raySupport.pipelineUsable
@@ -673,11 +701,11 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                 memPutAddress(tail + VkBaseOutStructure.PNEXT, unified.address()); tail = unified.address()
             }
 
-            // Optional: mesh shader + present features (Windows path).
+            // Mesh/task features are queried independently; Linux is a first-class mesh path.
             if (enableMeshShading) {
                 val mesh = VkPhysicalDeviceMeshShaderFeaturesEXT.calloc(stack)
                     .sType(EXTMeshShader.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT)
-                    .meshShader(true).taskShader(true).multiviewMeshShader(supportsMultiview)
+                    .meshShader(true).taskShader(true).multiviewMeshShader(supportsMultiviewMeshShader)
                 memPutAddress(tail + VkBaseOutStructure.PNEXT, mesh.address()); tail = mesh.address()
             }
 

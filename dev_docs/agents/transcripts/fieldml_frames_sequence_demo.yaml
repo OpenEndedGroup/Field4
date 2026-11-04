@@ -36,7 +36,7 @@ operations:
   - create:
       box: "fieldml-seq-script"
       name: "a script across frames"
-      frame: { x: 400.0, y: 40.0, w: 300.0, h: 120.0 }
+      frame: { x: 400.0, y: 40.0, w: 560.0, h: 100.0 }
       properties:
         "code": |
           // A `frames` body written in FieldML that WAITS: it draws a step, waits, draws the next.

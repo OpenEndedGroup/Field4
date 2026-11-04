@@ -548,7 +548,7 @@ class StackSLLowering(
             else -> "<span style='color:#e96'>not compiled</span>"
         }
         // Fixed width: an output panel sizes itself to its content.
-        append("<div style='width:500px;max-width:500px;overflow:hidden;font-family:var(--field-mono, monospace);font-size:11px;line-height:1.45;color:#ccc'>")
+        append("<div style='width:500px;max-width:500px;overflow:hidden;font-family:var(--field-font-code, var(--field-font, monospace));font-size:11px;line-height:1.45;color:#ccc'>")
         append("<div>$status · ${esc(guidance)}</div>")
         append("<div style='color:#888'>helpers ${esc(result.analysis.requiredHelpers.sorted().joinToString(", ").ifEmpty { "none" })}")
         append(" · wires ${result.analysis.danglingWires.size} · stack $depth/${(depth - 1).coerceAtLeast(0)}</div>")

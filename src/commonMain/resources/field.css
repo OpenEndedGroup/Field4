@@ -2080,9 +2080,9 @@ body.field-pane-resizing-h * {
 
 .field-slider .field-label {
     /* One label width for every slider, so tracks start (and, at their fixed drawn length, end)
-       at the same x in every panel; long labels ellipsize with the full text as a tooltip. */
-    flex: 0 0 var(--field-slider-label-width, 96px);
-    width: var(--field-slider-label-width, 96px);
+       at the same x in every panel; long labels retain both ends and the full tooltip. */
+    flex: 0 0 var(--field-slider-label-width, 110px);
+    width: var(--field-slider-label-width, 110px);
     overflow: hidden;
     text-overflow: ellipsis;
     color: var(--field-accent-text-soft);
@@ -2090,6 +2090,14 @@ body.field-pane-resizing-h * {
     letter-spacing: 0.2px;
     white-space: nowrap;
 }
+
+
+/* Two shrinking text runs put the ellipsis in the middle without measuring fonts in JS. */
+.field-slider .field-label.field-label-middle { display: flex; text-overflow: clip; }
+.field-label-middle > span { flex: 0 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; }
+.field-label-middle > .field-label-start { text-overflow: ellipsis; }
+.field-label-middle > .field-label-end { display: flex; justify-content: flex-end; text-overflow: clip; }
+.field-label-end > span { flex: none; }
 
 .field-value {
     font-family: var(--field-font);
@@ -2709,7 +2717,7 @@ body.field-pane-resizing-h * {
 .alpha-row .alpha-label {
     /* Swatch (52px) + the row gap (12px) + this = a slider's label, so the alpha track starts
        where every slider's track starts. */
-    flex: 0 0 calc(var(--field-slider-label-width, 96px) - 64px);
+    flex: 0 0 calc(var(--field-slider-label-width, 110px) - 64px);
 }
 
 .alpha-row .field-value {

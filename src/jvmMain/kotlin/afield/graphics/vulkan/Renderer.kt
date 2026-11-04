@@ -320,6 +320,9 @@ class Renderer(
     /** Stop external GPU consumers before queue/device retirement. Callbacks must join their owner. */
     internal val beforeDeviceCleanup = java.util.concurrent.CopyOnWriteArrayList<Runnable>()
 
+    internal val isRecordingGraphicsFrame: Boolean
+        get() = graphicsRecordingContext.get() != null
+
     internal fun afterCurrentGraphicsFrameComplete(callback: () -> Unit) {
         val key = graphicsRecordingContext.get()
             ?: throw IllegalStateException("afterCurrentGraphicsFrameComplete must be called while recording a graphics frame")
@@ -327,6 +330,13 @@ class Renderer(
             graphicsCompletionCallbacks.getOrPut(key) { mutableListOf() }.add(callback)
         }
     }
+
+    /**
+     * Finish a GPU-side capture without waiting in the render callback. Call while recording a
+     * graphics frame; [callback] runs after that submission's fence signals. It must stay short
+     * (complete a future or queue IO), because frame retirement also runs other cleanup work.
+     */
+    fun whenCurrentGraphicsFrameComplete(callback: () -> Unit) = afterCurrentGraphicsFrameComplete(callback)
 
     data class ExternalSemaphorePoint(val semaphore: Long, val value: Long)
     private data class ExternalFrameSync(
@@ -566,6 +576,9 @@ class Renderer(
         val w = ctx.window
 
         // Keeps swapchain pipeline moving; left as-is from the main render path.
+        if (w.bestEffortPresentation && !ctx.fences[ctx.swapChain.currentFrame].isSignaled()) {
+            throw ImageNotAvailable("Optional window is still presenting", retryable = true)
+        }
         ctx.fences[ctx.swapChain.currentFrame].fenceWait()
 
         var imageIndex = 0
@@ -821,6 +834,13 @@ class Renderer(
         presentQueue.waitIdle()
         graphQueue.waitIdle()
         device.waitIdle()
+        // A final capture must complete even when no subsequent frame polls its fence.
+        // Run before deferred buffer releases and before the device/fences disappear.
+        windowContexts.forEachIndexed { contextIndex, ctx ->
+            ctx.fences.indices.forEach { imageIndex ->
+                drainCompletedGraphicsCallbacks(ctx, contextIndex, imageIndex)
+            }
+        }
         // Pending releases normally wait for later frames. Shutdown has no later frame;
         // release them now, before their fences, command pools and device disappear.
         var deferredFailure = drainDeferredCleanup(cleanup, cleanupStack)
@@ -1271,7 +1291,7 @@ class Renderer(
         val renderScene = {
             windowContexts.forEachIndexed { ctxIndex, ctx ->
                 val w = ctx.window
-                if (w.width <= 0 || w.height <= 0) return@forEachIndexed
+                if (!w.presentationEnabled || w.width <= 0 || w.height <= 0) return@forEachIndexed
 
                 var imageIndex = 0
                 val preAcquiredImage = if (ctxIndex == 0) peekPreAcquiredPrimaryImageForFrame(frameId) else null
@@ -1795,7 +1815,7 @@ class Renderer(
             surface,
             window,
             Options.requestedImages,
-            Options.vsync,
+            Options.vsync && !window.bestEffortPresentation,
             presentQueue,
             arrayOf(graphQueue)
         )
@@ -1865,7 +1885,8 @@ class Renderer(
 
         context.swapChain.cleanup()
         context.swapChain = SwapChain(
-            device, context.surface, context.window, Options.requestedImages, Options.vsync, presentQueue, arrayOf(graphQueue)
+            device, context.surface, context.window, Options.requestedImages,
+            Options.vsync && !context.window.bestEffortPresentation, presentQueue, arrayOf(graphQueue)
         )
 
         context.depthAttachments.forEach { it.cleanup() }

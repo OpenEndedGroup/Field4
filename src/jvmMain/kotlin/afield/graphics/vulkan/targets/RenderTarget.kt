@@ -251,6 +251,7 @@ class RenderTarget(
 
             meshModules.forEach { (_, mp) ->
                 mp.current.meshes.values.forEach { mesh ->
+                    mesh.prepareForDraw(command)
                     mesh.push.primeBufferReferences(command) {
                         throw MissingRefException(afield.graphics.vulkan.buffers.unassignedMemberMessage(it))
                     }

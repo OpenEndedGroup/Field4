@@ -73,6 +73,7 @@ open class PingPongRenderToTexture(
     private val pingLayouts = Array(pingAttachmentCount) { IntArray(this.frameCount) { VK_IMAGE_LAYOUT_UNDEFINED } }
     private val pingMipsInitialized = Array(pingAttachmentCount) { BooleanArray(this.frameCount) { false } }
     protected var writeIndex = 0
+    private var boundFrameIndex = 0
     protected var latestIndex = 0
         private set
     protected var previousIndex = this.frameCount - 1
@@ -91,6 +92,38 @@ open class PingPongRenderToTexture(
     /** How many color attachments the ring carries, each with its own [frameCount] images. [latestImageViewFor] and the other per-attachment accessors take a slot in `0 until colorAttachmentCount`. */
     val colorAttachmentCount: Int
         get() = pingAttachmentCount
+
+    /**
+     * Replace every history slot with one coherent external state, without rotating the ring.
+     * Intended for prepared playback cuts: [copy] records a GPU transfer into each image. The
+     * ordinary RTT transition helper owns the layouts, so subsequent feedback cannot read stale
+     * pre-cut history. Requires `colorTransferDst = true`, `colorSampled = true` and a single
+     * mip level. Call outside a render pass on the graphics recording thread. The callback
+     * records a copy of mip 0, including every array layer; it must not alias any ring image.
+     * Ring indices, cadence and the currently bound attachment remain unchanged. This records
+     * commands only; [Renderer.whenCurrentGraphicsFrameComplete] can report their completion.
+     */
+    fun recordReplaceHistory(
+        command: CommandBuffer,
+        attachment: Int = 0,
+        copy: (vkImage: Long) -> Unit,
+    ) {
+        checkedAttachment(attachment)
+        check(!command.inRenderPassInstance) { "recordReplaceHistory must be recorded outside a render pass" }
+        check(parameters.colorTransferDst && parameters.colorSampled && mipLevels == 1) {
+            "recordReplaceHistory requires colorTransferDst, colorSampled and one mip level"
+        }
+        val savedBound = boundFrameIndex
+        try {
+            for (slot in 0 until frameCount) {
+                bindFrame(slot)
+                recordColorTransferDestination(command, attachment, copy)
+                pingLayouts[attachment][slot] = colorLayout[attachment]
+            }
+        } finally {
+            bindFrame(savedBound)
+        }
+    }
 
     protected fun checkedAttachment(attachment: Int): Int {
         require(attachment in 0 until pingAttachmentCount) {
@@ -628,7 +661,11 @@ open class PingPongRenderToTexture(
     }
 
     override fun beforeRender(index: Int) {
-        val write = writeIndex
+        bindFrame(writeIndex)
+    }
+
+    private fun bindFrame(write: Int) {
+        boundFrameIndex = write
         for (attachment in 0 until pingAttachmentCount) {
             colorImageRefs[attachment] = pingImages[attachment][write]
             colorImageHandles[attachment] = pingImageHandles[attachment][write]

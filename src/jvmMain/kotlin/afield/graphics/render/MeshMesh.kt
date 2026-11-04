@@ -4,6 +4,8 @@ import afield.document.context.fromContext
 import org.lwjgl.vulkan.EXTMeshShader.VK_SHADER_STAGE_MESH_BIT_EXT
 import org.lwjgl.vulkan.EXTMeshShader.VK_SHADER_STAGE_TASK_BIT_EXT
 import org.lwjgl.vulkan.EXTMeshShader.vkCmdDrawMeshTasksEXT
+import org.lwjgl.vulkan.EXTMeshShader.vkCmdDrawMeshTasksIndirectEXT
+import afield.graphics.vulkan.buffers.FrameBufferGroup
 import afield.graphics.vulkan.Renderer
 import afield.graphics.vulkan.buffers.MissingRefException
 import afield.graphics.vulkan.buffers.Structure
@@ -45,6 +47,19 @@ fun meshTask(c: (inside: MeshModule, cmd: CommandBuffer, pushConstantBuffer: Byt
 }
 // As names go, this one is pretty bad
 class MeshMesh(var renderer: Renderer = fromContext()) : MeshTask {
+    /** GPU-written VkDrawMeshTasksIndirectCommandEXT; null keeps direct x/y/z dispatch. */
+    var indirect: FrameBufferGroup? = null
+    /** Byte offset of the three uint group counts, aligned to four bytes. */
+    var indirectOffset: Long = 0L
+
+    /** Transfers must be prepared outside dynamic rendering, like a conventional mesh's buffers. */
+    fun prepareForDraw(command: CommandBuffer) {
+        indirect?.let { group ->
+            require(indirectOffset >= 0 && indirectOffset % 4L == 0L)
+            group.getGPUAddress(command)
+            require(indirectOffset + 12L <= group.getLastWritten().requestedSize)
+        }
+    }
 
     class FromUniform {
         operator fun getValue(inside: MeshModulePointer, property: KProperty<*>): Structure {
@@ -154,6 +169,10 @@ class MeshMesh(var renderer: Renderer = fromContext()) : MeshTask {
             }
 
             fun dispatchForCurrentWriter(dispatchX: Int?, dispatchY: Int?, dispatchZ: Int?) {
+                indirect?.let {
+                    vkCmdDrawMeshTasksIndirectEXT(cmd.vkCommandBuffer, it.getLastWritten().buffer, indirectOffset, 1, 12)
+                    return
+                }
                 val xx = dispatchX ?: x
                 val yy = dispatchY ?: y
                 val zz = dispatchZ ?: z

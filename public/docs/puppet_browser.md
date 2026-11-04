@@ -301,11 +301,11 @@ window ray, intersect its own geometry, and return whichever UV belongs under th
 ## Then put the browser in VR
 
 `PuppetBrowserVrPanel` places the same browser texture on a correctly proportioned world-space
-quad. It is rendered once per eye, so the panel has actual stereo distance instead of being pasted
-over the final headset image.
+quad. This path requires Vulkan multiview support. One multiview draw writes both eye layers, with a shared eye-uniform buffer and
+`gl_ViewIndex` selecting the view. The panel has actual stereo distance.
 
 ```diffstatic_runner {data-lang=kotlin requires="browser-bridge,electron-runtime" screenshot="assets/puppet_browser/youtube-stereo.png" wait="12" timeout="90" capture="native-window" native-wait-frames="8" graphics-context=true embed=true name="youtube-vr-browser" alt="A full YouTube browser panel rendered for the left and right eyes in a side-by-side stereo Field window" macro-file="../../dev_docs/agents/transcripts/youtube_vr_browser.yaml" capture-box="youtube_vr_renderer"}
-val stereo = SideBySideStereoTarget(renderer, openXR = renderer.openXRHmdTarget)
+val stereo = MultiviewStereoTarget(renderer, openXR = renderer.openXRHmdTarget)
 val panel = PuppetBrowserVrPanel(
     renderer = renderer,
     stereo = stereo,
@@ -317,9 +317,9 @@ panel.build()
 panel.enableDesktopInteraction()
 ```
 
-The packed image above shows both eyes, as in the [ImGui VR panel](imgui_vr_panel.md): on a headset
-the two views go to the eye swapchains; on a desktop they remain side by side as the development
-preview. Each eye sees the same 1.6 m × 0.9 m browser panel from a slightly different position.
+The desktop image above shows both eyes side by side. The renderer stores them in two array
+layers, which OpenXR copies directly to its eye swapchains. `stereo.mirrorToScreen()` samples
+the left eye; `stereoPair = { true }` shows both eyes in the development preview. Each eye sees the same 1.6 m × 0.9 m browser panel from a slightly different position.
 
 Each frame the interaction layer:
 

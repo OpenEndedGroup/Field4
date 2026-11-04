@@ -504,6 +504,10 @@ object Options {
      * message. [debugObjectNames], [debugLabels] and a shader's `printf` all do nothing without it.
      */
     var validate = if (captureCompatibility) false else validateOverride ?: true
+    /** Separate from Vulkan validation: vendor OpenXR extensions can outpace installed API layers. */
+    var validateOpenXR = System.getProperty(
+        "afield.openxr.validate", System.getenv("AFIELD_OPENXR_VALIDATE")
+    )?.trim()?.toBooleanStrictOrNull() ?: validate
 
     /**
      * Enable `debugPrintfEXT` in shaders without turning all of [validate] on, since the printf

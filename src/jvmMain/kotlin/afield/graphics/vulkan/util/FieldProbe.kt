@@ -1161,6 +1161,11 @@ class ShaderFieldProbe(
     }
 
     internal fun afterComputeShaderUse(renderer: Renderer, imageIndex: Int) {
+        // Compute recorded on the graphics queue retires with that image's graphics fence.
+        if (renderer.isRecordingGraphicsFrame) {
+            afterShaderUse(renderer, imageIndex)
+            return
+        }
         ensureRenderer(renderer)
         if (!enabled || imageIndex !in computeReadbacks.indices) return
 

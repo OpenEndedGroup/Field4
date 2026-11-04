@@ -3,7 +3,7 @@ package afield.media.browser
 import afield.graphics.vulkan.Renderer
 import afield.graphics.vulkan.Target
 import afield.graphics.vulkan.targets.OpenXRHmdTarget.Hand
-import afield.graphics.vulkan.targets.SideBySideStereoTarget
+import afield.graphics.vulkan.targets.MultiviewStereoTarget
 import afield.math.linalg.Quaternionf
 import afield.math.linalg.Vector3f
 import java.util.concurrent.atomic.AtomicBoolean
@@ -81,7 +81,7 @@ class FieldVrWorkspace(
 
     val browser = FieldUiBrowserTexture(renderer, url, width, height,
         readyBoxUid = readyBoxUid, cpuBitmapFallback = cpuBitmapFallback)
-    val stereo: SideBySideStereoTarget
+    val stereo: MultiviewStereoTarget
     val panel: PuppetBrowserVrPanel
     val input: PuppetBrowserVrInput
     val grab: PuppetBrowserVrGrab
@@ -92,13 +92,13 @@ class FieldVrWorkspace(
 
     init {
         val xr = renderer.openXRHmdTarget
-        // Insert before sbs-pack: upload and input belong to the frame, once for both eyes.
+        // Insert before the multiview scene: upload and input belong to the frame, once for both eyes.
         renderer.renderList.preTargets["field-vr-browser"] = Target { command, _ ->
             browser.prepareSampledImagesFor(command)
             update()
         }
         val eye = xr?.let { renderer.runOnQueueThread { it.sideBySideRTTParameters() } }
-        stereo = SideBySideStereoTarget(renderer, eyeWidth = eye?.width?.div(2) ?: 1200,
+        stereo = MultiviewStereoTarget(renderer, eyeWidth = eye?.width?.div(2) ?: 1200,
             eyeHeight = eye?.height ?: 1200, openXR = xr)
         panel = PuppetBrowserVrPanel(renderer, stereo, browser, widthMeters, distanceMeters,
             name = "field-vr-ide", automaticInteraction = false)
@@ -166,10 +166,10 @@ class FieldVrWorkspace(
         headsetDevices?.poll(deliver = browser.pageReady && !browser.state.loading)
         val xr = renderer.openXRHmdTarget
         val pointers = if (xr == null) emptyList() else {
-            // Use raw runtime states: the desktop mock must never appear when tracking drops.
+            // Controller aim only. Tracked hands resting on a keyboard/mouse must not
+            // reclaim its page cursor through hover movement or an incidental pinch.
             listOf(Hand.RIGHT, Hand.LEFT).mapNotNull { hand ->
                 input.controller("$hand-controller", xr.controllerState(hand), elapsed)
-                    ?: input.hand("$hand-hand", xr.handState(hand))
             }
         }
         val worldPress = pointers.any {
@@ -236,7 +236,8 @@ class FieldVrWorkspace(
     override fun close() {
         if (!closed.compareAndSet(false, true)) return
         renderer.renderList.preTargets.remove("field-vr-browser")
-        renderer.renderList.preTargets.remove("sbs-pack", stereo)
+        renderer.renderList.preTargets.remove("stereo-multiview", stereo)
+        renderer.openXRHmdTarget?.clearEyeSource(stereo.layered)
         input.cancel()
         grab.cancel()
         headsetDevices?.close()

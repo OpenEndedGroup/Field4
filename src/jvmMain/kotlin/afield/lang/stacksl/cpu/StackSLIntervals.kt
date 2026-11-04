@@ -215,7 +215,7 @@ class StackSLTilePicture(
             append("$enclosures interval runs for ${dim * dim} pixels (${millis} ms) · tolerance ${"%.4f".format(tolerance)}")
             refusal?.let { append("<br/>refused: ${it.replace("<", "&lt;")}") }
         }
-        return "<div style='font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#9aa4ae'>" +
+        return "<div style='font-family:var(--field-font-code, var(--field-font, monospace));font-size:12px;color:#9aa4ae'>" +
             "<div style='display:flex;gap:12px'>${img(renderPng)}${img(StackSLIntervals.tilePng(tiles, dim, scale))}</div>" +
             "<div style='margin-top:6px;max-width:${2 * dim * scale + 12}px'>$caption</div></div>"
     }

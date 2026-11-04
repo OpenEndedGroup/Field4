@@ -25,14 +25,25 @@ The page should be brought up to date whenever it is a week or so behind; `statu
 ## The rules `check` enforces
 
 - Each entry opens with `<!-- changelog: <first>..<last> -->`, naming the first and last
-  first-parent commits of `main` it covers (the `brief` marker line). The markers run newest
-  first and tile `main`'s history from its root with no gap and no overlap. A stretch with nothing
+  first-parent commits of `main` at publication time (the `brief` marker line). The markers run newest
+  first and tile that recorded timeline from its root with no gap and no overlap. A stretch with nothing
   worth telling a reader about still belongs to an entry: widen the neighbouring entry's range
   over it. That is what makes "covered" mean something.
 - After the marker comes a `### ` heading, and the entry sits under the `## Month YYYY` heading of
   its last landing's date.
 - Each entry links at least one docs page, every `.md` link names a page under `public/docs`, and
   every `#fragment` is a heading on that page.
+
+When another clone's main arrives through a merge, its published timeline can become a second
+parent here. The checker preserves those commit identities: it validates every range on the
+newest recorded commit's first-parent history and requires that commit to be reachable from the
+ref being checked. For a candidate awaiting landing, use
+`python tools/docs_changelog.py --ref HEAD check`; the real-page test checks that same candidate.
+Detached or invented histories still fail. Rendering resolves the full original commit hash.
+
+`status`, `windows` and `brief` require an explicit history that contains the newest recorded
+commit on its first-parent path. After an import, they report a ref mismatch instead of silently
+starting again at the root; `--ref <newest recorded commit>` inspects the archived timeline.
 
 ## What goes in an entry
 
