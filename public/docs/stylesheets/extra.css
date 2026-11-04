@@ -129,7 +129,7 @@ h3 {
 }
 
 .md-typeset > h1:first-child {
-    margin-top: 0.4rem;
+    margin-top: 100px;
 }
 
 /* A second `#` on a page starts a part of it ("Making bigger things" on the tour), and it groups with
