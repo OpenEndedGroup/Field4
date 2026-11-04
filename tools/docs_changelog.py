@@ -6,7 +6,7 @@ never writes prose. What it owns is the bookkeeping that makes the page trustwor
 
 * **Every landing on `main` belongs to exactly one entry.** Each entry carries an invisible
   marker, ``<!-- changelog: <first>..<last> -->``, naming the first and last first-parent commits
-  of `main` it summarises. ``check`` requires the markers to tile `main`'s first-parent history
+  of `main` at publication time. ``check`` requires the markers to tile that recorded history
   with no gap and no overlap, from the root to the newest entry. A quiet stretch with nothing a
   reader would care about is folded into a neighbouring entry's range rather than skipped, so
   "not yet written up" and "deliberately left out" can never be confused.
@@ -230,6 +230,35 @@ def check(text: str, history: list[Landing], docs_root: Path = DOCS_ROOT,
     return faults
 
 
+def recorded_history(text: str, ref: str = "HEAD") -> list[Landing]:
+    """The published timeline, anchored by its newest entry, reachable from ``ref``.
+
+    Importing another clone's main through the lander makes its historical mainline a second
+    parent here. Its published ranges must retain their original identity. Prove the newest
+    recorded commit belongs to the candidate, then validate every range on that commit's own
+    first-parent chain. A detached or invented timeline remains an error.
+    """
+    entries = parse_changelog(text)
+    if not entries:
+        raise ValueError("no entries: expected <!-- changelog: <first>..<last> --> markers")
+    newest = entries[0]
+    try:
+        sha = git("rev-parse", "--verify", f"{newest.last}^{{commit}}").strip()
+        git("merge-base", "--is-ancestor", sha, ref)
+    except subprocess.CalledProcessError as error:
+        raise ValueError(f"line {newest.line}: recorded tip {newest.last} is not reachable from {ref}") from error
+    return landings(sha)
+
+
+def check_published(text: str, ref: str = "HEAD", docs_root: Path = DOCS_ROOT) -> list[str]:
+    """Check the full published timeline and its membership in the candidate being verified."""
+    try:
+        history = recorded_history(text, ref)
+    except ValueError as error:
+        return [str(error)]
+    return check(text, history, docs_root)
+
+
 def tip(text: str, history: list[Landing]) -> int:
     """Index of the newest landing the page covers, or -1."""
     covered = [resolve(history, e.last) for e in parse_changelog(text)]
@@ -331,7 +360,9 @@ def render(text: str, history: list[Landing] | None = None, docs_root: Path = DO
 
     A commit hash links to GitHub only when the commit is in ``published`` (by default the
     history of ``origin/main``); otherwise it is shown unlinked until the next push."""
-    history = history if history is not None else landings()
+    if not MARKER.search(text):
+        return text
+    history = history if history is not None else recorded_history(text)
     if published is None:
         published = published_commits() or set()
     lines = text.splitlines()
@@ -530,14 +561,26 @@ def main(argv: list[str] | None = None) -> int:
             partial = resolve(history, args.partial_from)
             if partial is None:
                 parser.error(f"{args.partial_from} is not a first-parent commit of {args.ref}")
-        faults = check(text, history, partial_from=partial)
+        faults = (check(text, history, partial_from=partial) if partial is not None
+                  else check_published(text, args.ref))
         covered = tip(text, history)
         for fault in faults:
             print(f"{args.file.name} {fault}")
-        behind = len([h for h in history[covered + 1:] if not h.housekeeping])
-        print(f"{len(parse_changelog(text))} entries, {len(faults)} faults; "
-              f"{behind} landings on {args.ref} since the newest entry")
+        newest = parse_changelog(text)
+        if newest and resolve(history, newest[0].last) is None:
+            progress = f"recorded tip {newest[0].last} follows a different first-parent path"
+        else:
+            behind = len([h for h in history[covered + 1:] if not h.housekeeping])
+            progress = f"{behind} landings on {args.ref} since the newest entry"
+        print(f"{len(newest)} entries, {len(faults)} faults; {progress}")
         return 1 if faults else 0
+
+    # A brief must never silently start over at the root after an imported mainline. Checking
+    # and rendering the published archive still work; new authoring needs an explicit spine.
+    entries = parse_changelog(text)
+    if entries and resolve(history, entries[0].last) is None:
+        parser.error("the page follows an imported mainline; use --ref "
+                     + entries[0].last + " to inspect its recorded history")
 
     if args.command == "status":
         if covered < 0:

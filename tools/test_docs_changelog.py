@@ -2,18 +2,20 @@
 rules `check` holds `public/docs/changelog.md` to, and the real page against the real history.
 
 The unit tests build a synthetic history and a throwaway docs tree, so they read no git state.
-`RealPage` is the enforcement: it runs `check` over the committed page against this checkout's
-`main`, so an entry with a dead link, a gap in its ranges or a misfiled month fails
+`RealPage` is the enforcement: it checks the committed page's recorded timeline and proves the
+candidate contains it, so an entry with a dead link, a gap in its ranges or a misfiled month fails
 `checkPythonTools`.
 """
 
 from __future__ import annotations
 
 import subprocess
+import os
 import textwrap
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 from tools import docs_changelog as dc
 from tools.git_isolation import scrub_process_env  # noqa: E402
@@ -178,6 +180,66 @@ class Render(unittest.TestCase):
                          self.render("[it](page.md)\n<!-- changelog-image: none -->"))
 
 
+class ImportedHistory(unittest.TestCase):
+    def setUp(self):
+        self._tmp = TemporaryDirectory()
+        self.repo = Path(self._tmp.name)
+        self.docs = self.repo / "docs"
+        self.docs.mkdir()
+        (self.docs / "page.md").write_text("# Page\n")
+        self.env = dict(os.environ, GIT_AUTHOR_DATE="2026-11-01T12:00:00+00:00",
+                        GIT_COMMITTER_DATE="2026-11-01T12:00:00+00:00")
+        self.git("init", "-q", "-b", "main")
+        self.git("config", "user.name", "History test")
+        self.git("config", "user.email", "history-test@example.invalid")
+        self.spine = [self.commit("root")]
+        self.git("checkout", "-q", "-b", "published-main")
+        self.spine += [self.commit("published one"), self.commit("published two"), self.commit("published three")]
+        self.git("checkout", "-q", "main")
+        self.commit("local landing")
+        self.git("merge", "-q", "--no-ff", "published-main", "-m", "Land upstream main")
+        self.patch = patch.object(dc, "REPO_ROOT", self.repo)
+        self.patch.start()
+
+    def tearDown(self):
+        self.patch.stop()
+        self._tmp.cleanup()
+
+    def git(self, *args):
+        return subprocess.run(["git", *args], cwd=self.repo, env=self.env, check=True,
+                              capture_output=True, text=True).stdout.strip()
+
+    def commit(self, message):
+        self.git("commit", "-q", "--allow-empty", "-m", message)
+        return self.git("rev-parse", "HEAD")
+
+    def page(self, first, last):
+        return (f"<!-- changelog: {first}..{last} -->\n### Published change\n\n"
+                "See [the page](page.md).\n")
+
+    def test_a_second_parent_import_retains_its_published_timeline(self):
+        text = "## November 2026\n\n" + self.page(self.spine[2], self.spine[3]) + self.page(self.spine[0], self.spine[1])
+        self.assertIsNone(dc.resolve(dc.landings("main"), self.spine[3]))
+        self.assertEqual(dc.check_published(text, docs_root=self.docs), [])
+
+    def test_importing_a_timeline_does_not_hide_a_gap(self):
+        text = "## November 2026\n\n" + self.page(self.spine[3], self.spine[3]) + self.page(self.spine[0], self.spine[1])
+        faults = dc.check_published(text, docs_root=self.docs)
+        self.assertTrue(any("are in no entry" in fault for fault in faults), faults)
+
+    def test_render_links_the_full_commit_on_an_imported_timeline(self):
+        text = "## November 2026\n\n" + self.page(self.spine[0][:10], self.spine[3][:10])
+        rendered = dc.render(text, docs_root=self.docs, published=set(self.spine))
+        self.assertIn(dc.COMMIT_URL + self.spine[3], rendered)
+
+    def test_an_unmerged_timeline_is_refused(self):
+        self.git("checkout", "-q", "-b", "unmerged", self.spine[0])
+        detached = self.commit("not on main")
+        self.git("checkout", "-q", "main")
+        faults = dc.check_published("## November 2026\n\n" + self.page(self.spine[0], detached), docs_root=self.docs)
+        self.assertTrue(any("not reachable from HEAD" in fault for fault in faults), faults)
+
+
 def has_main() -> bool:
     return subprocess.run(["git", "rev-parse", "--verify", "--quiet", "main^{commit}"],
                           cwd=dc.REPO_ROOT, capture_output=True).returncode == 0
@@ -186,7 +248,7 @@ def has_main() -> bool:
 @unittest.skipUnless(dc.CHANGELOG.exists() and has_main(), "needs the page and a local main")
 class RealPage(unittest.TestCase):
     def test_the_published_page_passes_check(self):
-        faults = dc.check(dc.CHANGELOG.read_text(encoding="utf-8"), dc.landings("main"))
+        faults = dc.check_published(dc.CHANGELOG.read_text(encoding="utf-8"))
         self.assertEqual(faults, [], "\n".join(faults))
 
 
