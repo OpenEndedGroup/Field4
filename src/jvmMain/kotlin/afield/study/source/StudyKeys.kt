@@ -110,8 +110,7 @@ internal object StudyKeys {
      * 0 to 1 carrying `data-blend`.
      */
     fun section(blendSlider: String) =
-        "<h4>Keys</h4><div class='muted' style='margin-bottom:6px'>A key keeps every number at once. Apply one, or blend from one to another; " +
-            "<b>Keep these numbers</b> then keeps what you see.</div><div class='studykeys'></div>" +
+        "<h4>Keys</h4><div class='studykeys'></div>" +
             "<div class='keyblend' style='display:none;margin-top:6px'><select class='keyA'></select> → <select class='keyB'></select>" +
             "<span class='blendslider' style='display:inline-flex;width:420px;vertical-align:middle;margin-left:8px'>$blendSlider</span></div>" +
             "<div style='margin-top:6px'><button data-keyact='capture'>Capture these numbers as a key</button></div>"
