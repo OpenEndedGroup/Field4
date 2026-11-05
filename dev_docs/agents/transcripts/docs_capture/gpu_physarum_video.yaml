@@ -1,0 +1,48 @@
+name: gpu_physarum_video
+description: >
+  The video of alife_examples.md section 7's GPU subsection: the slime box of gpu_physarum on a
+  smaller window, so the native recording keeps a smooth frame rate. A renderer box and a slime box
+  that scatters a million agents of two species as noise and lets the network form.
+docs:
+  - page: alife_examples.md
+    why: "Builds the GPU Physarum video in section 7."
+operations:
+  - create:
+      box: physarum_video_renderer
+      name: renderer
+      frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.graphics.vulkan.util.Options
+
+          prop<Window>(window)
+          prop<Renderer>(renderer)
+          Options.enableHDR = false
+          Options.profiling = false
+          once.renderer {
+              window = Window("Physarum", initialDimensions = Rect(80.0, 80.0, 640.0, 360.0))
+              Renderer(window)
+          }
+          start(renderer::run)
+  - create:
+      box: physarum_video_slime
+      name: slime
+      frame: { x: 340.0, y: 40.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          // 512 pixels high and as wide as the window's shape needs, so the trail is not stretched
+          var physarum = ShaderPhysarumSystem() {
+              height = 512
+              width = 512 * window.width / window.height
+              agentCount = 1_000_000
+              speciesCount = 2
+              exposure = 0.05f
+          }
+
+          // steps once a frame and draws the trail, one colour per species
+          physarum.installInto()
+  - connect: { parent: physarum_video_renderer, child: physarum_video_slime }
+  - launch: { box: physarum_video_renderer, property: code, strand: renderer }
+  - await: {}
+  - launch: { box: physarum_video_slime, property: code }
+  - await: {}

@@ -800,6 +800,9 @@ object DemoTranscriptExecSmokeTest {
         // `four-lattice-boltzmann` and `four-forest-fire` docs captures in afield_four_graphics.md.
         "lattice_boltzmann_cylinder",
         "forest_fire",
+        // A million-agent ShaderPhysarumSystem on its own Window + Renderer; its pixels are the
+        // `alife-physarum-gpu` docs capture and alife.physarum-gpu.smoke measures it.
+        "gpu_physarum",
         // The madp Fern port: compute-shader iterated systems plotted into a PointAccumulation on
         // a native Window + Renderer, so compile-only here. IteratedSystemShaderTest compiles every
         // system's compute tab against the points/system harness without a GPU.

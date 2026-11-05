@@ -3481,6 +3481,20 @@ trains meet they interleave. Red recovers faster, so its rings come more often. 
 
 [Open →](offline.html?file=assets/agent_transcripts/forest_fire/metadata.edn)
 
+### gpu_physarum
+
+**Physarum on the GPU**: a million agents on a `TrailField`, in a square window. A renderer box; a
+slime box that builds a two-species `ShaderPhysarumSystem` and publishes it as `physarum`, its
+`vertex` tab holding the agent rule; a weather box that sets the trail's wind and half-life and the
+agents' jitter while it runs; and a reset box that empties the trail and scatters the agents again.
+Amber and cyan transport networks form within a few hundred frames, each species avoiding the
+other's trail. [A million agents on the GPU](alife_examples.md#a-million-agents-on-the-gpu) walks
+through the slime box.
+
+![Two interleaved transport networks, one amber and one cyan, made of rounded filaments that avoid each other](assets/alife_examples/physarum-gpu.png)
+
+[Open →](offline.html?file=assets/agent_transcripts/gpu_physarum/metadata.edn)
+
 ### fern_iterated_systems
 
 **Fern**, the classroom demo of iterated systems, on the GPU. Each system is tens or hundreds of
