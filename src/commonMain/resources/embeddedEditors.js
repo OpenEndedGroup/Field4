@@ -109,6 +109,7 @@ const GLSL_PROPERTIES = new Set([
 const EMBEDDED_EDITOR_OPTIONS = {
 	theme: "dark",
 	automaticLayout: true,
+	selectionClipboard: false,
 	scrollBeyondLastLine: false,
 	lineNumbersMinChars: 2,
 	lineDecorationsWidth: 12,

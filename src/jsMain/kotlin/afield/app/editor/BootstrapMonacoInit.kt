@@ -374,6 +374,7 @@ fun monacoInit(monaco: dynamic): dynamic {
     options.language = "kotlin"
     options.theme = "dark"
     options.automaticLayout = true
+    options.selectionClipboard = false
     options.scrollBeyondLastLine = false
     options.lineNumbersMinChars = 2
     // Blank and comment-only lines show no number; see proseLineFlags.
