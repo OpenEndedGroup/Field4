@@ -3,6 +3,39 @@
 {% block extrahead %}
     {{ super() }}
     <link rel="stylesheet" href="{{ base_url }}/stylesheets/extra.css">
+    {#- Page-to-page crossfade (the `@view-transition` rule in extra.css). Hold the new page's
+        first paint until #field-page-ready, emitted after the site's scripts in the `scripts`
+        block below, so the fade lands on a finished page instead of one whose rail, header
+        brand and code blocks are still being rewritten. Browsers without `rel=expect`
+        ignore it. -#}
+    <link rel="expect" href="#field-page-ready" blocking="render">
+    {#- The body face and the code face. fonts.css arrives through an @import inside
+        extra.css, so without these the browser only learns of the files after both sheets
+        have downloaded and paints the fallback face first. -#}
+    <link rel="preload" href="{{ base_url }}/assets/fonts/plex/plex-sans-condensed-400-latin.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="{{ base_url }}/assets/fonts/iosevka/iosevka-light.woff2" as="font" type="font/woff2" crossorigin>
+    {#- Chromium: prerender a docs page while the pointer rests on a link to it, so its images
+        are already loaded when the click lands. Only this site's pages (they all end in "/"),
+        never in-page anchors or new-tab links. The rules are written from script because the
+        pattern needs the site root as an absolute path (/field4/ published, /field-docs/ inside
+        Field): a relative pattern such as "../*/" resolves to "/field4//*/" and matches
+        nothing. -#}
+    <script>
+    (function () {
+        if (!(HTMLScriptElement.supports && HTMLScriptElement.supports("speculationrules"))) return;
+        var root = new URL("{{ base_url }}/", location.href).pathname;
+        var rules = document.createElement("script");
+        rules.type = "speculationrules";
+        rules.textContent = JSON.stringify({ prerender: [{
+            where: { and: [
+                { href_matches: [root, root + "*/"] },
+                { not: { selector_matches: "a[href^='#'], a[target], a[download]" } }
+            ] },
+            eagerness: "moderate"
+        }] });
+        document.head.appendChild(rules);
+    })();
+    </script>
     {% if page and page.file and page.file.src_uri == "index.md" %}
     <script>
         document.documentElement.setAttribute("data-field-homepage", "true");
@@ -44,3 +77,8 @@
 
 {{ super() }}
 {% endblock content %}
+
+{% block scripts %}
+{{ super() }}
+<div id="field-page-ready" hidden></div>
+{% endblock scripts %}
