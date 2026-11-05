@@ -2,7 +2,7 @@
 
 *Field·4* is an experimental, live-coding environment for new media art, VR, music and data visualization.
 
-If you want to get your hands on it, [install Field](installation.md) and make a [first moving drawing](first_steps.md). If you'd rather look around first, take the [Tour](funFeatures.md), or follow an idea from one medium into another in the [Long Way Round](chains.md). Looking for a particular thing? Start with [what's already in the box](reference/index.md). Been here before? [What's new](changelog.md) lists the features and pages added since, newest first.
+If you want to get your hands on it, [install Field](installation.md) and make a [first moving drawing](first_steps.md). If you'd rather look around first, take the [Tour](funFeatures.md), or follow an idea from one medium into another in the [Long Way Round](chains.md). Looking for a particular thing? Start with [what's already in the box](reference/index.md). Been here before? [What's new](changelog.md) lists the features and pages added since, newest first. The source code, and the place to report a bug, is [Field·4 on GitHub](https://github.com/OpenEndedGroup/Field4).
 
 *Field·4* runs on macOS, Windows and Linux. It draws desktop graphics with [Vulkan](https://www.vulkan.org/), so you can write shaders and render meshes and particles from a box. For VR, you can drive a headset attached to your computer through [OpenXR](https://www.khronos.org/openxr/), where the platform supports it, or send a scene to a headset or phone browser through [WebXR](https://immersive-web.github.io/webxr/). There is also a small native front end for the [Apple Vision Pro](vision.md).
 
@@ -26,6 +26,6 @@ Alternatively, the [Survival Guide](survivalGuide.md) is a good cheat sheet.
 
 If you do have Field open on your machine while reading these docs, many of the read-only examples will open directly in Field when you click the "Open in Field" button.
 
-Field's code is AGPL-3.0-or-later; [your code, AI and local history](privacy.md) explains the local services and optional external providers.
+Field's [code](https://github.com/OpenEndedGroup/Field4) is AGPL-3.0-or-later; [your code, AI and local history](privacy.md) explains the local services and optional external providers.
 
 Agents wrote much of this site's text, using a harness that is part of Field. This site is part of Field's build process: almost every one of the 2000 screenshots here is captured by running the code beside it — either the code fence visible above it or hidden in the source for the website. Even the video behind this page is automatically generated (and regenerated) too. Field has lots of other tests and build infrastructure, but this exercise in agent-driven, literate programming is a large part of its test suite.
