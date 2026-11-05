@@ -23,6 +23,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from verification_environment import VerificationEnvironment, VerificationEnvironmentError
+
 # Kotlin hard keywords that must never appear as members after a `.` (a classic K1 wart).
 KOTLIN_KEYWORDS = {
     "as", "break", "class", "continue", "do", "else", "false", "for", "fun", "if", "in", "interface",
@@ -122,11 +124,21 @@ def load(path: Path) -> dict[str, dict]:
 
 def regenerate(workspace: Path) -> None:
     """Recompile, regen classpath, and rerun both dumpers."""
+    environment = VerificationEnvironment(disk_path=workspace).start()
+    try:
+        token = environment.checkpoint(require_display=False)
+        _regenerate(workspace, environment, token)
+    finally:
+        environment.close()
+
+
+def _regenerate(workspace: Path, environment: VerificationEnvironment, token: int) -> None:
     env = os.environ.copy()
     classpath_file = workspace / "build/completion-corpus/fieldcp.txt"
     classpath_file.parent.mkdir(parents=True, exist_ok=True)
     print("[run] compileKotlinJvm …", flush=True)
     subprocess.run(["./gradlew", "compileKotlinJvm", "--console=plain"], cwd=workspace, check=True)
+    environment.check(token, require_display=False, force=True)
     print("[run] regenerating field classpath …", flush=True)
     cp = subprocess.run(
         ["./gradlew", "-q", "--init-script", "tools/print_field_classpath.init.gradle.kts", "printFieldCp"],
@@ -135,15 +147,21 @@ def regenerate(workspace: Path) -> None:
     lines = [ln[len("CP\t"):] for ln in cp.stdout.splitlines() if ln.startswith("CP\t")]
     classpath_file.write_text("\n".join(lines) + "\n")
     print(f"[run] classpath: {len(lines)} entries → {classpath_file}", flush=True)
+    environment.check(token, require_display=False, force=True)
     print("[run] AA dump (sidecar spike) …", flush=True)
     subprocess.run(
         ["./gradlew", "-p", "tools/code-use-semantic-sidecar", "runSpike", "--console=plain",
          "-PspikeArgs=--workspace {ws} --corpus tools/completion-corpus/scraped.tsv,tools/completion-corpus/name-fixtures.tsv --classpath-file {cp} --json-out build/completion-corpus/aa-candidates.json".format(ws=workspace, cp=classpath_file)],
         cwd=workspace, check=True,
     )
+    environment.check(token, require_display=False, force=True)
     print("[run] K1 dump (jvm-main probe) …", flush=True)
-    subprocess.run([sys.executable, "tools/run_field_tests.py", "--refresh-catalog", "--id", "kotlin.completion-diffdump.probe"],
-                   cwd=workspace, check=True, env=env)
+    result = subprocess.run([sys.executable, "tools/run_field_tests.py", "--refresh-catalog", "--id", "kotlin.completion-diffdump.probe"],
+                            cwd=workspace, env=env)
+    environment.check(token, require_display=False, force=True)
+    if result.returncode == 2:
+        raise VerificationEnvironmentError("K1 probe is environment-incomplete; see the smoke runner output above")
+    result.check_returncode()
 
 
 def main() -> int:
@@ -158,7 +176,17 @@ def main() -> int:
 
     workspace = Path(args.workspace).resolve()
     if args.run:
-        regenerate(workspace)
+        try:
+            regenerate(workspace)
+        except (VerificationEnvironmentError, subprocess.CalledProcessError) as exc:
+            incomplete = isinstance(exc, VerificationEnvironmentError)
+            status = "NOT RUN" if incomplete else "FAIL"
+            print(f"VERDICT: {status} — {exc}", file=sys.stderr)
+            if args.json_summary:
+                output = workspace / args.json_summary
+                output.parent.mkdir(parents=True, exist_ok=True)
+                output.write_text(json.dumps({"status": status, "passed": False, "reason": str(exc)}, indent=2) + "\n")
+            return 2 if incomplete else 1
 
     k1 = load(workspace / args.k1)
     aa = load(workspace / args.aa)

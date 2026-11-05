@@ -1257,6 +1257,8 @@ class RunnerState:
         summary_lines.append(sections[0])  # liveness -- the single most telling line
         if crash_reports:
             summary_lines.append(f"JVM crash dump present: {crash_reports[0][0]}")
+        if client is not None:
+            summary_lines.append(f"Backdoor client result:\n{client[1][-6000:]}")
         return "\n".join(summary_lines)
 
     def _shared_log_size(self) -> int:
@@ -1359,11 +1361,22 @@ class RunnerState:
     def _error_lines_in(log_path: Path) -> list[str]:
         try:
             with log_path.open("r", encoding="utf-8", errors="replace") as handle:
-                return [
-                    raw.rstrip("\n")
-                    for raw in handle
-                    if '"error"' in raw or '"traceback"' in raw or "_error" in raw
-                ]
+                failures = []
+                for raw in handle:
+                    try:
+                        record = json.loads(raw)
+                    except (ValueError, TypeError):
+                        continue
+                    if not isinstance(record, dict):
+                        continue
+                    result = record.get("result")
+                    if record.get("event") == "print_result" and isinstance(result, dict) and (
+                        result.get("ok") is False or result.get("timedOut") is True
+                    ):
+                        failures.append("Failed command result: " + json.dumps(result, ensure_ascii=False))
+                    elif '"error"' in raw or '"traceback"' in raw or "_error" in raw:
+                        failures.append(raw.rstrip("\n"))
+                return failures
         except OSError:
             return []
 
@@ -1407,7 +1420,7 @@ class RunnerState:
                     return str(own), "\n".join(error_lines[-12:])
                 return (
                     str(own),
-                    "(no error/exception events -- this capture's client log is clean, so the "
+                    "(no failed command results or error/exception events -- this capture's client log is clean, so the "
                     "failure was reported through a command result rather than a dropped socket; "
                     "read the command results and the server log above.)",
                 )
