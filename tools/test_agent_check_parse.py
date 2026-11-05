@@ -54,6 +54,27 @@ class AgentCheckParseParityTest(unittest.TestCase):
                          {"kind": "effects-absent", "text": "EXECUTE_CODE"})
         self.assertEqual(field_backdoor.parse_agent_check("tool-used:RunToolProgram"),
                          {"kind": "tool-used", "text": "RunToolProgram"})
+        self.assertEqual(field_backdoor.parse_agent_check("tool-ok:report_stall"),
+                         {"kind": "tool-ok", "text": "report_stall"})
+
+
+class AgentTaskRemoteOptInTest(unittest.TestCase):
+    """A live agent-task reaches a non-local provider only on request (N1104-3: docs left the machine)."""
+
+    def test_default_is_refuse(self) -> None:
+        self.assertFalse(field_backdoor.agent_task_allow_remote(False, {}))
+        self.assertFalse(field_backdoor.agent_task_allow_remote(False, {"AFIELD_AGENT_TASK_ALLOW_REMOTE": "0"}))
+        self.assertFalse(field_backdoor.agent_task_allow_remote(False, {"AFIELD_AI_PROVIDER": "openai"}))
+
+    def test_flag_or_env_opts_in(self) -> None:
+        self.assertTrue(field_backdoor.agent_task_allow_remote(True, {}))
+        self.assertTrue(field_backdoor.agent_task_allow_remote(False, {"AFIELD_AGENT_TASK_ALLOW_REMOTE": "1"}))
+
+    def test_the_cli_sends_the_flag(self) -> None:
+        parser = field_backdoor.build_command_parser()
+        args = parser.parse_args(["agent-task", "--goal", "g"])
+        self.assertFalse(args.allow_remote_provider)
+        self.assertTrue(parser.parse_args(["agent-task", "--goal", "g", "--allow-remote-provider"]).allow_remote_provider)
 
 
 if __name__ == "__main__":

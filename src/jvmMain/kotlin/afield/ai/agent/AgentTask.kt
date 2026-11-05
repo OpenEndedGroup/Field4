@@ -97,7 +97,24 @@ data class AgentTaskRequest(
      */
     val repoCommands: List<String> = emptyList(),
     val repoCommandMaxSec: Int = 900,
+    /**
+     * Whether a `live` turn may go to a provider other than `local` (OpenAI, OpenRouter, Anthropic), which
+     * sends the goal, the document's code and every tool result — docs pages included — off this machine.
+     * In-Field callers (the panel, box tasks) default to yes, since the user picked the provider. The backdoor
+     * sends `false` unless `--allow-remote-provider` or `AFIELD_AGENT_TASK_ALLOW_REMOTE=1`, so an unattended
+     * run cannot fall through to a remote model it was not told to use ([remoteProviderRefusal]).
+     */
+    val allowRemote: Boolean = true,
 )
+
+/**
+ * The refusal for a `live` task that would reach a remote provider without opt-in, or null when it may run.
+ * Pure so the gate is testable without a provider.
+ */
+fun remoteProviderRefusal(mode: String, provider: String, allowRemote: Boolean): String? =
+    if (mode != "live" || allowRemote || provider == "local") null
+    else "AI provider is '$provider', which sends the goal, code and tool results (docs pages included) off this machine. " +
+        "Pass --allow-remote-provider (or set AFIELD_AGENT_TASK_ALLOW_REMOTE=1) to allow it, or select the 'local' provider."
 
 /**
  * One predicate over the document. Kept as data (not a lambda) so a task can arrive over HTTP or the
@@ -116,7 +133,10 @@ data class AgentTaskRequest(
  *   rise strictly left to right, and (with more than one colour) the last, tallest bar is mostly the last colour
  * - `effects-absent` / `effects-present` [text] = a [afield.ai.tools.ToolEffect] — over every call the turn made,
  *   a program's nested calls included; a call with undeclared effects fails `effects-absent`
- * - `tool-used` [text] = a tool name — the turn called it (directly or from a program)
+ * - `tool-used` [text] = a tool name — the turn called it (directly or from a program), whatever the call returned
+ * - `tool-ok` [text] = a tool name — at least one such call succeeded (its [AgentToolCallRecord.ok]); the detail
+ *   counts the failures. Use this, not `tool-used`, when the tool doing its job is the point: a run whose every
+ *   call errored ("No tool registered") passes `tool-used` and fails this
  */
 @Serializable
 data class AgentCheck(
@@ -154,7 +174,7 @@ data class AgentCheck(
                     afield.ai.tools.ToolEffect.valueOf(rest.trim())
                     AgentCheck(kind, text = rest.trim())
                 }
-                "tool-used" -> AgentCheck(kind, text = rest.trim())
+                "tool-used", "tool-ok" -> AgentCheck(kind, text = rest.trim())
                 "output-colour" -> {
                     val parts = rest.split(':')
                     require(parts.size == 3) { "output-colour:<box>:#rrggbb:<fraction>" }
@@ -237,7 +257,17 @@ data class AgentTaskResult(
     val repoWritten: List<String> = emptyList(),
     /** The job's command runs, `name args -> exit code` (or `timeout`), in order. */
     val repoRuns: List<String> = emptyList(),
+    /** Per tool name: calls and failed calls ([toolCallTally]), so an all-errored tool shows without reading [toolCalls]. */
+    val toolTally: Map<String, ToolCallTally> = emptyMap(),
+    /** True when the turn went to a provider other than `local`, i.e. its content left this machine. */
+    val offMachine: Boolean = false,
 )
+
+@Serializable
+data class ToolCallTally(val calls: Int, val failed: Int)
+
+fun toolCallTally(calls: List<AgentToolCallRecord>): Map<String, ToolCallTally> =
+    calls.groupBy { it.tool }.mapValues { (_, c) -> ToolCallTally(c.size, c.count { !it.ok }) }
 
 /**
  * What a headless task adds to the ordinary AI4 chat instructions ([afield.ai.conversation.buildDynamicInstructions],
@@ -288,6 +318,7 @@ object AgentTaskRunner {
         )
 
         return try {
+            remoteProviderRefusal(request.mode, afield.ai.models.configuredAiProvider(), request.allowRemote)?.let { return failure(it) }
             val ctx = contextFor(info, graph, request.focusBox.ifBlank { null }).let { base ->
                 val off = (if (request.programs == "off") setOf(afield.ai.tools.program.RUN_TOOL_PROGRAM) else emptySet()) + request.withhold
                 if (off.isNotEmpty()) base.copy(withheld = base.withheld + off) else base
@@ -386,6 +417,8 @@ object AgentTaskRunner {
                 contextPlacement = sent.contextReport?.placement ?: "inline",
                 repoWritten = ctx.repoFiles?.written?.toList().orEmpty(),
                 repoRuns = ctx.repoCommands?.runs?.toList().orEmpty(),
+                toolTally = toolCallTally(calls),
+                offMachine = request.mode == "live" && (sent.modelIdentity?.provider ?: b.modelIdentity?.provider.orEmpty()).let { it.isNotBlank() && it != "local" },
             )
         } catch (t: Throwable) {
             failure("${t.javaClass.simpleName}: ${t.message}")
@@ -611,6 +644,17 @@ object AgentTaskRunner {
                 val log = calls ?: return fail("no per-call tool log for this task")
                 val hit = log.firstOrNull { it.tool == check.text || it.tool == check.text + "Request" }
                 if (hit != null) pass("call ${hit.index} was ${hit.tool}") else fail("${check.text} was never called (${log.size} calls)")
+            }
+            "tool-ok" -> {
+                val log = calls ?: return fail("no per-call tool log for this task (a --chat-box task keeps it in the panel)")
+                val mine = log.filter { it.tool == check.text || it.tool == check.text + "Request" }
+                val good = mine.firstOrNull { it.ok }
+                val failed = mine.count { !it.ok }
+                when {
+                    mine.isEmpty() -> fail("${check.text} was never called (${log.size} calls)")
+                    good == null -> fail("all ${mine.size} call(s) to ${check.text} failed, first: ${mine.first().result.take(200)}")
+                    else -> pass("call ${good.index} succeeded; ${mine.size - failed} of ${mine.size} ok")
+                }
             }
             "box-exists" -> box(check.box)?.let { pass("found ${it.id}") } ?: fail("no unique live box '${check.box}'")
             "output-contains" -> {

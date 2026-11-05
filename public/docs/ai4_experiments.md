@@ -151,8 +151,13 @@ the box:
 ```diffstatic {data-lang=bash}
 uv run --project . --group backdoor python tools/field_backdoor.py --json --document coldreader \
   --command 'transcript run ai4_cold_reader' \
-  --command "agent-task --goal-file cold_read_staging.txt --max-rounds 48 --check tool-used:report_stall"
+  --command "agent-task --goal-file cold_read_staging.txt --max-rounds 48 --check tool-ok:report_stall"
 ```
+
+`tool-ok:report_stall` passes only if at least one `report_stall` call succeeded; `tool-used` would
+pass on calls that all failed. A live `agent-task` uses only the `local` provider unless you add
+`--allow-remote-provider` (or set `AFIELD_AGENT_TASK_ALLOW_REMOTE=1`), because any other provider
+receives the page text. The result's `offMachine` field records whether the page text left the machine.
 
 `tools/cold_reader_score.py` compares the stalls with a list someone else made of the same page at
 the same revision. A stall counts as found when the quoted words overlap (one quote contains the

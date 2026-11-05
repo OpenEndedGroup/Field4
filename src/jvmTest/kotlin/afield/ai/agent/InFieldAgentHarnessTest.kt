@@ -26,6 +26,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -394,6 +395,56 @@ class InFieldAgentHarnessTest {
         assertEquals("budget-exhausted", result.verdict)
         assertTrue(result.hitToolRoundCap)
         assertEquals(1, result.rounds)
+    }
+
+    /**
+     * The 2026-11-04 cold-reader false green: every `report_stall` call failed with the registry's own
+     * "No tool registered" (the box tool had gone with its backdoor invocation), yet `tool-used` passed.
+     * Here the same failure comes from the real registry: `report_stall` is not registered in this context.
+     */
+    @Test
+    fun toolOkFailsWhenEveryCallToTheToolErroredAndToolUsedDoesNot() {
+        val result = runTask(AgentTaskRequest(goal = "report stalls", mode = "scripted",
+            checks = listOf(AgentCheck.parse("tool-used:report_stall"), AgentCheck.parse("tool-ok:report_stall"),
+                AgentCheck.parse("tool-ok:ListBoxes")),
+            script = InFieldAgentEvals.steps(
+                InFieldAgentEvals.call("report_stall", "exact" to "a"),
+                InFieldAgentEvals.call("report_stall", "exact" to "b"),
+                InFieldAgentEvals.call("ListBoxesRequest"),
+                "done")))
+        val calls = result.toolCalls.filter { it.tool == "report_stall" }
+        assertEquals(2, calls.size)
+        assertTrue(calls.none { it.ok }, "the registry refused both: ${calls.map { it.result }}")
+        assertTrue(calls.first().result.contains("No tool registered"), calls.first().result)
+        val (used, ok, listed) = result.checks
+        assertTrue(used.passed, "tool-used tests the attempt: ${used.detail}")
+        assertFalse(ok.passed, "tool-ok tests success")
+        assertTrue(ok.detail.contains("all 2 call(s)"), ok.detail)
+        assertTrue(listed.passed, listed.detail)
+        assertEquals("fail", result.verdict)
+        assertEquals(ToolCallTally(2, 2), result.toolTally["report_stall"])
+        assertEquals(ToolCallTally(1, 0), result.toolTally["ListBoxesRequest"])
+        assertFalse(result.offMachine, "a scripted replay never leaves the machine")
+    }
+
+    @Test
+    fun aLiveTaskRefusesARemoteProviderWithoutOptIn() {
+        assertNull(remoteProviderRefusal("live", "local", allowRemote = false))
+        assertNull(remoteProviderRefusal("scripted", "openai", allowRemote = false))
+        assertNull(remoteProviderRefusal("live", "openai", allowRemote = true))
+        listOf("openai", "openrouter", "anthropic").forEach {
+            assertTrue(remoteProviderRefusal("live", it, allowRemote = false).orEmpty().contains("off this machine"), it)
+        }
+        // Through the runner: with a remote provider configured on this machine, no bridge is ever built.
+        if (afield.ai.models.configuredAiProvider() != "local") {
+            var built = false
+            val result = AgentTaskRunner.run(AgentTaskRequest(goal = "g", mode = "live", allowRemote = false), document(),
+                FakeHost(evalTable), contextFor = { _, graph, _ -> ToolExecutionContext(fieldGraph = graph) },
+                bridgeFor = { built = true; error("must not be reached") })
+            assertEquals("error", result.verdict)
+            assertTrue(result.error.contains("off this machine"), result.error)
+            assertFalse(built, "the gate runs before any bridge exists")
+        }
     }
 
     @Test

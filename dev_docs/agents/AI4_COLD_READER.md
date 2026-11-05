@@ -68,7 +68,7 @@ loop makes one `report_stall` call per round, which accounts for the difference.
   `field_backdoor.py` process, or `agent-task` sees "No tool registered".
 - `--check tool-used:report_stall` passed on a scripted run where every `report_stall` call had
   failed ("No tool registered"). The check tests that the tool was called, not that it succeeded;
-  read `toolCalls[].ok`. Worth a `tool-ok:` check kind.
+  read `toolCalls[].ok`. Fixed 2026-11-05: use `--check tool-ok:report_stall`, and see `toolTally`.
 - Quotes from the model often span a hard line break (`\n` inside `exact`); the normaliser collapses
   whitespace, so matching is unaffected.
 
