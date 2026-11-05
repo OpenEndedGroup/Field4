@@ -1084,7 +1084,7 @@ animateEvolution(
 
 ### A million agents on the GPU
 
-The same rule runs on the GPU as `ShaderPhysarumSystem`: a million agents on a trail 1024 pixels high, each
+The same rule runs on the GPU as `ShaderPhysarumSystem`: a million agents on a trail 512 pixels high, each
 one a single vertex-shader invocation per frame that senses, turns, steps and deposits. The defaults are
 the `PhysarumParams` defaults above. The trail is a [`TrailField`](reference/alife.md#alife-trail-kt-trailfield), a stigmergy
 field you can use on its own: four channels, each with its own half-life, plus diffusion and wind. Any
@@ -1092,10 +1092,10 @@ module can deposit into it, and any shader can read it with `#include "trail/sam
 two species, one per channel. Each follows its own trail and avoids the other's:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/physarum-gpu.png" alt="two interleaved transport networks in a native render window, one amber and one cyan, made of rounded filaments that avoid each other, covering the whole window" wait="12" timeout="120" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="alife-physarum-gpu"}
-// 1024 pixels high and as wide as the window's shape needs, so the trail is not stretched
+// 512 pixels high and as wide as the window's shape needs, so the trail is not stretched
 var physarum = ShaderPhysarumSystem() {
-    height = 1024
-    width = 1024 * window.width / window.height
+    height = 512
+    width = 512 * window.width / window.height
     agentCount = 1_000_000
     speciesCount = 2
 }
