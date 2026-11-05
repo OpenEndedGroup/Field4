@@ -1092,6 +1092,60 @@ def prune_stale_page(*, source_docs: Path, site_dir: Path, relative: Path) -> No
         parent.rmdir()
 
 
+# A stylesheet or script tag naming a local file without a query: `<link ... href="x.css">`,
+# `<script src="x.js">`. Material's own bundles already carry a hash in the name
+# (`main.5e19f6ca.min.css`) and are left alone.
+_ASSET_REF = re.compile(r"""(<(?:link|script)\b[^>]*?\b(?:href|src)=")([^"?#:]+\.(?:css|js))(")""")
+_HASHED_NAME = re.compile(r"\.[0-9a-f]{8,}\.(?:min\.)?(?:css|js)$")
+
+
+def fingerprint_assets(site_dir: Path) -> tuple[int, int]:
+    """Append ``?v=<content hash>`` to every page's links to the site's own CSS and JS.
+
+    The published site sits behind CloudFront, which keeps a cached copy per URL *and per
+    encoding*, and the site linked `stylesheets/extra.css` by the same URL forever. On
+    2026-11-05 the brotli copy browsers were served was 22 hours older than the file in S3, so
+    the new What's New page rendered without its styles while curl (uncompressed) saw the new
+    sheet. A URL that changes whenever the file does cannot be served stale, whatever the cache
+    or its invalidations do. Returns (references rewritten, pages rewritten).
+    """
+    import hashlib
+
+    site_root = site_dir.resolve()
+    digests: dict[Path, str | None] = {}
+
+    def digest(target: Path) -> str | None:
+        if target not in digests:
+            inside = target == site_root or site_root in target.parents
+            digests[target] = (hashlib.sha256(target.read_bytes()).hexdigest()[:10]
+                               if inside and target.is_file() else None)
+        return digests[target]
+
+    refs = pages = 0
+    for page in site_dir.rglob("*.html"):
+        text = page.read_text(encoding="utf-8")
+        count = 0
+
+        def stamp(m: re.Match[str]) -> str:
+            nonlocal count
+            ref = m.group(2)
+            if _HASHED_NAME.search(ref):
+                return m.group(0)
+            target = (site_root / ref.lstrip("/")) if ref.startswith("/") else (page.parent / ref)
+            version = digest(target.resolve())
+            if version is None:
+                return m.group(0)
+            count += 1
+            return f"{m.group(1)}{ref}?v={version}{m.group(3)}"
+
+        rewritten = _ASSET_REF.sub(stamp, text)
+        if count:
+            page.write_text(rewritten, encoding="utf-8")
+            refs += count
+            pages += 1
+    return refs, pages
+
+
 def emit_build_info(*, site_dir: Path, repo_root: Path) -> None:
     """Write `field-docs-build.json`: which commit this site was built from.
 
@@ -1593,6 +1647,8 @@ def run(args: argparse.Namespace) -> int:
     emit_build_info(site_dir=staging, repo_root=repo_root)
     copied = copy_workspace_markdown(source_docs=public_dir / "docs", site_dir=staging)
     print(f"Copied {copied} workspace markdown file(s) verbatim (not built as pages).")
+    stamped, stamped_pages = fingerprint_assets(staging)
+    print(f"Fingerprinted {stamped} stylesheet/script reference(s) on {stamped_pages} page(s).")
     install_site(staging=staging, site_dir=site_dir, previous=generated_root / PREVIOUS_SITE_DIR_NAME)
     print(f"Installed the built site at {site_dir} ({expected - len(missing)} page(s)).")
 
