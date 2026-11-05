@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="sb_cut" index="0" -->
 
 ```edn [field-box id="sb_cut" role="properties"]
-{"id" "sb_cut" "index" 0 "name" "a word, cut out of a plate" "parents" ["root"] "children" ["sb_judge"] "properties" {"children" #{#afield/box "sb_judge"} "parents" #{#afield/box "root"} "name" "a word, cut out of a plate" "_tombstone" false "frame" #afield/rect [40.0 40.0 260.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sb_cut_code_.kt" "lines" 44 "characters" 1559 "sha256" "abd00454e6748670e989fadc43265fbfebd568f157471a2a0c68615e902dc254"}]}
+{"id" "sb_cut" "index" 0 "name" "a word, cut out of a plate" "parents" ["root"] "children" ["sb_judge"] "properties" {"children" #{#afield/box "sb_judge"} "parents" #{#afield/box "root"} "name" "a word, cut out of a plate" "_tombstone" false "frame" #afield/rect [40.0 40.0 260.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sb_cut_code_.kt" "lines" 46 "characters" 1587 "sha256" "de1c4a0293f681e8bb7baee6e31a0ec63dc8f443c18970b932e6433492e51afa"}]}
 ```
 
 ```kotlin [field-property box="sb_cut" name="code" path="sb_cut_code_.kt"]
@@ -26,9 +26,10 @@ prop<List<List<Any>>>(stencilGlyphs)
 
 stencilWord = layoutText("BRIDGE", typeface("SansSerif", 120.0))
 stencilPieces = []
-stencilGlyphs = stencilWord.glyphs.mapIndexed { g, p ->
-    [g, p.text, p.origin.x.toDouble(), p.origin.x.toDouble() + p.glyph.advance]
-}
+stencilGlyphs =
+    stencilWord.glyphs.mapIndexed { g, p ->
+        [g, p.text, p.origin.x.toDouble(), p.origin.x.toDouble() + p.glyph.advance]
+    }
 
 run {
     if (!ManifoldLibrary.isAvailable) {
@@ -37,9 +38,10 @@ run {
     }
     // The plate: the word's bounds, grown by a 14-unit margin with round corners.
     val (lo, hi) = Section.ofFLines(stencilWord.toFLines(), sampleDistance = 0.5).bounds
-    stencilBlank = Section.square((hi.x - lo.x).toDouble(), (hi.y - lo.y).toDouble())
-        .translated(lo.x.toDouble(), lo.y.toDouble())
-        .offset(14.0, JoinType.ROUND)
+    stencilBlank =
+        Section.square((hi.x - lo.x).toDouble(), (hi.y - lo.y).toDouble())
+            .translated(lo.x.toDouble(), lo.y.toDouble())
+            .offset(14.0, JoinType.ROUND)
 
     val letters = Section.ofFLines(stencilWord.toFLines(), sampleDistance = 0.5)
     val pieces = (stencilBlank - letters).decompose()
@@ -66,7 +68,7 @@ println("cut: ${stencilPieces.size} pieces")
 <!-- field-box id="sb_judge" index="1" -->
 
 ```edn [field-box id="sb_judge" role="properties"]
-{"id" "sb_judge" "index" 1 "name" "which letters fall out, by Datalog" "parents" ["root" "sb_cut"] "children" ["sb_bridge"] "properties" {"children" #{#afield/box "sb_bridge"} "parents" #{#afield/box "root" #afield/box "sb_cut"} "name" "which letters fall out, by Datalog" "_tombstone" false "frame" #afield/rect [1240.0 40.0 260.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sb_judge_code_.kt" "lines" 37 "characters" 1167 "sha256" "65b91dacbd2dbff156f883564b87f8a8014e8d1b43dd50d03e25298dc5e16c12"}]}
+{"id" "sb_judge" "index" 1 "name" "which letters fall out, by Datalog" "parents" ["root" "sb_cut"] "children" ["sb_bridge"] "properties" {"children" #{#afield/box "sb_bridge"} "parents" #{#afield/box "root" #afield/box "sb_cut"} "name" "which letters fall out, by Datalog" "_tombstone" false "frame" #afield/rect [1240.0 40.0 260.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sb_judge_code_.kt" "lines" 39 "characters" 1171 "sha256" "1cf856787ee2c47258db9d1d0c8a4129cf21dcdca4def586cad3075b483fbedb"}]}
 ```
 
 ```kotlin [field-property box="sb_judge" name="code" path="sb_judge_code_.kt"]
@@ -94,7 +96,9 @@ d.add(
 )
 
 val lost = d.query("lost(G, C, N)").rows.sortedBy { it[0] as Long }
-needsBridge = lost.map { (it[0] as Long).toInt() }
+needsBridge = lost.map {
+    (it[0] as Long).toInt()
+}
 val safe = d.query("safe(C)").column("C")
 markdown(
     "judged",
@@ -114,7 +118,7 @@ println("judged: ${needsBridge.size} letters need bridges")
 <!-- field-box id="sb_bridge" index="2" -->
 
 ```edn [field-box id="sb_bridge" role="properties"]
-{"id" "sb_bridge" "index" 2 "name" "bridged, and counted again" "parents" ["root" "sb_judge"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "sb_judge"} "name" "bridged, and counted again" "_tombstone" false "frame" #afield/rect [2440.0 40.0 260.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sb_bridge_code_.kt" "lines" 46 "characters" 1772 "sha256" "0c7c17b4e7a7c8305c3443f70cf0c02f8701fbe1a01d8e91b287b2b639cd9ee3"}]}
+{"id" "sb_bridge" "index" 2 "name" "bridged, and counted again" "parents" ["root" "sb_judge"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "sb_judge"} "name" "bridged, and counted again" "_tombstone" false "frame" #afield/rect [2440.0 40.0 260.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sb_bridge_code_.kt" "lines" 49 "characters" 1832 "sha256" "721ac8e3bb4b6b5dc68a5eb3a81caae95e2efd79301a439e7f380fbcc14c0c82"}]}
 ```
 
 ```kotlin [field-property box="sb_bridge" name="code" path="sb_bridge_code_.kt"]
@@ -130,23 +134,26 @@ run {
     val (lo, hi) = letters.bounds
 
     // One bar, 5 units wide, down the middle of each letter Datalog listed.
-    val bars = Section.union(needsBridge.map { g ->
-        val p = stencilWord.glyphs[g]
-        val mid = p.origin.x + p.glyph.advance / 2.0
-        Section.square(5.0, (hi.y - lo.y).toDouble() + 2.0)
-            .translated(mid - 2.5, lo.y.toDouble() - 1.0)
-    })
+    val bars = Section.union(
+        needsBridge.map { g ->
+            val p = stencilWord.glyphs[g]
+            val mid = p.origin.x + p.glyph.advance / 2.0
+            Section.square(5.0, (hi.y - lo.y).toDouble() + 2.0).translated(mid - 2.5, lo.y.toDouble() - 1.0)
+        },
+    )
     val before = (stencilBlank - letters).decompose()
     val after = (stencilBlank - (letters - bars)).decompose()
 
     // Plate in grey, islands in red; the bridged plate below it.
     fun draw(pieces: List<Section>, dy: Double) = pieces.mapIndexed { i, s ->
         val plate = s.area == pieces.maxOf { it.area }
-        s.toFLine().transform { it + vec(0.0, dy, 0.0) }.also {
-            it.filled = true
-            it.stroked = false
-            it.color = if (plate) vec(0.62, 0.64, 0.70, 1.0) else vec(0.95, 0.30, 0.30, 1.0)
-        }
+        s.toFLine()
+            .transform { it + vec(0.0, dy, 0.0) }
+            .also {
+                it.filled = true
+                it.stroked = false
+                it.color = if (plate) vec(0.62, 0.64, 0.70, 1.0) else vec(0.95, 0.30, 0.30, 1.0)
+            }
     }
     val gap = (hi.y - lo.y) + 60.0
     lines(draw(before, 0.0) + draw(after, gap), w = 900.0, h = 520.0, fitToSize = true)

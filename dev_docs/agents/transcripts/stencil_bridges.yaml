@@ -36,9 +36,10 @@ operations:
 
           stencilWord = layoutText("BRIDGE", typeface("SansSerif", 120.0))
           stencilPieces = []
-          stencilGlyphs = stencilWord.glyphs.mapIndexed { g, p ->
-              [g, p.text, p.origin.x.toDouble(), p.origin.x.toDouble() + p.glyph.advance]
-          }
+          stencilGlyphs =
+              stencilWord.glyphs.mapIndexed { g, p ->
+                  [g, p.text, p.origin.x.toDouble(), p.origin.x.toDouble() + p.glyph.advance]
+              }
 
           run {
               if (!ManifoldLibrary.isAvailable) {
@@ -47,9 +48,10 @@ operations:
               }
               // The plate: the word's bounds, grown by a 14-unit margin with round corners.
               val (lo, hi) = Section.ofFLines(stencilWord.toFLines(), sampleDistance = 0.5).bounds
-              stencilBlank = Section.square((hi.x - lo.x).toDouble(), (hi.y - lo.y).toDouble())
-                  .translated(lo.x.toDouble(), lo.y.toDouble())
-                  .offset(14.0, JoinType.ROUND)
+              stencilBlank =
+                  Section.square((hi.x - lo.x).toDouble(), (hi.y - lo.y).toDouble())
+                      .translated(lo.x.toDouble(), lo.y.toDouble())
+                      .offset(14.0, JoinType.ROUND)
 
               val letters = Section.ofFLines(stencilWord.toFLines(), sampleDistance = 0.5)
               val pieces = (stencilBlank - letters).decompose()
@@ -99,7 +101,9 @@ operations:
           )
 
           val lost = d.query("lost(G, C, N)").rows.sortedBy { it[0] as Long }
-          needsBridge = lost.map { (it[0] as Long).toInt() }
+          needsBridge = lost.map {
+              (it[0] as Long).toInt()
+          }
           val safe = d.query("safe(C)").column("C")
           markdown(
               "judged",
@@ -130,23 +134,26 @@ operations:
               val (lo, hi) = letters.bounds
 
               // One bar, 5 units wide, down the middle of each letter Datalog listed.
-              val bars = Section.union(needsBridge.map { g ->
-                  val p = stencilWord.glyphs[g]
-                  val mid = p.origin.x + p.glyph.advance / 2.0
-                  Section.square(5.0, (hi.y - lo.y).toDouble() + 2.0)
-                      .translated(mid - 2.5, lo.y.toDouble() - 1.0)
-              })
+              val bars = Section.union(
+                  needsBridge.map { g ->
+                      val p = stencilWord.glyphs[g]
+                      val mid = p.origin.x + p.glyph.advance / 2.0
+                      Section.square(5.0, (hi.y - lo.y).toDouble() + 2.0).translated(mid - 2.5, lo.y.toDouble() - 1.0)
+                  },
+              )
               val before = (stencilBlank - letters).decompose()
               val after = (stencilBlank - (letters - bars)).decompose()
 
               // Plate in grey, islands in red; the bridged plate below it.
               fun draw(pieces: List<Section>, dy: Double) = pieces.mapIndexed { i, s ->
                   val plate = s.area == pieces.maxOf { it.area }
-                  s.toFLine().transform { it + vec(0.0, dy, 0.0) }.also {
-                      it.filled = true
-                      it.stroked = false
-                      it.color = if (plate) vec(0.62, 0.64, 0.70, 1.0) else vec(0.95, 0.30, 0.30, 1.0)
-                  }
+                  s.toFLine()
+                      .transform { it + vec(0.0, dy, 0.0) }
+                      .also {
+                          it.filled = true
+                          it.stroked = false
+                          it.color = if (plate) vec(0.62, 0.64, 0.70, 1.0) else vec(0.95, 0.30, 0.30, 1.0)
+                      }
               }
               val gap = (hi.y - lo.y) + 60.0
               lines(draw(before, 0.0) + draw(after, gap), w = 900.0, h = 520.0, fitToSize = true)

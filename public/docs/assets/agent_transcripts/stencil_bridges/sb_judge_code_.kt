@@ -22,7 +22,9 @@ d.add(
 )
 
 val lost = d.query("lost(G, C, N)").rows.sortedBy { it[0] as Long }
-needsBridge = lost.map { (it[0] as Long).toInt() }
+needsBridge = lost.map {
+    (it[0] as Long).toInt()
+}
 val safe = d.query("safe(C)").column("C")
 markdown(
     "judged",

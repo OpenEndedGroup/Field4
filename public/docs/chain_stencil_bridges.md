@@ -25,9 +25,10 @@ rounded margin, and `decompose` splits whatever is left after the subtraction in
 stencilWord = layoutText("BRIDGE", typeface("SansSerif", 120.0))
 
 val (lo, hi) = Section.ofFLines(stencilWord.toFLines(), sampleDistance = 0.5).bounds
-stencilBlank = Section.square((hi.x - lo.x).toDouble(), (hi.y - lo.y).toDouble())
-    .translated(lo.x.toDouble(), lo.y.toDouble())
-    .offset(14.0, JoinType.ROUND)
+stencilBlank =
+    Section.square((hi.x - lo.x).toDouble(), (hi.y - lo.y).toDouble())
+        .translated(lo.x.toDouble(), lo.y.toDouble())
+        .offset(14.0, JoinType.ROUND)
 
 val letters = Section.ofFLines(stencilWord.toFLines(), sampleDistance = 0.5)
 val pieces = (stencilBlank - letters).decompose()
@@ -45,9 +46,10 @@ The box publishes the pieces and the glyphs as plain rows, an id followed by num
 box doesn't need Manifold or the font to read them:
 
 ```diffstatic {data-lang=kotlin}
-stencilGlyphs = stencilWord.glyphs.mapIndexed { g, p ->
-    [g, p.text, p.origin.x.toDouble(), p.origin.x.toDouble() + p.glyph.advance]
-}
+stencilGlyphs =
+    stencilWord.glyphs.mapIndexed { g, p ->
+        [g, p.text, p.origin.x.toDouble(), p.origin.x.toDouble() + p.glyph.advance]
+    }
 stencilPieces = pieces.mapIndexed { i, s ->
     val (a, b) = s.bounds
     [i, (a.x + b.x) / 2.0, (a.y + b.y) / 2.0, s.area]
@@ -92,12 +94,13 @@ the bars out of the letters before the letters come out of the plate, so the bar
 plate:
 
 ```diffstatic {data-lang=kotlin}
-val bars = Section.union(needsBridge.map { g ->
-    val p = stencilWord.glyphs[g]
-    val mid = p.origin.x + p.glyph.advance / 2.0
-    Section.square(5.0, (hi.y - lo.y).toDouble() + 2.0)
-        .translated(mid - 2.5, lo.y.toDouble() - 1.0)
-})
+val bars = Section.union(
+    needsBridge.map { g ->
+        val p = stencilWord.glyphs[g]
+        val mid = p.origin.x + p.glyph.advance / 2.0
+        Section.square(5.0, (hi.y - lo.y).toDouble() + 2.0).translated(mid - 2.5, lo.y.toDouble() - 1.0)
+    },
+)
 val before = (stencilBlank - letters).decompose()
 val after = (stencilBlank - (letters - bars)).decompose()
 ```

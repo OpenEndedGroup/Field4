@@ -9,9 +9,10 @@ prop<List<List<Any>>>(stencilGlyphs)
 
 stencilWord = layoutText("BRIDGE", typeface("SansSerif", 120.0))
 stencilPieces = []
-stencilGlyphs = stencilWord.glyphs.mapIndexed { g, p ->
-    [g, p.text, p.origin.x.toDouble(), p.origin.x.toDouble() + p.glyph.advance]
-}
+stencilGlyphs =
+    stencilWord.glyphs.mapIndexed { g, p ->
+        [g, p.text, p.origin.x.toDouble(), p.origin.x.toDouble() + p.glyph.advance]
+    }
 
 run {
     if (!ManifoldLibrary.isAvailable) {
@@ -20,9 +21,10 @@ run {
     }
     // The plate: the word's bounds, grown by a 14-unit margin with round corners.
     val (lo, hi) = Section.ofFLines(stencilWord.toFLines(), sampleDistance = 0.5).bounds
-    stencilBlank = Section.square((hi.x - lo.x).toDouble(), (hi.y - lo.y).toDouble())
-        .translated(lo.x.toDouble(), lo.y.toDouble())
-        .offset(14.0, JoinType.ROUND)
+    stencilBlank =
+        Section.square((hi.x - lo.x).toDouble(), (hi.y - lo.y).toDouble())
+            .translated(lo.x.toDouble(), lo.y.toDouble())
+            .offset(14.0, JoinType.ROUND)
 
     val letters = Section.ofFLines(stencilWord.toFLines(), sampleDistance = 0.5)
     val pieces = (stencilBlank - letters).decompose()
