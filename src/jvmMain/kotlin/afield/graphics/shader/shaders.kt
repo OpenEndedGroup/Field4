@@ -2310,6 +2310,9 @@ private fun builtInShaderInclude(inside: Box, includePath: String): String? {
         else if (includePath.startsWith("particles/") && !shaderIncludeRoots.containsKey("particles") &&
             afield.simulation.particles.ParticleShaders.has(includePath.removePrefix("particles/")))
             afield.simulation.particles.ParticleShaders.source(includePath.removePrefix("particles/"))
+        else if (includePath.startsWith("trail/") && !shaderIncludeRoots.containsKey("trail") &&
+            afield.simulation.agents.TrailShaders.has(includePath.removePrefix("trail/")))
+            afield.simulation.agents.TrailShaders.source(includePath.removePrefix("trail/"))
         else if (includePath.startsWith("boids/") && !shaderIncludeRoots.containsKey("boids") &&
             afield.simulation.particles.BoidShaders.has(includePath.removePrefix("boids/")))
             afield.simulation.particles.BoidShaders.source(includePath.removePrefix("boids/"))
