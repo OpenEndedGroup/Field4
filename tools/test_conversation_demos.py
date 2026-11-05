@@ -45,10 +45,11 @@ class ConversationDemoTest(unittest.TestCase):
                  'val points = listOf(c to 0f, ring[(k + 1) % ring.size] to 1f)\n'
                  'val spread = listOf(*xs)\nval typed = listOf<Int>(1)\n'
                  'val empty = listOf()\nval multiline = listOf(\n    1, 2\n)\n')
-        expected = saved.replace('listOf("x", "y", "z")', '["x", "y", "z"]').replace(
+        expected = saved.replace(
             'listOf(c to 0f, ring[(k + 1) % ring.size] to 1f)',
             '[c to 0f, ring[(k + 1) % ring.size] to 1f]')
         self.assertEqual(expected, current_kotlin_listing(saved))
+        self.assertIn('listOf("x", "y", "z").map', expected)
         self.assertIn('listOf("x", "y", "z")', saved)
         self.assertEqual(expected, current_kotlin_listing(expected))
 

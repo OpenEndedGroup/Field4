@@ -28,8 +28,9 @@ This is the check that retires the prose. The rules:
   lines is a note, since a literal takes no spread and this line-by-line check cannot see one on a
   later line. ``listOf()``, ``listOf<T>(...)``, a spread (``listOf(*xs)``) and an operand of an
   arithmetic operator (``xs + listOf(a)``, ``xs -= listOf(a)``: no expected type, so ``plus`` is
-  ambiguous) and a call that is a lambda's last expression (the line before its closing ``}``: no
-  expected type, so ``[a, b]`` does not compile) are left alone.
+  ambiguous), a receiver (``listOf(a, b).map { ... }``), and a call that is a lambda's last
+  expression (inline or before its closing ``}``: no expected type, so ``[a, b]`` does not compile)
+  are left alone.
 
 - Approved helpers (``dev_docs/agents/box_code_helpers/ADOPTION.md``), each replacing the verbose form
   the corpus used before the helper existed:
@@ -404,11 +405,17 @@ def list_literals(line: str, prev: str = "", next: str = "") -> tuple[str, bool]
         close = _closing_paren(line, m.end() - 1)
         args = line[m.end():close] if close >= 0 else line[m.end():]
         before = line[:m.start()]
+        after = line[close + 1:].split("//")[0].strip() if close >= 0 else ""
         operand = bool(OPERATOR_BEFORE.search(before) or
-                       (not before.strip() and OPERATOR_BEFORE.search(prev.split("//")[0])))
-        result = (close >= 0 and not before.strip() and not line[close + 1:].split("//")[0].strip()
-                  and next.strip().startswith("}"))
-        if operand or result or (close >= 0 and (not args.strip() or _spread(args))):
+                       (not before.strip() and OPERATOR_BEFORE.search(prev.split("//")[0])) or
+                       (close >= 0 and re.match(r"[-+*/%]", after)))
+        receiver = close >= 0 and (after.startswith((".", "?.", "!!")) or
+                                   (not after and next.strip().startswith((".", "?."))))
+        result = close >= 0 and (
+            (not before.strip() and not after and next.strip().startswith("}")) or
+            (re.search(r"(?:->|\{)\s*$", before) and after.startswith("}"))
+        )
+        if operand or receiver or result or (close >= 0 and (not args.strip() or _spread(args))):
             out.append(line[pos:m.end()])
             pos = m.end()
             continue

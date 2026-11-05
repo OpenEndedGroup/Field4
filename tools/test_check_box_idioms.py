@@ -197,8 +197,15 @@ class ListLiteralTests(unittest.TestCase):
         # `xs + [a, b]` is ambiguous between plus(T), plus(Array) and plus(Iterable).
         code = ("val c = merge.comparators + listOf(S(0, 1), S(2, 3))\nxs -= listOf(1)\nxs += listOf(1)\n"
                 "val d = xs +\n    listOf(1, 2)\nval f = { x -> listOf(x) }\n")
-        self.assertEqual(self.fixed(code), code.replace("{ x -> listOf(x) }", "{ x -> [x] }"))
-        self.assertEqual(self.fixed("val e = listOf(1) + listOf(2)\n"), "val e = [1] + listOf(2)\n")
+        self.assertEqual(self.fixed(code), code)
+        self.assertEqual(self.fixed("val e = listOf(1) + listOf(2)\n"), "val e = listOf(1) + listOf(2)\n")
+
+    def test_receivers_and_inline_lambda_results_keep_their_type(self):
+        code = ("val points = listOf(1 to 2, 3 to 4).map { (x, y) -> x + y }\n"
+                "val points = listOf(1 to 2, 3 to 4)\n    .map { (x, y) -> x + y }\n"
+                "val panels = xs.flatMap { x -> listOf(x, x) }\n"
+                "val panels = run { listOf(a, b) }\n")
+        self.assertEqual(self.fixed(code), code)
 
     def test_a_lambdas_last_expression_keeps_listOf(self):
         # A lambda's result has no expected type: `[ring, cloud]` there does not compile (flow_matching, 11-02/11-03).
