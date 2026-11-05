@@ -208,7 +208,12 @@ behaviour in the same build: `programs=off` (`--programs off`) withholds the pro
 `context=legacy` (`--context legacy`) puts the instructions back inside the stored message. Three check
 kinds came with them: `effects-absent:<EFFECT>` and `effects-present:<EFFECT>`, over every call the turn
 made including a program's nested ones (a call with undeclared effects fails `effects-absent`), and
-`tool-used:<Name>`. `tools/test_agent_check_parse.py` keeps `parse_agent_check` in step with
+`tool-used:<Name>` (the tool was called, whatever it returned). `tool-ok:<Name>` (2026-11-05) passes only
+when at least one call to it succeeded: the cold-reader run passed `tool-used` with every call failing
+"No tool registered". Results carry `toolTally` (per tool: calls, failed) and `offMachine`. A live task
+built from the backdoor refuses a non-`local` provider unless `--allow-remote-provider` or
+`AFIELD_AGENT_TASK_ALLOW_REMOTE=1` (`AgentTaskRequest.allowRemote`, `remoteProviderRefusal`); in-Field callers
+keep `allowRemote = true`. `agent-eval` is not gated yet. `tools/test_agent_check_parse.py` keeps `parse_agent_check` in step with
 `AgentCheck.parse`. Live runs are capped at 17 tasks. Reports carry `cacheReadTokens`,
 `cacheWriteTokens`, `programCalls`, `nestedCalls`, `turns` and `contextPlacement`.
 

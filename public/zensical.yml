@@ -107,6 +107,7 @@ nav:
     - A Drawn Morph, Heard: chain_drawn_morph.md
     - Drawn Strokes Become Paint: chain_drawn_paint.md
     - A Generator, Graded by Datalog: chain_flow_islands.md
+    - A Word Cut as a Stencil: chain_stencil_bridges.md
   - Working in a Document:
     # First in the section: panning, zooming, Cmd Cmd-and-hold between boxes and the nine bookmark
     # slots, i.e. how you get around a document before you do anything in it. It absorbed the old

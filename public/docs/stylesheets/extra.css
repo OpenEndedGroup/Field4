@@ -10,6 +10,20 @@
    two; without them all of that was faux-bold. */
 @import url("fonts.css");
 
+/* ── page-to-page crossfade ──────────────────────────────────────
+   Moving between docs pages crossfades the whole page instead of blanking and repainting it
+   piece by piece (Chrome/Edge 126+, Safari 18.2+; other browsers navigate as before). The new
+   page is held back until its scripts have run (`rel=expect` in overrides/main.html), so what
+   fades in is the finished page. Off for readers who ask for reduced motion. */
+@media (prefers-reduced-motion: no-preference) {
+    @view-transition { navigation: auto; }
+    ::view-transition-old(root),
+    ::view-transition-new(root) {
+        animation-duration: 500ms;
+        animation-timing-function: ease;
+    }
+}
+
 /* A gallery document opens beside its entry, using the space beyond the reading column. */
 html.field-transcript-open { overflow-x:auto !important; }
 html.field-transcript-open body { overflow-x:visible !important; }

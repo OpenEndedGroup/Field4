@@ -495,6 +495,16 @@ coloured by piece, strays in red. See [the walkthrough](chain_flow_islands.md).
 
 [Open →](offline.html?file=assets/agent_transcripts/flow_islands/metadata.edn)
 
+### stencil_bridges
+
+Three boxes, and a word becomes a stencil. `sb_cut` lays out "BRIDGE", subtracts the glyph
+outlines from a rounded plate with Manifold and splits the rest into pieces; `sb_judge` hands the
+pieces and the glyph extents to `Datalog`, which calls the largest piece the plate and lists the
+letters that lose a piece; `sb_bridge` cuts a bar through just those letters and counts the pieces
+again. See [the walkthrough](chain_stencil_bridges.md).
+
+[Open →](offline.html?file=assets/agent_transcripts/stencil_bridges/metadata.edn)
+
 ### point_matching
 
 One-to-one matching between point clouds, a million points a side, with `matchPoints` and the
@@ -3480,6 +3490,20 @@ trains meet they interleave. Red recovers faster, so its rings come more often. 
 ![A square forest crowded with ragged concentric rings of red and green fire, the two trains interleaved where they have met](assets/afield_four_graphics/11-forest-fire.png)
 
 [Open →](offline.html?file=assets/agent_transcripts/forest_fire/metadata.edn)
+
+### gpu_physarum
+
+**Physarum on the GPU**: a million agents on a `TrailField`, in a square window. A renderer box; a
+slime box that builds a two-species `ShaderPhysarumSystem` and publishes it as `physarum`, its
+`vertex` tab holding the agent rule; a weather box that sets the trail's wind and half-life and the
+agents' jitter while it runs; and a reset box that empties the trail and scatters the agents again.
+Amber and cyan transport networks form within a few hundred frames, each species avoiding the
+other's trail. [A million agents on the GPU](alife_examples.md#a-million-agents-on-the-gpu) walks
+through the slime box.
+
+![Two interleaved transport networks, one amber and one cyan, made of rounded filaments that avoid each other](assets/alife_examples/physarum-gpu.png)
+
+[Open →](offline.html?file=assets/agent_transcripts/gpu_physarum/metadata.edn)
 
 ### fern_iterated_systems
 

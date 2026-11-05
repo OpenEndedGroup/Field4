@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-05T08:18:36.824Z",
+  "documentName": "stencil_bridges",
+  "outputs": [
+    {
+      "uid": "sb_judge",
+      "channel": "judged",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 211,
+      "height": 94,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "sb_bridge",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "sb_bridge",
+      "channel": "bridged",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 293,
+      "height": 132,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "sb_cut",
+      "channel": "cut",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 282,
+      "height": 94,
+      "path": "outputs/3.html"
+    }
+  ]
+}

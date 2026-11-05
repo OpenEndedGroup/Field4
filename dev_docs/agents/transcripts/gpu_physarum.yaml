@@ -1,0 +1,87 @@
+name: gpu_physarum
+description: >
+  Physarum on the GPU: a million agents sensing, turning and depositing into a TrailField, the
+  public stigmergy field in alife_trail.kt. Four boxes: a renderer box; a slime box that builds a
+  ShaderPhysarumSystem, publishes it as the prop `physarum` and installs its agent rule into its
+  vertex tab; a weather box beneath it that sets the trail's wind, half-life and the agents' jitter
+  live; and a reset box that clears the trail and rescatters the agents. A transport network forms
+  within a few hundred frames. Requires a GPU/Vulkan window; capture it with a follow-on
+  `native-screenshot <path> --uid physarum_renderer`. Design: dev_docs/GPU_STIGMERGY_FIELD.md.
+docs:
+  - page: alife_examples.md
+    why: "Section 7's GPU subsection is the slime box of this document."
+operations:
+  - create:
+      box: physarum_renderer
+      name: renderer
+      frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.graphics.vulkan.util.Options
+
+          prop<Window>(window)
+          prop<Renderer>(renderer)
+          Options.enableHDR = false
+          Options.profiling = false
+          // once: re-running this box keeps the existing window and renderer
+          once.renderer {
+              window = Window("Physarum", initialDimensions = Rect(80.0, 80.0, 768.0, 768.0))
+              Renderer(window)
+          }
+          println("renderer ready")
+          // the frame loop runs as this box's coroutine; stopping the box stops rendering
+          start(renderer::run)
+  - create:
+      box: physarum_slime
+      name: slime
+      frame: { x: 340.0, y: 40.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          /*
+          A million agents on a 1024 x 1024 trail. Each one looks at the trail three ways ahead,
+          turns toward the strongest, steps a pixel and leaves a mark; the trail blurs and fades
+          by itself. The defaults are the CPU PhysarumParams defaults, so this is the same model
+          as the page's 6000-agent swarm at about 170 times the population.
+          */
+          prop<ShaderPhysarumSystem>(physarum) = ShaderPhysarumSystem() {
+              width = 1024
+              height = 1024
+              agentCount = 1_000_000
+              speciesCount = 2
+          }
+
+          // steps once a frame and draws the trail, one colour per species
+          physarum.installInto()
+          println("${physarum.settings.agentCount} agents, ${physarum.settings.speciesCount} species")
+  - create:
+      box: physarum_weather
+      name: weather
+      frame: { x: 340.0, y: 160.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          /*
+          Everything here is read every frame, so re-run this box with other numbers and the
+          running network responds: wind drags the whole trail (pixels per frame), a longer
+          half-life makes thicker, slower roads, and jitter makes agents wander off them.
+          */
+          physarum.trail.settings.windPx = Vector2f(0.25f, 0f)
+          physarum.trail.settings.halfLifeFrames = vec(12f, 12f, 12f, 12f)
+          physarum.settings.jitter = 0.05f
+          println("wind ${physarum.trail.settings.windPx}, decay per frame ${physarum.trail.decayFactors()}")
+  - create:
+      box: physarum_reset
+      name: reset
+      frame: { x: 340.0, y: 280.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          // empty the trail and scatter the agents again, with a new seed each time
+          physarum.trail.clear()
+          physarum.resetAgents(System.nanoTime())
+          println("reset")
+  - connect: { parent: physarum_renderer, child: physarum_slime }
+  - connect: { parent: physarum_slime, child: physarum_weather }
+  - connect: { parent: physarum_slime, child: physarum_reset }
+  - launch: { box: physarum_renderer, property: code, strand: renderer }  # renderer first — it owns the loop
+  - await: {}
+  - launch: { box: physarum_slime, property: code }
+  - await: {}

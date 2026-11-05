@@ -195,6 +195,8 @@ object DemoTranscriptExecSmokeTest {
         "point_matching",
         // flowMatch samples graded by a Datalog program and drawn by island; three CPU boxes, all executed.
         "flow_islands",
+        // A word cut out of a plate by Manifold, judged by Datalog, bridged; three CPU boxes, all executed.
+        "stencil_bridges",
         "fn_differentiable_fit_demo",
         // The two ways to run a `@{...}` Kotlin right-hand side, side by side; all three boxes execute.
         // `fnrw_broken` is the one-box form, which used to re-enter its own box 172 levels deep and
@@ -800,6 +802,9 @@ object DemoTranscriptExecSmokeTest {
         // `four-lattice-boltzmann` and `four-forest-fire` docs captures in afield_four_graphics.md.
         "lattice_boltzmann_cylinder",
         "forest_fire",
+        // A million-agent ShaderPhysarumSystem on its own Window + Renderer; its pixels are the
+        // `alife-physarum-gpu` docs capture and alife.physarum-gpu.smoke measures it.
+        "gpu_physarum",
         // The madp Fern port: compute-shader iterated systems plotted into a PointAccumulation on
         // a native Window + Renderer, so compile-only here. IteratedSystemShaderTest compiles every
         // system's compute tab against the points/system harness without a GPU.
