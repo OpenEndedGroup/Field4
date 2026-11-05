@@ -41,6 +41,21 @@ import kotlin.math.sqrt
 import kotlin.random.Random
 
 /**
+ * Jones' Physarum on the GPU, built on the [TrailField] stigmergy field in `alife_trail.kt`.
+ *
+ * [ShaderPhysarumSystem] keeps a million agents (by default) in an addressable buffer and steps
+ * them in one vertex-shader draw per frame: each agent samples the previous frame's trail at three
+ * sensors, turns toward the strongest, steps, writes itself back and deposits one additive point.
+ * Up to four species share the field, one per channel, each attracted by its own trail and repelled
+ * by the others. `sensing = false` is the random-turn control arm, so [Img.topShare] of the trail
+ * read back with [TrailField.read] separates a network from a random walk, as it does for the CPU
+ * [PhysarumSwarm].
+ *
+ * Unlike the CPU model there is no one-agent-per-cell exclusion; at about one agent per pixel the
+ * density does that job.
+ */
+
+/**
  * Everything [ShaderPhysarumSystem] reads. The defaults are the CPU [PhysarumParams] defaults, so
  * the two can be compared: 45° sensors 9 pixels ahead, 45° turns, one pixel a step, a radius-one
  * blur and `decay = 0.92` (the [trail]'s half-life of 8.3 frames).

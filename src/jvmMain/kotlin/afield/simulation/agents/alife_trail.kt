@@ -69,6 +69,8 @@ import kotlin.math.pow
  * [read] queues a copy of the raw floats and completes with an [Img] (four channels, unclamped);
  * `channel(c)` of that is what [Img.topShare] takes.
  */
+
+/** Everything [TrailField] reads: size, per-channel half-lives, diffusion, wind and format. All but the size and format are read every frame. */
 data class TrailFieldSettings(
     /** Prefix for the modules and render-list entries this field registers. Two fields in one renderer need two names. */
     var name: String = "trail",
