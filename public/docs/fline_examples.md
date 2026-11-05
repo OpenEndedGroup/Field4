@@ -434,7 +434,7 @@ The section clips everything: fills, strokes and points.
 
 This box draws a wall detail with four skins and five conduit runs, two dimensions, and all three controls live. Run it and drag the explode slider. The same box is the [`three_inspector_wall`](agent_transcripts.md#three_inspector_wall) starting point on the welcome screen.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/three_inspector_demo/opened.png" wait="3.0" capture="box" open-outputs="true" w="1200"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/three_inspector_demo/opened.png" wait="3.0" capture="box" open-outputs="true" w="1200" embed=true}
 :::static
 /*
 The three.js output area as an INSTRUMENT.
