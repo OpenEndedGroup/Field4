@@ -72,7 +72,7 @@ operations:
   - create:
       box: sb_judge
       name: "which letters fall out, by Datalog"
-      frame: { x: 40.0, y: 120.0, w: 260.0, h: 50.0 }
+      frame: { x: 1240.0, y: 40.0, w: 260.0, h: 50.0 }
       properties:
         code: |
           import afield.data.query.datalog.Datalog
@@ -115,7 +115,7 @@ operations:
   - create:
       box: sb_bridge
       name: "bridged, and counted again"
-      frame: { x: 40.0, y: 200.0, w: 260.0, h: 50.0 }
+      frame: { x: 2440.0, y: 40.0, w: 260.0, h: 50.0 }
       properties:
         code: |
           import afield.geometry.solid.manifold.ManifoldLibrary
