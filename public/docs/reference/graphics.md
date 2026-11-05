@@ -12218,7 +12218,7 @@ computation over cached outlines.
 
 `src/jvmMain/kotlin/afield/graphics/text/typography.kt` — [read the source](source/jvmMain/afield/graphics/text/typography/)
 
-**Used in:** [Typography as geometry — a string becomes contours](../typography_examples.md), [Datalog in a box](../datalog.md), [Solids that cannot fail: Manifold in Field](../manifold.md)
+**Used in:** [Typography as geometry — a string becomes contours](../typography_examples.md), [A Word Cut as a Stencil](../chain_stencil_bridges.md), [Datalog in a box](../datalog.md)
 
 ### Top-level functions { #typography-kt-functions }
 
