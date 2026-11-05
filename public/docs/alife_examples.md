@@ -1091,17 +1091,24 @@ field you can use on its own: four channels, each with its own half-life, plus d
 module can deposit into it, and any shader can read it with `#include "trail/sample"`. Here there are
 two species, one per channel. Each follows its own trail and avoids the other's:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/physarum-gpu.png" alt="two interleaved transport networks in a native render window, one amber and one cyan, made of rounded filaments that avoid each other, covering the whole window" wait="12" timeout="120" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="alife-physarum-gpu"}
+```diffstatic {data-lang=kotlin}
 // 512 pixels high and as wide as the window's shape needs, so the trail is not stretched
 var physarum = ShaderPhysarumSystem() {
     height = 512
     width = 512 * window.width / window.height
     agentCount = 1_000_000
     speciesCount = 2
+    exposure = 0.05f
 }
 
 // steps once a frame and draws the trail, one colour per species
 physarum.installInto()
+```
+
+A million agents scattered as noise, drawing themselves into two networks:
+
+```diffstatic_runner {data-lang=kotlin capture="native-window" capture-box="physarum_video_renderer" transcript="dev_docs/agents/transcripts/docs_capture/gpu_physarum_video.yaml" video="assets/alife_examples/physarum-gpu.mp4" duration="15" wait="0.2" timeout="300" embed=true hidden=true name="alife-physarum-gpu" alt="a million agents scattered as faint noise draw themselves, within a few seconds, into two interleaved transport networks, one amber and one cyan, whose filaments keep merging and re-routing around each other"}
+// The transcript builds a renderer and the slime box above, on a smaller window, and launches both.
 ```
 
 These agents do not exclude each other. On the GPU the density does the job that exclusion does on the
