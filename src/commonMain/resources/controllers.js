@@ -39,6 +39,9 @@
     maxExecutionMs: clampNumber(Number.parseInt(params.get("maxExecutionMs") || "750", 10), 0, 60000),
     controlsSignature: "",
     outputsSignature: "",
+    outputsControlsSignature: "",
+    outputsUid: null,
+    outputCards: new Map(),
     controlInfo: null,
     outputsInfo: null,
     chatFrame: null,
@@ -62,18 +65,23 @@
     state.socket = new WebSocket(`${protocol}://${window.location.host}/controllers/ws?${query}`);
 
     state.socket.addEventListener("open", () => {
-      connection.textContent = "online";
+      setConnectionState("online");
     });
 
     state.socket.addEventListener("close", () => {
-      connection.textContent = "offline";
+      setConnectionState("offline");
       window.clearTimeout(state.reconnectTimer);
       state.reconnectTimer = window.setTimeout(connect, 500);
     });
 
     state.socket.addEventListener("error", () => {
-      connection.textContent = "error";
+      setConnectionState("error");
     });
+  }
+
+  function setConnectionState(status) {
+    connection.textContent = status;
+    connection.dataset.state = status;
   }
 
   function clamp(value, min, max) {
@@ -130,6 +138,29 @@
       ...payload,
     }));
   }
+
+  // Embedded output widgets use the same callbacks as the canvas. Keep them on
+  // this controller's document socket instead of importing another Field client.
+  window.addEventListener("message", (event) => {
+    const message = event.data;
+    if (event.origin !== window.location.origin || !message?.fieldControllerOutput) return;
+    if (![...state.outputCards.values()].some((card) => card.frame?.contentWindow === event.source)) return;
+    const p = message.payload || {};
+    const controlId = String(p.controlId || p.sliderId || "");
+    if (!controlId) return;
+    switch (message.type) {
+      case "slider-update":
+        if (Number.isFinite(p.value)) send({ type: "slider", controlId, value: p.value });
+        break;
+      case "string-update":
+        if (typeof p.value === "string") send({ type: "string", controlId, text: p.value });
+        break;
+      case "checkbox-update": send({ type: "checkbox", controlId, checked: Boolean(p.value) }); break;
+      case "button-update": send({ type: "button", controlId, pressed: Boolean(p.pressed) }); break;
+      case "vec2-update": send({ type: "vec2", controlId, x: p.x, y: p.y }); break;
+      case "color-update": send({ type: "color", controlId, r: p.r, g: p.g, b: p.b, a: p.a }); break;
+    }
+  });
 
   function sendTouch(values) {
     send({
@@ -442,27 +473,73 @@
     const signature = JSON.stringify({ uid: info.selectedUid || "", outputs: visibleOutputs, controls });
     if (signature === state.outputsSignature || state.activeControlId) return;
     state.outputsSignature = signature;
-    outputsControls.replaceChildren();
-    outputsList.replaceChildren();
+    const page = outputsList.closest(".control-page");
+    const scrollTop = page.scrollTop;
+    const scrollLeft = page.scrollLeft;
+    const uid = info.selectedUid || "";
+    if (uid !== state.outputsUid) {
+      state.outputsUid = uid;
+      state.outputsControlsSignature = "";
+      state.outputCards.clear();
+      outputsControls.replaceChildren();
+      outputsList.replaceChildren();
+    }
     if (!info.selectedUid) {
       outputsState.textContent = "Select one box in Field";
       return;
     }
     outputsState.textContent = `${info.selectedName || info.selectedUid} · ${visibleOutputs.length} output${visibleOutputs.length === 1 ? "" : "s"}`;
-    controls.forEach((control) => outputsControls.appendChild(renderControl(control)));
-    visibleOutputs.forEach((output) => outputsList.appendChild(renderOutputArea(output)));
+    const controlsSignature = JSON.stringify(controls.map(controlLayoutSnapshot));
+    if (controlsSignature !== state.outputsControlsSignature) {
+      state.outputsControlsSignature = controlsSignature;
+      outputsControls.replaceChildren(...controls.map(renderControl));
+    }
+    updateMeterDisplays(controls);
+    updateArrayDisplays(controls);
+
+    const channels = new Set(visibleOutputs.map((output) => output.channel));
+    for (const [channel, card] of state.outputCards) {
+      if (!channels.has(channel)) {
+        card.shell.remove();
+        state.outputCards.delete(channel);
+      }
+    }
+    let cursor = outputsList.firstChild;
+    for (const output of visibleOutputs) {
+      let card = state.outputCards.get(output.channel);
+      if (!card) {
+        card = renderOutputArea(output);
+        state.outputCards.set(output.channel, card);
+      } else {
+        updateOutputArea(card, output);
+      }
+      // Moving an iframe's ancestor can reload it too. Leave existing cards exactly
+      // where they are unless the channel order actually changed.
+      if (card.shell !== cursor) outputsList.insertBefore(card.shell, cursor);
+      cursor = card.shell.nextSibling;
+    }
     if (!controls.length && !visibleOutputs.length) outputsState.textContent = `${info.selectedName || "selected"} has no outputs yet`;
     if (controls.length && !visibleOutputs.length) outputsState.textContent = `${info.selectedName || "selected"} · controls only`;
+    page.scrollTop = scrollTop;
+    page.scrollLeft = scrollLeft;
+  }
+
+  function controlLayoutSnapshot(control) {
+    if (control.type === "meter") return { ...control, value: null };
+    if (ARRAY_TYPES.has(control.type)) return { ...control, value: null, text: null, x: null, y: null };
+    return control;
   }
 
   function isNativeControlDuplicate(output, controls) {
     if (!controls.length) return false;
-    const html = String(output && output.html || "");
-    return html.includes("class=\"control-group\"") ||
-      html.includes("class='control-group'") ||
-      html.includes("field-control field-slider") ||
-      html.includes("field-control field-vec2") ||
-      html.includes("field-control field-color");
+    const doc = new DOMParser().parseFromString(String(output?.html || ""), "text/html");
+    const roots = [...doc.body.children].filter((node) => !["STYLE", "SCRIPT"].includes(node.tagName));
+    if (roots.length !== 1 || !roots[0].classList.contains("control-group")) return false;
+    const ids = [...roots[0].querySelectorAll("[data-control-id], [data-slider-id], [data-vec2-id], [data-checkbox-id], [data-string-id], [data-color-id], input[id], button[id], select[id], textarea[id]")]
+      .map((node) => node.dataset.controlId || node.dataset.sliderId || node.dataset.vec2Id ||
+        node.dataset.checkboxId || node.dataset.stringId || node.dataset.colorId || node.id).filter(Boolean);
+    const nativeIds = new Set(controls.map((control) => control.id));
+    return ids.length > 0 && ids.every((id) => nativeIds.has(id));
   }
 
   function isLinesOutput(output) {
@@ -492,17 +569,80 @@
   }
 
   function renderOutputArea(output) {
-    const linesOutput = isLinesOutput(output);
-    const flineEditorOutput = isFLineEditorOutput(output);
-    const flineEditorFrame = flineEditorOutput ? fLineEditorAspect(output) : null;
     const shell = document.createElement("article");
     shell.className = "phone-output-card";
-    shell.classList.toggle("phone-output-lines", linesOutput || flineEditorOutput);
+    shell.dataset.channel = output.channel;
     const title = document.createElement("div");
     title.className = "phone-output-title";
     title.textContent = output.channel || "output";
+    const host = document.createElement("div");
+    host.className = "phone-output-frame-host";
+    shell.append(title, host);
+    const card = { shell, host, frame: null, pending: null, output: null, nextOutput: output };
+    updateOutputArea(card, output);
+    return card;
+  }
+
+  function outputFrameScroll(frame) {
+    try {
+      const doc = frame.contentDocument;
+      const elements = [...doc.body.querySelectorAll("*")].filter((node) => node.scrollTop || node.scrollLeft).map((node) => {
+        const path = [];
+        for (let cursor = node; cursor && cursor !== doc.body; cursor = cursor.parentElement) {
+          path.unshift([...cursor.parentElement.children].indexOf(cursor));
+        }
+        return { path, top: node.scrollTop, left: node.scrollLeft };
+      });
+      return { top: frame.contentWindow.scrollY, left: frame.contentWindow.scrollX, elements };
+    } catch (_) { return null; }
+  }
+
+  function restoreOutputFrameScroll(frame, saved) {
+    if (!saved) return;
+    try {
+      frame.contentWindow.scrollTo(saved.left, saved.top);
+      for (const entry of saved.elements) {
+        let node = frame.contentDocument.body;
+        for (const index of entry.path) node = node?.children[index];
+        if (node) { node.scrollTop = entry.top; node.scrollLeft = entry.left; }
+      }
+    } catch (_) { /* The output may have navigated to an external page. */ }
+  }
+
+  function canPatchOutput(output) {
+    return !isLinesOutput(output) && !isFLineEditorOutput(output) &&
+      !/\bfield-control\b/.test(String(output.html || "")) &&
+      !/<(?:script|iframe|canvas|video|audio|object|embed)\b/i.test(String(output.html || ""));
+  }
+
+  function updateOutputArea(card, output) {
+    card.nextOutput = output;
+    if (card.pending || (card.output && card.output.html === output.html)) return;
+
+    // Plain HTML (for example a live statistics table) needs no document navigation.
+    // Keep its iframe window and the reader's position instead of showing a blank
+    // document at every poll. Scripted outputs still get a fresh execution context below.
+    if (card.frame && canPatchOutput(card.output) && canPatchOutput(output)) {
+      const saved = outputFrameScroll(card.frame);
+      const page = outputsList.closest(".control-page");
+      const top = page.scrollTop;
+      const left = page.scrollLeft;
+      card.frame.contentDocument.body.innerHTML = output.html || "";
+      card.output = output;
+      resizeOutputFrame(card.frame, true);
+      restoreOutputFrameScroll(card.frame, saved);
+      page.scrollTop = top;
+      page.scrollLeft = left;
+      return;
+    }
+
+    const linesOutput = isLinesOutput(output);
+    const flineEditorOutput = isFLineEditorOutput(output);
+    const flineEditorFrame = flineEditorOutput ? fLineEditorAspect(output) : null;
     const frame = document.createElement("iframe");
     frame.className = "phone-output-frame";
+    frame.style.visibility = "hidden";
+    if (card.frame) frame.classList.add("phone-output-frame-pending");
     if (linesOutput || flineEditorOutput) frame.classList.add("phone-output-frame-lines");
     if (flineEditorFrame) {
       frame.dataset.outputKind = "fline-editor";
@@ -510,9 +650,29 @@
     }
     frame.setAttribute("sandbox", "allow-scripts allow-forms allow-same-origin allow-popups");
     frame.srcdoc = outputFrameHtml(output, linesOutput, flineEditorOutput, flineEditorFrame);
-    frame.addEventListener("load", () => resizeOutputFrame(frame, true));
-    shell.append(title, frame);
-    return shell;
+    card.pending = frame;
+    frame.addEventListener("load", () => {
+      if (!card.shell.isConnected || card.pending !== frame) return;
+      const page = outputsList.closest(".control-page");
+      const top = page.scrollTop;
+      const left = page.scrollLeft;
+      const saved = card.frame ? outputFrameScroll(card.frame) : null;
+      resizeOutputFrame(frame, true);
+      card.shell.classList.toggle("phone-output-lines", linesOutput || flineEditorOutput);
+      card.frame?.remove();
+      frame.classList.remove("phone-output-frame-pending");
+      frame.style.visibility = "";
+      card.frame = frame;
+      card.pending = null;
+      card.output = output;
+      restoreOutputFrameScroll(frame, saved);
+      page.scrollTop = top;
+      page.scrollLeft = left;
+      // A slow scripted frame must finish rather than being cancelled by every poll.
+      // Coalesce updates received while it loaded to the latest output.
+      updateOutputArea(card, card.nextOutput);
+    }, { once: true });
+    card.host.appendChild(frame);
   }
 
   function outputFrameHtml(output, linesOutput, flineEditorOutput, flineEditorFrame) {
@@ -523,7 +683,22 @@
     const flineAspectStyle = flineEditorFrame
       ? ` style="--field-fline-editor-aspect:${flineEditorFrame.width} / ${flineEditorFrame.height}"`
       : "";
-    const flineEditorRuntime = flineEditorOutput ? `<script src="/sliders.js"></script>` : "";
+    const embeddedControls = !flineEditorOutput && /\bfield-control\b/.test(String(output.html || ""));
+    const widgetRuntime = (flineEditorOutput || embeddedControls) ? `<script src="/sliders.js"></script>` : "";
+    const widgetBridge = embeddedControls ? `<link rel="stylesheet" href="/field.css"><script>
+      window.afield = { send: function(type, payload) {
+        window.parent.postMessage({fieldControllerOutput:true, type:type, payload:payload}, ${JSON.stringify(window.location.origin)});
+      }};
+      document.addEventListener('DOMContentLoaded', function() {
+        // Older running Field sessions can still supply the previous card copy.
+        document.querySelectorAll('.stack-auto-card .slot > div:first-child .muted').forEach(function(el) {
+          el.textContent = el.textContent.replace(' · the window shows your whole shader', '');
+        });
+        document.querySelectorAll('.stack-auto-card .slotkeys > .muted').forEach(function(el) {
+          if (el.textContent.startsWith('A key keeps every number at once.')) el.remove();
+        });
+      });
+    </script>` : "";
     const linesScript = linesOutput ? `
       <script>
         (function () {
@@ -661,12 +836,16 @@
         })();
       </script>
     ` : "";
-    return `<!doctype html><html><head><base target="_blank"><meta name="viewport" content="width=device-width,initial-scale=1"><style>
-      html,body{margin:0;background:#050505;color:#ddd;font-family:system-ui,sans-serif;overflow-wrap:anywhere;}
+    return `<!doctype html><html><head><base target="_blank"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/iosevka.css">${widgetBridge}<style>
+      :root{--field-font:"Iosevka Web",monospace;--field-font-system:var(--field-font);--field-font-code:var(--field-font);--field-font-code-fallback:var(--field-font);--field-font-weight:300;}
+      html,body{margin:0;background:#050505;color:#ddd;font-family:"Iosevka Web",monospace;font-weight:300;overflow-wrap:anywhere;}
+      pre,code,kbd,samp,button,input,select,textarea{font-family:inherit;}
+      [style*="font-family:monospace"],[style*="font-family: monospace"]{font-family:"Iosevka Web",monospace!important;}
       body{width:100%;min-width:0;}
       img,svg,canvas,video,iframe{max-width:100%;}
       iframe{width:100%;}
       table{max-width:100%;display:block;overflow:auto;}
+      .stack-auto-card{width:100%!important;max-width:100%;box-sizing:border-box;}
       .field-controller-lines-frame{overflow:hidden;}
       .field-controller-lines-frame .afield-lines-output{display:block;width:100%;max-width:100%;overflow:hidden;}
       .field-controller-lines-frame .afield-lines-output>svg,
@@ -674,10 +853,11 @@
       .field-controller-fline-editor-frame{overflow:hidden;}
       .field-controller-fline-editor-frame .field-fline-editor-shell{width:100%!important;max-width:100%!important;overflow:hidden;aspect-ratio:var(--field-fline-editor-aspect,4 / 3);}
       .field-controller-fline-editor-frame .field-fline-editor-canvas{display:block!important;width:100%!important;height:100%!important;max-width:100%!important;}
-    </style>${flineEditorRuntime}</head><body class="${modeClass}"${flineAspectStyle}>${output.html || ""}${linesScript}</body></html>`;
+    </style>${widgetRuntime}</head><body class="${modeClass}"${flineAspectStyle}>${output.html || ""}${linesScript}</body></html>`;
   }
 
   function resizeOutputFrame(frame, scheduleFollowup = false) {
+    if (!frame.isConnected) return;
     try {
       if (frame.dataset.outputKind === "fline-editor") {
         const aspect = Number(frame.dataset.flineEditorAspect || "0");
@@ -721,11 +901,7 @@
       property: info.selectedProperty || "",
       // A meter's value changes on every poll and must not force a re-render; see updateMeterDisplays.
       // Nor may an array control's value or playhead: see updateArrayDisplays.
-      controls: controls.map((control) => {
-        if (control.type === "meter") return { ...control, value: null };
-        if (ARRAY_TYPES.has(control.type)) return { ...control, value: null, text: null, x: null, y: null };
-        return control;
-      }),
+      controls: controls.map(controlLayoutSnapshot),
     });
     if (signature === state.controlsSignature || state.activeControlId) {
       updateMeterDisplays(controls);
@@ -991,6 +1167,8 @@
   function controlShell(control, valueText) {
     const shell = document.createElement("div");
     shell.className = `phone-control phone-control-${control.type || "slider"}`;
+    shell.classList.toggle("phone-control-inline",
+      !["vec2", "multislider", "matrix", "range", "gesture"].includes(control.type));
 
     const header = document.createElement("div");
     header.className = "phone-control-header";

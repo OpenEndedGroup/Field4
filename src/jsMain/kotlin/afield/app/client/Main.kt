@@ -8111,6 +8111,7 @@ private fun setGoJobsBadge(uid: String, count: Int, strands: List<String>) {
     val existing = box.querySelector(":scope > .go-jobs-badge") as? HTMLElement
     if (count <= 0) {
         existing?.remove()
+        if (existing != null) canvasGestures.requestConnectionGroupRebuild(translationOnly = true)
         return
     }
     if (existing != null) {
@@ -8129,6 +8130,7 @@ private fun setGoJobsBadge(uid: String, count: Int, strands: List<String>) {
             number.textContent = now.toString()
             badge.appendChild(number)
             box.appendChild(badge)
+            canvasGestures.requestConnectionGroupRebuild(translationOnly = true)
         }
     }, GO_JOBS_BADGE_DELAY_MS)
 }

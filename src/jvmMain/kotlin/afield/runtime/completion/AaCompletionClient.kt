@@ -141,19 +141,20 @@ object AaCompletionClient {
         HttpClient.newBuilder().connectTimeout(Duration.ofMillis(1500)).build()
     }
 
-    /** Field's binary classpath (jars + build/classes) — includes afield's own output, unlike the
-     *  gradle `jvmRuntimeClasspath`. Computed once; the running JVM's classpath doesn't change.
-     *
-     *  Plus [PersonalLayer]'s roots, which are deliberately *not* on `java.class.path` — the box
-     *  code being completed compiles against them (KI2's loader chain includes the layer), so the
-     *  sidecar has to analyse against them too. Leaving them out doesn't error, it just returns an
-     *  AA result missing every personal symbol, which is exactly the empty-result shape that
-     *  silently suppresses the K1 fallback. */
-    private val classpathRoots: List<String> by lazy {
-        ((System.getProperty("java.class.path") ?: "").split(File.pathSeparatorChar) +
-            PersonalLayer.roots.map { it.absolutePath })
+    /** The stable app classpath, including Field's own binary output. */
+    private val appClasspathRoots: List<String> by lazy {
+        (System.getProperty("java.class.path") ?: "").split(File.pathSeparatorChar)
             .map { it.trim() }.filter { it.isNotEmpty() && File(it).exists() }.distinct()
     }
+
+    /**
+     * Analyse the same personal jar snapshot the REPL loads. The sidecar caches analysis sessions
+     * by root paths, so sending the rebuildable [PersonalLayer.roots] can retain stale classes even
+     * after that jar changes. [PersonalLayer.activeRoots] has a distinct path per generation; read
+     * it per request so a personal reload also selects a fresh analysis session.
+     */
+    internal val classpathRoots: List<String>
+        get() = (appClasspathRoots + PersonalLayer.activeRoots.map { it.absolutePath }).distinct()
 
     /**
      * Just the core `kotlin-stdlib` jar(s) from Field's classpath — the analysis scope for

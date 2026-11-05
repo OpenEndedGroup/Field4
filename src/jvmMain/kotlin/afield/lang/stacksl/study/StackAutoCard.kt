@@ -120,7 +120,7 @@ object StackAutoCard {
                     KnobNames.shouldAsk(box)) { refreshLater(box) }.orEmpty()
                 val inCode = offsetInCode(box, slot.source) != null
                 append("<div class='slot' data-slot='${slot.name}'>")
-                append("<div><b>stack.auto.${esc(slot.name)}</b> <span class='muted'>· ${if (knobs.isEmpty()) "no numbers to turn" else "${knobs.size} ${if (knobs.size == 1) "number" else "numbers"} · ${if (slot.live) "live" else "as compiled"}"} · the window shows your whole shader</span></div>")
+                append("<div><b>stack.auto.${esc(slot.name)}</b> <span class='muted'>· ${if (knobs.isEmpty()) "no numbers to turn" else "${knobs.size} ${if (knobs.size == 1) "number" else "numbers"} · ${if (slot.live) "live" else "as compiled"}"}</span></div>")
                 if (!inCode) append("<div class='warn'>This program is not written out in the box's code, so Keep cannot put numbers back into it.</div>")
                 knobs.groupBy { it.line }.forEach { (line, onLine) ->
                     val heading = lines.getOrNull(line - 2)?.trim()?.takeIf { it.startsWith("#") }?.removePrefix("#")?.trim()
@@ -143,6 +143,7 @@ object StackAutoCard {
                     }
                 }
                 append("<div style='margin-top:6px'>")
+                if (inCode) append("<button data-act='source' data-slot='${slot.name}'>Show source</button> ")
                 if (inCode && knobs.isNotEmpty()) append("<button data-act='keep' data-slot='${slot.name}'>Keep these numbers</button> ")
                 if (knobs.isNotEmpty()) append("<button data-act='reset' data-slot='${slot.name}'>Reset</button> ")
                 append("<button data-act='in-shader' data-slot='${slot.name}'>Show it in your shader</button> " +
@@ -193,7 +194,7 @@ object StackAutoCard {
         }
     }
 
-    /** One browser action — `keep`, `reset`, `in-shader`, `alone`, `locate` or `capture-key` — on [box]'s slot; returns what the card says. */
+    /** One browser action on [box]'s slot; returns what the card says. */
     internal fun handle(box: Box, json: String): String {
         val message = runCatching { mapper.readTree(json) }.getOrNull() ?: return "unreadable action"
         val slotName = message["slot"]?.asText() ?: return "no slot"
@@ -201,6 +202,11 @@ object StackAutoCard {
         val knobs = knobs(slot)
         val result = try {
             when (message["action"]?.asText()) {
+                "source" -> {
+                    val at = inCode(box, slot.source, 1, 1) ?: return "this program is not written out in the box's code"
+                    BoxStudies.reveal(box, "code", at.first, -1, -1)
+                    return "stack.auto.$slotName starts at line ${at.first} of the box's code"
+                }
                 "locate" -> {
                     val k = message["knob"]?.asInt()?.let { knobs.getOrNull(it) }
                     val line = k?.line ?: message["line"]?.asInt() ?: return "nothing to show"

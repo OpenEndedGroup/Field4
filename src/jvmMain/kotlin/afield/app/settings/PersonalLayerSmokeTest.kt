@@ -24,6 +24,7 @@ import afield.media.stream.*
 import afield.media.video.*
 import afield.runtime.kotlin.KotlinInterface2
 import afield.runtime.kotlin.findClassesNamed
+import afield.runtime.completion.AaCompletionClient
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 
@@ -157,6 +158,14 @@ object PersonalLayerSmokeTest {
         println("  Testing reload retires the layer and rebuilds it...")
         val before = PersonalLayer.current
         val staleClass = before.loadClass(PROBE_CLASS)
+        val completionBefore = AaCompletionClient.classpathRoots
+        val activeBefore = PersonalLayer.activeRoots.map { it.absolutePath }
+        require(completionBefore.containsAll(activeBefore)) {
+            "completion must analyse the personal snapshot the REPL actually loads"
+        }
+        require(PersonalLayer.roots.filter { it.isFile }.none { it.absolutePath in completionBefore }) {
+            "completion must not analyse the rebuildable personal jar; the sidecar caches it by path"
+        }
 
         // One engine per route into the scan, all built while gen0 is still live. Each declaration
         // is shaped so that exactly one branch can find it: `declared` is null at runtime so only
@@ -182,6 +191,17 @@ object PersonalLayerSmokeTest {
         KotlinInterface2.sharedClassLoader = null
 
         val after = PersonalLayer.current
+        val completionAfter = AaCompletionClient.classpathRoots
+        val activeAfter = PersonalLayer.activeRoots.map { it.absolutePath }
+        require(completionAfter.containsAll(activeAfter)) {
+            "completion kept the retired personal snapshot after reload"
+        }
+        require(completionAfter - activeAfter.toSet() == completionBefore - activeBefore.toSet()) {
+            "reloading personal code changed the core completion classpath"
+        }
+        require((activeBefore - activeAfter.toSet()).none { it in completionAfter }) {
+            "completion still sends a retired jar path, so stale analysis can win"
+        }
         require(after !== before) { "advance() did not produce a new layer" }
         require(generateSequence(after) { it.parent }.none { it === before }) {
             "the new layer was stacked on top of the retired one — gen0 classes would still win " +
