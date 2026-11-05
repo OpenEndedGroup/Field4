@@ -9,10 +9,10 @@ transcript `dev_docs/agents/transcripts/gpu_physarum.yaml`, and the user page se
 
 ## Why
 
-Trail/pheromone fields kept being hand-built: the personal `DustPheromoneField`
-(`src/personal/kotlin/drowning/DustPheromone.kt`, ping-pong cube-atlas shells with half-lives, wind,
-diffusion, particle deposits and hill-climbing) and the CPU-only `PhysarumSwarm`. `TrailField` is the
-general 2D part of that, public and reusable. The public code does not depend on `src/personal`.
+Trail/pheromone fields kept being hand-built: a private pheromone field
+(ping-pong cube-atlas shells with half-lives, wind, diffusion, particle deposits and
+hill-climbing) and the CPU-only `PhysarumSwarm`. `TrailField` is the general 2D part of that,
+public and reusable, and the public code depends on nothing private.
 
 ## Design
 
