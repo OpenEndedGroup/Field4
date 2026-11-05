@@ -654,7 +654,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**35766 public symbols across 1627 source files**, 20992 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**35772 public symbols across 1627 source files**, 20996 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -683,7 +683,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Audio AI](audio-ai.md) | 22 | 586 | 586 (100%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 123 | 3103 | 1527 (49%) | Field's small languages, from the host side. |
 | [Workspace](workspace.md) | 237 | 3209 | 1290 (40%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
-| [Machine learning](machine-learning.md) | 112 | 2610 | 1040 (39%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
+| [Machine learning](machine-learning.md) | 112 | 2616 | 1044 (39%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 | [Animation](animation.md) | 10 | 178 | 41 (23%) |  |
 | [Execution](execution.md) | 2 | 9 | 9 (100%) |  |
 | [Output](output.md) | 1 | 25 | 25 (100%) |  |
@@ -712,7 +712,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>tools/<wbr>automation/<wbr></small> [AgentJvmMainLauncher.kt](workspace.md#agentjvmmainlauncher-kt) | Workspace · internal | 2 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>agent/<wbr></small> [AgentLessons.kt](machine-learning.md#agentlessons-kt) | Machine learning | 22 | 11 | Lessons AI4 distils from its own eval runs, kept in a reviewable Markdown file and added to the instructions of every turn that has the graph tools. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [agentRouteAccess.kt](workspace.md#agentrouteaccess-kt) | Workspace · internal | 0 | 0 |  |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>agent/<wbr></small> [AgentTask.kt](machine-learning.md#agenttask-kt) | Machine learning | 79 | 35 | Headless agent tasks: a goal, a document and a set of checks, run through AI4's own turn and judged from what the document's boxes did. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>agent/<wbr></small> [AgentTask.kt](machine-learning.md#agenttask-kt) | Machine learning | 85 | 39 | Headless agent tasks: a goal, a document and a set of checks, run through AI4's own turn and judged from what the document's boxes did. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>agent/<wbr></small> [AgentTaskTranscript.kt](machine-learning.md#agenttasktranscript-kt) | Machine learning | 7 | 3 | Writes an agent task into a box's AI4 chat transcript, so a finished task can be read and continued in that box's chat panel. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [AgentToolDemoEvidence.kt](examples.md#agenttooldemoevidence-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>tools/<wbr></small> [AgentToolExtensions.kt](machine-learning.md#agenttoolextensions-kt) | Machine learning | 13 | 13 | The registration point through which code outside the AI core, including a document's own boxes, adds tools to the AI4 agents. |  |
