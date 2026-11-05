@@ -1,0 +1,181 @@
+name: stencil_bridges
+description: |
+  Three boxes, and a word becomes a stencil: typography supplies the letters, Manifold cuts them
+  out of a plate, and a Datalog program says which letters would drop pieces and need bridges.
+  None of the three knows about the others.
+
+    - `sb_cut` lays out "BRIDGE", turns the glyph outlines into a Manifold `Section`, subtracts it
+      from a rounded plate and splits what is left with `decompose`. It publishes the plate's
+      pieces (centre and area) and the glyphs' horizontal extents as plain rows.
+    - `sb_judge` hands both lists to `Datalog`. The rules call the largest piece the plate, assign
+      every other piece to the glyph whose extent contains its centre, and list the glyphs that
+      lose a piece. It publishes those glyph indices.
+    - `sb_bridge` cuts a vertical bar through each listed glyph only, subtracts the bridged word
+      from the same plate, counts the pieces again, and draws the plate before and after.
+
+  Pure CPU, no Window and no Renderer. Without Manifold (`brew install manifold`) the first and last
+  boxes print how to install it and publish nothing.
+docs:
+  - page: chain_stencil_bridges.md
+    why: "Walks through this typography-to-Manifold-to-Datalog stencil chain."
+operations:
+  - create:
+      box: sb_cut
+      name: "a word, cut out of a plate"
+      frame: { x: 40.0, y: 40.0, w: 260.0, h: 50.0 }
+      properties:
+        code: |
+          import afield.geometry.solid.manifold.JoinType
+          import afield.geometry.solid.manifold.ManifoldLibrary
+          import afield.geometry.solid.manifold.Section
+
+          prop<TextLayout>(stencilWord)
+          prop<Section>(stencilBlank)
+          prop<List<List<Any>>>(stencilPieces)
+          prop<List<List<Any>>>(stencilGlyphs)
+
+          stencilWord = layoutText("BRIDGE", typeface("SansSerif", 120.0))
+          stencilPieces = []
+          stencilGlyphs =
+              stencilWord.glyphs.mapIndexed { g, p ->
+                  [g, p.text, p.origin.x.toDouble(), p.origin.x.toDouble() + p.glyph.advance]
+              }
+
+          run {
+              if (!ManifoldLibrary.isAvailable) {
+                  println(ManifoldLibrary.describe())
+                  return@run
+              }
+              // The plate: the word's bounds, grown by a 14-unit margin with round corners.
+              val (lo, hi) = Section.ofFLines(stencilWord.toFLines(), sampleDistance = 0.5).bounds
+              stencilBlank =
+                  Section.square((hi.x - lo.x).toDouble(), (hi.y - lo.y).toDouble())
+                      .translated(lo.x.toDouble(), lo.y.toDouble())
+                      .offset(14.0, JoinType.ROUND)
+
+              val letters = Section.ofFLines(stencilWord.toFLines(), sampleDistance = 0.5)
+              val pieces = (stencilBlank - letters).decompose()
+              stencilPieces = pieces.mapIndexed { i, s ->
+                  val (a, b) = s.bounds
+                  [i, (a.x + b.x) / 2.0, (a.y + b.y) / 2.0, s.area]
+              }
+              markdown(
+                  "cut",
+                  """
+                  ~~~
+              word                        BRIDGE, ${stencilWord.glyphs.size} glyphs
+              counters, from the font     ${stencilWord.holeCount}
+              plate minus letters         ${pieces.size} pieces
+                  ~~~
+              """,
+              )
+          }
+          println("cut: ${stencilPieces.size} pieces")
+  - create:
+      box: sb_judge
+      name: "which letters fall out, by Datalog"
+      frame: { x: 1240.0, y: 40.0, w: 260.0, h: 50.0 }
+      properties:
+        code: |
+          import afield.data.query.datalog.Datalog
+
+          prop<List<Int>>(needsBridge)
+
+          val d = Datalog()
+          d.facts("piece", stencilPieces)
+          d.facts("glyph", stencilGlyphs)
+          d.add(
+              """
+              #datalog
+              % the plate is the piece with the largest area; every other piece is an island
+              biggest(M) :- M = max A : { piece(_, _, _, A) }.
+              plate(P) :- piece(P, _, _, A), biggest(A).
+              island(P, X) :- piece(P, X, _, _), !plate(P).
+
+              % an island belongs to the glyph whose advance contains its centre
+              falls(G, P) :- island(P, X), glyph(G, _, X0, X1), X > X0, X < X1.
+              lost(G, C, N) :- glyph(G, C, _, _), N = count : { falls(G, P) }, N > 0.
+              needs(G) :- falls(G, _).
+              safe(C) :- glyph(G, C, _, _), !needs(G).
+          """,
+          )
+
+          val lost = d.query("lost(G, C, N)").rows.sortedBy { it[0] as Long }
+          needsBridge = lost.map {
+              (it[0] as Long).toInt()
+          }
+          val safe = d.query("safe(C)").column("C")
+          markdown(
+              "judged",
+              """
+              ~~~
+          islands               ${d.query("island(P, X)").size}
+          letters that lose one ${lost.joinToString("  ") { "${it[1]}:${it[2]}" }}
+          letters that are safe ${safe.joinToString("  ")}
+              ~~~
+          """,
+          )
+          println("judged: ${needsBridge.size} letters need bridges")
+  - create:
+      box: sb_bridge
+      name: "bridged, and counted again"
+      frame: { x: 2440.0, y: 40.0, w: 260.0, h: 50.0 }
+      properties:
+        code: |
+          import afield.geometry.solid.manifold.ManifoldLibrary
+          import afield.geometry.solid.manifold.Section
+
+          run {
+              if (!ManifoldLibrary.isAvailable) {
+                  println(ManifoldLibrary.describe())
+                  return@run
+              }
+              val letters = Section.ofFLines(stencilWord.toFLines(), sampleDistance = 0.5)
+              val (lo, hi) = letters.bounds
+
+              // One bar, 5 units wide, down the middle of each letter Datalog listed.
+              val bars = Section.union(
+                  needsBridge.map { g ->
+                      val p = stencilWord.glyphs[g]
+                      val mid = p.origin.x + p.glyph.advance / 2.0
+                      Section.square(5.0, (hi.y - lo.y).toDouble() + 2.0).translated(mid - 2.5, lo.y.toDouble() - 1.0)
+                  },
+              )
+              val before = (stencilBlank - letters).decompose()
+              val after = (stencilBlank - (letters - bars)).decompose()
+
+              // Plate in grey, islands in red; the bridged plate below it.
+              fun draw(pieces: List<Section>, dy: Double) = pieces.mapIndexed { i, s ->
+                  val plate = s.area == pieces.maxOf { it.area }
+                  s.toFLine()
+                      .transform { it + vec(0.0, dy, 0.0) }
+                      .also {
+                          it.filled = true
+                          it.stroked = false
+                          it.color = if (plate) vec(0.62, 0.64, 0.70, 1.0) else vec(0.95, 0.30, 0.30, 1.0)
+                      }
+              }
+              val gap = (hi.y - lo.y) + 60.0
+              lines(draw(before, 0.0) + draw(after, gap), w = 900.0, h = 520.0, fitToSize = true)
+              markdown(
+                  "bridged",
+                  """
+                  ~~~
+              bars cut              ${needsBridge.size}, one per listed letter
+              pieces before         ${before.size}
+              pieces after          ${after.size}
+              plate area before     ${before.maxOf { it.area }.f2}
+              plate area after      ${after.maxOf { it.area }.f2}
+                  ~~~
+              """,
+              )
+              println("bridged: ${before.size} pieces before, ${after.size} after")
+          }
+  - connect: { parent: sb_cut, child: sb_judge }
+  - connect: { parent: sb_judge, child: sb_bridge }
+  - execute: { box: sb_cut, property: code }
+  - await: { wait: pending }
+  - execute: { box: sb_judge, property: code }
+  - await: { wait: pending }
+  - execute: { box: sb_bridge, property: code }
+  - await: { wait: pending }
