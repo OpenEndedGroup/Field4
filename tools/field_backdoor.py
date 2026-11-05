@@ -295,6 +295,11 @@ def page_eval_body_warning(script: str) -> str | None:
     )
 
 
+def agent_task_allow_remote(flag: bool, env: "os._Environ[str] | dict[str, str]") -> bool:
+    """A live agent-task may reach a non-local provider only when asked: the flag or AFIELD_AGENT_TASK_ALLOW_REMOTE=1."""
+    return bool(flag) or env.get("AFIELD_AGENT_TASK_ALLOW_REMOTE", "").strip().lower() in ("1", "true", "yes")
+
+
 def parse_agent_check(spec: str) -> dict[str, Any]:
     """`kind:arg:arg` -> an AgentCheck payload; mirrors AgentCheck.parse on the server.
 
@@ -322,7 +327,7 @@ def parse_agent_check(spec: str) -> dict[str, Any]:
         return {"kind": kind, "parent": parent, "child": child}
     if kind == "output-picture":
         return {"kind": kind, "box": rest}
-    if kind in ("effects-absent", "effects-present", "tool-used"):
+    if kind in ("effects-absent", "effects-present", "tool-used", "tool-ok"):
         return {"kind": kind, "text": rest.strip()}
     if kind == "output-rising":
         parts = rest.split(":")
@@ -3877,6 +3882,9 @@ def build_command_parser() -> argparse.ArgumentParser:
                                    help="legacy sends instructions inside the stored message (the context-pipeline A/B arm)")
     agent_task_parser.add_argument("--follow-up", dest="follow_ups", action="append", default=[],
                                    help="A further user turn in the same conversation, after the goal's; repeatable")
+    agent_task_parser.add_argument("--allow-remote-provider", action="store_true",
+                                   help="Let a live turn use a non-local AI provider (sends goal, code and tool results off this machine); "
+                                        "also AFIELD_AGENT_TASK_ALLOW_REMOTE=1")
     agent_task_parser.add_argument("--timeout", type=float)
 
     agent_eval_parser = subparsers.add_parser("agent-eval", add_help=False)
@@ -5125,6 +5133,7 @@ async def dispatch_command(
             "programs": args.programs,
             "context": args.context,
             "followUps": list(args.follow_ups),
+            "allowRemote": agent_task_allow_remote(args.allow_remote_provider, os.environ),
         }
         if args.repo_root:
             payload["repoRoot"] = str(Path(args.repo_root).expanduser().resolve())
@@ -5144,6 +5153,9 @@ async def dispatch_command(
         except Exception as exc:  # the result is still the result
             client.logger.exception("agent_task_snapshot_refresh_error", exc)
         ok = data.get("verdict") == "pass"
+        if data.get("offMachine"):
+            print(f"WARNING agent-task: this turn went to remote provider '{data.get('provider')}' "
+                  f"(model {data.get('model')}); its goal, code and tool results left this machine.", file=sys.stderr)
         result = command_result(command_line, ok, data=data, events=[])
         client.logger.log("command_dispatch_complete", commandLine=command_line, ok=ok, verdict=data.get("verdict"))
         return result

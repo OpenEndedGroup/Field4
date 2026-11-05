@@ -553,8 +553,11 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json --port
   back inside the stored message (both on `agent-task` and `agent-eval`: the A/B arms in
   [`../ai/AI4_PI_LESSONS.md`](../ai/AI4_PI_LESSONS.md)); `agent-task --follow-up "..."` (repeatable)
   adds user turns to the same conversation. Check kinds `effects-absent:<EFFECT>`,
-  `effects-present:<EFFECT>` and `tool-used:<Name>` read the turn's tool calls, a tool program's
-  nested ones included.
+  `effects-present:<EFFECT>`, `tool-used:<Name>` (called at all) and `tool-ok:<Name>` (at least one
+  call succeeded; prefer it, since `tool-used` passes on calls that all errored) read the turn's tool
+  calls, a tool program's nested ones included. A live `agent-task` refuses a non-`local` AI provider
+  unless `--allow-remote-provider` or `AFIELD_AGENT_TASK_ALLOW_REMOTE=1`, and warns on stderr when a turn went
+  off the machine (`offMachine` in the result).
 - Picture checks: `output-picture:B` (a capture of B's output is not blank) and
   `output-colour:B:#rrggbb:0.05` (at least that share of it is that colour), and
   `output-rising:B:#c1,#c2:N` (at least N bars in those colours, rising left to right, the tallest
