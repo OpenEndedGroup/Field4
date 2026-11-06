@@ -654,7 +654,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**35854 public symbols across 1633 source files**, 21061 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**35855 public symbols across 1633 source files**, 21062 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -672,7 +672,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Polytopes](polytopes.md) | 17 | 586 | 431 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 766 | 514 (67%) | Nonlinear least squares, aimed at geometry. |
 | [Simulation](simulation.md) | 48 | 1472 | 832 (56%) | Making a shape behave. |
-| [Imaging](imaging.md) | 55 | 885 | 450 (50%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
+| [Imaging](imaging.md) | 55 | 886 | 451 (50%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
 | [ALife](alife.md) | 17 | 938 | 851 (90%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization), plus the measurement layer every one of them makes its claims through. |
 | [Function](function.md) | 16 | 611 | 405 (66%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
 | [Search](search.md) | 10 | 464 | 464 (100%) | Optimisation over a space you can only sample. |
@@ -1824,7 +1824,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>browser/<wbr></small> [PuppetBrowserInteraction.kt](imaging.md#puppetbrowserinteraction-kt) | Imaging | 37 | 7 | Input adapters that route mouse, keyboard and controller rays into a `PuppetBrowser`. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>browser/<wbr></small> [PuppetBrowserKaleidoscope.kt](imaging.md#puppetbrowserkaleidoscope-kt) | Imaging | 12 | 4 | A Vulkan effect that draws a live puppet browser page through a grid of moving, mirrored triangular shards. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>browser/<wbr></small> [PuppetBrowserPage.kt](imaging.md#puppetbrowserpage-kt) | Imaging | 10 | 10 | Page queries on a puppet browser: an element's text or attribute, a count, a table as rows, and a wait for a condition. | [Chromium as a native Field surface](../puppet_browser.md) |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>browser/<wbr></small> [PuppetBrowserVrInput.kt](imaging.md#puppetbrowservrinput-kt) | Imaging | 19 | 5 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>browser/<wbr></small> [PuppetBrowserVrInput.kt](imaging.md#puppetbrowservrinput-kt) | Imaging | 20 | 6 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>browser/<wbr></small> [PuppetBrowserVrPanel.kt](imaging.md#puppetbrowservrpanel-kt) | Imaging | 15 | 3 | Shows a puppet browser page as a clickable, scrollable quad in VR or in the desktop stereo stand-in. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>browser/<wbr></small> [PuppetBrowserWindowPanel.kt](imaging.md#puppetbrowserwindowpanel-kt) | Imaging | 14 | 2 | Shows a puppet browser page letterboxed inside a Field render window, with mouse hit-testing back into page coordinates. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>vision/<wbr></small> [PyramidOpticalFlow.kt](imaging.md#pyramidopticalflow-kt) | Imaging | 14 | 4 | The portable optical-flow backend: coarse-to-fine Lucas–Kanade built from ordinary fragment passes, for devices without a hardware motion engine. |  |
