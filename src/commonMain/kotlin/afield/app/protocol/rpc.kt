@@ -1315,7 +1315,15 @@ data class BoxScreenshotRequest(
     /** One of [ExpectedOutputs]; what this capture asserts the box's output is. */
     val expectOutputs: String = ExpectedOutputs.PANEL,
     /** Open every `<details>` in the box's output before measuring, as a reader clicking each one would. */
-    val openDetails: Boolean = false
+    val openDetails: Boolean = false,
+    /**
+     * Hide every other box, and its output panels, until the next box screenshot on this page.
+     * For a page that exists only to take pictures (AI4's capture page): there, another box's
+     * floating panel over the clip is in the picture, and the model takes it for this box's output.
+     */
+    val isolate: Boolean = false,
+    /** Output channels of this box to leave out of the picture, e.g. `ai-chat` (the box's own AI conversation). */
+    val excludeChannels: List<String> = emptyList()
 )
 
 @Serializable

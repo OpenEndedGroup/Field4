@@ -147,7 +147,7 @@ const val RUN_TOOL_PROGRAM = "RunToolProgramRequest"
  * model's own call arguments — inside a program it would vanish, so programs use `text(...)` instead.
  * `AwaitStudyBuildsRequest` ends the turn, which only a call the model makes itself can do.
  */
-internal val NOT_CALLABLE_FROM_PROGRAMS = setOf(RUN_TOOL_PROGRAM, "Commentary", "DescribeToolsRequest", "AwaitStudyBuildsRequest")
+internal val NOT_CALLABLE_FROM_PROGRAMS = setOf(RUN_TOOL_PROGRAM, "Commentary", "DescribeToolsRequest", "AwaitStudyBuildsRequest", "AwaitRepoCommandsRequest")
 
 /** `AFIELD_AI4_TOOL_PROGRAMS=off` (or `-Dafield.ai4.toolPrograms=off`) removes the tool everywhere. */
 internal object ToolPrograms {

@@ -265,7 +265,10 @@ class IdeChatHelpers(
             dynamicTools = dynamicTools,
             fieldGraph = fieldGraph,
             inbox = inbox,
-            suspendable = suspendable
+            suspendable = suspendable,
+            // A chat that may edit and run its document may also work in Field's checkout (FieldCheckoutRepo).
+            repoFiles = if (fieldGraph != null) afield.ai.tools.FieldCheckoutRepo.files else null,
+            repoCommands = if (fieldGraph != null) afield.ai.tools.FieldCheckoutRepo.commands else null
         )
 
         return chatGeneral(state, code, lang, userPrompt, ctx, imageUrls, vectorStoreIds,

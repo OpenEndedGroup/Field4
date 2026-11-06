@@ -218,10 +218,26 @@ object BoxOutputLog {
     internal fun observeVerdict(report: ExecutionReport, document: String = "") {
         record(
             report.uid, "verdict",
-            if (report.success) "${report.mode}: ${report.stage}" else "${report.mode}: failed\n${report.error}",
+            if (report.success) "${report.mode}: ${report.stage}" else "${report.mode}: failed\n${decodeHtmlEntities(report.error)}",
             property = report.property,
             success = report.success, document=document
         )
+    }
+
+    private val NUMERIC_ENTITY = Regex("&#(x[0-9A-Fa-f]{1,6}|[0-9]{1,7});")
+
+    /**
+     * A verdict's error escaped for the page, as plain text: `Function invocation &#39;y()&#39;
+     * expected` reads as `'y()'`. Entities only — unlike [htmlToText] nothing that looks like a tag
+     * is dropped, because compiler messages are full of `<T>` and `->`.
+     */
+    fun decodeHtmlEntities(text: String): String {
+        if ('&' !in text) return text
+        return NUMERIC_ENTITY.replace(text) { m ->
+            val v = m.groupValues[1]
+            val code = if (v.startsWith("x")) v.drop(1).toIntOrNull(16) else v.toIntOrNull()
+            if (code == null || !Character.isValidCodePoint(code)) m.value else String(Character.toChars(code))
+        }.replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", "\"").replace("&apos;", "'").replace("&amp;", "&")
     }
 
     internal fun htmlToText(html: String): String = html

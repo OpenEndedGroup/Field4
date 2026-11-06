@@ -32,8 +32,9 @@ class RepoCommandToolsTest {
     @Test fun templatesBuildFixedArgvFromCheckedSlots() = Fixture().use { f ->
         assertEquals(listOf("./gradlew", "--console=plain", "jvmTest", "--tests", "afield.ai.tools.RepoFileToolsTest"),
             f.build("gradle", "jvmTest", "--tests", "afield.ai.tools.RepoFileToolsTest"))
-        assertEquals(listOf("uv", "run", "--project", ".", "--group", "backdoor", "python", "tools/test_thing.py", "FieldAgentTest.test_x"),
+        assertEquals(listOf("uv", "run", "--project", ".", "--group", "backdoor", "python", "-m", "unittest", "tools.test_thing.FieldAgentTest.test_x"),
             f.build("python-test", "tools/test_thing.py", "FieldAgentTest.test_x"))
+        assertEquals("tools.test_thing", f.build("python-test", "tools/test_thing.py").last())
         assertEquals("tools/check_thing.py", f.build("check", "tools/check_thing.py").last())
         val diff = f.build("git-diff", "--stat", "main...HEAD", "--", "docs/a.md")
         assertEquals(listOf("--stat", "main...HEAD", "--", "docs/a.md"), diff.takeLast(4))
@@ -62,7 +63,7 @@ class RepoCommandToolsTest {
             assertFailsWith<RepoPathRefused>(p) { f.build("git-diff", "--", p) }
         assertFailsWith<RepoPathRefused> { f.build("check", "tools/check_thing.py") }
         assertFailsWith<RepoPathRefused> { f.build("python-test", "tools/../tools/test_thing.py") }
-        assertEquals("tools/test_thing.py", f.build("python-test", "tools/test_thing.py").last())
+        assertEquals("tools.test_thing", f.build("python-test", "tools/test_thing.py").last())
     }
 
     @Test fun onlyTheJobsNamesRun(): Unit = Fixture(allowed = setOf("git-status")).use { f ->

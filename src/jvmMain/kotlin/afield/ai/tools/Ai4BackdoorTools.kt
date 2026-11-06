@@ -202,6 +202,9 @@ internal object Ai4BackdoorTools {
             compileKotlin = codeTools.compileKotlin,
             evaluateKotlinExpression = codeTools.evaluateKotlinExpression,
             fieldGraph = afield.ai.agent.FieldGraphTools(sessionInfo),
+            // The same Field-checkout tools the box chat gets, so they can be called and captured from here too.
+            repoFiles = FieldCheckoutRepo.files,
+            repoCommands = FieldCheckoutRepo.commands,
             focus = focusBox?.let { token ->
                 val box = boxByIdOrNull(token)
                     ?: uniqueBoxOrRefuse(token, sessionInfo.boxes.values.filter { it.name == token })

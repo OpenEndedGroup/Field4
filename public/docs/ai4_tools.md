@@ -174,10 +174,10 @@ output area and hands the model the picture.
   ],
   "width": 430,
   "height": 172,
-  "inkFraction": 0.03980530016224987,
+  "inkFraction": 0.04002163331530557,
   "dominantColours": [
-    "#050505 76.9%",
-    "#151515 19.1%",
+    "#050505 71.0%",
+    "#151515 25.0%",
     "#3a6ea5 2.4%",
     "#203a56 0.7%",
     "… 2 more"
@@ -188,6 +188,11 @@ output area and hands the model the picture.
 This is the picture that came back with it:
 
 ![The Wave box's output as ViewBoxOutputRequest captured it](assets/ai4_tools/wave.png)
+
+The picture comes from a separate browser that shows only this box. Other boxes are hidden, so a
+neighbour's output panel floating over this one cannot get into the picture. The box's own AI Chat
+panel is left out too. A box whose only panel is its chat has nothing to capture, and the call says
+so.
 
 ## Asking where a value comes from
 
@@ -466,32 +471,33 @@ program. Each tool is a function, named without its `Request` suffix.
   "message": "2 tutorial(s). Read a codeFiles entry with AttachmentRequest to see working box code.",
   "matches": [
     {
-      "name": "polyvector_explorer",
-      "description": "Line-drawing vectorization by polyvector fields (Bessmeltsev & Solomon). A generated pencil sketch with a T-junction, a crossing and a wave, vectorized; its field is built once and a slider re-traces it with more or less pruning, drawing th… (160 more characters)",
+      "name": "learned_pen",
+      "description": "Continuing an FLine with a learned pen (`afield.ai.learning.pen`): the Distill handwriting LSTM, run in Kotlin, carries on a line you give it; a fan of possible futures from one line; a drawing panel the pen keeps writing from, with sliders… (160 more characters)",
       "boxes": [
-        "1 - A sketch, re-traced under a slider"
+        "3 - draw, and it writes on (launch)"
       ],
       "docs": [
-        "polyvector.md: Explains vectorizing line drawings with polyvector fields."
+        "learned_pen.md: Explains the model, its units and controls, continueWith, PenLine, futures, cell edits and retraining."
       ],
       "codeFiles": [
-        "public/docs/assets/agent_transcripts/polyvector_explorer/pv_sketch_code_.kt",
-        "public/docs/assets/agent_transcripts/polyvector_explorer/pv_geometry_code_.kt",
-        "public/docs/assets/agent_transcripts/polyvector_explorer/pv_photograph_code_.kt"
+        "public/docs/assets/agent_transcripts/learned_pen/lp_draw_code_.kt"
       ]
     },
     {
-      "name": "ai4_paint_studio",
-      "description": "A studio for AI4 over the paint simulator (afield.graphics.paint). One box registers an agentExtension: twenty paint tools the chat agent can call (stroke, dab, work a region, glaze, draw, hatch, stipple, wait, a fresh canvas or sheet of pa… (160 more characters)",
+      "name": "a_pen_that_sees",
+      "description": "A learned pen that senses the ink around it (`afield.ai.learning.pen`, PenSense): what it sees at its tip; a seeing pen hatching beside a drawn line, after Michaux's mescaline drawings, against a blind twin trained on the same drawings; cra… (160 more characters)",
       "boxes": [
-        "Studio"
+        "6 - hatch beside your line (launch)",
+        "9 - hatch your drawing (launch)",
+        "7 - cracks in your shape (launch)"
       ],
       "docs": [
-        "ai4_painting.md: Covers AI4 painting with the paint simulator tools this studio registers.",
-        "paint_canvas.md: Explains the paint canvas the agent's strokes land on."
+        "a_pen_that_sees.md: Explains the sense inputs, the Michaux and cracks corpora, seeing against blind, and training a pen that sees."
       ],
       "codeFiles": [
-        "public/docs/assets/agent_transcripts/ai4_paint_studio/ai4_paint_studio_code_.kt"
+        "public/docs/assets/agent_transcripts/a_pen_that_sees/ps_draw_code_.kt",
+        "public/docs/assets/agent_transcripts/a_pen_that_sees/ps_doodle_code_.kt",
+        "public/docs/assets/agent_transcripts/a_pen_that_sees/ps_shape_code_.kt"
       ]
     }
   ]
@@ -514,11 +520,11 @@ program. Each tool is a function, named without its `Request` suffix.
     {
       "symbol": "FLine",
       "kind": "class",
-      "locationHint": "src/jvmMain/kotlin/afield/geometry/path/FLine.kt:196",
+      "locationHint": "src/jvmMain/kotlin/afield/geometry/path/FLine.kt:223",
       "filePath": "src/jvmMain/kotlin/afield/geometry/path/FLine.kt",
-      "line": 196,
+      "line": 223,
       "definitionLine": "class FLine : HasProperties {",
-      "kdoc": "Mutable path composed of move/line/cubic/close instructions.\n\nUse [moveTo], [lineTo], [cubicTo], and [close] to build geometry. Builders return\n[FLine] for chaining; use [here] to access the most recently added [Node] when you\nneed per-inst… (57 more characters)"
+      "kdoc": "Mutable path composed of move/line/cubic/close instructions.\n\nUse [moveTo], [lineTo], [cubicTo], and [close] to build geometry. Builders return\n[FLine] for chaining; use [here] to access the most recently added [Node] when you\nneed per-inst… (1345 more characters)"
     }
   ]
 }
@@ -609,10 +615,11 @@ A guide is a Markdown file saved in the document, for anything that should outla
 
 ## Working on Field's own repository
 
-AI4 can also do a coding agent's job on a checkout of Field, outside any document: set
-`FIELD_AGENT=field` (or put `field` in `~/.afield/agent`) and the landing queue's fixer, its `huh?`,
-and `tools/docs_notes.py revise` ask AI4 instead of `claude` or `codex`. A chat never sees these
-tools; only a job that names a checkout gets them.
+AI4 can also work on Field's own checkout, outside any document. The chat panel on a box gets these
+tools for the checkout Field is running from, so a conversation can add a page to the docs, register a
+transcript or run a smoke test. Set `AFIELD_AI4_REPO_TOOLS=off` to withhold them. A job can also name a
+checkout of its own: set `FIELD_AGENT=field` (or put `field` in `~/.afield/agent`) and the landing
+queue's fixer, its `huh?`, and `tools/docs_notes.py revise` ask AI4 instead of `claude` or `codex`.
 
 - `RepoReadFileRequest`, `RepoListFilesRequest` and `RepoSearchRequest` read the checkout, and
   `RepoPatchFileRequest` and `RepoWriteFileRequest` change it. Each job lists the paths it may read and
@@ -625,6 +632,18 @@ tools; only a job that names a checkout gets them.
   is stopped (Gradle's shared daemon is left alone). Long output keeps its beginning and its end.
   The command also refuses to start while a smoke, UI or docs run holds that checkout's verification
   lock.
+- A chat can also run `docs-build` (with a runner mode, and optionally `--page`), `docs-publications`,
+  `field-test` (by catalog `--id` or `--tag`) and `jvm-main` (a Field entrypoint, started through the
+  backdoor so it gets the JVM flags it needs).
+- `RepoStartCommandRequest` starts any of these in the background and returns at once with a job id.
+  `RepoCommandStatusRequest` reads the job's output and can wait up to two minutes for it to finish or
+  to print a given line. `RepoStopCommandRequest` stops it. A job keeps running after the turn that
+  started it, so a later turn can pick it up. `AwaitRepoCommandsRequest`† ends the turn, and Field
+  continues the conversation with the job's exit code and the end of its log when it finishes.
+- A command that could compile Field is refused while Field is running from the same checkout and
+  its source has changed since Field started. Compiling then would replace classes the running Field
+  has not loaded yet, and they would fail until Field is restarted. Restart Field first, or build in
+  another worktree.
 
 The fixer gets the Gradle, Python, check and git commands, so it can reproduce a red, make the
 smallest edit, and run the same command again to confirm it. To try it by hand, run
@@ -646,7 +665,7 @@ A few tools appear only in a particular kind of chat, such as one about a RectSL
 pages cover them.
 
 <!-- ai4-tools-reference:begin -->
-76 tools in 17 namespaces.
+91 tools in 19 namespaces.
 
 ### `graph`
 
@@ -666,6 +685,7 @@ Boxes: make, read, change, connect, run, launch, stop, and look at their output.
 | `RunBoxRequest` | Run a box's code once to completion (like the Run command) and wait for its verdict. | execute code |
 | `SetBoxPropertyRequest` | Replace a whole text property on a box, most often `code`, e.g. property = `code`, value = `println(1)`. | mutate document |
 | `StopBoxRequest` | Stop a running box and everything it launched (e.g. box = `Ticker`). | control runtime |
+| `SymbolAtRequest` | Ask what a name means at a place in a box's code, the way the editor hover does, but with everything Field knows: the hover text, every candidate the compiler offers there (overloads with signatures and types), the live value from the box's last run (or its parents'), the lines where this box declares it, and indexed Field declarations of that name with KDoc and source. | read document |
 | `ViewBoxOutputRequest` | Look at what a box SHOWS: capture its output area (the panels its display(...) calls fill) as a picture. | capture image |
 
 ### `kotlin`
@@ -832,6 +852,34 @@ The document's kit (see [Kits](kits.md)).
 | Tool | What it does | Effects |
 | --- | --- | --- |
 | `InspectKitRequest` \* | Say which kit this document runs and what differs from it. | filesystem read, read document |
+
+### `presentation`
+
+Slide files and built presentations (see [Presentation studio](presentation_studio.md)).
+
+| Tool | What it does | Effects |
+| --- | --- | --- |
+| `PresentationControlRequest` \* | Control an already built presentation by host box UID. | control runtime, execute code, mutate document |
+| `PresentationInspectRequest` | Inspect built Kotlin presentations in this document: returns host box UIDs, step IDs, titles, current cue and available reset action. | read document |
+| `PresentationReadRequest` | Read the outline and revision of an editable Field slide file, default files/talk.slides.json. | read document |
+| `PresentationWriteSlideRequest` | Create or revise ONE Markdown slide using the revision from PresentationReadRequest; use it after a read, e.g. slide id `intro` with a new body. | filesystem write, mutate document |
+
+### `repo`
+
+Field's own checkout: its files, and named commands run in the foreground or as background jobs.
+
+| Tool | What it does | Effects |
+| --- | --- | --- |
+| `AwaitRepoCommandsRequest` † | End this turn and let Field wait for background jobs without the model, then resume this conversation with how each ended (state, exit code, time and the last lines of its log), e.g. jobIds [`job-213045-1`], maxMinutes 60. | agent state |
+| `RepoCommandStatusRequest` | Read a background job's state and output, waiting for it if asked, e.g. jobId `job-213045-1`, waitSeconds 120, untilText `BUILD SUCCESSFUL`. | filesystem read |
+| `RepoListFilesRequest` | List repository files matching a glob, relative to the job's root, e.g. `public/docs/*.md` or `src/jvmMain/kotlin/afield/ai/**`. | filesystem read |
+| `RepoPatchFileRequest` | Replace an exact passage in a repository file the job may write, e.g. oldText `val x = 1` with newText `val x = 2`. | filesystem write |
+| `RepoReadFileRequest` | Read a text file of the repository this job works in, with line numbers. | filesystem read |
+| `RepoRunCommandRequest` | Run one of this job's allowed commands in its repository (not a shell: a named argv template). | execute code, filesystem write |
+| `RepoSearchRequest` | Search the repository files this job may read for literal text (or a Java regex with regex=true), one match per line. | filesystem read |
+| `RepoStartCommandRequest` | Start one of the allowed repository commands in the background and return at once with its jobId (e.g. command `docs-build`, args ["never"]; or `field-test`, args ["--id", "examples.demo-transcript.exec"]). | execute code, filesystem write |
+| `RepoStopCommandRequest` | Stop a background job and everything it started (TERM, then KILL after a grace; Gradle daemons are left alone), e.g. jobId `job-213045-1`. | execute code |
+| `RepoWriteFileRequest` | Create a repository file the job may write, with this content, e.g. path `dev_docs/notes/new_page.md`. | filesystem write |
 
 ### `core`
 

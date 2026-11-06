@@ -73,7 +73,7 @@ class StudyBuildAwaits(
     /** One awaited job as saved: [directory] is the runner's, read when the runner is not running. */
     @Serializable
     data class SavedJob(val boxId: String, val name: String, val jobId: String, val stage: String = "",
-        val label: String = "", val directory: String = "")
+        val label: String = "", val directory: String = "", val kind: String = "")
 
     private class Armed(val info: SessionInformation, val box: Box, @Volatile var saved: SavedSuspension) {
         val status = ConcurrentHashMap<String, String>()
@@ -98,7 +98,7 @@ class StudyBuildAwaits(
         val now = clock()
         val previous = armed[key(info, box)]?.saved ?: read(box)
         val jobs = ((previous?.jobs.orEmpty()) + suspension.jobs.map {
-            SavedJob(it.boxId, it.name, it.jobId, it.stage, it.label, it.directory)
+            SavedJob(it.boxId, it.name, it.jobId, it.stage, it.label, it.directory, it.kind)
         }).distinctBy { Triple(it.boxId, it.name, it.jobId) }
         val deadline = maxOf(previous?.deadline ?: 0L, suspension.deadlineMs)
         val saved = SavedSuspension(UUID.randomUUID().toString(), property, maxToolRounds, previous?.since ?: now, deadline, jobs, waitingRow(jobs, deadline))
@@ -163,6 +163,13 @@ class StudyBuildAwaits(
             val graph = graphFor(a.info)
             var terminal = true
             for (job in a.saved.jobs) {
+                if (job.kind == AwaitedBuild.REPO_JOB) {
+                    // A repository command lives in this JVM only: one a restarted Field no longer has has settled.
+                    val repo = afield.ai.tools.RepoCommandJobs.get(job.jobId)
+                    a.status[job.jobId] = repo?.state ?: "lost"
+                    if (repo?.alive == true) terminal = false
+                    continue
+                }
                 val state = graph.studyBuilds.awaitedState(job.awaited())
                 if (state.runnerLive) a.runnerMissingSince.remove(job.jobId) else a.runnerMissingSince.putIfAbsent(job.jobId, now)
                 val status = state.record?.status
@@ -176,8 +183,11 @@ class StudyBuildAwaits(
                 if (!settled) terminal = false
             }
             if (!terminal && now < a.saved.deadline) continue
-            val outcomes = a.saved.jobs.map { graph.studyBuilds.awaitedOutcome(it.awaited()) }
-            val text = continuationText(outcomes, now - a.saved.since, timedOut = !terminal)
+            val (repoJobs, studyJobs) = a.saved.jobs.partition { it.kind == AwaitedBuild.REPO_JOB }
+            val outcomes = studyJobs.map { graph.studyBuilds.awaitedOutcome(it.awaited()) }
+            val text = if (studyJobs.isEmpty()) repoContinuationText(repoJobs, now - a.saved.since, timedOut = !terminal)
+                else continuationText(outcomes, now - a.saved.since, timedOut = !terminal) +
+                    (if (repoJobs.isEmpty()) "" else "\n\n" + repoJobLines(repoJobs))
             val (images, shown) = pictures(graph, outcomes)
             val continuation = AiAssist(uid = a.box.id, prompt = (a.box.getPropertyRaw(a.saved.property) as? String).orEmpty(),
                 extraPrompt = text + shown, images = images, property = a.saved.property, kind = "general", maxToolRounds = a.saved.maxToolRounds,
@@ -259,10 +269,36 @@ class StudyBuildAwaits(
             AiBoxConversation.markPending(box)
         }
 
-        private fun SavedJob.awaited() = AwaitedBuild(boxId, name, jobId, stage, label, directory)
+        private fun SavedJob.awaited() = AwaitedBuild(boxId, name, jobId, stage, label, directory, kind)
 
         private fun jobLine(job: SavedJob) =
-            "- `${job.name}/${job.stage}`${job.label.takeIf { it.isNotBlank() }?.let { " ($it)" }.orEmpty()}, attempt `${job.jobId}`"
+            if (job.kind == AwaitedBuild.REPO_JOB) "- `${job.label.ifBlank { job.name }}`, job `${job.jobId}`"
+            else "- `${job.name}/${job.stage}`${job.label.takeIf { it.isNotBlank() }?.let { " ($it)" }.orEmpty()}, attempt `${job.jobId}`"
+
+        /** How much of each awaited command's log a resumed turn is shown: its last lines are where verdicts are. */
+        internal const val REPO_TAIL_BYTES = 3_000
+
+        /** Each awaited repository command as the resumed turn reads it: state, exit, time and the end of its log. */
+        internal fun repoJobLines(jobs: List<SavedJob>): String = jobs.joinToString("\n") { saved ->
+            val job = afield.ai.tools.RepoCommandJobs.get(saved.jobId)
+                ?: return@joinToString "- `${saved.label.ifBlank { saved.name }}`, job `${saved.jobId}`: **lost**: this Field no longer has it " +
+                    "(Field restarted, which stopped it). Start it again if it is still needed."
+            val r = afield.ai.tools.RepoCommandJobs.read(job, from = -1, waitSec = 0, until = "", maxBytes = REPO_TAIL_BYTES)
+            "- `${saved.label.ifBlank { saved.name }}`, job `${job.id}`: **${r.state}**" +
+                (r.exitCode?.let { ", exit $it" } ?: "") + ", ${duration(r.elapsedMs)}; ${r.message}. Log: `${r.logPath}`. It ended with:\n\n```text\n" +
+                r.output.trimEnd() + "\n```"
+        }
+
+        internal fun repoContinuationText(jobs: List<SavedJob>, waitedMs: Long, timedOut: Boolean): String = buildString {
+            append(afield.ai.conversation.AiChatBlock.FIELD_MESSAGE_PREFIX)
+            val n = jobs.size
+            if (timedOut) append("the time you allowed for ${if (n == 1) "this command" else "these commands"} has passed (${duration(waitedMs)}); " +
+                "what is still running keeps running. No model call was made while you waited.\n\n")
+            else append("the ${if (n == 1) "command" else "commands"} you awaited ${if (n == 1) "has" else "have"} ended, after ${duration(waitedMs)}. " +
+                "No model call was made while ${if (n == 1) "it" else "they"} ran.\n\n")
+            append(repoJobLines(jobs))
+            append("\n\nCarry on from where you stopped. RepoCommandStatusRequest with a jobId and fromByte reads any part of a log.")
+        }
 
         private fun plural(n: Int) = if (n == 1) "1 build" else "$n builds"
 
