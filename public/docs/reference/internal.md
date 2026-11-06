@@ -4,7 +4,7 @@
 
 Implementation details explicitly marked Internal by their source. They remain available to browse here, but are not intended as entry points for code written in a Field box.
 
-20 source file(s), 156 public symbol(s), 55 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+21 source file(s), 158 public symbol(s), 56 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -128,6 +128,20 @@ without a host.
 | <a id="binding-kt--boundbinding--source"></a><code class="highlight"><span class="k">val</span> <span class="n">source</span><span class="p">:</span> <span class="nc">BoundSource</span></code> |  |
 | <a id="binding-kt--boundbinding--check"></a><code class="highlight"><span class="k">val</span> <span class="n">check</span><span class="p">:</span> <span class="p">(</span><span class="nc">Any</span><span class="o">?</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Any</span><span class="o">?</span></code> |  |
 | <a id="binding-kt--boundbinding--apply"></a><code class="highlight"><span class="k">val</span> <span class="n">apply</span><span class="p">:</span> <span class="p">(</span><span class="nc">Any</span><span class="o">?</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span></code> |  |
+
+## CollectionLiteralCompileAudit.kt { #collectionliteralcompileaudit-kt }
+
+`src/jvmMain/kotlin/afield/examples/CollectionLiteralCompileAudit.kt` — [read the source](source/jvmMain/afield/examples/CollectionLiteralCompileAudit/)
+
+### CollectionLiteralCompileAudit { #collectionliteralcompileaudit-kt-collectionliteralcompileaudit }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">CollectionLiteralCompileAudit</span></code>](source/jvmMain/afield/examples/CollectionLiteralCompileAudit/#L20)
+
+Compile the exact source bodies selected by `tools/audit_collection_literals.py`, without evaluating their bodies. Complete programs pass; a fragment needing other declarations retains its compiler diagnostics for review. This report never treats missing context as a pass.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="collectionliteralcompileaudit-kt--collectionliteralcompileaudit--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/CollectionLiteralCompileAudit/#L22) |  |
 
 ## ManifoldNative.kt { #manifoldnative-kt }
 

@@ -409,6 +409,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 ### examples
 
 - [Examples](examples.md#agenttooldemoevidence-kt)
+- [Internal](internal.md#collectionliteralcompileaudit-kt)
 - <span class="reference-internal">[ai](examples.md#boxaitoolssmoketest-kt)</span>
 - [audio](examples.md#trackingresonatorresynthesisexample-kt)
 - [brief](examples.md#briefeditorextensionworkout-kt)
@@ -654,14 +655,14 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**35887 public symbols across 1636 source files**, 21093 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**35889 public symbols across 1637 source files**, 21094 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
 | Category | Files | Symbols | Documented | Covers |
 | --- | --- | --- | --- | --- |
 | [Examples](examples.md) | 223 | 703 | 312 (44%) | Runnable examples, galleries and verification programs. |
-| [Internal](internal.md) | 20 | 156 | 55 (35%) | Implementation details explicitly marked Internal by their source. |
+| [Internal](internal.md) | 21 | 158 | 56 (35%) | Implementation details explicitly marked Internal by their source. |
 | [Lighting](lighting.md) | 8 | 206 | 206 (100%) | Light sources, fixtures and control protocols for working with physical and rendered lighting. |
 | [Networking](networking.md) | 16 | 366 | 213 (58%) | OSC messages, discovery and query interfaces for connecting Field to other applications and devices. |
 | [Video](video.md) | 14 | 192 | 192 (100%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
@@ -905,6 +906,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>diagnostics/<wbr></small> [CodeUseTelemetryService.kt](workspace.md#codeusetelemetryservice-kt) | Workspace | 232 | 3 | The local history of code Field compiles and runs, stored in SQLite and summarised for the code-use panels and agent tools. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [CodeUseTelemetrySidecarStoreSmokeTest.kt](examples.md#codeusetelemetrysidecarstoresmoketest-kt) | Examples · internal | 2 | 0 |  |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [CodeUseTelemetrySmokeTest.kt](examples.md#codeusetelemetrysmoketest-kt) | Examples · internal | 2 | 0 |  |  |
+| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [CollectionLiteralCompileAudit.kt](internal.md#collectionliteralcompileaudit-kt) | Internal · internal | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>color/<wbr></small> [Colormaps.kt](graphics.md#colormaps-kt) | Graphics | 21 | 13 | The colour vocabulary the visualization helpers share: `Color4`, a `[0,1]`-component colour value with no dependencies, and `Colormaps`, eight named ramps that can be sampled at any parameter. | [Imaging and computer vision](../imaging_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>rpn/<wbr></small> [ColorRpn.kt](search.md#colorrpn-kt) | Search | 27 | 27 | A reverse-Polish language whose programs are pictures: tokens push numbers and colours onto a stack, the program runs once per pixel of a square, and what is left on the stack is that pixel's colour. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>lang/<wbr>rpn/<wbr></small> [ColorRpnEvolution.kt](search.md#colorrpnevolution-kt) | Search | 1 | 1 | The box-facing front of the `ColorRpn` family: one call puts a breeding grid of generated pictures in a box's output panel, and clicking two of them breeds the next generation. |  |
