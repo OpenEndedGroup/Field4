@@ -18,6 +18,8 @@ import afield.graphics.vulkan.targets.RenderTarget
 import afield.math.linalg.Vec4
 import afield.math.linalg.vec
 import org.lwjgl.vulkan.VK10.VK_BLEND_FACTOR_ONE
+import org.lwjgl.vulkan.VK10.VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA
+import org.lwjgl.vulkan.VK10.VK_BLEND_FACTOR_SRC_ALPHA
 import org.lwjgl.vulkan.VK10.VK_BLEND_OP_ADD
 import java.nio.ByteOrder
 import kotlin.math.PI
@@ -32,8 +34,7 @@ import kotlin.random.Random
  * buffer and moves them in one vertex-shader draw per frame. Each particle takes
  * `trailGradient(trailTex, p, weights, h)` from `#include "trail/sample"`, the gradient of
  * `dot(trail, weights)`, adds [TrailFollowerSettings.steering] times its direction to its velocity,
- * damps, clamps to a top speed and steps, then draws itself as an additive point over the trail's
- * preview. Positive weights climb a channel, negative ones flee it: weights `(1, -1, 0, 0)` ride
+ * damps, clamps to a top speed and steps, then draws itself as a point over the trail's preview. Positive weights climb a channel, negative ones flee it: weights `(1, -1, 0, 0)` ride
  * species 0's roads and keep out of species 1's.
  *
  * The followers only read the field, so they can be added to a running [ShaderPhysarumSystem] (pass
@@ -62,8 +63,11 @@ data class TrailFollowerSettings(
     var wander: Float = 0.15f,
     /** Point size on screen, pixels. */
     var pointSize: Float = 2f,
-    /** Colour of a particle's point (added over whatever is beneath it). */
-    var color: Vec4 = vec(1f, 1f, 1f, 1f),
+    /**
+     * Colour of a particle's point, drawn over the trail by its alpha. Pick one the trail's palette
+     * does not use: followers sit on the brightest roads, where a pale colour disappears.
+     */
+    var color: Vec4 = vec(0.95f, 0.1f, 0.55f, 1f),
     /** Seed for the initial scatter. */
     var randomSeed: Long = 7L
 )
@@ -102,11 +106,11 @@ class TrailFollowers(
                 name = settings.name
                 depthTest = false
                 blend = true
-                srcColor = VK_BLEND_FACTOR_ONE
-                dstColor = VK_BLEND_FACTOR_ONE
+                srcColor = VK_BLEND_FACTOR_SRC_ALPHA
+                dstColor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA
                 colorBlendOp = VK_BLEND_OP_ADD
                 srcAlpha = VK_BLEND_FACTOR_ONE
-                dstAlpha = VK_BLEND_FACTOR_ONE
+                dstAlpha = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA
                 alphaBlendOp = VK_BLEND_OP_ADD
                 primitiveType = points
                 vertex = FOLLOWER_VERTEX
@@ -232,7 +236,7 @@ class TrailFollowers(
             }
         """.trimIndent()
 
-        /** Writes the particle's colour; additive blending stacks crowded particles brighter. */
+        /** Writes the particle's colour, alpha-blended over the trail. */
         val FOLLOWER_FRAGMENT: String = """
             #version 450
 
