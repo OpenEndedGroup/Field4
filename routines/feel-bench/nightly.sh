@@ -2,20 +2,22 @@
 # Nightly feel benchmark: one 100-rep run on local main, checked against this host's committed baseline.
 # Report only: never commits, re-baselines or lands.
 #
-# Waits for AC power and a 1-minute load average under 4 held for 3 minutes, and gives up at
-# --give-up (HH:MM, default 00:10): the run takes ~30 min and must finish before the heavier night
-# routines start, or it measures them instead of Field. Prints a final line `NIGHTLY: <verdict>` and
-# writes $FIELD_FEEL_REPORTS/nightly-<date>.txt (default ~/.afield/feel-bench).
+# Waits for AC power and a 1-minute load average under 4 held for 3 minutes, for at most
+# --wait-minutes (default 50) after it starts, or until --give-up HH:MM if given. The run itself takes
+# ~30 min and must finish before the heavier night routines start, or it measures them instead of
+# Field. Prints a final line `NIGHTLY: <verdict>` and writes $FIELD_FEEL_REPORTS/nightly-<date>.txt (default ~/.afield/feel-bench).
 #
 # Paths: FIELD_REPO (default: the checkout holding this script), FIELD_WORKTREE_BASE (default:
 # <repo>-worktrees beside it). Works in its own worktree, <base>/feel-nightly, reset to local main
 # each night. `--prepare-only` builds the prerequisites and stops.
 setopt pipefail
-giveup_at=00:10
+giveup_at=
+wait_minutes=50
 prepare_only=0
 while [ $# -gt 0 ]; do
   case $1 in
     --give-up) giveup_at=$2; shift 2 ;;
+    --wait-minutes) wait_minutes=$2; shift 2 ;;
     --prepare-only) prepare_only=1; shift ;;
     *) echo "unknown argument: $1" >&2; exit 2 ;;
   esac
@@ -31,8 +33,13 @@ mkdir -p $reports
 day=$(date +%Y%m%d)
 report=$reports/nightly-$day.txt
 uv=$(command -v uv || echo ~/.local/bin/uv)
-giveup=$(date -j -f "%H:%M:%S" "$giveup_at:00" +%s)
-[ $giveup -lt $(date +%s) ] && giveup=$(date -j -v+1d -f "%H:%M:%S" "$giveup_at:00" +%s)
+if [ -n "$giveup_at" ]; then
+  giveup=$(date -j -f "%H:%M:%S" "$giveup_at:00" +%s)
+  [ $giveup -lt $(date +%s) ] && giveup=$(date -j -v+1d -f "%H:%M:%S" "$giveup_at:00" +%s)
+else
+  giveup=$(( $(date +%s) + wait_minutes * 60 ))
+  giveup_at=$(date -j -r $giveup +%H:%M)
+fi
 exec > >(tee $report) 2>&1
 finish() { echo "NIGHTLY: $1"; exit ${2:-0}; }
 
