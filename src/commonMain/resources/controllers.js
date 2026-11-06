@@ -648,7 +648,7 @@
       frame.dataset.outputKind = "fline-editor";
       frame.dataset.flineEditorAspect = String(flineEditorFrame.value);
     }
-    frame.setAttribute("sandbox", "allow-scripts allow-forms allow-same-origin allow-popups");
+    frame.setAttribute("sandbox", "allow-scripts allow-forms allow-same-origin allow-popups allow-pointer-lock");
     frame.srcdoc = outputFrameHtml(output, linesOutput, flineEditorOutput, flineEditorFrame);
     card.pending = frame;
     frame.addEventListener("load", () => {
@@ -684,7 +684,7 @@
       ? ` style="--field-fline-editor-aspect:${flineEditorFrame.width} / ${flineEditorFrame.height}"`
       : "";
     const embeddedControls = !flineEditorOutput && /\bfield-control\b/.test(String(output.html || ""));
-    const widgetRuntime = (flineEditorOutput || embeddedControls) ? `<script src="/sliders.js"></script>` : "";
+    const widgetRuntime = (flineEditorOutput || embeddedControls) ? `<script src="/relativePointer.js"></script><script src="/sliders.js"></script>` : "";
     const widgetBridge = embeddedControls ? `<link rel="stylesheet" href="/field.css"><script>
       window.afield = { send: function(type, payload) {
         window.parent.postMessage({fieldControllerOutput:true, type:type, payload:payload}, ${JSON.stringify(window.location.origin)});

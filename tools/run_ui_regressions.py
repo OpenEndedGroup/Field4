@@ -4648,6 +4648,19 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot=shell_join(["screenshot-window", "{screenshot}", "--preserve-selection", "--timeout", pw_timeout]),
         ),
         UiRegression(
+            id="relative-pointer",
+            description="Trusted mouse gestures acquire pointer lock, accumulate slider/pan motion and release on mouse-up or Escape; quick clicks leave capture off.",
+            commands=[
+                "viewport 1000x700",
+                "new-box --name RelativePointerFixture --x 100 --y 100",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/output-control-selection.kt"), "--timeout", timeout_text]),
+                shell_join(["macro", "write", "relative_pointer", "--file", str(TOOLS_ROOT / "ui_regressions/relative-pointer.yaml")]),
+                "macro run relative_pointer",
+                shell_join(["page-eval", "--body", "return window.__relativePointerSmoke;", "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--preserve-selection", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="output-control-selection",
             description="Output text and SVG slider interactions retain the editor and selection, deliver callbacks and leave box frames fixed; clicking a box still selects it.",
             commands=[

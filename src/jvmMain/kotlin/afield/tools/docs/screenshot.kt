@@ -2968,10 +2968,21 @@ class DocsUiDriver internal constructor(
     fun drag(uid: String, dx: Double, dy: Double, steps: Int = 12, hold: Boolean = false) {
         run(AgentPlaywrightInputRequest(action = "dragBox", uid = uid, dx = dx, dy = dy, steps = steps, hold = hold))
     }
-    fun mouseUp() { run(AgentPlaywrightInputRequest(action = "mouseUp")) }
+    /** Release [button] (left, middle or right), including a drag captured beyond the window. */
+    fun mouseUp(button: String = "left") {
+        runBlocking(playwrightDispatcher) {
+            pageProvider().mouse().up(com.microsoft.playwright.Mouse.UpOptions()
+                .setButton(com.microsoft.playwright.options.MouseButton.valueOf(button.uppercase())))
+        }
+    }
 
-    /** Press the real mouse where it is now; with [moveMouse] and [mouseUp], a drag that starts anywhere (a box edge, to resize). */
-    fun mouseDown() { runBlocking(playwrightDispatcher) { pageProvider().mouse().down() } }
+    /** Press [button] (left, middle or right) at the current position; pair with [moveMouse] and [mouseUp] for a drag. */
+    fun mouseDown(button: String = "left") {
+        runBlocking(playwrightDispatcher) {
+            pageProvider().mouse().down(com.microsoft.playwright.Mouse.DownOptions()
+                .setButton(com.microsoft.playwright.options.MouseButton.valueOf(button.uppercase())))
+        }
+    }
 
     /** Move the real mouse to ([x], [y]) in CSS px, in [steps] steps, as a hand would (canvas hover state, `n`'s drop point). */
     fun moveMouse(x: Double, y: Double, steps: Int = 1) {

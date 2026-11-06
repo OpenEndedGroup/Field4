@@ -2796,6 +2796,7 @@ private fun latchCanvasWheel(pane: CanvasPane) {
 private fun releaseCanvasDragLatch() {
     if (!canvasDragLatched) return
     canvasDragLatched = false
+    window.asDynamic().FieldRelativePointer?.end("canvas-pan")
     updateCanvasPanLatchClass()
 }
 
@@ -2847,14 +2848,16 @@ private fun installCanvasPanLatch() {
         canvasPanLatchPane = CanvasCamera.paneAt(event.clientX.toDouble(), event.clientY.toDouble())
         updateCanvasPanLatchClass()
         event.preventDefault() // no autoscroll
+        window.asDynamic().FieldRelativePointer?.begin("canvas-pan", event, { releaseCanvasDragLatch() })
     }, capture)
 
     window.addEventListener("mousemove", { e ->
         if (!canvasDragLatched) return@addEventListener
         val event = e.unsafeCast<MouseEvent>()
         if (event.buttons.toInt() and 4 == 0) {
-            // The release happened somewhere we did not hear it (outside the window).
-            releaseCanvasDragLatch()
+            // Capture/warp moves can have no buttons; mouse-up ends a locked drag.
+            // Without capture, recover a release we missed outside the window.
+            if (window.asDynamic().FieldRelativePointer?.locked("canvas-pan") != true) releaseCanvasDragLatch()
             return@addEventListener
         }
         event.preventDefault()
