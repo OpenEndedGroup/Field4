@@ -4,7 +4,7 @@
 
 The box's own surroundings: properties, persistence, and the handful of names every box already has in scope.
 
-237 source file(s), 3209 public symbol(s), 1290 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+238 source file(s), 3209 public symbol(s), 1290 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -2137,6 +2137,19 @@ in a minute is killed along with its descendants and reported as a timeout.
 | Declaration | Summary |
 | --- | --- |
 | <a id="rendererbrowsing-kt--registerrendererbrowsingadapters"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">registerRendererBrowsingAdapters</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/rendererBrowsing/#L37) | One-time registration of the Renderer/graphics [`Browsable`](workspace.md#browsing-kt-browsable) adapters, so `column("r", renderer)` and `tree("r", renderer)` open the renderer as targets (in draw order), modules with their shaders and bindings, textures, CPU span timings and profiler state. Called from [`installInspectorHandler`](workspace.md#browsing-kt--installinspectorhandler) at server start; idempotent. |
+
+## routinesPage.kt { #routinespage-kt }
+
+The server side of `/routines.html`: the scheduled routines in `routines/`, how each one last went,
+and the text that adopts one into a scheduler.
+
+Both routes are reads that run `tools/routines.py` (stdlib-only, so any Python will do, found the
+way the docs pass finds one) and pass its JSON through. Nothing here schedules, installs or starts
+a routine: adopting one is the user pasting a prompt into their agent or running the printed
+command, so the page can never change what runs at night. They are loopback + same-site all the
+same, because the answers carry the checkout's absolute path and the machine's report text.
+
+`src/jvmMain/kotlin/afield/app/server/routinesPage.kt` — [read the source](source/jvmMain/afield/app/server/routinesPage/)
 
 ## signalViewer.kt { #signalviewer-kt }
 
