@@ -1,0 +1,67 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-06T20:40:53.592Z",
+  "documentName": "knight_tour_workshop",
+  "outputs": [
+    {
+      "uid": "cc20e577-5142-4a8b-8083-3c737fc5b084",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "73b2ad1a-50a9-40ed-bef3-9456d8cf0d91",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "756af284-5020-45dd-baf4-7b3bc777e681",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "2685e17b-ada6-4ad7-8de3-b127719b87d2",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "0046694c-4358-43c9-913e-a17d8e55c785",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/4.html"
+    }
+  ]
+}

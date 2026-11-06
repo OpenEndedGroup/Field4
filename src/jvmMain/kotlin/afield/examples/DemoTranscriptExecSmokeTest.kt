@@ -215,6 +215,7 @@ object DemoTranscriptExecSmokeTest {
         // reach, and the reason this is EXECUTE rather than COMPILE_ONLY.
         "keyframe_code_blend",
         "linalg_thumbnails_demo",
+        "knight_tour_workshop", // CPU FLine drawings; source shares results with four derived views.
         "hello_display",
         "hello_display_capture",
         "ai4_iframe_hello",
