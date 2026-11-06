@@ -1,7 +1,7 @@
 ---
 name: scout
 title: Idea scout
-summary: Collects links from HN, lobste.rs, feeds and topic queries, reads every page that is not plainly off-domain, writes a card for each one worth bringing into Field, and once a week leaves a digest for Marc to answer.
+summary: Collects links from HN, lobste.rs, feeds and topic queries, reads every page that is not plainly off-domain, writes a card for each one worth bringing into Field, and every three days leaves a digest for Marc to answer.
 kind: agent
 schedule: 15 19 * * *
 runtime-hours: 1.5

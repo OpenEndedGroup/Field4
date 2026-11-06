@@ -147,7 +147,7 @@ and records it. Fix every `FAULT` line and run it again until there are none.
 
 `python3 $REPO/tools/scout.py digest`
 
-Once seven days have passed since the last digest and at least three cards are waiting, it writes
+Once three days have passed since the last digest and at least three cards are waiting, it writes
 `$JOURNAL/digests/<date>.md`. New ideas come first, then news touching work Field already has, each
 card under its title with links, points, license and nearest Field work, and an empty `verdict:`
 line for Marc. Name the digest's path in the report. Marc answers by editing the file (or asking an

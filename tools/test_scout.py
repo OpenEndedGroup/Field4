@@ -355,6 +355,17 @@ class DigestAndVerdicts(Cards):
         self.assertEqual(len(self.ledger.with_status("digested")), 4)
         self.assertIsNone(scout.digest(self.ledger, min_cards=1))  # nothing left, and not due
 
+    def test_next_digest_comes_three_days_later_by_default(self) -> None:
+        self.three_cards()
+        self.assertIsNotNone(scout.digest(self.ledger))
+        for n in (4, 5, 6):
+            self.card(self.fetched(n), CARD.format(kind="new", nearest="none"))
+        scout.ingest_cards(self.ledger)
+        self.clock(T0 + 2 * 86400)
+        self.assertIsNone(scout.digest(self.ledger))
+        self.clock(T0 + 3 * 86400)
+        self.assertIsNotNone(scout.digest(self.ledger))
+
     def test_verdicts_approve_reject_and_later_goes_to_the_watch_pool(self) -> None:
         a, b, c = self.three_cards()
         path = scout.digest(self.ledger, min_cards=3)

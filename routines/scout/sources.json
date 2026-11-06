@@ -34,5 +34,5 @@
     {"name": "arxiv-cs-gr", "url": "https://rss.arxiv.org/rss/cs.GR", "limit": 40}
   ],
   "watch": {"first_days": 7, "factor": 2, "max_checks": 5, "pool": 40},
-  "digest": {"every_days": 7, "min_cards": 3}
+  "digest": {"every_days": 3, "min_cards": 3}
 }
