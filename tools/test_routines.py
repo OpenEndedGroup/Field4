@@ -196,6 +196,7 @@ class Status(Isolated):
         reports.mkdir()
         (reports / "2026-11-05.md").write_text("# Night\n\nHeadline: **2 merge / 1 continue / 0 delete**.\n")
         (reports / "2026-11-06.md").write_text("_skipped — low disk (3.1 GiB free)_\n")
+        (reports / "2026-11-07-backlog-audit.md").write_text("A dated audit is not a nightly run.\n")
         self.git("add", "reports")
         self.git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "reports")
         self.git("checkout", "-q", "main")
@@ -205,6 +206,17 @@ class Status(Isolated):
         self.assertEqual([r["date"] for r in recent], ["2026-11-06", "2026-11-05"])
         self.assertTrue(recent[0]["verdict"].startswith("skipped — low disk"))
         self.assertEqual(recent[1]["verdict"], "2 merge / 1 continue / 0 delete")
+
+    def test_wrapper_logs_are_visible_even_when_old_journal_reports_exist(self):
+        write_routine(self.tmp, "alpha", reports=f"file:{self.tmp}/reports/*.txt")
+        reports = self.tmp / 'reports'
+        reports.mkdir()
+        (reports / '2026-11-05.txt').write_text('old report')
+        logs = routines.RUN_LOGS / 'alpha'
+        logs.mkdir(parents=True)
+        (logs / '20261106-052001.log').write_text('# routine alpha at 2026-11-06T05:20:01 in /tmp\n# exit 0\n')
+        recent = routines.recent_runs(routines.find('alpha', self.tmp), self.tmp)
+        self.assertEqual([r['date'] for r in recent], ['2026-11-06', '2026-11-05'])
 
     def test_report_files_by_glob(self) -> None:
         folder = self.tmp / "reports"
@@ -294,6 +306,11 @@ class ScheduleHealth(Isolated):
         self.routine.meta['schedule'] = '20 */4 * * *'
         result = self.health([{'date': '2026-11-06', 'source': 'dated.md'}])
         self.assertEqual(result['state'], 'unknown')
+
+    def test_no_change_commit_based_routine_is_unknown_not_overdue(self):
+        self.routine.meta['reports'] = 'log:^docs: update'
+        self.assertEqual(self.health()['state'], 'unknown')
+        self.assertEqual(self.health([{'date': '2026-11-06', 'source': 'main'}])['state'], 'recorded')
 
     def test_older_completed_log_proves_the_actual_slot(self):
         self.routine.meta['schedule'] = '20 */4 * * *'
