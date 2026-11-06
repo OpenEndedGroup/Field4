@@ -78,6 +78,8 @@ NAMESPACES = {
     "geometry": "Geometry views and review notes (see [Geometry review](geometry_review.md)).",
     "builds": "Long-running study builds (see [Let AI4 wait for long builds](ai4_long_builds.md)).",
     "kit": "The document's kit (see [Kits](kits.md)).",
+    "presentation": "Slide files and built presentations (see [Presentation studio](presentation_studio.md)).",
+    "repo": "Field's own checkout: its files, and named commands run in the foreground or as background jobs.",
     "core": "Housekeeping, and why a name a box reads resolves where it does.",
 }
 
@@ -152,7 +154,8 @@ class Shaper:
 async def capture(port: int, update_page: bool) -> None:
     page = PAGE.read_text()
     ASSETS.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix="ai4-tools-capture-") as temp:
+    # The Field this started may still be saving the document as it exits; a leftover temp file must not lose the page.
+    with tempfile.TemporaryDirectory(prefix="ai4-tools-capture-", ignore_cleanup_errors=True) as temp:
         workspace = Path(temp) / "workspace"
         workspace.mkdir()
         shaper = Shaper(workspace)

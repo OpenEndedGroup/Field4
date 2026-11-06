@@ -622,7 +622,7 @@ class FieldGraphTools(
         )
         return when {
             interrupted -> common.copy(
-                stage = "interrupted", timedOut = true, error = report?.error?.take(4000) ?: "",
+                stage = "interrupted", timedOut = true, error = report?.error?.let(BoxOutputLog::decodeHtmlEntities)?.take(4000) ?: "",
                 message = "The $verb of '${box.name}' did not return within ${timeoutSeconds}s, so Field interrupted it " +
                     (if (report != null) "and it stopped. " else "but has no verdict yet. ") +
                     "Look for a loop or recursion that never ends."
@@ -633,7 +633,7 @@ class FieldGraphTools(
                     "It may still be compiling or be stuck; check ReadBoxOutput, or StopBox it."
             )
             !report.success -> common.copy(
-                stage = report.stage, error = report.error.take(4000),
+                stage = report.stage, error = BoxOutputLog.decodeHtmlEntities(report.error).take(4000),
                 message = "The $verb of '${box.name}' FAILED. Read `error` and `errors`, fix the code, and try again."
             )
             else -> common.copy(

@@ -68,11 +68,16 @@ data class RepoCommandResult(
     val truncated: Boolean = false,
 )
 
-/** One allowed command: a fixed argv prefix, a check that turns the model's args into the rest, and its default timeout. */
+/**
+ * One allowed command: a fixed argv prefix, a check that turns the model's args into the rest, and its
+ * default timeout. [touchesBuild] says whether this argv may compile Field (Gradle, or a runner that
+ * starts a Field of its own), which [RepoCommandTools.liveBuildHazard] refuses under a running Field.
+ */
 class RepoCommandTemplate(
     val name: String,
     val summary: String,
     val defaultTimeoutSec: Int,
+    val touchesBuild: (argv: List<String>) -> Boolean = { false },
     val build: (args: List<String>, files: RepoFileTools) -> List<String>,
 )
 
@@ -124,7 +129,7 @@ object RepoCommandTemplates {
     }
 
     val ALL: Map<String, RepoCommandTemplate> = listOf(
-        RepoCommandTemplate("gradle", "./gradlew --console=plain <tasks> [--tests <pattern>]", 900) { args, files ->
+        RepoCommandTemplate("gradle", "./gradlew --console=plain <tasks> [--tests <pattern>]", 900, touchesBuild = { true }) { args, files ->
             val root = files.resolve("gradlew", write = false)
             if (!Files.isRegularFile(root, NOFOLLOW_LINKS)) refuse("this repository has no gradlew")
             val out = mutableListOf("./gradlew", "--console=plain")
@@ -149,11 +154,15 @@ object RepoCommandTemplates {
             if (tasks == 0) refuse("name at least one task, e.g. compileKotlinJvm or jvmTest --tests <Class>")
             out
         },
-        RepoCommandTemplate("python-test", "uv run --project . --group backdoor python tools/test_*.py [unittest names]", 600) { args, files ->
+        RepoCommandTemplate("python-test", "uv run --project . --group backdoor python -m unittest tools.test_* [Class or Class.test_method]: give the tools/test_*.py path", 600) { args, files ->
             val script = args.firstOrNull() ?: refuse("give the test file, e.g. tools/test_field_agent.py")
             val names = args.drop(1).onEach { if (!UNITTEST_NAME.matches(it)) refuse("'$it' is not a unittest name (Class or Class.test_method)") }
-            listOf("uv", "run", "--project", ".", "--group", "backdoor", "python",
-                readablePath(script, files, Regex("^(tools|python)/([A-Za-z0-9_]+/)*test_[A-Za-z0-9_]+\\.py$"), "a tools/test_*.py file")) + names
+            val path = readablePath(script, files, Regex("^(tools|python)/([A-Za-z0-9_]+/)*test_[A-Za-z0-9_]+\\.py$"), "a tools/test_*.py file")
+            // As a module from the root, the way tools/run_python_tests.py loads them: most suites import `from tools import ...`,
+            // which fails when the file is run as a script (seen 2026-11-07 with test_ai4_conversation_review.py).
+            val module = path.removeSuffix(".py").replace('/', '.')
+            listOf("uv", "run", "--project", ".", "--group", "backdoor", "python", "-m", "unittest") +
+                (if (names.isEmpty()) listOf(module) else names.map { "$module.$it" })
         },
         RepoCommandTemplate("check", "uv run --project . --group backdoor python tools/check_*.py", 600) { args, files ->
             if (args.size != 1) refuse("give exactly one tools/check_*.py path and no options")
@@ -176,6 +185,73 @@ object RepoCommandTemplates {
             if (args.size != 1) refuse("git-show takes one revision")
             GIT_PREFIX + listOf("show", "--stat", "--no-color", "--no-ext-diff", "--no-textconv", revision(args[0]))
         },
+        RepoCommandTemplate("field-test", "uv run --project . --group backdoor python tools/run_field_tests.py (--id <catalog-id> | --tag <tag>)... [--fail-fast]: the canonical smoke runner", 3600,
+            touchesBuild = { true }) { args, _ ->
+            val out = mutableListOf("uv", "run", "--project", ".", "--group", "backdoor", "python", "tools/run_field_tests.py")
+            var i = 0
+            var selected = 0
+            while (i < args.size) {
+                when (val a = args[i]) {
+                    "--id", "--tag" -> {
+                        val v = args.getOrNull(i + 1) ?: refuse("$a needs a value")
+                        if (!CATALOG_ID.matches(v)) refuse("'$v' is not a smoke-catalog id or tag")
+                        out += listOf(a, v); i++; selected++
+                    }
+                    "--fail-fast", "--refresh-catalog" -> out += a
+                    else -> refuse("field-test takes --id <id>, --tag <tag>, --fail-fast and --refresh-catalog; not '$a'")
+                }
+                i++
+            }
+            if (selected == 0) refuse("name what to run: --id <catalog-id> or --tag <tag> (the whole catalog takes hours)")
+            out
+        },
+        RepoCommandTemplate("jvm-main", "a Field JVM entrypoint through the backdoor's run-jvm-main, which adds the JVM flags Field needs: <afield.Class> [args...]", 1800,
+            touchesBuild = { true }) { args, _ ->
+            val entry = args.firstOrNull() ?: refuse("give the entrypoint class, e.g. afield.examples.DocumentToTranscript")
+            if (!ENTRYPOINT.matches(entry)) refuse("'$entry' is not an afield.* class name")
+            val rest = args.drop(1).onEach { if (it.length > 4096 || it.any { c -> c == '\u0000' || c == '\n' }) refuse("an argument must be one line") }
+            val command = (listOf("run-jvm-main", entry) + rest.flatMap { listOf("--arg", it) }).joinToString(" ", transform = ::shellQuote)
+            listOf("uv", "run", "--project", ".", "--group", "backdoor", "python", "tools/field_backdoor.py", "--json", "--command", command)
+        },
+        RepoCommandTemplate("docs-build", "FIELD_DOCS_RUNNER_MODE=<never|incremental|strict|always> tools/build_zensical_docs.py [--page <page.md>]... [--clean]", 3600,
+            touchesBuild = { argv -> "FIELD_DOCS_RUNNER_MODE=never" !in argv }) { args, files ->
+            val mode = args.firstOrNull() ?: refuse("give the runner mode first: never (HTML only), incremental, strict or always")
+            if (mode !in RUNNER_MODES) refuse("'$mode' is not a runner mode; one of ${RUNNER_MODES.joinToString(", ")}")
+            val out = mutableListOf("env", "FIELD_DOCS_RUNNER_MODE=$mode", "uv", "run", "--project", ".", "--group", "docs", "python", "tools/build_zensical_docs.py")
+            var i = 1
+            while (i < args.size) {
+                when (val a = args[i]) {
+                    "--page" -> {
+                        val v = args.getOrNull(i + 1) ?: refuse("--page needs a page, e.g. knight_tour_workshop.md")
+                        readablePath("public/docs/$v", files, Regex("^public/docs/[A-Za-z0-9_./-]+\\.md$"), "a page under public/docs")
+                        out += listOf(a, v); i++
+                    }
+                    "--clean" -> out += a
+                    else -> refuse("docs-build takes the mode, then --page <page.md> and --clean; not '$a'")
+                }
+                i++
+            }
+            out
+        },
+        RepoCommandTemplate("docs-publications", "tools/docs_publications.py <sync|check|list> [--mode <mode>] [--group pilot|gallery] [--name <recipe>]...", 3600,
+            touchesBuild = { argv -> "check" !in argv && "list" !in argv }) { args, _ ->
+            val action = args.firstOrNull() ?: refuse("give the action: sync, check or list")
+            if (action !in setOf("sync", "check", "list")) refuse("'$action' is not one of sync, check, list")
+            val out = mutableListOf("uv", "run", "--project", ".", "--group", "docs", "python", "tools/docs_publications.py", action)
+            var i = 1
+            while (i < args.size) {
+                val a = args[i]
+                val v = args.getOrNull(i + 1)
+                when {
+                    a == "--mode" && v in RUNNER_MODES -> { out += listOf(a, v!!); i++ }
+                    a == "--group" && v in setOf("pilot", "gallery") -> { out += listOf(a, v!!); i++ }
+                    a == "--name" && v != null && CATALOG_ID.matches(v) -> { out += listOf(a, v); i++ }
+                    else -> refuse("docs-publications takes --mode <${RUNNER_MODES.joinToString("|")}>, --group <pilot|gallery>, --name <recipe>; not '$a ${v ?: ""}'".trim())
+                }
+                i++
+            }
+            out
+        },
         RepoCommandTemplate("land-precheck", "uv run python tools/land.py precheck (merges main in uncommitted, runs the guards your diff can trip, undoes the merge)", 1800) { args, _ ->
             if (args.isNotEmpty()) refuse("land-precheck takes no arguments")
             listOf("uv", "run", "python", "tools/land.py", "precheck")
@@ -184,6 +260,21 @@ object RepoCommandTemplates {
 
     /** Reproduce and confirm, nothing that changes git state: what `field_agent.headless_argv("field", edits=True)` allows. */
     val FIXER_SET: List<String> = listOf("gradle", "python-test", "check", "git-status", "git-diff", "git-log", "git-show")
+
+    /**
+     * What the document chat may run in Field's own checkout: the fixer's set plus the docs, smoke and
+     * entrypoint runners a publishing turn needs (the knight-tour session reached for all of them through
+     * `ProcessBuilder`). Nothing that changes git state, and nothing that lands.
+     */
+    val CHAT_SET: List<String> = FIXER_SET + listOf("field-test", "jvm-main", "docs-build", "docs-publications")
+
+    private val CATALOG_ID = Regex("^[A-Za-z0-9][A-Za-z0-9_.:-]{0,120}$")
+    private val ENTRYPOINT = Regex("^afield(\\.[A-Za-z_][A-Za-z0-9_]*)+$")
+    private val RUNNER_MODES = listOf("never", "incremental", "strict", "always")
+
+    /** POSIX single-quoting, for the one template ([jvm-main]) whose argument is a command line another tool splits. */
+    internal fun shellQuote(s: String): String =
+        if (s.isNotEmpty() && s.all { it.isLetterOrDigit() || it in "@%+=:,./_-" }) s else "'" + s.replace("'", "'\"'\"'") + "'"
 }
 
 /** The command tool over one job's [RepoFileTools]. */
@@ -202,24 +293,122 @@ class RepoCommandTools(val files: RepoFileTools, val scope: RepoCommandScope) {
     /** The lines the job's prompt shows: one per allowed command. */
     fun describeAllowed(): String = scope.allowed.sorted().joinToString("\n") { "- ${it}: ${RepoCommandTemplates.ALL.getValue(it).summary}" }
 
-    fun run(req: RepoRunCommandRequest): RepoCommandResult = synchronized(lock) {
-        val name = req.command.trim()
-        val template = RepoCommandTemplates.ALL[name]
-        if (template == null || name !in scope.allowed)
-            return RepoCommandResult(false, "'$name' is not a command this job may run; allowed: ${scope.allowed.sorted().joinToString(", ").ifBlank { "(none)" }}")
-        val argv = try { template.build(req.args, files) } catch (e: RepoPathRefused) {
-            return RepoCommandResult(false, e.message ?: "refused", name)
-        }
-        lockHolder()?.let { return RepoCommandResult(false, "this checkout's verification lock is held by $it; try again later or work from the files", argv.joinToString(" ")) }
-        val timeout = (if (req.timeoutSec > 0) req.timeoutSec else template.defaultTimeoutSec).coerceIn(1, scope.maxTimeoutSec)
-        val result = execute(resolveExecutable(argv), timeout)
-        runs += "$name ${req.args.joinToString(" ")} -> ${if (result.timedOut) "timeout" else result.exitCode}".trim()
-        result.copy(command = argv.joinToString(" "))
+    /** A command checked and ready to start, or why it may not. */
+    private sealed interface Prepared {
+        data class Ready(val name: String, val argv: List<String>, val timeoutSec: Int) : Prepared
+        data class Refused(val message: String, val command: String = "") : Prepared
     }
 
-    private fun resolveExecutable(argv: List<String>): List<String> {
+    private fun prepare(command: String, args: List<String>, timeoutSec: Int): Prepared {
+        val name = command.trim()
+        val template = RepoCommandTemplates.ALL[name]
+        if (template == null || name !in scope.allowed)
+            return Prepared.Refused("'$name' is not a command this job may run; allowed: ${scope.allowed.sorted().joinToString(", ").ifBlank { "(none)" }}")
+        val argv = try { template.build(args, files) } catch (e: RepoPathRefused) {
+            return Prepared.Refused(e.message ?: "refused", name)
+        }
+        if (template.touchesBuild(argv)) liveBuildHazard()?.let { return Prepared.Refused(it, argv.joinToString(" ")) }
+        lockHolder()?.let { holder ->
+            val job = Regex("\"pid\"\\s*:\\s*(\\d+)").find(holder)?.groupValues?.get(1)?.toLongOrNull()?.let(RepoCommandJobs::owning)
+            return Prepared.Refused(
+                if (job != null) "this checkout's verification lock is held by your own background job ${job.id} (${job.name}); " +
+                    "wait for it with RepoCommandStatusRequest(jobId=\"${job.id}\", waitSeconds=120), or stop it"
+                else "this checkout's verification lock is held by $holder; try again later or work from the files",
+                argv.joinToString(" "))
+        }
+        val timeout = (if (timeoutSec > 0) timeoutSec else template.defaultTimeoutSec).coerceIn(1, scope.maxTimeoutSec)
+        return Prepared.Ready(name, argv, timeout)
+    }
+
+    fun run(req: RepoRunCommandRequest): RepoCommandResult = synchronized(lock) {
+        val ready = when (val p = prepare(req.command, req.args, req.timeoutSec)) {
+            is Prepared.Refused -> return RepoCommandResult(false, p.message, p.command)
+            is Prepared.Ready -> p
+        }
+        val result = execute(resolveExecutable(ready.argv), ready.timeoutSec)
+        runs += "${ready.name} ${req.args.joinToString(" ")} -> ${if (result.timedOut) "timeout" else result.exitCode}".trim()
+        result.copy(command = ready.argv.joinToString(" "))
+    }
+
+    /** Start [req] in the background ([RepoCommandJobs]) and report it after a moment. */
+    fun start(req: RepoStartCommandRequest): RepoJobResult = synchronized(lock) {
+        val ready = when (val p = prepare(req.command, req.args, req.timeoutSec)) {
+            is Prepared.Refused -> return RepoJobResult(false, p.message, command = p.command)
+            is Prepared.Ready -> p
+        }
+        val running = RepoCommandJobs.running(root)
+        if (running.size >= RepoCommandJobs.MAX_RUNNING_PER_ROOT)
+            return RepoJobResult(false, "${running.size} jobs are already running here (${running.joinToString { "${it.id} ${it.name}" }}); " +
+                "wait for one with RepoCommandStatusRequest or stop it with RepoStopCommandRequest", command = ready.argv.joinToString(" "))
+        val job = try {
+            RepoCommandJobs.start(root, ready.name, req.args, resolveExecutable(ready.argv), environment(System.getenv()), ready.timeoutSec,
+                File(root, "build/ai4-jobs"))
+        } catch (e: java.io.IOException) {
+            return RepoJobResult(false, "could not start ${ready.argv.first()}: ${e.message}", command = ready.argv.joinToString(" "))
+        }
+        runs += "${ready.name} ${req.args.joinToString(" ")} -> started ${job.id}".trim()
+        RepoCommandJobs.peek(job)
+        val read = RepoCommandJobs.read(job, from = 0, waitSec = 0, until = "", maxBytes = RepoCommandJobs.DEFAULT_READ_BYTES)
+        read.copy(message = (if (job.alive) "started ${job.id}; " else "started ${job.id}, and it already ended: ") + read.message +
+            (if (job.alive) ". Follow it with RepoCommandStatusRequest(jobId=\"${job.id}\", waitSeconds=120, fromByte=${read.nextByte})." else ""))
+    }
+
+    fun status(req: RepoCommandStatusRequest): RepoJobResult {
+        if (req.jobId.isBlank()) {
+            val all = RepoCommandJobs.all()
+            return RepoJobResult(true, if (all.isEmpty()) "no background jobs in this Field" else "${all.size} job(s), ${all.count { it.alive }} running",
+                jobs = all.map { it.summary() })
+        }
+        val job = RepoCommandJobs.get(req.jobId) ?: return RepoJobResult(false, "no job '${req.jobId}'; known: " +
+            RepoCommandJobs.all().joinToString { it.id }.ifBlank { "(none)" })
+        return RepoCommandJobs.read(job, req.fromByte, req.waitSeconds, req.untilText, scope.maxOutputBytes.coerceAtMost(RepoCommandJobs.DEFAULT_READ_BYTES * 4))
+    }
+
+    fun stop(req: RepoStopCommandRequest): RepoJobResult {
+        val job = RepoCommandJobs.get(req.jobId) ?: return RepoJobResult(false, "no job '${req.jobId}'; known: " +
+            RepoCommandJobs.all().joinToString { it.id }.ifBlank { "(none)" })
+        val stopped = RepoCommandJobs.stop(job)
+        val deadline = System.currentTimeMillis() + 5_000
+        while (job.alive && System.currentTimeMillis() < deadline) Thread.sleep(50)
+        val read = RepoCommandJobs.read(job, from = -1, waitSec = 0, until = "", maxBytes = 4 * 1024)
+        return read.copy(success = !job.alive, message = (if (stopped) "stopped ${job.id}: " else "${job.id} had already ended: ") + read.message)
+    }
+
+    /**
+     * Why a build may not run here now, or null. Field loads its classes from `<root>/build/classes`
+     * while it runs; a compile there rewrites them, and a class it has not loaded yet then fails to
+     * resolve for the rest of the process's life (`NoClassDefFoundError`, cached at the call site).
+     * So when this JVM runs from [root]'s build output and a source file is newer than this JVM,
+     * which is exactly when Gradle would recompile, the build is refused. Unchanged sources mean an
+     * up-to-date compile, which rewrites nothing: the knight-tour session's Gradle run was that case.
+     */
+    internal fun liveBuildHazard(
+        classPath: String = System.getProperty("java.class.path").orEmpty(),
+        startedMs: Long? = ProcessHandle.current().info().startInstant().orElse(null)?.toEpochMilli(),
+    ): String? {
+        val classes = runCatching { File(root, "build/classes/kotlin/jvm/main").canonicalFile }.getOrNull() ?: return null
+        val runsFromHere = classPath.split(File.pathSeparator).any { entry -> runCatching { File(entry).canonicalFile == classes }.getOrDefault(false) }
+        if (!runsFromHere || startedMs == null) return null
+        val newer = SOURCE_ROOTS.map { File(root, it) }.filter { it.exists() }.asSequence()
+            .flatMap { it.walkTopDown().filter { f -> f.isFile && (f.extension == "kt" || f.extension == "kts" || f.extension == "java") && f.lastModified() > startedMs } }
+            .take(3).toList()
+        if (newer.isEmpty()) return null
+        return "refused: this Field runs from this checkout's build output, and source has changed since it started " +
+            "(e.g. ${newer.joinToString { it.relativeTo(root).invariantSeparatorsPath }}). A build here would recompile classes under the running Field, " +
+            "and any class it has not loaded yet would then fail for the rest of its life. Ask the person to restart Field first, " +
+            "or do the build in a separate worktree. Commands that do not build (git-*, check, python-test, docs-build never) still run."
+    }
+
+    internal fun resolveExecutable(argv: List<String>): List<String> {
         val head = argv.first()
         if (head.startsWith("./")) return argv
+        if (head == "env") {
+            // `env NAME=value cmd ...`: env finds cmd on its own PATH, which is thin in a Field started from the Dock.
+            val at = argv.indexOfFirst { it != "env" && '=' !in it }
+            if (at < 0) return argv
+            val cmd = argv[at].takeUnless { it.startsWith("./") }?.let(::findExecutable) ?: argv[at]
+            return listOf(findExecutable("env") ?: "env") + argv.subList(1, at) + cmd + argv.drop(at + 1)
+        }
         val found = findExecutable(head) ?: return argv
         return listOf(found) + argv.drop(1)
     }
@@ -289,6 +478,7 @@ class RepoCommandTools(val files: RepoFileTools, val scope: RepoCommandScope) {
 
     companion object {
         const val HEAD_BYTES = 8 * 1024
+        private val SOURCE_ROOTS = listOf("src/jvmMain", "src/commonMain", "src/generatedLinalg", "build.gradle.kts", "settings.gradle.kts")
         const val OWNER_ENV = "AFIELD_VERIFICATION_LOCK_OWNER"
         private val INSTALL_DIRS = listOf(".local/bin", ".cargo/bin").map { File(System.getProperty("user.home"), it) } +
             listOf(File("/opt/homebrew/bin"), File("/usr/local/bin"), File("/usr/bin"))
@@ -315,4 +505,8 @@ class RepoCommandTools(val files: RepoFileTools, val scope: RepoCommandScope) {
 
 internal fun registerRepoCommandTools(tools: ToolRegistry) {
     tools.register(RepoRunCommandRequest::class.java, { it.repoCommands != null }) { ctx, req -> ctx.repoCommands!!.run(req) }
+    tools.register(RepoStartCommandRequest::class.java, { it.repoCommands != null }) { ctx, req -> ctx.repoCommands!!.start(req) }
+    tools.register(RepoCommandStatusRequest::class.java, { it.repoCommands != null }) { ctx, req -> ctx.repoCommands!!.status(req) }
+    tools.register(RepoStopCommandRequest::class.java, { it.repoCommands != null }) { ctx, req -> ctx.repoCommands!!.stop(req) }
+    tools.register(AwaitRepoCommandsRequest::class.java, { it.repoCommands != null && it.suspendable }) { _, req -> awaitRepoCommands(req) }
 }

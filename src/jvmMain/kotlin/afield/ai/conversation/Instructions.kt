@@ -222,6 +222,8 @@ ${ctx.documentGuides.catalogueContext()}
     if (ctx.captureRenderWindow != null) {
         ad("tools.verify", "- CaptureRenderWindow: capture the live Field 4 render window and attach it as an image, so you can see what the running code draws. Needs no shader edit and no successful reload. Use it before editing to see the starting point and after to check the result; pass settleMs to let an animation settle, and note to record what you are looking for. If it reports success=false, read the message: it names the precondition that failed.")
     }
+    // A headless job's prompt describes its own repo scope (AgentTask); the chat's is Field's checkout.
+    ctx.repoCommands?.takeIf { it === afield.ai.tools.FieldCheckoutRepo.commands }?.let { ad("tools.repo", afield.ai.tools.FieldCheckoutRepo.guidance(it)) }
     if (ctx.workspaceSymbolSearch != null) {
         ad("tools.symbols", "- WorkspaceSymbolSearch: search workspace symbols by query.")
         ad("tools.symbols", "  Results include filePath, fileId, line, definitionLine, definitionBody (including property getters), kdoc, and optionally relatedGuides / relatedExamples when includeRelatedContext=true.")

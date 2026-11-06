@@ -466,4 +466,49 @@ class StudyBuildAwaitsTest {
         assertTrue(offered(true), "the box chat's general turn")
         assertTrue("AwaitStudyBuildsRequest" in NOT_CALLABLE_FROM_PROGRAMS, "only a call the model makes itself can end the turn")
     }
+    /**
+     * The same wait for a background repository command (`AwaitRepoCommandsRequest`): the turn ends, polls make no
+     * model call while the command runs, and the resumed turn reads its exit and the end of its log.
+     */
+    @Test fun aTurnThatAwaitsARepositoryCommandResumesWithItsExitAndLog() {
+        val info = session()
+        val chat = Box("chat").also { it.name = "Chat"; info.boxes[it.id] = it }
+        val repo = Files.createTempDirectory("await-repo-job")
+        val gate = repo.resolve("go")
+        Files.writeString(repo.resolve("gradlew"), "#!/bin/sh\necho building\nwhile [ ! -f '$gate' ]; do sleep 0.1; done\necho 'BUILD FAILED: 2 tests'\nexit 1\n")
+        repo.resolve("gradlew").toFile().setExecutable(true)
+        val tools = RepoCommandTools(RepoFileTools(RepoScope(repo, listOf("**"))), RepoCommandScope(setOf("gradle"), maxTimeoutSec = 60))
+        val job = tools.start(RepoStartCommandRequest("gradle", listOf("jvmTest"))).jobId
+        fun repoCtx() = ToolExecutionContext(fieldGraph = FieldGraphTools(info, host), repoCommands = tools, suspendable = true, promoted = mutableSetOf())
+        val bridge = ScriptedLlmBridge(listOf(
+            ScriptedLlmBridge.Step.Call("AwaitRepoCommandsRequest", """{"jobIds":["$job"],"maxMinutes":30}"""),
+            ScriptedLlmBridge.Step.Final("The tests failed: two of them.")))
+        val state = bridge.startThread("k", "")
+        val resumed = mutableListOf<AiAssist>()
+        try {
+            awaits({ _, _, assist -> resumed += assist; bridge.send(state, assist.extraPrompt, ctx = repoCtx()); true }).use { awaits ->
+                val first = bridge.send(state, "Run the tests and tell me how it went.", ctx = repoCtx())
+                val suspension = assertNotNull(first.suspension, "the await ends the turn")
+                val saved = awaits.suspend(info, chat, suspension, "code", 24)
+                assertContains(saved.row, "`gradle jvmTest`, job `$job`")
+                repeat(3) { awaits.tick() }
+                assertEquals(1, bridge.received.size, "no model call while the command runs")
+                assertEquals("running", awaits.suspensionOf(info, chat)!!.jobs.single().status)
+
+                Files.writeString(gate, "")
+                val until = System.currentTimeMillis() + 10_000
+                while (RepoCommandJobs.get(job)!!.alive) { check(System.currentTimeMillis() < until); Thread.sleep(20) }
+                awaits.tick()
+                val text = resumed.single().extraPrompt
+                assertTrue(text.startsWith("**Field:** the command you awaited has ended"), text)
+                assertContains(text, "`gradle jvmTest`, job `$job`: **exited**, exit 1")
+                assertContains(text, "BUILD FAILED: 2 tests")
+                assertEquals(2, bridge.received.size, "one model call, when the command had ended")
+                assertNull(StudyBuildAwaits.read(chat), "the wait is over")
+            }
+        } finally {
+            RepoCommandJobs.get(job)?.let { RepoCommandJobs.stop(it) }
+            repo.toFile().deleteRecursively()
+        }
+    }
 }
