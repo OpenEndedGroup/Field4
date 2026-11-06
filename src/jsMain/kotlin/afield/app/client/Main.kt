@@ -7606,22 +7606,13 @@ suspend fun main() {
         pendingShiftToggleHadDrag = false
 
 
-        val originalTarget = event.target as? HTMLElement
-        val insideOutputArea = originalTarget?.closest(".outputArea") != null
-
-        // If the click originates from inside an embedded Monaco editor,
-        // don't re-select the box — that would disrupt the main editor.
-        val insideEmbeddedEditor = originalTarget?.closest(".monaco-editor") != null && insideOutputArea
-        if (insideEmbeddedEditor) return@on
-
-        // Review links navigate outputs. Selecting their source on pointer-down
-        // would open Monaco before the link's click handler can run.
-        if (insideOutputArea && originalTarget.closest("a[data-review-view][data-review-note]") != null) return@on
-
-        // If the click originates from a disclosure header (output area UI),
-        // don't intercept — let the disclosure handle its own alt-click removal.
-        val insideDisclosureHeader = originalTarget?.closest(".disclosure-header") != null
-        if (insideOutputArea && insideDisclosureHeader) return@on
+        val originalTarget = event.target as? Element
+        val outputArea = originalTarget?.closest(".outputArea")
+        val insideOutputArea = outputArea != null
+        val clickedBox = originalTarget?.closest(".box")
+        // Output controls (including their SVG tracks) must not select their host or
+        // bring Monaco over the interaction. A real nested box still selects normally.
+        if (outputArea != null && (clickedBox == null || clickedBox.asDynamic().uid == undefined || !outputArea.contains(clickedBox))) return@on
 
         val target: dynamic = reorient(event.target)
         if (event.altKey) {
@@ -7737,7 +7728,7 @@ suspend fun main() {
         }
     }
 
-    interactable.draggable(json("onmove" to { event: dynamic ->
+    interactable.draggable(json("ignoreFrom" to ".outputArea", "onmove" to { event: dynamic ->
         if (event.altKey) {
         } else if (originatingMouseDown.altKey) {
         } else {

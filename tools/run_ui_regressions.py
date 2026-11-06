@@ -4648,6 +4648,19 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot=shell_join(["screenshot-window", "{screenshot}", "--preserve-selection", "--timeout", pw_timeout]),
         ),
         UiRegression(
+            id="output-control-selection",
+            description="Output text and SVG slider interactions retain the editor and selection, deliver callbacks and leave box frames fixed; clicking a box still selects it.",
+            commands=[
+                "new-box --name SelectionAnchor --alias selection_anchor --x 40 --y 40",
+                "set @last code 'println(\"selection anchor\")'",
+                "new-box --name OutputSelectionControls --x 400 --y 60",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/output-control-selection.kt"), "--timeout", timeout_text]),
+                "editor-open @selection_anchor --property code",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/output-control-selection.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--preserve-selection", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="controllers-live-output-scroll",
             description="Live controller outputs preserve page and iframe scrolling, keep unchanged controls and channels, and execute scripts without blank frames.",
             commands=[
