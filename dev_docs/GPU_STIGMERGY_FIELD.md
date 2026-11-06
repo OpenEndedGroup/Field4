@@ -99,8 +99,8 @@ All runs ~8.3 ms/frame (the smoke pumps a shared window; per-run cost is dominat
 
 ## Open / next
 
-- A canonical_graphics lesson entry (needs a box in `public/docs/assets/canonical_graphics/metadata.edn`);
-  not done.
+- canonical_graphics lessons `12. stigmergy` / `12b. trail followers` landed 2026-11-06 (one box per
+  adopted shader: the followers live beneath the slime box).
 - A compute-shader variant (true `computeModuleHere` pass) if agent counts beyond ~4M need it; the
   vertex-shader pass is fine at 1M.
 - Non-toroidal edges, 3D/shell fields. (The gradient-following example is `TrailFollowers`.)
