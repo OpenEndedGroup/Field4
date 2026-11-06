@@ -1,0 +1,38 @@
+{
+  "_about": "Where the scout looks. hn: the front page above a points floor. hn_topics: HN title/url queries for work Field already has, with almost no floor, because news in Field's own lineage is often small (the 2026 Strudel and Gray-Scott posts had 2 points). Add a topic when Field gains a subsystem. Feeds were checked live on 2026-11-06; lobste.rs `music` and `gamedev` returned 500 then and are left out.",
+  "hn": {"min_points": 50, "lookback_days": 2},
+  "hn_topics": {
+    "min_points": 1,
+    "lookback_days": 2,
+    "queries": [
+      "lenia", "physarum", "stigmergy", "braitenberg", "cellular automata", "reaction diffusion", "boids",
+      "artificial life", "diffusion limited aggregation", "wave function collapse", "procedural generation",
+      "faust dsp", "strudel", "tidalcycles", "sonic pi", "supercollider", "livecoding", "live coding",
+      "orca sequencer", "forth", "datalog", "prolog", "physical modeling synthesis", "granular synthesis",
+      "additive synthesis", "modular synth",
+      "gaussian splatting", "path tracing", "ray marching", "signed distance", "shader", "vulkan", "webgpu",
+      "slang shading", "compute shader", "bezier", "hyperbezier", "font rendering", "vector graphics",
+      "mesh boolean", "manifold", "tetrahedral", "ceres solver", "constraint solver",
+      "matrix profile", "gaussian process", "flow matching", "neural cellular automata", "optical flow",
+      "mediapipe", "onnx", "pen plotter", "excalidraw", "morpho", "interaction nets", "penrose tiling",
+      "creative coding", "generative art", "data visualization", "explorable explanation", "interactive essay"
+    ]
+  },
+  "lobsters": {"tags": ["graphics", "visualization", "art", "audio", "plt", "math", "show"]},
+  "feeds": [
+    {"name": "graphics-programming-weekly", "url": "https://www.jendrikillner.com/tags/weekly/index.xml", "limit": 3, "lookback_days": 21, "expand": true},
+    {"name": "ciechanowski", "url": "https://ciechanow.ski/atom.xml"},
+    {"name": "red-blob-games", "url": "https://www.redblobgames.com/blog/posts.xml"},
+    {"name": "raph-levien", "url": "https://raphlinus.github.io/feed.xml"},
+    {"name": "matt-keeter", "url": "https://www.mattkeeter.com/atom.xml"},
+    {"name": "acko", "url": "https://acko.net/atom.xml"},
+    {"name": "maxime-heckel", "url": "https://blog.maximeheckel.com/rss.xml"},
+    {"name": "alex-harri", "url": "https://alexharri.com/rss.xml"},
+    {"name": "distill", "url": "https://distill.pub/rss.xml"},
+    {"name": "lines", "url": "https://llllllll.co/latest.rss", "limit": 25},
+    {"name": "cdm", "url": "https://cdm.link/feed/"},
+    {"name": "arxiv-cs-gr", "url": "https://rss.arxiv.org/rss/cs.GR", "limit": 40}
+  ],
+  "watch": {"first_days": 7, "factor": 2, "max_checks": 5, "pool": 40},
+  "digest": {"every_days": 7, "min_cards": 3}
+}

@@ -135,6 +135,14 @@ Read `$JOURNAL/SCRATCHPAD.md` in full. Extract:
 
 Also skim the two or three most recent `reports/*.md` to avoid repeating last night's picks.
 
+**Scout backlog.** If `$WORKTREE_BASE/scout-journal/approved.md` exists, its unticked `## [ ]`
+entries are ideas from outside Field that Marc has read a card for and said yes to (the `scout`
+routine, `routines/scout/`). Each card names the method, what Field adds, the figures a build must
+reproduce, the license, and the nearest Field work. Treat them as backlog he has already chosen:
+when one fits tonight, prefer it for A or B, and build its listed figures from real code. Read that
+file only; it belongs to the scout's journal. Name the card's `key` and source link in your report,
+and credit the source on any page you write.
+
 ## Step 2 — Build the digest
 
 Assemble a cross-referenced picture of recent work. Prefer filesystem/git inspection

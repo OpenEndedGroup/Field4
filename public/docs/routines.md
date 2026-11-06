@@ -2,8 +2,9 @@
 
 Field's checkout comes with a handful of jobs meant to run on a schedule while you are away: an
 agent that makes improvements overnight, a nightly build-and-test run, a benchmark that notices
-when Field gets slower, a weekly entry for [What's New](changelog.md), and a reaper that keeps the
-agents' worktrees from filling your disk. Each one is a folder in [`routines/`](https://github.com/OpenEndedGroup/Field4/blob/main/routines/README.md). Field does not
+when Field gets slower, a weekly entry for [What's New](changelog.md), a scout that reads the
+day's links for ideas worth bringing in, and a reaper that keeps the agents' worktrees from filling
+your disk. Each one is a folder in [`routines/`](https://github.com/OpenEndedGroup/Field4/blob/main/routines/README.md). Field does not
 schedule anything itself. You choose which routines to run and adopt each into a scheduler you
 already have: an agent's scheduled tasks, `launchd` or `cron`.
 
@@ -19,6 +20,7 @@ and want the same overnight help.
 | `feel-bench` | Times first runs, reruns, edits and shader compiles 100 times over and compares them with your computer's baseline. It waits for the machine to go quiet first. | no | 23:00 |
 | `weekly-changelog` | Writes the week's entries for the What's New page and sends them to the [landing queue](landing_queue.md). | yes | Sundays 21:30 |
 | `reap-worktrees` | Removes worktrees that are merged, clean and idle, and deletes rebuildable build output from idle ones. | no | every 4 hours |
+| `scout` | Collects the day's links from Hacker News, lobste.rs, a list of feeds and searches for topics Field already works on, reads every page that might matter, and writes a card for each one worth bringing into Field: what it is, what Field would add, the figures a version in Field must reproduce, and its license. Once a week the cards become a digest you answer with yes, no or later. | yes | 19:15 |
 
 None of the agent routines pushes, opens a pull request or commits on `main`. Each one leaves its
 work on branches for you to review, and `weekly-changelog` lands only through the queue. The
