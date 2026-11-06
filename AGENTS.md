@@ -154,7 +154,7 @@ hand-merging generated files.
 ### Scheduled routines
 
 The overnight loops (self-improvement, nightly CI, the feel benchmark, the weekly What's New, the
-worktree reaper) are defined in `routines/<name>/ROUTINE.md`, with long playbooks beside them; their
+idea scout, the worktree reaper) are defined in `routines/<name>/ROUTINE.md`, with long playbooks beside them; their
 per-machine journals stay on the orphan `nightly/journal` and `nightly/ci-journal` branches. A
 scheduler holds only a stub prompt pointing at `main`'s copy, so change a routine by landing an edit
 there. `tools/routines.py status|install|run|check` (`routines/README.md`); `/routines.html` in Field.
