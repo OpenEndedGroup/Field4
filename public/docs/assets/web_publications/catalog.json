@@ -1909,31 +1909,31 @@
     },
     "assets/agent_transcripts/knight_tour_workshop/metadata.edn": {
       "captureDigest": "4d5add3a103558e3a45b0b09c14392b55f14042e4118c9d4d341d9a926c175b0",
-      "capturedAt": "2026-11-06T20:40:53.592Z",
+      "capturedAt": "2026-11-06T22:09:42.360Z",
       "channels": 5,
       "file": "assets/web_publications/knight_tour_workshop/document/metadata.edn",
       "files": {
-        "assets/web_publications/knight_tour_workshop/document/metadata.edn": "01b794893a86c2517f3368231a9da10d65bf6d4d9ad508dc6b83d8a722f597d1",
-        "assets/web_publications/knight_tour_workshop/document/outputs.json": "6f8f443e14c9f1a9caeaa72e1ca78a85a12cfadd7d03e9b97c77f3b63cb550f7",
-        "assets/web_publications/knight_tour_workshop/outputs/0.html": "239da3762024996b5f5641f24973ff2ce6872327f5fec3b9a141b89990694d7a",
-        "assets/web_publications/knight_tour_workshop/outputs/1.html": "ab9d3c83fe4a9137b42b183205c48bc6d6342bfbedfb85808c5aa8bb0735dbdf",
-        "assets/web_publications/knight_tour_workshop/outputs/2.html": "0d5a075f944e44bd17526c4e380b7f24b50545e83ae60113e5f41efd6ddb3a46",
-        "assets/web_publications/knight_tour_workshop/outputs/3.html": "98969488f4b4728855195a4c4dfdf33e2ca3fcc8d286235347b3d0eeba63ce7c",
-        "assets/web_publications/knight_tour_workshop/outputs/4.html": "2a8b832353c8f78b315e1a1772b0bb23a9dab72d230e8f821dfcf9c1cb8a424a"
+        "assets/web_publications/knight_tour_workshop/document/metadata.edn": "57ca9fef5a5def89a02e6f74c22651a2af5fe129b21d721d4aef642dd98811af",
+        "assets/web_publications/knight_tour_workshop/document/outputs.json": "44e44f41258d6d97ae9449a470d7c3c7cc31095606939711e86c63794a4a92f1",
+        "assets/web_publications/knight_tour_workshop/outputs/0.html": "acaec5d937807876f8a92ea6fb28cb1e8a70eda37676c1b7fbd039d490f2fdcc",
+        "assets/web_publications/knight_tour_workshop/outputs/1.html": "ce0a743d46e04e3b7c8b4af1c586a949acaf371d64b3273edaddf80d3056f2ab",
+        "assets/web_publications/knight_tour_workshop/outputs/2.html": "48682feb97acbf3cf267e0718f252c844898172546941bcf2565cbff0ab70ac4",
+        "assets/web_publications/knight_tour_workshop/outputs/3.html": "defa6995f6e29092bfb1e5313bab66d5002d5ac0d41c4f5e7d76f56f7d2d088f",
+        "assets/web_publications/knight_tour_workshop/outputs/4.html": "f885d255f2d98179238f44432c4bd511511eded790ada37846a2a1e79e331860"
       },
       "kinds": [
         "svg"
       ],
       "outputs": "assets/web_publications/knight_tour_workshop/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/knight_tour_workshop.yaml": "962b6a020c65b444ddac7b6bb231c8ca4189ee439043d2e93804c881dcf15583",
-        "public/docs/assets/agent_transcripts/knight_tour_workshop/0046694c-4358-43c9-913e-a17d8e55c785_code_.kt": "e38435efe1bcee87d692811775a94fb36f18be115574e5306b337e942ba76ef8",
-        "public/docs/assets/agent_transcripts/knight_tour_workshop/2685e17b-ada6-4ad7-8de3-b127719b87d2_code_.kt": "2aa0bae2ece267987696a3c6df7978c632f2811d74e17eac822eaf92ddae3d17",
-        "public/docs/assets/agent_transcripts/knight_tour_workshop/73b2ad1a-50a9-40ed-bef3-9456d8cf0d91_code_.kt": "4f697dcb6aabc35a8a6e7a1dd164dc694920a492cc05f2b9d6ff3c1a40905db4",
-        "public/docs/assets/agent_transcripts/knight_tour_workshop/756af284-5020-45dd-baf4-7b3bc777e681_code_.kt": "cdc73da4956dac8f51868d6eb8f10c269f490a133dde9c385f9aef9320911b1f",
-        "public/docs/assets/agent_transcripts/knight_tour_workshop/cc20e577-5142-4a8b-8083-3c737fc5b084_code_.kt": "6aa2be65eb74bccdca5327ef9041ab1f898ec1ba78539a3569df3069d596b767",
+        "dev_docs/agents/transcripts/knight_tour_workshop.yaml": "4ba0ec57dce6952175a98c9c79fecb51145591a29b8a43841e6eb4a38098c78f",
+        "public/docs/assets/agent_transcripts/knight_tour_workshop/0046694c-4358-43c9-913e-a17d8e55c785_code_.kt": "645ee0ef34f39da89fb585af98c43214844af98ab927fcc8f6e0edb95b6fe8f5",
+        "public/docs/assets/agent_transcripts/knight_tour_workshop/2685e17b-ada6-4ad7-8de3-b127719b87d2_code_.kt": "a8c2f6ab090924eeb9dd9cbdcf9f00adbfbf86b7adcf40558138d70095552752",
+        "public/docs/assets/agent_transcripts/knight_tour_workshop/73b2ad1a-50a9-40ed-bef3-9456d8cf0d91_code_.kt": "bd5f64c6a732a532ac06fc351bd26ed6cd48f6bb548b79c4c8dabcaa3159d034",
+        "public/docs/assets/agent_transcripts/knight_tour_workshop/756af284-5020-45dd-baf4-7b3bc777e681_code_.kt": "06b47968ce2c0067a35b8eb1cc8b589db602996370148bef38fd43b56d734485",
+        "public/docs/assets/agent_transcripts/knight_tour_workshop/cc20e577-5142-4a8b-8083-3c737fc5b084_code_.kt": "7855c47bb6c6db94a168e060dbfe4cb94fce87c416fb0a0f0dd5d18d19463fae",
         "public/docs/assets/agent_transcripts/knight_tour_workshop/guides/knight_tour_workshop.md": "c71a2d08f4d674ab8c75a57dfe66db3bcac5f1d545060a79f9b80e545b03b125",
-        "public/docs/assets/agent_transcripts/knight_tour_workshop/metadata.edn": "e6b7af97ce7539109e5349fe6e5b10e66cba6ae885c0faefe967a7c977c2c1f5"
+        "public/docs/assets/agent_transcripts/knight_tour_workshop/metadata.edn": "4d8a2e44a7e5b19869d05e582a7b2a04a77372c3553e03a96a6ef1a83b21b78f"
       }
     },
     "assets/agent_transcripts/kolakoski_euclid/metadata.edn": {
