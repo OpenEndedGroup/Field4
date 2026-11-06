@@ -1278,7 +1278,7 @@ object DemoTranscriptExecSmokeTest {
      * would open a Window). `//%-` fragment breaks are Kotlin comments, so compiling the whole body
      * as one snippet keeps cross-fragment declarations resolvable without evaluating anything.
      */
-    private fun compileBoxOnly(box: Box): List<String> = runBlocking {
+    internal fun compileBoxOnly(box: Box): List<String> = runBlocking {
         val errors = mutableListOf<String>()
         Box.withBoxContext(box) {
             // Expand macros first: this both rewrites moduleHere/prop/println/… AND writes the
@@ -1334,7 +1334,7 @@ object DemoTranscriptExecSmokeTest {
 
     // ---- shared setup ----
 
-    private fun freshSession(name: String): File {
+    internal fun freshSession(name: String): File {
         thisSessionInfo.remove()
         val workspace = Files.createTempDirectory("afield-demo-exec-$name").toFile()
         workspace.deleteOnExit()

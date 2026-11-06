@@ -2347,7 +2347,9 @@ Spline constructors turn keyframes into continuous curves with different interpo
 Linearly interpolates between two keyframes.
 
 ```diffstatic {data-lang=kotlin}
-val f = piecewiseLinear([Keyframe(0.0, 0.0, "linear"), Keyframe(1.0, 1.0, "linear")])
+with(Functions) {
+    val f = piecewiseLinear([Keyframe(0.0, 0.0, "linear"), Keyframe(1.0, 1.0, "linear")])
+}
 ```
 
 **Creative**
@@ -2384,7 +2386,9 @@ Handle and B-spline helpers make smoother keyframe-derived curves.
 Builds a smooth quadratic B-spline through the keyframe values.
 
 ```diffstatic {data-lang=kotlin}
-val f = bSplineQuadratic([Keyframe(0.0, 0.0, "linear"), Keyframe(0.4, 1.0, "linear"), Keyframe(1.0, 0.2, "linear")])
+with(Functions) {
+    val f = bSplineQuadratic([Keyframe(0.0, 0.0, "linear"), Keyframe(0.4, 1.0, "linear"), Keyframe(1.0, 0.2, "linear")])
+}
 ```
 
 **Creative**
@@ -2415,7 +2419,9 @@ Discrete and eased interpolators choose how keyframes are held or blended.
 Holds each keyframe value until the next keyframe is reached.
 
 ```diffstatic {data-lang=kotlin}
-val f = stepHold([Keyframe(0.0, 0.0, "linear"), Keyframe(0.5, 1.0, "linear"), Keyframe(1.0, 0.5, "linear")])
+with(Functions) {
+    val f = stepHold([Keyframe(0.0, 0.0, "linear"), Keyframe(0.5, 1.0, "linear"), Keyframe(1.0, 0.5, "linear")])
+}
 ```
 
 **Creative**
@@ -2655,7 +2661,9 @@ List combiners arrange multiple functions into ordered, mirrored, or cycling phr
 Concatenates the list of functions with a small overlap between neighbors.
 
 ```diffstatic {data-lang=kotlin}
-val phrase = [sin(2.0), saw(0.12), square(0.18)].sequence(overlap = 0.05)
+with(Functions) {
+    val phrase = [sin(2.0), saw(0.12), square(0.18)].sequence(overlap = 0.05)
+}
 ```
 
 **Creative**
@@ -2677,7 +2685,9 @@ Looping list combiners repeat a sequence, optionally shuffled by seed.
 Repeats the listed functions forever, then trims the result to `0.0..8.0`.
 
 ```diffstatic {data-lang=kotlin}
-val f = [sin(2.0), saw(0.2)].sequenceLoop() over (0.0..8.0)
+with(Functions) {
+    val f = [sin(2.0), saw(0.2)].sequenceLoop() over (0.0..8.0)
+}
 ```
 
 **Creative**
@@ -2699,7 +2709,9 @@ Random sequence helpers choose chunks by seed, slot size, and optional weights.
 Chooses random list entries in fixed-width slots, then trims to six seconds.
 
 ```diffstatic {data-lang=kotlin}
-val f = [sin(2.0), saw(0.2)].randomSequence(seed = 3, slot = 0.4) over (0.0..6.0)
+with(Functions) {
+    val f = [sin(2.0), saw(0.2)].randomSequence(seed = 3, slot = 0.4) over (0.0..6.0)
+}
 ```
 
 **Creative**
@@ -2725,7 +2737,9 @@ Stacking and selection helpers combine many functions at the same x position.
 Sums the list's functions into a single stacked result.
 
 ```diffstatic {data-lang=kotlin}
-val f = [sin(2.0), saw(0.2) * 0.3].stack()
+with(Functions) {
+    val f = [sin(2.0), saw(0.2) * 0.3].stack()
+}
 ```
 
 **Creative**

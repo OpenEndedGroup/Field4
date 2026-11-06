@@ -1,0 +1,509 @@
+[
+  {
+    "id": "dev_docs/agents/demos/stackauto_conversation_polytope/polytope_source_code_.kt#source",
+    "path": "dev_docs/agents/demos/stackauto_conversation_polytope/polytope_source_code_.kt",
+    "sha256": "5127e1868404f72defacd893cda4cb2754906eb074babcd06e424b782bb0b432",
+    "compiled": false,
+    "errors": [
+      "Unresolved reference 'renderer'. (5:1)",
+      "Unresolved reference 'nrm'. (28:17)",
+      "Unresolved reference 'cen'. (29:17)",
+      "Unresolved reference 'fid'. (30:17)",
+      "Unresolved reference 'faceRadius'. (31:17)",
+      "Unresolved reference 'explode' on receiver of type 'ModulePointer'. (44:8)",
+      "Unresolved reference 'face_decay' on receiver of type 'ModulePointer'. (69:8)"
+    ]
+  },
+  {
+    "id": "dev_docs/agents/transcripts/docs_capture/flow_grain_displacement.yaml#yaml/operations/12/create/properties/code",
+    "path": "dev_docs/agents/transcripts/docs_capture/flow_grain_displacement.yaml",
+    "sha256": "3285f3f57072f4b735b4d475fa6b1af04ae550adb205803c29c47d4e4b0e0a51",
+    "compiled": false,
+    "errors": [
+      "Unresolved reference 'force'. (5:1)",
+      "Unresolved reference 'grainCell'. (6:1)",
+      "Unresolved reference 'strokeTime'. (7:1)",
+      "Unresolved reference 'travel'. (8:1)",
+      "Unresolved reference 'flowWidth'. (9:1)",
+      "Unresolved reference 'flowLook'. (10:1)",
+      "Cannot infer type for type parameter 'T'. Specify it explicitly. (11:1)",
+      "Unresolved reference 'force'. (11:2)",
+      "Unresolved reference 'grainCell'. (11:20)",
+      "Unresolved reference 'strokeTime'. (11:42)",
+      "Unresolved reference 'flowWidth'. (11:65)"
+    ]
+  },
+  {
+    "id": "dev_docs/agents/transcripts/docs_capture/gpu_state_flat_fbm.yaml#yaml/operations/1/create/properties/code",
+    "path": "dev_docs/agents/transcripts/docs_capture/gpu_state_flat_fbm.yaml",
+    "sha256": "71a7ddb150fca3be1461f7f80dfa0e3850a556bdf12daf6a911996d9bae0ac2b",
+    "compiled": false,
+    "errors": [
+      "Unresolved reference 'renderer'. (4:1)",
+      "Unresolved reference 'state' on receiver of type 'ComputeMesh'. (59:5)",
+      "Unresolved reference 'renderer'. (59:19)",
+      "Unresolved reference 'prevState' on receiver of type 'ComputeMesh'. (60:5)",
+      "Unresolved reference 'renderer'. (60:23)",
+      "Unresolved reference 'anchors' on receiver of type 'ComputeMesh'. (61:5)",
+      "Unresolved reference 'heat' on receiver of type 'ComputeMesh'. (62:5)",
+      "Unresolved reference 'count' on receiver of type 'ComputeMesh'. (63:5)",
+      "Unresolved reference 'dt' on receiver of type 'ComputeMesh'. (64:5)",
+      "Unresolved reference 'knobs' on receiver of type 'ComputeMesh'. (73:5)",
+      "Unresolved reference 'renderer'. (73:19)",
+      "Unresolved reference 'force' on receiver of type 'ComputeModulePointer'. (91:11)"
+    ]
+  },
+  {
+    "id": "dev_docs/agents/transcripts/docs_capture/reconstruction_plumbing_gbuffer.yaml#yaml/operations/3/create/properties/code",
+    "path": "dev_docs/agents/transcripts/docs_capture/reconstruction_plumbing_gbuffer.yaml",
+    "sha256": "0fff10f5a2e190df6118ce452d4d664fb4b82264997a5ee28c5efecbb835cf90",
+    "compiled": false,
+    "errors": [
+      "Unresolved reference 'renderer'. (12:41)",
+      "Unresolved reference 'renderer'. (14:59)",
+      "Unresolved reference 'renderer'. (19:26)",
+      "Unresolved reference 'renderer'. (32:17)",
+      "Unresolved reference 'renderer'. (37:58)",
+      "Unresolved reference 'renderer'. (78:1)",
+      "Unresolved reference 'window'. (80:14)",
+      "Unresolved reference 'window'. (82:15)",
+      "Unresolved reference 'renderer'. (92:13)"
+    ]
+  },
+  {
+    "id": "dev_docs/agents/transcripts/docs_capture/reconstruction_plumbing_gbuffer.yaml#yaml/operations/5/launch/code",
+    "path": "dev_docs/agents/transcripts/docs_capture/reconstruction_plumbing_gbuffer.yaml",
+    "sha256": "a03b7fd8cb05207c584a0c43d68608dd366b601322fbfdb1282749a1c860889f",
+    "compiled": false,
+    "errors": [
+      "Unresolved reference 'renderer'. (12:41)",
+      "Unresolved reference 'renderer'. (14:59)",
+      "Unresolved reference 'renderer'. (19:26)",
+      "Unresolved reference 'renderer'. (32:17)",
+      "Unresolved reference 'renderer'. (37:58)",
+      "Unresolved reference 'renderer'. (78:1)",
+      "Unresolved reference 'window'. (80:14)",
+      "Unresolved reference 'window'. (82:15)",
+      "Unresolved reference 'renderer'. (92:13)"
+    ]
+  },
+  {
+    "id": "public/docs/assets/canonical_graphics/b42d7b13-680e-4f9b-b789-8e6e7d8c4a21_code_.kt#source",
+    "path": "public/docs/assets/canonical_graphics/b42d7b13-680e-4f9b-b789-8e6e7d8c4a21_code_.kt",
+    "sha256": "0e125e4335bb5339d7c837663294826e73762174c8a96f01c7f989c8c4e9038e",
+    "compiled": false,
+    "errors": [
+      "Unresolved reference 'renderer'. (44:1)",
+      "Unresolved reference 'vertices' on receiver of type 'Mesh'. (48:3)",
+      "Unresolved reference 'count' on receiver of type 'Mesh'. (49:3)"
+    ]
+  },
+  {
+    "id": "public/docs/assets/opendlssnr/OpenDlssNrStudy.kt#source",
+    "path": "public/docs/assets/opendlssnr/OpenDlssNrStudy.kt",
+    "sha256": "24431700ac1d0fd3fe3a1ac5f8c4ac071de5d6367f94d5129289ef000b97065c",
+    "compiled": false,
+    "errors": [
+      "Cannot access 'val beforeDeviceCleanup: CopyOnWriteArrayList<Runnable>': it is internal in 'afield.graphics.vulkan.Renderer'. (129:18)",
+      "Cannot access 'object OpenDlssNrDiagnostics : Any': it is internal in file. (170:13)",
+      "Cannot access 'object OpenDlssNrDiagnostics : Any': it is internal in file. (170:35)",
+      "Cannot access 'val beforeDeviceCleanup: CopyOnWriteArrayList<Runnable>': it is internal in 'afield.graphics.vulkan.Renderer'. (199:18)"
+    ]
+  },
+  {
+    "id": "public/docs/audio_ai_corpus_microscope.md#fence:116",
+    "path": "public/docs/audio_ai_corpus_microscope.md",
+    "sha256": "0221c7deb5bfbc31d36dfd796960352087af9d36e9a001dd6f92843b09f708f0",
+    "compiled": false,
+    "errors": [
+      "Unresolved reference 'nancy'. (1:25)",
+      "Function invocation 'preview(...)' expected. (5:9)",
+      "No value passed for parameter 'value'. (5:9)",
+      "Variable expected. (5:9)",
+      "Assignment type mismatch: actual type is 'CorpusPreview', but 'String' was expected. (5:19)",
+      "Unresolved reference 'canonical'. (6:9)",
+      "Unresolved reference 'nancy'. (7:13)",
+      "Unresolved reference 'role'. (7:52)",
+      "Unresolved reference 'nancy'. (8:20)",
+      "Unresolved reference 'mediaType'. (8:53)",
+      "Argument type mismatch: actual type is 'String', but 'CorpusPreview' was expected. (9:52)",
+      "Function invocation 'preview(...)' expected. (9:52)",
+      "No value passed for parameter 'value'. (9:52)",
+      "Unresolved reference 'canonical'. (9:61)",
+      "Unresolved reference 'tracked'. (14:22)",
+      "Cannot infer type for value parameter 'result'. Specify it explicitly. (32:30)",
+      "Unresolved reference 'CancellationException'. (33:34)",
+      "Type mismatch: inferred type is '??? (Unresolved name: CancellationException)', but 'Throwable' was expected. (33:34)",
+      "Unresolved reference 'client'. (34:9)",
+      "Unresolved reference 'id'. (34:37)",
+      "Cannot infer type for type parameter 'T'. Specify it explicitly. (34:41)",
+      "Cannot infer type for type parameter 'T'. Specify it explicitly. (34:48)",
+      "Unresolved reference 'cancel'. (34:78)"
+    ]
+  },
+  {
+    "id": "public/docs/chain_flow_islands.md#fence:41",
+    "path": "public/docs/chain_flow_islands.md",
+    "sha256": "4e68ecfc1372fa22117fd3e9de7a5d9520176ce65befe3175dfeba9fbb308220",
+    "compiled": false,
+    "errors": [
+      "Candidate 'val Number.d: Double' is inapplicable because of a receiver type mismatch. Actual receiver type is 'Literal_audit_123__code__1'. (1:1)",
+      "Unresolved reference 'facts' on receiver of type 'Double'. (1:3)",
+      "Unresolved reference 'moonSamples'. (1:15)",
+      "Cannot infer type for value parameter 'i'. Specify it explicitly. (1:40)",
+      "Cannot infer type for value parameter 'p'. Specify it explicitly. (1:43)",
+      "Function invocation 'x(...)' expected. (1:54)",
+      "No value passed for parameter 'b'. (1:54)",
+      "Unresolved reference 'toDouble' on receiver of type 'Vector3f'. (1:56)",
+      "Unresolved reference 'y'. (1:70)",
+      "Candidate 'val Number.d: Double' is inapplicable because of a receiver type mismatch. Actual receiver type is 'Literal_audit_123__code__1'. (2:1)",
+      "Unresolved reference 'facts' on receiver of type 'Double'. (2:3)",
+      "Unresolved reference 'moonTarget'. (2:16)",
+      "Cannot infer type for value parameter 'i'. Specify it explicitly. (2:40)",
+      "Cannot infer type for value parameter 'p'. Specify it explicitly. (2:43)",
+      "Function invocation 'x(...)' expected. (2:54)",
+      "No value passed for parameter 'b'. (2:54)",
+      "Unresolved reference 'toDouble' on receiver of type 'Vector3f'. (2:56)",
+      "Unresolved reference 'y'. (2:70)"
+    ]
+  },
+  {
+    "id": "public/docs/chain_stencil_bridges.md#fence:48",
+    "path": "public/docs/chain_stencil_bridges.md",
+    "sha256": "c28e01fbaca0641ccfd22b3b41363f0ef0afe3c3d23530f86c4d2126c01c2f9d",
+    "compiled": false,
+    "errors": [
+      "Unresolved reference 'stencilGlyphs'. (1:1)",
+      "Unresolved reference 'stencilWord'. (2:5)",
+      "Cannot infer type for value parameter 'g'. Specify it explicitly. (2:37)",
+      "Cannot infer type for value parameter 'p'. Specify it explicitly. (2:40)",
+      "Function invocation 'text(...)' expected. (3:15)",
+      "No value passed for parameter 'initial'. (3:15)",
+      "Unresolved reference 'origin'. (3:23)",
+      "Unresolved reference 'toDouble' on receiver of type 'Vector3f'. (3:32)",
+      "Unresolved reference 'origin'. (3:46)",
+      "Unresolved reference 'toDouble' on receiver of type 'Vector3f'. (3:55)",
+      "Unresolved reference 'glyph'. (3:70)",
+      "Unresolved reference 'stencilPieces'. (5:1)",
+      "Unresolved reference 'pieces'. (5:17)",
+      "Cannot infer type for value parameter 'i'. Specify it explicitly. (5:37)",
+      "Cannot infer type for value parameter 's'. Specify it explicitly. (5:40)",
+      "Function invocation 'bounds()' expected. (6:20)",
+      "Unresolved reference 'area'. (7:49)"
+    ]
+  },
+  {
+    "id": "public/docs/direct_lighting.md#fence:112",
+    "path": "public/docs/direct_lighting.md",
+    "sha256": "6747fabdb2ef1e5ebc4bd55d0630620bfdbec15c7581f9c4cc662cb4e441030e",
+    "compiled": false,
+    "errors": [
+      "Unresolved reference 'study'. (3:16)",
+      "Unresolved reference 'IdentifiedAreaLight'. (4:24)",
+      "Unresolved reference 'study'. (4:48)",
+      "Unresolved reference 'study'. (5:1)",
+      "Unresolved reference 'RtxdiProgram'. (5:28)",
+      "Cannot infer type for type parameter 'T'. Specify it explicitly. (5:59)",
+      "Unresolved reference 'study'. (6:1)",
+      "Unresolved reference 'DirectLighting'. (6:23)",
+      "Unresolved reference 'study'. (7:1)"
+    ]
+  },
+  {
+    "id": "public/docs/dmx_lighting.md#fence:75",
+    "path": "public/docs/dmx_lighting.md",
+    "sha256": "ba800d08a057deb77fcb6f0b3779af4b484014091398882875476c1835367aa3",
+    "compiled": false,
+    "errors": [
+      "Unresolved reference 'FixtureProfile'. (1:13)",
+      "Cannot infer type for type parameter 'T'. Specify it explicitly. (1:38)",
+      "Unresolved reference 'Slot'. (1:39)",
+      "Unresolved reference 'Slot'. (1:52)",
+      "Unresolved reference 'Slot'. (1:62)",
+      "Unresolved reference 'Slot'. (1:74)",
+      "Unresolved reference 'Slot'. (1:85)",
+      "Unresolved reference 'Slot'. (1:96)"
+    ]
+  },
+  {
+    "id": "public/docs/gaussian_processes.md#fence:749",
+    "path": "public/docs/gaussian_processes.md",
+    "sha256": "be8e9c1699e2514c47ee6360fbe6d5c6ff09b2ed96e4b2cbfdd2940020bcf349",
+    "compiled": false,
+    "errors": [
+      "Unresolved reference 'xs'. (8:14)",
+      "Unresolved reference 'ys'. (8:18)"
+    ]
+  },
+  {
+    "id": "public/docs/gpu_schema.md#fence:97",
+    "path": "public/docs/gpu_schema.md",
+    "sha256": "ccfd109eb5b27e698d4ff21645afbb58750bbb6e6e8ca157dcce13c0d7aaf6c1",
+    "compiled": false,
+    "errors": [
+      "Cannot infer type for type parameter 'T'. Specify it explicitly. (1:14)",
+      "Unresolved reference 'Particle'. (2:5)",
+      "Unresolved reference 'Material'. (2:43)",
+      "Unresolved reference 'Particle'. (3:5)",
+      "Unresolved reference 'Material'. (3:41)",
+      "Unresolved reference 'Particle'. (4:5)",
+      "Unresolved reference 'Material'. (4:42)",
+      "Unresolved reference 'particle'. (8:27)",
+      "Unresolved reference 'particle'. (13:5)"
+    ]
+  },
+  {
+    "id": "public/docs/gpu_state.md#fence:123",
+    "path": "public/docs/gpu_state.md",
+    "sha256": "ab1c7e0005a3c8afae7ad75c32bddcdd2e18f97bfab927dae3889169f05c27a0",
+    "compiled": false,
+    "errors": [
+      "Cannot infer type for type parameter 'T'. Specify it explicitly. (3:16)",
+      "Unresolved reference 'stateA'. (3:17)",
+      "Unresolved reference 'stateB'. (3:25)",
+      "Unresolved reference 'write'. (4:12)",
+      "Cannot infer type for type parameter 'K'. Specify it explicitly. (6:13)",
+      "Cannot infer type for type parameter 'V'. Specify it explicitly. (6:13)",
+      "Candidate 'fun <K, V> MutableMap<K, MutableSet<V>>.put(key: K, value: V): Unit' is inapplicable because of a receiver type mismatch. Actual receiver type is 'Literal_audit_241__code__1'. (6:13)",
+      "Unresolved reference 'first' on receiver of type 'Char'. (6:23)",
+      "Unresolved reference 'second' on receiver of type 'Char'. (6:32)",
+      "Unresolved reference 'third' on receiver of type 'Char'. (6:42)",
+      "Cannot infer type for type parameter 'K'. Specify it explicitly. (7:13)",
+      "Cannot infer type for type parameter 'V'. Specify it explicitly. (7:13)",
+      "Candidate 'fun <K, V> MutableMap<K, MutableSet<V>>.put(key: K, value: V): Unit' is inapplicable because of a receiver type mismatch. Actual receiver type is 'Literal_audit_241__code__1'. (7:13)"
+    ]
+  },
+  {
+    "id": "public/docs/keyframe_autosweep.md#fence:385",
+    "path": "public/docs/keyframe_autosweep.md",
+    "sha256": "bc2297178994164376154a4d7596ebd7b20cd5d640a87a8abe5241a48f02d6c2",
+    "compiled": false,
+    "errors": [
+      "Unresolved reference 'renderer'. (17:5)",
+      "Unresolved reference 'renderer'. (37:98)",
+      "Unresolved reference 'renderer'. (45:57)",
+      "Unresolved reference 'renderer'. (108:27)",
+      "Unresolved reference 'renderer'. (109:17)",
+      "Unresolved reference 'renderer'. (200:9)",
+      "Unresolved reference 'renderer'. (201:29)"
+    ]
+  },
+  {
+    "id": "public/docs/kotlin_in_the_head.md#fence:222",
+    "path": "public/docs/kotlin_in_the_head.md",
+    "sha256": "d9ac289fd3cddafd62f1e63efc14ed37276d325781098367e1e67c53c1772d90",
+    "compiled": false,
+    "errors": [
+      "Unresolved reference 'onStart'. (2:1)",
+      "Unresolved reference 'Tone'. (3:17)",
+      "Unresolved reference 'Tone'. (4:18)",
+      "Unresolved reference 'Tone'. (9:21)",
+      "Cannot infer type for value parameter 'time'. Specify it explicitly. (14:11)",
+      "Unresolved reference 'Tone'. (21:5)",
+      "Unresolved reference 'onStop'. (24:5)"
+    ]
+  },
+  {
+    "id": "public/docs/orca.md#fence:77",
+    "path": "public/docs/orca.md",
+    "sha256": "bdef87009c9918f9d2b8082b5c6fca427f5c669178ca77bd8ee03d464d4b6833",
+    "compiled": false,
+    "errors": [
+      "Unresolved reference 'o'. (1:1)",
+      "Unresolved reference 'o'. (2:1)",
+      "Unresolved reference 'o'. (3:1)",
+      "Unresolved reference 'channel'. (3:36)",
+      "Unresolved reference 'o'. (3:50)"
+    ]
+  },
+  {
+    "id": "public/docs/ray_tracing_examples.md#fence:113",
+    "path": "public/docs/ray_tracing_examples.md",
+    "sha256": "4d2e88c6f9c4750775fa84c45d6661f8476eecbaaa5f4b82f180b83dfccc1ea2",
+    "compiled": false,
+    "errors": [
+      "Unresolved reference 'renderer'. (14:16)",
+      "Unresolved reference 'VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR'. (17:9)",
+      "Argument type mismatch: actual type is 'ElementSelector', but 'Int' was expected. (17:9)",
+      "Unresolved reference 'VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT'. (18:13)",
+      "Unresolved reference 'VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT'. (19:15)",
+      "Argument type mismatch: actual type is 'ElementSelector', but 'Int' was expected. (19:15)",
+      "Unresolved reference 'VK_MEMORY_PROPERTY_HOST_COHERENT_BIT'. (19:54)",
+      "Unresolved reference 'renderer'. (25:27)",
+      "Unresolved reference 'renderer'. (36:34)"
+    ]
+  },
+  {
+    "id": "public/docs/ray_tracing_examples.md#fence:256",
+    "path": "public/docs/ray_tracing_examples.md",
+    "sha256": "cc6db8e20efde26e42a4e83905191a5b566134639e75527ff007b5cca05dc0f9",
+    "compiled": false,
+    "errors": [
+      "Unresolved reference 'renderer'. (2:27)",
+      "Unresolved reference 'quadVertexBuffer'. (6:36)"
+    ]
+  },
+  {
+    "id": "public/docs/ray_tracing_examples.md#fence:314",
+    "path": "public/docs/ray_tracing_examples.md",
+    "sha256": "925d7d2903c237ecd5e38b8b8f190b5c3dd8efe5bb1dd164585b6c304d49ff95",
+    "compiled": false,
+    "errors": [
+      "Unresolved reference 'renderer'. (2:27)",
+      "Unresolved reference 'floorVertexBuffer'. (6:36)",
+      "Unresolved reference 'renderer'. (14:27)",
+      "Unresolved reference 'sphereAabbBuffer'. (18:34)",
+      "Unresolved reference 'sphereA'. (26:48)",
+      "Unresolved reference 'sphereB'. (27:48)",
+      "Unresolved reference 'sphereC'. (28:48)",
+      "Unresolved reference 'renderer'. (31:34)"
+    ]
+  },
+  {
+    "id": "public/docs/reconstruction_plumbing.md#fence:44",
+    "path": "public/docs/reconstruction_plumbing.md",
+    "sha256": "1c4715c491bd7b953932781d05fbd0115bdc1c9046345e244b9be903c07142d3",
+    "compiled": false,
+    "errors": [
+      "Unresolved reference 'renderer'. (1:30)",
+      "Unresolved reference 'inputSize'. (2:13)",
+      "Unresolved reference 'inputSize'. (3:14)",
+      "Unresolved reference 'VK_FORMAT_R16G16B16A16_SFLOAT'. (7:9)",
+      "Unresolved reference 'VK_FORMAT_R32_SFLOAT'. (8:9)",
+      "Unresolved reference 'VK_FORMAT_R32G32_SFLOAT'. (9:9)"
+    ]
+  },
+  {
+    "id": "public/docs/rtp_midi.md#fence:53",
+    "path": "public/docs/rtp_midi.md",
+    "sha256": "d7094a653f7a13efdda20256368c59140259ed66bb0349883a2f7419f2d9991c",
+    "compiled": false,
+    "errors": [
+      "Unresolved reference 'midi'. (3:9)",
+      "Unresolved reference 'midi'. (7:13)",
+      "Unresolved reference 'midi'. (10:5)",
+      "Unresolved reference 'midi'. (11:5)",
+      "Unresolved reference 'midi'. (12:5)"
+    ]
+  },
+  {
+    "id": "public/docs/solid_notation.md#fence:300",
+    "path": "public/docs/solid_notation.md",
+    "sha256": "b9b94e8e2a9be4a4a160d4be0b24018f6ac6254e092a07f73eeede50cfbeea2f",
+    "compiled": false,
+    "errors": [
+      "Unresolved reference 'renderer'. (14:16)",
+      "Unresolved reference 'window'. (23:37)",
+      "Unresolved reference 'window'. (23:61)",
+      "Unresolved reference 'renderer'. (26:1)"
+    ]
+  },
+  {
+    "id": "public/docs/solid_notation.md#fence:743",
+    "path": "public/docs/solid_notation.md",
+    "sha256": "95578f21c79a3899f779bea9f83712756817dba15efdb99353c20d555fbd6333",
+    "compiled": false,
+    "errors": [
+      "Expecting an element (1:53)",
+      "Expecting an argument (2:28)",
+      "Expecting ')' (2:28)",
+      "Expecting an element (2:29)",
+      "Expecting an element (2:30)",
+      "Expecting an element (4:64)",
+      "Expecting an argument (5:28)",
+      "Expecting ')' (5:28)",
+      "Expecting an element (5:29)",
+      "Expecting an element (5:30)",
+      "Unresolved reference 'unionOf'. (1:1)",
+      "Cannot infer type for type parameter 'T'. Specify it explicitly. (1:9)",
+      "Unresolved reference 'sphere'. (1:10)",
+      "Unresolved reference 'sphere'. (1:23)",
+      "Function invocation 'target(...)' expected. (2:20)",
+      "None of the following candidates is applicable:\n\nfun target(a: (CommandBuffer, Int) -> Unit): Target:\n  No value passed for parameter 'a'.\n\nfun target(box: Box): String:\n  No value passed for parameter 'box'. (2:20)",
+      "Unresolved reference 'deadParameters'. (2:31)",
+      "Unresolved reference 'smoothUnion'. (4:1)",
+      "Unresolved reference 'sphere'. (4:13)",
+      "Unresolved reference 'sphere'. (4:26)",
+      "Function invocation 'target(...)' expected. (5:20)",
+      "None of the following candidates is applicable:\n\nfun target(a: (CommandBuffer, Int) -> Unit): Target:\n  No value passed for parameter 'a'.\n\nfun target(box: Box): String:\n  No value passed for parameter 'box'. (5:20)",
+      "Unresolved reference 'deadParameters'. (5:31)"
+    ]
+  },
+  {
+    "id": "public/docs/stackauto_conversation.md#fence:298",
+    "path": "public/docs/stackauto_conversation.md",
+    "sha256": "f30f85e1258556dfd05ebbc178a4a810aed3675038ddaf4849211d9d0569d634",
+    "compiled": false,
+    "errors": [
+      "Cannot infer type for type parameter 'T'. Specify it explicitly. (7:5)",
+      "Candidate 'val <T> List<T>.m: MutableList<T>' is inapplicable because of a receiver type mismatch. Actual receiver type is 'Literal_audit_435__code__1'. (7:5)",
+      "Too many arguments for 'fun set(index: Int, element: ??? (Unknown type for type parameter T)): ??? (Unknown type for type parameter T)'. (7:35)",
+      "Unresolved reference 'pos'. (15:21)",
+      "Unresolved reference 'nrm'. (16:21)",
+      "Unresolved reference 'cen'. (17:21)",
+      "Unresolved reference 'fid'. (18:21)",
+      "Unresolved reference 'faceRadius'. (19:21)",
+      "None of the following candidates is applicable:\n\nfun FloatBuffer.add(x: Float, y: Float): FloatBuffer:\n  Candidate 'fun FloatBuffer.add(x: Float, y: Float): FloatBuffer' is inapplicable because of a receiver type mismatch. Actual receiver type is 'TriOsc'.\n\nfun FloatBuffer.add(a: Vector2f): FloatBuffer:\n  Candidate 'fun FloatBuffer.add(a: Vector2f): FloatBuffer' is inapplicable because of a receiver type mismatch. Actual receiver type is 'TriOsc'.\n\nfun FloatBuffer.add(a: Vector3f): FloatBuffer:\n  Candidate 'fun FloatBuffer.add(a: Vector3f): FloatBuffer' is inapplicable because of a receiver type mismatch. Actual receiver type is 'TriOsc'.\n\nfun FloatBuffer.add(a: Vector4f): FloatBuffer:\n  Candidate 'fun FloatBuffer.add(a: Vector4f): FloatBuffer' is inapplicable because of a receiver type mismatch. Actual receiver type is 'TriOsc'.\n\nfun FloatBuffer.add(x: Float, y: Float, z: Float): FloatBuffer:\n  Candidate 'fun FloatBuffer.add(x: Float, y: Float, z: Float): FloatBuffer' is inapplicable because of a receiver type mismatch. Actual receiver type is 'TriOsc'.\n\nfun FloatBuffer.add(vararg x: Number): FloatBuffer:\n  Candidate 'fun FloatBuffer.add(vararg x: Number): FloatBuffer' is inapplicable because of a receiver type mismatch. Actual receiver type is 'TriOsc'.\n\nfun IntBuffer.add(vararg x: Number): IntBuffer:\n  Candidate 'fun IntBuffer.add(vararg x: Number): IntBuffer' is inapplicable because of a receiver type mismatch. Actual receiver type is 'TriOsc'. (21:21)"
+    ]
+  },
+  {
+    "id": "public/docs/studies.md#fence:454",
+    "path": "public/docs/studies.md",
+    "sha256": "bee418d1ac0b3f29d93837c4bb85ff2fa6e12dbf3f6908200db7edf26b7a79a6",
+    "compiled": false,
+    "errors": [
+      "Unresolved reference 'failureNotes'. (1:1)",
+      "An explicit type is required on a value parameter. (1:18)",
+      "Unresolved reference 'problem'. (2:23)",
+      "Unresolved reference 'showHeld'. (9:78)"
+    ]
+  },
+  {
+    "id": "public/docs/three_output.md#fence:439",
+    "path": "public/docs/three_output.md",
+    "sha256": "a5a2c18eb66a5409dac4933583ddf618719b26a8e2511149fe73963737585fe3",
+    "compiled": false,
+    "errors": [
+      "Unresolved reference 'solid'. (3:41)",
+      "Unresolved reference 'kissed'. (4:34)"
+    ]
+  },
+  {
+    "id": "public/docs/visualizers.md#fence:2122",
+    "path": "public/docs/visualizers.md",
+    "sha256": "14002ac9917c25d8266e036b97c0a37b069feb50167af55923343fb5c2a17bd9",
+    "compiled": false,
+    "errors": [
+      "Unresolved reference 'representation'. (5:5)",
+      "Unresolved reference 'beats'. (19:10)",
+      "Unresolved reference 'mono'. (19:17)",
+      "Unresolved reference 'poly'. (19:23)"
+    ]
+  },
+  {
+    "id": "public/docs/visualizers.md#fence:2368",
+    "path": "public/docs/visualizers.md",
+    "sha256": "fef3dbbe292f60a34c664e45c2decd1b9b29594d1daa1ce669ed1ae848a535e5",
+    "compiled": false,
+    "errors": [
+      "Unresolved reference 'client'. (1:1)",
+      "Unresolved reference 'result'. (2:22)",
+      "Unresolved reference 'client'. (4:9)",
+      "Unresolved reference 'result'. (5:13)",
+      "Cannot infer type for value parameter 'preview'. Specify it explicitly. (10:9)",
+      "Cannot infer type for value parameter 'frames'. Specify it explicitly. (10:18)",
+      "Cannot infer type for value parameter 'previews'. Specify it explicitly. (19:19)"
+    ]
+  },
+  {
+    "id": "python/fieldcv/examples/webcam_demo.yaml#yaml/operations/7/create/properties/code",
+    "path": "python/fieldcv/examples/webcam_demo.yaml",
+    "sha256": "dee13f718430d03fb6154d1bd0a77d76a88ae58feb8f723f4ee3126180530443",
+    "compiled": false,
+    "errors": [
+      "Unresolved reference 'renderer'. (16:1)",
+      "Cannot infer type for type parameter 'T'. Specify it explicitly. (49:17)",
+      "Unresolved reference 'col'. (49:21)"
+    ]
+  }
+]
