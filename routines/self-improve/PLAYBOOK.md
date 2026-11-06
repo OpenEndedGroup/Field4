@@ -141,7 +141,9 @@ routine, `routines/scout/`). Each card names the method, what Field adds, the fi
 reproduce, the license, and the nearest Field work. Treat them as backlog he has already chosen:
 when one fits tonight, prefer it for A or B, and build its listed figures from real code. Read that
 file only; it belongs to the scout's journal. Name the card's `key` and source link in your report,
-and credit the source on any page you write.
+and credit the source on any page you write. Marc ticks an entry when he merges the branch built
+from it, so an unticked card may already have a branch: skip one that an earlier report built and
+whose branch still exists (`git -C $REPO branch --list <name>`).
 
 ## Step 2 — Build the digest
 

@@ -13,7 +13,7 @@ shows how each one last went. The public page is `public/docs/routines.md`.
 | [`feel-bench`](feel-bench/ROUTINE.md) | `tools/feel_bench.py` against this computer's baseline, once the machine is quiet | command |
 | [`weekly-changelog`](weekly-changelog/ROUTINE.md) | The week's entries for the public What's New page, through the landing queue | agent |
 | [`reap-worktrees`](reap-worktrees/ROUTINE.md) | Merged, idle worktrees removed; build output stripped from idle ones | command |
-| [`scout`](scout/ROUTINE.md) | Links from HN, lobste.rs, feeds and topic queries; every plausible page read, a card for each worth bringing into Field, a weekly digest for Marc to answer | agent |
+| [`scout`](scout/ROUTINE.md) | Links from HN, lobste.rs, feeds and topic queries; every plausible page read, a card for each worth bringing into Field, a digest every three days for Marc to answer | agent |
 
 ## The format
 

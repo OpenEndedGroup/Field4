@@ -4,7 +4,7 @@
 The `scout` routine (`routines/scout/ROUTINE.md`) runs this once a day. The scout harvests HN,
 lobste.rs, a list of feeds, and HN queries for topics Field already works on; an agent drops the
 plainly off-domain titles; the scout fetches every remaining page to a local text file; the agent
-reads each page and writes a card; and once a week the cards become a digest that Marc answers
+reads each page and writes a card; and every three days the cards become a digest that Marc answers
 with yes, no or later. Links worth a second look go into a finite watch pool that checks back with
 exponential backoff.
 
@@ -14,7 +14,7 @@ Everything this writes lives in the scout journal, a worktree of the orphan bran
     ledger.jsonl        one record per link (status, sightings, watch schedule, verdict)
     pages/<key>.txt     fetched page text, untrusted, kept out of git by .gitignore
     cards/<key>.md      the agent's card for a page (front matter, then the card)
-    digests/<date>.md   a week's cards with a `verdict:` line for each, which Marc fills in
+    digests/<date>.md   the cards since the last digest, with a `verdict:` line for each, which Marc fills in
     approved.md         cards Marc said yes to: the self-improve loop's scout backlog
     SCRATCHPAD.md       taste notes; `verdicts` appends Marc's reasons
     reports/<date>.md   one per run
@@ -28,7 +28,7 @@ Standard library only. The network is reached through `Fetcher`, which the tests
     python3 tools/scout.py fetch [--limit 40]       # fetch queued pages and due watch checks
     python3 tools/scout.py reading-list             # pages fetched and awaiting a card
     python3 tools/scout.py ingest-cards             # validate cards/*.md and record them
-    python3 tools/scout.py digest [--force]         # write the week's digest
+    python3 tools/scout.py digest [--force]         # write the digest, if one is due
     python3 tools/scout.py verdicts                 # read Marc's answers from the digests
     python3 tools/scout.py status                   # one line: how things stand
 """
@@ -835,7 +835,7 @@ def last_digest(journal: Path) -> dt.date | None:
     return dt.date.fromisoformat(dates[-1]) if dates else None
 
 
-def digest(ledger: Ledger, every_days: int = 7, min_cards: int = 3, force: bool = False) -> Path | None:
+def digest(ledger: Ledger, every_days: int = 3, min_cards: int = 3, force: bool = False) -> Path | None:
     """Write `digests/<today>.md` from every card not yet in a digest: new ideas first, then news
     touching work Field already has, each with a `verdict:` line for Marc."""
     carded = ledger.with_status("carded")
@@ -917,7 +917,7 @@ def _append_approved(journal: Path, item: Item) -> None:
     path = journal / "approved.md"
     if not path.exists():
         path.write_text("# Approved by Marc\n\nScout cards Marc said yes to. The self-improve loop takes these as "
-                        "backlog; whoever builds one ticks it and names the branch. Every page built from one "
+                        "backlog; Marc ticks one when he merges the branch built from it. Every page built from one "
                         "credits the source link.\n\n", encoding="utf-8")
     _, body = parse_front_matter((journal / item.card).read_text(encoding="utf-8"))
     with path.open("a", encoding="utf-8") as f:
@@ -1059,7 +1059,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1 if faults else 0
     if args.command == "digest":
         cfg = sources.get("digest", {})
-        path = digest(ledger, cfg.get("every_days", 7), cfg.get("min_cards", 3), args.force)
+        path = digest(ledger, cfg.get("every_days", 3), cfg.get("min_cards", 3), args.force)
         print(f"digest: {path}" if path else "digest: not due")
         return 0
     if args.command == "verdicts":
