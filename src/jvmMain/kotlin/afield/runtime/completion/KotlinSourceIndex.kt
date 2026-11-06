@@ -47,7 +47,13 @@ data class KotlinDefinitionRecord(
     val fileId: String?,
     val contentHash: String,
     val kdoc: String? = null,
-    val completionCategory: String? = null
+    val completionCategory: String? = null,
+    /**
+     * `private`, `protected` or `internal` when box code cannot call this declaration — its own modifier or
+     * that of a class it is nested in, whichever is narrower; null for public API. Indexes written before
+     * this field existed read as null everywhere, so a consumer that must know reads the declaration line.
+     */
+    val visibility: String? = null
 )
 
 data class KotlinSourceIndexDb(
@@ -157,7 +163,7 @@ object KotlinSourceIndex {
                 modifiedEpochMs = modified
             )
 
-            parseTopLevelDefinitions(rawText).forEach { def ->
+            withEffectiveVisibility(parseTopLevelDefinitions(rawText)).forEach { (def, visibility) ->
                 definitions += KotlinDefinitionRecord(
                     name = def.name,
                     kind = def.kind,
@@ -166,7 +172,8 @@ object KotlinSourceIndex {
                     fileId = null,
                     contentHash = contentHash,
                     kdoc = def.kdoc,
-                    completionCategory = def.completionCategory
+                    completionCategory = def.completionCategory,
+                    visibility = visibility
                 )
             }
         }
@@ -331,7 +338,7 @@ object KotlinSourceIndex {
                 .getOrElse { file.toString() }.replace("\\", "/")
             val text = runCatching { Files.readString(file, StandardCharsets.UTF_8) }.getOrNull()
                 ?: return@flatMap emptyList()
-            parseTopLevelDefinitions(text).map { def ->
+            withEffectiveVisibility(parseTopLevelDefinitions(text)).map { (def, visibility) ->
                 KotlinDefinitionRecord(
                     name = def.name,
                     kind = def.kind,
@@ -340,10 +347,138 @@ object KotlinSourceIndex {
                     fileId = null,
                     contentHash = "",
                     kdoc = def.kdoc,
-                    completionCategory = def.completionCategory
+                    completionCategory = def.completionCategory,
+                    visibility = visibility
                 )
             }
         }
+
+    /**
+     * Each definition with the visibility box code sees: the narrowest of its own modifier and those of the
+     * classes it is nested in (a public member of a `private class` is no more callable than the class), or
+     * null when that is public. [ParsedDefinition.visibility] stays the declaration's own modifier, which is
+     * what the generated reference wants.
+     */
+    internal fun withEffectiveVisibility(parsed: List<ParsedDefinition>): List<Pair<ParsedDefinition, String?>> {
+        val containers = parsed.filter { it.kind == "class" || it.kind == "interface" || it.kind == "object" }
+            .associate { it.name to it }
+        fun rank(v: String) = when (v) { "private" -> 3; "protected" -> 2; "internal" -> 1; else -> 0 }
+        return parsed.map { def ->
+            var narrowest = def.visibility
+            var owner = def.owner
+            var guard = 0
+            while (owner != null && guard++ < 16) {
+                val container = containers[owner] ?: break
+                if (rank(container.visibility) > rank(narrowest)) narrowest = container.visibility
+                owner = container.owner
+            }
+            def to narrowest.takeIf { rank(it) > 0 }
+        }
+    }
+
+    /**
+     * The body of the `fun` declared on [startLine] (1-based) of [lines]: from its `{` to the matching `}`,
+     * or from its `=` to the end of the expression, at most [maxChars]; null when it has no body (an
+     * abstract or interface function).
+     *
+     * Lexed with [KotlinParseState], so a `{` in a string, a comment or a lambda default
+     * (`onDone: () -> Unit = {}`) is not taken for the body. Scanning for the first `{` reported
+     * `private fun quat(q: Quaternionf): String =` (an expression body on the next line, in `assimpBrowsing.kt`)
+     * with the block of the *next* function, `fmtBytes`, to a model that then trusted it (2026-11-06).
+     *
+     * An expression body ends at the first line end where every bracket it opened is closed and the next
+     * line does not continue it (a leading `.`, `?:`, `&&`, an operator, or a line ending in one).
+     */
+    internal fun functionBodyText(lines: List<String>, startLine: Int, maxChars: Int = 6000): String? {
+        val first = (startLine - 1).coerceAtLeast(0)
+        if (first > lines.lastIndex) return null
+        val state = KotlinParseState()
+        var parens = 0          // ( and [ depth, in the signature or the expression
+        var sawParams = false
+        var bodyKind = 0        // 0 signature, 1 block, 2 expression
+        var baseDepth = 0
+        var startCol = -1
+        var startRow = -1
+        var endRow = -1
+        var endCol = -1
+        val expressionContinues = Regex("""^\s*(\.|\?\.|\?:|&&|\|\||[-+*%]|/(?![/*])|as\b|is\b|in\b|->|\)|\]|:(?!:))""")
+        val endsOpen = Regex("""(=|\+|-|\*|/|%|&&|\|\||\?:|,|\(|\[|\.|->|\{)\s*$""")
+        var row = first
+        while (row <= lines.lastIndex && endRow < 0) {
+            val line = lines[row]
+            if (bodyKind == 0 && row > first && parens == 0 && sawParams) {
+                // An abstract function: the signature is done and the next declaration has begun.
+                val t = line.trimStart()
+                if (t.isEmpty() || t.startsWith("}") || t.startsWith("@") || t.startsWith("/*") || t.startsWith("//") ||
+                    Regex("""^(?:(?:public|private|internal|protected|open|override|abstract|suspend|operator|infix|inline|const|lateinit|data|enum|sealed)\s+)*(?:fun|val|var|class|interface|object|typealias|init)\b""").containsMatchIn(t)
+                ) return null
+            }
+            state.consumeLine(line) { ch, col, before, after ->
+                if (endRow >= 0) return@consumeLine
+                when (bodyKind) {
+                    0 -> when (ch) {
+                        '(', '[' -> { parens++; if (ch == '(') sawParams = true }
+                        ')', ']' -> if (parens > 0) parens--
+                        '{' -> if (parens == 0) {
+                            bodyKind = 1; baseDepth = before; startRow = row; startCol = col
+                        }
+                        '=' -> if (parens == 0 && sawParams && isAssignmentEquals(line, col)) {
+                            bodyKind = 2; baseDepth = before; startRow = row; startCol = col
+                        }
+                    }
+                    1 -> if (ch == '}' && after == baseDepth) { endRow = row; endCol = col + 1 }
+                    2 -> when (ch) {
+                        '(', '[' -> parens++
+                        ')', ']' -> if (parens > 0) parens--
+                        '}' -> if (after < baseDepth) { endRow = row; endCol = col }
+                    }
+                }
+            }
+            if (bodyKind == 2 && endRow < 0 && parens == 0 && state.depth == baseDepth && !state.inRawString) {
+                val so = if (row == startRow) line.substring(startCol + 1) else line
+                val hasContent = (startRow until row).any { r -> lines[r].let { if (r == startRow) it.substring(startCol + 1) else it }.isNotBlank() } || so.isNotBlank()
+                val next = (row + 1..lines.lastIndex).firstOrNull { lines[it].isNotBlank() }?.let { lines[it] }
+                val code = stripLineComment(line)
+                if (hasContent && !endsOpen.containsMatchIn(code) && (next == null || !expressionContinues.containsMatchIn(next))) {
+                    endRow = row; endCol = line.length
+                }
+            }
+            row++
+        }
+        if (bodyKind == 0) return null
+        val lastRow = if (endRow >= 0) endRow else lines.lastIndex
+        val sb = StringBuilder()
+        for (r in startRow..lastRow) {
+            val line = lines[r]
+            val from = if (r == startRow) startCol else 0
+            val to = if (r == lastRow && endRow >= 0) endCol.coerceIn(from, line.length) else line.length
+            if (r > startRow) sb.append('\n')
+            sb.append(line, from, to)
+            if (sb.length >= maxChars) return sb.substring(0, maxChars).trimEnd()
+        }
+        return sb.toString().trimEnd()
+    }
+
+    /** `=` at [col] is an assignment or a body, not part of `==`, `!=`, `<=`, `>=` or `===`. */
+    private fun isAssignmentEquals(line: String, col: Int): Boolean {
+        val prev = line.getOrNull(col - 1)
+        val next = line.getOrNull(col + 1)
+        return next != '=' && prev != '=' && prev != '!' && prev != '<' && prev != '>'
+    }
+
+    /** [line] without a trailing `//` comment (outside strings, roughly: good enough for an end-of-line test). */
+    private fun stripLineComment(line: String): String {
+        var inString = false
+        var i = 0
+        while (i < line.length) {
+            val c = line[i]
+            if (c == '\\' && inString) { i += 2; continue }
+            if (c == '"') inString = !inString
+            if (!inString && c == '/' && line.getOrNull(i + 1) == '/') return line.substring(0, i)
+            i++
+        }
+        return line
+    }
 
     private fun collectKotlinFiles(roots: List<Path>): List<Path> {
         val out = mutableListOf<Path>()
@@ -833,7 +968,7 @@ object KotlinSourceIndex {
                     depth = (depth - 1).coerceAtLeast(0)
                     braces.addLast((braces.removeLast() - 1).coerceAtLeast(0))
                     if (outermost) onToken?.invoke(ch, i, before, depth)
-                } else if (ch == '(' || ch == ')') {
+                } else if (ch == '(' || ch == ')' || ch == '[' || ch == ']' || ch == '=') {
                     if (outermost) onToken?.invoke(ch, i, depth, depth)
                 }
                 i++

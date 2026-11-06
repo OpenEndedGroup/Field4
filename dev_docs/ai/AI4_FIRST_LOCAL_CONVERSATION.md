@@ -20,7 +20,7 @@ document's `*_ai4_chat_history_.md`, and the captures in `~/.afield/logs/ai4_box
 | same | `503: Loading model` from the server while it loaded weights; two ~1 s retries gave up. | A 503 "Loading model" is waited out like a rate limit (`temporaryRateLimitDelay`). |
 | "perhaps using FLines" | Ten lookups in a row (symbol search, retrieval, attachments) to find `fline { }`, `lines(...)`, `filled`, `color`. The page that teaches exactly this, `fline_examples.md`, never came up. | Semantic search was broken (below) and is rebuilt and measured; `TutorialCodeSearchRequest` finds worked box code by task: it is a query on semantic search's new `tutorials` corpus, which indexes the ~260 tutorial documents (the materialized transcripts and the graphics curriculum) box by box, exactly as a workspace is indexed, and returns each match's code files. A one-line FLine primer in the prompt was tried and withdrawn: the fix belongs in search. |
 | same | `WorkspaceSearchRequest` refused `extensions: [".md"]`, then `pathPrefix: "public/docs"` under the source scope ("does not exist"). | A leading dot is accepted, `src/` is stripped from a source prefix, and misses name the scope root and say that the docs are reached with `SemanticRetrievalSearchRequest` or `AttachmentRequest`. |
-| same | One symbol search returned 17k characters, mostly one unrelated function body. | Bodies are capped at 3k each and 6k per search (`withBodyBudget`). Semantic searches no longer repeat the embedder description. The ranking is unchanged: see "Symbol search" below. |
+| same | One symbol search returned 17k characters, mostly one unrelated function body. | Bodies are capped at 3k each and 6k per search (`withBodyBudget`). Semantic searches no longer repeat the embedder description. The ranking was later measured and changed: see "Symbol search" below. |
 | "let's do 2" | `400: request (65833 tokens) exceeds the available context size (65536 tokens)`. Every turn's prompt carried the full ~24k-character instructions, and every copy stayed in the stateless history, which was capped only by item count. | `StatelessHistory`: at each turn boundary the finished prompt becomes its durable text and old tool outputs and images shrink; when the window is known (`local.contextTokens`, `AFIELD_LOCAL_AI_CONTEXT_TOKENS`, or learned from the refusal) whole old turns are dropped to fit; a refusal for size is fitted and retried once. |
 | "can you try that again?" | After the failure the provider thread was discarded, and the next turn was reseeded from the prose transcript without a single tool result. | Stateless threads survive a failed request; a request that failed before an answer stays in their history. |
 | "ok, are you only plotting odd numbers" | Completed with no answer: 58.5k input tokens left no room for a reply. | The input budget keeps room for the answer (`StatelessHistory.inputBudget`). |
@@ -69,13 +69,64 @@ afterwards, a documentation search for "display" kept none of the global top 80.
 want authored pages and zero the 161 that want reference pages, a net loss, so it stays in, under its own kind
 (`docs-reference`, beside `docs-section` and `tutorial-code`).
 
-## Symbol search: no change survived measurement
+## Symbol search: measured, then changed
 
-Labels from behaviour, not from me: for each of 60 logged `WorkspaceSymbolSearch` calls, the symbols the agent then
-wrote in box code (resolved by Kotlin's scope rules: top-level, the implicit `Box` receiver, or a type the code
-names) or opened. Against that, hand bonuses for box-facing API, plural folding, type-aware boosts, and a usage
-prior learned from the box code Field teaches (docs fences and tutorial sidecars) all stayed within noise of the
-current ranker (MRR 0.609) or fell below it. The ranker is unchanged.
+The first attempt labelled 60 logged `WorkspaceSymbolSearch` calls by what the agent then wrote or opened, found
+MRR 0.609 for the ranker and no variant better, and left the ranking alone; the harness was never committed, so
+neither number can be reproduced. The second (2026-11-06) is committed:
+
+```bash
+uv run --project . python tools/ai4_symbol_search_cases.py      # logs -> src/jvmTest/resources/ai4/workspace_symbol_search_cases.jsonl
+./gradlew jvmTest -x checkTestTreeWrites --tests 'afield.ai.tools.WorkspaceSymbolSearchEvalTest'
+cat build/reports/ai4/workspace_symbol_search_eval.txt
+```
+
+The extractor turns each of the 282 logged searches (six models) into a case: the identifiers newly written in
+box code within the next twelve tool calls of the conversation (running on into the next turn when the turn ended
+first, as the knight-tour turn that asked for `Vector2f.rotate` did before the next one wrote `v * quat(r)`), and
+the Kotlin files opened. `WorkspaceSymbolSearchEval` rebuilds the index from the checkout's own sources
+(`src/personal` excluded, so every worktree gets the same number), resolves each written name by Kotlin's scope
+rules as far as names allow (bare `quat` to a top-level `quat` or a `Box.quat`; `.rotated` only to a member or
+extension on a type the code or query names), keeps public definitions related to the query by a word of the
+name or the KDoc, and scores hit@1, hit@5 and MRR@20. Its KDoc lists the limitations; the largest is that agents
+wrote what the old ranker showed them, so the labels favour it.
+
+114 searches got a label (90 from code written, 55 from a file opened). The rest: 70 had evidence that did not
+relate to the query, 48 had nothing new written or opened, 24 were answered in `src/personal`, and 26 wrote only
+names that are not Field definitions (stdlib, locals).
+
+| | hit@1 | hit@5 | MRR |
+| --- | --- | --- | --- |
+| Before (frozen as `LegacyWorkspaceSymbolRanker`) | 47.4% | 53.5% | 0.507 |
+| After | 51.8% | 62.3% | 0.564 |
+
+By model (MRR before → after): gpt-6-astra (n=50) 0.408 → 0.445, qwen3.8-27b (31) 0.581 → 0.656, gpt-6.1-sol
+(25) 0.687 → 0.730, gpt-5.5 (4) 0 → 0, gpt-6.1-terra (3) 0.422 → 0.833, gpt-5.6-sol (1) 1 → 1.
+
+Each term is a switch in `SymbolRankingOptions`; the eval reports the shipped ranker with each one off, so its
+worth is the drop:
+
+| Term | MRR without it | Why it is kept |
+| --- | --- | --- |
+| Exact-name matches ranked (they came back in index order: the private assimp `quat` before the public one) | 0.517 | measured |
+| Path priors (tests, examples, `ai/learning` corpora down; linear algebra, geometry, graphics, output up) | 0.531 | measured |
+| `Box.x` ranks a little higher (box code calls it bare) | 0.546 | measured |
+| Camel-case words shared with the query (`clearOutput` finds `displayClear`) | 0.556 | measured |
+| KDoc words (`Vector2f.rotate` finds `Vector2fc.times(Quaternionfc)`, "rotates `(x, y, 0)` by the quaternion") | 0.558 | measured; lowers the opened-file labels 0.721 → 0.704 |
+| Receiver-aware `Type.member`: its type family (supertypes, aliases, the `…c` interface) first, a top-level `member` last | 0.561 | fixes `Vector2f.rotate` and `Solid.translate` |
+| Private, protected and internal ranked below public | 0.564 | neutral; box code cannot call them |
+| A match only on the declaration line ranked below name matches | 0.564 | neutral; fixes `clearOutput` → `ShaderFieldProbe.deregister` |
+
+Not measurable here, and so separate: an expression body (`private fun quat(...): String =` on one line, the
+expression on the next) was reported with the next function's block body; bodies are now lexed
+(`KotlinSourceIndex.functionBodyText`), so braces in strings, comments and lambda defaults do not count. A
+`Type.member` query with no such member on the type says so in the result's `message` ("No `rotate` member or
+extension on Vector2f (or Vec2, Vector2fc) is indexed. Closest by name or documentation: Vector2fc.times, ...").
+
+Still bad: `FLine text` now leads with `FLine` and `fline`; the agent's label was the pen corpus's
+`HersheyFont.text`, which the path prior pushed out, and the box-facing answer (`layoutText`, `textCircle` in
+`graphics/text/typography.kt`) was never shown to an agent, so it is no label. `runChildren` and `displaySize`
+have no such API; they return nearby `Box.*` names and no note, because the note is only for `Type.member`.
 
 ## The loop
 
