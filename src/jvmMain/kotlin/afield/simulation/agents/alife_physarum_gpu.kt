@@ -220,7 +220,11 @@ class ShaderPhysarumSystem(
 
         zeroOccupancy()
         resetAgents(settings.randomSeed)
-        Box.context.get()?.attachShader(agentModule)
+        // one box drives one adopted shader: keep a vertex tab that holds some other system's rule
+        Box.context.get()?.let { box ->
+            val own = box.getPropertyRaw("vertex", null) as? String
+            if (own.isNullOrBlank() || "struct Agent" in own) box.attachShader(agentModule)
+        }
     }
 
     private fun zeroOccupancy() {

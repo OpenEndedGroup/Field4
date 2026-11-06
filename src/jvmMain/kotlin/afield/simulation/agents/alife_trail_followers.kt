@@ -38,7 +38,9 @@ import kotlin.random.Random
  * species 0's roads and keep out of species 1's.
  *
  * The followers only read the field, so they can be added to a running [ShaderPhysarumSystem] (pass
- * its `trail`) or to any [TrailField] another system writes. The rule is the host box's `vertex` tab.
+ * its `trail`) or to any [TrailField] another system writes. The rule is the host box's `vertex` tab,
+ * unless that tab already holds another system's rule: build the followers in a box of their own
+ * (beneath the one publishing the field) to edit theirs live.
  */
 
 /** Everything [TrailFollowers] reads; all but the count and name are read every frame. */
@@ -136,7 +138,12 @@ class TrailFollowers(
         }
         module.current.meshes["${settings.name}-points"] = mesh
         reset(settings.randomSeed)
-        Box.context.get()?.attachShader(module)
+        // one box drives one adopted shader: a box whose own vertex tab already holds another rule
+        // (a ShaderPhysarumSystem built in the same box) keeps it, and these particles run unadopted
+        Box.context.get()?.let { box ->
+            val own = box.getPropertyRaw("vertex", null) as? String
+            if (own.isNullOrBlank() || "struct Particle" in own) box.attachShader(module)
+        }
     }
 
     /** Scatter every particle uniformly over the field with a small random velocity. */

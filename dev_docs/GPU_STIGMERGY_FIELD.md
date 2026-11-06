@@ -54,11 +54,56 @@ Not directly comparable to the CPU page's 0.480 / 0.185 (6000 exclusive agents, 
 TrailField checks: hold keeps 1.0, a 10-frame half-life gives 0.465 after ~11 frames, zero clears,
 `clear()` empties.
 
+## Multi-species, exclusion and followers (nightly 2026-11-06-1)
+
+Sources added: `alife_trail_followers.kt` (`TrailFollowers`, `TrailFollowerSettings`); demo
+`dev_docs/agents/transcripts/gpu_stigmergy.yaml` (+ `docs_capture/gpu_stigmergy_followers.yaml`);
+user section `alife_examples.md` §7 "Several species on one field".
+
+- `TrailFieldSettings.channelDiffusion: Vec4?` — per-channel diffusion, overrides `diffusion`.
+  The evolve push block's `diffusion` is now a `vec4`.
+- `ShaderPhysarumSettings.attraction: List<Vec4>?` — species x channel sensing matrix (row s = how
+  species s weighs channels). `null` = old behaviour (+1 own, -repulsion others in use).
+- `ShaderPhysarumSettings.depositInto: List<Vec4>?` — species x channel deposit matrix (times
+  `deposit`). `null` = own channel only. Both are push `mat4`s (column s = species s), read every frame.
+  Push block is now ~190 bytes: fine on Apple/NVIDIA/AMD (>=256), over the 128-byte Vulkan minimum.
+- `ShaderPhysarumSettings.exclusive` — GPU Jones exclusion. `occupancyBuffer` holds one uint per
+  pixel; each frame an agent `atomicMax`es the frame stamp into its own pixel, then into its target;
+  if the target already had this stamp the move is refused (stay, random heading). Blocked agents
+  still deposit, as the CPU model does (an earlier cut that withheld the deposit measured 0.337
+  against the CPU's 0.484). Approximate: claims race within a frame, and a leaving agent holds its
+  old pixel for that frame.
+- `TrailFollowers(trail) { weights; steering; threshold; gradientPx; damping; maxSpeed; wander }` —
+  particles (pos, vel; 16 B) stepped in a vertex-shader point draw that reads `trailGradient` of
+  `dot(trail, weights)`; drawn alpha-blended over the preview (additive pale dots vanished on the
+  bright roads they climb).
+- `Box.attachShader` (shaders.kt) now seeds `vertex`/`fragment`/`compute` unless the box has its OWN
+  source; an inherited tab no longer counts. Before, a TrailFollowers box beneath a Physarum box drove
+  its module with the parent's agent shader (MissingRefException `agentBuffer`, renderer stall).
+
+### Measurements (`alife.physarum-gpu.smoke`, Apple silicon, KosmicKrisp)
+
+| run | result |
+| --- | --- |
+| segregation, 2 species, 250k on 512², 600 frames | 0.994 (area 0.52 / 0.48) |
+| segregation, 3 species | 0.866 (0.32 / 0.31 / 0.37) |
+| segregation, shared attraction control | 0.000 |
+| CPU `PhysarumSwarm` 6000 on 256², disc 0.55, 400 steps: sensing / blind / no exclusion | 0.484 / 0.185 / 1.000 |
+| GPU same setup, exclusive: sensing / blind / no exclusion | 0.546 / 0.222 / 0.998 |
+| GPU exclusive, 150k on 1024² (15 %), 800 frames | topShare 0.296, cellular branching net |
+| followers on a static ring (256², 4000) | mean distance 37.7 px -> 0.4 px |
+| followers in the live demo (probe) | 19368 / 20000 on amber-dominant pixels (42 % of area) |
+
+Segregation = share of pixels with total trail > 0.5 x mean whose top channel holds >= 80 %.
+All runs ~8.3 ms/frame (the smoke pumps a shared window; per-run cost is dominated by present).
+
 ## Open / next
 
 - A canonical_graphics lesson entry (needs a box in `public/docs/assets/canonical_graphics/metadata.edn`);
   not done.
 - A compute-shader variant (true `computeModuleHere` pass) if agent counts beyond ~4M need it; the
   vertex-shader pass is fine at 1M.
-- Non-toroidal edges, a gradient-following particle example (DustPheromone's hill-climbing) on
-  `trailGradient`, 3D/shell fields.
+- Non-toroidal edges, 3D/shell fields. (The gradient-following example is `TrailFollowers`.)
+- Followers that also deposit (become a species of their own); a predator/prey measurement for the
+  chase matrix (the segregation metric does not apply when one species writes another's channel).
+- `attachShader` still lets an inherited `vertex_fragment` (shared) tab win; only per-stage tabs were fixed.

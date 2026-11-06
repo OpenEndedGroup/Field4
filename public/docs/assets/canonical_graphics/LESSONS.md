@@ -57,6 +57,8 @@ Boxes here are read-only reference. To *run* one, copy its Kotlin and shader pro
 | 10b. lbm cylinder | `window` → `10. lattice boltzmann` | `72b68fa7-a8c3-4d4a-964d-2f66306692e3_code_.kt` | `72b68fa7-a8c3-4d4a-964d-2f66306692e3_vertex_.glsl`<br>`72b68fa7-a8c3-4d4a-964d-2f66306692e3_fragment_.glsl` |
 | 11. forest fire | `window` | `0f95328a-7214-44a2-acb6-f22c01261e96_code_.kt` | `0f95328a-7214-44a2-acb6-f22c01261e96_vertex_.glsl`<br>`0f95328a-7214-44a2-acb6-f22c01261e96_fragment_.glsl` |
 | 11b. fire starter | `window` → `11. forest fire` | `9df25333-3cb1-4bba-b628-b34c7ba61909_code_.kt` | `9df25333-3cb1-4bba-b628-b34c7ba61909_vertex_.glsl`<br>`9df25333-3cb1-4bba-b628-b34c7ba61909_fragment_.glsl` |
+| 12. stigmergy | `window` | `7c3e9a51-2f4b-4d8e-9a61-5b0c8e4f1d27_code_.kt` | — |
+| 12b. trail followers | `window` → `12. stigmergy` | `c4b18f02-6d3a-4e7f-8b95-2a1e7d9c0f63_code_.kt` | — |
 
 ## What each lesson uses
 
@@ -95,9 +97,11 @@ Field API names and GLSL features scanned out of the sources above — the rever
 - `ShaderDlaSystem` — 8. dla
 - `ShaderForestFireSystem` — 11. forest fire
 - `ShaderLatticeBoltzmannSystem` — 10. lattice boltzmann
+- `ShaderPhysarumSystem` — 12. stigmergy
 - `ShaderProbeQuantileWarpConfig` — 6b. debugging / mapping - Texture probe example
 - `SlugBuffer` — 5e. Slug filled paths
 - `Target` — 6. radix sort
+- `TrailFollowers` — 12b. trail followers
 - `transferNow` — 4. texturing, 4b. multi-texture, 6. debugging - Texture probe example, 6b. debugging / mapping - Texture probe example, 7b. slang — Texture
 - `Vector2f` — 10. lattice boltzmann
 - `Vertex` — 5d. GPU schema
