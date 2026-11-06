@@ -657,7 +657,7 @@ def recent_runs(routine: Routine, repo: Path) -> list[dict[str, str]]:
         # Journal folders also contain dated audits, archives and evidence notes.
         # Only the routine's date-named reports (including same-day b/c runs) are attempts.
         names = sorted((n for n in (listing or "").splitlines()
-                        if re.fullmatch(r"\d{4}-\d{2}-\d{2}[a-z]?\.md", Path(n).name)), reverse=True)
+                        if re.fullmatch(r"\d{4}-\d{2}-\d{2}(?:-?[a-z])?\.md", Path(n).name)), reverse=True)
         for name in names[:RECENT]:
             text = _git(repo, "show", f"refs/heads/{branch}:{name}") or ""
             runs.append({"date": _date_of(Path(name).name), "verdict": _verdict(routine, text), "source": f"{branch}:{name}"})
