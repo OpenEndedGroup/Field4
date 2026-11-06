@@ -470,7 +470,8 @@ class StudyBuildAwaitsTest {
      * The same wait for a background repository command (`AwaitRepoCommandsRequest`): the turn ends, polls make no
      * model call while the command runs, and the resumed turn reads its exit and the end of its log.
      */
-    @Test fun aTurnThatAwaitsARepositoryCommandResumesWithItsExitAndLog() {
+    @Test
+    fun aTurnThatAwaitsARepositoryCommandResumesWithItsExitAndLog() {
         val info = session()
         val chat = Box("chat").also { it.name = "Chat"; info.boxes[it.id] = it }
         val repo = Files.createTempDirectory("await-repo-job")
