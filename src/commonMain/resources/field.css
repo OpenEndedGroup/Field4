@@ -5987,6 +5987,12 @@ body.mode-editor-only .field-toast {
 .field-panel-toggle input { margin: 0; accent-color: rgb(var(--field-accent-rgb)); }
 
 /* Bookmarks panel (bookmarks.kt) */
+#bookmarks-panel {
+    top: auto;
+    right: auto;
+    bottom: 10px;
+    left: 10px;
+}
 .bookmark-top { justify-content: flex-end; }
 .bookmark-detail { display: grid; grid-template-columns: 168px minmax(0, 1fr); gap: 8px; }
 .bookmark-map { width: 168px; height: 104px; background: #111111; border-radius: 5px; display: block; }
