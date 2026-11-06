@@ -2,7 +2,7 @@
   "_comment": [
     "Docs assets over the size budget in tools/check_doc_assets.py (PNG > 2 MiB or > 3840x2160 pixels; mp4/webm/gif > 4 MiB), grandfathered as of 2026-11-06.",
     "Enforced both ways by `check_doc_assets.py --budget-only` (Gradle checkDocAssetBudget): an unlisted offender fails, an entry whose asset fits or is gone fails, and an asset may not grow past its entry. Exact paths only, no wildcards.",
-    "Delete an entry when its asset is recaptured smaller. Do not add entries for new assets: recapture with `max-width=` instead (dev_docs/testing/DOC_ASSET_BUDGET.md)."
+    "Delete an entry when its asset is recaptured smaller. Do not add entries for new assets: recapture with `max-width=` instead (dev_docs/testing/LANDING_ASSET_GUARDS.md)."
   ],
   "assets": {
     "public/docs/assets/afield_four_graphics/03b-particles.png": {
