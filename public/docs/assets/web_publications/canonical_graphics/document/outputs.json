@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-02T08:17:15.263Z",
+  "capturedAt": "2026-11-06T10:45:12.820Z",
   "documentName": "canonical_graphics",
   "outputs": [
     {
@@ -340,6 +340,16 @@
       "width": 440,
       "height": 272,
       "path": "outputs/32.html"
+    },
+    {
+      "uid": "c4b18f02-6d3a-4e7f-8b95-2a1e7d9c0f63",
+      "channel": "window",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 440,
+      "height": 272,
+      "path": "outputs/33.html"
     }
   ]
 }

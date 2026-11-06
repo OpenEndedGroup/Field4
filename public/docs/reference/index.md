@@ -654,13 +654,13 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**35864 public symbols across 1631 source files**, 21081 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**35866 public symbols across 1632 source files**, 21082 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
 | Category | Files | Symbols | Documented | Covers |
 | --- | --- | --- | --- | --- |
-| [Examples](examples.md) | 221 | 699 | 310 (44%) | Runnable examples, galleries and verification programs. |
+| [Examples](examples.md) | 222 | 701 | 311 (44%) | Runnable examples, galleries and verification programs. |
 | [Internal](internal.md) | 20 | 156 | 55 (35%) | Implementation details explicitly marked Internal by their source. |
 | [Lighting](lighting.md) | 8 | 206 | 206 (100%) | Light sources, fixtures and control protocols for working with physical and rendered lighting. |
 | [Networking](networking.md) | 16 | 366 | 213 (58%) | OSC messages, discovery and query interfaces for connecting Field to other applications and devices. |
@@ -2148,6 +2148,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [StereoPackingSmokeTest.kt](examples.md#stereopackingsmoketest-kt) | Examples · internal | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>targets/<wbr></small> [StereoPoseSource.kt](graphics.md#stereoposesource-kt) | Graphics | 9 | 9 | The interface for a stereo head pose that arrives from somewhere other than OpenXR, such as a remote headset. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>paint/<wbr></small> [StereoWarp.kt](graphics.md#stereowarp-kt) | Graphics | 7 | 7 | A smooth map between the two canvases of a stereo pair, so canvas texture such as weave and grain sits on the painted surface in both eyes: `StereoWarp`. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [StigmergySweep.kt](examples.md#stigmergysweep-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>spatial/<wbr></small> [stippletransport.kt](machine-learning.md#stippletransport-kt) | Machine learning | 13 | 13 | Runs a learned stipple transport on the CPU: a small SiLU network, trained by the optional PyTorch tool in `optional/transport-flow`, that moves points from a uniform source rectangle toward an image's density. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>spatial/<wbr></small> [stippling.kt](graphics.md#stippling-kt) | Graphics | 15 | 15 | Stippling: place exactly N points so that they follow an image's brightness *and* keep an even, low-correlation ("blue-noise-ish") spacing from one another. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [StopWatch.kt](workspace.md#stopwatch-kt) | Workspace · internal | 0 | 0 | Tells a box's clients when a stop has not taken effect, so the box's status marker can say "asked to stop, not responding". |  |

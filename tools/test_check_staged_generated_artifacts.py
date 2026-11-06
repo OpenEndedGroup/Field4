@@ -107,6 +107,17 @@ class GeneratedArtifactSelectionTests(unittest.TestCase):
     def test_docs_fence_implementation_selects_citation_gate(self) -> None:
         self.assertEqual(task_names(["public/docs_hooks.py"]), ["citationGates"])
 
+    def test_new_asset_guards_select_on_their_inputs(self) -> None:
+        # 2026-11-06: a docs figure or video selects the size budget; a docs page does not.
+        self.assertIn("checkDocAssetBudget", task_names(["public/docs/assets/alife_examples/physarum-gpu.png"]))
+        self.assertIn("checkDocAssetBudget", task_names(["public/docs/assets/x/clip.mp4"]))
+        self.assertIn("checkDocAssetBudget", task_names(["dev_docs/testing/doc_asset_budget_exceptions.json"]))
+        self.assertNotIn("checkDocAssetBudget", task_names(["public/docs/alife_examples.md"]))
+        self.assertIn("checkTranscriptRegistration",
+                      task_names(["src/jvmMain/kotlin/afield/examples/DemoTranscriptExecSmokeTest.kt"]))
+        self.assertNotIn("checkTranscriptRegistration",
+                         task_names(["dev_docs/agents/transcripts/docs_capture/x.yaml"]))
+
     def test_citation_task_wiring_selects_citation_gate(self) -> None:
         self.assertEqual(task_names(["build.gradle.kts"]), ["checkPythonTools", "citationGates"])
 
@@ -125,6 +136,7 @@ class GeneratedArtifactSelectionTests(unittest.TestCase):
             [
                 "checkAgentTranscripts",
                 "checkAgentTranscriptIndex", "checkDocsPublications",
+                "checkTranscriptRegistration",
                 "checkCompletionCorpusFixtures",
                 "checkBoxIdioms",
                 "checkBoxCodeFormat",

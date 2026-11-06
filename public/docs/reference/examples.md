@@ -4,7 +4,7 @@
 
 Runnable examples, galleries and verification programs. Read these for usage patterns; their entry points are not a promise of a reusable box API.
 
-221 source file(s), 699 public symbol(s), 310 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+222 source file(s), 701 public symbol(s), 311 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -2054,6 +2054,20 @@ Checks the first packed-image sampling, eye draw count, and eye aspect on a non-
 | Declaration | Summary |
 | --- | --- |
 | <a id="stereopackingsmoketest-kt--stereopackingsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/StereoPackingSmokeTest/#L35) |  |
+
+## StigmergySweep.kt { #stigmergysweep-kt }
+
+`src/jvmMain/kotlin/afield/examples/four/StigmergySweep.kt` — [read the source](source/jvmMain/afield/examples/four/StigmergySweep/)
+
+### StigmergySweep { #stigmergysweep-kt-stigmergysweep }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">StigmergySweep</span></code>](source/jvmMain/afield/examples/four/StigmergySweep/#L26)
+
+A parameter sweep for multi-species [`ShaderPhysarumSystem`](alife.md#alife-physarum-gpu-kt-shaderphysarumsystem) tuning: each named variant runs on a real renderer, its trail is read back and tone-mapped to `<out>/<variant>.png`, and its segregation (share of marked pixels whose top channel holds 80 % of the trail) is printed. Not a test; run with `run-jvm-main afield.examples.four.StigmergySweep --arg <outDir> --arg <variant,...>`.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="stigmergysweep-kt--stigmergysweep--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/StigmergySweep/#L112) |  |
 
 ## EvolveWorkedExample.kt { #evolveworkedexample-kt }
 
