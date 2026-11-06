@@ -77,6 +77,17 @@ class PolicyTests(unittest.TestCase):
         self.assertEqual(family_for(codex / "pr96-slug" / "field4", "codex/pr96", families).name, "any-merged")
         self.assertIsNone(family_for(codex / "field4", "codex/pr96", families))
 
+    def test_the_desktop_app_root_is_a_second_agent_root(self) -> None:
+        app = Path("/app-root/.claude-worktrees")
+        families = retention_families(BASE, AGENT, None, app)
+        self.assertEqual(family_for(app / "w", "claude/frosted-drawer", families).name, "agent-session")
+        self.assertEqual(family_for(app / "w", "docs-pass/20261101-1420", families).name, "docs-blast")
+        self.assertEqual(family_for(app / "w", "docs/github-link", families).name, "any-merged")
+        # Nightly branches still belong to their own root only.
+        self.assertEqual(family_for(app / "w", "nightly/2026-08-01/example", families).name, "any-merged")
+        # Without the argument nothing there is claimed, which is what every existing caller gets.
+        self.assertIsNone(family_for(app / "w", "claude/frosted-drawer", FAMILIES))
+
     def test_only_nightly_and_docs_branches_are_deleted(self) -> None:
         """The app re-checks out a resumed session's branch, so those refs must survive removal."""
         deleting = {f.name for f in FAMILIES if f.delete_branch}
@@ -1123,6 +1134,38 @@ class FinishInterruptedRemovalTests(unittest.TestCase):
         self.assertFalse(done)
         self.assertEqual([], calls)
         self.assertIn("4242", how)
+
+
+class FindOrphansTests(unittest.TestCase):
+    """``~/.claude-worktrees`` is shared by every repository the app opens."""
+
+    def setUp(self) -> None:
+        self.scratch = Path(tempfile.mkdtemp(prefix="reaper-orphans-")).resolve()
+        self.addCleanup(shutil.rmtree, self.scratch, True)
+        self.root = self.scratch / "claude-worktrees"
+        self.ours = self.scratch / "field4" / ".git"
+        (self.ours / "worktrees").mkdir(parents=True)
+
+    def worktree_shaped(self, name: str, gitdir: Path) -> Path:
+        path = self.root / name
+        path.mkdir(parents=True)
+        (path / ".git").write_text(f"gitdir: {gitdir}\n")
+        return path
+
+    def test_only_a_gitfile_pointing_into_this_repository_is_an_orphan(self) -> None:
+        ours = self.worktree_shaped("ours", self.ours / "worktrees" / "ours")
+        self.worktree_shaped("theirs", self.scratch / "other-repo" / ".git" / "worktrees" / "theirs")
+        (self.root / "plain-folder").mkdir()
+        self.assertEqual([ours], reaper.find_orphans([self.root], set(), self.ours))
+
+    def test_without_a_repository_every_gitfile_counts_as_before(self) -> None:
+        self.worktree_shaped("ours", self.ours / "worktrees" / "ours")
+        self.worktree_shaped("theirs", self.scratch / "other-repo" / ".git" / "worktrees" / "theirs")
+        self.assertEqual(2, len(reaper.find_orphans([self.root], set())))
+
+    def test_a_registered_worktree_is_not_an_orphan(self) -> None:
+        ours = self.worktree_shaped("ours", self.ours / "worktrees" / "ours")
+        self.assertEqual([], reaper.find_orphans([self.root], {ours}, self.ours))
 
 
 if __name__ == "__main__":
