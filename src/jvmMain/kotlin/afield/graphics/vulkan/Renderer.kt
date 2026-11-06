@@ -304,7 +304,8 @@ class Renderer(
     fun renderTargetFor(window: Window): RenderTarget = renderTargetFor(windowIndex(window))
     private val windowCaptures = WindowCaptureQueue()
     /** False records the primary pre-target scene using frame slots, without acquiring/presenting desktop images. */
-    @Volatile var desktopPresentationEnabled = true
+    @Volatile
+    var desktopPresentationEnabled = true
     private val graphicsCompletionLock = Any()
     private val graphicsRecordingContext = ThreadLocal<Pair<Int, Int>?>()
     private val graphicsCompletionCallbacks = mutableMapOf<Pair<Int, Int>, MutableList<() -> Unit>>()
