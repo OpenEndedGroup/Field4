@@ -340,7 +340,7 @@ docs branch.
 2. **Interpolated labels allocate a string per span.** Every renderer call site builds its
    label by interpolation, as at `Renderer.kt:1248#CPUSpan.time("present[$ctxIndex]") {`, so
    each timed span allocates a `String` and hashes it to find its deque
-   (`Renderer.kt:85#stats.getOrPut(label) { Stat() }.add(dt)`). Same order of magnitude as
+   (`Renderer.kt:110#stats.getOrPut(label) { Stat() }.add(dtNs)`). Same order of magnitude as
    the above, same thread, and the same "the instrument that measures allocation allocates"
    flavour. The capture pipeline has its own version of this, and it turned up in its own
    output: the sampler attributed 0.50 MiB apiece to five separate lines of
