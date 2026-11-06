@@ -23,6 +23,9 @@ worktree **root directory** with a set of **branch prefixes**. Both halves must 
   agent-session  <repo>/.claude/worktrees  claude/
   any-merged     both roots + ~/.codex/worktrees/*/  any branch, or a detached HEAD
 
+``~/.claude-worktrees``, where the desktop app also creates checkouts, counts as a second
+``<repo>/.claude/worktrees`` wherever that root appears ("both roots" includes it).
+
 All four are on by default since 2026-10-03. Two axes, not one, because the scope gap here was
 measured to be the *root*, not the prefix: on 2026-09-09 the 33 worktrees under ``.claude/worktrees``
 held 61.4 GiB -- 54% of the whole footprint, and the population that actually grows -- and no branch
@@ -272,15 +275,19 @@ def parse_worktrees(porcelain: str) -> list[Worktree]:
 
 
 def retention_families(
-    base: Path, agent_root: Path, codex_root: Path | None = None
+    base: Path, agent_root: Path, codex_root: Path | None = None, app_root: Path | None = None
 ) -> tuple[RetentionFamily, ...]:
     """The whole policy, in one readable table. [base] is ``<repo>-worktrees``, [agent_root] is
-    ``<repo>/.claude/worktrees``, [codex_root] is ``~/.codex/worktrees``.
+    ``<repo>/.claude/worktrees``, [codex_root] is ``~/.codex/worktrees``, [app_root] is
+    ``~/.claude-worktrees``, where the Claude desktop app also puts checkouts it creates. [app_root]
+    is treated exactly like [agent_root]: on 2026-11-06 it held three merged, clean trees worth
+    12.5 GiB that no root reached.
 
     Order matters: [family_for] returns the first match, so the catch-all comes last and the named
     families keep their own branch-deletion rules.
     """
     nested = (codex_root,) if codex_root is not None else ()
+    agent_roots = (agent_root,) + ((app_root,) if app_root is not None else ())
     return (
         RetentionFamily(
             name="nightly",
@@ -292,7 +299,7 @@ def retention_families(
         ),
         RetentionFamily(
             name="docs-blast",
-            roots=(base, agent_root),
+            roots=(base, *agent_roots),
             branch_prefixes=("docs/language-", "docs/voice-", "docs-pass/", "docs/kdoc-"),
             default_on=True,
             why="Checkouts from the docs harnesses -- the language blast (45 units 8-wide), the "
@@ -301,7 +308,7 @@ def retention_families(
         ),
         RetentionFamily(
             name="agent-session",
-            roots=(agent_root,),
+            roots=agent_roots,
             branch_prefixes=("claude/",),
             default_on=True,
             why="Interactive agent-session checkouts: the largest population and the fastest "
@@ -311,7 +318,7 @@ def retention_families(
         ),
         RetentionFamily(
             name="any-merged",
-            roots=(base, agent_root),
+            roots=(base, *agent_roots),
             branch_prefixes=(),
             default_on=True,
             why="Everything else under the worktree roots, including detached HEADs and Codex "
@@ -686,13 +693,31 @@ def finish_interrupted_removal(
     return False, f"still not empty after {attempts} attempts ({left})"
 
 
-def find_orphans(roots: list[Path], registered: set[Path]) -> list[Path]:
+def points_into(gitfile: Path, git_common_dir: Path) -> bool:
+    """True when the ``gitdir:`` line of [gitfile] names a path inside [git_common_dir]."""
+    try:
+        line = gitfile.read_text(errors="replace").strip()
+    except OSError:
+        return False
+    if not line.startswith("gitdir:"):
+        return False
+    target = Path(line.removeprefix("gitdir:").strip())
+    if not target.is_absolute():
+        target = gitfile.parent / target
+    return target.resolve().is_relative_to(git_common_dir.resolve())
+
+
+def find_orphans(
+    roots: list[Path], registered: set[Path], git_common_dir: Path | None = None
+) -> list[Path]:
     """Worktree-shaped directories that no longer appear in ``git worktree list``.
 
     The ``.git`` *file* is the marker: a real worktree has one pointing at the repository, so
     requiring it keeps unrelated directories the human happens to keep alongside their checkouts out
     of the result. These are the residue of the unregister-then-fail sequence described above, and
-    nothing else in the tree looks for them.
+    nothing else in the tree looks for them. With [git_common_dir], the gitfile must also point into
+    this repository: ``~/.claude-worktrees`` is shared by every repository the app opens, and another
+    repository's live worktree is not this one's orphan.
     """
     orphans: list[Path] = []
     for root in roots:
@@ -701,8 +726,12 @@ def find_orphans(roots: list[Path], registered: set[Path]) -> list[Path]:
         for entry in sorted(root.iterdir()):
             if not entry.is_dir() or entry.resolve() in registered:
                 continue
-            if (entry / ".git").is_file():
-                orphans.append(entry)
+            gitfile = entry / ".git"
+            if not gitfile.is_file():
+                continue
+            if git_common_dir is not None and not points_into(gitfile, git_common_dir):
+                continue
+            orphans.append(entry)
     return orphans
 
 
@@ -1038,7 +1067,8 @@ def main() -> int:
     base = (args.base or repo.with_name(f"{repo.name}-worktrees")).resolve()
     agent_root = (repo / ".claude/worktrees").resolve()
     codex_root = (Path.home() / ".codex/worktrees").resolve()
-    families = retention_families(base, agent_root, codex_root)
+    app_root = (Path.home() / ".claude-worktrees").resolve()
+    families = retention_families(base, agent_root, codex_root, app_root)
     unknown = sorted(set(args.family + args.only_family) - {family.name for family in families})
     if unknown:
         parser.error(
@@ -1142,9 +1172,12 @@ def main() -> int:
     # Leaks that already happened. Reported every run, in both modes, because an orphan is by
     # definition something no future candidate scan can reach.
     orphan_roots = list(dict.fromkeys(
-        path.resolve() for path in [base, repo / ".claude/worktrees", *args.report_root]
+        path.resolve() for path in [base, agent_root, app_root, *args.report_root]
     ))
-    orphans = find_orphans(orphan_roots, registered)
+    git_common_dir = Path(run_git(repo, "rev-parse", "--git-common-dir").stdout.strip())
+    if not git_common_dir.is_absolute():
+        git_common_dir = repo / git_common_dir
+    orphans = find_orphans(orphan_roots, registered, git_common_dir)
     if orphans:
         orphan_kib = sum(tree_size_kib(path) for path in orphans)
         print(
@@ -1160,7 +1193,7 @@ def main() -> int:
         if args.disk_floor_gib < 0 or args.reserve_gib < 0 or args.planned_gib < 0:
             parser.error("disk floor, reservation and planned cost must be non-negative")
         usage = shutil.disk_usage(repo)
-        report_roots = [base, repo / ".claude/worktrees", *args.report_root]
+        report_roots = [base, agent_root, app_root, *args.report_root]
         # Keep the report stable when a caller repeats a built-in root explicitly.
         report_roots = list(dict.fromkeys(path.resolve() for path in report_roots))
         rows = disk_rows(

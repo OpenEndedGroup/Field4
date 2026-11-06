@@ -14,7 +14,7 @@ only when both match.
 |---|---|---|---|
 | `nightly` | `<repo>-worktrees` | `nightly/` `review/` `integration/nightly` | deleted |
 | `docs-blast` | both roots | `docs/language-` `docs/voice-` `docs-pass/` `docs/kdoc-` | deleted |
-| `agent-session` | `<repo>/.claude/worktrees` | `claude/` | kept |
+| `agent-session` | `<repo>/.claude/worktrees` and `~/.claude-worktrees` | `claude/` | kept |
 | `any-merged` | both roots, and `~/.codex/worktrees/*/` | any branch, or a detached HEAD | kept |
 
 All four are on by default since 2026-10-03; until then only `nightly` was, and every cull went by
@@ -24,6 +24,12 @@ covering. So the safety moved from *which branch names may be touched* to the gu
 apply to every family. `--only-family` narrows a run to the named families; `--family` adds one.
 `nightly/journal` and `nightly/ci-journal` are checked above every family, so no family, however it
 is written, reaches them — and `--completed` on one of them says so rather than hinting at a flag.
+
+"Both roots" means `<repo>-worktrees` plus the two agent roots. `~/.claude-worktrees` is where the
+desktop app also creates checkouts; it joined on 2026-11-06, when it held three merged, clean trees
+(12.5 GiB) that no root reached and that were culled by hand. That directory is shared by every
+repository the app opens, so the orphan scan counts a directory there only when its `.git` file points
+into this repository.
 
 Agent-session and catch-all branches are kept because the desktop app checks a resumed session's
 branch out again; the ref is what lets the session come back.
