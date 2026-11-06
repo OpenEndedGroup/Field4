@@ -788,6 +788,14 @@ window.installSymbolContextMonitor = installSymbolContextMonitor
 
 const initMonaco = () => {
 	console.info("initializing monaco")
+        monaco.editor.onDidCreateEditor(editor => editor.updateOptions({ selectionClipboard: false }))
+        // Chromium can paste PRIMARY directly into Monaco's hidden textarea on Linux.
+        // Cancel that default action while leaving Field's middle-drag handlers running.
+        for (const type of ["mousedown", "auxclick"]) {
+                document.addEventListener(type, event => {
+                        if (event.button === 1 && event.target?.closest?.(".monaco-editor")) event.preventDefault()
+                }, { capture: true })
+        }
         let ed = monacoInit(monaco) || monaco.editor.getEditors()[0]
 
         monacoRegisterActions(ed, monaco)
@@ -839,17 +847,21 @@ const setStopPending = (uid, pending) => {
 window.setStopPending = setStopPending
 
 const syncBoxRunningClass = (box) => {
+        const previous = ["running", "running-launching", "running-continued", "running-ending"].find(name => box.classList.contains(name))
         box.classList.remove("running", "running-launching", "running-continued", "running-ending")
         const runningEntries = box.runningEntries ?? new Map()
-        if (runningEntries.size === 0) return
+        if (runningEntries.size === 0) {
+                if (previous) window.requestConnectionGroupRebuild?.(true)
+                return
+        }
 
         const modes = [...runningEntries.values()]
         const hasFreshLaunch = modes.some((mode) => mode !== "continue" && mode !== "ending" && mode !== "launching")
         const hasLaunching = !hasFreshLaunch && modes.some((mode) => mode === "launching")
         const hasEndingOnly = !hasFreshLaunch && modes.some((mode) => mode === "ending")
-        box.classList.add(
-                hasFreshLaunch ? "running" : hasLaunching ? "running-launching" : hasEndingOnly ? "running-ending" : "running-continued"
-        )
+        const current = hasFreshLaunch ? "running" : hasLaunching ? "running-launching" : hasEndingOnly ? "running-ending" : "running-continued"
+        box.classList.add(current)
+        if (current !== previous) window.requestConnectionGroupRebuild?.(true)
 }
 
 const setBoxRunning = (uid, isRunning, watermark, strand, mode = "launch") => {

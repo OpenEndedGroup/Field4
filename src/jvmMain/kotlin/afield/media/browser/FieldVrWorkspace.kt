@@ -1,6 +1,7 @@
 package afield.media.browser
 
 import afield.graphics.vulkan.Renderer
+import afield.graphics.vulkan.CPUSpan
 import afield.graphics.vulkan.Target
 import afield.graphics.vulkan.targets.OpenXRHmdTarget.Hand
 import afield.graphics.vulkan.targets.MultiviewStereoTarget
@@ -24,6 +25,7 @@ class FieldVrWorkspace(
     cpuBitmapFallback: Boolean = FieldUiBrowserTexture.cpuBitmapFallbackRequired,
     headsetInput: Boolean = defaultHeadsetInput(renderer.openXRHmdTarget != null),
     pairedInput: Boolean = defaultPairedInput(),
+    withDepth: Boolean = true,
 ) : AutoCloseable {
     companion object {
         /** ALVR has no WiVRn HID devices; its launcher selects the desktop focus path. */
@@ -94,16 +96,16 @@ class FieldVrWorkspace(
         val xr = renderer.openXRHmdTarget
         // Insert before the multiview scene: upload and input belong to the frame, once for both eyes.
         renderer.renderList.preTargets["field-vr-browser"] = Target { command, _ ->
-            browser.prepareSampledImagesFor(command)
-            update()
+            CPUSpan.time("vr_browser_upload") { browser.prepareSampledImagesFor(command) }
+            CPUSpan.time("vr_browser_input") { update() }
         }
         val eye = xr?.let { renderer.runOnQueueThread { it.sideBySideRTTParameters() } }
         stereo = MultiviewStereoTarget(renderer, eyeWidth = eye?.width?.div(2) ?: 1200,
-            eyeHeight = eye?.height ?: 1200, openXR = xr)
+            eyeHeight = eye?.height ?: 1200, openXR = xr, withDepth = withDepth)
         panel = PuppetBrowserVrPanel(renderer, stereo, browser, widthMeters, distanceMeters,
             name = "field-vr-ide", automaticInteraction = false)
         panel.build()
-        input = PuppetBrowserVrInput(panel.panel)
+        input = PuppetBrowserVrInput(panel.panel).apply { smoothingSeconds = 0.045 }
         grab = PuppetBrowserVrGrab(panel.panel)
         stereo.stereoCamera.base.lookAt(Vector3f(), Vector3f(0f, 0f, -1f))
         recenter()
@@ -142,6 +144,7 @@ class FieldVrWorkspace(
     fun recenter() {
         // A toolbar recenter ends any current attachment before setting a new room transform.
         grab.cancel()
+        input.cancel()
         val eye = Vector3f()
         val orientation = Quaternionf()
         val direction = Vector3f(0f, 0f, -1f)

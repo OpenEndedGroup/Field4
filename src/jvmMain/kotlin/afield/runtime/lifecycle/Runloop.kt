@@ -193,9 +193,9 @@ class Runloop {
         BoxInterrupt.Watchdog.start()
         while (true) {
             val frameStartNs = System.nanoTime()
-            preRun.update()
-            main.frame()
-            postRun.update()
+            CPUSpan.time("runloop_pre") { preRun.update() }
+            CPUSpan.time("runloop_main") { main.frame() }
+            CPUSpan.time("runloop_post") { postRun.update() }
             val workNs = System.nanoTime() - frameStartNs
             frame++
             // First completed frame = Field is up. Announce ready and collapse the startup row.
@@ -204,7 +204,7 @@ class Runloop {
 
             if (shouldSleep) {
 //                lprintln("debug,runloop", "framer has run out of work thread is ${Thread.currentThread().name}")
-                schedulingState.idle()
+                CPUSpan.time("runloop_idle") { schedulingState.idle() }
             }
             shouldSleep = true
         }

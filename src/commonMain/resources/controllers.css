@@ -100,6 +100,27 @@ button {
   white-space: nowrap;
 }
 
+#connection {
+  color: var(--fg);
+  animation: controller-connection-pulse 3s ease-in-out infinite;
+}
+
+#connection[data-state="offline"],
+#connection[data-state="error"] {
+  color: rgb(var(--field-danger-rgb));
+}
+
+@keyframes controller-connection-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #connection {
+    animation: none;
+  }
+}
+
 #readout {
   justify-self: end;
   color: var(--fg);
@@ -332,12 +353,12 @@ button {
 
 .phone-control {
   display: grid;
-  gap: 0.55rem;
+  gap: 0.4rem;
   min-width: 0;
   border: 1px solid var(--line);
   border-radius: var(--control-radius);
   background: var(--track);
-  padding: 0.85rem;
+  padding: 0.5rem 0.75rem;
 }
 
 .phone-control-header {
@@ -506,6 +527,49 @@ button {
   padding: 0.2rem;
 }
 
+/* Keep the label, control and value together across a tablet row. Two-dimensional
+   pads and array editors retain the space they need below their headings. */
+@media (min-width: 561px) {
+  .phone-control-inline {
+    grid-template-columns: minmax(8rem, 0.9fr) minmax(0, 2fr) minmax(4rem, max-content);
+    column-gap: 0.75rem;
+    align-items: center;
+    min-height: 4rem;
+  }
+
+  .phone-control-inline > .phone-control-header {
+    display: contents;
+  }
+
+  .phone-control-inline .phone-control-label {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .phone-control-inline .phone-control-value {
+    grid-column: 3;
+    grid-row: 1;
+    white-space: nowrap;
+  }
+
+  .phone-control-inline > :not(.phone-control-header) {
+    grid-column: 2;
+    grid-row: 1;
+    min-width: 0;
+  }
+
+  .phone-control-inline .phone-range {
+    min-height: 3rem;
+    padding: 0.4rem 0;
+  }
+
+  .phone-control-inline .phone-toggle,
+  .phone-control-inline .phone-button,
+  .phone-control-inline .phone-text-input {
+    min-height: 3rem;
+  }
+}
+
 @media (max-width: 560px) {
   .status-line {
     grid-template-columns: auto 1fr;
@@ -589,6 +653,17 @@ button {
   border: 1px solid var(--line);
   border-radius: var(--inner-radius);
   background: #050505;
+}
+
+.phone-output-frame-host {
+  position: relative;
+  min-width: 0;
+}
+
+.phone-output-frame-pending {
+  position: absolute;
+  inset: 0 auto auto 0;
+  pointer-events: none;
 }
 
 .phone-output-lines {

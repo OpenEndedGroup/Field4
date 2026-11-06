@@ -1553,20 +1553,57 @@ class CanvasGestures(
 
         fun clamp(v: Double, lo: Double, hi: Double) = max(lo, min(hi, v))
 
-        fun addHintLine(x1: Double, y1: Double, x2: Double, y2: Double) {
+        val hintPatterns = mutableMapOf<String, String>()
+        fun hintStroke(box: HTMLElement): String? {
+            val striped = if (listOf("running", "running-launching", "running-continued", "running-ending")
+                    .any { box.classList.contains(it) }) box
+                else box.querySelector(":scope > .go-jobs-badge") as? HTMLElement ?: return null
+            // Use the box's actual stripe artwork, including its execution mode and theme.
+            val background = window.getComputedStyle(striped).backgroundImage
+            if (!background.startsWith("url(")) return null
+            return hintPatterns.getOrPut(background) {
+                val id = "offscreen-hint-stripes-${hintPatterns.size}"
+                val tile = (17.0 / mainZoom).toString()
+                val pattern = document.createElementNS(svgNamespace, "pattern") as SVGElement
+                pattern.setAttribute("id", id)
+                pattern.setAttribute("patternUnits", "userSpaceOnUse")
+                pattern.setAttribute("width", tile)
+                pattern.setAttribute("height", tile)
+                val image = document.createElementNS(svgNamespace, "image") as SVGElement
+                image.setAttribute("width", tile)
+                image.setAttribute("height", tile)
+                image.setAttribute("href", background.removePrefix("url(").removeSuffix(")").trim('\"', '\''))
+                pattern.appendChild(image)
+                val drift = document.createElementNS(svgNamespace, "animateTransform") as SVGElement
+                drift.setAttribute("attributeName", "patternTransform")
+                drift.setAttribute("type", "translate")
+                drift.setAttribute("from", "0 0")
+                drift.setAttribute("to", "0 ${5780.0 / mainZoom}")
+                drift.setAttribute("dur", "100s")
+                drift.setAttribute("repeatCount", "indefinite")
+                pattern.appendChild(drift)
+                markerDefs.appendChild(pattern)
+                "url(#$id)"
+            }
+        }
+
+        fun addHintLine(box: HTMLElement, x1: Double, y1: Double, x2: Double, y2: Double) {
             val line = document.createElementNS(svgNamespace, "line") as SVGElement
             line.setAttribute("x1", x1.toString())
             line.setAttribute("y1", y1.toString())
             line.setAttribute("x2", x2.toString())
             line.setAttribute("y2", y2.toString())
-            line.setAttribute("stroke", "rgba(255,255,255,0.35)")
+            val stripes = hintStroke(box)
+            line.setAttribute("stroke", stripes ?: "rgba(255,255,255,0.35)")
+            if (stripes != null) line.setAttribute("opacity", "0.75")
+            uidOrNull(box)?.let { line.setAttribute("data-box-uid", it) }
             // This layer is drawn in world units; keep the hint 4 screen pixels wide at any zoom.
             line.setAttribute("stroke-width", (4.0 / mainZoom).toString())
             line.setAttribute("stroke-linecap", "round")
             hints.appendChild(line)
         }
 
-        fun addOffscreenHintForViewport(targetRect: DOMRect, viewportRect: DOMRect) {
+        fun addOffscreenHintForViewport(box: HTMLElement, targetRect: DOMRect, viewportRect: DOMRect) {
             val viewportLeft = viewportRect.x
             val viewportTop = viewportRect.y
             val viewportRight = viewportRect.x + viewportRect.width
@@ -1583,17 +1620,17 @@ class CanvasGestures(
             val edgeY = if (offTop) viewportTop + margin else viewportBottom - margin
             when {
                 (offLeft || offRight) && (offTop || offBottom) -> {
-                    addHintLine(edgeX, edgeY, edgeX, edgeY)
+                    addHintLine(box, edgeX, edgeY, edgeX, edgeY)
                 }
                 offLeft || offRight -> {
                     val y1 = clamp(targetRect.y, viewportTop, viewportBottom)
                     val y2 = clamp(targetRect.y + targetRect.height, viewportTop, viewportBottom)
-                    addHintLine(edgeX, y1, edgeX, y2)
+                    addHintLine(box, edgeX, y1, edgeX, y2)
                 }
                 offTop || offBottom -> {
                     val x1 = clamp(targetRect.x, viewportLeft, viewportRight)
                     val x2 = clamp(targetRect.x + targetRect.width, viewportLeft, viewportRight)
-                    addHintLine(x1, edgeY, x2, edgeY)
+                    addHintLine(box, x1, edgeY, x2, edgeY)
                 }
             }
 	        }
@@ -1657,6 +1694,7 @@ class CanvasGestures(
 
                 // Split, a box is offscreen relative to its own pane.
                 addOffscreenHintForViewport(
+                    renderedFrom,
                     cachedHintRects[renderedFrom] ?: worldRect,
                     cachedHintViewports[renderedFrom] ?: mainViewportRect
                 )
@@ -1795,7 +1833,7 @@ class CanvasGestures(
             val viewportRect = nestedDisclosureSnapshot(parentUid).viewportWorldRect ?: return@forEach
             val boxRect = cachedWorldRects[box] ?: return@forEach
             if (rectsIntersect(boxRect, viewportRect)) return@forEach
-            addOffscreenHintForViewport(boxRect, viewportRect)
+            addOffscreenHintForViewport(box, boxRect, viewportRect)
         }
 
         val obsolete = connectionFilterStates.keys - currentFrameKeys

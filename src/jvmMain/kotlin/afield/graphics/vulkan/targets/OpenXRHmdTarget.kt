@@ -696,6 +696,7 @@ class OpenXRHmdTarget(
      */
     var xrFrameCounter = 0L
         private set
+    private val frameCadence = OpenXRFrameCadence()
 
     init {
         run {
@@ -727,13 +728,23 @@ class OpenXRHmdTarget(
      * It also runs when XR is inactive, keeping the desktop usable while a headset is asleep.
      */
     fun renderFrame(renderScene: () -> Unit = {}) {
-        withOpenXRFrame(::prepareFrame, renderScene, ::submitFrame) { it.views.free() }
+        withOpenXRFrame(
+            prepare = {
+                val start = System.nanoTime()
+                try { prepareFrame() }
+                finally { CPUSpan.record("xr_prepare_total", System.nanoTime() - start) }
+            },
+            renderScene = { CPUSpan.time("render_scene_windows", renderScene) },
+            submit = { frame, rendered -> CPUSpan.time("xr_submit_total") { submitFrame(frame, rendered) } },
+            release = { it.views.free() },
+        )
     }
 
     private class PreparedFrame(
         val session: XrSession,
         val space: XrSpace,
         val displayTime: Long,
+        val displayPeriod: Long,
         val views: XrView.Buffer,
         var viewsLocated: Boolean = false,
     )
@@ -806,7 +817,10 @@ class OpenXRHmdTarget(
                 }
                 if (res < 0) return@use null
 
-                val frame = PreparedFrame(xrSessionLocal, xrSpaceLocal, frameState.predictedDisplayTime(), XrView.calloc(viewCount))
+                val frame = PreparedFrame(
+                    xrSessionLocal, xrSpaceLocal, frameState.predictedDisplayTime(),
+                    frameState.predictedDisplayPeriod(), XrView.calloc(viewCount),
+                )
                 for (i in 0 until viewCount) frame.views[i].type(XR_TYPE_VIEW)
 
                 try {
@@ -950,7 +964,11 @@ class OpenXRHmdTarget(
                         .environmentBlendMode(XR_ENVIRONMENT_BLEND_MODE_OPAQUE)
                         .layerCount(layerCount)
                         .layers(if (layerCount > 0) layers else null)
-                    CPUSpan.time("xr_endFrame") { xrEndFrame(frame.session, endInfo) }
+                    var endResult = XR_SUCCESS
+                    CPUSpan.time("xr_endFrame") { endResult = xrEndFrame(frame.session, endInfo) }
+                    val submittedAt = System.nanoTime()
+                    frameCadence.record(frame.displayTime, frame.displayPeriod, submittedAt, layerCount > 0 && endResult >= 0)
+                    frameCadence.reportIfDue(submittedAt)?.let { lprintln("info,perf", "XR cadence: ${it.summary()}") }
                     profilerState?.pending?.addLast(Pending(xrFrameCounter))
                     xrFrameCounter++
                 }
@@ -2324,11 +2342,15 @@ class OpenXRHmdTarget(
     private fun renderEyesVulkan(acquiredIndices: IntArray) {
         // Ensure previous submission is complete before reusing the command buffer/fence.
         // (If we didn't do a hard wait before release, this is where we naturally apply backpressure.)
-        if (!fence.isSignaled()) {
-            fence.fenceWait()
+        CPUSpan.time("xr_previous_gpu_wait") {
+            if (!fence.isSignaled()) fence.fenceWait()
         }
         fence.reset()
 
+        CPUSpan.time("xr_eye_record_submit") { recordAndSubmitEyes(acquiredIndices) }
+    }
+
+    private fun recordAndSubmitEyes(acquiredIndices: IntArray) {
         cmd.reset()
         cmd.beginRecording()
 

@@ -327,7 +327,17 @@ class PuppetBrowserPanel(
         pointerType: BrowserPointerType = BrowserPointerType.MOUSE,
         scrollX: Double = 0.0,
     ): Hit? {
-        val hit = raycast(origin, direction)
+        return interactHit(raycast(origin, direction), triggerPressed, scrollY, pointerType, scrollX)
+    }
+
+    /** Deliver the same projected target used to draw a stabilized VR cursor. */
+    internal fun interactHit(
+        hit: Hit?,
+        triggerPressed: Boolean,
+        scrollY: Double = 0.0,
+        pointerType: BrowserPointerType = BrowserPointerType.MOUSE,
+        scrollX: Double = 0.0,
+    ): Hit? {
         if (hit != null) lastHit = hit
         val at = when {
             hit?.onPanel == true -> hit

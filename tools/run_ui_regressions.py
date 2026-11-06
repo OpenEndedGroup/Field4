@@ -259,6 +259,170 @@ try {
 }
 """
 
+CONTROLLER_STACK_AUTO_SNIPPET = """\
+val stackControllerBox = afield.document.graph.Box.context.get()!!
+val stackControllerSource = "0.25 0.5 0.75 1 vec4"
+controlGroup("controls") {
+    slider("ordinary gain", min = 0.0, max = 1.0, initialValue = 0.5) { }
+}
+val stackControllerCompile = afield.lang.stacksl.StackAutoNumbers.compileLive(
+    "tabletTone", stackControllerSource, "sampleTexture", null)!!
+check(stackControllerCompile.second.ok)
+afield.lang.stacksl.StackAutoNumbers.compiled(stackControllerBox, "tabletTone", stackControllerSource,
+    null, stackControllerCompile.second.analysis.danglingWires)
+val stackControllerProbe: () -> Unit = {
+    val value = afield.lang.stacksl.StackAutoNumbers.value(stackControllerBox, "tabletTone", 0)
+    display("callback probe", "<div id='stack-controller-value'>$value</div>")
+}
+stackControllerProbe()
+val stackControllerTimer = java.util.Timer("stack-controller-probe", true)
+stackControllerTimer.scheduleAtFixedRate(object : java.util.TimerTask() {
+    var count = 0
+    override fun run() {
+        if (++count > 200) { stackControllerTimer.cancel(); return }
+        stackControllerProbe()
+    }
+}, 150L, 150L)
+"""
+
+CONTROLLER_STACK_AUTO_JS = r"""
+const delay = ms => new Promise(resolve => setTimeout(resolve,ms));
+const box = (window.selectedList || [])[0] || [...document.querySelectorAll('.box')].at(-1);
+if (!box) return {ok:false,reason:'No StackSL fixture box'};
+window.selectBox(box); window.selectionContextChanged?.();
+await delay(500);
+const frame = document.createElement('iframe');
+frame.id='__stack_controller_preview';
+frame.src='/controllers?page=outputs&file='+encodeURIComponent(new URL(location.href).searchParams.get('file')||'scratch');
+frame.style.cssText='position:fixed;inset:12px;width:820px;height:1050px;border:0;z-index:2147483000;background:#050505';
+document.getElementById(frame.id)?.remove();document.body.appendChild(frame);
+await new Promise(resolve=>frame.addEventListener('load',resolve,{once:true}));
+const doc=frame.contentDocument;
+const outputFrame=channel=>doc.querySelector(`[data-channel='${channel}'] iframe:not(.phone-output-frame-pending)`);
+const card=()=>outputFrame('stack.auto numbers');
+const probe=()=>Number(outputFrame('callback probe')?.contentDocument?.querySelector('#stack-controller-value')?.textContent);
+const waitFor=async test=>{for(let i=0;i<120;i++){if(test())return true;await delay(100);}return false;};
+if(!await waitFor(()=>card()?.contentWindow?.updateFieldSlider && card()?.contentDocument?.querySelector('.field-slider[data-knob]') && probe()===0.25))
+ return {ok:false,reason:'Real StackSL card/runtime/probe did not load',state:doc.querySelector('#outputs-state')?.textContent};
+const f=card();
+const sliders=[...f.contentDocument.querySelectorAll('.field-slider[data-knob]')];
+const slider=sliders[0];
+const track=slider.querySelector('.slider-track');
+const styled=f.contentWindow.getComputedStyle(track).stroke!=='none';
+f.contentWindow.updateFieldSlider(slider,0.65,{send:true});
+const sliderReachedSlot=await waitFor(()=>Math.abs(probe()-0.65)<1e-6);
+f.contentDocument.querySelector('button[data-act=reset]').click();
+const resetReachedSlot=await waitFor(()=>Math.abs(probe()-0.25)<1e-6);
+await delay(700);
+const current=card();
+const text=current.contentDocument.body.textContent;
+const sourceButton=current.contentDocument.querySelector('button[data-act=source]');
+const sourceEditor=window.monaco.editor.getEditors()[0];
+sourceEditor.setPosition({lineNumber:sourceEditor.getModel().getLineCount(),column:1});
+sourceButton?.click();
+const sourceRevealed=await waitFor(()=>window.currentSelectedProperty==='code' &&
+ window.monaco.editor.getEditors()[0]?.getPosition()?.lineNumber===2);
+const result={sliderCount:sliders.length,styled,sliderReachedSlot,resetReachedSlot,
+ hasSourceButton:!!sourceButton,sourceRevealed,
+ nativeControls:doc.querySelectorAll('#outputs-controls .phone-control').length,
+ duplicateNativeOutput:!!doc.querySelector('[data-channel=controls]'),
+ hasReset:!!current.contentDocument.querySelector('button[data-act=reset]'),
+ hasKeys:!!current.contentDocument.querySelector('.slotkeys'),
+ repeatedShaderCopy:text.includes('the window shows your whole shader'),
+ repeatedKeysCopy:text.includes('A key keeps every number at once.')};
+result.ok=result.sliderCount===4 && styled && sliderReachedSlot && resetReachedSlot && result.hasSourceButton && sourceRevealed &&
+ result.nativeControls===1 && !result.duplicateNativeOutput && result.hasReset && result.hasKeys &&
+ !result.repeatedShaderCopy && !result.repeatedKeysCopy;
+current.closest('.phone-output-card').scrollIntoView({block:'start'});
+return result;
+"""
+
+CONTROLLER_LIVE_OUTPUT_SNIPPET = """\
+controlGroup("controls") {
+    slider("gain", min = 0.0, max = 1.0, initialValue = 0.5) { }
+}
+display("c-stable", "<div id='stable-output'>Unchanged channel</div>")
+val controllerRows = (1..80).joinToString("") { "<div style='height:32px'>Output row $it</div>" }
+val publishControllerFrame: (Int) -> Unit = { tick ->
+    display("a-live", "<div id='live-tick'>$tick</div>" +
+        "<div id='nested-scroll' style='height:120px;overflow:auto'>$controllerRows</div>" + controllerRows)
+    display("b-script", "<div id='script-tick' data-tick='$tick'></div>" + controllerRows +
+        "<script>const tick = $tick; document.getElementById('script-tick').textContent = String(tick * 2);</script>")
+}
+publishControllerFrame(0)
+val controllerTimer = java.util.Timer("controller-output-regression", true)
+controllerTimer.scheduleAtFixedRate(object : java.util.TimerTask() {
+    var tick = 0
+    override fun run() {
+        if (++tick > 200) { controllerTimer.cancel(); return }
+        publishControllerFrame(tick)
+    }
+}, 150L, 150L)
+"""
+
+CONTROLLER_LIVE_OUTPUT_JS = r"""
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+const box = (window.selectedList || [])[0] || [...document.querySelectorAll('.box')].at(-1);
+if (!box) return {ok:false, reason:'No fixture box'};
+window.selectBox(box);
+window.selectionContextChanged?.();
+await delay(500);
+const frame = document.createElement('iframe');
+frame.id = '__controller_live_output_preview';
+frame.style.cssText = 'position:fixed;inset:12px;width:820px;height:650px;border:0;z-index:2147483000;background:#050505';
+frame.src = '/controllers?page=outputs&file=' + encodeURIComponent(new URL(location.href).searchParams.get('file') || 'scratch');
+document.getElementById(frame.id)?.remove();
+document.body.appendChild(frame);
+await new Promise(resolve => frame.addEventListener('load', resolve, {once:true}));
+const doc = frame.contentDocument;
+const currentFrame = channel => doc.querySelector(`[data-channel='${channel}'] iframe:not(.phone-output-frame-pending)`);
+const ready = () => ['a-live','b-script','c-stable'].every(channel => {
+  const f = currentFrame(channel);
+  return f?.contentDocument?.body?.textContent.trim() && f.style.visibility !== 'hidden';
+});
+for (let i=0; i<100 && !ready(); i++) await delay(100);
+if (!ready()) return {ok:false, reason:'Live output channels did not load', state:doc.querySelector('#outputs-state')?.textContent};
+const page = doc.querySelector('#outputs-page');
+const slider = doc.querySelector('#outputs-controls input[type=range]');
+const live = currentFrame('a-live');
+const stable = currentFrame('c-stable');
+const stableWindow = stable.contentWindow;
+const startTick = Number(live.contentDocument.querySelector('#live-tick').textContent);
+page.scrollTop = 260;
+live.contentWindow.scrollTo(0, 220);
+live.contentDocument.querySelector('#nested-scroll').scrollTop = 240;
+currentFrame('b-script').contentWindow.scrollTo(0, 200);
+const initialPageScroll = page.scrollTop;
+let missingVisibleFrames = 0;
+const observer = new MutationObserver(() => {
+  if (!ready()) missingVisibleFrames++;
+});
+observer.observe(doc.querySelector('#outputs-list'), {childList:true, subtree:true});
+await delay(2300);
+observer.disconnect();
+const nowLive = currentFrame('a-live');
+const script = currentFrame('b-script');
+const scriptTick = script.contentDocument.querySelector('#script-tick');
+const result = {
+  startTick,
+  endTick:Number(nowLive?.contentDocument?.querySelector('#live-tick')?.textContent),
+  initialPageScroll, pageScroll:page.scrollTop,
+  liveScroll:nowLive?.contentWindow.scrollY,
+  nestedScroll:nowLive?.contentDocument?.querySelector('#nested-scroll')?.scrollTop,
+  scriptedScroll:script.contentWindow.scrollY,
+  samePlainFrame:nowLive === live,
+  sameStableFrame:currentFrame('c-stable') === stable && stable.contentWindow === stableWindow,
+  sameSlider:doc.querySelector('#outputs-controls input[type=range]') === slider,
+  scriptExecuted:Number(scriptTick.textContent) === Number(scriptTick.dataset.tick) * 2,
+  missingVisibleFrames,
+};
+result.ok = result.endTick > startTick + 2 && initialPageScroll > 0 &&
+  Math.abs(result.pageScroll-initialPageScroll) < 2 && result.liveScroll >= 215 &&
+  result.nestedScroll >= 235 && result.scriptedScroll >= 195 && result.samePlainFrame &&
+  result.sameStableFrame && result.sameSlider && result.scriptExecuted && missingVisibleFrames === 0;
+return result;
+"""
+
 CONTROLLER_CONTROL_GROUP_SNIPPET = """\
 import afield.math.linalg.Vector2f
 import afield.math.linalg.Vector4f
@@ -3894,6 +4058,10 @@ def prepare_generated_files() -> dict[str, Path]:
         "show_plane_interactive_snippet": write_generated_file("show-plane-interactive.kt", SHOW_PLANE_INTERACTIVE_SNIPPET),
         "show_plane_interactive_js": write_generated_file("show-plane-interactive.js", SHOW_PLANE_INTERACTIVE_JS),
         "controller_control_group_snippet": write_generated_file("controller-control-group.kt", CONTROLLER_CONTROL_GROUP_SNIPPET),
+        "controller_stack_auto_snippet": write_generated_file("controller-stack-auto.kt", CONTROLLER_STACK_AUTO_SNIPPET),
+        "controller_stack_auto_js": write_generated_file("controller-stack-auto.js", CONTROLLER_STACK_AUTO_JS),
+        "controller_live_output_snippet": write_generated_file("controller-live-output.kt", CONTROLLER_LIVE_OUTPUT_SNIPPET),
+        "controller_live_output_js": write_generated_file("controller-live-output.js", CONTROLLER_LIVE_OUTPUT_JS),
         "selection_screenshot_snippet": write_generated_file("selection-screenshot.kt", SELECTION_SCREENSHOT_SNIPPET),
         "history_panel_snippet": write_generated_file("history-panel.kt", HISTORY_PANEL_SNIPPET),
         "macro_transcript_panel_snippet": write_generated_file("macro-transcript-panel.kt", MACRO_TRANSCRIPT_PANEL_SNIPPET),
@@ -4445,7 +4613,7 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
                 "sleep 0.5",
                 shell_join(["page-eval", "--body", "--file", str(files["controllers_editable_lines_js"]), "--timeout", pw_timeout]),
             ],
-            screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--preserve-selection", "--timeout", pw_timeout]),
         ),
         UiRegression(
             id="show-plane-interactive",
@@ -4467,7 +4635,40 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
                 "sleep 0.5",
                 shell_join(["page-eval", "--body", "--file", str(files["controllers_static_lines_js"]), "--timeout", pw_timeout]),
             ],
-            screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--preserve-selection", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="controllers-stack-auto",
+            description="Controllers retains the real StackSL numbers card alongside native controls, with working uniform-number and Reset callbacks and concise copy.",
+            commands=[
+                "new-box --name ControllerStackAutoRegression",
+                shell_join(["run", "@last", "--file", str(files["controller_stack_auto_snippet"]), "--timeout", timeout_text]),
+                shell_join(["page-eval", "--body", "--file", str(files["controller_stack_auto_js"]), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--preserve-selection", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="output-control-selection",
+            description="Output text and SVG slider interactions retain the editor and selection, deliver callbacks and leave box frames fixed; clicking a box still selects it.",
+            commands=[
+                "new-box --name SelectionAnchor --alias selection_anchor --x 40 --y 40",
+                "set @last code 'println(\"selection anchor\")'",
+                "new-box --name OutputSelectionControls --x 400 --y 60",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/output-control-selection.kt"), "--timeout", timeout_text]),
+                "editor-open @selection_anchor --property code",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/output-control-selection.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--preserve-selection", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="controllers-live-output-scroll",
+            description="Live controller outputs preserve page and iframe scrolling, keep unchanged controls and channels, and execute scripts without blank frames.",
+            commands=[
+                "new-box --name ControllerLiveOutputRegression",
+                shell_join(["run", "@last", "--file", str(files["controller_live_output_snippet"]), "--timeout", timeout_text]),
+                shell_join(["page-eval", "--body", "--file", str(files["controller_live_output_js"]), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--preserve-selection", "--timeout", pw_timeout]),
         ),
         UiRegression(
             id="controllers-control-group",
@@ -4478,7 +4679,7 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
                 "sleep 0.5",
                 shell_join(["page-eval", "--body", "--file", str(files["controllers_control_group_js"]), "--timeout", pw_timeout]),
             ],
-            screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--preserve-selection", "--timeout", pw_timeout]),
         ),
         UiRegression(
             id="controllers-mobile-workspace",

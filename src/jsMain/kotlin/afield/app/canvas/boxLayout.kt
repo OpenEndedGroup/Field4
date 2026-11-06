@@ -286,7 +286,10 @@ fun registerBoxLayoutActions(builtin: dynamic) {
     builtin.push(pack)
     val room: dynamic = js("({})")
     room.id = "toggle-make-room-for-outputs"
-    room.label = "Toggle Make Room for Outputs"
+    room.keyLabel = "Toggle Make Room for Outputs"
+    val roomLabel: dynamic = js("({enumerable: true, configurable: true})")
+    roomLabel.get = { "Toggle Make Room for Outputs (${if (BoxLayout.makeRoom) "On" else "Off"})" }
+    js("Object.defineProperty")(room, "label", roomLabel)
     room.detail = "When an output panel opens or grows, move the boxes it would cover down; move them back when it shrinks"
     room.run = {
         val on = BoxLayout.toggleMakeRoom()
