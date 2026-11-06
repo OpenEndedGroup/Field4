@@ -24,6 +24,15 @@ data class BrowserVrPointer(
  * including outside the panel; tracking loss cancels capture. Hover alone cannot steal a drag.
  */
 class PuppetBrowserVrInput(val panel: PuppetBrowserPanel) {
+    /** Resting cursor smoothing time in seconds; zero bypasses the filter. Large moves catch up faster. */
+    var smoothingSeconds: Double = 0.0
+        set(value) {
+            require(value.isFinite() && value >= 0.0)
+            field = value
+        }
+    internal var clockNanos: () -> Long = System::nanoTime
+    private var filteredHit: PuppetBrowserPanel.Hit? = null
+    private var filteredAt = 0L
     var activePointer: String? = null
         private set
     private var capturedPointer: String? = null
@@ -32,6 +41,7 @@ class PuppetBrowserVrInput(val panel: PuppetBrowserPanel) {
 
     fun update(pointers: List<BrowserVrPointer>, enabled: Boolean = true): PuppetBrowserPanel.Hit? {
         if (!enabled) {
+            filteredHit = null
             panel.releasePointer()
             capturedPointer = null
             activePointer = null
@@ -52,24 +62,55 @@ class PuppetBrowserVrInput(val panel: PuppetBrowserPanel) {
             ?: freshPress
             ?: pointers.firstOrNull { it.id == activePointer && hits[it.id]?.onPanel == true }
             ?: pointers.firstOrNull { hits[it.id]?.onPanel == true }
-        if (selected?.id != activePointer) panel.releasePointer()
+        if (selected?.id != activePointer) {
+            panel.releasePointer()
+            filteredHit = null
+        }
         activePointer = selected?.id
         val hit = selected?.let {
             // Moving onto the panel with a button already held must not synthesize a new click.
             val down = it.pressed && (it.id == capturedPointer || it.id !in previousPressed)
-            panel.interact(it.origin, it.direction, down, it.scrollY, scrollX = it.scrollX)
+            val target = hits[it.id]?.let(::smoothTarget)
+            if (target == null) filteredHit = null
+            panel.interactHit(target, down, it.scrollY, scrollX = it.scrollX)
         }
-        if (selected == null) panel.releasePointer()
+        if (selected == null) {
+            panel.releasePointer()
+            filteredHit = null
+        }
         capturedPointer = if (panel.uv.buttons != 0) selected?.id else null
         previousPressed = pointers.filter { it.pressed }.map { it.id }.toSet()
         return hit
     }
 
+    private fun smoothTarget(hit: PuppetBrowserPanel.Hit): PuppetBrowserPanel.Hit {
+        val now = clockNanos()
+        val previous = filteredHit
+        val seconds = (now - filteredAt) / 1e9
+        filteredAt = now
+        val next = if (smoothingSeconds == 0.0 || previous == null || seconds <= 0.0 || seconds > 0.25) hit else {
+            val du = hit.u - previous.u
+            val dv = hit.v - previous.v
+            val pixels = kotlin.math.hypot(du * panel.uv.cssWidth, dv * panel.uv.cssHeight)
+            val tau = smoothingSeconds / (1.0 + pixels / 24.0)
+            val alpha = -kotlin.math.expm1(-seconds / tau)
+            val u = previous.u + du * alpha
+            val v = previous.v + dv * alpha
+            val world = panel.model.transformPosition(Vector3f(
+                ((u - 0.5) * 2 * panel.halfWidth).toFloat(),
+                ((0.5 - v) * 2 * panel.halfHeight).toFloat(), 0f))
+            PuppetBrowserPanel.Hit(world, u, v, hit.onPanel)
+        }
+        filteredHit = next
+        return next
+    }
+
     fun cancel() {
+        filteredHit = null
         panel.releasePointer()
         capturedPointer = null
         activePointer = null
-        previousPressed = emptySet()
+        // A recenter/cancel must not turn a still-held trigger into a fresh click.
         pinching.clear()
     }
 

@@ -31,6 +31,84 @@ class PuppetBrowserVrInputTest {
     private fun ray(id: String, down: Boolean = false, x: Float = 0f) =
         BrowserVrPointer(id, Vector3f(), Vector3f(x, 0f, -2f).normalize(), down)
 
+    @Test fun `smoothing suppresses aim jitter but catches deliberate movement quickly`() {
+        input.smoothingSeconds = 0.045
+        var now = 1_000_000_000L
+        input.clockNanos = { now }
+        input.update(listOf(ray("right")))
+        val positions = (0 until 100).map { i ->
+            now += 11_111_111L
+            input.update(listOf(ray("right", x = if (i % 2 == 0) 0.002f else -0.002f)))!!.u
+        }.takeLast(30)
+        assertTrue((positions.max() - positions.min()) * panel.uv.cssWidth < 1.0,
+            "Approximately four CSS pixels of raw jitter should settle below one pixel")
+        now += 11_111_111L
+        val moved = input.update(listOf(ray("right", x = 0.8f)))!!
+        assertTrue(kotlin.math.abs(moved.u - 0.9) * panel.uv.cssWidth < 5,
+            "A deliberate large movement must catch up within one frame")
+    }
+
+    @Test fun `press uses the stabilized visible target and loss of tracking resets smoothing`() {
+        input.smoothingSeconds = 0.045
+        var now = 1_000_000_000L
+        input.clockNanos = { now }
+        input.update(listOf(ray("right")))
+        now += 11_111_111L
+        val pressed = input.update(listOf(ray("right", down = true, x = 0.01f)))!!
+        val down = events.last { it.type == BrowserPointerEventType.DOWN }
+        assertEquals(pressed.u * panel.uv.cssWidth, down.x, 1e-6)
+        assertEquals(pressed.v * panel.uv.cssHeight, down.y, 1e-6)
+        input.update(emptyList())
+        assertEquals(1, events.count { it.type == BrowserPointerEventType.UP })
+        now += 11_111_111L
+        assertEquals(0.9, input.update(listOf(ray("right", x = 0.8f)))!!.u, 1e-6,
+            "Reacquiring tracking must start at the new target")
+    }
+
+    @Test fun `switching hands disabling input and long gaps do not reuse the previous target`() {
+        input.smoothingSeconds = 0.045
+        var now = 1_000_000_000L
+        input.clockNanos = { now }
+        input.update(listOf(ray("right")))
+        now += 11_111_111L
+        assertEquals(0.9, input.update(listOf(ray("left", x = 0.8f)))!!.u, 1e-6)
+        input.update(emptyList(), enabled = false)
+        now += 11_111_111L
+        assertEquals(0.5, input.update(listOf(ray("left")))!!.u, 1e-6)
+        now += 1_000_000_000L
+        assertEquals(0.9, input.update(listOf(ray("left", x = 0.8f)))!!.u, 1e-6)
+    }
+
+    @Test fun `smoothing responds consistently at different frame rates`() {
+        fun trace(rate: Int): Double {
+            input.cancel()
+            input.smoothingSeconds = 0.045
+            var now = 1_000_000_000L
+            input.clockNanos = { now }
+            input.update(listOf(ray("right")))
+            repeat(rate) { step ->
+                now = 1_000_000_000L + (step + 1) * 1_000_000_000L / rate
+                input.update(listOf(ray("right", x = 0.02f * (step + 1) / rate)))
+            }
+            return panel.uv.position.first
+        }
+        val slow = trace(30)
+        val fast = trace(120)
+        assertTrue(kotlin.math.abs(slow - fast) * panel.uv.cssWidth < 0.5,
+            "The same aim movement should end within half a CSS pixel at 30 and 120 Hz")
+    }
+
+    @Test fun `cancel does not click again until the held trigger has been released`() {
+        input.update(listOf(ray("right", down = true)))
+        input.cancel()
+        input.update(listOf(ray("right", down = true)))
+        assertEquals(1, events.count { it.type == BrowserPointerEventType.DOWN })
+        assertEquals(1, events.count { it.type == BrowserPointerEventType.UP })
+        input.update(listOf(ray("right")))
+        input.update(listOf(ray("right", down = true)))
+        assertEquals(2, events.count { it.type == BrowserPointerEventType.DOWN })
+    }
+
     @Test fun `either hand can take over but hover cannot steal a drag`() {
         input.update(listOf(ray("right"), ray("left")))
         input.update(listOf(ray("right"), ray("left", true)))
