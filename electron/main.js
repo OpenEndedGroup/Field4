@@ -973,12 +973,13 @@ function createMainWindow() {
     } catch (_) {
       // View is either not attached yet or already on top.
     }
+    // A hidden strip must be detached, not just shrunk to zero height: a WebContentsView keeps
+    // answering the window's drag hit-test with its last `-webkit-app-region: drag` rectangle
+    // while it stays attached, so in full screen the top TAB_STRIP_HEIGHT pixels of the canvas
+    // went dead. Detaching it unregisters that drag region.
     if (isTabStripVisible()) {
       win.contentView.addChildView(tabStripView);
-      win.contentView.addChildView(tabRevealView);
-      return;
     }
-    win.contentView.addChildView(tabStripView);
     win.contentView.addChildView(tabRevealView);
   };
 
