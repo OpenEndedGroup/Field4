@@ -371,7 +371,7 @@ scripted host.
 
 `src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt` — [read the source](source/jvmMain/afield/ai/agent/FieldGraphTools/)
 
-**Used in:** [AI4's built-in tools](../ai4_tools.md)
+**Used in:** [AI4's built-in tools](../ai4_tools.md), [Experimenting with AI4](../ai4_experiments.md)
 
 ### Top-level values { #fieldgraphtools-kt-values }
 
