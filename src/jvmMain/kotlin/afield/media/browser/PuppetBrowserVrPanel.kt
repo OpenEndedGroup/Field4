@@ -81,8 +81,9 @@ class PuppetBrowserVrPanel(
                 this.name = this@PuppetBrowserVrPanel.name
                 stereo.configure(this)
                 color = 1
-                depth = 1
-                depthTest = true
+                depth = if (stereo.layered.parameters.useDepth) 1 else 0
+                depthTest = stereo.layered.parameters.useDepth
+                depthWrite = stereo.layered.parameters.useDepth
                 colorFormats = listOf(VK_FORMAT_B8G8R8A8_SRGB)
                 vertex = vertexShader
                 fragment = fragmentShader

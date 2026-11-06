@@ -3,11 +3,13 @@ package afield.graphics.vulkan.targets
 import afield.graphics.vulkan.device.vkLayout
 import afield.app.protocol.Rect
 import afield.runtime.lifecycle.Runloop
+import afield.graphics.vulkan.CPUSpan
 import afield.graphics.vulkan.GpuImageCapture
 import afield.graphics.vulkan.Renderer
 import afield.graphics.vulkan.Target
 import afield.graphics.vulkan.buffers.VulkanBuffer
 import afield.graphics.vulkan.device.CommandBuffer
+import afield.graphics.vulkan.device.GpuPassProbe
 import afield.graphics.vulkan.buffers.MissingRefException
 import afield.graphics.render.Module
 import afield.graphics.render.ModulePointer
@@ -166,6 +168,28 @@ open class RenderToTexture(
     var parameters = RTTParameters().apply(parameters)
     override var defaultSampler: TextureSampler? = null
     private val debugName = parametersDebugName()
+    // Cache labels once: recording must not allocate profiling names every frame.
+    private val cpuTotal = "rtt[$debugName].total"
+    private val cpuPrepare = "rtt[$debugName].prepare"
+    private val cpuDependencies = "rtt[$debugName].dependencies"
+    private val cpuMeshPrepare = "rtt[$debugName].mesh_prepare_dependencies"
+    private val cpuSampledImages = "rtt[$debugName].sampled_images"
+    private val cpuDraw = "rtt[$debugName].draw"
+    private val cpuFinish = "rtt[$debugName].finish"
+    /** Diagnostic GPU queries, sampled every 60 renderer frames; off until explicitly enabled. */
+    var profileGpu = false
+    /** Invocation counters can perturb mesh workloads severely; timestamps alone are the default. */
+    var profileGpuStatistics = false
+    private var gpuProbe: GpuPassProbe? = null
+    val gpuSample: GpuPassProbe.Snapshot? get() = gpuProbe?.snapshot
+    /** Sparse timestamp spans for individual draws, without invocation counters. */
+    var profileGpuDraws = false
+    private val gpuDrawProbes = linkedMapOf<String, GpuPassProbe>()
+    private val activeGpuDrawProbes = linkedMapOf<String, GpuPassProbe>()
+    private val classicGpuDrawKeys = linkedMapOf<String, String>()
+    private val meshGpuDrawKeys = linkedMapOf<String, String>()
+    val gpuDrawSamples: Map<String, GpuPassProbe.Snapshot>
+        get() = gpuDrawProbes.mapNotNull { (name, probe) -> probe.snapshot?.let { name to it } }.toMap()
 
     fun setDefaultSampler(
         anisotropyEnable: Boolean = true,
@@ -1427,6 +1451,13 @@ open class RenderToTexture(
     }
 
     override fun render(command: CommandBuffer, index: Int) {
+        val probe = if (profileGpu) gpuProbe ?: GpuPassProbe(renderer, debugName).also { gpuProbe = it } else null
+        val active = probe?.takeIf { it.begin(command, profileGpuStatistics) }
+        CPUSpan.time(cpuTotal) { recordRender(command, index, active) }
+        active?.end(command)
+    }
+
+    private fun recordRender(command: CommandBuffer, index: Int, probe: GpuPassProbe?) {
         beforeRender(index)
         MemoryStack.stackPush().use { stack ->
             // COLOR subresource range for mip 0 ONLY (we don't touch other mips during the attachment phase)
@@ -1581,139 +1612,179 @@ open class RenderToTexture(
 
             // KHR dynamic rendering
             // Upload dirty vertex/index buffers before beginning rendering.
-            modules.values.forEach { mp ->
-                mp.current.meshes.values.forEach { mesh ->
-                    mesh.prepareForDraw(command)
-                    mesh.push.primeBufferReferences(command) {
-                        throw MissingRefException(afield.graphics.vulkan.buffers.unassignedMemberMessage(it))
+            CPUSpan.time(cpuPrepare) {
+                modules.values.forEach { mp ->
+                    mp.current.meshes.values.forEach { mesh ->
+                        mesh.prepareForDraw(command)
+                        mesh.push.primeBufferReferences(command) {
+                            throw MissingRefException(afield.graphics.vulkan.buffers.unassignedMemberMessage(it))
+                        }
                     }
-                }
-                mp.current.liveUniformStructures.values.forEach { structure ->
-                    structure.primeBufferReferences(command) {
-                        throw MissingRefException(afield.graphics.vulkan.buffers.unassignedMemberMessage(it))
+                    mp.current.liveUniformStructures.values.forEach { structure ->
+                        structure.primeBufferReferences(command) {
+                            throw MissingRefException(afield.graphics.vulkan.buffers.unassignedMemberMessage(it))
+                        }
                     }
                 }
             }
 
-            modules.values.forEach { mp ->
-                mp.current.before.values.forEach { target ->
-                    target.render(command, index)
+            CPUSpan.time(cpuDependencies) {
+                modules.values.forEach { mp ->
+                    mp.current.before.values.forEach { target ->
+                        target.render(command, index)
+                    }
                 }
             }
 
-            meshModules.values.forEach { mp ->
-                mp.current.meshes.values.forEach { mesh ->
-                    mesh.prepareForDraw(command)
-                    mesh.push.primeBufferReferences(command) {
-                        throw MissingRefException(afield.graphics.vulkan.buffers.unassignedMemberMessage(it))
+            CPUSpan.time(cpuMeshPrepare) {
+                meshModules.values.forEach { mp ->
+                    mp.current.meshes.values.forEach { mesh ->
+                        mesh.prepareForDraw(command)
+                        mesh.push.primeBufferReferences(command) {
+                            throw MissingRefException(afield.graphics.vulkan.buffers.unassignedMemberMessage(it))
+                        }
                     }
-                }
-                mp.current.liveUniformStructures.values.forEach { structure ->
-                    structure.primeBufferReferences(command) {
-                        throw MissingRefException(afield.graphics.vulkan.buffers.unassignedMemberMessage(it))
+                    mp.current.liveUniformStructures.values.forEach { structure ->
+                        structure.primeBufferReferences(command) {
+                            throw MissingRefException(afield.graphics.vulkan.buffers.unassignedMemberMessage(it))
+                        }
                     }
+                    mp.current.before.values.forEach { it.render(command, index) }
                 }
-                mp.current.before.values.forEach { it.render(command, index) }
             }
 
-            // Allow subclasses to enqueue additional transfers/uploads before rendering begins.
-            prepareAdditionalResources(command, index)
+            CPUSpan.time(cpuSampledImages) {
+                // Allow subclasses to enqueue additional transfers/uploads before rendering begins.
+                prepareAdditionalResources(command, index)
 
-            // Texture providers may need layout transitions before descriptors are pushed.
-            // Dynamic rendering does not allow image barriers inside the rendering instance.
-            modules.values.forEach { it.prepareSampledImagesFor(command) }
-            meshModules.values.forEach { it.prepareSampledImagesFor(command) }
+                // Texture providers may need layout transitions before descriptors are pushed.
+                // Dynamic rendering does not allow image barriers inside the rendering instance.
+                modules.values.forEach { it.prepareSampledImagesFor(command) }
+                meshModules.values.forEach { it.prepareSampledImagesFor(command) }
+            }
 
-            command.inRenderPassInstance = true
-            KHRDynamicRendering.vkCmdBeginRenderingKHR(command.vkCommandBuffer, renderInfo)
+            // Query resets belong outside dynamic rendering; timestamps bracket the actual draw below.
+            activeGpuDrawProbes.clear()
+            if (profileGpuDraws) {
+                fun prepareDraw(name: String) {
+                    val drawProbe = gpuDrawProbes.getOrPut(name) {
+                        GpuPassProbe(renderer, "$debugName/$name", Integer.bitCount(parameters.multiviewViewMask).coerceAtLeast(1))
+                    }
+                    if (drawProbe.prepare(command)) activeGpuDrawProbes[name] = drawProbe
+                }
+                modules.forEach { (name, module) ->
+                    if (module.current.enabled && module.current.valid)
+                        prepareDraw(classicGpuDrawKeys.getOrPut(name) { "module:$name" })
+                }
+                meshModules.forEach { (name, module) ->
+                    if (module.current.enabled && module.current.valid)
+                        prepareDraw(meshGpuDrawKeys.getOrPut(name) { "mesh:$name" })
+                }
+            }
 
-            val targetViewports = if (parameters.viewports.isNotEmpty()) parameters.viewports
-            else listOf(Rect(0.0, 0.0, width.toDouble(), height.toDouble()))
+            CPUSpan.time(cpuDraw) {
+                probe?.beginStatistics(command)
+                command.inRenderPassInstance = true
+                KHRDynamicRendering.vkCmdBeginRenderingKHR(command.vkCommandBuffer, renderInfo)
 
-            modules.values.forEach {
+                val targetViewports = if (parameters.viewports.isNotEmpty()) parameters.viewports
+                else listOf(Rect(0.0, 0.0, width.toDouble(), height.toDouble()))
+
+                modules.forEach { (name, module) ->
+                    setViewportAndScissorArray(command.vkCommandBuffer, targetViewports, stack)
+                    val drawProbe = classicGpuDrawKeys[name]?.let { activeGpuDrawProbes[it] }
+                    drawProbe?.start(command, afterPriorWork = true)
+                    module.render(command, Rectanglef(0f, 0f, width.toFloat(), height.toFloat()))
+                    drawProbe?.end(command)
+                }
+                meshModules.forEach { (name, module) ->
+                    setViewportAndScissorArray(command.vkCommandBuffer, targetViewports, stack)
+                    val drawProbe = meshGpuDrawKeys[name]?.let { activeGpuDrawProbes[it] }
+                    drawProbe?.start(command, afterPriorWork = true)
+                    module.render(command, Rectanglef(0f, 0f, width.toFloat(), height.toFloat()))
+                    drawProbe?.end(command)
+                }
+
+                // Allow subclasses to emit additional drawing inside the dynamic rendering region.
                 setViewportAndScissorArray(command.vkCommandBuffer, targetViewports, stack)
-                it.render(command, Rectanglef(0f, 0f, width.toFloat(), height.toFloat()))
+                renderAdditional(command, index, stack)
+
+                KHRDynamicRendering.vkCmdEndRenderingKHR(command.vkCommandBuffer)
+                command.inRenderPassInstance = false
+                command.flushDeferredGraphicsHostReadBarriers()
+                probe?.endStatistics(command)
             }
-            meshModules.values.forEach {
-                setViewportAndScissorArray(command.vkCommandBuffer, targetViewports, stack)
-                it.render(command, Rectanglef(0f, 0f, width.toFloat(), height.toFloat()))
-            }
 
-            // Allow subclasses to emit additional drawing inside the dynamic rendering region.
-            setViewportAndScissorArray(command.vkCommandBuffer, targetViewports, stack)
-            renderAdditional(command, index, stack)
+            CPUSpan.time(cpuFinish) {
+                // --- Automatic color mipmap recompute (if requested & supported) ---
+                colorImageHandles.forEachIndexed { idx, img ->
+                    val doMips = parameters.generateColorMipmaps &&
+                            parameters.mipLevels > 1 &&
+                            parameters.colorSampled &&
+                            colorFormatCanBlit.getOrElse(idx) { false }
+                    if (doMips) {
+                        generateColorMipChain(
+                            commandBuffer = command.vkCommandBuffer,
+                            image = img,
+                            imageRef = colorImageRefs.getOrElse(idx) { null },
+                            width = width,
+                            height = height,
+                            mipLevels = mipLevels,
+                            filter = chosenMipFilter.getOrElse(idx) { VK_FILTER_LINEAR },
+                            mipsWereInitialized = colorMipsInitialized.getOrElse(idx) { false },
+                            arrayLayers = colorLayerCount.coerceAtLeast(1)
+                        )
+                        colorMipsInitialized[idx] = true
+                        colorLayout[idx] = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL // after mipgen all mips are SRV
+                    } else if (parameters.colorSampled) {
+                        // No mip generation: only mip 0 was rendered. Keep descriptors on a mip-0 view
+                        // and transition exactly that subresource to the sampled layout.
+                        val baseLevelRange = VkImageSubresourceRange.calloc(stack)
+                            .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
+                            .baseMipLevel(0)
+                            .levelCount(1)
+                            .baseArrayLayer(0)
+                            .layerCount(colorLayerCount.coerceAtLeast(1))
 
-            KHRDynamicRendering.vkCmdEndRenderingKHR(command.vkCommandBuffer)
-            command.inRenderPassInstance = false
-            command.flushDeferredGraphicsHostReadBarriers()
-
-            // --- Automatic color mipmap recompute (if requested & supported) ---
-            colorImageHandles.forEachIndexed { idx, img ->
-                val doMips = parameters.generateColorMipmaps &&
-                        parameters.mipLevels > 1 &&
-                        parameters.colorSampled &&
-                        colorFormatCanBlit.getOrElse(idx) { false }
-                if (doMips) {
-                    generateColorMipChain(
-                        commandBuffer = command.vkCommandBuffer,
-                        image = img,
-                        imageRef = colorImageRefs.getOrElse(idx) { null },
-                        width = width,
-                        height = height,
-                        mipLevels = mipLevels,
-                        filter = chosenMipFilter.getOrElse(idx) { VK_FILTER_LINEAR },
-                        mipsWereInitialized = colorMipsInitialized.getOrElse(idx) { false },
-                        arrayLayers = colorLayerCount.coerceAtLeast(1)
-                    )
-                    colorMipsInitialized[idx] = true
-                    colorLayout[idx] = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL // after mipgen all mips are SRV
-                } else if (parameters.colorSampled) {
-                    // No mip generation: only mip 0 was rendered. Keep descriptors on a mip-0 view
-                    // and transition exactly that subresource to the sampled layout.
-                    val baseLevelRange = VkImageSubresourceRange.calloc(stack)
-                        .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
-                        .baseMipLevel(0)
-                        .levelCount(1)
-                        .baseArrayLayer(0)
-                        .layerCount(colorLayerCount.coerceAtLeast(1))
-
-                    transitionColorAttachment(
-                        command = command,
-                        attachment = idx,
-                        srcStage = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-                        dstStage = sampledReadStageMask,
-                        srcAccess = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
-                        dstAccess = VK_ACCESS_2_SHADER_SAMPLED_READ_BIT,
-                        oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                        newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                        range = baseLevelRange
-                    )
-                    colorLayout[idx] = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-                } else {
-                    // Not sampling: keep mip 0 as color attachment
-                    colorLayout[idx] = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                        transitionColorAttachment(
+                            command = command,
+                            attachment = idx,
+                            srcStage = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+                            dstStage = sampledReadStageMask,
+                            srcAccess = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+                            dstAccess = VK_ACCESS_2_SHADER_SAMPLED_READ_BIT,
+                            oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                            newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                            range = baseLevelRange
+                        )
+                        colorLayout[idx] = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+                    } else {
+                        // Not sampling: keep mip 0 as color attachment
+                        colorLayout[idx] = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+                    }
                 }
+
+                // Transition DEPTH after render ONLY if we intend to sample it
+                if (parameters.useDepth && parameters.depthSampled && depthImage != null && depthRange != null) {
+                    image_layout_transition(
+                        command.vkCommandBuffer,
+                        depthImage!!,
+                        VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+                        sampledReadStageMask,
+                        VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+                        VK_ACCESS_2_SHADER_SAMPLED_READ_BIT,
+                        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                        VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
+                        depthRange
+                    )
+                    depthLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
+                } else if (parameters.useDepth) {
+                    depthLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+                }
+
+                recordPendingFileSaves(command)
             }
 
-            // Transition DEPTH after render ONLY if we intend to sample it
-            if (parameters.useDepth && parameters.depthSampled && depthImage != null && depthRange != null) {
-                image_layout_transition(
-                    command.vkCommandBuffer,
-                    depthImage!!,
-                    VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
-                    sampledReadStageMask,
-                    VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-                    VK_ACCESS_2_SHADER_SAMPLED_READ_BIT,
-                    VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                    VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
-                    depthRange
-                )
-                depthLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
-            } else if (parameters.useDepth) {
-                depthLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-            }
-
-            recordPendingFileSaves(command)
         } // MemoryStack.use
         afterRender(index)
     }

@@ -66,6 +66,8 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
      * to enable, so they are only there when profiling was on at startup.
      */
     val pipelineStatisticsQueryEnabled: Boolean
+    /** Task/mesh invocation statistics, enabled only when the mesh feature probe permits them. */
+    val meshShaderQueriesEnabled: Boolean
 
     /**
      * `VK_KHR_performance_query` is available **and** profiling was on at startup. Unlike
@@ -368,6 +370,9 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                 enableMeshShading = meshSupported.meshShader() && meshSupported.taskShader()
             }
             supportsMultiviewMeshShader = enableMeshShading && supportsMultiview && meshSupported.multiviewMeshShader()
+            meshShaderQueriesEnabled = enableMeshShading && meshSupported.meshShaderQueries() && enablePipelineStatisticsQuery &&
+                System.getProperty("afield.four.meshShaderStatistics",
+                    System.getenv("AFIELD_FOUR_MESH_SHADER_STATISTICS") ?: "false").toBoolean()
             meshShaderLimits = if (enableMeshShading) {
                 val limits = VkPhysicalDeviceMeshShaderPropertiesEXT.calloc(stack).`sType$Default`()
                 vkGetPhysicalDeviceProperties2(physicalDevice.vkPhysicalDevice,
@@ -706,6 +711,7 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                 val mesh = VkPhysicalDeviceMeshShaderFeaturesEXT.calloc(stack)
                     .sType(EXTMeshShader.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT)
                     .meshShader(true).taskShader(true).multiviewMeshShader(supportsMultiviewMeshShader)
+                    .meshShaderQueries(meshShaderQueriesEnabled)
                 memPutAddress(tail + VkBaseOutStructure.PNEXT, mesh.address()); tail = mesh.address()
             }
 
