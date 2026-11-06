@@ -2,7 +2,7 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 21051 of 35834 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 21081 of 35864 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
 **1973 undocumented entry points** (types, top-level functions and values) and 12146 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
@@ -792,7 +792,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [MacExternalBrowserSurface.kt](../src/jvmMain/kotlin/afield/media/browser/MacExternalBrowserSurface.kt) | Imaging | — | 0 | 3 | 25% |
 | [CompletionDiffK1Probe.kt](../src/jvmMain/kotlin/afield/runtime/completion/CompletionDiffK1Probe.kt) | Workspace | — | 0 | 3 | 25% |
 | [ReplSnippetDeclarationsSmokeTest.kt](../src/jvmMain/kotlin/afield/runtime/kotlin/ReplSnippetDeclarationsSmokeTest.kt) | Workspace | — | 0 | 3 | 50% |
-| [alife_physarum_gpu.kt](../src/jvmMain/kotlin/afield/simulation/agents/alife_physarum_gpu.kt) | ALife | — | 0 | 3 | 90% |
+| [alife_physarum_gpu.kt](../src/jvmMain/kotlin/afield/simulation/agents/alife_physarum_gpu.kt) | ALife | — | 0 | 3 | 91% |
 | [alife_trail.kt](../src/jvmMain/kotlin/afield/simulation/agents/alife_trail.kt) | ALife | — | 0 | 3 | 90% |
 | [KratosLaunch.kt](../src/jvmMain/kotlin/afield/simulation/kratos/KratosLaunch.kt) | Simulation | — | 0 | 3 | 70% |
 | [ShapeAudit.kt](../src/jvmMain/kotlin/afield/simulation/physics/pressure/ShapeAudit.kt) | Simulation | — | 0 | 3 | 40% |

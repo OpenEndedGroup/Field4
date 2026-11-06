@@ -323,7 +323,7 @@ Verification-integrity harness: executes / compiles the box bodies of *every* sh
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="demotranscriptexecsmoketest-kt--demotranscriptexecsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/DemoTranscriptExecSmokeTest/#L970) |  |
+| <a id="demotranscriptexecsmoketest-kt--demotranscriptexecsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/DemoTranscriptExecSmokeTest/#L974) |  |
 
 ## DocsPanelCodeLinksSmokeTest.kt { #docspanelcodelinkssmoketest-kt }
 
@@ -1907,13 +1907,13 @@ That a [`ParticleSketch`](simulation.md#particlesketch-kt-particlesketch) step o
 
 ### PhysarumGpuSmoke { #physarumgpusmoke-kt-physarumgpusmoke }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">PhysarumGpuSmoke</span></code>](source/jvmMain/afield/examples/four/PhysarumGpuSmoke/#L44)
+[<code class="highlight"><span class="k">object</span> <span class="nc">PhysarumGpuSmoke</span></code>](source/jvmMain/afield/examples/four/PhysarumGpuSmoke/#L45)
 
 Runs [`ShaderPhysarumSystem`](alife.md#alife-physarum-gpu-kt-shaderphysarumsystem) (a million agents on a 1024x1024 [`TrailField`](alife.md#alife-trail-kt-trailfield)) on a real renderer and reads its trail back as floats, so the GPU network is measured the way `alife_examples.md` §7 measures the CPU one: `topShare(0.05)` of the sensing population against the same population turning at random. Also checks [`TrailField`](alife.md#alife-trail-kt-trailfield) on its own: a held channel keeps a deposit, a decaying one halves in its half-life, and `clear()` empties it.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="physarumgpusmoke-kt--physarumgpusmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/PhysarumGpuSmoke/#L49) |  |
+| <a id="physarumgpusmoke-kt--physarumgpusmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/PhysarumGpuSmoke/#L50) |  |
 
 ## PingPongRestoreSmoke.kt { #pingpongrestoresmoke-kt }
 
