@@ -447,14 +447,19 @@ library. When a build's results are only trustworthy with particular versions of
 it as an asset of the kit:
 
 ```diffstatic {data-lang=kotlin}
-RuntimeIdentity.capture([Solid::class], natives = [File(ManifoldLibrary.resolvedPath!!)])
+import afield.geometry.solid.manifold.ManifoldLibrary
+import afield.geometry.solid.manifold.Solid
+
+RuntimeIdentity.capture([Solid::class], natives = [ManifoldLibrary.resolvedPath!!.toFile()])
     .write("runtime-identity.json".file)
 ```
 
 Then check it before building on that code:
 
 ```diffstatic {data-lang=kotlin}
-RuntimeIdentity.verify("runtime-identity.json".file, natives = [File(ManifoldLibrary.resolvedPath!!)])
+import afield.geometry.solid.manifold.ManifoldLibrary
+
+RuntimeIdentity.verify("runtime-identity.json".file, natives = [ManifoldLibrary.resolvedPath!!.toFile()])
 ```
 
 `verify` refuses a Field that loaded other code, and names each class or library that differs with
