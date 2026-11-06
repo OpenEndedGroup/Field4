@@ -105,7 +105,7 @@ class FieldVrWorkspace(
         panel = PuppetBrowserVrPanel(renderer, stereo, browser, widthMeters, distanceMeters,
             name = "field-vr-ide", automaticInteraction = false)
         panel.build()
-        input = PuppetBrowserVrInput(panel.panel)
+        input = PuppetBrowserVrInput(panel.panel).apply { smoothingSeconds = 0.045 }
         grab = PuppetBrowserVrGrab(panel.panel)
         stereo.stereoCamera.base.lookAt(Vector3f(), Vector3f(0f, 0f, -1f))
         recenter()
@@ -144,6 +144,7 @@ class FieldVrWorkspace(
     fun recenter() {
         // A toolbar recenter ends any current attachment before setting a new room transform.
         grab.cancel()
+        input.cancel()
         val eye = Vector3f()
         val orientation = Quaternionf()
         val direction = Vector3f(0f, 0f, -1f)
