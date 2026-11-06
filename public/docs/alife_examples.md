@@ -1131,21 +1131,36 @@ the trail gives `topShare(0.05)` = **0.75** with one species. The same agents wi
 ### Several species on one field
 
 Each species senses the trail through one row of an attraction matrix: `attraction[s]` weighs the four
-channels as species `s` reads them, positive to follow and negative to avoid. With `+1` for its own
-channel and `-1` for the other's, two species divide the field into territories:
+channels as species `s` reads them, positive to follow and negative to avoid. Here three species each
+follow their own channel and avoid the other two, with Jones' exclusion on and little diffusion, so the
+trails stay sharp:
 
 ```diffstatic {data-lang=kotlin}
 prop<ShaderPhysarumSystem>(physarum) = ShaderPhysarumSystem() {
-    width = 512
-    height = 512
-    agentCount = 250_000
-    speciesCount = 2
+    width = 1024
+    height = 1024
+    agentCount = 300_000
+    speciesCount = 3
+    exclusive = true
     attraction = listOf(
-        vec(1f, -1f, 0f, 0f),
-        vec(-1f, 1f, 0f, 0f),
+        vec(1f, -2f, -2f, 0f),
+        vec(-2f, 1f, -2f, 0f),
+        vec(-2f, -2f, 1f, 0f),
     )
 }
+physarum.trail.settings.diffusion = 0.2f
 physarum.installInto()
+```
+
+The video shows one species on the left and three on the right. The rule, the density and the
+exclusion are the same on both sides, and both start from an even scatter. On its own, a species closes
+into a net of cells: roads meet at junctions and enclose empty space. Three species that avoid each
+other cannot cross, so there are no junctions between colours. They pack the field into an interlocking
+labyrinth instead, each road running alongside roads of the other colours, and the borders keep
+shifting as one species pushes into another's ground.
+
+```diffstatic_runner {data-lang=kotlin capture="native-window" capture-box="stigmergy_video_renderer" transcript="dev_docs/agents/transcripts/docs_capture/gpu_stigmergy_contrast_video.yaml" video="assets/alife_examples/stigmergy-contrast.mp4" duration="12" fps="24" wait="0.2" timeout="300" embed=true hidden=true name="alife-stigmergy-contrast" alt="two square fields side by side, both starting as even noise. On the left a single amber species closes into a net of rounded cells; on the right amber, cyan and pink species pack into an interlocking labyrinth of parallel roads whose colours never cross, with borders that keep shifting"}
+// The transcript builds a renderer and two systems, one and three species, each drawn into half the window.
 ```
 
 Any other particle system can steer by the same field. `TrailFollowers` climbs the gradient of

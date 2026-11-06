@@ -1,13 +1,11 @@
 name: gpu_stigmergy
 description: >
-  Multi-species stigmergy on the GPU: two Physarum species on one TrailField, each attracted by
-  its own channel and repelled by the others' (the attraction matrix), so they divide the field into
-  interleaved territories; a cloud of gradient-following particles (TrailFollowers) that rides
+  Multi-species stigmergy on the GPU: three Physarum species on one TrailField, each attracted by
+  its own channel and repelled by the others' (the attraction matrix), with Jones' exclusion, so
+  they pack the field into an interlocking labyrinth whose colours do not cross; a cloud of gradient-following particles (TrailFollowers) that rides
   species 0's roads and keeps out of species 1's; and a chase box that rewrites the attraction and
   deposit matrices live so species 1 marks species 0's channel and species 0 flees it. Five boxes: a
-  renderer; a slime box publishing the prop `physarum`; followers, chase and reset boxes beneath it.
-  Jones' exclusion (`exclusive = true`) needs a lower density than this one-agent-per-pixel scene;
-  the smoke alife.physarum-gpu.smoke measures it at 15%. Requires a GPU/Vulkan window; capture with a follow-on
+  renderer; a slime box publishing the prop `physarum`; followers, chase and reset boxes beneath it. Requires a GPU/Vulkan window; capture with a follow-on
   `native-screenshot <path> --uid stigmergy_renderer`. Design: dev_docs/GPU_STIGMERGY_FIELD.md.
 docs:
   - page: alife_examples.md
@@ -40,22 +38,27 @@ operations:
       properties:
         code: |
           /*
-          Two species on one 512 x 512 trail, one channel each. Row s of `attraction` is how
-          species s weighs the four channels when it senses: +1 for its own, -1 for the other's.
-          Each follows its own roads and turns away from the other's, so the field divides into
-          amber and cyan territories that keep re-negotiating their borders.
+          Three species on one 1024 x 1024 trail, one channel each. Row s of `attraction` is how
+          species s weighs the four channels when it senses: +1 for its own, -2 for each other's.
+          `exclusive` is Jones' one-agent-per-pixel rule, so no road can hold more agents than it
+          has pixels. Low diffusion keeps the trails sharp. The three pack the field into an
+          interlocking labyrinth whose colours do not cross; one species alone, at the same
+          density, closes into a net of cells instead.
           */
           prop<ShaderPhysarumSystem>(physarum) = ShaderPhysarumSystem() {
-              width = 512
-              height = 512
-              agentCount = 250_000
-              speciesCount = 2
+              width = 1024
+              height = 1024
+              agentCount = 300_000
+              speciesCount = 3
+              exclusive = true
               exposure = 0.06f
               attraction = listOf(
-                  vec(1f, -1f, 0f, 0f),
-                  vec(-1f, 1f, 0f, 0f),
+                  vec(1f, -2f, -2f, 0f),
+                  vec(-2f, 1f, -2f, 0f),
+                  vec(-2f, -2f, 1f, 0f),
               )
           }
+          physarum.trail.settings.diffusion = 0.2f
 
           // steps once a frame and draws the trail, one colour per species
           physarum.installInto()
@@ -69,13 +72,15 @@ operations:
           /*
           A second particle system that only reads the field. Each particle climbs the gradient
           of dot(trail, weights): up species 0's channel (amber) and down species 1's (cyan), so
-          the magenta dots gather on amber roads and slide off cyan ones.
+          the white dots gather on amber roads and slide off cyan ones.
           */
           var followers = TrailFollowers(physarum.trail) {
               count = 20_000
               weights = vec(1f, -1f, 0f, 0f)
               steering = 0.4f
               pointSize = 3f
+              // white: the default magenta is too close to the third species' pink
+              color = vec(1f, 1f, 1f, 1f)
           }
           // draws after the trail's preview, so the points sit on top of it
           followers.installInto()
@@ -94,10 +99,12 @@ operations:
           physarum.settings.depositInto = listOf(
               vec(1f, 0f, 0f, 0f),
               vec(0.5f, 1f, 0f, 0f),
+              vec(0f, 0f, 1f, 0f),
           )
           physarum.settings.attraction = listOf(
-              vec(1f, -2f, 0f, 0f),
-              vec(1f, 1f, 0f, 0f),
+              vec(1f, -4f, -2f, 0f),
+              vec(1f, 1f, -2f, 0f),
+              vec(-2f, -2f, 1f, 0f),
           )
           println("chase: species 1 follows species 0 and marks its channel")
   - create:
@@ -109,8 +116,9 @@ operations:
           // empty the trail, restore the territorial matrices, and scatter the agents again
           physarum.settings.depositInto = null
           physarum.settings.attraction = listOf(
-              vec(1f, -1f, 0f, 0f),
-              vec(-1f, 1f, 0f, 0f),
+              vec(1f, -2f, -2f, 0f),
+              vec(-2f, 1f, -2f, 0f),
+              vec(-2f, -2f, 1f, 0f),
           )
           physarum.trail.clear()
           physarum.resetAgents(System.nanoTime())
