@@ -5,10 +5,10 @@ summary: Builds main from clean, fixes Kotlin warnings that are new since the la
 kind: agent
 schedule: 2 5 * * *
 runtime-hours: 4
-disk-gib: 8
+disk-gib: 36
 quiet: no
 needs: the agent's usage allowance for one long session; the Mac awake, on power, with the display on (GPU captures need it)
-cost: one agent for up to five hours; a clean build tree of about 13 GiB while it runs
+cost: one agent for up to five hours; about 13 GiB for the build plus 14 GiB observed capture growth; allow 36 GiB free including the protected floor
 journal: nightly/ci-journal
 reports: git:nightly/ci-journal:reports
 verdict: (?m)^## Verdict\n+([^\n]+)|^(skipped[^\n]*)
@@ -60,8 +60,9 @@ These hold even if the playbook is missing or malformed. In that case write a no
   create this run). The one exception is the step 3 command, run exactly as written.
 - **Fix, don't suppress.** Resolving a warning means removing its cause. `@Suppress`, `-nowarn` or
   deleting the emitting code is a last resort, flagged with its justification.
-- **Disk.** If `df -h /` shows less than 8 GB free, run the step 3 command first and check again;
-  if it is still under 8 GB, skip the run: a one-line report with both readings, commit, stop. A
+- **Disk.** Require 36 GiB free on the checkout volume before creating the build tree (8 GiB
+  protected floor plus 28 GiB whole-run allowance). Run the step 3 command first if below that;
+  if still under budget, skip the run: a one-line report with both readings, commit, stop. A
   nearly full disk silently corrupts JVM, PNG and docs captures.
 - **Honest verification only.** Re-compile after fixes to confirm the warning is gone and nothing
   new broke; treat docs-capture failures as test failures.

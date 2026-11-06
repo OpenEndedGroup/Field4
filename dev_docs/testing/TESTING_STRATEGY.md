@@ -97,7 +97,13 @@ Configure `FIELD_VERIFY_DISK_FLOOR_GIB`, `FIELD_VERIFY_DISK_RESERVE_GIB` (defaul
 and `FIELD_VERIFY_DISK_PLANNED_GIB` (default 0) with finite non-negative GiB values.
 Before the first action, free space must cover **floor + reserve + planned growth**;
 throughout execution it must cover **floor + reserve**. Planned growth is charged
-once per runner invocation, not once per capture. Zero planned growth means no
+once per runner invocation, not once per capture. Admission is serialized across checkouts
+on the same volume under `~/.afield/verification-budgets/` (override the metadata location with
+`FIELD_VERIFY_BUDGET_DIR`). Active runners' reserve and planned-growth claims are added to the
+highest protected floor. Claims retain their full declared amounts until close: observed volume
+loss cannot safely be attributed to one claimant. OS locks expire after a crash, allowing stale
+claim metadata to be reclaimed without guessing from PID or age. This is deliberately conservative.
+Zero planned growth means no
 growth estimate was supplied, not that the run is expected to allocate nothing.
 
 Budget the expected **whole-run volume loss**, including build outputs, downloads,
@@ -110,6 +116,11 @@ estimate of reclaimable space. Sampling cannot prevent a sudden loss between pro
 or reserve actual filesystem blocks. A low/unknown disk reading refuses new work or
 interrupts an owned capture/test; it never deletes anything. Raw Gradle, standalone
 backdoor and UI-regression commands are not covered by this smoke/docs monitor.
+
+On macOS each smoke/docs monitor owns `caffeinate -dims -w <runner-pid>` until close;
+`tools/routines.py run` also covers the agent's build gaps. There is no fixed keep-awake timeout.
+The environment report records its owned PID and whether it is active or could not start.
+Idle-sleep prevention does not override lid closure or replace the continuous prerequisite checks.
 
 The smoke and docs capture runners sample power and display state every 15 seconds,
 including while starting Field and between tests. Long verification requires AC or

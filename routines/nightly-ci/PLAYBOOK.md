@@ -58,7 +58,8 @@ BASELINE        = warnings-baseline.json                       # in $JOURNAL, on
 DOCS_PORT       = 9477                                          # isolated agent Field port
 BUILD_BUDGET    = ~30 min for the clean build + warning triage/fix loop
 DOCS_BUDGET     = ~4 h for the full docs build (test suite; remeasure as the corpus grows)
-DISK_FLOOR      = 8 GB free on / (this run recaptures docs — heavier than the 2am loop)
+DISK_FLOOR      = 8 GiB protected throughout; require 36 GiB free before the build tree
+DISK_PLANNED    = 28 GiB whole-run allowance (build, captures and temporary files)
 ```
 
 All Gradle runs use the checked-in wrapper: `./gradlew` (Unix). All Python tooling uses
@@ -122,7 +123,11 @@ that, and fixed it — see `reports/2026-08-21.md`).
      ... "Preparing update"`). The discharge follows the *app* coming up, not the machine. So a
      healthy-looking uptime does not clear this check; the simultaneity test does.
 
-   If it is a catch-up: write the one-line-verdict skip report (`reports/$RUN.md`), run the Step
+   An explicitly requested `tools/routines.py run nightly-ci --catch-up` sets
+   `FIELD_ROUTINE_CATCH_UP=1` after checking for a missing slot and journal locks. That is an
+   intentional single run, so do not classify it as an automatic scheduler catch-up.
+
+   If it is an automatic catch-up: write the one-line-verdict skip report (`reports/$RUN.md`), run the Step
    0.7 read-only audit — which is cheap, needs no build, and is where this loop's unmerged-work
    debt actually gets measured — update `SCRATCHPAD.md`'s run log, commit the journal, remove the
    lock, and **stop**. Report it as **"skipped — launchd catch-up"**, never as a pass, and never as
@@ -140,10 +145,11 @@ that, and fixed it — see `reports/2026-08-21.md`).
    report first: its findings are this run's starting context, and `main` will usually have
    moved since it.
 2. **Retention, then disk check:** if `$REPO/tools/reap_merged_worktrees.py` exists, run it
-   with `--apply` and record its summary, then run it again with `--disk-floor-gib 8` so the
+   with `--apply` and record its summary, then run it again with
+   `--disk-floor-gib 8 --planned-gib 28` so the
    report includes both nightly and interactive worktrees, live-process exclusions, ranked safe
    reclaimability, running subtotal, and deficit. Then run `df -h /`. Look at the **Avail** column (APFS: used+avail ≠ size; Avail is
-   the real constraint). If Avail < `DISK_FLOOR`, abort: write a one-line `reports/$DATE.md`
+   the real constraint). If Avail < `DISK_FLOOR + DISK_PLANNED` (36 GiB before the build), abort: write a one-line `reports/$DATE.md`
    noting "skipped — low disk (<Avail>)", update the run log in `SCRATCHPAD.md`, commit the
    journal, stop. (History: a near-full disk silently corrupts JVM/PNG/docs captures, so a
    docs build would *look* like it passed while producing garbage.)
@@ -209,7 +215,11 @@ that, and fixed it — see `reports/2026-08-21.md`).
    tools now own dedicated ports, reject foreign/stale server identities, and clean their
    exact process groups. Record system load (`uptime`) as telemetry, never as a reason to
    retry or explain away a failed test.
-3b. **Keep the display awake for the whole run.** `nohup caffeinate -dims -t 14400 &`. On 08-05
+3b. **Keep the display awake for the whole run.** `tools/routines.py run nightly-ci` now owns
+   `caffeinate -dims -w <runner-pid>` until its agent exits. Smoke/docs monitors independently own
+   the same lifetime protection for each verification process. An external agent scheduler that
+   bypasses `run` must use `caffeinate -dims -w <long-lived-agent-pid>` for build gaps too: identify
+   that agent's actual PID, never an ephemeral tool shell's `$$`. No four-hour timer is used. On 08-05
    the laptop slept its display inside the smoke window, `glfwGetVideoMode` returned NULL, and a
    GLFW smoke failed with an opaque NPE — false red on a three-hour unattended run. This does not
    close Backlog #24 (`Window.kt:136` should still say "no usable display" rather than throwing an
@@ -727,7 +737,7 @@ Then the docs build, from `$FIXTREE` (so it tests the code you just built/fixed)
 cd $FIXTREE
 export FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_LOG_LEVEL=INFO   # no pinned port: 10-25 lost an attempt to another session holding 9477
 unset FIELD_DOCS_RUNNER_CONTINUE_ON_ERROR
-/usr/bin/time -l uv run --project . --group docs python tools/build_zensical_docs.py --clean \
+FIELD_VERIFY_DISK_PLANNED_GIB=16 /usr/bin/time -l uv run --project . --group docs python tools/build_zensical_docs.py --clean \
   > "$LOGDIR/ci-docs.log" 2>&1
 ```
 
@@ -842,9 +852,8 @@ first, one line each on why it matters — or "none, all prior CI work has lande
 
 - A Gradle daemon hang does not abort the whole run — record it as "not verified" for that
   step and complete every step you still can.
-- A single capture crashing should **not** stop the docs build any more (continue-on-error is
-  on). If the docs build itself dies before producing the HTML site, that is a real infra
-  regression — read the `public/.field-docs-runner-failures/` post-mortems and the tail of
+- A capture failure stops certification, as required in Step 5; continue-on-error is off.
+  If the docs build dies before producing the HTML site, that is an infrastructure finding — read the `public/.field-docs-runner-failures/` post-mortems and the tail of
   `build/ci-docs.log` to find which side of the WebSocket died, and treat restoring
   "the build just runs" as the priority, not a reason to skip the step.
 - If `main` is genuinely broken, that's the headline, not a reason to give up: report the
