@@ -3505,6 +3505,21 @@ through the slime box.
 
 [Open →](offline.html?file=assets/agent_transcripts/gpu_physarum/metadata.edn)
 
+### gpu_stigmergy
+
+**Several species on one stigmergy field**, on the GPU. A renderer box; a slime box that builds a
+three-species `ShaderPhysarumSystem` whose `attraction` matrix makes each species follow its own
+trail and avoid the others', so they pack a `TrailField` into an amber, cyan and pink labyrinth; a
+followers box whose 20,000 `TrailFollowers` climb amber and flee cyan, beading the amber roads in
+white; a chase box that rewrites the deposit and attraction matrices live so the cyan species
+lays the amber species' scent; and a reset box.
+[Several species on one field](alife_examples.md#several-species-on-one-field) walks through the
+slime and followers boxes.
+
+![Amber, cyan and pink roads packed into a labyrinth whose colours never cross, the amber ones beaded with small white particles](assets/alife_examples/stigmergy-species.png)
+
+[Open →](offline.html?file=assets/agent_transcripts/gpu_stigmergy/metadata.edn)
+
 ### fern_iterated_systems
 
 **Fern**, the classroom demo of iterated systems, on the GPU. Each system is tens or hundreds of

@@ -1,0 +1,70 @@
+name: gpu_stigmergy_followers
+description: >
+  The picture in alife_examples.md section 7's "Several species on one field": the slime and
+  followers boxes of gpu_stigmergy on a 360 x 360 window. Three Physarum species with exclusion pack a 1024 x 1024
+  TrailField into an amber, cyan and pink labyrinth, and 20,000 TrailFollowers climbing amber and fleeing
+  cyan draw white beads along the amber roads.
+docs:
+  - page: alife_examples.md
+    why: "Builds the multi-species picture in section 7."
+operations:
+  - create:
+      box: stigmergy_capture_renderer
+      name: renderer
+      frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.graphics.vulkan.util.Options
+
+          prop<Window>(window)
+          prop<Renderer>(renderer)
+          Options.enableHDR = false
+          Options.profiling = false
+          once.renderer {
+              window = Window("Stigmergy", initialDimensions = Rect(80.0, 80.0, 360.0, 360.0))
+              Renderer(window)
+          }
+          start(renderer::run)
+  - create:
+      box: stigmergy_capture_slime
+      name: two species
+      frame: { x: 340.0, y: 40.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          prop<ShaderPhysarumSystem>(physarum) = ShaderPhysarumSystem() {
+              width = 1024
+              height = 1024
+              agentCount = 300_000
+              speciesCount = 3
+              exclusive = true
+              exposure = 0.06f
+              attraction = listOf(
+                  vec(1f, -2f, -2f, 0f),
+                  vec(-2f, 1f, -2f, 0f),
+                  vec(-2f, -2f, 1f, 0f),
+              )
+          }
+          physarum.trail.settings.diffusion = 0.2f
+          physarum.installInto()
+  - create:
+      box: stigmergy_capture_followers
+      name: followers
+      frame: { x: 680.0, y: 40.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          var followers = TrailFollowers(physarum.trail) {
+              count = 20_000
+              color = vec(1f, 1f, 1f, 1f)
+              weights = vec(1f, -1f, 0f, 0f)
+              steering = 0.4f
+              pointSize = 2f
+          }
+          followers.installInto()
+  - connect: { parent: stigmergy_capture_renderer, child: stigmergy_capture_slime }
+  - connect: { parent: stigmergy_capture_slime, child: stigmergy_capture_followers }
+  - launch: { box: stigmergy_capture_renderer, property: code, strand: renderer }
+  - await: {}
+  - launch: { box: stigmergy_capture_slime, property: code }
+  - await: {}
+  - launch: { box: stigmergy_capture_followers, property: code }
+  - await: {}

@@ -22,6 +22,7 @@ import afield.graphics.vulkan.buffers.VulkanBuffer
 import afield.graphics.vulkan.buffers.defaultBuffer
 import afield.graphics.vulkan.device.CommandBuffer
 import afield.graphics.vulkan.targets.RenderTarget
+import afield.math.linalg.Matrix4f
 import afield.math.linalg.Vec4
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.VK13
@@ -89,6 +90,29 @@ data class ShaderPhysarumSettings(
     var deposit: Float = 1f,
     /** How strongly another species' trail counts against a sensor, relative to an agent's own. */
     var repulsion: Float = 1f,
+    /**
+     * The species x channel sensing matrix: `attraction[s]` weights the four trail channels as
+     * species `s` senses them (positive attracts, negative repels). `null` (the default) is the
+     * diagonal built from [repulsion]: `+1` for an agent's own channel, `-repulsion` for the others
+     * in use. Rows beyond [speciesCount] are ignored; missing rows fall back to that default.
+     * Read every frame, so territories can be dissolved or hardened while it runs.
+     */
+    var attraction: List<Vec4>? = null,
+    /**
+     * The species x channel deposit matrix: `depositInto[s]` is what one agent of species `s` adds
+     * to each channel per frame (scaled by [deposit]). `null` (the default) deposits only into the
+     * agent's own channel. Off-diagonal entries let one species mark another's channel: with
+     * `attraction` that is how a predator lays the scent its prey flees.
+     */
+    var depositInto: List<Vec4>? = null,
+    /**
+     * Jones' one-agent-per-cell rule, on the GPU: an agent may move only into a pixel no other agent
+     * holds this frame (claimed with an atomic in an occupancy buffer); otherwise it stays and turns to a
+     * random heading (it still deposits where it stands, as the CPU model does). Approximate, since claims race within one frame, but the
+     * population becomes incompressible as in the CPU [PhysarumParams.exclusive]. Needs a density
+     * well under one agent per pixel to move at all (Jones uses a few percent to 15%).
+     */
+    var exclusive: Boolean = false,
     /** Random extra turn per frame, radians, uniformly in `±jitter`. */
     var jitter: Float = 0f,
     /** `false` turns at random instead of following the trail: the control arm, as in [PhysarumParams.sensing]. */
@@ -141,7 +165,11 @@ class ShaderPhysarumSystem(
     /** One point per agent; the `push.` constants of the agent shader are bound here. */
     val agentMesh: Mesh
 
+    /** One `uint` per pixel: the frame stamp of the last agent to hold it, used when [ShaderPhysarumSettings.exclusive] is on. */
+    val occupancyBuffer: FrameBufferGroup
+
     private var lastSeed = settings.randomSeed
+    private var frameStamp = 0
 
     init {
         require(settings.agentCount > 0) { "agentCount must be positive" }
@@ -153,6 +181,9 @@ class ShaderPhysarumSystem(
         }
         agentBuffer = defaultBuffer(name = "${settings.name}AgentBuffer") {
             size = settings.agentCount.toLong() * AGENT_STRIDE_BYTES
+        }.buffer
+        occupancyBuffer = defaultBuffer(name = "${settings.name}OccupancyBuffer") {
+            size = settings.width.toLong() * settings.height * 4L
         }.buffer
 
         agentModule = Module(
@@ -168,6 +199,11 @@ class ShaderPhysarumSystem(
         agentMesh = Mesh(renderer, agentModule).apply {
             resize(settings.agentCount, 0, agentModule)
             push.bind("agentBuffer") { agentBuffer }
+            push.bind("occupancy") { occupancyBuffer }
+            push.bind("attraction") { attractionMatrix() }
+            push.bind("depositInto") { depositMatrix() }
+            push.bind("exclusive") { if (settings.exclusive) 1f else 0f }
+            push.bind("frameStamp") { (++frameStamp).toFloat() }
             push.bind("sensorAngle") { settings.sensorAngle }
             push.bind("sensorDistance") { settings.sensorDistance }
             push.bind("turnAngle") { settings.turnAngle }
@@ -182,8 +218,51 @@ class ShaderPhysarumSystem(
         agentModule.current.meshes["${settings.name}-agents"] = agentMesh
         trail.addDeposit("agents", agentModule)
 
+        zeroOccupancy()
         resetAgents(settings.randomSeed)
-        Box.context.get()?.attachShader(agentModule)
+        // one box drives one adopted shader: keep a vertex tab that holds some other system's rule
+        Box.context.get()?.let { box ->
+            val own = box.getPropertyRaw("vertex", null) as? String
+            if (own.isNullOrBlank() || "struct Agent" in own) box.attachShader(agentModule)
+        }
+    }
+
+    private fun zeroOccupancy() {
+        occupancyBuffer.get(write = true).mapAndWrite_bytes {
+            clear()
+            while (hasRemaining()) put(0.toByte())
+            rewind()
+        }
+        frameStamp = 0
+    }
+
+    /** [ShaderPhysarumSettings.attraction] as the shader reads it: column `s` is species `s`'s channel weights. */
+    fun attractionMatrix(): Matrix4f {
+        val n = settings.speciesCount
+        val m = Matrix4f().zero()
+        for (s in 0 until 4) {
+            val row = settings.attraction?.getOrNull(s)
+            for (c in 0 until 4) {
+                m[s, c] = when {
+                    row != null -> row[c]
+                    n == 1 -> if (c == s) 1f else 0f
+                    c == s -> 1f
+                    c < n -> -settings.repulsion
+                    else -> 0f
+                }
+            }
+        }
+        return m
+    }
+
+    /** [ShaderPhysarumSettings.depositInto] times [ShaderPhysarumSettings.deposit]: column `s` is what one agent of species `s` adds to each channel. */
+    fun depositMatrix(): Matrix4f {
+        val m = Matrix4f().zero()
+        for (s in 0 until 4) {
+            val row = settings.depositInto?.getOrNull(s)
+            for (c in 0 until 4) m[s, c] = settings.deposit * (row?.get(c) ?: if (c == s) 1f else 0f)
+        }
+        return m
     }
 
     override val imageView: ImageView get() = trail.imageView
@@ -253,11 +332,23 @@ class ShaderPhysarumSystem(
                 Agent agents[];
             };
 
+            // one uint per pixel: the frame stamp of whoever holds it (exclusive mode only)
+            layout(std430, buffer_reference, scalar) buffer OccupancyBuffer {
+                uint cells[];
+            };
+
             // the trail as it was at the end of the previous frame
             layout(set = 0, binding = 0) uniform sampler2D trailTex;
 
             layout(push_constant) uniform Push {
                 AgentBuffer agentBuffer;
+                OccupancyBuffer occupancy;
+                // column s: how species s weights the four channels when sensing
+                mat4 attraction;
+                // column s: what one agent of species s adds to each channel
+                mat4 depositInto;
+                float exclusive;
+                float frameStamp;
                 float sensorAngle;
                 float sensorDistance;
                 float turnAngle;
@@ -294,10 +385,7 @@ class ShaderPhysarumSystem(
                 ivec2 dims = textureSize(trailTex, 0);
                 uint rng = agent.rngState;
                 int species = int(mod(float(gl_VertexIndex), max(push.speciesCount, 1.0)));
-                vec4 own = vec4(0.0);
-                own[species] = 1.0;
-                vec4 weights = own * (1.0 + push.repulsion) - vec4(push.repulsion);
-                if (push.speciesCount < 1.5) weights = own;
+                vec4 weights = push.attraction[species];
 
                 float a = agent.heading;
                 if (push.sensing > 0.5) {
@@ -319,6 +407,21 @@ class ShaderPhysarumSystem(
                 a += (random01(rng) * 2.0 - 1.0) * push.jitter;
 
                 vec2 p = mod(agent.positionPx + push.stepPx * vec2(cos(a), sin(a)), vec2(dims));
+                if (push.exclusive > 0.5) {
+                    // hold our own pixel for this frame, then try to claim the one we step into
+                    uint stamp = uint(push.frameStamp);
+                    ivec2 here = ivec2(agent.positionPx) % dims;
+                    ivec2 there = ivec2(p) % dims;
+                    atomicMax(push.occupancy.cells[here.y * dims.x + here.x], stamp);
+                    if (there != here) {
+                        uint before = atomicMax(push.occupancy.cells[there.y * dims.x + there.x], stamp);
+                        if (before >= stamp) {
+                            // taken: stay and face somewhere new (Jones 2010); the deposit below still lands here, as on the CPU
+                            p = agent.positionPx;
+                            a = random01(rng) * 6.28318530718;
+                        }
+                    }
+                }
 
                 push.agentBuffer.agents[gl_VertexIndex].positionPx = p;
                 push.agentBuffer.agents[gl_VertexIndex].heading = mod(a, 6.28318530718);
@@ -326,7 +429,7 @@ class ShaderPhysarumSystem(
 
                 gl_Position = trailClip(p, dims);
                 gl_PointSize = push.pointSize;
-                vColor = own * push.deposit;
+                vColor = push.depositInto[species];
             }
         """.trimIndent()
 
@@ -342,7 +445,7 @@ class ShaderPhysarumSystem(
             }
         """.trimIndent()
 
-        private fun graphicsToGraphicsBarrier(command: CommandBuffer, buffer: VulkanBuffer) {
+        internal fun graphicsToGraphicsBarrier(command: CommandBuffer, buffer: VulkanBuffer) {
             MemoryStack.stackPush().use { stack ->
                 val barrier = VkBufferMemoryBarrier2.calloc(1, stack)
                 barrier[0]

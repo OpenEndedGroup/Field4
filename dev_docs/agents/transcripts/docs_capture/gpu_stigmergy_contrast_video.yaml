@@ -1,0 +1,67 @@
+name: gpu_stigmergy_contrast_video
+description: >
+  The video in alife_examples.md section 7's "Several species on one field": one species (left)
+  against three mutually repelling species (right), same density, same rule, same exclusion,
+  each on its own 512 x 512 TrailField and drawn into one half of a 640 x 320 window. From a
+  uniform scatter, the single species closes into a net of cells; the three species pack into an
+  interlocking labyrinth whose colours never cross.
+docs:
+  - page: alife_examples.md
+    why: "Builds the one-species-against-three video in section 7."
+operations:
+  - create:
+      box: stigmergy_video_renderer
+      name: renderer
+      frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.graphics.vulkan.util.Options
+
+          prop<Window>(window)
+          prop<Renderer>(renderer)
+          Options.enableHDR = false
+          Options.profiling = false
+          once.renderer {
+              window = Window("Stigmergy", initialDimensions = Rect(80.0, 80.0, 640.0, 320.0))
+              Renderer(window)
+          }
+          start(renderer::run)
+  - create:
+      box: stigmergy_video_pair
+      name: one against three
+      frame: { x: 340.0, y: 40.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          // the window in framebuffer pixels, split into a left and a right half
+          val w = window.width.toDouble()
+          val h = window.height.toDouble()
+
+          fun slime(label: String, species: Int) = ShaderPhysarumSystem() {
+              name = label
+              width = 512
+              height = 512
+              agentCount = 75_000
+              speciesCount = species
+              exclusive = true
+              exposure = 0.12f
+              attraction = (0 until species).map { s ->
+                  vec(
+                      if (s == 0) 1f else -2f,
+                      if (s == 1) 1f else if (species > 1) -2f else 0f,
+                      if (s == 2) 1f else if (species > 2) -2f else 0f,
+                      0f,
+                  )
+              }
+          }
+
+          var one = slime("one-species", 1)
+          var three = slime("three-species", 3)
+          one.trail.settings.diffusion = 0.2f
+          three.trail.settings.diffusion = 0.2f
+          one.installInto(previewViewport = Rect(0.0, 0.0, w / 2, h))
+          three.installInto(previewViewport = Rect(w / 2, 0.0, w / 2, h))
+  - connect: { parent: stigmergy_video_renderer, child: stigmergy_video_pair }
+  - launch: { box: stigmergy_video_renderer, property: code, strand: renderer }
+  - await: {}
+  - launch: { box: stigmergy_video_pair, property: code }
+  - await: {}
