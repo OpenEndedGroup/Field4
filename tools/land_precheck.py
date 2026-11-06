@@ -49,11 +49,13 @@ from check_staged_generated_artifacts import (  # noqa: E402
     _compiled_transcript,
     _formatted_box_code,
     _demo_input,
+    _doc_asset_budget_input,
     _publication_input,
     _saved_document_input,
     _python_tool_input,
     _reference_input,
     _transcript_input,
+    _transcript_registration_input,
 )
 
 REPO = Path(__file__).resolve().parents[1]
@@ -236,6 +238,22 @@ CHECKS: tuple[Check, ...] = (
         lambda c: [p for p in c.paths if _transcript_input(p)],
         gradle=("checkAgentTranscriptIndex",),
         lander_guards=("checkAgentTranscriptIndex",),
+    ),
+    Check(
+        "transcript-registration",
+        "checkTranscriptRegistration (2026-11-05, gpu_physarum: a new transcript with no index entry and no "
+        "DemoTranscriptExecSmokeTest classification, found one register at a time in 444938ec9 and 1269001df)",
+        lambda c: [p for p in c.paths if _transcript_registration_input(p)],
+        python=("tools/check_transcript_registration.py",),
+        lander_guards=("checkTranscriptRegistration",),
+    ),
+    Check(
+        "doc-asset-budget",
+        "checkDocAssetBudget (2026-11-05: the physarum-gpu figure landed at 2.6 MB and was recaptured at "
+        "0.9 MB in 6291b6ff9)",
+        lambda c: [p for p in c.paths if _doc_asset_budget_input(p)],
+        python=("tools/check_doc_assets.py --budget-only",),
+        lander_guards=("checkDocAssetBudget",),
     ),
     Check(
         "js-module-imports",

@@ -876,6 +876,12 @@ class RunnerOptions:
     # once shown, and in a small `viewport=` window they stack over the canvas being recorded.
     hide_toasts: bool = False
     clip_at_end: bool = False
+    # `max-width="1600"`: downscale a finished still (after clip/trim) to at most this many device
+    # pixels wide, aspect kept, Lanczos. For captures whose size is set by something other than the
+    # capture page, a native-window graphics capture above all (the renderer's window is as large
+    # as the GPU target). The docs asset size budget (tools/check_doc_assets.py) is why. Not for
+    # box stills, whose pixels are `scale=`, nor for `video=`.
+    max_width: int | None = None
 
 
 # A profile names the host a capture needs. On any other host, or unless FIELD_DOCS_CAPTURE_PROFILES
@@ -3159,6 +3165,7 @@ class RunnerState:
             )
         clip_screenshot(screenshot_path=screenshot_path, options=options, backdoor_stdout=completed.stdout)
         trim_screenshot_border(screenshot_path=screenshot_path, options=options)
+        downscale_screenshot(screenshot_path=screenshot_path, options=options)
         # A child that wrote nothing fails when the capture transaction publishes, as before.
         if wanted_scale is not None and screenshot_path.is_file():
             write_png_pixel_scale(screenshot_path, wanted_scale)
@@ -3528,6 +3535,11 @@ def parse_runner_options(*, runner_name: str, open_line: str, page_path: Path, l
     open_outputs = parse_bool(
         first_attr(attrs, "open-outputs", "open_outputs"), default=expect_outputs == "panel"
     )
+    max_width = parse_max_width(first_attr(attrs, "max-width", "max_width"))
+    if max_width is not None and video:
+        raise RuntimeError(f"{page_path}:{line_number} max-width= downscales stills, not video= (lower the video's size or fps)")
+    if max_width is not None and capture == "box" and not source_image:
+        raise RuntimeError(f"{page_path}:{line_number} max-width= does not apply to capture=\"box\" stills; their pixels are scale=")
     if first_attr(attrs, "scale") is not None and capture != "box":
         raise RuntimeError(f"{page_path}:{line_number} scale= applies to capture=\"box\" stills only, not capture={capture!r}")
     wait_output = parse_bool(first_attr(attrs, "wait-output", "wait_output", "waitForOutput", "wait-for-output"), default=False)
@@ -3595,6 +3607,7 @@ def parse_runner_options(*, runner_name: str, open_line: str, page_path: Path, l
         fresh_document=parse_bool(first_attr(attrs, "fresh-document", "fresh_document"), default=False),
         hide_toasts=parse_bool(first_attr(attrs, "hide-toasts", "hide_toasts"), default=False),
         clip_at_end=parse_bool(first_attr(attrs, "clip-at-end", "clip_at_end"), default=False),
+        max_width=max_width,
         box_name=first_attr(attrs, "name") or f"{page_path.stem}-{block_index}",
         box_x=parse_float(first_attr(attrs, "x"), default=24.0),
         box_y=parse_float(first_attr(attrs, "y"), default=24.0),
@@ -4268,6 +4281,8 @@ def options_digest_payload(options: RunnerOptions) -> dict[str, Any]:
         payload["hideToasts"] = True
     if options.clip_at_end:
         payload["clipAtEnd"] = True
+    if options.max_width is not None:
+        payload["maxWidth"] = options.max_width
     if box_still_scale(options) is not None:
         payload["scale"] = box_still_scale(options)
     if options.fresh_document:
@@ -5032,6 +5047,45 @@ def parse_viewport(value: str | None) -> tuple[int, int] | None:
     if width < 320 or height < 240:
         raise RuntimeError(f"viewport={value!r} is smaller than 320x240")
     return width, height
+
+
+def parse_max_width(value: str | None) -> int | None:
+    """`max-width="1600"` -> 1600 device pixels, between 320 and 7680."""
+    if value is None or not value.strip():
+        return None
+    try:
+        width = int(value.strip())
+    except ValueError:
+        raise RuntimeError(f"max-width={value!r} must be a whole number of pixels, e.g. 1600")
+    if not (320 <= width <= 7680):
+        raise RuntimeError(f"max-width={value!r} must be between 320 and 7680")
+    return width
+
+
+def downscale_screenshot(*, screenshot_path: Path, options: RunnerOptions) -> bool:
+    """Shrink a finished still to `options.max_width` pixels wide, keeping its aspect.
+
+    The real capture resampled (Lanczos) and re-encoded optimised; nothing is drawn. A still
+    already narrow enough is left byte-identical. Returns whether it was resized.
+    """
+    if options.max_width is None or not screenshot_path.is_file():
+        return False
+    if box_still_scale(options) is not None:
+        raise RuntimeError(f"max-width= does not apply to a box still ({screenshot_path}); use scale=")
+    try:
+        from PIL import Image
+    except Exception:
+        raise RuntimeError("max-width= needs Pillow to downscale the screenshot")
+    with Image.open(screenshot_path) as source:
+        if source.width <= options.max_width:
+            return False
+        height = max(1, round(source.height * options.max_width / source.width))
+        before = (source.width, source.height)
+        image = source.resize((options.max_width, height), Image.LANCZOS)
+    image.save(screenshot_path, optimize=True)
+    LOG.info("Field docs runner downscaled %s from %dx%d to %dx%d (max-width=%d)",
+             screenshot_path, before[0], before[1], options.max_width, height, options.max_width)
+    return True
 
 
 def clip_screenshot(*, screenshot_path: Path, options: RunnerOptions, backdoor_stdout: str) -> None:

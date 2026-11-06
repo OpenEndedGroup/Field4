@@ -40,6 +40,7 @@ from tools.check_doc_assets import (
     png_header,
     stale_placeholder_exceptions,
 )
+from tools import check_doc_assets as cda  # noqa: E402
 from tools.git_isolation import scrub_process_env  # noqa: E402
 
 # This module builds scratch git repositories; an inherited GIT_DIR would redirect them.
@@ -324,6 +325,88 @@ class OrphanedCaptureFences(unittest.TestCase):
     def test_a_hand_written_reference_excuses_a_missing_embed(self):
         text = self.fence('screenshot="a/b.png"') + "\n![a description](a/b.png)\n"
         self.assertEqual(orphaned_capture_fences(text), [])
+
+
+def _png_bytes(width: int, height: int, padding: int = 0) -> bytes:
+    """A valid header for a `width`x`height` PNG, padded to a chosen size (the budget reads no pixels)."""
+    ihdr = struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)
+    chunk = struct.pack(">I", len(ihdr)) + b"IHDR" + ihdr + struct.pack(">I", zlib.crc32(b"IHDR" + ihdr))
+    return b"\x89PNG\r\n\x1a\n" + chunk + b"\0" * padding
+
+
+class SizeBudgetTest(unittest.TestCase):
+    """The docs asset size budget: positive controls on a scratch tree, negative on the committed one."""
+
+    def scratch(self, files: dict[str, bytes]) -> tuple[Path, set[str]]:
+        tmp = TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        root = Path(tmp.name)
+        for rel, data in files.items():
+            (root / rel).parent.mkdir(parents=True, exist_ok=True)
+            (root / rel).write_bytes(data)
+        return root, set(files)
+
+    def test_an_unregistered_oversized_png_fails_by_bytes_and_by_pixels(self) -> None:
+        # The physarum-gpu shape of 6291b6ff9: a 2.6 MB still.
+        heavy = "public/docs/assets/alife_examples/physarum-gpu.png"
+        huge = "public/docs/assets/x/huge.png"
+        fine = "public/docs/assets/x/fine.png"
+        root, tracked = self.scratch({
+            heavy: _png_bytes(1600, 900, 2_600_000),
+            huge: _png_bytes(6528, 3672, 10),
+            fine: _png_bytes(1920, 1080, 300_000),
+        })
+        offenders, errors = cda.budget_problems(root, tracked, register={})
+        self.assertEqual([], errors)
+        self.assertEqual(2, len(offenders), offenders)
+        self.assertIn("MB >", next(o for o in offenders if o.startswith(heavy)))
+        self.assertIn("Mpx >", next(o for o in offenders if o.startswith(huge)))
+
+    def test_an_oversized_video_fails(self) -> None:
+        video = "public/docs/assets/x/clip.mp4"
+        root, tracked = self.scratch({video: b"\0" * (cda.VIDEO_BUDGET_BYTES + 1),
+                                      "public/docs/assets/x/ok.mp4": b"\0" * 1000})
+        offenders, _ = cda.budget_problems(root, tracked, register={})
+        self.assertEqual([video], [o.split(":")[0] for o in offenders])
+
+    def test_the_register_is_enforced_both_ways(self) -> None:
+        listed = "public/docs/assets/x/listed.png"
+        fits = "public/docs/assets/x/fits.png"
+        root, tracked = self.scratch({listed: _png_bytes(100, 100, 3_000_000), fits: _png_bytes(10, 10)})
+        register = {
+            listed: {"bytes": 3_000_100, "width": 100, "height": 100},
+            fits: {"bytes": 999, "width": 10, "height": 10},
+            "public/docs/assets/x/gone.png": {"bytes": 3_000_000},
+            "public/docs/assets/x/*.png": {"bytes": 1},
+        }
+        offenders, errors = cda.budget_problems(root, tracked, register=register)
+        self.assertEqual([], offenders)
+        joined = "\n".join(errors)
+        self.assertIn("fits.png: fits the budget now", joined)
+        self.assertIn("gone.png: registered but not a tracked asset", joined)
+        self.assertIn("wildcards are not allowed", joined)
+        self.assertNotIn("listed.png", joined)
+
+    def test_a_registered_asset_may_not_grow(self) -> None:
+        listed = "public/docs/assets/x/listed.png"
+        root, tracked = self.scratch({listed: _png_bytes(100, 100, 3_000_000)})
+        offenders, errors = cda.budget_problems(root, tracked, register={listed: {"bytes": 2_500_000,
+                                                                                    "width": 100, "height": 100}})
+        self.assertEqual([], errors)
+        self.assertEqual(1, len(offenders))
+        self.assertIn("grew past", offenders[0])
+
+    def test_the_committed_tree_holds_its_budget(self) -> None:
+        # Negative control: today's offenders are exactly the register.
+        offenders, errors = cda.budget_problems(REPO_ROOT)
+        self.assertEqual([], offenders)
+        self.assertEqual([], errors)
+        self.assertGreater(len(cda.load_budget_register(REPO_ROOT)), 0)
+
+    def test_budget_only_cli_is_green_on_the_committed_tree(self) -> None:
+        completed = subprocess.run([sys.executable, str(CHECKER), "--budget-only"], cwd=REPO_ROOT,
+                                   capture_output=True, text=True)
+        self.assertEqual(0, completed.returncode, completed.stdout + completed.stderr)
 
 
 if __name__ == "__main__":

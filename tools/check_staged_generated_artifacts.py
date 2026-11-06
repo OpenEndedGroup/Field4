@@ -435,6 +435,27 @@ def _python_tool_input(path: str) -> bool:
     )
 
 
+def _transcript_registration_input(path: str) -> bool:
+    # A new or renamed top-level transcript, or any of the registers it must appear in.
+    return (
+        _compiled_transcript(path)
+        or path in {
+            "public/docs/agent_transcripts.md",
+            "src/jvmMain/kotlin/afield/examples/DemoTranscriptExecSmokeTest.kt",
+            "src/jvmMain/kotlin/afield/examples/AgentTranscriptMaterializer.kt",
+            "tools/check_transcript_registration.py",
+        }
+    )
+
+
+def _doc_asset_budget_input(path: str) -> bool:
+    # A docs PNG or video, the register that grandfathers today's oversized ones, or the checker.
+    return (
+        (_under(path, "public/docs/assets") and path.lower().endswith((".png", ".mp4", ".webm", ".gif")))
+        or path in {"dev_docs/testing/doc_asset_budget_exceptions.json", "tools/check_doc_assets.py"}
+    )
+
+
 def _publication_input(path: str) -> bool:
     return (_transcript_input(path) or _under(path, 'public/docs/assets/web_publications')
             or _under(path, 'public/docs/assets/fline_examples')
@@ -469,6 +490,8 @@ GUARDS = (
     ),
     Guard("checkAgentTranscriptIndex", "agent transcript index", _transcript_input),
     Guard("checkDocsPublications", "published document freshness and coverage", _publication_input),
+    Guard("checkTranscriptRegistration", "agent transcript registration", _transcript_registration_input),
+    Guard("checkDocAssetBudget", "docs asset size budget", _doc_asset_budget_input),
     Guard("checkAgentTranscriptLayouts", "agent transcript and demo layouts", _demo_input),
     Guard("checkAgentDemos", "saved document inline copies", _saved_document_input),
     Guard("checkPythonTools", "Python tools and their corpus contracts", _python_tool_input),
