@@ -2336,6 +2336,11 @@
                             <div class="ai-docs-actions"><button id="open-refactor-pass" type="button">Refactoring</button></div>
                         </div>
                         <div class="ai-docs-panel">
+                            <div class="ai-docs-header"><span class="ai-docs-label">Scheduled routines</span></div>
+                            <div class="ai-docs-actions"><button id="open-routines" type="button" title="the overnight loops: self-improvement, CI, the feel benchmark, What's New, the worktree reaper">Routines</button></div>
+                            <p class="starting-points-hint">Overnight loops that improve, test and benchmark this checkout, ready to adopt into your own scheduler. <a href="/field-docs/routines/" target="_blank" rel="noopener">How routines work</a></p>
+                        </div>
+                        <div class="ai-docs-panel">
                             <div class="ai-docs-header">
                                 <span class="ai-docs-label">Agent tool use</span>
                                 <span id="ai-tool-use-improvement-state">checking</span>
@@ -5957,6 +5962,7 @@
     }
     document.getElementById("open-refactor-pass")?.addEventListener("click", () => window.open("/refactor-pass.html", "_blank", "noopener"));
     document.getElementById("open-docs-pass")?.addEventListener("click", () => window.open("/docs-pass.html", "_blank", "noopener"));
+    document.getElementById("open-routines")?.addEventListener("click", () => window.open("/routines.html", "_blank", "noopener"));
     refreshDocsPassState();
     setInterval(() => { if (!document.hidden) refreshDocsPassState(); }, 20000);
 

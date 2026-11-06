@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Routines · Field</title>
+<meta name="color-scheme" content="dark">
+<link rel="preload" href="/woff2/iosevka-semicondensedlight.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/iosevka.css">
+<link rel="stylesheet" href="/field-tool-pages.css">
+<style>
+header nav { display: flex; gap: 20px; flex-wrap: wrap; }
+.routine { display: grid; gap: 10px; }
+.routine-head { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+.routine-head h2 { margin: 0; color: var(--cyan); text-transform: none; letter-spacing: 0; font-size: 16px; }
+.facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 14px; margin: 0; }
+.facts dt { color: var(--soft); }
+.facts dd { margin: 0; }
+.runs { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+.run { width: 12px; height: 12px; border-radius: 3px; background: var(--soft); opacity: .45; }
+.run.good { background: var(--ok); opacity: 1; }
+.run.bad { background: var(--danger); opacity: 1; }
+.run.skip { background: var(--warn); opacity: .8; }
+.last { color: var(--text); }
+.adopt { display: grid; gap: 8px; }
+.adopt .row { margin: 0; }
+.adopt pre { background: rgba(0, 0, 0, .55); border: 1px solid var(--border); border-radius: 7px; padding: 10px 12px; max-height: 340px; overflow: auto; }
+.adopted { color: var(--ok); }
+#conflicts:empty { display: none; }
+</style>
+</head>
+<body>
+<script src="/fieldWebglBackground.js"></script>
+<script>window.FieldWebGLBackground?.install(document.body, { fixed: true });</script>
+<main>
+<header><div><h1>Routines</h1><p>Work that runs on a schedule against this checkout: overnight loops that improve, test and benchmark Field, and the housekeeping behind them. Field does not schedule anything itself; adopt a routine into the scheduler you already use.</p></div><nav><a href="/welcome">Welcome</a><a href="/field-docs/routines/" target="_blank" rel="noopener">How routines work</a></nav></header>
+<div id="conflicts"></div>
+<div id="state" class="muted">Reading routines…</div>
+<p class="muted" style="margin:0 4px">Each square is one recent run, oldest first: <span class="run good" style="display:inline-block"></span> went through, <span class="run skip" style="display:inline-block"></span> skipped or partly run, <span class="run bad" style="display:inline-block"></span> found a problem. Hover a square for its report line.</p>
+<div id="routines" style="display:grid;gap:12px"></div>
+</main>
+<script>
+const harnessLabels = { prompt: "Agent prompt", launchd: "launchd (macOS)", cron: "cron" };
+const harnessHints = {
+  prompt: "Paste this into an agent that can schedule tasks (Claude Code's scheduled tasks, Codex, …). The prompt only points at the routine's file, so later changes to the routine reach the schedule without re-scheduling.",
+  launchd: "A LaunchAgent that runs tools/routines.py run at the suggested time. Install it with the command in the first lines, or save the rest as the file it names.",
+  cron: "A crontab line for the same thing. Add it with crontab -e.",
+};
+
+function el(tag, attrs = {}, ...children) {
+  const node = document.createElement(tag);
+  for (const [key, value] of Object.entries(attrs)) {
+    if (key === "class") node.className = value; else if (key === "text") node.textContent = value; else node.setAttribute(key, value);
+  }
+  for (const child of children) if (child != null) node.append(child);
+  return node;
+}
+
+function runClass(verdict) {
+  const v = (verdict || "").toLowerCase();
+  if (/skipp|not run|not certified/.test(v)) return "skip";
+  if (/regress|fail|red\b|refused|could not|error|not comparable/.test(v)) return "bad";
+  if (/no regressions|builds clean|merge|done|free:|what's new|^\d+ merge/.test(v)) return "good";
+  return "";
+}
+
+async function showAdopt(routine, harness, box) {
+  box.replaceChildren(el("p", { class: "muted", text: "Rendering…" }));
+  try {
+    const response = await fetch(`/api/routines/adopt?name=${encodeURIComponent(routine.name)}&harness=${encodeURIComponent(harness)}`);
+    const text = await response.text();
+    if (!response.ok) throw new Error(text);
+    const rendered = JSON.parse(text);
+    const pre = el("pre", { text: rendered.text });
+    const copy = el("button", { class: "primary", text: "Copy" });
+    copy.addEventListener("click", async () => {
+      await navigator.clipboard.writeText(rendered.text);
+      copy.textContent = "Copied";
+      setTimeout(() => { copy.textContent = "Copy"; }, 1500);
+    });
+    box.replaceChildren(el("p", { class: "muted", text: harnessHints[harness] }), pre, el("div", { class: "row" }, copy));
+  } catch (error) {
+    box.replaceChildren(el("div", { class: "notice bad", text: String(error.message || error) }));
+  }
+}
+
+function card(routine) {
+  const recent = routine.recent || [];
+  const last = recent[0];
+  const runs = el("div", { class: "runs", title: "Most recent last" });
+  for (const run of [...recent].reverse()) runs.append(el("span", { class: `run ${runClass(run.verdict)}`, title: `${run.date}: ${run.verdict}` }));
+  const facts = el("dl", { class: "facts" },
+    el("dt", { text: "When" }), el("dd", { text: `${routine.when} (suggested)` }),
+    el("dt", { text: "Kind" }), el("dd", { text: routine.kind === "agent" ? "an agent follows ROUTINE.md" : "a script, no agent needed" }),
+    el("dt", { text: "Needs" }), el("dd", { text: routine.needs }),
+    el("dt", { text: "Uses" }), el("dd", { text: routine.cost }),
+    el("dt", { text: "Last run" }), el("dd", {}, last ? el("span", { class: "last", text: `${last.date}: ${last.verdict}` }) : el("span", { class: "muted", text: "none on this machine" })),
+  );
+  if (routine.now) facts.append(el("dt", { text: "Now" }), el("dd", { text: routine.now }));
+  if (routine.adopted?.length) facts.append(el("dt", { text: "Scheduled by" }), el("dd", { class: "adopted", text: routine.adopted.join(", ") }));
+  facts.append(el("dt", { text: "Definition" }), el("dd", {}, el("code", { text: routine.path })));
+  const box = el("div", { class: "adopt" });
+  const buttons = el("div", { class: "row" });
+  for (const harness of Object.keys(harnessLabels)) {
+    const button = el("button", { text: harnessLabels[harness] });
+    button.addEventListener("click", () => showAdopt(routine, harness, box));
+    buttons.append(button);
+  }
+  const errors = (routine.errors || []).length ? el("div", { class: "notice bad", text: routine.errors.join("; ") }) : null;
+  return el("section", { class: "routine", id: `routine-${routine.name}` },
+    el("div", { class: "routine-head" }, el("h2", { text: routine.title }), runs),
+    el("p", { text: routine.summary }),
+    facts, errors,
+    el("div", { class: "adopt" }, el("div", { class: "muted", text: "Adopt it:" }), buttons, box),
+  );
+}
+
+async function load() {
+  const state = document.getElementById("state");
+  try {
+    const response = await fetch("/api/routines");
+    const text = await response.text();
+    if (!response.ok) throw new Error(text);
+    const report = JSON.parse(text);
+    document.getElementById("routines").replaceChildren(...report.routines.map(card));
+    document.getElementById("conflicts").replaceChildren(...(report.conflicts || []).map(line => el("div", { class: "notice", text: `Schedule clash: ${line}.` })));
+    state.textContent = `${report.routines.length} routines in ${report.repo}/routines`;
+  } catch (error) {
+    state.replaceChildren(el("div", { class: "notice bad", text: String(error.message || error) }));
+  }
+}
+load();
+</script>
+</body>
+</html>
