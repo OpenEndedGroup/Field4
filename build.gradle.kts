@@ -2387,6 +2387,23 @@ tasks.register<Exec>("checkDocsPublications") {
     commandLine("uv", "run", "--project", ".", "--group", "backdoor", "--frozen", "python", "tools/docs_publications.py", "check")
 }
 
+// Two file-only landing guards (no JVM, under a second each), added 2026-11-06 after a transcript
+// and a docs figure each needed a follow-up commit once they had landed. See
+// dev_docs/testing/LANDING_ASSET_GUARDS.md.
+tasks.register<Exec>("checkTranscriptRegistration") {
+    group = "verification"
+    description = "Fails when a top-level dev_docs/agents/transcripts/*.yaml has no public/docs/agent_transcripts.md entry or no DemoTranscriptExecSmokeTest classification, naming the line to add."
+    workingDir = rootDir
+    commandLine("uv", "run", "--project", ".", "--group", "backdoor", "--frozen", "python", "tools/check_transcript_registration.py")
+}
+
+tasks.register<Exec>("checkDocAssetBudget") {
+    group = "verification"
+    description = "Fails when a tracked public/docs/assets PNG exceeds 2 MiB or 3840x2160, or a video exceeds 4 MiB, outside dev_docs/testing/doc_asset_budget_exceptions.json (enforced both ways)."
+    workingDir = rootDir
+    commandLine("uv", "run", "--project", ".", "--group", "backdoor", "--frozen", "python", "tools/check_doc_assets.py", "--budget-only")
+}
+
 tasks.register<Exec>("checkPythonTools") {
     dependsOn(checkRefactorEngine)
     group = "verification"
@@ -2533,6 +2550,8 @@ tasks.named("check") {
     dependsOn("checkAgentTranscripts")
     dependsOn("checkAgentTranscriptIndex")
     dependsOn("checkDocsPublications")
+    dependsOn("checkTranscriptRegistration")
+    dependsOn("checkDocAssetBudget")
     dependsOn("checkAgentTranscriptLayouts")
     dependsOn("checkBoxOutputChannels")
     dependsOn("checkCompletionCorpusFixtures")
@@ -2578,6 +2597,8 @@ tasks.register("docsGates") {
     dependsOn("checkAgentTranscripts")
     dependsOn("checkAgentTranscriptIndex")
     dependsOn("checkDocsPublications")
+    dependsOn("checkTranscriptRegistration")
+    dependsOn("checkDocAssetBudget")
     dependsOn("checkAgentTranscriptLayouts")
     dependsOn("checkBoxOutputChannels")
     dependsOn("checkCompletionCorpusFixtures")
