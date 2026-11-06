@@ -73,3 +73,37 @@ python3 tools/routines.py run nightly-ci --dry-run                   # what a sc
 the agent `tools/field_agent.py` picks (`FIELD_AGENT` or `~/.afield/agent`) as one unattended
 session that may edit and run commands in the checkout. Its output is kept in
 `~/.afield/routines/<name>/` for 30 days.
+
+## Missing runs and catch-up
+
+`python3 tools/routines.py audit` prints routine health and exits 1 when an adopted routine is
+overdue, interrupted or has a failed runner attempt, and 2 when health is unknown. `status --json` exposes the same `health`
+records. Daily, weekly and every-N-hours schedules use the local timezone (or
+`FIELD_ROUTINE_TIMEZONE`, an IANA timezone such as `Europe/Paris`), explicit UTC offsets, and a
+grace window of the routine's `runtime-hours` (at least one hour). Unsupported schedules remain
+unknown. These times come from the routine definition; an external scheduler's actual configured
+slot is not verified by discovering its prompt.
+
+A dated external report proves an attempt on that day, including an explicit skip; it does not
+prove scheduler timing or successful certification. A dated report cannot establish a particular
+hourly slot. Completed older runner logs with a start time and exit line are checked against the
+specific slot. The runner records start/completion timestamps and exit status, and an OS lock
+separates a live runner from an interrupted attempt. Unfinished logs alone never establish success.
+
+`python3 tools/routines.py run nightly-ci --catch-up` explicitly runs only the latest missing
+slot, once. It does nothing during the normal runtime window, after a report or failed attempt,
+or while another runner holds the lock. It never replays every missed night. Existing external
+agent schedulers retain their journal locks and their own catch-up policy; a present journal lock
+leaves health unknown and blocks catch-up, even if the lock might be stale. These independent locks
+cannot eliminate races with an external scheduler. This command does not
+install or alter a scheduler. The existing worktree-reaper schedule runs `audit --notify` after its
+cleanup and sends a local macOS notification when an overdue, interrupted or failed state first
+appears or changes. It stays quiet while the state is unchanged and on recovery. Unknown health
+does not generate a notification; the audit returns 2 so other monitoring can surface it. Delivery
+depends on the existing reaper schedule and macOS notification settings. If no reaper is scheduled,
+run `audit` from another monitoring system to route its exit into that system's notifications.
+
+`run` enforces a routine's declared `disk-gib` before launching its command or agent, and owns
+keep-awake protection until that process exits. This initial check does not reserve filesystem
+blocks or cover arbitrary concurrent writers. Smoke/docs runners separately coordinate their
+declared disk claims and monitor the live environment. No new cleanup authority is granted.

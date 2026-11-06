@@ -35,12 +35,18 @@ import argparse
 import datetime as dt
 import glob
 import json
+import math
 import os
 import plistlib
 import re
 import shlex
+import shutil
 import subprocess
 import sys
+from contextlib import contextmanager
+from zoneinfo import ZoneInfo
+
+from verification_resources import KeepAwake, lock_file
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -179,12 +185,14 @@ def cron_fields(schedule: str) -> list[str] | None:
 
 def _valid_cron_field(value: str, low: int, high: int) -> bool:
     for item in value.split(","):
-        base, _, step = item.partition("/")
-        if step and not step.isdigit():
+        base, separator, step = item.partition("/")
+        if separator and (not step.isdigit() or int(step) == 0):
             return False
         if base == "*":
             continue
         start, _, stop = base.partition("-")
+        if stop and start.isdigit() and stop.isdigit() and int(start) > int(stop):
+            return False
         for bound in (start, stop) if stop else (start,):
             if not bound.isdigit() or not low <= int(bound) <= high:
                 return False
@@ -356,7 +364,162 @@ def apply_launchd(rendered: dict[str, str], routine: Routine) -> str:
 # Running
 
 
-def run(routine: Routine, repo: Path = HERE, dry_run: bool = False) -> int:
+def local_clock() -> dt.datetime:
+    """Use a real timezone where available so weekly/DST diagnostics retain their offset."""
+    name = os.environ.get("FIELD_ROUTINE_TIMEZONE")
+    if name:
+        return dt.datetime.now(ZoneInfo(name))
+    target = str(Path("/etc/localtime").resolve())
+    for marker in ("zoneinfo/", "zoneinfo.default/"):
+        if marker in target:
+            return dt.datetime.now(ZoneInfo(target.split(marker, 1)[1]))
+    return dt.datetime.now().astimezone()
+
+
+def latest_slot(routine: Routine, now: dt.datetime) -> dt.datetime | None:
+    """Daily, weekly and every-N-hours schedules; unsupported expressions stay explicit.
+
+    Walk actual instants, so the spring gap has no slot and the autumn fold has
+    two. A dated external report can only establish a run day, not an exact slot.
+    """
+    parts = cron_fields(routine.get("schedule"))
+    if not parts or not cron_valid(routine.get("schedule")):
+        return None
+    minute, hour, dom, month, dow = parts
+    if not minute.isdigit() or dom != "*" or month != "*" or not (dow == "*" or dow.isdigit()):
+        return None
+    if hour.isdigit():
+        hours = {int(hour)}
+    elif re.fullmatch(r"\*/[1-9][0-9]*", hour):
+        hours = set(range(0, 24, int(hour[2:])))
+    else:
+        return None
+    instant = now.astimezone(dt.timezone.utc).replace(second=0, microsecond=0)
+    for offset in range(8 * 24 * 60):
+        candidate = (instant - dt.timedelta(minutes=offset)).astimezone(now.tzinfo)
+        weekday = (candidate.weekday() + 1) % 7
+        if candidate.minute == int(minute) and candidate.hour in hours and (dow == "*" or weekday == int(dow) % 7):
+            return candidate
+    return None
+
+
+def _running(name: str) -> bool:
+    path = RUN_LOGS / name / "run.lock"
+    if not path.exists():
+        return False
+    try:
+        with path.open("r+b") as handle:
+            try:
+                lock_file(handle, blocking=False)
+            except (BlockingIOError, OSError):
+                return True
+    except FileNotFoundError:
+        pass
+    return False
+
+
+def schedule_health(routine: Routine, recent: list[dict], scheduled: bool, *, now=None,
+                    check_running=True, journal_locks=()) -> dict:
+    now = now or local_clock()
+    slot = latest_slot(routine, now)
+    result = {"state": "unknown", "checkedAt": now.isoformat(), "timezone": str(now.tzinfo),
+              "expectedAt": slot.isoformat() if slot else None, "evidence": None,
+              "scheduleSource": "routine definition; installed scheduler timing is unverified"}
+    if not scheduled:
+        result.update(state="unscheduled", message="No scheduler found on this machine")
+        return result
+    if slot is None:
+        result.update(message="Schedule health is supported for daily, weekly and every-N-hours schedules")
+        return result
+    if not math.isfinite(routine.runtime_hours) or routine.runtime_hours <= 0:
+        result.update(message="Routine runtime-hours must be finite and positive")
+        return result
+    deadline = (slot.astimezone(dt.timezone.utc) +
+                dt.timedelta(hours=max(routine.runtime_hours, 1))).astimezone(now.tzinfo)
+    result["deadlineAt"] = deadline.isoformat()
+    if check_running and _running(routine.name):
+        result.update(state="running", message="A routine runner holds the run lock")
+        return result
+    for lock in journal_locks:
+        if lock.exists():
+            result.update(state="unknown", message=f"Journal lock exists; an external run may be active: {lock}",
+                          evidence=str(lock))
+            return result
+    try:
+        state = json.loads((RUN_LOGS / routine.name / "last-run.json").read_text())
+        started = dt.datetime.fromisoformat(state["startedAt"])
+        if started.tzinfo is None:
+            raise ValueError("run timestamp lacks timezone")
+        if slot.timestamp() <= started.timestamp() <= now.timestamp():
+            result["evidence"] = state.get("log")
+            result.update(state=("recorded" if state.get("exit") == 0 else "failed") if "exit" in state else "interrupted",
+                          message=(f"Runner exited {state['exit']}" if "exit" in state else
+                                   "Runner disappeared without a completion record"))
+            return result
+    except (OSError, ValueError, KeyError, TypeError):
+        pass
+    # External agent schedulers bypass `run`. A dated report establishes an
+    # attempt, including an explicit skip, but cannot prove the scheduler time.
+    for report in recent:
+        if slot.date().isoformat() <= report.get("date", "") <= now.date().isoformat():
+            source = str(report.get("source", ""))
+            if source.endswith(".log"):
+                try:
+                    text = Path(source).read_text(encoding="utf-8", errors="replace")
+                    header = re.search(r"(?m)^# routine \S+ at (\S+) in ", text)
+                    if not header:
+                        continue
+                    started = dt.datetime.fromisoformat(header.group(1))
+                    if started.tzinfo is None:
+                        started = started.replace(tzinfo=now.tzinfo)
+                    if not slot.timestamp() <= started.timestamp() <= now.timestamp():
+                        continue
+                    exit_line = re.search(r"(?m)^# exit (-?\d+)\s*$", text)
+                    if not exit_line:
+                        result.update(state="unknown", message="An older runner log has no completion record",
+                                      evidence=source)
+                    else:
+                        code = int(exit_line.group(1))
+                        result.update(state="recorded" if code == 0 else "failed",
+                                      message=f"Runner log records exit {code}", evidence=source)
+                    return result
+                except (OSError, ValueError):
+                    continue
+            if len((cron_fields(routine.get("schedule")) or ["", ""])[1].split("/")) > 1:
+                result.update(state="unknown", message="Dated report cannot establish which hourly slot ran")
+                return result
+            result.update(state="recorded", message="Report found (day precision; timing unverified)",
+                          evidence=report.get("source"))
+            return result
+    result.update(state="overdue" if now.timestamp() > deadline.timestamp() else "awaiting",
+                  message="No run report found for the expected slot")
+    return result
+
+
+def journal_lock_paths(routine: Routine, repo: Path) -> list[Path]:
+    branch = routine.get("journal")
+    if not branch:
+        return []
+    journal = worktree_base(primary_checkout(repo)) / branch.rsplit("/", 1)[-1]
+    return [journal / ".lock", journal / ".ci-lock"]
+
+
+@contextmanager
+def routine_lock(name: str):
+    folder = RUN_LOGS / name
+    folder.mkdir(parents=True, exist_ok=True)
+    with (folder / "run.lock").open("a+b") as handle:
+        if handle.tell() == 0:
+            handle.write(b" ")
+            handle.flush()
+        try:
+            lock_file(handle, blocking=False)
+        except (BlockingIOError, OSError) as exc:
+            raise RuntimeError(f"{name}: another routine runner is active") from exc
+        yield
+
+
+def run(routine: Routine, repo: Path = HERE, dry_run: bool = False, catch_up: bool = False) -> int:
     paths = run_paths(repo)
     checkout = Path(paths["REPO"])
     env = dict(os.environ, FIELD_REPO=paths["REPO"], FIELD_WORKTREE_BASE=paths["WORKTREE_BASE"],
@@ -379,19 +542,57 @@ def run(routine: Routine, repo: Path = HERE, dry_run: bool = False) -> int:
         if stdin:
             print("stdin:\n" + stdin)
         return 0
-    logs = RUN_LOGS / routine.name
-    logs.mkdir(parents=True, exist_ok=True)
-    stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
-    log = logs / f"{stamp}.log"
-    with log.open("w", encoding="utf-8") as out:
-        out.write(f"# routine {routine.name} at {dt.datetime.now().isoformat(timespec='seconds')} in {checkout}\n")
-        out.write(f"# argv: {shlex.join(argv)}\n")
-        out.flush()
-        done = subprocess.run(argv, cwd=checkout, env=env, input=stdin, text=True, stdout=out, stderr=subprocess.STDOUT)
-        out.write(f"\n# exit {done.returncode}\n")
-    _prune(logs)
-    print(f"{routine.name}: exit {done.returncode}, log {log}")
-    return done.returncode
+    try:
+        with routine_lock(routine.name):
+            if catch_up:
+                health = schedule_health(routine, recent_runs(routine, checkout), True, check_running=False,
+                                         journal_locks=journal_lock_paths(routine, checkout))
+                if health["state"] == "unknown":
+                    print(health["message"], file=sys.stderr)
+                    return 2
+                if health["state"] != "overdue":
+                    print(f"{routine.name}: no missing slot to catch up ({health['state']})")
+                    return 0
+                env["FIELD_ROUTINE_CATCH_UP"] = "1"
+            logs = RUN_LOGS / routine.name
+            started = local_clock()
+            log = logs / f"{started.strftime('%Y%m%d-%H%M%S-%f')}.log"
+            state = {"startedAt": started.isoformat(), "log": str(log), "catchUp": catch_up}
+            def record():
+                temporary = logs / "last-run.tmp"
+                temporary.write_text(json.dumps(state, indent=2) + "\n")
+                temporary.replace(logs / "last-run.json")
+            record()
+            with KeepAwake(), log.open("w", encoding="utf-8") as out:
+                out.write(f"# routine {routine.name} at {started.isoformat()} in {checkout}\n")
+                out.write(f"# argv: {shlex.join(argv)}\n")
+                out.flush()
+                try:
+                    required = float(routine.get("disk-gib", "0"))
+                    if not math.isfinite(required) or required < 0:
+                        raise ValueError("disk-gib must be finite and non-negative")
+                    free = shutil.disk_usage(checkout).free / 1024**3
+                    out.write(f"# disk preflight: {free:.2f} GiB free; {required:g} GiB required\n")
+                    out.flush()
+                    if free < required:
+                        out.write("# not run: insufficient whole-run disk budget; no cleanup attempted\n")
+                        code = 2
+                    else:
+                        done = subprocess.run(argv, cwd=checkout, env=env, input=stdin, text=True,
+                                              stdout=out, stderr=subprocess.STDOUT)
+                        code = done.returncode
+                except (OSError, ValueError) as exc:
+                    out.write(f"\n# launch failed: {exc}\n")
+                    code = 2
+                out.write(f"\n# exit {code}\n")
+                state.update(exit=code, finishedAt=local_clock().isoformat())
+                record()
+            _prune(logs)
+            print(f"{routine.name}: exit {code}, log {log}")
+            return code
+    except RuntimeError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
 
 
 def _prune(logs: Path) -> None:
@@ -516,13 +717,16 @@ def status(repo: Path = HERE) -> dict:
     checkout = primary_checkout(repo)
     entries = []
     for r in routines:
+        recent = recent_runs(r, checkout)
+        schedulers = adopted(r, checkout)
         entries.append({
+            "health": schedule_health(r, recent, bool(schedulers), journal_locks=journal_lock_paths(r, checkout)),
             "name": r.name, "title": r.get("title"), "summary": r.get("summary"), "kind": r.kind,
             "schedule": r.get("schedule"), "when": describe_schedule(r.get("schedule")),
             "runtimeHours": r.runtime_hours, "diskGib": r.get("disk-gib"), "quiet": r.get("quiet"),
             "needs": r.get("needs"), "cost": r.get("cost"), "journal": r.get("journal"),
-            "path": f"routines/{r.name}/ROUTINE.md", "recent": recent_runs(r, checkout),
-            "now": status_command(r, repo), "adopted": adopted(r, checkout), "errors": r.errors,
+            "path": f"routines/{r.name}/ROUTINE.md", "recent": recent,
+            "now": status_command(r, repo), "adopted": schedulers, "errors": r.errors,
         })
     return {"repo": str(checkout), "routines": entries, "conflicts": conflicts(routines)}
 
@@ -556,8 +760,14 @@ def check(repo: Path = HERE) -> list[str]:
                 faults += [f"{where}: command names {a}, which does not exist" for a in scripts if not (repo / a).exists()]
         if not cron_valid(r.get("schedule")):
             faults.append(f"{where}: schedule {r.get('schedule')!r} is not a five-field cron expression")
-        if r.runtime_hours <= 0:
+        if not math.isfinite(r.runtime_hours) or r.runtime_hours <= 0:
             faults.append(f"{where}: runtime-hours must be a positive number")
+        try:
+            disk = float(r.get("disk-gib", "0"))
+            if not math.isfinite(disk) or disk < 0:
+                raise ValueError()
+        except ValueError:
+            faults.append(f"{where}: disk-gib must be finite and non-negative")
         spec = r.get("reports")
         if spec and not (spec == "runs" or re.match(r"^(git:[^:]+:.+|file:.+|log:.+)$", spec)):
             faults.append(f"{where}: reports must be runs, git:<branch>:<folder>, file:<glob> or log:<regex>")
@@ -581,12 +791,59 @@ def _print_status(report: dict) -> None:
         last = entry["recent"][0] if entry["recent"] else None
         print(f"{entry['name']:<18} {entry['when']:<28} {entry['kind']:<8} "
               + (f"last {last['date']}: {last['verdict']}" if last else "no runs found"))
+        health = entry.get("health", {})
+        if health:
+            print(f"{'':<18} {health['state']}: {health['message']} "
+                  f"(expected {health['expectedAt']}; timezone {health['timezone']})")
         if entry["now"]:
             print(f"{'':<18} now: {entry['now']}")
         if entry["adopted"]:
             print(f"{'':<18} scheduled here by: {', '.join(entry['adopted'])}")
     for line in report["conflicts"]:
         print(f"warning: {line}")
+
+
+def notify_health(report: dict) -> bool:
+    """Notify on newly actionable states, not on every periodic check or recovery."""
+    path = RUN_LOGS / "audit-notifications.json"
+    with routine_lock("_audit-notifications"):
+        try:
+            previous = json.loads(path.read_text(encoding="utf-8"))
+            if not isinstance(previous, dict):
+                previous = {}
+        except (OSError, ValueError):
+            previous = {}
+        current = {}
+        for entry in report["routines"]:
+            state = entry["health"]["state"]
+            name = entry["name"]
+            if state in ("overdue", "interrupted", "failed"):
+                current[name] = state
+            elif state == "unknown" and name in previous:
+                current[name] = previous[name]
+        changed = {name: state for name, state in current.items() if previous.get(name) != state}
+        if changed:
+            message = "; ".join(f"{name}: {state}" for name, state in sorted(changed.items()))
+            if sys.platform != "darwin":
+                print(f"routine notification unavailable on {sys.platform}: {message}", file=sys.stderr)
+                return False
+            try:
+                result = subprocess.run(
+                    ["osascript", "-e", "on run argv", "-e",
+                     'display notification (item 1 of argv) with title "Field routines"',
+                     "-e", "end run", message], capture_output=True, text=True, timeout=15,
+                )
+            except (OSError, subprocess.SubprocessError) as exc:
+                print(f"routine notification failed: {exc}", file=sys.stderr)
+                return False
+            if result.returncode:
+                print(f"routine notification failed: {result.stderr.strip()}", file=sys.stderr)
+                return False
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = path.with_suffix(".tmp")
+        temporary.write_text(json.dumps(current, indent=2) + "\n", encoding="utf-8")
+        temporary.replace(path)
+        return True
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -596,6 +853,9 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("list", help="One line per routine.")
     p_status = sub.add_parser("status", help="How each routine last went, where it is scheduled, and schedule clashes.")
     p_status.add_argument("--json", action="store_true")
+    p_audit = sub.add_parser("audit", help="Report scheduled-run health; exit 1 on failures, 2 on unknown health.")
+    p_audit.add_argument("--json", action="store_true")
+    p_audit.add_argument("--notify", action="store_true", help="Notify on newly actionable states on macOS.")
     p_install = sub.add_parser("install", help="Render a routine for a scheduler.")
     p_install.add_argument("name")
     p_install.add_argument("--harness", choices=HARNESSES, default="prompt")
@@ -603,6 +863,7 @@ def main(argv: list[str] | None = None) -> int:
     p_install.add_argument("--json", action="store_true")
     p_run = sub.add_parser("run", help="Run a routine now, as a scheduler would.")
     p_run.add_argument("name")
+    p_run.add_argument("--catch-up", action="store_true", help="Run the latest missing slot once; never replay older slots.")
     p_run.add_argument("--dry-run", action="store_true", help="Print what would run, and the prompt, and stop.")
     sub.add_parser("check", help="Validate every routines/*/ROUTINE.md.")
     args = parser.parse_args(argv)
@@ -612,12 +873,19 @@ def main(argv: list[str] | None = None) -> int:
         for r in discover(repo):
             print(f"{r.name:<18} {describe_schedule(r.get('schedule')):<28} {r.kind:<8} {r.get('summary')}")
         return 0
-    if args.mode == "status":
+    if args.mode in ("status", "audit"):
         report = status(repo)
         if args.json:
             print(json.dumps(report, indent=2))
         else:
             _print_status(report)
+        if args.mode == "audit":
+            if args.notify and not notify_health(report):
+                return 2
+            if any(r["health"]["state"] in ("overdue", "interrupted", "failed") for r in report["routines"]):
+                return 1
+            if any(r["health"]["state"] == "unknown" for r in report["routines"]):
+                return 2
         return 0
     if args.mode == "install":
         routine = find(args.name, repo)
@@ -630,7 +898,7 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(rendered, indent=2) if args.json else rendered["text"])
         return 0
     if args.mode == "run":
-        return run(find(args.name, repo), repo, args.dry_run)
+        return run(find(args.name, repo), repo, args.dry_run, args.catch_up)
     if args.mode == "check":
         faults = check(repo)
         for fault in faults:

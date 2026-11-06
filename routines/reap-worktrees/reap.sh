@@ -30,3 +30,5 @@ echo "== --clean-builds --min-idle-hours 3 --apply"
 python3 $script --repo $repo --clean-builds --min-idle-hours 3 --apply
 echo "== exit $?"
 echo "== $(date) done; free: $(free)"
+echo "== routine health audit"
+python3 "$repo/tools/routines.py" audit --notify || true
