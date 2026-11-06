@@ -101,9 +101,13 @@ object CPUSpan {
     inline fun time(label: String, block: () -> Unit) {
         val t0 = System.nanoTime()
         block()
-        val dt = System.nanoTime() - t0
+        record(label, System.nanoTime() - t0)
+    }
+
+    /** Record an interval measured at separate call sites, using the same rolling window as [time]. */
+    fun record(label: String, dtNs: Long) {
         val v = synchronized(lock) {
-            stats.getOrPut(label) { Stat() }.add(dt)
+            stats.getOrPut(label) { Stat() }.add(dtNs)
             version.incrementAndGet()
         }
         notifyListeners(v)
@@ -116,6 +120,12 @@ object CPUSpan {
 
     fun addListener(listener: (Long) -> Unit) {
         synchronized(lock) { listeners.add(listener) }
+    }
+
+    /** Start a fresh process-wide timing window for a diagnostic comparison. */
+    fun resetSamples() {
+        val v = synchronized(lock) { stats.clear(); version.incrementAndGet() }
+        notifyListeners(v)
     }
 
     fun snapshot(): List<Snapshot> {
@@ -293,6 +303,8 @@ class Renderer(
     }
     fun renderTargetFor(window: Window): RenderTarget = renderTargetFor(windowIndex(window))
     private val windowCaptures = WindowCaptureQueue()
+    /** False records the primary pre-target scene using frame slots, without acquiring/presenting desktop images. */
+    @Volatile var desktopPresentationEnabled = true
     private val graphicsCompletionLock = Any()
     private val graphicsRecordingContext = ThreadLocal<Pair<Int, Int>?>()
     private val graphicsCompletionCallbacks = mutableMapOf<Pair<Int, Int>, MutableList<() -> Unit>>()
@@ -422,7 +434,11 @@ class Renderer(
         return if (Thread.currentThread() === qt) {
             block()
         } else {
-            try { queueExecutor.submit<T> { block() }.get() }
+            val queuedAt = System.nanoTime()
+            try { queueExecutor.submit<T> {
+                CPUSpan.record("queue_dispatch", System.nanoTime() - queuedAt)
+                block()
+            }.get() }
             catch (e: java.util.concurrent.ExecutionException) { throw e.cause ?: e }
         }
     }
@@ -453,7 +469,11 @@ class Renderer(
         check(workerParallelismActive) {
             "Renderer worker parallelism is not active outside render() parallel sections"
         }
-        return async(workerDispatcher, block = block)
+        val queuedAt = System.nanoTime()
+        return async(workerDispatcher) {
+            CPUSpan.record("worker_dispatch", System.nanoTime() - queuedAt)
+            block()
+        }
     }
 
     data class GeometryFrameToken(
@@ -511,7 +531,7 @@ class Renderer(
     private val geometryPhaseStateLock = Any()
 
     private data class ExternalGeometryPhase(val token: GeometryFrameToken)
-    private data class PreAcquiredImage(val frameId: Long, val imageIndex: Int)
+    private data class PreAcquiredImage(val frameId: Long, val imageIndex: Int, val desktopPresentation: Boolean)
 
     @Volatile
     private var openGeometryPhase: ExternalGeometryPhase? = null
@@ -579,7 +599,7 @@ class Renderer(
         if (w.bestEffortPresentation && !ctx.fences[ctx.swapChain.currentFrame].isSignaled()) {
             throw ImageNotAvailable("Optional window is still presenting", retryable = true)
         }
-        ctx.fences[ctx.swapChain.currentFrame].fenceWait()
+        CPUSpan.time("wait_swapchain_slot[$windowIndex]") { ctx.fences[ctx.swapChain.currentFrame].fenceWait() }
 
         var imageIndex = 0
         CPUSpan.time("acquire[$windowIndex]") {
@@ -597,8 +617,10 @@ class Renderer(
         // Geometry/uniform writes are indexed by the acquired swapchain image. Make sure that
         // image slot is no longer in-flight on the GPU before any CPU-side writes touch its
         // per-image buffers.
-        ctx.fences[imageIndex].fenceWait()
-        drainCompletedGraphicsCallbacks(ctx, windowIndex, imageIndex, requireSignaled = true)
+        CPUSpan.time("wait_swapchain_image[$windowIndex]") { ctx.fences[imageIndex].fenceWait() }
+        CPUSpan.time("retire_graphics[$windowIndex]") {
+            drainCompletedGraphicsCallbacks(ctx, windowIndex, imageIndex, requireSignaled = true)
+        }
 
         unavailableWindows.remove(windowIndex)?.let { since ->
             if(System.nanoTime()-since>250_000_000L)presentationRevision++
@@ -606,6 +628,17 @@ class Renderer(
         ctx.currentImage = imageIndex
         if (windowIndex == 0) currentImage = imageIndex
         return imageIndex
+    }
+
+    private fun acquireSceneSlot(frameId: Long): Int {
+        val ctx = defaultContext
+        val slot = (frameId % ctx.numImages).toInt()
+        // This wait protects reusable scene buffers. It has no desktop acquisition dependency.
+        CPUSpan.time("wait_scene_slot") { ctx.fences[slot].fenceWait() }
+        drainCompletedGraphicsCallbacks(ctx, 0, slot)
+        ctx.currentImage = slot
+        currentImage = slot
+        return slot
     }
 
     /**
@@ -635,7 +668,8 @@ class Renderer(
                 throw IllegalStateException("Geometry writes already prepared for frame $frameId")
             }
 
-            val imageIndex = acquireFrameImage(windowIndex)
+            val present = desktopPresentationEnabled
+            val imageIndex = if (present) acquireFrameImage(windowIndex) else acquireSceneSlot(frameId)
             val token = GeometryFrameToken(
                 frameId = frameId,
                 imageIndex = imageIndex,
@@ -645,7 +679,7 @@ class Renderer(
             beginGeometryPools(token)
             openGeometryPhase = ExternalGeometryPhase(token)
             if (windowIndex == 0) {
-                preAcquiredPrimaryImage = PreAcquiredImage(frameId = frameId, imageIndex = imageIndex)
+                preAcquiredPrimaryImage = PreAcquiredImage(frameId = frameId, imageIndex = imageIndex, desktopPresentation = present)
             }
             return token
         }
@@ -937,6 +971,7 @@ class Renderer(
     }
 
     fun supportsDirectWindowCapture(window: Window = this.window): Boolean {
+        if (!desktopPresentationEnabled) return false
         val windowIndex = windows.indexOf(window)
         if (windowIndex < 0) return false
         return windowContexts.getOrNull(windowIndex)?.swapChain?.supportsTransferSrc == true
@@ -1236,7 +1271,25 @@ class Renderer(
     var presentationRevision=0L; private set
     private val unavailableWindows=mutableMapOf<Int,Long>()
 
+    private var previousRenderStartNs = 0L
+    private var previousRenderEndNs = 0L
+
     fun render() {
+        val start = System.nanoTime()
+        if (previousRenderStartNs != 0L) CPUSpan.record("render_interval", start - previousRenderStartNs)
+        if (previousRenderEndNs != 0L) CPUSpan.record("render_gap", start - previousRenderEndNs)
+        previousRenderStartNs = start
+        try {
+            renderFrameInternal()
+        } finally {
+            val end = System.nanoTime()
+            previousRenderEndNs = end
+            CPUSpan.record("render_total", end - start)
+        }
+    }
+
+    private fun renderFrameInternal() {
+        val prepareStart = System.nanoTime()
         check(!cleanedUp) { "Renderer has been cleaned up" }
         val maxFramesInFlight = windowContexts.maxOfOrNull { it.numImages } ?: return
         val frameId = frameCounter
@@ -1286,18 +1339,25 @@ class Renderer(
             }
         }
 
+        CPUSpan.record("render_prepare", System.nanoTime() - prepareStart)
         // OpenXR must locate the current predicted views BEFORE stereo preTargets render.
         // The mirror and compute work keep their existing threads; only the frame boundary moves.
         val renderScene = {
+            // A geometry producer may already own an acquired image. Finish that frame in its
+            // original mode; apply a UI toggle on the next one instead of abandoning acquisition.
+            val offscreen = synchronized(geometryPhaseStateLock) {
+                !(preAcquiredPrimaryImage?.takeIf { it.frameId == frameId }?.desktopPresentation ?: desktopPresentationEnabled)
+            }
             windowContexts.forEachIndexed { ctxIndex, ctx ->
                 val w = ctx.window
-                if (!w.presentationEnabled || w.width <= 0 || w.height <= 0) return@forEachIndexed
+                if (offscreen && ctxIndex != 0) return@forEachIndexed
+                if (!offscreen && (!w.presentationEnabled || w.width <= 0 || w.height <= 0)) return@forEachIndexed
 
                 var imageIndex = 0
                 val preAcquiredImage = if (ctxIndex == 0) peekPreAcquiredPrimaryImageForFrame(frameId) else null
 
                 try {
-                    imageIndex = preAcquiredImage ?: acquireFrameImage(ctxIndex)
+                    imageIndex = preAcquiredImage ?: if (offscreen) acquireSceneSlot(frameId) else acquireFrameImage(ctxIndex)
 
                     ctx.currentImage = imageIndex
                     if (ctxIndex == 0) {
@@ -1328,7 +1388,7 @@ class Renderer(
                                 }
                             } else null
                             val graphicsRecording = asyncWorker {
-                                recordGraphicsPass(ctx, ctxIndex, imageIndex, frameId)
+                                recordGraphicsPass(ctx, ctxIndex, imageIndex, frameId, offscreen)
                             }
 
                             computeRecording?.await()
@@ -1353,7 +1413,8 @@ class Renderer(
                                     ctx.commandBuffers[imageIndex],
                                     ctx.fences[imageIndex],
                                     graphQueue,
-                                    ctx.computeFinishedSemaphores[imageIndex].takeIf { runComputeForWindow }
+                                    ctx.computeFinishedSemaphores[imageIndex].takeIf { runComputeForWindow },
+                                    desktopPresentation = !offscreen,
                                 )
                             }
                             if (recordedWindowCaptures.isNotEmpty()) {
@@ -1365,7 +1426,7 @@ class Renderer(
                         }
                     }
 
-                    CPUSpan.time("present[$ctxIndex]") {
+                    if (!offscreen) CPUSpan.time("present[$ctxIndex]") {
                         runOnQueueThread {
                             if (ctx.swapChain.presentImage(presentQueue, imageIndex, frameId, ctxIndex).resize) w.isResized = true
                         }
@@ -1377,9 +1438,19 @@ class Renderer(
                     if (!e.retryable) lprintln("warning,graphics", e.message ?: "ImageNotAvailable")
                 }
             }
+            if (offscreen) {
+                // Do not leave screenshots queued for desktop images intentionally not rendered.
+                windowContexts.indices.forEach { windowIndex ->
+                    if (windowCaptures.pendingCount(windowIndex) > 0)
+                        windowCaptures.takeForFrame(windowIndex).forEach {
+                            it.completion.completeExceptionally(IllegalStateException("Desktop presentation is disabled"))
+                        }
+                }
+            }
         }
         val xr = openXRHmdTarget
         if (xr == null) renderScene() else xr.renderFrame(renderScene)
+        val finishStart = System.nanoTime()
         clearPreAcquiredPrimaryImageForFrame(frameId)
 
         // Deferred cleanup queue (use max frames-in-flight across all contexts)
@@ -1410,6 +1481,7 @@ class Renderer(
         // are hidden. A later successful submission resumes its normal frame accounting.
         if (computeSubmittedThisFrame || openXRHmdTarget != null) frameCounter++
         currentCommandBuffer = null
+        CPUSpan.record("render_finish", System.nanoTime() - finishStart)
     }
 
     private fun recordComputePass(
@@ -1521,12 +1593,13 @@ class Renderer(
         ctx: WindowContext,
         ctxIndex: Int,
         imageIndex: Int,
-        frameId: Long
+        frameId: Long,
+        offscreen: Boolean = false,
     ): List<RecordedWindowCapture> {
         var recordedWindowCaptures: List<RecordedWindowCapture> = emptyList()
         CPUSpan.time("record_gfx[$ctxIndex]") {
-            // Ensure the per-image graphics fence from any previous use is complete before re-recording
-            ctx.fences[imageIndex].fenceWait()
+            // Keep GPU backpressure visible separately from CPU command recording work.
+            CPUSpan.time("wait_gfx[$ctxIndex]") { ctx.fences[imageIndex].fenceWait() }
             ctx.fences[imageIndex].reset()
 
             val cmd = ctx.commandBuffers[imageIndex]
@@ -1534,7 +1607,7 @@ class Renderer(
 
             // Upload dirty mesh buffers once on the primary command buffer before any
             // secondary command buffers are recorded with render-pass inheritance.
-            prepareTargetMeshesForDraw(ctx.renderTarget, cmd)
+            if (!offscreen) prepareTargetMeshesForDraw(ctx.renderTarget, cmd)
 
             val swapChainExtent = ctx.swapChain.swapChainExtent
             val width = swapChainExtent.width()
@@ -1572,7 +1645,7 @@ class Renderer(
             val enableSecondaryModules =
                 Options.secondaryGraphicsCommandBuffers && device.supportsMaintenance7
             val moduleBuffers: List<CommandBuffer> =
-                if (enableSecondaryModules && moduleElements.isNotEmpty()) {
+                if (!offscreen && enableSecondaryModules && moduleElements.isNotEmpty()) {
                     val collected = arrayOfNulls<CommandBuffer>(moduleElements.size)
                     runBlocking {
                         val jobs = moduleElements.mapIndexed { idx, (name, action) ->
@@ -1635,8 +1708,12 @@ class Renderer(
                     ctx.renderTarget.preRecordedInsideRendering = moduleBuffers
                 }
 
-                ctx.renderTarget.render(cmd, imageIndex)
-                recordedWindowCaptures = recordPendingWindowCaptures(ctx, ctxIndex, imageIndex, cmd)
+                if (offscreen) {
+                    ctx.renderTarget.preTargets.values.forEach { it.render(cmd, imageIndex) }
+                } else {
+                    ctx.renderTarget.render(cmd, imageIndex)
+                    recordedWindowCaptures = recordPendingWindowCaptures(ctx, ctxIndex, imageIndex, cmd)
+                }
 
                 cmd.endLabel() // end "RenderTargets"
 
@@ -1673,12 +1750,13 @@ class Renderer(
         commandBuffer: CommandBuffer,
         currentFence: Fence,
         queue: Queue,
-        computeSemaphore: Semaphore?
+        computeSemaphore: Semaphore?,
+        desktopPresentation: Boolean = true,
     ) {
         runOnQueueThread {
             MemoryStack.stackPush().use { stack ->
-                val acquireSync = context.swapChain.syncSemaphoresList[context.swapChain.currentFrame]
-                val presentSync = context.swapChain.syncSemaphoresList[context.currentImage]
+                val acquireSync = if (desktopPresentation) context.swapChain.syncSemaphoresList[context.swapChain.currentFrame] else null
+                val presentSync = if (desktopPresentation) context.swapChain.syncSemaphoresList[context.currentImage] else null
                 val external = externalFrameSync.remove(commandBuffer.vkCommandBuffer.address()) ?: ExternalFrameSync()
 
                 // Command buffer info
@@ -1688,16 +1766,17 @@ class Renderer(
                     .commandBuffer(commandBuffer.vkCommandBuffer)
                     .deviceMask(0)
 
-                // Always wait for image acquisition; wait for compute only when this window ran it.
-                val ordinaryWaitCount = if (computeSemaphore == null) 1 else 2
+                // Offscreen scenes have no acquire wait or presentation signal, including binary semaphores.
+                val acquireWaitCount = if (desktopPresentation) 1 else 0
+                val ordinaryWaitCount = acquireWaitCount + if (computeSemaphore == null) 0 else 1
                 val waits = VkSemaphoreSubmitInfo.calloc(ordinaryWaitCount + external.waits.size, stack)
-                waits[0].sType(VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO)
+                if (acquireSync != null) waits[0].sType(VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO)
                     .semaphore(acquireSync.imgAcquisitionSemaphore.vkSemaphore)
                     .value(acquireSync.imgAcquisitionSemaphore.currentValue())
                     .stageMask(VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT)
                     .deviceIndex(0)
                 if (computeSemaphore != null) {
-                    waits[1].sType(VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO)
+                    waits[acquireWaitCount].sType(VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO)
                         .semaphore(computeSemaphore.vkSemaphore)
                         .value(computeSemaphore.currentValue())
                         // conservative: ensure graphics won't start any stage before compute finished
@@ -1710,15 +1789,16 @@ class Renderer(
                     waits[ordinaryWaitCount + i].sType(VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO)
                         .semaphore(point.semaphore).value(point.value).stageMask(VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT)
                 }
-                val signals = VkSemaphoreSubmitInfo.calloc(1 + external.signals.size, stack)
-                signals[0].sType(VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO)
+                val presentSignalCount = if (desktopPresentation) 1 else 0
+                val signals = VkSemaphoreSubmitInfo.calloc(presentSignalCount + external.signals.size, stack)
+                if (presentSync != null) signals[0].sType(VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO)
                     .semaphore(presentSync.renderCompleteSemaphore.vkSemaphore)
                     .value(presentSync.renderCompleteSemaphore.nextSignalValue())
                     .stageMask(VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT)
                     .deviceIndex(0)
 
                 external.signals.forEachIndexed { i, point ->
-                    signals[1 + i].sType(VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO)
+                    signals[presentSignalCount + i].sType(VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO)
                         .semaphore(point.semaphore).value(point.value).stageMask(VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT)
                 }
 

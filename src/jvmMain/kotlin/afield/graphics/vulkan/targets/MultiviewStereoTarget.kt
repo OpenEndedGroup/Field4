@@ -28,6 +28,7 @@ class MultiviewStereoTarget(
     val eyeWidth: Int = renderer.window.width / 2,
     val eyeHeight: Int = renderer.window.height,
     val openXR: OpenXRHmdTarget? = null,
+    withDepth: Boolean = true,
 ) : Target, HasImageView {
     val stereoCamera = StereoCamera(Camera(renderer).apply { p.auto = {} })
     val layered = RenderToTexture(renderer) {
@@ -38,7 +39,7 @@ class MultiviewStereoTarget(
         multiviewViewMask = 0b11
         colorSampled = true
         colorTransferSrc = true
-        useDepth = true
+        useDepth = withDepth
         clearColor = vec(0f, 0f, 0f, 1f)
     }
     override val imageView

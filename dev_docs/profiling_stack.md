@@ -50,6 +50,136 @@ type, no clock and no lifecycle with the other two; it is a separate, always-on 
 that happens to answer an adjacent question. Nothing joins them, and the published page
 says so rather than implying a unified profiler that does not exist.
 
+### RTT command-recording breakdown
+
+`RenderToTexture` publishes CPU wall-clock spans through the same `CPUSpan.snapshot()`
+used by the renderer's terminal statistics and Inspector. Labels use the target's
+`RTTParameters.debugName`, or its generated allocation-site name when none is supplied:
+
+| Label suffix | Work measured |
+| --- | --- |
+| `rtt[NAME].total` | Entire target recording, including subclass hooks and nested targets |
+| `.prepare` | Conventional mesh uploads and buffer-reference preparation |
+| `.dependencies` | Conventional modules' `before` callbacks, including dependent RTTs/compute |
+| `.mesh_prepare_dependencies` | Mesh-shader resource preparation and their `before` callbacks, in existing order |
+| `.sampled_images` | Additional resource preparation and sampled-image transitions |
+| `.draw` | Begin/end rendering, module recording, descriptors/uniforms and additional drawing |
+| `.finish` | Mipmap generation commands, final image transitions and pending file-save recording |
+
+The total also includes initial attachment transitions/setup and `beforeRender`/`afterRender`.
+These are CPU recording durations, not GPU execution times; a recorded transition does not
+measure the time the GPU spends waiting at that barrier. Labels are cached at target creation.
+The instrumentation does not change pass order, add GPU queries or wait for GPU completion.
+
+`wait_gfx[WINDOW]` separately measures the fence wait already inside `record_gfx[WINDOW]`.
+It is included in that parent span: a large recording span can therefore reflect GPU
+backpressure rather than expensive encoding.
+
+RTT samples are per invocation, not per frame. Totals and dependency spans are inclusive:
+do not add a parent's total to its children's totals, or sum percentile columns to obtain
+a frame percentile. The snapshot exposes sample counts alongside averages and percentiles.
+Existing snapshot consumers receive these labels automatically after restarting with the
+rebuilt core.
+
+### OpenXR cadence and eye-submission backpressure
+
+`xr_previous_gpu_wait` measures reuse of the eye-copy command buffer waiting on its
+previous GPU submission. `xr_eye_record_submit` measures subsequent eye command recording
+and queue submission. Both are inside `xr_render`; `xr_fence_wait`, when enabled, is the
+separate existing wait before releasing the current swapchain images.
+
+Every five seconds, `XR cadence` logs rolling histograms of up to 500 intervals between
+successful image-bearing `xrEndFrame` calls. It reports three independent measurements:
+
+- `submission`: wall-clock intervals between those calls completing.
+- `predicted_step`: differences between their runtime-provided predicted display times.
+- `runtime_period`: the corresponding `predictedDisplayPeriod` returned by `xrWaitFrame`.
+
+Each report lists the six most populated one-millisecond bins with counts. For example,
+`22..23ms` steps with `11..12ms` runtime periods support a half-refresh application cadence
+at 90 Hz. They do not measure which images the headset compositor actually displayed.
+Runtime-clock values are never subtracted from `System.nanoTime()`. Empty/failed frames,
+non-increasing predictions and wall-clock gaps of a second or more break interval continuity;
+older retained samples age out as new intervals arrive. No extra GPU waits or frame pacing
+are introduced by these measurements.
+
+### Accounting for a complete render interval
+
+`render_interval` measures entry-to-entry time for `Renderer.render()`, `render_total`
+measures the complete call, and `render_gap` measures time from the previous return to
+the next entry. The gap includes other box work, window polling and Runloop scheduling.
+`runloop_pre`, `runloop_main`, `runloop_post` and `runloop_idle` separate those Runloop
+phases. `runloop_main` contains the renderer when it is driven by a box, so it is an
+inclusive parent, not another duration to add to `render_total`.
+
+`render_prepare` and `render_finish` bracket renderer bookkeeping; `xr_prepare_total`,
+`render_scene_windows` and `xr_submit_total` cover the main XR stages. The queue and
+worker `*_dispatch` spans measure enqueue-to-start delay per job. Swapchain slot/image
+fence waits before acquisition are `wait_swapchain_slot[N]` and `wait_swapchain_image[N]`;
+they are GPU resource-reuse waits, not time inside `vkAcquireNextImage`.
+
+The VR workspace additionally reports `vr_browser_upload` and `vr_browser_input`.
+These are inside graphics recording. `CPUSpan.resetSamples()` clears the process-wide
+rolling windows when starting a diagnostic comparison; it does not change GPU pacing.
+
+### Optional desktop acquisition and presentation
+
+`renderer.desktopPresentationEnabled = false` records only the primary render target's
+`preTargets` using a ring of scene slots. It bypasses all desktop image acquisition,
+swapchain attachment drawing and presentation, while retaining compute, frame callbacks,
+interop semaphore ordering and offscreen RTT work. OpenXR still locates the frame before
+scene recording and copies the completed stereo image through its normal submission path.
+
+`wait_scene_slot` protects slot-indexed buffers still in use by the GPU. This necessary
+resource wait can remain even with desktop presentation disabled. There is no acquisition
+semaphore wait or presentation semaphore signal in the offscreen graphics submission.
+Desktop captures report unsupported while presentation is off; already queued captures
+fail promptly instead of waiting for a desktop frame that will not be rendered.
+
+Presentation can be enabled again on a running renderer. When geometry already reserved
+an image/slot, that frame completes in its reserved mode and the toggle takes effect on
+the next frame. `RttGpuTelemetrySmoke` exercises both directions, a disabled desktop
+window, repeated GPU-query reuse, and cleanup under Vulkan validation.
+
+### Sparse RTT GPU telemetry
+
+Set `target.profileGpu = true` on a `RenderToTexture` (including ping-pong targets) to
+sample GPU timestamps every 60 renderer
+frames. `target.gpuSample` returns the last completed sample and its frame number.
+The sampler has one outstanding query set and polls without `VK_QUERY_RESULT_WAIT_BIT`;
+if results are unavailable, it skips sampling rather than waiting. Query pools belong
+to the renderer's device and are released through its `AutoDisposer` owner ledger.
+Readback and reuse also require the sampling graphics submission's completion callback:
+query availability alone can still refer to the prior use, before a recorded GPU reset
+has executed.
+
+Elapsed GPU time covers the whole RTT, including dependencies. Invocation statistics
+cover its drawing only, so dependency RTT queries do not nest pipeline-statistics
+queries. The reported counts are vertex, fragment, compute and, when the device feature
+is enabled, task/mesh shader invocations. These are work counts, not utilization or
+proof of a throughput bottleneck. An RTT whose compute work occurs in dependency
+callbacks will not include those invocations in its own draw-only counters.
+
+Invocation statistics require the separate opt-in `target.profileGpuStatistics = true`.
+Task/mesh query support is enabled on device creation only with
+`AFIELD_FOUR_MESH_SHADER_STATISTICS=true` (or `afield.four.meshShaderStatistics=true`).
+The 4090 live test showed severe periodic hitches with invocation collection, which
+disappeared when the profiling box stopped. Counts are therefore off by default and
+should not be mixed into normal cadence measurements. Timestamp-only mode remains
+separately switchable; the display retains the last completed sample when sampling stops.
+
+When the ordinary whole-frame GPU profiler has pipeline-statistics queries enabled,
+the RTT probe falls back to timestamps to avoid nesting queries of the same type.
+The normal Linux renderer profiling path uses timestamps only. Disabling RTT sampling
+retains the last sample; inspect its frame number before treating it as current.
+
+On the tested Linux RTX 4090 driver (610.43.02), timestamp, pipeline-statistics and mesh
+query support are present; `VK_KHR_performance_query` is absent. NVIDIA hardware-counter
+access is restricted (`RmProfilingAdminOnly: 1`). Occupancy, memory-throughput and
+fill/compute limiter claims therefore require a separate supported vendor capture.
+`RttGpuTelemetrySmoke` validates real nested RTT queries, invocation results and teardown
+with Vulkan validation enabled.
+
 ### The two that can be confused
 
 `CoroutineProfileSpan` and `CPUSpan.Snapshot` are both "a span with percentiles" and they
