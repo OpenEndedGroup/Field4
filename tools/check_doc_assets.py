@@ -331,6 +331,131 @@ def orphaned_capture_fences(text: str) -> list[str]:
     return orphans
 
 
+# ---------------------------------------------------------------------------------------------
+# Size budget
+#
+# A committed docs asset is downloaded by every reader of its page and by every clone. On
+# 2026-11-05 the GPU Physarum figure had to be recaptured 2.6 MB -> 0.9 MB (6291b6ff9) after it
+# landed, because nothing said how big a figure may be. Measured on 2026-11-06 over the 1716
+# tracked PNGs under public/docs/assets: median 0.30 MB and 1920x1080, p90 1.15 MB, p95 1.9 MB,
+# max 47.9 MB (a 6528x3672 path-tracing still). Over the 217 videos: median 0.46 MB, p90 4.7 MB.
+#
+# The budget sits just above p95 so it catches the tail, not the ordinary capture: a PNG over
+# 2 MiB *or* over 4K UHD's pixel count, a video (mp4/webm/gif) over 4 MiB. Today's offenders are
+# grandfathered by exact path in BUDGET_REGISTER, enforced both ways like the expected-failure
+# registers: an unlisted offender fails, a listed asset that now fits (or is gone) fails until its
+# entry is deleted, and a listed asset may not grow past the size it was registered at. No
+# wildcards. The fix for a new offender is a smaller capture, not an entry: `max-width=` on the
+# docs fence (public/docs_hooks.py) downscales any capture, a native-window one included.
+PNG_BUDGET_BYTES = 2 * 1024 * 1024
+PNG_BUDGET_PIXELS = 3840 * 2160
+VIDEO_BUDGET_BYTES = 4 * 1024 * 1024
+VIDEO_EXTS = (".mp4", ".webm", ".gif")
+BUDGET_ROOT = "public/docs/assets"
+BUDGET_REGISTER = "dev_docs/testing/doc_asset_budget_exceptions.json"
+
+
+def asset_measure(path: Path) -> dict | None:
+    """`{"bytes": n}` plus `width`/`height` for a real PNG; None for a file the budget ignores."""
+    name = path.name.lower()
+    if not name.endswith((".png",) + VIDEO_EXTS) or not path.is_file():
+        return None
+    measure = {"bytes": path.stat().st_size}
+    if name.endswith(".png"):
+        with path.open("rb") as handle:
+            header = png_header(handle.read(33))
+        if header is not None:
+            measure["width"], measure["height"] = header[0], header[1]
+    return measure
+
+
+def over_budget(path: str, measure: dict) -> list[str]:
+    """Why `measure` breaks the budget (empty: it fits)."""
+    reasons = []
+    if path.lower().endswith(".png"):
+        if measure["bytes"] > PNG_BUDGET_BYTES:
+            reasons.append(f"{measure['bytes'] / 1e6:.2f} MB > {PNG_BUDGET_BYTES / 1e6:.2f} MB")
+        pixels = measure.get("width", 0) * measure.get("height", 0)
+        if pixels > PNG_BUDGET_PIXELS:
+            reasons.append(f"{measure['width']}x{measure['height']} = {pixels / 1e6:.1f} Mpx > "
+                           f"{PNG_BUDGET_PIXELS / 1e6:.1f} Mpx")
+    elif measure["bytes"] > VIDEO_BUDGET_BYTES:
+        reasons.append(f"{measure['bytes'] / 1e6:.2f} MB > {VIDEO_BUDGET_BYTES / 1e6:.2f} MB")
+    return reasons
+
+
+def load_budget_register(root: Path) -> dict[str, dict]:
+    import json
+
+    path = root / BUDGET_REGISTER
+    if not path.is_file():
+        return {}
+    return json.loads(path.read_text(encoding="utf-8")).get("assets", {})
+
+
+def budget_problems(root: Path, tracked: set[str] | None = None,
+                    register: dict[str, dict] | None = None) -> tuple[list[str], list[str]]:
+    """`(offenders, register_errors)` for the tracked assets under BUDGET_ROOT.
+
+    An offender is an asset over budget and not registered, or registered and grown past its
+    entry. A register error is an entry with a wildcard, for a missing asset, or for one that fits.
+    """
+    if tracked is None:
+        tracked = set(git(root, "ls-files", "-z", "--", BUDGET_ROOT).split("\0"))
+    if register is None:
+        register = load_budget_register(root)
+    offenders: list[str] = []
+    errors: list[str] = []
+    for rel in sorted(p for p in tracked if p.startswith(BUDGET_ROOT + "/")):
+        measure = asset_measure(root / rel)
+        if measure is None:
+            continue
+        reasons = over_budget(rel, measure)
+        entry = register.get(rel)
+        if reasons and entry is None:
+            offenders.append(f"{rel}: {'; '.join(reasons)}")
+        elif entry is not None and reasons:
+            grew = [k for k in ("bytes", "width", "height") if measure.get(k, 0) > entry.get(k, 0)]
+            if grew:
+                offenders.append(f"{rel}: grew past its {BUDGET_REGISTER} entry "
+                                 f"({', '.join(f'{k} {entry.get(k, 0)} -> {measure[k]}' for k in grew)})")
+    for rel in sorted(register):
+        if any(ch in rel for ch in "*?["):
+            errors.append(f"{rel}: wildcards are not allowed; name each asset")
+            continue
+        if rel not in tracked or not (root / rel).is_file():
+            errors.append(f"{rel}: registered but not a tracked asset any more; delete the entry")
+            continue
+        measure = asset_measure(root / rel)
+        if measure is None:
+            errors.append(f"{rel}: not a PNG or video; the budget does not cover it; delete the entry")
+        elif not over_budget(rel, measure):
+            errors.append(f"{rel}: fits the budget now ({measure['bytes']} bytes); delete the entry")
+    return offenders, errors
+
+
+def report_budget(root: Path) -> bool:
+    """Print the budget verdict; True when it holds."""
+    offenders, errors = budget_problems(root)
+    if offenders:
+        print(f"\nFAIL — {len(offenders)} docs asset(s) over the size budget "
+              f"(PNG {PNG_BUDGET_BYTES // 1048576} MiB / {PNG_BUDGET_PIXELS / 1e6:.1f} Mpx, "
+              f"video {VIDEO_BUDGET_BYTES // 1048576} MiB):\n")
+        for line in offenders:
+            print(f"  {line}")
+        print("\nFix: recapture smaller. On a docs fence, `max-width=1600` downscales the capture "
+              "(native-window included) before it is written; a coarser render target, a tighter "
+              "`clip=`/`trim=true`, or a shorter/lower-bitrate video also work. Do not hand-resize a "
+              f"capture, and do not add an entry to {BUDGET_REGISTER} for a new asset.")
+    if errors:
+        print(f"\nFAIL — {len(errors)} stale or invalid {BUDGET_REGISTER} entr(y/ies):\n")
+        for line in errors:
+            print(f"  {line}")
+    if not offenders and not errors:
+        print(f"OK — every docs PNG and video under {BUDGET_ROOT} fits the size budget or is registered.")
+    return not offenders and not errors
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--docs-root", default="public/docs", help="Docs directory (default: public/docs).")
@@ -338,9 +463,13 @@ def main() -> int:
     parser.add_argument("--all", action="store_true", help="Scan every *.md under the docs root, not just nav pages.")
     parser.add_argument("--ignore", action="append", default=[], metavar="PAGE",
                         help="Docs-root-relative page path to skip (repeatable).")
+    parser.add_argument("--budget-only", action="store_true",
+                        help="Check only the size budget of tracked PNGs and videos (fast; the landing guard).")
     args = parser.parse_args()
 
     root = repo_root()
+    if args.budget_only:
+        return 0 if report_budget(root) else 1
     docs_root = (root / args.docs_root).resolve()
     if not docs_root.is_dir():
         print(f"error: docs root {docs_root} not found", file=sys.stderr)
@@ -426,8 +555,9 @@ def main() -> int:
         print("\nFix: add `embed=true` to the fence, or reference the asset with an ordinary "
               "![](...) line.")
 
+    budget_ok = report_budget(root)
     if not problems:
-        if fakes or orphans:
+        if fakes or orphans or not budget_ok:
             return 1
         if known_fakes:
             print(f"\nOK — every referenced asset is committed and shown "
