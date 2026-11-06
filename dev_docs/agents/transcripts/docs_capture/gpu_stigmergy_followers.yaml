@@ -3,7 +3,7 @@ description: >
   The picture in alife_examples.md section 7's "Several species on one field": the slime and
   followers boxes of gpu_stigmergy on a 360 x 360 window. Three Physarum species with exclusion pack a 1024 x 1024
   TrailField into an amber, cyan and pink labyrinth, and 20,000 TrailFollowers climbing amber and fleeing
-  cyan draw magenta beads along the amber roads.
+  cyan draw white beads along the amber roads.
 docs:
   - page: alife_examples.md
     why: "Builds the multi-species picture in section 7."

@@ -1174,7 +1174,7 @@ var followers = TrailFollowers(physarum.trail) {
 followers.installInto()
 ```
 
-```diffstatic_runner {data-lang=kotlin capture="native-window" capture-box="stigmergy_capture_renderer" transcript="dev_docs/agents/transcripts/docs_capture/gpu_stigmergy_followers.yaml" screenshot="assets/alife_examples/stigmergy-species.png" wait="12" timeout="300" embed=true hidden=true name="alife-stigmergy-species" alt="amber and cyan roads that avoid each other on a black field, the amber ones beaded along their length with small magenta particles"}
+```diffstatic_runner {data-lang=kotlin capture="native-window" capture-box="stigmergy_capture_renderer" transcript="dev_docs/agents/transcripts/docs_capture/gpu_stigmergy_followers.yaml" screenshot="assets/alife_examples/stigmergy-species.png" wait="12" timeout="300" embed=true hidden=true name="alife-stigmergy-species" alt="amber, cyan and pink roads packed side by side into a labyrinth whose colours never cross, the amber ones beaded along their length with small white particles"}
 // The transcript builds a renderer, the two boxes above and launches them.
 ```
 
