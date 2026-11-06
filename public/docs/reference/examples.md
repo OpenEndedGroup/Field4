@@ -4,7 +4,7 @@
 
 Runnable examples, galleries and verification programs. Read these for usage patterns; their entry points are not a promise of a reusable box API.
 
-222 source file(s), 701 public symbol(s), 311 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+223 source file(s), 703 public symbol(s), 312 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -323,7 +323,7 @@ Verification-integrity harness: executes / compiles the box bodies of *every* sh
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="demotranscriptexecsmoketest-kt--demotranscriptexecsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/DemoTranscriptExecSmokeTest/#L970) |  |
+| <a id="demotranscriptexecsmoketest-kt--demotranscriptexecsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/DemoTranscriptExecSmokeTest/#L974) |  |
 
 ## DocsPanelCodeLinksSmokeTest.kt { #docspanelcodelinkssmoketest-kt }
 
@@ -1907,13 +1907,13 @@ That a [`ParticleSketch`](simulation.md#particlesketch-kt-particlesketch) step o
 
 ### PhysarumGpuSmoke { #physarumgpusmoke-kt-physarumgpusmoke }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">PhysarumGpuSmoke</span></code>](source/jvmMain/afield/examples/four/PhysarumGpuSmoke/#L44)
+[<code class="highlight"><span class="k">object</span> <span class="nc">PhysarumGpuSmoke</span></code>](source/jvmMain/afield/examples/four/PhysarumGpuSmoke/#L45)
 
 Runs [`ShaderPhysarumSystem`](alife.md#alife-physarum-gpu-kt-shaderphysarumsystem) (a million agents on a 1024x1024 [`TrailField`](alife.md#alife-trail-kt-trailfield)) on a real renderer and reads its trail back as floats, so the GPU network is measured the way `alife_examples.md` §7 measures the CPU one: `topShare(0.05)` of the sensing population against the same population turning at random. Also checks [`TrailField`](alife.md#alife-trail-kt-trailfield) on its own: a held channel keeps a deposit, a decaying one halves in its half-life, and `clear()` empties it.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="physarumgpusmoke-kt--physarumgpusmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/PhysarumGpuSmoke/#L49) |  |
+| <a id="physarumgpusmoke-kt--physarumgpusmoke--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/PhysarumGpuSmoke/#L50) |  |
 
 ## PingPongRestoreSmoke.kt { #pingpongrestoresmoke-kt }
 
@@ -2068,6 +2068,20 @@ Checks the first packed-image sampling, eye draw count, and eye aspect on a non-
 | Declaration | Summary |
 | --- | --- |
 | <a id="stereopackingsmoketest-kt--stereopackingsmoketest--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/StereoPackingSmokeTest/#L35) |  |
+
+## StigmergySweep.kt { #stigmergysweep-kt }
+
+`src/jvmMain/kotlin/afield/examples/four/StigmergySweep.kt` — [read the source](source/jvmMain/afield/examples/four/StigmergySweep/)
+
+### StigmergySweep { #stigmergysweep-kt-stigmergysweep }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">StigmergySweep</span></code>](source/jvmMain/afield/examples/four/StigmergySweep/#L26)
+
+A parameter sweep for multi-species [`ShaderPhysarumSystem`](alife.md#alife-physarum-gpu-kt-shaderphysarumsystem) tuning: each named variant runs on a real renderer, its trail is read back and tone-mapped to `<out>/<variant>.png`, and its segregation (share of marked pixels whose top channel holds 80 % of the trail) is printed. Not a test; run with `run-jvm-main afield.examples.four.StigmergySweep --arg <outDir> --arg <variant,...>`.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="stigmergysweep-kt--stigmergysweep--main"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/examples/four/StigmergySweep/#L112) |  |
 
 ## EvolveWorkedExample.kt { #evolveworkedexample-kt }
 

@@ -222,9 +222,40 @@ class BackdoorClientLogSelectionTests(unittest.TestCase):
         self.picker._remember_capture_child_pid(82129)
         path, tail = self.picker._latest_backdoor_client_error()
         self.assertEqual(path, str(mine))
-        # The honest answer for a quiet log is "this log is clean", not another's traceback.
-        self.assertIn("no error/exception events", tail)
+        self.assertIn("Failed command result", tail)
+        self.assertIn("stop @last", tail)
         self.assertNotIn("Timeout 30000ms", tail)
+
+    def test_failed_video_result_surfaces_the_reason_without_an_exception(self):
+        self._write("capture-pid82129-token.jsonl", [
+            {"event": "print_result", "result": {"ok": True, "command": "run @last"}},
+            {"event": "print_result", "result": {"ok": False, "command": "record-video @last",
+                "data": {"reason": "no changed frame pairs", "encodedFrames": 120}}},
+        ])
+        self.picker._remember_capture_child_pid(82129)
+        _, tail = self.picker._latest_backdoor_client_error()
+        self.assertIn("no changed frame pairs", tail)
+        self.assertIn('"encodedFrames": 120', tail)
+        self.assertNotIn("run @last", tail)
+
+    def test_timeout_result_and_partial_json_are_handled(self):
+        path = self._write("capture-pid82129-token.jsonl", [
+            {"event": "print_result", "result": {"ok": True, "timedOut": True,
+                "command": "stop @last"}},
+        ])
+        with path.open("a") as handle:
+            handle.write('{"partial":')
+        self.picker._remember_capture_child_pid(82129)
+        _, tail = self.picker._latest_backdoor_client_error()
+        self.assertIn("stop @last", tail)
+
+    def test_successful_commands_do_not_become_failure_evidence(self):
+        self._write("capture-pid82129-token.jsonl", [
+            {"event": "print_result", "result": {"ok": True, "command": "record-video @last"}},
+        ])
+        self.picker._remember_capture_child_pid(82129)
+        _, tail = self.picker._latest_backdoor_client_error()
+        self.assertIn("no failed command results", tail)
 
     def test_the_pid_matched_log_reports_its_own_errors_when_it_has_them(self):
         self._write("20260807-094413-pid81948-ce2f9ac3.jsonl", [{"error": "someone else"}], age=120)
@@ -249,6 +280,15 @@ class BackdoorClientLogSelectionTests(unittest.TestCase):
     def test_no_logs_at_all_is_not_an_error(self):
         self.picker._remember_capture_child_pid(82129)
         self.assertIsNone(self.picker._latest_backdoor_client_error())
+
+    def test_the_command_reason_reaches_the_summary_and_saved_report(self):
+        state = _Diagnoser(self.root / "field.log", _FakeChild())
+        state._latest_backdoor_client_error = lambda: ("own-client.jsonl", "Failed command result: no changed frame pairs")
+        reports = []
+        state._save_failure_report = lambda **kwargs: reports.append(kwargs["report"]) or "failure.log"
+        summary = state.diagnose_capture_failure(page_path=Path("p.md"), output_path=Path("clip.mp4"))
+        self.assertIn("no changed frame pairs", summary)
+        self.assertIn("no changed frame pairs", reports[0])
 
 
 class _Diagnoser:

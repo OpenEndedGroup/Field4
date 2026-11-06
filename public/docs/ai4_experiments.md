@@ -137,6 +137,116 @@ Measured this way, on OpenAI `gpt-6-astra`, one or two runs per arm:
 These are small samples on one model, on tasks chosen to need those features. Repeat them on your own
 work before relying on them.
 
+### Testing a tool without a model
+
+A tool written in a box can be tested before any model sees it. This box registers `room_area`, a
+tool that refuses a room with a negative side:
+
+```diffstatic {data-lang=kotlin}
+aiTool("room_area") {
+    describe("Floor area of a rectangular room, in square metres.")
+    val width by param<Double>("width in metres")
+    val depth by param<Double>("depth in metres")
+    action {
+        require(width() > 0 && depth() > 0) { "width and depth must be positive" }
+        "area %.2f m²".format(width() * depth())
+    }
+}
+println("room_area registered")
+```
+
+A script for `--mode scripted` is the list of calls a model would have made, followed by its final
+answer. This one, saved as `script.json`, makes one good call and one bad one:
+
+```diffstatic {data-lang=json}
+[
+  {"tool": "room_area", "arguments": {"width": 4.2, "depth": 3.1}},
+  {"tool": "room_area", "arguments": {"width": -1, "depth": 3.1}},
+  {"final": "The room is 13.02 m²."}
+]
+```
+
+One backdoor invocation makes the box, runs it, and replays the script through the same tool
+dispatch the chat uses. A scripted task still needs a `--goal`, which is recorded with the result:
+
+```diffstatic {data-lang=bash}
+uv run --project . --group backdoor python tools/field_backdoor.py --json --scratch \
+  --command 'new-box --name Rooms' --command 'set @last code --file area.kt' --command 'run Rooms' \
+  --command "agent-task --goal 'How big is a 4.2 by 3.1 m room?' --mode scripted --script script.json \
+     --check tool-used:room_area --check tool-ok:room_area"
+```
+
+The result of that run, shortened:
+
+```diffstatic {data-lang=json}
+"verdict": "pass",
+"checks": [
+  {"check": {"kind": "tool-used", "text": "room_area"}, "passed": true, "detail": "call 1 was room_area"},
+  {"check": {"kind": "tool-ok", "text": "room_area"}, "passed": true, "detail": "call 1 succeeded; 1 of 2 ok"}
+],
+"toolCalls": [
+  {"index": 1, "tool": "room_area", "arguments": "{\"width\":4.2,\"depth\":3.1}", "ok": true, "result": "\"area 13.02 m²\""},
+  {"index": 2, "tool": "room_area", "arguments": "{\"width\":-1,\"depth\":3.1}", "ok": false,
+   "result": "{\"error\":true,\"tool\":\"room_area\",\"message\":\"width and depth must be positive\"}"}
+],
+"rounds": 2, "elapsedMs": 90, "inputTokens": 0, "misuseCalls": 1,
+"toolTally": {"room_area": {"calls": 2, "failed": 1}}
+```
+
+`toolCalls` lists each call with its own `ok`. The exception thrown by `require` reached the model
+as an error result; the turn carried on. `toolTally` counts calls and failures per tool, and
+`misuseCalls` counts the failed calls across all tools.
+
+The two checks differ when every call fails. Leave out `run Rooms` and the tool is never registered.
+Both calls then come back `No tool registered for: room_area`, and the same checks give:
+
+```diffstatic {data-lang=json}
+"verdict": "fail",
+"checks": [
+  {"check": {"kind": "tool-used", "text": "room_area"}, "passed": true, "detail": "call 1 was room_area"},
+  {"check": {"kind": "tool-ok", "text": "room_area"}, "passed": false,
+   "detail": "all 2 call(s) to room_area failed, first: {\"error\":true,\"tool\":\"room_area\",\"message\":\"No tool registered for: room_area\"}"}
+],
+"toolTally": {"room_area": {"calls": 2, "failed": 2}}
+```
+
+`tool-used` passes because the agent asked for the tool. Use `tool-ok` when you mean the tool did its
+job. The command exits 1 whenever the verdict is not `pass`.
+
+To send the same request to a model, drop `--mode scripted` and `--script`. A live `agent-task`
+uses the `local` provider ([Local AI](local_ai.md)) unless you add `--allow-remote-provider`.
+
+### Running the suite
+
+`agent-eval` runs seventeen built-in tasks, each in its own scratch document: make a box that prints
+primes, fix a compile error, wire two boxes, stop a box that runs forever, draw bars in an output and
+check the picture, run one box over a sweep of values, and so on. With no options it replays a script
+for each task, so it needs no model; it tests the tools and the checks:
+
+```diffstatic {data-lang=bash}
+uv run --project . --group backdoor python tools/field_backdoor.py --json --scratch --command "agent-eval"
+```
+
+That took 50 seconds. The top of the report:
+
+```diffstatic {data-lang=json}
+"mode": "scripted", "population": 17, "passed": 17,
+"rounds": 57, "imagesSeen": 9, "programCalls": 3, "nestedCalls": 50,
+"inputTokens": 0, "outputTokens": 0,
+"documentsBefore": 1, "documentsAfter": 1, "capturePagesOpenAfter": 0,
+```
+
+`results` holds one `agent-task` result per task, each with its own `toolTally`. A task can pass with
+failed calls in its tally. In `fix-runtime-error` the first run of the box throws, the agent changes
+the code, and the second run succeeds:
+`{"RunBoxRequest": {"calls": 2, "failed": 1}, "SetBoxPropertyRequest": {"calls": 1, "failed": 0}}`.
+Equal `documentsBefore` and `documentsAfter`, with no capture pages left open, mean every task's
+scratch document was closed.
+
+`--mode live` sends the same tasks to the configured model, `--ids primes,wire-two` picks tasks, and
+`--max-rounds` caps each one. In a live run, `rounds`, tokens and `misuseCalls` are what tell two
+models, or two versions of your tools, apart.
+
 ## Scoring AI4 as a reader of these docs
 
 A measurement does not have to be about boxes. The

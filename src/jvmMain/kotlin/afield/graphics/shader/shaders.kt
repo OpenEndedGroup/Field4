@@ -2826,6 +2826,16 @@ private fun shaderPropertyValue(box: Box, property: String): String? = when (pro
     else -> box.getPropertyRaw(property) as? String
 }
 
+/**
+ * Whether [box] itself (not a parent it inherits from) holds source for [baseProperty]. Adopting a
+ * module must ask this: a box beneath another shader box inherits that box's `vertex`, and treating
+ * the inherited tab as its own drove the adopted module with the parent's shader.
+ */
+private fun hasOwnShaderSource(box: Box, baseProperty: String): Boolean =
+    shaderPropertyVariants(baseProperty).any { property ->
+        !(box.getPropertyRaw(property, null) as? String).isNullOrBlank()
+    }
+
 private fun hasShaderSource(box: Box, baseProperty: String): Boolean =
     shaderPropertyVariants(baseProperty).any { property ->
         !shaderPropertyValue(box, property).isNullOrBlank()
@@ -3980,7 +3990,8 @@ fun reloadShader(box: Box): Boolean {
  * as a box error straight away.
  *
  * Requires both stages to have non-blank source (it throws otherwise). By default the box's `vertex` /
- * `fragment` properties are only seeded if the box has none of its own, so an existing shader tab wins;
+ * `fragment` properties are only seeded if the box has none of its own, so an existing shader tab wins
+ * (one inherited from a parent box does not count: it belongs to the parent's module);
  * pass `overwriteProperties = true` to clobber it. Note what gets seeded is the module's *already
  * expanded* GLSL, so template slots and includes in the original are gone from the copy.
  *
@@ -3994,8 +4005,8 @@ fun Box.attachShader(module: ModulePointer, overwriteProperties: Boolean = false
     require(parameters.vertex.isNotBlank()) { "Attached graphics module must have a vertex shader source." }
     require(parameters.fragment.isNotBlank()) { "Attached graphics module must have a fragment shader source." }
 
-    if (overwriteProperties || !hasShaderSource(this, "vertex")) setPropertyRaw("vertex", parameters.vertex)
-    if (overwriteProperties || !hasShaderSource(this, "fragment")) setPropertyRaw("fragment", parameters.fragment)
+    if (overwriteProperties || !hasOwnShaderSource(this, "vertex")) setPropertyRaw("vertex", parameters.vertex)
+    if (overwriteProperties || !hasOwnShaderSource(this, "fragment")) setPropertyRaw("fragment", parameters.fragment)
 
     _vertex = parameters.vertex
     _fragment = parameters.fragment
@@ -4241,7 +4252,7 @@ fun Box.attachShader(module: ComputeModulePointer, overwriteProperties: Boolean 
     val parameters = module.current.parameters
     require(parameters.compute.isNotBlank()) { "Attached compute module must have a compute shader source." }
 
-    if (overwriteProperties || !hasShaderSource(this, "compute")) setPropertyRaw("compute", parameters.compute)
+    if (overwriteProperties || !hasOwnShaderSource(this, "compute")) setPropertyRaw("compute", parameters.compute)
 
     _compute = parameters.compute
     _computeShader = module
@@ -4413,7 +4424,7 @@ fun Box.attachShader(module: MeshModulePointer, overwriteProperties: Boolean = f
 
     if (overwriteProperties || !hasShaderSource(this, "task")) setPropertyRaw("task", parameters.task)
     if (overwriteProperties || !hasShaderSource(this, "mesh")) setPropertyRaw("mesh", parameters.mesh)
-    if (overwriteProperties || !hasShaderSource(this, "fragment")) setPropertyRaw("fragment", parameters.fragment)
+    if (overwriteProperties || !hasOwnShaderSource(this, "fragment")) setPropertyRaw("fragment", parameters.fragment)
 
     _task = parameters.task
     _mesh = parameters.mesh

@@ -1,0 +1,906 @@
+{
+  "_comment": [
+    "Docs assets over the size budget in tools/check_doc_assets.py (PNG > 2 MiB or > 3840x2160 pixels; mp4/webm/gif > 4 MiB), grandfathered as of 2026-11-06.",
+    "Enforced both ways by `check_doc_assets.py --budget-only` (Gradle checkDocAssetBudget): an unlisted offender fails, an entry whose asset fits or is gone fails, and an asset may not grow past its entry. Exact paths only, no wildcards.",
+    "Delete an entry when its asset is recaptured smaller. Do not add entries for new assets: recapture with `max-width=` instead (dev_docs/testing/LANDING_ASSET_GUARDS.md)."
+  ],
+  "assets": {
+    "public/docs/assets/afield_four_graphics/03b-particles.png": {
+      "bytes": 4193310,
+      "width": 4112,
+      "height": 2524
+    },
+    "public/docs/assets/afield_four_graphics/05-blur.png": {
+      "bytes": 154023,
+      "width": 4112,
+      "height": 2524
+    },
+    "public/docs/assets/afield_four_graphics/08-dla.png": {
+      "bytes": 1117062,
+      "width": 4112,
+      "height": 2524
+    },
+    "public/docs/assets/afield_four_graphics/09-bml-traffic.png": {
+      "bytes": 694856,
+      "width": 4112,
+      "height": 2524
+    },
+    "public/docs/assets/agent_transcripts_gallery/confluence_grid.png": {
+      "bytes": 1019285,
+      "width": 4680,
+      "height": 2706
+    },
+    "public/docs/assets/agent_transcripts_gallery/eagle_flow_raw.png": {
+      "bytes": 5581512,
+      "width": 2805,
+      "height": 2772
+    },
+    "public/docs/assets/agent_transcripts_gallery/gesture_paint_replay.png": {
+      "bytes": 1526949,
+      "width": 2088,
+      "height": 6138
+    },
+    "public/docs/assets/agent_transcripts_gallery/splat_shader_passthrough.png": {
+      "bytes": 4078916,
+      "width": 1800,
+      "height": 1800
+    },
+    "public/docs/assets/agent_transcripts_gallery/stacktrinket_feedback_fog.png": {
+      "bytes": 3698066,
+      "width": 1520,
+      "height": 1520
+    },
+    "public/docs/assets/agent_transcripts_gallery/webrtc_shader_jam.png": {
+      "bytes": 2467009,
+      "width": 1920,
+      "height": 1080
+    },
+    "public/docs/assets/alife_examples/cyclic.mp4": {
+      "bytes": 6051065
+    },
+    "public/docs/assets/alife_examples/inline-view.png": {
+      "bytes": 1749238,
+      "width": 1713,
+      "height": 4917
+    },
+    "public/docs/assets/alife_examples/physarum-gpu.png": {
+      "bytes": 907029,
+      "width": 4112,
+      "height": 2524
+    },
+    "public/docs/assets/alife_examples/stigmergy-contrast.mp4": {
+      "bytes": 10232304,
+      "width": 1280,
+      "height": 640
+    },
+    "public/docs/assets/audio_ai_codec/reconstruction_microscope.png": {
+      "bytes": 1557251,
+      "width": 3306,
+      "height": 3114
+    },
+    "public/docs/assets/audio_ai_gesture_board/gesture_candidates.png": {
+      "bytes": 2842600,
+      "width": 2464,
+      "height": 5460
+    },
+    "public/docs/assets/audio_ai_muscriptor/piano_roll.png": {
+      "bytes": 457477,
+      "width": 3252,
+      "height": 2622
+    },
+    "public/docs/assets/audio_ai_spectral_embeddings/mds_vs_tsne.png": {
+      "bytes": 1523904,
+      "width": 3252,
+      "height": 2829
+    },
+    "public/docs/assets/audio_ai_spectral_embeddings/spectral_spaces.png": {
+      "bytes": 2380198,
+      "width": 3252,
+      "height": 4122
+    },
+    "public/docs/assets/audio_ai_speech_embeddings/learned_spaces.png": {
+      "bytes": 2952970,
+      "width": 3252,
+      "height": 2769
+    },
+    "public/docs/assets/audio_render_analysis/pat_analysis.png": {
+      "bytes": 768057,
+      "width": 3252,
+      "height": 4080
+    },
+    "public/docs/assets/autodiff_examples/abs_seed.png": {
+      "bytes": 892213,
+      "width": 2412,
+      "height": 4734
+    },
+    "public/docs/assets/autodiff_examples/exact_fit.png": {
+      "bytes": 1789499,
+      "width": 3276,
+      "height": 4200
+    },
+    "public/docs/assets/banner.mp4": {
+      "bytes": 11388224
+    },
+    "public/docs/assets/braitenberg_vehicles/combined.png": {
+      "bytes": 4995613,
+      "width": 1974,
+      "height": 2172
+    },
+    "public/docs/assets/braitenberg_vehicles/learning.mp4": {
+      "bytes": 13092071
+    },
+    "public/docs/assets/braitenberg_vehicles/orbits.png": {
+      "bytes": 1203338,
+      "width": 2256,
+      "height": 3738
+    },
+    "public/docs/assets/braitenberg_vehicles/zoo.png": {
+      "bytes": 2554415,
+      "width": 1974,
+      "height": 2172
+    },
+    "public/docs/assets/browser_texture/field-ui-on-texture.png": {
+      "bytes": 2763449,
+      "width": 4112,
+      "height": 2524
+    },
+    "public/docs/assets/chain_ca_sound/rules.png": {
+      "bytes": 1825365,
+      "width": 3426,
+      "height": 3711
+    },
+    "public/docs/assets/chain_ceres_manifold_contours/gyro.png": {
+      "bytes": 2569970,
+      "width": 2832,
+      "height": 3807
+    },
+    "public/docs/assets/chain_ceres_manifold_contours/stack.png": {
+      "bytes": 6212907,
+      "width": 6528,
+      "height": 3672
+    },
+    "public/docs/assets/chain_drawn_paint/meadow.png": {
+      "bytes": 2943117,
+      "width": 2844,
+      "height": 1896
+    },
+    "public/docs/assets/chain_drawn_paint/painted.png": {
+      "bytes": 1514444,
+      "width": 2844,
+      "height": 3210
+    },
+    "public/docs/assets/chain_drawn_paint/starting_point.png": {
+      "bytes": 2414883,
+      "width": 1820,
+      "height": 1192
+    },
+    "public/docs/assets/chain_fn_sound_roundtrip/roundtrip.png": {
+      "bytes": 1052828,
+      "width": 3444,
+      "height": 3732
+    },
+    "public/docs/assets/chain_life3d_render/clusters.png": {
+      "bytes": 3949772,
+      "width": 4112,
+      "height": 2524
+    },
+    "public/docs/assets/chain_pattern_particles/rings.png": {
+      "bytes": 2997850,
+      "width": 4112,
+      "height": 2524
+    },
+    "public/docs/assets/chain_petri_sculpture/sculpture.png": {
+      "bytes": 8423823,
+      "width": 4112,
+      "height": 2524
+    },
+    "public/docs/assets/chain_petri_sparks/sparks.png": {
+      "bytes": 2091753,
+      "width": 4112,
+      "height": 2524
+    },
+    "public/docs/assets/chain_photo_to_solid/mounted_path_trace.png": {
+      "bytes": 4891585,
+      "width": 6528,
+      "height": 3672
+    },
+    "public/docs/assets/chain_physics_render/drape.png": {
+      "bytes": 8590278,
+      "width": 4112,
+      "height": 2524
+    },
+    "public/docs/assets/chain_polytope_render/lineage.png": {
+      "bytes": 3999811,
+      "width": 4112,
+      "height": 2524
+    },
+    "public/docs/assets/chain_polytope_render/shell.png": {
+      "bytes": 4249248,
+      "width": 4112,
+      "height": 2524
+    },
+    "public/docs/assets/chain_rectsl_spacetime/solid.png": {
+      "bytes": 4221254,
+      "width": 4112,
+      "height": 2524
+    },
+    "public/docs/assets/chain_scene_to_light/aliasing.png": {
+      "bytes": 2247851,
+      "width": 3453,
+      "height": 3924
+    },
+    "public/docs/assets/chain_skinned_volume/twist.png": {
+      "bytes": 5480270,
+      "width": 4112,
+      "height": 2524
+    },
+    "public/docs/assets/demo_document/film.mp4": {
+      "bytes": 7766406
+    },
+    "public/docs/assets/direct_lighting/emitter-large.png": {
+      "bytes": 1391007,
+      "width": 6528,
+      "height": 3672
+    },
+    "public/docs/assets/direct_lighting/emitter-small.png": {
+      "bytes": 988189,
+      "width": 6528,
+      "height": 3672
+    },
+    "public/docs/assets/direct_lighting/live.png": {
+      "bytes": 1153155,
+      "width": 6528,
+      "height": 3672
+    },
+    "public/docs/assets/direct_lighting/rtxdi-live.png": {
+      "bytes": 933673,
+      "width": 6528,
+      "height": 3672
+    },
+    "public/docs/assets/dynamic_graph_systems_examples/six_systems.png": {
+      "bytes": 1843379,
+      "width": 3993,
+      "height": 2907
+    },
+    "public/docs/assets/dynamic_graph_systems_examples/snapshot.png": {
+      "bytes": 1821643,
+      "width": 2865,
+      "height": 3087
+    },
+    "public/docs/assets/fabricate-multi-light-skybox.png": {
+      "bytes": 3485683,
+      "width": 2048,
+      "height": 1257
+    },
+    "public/docs/assets/fabricate-toy-car-three-throwaway-comparison.png": {
+      "bytes": 2950890,
+      "width": 4283,
+      "height": 1301
+    },
+    "public/docs/assets/field_audio_ai/style_candidates.png": {
+      "bytes": 1209641,
+      "width": 2384,
+      "height": 5460
+    },
+    "public/docs/assets/field_probes/particles-galaxy.png": {
+      "bytes": 4188615,
+      "width": 4112,
+      "height": 2524
+    },
+    "public/docs/assets/fieldml_afield_four_demo/triangle.png": {
+      "bytes": 59277,
+      "width": 4112,
+      "height": 2524
+    },
+    "public/docs/assets/fieldml_frames_demo/spin-0.png": {
+      "bytes": 60596,
+      "width": 4112,
+      "height": 2524
+    },
+    "public/docs/assets/fieldml_frames_demo/spin-1.png": {
+      "bytes": 60859,
+      "width": 4112,
+      "height": 2524
+    },
+    "public/docs/assets/fieldml_frames_demo/spin-2.png": {
+      "bytes": 60104,
+      "width": 4112,
+      "height": 2524
+    },
+    "public/docs/assets/fieldml_frames_demo/spin-3.png": {
+      "bytes": 60190,
+      "width": 4112,
+      "height": 2524
+    },
+    "public/docs/assets/fieldml_mesh_demo/ring-0.png": {
+      "bytes": 109426,
+      "width": 4112,
+      "height": 2524
+    },
+    "public/docs/assets/fieldml_mesh_demo/ring-1.png": {
+      "bytes": 111563,
+      "width": 4112,
+      "height": 2524
+    },
+    "public/docs/assets/fieldml_mesh_demo/ring-2.png": {
+      "bytes": 106774,
+      "width": 4112,
+      "height": 2524
+    },
+    "public/docs/assets/fieldml_mesh_demo/ring-3.png": {
+      "bytes": 102767,
+      "width": 4112,
+      "height": 2524
+    },
+    "public/docs/assets/first_steps/first-look.mp4": {
+      "bytes": 8752793
+    },
+    "public/docs/assets/first_steps/preview.gif": {
+      "bytes": 4315183
+    },
+    "public/docs/assets/first_steps/triangle.png": {
+      "bytes": 538193,
+      "width": 6528,
+      "height": 3672
+    },
+    "public/docs/assets/flow_grain/flow.png": {
+      "bytes": 2741192,
+      "width": 1920,
+      "height": 1440
+    },
+    "public/docs/assets/functions/gaussian-local-intersection.png": {
+      "bytes": 628054,
+      "width": 2412,
+      "height": 3513
+    },
+    "public/docs/assets/functions_examples/domain-over-pulsetrain-difference.png": {
+      "bytes": 603405,
+      "width": 2412,
+      "height": 3933
+    },
+    "public/docs/assets/functions_examples/reference/chebyshev-harmonic-ladder.png": {
+      "bytes": 1216516,
+      "width": 2412,
+      "height": 7032
+    },
+    "public/docs/assets/functions_examples/reference/chebyshev-perlin-waveshaping.png": {
+      "bytes": 877620,
+      "width": 2412,
+      "height": 4686
+    },
+    "public/docs/assets/functions_examples/reference/fn-rewrite-graph-inspection.png": {
+      "bytes": 725524,
+      "width": 3294,
+      "height": 4860
+    },
+    "public/docs/assets/functions_examples/reference/fn-rewrite-language-plot.png": {
+      "bytes": 621388,
+      "width": 2412,
+      "height": 3633
+    },
+    "public/docs/assets/functions_examples/reference/fold-rectify-quantize.png": {
+      "bytes": 893640,
+      "width": 2412,
+      "height": 6366
+    },
+    "public/docs/assets/functions_examples/reference/waveshape-transfer-curves.png": {
+      "bytes": 1353356,
+      "width": 2412,
+      "height": 7770
+    },
+    "public/docs/assets/gpu_shader_learning/comparison.png": {
+      "bytes": 2632524,
+      "width": 1920,
+      "height": 1080
+    },
+    "public/docs/assets/gpu_state/flat-fbm.png": {
+      "bytes": 5083104,
+      "width": 4112,
+      "height": 2524
+    },
+    "public/docs/assets/gpu_state/particle-field.png": {
+      "bytes": 11306961,
+      "width": 4112,
+      "height": 2524
+    },
+    "public/docs/assets/imgui_vr_panel/imgui-vr-panel.png": {
+      "bytes": 288454,
+      "width": 4112,
+      "height": 2524
+    },
+    "public/docs/assets/interaction_nets_examples/beta_bridge.png": {
+      "bytes": 581773,
+      "width": 3249,
+      "height": 2721
+    },
+    "public/docs/assets/interaction_nets_examples/duplication.png": {
+      "bytes": 523706,
+      "width": 3249,
+      "height": 2583
+    },
+    "public/docs/assets/interaction_nets_examples/energy_scheduler.png": {
+      "bytes": 613759,
+      "width": 3249,
+      "height": 2820
+    },
+    "public/docs/assets/interaction_nets_examples/erase.png": {
+      "bytes": 519765,
+      "width": 3249,
+      "height": 2583
+    },
+    "public/docs/assets/interaction_nets_examples/multi_step.png": {
+      "bytes": 860947,
+      "width": 3393,
+      "height": 3057
+    },
+    "public/docs/assets/keyframer_examples/strip_t00.png": {
+      "bytes": 163149,
+      "width": 4112,
+      "height": 2524
+    },
+    "public/docs/assets/keyframer_examples/strip_t10.png": {
+      "bytes": 161875,
+      "width": 4112,
+      "height": 2524
+    },
+    "public/docs/assets/keyframer_examples/strip_t33.png": {
+      "bytes": 165116,
+      "width": 4112,
+      "height": 2524
+    },
+    "public/docs/assets/keyframer_examples/strip_t66.png": {
+      "bytes": 167103,
+      "width": 4112,
+      "height": 2524
+    },
+    "public/docs/assets/learned_shader/animation.mp4": {
+      "bytes": 4743419
+    },
+    "public/docs/assets/learned_shader/arithmetic.png": {
+      "bytes": 3025209,
+      "width": 1920,
+      "height": 1080
+    },
+    "public/docs/assets/learned_shader/cooperative.png": {
+      "bytes": 3102081,
+      "width": 1920,
+      "height": 1080
+    },
+    "public/docs/assets/learned_shader/from-module.mp4": {
+      "bytes": 4910720
+    },
+    "public/docs/assets/learned_shader/from-module.png": {
+      "bytes": 2579205,
+      "width": 1920,
+      "height": 1080
+    },
+    "public/docs/assets/learned_shader/material.png": {
+      "bytes": 3152125,
+      "width": 3264,
+      "height": 1836
+    },
+    "public/docs/assets/loris/dialogue-partials.png": {
+      "bytes": 713843,
+      "width": 3120,
+      "height": 3411
+    },
+    "public/docs/assets/lp_curves_3d/turning_fan.mp4": {
+      "bytes": 5117931
+    },
+    "public/docs/assets/mesh_examples/modelling.png": {
+      "bytes": 2454192,
+      "width": 2244,
+      "height": 2382
+    },
+    "public/docs/assets/morpho_examples/family.png": {
+      "bytes": 1396921,
+      "width": 2865,
+      "height": 3087
+    },
+    "public/docs/assets/morpho_examples/growth.mp4": {
+      "bytes": 6607946
+    },
+    "public/docs/assets/morpho_examples/search-recursion.png": {
+      "bytes": 744818,
+      "width": 3093,
+      "height": 2898
+    },
+    "public/docs/assets/morse_smale/persistence.png": {
+      "bytes": 2142533,
+      "width": 2853,
+      "height": 954
+    },
+    "public/docs/assets/neural_particles/flocks.png": {
+      "bytes": 270175,
+      "width": 4112,
+      "height": 2524
+    },
+    "public/docs/assets/neural_particles/interpolation.png": {
+      "bytes": 665309,
+      "width": 4112,
+      "height": 2524
+    },
+    "public/docs/assets/neural_particles/separation.png": {
+      "bytes": 288933,
+      "width": 4112,
+      "height": 2524
+    },
+    "public/docs/assets/neural_particles/word.png": {
+      "bytes": 649850,
+      "width": 4112,
+      "height": 2524
+    },
+    "public/docs/assets/neural_reconstruction/abstract.mp4": {
+      "bytes": 6619228
+    },
+    "public/docs/assets/neural_reconstruction/geometry.mp4": {
+      "bytes": 15998928
+    },
+    "public/docs/assets/neural_reconstruction/stress-abstract.mp4": {
+      "bytes": 7046271
+    },
+    "public/docs/assets/neural_reconstruction/stress-geometry.mp4": {
+      "bytes": 19326022
+    },
+    "public/docs/assets/opendlssnr/cubes-study.mp4": {
+      "bytes": 23750716
+    },
+    "public/docs/assets/opendlssnr/cubes.png": {
+      "bytes": 3376767,
+      "width": 3917,
+      "height": 1414
+    },
+    "public/docs/assets/opendlssnr/image-study.png": {
+      "bytes": 4120597,
+      "width": 3917,
+      "height": 1414
+    },
+    "public/docs/assets/opendlssnr/ink-study.mp4": {
+      "bytes": 13248924
+    },
+    "public/docs/assets/opendlssnr/study.png": {
+      "bytes": 4502528,
+      "width": 3917,
+      "height": 1414
+    },
+    "public/docs/assets/optical_flow/advection.mp4": {
+      "bytes": 14190720
+    },
+    "public/docs/assets/optical_flow/advection.png": {
+      "bytes": 3107776,
+      "width": 1920,
+      "height": 1080
+    },
+    "public/docs/assets/optical_flow/macos_advection.png": {
+      "bytes": 2686929,
+      "width": 1600,
+      "height": 982
+    },
+    "public/docs/assets/optical_flow/pingpong.png": {
+      "bytes": 3663696,
+      "width": 3264,
+      "height": 1836
+    },
+    "public/docs/assets/optical_flow/translation.png": {
+      "bytes": 2112995,
+      "width": 1920,
+      "height": 1080
+    },
+    "public/docs/assets/paint_canvas/aged.png": {
+      "bytes": 4902461,
+      "width": 2856,
+      "height": 2382
+    },
+    "public/docs/assets/paint_canvas/areas.png": {
+      "bytes": 2307498,
+      "width": 2856,
+      "height": 1572
+    },
+    "public/docs/assets/paint_canvas/flow.png": {
+      "bytes": 3614536,
+      "width": 2856,
+      "height": 2151
+    },
+    "public/docs/assets/paint_canvas/grounds.png": {
+      "bytes": 4203651,
+      "width": 2916,
+      "height": 3273
+    },
+    "public/docs/assets/paint_canvas/tools.png": {
+      "bytes": 5014462,
+      "width": 2856,
+      "height": 2022
+    },
+    "public/docs/assets/paint_canvas/underdrawing.png": {
+      "bytes": 3721478,
+      "width": 2856,
+      "height": 2022
+    },
+    "public/docs/assets/paint_gestures/elegy_thinned.png": {
+      "bytes": 2483352,
+      "width": 2856,
+      "height": 1506
+    },
+    "public/docs/assets/paint_sweeps/splay.png": {
+      "bytes": 2173275,
+      "width": 2200,
+      "height": 1686
+    },
+    "public/docs/assets/particle_video/comparison.mp4": {
+      "bytes": 6606929
+    },
+    "public/docs/assets/particle_video/particles.mp4": {
+      "bytes": 12340745
+    },
+    "public/docs/assets/particle_video/polylines-full.mp4": {
+      "bytes": 12722520
+    },
+    "public/docs/assets/particle_video/polylines-overlay.mp4": {
+      "bytes": 4703652
+    },
+    "public/docs/assets/path_traced_reconstruction/raw.png": {
+      "bytes": 3186798,
+      "width": 1920,
+      "height": 1080
+    },
+    "public/docs/assets/path_traced_reconstruction/stripes-3.png": {
+      "bytes": 4709352,
+      "width": 6528,
+      "height": 3672
+    },
+    "public/docs/assets/path_traced_reconstruction/stripes-8.png": {
+      "bytes": 6526484,
+      "width": 6528,
+      "height": 3672
+    },
+    "public/docs/assets/path_tracing/camera.png": {
+      "bytes": 6370085,
+      "width": 6528,
+      "height": 3672
+    },
+    "public/docs/assets/path_tracing/clamp_off.png": {
+      "bytes": 31574397,
+      "width": 6528,
+      "height": 3672
+    },
+    "public/docs/assets/path_tracing/clamp_on.png": {
+      "bytes": 31192089,
+      "width": 6528,
+      "height": 3672
+    },
+    "public/docs/assets/path_tracing/direct_only.png": {
+      "bytes": 8299337,
+      "width": 6528,
+      "height": 3672
+    },
+    "public/docs/assets/path_tracing/fog.png": {
+      "bytes": 4145609,
+      "width": 6528,
+      "height": 3672
+    },
+    "public/docs/assets/path_tracing/glass.png": {
+      "bytes": 12303321,
+      "width": 6528,
+      "height": 3672
+    },
+    "public/docs/assets/path_tracing/gltf.png": {
+      "bytes": 7197555,
+      "width": 6528,
+      "height": 3672
+    },
+    "public/docs/assets/path_tracing/hidden_environment.png": {
+      "bytes": 5296145,
+      "width": 6528,
+      "height": 3672
+    },
+    "public/docs/assets/path_tracing/materials.png": {
+      "bytes": 9091558,
+      "width": 6528,
+      "height": 3672
+    },
+    "public/docs/assets/path_tracing/motion_no_reuse.png": {
+      "bytes": 47883771,
+      "width": 6528,
+      "height": 3672
+    },
+    "public/docs/assets/path_tracing/motion_persistent.png": {
+      "bytes": 14957911,
+      "width": 6528,
+      "height": 3672
+    },
+    "public/docs/assets/path_tracing/motion_reuse.png": {
+      "bytes": 26349687,
+      "width": 6528,
+      "height": 3672
+    },
+    "public/docs/assets/pattern_language/condense.png": {
+      "bytes": 302626,
+      "width": 3414,
+      "height": 2484
+    },
+    "public/docs/assets/pattern_language/fn-fit.png": {
+      "bytes": 1541913,
+      "width": 3276,
+      "height": 3531
+    },
+    "public/docs/assets/pattern_language/rhythm.png": {
+      "bytes": 320736,
+      "width": 3414,
+      "height": 2484
+    },
+    "public/docs/assets/physics/curvature.png": {
+      "bytes": 641984,
+      "width": 3069,
+      "height": 2724
+    },
+    "public/docs/assets/physics/debug_view.png": {
+      "bytes": 652881,
+      "width": 3069,
+      "height": 2778
+    },
+    "public/docs/assets/physics/equivalence.png": {
+      "bytes": 556256,
+      "width": 3069,
+      "height": 2778
+    },
+    "public/docs/assets/physics/tuning_ladder.png": {
+      "bytes": 756788,
+      "width": 5025,
+      "height": 2736
+    },
+    "public/docs/assets/point_matching/million_pixels.png": {
+      "bytes": 6098414,
+      "width": 2808,
+      "height": 2874
+    },
+    "public/docs/assets/puppet_browser/youtube-desktop.png": {
+      "bytes": 3304769,
+      "width": 2560,
+      "height": 1440
+    },
+    "public/docs/assets/puppet_browser/youtube-kaleidoscope.png": {
+      "bytes": 6943605,
+      "width": 2560,
+      "height": 1440
+    },
+    "public/docs/assets/puppet_browser/youtube-stereo.png": {
+      "bytes": 3779726,
+      "width": 4112,
+      "height": 2524
+    },
+    "public/docs/assets/python_cv/machines_motion.mp4": {
+      "bytes": 4481521
+    },
+    "public/docs/assets/python_cv/native_shared_memory.png": {
+      "bytes": 3143604,
+      "width": 4112,
+      "height": 2524
+    },
+    "public/docs/assets/ray_reconstruction/comparison.mp4": {
+      "bytes": 5053592
+    },
+    "public/docs/assets/reconstruction_plumbing/gbuffer_strip.png": {
+      "bytes": 600732,
+      "width": 6528,
+      "height": 1416
+    },
+    "public/docs/assets/slug_paths/lesson_5e.png": {
+      "bytes": 302094,
+      "width": 4112,
+      "height": 2524
+    },
+    "public/docs/assets/sorting_networks_examples/anneal_search.png": {
+      "bytes": 1520275,
+      "width": 4089,
+      "height": 3066
+    },
+    "public/docs/assets/stacksl_conversation/card.png": {
+      "bytes": 1859207,
+      "width": 2158,
+      "height": 4228
+    },
+    "public/docs/assets/staged_projects/overview.png": {
+      "bytes": 3693827,
+      "width": 4480,
+      "height": 2360
+    },
+    "public/docs/assets/state_estimation_examples/ukf_particle_filter.png": {
+      "bytes": 989666,
+      "width": 2256,
+      "height": 4704
+    },
+    "public/docs/assets/statistics_examples/dependence_grid.png": {
+      "bytes": 875839,
+      "width": 2829,
+      "height": 3222
+    },
+    "public/docs/assets/statistics_examples/null_distribution.png": {
+      "bytes": 1563600,
+      "width": 2823,
+      "height": 3591
+    },
+    "public/docs/assets/statistics_examples/quantile_warp.png": {
+      "bytes": 1599402,
+      "width": 3135,
+      "height": 3837
+    },
+    "public/docs/assets/streaming_diffusion/ink-field.png": {
+      "bytes": 6207305,
+      "width": 6528,
+      "height": 3672
+    },
+    "public/docs/assets/studies/speculate.png": {
+      "bytes": 2917370,
+      "width": 2472,
+      "height": 4248
+    },
+    "public/docs/assets/three_output/grid.png": {
+      "bytes": 2939544,
+      "width": 2904,
+      "height": 2502
+    },
+    "public/docs/assets/tour_gpu_graphics/rings.png": {
+      "bytes": 3009288,
+      "width": 4112,
+      "height": 2524
+    },
+    "public/docs/assets/tour_gpu_graphics/spiral.png": {
+      "bytes": 3476083,
+      "width": 4112,
+      "height": 2524
+    },
+    "public/docs/assets/transcript_gallery/simulation-chain.png": {
+      "bytes": 1923740,
+      "width": 6528,
+      "height": 3672
+    },
+    "public/docs/assets/typography_examples/on_a_curve.png": {
+      "bytes": 780601,
+      "width": 2829,
+      "height": 3171
+    },
+    "public/docs/assets/typography_examples/sdf.png": {
+      "bytes": 2940223,
+      "width": 2808,
+      "height": 3642
+    },
+    "public/docs/assets/vector_field_topology/eagle_flow_raw.mp4": {
+      "bytes": 10758812
+    },
+    "public/docs/assets/vector_field_topology/eagle_raw.png": {
+      "bytes": 4721595,
+      "width": 2853,
+      "height": 2025
+    },
+    "public/docs/assets/visualizers-one-viewer.png": {
+      "bytes": 642841,
+      "width": 2388,
+      "height": 3831
+    },
+    "public/docs/assets/webrtc/received-in-window.png": {
+      "bytes": 2501901,
+      "width": 1920,
+      "height": 1080
+    },
+    "public/docs/assets/wfc_examples/collapse-frames.png": {
+      "bytes": 1030992,
+      "width": 3012,
+      "height": 2979
+    },
+    "public/docs/assets/wfc_examples/inline-rules.png": {
+      "bytes": 2447806,
+      "width": 1812,
+      "height": 6288
+    },
+    "public/docs/assets/wfc_examples/scalar-field.png": {
+      "bytes": 1710522,
+      "width": 3150,
+      "height": 3387
+    },
+    "public/docs/assets/wfc_examples/simple-tiled.png": {
+      "bytes": 893437,
+      "width": 2052,
+      "height": 4488
+    }
+  }
+}

@@ -89,6 +89,12 @@ data class TrailFieldSettings(
      * diffusion) to 1 (a full box blur of radius one, the CPU Physarum's `blurRadius = 1`).
      */
     var diffusion: Float = 1f,
+    /**
+     * Per-channel diffusion, each from 0 to 1 as [diffusion]; when set it replaces [diffusion], so
+     * one species' trail can spread wide while another's stays sharp. `null` (the default) uses
+     * [diffusion] for all four.
+     */
+    var channelDiffusion: Vec4? = null,
     /** Drift of the whole field in pixels per frame, applied by sampling upstream. Zero by default. */
     var windPx: Vector2f = Vector2f(0f, 0f),
     /** Colour format. A float format is needed: the trail is unbounded above and decays below 8-bit steps. */
@@ -200,7 +206,7 @@ class TrailField(
         evolveModule.current.meshes["${settings.name}-evolve-quad"] = fullscreenTriangle(evolveModule).apply {
             push.bind("decay") { decayFactors() }
             push.bind("windPx") { settings.windPx }
-            push.bind("diffusion") { settings.diffusion.coerceIn(0f, 1f) }
+            push.bind("diffusion") { diffusionFactors() }
             push.bind("clearing") { if (clearFrames > 0) 1f else 0f }
         }
         target += "evolve" to evolveModule
@@ -215,6 +221,14 @@ class TrailField(
             else -> 0.5f.pow(1f / v)
         }
         return vec(f(h.x), f(h.y), f(h.z), f(h.w))
+    }
+
+    /** Per-channel diffusion this frame, from [TrailFieldSettings.channelDiffusion] or, when that is `null`, [TrailFieldSettings.diffusion]. */
+    fun diffusionFactors(): Vec4 {
+        val d = settings.channelDiffusion
+        fun c(v: Float) = v.coerceIn(0f, 1f)
+        return if (d == null) settings.diffusion.let { vec(c(it), c(it), c(it), c(it)) }
+        else vec(c(d.x), c(d.y), c(d.z), c(d.w))
     }
 
     /**
@@ -354,8 +368,8 @@ class TrailField(
 
             layout(push_constant) uniform Push {
                 vec4 decay;
+                vec4 diffusion;
                 vec2 windPx;
-                float diffusion;
                 float clearing;
             } push;
 

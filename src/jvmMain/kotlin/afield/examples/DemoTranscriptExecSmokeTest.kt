@@ -805,6 +805,10 @@ object DemoTranscriptExecSmokeTest {
         // A million-agent ShaderPhysarumSystem on its own Window + Renderer; its pixels are the
         // `alife-physarum-gpu` docs capture and alife.physarum-gpu.smoke measures it.
         "gpu_physarum",
+        // Two-species ShaderPhysarumSystem with an attraction matrix plus TrailFollowers on a native
+        // Window + Renderer; alife.physarum-gpu.smoke measures its territories and followers, and
+        // its pixels are the `alife-stigmergy-species` docs capture.
+        "gpu_stigmergy",
         // The madp Fern port: compute-shader iterated systems plotted into a PointAccumulation on
         // a native Window + Renderer, so compile-only here. IteratedSystemShaderTest compiles every
         // system's compute tab against the points/system harness without a GPU.

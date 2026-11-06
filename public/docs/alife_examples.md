@@ -1128,6 +1128,83 @@ the trail gives `topShare(0.05)` = **0.75** with one species. The same agents wi
     axes. The four-box version, with live wind and reset boxes, is the transcript
     `dev_docs/agents/transcripts/gpu_physarum.yaml`.
 
+### Several species on one field
+
+Each species senses the trail through one row of an attraction matrix: `attraction[s]` weighs the four
+channels as species `s` reads them, positive to follow and negative to avoid. Here three species each
+follow their own channel and avoid the other two, with Jones' exclusion on and little diffusion, so the
+trails stay sharp:
+
+```diffstatic {data-lang=kotlin}
+prop<ShaderPhysarumSystem>(physarum) = ShaderPhysarumSystem() {
+    width = 1024
+    height = 1024
+    agentCount = 300_000
+    speciesCount = 3
+    exclusive = true
+    attraction = listOf(
+        vec(1f, -2f, -2f, 0f),
+        vec(-2f, 1f, -2f, 0f),
+        vec(-2f, -2f, 1f, 0f),
+    )
+}
+physarum.trail.settings.diffusion = 0.2f
+physarum.installInto()
+```
+
+The video shows one species on the left and three on the right. The rule, the density and the
+exclusion are the same on both sides, and both start from an even scatter. On its own, a species closes
+into a net of cells: roads meet at junctions and enclose empty space. Three species that avoid each
+other cannot cross, so there are no junctions between colours. They pack the field into an interlocking
+labyrinth instead, each road running alongside roads of the other colours, and the borders keep
+shifting as one species pushes into another's ground.
+
+```diffstatic_runner {data-lang=kotlin capture="native-window" capture-box="stigmergy_video_renderer" transcript="dev_docs/agents/transcripts/docs_capture/gpu_stigmergy_contrast_video.yaml" video="assets/alife_examples/stigmergy-contrast.mp4" duration="12" fps="24" wait="0.2" timeout="300" embed=true hidden=true name="alife-stigmergy-contrast" alt="two square fields side by side, both starting as even noise. On the left a single amber species closes into a net of rounded cells; on the right amber, cyan and pink species pack into an interlocking labyrinth of parallel roads whose colours never cross, with borders that keep shifting"}
+// The transcript builds a renderer and two systems, one and three species, each drawn into half the window.
+```
+
+Any other particle system can steer by the same field. `TrailFollowers` climbs the gradient of
+`dot(trail, weights)`, so these 20,000 particles ride the amber roads and keep off the cyan ones:
+
+```diffstatic {data-lang=kotlin}
+var followers = TrailFollowers(physarum.trail) {
+    count = 20_000
+    weights = vec(1f, -1f, 0f, 0f)
+}
+followers.installInto()
+```
+
+```diffstatic_runner {data-lang=kotlin capture="native-window" capture-box="stigmergy_capture_renderer" transcript="dev_docs/agents/transcripts/docs_capture/gpu_stigmergy_followers.yaml" screenshot="assets/alife_examples/stigmergy-species.png" wait="12" timeout="300" embed=true hidden=true name="alife-stigmergy-species" alt="amber, cyan and pink roads packed side by side into a labyrinth whose colours never cross, the amber ones beaded along their length with small white particles"}
+// The transcript builds a renderer, the two boxes above and launches them.
+```
+
+Read back after 600 frames, a pixel's brightest channel holds at least 80 % of its trail on **99.4 %**
+of the marked pixels with two species, and **86.6 %** with three. When every species is attracted by
+every channel alike, the same agents share one network and the figure is **0**. A follower reads the
+field and never writes it; in the running demo 97 % of the followers stand on amber-dominant pixels,
+which cover 42 % of the field.
+
+Two more settings. `depositInto[s]` is what one agent of species `s` adds to each channel, so one
+species can lay another's scent: with `vec(0.5f, 1f, 0f, 0f)` for species 1, the cyan agents mark the
+amber channel too, and an amber row of `vec(1f, -2f, 0f, 0f)` makes the amber species flee them.
+`exclusive = true` is Jones' one-agent-per-cell rule on the GPU. A step into a pixel another agent
+holds this frame is refused, and the agent turns to a random heading. At Jones' density of about
+15 %, it turns the roads into a branching cellular net.
+
+On the page's own experiment, 6000 agents in a disc on 256 x 256 for 400 steps, the GPU with exclusion
+gives `topShare(0.05)` = **0.546** and the CPU gives 0.484. The blind controls give 0.222 and 0.185.
+Without exclusion both collapse, to 0.998 and 1.000.
+
+??? aside "Where the multi-species numbers come from"
+    `alife.physarum-gpu.smoke` (`PhysarumGpuSmoke.kt`) runs every figure above on a real renderer and
+    reads the trail back with `TrailField.read()`. Segregation is measured on 250,000 agents on 512 x 512.
+    It is the share of pixels holding more than half the mean trail where one channel holds 80 % of it.
+    The GPU exclusion is approximate: claims race within a frame, and an agent holds its old pixel for
+    the frame it leaves it. The CPU frees a cell as soon as its agent moves. That is the likeliest
+    reason the GPU's figure sits above the CPU's. The follower figure comes from a probe in the
+    `gpu_stigmergy` demo transcript, `dev_docs/agents/transcripts/gpu_stigmergy.yaml`, whose chase box
+    sets the deposit and attraction matrices while it runs.
+
 ## 8. Diffusion-limited aggregation
 
 Diffusion-limited aggregation: a seed at the centre, then particles released far away that random-walk

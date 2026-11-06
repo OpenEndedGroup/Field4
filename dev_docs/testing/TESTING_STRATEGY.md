@@ -494,7 +494,10 @@ not just that the `code` string round-trips — `OperationTranscriptMacroSmokeTe
 only *applies* ops and diffs `code`, which is how `fn_differentiable_fit_demo`
 shipped with two compile errors on 2026-07-18. When you add a transcript, add its
 name to `EXECUTE` or `COMPILE_ONLY` in that harness (see the transcript README's
-"Verified in CI" section).
+"Verified in CI" section). `uv run python tools/check_transcript_registration.py`
+(Gradle `checkTranscriptRegistration`, a landing guard and a precheck check)
+names every register a new top-level transcript is missing from in under a
+second, without the JVM; see `dev_docs/testing/LANDING_ASSET_GUARDS.md`.
 
 ### 8. Offline Viewer and Asset Ownership
 
@@ -515,6 +518,13 @@ uv run python tools/check_offline_assets.py --target dist/offline-viewer
 Do not synchronize generated copies into `public/` or `dev_docs/`; the checker
 explicitly rejects those paths if they become tracked. The docs build emits its
 own site-local copy under `public/field4/`.
+
+Committed docs figures and videos also have a size budget (PNG 2 MiB and
+3840x2160, video 4 MiB), with today's offenders in
+`dev_docs/testing/doc_asset_budget_exceptions.json`:
+`uv run python tools/check_doc_assets.py --budget-only` (Gradle
+`checkDocAssetBudget`). Shrink a capture with `max-width=` on its fence; see
+`dev_docs/testing/LANDING_ASSET_GUARDS.md`.
 
 ### 9. Specialized Manual References
 

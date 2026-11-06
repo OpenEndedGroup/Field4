@@ -112,6 +112,26 @@ class SelectionTest(unittest.TestCase):
         self.assertNotIn("demo-corpus", keys(Change({"dev_docs/agents/transcripts/x.yaml": "A"})))
         self.assertIn("transcript-index", keys(Change({"dev_docs/agents/transcripts/x.yaml": "A"})))
 
+    def test_a_new_transcript_selects_the_registration_check(self) -> None:
+        # 2026-11-05, gpu_physarum: the branch added the yaml and nothing else (positive control).
+        change = Change({"dev_docs/agents/transcripts/gpu_physarum.yaml": "A",
+                         "dev_docs/agents/transcripts/gpu_physarum/physarum_slime_code_.kt": "A"})
+        selected = dict((check.key, why) for check, why in precheck.select(change))
+        self.assertEqual(["dev_docs/agents/transcripts/gpu_physarum.yaml"], selected["transcript-registration"])
+        check = next(c for c in precheck.CHECKS if c.key == "transcript-registration")
+        self.assertEqual(("tools/check_transcript_registration.py",), check.python)
+        # Negative control: a docs_capture variant is not a starting point.
+        self.assertNotIn("transcript-registration",
+                         keys(Change({"dev_docs/agents/transcripts/docs_capture/x.yaml": "A"})))
+
+    def test_a_docs_figure_selects_the_asset_budget(self) -> None:
+        # 6291b6ff9: public/docs/assets/alife_examples/physarum-gpu.png at 2.6 MB.
+        figure = "public/docs/assets/alife_examples/physarum-gpu.png"
+        selected = dict((check.key, why) for check, why in precheck.select(Change({figure: "A"})))
+        self.assertEqual([figure], selected["doc-asset-budget"])
+        self.assertIn("doc-asset-budget", keys(Change({"public/docs/assets/x/clip.mp4": "M"})))
+        self.assertNotIn("doc-asset-budget", keys(Change({"public/docs/alife_examples.md": "M"})))
+
     def test_a_docs_document_sidecar_selects_the_inline_copy_guard(self) -> None:
         sidecar = "public/docs/assets/canonical_graphics/0e01f4b0_code_.kt"
         self.assertIn("saved-document-inlines", keys(Change({sidecar: "M"})))

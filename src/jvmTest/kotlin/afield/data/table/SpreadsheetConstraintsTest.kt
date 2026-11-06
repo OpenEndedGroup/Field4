@@ -4,6 +4,8 @@ import afield.app.server.SessionInformation
 import afield.app.server.documents
 import afield.app.server.thisSessionInfo
 import afield.document.graph.Box
+import afield.math.optimization.ceres.CeresNativeLibrary
+import afield.math.optimization.ceres.FfmCeresBackend
 import kotlin.math.abs
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -34,6 +36,17 @@ class SpreadsheetConstraintsTest {
             it.inside = session
             session.boxes[it.id] = it
             session.root.children.add(it)
+        }
+        // The UI keeps a solver failure in the sheet's status instead of throwing. Without this
+        // preflight a missing native library looks like nine unrelated arithmetic regressions.
+        try {
+            FfmCeresBackend()
+        } catch (failure: Throwable) {
+            throw AssertionError(
+                "Spreadsheet constraint tests require a working Ceres library at ${CeresNativeLibrary.defaultPath}. " +
+                    "Run ${CeresNativeLibrary.HOW_TO_BUILD} before this suite.",
+                failure,
+            )
         }
     }
 
