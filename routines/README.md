@@ -88,7 +88,10 @@ slot is not verified by discovering its prompt.
 A dated external report proves an attempt on that day, including an explicit skip; it does not
 prove scheduler timing or successful certification. A dated report cannot establish a particular
 hourly slot. Completed older runner logs with a start time and exit line are checked against the
-specific slot. The runner records start/completion timestamps and exit status, and an OS lock
+specific slot. Journal run reports are named `YYYY-MM-DD.md` (with an optional same-day letter);
+dated audits and archives do not count as runs. A routine whose only evidence is a commit on
+`main` has unknown health when there is no new commit: it might have run with no changes.
+The runner records start/completion timestamps and exit status, and an OS lock
 separates a live runner from an interrupted attempt. Unfinished logs alone never establish success.
 
 `python3 tools/routines.py run nightly-ci --catch-up` explicitly runs only the latest missing
