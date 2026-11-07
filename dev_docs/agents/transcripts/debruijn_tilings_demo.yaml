@@ -30,7 +30,8 @@ operations:
         code: |
           // The same construction at four symmetries, one with its grid lines jittered.
           val panel = { title: String, t: DeBruijnTiling ->
-              val counts = t.typeCounts().entries.joinToString("  ") { (type, n) -> "%.1f°: %d".format(type * 180.0 / t.symmetry, n) }
+              val counts =
+                  t.typeCounts().entries.joinToString("  ") { (type, n) -> "%.1f°: %d".format(type * 180.0 / t.symmetry, n) }
               "$title\n$counts" to t.lines()
           }
 
@@ -105,9 +106,11 @@ operations:
       frame: { x: 700.0, y: 1440.0, w: 400.0, h: 100.0 }
       properties:
         code: |
-          // Slide every line of family 0 through one full spacing over six seconds. Most tiles hold still;
-          // small groups flip as each line passes a crossing. At offset +1 the lines are back where they
-          // started, relabelled, so the loop has no seam. The red ribbon is line 0 of family 0.
+          /*
+          Slide every line of family 0 through one full spacing over six seconds. Most tiles hold still;
+          small groups flip as each line passes a crossing. At offset +1 the lines are back where they
+          started, relabelled, so the loop has no seam. The red ribbon is line 0 of family 0.
+          */
           val base = defaultDeBruijnOffsets(5)
           val line = DeBruijnLine(family = 0, index = 0)
           val window = Rect(-190.0, -190.0, 380.0, 380.0)
@@ -136,24 +139,31 @@ operations:
         code: |
           import afield.geometry.solid.manifold.*
 
-          // A Penrose relief: every rhombus inset by 0.6 and extruded, thin ones taller than thick ones,
-          // then all unioned into one closed solid. Each tile's outline is a closed FLine, so it goes
-          // straight into a Manifold Section.
+          /*
+          A Penrose relief: every rhombus inset by 0.6 and extruded, thin ones taller than thick ones,
+          then all unioned into one closed solid. Each tile's outline is a closed FLine, so it goes
+          straight into a Manifold Section.
+          */
           val tiling = deBruijnTiling(symmetry = 5, radius = 3.5, scale = 10.0)
           val relief = Solid.scope {
-              val prisms = tiling.tiles.map { tile ->
-                  Section.ofFLines([tile.outline()], sampleDistance = 10.0)
-                      .offset(-0.6, JoinType.MITER)
-                      .extruded(if (tile.type == 1) 6.0 else 3.0)
-              }
-              val base = Section.ofFLines(tiling.tiles.map { it.outline() }, sampleDistance = 10.0).offset(0.5, JoinType.MITER).extruded(1.5)
+              val prisms =
+                  tiling.tiles.map { tile ->
+                      Section.ofFLines([tile.outline()], sampleDistance = 10.0)
+                          .offset(-0.6, JoinType.MITER)
+                          .extruded(if (tile.type == 1) 6.0 else 3.0)
+                  }
+              val base =
+                  Section.ofFLines(tiling.tiles.map { it.outline() }, sampleDistance = 10.0)
+                      .offset(0.5, JoinType.MITER)
+                      .extruded(1.5)
               Solid.union(prisms + base)
           }
           val mesh = relief.toTriMesh()
           showMesh(
               mesh,
               title = "Penrose relief, ${tiling.tiles.size} rhombi",
-              caption = "thin 36° tiles 6 high, thick 72° tiles 3 high · genus ${relief.genus} · volume %.0f".format(relief.volume),
+              caption =
+                  "thin 36° tiles 6 high, thick 72° tiles 3 high · genus ${relief.genus} · volume %.0f".format(relief.volume),
               view = MeshView(yawDegrees = 20.0, pitchDegrees = 50.0, width = 760, height = 520),
           )
   - execute:

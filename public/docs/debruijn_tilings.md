@@ -43,13 +43,20 @@ val t = deBruijnTiling(symmetry = 5, radius = 3.0, scale = 20.0)
 val picked = t.tiles.minBy { it.crossing.length() }
 val grid = t.gridLines(scale = 60.0, thickness = 1.2, highlight = setOf(picked.first, picked.second))
 val orange = vec(1.0, 0.35, 0.2, 1.0)
-val tiles = t.lines(palette = [vec(0.30, 0.30, 0.36, 1.0)]) + picked.outline().apply {
-    color = orange
-    filled = true
-}
+val tiles =
+    t.lines(palette = [vec(0.30, 0.30, 0.36, 1.0)]) +
+        picked.outline().apply {
+            color = orange
+            filled = true
+        }
 // Grid on the left, tiling to its right.
 val shift = 60.0 * 3.0 + 100.0 + 20.0 * 5.0
-lines(grid + tiles.map { it.copy().apply { transform { v -> v.add(shift.toFloat(), 0f, 0f) } } }, w = 680.0, h = 340.0, fitToSize = true)
+lines(
+    grid + tiles.map { it.copy().apply { transform { v -> v.add(shift.toFloat(), 0f, 0f) } } },
+    w = 680.0,
+    h = 340.0,
+    fitToSize = true,
+)
 "crossing of ${picked.first} and ${picked.second} -> a type-${picked.type} rhombus (${picked.acuteDegrees(5).toInt()} degrees)"
 ```
 
@@ -78,7 +85,8 @@ kind from a palette, which you can replace.
 ```diffstatic_runner {data-lang=kotlin embed=true screenshot="assets/debruijn_tilings/gallery.png" wait="2.0" capture="box" open-outputs="true" w="760" padding="14"}
 // The same construction at four symmetries, one with its grid lines jittered.
 val panel = { title: String, t: DeBruijnTiling ->
-    val counts = t.typeCounts().entries.joinToString("  ") { (type, n) -> "%.1f°: %d".format(type * 180.0 / t.symmetry, n) }
+    val counts =
+        t.typeCounts().entries.joinToString("  ") { (type, n) -> "%.1f°: %d".format(type * 180.0 / t.symmetry, n) }
     "$title\n$counts" to t.lines()
 }
 
@@ -165,9 +173,11 @@ slide through one full spacing. `recenter = false` keeps unchanged tiles exactly
 so only the flips move. Line 0's ribbon, in red, is carried across with its line.
 
 ```diffstatic_runner {data-lang=kotlin video="assets/debruijn_tilings/offset_sweep.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="6" fps="20" timeout="240" w="760" embed=true name="debruijn-offset-sweep" alt="a Penrose tiling of yellow thin and blue thick rhombi with one red ribbon of tiles running top to bottom; as the caption's offset rises from 0 to 1, small groups of tiles flip while the rest hold still"}
-// Slide every line of family 0 through one full spacing over six seconds. Most tiles hold still;
-// small groups flip as each line passes a crossing. At offset +1 the lines are back where they
-// started, relabelled, so the loop has no seam. The red ribbon is line 0 of family 0.
+/*
+Slide every line of family 0 through one full spacing over six seconds. Most tiles hold still;
+small groups flip as each line passes a crossing. At offset +1 the lines are back where they
+started, relabelled, so the loop has no seam. The red ribbon is line 0 of family 0.
+*/
 val base = defaultDeBruijnOffsets(5)
 val line = DeBruijnLine(family = 0, index = 0)
 val window = Rect(-190.0, -190.0, 380.0, 380.0)
@@ -199,24 +209,31 @@ base into one closed solid, ready for `saveStl`. See [Solids & Booleans](manifol
 ```diffstatic_runner {data-lang=kotlin embed=true screenshot="assets/debruijn_tilings/relief.png" wait="4" capture="box" open-outputs="true" padding="20" requires="manifold" w="760" name="debruijn-relief"}
 import afield.geometry.solid.manifold.*
 
-// A Penrose relief: every rhombus inset by 0.6 and extruded, thin ones taller than thick ones,
-// then all unioned into one closed solid. Each tile's outline is a closed FLine, so it goes
-// straight into a Manifold Section.
+/*
+A Penrose relief: every rhombus inset by 0.6 and extruded, thin ones taller than thick ones,
+then all unioned into one closed solid. Each tile's outline is a closed FLine, so it goes
+straight into a Manifold Section.
+*/
 val tiling = deBruijnTiling(symmetry = 5, radius = 3.5, scale = 10.0)
 val relief = Solid.scope {
-    val prisms = tiling.tiles.map { tile ->
-        Section.ofFLines([tile.outline()], sampleDistance = 10.0)
-            .offset(-0.6, JoinType.MITER)
-            .extruded(if (tile.type == 1) 6.0 else 3.0)
-    }
-    val base = Section.ofFLines(tiling.tiles.map { it.outline() }, sampleDistance = 10.0).offset(0.5, JoinType.MITER).extruded(1.5)
+    val prisms =
+        tiling.tiles.map { tile ->
+            Section.ofFLines([tile.outline()], sampleDistance = 10.0)
+                .offset(-0.6, JoinType.MITER)
+                .extruded(if (tile.type == 1) 6.0 else 3.0)
+        }
+    val base =
+        Section.ofFLines(tiling.tiles.map { it.outline() }, sampleDistance = 10.0)
+            .offset(0.5, JoinType.MITER)
+            .extruded(1.5)
     Solid.union(prisms + base)
 }
 val mesh = relief.toTriMesh()
 showMesh(
     mesh,
     title = "Penrose relief, ${tiling.tiles.size} rhombi",
-    caption = "thin 36° tiles 6 high, thick 72° tiles 3 high · genus ${relief.genus} · volume %.0f".format(relief.volume),
+    caption =
+        "thin 36° tiles 6 high, thick 72° tiles 3 high · genus ${relief.genus} · volume %.0f".format(relief.volume),
     view = MeshView(yawDegrees = 20.0, pitchDegrees = 50.0, width = 760, height = 520),
 )
 ```
