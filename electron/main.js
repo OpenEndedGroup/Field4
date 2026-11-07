@@ -691,6 +691,36 @@ function clampZoomLevel(level) {
   return Math.min(MAX_ZOOM_LEVEL, Math.max(MIN_ZOOM_LEVEL, level));
 }
 
+// Electron shows no context menu of its own, so without this a text field underlines a misspelling and
+// offers no way to fix it. Only editable fields get one: the canvas, Monaco and the drawing layer handle
+// their own right-clicks (they preventDefault, and then this event never fires).
+function installEditableContextMenu(webContents) {
+  webContents.on("context-menu", (_event, params) => {
+    if (!params.isEditable) return;
+    const template = [];
+    const word = params.misspelledWord;
+    if (word) {
+      const guesses = (params.dictionarySuggestions || []).slice(0, 6);
+      if (guesses.length === 0) template.push({ label: "No Guesses Found", enabled: false });
+      guesses.forEach((guess) => template.push({ label: guess, click: () => webContents.replaceMisspelling(guess) }));
+      template.push(
+        { type: "separator" },
+        { label: `Learn Spelling of "${word}"`, click: () => webContents.session.addWordToSpellCheckerDictionary(word) },
+        { type: "separator" },
+      );
+    }
+    const flags = params.editFlags || {};
+    template.push(
+      { role: "cut", enabled: !!flags.canCut },
+      { role: "copy", enabled: !!flags.canCopy },
+      { role: "paste", enabled: !!flags.canPaste },
+      { type: "separator" },
+      { role: "selectAll", enabled: !!flags.canSelectAll },
+    );
+    Menu.buildFromTemplate(template).popup();
+  });
+}
+
 function installPageShortcuts(webContents) {
   if (process.platform === "darwin") return;
   webContents.on("before-input-event", (event, input) => {
@@ -1150,6 +1180,7 @@ function createMainWindow() {
     setViewBackground(tab.view, colorForUrl(normalizedUrl));
     installPageBackgroundGuard(tab);
     installPageShortcuts(tab.view.webContents);
+    installEditableContextMenu(tab.view.webContents);
 
     const updateTitle = (url = contentsUrl(tab)) => {
       tab.url = url || tab.url;

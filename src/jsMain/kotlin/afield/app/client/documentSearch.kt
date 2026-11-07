@@ -84,6 +84,9 @@ private fun ensureSearchWidget() {
     if (searchContainer != null) return
     val container = document.createElement("div") as HTMLDivElement
     container.id = searchWidgetId
+    // Hidden by field.css too, but isSearchVisible() reads the inline style: left at "", it said the bar was
+    // open from page load until search was first closed, and the window-level handler took every Escape.
+    container.style.display = "none"
 
     val input = document.createElement("input") as HTMLInputElement
     input.placeholder = "Search boxes"
