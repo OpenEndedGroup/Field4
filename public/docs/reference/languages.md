@@ -7362,7 +7362,7 @@ Two tools a document can hand to its AI4 agents: one syntax-checks a RectSL prog
 renders it in the document's live Field 4 window and returns the captured frames to the
 conversation.
 
-Both are built with [`aiTool`](machine-learning.md#boxaitools-kt--aitool). A box registers the pair once in its `code`, and running that
+Both are built with [`aiTool`](ai4.md#boxaitools-kt--aitool). A box registers the pair once in its `code`, and running that
 again replaces them:
 ```diffstatic {data-lang=kotlin}
 registerRectslStudioTools()
@@ -7657,7 +7657,7 @@ A study's frames from the GPU: the scene drawn by a real Field 4 graphics module
 The tools an AI4 conversation gets when it is opened on a RectSL scene's `rectSL` property.
 
 Each works on the focused box's own study (see [`RectSLPrograms`](languages.md#rectslprograms-kt-rectslprograms)), so nothing here is per
-document. A document can still add tools of its own from a box: [`AgentToolExtensions.register`](machine-learning.md#agenttoolextensions-kt--agenttoolextensions--register)
+document. A document can still add tools of its own from a box: [`AgentToolExtensions.register`](ai4.md#agenttoolextensions-kt--agenttoolextensions--register)
 with its document as the scope.
 
 `src/jvmMain/kotlin/afield/lang/rectsl/study/RectSLStudyTools.kt` — [read the source](source/jvmMain/afield/lang/rectsl/study/RectSLStudyTools/)
@@ -10330,7 +10330,7 @@ A colour literal's red, green and blue knobs, and its colour as linear light: se
 The tools an AI4 conversation gets when it is opened on a StackSL program's `stackSL` property.
 
 Each works on the focused box's own study (see [`StackSLPrograms`](languages.md#stackslprograms-kt-stackslprograms)), so nothing here is per
-document. A document can still add tools of its own from a box: [`AgentToolExtensions.register`](machine-learning.md#agenttoolextensions-kt--agenttoolextensions--register)
+document. A document can still add tools of its own from a box: [`AgentToolExtensions.register`](ai4.md#agenttoolextensions-kt--agenttoolextensions--register)
 with its document as the scope.
 
 `src/jvmMain/kotlin/afield/lang/stacksl/study/StackSLStudyTools.kt` — [read the source](source/jvmMain/afield/lang/stacksl/study/StackSLStudyTools/)
