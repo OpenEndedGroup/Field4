@@ -28,6 +28,10 @@ import java.time.format.DateTimeFormatter
  * - `memory`: the scenario's sessions share one memory folder ([UserMemory]), fresh for the scenario.
  * - `dream`: as `memory`, with a dream pass ([Dreaming]) between sessions over the sessions so far.
  *
+ * In the memory arms the history tools search the arm's recorded sessions, as they would search a workspace's
+ * earlier chats; before 2026-11-07's `missed-correction` they searched only the session's empty scratch
+ * workspace, so the first live runs' sessions could not look back.
+ *
  * A dream pass reads saved chats, and a headless task saves none, so after each session the runner records it
  * as a chat in the arm's own history workspace ([recordSession]): each request the person made, the tool
  * calls that turn made (name, outcome, arguments), and AI4's reply. That record is written by this harness
@@ -41,13 +45,51 @@ import java.time.format.DateTimeFormatter
  */
 object MemoryEval {
 
-    /** One session: what the person asks, what they add afterwards in the same conversation, and the checks. */
-    data class Session(val goal: String, val followUps: List<String> = emptyList(), val checks: List<String> = emptyList())
+    /**
+     * One session: what the person asks, what they add afterwards in the same conversation, and the checks.
+     * [memory] false runs it without memory tools in every arm, as a chat where memory was unavailable; it is
+     * still recorded, so a dream pass and the history tools can read it.
+     */
+    data class Session(val goal: String, val followUps: List<String> = emptyList(), val checks: List<String> = emptyList(),
+                       val memory: Boolean = true)
 
-    /** A scenario: [sessions] in order, the last one scored. [teaches] says what the earlier sessions carry. */
-    data class Scenario(val id: String, val teaches: String, val sessions: List<Session>)
+    /** A note the memory arms start with: something an earlier session (not run here) is supposed to have written. */
+    data class SeedNote(val name: String, val description: String, val body: String, val kind: String = "person", val status: String = "verified")
+
+    /**
+     * A scenario: [sessions] in order, the last one scored. [teaches] says what the earlier sessions carry. [seed]
+     * notes are written into the memory folder before the first session, in the arms that have one.
+     */
+    data class Scenario(val id: String, val teaches: String, val sessions: List<Session>, val seed: List<SeedNote> = emptyList())
 
     val ARMS = listOf("none", "memory", "dream")
+
+    /**
+     * Withheld from every session: the corpus's sealed set (workspace, symbol and semantic search, Kotlin evaluation
+     * in the server, code-use) and the repository tools. The scenarios' own text is in this checkout, in this file, so
+     * a session that can search the repository can find the answer there: on the first `missed-correction` run the
+     * no-memory arm did, with `RepoSearchRequest` for "gizmos", and passed both repeats.
+     */
+    val WITHHELD: List<String> = AgentEvalCorpus.SEALED_TOOLS + listOf(
+        "RepoReadFileRequest", "RepoListFilesRequest", "RepoSearchRequest", "RepoPatchFileRequest", "RepoWriteFileRequest",
+        "RepoRunCommandRequest", "RepoStartCommandRequest", "RepoCommandStatusRequest", "RepoStopCommandRequest",
+    )
+
+    /** Tools whose results may hold earlier sessions' words legitimately: reading memory and the recorded sessions is the point. */
+    private fun recallsLegitimately(tool: String) = tool.startsWith("Memory") || tool.startsWith("History")
+
+    /**
+     * The tool through which a session saw what an earlier session said, other than memory and history, or null.
+     * Withholding is not proof (box code can read files), so every scored session is checked afterwards.
+     */
+    fun leak(earlier: List<Session>, result: AgentTaskResult): String? {
+        val phrases = earlier.flatMap { listOf(it.goal) + it.followUps }
+            .flatMap { it.split(Regex("(?<=[.!?])\\s+")) }.map { it.trim() }.filter { it.length >= 20 }
+        if (phrases.isEmpty()) return null
+        return result.toolCalls.firstOrNull { c ->
+            !recallsLegitimately(c.tool) && c.result.replace("\\\"", "\"").let { r -> phrases.any { it in r } }
+        }?.tool
+    }
     const val MAX_LIVE_SESSIONS = 40
 
     val scenarios: List<Scenario> = listOf(
@@ -79,6 +121,15 @@ object MemoryEval {
                 checks = listOf("output-contains:Invoice:15")),
             Session("Make a box named Restock that prints the cost of 10 gadgets.", checks = listOf("output-contains:Restock:50")),
         )),
+        // What only a dream should fix. The memory starts with a note that was true once; the session that changes
+        // it has no memory tools, so nothing writes the change down. Only re-reading that session's transcript, a
+        // dream pass or the history tools, can bring the new price into the last session.
+        Scenario("missed-correction", "a change stated in a session that had no memory tools, contradicting a note", listOf(
+            Session("Gizmos went up to 3.60 each. Make a box named Receipt that prints the cost of 4 gizmos.",
+                checks = listOf("output-contains:Receipt:14.4"), memory = false),
+            Session("Make a box named Restock that prints the cost of 10 gizmos.", checks = listOf("output-contains:Restock:36")),
+        ), seed = listOf(SeedNote("shop-gizmo-price", "Gizmos in the person's shop cost 3.00 each",
+            "The person sells gizmos at 3.00 each. Use that price for gizmo quotes unless they change it."))),
         Scenario("control", "nothing the last session needs", listOf(
             Session("Make a box named Hello that prints hello.", listOf("Thanks. For what it's worth, I like short replies."),
                 listOf("output-contains:Hello:hello")),
@@ -152,15 +203,21 @@ object MemoryEval {
             val runDir = File(root, "$arm/${scenario.id}-r$r")
             val memoryDir = File(runDir, "memory")
             val history = File(runDir, "history")
+            if (arm != "none") for (n in scenario.seed)
+                UserMemory.at(memoryDir).write(n.name, n.description, n.body, n.kind, n.status, emptyList(), "", reason = "seeded by the memory eval")
             scenario.sessions.forEachIndexed { k, s ->
                 val task = AgentTaskRequest(
                     goal = s.goal, followUps = s.followUps, checks = s.checks.map(AgentCheck::parse),
                     mode = request.mode, model = request.model, maxToolRounds = request.maxToolRounds,
-                    memory = if (arm == "none") "off" else memoryDir.path,
+                    memory = if (arm == "none" || !s.memory) "off" else memoryDir.path,
+                    history = if (arm == "none") "" else history.path,
                     taskId = "${arm}-${scenario.id}-r$r-s${k + 1}",
                     allowRemote = request.allowRemote,
+                    withhold = WITHHELD,
                 )
-                val result = runTask(task)
+                val ran = runTask(task)
+                val leakedVia = if (k == scenario.sessions.lastIndex) leak(scenario.sessions.take(k), ran) else null
+                val result = if (leakedVia != null && ran.verdict == "pass") ran.copy(verdict = "leaked") else ran
                 recordSession(history, "${scenario.id}-s${k + 1}", task, result, clock())
                 val memoryCalls = result.toolCalls.filter { it.tool.startsWith("Memory") || it.tool.startsWith("History") }
                     .groupingBy { it.tool }.eachCount()
@@ -170,7 +227,7 @@ object MemoryEval {
                     checks = result.checks.map { (if (it.passed) "PASS " else "FAIL ") + it.detail.take(200) },
                     memoryCalls = memoryCalls,
                     notesAfter = if (arm == "none") emptyList() else UserMemory.at(memoryDir).notes().map { it.name },
-                    reply = result.finalText.take(600), rounds = result.rounds, error = result.error,
+                    reply = result.finalText.take(600), rounds = result.rounds, error = result.error, leakedVia = leakedVia.orEmpty(),
                     inputTokens = result.inputTokens, outputTokens = result.outputTokens,
                 )
                 if (arm == "dream" && k < scenario.sessions.lastIndex) {
@@ -219,6 +276,8 @@ data class MemoryEvalSession(
     /** The notes in the arm's memory folder after this session (and before any dream). */
     val notesAfter: List<String>,
     val reply: String, val rounds: Int, val error: String = "",
+    /** Set on a scored session whose tool results held an earlier session's words outside memory and history; a pass is then `leaked`. */
+    val leakedVia: String = "",
     val inputTokens: Long? = null, val outputTokens: Long? = null,
 )
 
