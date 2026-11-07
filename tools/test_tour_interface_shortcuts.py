@@ -29,7 +29,7 @@ def cell_keys(cell: str) -> list[str]:
     keys = re.findall(r"`([^`]+)`", cell)
     modifiers = {"⌘": "cmd", "cmd": "cmd", "command": "cmd", "^": "cmd",
                  "ctrl": "cmd", "control": "cmd", "⇧": "shift", "⌥": "alt"}
-    for alternative in cell.split("/"):
+    for alternative in re.split(r"\s+/\s+", cell):
         caps = re.findall(r"<kbd(?:\s[^>]*)?>(.*?)</kbd>", alternative, flags=re.IGNORECASE)
         if not caps:
             continue
