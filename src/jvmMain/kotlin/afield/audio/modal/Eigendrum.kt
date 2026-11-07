@@ -11,6 +11,7 @@
  */
 package afield.audio.modal
 
+import afield.audio.engine.WavFloatArrayWriter
 import afield.geometry.path.FLine
 import afield.graphics.render.color
 import afield.graphics.render.filled
@@ -190,6 +191,24 @@ class DrumModes(
         return out
     }
 
+    /**
+     * An HTML table of the modes, one row each: index, λ, ratio to the fundamental, frequency, and
+     * an audio player that sounds that mode alone. Pass it to `display(...)`.
+     */
+    @JvmOverloads
+    fun modeListHtml(fundamental: Double = 110.0, seconds: Double = 1.5, sampleRate: Int = 22050): String {
+        val f = frequencies(fundamental)
+        val sb = StringBuilder("<table style='font:12px monospace;color:#ddd;border-collapse:collapse'>")
+        sb.append("<tr><th>mode</th><th>λ</th><th>ratio</th><th>Hz</th><th></th></tr>")
+        for (k in 0 until count) {
+            val wav = WavFloatArrayWriter.encodeMono16(render(DoubleArray(count), fundamental, seconds, sampleRate, only = k), sampleRate)
+            val b64 = java.util.Base64.getEncoder().encodeToString(wav)
+            sb.append("<tr><td>${k + 1}</td><td>${"%.3f".format(lambda[k])}</td><td>${"%.3f".format(f[k] / fundamental)}</td>")
+            sb.append("<td>${"%.1f".format(f[k])}</td><td><audio controls preload='none' style='height:24px' src='data:audio/wav;base64,$b64'></audio></td></tr>")
+        }
+        return sb.append("</table>").toString()
+    }
+
     /** The nodal lines (φ = 0) of mode [mode] as one FLine of segments. */
     fun nodalLines(mode: Int): FLine {
         val m = mesh; val s = shapes[mode]; val f = FLine()
@@ -296,6 +315,28 @@ fun drumMesh(line: FLine, h: Double): DrumMesh {
         pts += p.x.toDouble(); pts += p.y.toDouble()
     }
     return drumMesh(pts.toDoubleArray(), h)
+}
+
+/**
+ * Triangulate the inside of a closed [line] drawn at any size (a drawing-layer stroke, say),
+ * first scaled so its larger side is 1, with about [resolution] mesh cells across.
+ */
+@JvmOverloads
+fun drumMeshFitted(line: FLine, resolution: Int = 32): DrumMesh {
+    val pts = ArrayList<Double>()
+    for (n in line.nodes) {
+        val p = n.storage.lastOrNull() ?: continue
+        pts += p.x.toDouble(); pts += p.y.toDouble()
+    }
+    return drumMesh(fitPolygonToUnit(pts.toDoubleArray()), 1.0 / resolution)
+}
+
+/** Scale and translate alternating x, y coordinates so the polygon's larger side spans [0, 1]. */
+fun fitPolygonToUnit(xy: DoubleArray): DoubleArray {
+    var x0 = Double.MAX_VALUE; var y0 = Double.MAX_VALUE; var x1 = -Double.MAX_VALUE; var y1 = -Double.MAX_VALUE
+    for (i in 0 until xy.size / 2) { x0 = min(x0, xy[2 * i]); x1 = max(x1, xy[2 * i]); y0 = min(y0, xy[2 * i + 1]); y1 = max(y1, xy[2 * i + 1]) }
+    val s = 1.0 / max(x1 - x0, y1 - y0)
+    return DoubleArray(xy.size) { if (it % 2 == 0) (xy[it] - x0) * s else (xy[it] - y0) * s }
 }
 
 /** A drum bounded by the polar curve r(θ) about the origin, sampled at [samples] angles. */

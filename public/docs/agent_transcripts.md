@@ -138,6 +138,17 @@ drawing panels, one the pen hatches beside and one it fills with cracks. Pure CP
 
 [Open →](offline.html?file=assets/agent_transcripts/a_pen_that_sees/metadata.edn)
 
+### eigendrum
+
+**Draw a shape, hear it as a drum.** The starting point of [Eigendrum](eigendrum.md): the sixteen
+lowest modes of a square drum, each playable alone; a polar-equation drum and its mesh; the
+Gordon–Webb–Wolpert pair, two shapes with one spectrum; strikes on and off a nodal line; and a drum
+from your last stroke on the drawing layer. Pure CPU.
+
+![Two different seven-piece polygons outlined in yellow, each coloured orange and blue by its third mode](assets/eigendrum/kac.png)
+
+[Open →](offline.html?file=assets/agent_transcripts/eigendrum/metadata.edn)
+
 ### teaching_a_pen
 
 **Pens with other hands.** The starting point of [Teaching a pen](teaching_a_pen.md): Hershey plotter

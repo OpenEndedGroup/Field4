@@ -273,6 +273,8 @@ nav:
       - A Pattern in Space (HRTF): pat_spatial.md
       - DoughDSP Sound Examples: dough_dsp_sound.md
       - Subharmonic Synthesis: subharmonic_sound.md
+      # Modal synthesis from geometry: the modes of a drawn drum head.
+      - "Eigendrum: Hear the Shape of a Drum": eigendrum.md
       - Loris Partial Tracks and Resynthesis: loris.md
       - Sonic Pi: sonic_pi.md
       - Faust: faust.md

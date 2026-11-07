@@ -497,6 +497,9 @@ object DemoTranscriptExecSmokeTest {
         // a_pen_that_sees.md's starting point: the bundled sensing pens (PenSense) and their blind
         // twins; two drawing-panel boxes are frames {} loops. CPU only.
         "a_pen_that_sees",
+        // eigendrum.md's starting point: FEM drum modes (afield.audio.modal) drawn through lines()
+        // and played through WAV players; the drawing box falls back to a polar curve. CPU only.
+        "eigendrum",
         "fline_hit_records",
         // fline_examples.md's measuring sections: locationAt, trim/splitAt, crossings, fill rules. CPU only.
         "fline_measure",
