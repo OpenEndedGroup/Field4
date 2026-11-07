@@ -191,7 +191,33 @@ no dependency on the dust renderer.
 `stop.json` under `/tmp/text-one-transcripts`. Import them with the backdoor's `macro write`
 commands, then run the create and launch macros in the intended document. The four parses are classpath resources, so no document-side file copy is needed.
 The generator reads the StereoViews ABI and shader sources; it never edits metadata.edn directly.
-For the public starting place, `uv run --group backdoor python templates/text_one/build_transcript.py
---transcript dev_docs/agents/transcripts/text_one_vr.yaml` writes readable YAML source blocks,
-keeping Kotlin and shader properties distinct for documentation checks.
+For the public starting place, run:
+
+```bash
+uv run --group backdoor python templates/text_one/build_transcript.py --transcript dev_docs/agents/transcripts/text_one_vr.yaml
+./gradlew formatBoxCode --args="dev_docs/agents/transcripts/text_one_vr.yaml"
+```
+
+Readable YAML source blocks keep Kotlin and shader properties distinct for documentation checks.
+
+## Blur and paint
+
+The drawing, marker and Slug modules add opacity-weighted RGB and opacity into a transparent
+`R16G16B16A16_SFLOAT` two-eye target, with no depth attachment. Four separable blur passes
+produce medium and broad images at half and quarter resolution. The final compositor and
+the sharp browser surface follow on the same command buffer and current stereo views.
+
+Green is a blur-control channel. Edit each item's green value to change its response; the
+final image reconstructs green from red and blue. **Blur mix** starts at zero, and the
+selector defaults to the medium image. `blurWeights` in box 11 defines the effective LUT.
+The **Additive to weighted paint** control mixes accumulated light with opacity-normalized
+colour. Alpha sums coverage from every stroke, point and glyph, rather than being cleared
+to one or overwritten with display alpha. The paint threshold and knee set the crossover.
+
+Box 10 exposes the blur shader; box 11 exposes the compositor. Drawing's reload button
+reloads all shader pairs while preserving physics and text atlases. The settings also expose
+the fold, grading, luminance-preserving split tones, FXAA and supersample-mask parameters.
+To allocate a larger scene, stop Drawing and pass `sceneScale = 1.5f` (up to `2f`) to
+`StereoDiagramRenderer`; eye output and browser resolution stay fixed. Filtering happens in
+linear light before the final output transfer. There is no temporal image history.
 

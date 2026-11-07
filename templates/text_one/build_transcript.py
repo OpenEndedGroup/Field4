@@ -30,20 +30,22 @@ def main():
         ('text1_example3', '4 · Dependency undertow', 650, 220, {'code': (here/'example_three.kt').read_text()}),
         ('text1_example4', '5 · Sentence furniture', 650, 330, {'code': (here/'example_four.kt').read_text()}),
         ('text1_score', '6 · Scores / example selector', 1200, 0, {'code': (here/'score.kt').read_text()}),
-        ('text1_stroke', '7 · FLine strokes', 1800, 0, {'code': 'prop<Box>(strokeSource)=thisBox\n', 'vertex': shader('stroke_vertex'), 'fragment': shader('stroke_fragment')}),
-        ('text1_point', '8 · SDF markers', 1800, 110, {'code': 'prop<Box>(pointSource)=thisBox\n', 'vertex': shader('point_vertex'), 'fragment': shader('point_fragment')}),
-        ('text1_text', '9 · Slug words', 1800, 220, {'code': 'prop<Box>(textSource)=thisBox\n', 'vertex': shader('slug_vertex'), 'fragment': shader('slug_fragment')}),
-        ('text1_drawing', '10 · Drawing / score playback', 2350, 0, {'code': (here/'drawing.kt').read_text()}),
+        ('text1_stroke', '7 · FLine strokes', 1800, 0, {'code': 'prop<Box>(strokeSource) = thisBox\n', 'vertex': shader('stroke_vertex'), 'fragment': shader('stroke_fragment')}),
+        ('text1_point', '8 · SDF markers', 1800, 110, {'code': 'prop<Box>(pointSource) = thisBox\n', 'vertex': shader('point_vertex'), 'fragment': shader('point_fragment')}),
+        ('text1_text', '9 · Slug words', 1800, 220, {'code': 'prop<Box>(textSource) = thisBox\n', 'vertex': shader('slug_vertex'), 'fragment': shader('slug_fragment')}),
+        ('text1_blur', '10 · Blur cascade', 1800, 330, {'code': 'prop<Box>(blurSource) = thisBox\n', 'vertex': shader('fullscreen_vertex'), 'fragment': shader('blur_fragment')}),
+        ('text1_composite', '11 · Green / paint compositor', 1800, 440, {'code': 'prop<Box>(compositeSource) = thisBox\n', 'vertex': shader('fullscreen_vertex'), 'fragment': shader('composite_fragment')}),
+        ('text1_drawing', '12 · Drawing / score playback', 2350, 0, {'code': (here/'drawing.kt').read_text()}),
     ]
     create = [
         {'create': {'box': uid, 'name': name, 'frame': {'x': x, 'y': y, 'w': 480, 'h': 100}, 'properties': props}}
         for uid, name, x, y, props in boxes
     ]
-    for child in ['text1_poem', 'text1_example2', 'text1_example3', 'text1_example4', 'text1_stroke', 'text1_point', 'text1_text']:
+    for child in ['text1_poem', 'text1_example2', 'text1_example3', 'text1_example4', 'text1_stroke', 'text1_point', 'text1_text', 'text1_blur', 'text1_composite']:
         create.append({'connect': {'parent': 'text1_context', 'child': child}})
     for parent in ['text1_poem', 'text1_example2', 'text1_example3', 'text1_example4']:
         create.append({'connect': {'parent': parent, 'child': 'text1_score'}})
-    for parent in ['text1_poem', 'text1_score', 'text1_stroke', 'text1_point', 'text1_text']:
+    for parent in ['text1_poem', 'text1_score', 'text1_stroke', 'text1_point', 'text1_text', 'text1_blur', 'text1_composite']:
         create.append({'connect': {'parent': parent, 'child': 'text1_drawing'}})
     launch = [{'launch': {'box': uid}} for uid, *_ in boxes] + [{'await': {'wait': 'pending'}}]
     stop = [{'stop': {'box': 'text1_drawing'}}, {'stop': {'box': 'text1_context'}}]

@@ -17,6 +17,10 @@ data class DiagramShaderSet(
     val pointFragment: String = ReadingShaders.source("point_fragment"),
     val textVertex: String = ReadingShaders.source("slug_vertex"),
     val textFragment: String = ReadingShaders.source("slug_fragment"),
+    val blurVertex: String = ReadingShaders.source("fullscreen_vertex"),
+    val blurFragment: String = ReadingShaders.source("blur_fragment"),
+    val compositeVertex: String = ReadingShaders.source("fullscreen_vertex"),
+    val compositeFragment: String = ReadingShaders.source("composite_fragment"),
 )
 
 object ReadingShaders {
@@ -39,8 +43,10 @@ class StereoDiagramRenderer(
     shaders: DiagramShaderSet = DiagramShaderSet(),
     val maxSegments: Int = 8192,
     val maxPoints: Int = 1024,
+    sceneScale: Float = 1f,
 ) : AutoCloseable {
     private val ownedTarget = stereo.layered
+    val compositor = DiagramCompositor(renderer, stereo, shaders, sceneScale)
     private val segments =
         defaultBuffer(name = "reading-segments") {
                 size = maxSegments.toLong() * 128
@@ -63,6 +69,7 @@ class StereoDiagramRenderer(
                 parameters(renderer) {
                     this.name = name
                     stereo.configure(this)
+                    +compositor.sharp
                     this.vertex = vertex
                     this.fragment = fragment
                     primitiveType = triangles
@@ -70,9 +77,9 @@ class StereoDiagramRenderer(
                     depthWrite = false
                     blend = true
                     srcColor = VK_BLEND_FACTOR_SRC_ALPHA
-                    dstColor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA
+                    dstColor = VK_BLEND_FACTOR_ONE
                     srcAlpha = VK_BLEND_FACTOR_ONE
-                    dstAlpha = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA
+                    dstAlpha = VK_BLEND_FACTOR_ONE
                 },
             )
             .pointer()
@@ -113,15 +120,16 @@ class StereoDiagramRenderer(
             mesh.resize(0, 0)
             mesh.push["model"] = Matrix4f()
             mesh.push["slugData"] = slugData.values.first()
-            mesh.push["viewport"] = Vector2f(stereo.eyeWidth.toFloat(), stereo.eyeHeight.toFloat())
+            mesh.push["viewport"] = Vector2f(compositor.sharp.width.toFloat(), compositor.sharp.height.toFloat())
             mesh.push["tint"] = Vector4f(0f)
             textModule += "word-$i" to mesh
         }
         val overlays = LinkedHashMap(ownedTarget.modules)
         ownedTarget.modules.clear()
-        ownedTarget += "reading-strokes" to strokeModule
-        ownedTarget += "reading-markers" to pointModule
-        ownedTarget += "reading-slug" to textModule
+        compositor.sharp += "reading-strokes" to strokeModule
+        compositor.sharp += "reading-markers" to pointModule
+        compositor.sharp += "reading-slug" to textModule
+        ownedTarget += "reading-composite" to compositor.module
         ownedTarget.modules.putAll(overlays) // Field's browser stays sharp and above the scene.
         strokeModule.current.before["reading-frame"] = Target { _, _ -> updateFrame() }
         strokeMesh.resize(0, 0)
@@ -149,8 +157,8 @@ class StereoDiagramRenderer(
 
     private fun viewportOptions() =
         Vector4f(
-            stereo.eyeWidth.toFloat(),
-            stereo.eyeHeight.toFloat(),
+            compositor.sharp.width.toFloat(),
+            compositor.sharp.height.toFloat(),
             minimumStrokePixels,
             minimumPointPixels,
         )
@@ -213,7 +221,7 @@ class StereoDiagramRenderer(
             mesh.push["model"] =
                 Matrix4f(model).translate(word.position).rotateZ(word.rotation).scale(word.scale)
             mesh.push["slugData"] = slugData.getValue(word.shape.text)
-            mesh.push["viewport"] = Vector2f(stereo.eyeWidth.toFloat(), stereo.eyeHeight.toFloat())
+            mesh.push["viewport"] = Vector2f(compositor.sharp.width.toFloat(), compositor.sharp.height.toFloat())
             mesh.push["tint"] = Vector4f(labelColor).mul(word.color).apply { w *= word.opacity }
         }
         frameCount++
@@ -234,14 +242,15 @@ class StereoDiagramRenderer(
         reload(strokeModule, shaders.strokeVertex, shaders.strokeFragment)
         reload(pointModule, shaders.pointVertex, shaders.pointFragment)
         reload(textModule, shaders.textVertex, shaders.textFragment)
+        compositor.reload(shaders)
     }
 
     override fun close() {
         if (closed) return
         closed = true
-        ownedTarget.modules.remove("reading-strokes", strokeModule)
-        ownedTarget.modules.remove("reading-markers", pointModule)
-        ownedTarget.modules.remove("reading-slug", textModule)
+        ownedTarget.modules.remove("reading-composite", compositor.module)
+        compositor.sharp.modules.clear()
+        compositor.close()
         strokeModule.current.before.remove("reading-frame")
         slugData.values.forEach { it.close() }
         // Use Field's retirement queue: previous frames may still be reading these resources.

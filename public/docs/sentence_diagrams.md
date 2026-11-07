@@ -199,6 +199,17 @@ runtime/headset, a fresh Field process with the Reading space box's `headsetMode
 `true`, and the Slug helper (`./gradlew buildSlugNative`). VR mode includes a movable browser
 surface for editing the document.
 
+The drawing first accumulates into a transparent, two-eye float texture. Half- and
+quarter-resolution blur stages feed the **Green / paint compositor**. Green selects the
+blend of sharp, medium and broad images; the displayed green is reconstructed from red
+and blue. **Blur mix** starts at zero. Increase it to soften the diagram, or edit
+`blurWeights` in the compositor's fragment shader to change the response.
+
+**Additive to weighted paint** blends between light accumulation and opacity-normalized
+colour, with a soft threshold. Strokes, dots and glyphs all contribute their coverage to
+the accumulated alpha. The browser is drawn afterward and stays sharp. The entire chain
+uses the same eye views and command buffer, without a previous-frame image.
+
 ```diffstatic_runner {data-lang=kotlin capture="native-window" native-wait-frames="8" screenshot="assets/sentence_diagrams/reading_space.png" macro-file="../../dev_docs/agents/transcripts/docs_capture/text_one_native.yaml" capture-box="text1_context" wait="1" timeout="240" capture-profile="linux-nvidia" embed=true hidden=true name="sentence-reading-space" alt="The desktop stereo preview: a shallow three-dimensional constituency canopy, with Slug words, curved GPU-thickened branches and ring joints against a dark background."}
 // Prepare Slug text, CPU physics and the multiview renderer.
 ```
