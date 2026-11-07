@@ -206,7 +206,7 @@ class StackSLStudyViewer(
                 #$id .muted{color:#8a8a90} #$id .warn{color:#e5b35f} #$id .bad{color:#ec8a74}
                 #$id h4{font-weight:400;margin:14px 0 6px;color:#aaa;letter-spacing:.06em;text-transform:uppercase;font-size:11px}
                 #$id canvas,#$id img.still{width:${previewSize}px;height:${previewSize}px;image-rendering:auto;border:1px solid #333;background:#000}
-                #$id .field-control{padding:2px 10px;margin:3px 0}
+                #$id .field-control{padding:2px 6px;margin:3px 0}
                 #$id .field-slider,#$id .kcolour{max-width:560px}
                 #$id .field-slider .field-label{width:250px;overflow:hidden;text-overflow:ellipsis}
                 #$id .field-slider-visual{height:26px}

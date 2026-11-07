@@ -262,6 +262,138 @@ function boxTitle(box) {
         return box.uid || ""
 }
 
+const anywhereScopes = {
+        control: ["control"], controls: ["control"],
+        box: ["box"], boxes: ["box"],
+        property: ["box-prop"], properties: ["box-prop"], prop: ["box-prop"],
+        docs: ["docs"], doc: ["docs"],
+        command: ["command"], commands: ["command"], cmd: ["command"],
+        macro: ["macro"], macros: ["macro"],
+        guide: ["guide"], guides: ["guide"],
+        workspace: ["workspace"], document: ["workspace"], documents: ["workspace"],
+        code: ["box-prop", "semantic"], semantic: ["semantic"],
+}
+const anywherePrefixScopes = { ">": ["control"], "?": ["docs"], "`": ["box-prop", "semantic"], ",": ["box"] }
+
+function paletteAnywhereQuery(value) {
+        const query = String(value || "").trim()
+        const prefixProviders = anywherePrefixScopes[query[0]]
+        if (prefixProviders) return { query: query.slice(1).trim(), providers: prefixProviders }
+        const match = /^([a-z-]+):\s*(.*)$/i.exec(query)
+        const providers = match && anywhereScopes[match[1].toLowerCase()]
+        return Array.isArray(providers) ? { query: match[2].trim(), providers } : { query, providers: null }
+}
+
+function paletteControlLabel(control) {
+        return String(control.querySelector(".field-label")?.textContent ||
+                control.getAttribute("aria-label") || control.querySelector("button")?.textContent || "")
+                .replace(/\s+/g, " ").trim()
+}
+
+function paletteControls(box) {
+        return [...box.querySelectorAll(".outputArea .field-control")].filter(control => control.closest(".box") === box)
+}
+
+function paletteControlChannel(control) {
+        return control.closest(".disclosure")?.__disclosureId || ""
+}
+
+function paletteControlId(control) {
+        return control.dataset.sliderId || control.dataset.controlId || control.querySelector("input, textarea, select, button")?.id || ""
+}
+
+function paletteResolveControl(target) {
+        const box = selectBoxByUid(target.boxId)
+        if (!box) return null
+        if (target.element.isConnected && target.element.closest(".box") === box) return target.element
+        const sameId = target.controlId && paletteControls(box).find(control => paletteControlId(control) === target.controlId)
+        if (sameId) return sameId
+        return paletteControls(box).filter(control => paletteControlLabel(control) === target.label &&
+                paletteControlChannel(control) === target.channel)[target.occurrence] || null
+}
+
+function paletteControlValue(control) {
+        const input = control.querySelector("input, textarea, select")
+        if (input?.type === "checkbox") return input.checked ? "On" : "Off"
+        if (input?.type === "password") return input.value ? "••••••••" : ""
+        if (input?.type === "file") return [...input.files || []].map(file => file.name).join(", ") || "No file selected"
+        if (input) return input.value
+        if (control.classList.contains("field-button")) return control.querySelector("button")?.getAttribute("aria-pressed") === "true" ? "Held" : "Released"
+        return control.querySelector(".field-value")?.textContent.trim() || control.dataset.value || ""
+}
+
+async function paletteRevealControl(target) {
+        const box = selectBoxByUid(target.boxId)
+        if (!box || !paletteResolveControl(target)) return
+        applySelection(box, null, async () => {
+                let control = paletteResolveControl(target)
+                if (!control) return
+                const panels = []
+                for (let panel = control.closest(".disclosure"); panel; panel = panel.parentElement?.closest(".disclosure")) panels.unshift(panel)
+                panels.forEach(panel => window.disclosureInterface?.(panel.closest(".disclosure-group"))?.open(panel.__disclosureId))
+                // Wait for selection/editor layout and disclosure sizing before measuring the target.
+                let previous = "", stable = 0
+                for (let i = 0; i < 60 && stable < 3; i++) {
+                        await new Promise(requestAnimationFrame)
+                        if (!(window.selectedList || []).includes(box)) return
+                        control = paletteResolveControl(target)
+                        if (!control) return
+                        if (window.globalEditor && (window.currentSelectedCode?.[0] !== box ||
+                                window.currentSelectedProperty !== window.selectedProperty)) { stable = 0; continue }
+                        const r = control.getBoundingClientRect()
+                        const editorElement = document.querySelector(".monaco-editor-container")
+                        const editor = editorElement?.getBoundingClientRect(), editorStyle = editorElement && getComputedStyle(editorElement)
+                        const next = [r.width, r.height, editor?.left, editor?.width].map(v => Math.round(v || 0)).join(",") +
+                                `:${editorStyle?.visibility}:${editorStyle?.opacity}`
+                        stable = next === previous ? stable + 1 : 0
+                        previous = next
+                }
+                // Scroll only the output's own scrollers; the canvas moves through its camera.
+                for (let parent = control.parentElement; parent && parent !== box; parent = parent.parentElement) {
+                        const style = getComputedStyle(parent), r = parent.getBoundingClientRect(), c = control.getBoundingClientRect()
+                        const scale = parent.offsetWidth ? r.width / parent.offsetWidth : 1
+                        if (/auto|scroll/.test(style.overflowY) && (c.top < r.top || c.bottom > r.bottom)) parent.scrollTop += (c.top + c.height / 2 - r.top - r.height / 2) / scale
+                        if (/auto|scroll/.test(style.overflowX) && (c.left < r.left || c.right > r.right)) parent.scrollLeft += (c.left + c.width / 2 - r.left - r.width / 2) / scale
+                }
+                window.frameControlElement?.(control)
+                control.classList.add("afield-control-reveal")
+                setTimeout(() => control.classList.remove("afield-control-reveal"), 1600)
+        })
+}
+
+function paletteMountControlPreview(doc, target) {
+        const host = doc.querySelector(".afield-palette-control-preview")
+        if (!host) return
+        let previous = ""
+        const render = () => {
+                const control = paletteResolveControl(target)
+                const value = control ? paletteControlValue(control) : "No longer available"
+                doc.querySelector(".afield-palette-control-value").textContent = value
+                if (!control) { host.replaceChildren(); return }
+                const snapshot = control.outerHTML + value
+                if (snapshot === previous) return
+                previous = snapshot
+                const clone = control.cloneNode(true)
+                ;[clone, ...clone.querySelectorAll("*")].forEach(node => {
+                        for (const attr of [...node.attributes]) {
+                                if (/^on/i.test(attr.name) || ["id", "for", "data-slider-id", "data-control-id", "aria-labelledby", "aria-describedby"].includes(attr.name)) node.removeAttribute(attr.name)
+                        }
+                })
+                clone.querySelectorAll("script, iframe").forEach(node => node.remove())
+                clone.dataset.send = "false"
+                clone.inert = true
+                const originals = control.querySelectorAll("input, textarea, select")
+                clone.querySelectorAll("input, textarea, select").forEach((input, i) => {
+                        if (input.type !== "file") input.value = originals[i].value
+                        if (input.type === "checkbox") input.checked = originals[i].checked
+                })
+                host.replaceChildren(clone)
+        }
+        render()
+        const timer = setInterval(() => { if (!host.isConnected) clearInterval(timer); else render() }, 150)
+        return () => clearInterval(timer)
+}
+
 function bootstrapAnywhereProviders() {
         if (bootstrapAnywhereProviders._installed) return
         bootstrapAnywhereProviders._installed = true
@@ -294,6 +426,34 @@ function bootstrapAnywhereProviders() {
                 "preamble",
                 "metadata",
         ]
+
+        registerAnywhereProvider("control", query => {
+                const results = []
+                for (const box of boxElements()) {
+                        if (!box.uid) continue
+                        const occurrences = new Map()
+                        for (const element of paletteControls(box)) {
+                                const label = paletteControlLabel(element)
+                                if (!label) continue
+                                const channel = paletteControlChannel(element), key = JSON.stringify([channel, label])
+                                const occurrence = occurrences.get(key) || 0
+                                occurrences.set(key, occurrence + 1)
+                                const boxId = box.uid, name = paletteBoxName(box)
+                                if (query && !Number.isFinite(paletteFuzzyScore(query, `${label} ${name} ${channel}`))) continue
+                                const controlTarget = { boxId, label, channel, occurrence, element, controlId: paletteControlId(element) }
+                                results.push({ id: JSON.stringify([boxId, channel, label, occurrence]), label, boxId,
+                                        description: [name, channel].filter(Boolean).join(" · "), detail: paletteControlValue(element),
+                                        icon: "co", controlTarget, exactMatch: !!query && label.toLowerCase() === query.toLowerCase(),
+                                        score: query && label.toLowerCase().includes(query.toLowerCase()) ? 32 : 0,
+                                        run: () => paletteRevealControl(controlTarget) })
+                        }
+                }
+                return results
+        })
+
+        registerAnywhereProvider("command", query => collectDocumentCommandItems()
+                .filter(item => !query || Number.isFinite(paletteFuzzyScore(query, `${item.label} ${item.detail}`)))
+                .map(item => ({ ...item, category: "Commands", commandItem: item })))
 
         // Box name / id provider
         registerAnywhereProvider("box", (query) => {
@@ -647,7 +807,7 @@ function highlightBox(uid) {
         highlightedBox = el
 }
 
-function applySelection(box, property) {
+function applySelection(box, property, onSelected) {
         if (!box) return
         const w = window
 
@@ -662,6 +822,7 @@ function applySelection(box, property) {
         setTimeout(() => {
                 w.selectBox(box)
                 setSelectedProperty(property || w.selectedProperty || "code")
+                onSelected?.()
         }, 200)
 }
 window.applySelection = applySelection
@@ -693,6 +854,8 @@ const paletteEscapeHtml = (value) =>
 const paletteProviderTitle = (provider) => {
         const titles = {
                 "box": "Boxes",
+                "control": "Controls",
+                "command": "Commands",
                 "box-prop": "Properties",
                 "semantic": "Semantic",
                 "semantic-current": "Semantic in Current Document",
@@ -1337,6 +1500,14 @@ const paletteBoxLabel = (uid) => {
 
 const palettePreviewForAnywhere = (item) => {
         if (!item) return ""
+        if (item.controlTarget) return [
+                `<div class="afield-palette-doc-title">${paletteEscapeHtml(item.label)}</div>`,
+                `<div class="afield-palette-doc-meta">${paletteEscapeHtml(item.description)}</div>`,
+                `<p class="afield-palette-control-value"></p>`,
+                `<div class="afield-palette-control-preview"></div>`,
+                `<p class="afield-palette-doc-muted">Press Enter to select the box and centre this control beside the editor.</p>`,
+        ].join("")
+        if (item.commandItem) return palettePreviewForAction(item.commandItem)
         if (item.provider === "guide") return [
                 `<div class="afield-palette-doc-title">${paletteEscapeHtml(item.label)}</div>`,
                 `<div class="afield-palette-doc-meta">${paletteEscapeHtml(item.path || "Current document")}</div>`,
@@ -1611,6 +1782,7 @@ class FieldPaletteController {
         input() { return this.root.querySelector(".afield-palette-input") }
         list() { return this.root.querySelector(".afield-palette-list") }
         doc() { return this.root.querySelector(".afield-palette-doc") }
+        searchQuery() { return this.options.searchQuery ? this.options.searchQuery(this.input().value || "") : this.input().value || "" }
 
         open(options = {}) {
                 this.options = options
@@ -1633,6 +1805,8 @@ class FieldPaletteController {
 
         hide(options = {}) {
                 if (this.root.style.display === "none") return
+                this.previewDispose?.()
+                this.previewDispose = null
                 const input = this.input()
                 if (input) {
                         try { input.blur() } catch (_) {}
@@ -1657,20 +1831,23 @@ class FieldPaletteController {
         }
 
         renderLoading() {
+                this.previewDispose?.()
+                this.previewDispose = null
                 this.list().innerHTML = `<div class="afield-palette-empty"><span class="afield-suggest-spinner" aria-hidden="true"></span></div>`
                 this.doc().innerHTML = `<div class="afield-palette-doc-empty"></div>`
         }
 
         async refresh() {
                 const generation = ++this.generation
-                const query = this.input().value || ""
+                const value = this.input().value || ""
+                const query = this.searchQuery()
                 // Providers can be asynchronous. Enter must never accept a result from the
                 // previous query while the new catalogue/semantic results are arriving.
                 this.items = []
                 this.activeIndex = -1
                 this.renderLoading()
                 const source = this.options.getItems
-                        ? await Promise.resolve(this.options.getItems(query))
+                        ? await Promise.resolve(this.options.getItems(value))
                         : (this.options.items || [])
                 if (generation !== this.generation) return
                 this.items = this.groupOrderItems(this.rankItems(source || [], query))
@@ -1784,6 +1961,8 @@ class FieldPaletteController {
         }
 
         renderDoc() {
+                this.previewDispose?.()
+                this.previewDispose = null
                 const item = this.items[this.activeIndex]
                 if (!item) {
                         this.doc().innerHTML = `<div class="afield-palette-doc-empty">No preview available</div>`
@@ -1792,7 +1971,8 @@ class FieldPaletteController {
                 if (typeof item.previewHtml === "function") this.doc().innerHTML = item.previewHtml(item)
                 else if (item.previewHtml) this.doc().innerHTML = item.previewHtml
                 else this.doc().innerHTML = palettePreviewForAction(item)
-                if (item.docsHit) paletteMountDocsFrame(this.doc(), item.docsHit, this.input().value || "")
+                if (item.docsHit) paletteMountDocsFrame(this.doc(), item.docsHit, this.searchQuery())
+                if (item.controlTarget) this.previewDispose = paletteMountControlPreview(this.doc(), item.controlTarget)
                 if (typeof this.options.onActive === "function") this.options.onActive(item)
                 if (window.hljs && typeof window.hljs.highlightElement === "function") {
                         this.doc().querySelectorAll("pre code").forEach((block) => {
@@ -1837,7 +2017,7 @@ class FieldPaletteController {
         setActive(index) {
                 if (!this.items.length) return
                 this.activeIndex = Math.max(0, Math.min(this.items.length - 1, index))
-                this.render(this.input().value || "")
+                this.render(this.searchQuery())
         }
 
         move(delta) {
@@ -1899,17 +2079,22 @@ function openAnywherePalette() {
         ensureEditor()
         fieldPalette().open({
                 title: "Open Anything",
-                placeholder: "Search boxes, properties, docs, starting points, macros, or text...",
+                placeholder: "Search controls, boxes, commands, docs, or text...",
+                hint: "> controls · ? docs · ` code · , box names",
+                searchQuery: value => paletteAnywhereQuery(value).query,
                 getItems: async (value) => {
-                        const query = (value || "").trim()
+                        const { query, providers } = paletteAnywhereQuery(value)
                         qpLog("[anywhere] query", query, "providers", anywhereProviders.length)
                         const pending = []
                         anywhereProviders.forEach((p) => {
+                                if (providers && !providers.includes(p.id)) return
                                 try {
                                         const res = p.fetcher(query)
                                         pending.push(Promise.resolve(res).then((items) => {
                                                 qpLog("[anywhere] provider result", p.id, items && items.length)
-                                                return (items || []).map((it, idx) => ({
+                                                const scopedItems = providers?.includes("box-prop") && p.id === "semantic"
+                                                        ? (items || []).filter(item => String(item.semanticHit?.corpus || "").toLowerCase() !== "documentation") : items || []
+                                                return scopedItems.map((it, idx) => ({
                                                         provider: p.id,
                                                         category: it.category || paletteProviderTitle(p.id),
                                                         id: it.id || `${p.id}-${idx}-${it.label}`,
@@ -1932,6 +2117,8 @@ function openAnywherePalette() {
                                                         docsHit: it.docsHit || null,
                                                         serverRanked: !!it.serverRanked,
                                                         workspaceDoc: it.workspaceDoc || null,
+                                                        controlTarget: it.controlTarget || null,
+                                                        commandItem: it.commandItem || null,
                                                         runSource: it.run,
                                                 }))
                                         }))
@@ -1945,7 +2132,7 @@ function openAnywherePalette() {
                                 previewHtml: () => palettePreviewForAnywhere(r),
                                 run: () => {
                                         bumpUsage(r.usageKey)
-                                        if (r.boxId) {
+                                        if (r.boxId && !r.controlTarget) {
                                                 const el = selectBoxByUid(r.boxId)
                                                 applySelection(el, r.property)
                                         }
