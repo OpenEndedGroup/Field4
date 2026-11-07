@@ -144,9 +144,12 @@ class DeBruijnTiling(
     }
 
     /**
-     * Filled, outlined FLines, one per tile, coloured by [palette] (indexed by `type - 1`, repeating).
-     * Pass [highlight] to draw one grid line's ribbon in [highlightColor] instead.
-     * Set [fill] to false for plain outlines suitable for a pen plotter.
+     * The tiling as FLines, coloured by [palette] (indexed by `type - 1`, repeating): one FLine per
+     * colour holding every tile of that colour, then, when [fill] is on, one dark FLine with every
+     * outline. A tiling of thousands of rhombi is a handful of FLines, which keeps SVG output and
+     * publication light. Pass [highlight] to draw one grid line's ribbon in [highlightColor]
+     * instead. Set [fill] to false for plain outlines suitable for a pen plotter. For one FLine per
+     * tile, use each tile's [DeBruijnTile.outline].
      */
     fun lines(
         palette: List<Vector4f> = defaultPalette,
@@ -154,22 +157,35 @@ class DeBruijnTiling(
         outlineThickness: Double = 1.0,
         highlight: DeBruijnLine? = null,
         highlightColor: Vector4f = Vector4f(1f, 0.35f, 0.2f, 1f),
-    ): List<FLine> = tiles.map { tile ->
-        tile.outline().apply {
-            color = if (highlight != null && tile.on(highlight)) highlightColor else palette[(tile.type - 1).mod(palette.size)]
+    ): List<FLine> = tiles.groupBy { tile ->
+        // -1 is the highlighted ribbon; otherwise the palette slot, so equal colours share an FLine.
+        if (highlight != null && tile.on(highlight)) -1 else (tile.type - 1).mod(palette.size)
+    }.toSortedMap().map { (slot, group) ->
+        FLine().apply {
+            group.forEach { appendOutline(it) }
+            color = if (slot < 0) highlightColor else palette[slot]
             filled = fill
             stroked = !fill
             thickness = outlineThickness
         }
-    } + if (fill) tiles.map { tile ->
-        tile.outline().apply {
+    } + if (fill) listOf(
+        FLine().apply {
+            tiles.forEach { appendOutline(it) }
             color = Vector4f(0.08f, 0.08f, 0.1f, 1f)
             stroked = true
             thickness = outlineThickness
-        }
-    } else emptyList()
+        },
+    ) else emptyList()
 
     companion object {
+        /** Adds [tile]'s closed outline to this FLine as one more subpath. */
+        private fun FLine.appendOutline(tile: DeBruijnTile) {
+            val c = tile.corners
+            moveTo(c[0].x, c[0].y)
+            for (i in 1 until 4) lineTo(c[i].x, c[i].y)
+            lineTo(c[0].x, c[0].y)
+        }
+
         /** A palette of six colours, light to dark, for tile types 1..6. */
         val defaultPalette: List<Vector4f> = listOf(
             Vector4f(0.98f, 0.82f, 0.36f, 1f),
