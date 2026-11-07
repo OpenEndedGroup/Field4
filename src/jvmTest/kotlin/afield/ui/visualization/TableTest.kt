@@ -393,4 +393,47 @@ class TableTest {
         assertTrue(lines[1].endsWith("  7"), "expected 7 right-aligned under a 5-wide column: '${lines[1]}'")
         assertTrue(lines[2].endsWith("123"), "expected 123 flush right: '${lines[2]}'")
     }
+
+    /** The fill for cell ([r], [c]) as its `background:rgb(...)` text, or null when it has none. */
+    private fun fill(t: Table, r: Int, c: Int): String? =
+        t.heatCss(r, c)?.substringBefore(";")
+
+    @Test
+    fun `heat by column, row and table measures each cell against the range it names`() {
+        // Column b's values are ten times column a's, so per-column heat gives both columns the
+        // same colours and table-wide heat does not.
+        fun grid() = Table(listOf("a", "b")).row(1.0, 10.0).row(2.0, 20.0).row(3.0, 30.0)
+        val gray = "grayscale"
+
+        val byColumn = grid().heat(by = HeatScope.COLUMN, colormap = gray)
+        for (r in 0..2) assertEquals(fill(byColumn, r, 0), fill(byColumn, r, 1), "row $r")
+        assertEquals("background:rgb(0,0,0)", fill(byColumn, 0, 0), "a column's minimum is the map's start")
+        assertEquals("background:rgb(255,255,255)", fill(byColumn, 2, 1), "a column's maximum is the map's end")
+
+        val byTable = grid().heat(by = HeatScope.TABLE, colormap = gray)
+        assertEquals("background:rgb(127,127,127)", fill(byColumn, 1, 0), "2 is the middle of column a's 1..3")
+        assertEquals("background:rgb(8,8,8)", fill(byTable, 1, 0), "2 is near the bottom of the table's 1..30")
+        assertEquals("background:rgb(255,255,255)", fill(byTable, 2, 1))
+
+        // Per row, a is always the smaller of the two and b the larger.
+        val byRow = grid().heat(by = HeatScope.ROW, colormap = gray)
+        for (r in 0..2) {
+            assertEquals("background:rgb(0,0,0)", fill(byRow, r, 0), "row $r, a")
+            assertEquals("background:rgb(255,255,255)", fill(byRow, r, 1), "row $r, b")
+        }
+    }
+
+    @Test
+    fun `heat with a center is symmetric about it, and skips text, NaN and unheated columns`() {
+        val t = Table(listOf("label", "diff", "plain"))
+            .row("x", -2.0, 5.0).row("y", 0.0, 6.0).row("z", 1.0, 7.0).row("w", Double.NaN, 8.0)
+            .heat("diff", colormap = "grayscale", center = 0.0)
+        assertEquals("background:rgb(0,0,0)", fill(t, 0, 1), "-2 is the far end of a range symmetric about 0")
+        assertEquals("background:rgb(127,127,127)", fill(t, 1, 1), "the center sits at the map's middle")
+        assertNull(fill(t, 3, 1), "a NaN cell is left unfilled")
+        assertNull(fill(t, 0, 0), "a text column is not heated")
+        assertNull(fill(t, 0, 2), "a column not named in heat(...) is not heated")
+        assertTrue(t.toHTML().contains("background:rgb(127,127,127)"), "the fill reaches the rendered HTML")
+        assertFailsWith<IllegalArgumentException> { Table(listOf("a")).heat(colormap = "no-such-map") }
+    }
 }
