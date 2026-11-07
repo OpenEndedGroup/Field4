@@ -16,5 +16,6 @@ void main() {
         d=length(p)-(.7+.3*cos(2*a));
     }
     float coverage=clamp(.5-d/max(fwidth(d),1e-5),0,1);
-    outColor=vec4(tint.rgb,tint.a*coverage);
+    // White ink; retain the marker's opacity and antialiased boundary.
+    outColor=vec4(vec3(1.0),tint.a*coverage);
 }

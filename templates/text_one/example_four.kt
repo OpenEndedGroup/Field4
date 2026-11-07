@@ -6,7 +6,7 @@ import afield.graphics.text.sentences.*
 // 4 · Sentence furniture. Reed-Kellogg shelves become a shallow spatial mobile, then a reading line.
 val parsed = Sentences.example(4)
 check(parsed.problems().isEmpty()) { parsed.problems().joinToString() }
-val face = Typefaces.named("Noto Serif", 100, strict = true)
+val face = Typefaces.named("Noto Serif Light", 100, strict = true)
 val config = KelloggConfig(
     slantAngle = 30.0,
     nestAngleStep = 10.0,
@@ -61,6 +61,9 @@ val graph = readingDiagram {
         dot("reading-bead", wind.at(.5f)) { radius = .004f }
     }
 }
+// Let the words lead: structural strokes and markers are more translucent.
+for (path in graph.paths) path.ink = path.ink.copy(color = Vector4f(path.ink.color).apply { w *= .65f })
+for (dot in graph.dots) dot.color.w *= .65f
 val progress = progressReporter("Prepare 4 / 4: sentence furniture", showDelayMillis = 0)
 val player = try {
     ReadingDiagramPlayer.prepare(graph, face, "field-slug".file, diagramScore(graph, 24.0) {}) { n, total, text ->

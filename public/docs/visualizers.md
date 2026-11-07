@@ -1327,6 +1327,13 @@ four calls and the mouse gestures that do the same.
 
 Field can build small control surfaces directly into output areas: sliders and pads you drag while the box runs.
 
+To find a control in a large document, open **Open Anything** (<kbd>⌘</kbd><kbd>P</kbd> on macOS,
+<kbd>^</kbd><kbd>P</kbd> on Windows and Linux) and type `>` followed by part of its label, such as `> gain`. Its preview shows the
+current value and a live, read-only view
+of the widget. Choosing it selects the owning box, opens the output panel and centres the control
+in the space left by the editor. See [Open Anything](tour_interface.md#the-command-palette-and-open-anything)
+for the other search prefixes.
+
 They also reach a phone. Open `/controllers?file=<document>` on it and the **Group** tab redraws the selected box's `controlGroup(...)` at thumb size, while **Outputs** shows its output areas with their controls still live. See [Field from your phone](mobile_controllers.md#the-six-tabs).
 
 <!--

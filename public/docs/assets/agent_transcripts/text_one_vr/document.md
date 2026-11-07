@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 12 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 13 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
 ```
 
 ## 1. 1 · Reading space
@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="text1_context" index="0" -->
 
 ```edn [field-box id="text1_context" role="properties"]
-{"id" "text1_context" "index" 0 "name" "1 · Reading space" "parents" ["root"] "children" ["text1_poem" "text1_example2" "text1_example3" "text1_example4" "text1_stroke" "text1_point" "text1_text" "text1_blur" "text1_composite"] "properties" {"children" #{#afield/box "text1_poem" #afield/box "text1_example2" #afield/box "text1_example3" #afield/box "text1_example4" #afield/box "text1_stroke" #afield/box "text1_point" #afield/box "text1_text" #afield/box "text1_blur" #afield/box "text1_composite"} "parents" #{#afield/box "root"} "name" "1 · Reading space" "_tombstone" false "frame" #afield/rect [0.0 150.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_context_code_.kt" "lines" 54 "characters" 2521 "sha256" "729d36e017c8100b3af6671ecdb695c5482500c9ea70c24bc652aa4ee29f7a84"}]}
+{"id" "text1_context" "index" 0 "name" "1 · Reading space" "parents" ["root"] "children" ["text1_poem" "text1_example2" "text1_example3" "text1_example4" "text1_typography" "text1_stroke" "text1_point" "text1_text" "text1_blur" "text1_composite"] "properties" {"children" #{#afield/box "text1_poem" #afield/box "text1_example2" #afield/box "text1_example3" #afield/box "text1_example4" #afield/box "text1_typography" #afield/box "text1_stroke" #afield/box "text1_point" #afield/box "text1_text" #afield/box "text1_blur" #afield/box "text1_composite"} "parents" #{#afield/box "root"} "name" "1 · Reading space" "_tombstone" false "frame" #afield/rect [0.0 150.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_context_code_.kt" "lines" 63 "characters" 2990 "sha256" "e16489605862e9ac18d86e1858ab2eacf81bb3f3b976199093af3eca61294e34"}]}
 ```
 
 ```kotlin [field-property box="text1_context" name="code" path="text1_context_code_.kt"]
@@ -20,9 +20,12 @@ import afield.graphics.vulkan.targets.*
 import afield.graphics.vulkan.util.Options
 import afield.media.browser.*
 
-// Set headsetMode on this box BEFORE the first Vulkan renderer is created.
-// Moving between desktop-only and OpenXR mode requires a fresh Field JVM.
-val headsetMode = thisBox.getPropertyRaw("headsetMode")?.toString() == "true"
+/*
+Set this code switch BEFORE the first Vulkan renderer is created.
+Moving between desktop-only and OpenXR mode requires a fresh Field JVM.
+The browser texture size below is independent of the headset render resolution.
+*/
+val headsetMode = false // true for WiVRn / OpenXR; false for desktop preview
 Options.enableVR = headsetMode
 Options.enableHDR = false
 prop<Window>(window) = Window("text_one · a reading space", initialDimensions = Rect(60.0, 60.0, 1440.0, 1000.0))
@@ -44,6 +47,8 @@ if (headsetMode) {
         distanceMeters = 1.7f,
     )
 }
+// FieldVrWorkspace takes eye dimensions from OpenXR, exactly as dust_six does.
+// Only the disconnected desktop preview uses this fixed fallback.
 prop<MultiviewStereoTarget>(stereo) =
     workspace?.stereo ?: MultiviewStereoTarget(renderer, 1600, 1200, withDepth = false)
 val ownedStereo = stereo
@@ -52,6 +57,10 @@ if (!headsetMode) {
     stereo.stereoCamera.base.target = vec(0f, 0f, 0f)
 }
 stereo.layered.parameters.clearColor = vec(.003f, .005f, .010f, 1f)
+display(
+    "resolution",
+    "<div style='padding:12px'>${if (headsetMode) "OpenXR runtime" else "Desktop fallback"}: ${stereo.eyeWidth} × ${stereo.eyeHeight} per eye. Browser: 2560 × 1600. Restart Field after changing WiVRn resolution.</div>",
+)
 prop<Boolean>(showStereoPair) = false
 val mirror = stereo.mirrorToScreen(name = "reading-preview", stereoPair = { showStereoPair })
 controlGroup("reading space") {
@@ -60,7 +69,7 @@ controlGroup("reading space") {
 }
 display(
     "mode",
-    "<div style='padding:12px;width:440px'>${if(headsetMode)"OpenXR: current predicted pose in both eyes + sharp Field browser" else "Desktop stereo preview: the same two-eye scene, without a headset"}. No motion history or temporal antialiasing. Launch the four example boxes, Scores, the shaders, then Drawing.</div>",
+    "<div style='padding:12px;width:440px'>${if(headsetMode)"OpenXR: current predicted pose in both eyes + sharp Field browser" else "Desktop stereo preview: the same two-eye scene, without a headset"}. No motion history or temporal antialiasing. Launch the five example boxes, Scores, the shaders, then Drawing.</div>",
 )
 loop { frame() }
     .end {
@@ -306,12 +315,119 @@ void main() {
 }
 ```
 
-## 3. 3 · Constituency canopy
+## 3. 13 · Typography playground
 
-<!-- field-box id="text1_example2" index="2" -->
+<!-- field-box id="text1_typography" index="2" -->
+
+```edn [field-box id="text1_typography" role="properties"]
+{"id" "text1_typography" "index" 2 "name" "13 · Typography playground" "parents" ["root" "text1_context"] "children" ["text1_score"] "properties" {"children" #{#afield/box "text1_score"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "13 · Typography playground" "_tombstone" false "frame" #afield/rect [650.0 440.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_typography_code_.kt" "lines" 96 "characters" 3656 "sha256" "a418dc87b5635d979b6116117771978c64836ea359800bbddabd7a0990200824"}]}
+```
+
+```kotlin [field-property box="text1_typography" name="code" path="text1_typography_code_.kt"]
+import afield.geometry.path.FLine
+import afield.graphics.scene.reading.*
+import afield.graphics.text.*
+
+// 5 · A room for words. One Slug run can contain multiple real faces and inline styles.
+val serif = Typefaces.named("Noto Serif", 100, strict = true)
+val sans = Typefaces.named("Noto Sans", 100, strict = true)
+val graph = readingDiagram {
+    val peg = point("peg", 0, .25, pinned = true)
+    val mobile = point("mobile", 0, .12)
+    link(peg, mobile, .35f)
+    val sentence = text("sentence", "The quiet water carries the light", mobile) {
+        font = serif
+        scale = .7f
+        word("quiet").style { italic = true }
+        word("water").style { bold = true }
+        word("light").style {
+            font = sans
+            weight = 300.0
+        }
+    }
+    // Each selection stays in the full shaped run, including kerning, inline fonts and tracking.
+    rectangle("whole-ink", sentence.inkBounds, padding = .012f) {
+        width = .0008f
+        color = vec(1f, 1f, 1f, .20f)
+    }
+    for ((i, word) in sentence.words.withIndex()) {
+        rectangle("word-box-$i", word.bodyBounds, padding = .003f) {
+            width = .0008f
+            color = vec(1f, 1f, 1f, .35f)
+        }
+    }
+    underline("water", sentence.word("water"), gap = .018f) {
+        width = .0013f
+        color = vec(1f, 1f, 1f, .45f)
+    }
+    dot("caret", sentence.caret(4).alongText(sentence, y = -.025f)) {
+        shape = DiagramPointShape.DIAMOND
+        radius = .0035f
+        color = vec(1f, 1f, 1f, .55f)
+    }
+    // Author arbitrary curves in font units. The frame supplies the glyphs' exact live transform.
+    textPath(
+        "cap-ruler",
+        sentence,
+        shape = {
+            FLine().moveTo(advance.left, capHeight + 12f).lineTo(advance.right, capHeight + 12f)
+        },
+    ) {
+        dashed(.015f, .35f)
+        width = .0007f
+        color = vec(1f, 1f, 1f, .30f)
+    }
+    // Equal strings with different faces must own distinct prepared outlines and GPU data.
+    for (i in 0..2) {
+        val p = point("face-$i", -.62 + i * .62, -.18, pinned = true)
+        val word = text("face-word-$i", "water", p) {
+            font = if (i == 2) sans else serif
+            italic = i == 1
+            bold = i == 2
+            scale = .62f
+        }
+        rectangle("face-box-$i", word.inkBounds, padding = .008f) {
+            width = .0007f
+            color = vec(1f, 1f, 1f, .25f)
+        }
+    }
+    // Numeric weight requests are prepared as real outlines. AWT chooses or synthesizes the face;
+    // they are not a fragment-shader dilation and do not claim arbitrary variable-font axes.
+    for (i in 0..4) {
+        val p = point("weight-$i", -.8 + i * .4, -.46, pinned = true)
+        text("weight-word-$i", "wave", p) {
+            font = serif
+            weight = 300.0 + 100 * i
+            scale = .48f
+        }
+        text("weight-label-$i", (300 + 100 * i).toString(), p.anchor.offset(y = -.075f)) {
+            font = sans
+            scale = .16f
+            color = vec(1f, 1f, 1f, .45f)
+        }
+    }
+}
+val progress = progressReporter("Prepare typography playground", showDelayMillis = 0)
+val player = try {
+    ReadingDiagramPlayer.prepare(graph, serif, "field-slug".file, diagramScore(graph, 20.0) {}) { n, total, text ->
+        progress.update(n.toDouble() / total, "$n / $total: $text")
+    }
+} finally {
+        progress.close()
+    }
+prop<ReadingExample>(exampleFive) = ReadingExample(
+    "5 · A room for words",
+    "Inline italic, bold and alternate faces; repeated words in different fonts; numeric weights; live ink and body boxes, baseline attachments and a cap-height ruler.",
+    player,
+)
+```
+
+## 4. 3 · Constituency canopy
+
+<!-- field-box id="text1_example2" index="3" -->
 
 ```edn [field-box id="text1_example2" role="properties"]
-{"id" "text1_example2" "index" 2 "name" "3 · Constituency canopy" "parents" ["root" "text1_context"] "children" ["text1_score"] "properties" {"children" #{#afield/box "text1_score"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "3 · Constituency canopy" "_tombstone" false "frame" #afield/rect [650.0 110.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_example2_code_.kt" "lines" 101 "characters" 4449 "sha256" "231c85c26553e4a87f05a7cf312d4fabecec7f5ec4cc11dcd625149ee9d72820"}]}
+{"id" "text1_example2" "index" 3 "name" "3 · Constituency canopy" "parents" ["root" "text1_context"] "children" ["text1_score"] "properties" {"children" #{#afield/box "text1_score"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "3 · Constituency canopy" "_tombstone" false "frame" #afield/rect [650.0 110.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_example2_code_.kt" "lines" 162 "characters" 7208 "sha256" "508b402751019e19cb77aa99267be3c0a433957c9c41d65111b28af84cbdec1a"}]}
 ```
 
 ```kotlin [field-property box="text1_example2" name="code" path="text1_example2_code_.kt"]
@@ -320,10 +436,10 @@ import afield.graphics.text.*
 import afield.graphics.text.sentences.*
 import kotlin.math.*
 
-// 2 · Constituency canopy. Use the real parse/layout, then rebuild its connections in gentle 3D.
+// 2 · Complete canopy. Preserve the parser's tree, POS labels, word stems and dependency arcs.
 val parsed = Sentences.example(2)
 check(parsed.problems().isEmpty()) { parsed.problems().joinToString() }
-val face = Typefaces.named("Noto Serif", 100, strict = true)
+val face = Typefaces.named("Noto Serif Light", 100, strict = true)
 val layout =
     SentenceDiagram()
         .use(parsed)
@@ -332,16 +448,19 @@ val layout =
             wordFont = face.awtFont.deriveFont(32f)
             heights = Heights.Flat()
             layerGap = 55.0
-            wordGap = 36.0
+            wordGap = 50.0
+            tagFontSize = 13.0
+            labelFontSize = 11.0
         }
         .diagram()
-val xs = layout.words.flatMap { listOf(it.left, it.right) } + layout.nodes.map { it.at.x }
-val ys = layout.words.map { it.baseline } + layout.nodes.map { it.at.y }
-val cx = (xs.min() + xs.max()) * .5
-val cy = (ys.min() + ys.max()) * .5
-val metres = min(2.0 / (xs.max() - xs.min()), 1.15 / (ys.max() - ys.min()))
+// Include the lower arcs and their labels when fitting the whole diagram into reading space.
+val bounds = layout.bounds
+val cx = bounds.centre.x
+val cy = bounds.centre.y
+val metres = min(2.15 / bounds.width, 1.7 / bounds.height)
 val tagMetrics = Java2DMetrics(face.awtFont.deriveFont(13f))
 fun world(p: P, z: Double = 0.0) = vec(((p.x - cx) * metres).toFloat(), (-(p.y - cy) * metres).toFloat(), z.toFloat())
+fun direction(p: P) = vec((p.x * metres).toFloat(), (-p.y * metres).toFloat(), 0f)
 val graph = readingDiagram {
     val nodes =
         layout.nodes.associate { n ->
@@ -349,8 +468,8 @@ val graph = readingDiagram {
             n.id to point("node-${n.id}", p.x, p.y, p.z, pinned = n.id == parsed.constituency.id)
         }
     val degrees = mutableMapOf<Int, Int>()
-    // The visible topology is complete; the reciprocal physical stencil is limited to four links.
     for (edge in layout.treeEdges) {
+        // Physics has four reciprocal slots; the visible topology always includes every branch.
         if (degrees.getOrDefault(edge.parent, 0) < 4 && degrees.getOrDefault(edge.child, 0) < 4) {
             link(nodes.getValue(edge.parent), nodes.getValue(edge.child), .65f)
             degrees[edge.parent] = degrees.getOrDefault(edge.parent, 0) + 1
@@ -358,17 +477,18 @@ val graph = readingDiagram {
         }
         val a = nodes.getValue(edge.parent).anchor
         val b = nodes.getValue(edge.child).anchor
+        val c1 = direction(edge.curve.c1 - edge.curve.a)
+        val c2 = direction(edge.curve.c2 - edge.curve.b)
         path(
             "branch-${edge.parent}-${edge.child}",
             shape = {
                 val from = position(a)
                 val to = position(b)
-                val drop = to.y - from.y
-                FLine().moveTo(from).cubicTo(from + vec(0f, drop * .5f, .012f), to - vec(0f, drop * .5f, .012f), to)
+                FLine().moveTo(from).cubicTo(from + c1, to + c2, to)
             },
         ) {
             width = .0013f
-            color = vec(.27f, .45f, .6f, 1f)
+            color = vec(1f, 1f, 1f, .7f)
         }
     }
     for (n in layout.nodes) {
@@ -377,32 +497,89 @@ val graph = readingDiagram {
             radius = if (n.leaf) .0025f else .004f
             shape = DiagramPointShape.RING
         }
-        if (!n.leaf)
-            // Text anchors are centred: add half its measured width, then clear the joint ring.
-            text(
-                "tag-${n.id}",
-                n.label,
-                anchor.offset(x = (.012 + tagMetrics.width(n.label) * metres * .5).toFloat(), y = .018f),
-            ) {
-                scale = (13.0 * metres / .09).toFloat()
-                color = vec(.75f, .47f, .2f, 1f)
-            }
+        // Every label is drawn, including the POS leaves. Centred runs need half their width added.
+        val gap = max(.012, layout.config.tagOffset.x * metres)
+        text("tag-${n.id}", n.label, anchor.offset(x = gap + tagMetrics.width(n.label) * metres * .4)) {
+            scale = (10.4 * metres / .09).toFloat()
+            color = vec(1f, 1f, 1f, .65f)
+        }
     }
-    for (w in layout.words) {
-        val p = world(P(w.centre, w.baseline), .025 * sin(w.token * 1.3))
-        val node = point("word-point-${w.token}", p.x, p.y, p.z)
-        val word = text("word-${w.token}", w.word, node) { scale = (32.0 * metres / .09).toFloat() }
-        val leaf = layout.nodes.single { it.leaf && it.token == w.token }
-        if (degrees.getOrDefault(leaf.id, 0) < 4) link(nodes.getValue(leaf.id), node, .6f)
-        line("stem-${w.token}", nodes.getValue(leaf.id).anchor, word.above) { width = .0010f }
-        if (w.underlined)
-            underline("mark-${w.token}", word.all, gap = .010f) {
-                color = vec(.5f, .33f, .13f, 1f)
-                width = .0012f
-            }
+    val particles = mutableMapOf<Int, DiagramParticle>()
+    val words =
+        layout.words.associate { w ->
+            val p = world(P(w.centre, w.baseline), .025 * sin(w.token * 1.3))
+            val node = point("word-point-${w.token}", p.x, p.y, p.z)
+            particles[w.token] = node
+            w.token to text("word-${w.token}", w.word, node) { scale = (32.0 * metres / .09).toFloat() }
+        }
+    val wordLayouts = layout.words.associateBy { it.token }
+    // A font-metric baseline anchor follows its word; the offset preserves the original layout.
+    fun wordAnchor(token: Int, at: P): DiagramAnchor {
+        val w = wordLayouts.getValue(token)
+        return words
+            .getValue(token)
+            .all
+            .baseline
+            .offset(x = (at.x - w.centre) * metres, y = -(at.y - w.baseline) * metres)
+    }
+    for (edge in layout.wordEdges) {
+        if (degrees.getOrDefault(edge.node, 0) < 4) link(nodes.getValue(edge.node), particles.getValue(edge.token), .6f)
+        val a = nodes.getValue(edge.node).anchor
+        val b = wordAnchor(edge.token, edge.curve.b)
+        val c1 = direction(edge.curve.c1 - edge.curve.a)
+        val c2 = direction(edge.curve.c2 - edge.curve.b)
+        path(
+            "stem-${edge.token}",
+            shape = {
+                val from = position(a)
+                val to = position(b)
+                FLine().moveTo(from).cubicTo(from + c1, to + c2, to)
+            },
+        ) {
+            width = .0010f
+            color = vec(1f, 1f, 1f, .6f)
+        }
+    }
+    for (w in layout.words) if (w.underlined)
+        underline("mark-${w.token}", words.getValue(w.token).all, gap = .010f) {
+            color = vec(1f, 1f, 1f, .75f)
+            width = .0012f
+        }
+    for ((i, dep) in layout.arcs.withIndex()) {
+        if (dep.edge.isRoot) continue
+        val a = wordAnchor(dep.edge.gov, dep.curve.a)
+        val b = wordAnchor(dep.edge.dep, dep.curve.b)
+        val c1 = direction(dep.curve.c1 - dep.curve.a)
+        val c2 = direction(dep.curve.c2 - dep.curve.b)
+        val arc = path(
+            "dependency-$i",
+            shape = {
+                val from = position(a)
+                val to = position(b)
+                FLine().moveTo(from).cubicTo(from + c1, to + c2, to)
+            },
+        ) {
+            width = .0012f
+            color = vec(1f, 1f, 1f, .45f)
+        }
+        // Convert the layout's label position to an arclength anchor that stays on a moving arc.
+        val samples = (0..128).map { dep.curve.pointAt(it / 128.0) }
+        val lengths = samples.zipWithNext().map { (a, b) -> (b - a).length }
+        val labelOnCurve = dep.labelAt - P(0.0, layout.config.arcLabelDrop)
+        val nearest = samples.indices.minBy { (samples[it] - labelOnCurve).length }
+        val fraction = (lengths.take(nearest).sum() / lengths.sum()).toFloat()
+        val offset = direction(dep.labelAt - samples[nearest])
+        text("dependency-label-$i", dep.label, arc.at(fraction).offset(x = offset.x, y = offset.y)) {
+            scale = (8.8 * metres / .09).toFloat()
+            rotation = -Math.toRadians(dep.labelAngle).toFloat()
+            color = vec(1f, 1f, 1f, .55f)
+        }
     }
 }
-val progress = progressReporter("Prepare 2 / 4: constituency canopy", showDelayMillis = 0)
+// Let the words lead: structural strokes and markers are more translucent.
+for (path in graph.paths) path.ink = path.ink.copy(color = Vector4f(path.ink.color).apply { w *= .65f })
+for (dot in graph.dots) dot.color.w *= .65f
+val progress = progressReporter("Prepare 2 / 4: complete canopy", showDelayMillis = 0)
 val player = try {
     ReadingDiagramPlayer.prepare(graph, face, "field-slug".file, diagramScore(graph, 20.0) {}) { n, total, text ->
         progress.update(n.toDouble() / total, "$n / $total: $text")
@@ -413,17 +590,17 @@ val player = try {
 player.wind = .012f
 prop<ReadingExample>(exampleTwo) = ReadingExample(
     "2 · Constituency canopy",
-    "The parser's actual tree hangs above the words. Branches occupy shallow depth layers; type stays in readable planes.",
+    "The complete constituent tree, POS labels and word stems, with collapsed dependencies beneath the words. Curves follow their moving anchors.",
     player,
 )
 ```
 
-## 4. 4 · Dependency undertow
+## 5. 4 · Dependency undertow
 
-<!-- field-box id="text1_example3" index="3" -->
+<!-- field-box id="text1_example3" index="4" -->
 
 ```edn [field-box id="text1_example3" role="properties"]
-{"id" "text1_example3" "index" 3 "name" "4 · Dependency undertow" "parents" ["root" "text1_context"] "children" ["text1_score"] "properties" {"children" #{#afield/box "text1_score"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "4 · Dependency undertow" "_tombstone" false "frame" #afield/rect [650.0 220.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_example3_code_.kt" "lines" 86 "characters" 3730 "sha256" "dda212994b00c0430e874500c8af3621fd5974a967e9f7f228ea84a91f15fe76"}]}
+{"id" "text1_example3" "index" 4 "name" "4 · Dependency undertow" "parents" ["root" "text1_context"] "children" ["text1_score"] "properties" {"children" #{#afield/box "text1_score"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "4 · Dependency undertow" "_tombstone" false "frame" #afield/rect [650.0 220.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_example3_code_.kt" "lines" 89 "characters" 3957 "sha256" "24fda071c676682a7e43fdcba393d188f911e02e4c47d15ad7854380628daddc"}]}
 ```
 
 ```kotlin [field-property box="text1_example3" name="code" path="text1_example3_code_.kt"]
@@ -435,7 +612,7 @@ import kotlin.math.*
 // 3 · Undertow. Nested dependency arcs, with independently scored labels and beads.
 val parsed = Sentences.example(3)
 check(parsed.problems().isEmpty()) { parsed.problems().joinToString() }
-val face = Typefaces.named("Noto Serif", 100, strict = true)
+val face = Typefaces.named("Noto Serif Light", 100, strict = true)
 val layout =
     SentenceDiagram()
         .use(parsed)
@@ -494,11 +671,14 @@ val graph = readingDiagram {
             color = vec(.85f, .48f, .15f, 1f)
         }
         text("label-$i", dep.label, path.at(.52f).offset(y = -.027f)) {
-            scale = (11.0 * metres / .09).toFloat()
-            color = vec(.43f, .6f, .72f, 1f)
+            scale = (8.8 * metres / .09).toFloat()
+            color = vec(1f, 1f, 1f, .55f)
         }
     }
 }
+// Let the words lead: structural strokes and markers are more translucent.
+for (path in graph.paths) path.ink = path.ink.copy(color = Vector4f(path.ink.color).apply { w *= .65f })
+for (dot in graph.dots) dot.color.w *= .65f
 val progress = progressReporter("Prepare 3 / 4: dependency undertow", showDelayMillis = 0)
 val player = try {
     ReadingDiagramPlayer.prepare(graph, face, "field-slug".file, diagramScore(graph, 20.0) {}) { n, total, text ->
@@ -515,12 +695,12 @@ prop<ReadingExample>(exampleThree) = ReadingExample(
 )
 ```
 
-## 5. 5 · Sentence furniture
+## 6. 5 · Sentence furniture
 
-<!-- field-box id="text1_example4" index="4" -->
+<!-- field-box id="text1_example4" index="5" -->
 
 ```edn [field-box id="text1_example4" role="properties"]
-{"id" "text1_example4" "index" 4 "name" "5 · Sentence furniture" "parents" ["root" "text1_context"] "children" ["text1_score"] "properties" {"children" #{#afield/box "text1_score"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "5 · Sentence furniture" "_tombstone" false "frame" #afield/rect [650.0 330.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_example4_code_.kt" "lines" 77 "characters" 3717 "sha256" "03063693defef87d2ca7d622727b3a78c78e0e1a1f9c92f4bc8a2a79353a79da"}]}
+{"id" "text1_example4" "index" 5 "name" "5 · Sentence furniture" "parents" ["root" "text1_context"] "children" ["text1_score"] "properties" {"children" #{#afield/box "text1_score"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "5 · Sentence furniture" "_tombstone" false "frame" #afield/rect [650.0 330.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_example4_code_.kt" "lines" 80 "characters" 3948 "sha256" "a4c7ee172c124060c1525276e80d9c1db4ab6bbb2d6af66adeee288c5a84ce8c"}]}
 ```
 
 ```kotlin [field-property box="text1_example4" name="code" path="text1_example4_code_.kt"]
@@ -532,7 +712,7 @@ import kotlin.math.*
 // 4 · Sentence furniture. Reed-Kellogg shelves become a shallow spatial mobile, then a reading line.
 val parsed = Sentences.example(4)
 check(parsed.problems().isEmpty()) { parsed.problems().joinToString() }
-val face = Typefaces.named("Noto Serif", 100, strict = true)
+val face = Typefaces.named("Noto Serif Light", 100, strict = true)
 val config = KelloggConfig(
     slantAngle = 30.0,
     nestAngleStep = 10.0,
@@ -587,6 +767,9 @@ val graph = readingDiagram {
         dot("reading-bead", wind.at(.5f)) { radius = .004f }
     }
 }
+// Let the words lead: structural strokes and markers are more translucent.
+for (path in graph.paths) path.ink = path.ink.copy(color = Vector4f(path.ink.color).apply { w *= .65f })
+for (dot in graph.dots) dot.color.w *= .65f
 val progress = progressReporter("Prepare 4 / 4: sentence furniture", showDelayMillis = 0)
 val player = try {
     ReadingDiagramPlayer.prepare(graph, face, "field-slug".file, diagramScore(graph, 24.0) {}) { n, total, text ->
@@ -603,12 +786,12 @@ prop<ReadingExample>(exampleFour) = ReadingExample(
 )
 ```
 
-## 6. 10 · Blur cascade
+## 7. 10 · Blur cascade
 
-<!-- field-box id="text1_blur" index="5" -->
+<!-- field-box id="text1_blur" index="6" -->
 
 ```edn [field-box id="text1_blur" role="properties"]
-{"id" "text1_blur" "index" 5 "name" "10 · Blur cascade" "parents" ["root" "text1_context"] "children" ["text1_drawing"] "properties" {"children" #{#afield/box "text1_drawing"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "10 · Blur cascade" "_tombstone" false "frame" #afield/rect [1800.0 330.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_blur_code_.kt" "lines" 1 "characters" 32 "sha256" "d55764980cd0a35c3a2658aa262cccba454d34de0bb0dd8d72d6e24152b55593"} {"name" "vertex" "language" "glsl" "path" "text1_blur_vertex_.glsl" "lines" 10 "characters" 310 "sha256" "bfeef78cb283bfcb51d42e49e10e99971c2d418460670cf8a23279f7fd45a6cf"} {"name" "fragment" "language" "glsl" "path" "text1_blur_fragment_.glsl" "lines" 20 "characters" 861 "sha256" "4631f2b27487bb0cc7e210c7578866150db400df9abd6bd045ba7c65518aba71"}]}
+{"id" "text1_blur" "index" 6 "name" "10 · Blur cascade" "parents" ["root" "text1_context"] "children" ["text1_drawing"] "properties" {"children" #{#afield/box "text1_drawing"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "10 · Blur cascade" "_tombstone" false "frame" #afield/rect [1800.0 330.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_blur_code_.kt" "lines" 1 "characters" 32 "sha256" "d55764980cd0a35c3a2658aa262cccba454d34de0bb0dd8d72d6e24152b55593"} {"name" "vertex" "language" "glsl" "path" "text1_blur_vertex_.glsl" "lines" 10 "characters" 310 "sha256" "bfeef78cb283bfcb51d42e49e10e99971c2d418460670cf8a23279f7fd45a6cf"} {"name" "fragment" "language" "glsl" "path" "text1_blur_fragment_.glsl" "lines" 20 "characters" 861 "sha256" "4631f2b27487bb0cc7e210c7578866150db400df9abd6bd045ba7c65518aba71"}]}
 ```
 
 ```kotlin [field-property box="text1_blur" name="code" path="text1_blur_code_.kt"]
@@ -651,12 +834,12 @@ void main() {
 }
 ```
 
-## 7. 2 · Marked breath
+## 8. 2 · Marked breath
 
-<!-- field-box id="text1_poem" index="6" -->
+<!-- field-box id="text1_poem" index="7" -->
 
 ```edn [field-box id="text1_poem" role="properties"]
-{"id" "text1_poem" "index" 6 "name" "2 · Marked breath" "parents" ["root" "text1_context"] "children" ["text1_score" "text1_drawing"] "properties" {"children" #{#afield/box "text1_score" #afield/box "text1_drawing"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "2 · Marked breath" "_tombstone" false "frame" #afield/rect [650.0 0.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_poem_code_.kt" "lines" 60 "characters" 2468 "sha256" "6f429f02dd21156ea5fe1605e354e101451254e8788dbbef0722e3fa2a6b947b"}]}
+{"id" "text1_poem" "index" 7 "name" "2 · Marked breath" "parents" ["root" "text1_context"] "children" ["text1_score" "text1_drawing"] "properties" {"children" #{#afield/box "text1_score" #afield/box "text1_drawing"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "2 · Marked breath" "_tombstone" false "frame" #afield/rect [650.0 0.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_poem_code_.kt" "lines" 68 "characters" 2842 "sha256" "d70a49bf9a0eb95e82d5ba5cd148e6421ca2a2f58f652777738832d41ff157ea"}]}
 ```
 
 ```kotlin [field-property box="text1_poem" name="code" path="text1_poem_code_.kt"]
@@ -670,6 +853,11 @@ val parsed = Sentences.example(1)
 check(parsed.problems().isEmpty()) { parsed.problems().joinToString() }
 val graph = readingDiagram {
     val peg = point("peg", -.78, .52, pinned = true)
+    dot("peg-marker", peg.anchor) {
+        shape = DiagramPointShape.RING
+        radius = .009f
+        color = vec(.8f, .43f, .13f, 1f)
+    }
     val first = point("first", 0, .24, .025)
     val second = point("second", 0, -.08, -.025)
     link(peg, first)
@@ -702,11 +890,14 @@ val graph = readingDiagram {
         parsed.dependencies.sdCollapsed.first { it.rel == "prep_off" }.label,
         relation.at(.55f).offset(y = -.045f),
     ) {
-        scale = .38f
-        color = vec(.45f, .6f, .75f, 1f)
+        scale = .304f
+        color = vec(1f, 1f, 1f, .55f)
     }
 }
-val face = Typefaces.named("Noto Serif", 100, strict = true)
+val face = Typefaces.named("Noto Serif Light", 100, strict = true)
+// Let the words lead: structural strokes and markers are more translucent.
+for (path in graph.paths) path.ink = path.ink.copy(color = Vector4f(path.ink.color).apply { w *= .65f })
+for (dot in graph.dots) dot.color.w *= .65f
 val progress = progressReporter("Prepare 1 / 4: marked breath", showDelayMillis = 0)
 val player = try {
     ReadingDiagramPlayer.prepare(graph, face, "field-slug".file, diagramScore(graph, 20.0) {}) { n, total, text ->
@@ -722,20 +913,20 @@ prop<ReadingExample>(exampleOne) = ReadingExample(
 )
 ```
 
-## 8. 6 · Scores / example selector
+## 9. 6 · Scores / example selector
 
-<!-- field-box id="text1_score" index="7" -->
+<!-- field-box id="text1_score" index="8" -->
 
 ```edn [field-box id="text1_score" role="properties"]
-{"id" "text1_score" "index" 7 "name" "6 · Scores / example selector" "parents" ["root" "text1_poem" "text1_example2" "text1_example3" "text1_example4"] "children" ["text1_drawing"] "properties" {"children" #{#afield/box "text1_drawing"} "parents" #{#afield/box "root" #afield/box "text1_poem" #afield/box "text1_example2" #afield/box "text1_example3" #afield/box "text1_example4"} "name" "6 · Scores / example selector" "_tombstone" false "frame" #afield/rect [1200.0 0.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_score_code_.kt" "lines" 90 "characters" 3780 "sha256" "a01bf117fb8f9c069e3f9a2f128e4d4db26c09acc4cbaeccfc25d645a582db30"}]}
+{"id" "text1_score" "index" 8 "name" "6 · Scores / example selector" "parents" ["root" "text1_poem" "text1_example2" "text1_example3" "text1_example4" "text1_typography"] "children" ["text1_drawing"] "properties" {"children" #{#afield/box "text1_drawing"} "parents" #{#afield/box "root" #afield/box "text1_poem" #afield/box "text1_example2" #afield/box "text1_example3" #afield/box "text1_example4" #afield/box "text1_typography"} "name" "6 · Scores / example selector" "_tombstone" false "frame" #afield/rect [1200.0 0.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_score_code_.kt" "lines" 90 "characters" 3793 "sha256" "228bffe7fa29f7e07ca530852887b7c729724c39006ace3a734556f6b6946157"}]}
 ```
 
 ```kotlin [field-property box="text1_score" name="code" path="text1_score_code_.kt"]
 import afield.graphics.scene.reading.*
 
-// All four scores are separate from graph construction and native typography preparation.
+// All five scores are separate from graph construction and native typography preparation.
 // Re-run this box to rescore the existing players; their physics and Slug buffers are retained.
-val allExamples = listOf(exampleOne, exampleTwo, exampleThree, exampleFour)
+val allExamples = listOf(exampleOne, exampleTwo, exampleThree, exampleFour, exampleFive)
 for ((index, example) in allExamples.withIndex()) {
     val graph = example.player.diagram
     example.player.playback.score = diagramScore(graph, duration = if (index == 3) 24.0 else 20.0) {
@@ -823,12 +1014,12 @@ controlGroup("gentle physics") {
 describe()
 ```
 
-## 9. 7 · FLine strokes
+## 10. 7 · FLine strokes
 
-<!-- field-box id="text1_stroke" index="8" -->
+<!-- field-box id="text1_stroke" index="9" -->
 
 ```edn [field-box id="text1_stroke" role="properties"]
-{"id" "text1_stroke" "index" 8 "name" "7 · FLine strokes" "parents" ["root" "text1_context"] "children" ["text1_drawing"] "properties" {"children" #{#afield/box "text1_drawing"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "7 · FLine strokes" "_tombstone" false "frame" #afield/rect [1800.0 0.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_stroke_code_.kt" "lines" 1 "characters" 34 "sha256" "b33d092c8d888b5530ccbf2be717e411a845014cdc35b50e8701d0c94819d446"} {"name" "vertex" "language" "glsl" "path" "text1_stroke_vertex_.glsl" "lines" 110 "characters" 4165 "sha256" "1a9d198b61c33931438b721ec009bc7db77b197d472e91a812d2f0ab24d1a878"} {"name" "fragment" "language" "glsl" "path" "text1_stroke_fragment_.glsl" "lines" 36 "characters" 1646 "sha256" "17e9404671abdeffd921fef879d5ef39cf98ae14f749556b7f39c022cc8887ea"}]}
+{"id" "text1_stroke" "index" 9 "name" "7 · FLine strokes" "parents" ["root" "text1_context"] "children" ["text1_drawing"] "properties" {"children" #{#afield/box "text1_drawing"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "7 · FLine strokes" "_tombstone" false "frame" #afield/rect [1800.0 0.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_stroke_code_.kt" "lines" 1 "characters" 34 "sha256" "b33d092c8d888b5530ccbf2be717e411a845014cdc35b50e8701d0c94819d446"} {"name" "vertex" "language" "glsl" "path" "text1_stroke_vertex_.glsl" "lines" 117 "characters" 4529 "sha256" "5655bcc7a685480068cd7c73a727ca1a0b59a5583589bc176a1e0161e2ce7e0f"} {"name" "fragment" "language" "glsl" "path" "text1_stroke_fragment_.glsl" "lines" 44 "characters" 2212 "sha256" "cce3efa8d2ef123e75d2d780cfeb1a91435c146f0126da821b5e336db1c5c79b"}]}
 ```
 
 ```kotlin [field-property box="text1_stroke" name="code" path="text1_stroke_code_.kt"]
@@ -896,6 +1087,13 @@ vec2 unit(vec2 p,vec2 fallback) {
 const vec2 corners[6]=vec2[6](vec2(0,-1),vec2(1,-1),vec2(1,1),vec2(0,-1),vec2(1,1),vec2(0,1));
 void main() {
     Segment s=pc.diagramData.item[gl_VertexIndex/6];
+    // Do not rasterize unrevealed tessellation segments. Clamped arclength derivatives
+    // at their joins can otherwise turn distant AA tails into a dotted preview.
+    float capPadding=max(s.previous.w,s.next.w)+.0001;
+    if(s.trim.y<=s.trim.x||s.a.w>s.trim.y+capPadding||s.b.w<s.trim.x-capPadding) {
+        gl_Position=vec4(0,0,2,1);
+        return;
+    }
     mat4 vp=gl_ViewIndex==0?stereoVpL:stereoVpR;
     vec4 projection=gl_ViewIndex==0?stereoProjectionL:stereoProjectionR;
     mat4 m=vp*pc.model;
@@ -958,6 +1156,8 @@ layout(location=4) flat in vec4 ink;
 layout(location=5) flat in vec4 limits;
 layout(location=0) out vec4 outColor;
 void main() {
+    // Empty reveal intervals must never leave a rounded cap behind.
+    if(limits.y<=limits.x)discard;
     vec2 delta=endpoints.zw-endpoints.xy;
     float len=length(delta);
     if(len<1e-6)discard;
@@ -975,6 +1175,9 @@ void main() {
     float unitsPerPixel=max(fwidth(arc),1e-7);
     // Rounded reveal and dash ends use the same SDF as the outer edge.
     float trimOutside=max(limits.x-arc,arc-limits.y)/unitsPerPixel;
+    // Reject distant unrevealed fragments before differentiating the cap SDF.
+    // At tessellation joins its derivative can otherwise inflate AA into isolated dots.
+    if(trimOutside>radius+1.5)discard;
     if(trimOutside>0)sdf=max(sdf,length(vec2(trimOutside,side))-radius);
     if(ink.x>1e-6) {
         float local=mod(arc+ink.z,ink.x)-ink.x*.5;
@@ -982,17 +1185,20 @@ void main() {
         if(dashOutside>0)sdf=max(sdf,length(vec2(dashOutside,side))-radius);
     }
     float coverage=clamp(.5-sdf/max(fwidth(sdf),.75),0,1);
+    // Grow sub-diameter reveals into a stroke instead of popping in a full cap-sized dot.
+    coverage*=clamp((limits.y-limits.x)/unitsPerPixel/max(2*radius,1),0,1);
     vec4 c=mix(colorA,colorB,worldT);
-    outColor=vec4(c.rgb,c.a*coverage);
+    // White ink: structure comes from coverage, authored opacity and stroke width.
+    outColor=vec4(vec3(1.0),c.a*coverage);
 }
 ```
 
-## 10. 8 · SDF markers
+## 11. 8 · SDF markers
 
-<!-- field-box id="text1_point" index="9" -->
+<!-- field-box id="text1_point" index="10" -->
 
 ```edn [field-box id="text1_point" role="properties"]
-{"id" "text1_point" "index" 9 "name" "8 · SDF markers" "parents" ["root" "text1_context"] "children" ["text1_drawing"] "properties" {"children" #{#afield/box "text1_drawing"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "8 · SDF markers" "_tombstone" false "frame" #afield/rect [1800.0 110.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_point_code_.kt" "lines" 1 "characters" 33 "sha256" "11fd3bf6472a2fc0e8ac50cb8178b6d0abf54a11b460ef4f975f5eb04049fbcc"} {"name" "vertex" "language" "glsl" "path" "text1_point_vertex_.glsl" "lines" 60 "characters" 2229 "sha256" "035ff790ed3e4de3825009a4488defa68073b4008f2c11bef5b8970126ee0129"} {"name" "fragment" "language" "glsl" "path" "text1_point_fragment_.glsl" "lines" 20 "characters" 644 "sha256" "45dba99ad1956083645c05190646deca0aeb547f12e5494bed1519304cd959fa"}]}
+{"id" "text1_point" "index" 10 "name" "8 · SDF markers" "parents" ["root" "text1_context"] "children" ["text1_drawing"] "properties" {"children" #{#afield/box "text1_drawing"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "8 · SDF markers" "_tombstone" false "frame" #afield/rect [1800.0 110.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_point_code_.kt" "lines" 1 "characters" 33 "sha256" "11fd3bf6472a2fc0e8ac50cb8178b6d0abf54a11b460ef4f975f5eb04049fbcc"} {"name" "vertex" "language" "glsl" "path" "text1_point_vertex_.glsl" "lines" 60 "characters" 2229 "sha256" "035ff790ed3e4de3825009a4488defa68073b4008f2c11bef5b8970126ee0129"} {"name" "fragment" "language" "glsl" "path" "text1_point_fragment_.glsl" "lines" 21 "characters" 717 "sha256" "e0fd4b50839bcd49ef1aa013c328e1f0345c6354259d5e41a1450ad1868b7875"}]}
 ```
 
 ```kotlin [field-property box="text1_point" name="code" path="text1_point_code_.kt"]
@@ -1081,16 +1287,17 @@ void main() {
         d=length(p)-(.7+.3*cos(2*a));
     }
     float coverage=clamp(.5-d/max(fwidth(d),1e-5),0,1);
-    outColor=vec4(tint.rgb,tint.a*coverage);
+    // White ink; retain the marker's opacity and antialiased boundary.
+    outColor=vec4(vec3(1.0),tint.a*coverage);
 }
 ```
 
-## 11. 9 · Slug words
+## 12. 9 · Slug words
 
-<!-- field-box id="text1_text" index="10" -->
+<!-- field-box id="text1_text" index="11" -->
 
 ```edn [field-box id="text1_text" role="properties"]
-{"id" "text1_text" "index" 10 "name" "9 · Slug words" "parents" ["root" "text1_context"] "children" ["text1_drawing"] "properties" {"children" #{#afield/box "text1_drawing"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "9 · Slug words" "_tombstone" false "frame" #afield/rect [1800.0 220.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_text_code_.kt" "lines" 1 "characters" 32 "sha256" "98d254fdf3f6a0a2bace467aa81bacb438f376f5364bbec1ceffa4349739fb66"} {"name" "vertex" "language" "glsl" "path" "text1_text_vertex_.glsl" "lines" 78 "characters" 3304 "sha256" "229c92471c6a05bbf9bd8f09a8c49fd4d36c240cbd76ff9d424d2fe4a9e6359b"} {"name" "fragment" "language" "glsl" "path" "text1_text_fragment_.glsl" "lines" 186 "characters" 7259 "sha256" "a327abf7c634298e1f2d2e52f452f9d8130716657599eb568af24c4b92b4fb5e"}]}
+{"id" "text1_text" "index" 11 "name" "9 · Slug words" "parents" ["root" "text1_context"] "children" ["text1_drawing"] "properties" {"children" #{#afield/box "text1_drawing"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "9 · Slug words" "_tombstone" false "frame" #afield/rect [1800.0 220.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_text_code_.kt" "lines" 1 "characters" 32 "sha256" "98d254fdf3f6a0a2bace467aa81bacb438f376f5364bbec1ceffa4349739fb66"} {"name" "vertex" "language" "glsl" "path" "text1_text_vertex_.glsl" "lines" 78 "characters" 3304 "sha256" "229c92471c6a05bbf9bd8f09a8c49fd4d36c240cbd76ff9d424d2fe4a9e6359b"} {"name" "fragment" "language" "glsl" "path" "text1_text_fragment_.glsl" "lines" 187 "characters" 7335 "sha256" "4ecc299bb5488ebf046d36912a4082a565a28c43d3da81b8b34a0208063dd0e5"}]}
 ```
 
 ```kotlin [field-property box="text1_text" name="code" path="text1_text_code_.kt"]
@@ -1354,7 +1561,8 @@ float slug_Render(vec2 renderCoord, vec4 bandTransform, ivec2 glyphLoc, ivec2 ba
 
 // The fill colour. Replace it with any procedural fill; coverage is computed independently of it.
 vec3 shade(vec2 q) {
-    return pc.tint.rgb;
+    // White ink; glyph coverage and score-driven opacity remain independent.
+    return vec3(1.0);
 }
 void main() {
     ivec2 loc = ivec2(pc.slugData.words[16], pc.slugData.words[17]);
@@ -1367,12 +1575,12 @@ void main() {
 }
 ```
 
-## 12. 12 · Drawing / score playback
+## 13. 12 · Drawing / score playback
 
-<!-- field-box id="text1_drawing" index="11" -->
+<!-- field-box id="text1_drawing" index="12" -->
 
 ```edn [field-box id="text1_drawing" role="properties"]
-{"id" "text1_drawing" "index" 11 "name" "12 · Drawing / score playback" "parents" ["root" "text1_poem" "text1_score" "text1_stroke" "text1_point" "text1_text" "text1_blur" "text1_composite"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "text1_poem" #afield/box "text1_score" #afield/box "text1_stroke" #afield/box "text1_point" #afield/box "text1_text" #afield/box "text1_blur" #afield/box "text1_composite"} "name" "12 · Drawing / score playback" "_tombstone" false "frame" #afield/rect [2350.0 0.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_drawing_code_.kt" "lines" 104 "characters" 5062 "sha256" "f90298ecda227d4eb0e6dc15da9cffed6e5bc6d1ea8982767cdcf1c91cf08208"}]}
+{"id" "text1_drawing" "index" 12 "name" "12 · Drawing / score playback" "parents" ["root" "text1_poem" "text1_score" "text1_stroke" "text1_point" "text1_text" "text1_blur" "text1_composite"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "text1_poem" #afield/box "text1_score" #afield/box "text1_stroke" #afield/box "text1_point" #afield/box "text1_text" #afield/box "text1_blur" #afield/box "text1_composite"} "name" "12 · Drawing / score playback" "_tombstone" false "frame" #afield/rect [2350.0 0.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_drawing_code_.kt" "lines" 104 "characters" 5062 "sha256" "f90298ecda227d4eb0e6dc15da9cffed6e5bc6d1ea8982767cdcf1c91cf08208"}]}
 ```
 
 ```kotlin [field-property box="text1_drawing" name="code" path="text1_drawing_code_.kt"]

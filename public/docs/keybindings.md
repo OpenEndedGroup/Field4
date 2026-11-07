@@ -105,6 +105,9 @@ on macOS. Case does not matter, and `+`, `-`, a space or a comma all
 separate tokens, so `cmd-shift-d`, `CMD + SHIFT + D` and `cmd shift d` are the same
 shortcut as `cmd+shift+d`.
 
+In shortcut illustrations, <kbd>⌘</kbd> is Command and <kbd>^</kbd> is Control. For example,
+Open Anything is <kbd>⌘</kbd><kbd>P</kbd> on macOS and <kbd>^</kbd><kbd>P</kbd> on Windows and Linux.
+
 **Keys** are `a`–`z`, `0`–`9`, `f1`–`f24`, one of
 
 ```diffstatic {data-lang=text}

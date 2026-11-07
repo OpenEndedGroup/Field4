@@ -1,6 +1,7 @@
 package afield.graphics.scene.reading
 
 import afield.geometry.path.FLine
+import afield.graphics.text.Typeface
 import afield.math.linalg.*
 
 @DslMarker annotation class ReadingDsl
@@ -26,6 +27,13 @@ internal constructor(id: String, owner: Any, val rest: Vector3f, val pinned: Boo
 class DiagramText
 internal constructor(id: String, owner: Any, val text: String, val at: DiagramAnchor) :
     DiagramItem(id, owner) {
+    /** Font/style changes are preparation-time edits; position, rotation and scale stay live. */
+    var font: Typeface? = null
+    var bold = false
+    var italic = false
+    var weight: Double? = null
+    var tracking = 0.0 // font units between shaped glyphs
+    internal val styles = ArrayList<Pair<DiagramTextSpan, DiagramTypography>>()
     var scale = 1f
     var rotation = 0f // radians around the run baseline midpoint, in the diagram plane
     var color = Vector4f(.82f, .88f, .98f, 1f)
@@ -46,6 +54,59 @@ internal constructor(id: String, owner: Any, val text: String, val at: DiagramAn
 
     val below
         get() = all.below
+
+    /**
+     * A line excludes its newline; anchors and measurements keep the complete run's coordinates.
+     */
+    fun line(index: Int): DiagramTextSpan {
+        val lines = text.split('\n')
+        require(index in lines.indices && lines[index].isNotEmpty())
+        val start = lines.take(index).sumOf { it.length + 1 }
+        return characters(start, start + lines[index].length)
+    }
+
+    /** Unicode word tokens in reading order, each retaining its position in the full run. */
+    val words: List<DiagramTextSpan>
+        get() =
+            Regex("[\\p{L}\\p{N}_]+(?:[’'][\\p{L}\\p{N}_]+)*")
+                .findAll(text)
+                .map { characters(it.range.first, it.range.last + 1) }
+                .toList()
+
+    val inkBounds
+        get() = all.inkBounds
+
+    val bodyBounds
+        get() = all.bodyBounds
+
+    val emBounds
+        get() = all.emBounds
+
+    val capBounds
+        get() = all.capBounds
+
+    val xHeightBounds
+        get() = all.xHeightBounds
+
+    val advanceBounds
+        get() = all.advanceBounds
+
+    val baseline
+        get() = all.baseline
+
+    val baselineLeft
+        get() = all.baselineLeft
+
+    val baselineRight
+        get() = all.baselineRight
+
+    fun local(x: Number = 0, y: Number = 0, z: Number = 0) = all.local(x, y, z)
+
+    /** Caret at a shaped cluster boundary; indexing is UTF-16, as for word/span selections. */
+    fun caret(index: Int): DiagramAnchor {
+        require(index in 0..text.length)
+        return DiagramAnchor(owner) { it.textCaret(this, index) }
+    }
 
     fun characters(start: Int, endExclusive: Int): DiagramTextSpan {
         require(start >= 0 && endExclusive > start && endExclusive <= text.length) {
@@ -84,6 +145,36 @@ internal constructor(id: String, owner: Any, val text: String, val at: DiagramAn
 
 class DiagramTextSpan
 internal constructor(val run: DiagramText, val start: Int, val endExclusive: Int) {
+    /** Apply a preparation-time font/style override; later overlapping styles take precedence. */
+    fun style(block: DiagramTypography.() -> Unit): DiagramTextSpan = apply {
+        run.styles.add(this to DiagramTypography().apply(block))
+    }
+
+    val inkBounds
+        get() = DiagramTextBox(this, DiagramBoundsKind.INK)
+
+    val bodyBounds
+        get() = DiagramTextBox(this, DiagramBoundsKind.NO_DESCENDERS)
+
+    val emBounds
+        get() = DiagramTextBox(this, DiagramBoundsKind.EM)
+
+    val capBounds
+        get() = DiagramTextBox(this, DiagramBoundsKind.CAPS)
+
+    val xHeightBounds
+        get() = DiagramTextBox(this, DiagramBoundsKind.X_HEIGHT)
+
+    val advanceBounds
+        get() = DiagramTextBox(this, DiagramBoundsKind.ADVANCE)
+
+    /** Coordinates in this span's font units: x from its baseline start, y upward. */
+    fun local(x: Number = 0, y: Number = 0, z: Number = 0) =
+        DiagramAnchor(run.owner) {
+            val m = it.measure(this)
+            it.textPoint(run, m.advance.left + x.toFloat(), m.baseline + y.toFloat(), z.toFloat())
+        }
+
     private fun anchor(x: Float, y: Float) = DiagramAnchor(run.owner) { it.textAnchor(this, x, y) }
 
     val baselineLeft
@@ -108,7 +199,10 @@ internal constructor(val run: DiagramText, val start: Int, val endExclusive: Int
         get() = anchor(.5f, .8f)
 
     val below
-        get() = baseline.offset(y = -.02f)
+        get() =
+            DiagramAnchor(run.owner) {
+                it.textAnchor(this, .5f, 0f).add(it.textDirection(run, 0f, -.02f, 0f))
+            }
 }
 
 class DiagramPath
@@ -228,7 +322,7 @@ class ReadingDiagramBuilder internal constructor() {
     ): DiagramText {
         name(id)
         check(at)
-        require(value.isNotBlank() && '\n' !in value) { "Use one text run per baseline" }
+        require(value.isNotBlank()) { "A text run must contain visible text" }
         return DiagramText(id, owner, value, at).apply(block).also { texts.add(it) }
     }
 
@@ -291,7 +385,13 @@ class ReadingDiagramBuilder internal constructor() {
         span: DiagramTextSpan,
         gap: Float = .014f,
         block: DiagramPath.() -> Unit = {},
-    ) = line(id, span.baselineLeft.offset(y = -gap), span.baselineRight.offset(y = -gap), block)
+    ) =
+        line(
+            id,
+            span.baselineLeft.alongText(span.run, y = -gap),
+            span.baselineRight.alongText(span.run, y = -gap),
+            block,
+        )
 
     fun dot(id: String, at: DiagramAnchor, block: DiagramDot.() -> Unit = {}): DiagramDot {
         name(id)

@@ -35,6 +35,13 @@ vec2 unit(vec2 p,vec2 fallback) {
 const vec2 corners[6]=vec2[6](vec2(0,-1),vec2(1,-1),vec2(1,1),vec2(0,-1),vec2(1,1),vec2(0,1));
 void main() {
     Segment s=pc.diagramData.item[gl_VertexIndex/6];
+    // Do not rasterize unrevealed tessellation segments. Clamped arclength derivatives
+    // at their joins can otherwise turn distant AA tails into a dotted preview.
+    float capPadding=max(s.previous.w,s.next.w)+.0001;
+    if(s.trim.y<=s.trim.x||s.a.w>s.trim.y+capPadding||s.b.w<s.trim.x-capPadding) {
+        gl_Position=vec4(0,0,2,1);
+        return;
+    }
     mat4 vp=gl_ViewIndex==0?stereoVpL:stereoVpR;
     vec4 projection=gl_ViewIndex==0?stereoProjectionL:stereoProjectionR;
     mat4 m=vp*pc.model;

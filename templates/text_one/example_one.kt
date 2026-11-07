@@ -8,6 +8,11 @@ val parsed = Sentences.example(1)
 check(parsed.problems().isEmpty()) { parsed.problems().joinToString() }
 val graph = readingDiagram {
     val peg = point("peg", -.78, .52, pinned = true)
+    dot("peg-marker", peg.anchor) {
+        shape = DiagramPointShape.RING
+        radius = .009f
+        color = vec(.8f, .43f, .13f, 1f)
+    }
     val first = point("first", 0, .24, .025)
     val second = point("second", 0, -.08, -.025)
     link(peg, first)
@@ -40,11 +45,14 @@ val graph = readingDiagram {
         parsed.dependencies.sdCollapsed.first { it.rel == "prep_off" }.label,
         relation.at(.55f).offset(y = -.045f),
     ) {
-        scale = .38f
-        color = vec(.45f, .6f, .75f, 1f)
+        scale = .304f
+        color = vec(1f, 1f, 1f, .55f)
     }
 }
-val face = Typefaces.named("Noto Serif", 100, strict = true)
+val face = Typefaces.named("Noto Serif Light", 100, strict = true)
+// Let the words lead: structural strokes and markers are more translucent.
+for (path in graph.paths) path.ink = path.ink.copy(color = Vector4f(path.ink.color).apply { w *= .65f })
+for (dot in graph.dots) dot.color.w *= .65f
 val progress = progressReporter("Prepare 1 / 4: marked breath", showDelayMillis = 0)
 val player = try {
     ReadingDiagramPlayer.prepare(graph, face, "field-slug".file, diagramScore(graph, 20.0) {}) { n, total, text ->

@@ -6,7 +6,7 @@ import kotlin.math.*
 // 3 · Undertow. Nested dependency arcs, with independently scored labels and beads.
 val parsed = Sentences.example(3)
 check(parsed.problems().isEmpty()) { parsed.problems().joinToString() }
-val face = Typefaces.named("Noto Serif", 100, strict = true)
+val face = Typefaces.named("Noto Serif Light", 100, strict = true)
 val layout =
     SentenceDiagram()
         .use(parsed)
@@ -65,11 +65,14 @@ val graph = readingDiagram {
             color = vec(.85f, .48f, .15f, 1f)
         }
         text("label-$i", dep.label, path.at(.52f).offset(y = -.027f)) {
-            scale = (11.0 * metres / .09).toFloat()
-            color = vec(.43f, .6f, .72f, 1f)
+            scale = (8.8 * metres / .09).toFloat()
+            color = vec(1f, 1f, 1f, .55f)
         }
     }
 }
+// Let the words lead: structural strokes and markers are more translucent.
+for (path in graph.paths) path.ink = path.ink.copy(color = Vector4f(path.ink.color).apply { w *= .65f })
+for (dot in graph.dots) dot.color.w *= .65f
 val progress = progressReporter("Prepare 3 / 4: dependency undertow", showDelayMillis = 0)
 val player = try {
     ReadingDiagramPlayer.prepare(graph, face, "field-slug".file, diagramScore(graph, 20.0) {}) { n, total, text ->
