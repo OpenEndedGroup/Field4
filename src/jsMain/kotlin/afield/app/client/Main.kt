@@ -2572,6 +2572,12 @@ private fun registerCanvasZoomActions() {
     interrupt.detail = "Throw out of box code that never returns (a runaway loop or recursion), so Field runs again"
     interrupt.run = { send("interrupt-box", js("({})")) }
     builtin.push(interrupt)
+    val dream: dynamic = js("({})")
+    dream.id = "consolidate-ai4-memory"
+    dream.label = "Consolidate AI4 Memory"
+    dream.detail = "Have AI4 check its memory notes against the chats since its last pass, and fix, merge or add notes"
+    dream.run = { send("ai4-memory-dream", js("({})")) }
+    builtin.push(dream)
     val frame: dynamic = js("({})")
     frame.id = "frame-selected"
     frame.label = "Frame Selected"

@@ -54,7 +54,14 @@ import java.util.concurrent.TimeUnit
  * agent tasks and evals get no memory unless their request asks for it (`AgentTaskRequest.memory`), so an
  * eval neither reads nor writes the person's notes.
  */
-class UserMemory(val dir: File) {
+class UserMemory(
+    val dir: File,
+    /**
+     * Whether each write and delete is committed on its own. A dream pass works on an instance with this off
+     * and commits the whole pass once, with its log ([Dreaming]).
+     */
+    private val commitEachChange: Boolean = true,
+) {
 
     /** One note as parsed from disk. [revision] is the SHA-256 of the file's bytes. */
     data class Note(
@@ -252,6 +259,14 @@ class UserMemory(val dir: File) {
      * the repository that ran the hook.
      */
     private fun commit(message: String) {
+        if (commitEachChange) commitAll(message)
+    }
+
+    /** Commit whatever the folder holds now, as one change: what a dream pass does at its end. */
+    fun commitAll(message: String): Unit = synchronized(lock) { commitLocked(message) }
+
+    private fun commitLocked(message: String) {
+        dir.mkdirs()
         fun git(vararg args: String): Boolean = runCatching {
             val pb = ProcessBuilder(listOf("git", "-c", "user.name=Field AI4", "-c", "user.email=ai4@localhost",
                 "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null") + args)

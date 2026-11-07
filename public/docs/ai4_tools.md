@@ -630,6 +630,15 @@ change, so edit the notes rather than that file. Each change AI4 makes is a comm
 own git repository: `git log -p` shows what it learned, and `git revert` undoes a change. Set
 `AFIELD_AI4_MEMORY=off` to turn memory off, or `AFIELD_AI4_MEMORY_DIR` to keep it somewhere else.
 
+A note written in the middle of a chat can be wrong, or go stale. So once in a while AI4 goes back
+over its memory with nobody present. It reads the chats saved since its last pass, checks each note
+against what was actually said, and fixes or deletes a note the chats contradict. It also records
+corrections you made that no note holds yet, and merges notes that say the same thing. This happens
+on its own when Field has had no AI4 chat for half an hour, at most every six hours, and only after a
+few new turns. **Consolidate AI4 Memory** in the command palette runs it now. Each pass is one commit
+in the memory's repository, with an account of what it changed in `dreams/`. Set
+`AFIELD_AI4_DREAM=manual` to keep only the palette command, or `off` to stop it.
+
 ## Working on Field's own repository
 
 AI4 can also work on Field's own checkout, outside any document. The chat panel on a box gets these

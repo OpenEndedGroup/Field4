@@ -45,6 +45,27 @@ class ChatHistory private constructor(val workspace: File) {
         }
     }
 
+    /**
+     * One saved turn: the chat, its session-tree node, when it was saved, the stretch of blocks it added (as
+     * addresses), what the person asked, and whether it is on the chat's current branch (false: rewound away).
+     */
+    data class Turn(val chat: String, val node: String, val ts: Long, val first: String, val last: String,
+                    val request: String, val onHead: Boolean) {
+        val citation: String get() = "$chat@$first"
+    }
+
+    /** Every turn the person started that was saved after [since] (epoch ms), oldest first. */
+    fun turnsSince(since: Long): List<Turn> = synchronized(this) {
+        store.all().flatMap { (id, tree) ->
+            tree.nodes.mapNotNull { n ->
+                val ts = n.ts ?: return@mapNotNull null
+                val request = n.user?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+                if (ts <= since || n.blocks.isEmpty()) return@mapNotNull null
+                Turn(id, n.id, ts, n.blocks.first().address, n.blocks.last().address, request, n.onHead)
+            }
+        }.sortedBy { it.ts }
+    }
+
     /** The chats, as `name · N turns`. */
     fun chats(): List<String> = synchronized(this) { store.all().map { (id, tree) -> "$id · ${tree.nodes.size} turns" } }
 

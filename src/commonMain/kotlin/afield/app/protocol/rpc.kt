@@ -1119,6 +1119,22 @@ data class ProvisionalAcceptedValue(val uid: String, val property: String, val v
 @Serializable
 data class Notify(val text: String, val category: String)
 
+/**
+ * The reply to `ai4-memory-dream`: what one pass of AI4's memory consolidation did (`afield.ai.memory.Dreaming`).
+ * [log] is the path of the pass's log in the memory folder.
+ */
+@Serializable
+data class Ai4DreamReply(
+    val ok: Boolean,
+    val message: String,
+    val turnsRead: Int = 0,
+    val created: List<String> = emptyList(),
+    val updated: List<String> = emptyList(),
+    val deleted: List<String> = emptyList(),
+    val rounds: Int = 0,
+    val log: String = "",
+)
+
 @Serializable
 data class OscEditorCommand(
     val command: String,
