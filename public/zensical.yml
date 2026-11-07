@@ -263,6 +263,7 @@ nav:
       - Sentence diagrams: sentence_diagrams.md
       - Euclid's Elements: euclid_elements.md
       - Voronoi, Contours & Clusters: spatial_geometry_examples.md
+      - Penrose and Other Quasiperiodic Tilings: debruijn_tilings.md
       - Linear Programs as Curves: lp_curves.md
     # sound.md is the Tour's sound stop, so this group starts at the pattern language that feeds
     # it and continues into the paths that page only introduces. Deliberately not an ordinal —
@@ -274,6 +275,8 @@ nav:
       - A Pattern in Space (HRTF): pat_spatial.md
       - DoughDSP Sound Examples: dough_dsp_sound.md
       - Subharmonic Synthesis: subharmonic_sound.md
+      # Modal synthesis from geometry: the modes of a drawn drum head.
+      - "Eigendrum: Hear the Shape of a Drum": eigendrum.md
       - Loris Partial Tracks and Resynthesis: loris.md
       - Sonic Pi: sonic_pi.md
       - Faust: faust.md

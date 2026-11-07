@@ -138,6 +138,17 @@ drawing panels, one the pen hatches beside and one it fills with cracks. Pure CP
 
 [Open →](offline.html?file=assets/agent_transcripts/a_pen_that_sees/metadata.edn)
 
+### eigendrum
+
+**Draw a shape, hear it as a drum.** The starting point of [Eigendrum](eigendrum.md): the sixteen
+lowest modes of a square drum, each playable alone; a polar-equation drum and its mesh; the
+Gordon–Webb–Wolpert pair, two shapes with one spectrum; strikes on and off a nodal line; and a drum
+from your last stroke on the drawing layer. Pure CPU.
+
+![Two different seven-piece polygons outlined in yellow, each coloured orange and blue by its third mode](assets/eigendrum/kac.png)
+
+[Open →](offline.html?file=assets/agent_transcripts/eigendrum/metadata.edn)
+
 ### teaching_a_pen
 
 **Pens with other hands.** The starting point of [Teaching a pen](teaching_a_pen.md): Hershey plotter
@@ -1267,6 +1278,17 @@ Both boxes compute both spacings live, so neither picture is stored. Move a cont
 middle of the chord and re-run to watch the two columns converge.
 
 [Open →](offline.html?file=assets/agent_transcripts/arclength_spacing_demo/metadata.edn)
+
+### debruijn_tilings_demo
+
+Quasiperiodic rhombus tilings from de Bruijn multigrids, the companion to
+[Penrose and other quasiperiodic tilings](debruijn_tilings.md). *Penrose* colours a 5-fold tiling by
+rhombus type and returns its thin and thick counts; *gallery* shows 8-, 7- and 12-fold tilings and a
+disordered 6-fold one; *ribbon* highlights the tiles on one grid line; *plotter* draws plain outlines
+and counts shared edges; *slider* moves one family of lines; *offset sweep* animates that move
+(launch it); *relief* extrudes every tile through Manifold into one closed solid.
+
+[Open →](offline.html?file=assets/agent_transcripts/debruijn_tilings_demo/metadata.edn)
 
 ### lp_curves
 

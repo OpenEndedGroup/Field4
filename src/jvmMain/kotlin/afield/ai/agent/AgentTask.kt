@@ -71,6 +71,11 @@ data class AgentTaskRequest(
      * to use as the memory (an eval's, for a with/without-memory comparison).
      */
     val memory: String = "",
+    /**
+     * The workspace whose saved chats the history tools search, when the task has memory. Blank: the
+     * document's own workspace. The memory eval points it at the sessions it has recorded so far.
+     */
+    val history: String = "",
     /** Withhold [ViewBoxOutputRequest] — the counterfactual for a visual task: can it be done without looking? */
     val blind: Boolean = false,
     /**
@@ -338,7 +343,10 @@ object AgentTaskRunner {
                     "on" -> afield.ai.memory.UserMemory.forPerson()
                     else -> afield.ai.memory.UserMemory.at(java.io.File(request.memory.trim()))
                 }
-                base.copy(userMemory = memory, chatHistory = memory?.let { afield.ai.memory.ChatHistory.forDocument(java.io.File(info.filename)) })
+                base.copy(userMemory = memory, chatHistory = memory?.let {
+                    if (request.history.isNotBlank()) afield.ai.memory.ChatHistory.forWorkspace(java.io.File(request.history))
+                    else afield.ai.memory.ChatHistory.forDocument(java.io.File(info.filename))
+                })
             }.let { base ->
                 if (request.repoRoot.isBlank()) base else {
                     val root = java.io.File(request.repoRoot)

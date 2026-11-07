@@ -356,6 +356,9 @@ object DemoTranscriptExecSmokeTest {
         // Two more of the same shape: the interior-Close demo reverses, subdivides and dashes
         // closed contours and reports the numbers, all through showPlaneGrid.
         "close_node_demo",
+        // De Bruijn tilings: lines / showPlaneGrid / showPlane through drawToSVG, sliders, and a
+        // Manifold relief drawn by showMesh's CPU rasteriser. No Window, no Renderer.
+        "debruijn_tilings_demo",
         // lp_curves.md's companion: LP methods as curve generators over LpPolygon, drawn through
         // showPlaneGrid / showPlane. The second box ends in `animate { }` and is launched; the third
         // draws the fan map in an editable threeLines viewer. CPU only.
@@ -498,6 +501,9 @@ object DemoTranscriptExecSmokeTest {
         // a_pen_that_sees.md's starting point: the bundled sensing pens (PenSense) and their blind
         // twins; two drawing-panel boxes are frames {} loops. CPU only.
         "a_pen_that_sees",
+        // eigendrum.md's starting point: FEM drum modes (afield.audio.modal) drawn through lines()
+        // and played through WAV players; the drawing box falls back to a polar curve. CPU only.
+        "eigendrum",
         "fline_hit_records",
         // fline_examples.md's measuring sections: locationAt, trim/splitAt, crossings, fill rules. CPU only.
         "fline_measure",

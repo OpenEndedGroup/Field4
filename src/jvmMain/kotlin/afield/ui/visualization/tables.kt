@@ -29,6 +29,7 @@ import afield.ui.output.md
 
 import afield.audio.synth.*
 import afield.document.graph.Box
+import afield.graphics.color.Colormaps
 import afield.graphics.vulkan.*
 import afield.media.stream.*
 import afield.media.video.*
@@ -69,6 +70,12 @@ import kotlin.reflect.jvm.isAccessible
 
 /** Horizontal alignment of a [Table] column. Numeric columns default to [RIGHT], everything else [LEFT]. */
 enum class Align { LEFT, RIGHT, CENTER }
+
+/**
+ * What a [Table.heat] colour is relative to: each column's own range, each row's own range, or one
+ * range over every heated cell in the table.
+ */
+enum class HeatScope { COLUMN, ROW, TABLE }
 
 /** One cell that failed a [Table.expect] check: its row index, column name, value, and the reason given. */
 data class Deviation(val row: Int, val column: String, val value: Any?, val because: String?)
@@ -148,6 +155,9 @@ class Table(
     private val colors = mutableMapOf<String, String>()
     private val roles = mutableMapOf<String, CellRole>()
     private val bars = mutableMapOf<String, Pair<Double?, Int>>()
+    private val heats = mutableMapOf<String, Heat>()
+
+    private class Heat(val scope: HeatScope, val colormap: String, val center: Double?)
     private val roleFns = mutableMapOf<String, (Any?) -> CellRole?>()
     private val formats = mutableMapOf<String, (Any?) -> String>()
     private val checks = mutableListOf<Triple<String?, String?, (Int, String, Any?) -> Boolean>>()
@@ -218,6 +228,61 @@ class Table(
      */
     fun bar(column: String, max: Double? = null, width: Int = 120): Table =
         apply { bars[header[columnIndex(column)]] = max to width }
+
+    /**
+     * Fills numeric cells of [columns] with a colour from [colormap] (a [Colormaps] name), so a
+     * table of numbers also reads as a heatmap. With no columns named, every column is heated.
+     *
+     * [by] chooses the range a colour is relative to: [HeatScope.COLUMN] (each column's own min and
+     * max, for columns measured in different units), [HeatScope.ROW] (a row's cells against each
+     * other), or [HeatScope.TABLE] (one range over every heated cell, for a grid of one quantity).
+     * Pass [center] for a signed quantity: the range becomes symmetric about it, so a diverging map
+     * such as `"cyanorange"` puts [center] at its midpoint. Non-numeric and non-finite cells stay
+     * unfilled, and a cell that fails an [expect] keeps its warning colour instead.
+     */
+    fun heat(
+        vararg columns: String,
+        by: HeatScope = HeatScope.COLUMN,
+        colormap: String = "viridis",
+        center: Double? = null,
+    ): Table = apply {
+        Colormaps.stops(colormap)
+        val names = if (columns.isEmpty()) header else columns.map { header[columnIndex(it)] }
+        names.forEach { heats[it] = Heat(by, colormap, center) }
+    }
+
+    private fun heatValue(r: Int, c: Int): Double? =
+        (cells[r][c] as? Number)?.toDouble()?.takeIf { it.isFinite() }
+
+    /** The heated cells that share a range with cell ([r], [c]) under its [Heat.scope]. */
+    private fun heatPeers(r: Int, c: Int, heat: Heat): List<Double> {
+        val heated = header.indices.filter { heats[header[it]]?.scope == heat.scope }
+        return when (heat.scope) {
+            HeatScope.COLUMN -> cells.indices.mapNotNull { heatValue(it, c) }
+            HeatScope.ROW -> heated.mapNotNull { heatValue(r, it) }
+            HeatScope.TABLE -> cells.indices.flatMap { rr -> heated.mapNotNull { heatValue(rr, it) } }
+        }
+    }
+
+    /** The CSS fill and ink for cell ([r], [c]), or null when it is not heated or not a finite number. */
+    internal fun heatCss(r: Int, c: Int): String? {
+        val heat = heats[header[c]] ?: return null
+        val v = heatValue(r, c) ?: return null
+        val peers = heatPeers(r, c, heat)
+        val t = if (heat.center != null) {
+            val m = peers.maxOfOrNull { abs(it - heat.center) } ?: 0.0
+            if (m <= 0.0) 0.5 else 0.5 + 0.5 * (v - heat.center) / m
+        } else {
+            val lo = peers.minOrNull() ?: v
+            val hi = peers.maxOrNull() ?: v
+            if (hi <= lo) 0.5 else (v - lo) / (hi - lo)
+        }
+        val col = Colormaps.sample(heat.colormap, t.coerceIn(0.0, 1.0))
+        fun ch(x: Double) = (x.coerceIn(0.0, 1.0) * 255).toInt()
+        val luma = 0.2126 * col.r + 0.7152 * col.g + 0.0722 * col.b
+        val ink = if (luma > 0.55) "#111" else "#eee"
+        return "background:rgb(${ch(col.r)},${ch(col.g)},${ch(col.b)});color:$ink"
+    }
 
     /**
      * Formats a column's cells. The returned string is **trusted HTML** and is not escaped, which is
@@ -346,7 +411,12 @@ class Table(
     /** The rendered table — dispatched by `ValueVisualizer` for `display`, `.h` and box return values. */
     override fun toHTML(): String = buildString {
         val shown = cells.take(maxRows)
-        fun padding(c: Int) = if (c == 0) "3px 0" else "3px 0 3px 16px"
+        // A filled cell needs room on both sides of its text, so heated columns pad symmetrically.
+        fun padding(c: Int) = when {
+            header[c] in heats -> "3px 8px"
+            c == 0 -> "3px 0"
+            else -> "3px 0 3px 16px"
+        }
 
         append("<div style=\"font:12px/1.4 'Iosevka Web',monospace;color:$TABLE_TEXT\">")
         title?.let {
@@ -380,6 +450,8 @@ class Table(
                 // the one thing it was there to say. Same design token either way.
                 if (role != null) append(";color:var(${role.cssVar})")
                 else colors[name]?.let { append(";color:$it") }
+                // Heat sets its own legible ink after the colour, so the fill never hides the text.
+                if (role == null) heatCss(r, c)?.let { append(";$it") }
                 append("'")
                 why?.let { append(" title='${escapeTableHtml(it)}'") }
                 append(">")
