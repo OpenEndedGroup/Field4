@@ -1259,6 +1259,17 @@ middle of the chord and re-run to watch the two columns converge.
 
 [Open →](offline.html?file=assets/agent_transcripts/arclength_spacing_demo/metadata.edn)
 
+### debruijn_tilings_demo
+
+Quasiperiodic rhombus tilings from de Bruijn multigrids, the companion to
+[Penrose and other quasiperiodic tilings](debruijn_tilings.md). *Penrose* colours a 5-fold tiling by
+rhombus type and returns its thin and thick counts; *gallery* shows 8-, 7- and 12-fold tilings and a
+disordered 6-fold one; *ribbon* highlights the tiles on one grid line; *plotter* draws plain outlines
+and counts shared edges; *slider* moves one family of lines; *offset sweep* animates that move
+(launch it); *relief* extrudes every tile through Manifold into one closed solid.
+
+[Open →](offline.html?file=assets/agent_transcripts/debruijn_tilings_demo/metadata.edn)
+
 ### lp_curves
 
 Linear-programming algorithms as curve generators, the companion to

@@ -55,7 +55,7 @@ operations:
           val line = DeBruijnLine(family = 0, index = 0)
           val ribbon = penrose.ribbon(line)
 
-          val grey = listOf(vec(0.32, 0.34, 0.40, 1.0), vec(0.22, 0.24, 0.30, 1.0))
+          val grey = [vec(0.32, 0.34, 0.40, 1.0), vec(0.22, 0.24, 0.30, 1.0)]
           lines(penrose.lines(palette = grey, highlight = line), w = 560.0, h = 560.0, fitToSize = true)
 
           "${ribbon.size} tiles on family ${line.family}, line ${line.index}"
@@ -68,7 +68,7 @@ operations:
           // Outlines only, one closed FLine per rhombus: what a pen plotter wants. Each tile's two parallel
           // pairs of edges are perpendicular to the two grid lines that made it.
           val tiling = deBruijnTiling(symmetry = 5, radius = 5.0, scale = 16.0)
-          val outlines = tiling.lines(fill = false, outlineThickness = 1.2, palette = listOf(vec(0.92, 0.92, 0.88, 1.0)))
+          val outlines = tiling.lines(fill = false, outlineThickness = 1.2, palette = [vec(0.92, 0.92, 0.88, 1.0)])
           lines(outlines, w = 480.0, h = 480.0, fitToSize = true)
           "${outlines.size} closed outlines, ${tiling.adjacency().sumOf { it.size } / 2} shared edges"
   - create:
