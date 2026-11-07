@@ -262,6 +262,7 @@ nav:
       - Typography as Geometry: typography_examples.md
       - Euclid's Elements: euclid_elements.md
       - Voronoi, Contours & Clusters: spatial_geometry_examples.md
+      - Penrose and Other Quasiperiodic Tilings: debruijn_tilings.md
       - Linear Programs as Curves: lp_curves.md
     # sound.md is the Tour's sound stop, so this group starts at the pattern language that feeds
     # it and continues into the paths that page only introduces. Deliberately not an ordinal —
