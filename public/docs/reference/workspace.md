@@ -4,7 +4,7 @@
 
 The box's own surroundings: properties, persistence, and the handful of names every box already has in scope.
 
-238 source file(s), 3211 public symbol(s), 1293 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+239 source file(s), 3212 public symbol(s), 1294 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -1396,6 +1396,16 @@ Owns `~/.afield/theme.css` and its delivery to connected clients.
 | Declaration | Summary |
 | --- | --- |
 | <a id="agent-backdoor-kt--installagentbackdoorhandlers"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">installAgentBackdoorHandlers</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/agent_backdoor/#L1493) |  |
+
+## ai4Memory.kt { #ai4memory-kt }
+
+`src/jvmMain/kotlin/afield/app/server/ai4Memory.kt` — [read the source](source/jvmMain/afield/app/server/ai4Memory/)
+
+### Top-level functions { #ai4memory-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="ai4memory-kt--ai4memoryhandlers"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">ai4MemoryHandlers</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/app/server/ai4Memory/#L19) | The server's side of AI4's memory dreaming ([`Dreaming`](machine-learning.md#dreaming-kt-dreaming)): the `ai4-memory-dream` message, which the palette's **Consolidate AI4 Memory** sends and the backdoor can (`raw-send ai4-memory-dream '{}' --reply ai4-memory-dream`), and the idle watcher, started with the handlers. |
 
 ## arguments.kt { #arguments-kt }
 

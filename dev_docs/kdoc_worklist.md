@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 21224 of 36019 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 21239 of 36042 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**1975 undocumented entry points** (types, top-level functions and values) and 12156 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**1975 undocumented entry points** (types, top-level functions and values) and 12164 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -672,6 +672,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [AgentWorktreeManager.kt](../src/jvmMain/kotlin/afield/tools/automation/AgentWorktreeManager.kt) | Workspace | — | 0 | 8 | 11% |
 | [NotationScene.kt](../src/jvmMain/kotlin/afield/ui/notation/NotationScene.kt) | Visualization | — | 0 | 8 | 42% |
 | [GeometryFinding.kt](../src/jvmMain/kotlin/afield/ui/visualization/GeometryFinding.kt) | Visualization | — | 0 | 8 | 11% |
+| [Dreaming.kt](../src/jvmMain/kotlin/afield/ai/memory/Dreaming.kt) | Machine learning | — | 0 | 7 | 61% |
 | [BoxOutputLog.kt](../src/jvmMain/kotlin/afield/app/diagnostics/BoxOutputLog.kt) | Workspace | — | 0 | 7 | 50% |
 | [Scene.kt](../src/jvmMain/kotlin/afield/audio/spatial/steamaudio/Scene.kt) | Audio | — | 0 | 7 | 73% |
 | [HarmonicPhaseTracker.kt](../src/jvmMain/kotlin/afield/audio/synth/HarmonicPhaseTracker.kt) | Synthesis | — | 0 | 7 | 74% |
@@ -765,6 +766,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [SimulationResult.kt](../src/jvmMain/kotlin/afield/simulation/kratos/SimulationResult.kt) | Simulation | — | 0 | 4 | 87% |
 | [AgentTranscriptLayoutGuard.kt](../src/jvmMain/kotlin/afield/tools/docs/AgentTranscriptLayoutGuard.kt) | Workspace | — | 0 | 4 | 33% |
 | [FilestoreDir.kt](../src/jvmMain/kotlin/afield/ai/knowledge/FilestoreDir.kt) | AI4 | — | 0 | 3 | 66% |
+| [UserMemory.kt](../src/jvmMain/kotlin/afield/ai/memory/UserMemory.kt) | Machine learning | — | 0 | 3 | 76% |
 | [AnthropicBridge.kt](../src/jvmMain/kotlin/afield/ai/models/AnthropicBridge.kt) | AI4 | — | 0 | 3 | 40% |
 | [RelatedContextDiscovery.kt](../src/jvmMain/kotlin/afield/ai/retrieval/RelatedContextDiscovery.kt) | Machine learning | — | 0 | 3 | 40% |
 | [AskUserTools.kt](../src/jvmMain/kotlin/afield/ai/tools/AskUserTools.kt) | AI4 | — | 0 | 3 | 40% |
@@ -808,7 +810,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [AiTurnInbox.kt](../src/jvmMain/kotlin/afield/ai/conversation/AiTurnInbox.kt) | AI4 | — | 0 | 2 | 77% |
 | [ChatLogViews.kt](../src/jvmMain/kotlin/afield/ai/conversation/chatlog/ChatLogViews.kt) | AI4 | — | 0 | 2 | 83% |
 | [DepthAnythingWorker.kt](../src/jvmMain/kotlin/afield/ai/inference/onnx/DepthAnythingWorker.kt) | Machine learning | — | 0 | 2 | 85% |
-| [UserMemory.kt](../src/jvmMain/kotlin/afield/ai/memory/UserMemory.kt) | Machine learning | — | 0 | 2 | 81% |
 | [MotionExamples.kt](../src/jvmMain/kotlin/afield/animation/mocap/MotionExamples.kt) | Animation | — | 0 | 2 | 33% |
 | [UserThemeManager.kt](../src/jvmMain/kotlin/afield/app/server/UserThemeManager.kt) | Workspace | — | 0 | 2 | 33% |
 | [Callbacks.kt](../src/jvmMain/kotlin/afield/audio/spatial/steamaudio/Callbacks.kt) | Audio | — | 0 | 2 | 88% |
