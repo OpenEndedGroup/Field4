@@ -9801,7 +9801,7 @@ box's `code`, and shows the slot either in its host shader or alone on the study
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="stackautocard-kt--installstackautocard"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">installStackAutoCard</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/lang/stacksl/study/StackAutoCard/#L294) | The box's `stack.auto` numbers card redraws whenever one of its slots compiles new StackSL. |
+| <a id="stackautocard-kt--installstackautocard"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">installStackAutoCard</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/lang/stacksl/study/StackAutoCard/#L310) | The box's `stack.auto` numbers card redraws whenever one of its slots compiles new StackSL. |
 
 ### StackAutoCard { #stackautocard-kt-stackautocard }
 

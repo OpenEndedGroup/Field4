@@ -120,8 +120,15 @@ object StackAutoCard {
                     KnobNames.shouldAsk(box)) { refreshLater(box) }.orEmpty()
                 val inCode = offsetInCode(box, slot.source) != null
                 append("<div class='slot' data-slot='${slot.name}'>")
+                append("<div class='slot-heading'><span class='view-actions'>")
+                append("<button class='view-action' data-act='in-shader' data-slot='${slot.name}' title='Show it in your shader' aria-label='Show it in your shader'><svg width='18' height='18' viewBox='0 0 20 20' fill='none' stroke='currentColor' stroke-width='1.3' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true' focusable='false'><rect x='2' y='2' width='16' height='13' rx='1.5'/><path d='M7 18h6m-3-3v3M5 8.5s2-3 5-3 5 3 5 3-2 3-5 3-5-3-5-3Z'/><circle cx='10' cy='8.5' r='1.2'/></svg></button> " +
+                    "<button class='view-action' data-act='alone' data-slot='${slot.name}' title='Render this function alone' aria-label='Render this function alone'><svg width='18' height='18' viewBox='0 0 20 20' fill='none' stroke='currentColor' stroke-width='1.3' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true' focusable='false'><path d='M6 3H5Q3 3 3 5v2q0 3-2 3 2 0 2 3v2q0 2 2 2h1M14 3h1q2 0 2 2v2q0 3 2 3-2 0-2 3v2q0 2-2 2h-1'/><path d='m8 6 6 4-6 4Z' fill='currentColor' stroke='none'/></svg></button></span>")
                 append("<div><b>stack.auto.${esc(slot.name)}</b> <span class='muted'>· ${if (knobs.isEmpty()) "no numbers to turn" else "${knobs.size} ${if (knobs.size == 1) "number" else "numbers"} · ${if (slot.live) "live" else "as compiled"}"}</span></div>")
-                if (!inCode) append("<div class='warn'>This program is not written out in the box's code, so Keep cannot put numbers back into it.</div>")
+                if (!inCode) {
+                    val warning = esc("This program is not written out in the box's code, so Keep cannot put numbers back into it.")
+                    append("<span class='warn' role='img' tabindex='0' title='$warning' aria-label='$warning'><svg width='14' height='14' viewBox='0 0 16 16' fill='none' stroke='currentColor' stroke-width='1.3' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true'><path d='M8 1.5 15 14H1Z'/><path d='M8 5.5v4'/><circle cx='8' cy='11.5' r='.7' fill='currentColor' stroke='none'/></svg></span>")
+                }
+                append("</div>")
                 knobs.groupBy { it.line }.forEach { (line, onLine) ->
                     val heading = lines.getOrNull(line - 2)?.trim()?.takeIf { it.startsWith("#") }?.removePrefix("#")?.trim()
                         ?: lines.getOrNull(line - 1)?.substringBefore('#')?.trim().orEmpty()
@@ -142,12 +149,13 @@ object StackAutoCard {
                         append(buildSliderHtml(sliderId, label, minOf(lo, v), maxOf(hi, v), step, v, extraAttributes = "data-knob='${k.knob}' data-slot='${slot.name}'", ariaLabel = "k${k.knob} ${names[k.knob] ?: operand}"))
                     }
                 }
-                append("<div style='margin-top:6px'>")
-                if (inCode) append("<button data-act='source' data-slot='${slot.name}'>Show source</button> ")
-                if (inCode && knobs.isNotEmpty()) append("<button data-act='keep' data-slot='${slot.name}'>Keep these numbers</button> ")
-                if (knobs.isNotEmpty()) append("<button data-act='reset' data-slot='${slot.name}'>Reset</button> ")
-                append("<button data-act='in-shader' data-slot='${slot.name}'>Show it in your shader</button> " +
-                    "<button data-act='alone' data-slot='${slot.name}'>Render this function alone</button></div>")
+                if (inCode || knobs.isNotEmpty()) {
+                    append("<div style='margin-top:6px'>")
+                    if (inCode) append("<button data-act='source' data-slot='${slot.name}'>Show source</button> ")
+                    if (inCode && knobs.isNotEmpty()) append("<button data-act='keep' data-slot='${slot.name}'>Keep these numbers</button> ")
+                    if (knobs.isNotEmpty()) append("<button data-act='reset' data-slot='${slot.name}'>Reset</button> ")
+                    append("</div>")
+                }
                 val views = listOfNotNull(inShader["${box.id}|${slot.name}"], alone["${box.id}|${slot.name}"])
                 if (views.isNotEmpty()) {
                     append("<div class='views'>")
@@ -172,6 +180,11 @@ object StackAutoCard {
             append("""<style>
                 #$id{font:13px/1.45 var(--field-font-code, var(--field-font, monospace));font-stretch:inherit;font-feature-settings:inherit;color:#ddd;background:#0b0b0d;padding:12px 14px;width:640px;border-radius:6px}
                 #$id .muted{color:#8a8a90} #$id .warn{color:#e5b35f} #$id .status{margin-top:8px;color:#9c9}
+                #$id .slot-heading{display:flex;align-items:center;gap:8px}
+                #$id .slot-heading>div{min-width:0}
+                #$id .view-actions{display:inline-flex;gap:4px;flex:none}
+                #$id .warn{display:inline-flex;flex:none;margin-left:auto;cursor:help}
+                #$id .warn:focus-visible{outline:1px solid currentColor;outline-offset:3px;border-radius:2px}
                 #$id h4{font-weight:400;margin:12px 0 6px;color:#aaa;letter-spacing:.06em;text-transform:uppercase;font-size:11px}
                 #$id .slot+.slot{margin-top:14px;border-top:1px solid #333;padding-top:10px}
                 #$id .field-control{padding:2px 10px;margin:3px 0}
@@ -184,6 +197,9 @@ object StackAutoCard {
                 #$id .kline{margin:10px 0 2px;color:#b8b8be;font-size:12px;border-top:1px solid #222;padding-top:6px}
                 #$id button{font:inherit;background:#222;color:#ddd;border:1px solid #444;padding:3px 10px;border-radius:4px;cursor:pointer}
                 #$id button:hover{background:#333}
+                #$id button.view-action{display:inline-flex;align-items:center;justify-content:center;width:30px;height:28px;padding:0;vertical-align:middle}
+                #$id button.view-action svg{width:22px;height:22px;flex:none}
+                #$id button.view-action:focus-visible{outline:1px solid currentColor;outline-offset:2px}
                 #$id select{font:inherit;background:#222;color:#ddd;border:1px solid #444;padding:2px 6px;border-radius:4px}
                 #$id .blendslider .field-label{width:auto}
                 #$id .views{display:flex;gap:12px;align-items:flex-start;margin-top:8px}
