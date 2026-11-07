@@ -218,6 +218,26 @@ class Pages(Journal):
         self.assertIn("HN discussion follows", text)
         self.assertIn("[ann] It simulates fire spread", text)
 
+    def test_a_refused_page_is_read_from_its_hn_discussion(self) -> None:
+        item = self.add("A long explainer", "https://patreon.example/post", hn="88")
+        item.move("queued")
+        fetcher = FakeFetcher({
+            "https://patreon.example/post": (403, "text/html", "blocked"),
+            "https://hn.algolia.com/api/v1/items/88": (200, "application/json", {
+                "text": None, "children": [{"author": "bo", "text": "<p>The figures solve Navier-Stokes live.</p>"}]}),
+        })
+        done = scout.fetch(self.ledger, fetcher, log=lambda _: None)
+        self.assertEqual((done["fetched"], item.status), (1, "fetched"))
+        text = (self.dir / item.page).read_text()
+        self.assertIn("refused the fetch", text)
+        self.assertIn("[bo] The figures solve", text)
+
+    def test_a_refused_page_without_hn_discussion_still_counts_a_failure(self) -> None:
+        item = self.add(url="https://journal.example/paper")
+        item.move("queued")
+        done = scout.fetch(self.ledger, FakeFetcher({"https://journal.example/paper": (403, "text/html", "")}), log=lambda _: None)
+        self.assertEqual((done["failed"], item.status), (1, "queued"))
+
     def test_three_failures_give_up(self) -> None:
         item = self.add(url="https://down.example/x")
         item.move("queued")
