@@ -31,7 +31,12 @@
     {"name": "distill", "url": "https://distill.pub/rss.xml"},
     {"name": "lines", "url": "https://llllllll.co/latest.rss", "limit": 25},
     {"name": "cdm", "url": "https://cdm.link/feed/"},
-    {"name": "arxiv-cs-gr", "url": "https://rss.arxiv.org/rss/cs.GR", "limit": 40}
+    {"name": "arxiv-cs-gr", "url": "https://rss.arxiv.org/rss/cs.GR", "limit": 40},
+    {"name": "pkh", "url": "https://blog.pkh.me/rss.xml"},
+    {"name": "jcgt", "url": "https://jcgt.org/feed.xml", "limit": 10},
+    {"name": "construction-physics", "url": "https://www.construction-physics.com/feed"},
+    {"name": "public-domain-review", "url": "https://publicdomainreview.org/rss.xml", "limit": 20},
+    {"name": "ieee-spectrum", "url": "https://spectrum.ieee.org/feeds/feed.rss", "limit": 30}
   ],
   "watch": {"first_days": 7, "factor": 2, "max_checks": 5, "pool": 40},
   "digest": {"every_days": 3, "min_cards": 3}
