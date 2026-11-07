@@ -63,6 +63,10 @@ class AiTurnLifecycleTest {
                 if (mode == "complete") {
                     assertTrue(progress.single { it.phase == "tool_result" }.body.isEmpty())
                     assertTrue(terminal.has("modelElapsedMs") && terminal.has("toolElapsedMs"))
+                    // The reply is in the log, not only its length: a log without it cannot be reread as a conversation.
+                    assertEquals("Done.", terminal["text"].asText())
+                    assertEquals(5, terminal["textChars"].asInt())
+                    assertTrue(terminal["commentary"].isArray)
                     assertTrue(records.single { it["event"].asText() == "tool_result" }.has("elapsedMs"))
                     assertEquals(2, requests)
                 } else assertEquals(1, requests, "Failure/cancellation must not silently restart a turn")

@@ -863,6 +863,10 @@ class OpenAiIdeCodexBridge(
             mapOf(
                 "responseId" to response.id(),
                 "textChars" to text.length,
+                // The reply itself, and what the model said between rounds: without them a log held the person's
+                // request and the tool calls but not one word of the answer (2026-11-07).
+                "text" to text,
+                "commentary" to commentaryMessages.toList(),
                 "commentaryCount" to commentaryMessages.size,
                 "toolCallCount" to toolTranscript.size,
                 "elapsedMs" to ms,
