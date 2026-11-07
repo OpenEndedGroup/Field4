@@ -224,7 +224,7 @@ operations:
         lines(outlines, w = 620.0, h = 100.0, fitToSize = true)
         // One row per shape; each mode's column is heated on its own, so you can watch every
         // overtone fall as the lobes deepen. Mode 1 is the reference and stays plain.
-        val modeNames = listOf("f₁", "f₂", "f₃", "f₄", "f₅", "f₆")
+        val modeNames = ["f₁", "f₂", "f₃", "f₄", "f₅", "f₆"]
         val ratios = table(
             "a" to shapes.indices.map { 0.05 * it },
             *modeNames.mapIndexed { k, name -> name to shapes.map { it.ratios()[k] } }.toTypedArray(),

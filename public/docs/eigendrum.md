@@ -143,7 +143,7 @@ line and that mode stays silent. The centre of a square lies on a nodal line of 
 even m or n, so a centre strike leaves out more than half the spectrum (the bars, one per mode)
 and sounds hollower than a strike off-centre:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/eigendrum/strike.png" embed=true alt="Two copies of a square drum coloured by its second mode with a white nodal line across the middle; on the left a yellow dot on the nodal line and above it a sparse row of bars, several of them zero; on the right a dot off the line and a full row of bars"}
+```diffstatic_runner {data-lang=kotlin trim=true screenshot="assets/eigendrum/strike.png" embed=true alt="Two copies of a square drum coloured by its second mode with a white nodal line across the middle; on the left a yellow dot on the nodal line and above it a sparse row of bars, several of them zero; on the right a dot off the line and a full row of bars"}
 import afield.audio.engine.WavFloatArrayWriter
 import afield.audio.modal.*
 
@@ -268,7 +268,7 @@ val outlines = shapes.flatMapIndexed { i, m ->
 lines(outlines, w = 620.0, h = 100.0, fitToSize = true)
 // One row per shape; each mode's column is heated on its own, so you can watch every
 // overtone fall as the lobes deepen. Mode 1 is the reference and stays plain.
-val modeNames = listOf("f₁", "f₂", "f₃", "f₄", "f₅", "f₆")
+val modeNames = ["f₁", "f₂", "f₃", "f₄", "f₅", "f₆"]
 val ratios = table(
     "a" to shapes.indices.map { 0.05 * it },
     *modeNames.mapIndexed { k, name -> name to shapes.map { it.ratios()[k] } }.toTypedArray(),
