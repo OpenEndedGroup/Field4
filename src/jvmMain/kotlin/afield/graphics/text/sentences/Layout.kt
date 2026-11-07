@@ -584,14 +584,6 @@ internal fun readable(angle: Double): Double {
     }
 }
 
-/**
- * A rotated line of text, for testing whether a curve runs through it.
- *
- * Tests the oriented rectangle rather than its axis-aligned bounds, which matters a great
- * deal for a steeply rotated label: an 11pt line set at -65 degrees has axis-aligned bounds
- * 71 tall, so testing those would treat it as a far larger obstacle than it is and push
- * arcs needlessly deep.
- */
 /** Height of an x-sorted polyline at [x], or null if [x] falls outside it. */
 internal fun yAlong(profile: List<P>, x: Double): Double? {
     if (profile.size < 2) return null
@@ -608,6 +600,14 @@ internal fun yAlong(profile: List<P>, x: Double): Double? {
     return profile.last().y
 }
 
+/**
+ * A rotated line of text, for testing whether a curve runs through it.
+ *
+ * Tests the oriented rectangle rather than its axis-aligned bounds, which matters a great
+ * deal for a steeply rotated label: an 11pt line set at -65 degrees has axis-aligned bounds
+ * 71 tall, so testing those would treat it as a far larger obstacle than it is and push
+ * arcs needlessly deep.
+ */
 internal class TextBox(
     private val centre: P,
     private val width: Double,

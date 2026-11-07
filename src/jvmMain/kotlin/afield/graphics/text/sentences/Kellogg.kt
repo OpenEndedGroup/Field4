@@ -387,19 +387,19 @@ class Kellogg(private val config: KelloggConfig = KelloggConfig()) {
         from: P,
         along: P,
         reach: Double,
-        /** Point size of the word this is hanging under, so a slant can clear its descender. */
+        /* Point size of the word this is hanging under, so a slant can clear its descender. */
         hostSize: Double,
-        /** Angle for slants hanging here. */
+        /* Angle for slants hanging here. */
         angle: Double,
-        /** Angle of the line they hang from, so they can be started clear of it. */
+        /* Angle of the line they hang from, so they can be started clear of it. */
         hostAngle: Double,
-        /**
+        /*
          * How far along the host line to begin. Children of a *slant* start past the parent's own
          * word: they run parallel to it, so beginning at the slant's origin puts them straight
          * through it.
          */
         startAt: Double = 0.0,
-        /**
+        /*
          * Children already drawn by the caller -- the arguments `clause` put on the baseline.
          * Passed explicitly rather than skipped by role: a subject can itself be a predication
          * with a subject of its own, and skipping those by role loses them off the page.

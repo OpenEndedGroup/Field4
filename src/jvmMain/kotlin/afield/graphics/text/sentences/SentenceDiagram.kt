@@ -17,7 +17,7 @@ package afield.graphics.text.sentences
  *     d.heights = Heights.Custom { i, _ -> 300 + 80 * sin(i * 0.7 + t) }
  *     _self.lines.addAll(d.flines().curves)
  *
- * Start the parser first: `cd ~/temp/sentence && .venv/bin/python parse.py --serve 9500`.
+ * Start the parser first: `optional/sentence-parser/.venv/bin/python python/fieldsentences --serve 9500`.
  *
  * Not to be confused with [Diagram], which is the immutable snapshot this produces.
  */
@@ -42,7 +42,7 @@ class SentenceDiagram(text: String? = null) {
         loadedFrom = text
     }
 
-    /** Parse a file written by `parse.py -o`. */
+    /** Parse a file written by `python python/fieldsentences -o`. */
     fun loadFile(path: String) = load(java.io.File(path).readText())
 
     /** Use an already-parsed sentence. */

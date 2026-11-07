@@ -47,12 +47,6 @@ data class Rect(val x0: Double, val y0: Double, val x1: Double, val y1: Double) 
         val EMPTY = Rect(0.0, 0.0, 0.0, 0.0)
 
         /**
-         * Axis-aligned bounds of a rotated line of text.
-         *
-         * [centre] is the text's baseline midpoint, so the box sits mostly above it, the way
-         * set type does.
-         */
-        /**
          * Bounds of a rotated line of text that *starts* at [at] and runs [width] along
          * [angleDegrees] -- the way a word set along a slant does.
          *
@@ -72,6 +66,12 @@ data class Rect(val x0: Double, val y0: Double, val x1: Double, val y1: Double) 
             return around(corners)
         }
 
+        /**
+         * Axis-aligned bounds of a rotated line of text.
+         *
+         * [centre] is the text's baseline midpoint, so the box sits mostly above it, the way
+         * set type does.
+         */
         fun rotatedText(centre: P, width: Double, height: Double, angleDegrees: Double): Rect {
             val r = Math.toRadians(angleDegrees)
             val cs = Math.cos(r)

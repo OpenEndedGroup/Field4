@@ -1,17 +1,11 @@
-"""Stdlib-only client for the parser server.
+"""Stdlib HTTP client for Field's separately running sentence parser.
 
-Copy this one file into Field4 (or anywhere else) -- it has no dependencies, so
-it does not need this project's venv.  Start the server from the venv:
+Field appends its shipped python/ tree to Python-box imports:
+    from fieldsentences.client import parse
+    diagram = parse("The quiet water carries the light")
 
-    python python/fieldsentences --serve 9500
-
-then from Field4:
-
-    from client import parse
-    d = parse("Listen if you will birdsong reflects off the walls")
-
-Going through the server keeps the model loaded, so each sentence costs
-milliseconds instead of the ten seconds a cold start takes.
+Prepare with ./gradlew prepareSentenceParser, then start the optional environment's
+Python on python/fieldsentences --serve 9500. This client never loads Torch in Field.
 """
 
 import json

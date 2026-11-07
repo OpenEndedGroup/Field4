@@ -1,6 +1,6 @@
 # Sentence diagrams
 
-Reads the JSON from the `sentence` parser (`~/temp/sentence`) and lays out both halves of
+Reads the JSON from the shipped `fieldsentences` parser and lays out both halves of
 a sentence diagram: a **constituency tree** above a row of words, **dependency arcs**
 below it. Geometry only — the drawing is yours.
 
@@ -133,11 +133,11 @@ Setting `wordFont` also switches the layout onto `Java2DMetrics`, so words are m
 the same font that gets drawn. Worth doing before fussing over `wordGap` — the built-in
 `ApproxSerifMetrics` is about 7% narrow on "birdsong" at 26pt.
 
-Start the parser server first, so each sentence costs milliseconds rather than a ten
+For new text, prepare the optional environment with `./gradlew prepareSentenceParser`, then start the parser server, so each sentence costs milliseconds rather than a ten
 second model load:
 
 ```bash
-cd ~/temp/sentence && .venv/bin/python parse.py --serve 9500
+optional/sentence-parser/.venv/bin/python python/fieldsentences --serve 9500
 ```
 
 ## Seeing it

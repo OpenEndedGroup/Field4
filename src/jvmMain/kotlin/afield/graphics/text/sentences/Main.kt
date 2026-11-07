@@ -7,7 +7,7 @@ package afield.graphics.text.sentences
  * directly and ignore all of the below.
  *
  *     kotlin -cp ... afield.graphics.text.sentences.MainKt --in 3b.json --depth --out 3b.svg
- *     .venv/bin/python parse.py "..." | kotlin ... afield.graphics.text.sentences.MainKt --out out.svg
+ *     optional/sentence-parser/.venv/bin/python python/fieldsentences "..." | kotlin ... afield.graphics.text.sentences.MainKt --out out.svg
  */
 fun main(args: Array<String>) {
     fun flag(name: String): String? {

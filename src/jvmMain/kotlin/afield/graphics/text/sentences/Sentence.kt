@@ -5,13 +5,13 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
 /**
- * The JSON emitted by the `sentence` Python tool (`~/temp/sentence`), which parses a
+ * The JSON emitted by the shipped `fieldsentences` Python worker, which parses a
  * sentence into the two halves of a sentence diagram: a constituency tree that hangs
  * above the words, and dependency arcs that hang below them, over one shared token
  * list so the two can be drawn around the same row of words.
  *
- *     .venv/bin/python parse.py "..." > out.json          # one-shot
- *     .venv/bin/python parse.py --serve 9500              # keeps the model warm
+ *     optional/sentence-parser/.venv/bin/python python/fieldsentences "..." > out.json          # one-shot
+ *     optional/sentence-parser/.venv/bin/python python/fieldsentences --serve 9500              # keeps the model warm
  *
  * Parse with [Sentences.parse] / [Sentences.parseAll].
  */
@@ -32,7 +32,8 @@ data class Token(
      * underline: collapsing folds prepositions and conjunctions into relation names
      * ("of" becomes part of `prep_of`), leaving those words with no arcs at all.
      */
-    @SerialName("in_graph") val inGraph: Boolean = true,
+    @SerialName("in_graph")
+    val inGraph: Boolean = true,
     /** True when this token was the one folded into a relation name. */
     val absorbed: Boolean = false,
 )
@@ -94,9 +95,11 @@ data class Dependencies(
     /** What the parser actually produced. */
     val ud: List<Edge> = emptyList(),
     /** Classic Stanford Dependencies. */
-    @SerialName("sd_basic") val sdBasic: List<Edge> = emptyList(),
+    @SerialName("sd_basic")
+    val sdBasic: List<Edge> = emptyList(),
     /** Collapsed Stanford Dependencies -- what the 2011 diagrams drew. */
-    @SerialName("sd_collapsed") val sdCollapsed: List<Edge> = emptyList(),
+    @SerialName("sd_collapsed")
+    val sdCollapsed: List<Edge> = emptyList(),
 )
 
 /** Which dependency analysis to draw. */
@@ -109,8 +112,10 @@ data class Sentence(
     val text: String = "",
     val tokens: List<Token> = emptyList(),
     val constituency: Node,
-    @SerialName("constituency_bracketed") val bracketed: String = "",
-    @SerialName("constituency_depth") val treeDepth: Int = 0,
+    @SerialName("constituency_bracketed")
+    val bracketed: String = "",
+    @SerialName("constituency_depth")
+    val treeDepth: Int = 0,
     val dependencies: Dependencies = Dependencies(),
 ) {
     private val byId: Map<Int, Token> by lazy { tokens.associateBy { it.id } }
@@ -184,7 +189,7 @@ object Sentences {
 
     /**
      * Ask the warm parser server directly, skipping the file entirely.
-     * Start it with `.venv/bin/python parse.py --serve 9500`.
+     * Start it with `optional/sentence-parser/.venv/bin/python python/fieldsentences --serve 9500`.
      */
     fun fromServer(text: String, url: String = "http://127.0.0.1:9500"): List<Sentence> {
         val conn = java.net.URI(url).toURL().openConnection() as java.net.HttpURLConnection
@@ -199,7 +204,7 @@ object Sentences {
         } catch (e: java.io.IOException) {
             throw java.io.IOException(
                 "no parser at $url -- start it with:\n" +
-                    "    .venv/bin/python parse.py --serve 9500", e
+                    "    optional/sentence-parser/.venv/bin/python python/fieldsentences --serve 9500", e
             )
         } finally {
             conn.disconnect()
