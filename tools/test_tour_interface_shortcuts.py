@@ -8,6 +8,7 @@ documentSearch.kt matches cmd/ctrl+F itself, so that row is checked against that
 """
 from __future__ import annotations
 
+import html
 import re
 import unittest
 from pathlib import Path
@@ -21,6 +22,23 @@ ID_DECL = re.compile(r"""(?:\bid\s*=\s*"([a-z0-9$-]+)"|\bid\s*:\s*'([a-z0-9$-]+)
 KEYS = re.compile(r"""(?:\bkeys\s*=\s*"([^"]*)"|\bkeys\s*:\s*'([^']*)'|\bdefaults\s*=\s*listOf\(([^)]*)\))""")
 
 
+def cell_keys(cell: str) -> list[str]:
+    """Read code-form chords and the platform keycaps used by the public page."""
+    if cell.strip() == "none":
+        return []
+    keys = re.findall(r"`([^`]+)`", cell)
+    modifiers = {"⌘": "cmd", "cmd": "cmd", "command": "cmd", "^": "cmd",
+                 "ctrl": "cmd", "control": "cmd", "⇧": "shift", "⌥": "alt"}
+    for alternative in cell.split("/"):
+        caps = re.findall(r"<kbd(?:\s[^>]*)?>(.*?)</kbd>", alternative, flags=re.IGNORECASE)
+        if not caps:
+            continue
+        parts = [html.unescape(re.sub(r"<[^>]+>", "", cap)).strip().casefold()
+                 for cap in caps]
+        keys.append("+".join(modifiers.get(part, part) for part in parts))
+    return list(dict.fromkeys(keys))
+
+
 def page_rows() -> dict[str, list[str]]:
     rows = {}
     for line in PAGE.read_text().splitlines():
@@ -28,7 +46,7 @@ def page_rows() -> dict[str, list[str]]:
         if not m:
             continue
         cell = m.group(2)
-        keys = [] if cell.strip() == "none" else re.findall(r"`([^`]+)`", cell)
+        keys = cell_keys(cell)
         rows[m.group(1)] = keys
     return rows
 
@@ -54,6 +72,12 @@ def shipped_defaults() -> dict[str, set[str]]:
 
 
 class TourInterfaceShortcutsTest(unittest.TestCase):
+    def test_platform_keycaps_preserve_the_shipped_chord(self):
+        self.assertEqual(cell_keys("<kbd>⌘</kbd><kbd>P</kbd> / <kbd>^</kbd><kbd>P</kbd>"), ["cmd+p"])
+        self.assertEqual(cell_keys("<kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>P</kbd> / <kbd>F1</kbd>"), ["cmd+shift+p", "f1"])
+        self.assertEqual(cell_keys("`cmd+shift+p`, `f1`"), ["cmd+shift+p", "f1"])
+        self.assertEqual(cell_keys("none"), [])
+
     def test_table_matches_the_shipped_defaults(self):
         rows = page_rows()
         self.assertGreater(len(rows), 10, "the shortcut table was not found on the page")

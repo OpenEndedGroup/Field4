@@ -126,6 +126,11 @@ class ReadingTypographyTest {
         val right = f.position(run.all.baselineRight)
         assertEquals(0f, right.x - left.x, 1e-5f)
         assertEquals(f.measure(run).width * p.textScale * run.scale * 2f, right.y - left.y, 1e-5f)
+        // Metre offsets rotate with the run, but do not grow with font/score scale.
+        val beside = f.position(run.all.baselineRight.alongText(run, x = .015f, z = .003f))
+        assertEquals(right.x, beside.x, 1e-5f)
+        assertEquals(.015f, beside.y - right.y, 1e-5f)
+        assertEquals(.003f, beside.z - right.z, 1e-5f)
         val under = f.path(graph.path("under")).nodes.first().to
         assertEquals(.02f, under.x - left.x, 1e-5f)
         assertEquals(left.y, under.y, 1e-5f)
