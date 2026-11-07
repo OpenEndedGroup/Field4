@@ -1995,7 +1995,7 @@ Runs d2 layout engines through the optional `native/field-d2-layout` helper, ans
 ## alignment.kt { #alignment-kt }
 
 Geometric tidying of box frames on the canvas: aligning, snapping and connection-guided
-routing over a list of `Rect`s, plus the palette actions that apply them to a selection.
+routing over a list of [`Rect`](graphics.md#geometry-kt-rect)s, plus the palette actions that apply them to a selection.
 
 Three entry points, each taking rectangles and returning new ones in the same order:
 

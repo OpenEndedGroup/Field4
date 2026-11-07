@@ -1,0 +1,60 @@
+import afield.graphics.scene.reading.*
+import afield.graphics.text.*
+import afield.graphics.text.sentences.Sentences
+
+// 1 · Marked breath. Whole runs, two selected words and an arclength bead.
+// Cached real parser output: no network request or font preparation in the frame loop.
+val parsed = Sentences.example(1)
+check(parsed.problems().isEmpty()) { parsed.problems().joinToString() }
+val graph = readingDiagram {
+    val peg = point("peg", -.78, .52, pinned = true)
+    val first = point("first", 0, .24, .025)
+    val second = point("second", 0, -.08, -.025)
+    link(peg, first)
+    link(first, second)
+    val opening = text("opening", parsed.tokens.take(4).joinToString(" ") { it.word }, first)
+    val sentence = text("sentence", parsed.tokens.drop(4).joinToString(" ") { it.word }, second)
+    arc("hanging", peg.anchor, opening.above, rise = .09f) { dashed(.025f) }
+    val birds = underline("birdsong", sentence.word("birdsong"), gap = .018f) {
+        width = .002f
+        color = vec(.8f, .43f, .13f, 1f)
+    }
+    underline("walls", sentence.word("walls"), gap = .018f) { color = vec(.8f, .43f, .13f, 1f) }
+    dot("beside-word", opening.word("Listen").left.offset(x = -.028f)) {
+        shape = DiagramPointShape.RING
+        radius = .005f
+    }
+    dot("on-underline", birds.at(.65f)) { radius = .0045f }
+    val relation = arc(
+        "reflection",
+        sentence.word("birdsong").below.offset(y = -.055f),
+        sentence.word("walls").below.offset(y = -.055f),
+        rise = -.23f,
+    ) {
+        width = .0012f
+        arrow = .013f
+    }
+    dot("bead", relation.at(.50f)) { radius = .003f }
+    text(
+        "relation-label",
+        parsed.dependencies.sdCollapsed.first { it.rel == "prep_off" }.label,
+        relation.at(.55f).offset(y = -.045f),
+    ) {
+        scale = .38f
+        color = vec(.45f, .6f, .75f, 1f)
+    }
+}
+val face = Typefaces.named("Noto Serif", 100, strict = true)
+val progress = progressReporter("Prepare 1 / 4: marked breath", showDelayMillis = 0)
+val player = try {
+    ReadingDiagramPlayer.prepare(graph, face, "field-slug".file, diagramScore(graph, 20.0) {}) { n, total, text ->
+        progress.update(n.toDouble() / total, "$n / $total: $text")
+    }
+} finally {
+        progress.close()
+    }
+prop<ReadingExample>(exampleOne) = ReadingExample(
+    "1 · Marked breath",
+    "Whole-run spans, a dot beside a word, and dots on an underline and an arc. Two baselines sit 5 cm apart in depth.",
+    player,
+)

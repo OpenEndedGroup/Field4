@@ -88,7 +88,7 @@ println("net ready: ${sparkNet.places.size} places, ${sparkNet.transitions.size}
 <!-- field-box id="ps_sparks" index="2" -->
 
 ```edn [field-box id="ps_sparks" role="properties"]
-{"id" "ps_sparks" "index" 2 "name" "firings into sparks" "parents" ["root" "ps_net"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "ps_net"} "name" "firings into sparks" "_tombstone" false "frame" #afield/rect [260.0 120.0 240.0 50.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "ps_sparks_vertex_.glsl" "lines" 115 "characters" 3788 "sha256" "9426d325c7c81a66df1a0704fab09e68b61e222d49f81b33bba4ba5b21dbbd37"} {"name" "fragment" "language" "glsl" "path" "ps_sparks_fragment_.glsl" "lines" 12 "characters" 343 "sha256" "32533ff454fe2a8e91c1c79fafaf0425966187df654994df6c08e0618b7299ca"} {"name" "code" "language" "kotlin" "path" "ps_sparks_code_.kt" "lines" 94 "characters" 3623 "sha256" "1407202835294999c9cf8e728e29fe264acdeae8c29c5db6431f7822292cfe47"}]}
+{"id" "ps_sparks" "index" 2 "name" "firings into sparks" "parents" ["root" "ps_net"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "ps_net"} "name" "firings into sparks" "_tombstone" false "frame" #afield/rect [260.0 120.0 240.0 50.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "ps_sparks_vertex_.glsl" "lines" 114 "characters" 3787 "sha256" "adfd2088a2342e5e50b19b779d59221bb8a2508ecf5da1c42d979671a2176c14"} {"name" "fragment" "language" "glsl" "path" "ps_sparks_fragment_.glsl" "lines" 12 "characters" 343 "sha256" "32533ff454fe2a8e91c1c79fafaf0425966187df654994df6c08e0618b7299ca"} {"name" "code" "language" "kotlin" "path" "ps_sparks_code_.kt" "lines" 94 "characters" 3623 "sha256" "1407202835294999c9cf8e728e29fe264acdeae8c29c5db6431f7822292cfe47"}]}
 ```
 
 ```glsl [field-property box="ps_sparks" name="vertex" path="ps_sparks_vertex_.glsl"]
@@ -139,7 +139,6 @@ const float[3] ringRadius = {
 const vec3[3] ringTint = {
     vec3(0.30, 0.78, 1.00), vec3(1.00, 0.52, 0.18), vec3(1.00, 0.86, 0.40)
 };
-
 
 float hash(uint x) {
     x ^= x >> 16;

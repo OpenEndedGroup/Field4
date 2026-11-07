@@ -1,0 +1,1 @@
+prop<Box>(blurSource) = thisBox
