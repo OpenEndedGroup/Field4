@@ -89,6 +89,14 @@ class RepoCommandToolsTest {
         assertEquals(mapOf("PATH" to "/bin", "AFIELD_VERIFICATION_LOCK" to "fail", "GIT_TERMINAL_PROMPT" to "0", "GIT_PAGER" to "cat", "PAGER" to "cat"), env)
     }
 
+    @Test fun environmentDropsThisFieldsOwnPortsAndDebugger() = Fixture().use { f ->
+        // A backdoor-launched Field carries these; a Field its job starts must pick its own or it fails to bind them.
+        val env = f.tools.environment(mapOf("PORT" to "9491", "AFIELD_HTTP_PORT" to "19491", "AFIELD_JDWP_PORT" to "5005",
+            "AFIELD_JDWP_HOST" to "127.0.0.1", "AFIELD_JDWP_SUSPEND" to "n", "AFIELD_SKIP_WORKSPACE_PERSIST" to "1", "PATH" to "/bin"))
+        assertTrue(RepoCommandTools.INSTANCE_ENV.none { it in env }, env.toString())
+        assertEquals("1", env["AFIELD_SKIP_WORKSPACE_PERSIST"], "the rest is inherited")
+    }
+
     @Test fun nonZeroExitIsReportedNotThrown() = Fixture(allowed = setOf("gradle")).use { f ->
         f.file("gradlew", "#!/bin/sh\necho broken >&2\nexit 3\n")
         val r = f.tools.run(RepoRunCommandRequest("gradle", listOf("jvmTest")))
