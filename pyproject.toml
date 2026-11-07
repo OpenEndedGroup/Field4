@@ -32,6 +32,11 @@ docs = [
     "websockets>=15.0.0",
     "zensical>=0.0.47",
 ]
+audio-curve = [
+    # Offline rolling spectral embeddings (`python/fieldaudio_curve`).
+    "numpy>=1.26",
+    "scipy>=1.11",
+]
 cv = [
     # Optional computer vision for Python boxes (`python/fieldcv`). Not part of any default
     # gate: install with `uv sync --inexact --group cv` into the venv Field's JEP is bound to.

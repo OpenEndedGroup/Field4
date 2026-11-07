@@ -655,6 +655,10 @@ dependencies = [
 ]
 
 [package.dev-dependencies]
+audio-curve = [
+    { name = "numpy" },
+    { name = "scipy" },
+]
 backdoor = [
     { name = "pillow" },
     { name = "pyyaml" },
@@ -697,6 +701,10 @@ voice = [
 requires-dist = [{ name = "codealmanac", specifier = ">=0.4.7" }]
 
 [package.metadata.requires-dev]
+audio-curve = [
+    { name = "numpy", specifier = ">=1.26" },
+    { name = "scipy", specifier = ">=1.11" },
+]
 backdoor = [
     { name = "pillow", specifier = ">=10.0.0" },
     { name = "pyyaml", specifier = ">=6.0.0" },
