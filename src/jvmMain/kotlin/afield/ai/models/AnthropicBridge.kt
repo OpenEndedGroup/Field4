@@ -209,6 +209,8 @@ class AnthropicBridge(
                     "provider" to "anthropic",
                     "reasoningEffort" to "provider-default",
                     "conversationId" to state.conversationId,
+                    // The person's own words, apart from the instructions around them, as OpenAiIdeCodexBridge logs them.
+                    "request" to turnContext?.rest,
                     "localThreadId" to state.localThreadId,
                     "fileKey" to state.fileKey,
                     "inputChars" to inputText.length,
@@ -443,7 +445,8 @@ class AnthropicBridge(
         val ms = (System.nanoTime() - t0) / 1_000_000
         info("done id=${response.id()} textChars=${text.length} commentary=${commentary.size} rounds=$rounds (${ms}ms)")
         toolIo("session_end", mapOf(
-            "responseId" to response.id(), "textChars" to text.length, "commentaryCount" to commentary.size,
+            "responseId" to response.id(), "textChars" to text.length, "text" to text, "commentary" to commentary.toList(),
+            "commentaryCount" to commentary.size,
             "toolCallCount" to transcript.size, "elapsedMs" to ms, "status" to if (suspension != null) "suspended" else "completed",
             "toolElapsedMs" to toolElapsedMs, "rounds" to rounds,
             "inputTokens" to inputTokens, "outputTokens" to outputTokens,
