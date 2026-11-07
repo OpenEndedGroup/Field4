@@ -36,6 +36,7 @@ Standard library only. The network is reached through `Fetcher`, which the tests
 from __future__ import annotations
 
 import argparse
+import csv
 import datetime as dt
 import email.utils
 import hashlib
@@ -205,6 +206,7 @@ class Ledger:
         self.journal = journal
         self.path = journal / "ledger.jsonl"
         self.items: dict[str, Item] = {}
+        self.saves: dict[str, dict] = load_saves(journal)
         if self.path.exists():
             for line in self.path.read_text(encoding="utf-8").splitlines():
                 if line.strip():
@@ -217,6 +219,10 @@ class Ledger:
             for item in self.items.values():
                 f.write(json.dumps(item.__dict__, ensure_ascii=False, sort_keys=True) + "\n")
         tmp.replace(self.path)
+
+    def saved(self, item: Item) -> dict | None:
+        """Marc's own bookmark for this link, if he saved it (see `import-saves`)."""
+        return self.saves.get(item.key)
 
     def with_status(self, *statuses: str) -> list[Item]:
         return [i for i in self.items.values() if i.status in statuses]
@@ -241,6 +247,54 @@ class Ledger:
         if topic and topic not in item.topics:
             item.topics.append(topic)
         return item, created
+
+
+# ---------------------------------------------------------------------------------------------
+# Marc's saves: a bookmark export, kept beside the ledger rather than in it
+
+
+SAVES = "saves.jsonl"
+
+
+def load_saves(journal: Path) -> dict[str, dict]:
+    path = journal / SAVES
+    if not path.exists():
+        return {}
+    rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    return {row["key"]: row for row in rows}
+
+
+def import_saves(journal: Path, csv_path: Path) -> tuple[int, int]:
+    """Merge a Raindrop.io CSV export (id,title,note,excerpt,url,folder,tags,created,...) into
+    `saves.jsonl`, keyed like the ledger. Returns (rows read, links new to the file). Re-importing a
+    fuller export is safe: a link already saved keeps its earliest date."""
+    saves = load_saves(journal)
+    read = new = 0
+    with csv_path.open(encoding="utf-8-sig", newline="") as f:
+        for row in csv.DictReader(f):
+            url = (row.get("url") or "").strip()
+            if not url.startswith(("http://", "https://")):
+                continue
+            read += 1
+            key = key_for(url)
+            entry = {"key": key, "title": (row.get("title") or "").strip()[:300], "url": url,
+                     "saved": (row.get("created") or "")[:10], "folder": row.get("folder") or "",
+                     **{k: row[k].strip() for k in ("tags", "note") if (row.get(k) or "").strip()}}
+            old = saves.get(key)
+            if old is None:
+                new += 1
+            elif old.get("saved") and old["saved"] < entry["saved"]:
+                entry["saved"] = old["saved"]
+            saves[key] = entry
+    path = journal / SAVES
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text("".join(json.dumps(v, ensure_ascii=False, sort_keys=True) + "\n" for v in saves.values()), encoding="utf-8")
+    tmp.replace(path)
+    return read, new
+
+
+def saved_note(save: dict | None) -> str:
+    return f"saved by Marc {save.get('saved') or ''}".strip() if save else ""
 
 
 # ---------------------------------------------------------------------------------------------
@@ -444,16 +498,17 @@ def triage_list(ledger: Ledger) -> list[str]:
     rows = []
     for item in sorted(ledger.with_status("new"), key=lambda i: -i.points):
         topics = f" [topics: {', '.join(item.topics)}]" if item.topics else ""
-        rows.append(f"{item.key}\t{item.title}\t{domain_of(item.url)}\t{item.points}{topics}")
+        saved = f" [{saved_note(ledger.saved(item))}]" if ledger.saved(item) else ""
+        rows.append(f"{item.key}\t{item.title}\t{domain_of(item.url)}\t{item.points}{topics}{saved}")
     return rows
 
 
 def triage(ledger: Ledger, drop: set[str], reason: str = "off-domain title") -> tuple[int, int]:
     """Drop the listed keys and queue every other new link for reading. A link a topic query found
-    is never dropped on its title: it touches work Field already has."""
+    is never dropped on its title: it touches work Field already has. Nor is one Marc saved himself."""
     dropped = queued = 0
     for item in ledger.with_status("new"):
-        if item.key in drop and not item.topics:
+        if item.key in drop and not item.topics and not ledger.saved(item):
             item.move("dropped", reason)
             dropped += 1
         else:
@@ -620,7 +675,7 @@ def hn_discussion(fetcher: Fetcher, hn_id: str, comments: int = 6, each: int = 7
     return "\n\n".join(parts)
 
 
-def write_page(journal: Path, item: Item, text: str, meta: dict) -> str:
+def write_page(journal: Path, item: Item, text: str, meta: dict, save: dict | None = None) -> str:
     pages = journal / "pages"
     pages.mkdir(exist_ok=True)
     path = pages / f"{item.key}.txt"
@@ -629,6 +684,8 @@ def write_page(journal: Path, item: Item, text: str, meta: dict) -> str:
             f"points: {item.points}", f"fetched: {today().isoformat()}"]
     if item.topics:
         head.append(f"topics (Field already works on): {', '.join(item.topics)}")
+    if save:
+        head.append(f"{saved_note(save)}: Marc bookmarked this link himself; a resurfacing is news, not a find")
     for k in ("license", "release", "stars", "pushed_at", "language", "page_title"):
         if meta.get(k) not in (None, ""):
             head.append(f"{k}: {meta[k]}")
@@ -664,7 +721,7 @@ def fetch(ledger: Ledger, fetcher: Fetcher, limit: int = 40, watch_cfg: dict | N
                 if talk:
                     text += "\n\n# The page rendered little text. HN discussion follows.\n\n" + talk
             item.meta.update({k: v for k, v in meta.items() if k != "links"})
-            item.page = write_page(ledger.journal, item, text, meta)
+            item.page = write_page(ledger.journal, item, text, meta, ledger.saved(item))
             item.move("fetched")
             done["fetched"] += 1
         except (OSError, ValueError, UnicodeError) as error:
@@ -677,7 +734,7 @@ def fetch(ledger: Ledger, fetcher: Fetcher, limit: int = 40, watch_cfg: dict | N
                     text = (f"# The site refused the fetch ({error}); retrying will not help. "
                             "Only the HN discussion follows: judge from it, and say so on the card.\n\n" + talk)
                     item.meta["page_refused"] = str(error)[:200]
-                    item.page = write_page(ledger.journal, item, text, {})
+                    item.page = write_page(ledger.journal, item, text, {}, ledger.saved(item))
                     item.move("fetched", "page refused: HN discussion only")
                     done["fetched"] += 1
                     log(f"fetch refused {item.key} {item.url}: {error}; kept its HN discussion instead")
@@ -700,7 +757,7 @@ def fetch(ledger: Ledger, fetcher: Fetcher, limit: int = 40, watch_cfg: dict | N
         news = changed(old, text) or (meta.get("release") and meta.get("release") != old_release)
         if news:
             item.meta.update({k: v for k, v in meta.items() if k != "links"})
-            item.page = write_page(ledger.journal, item, text, meta)
+            item.page = write_page(ledger.journal, item, text, meta, ledger.saved(item))
             item.watch.update(interval=cfg["first_days"], checks=0, next=_days_from_today(cfg["first_days"]))
             item.move("fetched", "watch: page changed")
             done["watch-news"] += 1
@@ -884,6 +941,8 @@ def digest(ledger: Ledger, every_days: int = 3, min_cards: int = 3, force: bool 
             sources = sorted({x["src"].split(":", 1)[-1] for x in item.sightings if not x["src"].startswith("hn")})
             seen = f"{item.points} points" if item.hn_ids else ("from " + ", ".join(sources) if sources else "")
             reposts = f", posted {len(item.hn_ids)} times" if len(item.hn_ids) > 1 else ""
+            if ledger.saved(item):
+                reposts += f" · **{saved_note(ledger.saved(item))}**"
             out += [f"### {item.title}", "", f"<!-- key: {item.key} -->",
                     f"{' · '.join(links)} · {seen}{reposts} · {item.meta.get('type', '')} · "
                     f"license: {item.meta.get('license', '?')} · nearest: {item.meta.get('nearest', 'none')}", "",
@@ -1039,6 +1098,8 @@ def main(argv: list[str] | None = None) -> int:
     d.add_argument("--force", action="store_true")
     sub.add_parser("verdicts")
     sub.add_parser("status")
+    i = sub.add_parser("import-saves", help="merge a Raindrop.io CSV export into saves.jsonl")
+    i.add_argument("csv", type=Path)
     args = parser.parse_args(argv)
 
     journal = (args.journal or default_journal()).expanduser().resolve()
@@ -1053,6 +1114,10 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     ledger = Ledger(journal)
     sources = load_sources(args.sources) if args.sources.exists() else {}
+    if args.command == "import-saves":
+        read, new = import_saves(journal, args.csv.expanduser())
+        print(f"import-saves: {read} links read, {new} new, {len(load_saves(journal))} saved in all")
+        return 0
     if args.command == "harvest":
         result = harvest(ledger, Fetcher(), sources)
         print(f"harvest: {result['new']} new links, {len(result['failures'])} sources failed")

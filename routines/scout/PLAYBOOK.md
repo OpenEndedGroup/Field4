@@ -44,7 +44,11 @@ AI industry (model launches, safety papers, lawsuits), security advisories, oper
 phone news, hiring, general programming-language internals with no media angle, and personal
 essays about work. **When in doubt, keep it.** A headline tells neither Marc nor you whether a page
 is a fit. TALA, Easel and MorphoHDL all looked like niche tools and all were real catches. Links
-with topic tags are never dropped on their title (`triage` enforces this). Expect to drop about
+with topic tags are never dropped on their title (`triage` enforces this), and neither are links
+marked `[saved by Marc <date>]`: he bookmarked that page himself (`$JOURNAL/saves.jsonl`, merged
+from his Raindrop export with `scout.py import-saves <csv>`). A saved link that resurfaces is not a
+find, since he has seen it; card it only when the new sighting brings something the saved page
+lacked (a release, code, a part two), and say so on the card. The digest marks it. Expect to drop about
 two thirds of the HN front page and almost nothing from the feeds.
 
 ## 4. Fetch
