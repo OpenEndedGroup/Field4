@@ -118,7 +118,7 @@ data class AttachmentRequest(
     val maxChars: Int = 6000,
     /** The `sourceHash` of an earlier excerpt; when set, a source that has changed since is refused rather than mixed. */
     val expectedSourceHash: String = "",
-    /** A case-sensitive literal to search for from [offset]; the excerpt is taken around the first match. */
+    /** A case-sensitive literal to search for from `offset`; the excerpt is taken around the first match. */
     val find: String = ""
 )
 
@@ -127,13 +127,13 @@ data class AttachmentResponse(
     val file: String,
     /** Its language. */
     val language: String,
-    /** The excerpt: the whole file only when [isExcerpt] is false. */
+    /** The excerpt: the whole file only when `isExcerpt` is false. */
     val content: String,
     /** Guides that discuss this source. */
     val relatedGuides: List<String> = emptyList(),
     /** Examples that use this source. */
     val relatedExamples: List<String> = emptyList(),
-    /** Where [content] starts in the whole source. */
+    /** Where `content` starts in the whole source. */
     val offset: Int = 0,
     /** The length of the whole source. */
     val totalChars: Int = content.length,
@@ -141,13 +141,13 @@ data class AttachmentResponse(
     val sourceHash: String = "",
     /** Where the next excerpt starts, or null when nothing remains. */
     val nextOffset: Int? = null,
-    /** True when [content] is part of the source, not all of it. */
+    /** True when `content` is part of the source, not all of it. */
     val isExcerpt: Boolean = false,
     /** Whether `find` matched; null when no `find` was given. False means no match, not an empty file. */
     val searchMatched: Boolean? = null,
     /** Where `find` matched, in UTF-16 code units. */
     val matchOffset: Int? = null,
-    /** 1-based line of [offset] and of [matchOffset]: offsets are not line numbers, so cite these. */
+    /** 1-based line of `offset` and of [matchOffset]: offsets are not line numbers, so cite these. */
     val startLine: Int? = null,
     val matchLine: Int? = null,
     /** When `find` missed: up to eight `line: text` rows containing its longest identifier. */
@@ -244,7 +244,7 @@ data class KotlinContextVariableInfo(
     val valuePreview: String,
     /** The value itself when it is a primitive or string, else null. */
     val primitiveValue: Any? = null,
-    /** Which primitive [primitiveValue] is, or empty. */
+    /** Which primitive `primitiveValue` is, or empty. */
     val primitiveKind: String = ""
 )
 
@@ -297,7 +297,7 @@ data class EvaluateKotlinExpressionResult(
     val runtimeType: String = "",
     /** The value itself when it is a primitive or string, else null. */
     val primitiveValue: Any? = null,
-    /** Which primitive [primitiveValue] is, or empty. */
+    /** Which primitive `primitiveValue` is, or empty. */
     val primitiveKind: String = "",
     /** The value as a bounded string. */
     val stringValue: String = "",
