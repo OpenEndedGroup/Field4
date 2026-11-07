@@ -1995,3 +1995,17 @@ html .md-typeset details.aside > :last-child {
 .md-typeset:has(.changelog-head) li {
     font-size: 0.675rem;
 }
+/* Keyboard keys in prose: neutral, legible on light and dark themes. */
+.md-typeset kbd {
+  display: inline-block;
+  min-width: 1.4em;
+  padding: 0.05em 0.3em;
+  border: 1px solid currentColor;
+  border-radius: 0.2em;
+  color: inherit;
+  background: transparent;
+  box-shadow: none;
+  font-family: system-ui, sans-serif;
+  font-size: 0.88em;
+  text-align: center;
+}

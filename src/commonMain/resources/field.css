@@ -3104,6 +3104,11 @@ body.field-pane-resizing-h * {
     /*filter: blur(10px) !important;*/
 }
 
+/* Monaco's inherited blue focus outline otherwise draws a line along the editor edge. */
+.monaco-editor-container > .monaco-editor {
+    outline: none;
+}
+
 .monaco-editor-container.afield-notes-preview-active > .monaco-editor {
     visibility: hidden;
     pointer-events: none;

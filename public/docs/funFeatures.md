@@ -549,7 +549,10 @@ ui.pause(600)
 	<source src="assets/Screen-Recording-2026-03-21-at-14.12.21.mp4" type="video/mp4">
 </video>
 
-`Double-tap shift` opens the 'open anything' search box:
+`Double-tap shift` opens the [Open Anything](tour_interface.md#the-command-palette-and-open-anything)
+search box. Search across categories, or start with `>` for control labels, `?` for documentation,
+<code>&#96;</code> for code, or `,` for box names. A control result previews its live value; choosing
+it selects its box and brings the control into view beside the editor:
 
 <video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
 	<source src="assets/Screen-Recording-2026-03-21-at-14.14.34.mp4" type="video/mp4">
