@@ -1,13 +1,13 @@
 # Rolling audio curves
 
-A PCM WAV or a stream of mono samples becomes a time-ordered curve through recent spectral states. Each Hann-windowed FFT is converted to 64 area-normalized mel-band powers and normalized to unit mass. Pairwise Wasserstein-1 distances on uniformly spaced mel positions feed classical metric MDS. A similarity Procrustes fit (translation, rotation, reflection and scale) aligns the shared points with the preceding curve. The default history is 128 frames; startup curves contain fewer points.
+A PCM WAV or a stream of mono samples becomes a time-ordered curve through recent spectral states. Each Hann-windowed FFT is converted to 64 area-normalized mel-band powers, compressed (each band raised to `compression`, 0.3 by default) and normalized to unit mass. Pairwise Wasserstein-1 distances on uniformly spaced mel positions feed classical metric MDS. A similarity Procrustes fit (translation, rotation, reflection and scale) aligns the shared points with the preceding curve. The default history is 128 frames; startup curves contain fewer points.
 
 ```sh
 # From the repository root:
 PYTHONPATH=python uv run --group audio-curve -- python -m fieldaudio_curve input.wav output.f4curve
 ```
 
-The library needs NumPy and SciPy (`uv sync --inexact --group audio-curve`). `CurveAnalyzer(CurveConfig(sample_rate)).push(mono_samples)` returns `(center_time_seconds, coordinates)` pairs and accepts arbitrarily sized chunks. It emits only complete FFT windows; there is no end padding. The CLI accepts uncompressed 8-, 16-, 24- and 32-bit integer PCM WAV and analyzes each channel separately. A mono input writes the requested path; a multichannel input writes `output.ch1.f4curve`, `output.ch2.f4curve`, and so on. Channels share a clock but their independently aligned MDS axes are not comparable. `read_wav_channels` preserves the channels in a sample-major array; `read_wav` explicitly downmixes to mono. `--fft-size`, `--hop-size`, `--mel-bands`, `--history`, and `--dimensions` tune it. The current implementation solves an eigenproblem for a dense matrix at every hop: this is an offline/batch implementation, not a guaranteed real-time audio callback.
+The library needs NumPy and SciPy (`uv sync --inexact --group audio-curve`). `CurveAnalyzer(CurveConfig(sample_rate)).push(mono_samples)` returns `(center_time_seconds, coordinates)` pairs and accepts arbitrarily sized chunks. It emits only complete FFT windows; there is no end padding. The CLI accepts uncompressed 8-, 16-, 24- and 32-bit integer PCM WAV and analyzes each channel separately. A mono input writes the requested path; a multichannel input writes `output.ch1.f4curve`, `output.ch2.f4curve`, and so on. Channels share a clock but their independently aligned MDS axes are not comparable. `read_wav_channels` preserves the channels in a sample-major array; `read_wav` explicitly downmixes to mono. `--fft-size`, `--hop-size`, `--mel-bands`, `--history`, `--dimensions` and `--compression` tune it. Without compression (`--compression 1`), a voice's lowest five of 64 bands hold a median 71% of the mass and the distance mostly compares them; 0.3, close to how loudness grows with intensity, lets the whole spectrum count. The current implementation solves an eigenproblem for a dense matrix at every hop: this is an offline/batch implementation, not a guaranteed real-time audio callback.
 
 For a denser trace of the 96 kHz `near_drowning.wav`, the following keeps the 4096-sample analysis window and uses 512 points with a 256-sample hop (2.67 ms):
 
@@ -35,7 +35,9 @@ A completed file is little-endian, with a 64-byte header and fixed-size records.
 | 24 | uint32 | history capacity |
 | 28 | uint32 | dimensions (2 or 3) |
 | 32 | uint64 | record count |
-| 40 | 24 bytes | reserved, zero |
+| 40 | uint32 | kind: 0 for a rolling window, 1 for EMA timescales (below) |
+| 44 | float64 | EMA files: the longest time constant, seconds; otherwise zero |
+| 52 | 12 bytes | reserved, zero |
 
 Record `i` begins at `64 + i * (16 + 4 * history * dimensions)`: float64 center time of the newest FFT window, uint32 valid point count, uint32 reserved, followed by `history * dimensions` float32 values, point-major. Only the first `count` points are valid; padding is zero. Point `j` has center time `recordTime - (count - 1 - j) * hopSize / sampleRate`.
 
@@ -126,3 +128,21 @@ PYTHONPATH=python uv run --group audio-curve -- python -m fieldaudio_curve.stere
 ```
 
 The output has the same memory-mappable format and leaves both inputs unchanged. The files must have matching headers, timestamps and point counts. Each fit uses corresponding points, allowing translation, rotation, uniform scale and reflection; left is the reference. It preserves each right curve's shape up to a similarity transform, but does not force genuinely different stereo content to coincide. Each channel was already aligned through time; since the additional stereo fit is independent at each timestamp, it can introduce extra motion when the fit is ambiguous or the channels differ. The two channels are in the left channel's moving frame, not a fixed global frame.
+
+## Averages instead of a window
+
+`python -m fieldaudio_curve.ema input.wav output.f4curve --points 48 --longest 20` writes the same
+format, but each curve's points are exponential moving averages of the unit-mass mel spectrum over
+`--points` time constants spaced geometrically from one hop to `--longest` seconds, longest first.
+Points keep their identity from hop to hop, so each curve is fitted to the previous one using every
+point, weighted by its time constant, as a rigid motion (no scale). The slow end barely moves and
+holds the frame still. Header `kind` is 1 and the longest time constant is stored at byte 44; the
+point-time formula of the rolling format does not apply.
+
+## Stages, for figures
+
+`python -m fieldaudio_curve.stages input.wav out.json --time 2.0` runs the rolling analyzer up to one
+moment and writes the window's unit-mass mel spectra, their distance matrix, and the MDS coordinates
+of that curve and the previous one before and after alignment. Field's `audioCurveStages(...)` reads
+it; the figures on the public [Audio curves](https://openendedgroup.com/field4/audio_curves/) page
+come from it.

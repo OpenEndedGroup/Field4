@@ -28,6 +28,12 @@ class AudioCurveFile(path: Path) : Closeable {
     val history: Int
     val dimensions: Int
     val frameCount: Long
+    /**
+     * Null for a rolling window, where point `j` is a spectrum `count - 1 - j` hops old. For an
+     * EMA file (`AudioCurveSettings.emaLongestSeconds`), the longest time constant in seconds:
+     * the points are running averages over timescales from this down to one hop.
+     */
+    val emaLongestSeconds: Double?
     private val recordSize: Int
 
     init {
@@ -43,6 +49,7 @@ class AudioCurveFile(path: Path) : Closeable {
             history = h.int
             dimensions = h.int
             frameCount = h.long
+            emaLongestSeconds = if (h.getInt(40) == 1) h.getDouble(44) else null
             require(sampleRate > 0 && fftSize >= 4 && hopSize in 1..fftSize && history >= 3 && dimensions in 2..3 && frameCount >= 0) {
                 "Invalid audio curve header"
             }

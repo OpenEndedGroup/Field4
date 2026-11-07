@@ -24,6 +24,7 @@ class AudioCurveFileTest {
             Files.write(path, b.array())
             AudioCurveFile(path).use { curves ->
                 assertEquals(2L, curves.frameCount)
+                assertNull(curves.emaLongestSeconds)
                 assertNull(curves.frameAt(.007))
                 assertContentEquals(floatArrayOf(1f, 2f), curves.frameAt(.008)!!.coordinates)
                 assertContentEquals(floatArrayOf(3f, 4f, 5f, 6f), curves.frameAt(.013)!!.coordinates)
@@ -32,6 +33,22 @@ class AudioCurveFileTest {
             }
             Files.write(path, b.array().copyOf(80))
             assertFailsWith<IllegalArgumentException> { AudioCurveFile(path) }
+        } finally {
+            Files.deleteIfExists(path)
+        }
+    }
+
+    /** `fieldaudio_curve.ema` marks its files with kind 1 at byte 40 and the longest time constant at 44. */
+    @Test
+    fun readsTheEmaKindFromTheReservedHeaderBytes() {
+        val path = Files.createTempFile("audio-curve-ema", ".bin")
+        try {
+            val b = ByteBuffer.allocate(64).order(ByteOrder.LITTLE_ENDIAN)
+            b.put(byteArrayOf(70, 52, 67, 85, 82, 86, 69, 0))
+            b.putInt(1).putInt(8000).putInt(128).putInt(32).putInt(3).putInt(2).putLong(0)
+            b.putInt(1).putDouble(20.0)
+            Files.write(path, b.array())
+            AudioCurveFile(path).use { assertEquals(20.0, it.emaLongestSeconds) }
         } finally {
             Files.deleteIfExists(path)
         }

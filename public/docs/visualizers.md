@@ -2113,6 +2113,31 @@ sample decimation would miss. Zooming and panning request a new envelope with at
 the audio itself continues to stream from the immutable representation. Set `showPlayhead = false`
 for a waveform-only inspection surface.
 
+### Drawing in step with the player: `onTime`
+
+A sync group joins views that live in the browser. To draw from box code (FLines, a Three.js
+scene, anything the server makes) in step with the audio, give the player an `onTime` callback. It
+is called on the server with the time the player is showing: the cursor while you hover or drag
+across the waveform, otherwise the playhead, which reports every animation frame while the audio
+plays. The browser keeps the audio clock; the box just reads `t`.
+
+```diffstatic {data-lang=kotlin}
+var t = 0.0
+displayAudioBytes(
+    "%docs/assets/subharmonic_sound/notld-barbara-source.wav".path.toFile().readBytes(),
+    options = AudioVisualizerOptions(onTime = { t = it }),
+)
+
+loop {
+    val x = 40 + t / 13.5 * 900
+    lines(fline { moveTo(x, 0); lineTo(x, 80) }, channel = "where", w = 980.0, h = 80.0)
+}
+```
+
+Launch the box so the `loop` keeps running. The callback belongs to the run that displayed the
+player, and rerunning the box replaces it. [Audio curves](audio_curves.md) uses this to draw a
+moving 3D curve under the player.
+
 ### Shared time cursors and transport
 
 Audio players and arbitrary time-based views can share a loose, browser-side timeline. Give them

@@ -277,6 +277,7 @@ nav:
       # Modal synthesis from geometry: the modes of a drawn drum head.
       - "Eigendrum: Hear the Shape of a Drum": eigendrum.md
       - Loris Partial Tracks and Resynthesis: loris.md
+      - "Audio Curves: Sound as a Few Controls": audio_curves.md
       - Sonic Pi: sonic_pi.md
       - Faust: faust.md
       - Pure Data: pure_data.md

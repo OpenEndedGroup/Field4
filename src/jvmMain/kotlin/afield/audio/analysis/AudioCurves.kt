@@ -8,6 +8,8 @@ import afield.graphics.render.fline
 import afield.graphics.render.thickness
 import afield.math.linalg.Vec4
 import afield.math.linalg.vec
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
@@ -20,6 +22,9 @@ import javax.sound.sampled.AudioSystem
  *
  * [fftSize] samples go into each spectrum and a new curve starts every [hopSize] samples. Each curve
  * holds the last [history] spectra, so it spans `history * hopSize / sampleRate` seconds of sound.
+ * With [emaLongestSeconds] set, each curve instead holds [history] running averages of the spectrum
+ * over timescales from one hop up to that many seconds: a long view of the whole recording at one
+ * end and the present at the other.
  */
 data class AudioCurveSettings(
     val fftSize: Int = 2048,
@@ -27,15 +32,29 @@ data class AudioCurveSettings(
     val melBands: Int = 64,
     val history: Int = 128,
     val dimensions: Int = 2,
+    /**
+     * Exponent applied to each mel band's energy before the spectrum is scaled to unit mass. Raw
+     * power (1.0) leaves a voice's lowest few bands holding most of the mass; 0.3, close to how
+     * loudness grows with intensity, lets the whole spectrum count.
+     */
+    val compression: Double = 0.3,
+    /**
+     * Null for a rolling window of the last [history] spectra. A number makes each point an
+     * exponential moving average of the spectrum instead, with [history] time constants spaced
+     * geometrically from one hop up to this many seconds, longest first. Those slow points barely
+     * move, so they hold the curve's frame still over the whole recording.
+     */
+    val emaLongestSeconds: Double? = null,
 ) {
     init {
-        require(fftSize >= 4 && hopSize in 1..fftSize && melBands >= 2 && history >= 3 && dimensions in 2..3) {
+        require(fftSize >= 4 && hopSize in 1..fftSize && melBands >= 2 && history >= 3 && dimensions in 2..3 &&
+            compression > 0 && compression <= 4 && (emaLongestSeconds == null || emaLongestSeconds > 0)) {
             "invalid audio curve settings $this"
         }
     }
 
     /** A filename-safe tag, so files analysed with different settings never collide. */
-    internal val tag get() = "fft$fftSize-hop$hopSize-mel$melBands-h$history-${dimensions}d"
+    internal val tag get() = "fft$fftSize-hop$hopSize-mel$melBands-h$history-${dimensions}d-c$compression" + (emaLongestSeconds?.let { "-ema$it" } ?: "")
 }
 
 /**
@@ -64,6 +83,26 @@ fun audioCurves(
 }
 
 private fun runCurveAnalysis(wav: Path, output: Path, settings: AudioCurveSettings) {
+    val files = listOf(wav.toString(), output.toString())
+    val ema = settings.emaLongestSeconds
+    if (ema == null) runFieldaudioCurve("fieldaudio_curve", files + settings.cliArguments)
+    else runFieldaudioCurve(
+        "fieldaudio_curve.ema",
+        files + listOf(
+            "--points", "${settings.history}", "--longest", "$ema",
+            "--fft-size", "${settings.fftSize}", "--hop-size", "${settings.hopSize}", "--mel-bands", "${settings.melBands}",
+            "--dimensions", "${settings.dimensions}", "--compression", "${settings.compression}",
+        ),
+    )
+}
+
+private val AudioCurveSettings.cliArguments get() = listOf(
+    "--fft-size", "$fftSize", "--hop-size", "$hopSize", "--mel-bands", "$melBands",
+    "--history", "$history", "--dimensions", "$dimensions", "--compression", "$compression",
+)
+
+/** Run a `fieldaudio_curve` module from this checkout through `uv`, failing with its output. */
+private fun runFieldaudioCurve(module: String, arguments: List<String>) {
     val checkout = generateSequence(File(System.getProperty("user.dir")).absoluteFile) { it.parentFile }
         .firstOrNull { File(it, "python/fieldaudio_curve/curve.py").isFile }
         ?: error("python/fieldaudio_curve not found above ${System.getProperty("user.dir")}: run Field from its checkout")
@@ -74,22 +113,71 @@ private fun runCurveAnalysis(wav: Path, output: Path, settings: AudioCurveSettin
         ?: error("audio curves need `uv` (https://docs.astral.sh/uv/); set AFIELD_UV to its path")
     val log = Files.createTempFile("field-audio-curve", ".log").toFile()
     val process = ProcessBuilder(
-        uv, "run", "--project", checkout.path, "--group", "audio-curve", "--", "python", "-m", "fieldaudio_curve",
-        wav.toString(), output.toString(),
-        "--fft-size", "${settings.fftSize}", "--hop-size", "${settings.hopSize}", "--mel-bands", "${settings.melBands}",
-        "--history", "${settings.history}", "--dimensions", "${settings.dimensions}",
+        listOf(uv, "run", "--project", checkout.path, "--group", "audio-curve", "--", "python", "-m", module) + arguments,
     ).directory(checkout).redirectErrorStream(true).redirectOutput(log).apply {
         environment()["PYTHONPATH"] = File(checkout, "python").path
         environment()["OPENBLAS_NUM_THREADS"] = "1"
         environment().remove("VIRTUAL_ENV")
     }.start()
     try {
-        if (!process.waitFor(30, TimeUnit.MINUTES)) error("audio curve analysis of $wav timed out; log: $log")
+        if (!process.waitFor(30, TimeUnit.MINUTES)) error("$module timed out; log: $log")
     } finally {
         if (process.isAlive) process.destroyForcibly()
     }
-    check(process.exitValue() == 0) { "audio curve analysis of $wav failed (exit ${process.exitValue()}):\n${log.readText().takeLast(4000)}" }
+    check(process.exitValue() == 0) { "$module failed (exit ${process.exitValue()}):\n${log.readText().takeLast(4000)}" }
 }
+
+/** One curve as [audioCurveStages] reports it: MDS coordinates as solved, and after alignment. */
+@Serializable
+data class AudioCurveStage(
+    /** Centre of the newest analysis window, in seconds. */
+    val time: Double,
+    /** One row per spectrum, oldest first: the MDS solution before alignment. */
+    val unaligned: List<List<Double>>,
+    /** The same points after the similarity fit onto the previous curve: what the `.f4curve` holds. */
+    val aligned: List<List<Double>>,
+)
+
+/**
+ * Every stage behind the curve at one moment, from the analyzer itself: the mel spectra in its
+ * window, the Wasserstein distances between them, and the MDS coordinates of that curve and the
+ * one before it, before and after alignment. For explaining and checking the method; use
+ * [audioCurves] to analyse a whole recording.
+ */
+@Serializable
+data class AudioCurveStages(
+    val sampleRate: Int, val fftSize: Int, val hopSize: Int, val melBands: Int, val history: Int, val dimensions: Int,
+    val compression: Double,
+    /** Centre frequency of each mel band, in Hz. */
+    val melCentersHz: List<Double>,
+    /** One unit-mass mel spectrum per analysis window, oldest first. All zeros means silence. */
+    val masses: List<List<Double>>,
+    /** Wasserstein-1 distance between every pair of [masses]: what MDS embeds. */
+    val distances: List<List<Double>>,
+    /** The previous curve and the current one, in that order. */
+    val curves: List<AudioCurveStage>,
+)
+
+/** Run the analyzer on [channel] of [wav] up to [seconds] and report every stage of that curve. */
+fun audioCurveStages(
+    wav: Path,
+    seconds: Double,
+    settings: AudioCurveSettings = AudioCurveSettings(),
+    channel: Int = 0,
+): AudioCurveStages {
+    val out = Files.createTempFile("field-audio-curve-stages", ".json")
+    try {
+        runFieldaudioCurve(
+            "fieldaudio_curve.stages",
+            listOf(wav.toAbsolutePath().toString(), out.toString(), "--time", "$seconds", "--channel", "$channel") + settings.cliArguments,
+        )
+        return stagesJson.decodeFromString(AudioCurveStages.serializer(), Files.readString(out))
+    } finally {
+        Files.deleteIfExists(out)
+    }
+}
+
+private val stagesJson = Json { ignoreUnknownKeys = true }
 
 /**
  * A robust half-width of everything this file draws: half the larger of the x and y spreads between
@@ -119,19 +207,25 @@ fun AudioCurveFile.extent(): Double {
  * Coordinates are multiplied by [scale]. A 3D file uses its third coordinate for z; a 2D file
  * spreads its points along z instead, from `-depth` (oldest) to 0 (newest), so in `threeLines`
  * the curve trails back through time.
+ *
+ * [centered] moves the curve so its middle is at the origin. A rolling curve's frame keeps its
+ * orientation from one hop to the next but slowly slides, which over a recording can carry it out
+ * of a fixed view; centring removes the slide and keeps the shape and its turning.
  */
 fun AudioCurveFrame.flines(
     scale: Double = 1.0,
     depth: Double = 0.0,
     color: Vec4 = vec(0.39, 0.78, 0.86, 1.0),
     bands: Int = 8,
+    centered: Boolean = false,
 ): List<FLine> {
     val n = pointCount
     if (n < 2) return emptyList()
+    val middle = DoubleArray(dimensions) { d -> if (centered) (0 until n).sumOf { coordinates[it * dimensions + d].toDouble() } / n else 0.0 }
     fun point(j: Int) = vec(
-        coordinates[j * dimensions] * scale,
-        coordinates[j * dimensions + 1] * scale,
-        if (dimensions == 3) coordinates[j * dimensions + 2] * scale else (j / (n - 1.0) - 1.0) * depth,
+        (coordinates[j * dimensions] - middle[0]) * scale,
+        (coordinates[j * dimensions + 1] - middle[1]) * scale,
+        if (dimensions == 3) (coordinates[j * dimensions + 2] - middle[2]) * scale else (j / (n - 1.0) - 1.0) * depth,
     )
     return (0 until bands).mapNotNull { b ->
         val from = b * (n - 1) / bands
