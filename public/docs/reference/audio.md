@@ -4,9 +4,41 @@
 
 Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. `SoundPathMap.kt` is the one to read first: the declared, re-derived-from-the-code map of every route Field has from a box to something audible, which [Making a sound in Field: every path there is](../sound_paths.md) renders as a page. [Sonic Pi](../sonic_pi.md) covers owned mode in full.
 
-83 source file(s), 2176 public symbol(s), 1084 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+84 source file(s), 2188 public symbol(s), 1088 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
+
+## AudioCurveFile.kt { #audiocurvefile-kt }
+
+`src/jvmMain/kotlin/afield/audio/analysis/AudioCurveFile.kt` — [read the source](source/jvmMain/afield/audio/analysis/AudioCurveFile/)
+
+### AudioCurveFrame { #audiocurvefile-kt-audiocurveframe }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">AudioCurveFrame</span><span class="p">(</span><span class="k">val</span> <span class="n">timeSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">dimensions</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">coordinates</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">)</span></code>](source/jvmMain/afield/audio/analysis/AudioCurveFile/#L14)
+
+A single oldest-to-newest curve. Coordinates are point-major, with [`dimensions`](audio.md#audiocurvefile-kt--audiocurvefile--dimensions) floats per point.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="audiocurvefile-kt--audiocurveframe--pointcount"></a>[<code class="highlight"><span class="k">val</span> <span class="n">pointCount</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/audio/analysis/AudioCurveFile/#L15) |  |
+
+### AudioCurveFile { #audiocurvefile-kt-audiocurvefile }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">AudioCurveFile</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nc">Path</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Closeable</span></code>](source/jvmMain/afield/audio/analysis/AudioCurveFile/#L23)
+
+Read a completed `fieldaudio_curve` v1 file using read-only memory maps. The channel stays open until [`close`](audio.md#audiocurvefile-kt--audiocurvefile--close); frames are copied out and remain usable afterwards. Large files are mapped one record at a time, so their total size is not limited by a JVM ByteBuffer's integer capacity.
+
+| Declaration | Summary |
+| --- | --- |
+| <a id="audiocurvefile-kt--audiocurvefile--samplerate"></a>[<code class="highlight"><span class="k">val</span> <span class="n">sampleRate</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/audio/analysis/AudioCurveFile/#L25) |  |
+| <a id="audiocurvefile-kt--audiocurvefile--fftsize"></a>[<code class="highlight"><span class="k">val</span> <span class="n">fftSize</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/audio/analysis/AudioCurveFile/#L26) |  |
+| <a id="audiocurvefile-kt--audiocurvefile--hopsize"></a>[<code class="highlight"><span class="k">val</span> <span class="n">hopSize</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/audio/analysis/AudioCurveFile/#L27) |  |
+| <a id="audiocurvefile-kt--audiocurvefile--history"></a>[<code class="highlight"><span class="k">val</span> <span class="n">history</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/audio/analysis/AudioCurveFile/#L28) |  |
+| <a id="audiocurvefile-kt--audiocurvefile--dimensions"></a>[<code class="highlight"><span class="k">val</span> <span class="n">dimensions</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/audio/analysis/AudioCurveFile/#L29) |  |
+| <a id="audiocurvefile-kt--audiocurvefile--framecount"></a>[<code class="highlight"><span class="k">val</span> <span class="n">frameCount</span><span class="p">:</span> <span class="nc">Long</span></code>](source/jvmMain/afield/audio/analysis/AudioCurveFile/#L30) |  |
+| <a id="audiocurvefile-kt--audiocurvefile--frame"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">frame</span><span class="p">(</span><span class="n">index</span><span class="p">:</span> <span class="nc">Long</span><span class="p">)</span><span class="p">:</span> <span class="nc">AudioCurveFrame</span></code>](source/jvmMain/afield/audio/analysis/AudioCurveFile/#L62) | Read a curve by index. |
+| <a id="audiocurvefile-kt--audiocurvefile--frameat"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">frameAt</span><span class="p">(</span><span class="n">seconds</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">AudioCurveFrame</span><span class="o">?</span></code>](source/jvmMain/afield/audio/analysis/AudioCurveFile/#L76) | The most recent completed analysis window at `seconds`, or null before its center. |
+| <a id="audiocurvefile-kt--audiocurvefile--close"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/audio/analysis/AudioCurveFile/#L84) |  |
 
 ## essentiaAnalysis.kt { #essentiaanalysis-kt }
 
