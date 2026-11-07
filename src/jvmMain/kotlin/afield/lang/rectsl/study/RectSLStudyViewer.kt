@@ -225,7 +225,7 @@ class RectSLStudyViewer(
                 #$id h4{font-weight:400;margin:14px 0 6px;color:#aaa;letter-spacing:.06em;text-transform:uppercase;font-size:11px}
                 #$id .row{display:flex;gap:16px;align-items:flex-start}
                 #$id .film{display:flex;gap:10px} #$id .film img{width:${fw}px;height:${fh}px;border:1px solid #333;display:block;background:#000}
-                #$id .field-control{padding:2px 10px;margin:3px 0}
+                #$id .field-control{padding:2px 6px;margin:3px 0}
                 #$id .field-slider,#$id .kcolour{max-width:640px}
                 #$id .field-slider .field-label{width:300px;overflow:hidden;text-overflow:ellipsis}
                 #$id .field-slider-visual{height:26px}

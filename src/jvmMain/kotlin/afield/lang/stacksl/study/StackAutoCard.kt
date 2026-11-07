@@ -187,7 +187,7 @@ object StackAutoCard {
                 #$id .warn:focus-visible{outline:1px solid currentColor;outline-offset:3px;border-radius:2px}
                 #$id h4{font-weight:400;margin:12px 0 6px;color:#aaa;letter-spacing:.06em;text-transform:uppercase;font-size:11px}
                 #$id .slot+.slot{margin-top:14px;border-top:1px solid #333;padding-top:10px}
-                #$id .field-control{padding:2px 10px;margin:3px 0}
+                #$id .field-control{padding:2px 6px;margin:3px 0}
                 #$id .field-slider{max-width:600px}
                 #$id .field-slider .field-label{width:250px;overflow:hidden;text-overflow:ellipsis}
                 #$id .field-slider-visual{height:26px}
