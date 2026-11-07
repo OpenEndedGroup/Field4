@@ -491,6 +491,9 @@ def schedule_health(routine: Routine, recent: list[dict], scheduled: bool, *, no
             result.update(state="recorded", message="Report found (day precision; timing unverified)",
                           evidence=report.get("source"))
             return result
+    if routine.get("reports").startswith("log:"):
+        result.update(state="unknown", message="Commit history cannot prove that a no-change run was missed")
+        return result
     result.update(state="overdue" if now.timestamp() > deadline.timestamp() else "awaiting",
                   message="No run report found for the expected slot")
     return result
@@ -651,7 +654,10 @@ def recent_runs(routine: Routine, repo: Path) -> list[dict[str, str]]:
     if spec.startswith("git:"):
         _, branch, folder = spec.split(":", 2)
         listing = _git(repo, "ls-tree", "--name-only", f"refs/heads/{branch}", f"{folder.rstrip('/')}/")
-        names = sorted((n for n in (listing or "").splitlines() if n.endswith(".md") and _date_of(n)), reverse=True)
+        # Journal folders also contain dated audits, archives and evidence notes.
+        # Only the routine's date-named reports (including same-day b/c runs) are attempts.
+        names = sorted((n for n in (listing or "").splitlines()
+                        if re.fullmatch(r"\d{4}-\d{2}-\d{2}(?:-?[a-z])?\.md", Path(n).name)), reverse=True)
         for name in names[:RECENT]:
             text = _git(repo, "show", f"refs/heads/{branch}:{name}") or ""
             runs.append({"date": _date_of(Path(name).name), "verdict": _verdict(routine, text), "source": f"{branch}:{name}"})
@@ -668,11 +674,11 @@ def recent_runs(routine: Routine, repo: Path) -> list[dict[str, str]]:
             day, _, subject = line.partition("\t")
             runs.append({"date": day, "verdict": subject, "source": "main"})
     logs = RUN_LOGS / routine.name
-    if not runs and logs.is_dir():
+    if logs.is_dir():
         for path in sorted(logs.glob("2*.log"), reverse=True)[:RECENT]:
             text = path.read_text(encoding="utf-8", errors="replace")
             runs.append({"date": _date_of(path.name), "verdict": _verdict(routine, text), "source": str(path)})
-    return runs
+    return sorted(runs, key=lambda r: (r["date"], r["source"].endswith(".log"), r["source"]), reverse=True)[:RECENT]
 
 
 def adopted(routine: Routine, repo: Path) -> list[str]:

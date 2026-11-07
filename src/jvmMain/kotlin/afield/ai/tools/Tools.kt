@@ -88,9 +88,13 @@ data class Commentary(val text: String)
  * Attachments are retrieved via tools rather than stuffed into the prompt body.
  */
 data class ContextAttachment(
+    /** The name the agent lists and reads the attachment by. */
     val fileName: String,
+    /** Its language, such as `kotlin` or `glsl`. */
     val language: String,
+    /** The attached text itself. */
     val code: String,
+    /** An optional line saying what the attachment is, shown when the agent lists attachments. */
     val description: String = ""
 )
 
@@ -106,27 +110,44 @@ data class AttachmentInfo(val file: String, val language: String, val descriptio
 @JsonClassDescription("Read an attachment or resolvable file/ref in bounded excerpts (default 6000 UTF-16 code units, maximum 65536). The response identifies the whole source hash and totalChars, marks isExcerpt and gives nextOffset when more remains. Continue with nextOffset and expectedSourceHash to refuse mixed versions. An excerpt is not the entire file: never replace a file with just its excerpt. Use find for a case-sensitive literal search starting at offset: return a bounded excerpt around the first match instead of reading unrelated source. searchMatched=false means no match, not an empty file. Related guides/examples are preserved.")
 @AgentToolMeta("context", effects = [ToolEffect.READ_DOCUMENT, ToolEffect.FILESYSTEM_READ])
 data class AttachmentRequest(
+    /** The attachment name, or a resolvable file or `afield://` ref. */
     val file: String,
+    /** Where the excerpt starts, in UTF-16 code units; pass the previous response's `nextOffset` to continue. */
     val offset: Int = 0,
+    /** How much to return: 6000 by default, at most 65536. */
     val maxChars: Int = 6000,
+    /** The `sourceHash` of an earlier excerpt; when set, a source that has changed since is refused rather than mixed. */
     val expectedSourceHash: String = "",
+    /** A case-sensitive literal to search for from `offset`; the excerpt is taken around the first match. */
     val find: String = ""
 )
 
 data class AttachmentResponse(
+    /** The file that was read. */
     val file: String,
+    /** Its language. */
     val language: String,
+    /** The excerpt: the whole file only when `isExcerpt` is false. */
     val content: String,
+    /** Guides that discuss this source. */
     val relatedGuides: List<String> = emptyList(),
+    /** Examples that use this source. */
     val relatedExamples: List<String> = emptyList(),
+    /** Where `content` starts in the whole source. */
     val offset: Int = 0,
+    /** The length of the whole source. */
     val totalChars: Int = content.length,
+    /** A hash of the whole source, to pass back as `expectedSourceHash`. */
     val sourceHash: String = "",
+    /** Where the next excerpt starts, or null when nothing remains. */
     val nextOffset: Int? = null,
+    /** True when `content` is part of the source, not all of it. */
     val isExcerpt: Boolean = false,
+    /** Whether `find` matched; null when no `find` was given. False means no match, not an empty file. */
     val searchMatched: Boolean? = null,
+    /** Where `find` matched, in UTF-16 code units. */
     val matchOffset: Int? = null,
-    /** 1-based line of [offset] and of [matchOffset]: offsets are not line numbers, so cite these. */
+    /** 1-based line of `offset` and of [matchOffset]: offsets are not line numbers, so cite these. */
     val startLine: Int? = null,
     val matchLine: Int? = null,
     /** When `find` missed: up to eight `line: text` rows containing its longest identifier. */
@@ -149,87 +170,142 @@ data class DefinitionInfo(val name: String, val type: String, val fileRef: Strin
 data class ListContentsRequest(val unused: Int = 0)
 
 data class ListContentsResult(
+    /** The ref of the current box's main property, when there is one. */
     val fileRef: String? = null,
+    /** That property's text. */
     val content: String? = null,
+    /** That property's language. */
     val language: String? = null,
+    /** Every text property of the current box and its graph-relevant boxes. */
     val contents: List<ListContentEntry> = emptyList(),
+    /** The names the box's preamble puts in scope, and where each comes from. */
     val preambleHints: List<PreamblePropertyHint> = emptyList(),
     /** Set when there is something to say about the listing itself, such as an empty box. */
     val message: String = ""
 )
 
 data class PreamblePropertyHint(
+    /** The name as the box's code writes it. */
     val property: String,
+    /** What the name is read from. */
     val receiver: String,
+    /** How it is supplied: an inherited Box property or a shader-generated Mesh/Module binding helper. */
     val delegate: String,
+    /** Its type, when known. */
     val type: String = "",
+    /** The box that supplies it. */
     val boxUid: String = "",
+    /** That box's name. */
     val boxName: String = "",
+    /** How the supplying box relates to the current one: `current`, a parent, and so on. */
     val relation: String = "current",
+    /** True when the supplying box is reached through the box graph. */
     val graphRelevant: Boolean = false
 )
 
 data class ListContentEntry(
+    /** The ref to pass to `EditFileRequest`, such as `afield://doc/box-uid/code`. */
     val fileRef: String,
+    /** The property name: `code`, `fragment`, and so on. */
     val property: String,
+    /** Its language. */
     val language: String,
+    /** Its full text. */
     val content: String,
+    /** The box it belongs to. */
     val boxUid: String = "",
+    /** That box's name. */
     val boxName: String = "",
+    /** How that box relates to the current one. */
     val relation: String = "current"
 )
 
 @JsonClassDescription("List Kotlin REPL context variables currently retained by a Field box's KotlinInterface/KotlinInterface2 without evaluating code. Target may be blank for the current box, a box uid/name, or an afield://... ref. This lists retained script variables, not Field box properties. String values in both valuePreview and primitiveValue are bounded by maxValueChars (64 to 100000 characters) and carry an explicit truncation marker when shortened. In later EvaluateKotlinExpression calls, refer to these variables by their names; refer to the current/target box as thisBox, never as _ or _.foo.")
 @AgentToolMeta("kotlin", effects = [ToolEffect.READ_DOCUMENT])
 data class ListKotlinContextVariablesRequest(
+    /** Blank for the current box, or a box uid, name or `afield://` ref. */
     val target: String = "",
+    /** The bound on each string value, 64 to 100000 characters; a shortened value says so. */
     val maxValueChars: Int = 300
 )
 
 data class KotlinContextVariableInfo(
+    /** The variable's name, as later evaluations refer to it. */
     val name: String,
+    /** Its declaration as written. */
     val declaration: String,
+    /** The type it was declared with. */
     val declaredType: String,
+    /** The class of its current value. */
     val runtimeType: String,
+    /** True for a `var`. */
     val mutable: Boolean,
+    /** A bounded rendering of its value. */
     val valuePreview: String,
+    /** The value itself when it is a primitive or string, else null. */
     val primitiveValue: Any? = null,
+    /** Which primitive `primitiveValue` is, or empty. */
     val primitiveKind: String = ""
 )
 
 data class ListKotlinContextVariablesResult(
+    /** Whether the box was found and its context read. */
     val success: Boolean,
+    /** The target as requested. */
     val target: String,
+    /** The box it resolved to. */
     val boxUid: String,
+    /** That box's name. */
     val boxName: String,
+    /** Which run of the box the variables come from. */
     val generation: Int,
+    /** What happened, in words. */
     val message: String,
+    /** The retained script variables, not the box's properties. */
     val variables: List<KotlinContextVariableInfo> = emptyList()
 )
 
 @JsonClassDescription("Evaluate a Kotlin expression in a Field box's existing KotlinInterface/KotlinInterface2 context. Target may be blank for the current box, a box uid/name, or an afield://... ref. Prefer read-only expressions; this runs against live runtime objects. String results in both primitiveValue and stringValue, and optional HTML, are bounded by maxChars (64 to 100000 characters) and carry an explicit truncation marker when shortened. Request a substring or summary of large values to inspect more selectively. The current/target Field box is thisBox. Do not use _, _.foo, or bare box as current-box syntax. Use thisBox.getPropertyRaw(\"name\") / thisBox.setPropertyRaw(\"name\", value) for raw box properties, and use box(\"uid\", root = thisBox.inside) when intentionally resolving or creating another box in the same document.")
 @AgentToolMeta("kotlin", effects = [ToolEffect.EXECUTE_CODE])
 data class EvaluateKotlinExpressionRequest(
+    /** Blank for the current box, or a box uid, name or `afield://` ref. */
     val target: String = "",
+    /** The Kotlin to evaluate in that box's live context, where the box is `thisBox`. */
     val expression: String,
+    /** Also return an HTML rendering of the value. */
     val renderHtml: Boolean = true,
+    /** The bound on string results and HTML, 64 to 100000 characters; a shortened value says so. */
     val maxChars: Int = 12000
 )
 
 data class EvaluateKotlinExpressionResult(
+    /** Whether the expression compiled and ran. */
     val success: Boolean,
+    /** The target as requested. */
     val target: String,
+    /** The box it ran in. */
     val boxUid: String,
+    /** That box's name. */
     val boxName: String,
+    /** The expression that ran. */
     val expression: String,
+    /** What kind of value came back. */
     val valueKind: String,
+    /** The expression's static type. */
     val type: String = "",
+    /** The class of the value. */
     val runtimeType: String = "",
+    /** The value itself when it is a primitive or string, else null. */
     val primitiveValue: Any? = null,
+    /** Which primitive `primitiveValue` is, or empty. */
     val primitiveKind: String = "",
+    /** The value as a bounded string. */
     val stringValue: String = "",
+    /** The value rendered as HTML, when asked for. */
     val html: String = "",
+    /** Compiler diagnostics, when it did not compile. */
     val diagnostics: List<CompileDiagnostic> = emptyList(),
+    /** What happened, in words. */
     val message: String = ""
 )
 
@@ -1043,6 +1119,7 @@ data class ToolFocus(
     val property: String,
 )
 
+/** Turns a document's virtual text files into attachments the agent can list and read, keeping each file's name and language. */
 fun virtualFilesToAttachments(files: List<afield.document.workspace.VirtualTextFile>): List<ContextAttachment> =
     files.map { ContextAttachment(it.ref.fileName, it.ref.language, it.content) }
 
@@ -1496,6 +1573,10 @@ internal object ToolSchema {
     private fun typeObject(t: String): JsonObject = buildJsonObject { put("type", t) }
 }
 
+/**
+ * Refuses model output that still contains one of the prompt's own markers (`<cursor>`, `<error>`,
+ * `<rewrite>`, ...), by throwing `MalformedAI`, so a half-followed instruction is never written into a box.
+ */
 fun validateNoMarkers(code: String) {
     val bad = listOf("<help>", "<error>", "</error>", "<cursor>", "<rewrite>", "</rewrite>")
     val hit = bad.firstOrNull { code.contains(it) }

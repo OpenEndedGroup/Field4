@@ -424,7 +424,7 @@ so the tools wait for it. An edit returns once the new pipeline is drawing and s
 The box's card shows both slots' numbers, each named by a fast model from what its line does, with
 sliders that turn them live. **Show it in your shader** captures the slot in the window:
 
-![The polytope box with the explode slot's part of its card: eleven numbers, each with a name such as wave cycle duration and face phase offset, and buttons to keep them, reset, show the slot in the shader or render it alone](assets/stackauto_conversation/card.png)
+![The polytope box with the explode slot's part of its card: eleven numbers, each with a name such as wave cycle duration and face phase offset, with two monochrome icons at the left of the heading to show the slot in its shader or render it alone, and buttons below the sliders to show source, keep the numbers or reset them](assets/stackauto_conversation/card.png)
 
 ![face_decay shown in the shader from the card, pressed early in a burst: the upper faces flown out as thin orange frames with torn edges, the lower ones still whole and dark](assets/stackauto_conversation/in-shader.png)
 

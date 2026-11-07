@@ -1,0 +1,47 @@
+name: relative_pointer
+operations:
+  - drive:
+      script: |
+        ui.eval("window.__waitForPointer=async p=>{for(let i=0;i<100;i++){if(p())return true;await new Promise(r=>setTimeout(r,20));}return false;};window.__pointerEvents=[]; const request=document.body.requestPointerLock.bind(document.body); document.body.requestPointerLock=()=>{const p=request();p?.catch(e=>window.__pointerError=e.name+': '+e.message);return p;}; ['mousedown','mouseup','pointerlockchange','pointerlockerror'].forEach(k=>window.addEventListener(k,e=>window.__pointerEvents.push({type:e.type,button:e.button,target:e.target.className,locked:!!document.pointerLockElement}),true));return true;")
+        try {
+            ui.hoverSelector(".field-slider-visual")
+            ui.down("Shift")
+            ui.mouseDown()
+            ui.pause(120)
+            check(ui.eval("return await window.__waitForPointer(()=>window.FieldRelativePointer.locked('slider'));").toString() == "true") { "Slider did not acquire real pointer lock" }
+            repeat(40) { ui.moveMouse(800.0, 400.0) }
+            ui.pause(120)
+            check(ui.eval("return Number(document.querySelector('.field-slider').dataset.value) > 0.9;").toString() == "true") { "Relative slider movement did not reach maximum" }
+            // CDP absolute coordinates clamp negative motion under lock; exercise the signed consumer explicitly.
+            ui.eval("for(let i=0;i<20;i++)window.dispatchEvent(new MouseEvent('mousemove',{movementX:-800,buttons:1,shiftKey:true,bubbles:true})); return true;")
+            ui.pause(120)
+            check(ui.eval("return Number(document.querySelector('.field-slider').dataset.value) < 0.1;").toString() == "true") { "Relative slider movement did not reach minimum" }
+        } finally {
+            ui.mouseUp()
+            ui.up("Shift")
+        }
+        ui.pause(120)
+        check(ui.eval("return await window.__waitForPointer(()=>document.pointerLockElement===null && window.__pointerEvents.filter(e=>e.type==='pointerlockchange').at(-1)?.locked===false);").toString() == "true") { "Slider release kept pointer lock" }
+        ui.eval("window.moveCanvasCamera(0,0,1); window.__panBefore=window.canvasPanesState().panes.at(-1); return true;")
+        ui.moveMouse(20.0, 500.0)
+        try {
+            ui.mouseDown("middle")
+            ui.pause(120)
+            check(ui.eval("return await window.__waitForPointer(()=>window.FieldRelativePointer.locked('canvas-pan'));").toString() == "true") { "Pan did not acquire real pointer lock: " + ui.eval("return JSON.stringify({events:window.__pointerEvents,error:window.__pointerError,at:document.elementFromPoint(20,500)?.className});") }
+            repeat(40) { ui.moveMouse(820.0, 650.0) }
+            ui.pause(150)
+            check(ui.eval("const p=window.canvasPanesState().panes.at(-1);return p.tx-window.__panBefore.tx>5000 && p.ty-window.__panBefore.ty>5000;").toString() == "true") { "Canvas pan stopped at screen edges" }
+            ui.press("Escape")
+            ui.pause(120)
+            check(ui.eval("return await window.__waitForPointer(()=>document.pointerLockElement===null && !document.body.classList.contains('canvas-pan-latched'));").toString() == "true") { "Escape did not release pan" }
+        } finally {
+            ui.mouseUp("middle")
+            ui.eval("document.exitPointerLock?.(); window.moveCanvasCamera(0,0,1); return true;")
+        }
+        ui.clickSelector(".field-slider-visual")
+        ui.pause(120)
+        check(ui.eval("return await window.__waitForPointer(()=>document.pointerLockElement===null && window.__pointerEvents.filter(e=>e.type==='pointerlockchange').at(-1)?.locked===false);").toString() == "true") { "Quick slider click leaked capture" }
+        // Use the normal CSS background for this headless capture; GPU compositing can cover the UI.
+        ui.eval("document.querySelectorAll('.field-webgl-background').forEach(e=>e.style.display='none'); window.moveCanvasCamera(0,0,1); return true;")
+        ui.pause(250)
+        ui.eval("window.__relativePointerSmoke = {ok:true,slider:true,pan:true,escape:true,quickClick:true}; return true;")

@@ -2010,9 +2010,11 @@ function setSliderT(container, t) {
  * A plain press jumps the thumb to the pointer and follows it, as it always has. With shift held the
  * press does not jump: the drag becomes relative and ten times finer, so a value can be walked into
  * place from wherever it already is. Pressing or releasing shift mid-drag switches between the two
- * without the thumb leaping; a drag that has once gone relative stays relative.
+ * without the thumb leaping; a drag that has once gone relative stays relative. Mouse drags request
+ * pointer lock for unbounded movement; unsupported/denied capture keeps the ordinary pointer path.
  */
 function startSliderDrag(container, event) {
+    if (event.button !== undefined && event.button !== 0) return;
     event.preventDefault();
     if (event.target?.setPointerCapture && event.pointerId !== undefined) {
         try { event.target.setPointerCapture(event.pointerId); } catch (_) {}
@@ -2030,6 +2032,10 @@ function startSliderDrag(container, event) {
     container.classList.toggle('fine', relative);
     window.addEventListener('pointermove', dragSliderMove);
     window.addEventListener('pointerup', endSliderDrag);
+    window.addEventListener('mousemove', dragSliderLockedMove);
+    window.addEventListener('mouseup', sliderMouseUp);
+    window.addEventListener('blur', endSliderDrag);
+    window.FieldRelativePointer?.begin('slider', event, endSliderDrag);
 }
 
 function liveSlider(container) {
@@ -2039,6 +2045,7 @@ function liveSlider(container) {
 
 function dragSliderMove(event) {
     if (!sliderState.active) return;
+    if (window.FieldRelativePointer?.locked('slider')) return;
     const container = sliderState.active = liveSlider(sliderState.active);
     const dx = event.clientX - (sliderState.lastX ?? event.clientX);
     sliderState.lastX = event.clientX;
@@ -2057,12 +2064,34 @@ function dragSliderMove(event) {
     }
 }
 
+function dragSliderLockedMove(event) {
+    if (!sliderState.active || !window.FieldRelativePointer?.locked('slider')) return;
+    // Ignore capture/warp events without the held button. Locked mouse-up (or
+    // capture loss) ends the gesture even beyond the window.
+    if (!(event.buttons & 1) || !event.movementX) return;
+    const container = sliderState.active = liveSlider(sliderState.active);
+    sliderState.relative = true;
+    const gain = event.shiftKey ? SLIDER_FINE : 1;
+    sliderState.t = clamp(sliderState.t + gain * event.movementX / sliderTrackPixels(container), 0, 1);
+    container.classList.toggle('fine', !!event.shiftKey);
+    setSliderT(container, sliderState.t);
+    event.preventDefault();
+}
+
+function sliderMouseUp(event) {
+    if (event.button === 0) endSliderDrag();
+}
+
 function endSliderDrag() {
     if (sliderState.active) liveSlider(sliderState.active).classList.remove('fine');
     sliderState.active = null;
     sliderState.relative = false;
     window.removeEventListener('pointermove', dragSliderMove);
     window.removeEventListener('pointerup', endSliderDrag);
+    window.removeEventListener('mousemove', dragSliderLockedMove);
+    window.removeEventListener('mouseup', sliderMouseUp);
+    window.removeEventListener('blur', endSliderDrag);
+    window.FieldRelativePointer?.end('slider');
 }
 
 /** Double-click on the track: back to the value the box declared (`data-default`). */

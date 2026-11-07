@@ -1133,7 +1133,7 @@ Guards the pose uplink's arithmetic, which is the half of the head-tracking mile
 
 [<code class="highlight"><span class="k">object</span> <span class="nc">BoxAiToolsSmokeTest</span></code>](source/jvmMain/afield/examples/ai/BoxAiToolsSmokeTest/#L59)
 
-Mechanism slice for box-authored AI tools (the `aiTool` DSL, [`DocumentToolRegistry`](machine-learning.md#boxaitools-kt-documenttoolregistry), and the [`ToolExecutionContext.dynamicTools`](machine-learning.md#tools-kt--toolexecutioncontext--dynamictools) wiring into `ToolRegistry`).
+Mechanism slice for box-authored AI tools (the `aiTool` DSL, [`DocumentToolRegistry`](ai4.md#boxaitools-kt-documenttoolregistry), and the [`ToolExecutionContext.dynamicTools`](ai4.md#tools-kt--toolexecutioncontext--dynamictools) wiring into `ToolRegistry`).
 
 | Declaration | Summary |
 | --- | --- |

@@ -1,3 +1,14 @@
+/**
+ * Keeps an AI4 turn alive through a provider's rate limits and brief outages by retrying the one model
+ * request that failed, never the tool round or the user's turn around it.
+ *
+ * [AiRateLimitRecovery] waits at least as long as the provider asks, with exponential backoff capped at
+ * 30 s plus jitter, for up to 120 retries or ten minutes in all; a transport or server error without a
+ * rate-limit hint is retried only twice. When it gives up, the error says so and the conversation and
+ * the tool work already done are kept. [PartialModelResponseException] is the other ending: a stream that
+ * failed after delivering part of its answer keeps that part and is not replayed.
+ */
+
 package afield.ai.conversation
 
 import afield.ai.models.OpenAiIdeCodexBridge

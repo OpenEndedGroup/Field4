@@ -423,7 +423,15 @@ class RepoCommandTools(val files: RepoFileTools, val scope: RepoCommandScope) {
         return text.take(300)
     }
 
-    internal fun environment(base: Map<String, String>): Map<String, String> = base.filterKeys { !it.startsWith("GIT_") && it != OWNER_ENV && it != "VIRTUAL_ENV" } + mapOf(
+    /**
+     * What a command runs with: this JVM's environment less git's, uv's and the lock owner's variables, and less
+     * [INSTANCE_ENV], which describe this one Field (its ports and debugger). A Field the command starts must
+     * choose its own: inheriting `AFIELD_JDWP_PORT` from a backdoor-launched Field made the nested backdoor bind
+     * the same debugger port and die at once (`transport error 202`), the first live `jvm-main` job, 2026-11-07.
+     */
+    internal fun environment(base: Map<String, String>): Map<String, String> = base.filterKeys {
+        !it.startsWith("GIT_") && it != OWNER_ENV && it != "VIRTUAL_ENV" && it !in INSTANCE_ENV
+    } + mapOf(
         "AFIELD_VERIFICATION_LOCK" to "fail", "GIT_TERMINAL_PROMPT" to "0", "GIT_PAGER" to "cat", "PAGER" to "cat",
     )
 
@@ -480,6 +488,8 @@ class RepoCommandTools(val files: RepoFileTools, val scope: RepoCommandScope) {
         const val HEAD_BYTES = 8 * 1024
         private val SOURCE_ROOTS = listOf("src/jvmMain", "src/commonMain", "src/generatedLinalg", "build.gradle.kts", "settings.gradle.kts")
         const val OWNER_ENV = "AFIELD_VERIFICATION_LOCK_OWNER"
+        /** Settings of the running Field itself, never handed to what it starts: see [environment]. */
+        val INSTANCE_ENV = setOf("PORT", "AFIELD_HTTP_PORT", "AFIELD_JDWP_PORT", "AFIELD_JDWP_HOST", "AFIELD_JDWP_SUSPEND")
         private val INSTALL_DIRS = listOf(".local/bin", ".cargo/bin").map { File(System.getProperty("user.home"), it) } +
             listOf(File("/opt/homebrew/bin"), File("/usr/local/bin"), File("/usr/bin"))
 

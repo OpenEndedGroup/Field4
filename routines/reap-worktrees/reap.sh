@@ -14,7 +14,7 @@ repo=${repo%/.git}
 [ -d "$repo" ] || repo=${script_dir:h:h}
 free() { df -h "$repo" | awk 'NR==2{print $4}'; }
 script=$(mktemp -t reap_main).py
-trap 'rm -f $script $script.preview' EXIT
+trap 'rm -f $script $script.preview $script.daemon' EXIT
 
 echo "== $(date) start; free: $(free)"
 git -C $repo show refs/heads/main:tools/reap_merged_worktrees.py > $script || { echo "cannot read main's reaper"; exit 1; }
@@ -29,6 +29,11 @@ echo "== exit $?"
 echo "== --clean-builds --min-idle-hours 3 --apply"
 python3 $script --repo $repo --clean-builds --min-idle-hours 3 --apply
 echo "== exit $?"
+if git -C $repo show refs/heads/main:tools/prune_gradle_daemon_logs.py > $script.daemon 2>/dev/null; then
+  echo "== prune dead Gradle daemon logs older than 14 days"
+  python3 $script.daemon --older-than-days 14 --apply
+  echo "== exit $?"
+fi
 echo "== $(date) done; free: $(free)"
 echo "== routine health audit"
 python3 "$repo/tools/routines.py" audit --notify || true
