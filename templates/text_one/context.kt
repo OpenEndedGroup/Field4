@@ -47,7 +47,7 @@ controlGroup("reading space") {
 }
 display(
     "mode",
-    "<div style='padding:12px;width:440px'>${if(headsetMode)"OpenXR: current predicted pose in both eyes + sharp Field browser" else "Desktop stereo preview: the same two-eye scene, without a headset"}. No motion history or temporal antialiasing. Launch the four example boxes, Scores, the shaders, then Drawing.</div>",
+    "<div style='padding:12px;width:440px'>${if(headsetMode)"OpenXR: current predicted pose in both eyes + sharp Field browser" else "Desktop stereo preview: the same two-eye scene, without a headset"}. No motion history or temporal antialiasing. Launch the five example boxes, Scores, the shaders, then Drawing.</div>",
 )
 loop { frame() }
     .end {

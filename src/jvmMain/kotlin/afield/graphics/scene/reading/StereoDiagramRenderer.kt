@@ -89,7 +89,8 @@ class StereoDiagramRenderer(
     val textModule = module("reading-slug", shaders.textVertex, shaders.textFragment)
     private val strokeMesh = Mesh(renderer, strokeModule)
     private val pointMesh = Mesh(renderer, pointModule)
-    private val slugData = scene.shapes.mapValues { SlugBuffer(renderer, it.value.slug) }
+    private val slugData =
+        scene.shapes.values.distinct().associateWith { SlugBuffer(renderer, it.slug) }
     private val wordMeshes = List(scene.maximumLabels) { Mesh(renderer, textModule) }
     val model = Matrix4f()
     val origin = Vector3f()
@@ -120,7 +121,8 @@ class StereoDiagramRenderer(
             mesh.resize(0, 0)
             mesh.push["model"] = Matrix4f()
             mesh.push["slugData"] = slugData.values.first()
-            mesh.push["viewport"] = Vector2f(compositor.sharp.width.toFloat(), compositor.sharp.height.toFloat())
+            mesh.push["viewport"] =
+                Vector2f(compositor.sharp.width.toFloat(), compositor.sharp.height.toFloat())
             mesh.push["tint"] = Vector4f(0f)
             textModule += "word-$i" to mesh
         }
@@ -220,8 +222,9 @@ class StereoDiagramRenderer(
             mesh.resize(6, 0)
             mesh.push["model"] =
                 Matrix4f(model).translate(word.position).rotateZ(word.rotation).scale(word.scale)
-            mesh.push["slugData"] = slugData.getValue(word.shape.text)
-            mesh.push["viewport"] = Vector2f(compositor.sharp.width.toFloat(), compositor.sharp.height.toFloat())
+            mesh.push["slugData"] = slugData.getValue(word.shape)
+            mesh.push["viewport"] =
+                Vector2f(compositor.sharp.width.toFloat(), compositor.sharp.height.toFloat())
             mesh.push["tint"] = Vector4f(labelColor).mul(word.color).apply { w *= word.opacity }
         }
         frameCount++

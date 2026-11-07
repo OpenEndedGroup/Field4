@@ -182,10 +182,10 @@ displayOpen("diagram")
 
 ## From geometry to a shallow-3D reading space
 
-[Open text_one](offline.html?file=assets/agent_transcripts/text_one_vr/metadata.edn) for the four
+[Open text_one](offline.html?file=assets/agent_transcripts/text_one_vr/metadata.edn) for five
 related reading spaces: **Marked breath**, **Constituency canopy**, **Dependency undertow**
-and **Sentence furniture**. The last crossfades its structural drawing into a complete reading
-line. Select an example in **Scores / example selector**, then use **Restart entrances**,
+**Sentence furniture**, and **A room for words**. Sentence furniture crossfades its structural drawing into a complete reading
+line; the typography playground combines inline styles, multiple faces and text-relative geometry. Select an example in **Scores / example selector**, then use **Restart entrances**,
 **Show complete diagram** or the score-time slider.
 
 These are world-space graphs, with shallow depth layers and a small CPU SIMDVerlet system.
@@ -254,6 +254,52 @@ fresh pose at an absolute time, so scrubbing backward does not accumulate edits.
 only the score leaves the physics, prepared outlines and renderer alive. Stop Drawing before
 rebuilding graph topology or fonts. The example source and detailed guide are in
 `templates/text_one/`.
+
+### Typography and geometry in the words’ coordinate system
+
+A text item can choose its own `font` (`Typeface`), `bold`, `italic`, numeric `weight`
+(100–900) and font-unit `tracking`. Word and character selections can override the font
+and style inside a single shaped run:
+
+```diffstatic {data-lang=kotlin}
+val title = text("title", "quiet water", point("title-point", 0, 0)) {
+    font = Typefaces.named("Noto Serif", 100, strict = true)
+    word("quiet").style { italic = true }
+    word("water").style { bold = true }
+}
+rectangle("word-box", title.word("water").bodyBounds, padding = .008f)
+underline("word-rule", title.word("water"), gap = .015f)
+textPath(
+    "cap-ruler",
+    title,
+    shape = {
+        FLine().moveTo(advance.left, capHeight).lineTo(advance.right, capHeight)
+    },
+)
+```
+
+`inkBounds` includes the actual curved outlines and italic overhangs. `bodyBounds` clips
+those bounds at each baseline to exclude descenders. `emBounds`, `capBounds`,
+`xHeightBounds` and `advanceBounds` provide the other useful typographic rectangles.
+Each rectangle exposes corners, edge midpoints, `center` and `.at(u,v)`; those anchors
+follow the text’s physics, rotation, score translation and scale.
+
+`player.frame().measure(run)` or `.measure(run.word("water"))` returns the cached
+font-space ink/advance rectangles, ascent, descent, leading, cap height and x-height.
+Whitespace has an advance but no ink. `run.words`, `run.line(index)` and `run.caret(index)`
+locate words, baselines and shaped cluster boundaries without remeasuring character counts.
+
+Use `textPath` or `frame.textLine(run, fline)` for arbitrary local FLines, in font units
+with Y up and the origin at the run’s baseline-left. Rectangle padding and underline
+gaps are metres. `anchor.alongText(run, x, y, z)` makes metre offsets in the run’s rotated
+axes; `anchor.offset(...)` remains in diagram axes.
+
+Font/style changes require preparing the player and drawing again. Each inline style
+boundary starts a shaping context, preserving kerning within that section. Inline font
+styles currently use one baseline; plain multiline runs have full union bounds and
+per-line selections. AWT resolves numeric weights to available faces or synthesizes them;
+this is not an arbitrary OpenType variable-axis API. Use a specific named or file-backed
+`Typeface` when an exact face or weight is required.
 
 ## Parsing new text
 

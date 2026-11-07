@@ -262,6 +262,21 @@ class Typeface internal constructor(
         awtFont.deriveFont((if (bold) Font.BOLD else 0) or (if (italic) Font.ITALIC else 0))
     )
 
+    /**
+     * CSS/OpenType-style weight, 100 (thin) through 900 (black). AWT resolves available
+     * faces or synthesizes weight; this does not instantiate an arbitrary variable-font axis.
+     * Prepare the resulting outlines again before using them in a Slug atlas.
+     */
+    fun withWeight(weight: Number): Typeface {
+        val w = weight.toFloat()
+        require(w.isFinite() && w in 100f..900f) { "Font weight must be between 100 and 900" }
+        val css = floatArrayOf(100f, 200f, 300f, 400f, 500f, 600f, 700f, 800f, 900f)
+        val awt = floatArrayOf(.5f, .625f, .75f, 1f, 1.25f, 1.5f, 2f, 2.5f, 2.75f)
+        val i = ((w - 100f) / 100f).toInt().coerceAtMost(7)
+        val t = (w - css[i]) / 100f
+        return of(awtFont.deriveFont(mapOf(TextAttribute.WEIGHT to (awt[i] + t * (awt[i + 1] - awt[i])))))
+    }
+
     /** True when this font has a glyph for every character of [text]. */
     fun canDisplay(text: String): Boolean = awtFont.canDisplayUpTo(text) < 0
 
