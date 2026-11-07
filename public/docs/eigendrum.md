@@ -101,8 +101,7 @@ val spectra = table(
     "λ A" to a.lambda.take(10),
     "λ B" to b.lambda.take(10),
     "diff %" to (0 until 10).map { 100 * abs(a.lambda[it] - b.lambda[it]) / a.lambda[it] },
-)
-    .format("λ A") { (it as Double).f3 }
+).format("λ A") { (it as Double).f3 }
     .format("λ B") { (it as Double).f3 }
     .format("diff %") { (it as Double).f3 }
     .heat("λ A", "λ B", by = HeatScope.TABLE)
