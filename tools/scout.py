@@ -596,6 +596,15 @@ def fetch_page(fetcher: Fetcher, item: Item) -> tuple[str, dict]:
     return body, {"kind": "text"}
 
 
+REFUSED = re.compile(r"\bHTTP (401|403|451)\b")
+
+
+def refused(error: BaseException) -> bool:
+    """A site that blocks scripted readers (Patreon, some journals) answers 401/403/451 on every
+    try, so waiting for tomorrow's retry only delays the give-up."""
+    return bool(REFUSED.search(str(error)))
+
+
 THIN_PAGE = 1500  # characters; below this a page is probably a script-rendered app
 
 
@@ -659,6 +668,20 @@ def fetch(ledger: Ledger, fetcher: Fetcher, limit: int = 40, watch_cfg: dict | N
             item.move("fetched")
             done["fetched"] += 1
         except (OSError, ValueError, UnicodeError) as error:
+            if refused(error) and item.hn_ids and item.url:
+                try:
+                    talk = hn_discussion(fetcher, item.hn_ids[0])
+                except (OSError, ValueError):
+                    talk = ""
+                if talk:
+                    text = (f"# The site refused the fetch ({error}); retrying will not help. "
+                            "Only the HN discussion follows: judge from it, and say so on the card.\n\n" + talk)
+                    item.meta["page_refused"] = str(error)[:200]
+                    item.page = write_page(ledger.journal, item, text, {})
+                    item.move("fetched", "page refused: HN discussion only")
+                    done["fetched"] += 1
+                    log(f"fetch refused {item.key} {item.url}: {error}; kept its HN discussion instead")
+                    continue
             tries = item.meta.get("fetch_tries", 0) + 1
             item.meta["fetch_tries"] = tries
             if tries >= 3:

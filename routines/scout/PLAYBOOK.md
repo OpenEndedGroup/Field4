@@ -54,7 +54,10 @@ two thirds of the HN front page and almost nothing from the feeds.
 It fetches up to 40 queued pages (topic hits first, then by points) to `$JOURNAL/pages/<key>.txt`,
 and runs any watch checks that are due. GitHub repos arrive as their README plus license, stars,
 language and latest release from the API. A page that renders little text has its HN discussion
-appended. Whatever stays queued is fetched tomorrow.
+appended. A site that refuses scripted readers (HTTP 401, 403 or 451, as Patreon and some journals
+do) is kept as its HN discussion alone, printed as `fetch refused`, and the page file says so: judge
+from the discussion, say on the card that the page itself was not read, and prefer `watch` to `drop`
+when the discussion suggests a real explainer. Whatever stays queued is fetched tomorrow.
 
 ## 5. Read every page and write a card
 
@@ -71,8 +74,11 @@ files in one run; the rest stay fetched for tomorrow, topic hits and high points
 ### Before writing a card: search Field
 
 Find the nearest existing Field work before you decide what Field would add:
-`git -C $REPO grep -l -i -E '<two or three distinctive terms>' -- src dev_docs public/docs`, plus
-`ls $REPO/dev_docs $REPO/public/docs` for page names. Slug, Kalman and Forth were all already in
+`git -C $REPO grep -l -i -E '<two or three distinctive terms>' -- src/jvmMain/kotlin src/jsMain/kotlin dev_docs ':(glob)public/docs/**/*.md'`,
+plus `ls $REPO/dev_docs $REPO/public/docs` for page names. Keep to those paths: `public/docs` holds
+2.6 GB of captured assets and `src` holds minified vendor JS, so a search over the whole of either
+takes 30 s to several minutes, and a sub-agent's shell gives up at two, leaving its card's
+`nearest:` unsearched. A `nearest: none` must rest on a search that finished. Slug, Kalman and Forth were all already in
 Field during the backfill, and a card that proposes something Field has wastes Marc's attention. If
 Field already has it and the page adds nothing, drop it, giving the Field page as the reason. If the
 page adds something to what Field has, write a `touches` card.
