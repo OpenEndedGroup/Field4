@@ -32,6 +32,18 @@ transcript stays in the document's `<box-id>_ai4_chat_history_.md` sidecar. To k
 requests bounded, model context uses at most the most recent 64,000 characters (preferring
 whole turns); saved images remain visible but must be attached again for fresh image analysis.
 
+### Suggestions as you type
+
+Pause while writing a message and AI4's fast model suggests how it goes on, in grey after the
+cursor. Press `Tab` to take the suggestion, `→` to take its next word, or `Esc` to drop it; typing
+the same letters keeps the rest. A suggestion is one short request with the box's name, the start of
+its code, the last few turns and your draft. `/autocomplete off` turns suggestions off in this
+browser and `/autocomplete on` brings them back; `AFIELD_AI4_CHAT_AUTOCOMPLETE=off` turns them off
+for a whole Field, and `AFIELD_AI4_CHAT_AUTOCOMPLETE_MODEL` picks a model other than the fast one.
+
+Misspelled words in the message are underlined as you type. In Field's own window, right-click one
+for corrections or to add it to the dictionary.
+
 ### Writing while it works
 
 You can send a correction or a new instruction while AI4 is working. Your message appears at the
