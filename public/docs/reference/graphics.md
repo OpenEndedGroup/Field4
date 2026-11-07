@@ -8817,7 +8817,7 @@ built out of parts that are useful on their own:
 
 That last property is what makes the second tool worth copying. A model asked "is the scan I dropped
 in there the right way up?" can *look*, because [`InspectGeometryFileResult`](graphics.md#geometryagenttools-kt-inspectgeometryfileresult) implements
-[`CarriesToolImages`](machine-learning.md#tools-kt-carriestoolimages) and the picture travels as an image rather than as base64 spent in a JSON string.
+[`CarriesToolImages`](ai4.md#tools-kt-carriestoolimages) and the picture travels as an image rather than as base64 spent in a JSON string.
 
 ### Using it
 
@@ -8836,7 +8836,7 @@ fine, and a re-run reaches a conversation that is already open.
  1. **A gate on the tool set.** Both tools are unavailable until a search root is added. A tool set
     that is always on costs its schema on every request in every conversation, including the ones
     that have nothing to do with it.
- 2. **A result that summarises itself.** Both results implement [`SummarisesForToolLog`](machine-learning.md#agenttoolextensions-kt-summarisesfortoollog), so the tool
+ 2. **A result that summarises itself.** Both results implement [`SummarisesForToolLog`](ai4.md#agenttoolextensions-kt-summarisesfortoollog), so the tool
     I/O log — which `AiToolUseImprovementMonitor` reads — records what happened rather than a class
     name.
  3. **Refusing to read outside the roots.** These tools take a *path from a language model*. The

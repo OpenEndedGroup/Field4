@@ -126,4 +126,4 @@ The viewer fetches chats and pictures from Field over `/api/chatlog/lens` and `/
 
 The four boxes on this page are also the [ai4_chat_archive](agent_transcripts.md#ai4_chat_archive) starting point, which reads the same example chat when Field runs from a checkout.
 
-See also: [AI Tool-Use History](ai_tool_use_history.md) for the per-call tool logs, and [Experimenting with AI4](ai4_experiments.md).
+See also: [AI Tool-Use History](ai_tool_use_history.md) for the per-call tool logs, and [Experimenting with AI4](ai4_experiments.md). The archive and the lens viewer are [`ChatArchive.kt`](reference/ai4.md#chatarchive-kt) and [`ChatLensViewer.kt`](reference/ai4.md#chatlensviewer-kt) in the [AI4 reference](reference/ai4.md).

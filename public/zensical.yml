@@ -498,6 +498,7 @@ nav:
       - Languages: reference/languages.md
       - Workspace: reference/workspace.md
       - Execution: reference/execution.md
+      - AI4: reference/ai4.md
       - Machine learning: reference/machine-learning.md
       - Networking: reference/networking.md
       - Video: reference/video.md

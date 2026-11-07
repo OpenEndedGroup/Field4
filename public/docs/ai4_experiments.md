@@ -311,7 +311,9 @@ does not make the model a better reader; it puts the reading in a box you can op
   its turn and let Field wait: see [Let AI4 Wait for Long Builds](ai4_long_builds.md).
 
 See also: [AI4 Paints](ai4_painting.md), [AI Overview](aiFeatures.md),
-[Automating Field](automating_field.md).
+[Automating Field](automating_field.md). In the [AI4 reference](reference/ai4.md):
+[`aiTool`](reference/ai4.md#boxaitools-kt), [`agentExtension`](reference/ai4.md#agentextensions-kt)
+and the conversation tree, [`AiSessionTree.kt`](reference/ai4.md#aisessiontree-kt).
 
 ??? aside "How these figures were made"
     From live panel turns on 2026-10-04, OpenAI `gpt-6.1-sol`, in one conversation: a quick landscape
