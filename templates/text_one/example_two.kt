@@ -1,11 +1,10 @@
 import afield.graphics.scene.reading.*
 import afield.graphics.text.*
-import java.io.File
 import kotlin.math.*
 import afield.graphics.text.sentences.*
 
 // 2 · Constituency canopy. Use the real parse/layout, then rebuild its connections in gentle 3D.
-val parsed = Sentences.parse(File(thisBox.inside.filename, "files/parser/2.json").readText())
+val parsed = Sentences.example(2)
 check(parsed.problems().isEmpty()) { parsed.problems().joinToString() }
 val face = Typefaces.named("Noto Serif", 100, strict = true)
 val layout =

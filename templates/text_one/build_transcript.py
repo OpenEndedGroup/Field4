@@ -9,6 +9,7 @@ from pathlib import Path
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--transcript', type=Path, help='Write the full public starting-point transcript (JSON is valid YAML)')
     parser.add_argument('--output', type=Path, default=Path('/tmp/text-one-transcripts'))
     args = parser.parse_args()
     here = Path(__file__).resolve().parent
@@ -46,6 +47,15 @@ def main():
         create.append({'connect': {'parent': parent, 'child': 'text1_drawing'}})
     launch = [{'launch': {'box': uid}} for uid, *_ in boxes] + [{'await': {'wait': 'pending'}}]
     stop = [{'stop': {'box': 'text1_drawing'}}, {'stop': {'box': 'text1_context'}}]
+    if args.transcript:
+        args.transcript.parent.mkdir(parents=True, exist_ok=True)
+        args.transcript.write_text(json.dumps({
+            'name': 'text_one_vr',
+            'description': 'Four shallow-3D reading spaces: marked breath, constituency canopy, dependency undertow and Reed-Kellogg sentence furniture. CPU SIMDVerlet, per-eye FLine thickening and Slug text, with independent scores. Starts in desktop preview; OpenXR is an explicit fresh-process mode. Generated from templates/text_one by build_transcript.py.',
+            'docs': [{'page': 'sentence_diagrams.md', 'why': 'Parser setup, four diagrams and the reading-space DSL.'}],
+            'operations': create + launch,
+        },ensure_ascii=False,indent=2)+'\n')
+        print(args.transcript)
     args.output.mkdir(parents=True, exist_ok=True)
     for name, operations in [('create', create), ('launch', launch), ('stop', stop)]:
         path = args.output / f'{name}.json'

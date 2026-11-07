@@ -1,11 +1,10 @@
 import afield.graphics.scene.reading.*
 import afield.graphics.text.*
-import java.io.File
 import kotlin.math.*
 import afield.graphics.text.sentences.*
 
 // 4 · Sentence furniture. Reed-Kellogg shelves become a shallow spatial mobile, then a reading line.
-val parsed = Sentences.parse(File(thisBox.inside.filename, "files/parser/4.json").readText())
+val parsed = Sentences.example(4)
 check(parsed.problems().isEmpty()) { parsed.problems().joinToString() }
 val face = Typefaces.named("Noto Serif", 100, strict = true)
 val config = KelloggConfig(

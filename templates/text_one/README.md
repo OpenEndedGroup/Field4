@@ -172,11 +172,11 @@ The example selectors reuse the same stereo renderer and prepared text resources
 start at 6 seconds for inspection; **Restart entrances** shows the full score. The fourth
 example's reading-line state is visible after its transition at 9–11.4 seconds.
 
-These use real Stanza parser responses, cached in `files/parser/1.json` through `4.json`,
+These use real Stanza parser responses, packaged in `/afield/sentences/examples/1.json` through `4.json`,
 so reopening the document does not need the service. The source material and 2D layout
 algorithms live in `src/jvmMain/kotlin/afield/graphics/text/sentences`; the example boxes rebuild their
 connections around moving three-dimensional anchors. They do not turn a rendered SVG
-into a flat texture. The parser server runs at `http://127.0.0.1:9500/`; POST UTF-8 sentence
+into a flat texture. The optional `python/fieldsentences` parser server runs at `http://127.0.0.1:9500/`; POST UTF-8 sentence
 text to regenerate a cache. Parser interpretations are editable source material, rather
 than an assertion of a unique grammatical reading.
 
@@ -189,8 +189,7 @@ no dependency on the dust renderer.
 
 `python templates/text_one/build_transcript.py` emits `create.json`, `launch.json` and
 `stop.json` under `/tmp/text-one-transcripts`. Import them with the backdoor's `macro write`
-commands, then run the create and launch macros in the intended document. Copy the four
-JSON files from `templates/text_one/parser/` to that document's `files/parser/` first.
+commands, then run the create and launch macros in the intended document. The four parses are classpath resources, so no document-side file copy is needed.
 The generator reads the current StereoViews ABI and real shader sources; it never edits
 metadata.edn directly. The current document has `text_one_create`, `text_one_launch` and
 `text_one_stop` installed already.

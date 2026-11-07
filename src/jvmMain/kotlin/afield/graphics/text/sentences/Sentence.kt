@@ -164,6 +164,13 @@ object Sentences {
     /** Tolerant of fields we do not model, so the Python side can grow. */
     val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
+    /** Real retained Stanza parses behind the four diagram examples; no parser/model is needed. */
+    fun example(index: Int): Sentence {
+        require(index in 1..4) { "Sentence example must be 1 through 4" }
+        val source = requireNotNull(javaClass.getResource("/afield/sentences/examples/$index.json"))
+        return parse(source.readText())
+    }
+
     /** Parse the whole array the tool emits -- one entry per sentence. */
     fun parseAll(text: String): List<Sentence> = json.decodeFromString(text)
 

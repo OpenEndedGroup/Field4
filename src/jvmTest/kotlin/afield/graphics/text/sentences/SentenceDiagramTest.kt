@@ -1,10 +1,9 @@
 package afield.graphics.text.sentences
 
-import java.io.File
 import kotlin.test.*
 
 class SentenceDiagramTest {
-    private fun sentence(index: Int) = Sentences.parse(File("templates/text_one/parser/$index.json").readText())
+    private fun sentence(index: Int) = Sentences.example(index)
 
     @Test
     fun cachedParsesPreserveTokenTreeAndDependencyReferences() {

@@ -1,11 +1,10 @@
 import afield.graphics.scene.reading.*
 import afield.graphics.text.*
-import java.io.File
 import afield.graphics.text.sentences.Sentences
 
 // 1 · Marked breath. Whole runs, two selected words and an arclength bead.
 // Cached real parser output: no network request or font preparation in the frame loop.
-val parsed = Sentences.parse(File(thisBox.inside.filename, "files/parser/1.json").readText())
+val parsed = Sentences.example(1)
 check(parsed.problems().isEmpty()) { parsed.problems().joinToString() }
 val graph = readingDiagram {
     val peg = point("peg", -.78, .52, pinned = true)

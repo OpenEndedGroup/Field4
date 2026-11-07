@@ -1,11 +1,10 @@
 import afield.graphics.scene.reading.*
 import afield.graphics.text.*
-import java.io.File
 import kotlin.math.*
 import afield.graphics.text.sentences.*
 
 // 3 · Undertow. Nested dependency arcs, with independently scored labels and beads.
-val parsed = Sentences.parse(File(thisBox.inside.filename, "files/parser/3.json").readText())
+val parsed = Sentences.example(3)
 check(parsed.problems().isEmpty()) { parsed.problems().joinToString() }
 val face = Typefaces.named("Noto Serif", 100, strict = true)
 val layout =

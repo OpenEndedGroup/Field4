@@ -1,0 +1,142 @@
+name: sentence_diagrams
+description: 'Four complete sentence diagrams, from retained real Stanza parses: shared tree/arcs, constituent
+  canopy, decorated dependencies and Reed–Kellogg furniture. No model, HTTP service or GPU needed. Edit
+  the source and keep the same underlying tokens.'
+docs:
+- page: sentence_diagrams.md
+  why: Full examples, parser installation and the shallow-3D reading space.
+operations:
+- create:
+    box: sentence_both
+    name: 1 · A sentence, two structures
+    frame:
+      x: 0
+      y: 0
+      w: 450
+      h: 100
+    properties:
+      code: |
+        import afield.graphics.text.sentences.*
+        import afield.graphics.render.color
+
+        val d = SentenceDiagram().use(Sentences.example(2))
+        d.wordFont = font("Serif", 30.0)
+        d.heights = Heights.Flat()
+        d.wordGap = 38.0
+        d.layerGap = 50.0
+        d.tagFontSize = 12.0
+        d.labelFontSize = 14.0
+        // Constituents above, collapsed dependencies below; both share the same token row.
+        val svg = d.svg()
+
+        display("diagram", """
+            <div id="sentence-figure" style="width:760px;background:#f4f0e6;padding:24px;box-sizing:border-box">
+            <style>#sentence-figure svg { width:100%; height:auto; display:block; }</style>
+            $svg
+            </div>
+        """)
+        displayOpen("diagram")
+- launch:
+    box: sentence_both
+- create:
+    box: sentence_canopy
+    name: 2 · The constituency canopy
+    frame:
+      x: 900
+      y: 0
+      w: 450
+      h: 100
+    properties:
+      code: |
+        import afield.graphics.text.sentences.*
+        import afield.graphics.render.color
+
+        val d = SentenceDiagram().use(Sentences.example(2))
+        d.wordFont = font("Serif", 32.0)
+        d.heights = Heights.ByTreeDepth(jitter = 0.0)
+        d.layerGap = 55.0
+        d.wordGap = 36.0
+        d.tagFontSize = 13.0
+        val marks = decorations {
+            node { if (!it.node.leaf) ring(it.position, 3.5).also { f -> f.color = vec(.7, .3, .1, 1) } else null }
+        }
+        val f = d.flines(decorate = marks)
+        val canopy = f.copy(arcs = emptyList(), texts = f.texts.filter { it.kind != TextKind.RELATION })
+        val svg = afield.ui.visualization.drawToSVG(canopy.everything(style = DiagramStyle.onWhite), -1.0, -1.0)
+
+        display("diagram", """
+            <div id="sentence-figure" style="width:760px;background:#f4f0e6;padding:24px;box-sizing:border-box">
+            <style>#sentence-figure svg { width:100%; height:auto; display:block; }</style>
+            $svg
+            </div>
+        """)
+        displayOpen("diagram")
+- launch:
+    box: sentence_canopy
+- create:
+    box: sentence_undertow
+    name: 3 · Dependency arcs and decorations
+    frame:
+      x: 1800
+      y: 0
+      w: 450
+      h: 100
+    properties:
+      code: |
+        import afield.graphics.text.sentences.*
+        import afield.graphics.render.color
+
+        val d = SentenceDiagram().use(Sentences.example(3))
+        d.wordFont = font("Serif", 32.0)
+        d.heights = Heights.Wandering(seed = 17, amplitude = 20.0)
+        d.wordGap = 42.0
+        d.labelFontSize = 14.0
+        d.arcSpanRatio = .43
+        val marks = decorations {
+            arc { dot(it.pointAt(.5), 3.0).also { f -> f.color = vec(.7, .3, .1, 1) } }
+            underline { ring(it.left, 3.0).also { f -> f.color = vec(.7, .3, .1, 1) } }
+        }
+        val f = d.flines(decorate = marks)
+        val undertow = f.copy(treeEdges = emptyList(), wordEdges = emptyList(),
+            texts = f.texts.filter { it.kind != TextKind.TAG })
+        val svg = afield.ui.visualization.drawToSVG(undertow.everything(style = DiagramStyle.onWhite), -1.0, -1.0)
+
+        display("diagram", """
+            <div id="sentence-figure" style="width:760px;background:#f4f0e6;padding:24px;box-sizing:border-box">
+            <style>#sentence-figure svg { width:100%; height:auto; display:block; }</style>
+            $svg
+            </div>
+        """)
+        displayOpen("diagram")
+- launch:
+    box: sentence_undertow
+- create:
+    box: sentence_furniture
+    name: 4 · Reed-Kellogg sentence furniture
+    frame:
+      x: 2700
+      y: 0
+      w: 450
+      h: 100
+    properties:
+      code: |
+        import afield.graphics.text.sentences.*
+        import afield.graphics.render.color
+
+        val d = SentenceDiagram().use(Sentences.example(4))
+        d.wordFont = font("Serif", 32.0)
+        // Here grammar places words on shelves/slants; it is a different layout, not a style on the arc tree.
+        val config = KelloggConfig(slantAngle = 30.0, nestAngleStep = 10.0, maxSlantAngle = 48.0,
+            fontSize = 32.0, metrics = Java2DMetrics(d.wordFont!!),
+            modifierSize = 23.0, modifierMetrics = Java2DMetrics(d.wordFont!!.deriveFont(23f)))
+        val svg = d.kelloggSvg(kelloggConfig = config)
+
+        display("diagram", """
+            <div id="sentence-figure" style="width:760px;background:#f4f0e6;padding:24px;box-sizing:border-box">
+            <style>#sentence-figure svg { width:100%; height:auto; display:block; }</style>
+            $svg
+            </div>
+        """)
+        displayOpen("diagram")
+- launch:
+    box: sentence_furniture
