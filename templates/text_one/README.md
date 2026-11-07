@@ -193,6 +193,9 @@ commands, then run the create and launch macros in the intended document. The fo
 The generator reads the current StereoViews ABI and real shader sources; it never edits
 metadata.edn directly. The current document has `text_one_create`, `text_one_launch` and
 `text_one_stop` installed already.
+For the public starting place, `uv run --group backdoor python templates/text_one/build_transcript.py
+--transcript dev_docs/agents/transcripts/text_one_vr.yaml` writes readable YAML source blocks,
+keeping Kotlin and shader properties distinct for documentation checks.
 
 Validation: eight focused CPU tests pass. Real desktop GPU captures cover all four examples,
 the fourth example after its crossfade, shader reload and two distinct stereo eye layers.
