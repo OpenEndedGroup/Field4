@@ -72,7 +72,7 @@ and the `registerMainLanguageRuntime` call each one makes:
 | `lua` | `src/jvmMain/kotlin/afield/lang/lua/LuaLanguage.kt:478` | `id = "lua"` |
 | `csound` | `src/jvmMain/kotlin/afield/audio/csound/CsoundLanguage.kt:341` | `id = "csound"` |
 
-Kotlin is the twelfth and is the *absence* of an entry: `mainLanguage = null` means Kotlin
+Kotlin is the default and is the *absence* of an entry: `mainLanguage = null` means Kotlin
 (`MainLanguageRegistry.kt:51-56`), so there is no `KotlinExecution` runtime registered here.
 
 **RectSL, StackSL and Brief are not on this list**, and that is the single most useful fact on this
@@ -320,6 +320,19 @@ That list is the honest census of the editor's language surface, and it does not
 main-language list: `msl`, `stacksl`, `rectsl`, `fnrewrite`, `brief`, `sonicpi` and `faust` have
 editor modules and no `BoxExecution`; `clojure`, `python` and `remotejs` have a `BoxExecution` and no
 module of their own. Neither asymmetry is a bug — it is what "small language" covers here.
+
+**Faust and Sonic Pi are two more Route A examples, with different runtimes.** The browser modules
+`src/commonMain/resources/faust.js` and `src/commonMain/resources/sonicpi.js` find `#faust` and
+`#sonicpi` regions inside Kotlin strings and provide editor help from generated vocabularies. The
+Faust vocabulary comes from the vendored libfaust libraries; Sonic Pi's comes from the installed
+application's own documentation. These editor hooks do not themselves execute either language.
+
+For execution, Field strips the `#faust` header before `afield.audio.synth.FaustEngine` compiles
+the source with vendored libfaust in GraalVM; `FaustDsp` runs the resulting WebAssembly in Field's audio graph.
+`afield.audio.synth.SonicPi` instead starts and controls an installed Sonic Pi daemon over OSC and
+receives its logs and errors. Ruby treats `#sonicpi` as a comment, so that header can remain in the
+program and its lines stay aligned. These are embedded editor integrations and external/compiler
+execution paths, not main-language `BoxExecution` registrations.
 
 ## The third implementation shape: a compiler behind a browser extension
 

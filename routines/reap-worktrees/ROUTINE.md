@@ -29,6 +29,12 @@ file or a protected branch is touched. The retention rules and their measurement
 `dev_docs/worktree_retention_policy.md`; `python3 tools/reap_merged_worktrees.py --explain-policy`
 prints them.
 
+The same scheduled run also removes Gradle daemon logs older than 14 days when their recorded PID
+is no longer alive. It rechecks the file identity, age and PID before removal; changed, symlinked,
+missing or live-daemon logs are left alone. `python3 tools/prune_gradle_daemon_logs.py
+--older-than-days 14` previews candidates without deleting them. The check cannot make deletion
+atomic with a completely unrelated process starting or changing a file.
+
 Run it directly from a scheduler (`tools/routines.py run reap-worktrees`) rather than through an
 agent: it needs no judgement, and an agent's permission system may refuse the deletion, which is
 the whole job.
