@@ -24,7 +24,7 @@ def main():
         return (repo / f'src/jvmMain/resources/afield/reading/{name}.glsl').read_text().replace('// VIEWS', views)
 
     boxes = [
-        ('text1_context', '1 · Reading space', 0, 150, {'code': (here/'context.kt').read_text(), 'headsetMode': 'false'}),
+        ('text1_context', '1 · Reading space', 0, 150, {'code': (here/'context.kt').read_text()}),
         ('text1_poem', '2 · Marked breath', 650, 0, {'code': (here/'example_one.kt').read_text()}),
         ('text1_example2', '3 · Constituency canopy', 650, 110, {'code': (here/'example_two.kt').read_text()}),
         ('text1_example3', '4 · Dependency undertow', 650, 220, {'code': (here/'example_three.kt').read_text()}),

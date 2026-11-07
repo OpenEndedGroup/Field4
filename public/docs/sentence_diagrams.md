@@ -195,7 +195,7 @@ shaders thicken them separately for the two current eye views and draw antialias
 Physics advances in fixed steps; rendering uses the current eye views.
 
 The default launch is a desktop stereo preview. VR additionally needs an OpenXR
-runtime/headset, a fresh Field process with the Reading space box's `headsetMode` set to
+runtime/headset, a fresh Field process with `val headsetMode` in the Reading space code set to
 `true`, and the Slug helper (`./gradlew buildSlugNative`). VR mode includes a movable browser
 surface for editing the document.
 

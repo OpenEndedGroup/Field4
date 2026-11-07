@@ -145,7 +145,7 @@ image, with an optional **Show both eyes side by side** control.
 ## Desktop and headset
 
 The initial run is a desktop preview. For VR, connect WiVRn and start Field in a fresh JVM.
-Before launching Reading space set its `headsetMode` property to the text `true`, then run
+Before launching Reading space set `val headsetMode = true` in its code, then run
 `text_one_launch`. Vulkan/OpenXR extension selection happens before the first renderer;
 switching modes needs a fresh JVM. The VR path uses the existing high-resolution Field
 browser and its keyboard/mouse forwarding and controller pane movement. Recenter is explicit.
@@ -221,3 +221,16 @@ To allocate a larger scene, stop Drawing and pass `sceneScale = 1.5f` (up to `2f
 `StereoDiagramRenderer`; eye output and browser resolution stay fixed. Filtering happens in
 linear light before the final output transfer. There is no temporal image history.
 
+
+### Resolution and stroke reveals
+
+The OpenXR path uses the same `FieldVrWorkspace` target as `dust_six`: per-eye dimensions
+come from the runtime's swapchains. The 2560 × 1600 allocation is the sharp browser
+texture; 1600 × 1200 is only the desktop fallback. Reading space reports the actual
+per-eye size. Restart Field after changing WiVRn resolution, or when changing
+the `headsetMode` code switch, before launching the scene.
+
+Unrevealed strokes emit no segments. The fragment shader also rejects empty reveal
+intervals and fades reveals shorter than a cap diameter, preventing a full-size cap
+from popping in ahead of a line. The authored peg ring and path beads are separate
+markers with their own score cues.

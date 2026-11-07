@@ -7,6 +7,8 @@ layout(location=4) flat in vec4 ink;
 layout(location=5) flat in vec4 limits;
 layout(location=0) out vec4 outColor;
 void main() {
+    // Empty reveal intervals must never leave a rounded cap behind.
+    if(limits.y<=limits.x)discard;
     vec2 delta=endpoints.zw-endpoints.xy;
     float len=length(delta);
     if(len<1e-6)discard;
@@ -24,6 +26,9 @@ void main() {
     float unitsPerPixel=max(fwidth(arc),1e-7);
     // Rounded reveal and dash ends use the same SDF as the outer edge.
     float trimOutside=max(limits.x-arc,arc-limits.y)/unitsPerPixel;
+    // Reject distant unrevealed fragments before differentiating the cap SDF.
+    // At tessellation joins its derivative can otherwise inflate AA into isolated dots.
+    if(trimOutside>radius+1.5)discard;
     if(trimOutside>0)sdf=max(sdf,length(vec2(trimOutside,side))-radius);
     if(ink.x>1e-6) {
         float local=mod(arc+ink.z,ink.x)-ink.x*.5;
@@ -31,6 +36,9 @@ void main() {
         if(dashOutside>0)sdf=max(sdf,length(vec2(dashOutside,side))-radius);
     }
     float coverage=clamp(.5-sdf/max(fwidth(sdf),.75),0,1);
+    // Grow sub-diameter reveals into a stroke instead of popping in a full cap-sized dot.
+    coverage*=clamp((limits.y-limits.x)/unitsPerPixel/max(2*radius,1),0,1);
     vec4 c=mix(colorA,colorB,worldT);
-    outColor=vec4(c.rgb,c.a*coverage);
+    // White ink: structure comes from coverage, authored opacity and stroke width.
+    outColor=vec4(vec3(1.0),c.a*coverage);
 }
