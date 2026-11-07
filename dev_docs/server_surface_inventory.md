@@ -302,7 +302,7 @@ the file, and the reach is described per file below in prose that a human checke
 | declaring file | commands |
 | --- | --- |
 | `Server.kt` | 55 |
-| `agent_backdoor.kt` | 27 |
+| `agent_backdoor.kt` | 28 |
 | `history.kt` | 14 |
 | `executing.kt` | 10 |
 | `Ai4Installer.kt` | 10 |
@@ -357,6 +357,8 @@ no sandbox between a `/ws` frame and that.
 
 `agent-task` and `agent-eval` (2026-09-29) are in the same class and add one thing: in `live`
 mode they call the configured AI provider, so a frame can also spend the machine's model tokens.
+`memory-eval` (2026-11-07) runs a set of `agent-task`s and AI4 memory dream passes in fresh
+headless documents, and writes its memory folders and report under a directory the client names.
 The HTTP twins `POST /api/agent-task` and `POST /api/agent-eval` have their own guard
 (`agentRouteAccess.kt`: loopback peer, `Host` of localhost/127.0.0.1/[::1], same-origin), which the
 docs-annotation opt-ins do not loosen. The census pins both as
@@ -480,6 +482,7 @@ reach to a client that `agent-eval` and `launch-all` already let run arbitrary c
 | `list-history-versions` | `history.kt` |
 | `load-chat-messages` | `chat.kt` |
 | `macro-transcript-command` | `Server.kt` |
+| `memory-eval` | `agent_backdoor.kt` |
 | `name-history-version` | `history.kt` |
 | `notation-anchor-selection` | `NotationServer.kt` |
 | `notation-scene` | `NotationServer.kt` |

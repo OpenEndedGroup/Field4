@@ -3889,6 +3889,18 @@ def build_command_parser() -> argparse.ArgumentParser:
                                         "also AFIELD_AGENT_TASK_ALLOW_REMOTE=1")
     agent_task_parser.add_argument("--timeout", type=float)
 
+    memory_eval_parser = subparsers.add_parser("memory-eval", add_help=False)
+    memory_eval_parser.add_argument("--ids", default="", help="Comma-separated scenario ids; empty = all (afield.ai.agent.MemoryEval)")
+    memory_eval_parser.add_argument("--arms", default="", help="Comma-separated arms from none,memory,dream; empty = all three")
+    memory_eval_parser.add_argument("--mode", choices=("live", "scripted"), default="live")
+    memory_eval_parser.add_argument("--model", default="")
+    memory_eval_parser.add_argument("--max-rounds", type=int, default=16)
+    memory_eval_parser.add_argument("--repeats", type=int, default=1)
+    memory_eval_parser.add_argument("--dir", default="", help="Where memory folders, sessions and report.json go (default build/ai4-memory-eval/<time>)")
+    memory_eval_parser.add_argument("--allow-remote-provider", action="store_true",
+                                    help="Let a live run use a non-local AI provider; also AFIELD_AGENT_TASK_ALLOW_REMOTE=1")
+    memory_eval_parser.add_argument("--timeout", type=float)
+
     agent_eval_parser = subparsers.add_parser("agent-eval", add_help=False)
     agent_eval_parser.add_argument("--mode", choices=("live", "scripted"), default="scripted")
     agent_eval_parser.add_argument("--ids", default="", help="Comma-separated task ids; empty = all")
@@ -5161,6 +5173,28 @@ async def dispatch_command(
                   f"(model {data.get('model')}); its goal, code and tool results left this machine.", file=sys.stderr)
         result = command_result(command_line, ok, data=data, events=[])
         client.logger.log("command_dispatch_complete", commandLine=command_line, ok=ok, verdict=data.get("verdict"))
+        return result
+
+    if args.command == "memory-eval":
+        if args.mode == "live" and not agent_task_allow_remote(args.allow_remote_provider, os.environ):
+            raise BackdoorError("memory-eval --mode live sends every session to the configured AI provider: pass --allow-remote-provider")
+        payload = {
+            "ids": [x.strip() for x in args.ids.split(",") if x.strip()],
+            "arms": [x.strip() for x in args.arms.split(",") if x.strip()],
+            "mode": args.mode,
+            "model": args.model,
+            "maxToolRounds": args.max_rounds,
+            "repeats": args.repeats,
+            "dir": str(Path(args.dir).expanduser().resolve()) if args.dir else "",
+            "allowRemote": agent_task_allow_remote(args.allow_remote_provider, os.environ),
+        }
+        timeout = args.timeout or max(client.default_timeout, 3 * 3600.0)
+        event = await client.call_for_single_reply("memory-eval", payload, timeout=timeout)
+        data = event.get("payload") if isinstance(event.get("payload"), dict) else {}
+        # The verdict is that the eval ran; how each arm scored is its output, not a pass/fail of the command.
+        ok = bool(data) and not data.get("error")
+        result = command_result(command_line, ok, data=data, events=[])
+        client.logger.log("command_dispatch_complete", commandLine=command_line, ok=ok)
         return result
 
     if args.command == "agent-eval":

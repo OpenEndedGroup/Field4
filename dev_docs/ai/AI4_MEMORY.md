@@ -73,9 +73,34 @@ message, sent by the palette's **Consolidate AI4 Memory** and by the backdoor
 - **Not done.** The article suggests aiming dreaming at what changes and tuning its cadence by how
   often a note is used. Field does not count note reads yet, so every pass looks at every note.
 
-## Stage 3: measure it (not built)
+## Stage 3: measure it
 
-An `agent-eval` pair of tasks in fresh sessions, where the second depends on a correction made in
-the first, each given its own memory folder (`AgentTaskRequest.memory = <dir>`). Run each pair
-without memory, with memory, and with memory plus a dreaming pass between the two tasks.
-`AgentEvalRequest` needs a `memory` pin to pass through, as it has `lessons`.
+`afield.ai.agent.MemoryEval`, run with the backdoor's `memory-eval`. It follows the article's
+CL-Bench setup: a fresh session for each question, with the memory folder the only thing carried
+over.
+
+- **Scenarios.** Each is two or three sessions, each in a fresh headless document and conversation.
+  In an early session the person says something AI4 cannot otherwise know; the last session asks for
+  work that depends on it without repeating it. Only the last session is scored.
+  - `widget-price`: a fact, with an explicit "remember".
+  - `kelvin`: a correction about units, with no request to remember.
+  - `result-prefix`: a house style, stated as a correction.
+  - `price-change`: a fact that changes in session two; session three needs the new value. This is
+    the drift case dreaming exists for.
+  - `control`: nothing carries over. A drop here would mean memory got in the way.
+- **Arms.**
+  - `none`: memory off.
+  - `memory`: one fresh folder per scenario, shared by its sessions.
+  - `dream`: as `memory`, plus a `Dreaming.run` after every session but the last.
+- **Transcripts for the dream arm.** A headless task saves no chat, so the runner records each
+  session as one (`MemoryEval.recordSession`): every request, the tool calls each turn made, and each
+  turn's reply. This is why `AgentTaskResult` gained `replies` and `turnToolCalls`. The record is
+  written by the harness from the task's result, not by the chat panel, and is thinner: no images,
+  and arguments are cut at 300 characters.
+- **Report.** Last sessions passed per arm and per scenario, plus every session's verdict, its
+  memory-tool calls, and the notes in the folder after it. It also lists every dream pass. Everything
+  stays under the run's `--dir`.
+
+### First live run
+
+(pending)
