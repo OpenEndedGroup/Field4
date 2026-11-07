@@ -161,6 +161,8 @@ def automation_log_environment(repo_root: Path) -> dict[str, str]:
         "AFIELD_AI4_CAPTURE_DIR": str(root / "ai4_box_captures"),
         "AFIELD_CODE_USE_PATH": str(root / "code-use" / "field-code-use.sqlite"),
         "AFIELD_AI4_MEMORY_DIR": str(root / "ai4_memory"),
+        # Dreaming is a model turn on the user's key: an automated server dreams only when told to.
+        "AFIELD_AI4_DREAM": "manual",
     }
 
 

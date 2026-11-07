@@ -92,6 +92,7 @@ class AutomationWorkspaceTests(unittest.TestCase):
         self.assertEqual(environment["AFIELD_AI4_CAPTURE_DIR"], str(logs / "ai4_box_captures"))
         # AI4's memory is read into every turn, so a scratch turn must not write the user's.
         self.assertEqual(environment["AFIELD_AI4_MEMORY_DIR"], str(logs / "ai4_memory"))
+        self.assertEqual(environment["AFIELD_AI4_DREAM"], "manual")
         # The request ledger is the machine-wide account of AI spend, agents' included.
         self.assertEqual(environment["AFIELD_AI_USAGE_LOG_PATH"], user_logs + "/ai_usage")
 

@@ -37,7 +37,10 @@ this machine. Review the tools and provider you enable for confidential work.
 AI4 also keeps [memory notes](ai4_tools.md#keeping-track-of-the-work) in `~/.afield/ai4/memory/`
 that carry what it learned from one session into the next, in any document. Every AI4 request
 includes the list of those notes, one line each, and AI4 can read a whole note, or search the
-workspace's saved chats, while it answers. Read or delete the notes there at any time, or set
+workspace's saved chats, while it answers. Every few hours, after you have stopped chatting, AI4
+also sends the provider a list of the chats saved since its last pass, and reads from them, so it can
+check and update the notes. This uses your key and can incur charges. Read or delete the notes there
+at any time, set `AFIELD_AI4_DREAM=manual` to stop those background passes, or set
 `AFIELD_AI4_MEMORY=off` to turn memory off.
 
 Providers and model/account settings appear in **Welcome → AI**. With [Local AI](local_ai.md),

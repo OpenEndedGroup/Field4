@@ -1,8 +1,8 @@
 # AI4 memory between sessions
 
 2026-11-07. This implements Anthropic's account of agent memory,
-<https://www.anthropic.com/research/components-of-agent-memory> (2026-11-06), for AI4. Stage 1 is
-built. Stages 2 and 3 are planned below.
+<https://www.anthropic.com/research/components-of-agent-memory> (2026-11-06), for AI4. Stages 1
+(notes, history, index) and 2 (dreaming) are built. Stage 3 is planned below.
 
 ## The article's layers, mapped onto Field
 
@@ -38,24 +38,40 @@ built. Stages 2 and 3 are planned below.
   `AgentTaskRequest.memory` defaults to none, accepts `on`, or takes a folder.
 - **Switches:** `AFIELD_AI4_MEMORY=off` turns it off. `AFIELD_AI4_MEMORY_DIR` relocates it.
 
-## Stage 2: dreaming (not built)
+## Stage 2: dreaming
 
-A consolidation turn over the notes and the transcripts, run when Field is idle (modelled on
-`SemanticRetrievalService`'s idle rebuild) and from the palette.
+`afield.ai.memory.Dreaming` runs an AI4 turn with nobody present. The turn's context has only
+`userMemory` and `chatHistory`, so it is offered the memory and history tools and none of the document
+or box tools. The server side (`afield/app/server/ai4Memory.kt`) adds the `ai4-memory-dream`
+message, sent by the palette's **Consolidate AI4 Memory** and by the backdoor
+(`raw-send ai4-memory-dream '{}' --reply ai4-memory-dream`), and starts the idle watcher.
 
-- Watermark: the newest session-tree timestamp already consolidated, kept in the memory folder.
-  Dreaming runs only when there are newer turns, and under a daily budget.
-- The turn gets the memory and history tools only. Its brief:
-  - re-check each note against its `sources`, and fix, downgrade to unconfirmed, or delete a note
-    the transcript contradicts;
-  - mine new turns for corrections the person made that no note records;
-  - merge duplicates.
-- Backfill `sources`. A note written during a chat cannot cite that chat, because a turn's blocks get
-  addresses only once the turn is saved. In the first live test the note came out with
-  `sources: []`. Dreaming can find the block in history and add it.
-- One commit per pass, with a dream log, so a pass can be reviewed and reverted whole.
-- From the article: aim it at what changes (traps, project notes) more than at stable person notes.
-  Watch for growth that abstracts nothing (its 1.77× wiki).
+- **What it reads.** The turns saved in the workspace since its watermark. The first pass looks back
+  seven days. The brief lists up to 60 turns as `chat@address` with the request, newest kept.
+- **What it is told** (`Dreaming.INSTRUCTIONS`):
+  - check notes against the chats, and fix, downgrade or delete;
+  - record what the new turns taught that no note holds, corrections and stated preferences first;
+  - merge duplicates;
+  - add the sources a note written mid-chat could not cite (stage 1's gap: a turn's blocks have no
+    address until the turn is saved).
+
+  It also says that a few strong notes beat many weak ones and that changing nothing is a good
+  outcome. This is the article's guard against a memory that grows without abstracting anything (its
+  1.77× wiki).
+- **One commit per pass.** The turn writes through a `UserMemory` that does not commit
+  (`commitEachChange = false`). At the end, `commitAll` records the pass with its log,
+  `dreams/<yyyy-MM-dd-HHmmss>.md`, which holds the trigger, model, turns read, created, updated and
+  deleted notes, and the model's own account.
+- **The watermark moves only after a pass that finished**, so a failed pass (no key, a provider error)
+  reads the same turns next time. It is kept in `.dream-state.json`, which is gitignored, with the
+  time of the last attempt.
+- **When.** Idle (`Dreaming.idleDue`): no AI4 turn for 30 minutes, at least 3 new turns, and 6 hours
+  since the last attempt. The watcher checks every 10 minutes and skips quiet mode. One pass runs at
+  a time across Field.
+- **Switches.** `AFIELD_AI4_DREAM=off|manual|idle` (default `idle`). Automated servers get `manual`
+  from `automation_log_environment()`, so a test server never spends a dream on the person's key.
+- **Not done.** The article suggests aiming dreaming at what changes and tuning its cadence by how
+  often a note is used. Field does not count note reads yet, so every pass looks at every note.
 
 ## Stage 3: measure it (not built)
 
