@@ -238,6 +238,32 @@ class Pages(Journal):
         done = scout.fetch(self.ledger, FakeFetcher({"https://journal.example/paper": (403, "text/html", "")}), log=lambda _: None)
         self.assertEqual((done["failed"], item.status), (1, "queued"))
 
+    def test_a_saved_link_survives_the_title_pass_and_is_marked_on_page_and_digest(self) -> None:
+        export = self.dir / "raindrop.csv"
+        export.write_text("id,title,note,excerpt,url,folder,tags,created,cover,highlights,favorite\n"
+                          "1,Life Universe,,,https://oimo.io/works/life/,Unsorted,,2024-03-23T10:00:00Z,,,false\n"
+                          "2,Later copy,,,https://oimo.io/works/life,Unsorted,,2025-01-01T10:00:00Z,,,false\n", encoding="utf-8")
+        self.assertEqual(scout.import_saves(self.dir, export), (2, 1))
+        ledger = scout.Ledger(self.dir)
+        self.assertEqual(next(iter(ledger.saves.values()))["saved"], "2024-03-23")
+        item, _ = ledger.add("Life Universe", "https://oimo.io/works/life/", {"src": "hn", "hn": "5", "points": 3})
+        other, _ = ledger.add("Unrelated", "https://else.example/x", {"src": "hn", "hn": "6", "points": 3})
+        self.assertIn("[saved by Marc 2024-03-23]", "\n".join(scout.triage_list(ledger)))
+        scout.triage(ledger, {item.key, other.key})
+        self.assertEqual((item.status, other.status), ("queued", "dropped"))
+        fetcher = FakeFetcher({"https://oimo.io/works/life": (200, "text/html", "<p>" + "cells " * 400 + "</p>")})
+        scout.fetch(ledger, fetcher, log=lambda _: None)
+        self.assertIn("saved by Marc 2024-03-23", (self.dir / item.page).read_text())
+        (self.dir / "cards").mkdir(exist_ok=True)
+        (self.dir / "cards" / f"{item.key}.md").write_text(
+            "---\nverdict: card\nkind: new\ntype: reimplement\nnearest: none (searched: life)\nlicense: unstated\n---\n"
+            "**What it is.** x\n\n**Method.** x\n\n**What Field adds.** x\n\n**Figures.** x\n\n**License.** x\n\n**Size.** A night.\n",
+            encoding="utf-8")
+        counts, faults = scout.ingest_cards(ledger)
+        self.assertEqual(faults, [])
+        path = scout.digest(ledger, force=True)
+        self.assertIn("**saved by Marc 2024-03-23**", path.read_text())
+
     def test_three_failures_give_up(self) -> None:
         item = self.add(url="https://down.example/x")
         item.move("queued")
