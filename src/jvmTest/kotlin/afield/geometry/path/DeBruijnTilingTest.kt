@@ -117,4 +117,19 @@ class DeBruijnTilingTest {
         // Every ribbon tile touches another ribbon tile across a shared edge.
         for (i in indices) assertTrue(adjacency[i].any { it in indices }, "ribbon tile $i is isolated")
     }
+
+    @Test
+    fun concurrentLinesAreNudgedOrReported() {
+        // Three-fold with zero offsets: lines j0, j1, j2 with j0 + j1 + j2 = 0 always meet.
+        val zero = listOf(0.0, 0.0, 0.0)
+        val error = kotlin.runCatching { deBruijnTiling(symmetry = 3, offsets = zero, radius = 6.0, onDegenerate = DeBruijnDegeneracy.ERROR) }.exceptionOrNull()
+        assertTrue(error is DeBruijnDegenerateException, "expected DeBruijnDegenerateException, got $error")
+        assertEquals(3, error.lines.map { it.family }.toSet().size)
+        checkTiling(deBruijnTiling(symmetry = 3, offsets = zero, radius = 10.0), 10.0, 4.0)
+
+        // Evenly stepped offsets that put three lines through a point at 7-fold.
+        val stepped = List(7) { ((it + 1) * 0.6180339887498949 + 0.1234).mod(1.0) }.let { r -> r.map { it - r.average() } }
+        assertTrue(kotlin.runCatching { deBruijnTiling(symmetry = 7, offsets = stepped, radius = 10.0, onDegenerate = DeBruijnDegeneracy.ERROR) }.isFailure)
+        checkTiling(deBruijnTiling(symmetry = 7, offsets = stepped, radius = 10.0), 10.0, 4.0)
+    }
 }

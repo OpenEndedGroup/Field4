@@ -42,6 +42,7 @@ The parameters are the ones Pattern Collider exposes:
 | `disorder` | moves every line by a random amount up to `disorder / 2` of the spacing (0 to 0.99), seeded by `seed`. The result still tiles, but loses its long-range order |
 | `radius` | how far from the centre crossings are kept, in line spacings |
 | `scale` | the rhombus edge length in drawing units |
+| `onDegenerate` | where three lines meet at one point there is no tiling. `NUDGE` (the default) shifts the offsets by about a millionth of a spacing and tries again; `ERROR` throws `DeBruijnDegenerateException` naming the three lines |
 
 Each `DeBruijnTile` carries its four `corners`, its `type` (the acute angle is
 `type * 180 / symmetry` degrees), its `center`, and the two grid lines `first` and `second` whose

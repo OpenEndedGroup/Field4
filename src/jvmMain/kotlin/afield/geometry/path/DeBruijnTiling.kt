@@ -182,6 +182,11 @@ class DeBruijnTiling(
  * become tiles. [scale] is the rhombus edge length in drawing units, and the tiling is centred at
  * ([centerX], [centerY]).
  *
+ * Where three grid lines meet at one point no rhombus tiling exists; [onDegenerate] decides
+ * whether to nudge the offsets by about 1e-6 and retry (the default) or throw
+ * [DeBruijnDegenerateException]. `symmetry = 3` with offsets summing to an integer is always
+ * degenerate this way.
+ *
  * The method and its parameters follow Aatish Bhatia's Pattern Collider
  * (https://github.com/aatishb/patterncollider, MIT) and N. G. de Bruijn (1981).
  *
@@ -199,6 +204,48 @@ fun deBruijnTiling(
     scale: Double = 20.0,
     centerX: Double = 0.0,
     centerY: Double = 0.0,
+    onDegenerate: DeBruijnDegeneracy = DeBruijnDegeneracy.NUDGE,
+): DeBruijnTiling {
+    val requested = offsets ?: defaultDeBruijnOffsets(symmetry)
+    var attempt = 0
+    while (true) {
+        // Nudge every offset by a different, tiny amount; 1e-6 of a line spacing is invisible.
+        val tried = if (attempt == 0) requested else requested.mapIndexed { k, g -> g + 1e-6 * attempt * (k + 1) * (if (k % 2 == 0) 1 else -1) }
+        try {
+            return buildDeBruijnTiling(symmetry, tried, radius, disorder, seed, scale, centerX, centerY)
+        } catch (d: DeBruijnDegenerateException) {
+            if (onDegenerate == DeBruijnDegeneracy.ERROR || attempt >= 8) throw d
+            attempt++
+        }
+    }
+}
+
+/** What [deBruijnTiling] does when three grid lines meet at a point, where no rhombus tiling exists. */
+enum class DeBruijnDegeneracy {
+    /** Shift the offsets by about a millionth of a line spacing and try again (the default). */
+    NUDGE,
+
+    /** Throw a [DeBruijnDegenerateException] naming the three lines. */
+    ERROR,
+}
+
+/**
+ * Thrown by [deBruijnTiling] with [DeBruijnDegeneracy.ERROR] when three grid lines are concurrent.
+ *
+ * @param lines the three grid lines that meet.
+ */
+class DeBruijnDegenerateException(val lines: List<DeBruijnLine>) :
+    IllegalArgumentException("three de Bruijn grid lines meet at one point: $lines; change the offsets or use DeBruijnDegeneracy.NUDGE")
+
+private fun buildDeBruijnTiling(
+    symmetry: Int,
+    offsets: List<Double>?,
+    radius: Double,
+    disorder: Double,
+    seed: Int,
+    scale: Double,
+    centerX: Double,
+    centerY: Double,
 ): DeBruijnTiling {
     require(symmetry >= 3) { "symmetry must be at least 3, was $symmetry" }
     require(disorder in 0.0..0.99) { "disorder must be in 0.0..0.99, was $disorder" }
@@ -244,7 +291,17 @@ fun deBruijnTiling(
             val x = (pa * es.y - pb * er.y) / det
             val y = (er.x * pb - es.x * pa) / det
             if (hypot(x, y) > radius) continue
-            for (q in 0 until n) k[q] = if (q == r || q == s) 0 else strip(q, x * e[q].x + y * e[q].y)
+            for (q in 0 until n) {
+                if (q == r || q == s) {
+                    k[q] = 0
+                    continue
+                }
+                val t = x * e[q].x + y * e[q].y
+                k[q] = strip(q, t)
+                // A third line through this crossing: the strips on either side disagree.
+                if (abs(position(q, k[q]) - t) < 1e-9 || abs(position(q, k[q] + 1) - t) < 1e-9)
+                    throw DeBruijnDegenerateException(listOf(DeBruijnLine(r, a), DeBruijnLine(s, b), DeBruijnLine(q, if (abs(position(q, k[q]) - t) < 1e-9) k[q] else k[q] + 1)))
+            }
             var bx = 0.0
             var by = 0.0
             for (q in 0 until n) if (q != r && q != s) {
