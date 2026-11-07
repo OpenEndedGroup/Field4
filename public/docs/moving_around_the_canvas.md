@@ -14,7 +14,7 @@ Let's start with moving around.
   point under it stays put. The zoom runs from 10% to 400%.
 - **Reset Canvas Zoom** in the command palette returns to 100%, keeping the centre of the window
   where it is.
-- **`alt/option-H`** (**Reset View** in the command palette, and a button at the top of the bookmarks
+- ++alt+h++ (**Reset View** in the command palette, and a button at the top of the bookmarks
   panel) also returns to 100%, and closes every output panel.
 
 Over an output panel, the wheel scrolls the panel while it has room to scroll that way and pans
@@ -122,7 +122,7 @@ repeat(40) {
 ui.pause(2500)
 ```
 
-The drawing layer (`alt/option-D`) works in every pane: its toolbar is in the bottom-right pane, and the
+The drawing layer (++alt+d++) works in every pane: its toolbar is in the bottom-right pane, and the
 tool you pick there follows the pointer into the others.
 
 The split is saved with the document. A bookmark saved while the canvas is split restores the split
@@ -227,7 +227,7 @@ you have to keep holding. Nothing happens if no box is selected, since the overl
 around something.
 
 Each arrow selects the box in that direction, scrolls it into view, and redraws the overlay around
-its new position, so you can keep arrowing without letting go. `Escape` leaves the mode early, and so
+its new position, so you can keep arrowing without letting go. ++escape++ leaves the mode early, and so
 does clicking away from the window.
 
 Letting go of the trigger key puts the focus in the editor of whichever box you landed on, ready to
@@ -384,7 +384,7 @@ are hidden, deleted, or drawn at zero size are not candidates.
 
 ## Framing the selection
 
-`alt/option-F` (**Frame Selected** in the command palette, rebindable as `frame-selected`) brings the
+++alt+f++ (**Frame Selected** in the command palette, rebindable as `frame-selected`) brings the
 selected boxes, and their open output panels, into view. It puts them in the largest part of the
 window that the editor, the docs panel and Field's own panels leave uncovered. If they do not fit
 there it zooms out until they do. If the canvas was zoomed further out than it needs to be, it
@@ -396,7 +396,7 @@ could, it uses the whole window instead and lets the editor cover part of it. A 
 a wide editor is not worth squinting at.
 
 Below, `target` is selected with its editor open. Opening the editor brought the box into view,
-but its open output panel runs under the editor. After alt-F the canvas zooms out until the box
+but its open output panel runs under the editor. After ++alt+f++ the canvas zooms out until the box
 and its panel both fit in the strip the editor leaves:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x640" clip="0,0,1100,640" transcript="../../dev_docs/agents/transcripts/docs_capture/frame_selected.yaml" padding="0" wait="0" timeout="240" hide-toasts=true embed=true hidden=true screenshot="assets/moving_around_the_canvas/frame_selected_before.png" name="frame-selected-before" alt="Field's canvas with the code editor open on the right for the box target. target sits at the left edge of the uncovered strip, and its open output panel, labelled main, runs off under the editor."}
@@ -418,8 +418,8 @@ ui.pause(1200)
 
 To return to a part of the document you visit often, save its view in one of nine numbered slots.
 
-- Save the current view: `ctrl/command-shift-F1` through `ctrl/command-shift-F9`
-- Restore a saved view: `shift-F1` through `shift-F9`
+- Save the current view: ++cmd+shift+f1++ through ++cmd+shift+f9++
+- Restore a saved view: ++shift+f1++ through ++shift+f9++
 
 `Cmd` is Command on macOS and Control everywhere else. Both sets are rebindable as
 `save-bookmark-N` and `restore-bookmark-N`, and both appear in the command palette as
@@ -437,7 +437,7 @@ A slot stores a view rather than a box reference. Restoring one reapplies, in th
 
 ### The bookmarks panel
 
-`alt/option-B` (**Show Bookmarks** in the command palette, rebindable as `show-bookmarks`) opens a panel
+++alt+b++ (**Show Bookmarks** in the command palette, rebindable as `show-bookmarks`) opens a panel
 with a row for each of the nine slots, so you can see what a slot holds before you jump to it:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector="#bookmarks-panel" screenshot="assets/moving_around_the_canvas/bookmarks_panel.png" transcript="../../dev_docs/agents/transcripts/docs_capture/bookmarks_panel.yaml" padding="8" wait="0" timeout="240" embed=true hidden=true name="bookmarks-panel" alt="The bookmarks panel. Nine rows, F1 to F9. F1, named ideas, and F2, named render, are saved: each shows a small map of the document's three boxes with the saved view drawn as a dashed rectangle and the selected box in the accent colour, the view position, the box that was being edited, how many output panels were open and closed with a pill naming each open one and its size, and three options, restore view, restore selection and close unrecorded panels. Each has Restore, Save and delete buttons. The other seven rows read empty, with a Save here button."}
@@ -486,8 +486,8 @@ Each saved slot shows:
   edited, with the cursor line
 - how many output panels were open and closed, and a pill for each open one with its size
 
-Click the name to rename a slot. **Restore** and **Save** do what `Shift+F`*n* and
-`ctrl/command-shift-F`*n* do, and **×** empties the slot. The three checkboxes are saved with the slot:
+Click the name to rename a slot. **Restore** and **Save** do what that slot's ++shift+f1++ and
+++cmd+shift+f1++ shortcuts do, and **×** empties the slot. The three checkboxes are saved with the slot:
 
 - **restore view**: pan and zoom back to the saved view. Turn it off for a slot that should rearrange
   output panels without moving the canvas.
@@ -499,7 +499,7 @@ Click the name to rename a slot. **Restore** and **Save** do what `Shift+F`*n* a
 Saving over a slot keeps its name and its options.
 
 While the navigation overlay is up, every box on screen that a slot points at wears an `F` chip
-with that slot's number: `F3` is the view saved in slot 3, reached with `shift-F3`. A box wears
+with that slot's number: `F3` is the view saved in slot 3, reached with ++shift+f3++. A box wears
 more than one chip if several slots were saved on it.
 
 **Fly Through Bookmarks** in the command palette flies the canvas smoothly through the saved slots
@@ -512,9 +512,9 @@ browser session.
 ## Showing and hiding layers
 
 A box can be on one or more layers, and hiding a layer takes its boxes off the canvas, which is the
-quickest way to clear a crowded document down to the part you are working on. `alt/option-L`
+quickest way to clear a crowded document down to the part you are working on. ++alt+l++
 (**Show Layers Panel** in the command palette) opens a panel listing every layer with its box
-count. Click a layer's eye to show or hide it (shift-click to show only that one), and pick the
+count. Click a layer's eye to show or hide it (++shift++-click to show only that one), and pick the
 active layer with its radio button. **Solo** shows only that layer and makes it active, **Show all**
 brings every layer back, and **Move selection to active layer** puts the selected boxes on the
 active layer. The last visible layer cannot be hidden. If the document has a drawing, it has a

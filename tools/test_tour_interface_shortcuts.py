@@ -8,7 +8,6 @@ documentSearch.kt matches cmd/ctrl+F itself, so that row is checked against that
 """
 from __future__ import annotations
 
-import html
 import re
 import unittest
 from pathlib import Path
@@ -22,20 +21,20 @@ ID_DECL = re.compile(r"""(?:\bid\s*=\s*"([a-z0-9$-]+)"|\bid\s*:\s*'([a-z0-9$-]+)
 KEYS = re.compile(r"""(?:\bkeys\s*=\s*"([^"]*)"|\bkeys\s*:\s*'([^']*)'|\bdefaults\s*=\s*listOf\(([^)]*)\))""")
 
 
+# pymdownx.keys names (`++cmd+slash++`) back to the spec Field ships (`cmd+/`).
+KEYCAP_NAMES = {"command": "cmd", "control": "ctrl", "option": "alt", "slash": "/",
+                "comma": ",", "period": ".", "bracket-left": "[", "bracket-right": "]",
+                "question": "?", "arrow-up": "up", "arrow-down": "down", "arrow-left": "left",
+                "arrow-right": "right", "esc": "escape", "return": "enter"}
+
+
 def cell_keys(cell: str) -> list[str]:
-    """Read code-form chords and the platform keycaps used by the public page."""
+    """Read the `++cmd+shift+p++` keycaps (or `code` specs) in a Default shortcut cell."""
     if cell.strip() == "none":
         return []
     keys = re.findall(r"`([^`]+)`", cell)
-    modifiers = {"⌘": "cmd", "cmd": "cmd", "command": "cmd", "^": "cmd",
-                 "ctrl": "cmd", "control": "cmd", "⇧": "shift", "⌥": "alt"}
-    for alternative in re.split(r"\s+/\s+", cell):
-        caps = re.findall(r"<kbd(?:\s[^>]*)?>(.*?)</kbd>", alternative, flags=re.IGNORECASE)
-        if not caps:
-            continue
-        parts = [html.unescape(re.sub(r"<[^>]+>", "", cap)).strip().casefold()
-                 for cap in caps]
-        keys.append("+".join(modifiers.get(part, part) for part in parts))
+    for caps in re.findall(r"\+\+([^+\s][^\s]*?)\+\+", cell):
+        keys.append("+".join(KEYCAP_NAMES.get(part, part) for part in caps.lower().split("+")))
     return list(dict.fromkeys(keys))
 
 
@@ -72,9 +71,12 @@ def shipped_defaults() -> dict[str, set[str]]:
 
 
 class TourInterfaceShortcutsTest(unittest.TestCase):
-    def test_platform_keycaps_preserve_the_shipped_chord(self):
-        self.assertEqual(cell_keys("<kbd>⌘</kbd><kbd>P</kbd> / <kbd>^</kbd><kbd>P</kbd>"), ["cmd+p"])
-        self.assertEqual(cell_keys("<kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>P</kbd> / <kbd>F1</kbd>"), ["cmd+shift+p", "f1"])
+    def test_keycaps_read_back_as_the_shipped_spec(self):
+        self.assertEqual(cell_keys("++cmd+p++"), ["cmd+p"])
+        self.assertEqual(cell_keys("++cmd+shift+p++ or ++f1++"), ["cmd+shift+p", "f1"])
+        self.assertEqual(cell_keys("++cmd+slash++"), ["cmd+/"])
+        self.assertEqual(cell_keys("++question++"), ["?"])
+        self.assertEqual(cell_keys("++cmd+f++ (canvas focused)"), ["cmd+f"])
         self.assertEqual(cell_keys("`cmd+shift+p`, `f1`"), ["cmd+shift+p", "f1"])
         self.assertEqual(cell_keys("none"), [])
 

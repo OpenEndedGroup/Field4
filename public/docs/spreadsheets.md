@@ -325,10 +325,10 @@ total is the one that gives. Code that reads a variable cell with `sheetCell("B1
 | typing, Enter, F2 | edit the cell |
 | Escape | stop editing, clear the selection |
 | Delete, Backspace | empty the selected cells |
-| Cmd/Ctrl+D | fill the top cell of the selection down through it |
-| Cmd/Ctrl+R | fill the left cell of the selection across it |
-| Cmd/Ctrl+C, X, V | copy, cut and paste; a pasted formula's references move with it, so `=A1 * 10` copied from B1 to B2 becomes `=A2 * 10`; one copied cell pasted over a selection fills it |
-| Cmd/Ctrl+Space | complete cell references, functions and box names while editing a formula |
+| ++cmd+d++ | fill the top cell of the selection down through it |
+| ++cmd+r++ | fill the left cell of the selection across it |
+| ++cmd+c++, ++cmd+x++, ++cmd+v++ | copy, cut and paste; a pasted formula's references move with it, so `=A1 * 10` copied from B1 to B2 becomes `=A2 * 10`; one copied cell pasted over a selection fills it |
+| ++cmd+space++ | complete cell references, functions and box names while editing a formula |
 
 While you edit a formula, clicking another cell inserts its reference, and the cells and boxes the
 formula reads are highlighted. Drag a column or row edge to resize it.

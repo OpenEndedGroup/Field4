@@ -3,7 +3,7 @@
 To animate something from a box, end the box with a `loop { }`. The code above it runs once, when
 you run the box. The block runs again every frame, until you stop the box or run it again:
 
-Try launching this with **alt/option-Up**, then stop it with **alt/option-Down**. Open the `main`
+Try launching this with ++alt+arrow-up++, then stop it with ++alt+arrow-down++. Open the `main`
 output panel to see it count while the box is running. The [first moving drawing](first_steps.md)
 uses the same idea to keep lines in motion.
 

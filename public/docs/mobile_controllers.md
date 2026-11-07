@@ -33,7 +33,7 @@ Replace `FIELD-HOST` with the machine's LAN name or address and `YOUR-DOCUMENT` 
 | **Group** | Phone-sized sliders, toggles, text inputs, vector pads, color controls, multisliders, matrices, range sliders and menus published by the selected box's `controlGroup(...)`, with their playheads. |
 | **Outputs** | The selected box's output areas, reformatted into a narrow scrolling column. Native controls remain interactive. |
 | **Chat** | The real AI4 conversation for the selected box and property, including attachments, code, and expandable tool-use summaries. File edits are called out by filename. |
-| **Select** | Field's [**Open Anything**](tour_interface.md#the-command-palette-and-open-anything) panel (the <kbd>⌘</kbd><kbd>P</kbd> / <kbd>^</kbd><kbd>P</kbd> search over everything in a document), adapted for touch. Search boxes, properties, commands, and document text. Choosing a result updates every other phone tab. |
+| **Select** | Field's [**Open Anything**](tour_interface.md#the-command-palette-and-open-anything) panel (the ++cmd+p++ search over everything in a document), adapted for touch. Search boxes, properties, commands, and document text. Choosing a result updates every other phone tab. |
 | **Edit** | A full embedded Monaco editor on the box and property chosen in **Select**. The same editor instance moves between Select and Edit, preserving its model and undo history. |
 
 </div>

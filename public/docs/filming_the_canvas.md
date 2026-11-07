@@ -8,9 +8,9 @@ back to its own camera.
 
 ## Fly through your bookmarks
 
-Save a few views as [bookmarks](moving_around_the_canvas.md#bookmarks) (`ctrl/command-shift-F1`
-to `F9`), and name them in the bookmarks panel (`alt/option-B`). **Fly Through Bookmarks** in the
-command palette then flies through every saved slot in slot order. Press `Escape`, pan or zoom to
+Save a few views as [bookmarks](moving_around_the_canvas.md#bookmarks) (++cmd+shift+f1++
+to ++cmd+shift+f9++), and name them in the bookmarks panel (++alt+b++). **Fly Through Bookmarks** in the
+command palette then flies through every saved slot in slot order. Press ++escape++, pan or zoom to
 stop the flight where it is, or choose **Stop Canvas Flight**.
 
 The flight pauses at the first bookmark, then travels to each one in turn. Each leg starts
@@ -165,8 +165,8 @@ mouse.
 
 ??? aside "Agents: how the film on this page is made"
     The docs runner builds it. The setup transcript (`canvas_flight.yaml`) creates the three boxes.
-    The drive script saves the three bookmarks through the bookmark code, as `ctrl/command-shift-F1`
-    to `F3` would. `ui.filmCanvasFlight` then films the flight with the recorder `canvasFlight(record = …)`
+    The drive script saves the three bookmarks through the bookmark code, as ++cmd+shift+f1++
+    to ++cmd+shift+f3++ would. `ui.filmCanvasFlight` then films the flight with the recorder `canvasFlight(record = …)`
     uses, in place of the drive's real-time recording. The `canvas-flight` UI regression checks the
     same recorder: one frame per tick, each bookmark reached exactly where restoring it puts the
     camera, and the three.js view turned at the requested rate and given its camera back afterwards.

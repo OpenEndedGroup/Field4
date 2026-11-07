@@ -108,7 +108,7 @@ Above, Code History is open under the line that sets `radius`, listing the value
 
 Select the box, put your cursor on a line of its code (or select a range), **right-click**, and choose **Show Code History for Line / Selection** from the editor context menu.
 
-Code History opens as a small zone directly beneath your selection. Its shortcut is `alt+shift+h`.
+Code History opens as a small zone directly beneath your selection. Its shortcut is ++alt+shift+h++.
 
 ## What it shows
 

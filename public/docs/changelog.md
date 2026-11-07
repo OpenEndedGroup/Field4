@@ -120,7 +120,7 @@ generator's points to a Datalog program, which checks whether they kept the targ
   [MIDI learn](visualizers.md#midi-learn).
 - **FieldML** calls Kotlin `suspend` methods with `hostLaunch`.
   [Calling a suspend method](fieldml_host_bridge.md#calling-a-suspend-method).
-- **Templates**: `cmd+t` lists personal templates too, in one precedence order.
+- **Templates**: ++cmd+t++ lists personal templates too, in one precedence order.
   [Insert a template](templates.md#insert-a-template).
 - The [Patchy](patchy.md), [presentation](presentation_studio.md), [layers](layers.md) and
   [demo document](demo_document.md) pages were revised after a fresh read.
@@ -156,7 +156,7 @@ formatted consistently, and plane-grid figures use a flat card.
 
 *29–30 October 2026*
 
-- **Templates**: save boxes as a template, insert one with `cmd+t`, and see where a copy came
+- **Templates**: save boxes as a template, insert one with ++cmd+t++, and see where a copy came
   from. [Templates](templates.md).
 - **Generative Mocap**: open motion recordings, run a live simulated body, write a movement
   score and give it an intention or a route. [Generative Mocap](motion_recordings.md).
@@ -532,7 +532,7 @@ four kinds of fire ([A forest fire](afield_four_graphics.md#forest-fire)). The
 *16 October 2026*
 
 - **Code History**: the per-line history zone in the editor has a new name, and its shortcut is
-  `alt+shift+h`. [Code History](history_lens.md#open-it).
+  ++alt+shift+h++. [Code History](history_lens.md#open-it).
 - **Kits run on first open**: a document made from a kit starting point runs its roles, in launch
   order, the first time it opens. [Kits and Starting Points](kits.md#publish-it-as-a-starting-point).
 - **Corpus microscope**: a neighbour can be placed on the canvas as an audio-clip box.
@@ -566,7 +566,7 @@ follows Lambdascope, so shared structure reads back correctly
   [Execution reference](reference/execution.md).
 - **Editing files outside Field**: external edits to a document's property files are applied to
   the open document. [The document on disk](document_on_disk.md).
-- **First steps**: the live edit is now an assignment you run with Alt+Enter while the drawing
+- **First steps**: the live edit is now an assignment you run with ++alt+enter++ while the drawing
   moves. [First steps](first_steps.md).
 - Docs prose is left-aligned and hyphenated, and the
   [StackSL conversation](stacksl_conversation.md) was re-recorded.
@@ -639,7 +639,7 @@ of the code by area, and gains pages for [networking](reference/networking.md),
 
 *14 October 2026*
 
-A box with `go { }` jobs still running shows a small badge with their count, and Alt+1 relaunches
+A box with `go { }` jobs still running shows a small badge with their count, and ++alt+1++ relaunches
 just the part of an already-run box under the cursor.
 [Calling suspend functions](running_code.md#calling-suspend-functions-with-go). The synth's
 `delay()` effect is now `delayEffect()`, so `delay` inside `go { }` waits as expected. Shortcuts
@@ -689,7 +689,7 @@ program to start, print something or exit, so a command-line tool becomes someth
 
 *12 October 2026*
 
-Open Anything (`cmd+p`) now finds documentation pages and starting-point documents as well as
+Open Anything (++cmd+p++) now finds documentation pages and starting-point documents as well as
 the boxes in your own document. [The command palette and Open
 Anything](tour_interface.md#the-command-palette-and-open-anything). The moving-hair brush learned
 clumping, liquid bridges between hairs and a scattered splay, and dry bristles that ride the
@@ -742,7 +742,7 @@ tabs are capitalised and tinted.
 
 *11 October 2026*
 
-- **Controls**: sliders take fine Shift-drag, keyboard nudges, a reset, and typed values, with
+- **Controls**: sliders take fine ++shift++-drag, keyboard nudges, a reset, and typed values, with
   tick, default and zero guides; vec2 pads and colour readouts accept typed values too
   ([Handling a slider](visualizers.md#handling-a-slider)).
 - **[Code History](history_lens.md)** shows what one line said in earlier saves, under the line in
@@ -1023,7 +1023,7 @@ the connection to the browser, and new editor commands rerun the enclosing block
 
 *4 October 2026*
 
-- **Reset View** (Alt+H) zooms back to 100% and closes every output panel
+- **Reset View** (++alt+h++) zooms back to 100% and closes every output panel
   ([Moving around the canvas](moving_around_the_canvas.md#panning-and-zooming)).
 - Field remembers the last document you opened in each workspace, and new commands control
   whether the editor opens automatically ([Keyboard shortcuts](keybindings.md#canvas)).
@@ -1120,7 +1120,7 @@ plays real audio beside a matched baseline, and the [physics](physics.md) and
 *3 October 2026*
 
 - **Canvas navigation**: a [layers panel](moving_around_the_canvas.md#showing-and-hiding-layers)
-  (Alt+L), [Frame Selected](moving_around_the_canvas.md#framing-the-selection) (Alt+F), and
+  (++alt+l++), [Frame Selected](moving_around_the_canvas.md#framing-the-selection) (++alt+f++), and
   [bookmarks](moving_around_the_canvas.md#bookmarks) that keep panel sizes and zoom and draw
   minimaps.
 - **[Streaming diffusion](streaming_diffusion.md)** is a new page: restyle a rendered texture with
@@ -1147,11 +1147,11 @@ plays real audio beside a matched baseline, and the [physics](physics.md) and
 
 *1–2 October 2026*
 
-- **[Csound](csound.md)** is a new page: `.csd` boxes run with Alt-Enter, with completion and hover
+- **[Csound](csound.md)** is a new page: `.csd` boxes run with ++alt+enter++, with completion and hover
   from the manual, highlighting, line notes, offline render and MIDI.
 - **[A Drawn Morph, Heard](chain_drawn_morph.md)** is a new chain page: morph a drawn circle into a
   heart and hear its size as a tune, using the new `matchPoints` point matching.
-- **Bookmarks** remember output panels, and a bookmarks panel opens with Alt+B
+- **Bookmarks** remember output panels, and a bookmarks panel opens with ++alt+b++
   ([Moving around the canvas](moving_around_the_canvas.md#the-bookmarks-panel)).
 - The [Sound](sound.md) page was rewritten to lead with its two voices.
 
@@ -1160,7 +1160,7 @@ plays real audio beside a matched baseline, and the [physics](physics.md) and
 
 *1 October 2026*
 
-- **Chords**: a shortcut can now be two keys in sequence, such as Cmd+K Cmd+S
+- **Chords**: a shortcut can now be two keys in sequence, such as ++cmd+k++ ++cmd+s++
   ([Keyboard shortcuts](keybindings.md#writing-a-two-key-chord)).
 - **`pulseTrain`, `ease` and `tween`** can now be bounded and differentiated
   ([Proving a Function's Range](fn_intervals.md#the-waveform-generators)).
@@ -1246,7 +1246,7 @@ groups its parts and review controls.
   with reinforcement, tethers and supports.
 - **AI4 in the chat panel** gained box-graph and execution tools on every chat path, and can test
   a candidate edit before applying it ([AI4's built-in tools](ai4_tools.md)).
-- Field now exits on Ctrl-C or `kill -INT` even when launched in the background, saving pending
+- Field now exits on ++ctrl+c++ or `kill -INT` even when launched in the background, saving pending
   edits first. KosmicKrisp is now the default Vulkan driver on Apple-silicon Macs running macOS 26.
 
 <!-- changelog: a7f3f884f3..498a59249e -->
@@ -2043,7 +2043,7 @@ and taken.
   counterexample drawn over the state graph. [Deadlock and starvation](petri_nets.md#deadlock-and-starvation).
 - **FieldML callbacks**: a lambda passed to the JVM gets typed parameters and completion.
   [Passing a function](fieldml_host_bridge.md#passing-a-function).
-- **Cmd+/ comments code again** when the editor has focus.
+- **++cmd+slash++ comments code again** when the editor has focus.
 
 <!-- changelog: 5b0003128a..3ca192600e -->
 ### Petri nets as a sequencer
@@ -2075,7 +2075,7 @@ names by where they are declared.
   for Field's built-in typed language. [FieldML cheatsheet](fieldml_cheatsheet.md).
 - **Iteration, vectors and per-frame animation** in FieldML boxes, described in
   [Animation](fieldml_examples.md#animation) and [Vector arithmetic](fieldml_examples.md#vector-arithmetic).
-- **Cmd+C in the editor copies text again**, and a cancelled stream can no longer leave a browser
+- **++cmd+c++ in the editor copies text again**, and a cancelled stream can no longer leave a browser
   tab stuck. Code completion offers more of the right names after a round of fixes.
 - The [inverse-animation page](rectsl_inverse_animation.md) now shows its boxes running.
 
@@ -2678,7 +2678,7 @@ Four months of work arrived at once:
   ([Physics](physics.md#cloth)), grabbable in VR.
 - **`@exported`** promotes a definition so connected boxes can use it
   ([Running code](running_code.md#exported-promote-what-you-defined)).
-- **Search Documentation & Code** (Cmd+Shift+D) searches the docs and your code
+- **Search Documentation & Code** (++cmd+shift+d++) searches the docs and your code
   ([Keyboard shortcuts](keybindings.md#canvas)), and the value visualizer shows more about
   images.
 
@@ -2819,7 +2819,7 @@ and dragging boxes stays smooth when the frame rate is low.
 - **Slideshow annotations**: lines drawn from a note to a box or a line of code
   ([Interactive guides](interactive_guides.md#annotations-and-code-callouts)), and slides can
   show images from the workspace.
-- **Output panels**: Alt-click a panel's arrow to remove it, Shift-click to show it alone.
+- **Output panels**: ++alt++-click a panel's arrow to remove it, ++shift++-click to show it alone.
 
 <!-- changelog: 8e03c9bcb7..43d14a5616 -->
 ### Slideshows, bookmarks and logging
@@ -2848,7 +2848,7 @@ and dragging boxes stays smooth when the frame rate is low.
   ([Editing a document from outside Field](editing_from_outside.md)).
 - **Video textures**: play a video file onto the GPU
   ([reference](reference/graphics.md#videotexture-kt-videotexture)).
-- Export the selection or the whole document, import a `metadata.edn`, and Alt-double-click a
+- Export the selection or the whole document, import a `metadata.edn`, and ++alt++-double-click a
   symbol to run it.
 
 <!-- changelog: 2478e14ae9..179d6832fd -->

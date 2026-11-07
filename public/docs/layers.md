@@ -20,7 +20,7 @@ exists as soon as some box names it.
 
 ## The layers panel
 
-`alt/option-L` (**Show Layers Panel** in the command palette) opens the layers panel. It lists every
+++alt+l++ (**Show Layers Panel** in the command palette) opens the layers panel. It lists every
 layer some box is on, with the number of boxes on each. Here three boxes are on both `draft` and `final`,
 one is on `sketch`, and the rest name no layer and so are on `default`. Every
 layer is showing, and `draft` is active:
@@ -55,7 +55,7 @@ ui.pause(900)
 
 Each row has:
 
-- an eye, which shows or hides the layer's boxes. Shift-click it to show that layer alone. You
+- an eye, which shows or hides the layer's boxes. ++shift++-click it to show that layer alone. You
   cannot hide the last layer that is showing.
 - a radio button that makes the layer active (below). Making a layer active also shows it.
 - the number of boxes on the layer.
@@ -67,7 +67,7 @@ selected boxes on the active layer, and only on it: their `layers` becomes that 
 The panel floats over the canvas, so hiding a layer never hides the panel. `showLayers()` in a box
 puts the same controls in that box's output area instead.
 
-From the keyboard, `alt-]` solos the next layer in alphabetical order and `alt-[` the previous one;
+From the keyboard, ++alt+bracket-right++ solos the next layer in alphabetical order and ++alt+bracket-left++ the previous one;
 in the command palette, **Solo Next Layer** and **Solo Previous Layer** name the layer they will go
 to. **Show All Layers** in the palette shows every layer and opens the panel. With a layer active
 and boxes selected, the palette also offers **Move N boxes to active layer**, which does the same as

@@ -1327,8 +1327,7 @@ four calls and the mouse gestures that do the same.
 
 Field can build small control surfaces directly into output areas: sliders and pads you drag while the box runs.
 
-To find a control in a large document, open **Open Anything** (<kbd>⌘</kbd><kbd>P</kbd> on macOS,
-<kbd>^</kbd><kbd>P</kbd> on Windows and Linux) and type `>` followed by part of its label, such as `> gain`. Its preview shows the
+To find a control in a large document, open **Open Anything** (++cmd+p++) and type `>` followed by part of its label, such as `> gain`. Its preview shows the
 current value and a live, read-only view
 of the widget. Choosing it selects the owning box, opens the output panel and centres the control
 in the space left by the editor. See [Open Anything](tour_interface.md#the-command-palette-and-open-anything)
@@ -1466,10 +1465,10 @@ ui.pause(100)
 | press and drag | the thumb jumps to the pointer and follows it |
 | hold **shift** while dragging | a relative drag, ten times finer, from wherever the value already is; pressing shift mid-drag does not make the thumb leap |
 | double-click the track | the slider's `initialValue` again |
-| click the number | type an exact value; **Enter** keeps it, **Esc** abandons it |
+| click the number | type an exact value; ++enter++ keeps it, ++escape++ abandons it |
 | arrow keys (after a click) | one `step` per press; **shift** ×10, **alt** ÷10. A `law =` slider moves 1% of its travel instead |
 | **PageUp** / **PageDown**, **Home** / **End** | 10% of travel, or the ends |
-| **Backspace** | back to `initialValue` |
+| ++backspace++ | back to `initialValue` |
 | the mouse wheel (after a click) | one arrow press per notch, with the same **shift** and **alt**. A slider you have not clicked lets the wheel scroll the canvas |
 
 If the box re-renders the control while you are dragging it, because its callback rebuilt the
@@ -1547,8 +1546,8 @@ ui.moveMouse(900.0, 700.0, 4)
 | hold **shift** while dragging | a relative drag, ten times finer, from where the handle already is |
 | double-click the pad | its `initialValue` again |
 | arrow keys (after a click) | one `step` along that axis, up is +y; **shift** ×10 |
-| **Backspace** | back to `initialValue` |
-| **Enter** | type `(x, y)` |
+| ++backspace++ | back to `initialValue` |
+| ++enter++ | type `(x, y)` |
 
 The other controls' readouts take typing too. On a `vec2Control`, click **X** or **Y** to set one coordinate, the `(x, y)` pair to set both, `|v|` to change the length and keep the direction, or `θ` (degrees) to turn it and keep the length. On a `colorPicker`, click the `rgba(...)` readout and type four numbers from 0 to 1, or a `#rrggbb` hex colour; click the alpha number to type the alpha alone. Typed values are clamped and snapped like a drag.
 
@@ -1771,7 +1770,7 @@ loop {
 
 ### Recording a gesture
 
-`gesture(...)` is an XY pad that remembers what you did with it. A plain drag works like `vec2Control(...)`, and the callback gets each position. **Shift-drag** records a take: the whole stroke and its timing, kept with the box like any other control value. On a phone, tap **rec**, then draw. The trail of the take stays on the pad.
+`gesture(...)` is an XY pad that remembers what you did with it. A plain drag works like `vec2Control(...)`, and the callback gets each position. ++shift++-drag records a take: the whole stroke and its timing, kept with the box like any other control value. On a phone, tap **rec**, then draw. The trail of the take stays on the pad.
 
 The box controls playback. `at(seconds)` returns the position at a given time in the loop,
 interpolating between recorded samples; `playhead(seconds)` shows that position on the pad. Read
@@ -2013,7 +2012,7 @@ the waveform itself as a navigator:
 - click to seek;
 - drag to pan;
 - use the mouse wheel or `+` / `−` to zoom while keeping the visible playhead fixed on screen;
-- shift-wheel to pan;
+- ++shift++-wheel to pan;
 - double-click or press **all** to restore the complete clip.
 
 If the playhead is outside the visible interval, wheel zoom falls back to the pointer and button or
