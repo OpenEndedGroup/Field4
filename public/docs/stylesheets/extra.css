@@ -1995,17 +1995,41 @@ html .md-typeset details.aside > :last-child {
 .md-typeset:has(.changelog-head) li {
     font-size: 0.675rem;
 }
-/* Keyboard keys in prose: neutral, legible on light and dark themes. */
+/* Keycaps. Write a shortcut as `++cmd+shift+p++` (pymdownx.keys); the labels, ⌘/⌃ ⇧ ⌥ ⌃,
+   come from `key_map` in zensical.yml. A chord reads as a row of caps with no "+" between
+   them, the way macOS menus draw it; the separator stays in the DOM for screen readers. */
+.md-typeset .keys {
+  white-space: nowrap;
+}
 .md-typeset kbd {
   display: inline-block;
-  min-width: 1.4em;
-  padding: 0.05em 0.3em;
-  border: 1px solid currentColor;
-  border-radius: 0.2em;
-  color: inherit;
-  background: transparent;
-  box-shadow: none;
-  font-family: system-ui, sans-serif;
-  font-size: 0.88em;
+  min-width: 1.55em;
+  margin: 0 0.06em;
+  padding: 0 0.38em;
+  border-radius: 0.28em;
+  color: var(--md-default-fg-color);
+  background: color-mix(in srgb, currentColor 9%, transparent);
+  box-shadow:
+    inset 0 0 0 0.05rem color-mix(in srgb, currentColor 32%, transparent),
+    0 0.09rem 0 color-mix(in srgb, currentColor 26%, transparent);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  font-size: 0.86em;
+  font-weight: 500;
+  line-height: 1.55;
   text-align: center;
+  vertical-align: 0.1em;
+}
+/* The theme prefixes modifier caps with its own glyph (⌘ Cmd); the label already is the glyph.
+   `kbd[class]` outranks the theme's `.keys .key-command:before`. */
+.md-typeset .keys kbd[class]::before,
+.md-typeset .keys kbd[class]::after {
+  content: none;
+}
+.md-typeset .keys > span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }

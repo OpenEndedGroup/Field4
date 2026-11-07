@@ -162,7 +162,7 @@ every box in the document does.
 
     **[ShaderTrinket](agent_transcripts.md#shadertrinket).** A ShaderToy-style `mainImage`
     (a function that returns one pixel's colour) in a box,
-    recompiled on alt-R with any error marked on its own line. Each preset is a box you launch,
+    recompiled on ++alt+r++ with any error marked on its own line. Each preset is a box you launch,
     and the camera is one line away as `iChannel0`.
 
 -   ![A rippled pale-cyan terrain of triangles floating over a dark studio ground, casting a soft shadow onto it](assets/agent_transcripts_gallery/madp_geometry_terrain.png)

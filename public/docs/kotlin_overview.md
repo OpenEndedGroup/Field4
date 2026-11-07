@@ -43,7 +43,7 @@ If you’ve used Swift: Kotlin’s `val`/`var` are very close to Swift’s `let`
 ### Editing a running box
 
 A `var` is also how you tweak a value while your code keeps running. If a box has started a loop
-that reads `speed`, change the number and press **Alt/Option-Enter** on that line:
+that reads `speed`, change the number and press ++alt+enter++ on that line:
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -53,7 +53,7 @@ var speed = 0.5 // edit to 2.0, then Alt/Option-Enter on this line
 The running loop picks up the new value without restarting. A `val` stays fixed.
 
 The [First steps](first_steps.md) drawing does exactly this: its `var petals = 5` changes to 8 and
-alt/option-Enter on that line changes the running drawing.
+++alt+enter++ on that line changes the running drawing.
 
 <video controls muted loop playsinline preload="metadata" src="assets/first_steps/first-look.mp4" width="2400" height="1440" style="max-width:100%;height:auto;aspect-ratio:2400/1440" aria-label="Field's editor launches a cyan moving FLine drawing, changes its petal count from five to eight and runs that one line with Alt+Enter while the drawing keeps moving, relaunches it, and shows the value eight inline before stopping the animation."></video>
 

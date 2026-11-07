@@ -113,19 +113,19 @@ ui.pause(1200)
 
 1. Click the box titled **First steps · a moving drawing** (the one the Welcome button copied
    for you) to select it and open its code in the editor.
-2. Press **alt/option-Up** to launch it. Open the output disclosure below
+2. Press ++alt+arrow-up++ to launch it. Open the output disclosure below
    the box if the drawing is collapsed. Fine blue-white curves ripple and twist together.
 3. While it runs, change the 5 in `var petals = 5` (the second line) to 8, keep the cursor on that line
-   and press **alt/option-Enter**. That runs only this line, and the running drawing picks up eight
+   and press ++alt+enter++. That runs only this line, and the running drawing picks up eight
    petals without restarting. Editing alone runs nothing; running the line does.
-4. Press **alt/option-Up** to launch the whole box again: it starts over, still with eight petals,
-   and `println(petals)` prints 8 beside the code. Press **alt/option-Down** to stop. The drawing freezes.
+4. Press ++alt+arrow-up++ to launch the whole box again: it starts over, still with eight petals,
+   and `println(petals)` prints 8 beside the code. Press ++alt+arrow-down++ to stop. The drawing freezes.
 5. Wait for autosave (about five seconds), close the document tab, and reopen your copy from
    Welcome. The edited code is still there, but the drawing is not moving: opening a document
    does not restart its animations. Launch it again to bring it back.
 
-If a window manager intercepts the shortcuts, use Field's editor command palette (**ctrl/command-shift-P**) to
-find the launch and stop commands. Press **?** on the canvas for the shortcut card.
+If a window manager intercepts the shortcuts, use Field's editor command palette (++cmd+shift+p++) to
+find the launch and stop commands. Press ++question++ on the canvas for the shortcut card.
 
 The drawing is made of `FLine`s, Field's type for drawn lines and curves, drawn into the box's output, so it needs no separate graphics
 window. Its loop computes a ribbon from `petals` and `phase`. Each layer follows the same wave
@@ -167,11 +167,11 @@ ui.eval(
 ui.pause(800)
 ```
 
-1. Click the **1 · Launch the renderer** box to select it and open its code. Press **alt/option-Up**.
+1. Click the **1 · Launch the renderer** box to select it and open its code. Press ++alt+arrow-up++.
    A separate, initially black graphics window opens.
-2. Return to Field, click the **2 · Launch the triangle** box, and press **alt/option-Up**.
+2. Return to Field, click the **2 · Launch the triangle** box, and press ++alt+arrow-up++.
    The graphics window now shows a colored triangle.
-3. To stop, select the triangle box and press **alt/option-Down**.
+3. To stop, select the triangle box and press ++alt+arrow-down++.
    Then select the renderer box and press the same shortcut.
 
 The renderer box's code opens the window and creates the renderer. The triangle box's code lists

@@ -718,8 +718,8 @@ Open **Parts** to browse the scene as a tree. A mesh and its outline share one c
 when they have the same assembly group or drawable ID. Folder checkboxes show a dash when
 only some children are visible. **Select all** shows or hides the entire scene.
 
-**Shift-click** a part or folder checkbox to solo it. Shift-click it again to restore the
-previous visibility; shift-click a different part to move the solo without losing that
+++shift++-click a part or folder checkbox to solo it. ++shift++-click it again to restore the
+previous visibility; ++shift++-click a different part to move the solo without losing that
 previous view. An ordinary click ends solo mode and edits the current visibility.
 
 Use `inspect(partPaths = …)` to organise a large scene. Keys are stable mesh IDs, assembly

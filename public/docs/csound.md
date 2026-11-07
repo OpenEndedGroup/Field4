@@ -6,7 +6,7 @@ instrument plays. Field runs Csound in-process, through its C library, in two wa
 
 - **as a box language**: set a box's Main Language to Csound, and its children hold `.csd` text.
   The editor highlights it and completes opcodes with their signatures. Launching a box plays it,
-  and alt/option-Enter sends single instruments and score lines to the running Csound.
+  and ++alt+enter++ sends single instruments and score lines to the running Csound.
 - **from Kotlin**: `csound(orchestra, score)` and `CsoundInstance` hold a Csound inside a Kotlin
   box, for when the Kotlin side is doing most of the work.
 
@@ -69,20 +69,20 @@ something writes the channel. Other Csound hosts may start it at 0, which makes 
 
 | Key | Where | What it does |
 | --- | --- | --- |
-| **alt/option-0**, Run, Launch | anywhere | Compiles the orchestra and score into a new Csound of the box's own and plays it, replacing any earlier one. The box runs until it is stopped or the score ends. `f 0 z` in the score keeps Csound running with nothing scheduled. |
-| **alt/option-Enter** | a line inside `instr … endin` | Recompiles that whole instrument into the running Csound (`csoundCompileOrc`). Notes already sounding finish with the old definition, and the next event uses the new one. |
-| **alt/option-Enter** | a selection of whole instruments | Compiles the selection as it is. |
-| **alt/option-Enter** | an orchestra line outside any instrument | Compiles that line (or selection) as global code, which runs once: a new `ftgen` table, a `chn_k` declaration. |
-| **alt/option-Enter** | a score line or selection | Reads it into the running Csound now (`csoundReadScore`). Start times count from this moment, so `i "Pluck" 0 1 69 -9` sounds at once. |
-| **alt/option-Enter** | `<CsOptions>` | Sends nothing. The box says that options apply at the next launch. |
+| ++alt+0++, Run, Launch | anywhere | Compiles the orchestra and score into a new Csound of the box's own and plays it, replacing any earlier one. The box runs until it is stopped or the score ends. `f 0 z` in the score keeps Csound running with nothing scheduled. |
+| ++alt+enter++ | a line inside `instr … endin` | Recompiles that whole instrument into the running Csound (`csoundCompileOrc`). Notes already sounding finish with the old definition, and the next event uses the new one. |
+| ++alt+enter++ | a selection of whole instruments | Compiles the selection as it is. |
+| ++alt+enter++ | an orchestra line outside any instrument | Compiles that line (or selection) as global code, which runs once: a new `ftgen` table, a `chn_k` declaration. |
+| ++alt+enter++ | a score line or selection | Reads it into the running Csound now (`csoundReadScore`). Start times count from this moment, so `i "Pluck" 0 1 69 -9` sounds at once. |
+| ++alt+enter++ | `<CsOptions>` | Sends nothing. The box says that options apply at the next launch. |
 | Stop | | Ends the performance and frees the Csound. |
 
-alt/option-Enter needs the box to be playing, and says so if it is not. Errors from any of these, Csound's
+++alt+enter++ needs the box to be playing, and says so if it is not. Errors from any of these, Csound's
 own messages, are marked on the box line they belong to.
 
 ### Completion
 
-Ctrl-Space offers Csound's opcodes under the heading **Csound opcodes**. Each row shows the
+++ctrl+space++ offers Csound's opcodes under the heading **Csound opcodes**. Each row shows the
 manual's shortest syntax line for it, named the way the manual names arguments. The panel beside
 the list shows the manual's one-line description, every syntax line, the arguments with a
 sentence each, the manual section and a link to the page. An opcode the manual does not describe

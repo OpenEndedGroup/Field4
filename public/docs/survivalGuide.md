@@ -78,7 +78,7 @@ check("hello world" in text && "55" in text) { "the intro's runs did not print h
 
 Press `f1` in the editor to search Field's commands, including the other ways to run code.
 
-A box is one of the rectangles on the canvas, the area behind the editor; it holds the code you type into the editor. Field distinguishes between running code (a line or two, or the whole box) and _launching_ it. Run code executes once and finishes. Launched code can keep going: a `loop { }` in a launched box runs again on every frame of Field's animation loop, which is why the frame count at the end of the video keeps climbing until you stop the box (`alt-down`).
+A box is one of the rectangles on the canvas, the area behind the editor; it holds the code you type into the editor. Field distinguishes between running code (a line or two, or the whole box) and _launching_ it. Run code executes once and finishes. Launched code can keep going: a `loop { }` in a launched box runs again on every frame of Field's animation loop, which is why the frame count at the end of the video keeps climbing until you stop the box (++alt+arrow-down++).
 
 [Running code in a box](running_code.md) is what happens behind that distinction: what Field does
 to your text before the compiler sees it, how a child box sees its parent's values, and where a
@@ -90,7 +90,7 @@ Field saves your document about every 5 seconds whenever something has changed.
 
 Reloading the page reconnects you to Field but does not restart it: whatever you launched is still running.
 
-To restart Field, press `ctrl-c` in the terminal you launched it from and start it again, or choose quit on the welcome page.
+To restart Field, press ++ctrl+c++ in the terminal you launched it from and start it again, or choose quit on the welcome page.
 
 To change what document you are looking at, go back to the welcome tab — the `+` at the end of the tab strip opens one if you've closed it.
 
@@ -110,13 +110,13 @@ ui.press("F1")
 ui.pause(1600)
 ```
 
-Opened from the canvas instead, the palette offers commands that act on boxes. Two of them keep boxes for reuse: **Save selection as template** stores the selected boxes as a template, a named copy you can add to any document, and **Insert template** (`cmd+t`) adds one; see [Templates](templates.md).
+Opened from the canvas instead, the palette offers commands that act on boxes. Two of them keep boxes for reuse: **Save selection as template** stores the selected boxes as a template, a named copy you can add to any document, and **Insert template** (++cmd+t++) adds one; see [Templates](templates.md).
 
 For its main code-writing experience _Field·4_ wraps the [Monaco text editor](https://microsoft.github.io/monaco-editor/) — just like everyone else is doing these days — so there's a pretty rich set of ways of interacting with code built-in. But there are some advanced features to discover — inline printing, AI-chat (if you have an OpenAI Platform Key), number increment and decrement shortcuts, configurable code blocks.
 
 ## Autocomplete
 
-One of the most useful keyboard shortcuts of all is autocomplete — `ctrl-space`. Use it to provide ideas about what you might type, and documentation about those things:
+One of the most useful keyboard shortcuts of all is autocomplete — ++ctrl+space++. Use it to provide ideas about what you might type, and documentation about those things:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="editor" warm-completion=true screenshot="assets/autocomplete.png" wait="0" timeout="90" embed=true hidden=true name="autocomplete"}
 ui.eval(
