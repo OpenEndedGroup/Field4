@@ -322,9 +322,14 @@
         #glb-status.is-error { color: #ff7777; }
         #feature-region-box { position: fixed; border: 1px dashed #fff; pointer-events: none; z-index: 8; }
         .viewer-tool select { font: inherit; color: var(--ink); background: #242424; border: 0; border-radius: 6px; }
-        #hud-left { flex: 1; min-width: 0; flex-wrap: wrap; }
+        /* The two sides share the top row when the controls actually showing fit on it, and the right
+           side moves to a row of its own when they do not. This used to be a 760px media query, which
+           split the rows by frame width alone: a view that asked for few controls still wrapped as if
+           it carried all of them. */
+        #hud { flex-wrap: wrap; }
+        #hud-left { flex: 1 1 auto; min-width: 0; flex-wrap: wrap; }
         #hud-right { flex-shrink: 1; }
-        @media (max-width: 760px) { #hud { flex-wrap: wrap; } #hud-left, #hud-right { flex-basis: 100%; max-width: 100%; } }
+        @media (max-width: 760px) { #hud-right { max-width: 100%; } }
         /* Published views have fewer tools, so both sides fit on the top row in a box. */
         @media (min-width: 440px) {
             body.publication #hud { flex-wrap: nowrap; }
@@ -489,11 +494,27 @@ if (isPublication) {
 const xrayState = { enabled: urlParams.get('xray') === '1', opacity: .12 };
 const xrayToggle = document.getElementById('xray-toggle');
 const xrayOpacity = document.getElementById('xray-opacity');
+// Which of the viewer's own controls the toolbar shows (`ThreeControls` in ThreeJsViewer.kt). None unless
+// the box asked, so a plain view is a picture you can orbit. E shows every one until it is pressed
+// again; `hud(false)` hides the HUD whatever this says. A view set up for linking or inspecting shows
+// that control without asking, and a linked view keeps its button so it can be unlinked.
+let controlsPayload = {}, controlsRevealed = false;
+function controlShown(name) {
+    if (controlsRevealed || controlsPayload.controls?.[name]) return true;
+    if (name === 'linkCamera') return !!controlsPayload.cameraLink || cameraLinkOn;
+    if (name === 'parts') return !!controlsPayload.inspector?.enabled;
+    return false;
+}
+function controlsHud() { xrayHud(); featureHud(); inspectorPartHud(); }
 function xrayHud() {
-    document.getElementById('xray-tools').classList.toggle('hidden', !editorState.uiVisible);
+    const xray = controlShown('xray'), glb = controlShown('export'), link = controlShown('linkCamera');
+    document.getElementById('xray-tools').classList.toggle('hidden', !(xray || glb || link));
+    xrayToggle.classList.toggle('hidden', !xray);
+    document.getElementById('export-glb').classList.toggle('hidden', !glb);
+    document.getElementById('camera-link').classList.toggle('hidden', !link);
     xrayToggle.classList.toggle('is-active', xrayState.enabled);
     xrayToggle.setAttribute('aria-pressed', String(xrayState.enabled));
-    document.getElementById('xray-opacity-wrap').classList.toggle('hidden', !xrayState.enabled);
+    document.getElementById('xray-opacity-wrap').classList.toggle('hidden', !xray || !xrayState.enabled);
     xrayOpacity.value = String(Math.round(xrayState.opacity * 100));
     document.getElementById('xray-readout').textContent = Math.round(xrayState.opacity * 100) + '%';
 }
@@ -749,7 +770,7 @@ const cameraLink = createCameraLink({
         cameraLinkButton.textContent=state.enabled?'Camera linked':'Link camera';
         cameraLinkButton.title=state.enabled?'Orbit, pan and zoom are shared with linked views in this document. Click to unlink.':
             'Link cameras with other opted-in views in this document; display and notes stay independent';
-        if (state.enabled !== cameraLinkOn) { cameraLinkOn = state.enabled; turntable.linked(state.enabled); }
+        if (state.enabled !== cameraLinkOn) { cameraLinkOn = state.enabled; turntable.linked(state.enabled); xrayHud(); }
     }
 });
 // `linkCamera()` starts the view linked. A request applies when it changes, so re-running the box
@@ -1056,7 +1077,6 @@ const HANDLE_HIT_RADIUS_PX = 9;
 
 const editorState = {
     mode: 'camera',
-    uiVisible: true,
     scene: null,
     selection: new Set(),
     mask: { point: true, edge: true, face: true },
@@ -1338,7 +1358,7 @@ function selectionRefs(state) {
 }
 
 function updateSelectionStatus() {
-    if (editorState.mode !== 'edit' || !editorState.scene || !editorState.uiVisible) {
+    if (editorState.mode !== 'edit' || !editorState.scene) {
         selectionStatusEl.classList.add('hidden');
         return;
     }
@@ -4309,7 +4329,7 @@ function renderEditableOverlay() {
     requestRender();
     clearGroup(editorOverlayRoot);
     editableHitObjects = [];
-    if (editorState.mode !== 'edit' || !editorState.scene || !editorState.uiVisible) {
+    if (editorState.mode !== 'edit' || !editorState.scene) {
         updateSelectionStatus();
         return;
     }
@@ -5310,7 +5330,8 @@ function featureHud() {
     document.getElementById('feature-angle-wrap').classList.toggle('hidden',featureModeEl.value!=='region' && s?.kind!=='region');
     if(s?.region)document.getElementById('feature-angle').value=String(s.region.angle);
     document.getElementById('feature-angle-value').textContent=document.getElementById('feature-angle').value+'°';
-    document.getElementById('feature-tools').classList.toggle('hidden',!featureIdentity() || !editorState.uiVisible);
+    const reviewShown=controlShown('review');
+    document.getElementById('feature-tools').classList.toggle('hidden',!featureIdentity() || !reviewShown);
     const sheet=panelState.cameras.length>1, rectangle=featureModeEl.querySelector('option[value="region"]');
     if(rectangle){rectangle.disabled=sheet;rectangle.title=sheet?'Rectangle review needs a single viewport':'';}
     if(sheet&&featureModeEl.value==='region')featureModeEl.value='off';
@@ -5559,7 +5580,25 @@ function inspectorPartHud() {
     const scroll = host.querySelector('.part-list')?.scrollTop || 0;
     host.replaceChildren(); partControls = [];
     const tree = inspectorPartTree();
-    host.classList.toggle('hidden', !tree.ids.length);
+    const motions = (inspectorState.spec || {}).assembly || [];
+    // A one-part list has nothing to show, hide or solo.
+    const partsShown = controlShown('parts') && tree.leaves.length > 1, lightShown = controlShown('light');
+    host.classList.toggle('hidden', !tree.ids.length || !(partsShown || lightShown || motions.length));
+    if (partsShown) inspectorPartList(host, tree, wasOpen, scroll);
+    if (motions.length) {
+        const label = document.createElement('label'), slider = document.createElement('input');
+        slider.type = 'range'; slider.min = '0'; slider.max = String(motions.length); slider.step = '.01';
+        slider.value = String(inspectorState.assemblyStep ?? motions.length); slider.setAttribute('aria-label','Checked insertion order');
+        slider.oninput = () => { inspectorState.assemblyStep = Number(slider.value); inspectorRefresh(); };
+        label.append(document.createTextNode('Insertion order'),slider);host.append(label);
+    }
+    if (!lightShown) return;
+    const light = document.createElement('input'); light.type = 'range'; light.min = '0'; light.max = '360'; light.value=String((Math.atan2(keyLight.position.z,keyLight.position.x)*180/Math.PI+360)%360);
+    light.setAttribute('aria-label','Grazing light direction'); light.oninput = () => { const a=Number(light.value)*Math.PI/180;keyLight.position.set(Math.cos(a)*10,1,Math.sin(a)*10); requestRender(); };
+    const lightLabel = document.createElement('label');
+    lightLabel.append(document.createTextNode('Light'),light); host.append(lightLabel);
+}
+function inspectorPartList(host, tree, wasOpen, scroll) {
     const details = document.createElement('details'); details.open = wasOpen;
     const summary = document.createElement('summary'); summary.textContent = 'Parts (' + tree.leaves.length + ')';
     const partHost = document.createElement('div'); partHost.className = 'part-list';
@@ -5592,18 +5631,6 @@ function inspectorPartHud() {
         if(node.children.length) { parent.append(children); node.children.forEach(child=>append(child,children)); }
     }
     tree.children.forEach(node=>append(node,partHost)); inspectorPartsSync(); partHost.scrollTop=scroll;
-    const motions = (inspectorState.spec || {}).assembly || [];
-    if (motions.length) {
-        const label = document.createElement('label'), slider = document.createElement('input');
-        slider.type = 'range'; slider.min = '0'; slider.max = String(motions.length); slider.step = '.01';
-        slider.value = String(inspectorState.assemblyStep ?? motions.length); slider.setAttribute('aria-label','Checked insertion order');
-        slider.oninput = () => { inspectorState.assemblyStep = Number(slider.value); inspectorRefresh(); };
-        label.append(document.createTextNode('Insertion order'),slider);host.append(label);
-    }
-    const light = document.createElement('input'); light.type = 'range'; light.min = '0'; light.max = '360'; light.value=String((Math.atan2(keyLight.position.z,keyLight.position.x)*180/Math.PI+360)%360);
-    light.setAttribute('aria-label','Grazing light direction'); light.oninput = () => { const a=Number(light.value)*Math.PI/180;keyLight.position.set(Math.cos(a)*10,1,Math.sin(a)*10); requestRender(); };
-    const lightLabel = document.createElement('label');
-    lightLabel.append(document.createTextNode('Light'),light); host.append(lightLabel);
 }
 window.FieldInspector = Object.freeze({ snapshot: inspectorSnapshot, restore: inspectorRestore,
     pick:featurePick, region:featureRegion, select:featureSet, review:featureReview,
@@ -5641,7 +5668,7 @@ function inspectorUpdateHud() {
     const spec = inspectorState.spec;
     const on = !!(spec && spec.enabled);
     featureHud();
-    inspectorGroupEl.classList.toggle('hidden', !on || !editorState.uiVisible);
+    inspectorGroupEl.classList.toggle('hidden', !on);
     if (!on) {
         renderer.localClippingEnabled = false;
         inspectorSetStatus('');
@@ -5993,26 +6020,21 @@ function setMode(mode) {
     modeGroupEl.querySelectorAll('[data-mode]').forEach((button) => {
         button.classList.toggle('is-active', button.getAttribute('data-mode') === mode);
     });
-    maskGroupEl.classList.toggle('hidden', mode !== 'edit' || !editorState.uiVisible);
+    maskGroupEl.classList.toggle('hidden', mode !== 'edit');
     if (mode !== 'edit') hideMarquee();
     renderEditableOverlay();
 }
 
 function updateEditableHud() {
     xrayHud();
-    document.getElementById("viewer-tools").classList.toggle("hidden", !editorState.uiVisible);
     const editable = !!payloadState.editableEnabled;
-    modeGroupEl.classList.toggle('hidden', !editable || !editorState.uiVisible);
+    modeGroupEl.classList.toggle('hidden', !editable);
     if (!editable) {
         maskGroupEl.classList.add('hidden');
         selectionStatusEl.classList.add('hidden');
         controls.enabled = true;
         editorState.mode = 'camera';
     } else {
-        if (!editorState.uiVisible) {
-            maskGroupEl.classList.add('hidden');
-            selectionStatusEl.classList.add('hidden');
-        }
         setMode(editorState.mode === 'edit' ? 'edit' : 'camera');
     }
 }
@@ -6315,6 +6337,7 @@ function applyGeometry(payload) {
     captureState = {ready:settled, error:null, revision:payload.revision || payload.inspector?.artifactDigest || null, settleKey};
     requestRender();
     payloadState = payload;
+    controlsPayload = payload;
     editorState.pointerDown = null;
     editorState.dragging = null;
     editorState.marquee = null;
@@ -6656,9 +6679,9 @@ renderer.domElement.addEventListener('keydown', (event) => {
     if (event.key !== 'e' && event.key !== 'E') return;
     const target = event.target;
     if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
-    editorState.uiVisible = !editorState.uiVisible;
-    updateEditableHud();
-    renderEditableOverlay();
+    // E shows every toolbar control the box did not ask for, and pressing it again puts them away.
+    controlsRevealed = !controlsRevealed;
+    controlsHud();
     event.preventDefault();
     event.stopPropagation();
 });

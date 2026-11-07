@@ -2,7 +2,7 @@
 
 The Three.js viewer can attach a note to a surface point, face, edge, vertex or rectangular region. The note identifies the geometry and keeps the view in which you saw it, so another person or an agent can return to the same feature.
 
-This works with ordinary meshes, FLine strokes and point buffers, as well as construction solids. There is no construction-specific setup to enable the **Pick** control.
+This works with ordinary meshes, FLine strokes and point buffers, as well as construction solids. Put **Pick** on a view's toolbar with `controls(review = true)`, or press **E** in any view to show it; there is no construction-specific setup.
 
 ## Make a selection
 

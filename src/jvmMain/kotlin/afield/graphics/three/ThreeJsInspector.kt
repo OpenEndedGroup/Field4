@@ -286,6 +286,7 @@ class ThreeInspectorView internal constructor(
     private val samplesPerCubic: Int,
     private val autoFrame: Boolean,
     private var inspector: ThreeInspector,
+    private val controls: ThreeControls = ThreeControls(),
 ) {
     val uid: String get() = state.uid
 
@@ -304,7 +305,7 @@ class ThreeInspectorView internal constructor(
                 editable = false,
                 groupKeys = groupKeys,
                 inspector = next,
-            )
+            ).copy(controls = controls)
         )
         return this
     }
@@ -383,6 +384,8 @@ class ThreeInspectorView internal constructor(
  * [afield.graphics.render.label], which is what the `panel-*` documents already set, falling back to one group
  * per line for unlabelled figures — so an existing figure explodes sensibly with no extra work.
  * @param units appended to every dimension: `"mm"`.
+ * @param controls further toolbar controls to show; measure, section, explode and Parts come with the
+ * inspector. See [ThreeControls].
  */
 fun Box.threeInspect(
     lines: Collection<FLine>,
@@ -398,6 +401,7 @@ fun Box.threeInspect(
     units: String = "",
     decimals: Int = 2,
     pickToMeasure: Boolean = true,
+    controls: ThreeControls = ThreeControls(),
 ): ThreeInspectorView {
     val sourceLines = lines.toList()
     val groupKeys = sourceLines.mapIndexed { index, line ->
@@ -421,8 +425,9 @@ fun Box.threeInspect(
         samplesPerCubic = samplesPerCubic,
         autoFrame = autoFrame,
         editable = false,
+        controls = controls,
     )
-    return ThreeInspectorView(view, sourceLines, groupKeys, samplesPerCubic, autoFrame, inspector).set(inspector)
+    return ThreeInspectorView(view, sourceLines, groupKeys, samplesPerCubic, autoFrame, inspector, controls).set(inspector)
 }
 
 /**
