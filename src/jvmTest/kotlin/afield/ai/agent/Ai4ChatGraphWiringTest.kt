@@ -103,6 +103,23 @@ class Ai4ChatGraphWiringTest {
         assertNotNull(info.boxes[me.uid])
     }
 
+    /** The knight-tour session's two slips, replayed through the write tools: each is noted once, where it is written. */
+    @Test
+    fun writesThatReachForAGenericIdiomCarryANoteOnce() {
+        val info = document()
+        val tools = FieldGraphTools(info, host)
+        tools.newBox(NewBoxRequest("tours", code = "val tile = fline { moveTo(0, 0); lineTo(10, 20) }\nlines(tile)"))
+        val svg = tools.newBox(NewBoxRequest("growth", code = "display(\"growth\", \"<svg xmlns='http://www.w3.org/2000/svg'></svg>\")"))
+        assertTrue(svg.success && svg.notes.single().contains("draw with FLines") && "Note:" in svg.message, svg.message)
+        val redrawn = tools.setProperty(SetBoxPropertyRequest("growth", "code", "lines(fline { moveTo(0, 0); lineTo(5, 5) })"))
+        assertTrue(redrawn.notes.isEmpty(), redrawn.message)
+        val point = "data class Point2(val x: Double, val y: Double) { operator fun plus(p: Point2) = Point2(x + p.x, y + p.y) }\nval a = 1"
+        val made = tools.newBox(NewBoxRequest("lines", code = point))
+        assertTrue(made.notes.single().contains("`Point2` is a hand-made 2D vector"), made.message)
+        val edited = tools.patchText(PatchBoxTextRequest("lines", find = "val a = 1", replace = "val a = 2"))
+        assertTrue(edited.success && edited.notes.isEmpty(), "an edit that leaves the class alone is not noted again: ${edited.message}")
+    }
+
     @Test
     fun patchEditsInPlaceAndRefusesWhatItCannotDoExactly() {
         val info = document()

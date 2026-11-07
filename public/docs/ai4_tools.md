@@ -60,6 +60,12 @@ A second box, made as a child of the first, reads that value as `_speed` and dra
 }
 ```
 
+Wave draws with an SVG string, which suits a document like this one. When the code a box tool writes
+reaches past something Field already has, the result says so in `notes`, and the message repeats it:
+a class of two numbers with its own `plus` (Field has `vec(x, y)`), or SVG drawn by hand in a document
+whose other boxes draw with FLines. The note does not block the write. It appears only on the write
+that introduces the pattern, not on every later edit.
+
 Tools take a box's name wherever they take its uid, as long as the name is unique. `RunBoxRequest`
 compiles and runs the code and waits for the verdict.
 
