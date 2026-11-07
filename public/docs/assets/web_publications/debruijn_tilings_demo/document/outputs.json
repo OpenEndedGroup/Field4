@@ -1,0 +1,103 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-07T13:26:06.682Z",
+  "documentName": "debruijn_tilings_demo",
+  "outputs": [
+    {
+      "uid": "debruijn_slider",
+      "channel": "offset",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 469,
+      "height": 60,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "debruijn_slider",
+      "channel": "symmetry",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 469,
+      "height": 60,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "debruijn_slider",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "debruijn_penrose",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "debruijn_relief",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 768,
+      "height": 528,
+      "path": "outputs/4.html"
+    },
+    {
+      "uid": "debruijn_ribbon",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/5.html"
+    },
+    {
+      "uid": "debruijn_gallery",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 838,
+      "height": 931,
+      "path": "outputs/6.html"
+    },
+    {
+      "uid": "debruijn_plotter",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/7.html"
+    }
+  ]
+}
