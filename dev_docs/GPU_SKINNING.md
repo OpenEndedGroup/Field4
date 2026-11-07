@@ -219,7 +219,7 @@ So the only arithmetic the GPU adds is the blend, and a disagreement with
 
 - `AfSkinDual { vec4 v[]; }` — **5 `vec4` per (instance, bone)**, 80 bytes, slice base
   `(instance·boneCount + bone)·5`: `real.xyzw`, `dual.xyzw`, then the residual 3×3 `S` as three
-  columns in JOML order (`m00 m01 m02 _`, `m10 m11 m12 _`, `m20 m21 m22 _`). Rigid joints get the
+  columns in `afield.math.linalg` matrix order (`m00 m01 m02 _`, `m10 m11 m12 _`, `m20 m21 m22 _`). Rigid joints get the
   identity. Five and not four because a degenerate joint (an axis scaled to nothing) hands its
   whole 3×3 over as the residual; the upper-triangular Gram-Schmidt residual alone would fit in 14
   floats, the degenerate one does not.

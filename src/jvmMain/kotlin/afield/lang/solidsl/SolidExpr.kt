@@ -365,8 +365,8 @@ sealed interface Profile {
 /**
  * An immutable 2D point, in `Double`.
  *
- * [Vec2] would have been the obvious choice and is the wrong one: it is `org.joml.Vector2f`, it is
- * mutable, and it is `Float`. A symbolic expression whose leaves someone else can move is not
+ * [Vec2] would have been the obvious choice and is the wrong one: it is `afield.math.linalg.Vector2f`,
+ * it is mutable, and it is `Float`. A symbolic expression whose leaves someone else can move is not
  * symbolic, and the profile coordinates go straight into Clipper, which works in `Double`.
  */
 data class P2(val x: Double, val y: Double) {

@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 21191 of 35948 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 21258 of 36082 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**1970 undocumented entry points** (types, top-level functions and values) and 12123 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**1977 undocumented entry points** (types, top-level functions and values) and 12183 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -54,8 +54,9 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Phased.kt](../src/jvmMain/kotlin/afield/runtime/lifecycle/Phased.kt) | Workspace | animation_time_model | 6 | 12 | 47% |
 | [SolidExpr.kt](../src/jvmMain/kotlin/afield/lang/solidsl/SolidExpr.kt) | Graphics | solid_notation, manifold | 6 | 11 | 77% |
 | [Structure.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/buffers/Structure.kt) | Graphics | gpu_schema, running_code | 5 | 31 | 33% |
+| [MemoryTools.kt](../src/jvmMain/kotlin/afield/ai/tools/MemoryTools.kt) | AI4 | ai4_tools | 5 | 26 | 29% |
+| [Solver.kt](../src/jvmMain/kotlin/afield/simulation/physics/pressure/Solver.kt) | Simulation | pressure_membranes | 5 | 16 | 12% |
 | [keyframes.kt](../src/jvmMain/kotlin/afield/animation/keyframes/keyframes.kt) | Graphics | keyframe_editor, agent_transcripts | 5 | 12 | 66% |
-| [Solver.kt](../src/jvmMain/kotlin/afield/simulation/physics/pressure/Solver.kt) | Simulation | pressure_membranes | 5 | 12 | 14% |
 | [nesting.kt](../src/jvmMain/kotlin/afield/document/graph/nesting.kt) | Workspace | visualizers | 5 | 0 | 50% |
 | [ParamQuery.kt](../src/jvmMain/kotlin/afield/audio/synth/ParamQuery.kt) | Synthesis | graph_query | 4 | 46 | 8% |
 | [KratosSession.kt](../src/jvmMain/kotlin/afield/simulation/kratos/KratosSession.kt) | Simulation | tetgen | 4 | 44 | 29% |
@@ -292,7 +293,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [callbacks.kt](../src/jvmMain/kotlin/afield/ui/output/callbacks.kt) | Visualization | — | 8 | 0 | 0% |
 | [AbletonSetDebugDrawing.kt](../src/jvmMain/kotlin/afield/audio/synth/AbletonSetDebugDrawing.kt) | Audio | — | 7 | 19 | 0% |
 | [ReturnValueRegistry.kt](../src/jvmMain/kotlin/afield/runtime/execution/ReturnValueRegistry.kt) | Workspace | — | 7 | 2 | 9% |
-| [AgentTask.kt](../src/jvmMain/kotlin/afield/ai/agent/AgentTask.kt) | AI4 | — | 6 | 40 | 45% |
+| [AgentTask.kt](../src/jvmMain/kotlin/afield/ai/agent/AgentTask.kt) | AI4 | — | 6 | 40 | 47% |
 | [Sampling.kt](../src/jvmMain/kotlin/afield/audio/synth/Sampling.kt) | Synthesis | — | 6 | 39 | 38% |
 | [screenshot.kt](../src/jvmMain/kotlin/afield/tools/docs/screenshot.kt) | Workspace | — | 6 | 19 | 50% |
 | [LinalgSerialization.kt](../src/jvmMain/kotlin/afield/document/persistence/LinalgSerialization.kt) | Workspace | — | 6 | 15 | 4% |
@@ -357,6 +358,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [docsAnnotations.kt](../src/jvmMain/kotlin/afield/app/server/docsAnnotations.kt) | Workspace | — | 2 | 23 | 37% |
 | [BoxAiTools.kt](../src/jvmMain/kotlin/afield/ai/tools/BoxAiTools.kt) | AI4 | — | 2 | 21 | 60% |
 | [MotionSession.kt](../src/jvmMain/kotlin/afield/animation/mocap/MotionSession.kt) | Animation | — | 2 | 21 | 20% |
+| [MemoryEval.kt](../src/jvmMain/kotlin/afield/ai/agent/MemoryEval.kt) | AI4 | — | 2 | 19 | 44% |
 | [Window.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/util/Window.kt) | Graphics | — | 2 | 19 | 40% |
 | [ToolEvidence.kt](../src/jvmMain/kotlin/afield/ai/tools/program/ToolEvidence.kt) | AI4 | — | 2 | 15 | 15% |
 | [LeastSquares.kt](../src/jvmMain/kotlin/afield/math/optimization/LeastSquares.kt) | Math | — | 2 | 15 | 10% |
@@ -671,6 +673,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [AgentWorktreeManager.kt](../src/jvmMain/kotlin/afield/tools/automation/AgentWorktreeManager.kt) | Workspace | — | 0 | 8 | 11% |
 | [NotationScene.kt](../src/jvmMain/kotlin/afield/ui/notation/NotationScene.kt) | Visualization | — | 0 | 8 | 42% |
 | [GeometryFinding.kt](../src/jvmMain/kotlin/afield/ui/visualization/GeometryFinding.kt) | Visualization | — | 0 | 8 | 11% |
+| [Dreaming.kt](../src/jvmMain/kotlin/afield/ai/memory/Dreaming.kt) | Machine learning | — | 0 | 7 | 61% |
 | [BoxOutputLog.kt](../src/jvmMain/kotlin/afield/app/diagnostics/BoxOutputLog.kt) | Workspace | — | 0 | 7 | 50% |
 | [Scene.kt](../src/jvmMain/kotlin/afield/audio/spatial/steamaudio/Scene.kt) | Audio | — | 0 | 7 | 73% |
 | [HarmonicPhaseTracker.kt](../src/jvmMain/kotlin/afield/audio/synth/HarmonicPhaseTracker.kt) | Synthesis | — | 0 | 7 | 74% |
@@ -764,6 +767,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [SimulationResult.kt](../src/jvmMain/kotlin/afield/simulation/kratos/SimulationResult.kt) | Simulation | — | 0 | 4 | 87% |
 | [AgentTranscriptLayoutGuard.kt](../src/jvmMain/kotlin/afield/tools/docs/AgentTranscriptLayoutGuard.kt) | Workspace | — | 0 | 4 | 33% |
 | [FilestoreDir.kt](../src/jvmMain/kotlin/afield/ai/knowledge/FilestoreDir.kt) | AI4 | — | 0 | 3 | 66% |
+| [UserMemory.kt](../src/jvmMain/kotlin/afield/ai/memory/UserMemory.kt) | Machine learning | — | 0 | 3 | 76% |
 | [AnthropicBridge.kt](../src/jvmMain/kotlin/afield/ai/models/AnthropicBridge.kt) | AI4 | — | 0 | 3 | 40% |
 | [RelatedContextDiscovery.kt](../src/jvmMain/kotlin/afield/ai/retrieval/RelatedContextDiscovery.kt) | Machine learning | — | 0 | 3 | 40% |
 | [AskUserTools.kt](../src/jvmMain/kotlin/afield/ai/tools/AskUserTools.kt) | AI4 | — | 0 | 3 | 40% |
@@ -882,6 +886,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [PetriSmokeTest.kt](../src/jvmMain/kotlin/afield/simulation/petri/PetriSmokeTest.kt) | Simulation | — | 0 | 2 | 33% |
 | [StudyReport.kt](../src/jvmMain/kotlin/afield/study/evidence/StudyReport.kt) | Workspace | — | 0 | 2 | 33% |
 | [StudyKnob.kt](../src/jvmMain/kotlin/afield/study/ui/StudyKnob.kt) | Workspace | — | 0 | 2 | 81% |
+| [Ai4ChatAutocomplete.kt](../src/jvmMain/kotlin/afield/ai/completion/Ai4ChatAutocomplete.kt) | AI4 | — | 0 | 1 | 66% |
 | [ClipSmokeTest.kt](../src/jvmMain/kotlin/afield/ai/inference/onnx/ClipSmokeTest.kt) | Machine learning | — | 0 | 1 | 50% |
 | [LpipsSmokeTest.kt](../src/jvmMain/kotlin/afield/ai/inference/onnx/LpipsSmokeTest.kt) | Machine learning | — | 0 | 1 | 50% |
 | [OnnxSmokeTest.kt](../src/jvmMain/kotlin/afield/ai/inference/onnx/OnnxSmokeTest.kt) | Machine learning | — | 0 | 1 | 50% |
@@ -1104,12 +1109,17 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `ViewBoxOutputRequest` | class | `src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt:146` |
 | `FieldBoxSummary` | class | `src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt:156` |
 | `FieldOutputEntry` | class | `src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt:167` |
-| `FieldGraphTools` | class | `src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt:305` |
+| `FieldGraphTools` | class | `src/jvmMain/kotlin/afield/ai/agent/FieldGraphTools.kt:307` |
 | `BlockBoundary` | class | `src/jvmMain/kotlin/afield/ai/diagnostics/Logging.kt:51` |
 | `LogSink` | interface | `src/jvmMain/kotlin/afield/ai/diagnostics/Logging.kt:53` |
 | `NotifyLog` | class | `src/jvmMain/kotlin/afield/ai/diagnostics/Logging.kt:204` |
 | `TraceLogger` | class | `src/jvmMain/kotlin/afield/ai/diagnostics/Logging.kt:227` |
 | `AiToolIoLogger` | class | `src/jvmMain/kotlin/afield/ai/diagnostics/Logging.kt:307` |
+| `MemoryReadRequest` | class | `src/jvmMain/kotlin/afield/ai/tools/MemoryTools.kt:31` |
+| `MemoryWriteRequest` | class | `src/jvmMain/kotlin/afield/ai/tools/MemoryTools.kt:44` |
+| `MemoryDeleteRequest` | class | `src/jvmMain/kotlin/afield/ai/tools/MemoryTools.kt:67` |
+| `HistorySearchRequest` | class | `src/jvmMain/kotlin/afield/ai/tools/MemoryTools.kt:79` |
+| `HistoryReadRequest` | class | `src/jvmMain/kotlin/afield/ai/tools/MemoryTools.kt:93` |
 | `RepoStartCommandRequest` | class | `src/jvmMain/kotlin/afield/ai/tools/RepoCommandJobs.kt:209` |
 | `RepoCommandStatusRequest` | class | `src/jvmMain/kotlin/afield/ai/tools/RepoCommandJobs.kt:222` |
 | `RepoStopCommandRequest` | class | `src/jvmMain/kotlin/afield/ai/tools/RepoCommandJobs.kt:236` |
@@ -1204,10 +1214,5 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `SawOsc` | class | `src/jvmMain/kotlin/afield/audio/synth/Oscillators.kt:113` |
 | `SquareOsc` | class | `src/jvmMain/kotlin/afield/audio/synth/Oscillators.kt:140` |
 | `PulseOsc` | class | `src/jvmMain/kotlin/afield/audio/synth/Oscillators.kt:167` |
-| `TriOsc` | class | `src/jvmMain/kotlin/afield/audio/synth/Oscillators.kt:202` |
-| `SuperSaw` | class | `src/jvmMain/kotlin/afield/audio/synth/Oscillators.kt:234` |
-| `WavetableOsc` | class | `src/jvmMain/kotlin/afield/audio/synth/Oscillators.kt:888` |
-| `WhiteNoise` | class | `src/jvmMain/kotlin/afield/audio/synth/Oscillators.kt:981` |
-| `PinkNoise` | class | `src/jvmMain/kotlin/afield/audio/synth/Oscillators.kt:991` |
 
-…and **1850 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
+…and **1857 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.

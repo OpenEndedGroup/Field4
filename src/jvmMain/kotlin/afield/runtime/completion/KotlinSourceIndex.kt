@@ -645,6 +645,17 @@ object KotlinSourceIndex {
                                 kind, qualifiedName, lineNumber, kdoc, category,
                                 parsed.visibility, owner
                             )
+                            // `fun rotate(q: Quaternionfc): Matrix4f = …; fun rotation(q: Quaternionfc): Matrix4f { … }`:
+                            // the generated linalg packs members onto one line, and only the first used to be indexed
+                            // (130 declarations in Transforms.kt alone, 2026-11-07).
+                            if (constructorOwner == null) for (segment in sameLineDeclarations(rawLine)) {
+                                val more = parseDefinitionFromLine(segment) ?: continue
+                                if (more.kind != "fun" && more.kind != "val" && more.kind != "var") continue
+                                out += ParsedDefinition(
+                                    more.kind, if (owner != null) "$owner.${more.name}" else more.name, lineNumber, null,
+                                    more.completionCategory ?: category, more.visibility, owner
+                                )
+                            }
                         }
                     }
                 }
@@ -669,6 +680,31 @@ object KotlinSourceIndex {
             while (classStack.isNotEmpty() && state.depth < classStack.last().depth) {
                 classStack.removeLast()
             }
+        }
+        return out
+    }
+
+    /**
+     * The text after each `;` in [line] that sits outside every bracket, string and comment of that line:
+     * where a further declaration on the same line would begin. Empty for an ordinary one-declaration line.
+     */
+    internal fun sameLineDeclarations(line: String): List<String> {
+        if (';' !in line) return emptyList()
+        val out = mutableListOf<String>()
+        var depth = 0
+        var i = 0
+        var quote: Char? = null
+        while (i < line.length) {
+            val c = line[i]
+            when {
+                quote != null -> { if (c == '\\') i++ else if (c == quote) quote = null }
+                c == '"' || c == '\'' -> quote = c
+                c == '/' && line.startsWith("//", i) -> return out
+                c == '(' || c == '{' || c == '[' -> depth++
+                c == ')' || c == '}' || c == ']' -> depth--
+                c == ';' && depth == 0 -> out += line.substring(i + 1)
+            }
+            i++
         }
         return out
     }

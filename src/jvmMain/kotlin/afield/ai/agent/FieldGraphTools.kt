@@ -185,6 +185,8 @@ data class FieldGraphResult(
     val outputMarker: Long = 0,
     val found: Boolean? = null,
     val timedOut: Boolean = false,
+    /** What [BoxCodeIdiomNotes] says about code this call wrote; also appended to [message]. */
+    val notes: List<String> = emptyList(),
 )
 
 /**
@@ -408,7 +410,18 @@ class FieldGraphTools(
             true,
             "Created '${box.name}'" + (parent?.let { " under '${it.name}'" } ?: "") + ". It has not been run.",
             uid = box.id, name = box.name
-        )
+        ).noted(box, "code", req.code)
+    }
+
+    /**
+     * [this] with the [BoxCodeIdiomNotes] that [code], written to [box]'s [property], adds to what [previous] already
+     * had: a later edit of a box that still holds the idiom is not noted again.
+     */
+    private fun FieldGraphResult.noted(box: Box, property: String, code: String, previous: String = ""): FieldGraphResult {
+        if (property != "code" || code.isBlank()) return this
+        val others = { info.boxes.values.asSequence().filter { it !== box && live(it) }.mapNotNull { it.getPropertyRaw("code") as? String } }
+        val notes = BoxCodeIdiomNotes.notes(code, others()) - BoxCodeIdiomNotes.notes(previous, others()).toSet()
+        return if (notes.isEmpty()) this else copy(message = message + " Note: " + notes.joinToString(" "), notes = notes)
     }
 
     /**
@@ -440,11 +453,12 @@ class FieldGraphTools(
         require(req.value.length <= 2_000_000) { "Value is too large." }
         check(!info.readOnly) { "This document is read-only." }
         val value = if (req.property == "code") unwrapEditorScript(req.value) else req.value
+        val previous = (box.getPropertyRaw(req.property) as? String).orEmpty()
         applyAgentPropertyRecorded(box, req.property, JsonPrimitive(value), origin)
         needsResync.add(box to req.property)
         doResync()
         FieldGraphResult(true, "Set ${req.property} on '${box.name}' (${req.value.length} chars). Not run.",
-            uid = box.id, name = box.name, property = req.property)
+            uid = box.id, name = box.name, property = req.property).noted(box, req.property, value, previous)
     }
 
     fun patchText(req: PatchBoxTextRequest): FieldGraphResult = host.onOwner(info) {
@@ -503,7 +517,7 @@ class FieldGraphTools(
         needsResync.add(box to req.property)
         doResync()
         FieldGraphResult(true, "Patched ${req.property} on '${box.name}' (${before.length} -> ${after.length} chars). Not run.",
-            uid = box.id, name = box.name, property = req.property, value = after.takeIf { it.length <= 4000 })
+            uid = box.id, name = box.name, property = req.property, value = after.takeIf { it.length <= 4000 }).noted(box, req.property, after, before)
     }
 
     fun getProperty(req: GetBoxPropertyRequest): FieldGraphResult = host.onOwner(info) {

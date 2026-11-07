@@ -926,6 +926,32 @@ pre code {
     box-shadow: none;
 }
 
+/* Autocomplete (aiChatAutocomplete.js): a mirror laid over the textarea; its copy of the draft is invisible,
+   so only the suggestion after it shows, in the muted colour. Two classes, to outrank `.box * { position:
+   relative }` further down, which would put the mirror back in the flex row. */
+.ai-chat-input {
+    position: relative;
+}
+
+.ai-chat-input > .ai-chat-ghost {
+    display: none;
+    position: absolute;
+    box-sizing: border-box;
+    overflow: hidden;
+    pointer-events: none;
+    margin: 0;
+    border: 0;
+}
+
+.ai-chat-ghost-typed {
+    color: transparent;
+}
+
+.ai-chat-ghost-rest {
+    color: var(--field-fg-muted);
+    opacity: 0.8;
+}
+
 .ai-chat-input {
     &::-webkit-scrollbar {
         width: 8px;
