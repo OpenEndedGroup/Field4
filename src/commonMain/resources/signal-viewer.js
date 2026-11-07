@@ -44,7 +44,21 @@
   let rendering = Promise.resolve(), yRanges = {}, pointerTime = null, external = null, externalKind = 'hover', pinned = null;
   const listeners = new AbortController(), clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const on = (target, name, fn, options = {}) => target && target.addEventListener(name, fn, {...options, signal: listeners.signal});
-  const publish = (name, detail) => { if (group) bus.dispatchEvent(new bus.CustomEvent(name, {detail: {group, source: instance, ...detail}})); };
+  // config.timeCallback: report the time a box should draw at to the server (Kotlin `onTime`), over the
+  // controls' slider-update message. That is the hovered time while scrubbing, otherwise the playhead.
+  let hoverTime = null, playTime = null, sentTime = null;
+  const reportTime = detail => {
+    if (!config.timeCallback) return;
+    if (detail.kind === 'hover') hoverTime = detail.active === false ? null : detail.time; else if (detail.time != null) playTime = detail.time;
+    const t = hoverTime ?? playTime;
+    if (t == null || !Number.isFinite(t) || t === sentTime) return;
+    const send = window.sendSliderUpdate || (() => { try { return window.parent.sendSliderUpdate; } catch (_) { return null; } })();
+    if (send) { sentTime = t; send(config.timeCallback, t); }
+  };
+  const publish = (name, detail) => {
+    if (name === 'field-time-cursor') reportTime(detail);
+    if (group) bus.dispatchEvent(new bus.CustomEvent(name, {detail: {group, source: instance, ...detail}}));
+  };
   const num = v => {
     if (!Number.isFinite(v)) return '–';
     const a = Math.abs(v);

@@ -43,6 +43,7 @@ import afield.lang.stacksl.evolution.render
 import afield.media.image.channel
 import afield.document.graph.Box
 import afield.audio.engine.WavFloatArrayWriter
+import afield.ui.output.registerSliderCallback
 import java.util.Base64
 
 /**
@@ -131,6 +132,20 @@ data class AudioVisualizerOptions(
      * the ±1 axis; the axis ticks print whichever range is drawn.
      */
     val normalize: Boolean = false,
+    /**
+     * Called on the server with the time, in player seconds, that a box should show: the cursor
+     * while you hover or drag across the waveform, otherwise the playhead, which reports every
+     * animation frame while the audio plays. This is how box code draws in step with the player:
+     *
+     * ```kotlin
+     * var t = 0.0
+     * displayAudioBytes(bytes, options = AudioVisualizerOptions(onTime = { t = it }))
+     * loop { lines(drawingAt(t)) }
+     * ```
+     *
+     * The callback belongs to the run that displayed the player, and a rerun replaces it.
+     */
+    val onTime: ((Double) -> Unit)? = null,
 )
 
 /**
@@ -168,6 +183,9 @@ object AudioVisualizer {
                 "source" to "audio", "start" to 0.0, "end" to (duration ?: 0.0),
                 "initialStart" to options.initialStartSeconds, "initialDuration" to initialDuration,
                 "syncGroup" to options.syncGroup.orEmpty(), "syncOffset" to options.syncOffsetSeconds,
+                "timeCallback" to options.onTime?.let { onTime ->
+                    "audio-time-${java.util.UUID.randomUUID()}".also { registerSliderCallback(it, onTime) }
+                },
                 "label" to source.label.orEmpty(), "xUnit" to "clock", "interactive" to options.interactive,
                 "plotHeight" to options.waveformHeight + 36, "margin" to mapOf("l" to 40, "r" to 12),
                 "colors" to mapOf("primary" to options.accent),
