@@ -49,3 +49,6 @@ val Why.exampleThree by Whying() /*from:text1_example3*/ /**/
 var Box.exampleFour by Inheritance<ReadingExample>() /*from:text1_example4*/ /**/
 val Once.exampleFour by Onceing<ReadingExample>() /*from:text1_example4*/ /**/
 val Why.exampleFour by Whying() /*from:text1_example4*/ /**/
+var Box.exampleFive by Inheritance<ReadingExample>() /*from:text1_typography*/ /**/
+val Once.exampleFive by Onceing<ReadingExample>() /*from:text1_typography*/ /**/
+val Why.exampleFive by Whying() /*from:text1_typography*/ /**/

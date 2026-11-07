@@ -173,7 +173,8 @@ float slug_Render(vec2 renderCoord, vec4 bandTransform, ivec2 glyphLoc, ivec2 ba
 
 // The fill colour. Replace it with any procedural fill; coverage is computed independently of it.
 vec3 shade(vec2 q) {
-    return pc.tint.rgb;
+    // White ink; glyph coverage and score-driven opacity remain independent.
+    return vec3(1.0);
 }
 void main() {
     ivec2 loc = ivec2(pc.slugData.words[16], pc.slugData.words[17]);
