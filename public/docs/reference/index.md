@@ -655,7 +655,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**35948 public symbols across 1639 source files**, 21104 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**35948 public symbols across 1639 source files**, 21105 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -683,7 +683,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Audio](audio.md) | 80 | 2122 | 1039 (48%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 22 | 586 | 586 (100%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 123 | 3103 | 1527 (49%) | Field's small languages, from the host side. |
-| [Workspace](workspace.md) | 238 | 3211 | 1292 (40%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
+| [Workspace](workspace.md) | 238 | 3211 | 1293 (40%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [Machine learning](machine-learning.md) | 114 | 2673 | 1052 (39%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 | [Animation](animation.md) | 10 | 178 | 41 (23%) |  |
 | [Execution](execution.md) | 2 | 9 | 9 (100%) |  |
@@ -1950,7 +1950,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>io/<wbr>dmx/<wbr></small> [SceneOnARig.kt](lighting.md#sceneonarig-kt) | Lighting | 16 | 16 | A RectSL scene driven onto a light rig over sACN, and measured end to end. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>animation/<wbr>motion/<wbr></small> [Score.kt](simulation.md#score-kt) | Simulation | 81 | 49 | The canvas as a score: boxes are the events, a playhead box sweeps across them, and each box's `score { }` runs every frame the playhead is over it. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>runtime/<wbr>lifecycle/<wbr></small> [scratch.kt](internal.md#scratch-kt) | Internal · internal | 4 | 2 |  | [Running code in a box](../running_code.md), [Why does this value resolve here?](../why.md) |
-| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>tools/<wbr>docs/<wbr></small> [screenshot.kt](workspace.md#screenshot-kt) | Workspace · internal | 54 | 26 | Screenshot and video capture of Field's browser UI, used by the backdoor and the docs runner. |  |
+| <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>tools/<wbr>docs/<wbr></small> [screenshot.kt](workspace.md#screenshot-kt) | Workspace · internal | 54 | 27 | Screenshot and video capture of Field's browser UI, used by the backdoor and the docs runner. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>models/<wbr></small> [ScriptedLlmBridge.kt](machine-learning.md#scriptedllmbridge-kt) | Machine learning | 8 | 3 | An `LlmBridge` that replays a fixed script of tool calls instead of asking a model. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>study/<wbr>search/<wbr></small> [SearchComparison.kt](search.md#searchcomparison-kt) | Search | 31 | 31 | Equal-budget comparison of search drivers for any `GenomeOps` and `Objective`: "does search beat random sampling here?" | [Spatial artificial life](../alife_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>solid/<wbr>manifold/<wbr></small> [Section.kt](graphics.md#section-kt) | Graphics | 31 | 19 | 2D regions with holes, from Manifold's `CrossSection`: boolean operations, offsetting with a choice of `JoinType`, and extrusion into a `Solid`. |  |
