@@ -81,7 +81,7 @@ into a **1-based position**, or `0` for "this type said nothing". Resolution:
 The qualified name comes from the candidate itself when the Analysis API served the completion. When the
 K1 fallback did, no candidate carries one, and the server resolves the caret's receiver itself instead:
 the live value's own class, else the declared type, else the constructor called to make it. Otherwise
-the prior would be absent for the first `ctrl-space` after launch (see
+the prior would be absent for the first ++ctrl+space++ after launch (see
 [the K1 fallback](#the-k1-fallback)).
 
 The position rides across the wire as `Metadata.commonMemberRank`.
@@ -130,7 +130,7 @@ to first.
 
 ## Seeing it
 
-The first figure is a `ctrl-space` on a box containing `val f = FLine()` and a bare `f.`, with
+The first figure is a ++ctrl+space++ on a box containing `val f = FLine()` and a bare `f.`, with
 the popup captured while it is open. It is served by the same Analysis API backend an ordinary
 `./field.sh` session uses.
 
@@ -175,7 +175,7 @@ section the prior decides the order.
 ### The K1 fallback { #the-k1-fallback }
 
 K1 serves **every** completion until the sidecar's Analysis API session exists, including the first
-`ctrl-space` after launch. `CommonMemberPrior` keys on the receiver's *qualified* name and only the
+++ctrl+space++ after launch. `CommonMemberPrior` keys on the receiver's *qualified* name and only the
 sidecar's reply carries one; a K1 result names no receiver at all, so `rankOf(null, "moveTo")` would
 be 0. The server resolves the caret's own receiver when the backend names none, so the prior applies
 on both paths. Two consecutive completions on one caret, from an ordinary session's log:

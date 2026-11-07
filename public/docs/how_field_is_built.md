@@ -327,7 +327,7 @@ and each keeps its last passing and failing screenshots.
 
 ## Notes on these pages, revised by agents
 
-Reading these docs inside Field, you can select a passage, press `Ctrl+Shift+A` and leave a note.
+Reading these docs inside Field, you can select a passage, press ++ctrl+shift+a++ and leave a note.
 Here is one being left on [Landing on `main`](landing_queue.md); the **DOC NOTES** panel beside the
 page lists it with its state and where it sits in the source:
 

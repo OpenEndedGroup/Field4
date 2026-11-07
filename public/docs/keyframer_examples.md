@@ -895,7 +895,7 @@ keyframeBrowser(dir, scope = scope, height = 330)
 
 ![The keyframe collection browser in a box's keyframes output: a header naming the glow-looks folder and the note of the last save, counters for 4 keys, 4 versions, 3 slots and 0 selected, the four keys hot, mid, soft and wide as buttons, the Apply, Copy updateCode, Code blend, Clear and Reload buttons, and one row per slot, glow@falloff, glow@intensity and glow@radius, each a float held by 4 of 4 keys with a tick for every key's value along its range and the spread at the right](assets/keyframer_examples/browser.png)
 
-Click a key to read its contents, shift-click a second for a diff of the two, and drag across a
+Click a key to read its contents, ++shift++-click a second for a diff of the two, and drag across a
 slot's range to select the keys whose values fall inside it. **Copy updateCode** hands you the
 selected key as source, which is the next section.
 

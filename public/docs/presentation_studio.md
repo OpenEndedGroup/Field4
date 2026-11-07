@@ -49,8 +49,8 @@ presentation(title = "A lesson about motion") {
 image descriptions, section names and slide numbers. Multiple words may occur in different parts
 of the slide; matching ignores case and accents. Body matches show a short excerpt.
 
-In the presenter controls, press **/** or **⌘/Ctrl+F** to focus search. **↑/↓** chooses a match;
-**Enter** visits that slide. The query stays ready for another hop. **Esc** clears the query and
+In the presenter controls, press ++slash++ or ++cmd+f++ to focus search. ++arrow-up++ and ++arrow-down++ choose a match;
+++enter++ visits that slide. The query stays ready for another hop. ++escape++ clears the query and
 returns focus to the current slide in the outline, where the usual presentation navigation keys work.
 Typing and choosing a match leave the audience on the current slide until Enter.
 

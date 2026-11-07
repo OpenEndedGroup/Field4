@@ -4509,3 +4509,10 @@ tasks.register("buildOpenDlssNr") {
     description="Prepare the optional OpenDLSS-NR library, kernels and weights"
     dependsOn("buildOpenDlssNrNative")
 }
+
+// Selected explicitly by first-run's sentence-diagram extra; normal drawing needs no parser.
+tasks.register<Exec>("prepareSentenceParser") {
+    group = "optional"
+    description = "Install the separate Stanza parser environment, download English models and verify CPU inference."
+    commandLine(nativeBuildPython, "tools/prepare_sentence_parser.py")
+}

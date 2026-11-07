@@ -501,7 +501,8 @@ open class Structure(
             }
             is HasBuffer -> {
                 val address = v.getGPUAddress(cmd)
-                if (address <= 0) {
+                // VkDeviceAddress is unsigned; a set sign bit is a valid address in a Kotlin Long.
+                if (address == 0L) {
                     throw IllegalArgumentException(" buffer for member ${name} does not have a gpu address. Make sure you call .addressable() on it's buffer parameters")
                 }
                 nullPointerChecks.remove(name)
@@ -609,7 +610,8 @@ open class Structure(
 
             is HasBuffer -> {
                 val address = v.getGPUAddress(cmd ?: throw IllegalStateException("writing buffer reference `$name` needs a command buffer"))
-                if (address <= 0) {
+                // VkDeviceAddress is unsigned; a set sign bit is a valid address in a Kotlin Long.
+                if (address == 0L) {
                     throw IllegalArgumentException(" buffer for member ${name} does not have a gpu address. Make sure you call .addressable() on it's buffer parameters")
                 }
                 nullPointerChecks.remove(name)

@@ -2037,7 +2037,7 @@ body.field-pane-resizing-h * {
     background: rgba(var(--field-black-rgb), 0.78);
     border: 1px solid var(--field-accent-border-faint);
     border-radius: 10px;
-    padding: 8px 10px;
+    padding: 6px 6px;
     margin: 1px 0;
     box-sizing: border-box;
     /*box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35);*/
@@ -2071,7 +2071,7 @@ body.field-pane-resizing-h * {
 .field-slider {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 6px;
 }
 
 .field-slider:focus,
@@ -2107,8 +2107,8 @@ body.field-pane-resizing-h * {
 .field-slider .field-label {
     /* One label width for every slider, so tracks start (and, at their fixed drawn length, end)
        at the same x in every panel; long labels retain both ends and the full tooltip. */
-    flex: 0 0 var(--field-slider-label-width, 110px);
-    width: var(--field-slider-label-width, 110px);
+    flex: 0 0 var(--field-slider-label-width, 126.5px);
+    width: var(--field-slider-label-width, 126.5px);
     overflow: hidden;
     text-overflow: ellipsis;
     color: var(--field-accent-text-soft);
@@ -2737,13 +2737,13 @@ body.field-pane-resizing-h * {
 .alpha-row {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 6px;
 }
 
 .alpha-row .alpha-label {
     /* Swatch (52px) + the row gap (12px) + this = a slider's label, so the alpha track starts
        where every slider's track starts. */
-    flex: 0 0 calc(var(--field-slider-label-width, 110px) - 64px);
+    flex: 0 0 calc(var(--field-slider-label-width, 126.5px) - 64px);
 }
 
 .alpha-row .field-value {
@@ -3102,6 +3102,11 @@ body.field-pane-resizing-h * {
     outline: none;
     border: 5px solid transparent;
     /*filter: blur(10px) !important;*/
+}
+
+/* Monaco's inherited blue focus outline otherwise draws a line along the editor edge. */
+.monaco-editor-container > .monaco-editor {
+    outline: none;
 }
 
 .monaco-editor-container.afield-notes-preview-active > .monaco-editor {

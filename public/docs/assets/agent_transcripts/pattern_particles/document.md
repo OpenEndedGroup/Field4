@@ -209,7 +209,7 @@ From `code`
 Draws two triangles per particle at the positions the compute box wrote.
 
 ```edn [field-box id="pp_draw" role="properties"]
-{"id" "pp_draw" "index" 3 "name" "draw" "parents" ["root" "pp_compute"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "pp_compute"} "name" "draw" "_tombstone" false "frame" #afield/rect [260.0 200.0 240.0 50.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "pp_draw_vertex_.glsl" "lines" 31 "characters" 839 "sha256" "52679ce317cf4a862f056885473ac55b4cbcac8b22beb20c9ea97f7678f42e19"} {"name" "fragment" "language" "glsl" "path" "pp_draw_fragment_.glsl" "lines" 23 "characters" 748 "sha256" "fad891554f44d699b95ca65aa7bb5d4e24c06bfcf4521013f38449246d2b6e0e"} {"name" "code" "language" "kotlin" "path" "pp_draw_code_.kt" "lines" 21 "characters" 614 "sha256" "2559b0c647b8933e28ce034e60a194fd897fd13e5191b81fe13963132fffe883"}]}
+{"id" "pp_draw" "index" 3 "name" "draw" "parents" ["root" "pp_compute"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "pp_compute"} "name" "draw" "_tombstone" false "frame" #afield/rect [260.0 200.0 240.0 50.0]} "blockProperties" [{"name" "vertex" "language" "glsl" "path" "pp_draw_vertex_.glsl" "lines" 30 "characters" 838 "sha256" "9c821ce3001e832254c4bdd18ebdb4086ba0ae1987e1a6ec7c53290153972977"} {"name" "fragment" "language" "glsl" "path" "pp_draw_fragment_.glsl" "lines" 22 "characters" 747 "sha256" "b355cba7ceff6bf1af686cf9e5cff6757db57f74e9447c4f7fa7bab06339a8bf"} {"name" "code" "language" "kotlin" "path" "pp_draw_code_.kt" "lines" 21 "characters" 614 "sha256" "2559b0c647b8933e28ce034e60a194fd897fd13e5191b81fe13963132fffe883"}]}
 ```
 
 ```glsl [field-property box="pp_draw" name="vertex" path="pp_draw_vertex_.glsl"]
@@ -231,7 +231,6 @@ const vec3[6] part = {
     vec3(0,0,0), vec3(1,0,0), vec3(1,1,0),
     vec3(0,0,0), vec3(1,1,0), vec3(0,1,0)
 };
-
 
 void main() {
     vec4 particle = pc.inData.pos[gl_VertexIndex / 6];
@@ -261,7 +260,6 @@ const vec3[4] tint = {
     vec3(0.561, 1.000, 0.604),
     vec3(1.000, 0.878, 0.400)
 };
-
 
 void main() {
     float d = max(0.0, 0.5 - length(tc - vec2(0.5)));

@@ -195,7 +195,7 @@ lines(out, w = 520.0, h = 300.0, fitToSize = true)
 
 ## Your own drum
 
-Press Alt+D, draw a closed shape with the freedraw tool, and run the fifth box of the starting
+Press ++alt+d++, draw a closed shape with the freedraw tool, and run the fifth box of the starting
 point: `notation.strokes.lastOrNull()?.toFLine()` is your stroke, and `drumMeshFitted` scales it to
 fit before meshing. With nothing drawn it uses a polar curve, which is what was captured here: the
 first four modes and their nodal lines.

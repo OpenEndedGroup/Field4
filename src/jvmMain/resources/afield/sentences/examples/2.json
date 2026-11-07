@@ -1,0 +1,347 @@
+[
+  {
+    "schema": 2,
+    "backend": "stanza",
+    "text": "The quiet water carries the light",
+    "tokens": [
+      {
+        "id": 1,
+        "word": "The",
+        "lemma": "the",
+        "pos": "DT",
+        "upos": "DET",
+        "feats": "Definite=Def|PronType=Art",
+        "start": 0,
+        "end": 3,
+        "in_graph": true,
+        "absorbed": false
+      },
+      {
+        "id": 2,
+        "word": "quiet",
+        "lemma": "quiet",
+        "pos": "JJ",
+        "upos": "ADJ",
+        "feats": "Degree=Pos",
+        "start": 4,
+        "end": 9,
+        "in_graph": true,
+        "absorbed": false
+      },
+      {
+        "id": 3,
+        "word": "water",
+        "lemma": "water",
+        "pos": "NN",
+        "upos": "NOUN",
+        "feats": "Number=Sing",
+        "start": 10,
+        "end": 15,
+        "in_graph": true,
+        "absorbed": false
+      },
+      {
+        "id": 4,
+        "word": "carries",
+        "lemma": "carry",
+        "pos": "VBZ",
+        "upos": "VERB",
+        "feats": "Mood=Ind|Number=Sing|Person=3|Tense=Pres|VerbForm=Fin",
+        "start": 16,
+        "end": 23,
+        "in_graph": true,
+        "absorbed": false
+      },
+      {
+        "id": 5,
+        "word": "the",
+        "lemma": "the",
+        "pos": "DT",
+        "upos": "DET",
+        "feats": "Definite=Def|PronType=Art",
+        "start": 24,
+        "end": 27,
+        "in_graph": true,
+        "absorbed": false
+      },
+      {
+        "id": 6,
+        "word": "light",
+        "lemma": "light",
+        "pos": "NN",
+        "upos": "NOUN",
+        "feats": "Number=Sing",
+        "start": 28,
+        "end": 33,
+        "in_graph": true,
+        "absorbed": false
+      }
+    ],
+    "constituency": {
+      "id": 0,
+      "label": "ROOT",
+      "leaf": false,
+      "children": [
+        {
+          "id": 1,
+          "label": "S",
+          "leaf": false,
+          "children": [
+            {
+              "id": 2,
+              "label": "NP",
+              "leaf": false,
+              "children": [
+                {
+                  "id": 3,
+                  "label": "DT",
+                  "leaf": true,
+                  "word": "The",
+                  "token": 1,
+                  "children": [],
+                  "depth": 3
+                },
+                {
+                  "id": 4,
+                  "label": "JJ",
+                  "leaf": true,
+                  "word": "quiet",
+                  "token": 2,
+                  "children": [],
+                  "depth": 3
+                },
+                {
+                  "id": 5,
+                  "label": "NN",
+                  "leaf": true,
+                  "word": "water",
+                  "token": 3,
+                  "children": [],
+                  "depth": 3
+                }
+              ],
+              "depth": 2
+            },
+            {
+              "id": 6,
+              "label": "VP",
+              "leaf": false,
+              "children": [
+                {
+                  "id": 7,
+                  "label": "VBZ",
+                  "leaf": true,
+                  "word": "carries",
+                  "token": 4,
+                  "children": [],
+                  "depth": 3
+                },
+                {
+                  "id": 8,
+                  "label": "NP",
+                  "leaf": false,
+                  "children": [
+                    {
+                      "id": 9,
+                      "label": "DT",
+                      "leaf": true,
+                      "word": "the",
+                      "token": 5,
+                      "children": [],
+                      "depth": 4
+                    },
+                    {
+                      "id": 10,
+                      "label": "NN",
+                      "leaf": true,
+                      "word": "light",
+                      "token": 6,
+                      "children": [],
+                      "depth": 4
+                    }
+                  ],
+                  "depth": 3
+                }
+              ],
+              "depth": 2
+            }
+          ],
+          "depth": 1
+        }
+      ],
+      "depth": 0
+    },
+    "constituency_bracketed": "(ROOT (S (NP (DT The) (JJ quiet) (NN water)) (VP (VBZ carries) (NP (DT the) (NN light)))))",
+    "constituency_depth": 4,
+    "dependencies": {
+      "ud": [
+        {
+          "gov": 3,
+          "dep": 1,
+          "rel": "det",
+          "base": "det",
+          "label": "determiner",
+          "direction": "left",
+          "distance": 2
+        },
+        {
+          "gov": 3,
+          "dep": 2,
+          "rel": "amod",
+          "base": "amod",
+          "label": "adjectival modifier",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 4,
+          "dep": 3,
+          "rel": "nsubj",
+          "base": "nsubj",
+          "label": "nominal subject",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 0,
+          "dep": 4,
+          "rel": "root",
+          "base": "root",
+          "label": "root",
+          "direction": "right",
+          "distance": 4
+        },
+        {
+          "gov": 6,
+          "dep": 5,
+          "rel": "det",
+          "base": "det",
+          "label": "determiner",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 4,
+          "dep": 6,
+          "rel": "obj",
+          "base": "obj",
+          "label": "direct object",
+          "direction": "right",
+          "distance": 2
+        }
+      ],
+      "sd_basic": [
+        {
+          "gov": 3,
+          "dep": 1,
+          "rel": "det",
+          "base": "det",
+          "label": "determiner",
+          "direction": "left",
+          "distance": 2
+        },
+        {
+          "gov": 3,
+          "dep": 2,
+          "rel": "amod",
+          "base": "amod",
+          "label": "adjectival modifier",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 4,
+          "dep": 3,
+          "rel": "nsubj",
+          "base": "nsubj",
+          "label": "nominal subject",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 0,
+          "dep": 4,
+          "rel": "root",
+          "base": "root",
+          "label": "root",
+          "direction": "right",
+          "distance": 4
+        },
+        {
+          "gov": 6,
+          "dep": 5,
+          "rel": "det",
+          "base": "det",
+          "label": "determiner",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 4,
+          "dep": 6,
+          "rel": "dobj",
+          "base": "dobj",
+          "label": "direct object",
+          "direction": "right",
+          "distance": 2
+        }
+      ],
+      "sd_collapsed": [
+        {
+          "gov": 3,
+          "dep": 1,
+          "rel": "det",
+          "base": "det",
+          "label": "determiner",
+          "direction": "left",
+          "distance": 2
+        },
+        {
+          "gov": 3,
+          "dep": 2,
+          "rel": "amod",
+          "base": "amod",
+          "label": "adjectival modifier",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 4,
+          "dep": 3,
+          "rel": "nsubj",
+          "base": "nsubj",
+          "label": "nominal subject",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 0,
+          "dep": 4,
+          "rel": "root",
+          "base": "root",
+          "label": "root",
+          "direction": "right",
+          "distance": 4
+        },
+        {
+          "gov": 6,
+          "dep": 5,
+          "rel": "det",
+          "base": "det",
+          "label": "determiner",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 4,
+          "dep": 6,
+          "rel": "dobj",
+          "base": "dobj",
+          "label": "direct object",
+          "direction": "right",
+          "distance": 2
+        }
+      ]
+    }
+  }
+]

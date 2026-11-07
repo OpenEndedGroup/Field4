@@ -1,6 +1,6 @@
 # Drawing and Notation
 
-Press `alt/option-D` and the canvas becomes a drawing surface. Press it again and you are back with the boxes.
+Press ++alt+d++ and the canvas becomes a drawing surface. Press it again and you are back with the boxes.
 
 The drawing surface is [Excalidraw](https://excalidraw.com), the open-source whiteboard
 ([source on GitHub](https://github.com/excalidraw/excalidraw)), running inside Field over your
@@ -15,7 +15,7 @@ Your code can read the drawing and write to it. Every stroke is data a box can a
 
 ## Drawing
 
-`alt/option-D` switches the mouse and keyboard to the drawing; `alt/option-D` again gives them back to the boxes. While the drawing has them, Excalidraw's own keys work: `p` for the pen, `r` rectangle, `o` ellipse, `a` arrow, `l` line, `t` text, `e` eraser, and space-drag or two fingers to pan. Pinch to zoom, and the boxes zoom with you.
+++alt+d++ switches the mouse and keyboard to the drawing; ++alt+d++ again gives them back to the boxes. While the drawing has them, Excalidraw's own keys work: `p` for the pen, `r` rectangle, `o` ellipse, `a` arrow, `l` line, `t` text, `e` eraser, and space-drag or two fingers to pan. Pinch to zoom, and the boxes zoom with you.
 
 When drawing mode is off, your marks remain visible and clicks reach the boxes underneath. You
 can also attach marks to boxes so they move together:
@@ -49,7 +49,7 @@ notation {
 }
 ```
 
-Run both, press `alt/option-D`, pick the pen and draw. When you lift the pen, a green copy of your stroke appears beside it, and `listen` reports the stroke's size:
+Run both, press ++alt+d++, pick the pen and draw. When you lift the pen, a green copy of your stroke appears beside it, and `listen` reports the stroke's size:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1400x560" clip="0,0,1400,380" hide-toasts=true screenshot="assets/drawing_and_notation/listen.png" transcript="assets/transcripts/notation_listen_setup.yaml" padding="0" wait="0" timeout="120" embed=true hidden=true name="notation-listen" alt="The drawing layer switched on over two boxes, 'listen' and 'tell', joined by a blue arrow labelled 'tells'. A pale wave drawn with the pen runs across the canvas below them, a green copy of it runs alongside, and the listen box's output reports the stroke's point count and length."}
 /*
@@ -130,7 +130,7 @@ The block can make a `rect`, `ellipse`, `diamond`, `text`, `line`, `arrow`, `str
 
 A stroke can carry pen pressure, as one drawn with a tablet pen does: `stroke(line, pressure = { t -> 0.2 + 0.8 * t })` gives the pressure, 0 to 1, as a function of how far along the stroke the pen is. `mark.pressures` reads it back, from code-drawn and hand-drawn strokes alike, and [Drawn Strokes Become Paint](chain_drawn_paint.md) paints with it.
 
-Marks made inside a `frame(name, x, y, w, h) { }` block belong to that frame, so Excalidraw clips them to it and drags them with it, and `notation.inside(frame)` finds them. Marks made inside `group { }` are grouped the way Ctrl+G groups them: select one and you have them all. `name =` gives a mark a label that code can find it by with `notation.named(...)`. Shapes take a `fillStyle` (`"solid"`, `"hachure"`, `"cross-hatch"`, `"zigzag"`) and an `opacity`, and the block's `roughness` and `dashed` set how the lines after them are drawn:
+Marks made inside a `frame(name, x, y, w, h) { }` block belong to that frame, so Excalidraw clips them to it and drags them with it, and `notation.inside(frame)` finds them. Marks made inside `group { }` are grouped the way ++cmd+g++ groups them: select one and you have them all. `name =` gives a mark a label that code can find it by with `notation.named(...)`. Shapes take a `fillStyle` (`"solid"`, `"hachure"`, `"cross-hatch"`, `"zigzag"`) and an `opacity`, and the block's `roughness` and `dashed` set how the lines after them are drawn:
 
 ```diffstatic {data-lang=kotlin}
 notation {

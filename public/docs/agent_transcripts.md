@@ -658,6 +658,15 @@ this file.
 
 [Open →](offline.html?file=assets/agent_transcripts/pattern_language_composition/metadata.edn)
 
+### sentence_diagrams
+
+[Sentence diagrams](sentence_diagrams.md): four complete retained-parse examples covering a
+shared constituent/dependency diagram, a canopy, decorated dependency arcs and Reed–Kellogg
+sentence furniture. The diagrams use real cached Stanza responses and Field's FLine-to-SVG
+renderer, including glyph outlines. No parser service, model download or GPU is needed.
+
+[Open →](offline.html?file=assets/agent_transcripts/sentence_diagrams/metadata.edn)
+
 ### kolakoski_euclid
 
 **Kolakoski counts, Euclid places.** A Euclidean rhythm spreads a density you chose in advance as
@@ -2562,6 +2571,19 @@ Walkthrough: [Loris partial tracks and resynthesis](loris.md).
 ![A three-second spectral whirlpool: partial tracks bend through 6–9 seconds, with amber noise bandwidth, above the resynthesized waveform and audio player](assets/loris/spectral-whirlpool.png)
 
 [Open →](offline.html?file=assets/agent_transcripts/loris_partial_explorer/metadata.edn)
+
+### audio_curve_explorer
+
+A film voice analysed into a rolling curve of its recent spectra (mel bands, earth mover's distances,
+MDS, alignment) and drawn as FLines in the Three.js viewer at whatever time Field's waveform player is
+playing or scrubbing. Further boxes draw a stereo recording as one curve per channel, the voice with a
+finer hop and a longer memory, and a curve of running averages from one hop to twenty seconds. Every
+box is compile-checked; the analysis runs the `fieldaudio_curve` Python package through `uv`.
+Walkthrough: [Audio curves: a sound as a few slow controls](audio_curves.md).
+
+![The voice's curve of running averages in the Three.js viewer: faint at its 20-second end, bright at the present](assets/audio_curves/ema-curve.png)
+
+[Open →](offline.html?file=assets/agent_transcripts/audio_curve_explorer/metadata.edn)
 
 ### audio_ai_underfit_mancini
 
@@ -4468,6 +4490,17 @@ and the output checkbox compares the same image with and without AA. Requires Vu
 without opening a window in CI, with a real desktop capture on the walkthrough page.
 
 [Open →](offline.html?file=assets/agent_transcripts/stereo_rtt_composite/metadata.edn)
+
+### text_one_vr
+
+[A shallow-3D reading space](sentence_diagrams.md#from-geometry-to-a-shallow-3d-reading-space):
+four editable sentence graphs with CPU SIMDVerlet physics, Slug text, per-eye thick FLine
+strokes and SDF dots. Separate absolute-time scores reveal, erase and crossfade the material.
+The default is a desktop stereo preview; an OpenXR mode includes Field's browser workspace.
+The green-channel blur cascade and additive/weighted paint compositor process the diagram;
+the browser stays sharp. Vulkan and the Slug helper are required.
+
+[Open →](offline.html?file=assets/agent_transcripts/text_one_vr/metadata.edn)
 
 ### field_vr_ide
 

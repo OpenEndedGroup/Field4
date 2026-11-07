@@ -326,7 +326,6 @@ fun formatGlslCode(code: String): String {
             previousBlank = true
             return@forEach
         }
-        previousBlank = false
         val structure = line.replace(Regex("""/\*.*?\*/|//.*"""), "").trim()
         if (structure.startsWith("}")) indent = (indent - 1).coerceAtLeast(0)
         val effectiveIndent = if (structure.startsWith("case ") || structure.startsWith("default:")) {
@@ -334,9 +333,10 @@ fun formatGlslCode(code: String): String {
         } else {
             indent
         }
-        if (effectiveIndent == 0 && previousLine == "};" && looksLikeGlslFunctionDeclaration(line)) {
+        if (!previousBlank && effectiveIndent == 0 && previousLine == "};" && looksLikeGlslFunctionDeclaration(line)) {
             out.appendLine()
         }
+        previousBlank = false
         repeat(effectiveIndent) { out.append("    ") }
         val cleaned = cleanGlslSpacing(line)
         out.appendLine(cleaned)

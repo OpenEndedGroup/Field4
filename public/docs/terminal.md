@@ -2,7 +2,7 @@
 
 `terminal()` puts a real terminal in a box's output area: your shell, or any program, running on a
 pseudo-terminal, so colour, cursor movement, full-screen programs like `top` and `vim`, and
-Ctrl-C all behave as they do in a terminal window. Click in it and type.
+++ctrl+c++ all behave as they do in a terminal window. Click in it and type.
 
 The simplest box starts your login shell in the document's directory:
 

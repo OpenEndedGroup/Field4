@@ -21,6 +21,23 @@ ID_DECL = re.compile(r"""(?:\bid\s*=\s*"([a-z0-9$-]+)"|\bid\s*:\s*'([a-z0-9$-]+)
 KEYS = re.compile(r"""(?:\bkeys\s*=\s*"([^"]*)"|\bkeys\s*:\s*'([^']*)'|\bdefaults\s*=\s*listOf\(([^)]*)\))""")
 
 
+# pymdownx.keys names (`++cmd+slash++`) back to the spec Field ships (`cmd+/`).
+KEYCAP_NAMES = {"command": "cmd", "control": "ctrl", "option": "alt", "slash": "/",
+                "comma": ",", "period": ".", "bracket-left": "[", "bracket-right": "]",
+                "question": "?", "arrow-up": "up", "arrow-down": "down", "arrow-left": "left",
+                "arrow-right": "right", "esc": "escape", "return": "enter"}
+
+
+def cell_keys(cell: str) -> list[str]:
+    """Read the `++cmd+shift+p++` keycaps (or `code` specs) in a Default shortcut cell."""
+    if cell.strip() == "none":
+        return []
+    keys = re.findall(r"`([^`]+)`", cell)
+    for caps in re.findall(r"\+\+([^+\s][^\s]*?)\+\+", cell):
+        keys.append("+".join(KEYCAP_NAMES.get(part, part) for part in caps.lower().split("+")))
+    return list(dict.fromkeys(keys))
+
+
 def page_rows() -> dict[str, list[str]]:
     rows = {}
     for line in PAGE.read_text().splitlines():
@@ -28,7 +45,7 @@ def page_rows() -> dict[str, list[str]]:
         if not m:
             continue
         cell = m.group(2)
-        keys = [] if cell.strip() == "none" else re.findall(r"`([^`]+)`", cell)
+        keys = cell_keys(cell)
         rows[m.group(1)] = keys
     return rows
 
@@ -54,6 +71,15 @@ def shipped_defaults() -> dict[str, set[str]]:
 
 
 class TourInterfaceShortcutsTest(unittest.TestCase):
+    def test_keycaps_read_back_as_the_shipped_spec(self):
+        self.assertEqual(cell_keys("++cmd+p++"), ["cmd+p"])
+        self.assertEqual(cell_keys("++cmd+shift+p++ or ++f1++"), ["cmd+shift+p", "f1"])
+        self.assertEqual(cell_keys("++cmd+slash++"), ["cmd+/"])
+        self.assertEqual(cell_keys("++question++"), ["?"])
+        self.assertEqual(cell_keys("++cmd+f++ (canvas focused)"), ["cmd+f"])
+        self.assertEqual(cell_keys("`cmd+shift+p`, `f1`"), ["cmd+shift+p", "f1"])
+        self.assertEqual(cell_keys("none"), [])
+
     def test_table_matches_the_shipped_defaults(self):
         rows = page_rows()
         self.assertGreater(len(rows), 10, "the shortcut table was not found on the page")

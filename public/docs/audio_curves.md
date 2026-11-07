@@ -64,7 +64,7 @@ import afield.audio.engine.WavFloatArrayLoader
 
 val wav = "%docs/assets/subharmonic_sound/notld-barbara-source.wav".path
 val audio = WavFloatArrayLoader.loadWavToFloatArray(wav.toString())
-val settings = AudioCurveSettings()          // fftSize 2048, hopSize 512
+val settings = AudioCurveSettings() // fftSize 2048, hopSize 512
 val start = (2.0 * audio.sampleRate).toInt()
 val windows = 7
 val span = settings.fftSize + (windows - 1) * settings.hopSize
@@ -127,7 +127,10 @@ val ridges = shown.mapIndexed { row, i ->
     }
 }
 lines(ridges, channel = "spectra", w = 1000.0, h = 420.0, fitToSize = true)
-markdown("about", "${stages.masses.size} spectra of ${stages.melBands} mel bands, ${stages.melCentersHz.first().toInt()}–${stages.melCentersHz.last().toInt()} Hz")
+markdown(
+    "about",
+    "${stages.masses.size} spectra of ${stages.melBands} mel bands, ${stages.melCentersHz.first().toInt()}–${stages.melCentersHz.last().toInt()} Hz",
+)
 ```
 
 
@@ -154,9 +157,13 @@ val a = stages.masses[i]
 val b = stages.masses[j]
 
 showSignals(
-    "spectrum a" to a, "spectrum b" to b,
-    xTitle = "mel band", yTitle = "share of the spectrum", title = "two spectra from the same window",
-    channel = "spectra", height = 260,
+    "spectrum a" to a,
+    "spectrum b" to b,
+    xTitle = "mel band",
+    yTitle = "share of the spectrum",
+    title = "two spectra from the same window",
+    channel = "spectra",
+    height = 260,
 )
 
 // Earth mover's distance on a line is the area between the two cumulative sums.
@@ -178,7 +185,15 @@ val between = fline {
     stroked = false
     color = vec(1.0, 0.85, 0.4, 0.35)
 }
-lines(between, curve(ca, vec(0.39, 0.78, 0.86, 1.0)), curve(cb, vec(0.96, 0.62, 0.30, 1.0)), channel = "transport", w = 1000.0, h = 320.0, fitToSize = true)
+lines(
+    between,
+    curve(ca, vec(0.39, 0.78, 0.86, 1.0)),
+    curve(cb, vec(0.96, 0.62, 0.30, 1.0)),
+    channel = "transport",
+    w = 1000.0,
+    h = 320.0,
+    fitToSize = true,
+)
 
 val area = ca.indices.toList().dropLast(1).sumOf { abs(ca[it] - cb[it]) } / (stages.melBands - 1)
 markdown("about", "area between the curves %.4f · the analyzer's distance %.4f".format(area, d[i][j]))
@@ -204,13 +219,14 @@ val top = d.flatten().max()
 
 // Row i, column j: how far spectrum i is from spectrum j. Dark is near; the diagonal is zero.
 val size = 900
-val px = IntArray(size * size) { p ->
-    val v = d[p / size * n / size][p % size * n / size] / top
-    val r = (12 + 243 * v).toInt()
-    val g = (16 + 190 * v.pow(1.4)).toInt()
-    val bl = (24 + 60 * v.pow(3)).toInt()
-    (0xFF shl 24) or (r shl 16) or (g shl 8) or bl
-}
+val px =
+    IntArray(size * size) { p ->
+        val v = d[p / size * n / size][p % size * n / size] / top
+        val r = (12 + 243 * v).toInt()
+        val g = (16 + 190 * v.pow(1.4)).toInt()
+        val bl = (24 + 60 * v.pow(3)).toInt()
+        (0xFF shl 24) or (r shl 16) or (g shl 8) or bl
+    }
 display("distances", PngEncoder.encode(px, size, size))
 ```
 
@@ -256,7 +272,8 @@ val wav = "%docs/assets/subharmonic_sound/notld-barbara-source.wav".path
 val stages = audioCurveStages(wav, 3.083)
 val (before, now) = stages.curves
 
-fun frame(points: List<List<Double>>) = AudioCurveFrame(now.time, 2, points.flatten().map { it.toFloat() }.toFloatArray())
+fun frame(points: List<List<Double>>) =
+    AudioCurveFrame(now.time, 2, points.flatten().map { it.toFloat() }.toFloatArray())
 val orange = vec(0.96, 0.62, 0.30, 1.0)
 
 // Left: two consecutive MDS solutions as solved (previous orange, current blue).
@@ -276,8 +293,14 @@ fun mismatch(a: List<List<Double>>, b: List<List<Double>>): Double {
     val size = sqrt(x.chunked(2).sumOf { (it[0] - mean[0]).pow(2) + (it[1] - mean[1]).pow(2) })
     return sqrt(x.indices.sumOf { (x[it] - y[it]).pow(2) }) / size
 }
-markdown("about", "as solved: shared points %.0f%% of the curve's size apart · aligned: %.2f%%".format(
-    100 * mismatch(before.unaligned, now.unaligned), 100 * mismatch(before.aligned, now.aligned)))
+markdown(
+    "about",
+    "as solved: shared points %.0f%% of the curve's size apart · aligned: %.2f%%"
+        .format(
+            100 * mismatch(before.unaligned, now.unaligned),
+            100 * mismatch(before.aligned, now.aligned),
+        ),
+)
 ```
 
 
@@ -304,9 +327,16 @@ displayAudioBytes(wav.toFile().readBytes(), options = AudioVisualizerOptions(onT
 // A faint cube around where the curve lives, so the view holds still while you orbit.
 val room = fline {
     for (z in [-80, 80]) {
-        moveTo(-80, -80, z); lineTo(80, -80, z); lineTo(80, 80, z); lineTo(-80, 80, z); lineTo(-80, -80, z)
+        moveTo(-80, -80, z)
+        lineTo(80, -80, z)
+        lineTo(80, 80, z)
+        lineTo(-80, 80, z)
+        lineTo(-80, -80, z)
     }
-    for (x in [-80, 80]) for (y in [-80, 80]) { moveTo(x, y, -80); lineTo(x, y, 80) }
+    for (x in [-80, 80]) for (y in [-80, 80]) {
+        moveTo(x, y, -80)
+        lineTo(x, y, 80)
+    }
     color = vec(1, 1, 1, 0.12)
 }
 
@@ -318,7 +348,8 @@ loop {
         shown = frame.timeSeconds
         threeLines(frame.flines(scale, bands = 16, centered = true) + room, channel = "curve", height = 560)
     }
-}.end { curve.close() }
+}
+    .end { curve.close() }
 ```
 
 Launch the box rather than running it: the `loop` keeps drawing until you stop it. Press play, or
@@ -391,12 +422,14 @@ val curve = audioCurves(wav, settings).first()
 
 val count = curve.frameCount.toInt()
 val frames = count { curve.frame(it.toLong()) }
-val present = frames.map { it.coordinates.takeLast(3) }   // the shortest timescale
-val memory = frames.map { it.coordinates.take(3) }         // the 20-second average
+val present = frames.map { it.coordinates.takeLast(3) } // the shortest timescale
+val memory = frames.map { it.coordinates.take(3) } // the 20-second average
 curve.close()
 
 showSignals(
-    "x" to present.map { it[0] }, "y" to present.map { it[1] }, "z" to present.map { it[2] },
+    "x" to present.map { it[0] },
+    "y" to present.map { it[1] },
+    "z" to present.map { it[2] },
     "20 s memory, x" to memory.map { it[0] },
     x = frames.map { it.timeSeconds },
     xTitle = "seconds",

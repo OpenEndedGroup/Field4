@@ -24,9 +24,16 @@ operations:
           // A faint cube around where the curve lives, so the view holds still while you orbit.
           val room = fline {
               for (z in [-80, 80]) {
-                  moveTo(-80, -80, z); lineTo(80, -80, z); lineTo(80, 80, z); lineTo(-80, 80, z); lineTo(-80, -80, z)
+                  moveTo(-80, -80, z)
+                  lineTo(80, -80, z)
+                  lineTo(80, 80, z)
+                  lineTo(-80, 80, z)
+                  lineTo(-80, -80, z)
               }
-              for (x in [-80, 80]) for (y in [-80, 80]) { moveTo(x, y, -80); lineTo(x, y, 80) }
+              for (x in [-80, 80]) for (y in [-80, 80]) {
+                  moveTo(x, y, -80)
+                  lineTo(x, y, 80)
+              }
               color = vec(1, 1, 1, 0.12)
           }
 
@@ -38,7 +45,8 @@ operations:
                   shown = frame.timeSeconds
                   threeLines(frame.flines(scale, bands = 16, centered = true) + room, channel = "curve", height = 560)
               }
-          }.end { curve.close() }
+          }
+              .end { curve.close() }
   - create:
       box: audio_curve_music
       name: 2 · stereo music, one curve per channel
@@ -68,7 +76,8 @@ operations:
                   }
                   threeLines(lines, channel = "curves", height = 520)
               }
-          }.end { curves.forEach { it.close() } }
+          }
+              .end { curves.forEach { it.close() } }
   - create:
       box: audio_curve_dense
       name: 3 · finer hop, longer memory
@@ -93,7 +102,8 @@ operations:
                   shown = frame.timeSeconds
                   threeLines(frame.flines(scale, depth = 300.0, bands = 16), channel = "curve", height = 560)
               }
-          }.end { curve.close() }
+          }
+              .end { curve.close() }
   - create:
       box: audio_curve_ema
       name: 4 · averages from one hop to 20 s instead of a window
@@ -116,4 +126,5 @@ operations:
                   shown = frame.timeSeconds
                   threeLines(frame.flines(scale, bands = 16), channel = "curve", height = 560)
               }
-          }.end { curve.close() }
+          }
+              .end { curve.close() }

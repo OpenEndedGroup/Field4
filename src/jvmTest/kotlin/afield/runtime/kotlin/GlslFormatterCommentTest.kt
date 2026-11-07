@@ -6,6 +6,20 @@ import kotlin.test.assertTrue
 
 class GlslFormatterCommentTest {
     @Test
+    fun functionAfterUniformBlockKeepsOneBlankLineAcrossRepeatedFormatting() {
+        for (gap in listOf("\n", "\n\n", "\n\n\n")) {
+            val source = "layout(std140) uniform Views { mat4 view; };${gap}mat4 eyeView() { return view; }\n"
+            val formatted = formatGlslCode(source)
+            assertTrue(formatted.contains("};\n\nmat4 eyeView()"), formatted)
+            var again = formatted
+            repeat(3) {
+                again = formatGlslCode(again)
+                assertEquals(formatted, again)
+            }
+        }
+    }
+
+    @Test
     fun restoresDoubleDigitCommentIndicesWithoutPrefixReplacement() {
         val comments = (0..24).map { "// distinct note $it" }
         val result = formatGlslCode(comments.joinToString("\n") + "\nvoid main(){}\n")

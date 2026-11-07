@@ -8,7 +8,7 @@ the boxes beneath it use them.
 
 ## Connect two boxes
 
-Click the box that should be the parent, shift-click the child, and press `g`. A line now runs from
+Click the box that should be the parent, ++shift++-click the child, and press `g`. A line now runs from
 the parent down to the child:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="900x560" clip="0,0,460,360" video="assets/tour_connecting_boxes/connect.mp4" fps="10" transcript="assets/transcripts/tour_connecting_setup.yaml" padding="0" wait="0" timeout="180" embed=true hidden=true name="tour-connect-g" alt="Two boxes on the canvas, Palette above Swatch, with no line between them. A click selects Palette, a shift-click adds Swatch to the selection, and pressing g draws a connection line from Palette down to Swatch. Swatch is then dragged off to the right, and the line bends to follow it."}

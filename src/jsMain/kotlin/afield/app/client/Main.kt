@@ -2665,6 +2665,12 @@ private fun registerCanvasZoomActions() {
     allActions.builtin = builtin
     updateActions()
     window.asDynamic().frameSelected = ::frameSelected
+    window.asDynamic().frameControlElement = { element: HTMLElement ->
+        val r = element.getBoundingClientRect()
+        if (r.width > 0.0 && r.height > 0.0) {
+            frameRectsInPane(listOf(Rect(r.left, r.top, r.width, r.height)), CanvasCamera.paneOf(element))
+        }
+    }
     window.asDynamic().setCanvasZoom = ::setCanvasZoom
     window.asDynamic().resetCanvasZoom = ::resetCanvasZoom
     window.asDynamic().moveCanvasCamera = { x: Double, y: Double, zoom: Double -> moveCanvasCamera(x, y, zoom) }
@@ -2757,6 +2763,11 @@ fun frameSelected() {
     val rects = boxes.flatMap { frameRectsFor(it) }
     if (rects.isEmpty()) return
     val pane = CanvasCamera.paneOf(boxes.first())
+    frameRectsInPane(rects, pane)
+}
+
+/** Centre a target in the same uncovered pane space used by Frame Selected. */
+private fun frameRectsInPane(rects: List<Rect>, pane: CanvasPane) {
     val z0 = pane.zoom
     val t0x = pane.tx
     val t0y = pane.ty

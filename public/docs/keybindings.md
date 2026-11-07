@@ -11,7 +11,7 @@ in there, including the ones that ship with no shortcut at all. Change a line, s
 shortcut moves immediately: the file is watched, like `~/.afield/theme.css`, and nothing
 needs restarting.
 
-Press `?` on the canvas to see the shortcut card. It reads your current bindings, so any changes
+Press ++question++ on the canvas to see the shortcut card. It reads your current bindings, so any changes
 you make to the file show up there too.
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector="#cheatsheet .centered-container-div" screenshot="assets/keybindings/cheatsheet.png" padding="8" wait="0" timeout="120" embed=true hidden=true name="keybindings-cheatsheet" alt="Field's ? cheatsheet card, with every key legend filled in from the live keybindings"}
@@ -59,12 +59,12 @@ bindings:
 
 Two things are *not* in the file:
 
-- **Gestures.** alt/option-click to launch a box, alt/option-drag to "strum" several, and the
-  multi-taps — `Esc Esc` to clear the newest output, `Esc Esc Esc` to clear them all,
-  `Shift Shift` to open anything from the canvas, `Cmd Cmd`-and-hold for
+- **Gestures.** ++alt++-click to launch a box, ++alt++-drag to "strum" several, and the
+  multi-taps — ++escape++ ++escape++ to clear the newest output, ++escape++ ++escape++ ++escape++ to clear them all,
+  ++shift++ ++shift++ to open anything from the canvas, ++cmd++ ++cmd++-and-hold for
   [stepping between boxes](moving_around_the_canvas.md#stepping-between-boxes). These are not single chords, so there is
   no way to write them in the shortcut syntax described below; they are hard-wired.
-- **Monaco's own editor bindings.** Autocomplete (`Ctrl+Space`), undo, find, multi-cursor
+- **Monaco's own editor bindings.** Autocomplete (++ctrl+space++), undo, find, multi-cursor
   and the rest belong to the text editor Field embeds, not to Field's command list.
 
 Two-key chords, such as `cmd+k cmd+s`, *can* be written in the shortcut syntax: see
@@ -75,7 +75,7 @@ your file is one you wrote.
 
 You already have one; Field writes it on first run. Two ways to get to it:
 
-- Run **Open Keybindings** from the command palette (`ctrl/command-shift-P`). Field opens
+- Run **Open Keybindings** from the command palette (++cmd+shift+p++). Field opens
   the file as a box on the canvas, so you can edit your shortcuts in Field, with Field.
 - Or open `~/.afield/keybindings.yaml` in any editor you like.
 
@@ -104,6 +104,12 @@ everywhere else, so one spec covers both platforms; `ctrl` means the same. `alt`
 on macOS. Case does not matter, and `+`, `-`, a space or a comma all
 separate tokens, so `cmd-shift-d`, `CMD + SHIFT + D` and `cmd shift d` are the same
 shortcut as `cmd+shift+d`.
+
+Elsewhere in these pages a shortcut you press is drawn as keycaps rather than as a spec.
+++cmd++ is the key `cmd` names: Command on macOS, Control on Windows and Linux. ++alt++ is
+Option or Alt and ++shift++ is Shift. ++ctrl++ on its own is the Control key on every platform,
+which the editor keeps for itself, as in autocomplete's ++ctrl+space++. So the spec
+`cmd+shift+d` is drawn ++cmd+shift+d++.
 
 **Keys** are `a`–`z`, `0`–`9`, `f1`–`f24`, one of
 
@@ -142,7 +148,7 @@ bindings:
 ```
 
 Every key ends a chord, and the modifiers written before a key belong to it. That is why
-`cmd shift d` is still one shortcut, Cmd+Shift+D: it has one key. `cmd+k cmd+s` has two keys,
+`cmd shift d` is still one shortcut, ++cmd+shift+d++: it has one key. `cmd+k cmd+s` has two keys,
 so it is a chord. A chord is at most two keys.
 
 After the first key Field shows it at the bottom of the window ("Cmd+K … (waiting for the
@@ -152,11 +158,11 @@ second key)") and waits **one second**. Then:
   on its own does;
 - **another key** cancels the wait. If the first key is a shortcut on its own, it runs now, and the
   new key does whatever it normally does;
-- **Escape** cancels without running anything;
+- ++escape++ cancels without running anything;
 - **nothing, for a second**: the first key runs as an ordinary shortcut, if it is one.
 
-So a key can be a shortcut and the first half of a chord at once (`cmd+k` and `cmd+k cmd+s`), and
-the cost is that the plain `cmd+k` now fires a second late. This is the same in an editor and on
+So a key can be a shortcut and the first half of a chord at once (++cmd+k++ and ++cmd+k++ ++cmd+s++), and
+the cost is that the plain ++cmd+k++ now fires a second late. This is the same in an editor and on
 the canvas. Which chords work while you are typing is covered under
 [Where a shortcut is live](#where-a-shortcut-is-live).
 
@@ -228,7 +234,7 @@ Thread {
     .start()
 ```
 
-The `?` card is the quickest way to see your current shortcuts for the twenty or so commands
+The ++question++ card is the quickest way to see your current shortcuts for the twenty or so commands
 you will use every day.
 
 ## When you get it wrong
@@ -244,7 +250,7 @@ If a binding cannot be applied, Field tells you what went wrong.
     ```
 
     **The command keeps its default.** A line Field cannot read is ignored, not taken as an
-    unbind: `open-anything` above is still on `cmd+p`. Only an empty value, `""`, removes a
+    unbind: `open-anything` above is still on ++cmd+p++. Only an empty value, `""`, removes a
     shortcut.
 
 - **A command id it does not recognize** — usually a typo — is logged as a warning naming
@@ -298,12 +304,12 @@ markdown(
 `effective` is the answer for every command Field has seen this run, override or default
 already applied; `bindings` is only what your file changed. A command in neither, such as a
 selection-only one with nothing selected, is reported as dormant instead of unbound, which is
-why the `?` card leaves that legend at its written default rather than claiming the key is
+why the ++question++ card leaves that legend at its written default rather than claiming the key is
 dead.
 
 ## Limits
 
-- **Two keys per chord, one second apart.** `cmd+k cmd+s` works; a third key is refused with
+- **Two keys per chord, one second apart.** ++cmd+k++ ++cmd+s++ works; a third key is refused with
   that explanation rather than half-obeyed. The one-second wait is fixed.
 - **`f13`–`f24` and some rarer keys** are accepted on the canvas but may have no
   counterpart in the editor, where the binding is Monaco's to make. If a shortcut works on
@@ -484,4 +490,4 @@ exactly what a fresh `keybindings.yaml` says.
 
 - [Survival Guide](survivalGuide.md) — the shortcuts worth learning first.
 - [Feature Overview](funFeatures.md) — what the commands in that table actually do.
-- [Layers](layers.md) — the layer commands (`alt+l`, `alt+]`, `alt+[`) in use.
+- [Layers](layers.md) — the layer commands (++alt+l++, ++alt+bracket-right++, ++alt+bracket-left++) in use.

@@ -27,16 +27,16 @@ To help you find that snippet of code.
 
 A Field document is a canvas of *boxes*. Each box holds a piece of code (and, often, its output); you edit one box at a time in the editor. You can run that code in the following ways (from the commonplace to the rare):
 
- * `alt/option-enter` — runs the line or block that the cursor is in.
- * Or, `alt/option-enter` — runs the currently selected code.
+ * ++alt+enter++ — runs the line or block that the cursor is in.
+ * Or, ++alt+enter++ — runs the currently selected code.
  * `alt/option-up arrow` — *launches* the currently edited box. `alt/option-down arrow` stops.
- * `alt/option-click` on a box — *launches* it for as long as you hold the mouse button down, and stops it when you let go. To keep it running after you let go, drag upwards before releasing. To stop it later, `alt/option-click` it again and drag downwards. For example:
+ * ++alt++-click on a box — *launches* it for as long as you hold the mouse button down, and stops it when you let go. To keep it running after you let go, drag upwards before releasing. To stop it later, ++alt++-click it again and drag downwards. For example:
 
 <video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
 	<source src="assets/launching.mp4" type="video/mp4">
 </video>
 
- * `alt/option-0` — runs everything in a box (but doesn't *launch* it)
+ * ++alt+0++ — runs everything in a box (but doesn't *launch* it)
 
 What's the difference between 'running' and 'launching'? Running executes the code once. A box can end with an object that keeps going by itself, such as a `loop { }`; launching the box hands that object to Field's _animation loop_, which calls it once every frame until you stop it. When several boxes are launched, they are called in the same order every frame. The idea of installing code into, and removing it from, the animation cycle is fundamental to making sound, image and data visualizations, so this idea is right at the heart of Field.
 
@@ -47,13 +47,13 @@ _But..._ since running code is very important, we actually have quite a few more
 For completeness, we'll list them here:
 
  * `alt/option-shift-up arrow` — immediately launches the box **without recompiling** if that's possible. Handy if your box has some long, complicated startup and then an animation or something at the end that you are playing with.
- * `ctrl/command-alt/option-k` or `ctrl/command-alt/option-j` **increments** or **decrements** the number under the cursor and then acts like you pressed alt/option-enter.
- * `alt/option-double-click` in the editor. Doing this to `true`, `false`, `disable { ... }` or `enable { ... }` in the editor flips that word to the opposite and then `alt/option-enter`s the block. Think of this as a toggle, but hanging out in your source code.
- *  `alt/option-double-click` on the name of a function in scope with the signature `foo()` just runs the function. Buttons everywhere!
- *  `alt/option-1` — relaunches **just the selection**, or the line or enclosing block under the cursor (i.e. the same code `alt/option-enter` would run), without running other parts of the box again. See [Running code in a box](running_code.md#running-code-around-the-cursor). You get a handsome stripe in the margin that shows the launched code that's ongoing.
+ * ++cmd+alt+k++ or ++cmd+alt+j++ **increments** or **decrements** the number under the cursor and then acts like you pressed ++alt+enter++.
+ * ++alt++-double-click in the editor. Doing this to `true`, `false`, `disable { ... }` or `enable { ... }` in the editor flips that word to the opposite and then runs the block as ++alt+enter++ would. Think of this as a toggle, but hanging out in your source code.
+ *  ++alt++-double-click on the name of a function in scope with the signature `foo()` just runs the function. Buttons everywhere!
+ *  ++alt+1++ — relaunches **just the selection**, or the line or enclosing block under the cursor (i.e. the same code ++alt+enter++ would run), without running other parts of the box again. See [Running code in a box](running_code.md#running-code-around-the-cursor). You get a handsome stripe in the margin that shows the launched code that's ongoing.
  *  Writing code that launches other boxes. For example `root.named("progress").begin()` launches a box called "progress".
 
-Some of these effects are language-dependent. For example, if you are editing a GLSL shader property, alt/option-enter recompiles and reloads the shader instead.
+Some of these effects are language-dependent. For example, if you are editing a GLSL shader property, ++alt+enter++ recompiles and reloads the shader instead.
 
 ## Printing things
 
@@ -228,7 +228,7 @@ Box code can also extend and decorate the text editor itself. In the video below
 
 ## Other output-area-related things
 
-You can remove output areas you no longer want to see by `alt/option-click`ing their disclosure triangles; while `alt/option` is held over one, the triangle turns into a red ✕.
+You can remove output areas you no longer want to see by ++alt++-clicking their disclosure triangles; while ++alt++ is held over one, the triangle turns into a red ✕.
 
 ![](assets/screenshot_38.png)
 
@@ -450,20 +450,20 @@ Along the top is a timeline of every saved version, which you can scrub and view
 
 ## Documentation browser
 
-In some weird inception move, Field has a documentation browser (`Browse Documentation` or `ctrl/command-/`):
+In some weird inception move, Field has a documentation browser (`Browse Documentation` or ++cmd+slash++):
 
 ![](assets/screenshot_40.png)
 
 Press that cyan arrow to get back to the text editor.
 
 
-Beside the page is a **DOC NOTES** panel. Select a sentence, press `Ctrl+Shift+A` and say what's wrong with it; your note joins a queue that agents, one per page, work through: they revise the Markdown behind the note and leave a record of what they did, or a question for you. [Notes on the Documentation](docs_notes.md) explains the loop.
+Beside the page is a **DOC NOTES** panel. Select a sentence, press ++ctrl+shift+a++ and say what's wrong with it; your note joins a queue that agents, one per page, work through: they revise the Markdown behind the note and leave a record of what they did, or a question for you. [Notes on the Documentation](docs_notes.md) explains the loop.
 
 ## Presenting with Field
 
 Your talk can be a Field document too. Put Markdown, images, real webpages, YouTube and live Field documents on a separate audience display, with crossfades between slides and simple fade-in builds. When it's time to demonstrate something, run a saved macro or an interactive guide in the document on screen, and edit the code while the audience watches. Slides, CSS themes and shared media stay in ordinary files you can keep in Git.
 
-Long talks get a collapsible outline and incremental search over slide titles **and their text**, including reveals. Type a phrase, choose a match with the arrow keys, and press Enter to jump there; searching leaves the audience on the current slide until you're ready.
+Long talks get a collapsible outline and incremental search over slide titles **and their text**, including reveals. Type a phrase, choose a match with the arrow keys, and press ++enter++ to jump there; searching leaves the audience on the current slide until you're ready.
 
 ![Field's presenter searching for propagation in a slide's reveal text, with a matching excerpt and a keyboard-selected result.](assets/presentation_studio/search.png)
 
@@ -473,7 +473,7 @@ Start with the **Presentations** kit on Welcome. [Presenting with Field](present
 
 A few keyboard shortcuts for getting around Field.
 
-`ctrl/command-shift-P` — pressed in the editor, this brings up the command palette for that box; press it _again_ and you get the command palette for the document as a whole:
+++cmd+shift+p++ — pressed in the editor, this brings up the command palette for that box; press it _again_ and you get the command palette for the document as a whole:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="900x560" clip="0,0,900,560" video="assets/funfeatures/command-palette.mp4" fps="10" transcript="assets/transcripts/funfeatures_tour_setup.yaml" padding="0" wait="0" timeout="180" embed=true hidden=true name="funfeatures-command-palette" alt="In a small Field window with two boxes, sketch's editor is open. Cmd/Ctrl-Shift-P opens the Command Palette for the box, with editor commands in it, and typing fold all narrows it to the folding commands; pressing the shortcut again turns it into Document Commands, and typing document history narrows that to the document history commands. Escape closes it."}
 // The setup transcript makes two boxes, sketch and helper. Lay the editor pane out for this
@@ -549,7 +549,10 @@ ui.pause(600)
 	<source src="assets/Screen-Recording-2026-03-21-at-14.12.21.mp4" type="video/mp4">
 </video>
 
-`Double-tap shift` opens the 'open anything' search box:
+`Double-tap shift` opens the [Open Anything](tour_interface.md#the-command-palette-and-open-anything)
+search box. Search across categories, or start with `>` for control labels, `?` for documentation,
+<code>&#96;</code> for code, or `,` for box names. A control result previews its live value; choosing
+it selects its box and brings the control into view beside the editor:
 
 <video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
 	<source src="assets/Screen-Recording-2026-03-21-at-14.14.34.mp4" type="video/mp4">
@@ -559,7 +562,7 @@ Drag the little grip in the top-left corner of the canvas to split it into panes
 
 ![Field's canvas split into four panes by a black cross: bar headings along the top and instrument labels down the left stay lined up with the pattern boxes in the scrolled body](assets/moving_around_the_canvas/split_canvas.png)
 
-`ctrl/command-f` does the _Find_ you'd expect inside the editor; but with the keyboard focused on the whole document, finds over the contents of all of the boxes:
+++cmd+f++ does the _Find_ you'd expect inside the editor; but with the keyboard focused on the whole document, finds over the contents of all of the boxes:
 
 <video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
 	<source src="assets/Screen-Recording-2026-03-21-at-14.16.23.mp4" type="video/mp4">
@@ -574,7 +577,7 @@ you assign it to layers with `layers`:
 layers = "default,secondLayer"
 ```
 
-A box that names no layer is on `default`. `alt/option-L` (**Show Layers Panel** in the command palette)
+A box that names no layer is on `default`. ++alt+l++ (**Show Layers Panel** in the command palette)
 opens the layers panel, which lists every layer some box is on:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector="#layers-panel" screenshot="assets/layers-panel-floating.png" transcript="assets/transcripts/layers_setup.yaml" padding="8" wait="0" timeout="120" embed=true hidden=true name="layers-panel-floating" alt="The layers panel: four rows, default, overlay, render and sketch, each with an eye button, a radio button, the layer name, its box count and a Solo button, all in aligned columns. overlay is hidden: its eye is dimmed and so is its row. default is the active layer: its radio is checked and its name is in the accent colour. Below the rows are Show all and Move selection to active layer buttons."}
@@ -620,7 +623,7 @@ ui.pause(900)
 
 Each row has:
 
-- an eye, which toggles whether the layer's boxes are on the canvas. Shift-click it to show that
+- an eye, which toggles whether the layer's boxes are on the canvas. ++shift++-click it to show that
   layer alone. The last visible layer cannot be hidden.
 - a radio button for the active layer. The active layer decides which set of frames you are moving
   when you drag boxes about. Making a layer active also shows it.
@@ -632,7 +635,7 @@ Once the [drawing](#drawing-on-the-canvas) has anything on it, it gets a row too
 **Solo**, since boxes can't go on it. **Show all** brings it back with the rest.
 
 **Show all** brings every layer back, and **Move selection to active layer** puts the selected boxes
-on the active layer, and only on it. `alt-]` solos the next layer and `alt-[` the previous one; the
+on the active layer, and only on it. ++alt+bracket-right++ solos the next layer and ++alt+bracket-left++ the previous one; the
 command palette labels include the target layer names. **Show All Layers** in the command palette
 shows every layer and opens the panel.
 
@@ -655,7 +658,7 @@ ui.pause(700)
 
 ## Drawing on the canvas
 
-`alt/option-d` turns the canvas into a drawing surface: pens, shapes, arrows and text, in Excalidraw's hand-drawn style, right over your boxes. `alt/option-d` again and you're back with the boxes, and the drawing stays put, panning and zooming along with everything else. Pinch to zoom, by the way; that works everywhere now.
+++alt+d++ turns the canvas into a drawing surface: pens, shapes, arrows and text, in Excalidraw's hand-drawn style, right over your boxes. ++alt+d++ again and you're back with the boxes, and the drawing stays put, panning and zooming along with everything else. Pinch to zoom, by the way; that works everywhere now.
 
 ![Field with the drawing layer switched on: Excalidraw's toolbar across the top of the window, over a score drawn by a box, with its blue piano-roll rectangles, a red glissando and its label, a green held note and an orange playhead, and the box that drew them to the left](assets/chain_drawn_score/hero.png)
 
@@ -679,7 +682,7 @@ gets you started. Run it, and that puts a keyframe editor in the box's output ar
 keyframes(channel = "k", name = "keyframe", defaults = [vec(0.2, 0.5), vec(0.5, 2.0)])
 ```
 
-Scroll with `scroll` gestures, zoom with `ctrl-scroll`, `double-click` to add a keyframe, right-click to change the keyframe type.
+Scroll with `scroll` gestures, zoom with ++ctrl++-scroll, `double-click` to add a keyframe, right-click to change the keyframe type.
 
 These boxes are both _input_ and _output_, so this code, which converts a keyframe set into a Field `Fn` (see [Functions](functions_examples.md)), is:
 
@@ -801,7 +804,7 @@ customMarking["W2" to "the end"] = {
 } // outer ring
 ```
 
-You can open and swipe around these callbacks with `alt/option-shift-click`:
+You can open and swipe around these callbacks with ++alt+shift++-click:
 
 <video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
 	<source src="assets/customMarking.mp4" type="video/mp4">
@@ -871,7 +874,7 @@ This can end up as a kind of reactive variable system for Kotlin. For the mechan
 
 ## Nesting
 
-Boxes can be nested inside other boxes: select them, open the command palette (`ctrl/command-shift-P`) and pick "Nest ...":
+Boxes can be nested inside other boxes: select them, open the command palette (++cmd+shift+p++) and pick "Nest ...":
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="900x560" clip="0,0,900,560" video="assets/funfeatures/nesting.mp4" fps="10" transcript="assets/transcripts/funfeatures_tour_setup.yaml" padding="0" wait="0" timeout="180" embed=true hidden=true name="funfeatures-nesting" alt="Two boxes, sketch and helper. A click selects sketch and shift-click adds helper; F1 opens the palette over the canvas, typing nest narrows it to Nest 'helper' into 'sketch', and Enter runs it: helper disappears into sketch's nest."}
 // The setup transcript makes two boxes, sketch and helper. Lay the editor pane out for this

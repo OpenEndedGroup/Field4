@@ -96,6 +96,14 @@ class FirstRunTest {
         assertTrue(preparationCommands(setOf("cv", "voice", "diffusion", "audio-ai", "kratos", "tracker", "transport", "opendlssnr", "ardy", "closd"), "linux").isEmpty())
         assertFalse(extraTools(setOf("syphon"), "windows").contains("xcrun"))
     }
+    @Test fun sentenceParserPreparationIsExplicitAndKeepsLegacyChoices() {
+        assertTrue(preparationCommands(emptySet(), "linux").isEmpty())
+        assertEquals(setOf("vulkan", "python"), selectedExtras("1 2"))
+        for (platform in listOf("linux", "mac", "windows")) {
+            assertEquals("prepareSentenceParser", preparationCommands(setOf("sentences"), platform).single().last())
+            assertTrue("uv" in extraTools(setOf("sentences"), platform))
+        }
+    }
     @Test fun nativeArtifactChecksHonorOverridesAndWindowsOutputLayouts() {
         val root = File(System.getProperty("java.io.tmpdir"), "field-setup-checkout").absoluteFile
         val override = File(System.getProperty("java.io.tmpdir"), "external/custom-ceres.so").absoluteFile

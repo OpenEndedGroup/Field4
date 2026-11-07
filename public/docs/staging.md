@@ -81,7 +81,7 @@ The Tour's [Graphics on the GPU](tour_gpu_graphics.md) stop gets a shader drawin
 
 ## AI and agents
 
-- [AI Overview](aiFeatures.md) is the one to read first. It is organised by what you are asking for: a conversation about a box, an edit at one spot, AI candidates mixed into `ctrl-space`, or a function body filled in from its signature.
+- [AI Overview](aiFeatures.md) is the one to read first. It is organised by what you are asking for: a conversation about a box, an edit at one spot, AI candidates mixed into ++ctrl+space++, or a function body filled in from its signature.
 - [Agent Transcript Gallery](agent_transcripts.md) collects agent-built documents as reproducible starting points, each materialized from a recorded transcript and openable in your own workspace.
 - [AI Tool-Use History](ai_tool_use_history.md) is the structured trace of what a send actually did, for when a tool call goes wrong, and [AI Documentation Polish](ai_doc_polish.md) covers the generated documentation that fills in for a completion entry whose source carries no useful KDoc.
 - [Notes on the Documentation](docs_notes.md) turns notes you leave on these pages into a queue that agents work through.

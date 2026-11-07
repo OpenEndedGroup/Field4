@@ -87,7 +87,7 @@ into your workspace as a new document. It has two boxes:
 | Box | What it is |
 | --- | --- |
 | **renderer — launch me first** | Opens the window. Select it and choose **Launch Box**. |
-| **the polytope — talk here (AI4)** | The mesh, its shaders and the two slots. Run it (**ctrl/command-return**) once the window is open, then press **ctrl/command-4** for AI4 chat. |
+| **the polytope — talk here (AI4)** | The mesh, its shaders and the two slots. Run it (++cmd+enter++) once the window is open, then press ++cmd+4++ for AI4 chat. |
 
 Configure an AI provider through Field's welcome page if you have not already; see
 [AI features](aiFeatures.md). In a document of your own, any box whose shader has a

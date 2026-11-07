@@ -17,14 +17,14 @@ and a document can add tools of its own.
 In any document, select a box — press **n** to make one — and choose **Make a StackSL Program** from
 the command palette. A root box, **StackSL window**, appears above it and opens a square window; the
 box becomes a program, layered noise over slowly drifting coordinates, and draws in it. Select the
-program and press **ctrl/command-4** to open AI4 chat. Configure an AI provider through Field's
+program and press ++cmd+4++ to open AI4 chat. Configure an AI provider through Field's
 welcome page if you have not already; see [AI features](aiFeatures.md).
 
 ![A program box with its AI4 chat open: the model's reply explaining a blue mound in the aurora, followed by its trace of the program and the fix](assets/stacksl_conversation/saved-chat.png)
 
 The program box edits its `stackSL` property, and the window follows every edit that compiles; an
 edit with an error is marked on its line, and the window keeps the last program that compiled.
-Running the box (ctrl/command-return) checks your program in as a revision. The root holds no code:
+Running the box (++cmd+enter++) checks your program in as a revision. The root holds no code:
 it is the box whose main language is StackSL, and it opens its window when a program beneath it
 starts. Stopping the root, or closing the window, stops the programs in it; running one again reopens
 the window, and a program whose window is closed still has its card's WebGL preview. **Set Main
@@ -38,7 +38,7 @@ workspace as a new document. It has two boxes:
 | Box | What it is |
 | --- | --- |
 | **StackSL window** | The StackSL root. It holds no code; its window opens when the program starts. |
-| **the shader — talk here (AI4)** | The program. Select it and press **ctrl/command-4** to open AI4 chat. |
+| **the shader — talk here (AI4)** | The program. Select it and press ++cmd+4++ to open AI4 chat. |
 
 The program starts as one flat grey:
 
