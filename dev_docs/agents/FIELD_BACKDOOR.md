@@ -563,6 +563,14 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json --port
   `output-rising:B:#c1,#c2:N` (at least N bars in those colours, rising left to right, the tallest
   mostly the last colour). They open AI4's own
   capture page if none is open; no `--with-playwright` is needed.
+- `agent-task --memory on|<folder>` gives the task AI4's cross-session memory. It gets none by
+  default, so a task neither reads nor writes the person's notes.
+- `memory-eval [--ids widget-price,kelvin] [--arms none,memory,dream] [--repeats N] [--dir D]
+  --allow-remote-provider` measures that memory. Each scenario is a run of fresh sessions where the
+  last session depends on something said in an earlier one, under three arms: no memory, a shared
+  memory folder, and the folder plus a dream pass between sessions. Live runs are capped at 40
+  sessions. The report, the memory folders and the recorded sessions stay under `--dir`, by default
+  `build/ai4-memory-eval/<time>`. See [`../ai/AI4_MEMORY.md`](../ai/AI4_MEMORY.md).
 
 Details, the tool list and measured results are in
 [`../ai/IN_FIELD_AGENT_HARNESS.md`](../ai/IN_FIELD_AGENT_HARNESS.md).

@@ -255,6 +255,10 @@ data class AgentTaskResult(
     val nestedCalls: Int = 0,
     /** User turns in the conversation: 1 + [AgentTaskRequest.followUps]. */
     val turns: Int = 1,
+    /** Each user turn's reply, in order ([finalText] is the last); empty where the task did not run turns itself. */
+    val replies: List<String> = emptyList(),
+    /** How many of [toolCalls] each user turn made, in order, so a transcript can put each call under its turn. */
+    val turnToolCalls: List<Int> = emptyList(),
     /** Where the last turn's instructions went: `instructions`, `system+prefix`, or `inline` (the legacy arm). */
     val contextPlacement: String = "",
     /** A mined-corpus task only: the tool whose result held a line of the task's own solution (see [AgentEvalCorpus.leak]). */
@@ -393,10 +397,15 @@ object AgentTaskRunner {
             var sent = helpers.chatGeneral(
                 thread, code = "", lang = afield.runtime.languages.KOTLIN_SCRIPT, userPrompt = prompt, ctx = ctx,
                 maxToolRounds = budget, extraInstructions = extra)
+            val replies = mutableListOf(sent.text)
+            val turnCalls = mutableListOf(records(sent).size)
             for (followUp in request.followUps) {
-                sent = mergeTurns(sent, helpers.chatGeneral(
+                val next = helpers.chatGeneral(
                     sent.threadState, code = "", lang = afield.runtime.languages.KOTLIN_SCRIPT, userPrompt = followUp, ctx = ctx,
-                    maxToolRounds = budget, extraInstructions = extra))
+                    maxToolRounds = budget, extraInstructions = extra)
+                replies += next.text
+                turnCalls += records(next).size
+                sent = mergeTurns(sent, next)
             }
 
             val shots = HashMap<String, BoxOutputShot>()
@@ -427,6 +436,8 @@ object AgentTaskRunner {
                 programCalls = calls.count { it.tool == afield.ai.tools.program.RUN_TOOL_PROGRAM },
                 nestedCalls = calls.count { it.parent.isNotEmpty() },
                 turns = 1 + request.followUps.size,
+                replies = replies,
+                turnToolCalls = turnCalls,
                 contextPlacement = sent.contextReport?.placement ?: "inline",
                 repoWritten = ctx.repoFiles?.written?.toList().orEmpty(),
                 repoRuns = ctx.repoCommands?.runs?.toList().orEmpty(),

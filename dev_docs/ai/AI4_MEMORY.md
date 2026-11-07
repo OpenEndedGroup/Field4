@@ -73,9 +73,82 @@ message, sent by the palette's **Consolidate AI4 Memory** and by the backdoor
 - **Not done.** The article suggests aiming dreaming at what changes and tuning its cadence by how
   often a note is used. Field does not count note reads yet, so every pass looks at every note.
 
-## Stage 3: measure it (not built)
+## Stage 3: measure it
 
-An `agent-eval` pair of tasks in fresh sessions, where the second depends on a correction made in
-the first, each given its own memory folder (`AgentTaskRequest.memory = <dir>`). Run each pair
-without memory, with memory, and with memory plus a dreaming pass between the two tasks.
-`AgentEvalRequest` needs a `memory` pin to pass through, as it has `lessons`.
+`afield.ai.agent.MemoryEval`, run with the backdoor's `memory-eval`. It follows the article's
+CL-Bench setup: a fresh session for each question, with the memory folder the only thing carried
+over.
+
+- **Scenarios.** Each is two or three sessions, each in a fresh headless document and conversation.
+  In an early session the person says something AI4 cannot otherwise know; the last session asks for
+  work that depends on it without repeating it. Only the last session is scored.
+  - `widget-price`: a fact, with an explicit "remember".
+  - `kelvin`: a correction about units, with no request to remember.
+  - `result-prefix`: a house style, stated as a correction.
+  - `price-change`: a fact that changes in session two; session three needs the new value. This is
+    the drift case dreaming exists for.
+  - `control`: nothing carries over. A drop here would mean memory got in the way.
+- **Arms.**
+  - `none`: memory off.
+  - `memory`: one fresh folder per scenario, shared by its sessions.
+  - `dream`: as `memory`, plus a `Dreaming.run` after every session but the last.
+- **Transcripts for the dream arm.** A headless task saves no chat, so the runner records each
+  session as one (`MemoryEval.recordSession`): every request, the tool calls each turn made, and each
+  turn's reply. This is why `AgentTaskResult` gained `replies` and `turnToolCalls`. The record is
+  written by the harness from the task's result, not by the chat panel, and is thinner: no images,
+  and arguments are cut at 300 characters.
+- **Report.** Last sessions passed per arm and per scenario, plus every session's verdict, its
+  memory-tool calls, and the notes in the folder after it. It also lists every dream pass. Everything
+  stays under the run's `--dir`.
+
+### First live run (2026-11-07, openai gpt-6.1-sol, one repeat)
+
+All 33 sessions and 6 dream passes took 15 minutes and 3.27M input tokens. Most of those tokens are
+AI4's instructions and tool schemas, resent every round.
+
+| scenario | none | memory | dream |
+|---|---|---|---|
+| widget-price | fail | pass | pass |
+| kelvin | pass* | pass | pass |
+| result-prefix | fail | pass | pass |
+| price-change | fail | pass | pass |
+| control | fail† | fail† | fail† |
+| **last sessions passed** | **1/5** | **4/5** | **4/5** |
+
+- **Without memory, AI4 still tried to remember.** It saved the widget price and the kelvin
+  convention to the document's `DECISIONS.md`, a guide that a fresh document never sees. The next
+  session then printed "cost of 12 widgets: unknown (unit price not specified)".
+- **With memory, every scenario's knowledge carried.** Each first session wrote exactly one note,
+  with no request to remember in `kelvin` or `result-prefix`, and each last session read it
+  (`MemoryReadRequest`) before answering. In `price-change`, session two replaced the note's 4.50
+  with 5.00 on its own, so session three used 5.00.
+- **Dreaming added nothing measurable here**, because in-session memory already handled the one
+  drift case. Each pass updated its scenario's note to add sources, and one removed
+  document-specific detail ("removed the document-specific `Quote` test result"). None created or
+  deleted a note. A scenario where the in-session note goes wrong, and only a later re-read of the
+  transcript catches it, would be needed to show what dreaming adds.
+- \* The `kelvin` check was too lenient. The no-memory session printed
+  "273.15 K (0 °C, 32 °F)", hedging into a pass. The check now also requires that the box's code
+  contain no °C or °F.
+- † `control` failed in every arm for the same reason, which had nothing to do with memory. The box
+  printed 1, 4, 9, 16 and 25 on five lines, and the output check saw only the last three. The
+  scenario now asks for one printed line, the sum of the squares (55).
+
+### Second run, the two fixed scenarios (same day, same model)
+
+12 sessions and 2 dream passes took 3.8 minutes and 0.89M input tokens.
+
+| scenario | none | memory | dream |
+|---|---|---|---|
+| kelvin | fail | pass | pass |
+| control | pass | pass | pass |
+
+With the tighter check, the no-memory `kelvin` session failed for the reason the check now
+catches: it printed "0 °C (32 °F, 273.15 K)". With memory it printed kelvin only. `control` passed
+in every arm, so the control-scenario notes ("short replies") did not get in the way.
+
+Taking the three unchanged scenarios from the first run and the two fixed ones from this run, last
+sessions passed **none 1/5 (the control only), memory 5/5, dream 5/5**. That is one repeat on one
+model. `--repeats` and a second provider are the next things to run before quoting these numbers
+anywhere. A scenario built to show what dreaming adds is still missing.
+
