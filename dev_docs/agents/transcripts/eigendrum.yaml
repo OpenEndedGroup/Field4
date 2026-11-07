@@ -15,7 +15,6 @@ operations:
     properties:
       code: |
         import afield.audio.modal.*
-        import afield.audio.engine.WavFloatArrayWriter
 
         // A unit-square drum. Its lowest sixteen modes, each a row you can play on its own;
         // the analytic spectrum is π²(m² + n²), so λ₁ ≈ 19.74.
@@ -41,13 +40,15 @@ operations:
     properties:
       code: |
         import afield.audio.modal.*
-        import afield.audio.engine.WavFloatArrayWriter
 
         // r(θ) = 1 + 0.3 cos 5θ: a five-lobed drum. Left, the triangle mesh;
         // right, its sixth mode coloured by displacement, nodal lines in white.
         val mesh = polarDrumMesh(0.06) { t -> 1 + 0.3 * cos(5 * t) }
         val modes = mesh.modes(8)
-        val wire = mesh.wireframe().apply { color = vec(0.8, 0.8, 0.8, 0.6); thickness = 0.5 }
+        val wire = mesh.wireframe().apply {
+            color = vec(0.8, 0.8, 0.8, 0.6)
+            thickness = 0.5
+        }
         val shape = modes.modeMesh(5).map { it.copy().apply { transform { v -> v.add(3f, 0f, 0f) } } }
         val nodes = modes.nodalLines(5).copy().apply {
             transform { v -> v.add(3f, 0f, 0f) }
@@ -55,7 +56,7 @@ operations:
             thickness = 1.5
         }
         lines(listOf(wire) + shape + listOf(nodes), w = 520.0, h = 260.0, fitToSize = true)
-        println("${mesh.nodeCount} nodes, ${mesh.triangleCount} triangles, ratios ${modes.ratios().map { "%.3f".format(it) }}")
+        println("${mesh.nodeCount} nodes, ${mesh.triangleCount} triangles, ratios ${modes.ratios().map { it.f3 }}")
 - create:
     box: ed_kac
     name: 3 - two shapes, one spectrum
@@ -66,18 +67,25 @@ operations:
       h: 100.0
     properties:
       code: |
-        import afield.audio.modal.*
         import afield.audio.engine.WavFloatArrayWriter
+        import afield.audio.modal.*
 
         // Gordon, Webb and Wolpert's isospectral pair: you cannot hear the shape of a drum.
         val a = drumMesh(KacPair.drumA, 0.06).modes(10)
         val b = drumMesh(KacPair.drumB, 0.06).modes(10)
-        val rows = (0 until 10).joinToString("") { i ->
-            "<tr><td>${i + 1}</td><td>${"%.3f".format(a.lambda[i])}</td><td>${"%.3f".format(b.lambda[i])}</td>" +
-                "<td>${"%.3f".format(100 * abs(a.lambda[i] - b.lambda[i]) / a.lambda[i])}%</td></tr>"
+        val rows =
+            (0 until 10).joinToString("") { i ->
+                "<tr><td>${i + 1}</td><td>${(a.lambda[i]).f3}</td><td>${(b.lambda[i]).f3}</td>" +
+                    "<td>${(100 * abs(a.lambda[i] - b.lambda[i]) / a.lambda[i]).f3}%</td></tr>"
+            }
+        display(
+            "spectra",
+            "<table style='font:12px monospace;color:#ddd'><tr><th>mode</th><th>λ A</th><th>λ B</th><th>diff</th></tr>$rows</table>",
+        )
+        val outlineA = polygonFLine(KacPair.drumA).apply {
+            color = vec(1.0, 0.85, 0.3, 1.0)
+            thickness = 2.0
         }
-        display("spectra", "<table style='font:12px monospace;color:#ddd'><tr><th>mode</th><th>λ A</th><th>λ B</th><th>diff</th></tr>$rows</table>")
-        val outlineA = polygonFLine(KacPair.drumA).apply { color = vec(1.0, 0.85, 0.3, 1.0); thickness = 2.0 }
         val outlineB = polygonFLine(KacPair.drumB).apply {
             transform { v -> v.add(4f, 0f, 0f) }
             color = vec(1.0, 0.85, 0.3, 1.0)
@@ -100,8 +108,8 @@ operations:
       h: 100.0
     properties:
       code: |
-        import afield.audio.modal.*
         import afield.audio.engine.WavFloatArrayWriter
+        import afield.audio.modal.*
 
         // A square drum struck on the centre, which lies on a nodal line of every mode with m or n even,
         // and off-centre. The bars are how strongly each of the 16 modes rings.
@@ -111,13 +119,30 @@ operations:
         spots.forEachIndexed { s, (px, py) ->
             val dx = s * 2.4f
             out += modes.modeMesh(1).map { it.copy().apply { transform { v -> v.add(dx, 0f, 0f) } } }
-            out += modes.nodalLines(1).copy().apply { transform { v -> v.add(dx, 0f, 0f) }; color = vec(1.0, 1.0, 1.0, 1.0); thickness = 1.5 }
-            out += fline { circle(px + dx, py, 0.04) }.apply { color = vec(1.0, 0.85, 0.3, 1.0); filled = true }
+            out +=
+                modes.nodalLines(1).copy().apply {
+                    transform { v -> v.add(dx, 0f, 0f) }
+                    color = vec(1.0, 1.0, 1.0, 1.0)
+                    thickness = 1.5
+                }
+            out +=
+                fline { circle(px + dx, py, 0.04) }
+                    .apply {
+                        color = vec(1.0, 0.85, 0.3, 1.0)
+                        filled = true
+                    }
             val amps = modes.strike(px, py)
             val peak = amps.maxOf { abs(it) }
             amps.forEachIndexed { k, a ->
-                out += fline { moveTo(dx + k * 0.06, -0.15); lineTo(dx + k * 0.06, -0.15 - 0.6 * abs(a) / peak) }
-                    .apply { color = vec(1.0, 0.85, 0.3, 1.0); thickness = 3.0 }
+                out +=
+                    fline {
+                        moveTo(dx + k * 0.06, -0.15)
+                        lineTo(dx + k * 0.06, -0.15 - 0.6 * abs(a) / peak)
+                    }
+                        .apply {
+                            color = vec(1.0, 0.85, 0.3, 1.0)
+                            thickness = 3.0
+                        }
             }
             display("strike ${s + 1}", WavFloatArrayWriter.encodeMono16(modes.render(amps, fundamental = 120.0), 44100))
         }
@@ -132,8 +157,8 @@ operations:
       h: 100.0
     properties:
       code: |
-        import afield.audio.modal.*
         import afield.audio.engine.WavFloatArrayWriter
+        import afield.audio.modal.*
 
         // Draw a closed shape on the drawing layer (Alt+D, freedraw), then run this box.
         // With nothing drawn yet it uses a heart-ish polar curve.
@@ -141,11 +166,64 @@ operations:
         val outline = stroke ?: polygonFLine(polarPolygon(200) { t -> 1 + 0.35 * sin(t) * abs(cos(t)) + 0.15 * cos(3 * t) })
         val mesh = drumMeshFitted(outline, 32)
         val modes = mesh.modes(12)
-        val pictures = (0 until 4).flatMap { k ->
-            modes.modeMesh(k).map { it.copy().apply { transform { v -> v.add(k * 1.15f, 0f, 0f) } } } +
-                modes.nodalLines(k).copy().apply { transform { v -> v.add(k * 1.15f, 0f, 0f) }; color = vec(1.0, 1.0, 1.0, 1.0) }
-        }
+        val pictures =
+            (0 until 4).flatMap { k ->
+                modes.modeMesh(k).map { it.copy().apply { transform { v -> v.add(k * 1.15f, 0f, 0f) } } } +
+                    modes.nodalLines(k).copy().apply {
+                        transform { v -> v.add(k * 1.15f, 0f, 0f) }
+                        color = vec(1.0, 1.0, 1.0, 1.0)
+                    }
+            }
         lines(pictures, w = 520.0, h = 150.0, fitToSize = true)
         val c = mesh.x.indices.filter { !mesh.boundary[it] }.minBy { abs(mesh.x[it] - 0.4) + abs(mesh.y[it] - 0.35) }
-        display("strike", WavFloatArrayWriter.encodeMono16(modes.render(modes.strike(mesh.x[c], mesh.y[c]), fundamental = 130.0), 44100))
-        println(if (stroke == null) "no stroke yet: using the polar curve" else "drum from your stroke: ${mesh.nodeCount} nodes")
+        display(
+            "strike",
+            WavFloatArrayWriter.encodeMono16(modes.render(modes.strike(mesh.x[c], mesh.y[c]), fundamental = 130.0), 44100),
+        )
+        println(
+            if (stroke == null) "no stroke yet: using the polar curve" else "drum from your stroke: ${mesh.nodeCount} nodes",
+        )
+- create:
+    box: ed_live
+    name: 6 - a live drum
+    frame:
+      x: 1420.0
+      y: 1200.0
+      w: 300.0
+      h: 100.0
+    properties:
+      code: |
+        import afield.audio.modal.*
+
+        // The flower drum as a live voice in the audio engine: it strikes itself every 1.5 s.
+        // Call drum.strike(x, y) from any box or callback to hit it somewhere else.
+        val modes = polarDrumMesh(0.06) { t -> 1 + 0.3 * cos(5 * t) }.modes(16)
+        val drum = ModalDrum(modes, fundamental = 110.0, every = 1.5, autoX = 0.35, autoY = 0.1)
+        drum
+- create:
+    box: ed_morph
+    name: 7 - a drum that changes shape
+    frame:
+      x: 1420.0
+      y: 1500.0
+      w: 300.0
+      h: 100.0
+    properties:
+      code: |
+        import afield.audio.modal.*
+
+        // Nine drums from a circle to a five-lobed flower. The voice glides through them and back
+        // every 4 s, striking itself as it goes, so every mode's pitch bends with the outline.
+        val shapes = (0..8).map { i -> polarDrumMesh(0.07) { t -> 1 + 0.05 * i * cos(5 * t) }.modes(12) }
+        val outlines = shapes.flatMapIndexed { i, m ->
+            m.modeMesh(0).map { it.copy().apply { transform { v -> v.add(i * 2.8f, 0f, 0f) } } }
+        }
+        lines(outlines, w = 620.0, h = 100.0, fitToSize = true)
+        val rows = shapes.mapIndexed { i, m ->
+            "<tr><td>${(0.05 * i).f2}</td>" + m.ratios().take(6).joinToString("") { "<td>${it.f3}</td>" } + "</tr>"
+        }
+        display(
+            "ratios",
+            "<table style='font:12px monospace;color:#ddd'><tr><th>a</th><th colspan=6>f / f₁ of modes 1–6</th></tr>${rows.joinToString("")}</table>",
+        )
+        ModalDrum(shapes[0], fundamental = 110.0, every = 0.6, autoX = 0.3, autoY = 0.1, morph = shapes, morphPeriod = 4.0)

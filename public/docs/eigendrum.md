@@ -29,7 +29,6 @@ are the first eight, orange where the head moves up and blue where it moves down
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/eigendrum/modes.png" embed=true alt="A table of sixteen modes of a square drum with λ, frequency ratio, frequency and an audio player for each, starting at λ 19.740; below it eight squares coloured orange and blue in checkerboard patterns of one, two, three and four lobes"}
 import afield.audio.modal.*
-import afield.audio.engine.WavFloatArrayWriter
 
 // A unit-square drum. Its lowest sixteen modes, each a row you can play on its own;
 // the analytic spectrum is π²(m² + n²), so λ₁ ≈ 19.74.
@@ -58,13 +57,15 @@ still) in white.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/eigendrum/polar.png" embed=true alt="On the left a five-lobed flower shape filled with a fine triangle mesh; on the right the same flower coloured by its sixth mode, an orange disc in the middle ringed by a white nodal line, with a blue patch in each of the five lobes"}
 import afield.audio.modal.*
-import afield.audio.engine.WavFloatArrayWriter
 
 // r(θ) = 1 + 0.3 cos 5θ: a five-lobed drum. Left, the triangle mesh;
 // right, its sixth mode coloured by displacement, nodal lines in white.
 val mesh = polarDrumMesh(0.06) { t -> 1 + 0.3 * cos(5 * t) }
 val modes = mesh.modes(8)
-val wire = mesh.wireframe().apply { color = vec(0.8, 0.8, 0.8, 0.6); thickness = 0.5 }
+val wire = mesh.wireframe().apply {
+    color = vec(0.8, 0.8, 0.8, 0.6)
+    thickness = 0.5
+}
 val shape = modes.modeMesh(5).map { it.copy().apply { transform { v -> v.add(3f, 0f, 0f) } } }
 val nodes = modes.nodalLines(5).copy().apply {
     transform { v -> v.add(3f, 0f, 0f) }
@@ -72,7 +73,7 @@ val nodes = modes.nodalLines(5).copy().apply {
     thickness = 1.5
 }
 lines(listOf(wire) + shape + listOf(nodes), w = 520.0, h = 260.0, fitToSize = true)
-println("${mesh.nodeCount} nodes, ${mesh.triangleCount} triangles, ratios ${modes.ratios().map { "%.3f".format(it) }}")
+println("${mesh.nodeCount} nodes, ${mesh.triangleCount} triangles, ratios ${modes.ratios().map { it.f3 }}")
 ```
 
 ```diffstatic_runner {data-lang=kotlin audio="assets/eigendrum/polar.wav" audio-spec="polar" audio-renderer="afield.audio.modal.EigendrumDocs" embed=true hidden=true name="eigendrum-polar"}
@@ -88,18 +89,25 @@ the first ten computed for each; they agree to better than 0.05%, which is the s
 discretisation error itself.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/eigendrum/kac.png" embed=true alt="A table of ten eigenvalues for drums A and B that agree to within 0.05 percent, beside the two different seven-piece polygons outlined in yellow, each coloured by its third mode; below, two audio players"}
-import afield.audio.modal.*
 import afield.audio.engine.WavFloatArrayWriter
+import afield.audio.modal.*
 
 // Gordon, Webb and Wolpert's isospectral pair: you cannot hear the shape of a drum.
 val a = drumMesh(KacPair.drumA, 0.06).modes(10)
 val b = drumMesh(KacPair.drumB, 0.06).modes(10)
-val rows = (0 until 10).joinToString("") { i ->
-    "<tr><td>${i + 1}</td><td>${"%.3f".format(a.lambda[i])}</td><td>${"%.3f".format(b.lambda[i])}</td>" +
-        "<td>${"%.3f".format(100 * abs(a.lambda[i] - b.lambda[i]) / a.lambda[i])}%</td></tr>"
+val rows =
+    (0 until 10).joinToString("") { i ->
+        "<tr><td>${i + 1}</td><td>${(a.lambda[i]).f3}</td><td>${(b.lambda[i]).f3}</td>" +
+            "<td>${(100 * abs(a.lambda[i] - b.lambda[i]) / a.lambda[i]).f3}%</td></tr>"
+    }
+display(
+    "spectra",
+    "<table style='font:12px monospace;color:#ddd'><tr><th>mode</th><th>λ A</th><th>λ B</th><th>diff</th></tr>$rows</table>",
+)
+val outlineA = polygonFLine(KacPair.drumA).apply {
+    color = vec(1.0, 0.85, 0.3, 1.0)
+    thickness = 2.0
 }
-display("spectra", "<table style='font:12px monospace;color:#ddd'><tr><th>mode</th><th>λ A</th><th>λ B</th><th>diff</th></tr>$rows</table>")
-val outlineA = polygonFLine(KacPair.drumA).apply { color = vec(1.0, 0.85, 0.3, 1.0); thickness = 2.0 }
 val outlineB = polygonFLine(KacPair.drumB).apply {
     transform { v -> v.add(4f, 0f, 0f) }
     color = vec(1.0, 0.85, 0.3, 1.0)
@@ -133,8 +141,8 @@ even m or n, so a centre strike leaves out more than half the spectrum (the bars
 and sounds hollower than a strike off-centre:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/eigendrum/strike.png" embed=true alt="Two copies of a square drum coloured by its second mode with a white nodal line across the middle; on the left a yellow dot on the nodal line and above it a sparse row of bars, several of them zero; on the right a dot off the line and a full row of bars"}
-import afield.audio.modal.*
 import afield.audio.engine.WavFloatArrayWriter
+import afield.audio.modal.*
 
 // A square drum struck on the centre, which lies on a nodal line of every mode with m or n even,
 // and off-centre. The bars are how strongly each of the 16 modes rings.
@@ -144,13 +152,30 @@ val out = ArrayList<FLine>()
 spots.forEachIndexed { s, (px, py) ->
     val dx = s * 2.4f
     out += modes.modeMesh(1).map { it.copy().apply { transform { v -> v.add(dx, 0f, 0f) } } }
-    out += modes.nodalLines(1).copy().apply { transform { v -> v.add(dx, 0f, 0f) }; color = vec(1.0, 1.0, 1.0, 1.0); thickness = 1.5 }
-    out += fline { circle(px + dx, py, 0.04) }.apply { color = vec(1.0, 0.85, 0.3, 1.0); filled = true }
+    out +=
+        modes.nodalLines(1).copy().apply {
+            transform { v -> v.add(dx, 0f, 0f) }
+            color = vec(1.0, 1.0, 1.0, 1.0)
+            thickness = 1.5
+        }
+    out +=
+        fline { circle(px + dx, py, 0.04) }
+            .apply {
+                color = vec(1.0, 0.85, 0.3, 1.0)
+                filled = true
+            }
     val amps = modes.strike(px, py)
     val peak = amps.maxOf { abs(it) }
     amps.forEachIndexed { k, a ->
-        out += fline { moveTo(dx + k * 0.06, -0.15); lineTo(dx + k * 0.06, -0.15 - 0.6 * abs(a) / peak) }
-            .apply { color = vec(1.0, 0.85, 0.3, 1.0); thickness = 3.0 }
+        out +=
+            fline {
+                moveTo(dx + k * 0.06, -0.15)
+                lineTo(dx + k * 0.06, -0.15 - 0.6 * abs(a) / peak)
+            }
+                .apply {
+                    color = vec(1.0, 0.85, 0.3, 1.0)
+                    thickness = 3.0
+                }
     }
     display("strike ${s + 1}", WavFloatArrayWriter.encodeMono16(modes.render(amps, fundamental = 120.0), 44100))
 }
@@ -173,8 +198,8 @@ fit before meshing. With nothing drawn it uses a polar curve, which is what was 
 first four modes and their nodal lines.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/eigendrum/draw.png" embed=true alt="Four copies of a rounded three-lobed shape: the first all orange, then split in two by one white nodal line, then by a curved line, then by two lines into three bands"}
-import afield.audio.modal.*
 import afield.audio.engine.WavFloatArrayWriter
+import afield.audio.modal.*
 
 // Draw a closed shape on the drawing layer (Alt+D, freedraw), then run this box.
 // With nothing drawn yet it uses a heart-ish polar curve.
@@ -182,15 +207,74 @@ val stroke = notation.strokes.lastOrNull()?.toFLine()
 val outline = stroke ?: polygonFLine(polarPolygon(200) { t -> 1 + 0.35 * sin(t) * abs(cos(t)) + 0.15 * cos(3 * t) })
 val mesh = drumMeshFitted(outline, 32)
 val modes = mesh.modes(12)
-val pictures = (0 until 4).flatMap { k ->
-    modes.modeMesh(k).map { it.copy().apply { transform { v -> v.add(k * 1.15f, 0f, 0f) } } } +
-        modes.nodalLines(k).copy().apply { transform { v -> v.add(k * 1.15f, 0f, 0f) }; color = vec(1.0, 1.0, 1.0, 1.0) }
-}
+val pictures =
+    (0 until 4).flatMap { k ->
+        modes.modeMesh(k).map { it.copy().apply { transform { v -> v.add(k * 1.15f, 0f, 0f) } } } +
+            modes.nodalLines(k).copy().apply {
+                transform { v -> v.add(k * 1.15f, 0f, 0f) }
+                color = vec(1.0, 1.0, 1.0, 1.0)
+            }
+    }
 lines(pictures, w = 520.0, h = 150.0, fitToSize = true)
 val c = mesh.x.indices.filter { !mesh.boundary[it] }.minBy { abs(mesh.x[it] - 0.4) + abs(mesh.y[it] - 0.35) }
-display("strike", WavFloatArrayWriter.encodeMono16(modes.render(modes.strike(mesh.x[c], mesh.y[c]), fundamental = 130.0), 44100))
-println(if (stroke == null) "no stroke yet: using the polar curve" else "drum from your stroke: ${mesh.nodeCount} nodes")
+display(
+    "strike",
+    WavFloatArrayWriter.encodeMono16(modes.render(modes.strike(mesh.x[c], mesh.y[c]), fundamental = 130.0), 44100),
+)
+println(
+    if (stroke == null) "no stroke yet: using the polar curve" else "drum from your stroke: ${mesh.nodeCount} nodes",
+)
 ```
+
+## A live drum
+
+`render` makes a finished sound. For a drum you play, `ModalDrum(modes)` is a voice in Field's
+audio engine: return it from a box and launch the box (it is a `Signal`, like `SineOsc`). Each
+mode is a decaying oscillator running on the audio thread. `drum.strike(x, y)` can be called from
+any box or callback; it computes the mallet's projection where it is called and hands it to the
+audio thread, which adds it at the start of the next block. `every = 1.5` makes the drum strike
+itself on a sample-accurate clock.
+
+```diffstatic {data-lang=kotlin}
+import afield.audio.modal.*
+
+// The flower drum as a live voice in the audio engine: it strikes itself every 1.5 s.
+// Call drum.strike(x, y) from any box or callback to hit it somewhere else.
+val modes = polarDrumMesh(0.06) { t -> 1 + 0.3 * cos(5 * t) }.modes(16)
+val drum = ModalDrum(modes, fundamental = 110.0, every = 1.5, autoX = 0.35, autoY = 0.1)
+drum
+```
+
+## A drum that changes shape
+
+`retune(newModes)` swaps the drum's shape while it rings: the oscillators keep their energy and
+change pitch. With `morph = shapes`, the voice glides through a list of shapes and back, every
+`morphPeriod` seconds, interpolating each mode's frequency on the audio thread. Here nine drums run
+from a circle to the five-lobed flower. The table shows the overtones closing in on the
+fundamental as the lobes deepen, so the strikes sound lower and more clustered at the flower end.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/eigendrum/morph.png" embed=true alt="Nine drum shapes in a row, from a circle to a deep five-lobed flower, each glowing orange with its first mode; below, a table of frequency ratios for modes one to six, the second falling from 1.593 to 1.499 and the fourth from 2.135 to 1.716"}
+import afield.audio.modal.*
+
+// Nine drums from a circle to a five-lobed flower. The voice glides through them and back
+// every 4 s, striking itself as it goes, so every mode's pitch bends with the outline.
+val shapes = (0..8).map { i -> polarDrumMesh(0.07) { t -> 1 + 0.05 * i * cos(5 * t) }.modes(12) }
+val outlines = shapes.flatMapIndexed { i, m ->
+    m.modeMesh(0).map { it.copy().apply { transform { v -> v.add(i * 2.8f, 0f, 0f) } } }
+}
+lines(outlines, w = 620.0, h = 100.0, fitToSize = true)
+val rows = shapes.mapIndexed { i, m ->
+    "<tr><td>${(0.05 * i).f2}</td>" + m.ratios().take(6).joinToString("") { "<td>${it.f3}</td>" } + "</tr>"
+}
+display(
+    "ratios",
+    "<table style='font:12px monospace;color:#ddd'><tr><th>a</th><th colspan=6>f / f₁ of modes 1–6</th></tr>${rows.joinToString("")}</table>",
+)
+ModalDrum(shapes[0], fundamental = 110.0, every = 0.6, autoX = 0.3, autoY = 0.1, morph = shapes, morphPeriod = 4.0)
+```
+
+The interpolation follows modes by their rank, so where two modes cross in pitch partway through
+the morph, they swap roles rather than crossing.
 
 ## How it is computed
 

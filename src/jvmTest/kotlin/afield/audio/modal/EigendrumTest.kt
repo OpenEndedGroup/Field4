@@ -63,4 +63,26 @@ class EigendrumTest {
         val sound = modes.render(modes.strike(0.3, 0.2), seconds = 0.5, sampleRate = 8000)
         assertTrue(sound.any { abs(it) > 0.5f })
     }
+
+    /**
+     * The live voice: block-rendered as the audio engine does, silent until struck, ringing after a
+     * strike posted from another thread, and still ringing (no reset) after a retune to a new shape.
+     */
+    @Test
+    fun modalDrumSignalRendersStrikesAndRetunes() {
+        val square = drumMesh(doubleArrayOf(0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0), 0.06).modes(8)
+        val drum = ModalDrum(square, fundamental = 150.0)
+        val ctx = afield.audio.synth.SynthContext(44_100f, 512)
+        val block = FloatArray(512)
+        fun peakOf(blocks: Int): Float { var p = 0f; repeat(blocks) { drum.render(block, 512, ctx); ctx.cycleId++; p = maxOf(p, block.maxOf { abs(it) }) }; return p }
+        assertTrue(peakOf(4) == 0f, "silent before a strike")
+        val poster = Thread { drum.strike(0.3, 0.2) }; poster.start(); poster.join()
+        val struck = peakOf(8)
+        println("peak after strike $struck, frames ${drum.framesRendered}")
+        assertTrue(struck > 0.01f)
+        drum.retune(polarDrumMesh(0.08) { 0.6 }.modes(8))
+        val after = peakOf(8)
+        println("peak after retune $after")
+        assertTrue(after > 0.001f && after < struck * 1.5f, "retune keeps the ring without a jump")
+    }
 }

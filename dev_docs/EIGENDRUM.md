@@ -44,3 +44,17 @@ docs power gate (battery 66% < 80%, no AC). Recapture on AC with
 `FIELD_DOCS_RUNNER_MODE=always uv run --project . --group docs python tools/build_zensical_docs.py --page eigendrum.md`.
 The same box code was run through the backdoor and its screenshots inspected; the five audio
 scenes were rendered offline via `EigendrumDocs.renderWav` (2.0–2.5 s, 44.1 kHz, decaying).
+
+## Live voice (ModalDrum, added later 2026-11-07)
+- `ModalDrum` is a `Signal`: one damped complex phasor per mode. `strike`/`retune` run on the
+  caller's thread (projection, bank build) and post through a ConcurrentLinkedQueue /
+  AtomicReference; the audio thread drains them at block start — no Runloop code touches DSP state.
+  Strike amplitudes are divided by 2πr² so aᵢ ≈ φᵢ(x, y).
+- `morph = shapes`: the audio thread interpolates frequency ratios by mode rank (triangle wave,
+  per block). Rank-following means crossings swap roles.
+- Verified in the real engine: launching ed_live, `ModalDrum.latest.framesRendered` rose
+  29,696 → 177,152 over ~3 s (≈48 kHz) with block peaks ≈0.1; ed_morph peaks 0.19–0.49.
+  Unit test renders blocks via SynthContext: silent until struck, peak 1.18 at gain 0.2 (default
+  now 0.15), still ringing after retune.
+- Real drawing-layer path: a box wrote `notation { stroke(fline) }`; ed_draw then printed
+  "drum from your stroke: 764 nodes" and drew its modes (not the fallback).
