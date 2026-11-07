@@ -34,6 +34,12 @@ An agent's tools can read more code, files or local code-use history while answe
 tool results then become model context. A selected line is not a guarantee that only that line leaves
 this machine. Review the tools and provider you enable for confidential work.
 
+AI4 also keeps [memory notes](ai4_tools.md#keeping-track-of-the-work) in `~/.afield/ai4/memory/`
+that carry what it learned from one session into the next, in any document. Every AI4 request
+includes the list of those notes, one line each, and AI4 can read a whole note, or search the
+workspace's saved chats, while it answers. Read or delete the notes there at any time, or set
+`AFIELD_AI4_MEMORY=off` to turn memory off.
+
 Providers and model/account settings appear in **Welcome → AI**. With [Local AI](local_ai.md),
 requests go to the model endpoint you choose, which can run on this computer or another machine
 you own. Hosted-provider requests use your own API key or

@@ -1036,6 +1036,10 @@ data class ToolExecutionContext(
 
     val agentMemory: AgentMemoryState? = null,
     val documentGuides: DocumentGuideTools? = null,
+    /** The person's memory notes, kept across sessions and documents ([afield.ai.memory.UserMemory]); null when memory is off or not offered. */
+    val userMemory: afield.ai.memory.UserMemory? = null,
+    /** The workspace's saved AI4 chats, searchable ([afield.ai.memory.ChatHistory]); offered with [userMemory]. */
+    val chatHistory: afield.ai.memory.ChatHistory? = null,
 
     // Optional extra tools
     val workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
@@ -1257,7 +1261,7 @@ internal class ToolRegistry {
         handlers[name]?.meta ?: dynamicTool(dynamicToolsIn(ctx), name)?.meta
 
     fun addAllTo(builder: ResponseCreateParams.Builder, ctx: ToolExecutionContext, deferLoading: Boolean = false, loadedTools: Set<String> = emptySet()) {
-        val immediate = setOf("Commentary", "AttachmentRequest", "DocumentGuideListRequest", "DocumentGuideReadRequest", "ChecklistReadRequest", "ChecklistUpdateRequest", "ScratchpadReadRequest", "ScratchpadUpdateRequest", "DescribeToolsRequest", "RunToolProgramRequest")
+        val immediate = setOf("Commentary", "AttachmentRequest", "DocumentGuideListRequest", "DocumentGuideReadRequest", "ChecklistReadRequest", "ChecklistUpdateRequest", "ScratchpadReadRequest", "ScratchpadUpdateRequest", "MemorySearchRequest", "MemoryReadRequest", "MemoryWriteRequest", "DescribeToolsRequest", "RunToolProgramRequest")
         var hasDeferredTool = false
         handlers.values.forEach { h ->
             if (h.offeredUnder(ctx) && shown(h.cls.simpleName, h.meta, ToolFace.MODEL, ctx)) {

@@ -177,10 +177,10 @@ output area and hands the model the picture.
   ],
   "width": 430,
   "height": 172,
-  "inkFraction": 0.04002163331530557,
+  "inkFraction": 0.03980530016224987,
   "dominantColours": [
-    "#050505 71.0%",
-    "#151515 25.0%",
+    "#050505 76.9%",
+    "#151515 19.1%",
     "#3a6ea5 2.4%",
     "#203a56 0.7%",
     "… 2 more"
@@ -616,6 +616,20 @@ A guide is a Markdown file saved in the document, for anything that should outla
 }
 ```
 
+Memory holds what AI4 should know in every document, not just this one: how you like box code
+written, a correction you made, a trap you both hit last week. It is a folder of short Markdown
+notes, one fact per note, in `~/.afield/ai4/memory/`. Every AI4 turn starts with the list of notes,
+one line each, and AI4 reads a note in full before relying on its details. It writes a note when you
+ask it to remember something, or when something is clearly worth remembering. Each note says whether
+AI4 checked it, and cites the chat it came from. `HistorySearchRequest` and `HistoryReadRequest`
+search and read the workspace's saved chats, every branch included, so a note can be traced back to
+what was actually said.
+
+The folder is yours to read and edit. `MEMORY.md` lists the notes and is rewritten after every
+change, so edit the notes rather than that file. Each change AI4 makes is a commit in the folder's
+own git repository: `git log -p` shows what it learned, and `git revert` undoes a change. Set
+`AFIELD_AI4_MEMORY=off` to turn memory off, or `AFIELD_AI4_MEMORY_DIR` to keep it somewhere else.
+
 ## Working on Field's own repository
 
 AI4 can also work on Field's own checkout, outside any document. The chat panel on a box gets these
@@ -668,7 +682,7 @@ A few tools appear only in a particular kind of chat, such as one about a RectSL
 pages cover them.
 
 <!-- ai4-tools-reference:begin -->
-91 tools in 19 namespaces.
+97 tools in 19 namespaces.
 
 ### `graph`
 
@@ -740,12 +754,18 @@ Markdown guides that live in the document and outlast the chat.
 
 ### `memory`
 
-The chat's own scratchpad and checklist.
+The chat's own scratchpad and checklist, which last the session; notes kept across sessions and documents, and the saved chats they cite.
 
 | Tool | What it does | Effects |
 | --- | --- | --- |
 | `ChecklistReadRequest` | Read the in-memory checklist for this chat. | agent state |
 | `ChecklistUpdateRequest` | Update the in-memory checklist for this chat. | agent state |
+| `HistoryReadRequest` | Read a stretch of a saved AI4 chat as text, each block headed by its address. | filesystem read |
+| `HistorySearchRequest` | Search the saved AI4 chats of this workspace, on every branch, for a phrase. | filesystem read |
+| `MemoryDeleteRequest` | Delete a memory note that is wrong or no longer useful, with the reason, which the memory's history keeps. | agent state, filesystem write |
+| `MemoryReadRequest` | Read one memory note. | agent state, filesystem read |
+| `MemorySearchRequest` | Search your memory notes, the ones that persist across sessions and documents. | agent state, filesystem read |
+| `MemoryWriteRequest` | Create or replace a memory note: one fact a later session with this person will need, kept across sessions and documents. | agent state, filesystem write |
 | `ScratchpadReadRequest` | Read this chat's in-memory scratchpad across turns. | agent state |
 | `ScratchpadUpdateRequest` | Update this chat's in-memory scratchpad. | agent state |
 

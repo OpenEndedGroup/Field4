@@ -147,6 +147,11 @@ def automation_log_environment(repo_root: Path) -> dict[str, str]:
     The request ledger (``AFIELD_AI_USAGE_LOG_PATH``) stays in ``~/.afield/logs``: an agent's AI
     call costs real money on the same key, ``tools/ai_usage.py`` accounts for that spend across the
     machine, and each record already names its checkout and port.
+
+    AI4's cross-session memory (``AFIELD_AI4_MEMORY_DIR``, ``afield.ai.memory.UserMemory``) moves for
+    the opposite reason: it is read *into* every AI4 turn. A scratch or docs-runner turn that wrote a
+    note there would carry it into the user's next real session, and the user's notes would steer
+    captures and evals that should not depend on who ran them.
     """
     root = repo_root.resolve() / "build" / "field-automation-logs"
     return {
@@ -155,6 +160,7 @@ def automation_log_environment(repo_root: Path) -> dict[str, str]:
         "AFIELD_AI4_TOOL_EVIDENCE_PATH": str(root / "ai4_tool_io" / "evidence"),
         "AFIELD_AI4_CAPTURE_DIR": str(root / "ai4_box_captures"),
         "AFIELD_CODE_USE_PATH": str(root / "code-use" / "field-code-use.sqlite"),
+        "AFIELD_AI4_MEMORY_DIR": str(root / "ai4_memory"),
     }
 
 
