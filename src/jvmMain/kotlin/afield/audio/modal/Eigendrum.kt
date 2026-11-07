@@ -30,6 +30,7 @@ import kotlin.math.exp
 import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.sqrt
 
@@ -248,23 +249,36 @@ class DrumModes(
     /**
      * Mode [mode] as filled triangles, warm for positive displacement and cool for negative,
      * brighter with amplitude.
+     *
+     * Triangles are binned into [levels] brightness steps per sign, and each step is one FLine
+     * holding all of its triangles. So a mode is at most `2 * levels + 1` FLines, not one per
+     * triangle: a fine mesh of thousands of triangles stays light to draw, to put in an SVG and
+     * to publish.
      */
-    fun modeMesh(mode: Int): List<FLine> {
+    @JvmOverloads
+    fun modeMesh(mode: Int, levels: Int = 24): List<FLine> {
+        require(levels >= 1) { "levels must be at least 1, was $levels" }
         val m = mesh; val s = shapes[mode]
         var peak = 1e-30
         for (v in s) peak = max(peak, abs(v))
-        return (0 until m.triangleCount).map { t ->
+        // Bin -levels..levels by signed amplitude; each bin's colour is that of its centre value.
+        val bins = sortedMapOf<Int, FLine>()
+        for (t in 0 until m.triangleCount) {
             val a = m.tris[3 * t]; val b = m.tris[3 * t + 1]; val c = m.tris[3 * t + 2]
-            val v = (s[a] + s[b] + s[c]) / (3 * peak)
-            val k = min(1.0, abs(v))
-            FLine().apply {
-                moveTo(m.x[a], m.y[a]); lineTo(m.x[b], m.y[b]); lineTo(m.x[c], m.y[c]); lineTo(m.x[a], m.y[a])
-                filled = true
-                stroked = false
-                color = if (v >= 0) afield.math.linalg.vec(0.15 + 0.85 * k, 0.15 + 0.45 * k, 0.15, 1.0)
-                else afield.math.linalg.vec(0.15, 0.15 + 0.45 * k, 0.15 + 0.85 * k, 1.0)
+            val v = ((s[a] + s[b] + s[c]) / (3 * peak)).coerceIn(-1.0, 1.0)
+            val bin = (v * levels).roundToInt()
+            val f = bins.getOrPut(bin) {
+                val k = abs(bin).toDouble() / levels
+                FLine().apply {
+                    filled = true
+                    stroked = false
+                    color = if (bin >= 0) afield.math.linalg.vec(0.15 + 0.85 * k, 0.15 + 0.45 * k, 0.15, 1.0)
+                    else afield.math.linalg.vec(0.15, 0.15 + 0.45 * k, 0.15 + 0.85 * k, 1.0)
+                }
             }
+            f.moveTo(m.x[a], m.y[a]); f.lineTo(m.x[b], m.y[b]); f.lineTo(m.x[c], m.y[c]); f.lineTo(m.x[a], m.y[a])
         }
+        return bins.values.toList()
     }
 }
 
