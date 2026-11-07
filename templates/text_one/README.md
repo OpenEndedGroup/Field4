@@ -11,8 +11,8 @@ The document separates three jobs:
 3. **Drawing** uploads one CPU scene snapshot and renders it with the current matrices for both eyes.
 
 Launch `text_one_launch`; `text_one_stop` stops Drawing before Reading space.
-The three shader boxes export their actual `vertex` and `fragment` properties.
-The renderer reads those live properties when **Reload the three shader pairs** is pressed.
+The five shader boxes export their `vertex` and `fragment` properties.
+The renderer reads those live properties when **Reload drawing, blur and compositor shaders** is pressed.
 Stop Drawing before rebuilding the graph. Re-running just the score leaves the physics,
 text atlases and renderer in place.
 
@@ -138,8 +138,8 @@ after the target acquires its frame slot. Both eyes use that snapshot and their 
 predicted view. Only the diagram's deliberate reader-facing yaw is gently smoothed; eye
 matrices never are. No TAA, delayed head pose or image-history composite is involved.
 
-Colours are linear; normal alpha blending occurs once into the sRGB stereo target. The
-browser is drawn sharply above the diagram. Desktop preview samples the actual stereo
+Colours are linear; drawing accumulates into a float target before blur and paint compositing.
+The browser is drawn sharply above the diagram. Desktop preview samples the stereo
 image, with an optional **Show both eyes side by side** control.
 
 ## Desktop and headset

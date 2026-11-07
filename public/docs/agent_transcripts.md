@@ -4444,8 +4444,8 @@ without opening a window in CI, with a real desktop capture on the walkthrough p
 four editable sentence graphs with CPU SIMDVerlet physics, Slug text, per-eye thick FLine
 strokes and SDF dots. Separate absolute-time scores reveal, erase and crossfade the material.
 The default is a desktop stereo preview; an OpenXR mode includes Field's browser workspace.
-Vulkan and the Slug helper are required. CI compiles the scene without evaluating GPU work;
-real desktop/stereo renders have been checked. Headset readability remains a hardware check.
+The green-channel blur cascade and additive/weighted paint compositor process the diagram;
+the browser stays sharp. Vulkan and the Slug helper are required.
 
 [Open →](offline.html?file=assets/agent_transcripts/text_one_vr/metadata.edn)
 

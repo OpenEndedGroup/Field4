@@ -154,8 +154,8 @@ operations:
       code: |
         import afield.graphics.scene.reading.*
         import afield.graphics.text.*
-        import kotlin.math.*
         import afield.graphics.text.sentences.*
+        import kotlin.math.*
 
         // 2 · Constituency canopy. Use the real parse/layout, then rebuild its connections in gentle 3D.
         val parsed = Sentences.example(2)
@@ -216,7 +216,11 @@ operations:
                 }
                 if (!n.leaf)
                     // Text anchors are centred: add half its measured width, then clear the joint ring.
-                    text("tag-${n.id}", n.label, anchor.offset(x = (.012 + tagMetrics.width(n.label) * metres * .5).toFloat(), y = .018f)) {
+                    text(
+                        "tag-${n.id}",
+                        n.label,
+                        anchor.offset(x = (.012 + tagMetrics.width(n.label) * metres * .5).toFloat(), y = .018f),
+                    ) {
                         scale = (13.0 * metres / .09).toFloat()
                         color = vec(.75f, .47f, .2f, 1f)
                     }
@@ -261,8 +265,8 @@ operations:
       code: |
         import afield.graphics.scene.reading.*
         import afield.graphics.text.*
-        import kotlin.math.*
         import afield.graphics.text.sentences.*
+        import kotlin.math.*
 
         // 3 · Undertow. Nested dependency arcs, with independently scored labels and beads.
         val parsed = Sentences.example(3)
@@ -357,8 +361,8 @@ operations:
       code: |
         import afield.graphics.scene.reading.*
         import afield.graphics.text.*
-        import kotlin.math.*
         import afield.graphics.text.sentences.*
+        import kotlin.math.*
 
         // 4 · Sentence furniture. Reed-Kellogg shelves become a shallow spatial mobile, then a reading line.
         val parsed = Sentences.example(4)
@@ -576,10 +580,19 @@ operations:
             vec4 stereoProjectionL; // projection XY and viewport size
             vec4 stereoProjectionR; // projection XY and viewport size
         };
-        mat4 stereoViewProjection() { return gl_ViewIndex==0 ? stereoVpL : stereoVpR; }
-        vec3 stereoCameraRight() { return (gl_ViewIndex==0 ? stereoRightL : stereoRightR).xyz; }
-        vec3 stereoCameraUp() { return (gl_ViewIndex==0 ? stereoUpL : stereoUpR).xyz; }
-        vec4 stereoProjection() { return gl_ViewIndex==0 ? stereoProjectionL : stereoProjectionR; }
+
+        mat4 stereoViewProjection() {
+            return gl_ViewIndex==0 ? stereoVpL : stereoVpR;
+        }
+        vec3 stereoCameraRight() {
+            return (gl_ViewIndex==0 ? stereoRightL : stereoRightR).xyz;
+        }
+        vec3 stereoCameraUp() {
+            return (gl_ViewIndex==0 ? stereoUpL : stereoUpR).xyz;
+        }
+        vec4 stereoProjection() {
+            return gl_ViewIndex==0 ? stereoProjectionL : stereoProjectionR;
+        }
         layout(location=0) flat out vec4 endpoints;
         layout(location=1) flat out vec4 widthsArc;
         layout(location=2) flat out vec4 colorA;
@@ -721,10 +734,19 @@ operations:
             vec4 stereoProjectionL; // projection XY and viewport size
             vec4 stereoProjectionR; // projection XY and viewport size
         };
-        mat4 stereoViewProjection() { return gl_ViewIndex==0 ? stereoVpL : stereoVpR; }
-        vec3 stereoCameraRight() { return (gl_ViewIndex==0 ? stereoRightL : stereoRightR).xyz; }
-        vec3 stereoCameraUp() { return (gl_ViewIndex==0 ? stereoUpL : stereoUpR).xyz; }
-        vec4 stereoProjection() { return gl_ViewIndex==0 ? stereoProjectionL : stereoProjectionR; }
+
+        mat4 stereoViewProjection() {
+            return gl_ViewIndex==0 ? stereoVpL : stereoVpR;
+        }
+        vec3 stereoCameraRight() {
+            return (gl_ViewIndex==0 ? stereoRightL : stereoRightR).xyz;
+        }
+        vec3 stereoCameraUp() {
+            return (gl_ViewIndex==0 ? stereoUpL : stereoUpR).xyz;
+        }
+        vec4 stereoProjection() {
+            return gl_ViewIndex==0 ? stereoProjectionL : stereoProjectionR;
+        }
         layout(location=0) noperspective out vec2 uv;
         layout(location=1) flat out vec4 tint;
         layout(location=2) flat out vec4 shape;
@@ -792,10 +814,19 @@ operations:
             vec4 stereoProjectionL; // projection XY and viewport size
             vec4 stereoProjectionR; // projection XY and viewport size
         };
-        mat4 stereoViewProjection() { return gl_ViewIndex==0 ? stereoVpL : stereoVpR; }
-        vec3 stereoCameraRight() { return (gl_ViewIndex==0 ? stereoRightL : stereoRightR).xyz; }
-        vec3 stereoCameraUp() { return (gl_ViewIndex==0 ? stereoUpL : stereoUpR).xyz; }
-        vec4 stereoProjection() { return gl_ViewIndex==0 ? stereoProjectionL : stereoProjectionR; }
+
+        mat4 stereoViewProjection() {
+            return gl_ViewIndex==0 ? stereoVpL : stereoVpR;
+        }
+        vec3 stereoCameraRight() {
+            return (gl_ViewIndex==0 ? stereoRightL : stereoRightR).xyz;
+        }
+        vec3 stereoCameraUp() {
+            return (gl_ViewIndex==0 ? stereoUpL : stereoUpR).xyz;
+        }
+        vec4 stereoProjection() {
+            return gl_ViewIndex==0 ? stereoProjectionL : stereoProjectionR;
+        }
         // Adapted Slug core: Copyright (c) 2026 AlphaPixel LLC. See LICENSE-slughorn.
         layout(std430, buffer_reference, buffer_reference_align = 4) readonly buffer SlugData {
             uint words[];
@@ -1139,7 +1170,9 @@ operations:
             float t=clamp(green*pc.selection.x+pc.selection.y,lo,hi);
             return vec3(max(1.0-2.0*t,0.0),1.0-abs(2.0*t-1.0),max(2.0*t-1.0,0.0));
         }
-        float luminance(vec3 c) { return dot(c,vec3(0.2126,0.7152,0.0722)); }
+        float luminance(vec3 c) {
+            return dot(c,vec3(0.2126,0.7152,0.0722));
+        }
         float smoothMaximum(float a,float b,float width) {
             if(width<=1e-6)return max(a,b);
             float h=clamp(0.5+0.5*(a-b)/width,0.0,1.0);
@@ -1194,9 +1227,9 @@ operations:
             vec2 a=rotation*vec2(radius,radius)/size;
             vec2 b=rotation*vec2(radius,-radius)/size;
             return 0.25*(textureLod(sharpImage,p+vec3(a,0),0.0)
-                        +textureLod(sharpImage,p-vec3(a,0),0.0)
-                        +textureLod(sharpImage,p+vec3(b,0),0.0)
-                        +textureLod(sharpImage,p-vec3(b,0),0.0));
+            +textureLod(sharpImage,p-vec3(a,0),0.0)
+            +textureLod(sharpImage,p+vec3(b,0),0.0)
+            +textureLod(sharpImage,p-vec3(b,0),0.0));
         }
 
         // One world-frame image evaluation. Alpha is summed opacity; it is not display alpha.
@@ -1255,7 +1288,9 @@ operations:
         vec3 srgbToLinear(vec3 c) {
             return mix(c/12.92,pow((c+0.055)/1.055,vec3(2.4)),step(vec3(0.04045),c));
         }
-        bool linearAA() { return grade.subpixel.w>=0.5; }
+        bool linearAA() {
+            return grade.subpixel.w>=0.5;
+        }
         vec3 displaySample(vec2 at) {
             vec3 color=clamp(composeScene(at),vec3(0),vec3(1));
             return linearAA()?color:linearToSrgb(color);
@@ -1347,27 +1382,56 @@ operations:
         }
         val grade = drawing.compositor.settings
         controlGroup("blur cascade") {
-            slider("Medium blur radius", initialValue = grade.mediumRadius.toDouble(), min = 0.0, max = 8.0) { grade.mediumRadius = it.toFloat() }
-            slider("Broad blur radius", initialValue = grade.broadRadius.toDouble(), min = 0.0, max = 8.0) { grade.broadRadius = it.toFloat() }
+            slider("Medium blur radius", initialValue = grade.mediumRadius.toDouble(), min = 0.0, max = 8.0) {
+                grade.mediumRadius = it.toFloat()
+            }
+            slider("Broad blur radius", initialValue = grade.broadRadius.toDouble(), min = 0.0, max = 8.0) {
+                grade.broadRadius = it.toFloat()
+            }
         }
         controlGroup("green compositor") {
-            slider("Blur mix", initialValue = grade.selection.z.toDouble(), min = 0.0, max = 1.0) { grade.selection.z = it.toFloat() }
-            slider("Green selector gain", initialValue = grade.selection.x.toDouble(), min = 0.0, max = 8.0) { grade.selection.x = it.toFloat() }
-            slider("Green selector offset", initialValue = grade.selection.y.toDouble(), min = -1.0, max = 1.0) { grade.selection.y = it.toFloat() }
-            slider("Source green scale", initialValue = grade.selection.w.toDouble(), min = 0.0, max = 4.0) { grade.selection.w = it.toFloat() }
-            slider("Selector sharp weight", initialValue = grade.selectorSource.x.toDouble(), min = 0.0, max = 1.0) { grade.selectorSource.x = it.toFloat() }
-            slider("Selector medium weight", initialValue = grade.selectorSource.y.toDouble(), min = 0.0, max = 1.0) { grade.selectorSource.y = it.toFloat() }
-            slider("Selector broad weight", initialValue = grade.selectorSource.z.toDouble(), min = 0.0, max = 1.0) { grade.selectorSource.z = it.toFloat() }
+            slider("Blur mix", initialValue = grade.selection.z.toDouble(), min = 0.0, max = 1.0) {
+                grade.selection.z = it.toFloat()
+            }
+            slider("Green selector gain", initialValue = grade.selection.x.toDouble(), min = 0.0, max = 8.0) {
+                grade.selection.x = it.toFloat()
+            }
+            slider("Green selector offset", initialValue = grade.selection.y.toDouble(), min = -1.0, max = 1.0) {
+                grade.selection.y = it.toFloat()
+            }
+            slider("Source green scale", initialValue = grade.selection.w.toDouble(), min = 0.0, max = 4.0) {
+                grade.selection.w = it.toFloat()
+            }
+            slider("Selector sharp weight", initialValue = grade.selectorSource.x.toDouble(), min = 0.0, max = 1.0) {
+                grade.selectorSource.x = it.toFloat()
+            }
+            slider("Selector medium weight", initialValue = grade.selectorSource.y.toDouble(), min = 0.0, max = 1.0) {
+                grade.selectorSource.y = it.toFloat()
+            }
+            slider("Selector broad weight", initialValue = grade.selectorSource.z.toDouble(), min = 0.0, max = 1.0) {
+                grade.selectorSource.z = it.toFloat()
+            }
             slider("Green from red / blue", initialValue = grade.reconstruction.x.toDouble(), min = 0.0, max = 1.0) {
-                grade.reconstruction.x = it.toFloat(); grade.reconstruction.y = 1f - it.toFloat()
+                grade.reconstruction.x = it.toFloat()
+                grade.reconstruction.y = 1f - it.toFloat()
             }
         }
         controlGroup("paint and colour") {
-            slider("Additive to weighted paint", initialValue = grade.paint.z.toDouble(), min = 0.0, max = 1.0) { grade.paint.z = it.toFloat() }
-            slider("Paint opacity threshold", initialValue = grade.paint.x.toDouble(), min = .001, max = 4.0) { grade.paint.x = it.toFloat() }
-            slider("Paint knee width", initialValue = grade.paint.y.toDouble(), min = 0.0, max = 2.0) { grade.paint.y = it.toFloat() }
-            slider("Exposure", initialValue = grade.reconstruction.z.toDouble(), min = 0.0, max = 4.0) { grade.reconstruction.z = it.toFloat() }
-            slider("Saturation", initialValue = grade.saturation.x.toDouble(), min = 0.0, max = 3.0) { grade.saturation.x = it.toFloat() }
+            slider("Additive to weighted paint", initialValue = grade.paint.z.toDouble(), min = 0.0, max = 1.0) {
+                grade.paint.z = it.toFloat()
+            }
+            slider("Paint opacity threshold", initialValue = grade.paint.x.toDouble(), min = .001, max = 4.0) {
+                grade.paint.x = it.toFloat()
+            }
+            slider("Paint knee width", initialValue = grade.paint.y.toDouble(), min = 0.0, max = 2.0) {
+                grade.paint.y = it.toFloat()
+            }
+            slider("Exposure", initialValue = grade.reconstruction.z.toDouble(), min = 0.0, max = 4.0) {
+                grade.reconstruction.z = it.toFloat()
+            }
+            slider("Saturation", initialValue = grade.saturation.x.toDouble(), min = 0.0, max = 3.0) {
+                grade.saturation.x = it.toFloat()
+            }
             slider("FXAA mix", initialValue = grade.fxaa.x.toDouble(), min = 0.0, max = 1.0) { grade.fxaa.x = it.toFloat() }
             colorPicker("Background", initialValue = grade.background) { grade.background.set(it) }
             colorPicker("Shadow tone (alpha = strength)", initialValue = grade.shadowTone) { grade.shadowTone.set(it) }
