@@ -196,6 +196,7 @@ class Status(Isolated):
         reports.mkdir()
         (reports / "2026-11-05.md").write_text("# Night\n\nHeadline: **2 merge / 1 continue / 0 delete**.\n")
         (reports / "2026-11-06.md").write_text("_skipped — low disk (3.1 GiB free)_\n")
+        (reports / "2026-11-07-b.md").write_text("_skipped — off-slot run_\n")
         (reports / "2026-11-07-backlog-audit.md").write_text("A dated audit is not a nightly run.\n")
         self.git("add", "reports")
         self.git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "reports")
@@ -203,9 +204,10 @@ class Status(Isolated):
         write_routine(self.tmp, "nightly", reports="git:nightly/journal:reports",
                       verdict=r"(?m)(\d+ merge / \d+ continue(?: / \d+ delete)?)|^_?(skipped[^\n]*)")
         recent = routines.recent_runs(routines.find("nightly", self.tmp), self.tmp)
-        self.assertEqual([r["date"] for r in recent], ["2026-11-06", "2026-11-05"])
-        self.assertTrue(recent[0]["verdict"].startswith("skipped — low disk"))
-        self.assertEqual(recent[1]["verdict"], "2 merge / 1 continue / 0 delete")
+        self.assertEqual([r["date"] for r in recent], ["2026-11-07", "2026-11-06", "2026-11-05"])
+        self.assertTrue(recent[0]["verdict"].startswith("skipped — off-slot"))
+        self.assertTrue(recent[1]["verdict"].startswith("skipped — low disk"))
+        self.assertEqual(recent[2]["verdict"], "2 merge / 1 continue / 0 delete")
 
     def test_wrapper_logs_are_visible_even_when_old_journal_reports_exist(self):
         write_routine(self.tmp, "alpha", reports=f"file:{self.tmp}/reports/*.txt")

@@ -88,7 +88,8 @@ slot is not verified by discovering its prompt.
 A dated external report proves an attempt on that day, including an explicit skip; it does not
 prove scheduler timing or successful certification. A dated report cannot establish a particular
 hourly slot. Completed older runner logs with a start time and exit line are checked against the
-specific slot. Journal run reports are named `YYYY-MM-DD.md` (with an optional same-day letter);
+specific slot. Journal run reports are named `YYYY-MM-DD.md` (with an optional same-day letter,
+with or without a preceding hyphen);
 dated audits and archives do not count as runs. A routine whose only evidence is a commit on
 `main` has unknown health when there is no new commit: it might have run with no changes.
 The runner records start/completion timestamps and exit status, and an OS lock
