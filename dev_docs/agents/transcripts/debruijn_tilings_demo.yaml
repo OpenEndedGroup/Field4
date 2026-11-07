@@ -4,7 +4,8 @@ description: >
   following Aatish Bhatia's Pattern Collider (MIT) and de Bruijn 1981. Five pure-compute boxes, no
   Renderer: a Penrose tiling with its thick/thin count, a gallery of 8-, 7-, 12- and disordered
   6-fold tilings, one grid line's ribbon highlighted, plain outlines for a plotter with the dual
-  graph's edge count, and two sliders that move one family of grid lines. Replay with
+  graph's edge count, and two sliders that move one family of grid lines, an animate loop sliding family 0 (launch it), and a
+  Manifold relief of extruded tiles. Replay with
   field_run_transcript and run each box; the operations omit inline code, so each runs its stored
   code property.
 docs:
@@ -98,6 +99,63 @@ operations:
               draw()
           }
           draw()
+  - create:
+      box: debruijn_offset_sweep
+      name: animate family 0 sliding one spacing
+      frame: { x: 700.0, y: 1440.0, w: 400.0, h: 100.0 }
+      properties:
+        code: |
+          // Slide every line of family 0 through one full spacing over six seconds. Most tiles hold still;
+          // small groups flip as each line passes a crossing. At offset +1 the lines are back where they
+          // started, relabelled, so the loop has no seam. The red ribbon is line 0 of family 0.
+          val base = defaultDeBruijnOffsets(5)
+          val line = DeBruijnLine(family = 0, index = 0)
+          val window = Rect(-190.0, -190.0, 380.0, 380.0)
+          val seconds = 6.0
+          val started = AnimationClock.nowSeconds()
+
+          animate {
+              val shift = ((AnimationClock.nowSeconds() - started) / seconds) % 1.0
+              val offsets = base.toMutableList().also { it[0] += shift }
+              // recenter = false: unchanged tiles stay put rather than shifting with the mean.
+              val t = deBruijnTiling(symmetry = 5, offsets = offsets, radius = 5.0, scale = 12.0, recenter = false)
+              showPlane(
+                  t.lines(highlight = line),
+                  title = "family 0 offset +%.2f".format(shift),
+                  caption = "thin ${t.typeCounts()[1]}, thick ${t.typeCounts()[2]}",
+                  width = 560,
+                  height = 560,
+                  window = window,
+              )
+          }
+  - create:
+      box: debruijn_relief
+      name: a Penrose relief through Manifold
+      frame: { x: 80.0, y: 2120.0, w: 400.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.geometry.solid.manifold.*
+
+          // A Penrose relief: every rhombus inset by 0.6 and extruded, thin ones taller than thick ones,
+          // then all unioned into one closed solid. Each tile's outline is a closed FLine, so it goes
+          // straight into a Manifold Section.
+          val tiling = deBruijnTiling(symmetry = 5, radius = 3.5, scale = 10.0)
+          val relief = Solid.scope {
+              val prisms = tiling.tiles.map { tile ->
+                  Section.ofFLines([tile.outline()], sampleDistance = 10.0)
+                      .offset(-0.6, JoinType.MITER)
+                      .extruded(if (tile.type == 1) 6.0 else 3.0)
+              }
+              val base = Section.ofFLines(tiling.tiles.map { it.outline() }, sampleDistance = 10.0).offset(0.5, JoinType.MITER).extruded(1.5)
+              Solid.union(prisms + base)
+          }
+          val mesh = relief.toTriMesh()
+          showMesh(
+              mesh,
+              title = "Penrose relief, ${tiling.tiles.size} rhombi",
+              caption = "thin 36° tiles 6 high, thick 72° tiles 3 high · genus ${relief.genus} · volume %.0f".format(relief.volume),
+              view = MeshView(yawDegrees = 20.0, pitchDegrees = 50.0, width = 760, height = 520),
+          )
   - execute:
       box: debruijn_penrose
   - execute:
@@ -108,3 +166,5 @@ operations:
       box: debruijn_plotter
   - execute:
       box: debruijn_slider
+  - execute:
+      box: debruijn_relief

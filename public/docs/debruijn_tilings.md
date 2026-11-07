@@ -42,6 +42,7 @@ The parameters are the ones Pattern Collider exposes:
 | `disorder` | moves every line by a random amount up to `disorder / 2` of the spacing (0 to 0.99), seeded by `seed`. The result still tiles, but loses its long-range order |
 | `radius` | how far from the centre crossings are kept, in line spacings |
 | `scale` | the rhombus edge length in drawing units |
+| `recenter` | move the mean tile centre to `centerX`, `centerY` (default true); turn it off when animating |
 | `onDegenerate` | where three lines meet at one point there is no tiling. `NUDGE` (the default) shifts the offsets by about a millionth of a spacing and tries again; `ERROR` throws `DeBruijnDegenerateException` naming the three lines |
 
 Each `DeBruijnTile` carries its four `corners`, its `type` (the acute angle is
@@ -135,6 +136,69 @@ slider("symmetry", min = 4.0, max = 12.0, step = 1.0, initialValue = 5.0, channe
     draw()
 }
 draw()
+```
+
+## Animating the offsets
+
+The same idea as a loop: `animate { }` rebuilds the tiling every frame while family 0's lines
+slide through one full spacing. `recenter = false` keeps unchanged tiles exactly where they were,
+so only the flips move. Line 0's ribbon, in red, is carried across with its line.
+
+```diffstatic_runner {data-lang=kotlin video="assets/debruijn_tilings/offset_sweep.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="6" fps="20" timeout="240" w="760" embed=true name="debruijn-offset-sweep" alt="a Penrose tiling of yellow thin and blue thick rhombi with one red ribbon of tiles running top to bottom; as the caption's offset rises from 0 to 1, small groups of tiles flip while the rest hold still"}
+// Slide every line of family 0 through one full spacing over six seconds. Most tiles hold still;
+// small groups flip as each line passes a crossing. At offset +1 the lines are back where they
+// started, relabelled, so the loop has no seam. The red ribbon is line 0 of family 0.
+val base = defaultDeBruijnOffsets(5)
+val line = DeBruijnLine(family = 0, index = 0)
+val window = Rect(-190.0, -190.0, 380.0, 380.0)
+val seconds = 6.0
+val started = AnimationClock.nowSeconds()
+
+animate {
+    val shift = ((AnimationClock.nowSeconds() - started) / seconds) % 1.0
+    val offsets = base.toMutableList().also { it[0] += shift }
+    // recenter = false: unchanged tiles stay put rather than shifting with the mean.
+    val t = deBruijnTiling(symmetry = 5, offsets = offsets, radius = 5.0, scale = 12.0, recenter = false)
+    showPlane(
+        t.lines(highlight = line),
+        title = "family 0 offset +%.2f".format(shift),
+        caption = "thin ${t.typeCounts()[1]}, thick ${t.typeCounts()[2]}",
+        width = 560,
+        height = 560,
+        window = window,
+    )
+}
+```
+
+## A relief, through Manifold
+
+Each tile's outline is a closed, counter-clockwise `FLine`, so it goes straight into a Manifold
+`Section`. Here every rhombus is inset, extruded to a height set by its type, and unioned with a
+base into one closed solid, ready for `saveStl`. See [Solids & Booleans](manifold.md).
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/debruijn_tilings/relief.png" wait="4" capture="box" open-outputs="true" padding="20" requires="manifold" w="760" name="debruijn-relief"}
+import afield.geometry.solid.manifold.*
+
+// A Penrose relief: every rhombus inset by 0.6 and extruded, thin ones taller than thick ones,
+// then all unioned into one closed solid. Each tile's outline is a closed FLine, so it goes
+// straight into a Manifold Section.
+val tiling = deBruijnTiling(symmetry = 5, radius = 3.5, scale = 10.0)
+val relief = Solid.scope {
+    val prisms = tiling.tiles.map { tile ->
+        Section.ofFLines([tile.outline()], sampleDistance = 10.0)
+            .offset(-0.6, JoinType.MITER)
+            .extruded(if (tile.type == 1) 6.0 else 3.0)
+    }
+    val base = Section.ofFLines(tiling.tiles.map { it.outline() }, sampleDistance = 10.0).offset(0.5, JoinType.MITER).extruded(1.5)
+    Solid.union(prisms + base)
+}
+val mesh = relief.toTriMesh()
+showMesh(
+    mesh,
+    title = "Penrose relief, ${tiling.tiles.size} rhombi",
+    caption = "thin 36° tiles 6 high, thick 72° tiles 3 high · genus ${relief.genus} · volume %.0f".format(relief.volume),
+    view = MeshView(yawDegrees = 20.0, pitchDegrees = 50.0, width = 760, height = 520),
+)
 ```
 
 The demo document `dev_docs/agents/transcripts/debruijn_tilings_demo.yaml` holds all of these

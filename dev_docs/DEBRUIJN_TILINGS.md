@@ -22,3 +22,12 @@ de Bruijn 1981. The code is a re-derivation, not a port of the JS.
 Not done (stretch from the scout card `7e6f81bfaf83`): GPU instancing domain, extrusion via
 Manifold booleans, an exact tile-matching check against Ammann–Beenker substitution, shared-edge
 dedupe for plotting.
+
+## Later additions (same night)
+- Concurrency check: a crossing with a third line within 1e-9 throws `DeBruijnDegenerateException`
+  (`onDegenerate = ERROR`) or, by default, retries with offsets nudged by ~1e-6·attempt (up to 8).
+- Corners are counter-clockwise so outlines feed Manifold `Section.ofFLines` as solids; with
+  clockwise corners the union came back empty ("shadedNormals ... 0 vertices").
+- `Section.ofFLines(sampleDistance = 1.0)` resamples straight edges (45k tris for 295 tiles); 10.0
+  gives 5.4k with the same volume; 50.0 returned an empty solid.
+- `recenter = false` for animation, so unchanged tiles do not drift with the mean centre.

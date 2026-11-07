@@ -32,7 +32,8 @@ data class DeBruijnLine(val family: Int, val index: Int)
 /**
  * One rhombus of a [DeBruijnTiling].
  *
- * @param corners the four corners, in the tiling's drawing units, going round the rhombus.
+ * @param corners the four corners, in the tiling's drawing units, counter-clockwise (positive
+ *   signed area, with +y up).
  * @param type the angle class: the rhombus's acute angle is `type * PI / symmetry`. A 5-fold
  *   (Penrose) tiling has type 1 (thin, 36 degrees) and type 2 (thick, 72 degrees).
  * @param first the grid line of the lower-numbered family whose crossing made this tile.
@@ -182,6 +183,9 @@ class DeBruijnTiling(
  * become tiles. [scale] is the rhombus edge length in drawing units, and the tiling is centred at
  * ([centerX], [centerY]).
  *
+ * With [recenter] (the default) the mean tile centre is moved to ([centerX], [centerY]); turn it
+ * off when animating offsets, so unchanged tiles stay where they are.
+ *
  * Where three grid lines meet at one point no rhombus tiling exists; [onDegenerate] decides
  * whether to nudge the offsets by about 1e-6 and retry (the default) or throw
  * [DeBruijnDegenerateException]. `symmetry = 3` with offsets summing to an integer is always
@@ -205,6 +209,7 @@ fun deBruijnTiling(
     centerX: Double = 0.0,
     centerY: Double = 0.0,
     onDegenerate: DeBruijnDegeneracy = DeBruijnDegeneracy.NUDGE,
+    recenter: Boolean = true,
 ): DeBruijnTiling {
     val requested = offsets ?: defaultDeBruijnOffsets(symmetry)
     var attempt = 0
@@ -212,7 +217,7 @@ fun deBruijnTiling(
         // Nudge every offset by a different, tiny amount; 1e-6 of a line spacing is invisible.
         val tried = if (attempt == 0) requested else requested.mapIndexed { k, g -> g + 1e-6 * attempt * (k + 1) * (if (k % 2 == 0) 1 else -1) }
         try {
-            return buildDeBruijnTiling(symmetry, tried, radius, disorder, seed, scale, centerX, centerY)
+            return buildDeBruijnTiling(symmetry, tried, radius, disorder, seed, scale, centerX, centerY, recenter)
         } catch (d: DeBruijnDegenerateException) {
             if (onDegenerate == DeBruijnDegeneracy.ERROR || attempt >= 8) throw d
             attempt++
@@ -246,6 +251,7 @@ private fun buildDeBruijnTiling(
     scale: Double,
     centerX: Double,
     centerY: Double,
+    recenter: Boolean,
 ): DeBruijnTiling {
     require(symmetry >= 3) { "symmetry must be at least 3, was $symmetry" }
     require(disorder in 0.0..0.99) { "disorder must be in 0.0..0.99, was $disorder" }
@@ -314,12 +320,15 @@ private fun buildDeBruijnTiling(
                     centerY + scale * (by + ka * er.y + kb * es.y),
                 )
             }
-            tiles.add(DeBruijnTile(corners, type, DeBruijnLine(r, a), DeBruijnLine(s, b), Vector2d(x, y)))
+            // Counter-clockwise (positive area), so outlines go into Section/Manifold as solids, not holes.
+            val turn = (corners[1].x - corners[0].x) * (corners[3].y - corners[0].y) - (corners[1].y - corners[0].y) * (corners[3].x - corners[0].x)
+            val ccw = if (turn < 0) corners.reversed() else corners
+            tiles.add(DeBruijnTile(ccw, type, DeBruijnLine(r, a), DeBruijnLine(s, b), Vector2d(x, y)))
         }
     }
 
     // Recentre so the tiling's mean tile centre lands on (centerX, centerY).
-    if (tiles.isNotEmpty()) {
+    if (recenter && tiles.isNotEmpty()) {
         val mx = tiles.sumOf { it.center.x } / tiles.size - centerX
         val my = tiles.sumOf { it.center.y } / tiles.size - centerY
         val moved = tiles.map { t -> DeBruijnTile(t.corners.map { Vector2d(it.x - mx, it.y - my) }, t.type, t.first, t.second, t.crossing) }
