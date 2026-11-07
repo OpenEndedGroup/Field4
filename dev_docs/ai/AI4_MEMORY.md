@@ -101,6 +101,54 @@ over.
   memory-tool calls, and the notes in the folder after it. It also lists every dream pass. Everything
   stays under the run's `--dir`.
 
-### First live run
+### First live run (2026-11-07, openai gpt-6.1-sol, one repeat)
 
-(pending)
+All 33 sessions and 6 dream passes took 15 minutes and 3.27M input tokens. Most of those tokens are
+AI4's instructions and tool schemas, resent every round.
+
+| scenario | none | memory | dream |
+|---|---|---|---|
+| widget-price | fail | pass | pass |
+| kelvin | pass* | pass | pass |
+| result-prefix | fail | pass | pass |
+| price-change | fail | pass | pass |
+| control | fail† | fail† | fail† |
+| **last sessions passed** | **1/5** | **4/5** | **4/5** |
+
+- **Without memory, AI4 still tried to remember.** It saved the widget price and the kelvin
+  convention to the document's `DECISIONS.md`, a guide that a fresh document never sees. The next
+  session then printed "cost of 12 widgets: unknown (unit price not specified)".
+- **With memory, every scenario's knowledge carried.** Each first session wrote exactly one note,
+  with no request to remember in `kelvin` or `result-prefix`, and each last session read it
+  (`MemoryReadRequest`) before answering. In `price-change`, session two replaced the note's 4.50
+  with 5.00 on its own, so session three used 5.00.
+- **Dreaming added nothing measurable here**, because in-session memory already handled the one
+  drift case. Each pass updated its scenario's note to add sources, and one removed
+  document-specific detail ("removed the document-specific `Quote` test result"). None created or
+  deleted a note. A scenario where the in-session note goes wrong, and only a later re-read of the
+  transcript catches it, would be needed to show what dreaming adds.
+- \* The `kelvin` check was too lenient. The no-memory session printed
+  "273.15 K (0 °C, 32 °F)", hedging into a pass. The check now also requires that the box's code
+  contain no °C or °F.
+- † `control` failed in every arm for the same reason, which had nothing to do with memory. The box
+  printed 1, 4, 9, 16 and 25 on five lines, and the output check saw only the last three. The
+  scenario now asks for one printed line, the sum of the squares (55).
+
+### Second run, the two fixed scenarios (same day, same model)
+
+12 sessions and 2 dream passes took 3.8 minutes and 0.89M input tokens.
+
+| scenario | none | memory | dream |
+|---|---|---|---|
+| kelvin | fail | pass | pass |
+| control | pass | pass | pass |
+
+With the tighter check, the no-memory `kelvin` session failed for the reason the check now
+catches: it printed "0 °C (32 °F, 273.15 K)". With memory it printed kelvin only. `control` passed
+in every arm, so the control-scenario notes ("short replies") did not get in the way.
+
+Taking the three unchanged scenarios from the first run and the two fixed ones from this run, last
+sessions passed **none 1/5 (the control only), memory 5/5, dream 5/5**. That is one repeat on one
+model. `--repeats` and a second provider are the next things to run before quoting these numbers
+anywhere. A scenario built to show what dreaming adds is still missing.
+
