@@ -139,7 +139,7 @@ class VulkanBuffer(
     // Volatile, like the handle fields below: the render workers read these while recording, on
     // other threads than the one that reallocates. See [realloc].
     @Volatile
-    var gpuAddress: Long = -1
+    var gpuAddress: Long = 0
     private val writeLock = Any()
 
     /** VMA-managed */
@@ -687,7 +687,8 @@ class VulkanBuffer(
 
     override fun getGPUAddress(cmd: CommandBuffer): Long {
         if (cpuOnly) return 0L
-        if (gpuAddress > 0) return gpuAddress
+        // VkDeviceAddress is unsigned; only zero is the null address.
+        if (gpuAddress != 0L) return gpuAddress
         MemoryStack.stackPush().use { stack ->
             val info = VkBufferDeviceAddressInfo.calloc(stack).apply {
                 sType(VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO)

@@ -1,0 +1,347 @@
+[
+  {
+    "schema": 2,
+    "backend": "stanza",
+    "text": "Every small wave remembers the shore",
+    "tokens": [
+      {
+        "id": 1,
+        "word": "Every",
+        "lemma": "every",
+        "pos": "DT",
+        "upos": "DET",
+        "feats": "PronType=Tot",
+        "start": 0,
+        "end": 5,
+        "in_graph": true,
+        "absorbed": false
+      },
+      {
+        "id": 2,
+        "word": "small",
+        "lemma": "small",
+        "pos": "JJ",
+        "upos": "ADJ",
+        "feats": "Degree=Pos",
+        "start": 6,
+        "end": 11,
+        "in_graph": true,
+        "absorbed": false
+      },
+      {
+        "id": 3,
+        "word": "wave",
+        "lemma": "wave",
+        "pos": "NN",
+        "upos": "NOUN",
+        "feats": "Number=Sing",
+        "start": 12,
+        "end": 16,
+        "in_graph": true,
+        "absorbed": false
+      },
+      {
+        "id": 4,
+        "word": "remembers",
+        "lemma": "remember",
+        "pos": "VBZ",
+        "upos": "VERB",
+        "feats": "Mood=Ind|Number=Sing|Person=3|Tense=Pres|VerbForm=Fin",
+        "start": 17,
+        "end": 26,
+        "in_graph": true,
+        "absorbed": false
+      },
+      {
+        "id": 5,
+        "word": "the",
+        "lemma": "the",
+        "pos": "DT",
+        "upos": "DET",
+        "feats": "Definite=Def|PronType=Art",
+        "start": 27,
+        "end": 30,
+        "in_graph": true,
+        "absorbed": false
+      },
+      {
+        "id": 6,
+        "word": "shore",
+        "lemma": "shore",
+        "pos": "NN",
+        "upos": "NOUN",
+        "feats": "Number=Sing",
+        "start": 31,
+        "end": 36,
+        "in_graph": true,
+        "absorbed": false
+      }
+    ],
+    "constituency": {
+      "id": 0,
+      "label": "ROOT",
+      "leaf": false,
+      "children": [
+        {
+          "id": 1,
+          "label": "S",
+          "leaf": false,
+          "children": [
+            {
+              "id": 2,
+              "label": "NP",
+              "leaf": false,
+              "children": [
+                {
+                  "id": 3,
+                  "label": "DT",
+                  "leaf": true,
+                  "word": "Every",
+                  "token": 1,
+                  "children": [],
+                  "depth": 3
+                },
+                {
+                  "id": 4,
+                  "label": "JJ",
+                  "leaf": true,
+                  "word": "small",
+                  "token": 2,
+                  "children": [],
+                  "depth": 3
+                },
+                {
+                  "id": 5,
+                  "label": "NN",
+                  "leaf": true,
+                  "word": "wave",
+                  "token": 3,
+                  "children": [],
+                  "depth": 3
+                }
+              ],
+              "depth": 2
+            },
+            {
+              "id": 6,
+              "label": "VP",
+              "leaf": false,
+              "children": [
+                {
+                  "id": 7,
+                  "label": "VBZ",
+                  "leaf": true,
+                  "word": "remembers",
+                  "token": 4,
+                  "children": [],
+                  "depth": 3
+                },
+                {
+                  "id": 8,
+                  "label": "NP",
+                  "leaf": false,
+                  "children": [
+                    {
+                      "id": 9,
+                      "label": "DT",
+                      "leaf": true,
+                      "word": "the",
+                      "token": 5,
+                      "children": [],
+                      "depth": 4
+                    },
+                    {
+                      "id": 10,
+                      "label": "NN",
+                      "leaf": true,
+                      "word": "shore",
+                      "token": 6,
+                      "children": [],
+                      "depth": 4
+                    }
+                  ],
+                  "depth": 3
+                }
+              ],
+              "depth": 2
+            }
+          ],
+          "depth": 1
+        }
+      ],
+      "depth": 0
+    },
+    "constituency_bracketed": "(ROOT (S (NP (DT Every) (JJ small) (NN wave)) (VP (VBZ remembers) (NP (DT the) (NN shore)))))",
+    "constituency_depth": 4,
+    "dependencies": {
+      "ud": [
+        {
+          "gov": 3,
+          "dep": 1,
+          "rel": "det",
+          "base": "det",
+          "label": "determiner",
+          "direction": "left",
+          "distance": 2
+        },
+        {
+          "gov": 3,
+          "dep": 2,
+          "rel": "amod",
+          "base": "amod",
+          "label": "adjectival modifier",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 4,
+          "dep": 3,
+          "rel": "nsubj",
+          "base": "nsubj",
+          "label": "nominal subject",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 0,
+          "dep": 4,
+          "rel": "root",
+          "base": "root",
+          "label": "root",
+          "direction": "right",
+          "distance": 4
+        },
+        {
+          "gov": 6,
+          "dep": 5,
+          "rel": "det",
+          "base": "det",
+          "label": "determiner",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 4,
+          "dep": 6,
+          "rel": "obj",
+          "base": "obj",
+          "label": "direct object",
+          "direction": "right",
+          "distance": 2
+        }
+      ],
+      "sd_basic": [
+        {
+          "gov": 3,
+          "dep": 1,
+          "rel": "det",
+          "base": "det",
+          "label": "determiner",
+          "direction": "left",
+          "distance": 2
+        },
+        {
+          "gov": 3,
+          "dep": 2,
+          "rel": "amod",
+          "base": "amod",
+          "label": "adjectival modifier",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 4,
+          "dep": 3,
+          "rel": "nsubj",
+          "base": "nsubj",
+          "label": "nominal subject",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 0,
+          "dep": 4,
+          "rel": "root",
+          "base": "root",
+          "label": "root",
+          "direction": "right",
+          "distance": 4
+        },
+        {
+          "gov": 6,
+          "dep": 5,
+          "rel": "det",
+          "base": "det",
+          "label": "determiner",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 4,
+          "dep": 6,
+          "rel": "dobj",
+          "base": "dobj",
+          "label": "direct object",
+          "direction": "right",
+          "distance": 2
+        }
+      ],
+      "sd_collapsed": [
+        {
+          "gov": 3,
+          "dep": 1,
+          "rel": "det",
+          "base": "det",
+          "label": "determiner",
+          "direction": "left",
+          "distance": 2
+        },
+        {
+          "gov": 3,
+          "dep": 2,
+          "rel": "amod",
+          "base": "amod",
+          "label": "adjectival modifier",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 4,
+          "dep": 3,
+          "rel": "nsubj",
+          "base": "nsubj",
+          "label": "nominal subject",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 0,
+          "dep": 4,
+          "rel": "root",
+          "base": "root",
+          "label": "root",
+          "direction": "right",
+          "distance": 4
+        },
+        {
+          "gov": 6,
+          "dep": 5,
+          "rel": "det",
+          "base": "det",
+          "label": "determiner",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 4,
+          "dep": 6,
+          "rel": "dobj",
+          "base": "dobj",
+          "label": "direct object",
+          "direction": "right",
+          "distance": 2
+        }
+      ]
+    }
+  }
+]
