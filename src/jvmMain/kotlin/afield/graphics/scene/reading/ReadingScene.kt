@@ -2,6 +2,7 @@ package afield.graphics.scene.reading
 
 import afield.geometry.path.FLine
 import afield.graphics.text.TextLayout
+import afield.graphics.text.Typeface
 import afield.graphics.text.slug.SlugPath
 import afield.math.linalg.Vector3f
 import afield.math.linalg.Vector4f
@@ -13,7 +14,16 @@ data class ReadingText(
     val outline: FLine,
     val slug: SlugPath,
     val layout: TextLayout? = null,
-)
+    val faces: List<Typeface> = listOfNotNull(layout?.typeface),
+    val glyphFaces: Map<Int, Typeface> = emptyMap(),
+) {
+    private val measurements =
+        java.util.concurrent.ConcurrentHashMap<Pair<Int, Int>, DiagramTextMetrics>()
+
+    /** Cached font-space metrics; no GPU readback, physics step or native Slug work. */
+    fun measure(start: Int = 0, endExclusive: Int = text.length): DiagramTextMetrics =
+        measurements.computeIfAbsent(start to endExclusive) { prepareMetrics(start, endExclusive) }
+}
 
 data class ReadingLabel(
     val shape: ReadingText,

@@ -122,7 +122,7 @@ Score offsets affect drawing; they do not inject velocity or change the physics 
 Every physics link is reciprocal. The solver runs at 120 Hz, with at most 12 catch-up
 steps and a 100 ms elapsed-time cap for simulation. Score time remains real elapsed time.
 A weak spring attracts each free particle toward its authored position. Air, gravity,
-constraint gain and damping are separate controls. The four examples use a few dozen particles and text runs; it does not need dust_six or task/mesh shaders.
+constraint gain and damping are separate controls. The examples use a few dozen particles and text runs; it does not need dust_six or task/mesh shaders.
 
 DiagramGeometry handles multiple contours, lines, cubics and Close. Adaptive CPU centreline
 samples carry per-node colours and widths. The vertex shader expands connected ribbons in
@@ -145,14 +145,13 @@ image, with an optional **Show both eyes side by side** control.
 ## Desktop and headset
 
 The initial run is a desktop preview. For VR, connect WiVRn and start Field in a fresh JVM.
-Before launching Reading space set its `headsetMode` property to the text `true`, then run
+Before launching Reading space set `val headsetMode = true` in its code, then run
 `text_one_launch`. Vulkan/OpenXR extension selection happens before the first renderer;
 switching modes needs a fresh JVM. The VR path uses the existing high-resolution Field
 browser and its keyboard/mouse forwarding and controller pane movement. Recenter is explicit.
-The first validation captures are desktop GPU renders; headset readability still needs a
-live headset check.
+The desktop mirror samples the same multiview image supplied to the headset.
 
-## Four examples
+## Five examples
 
 - **Marked breath** — “Listen if you will / birdsong reflects off the walls”. Two complete
   runs in planes 5 cm apart; selected-word underlines, a dot beside a word, a bead on an
@@ -168,11 +167,14 @@ live headset check.
   Reed–Kellogg layout becomes a spatial mobile, with softened text slants and shallow shelf
   offsets. At 9 seconds the separate score crossfades it into a complete reading run.
 
+- **A room for words** — mixed faces and inline styles, repeated words in different fonts,
+  numeric weights, measured boxes and a cap-height ruler. Source: `typography_playground.kt`.
+
 The example selectors reuse the same stereo renderer and prepared text resources. They
 start at 6 seconds for inspection; **Restart entrances** shows the full score. The fourth
 example's reading-line state is visible after its transition at 9–11.4 seconds.
 
-These use Stanza parses, packaged in `/afield/sentences/examples/1.json` through `4.json`,
+The first four use Stanza parses, packaged in `/afield/sentences/examples/1.json` through `4.json`,
 so reopening the document does not need the service. The source material and 2D layout
 algorithms live in `src/jvmMain/kotlin/afield/graphics/text/sentences`; the example boxes rebuild their
 connections around moving three-dimensional anchors. They do not turn a rendered SVG
@@ -221,3 +223,85 @@ To allocate a larger scene, stop Drawing and pass `sceneScale = 1.5f` (up to `2f
 `StereoDiagramRenderer`; eye output and browser resolution stay fixed. Filtering happens in
 linear light before the final output transfer. There is no temporal image history.
 
+
+### Resolution and stroke reveals
+
+The OpenXR path uses the same `FieldVrWorkspace` target as `dust_six`: per-eye dimensions
+come from the runtime's swapchains. The 2560 × 1600 allocation is the sharp browser
+texture; 1600 × 1200 is only the desktop fallback. Reading space reports the actual
+per-eye size. Restart Field after changing WiVRn resolution, or when changing
+the `headsetMode` code switch, before launching the scene.
+
+Unrevealed strokes emit no segments. The vertex shader rejects tessellation segments outside the reveal before rasterization, preventing antialiasing tails at joins from becoming stray dots. The fragment shader also rejects empty reveal
+intervals and fades reveals shorter than a cap diameter, preventing a full-size cap
+from popping in ahead of a line. The authored peg ring and path beads are separate
+markers with their own score cues.
+
+## Typography and text-relative geometry
+
+The typography playground adds an inline italic word, an inline bold word, an alternate
+face, identical strings in different fonts, numeric weights, word boxes, a run box and a
+cap-height ruler. Each face/style combination is shaped and compiled into Slug outside
+the frame loop. Physics, score transforms and headset pose do not rebuild typography.
+
+```kotlin
+val serif = Typefaces.named("Noto Serif", 100, strict = true)
+val title = text("title", "quiet water", point("title-point", 0, 0)) {
+    font = serif
+    word("quiet").style { italic = true }
+    word("water").style { bold = true }
+}
+rectangle("ink", title.inkBounds, padding = .008f) { width = .001f }
+rectangle("no-descenders", title.bodyBounds) { dashed(.02f) }
+underline("under-water", title.word("water"), gap = .015f)
+dot("after-word", title.word("quiet").baselineRight.alongText(title, x = .01f))
+textPath("ruler", title, shape = {
+    FLine().moveTo(advance.left, capHeight).lineTo(advance.right, capHeight)
+})
+```
+
+`font` accepts any `Typeface`, including `Typefaces.fromFile(...)`. A run also has `bold`,
+`italic`, `weight` and `tracking`. A selected `word(...)`, `span(...)` or `characters(...)`
+can override font/style through `.style { ... }`. Overlapping overrides use the last
+matching style. Each style boundary starts a shaping context: kerning and ligatures remain
+within that section. Styles and fonts are preparation-time choices; reprepare the player
+and drawing after changing them. These are real glyph outlines, not shader dilation.
+
+Numeric `weight` accepts 100–900, including intermediate values. AWT resolves available
+faces or synthesizes weight. This is not an arbitrary OpenType variation-axis API; for an
+exact specific weight, supply the named or file-backed face. Different fonts may resolve
+intermediate requests to the same available face.
+
+`frame = player.frame()` samples without advancing time or physics. `frame.measure(run)`
+or `frame.measure(run.word("water"))` returns cached measurements **in font units**:
+
+- `ink`: tight cubic-outline bounds, including italic overhangs and descenders.
+- `advance`: the baseline pen interval, including selected whitespace; one baseline has zero height, multiple baselines span their baseline separation.
+- `noDescenders`: ink bounds clipped at the baseline, useful for boxes sitting on it.
+- `ascent`, `descent`, `leading`, `capHeight` (the ink top of H), and `xHeight` (the ink top of x).
+- `baseline` and `hasInk`; whitespace has an advance but no ink.
+
+Each span exposes `inkBounds`, `bodyBounds`, `emBounds`, `capBounds`, `xHeightBounds` and
+`advanceBounds`. Each has `topLeft`, `topRight`, `bottomLeft`, `bottomRight`, edge midpoints,
+`center`, and `.at(u, v)` (bottom-left is 0,0). The same properties are available on whole
+runs. `run.words` enumerates Unicode word selections; `run.caret(index)` locates shaped
+cluster boundaries. Indices are UTF-16, like JVM strings. Selecting through a ligature or
+surrogate pair fails clearly instead of inventing a coordinate.
+
+Whole multiline runs have union bounds; `baseline` is the first and `lastBaseline` the last. Use `run.line(index)` for individual baseline measurements. Inline font
+styles currently require a single baseline; use separate styled runs for multiline text.
+
+`textPath` authors an arbitrary FLine in font units, with x from the complete run's
+baseline-left and y upward. `frame.textLine(run, fline)` applies the glyph transform to any
+existing FLine, including control points. `span.local(x,y,z)` creates an anchor in font
+units relative to that span's baseline-left. `anchor.alongText(run,x,y,z)` offsets in
+**metres**, rotated with the run; generic `anchor.offset(...)` stays in diagram axes.
+Rectangles, underlines and these anchors follow text translation, score scale and rotation.
+Rectangle padding and underline gaps are metres. Nothing adds a second text-rendering pass.
+
+## Focused document guides
+
+The companion book is in `templates/text_one/guides/`: start with `00-start-here.md`, then
+read typography, measurements, shapes/anchors, motion/scores, and recipes/maintenance.
+Copy these Markdown files to the document's `guides/` alongside this README as
+`01-reading-space.md`; Field discovers them through its Guides catalogue.

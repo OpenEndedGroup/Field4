@@ -10,9 +10,6 @@ data class ReadingExample(
 class ReadingGallery(val examples: List<ReadingExample>) : ReadingScene {
     init {
         require(examples.isNotEmpty())
-        require(examples.map { it.player.typeface.awtFont }.distinct().size == 1) {
-            "A gallery shares one font at one preparation size"
-        }
     }
 
     var selected = 0
@@ -23,7 +20,11 @@ class ReadingGallery(val examples: List<ReadingExample>) : ReadingScene {
 
     override val maximumLabels = examples.maxOf { it.player.maximumLabels }
     override val shapes =
-        examples.flatMap { it.player.shapes.entries }.associate { it.key to it.value }
+        examples
+            .flatMapIndexed { index, example ->
+                example.player.shapes.map { (key, shape) -> "$index:$key" to shape }
+            }
+            .toMap()
     override val geometry
         get() = current.geometry
 

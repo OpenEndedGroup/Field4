@@ -38,32 +38,62 @@ internal constructor(private val player: ReadingDiagramPlayer, private val time:
 
     internal fun textAnchor(span: DiagramTextSpan, fraction: Float, height: Float): Vector3f {
         val run = span.run
-        val shape = player.shapes.getValue(run.text)
-        val layout = requireNotNull(shape.layout) { "Span anchors require the prepared run layout" }
-        fun boundary(index: Int): Float {
-            if (index == run.text.length) return shape.advance
-            val glyph = layout.glyphs.firstOrNull { it.charIndex == index }
-            requireNotNull(glyph) {
-                "Span boundary $index splits a shaped glyph in '${run.text}'; select the complete word or glyph cluster"
-            }
-            return glyph.origin.x
+        val m = measure(span)
+        return textPoint(
+            run,
+            m.advance.left + m.advance.width * fraction,
+            m.baseline + m.ascent * height,
+        )
+    }
+
+    /** Snapshot of prepared font-space metrics. Resolving anchors applies this frame's pose. */
+    fun measure(span: DiagramTextSpan): DiagramTextMetrics {
+        require(span.run.owner === player.diagram.owner)
+        return player.shape(span.run).measure(span.start, span.endExclusive)
+    }
+
+    fun measure(run: DiagramText) = measure(run.all)
+
+    internal fun textCaret(run: DiagramText, index: Int): Vector3f {
+        val layout = requireNotNull(player.shape(run).layout)
+        if (index == run.text.length || run.text[index] == '\n') {
+            val line = layout.lines[run.text.take(index).count { it == '\n' }]
+            return textPoint(run, line.advanceWidth.toFloat(), -line.baselineY.toFloat())
         }
-        val a = boundary(span.start)
-        val b = boundary(span.endExclusive)
-        val local =
-            Vector3f(
-                (a + (b - a) * fraction - shape.advance * .5f) * textScale(run),
-                player.typeface.ascent.toFloat() * height * textScale(run),
-                0f,
+        val glyph =
+            requireNotNull(layout.glyphs.firstOrNull { it.charIndex == index }) {
+                "Caret $index splits a shaped glyph cluster in '${run.text}'"
+            }
+        return textPoint(run, glyph.origin.x, -glyph.origin.y)
+    }
+
+    /** Font-space baseline-left coordinates -> diagram space; y is up, z is toward the reader. */
+    fun textPoint(run: DiagramText, x: Float, y: Float, z: Float = 0f): Vector3f {
+        val shape = player.shape(run)
+        val scale = textScale(run)
+        return textPosition(run)
+            .add(
+                textDirection(
+                    run,
+                    (x - shape.advance * .5f) * scale,
+                    y * scale,
+                    z * scale,
+                ),
             )
+    }
+
+    /** Metres in the text's rotated axes. Use for padding that should not change with font size. */
+    fun textDirection(run: DiagramText, x: Float, y: Float, z: Float): Vector3f {
         val c = cos(run.rotation)
         val s = sin(run.rotation)
-        val x = local.x
-        val y = local.y
-        local.x = c * x - s * y
-        local.y = s * x + c * y
-        return textPosition(run).add(local)
+        return Vector3f(c * x - s * y, s * x + c * y, z)
     }
+
+    /** Transform any locally-authored FLine in font units, including cubic controls. */
+    fun textLine(run: DiagramText, line: FLine): FLine =
+        line.copy().transform {
+            textPoint(run, it.x, it.y, it.z)
+        }
 
     fun path(path: DiagramPath): FLine {
         require(path.owner === player.diagram.owner)
@@ -100,6 +130,8 @@ class ReadingDiagramPlayer(
     val typeface: Typeface,
     override val shapes: Map<String, ReadingText>,
     score: DiagramScore,
+    private val preparedRuns: Map<DiagramText, ReadingText> =
+        diagram.texts.associateWith { shapes.getValue(it.text) },
 ) : ReadingScene {
     val playback = DiagramPlayback(score)
     val state = SimdVerlet.State3.empty(diagram.particles.size)
@@ -130,7 +162,7 @@ class ReadingDiagramPlayer(
 
     init {
         require(score.diagram === diagram)
-        require(diagram.texts.all { shapes.containsKey(it.text) })
+        require(diagram.texts.all { preparedRuns.containsKey(it) })
         for (p in diagram.particles) {
             state.addParticle()
             if (p.pinned) state.invMass!![particleIndex.getValue(p)] = 0f
@@ -149,27 +181,52 @@ class ReadingDiagramPlayer(
             score: DiagramScore,
             progress: (Int, Int, String) -> Unit = { _, _, _ -> },
         ): ReadingDiagramPlayer {
-            val strings = diagram.texts.map { it.text }.distinct()
-            val shapes = LinkedHashMap<String, ReadingText>()
-            for ((i, text) in strings.withIndex()) {
-                require(typeface.canDisplay(text)) { "${typeface.fontName} cannot display '$text'" }
-                val layout = layoutText(text, typeface)
-                val outline =
-                    layout.toFLine(filled = true, stroked = false).copy().transform { p ->
-                        Vector3f(p.x - layout.advanceWidth.toFloat() * .5f, -p.y, 0f)
+            val cache = LinkedHashMap<ReadingPreparationKey, ReadingText>()
+            val runs = LinkedHashMap<DiagramText, ReadingText>()
+            for ((i, run) in diagram.texts.withIndex()) {
+                val key = readingPreparationKey(run, typeface)
+                val shape =
+                    cache.getOrPut(key) {
+                        val layout = prepareReadingLayout(run, key)
+                        val outline =
+                            layout.toFLine(filled = true, stroked = false).copy().transform { p ->
+                                Vector3f(p.x - layout.advanceWidth.toFloat() * .5f, -p.y, 0f)
+                            }
+                        ReadingText(
+                            run.text,
+                            layout.advanceWidth.toFloat(),
+                            outline,
+                            SlugPath.compile(outline, helper, .01f),
+                            layout,
+                            (listOf(key.face) + key.ranges.map { it.face }).distinct(),
+                            layout.glyphs.associate { g ->
+                                g.charIndex to
+                                    (key.ranges
+                                        .lastOrNull { g.charIndex in it.start until it.end }
+                                        ?.face ?: key.face)
+                            },
+                        )
                     }
-                shapes[text] =
-                    ReadingText(
-                        text,
-                        layout.advanceWidth.toFloat(),
-                        outline,
-                        SlugPath.compile(outline, helper, .01f),
-                        layout,
-                    )
-                progress(i + 1, strings.size, text)
+                runs[run] = shape
+                progress(i + 1, diagram.texts.size, run.text)
             }
-            return ReadingDiagramPlayer(diagram, typeface, shapes, score)
+            return ReadingDiagramPlayer(
+                diagram,
+                typeface,
+                runs.mapKeys { it.key.id },
+                score,
+                runs,
+            )
         }
+    }
+
+    /** Prepared face and outline for this item; equal strings may have different typography. */
+    fun shape(run: DiagramText): ReadingText = preparedRuns.getValue(run)
+
+    /** Anchor/measurement access without advancing physics or the score. */
+    fun frame(time: Double = playback.sampleTime): DiagramFrame {
+        require(time.isFinite())
+        return DiagramFrame(this, time)
     }
 
     fun resetPositions() {
@@ -247,7 +304,7 @@ class ReadingDiagramPlayer(
             if (p.opacity * text.color.w > 1e-5f)
                 labels.add(
                     ReadingLabel(
-                        shapes.getValue(text.text),
+                        shape(text),
                         frame.textPosition(text),
                         p.opacity,
                         frame.textScale(text),
