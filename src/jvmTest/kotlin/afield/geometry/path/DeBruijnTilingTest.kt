@@ -132,4 +132,24 @@ class DeBruijnTilingTest {
         assertTrue(kotlin.runCatching { deBruijnTiling(symmetry = 7, offsets = stepped, radius = 10.0, onDegenerate = DeBruijnDegeneracy.ERROR) }.isFailure)
         checkTiling(deBruijnTiling(symmetry = 7, offsets = stepped, radius = 10.0), 10.0, 4.0)
     }
+
+    /**
+     * The recorded grid is the grid the tiles came from: every tile's crossing lies on both of its
+     * lines' recorded segments, with and without disorder (which moves the lines).
+     */
+    @Test
+    fun everyCrossingLiesOnItsTwoRecordedGridLines() {
+        for (disorder in listOf(0.0, 0.6)) {
+            val t = deBruijnTiling(symmetry = 5, radius = 5.0, disorder = disorder)
+            val byLine = t.grid.toMap()
+            for (tile in t.tiles) for (line in listOf(tile.first, tile.second)) {
+                val (a, b) = byLine[line] ?: error("disorder $disorder: no recorded segment for $line")
+                val dx = b.x - a.x
+                val dy = b.y - a.y
+                val off = abs((tile.crossing.x - a.x) * dy - (tile.crossing.y - a.y) * dx) / hypot(dx, dy)
+                assertTrue(off < 1e-9, "disorder $disorder: crossing of $tile is $off off $line")
+            }
+            assertEquals(t.grid.size * 1, t.gridLines().size, "one FLine per recorded line")
+        }
+    }
 }

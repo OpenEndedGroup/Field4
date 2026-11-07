@@ -15,6 +15,7 @@ import kotlin.math.floor
 import kotlin.math.hypot
 import kotlin.math.roundToInt
 import kotlin.math.sin
+import kotlin.math.sqrt
 import kotlin.random.Random
 
 /*
@@ -86,7 +87,33 @@ class DeBruijnTiling(
     val offsets: List<Double>,
     val directions: List<Vector2d>,
     val tiles: List<DeBruijnTile>,
+    /**
+     * The grid lines the tiles were built from, clipped to the disk of the requested radius, in
+     * grid units (one unit = one line spacing; the frame of [DeBruijnTile.crossing]). Each entry is
+     * a line and its two clipped end points. Disorder is included: these are the jittered lines.
+     */
+    val grid: List<Pair<DeBruijnLine, Pair<Vector2d, Vector2d>>> = emptyList(),
 ) {
+    /**
+     * The multigrid drawn as FLines in grid units times [scale]: one segment per [grid] line,
+     * coloured by family from [palette], with the lines in [highlight] thicker and in
+     * [highlightColor]. Put it beside [lines] to show which crossing made which rhombus.
+     */
+    fun gridLines(
+        scale: Double = 20.0,
+        palette: List<Vector4f> = defaultPalette,
+        thickness: Double = 1.0,
+        highlight: Set<DeBruijnLine> = emptySet(),
+        highlightColor: Vector4f = Vector4f(1f, 0.35f, 0.2f, 1f),
+    ): List<FLine> = grid.sortedBy { it.first in highlight }.map { (line, ends) ->
+        FLine().moveTo(scale * ends.first.x, scale * ends.first.y).lineTo(scale * ends.second.x, scale * ends.second.y).apply {
+            val on = line in highlight
+            color = if (on) highlightColor else palette[line.family.mod(palette.size)]
+            stroked = true
+            this.thickness = if (on) thickness * 3 else thickness
+        }
+    }
+
     /** How many acute-angle classes this symmetry has: `symmetry / 2`. */
     val typeCount: Int get() = symmetry / 2
 
@@ -327,14 +354,25 @@ private fun buildDeBruijnTiling(
         }
     }
 
+    // Every line that reaches the disk, clipped to it: x . e_k = p is the chord at distance |p|.
+    val grid = ArrayList<Pair<DeBruijnLine, Pair<Vector2d, Vector2d>>>()
+    for (q in 0 until n) for (j in -range..range) {
+        val p = position(q, j)
+        if (abs(p) >= radius) continue
+        val half = sqrt(radius * radius - p * p)
+        val px = -e[q].y
+        val py = e[q].x
+        grid += DeBruijnLine(q, j) to (Vector2d(p * e[q].x - half * px, p * e[q].y - half * py) to Vector2d(p * e[q].x + half * px, p * e[q].y + half * py))
+    }
+
     // Recentre so the tiling's mean tile centre lands on (centerX, centerY).
     if (recenter && tiles.isNotEmpty()) {
         val mx = tiles.sumOf { it.center.x } / tiles.size - centerX
         val my = tiles.sumOf { it.center.y } / tiles.size - centerY
         val moved = tiles.map { t -> DeBruijnTile(t.corners.map { Vector2d(it.x - mx, it.y - my) }, t.type, t.first, t.second, t.crossing) }
-        return DeBruijnTiling(n, gamma, e, moved)
+        return DeBruijnTiling(n, gamma, e, moved, grid)
     }
-    return DeBruijnTiling(n, gamma, e, tiles)
+    return DeBruijnTiling(n, gamma, e, tiles, grid)
 }
 
 /**

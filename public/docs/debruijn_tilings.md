@@ -33,6 +33,26 @@ between it and the origin: corner position = Σ *K*ₖ **e**ₖ, where *K*ₖ is
 crossing sits in and **e**ₖ is that family's direction. The rhombi fit edge to edge with no gaps and
 no overlaps.
 
+Below, on the left, is the five-family grid; on the right is the tiling it makes. One crossing's
+two lines are drawn thick in orange, and the rhombus that crossing becomes is filled in orange on
+the right. Its edges are perpendicular to those two lines.
+
+```diffstatic_runner {data-lang=kotlin embed=true screenshot="assets/debruijn_tilings/construction.png" wait="2.0" capture="box" open-outputs="true" w="760" padding="14" alt="Left: five families of parallel grid lines clipped to a disk, one family per colour, with two lines drawn thick in orange; right: the Penrose rhombus tiling built from that grid, with the rhombus made by the orange lines' crossing filled orange"}
+val t = deBruijnTiling(symmetry = 5, radius = 3.0, scale = 20.0)
+// The crossing nearest the middle of the grid, and the two lines that made it.
+val picked = t.tiles.minBy { it.crossing.length() }
+val grid = t.gridLines(scale = 60.0, thickness = 1.2, highlight = setOf(picked.first, picked.second))
+val orange = vec(1.0, 0.35, 0.2, 1.0)
+val tiles = t.lines(palette = [vec(0.30, 0.30, 0.36, 1.0)]) + picked.outline().apply {
+    color = orange
+    filled = true
+}
+// Grid on the left, tiling to its right.
+val shift = 60.0 * 3.0 + 100.0 + 20.0 * 5.0
+lines(grid + tiles.map { it.copy().apply { transform { v -> v.add(shift.toFloat(), 0f, 0f) } } }, w = 680.0, h = 340.0, fitToSize = true)
+"crossing of ${picked.first} and ${picked.second} -> a type-${picked.type} rhombus (${picked.acuteDegrees(5).toInt()} degrees)"
+```
+
 The parameters are the ones Pattern Collider exposes:
 
 | Parameter | Meaning |
@@ -113,7 +133,7 @@ lines(outlines, w = 480.0, h = 480.0, fitToSize = true)
 Moving one family's offset slides its lines. Most tiles stay where they are; small groups flip
 into a new arrangement as lines pass through crossings. Run this box and drag the sliders.
 
-```diffstatic_runner {data-lang=kotlin embed=true screenshot="assets/debruijn_tilings/slider.png" wait="2.0" capture="box" open-outputs="true" w="760" padding="14"}
+```diffstatic_runner {data-lang=kotlin embed=true screenshot="assets/debruijn_tilings/slider.png" trim=true wait="2.0" capture="box" open-outputs="true" w="760" padding="14"}
 // Drag the slider: every grid line of family 0 moves by `offset`, and the tiling re-forms.
 // Tiles flip in small groups ("phason flips") while the rest stay put.
 var offset = 0.0
