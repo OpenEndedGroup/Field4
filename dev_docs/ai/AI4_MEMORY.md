@@ -150,5 +150,38 @@ in every arm, so the control-scenario notes ("short replies") did not get in the
 Taking the three unchanged scenarios from the first run and the two fixed ones from this run, last
 sessions passed **none 1/5 (the control only), memory 5/5, dream 5/5**. That is one repeat on one
 model. `--repeats` and a second provider are the next things to run before quoting these numbers
-anywhere. A scenario built to show what dreaming adds is still missing.
+anywhere. A scenario built to show what dreaming adds was added next.
+
+### `missed-correction`: what only re-reading the transcript can fix
+
+The memory arms start with a note that was true once, seeded before the first session: "Gizmos cost
+3.00 each". Session one says "Gizmos went up to 3.60 each" in a session with no memory tools, in
+every arm, as a chat where memory was unavailable. Nothing writes the change down. Session two asks
+for the cost of 10 gizmos (36). Two harness changes came with it:
+
+- **The history tools now search the arm's recorded sessions** (`AgentTaskRequest.history`), as they
+  would search a workspace's earlier chats. Before this, they searched the session's empty scratch
+  workspace, so the earlier runs' sessions could not look back.
+- **Every session is sealed** (`MemoryEval.WITHHELD`): the corpus's sealed tools plus the repository
+  tools. Each scored session is also checked for a leak (`MemoryEval.leak`), and a pass becomes
+  `leaked` when a tool result other than memory or history held an earlier session's words. The
+  first run of this scenario needed both. The no-memory arm passed both repeats by running
+  `RepoSearchRequest` for "gizmos" and reading the scenario's own text in `MemoryEval.kt`. In the
+  earlier runs, the only scored session that used a search tool was no-memory `widget-price`, which
+  failed anyway, so those results stand.
+
+Sealed, two repeats (openai gpt-6.1-sol, 12 sessions, 2 dream passes, 0.78M input tokens):
+
+| arm | passed | last session: rounds, input tokens | how it got 3.60 |
+|---|---|---|---|
+| none | 0/2 | 10–11, ~150K | it didn't: "unit price not provided" |
+| memory | 2/2 | 6, ~97K | read the stale note, then searched and read the history, found the change, and fixed the note itself |
+| dream | 2/2 | 3, ~54K | the dream pass had already fixed the note; one `MemoryReadRequest` |
+
+So with history searchable, a session that doubts a note can do the dream's work itself, and passes.
+What dreaming changed was where that work happens: the correction moved out of the person's session,
+which took half the rounds and a little over half the tokens. The dream pass's own tokens are not
+recorded yet, so this does not show that the total was lower. One unscored no-memory session failed
+when the provider stayed unavailable for ten minutes. That did not change the scored result, because
+that arm had no record of the price either way.
 
