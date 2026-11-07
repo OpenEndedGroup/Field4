@@ -1,0 +1,110 @@
+name: debruijn_tilings_demo
+description: >
+  Quasiperiodic rhombus tilings from de Bruijn multigrids (deBruijnTiling, in afield.geometry.path),
+  following Aatish Bhatia's Pattern Collider (MIT) and de Bruijn 1981. Five pure-compute boxes, no
+  Renderer: a Penrose tiling with its thick/thin count, a gallery of 8-, 7-, 12- and disordered
+  6-fold tilings, one grid line's ribbon highlighted, plain outlines for a plotter with the dual
+  graph's edge count, and two sliders that move one family of grid lines. Replay with
+  field_run_transcript and run each box; the operations omit inline code, so each runs its stored
+  code property.
+docs:
+  - page: debruijn_tilings.md
+    why: "The page these boxes illustrate."
+operations:
+  - create:
+      box: debruijn_penrose
+      name: a Penrose tiling, coloured by rhombus type
+      frame: { x: 80.0, y: 80.0, w: 400.0, h: 100.0 }
+      properties:
+        code: |
+          val penrose = deBruijnTiling(symmetry = 5, radius = 7.0, scale = 14.0)
+          val counts = penrose.typeCounts()
+          lines(penrose.lines(), w = 560.0, h = 560.0, fitToSize = true)
+          "thin ${counts[1]}, thick ${counts[2]}, thick/thin %.4f".format(counts.getValue(2).toDouble() / counts.getValue(1))
+  - create:
+      box: debruijn_gallery
+      name: 8, 7, 12-fold and disordered 6-fold
+      frame: { x: 700.0, y: 80.0, w: 400.0, h: 100.0 }
+      properties:
+        code: |
+          // The same construction at four symmetries, one with its grid lines jittered.
+          val panel = { title: String, t: DeBruijnTiling ->
+              val counts = t.typeCounts().entries.joinToString("  ") { (type, n) -> "%.1f°: %d".format(type * 180.0 / t.symmetry, n) }
+              "$title\n$counts" to t.lines()
+          }
+
+          showPlaneGrid(
+              panel("8-fold, Ammann–Beenker", deBruijnTiling(symmetry = 8, radius = 5.0, scale = 10.0)),
+              panel("7-fold", deBruijnTiling(symmetry = 7, radius = 5.0, scale = 10.0)),
+              panel("12-fold", deBruijnTiling(symmetry = 12, radius = 4.0, scale = 8.0)),
+              panel("6-fold, disorder 0.6", deBruijnTiling(symmetry = 6, radius = 6.0, scale = 10.0, disorder = 0.6)),
+              columns = 2,
+              cellWidth = 380,
+              cellHeight = 380,
+          )
+  - create:
+      box: debruijn_ribbon
+      name: one grid line's ribbon
+      frame: { x: 80.0, y: 760.0, w: 400.0, h: 100.0 }
+      properties:
+        code: |
+          // Every tile on one grid line's ribbon shares an edge with the next: the line threads a chain of
+          // rhombi whose shared edges are all parallel. Line 0 of family 0 is drawn in red.
+          val penrose = deBruijnTiling(symmetry = 5, radius = 7.0, scale = 14.0)
+          val line = DeBruijnLine(family = 0, index = 0)
+          val ribbon = penrose.ribbon(line)
+
+          val grey = listOf(vec(0.32, 0.34, 0.40, 1.0), vec(0.22, 0.24, 0.30, 1.0))
+          lines(penrose.lines(palette = grey, highlight = line), w = 560.0, h = 560.0, fitToSize = true)
+
+          "${ribbon.size} tiles on family ${line.family}, line ${line.index}"
+  - create:
+      box: debruijn_plotter
+      name: outlines for a pen plotter
+      frame: { x: 700.0, y: 760.0, w: 400.0, h: 100.0 }
+      properties:
+        code: |
+          // Outlines only, one closed FLine per rhombus: what a pen plotter wants. Each tile's two parallel
+          // pairs of edges are perpendicular to the two grid lines that made it.
+          val tiling = deBruijnTiling(symmetry = 5, radius = 5.0, scale = 16.0)
+          val outlines = tiling.lines(fill = false, outlineThickness = 1.2, palette = listOf(vec(0.92, 0.92, 0.88, 1.0)))
+          lines(outlines, w = 480.0, h = 480.0, fitToSize = true)
+          "${outlines.size} closed outlines, ${tiling.adjacency().sumOf { it.size } / 2} shared edges"
+  - create:
+      box: debruijn_slider
+      name: slide a family of grid lines
+      frame: { x: 80.0, y: 1440.0, w: 400.0, h: 100.0 }
+      properties:
+        code: |
+          // Drag the slider: every grid line of family 0 moves by `offset`, and the tiling re-forms.
+          // Tiles flip in small groups ("phason flips") while the rest stay put.
+          var offset = 0.0
+          var symmetry = 5.0
+
+          val draw = {
+              val n = symmetry.toInt()
+              val offsets = defaultDeBruijnOffsets(n).toMutableList()
+              offsets[0] += offset
+              val t = deBruijnTiling(symmetry = n, offsets = offsets, radius = 5.0, scale = 12.0)
+              lines(t.lines(), w = 480.0, h = 480.0, fitToSize = true)
+          }
+
+          slider("family 0 offset", min = -1.0, max = 1.0, step = 0.01, initialValue = 0.0, channel = "offset") {
+              offset = it
+              draw()
+          }
+          slider("symmetry", min = 4.0, max = 12.0, step = 1.0, initialValue = 5.0, channel = "symmetry") {
+              symmetry = it
+              draw()
+          }
+          draw()
+  - execute:
+      box: debruijn_penrose
+  - execute:
+      box: debruijn_gallery
+  - execute:
+      box: debruijn_ribbon
+  - execute:
+      box: debruijn_plotter
+  - execute:
+      box: debruijn_slider
