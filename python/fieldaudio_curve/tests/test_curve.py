@@ -8,6 +8,7 @@ from pathlib import Path
 import numpy as np
 from fieldaudio_curve import CurveAnalyzer, CurveConfig, write_curves
 from fieldaudio_curve.curve import _align, _project, _embed_distances
+from fieldaudio_curve.stereo import align_pair, align_stereo_files
 
 
 class CurveTest(unittest.TestCase):
@@ -19,6 +20,43 @@ class CurveTest(unittest.TestCase):
         current = np.array([[2., 3.], [2., 5.], [0., 5.], [-1., 5.]])
         aligned = _align(current, previous)
         np.testing.assert_allclose(aligned[:3], previous, atol=1e-12)
+
+    def test_stereo_similarity_recovers_reflection_rotation_and_scale(self):
+        rng = np.random.default_rng(9)
+        for dims in (2, 3):
+            target = rng.normal(size=(50, dims))
+            q, _ = np.linalg.qr(rng.normal(size=(dims, dims)))
+            q[:, 0] *= -1 if np.linalg.det(q) > 0 else 1
+            moving = target @ q * 2.3 + np.arange(dims)
+            np.testing.assert_allclose(align_pair(target, moving), target, atol=1e-12)
+
+    def test_stereo_file_validation_and_output(self):
+        with tempfile.TemporaryDirectory() as directory:
+            left = Path(directory) / 'left'
+            right = Path(directory) / 'right'
+            out = Path(directory) / 'out'
+            c = CurveConfig(8000, fft_size=128, hop_size=32, mel_bands=12, history=8, dimensions=3)
+            audio = np.random.default_rng(9).normal(size=512)
+            write_curves(left, audio, c)
+            write_curves(right, audio, c)
+            align_stereo_files(left, right, out)
+            self.assertEqual(left.stat().st_size, out.stat().st_size)
+            dtype = np.dtype([('time', '<f8'), ('count', '<u4'), ('reserved', '<u4'),
+                              ('coordinates', '<f4', (8, 3))])
+            expected = np.memmap(left, dtype=dtype, mode='r', offset=64)
+            actual = np.memmap(out, dtype=dtype, mode='r', offset=64)
+            np.testing.assert_allclose(actual['coordinates'], expected['coordinates'], atol=1e-7)
+            np.testing.assert_array_equal(actual['time'], expected['time'])
+            with self.assertRaises(ValueError):
+                align_stereo_files(left, right, left)
+            with self.assertRaises(FileExistsError):
+                align_stereo_files(left, right, out)
+            bad = bytearray(right.read_bytes())
+            struct.pack_into('<d', bad, 64, 123.0)
+            right.write_bytes(bad)
+            with self.assertRaises(ValueError):
+                align_stereo_files(left, right, Path(directory) / 'bad')
+            self.assertFalse((Path(directory) / 'bad').exists())
 
     def test_partial_eigensolver_matches_dense_mds(self):
         rng = np.random.default_rng(31)

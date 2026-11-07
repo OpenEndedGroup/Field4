@@ -115,3 +115,14 @@ frames {
 ```
 
 The clip and analysis must use the same source and timeline. The first curve appears at the center of the first complete FFT window. Java Sound chooses the system output device; its playback clock and device latency are not a sample-accurate visual synchronization guarantee.
+
+## Aligning stereo channels
+
+The usual analysis aligns each channel to its own previous frame. To compare the two channels in one coordinate system, fit the right curve to the left curve at each timestamp:
+
+```sh
+PYTHONPATH=python uv run --group audio-curve -- python -m fieldaudio_curve.stereo \
+  left.f4curve right.f4curve right-aligned.f4curve
+```
+
+The output has the same memory-mappable format and leaves both inputs unchanged. The files must have matching headers, timestamps and point counts. Each fit uses corresponding points, allowing translation, rotation, uniform scale and reflection; left is the reference. It preserves each right curve's shape up to a similarity transform, but does not force genuinely different stereo content to coincide. Each channel was already aligned through time; since the additional stereo fit is independent at each timestamp, it can introduce extra motion when the fit is ambiguous or the channels differ. The two channels are in the left channel's moving frame, not a fixed global frame.
