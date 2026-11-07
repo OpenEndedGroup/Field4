@@ -227,6 +227,8 @@ internal fun jpegDataUrl(image: BufferedImage, maxSide: Int = 1200, quality: Flo
  * and gets every retained panel (OutputAreaReplay), so "run first, look later" works.
  */
 object BoxOutputCapture {
+    /** The channel a box's AI conversation is mounted in; never part of a picture of its output. */
+    const val AI_CHAT_CHANNEL = "ai-chat"
     const val MAX_PAGES = 4
     const val IDLE_RELEASE_MS = 120_000L
     private const val NAVIGATION_TIMEOUT_MS = 20_000.0
@@ -267,7 +269,9 @@ object BoxOutputCapture {
     fun capture(info: SessionInformation, uid: String, settleMs: Int = 300): BoxOutputShot {
         check(!afield.runtime.lifecycle.Runloop.isMainThread) { "BoxOutputCapture.capture blocks; call it off the Runloop" }
         val box = info.boxes[uid] ?: return BoxOutputShot.failed("No box '$uid' in ${info.documentName}.")
-        val channels = box.output.retainedAreas.channels()
+        // The box's own AI conversation is a panel too, but it is not what the box draws: a picture
+        // of it would have the model describing its own chat (seen in the knight-tour session).
+        val channels = box.output.retainedAreas.channels().filter { it != AI_CHAT_CHANNEL }
         if (channels.isEmpty()) return BoxOutputShot.failed(
             "'${box.name}' has no output panel: it has not displayed anything since it was last cleared. " +
                 "println text is not a panel (read it with ReadBoxOutputRequest); display(\"main\", html) makes one."
@@ -349,7 +353,10 @@ object BoxOutputCapture {
         val page = pageFor(info)
         val prep = requestBoxScreenshot(page, BoxScreenshotRequest(
             uid = uid, padding = 12.0, panIntoView = true, hideMonaco = true, openOutputs = true,
-            preserveSelection = true, includeNotifications = false, expectOutputs = ExpectedOutputs.PANEL
+            preserveSelection = true, includeNotifications = false, expectOutputs = ExpectedOutputs.PANEL,
+            // This page is ours alone: hide the other boxes, whose floating panels would otherwise
+            // land in the clip and be read as this box's output.
+            isolate = true, excludeChannels = listOf(AI_CHAT_CHANNEL)
         ))
         // A stalled page will stall again; throwing sends capture() to drop it and retry on a fresh one.
         check(!prep.message.startsWith(SCREENSHOT_PREP_STALLED)) { prep.message }

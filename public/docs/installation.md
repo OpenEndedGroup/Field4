@@ -243,7 +243,8 @@ The right side is a stack of collapsible panels, one per part of Field:
 - **Python**: which interpreter [Python boxes](python.md) will use.
 - **AI**: model settings and the background tasks that improve Field's docs and tools, described
   in [Your History with Field](history_overview.md#the-welcome-dashboard); what the models do
-  inside a document is in [AI features](aiFeatures.md).
+  inside a document is in [AI features](aiFeatures.md). Its **Routines** button opens the
+  [overnight routines](routines.md) this checkout can run on a schedule.
 - **Preferences** and the **OSC editor**.
 
 ### Personal templates
@@ -365,6 +366,21 @@ or the network is down), it explains why rather than reporting that you are up t
 
     Anyone whose update check spans that commit sees the trailer's text verbatim, instead of the
     subject of the newest commit. Several notices in one range are all shown, deduplicated.
+
+## Overnight routines
+
+If you work on Field itself, the checkout includes jobs to run while you are away: an agent that
+makes improvements overnight, a nightly build-and-test run, a benchmark that notices when Field
+gets slower, and a reaper that keeps their worktrees from filling the disk. None is needed to use
+Field, and none is scheduled for you. To see them and how they last went:
+
+```diffstatic {data-lang=bash}
+:::static
+python3 tools/routines.py status
+```
+
+[Overnight Routines](routines.md) describes each one and how to adopt it into your agent's
+scheduled tasks, `launchd` or `cron`.
 
 ## Project-owned Kotlin extensions
 

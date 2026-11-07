@@ -184,6 +184,13 @@ object StdlibReferenceGenerator {
     internal const val RENDERERS = "Renderers"
 
     /**
+     * The page for Field's own agent harness, `afield.ai.{agent,tools,conversation,models,...}`. A
+     * reference-only label like [RENDERERS]: no source file declares it as a completion category,
+     * and `LanguagesCategoryTest` keeps it that way.
+     */
+    internal const val AI4 = "AI4"
+
+    /**
      * The category a file lands in when it carries no `@file:CompletionCategory` — matched on the
      * repo-relative path, first entry wins, [UNCATEGORISED] when nothing does.
      *
@@ -282,6 +289,18 @@ object StdlibReferenceGenerator {
         "src/jvmMain/kotlin/afield/lang/brief/" to "Solvers",
         "src/jvmMain/kotlin/afield/lang/solidsl/" to "Graphics",
         "src/jvmMain/kotlin/afield/lang/lambda/" to "Function",
+        // AI4, Field's own agent harness: the chat, its tools, headless agent tasks and the provider
+        // bridges. Before 2026-11-07 these fell through to the `afield/ai/` fallback below and were
+        // published as most of the "Machine learning" page, whose blurb is about flow matching.
+        // Model training, ONNX inference and retrieval stay there.
+        "src/jvmMain/kotlin/afield/ai/agent/" to AI4,
+        "src/jvmMain/kotlin/afield/ai/compat/" to AI4,
+        "src/jvmMain/kotlin/afield/ai/completion/" to AI4,
+        "src/jvmMain/kotlin/afield/ai/conversation/" to AI4,
+        "src/jvmMain/kotlin/afield/ai/diagnostics/" to AI4,
+        "src/jvmMain/kotlin/afield/ai/knowledge/" to AI4,
+        "src/jvmMain/kotlin/afield/ai/models/" to AI4,
+        "src/jvmMain/kotlin/afield/ai/tools/" to AI4,
         // Complete domain fallbacks, after the more specific package choices above.
         "src/jvmMain/kotlin/afield/ai/" to "Machine learning",
         "src/jvmMain/kotlin/afield/animation/" to "Graphics",
@@ -697,6 +716,42 @@ object StdlibReferenceGenerator {
             "[Forth](../forth_examples.md) and [Python](../python.md).",
         "Workspace" to "The box's own surroundings: properties, persistence, and the handful of " +
             "names every box already has in scope.",
+        AI4 to "AI4 is the agent that lives inside Field: the chat panel on every box, the " +
+            "document chat, editor completion, and headless agent tasks. It runs in the Field JVM " +
+            "against the live document, so the boxes it makes and runs are the ones you see, and a " +
+            "box can change what the agent can do while a conversation is under way. This page is " +
+            "that harness from the inside. The files fall into five families:\n\n" +
+            "- **Tools** (`afield.ai.tools`). A tool is a Kotlin request class: its simple name is " +
+            "the tool name and its `@JsonClassDescription` is what the model reads. `Tools.kt` holds " +
+            "the core set and the registry; `ToolMeta.kt` says how each tool is offered and what " +
+            "calling it changes; `FieldGraphTools.kt` (in `afield.ai.agent`) makes, runs and reads " +
+            "boxes. A box adds a tool of its own with `aiTool { }` (`BoxAiTools.kt`), a whole " +
+            "extension with `agentExtension { }` (`AgentExtensions.kt`), or a webpage the agent can " +
+            "operate with `exposeOutputIframeTools` (`OutputIframeAiTools.kt`). `RepoCommandTools.kt` " +
+            "runs named commands in a checkout and `RepoCommandJobs.kt` runs them as background jobs " +
+            "a turn can come back for.\n" +
+            "- **Builds and waiting** (`afield.ai.agent`). `StudyBuildTools.kt` starts, inspects and " +
+            "cancels study builds; `StudyBuildAwaits.kt` lets a turn end on `AwaitStudyBuildsRequest` " +
+            "and resumes the chat, without the model, when the jobs finish.\n" +
+            "- **Headless tasks** (`afield.ai.agent`). `AgentTask.kt` is a goal, a document and checks " +
+            "judged from what the boxes did, not from the agent's last message; `askFieldAgent` in " +
+            "`BoxAgentTask.kt` hands one to a box's chat. `InFieldAgentEvals.kt` and " +
+            "`AgentEvalCorpus.kt` are the evals built on it.\n" +
+            "- **Conversations** (`afield.ai.conversation`). `AiBoxConversation.kt` is where a " +
+            "transcript is stored, `AiSessionTree.kt` records it as a tree you can rewind, " +
+            "`ContextPipeline.kt` builds each turn's prompt, and `chatlog/` reads saved chats back.\n" +
+            "- **Providers** (`afield.ai.models`). `LlmBridge.kt` is the one interface the turn loop " +
+            "talks to. `AnthropicBridge.kt`, `OpenAiIdeCodexBridge.kt` and the local-model connection " +
+            "implement it, and `ScriptedLlmBridge.kt` replays a list of tool calls with no model, " +
+            "which is how `askFieldAgent` runs a task in `scripted` mode with no provider key.\n\n" +
+            "Start from [AI features](../aiFeatures.md) and [AI4's built-in tools](../ai4_tools.md), " +
+            "which show these at work. The other user pages: " +
+            "[Let AI4 wait for long builds](../ai4_long_builds.md), " +
+            "[Experimenting with AI4](../ai4_experiments.md), " +
+            "[Let AI4 drive a live webpage](../ai4_live_iframe.md), " +
+            "[AI4 Paints](../ai4_painting.md) and [Reading saved AI4 chats](../ai4_chat_archive.md). " +
+            "Model training, ONNX inference and semantic retrieval are under " +
+            "[Machine learning](machine-learning.md).",
         "Machine learning" to "Models small enough to train inside a box, in plain Kotlin, while " +
             "you watch. Flow matching carries one 2D or 3D point cloud onto another and hands back " +
             "the deformation between them; the multi-output regression head it trains is usable " +

@@ -50,7 +50,7 @@ val nested = mapOf(
     "position" to vec(10.0, 20.0, 30.0),
     "rotation" to quat(0.0, vec(0, 1, 0)),
     "scale" to vec(1.0, 1.0, 1.0),
-    "children" to ["child1", "child2", "child3"],
+    "children" to listOf("child1", "child2", "child3"),
 )
 viz("nested", nested)
 

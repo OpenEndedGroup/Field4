@@ -1119,6 +1119,22 @@ data class ProvisionalAcceptedValue(val uid: String, val property: String, val v
 @Serializable
 data class Notify(val text: String, val category: String)
 
+/**
+ * The reply to `ai4-memory-dream`: what one pass of AI4's memory consolidation did (`afield.ai.memory.Dreaming`).
+ * [log] is the path of the pass's log in the memory folder.
+ */
+@Serializable
+data class Ai4DreamReply(
+    val ok: Boolean,
+    val message: String,
+    val turnsRead: Int = 0,
+    val created: List<String> = emptyList(),
+    val updated: List<String> = emptyList(),
+    val deleted: List<String> = emptyList(),
+    val rounds: Int = 0,
+    val log: String = "",
+)
+
 @Serializable
 data class OscEditorCommand(
     val command: String,
@@ -1315,7 +1331,15 @@ data class BoxScreenshotRequest(
     /** One of [ExpectedOutputs]; what this capture asserts the box's output is. */
     val expectOutputs: String = ExpectedOutputs.PANEL,
     /** Open every `<details>` in the box's output before measuring, as a reader clicking each one would. */
-    val openDetails: Boolean = false
+    val openDetails: Boolean = false,
+    /**
+     * Hide every other box, and its output panels, until the next box screenshot on this page.
+     * For a page that exists only to take pictures (AI4's capture page): there, another box's
+     * floating panel over the clip is in the picture, and the model takes it for this box's output.
+     */
+    val isolate: Boolean = false,
+    /** Output channels of this box to leave out of the picture, e.g. `ai-chat` (the box's own AI conversation). */
+    val excludeChannels: List<String> = emptyList()
 )
 
 @Serializable

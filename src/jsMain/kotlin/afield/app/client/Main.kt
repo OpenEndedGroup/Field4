@@ -1668,6 +1668,44 @@ private fun clearSelectionForScreenshot() {
     selected.toList().forEach { deselectBox(it) }
 }
 
+private const val SHOT_ISOLATION_STYLE = "field-shot-isolation"
+private const val SHOT_KEEP = "field-shot-keep"
+private const val SHOT_EXCLUDED = "field-shot-excluded"
+
+/**
+ * Hide everything but [box] for a capture page's picture, or undo the last such hiding when
+ * [isolate] is false and [excluded] is empty. Each box screenshot first undoes the previous one,
+ * so a page that captures box after box never leaves one hidden for the next. The boxes [box]
+ * sits inside, and those nested inside it, stay visible: they are part of the picture.
+ */
+private fun isolateBoxForScreenshot(box: HTMLElement, isolate: Boolean, excluded: Set<String>) {
+    document.getElementById(SHOT_ISOLATION_STYLE)?.remove()
+    document.querySelectorAll(".$SHOT_KEEP, .$SHOT_EXCLUDED").asList().forEach {
+        (it as? HTMLElement)?.classList?.remove(SHOT_KEEP, SHOT_EXCLUDED)
+    }
+    if (!isolate && excluded.isEmpty()) return
+    if (isolate) {
+        box.classList.add(SHOT_KEEP)
+        box.querySelectorAll(".box").asList().forEach { (it as? HTMLElement)?.classList?.add(SHOT_KEEP) }
+        var up = box.parentElement
+        while (up != null) {
+            if (up.classList.contains("box")) up.classList.add(SHOT_KEEP)
+            up = up.parentElement
+        }
+    }
+    box.querySelector(".outputArea")?.querySelectorAll(".disclosure")?.asList()?.forEach { d ->
+        if ((d.asDynamic().__disclosureId as? String) in excluded) (d as? HTMLElement)?.classList?.add(SHOT_EXCLUDED)
+    }
+    val style = document.createElement("style")
+    style.id = SHOT_ISOLATION_STYLE
+    style.textContent = buildString {
+        // `*` too: a hidden parent does not hide a child whose own style says visible, and output areas do.
+        if (isolate) append(".box:not(.$SHOT_KEEP), .box:not(.$SHOT_KEEP) * { visibility: hidden !important; }\n")
+        append(".$SHOT_EXCLUDED { display: none !important; }\n")
+    }
+    document.head?.appendChild(style)
+}
+
 private fun hideNotificationsForScreenshot() {
     document.querySelectorAll(".bubble").asList()
         .mapNotNull { it as? HTMLElement }
@@ -2534,6 +2572,12 @@ private fun registerCanvasZoomActions() {
     interrupt.detail = "Throw out of box code that never returns (a runaway loop or recursion), so Field runs again"
     interrupt.run = { send("interrupt-box", js("({})")) }
     builtin.push(interrupt)
+    val dream: dynamic = js("({})")
+    dream.id = "consolidate-ai4-memory"
+    dream.label = "Consolidate AI4 Memory"
+    dream.detail = "Have AI4 check its memory notes against the chats since its last pass, and fix, merge or add notes"
+    dream.run = { send("ai4-memory-dream", js("({})")) }
+    builtin.push(dream)
     val frame: dynamic = js("({})")
     frame.id = "frame-selected"
     frame.label = "Frame Selected"
@@ -3074,6 +3118,8 @@ private fun prepareBoxScreenshot(req: BoxScreenshotRequest): BoxScreenshotRespon
         ?: return BoxScreenshotResponse(uid = req.uid, success = false, message = "box ${req.uid} not found")
 
     if (!req.includeNotifications) hideNotificationsForScreenshot()
+    // Before any measuring: what is hidden here is not in the clip, and the layout it leaves is.
+    isolateBoxForScreenshot(box, req.isolate, req.excludeChannels.toSet())
     if (req.openDetails) {
         // Before any measuring, so the clip and the readiness checks see the opened layout.
         val details = box.querySelectorAll(".outputArea details")
@@ -3270,7 +3316,9 @@ private fun rawToBoxScreenshotRequest(raw: dynamic) = BoxScreenshotRequest(
     openOutputs = dynamicBoolean(raw?.openOutputs, false),
     preserveSelection = dynamicBoolean(raw?.preserveSelection, false),
     includeNotifications = dynamicBoolean(raw?.includeNotifications, false),
-    openDetails = dynamicBoolean(raw?.openDetails, false)
+    openDetails = dynamicBoolean(raw?.openDetails, false),
+    isolate = dynamicBoolean(raw?.isolate, false),
+    excludeChannels = (raw?.excludeChannels as? Array<*>)?.mapNotNull { it as? String }.orEmpty()
 )
 
 private fun rawToWindowScreenshotRequest(raw: dynamic) = WindowScreenshotRequest(

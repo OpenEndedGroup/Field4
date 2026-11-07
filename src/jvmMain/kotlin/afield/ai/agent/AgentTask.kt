@@ -65,6 +65,12 @@ data class AgentTaskRequest(
     val chatBox: String = "",
     /** `on` / `off` pins the eval-distilled lessons in the instructions ([AgentLessons]); blank = default. */
     val lessons: String = "",
+    /**
+     * The cross-session memory this task gets ([afield.ai.memory.UserMemory]): blank or `off` gives none, so an
+     * eval neither reads nor writes the person's notes; `on` gives the person's own; anything else is a folder
+     * to use as the memory (an eval's, for a with/without-memory comparison).
+     */
+    val memory: String = "",
     /** Withhold [ViewBoxOutputRequest] — the counterfactual for a visual task: can it be done without looking? */
     val blind: Boolean = false,
     /**
@@ -249,6 +255,10 @@ data class AgentTaskResult(
     val nestedCalls: Int = 0,
     /** User turns in the conversation: 1 + [AgentTaskRequest.followUps]. */
     val turns: Int = 1,
+    /** Each user turn's reply, in order ([finalText] is the last); empty where the task did not run turns itself. */
+    val replies: List<String> = emptyList(),
+    /** How many of [toolCalls] each user turn made, in order, so a transcript can put each call under its turn. */
+    val turnToolCalls: List<Int> = emptyList(),
     /** Where the last turn's instructions went: `instructions`, `system+prefix`, or `inline` (the legacy arm). */
     val contextPlacement: String = "",
     /** A mined-corpus task only: the tool whose result held a line of the task's own solution (see [AgentEvalCorpus.leak]). */
@@ -323,6 +333,13 @@ object AgentTaskRunner {
                 val off = (if (request.programs == "off") setOf(afield.ai.tools.program.RUN_TOOL_PROGRAM) else emptySet()) + request.withhold
                 if (off.isNotEmpty()) base.copy(withheld = base.withheld + off) else base
             }.let { base ->
+                val memory = when (request.memory.trim().lowercase()) {
+                    "", "off" -> null
+                    "on" -> afield.ai.memory.UserMemory.forPerson()
+                    else -> afield.ai.memory.UserMemory.at(java.io.File(request.memory.trim()))
+                }
+                base.copy(userMemory = memory, chatHistory = memory?.let { afield.ai.memory.ChatHistory.forDocument(java.io.File(info.filename)) })
+            }.let { base ->
                 if (request.repoRoot.isBlank()) base else {
                     val root = java.io.File(request.repoRoot)
                     require(root.isDirectory) { "repoRoot '${request.repoRoot}' is not a directory" }
@@ -380,10 +397,15 @@ object AgentTaskRunner {
             var sent = helpers.chatGeneral(
                 thread, code = "", lang = afield.runtime.languages.KOTLIN_SCRIPT, userPrompt = prompt, ctx = ctx,
                 maxToolRounds = budget, extraInstructions = extra)
+            val replies = mutableListOf(sent.text)
+            val turnCalls = mutableListOf(records(sent).size)
             for (followUp in request.followUps) {
-                sent = mergeTurns(sent, helpers.chatGeneral(
+                val next = helpers.chatGeneral(
                     sent.threadState, code = "", lang = afield.runtime.languages.KOTLIN_SCRIPT, userPrompt = followUp, ctx = ctx,
-                    maxToolRounds = budget, extraInstructions = extra))
+                    maxToolRounds = budget, extraInstructions = extra)
+                replies += next.text
+                turnCalls += records(next).size
+                sent = mergeTurns(sent, next)
             }
 
             val shots = HashMap<String, BoxOutputShot>()
@@ -414,6 +436,8 @@ object AgentTaskRunner {
                 programCalls = calls.count { it.tool == afield.ai.tools.program.RUN_TOOL_PROGRAM },
                 nestedCalls = calls.count { it.parent.isNotEmpty() },
                 turns = 1 + request.followUps.size,
+                replies = replies,
+                turnToolCalls = turnCalls,
                 contextPlacement = sent.contextReport?.placement ?: "inline",
                 repoWritten = ctx.repoFiles?.written?.toList().orEmpty(),
                 repoRuns = ctx.repoCommands?.runs?.toList().orEmpty(),

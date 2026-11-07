@@ -62,7 +62,13 @@ data class AwaitedBuild(
     val label: String = "",
     /** The runner's directory, so a job can still be read from disk when the runner is not running. */
     val directory: String = "",
-)
+    /** What [jobId] names: a study build (blank) or a background repository command ([REPO_JOB], `RepoStartCommandRequest`). */
+    val kind: String = "",
+) {
+    companion object {
+        const val REPO_JOB = "repo"
+    }
+}
 
 /**
  * The tool outputs of the round that suspended a turn, which the provider has not seen yet. The next turn

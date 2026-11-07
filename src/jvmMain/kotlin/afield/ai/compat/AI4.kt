@@ -49,9 +49,13 @@ val SLANG_FRAGMENT get() = afield.runtime.languages.SLANG_FRAGMENT
 val SLANG_MESH get() = afield.runtime.languages.SLANG_MESH
 val SLANG_TASK get() = afield.runtime.languages.SLANG_TASK
 val SLANG_COMPUTE get() = afield.runtime.languages.SLANG_COMPUTE
+/** Forwards to `afield.runtime.languages.wrapScript`: wraps box script in the `SCRIPT()` function the completion engine reads, keeping imports and `@file` lines on top. */
 fun wrapScript(script: String) = afield.runtime.languages.wrapScript(script)
+/** Forwards to `afield.runtime.languages.unwrapScriptLenient`: recovers box script from wrapped model output, with or without its markers. */
 fun unwrapScriptLenient(wrapped: String) = afield.runtime.languages.unwrapScriptLenient(wrapped)
+/** Forwards to `afield.runtime.languages.glslSpecForProperty`: the GLSL stage spec for a shader property name such as `fragment`, or null. */
 fun glslSpecForProperty(property: String) = afield.runtime.languages.glslSpecForProperty(property)
+/** Forwards to `afield.runtime.languages.shaderSpecForProperty`: the GLSL or Slang stage spec for a shader property name, or null. */
 fun shaderSpecForProperty(property: String) = afield.runtime.languages.shaderSpecForProperty(property)
 
 // Tool schemas ---------------------------------------------------------------
@@ -96,8 +100,10 @@ typealias GetUtcTime = afield.ai.tools.GetUtcTime
 typealias Remember = afield.ai.tools.Remember
 typealias Recall = afield.ai.tools.Recall
 typealias ToolExecutionContext = afield.ai.tools.ToolExecutionContext
+/** Forwards to [afield.ai.tools.virtualFilesToAttachments]. */
 fun virtualFilesToAttachments(files: List<afield.document.workspace.VirtualTextFile>) =
     afield.ai.tools.virtualFilesToAttachments(files)
+/** Forwards to [afield.ai.tools.validateNoMarkers]. */
 fun validateNoMarkers(code: String) = afield.ai.tools.validateNoMarkers(code)
 
 // Core runtime ---------------------------------------------------------------
@@ -116,9 +122,11 @@ val Ai4CompletionDoc get() = afield.ai.completion.Ai4CompletionDoc
 
 // Installer ------------------------------------------------------------------
 
+/** Installs AI4's message handlers when Field starts. */
 @RunsAt(installHandlers)
 fun ai4_install() = installAi4()
 
+/** Installs the docs search, including its `docs_search_input` message handler, when Field starts. */
 @RunsAt(installHandlers)
 fun docs_search_install() = installDocsSearch()
 

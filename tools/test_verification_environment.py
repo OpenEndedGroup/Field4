@@ -17,6 +17,18 @@ from verification_environment import (VerificationEnvironment, VerificationEnvir
 from verification_runtime import run_with_watchdog
 
 
+def setUpModule():
+    global _budget_tmp, _budget_env
+    _budget_tmp = tempfile.TemporaryDirectory()
+    _budget_env = patch.dict(os.environ, {"FIELD_VERIFY_BUDGET_DIR": _budget_tmp.name})
+    _budget_env.start()
+
+
+def tearDownModule():
+    _budget_env.stop()
+    _budget_tmp.cleanup()
+
+
 GOOD = {"supported": True, "onAC": True, "batteryPercent": 42, "displayAvailable": True}
 
 
@@ -399,6 +411,126 @@ class DiskBudgetTests(unittest.TestCase):
             budget = DiskBudget(Path(directory), probe=probe, floor_gib=8, reserve_gib=0, planned_gib=0)
             budget.sample()
             probe.assert_called_once_with(Path(directory).resolve())
+
+
+
+
+class SharedResourceTests(unittest.TestCase):
+    def setUp(self):
+        from verification_resources import SharedDiskClaim
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+        self.factory = lambda: SharedDiskClaim(Path.cwd(), root=self.root)
+
+    def claim(self, **kwargs):
+        claim = self.factory()
+        self.addCleanup(claim.close)
+        claim.acquire(free=20 * GIB, floor=8 * GIB, reserve=0, planned=8 * GIB, **kwargs)
+        return claim
+
+    def test_concurrent_budget_is_counted_and_released(self):
+        first = self.claim()
+        second = self.factory()
+        self.addCleanup(second.close)
+        with self.assertRaisesRegex(ValueError, '8.00 GiB claimed by other runs'):
+            second.acquire(free=20 * GIB, floor=8 * GIB, reserve=0, planned=8 * GIB)
+        first.close()
+        second.acquire(free=20 * GIB, floor=8 * GIB, reserve=0, planned=8 * GIB)
+        self.assertEqual(second.others, 0)
+
+    def test_another_process_cannot_spend_the_same_claimed_budget(self):
+        self.claim()
+        tools = str(Path(__file__).resolve().parent)
+        script = f"""import sys
+sys.path.insert(0, {tools!r})
+from verification_resources import SharedDiskClaim
+from pathlib import Path
+c = SharedDiskClaim(Path.cwd(), root=Path({str(self.root)!r}))
+try:
+    c.acquire(free=20*1024**3, floor=8*1024**3, reserve=0, planned=8*1024**3)
+except ValueError as exc:
+    print(exc)
+    sys.exit(3)
+sys.exit(0)
+"""
+        done = subprocess.run([sys.executable, '-c', script], capture_output=True, text=True, timeout=15)
+        self.assertEqual(done.returncode, 3)
+        self.assertIn('8.00 GiB claimed by other runs', done.stdout)
+
+    def test_crashed_process_lease_is_reclaimed_without_pid_or_age_guess(self):
+        tools = str(Path(__file__).resolve().parent)
+        script = f'''import sys, os
+sys.path.insert(0, {tools!r})
+from verification_resources import SharedDiskClaim
+from pathlib import Path
+c = SharedDiskClaim(Path.cwd(), root=Path({str(self.root)!r}))
+c.acquire(free=20*1024**3, floor=8*1024**3, reserve=0, planned=8*1024**3)
+os._exit(0)
+'''
+        subprocess.run([sys.executable, '-c', script], check=True, timeout=15)
+        self.assertEqual(len(list(self.root.glob('*/*.json'))), 1)
+        self.claim()
+        self.assertEqual(len(list(self.root.glob('*/*.json'))), 1)
+
+    def test_admission_reprobes_after_taking_shared_lock(self):
+        claim = self.factory()
+        self.addCleanup(claim.close)
+        with self.assertRaisesRegex(ValueError, 'shared disk budget'):
+            claim.acquire(probe=lambda: 1, floor=8 * GIB, reserve=0, planned=0)
+        self.assertIsNone(claim.handle)
+
+    def test_malformed_active_claim_fails_closed(self):
+        from verification_resources import lock_file
+        claim = self.factory()
+        with claim.admission():
+            handle = (claim.folder / 'damaged.json').open('w+b')
+            handle.write(b'{"floor": 8}')
+            handle.flush()
+            lock_file(handle)
+        try:
+            with self.assertRaisesRegex(ValueError, 'invalid active disk claim'):
+                claim.acquire(free=20 * GIB, floor=8 * GIB, reserve=0, planned=0)
+        finally:
+            handle.close()
+
+    def test_other_runs_higher_floor_is_preserved(self):
+        first = self.factory()
+        self.addCleanup(first.close)
+        first.acquire(free=20 * GIB, floor=18 * GIB, reserve=0, planned=0)
+        other = self.factory()
+        with self.assertRaises(ValueError):
+            other.acquire(free=17 * GIB, floor=8 * GIB, reserve=0, planned=0)
+
+    def test_keep_awake_tracks_owner_and_stops_only_owned_process(self):
+        from verification_resources import KeepAwake
+        with patch('verification_resources.sys.platform', 'darwin'), patch('verification_resources.subprocess.Popen') as popen:
+            process = popen.return_value
+            process.poll.return_value = None
+            with KeepAwake() as awake:
+                self.assertTrue(awake.report()['active'])
+                argv = popen.call_args.args[0]
+                self.assertEqual(argv, ['caffeinate', '-dims', '-w', str(os.getpid())])
+                self.assertNotIn('-t', argv)
+            process.terminate.assert_called_once()
+            process.wait.assert_called_once()
+
+    def test_keep_awake_unavailable_is_reported_not_a_verification_pass(self):
+        from verification_resources import KeepAwake
+        with patch('verification_resources.sys.platform', 'darwin'), patch('verification_resources.subprocess.Popen', side_effect=FileNotFoundError('missing')):
+            with KeepAwake() as awake:
+                self.assertFalse(awake.report()['active'])
+                self.assertIn('missing', awake.report()['error'])
+
+    def test_environment_close_releases_shared_disk_claim(self):
+        with patch.dict(os.environ, {'FIELD_VERIFY_BUDGET_DIR': str(self.root)}):
+            monitor = VerificationEnvironment(probe=lambda: {'supported': False},
+                disk_probe=lambda path: SimpleNamespace(free=20 * GIB), disk_planned_gib=8,
+                disk_floor_gib=8, disk_reserve_gib=0)
+            monitor.checkpoint(require_display=False)
+            self.assertEqual(len(list(self.root.glob('*/*.json'))), 1)
+            monitor.close()
+            self.assertEqual(len(list(self.root.glob('*/*.json'))), 0)
 
 
 if __name__ == "__main__":

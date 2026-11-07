@@ -838,6 +838,7 @@ internal fun Route.installDocsAnnotationRoutes(
     }
     installDocsPassRoutes(policy)
     installRefactorPassRoutes(policy)
+    installRoutinesRoutes(policy)
     installDocsSourceFileRoute(policy)
     // Gated like the annotations, and the reason is not the one you would guess.
     //

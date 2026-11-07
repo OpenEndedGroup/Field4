@@ -1,0 +1,66 @@
+# Shared knight-tour computation
+
+## Wiring
+- Source: `knight tours` (`73b2ad1a-50a9-40ed-bef3-9456d8cf0d91`).
+- Child: `knight tour arc growth` (`2685e17b-ada6-4ad7-8de3-b127719b87d2`). Connected as a child to inherit typed graph properties.
+- The source computes `rows` once, then `arcRows` once using the A → B → C circumcircle sampler. Both the overview and growth view consume this sampled geometry.
+- Published with `prop<T>`: `knightTourRows`, `knightArcRows`, `knightBoardWidth`, `knightBoardHeight`, `knightCellSize`.
+- The child has no hard-coded tour or duplicate circle sampler. It builds cumulative FLine stages from inherited geometry; all lettering and markers are also FLines.
+
+## Use
+- Run the source first. At its end, it calls `begin()` on the connected growth and perpendicular-offset children (filtered by UID), asynchronously refreshing them after publishing all data.
+
+### Arc-transform view (formerly perpendicular-only)
+- Box: `knight tour perpendicular arcs` (`756af284-5020-45dd-baf4-7b3bc777e681`), also a child of the source; its UID and automatic refresh wiring are unchanged.
+- Current parameters: `arcScale = 0.9`, `arcPush = 0.0`. Each arc is uniformly scaled about its original B, then optionally translated along its original A-to-C normal.
+- Transformation: `q = B + arcScale * (p-B) + arcPush * (-dy,dx)/hypot(dx,dy)`, where `(dx,dy)=C-A`. B is taken from tour index `k+1`, not the midpoint of the sample list. At zero push B stays fixed; A/C move toward B. Negative push reverses the translation.
+- Reuses inherited samples without mutation, search or circle fitting. Circle radius scales; angular sweep is preserved. Overview and lettering remain FLines.
+- Verified compilation/run and visual layout at scale 0.9, push 0.0. All 1,116 arcs passed: B-anchor error `0.0`; maximum radial scaling error `1.0658141036401503E-14`.
+
+### Growth-view selection
+- In the child, edit `sourceRow` and `sourceTour` (zero-based), then run the child to select a different cached tour without repeating search or sampling.
+- Row 0: exhaustive; row 1: rotation walk; row 2: independent randomised searches. Initial selection is row 0, tour 0.
+- These are shared runtime objects, not copies: treat inherited arrays/lists as read-only. After a session reset, run the source to repopulate them.
+- Parent/child inheritance alone does not schedule redraws; the explicit final `begin()` is what refreshes the child on source reruns. Merely editing source without running does not refresh results.
+
+## Verified
+- Both edited boxes compiled and ran successfully.
+- A subsequent source run produced fresh child output without a separate child Run call.
+- Runtime reference-identity probes confirmed `tour === knightTourRows[sourceRow][sourceTour]` and `arcs === knightArcRows[sourceRow][sourceTour]`.
+- `WhyDoesThisResolve` confirmed `knightArcRows` is inherited from the source, at depth one, with no ambiguity.
+- Visual captures retained the 18-tour overview and the 62-stage FLine grid. The small auto-fitted output panel makes growth labels tiny; enlarge the panel for inspection.
+
+## API discovery evidence
+Semantic retrieval warned its index was stale. It reported capsule backend `source-index-capsules` and vector backend `onnx-runtime-java:cpu-fallback:model_quantized.onnx`; `Box.begin` was then confirmed directly with symbol lookup. The property syntax was confirmed against the worked `two_box_context` tutorial.
+
+## Glued quarter-arc paths
+- New source child: `knight tour glued arcs` (`cc20e577-5142-4a8b-8083-3c737fc5b084`). `arcScale = 0.25`; inherited arcs shrink about exact B with no shift. Existing views are unchanged.
+- Keeps each transformed arc's position and shape, reorders and optionally reverses arcs, and connects consecutive endpoints by straight segments. One open FLine per tour (one moveTo, no closing segment); 18-tour overview. This is endpoint stitching, not tangent-continuous smoothing or moving endpoints into coincidence.
+- Route heuristic: nearest-neighbour from every arc in both orientations, followed by best-improvement open-path 2-opt on each candidate. Signed arc IDs encode orientation; reversing a block flips all arc directions. Global shortest route is not guaranteed. Only connector length needs optimisation because total arc length is constant.
+- Compiled, ran, visually inspected: 1,116 arcs visited exactly once across 18 routes. Total connectors decreased from 12,276.01319647385 (tour order) to 3,759.2252791264336. Each route checked no worse than its tour-order baseline.
+- Added child UID to the source's explicit refresh set; source compilation passed. Automatic scheduling uses the same existing begin() wiring; source was not rerun as part of this final wiring check.
+
+## Straight-line baseline and drawing sandbox
+- Original `knight tours` now displays straight knight-move polylines again (thickness 1.0, opaque gold). Search and shared arc generation/publication remain intact for all existing arc children.
+- New child `knight tour line experiments` (`0046694c-4358-43c9-913e-a17d8e55c785`) copies the straight-line drawing setup, not the search. Inherits `knightTourRows`, board dimensions and cell size. Its local `tourLine(tour)` is the editing point for future drawing experiments; `strokeWidth` is exposed at the top.
+- New UID added to source refresh set. Source and sandbox compiled and ran successfully; source-triggered sandbox output was also observed. Both visual captures match the same 3-by-6 straight-line tour layout. No new alternate drawing style has been chosen yet.
+
+## Parametric line experiments
+- `knight tour line experiments` now renders each individual move A->B as a separate quadratic stroke. Top-level parameters: `startTrim`, `endTrim`, `nextPull`, `previousPull`, `rotationRadians`, `perpendicularOffset`, `alongSlide`. Geometry parameters are not clamped.
+- Trims are fractional distances removed from original endpoints: S=A+(B-A)*startTrim, E=B-(B-A)*endTrim. Negative extends; values beyond 1 can reverse endpoints. M=(S+E)/2.
+- Quadratic control Q=M+nextPull*unit(next-M)+previousPull*unit(previous-M), using original tour neighbours before A/after B. Signed fixed-length pulls, summed independently; absent neighbours and zero directions contribute zero. Pull refers to control-point displacement, not curve midpoint displacement.
+- Rotate S/Q/E about M, then translate along the rotated original A->B unit axis by `alongSlide` and its normal (-axis.y,axis.x) by `perpendicularOffset`. Axis orientation remains original A->B even when trims reverse the segment.
+- Exact quadratic-to-cubic conversion uses controls S+2/3*(Q-S), E+2/3*(Q-E); FLine moveTo/cubicTo per move. No duplicate search or mutation of shared tours.
+- Initial settings: trims 0.08 each, nextPull 4, previousPull/rotation/offset/slide 0. Setting all seven to zero restores straight geometry. Other boxes unchanged.
+- Compile/run and visual inspection passed: 1,134 quadratic moves over 18 tiles. Mathematical checks passed for identity, negative trims, reversed endpoints, next pull +11, previous pull -11, and PI/2 rotation with offset 2/slide 3. Fixed an FLine `h` property shadowing board height by using boardW/boardH.
+
+## Native-vector cleanup
+- Removed the custom `Point2` class from line experiments. Geometry and test points now use `afield.math.linalg.Vector2d`, native allocating arithmetic operators, and non-mutating `normalized(1e-12)` (zero-safe). Only a small allocating `Vector2d.rotated` extension remains for 2D rotation; no home-grown vector arithmetic/type.
+- Preserved the user's current parameters: trims 0/0, nextPull 4, previousPull -4, rotation/offset/slide 0. Compilation/run, all existing geometry checks, and visual inspection passed (1,134 moves). Native arithmetic returns fresh results, so shared/control vectors are not mutated.
+
+## Zipped parameter layers (current line experiments)
+- Geometry now uses native Vector2f/vec and `v * quat(angle)`; the handwritten rotation helper is removed. Reuses a quaternion per stroke, with radians about +Z. Geometry checks include a nonzero quarter-turn.
+- Seven geometry parameters plus strokeWidth accept collection literals `[a, b, c]` or scalars. Lists are zipped, not Cartesian products: longest list sets layer count, shorter lists hold their last value, scalars repeat. Empty lists are rejected with a message; values are not clamped.
+- Each layer becomes an FLine over the same tour/board; background is drawn once. Gap remains a single layout setting. Original tour centres are computed once and reused across layers; no search duplication.
+- Current demo preserves trims 0.3/0.3, nextPull 2, previousPull -2, offset/slide 0, width 0.5 as singleton lists. Rotation is `[Math.PI/20, 0.0, -Math.PI/20]`, yielding three superimposed drawings per tile.
+- Verified compilation/run: 3 layers, 3,402 strokes over 18 tiles. Geometry, scalar broadcasting, and hold-last checks (including -1 and 11) pass. Visual capture shows small gold stroke fans on the unchanged 3-by-6 board layout.

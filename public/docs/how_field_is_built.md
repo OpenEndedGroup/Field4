@@ -640,7 +640,9 @@ Two scheduled agent runs use all of the above every night. One builds three smal
 each in its own branch, and a fourth agent reviews them and writes a verdict on each. The other
 builds `main` from clean, fixes any new compiler warnings without suppressing them, and runs the
 full gates, the complete docs recapture and the smoke catalog. Both keep their plans and their
-memory on branches of their own, never touch `main`, and leave their work for a person to land.
+memory on branches of their own, never touch `main`, and leave their work for a person to land. They,
+a benchmark that waits for a quiet machine, and the reaper that clears their worktrees are all in
+the checkout, ready to schedule on yours: see [Overnight Routines](routines.md).
 
 ## Ideas worth taking with you
 

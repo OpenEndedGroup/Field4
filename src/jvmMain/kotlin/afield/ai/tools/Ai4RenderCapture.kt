@@ -1,3 +1,11 @@
+/**
+ * Finds the render window a box's chat should look at, and captures it for the model.
+ *
+ * The window is searched for from the box outwards: a `Window` or `Renderer` held in a property of the
+ * box or of any of its ancestors, nearest first. `captureChatScreenshot` refuses an unknown box uid
+ * rather than capturing some other window in its place.
+ */
+
 package afield.ai.tools
 
 import afield.ai.agent.*

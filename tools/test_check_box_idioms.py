@@ -207,6 +207,15 @@ class ListLiteralTests(unittest.TestCase):
                 "val panels = run { listOf(a, b) }\n")
         self.assertEqual(self.fixed(code), code)
 
+    def test_a_heterogeneous_map_keeps_a_string_list_distinct_from_numeric_vectors(self):
+        # In the real compiler the literal here is inferred as a numeric vector, even with
+        # mapOf<String, Any>; its three strings are then rejected as non-Numbers (viz_demo.kt).
+        code = ('val nested = mapOf(\n    "position" to vec(1.0, 2.0, 3.0),\n'
+                '    "children" to listOf("child1", "child2", "child3"),\n)\n')
+        self.assertEqual(self.fixed(code), code)
+        split = code.replace('"children" to listOf', '"children" to\n        listOf')
+        self.assertEqual(self.fixed(split), split)
+
     def test_a_lambdas_last_expression_keeps_listOf(self):
         # A lambda's result has no expected type: `[ring, cloud]` there does not compile (flow_matching, 11-02/11-03).
         code = ("val panels = xs.flatMapIndexed { i, x ->\n    val ring = x\n    listOf(ring, x)\n}\n"

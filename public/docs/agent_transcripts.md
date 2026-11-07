@@ -85,6 +85,24 @@ Kotlin is compiled on every build.
 These build and run headless: no window, no GPU. Open one to get the code in front of you, then run
 its box to see the output (a plot, an inline value thumbnail, a printed line).
 
+### knight_tour_workshop
+
+**Knight tours, many ways of drawing a move.** Five connected CPU-only FLine boxes:
+straight tours from three search strategies, rolling arcs through consecutive triples, a 62-stage
+growth sheet, arcs scaled about B with optional perpendicular push, short-join glued arcs, and
+layered quadratic stroke experiments. (The source overview and four derived views make five boxes.)
+Run **knight tours** first: it publishes the searches and sampled arcs once and refreshes the views.
+The last box accepts collection literals or scalar parameters, zipped with hold-last repetition;
+trims, pulls, rotation, offset and slide are deliberately unclamped. Its default three layers
+produce 3,402 quadratic strokes across eighteen tiles, with runtime geometry assertions.
+The glued view reports join lengths; its nearest-neighbour/2-opt route is not a global optimum.
+
+![Eighteen dark tiles with gold, trimmed quadratic knight moves layered into little fans](assets/knight_tour_workshop/layers.png)
+
+[Open →](offline.html?file=assets/agent_transcripts/knight_tour_workshop/metadata.edn) ·
+[Walkthrough and parameters](knight_tour_workshop.md) ·
+[Saved chat](assets/knight_tour_workshop/chat.txt)
+
 ### staged_project
 
 **A level built in stages.** The starting place of [Start a staged project](staged_projects.md): a

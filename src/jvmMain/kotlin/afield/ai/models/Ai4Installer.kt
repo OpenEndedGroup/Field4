@@ -257,6 +257,21 @@ private data class AiChatContextRequest(val uid: String)
 @kotlinx.serialization.Serializable
 private data class AiChatContextReply(val uid: String, val markdown: String)
 
+/** The composer's draft, for inline autocomplete ([afield.ai.completion.Ai4ChatAutocomplete]). */
+@kotlinx.serialization.Serializable
+private data class AiChatSuggestRequest(val uid: String, val property: String = "code", val draft: String, val seq: Long = 0)
+
+/** [suggestion] follows [draft]; [disabled] means this Field has chat autocomplete off, so stop asking. */
+@kotlinx.serialization.Serializable
+private data class AiChatSuggestReply(
+    val uid: String,
+    val seq: Long,
+    val draft: String,
+    val suggestion: String = "",
+    val disabled: Boolean = false,
+    val error: String? = null
+)
+
 private val ai4Scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
 internal fun macroRunToolResult(
@@ -1008,6 +1023,32 @@ fun installAi4() {
             ?: "_No AI turn has run in this box since Field started, or the last one sent its instructions inline " +
                 "(AFIELD_AI4_EPHEMERAL_INSTRUCTIONS=off, or the OpenRouter provider)._"
         reply(Message("ai-chat-context").payload(AiChatContextReply(request.uid, markdown)))
+        Handled.yes
+    })
+
+    // Inline autocomplete for the chat composer: the fast model's guess at how the draft goes on. The box is
+    // read here, on the handler's thread; only the model call runs on ai4Scope.
+    handlers["ai-chat-suggest"] = mutableSetOf({ message, reply ->
+        val request = Json.decodeFromJsonElement<AiChatSuggestRequest>(message.payload!!)
+        fun answer(suggestion: String = "", disabled: Boolean = false, error: String? = null) =
+            reply(Message("ai-chat-suggest").payload(AiChatSuggestReply(request.uid, request.seq, request.draft, suggestion, disabled, error)))
+        val target = thisSessionInfo.get()?.boxes?.get(request.uid)
+        when {
+            !afield.ai.completion.Ai4ChatAutocomplete.enabled() -> answer(disabled = true)
+            target == null || request.draft.isBlank() -> answer()
+            else -> {
+                val boxName = target.name
+                val code = target.getPropertyRaw(request.property, "") as? String ?: ""
+                val history = AiBoxConversation.read(target)
+                ai4Scope.launch {
+                    val suggestion = runCatching {
+                        afield.ai.completion.Ai4ChatAutocomplete.complete(boxName, request.property, code, history, request.draft)
+                    }
+                    suggestion.onFailure { lprintln("info,ai_completions", "chat autocomplete failed: ${it.javaClass.simpleName}: ${it.message}") }
+                    answer(suggestion.getOrDefault(""), error = suggestion.exceptionOrNull()?.let { it.message ?: it.javaClass.simpleName })
+                }
+            }
+        }
         Handled.yes
     })
 
@@ -2207,6 +2248,8 @@ fun installAi4() {
                             semanticRetrievalRebuild = semanticRetrievalRebuild,
                             agentMemory = agentMemory,
                             documentGuides = documentGuides,
+                            userMemory = afield.ai.memory.UserMemory.forPerson(),
+                            chatHistory = afield.ai.memory.ChatHistory.offeredFor(docPath),
                             focus = focus,
                             fieldGraph = replyGraph,
                             inbox = inbox,
@@ -2247,6 +2290,8 @@ fun installAi4() {
                             semanticRetrievalRebuild = semanticRetrievalRebuild,
                             agentMemory = agentMemory,
                             documentGuides = documentGuides,
+                            userMemory = afield.ai.memory.UserMemory.forPerson(),
+                            chatHistory = afield.ai.memory.ChatHistory.offeredFor(docPath),
                             focus = focus,
                             fieldGraph = chatGraph,
                             inbox = inbox,
@@ -2300,6 +2345,8 @@ fun installAi4() {
                             semanticRetrievalRebuild = semanticRetrievalRebuild,
                             agentMemory = agentMemory,
                             documentGuides = documentGuides,
+                            userMemory = afield.ai.memory.UserMemory.forPerson(),
+                            chatHistory = afield.ai.memory.ChatHistory.offeredFor(docPath),
                             focus = focus,
                             fieldGraph = replyGraph,
                             inbox = inbox,
@@ -2337,6 +2384,8 @@ fun installAi4() {
                             semanticRetrievalRebuild = semanticRetrievalRebuild,
                             agentMemory = agentMemory,
                             documentGuides = documentGuides,
+                            userMemory = afield.ai.memory.UserMemory.forPerson(),
+                            chatHistory = afield.ai.memory.ChatHistory.offeredFor(docPath),
                             focus = focus,
                             fieldGraph = replyGraph,
                             inbox = inbox,
@@ -2374,6 +2423,8 @@ fun installAi4() {
                             semanticRetrievalRebuild = semanticRetrievalRebuild,
                             agentMemory = agentMemory,
                             documentGuides = documentGuides,
+                            userMemory = afield.ai.memory.UserMemory.forPerson(),
+                            chatHistory = afield.ai.memory.ChatHistory.offeredFor(docPath),
                             focus = focus,
                             fieldGraph = replyGraph,
                             inbox = inbox,
@@ -2849,6 +2900,8 @@ fun installAi4() {
                     semanticRetrievalRebuild = semanticRetrievalRebuild,
                     agentMemory = agentMemory,
                     documentGuides = documentGuides,
+                    userMemory = afield.ai.memory.UserMemory.forPerson(),
+                    chatHistory = afield.ai.memory.ChatHistory.offeredFor(chatDocPath),
                     dynamicTools = DocumentToolRegistry.toolsFor(chatDocPath),
                     // The document chat had no way to edit a box before: no EditFile, no graph tools.
                     fieldGraph = chatSession?.let { afield.ai.agent.FieldGraphTools.forTurn(it) }

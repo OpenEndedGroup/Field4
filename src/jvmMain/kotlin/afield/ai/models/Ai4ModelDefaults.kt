@@ -1,3 +1,13 @@
+/**
+ * Which model AI4 asks when nothing more specific was chosen: a flagship model for chat turns, a fast
+ * one for small jobs such as box naming, and a fallback.
+ *
+ * Each role is read, in order, from its environment variable (`AFIELD_AI_MODEL`,
+ * `AFIELD_AI_FAST_MODEL`, `AFIELD_AI_FALLBACK_MODEL`), then from the configured model settings
+ * (`ai-models.properties`), then from the selected provider's built-in default. A local provider has no built-in default
+ * and asks you to pick a model in Welcome → AI → Local.
+ */
+
 package afield.ai.models
 
 internal object Ai4ModelDefaults {

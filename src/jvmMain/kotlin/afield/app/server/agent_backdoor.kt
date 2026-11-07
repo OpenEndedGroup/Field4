@@ -1649,6 +1649,24 @@ fun installAgentBackdoorHandlers() {
         Handled.yes
     })
 
+    // Does AI4's memory help? Scenarios of fresh sessions under each memory arm (afield.ai.agent.MemoryEval).
+    handlers["memory-eval"] = mutableSetOf({ message, reply ->
+        val request = Json.decodeFromJsonElement<afield.ai.agent.MemoryEvalRequest>(message.payload!!)
+        agentBackdoorScope.launch {
+            val report = runCatching {
+                afield.ai.agent.MemoryEval.run(request, { task -> runAgentTaskHeadless(task) }, {
+                    if (request.mode == "live") afield.ai.models.createIdeBridge()
+                    else afield.ai.models.ScriptedLlmBridge(listOf(afield.ai.models.ScriptedLlmBridge.Step.Final("scripted run: no dream")), "scripted-dream")
+                })
+            }.getOrElse { t ->
+                afield.ai.agent.MemoryEvalReport(request.mode, request.model, request.dir, emptyMap(), emptyMap(), emptyList(), emptyList(), 0,
+                    error = "${t.javaClass.simpleName}: ${t.message}")
+            }
+            reply(Message("memory-eval").payload(report))
+        }
+        Handled.yes
+    })
+
     handlers["agent-set-property"] = mutableSetOf({ message, reply ->
         val request = Json.decodeFromJsonElement<AgentSetPropertyRequest>(message.payload!!)
         val info = thisSessionInfo.get()

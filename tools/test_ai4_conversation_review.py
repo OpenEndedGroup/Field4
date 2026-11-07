@@ -67,6 +67,20 @@ class ConversationReviewTest(unittest.TestCase):
         self.assertIn("exceeds", turns[2]["failure"])
         self.assertIn("corrected next turn", review.render([self.reviewed()]))
 
+    def test_a_redirection_marks_the_turn_before_but_an_ordinary_request_does_not(self) -> None:
+        write_turn(self.root, "t1", "2026-11-06T19:25:00Z", "make a growth grid", [END])
+        write_turn(self.root, "t2", "2026-11-06T19:27:00Z", "don't use SVG here, just use FLines", [END])
+        write_turn(self.root, "t3", "2026-11-06T19:30:00Z", "Excellent; let's keep this box dynamic", [END])
+        write_turn(self.root, "t4", "2026-11-06T20:07:00Z", "isn't there something like this on Vector2f already?", [END])
+        reviewed = self.reviewed()
+        turns = reviewed["turns"]
+        self.assertIn("just use FLines", turns[0]["redirectedBy"])
+        self.assertNotIn("redirectedBy", turns[1])
+        self.assertIn("Vector2f already", turns[2]["redirectedBy"])
+        self.assertNotIn("correctedBy", turns[0], "a redirection is not a wrong-claim correction")
+        self.assertEqual(2, reviewed["summary"]["redirections"])
+        self.assertIn("redirected next turn", review.render([reviewed]))
+
     def test_the_logged_request_wins_over_the_prompt_tail(self) -> None:
         write_turn(self.root, "t1", "2026-10-22T08:01:00Z", "tail", [END])
         path = self.root / "t1.jsonl"

@@ -16,6 +16,10 @@ four things a turn teaches, each with where its fix belongs:
 - **Corrections**: a person's next message that says the last answer was wrong ("look again", "are
   you sure"). The claim before it is a verification miss, usually worth a curated lesson in
   `src/jvmMain/resources/ai4/agent_lessons.md`.
+- **Redirections**: a person's next message that turns the work onto Field's own way of doing it
+  ("don't use SVG here, just use FLines", "isn't there something like this on Vector2f already?").
+  The turn before it reached for a generic idiom; what the person named is the idiom the next model
+  should start with (the instructions, a lesson, or a search that finds it).
 
 It began with the first conversation with a local model (qwen3.8-27b, 2026-10-22, the prime numbers
 that became an inferno-coloured Ulam spiral), which had all four.
@@ -56,6 +60,12 @@ LOOKUP_THRESHOLD = 4
 CORRECTION = re.compile(
     r"(?i)\b(look again|are you sure|not sure|that'?s (not|wrong)|you'?re wrong|isn'?t (right|correct)|doesn'?t (look|match|work)"
     r"|you (said|claimed|claiming)|claiming|not what i|still (wrong|broken)|try again|wrong)\b")
+# From the knight-tour conversation (2026-11-06), where the two redirections were the only course changes and
+# the correction pattern saw neither. Across every logged request it matched only redirections (5 of 3310).
+REDIRECTION = re.compile(
+    r"(?i)(\bdon'?t use\b|\bjust use\b|\bno need (for|to)\b|\bno universe\b|\bwe (already )?have\b"
+    r"|\bisn'?t there (something|a|an)\b|\bis there(n'?t)? already\b|\binstead of\b|\buse (the )?(existing|built-?in)\b"
+    r"|\bi bet (this|it|that) works with\b|,\s*not the\b)")
 
 
 @dataclass
@@ -185,6 +195,8 @@ def review(turns: list[Turn], context_tokens: int) -> dict:
     for previous, current in zip(reviewed, reviewed[1:]):
         if CORRECTION.search(current["request"]):
             previous["correctedBy"] = current["request"][:300]
+        elif REDIRECTION.search(current["request"]):
+            previous["redirectedBy"] = current["request"][:300]
     return {
         "conversationId": turns[0].start.get("conversationId"),
         "fileKey": turns[0].start.get("fileKey"),
@@ -196,6 +208,7 @@ def review(turns: list[Turn], context_tokens: int) -> dict:
             "toolFailures": sum(len(r["toolFailures"]) for r in reviewed),
             "expensiveLookups": sum(1 for r in reviewed if r["lookupRun"]),
             "corrections": sum(1 for r in reviewed if "correctedBy" in r),
+            "redirections": sum(1 for r in reviewed if "redirectedBy" in r),
             "peakInputTokens": max((r["peakInputTokens"] for r in reviewed), default=0),
         },
     }
@@ -208,7 +221,7 @@ def render(reviews: list[dict]) -> str:
         window = conv["contextTokens"]
         out.append(f"## {conv['conversationId']}  ({conv['fileKey']})")
         out.append(f"{s['turns']} turns, {s['failedTurns']} failed, {s['toolFailures']} tool failure(s), "
-                   f"{s['expensiveLookups']} expensive lookup(s), {s['corrections']} correction(s); "
+                   f"{s['expensiveLookups']} expensive lookup(s), {s['corrections']} correction(s), {s['redirections']} redirection(s); "
                    f"peak input {s['peakInputTokens']} tokens" + (f" of {window}" if window else ""))
         out.append("")
         for i, t in enumerate(conv["turns"], 1):
@@ -227,6 +240,9 @@ def render(reviews: list[dict]) -> str:
                            f"→ put what it found in the instructions")
             if "correctedBy" in t:
                 out.append(f"   - corrected next turn: \"{t['correctedBy'][:200]}\" → check the claim; a curated lesson if it generalises")
+            if "redirectedBy" in t:
+                out.append(f"   - redirected next turn: \"{t['redirectedBy'][:200]}\" → the idiom it should have reached for: "
+                           "make the instructions or a search lead to it")
         out.append("")
     return "\n".join(out)
 

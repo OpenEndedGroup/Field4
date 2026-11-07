@@ -7,6 +7,32 @@ Welcome screen lists every commit in your own checkout.
 
 ## November 2026
 
+<!-- changelog: 706771453e..5664df2184 -->
+### Several Physarum species sharing one GPU field
+
+*6 November 2026*
+
+- **Multi-species stigmergy**: three species lay and follow trails on one GPU field, attracted to
+  their own and repelled by the others, with a video comparing one species against three.
+  [Several species on one field](alife_examples.md#several-species-on-one-field).
+- **Testing a box tool without a model**: script an agent's calls and read the per-tool tally.
+  [Testing a tool without a model](ai4_experiments.md#testing-a-tool-without-a-model).
+- Boxes now show their execution state on the canvas, interacting with a box's output no longer
+  drags the box, and the bookmarks panel sits at the bottom left.
+
+<!-- changelog: f7a2fef406..9f50a281fa -->
+### A million Physarum agents on the GPU, and this page
+
+*4–5 November 2026*
+
+- **GPU Physarum**: a trail field on the GPU drives a million agents, with a video.
+  [A million agents on the GPU](alife_examples.md#a-million-agents-on-the-gpu).
+- **A word cut as a stencil**: a new chain page cuts a word, has Datalog find the letters that
+  fall apart, and bridges them. [A Word Cut as a Stencil](chain_stencil_bridges.md).
+- **What's new**: this page, backfilled from Field's history.
+- Montage and `withLabel` captions are drawn with anti-aliased text, box stills are captured at
+  3× for sharper screenshots, and pages crossfade as you move between them.
+
 <!-- changelog: 9bc6dcb33e..46e37dc010 -->
 ### Screenshots at the size Field draws them, and a generator graded by Datalog
 

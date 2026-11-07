@@ -14,7 +14,7 @@ Where the neighbours are. [Solvers](solvers.md) is Ceres, which finds the shape 
 
 The prose, with pictures: [Physics: particles, constraints and cloth](../physics.md) for the real-time stack — read it before touching `stiffness`, because it and `iterations` are not two knobs — and [Filling a solid: tetrahedral meshing with TetGen](../tetgen.md) for the meshing and the route into Kratos. Four loadable Kratos documents (thermal, flow, structural and the parameter study) and the cloth starting point are in the [Agent Transcript Gallery](../agent_transcripts.md); [Frames and the Animation Loop](../animation_time_model.md) explains why an integrator wants a fixed `dt`. `dev_docs/TETGEN.md` carries the mesher comparison that chose this route.
 
-48 source file(s), 1472 public symbol(s), 832 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+48 source file(s), 1476 public symbol(s), 832 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -4277,6 +4277,10 @@ Uses Field's existing L-BFGS; only physical residuals can declare an equilibrium
 | Declaration | Summary |
 | --- | --- |
 | <a id="solver-kt--solvetrace--evaluations"></a>[<code class="highlight"><span class="k">var</span> <span class="n">evaluations</span></code>](source/jvmMain/afield/simulation/physics/pressure/Solver/#L45) |  |
+| <a id="solver-kt--solvetrace--iterations"></a>[<code class="highlight"><span class="k">var</span> <span class="n">evaluations</span></code>](source/jvmMain/afield/simulation/physics/pressure/Solver/#L45) |  |
+| <a id="solver-kt--solvetrace--backtracks"></a>[<code class="highlight"><span class="k">var</span> <span class="n">evaluations</span></code>](source/jvmMain/afield/simulation/physics/pressure/Solver/#L45) |  |
+| <a id="solver-kt--solvetrace--skippedcurvature"></a>[<code class="highlight"><span class="k">var</span> <span class="n">evaluations</span></code>](source/jvmMain/afield/simulation/physics/pressure/Solver/#L45) |  |
+| <a id="solver-kt--solvetrace--newtoniterations"></a>[<code class="highlight"><span class="k">var</span> <span class="n">evaluations</span></code>](source/jvmMain/afield/simulation/physics/pressure/Solver/#L45) |  |
 | <a id="solver-kt--solvetrace--rows"></a>[<code class="highlight"><span class="k">val</span> <span class="n">rows</span></code>](source/jvmMain/afield/simulation/physics/pressure/Solver/#L46) |  |
 | <a id="solver-kt--solvetrace--tostring"></a>[<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/simulation/physics/pressure/Solver/#L47) |  |
 

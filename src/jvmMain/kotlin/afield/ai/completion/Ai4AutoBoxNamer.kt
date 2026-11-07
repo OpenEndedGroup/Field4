@@ -1,3 +1,16 @@
+/**
+ * Names boxes for you: after a document saves, AI4 asks the fast model for a short name for each box
+ * whose text has changed enough to deserve a new one.
+ *
+ * A box is a candidate when its code or shader properties have no recorded signature yet, or have grown
+ * or shrunk by at least four lines (or by two lines and a quarter of their length) since the last name.
+ * Up to sixteen candidates go in one request to `AFIELD_AI_AUTO_NAME_MODEL`, falling back to the
+ * provider's fast model, and the document is saved again with the message "AI4 auto box names", a save
+ * the namer ignores so it never triggers itself. It does nothing without an AI credential, is turned off
+ * with `AFIELD_AI_AUTO_NAME_BOXES=false` (or `-Dafield.ai.autoNameBoxes=false`), and never renames boxes
+ * in a document an agent loaded through the backdoor, whose names are deliberate.
+ */
+
 package afield.ai.completion
 
 import afield.ai.conversation.sha256

@@ -32,8 +32,9 @@ class RepoCommandToolsTest {
     @Test fun templatesBuildFixedArgvFromCheckedSlots() = Fixture().use { f ->
         assertEquals(listOf("./gradlew", "--console=plain", "jvmTest", "--tests", "afield.ai.tools.RepoFileToolsTest"),
             f.build("gradle", "jvmTest", "--tests", "afield.ai.tools.RepoFileToolsTest"))
-        assertEquals(listOf("uv", "run", "--project", ".", "--group", "backdoor", "python", "tools/test_thing.py", "FieldAgentTest.test_x"),
+        assertEquals(listOf("uv", "run", "--project", ".", "--group", "backdoor", "python", "-m", "unittest", "tools.test_thing.FieldAgentTest.test_x"),
             f.build("python-test", "tools/test_thing.py", "FieldAgentTest.test_x"))
+        assertEquals("tools.test_thing", f.build("python-test", "tools/test_thing.py").last())
         assertEquals("tools/check_thing.py", f.build("check", "tools/check_thing.py").last())
         val diff = f.build("git-diff", "--stat", "main...HEAD", "--", "docs/a.md")
         assertEquals(listOf("--stat", "main...HEAD", "--", "docs/a.md"), diff.takeLast(4))
@@ -62,7 +63,7 @@ class RepoCommandToolsTest {
             assertFailsWith<RepoPathRefused>(p) { f.build("git-diff", "--", p) }
         assertFailsWith<RepoPathRefused> { f.build("check", "tools/check_thing.py") }
         assertFailsWith<RepoPathRefused> { f.build("python-test", "tools/../tools/test_thing.py") }
-        assertEquals("tools/test_thing.py", f.build("python-test", "tools/test_thing.py").last())
+        assertEquals("tools.test_thing", f.build("python-test", "tools/test_thing.py").last())
     }
 
     @Test fun onlyTheJobsNamesRun(): Unit = Fixture(allowed = setOf("git-status")).use { f ->
@@ -86,6 +87,14 @@ class RepoCommandToolsTest {
     @Test fun environmentDropsGitVariablesAndTheLockOwner() = Fixture().use { f ->
         val env = f.tools.environment(mapOf("GIT_DIR" to "/x", "GIT_INDEX_FILE" to "/y", "AFIELD_VERIFICATION_LOCK_OWNER" to "1", "VIRTUAL_ENV" to "/v", "PATH" to "/bin"))
         assertEquals(mapOf("PATH" to "/bin", "AFIELD_VERIFICATION_LOCK" to "fail", "GIT_TERMINAL_PROMPT" to "0", "GIT_PAGER" to "cat", "PAGER" to "cat"), env)
+    }
+
+    @Test fun environmentDropsThisFieldsOwnPortsAndDebugger() = Fixture().use { f ->
+        // A backdoor-launched Field carries these; a Field its job starts must pick its own or it fails to bind them.
+        val env = f.tools.environment(mapOf("PORT" to "9491", "AFIELD_HTTP_PORT" to "19491", "AFIELD_JDWP_PORT" to "5005",
+            "AFIELD_JDWP_HOST" to "127.0.0.1", "AFIELD_JDWP_SUSPEND" to "n", "AFIELD_SKIP_WORKSPACE_PERSIST" to "1", "PATH" to "/bin"))
+        assertTrue(RepoCommandTools.INSTANCE_ENV.none { it in env }, env.toString())
+        assertEquals("1", env["AFIELD_SKIP_WORKSPACE_PERSIST"], "the rest is inherited")
     }
 
     @Test fun nonZeroExitIsReportedNotThrown() = Fixture(allowed = setOf("gradle")).use { f ->

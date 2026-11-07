@@ -13,7 +13,7 @@ description: >
   with no box in it is absent from the overlay, and the figure should show that.
 
   Boxes are created but not launched. The overlay is drawn from box geometry and names, so nothing
-  here needs to run, and a box that does not run cannot fail a capture.
+  here needs to run to draw the overlay.
 
   Capture-only, so it lives under transcripts/docs_capture/: AgentTranscriptMaterializer scans the
   transcripts/ directory itself and would expect a committed starting-point bundle for anything
@@ -30,7 +30,7 @@ operations:
       properties:
         code: |
           // The colours the curve below is drawn with.
-          val ramp = [Vec4(0.96, 0.62, 0.26, 1.0), Vec4(0.30, 0.62, 0.90, 1.0)]
+          val ramp = [Vec4(0.96f, 0.62f, 0.26f, 1.0f), Vec4(0.30f, 0.62f, 0.90f, 1.0f)]
   - create:
       box: spatial_nav_center
       name: curve

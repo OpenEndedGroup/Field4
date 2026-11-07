@@ -3640,7 +3640,7 @@ most 1000 uniquely identified slides, 100 000 characters of Markdown each, 100 r
 reading and writing run it.
 
 [`PresentationSlideFiles`](visualization.md#presentationslides-kt-presentationslidefiles) is the file side, shared by Kotlin box code and by AI4's slide tools in
-[`PresentationTools`](machine-learning.md#presentationtools-kt-presentationtools). A write names the revision it read, so a deck edited underneath a caller is
+[`PresentationTools`](ai4.md#presentationtools-kt-presentationtools). A write names the revision it read, so a deck edited underneath a caller is
 refused rather than overwritten, and every path is checked to stay inside the document's `files/`
 directory.
 

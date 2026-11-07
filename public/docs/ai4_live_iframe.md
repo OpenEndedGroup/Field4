@@ -35,3 +35,6 @@ again. The bridge evaluates code *inside* that iframe, including pages on anothe
 it does not change Chromium's normal web security. A page must be visible in the Field Electron
 app for these AI4 tools to reach it. A screenshot pans the canvas to an output area that is
 offscreen.
+
+The tools come from [`exposeOutputIframeTools`](reference/ai4.md#outputiframeaitools-kt), in the
+[AI4 reference](reference/ai4.md).

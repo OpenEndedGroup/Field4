@@ -199,9 +199,15 @@ internal object Ai4BackdoorTools {
             semanticRetrievalRebuild = semanticRetrievalRebuild,
             agentMemory = agentMemory,
             documentGuides = DocumentGuideTools.forSession(sessionInfo),
+            // The person's memory, so MCP clients can read and curate it; AgentTask replaces these per request.
+            userMemory = afield.ai.memory.UserMemory.forPerson(),
+            chatHistory = afield.ai.memory.ChatHistory.offeredFor(docPath),
             compileKotlin = codeTools.compileKotlin,
             evaluateKotlinExpression = codeTools.evaluateKotlinExpression,
             fieldGraph = afield.ai.agent.FieldGraphTools(sessionInfo),
+            // The same Field-checkout tools the box chat gets, so they can be called and captured from here too.
+            repoFiles = FieldCheckoutRepo.files,
+            repoCommands = FieldCheckoutRepo.commands,
             focus = focusBox?.let { token ->
                 val box = boxByIdOrNull(token)
                     ?: uniqueBoxOrRefuse(token, sessionInfo.boxes.values.filter { it.name == token })

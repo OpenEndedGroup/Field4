@@ -1,4 +1,4 @@
-"""Read-only verification prerequisites: cross-platform disk, macOS power/display.
+"""Verification prerequisites and owned resource protection: cross-platform disk, macOS power/display.
 
 An observation gap is not proof of sleep. Preserve the gap and any matching macOS
 Sleep/Wake log lines rather than subtracting guessed sleep time from test timings.
@@ -16,6 +16,8 @@ import threading
 import time
 from datetime import datetime
 from pathlib import Path
+
+from verification_resources import KeepAwake, SharedDiskClaim
 
 
 class VerificationEnvironmentError(RuntimeError):
@@ -40,7 +42,8 @@ class DiskBudget:
 
     Volume-wide free-space changes include other writers. Never present them as
     this checkout's footprint, reclaimable bytes, or an attribution of consumption.
-    This observer neither reserves filesystem blocks nor removes anything.
+    Cooperative claims serialize admission across checkouts on the same volume.
+    They do not reserve filesystem blocks or authorize cleanup.
     """
     def __init__(self, path: Path, *, probe=shutil.disk_usage, floor_gib=None,
                  reserve_gib=None, planned_gib=None):
@@ -51,6 +54,7 @@ class DiskBudget:
         self.admitted = False
         self.start_free: int | None = None
         self.minimum_free: int | None = None
+        self.claim = SharedDiskClaim(self.path)
 
     def sample(self) -> dict:
         result = {"path": str(self.path), "freeBytes": None,
@@ -78,11 +82,28 @@ class DiskBudget:
                 f"disk budget: {available} available at {self.path}; need {required / GIB:.2f} GiB "
                 f"(floor {self.floor / GIB:g} + reserve {self.reserve / GIB:g} + "
                 f"planned whole-run growth {self.planned / GIB:g}). No cleanup was attempted.")
+        try:
+            # Re-probe under the shared admission lock inside acquire; callers' earlier
+            # samples remain useful telemetry but cannot admit two runs concurrently.
+            self.claim.acquire(probe=lambda: self.probe(self.path).free, floor=self.floor,
+                               reserve=self.reserve, planned=self.planned)
+        except (OSError, ValueError) as exc:
+            raise VerificationEnvironmentError(str(exc)) from exc
         self.admitted = True
+
+    def close(self):
+        self.claim.close()
+
+    def __del__(self):
+        try:
+            self.close()
+        except Exception:
+            pass  # OS lock expiry still makes the claim recoverable after process exit.
 
     def report(self) -> dict:
         return {"path": str(self.path), "floorBytes": self.floor, "reserveBytes": self.reserve,
                 "plannedBytes": self.planned, "admitted": self.admitted,
+                "otherClaimedBytesAtAdmission": self.claim.others,
                 "initialFreeBytes": self.start_free, "minimumFreeBytes": self.minimum_free,
                 "maxObservedVolumeLossBytes": (None if self.start_free is None else
                                               self.start_free - self.minimum_free),
@@ -187,6 +208,7 @@ class VerificationEnvironment:
         self._sample_lock = threading.Lock()
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
+        self.keep_awake = KeepAwake()
 
     def sample(self, *, force=False):
         with self._sample_lock:
@@ -215,6 +237,7 @@ class VerificationEnvironment:
 
     def start(self):
         self.sample(force=True)
+        self.keep_awake.start()
         def loop():
             while not self._stop.wait(1):
                 try:
@@ -253,13 +276,17 @@ class VerificationEnvironment:
             return {"startedAtEpochSec": self.started_at, "reportedAtEpochSec": self.clock(),
                     "sampleIntervalSec": self.sample_interval, "gapThresholdSec": self.gap_seconds,
                     "sampleCount": self.sample_count, "latest": dict(self.snapshot),
-                    "diskBudget": self.disk.report(),
+                    "diskBudget": self.disk.report(), "keepAwake": self.keep_awake.report(),
                     "events": list(self.events)}
 
     def close(self):
         self._stop.set()
         if self._thread:
             self._thread.join(timeout=15)
+        try:
+            self.keep_awake.close()
+        finally:
+            self.disk.close()
 
     def write_report(self, path: Path, outcomes: list[dict]):
         path.parent.mkdir(parents=True, exist_ok=True)

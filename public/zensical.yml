@@ -498,6 +498,7 @@ nav:
       - Languages: reference/languages.md
       - Workspace: reference/workspace.md
       - Execution: reference/execution.md
+      - AI4: reference/ai4.md
       - Machine learning: reference/machine-learning.md
       - Networking: reference/networking.md
       - Video: reference/video.md
@@ -556,6 +557,10 @@ nav:
     - How Field Is Built: how_field_is_built.md
     - Building & Testing: building_and_testing.md
     - Landing on main: landing_queue.md
+    # After the landing queue, which it leans on: the overnight jobs in routines/ (self-improvement,
+    # CI, the feel benchmark, What's New, the reaper), how to adopt them into a scheduler, and what
+    # they need. Linked from installation.md, since adopting one is part of setting up a machine.
+    - Overnight Routines: routines.md
 
 markdown_extensions:
   - admonition                    # `!!! note` / `!!! warning` callouts

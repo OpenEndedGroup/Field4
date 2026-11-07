@@ -589,7 +589,9 @@ private fun BoxScreenshotRequest.toPlaywrightArg(): Map<String, Any?> = mapOf(
     "expectOutputs" to expectOutputs,
     "preserveSelection" to preserveSelection,
     "includeNotifications" to includeNotifications,
-    "openDetails" to openDetails
+    "openDetails" to openDetails,
+    "isolate" to isolate,
+    "excludeChannels" to excludeChannels
 )
 
 private fun WindowScreenshotRequest.toPlaywrightArg(): Map<String, Any?> = mapOf(

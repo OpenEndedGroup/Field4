@@ -28,7 +28,8 @@ This is the check that retires the prose. The rules:
   lines is a note, since a literal takes no spread and this line-by-line check cannot see one on a
   later line. ``listOf()``, ``listOf<T>(...)``, a spread (``listOf(*xs)``) and an operand of an
   arithmetic operator (``xs + listOf(a)``, ``xs -= listOf(a)``: no expected type, so ``plus`` is
-  ambiguous), a receiver (``listOf(a, b).map { ... }``), and a call that is a lambda's last
+  ambiguous), a `to` operand (a heterogeneous map can infer a numeric vector for the literal),
+  a receiver (``listOf(a, b).map { ... }``), and a call that is a lambda's last
   expression (inline or before its closing ``}``: no expected type, so ``[a, b]`` does not compile)
   are left alone.
 
@@ -134,9 +135,9 @@ def lists_as_literals(path: str) -> bool:
             and not any(_under(path, root) for root in LIST_LITERAL_EXCLUDED))
 
 LIST_OF = re.compile(r"(?<![\w.])listOf\(")
-# An operand of an arithmetic operator has no expected type, so a literal there is ambiguous
-# (`xs + [a, b]` matches `plus(T)`, `plus(Array)` and `plus(Iterable)`); `listOf` stays.
-OPERATOR_BEFORE = re.compile(r"(?:[-+*/%]=?)\s*$")
+# Operator operands have no reliable expected collection type. `+` is ambiguous, and `to` can
+# infer a numeric vector in a heterogeneous map. Keep factories, including across a line break.
+OPERATOR_BEFORE = re.compile(r"(?:[-+*/%]=?|\bto)\s*$")
 KEY_MAP = re.compile(r"(?<!\w)Key\(\s*mutableMapOf(?:<\s*String\s*,\s*Any\?\s*>)?\(")
 FIXED_FORMAT = re.compile(r'(?<!\\)"%\.(?P<digits>\d)f"\.format\(')
 SIMPLE_RECEIVER = re.compile(r"^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*|\(\)|\[[^\[\]()]*\])*$|^\d+(?:\.\d+)?$")

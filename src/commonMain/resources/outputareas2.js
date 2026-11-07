@@ -4,6 +4,7 @@ import { renderAiChatFences } from "./aiChatFenceRenderers.js";
 import { typesetAiChatMath } from "./aiChatMath.js";
 import { installAiChatFenceCatalog } from "./aiChatFenceCatalog.js";
 import { mountLocalAiFeedback } from "./localAiFeedback.js";
+import { mountChatAutocomplete, setChatAutocomplete, chatAutocompleteState } from "./aiChatAutocomplete.js";
 
 // Rebuild every open chat once, for a catalog that arrived after it first rendered.
 function rerenderOpenChats() {
@@ -2045,6 +2046,7 @@ function ensureAiChat(container, uid, property) {
         const textarea = document.createElement("textarea");
         textarea.rows = 4;
         textarea.placeholder = "Ask about this box...";
+        textarea.spellcheck = true;
 
         const sendButton = document.createElement("button");
         sendButton.textContent = "Send";
@@ -2178,6 +2180,7 @@ function ensureAiChat(container, uid, property) {
                         "- `/branches` list this conversation's branches (made by rewinding or editing a message); `/branch <#>` switch to one",
                         "- `/stop-waiting` stop waiting for the builds the agent's last turn awaited (the builds keep running)",
                         "- `/box \"box name\"/property` reference a box property in the conversation",
+                        "- `/autocomplete [on|off]` grey suggestions as you type (Tab takes one, → its next word, Esc drops it)",
                         "",
                         "`[window]` can be a 1-based window number or part of a window title. Quotes around box names are optional when the name/property split is unambiguous."
                 ].join("\n");
@@ -2369,6 +2372,18 @@ function ensureAiChat(container, uid, property) {
                         return true;
                 }
 
+                if (command === "autocomplete") {
+                        textarea.value = "";
+                        const choice = rest.toLowerCase();
+                        if (choice === "on" || choice === "off") setChatAutocomplete(choice === "on");
+                        else if (choice) {
+                                appendLocalChatTurn("ai", "_Usage: `/autocomplete on` or `/autocomplete off`._");
+                                return true;
+                        }
+                        appendLocalChatTurn("ai", `_Autocomplete is ${chatAutocompleteState()}. Suggestions come from the fast model after a pause in typing; Tab takes one, → its next word, Esc drops it._`);
+                        return true;
+                }
+
                 if (command === "box") {
                         return false;
                 }
@@ -2390,6 +2405,7 @@ function ensureAiChat(container, uid, property) {
         function submitPrompt(options = {}) {
                 const text = textarea.value.trim();
                 if (!text && attachments.length === 0) return;
+                autocomplete.clear();
                 if (text.startsWith("/")) {
                         if (handleSlashCommand(text)) return;
                 }
@@ -2468,6 +2484,7 @@ function ensureAiChat(container, uid, property) {
         inputWrap.appendChild(textarea);
         inputWrap.appendChild(micButton);
         inputWrap.appendChild(sendButton);
+        const autocomplete = mountChatAutocomplete(inputWrap, textarea, {chatUid, chatProperty});
 
         const stateBrowser = mountStateTreeBrowser(root, {
                 chatUid,
