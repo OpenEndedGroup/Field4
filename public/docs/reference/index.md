@@ -656,7 +656,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**36082 public symbols across 1647 source files**, 21258 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**36087 public symbols across 1647 source files**, 21263 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -685,7 +685,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Audio AI](audio-ai.md) | 22 | 586 | 586 (100%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 123 | 3103 | 1527 (49%) | Field's small languages, from the host side. |
 | [Workspace](workspace.md) | 239 | 3212 | 1294 (40%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
-| [AI4](ai4.md) | 95 | 2115 | 794 (37%) | AI4 is the agent that lives inside Field: the chat panel on every box, the document chat, editor completion, and headless agent tasks. |
+| [AI4](ai4.md) | 95 | 2120 | 799 (37%) | AI4 is the agent that lives inside Field: the chat panel on every box, the document chat, editor completion, and headless agent tasks. |
 | [Machine learning](machine-learning.md) | 26 | 687 | 410 (59%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 | [Animation](animation.md) | 10 | 178 | 41 (23%) |  |
 | [Execution](execution.md) | 2 | 9 | 9 (100%) |  |
@@ -715,7 +715,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>tools/<wbr>automation/<wbr></small> [AgentJvmMainLauncher.kt](workspace.md#agentjvmmainlauncher-kt) | Workspace · internal | 2 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>agent/<wbr></small> [AgentLessons.kt](ai4.md#agentlessons-kt) | AI4 | 22 | 11 | Lessons AI4 distils from its own eval runs, kept in a reviewable Markdown file and added to the instructions of every turn that has the graph tools. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>app/<wbr>server/<wbr></small> [agentRouteAccess.kt](workspace.md#agentrouteaccess-kt) | Workspace · internal | 0 | 0 |  |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>agent/<wbr></small> [AgentTask.kt](ai4.md#agenttask-kt) | AI4 | 88 | 42 | Headless agent tasks: a goal, a document and a set of checks, run through AI4's own turn and judged from what the document's boxes did. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>agent/<wbr></small> [AgentTask.kt](ai4.md#agenttask-kt) | AI4 | 89 | 43 | Headless agent tasks: a goal, a document and a set of checks, run through AI4's own turn and judged from what the document's boxes did. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>agent/<wbr></small> [AgentTaskTranscript.kt](ai4.md#agenttasktranscript-kt) | AI4 | 7 | 3 | Writes an agent task into a box's AI4 chat transcript, so a finished task can be read and continued in that box's chat panel. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr></small> [AgentToolDemoEvidence.kt](examples.md#agenttooldemoevidence-kt) | Examples | 2 | 1 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>tools/<wbr></small> [AgentToolExtensions.kt](ai4.md#agenttoolextensions-kt) | AI4 | 13 | 13 | The registration point through which code outside the AI core, including a document's own boxes, adds tools to the AI4 agents. |  |
@@ -1519,7 +1519,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>texture/<wbr>mega/<wbr></small> [MegaTextureLayout.kt](graphics.md#megatexturelayout-kt) | Graphics | 30 | 19 | The atlas geometry and page-table encoding for a `MegaTexture`, kept free of any GPU calls. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>render/<wbr></small> [megaTextures.kt](graphics.md#megatextures-kt) | Graphics | 12 | 12 | A directory of images as one texture, however many of them there are. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>texture/<wbr>mega/<wbr></small> [megaTextureShader.kt](graphics.md#megatextureshader-kt) | Graphics | 7 | 7 | GLSL snippets that let a box's own shaders sample a `MegaTexture`. |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>agent/<wbr></small> [MemoryEval.kt](ai4.md#memoryeval-kt) | AI4 | 38 | 17 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>agent/<wbr></small> [MemoryEval.kt](ai4.md#memoryeval-kt) | AI4 | 42 | 21 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>tools/<wbr></small> [MemoryTools.kt](ai4.md#memorytools-kt) | AI4 | 44 | 13 | The AI4 tools over `UserMemory` (notes that persist across sessions and documents) and `ChatHistory` (the workspace's saved chats, which notes cite). | [AI4's built-in tools](../ai4_tools.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>mesh/<wbr></small> [mesh.kt](graphics.md#mesh-kt) | Graphics | 59 | 53 | `TriMesh` — the CPU triangle mesh Field's 3D geometry family is built on, plus the builder that makes one and the whole-mesh transforms that move one around. | [Meshes and 3D geometry](../mesh_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>render/<wbr></small> [Mesh.kt](graphics.md#mesh-kt-src-jvmmain-kotlin-afield-graphics-render) | Graphics | 29 | 16 | `Mesh` is the vertex-buffer draw call of a graphics module: it holds the vertex inputs and push constants the module's shaders declare, and draws them on the `Renderer` found from context. | [Field 4 Graphics](../afield_four_graphics.md), [Field Probes: instrumenting shaders](../field_probes.md), [FieldML's JVM bridge](../fieldml_host_bridge.md) |
