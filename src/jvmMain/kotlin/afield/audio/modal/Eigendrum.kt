@@ -16,6 +16,8 @@ import afield.geometry.path.FLine
 import afield.graphics.render.color
 import afield.graphics.render.filled
 import afield.graphics.render.stroked
+import afield.ui.visualization.Table
+import afield.ui.visualization.table
 import org.locationtech.jts.geom.Coordinate
 import org.locationtech.jts.geom.GeometryFactory
 import org.locationtech.jts.geom.Polygon
@@ -192,22 +194,37 @@ class DrumModes(
     }
 
     /**
-     * An HTML table of the modes, one row each: index, λ, ratio to the fundamental, frequency, and
-     * an audio player that sounds that mode alone. Pass it to `display(...)`.
+     * The modes as a [Table], one row each: index, λ, ratio to the fundamental, frequency, and an
+     * audio player that sounds that mode alone. The ratio column is heated, so clusters of
+     * near-equal modes (a square's degenerate pairs) read as bands of one colour. Pass it to
+     * `display(...)`.
      */
     @JvmOverloads
-    fun modeListHtml(fundamental: Double = 110.0, seconds: Double = 1.5, sampleRate: Int = 22050): String {
+    fun modeTable(fundamental: Double = 110.0, seconds: Double = 1.5, sampleRate: Int = 22050): Table {
         val f = frequencies(fundamental)
-        val sb = StringBuilder("<table style='font:12px monospace;color:#ddd;border-collapse:collapse'>")
-        sb.append("<tr><th>mode</th><th>λ</th><th>ratio</th><th>Hz</th><th></th></tr>")
-        for (k in 0 until count) {
+        val players = (0 until count).map { k ->
             val wav = WavFloatArrayWriter.encodeMono16(render(DoubleArray(count), fundamental, seconds, sampleRate, only = k), sampleRate)
-            val b64 = java.util.Base64.getEncoder().encodeToString(wav)
-            sb.append("<tr><td>${k + 1}</td><td>${"%.3f".format(lambda[k])}</td><td>${"%.3f".format(f[k] / fundamental)}</td>")
-            sb.append("<td>${"%.1f".format(f[k])}</td><td><audio controls preload='none' style='height:24px' src='data:audio/wav;base64,$b64'></audio></td></tr>")
+            "<audio controls preload='metadata' style='height:24px' src='data:audio/wav;base64," +
+                java.util.Base64.getEncoder().encodeToString(wav) + "'></audio>"
         }
-        return sb.append("</table>").toString()
+        return table(
+            "mode" to (1..count).toList(),
+            "λ" to lambda.toList(),
+            "ratio" to (0 until count).map { f[it] / fundamental },
+            "Hz" to f.toList(),
+            "play" to players,
+        )
+            .format("λ") { "%.3f".format(it as Double) }
+            .format("ratio") { "%.3f".format(it as Double) }
+            .format("Hz") { "%.1f".format(it as Double) }
+            .format("play") { it as String }
+            .heat("ratio")
     }
+
+    /** [modeTable] rendered to HTML, for callers that want the markup itself. */
+    @JvmOverloads
+    fun modeListHtml(fundamental: Double = 110.0, seconds: Double = 1.5, sampleRate: Int = 22050): String =
+        modeTable(fundamental, seconds, sampleRate).toHTML()
 
     /** The nodal lines (φ = 0) of mode [mode] as one FLine of segments. */
     fun nodalLines(mode: Int): FLine {

@@ -34,7 +34,7 @@ import afield.audio.modal.*
 // the analytic spectrum is π²(m² + n²), so λ₁ ≈ 19.74.
 val square = drumMesh(doubleArrayOf(0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0), 0.04)
 val modes = square.modes(16)
-display("modes", modes.modeListHtml(fundamental = 110.0))
+display("modes", modes.modeTable(fundamental = 110.0))
 lines(
     (0 until 8).flatMap { k ->
         modes.modeMesh(k).map { it.copy().apply { transform { v -> v.add((k % 4) * 1.1f, (k / 4) * 1.1f, 0f) } } }
@@ -95,15 +95,19 @@ import afield.audio.modal.*
 // Gordon, Webb and Wolpert's isospectral pair: you cannot hear the shape of a drum.
 val a = drumMesh(KacPair.drumA, 0.06).modes(10)
 val b = drumMesh(KacPair.drumB, 0.06).modes(10)
-val rows =
-    (0 until 10).joinToString("") { i ->
-        "<tr><td>${i + 1}</td><td>${(a.lambda[i]).f3}</td><td>${(b.lambda[i]).f3}</td>" +
-            "<td>${(100 * abs(a.lambda[i] - b.lambda[i]) / a.lambda[i]).f3}%</td></tr>"
-    }
-display(
-    "spectra",
-    "<table style='font:12px monospace;color:#ddd'><tr><th>mode</th><th>λ A</th><th>λ B</th><th>diff</th></tr>$rows</table>",
+// λ A and λ B share one colour range, so matching rows come out the same colour.
+val spectra = table(
+    "mode" to (1..10).toList(),
+    "λ A" to a.lambda.take(10),
+    "λ B" to b.lambda.take(10),
+    "diff %" to (0 until 10).map { 100 * abs(a.lambda[it] - b.lambda[it]) / a.lambda[it] },
 )
+    .format("λ A") { (it as Double).f3 }
+    .format("λ B") { (it as Double).f3 }
+    .format("diff %") { (it as Double).f3 }
+    .heat("λ A", "λ B", by = HeatScope.TABLE)
+    .heat("diff %", colormap = "magma")
+display("spectra", spectra)
 val outlineA = polygonFLine(KacPair.drumA).apply {
     color = vec(1.0, 0.85, 0.3, 1.0)
     thickness = 2.0
@@ -263,13 +267,17 @@ val outlines = shapes.flatMapIndexed { i, m ->
     m.modeMesh(0).map { it.copy().apply { transform { v -> v.add(i * 2.8f, 0f, 0f) } } }
 }
 lines(outlines, w = 620.0, h = 100.0, fitToSize = true)
-val rows = shapes.mapIndexed { i, m ->
-    "<tr><td>${(0.05 * i).f2}</td>" + m.ratios().take(6).joinToString("") { "<td>${it.f3}</td>" } + "</tr>"
-}
-display(
-    "ratios",
-    "<table style='font:12px monospace;color:#ddd'><tr><th>a</th><th colspan=6>f / f₁ of modes 1–6</th></tr>${rows.joinToString("")}</table>",
-)
+// One row per shape; each mode's column is heated on its own, so you can watch every
+// overtone fall as the lobes deepen. Mode 1 is the reference and stays plain.
+val modeNames = listOf("f₁", "f₂", "f₃", "f₄", "f₅", "f₆")
+val ratios = table(
+    "a" to shapes.indices.map { 0.05 * it },
+    *modeNames.mapIndexed { k, name -> name to shapes.map { it.ratios()[k] } }.toTypedArray(),
+).apply { title = "f / f₁ of modes 1–6" }
+    .format("a") { (it as Double).f2 }
+modeNames.forEach { name -> ratios.format(name) { (it as Double).f3 } }
+ratios.heat(*modeNames.drop(1).toTypedArray())
+display("ratios", ratios)
 ModalDrum(shapes[0], fundamental = 110.0, every = 0.6, autoX = 0.3, autoY = 0.1, morph = shapes, morphPeriod = 4.0)
 ```
 
