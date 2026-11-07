@@ -6,7 +6,7 @@ from those layouts, and the layouts separate from drawing. Words, curves, labels
 underlines come back as geometry that you can keep manipulating.
 
 The examples below write out their choices, like the constructions in [Euclid's Elements](euclid_elements.md).
-They use real retained Stanza parses. Loading and drawing these examples needs neither a
+They use retained Stanza parses. Loading and drawing these examples needs neither a
 Python environment nor a running parser. [Open the four examples](offline.html?file=assets/agent_transcripts/sentence_diagrams/metadata.edn)
 to get editable boxes in Field, or copy a complete example from this page.
 
@@ -192,17 +192,15 @@ These are world-space graphs, with shallow depth layers and a small CPU SIMDVerl
 Connections are rebuilt around moving anchors, rather than displaying an SVG on a plane.
 Full text runs use Slug analytic curve coverage. FLines supply centrelines; vertex/fragment
 shaders thicken them separately for the two current eye views and draw antialiased SDF dots.
-Physics updates once per frame, at a fixed simulation step. The score and the geometry have
-no history of the user's head pose.
+Physics advances in fixed steps; rendering uses the current eye views.
 
-The default launch is the actual desktop stereo preview. VR additionally needs an OpenXR
+The default launch is a desktop stereo preview. VR additionally needs an OpenXR
 runtime/headset, a fresh Field process with the Reading space box's `headsetMode` set to
-`true`, and the Slug helper (`./gradlew buildSlugNative`). The source includes Field's existing
-sharp browser workspace. Desktop stereo, selectors and reloads have been checked on Linux
-with an NVIDIA GPU; the new reading examples still need a headset readability check.
+`true`, and the Slug helper (`./gradlew buildSlugNative`). VR mode includes a movable browser
+surface for editing the document.
 
-```diffstatic_runner {data-lang=kotlin capture="native-window" native-wait-frames="8" screenshot="assets/sentence_diagrams/reading_space.png" macro-file="../../dev_docs/agents/transcripts/docs_capture/text_one_native.yaml" capture-box="text1_context" wait="1" timeout="240" capture-profile="linux-nvidia" embed=true hidden=true name="sentence-reading-space" alt="The actual desktop stereo scene: a shallow three-dimensional constituency canopy, with Slug words, curved GPU-thickened branches and ring joints against a dark background."}
-// The full text_one transcript prepares the real Slug text, CPU physics and multiview renderer.
+```diffstatic_runner {data-lang=kotlin capture="native-window" native-wait-frames="8" screenshot="assets/sentence_diagrams/reading_space.png" macro-file="../../dev_docs/agents/transcripts/docs_capture/text_one_native.yaml" capture-box="text1_context" wait="1" timeout="240" capture-profile="linux-nvidia" embed=true hidden=true name="sentence-reading-space" alt="The desktop stereo preview: a shallow three-dimensional constituency canopy, with Slug words, curved GPU-thickened branches and ring joints against a dark background."}
+// Prepare Slug text, CPU physics and the multiview renderer.
 ```
 
 ### Words, spans and dots
@@ -257,7 +255,7 @@ optional/sentence-parser/.venv/bin/python python/fieldsentences --serve 9500
 ```
 
 Preparation installs the locked optional environment, downloads English Stanza models and
-verifies one real CPU parse. It does not start a server. On Windows, use
+verifies a CPU parse. It does not start a server. On Windows, use
 `optional\sentence-parser\.venv\Scripts\python.exe python\fieldsentences --serve 9500`.
 The server binds to loopback, warms the model once and defaults to two CPU inference threads,
 leaving GPU memory for graphics. The Python worker ships under `python/fieldsentences`;
@@ -282,5 +280,5 @@ server. Treat the parser's choices as editable material, especially for poetry.
 
 The current typography layout is left-to-right and requires glyphs in the chosen font.
 Text outlines remain planar; the surrounding graph and its anchors can move in three dimensions.
-No temporal antialiasing or delayed head pose is used. Models, inference and headset support
-are optional; the four retained-parse drawing demos remain available without them.
+Models, inference and headset support are optional; the four retained-parse drawing demos
+remain available without them.

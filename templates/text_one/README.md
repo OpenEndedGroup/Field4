@@ -172,7 +172,7 @@ The example selectors reuse the same stereo renderer and prepared text resources
 start at 6 seconds for inspection; **Restart entrances** shows the full score. The fourth
 example's reading-line state is visible after its transition at 9–11.4 seconds.
 
-These use real Stanza parser responses, packaged in `/afield/sentences/examples/1.json` through `4.json`,
+These use Stanza parses, packaged in `/afield/sentences/examples/1.json` through `4.json`,
 so reopening the document does not need the service. The source material and 2D layout
 algorithms live in `src/jvmMain/kotlin/afield/graphics/text/sentences`; the example boxes rebuild their
 connections around moving three-dimensional anchors. They do not turn a rendered SVG
@@ -190,15 +190,8 @@ no dependency on the dust renderer.
 `python templates/text_one/build_transcript.py` emits `create.json`, `launch.json` and
 `stop.json` under `/tmp/text-one-transcripts`. Import them with the backdoor's `macro write`
 commands, then run the create and launch macros in the intended document. The four parses are classpath resources, so no document-side file copy is needed.
-The generator reads the current StereoViews ABI and real shader sources; it never edits
-metadata.edn directly. The current document has `text_one_create`, `text_one_launch` and
-`text_one_stop` installed already.
+The generator reads the StereoViews ABI and shader sources; it never edits metadata.edn directly.
 For the public starting place, `uv run --group backdoor python templates/text_one/build_transcript.py
 --transcript dev_docs/agents/transcripts/text_one_vr.yaml` writes readable YAML source blocks,
 keeping Kotlin and shader properties distinct for documentation checks.
 
-Validation: eight focused CPU tests pass. Real desktop GPU captures cover all four examples,
-the fourth example after its crossfade, shader reload and two distinct stereo eye layers.
-These are saved under `files/previews/`. Headset readability and interaction remain a live
-hardware check. The document is left showing example one at six seconds, paused for inspection;
-use the selector or **Restart entrances** to explore.
