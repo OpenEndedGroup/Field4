@@ -122,7 +122,7 @@ Score offsets affect drawing; they do not inject velocity or change the physics 
 Every physics link is reciprocal. The solver runs at 120 Hz, with at most 12 catch-up
 steps and a 100 ms elapsed-time cap for simulation. Score time remains real elapsed time.
 A weak spring attracts each free particle toward its authored position. Air, gravity,
-constraint gain and damping are separate controls. The four examples use a few dozen particles and text runs; it does not need dust_six or task/mesh shaders.
+constraint gain and damping are separate controls. The examples use a few dozen particles and text runs; it does not need dust_six or task/mesh shaders.
 
 DiagramGeometry handles multiple contours, lines, cubics and Close. Adaptive CPU centreline
 samples carry per-node colours and widths. The vertex shader expands connected ribbons in
@@ -149,10 +149,9 @@ Before launching Reading space set `val headsetMode = true` in its code, then ru
 `text_one_launch`. Vulkan/OpenXR extension selection happens before the first renderer;
 switching modes needs a fresh JVM. The VR path uses the existing high-resolution Field
 browser and its keyboard/mouse forwarding and controller pane movement. Recenter is explicit.
-The first validation captures are desktop GPU renders; headset readability still needs a
-live headset check.
+The desktop mirror samples the same multiview image supplied to the headset.
 
-## Four examples
+## Five examples
 
 - **Marked breath** — “Listen if you will / birdsong reflects off the walls”. Two complete
   runs in planes 5 cm apart; selected-word underlines, a dot beside a word, a bead on an
@@ -168,11 +167,14 @@ live headset check.
   Reed–Kellogg layout becomes a spatial mobile, with softened text slants and shallow shelf
   offsets. At 9 seconds the separate score crossfades it into a complete reading run.
 
+- **A room for words** — mixed faces and inline styles, repeated words in different fonts,
+  numeric weights, measured boxes and a cap-height ruler. Source: `typography_playground.kt`.
+
 The example selectors reuse the same stereo renderer and prepared text resources. They
 start at 6 seconds for inspection; **Restart entrances** shows the full score. The fourth
 example's reading-line state is visible after its transition at 9–11.4 seconds.
 
-These use Stanza parses, packaged in `/afield/sentences/examples/1.json` through `4.json`,
+The first four use Stanza parses, packaged in `/afield/sentences/examples/1.json` through `4.json`,
 so reopening the document does not need the service. The source material and 2D layout
 algorithms live in `src/jvmMain/kotlin/afield/graphics/text/sentences`; the example boxes rebuild their
 connections around moving three-dimensional anchors. They do not turn a rendered SVG
@@ -296,3 +298,10 @@ units relative to that span's baseline-left. `anchor.alongText(run,x,y,z)` offse
 **metres**, rotated with the run; generic `anchor.offset(...)` stays in diagram axes.
 Rectangles, underlines and these anchors follow text translation, score scale and rotation.
 Rectangle padding and underline gaps are metres. Nothing adds a second text-rendering pass.
+
+## Focused document guides
+
+The companion book is in `templates/text_one/guides/`: start with `00-start-here.md`, then
+read typography, measurements, shapes/anchors, motion/scores, and recipes/maintenance.
+Copy these Markdown files to the document's `guides/` alongside this README as
+`01-reading-space.md`; Field discovers them through its Guides catalogue.
