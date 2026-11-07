@@ -5656,7 +5656,7 @@ alone, with no cache or network.
 
 | Declaration | Summary |
 | --- | --- |
-| <a id="kotlinsourceindex-kt--synckotlinsourceindex"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">syncKotlinSourceIndex</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/completion/KotlinSourceIndex/#L985) |  |
+| <a id="kotlinsourceindex-kt--synckotlinsourceindex"></a>[<code class="highlight"><span class="k">fun</span> <span class="nf">syncKotlinSourceIndex</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/runtime/completion/KotlinSourceIndex/#L1021) |  |
 
 ### KotlinSourceFileRecord { #kotlinsourceindex-kt-kotlinsourcefilerecord }
 
