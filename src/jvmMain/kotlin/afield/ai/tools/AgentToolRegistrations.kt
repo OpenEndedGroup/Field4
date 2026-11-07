@@ -21,6 +21,7 @@ internal fun registerBuiltInAgentTools(tools: ToolRegistry) {
         // Inverting it was the right fix independent of the move; see AgentToolExtensions.
         AgentToolExtensions.applyTo(tools)
         registerDocumentGuideTools(tools)
+        registerMemoryTools(tools)
         registerPresentationTools(tools)
         registerTutorialCodeTools(tools)
         registerDocumentSourceTools(tools)

@@ -67,7 +67,7 @@ NAMESPACES = {
     "source": "A box's live, saved and last-run source, and edits to it.",
     "states": "The document's saved histories and the states in them.",
     "guides": "Markdown guides that live in the document and outlast the chat.",
-    "memory": "The chat's own scratchpad and checklist.",
+    "memory": "The chat's own scratchpad and checklist, which last the session; notes kept across sessions and documents, and the saved chats they cite.",
     "program": "One call that runs a short JavaScript program over the other tools.",
     "search": "Field's tutorials and the workspace's files, by what they do.",
     "symbols": "Declarations in Field and the workspace, with their KDoc.",

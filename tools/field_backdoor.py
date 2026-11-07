@@ -3876,6 +3876,8 @@ def build_command_parser() -> argparse.ArgumentParser:
     agent_task_parser.add_argument("--model", default="")
     agent_task_parser.add_argument("--focus-box", default="")
     agent_task_parser.add_argument("--chat-box", default="", help="Run the task as this box's real AI4 panel turn (live only)")
+    agent_task_parser.add_argument("--memory", default="",
+                                   help="Cross-session memory for the task: blank/off none, on the person's own (AFIELD_AI4_MEMORY_DIR), or a folder")
     agent_task_parser.add_argument("--programs", choices=("", "on", "off"), default="",
                                    help="off withholds RunToolProgramRequest (the tool-program A/B arm)")
     agent_task_parser.add_argument("--context", choices=("", "legacy"), default="",
@@ -5130,6 +5132,7 @@ async def dispatch_command(
             "model": args.model,
             "focusBox": args.focus_box,
             "chatBox": args.chat_box,
+            "memory": args.memory,
             "programs": args.programs,
             "context": args.context,
             "followUps": list(args.follow_ups),

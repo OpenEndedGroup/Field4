@@ -199,6 +199,9 @@ internal object Ai4BackdoorTools {
             semanticRetrievalRebuild = semanticRetrievalRebuild,
             agentMemory = agentMemory,
             documentGuides = DocumentGuideTools.forSession(sessionInfo),
+            // The person's memory, so MCP clients can read and curate it; AgentTask replaces these per request.
+            userMemory = afield.ai.memory.UserMemory.forPerson(),
+            chatHistory = afield.ai.memory.ChatHistory.offeredFor(docPath),
             compileKotlin = codeTools.compileKotlin,
             evaluateKotlinExpression = codeTools.evaluateKotlinExpression,
             fieldGraph = afield.ai.agent.FieldGraphTools(sessionInfo),

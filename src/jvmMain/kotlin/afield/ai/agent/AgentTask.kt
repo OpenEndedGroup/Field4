@@ -65,6 +65,12 @@ data class AgentTaskRequest(
     val chatBox: String = "",
     /** `on` / `off` pins the eval-distilled lessons in the instructions ([AgentLessons]); blank = default. */
     val lessons: String = "",
+    /**
+     * The cross-session memory this task gets ([afield.ai.memory.UserMemory]): blank or `off` gives none, so an
+     * eval neither reads nor writes the person's notes; `on` gives the person's own; anything else is a folder
+     * to use as the memory (an eval's, for a with/without-memory comparison).
+     */
+    val memory: String = "",
     /** Withhold [ViewBoxOutputRequest] — the counterfactual for a visual task: can it be done without looking? */
     val blind: Boolean = false,
     /**
@@ -322,6 +328,13 @@ object AgentTaskRunner {
             val ctx = contextFor(info, graph, request.focusBox.ifBlank { null }).let { base ->
                 val off = (if (request.programs == "off") setOf(afield.ai.tools.program.RUN_TOOL_PROGRAM) else emptySet()) + request.withhold
                 if (off.isNotEmpty()) base.copy(withheld = base.withheld + off) else base
+            }.let { base ->
+                val memory = when (request.memory.trim().lowercase()) {
+                    "", "off" -> null
+                    "on" -> afield.ai.memory.UserMemory.forPerson()
+                    else -> afield.ai.memory.UserMemory.at(java.io.File(request.memory.trim()))
+                }
+                base.copy(userMemory = memory, chatHistory = memory?.let { afield.ai.memory.ChatHistory.forDocument(java.io.File(info.filename)) })
             }.let { base ->
                 if (request.repoRoot.isBlank()) base else {
                     val root = java.io.File(request.repoRoot)
