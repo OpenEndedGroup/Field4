@@ -1,0 +1,18 @@
+[project]
+name = "field-sentence-parser"
+version = "0.1.0"
+description = "Optional Stanford Stanza parser for Field sentence diagrams"
+requires-python = ">=3.11,<3.14"
+dependencies = ["stanza==1.14.0"]
+
+[tool.uv]
+package = false
+
+# The parser normally runs beside a GPU renderer, so Linux/Windows use CPU Torch wheels.
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu", marker = "sys_platform != 'darwin'" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true

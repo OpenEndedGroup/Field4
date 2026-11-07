@@ -399,3 +399,12 @@ change it, rebuild `personalJar` with the same setting, then run `reloadPersonal
 Field. Gradle scripts in these directories are not run; third-party libraries are added the same
 way as for the rest of Field. To keep the project's templates beside its code, point
 `afield.personalTemplates.dir` (see [Personal templates](#personal-templates)) into the project.
+
+### Sentence-diagram parsing
+
+**Sentence diagrams / Stanford parser** in first-run setup prepares a separate, locked Python
+environment, downloads the English Stanza models and verifies CPU inference after you approve
+**BUILD**. It starts no background service. The [sentence-diagram examples](sentence_diagrams.md)
+use retained parses and need none of these downloads. The optional **Slug analytic paths / VR
+text** selection builds the native helper needed for the 3D reading-space text renderer on
+Linux/macOS; OpenXR runtime/headset setup remains separate.

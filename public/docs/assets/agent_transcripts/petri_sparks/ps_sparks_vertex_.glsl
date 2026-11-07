@@ -46,7 +46,6 @@ const vec3[3] ringTint = {
     vec3(0.30, 0.78, 1.00), vec3(1.00, 0.52, 0.18), vec3(1.00, 0.86, 0.40)
 };
 
-
 float hash(uint x) {
     x ^= x >> 16;
     x *= 0x7feb352du;

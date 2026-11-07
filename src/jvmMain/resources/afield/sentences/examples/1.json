@@ -1,0 +1,539 @@
+[
+  {
+    "schema": 2,
+    "backend": "stanza",
+    "text": "Listen if you will birdsong reflects off the walls",
+    "tokens": [
+      {
+        "id": 1,
+        "word": "Listen",
+        "lemma": "listen",
+        "pos": "VB",
+        "upos": "VERB",
+        "feats": "Mood=Imp|VerbForm=Fin",
+        "start": 0,
+        "end": 6,
+        "in_graph": true,
+        "absorbed": false
+      },
+      {
+        "id": 2,
+        "word": "if",
+        "lemma": "if",
+        "pos": "IN",
+        "upos": "SCONJ",
+        "feats": null,
+        "start": 7,
+        "end": 9,
+        "in_graph": true,
+        "absorbed": false
+      },
+      {
+        "id": 3,
+        "word": "you",
+        "lemma": "you",
+        "pos": "PRP",
+        "upos": "PRON",
+        "feats": "Case=Nom|Person=2|PronType=Prs",
+        "start": 10,
+        "end": 13,
+        "in_graph": true,
+        "absorbed": false
+      },
+      {
+        "id": 4,
+        "word": "will",
+        "lemma": "will",
+        "pos": "MD",
+        "upos": "AUX",
+        "feats": "VerbForm=Fin",
+        "start": 14,
+        "end": 18,
+        "in_graph": true,
+        "absorbed": false
+      },
+      {
+        "id": 5,
+        "word": "birdsong",
+        "lemma": "birdsong",
+        "pos": "NN",
+        "upos": "NOUN",
+        "feats": "Number=Sing",
+        "start": 19,
+        "end": 27,
+        "in_graph": true,
+        "absorbed": false
+      },
+      {
+        "id": 6,
+        "word": "reflects",
+        "lemma": "reflect",
+        "pos": "VBZ",
+        "upos": "VERB",
+        "feats": "Mood=Ind|Number=Sing|Person=3|Tense=Pres|VerbForm=Fin",
+        "start": 28,
+        "end": 36,
+        "in_graph": true,
+        "absorbed": false
+      },
+      {
+        "id": 7,
+        "word": "off",
+        "lemma": "off",
+        "pos": "IN",
+        "upos": "ADP",
+        "feats": null,
+        "start": 37,
+        "end": 40,
+        "in_graph": false,
+        "absorbed": true
+      },
+      {
+        "id": 8,
+        "word": "the",
+        "lemma": "the",
+        "pos": "DT",
+        "upos": "DET",
+        "feats": "Definite=Def|PronType=Art",
+        "start": 41,
+        "end": 44,
+        "in_graph": true,
+        "absorbed": false
+      },
+      {
+        "id": 9,
+        "word": "walls",
+        "lemma": "wall",
+        "pos": "NNS",
+        "upos": "NOUN",
+        "feats": "Number=Plur",
+        "start": 45,
+        "end": 50,
+        "in_graph": true,
+        "absorbed": false
+      }
+    ],
+    "constituency": {
+      "id": 0,
+      "label": "ROOT",
+      "leaf": false,
+      "children": [
+        {
+          "id": 1,
+          "label": "S",
+          "leaf": false,
+          "children": [
+            {
+              "id": 2,
+              "label": "S",
+              "leaf": false,
+              "children": [
+                {
+                  "id": 3,
+                  "label": "VP",
+                  "leaf": false,
+                  "children": [
+                    {
+                      "id": 4,
+                      "label": "VB",
+                      "leaf": true,
+                      "word": "Listen",
+                      "token": 1,
+                      "children": [],
+                      "depth": 4
+                    },
+                    {
+                      "id": 5,
+                      "label": "SBAR",
+                      "leaf": false,
+                      "children": [
+                        {
+                          "id": 6,
+                          "label": "IN",
+                          "leaf": true,
+                          "word": "if",
+                          "token": 2,
+                          "children": [],
+                          "depth": 5
+                        },
+                        {
+                          "id": 7,
+                          "label": "S",
+                          "leaf": false,
+                          "children": [
+                            {
+                              "id": 8,
+                              "label": "NP",
+                              "leaf": false,
+                              "children": [
+                                {
+                                  "id": 9,
+                                  "label": "PRP",
+                                  "leaf": true,
+                                  "word": "you",
+                                  "token": 3,
+                                  "children": [],
+                                  "depth": 7
+                                }
+                              ],
+                              "depth": 6
+                            },
+                            {
+                              "id": 10,
+                              "label": "VP",
+                              "leaf": false,
+                              "children": [
+                                {
+                                  "id": 11,
+                                  "label": "MD",
+                                  "leaf": true,
+                                  "word": "will",
+                                  "token": 4,
+                                  "children": [],
+                                  "depth": 7
+                                },
+                                {
+                                  "id": 12,
+                                  "label": "NP",
+                                  "leaf": false,
+                                  "children": [
+                                    {
+                                      "id": 13,
+                                      "label": "NN",
+                                      "leaf": true,
+                                      "word": "birdsong",
+                                      "token": 5,
+                                      "children": [],
+                                      "depth": 8
+                                    }
+                                  ],
+                                  "depth": 7
+                                }
+                              ],
+                              "depth": 6
+                            }
+                          ],
+                          "depth": 5
+                        }
+                      ],
+                      "depth": 4
+                    }
+                  ],
+                  "depth": 3
+                }
+              ],
+              "depth": 2
+            },
+            {
+              "id": 14,
+              "label": "VP",
+              "leaf": false,
+              "children": [
+                {
+                  "id": 15,
+                  "label": "VBZ",
+                  "leaf": true,
+                  "word": "reflects",
+                  "token": 6,
+                  "children": [],
+                  "depth": 3
+                },
+                {
+                  "id": 16,
+                  "label": "PP",
+                  "leaf": false,
+                  "children": [
+                    {
+                      "id": 17,
+                      "label": "IN",
+                      "leaf": true,
+                      "word": "off",
+                      "token": 7,
+                      "children": [],
+                      "depth": 4
+                    },
+                    {
+                      "id": 18,
+                      "label": "NP",
+                      "leaf": false,
+                      "children": [
+                        {
+                          "id": 19,
+                          "label": "DT",
+                          "leaf": true,
+                          "word": "the",
+                          "token": 8,
+                          "children": [],
+                          "depth": 5
+                        },
+                        {
+                          "id": 20,
+                          "label": "NNS",
+                          "leaf": true,
+                          "word": "walls",
+                          "token": 9,
+                          "children": [],
+                          "depth": 5
+                        }
+                      ],
+                      "depth": 4
+                    }
+                  ],
+                  "depth": 3
+                }
+              ],
+              "depth": 2
+            }
+          ],
+          "depth": 1
+        }
+      ],
+      "depth": 0
+    },
+    "constituency_bracketed": "(ROOT (S (S (VP (VB Listen) (SBAR (IN if) (S (NP (PRP you)) (VP (MD will) (NP (NN birdsong))))))) (VP (VBZ reflects) (PP (IN off) (NP (DT the) (NNS walls))))))",
+    "constituency_depth": 8,
+    "dependencies": {
+      "ud": [
+        {
+          "gov": 0,
+          "dep": 1,
+          "rel": "root",
+          "base": "root",
+          "label": "root",
+          "direction": "right",
+          "distance": 1
+        },
+        {
+          "gov": 6,
+          "dep": 2,
+          "rel": "mark",
+          "base": "mark",
+          "label": "marker",
+          "direction": "left",
+          "distance": 4
+        },
+        {
+          "gov": 5,
+          "dep": 3,
+          "rel": "nsubj",
+          "base": "nsubj",
+          "label": "nominal subject",
+          "direction": "left",
+          "distance": 2
+        },
+        {
+          "gov": 5,
+          "dep": 4,
+          "rel": "aux",
+          "base": "aux",
+          "label": "auxiliary",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 6,
+          "dep": 5,
+          "rel": "nsubj",
+          "base": "nsubj",
+          "label": "nominal subject",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 1,
+          "dep": 6,
+          "rel": "advcl",
+          "base": "advcl",
+          "label": "adverbial clause modifier",
+          "direction": "right",
+          "distance": 5
+        },
+        {
+          "gov": 9,
+          "dep": 7,
+          "rel": "case",
+          "base": "case",
+          "label": "case marking",
+          "direction": "left",
+          "distance": 2
+        },
+        {
+          "gov": 9,
+          "dep": 8,
+          "rel": "det",
+          "base": "det",
+          "label": "determiner",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 6,
+          "dep": 9,
+          "rel": "obl",
+          "base": "obl",
+          "label": "oblique nominal",
+          "direction": "right",
+          "distance": 3
+        }
+      ],
+      "sd_basic": [
+        {
+          "gov": 0,
+          "dep": 1,
+          "rel": "root",
+          "base": "root",
+          "label": "root",
+          "direction": "right",
+          "distance": 1
+        },
+        {
+          "gov": 6,
+          "dep": 2,
+          "rel": "mark",
+          "base": "mark",
+          "label": "marker",
+          "direction": "left",
+          "distance": 4
+        },
+        {
+          "gov": 5,
+          "dep": 3,
+          "rel": "nsubj",
+          "base": "nsubj",
+          "label": "nominal subject",
+          "direction": "left",
+          "distance": 2
+        },
+        {
+          "gov": 5,
+          "dep": 4,
+          "rel": "aux",
+          "base": "aux",
+          "label": "auxiliary",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 6,
+          "dep": 5,
+          "rel": "nsubj",
+          "base": "nsubj",
+          "label": "nominal subject",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 1,
+          "dep": 6,
+          "rel": "advcl",
+          "base": "advcl",
+          "label": "adverbial clause modifier",
+          "direction": "right",
+          "distance": 5
+        },
+        {
+          "gov": 6,
+          "dep": 7,
+          "rel": "prep",
+          "base": "prep",
+          "label": "prepositional modifier",
+          "direction": "right",
+          "distance": 1
+        },
+        {
+          "gov": 9,
+          "dep": 8,
+          "rel": "det",
+          "base": "det",
+          "label": "determiner",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 7,
+          "dep": 9,
+          "rel": "pobj",
+          "base": "pobj",
+          "label": "object of a preposition",
+          "direction": "right",
+          "distance": 2
+        }
+      ],
+      "sd_collapsed": [
+        {
+          "gov": 0,
+          "dep": 1,
+          "rel": "root",
+          "base": "root",
+          "label": "root",
+          "direction": "right",
+          "distance": 1
+        },
+        {
+          "gov": 6,
+          "dep": 2,
+          "rel": "mark",
+          "base": "mark",
+          "label": "marker",
+          "direction": "left",
+          "distance": 4
+        },
+        {
+          "gov": 5,
+          "dep": 3,
+          "rel": "nsubj",
+          "base": "nsubj",
+          "label": "nominal subject",
+          "direction": "left",
+          "distance": 2
+        },
+        {
+          "gov": 5,
+          "dep": 4,
+          "rel": "aux",
+          "base": "aux",
+          "label": "auxiliary",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 6,
+          "dep": 5,
+          "rel": "nsubj",
+          "base": "nsubj",
+          "label": "nominal subject",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 1,
+          "dep": 6,
+          "rel": "advcl",
+          "base": "advcl",
+          "label": "adverbial clause modifier",
+          "direction": "right",
+          "distance": 5
+        },
+        {
+          "gov": 9,
+          "dep": 8,
+          "rel": "det",
+          "base": "det",
+          "label": "determiner",
+          "direction": "left",
+          "distance": 1
+        },
+        {
+          "gov": 6,
+          "dep": 9,
+          "rel": "prep_off",
+          "base": "prep",
+          "label": "prep collapsed",
+          "direction": "right",
+          "distance": 3,
+          "marker": "off"
+        }
+      ]
+    }
+  }
+]

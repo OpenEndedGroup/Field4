@@ -1,0 +1,1484 @@
+# Field Document: text_one_vr
+
+This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
+
+```edn [field-document version="1" source="metadata.edn"]
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 12 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "_controlMidi" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_chat_suspension" "ai4_session" "fileManagerAccessHistory" "kitRole"]}
+```
+
+## 1. 1 · Reading space
+
+<!-- field-box id="text1_context" index="0" -->
+
+```edn [field-box id="text1_context" role="properties"]
+{"id" "text1_context" "index" 0 "name" "1 · Reading space" "parents" ["root"] "children" ["text1_poem" "text1_example2" "text1_example3" "text1_example4" "text1_stroke" "text1_point" "text1_text" "text1_blur" "text1_composite"] "properties" {"children" #{#afield/box "text1_poem" #afield/box "text1_example2" #afield/box "text1_example3" #afield/box "text1_example4" #afield/box "text1_stroke" #afield/box "text1_point" #afield/box "text1_text" #afield/box "text1_blur" #afield/box "text1_composite"} "parents" #{#afield/box "root"} "name" "1 · Reading space" "_tombstone" false "frame" #afield/rect [0.0 150.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_context_code_.kt" "lines" 54 "characters" 2521 "sha256" "729d36e017c8100b3af6671ecdb695c5482500c9ea70c24bc652aa4ee29f7a84"}]}
+```
+
+```kotlin [field-property box="text1_context" name="code" path="text1_context_code_.kt"]
+import afield.graphics.scene.reading.*
+import afield.graphics.vulkan.targets.*
+import afield.graphics.vulkan.util.Options
+import afield.media.browser.*
+
+// Set headsetMode on this box BEFORE the first Vulkan renderer is created.
+// Moving between desktop-only and OpenXR mode requires a fresh Field JVM.
+val headsetMode = thisBox.getPropertyRaw("headsetMode")?.toString() == "true"
+Options.enableVR = headsetMode
+Options.enableHDR = false
+prop<Window>(window) = Window("text_one · a reading space", initialDimensions = Rect(60.0, 60.0, 1440.0, 1000.0))
+prop<Renderer>(renderer) = Renderer(window)
+val ownedRenderer = renderer
+var workspace: FieldVrWorkspace? = null
+if (headsetMode) {
+    renderer.openXRHmdTarget = OpenXRHmdTarget(renderer)
+    repeat(8) { if (renderer.openXRHmdTarget?.hasEyeViews == false) renderer.render() }
+    check(renderer.openXRHmdTarget?.hasEyeViews == true) { "Connect WiVRn before launching the headset mode" }
+    workspace = FieldVrWorkspace(
+        renderer,
+        FieldUiBrowserTexture.fieldDocumentUrl(thisBox),
+        width = 2560,
+        height = 1600,
+        readyBoxUid = thisBox.id,
+        withDepth = false,
+        widthMeters = 1.8f,
+        distanceMeters = 1.7f,
+    )
+}
+prop<MultiviewStereoTarget>(stereo) =
+    workspace?.stereo ?: MultiviewStereoTarget(renderer, 1600, 1200, withDepth = false)
+val ownedStereo = stereo
+if (!headsetMode) {
+    stereo.stereoCamera.base.at = vec(0f, 0f, 2.35f)
+    stereo.stereoCamera.base.target = vec(0f, 0f, 0f)
+}
+stereo.layered.parameters.clearColor = vec(.003f, .005f, .010f, 1f)
+prop<Boolean>(showStereoPair) = false
+val mirror = stereo.mirrorToScreen(name = "reading-preview", stereoPair = { showStereoPair })
+controlGroup("reading space") {
+    checkbox("Show both eyes side by side", initialValue = false) { showStereoPair = it }
+    checkbox("Desktop preview", initialValue = true) { renderer.desktopPresentationEnabled = it }
+}
+display(
+    "mode",
+    "<div style='padding:12px;width:440px'>${if(headsetMode)"OpenXR: current predicted pose in both eyes + sharp Field browser" else "Desktop stereo preview: the same two-eye scene, without a headset"}. No motion history or temporal antialiasing. Launch the four example boxes, Scores, the shaders, then Drawing.</div>",
+)
+loop { frame() }
+    .end {
+        workspace?.close()
+        ownedRenderer.renderList.preTargets.remove("stereo-multiview", ownedStereo)
+        ownedRenderer.openXRHmdTarget?.clearEyeSource(ownedStereo.layered)
+        ownedRenderer.cleanup()
+    }
+```
+
+## 2. 11 · Green / paint compositor
+
+<!-- field-box id="text1_composite" index="1" -->
+
+```edn [field-box id="text1_composite" role="properties"]
+{"id" "text1_composite" "index" 1 "name" "11 · Green / paint compositor" "parents" ["root" "text1_context"] "children" ["text1_drawing"] "properties" {"children" #{#afield/box "text1_drawing"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "11 · Green / paint compositor" "_tombstone" false "frame" #afield/rect [1800.0 440.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_composite_code_.kt" "lines" 1 "characters" 37 "sha256" "c7529d92c46599f2f052aa90bc4634d65fcdca8e243cc1da2dc1ac7018210e00"} {"name" "vertex" "language" "glsl" "path" "text1_composite_vertex_.glsl" "lines" 10 "characters" 310 "sha256" "bfeef78cb283bfcb51d42e49e10e99971c2d418460670cf8a23279f7fd45a6cf"} {"name" "fragment" "language" "glsl" "path" "text1_composite_fragment_.glsl" "lines" 207 "characters" 10812 "sha256" "84f1b38ac4be94e8bbcea9d792869ae01c8d4d4f9fa7616da0f9adbb1bc7795f"}]}
+```
+
+```kotlin [field-property box="text1_composite" name="code" path="text1_composite_code_.kt"]
+prop<Box>(compositeSource) = thisBox
+```
+
+```glsl [field-property box="text1_composite" name="vertex" path="text1_composite_vertex_.glsl"]
+#version 450
+#extension GL_EXT_multiview : require
+layout(location = 0) out vec2 uv;
+layout(location = 1) flat out int eye;
+void main() {
+    vec2 p = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+    uv = vec2(p.x, 1.0 - p.y);
+    eye = gl_ViewIndex;
+    gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);
+}
+```
+
+```glsl [field-property box="text1_composite" name="fragment" path="text1_composite_fragment_.glsl"]
+#version 450
+layout(location=0) in vec2 uv;
+layout(location=1) flat in int eye;
+layout(location=0) out vec4 outColor;
+layout(set=0,binding=0) uniform sampler2DArray sharpImage;
+layout(set=0,binding=1) uniform sampler2DArray mediumImage;
+layout(set=0,binding=2) uniform sampler2DArray broadImage;
+layout(push_constant) uniform CompositePush {
+    vec4 selection; // selector gain, offset, effect mix, source-green scale
+    vec4 reconstruction; // red/blue green reconstruction weights, exposure, reserved
+} pc;
+// Live grading controls use a UBO: the compositor still needs only 32 push-constant bytes.
+layout(std140,set=0,binding=3) uniform CompositeGrade {
+    vec4 selectorRange; // selector minimum/maximum, cubic fold strength, reserved
+    vec4 selectorSource; // sharp/medium/broad green weights, reserved
+    vec4 paint; // opacity threshold, smooth knee width, normalization mix, reserved
+    vec4 colorFold; // red/green/blue fold gains, overall fold mix
+    vec4 foldLimits; // red/green/blue fold caps, fold scale
+    vec4 alphaFold; // fold gain, cap, strength, reserved
+    vec4 saturation; // base saturation, shadow desaturation, shadow knee, shadow slope
+    vec4 gain; // per-channel linear gain, reserved
+    vec4 gamma; // per-channel artistic gamma, master artistic gamma
+    vec4 shadowTone; // shadow hue RGB, luminance-preserving strength
+    vec4 highlightTone; // highlight hue RGB, luminance-preserving strength
+    vec4 toneRange; // shadow end, highlight start, luminance balance, reserved
+    vec4 background; // linear background RGB, strength
+    vec4 fxaa; // overall mix, relative edge threshold, absolute threshold, span pixels
+    vec4 subpixel; // subpixel smoothing, output-eye width/height, linear-light FXAA flag
+    vec4 supersampling; // per-pixel rotation mix, footprint radius, stable integer seed, reserved
+} grade;
+
+// Editable effective LUT. Outside 0..1 these sum-to-one weights deliberately go
+// negative, so preserve signed RGB until background and artistic gamma are applied.
+vec3 blurWeights(float green) {
+    float lo=min(grade.selectorRange.x,grade.selectorRange.y);
+    float hi=max(grade.selectorRange.x,grade.selectorRange.y);
+    float t=clamp(green*pc.selection.x+pc.selection.y,lo,hi);
+    return vec3(max(1.0-2.0*t,0.0),1.0-abs(2.0*t-1.0),max(2.0*t-1.0,0.0));
+}
+float luminance(vec3 c) {
+    return dot(c,vec3(0.2126,0.7152,0.0722));
+}
+float smoothMaximum(float a,float b,float width) {
+    if(width<=1e-6)return max(a,b);
+    float h=clamp(0.5+0.5*(a-b)/width,0.0,1.0);
+    return mix(b,a,h)+width*h*(1.0-h);
+}
+vec3 signedGamma(vec3 c,vec3 gamma_) {
+    return sign(c)*pow(abs(c),1.0/max(gamma_,vec3(0.001)));
+}
+
+// Hue transfer at constant Rec.709 linear luminance. Reduce chroma, rather than
+// clipping RGB, when the requested tint would leave the display gamut.
+vec3 lumaPreservingTint(vec3 color,vec4 tint,float region) {
+    float strength=clamp(tint.a*region,0.0,1.0);
+    vec3 hue=max(tint.rgb,vec3(0));
+    float hueY=luminance(hue);
+    if(strength<=0.0||hueY<=1e-6)return color;
+    vec3 target=hue*(luminance(color)/hueY);
+    vec3 delta=(target-color)*strength;
+    float chromaScale=1.0;
+    for(int channel=0;channel<3;channel++) {
+        if(delta[channel]>1e-6)chromaScale=min(chromaScale,(1.0-color[channel])/delta[channel]);
+        else if(delta[channel]<-1e-6)chromaScale=min(chromaScale,-color[channel]/delta[channel]);
+    }
+    return color+delta*clamp(chromaScale,0.0,1.0);
+}
+
+// Resolve supersampled RGBA in linear scene space, before nonlinear grading.
+// Four bilinear taps cover the output pixel; at 100% the original single fetch is used.
+vec2 outputSize() {
+    return grade.subpixel.y>0.0&&grade.subpixel.z>0.0?grade.subpixel.yz:vec2(textureSize(sharpImage,0).xy);
+}
+// Integer hash has no frame or eye dependence: a stationary view has stationary
+// grain, and both eyes use the same screen-space pattern rather than independent noise.
+uint sampleMaskHash(uvec2 pixel,uint seed) {
+    uint h=pixel.x*1664525u+pixel.y*1013904223u+seed*747796405u;
+    h=(h^(h>>16u))*2246822519u;
+    h=(h^(h>>13u))*3266489917u;
+    return h^(h>>16u);
+}
+vec4 sharpSample(vec3 p) {
+    vec2 sourceSize=vec2(textureSize(sharpImage,0).xy);
+    vec2 size=outputSize();
+    if(all(lessThanEqual(sourceSize,size+vec2(0.5))))return textureLod(sharpImage,p,0.0);
+    uvec2 pixel=uvec2(clamp(floor(p.xy*size),vec2(0),size-vec2(1)));
+    uint bits=sampleMaskHash(pixel,uint(max(grade.supersampling.z,0.0)));
+    float angle=float(bits>>8u)*(6.28318530718/16777216.0)*clamp(grade.supersampling.x,0.0,1.0);
+    float c=cos(angle),s=sin(angle);
+    mat2 rotation=mat2(c,s,-s,c);
+    // Opposite pairs keep the centroid exactly zero; equal weights preserve constant RGBA.
+    // Rotation is in output-pixel coordinates, before dividing by the non-square eye size.
+    float radius=0.25*max(grade.supersampling.y,0.0);
+    vec2 a=rotation*vec2(radius,radius)/size;
+    vec2 b=rotation*vec2(radius,-radius)/size;
+    return 0.25*(textureLod(sharpImage,p+vec3(a,0),0.0)
+    +textureLod(sharpImage,p-vec3(a,0),0.0)
+    +textureLod(sharpImage,p+vec3(b,0),0.0)
+    +textureLod(sharpImage,p-vec3(b,0),0.0));
+}
+
+// One world-frame image evaluation. Alpha is summed opacity; it is not display alpha.
+vec3 composeScene(vec2 at) {
+    vec3 p=vec3(clamp(at,vec2(0),vec2(1)),float(eye));
+    vec4 sharp=sharpSample(p);
+    vec4 medium=textureLod(mediumImage,p,0.0);
+    vec4 broad=textureLod(broadImage,p,0.0);
+
+    //sharp -= broad*0.2;
+
+    vec3 source=max(grade.selectorSource.xyz,vec3(0));
+    float sourceSum=dot(source,vec3(1));
+    float g=(sourceSum>1e-6?dot(vec3(sharp.g,medium.g,broad.g),source)/sourceSum:broad.g)*pc.selection.w;
+    float foldedGreen=g-g*g*g*grade.selectorRange.z;
+    vec3 weights=blurWeights(foldedGreen);
+    vec4 c=mix(sharp,sharp*weights.x+medium*weights.y+broad*weights.z,pc.selection.z);
+    c.g=dot(c.rb,pc.reconstruction.xy)/max(pc.reconstruction.x+pc.reconstruction.y,1e-6);
+
+    // Optional channel foldovers retain the original recipe's signed response.
+    vec3 folded=c.rgb;
+    folded.r+=min(grade.foldLimits.x,broad.g*broad.g*g*grade.colorFold.x)*grade.foldLimits.w;
+    folded.g-=min(grade.foldLimits.y,g*g*grade.colorFold.y)*grade.foldLimits.w;
+    folded.b-=min(grade.foldLimits.z,g*broad.g*grade.colorFold.z)*c.b*grade.foldLimits.w;
+    c.rgb=mix(c.rgb,folded,clamp(grade.colorFold.w,0.0,1.0));
+    c.a*=1.0-clamp(grade.alphaFold.z,0.0,1.0)*clamp(g*broad.g*grade.alphaFold.x,0.0,max(grade.alphaFold.y,0.0));
+
+    // C1 knee from additive light below the threshold to opacity-weighted paint above it.
+    float denominator=max(smoothMaximum(max(c.a,0.0),max(grade.paint.x,0.0001),max(grade.paint.y,0.0)),0.0001);
+    c.rgb*=mix(1.0,1.0/denominator,clamp(grade.paint.z,0.0,1.0));
+    float energy=dot(abs(c.rgb),vec3(1.0/3.0));
+    c.rgb=mix(vec3(luminance(c.rgb)),c.rgb,max(grade.saturation.x,0.0));
+    float desaturate=clamp(grade.saturation.y*max(grade.saturation.z-energy,0.0)*grade.saturation.w,0.0,1.0);
+    c.rgb=mix(c.rgb,vec3(energy),desaturate);
+
+    // Signed foreground can darken the background. Neither is clipped before artistic gamma.
+    float coverage=clamp(max(c.a,0.0)/denominator,0.0,1.0);
+    vec3 color=c.rgb+grade.background.rgb*grade.background.a*(1.0-coverage);
+    color*=grade.gain.rgb*pc.reconstruction.z;
+    // Toning operates on final display-linear colour, after artistic gamma.
+    // This makes its luminance invariant survive per-channel gamma and gamut limits.
+    color=clamp(signedGamma(color,grade.gamma.rgb*grade.gamma.w),vec3(0),vec3(1));
+    float tone=clamp(luminance(color)+grade.toneRange.z,0.0,1.0);
+    float shadow=1.0-smoothstep(0.0,max(grade.toneRange.x,0.0001),tone);
+    float highlight=smoothstep(min(grade.toneRange.y,0.9999),1.0,tone);
+    color=lumaPreservingTint(color,grade.shadowTone,shadow);
+    color=lumaPreservingTint(color,grade.highlightTone,highlight);
+    return color;
+}
+
+// Keep perceptual edge detection, with selectable linear-light colour averaging.
+// The target performs the one final sRGB encoding; artistic gamma belongs to grading.
+vec3 linearToSrgb(vec3 c) {
+    return mix(12.92*c,1.055*pow(max(c,vec3(0)),vec3(1.0/2.4))-0.055,step(vec3(0.0031308),c));
+}
+vec3 srgbToLinear(vec3 c) {
+    return mix(c/12.92,pow((c+0.055)/1.055,vec3(2.4)),step(vec3(0.04045),c));
+}
+bool linearAA() {
+    return grade.subpixel.w>=0.5;
+}
+vec3 displaySample(vec2 at) {
+    vec3 color=clamp(composeScene(at),vec3(0),vec3(1));
+    return linearAA()?color:linearToSrgb(color);
+}
+float aaLuma(vec3 color) {
+    return luminance(linearAA()?linearToSrgb(color):color);
+}
+
+// Compact FXAA-style directional filter plus a bounded subpixel low-pass.
+// It evaluates this same compositor at neighbours: no extra RTT, history, or pose delay.
+vec3 spatialAA(vec2 at,vec3 center) {
+    vec2 texel=1.0/outputSize();
+    vec3 n=displaySample(at+texel*vec2(0,-1)),s=displaySample(at+texel*vec2(0,1));
+    vec3 e=displaySample(at+texel*vec2(1,0)),w=displaySample(at+texel*vec2(-1,0));
+    float mY=aaLuma(center),nY=aaLuma(n),sY=aaLuma(s),eY=aaLuma(e),wY=aaLuma(w);
+    float low=min(mY,min(min(nY,sY),min(eY,wY)));
+    float high=max(mY,max(max(nY,sY),max(eY,wY)));
+    float contrast=high-low;
+    if(contrast<max(grade.fxaa.z,high*grade.fxaa.y))return center;
+    vec3 nw=displaySample(at+texel*vec2(-1,-1)),ne=displaySample(at+texel*vec2(1,-1));
+    vec3 sw=displaySample(at+texel*vec2(-1,1)),se=displaySample(at+texel*vec2(1,1));
+    float nwY=aaLuma(nw),neY=aaLuma(ne),swY=aaLuma(sw),seY=aaLuma(se);
+    low=min(low,min(min(nwY,neY),min(swY,seY)));
+    high=max(high,max(max(nwY,neY),max(swY,seY)));
+    vec2 direction=vec2(-((nwY+neY)-(swY+seY)),(nwY+swY)-(neY+seY));
+    float reduce=max((nwY+neY+swY+seY)*(0.25/8.0),1.0/128.0);
+    direction=clamp(direction/(min(abs(direction.x),abs(direction.y))+reduce),vec2(-grade.fxaa.w),vec2(grade.fxaa.w))*texel;
+    vec3 a=0.5*(displaySample(at-direction/6.0)+displaySample(at+direction/6.0));
+    vec3 b=a*0.5+0.25*(displaySample(at-direction*0.5)+displaySample(at+direction*0.5));
+    float bY=aaLuma(b);
+    vec3 edge=(bY<low||bY>high)?a:b;
+    float averageY=(nY+sY+eY+wY)*0.25;
+    float subpixel=clamp((abs(averageY-mY)/max(contrast,1e-6)-0.25)/0.75,0.0,1.0);
+    subpixel=subpixel*subpixel*(3.0-2.0*subpixel);
+    vec3 neighbourhood=(center+n+s+e+w+nw+ne+sw+se)/9.0;
+    return mix(edge,neighbourhood,subpixel*clamp(grade.subpixel.x,0.0,1.0));
+}
+void main() {
+    vec3 color=composeScene(uv);
+    if(grade.fxaa.x>0.0) {
+        vec3 center=clamp(color,vec3(0),vec3(1));
+        if(!linearAA())center=linearToSrgb(center);
+        vec3 filtered=mix(center,spatialAA(uv,center),clamp(grade.fxaa.x,0.0,1.0));
+        color=linearAA()?filtered:srgbToLinear(filtered);
+    }
+    outColor=vec4(max(color,vec3(0)),1.0);
+}
+```
+
+## 3. 3 · Constituency canopy
+
+<!-- field-box id="text1_example2" index="2" -->
+
+```edn [field-box id="text1_example2" role="properties"]
+{"id" "text1_example2" "index" 2 "name" "3 · Constituency canopy" "parents" ["root" "text1_context"] "children" ["text1_score"] "properties" {"children" #{#afield/box "text1_score"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "3 · Constituency canopy" "_tombstone" false "frame" #afield/rect [650.0 110.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_example2_code_.kt" "lines" 101 "characters" 4449 "sha256" "231c85c26553e4a87f05a7cf312d4fabecec7f5ec4cc11dcd625149ee9d72820"}]}
+```
+
+```kotlin [field-property box="text1_example2" name="code" path="text1_example2_code_.kt"]
+import afield.graphics.scene.reading.*
+import afield.graphics.text.*
+import afield.graphics.text.sentences.*
+import kotlin.math.*
+
+// 2 · Constituency canopy. Use the real parse/layout, then rebuild its connections in gentle 3D.
+val parsed = Sentences.example(2)
+check(parsed.problems().isEmpty()) { parsed.problems().joinToString() }
+val face = Typefaces.named("Noto Serif", 100, strict = true)
+val layout =
+    SentenceDiagram()
+        .use(parsed)
+        .apply {
+            fontSize = 32.0
+            wordFont = face.awtFont.deriveFont(32f)
+            heights = Heights.Flat()
+            layerGap = 55.0
+            wordGap = 36.0
+        }
+        .diagram()
+val xs = layout.words.flatMap { listOf(it.left, it.right) } + layout.nodes.map { it.at.x }
+val ys = layout.words.map { it.baseline } + layout.nodes.map { it.at.y }
+val cx = (xs.min() + xs.max()) * .5
+val cy = (ys.min() + ys.max()) * .5
+val metres = min(2.0 / (xs.max() - xs.min()), 1.15 / (ys.max() - ys.min()))
+val tagMetrics = Java2DMetrics(face.awtFont.deriveFont(13f))
+fun world(p: P, z: Double = 0.0) = vec(((p.x - cx) * metres).toFloat(), (-(p.y - cy) * metres).toFloat(), z.toFloat())
+val graph = readingDiagram {
+    val nodes =
+        layout.nodes.associate { n ->
+            val p = world(n.at, .018 * sin(n.id * 1.71) + n.depth * .009)
+            n.id to point("node-${n.id}", p.x, p.y, p.z, pinned = n.id == parsed.constituency.id)
+        }
+    val degrees = mutableMapOf<Int, Int>()
+    // The visible topology is complete; the reciprocal physical stencil is limited to four links.
+    for (edge in layout.treeEdges) {
+        if (degrees.getOrDefault(edge.parent, 0) < 4 && degrees.getOrDefault(edge.child, 0) < 4) {
+            link(nodes.getValue(edge.parent), nodes.getValue(edge.child), .65f)
+            degrees[edge.parent] = degrees.getOrDefault(edge.parent, 0) + 1
+            degrees[edge.child] = degrees.getOrDefault(edge.child, 0) + 1
+        }
+        val a = nodes.getValue(edge.parent).anchor
+        val b = nodes.getValue(edge.child).anchor
+        path(
+            "branch-${edge.parent}-${edge.child}",
+            shape = {
+                val from = position(a)
+                val to = position(b)
+                val drop = to.y - from.y
+                FLine().moveTo(from).cubicTo(from + vec(0f, drop * .5f, .012f), to - vec(0f, drop * .5f, .012f), to)
+            },
+        ) {
+            width = .0013f
+            color = vec(.27f, .45f, .6f, 1f)
+        }
+    }
+    for (n in layout.nodes) {
+        val anchor = nodes.getValue(n.id).anchor
+        dot("joint-${n.id}", anchor) {
+            radius = if (n.leaf) .0025f else .004f
+            shape = DiagramPointShape.RING
+        }
+        if (!n.leaf)
+            // Text anchors are centred: add half its measured width, then clear the joint ring.
+            text(
+                "tag-${n.id}",
+                n.label,
+                anchor.offset(x = (.012 + tagMetrics.width(n.label) * metres * .5).toFloat(), y = .018f),
+            ) {
+                scale = (13.0 * metres / .09).toFloat()
+                color = vec(.75f, .47f, .2f, 1f)
+            }
+    }
+    for (w in layout.words) {
+        val p = world(P(w.centre, w.baseline), .025 * sin(w.token * 1.3))
+        val node = point("word-point-${w.token}", p.x, p.y, p.z)
+        val word = text("word-${w.token}", w.word, node) { scale = (32.0 * metres / .09).toFloat() }
+        val leaf = layout.nodes.single { it.leaf && it.token == w.token }
+        if (degrees.getOrDefault(leaf.id, 0) < 4) link(nodes.getValue(leaf.id), node, .6f)
+        line("stem-${w.token}", nodes.getValue(leaf.id).anchor, word.above) { width = .0010f }
+        if (w.underlined)
+            underline("mark-${w.token}", word.all, gap = .010f) {
+                color = vec(.5f, .33f, .13f, 1f)
+                width = .0012f
+            }
+    }
+}
+val progress = progressReporter("Prepare 2 / 4: constituency canopy", showDelayMillis = 0)
+val player = try {
+    ReadingDiagramPlayer.prepare(graph, face, "field-slug".file, diagramScore(graph, 20.0) {}) { n, total, text ->
+        progress.update(n.toDouble() / total, "$n / $total: $text")
+    }
+} finally {
+        progress.close()
+    }
+player.wind = .012f
+prop<ReadingExample>(exampleTwo) = ReadingExample(
+    "2 · Constituency canopy",
+    "The parser's actual tree hangs above the words. Branches occupy shallow depth layers; type stays in readable planes.",
+    player,
+)
+```
+
+## 4. 4 · Dependency undertow
+
+<!-- field-box id="text1_example3" index="3" -->
+
+```edn [field-box id="text1_example3" role="properties"]
+{"id" "text1_example3" "index" 3 "name" "4 · Dependency undertow" "parents" ["root" "text1_context"] "children" ["text1_score"] "properties" {"children" #{#afield/box "text1_score"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "4 · Dependency undertow" "_tombstone" false "frame" #afield/rect [650.0 220.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_example3_code_.kt" "lines" 86 "characters" 3730 "sha256" "dda212994b00c0430e874500c8af3621fd5974a967e9f7f228ea84a91f15fe76"}]}
+```
+
+```kotlin [field-property box="text1_example3" name="code" path="text1_example3_code_.kt"]
+import afield.graphics.scene.reading.*
+import afield.graphics.text.*
+import afield.graphics.text.sentences.*
+import kotlin.math.*
+
+// 3 · Undertow. Nested dependency arcs, with independently scored labels and beads.
+val parsed = Sentences.example(3)
+check(parsed.problems().isEmpty()) { parsed.problems().joinToString() }
+val face = Typefaces.named("Noto Serif", 100, strict = true)
+val layout =
+    SentenceDiagram()
+        .use(parsed)
+        .apply {
+            fontSize = 32.0
+            wordFont = face.awtFont.deriveFont(32f)
+            wordGap = 42.0
+            heights = Heights.Wandering(seed = 17, amplitude = 20.0)
+            arcLabels = false
+            arcSpanRatio = .43
+        }
+        .diagram()
+val cx = (layout.words.first().left + layout.words.last().right) * .5
+val top = layout.words.minOf { it.baseline } - 38.0
+val bottom = max(layout.arcs.maxOf { it.curve.lowestPoint().y }, layout.words.maxOf { it.baseline }) + 30.0
+val cy = (top + bottom) * .5
+val metres = min(2.05 / (layout.words.last().right - layout.words.first().left), 1.05 / (bottom - top))
+fun world(p: P, z: Float = 0f) = vec(((p.x - cx) * metres).toFloat(), (-(p.y - cy) * metres).toFloat(), z)
+val graph = readingDiagram {
+    val particles = mutableMapOf<Int, DiagramParticle>()
+    val words =
+        layout.words.associate { w ->
+            val p = world(P(w.centre, w.baseline), (.025 * sin(w.token * 1.5)).toFloat())
+            val particle = point("particle-${w.token}", p.x, p.y, p.z, pinned = w.token == 4)
+            particles[w.token] = particle
+            w.token to text("word-${w.token}", w.word, particle) { scale = (32.0 * metres / .09).toFloat() }
+        }
+    val physics = words.keys.sorted()
+    for ((a, b) in physics.zipWithNext()) link(particles.getValue(a), particles.getValue(b))
+    for (w in layout.words) if (w.underlined)
+        underline("mark-${w.token}", words.getValue(w.token).all, gap = .012f) { color = vec(.5f, .33f, .14f, 1f) }
+    for ((i, dep) in layout.arcs.withIndex()) {
+        if (dep.edge.isRoot) continue
+        val a = words.getValue(dep.edge.gov).below.offset(y = -.02f)
+        val b = words.getValue(dep.edge.dep).below.offset(y = -.02f)
+        val originalA = world(dep.curve.a)
+        val originalB = world(dep.curve.b)
+        val c1 = world(dep.curve.c1) - originalA
+        val c2 = world(dep.curve.c2) - originalB
+        val path = path(
+            "arc-$i",
+            shape = {
+                val from = position(a)
+                val to = position(b)
+                FLine()
+                    .moveTo(from)
+                    .cubicTo(from + c1 + vec(0f, 0f, -dep.lane * .012f), to + c2 + vec(0f, 0f, -dep.lane * .012f), to)
+            },
+        ) {
+            width = .0015f
+            arrow = .012f
+            if (i % 2 == 0) dashed(.026f)
+        }
+        dot("bead-$i", path.at(.50f)) {
+            radius = .004f
+            color = vec(.85f, .48f, .15f, 1f)
+        }
+        text("label-$i", dep.label, path.at(.52f).offset(y = -.027f)) {
+            scale = (11.0 * metres / .09).toFloat()
+            color = vec(.43f, .6f, .72f, 1f)
+        }
+    }
+}
+val progress = progressReporter("Prepare 3 / 4: dependency undertow", showDelayMillis = 0)
+val player = try {
+    ReadingDiagramPlayer.prepare(graph, face, "field-slug".file, diagramScore(graph, 20.0) {}) { n, total, text ->
+        progress.update(n.toDouble() / total, "$n / $total: $text")
+    }
+} finally {
+        progress.close()
+    }
+player.wind = .010f
+prop<ReadingExample>(exampleThree) = ReadingExample(
+    "3 · Dependency undertow",
+    "The real collapsed dependencies form nested undercurrents. Beads and relation labels follow each moving arc's arclength.",
+    player,
+)
+```
+
+## 5. 5 · Sentence furniture
+
+<!-- field-box id="text1_example4" index="4" -->
+
+```edn [field-box id="text1_example4" role="properties"]
+{"id" "text1_example4" "index" 4 "name" "5 · Sentence furniture" "parents" ["root" "text1_context"] "children" ["text1_score"] "properties" {"children" #{#afield/box "text1_score"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "5 · Sentence furniture" "_tombstone" false "frame" #afield/rect [650.0 330.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_example4_code_.kt" "lines" 77 "characters" 3717 "sha256" "03063693defef87d2ca7d622727b3a78c78e0e1a1f9c92f4bc8a2a79353a79da"}]}
+```
+
+```kotlin [field-property box="text1_example4" name="code" path="text1_example4_code_.kt"]
+import afield.graphics.scene.reading.*
+import afield.graphics.text.*
+import afield.graphics.text.sentences.*
+import kotlin.math.*
+
+// 4 · Sentence furniture. Reed-Kellogg shelves become a shallow spatial mobile, then a reading line.
+val parsed = Sentences.example(4)
+check(parsed.problems().isEmpty()) { parsed.problems().joinToString() }
+val face = Typefaces.named("Noto Serif", 100, strict = true)
+val config = KelloggConfig(
+    slantAngle = 30.0,
+    nestAngleStep = 10.0,
+    maxSlantAngle = 48.0,
+    fontSize = 32.0,
+    metrics = Java2DMetrics(face.awtFont.deriveFont(32f)),
+    modifierSize = 23.0,
+    modifierMetrics = Java2DMetrics(face.awtFont.deriveFont(23f)),
+)
+val layout = Kellogg(config).layout(parsed)
+check(layout.problems().isEmpty()) { layout.problems().joinToString() }
+val metres = min(2.15 / layout.bounds.width, 1.1 / layout.bounds.height)
+val center = layout.bounds.centre
+fun world(p: P, z: Float = 0f) = vec(((p.x - center.x) * metres).toFloat(), (-(p.y - center.y) * metres).toFloat(), z)
+val graph = readingDiagram {
+    group("furniture") {
+        val points = ArrayList<Pair<KWord, DiagramParticle>>()
+        for ((i, w) in layout.words.withIndex()) {
+            val angle = Math.toRadians(w.angle)
+            val midpoint = P(w.at.x + cos(angle) * w.width * .5, w.at.y + sin(angle) * w.width * .5)
+            val p = world(midpoint, if (w.role == Role.MODIFIER) -.035f else .02f)
+            val particle = point("word-point-$i", p.x, p.y, p.z, pinned = w.role == Role.PREDICATE)
+            points.add(w to particle)
+            text("word-$i", w.text, particle) {
+                scale = (w.size * metres / .09).toFloat()
+                rotation = -angle.toFloat()
+            }
+        }
+        for ((a, b) in points.zipWithNext()) link(a.second, b.second, .35f)
+        fun attached(p: P): DiagramAnchor {
+            val position = world(p)
+            val nearest = points.minBy { it.second.rest.distanceSquared(position) }.second
+            val offset = position - nearest.rest
+            return nearest.anchor.offset(offset.x, offset.y, offset.z)
+        }
+        for ((i, l) in layout.lines.withIndex()) line("shelf-$i", attached(l.a), attached(l.b)) {
+            width = if (l.kind == KLineKind.BASELINE) .002f else .0013f
+            color = vec(.3f, .49f, .65f, 1f)
+            if (l.kind == KLineKind.RISER) dashed(.022f)
+        }
+        for ((i, entry) in points.withIndex()) if (i % 2 == 0)
+            dot("joint-$i", entry.second.anchor.offset(y = -.015f)) {
+                radius = .0035f
+                shape = DiagramPointShape.RING
+            }
+    }
+    group("reading") {
+        val p = point("reading-point", 0, 0, .07, pinned = true)
+        val sentence = text("reading-run", parsed.tokens.joinToString(" ") { it.word }, p) { scale = .78f }
+        val wind = underline("reading-wind", sentence.word("wind"), gap = .018f) { color = vec(.8f, .42f, .12f, 1f) }
+        underline("reading-weather", sentence.word("weather"), gap = .018f) { color = vec(.8f, .42f, .12f, 1f) }
+        dot("reading-bead", wind.at(.5f)) { radius = .004f }
+    }
+}
+val progress = progressReporter("Prepare 4 / 4: sentence furniture", showDelayMillis = 0)
+val player = try {
+    ReadingDiagramPlayer.prepare(graph, face, "field-slug".file, diagramScore(graph, 24.0) {}) { n, total, text ->
+        progress.update(n.toDouble() / total, "$n / $total: $text")
+    }
+} finally {
+        progress.close()
+    }
+player.wind = .012f
+prop<ReadingExample>(exampleFour) = ReadingExample(
+    "4 · Sentence furniture",
+    "A Reed-Kellogg structure with gently separated shelves, a softened slant angle, then a scored crossfade into one complete reading run.",
+    player,
+)
+```
+
+## 6. 10 · Blur cascade
+
+<!-- field-box id="text1_blur" index="5" -->
+
+```edn [field-box id="text1_blur" role="properties"]
+{"id" "text1_blur" "index" 5 "name" "10 · Blur cascade" "parents" ["root" "text1_context"] "children" ["text1_drawing"] "properties" {"children" #{#afield/box "text1_drawing"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "10 · Blur cascade" "_tombstone" false "frame" #afield/rect [1800.0 330.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_blur_code_.kt" "lines" 1 "characters" 32 "sha256" "d55764980cd0a35c3a2658aa262cccba454d34de0bb0dd8d72d6e24152b55593"} {"name" "vertex" "language" "glsl" "path" "text1_blur_vertex_.glsl" "lines" 10 "characters" 310 "sha256" "bfeef78cb283bfcb51d42e49e10e99971c2d418460670cf8a23279f7fd45a6cf"} {"name" "fragment" "language" "glsl" "path" "text1_blur_fragment_.glsl" "lines" 20 "characters" 861 "sha256" "4631f2b27487bb0cc7e210c7578866150db400df9abd6bd045ba7c65518aba71"}]}
+```
+
+```kotlin [field-property box="text1_blur" name="code" path="text1_blur_code_.kt"]
+prop<Box>(blurSource) = thisBox
+```
+
+```glsl [field-property box="text1_blur" name="vertex" path="text1_blur_vertex_.glsl"]
+#version 450
+#extension GL_EXT_multiview : require
+layout(location = 0) out vec2 uv;
+layout(location = 1) flat out int eye;
+void main() {
+    vec2 p = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+    uv = vec2(p.x, 1.0 - p.y);
+    eye = gl_ViewIndex;
+    gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);
+}
+```
+
+```glsl [field-property box="text1_blur" name="fragment" path="text1_blur_fragment_.glsl"]
+#version 450
+layout(location = 0) in vec2 uv;
+layout(location = 1) flat in int eye;
+layout(location = 0) out vec4 outColor;
+layout(set = 0, binding = 0) uniform sampler2DArray source;
+layout(push_constant) uniform BlurPush {
+    vec4 tapStep; // XY step in output pixels, kernel radius and gain
+} pc;
+
+// Nine-tap Gaussian approximation, using bilinear pairing for five texture fetches.
+// The output texel size makes H/V isotropic even while the first pass downsamples.
+vec4 sampleOffset(float offset) {
+    return texture(source, vec3(uv + pc.tapStep.xy * pc.tapStep.z * offset, float(eye)));
+}
+void main() {
+    vec4 c = sampleOffset(0.0) * 0.2270270270;
+    c += (sampleOffset(1.3846153846) + sampleOffset(-1.3846153846)) * 0.3162162162;
+    c += (sampleOffset(3.2307692308) + sampleOffset(-3.2307692308)) * 0.0702702703;
+    outColor = c * pc.tapStep.w;
+}
+```
+
+## 7. 2 · Marked breath
+
+<!-- field-box id="text1_poem" index="6" -->
+
+```edn [field-box id="text1_poem" role="properties"]
+{"id" "text1_poem" "index" 6 "name" "2 · Marked breath" "parents" ["root" "text1_context"] "children" ["text1_score" "text1_drawing"] "properties" {"children" #{#afield/box "text1_score" #afield/box "text1_drawing"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "2 · Marked breath" "_tombstone" false "frame" #afield/rect [650.0 0.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_poem_code_.kt" "lines" 60 "characters" 2468 "sha256" "6f429f02dd21156ea5fe1605e354e101451254e8788dbbef0722e3fa2a6b947b"}]}
+```
+
+```kotlin [field-property box="text1_poem" name="code" path="text1_poem_code_.kt"]
+import afield.graphics.scene.reading.*
+import afield.graphics.text.*
+import afield.graphics.text.sentences.Sentences
+
+// 1 · Marked breath. Whole runs, two selected words and an arclength bead.
+// Cached real parser output: no network request or font preparation in the frame loop.
+val parsed = Sentences.example(1)
+check(parsed.problems().isEmpty()) { parsed.problems().joinToString() }
+val graph = readingDiagram {
+    val peg = point("peg", -.78, .52, pinned = true)
+    val first = point("first", 0, .24, .025)
+    val second = point("second", 0, -.08, -.025)
+    link(peg, first)
+    link(first, second)
+    val opening = text("opening", parsed.tokens.take(4).joinToString(" ") { it.word }, first)
+    val sentence = text("sentence", parsed.tokens.drop(4).joinToString(" ") { it.word }, second)
+    arc("hanging", peg.anchor, opening.above, rise = .09f) { dashed(.025f) }
+    val birds = underline("birdsong", sentence.word("birdsong"), gap = .018f) {
+        width = .002f
+        color = vec(.8f, .43f, .13f, 1f)
+    }
+    underline("walls", sentence.word("walls"), gap = .018f) { color = vec(.8f, .43f, .13f, 1f) }
+    dot("beside-word", opening.word("Listen").left.offset(x = -.028f)) {
+        shape = DiagramPointShape.RING
+        radius = .005f
+    }
+    dot("on-underline", birds.at(.65f)) { radius = .0045f }
+    val relation = arc(
+        "reflection",
+        sentence.word("birdsong").below.offset(y = -.055f),
+        sentence.word("walls").below.offset(y = -.055f),
+        rise = -.23f,
+    ) {
+        width = .0012f
+        arrow = .013f
+    }
+    dot("bead", relation.at(.50f)) { radius = .003f }
+    text(
+        "relation-label",
+        parsed.dependencies.sdCollapsed.first { it.rel == "prep_off" }.label,
+        relation.at(.55f).offset(y = -.045f),
+    ) {
+        scale = .38f
+        color = vec(.45f, .6f, .75f, 1f)
+    }
+}
+val face = Typefaces.named("Noto Serif", 100, strict = true)
+val progress = progressReporter("Prepare 1 / 4: marked breath", showDelayMillis = 0)
+val player = try {
+    ReadingDiagramPlayer.prepare(graph, face, "field-slug".file, diagramScore(graph, 20.0) {}) { n, total, text ->
+        progress.update(n.toDouble() / total, "$n / $total: $text")
+    }
+} finally {
+        progress.close()
+    }
+prop<ReadingExample>(exampleOne) = ReadingExample(
+    "1 · Marked breath",
+    "Whole-run spans, a dot beside a word, and dots on an underline and an arc. Two baselines sit 5 cm apart in depth.",
+    player,
+)
+```
+
+## 8. 6 · Scores / example selector
+
+<!-- field-box id="text1_score" index="7" -->
+
+```edn [field-box id="text1_score" role="properties"]
+{"id" "text1_score" "index" 7 "name" "6 · Scores / example selector" "parents" ["root" "text1_poem" "text1_example2" "text1_example3" "text1_example4"] "children" ["text1_drawing"] "properties" {"children" #{#afield/box "text1_drawing"} "parents" #{#afield/box "root" #afield/box "text1_poem" #afield/box "text1_example2" #afield/box "text1_example3" #afield/box "text1_example4"} "name" "6 · Scores / example selector" "_tombstone" false "frame" #afield/rect [1200.0 0.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_score_code_.kt" "lines" 90 "characters" 3780 "sha256" "a01bf117fb8f9c069e3f9a2f128e4d4db26c09acc4cbaeccfc25d645a582db30"}]}
+```
+
+```kotlin [field-property box="text1_score" name="code" path="text1_score_code_.kt"]
+import afield.graphics.scene.reading.*
+
+// All four scores are separate from graph construction and native typography preparation.
+// Re-run this box to rescore the existing players; their physics and Slug buffers are retained.
+val allExamples = listOf(exampleOne, exampleTwo, exampleThree, exampleFour)
+for ((index, example) in allExamples.withIndex()) {
+    val graph = example.player.diagram
+    example.player.playback.score = diagramScore(graph, duration = if (index == 3) 24.0 else 20.0) {
+        if (index == 3) {
+            val furniture = graph.group("furniture")
+            val reading = graph.group("reading")
+            fadeIn(furniture, at = 0.0, seconds = 1.0)
+            for ((i, path) in furniture.items.filterIsInstance<DiagramPath>().withIndex()) drawIn(
+                path,
+                at = .15 + i * .06,
+                seconds = 1.2,
+            )
+            transition(furniture, reading, at = 9.0, seconds = 2.4)
+            exitAll(at = 20.0, seconds = 2.5)
+        } else {
+            for ((i, text) in graph.texts.withIndex()) enter(text, at = i * .16, seconds = 1.0)
+            for ((i, path) in graph.paths.withIndex()) drawIn(path, at = .2 + i * .10, seconds = 1.2)
+            for ((i, dot) in graph.dots.withIndex()) enter(dot, at = .8 + i * .08, rise = 0f)
+            exitAll(at = 17.0, seconds = 2.5)
+        }
+    }
+    example.player.playback.seek(6.0)
+}
+// Re-scoring preserves the gallery object while Drawing is active.
+val previousGallery = thisBox.getPropertyRaw("poem") as? ReadingGallery
+prop<ReadingGallery>(poem) = previousGallery?.takeIf {
+    it.examples.map { e -> e.player } == allExamples.map { e -> e.player }
+} ?: ReadingGallery(allExamples)
+fun describe() {
+    val e = poem.examples[poem.selected]
+    display("selected example", "<div style='padding:12px;width:440px'><b>${e.title}</b><p>${e.description}</p></div>")
+}
+controlGroup("four reading spaces") {
+    for ((i, e) in allExamples.withIndex()) button(e.title) { down ->
+        if (down) {
+            poem.select(i)
+            poem.current.playback.seek(6.0)
+            describe()
+        }
+    }
+}
+controlGroup("score") {
+    checkbox("Play score", initialValue = true) { poem.current.playback.playing = it }
+    checkbox("Repeat score", initialValue = true) { poem.current.playback.repeat = it }
+    slider("Score time (seconds)", initialValue = 6.0, min = 0.0, max = 24.0) {
+        poem.current.playback.playing = false
+        poem.current.playback.seek(it.toDouble())
+    }
+    button("Restart entrances") { down ->
+        if (down) {
+            poem.current.restart()
+            poem.current.playback.playing = true
+        }
+    }
+    button("Show complete diagram") { down ->
+        if (down) {
+            poem.current.playback.playing = false
+            poem.current.playback.seek(6.0)
+        }
+    }
+}
+controlGroup("gentle physics") {
+    slider("Layout spring", initialValue = 28.0, min = 0.0, max = 100.0) {
+        allExamples.forEach { e -> e.player.spring = it.toFloat() }
+    }
+    slider("Link stiffness", initialValue = 18.0, min = 0.0, max = 80.0) {
+        allExamples.forEach { e -> e.player.constraintStrength = it.toFloat() }
+    }
+    slider("Gravity", initialValue = -.025, min = -.3, max = .1) {
+        allExamples.forEach { e -> e.player.gravity = it.toFloat() }
+    }
+    slider("Air movement", initialValue = .012, min = 0.0, max = .3) {
+        allExamples.forEach { e -> e.player.wind = it.toFloat() }
+    }
+    button("Still proof / reset") { down ->
+        if (down) {
+            poem.current.gravity = 0f
+            poem.current.wind = 0f
+            poem.current.resetPositions()
+            poem.current.playback.playing = false
+            poem.current.playback.seek(6.0)
+        }
+    }
+}
+describe()
+```
+
+## 9. 7 · FLine strokes
+
+<!-- field-box id="text1_stroke" index="8" -->
+
+```edn [field-box id="text1_stroke" role="properties"]
+{"id" "text1_stroke" "index" 8 "name" "7 · FLine strokes" "parents" ["root" "text1_context"] "children" ["text1_drawing"] "properties" {"children" #{#afield/box "text1_drawing"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "7 · FLine strokes" "_tombstone" false "frame" #afield/rect [1800.0 0.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_stroke_code_.kt" "lines" 1 "characters" 34 "sha256" "b33d092c8d888b5530ccbf2be717e411a845014cdc35b50e8701d0c94819d446"} {"name" "vertex" "language" "glsl" "path" "text1_stroke_vertex_.glsl" "lines" 110 "characters" 4165 "sha256" "1a9d198b61c33931438b721ec009bc7db77b197d472e91a812d2f0ab24d1a878"} {"name" "fragment" "language" "glsl" "path" "text1_stroke_fragment_.glsl" "lines" 36 "characters" 1646 "sha256" "17e9404671abdeffd921fef879d5ef39cf98ae14f749556b7f39c022cc8887ea"}]}
+```
+
+```kotlin [field-property box="text1_stroke" name="code" path="text1_stroke_code_.kt"]
+prop<Box>(strokeSource) = thisBox
+```
+
+```glsl [field-property box="text1_stroke" name="vertex" path="text1_stroke_vertex_.glsl"]
+#version 450
+#extension GL_EXT_buffer_reference : require
+#extension GL_EXT_multiview : require
+struct Segment {
+    vec4 previous;
+    vec4 a;
+    vec4 b;
+    vec4 next;
+    vec4 colorA;
+    vec4 colorB;
+    vec4 ink;
+    vec4 trim;
+};
+layout(std430,buffer_reference) readonly buffer DiagramSegments {
+    Segment item[];
+};
+layout(push_constant) uniform DiagramPush {
+    mat4 model; // diagram-local to world, shared by both eyes
+    DiagramSegments diagramData; // CPU-authored centreline samples, never eye-dependent triangles
+    vec4 options; // viewport width/height, minimum stroke/marker radius in pixels
+} pc;
+#extension GL_EXT_multiview : require
+layout(std140, set=0, binding=7) uniform StereoViews {
+    mat4 stereoVpL; // left-eye projection/view
+    mat4 stereoVpR; // right-eye projection/view
+    vec4 stereoRightL; // left-eye camera right
+    vec4 stereoRightR; // right-eye camera right
+    vec4 stereoUpL; // left-eye camera up
+    vec4 stereoUpR; // right-eye camera up
+    vec4 stereoProjectionL; // projection XY and viewport size
+    vec4 stereoProjectionR; // projection XY and viewport size
+};
+
+mat4 stereoViewProjection() {
+    return gl_ViewIndex==0 ? stereoVpL : stereoVpR;
+}
+vec3 stereoCameraRight() {
+    return (gl_ViewIndex==0 ? stereoRightL : stereoRightR).xyz;
+}
+vec3 stereoCameraUp() {
+    return (gl_ViewIndex==0 ? stereoUpL : stereoUpR).xyz;
+}
+vec4 stereoProjection() {
+    return gl_ViewIndex==0 ? stereoProjectionL : stereoProjectionR;
+}
+layout(location=0) flat out vec4 endpoints;
+layout(location=1) flat out vec4 widthsArc;
+layout(location=2) flat out vec4 colorA;
+layout(location=3) flat out vec4 colorB;
+layout(location=4) flat out vec4 ink;
+layout(location=5) flat out vec4 limits;
+vec2 pixel(vec4 q) {
+    return vec2(q.x/q.w*.5+.5,.5-q.y/q.w*.5)*pc.options.xy;
+}
+vec2 unit(vec2 p,vec2 fallback) {
+    return dot(p,p)>1e-10?normalize(p):fallback;
+}
+const vec2 corners[6]=vec2[6](vec2(0,-1),vec2(1,-1),vec2(1,1),vec2(0,-1),vec2(1,1),vec2(0,1));
+void main() {
+    Segment s=pc.diagramData.item[gl_VertexIndex/6];
+    mat4 vp=gl_ViewIndex==0?stereoVpL:stereoVpR;
+    vec4 projection=gl_ViewIndex==0?stereoProjectionL:stereoProjectionR;
+    mat4 m=vp*pc.model;
+    vec4 a=m*vec4(s.a.xyz,1),b=m*vec4(s.b.xyz,1);
+    // Clip the centreline before division; never turn a behind-eye endpoint into a giant ribbon.
+    float enter=0,leave=1;
+    float da=a.z,db=b.z;
+    if(da<0&&db<0) {
+        gl_Position=vec4(0,0,2,1);
+        return;
+    }
+    if(da<0)enter=max(enter,-da/(db-da));
+    if(db<0)leave=min(leave,da/(da-db));
+    if(enter>=leave||max(a.w,b.w)<1e-6) {
+        gl_Position=vec4(0,0,2,1);
+        return;
+    }
+    vec4 ca=mix(a,b,enter),cb=mix(a,b,leave);
+    ca.w=max(ca.w,1e-6);
+    cb.w=max(cb.w,1e-6);
+    vec2 pa=pixel(ca),pb=pixel(cb),axis=unit(pb-pa,vec2(1,0));
+    vec4 prev=m*vec4(s.previous.xyz,1),next=m*vec4(s.next.xyz,1);
+    vec2 before=prev.w>1e-6&&enter==0?unit(pa-pixel(prev),axis):axis;
+    vec2 after=next.w>1e-6&&leave==1?unit(pixel(next)-pb,axis):axis;
+    vec2 normal=vec2(-axis.y,axis.x);
+    vec2 ma=unit(vec2(-before.y,before.x)+normal,normal);
+    vec2 mb=unit(vec2(-after.y,after.x)+normal,normal);
+    ma/=max(dot(ma,normal),.25);
+    mb/=max(dot(mb,normal),.25);
+    float focal=abs(projection.y)*pc.options.y*.5;
+    float modelScale=length(pc.model[0].xyz);
+    float ra=max(mix(s.previous.w,s.next.w,enter)*modelScale*focal/ca.w,pc.options.z);
+    float rb=max(mix(s.previous.w,s.next.w,leave)*modelScale*focal/cb.w,pc.options.z);
+    vec2 corner=corners[gl_VertexIndex%6];
+    bool atEnd=corner.x>.5;
+    vec4 clip=atEnd?cb:ca;
+    vec2 p=atEnd?pb:pa;
+    p+=(atEnd?mb:ma)*corner.y*((atEnd?rb:ra)+1.5);
+    uint flags=uint(s.ink.w);
+    if(!atEnd&&((flags&1u)!=0u||enter>0))p-=axis*(ra+1.5);
+    if(atEnd&&((flags&2u)!=0u||leave<1))p+=axis*(rb+1.5);
+    clip.xy=vec2(p.x/pc.options.x*2-1,1-p.y/pc.options.y*2)*clip.w;
+    gl_Position=clip;
+    endpoints=vec4(pa,pb);
+    widthsArc=vec4(ra,rb,mix(s.a.w,s.b.w,enter),mix(s.a.w,s.b.w,leave));
+    colorA=mix(s.colorA,s.colorB,enter);
+    colorB=mix(s.colorA,s.colorB,leave);
+    ink=s.ink;
+    limits=vec4(s.trim.xy,ca.w,cb.w);
+}
+```
+
+```glsl [field-property box="text1_stroke" name="fragment" path="text1_stroke_fragment_.glsl"]
+#version 450
+layout(location=0) flat in vec4 endpoints;
+layout(location=1) flat in vec4 widthsArc;
+layout(location=2) flat in vec4 colorA;
+layout(location=3) flat in vec4 colorB;
+layout(location=4) flat in vec4 ink;
+layout(location=5) flat in vec4 limits;
+layout(location=0) out vec4 outColor;
+void main() {
+    vec2 delta=endpoints.zw-endpoints.xy;
+    float len=length(delta);
+    if(len<1e-6)discard;
+    vec2 axis=delta/len,q=gl_FragCoord.xy-endpoints.xy;
+    float along=dot(q,axis),side=dot(q,vec2(-axis.y,axis.x));
+    float t=clamp(along/len,0,1);
+    // Perspective-correct world arclength; pixel-space coverage stays per-eye and spatial only.
+    float worldT=(t/limits.w)/max((1-t)/limits.z+t/limits.w,1e-8);
+    float arc=mix(widthsArc.z,widthsArc.w,worldT);
+    float radius=mix(widthsArc.x,widthsArc.y,t);
+    float sdf=abs(side)-radius;
+    uint flags=uint(ink.w);
+    float outside=max((flags&1u)!=0u?-along:0,(flags&2u)!=0u?along-len:0);
+    if(outside>0)sdf=length(vec2(outside,side))-radius;
+    float unitsPerPixel=max(fwidth(arc),1e-7);
+    // Rounded reveal and dash ends use the same SDF as the outer edge.
+    float trimOutside=max(limits.x-arc,arc-limits.y)/unitsPerPixel;
+    if(trimOutside>0)sdf=max(sdf,length(vec2(trimOutside,side))-radius);
+    if(ink.x>1e-6) {
+        float local=mod(arc+ink.z,ink.x)-ink.x*.5;
+        float dashOutside=(abs(local)-ink.x*clamp(ink.y,.01,1)*.5)/unitsPerPixel;
+        if(dashOutside>0)sdf=max(sdf,length(vec2(dashOutside,side))-radius);
+    }
+    float coverage=clamp(.5-sdf/max(fwidth(sdf),.75),0,1);
+    vec4 c=mix(colorA,colorB,worldT);
+    outColor=vec4(c.rgb,c.a*coverage);
+}
+```
+
+## 10. 8 · SDF markers
+
+<!-- field-box id="text1_point" index="9" -->
+
+```edn [field-box id="text1_point" role="properties"]
+{"id" "text1_point" "index" 9 "name" "8 · SDF markers" "parents" ["root" "text1_context"] "children" ["text1_drawing"] "properties" {"children" #{#afield/box "text1_drawing"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "8 · SDF markers" "_tombstone" false "frame" #afield/rect [1800.0 110.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_point_code_.kt" "lines" 1 "characters" 33 "sha256" "11fd3bf6472a2fc0e8ac50cb8178b6d0abf54a11b460ef4f975f5eb04049fbcc"} {"name" "vertex" "language" "glsl" "path" "text1_point_vertex_.glsl" "lines" 60 "characters" 2229 "sha256" "035ff790ed3e4de3825009a4488defa68073b4008f2c11bef5b8970126ee0129"} {"name" "fragment" "language" "glsl" "path" "text1_point_fragment_.glsl" "lines" 20 "characters" 644 "sha256" "45dba99ad1956083645c05190646deca0aeb547f12e5494bed1519304cd959fa"}]}
+```
+
+```kotlin [field-property box="text1_point" name="code" path="text1_point_code_.kt"]
+prop<Box>(pointSource) = thisBox
+```
+
+```glsl [field-property box="text1_point" name="vertex" path="text1_point_vertex_.glsl"]
+#version 450
+#extension GL_EXT_buffer_reference : require
+#extension GL_EXT_multiview : require
+struct Marker {
+    vec4 position;
+    vec4 color;
+    vec4 shape;
+};
+layout(std430,buffer_reference) readonly buffer DiagramMarkers {
+    Marker item[];
+};
+layout(push_constant) uniform DiagramPush {
+    mat4 model; // diagram-local to world, shared by both eyes
+    DiagramMarkers diagramData; // position/radius, linear RGBA and SDF parameters
+    vec4 options; // viewport width/height, minimum stroke/marker radius in pixels
+} pc;
+#extension GL_EXT_multiview : require
+layout(std140, set=0, binding=7) uniform StereoViews {
+    mat4 stereoVpL; // left-eye projection/view
+    mat4 stereoVpR; // right-eye projection/view
+    vec4 stereoRightL; // left-eye camera right
+    vec4 stereoRightR; // right-eye camera right
+    vec4 stereoUpL; // left-eye camera up
+    vec4 stereoUpR; // right-eye camera up
+    vec4 stereoProjectionL; // projection XY and viewport size
+    vec4 stereoProjectionR; // projection XY and viewport size
+};
+
+mat4 stereoViewProjection() {
+    return gl_ViewIndex==0 ? stereoVpL : stereoVpR;
+}
+vec3 stereoCameraRight() {
+    return (gl_ViewIndex==0 ? stereoRightL : stereoRightR).xyz;
+}
+vec3 stereoCameraUp() {
+    return (gl_ViewIndex==0 ? stereoUpL : stereoUpR).xyz;
+}
+vec4 stereoProjection() {
+    return gl_ViewIndex==0 ? stereoProjectionL : stereoProjectionR;
+}
+layout(location=0) noperspective out vec2 uv;
+layout(location=1) flat out vec4 tint;
+layout(location=2) flat out vec4 shape;
+const vec2 corners[6]=vec2[6](vec2(-1,-1),vec2(1,-1),vec2(1,1),vec2(-1,-1),vec2(1,1),vec2(-1,1));
+void main() {
+    Marker p=pc.diagramData.item[gl_VertexIndex/6];
+    mat4 vp=gl_ViewIndex==0?stereoVpL:stereoVpR;
+    vec4 projection=gl_ViewIndex==0?stereoProjectionL:stereoProjectionR;
+    vec4 clip=vp*pc.model*vec4(p.position.xyz,1);
+    if(clip.z<0||clip.w<1e-6) {
+        gl_Position=vec4(0,0,2,1);
+        return;
+    }
+    float radius=max(p.position.w*length(pc.model[0].xyz)*abs(projection.y)*pc.options.y*.5/clip.w,pc.options.w);
+    uv=corners[gl_VertexIndex%6]*(1+2/max(radius,1e-5));
+    clip.xy+=uv*radius*vec2(2,-2)/pc.options.xy*clip.w;
+    gl_Position=clip;
+    tint=p.color;
+    shape=p.shape;
+}
+```
+
+```glsl [field-property box="text1_point" name="fragment" path="text1_point_fragment_.glsl"]
+#version 450
+layout(location=0) noperspective in vec2 uv;
+layout(location=1) flat in vec4 tint;
+layout(location=2) flat in vec4 shape;
+layout(location=0) out vec4 outColor;
+void main() {
+    float c=cos(shape.z),s=sin(shape.z);
+    vec2 p=mat2(c,-s,s,c)*uv;
+    p.x/=max(shape.w,.1);
+    float d=length(p)-1;
+    int form=int(shape.x+.5);
+    if(form==1)d=abs(length(p)-(1-shape.y*.5))-shape.y*.5;
+    if(form==2)d=(abs(p.x)+abs(p.y)-1)*.70710678;
+    if(form==3) {
+        float a=atan(p.y,p.x);
+        d=length(p)-(.7+.3*cos(2*a));
+    }
+    float coverage=clamp(.5-d/max(fwidth(d),1e-5),0,1);
+    outColor=vec4(tint.rgb,tint.a*coverage);
+}
+```
+
+## 11. 9 · Slug words
+
+<!-- field-box id="text1_text" index="10" -->
+
+```edn [field-box id="text1_text" role="properties"]
+{"id" "text1_text" "index" 10 "name" "9 · Slug words" "parents" ["root" "text1_context"] "children" ["text1_drawing"] "properties" {"children" #{#afield/box "text1_drawing"} "parents" #{#afield/box "root" #afield/box "text1_context"} "name" "9 · Slug words" "_tombstone" false "frame" #afield/rect [1800.0 220.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_text_code_.kt" "lines" 1 "characters" 32 "sha256" "98d254fdf3f6a0a2bace467aa81bacb438f376f5364bbec1ceffa4349739fb66"} {"name" "vertex" "language" "glsl" "path" "text1_text_vertex_.glsl" "lines" 78 "characters" 3304 "sha256" "229c92471c6a05bbf9bd8f09a8c49fd4d36c240cbd76ff9d424d2fe4a9e6359b"} {"name" "fragment" "language" "glsl" "path" "text1_text_fragment_.glsl" "lines" 186 "characters" 7259 "sha256" "a327abf7c634298e1f2d2e52f452f9d8130716657599eb568af24c4b92b4fb5e"}]}
+```
+
+```kotlin [field-property box="text1_text" name="code" path="text1_text_code_.kt"]
+prop<Box>(textSource) = thisBox
+```
+
+```glsl [field-property box="text1_text" name="vertex" path="text1_text_vertex_.glsl"]
+#version 450
+#extension GL_EXT_buffer_reference : require
+#extension GL_EXT_multiview : require
+#extension GL_EXT_multiview : require
+layout(std140, set=0, binding=7) uniform StereoViews {
+    mat4 stereoVpL; // left-eye projection/view
+    mat4 stereoVpR; // right-eye projection/view
+    vec4 stereoRightL; // left-eye camera right
+    vec4 stereoRightR; // right-eye camera right
+    vec4 stereoUpL; // left-eye camera up
+    vec4 stereoUpR; // right-eye camera up
+    vec4 stereoProjectionL; // projection XY and viewport size
+    vec4 stereoProjectionR; // projection XY and viewport size
+};
+
+mat4 stereoViewProjection() {
+    return gl_ViewIndex==0 ? stereoVpL : stereoVpR;
+}
+vec3 stereoCameraRight() {
+    return (gl_ViewIndex==0 ? stereoRightL : stereoRightR).xyz;
+}
+vec3 stereoCameraUp() {
+    return (gl_ViewIndex==0 ? stereoUpL : stereoUpR).xyz;
+}
+vec4 stereoProjection() {
+    return gl_ViewIndex==0 ? stereoProjectionL : stereoProjectionR;
+}
+// Adapted Slug core: Copyright (c) 2026 AlphaPixel LLC. See LICENSE-slughorn.
+layout(std430, buffer_reference, buffer_reference_align = 4) readonly buffer SlugData {
+    uint words[];
+};
+layout(push_constant) uniform SlugPC {
+    mat4 model; // local glyph plane to world; eye VP is applied in this vertex shader
+    SlugData slugData; // immutable word-outline atlas
+    vec2 viewport; // dimensions of this eye, for perspective-dependent quad dilation
+    vec4 tint; // linear RGBA, with score-driven word opacity
+} pc;
+vec4 data4(uint at) {
+    return uintBitsToFloat(uvec4(pc.slugData.words[at], pc.slugData.words[at+1],
+    pc.slugData.words[at+2], pc.slugData.words[at+3]));
+}
+layout(location=0) out vec2 emCoord;
+const vec2 corners[6] = vec2[6](vec2(0,0), vec2(1,0), vec2(1,1), vec2(0,0), vec2(1,1), vec2(0,1));
+void main() {
+    vec4 bounds = data4(8u);
+    // A closed SlugBuffer's empty atlas: nothing to cover, so put every corner outside the clip volume.
+    if (!(bounds.z > bounds.x && bounds.w > bounds.y)) {
+        emCoord = vec2(0.0);
+        gl_Position = vec4(0.0, 0.0, 2.0, 1.0);
+        return;
+    }
+    // Entire words crossing the eye/near plane are hidden rather than generating unstable quads.
+    for (int i=0;i<4;i++) {
+        vec2 p=mix(bounds.xy,bounds.zw,vec2(i&1,(i>>1)&1));
+        vec4 checkClip=(gl_ViewIndex==0?stereoVpL:stereoVpR)*pc.model*vec4(p,0,1);
+        if(checkClip.w<=1e-5||checkClip.z<=0) {
+            gl_Position=vec4(0,0,2,1);
+            emCoord=vec2(0);
+            return;
+        }
+    }
+    vec2 corner = corners[gl_VertexIndex % 6];
+    vec2 q = mix(bounds.xy, bounds.zw, corner);
+    vec2 normal = 2.0 * corner - 1.0;
+    mat4 matrix = (gl_ViewIndex == 0 ? stereoVpL : stereoVpR) * pc.model;
+    vec4 position = matrix * vec4(q, 0.0, 1.0);
+    // Lengyel's perspective-dependent dilation, expressed in homogeneous vectors.
+    // normal is the corner bisector scaled so both incident sides expand equally.
+    vec4 direction = matrix * vec4(normalize(normal), 0.0, 0.0);
+    float s = position.w;
+    float t = direction.w;
+    vec2 uv = pc.viewport * (s*direction.xy - t*position.xy);
+    float denominator = length(uv) - s*t;
+    float distance = denominator > 1e-12 ? s*s / denominator : 0.0;
+    q += distance * normal;
+    emCoord = q;
+    gl_Position = matrix * vec4(q, 0.0, 1.0);
+}
+```
+
+```glsl [field-property box="text1_text" name="fragment" path="text1_text_fragment_.glsl"]
+#version 450
+#extension GL_EXT_buffer_reference : require
+// Adapted Slug core: Copyright (c) 2026 AlphaPixel LLC. See LICENSE-slughorn.
+layout(std430, buffer_reference, buffer_reference_align = 4) readonly buffer SlugData {
+    uint words[];
+};
+layout(push_constant) uniform SlugPC {
+    mat4 model; // word plane to world (the vertex stage applies the current eye VP)
+    SlugData slugData; // immutable word-outline atlas
+    vec2 viewport; // dimensions of this eye
+    vec4 tint; // linear RGBA and score-driven opacity
+} pc;
+vec4 data4(uint at) {
+    return uintBitsToFloat(uvec4(pc.slugData.words[at], pc.slugData.words[at+1],
+    pc.slugData.words[at+2], pc.slugData.words[at+3]));
+}
+layout(location=0) in vec2 emCoord;
+layout(location=0) out vec4 fragColor;
+#define TEX_WIDTH 9
+#define SLUG_INDIRECTION_SIZE 32
+uvec4 bandFetch(ivec2 xy) {
+    uint i = pc.slugData.words[7] + uint(xy.y * 512 + xy.x);
+    uint pair = pc.slugData.words[i];
+    return uvec4(pair & 65535u, pair >> 16u, 0u, 0u);
+}
+vec4 curveFetch(ivec2 xy) {
+    uint i = pc.slugData.words[6] + 4u * uint(xy.y * 512 + xy.x);
+    return data4(i);
+}
+uint slug_CalcRootCode(float y1, float y2, float y3) {
+    uint i1 = floatBitsToUint(y1) >> 31u;
+    uint i2 = floatBitsToUint(y2) >> 30u;
+    uint i3 = floatBitsToUint(y3) >> 29u;
+
+    uint shift = (i2 & 2u) | (i1 & ~2u);
+    shift = (i3 & 4u) | (shift & ~4u);
+
+    return ((0x2E74u >> shift) & 0x0101u);
+}
+
+vec2 slug_SolveHorizPoly(vec4 p12, vec2 p3) {
+    vec2 a = p12.xy - p12.zw * 2.0 + p3;
+    vec2 b = p12.xy - p12.zw;
+    float ra = 1.0 / a.y;
+    float rb = 0.5 / b.y;
+    float d = sqrt(max(b.y * b.y - a.y * p12.y, 0.0));
+    float t1 = (b.y - d) * ra;
+    float t2 = (b.y + d) * ra;
+    if(abs(a.y) < 1.0 / 65536.0) {
+        t1 = p12.y * rb;
+        t2 = t1;
+    }
+    return vec2(
+    (a.x * t1 - b.x * 2.0) * t1 + p12.x,
+    (a.x * t2 - b.x * 2.0) * t2 + p12.x
+    );
+}
+
+vec2 slug_SolveVertPoly(vec4 p12, vec2 p3) {
+    vec2 a = p12.xy - p12.zw * 2.0 + p3;
+    vec2 b = p12.xy - p12.zw;
+    float ra = 1.0 / a.x;
+    float rb = 0.5 / b.x;
+    float d = sqrt(max(b.x * b.x - a.x * p12.x, 0.0));
+    float t1 = (b.x - d) * ra;
+    float t2 = (b.x + d) * ra;
+    if(abs(a.x) < 1.0 / 65536.0) {
+        t1 = p12.x * rb;
+        t2 = t1;
+    }
+    return vec2(
+    (a.y * t1 - b.y * 2.0) * t1 + p12.y,
+    (a.y * t2 - b.y * 2.0) * t2 + p12.y
+    );
+}
+
+ivec2 slug_CalcBandLoc(ivec2 glyphLoc, uint offset) {
+    ivec2 bandLoc = ivec2(glyphLoc.x + int(offset), glyphLoc.y);
+    bandLoc.y += bandLoc.x >> TEX_WIDTH;
+    bandLoc.x &= (1 << TEX_WIDTH) - 1;
+    return bandLoc;
+}
+
+// Location of a curve's later texel, wrapping to the next row of the 512-wide data layout the same
+// way slug_CalcBandLoc() does, since a curve's texels may straddle a row boundary.
+ivec2 slug_CalcCurveLoc(ivec2 curveLoc, int offset) {
+    ivec2 loc = ivec2(curveLoc.x + offset, curveLoc.y);
+    loc.y += loc.x >> TEX_WIDTH;
+    loc.x &= (1 << TEX_WIDTH) - 1;
+    return loc;
+}
+
+float slug_CalcCoverage(float xcov, float ycov, float xwgt, float ywgt) {
+    float coverage = max(
+    abs(xcov * xwgt + ycov * ywgt) / max(xwgt + ywgt, 1.0 / 65536.0),
+    min(abs(xcov), abs(ycov))
+    );
+    return clamp(coverage, 0.0, 1.0);
+}
+
+float slug_Render(vec2 renderCoord, vec4 bandTransform, ivec2 glyphLoc, ivec2 bandMax) {
+    vec2 emsPerPixel = fwidth(renderCoord);
+    vec2 pixelsPerEm = 1.0 / emsPerPixel;
+
+    // O(1) band index via indirection tables (2 fetches per axis).
+    int qY = clamp(int(renderCoord.y * bandTransform.y + bandTransform.w), 0, SLUG_INDIRECTION_SIZE - 1);
+    int qX = clamp(int(renderCoord.x * bandTransform.x + bandTransform.z), 0, SLUG_INDIRECTION_SIZE - 1);
+    int bandY = int(bandFetch(ivec2(glyphLoc.x + qY, glyphLoc.y)).r);
+    int bandX = int(bandFetch(ivec2(glyphLoc.x + SLUG_INDIRECTION_SIZE + qX, glyphLoc.y)).r);
+
+    // Horizontal bands -- headers at glyphLoc + 2*IS + bandY
+    float xcov = 0.0, xwgt = 0.0;
+    uvec2 hbandData = bandFetch(ivec2(glyphLoc.x + 2 * SLUG_INDIRECTION_SIZE + bandY, glyphLoc.y)).xy;
+
+    for(int ci = 0; ci < int(hbandData.x); ci++) {
+        // Compute each curve index's location separately, so a band's curve list may span
+        // more than one row of the data layout.
+        ivec2 hbandLoc = slug_CalcBandLoc(glyphLoc, hbandData.y + uint(ci));
+        ivec2 curveLoc = ivec2(bandFetch(hbandLoc).xy);
+        vec4 p12 = curveFetch(curveLoc) - vec4(renderCoord, renderCoord);
+
+        // A curve's third control point is the next texel. Connected curves share endpoint
+        // texels, so that texel can sit at the start of the next row.
+        vec2 p3 = curveFetch(slug_CalcCurveLoc(curveLoc, 1)).xy - renderCoord;
+
+        if(max(max(p12.x, p12.z), p3.x) * pixelsPerEm.x < -0.5) break;
+
+        uint code = slug_CalcRootCode(p12.y, p12.w, p3.y);
+        if(code != 0u) {
+            vec2 r = slug_SolveHorizPoly(p12, p3) * pixelsPerEm.x;
+            if((code & 1u) != 0u) {
+                xcov += clamp(r.x + 0.5, 0.0, 1.0);
+                xwgt = max(xwgt, clamp(1.0 - abs(r.x) * 2.0, 0.0, 1.0));
+            }
+            if(code > 1u) {
+                xcov -= clamp(r.y + 0.5, 0.0, 1.0);
+                xwgt = max(xwgt, clamp(1.0 - abs(r.y) * 2.0, 0.0, 1.0));
+            }
+        }
+    }
+
+    // Vertical bands -- headers at glyphLoc + 2*IS + numHBands + bandX
+    float ycov = 0.0, ywgt = 0.0;
+    uvec2 vbandData = bandFetch(ivec2(glyphLoc.x + 2 * SLUG_INDIRECTION_SIZE + bandMax.y + 1 + bandX, glyphLoc.y)).xy;
+
+    for(int ci = 0; ci < int(vbandData.x); ci++) {
+        // See the matching comment in the horizontal-band loop above.
+        ivec2 vbandLoc = slug_CalcBandLoc(glyphLoc, vbandData.y + uint(ci));
+        ivec2 curveLoc = ivec2(bandFetch(vbandLoc).xy);
+        vec4 p12 = curveFetch(curveLoc) - vec4(renderCoord, renderCoord);
+
+        // See the matching comment in the horizontal-band loop above.
+        vec2 p3 = curveFetch(slug_CalcCurveLoc(curveLoc, 1)).xy - renderCoord;
+
+        if(max(max(p12.y, p12.w), p3.y) * pixelsPerEm.y < -0.5) break;
+
+        uint code = slug_CalcRootCode(p12.x, p12.z, p3.x);
+        if(code != 0u) {
+            vec2 r = slug_SolveVertPoly(p12, p3) * pixelsPerEm.y;
+            if((code & 1u) != 0u) {
+                ycov -= clamp(r.x + 0.5, 0.0, 1.0);
+                ywgt = max(ywgt, clamp(1.0 - abs(r.x) * 2.0, 0.0, 1.0));
+            }
+            if(code > 1u) {
+                ycov += clamp(r.y + 0.5, 0.0, 1.0);
+                ywgt = max(ywgt, clamp(1.0 - abs(r.y) * 2.0, 0.0, 1.0));
+            }
+        }
+    }
+
+    return slug_CalcCoverage(xcov, ycov, xwgt, ywgt);
+}
+
+// The fill colour. Replace it with any procedural fill; coverage is computed independently of it.
+vec3 shade(vec2 q) {
+    return pc.tint.rgb;
+}
+void main() {
+    ivec2 loc = ivec2(pc.slugData.words[16], pc.slugData.words[17]);
+    ivec2 bandMax = ivec2(pc.slugData.words[18], pc.slugData.words[19]);
+    float coverage = slug_Render(emCoord, data4(12u), loc, bandMax);
+    if (coverage <= 0.0) discard;
+    // Straight alpha; use a source-alpha blending pipeline. Convert explicitly for
+    // premultiplied-alpha targets. Neither atlas data nor coverage are sRGB colors.
+    fragColor = vec4(shade(emCoord), coverage * pc.tint.a);
+}
+```
+
+## 12. 12 · Drawing / score playback
+
+<!-- field-box id="text1_drawing" index="11" -->
+
+```edn [field-box id="text1_drawing" role="properties"]
+{"id" "text1_drawing" "index" 11 "name" "12 · Drawing / score playback" "parents" ["root" "text1_poem" "text1_score" "text1_stroke" "text1_point" "text1_text" "text1_blur" "text1_composite"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "text1_poem" #afield/box "text1_score" #afield/box "text1_stroke" #afield/box "text1_point" #afield/box "text1_text" #afield/box "text1_blur" #afield/box "text1_composite"} "name" "12 · Drawing / score playback" "_tombstone" false "frame" #afield/rect [2350.0 0.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "text1_drawing_code_.kt" "lines" 104 "characters" 5062 "sha256" "f90298ecda227d4eb0e6dc15da9cffed6e5bc6d1ea8982767cdcf1c91cf08208"}]}
+```
+
+```kotlin [field-property box="text1_drawing" name="code" path="text1_drawing_code_.kt"]
+import afield.graphics.scene.reading.*
+
+fun source(box: Box, property: String) = checkNotNull(box.getPropertyRaw(property) as? String)
+fun shaders() = DiagramShaderSet(
+    source(strokeSource, "vertex"),
+    source(strokeSource, "fragment"),
+    source(pointSource, "vertex"),
+    source(pointSource, "fragment"),
+    source(textSource, "vertex"),
+    source(textSource, "fragment"),
+    source(blurSource, "vertex"),
+    source(blurSource, "fragment"),
+    source(compositeSource, "vertex"),
+    source(compositeSource, "fragment"),
+)
+prop<StereoDiagramRenderer>(drawing) = StereoDiagramRenderer(renderer, stereo, poem, shaders())
+val ownedDrawing = drawing
+controlGroup("drawing") {
+    button("Recenter poem") { down -> if (down) drawing.recenter() }
+    checkbox("Gently face the reader", initialValue = true) { drawing.followReader = it }
+    slider("Turning half-life (seconds)", initialValue = 2.0, min = .1, max = 10.0) {
+        drawing.turnHalfLife = it.toFloat()
+    }
+    slider("Stroke width multiplier", initialValue = 1.0, min = .2, max = 4.0) {
+        poem.examples.forEach { e -> e.player.strokeWidthScale = it.toFloat() }
+    }
+    slider("Point radius multiplier", initialValue = 1.0, min = .2, max = 4.0) {
+        poem.examples.forEach { e -> e.player.dotRadiusScale = it.toFloat() }
+    }
+    checkbox("Show diagram dots", initialValue = true) { poem.examples.forEach { e -> e.player.showDots = it } }
+    button("Reload drawing, blur and compositor shaders") { down -> if (down) drawing.reload(shaders()) }
+}
+val grade = drawing.compositor.settings
+controlGroup("blur cascade") {
+    slider("Medium blur radius", initialValue = grade.mediumRadius.toDouble(), min = 0.0, max = 8.0) {
+        grade.mediumRadius = it.toFloat()
+    }
+    slider("Broad blur radius", initialValue = grade.broadRadius.toDouble(), min = 0.0, max = 8.0) {
+        grade.broadRadius = it.toFloat()
+    }
+}
+controlGroup("green compositor") {
+    slider("Blur mix", initialValue = grade.selection.z.toDouble(), min = 0.0, max = 1.0) {
+        grade.selection.z = it.toFloat()
+    }
+    slider("Green selector gain", initialValue = grade.selection.x.toDouble(), min = 0.0, max = 8.0) {
+        grade.selection.x = it.toFloat()
+    }
+    slider("Green selector offset", initialValue = grade.selection.y.toDouble(), min = -1.0, max = 1.0) {
+        grade.selection.y = it.toFloat()
+    }
+    slider("Source green scale", initialValue = grade.selection.w.toDouble(), min = 0.0, max = 4.0) {
+        grade.selection.w = it.toFloat()
+    }
+    slider("Selector sharp weight", initialValue = grade.selectorSource.x.toDouble(), min = 0.0, max = 1.0) {
+        grade.selectorSource.x = it.toFloat()
+    }
+    slider("Selector medium weight", initialValue = grade.selectorSource.y.toDouble(), min = 0.0, max = 1.0) {
+        grade.selectorSource.y = it.toFloat()
+    }
+    slider("Selector broad weight", initialValue = grade.selectorSource.z.toDouble(), min = 0.0, max = 1.0) {
+        grade.selectorSource.z = it.toFloat()
+    }
+    slider("Green from red / blue", initialValue = grade.reconstruction.x.toDouble(), min = 0.0, max = 1.0) {
+        grade.reconstruction.x = it.toFloat()
+        grade.reconstruction.y = 1f - it.toFloat()
+    }
+}
+controlGroup("paint and colour") {
+    slider("Additive to weighted paint", initialValue = grade.paint.z.toDouble(), min = 0.0, max = 1.0) {
+        grade.paint.z = it.toFloat()
+    }
+    slider("Paint opacity threshold", initialValue = grade.paint.x.toDouble(), min = .001, max = 4.0) {
+        grade.paint.x = it.toFloat()
+    }
+    slider("Paint knee width", initialValue = grade.paint.y.toDouble(), min = 0.0, max = 2.0) {
+        grade.paint.y = it.toFloat()
+    }
+    slider("Exposure", initialValue = grade.reconstruction.z.toDouble(), min = 0.0, max = 4.0) {
+        grade.reconstruction.z = it.toFloat()
+    }
+    slider("Saturation", initialValue = grade.saturation.x.toDouble(), min = 0.0, max = 3.0) {
+        grade.saturation.x = it.toFloat()
+    }
+    slider("FXAA mix", initialValue = grade.fxaa.x.toDouble(), min = 0.0, max = 1.0) { grade.fxaa.x = it.toFloat() }
+    colorPicker("Background", initialValue = grade.background) { grade.background.set(it) }
+    colorPicker("Shadow tone (alpha = strength)", initialValue = grade.shadowTone) { grade.shadowTone.set(it) }
+    colorPicker("Highlight tone (alpha = strength)", initialValue = grade.highlightTone) { grade.highlightTone.set(it) }
+}
+var lastStats = 0L
+loop {
+    renderer.windows.forEach { it.pollEvents() }
+    renderer.render()
+    val now = System.nanoTime()
+    if (now - lastStats > 1_000_000_000L) {
+        lastStats = now
+        display(
+            "frame",
+            "<div style='padding:12px;width:440px'>Frame ${drawing.frameCount} · ${poem.labels.size} text runs · ${poem.geometry.segments.size} stroke segments · ${poem.geometry.points.size} markers · ${poem.current.physicsSteps} fixed physics steps. One centreline upload and one text-pose update serve both eyes.</div>",
+        )
+    }
+    frame()
+}
+    .end { ownedDrawing.close() }
+```
+

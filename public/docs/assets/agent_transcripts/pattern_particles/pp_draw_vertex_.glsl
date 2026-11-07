@@ -17,7 +17,6 @@ const vec3[6] part = {
     vec3(0,0,0), vec3(1,1,0), vec3(0,1,0)
 };
 
-
 void main() {
     vec4 particle = pc.inData.pos[gl_VertexIndex / 6];
     float scale = particle.w;

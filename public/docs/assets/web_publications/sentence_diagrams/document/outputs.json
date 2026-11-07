@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-07T14:04:15.151Z",
+  "documentName": "sentence_diagrams",
+  "outputs": [
+    {
+      "uid": "sentence_both",
+      "channel": "diagram",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 776,
+      "height": 471,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "sentence_undertow",
+      "channel": "diagram",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 828,
+      "height": 208,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "sentence_canopy",
+      "channel": "diagram",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 776,
+      "height": 377,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "sentence_furniture",
+      "channel": "diagram",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 776,
+      "height": 320,
+      "path": "outputs/3.html"
+    }
+  ]
+}

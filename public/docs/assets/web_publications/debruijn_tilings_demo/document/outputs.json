@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-07T13:26:06.682Z",
+  "capturedAt": "2026-11-07T14:11:58.845Z",
   "documentName": "debruijn_tilings_demo",
   "outputs": [
     {
@@ -11,8 +11,8 @@
       "kinds": [
         "svg"
       ],
-      "width": 469,
-      "height": 60,
+      "width": 473,
+      "height": 56,
       "path": "outputs/0.html"
     },
     {
@@ -23,8 +23,8 @@
       "kinds": [
         "svg"
       ],
-      "width": 469,
-      "height": 60,
+      "width": 473,
+      "height": 56,
       "path": "outputs/1.html"
     },
     {
@@ -84,7 +84,7 @@
         "svg"
       ],
       "width": 838,
-      "height": 931,
+      "height": 929,
       "path": "outputs/6.html"
     },
     {

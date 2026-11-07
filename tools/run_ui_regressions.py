@@ -4661,6 +4661,22 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot=shell_join(["screenshot-window", "{screenshot}", "--preserve-selection", "--timeout", pw_timeout]),
         ),
         UiRegression(
+            id="open-anything-controls",
+            description="Control labels and category prefixes find live widgets; previews stay read-only and current, and accepting opens/scrolls the panel and frames the control clear of the editor.",
+            commands=[
+                "viewport 1300x900",
+                "new-box --name ControlSearchAnchor --alias control_anchor --x 40 --y 40",
+                "set @last code 'println(\"anchor\")'",
+                "new-box --name ControlSearchTarget --x 2200 --y 1600",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/open-anything-controls.kt"), "--timeout", timeout_text]),
+                "new-box --name ControlSearchOther --x 4200 --y 1600",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/open-anything-controls.kt"), "--timeout", timeout_text]),
+                "editor-open @control_anchor --property code",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/open-anything-controls.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--preserve-selection", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="output-control-selection",
             description="Output text and SVG slider interactions retain the editor and selection, deliver callbacks and leave box frames fixed; clicking a box still selects it.",
             commands=[

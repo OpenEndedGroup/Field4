@@ -96,6 +96,7 @@ object DemoTranscriptExecSmokeTest {
 
     /** Pure-compute demos that are safe to run to completion headless. */
     internal val EXECUTE = setOf(
+        "sentence_diagrams",
         // visualizers.md's presets demo: a preset bar, record button and MIDI learn; the MIDI box feeds stand-in CCs.
         "controls_presets_morph_midi",
         // Loads a committed glTF fixture through Assimp and opens column()/tree() on it; no renderer.
@@ -590,6 +591,7 @@ object DemoTranscriptExecSmokeTest {
 
     /** Graphics demos: box bodies are compiled (real pipeline, eval skipped) but not launched. */
     internal val COMPILE_ONLY = setOf(
+        "text_one_vr",
         // Interactive playback loops and optional ARDY/CLoSD workers; portable APIs have JVM tests.
         "motion_recording_probe",
         "motion_closd_recording",

@@ -433,6 +433,22 @@
     scrollbar-color: var(--field-scrollbar-thumb) transparent;
 }
 
+.afield-palette-control-preview {
+    pointer-events: none;
+    padding: 12px;
+    border: 1px solid #333;
+    border-radius: 6px;
+    overflow: hidden;
+}
+.afield-palette-control-preview .field-control {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+.afield-palette-control-value { font-family: var(--field-font-code, monospace); }
+.afield-control-reveal { outline: 2px solid var(--field-accent, #5ce1ff); outline-offset: 4px; }
+
 .afield-palette-doc {
     min-width: 0;
     max-height: min(610px, calc(100vh - 176px));
