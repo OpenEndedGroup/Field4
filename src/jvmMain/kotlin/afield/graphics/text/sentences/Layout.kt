@@ -331,6 +331,8 @@ data class LayoutConfig(
      * keeping them here means every text size has one home and the renderers cannot disagree.
      */
     val tagSize: Double = 9.5,
+    /** Label-baseline offset from its tree anchor; branches and node decorations keep the anchor. */
+    val tagOffset: P = P(7.0, 0.0),
     /** Widths for relation labels. Should agree with [labelSize]. */
     val labelMetrics: Metrics = ApproxSerifMetrics(11.0),
     /** How far below the curve a relation label's baseline sits. */

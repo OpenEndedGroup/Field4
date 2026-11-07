@@ -177,6 +177,7 @@ operations:
         val cx = (xs.min() + xs.max()) * .5
         val cy = (ys.min() + ys.max()) * .5
         val metres = min(2.0 / (xs.max() - xs.min()), 1.15 / (ys.max() - ys.min()))
+        val tagMetrics = Java2DMetrics(face.awtFont.deriveFont(13f))
         fun world(p: P, z: Double = 0.0) = vec(((p.x - cx) * metres).toFloat(), (-(p.y - cy) * metres).toFloat(), z.toFloat())
         val graph = readingDiagram {
             val nodes =
@@ -214,7 +215,8 @@ operations:
                     shape = DiagramPointShape.RING
                 }
                 if (!n.leaf)
-                    text("tag-${n.id}", n.label, anchor.offset(y = .018f)) {
+                    // Text anchors are centred: add half its measured width, then clear the joint ring.
+                    text("tag-${n.id}", n.label, anchor.offset(x = (.012 + tagMetrics.width(n.label) * metres * .5).toFloat(), y = .018f)) {
                         scale = (13.0 * metres / .09).toFloat()
                         color = vec(.75f, .47f, .2f, 1f)
                     }

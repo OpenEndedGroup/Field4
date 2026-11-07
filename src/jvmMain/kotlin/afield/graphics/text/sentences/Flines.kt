@@ -152,7 +152,7 @@ fun Diagram.toFLines(
         texts += TextItem(w.word, P(w.left, w.baseline), 0.0, TextKind.WORD)
     }
     for (n in nodes) {
-        texts += TextItem(n.label, n.at, 0.0, TextKind.TAG)
+        texts += TextItem(n.label, n.at + config.tagOffset, 0.0, TextKind.TAG)
     }
     if (config.arcLabels) {
         for (a in arcs) {
