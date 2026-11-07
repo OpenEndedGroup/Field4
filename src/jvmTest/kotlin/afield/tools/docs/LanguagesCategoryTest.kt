@@ -118,6 +118,8 @@ class LanguagesCategoryTest {
             "src/jvmMain/kotlin/afield/lang/stacksl/evolution/StackSLEvolve.kt" to "Search",
             // Added in place, not moved: the collection-literal compile audit (2026-11-06).
             "src/jvmMain/kotlin/afield/examples/CollectionLiteralCompileAudit.kt" to "Internal",
+            // Not moved: ToolPool.kt kept its annotation when afield/ai/tools/ got the AI4 page (2026-11-07).
+            "src/jvmMain/kotlin/afield/ai/tools/ToolPool.kt" to "Workspace",
         )
         val prefixes = referenceOnlyPathCategories().flatMap {
             StdlibReferenceGenerator.pathAssignedPrefixesFor(it)

@@ -136,7 +136,9 @@ the document chat, a headless agent task. There the agent watches a build with
 either, since only a call the model makes itself can end its turn.
 
 See also: [Studies](studies.md), [AI features](aiFeatures.md),
-[Experimenting with AI4](ai4_experiments.md).
+[Experimenting with AI4](ai4_experiments.md). The build tools and the wait are
+[`StudyBuildTools.kt`](reference/ai4.md#studybuildtools-kt) and
+[`StudyBuildAwaits.kt`](reference/ai4.md#studybuildawaits-kt) in the [AI4 reference](reference/ai4.md).
 
 ??? aside "How these figures were made"
     By `tools/capture_ai4_long_builds.py`, on a Field it starts in a temporary workspace. It runs the

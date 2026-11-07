@@ -10,7 +10,10 @@ the same arguments and reads the same responses during a chat. Long strings and 
 shortened here, and box IDs are shown as `<uid of Name>`.
 
 Your own tools join these when you register them; see
-[Give the AI a tool of your own](aiFeatures.md#give-the-ai-a-tool-of-your-own).
+[Give the AI a tool of your own](aiFeatures.md#give-the-ai-a-tool-of-your-own). Each tool is a
+request class in Field's source, and the [AI4 codebase reference](reference/ai4.md) carries its
+KDoc: start from [`Tools.kt`](reference/ai4.md#tools-kt) for the core set and
+[`ToolMeta.kt`](reference/ai4.md#toolmeta-kt) for what the Effects column means.
 
 ## Making and running boxes
 
