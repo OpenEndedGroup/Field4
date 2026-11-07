@@ -18,7 +18,7 @@ with no shortcut runs from the command palette. On Windows and Linux, `cmd` is `
 | What | Command | Default shortcut |
 | --- | --- | --- |
 | Command palette | `open-command-palette` | `cmd+shift+p`, `f1` |
-| Open Anything | `open-anything` | `cmd+p` |
+| Open Anything | `open-anything` | <kbd>⌘</kbd><kbd>P</kbd> / <kbd>^</kbd><kbd>P</kbd> |
 | Insert a template | `insert-from-workspace` | `cmd+t` |
 | AI chat for the selected box | `ai-chat-panel` | `cmd+4` |
 | Shortcut card | `show-cheatsheet` | `?` |
@@ -55,9 +55,28 @@ ui.pause(600)
 ## The command palette and Open Anything
 
 The command palette (`cmd+shift+p` or `F1`) lists every command Field has, with its shortcut,
-and filters as you type. Open Anything (`cmd+p`) searches boxes, properties and text across the
-document and jumps to what you pick. **Esc** closes either. The
+and filters as you type. Open Anything (<kbd>⌘</kbd><kbd>P</kbd> on macOS, <kbd>^</kbd><kbd>P</kbd>
+on Windows and Linux) searches
+boxes, controls, properties and text across the document, as well as documentation, and jumps to
+what you pick. **Esc** closes either. The
 [Survival Guide](survivalGuide.md#the-command-palette) has more on the palette.
+
+Type a label such as `gain` to find a control alongside the other results, or start your search with
+one character to choose a category:
+
+| Prefix | Search | Example |
+| --- | --- | --- |
+| `>` | Control labels | `> gain` |
+| `?` | Documentation | `? keyframes` |
+| <code>&#96;</code> | Code and text properties | <code>&#96; pheromoneField</code> |
+| `,` | Box names | `, renderer` |
+
+Control results show the owning box and output channel, so repeated labels can be told apart. The
+preview pane shows the current value and a live, read-only view of the control. Press **Enter** to
+select its box, open its output panel and scroll the control into view. Field centres the control
+in the space left by the editor and other panels, using the same framing rules as **Frame Selected**.
+This searches controls that the boxes have already created in their output areas; run a box first
+if its controls do not exist yet.
 
 **Insert template** (`cmd+t`) is the same kind of palette over your saved templates: pick one and
 a copy of its boxes lands where the mouse is. [Templates](templates.md) covers saving them.
