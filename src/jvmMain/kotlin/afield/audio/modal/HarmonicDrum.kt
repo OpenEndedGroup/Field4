@@ -263,7 +263,8 @@ class HarmonicityMap(
     }
 
     /**
-     * The map as filled cells, radius across and mass ratio up (log spaced rows are drawn evenly),
+     * The map as filled cells for `lines(...)` (whose y runs down), radius across and mass ratio up
+     * (log spaced rows are drawn evenly),
      * coloured from bright (harmonic, below [good] cents) to dark (above [bad] cents), in a [w] × [h]
      * box. [marks] are extra (radius, mass ratio) points drawn as white rings, interpolated
      * between grid lines.
@@ -275,7 +276,7 @@ class HarmonicityMap(
         for (i in massRatios.indices) for (j in radii.indices) {
             val u = ((ln(cents[i][j]) - ln(good)) / (ln(bad) - ln(good))).coerceIn(0.0, 1.0)
             out += FLine().apply {
-                val x0 = j * cw; val y0 = i * ch
+                val x0 = j * cw; val y0 = (massRatios.size - 1 - i) * ch
                 moveTo(x0, y0); lineTo(x0 + cw * 0.96, y0); lineTo(x0 + cw * 0.96, y0 + ch * 0.96); lineTo(x0, y0 + ch * 0.96); lineTo(x0, y0)
                 filled = true; stroked = false
                 color = heatColour(1 - u)
@@ -283,7 +284,7 @@ class HarmonicityMap(
         }
         for ((k, mu) in marks) {
             val px = (interpIndex(radii, k) + 0.5) * cw
-            val py = (interpIndex(massRatios, mu) + 0.5) * ch
+            val py = (massRatios.size - 1 - interpIndex(massRatios, mu) + 0.5) * ch
             out += FLine().apply {
                 val rr = 0.35 * min(cw, ch)
                 moveTo(px + rr, py)

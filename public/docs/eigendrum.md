@@ -396,7 +396,7 @@ val modes = polarDrumMesh(0.04) { 1.0 }.withDensity(syahi(0.4, 3.125 * 3.125)).m
 val labels = modes.circularLabels()
 val ring = labels.indexOf(CircularLabel(0, 2))
 val cross = labels.indexOf(CircularLabel(2, 1))
-val mixes = [0.0, 0.4, 0.75, 1.3, 1000.0]
+val mixes = [0.0, 0.6, 1.0, 1.25, 2.5, 1000.0]
 val out = ArrayList<FLine>()
 mixes.forEachIndexed { i, w ->
     val dx = i * 2.3f
@@ -466,8 +466,8 @@ val rnd = java.util.Random(3)
 val shapes = (0 until 40).map {
     PolarShape.circle(5).apply {
         for (k in 2..5) {
-            cosine[k] = 0.4 * (rnd.nextDouble() - 0.5) / k
-            sine[k] = 0.4 * (rnd.nextDouble() - 0.5) / k
+            cosine[k] = 0.5 * (rnd.nextDouble() - 0.5) / k
+            sine[k] = 0.5 * (rnd.nextDouble() - 0.5) / k
         }
     }
 }
@@ -480,7 +480,7 @@ val scores =
         }
         .toList()
 val syahi = loadedDisk(Raman.compositeRadius, Raman.compositeMassRatio, h = 0.07).modes(15)
-fun dot(f: Double, cents: Double) = fline { circle((f - 1.0) * 400, cents, 6.0) }.apply { filled = true }
+fun dot(f: Double, cents: Double) = fline { circle((f - 1.0) * 400, 400 - cents, 6.0) }.apply { filled = true }
 val out = ArrayList<FLine>()
 out +=
     fline {
@@ -519,7 +519,7 @@ skin, the top of the range makers use. Each step needs only one solve, because t
 exact: making a patch 1% heavier lowers each mode's λ by that mode's share of energy on the patch,
 times 1%.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/eigendrum/syahi.png" embed=true alt="A table of syahi designs with one, two and three layers, their radii, added densities and distances from a harmonic series falling from about 28 to 18 cents; below it four density profiles stepping down from the centre to the rim"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/eigendrum/syahi.png" embed=true timeout="300" alt="A table of syahi designs with one, two and three layers, their radii, added densities and distances from a harmonic series falling from about 28 to 18 cents; below it four density profiles stepping down from the centre to the rim"}
 import afield.audio.modal.*
 
 // Fit a syahi of one, two and three stacked layers to 1:2:3:4:5, each starting from
@@ -611,22 +611,22 @@ display(
 ### Morphing between them
 
 The live voice glides between any drums with the same number of modes. This one runs from the bare
-drum through Ramakrishna and Sondhi's syahi to the fitted two-layer one and back, every four
+drum through Ramakrishna and Sondhi's syahi to the fitted one-layer one and back, every four
 seconds, striking itself between the paste and the rim. The table lists the overtones it passes
 through.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/eigendrum/raman-morph.png" embed=true alt="A table with three rows, bare, composite and two-layer, of frequency ratios for modes two to eight, the bare row starting 1.593 and the loaded rows close to 2, 3 and 4"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/eigendrum/raman-morph.png" embed=true alt="A table with three rows, bare, composite and one layer, of frequency ratios for modes two to eight, the bare row starting 1.593 and the loaded rows close to 2, 3 and 4"}
 import afield.audio.modal.*
 
 // From the bare drum to Raman's harmonic drum and back, every 4 s, as a live voice.
 val bare = polarDrumMesh(0.07) { 1.0 }.modes(15)
 val composite = loadedDisk(Raman.compositeRadius, Raman.compositeMassRatio, h = 0.07).modes(15)
-val fitted = designSyahi(2, h = 0.08).modes
+val fitted = designSyahi(1, h = 0.08).modes
 val drums = [bare, composite, fitted]
 val names = ["f₂", "f₄", "f₆", "f₇", "f₉", "f₁₁", "f₁₅"]
 val picks = [1, 3, 5, 6, 8, 10, 14]
 val spectra = table(
-    "drum" to ["bare", "composite", "two layers"],
+    "drum" to ["bare", "composite", "one layer"],
     *names.mapIndexed { c, name -> name to drums.map { it.ratios()[picks[c]] } }.toTypedArray(),
 )
 names.forEach { n -> spectra.format(n) { (it as Double).f3 } }
