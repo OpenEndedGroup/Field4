@@ -271,6 +271,17 @@ class DeBruijnTiling3D(
     fun layer(plane: DeBruijnPlane): List<DeBruijnCell> = cells.filter { it.on(plane) }
 
     /**
+     * The cells whose crossings lie strictly between plane [from] and plane [to] of [family]: a
+     * stack of `to - from` layers. Its top and bottom are each a surface of whole faces with no
+     * edge-only contacts (the surface dual to the lines the other families draw on one plane), so
+     * through [toSolid] it makes a slab that prints. A cell on plane [from] or [to] is left out.
+     */
+    fun between(family: Int, from: Int, to: Int): List<DeBruijnCell> = cells.filter { c ->
+        val on = c.planes.firstOrNull { it.family == family }
+        if (on != null) on.index in from + 1 until to else c.lift(0)[family] in from until to
+    }
+
+    /**
      * Each face shared by two cells, as their two indices into [cells]; the dual graph's edges.
      * A face on the boundary of the patch has one cell and is not listed.
      */
@@ -376,7 +387,7 @@ class DeBruijnTiling3D(
 
     /**
      * This tiling turned so that [up] points along +z: the same cells, the same lifts, with every
-     * corner recomputed from rotated directions. Use it to lay a slab or a relief flat.
+     * corner (and every crossing) turned with the directions. Use it to lay a slab or a relief flat.
      */
     fun oriented(up: Vector3d): DeBruijnTiling3D {
         val z = normalize(up)
@@ -390,7 +401,7 @@ class DeBruijnTiling3D(
                 val p = rotate(Vector3d(cell.x(k, 0), cell.x(k, 1), cell.x(k, 2)))
                 xyz[k * 3] = p.x; xyz[k * 3 + 1] = p.y; xyz[k * 3 + 2] = p.z
             }
-            DeBruijnCell(cell.shape, cell.planes, cell.crossing, cell.lift(0), xyz, cell.rightHanded, cell.volume)
+            DeBruijnCell(cell.shape, cell.planes, rotate(cell.crossing), cell.lift(0), xyz, cell.rightHanded, cell.volume)
         }
         return DeBruijnTiling3D(turned, offsets, moved, shapeVolumes)
     }

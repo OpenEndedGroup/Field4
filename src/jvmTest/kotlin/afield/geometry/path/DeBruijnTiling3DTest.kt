@@ -136,6 +136,30 @@ class DeBruijnTiling3DTest {
         }
     }
 
+    /** The cells between two planes of one family are bounded by manifold surfaces: every edge of the boundary has two faces. */
+    @Test
+    fun betweenIsBoundedByManifoldSurfaces() {
+        val t = deBruijnTiling3D(radius = 5.0, scale = 1.0)
+        val slab = t.between(family = 0, from = 0, to = 2)
+        assertTrue(slab.isNotEmpty())
+        assertTrue(slab.none { it.on(DeBruijnPlane(0, 0)) || it.on(DeBruijnPlane(0, 2)) })
+        assertTrue(slab.any { it.on(DeBruijnPlane(0, 1)) })
+        val count = HashMap<List<List<Int>>, Int>()
+        for (c in slab) for (f in c.faces()) count.merge(c.faceKey(f), 1, Int::plus)
+        val edges = HashMap<List<List<Int>>, Int>()
+        val central = ArrayList<List<List<Int>>>()
+        for (c in slab) for (f in c.faces()) {
+            if (count[c.faceKey(f)] != 1) continue
+            for (i in 0 until 4) {
+                val edge = listOf(c.lift(f[i]).toList(), c.lift(f[(i + 1) % 4]).toList()).sortedWith(DeBruijnCell.LIFT_ORDER)
+                edges.merge(edge, 1, Int::plus)
+                if (length(c.crossing) < 3.0) central += edge
+            }
+        }
+        assertTrue(central.size > 100, "only ${central.size} central boundary edges")
+        for (e in central) assertEquals(2, edges[e], "a boundary edge near the middle has ${edges[e]} faces")
+    }
+
     @Test
     fun everyStarTiles() {
         val cubic = deBruijnTiling3D(DeBruijnStar.CUBIC, radius = 3.0, scale = 1.0)

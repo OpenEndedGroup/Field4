@@ -165,34 +165,39 @@ showPlaneGrid(*panels.toTypedArray(), columns = 3, cellWidth = 240, cellHeight =
 ## A printable slab, through Manifold
 
 `oriented(up)` turns the tiling so that `up` points along +z, without moving any cell relative to
-its neighbours. Turn a 5-fold axis upright, keep the cells whose centres lie in a thin slab, and
-`toSolid(slab)` welds them into one solid whose top is a terrain of golden-rhombus faces. Trimming the
-bottom flat makes it something a printer can stand on. The welded volume is printed beside the sum
-of the cell volumes it came from: equal, because the cells neither overlap nor leave gaps.
+its neighbours. `between(family, from, to)` keeps the cells whose crossings lie between two planes
+of one family. Their top and bottom are surfaces made of whole golden-rhombus faces, so
+`toSolid(...)` welds them into one clean solid. Below, a 5-fold axis stands upright and the cells
+between planes 0 and 2 of that family are welded, cut to a disk and trimmed flat underneath, which
+leaves a disk with a terrain of rhombic faces on top and a flat base to print from. The caption prints the
+welded volume beside the sum of the cell volumes it came from. They agree, because the cells
+neither overlap nor leave gaps.
 
 ```diffstatic_runner {data-lang=kotlin embed=true screenshot="assets/debruijn_tilings_3d/slab.png" wait="5" capture="box" open-outputs="true" padding="20" requires="manifold" w="760" name="debruijn3d-slab"}
 import afield.geometry.solid.manifold.*
 
-// Stand a 5-fold axis upright, then keep a slab 18 units thick and 100 across.
-val t = deBruijnTiling3D(radius = 4.5, scale = 10.0).oriented(DeBruijnStar.ICOSAHEDRAL.directions[0])
-val slab = t.cells.filter { abs(it.center.z) < 9.0 && hypot(it.center.x, it.center.y) < 50.0 }
+// Stand a 5-fold axis upright and keep two layers: the cells between planes 0 and 2 of family 0.
+val t = deBruijnTiling3D(radius = 4.0, scale = 10.0).oriented(DeBruijnStar.ICOSAHEDRAL.directions[0])
+val slab = t.between(family = 0, from = 0, to = 2).filter { hypot(it.center.x, it.center.y) < 60.0 }
+val floor = slab.sumOf { it.center.z } / slab.size
 
 val (welded, relief) =
     Solid.scope {
         val union = t.toSolid(slab)
-        // Keep everything above z = -6: a flat bottom to print from.
-        union.volume to union.trimByPlane(0.0, 0.0, 1.0, -6.0)
+        // A disk 90 across, trimmed flat at the slab's middle height.
+        val disk = Solid.cylinder(400.0, 45.0, segments = 96, center = true)
+        union.volume to (union and disk).trimByPlane(0.0, 0.0, 1.0, floor)
     }
 
 showMesh(
     relief.toTriMesh().withColor(0.85, 0.80, 0.68),
-    title = "a slab of the 3D Penrose tiling, ${slab.size} cells, 5-fold axis up",
+    title = "two layers of the 3D Penrose tiling, 5-fold axis up · genus ${relief.genus}",
     caption =
-        "sum of cell volumes %.1f · welded by Manifold %.1f · bottom trimmed flat at z = -6".format(
+        "${slab.size} cells · sum of cell volumes %.1f · welded by Manifold %.1f".format(
             slab.sumOf { it.volume },
             welded,
         ),
-    view = MeshView(yawDegrees = 20.0, pitchDegrees = 55.0, width = 760, height = 520),
+    view = MeshView(yawDegrees = 20.0, pitchDegrees = 50.0, width = 760, height = 520),
 )
 ```
 

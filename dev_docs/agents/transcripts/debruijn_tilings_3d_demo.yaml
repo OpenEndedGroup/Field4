@@ -26,41 +26,40 @@ operations:
 
           val (union, hull) =
               Solid.scope {
-                  val cells = Solid.union(t.cells.map { Solid.hullOfPointsD(it.cornerArray()) })
+                  // The control: the convex hull of every corner, which is the triacontahedron.
                   val corners = Solid.hullOfPointsD(t.cells.flatMap { it.cornerArray().toList() }.toDoubleArray())
-                  cells.toTriMesh(normals = true) to corners.volume
+                  t.toSolid().toTriMesh() to corners.volume
               }
 
           showMeshGrid(
-              "the twenty cells, pulled apart" to t.toTriMesh(shrink = 0.8),
-              "their union, through Manifold" to union.withColor(0.75, 0.78, 0.84),
+              "${counts[1]} prolate + ${counts[2]} oblate, pulled apart" to t.toTriMesh(shrink = 0.8),
+              "their Manifold union · cells %.1f · hull %.1f".format(t.volume(), hull) to union.withColor(0.75, 0.78, 0.84),
               columns = 2,
               cellWidth = 370,
           )
-          "prolate ${counts[1]}, oblate ${counts[2]} · sum of cells %.2f · convex hull %.2f".format(t.volume(), hull)
   - create:
       box: debruijn3d_patch
       name: a patch of the 3D Penrose tiling
       frame: { x: 700.0, y: 80.0, w: 400.0, h: 100.0 }
       properties:
         code: |
+          // prolate / oblate against the radius of the patch, beside the golden ratio.
+          val phi = (1 + sqrt(5.0)) / 2
+          val ratios =
+              [2, 4, 8, 12].joinToString(" · ") { r ->
+                  val counts = deBruijnTiling3D(radius = r.toDouble()).shapeCounts()
+                  "radius $r: %.4f".format(counts.getValue(1).toDouble() / counts.getValue(2))
+              }
+
           val penrose3 = deBruijnTiling3D(radius = 2.0, scale = 10.0)
           // The cells whose crossing is nearest the middle of the grid.
           val middle = penrose3.cells.filter { it.crossing.length() < 1.3 }
           showMesh(
               penrose3.toTriMesh(only = middle, shrink = 0.88),
-              title = "${middle.size} cells of the 3D Penrose tiling",
-              caption = "yellow: prolate rhombohedron, blue: oblate · each shrunk to 88% about its centre",
+              title = "${middle.size} cells of the 3D Penrose tiling, each shrunk to 88%",
+              caption = "yellow prolate, blue oblate · prolate/oblate $ratios · φ = %.4f".format(phi),
               view = MeshView(yawDegrees = 25.0, pitchDegrees = 22.0, width = 720, height = 520),
           )
-
-          // prolate / oblate against the radius of the patch, beside the golden ratio.
-          val phi = (1 + sqrt(5.0)) / 2
-          for (r in [2.0, 4.0, 6.0, 8.0]) {
-              val counts = deBruijnTiling3D(radius = r).shapeCounts()
-              val ratio = counts.getValue(1).toDouble() / counts.getValue(2)
-              println("radius $r: ${counts[1]} prolate, ${counts[2]} oblate, ratio %.4f (φ %+.4f)".format(ratio, ratio - phi))
-          }
   - create:
       box: debruijn3d_slices
       name: slices across 5-, 3- and 2-fold axes
@@ -124,36 +123,41 @@ operations:
                   val t = deBruijnTiling3D(star, radius = if (star.directions.size > 6) 3.0 else 4.0, scale = 10.0)
                   val shapes = t.shapeCounts().values.joinToString(" : ")
                   val name = star.name.lowercase().replace('_', ' ')
-                  "$name, ${t.directions.size} families\n${t.shapeVolumes.size} cell shapes, $shapes" to t.slice(cut, offset = 0.5).lines()
+                  "$name, ${t.directions.size} families\ncell shapes ${t.shapeVolumes.size}, counts $shapes" to t.slice(cut, offset = 0.5).lines()
               }
 
           showPlaneGrid(*panels.toTypedArray(), columns = 3, cellWidth = 240, cellHeight = 240, window = Rect(-55.0, -55.0, 110.0, 110.0))
   - create:
       box: debruijn3d_slab
-      name: a printable slab through Manifold
+      name: two layers welded into a printable slab
       frame: { x: 700.0, y: 1440.0, w: 400.0, h: 100.0 }
       properties:
         code: |
           import afield.geometry.solid.manifold.*
 
-          // Stand a 5-fold axis upright, then keep a slab 18 units thick and 100 across.
-          val t = deBruijnTiling3D(radius = 4.5, scale = 10.0).oriented(DeBruijnStar.ICOSAHEDRAL.directions[0])
-          val slab = t.cells.filter { abs(it.center.z) < 9.0 && hypot(it.center.x, it.center.y) < 50.0 }
+          // Stand a 5-fold axis upright and keep two layers: the cells between planes 0 and 2 of family 0.
+          val t = deBruijnTiling3D(radius = 4.0, scale = 10.0).oriented(DeBruijnStar.ICOSAHEDRAL.directions[0])
+          val slab = t.between(family = 0, from = 0, to = 2).filter { hypot(it.center.x, it.center.y) < 60.0 }
+          val floor = slab.sumOf { it.center.z } / slab.size
 
           val (welded, relief) =
               Solid.scope {
-                  val union = Solid.union(slab.map { Solid.hullOfPointsD(it.cornerArray()) })
-                  // Keep everything above z = -6: a flat bottom to print from.
-                  union.volume to union.trimByPlane(0.0, 0.0, 1.0, -6.0)
+                  val union = t.toSolid(slab)
+                  // A disk 90 across, trimmed flat at the slab's middle height.
+                  val disk = Solid.cylinder(400.0, 45.0, segments = 96, center = true)
+                  union.volume to (union and disk).trimByPlane(0.0, 0.0, 1.0, floor)
               }
 
           showMesh(
-              relief.toTriMesh(normals = true).withColor(0.85, 0.80, 0.68),
-              title = "a slab of the 3D Penrose tiling, ${slab.size} cells",
-              caption = "5-fold axis up, bottom trimmed flat at z = -6",
-              view = MeshView(yawDegrees = 20.0, pitchDegrees = 40.0, width = 760, height = 520),
+              relief.toTriMesh().withColor(0.85, 0.80, 0.68),
+              title = "two layers of the 3D Penrose tiling, 5-fold axis up · genus ${relief.genus}",
+              caption =
+                  "${slab.size} cells · sum of cell volumes %.1f · welded by Manifold %.1f".format(
+                      slab.sumOf { it.volume },
+                      welded,
+                  ),
+              view = MeshView(yawDegrees = 20.0, pitchDegrees = 50.0, width = 760, height = 520),
           )
-          "cells %.0f · welded %.0f · genus ${relief.genus}".format(slab.sumOf { it.volume }, welded)
   - execute:
       box: debruijn3d_triacontahedron
   - execute:
