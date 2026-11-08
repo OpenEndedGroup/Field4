@@ -78,7 +78,7 @@ operations:
 
         workspace?.panel?.panel?.faceToward(vec(-2.3f, 0f, -1.6f), vec(0f, 0f, 0f))
 
-        var pairPreview = false
+        var pairPreview = true
         stereo.mirrorToScreen(windowIndex = if (preview != null) 1 else 0, name = "video-preview", stereoPair = { pairPreview })
 
         controlGroup("preview") {
@@ -615,3 +615,8 @@ operations:
     code: |-
       check(movie.hasFrame)
       check(kotlin.math.abs(movie.timestamp - .75) < .05)
+- execute:
+    box: video1_context
+    code: |-
+      stereo.stereoCamera.base.at.set(.12f, .04f, 0f)
+      stereo.stereoCamera.base.target.set(0f, 0f, -2.5f)

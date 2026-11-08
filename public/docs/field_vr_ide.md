@@ -281,7 +281,7 @@ Steam Audio binaural stereo from the published headset pose. It opens a dedicate
 WiVRn output, leaving the desktop default alone. Steam Audio's native library is installed
 with `./gradlew fetchSteamAudioNatives`.
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 val sound = SpatialWavPlayer(
     "voice.wav".file,
     renderer.openXRHmdTarget!!.asHeadPoseSource(),

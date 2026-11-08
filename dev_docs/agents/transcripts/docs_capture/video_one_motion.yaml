@@ -78,7 +78,7 @@ operations:
 
         workspace?.panel?.panel?.faceToward(vec(-2.3f, 0f, -1.6f), vec(0f, 0f, 0f))
 
-        var pairPreview = false
+        var pairPreview = true
         stereo.mirrorToScreen(windowIndex = if (preview != null) 1 else 0, name = "video-preview", stereoPair = { pairPreview })
 
         controlGroup("preview") {
@@ -553,8 +553,17 @@ operations:
 
         // Render at the runtime cadence; send inexpensive transport/status updates at four Hz.
         var lastStatus = 0L
+        val demoPoseStart = System.nanoTime()
 
+        // A simulated desktop head, not a recorded headset pose: both eyes follow this camera.
         loop {
+            val t = (System.nanoTime() - demoPoseStart) / 1e9
+            stereo.stereoCamera.base.at.set(
+                (.16 * kotlin.math.sin(t * 1.1)).toFloat(),
+                (.045 * kotlin.math.sin(t * .7)).toFloat(),
+                (.10 * kotlin.math.sin(t * .9)).toFloat(),
+            )
+            stereo.stereoCamera.base.target.set((.12 * kotlin.math.sin(t * .8)).toFloat(), 0f, -2.5f)
             renderer.windows.forEach { it.pollEvents() }
             renderer.render()
 
