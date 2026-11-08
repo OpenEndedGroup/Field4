@@ -376,12 +376,29 @@ object RuntimeDebugProbeService {
             ?: System.getenv("AFIELD_JDWP_HOST")
             ?: "127.0.0.1"
 
+    /**
+     * The port this JVM's JDWP agent is listening on. The agent's own record comes first, since with
+     * `AFIELD_JDWP_PORT=auto` (the backdoor's default) it bound an ephemeral port nobody chose; the
+     * configured number is the fallback for a JVM started without the export that record needs.
+     */
     private fun jdwpPort(): Int? {
+        listenerPort()?.let { return it }
         val raw = System.getProperty("afield.jdwp.port")
             ?: System.getenv("AFIELD_JDWP_PORT")
             ?: return null
         return raw.toIntOrNull()
     }
+
+    /**
+     * The port in the JDWP agent's `sun.jdwp.listenerAddress` (`dt_socket:59923`), or null without a
+     * listening agent. It is an agent property, not a system property, so it is read through
+     * `jdk.internal.vm.VMSupport`, which `runJvm` exports alongside the agent.
+     */
+    private fun listenerPort(): Int? = runCatching {
+        val properties = Class.forName("jdk.internal.vm.VMSupport").getMethod("getAgentProperties")
+            .invoke(null) as java.util.Properties
+        properties.getProperty("sun.jdwp.listenerAddress")?.substringAfterLast(':')?.toIntOrNull()
+    }.getOrNull()
 
     private fun errorEvent(ctx: ProbeContext, message: String): Message =
         renderEvent(

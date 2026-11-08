@@ -369,7 +369,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
     - *loris* — [Audio](audio.md#loris-kt) · [Visualization](visualization.md#lorisvisualizer-kt)
 - *csound* — [Audio](audio.md#csddocument-kt) · [Synthesis](synthesis.md#csoundinstance-kt)
 - [engine](audio.md#oscillatorbankarrays-kt)
-- [modal](audio.md#eigendrum-kt)
+- [modal](audio.md#drumdesign-kt)
 - [pd](synthesis.md#pdinstance-kt)
 - spatial
     - [steamaudio](audio.md#ambisonicseffects-kt)
@@ -659,7 +659,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**36990 public symbols across 1672 source files**, 21620 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**37070 public symbols across 1674 source files**, 21695 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -684,7 +684,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Visualization](visualization.md) | 62 | 1731 | 1238 (71%) | Turning a value into something you can look at, without leaving the box. |
 | [Synthesis](synthesis.md) | 43 | 1534 | 763 (49%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
 | [Patterns](patterns.md) | 40 | 1317 | 721 (54%) | Musical time, as a value. |
-| [Audio](audio.md) | 85 | 2212 | 1105 (49%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
+| [Audio](audio.md) | 87 | 2292 | 1180 (51%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 22 | 586 | 586 (100%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 123 | 3103 | 1527 (49%) | Field's small languages, from the host side. |
 | [Workspace](workspace.md) | 239 | 3212 | 1294 (40%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
@@ -1063,6 +1063,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [DrawnMorphDocs.kt](patterns.md#drawnmorphdocs-kt) | Patterns | 22 | 13 | The harness that renders the sound on `chain_drawn_morph.md` from two strokes in a document's drawing. | [A Drawn Morph, Heard](../chain_drawn_morph.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [DrawnScoreDocs.kt](patterns.md#drawnscoredocs-kt) | Patterns | 32 | 21 | A drawn score, heard — the harness behind `public/docs/chain_drawn_score.md`. | [A Drawn Score, Heard](../chain_drawn_score.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>memory/<wbr></small> [Dreaming.kt](machine-learning.md#dreaming-kt) | Machine learning | 18 | 11 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>modal/<wbr></small> [DrumDesign.kt](audio.md#drumdesign-kt) | Audio | 39 | 36 |  | [Eigendrum: hear the shape of a drum](../eigendrum.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>math/<wbr>linalg/<wbr></small> [DualQuaternionf.kt](math.md#dualquaternionf-kt) | Math | 28 | 1 | Rigid 3D transforms (rotation plus translation) as mutable unit dual quaternions, with blending. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>examples/<wbr>four/<wbr></small> [DualQuaternionfSmokeTest.kt](examples.md#dualquaternionfsmoketest-kt) | Examples · internal | 2 | 0 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>scene/<wbr></small> [DualQuaternionSkinning.kt](graphics.md#dualquaternionskinning-kt) | Graphics | 6 | 6 | The second of Field's two skinning blends: joint motions averaged as dual quaternions, for rigs that twist far enough to break the usual one. |  |
@@ -1075,8 +1076,8 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>document/<wbr>persistence/<wbr></small> [edn.kt](workspace.md#edn-kt) | Workspace · internal | 21 | 7 | An EDN reader and printer, the text format of a document's `metadata.edn`. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>controls/<wbr></small> [EffectiveParameter.kt](workspace.md#effectiveparameter-kt) | Workspace | 13 | 1 | A bounded scalar parameter that keeps the value it was asked for apart from the value it uses. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [Effects.kt](synthesis.md#effects-kt) | Synthesis | 76 | 47 | The mono effects: delays, reverbs, distortions and dynamics, each one a `SignalProcessor` that `/` pipes a signal into. | [Visualizers, Displays, and Little Instruments](../visualizers.md) |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>modal/<wbr></small> [Eigendrum.kt](audio.md#eigendrum-kt) | Audio | 35 | 35 |  | [Eigendrum: hear the shape of a drum](../eigendrum.md) |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>modal/<wbr></small> [EigendrumDocs.kt](audio.md#eigendrumdocs-kt) | Audio | 4 | 4 |  |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>modal/<wbr></small> [Eigendrum.kt](audio.md#eigendrum-kt) | Audio | 36 | 36 |  | [Eigendrum: hear the shape of a drum](../eigendrum.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>modal/<wbr></small> [EigendrumDocs.kt](audio.md#eigendrumdocs-kt) | Audio | 5 | 5 |  |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>browser/<wbr></small> [ElectronBrowserTextureSession.kt](imaging.md#electronbrowsertexturesession-kt) | Imaging | 0 | 0 | The Electron process that paints a web page for Field, and the ways a frame of it crosses into this process. |  |
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>tools/<wbr>docs/<wbr></small> [ElectronCaptureBrowser.kt](workspace.md#electroncapturebrowser-kt) | Workspace · internal | 5 | 2 | This checkout's Field Electron app, driven by the server's Playwright over CDP. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>stream/<wbr></small> [ElectronRTTView.kt](imaging.md#electronrttview-kt) | Imaging | 12 | 4 | Shows a Field 4 render target live in a box's output area in the Field Electron app, sharing GPU surfaces with Electron instead of reading pixels back. |  |
@@ -1311,6 +1312,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>visualization/<wbr></small> [H2Reflect.kt](visualization.md#h2reflect-kt) | Visualization | 0 | 0 | The reflective half of `.h2`: what a domain object's *children* are, computed once and shared by every surface that shows them. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>spatial/<wbr>steamaudio/<wbr></small> [Handles.kt](audio.md#handles-kt) | Audio | 4 | 3 | Lifetime management for Steam Audio native objects: `SteamAudioObject` wraps a reference-counted handle, releases it once on close, and keeps a cleaner as a backstop for objects that are dropped without closing. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>media/<wbr>vision/<wbr></small> [HardwareOpticalFlow.kt](imaging.md#hardwareopticalflow-kt) | Imaging | 13 | 4 | The hardware optical-flow backend, which drives the VK_NV_optical_flow engine on NVIDIA Ada and later GPUs. |  |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>modal/<wbr></small> [HarmonicDrum.kt](audio.md#harmonicdrum-kt) | Audio | 39 | 37 |  | [Eigendrum: hear the shape of a drum](../eigendrum.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>synth/<wbr></small> [HarmonicPhaseTracker.kt](synthesis.md#harmonicphasetracker-kt) | Synthesis | 27 | 20 | Pitch and phase tracking for harmonically rich monophonic input, through `HarmonicPhaseTracker`. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>vulkan/<wbr>targets/<wbr></small> [HasRenderToTexture.kt](graphics.md#hasrendertotexture-kt) | Graphics | 4 | 4 | A `RenderToTexture` owner that modules can be attached to as if it were the target itself. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>learning/<wbr>pen/<wbr></small> [hatch.kt](machine-learning.md#hatch-kt) | Machine learning | 15 | 7 | Hatching around a drawing with a sensing pen: every stroke of the drawing gets passes of the pen's own trembling line laid beside it, which keep clear of the other strokes and of the hatching already done. |  |

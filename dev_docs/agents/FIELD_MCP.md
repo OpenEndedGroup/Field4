@@ -203,7 +203,7 @@ The probe attaches over JDWP, which is **off by default** — a plain `./gradlew
 opens no debug port. It turns on when `AFIELD_JDWP_PORT` is set, and **the backdoor
 launcher sets it automatically**: any Field started by `tools/field_backdoor.py` (the
 recommended way for agents to start Field — see [`FIELD_BACKDOOR.md`](./FIELD_BACKDOOR.md))
-gets JDWP on port 5005. So if you launched Field through the backdoor, probes just work.
+gets JDWP on an ephemeral port the JVM binds itself (`AFIELD_JDWP_PORT=auto`). So if you launched Field through the backdoor, probes just work.
 
 If you attach to a Field launched some other way, the probe returns a clear, actionable
 `isError` ("This Field process was launched without remote debugging…") telling you to

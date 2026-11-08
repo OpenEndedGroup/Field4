@@ -1,0 +1,121 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-08T13:47:03.732Z",
+  "documentName": "harmonic_drum",
+  "outputs": [
+    {
+      "uid": "hd_shapes",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "hd_triad",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "hd_triad",
+      "channel": "strike",
+      "open": true,
+      "warnings": [
+        "Live media omitted"
+      ],
+      "kinds": [],
+      "width": 428,
+      "height": 62,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "hd_families",
+      "channel": "families",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 286,
+      "height": 236,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "hd_families",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/4.html"
+    },
+    {
+      "uid": "hd_sand",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/5.html"
+    },
+    {
+      "uid": "hd_syahi",
+      "channel": "designs",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 480,
+      "height": 133,
+      "path": "outputs/6.html"
+    },
+    {
+      "uid": "hd_syahi",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/7.html"
+    },
+    {
+      "uid": "hd_morph",
+      "channel": "spectra",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 384,
+      "height": 100,
+      "path": "outputs/8.html"
+    },
+    {
+      "uid": "hd_map",
+      "channel": "lines",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 480,
+      "height": 150,
+      "path": "outputs/9.html"
+    }
+  ]
+}
