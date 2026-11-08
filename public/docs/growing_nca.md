@@ -119,6 +119,8 @@ var step = 0
 var brush = vec(0, 0, 0, 0)
 // set to false to leave the cutting to the mouse alone
 var autoCut = true
+// the angle, in radians, the cells' two gradient sensors are turned by; 0 grows the flower upright
+var angle = 0.0
 
 /*
 Two steps a frame: `forward` reads grid 0 and writes grid 1, `back` reads grid 1 and writes grid 0,
@@ -135,6 +137,7 @@ fun stepMesh(parity: Int): ComputeMesh {
     // compute tasks below advance `step` and set and clear `brush`.
     m.seed = { step }
     m.brush = { brush }
+    m.angle = { angle.toFloat() }
     m.x = (n + 7) / 8
     m.y = (n + 7) / 8
     m.z = 1

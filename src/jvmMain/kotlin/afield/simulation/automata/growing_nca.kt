@@ -379,7 +379,7 @@ class GrowingNca(
         }
 
         /** The names [pretrained] accepts. */
-        val pretrainedNames = listOf("flower")
+        val pretrainedNames = listOf("flower", "fish")
 
         /**
          * A rule that ships with Field, trained to grow [name] (one of [pretrainedNames]) from one
@@ -393,15 +393,26 @@ class GrowingNca(
         }
 
         /**
-         * The picture [name] was trained to grow, `[y][x][rgba]` premultiplied, at the training grid
-         * size (64), for [loss].
+         * The picture [name] was trained to grow, `[y][x][rgba]` premultiplied, for [loss] on a grid
+         * of [size] cells: the training picture (64 square) is padded or cropped about its centre,
+         * so it stays where a seed planted at `size / 2` grows it.
          */
-        fun pretrainedTarget(name: String = "flower"): FloatArray {
+        fun pretrainedTarget(name: String = "flower", size: Int = 64): FloatArray {
             val text = checkNotNull(GrowingNca::class.java.getResourceAsStream("/afield/alife/nca_$name.json")) {
                 "no pretrained growing NCA called '$name'; try one of $pretrainedNames"
             }.bufferedReader().use { it.readText() }
             val o = Json.parseToJsonElement(text).jsonObject
-            return o.getValue("targetRgba").jsonArray.map { it.jsonPrimitive.float }.toFloatArray()
+            val t = o.getValue("targetRgba").jsonArray.map { it.jsonPrimitive.float }.toFloatArray()
+            val from = o["size"]?.jsonPrimitive?.int ?: 64
+            if (size == from) return t
+            val out = FloatArray(size * size * 4)
+            val shift = size / 2 - from / 2
+            for (y in 0 until from) for (x in 0 until from) {
+                val xx = x + shift
+                val yy = y + shift
+                if (xx in 0 until size && yy in 0 until size) System.arraycopy(t, (y * from + x) * 4, out, (yy * size + xx) * 4, 4)
+            }
+            return out
         }
 
         /**
