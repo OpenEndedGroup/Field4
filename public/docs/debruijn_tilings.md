@@ -938,7 +938,7 @@ states, and the 31.5% strike share.
   [`DeBruijnTiling3D.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/geometry/path/DeBruijnTiling3D.kt),
   [`TilingSpectrum.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/geometry/path/TilingSpectrum.kt).
 
-Open questions about the spectrum, each a box or two away:
+Open questions about the spectrum:
 
 - **Periodic approximants.** The rim is the only reason the raw fraction wanders. A rational
   approximant of the Penrose tiling on a torus has no rim, and its count would be exact at every
