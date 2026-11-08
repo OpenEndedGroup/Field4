@@ -1,12 +1,10 @@
 # Overnight Routines
 
-Field's checkout comes with a handful of jobs meant to run on a schedule while you are away: an
-agent that makes improvements overnight, a nightly build-and-test run, a benchmark that notices
-when Field gets slower, a weekly entry for [What's New](changelog.md), a scout that reads the
-day's links for ideas worth bringing in, and a reaper that keeps the agents' worktrees from filling
-your disk. Each one is a folder in [`routines/`](https://github.com/OpenEndedGroup/Field4/blob/main/routines/README.md). Field does not
-schedule anything itself. You choose which routines to run and adopt each into a scheduler you
-already have: an agent's scheduled tasks, `launchd` or `cron`.
+Want Field to run its tests overnight, keep an eye on performance, or look through the day's
+links for ideas? The checkout comes with routines for these jobs and more. Each one is a folder in
+[`routines/`](https://github.com/OpenEndedGroup/Field4/blob/main/routines/README.md), with instructions
+you can read and change. Choose the ones you want and give them to a scheduler you already use:
+an agent's scheduled tasks, `launchd` or `cron`.
 
 None of them is needed to use Field. They are for people who work on Field, or on a fork of it,
 and want the same overnight help.

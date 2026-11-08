@@ -1,9 +1,8 @@
 # What's new
 
-What has changed in Field·4 and on this site, newest first. Each entry covers a few days of work:
-the features that arrived, linked to the page that describes them, and the pages that are new or
-were rewritten. Small fixes and wording changes are left out; the **Changelog** panel on Field's
-Welcome screen lists every commit in your own checkout.
+What's new in Field·4? Here are the features and documentation we've added, newest first, with
+links to the pages where you can try them. For every commit in your own checkout, including small
+fixes and wording changes, open **Changelog** on the Welcome screen.
 
 ## November 2026
 
@@ -12,9 +11,9 @@ Welcome screen lists every commit in your own checkout.
 
 *8 November 2026*
 
-- **Audio curves**: a new page turns a recording into a handful of slow curves, step by step from
-  overlapping windows and ear-weighted spectra to a map that holds still, drawn as FLines under the
-  waveform player. [Audio curves](audio_curves.md).
+- **Audio curves**: turn a recording into curves you can use to control other things. Follow the
+  analysis from overlapping windows and ear-weighted spectra to a locally steady map, drawn as
+  FLines under the waveform player. [Audio curves](audio_curves.md).
 - **Three.js toolbar controls are opt-in**: a view starts as a picture you can orbit, and
   `controls(...)` asks for the tools you want. [Toolbar controls](three_output.md#toolbar-controls).
 - Keyboard shortcuts in the docs are drawn as keycaps in one spelling.
@@ -113,8 +112,9 @@ generator's points to a Datalog program, which checks whether they kept the targ
 *2 November 2026*
 
 - **Field inside VR**: edit Kotlin, run boxes and move around the canvas with the headset on, in a
-  browser panel inside Field's OpenXR scene. Controllers point, scroll and resize it, and a real
-  keyboard and mouse work on Quest 3 with WiVRn and on Vision Pro through ALVR.
+  browser panel inside Field's OpenXR scene. Controllers point, scroll and resize it; a keyboard
+  and mouse connected to Quest 3 work through WiVRn. The Vision Pro path through ALVR is prepared
+  but has not yet been tested with Field.
   [Field inside VR](field_vr_ide.md).
 - **Keyframe sweeps** can render chosen blends, including blends past the saved keys.
   [Blending past the saved keys](keyframe_autosweep.md#blending-past-the-saved-keys).
