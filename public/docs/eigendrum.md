@@ -375,7 +375,8 @@ the paste and the rim:
 and the same drum with the syahi:
 
 ```diffstatic_runner {data-lang=kotlin audio="assets/eigendrum/disk-raman.wav" audio-spec="disk-raman" audio-renderer="afield.audio.modal.EigendrumDocs" embed=true hidden=true name="eigendrum-disk-raman"}
-// offline-rendered by EigendrumDocs.renderWav("disk-raman", ...): Ramakrishna & Sondhi's loaded disk struck at (0.62, 0.15)
+// offline-rendered by EigendrumDocs.renderWav("disk-raman", ...): Ramakrishna & Sondhi's loaded disk struck at (0.62,
+// 0.15)
 ```
 
 ### Two modes at one pitch
@@ -470,24 +471,43 @@ val shapes = (0 until 40).map {
         }
     }
 }
-val scores = shapes.parallelStream().map { s ->
-    val m = disk.polarMorphed(s).modes(15)
-    m.ratios()[1] to m.ramanHarmonicity().rms
-}.toList()
+val scores =
+    shapes
+        .parallelStream()
+        .map { s ->
+            val m = disk.polarMorphed(s).modes(15)
+            m.ratios()[1] to m.ramanHarmonicity().rms
+        }
+        .toList()
 val syahi = loadedDisk(Raman.compositeRadius, Raman.compositeMassRatio, h = 0.07).modes(15)
 fun dot(f: Double, cents: Double) = fline { circle((f - 1.0) * 400, cents, 6.0) }.apply { filled = true }
 val out = ArrayList<FLine>()
-out += fline { moveTo(0.0, 0.0); lineTo(440.0, 0.0); lineTo(440.0, 400.0); lineTo(0.0, 400.0); lineTo(0.0, 0.0) }.apply { color = vec(0.4, 0.4, 0.4, 1.0) }
-out += fline { moveTo(0.593 * 400, 0.0); lineTo(0.593 * 400, 400.0) }.apply { color = vec(1.0, 1.0, 1.0, 1.0); thickness = 1.5 }
+out +=
+    fline {
+        moveTo(0.0, 0.0)
+        lineTo(440.0, 0.0)
+        lineTo(440.0, 400.0)
+        lineTo(0.0, 400.0)
+        lineTo(0.0, 0.0)
+    }
+        .apply { color = vec(0.4, 0.4, 0.4, 1.0) }
+out +=
+    fline {
+        moveTo(0.593 * 400, 0.0)
+        lineTo(0.593 * 400, 400.0)
+    }
+        .apply {
+            color = vec(1.0, 1.0, 1.0, 1.0)
+            thickness = 1.5
+        }
 scores.forEach { (f, c) -> out += dot(f, c).apply { color = vec(0.35, 0.6, 1.0, 1.0) } }
 out += dot(syahi.ratios()[1], syahi.ramanHarmonicity().rms).apply { color = vec(1.0, 0.85, 0.3, 1.0) }
 lines(out, w = 440.0, h = 400.0, fitToSize = true)
-println("highest f₂/f₁ of 40 shapes: ${scores.maxOf { it.first }.f3}; closest to 1:2:3:4:5: ${scores.minOf { it.second }.f1} cents")
+println(
+    "highest f₂/f₁ of 40 shapes: ${scores.maxOf { it.first }.f3}; closest to 1:2:3:4:5: ${scores.minOf { it.second }.f1} cents",
+)
 println("loaded disk: f₂/f₁ ${syahi.ratios()[1].f3}, ${syahi.ramanHarmonicity().rms.f1} cents")
 ```
-
-Fitting the outline with the solver does no better: from four different starting shapes it walks
-back towards the circle and stops about 188 cents from the series, against 191 for the circle.
 
 ### Fitting the paste
 
@@ -518,7 +538,13 @@ display(
 )
 val colours = [vec(0.35, 0.6, 1.0, 1.0), vec(1.0, 0.85, 0.3, 1.0), vec(1.0, 0.45, 0.3, 1.0)]
 val profiles = designs.mapIndexed { i, d -> d.profile(w = 3.0, h = 1.0, top = 16.0).apply { color = colours[i] } }
-val composite = fline { moveTo(0.0, 9.77 / 16); lineTo(1.2, 9.77 / 16); lineTo(1.2, 1.0 / 16); lineTo(3.0, 1.0 / 16) }.apply { color = vec(0.6, 0.6, 0.6, 1.0) }
+val composite = fline {
+    moveTo(0.0, 9.77 / 16)
+    lineTo(1.2, 9.77 / 16)
+    lineTo(1.2, 1.0 / 16)
+    lineTo(3.0, 1.0 / 16)
+}
+    .apply { color = vec(0.6, 0.6, 0.6, 1.0) }
 lines(profiles + composite, w = 520.0, h = 180.0, fitToSize = true)
 ```
 
@@ -551,24 +577,36 @@ val start = if (stroke != null) PolarShape.fromLine(stroke, 3) else PolarShape.f
 val design = designShape([4.0, 5.0, 6.0], start = start, h = 0.08)
 val modes = polarDrumMesh(0.05) { 1.0 }.polarMorphed(design.shape).modes(12)
 val out = ArrayList<FLine>()
-out += design.start.outline().apply { color = vec(0.6, 0.6, 0.6, 1.0); thickness = 2.0 }
-out += design.shape.outline().apply { color = vec(1.0, 0.85, 0.3, 1.0); thickness = 2.0 }
+out +=
+    design.start.outline().apply {
+        color = vec(0.6, 0.6, 0.6, 1.0)
+        thickness = 2.0
+    }
+out +=
+    design.shape.outline().apply {
+        color = vec(1.0, 0.85, 0.3, 1.0)
+        thickness = 2.0
+    }
 for (k in 0 until 3) {
     val dx = (k + 1) * 2.8f
     out += modes.modeMesh(k).map { it.copy().apply { transform { v -> v.add(dx, 0f, 0f) } } }
-    out += modes.nodalLines(k).copy().apply { transform { v -> v.add(dx, 0f, 0f) }; color = vec(1.0, 1.0, 1.0, 1.0) }
+    out +=
+        modes.nodalLines(k).copy().apply {
+            transform { v -> v.add(dx, 0f, 0f) }
+            color = vec(1.0, 1.0, 1.0, 1.0)
+        }
 }
 lines(out, w = 520.0, h = 140.0, fitToSize = true)
 println("start ${design.startFit}, fitted ${design.fit}; ratios ${modes.ratios().take(3).map { (4 * it).f3 }}")
-display("strike", WavFloatArrayWriter.encodeMono16(modes.render(modes.strike(0.3, 0.25, 0.04), fundamental = 220.0), 44100))
+display(
+    "strike",
+    WavFloatArrayWriter.encodeMono16(modes.render(modes.strike(0.3, 0.25, 0.04), fundamental = 220.0), 44100),
+)
 ```
 
 ```diffstatic_runner {data-lang=kotlin audio="assets/eigendrum/triad.wav" audio-spec="triad" audio-renderer="afield.audio.modal.EigendrumDocs" embed=true hidden=true name="eigendrum-triad"}
 // offline-rendered by EigendrumDocs.renderWav("triad", ...): the heart bent into a 4:5:6 drum, struck at (0.3, 0.25)
 ```
-
-A fourth note is harder: aiming at 4:5:6:8 from the same heart, the fit gets to within about 60
-cents. The higher a target reaches, the more harmonics the outline needs.
 
 ### Morphing between them
 
