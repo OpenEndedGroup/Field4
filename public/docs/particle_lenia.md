@@ -40,7 +40,12 @@ animateEvolution(
     seconds = 7.0,
     cellSide = 400,
     step = { it.step() },
-    panels = { pl, n -> ["step %d   mean E %.3f".format(n, pl.currentEnergy()) to pl.render(extent = 24.0, size = 300, cx = 0.0, cy = 0.0)] },
+    panels = { pl, n ->
+        [
+            "step %d   mean E %.3f".format(n, pl.currentEnergy()) to
+                pl.render(extent = 24.0, size = 300, cx = 0.0, cy = 0.0),
+        ]
+    },
 )
 ```
 
@@ -161,12 +166,11 @@ once.lenia {
         renderer = renderer,
         name = "leniaGrid",
     )
-    ShaderParticleLenia(grid, 6400, renderer, ParticleLeniaParams(sigmaK = 0.6, cRep = 0.3), name = "lenia")
-        .also {
-            it.reset(creatures = 64, perCreature = 100, side = 8.5f, spacing = 26f, seed = 1)
-            it.install(renderer.renderList.others)
-            it.installDrawInto()
-        }
+    ShaderParticleLenia(grid, 6400, renderer, ParticleLeniaParams(sigmaK = 0.6, cRep = 0.3), name = "lenia").also {
+        it.reset(creatures = 64, perCreature = 100, side = 8.5f, spacing = 26f, seed = 1)
+        it.install(renderer.renderList.others)
+        it.installDrawInto()
+    }
 }
 
 lenia.substeps = 20

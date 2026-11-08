@@ -1057,14 +1057,6 @@ a control with the kernel switched off. Box 2 animates the same run. Box 3 anima
 
 [Open →](offline.html?file=assets/agent_transcripts/particle_lenia/metadata.edn)
 
-### particle_lenia_gpu
-
-The GPU half of [Particle Lenia](particle_lenia.md#thousands-of-particles-on-the-gpu): a renderer box
-and, beneath it, `ShaderParticleLenia` running 6400 particles in 64 clusters under the rotator rule,
-20 steps per frame, in the native window. Clusters that drift into each other merge.
-
-[Open →](offline.html?file=assets/agent_transcripts/particle_lenia_gpu/metadata.edn)
-
 ### alife_search_comparison
 
 The "Does search beat random?" part of [spatial artificial life](alife_examples.md#does-search-beat-random)
@@ -4366,6 +4358,14 @@ who else is publishing, and hands the stream you pick to its program as a second
 ```
 
 [Open →](offline.html?file=assets/agent_transcripts/stacktrinket_feedback/metadata.edn)
+
+### particle_lenia_gpu
+
+The GPU half of [Particle Lenia](particle_lenia.md#thousands-of-particles-on-the-gpu): a renderer box
+and, beneath it, `ShaderParticleLenia` running 6400 particles in 64 clusters under the rotator rule,
+20 steps per frame, in the native window. Clusters that drift into each other merge.
+
+[Open →](offline.html?file=assets/agent_transcripts/particle_lenia_gpu/metadata.edn)
 
 ## Graphics building blocks
 
