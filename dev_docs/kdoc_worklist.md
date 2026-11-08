@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 21982 of 37440 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 22018 of 37478 public symbols in all JVM Kotlin packages in `src/jvmMain/kotlin` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**2017 undocumented entry points** (types, top-level functions and values) and 12762 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**2012 undocumented entry points** (types, top-level functions and values) and 12768 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -19,7 +19,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Tools.kt](../src/jvmMain/kotlin/afield/ai/tools/Tools.kt) | AI4 | ai4_tools | 51 | 204 | 32% |
 | [TidalPatterns.kt](../src/jvmMain/kotlin/afield/audio/synth/TidalPatterns.kt) | Patterns | pattern_language, marf, petri_nets | 43 | 78 | 21% |
 | [Visualizers.kt](../src/jvmMain/kotlin/afield/audio/synth/Visualizers.kt) | Synthesis | visualizers | 37 | 11 | 5% |
-| [outputs.kt](../src/jvmMain/kotlin/afield/ui/output/outputs.kt) | Visualization | visualizers, box_output, keyframe_editor | 30 | 44 | 41% |
+| [outputs.kt](../src/jvmMain/kotlin/afield/ui/output/outputs.kt) | Visualization | visualizers, box_output, keyframe_editor | 25 | 45 | 45% |
 | [Boxes.kt](../src/jvmMain/kotlin/afield/document/graph/Boxes.kt) | Workspace | ai4_tools, keybindings, keyframer_examples | 23 | 33 | 28% |
 | [wfc.kt](../src/jvmMain/kotlin/afield/simulation/automata/wfc.kt) | Data | wfc_examples | 20 | 59 | 30% |
 | [FabricateScene.kt](../src/jvmMain/kotlin/afield/graphics/scene/fabricated/FabricateScene.kt) | Renderers | fabricate_renderer, geometry_from_disk | 19 | 102 | 5% |
@@ -53,7 +53,8 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Model.kt](../src/jvmMain/kotlin/afield/simulation/physics/pressure/Model.kt) | Simulation | pressure_membranes | 6 | 26 | 17% |
 | [Phased.kt](../src/jvmMain/kotlin/afield/runtime/lifecycle/Phased.kt) | Workspace | animation_time_model | 6 | 12 | 47% |
 | [SolidExpr.kt](../src/jvmMain/kotlin/afield/lang/solidsl/SolidExpr.kt) | Graphics | solid_notation, manifold, debruijn_tilings | 6 | 11 | 77% |
-| [Structure.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/buffers/Structure.kt) | Graphics | gpu_schema, running_code | 5 | 31 | 33% |
+| [ComputeMesh.kt](../src/jvmMain/kotlin/afield/graphics/render/ComputeMesh.kt) | Graphics | growing_nca | 6 | 10 | 36% |
+| [Structure.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/buffers/Structure.kt) | Graphics | gpu_schema, running_code | 5 | 30 | 35% |
 | [MemoryTools.kt](../src/jvmMain/kotlin/afield/ai/tools/MemoryTools.kt) | AI4 | ai4_tools | 5 | 26 | 29% |
 | [Solver.kt](../src/jvmMain/kotlin/afield/simulation/physics/pressure/Solver.kt) | Simulation | pressure_membranes | 5 | 16 | 12% |
 | [keyframes.kt](../src/jvmMain/kotlin/afield/animation/keyframes/keyframes.kt) | Graphics | keyframe_editor, agent_transcripts | 5 | 12 | 66% |
@@ -233,7 +234,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Timecode.kt](../src/jvmMain/kotlin/afield/io/timecode/Timecode.kt) | Networking | smpte_timecode | 0 | 4 | 66% |
 | [alife_vehicle_brains.kt](../src/jvmMain/kotlin/afield/simulation/agents/alife_vehicle_brains.kt) | ALife | braitenberg_vehicles | 0 | 4 | 94% |
 | [PetriVisual.kt](../src/jvmMain/kotlin/afield/simulation/petri/PetriVisual.kt) | Visualization | petri_nets, petri_cheatsheet, audio_curves | 0 | 4 | 85% |
-| [KeyframeControls.kt](../src/jvmMain/kotlin/afield/animation/keyframes/KeyframeControls.kt) | Graphics | visualizers | 0 | 3 | 76% |
+| [KeyframeControls.kt](../src/jvmMain/kotlin/afield/animation/keyframes/KeyframeControls.kt) | Graphics | visualizers | 0 | 3 | 78% |
 | [FrameProfile.kt](../src/jvmMain/kotlin/afield/app/diagnostics/FrameProfile.kt) | Workspace | profiling_timeline | 0 | 3 | 66% |
 | [PatPianoRollGallery.kt](../src/jvmMain/kotlin/afield/audio/synth/PatPianoRollGallery.kt) | Patterns | pattern_language | 0 | 3 | 82% |
 | [stdlib_properties.kt](../src/jvmMain/kotlin/afield/document/properties/stdlib_properties.kt) | Workspace | running_code | 0 | 3 | 78% |
@@ -312,7 +313,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Sampling.kt](../src/jvmMain/kotlin/afield/audio/synth/Sampling.kt) | Synthesis | — | 6 | 39 | 38% |
 | [screenshot.kt](../src/jvmMain/kotlin/afield/tools/docs/screenshot.kt) | Workspace | — | 6 | 19 | 50% |
 | [LinalgSerialization.kt](../src/jvmMain/kotlin/afield/document/persistence/LinalgSerialization.kt) | Workspace | — | 6 | 15 | 4% |
-| [ComputeMesh.kt](../src/jvmMain/kotlin/afield/graphics/render/ComputeMesh.kt) | Graphics | — | 6 | 10 | 36% |
 | [LlmBridge.kt](../src/jvmMain/kotlin/afield/ai/models/LlmBridge.kt) | AI4 | — | 6 | 6 | 29% |
 | [SimpleSpatialAudio.kt](../src/jvmMain/kotlin/afield/audio/engine/SimpleSpatialAudio.kt) | Audio | — | 5 | 78 | 23% |
 | [ForthInterpreter.kt](../src/jvmMain/kotlin/afield/lang/forth/ForthInterpreter.kt) | Languages | — | 5 | 38 | 15% |
@@ -743,6 +743,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [FieldEncodeProcess.kt](../src/jvmMain/kotlin/afield/media/stream/FieldEncodeProcess.kt) | Imaging | — | 0 | 6 | 57% |
 | [KDocExtractor.kt](../src/jvmMain/kotlin/afield/tools/docs/index/KDocExtractor.kt) | Workspace | — | 0 | 6 | 33% |
 | [StrokeSketch.kt](../src/jvmMain/kotlin/afield/ui/notation/StrokeSketch.kt) | Visualization | — | 0 | 6 | 76% |
+| [FileChooser.kt](../src/jvmMain/kotlin/afield/ui/output/FileChooser.kt) | Visualization | — | 0 | 6 | 56% |
 | [LineNoteTools.kt](../src/jvmMain/kotlin/afield/ui/output/LineNoteTools.kt) | Workspace | — | 0 | 6 | 45% |
 | [IdeChatHelpers.kt](../src/jvmMain/kotlin/afield/ai/conversation/IdeChatHelpers.kt) | AI4 | — | 0 | 5 | 28% |
 | [ScriptedLlmBridge.kt](../src/jvmMain/kotlin/afield/ai/models/ScriptedLlmBridge.kt) | AI4 | — | 0 | 5 | 37% |
@@ -1245,4 +1246,4 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `SquareOsc` | class | `src/jvmMain/kotlin/afield/audio/synth/Oscillators.kt:140` |
 | `PulseOsc` | class | `src/jvmMain/kotlin/afield/audio/synth/Oscillators.kt:167` |
 
-…and **1897 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
+…and **1892 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.

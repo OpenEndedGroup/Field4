@@ -1790,6 +1790,39 @@
         "public/docs/gpu_state.md#capture-box=gs_renderer"
       ]
     },
+    "assets/agent_transcripts/growing_nca/metadata.edn": {
+      "captureDigest": "d410aadb0a5f2a23699b553908efd7a3d7e4d3380c6fcba7c5d48a12462b5ea5",
+      "capturedAt": "2026-11-08T19:25:18.957Z",
+      "channels": 1,
+      "file": "assets/web_publications/growing_nca/document/metadata.edn",
+      "files": {
+        "assets/web_publications/growing_nca/document/metadata.edn": "180c2d574d8bfb50a93ac43ba019242c653a32d29ed9c65c7c7555443fad7e35",
+        "assets/web_publications/growing_nca/document/outputs.json": "c0440b6ebb9a8cd75410f015d1b9d84aa77b0894398a174a7848bbdafd173c74",
+        "assets/web_publications/growing_nca/outputs/0.html": "ee86232e3f7913b307ebc03c1145883f8acd977592545c53d2bf550b6fa505cc"
+      },
+      "kinds": [
+        "native-image"
+      ],
+      "outputs": "assets/web_publications/growing_nca/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/growing_nca.yaml": "1164aac7b875beda3b5ea4e30b656b1fe821d429e44335a4745418c8d7a2e1ca",
+        "public/docs/assets/agent_transcripts/growing_nca/guides/growing_nca.md": "8e833cf6081e51e91e02487facf568a48ec290e058ac4e59add89119a5436ff8",
+        "public/docs/assets/agent_transcripts/growing_nca/metadata.edn": "85780330d027b8864a6344afea6d34246cb649704860c410486ef4d476d54b5e",
+        "public/docs/assets/agent_transcripts/growing_nca/nca_gpu_code_.kt": "cc87eb231b39216109269488b95d32024e8d28cc05cfc975c378811a3f8aec9b",
+        "public/docs/assets/agent_transcripts/growing_nca/nca_gpu_compute_.glsl": "5e8428af895ad9de00e79e08a0925f9fe62f66e932a569d4159c164cc9023992",
+        "public/docs/assets/agent_transcripts/growing_nca/nca_gpu_fragment_.glsl": "d30ac0135056781a0bd0945a066ceb50998316ee79395725ac8cbc3c397a78f2",
+        "public/docs/assets/agent_transcripts/growing_nca/nca_gpu_vertex_.glsl": "c55d55eab8d8b7e6dd2cf26f915903dfb3364de1defda77b9dc14489a101cf01",
+        "public/docs/assets/agent_transcripts/growing_nca/nca_live_code_.kt": "6206b17dbbed8aa2b80029ba69597230636edfa5f0a957aede6a4f60a9596929",
+        "public/docs/assets/agent_transcripts/growing_nca/nca_renderer_code_.kt": "c3f4dfacb4a318c3cbc01337c0a4b3817a2cb5b980459192209dd36da8d1f0de",
+        "public/docs/assets/agent_transcripts/growing_nca/nca_strip_code_.kt": "2f7638380c2e4ef983ecbd66079c01da235f194ecb23fce8174db6ddd4deb1da",
+        "public/docs/assets/growing_nca/gpu_window.png": "aa5df6953053642079105dd39022bfee04509e70467ab15446d8233cf1713d47",
+        "public/docs/growing_nca.md#capture-box=nca_renderer": "70cdf67239cfc7edd67a640e5620cbc2e73cd00b3a7c40f53cd987eeef8034c8"
+      },
+      "supplementalSources": [
+        "public/docs/assets/growing_nca/gpu_window.png",
+        "public/docs/growing_nca.md#capture-box=nca_renderer"
+      ]
+    },
     "assets/agent_transcripts/harmonic_drum/metadata.edn": {
       "captureDigest": "d410aadb0a5f2a23699b553908efd7a3d7e4d3380c6fcba7c5d48a12462b5ea5",
       "capturedAt": "2026-11-08T18:23:05.333Z",
