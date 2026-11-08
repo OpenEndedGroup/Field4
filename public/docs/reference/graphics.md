@@ -1864,7 +1864,7 @@ The result of intersecting two shapes: isolated crossing or touching [`points`](
 
 `src/jvmMain/kotlin/afield/geometry/leaper/UncrossedLeaperDrawing.kt` — [read the source](source/jvmMain/afield/geometry/leaper/UncrossedLeaperDrawing/)
 
-**Used in:** [Uncrossed knight paths](../uncrossed_leapers.md)
+**Used in:** [Knight tours and uncrossed paths](../knight_tour_workshop.md)
 
 ### Top-level functions { #uncrossedleaperdrawing-kt-functions }
 
@@ -1881,7 +1881,7 @@ The result of intersecting two shapes: isolated crossing or touching [`points`](
 
 `src/jvmMain/kotlin/afield/geometry/leaper/UncrossedLeapers.kt` — [read the source](source/jvmMain/afield/geometry/leaper/UncrossedLeapers/)
 
-**Used in:** [Uncrossed knight paths](../uncrossed_leapers.md)
+**Used in:** [Knight tours and uncrossed paths](../knight_tour_workshop.md)
 
 ### Top-level functions { #uncrossedleapers-kt-functions }
 

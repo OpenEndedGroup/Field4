@@ -1,6 +1,6 @@
 ---
 docs: knight_tour_workshop/
 ---
-# Knight tours: a drawing laboratory
+# Knight tours and uncrossed paths
 
-The line and arc views boxes 6a and 6b come from.
+The search, the known values, the gallery and sweep, and the line and arc views boxes 6a and 6b come from.

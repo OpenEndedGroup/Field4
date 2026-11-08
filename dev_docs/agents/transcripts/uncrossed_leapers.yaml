@@ -1,11 +1,9 @@
 name: uncrossed_leapers
 description: |-
-  Uncrossed leaper paths: knight paths and cycles whose moves never cross, by exhaustive branch and bound (afield.geometry.leaper), checked against OEIS A003192 and A157416; best found against the known optimum on 8×8 and 9×9; a gallery of five leapers on a rectangle, cylinder and torus; a sweep of how much of the board each covers; the longest 7×7 paths fed into the knight-tour workshop's line and arc views; a pen-plotter SVG sheet; and a box that checks a path drawn on the drawing layer. Pure CPU. Docs page: public/docs/uncrossed_leapers.md.
+  Uncrossed leaper paths: knight paths and cycles whose moves never cross, by exhaustive branch and bound (afield.geometry.leaper), checked against OEIS A003192 and A157416; best found against the known optimum on 8×8 and 9×9; a gallery of five leapers on a rectangle, cylinder and torus; a sweep of how much of the board each covers; the longest 7×7 paths fed into the knight-tour workshop's line and arc views; a pen-plotter SVG sheet; and a box that checks a path drawn on the drawing layer. Pure CPU. Docs page: public/docs/knight_tour_workshop.md (its uncrossed paths half).
 docs:
-- page: uncrossed_leapers.md
-  why: The search, the known values, the gallery and sweep, and how the paths feed the workshop.
 - page: knight_tour_workshop.md
-  why: The line and arc views boxes 6a and 6b come from.
+  why: The search, the known values, the gallery and sweep, and the line and arc views boxes 6a and 6b come from.
 operations:
 - create:
     box: ul_knight
