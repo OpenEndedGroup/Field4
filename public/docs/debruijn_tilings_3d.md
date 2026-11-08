@@ -31,17 +31,17 @@ val counts = t.shapeCounts()
 val (union, hull) =
     Solid.scope {
         val cells = Solid.union(t.cells.map { Solid.hullOfPointsD(it.cornerArray()) })
+        // The control: the convex hull of every corner, which is the triacontahedron.
         val corners = Solid.hullOfPointsD(t.cells.flatMap { it.cornerArray().toList() }.toDoubleArray())
-        cells.toTriMesh(normals = true) to corners.volume
+        cells.toTriMesh() to corners.volume
     }
 
 showMeshGrid(
-    "the twenty cells, pulled apart" to t.toTriMesh(shrink = 0.8),
-    "their union, through Manifold" to union.withColor(0.75, 0.78, 0.84),
+    "${counts[1]} prolate + ${counts[2]} oblate, pulled apart" to t.toTriMesh(shrink = 0.8),
+    "their Manifold union · cells %.1f · hull %.1f".format(t.volume(), hull) to union.withColor(0.75, 0.78, 0.84),
     columns = 2,
     cellWidth = 370,
 )
-"prolate ${counts[1]}, oblate ${counts[2]} · sum of cells %.2f · convex hull %.2f".format(t.volume(), hull)
 ```
 
 Every corner of every cell sits at a sum of the six directions with integer coefficients, so two
@@ -58,23 +58,23 @@ shrunk a little each so the stack can be read. `shapeCounts()` counts each kind.
 closes in on φ as the radius grows.
 
 ```diffstatic_runner {data-lang=kotlin embed=true screenshot="assets/debruijn_tilings_3d/patch.png" wait="4" capture="box" open-outputs="true" padding="20" w="760" name="debruijn3d-patch"}
+// prolate / oblate against the radius of the patch, beside the golden ratio.
+val phi = (1 + sqrt(5.0)) / 2
+val ratios =
+    [2, 4, 6, 8].joinToString(" · ") { r ->
+        val counts = deBruijnTiling3D(radius = r.toDouble()).shapeCounts()
+        "radius $r: %.4f".format(counts.getValue(1).toDouble() / counts.getValue(2))
+    }
+
 val penrose3 = deBruijnTiling3D(radius = 2.0, scale = 10.0)
 // The cells whose crossing is nearest the middle of the grid.
 val middle = penrose3.cells.filter { it.crossing.length() < 1.3 }
 showMesh(
     penrose3.toTriMesh(only = middle, shrink = 0.88),
-    title = "${middle.size} cells of the 3D Penrose tiling",
-    caption = "yellow: prolate rhombohedron, blue: oblate · each shrunk to 88% about its centre",
+    title = "${middle.size} cells of the 3D Penrose tiling, each shrunk to 88%",
+    caption = "yellow prolate, blue oblate · prolate/oblate $ratios · φ = %.4f".format(phi),
     view = MeshView(yawDegrees = 25.0, pitchDegrees = 22.0, width = 720, height = 520),
 )
-
-// prolate / oblate against the radius of the patch, beside the golden ratio.
-val phi = (1 + sqrt(5.0)) / 2
-for (r in [2.0, 4.0, 6.0, 8.0]) {
-    val counts = deBruijnTiling3D(radius = r).shapeCounts()
-    val ratio = counts.getValue(1).toDouble() / counts.getValue(2)
-    println("radius $r: ${counts[1]} prolate, ${counts[2]} oblate, ratio %.4f (φ %+.4f)".format(ratio, ratio - phi))
-}
 ```
 
 ## Slices
@@ -83,8 +83,9 @@ A plane through the tiling cuts each cell it meets in a triangle, quadrilateral,
 hexagon, and neighbouring cells' pieces share their edges, so every flat cut is itself a
 quasiperiodic tiling of the plane. `slice(normal, offset)` returns those polygons in the plane's
 own coordinates, and `lines()` draws them as FLines coloured by the cell they came from. Cut
-across a 5-fold axis, a 3-fold axis and a 2-fold axis of the icosahedron and the pattern takes on
-each axis's symmetry.
+across a 5-fold, a 3-fold and a 2-fold axis of the icosahedron and the patterns show that axis's
+symmetry locally: ten-pointed stars across the 5-fold axis, three-armed ones across the 3-fold, and
+mirror rows across the 2-fold. Each caption counts the polygons by their number of sides.
 
 ```diffstatic_runner {data-lang=kotlin embed=true screenshot="assets/debruijn_tilings_3d/slices.png" wait="3" capture="box" open-outputs="true" w="760" padding="14" name="debruijn3d-slices"}
 val t = deBruijnTiling3D(radius = 5.0, scale = 10.0)
@@ -154,7 +155,7 @@ val panels =
         val t = deBruijnTiling3D(star, radius = if (star.directions.size > 6) 3.0 else 4.0, scale = 10.0)
         val shapes = t.shapeCounts().values.joinToString(" : ")
         val name = star.name.lowercase().replace('_', ' ')
-        "$name, ${t.directions.size} families\n${t.shapeVolumes.size} cell shapes, $shapes" to t.slice(cut, offset = 0.5).lines()
+        "$name, ${t.directions.size} families\ncell shapes ${t.shapeVolumes.size}, counts $shapes" to t.slice(cut, offset = 0.5).lines()
     }
 
 showPlaneGrid(*panels.toTypedArray(), columns = 3, cellWidth = 240, cellHeight = 240, window = Rect(-55.0, -55.0, 110.0, 110.0))
@@ -183,12 +184,15 @@ val (welded, relief) =
     }
 
 showMesh(
-    relief.toTriMesh(normals = true).withColor(0.85, 0.80, 0.68),
-    title = "a slab of the 3D Penrose tiling, ${slab.size} cells",
-    caption = "5-fold axis up, bottom trimmed flat at z = -6",
-    view = MeshView(yawDegrees = 20.0, pitchDegrees = 40.0, width = 760, height = 520),
+    relief.toTriMesh().withColor(0.85, 0.80, 0.68),
+    title = "a slab of the 3D Penrose tiling, ${slab.size} cells, 5-fold axis up",
+    caption =
+        "sum of cell volumes %.1f · welded by Manifold %.1f · bottom trimmed flat at z = -6".format(
+            slab.sumOf { it.volume },
+            welded,
+        ),
+    view = MeshView(yawDegrees = 20.0, pitchDegrees = 55.0, width = 760, height = 520),
 )
-"cells %.0f · welded %.0f · genus ${relief.genus}".format(slab.sumOf { it.volume }, welded)
 ```
 
 `relief.toTriMesh().saveStl(File("penrose3d.stl"))` writes it out for a slicer.

@@ -75,7 +75,8 @@ private fun unit(v: List<Vector3d>) = v.map { val l = sqrt(it.x * it.x + it.y * 
  * integer lift (one integer per family, the vertex as a point of Z^n) is [lift]; two cells that
  * share a corner share its lift exactly, which is what [faceKey] and the tests use.
  *
- * @param shape the shape class, numbered 1, 2, ... in order of decreasing volume. For
+ * @param shape the shape class, numbered 1, 2, ... in order of decreasing volume; two cells share a
+ *   number exactly when they are congruent. For
  *   [DeBruijnStar.ICOSAHEDRAL], shape 1 is the prolate rhombohedron and shape 2 the oblate one.
  * @param planes the three planes whose crossing made this cell, lowest family first.
  * @param crossing where they cross, in grid coordinates (one unit = one plane spacing).
@@ -462,13 +463,27 @@ private fun buildDeBruijnTiling3D(
     }
 
     val e3 = e.map { doubleArrayOf(it.x, it.y, it.z) }
-    // Shape classes by volume, largest first.
+    // Shape classes, largest volume first. A parallelepiped of unit edges is fixed, up to
+    // congruence, by the three |cos| between its edges and the sign of their product (flipping one
+    // edge flips two cosines); equal volumes need not mean equal shapes (cube face diagonals).
     val triples = ArrayList<IntArray>()
     for (r in 0 until n) for (s in r + 1 until n) for (t in s + 1 until n)
         if (abs(det3(e3[r], e3[s], e3[t])) > 1e-9) triples += intArrayOf(r, s, t)
-    val volumes = triples.map { abs(det3(e3[it[0]], e3[it[1]], e3[it[2]])) }
-    val classes = ArrayList<Double>()
-    for (vol in volumes.sortedDescending()) if (classes.none { abs(it - vol) < 1e-9 }) classes += vol
+    fun cos(a: Int, b: Int) = e3[a][0] * e3[b][0] + e3[a][1] * e3[b][1] + e3[a][2] * e3[b][2]
+    fun shapeKey(tri: IntArray): List<Double> {
+        val c = listOf(cos(tri[0], tri[1]), cos(tri[0], tri[2]), cos(tri[1], tri[2]))
+        val product = c[0] * c[1] * c[2]
+        val sign = if (abs(product) < 1e-9) 0.0 else Math.signum(product)
+        return listOf(abs(det3(e3[tri[0]], e3[tri[1]], e3[tri[2]]))) + c.map { abs(it) }.sorted() + sign
+    }
+    fun same(a: List<Double>, b: List<Double>) = a.indices.all { abs(a[it] - b[it]) < 1e-9 }
+    val keys = triples.map(::shapeKey)
+    val classes = ArrayList<List<Double>>()
+    val order = Comparator<List<Double>> { a, b ->
+        for (i in a.indices) if (abs(a[i] - b[i]) >= 1e-9) return@Comparator if (i == 0) b[i].compareTo(a[i]) else a[i].compareTo(b[i])
+        0
+    }
+    for (key in keys.sortedWith(order)) if (classes.none { same(it, key) }) classes += key
 
     data class Raw(val shape: Int, val planes: List<DeBruijnPlane>, val crossing: DoubleArray, val base: IntArray, val triple: IntArray, val right: Boolean)
 
@@ -477,7 +492,7 @@ private fun buildDeBruijnTiling3D(
     for ((ti, tri) in triples.withIndex()) {
         val (r, s, t) = Triple(tri[0], tri[1], tri[2])
         val det = det3(e3[r], e3[s], e3[t])
-        val shape = classes.indexOfFirst { abs(it - volumes[ti]) < 1e-9 } + 1
+        val shape = classes.indexOfFirst { same(it, keys[ti]) } + 1
         for (a in indices) for (b in indices) for (c in indices) {
             // Solve x . e_r = pa, x . e_s = pb, x . e_t = pc by Cramer's rule on the transposed system.
             val rhs = doubleArrayOf(position(r, a), position(s, b), position(t, c))
@@ -528,9 +543,9 @@ private fun buildDeBruijnTiling3D(
     val cube = scale * scale * scale
     val cells = raw.mapIndexed { i, cell ->
         val xyz = DoubleArray(24) { corners[i][it] - shift[it % 3] }
-        DeBruijnCell(cell.shape, cell.planes, Vector3d(cell.crossing[0], cell.crossing[1], cell.crossing[2]), cell.base, xyz, cell.right, classes[cell.shape - 1] * cube)
+        DeBruijnCell(cell.shape, cell.planes, Vector3d(cell.crossing[0], cell.crossing[1], cell.crossing[2]), cell.base, xyz, cell.right, classes[cell.shape - 1][0] * cube)
     }
-    return DeBruijnTiling3D(e, gamma, cells, classes.map { it * cube })
+    return DeBruijnTiling3D(e, gamma, cells, classes.map { it[0] * cube })
 }
 
 private fun det3(a: DoubleArray, b: DoubleArray, c: DoubleArray) =

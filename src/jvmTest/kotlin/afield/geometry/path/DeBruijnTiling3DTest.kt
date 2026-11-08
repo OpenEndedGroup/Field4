@@ -136,6 +136,26 @@ class DeBruijnTiling3DTest {
         checkTiling(deBruijnTiling3D(offsets = moved, radius = 3.5), 2.0)
     }
 
+    /** Cells share a shape number exactly when their edge angles agree: equal volume is not enough. */
+    @Test
+    fun shapeClassesAreCongruenceClasses() {
+        fun angles(c: DeBruijnCell): List<Long> {
+            val o = c.corners[0]
+            val edges = listOf(1, 2, 4).map { Vector3d(c.corners[it]).sub(o).normalize() }
+            val cs = listOf(edges[0].dot(edges[1]), edges[0].dot(edges[2]), edges[1].dot(edges[2]))
+            val product = cs[0] * cs[1] * cs[2]
+            return cs.map { Math.round(abs(it) * 1e6) }.sorted() + (if (abs(product) < 1e-9) 0L else Math.round(Math.signum(product)))
+        }
+        for (star in DeBruijnStar.entries) {
+            val t = deBruijnTiling3D(star, radius = 2.0, scale = 1.0)
+            val byShape = t.cells.groupBy { it.shape }.mapValues { (_, cells) -> cells.map(::angles).toSet() }
+            for ((shape, set) in byShape) assertEquals(1, set.size, "$star shape $shape mixes ${set.size} angle sets")
+            assertEquals(byShape.size, byShape.values.map { it.single() }.toSet().size, "$star: two shape numbers for one shape")
+        }
+        // Six face diagonals of a cube give equal volumes from two different rhombohedra.
+        assertTrue(deBruijnTiling3D(DeBruijnStar.CUBIC_TWOFOLD, radius = 2.0).shapeVolumes.size >= 2)
+    }
+
     @Test
     fun aSliceIsAPolygonTilingOfThePlane() {
         val t = deBruijnTiling3D(radius = 5.0, scale = 1.0)
