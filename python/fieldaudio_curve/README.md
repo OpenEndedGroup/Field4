@@ -157,7 +157,9 @@ neighbourhood is Gaussian in grid distance, so neighbours in every direction sta
 are listed in C order (last axis fastest), and the grid's three sizes are stored as uint32 at byte
 52 (1 for an unused axis; all zero in a file from before grids, which is a chain). The neighbourhood
 starts at half the grid's longest side and narrows to `--sigma` over the first two seconds, so the
-grid unfolds before it settles.
+grid unfolds before it settles. `--sigma` defaults to 2 on a chain and 1 on a sheet or lattice: at 2,
+a 6-wide lattice's neighbourhood spans a third of each side, and its prototypes contract toward the
+middle (on the film voice, a median 0.44 typical differences apart instead of 0.58).
 
 `python -m fieldaudio_curve.compare a.wav [b.wav ...]` scores rolling, EMA and map curves of the same
 size on memory (how close recent spectra come to the points held), distinct points and movement.
