@@ -324,6 +324,7 @@ the file, and the reach is described per file below in prose that a human checke
 | `fileproxy.kt` | 1 |
 | `visualizers.kt` | 1 |
 | `StrokeSketch.kt` | 1 |
+| `FileChooser.kt` | 1 |
 
 What each of those reaches, checked against the code rather than inferred from the name:
 
@@ -352,6 +353,7 @@ What each of those reaches, checked against the code rather than inferred from t
 | `documentGuides.kt` | document-relative guide listing and reading, revision-checked saves, and shared file-proxy creation; writes reject read-only documents |
 | `fileproxy.kt` | **creates a file-proxy box**, which writes a new file into the workspace |
 | `visualizers.kt` | one control-widget callback: `array-update` carries a multislider, matrix, range-slider or menu value as a list of doubles to the callback box code registered for that control id, and records it in the control cache. Unguarded beyond the `/ws` boundary, like `slider-update` and `button-update` beside it; guarding the control-message family is one change for all of them |
+| `FileChooser.kt` | `file-complete`, the `fileChooser(...)` control's completion: lists one directory's entries (names, sizes, modification times; never contents) for the path a person is typing, for a control id box code registered with a chooser, and nothing for any other id. The typed path may be absolute, `~/…` or `%name/…`, so it can list any directory the Field process can read. Reads `%name` roots from `FieldFileManager.mappedRoots()`, which records no access history. No guard beyond the `/ws` boundary, decided 2026-11-08: a frame that reaches `/ws` already reaches `launch-all`, which can list or read any of the same files, so a directory listing adds no reach. The choice itself arrives as an ordinary `string-update` |
 
 `executing.kt` is the row that decides how seriously to read the rest. A command that reaches
 `launch-all` runs the code in the document, in Field's JVM, with Field's privileges. There is
@@ -452,6 +454,7 @@ reach to a client that `agent-eval` and `launch-all` already let run arbitrary c
 | `export-document` | `Server.kt` |
 | `export-web-document` | `Server.kt` |
 | `export-ipynb` | `importing.kt` |
+| `file-complete` | `FileChooser.kt` |
 | `file-upload-update` | `Server.kt` |
 | `fline-click` | `Server.kt` |
 | `fline-edit-add-line` | `Server.kt` |

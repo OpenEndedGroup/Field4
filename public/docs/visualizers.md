@@ -1996,8 +1996,15 @@ var align = 0.5
 var cohere = 0.3
 var wrap = true
 controlGroup("flock") {
-    slider("speed", 0.0, 5.0, initialValue = speed,
-        tooltip = "Top speed. Below about 0.3 the flock stalls and stops turning.") { speed = it }
+    slider(
+        "speed",
+        0.0,
+        5.0,
+        initialValue = speed,
+        tooltip = "Top speed. Below about 0.3 the flock stalls and stops turning.",
+    ) {
+        speed = it
+    }
     tooltip("Steering weights. They are relative, so doubling all of them changes nothing.") {
         slider("align", 0.0, 2.0, initialValue = align) { align = it }
         slider("cohere", 0.0, 2.0, initialValue = cohere) { cohere = it }
@@ -2017,15 +2024,19 @@ The tooltip travels with the control's record, so the touch controller shows it 
 ```diffstatic {data-lang=kotlin}
 var image: File? = null
 controlGroup("input") {
-    fileChooser("image", directory = "~/Pictures", mask = "*.{png,jpg}",
-        tooltip = "The picture to trace; anything Field can load as an image") {
+    fileChooser(
+        "image",
+        directory = "~/Pictures",
+        mask = "*.{png,jpg}",
+        tooltip = "The picture to trace; anything Field can load as an image",
+    ) {
         image = it
         println("tracing ${it.name}")
     }
 }
 ```
 
-Type a name and a list of matches drops down under the field: directories first, then files that match the mask, with sizes and dates. Names that start with what you typed come first, then names containing it, then names that hold its letters in order. Use the arrow keys to move through the list. Tab or Enter takes the highlighted entry; a directory opens and a file is chosen. Escape closes the list, and the ▾ button (or Alt+↓) lists the folder you are in. You can also type a path relative to `directory`, a `~/…` path, or an absolute one, and press Enter. The field turns red when you commit something the chooser would not accept.
+Type a name and a list of matches drops down under the field: directories first, then files that match the mask, with sizes and dates. Names that start with what you typed come first, then names containing it, then names that hold its letters in order. Use the arrow keys to move through the list. Tab or Enter takes the highlighted entry; a directory opens and a file is chosen. Escape closes the list, and the ▾ button (or ++alt+down++) lists the folder you are in. You can also type a path relative to `directory`, a `~/…` path, or an absolute one, and press Enter. The field turns red when you commit something the chooser would not accept.
 
 A path can also start with any of the `%` names FileManager knows: `%document/…` for this document's `files/` folder, `%project/…` for its project's, and `%textures/…` for a folder registered with `FileManager["textures"] = "~/Pictures"`. Type `%` to list them, each with the folder it points to; a blank field lists them too, under `..`. The field keeps the spelling you chose, so `initialValue = "%textures/wall.png"` still finds the file after the folder is registered somewhere else.
 
