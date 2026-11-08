@@ -660,7 +660,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**37001 public symbols across 1672 source files**, 21627 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**37046 public symbols across 1673 source files**, 21667 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -673,7 +673,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Video](video.md) | 14 | 192 | 192 (100%) | Video sources, shared GPU frames and live diffusion sessions, with controls for motion and temporal output. |
 | [Math](math.md) | 47 | 2162 | 1623 (75%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 26 | 1061 | 502 (47%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 352 | 8874 | 5593 (63%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 353 | 8919 | 5633 (63%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 46 | 797 | 427 (53%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 586 | 431 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 7 | 766 | 514 (67%) | Nonlinear least squares, aimed at geometry. |
@@ -1001,6 +1001,7 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path reference-internal">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>data/<wbr>query/<wbr>datalog/<wbr></small> [DatalogSmokeTest.kt](languages.md#datalogsmoketest-kt) | Languages · internal | 3 | 1 | Smoke test for the Datalog deductive-database language in `afield.data.query.datalog`. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>data/<wbr>query/<wbr>datalog/<wbr></small> [DatalogWhyNot.kt](languages.md#datalogwhynot-kt) | Languages | 16 | 10 | The why-not layer: `Datalog.whyNot` walks a failing conjunction literal by literal and names the one that took the answer count to zero. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>path/<wbr></small> [DeBruijnTiling.kt](graphics.md#debruijntiling-kt) | Graphics | 29 | 20 |  | [Penrose and Other Quasiperiodic Tilings](../debruijn_tilings.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>geometry/<wbr>path/<wbr></small> [DeBruijnTiling3D.kt](graphics.md#debruijntiling3d-kt) | Graphics | 45 | 40 |  | [Penrose Tilings in Three Dimensions](../debruijn_tilings_3d.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>text/<wbr>sentences/<wbr></small> [Decorations.kt](graphics.md#decorations-kt) | Graphics | 85 | 20 |  | [FLine examples (Field graphics)](../fline_examples.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>output/<wbr></small> [decorations.kt](visualization.md#decorations-kt) | Visualization | 32 | 23 | Editor decorations driven from running code: `RawDecoration` marks a span of a box's source in Monaco, and the `Marker` extensions here — `histogram`, `history`, `stats`, `liveNumber`, `toggle`, `beep`, `bop` — attach live values and clickable widgets to the line that called them. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ai/<wbr>learning/<wbr></small> [deepsets.kt](machine-learning.md#deepsets-kt) | Machine learning | 45 | 45 | A learned two-body interaction: the acceleration on a particle as a function of the neighbours around it, fitted by autodiff from examples of any rule that can already be evaluated. | [Neural particle systems](../neural_particles.md) |

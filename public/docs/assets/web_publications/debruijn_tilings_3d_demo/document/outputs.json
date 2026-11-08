@@ -1,0 +1,79 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-08T16:05:34.097Z",
+  "documentName": "debruijn_tilings_3d_demo",
+  "outputs": [
+    {
+      "uid": "debruijn3d_stars",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 834,
+      "height": 668,
+      "path": "outputs/0.html"
+    },
+    {
+      "uid": "debruijn3d_triacontahedron",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 748,
+      "height": 285,
+      "path": "outputs/1.html"
+    },
+    {
+      "uid": "debruijn3d_slab",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 768,
+      "height": 528,
+      "path": "outputs/2.html"
+    },
+    {
+      "uid": "debruijn3d_slices",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 864,
+      "height": 335,
+      "path": "outputs/3.html"
+    },
+    {
+      "uid": "debruijn3d_patch",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "three"
+      ],
+      "width": 728,
+      "height": 528,
+      "path": "outputs/4.html"
+    },
+    {
+      "uid": "debruijn3d_offset_sweep",
+      "channel": "main",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 798,
+      "height": 891,
+      "path": "outputs/5.html"
+    }
+  ]
+}
