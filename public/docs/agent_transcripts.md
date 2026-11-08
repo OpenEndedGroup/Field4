@@ -4275,6 +4275,22 @@ CPU integrator per particle.
 
 [Open →](offline.html?file=assets/agent_transcripts/neural_particles/metadata.edn)
 
+### growing_nca
+
+**A flower that grows from one cell and grows back when you cut it.** A growing neural cellular
+automaton (Mordvintsev et al., Distill 2020): every cell holds 16 numbers and runs the same trained
+48 → 128 → 16 network. One box grows, damages and regrows it on the CPU and shows seven snapshots;
+one runs it live on the CPU (launch it); and beneath a renderer, one runs the same rule as a compute
+shader at 96 × 96, erasing cells under the left mouse button. See [Growing Neural Cellular
+Automata](growing_nca.md).
+
+```diffstatic {data-lang=text}
+macro write growing_nca --file dev_docs/agents/transcripts/growing_nca.yaml
+macro run growing_nca
+```
+
+[Open →](offline.html?file=assets/agent_transcripts/growing_nca/metadata.edn)
+
 ### learned_boids
 
 **Two flocks side by side: one running Reynolds boids, one running a network that learned it.** Four

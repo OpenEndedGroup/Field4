@@ -325,6 +325,7 @@ nav:
     - Boolean Network Music Examples: boolean_network_music_examples.md
     - Wave Function Collapse Examples: wfc_examples.md
     - Spatial Artificial Life: alife_examples.md
+    - Growing Neural Cellular Automata: growing_nca.md
     - Particle Lenia: particle_lenia.md
     - Braitenberg Vehicles with Memory: braitenberg_vehicles.md
     - Evolving Creatures: evolving_creatures.md

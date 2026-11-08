@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "capturedAt": "2026-11-08T18:06:14.906Z",
+  "documentName": "growing_nca",
+  "outputs": [
+    {
+      "uid": "nca_renderer",
+      "channel": "Vulkan window · still image",
+      "open": true,
+      "path": "outputs/0.html",
+      "width": 1600,
+      "height": 982,
+      "kinds": [
+        "native-image"
+      ],
+      "warnings": []
+    }
+  ]
+}
