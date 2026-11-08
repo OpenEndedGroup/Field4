@@ -102,6 +102,29 @@ data class PhysarumFood(
     }
 }
 
+/**
+ * Run [steps] steps (with [food], if given) and return the trail averaged over the last
+ * [averageOver] of them; the agents advance in place, as in [PhysarumSwarm.step].
+ *
+ * Measure a network on this rather than on one step's trail. A Physarum network keeps changing:
+ * faint roads come and go, and a single snapshot cut at a threshold reads a road that is fading for
+ * a step as a break. Averaged over a few hundred steps the persistent roads stand out, which is the
+ * network Tero measured, and the blind control's noise averages away.
+ */
+fun PhysarumSwarm.meanTrail(p: PhysarumParams, steps: Int, averageOver: Int = 300, seed: Long = 1L, food: PhysarumFood? = null): Img {
+    require(averageOver in 1..steps) { "averageOver must be in 1..steps, got $averageOver of $steps" }
+    val rng = kotlin.random.Random(seed)
+    var s = this
+    repeat(steps - averageOver) { s = s.step(p, rng, food) }
+    val mean = Img.zeros(width, height, 1)
+    val k = 1f / averageOver
+    repeat(averageOver) {
+        s = s.step(p, rng, food)
+        for (i in mean.data.indices) mean.data[i] += s.trail.data[i] * k
+    }
+    return mean
+}
+
 /** One link of a [TransportNetwork]: two node indices, its length, and the polyline it follows. */
 data class NetworkEdge(val a: Int, val b: Int, val length: Double, val path: List<Vec2>)
 
@@ -329,9 +352,11 @@ class TransportNetwork(
         /**
          * Read the network a trail has grown between [sources].
          *
-         * 1. Cells at or above [threshold] are road. For a Jones trail, a quarter of the level a cell
-         *    reaches when an agent stands on it every step, `deposit / (1 - decay)`, picks out the
-         *    roads and leaves the blind control's diffuse trail below it.
+         * 1. Cells at or above [threshold] are road, and so are cells down to [weakThreshold] that join
+         *    road (hysteresis, so a faint road between two strong ones is not cut). For a Jones trail,
+         *    a quarter of the level a cell reaches when an agent stands on it every step,
+         *    `deposit / (1 - decay)`, picks out the roads and leaves the blind control's diffuse
+         *    trail below it.
          * 2. Holes in the road smaller than [minHoleArea] cells are filled, so a wide road does not
          *    read as two roads around a pinhole.
          * 3. Zhang–Suen thinning reduces the road to a one-pixel skeleton.
@@ -344,7 +369,7 @@ class TransportNetwork(
          * The outermost cell all round is treated as empty, so the field is read as bounded, not
          * toroidal.
          */
-        fun extract(trail: Img, sources: List<Vec2>, threshold: Double, minHoleArea: Int = 40,
+        fun extract(trail: Img, sources: List<Vec2>, threshold: Double, weakThreshold: Double = threshold / 3, minHoleArea: Int = 40,
                     attachRadius: Double = 8.0, simplifyTolerance: Double = 1.0, mergeLength: Double = 4.0): TransportNetwork {
             require(trail.channels == 1) { "extract reads a one-channel trail; pass trail.channel(c)" }
             val w = trail.width
@@ -354,6 +379,7 @@ class TransportNetwork(
                 val y = i / w
                 x > 0 && y > 0 && x < w - 1 && y < h - 1 && trail.data[i] >= threshold
             }
+            growInto(road, w, h) { i -> trail.data[i] >= weakThreshold }
             fillSmallHoles(road, w, h, minHoleArea)
             thin(road, w, h)
             return graphFromSkeleton(road, w, h, sources, attachRadius, simplifyTolerance, mergeLength)
@@ -361,6 +387,24 @@ class TransportNetwork(
 
         private val DX = intArrayOf(0, 1, 1, 1, 0, -1, -1, -1)
         private val DY = intArrayOf(-1, -1, 0, 1, 1, 1, 0, -1)
+
+        /** Add to [road] every cell that passes [weak] and is 8-connected to road through such cells. */
+        private fun growInto(road: BooleanArray, w: Int, h: Int, weak: (Int) -> Boolean) {
+            val stack = ArrayDeque<Int>()
+            for (i in 0 until w * h) if (road[i]) stack += i
+            while (stack.isNotEmpty()) {
+                val i = stack.removeLast()
+                val x = i % w
+                val y = i / w
+                for (k in 0 until 8) {
+                    val nx = x + DX[k]
+                    val ny = y + DY[k]
+                    if (nx <= 0 || ny <= 0 || nx >= w - 1 || ny >= h - 1) continue
+                    val j = ny * w + nx
+                    if (!road[j] && weak(j)) { road[j] = true; stack += j }
+                }
+            }
+        }
 
         private fun fillSmallHoles(road: BooleanArray, w: Int, h: Int, maxArea: Int) {
             val seen = BooleanArray(w * h)

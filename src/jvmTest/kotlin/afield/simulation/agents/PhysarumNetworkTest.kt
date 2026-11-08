@@ -83,23 +83,30 @@ class PhysarumNetworkTest {
         assertEquals(1.0 / 3.0, s.connectedPairs, 1e-9)
     }
 
-    private fun grow(agents: Int, food: PhysarumFood, sensing: Boolean = true, steps: Int = 3000): Pair<PhysarumSwarm, NetworkScore> {
-        val p = PhysarumParams(sensing = sensing)
-        val swarm = PhysarumSwarm.random(200, 200, agents, seed = 5L).stepTimes(p, steps, seed = 5L, food = food)
+    private fun grow(agents: Int, food: PhysarumFood, p: PhysarumParams = PhysarumParams()): NetworkScore {
+        val trail = PhysarumSwarm.random(200, 200, agents, seed = 5L).meanTrail(p, 3000, averageOver = 300, seed = 5L, food = food)
         val threshold = 0.25 * p.deposit / (1 - p.decay)
-        val score = TransportNetwork.extract(swarm.trail, food.points, threshold).score("$agents agents" + if (sensing) "" else " blind")
-        return swarm to score
+        return TransportNetwork.extract(trail, food.points, threshold).score("$agents agents" + if (p.sensing) "" else " blind")
     }
 
     @Test fun foodJoinsTheNetworkAndTheBlindControlDoesNot() {
         val food = PhysarumFood.scattered(200, 200, 8, seed = 3L)
-        val (_, few) = grow(1200, food)
-        val (_, many) = grow(2400, food)
-        val (_, blind) = grow(2400, food, sensing = false)
+        val few = grow(1600, food)
+        val many = grow(4800, food)
+        val blind = grow(2400, food, PhysarumParams(sensing = false))
         println(NetworkScore.table(listOf(TransportNetwork.mst(food.points).score("MST"), few, many, blind)))
-        assertTrue(few.connectedPairs > 0.99, "1200 agents join every source: ${few.connectedPairs}")
-        assertTrue(many.connectedPairs > 0.99, "2400 agents join every source: ${many.connectedPairs}")
-        assertTrue(many.length > few.length, "more agents, more road")
-        assertTrue(blind.connectedPairs < 0.3, "the blind control joins few sources: ${blind.connectedPairs}")
+        assertTrue(few.connectedPairs > 0.99, "1600 agents join every source: ${few.connectedPairs}")
+        assertTrue(many.connectedPairs > 0.99, "4800 agents join every source: ${many.connectedPairs}")
+        assertTrue(many.length > 1.5 * few.length, "three times the agents, more road: ${few.length} -> ${many.length}")
+        assertTrue(many.loops > few.loops, "and more loops: ${few.loops} -> ${many.loops}")
+        assertTrue(few.relativeCost in 1.0..1.6, "a near-tree just above the MST's cost: ${few.relativeCost}")
+        assertTrue(blind.connectedPairs < 0.15, "the blind control joins few sources: ${blind.connectedPairs}")
+    }
+
+    @Test fun aWideSensorAngleBreaksTheNetwork() {
+        val food = PhysarumFood.scattered(200, 200, 8, seed = 3L)
+        val wide = grow(2400, food, PhysarumParams(sensorAngle = 3 * Math.PI / 8))
+        println(wide.row())
+        assertTrue(wide.connectedPairs < 0.5, "67.5 degree sensors leave the sources in separate pieces: ${wide.connectedPairs}")
     }
 }
