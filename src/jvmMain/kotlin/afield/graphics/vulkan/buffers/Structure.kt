@@ -175,6 +175,14 @@ open class Structure(
     var allBinding : (() -> WritesToBuffer)? = null
 
     /**
+     * Binding results already computed for the dispatch being recorded, keyed like [bindings]. While
+     * it is set, a write uses these instead of invoking the binding again, so a binding with a side
+     * effect (`step++`) runs once per dispatch even though the fan-out check looks at every binding
+     * before the write does. Set and cleared by `forEachFanOutDispatch`.
+     */
+    var dispatchSnapshot: Map<String, Any?>? = null
+
+    /**
      * Bumped by every change a write has to carry ([set], [bind], [bindAll], a carry-over). A per-frame
      * uniform is a [FrameBufferGroup] with one buffer per swapchain image, and a change has to reach
      * each of them: [writtenGeneration] records, per buffer slot, the generation that slot last got, so
@@ -541,7 +549,9 @@ open class Structure(
         var keepDirty = false
         members.forEach { member ->
             val key = if (prefix.isBlank()) member.name else "$prefix.${member.name}"
-            val raw = bindings[key]?.invoke() ?: values[key]
+            val snapshot = dispatchSnapshot
+            val raw = if (snapshot != null && snapshot.containsKey(key)) snapshot[key] ?: values[key]
+            else bindings[key]?.invoke() ?: values[key]
             if (raw != null) {
                 val resolved = if (raw is HasUniform<*>) {
                     if (raw is ProgressingUniform && !raw.isComplete) keepDirty = true
