@@ -13,7 +13,16 @@ import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import afield.geometry.path.FLine
+import afield.geometry.path.java2d.FLinesAndJavaShapes
+import afield.graphics.render.color
+import afield.graphics.render.filled
+import java.awt.RenderingHints
+import java.awt.image.BufferedImage
 import java.io.File
+import kotlin.math.cos
+import kotlin.math.floor
+import kotlin.math.sin
 import kotlin.random.Random
 
 /**
@@ -69,6 +78,21 @@ class GrowingNca(
     private val hiddenRow = FloatArray(mlp.hidden[0])
     private val alive = BooleanArray(size * size)
 
+    /**
+     * The angle, in radians, the cells' two gradient sensors are turned by. The Sobel-x and Sobel-y
+     * filters become `Kx = cos θ Sx − sin θ Sy` and `Ky = sin θ Sx + cos θ Sy` (the article's
+     * Experiment 4), and the trained picture grows turned by the same angle about the seed, with no
+     * retraining. Positive angles turn it anticlockwise on screen (y points down). See [rotateTarget].
+     */
+    var rotation = 0.0
+
+    /**
+     * A per-cell sensor angle, in radians, used in place of [rotation] when set: each cell
+     * perceives its neighbours in its own frame. *Self-Organising Textures* (Niklasson et al.,
+     * Distill 2021) notes that the rotation "can even be done on a per-cell level".
+     */
+    var rotationAt: ((x: Int, y: Int) -> Double)? = null
+
     /** How many steps have run since the last [seed]. */
     var steps = 0
         private set
@@ -91,6 +115,41 @@ class GrowingNca(
             val dy = j + 0.5 - y
             if (dx * dx + dy * dy < radius * radius) state.fill(0f, (j * size + i) * CHANNELS, (j * size + i + 1) * CHANNELS)
         }
+    }
+
+    /**
+     * Zeroes every cell for which [where] is true — any shape of damage: a half-plane
+     * (`damage { x, _ -> x < 32 }`), a rectangle, a stripe.
+     */
+    fun damage(where: (x: Int, y: Int) -> Boolean) {
+        for (j in 0 until size) for (i in 0 until size) if (where(i, j)) state.fill(0f, (j * size + i) * CHANNELS, (j * size + i + 1) * CHANNELS)
+    }
+
+    /** How many cells have alpha above the alive threshold. 0 means the pattern has died. */
+    fun liveCells(): Int = (0 until size * size).count { state[it * CHANNELS + 3] > ALIVE_THRESHOLD }
+
+    /**
+     * The alpha that lies more than [margin] cells away from anything in [target] (`[y][x][rgba]`,
+     * the size of this grid): growth where the picture has nothing, such as a second flower.
+     */
+    fun strayAlpha(target: FloatArray, margin: Int = 3): Double {
+        var sum = 0.0
+        for (y in 0 until size) for (x in 0 until size) {
+            val a = state[(y * size + x) * CHANNELS + 3]
+            if (a <= 0f) continue
+            var near = false
+            loop@ for (dy in -margin..margin) for (dx in -margin..margin) {
+                val xx = x + dx
+                val yy = y + dy
+                if (xx < 0 || yy < 0 || xx >= size || yy >= size) continue
+                if (target[(yy * size + xx) * 4 + 3] > ALIVE_THRESHOLD) {
+                    near = true
+                    break@loop
+                }
+            }
+            if (!near) sum += a.coerceIn(0f, 1f)
+        }
+        return sum
     }
 
     private fun computeAlive(s: FloatArray) {
@@ -153,6 +212,9 @@ class GrowingNca(
 
     private fun perceive(s: FloatArray, x: Int, y: Int) {
         perception.fill(0f)
+        val angle = rotationAt?.invoke(x, y) ?: rotation
+        val ca = cos(angle).toFloat()
+        val sa = sin(angle).toFloat()
         for (dy in -1..1) {
             val yy = y + dy
             if (yy < 0 || yy >= size) continue
@@ -160,8 +222,11 @@ class GrowingNca(
                 val xx = x + dx
                 if (xx < 0 || xx >= size) continue
                 // Sobel-x weights (dx, 2 dx, dx)/8 down the rows; Sobel-y is its transpose.
-                val sx = dx * (if (dy == 0) 2f else 1f) / 8f
-                val sy = dy * (if (dx == 0) 2f else 1f) / 8f
+                val sobelX = dx * (if (dy == 0) 2f else 1f) / 8f
+                val sobelY = dy * (if (dx == 0) 2f else 1f) / 8f
+                // the two sensors turned by `rotation`
+                val sx = ca * sobelX - sa * sobelY
+                val sy = sa * sobelX + ca * sobelY
                 val base = (yy * size + xx) * CHANNELS
                 for (c in 0 until CHANNELS) {
                     val v = s[base + c]
@@ -207,8 +272,8 @@ class GrowingNca(
      *
      * The push constants are `cells` (one buffer of `2 * size * size * 4` vec4s: two whole grids),
      * `nw` (the [MlpWeights.flat] array in a buffer), `size`, `parity` (0 reads the first grid and
-     * writes the second, 1 the reverse), a per-step `seed` for the update mask, and `brush` (`xy` in
-     * cells, `z` radius, `w > 0` to erase). Both grids live in one buffer, selected by `parity`,
+     * writes the second, 1 the reverse), a per-step `seed` for the update mask, `brush` (`xy` in
+     * cells, `z` radius, `w > 0` to erase), and `angle`, the [rotation] in radians. Both grids live in one buffer, selected by `parity`,
      * because a buffer-reference push constant is resolved once and then reused: swapping two
      * pointers between dispatches leaves the shader reading the first grid for ever. The network itself is `MlpWeights.glsl`'s output,
      * so the GPU and [step] evaluate one set of weights in one order.
@@ -227,6 +292,7 @@ class GrowingNca(
                 uint parity;
                 uint seed;
                 vec4 brush;
+                float angle;
             } pc;
 
             float cellAlpha(int x, int y) {
@@ -253,13 +319,15 @@ class GrowingNca(
                 for (int dy = -1; dy <= 1; ++dy) for (int dx = -1; dx <= 1; ++dx) pre = pre || cellAlpha(x + dx, y + dy) > $ALIVE_THRESHOLD;
 
                 if (pre && hash(uvec3(x, y, pc.seed)) <= $fireRate) {
+                    float ca = cos(pc.angle), sa = sin(pc.angle);
                     float p[48];
                     for (int c = 0; c < 48; ++c) p[c] = 0.0;
                     for (int dy = -1; dy <= 1; ++dy) for (int dx = -1; dx <= 1; ++dx) {
                         int xx = x + dx, yy = y + dy;
                         if (xx < 0 || yy < 0 || xx >= n || yy >= n) continue;
-                        float sx = float(dx) * (dy == 0 ? 2.0 : 1.0) / 8.0;
-                        float sy = float(dy) * (dx == 0 ? 2.0 : 1.0) / 8.0;
+                        float sobelX = float(dx) * (dy == 0 ? 2.0 : 1.0) / 8.0;
+                        float sobelY = float(dy) * (dx == 0 ? 2.0 : 1.0) / 8.0;
+                        float sx = ca * sobelX - sa * sobelY, sy = sa * sobelX + ca * sobelY;
                         int nb = (yy * n + xx) * 4;
                         for (int k = 0; k < 4; ++k) {
                             vec4 q = pc.cells.v[src + nb + k];
@@ -334,6 +402,85 @@ class GrowingNca(
             }.bufferedReader().use { it.readText() }
             val o = Json.parseToJsonElement(text).jsonObject
             return o.getValue("targetRgba").jsonArray.map { it.jsonPrimitive.float }.toFloatArray()
+        }
+
+        /**
+         * [target] (`[y][x][rgba]`, [size] square) turned anticlockwise on screen by [angle] radians
+         * about the seed cell's centre, sampled bilinearly: the picture a rule run with
+         * [rotation] = [angle] should grow.
+         */
+        fun rotateTarget(target: FloatArray, angle: Double, size: Int = 64): FloatArray {
+            val out = FloatArray(target.size)
+            val c = size / 2 + 0.5
+            val ca = cos(angle)
+            val sa = sin(angle)
+            fun at(x: Int, y: Int, k: Int) = if (x < 0 || y < 0 || x >= size || y >= size) 0f else target[(y * size + x) * 4 + k]
+            for (y in 0 until size) for (x in 0 until size) {
+                // the cell centre, turned back into the upright picture
+                val px = x + 0.5 - c
+                val py = y + 0.5 - c
+                val sx = ca * px - sa * py + c - 0.5
+                val sy = sa * px + ca * py + c - 0.5
+                val x0 = floor(sx).toInt()
+                val y0 = floor(sy).toInt()
+                val fx = (sx - x0).toFloat()
+                val fy = (sy - y0).toFloat()
+                for (k in 0 until 4) {
+                    val top = at(x0, y0, k) * (1 - fx) + at(x0 + 1, y0, k) * fx
+                    val bottom = at(x0, y0 + 1, k) * (1 - fx) + at(x0 + 1, y0 + 1, k) * fx
+                    out[(y * size + x) * 4 + k] = top * (1 - fy) + bottom * fy
+                }
+            }
+            return out
+        }
+
+        /**
+         * Rasterises filled [lines] into a training target: [size] square (`[y][x][rgba]`,
+         * premultiplied), each line in its own `color` (alpha included), antialiased, later lines
+         * over earlier ones. Coordinates are pixels of that square, y down, so draw inside 0..[size].
+         * [writeTarget] saves it for `tools/nca/train_growing_nca.py --target-file`.
+         */
+        fun targetFromFLines(lines: List<FLine>, size: Int = 40): FloatArray {
+            val img = BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB)
+            val g = img.createGraphics()
+            g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+            g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY)
+            for (l in lines) {
+                val c = l.color
+                g.color = java.awt.Color(c.x.coerceIn(0f, 1f), c.y.coerceIn(0f, 1f), c.z.coerceIn(0f, 1f), c.w.coerceIn(0f, 1f))
+                val shape = FLinesAndJavaShapes.flineToJavaShape(l)
+                if (l.filled) g.fill(shape) else g.draw(shape)
+            }
+            g.dispose()
+            val out = FloatArray(size * size * 4)
+            for (y in 0 until size) for (x in 0 until size) {
+                val p = img.getRGB(x, y)
+                val a = (p ushr 24 and 0xff) / 255f
+                out[(y * size + x) * 4] = (p shr 16 and 0xff) / 255f * a
+                out[(y * size + x) * 4 + 1] = (p shr 8 and 0xff) / 255f * a
+                out[(y * size + x) * 4 + 2] = (p and 0xff) / 255f * a
+                out[(y * size + x) * 4 + 3] = a
+            }
+            return out
+        }
+
+        /** A target (`[y][x][rgba]`, premultiplied) as ARGB pixels on white, [scale] pixels per cell. */
+        fun targetArgb(target: FloatArray, size: Int, scale: Int = 1): IntArray {
+            val w = size * scale
+            return IntArray(w * w) { i ->
+                val base = ((i / w / scale) * size + (i % w) / scale) * 4
+                val a = target[base + 3].coerceIn(0f, 1f)
+                fun ch(c: Int) = ((1f - a + target[base + c].coerceIn(0f, 1f)).coerceIn(0f, 1f) * 255f).toInt()
+                (0xff shl 24) or (ch(0) shl 16) or (ch(1) shl 8) or ch(2)
+            }
+        }
+
+        /** Writes [target] ([size] square) as the JSON `train_growing_nca.py --target-file` reads. */
+        fun writeTarget(file: File, target: FloatArray, size: Int = 40, name: String = file.nameWithoutExtension) {
+            require(target.size == size * size * 4) { "target has ${target.size} floats, not $size x $size x 4" }
+            file.absoluteFile.parentFile?.mkdirs()
+            val rgba = target.joinToString(",") { "%.4f".format(java.util.Locale.ROOT, it) }
+            file.writeText("{\"name\": \"$name\", \"size\": $size, \"rgba\": [$rgba]}\n")
         }
 
         /** A rule from a JSON file written by `tools/nca/train_growing_nca.py`. */
