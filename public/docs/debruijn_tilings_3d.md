@@ -18,8 +18,8 @@ A40, 580, 1984).
 Keep one plane per family and there are exactly twenty crossings, one for each way of choosing
 three of the six families. Their twenty cells, ten prolate and ten oblate, pack into a rhombic
 triacontahedron, the thirty-faced solid the six directions span. The box below pulls the cells
-apart so the packing shows, then asks Manifold for their union and, as a control, for the convex
-hull of every corner. If the cells overlapped or left a gap, the two volumes would disagree.
+apart so the packing shows, then welds them into one solid with `toSolid()`, which unions them
+through Manifold, and, as a control, takes the convex hull of every corner. If the cells overlapped or left a gap, the two volumes would disagree.
 
 ```diffstatic_runner {data-lang=kotlin embed=true screenshot="assets/debruijn_tilings_3d/triacontahedron.png" wait="4" capture="box" open-outputs="true" padding="20" requires="manifold" w="760" name="debruijn3d-triacontahedron"}
 import afield.geometry.solid.manifold.*
@@ -30,10 +30,9 @@ val counts = t.shapeCounts()
 
 val (union, hull) =
     Solid.scope {
-        val cells = Solid.union(t.cells.map { Solid.hullOfPointsD(it.cornerArray()) })
         // The control: the convex hull of every corner, which is the triacontahedron.
         val corners = Solid.hullOfPointsD(t.cells.flatMap { it.cornerArray().toList() }.toDoubleArray())
-        cells.toTriMesh() to corners.volume
+        t.toSolid().toTriMesh() to corners.volume
     }
 
 showMeshGrid(
@@ -46,7 +45,7 @@ showMeshGrid(
 
 Every corner of every cell sits at a sum of the six directions with integer coefficients, so two
 cells that meet compute their shared corners to the same bits; that is what lets Manifold weld
-twenty solids into one closed thirty-faced one. `planes = 0 until m` keeps *m* planes per family
+twenty solids into one closed thirty-faced one, with no seams left inside. `planes = 0 until m` keeps *m* planes per family
 and fills a triacontahedron *m* times as wide with 20*m*³ cells.
 
 ## A patch of the 3D Penrose tiling
@@ -61,7 +60,7 @@ closes in on φ as the radius grows.
 // prolate / oblate against the radius of the patch, beside the golden ratio.
 val phi = (1 + sqrt(5.0)) / 2
 val ratios =
-    [2, 4, 6, 8].joinToString(" · ") { r ->
+    [2, 4, 8, 12].joinToString(" · ") { r ->
         val counts = deBruijnTiling3D(radius = r.toDouble()).shapeCounts()
         "radius $r: %.4f".format(counts.getValue(1).toDouble() / counts.getValue(2))
     }
@@ -144,8 +143,10 @@ showPlaneGrid(*panels.toTypedArray(), columns = 2, cellWidth = 360, cellHeight =
 The construction takes any set of directions. `DeBruijnStar` names five: the 4-, 3- and 2-fold
 axes of a cube and the 5- and 3-fold axes of an icosahedron. Cube axes have rational coordinates,
 so their tilings repeat; icosahedral axes do not, so theirs never do. The three-axis cubic grid is
-just the cubic lattice, one cell shape and every slice a lattice of squares and
-parallelograms. Every panel below is cut along the same plane.
+just the cubic lattice of cubes, so its slice repeats; the body diagonals give a single
+rhombohedron and the face diagonals two. The icosahedral 3-fold axes, ten families, give five cell
+shapes. Every panel below is cut along the same plane, and its caption counts the cells of each
+shape.
 
 ```diffstatic_runner {data-lang=kotlin embed=true screenshot="assets/debruijn_tilings_3d/stars.png" wait="4" capture="box" open-outputs="true" w="760" padding="14" name="debruijn3d-stars"}
 val cut = Vector3d(0.31, 0.52, 0.80)
@@ -165,7 +166,7 @@ showPlaneGrid(*panels.toTypedArray(), columns = 3, cellWidth = 240, cellHeight =
 
 `oriented(up)` turns the tiling so that `up` points along +z, without moving any cell relative to
 its neighbours. Turn a 5-fold axis upright, keep the cells whose centres lie in a thin slab, and
-Manifold welds them into one solid whose top is a terrain of golden-rhombus faces. Trimming the
+`toSolid(slab)` welds them into one solid whose top is a terrain of golden-rhombus faces. Trimming the
 bottom flat makes it something a printer can stand on. The welded volume is printed beside the sum
 of the cell volumes it came from: equal, because the cells neither overlap nor leave gaps.
 
@@ -178,7 +179,7 @@ val slab = t.cells.filter { abs(it.center.z) < 9.0 && hypot(it.center.x, it.cent
 
 val (welded, relief) =
     Solid.scope {
-        val union = Solid.union(slab.map { Solid.hullOfPointsD(it.cornerArray()) })
+        val union = t.toSolid(slab)
         // Keep everything above z = -6: a flat bottom to print from.
         union.volume to union.trimByPlane(0.0, 0.0, 1.0, -6.0)
     }

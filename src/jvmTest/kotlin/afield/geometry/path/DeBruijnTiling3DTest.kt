@@ -122,6 +122,20 @@ class DeBruijnTiling3DTest {
         assertEquals(8 * t.volume(), twice.volume(), 1e-9)
     }
 
+    /** Manifold welds the twenty cells into the triacontahedron itself: 32 vertices, 60 triangles. */
+    @Test
+    fun toSolidIsTheTriacontahedron() {
+        val t = deBruijnTiling3D(planes = 0..0, scale = 1.0)
+        afield.geometry.solid.manifold.Solid.scope {
+            val solid = t.toSolid()
+            assertEquals(0, solid.genus)
+            assertEquals(32L, solid.vertexCount)
+            assertEquals(60L, solid.triangleCount)
+            assertEquals(t.volume(), solid.volume, 1e-9)
+            Unit
+        }
+    }
+
     @Test
     fun everyStarTiles() {
         val cubic = deBruijnTiling3D(DeBruijnStar.CUBIC, radius = 3.0, scale = 1.0)

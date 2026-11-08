@@ -1,6 +1,7 @@
 package afield.geometry.path
 
 import afield.geometry.mesh.TriMesh
+import afield.geometry.solid.manifold.Solid
 import afield.graphics.render.color
 import afield.graphics.render.filled
 import afield.graphics.render.stroked
@@ -355,6 +356,22 @@ class DeBruijnTiling3D(
             }
         }
         return TriMesh(positions, indices, normals, null, colors)
+    }
+
+    /**
+     * The union of [only] (every cell by default) as one closed Manifold [Solid], ready for
+     * `trimByPlane`, `slice` or `saveStl`. Neighbouring cells compute their shared corners to the
+     * same bits, so their faces weld exactly. Manifold's union leaves a zero-volume shell where many
+     * coplanar faces meet at a point; this drops those, keeping every part with real volume.
+     * Needs the Manifold native library (see the Manifold page).
+     */
+    fun toSolid(only: List<DeBruijnCell> = cells): Solid {
+        require(only.isNotEmpty()) { "toSolid needs at least one cell" }
+        val smallest = only.minOf { it.volume }
+        return Solid.scope {
+            val union = Solid.union(only.map { Solid.hullOfPointsD(it.cornerArray()) })
+            Solid.compose(union.decompose().filter { it.volume > 1e-6 * smallest })
+        }
     }
 
     /**
