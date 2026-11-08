@@ -2582,6 +2582,20 @@ body.field-pane-resizing-h * {
     transform: translateY(1px);
 }
 
+.field-button .field-button-icon {
+    min-width: 56px;
+    min-height: 26px;
+    display: inline-grid;
+    place-items: center;
+}
+
+.field-button-icon svg {
+    width: 16px;
+    height: 16px;
+    fill: currentColor;
+    pointer-events: none;
+}
+
 .field-button .field-button-hit:focus-visible {
     outline: 1px solid var(--field-accent-outline);
     outline-offset: 2px;
@@ -2621,18 +2635,30 @@ body.field-pane-resizing-h * {
 }
 
 .field-checkbox .checkbox-toggle {
-    width: 16px;
-    height: 16px;
+    width: 32px;
+    height: 32px;
+    margin: 0;
+    flex: 0 0 32px;
     appearance: none;
     -webkit-appearance: none;
-    background: var(--field-surface);
-    border: 1px solid var(--field-accent-border-strong);
-    border-radius: 4px;
+    background: transparent;
+    border: 0;
     cursor: pointer;
     position: relative;
     display: grid;
     place-items: center;
+}
+
+.field-checkbox .checkbox-toggle::before {
+    content: "";
+    width: 16px;
+    height: 16px;
+    box-sizing: border-box;
+    background: var(--field-surface);
+    border: 1px solid var(--field-accent-border-strong);
+    border-radius: 4px;
     box-shadow: 0 0 0 1px var(--field-shadow-inset) inset, 0 0 6px var(--field-accent-glow);
+    grid-area: 1 / 1;
 }
 
 .field-checkbox .checkbox-toggle::after {
@@ -2641,6 +2667,7 @@ body.field-pane-resizing-h * {
     height: 10px;
     background: var(--field-selection);
     border-radius: 2px;
+    grid-area: 1 / 1;
     opacity: 0;
     transition: opacity 120ms ease;
 }

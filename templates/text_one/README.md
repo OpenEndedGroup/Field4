@@ -11,8 +11,9 @@ The document separates three jobs:
 3. **Drawing** uploads one CPU scene snapshot and renders it with the current matrices for both eyes.
 
 Launch `text_one_launch`; `text_one_stop` stops Drawing before Reading space.
-The five shader boxes export their `vertex` and `fragment` properties.
-The renderer reads those live properties when **Reload drawing, blur and compositor shaders** is pressed.
+Each shader box builds its pass with `moduleHere`, from its own `vertex` and `fragment` tabs.
+Drawing supplies target/resource settings through a small module factory. Use **Reload Shader**
+(Alt+R) in the edited box; generated push-constant and buffer accessors belong to that box.
 Stop Drawing before rebuilding the graph. Re-running just the score leaves the physics,
 text atlases and renderer in place.
 
@@ -216,8 +217,8 @@ The **Additive to weighted paint** control mixes accumulated light with opacity-
 colour. Alpha sums coverage from every stroke, point and glyph, rather than being cleared
 to one or overwritten with display alpha. The paint threshold and knee set the crossover.
 
-Box 10 exposes the blur shader; box 11 exposes the compositor. Drawing's reload button
-reloads all shader pairs while preserving physics and text atlases. The settings also expose
+Box 10 and the three following blur boxes expose the horizontal/vertical passes at each scale;
+box 11 exposes the compositor. **Reload Shader** in a pass preserves physics and text atlases. The settings also expose
 the fold, grading, luminance-preserving split tones, FXAA and supersample-mask parameters.
 To allocate a larger scene, stop Drawing and pass `sceneScale = 1.5f` (up to `2f`) to
 `StereoDiagramRenderer`; eye output and browser resolution stay fixed. Filtering happens in

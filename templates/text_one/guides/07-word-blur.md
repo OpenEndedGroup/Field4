@@ -65,3 +65,10 @@ or close inspection, at a memory and one-time preparation cost. Cache preparatio
 the scene on its command buffer; its first frame can take longer. Steady frames sample the
 cache rather than running fifteen Gaussian passes again. This is not temporal AA or a
 headset-image blur. The existing green-controlled scene compositor remains independent.
+
+## Display dither
+
+Drawing's **Dither (8-bit code steps)** control adds monochrome triangular noise after grading
+and spatial AA, in perceptual code space. Zero disables it; about 0.65 is a gentle starting
+point for a downstream eight-bit display conversion. The noise is static in screen coordinates
+and black backgrounds remain black. It changes neither the blur cache nor headset pose timing.

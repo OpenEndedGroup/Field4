@@ -73,6 +73,21 @@ operations:
 
 
 class RuleTests(unittest.TestCase):
+    def test_literal_raw_shader_reads_require_review_but_typed_properties_are_clean(self):
+        code = [
+            'val source = thisBox.getPropertyRaw("fragment") as String',
+            'val shader = other.getPropertyRaw("vertex") as? String',
+            'val normal = other.fragment',
+            '// val quoted = thisBox.getPropertyRaw("compute")',
+            'println("getPropertyRaw(\\"fragment\\") is verbose")',
+            'val unrelated = thisBox.getPropertyRaw("metadata")',
+        ]
+        findings = idioms.check_block(code, 0, len(code))
+        raw = [f for f in findings if f[1] == "raw-shader-property"]
+        self.assertEqual([0, 1], [f[0] for f in raw])
+        self.assertTrue(all(not f[3] for f in raw), "cast/guard semantics need human review")
+
+
     def test_each_rule_is_reported_on_its_file_line(self):
         f = Fixture({TRANSCRIPT: YAML})
         try:

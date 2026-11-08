@@ -134,6 +134,29 @@ explicitly, or use the opt-in. All four cases are staged live and asserted in
 `examples.context.search-order-ledger`, with the measured output recorded in
 [`../stdlib_behaviour_changes.md`](../stdlib_behaviour_changes.md).
 
+## Write box code in Field's own idiom
+
+Read [Box code revision pass](BOX_CODE_REVISION_PASS.md#authoring-shader-boxes) before adding
+an editable GPU example. The box is an implicit receiver; inherited values belong in
+`prop<T>(name)` or `@exported` declarations. Use the existing typed shader properties
+`vertex`, `fragment`, `compute`, `task` and `mesh`; `getPropertyRaw("fragment") as String`
+is persistence plumbing, not the ordinary way to read a shader in a box.
+
+An editable graphics shader box normally uses `moduleHere { ... }`, with GLSL in its
+shader tabs. It supplies Reload Shader/Alt+R, Update Shader, and reflected Kotlin
+accessors. Prefer the existing unary-plus composition (`+target`, `+movie` for a `ConfiguresModule`)
+when a source supplies its configuration. The block configures targets, textures and blend/depth state; it does not
+replace the shader tabs. Put a short trailing `//` comment on each push-constant member
+and shader buffer declaration; those comments become help in Kotlin completion.
+
+Keep Kotlin readable: blank lines between lifecycle phases and control groups, short
+comments for units, ownership and timing, and explicit names for intermediate values
+that explain a non-obvious operation. A compile-green compressed script is not finished.
+`Module(parameters(...))` is appropriate inside a reusable renderer library or for a
+pipeline that deliberately owns several passes. It is not the default for a document's
+editable shader. `attachShader` adopts an existing library-owned module; prefer creating
+a new document module with `moduleHere` in the first place.
+
 ## Inspect a live value at runtime (debug probe)
 
 Ask the running JVM "what is this variable right now?" via the MCP tool

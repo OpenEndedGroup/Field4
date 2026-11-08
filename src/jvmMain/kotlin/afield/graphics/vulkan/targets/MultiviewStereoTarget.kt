@@ -22,16 +22,22 @@ import afield.graphics.vulkan.util.MouseEvent
 import afield.graphics.vulkan.util.MouseEvents
 import afield.math.linalg.*
 
-/** One scene pass into two array layers, with one shared per-frame eye UBO. No packed intermediate. */
+/**
+ * One scene pass into two array layers, with one shared per-frame eye UBO. No packed intermediate.
+ *
+ * @param colorFormat Eye image format; defaults to the OpenXR swapchain format or linear float without OpenXR.
+ */
 class MultiviewStereoTarget(
     val renderer: Renderer = fromContext(),
     val eyeWidth: Int = renderer.window.width / 2,
     val eyeHeight: Int = renderer.window.height,
     val openXR: OpenXRHmdTarget? = null,
     withDepth: Boolean = true,
+    colorFormat: Int = openXR?.swapchainColorFormat ?: org.lwjgl.vulkan.VK10.VK_FORMAT_R16G16B16A16_SFLOAT,
 ) : Target, HasImageView {
     val stereoCamera = StereoCamera(Camera(renderer).apply { p.auto = {} })
     val layered = RenderToTexture(renderer) {
+        format = colorFormat
         width = eyeWidth
         height = eyeHeight
         colorAttachments = 1
@@ -64,7 +70,12 @@ class MultiviewStereoTarget(
             if (requested.name == "StereoViews") {
                 require(requested.source?.size == 224) { "StereoViews must be 224 bytes" }
                 eyeUniforms
-                    ?: requested.also {
+                    ?: BufferParameters(source = requested.source, name = requested.name).also {
+                        // The target supplies/owns this allocation, not the first scene module.
+                        // Returning the request itself marks it module-owned and a shader reload
+                        // that removes StereoViews would retire the shared eye buffer.
+                        it.size = 224
+                        it.uniform()
                         it.perFrame = true
                         it.hosted()
                         eyeUniforms = it

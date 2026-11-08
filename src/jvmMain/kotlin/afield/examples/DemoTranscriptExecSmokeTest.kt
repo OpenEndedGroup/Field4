@@ -592,6 +592,7 @@ object DemoTranscriptExecSmokeTest {
     /** Graphics demos: box bodies are compiled (real pipeline, eval skipped) but not launched. */
     internal val COMPILE_ONLY = setOf(
         "text_one_vr",
+        "video_one_vr",
         // Audio curves: every box is a playback loop under a waveform player that waits for the
         // user to press play, and the analysis shells out to uv. AudioCurvesTest runs audioCurves,
         // audioCurveStages and the EMA variant through the real analyzer instead.

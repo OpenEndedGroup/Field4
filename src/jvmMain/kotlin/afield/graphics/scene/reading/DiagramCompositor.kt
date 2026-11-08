@@ -46,6 +46,7 @@ class DiagramCompositor(
     private val stereo: MultiviewStereoTarget,
     shaders: DiagramShaderSet,
     val sceneScale: Float = 1f,
+    private val moduleFactories: Map<String, DiagramModuleFactory> = emptyMap(),
 ) : AutoCloseable {
     val settings = DiagramCompositeSettings()
     private val width = (stereo.eyeWidth * sceneScale).roundToInt().coerceAtLeast(1)
@@ -76,18 +77,16 @@ class DiagramCompositor(
     private val blurModules = (1..4).map { i ->
         val target = stages[i]
         val source = stages[i - 1]
-        val module = Module(parameters(renderer) {
+        val module = readingModule(parameters(renderer) {
             name = "reading-blur-$i"
             +target
-            vertex = shaders.blurVertex
-            fragment = shaders.blurFragment
             depthTest = false
             depthWrite = false
             blend = false
             textureResolver = { texture ->
                 if (texture.name == "source") fromViews(listOf(source), texture.name, sampler) else null
             }
-        }).pointer()
+        }, shaders.blurVertex, shaders.blurFragment, moduleFactories)
         val mesh = Mesh(renderer, module)
         mesh.resize(3, 0)
         mesh.push.bindPushConstant("tapStep", {
@@ -103,11 +102,9 @@ class DiagramCompositor(
         module
     }
 
-    val module = Module(parameters(renderer) {
+    val module = readingModule(parameters(renderer) {
         name = "reading-composite"
         stereo.configure(this)
-        vertex = shaders.compositeVertex
-        fragment = shaders.compositeFragment
         depthTest = false
         depthWrite = false
         blend = false
@@ -120,7 +117,7 @@ class DiagramCompositor(
             }
             source?.let { fromViews(listOf(it), texture.name, sampler) }
         }
-    }).pointer()
+    }, shaders.compositeVertex, shaders.compositeFragment, moduleFactories)
     private val mesh = Mesh(renderer, module)
     /** Last recorded frame and command buffer for each of the five inputs and final composite. */
     val stageFrames = LongArray(6) { -1L }

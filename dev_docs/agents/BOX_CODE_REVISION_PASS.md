@@ -5,6 +5,10 @@ checked and improved, and what an agent revising it is asked.
 
 ## What is enforced (the gate)
 
+Literal `getPropertyRaw("fragment")` (and other shader-stage) reads in box code now trip
+the `raw-shader-property` rule. The checker asks for typed properties and leaves casts/guards
+for review, rather than silently changing their semantics.
+
 - `tools/check_box_idioms.py` flags, and with `--fix` rewrites, the idioms agents keep writing:
   a redundant `val renderer: Renderer = fromContext()` (the renderer box publishes
   `prop<Renderer>(renderer)`), `mesh.push.bindPushConstant("n", { e }) { throw ... }` instead of
@@ -46,6 +50,56 @@ after helper implementation: four representative transcripts with native graphic
 mesh and Loris verification. Its checkpoint lists completed and deferred work explicitly.
 The [second-pass checkpoint](box_code_second_pass/README.md) tracks addressed finding IDs and
 remaining work as further batches land.
+
+## Authoring shader boxes
+
+Use Field's public box language rather than rebuilding it with reflection or persistence APIs.
+
+- Publish inherited context with `prop<T>(name)`; use `@exported` for exported script values.
+  A child then reads the value on its implicit box receiver. Prefer that to a cached
+  `fromContext` lookup when an ordinary inherited property expresses the relationship.
+- Shader sources already have typed inherited properties: `Box.vertex`, `Box.fragment`,
+  `Box.compute`, `Box.task`, `Box.mesh`. Write `vertex` / `fragment` in the box, or
+  `otherBox.fragment` when reading another shader box. Low-level `getPropertyRaw` casts,
+  string dispatch helpers and repeated presence/type guards obscure this contract.
+- Define an editable graphics pipeline with `moduleHere { ... }`. Put GLSL in the box's
+  shader properties. The macro wires Reload Shader/Alt+R, Update Shader, generated push
+  constants, buffers and documentation. Configure the target, sampler/texture resolver,
+  blend/depth state inside the block; assigning shader source in that block is overwritten
+  by the box's prepared source.
+- Add short trailing `//` comments to push-constant members and shader buffer declarations,
+  including units, packing and coordinate space. Field carries these comments into Kotlin
+  completion. In Kotlin, comment buffer allocation and producer/consumer ownership near
+  the allocation rather than leaving a bare byte count unexplained.
+- Space the script into preparation, controls, rendering and cleanup. Comments explain
+  units, frame ordering, state ownership and artistic intent, not a translation of each line.
+  Use Field's formatter and inspect the result; formatting alone cannot add missing context.
+
+For a document pipeline, the intended shape is:
+
+```kotlin
+val shader = moduleHere {
+    +movie // target, video planes, sampler and depth/blend state
+}
+```
+
+This is the `video_one` shape: shader properties live on that same box. Consumers should accept a `ModulePointer` or a configuration
+hook so the box can own its pipeline; they should not force a document to construct a hidden
+`Module`, copy its GLSL through raw property access, and manually install a reload button.
+
+Direct `Module(parameters(...))` remains useful **inside reusable library implementations**,
+particularly a pass graph that owns several differently sized RTTs. Keep that boundary clear.
+`attachShader` is the adoption API for a module that must remain owned by such a library;
+it is not a replacement for `moduleHere` when designing a new editable shader box.
+The same distinction applies to `computeModuleHere` and `meshModuleHere`.
+
+### Review before calling an example ready
+
+Inspect its source, not only its screenshot: normal inherited properties; native shader macros
+or an explained library boundary; documented push constants/buffers; useful whitespace and
+comments; cleanup owned by the launch that created resources. Exercise the ordinary Reload
+Shader action in the real document. A custom rerun/reload helper passing is not evidence that
+Alt+R or generated Kotlin accessors work.
 
 ## Imports
 

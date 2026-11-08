@@ -2,14 +2,16 @@
 #extension GL_EXT_buffer_reference : require
 #extension GL_EXT_multiview : require
 layout(std430, buffer_reference, buffer_reference_align = 4) readonly buffer SlugData {
-    uint words[];
+    uint words[]; // immutable Slug header, curve and band atlas in 32-bit words
 };
 struct BlurEntry {
-    SlugData slug;
-    vec4 bounds;
-    vec4 metrics;
+    SlugData slug; // word-local outline atlas address
+    vec4 bounds; // padded min XY / max XY in font units
+    vec4 metrics; // maximum Gaussian sigma in font units, three reserved values
 };
-layout(std430, buffer_reference) readonly buffer BlurEntries { BlurEntry item[]; };
+layout(std430, buffer_reference) readonly buffer BlurEntries {
+    BlurEntry item[]; // paired immutable 48-byte word-cache entries
+};
 // Analytic Slug core: Copyright (c) 2026 AlphaPixel LLC. See LICENSE-slughorn.
 layout(push_constant) uniform MaskPush {
     BlurEntries entries; // immutable glyph data; preparation never uses an eye or head pose

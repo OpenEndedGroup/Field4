@@ -33,11 +33,12 @@ for ((index, example) in allExamples.withIndex()) {
     }
     example.player.playback.seek(6.0)
 }
-// Re-scoring preserves the gallery object while Drawing is active.
-val previousGallery = thisBox.getPropertyRaw("poem") as? ReadingGallery
-prop<ReadingGallery>(poem) = previousGallery?.takeIf {
-    it.examples.map { e -> e.player } == allExamples.map { e -> e.player }
-} ?: ReadingGallery(allExamples)
+// Keep the gallery through a re-score, replacing it only when graph construction
+// produced different players. once/prop are the normal persistent property path.
+prop<ReadingGallery>(poem)
+once.poem { ReadingGallery(allExamples) }
+if (poem.examples.map { it.player } != allExamples.map { it.player }) poem = ReadingGallery(allExamples)
+
 fun describe() {
     val e = poem.examples[poem.selected]
     display("selected example", "<div style='padding:12px;width:440px'><b>${e.title}</b><p>${e.description}</p></div>")

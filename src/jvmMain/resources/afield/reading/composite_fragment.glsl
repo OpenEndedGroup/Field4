@@ -26,7 +26,7 @@ layout(std140,set=0,binding=3) uniform CompositeGrade {
     vec4 background; // linear background RGB, strength
     vec4 fxaa; // overall mix, relative edge threshold, absolute threshold, span pixels
     vec4 subpixel; // subpixel smoothing, output-eye width/height, linear-light FXAA flag
-    vec4 supersampling; // per-pixel rotation mix, footprint radius, stable integer seed, reserved
+    vec4 supersampling; // per-pixel rotation mix, footprint radius, stable integer seed, display dither in 8-bit code steps
 } grade;
 
 // Editable effective LUT. Outside 0..1 these sum-to-one weights deliberately go
@@ -198,6 +198,20 @@ void main() {
         if(!linearAA())center=linearToSrgb(center);
         vec3 filtered=mix(center,spatialAA(uv,center),clamp(grade.fxaa.x,0.0,1.0));
         color=linearAA()?filtered:srgbToLinear(filtered);
+    }
+    // Dither after grading and AA, in perceptual code space, then return linear RGB.
+    // One shared RGB offset avoids coloured speckles. Static per-eye-pixel noise avoids flicker.
+    // A triangular distribution spans +/- one code step at strength 1; zero disables it.
+    float strength=max(grade.supersampling.w,0.0);
+    if(strength>0.0) {
+        uvec2 pixel=uvec2(gl_FragCoord.xy);
+        float a=float(sampleMaskHash(pixel,19391u)>>8u)/16777216.0;
+        float b=float(sampleMaskHash(pixel,73471u)>>8u)/16777216.0;
+        vec3 encoded=linearToSrgb(clamp(color,vec3(0),vec3(1)));
+        // Keep an exactly black background black; fully apply noise above two code steps.
+        float gate=smoothstep(0.0,2.0/255.0,max(encoded.r,max(encoded.g,encoded.b)));
+        encoded=clamp(encoded+vec3((a-b)*strength*gate/255.0),vec3(0),vec3(1));
+        color=srgbToLinear(encoded);
     }
     outColor=vec4(max(color,vec3(0)),1.0);
 }
