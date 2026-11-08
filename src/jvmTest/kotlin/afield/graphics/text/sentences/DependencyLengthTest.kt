@@ -174,4 +174,14 @@ class DependencyLengthTest {
             assertTrue(measured.all { it.lengths.optimal <= it.lengths.observed || !it.tree.isProjective() })
         }
     }
+
+    @Test
+    fun figureSvgScalesToItsPanelKeepingItsProportions() {
+        val svg = figureSvg(dog.arcLines(spacing = 20.0), maxWidth = 500)
+        val open = Regex("<svg\\b[^>]*>").find(svg)!!.value
+        val viewBox = Regex("viewBox=\"0 0 ([0-9.]+) ([0-9.]+)\"").find(open)!!.groupValues
+        assertTrue(viewBox[1].toDouble() > viewBox[2].toDouble(), open)
+        assertTrue("max-width:500px" in open, open)
+        assertFalse(Regex("\\swidth=").containsMatchIn(open), open)
+    }
 }

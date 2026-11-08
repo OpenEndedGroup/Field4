@@ -261,6 +261,23 @@ class DependencyTree(
 fun outlinedText(text: String, at: P, font: java.awt.Font): FLine =
     TextItem(text, at, kind = TextKind.WORD).outlineFLine(font)
 
+/**
+ * [lines] as an SVG that scales to the width of its output panel, up to [maxWidth] pixels, keeping
+ * its proportions: `display("figure", figureSvg(lines))`. `lines()` fits a drawing inside a panel of
+ * fixed height instead, which suits wide figures but shrinks a tall one, such as rows of sentences.
+ */
+fun figureSvg(lines: List<FLine>, maxWidth: Int = 760): String {
+    val svg = afield.ui.visualization.drawToSVG(lines, -1.0, -1.0)
+    val open = Regex("<svg\\b[^>]*>").find(svg) ?: return svg
+    fun attr(name: String) = Regex("\\b$name=\"([0-9.]+)\"").find(open.value)?.groupValues?.get(1)
+    val w = attr("width") ?: return svg
+    val h = attr("height") ?: return svg
+    val tag = open.value
+        .replace(Regex("\\s(width|height)=\"[0-9.]+\""), "")
+        .replaceFirst("<svg", "<svg viewBox=\"0 0 $w $h\" style=\"width:100%;max-width:${maxWidth}px;height:auto;display:block\"")
+    return svg.replaceRange(open.range, tag)
+}
+
 /** Ways of putting a tree's words in a line, each projective by construction. */
 object Linearization {
     /** The paper's free word order baseline: at every head, the head and its dependents in random order. */

@@ -26,23 +26,24 @@ operations:
             (1..3).map { "shuffled" to Linearization.freeRandom(tree, rng) } +
             listOf("shortest" to Linearization.optimal(tree))
 
-        val caption = font("Serif", 26.0)
+        val caption = font("Serif", 30.0)
         var y = 0.0
         val figure = rows.flatMap { (name, order) ->
             val d = SentenceDiagram().use(tree.sentence(order))
             d.scheme = Scheme.UD
-            d.wordFont = font("Serif", 26.0)
+            d.wordFont = font("Serif", 30.0)
+            d.wordGap = 22.0
             d.heights = Heights.Flat(y)
             d.arcLabels = false
-            d.x0 = 260.0
+            d.x0 = 250.0
             val f = d.flines()
             // Keep the words and the arcs; the constituency tree is a stand-in for a reordered sentence.
             val arcs = f.copy(treeEdges = emptyList(), wordEdges = emptyList(), texts = f.texts.filter { it.kind == TextKind.WORD })
             val label = outlinedText("$name  ${tree.length(order)}", P(0.0, y), caption)
-            y = d.diagram().bounds.y1 + 50.0
+            y = d.diagram().bounds.y1 + 60.0
             arcs.everything() + label
         }
-        lines(figure, w = 760.0, h = 640.0, fitToSize = true)
+        display("figure", figureSvg(figure))
 - launch:
     box: dl_reorderings
 - create:
@@ -58,17 +59,18 @@ operations:
         import afield.graphics.text.sentences.*
 
         val text = SentenceTexts.load("gettysburg")
-        val small = font("Serif", 11.0)
+        val ratioFont = font("Serif", 18.0)
+        val openingFont = font("Serif", 13.0)
         var y = 0.0
         val figure = text.measure().flatMap { m ->
-            val opening = m.sentence.words.take(6).joinToString(" ") + " …"
-            val row = m.tree.arcLines(at = P(150.0, y), spacing = 6.0, depth = 0.35) +
-                outlinedText("%.2f".format(m.ratio), P(0.0, y + 4), font("Serif", 16.0)) +
-                outlinedText(opening, P(42.0, y + 3), small)
-            y += m.tree.arcDepth(spacing = 6.0, depth = 0.35) + 24.0
+            // The arcs start at x = 270, leaving a column for the ratio and the opening words.
+            val row = m.tree.arcLines(at = P(270.0, y), spacing = 8.0, depth = 0.3) +
+                outlinedText("%.2f".format(m.ratio), P(0.0, y + 6), ratioFont) +
+                outlinedText(m.tree.words.take(4).joinToString(" ") + " …", P(50.0, y + 5), openingFont)
+            y += m.tree.arcDepth(spacing = 8.0, depth = 0.3) + 30.0
             row
         }
-        lines(figure, w = 760.0, h = 760.0, fitToSize = true)
+        display("figure", figureSvg(figure))
 - launch:
     box: dl_gettysburg
 - create:
@@ -109,11 +111,13 @@ operations:
                 yaxis { title = "total dependency length" }
             }
         }.darkMode()
+        // darkMode() places the legend beside the plot; put it inside, over the empty upper left.
+        plot.layout { legend { x = 0.02; y = 0.98 } }
         display(plot)
 - launch:
     box: dl_growth
 - create:
-    box: dl_texts
+    box: dl_table
     name: 4 · Five texts side by side
     frame:
       x: 900
@@ -124,8 +128,7 @@ operations:
       code: |
         import afield.graphics.text.sentences.*
 
-        val texts = SentenceTexts.all()
-        val rows = texts.map { t ->
+        val rows = SentenceTexts.all().map { t ->
             val m = t.measure()
             val observed = m.sumOf { it.lengths.observed }.toDouble()
             "| ${t.title} | ${m.size} | %.1f | %.2f | %.2f | %.2f | %.0f%% |".format(
@@ -143,6 +146,21 @@ operations:
             ${rows.joinToString("\n    ")}
             """.trimIndent(),
         )
+- launch:
+    box: dl_table
+- create:
+    box: dl_ratios
+    name: 5 · Ratio per sentence, five texts
+    frame:
+      x: 0
+      y: 1400
+      w: 450
+      h: 100
+    properties:
+      code: |
+        import afield.graphics.text.sentences.*
+
+        val texts = SentenceTexts.all()
         display(
             "ratios",
             violin(
@@ -152,4 +170,4 @@ operations:
             ),
         )
 - launch:
-    box: dl_texts
+    box: dl_ratios
