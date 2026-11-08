@@ -223,7 +223,9 @@ for (c in ParticleLeniaZoo.creatures) {
     val pl = c.lenia().stepTimes(2000)
     val w = pl.measure(4000)
     println("%-14s %3d  %s".format(c.name, c.count, w))
-    tiles += "%s: %s".format(c.name, w.motion.name.lowercase()) to LeniaMapCell(0.0, 0.0, pl, w).tile(extent = 16.0, size = 240)
+    tiles +=
+        "%s: %s".format(c.name, w.motion.name.lowercase()) to
+            LeniaMapCell(0.0, 0.0, pl, w).tile(extent = 16.0, size = 240)
 }
 
 // The gliders again under the demo's integrator, which carries half of each step into the next.
@@ -282,18 +284,21 @@ wandering, red dispersing.
 // with the growth curve's centre muG across and its width sigmaG up: 3000 steps to settle, 4000 measured.
 val muGs = [0.3, 0.4, 0.5, 0.6, 0.7, 0.8]
 val sigmaGs = [0.06, 0.1, 0.15, 0.2]
-val cells = leniaMotionMap(muGs, sigmaGs, settle = 3000, window = 4000) { muG, sigmaG ->
-    ParticleLenia.random(
-        100,
-        side = 12.0 * Math.sqrt(0.5),
-        seed = 1L,
-        params = ParticleLeniaParams(sigmaK = 0.6, cRep = 0.3, muG = muG, sigmaG = sigmaG),
-    )
-}
+val cells =
+    leniaMotionMap(muGs, sigmaGs, settle = 3000, window = 4000) { muG, sigmaG ->
+        ParticleLenia.random(
+            100,
+            side = 12.0 * Math.sqrt(0.5),
+            seed = 1L,
+            params = ParticleLeniaParams(sigmaK = 0.6, cRep = 0.3, muG = muG, sigmaG = sigmaG),
+        )
+    }
 for (c in cells) println("muG %.2f  sigmaG %.2f  %s".format(c.x, c.y, c.window))
 println(cells.groupingBy { it.motion }.eachCount())
 
-showImg(montage(cells.map { "%.2f, %.2f".format(it.x, it.y) to it.tile(size = 160) }, columns = muGs.size, cellSide = 160))
+showImg(
+    montage(cells.map { "%.2f, %.2f".format(it.x, it.y) to it.tile(size = 160) }, columns = muGs.size, cellSide = 160),
+)
 ```
 
 ![a six-by-four grid of tiles: in the lower right, grey-bordered square lattices of evenly spaced dots; on the left, flowers of bright petals, most with grey borders; four green-bordered gliders along the top row and in the third row, two orange rotators, three blue wanderers and one red tile whose creature has broken into pieces](assets/particle_lenia/growth-map.png)
@@ -317,6 +322,190 @@ numbers show three regions:
 Each cell is one seed, and the article notes that different seeds can end in different creatures,
 so the map shows what this seed does under each rule rather than drawing sharp boundaries.
 
+## Searching for a glider
+
+The map's gliders are slow, and the sweeps in the rotator section found none. The zoo says where to
+look: its fast gliders are small, and their growth curves want a low `U`.
+[`ParticleLeniaRuleGenome`](reference/alife.md#alife-particle-lenia-motion-kt) turns a rule into a genome
+for [`PopulationSearch`](alife_examples.md), the engine behind the ALife page's Lenia and Life-rule
+searches. The genome is five numbers (`muK` from 1.5 to 6, `sigmaK` 0.5 to 2.5, `muG` 0.1 to 0.9,
+`sigmaG` 0.05 to 0.25, `cRep` 0.2 to 1.5), with `wK` set so that the kernel integrates to one, the
+article's normalisation, which keeps `muG` meaning the same thing at every kernel size.
+[`particleLeniaGlideObjective`](reference/alife.md#alife-particle-lenia-motion-kt) scores a rule by
+dropping 40 particles into a random square, the size of the zoo's Tarbosaurolop. After 3000 steps to
+settle it measures two consecutive windows of 1500 steps, and takes the window with the lower speed
+times straightness. A creature that splits, or whose spread changes by more than 2 % in either
+window, scores zero. The score is the worse of two seeds.
+
+The two windows and the spread test are what tell a glider from a population that is still settling.
+A cloud that is still spreading out also moves its centre, and over one window it can score as well
+as a glider. A glider holds its shape, so its spread stays put.
+
+The box below runs evolution and, as the control, random sampling from the same distribution, both
+at 300 evaluations and the same seed. Then it runs each arm's best rule from five seeds the search
+never saw, for two windows of 4000 steps each, and tabulates the results. It takes a few minutes, so
+it runs off the main loop.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/particle_lenia/glider-search.png" wait-output="true" wait-output-kind="display" wait="2.0" timeout="900" capture="box" open-outputs="true" padding="20"}
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
+/*
+A rule whose 40 particles pull themselves into a glider from a random square. The genome is five numbers
+(muK, sigmaK, muG, sigmaG, cRep) with wK normalised. A rule scores speed times straightness over two windows
+of 1500 steps after 3000 to settle, the worse of seeds 1 and 2, and zero if its creature splits or its spread
+changes by more than 2%. Random sampling at the same budget and seed is the control.
+*/
+val genome = ParticleLeniaRuleGenome()
+val objective = particleLeniaGlideObjective(genome, count = 40, seeds = [1L, 2L])
+
+go {
+    // three or four minutes of simulation, so it runs off the main loop
+    val (runs, checks) = withContext(Dispatchers.Default) {
+        val runs = [
+            PopulationSearch.random(genome, objective, 300, seed = 5L, label = "random sampling"),
+            PopulationSearch.evolve(
+                genome,
+                objective,
+                300,
+                seed = 5L,
+                mu = 6,
+                lambda = 12,
+                crossoverRate = 0.3,
+                immigrantRate = 0.2,
+                label = "evolution",
+            ),
+        ]
+        // each arm's best rule from five seeds the search never saw: two windows of 4000 after 2000 to settle
+        val checks = runs.map { run ->
+            (3L..7L)
+                .toList()
+                .parallelStream()
+                .map { seed ->
+                    val pl = ParticleLenia.random(
+                        40,
+                        side = 12.0 * Math.sqrt(0.2),
+                        seed = seed,
+                        params = genome.params(run.best!!.genome),
+                    )
+                    pl.stepTimes(2000)
+                    seed to [pl.measure(4000), pl.measure(4000)]
+                }
+                .toList()
+        }
+        runs to checks
+    }
+    val table = StringBuilder(
+        "| | best fitness | muK | sigmaK | muG | sigmaG | cRep |\n| --- | ---: | ---: | ---: | ---: | ---: | ---: |\n",
+    )
+    for (run in runs) {
+        val p = genome.params(run.best!!.genome)
+        table.append(
+            "| %s | %.4f | %.3f | %.3f | %.3f | %.3f | %.3f |\n"
+                .format(run.label, run.bestFitness, p.muK, p.sigmaK, p.muG, p.sigmaG, p.cRep),
+        )
+    }
+    table.append("\n| best of | seed | steps 2000–6000 | steps 6000–10000 | heading drift | spread |\n")
+    table.append("| --- | ---: | --- | --- | ---: | ---: |\n")
+    for ((run, rows) in runs.zip(checks)) for ((seed, w) in rows) {
+        table.append(
+            "| %s | %d | %s %.4f | %s %.4f | %.3f | %.2f |\n"
+                .format(
+                    run.label,
+                    seed,
+                    w[0].motion.name.lowercase(),
+                    w[0].speed,
+                    w[1].motion.name.lowercase(),
+                    w[1].speed,
+                    w[1].headingDrift,
+                    w[1].spreadEnd,
+                ),
+        )
+    }
+    markdown(table.toString())
+    for (run in runs) {
+        println(run.summary())
+        println("  " + genome.params(run.best!!.genome))
+    }
+}
+```
+
+![two tables in a box's output: the best fitness and rule of random sampling and of evolution, and below, for each arm's best rule and each of seeds 3 to 7, its class and speed over two windows, its heading drift and its spread; four seeds of each arm glide and seed 5 is static for both](assets/particle_lenia/glider-search.png)
+
+Evolution beats the control here: its best rule scores 0.168 against random sampling's 0.132. Both
+winners have a growth curve centred on a low `U` (`muG` 0.18 and 0.16) and a narrow one
+(`sigmaG` near 0.1), the region the zoo's fast gliders come from, and which none of the sweeps above
+reached. On the five held-out seeds both rules glide from four and settle into a still ring from
+the fifth (seed 5, spread 5.1 and 5.4). Evolution's gliders are the steadier: 0.103 to 0.169 per
+unit time over steps 6000 to 10000, the same speed as in the window before to within 2 %, with a
+heading that turns by 0.2 rad or less in 4000 steps. Random sampling's gliders are slower on three
+of its four seeds, between 0.023 and 0.057. For comparison, the zoo's 39-particle Tarbosaurolop,
+started from the demo's own positions, glides at 0.125.
+
+Which creature a seed assembles is sensitive to the rule itself. Rounding the evolved rule to the
+three places shown in the table changes which creature some of the seeds settle into, so the
+video below takes the rule in full, as the box prints it. It runs seeds 3 and 4 for 8000 steps, each
+panel framed on its own creature with the path its centre has travelled.
+
+```diffstatic_runner {data-lang=kotlin video="assets/particle_lenia/glider.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="600" w="800" embed=true name="particle-lenia-glider-video" alt="two panels, each following a cluster of 40 white dots: the scattered dots pull together into a small ring of dots inside a bright halo, which then slides steadily across the field, trailing a straight dotted line behind it, gently curving in the right-hand panel"}
+// Evolution's best rule, in full as the search box prints it, from two of the held-out seeds. Each panel is
+// framed on its own creature, with the path its centre has travelled.
+val rule = ParticleLeniaParams(
+    muK = 4.366173229773033,
+    sigmaK = 0.6772483357354411,
+    wK = 0.030367731514477567,
+    muG = 0.17729432366437387,
+    sigmaG = 0.1030105021620745,
+    cRep = 1.1856752478847217,
+)
+val tracks = [mutableListOf<Pair<Double, Double>>(), mutableListOf<Pair<Double, Double>>()]
+
+animateEvolution(
+    [3L, 4L].map { ParticleLenia.random(40, side = 12.0 * Math.sqrt(0.2), seed = it, params = rule) },
+    totalSteps = 8000,
+    seconds = 7.0,
+    columns = 2,
+    cellSide = 360,
+    step = { pls ->
+        pls.forEachIndexed { i, pl ->
+            pl.step()
+            if (pl.steps % 40 == 0) tracks[i] += pl.centroid()
+        }
+        pls
+    },
+    panels = { pls, n ->
+        pls.mapIndexed { i, pl ->
+            val (cx, cy) = pl.centroid()
+            val (x0, y0) = tracks[i].firstOrNull() ?: (cx to cy)
+            "seed %d, step %d, moved %.0f".format(i + 3, n, Math.hypot(cx - x0, cy - y0)) to
+                splatDots(
+                    pl.render(extent = 30.0, size = 360, dotRadius = 2.0),
+                    tracks[i],
+                    30.0,
+                    cx,
+                    cy,
+                    dotRadius = 1.0,
+                )
+        }
+    },
+)
+```
+
+??? aside "Why 40 particles"
+    The same search at the article's 200 particles, scored on one seed, returned rules whose
+    populations were still spreading out after 10000 steps, and none of them glided from other
+    seeds. That result is what led to the two-window, two-seed objective. Forty particles is also the
+    size of the zoo's fast gliders, and each evaluation costs a twenty-fifth of one at 200.
+
 ## Where to take it
 
-- **Per-particle rules**, the article's 3-D variant, and gliders from its other parameter sets.
+- **A catalogue rather than one winner.** `PopulationSearch.mapElites` keeps the best rule in every
+  cell of a grid over behaviour (speed against rim speed, say), which would collect a zoo of our own
+  to set beside the demo's.
+- **The map on the GPU.** The GPU section's 64 clusters could each carry their own rule, so one
+  dispatch would fill the growth-curve map at thousands of particles a cell.
+- **Per-particle rules.** Two species with different rules on one field, the article's own
+  suggestion for future work.
+- **The article's 3-D variant**, whose 256 particles settle into a mushroom-shaped glider
+  (`muK` 4.3, `sigmaK` 1.1, `muG` 0.23, `sigmaG` 0.06), and its sonification, in which every particle
+  sings at a pitch set by its energy, as loud as it is fast.

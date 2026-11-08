@@ -1097,10 +1097,14 @@ counterfactual is its own `initialLoss`, measured in the same run. None of the f
 
 ### particle_lenia
 
-[Particle Lenia](particle_lenia.md) as three boxes. Box 1 runs the article's default rule from 200
+[Particle Lenia](particle_lenia.md) as seven boxes. Box 1 runs the article's default rule from 200
 particles in a random square to step 3000, prints mean energy, spread, rotation and drift at four
 moments, and draws the particles over the energy field, the potential `U` and the energy curve beside
-a control with the kernel switched off. Box 2 animates the same run. Box 3 animates a rule that makes a spinning, drifting creature. All three are pure CPU.
+a control with the kernel switched off. Box 2 animates the same run. Box 3 animates a rule that makes a spinning, drifting creature.
+Box 4 measures nine creatures from the article demo's zoo and names what each does (gliding, rotating,
+static). Box 5 maps 24 growth curves by what their creature does. Box 6 searches for a 40-particle
+glider with `PopulationSearch` beside a random-sampling control and checks both winners on five
+held-out seeds; it takes a few minutes. Box 7 animates the evolved glider. All seven are pure CPU.
 
 [Open →](offline.html?file=assets/agent_transcripts/particle_lenia/metadata.edn)
 

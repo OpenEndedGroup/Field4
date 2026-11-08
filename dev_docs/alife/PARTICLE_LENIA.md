@@ -45,9 +45,54 @@ centred positions) over 2000-step windows; sweep 2 uses two windows (steps 3000�
     spread 3.08–3.09 from step 3000 to 12000; centroid speed 0.0052–0.0059/t along a curve)
   - n 100, muK 5, sigmaK 0.6, cRep 1.0: 0.324 / 0.322
   - n 200, muK 5, sigmaK 0.6, cRep 0.3: 0.237 / 0.251
-- No straight-line glider found. Next: larger n (the article's gliders), asymmetric seeds, or
-  evolve parameters with `PopulationSearch` on a displacement objective.
+- No straight-line glider found in either sweep (both stayed near the article's muG 0.6).
+
+## Motion classification, the demo's zoo, the growth map, a searched glider (2026-11-08)
+
+Source: `src/jvmMain/kotlin/afield/simulation/agents/alife_particle_lenia_motion.kt`; test
+`ParticleLeniaMotionTest` (page rotator ROTATING at 0.0026 rad/t with rim > centroid speed; zoo
+Tarbosaurolop GLIDING at 0.124 +- 0.005, Chungasto ROTATING, Bellusauropel STATIC; demo integrator
+gives the same glider speed to 1e-3; parallel step bit-identical to serial; normalisedWK equals the
+demo's w1). Page sections "Naming what a creature does", "The demo's creatures", "A map of the growth
+curve", "Searching for a glider". Transcript boxes 4-7 in `transcripts/particle_lenia.yaml`.
+
+- `ParticleLenia.measure(steps, every = 50)` -> `ParticleLeniaWindow` (displacement, path length,
+  straightness, summed turn, heading drift between halves, spread start/end, mean E, groups at link
+  muK + sigmaK, centroid track). `motion`: DISPERSING (groups > 1 or spread x1.25) > GLIDING (speed >=
+  0.005, straightness >= 0.9, speed >= rim speed) > ROTATING (rim speed = |omega| x spread >= 0.005) >
+  WANDERING (speed >= 0.005) > STATIC. An earlier rotation threshold in rad/t (0.001) let the page's
+  rotator (centroid 0.0043, straightness 0.99) be one threshold away from GLIDING; the rim speed puts
+  turning and travel in the same units.
+- `ParticleLenia.inertia` (0 = Euler; 0.5 = the demo's `pos += 0.5(pos-prev) + 0.5 dt v`),
+  `ParticleLeniaParams.normalisedWK` (the demo's calcNormCoef), parallel `step()` from 64 particles
+  (bit-identical; energy summed in particle order).
+- `ParticleLeniaZoo`: nine 2-D creatures from `znah.net/lenia/zoo.js` (19 in the file; two have
+  coincident points and NaN in a numpy port, the rest skipped for size). Measured (2000 settle, 4000
+  window): gliders Iguanmousauru 0.2823, Agilienster 0.1753, Tarbosaurolop 0.1254, Coelopasaurop
+  0.0134, Sauropeltad 0.0113 (identical under inertia 0.5); rotators Orodromic, Nedocernosa (rim
+  0.0051, borderline), Chungasto; Bellusauropel static. The demo also has a confining dish
+  (radius 75) and cuts the kernel at muK +- 3 sigmaK; neither matters for these.
+- Growth map (rotator kernel, n 100, seed 1, muG 0.3-0.8 x sigmaG 0.06-0.2, 3000 + 4000): 14 static,
+  4 gliding (0.0057-0.0093), 2 rotating (page rotator at 0.6/0.15 rim 0.0081), 3 wandering, 1
+  dispersing. 8.7 s for 24 cells via `leniaMotionMap` (parallelStream over cells).
+- Glider search (`ParticleLeniaRuleGenome` + `particleLeniaGlideObjective`, n 40, seeds 1 and 2,
+  3000 settle + two windows of 1500, zero on split or spread change > 2 %): budget 300, seed 5.
+  random 0.1315 (muK 3.867 sK 1.293 muG 0.158 sG 0.096 cRep 1.017), evolve 0.1680 (4.366, 0.677,
+  0.177, 0.103, 1.186). Held-out seeds 3-7, windows 2000-6000 / 6000-10000: both arms glide from 4 of
+  5 (seed 5 static for both); evolution 0.103-0.169, heading drift <= 0.205 rad / 4000 steps.
+  Rounding the rule to 3 places changes which creature some seeds assemble (rounded: 5 of 5 glide,
+  seed 4 at 0.169 instead of 0.103) - the video uses the full-precision rule.
+- What did not work, for the record: a one-seed, one-window objective at n 200 (fitness = speed x
+  straightness over steps 2000-4000, spread growth <= 10 %) gave random 0.0112 / evolve 0.0067 at
+  100 evals, both rules spreading clouds that were static on four held-out seeds; a two-window
+  version at n 200 (120 evals, ~1.6 s each) the same. Evolution lost to random at n 200 in both;
+  at n 40 with two seeds it won.
+- Box code > 30 s on the runloop is interrupted by the watchdog: the search box uses
+  `go { withContext(Dispatchers.Default) { ... } }`.
 
 ## Not done
 
-- Per-particle rules, 3-D variant, the article's glider, audio voice.
+- MAP-Elites zoo over (speed, rim speed); the growth map on the GPU with per-cluster rules (the
+  shader's two spare floats per particle could carry a cluster index into a rule buffer);
+  per-particle rules / two species; the 3-D variant (mushroom glider: create_params(4.3, 1.1, 0.23,
+  0.06, 1.0, dim 3), 256 points, dt 0.2); the article's sonification.
