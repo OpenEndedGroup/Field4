@@ -308,7 +308,7 @@
       "outputs": "assets/web_publications/aperture_playground/document/outputs.json",
       "sources": {
         "dev_docs/agents/transcripts/aperture_playground.yaml": "2899abd0ddf5fcd6dce9c5c14279695bc56d33c1503808a1128ff8d937b1138b",
-        "public/docs/aperture_playground.md": "8d36d26c978c0a496dad1c5a6fcca7e4e844f168cd49577bfa8b791e9f1e92f8",
+        "public/docs/aperture_playground.md#capture-box=agent_graphics_context": "5cf719d611c70aca2b4894792ef734beb0d4a10d1bbc2db3bf4d8a0b0c9af438",
         "public/docs/assets/agent_transcripts/aperture_playground/agent_graphics_context_code_.kt": "59930bc0746093a513d55dc04694cfce08a47dd3851c5aad863cf726b55968b5",
         "public/docs/assets/agent_transcripts/aperture_playground/aperture_broad_code_.kt": "471870b0a902c2ecdfe175f53075f2c88fe01629e484c36d51e1b58a197e67ae",
         "public/docs/assets/agent_transcripts/aperture_playground/aperture_broad_fragment_.glsl": "6b5b546e1ec925580d3684b191205d36c33888920fc31f265d98955e79995c63",
@@ -336,7 +336,7 @@
         "public/docs/assets/aperture_playground/aperture.png": "dff72d0d84c4990c5ad2c2fd6446741ea68ca2d6354735e2cfcd5cc2d1bd60f6"
       },
       "supplementalSources": [
-        "public/docs/aperture_playground.md",
+        "public/docs/aperture_playground.md#capture-box=agent_graphics_context",
         "public/docs/assets/aperture_playground/aperture.png"
       ]
     },
@@ -1258,7 +1258,7 @@
       "outputs": "assets/web_publications/fern_iterated_systems/document/outputs.json",
       "sources": {
         "dev_docs/agents/transcripts/fern_iterated_systems.yaml": "13bc05524ca8237f3b57d80eb49e52791ceb598c47ee4e6e711f36a8303f86a4",
-        "public/docs/agent_transcripts.md": "a228bfb3e05a9a3d423064587e30b2f4b17ed0eb5ce46bd95ffa6043ad5f54ca",
+        "public/docs/agent_transcripts.md#capture-box=fern_renderer": "3d8afcb11b3bb077a3d949b54d0ad3be317bb823118fd85cddde8f84e865c552",
         "public/docs/assets/agent_transcripts/fern_iterated_systems/fern_barnsley_code_.kt": "465350835ba6b09747ec8601dc4cc9e52a769a222658aa11312db7f4c3daec9e",
         "public/docs/assets/agent_transcripts/fern_iterated_systems/fern_barnsley_compute_.glsl": "32b40c7b0f4ad43154427cd5a02875a9261a9a52c115e3f6f9356b161ec08b23",
         "public/docs/assets/agent_transcripts/fern_iterated_systems/fern_barnsley_notes_.md": "e52fceb04c29422e455753e00be039fc1bc5ca402627ee33bcec34cd25c23daf",
@@ -1276,7 +1276,7 @@
         "public/docs/assets/agent_transcripts_gallery/fern_iterated_systems_barnsley.png": "e11b7b7a65e00062599d695e9f9450ab7f508a4ddcab8ffab0b471e936fc552e"
       },
       "supplementalSources": [
-        "public/docs/agent_transcripts.md",
+        "public/docs/agent_transcripts.md#capture-box=fern_renderer",
         "public/docs/assets/agent_transcripts_gallery/fern_iterated_systems_barnsley.png"
       ]
     },
@@ -1303,11 +1303,11 @@
         "public/docs/assets/agent_transcripts/field_ui_browser_texture/guides/puppet_browser.md": "1cf93dd6e995f5ce137c3d99bbbce5ec1b821c59be77f14a917f7cb63a2a5343",
         "public/docs/assets/agent_transcripts/field_ui_browser_texture/metadata.edn": "2ec54b593549d4e611bb872864886ef6e90c8ac8a7b15d83e478e7016a245940",
         "public/docs/assets/browser_texture/field-ui-on-texture.png": "628b996f31fc7321f761aaabc51820fbc27a108938a489667531812bbb7051fd",
-        "public/docs/puppet_browser.md": "b19d5e0567a478e5b89437390170241c37824ba364a0137a4ce301e84f8c21b9"
+        "public/docs/puppet_browser.md#capture-box=field_ui_texture_renderer": "43a8a49ab599115b9a11df7e9581b7a5ffe69f641b495a7a931cd6f52307170c"
       },
       "supplementalSources": [
         "public/docs/assets/browser_texture/field-ui-on-texture.png",
-        "public/docs/puppet_browser.md"
+        "public/docs/puppet_browser.md#capture-box=field_ui_texture_renderer"
       ]
     },
     "assets/agent_transcripts/field_vr_ide/metadata.edn": {
@@ -1332,11 +1332,11 @@
         "public/docs/assets/agent_transcripts/field_vr_ide/vr_ide_playground_code_.kt": "c45441dd78ad57a39384759b8d42d803b88253dd664e8b302fff0a21c7ed9ed2",
         "public/docs/assets/agent_transcripts/field_vr_ide/vr_ide_renderer_code_.kt": "eb3a49f3f5e485500925e44ffab68367c321941c92f46d1a2b0ca201056c2fff",
         "public/docs/assets/field_vr_ide/companion.png": "9dbc1a325886b8d95384e5a7d4094fbbfeaa938c2485e31ce91747c3399517c7",
-        "public/docs/field_vr_ide.md": "01613d9370495f0c93f718a0b9949a293e5551e5f0740546980ed6beb7de80bb"
+        "public/docs/field_vr_ide.md#capture-box=vr_ide_renderer": "e90748065ae89b3984907f3b07f7eadc29b9f5cbb27e38003528c9f2c3211b9b"
       },
       "supplementalSources": [
         "public/docs/assets/field_vr_ide/companion.png",
-        "public/docs/field_vr_ide.md"
+        "public/docs/field_vr_ide.md#capture-box=vr_ide_renderer"
       ]
     },
     "assets/agent_transcripts/fline_exact_booleans/metadata.edn": {
@@ -1458,11 +1458,11 @@
         "public/docs/assets/agent_transcripts/flow_grain/guides/flow_grain.md": "56160b69187499d364d7bd8c676343cc11254429bad60034797ad3f52914f978",
         "public/docs/assets/agent_transcripts/flow_grain/metadata.edn": "27c08ab3c00b3ce56af5daabdd188695e9bae68f807aaef4f9e1b74913a0289d",
         "public/docs/assets/flow_grain/flow.png": "1d8d69c9c7d4d7ca2dda29d2e3fd0755ac99926a0ab23cae9caed67c87c15e45",
-        "public/docs/flow_grain.md": "43e68a9aed4b0b509cb2d3e3054343e2b0d600cac983ebdd4c6beb1cb2df7bd3"
+        "public/docs/flow_grain.md#capture-box=flow_renderer": "3e9012122e35eca9ae5931cbf7e3c0f1d540228c80bf19a74935a4e196d47c6e"
       },
       "supplementalSources": [
         "public/docs/assets/flow_grain/flow.png",
-        "public/docs/flow_grain.md"
+        "public/docs/flow_grain.md#capture-box=flow_renderer"
       ]
     },
     "assets/agent_transcripts/flow_islands/metadata.edn": {
@@ -1720,11 +1720,11 @@
         "public/docs/assets/agent_transcripts/gpu_state/guides/gpu_state.md": "e238fb0603255df494c776a9f2955a71038185b6dea921f641f1265a6afb7497",
         "public/docs/assets/agent_transcripts/gpu_state/metadata.edn": "f7fd6f975538fde5e86fdd8c54ae6b4149bc8cdbe34d5fd2696a218f23b06396",
         "public/docs/assets/gpu_state/particle-field.png": "b681ca428b78db68868670021e51ab4df5526b804189ff1f5220ea854a1f3919",
-        "public/docs/gpu_state.md": "338604429c5947ba1bf26f1c5ea1fdcd6225abc9ebac8b2a46698a5cd4095c9d"
+        "public/docs/gpu_state.md#capture-box=gs_renderer": "878ab718e46a79e626246ae4653ff7ff9d4c8b9a2c7c4abd8997dc0d5f98b728"
       },
       "supplementalSources": [
         "public/docs/assets/gpu_state/particle-field.png",
-        "public/docs/gpu_state.md"
+        "public/docs/gpu_state.md#capture-box=gs_renderer"
       ]
     },
     "assets/agent_transcripts/hello_display/metadata.edn": {
@@ -2064,11 +2064,11 @@
         "public/docs/assets/agent_transcripts/learned_boids/lb_written_code_.kt": "70ec29e90ff0c85eb707fe97f5efca997c22927eca2397e64cb066f5392e6e51",
         "public/docs/assets/agent_transcripts/learned_boids/metadata.edn": "6b6aee163f872507857def4692187f062a9a22846cb81a3ee1da6848d420cbe5",
         "public/docs/assets/neural_particles/flocks.png": "4598093b0051b1fde937c98cc786142fabb980d3403ad603ed15b5aa5a8917db",
-        "public/docs/neural_particles.md": "f1703dc890813a847f0be60cfd4f68fc75836912b7118c954f22df431f64a116"
+        "public/docs/neural_particles.md#capture-box=lb_renderer": "03baae9cf5c5e5c2eef404498e5d2bf5be0e4ffb30717ec9e9b3cfb3f4747d9a"
       },
       "supplementalSources": [
         "public/docs/assets/neural_particles/flocks.png",
-        "public/docs/neural_particles.md"
+        "public/docs/neural_particles.md#capture-box=lb_renderer"
       ]
     },
     "assets/agent_transcripts/learned_pen/metadata.edn": {
@@ -2126,11 +2126,11 @@
         "public/docs/assets/agent_transcripts/letter_interpolation_panels/li_renderer_code_.kt": "00106986b913e0fdc66ecd33fec4c3dcfa7b1fcd1a748b48572ff52830fe3d32",
         "public/docs/assets/agent_transcripts/letter_interpolation_panels/metadata.edn": "686b59a54b4eb43da4552f98d23ec9befb983e233d06491c14c6ee936b7ec254",
         "public/docs/assets/neural_particles/interpolation.png": "9335f1e00f178b8c7d89afe62a85d7cd46ee8b781954762661b1e67f0c702164",
-        "public/docs/neural_particles.md": "f1703dc890813a847f0be60cfd4f68fc75836912b7118c954f22df431f64a116"
+        "public/docs/neural_particles.md#capture-box=li_renderer": "fca0513698da7cb738af76434c012e4840a4041689b1f7fba3c123abf05b6b75"
       },
       "supplementalSources": [
         "public/docs/assets/neural_particles/interpolation.png",
-        "public/docs/neural_particles.md"
+        "public/docs/neural_particles.md#capture-box=li_renderer"
       ]
     },
     "assets/agent_transcripts/life3d_manifold_path_trace/metadata.edn": {
@@ -2154,11 +2154,11 @@
         "public/docs/assets/agent_transcripts/life3d_manifold_path_trace/life3d_manifold_trace_code_.kt": "9465c04731ed5c6e2d0c8fd57b33dcae44347df2d9ea2e0ef05f7116cca79479",
         "public/docs/assets/agent_transcripts/life3d_manifold_path_trace/metadata.edn": "249ef9e8818a149074ed18fb4f4a5fd00027675a5a51aaff1ff5a17fd3fa8f4d",
         "public/docs/assets/chain_life3d_render/clusters.png": "b5db8bce31f63ded807f4b1f406d53c3bb79d688b624b87c8ffb20270e7f9efe",
-        "public/docs/chain_life3d_render.md": "170a7933f212a48cdf0ddfa340e460d2887d01f1f4a7fe4210312d974d0da47e"
+        "public/docs/chain_life3d_render.md#capture-box=life3d_manifold_trace": "a1eb545e4685a0372feac74fe294d6a3091eb746c1f9451b7aa1ffb40db93438"
       },
       "supplementalSources": [
         "public/docs/assets/chain_life3d_render/clusters.png",
-        "public/docs/chain_life3d_render.md"
+        "public/docs/chain_life3d_render.md#capture-box=life3d_manifold_trace"
       ]
     },
     "assets/agent_transcripts/logging_layer/metadata.edn": {
@@ -2255,7 +2255,7 @@
       "outputs": "assets/web_publications/madp_boids/document/outputs.json",
       "sources": {
         "dev_docs/agents/transcripts/madp_boids.yaml": "631ae33bad0aea35ca5a32076a932b47e89b7ae7c13c3c010ca7dff74784cb2a",
-        "public/docs/agent_transcripts.md": "a228bfb3e05a9a3d423064587e30b2f4b17ed0eb5ce46bd95ffa6043ad5f54ca",
+        "public/docs/agent_transcripts.md#capture-box=boids_renderer": "13c544c33e07eaeb15e3131385cdd3baf78cba56e27de86ba0e55f6c65de84fc",
         "public/docs/assets/agent_transcripts/madp_boids/boids_bait_ball_code_.kt": "f0ea1e6f2ad52df552cda83b6ebb855407a0faeeb4791c5eb6382323b06a2248",
         "public/docs/assets/agent_transcripts/madp_boids/boids_bait_ball_compute_.glsl": "69e860072ee2490be04021ef5d5c4629f97bf3f0ab63fba355515584646c3812",
         "public/docs/assets/agent_transcripts/madp_boids/boids_bait_ball_notes_.md": "3d8b9ea07067fddb4c997ead04d91520fa7667142c2ceea197f1965a3b3ca573",
@@ -2282,7 +2282,7 @@
         "public/docs/assets/agent_transcripts_gallery/madp_boids_murmuration.png": "805b5c9d90704361da1c17e3e284de7c675f86d2c69eda395645765fd8599a1f"
       },
       "supplementalSources": [
-        "public/docs/agent_transcripts.md",
+        "public/docs/agent_transcripts.md#capture-box=boids_renderer",
         "public/docs/assets/agent_transcripts_gallery/madp_boids_murmuration.png"
       ]
     },
@@ -2604,11 +2604,11 @@
         "public/docs/assets/agent_transcripts/neural_particles/np_particles_code_.kt": "cd76385e99290aa1f3a710cf416e154cbe4a02a27822e0068a5d88660f86a9dd",
         "public/docs/assets/agent_transcripts/neural_particles/np_renderer_code_.kt": "54081b9bc6671493d222b7715f4c3e5a586f13975d00e61efb1912699265e0b3",
         "public/docs/assets/neural_particles/word.png": "c5fd54c37f558473e84f83e564f094b9f90962ee0c43bd2fce9a4eb6351b4337",
-        "public/docs/neural_particles.md": "f1703dc890813a847f0be60cfd4f68fc75836912b7118c954f22df431f64a116"
+        "public/docs/neural_particles.md#capture-box=np_renderer": "73ef915e52ff1c4a855e6a093c45f67a05f0fc8ed70c6d438b54ea196bc70e3a"
       },
       "supplementalSources": [
         "public/docs/assets/neural_particles/word.png",
-        "public/docs/neural_particles.md"
+        "public/docs/neural_particles.md#capture-box=np_renderer"
       ]
     },
     "assets/agent_transcripts/notation_elements/metadata.edn": {
@@ -2684,11 +2684,11 @@
         "public/docs/assets/agent_transcripts/open_dlss_nr/open_dlss_nr_fragment_.glsl": "65a825358c2f033b55c4b12c12d08890905dbb7387dfb425e0e8181776f959d7",
         "public/docs/assets/agent_transcripts/open_dlss_nr/open_dlss_nr_vertex_.glsl": "0ca9a483205f4c8f54843729e3a6d077be2ab8791b1327f8abdf8932429363af",
         "public/docs/assets/opendlssnr/study.png": "28b23faa778602410ebffa6b53e40b8d1c4548bc85f0d9a0d77f6102177e9c19",
-        "public/docs/open_dlss_nr.md": "42f9e65d5adb84bc7bc26491278ef171b7d08a5e986ad40d8d1296d97817d5de"
+        "public/docs/open_dlss_nr.md#capture-box=open_dlss_nr": "7639e0bc781fa69cf03c218820da6a430d6c1bc02f543429f5070e6585e1ef61"
       },
       "supplementalSources": [
         "public/docs/assets/opendlssnr/study.png",
-        "public/docs/open_dlss_nr.md"
+        "public/docs/open_dlss_nr.md#capture-box=open_dlss_nr"
       ]
     },
     "assets/agent_transcripts/open_dlss_nr_cubes/metadata.edn": {
@@ -2715,11 +2715,11 @@
         "public/docs/assets/agent_transcripts/open_dlss_nr_cubes/open_dlss_nr_fragment_.glsl": "dae3930e45ae77ec2321912a08af00c60f72a342a1e259bde0a65dc4b5ae718a",
         "public/docs/assets/agent_transcripts/open_dlss_nr_cubes/open_dlss_nr_vertex_.glsl": "846552df2e767e56de5b02d748a210497251cc02bb2276e7428b7de86749fed3",
         "public/docs/assets/opendlssnr/cubes.png": "bfe0d0cf243b07650b0fcdb3805b2abf19a4459b7bbce931e2d98b6d9fa90be9",
-        "public/docs/open_dlss_nr.md": "42f9e65d5adb84bc7bc26491278ef171b7d08a5e986ad40d8d1296d97817d5de"
+        "public/docs/open_dlss_nr.md#capture-box=open_dlss_nr": "7639e0bc781fa69cf03c218820da6a430d6c1bc02f543429f5070e6585e1ef61"
       },
       "supplementalSources": [
         "public/docs/assets/opendlssnr/cubes.png",
-        "public/docs/open_dlss_nr.md"
+        "public/docs/open_dlss_nr.md#capture-box=open_dlss_nr"
       ]
     },
     "assets/agent_transcripts/openxr_eye_intersection/metadata.edn": {
@@ -2745,11 +2745,11 @@
         "public/docs/assets/agent_transcripts/openxr_eye_intersection/guides/openxr_eye_intersection.md": "0e8f541f4bac93f196ec458c16f0ba7f4311739dc7872d4c1b568c0ab9b5a82b",
         "public/docs/assets/agent_transcripts/openxr_eye_intersection/metadata.edn": "4780b2187b419f6cf37d34564804a3d54896ce181a497d02373aaa505710cc85",
         "public/docs/assets/openxr_eye_intersection/desktop.png": "b71007f4148edad06b4b37b0a97f52e43fde68924f380e4b1f757cbcb4cf4598",
-        "public/docs/openxr_eye_intersection.md": "d9e6d4f60d5a72b1d3ea9976759c83f6cc192439103464249d89d59376c43450"
+        "public/docs/openxr_eye_intersection.md#capture-box=eye_ray_renderer": "c253d973ae07f1f5e9893a6b168405bc83d714a9db55343212222b714a8607b4"
       },
       "supplementalSources": [
         "public/docs/assets/openxr_eye_intersection/desktop.png",
-        "public/docs/openxr_eye_intersection.md"
+        "public/docs/openxr_eye_intersection.md#capture-box=eye_ray_renderer"
       ]
     },
     "assets/agent_transcripts/paint_canvas/metadata.edn": {
@@ -2813,7 +2813,7 @@
       "outputs": "assets/web_publications/particles_sketchbook/document/outputs.json",
       "sources": {
         "dev_docs/agents/transcripts/particles_sketchbook.yaml": "2be7bfe425ae340f289bd3e0deb041a286ab5f975e127a275bf8abd4f57a59cc",
-        "public/docs/agent_transcripts.md": "a228bfb3e05a9a3d423064587e30b2f4b17ed0eb5ce46bd95ffa6043ad5f54ca",
+        "public/docs/agent_transcripts.md#capture-box=particles_renderer": "d6b3bfb48e340ae4753ac45102e6fd1a0e354e22c11f7729ba4e3045aa0cae0d",
         "public/docs/assets/agent_transcripts/particles_sketchbook/metadata.edn": "d43842c083bfba64e9048d1b56e5020476b8c4eae1be3716973b35a6dd870566",
         "public/docs/assets/agent_transcripts/particles_sketchbook/particles_boids_code_.kt": "89c2ed280a9f1789190107607d3a151c3d4fc8d6477d0e206adba020ba707bdf",
         "public/docs/assets/agent_transcripts/particles_sketchbook/particles_boids_compute_.glsl": "9dee72db57521ab74224621398df07de50cdf86d28956af6840a94c1285eb63d",
@@ -2840,7 +2840,7 @@
         "public/docs/assets/agent_transcripts_gallery/particles_sketchbook_boids.png": "48157c3aa5dcf88b774e94c883ae0a0d2f333728aee1d72c857f0338ad8c8c59"
       },
       "supplementalSources": [
-        "public/docs/agent_transcripts.md",
+        "public/docs/agent_transcripts.md#capture-box=particles_renderer",
         "public/docs/assets/agent_transcripts_gallery/particles_sketchbook_boids.png"
       ]
     },
@@ -2892,11 +2892,11 @@
         "public/docs/assets/agent_transcripts/path_tracing_camera/path_trace_camera_code_.kt": "c46a97f10e01dcb933f2e7556f1c65a26085baa3d281accbe33b38b16f0c9952",
         "public/docs/assets/agent_transcripts/path_tracing_camera/path_trace_renderer_code_.kt": "d9a523d21baae9bd403e31097aeb6360849ac2629258b04f0145cc3d54c4d2a9",
         "public/docs/assets/path_tracing/camera.png": "089bf195ffcae3fcf61720b100f444648e36587757f17e3651803fc9be1626a1",
-        "public/docs/path_tracing.md": "2fc269f2323dfd062b82fc2a8984cd9cfb7ef4300d11f2c828a516bd55bfe994"
+        "public/docs/path_tracing.md#capture-box=path_trace_camera": "3b53daac6974af82dc2cd8e4c756de15676db3c390f4e51d1dda6744160bf1b3"
       },
       "supplementalSources": [
         "public/docs/assets/path_tracing/camera.png",
-        "public/docs/path_tracing.md"
+        "public/docs/path_tracing.md#capture-box=path_trace_camera"
       ]
     },
     "assets/agent_transcripts/path_tracing_glass/metadata.edn": {
@@ -2920,11 +2920,11 @@
         "public/docs/assets/agent_transcripts/path_tracing_glass/path_trace_glass_code_.kt": "5d766ed17986573226a0406b6120e31ee11b6ed1da9dc5e97d841f543361de1a",
         "public/docs/assets/agent_transcripts/path_tracing_glass/path_trace_renderer_code_.kt": "d9a523d21baae9bd403e31097aeb6360849ac2629258b04f0145cc3d54c4d2a9",
         "public/docs/assets/path_tracing/glass.png": "5faa55bb0e61928cc87eab0209ea9ed700a16e890e99bfaf62c901bce14a517a",
-        "public/docs/path_tracing.md": "2fc269f2323dfd062b82fc2a8984cd9cfb7ef4300d11f2c828a516bd55bfe994"
+        "public/docs/path_tracing.md#capture-box=path_trace_glass": "f7fa78ed8536c24446fbe04a77098d5314a1b793df2ad437d41b1d2711313b4c"
       },
       "supplementalSources": [
         "public/docs/assets/path_tracing/glass.png",
-        "public/docs/path_tracing.md"
+        "public/docs/path_tracing.md#capture-box=path_trace_glass"
       ]
     },
     "assets/agent_transcripts/path_tracing_gltf/metadata.edn": {
@@ -2948,11 +2948,11 @@
         "public/docs/assets/agent_transcripts/path_tracing_gltf/path_trace_gltf_code_.kt": "80e3d6c31114b060cad63d67c30386cf7c2304b3e4564de59487dafa826084fa",
         "public/docs/assets/agent_transcripts/path_tracing_gltf/path_trace_renderer_code_.kt": "d9a523d21baae9bd403e31097aeb6360849ac2629258b04f0145cc3d54c4d2a9",
         "public/docs/assets/path_tracing/gltf.png": "9ac785000f30199ab443d0c79373264346be8575c17674b74df4a38c2d05d0b3",
-        "public/docs/path_tracing.md": "2fc269f2323dfd062b82fc2a8984cd9cfb7ef4300d11f2c828a516bd55bfe994"
+        "public/docs/path_tracing.md#capture-box=path_trace_gltf": "1b8674dc4b65a38bea67725741c85e9994c4872d5bab801a2d65e94ede5bc965"
       },
       "supplementalSources": [
         "public/docs/assets/path_tracing/gltf.png",
-        "public/docs/path_tracing.md"
+        "public/docs/path_tracing.md#capture-box=path_trace_gltf"
       ]
     },
     "assets/agent_transcripts/path_tracing_hidden_environment/metadata.edn": {
@@ -2976,11 +2976,11 @@
         "public/docs/assets/agent_transcripts/path_tracing_hidden_environment/path_trace_hidden_environment_code_.kt": "9803893402681c2315563f5cc5824e6dd72b7a3aee4da57acdebdd592c8d13bb",
         "public/docs/assets/agent_transcripts/path_tracing_hidden_environment/path_trace_renderer_code_.kt": "d9a523d21baae9bd403e31097aeb6360849ac2629258b04f0145cc3d54c4d2a9",
         "public/docs/assets/path_tracing/hidden_environment.png": "e972d9a85ff61cc1a79e9d5c31fa6ba6ba39b583bd1c79bf312d1042461f3f1d",
-        "public/docs/path_tracing.md": "2fc269f2323dfd062b82fc2a8984cd9cfb7ef4300d11f2c828a516bd55bfe994"
+        "public/docs/path_tracing.md#capture-box=path_trace_hidden_environment": "530b3fc53ce07564ef678ef6214e32b8fb91103e9faa68034e67de3fe3794321"
       },
       "supplementalSources": [
         "public/docs/assets/path_tracing/hidden_environment.png",
-        "public/docs/path_tracing.md"
+        "public/docs/path_tracing.md#capture-box=path_trace_hidden_environment"
       ]
     },
     "assets/agent_transcripts/path_tracing_materials/metadata.edn": {
@@ -3004,11 +3004,11 @@
         "public/docs/assets/agent_transcripts/path_tracing_materials/path_trace_materials_code_.kt": "43b0c2afd59e91e76808f6fe30172b00cc83d4a995062bc0ccda805436b22075",
         "public/docs/assets/agent_transcripts/path_tracing_materials/path_trace_renderer_code_.kt": "d9a523d21baae9bd403e31097aeb6360849ac2629258b04f0145cc3d54c4d2a9",
         "public/docs/assets/path_tracing/materials.png": "b3b7bc104da366da23a8fb2d0ce18673ba605ab74408bd913873e126e04534db",
-        "public/docs/path_tracing.md": "2fc269f2323dfd062b82fc2a8984cd9cfb7ef4300d11f2c828a516bd55bfe994"
+        "public/docs/path_tracing.md#capture-box=path_trace_materials": "7eec65c204ee54c190c71bbfcbcb28b68bb141d64b23a3555bdc60b142b0d746"
       },
       "supplementalSources": [
         "public/docs/assets/path_tracing/materials.png",
-        "public/docs/path_tracing.md"
+        "public/docs/path_tracing.md#capture-box=path_trace_materials"
       ]
     },
     "assets/agent_transcripts/pattern_condense/metadata.edn": {
@@ -3111,11 +3111,11 @@
         "public/docs/assets/agent_transcripts/pattern_particles/pp_draw_vertex_.glsl": "9c821ce3001e832254c4bdd18ebdb4086ba0ae1987e1a6ec7c53290153972977",
         "public/docs/assets/agent_transcripts/pattern_particles/pp_renderer_code_.kt": "08fed8b8e5f7e7325ccee01a9323429230d3de8e10c3f08ef0b05ec4e89832cb",
         "public/docs/assets/chain_pattern_particles/rings.png": "95def232186a46685f09a688268509f7b2179315901be625d2f748b3484538aa",
-        "public/docs/chain_pattern_particles.md": "d9036dab48c5231c48ee1bd97e4c0b8ae1c83d6608ab6d1df8bbbfbcf1a9dc5d"
+        "public/docs/chain_pattern_particles.md#capture-box=pp_draw": "54ac192e3ef9a2293c54c968f91173e71c66cc7fd1825370bf280558dc8cdf79"
       },
       "supplementalSources": [
         "public/docs/assets/chain_pattern_particles/rings.png",
-        "public/docs/chain_pattern_particles.md"
+        "public/docs/chain_pattern_particles.md#capture-box=pp_draw"
       ]
     },
     "assets/agent_transcripts/petri_sound/metadata.edn": {
@@ -3187,11 +3187,11 @@
         "public/docs/assets/agent_transcripts/petri_sparks/ps_sparks_fragment_.glsl": "32533ff454fe2a8e91c1c79fafaf0425966187df654994df6c08e0618b7299ca",
         "public/docs/assets/agent_transcripts/petri_sparks/ps_sparks_vertex_.glsl": "adfd2088a2342e5e50b19b779d59221bb8a2508ecf5da1c42d979671a2176c14",
         "public/docs/assets/chain_petri_sparks/sparks.png": "8c35eb8b4137aea9618b4838bd381771d62d4a4f72b7fee8beb7691b48de9333",
-        "public/docs/chain_petri_sparks.md": "1d02b0a2c43c9164696e23f33a890718186d78aadd2507e9aad07afe4aa16cbf"
+        "public/docs/chain_petri_sparks.md#capture-box=ps_sparks": "3eeb623b01e011d3d8959dbe9ac480ddf02e4749f7bd1b84a70b32648c23c8d5"
       },
       "supplementalSources": [
         "public/docs/assets/chain_petri_sparks/sparks.png",
-        "public/docs/chain_petri_sparks.md"
+        "public/docs/chain_petri_sparks.md#capture-box=ps_sparks"
       ]
     },
     "assets/agent_transcripts/petri_state_space/metadata.edn": {
@@ -3250,11 +3250,11 @@
         "public/docs/assets/agent_transcripts/petri_state_space_sculpture/metadata.edn": "b341d90ccc64f7b3b94fca110b5c29deb997c84ee81d89b5c8ba88de19c1b1d6",
         "public/docs/assets/agent_transcripts/petri_state_space_sculpture/petri_sculpture_trace_code_.kt": "d99897c84465b61b07bc7a2f9569d5c16cf834fdc6644a25443f35c8b6669836",
         "public/docs/assets/chain_petri_sculpture/sculpture.png": "ff5fc7d535a69e341eb99603b3fabb8079ae11ff0800f93f0f0aa1a7e5f25f01",
-        "public/docs/chain_petri_sculpture.md": "74a65b368fcbeaa36adb5d75eddfe7304984df5a508e5fce22bbaaa6c5292f83"
+        "public/docs/chain_petri_sculpture.md#capture-box=petri_sculpture_trace": "eaf606e43f5adacccf046e4b99ea71b0a2c98fd9d2cb884ed0f456f8a0eebde3"
       },
       "supplementalSources": [
         "public/docs/assets/chain_petri_sculpture/sculpture.png",
-        "public/docs/chain_petri_sculpture.md"
+        "public/docs/chain_petri_sculpture.md#capture-box=petri_sculpture_trace"
       ]
     },
     "assets/agent_transcripts/petri_tala_layout/metadata.edn": {
@@ -3305,11 +3305,11 @@
         "public/docs/assets/agent_transcripts/photo_mount_path_trace/metadata.edn": "902f0ae8f94c2e396dceb08f16b91c877c63ddfa2fe9794529243c08d58beefa",
         "public/docs/assets/agent_transcripts/photo_mount_path_trace/photo_mount_trace_code_.kt": "e7686b4f3e1d58f67289c9081557ad398ffaa35a4af7b08925955649e681ed30",
         "public/docs/assets/chain_photo_to_solid/mounted_path_trace.png": "4a971013d0caeb9b38056acfa8c7abd028463f581b92b99228a09ce0f6473443",
-        "public/docs/chain_photo_to_solid.md": "bf343be6fb5c42ab15d896b6bb3782af1d52704fd1f6be22b623e6f7cb69d6e5"
+        "public/docs/chain_photo_to_solid.md#capture-box=photo_mount_trace": "2f0f8e485716a40e072c954ebba7d243bb9fff9b6421cfcb7d52f8bb47b91e1c"
       },
       "supplementalSources": [
         "public/docs/assets/chain_photo_to_solid/mounted_path_trace.png",
-        "public/docs/chain_photo_to_solid.md"
+        "public/docs/chain_photo_to_solid.md#capture-box=photo_mount_trace"
       ]
     },
     "assets/agent_transcripts/photo_to_solid_chain/metadata.edn": {
@@ -3358,11 +3358,11 @@
         "public/docs/assets/agent_transcripts/physics_manifold_path_trace/metadata.edn": "0d4c9f1cd0578afe6e5c2c009d0d5db5ee1274bd8bf673a049777dbfc7be6534",
         "public/docs/assets/agent_transcripts/physics_manifold_path_trace/physics_manifold_trace_code_.kt": "5166d7728fab9f545fd66b58a0f87834f295c0c79e98dabe6eb8ac9ec00ed0ca",
         "public/docs/assets/chain_physics_render/drape.png": "c5e259ff71dbdb8daafa36f3cd0fe1f5035a80e0f5777a1a99b79f3fcbbef485",
-        "public/docs/chain_physics_render.md": "5437fb4529db5b2d5d684598a58203caf7d2611d95c2039643bffae413c57df8"
+        "public/docs/chain_physics_render.md#capture-box=physics_manifold_trace": "2392c4871598502b8171c3652a21a2f1c71a18feec89426af3c1dd1e16b11b74"
       },
       "supplementalSources": [
         "public/docs/assets/chain_physics_render/drape.png",
-        "public/docs/chain_physics_render.md"
+        "public/docs/chain_physics_render.md#capture-box=physics_manifold_trace"
       ]
     },
     "assets/agent_transcripts/pitch_transcription_roundtrip/metadata.edn": {
@@ -3553,11 +3553,11 @@
         "public/docs/assets/agent_transcripts/polytope_layer_stack_path_trace/layer_stack_trace_code_.kt": "52a57064b5a7660a283822ed38d573352f0f15cadd2c39eef13b2eb66494f695",
         "public/docs/assets/agent_transcripts/polytope_layer_stack_path_trace/metadata.edn": "44a9146b346ee0a14ef90af593fc4eccfde0de5e4a0fabc2b5646d1157abdd25",
         "public/docs/assets/chain_ceres_manifold_contours/stack.png": "77d27b3b1740d297289f3c4147ab37b76df1f73f8ad0049d814d9711b186513e",
-        "public/docs/chain_ceres_manifold_contours.md": "0ddb95a3c02ce5735a3d05bc9dad4cc741781702e67960d5adc14b7467d8d774"
+        "public/docs/chain_ceres_manifold_contours.md#capture-box=layer_stack_trace": "bac911151fa0b3d11620163fedc7a080dc7fa667e3cb58d835872c0bcb7936be"
       },
       "supplementalSources": [
         "public/docs/assets/chain_ceres_manifold_contours/stack.png",
-        "public/docs/chain_ceres_manifold_contours.md"
+        "public/docs/chain_ceres_manifold_contours.md#capture-box=layer_stack_trace"
       ]
     },
     "assets/agent_transcripts/polytope_manifold_path_trace/metadata.edn": {
@@ -3581,11 +3581,11 @@
         "public/docs/assets/agent_transcripts/polytope_manifold_path_trace/metadata.edn": "0d33c22f2da68bffb87f3f804761e92dfa759de5d8a579ba03d21dcf99d5a25b",
         "public/docs/assets/agent_transcripts/polytope_manifold_path_trace/polytope_manifold_trace_code_.kt": "31a7d9797da983d00b1aafca06a17bb6b19925215e925a3c8eb731ddba9cfd46",
         "public/docs/assets/chain_polytope_render/shell.png": "d4c92d40ecdffb49b47d719e0cb25e9fc520b8d438e81b960498fedffbff3538",
-        "public/docs/chain_polytope_render.md": "f1f48ce47f57aa0d7b3ac9e70187d07b0f8b435437891a7bc4a2221abaa762cd"
+        "public/docs/chain_polytope_render.md#capture-box=polytope_manifold_trace": "6fee57a3f2371b982891a6e595a9c1f1c512a3056b69a2c23cdb93562c7930fe"
       },
       "supplementalSources": [
         "public/docs/assets/chain_polytope_render/shell.png",
-        "public/docs/chain_polytope_render.md"
+        "public/docs/chain_polytope_render.md#capture-box=polytope_manifold_trace"
       ]
     },
     "assets/agent_transcripts/polytope_path_trace_lineage/metadata.edn": {
@@ -3609,11 +3609,11 @@
         "public/docs/assets/agent_transcripts/polytope_path_trace_lineage/metadata.edn": "2a801a9bd47cd5e5d90a3bd1aa1360a1fe9cf8de0fbb16a2ee044d65218b19cf",
         "public/docs/assets/agent_transcripts/polytope_path_trace_lineage/polytope_lineage_trace_code_.kt": "edd0506cf3f50875cb2e1ff015adda7b9fd8f687075a6c862013cd55d39641f1",
         "public/docs/assets/chain_polytope_render/lineage.png": "ff2c35b32d5a28527d69c5fe38ece3afc5d0c7b6c83e862f0d2aa96913820ec9",
-        "public/docs/chain_polytope_render.md": "f1f48ce47f57aa0d7b3ac9e70187d07b0f8b435437891a7bc4a2221abaa762cd"
+        "public/docs/chain_polytope_render.md#capture-box=polytope_lineage_trace": "7b65a2261ed824ed55b5cd26574317bbbeca42f709bb58fceb535a42705300e6"
       },
       "supplementalSources": [
         "public/docs/assets/chain_polytope_render/lineage.png",
-        "public/docs/chain_polytope_render.md"
+        "public/docs/chain_polytope_render.md#capture-box=polytope_lineage_trace"
       ]
     },
     "assets/agent_transcripts/popup_prior_inspect/metadata.edn": {
@@ -3698,11 +3698,11 @@
         "public/docs/assets/agent_transcripts/rectsl_spacetime_path_trace/metadata.edn": "d60bf63050230e8f697da12551249f30b44a9a93ba39184fc9e48bb4c3c4da99",
         "public/docs/assets/agent_transcripts/rectsl_spacetime_path_trace/rectsl_spacetime_trace_code_.kt": "4327f8f9aec99538cc3eb6827cbbb169e95da64fff6d20390ecf80fadb3557d7",
         "public/docs/assets/chain_rectsl_spacetime/solid.png": "bb07d5177af0da405a614797030febebed4a16bd95607d72eb9775d192d06b54",
-        "public/docs/chain_rectsl_spacetime.md": "579213c4cfd80f7895aa2155d0d4691e5f78bd553049c9706de820aa0de75c16"
+        "public/docs/chain_rectsl_spacetime.md#capture-box=rectsl_spacetime_trace": "1cf9310101c36123f190dbf827a90768c4368fe004e86db27287285786fe9ae6"
       },
       "supplementalSources": [
         "public/docs/assets/chain_rectsl_spacetime/solid.png",
-        "public/docs/chain_rectsl_spacetime.md"
+        "public/docs/chain_rectsl_spacetime.md#capture-box=rectsl_spacetime_trace"
       ]
     },
     "assets/agent_transcripts/sentence_diagrams/metadata.edn": {
@@ -3754,11 +3754,11 @@
         "public/docs/assets/agent_transcripts/shader_boids_separation/sb_groups_code_.kt": "a4699a733f2a63b1193544eead5092231cc8e7dcbb348b188809f684d2332fba",
         "public/docs/assets/agent_transcripts/shader_boids_separation/sb_renderer_code_.kt": "0997692c41670d3e4832bd6fe0c1c69107a546029873caf6c8264ec486db5dcd",
         "public/docs/assets/neural_particles/separation.png": "0a329c526c11b5f2fba81bde045dbf3f6fcb4dc21216ddd0bafac79b623a7b48",
-        "public/docs/neural_particles.md": "f1703dc890813a847f0be60cfd4f68fc75836912b7118c954f22df431f64a116"
+        "public/docs/neural_particles.md#capture-box=sb_renderer": "02078cd43773badafac13d53552c9f06a1edb2aa49284d8a3d3f8ec4cf539fb2"
       },
       "supplementalSources": [
         "public/docs/assets/neural_particles/separation.png",
-        "public/docs/neural_particles.md"
+        "public/docs/neural_particles.md#capture-box=sb_renderer"
       ]
     },
     "assets/agent_transcripts/shadertrinket/metadata.edn": {
@@ -3777,7 +3777,7 @@
       "outputs": "assets/web_publications/shadertrinket/document/outputs.json",
       "sources": {
         "dev_docs/agents/transcripts/shadertrinket.yaml": "9afa02fecc07031fe00c05c778817ea944e898856c1744b7cbca4c2fc8c507e9",
-        "public/docs/agent_transcripts.md": "a228bfb3e05a9a3d423064587e30b2f4b17ed0eb5ce46bd95ffa6043ad5f54ca",
+        "public/docs/agent_transcripts.md#capture-box=shadertrinket_renderer": "7f546c17012ee147ebf03f7332c9a993204fcfa06010ec9fe918368a011f1195",
         "public/docs/assets/agent_transcripts/shadertrinket/metadata.edn": "a0450d69603395a6876e355e42abfcbee3363cd9fab341846548821ade1ed202",
         "public/docs/assets/agent_transcripts/shadertrinket/shadertrinket_camera_code_.kt": "051b81079a5fcec105de568de0f6d103979aa4c7bc515be1b9326acacf4fe293",
         "public/docs/assets/agent_transcripts/shadertrinket/shadertrinket_camera_fragment_.glsl": "91bc60be7eb8a3d1a9d8aee6de734f5d049fb632bc53bb34a431d6ca4089b170",
@@ -3807,7 +3807,7 @@
         "public/docs/assets/agent_transcripts_gallery/shadertrinket_flat_rings.png": "10441d6fb8c877062bc94f51b8e526ecdd17af7c111527a6b67c9ede560bd685"
       },
       "supplementalSources": [
-        "public/docs/agent_transcripts.md",
+        "public/docs/agent_transcripts.md#capture-box=shadertrinket_renderer",
         "public/docs/assets/agent_transcripts_gallery/shadertrinket_flat_rings.png"
       ]
     },
@@ -3882,11 +3882,11 @@
         "public/docs/assets/agent_transcripts/skinned_volume_path_trace/metadata.edn": "daeed98ad6c8f8a18fed88a42722a11c987728aa0d799c348cd4a2d2b9d68163",
         "public/docs/assets/agent_transcripts/skinned_volume_path_trace/skinned_volume_trace_code_.kt": "b296faf30cc8a2bae0ec97800cd0991b17a179e1b2f7da1a634893970d5b9127",
         "public/docs/assets/chain_skinned_volume/twist.png": "c24f7084ae8892d80d9f94ebdf5d8e9a6ceaad9c29c13ffd1668c12850714c92",
-        "public/docs/chain_skinned_volume.md": "ff118c03746f5626187c0cb8d0292c4596fee54c608a721e76f2f89dfcf26474"
+        "public/docs/chain_skinned_volume.md#capture-box=skinned_volume_trace": "59ad34b2a3e7ed8af8d5f090e518fb21e898726d014adb2fd73a944f3eaf670e"
       },
       "supplementalSources": [
         "public/docs/assets/chain_skinned_volume/twist.png",
-        "public/docs/chain_skinned_volume.md"
+        "public/docs/chain_skinned_volume.md#capture-box=skinned_volume_trace"
       ]
     },
     "assets/agent_transcripts/smpte_timecode/metadata.edn": {
@@ -4170,7 +4170,7 @@
       "outputs": "assets/web_publications/splat_shader/document/outputs.json",
       "sources": {
         "dev_docs/agents/transcripts/splat_shader.yaml": "9c1c31d705d0ee0173745ae3fb8bb2d79d617e7386d6afb29804f67e7eb232c8",
-        "public/docs/agent_transcripts.md": "a228bfb3e05a9a3d423064587e30b2f4b17ed0eb5ce46bd95ffa6043ad5f54ca",
+        "public/docs/agent_transcripts.md#capture-box=splat_renderer": "55f1f346a5466378a73bff7b1408a012b2781444a252639e0db630d36a1773c3",
         "public/docs/assets/agent_transcripts/splat_shader/metadata.edn": "dcd6686e31d3b05aa3c0322ba0de32f79c0079fec38b0390ddb59aec1b9ccfd6",
         "public/docs/assets/agent_transcripts/splat_shader/splat_dissolve_code_.kt": "915b087b839a258bd256d6bd1104a50b9a16b1f5e2d6a66f2691f3ff47a318d2",
         "public/docs/assets/agent_transcripts/splat_shader/splat_dissolve_compute_.glsl": "ed4c69f3f194f5b3996c4ec92972f2ef3e5834776c0025939082ee5492ea52c3",
@@ -4201,7 +4201,7 @@
         "public/docs/assets/agent_transcripts_gallery/splat_shader_passthrough.png": "1b309b568f0a477cebe281e0da36997a2cef76a29f69c5fba9ee0849044e57e7"
       },
       "supplementalSources": [
-        "public/docs/agent_transcripts.md",
+        "public/docs/agent_transcripts.md#capture-box=splat_renderer",
         "public/docs/assets/agent_transcripts_gallery/splat_shader_passthrough.png"
       ]
     },
@@ -4309,7 +4309,7 @@
       "outputs": "assets/web_publications/stacktrinket_feedback/document/outputs.json",
       "sources": {
         "dev_docs/agents/transcripts/stacktrinket_feedback.yaml": "e849bdc1d68ddac3f499ade62117c6c13c158f3a8af8922207419da06a1a6cbb",
-        "public/docs/agent_transcripts.md": "a228bfb3e05a9a3d423064587e30b2f4b17ed0eb5ce46bd95ffa6043ad5f54ca",
+        "public/docs/agent_transcripts.md#capture-box=stacktrinket_renderer": "6ac9c4358f68cb5deb2c651d3877cc5340b5b3ad82a23218b68cb7a86806ba76",
         "public/docs/assets/agent_transcripts/stacktrinket_feedback/metadata.edn": "c2f9823c758d2022bb7cf72cc816a82987f085a2a7590b0661ea7d6bf91fd8bb",
         "public/docs/assets/agent_transcripts/stacktrinket_feedback/stacktrinket_feedback_fog_code_.kt": "a97a1b0a1788d92d535c74325b2993bc27ac2970a3ff020d2ed97a300db43a22",
         "public/docs/assets/agent_transcripts/stacktrinket_feedback/stacktrinket_feedback_fog_notes_.md": "a0fb802b1d8a564e06f2be941c72813124e2f219b61faff44a35cb64cf6386d2",
@@ -4341,7 +4341,7 @@
         "public/docs/assets/agent_transcripts_gallery/stacktrinket_feedback_pulse_ring.png": "69ac8f2bcddfd87ad0c9a12012ce0b677b9581ec12f263417eea4b1667ba3629"
       },
       "supplementalSources": [
-        "public/docs/agent_transcripts.md",
+        "public/docs/agent_transcripts.md#capture-box=stacktrinket_renderer",
         "public/docs/assets/agent_transcripts_gallery/stacktrinket_feedback_fog.png",
         "public/docs/assets/agent_transcripts_gallery/stacktrinket_feedback_pulse_ring.png"
       ]
@@ -4463,11 +4463,11 @@
         "public/docs/assets/agent_transcripts/stereo_rtt_composite/stereo_scene_fragment_.glsl": "09f2d517b9f20511becdbad44a079ab2444e197c15df7f90141a8a45c10d42de",
         "public/docs/assets/agent_transcripts/stereo_rtt_composite/stereo_scene_vertex_.glsl": "ba9c05a361b5dad4a7b25127970e926431dec660a338790f6adadfff1908afb0",
         "public/docs/assets/stereo_rtt_composite/desktop.png": "ab0061b15e0f627e4eb7e1dbd28e97bd6f032a5e835ce9af8379b192603577f5",
-        "public/docs/stereo_rtt_composite.md": "0f062c206960891e14f5578e30587976268d7ab74ff0c551e7c1c59ff8c46738"
+        "public/docs/stereo_rtt_composite.md#capture-box=stereo_present": "e2054d97c22eb28acb980b22133b8ab37320b9884bd5e4016eb55983d04693ff"
       },
       "supplementalSources": [
         "public/docs/assets/stereo_rtt_composite/desktop.png",
-        "public/docs/stereo_rtt_composite.md"
+        "public/docs/stereo_rtt_composite.md#capture-box=stereo_present"
       ]
     },
     "assets/agent_transcripts/stipple_sheet/metadata.edn": {
@@ -4621,11 +4621,11 @@
         "public/docs/assets/agent_transcripts/threebox/tb_draw_vertex_.glsl": "2c8e11634cdf55e1666a96f3bd1411949e77074c7a19dbac24f48c5380aa07f1",
         "public/docs/assets/agent_transcripts/threebox/tb_renderer_code_.kt": "5adb4383d6451544289629b5958e7ac4767f497841dc5b8c0797e2c4f4ea53af",
         "public/docs/assets/field_probes/particles-galaxy.png": "9d2e8a4211e378e71d767b9b1816551cdbac2cd5d4b95e4efb625385c4d5e46e",
-        "public/docs/field_probes.md": "214d79fb0449a59835365135705d4b4b7202fa2172fdf66f701fc2e8e9692a6b"
+        "public/docs/field_probes.md#capture-box=tb_renderer": "84f3f2bd332821d8fd9b5bd234c2873f6c1dafae0e6cd18a6c93bc34f9077f95"
       },
       "supplementalSources": [
         "public/docs/assets/field_probes/particles-galaxy.png",
-        "public/docs/field_probes.md"
+        "public/docs/field_probes.md#capture-box=tb_renderer"
       ]
     },
     "assets/agent_transcripts/typography_worked_example/metadata.edn": {
@@ -4754,7 +4754,7 @@
       "outputs": "assets/web_publications/webrtc_shader_jam/document/outputs.json",
       "sources": {
         "dev_docs/agents/transcripts/webrtc_shader_jam.yaml": "f618fab78e824b8d6e0397e83a940bbf8daed2918f8c217ca54977225b5d3bd7",
-        "public/docs/agent_transcripts.md": "a228bfb3e05a9a3d423064587e30b2f4b17ed0eb5ce46bd95ffa6043ad5f54ca",
+        "public/docs/agent_transcripts.md#capture-box=webrtc_renderer": "2a77bd1feadee24fabc5a4976ea9b30f030ff9b4dcbda356a1600c65b523f4ac",
         "public/docs/assets/agent_transcripts/webrtc_shader_jam/metadata.edn": "a2df407b528af7bad149e969d6d59ef520f169e0730bb134e5f78b5a99b35f1b",
         "public/docs/assets/agent_transcripts/webrtc_shader_jam/webrtc_publish_shader_code_.kt": "ba8bc0901bbcf1d8eed804928ebd373d53ec01846d70d8019744fcc9c65a8bf7",
         "public/docs/assets/agent_transcripts/webrtc_shader_jam/webrtc_publish_shader_fragment_.glsl": "99d306b6c193e5f76a0982fc0149c26e701395cc049cbad515af4b428b177b6f",
@@ -4769,7 +4769,7 @@
         "public/docs/assets/agent_transcripts_gallery/webrtc_shader_jam.png": "1cf8333a2a99008339687a4bbc15f5845582d32ff1801795add7857831c2e17e"
       },
       "supplementalSources": [
-        "public/docs/agent_transcripts.md",
+        "public/docs/agent_transcripts.md#capture-box=webrtc_renderer",
         "public/docs/assets/agent_transcripts_gallery/webrtc_shader_jam.png"
       ]
     },
@@ -4832,11 +4832,11 @@
         "public/docs/assets/agent_transcripts/youtube_kaleidoscope/youtube_kaleidoscope_renderer_code_.kt": "64daf720c8211e7d59a3a79723fda489d4f33749164253020cbd975c0f8b9170",
         "public/docs/assets/agent_transcripts/youtube_kaleidoscope/youtube_kaleidoscope_shards_code_.kt": "3471bcb95e54c850e248927f85d287c5507400cad6e17e9ba0e4ffa3616df9d5",
         "public/docs/assets/puppet_browser/youtube-kaleidoscope.png": "a855d33de7368a33ff0bedbfba43d90067c15dcabf0c7315bbb251e847ef0114",
-        "public/docs/puppet_browser.md": "b19d5e0567a478e5b89437390170241c37824ba364a0137a4ce301e84f8c21b9"
+        "public/docs/puppet_browser.md#capture-box=youtube_kaleidoscope_renderer": "fd2cc07262dda99dec99a3b7b531083b544e2485ff29f8ea3370eb44ba5243c6"
       },
       "supplementalSources": [
         "public/docs/assets/puppet_browser/youtube-kaleidoscope.png",
-        "public/docs/puppet_browser.md"
+        "public/docs/puppet_browser.md#capture-box=youtube_kaleidoscope_renderer"
       ]
     },
     "assets/agent_transcripts/youtube_mouse_keyboard_browser/metadata.edn": {
@@ -4860,11 +4860,11 @@
         "public/docs/assets/agent_transcripts/youtube_mouse_keyboard_browser/youtube_desktop_panel_code_.kt": "1c29e0f8711256788d98cd04e56a17d3fd6345b810106594debc022a22918542",
         "public/docs/assets/agent_transcripts/youtube_mouse_keyboard_browser/youtube_desktop_renderer_code_.kt": "53af4900d8eb44bd30c235869088104ad7e91cff42abb1c7ff2e1a86fbbcd8ae",
         "public/docs/assets/puppet_browser/youtube-desktop.png": "ee6ba51355a99f375a99058f1c0c9f78dad4694ae9a22fb1ee319e914d3e19ab",
-        "public/docs/puppet_browser.md": "b19d5e0567a478e5b89437390170241c37824ba364a0137a4ce301e84f8c21b9"
+        "public/docs/puppet_browser.md#capture-box=youtube_desktop_renderer": "667df2fc8b71782ef460a65ff4f2355f3911295c246c210f0bd370a9a7748d0b"
       },
       "supplementalSources": [
         "public/docs/assets/puppet_browser/youtube-desktop.png",
-        "public/docs/puppet_browser.md"
+        "public/docs/puppet_browser.md#capture-box=youtube_desktop_renderer"
       ]
     },
     "assets/agent_transcripts/youtube_vr_browser/metadata.edn": {
@@ -4888,11 +4888,11 @@
         "public/docs/assets/agent_transcripts/youtube_vr_browser/youtube_vr_panel_code_.kt": "afba5dd0d27255da79579846c76bb145867b94cf930a9b1927fe0f6e1e5292fc",
         "public/docs/assets/agent_transcripts/youtube_vr_browser/youtube_vr_renderer_code_.kt": "d7b86120583e7054b2a123d01f70d92b40b44b8bf67c2e811b8b5369ca924926",
         "public/docs/assets/puppet_browser/youtube-stereo.png": "60ac92c33cd2c2654a546556063837a1531c288d7dacb6d2f0d2f42fe8d00c39",
-        "public/docs/puppet_browser.md": "b19d5e0567a478e5b89437390170241c37824ba364a0137a4ce301e84f8c21b9"
+        "public/docs/puppet_browser.md#capture-box=youtube_vr_renderer": "121389729a688d6863c88d794c53ab42bb130d14877e15198f7b7edb45e905aa"
       },
       "supplementalSources": [
         "public/docs/assets/puppet_browser/youtube-stereo.png",
-        "public/docs/puppet_browser.md"
+        "public/docs/puppet_browser.md#capture-box=youtube_vr_renderer"
       ]
     },
     "assets/canonical_graphics/metadata.edn": {

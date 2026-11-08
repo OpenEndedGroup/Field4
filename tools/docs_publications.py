@@ -97,12 +97,41 @@ def write_catalog(index: dict) -> None:
     pending.replace(CATALOG)
 
 
+RUNNER_FENCE = re.compile(r'^```diffstatic_runner\s+\{([^\n]+)\}', re.M)
+# Marks a `sources` key naming one capture box's runner fences on a page rather than the whole page.
+FENCE_SOURCE = '#capture-box='
+
+
+def runner_fences(text: str) -> list[tuple[str, dict[str, str]]]:
+    """Each `diffstatic_runner` fence header on a docs page, with its parsed attributes."""
+    return [(header, dict(part.split('=', 1) for part in shlex.split(header) if '=' in part))
+            for header in RUNNER_FENCE.findall(text)]
+
+
+def source_digest(name: str) -> str | None:
+    """The digest a publication records for one of its `sources`, or None when it is gone.
+
+    A plain name is a file. `<page>#capture-box=<uid>` is the header of every runner fence on that
+    page whose `capture-box` is `<uid>`: a native capture takes its box, image and alt text from
+    those attributes and nothing else from the page, so prose elsewhere on it (a new starting point
+    in `agent_transcripts.md`, say) does not make the publication stale. The image is its own
+    source."""
+    file, _, box = name.partition(FENCE_SOURCE)
+    path = ROOT / file
+    if not path.is_file():
+        return None
+    if not box:
+        return digest(path)
+    headers = [header for header, attrs in runner_fences(path.read_text()) if attrs.get('capture-box') == box]
+    return hashlib.sha256('\n'.join(headers).encode()).hexdigest() if headers else None
+
+
 def recipe_sources(recipe: dict) -> dict[str, str]:
     sources = source_files(recipe['source'], recipe.get('transcript'))
     for image in recipe.get('nativeCaptures', []):
-        for name in (image['path'], image['page']):
-            path = DOCS / name
-            sources[str(path.relative_to(ROOT))] = digest(path)
+        for name in ((DOCS / image['path']).relative_to(ROOT).as_posix(),
+                     (DOCS / image['page']).relative_to(ROOT).as_posix() + FENCE_SOURCE + image['uid']):
+            sources[name] = source_digest(name)
     return sources
 
 
@@ -224,8 +253,7 @@ def registry(*, verify: bool = True, index: dict | None = None) -> dict:
     for source, entry in (catalog() if index is None else index)["documents"].items():
         if verify:
             for name, expected in entry["sources"].items():
-                path = ROOT / name
-                if not path.is_file() or digest(path) != expected:
+                if source_digest(name) != expected:
                     raise ValueError(f"Stale publication {source}: {name}; recapture with tools/docs_publications.py")
             transcript = next((name for name in entry['sources'] if name.startswith('dev_docs/agents/transcripts/')), None)
             document_sources = source_files(source, transcript)
@@ -352,8 +380,7 @@ def recipes(group: str) -> list[dict]:
     # stay with the existing runner; publishing never executes arbitrary compile-only recipes.
     native = {}
     for page in sorted(DOCS.glob('*.md')):
-        for fence in re.findall(r'^```diffstatic_runner\s+\{([^\n]+)\}', page.read_text(), re.M):
-            attrs = dict(part.split('=', 1) for part in shlex.split(fence) if '=' in part)
+        for _, attrs in runner_fences(page.read_text()):
             macro = attrs.get('macro-file', '')
             match = re.fullmatch(r'../../dev_docs/agents/transcripts/([a-z0-9_-]+)\.yaml', macro)
             if attrs.get('capture') != 'native-window' or not match or not attrs.get('capture-box'):
