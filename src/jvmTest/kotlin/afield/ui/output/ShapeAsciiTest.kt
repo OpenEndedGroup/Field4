@@ -1,6 +1,9 @@
 package afield.ui.output
 
 import afield.document.graph.Box
+import afield.examples.four.ShapeAsciiGpuSmoke
+import afield.graphics.shader.Introspection
+import afield.graphics.shader.ShaderKind
 import afield.media.image.Img
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -95,6 +98,70 @@ class ShapeAsciiTest {
         for (y in 0 until frame.rows) for (x in 0 until frame.cols)
             assertEquals(grid.glyphIndex(frame.char(x, y).toString()), grid.get(x, y), "cell ($x, $y)")
         assertEquals(' ', frame.char(3, 0), "the black half stays blank")
+    }
+
+    /** Cells holding the glyphs' own rasters come back, with `exact`, as glyphs with the same vectors. */
+    @Test
+    fun exactConvertRoundTripsTheCharset() {
+        val n = ascii.glyphs.length
+        val cw = ascii.cellWidth
+        val ch = ascii.cellHeight
+        val rasters = Array(n) { ascii.glyphImg(it) }
+        val img = Img.generate(n * cw, ch) { x, y -> rasters[x / cw].data[y * cw + x % cw] }
+        val frame = ascii.convert(img, n, rows = 1, exact = true)
+        for (i in 0 until n) {
+            val j = frame.indices[i]
+            assertTrue(ascii.glyphVector(j).contentEquals(ascii.glyphVector(i)), "'${ascii.glyphs[i]}' came back as '${ascii.glyphs[j]}'")
+        }
+        assertEquals(1.0, frame.agreement(frame))
+    }
+
+    /** Each circle's pixel list is what samplingCircles describes: centres inside its radius, about pi r^2 of them. */
+    @Test
+    fun circlePixelsFillTheirCircles() {
+        val circles = ascii.samplingCircles()
+        for (k in 0 until 12) {
+            val (cx, cy, r) = circles[k]
+            val px = ascii.circlePixels(k)
+            val count = px.size / 2
+            for (i in px.indices step 2)
+                assertTrue(Math.hypot(px[i] + 0.5 - cx, px[i + 1] + 0.5 - cy) <= r + 1e-9, "circle $k pixel (${px[i]}, ${px[i + 1]})")
+            assertTrue(count > 0.6 * Math.PI * r * r && count < 1.6 * Math.PI * r * r, "circle $k has $count pixels for r = $r")
+        }
+    }
+
+    /** agreement is the share of identical cells. */
+    @Test
+    fun agreementCountsIdenticalCells() {
+        val left = Img.generate(4 * ascii.cellWidth, ascii.cellHeight) { x, _ -> if (x < 2 * ascii.cellWidth) 1f else 0f }
+        val dark = Img.zeros(4 * ascii.cellWidth, ascii.cellHeight)
+        val a = ascii.convert(left, 4, rows = 1)
+        assertEquals(0.5, a.agreement(ascii.convert(dark, 4, rows = 1)), 1e-12)
+    }
+
+    /**
+     * The GPU pass's shaders compile, and declare the push constants and samplers [ShapeAsciiGpu]
+     * binds by name, and the smoke's torus knot declares the inputs it writes. A rename on either side
+     * would otherwise show only on a machine with a GPU.
+     */
+    @Test
+    fun gpuShadersCompileAndDeclareWhatTheKotlinBinds() {
+        fun introspect(name: String, source: String, kind: ShaderKind): Introspection {
+            val i = Introspection(source, kind, sourceName = name)
+            assertTrue(i.valid, "$name did not compile")
+            return i
+        }
+        fun push(i: Introspection) = i.pushConstants.flatMap { b -> b.members.map { it.name } }.toSet()
+        val match = introspect("match", ShapeAsciiGpu.matchFragment(ascii), ShaderKind.FRAGMENT_SHADER)
+        assertEquals(setOf("contrast", "directional", "invert"), push(match))
+        assertEquals(listOf("sceneTex"), match.textures.map { it.name })
+        val draw = introspect("draw", ShapeAsciiGpu.drawFragment(ascii), ShaderKind.FRAGMENT_SHADER)
+        assertEquals(setOf("ink", "background"), push(draw))
+        assertEquals(setOf("cellsTex", "atlasTex"), draw.textures.map { it.name }.toSet())
+        val knot = introspect("knot", ShapeAsciiGpuSmoke.KNOT_VERTEX, ShaderKind.VERTEX_SHADER)
+        assertEquals(setOf("pos", "normal"), knot.inputs.map { it.name }.toSet())
+        assertEquals(setOf("time", "aspect"), push(knot))
+        introspect("knot fragment", ShapeAsciiGpuSmoke.KNOT_FRAGMENT, ShaderKind.FRAGMENT_SHADER)
     }
 
     /** showAscii puts every panel up as one display payload on the asked channel. */
