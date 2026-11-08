@@ -1290,6 +1290,18 @@ and counts shared edges; *slider* moves one family of lines; *offset sweep* anim
 
 [Open →](offline.html?file=assets/agent_transcripts/debruijn_tilings_demo/metadata.edn)
 
+### debruijn_tilings_3d_demo
+
+The same multigrid with planes, the companion to
+[Penrose tilings in three dimensions](debruijn_tilings_3d.md). *Triacontahedron* welds the twenty
+Ammann rhombohedra of one plane per family through Manifold beside their convex hull; *patch* draws
+the cells nearest the centre of a 3D Penrose tiling and prints the prolate/oblate ratio against
+radius; *slices* cuts the tiling across 5-, 3- and 2-fold axes into FLine polygons; *offset sweep*
+slides one family of planes and counts the cells that survive; *stars* cuts the five
+`DeBruijnStar` direction sets along one plane; *slab* welds a slab of cells into a printable solid.
+
+[Open →](offline.html?file=assets/agent_transcripts/debruijn_tilings_3d_demo/metadata.edn)
+
 ### lp_curves
 
 Linear-programming algorithms as curve generators, the companion to
