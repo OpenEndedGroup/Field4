@@ -25,7 +25,7 @@ enum class LeniaMotion {
     /** Neither travels nor turns. */
     STATIC,
 
-    /** Turns about its centre of mass without travelling in a straight line. */
+    /** Turns about its centre of mass faster than it travels in a straight line. */
     ROTATING,
 
     /** Travels in a straight line. */
@@ -39,16 +39,15 @@ enum class LeniaMotion {
 }
 
 /**
- * The thresholds [ParticleLeniaWindow.motion] classifies with. Speeds are world units per unit time,
- * rotation radians per unit time.
+ * The thresholds [ParticleLeniaWindow.motion] classifies with. Travel and turning are compared in the
+ * same units: the centroid's speed, and the rim speed of the turn (angular velocity times spread), both
+ * world units per unit time.
  */
 data class LeniaMotionThresholds(
-    /** Centroid speed at and above which a creature counts as travelling. */
-    val travelSpeed: Double = 0.005,
+    /** Speed at and above which a creature counts as travelling, or its rim as turning. */
+    val speed: Double = 0.005,
     /** Net displacement over path length at and above which travel counts as a straight line. */
     val straightness: Double = 0.9,
-    /** Angular velocity at and above which a creature counts as turning. */
-    val rotation: Double = 0.001,
     /** Spread growth over the window (end / start) above which a creature counts as dispersing. */
     val spreadGrowth: Double = 1.25,
 )
@@ -92,12 +91,20 @@ class ParticleLeniaWindow(
     /** [rotation] over [time], radians per unit time. */
     val angularVelocity: Double get() = if (time <= 0.0) 0.0 else rotation / time
 
-    /** The class these numbers fall in under [thresholds]. */
+    /** Rim speed of the turn: [angularVelocity] times [spreadEnd], in the units of [speed]. */
+    val rimSpeed: Double get() = abs(angularVelocity) * spreadEnd
+
+    /**
+     * The class these numbers fall in under [thresholds]: [LeniaMotion.DISPERSING] if it ended in more
+     * than one group or kept spreading; [LeniaMotion.GLIDING] if it travelled in a straight line faster
+     * than its rim turned; [LeniaMotion.ROTATING] if its rim turned; [LeniaMotion.WANDERING] if it
+     * travelled any other way; otherwise [LeniaMotion.STATIC].
+     */
     fun motion(thresholds: LeniaMotionThresholds = LeniaMotionThresholds()): LeniaMotion = when {
         groups > 1 || spreadEnd > thresholds.spreadGrowth * spreadStart -> LeniaMotion.DISPERSING
-        speed >= thresholds.travelSpeed && straightness >= thresholds.straightness -> LeniaMotion.GLIDING
-        abs(angularVelocity) >= thresholds.rotation -> LeniaMotion.ROTATING
-        speed >= thresholds.travelSpeed -> LeniaMotion.WANDERING
+        speed >= thresholds.speed && straightness >= thresholds.straightness && speed >= rimSpeed -> LeniaMotion.GLIDING
+        rimSpeed >= thresholds.speed -> LeniaMotion.ROTATING
+        speed >= thresholds.speed -> LeniaMotion.WANDERING
         else -> LeniaMotion.STATIC
     }
 
@@ -105,8 +112,8 @@ class ParticleLeniaWindow(
     val motion: LeniaMotion get() = motion(LeniaMotionThresholds())
 
     override fun toString(): String =
-        "%s: speed %.4f/t, straightness %.2f, heading drift %.3f rad, rotation %.4f rad/t, spread %.2f -> %.2f, mean E %.3f, %d group%s".format(
-            motion, speed, straightness, headingDrift, angularVelocity, spreadStart, spreadEnd, meanEnergy,
+        "%s: speed %.4f/t, straightness %.2f, heading drift %.3f rad, rotation %.4f rad/t (rim %.4f/t), spread %.2f -> %.2f, mean E %.3f, %d group%s".format(
+            motion, speed, straightness, headingDrift, angularVelocity, rimSpeed, spreadStart, spreadEnd, meanEnergy,
             groups, if (groups == 1) "" else "s",
         )
 }
@@ -507,27 +514,38 @@ class ParticleLeniaRuleGenome(
 }
 
 /**
- * "Travel in a straight line and stay in one piece": [count] particles from the seed square of
- * [ParticleLenia.random] (side `12 · sqrt(count / 200)`, the article's density) under the genome's rule
- * run [settle] steps, then a measured window of [window] steps. The fitness is the window's
- * speed times its straightness, and zero when the population ends in more than one group or its spread
- * grew by more than [maxSpreadGrowth] over the window. The [afield.study.search.Evaluation.behaviour] is
- * `[speed, straightness, angularVelocity, groups]`.
+ * "Travel in a straight line, steadily, and stay in one piece", from every one of [seeds]: [count]
+ * particles from the seed square of [ParticleLenia.random] (side `12 · sqrt(count / 200)`, the
+ * article's density) under the genome's rule run [settle] steps, then two consecutive measured
+ * windows of [window] steps. A window scores its speed times its straightness; a seed scores the
+ * smaller of its two windows, and the fitness is the smallest score over the seeds, so a rule has to
+ * glide from all of them. A seed scores zero when either window ends in more than one group or changes
+ * the spread by more than [maxSpreadChange] (a fraction), which rules out a population that is still
+ * relaxing: a glider holds its shape, so its spread stays put while it travels. The
+ * [afield.study.search.Evaluation.behaviour] is `[speed, straightness, angularVelocity, spread change]`
+ * of the first seed's second window.
  */
 fun particleLeniaGlideObjective(
     genome: ParticleLeniaRuleGenome,
-    count: Int = 100,
-    seed: Long = 1L,
+    count: Int = 40,
+    seeds: List<Long> = listOf(1L, 2L),
     settle: Int = 3000,
-    window: Int = 2000,
-    maxSpreadGrowth: Double = 1.1,
+    window: Int = 1500,
+    maxSpreadChange: Double = 0.02,
 ): afield.study.search.Objective<DoubleArray> = afield.study.search.Objective { g ->
-    val pl = ParticleLenia.random(count, side = 12.0 * kotlin.math.sqrt(count / 200.0), seed = seed, params = genome.params(g))
-    pl.stepTimes(settle)
-    val w = pl.measure(window)
-    val coherent = w.groups == 1 && w.spreadEnd <= maxSpreadGrowth * w.spreadStart
-    afield.study.search.Evaluation(
-        fitness = if (coherent) w.speed * w.straightness else 0.0,
-        behaviour = doubleArrayOf(w.speed, w.straightness, w.angularVelocity, w.groups.toDouble()),
-    )
+    require(seeds.isNotEmpty()) { "the glide objective needs at least one seed" }
+    fun change(w: ParticleLeniaWindow) = abs(w.spreadEnd / w.spreadStart - 1.0)
+    var fitness = Double.POSITIVE_INFINITY
+    var behaviour = DoubleArray(0)
+    for (seed in seeds) {
+        val pl = ParticleLenia.random(count, side = 12.0 * kotlin.math.sqrt(count / 200.0), seed = seed, params = genome.params(g))
+        pl.stepTimes(settle)
+        val a = pl.measure(window)
+        val b = pl.measure(window)
+        if (behaviour.isEmpty()) behaviour = doubleArrayOf(b.speed, b.straightness, b.angularVelocity, change(b))
+        val steady = a.groups == 1 && b.groups == 1 && change(a) <= maxSpreadChange && change(b) <= maxSpreadChange
+        fitness = minOf(fitness, if (steady) minOf(a.speed * a.straightness, b.speed * b.straightness) else 0.0)
+        if (fitness == 0.0) break
+    }
+    afield.study.search.Evaluation(fitness = fitness, behaviour = behaviour)
 }

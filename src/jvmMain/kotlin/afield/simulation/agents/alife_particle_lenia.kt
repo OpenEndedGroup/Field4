@@ -170,15 +170,19 @@ class ParticleLenia(
         return s / count
     }
 
-    /** One Euler step of `dp/dt = −∇E`, all particles from the same old positions. */
+    private val energies = DoubleArray(count)
+
+    /**
+     * One Euler step of `dp/dt = −∇E`, all particles from the same old positions. From
+     * [PARALLEL_FROM] particles up the velocities are computed on all cores; each particle's sum is the
+     * same either way, and the mean energy is summed in particle order, so the result does not depend
+     * on how many cores ran it.
+     */
     fun step(): ParticleLenia {
+        if (count >= PARALLEL_FROM) java.util.stream.IntStream.range(0, count).parallel().forEach { velocityOf(it) }
+        else for (i in 0 until count) velocityOf(i)
         var e = 0.0
-        for (i in 0 until count) {
-            val s = sample(positions[2 * i], positions[2 * i + 1])
-            e += s.e
-            velocities[2 * i] = -s.gx
-            velocities[2 * i + 1] = -s.gy
-        }
+        for (i in 0 until count) e += energies[i]
         for (k in positions.indices) {
             val move = inertia * lastMove[k] + (1.0 - inertia) * params.dt * velocities[k]
             positions[k] += move
@@ -187,6 +191,13 @@ class ParticleLenia(
         steps++
         energyHistory += e / count
         return this
+    }
+
+    private fun velocityOf(i: Int) {
+        val s = sample(positions[2 * i], positions[2 * i + 1])
+        energies[i] = s.e
+        velocities[2 * i] = -s.gx
+        velocities[2 * i + 1] = -s.gy
     }
 
     /** Mean energy of the current arrangement, measured now (the entry the next [step] will record). */
@@ -301,6 +312,9 @@ class ParticleLenia(
         )
 
     companion object {
+        /** Population size from which [step] runs on all cores. */
+        const val PARALLEL_FROM: Int = 64
+
         /**
          * [n] particles uniform in a square of side [side] centred on the origin; the article's seed is
          * 200 particles in a 12-unit square.

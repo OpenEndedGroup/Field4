@@ -184,6 +184,139 @@ println("particles: " + lenia.count + ", cutoff " + lenia.cutoff + ", cell " + l
 // (a renderer box on a smaller window and the box above beneath it).
 ```
 
+## Naming what a creature does
+
+Calling a creature a glider or a rotator needs a measurement. [`measure`](reference/alife.md#alife-particle-lenia-motion-kt)
+runs a population for a window of steps, sampling it every 50, and records five things: how far the
+centre of mass travelled and how straight its path was, how far the particles turned about the
+centre, how the spread changed, and how many separate groups are left at the end (particles closer
+than `muK + sigmaK` are joined, the distance at which one particle's ring still reaches another).
+`motion` names the window with one of five classes, using fixed thresholds that compare travel and
+turning in the same units:
+
+| class | test, in order |
+| --- | --- |
+| dispersing | more than one group at the end, or the spread grew by more than a quarter |
+| gliding | the centroid moved at 0.005 per unit time or faster, on a path at least 0.9 straight, and faster than the rim turned |
+| rotating | the rim speed of the turn (angular velocity × spread) is 0.005 or more |
+| wandering | the centroid moved at 0.005 or faster any other way |
+| static | none of these |
+
+The rotator above, measured from step 3000 to 5000, is rotating: its rim moves at 0.008 per unit time
+(0.0026 rad per unit time at a spread of 3.09), while its centre travels at 0.0043.
+
+## The demo's creatures
+
+The article's [live demo](https://znah.net/lenia/) ships a zoo of creatures people found with it,
+each saved as a rule and a set of starting positions (its `zoo.js`).
+[`ParticleLeniaZoo`](reference/alife.md#alife-particle-lenia-motion-kt) carries nine of them unchanged, so
+the classification can be checked against creatures whose behaviour is on record. The box below
+starts each one from the demo's positions under its own rule, lets it settle for 2000 steps and
+measures the next 4000. Each tile is the creature at the end of the window, 16 units across, with its
+centroid's path as dots and a border in the colour of its class.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/particle_lenia/zoo.png" wait="30.0" timeout="300" capture="box" open-outputs="true" padding="20"}
+// Nine creatures from the demo's zoo, each from the demo's starting positions under its own rule:
+// 2000 steps to settle, then a measured window of 4000.
+val tiles = mutableListOf<Pair<String, Img>>()
+for (c in ParticleLeniaZoo.creatures) {
+    val pl = c.lenia().stepTimes(2000)
+    val w = pl.measure(4000)
+    println("%-14s %3d  %s".format(c.name, c.count, w))
+    tiles += "%s: %s".format(c.name, w.motion.name.lowercase()) to LeniaMapCell(0.0, 0.0, pl, w).tile(extent = 16.0, size = 240)
+}
+
+// The gliders again under the demo's integrator, which carries half of each step into the next.
+for (name in ["Iguanmousauru", "Agilienster", "Tarbosaurolop", "Coelopasaurop", "Sauropeltad"]) {
+    val euler = ParticleLeniaZoo[name].lenia().stepTimes(2000).measure(4000)
+    val demo = ParticleLeniaZoo[name].lenia().also { it.inertia = 0.5 }.stepTimes(2000).measure(4000)
+    println("%-14s speed %.4f (Euler)  %.4f (demo's integrator)".format(name, euler.speed, demo.speed))
+}
+
+showImg(montage(tiles, columns = 3, cellSide = 240))
+```
+
+![nine dark tiles in a three-by-three grid, each a creature over its glowing energy field with a dotted trail: five with green borders whose trails are straight lines (two tiny five-particle creatures, a dense blob inside a bright ring, two larger irregular discs), three with orange borders that turn (a small curled creature, two small rings inside a large oval, a big ring of petals round a triangular core), and one with a grey border, a still ring](assets/particle_lenia/zoo.png)
+
+Five of the nine glide, three rotate and one is still, and the numbers the box prints say how
+cleanly:
+
+| creature | particles | class | speed | straightness | rotation, rad/t |
+| --- | ---: | --- | ---: | ---: | ---: |
+| Iguanmousauru | 5 | gliding | 0.2823 | 1.00 | 0.0000 |
+| Agilienster | 5 | gliding | 0.1753 | 1.00 | 0.0000 |
+| Tarbosaurolop | 39 | gliding | 0.1254 | 1.00 | 0.0000 |
+| Coelopasaurop | 43 | gliding | 0.0134 | 1.00 | 0.0000 |
+| Sauropeltad | 25 | gliding | 0.0113 | 1.00 | 0.0000 |
+| Orodromic | 14 | rotating | 0.0118 | 0.10 | −0.0077 |
+| Nedocernosa | 51 | rotating | 0.0065 | 0.63 | 0.0014 |
+| Chungasto | 181 | rotating | 0.0007 | 0.09 | 0.0038 |
+| Bellusauropel | 24 | static | 0.0000 | 0.15 | 0.0000 |
+
+The gliders hold their shape: their spread does not change in the window, their heading turns by less than 0.01 rad, and their
+rotation is zero to four places. A rigid shape moving in a straight line is a fixed point of the
+motion in a frame that travels with it. The demo integrates with half of each step carried into the
+next, `p += 0.5 (p − p_prev) + 0.5 dt · v` (set `inertia = 0.5` to get it). That integrator settles to
+the same velocity `dt · v` as the article's Euler step, and the second block of output confirms
+it: every glider has the same speed under both to four places. Nedocernosa is the closest call.
+Its rim turns at 0.0051 per unit time, just over the line, while its centre moves along a wide arc
+whose heading changes by 1.6 rad in the window.
+
+The fastest gliders are tiny: five particles, sliding at more than a quarter of a unit per unit time. The two
+sweeps above never tried rules like theirs, whose growth curve wants a much lower `U`
+(`muG` 0.17 to 0.28, against the article's 0.6).
+
+## A map of the growth curve
+
+The growth curve decides which values of `U` a particle is rewarded for: `muG` is the value it
+wants, `sigmaG` how fussy it is. The box below holds the rotator's kernel, repulsion, 100 particles
+and seed, and runs a grid of 24 growth curves, `muG` from 0.3 to 0.8 across and `sigmaG` from 0.06
+to 0.2 up. Each cell settles for 3000 steps and is measured over the next 4000.
+[`leniaMotionMap`](reference/alife.md#alife-particle-lenia-motion-kt) runs the cells in parallel on all
+cores and returns them row by row, top row first. Each tile is labelled `muG, sigmaG`, framed on its creature,
+with its centroid's path and its class colour: grey static, green gliding, orange rotating, blue
+wandering, red dispersing.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/particle_lenia/growth-map.png" wait="30.0" timeout="300" capture="box" open-outputs="true" padding="20"}
+// The rotator's kernel (muK 4, sigmaK 0.6, wK 0.022) and repulsion (cRep 0.3) at 100 particles, seed 1,
+// with the growth curve's centre muG across and its width sigmaG up: 3000 steps to settle, 4000 measured.
+val muGs = [0.3, 0.4, 0.5, 0.6, 0.7, 0.8]
+val sigmaGs = [0.06, 0.1, 0.15, 0.2]
+val cells = leniaMotionMap(muGs, sigmaGs, settle = 3000, window = 4000) { muG, sigmaG ->
+    ParticleLenia.random(
+        100,
+        side = 12.0 * Math.sqrt(0.5),
+        seed = 1L,
+        params = ParticleLeniaParams(sigmaK = 0.6, cRep = 0.3, muG = muG, sigmaG = sigmaG),
+    )
+}
+for (c in cells) println("muG %.2f  sigmaG %.2f  %s".format(c.x, c.y, c.window))
+println(cells.groupingBy { it.motion }.eachCount())
+
+showImg(montage(cells.map { "%.2f, %.2f".format(it.x, it.y) to it.tile(size = 160) }, columns = muGs.size, cellSide = 160))
+```
+
+![a six-by-four grid of tiles: in the lower right, grey-bordered square lattices of evenly spaced dots; on the left, flowers of bright petals, most with grey borders; four green-bordered gliders along the top row and in the third row, two orange rotators, three blue wanderers and one red tile whose creature has broken into pieces](assets/particle_lenia/growth-map.png)
+
+Of the 24 cells, 14 are static, four glide, two rotate, three wander and one breaks up. The printed
+numbers show three regions:
+
+- **Too high to reach.** In the lower right (`muG` 0.6 to 0.8 with a narrow curve), `U` never
+  reaches the value the growth curve rewards, so `G` is close to zero everywhere. The mean energy
+  is 0.03 to 0.15. A value of 0.15 is `cRep / 2`, the particle's own repulsion term and nothing
+  else, and the particles sit in the same square lattice as the `wK = 0` control in the first
+  section.
+- **Flowers.** At `muG` 0.3 and 0.4 the creature is a ring of petals with a spread of 3.6 to 5.
+  Most of these are still. Two of them (`muG` 0.4 with `sigmaG` 0.10 and 0.15) travel in a
+  straight line (straightness 1.00) at 0.0049 and 0.0043 per unit time, just under the threshold.
+- **Movers.** In between are the gliders, at `sigmaG` 0.2 (`muG` 0.4, 0.6 and 0.7) and at 0.5,
+  0.10, travelling at 0.0057 to 0.0093 per unit time, slower than every glider in the zoo. The
+  page's rotator is the cell at 0.60, 0.15 (rim speed 0.0081). Its neighbours glide (0.60, 0.20),
+  wander (0.60, 0.10), sit still (0.50, 0.15) or break into three groups (0.70, 0.15).
+
+Each cell is one seed, and the article notes that different seeds can end in different creatures,
+so the map shows what this seed does under each rule rather than drawing sharp boundaries.
+
 ## Where to take it
 
 - **Per-particle rules**, the article's 3-D variant, and gliders from its other parameter sets.

@@ -18,6 +18,8 @@ class ParticleLeniaMotionTest {
         println("PL rotator: $w")
         assertEquals(LeniaMotion.ROTATING, w.motion, "$w")
         assertTrue(w.angularVelocity in 0.002..0.0035, "$w")
+        // it also drifts, but its rim turns faster than its centre travels
+        assertTrue(w.rimSpeed > w.speed, "$w")
         assertEquals(1, w.groups)
     }
 
@@ -30,6 +32,8 @@ class ParticleLeniaMotionTest {
         val glider = ParticleLeniaZoo["Tarbosaurolop"].lenia().stepTimes(2000).measure(2000)
         assertEquals(LeniaMotion.GLIDING, glider.motion, "$glider")
         assertTrue(abs(glider.speed - 0.124) < 0.005, "$glider")
+        val rotor = ParticleLeniaZoo["Chungasto"].lenia().stepTimes(2000).measure(2000)
+        assertEquals(LeniaMotion.ROTATING, rotor.motion, "$rotor")
         val still = ParticleLeniaZoo["Bellusauropel"].lenia().stepTimes(2000).measure(2000)
         assertEquals(LeniaMotion.STATIC, still.motion, "$still")
     }
@@ -39,6 +43,21 @@ class ParticleLeniaMotionTest {
         val demo = ParticleLeniaZoo["Tarbosaurolop"].lenia().also { it.inertia = 0.5 }.stepTimes(2000).measure(2000)
         println("PL euler $euler\nPL demo  $demo")
         assertTrue(abs(euler.speed - demo.speed) < 1e-3 * euler.speed, "euler ${euler.speed} demo ${demo.speed}")
+    }
+
+    @Test fun parallelStepMatchesSerialStep() {
+        // 100 particles take the parallel path; the same positions stepped one particle at a time must agree exactly
+        val a = ParticleLenia.random(100, side = 8.5, seed = 2L, params = ParticleLeniaParams(sigmaK = 0.6, cRep = 0.3)).stepTimes(50)
+        val b = ParticleLenia(ParticleLenia.random(100, side = 8.5, seed = 2L).positions, ParticleLeniaParams(sigmaK = 0.6, cRep = 0.3))
+        repeat(50) {
+            val v = DoubleArray(b.positions.size)
+            for (i in 0 until b.count) {
+                val s = b.sample(b.positions[2 * i], b.positions[2 * i + 1])
+                v[2 * i] = -s.gx; v[2 * i + 1] = -s.gy
+            }
+            for (k in v.indices) b.positions[k] += b.params.dt * v[k]
+        }
+        assertTrue(a.positions.contentEquals(b.positions), "parallel and serial steps differ")
     }
 
     @Test fun normalisedKernelWeightMatchesTheDemo() {
