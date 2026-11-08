@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "capturedAt": "2026-11-08T13:27:21.480Z",
+  "capturedAt": "2026-11-08T13:57:11.569Z",
   "documentName": "penrose_spectra",
   "outputs": [
     {
@@ -72,20 +72,18 @@
       "path": "outputs/5.html"
     },
     {
-      "uid": "ps_slider",
-      "channel": "symmetry",
+      "uid": "ps_strike",
+      "channel": "measure",
       "open": true,
       "warnings": [],
-      "kinds": [
-        "svg"
-      ],
-      "width": 473,
-      "height": 56,
+      "kinds": [],
+      "width": 474,
+      "height": 45,
       "path": "outputs/6.html"
     },
     {
       "uid": "ps_slider",
-      "channel": "disorder",
+      "channel": "symmetry",
       "open": true,
       "warnings": [],
       "kinds": [
@@ -97,6 +95,18 @@
     },
     {
       "uid": "ps_slider",
+      "channel": "disorder",
+      "open": true,
+      "warnings": [],
+      "kinds": [
+        "svg"
+      ],
+      "width": 473,
+      "height": 56,
+      "path": "outputs/8.html"
+    },
+    {
+      "uid": "ps_slider",
       "channel": "lines",
       "open": true,
       "warnings": [],
@@ -105,7 +115,7 @@
       ],
       "width": 480,
       "height": 150,
-      "path": "outputs/8.html"
+      "path": "outputs/9.html"
     },
     {
       "uid": "ps_slider",
@@ -115,7 +125,7 @@
       "kinds": [],
       "width": 479,
       "height": 45,
-      "path": "outputs/9.html"
+      "path": "outputs/10.html"
     },
     {
       "uid": "ps_idos",
@@ -127,7 +137,17 @@
       ],
       "width": 480,
       "height": 150,
-      "path": "outputs/10.html"
+      "path": "outputs/11.html"
+    },
+    {
+      "uid": "ps_idos",
+      "channel": "measure",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 474,
+      "height": 45,
+      "path": "outputs/12.html"
     },
     {
       "uid": "ps_sweep",
@@ -137,7 +157,7 @@
       "kinds": [],
       "width": 302,
       "height": 236,
-      "path": "outputs/11.html"
+      "path": "outputs/13.html"
     },
     {
       "uid": "ps_sweep",
@@ -147,7 +167,7 @@
       "kinds": [],
       "width": 200,
       "height": 191,
-      "path": "outputs/12.html"
+      "path": "outputs/14.html"
     },
     {
       "uid": "ps_sweep",
@@ -157,7 +177,7 @@
       "kinds": [],
       "width": 200,
       "height": 168,
-      "path": "outputs/13.html"
+      "path": "outputs/15.html"
     },
     {
       "uid": "ps_states",
@@ -169,7 +189,17 @@
       ],
       "width": 480,
       "height": 150,
-      "path": "outputs/14.html"
+      "path": "outputs/16.html"
+    },
+    {
+      "uid": "ps_states",
+      "channel": "measure",
+      "open": true,
+      "warnings": [],
+      "kinds": [],
+      "width": 474,
+      "height": 64,
+      "path": "outputs/17.html"
     }
   ]
 }
