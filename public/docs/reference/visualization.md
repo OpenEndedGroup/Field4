@@ -4883,7 +4883,7 @@ a string returned from a [`Table.format`](visualization.md#tables-kt--table--for
 
 `src/jvmMain/kotlin/afield/ui/visualization/tables.kt` — [read the source](source/jvmMain/afield/ui/visualization/tables/)
 
-**Used in:** [Frames and the animation loop](../animation_time_model.md), [How completions are ranked](../completion_ranking.md), [DataFrames in a Box](../dataframe.md)
+**Used in:** [Frames and the animation loop](../animation_time_model.md), [What's new](../changelog.md), [How completions are ranked](../completion_ranking.md)
 
 ### Top-level functions { #tables-kt-functions }
 
