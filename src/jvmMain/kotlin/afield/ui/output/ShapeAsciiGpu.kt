@@ -68,11 +68,14 @@ class ShapeAsciiGpu(
     /** Read dark pixels as ink, for a dark scene on a light ground; read every frame. */
     var invert: Boolean = false
 
-    /** The characters' colour in [drawInto]. */
-    var ink: Vec4 = vec(0.91f, 0.91f, 0.91f, 1f)
+    /**
+     * The characters' colour in [drawInto], written as it is: Field's window is sRGB, so it brightens
+     * on screen, and the default shows as a light gray (`#E6E6E6`).
+     */
+    var ink: Vec4 = vec(0.79f, 0.79f, 0.79f, 1f)
 
-    /** The ground behind the characters in [drawInto]. */
-    var background: Vec4 = vec(0.086f, 0.086f, 0.10f, 1f)
+    /** The ground behind the characters in [drawInto], written as it is like [ink]; the default shows as `#161619`. */
+    var background: Vec4 = vec(0.008f, 0.008f, 0.010f, 1f)
 
     /** The scene target's size in pixels: [cols] × the font's cell width by [rows] × its cell height. */
     val sceneWidth: Int = cols * ascii.cellWidth
@@ -293,7 +296,8 @@ class ShapeAsciiGpu(
             layout(location = 0) out vec4 outColor;
 
             void main() {
-                outColor = vec4(texture(sceneTex, uv).rgb, 1.0);
+                // uv.y runs up the viewport; the scene's top row is its row 0
+                outColor = vec4(texture(sceneTex, vec2(uv.x, 1.0 - uv.y)).rgb, 1.0);
             }
         """.trimIndent()
 
@@ -344,6 +348,8 @@ class ShapeAsciiGpu(
 
                 void main() {
                     ivec2 size = textureSize(sceneTex, 0);
+                    // Field's viewports are flipped so that clip-space +y is up, which puts the
+                    // picture's top row in row 0 of both targets: this cell's pixels start here
                     ivec2 origin = ivec2(gl_FragCoord.xy) * ivec2(CELL_W, CELL_H);
                     float v[6];
                     for (int k = 0; k < 6; k++) v[k] = circle(k, origin, size);
@@ -394,7 +400,9 @@ class ShapeAsciiGpu(
 
             void main() {
                 ivec2 grid = textureSize(cellsTex, 0);
-                vec2 g = uv * vec2(grid);
+                // uv.y runs up from the bottom of the viewport (Field flips it so +y is up), while
+                // the cells and the atlas keep their top row first
+                vec2 g = vec2(uv.x, 1.0 - uv.y) * vec2(grid);
                 ivec2 cell = clamp(ivec2(floor(g)), ivec2(0), grid - 1);
                 float glyph = floor(texelFetch(cellsTex, cell, 0).r * 255.0 + 0.5);
                 vec2 inCell = clamp(fract(g) * CELL, vec2(0.5), CELL - 0.5);
@@ -407,7 +415,7 @@ class ShapeAsciiGpu(
 }
 
 /** One frame of a [ShapeAsciiGpu], read back: the [scene] as the matcher saw it, and the characters it chose. */
-class ShapeAsciiReadback(
+data class ShapeAsciiReadback(
     /** The scene target's pixels, RGB in `0..1`, row 0 at the top. */
     val scene: Img,
     /** The characters the GPU chose for that scene. */

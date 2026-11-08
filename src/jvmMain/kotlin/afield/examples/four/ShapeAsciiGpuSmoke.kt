@@ -3,6 +3,7 @@ package afield.examples.four
 import afield.document.graph.Box
 import afield.graphics.render.Mesh
 import afield.graphics.render.Module
+import afield.graphics.render.fullscreenTriangle
 import afield.graphics.render.parameters
 import afield.graphics.render.pointer
 import afield.graphics.vulkan.Renderer
@@ -65,6 +66,7 @@ object ShapeAsciiGpuSmoke {
             val ascii = ShapeAscii()
             println(" -- charset: ${ascii.glyphs.length} glyphs, cell ${ascii.cellWidth}x${ascii.cellHeight} px")
             Box.withBoxContextNow(hostBox("ascii-gpu-blank")) { check("blank") { blank(renderer, window, ascii) } }
+            Box.withBoxContextNow(hostBox("ascii-gpu-upright")) { check("upright") { upright(renderer, window, ascii) } }
             Box.withBoxContextNow(hostBox("ascii-gpu-agreement")) { check("agreement") { agreement(renderer, window, ascii) } }
             Box.withBoxContextNow(hostBox("ascii-gpu-timing")) { check("timing") { timing(renderer, window, ascii) } }
         } catch (t: Throwable) {
@@ -89,6 +91,48 @@ object ShapeAsciiGpuSmoke {
         gpu.uninstallFrom()
         expect("an empty scene reads back black", r.scene.data.all { it == 0f })
         expect("an empty scene is all spaces on the GPU", r.frame.text().all { it == ' ' || it == '\n' })
+    }
+
+    /**
+     * A module lighting the top half of the scene (clip-space y above 0, which is up in Field's
+     * flipped viewports) reads back with its light in the top rows, on both the scene and the
+     * characters: the readback is top row first, and the matcher sees the picture upright.
+     */
+    private fun upright(renderer: Renderer, window: Window, ascii: ShapeAscii) {
+        val gpu = ShapeAsciiGpu(cols = 16, rows = 8, ascii = ascii, renderer = renderer, name = "ascii-upright")
+        val top = Module(
+            parameters(renderer) {
+                +gpu.scene
+                name = "ascii-upright-top"
+                blend = false
+                depthTest = false
+                vertex = """
+                    #version 450
+                    void main() {
+                        vec2 p = gl_VertexIndex == 0 ? vec2(-1.0, 0.0) : (gl_VertexIndex == 1 ? vec2(3.0, 0.0) : vec2(-1.0, 2.0));
+                        gl_Position = vec4(p, 0.0, 1.0);
+                    }
+                """.trimIndent()
+                fragment = """
+                    #version 450
+                    layout(location = 0) out vec4 outColor;
+                    void main() { outColor = vec4(1.0); }
+                """.trimIndent()
+            }
+        ).pointer()
+        top.current.meshes["quad"] = fullscreenTriangle(top)
+        gpu.scene += "top" to top
+        gpu.installInto(draw = false)
+        pump(renderer, window, 3)
+        val r = read(renderer, window, gpu)
+        gpu.uninstallFrom()
+        val space = ascii.glyphs.indexOf(' ')
+        val lines = r.frame.text().lines()
+        println(" -- upright: scene top-left ${r.scene.data[0]}, bottom-left ${r.scene.data[(r.scene.height - 1) * r.scene.width * 3]}; " +
+            "first row '${lines.first()}', last row '${lines.last()}'")
+        expect("the readback's top row is the lit top of the picture", r.scene.data[0] == 1f && r.scene.data[(r.scene.height - 1) * r.scene.width * 3] == 0f)
+        expect("the characters' top row is inked and their bottom row blank",
+            (0 until gpu.cols).all { r.frame.indices[it] != space } && (0 until gpu.cols).all { r.frame.indices[(gpu.rows - 1) * gpu.cols + it] == space })
     }
 
     /** GPU characters against the CPU's on the same frames, at three contrast settings. */
@@ -145,7 +189,7 @@ object ShapeAsciiGpuSmoke {
             gpu.installInto()
             val match = ArrayList<Double>()
             val sceneMs = ArrayList<Double>()
-            repeat(90) {
+            repeat(270) {
                 knot.time = it / 60f
                 pump(renderer, window, 1)
                 if (it >= 30) {
@@ -154,19 +198,20 @@ object ShapeAsciiGpuSmoke {
                 }
             }
             val r = read(renderer, window, gpu)
-            fun cpu(exact: Boolean): Double {
+            // median of five conversions, each with a fresh cache, after two to warm the JIT
+            fun cpu(exact: Boolean): Double = (0 until 7).map {
                 val fresh = ShapeAscii()
-                fresh.convert(r.scene, cols, contrast = 3.0, directional = 3.0, rows = rows, exact = exact)
                 val t0 = System.nanoTime()
-                repeat(3) { fresh.convert(r.scene, cols, contrast = 3.0, directional = 3.0, rows = rows, exact = exact) }
-                return (System.nanoTime() - t0) / 3e6
-            }
+                fresh.convert(r.scene, cols, contrast = 3.0, directional = 3.0, rows = rows, exact = exact)
+                (System.nanoTime() - t0) / 1e6
+            }.drop(2).let(::median)
             val cpuExact = cpu(true)
             val cpuCached = cpu(false)
             gpu.uninstallFrom()
             knot.remove()
-            println(" -- ${cols}x$rows cells (${gpu.sceneWidth}x${gpu.sceneHeight} px): GPU match median ${ms(median(match))} ms " +
-                "(scene ${ms(median(sceneMs))} ms, ${match.size} samples); CPU exact ${ms(cpuExact)} ms, CPU cached ${ms(cpuCached)} ms")
+            println(" -- ${cols}x$rows cells (${gpu.sceneWidth}x${gpu.sceneHeight} px): GPU match median ${ms(median(match))} ms, " +
+                "10th percentile ${ms(percentile(match, 0.1))} ms (scene median ${ms(median(sceneMs))} ms, ${match.size} frames); " +
+                "CPU exact ${ms(cpuExact)} ms, CPU cached ${ms(cpuCached)} ms")
             expect("${cols}x$rows: the matching pass was timed", match.isNotEmpty())
         }
     }
@@ -259,9 +304,10 @@ object ShapeAsciiGpuSmoke {
             mat3 rx = mat3(1.0, 0.0, 0.0, 0.0, cos(b), sin(b), 0.0, -sin(b), cos(b));
             vec3 p = rx * ry * pos;
             fnormal = rx * ry * normal;
-            // a camera 4 units back looking along +z, y up; depth runs 0..1 from z = 1 to z = 8
+            // a camera 4 units back looking along +z; +y is up, since Field flips its viewports;
+            // depth runs 0..1 from z = 1 to z = 8
             float z = p.z + 4.0;
-            gl_Position = vec4(p.x * 2.6 / pc.aspect, -p.y * 2.6, (z - 1.0) / 7.0 * z, z);
+            gl_Position = vec4(p.x * 2.6 / pc.aspect, p.y * 2.6, (z - 1.0) / 7.0 * z, z);
         }
     """.trimIndent()
 
@@ -284,7 +330,8 @@ object ShapeAsciiGpuSmoke {
         return future.get(20, TimeUnit.SECONDS)
     }
 
-    private fun median(v: List<Double>): Double = if (v.isEmpty()) Double.NaN else v.sorted()[v.size / 2]
+    private fun median(v: List<Double>): Double = percentile(v, 0.5)
+    private fun percentile(v: List<Double>, q: Double): Double = if (v.isEmpty()) Double.NaN else v.sorted()[(q * (v.size - 1)).toInt()]
     private fun ms(v: Double) = "%.3f".format(v)
     private fun pct(v: Double) = "%.2f%%".format(100 * v)
 

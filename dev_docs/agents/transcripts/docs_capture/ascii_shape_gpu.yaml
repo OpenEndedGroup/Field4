@@ -1,0 +1,115 @@
+name: ascii_shape_gpu
+description: >
+  The native-window capture of ascii_shape.md's GPU section: a renderer box whose window is the
+  ASCII grid's size, and the knot box from the page beneath it. The knot box draws a lit (2, 3)
+  torus knot into a ShapeAsciiGpu scene target; the pass matches it per cell every frame and draws
+  the characters over the window, with the scene itself inset in the lower right.
+docs:
+  - page: ascii_shape.md
+    why: "Builds the GPU section's native-window video."
+operations:
+  - create:
+      box: ascii_gpu_renderer
+      name: renderer
+      frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.graphics.vulkan.util.Options
+
+          prop<Window>(window)
+          prop<Renderer>(renderer)
+          Options.enableHDR = false
+          Options.profiling = false
+          once.renderer {
+              window = Window("Shape ASCII", initialDimensions = Rect(80.0, 80.0, 640.0, 456.0))
+              Renderer(window)
+          }
+          start(renderer::run)
+  - create:
+      box: ascii_gpu_knot
+      name: knot in characters
+      frame: { x: 380.0, y: 40.0, w: 300.0, h: 100.0 }
+      properties:
+        vertex: |
+          #version 450
+          layout(location = 0) in vec3 pos;
+          layout(location = 1) in vec3 normal;
+          layout(location = 0) out vec3 fnormal;
+
+          layout(push_constant) uniform Push {
+              float time;
+              float aspect;
+          } pc;
+
+          void main() {
+              // turn about y, then x
+              float a = pc.time * 0.7;
+              float b = pc.time * 0.45;
+              mat3 ry = mat3(cos(a), 0.0, -sin(a), 0.0, 1.0, 0.0, sin(a), 0.0, cos(a));
+              mat3 rx = mat3(1.0, 0.0, 0.0, 0.0, cos(b), sin(b), 0.0, -sin(b), cos(b));
+              vec3 p = rx * ry * pos;
+              fnormal = rx * ry * normal;
+              // a camera 4 units back looking along +z; +y is up, since Field flips its viewports;
+            // depth runs 0..1 from z = 1 to z = 8
+              float z = p.z + 4.0;
+              gl_Position = vec4(p.x * 2.6 / pc.aspect, p.y * 2.6, (z - 1.0) / 7.0 * z, z);
+          }
+        fragment: |
+          #version 450
+          layout(location = 0) in vec3 fnormal;
+          layout(location = 0) out vec4 outColor;
+
+          void main() {
+              // a light up and to the left of the camera
+              vec3 l = normalize(vec3(-0.5, 0.6, -0.65));
+              float d = max(dot(normalize(fnormal), l), 0.0);
+              outColor = vec4(vec3(0.04 + 0.96 * d), 1.0);
+          }
+        code: |
+          // The knot is drawn into the ASCII pass's scene target, not into the window. Every frame the pass
+          // matches the scene cell by cell and draws the characters over the window.
+          var ascii = ShapeAsciiGpu(cols = 128, rows = 48) {
+              contrast = 3f
+              directional = 3f
+          }
+          var module = moduleHere { +ascii.scene }
+          var knot = Mesh()
+          module += "knot" to knot
+          ascii.scene += "knot" to module
+
+          // The vertex shader turns the knot by `time` and projects it at the scene's shape.
+          var time = 0f
+          knot.time = {
+              time += 1f / 60
+              time
+          }
+          knot.aspect = { ascii.sceneWidth.toFloat() / ascii.sceneHeight }
+
+          // A (2, 3) torus knot: a tube of radius 0.16 around a centre line, 240 steps along it and 16 around.
+          fun centre(a: Double) = vec(0.42 * (2 + cos(3 * a)) * cos(2 * a), 0.42 * (2 + cos(3 * a)) * sin(2 * a), -0.42 * sin(3 * a))
+          knot.set(240 * 16, 240 * 16 * 2) {
+              for (i in 0 until 240) for (j in 0 until 16) {
+                  val a = 2 * PI * i / 240
+                  val along = (centre(a + 1e-4) - centre(a - 1e-4)).normalize()
+                  val side = vec(along.y, -along.x, 0).normalize()
+                  val up = vec(side.y * along.z, -side.x * along.z, side.x * along.y - side.y * along.x)
+                  val w = 2 * PI * j / 16
+                  val out = side * cos(w).toFloat() + up * sin(w).toFloat()
+                  val p = centre(a) + out * 0.16f
+                  pos.add(p.x, p.y, p.z)
+                  normal.add(out.x, out.y, out.z)
+                  val next = (i + 1) % 240
+                  tri.add(i * 16 + j, next * 16 + j, next * 16 + (j + 1) % 16)
+                  tri.add(i * 16 + j, next * 16 + (j + 1) % 16, i * 16 + (j + 1) % 16)
+              }
+          }
+
+          // Run the scene and the matching pass every frame and draw the characters over the window,
+          // with the scene itself, as the matcher sees it, in the lower right corner.
+          ascii.installInto()
+          ascii.drawSceneInto(viewport = Rect(window.width * 0.76, window.height * 0.76, window.width * 0.22, window.height * 0.22))
+  - connect: { parent: ascii_gpu_renderer, child: ascii_gpu_knot }
+  - launch: { box: ascii_gpu_renderer, property: code, strand: renderer }
+  - await: {}
+  - launch: { box: ascii_gpu_knot, property: code }
+  - await: {}
