@@ -3,7 +3,7 @@ description: >
   The video in alife_examples.md section 7's "Designing a network": the map and slime boxes of
   gpu_physarum_networks on a 512 x 512 window. Twelve food sources are dots in a frame named
   "network" on the drawing layer; 4000 agents scattered at random find them and contract into a
-  network between them. Six seconds in, a "late" box draws a thirteenth dot through `notation` and
+  network between them. Four seconds in, a "late" box draws a thirteenth dot through `notation` and
   reads the frame's dots back into `settings.food` (a dot drawn by hand reaches the agents through
   the slime box's `notation.onChange`, which fires for edits made in the page, not for marks code
   writes), and the network grows a road to it.
@@ -79,12 +79,12 @@ operations:
       frame: { x: 760.0, y: 40.0, w: 300.0, h: 100.0 }
       properties:
         code: |
-          // six seconds in, draw one more food source into the frame and read the frame's dots again
+          // four seconds in, draw one more food source into the frame and read the frame's dots again
           val map = notation.space("network", x = 0.0..512.0, y = 512.0..0.0)
           frames {
               val start = System.nanoTime()
-              while (frame() && System.nanoTime() - start < 6_000_000_000L) { }
-              notation("late") { ellipse(400.0 + 0.90 * 400 - 6, 200.0 + 0.10 * 400 - 6, 12, 12, fill = "#ffd8a8") }
+              while (frame() && System.nanoTime() - start < 4_000_000_000L) { }
+              notation("late") { ellipse(400.0 + 0.86 * 400 - 6, 200.0 + 0.13 * 400 - 6, 12, 12, fill = "#ffd8a8") }
               physarum.settings.food = map.marks.filter { it.kind == MarkType.ELLIPSE }.map { map.toSpace(it.center) }
           }
   - connect: { parent: net_video_renderer, child: net_video_slime }

@@ -1259,7 +1259,7 @@ val controls: List<NetworkScore> = [
     TransportNetwork.mst(food.points).score("MST"),
     TransportNetwork.delaunay(food.points).score("Delaunay"),
 ]
-markdown("scores", "```\n" + NetworkScore.table(networks.map { (label, net) -> net.score(label) } + controls) + "\n```")
+markdown("scores", "```\n" + NetworkScore.table(networks.map { (label, net) -> net.score(label) } + controls) + "\n```", width = 560)
 
 :::fold draw each network over its trail
 showImg(
@@ -1318,7 +1318,7 @@ val scores = arms.parallelStream().map { (label, a) -> run(label, a.first, a.sec
 val joined = scores.filter { it.connectedPairs > 0.99 }
 
 val broken = scores.filter { it.connectedPairs <= 0.99 }.joinToString { it.label }
-markdown("scores", "```\n" + NetworkScore.table(scores) + "\n```\nbreaks apart: " + broken)
+markdown("scores", "```\n" + NetworkScore.table(scores) + "\n```\nbreaks apart: " + broken, width = 560)
 val controls: List<NetworkScore> = [
     TransportNetwork.mst(food.points).score("MST"),
     TransportNetwork.delaunay(food.points).score("Delaunay"),
@@ -1378,10 +1378,10 @@ notation.onChange { physarum.settings.food = dots() }
 ```
 
 `recycle = true` is the GPU form of the field's edge. The video starts from 4000 agents scattered at
-random over twelve dots. Six seconds in, a thirteenth dot is drawn at the top right and the network
+random over twelve dots. Four seconds in, a thirteenth dot is drawn at the top right and the network
 grows a road to it:
 
-```diffstatic_runner {data-lang=kotlin capture="native-window" capture-box="net_video_renderer" transcript="dev_docs/agents/transcripts/docs_capture/gpu_physarum_networks_video.yaml" video="assets/alife_examples/physarum-network-gpu.mp4" duration="16" fps="24" wait="0.2" timeout="300" embed=true hidden=true name="alife-physarum-network-gpu" alt="a square trail field with twelve bright food sources. Faint noise from 4000 scattered agents gathers into roads that join the sources, thins to a network of a few loops, and after a few seconds grows a new road to a thirteenth source that appears at the top right"}
+```diffstatic_runner {data-lang=kotlin capture="native-window" capture-box="net_video_renderer" transcript="dev_docs/agents/transcripts/docs_capture/gpu_physarum_networks_video.yaml" video="assets/alife_examples/physarum-network-gpu.mp4" duration="20" fps="24" wait="0.2" timeout="300" embed=true hidden=true name="alife-physarum-network-gpu" alt="a square trail field with twelve bright food sources. Faint noise from 4000 scattered agents gathers into roads that join the sources, thins to a network of a few loops, and after a few seconds grows a new road to a thirteenth source that appears at the top right"}
 // The transcript draws the frame and its dots, builds a renderer and the slime box above, and launches both.
 ```
 
