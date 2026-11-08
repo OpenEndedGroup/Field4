@@ -342,7 +342,7 @@ println("${svg.lines().count { it.startsWith("<path") }} pen paths, ${svg.length
 
 ## Checking a path you draw
 
-The last box puts an empty board on the drawing layer next to itself. Press Alt+D, draw a knight
+The last box puts an empty board on the drawing layer next to itself. Press ++alt+d++, draw a knight
 path through the squares' centres in one stroke, and run the box again. It reads your newest stroke
 over the board through `notation`, snaps it to the squares it passes over with
 `board.readDrawnPath(...)` and checks it with `board.check(cells)`. `check` returns null for a
