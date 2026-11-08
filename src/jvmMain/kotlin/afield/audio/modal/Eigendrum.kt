@@ -94,10 +94,12 @@ class DrumMesh(
      * @param mass `"blend"` (default) averages consistent and lumped mass, which cancels most of the
      *   O(h²) error of linear elements; `"consistent"` gives upper bounds; `"lumped"` lower ones.
      * @param tolerance relative change in every wanted eigenvalue at which iteration stops.
+     * @param warm modes of a drum with the same nodes (the previous step of a fit, say) to start
+     *   the iteration from instead of random vectors; a small change then converges in a few steps.
      */
     @JvmOverloads
-    fun modes(count: Int = 16, mass: String = "blend", tolerance: Double = 1e-10, maxIterations: Int = 400): DrumModes =
-        solveDrumModes(this, count, mass, tolerance, maxIterations)
+    fun modes(count: Int = 16, mass: String = "blend", tolerance: Double = 1e-10, maxIterations: Int = 400, warm: DrumModes? = null): DrumModes =
+        solveDrumModes(this, count, mass, tolerance, maxIterations, warm)
 }
 
 /**
@@ -114,6 +116,9 @@ class DrumModes(
     /** Subspace iterations the solve took. */
     val iterations: Int,
 ) {
+    /** The solver's whole subspace (free nodes only, in its own order), kept to warm-start a nearby solve. */
+    internal var subspace: Array<DoubleArray>? = null
+
     /** Number of modes. */
     val count: Int get() = lambda.size
 
@@ -514,7 +519,7 @@ internal fun jacobiEigen(a0: Array<DoubleArray>, vecs: Array<DoubleArray>): Doub
     return DoubleArray(n) { a[it][it] }
 }
 
-internal fun solveDrumModes(mesh: DrumMesh, count: Int, mass: String, tol: Double, maxIt: Int): DrumModes {
+internal fun solveDrumModes(mesh: DrumMesh, count: Int, mass: String, tol: Double, maxIt: Int, warm: DrumModes? = null): DrumModes {
     // free nodes, ordered by x then y to keep the band narrow
     val free = (0 until mesh.nodeCount).filter { !mesh.boundary[it] }.sortedWith(compareBy({ mesh.x[it] }, { mesh.y[it] }))
     val n = free.size
@@ -548,7 +553,8 @@ internal fun solveDrumModes(mesh: DrumMesh, count: Int, mass: String, tol: Doubl
     val kc = Band(n, bw); k.v.copyInto(kc.v); kc.cholesky()
     val p = min(n, max(count + 8, 2 * count))
     val rnd = java.util.Random(1)
-    var x = Array(p) { DoubleArray(n) { rnd.nextDouble() - 0.5 } }
+    val previous = warm?.subspace?.takeIf { warm.mesh.nodeCount == mesh.nodeCount && it.size == p && it[0].size == n }
+    var x = previous?.let { v -> Array(p) { v[it].copyOf() } } ?: Array(p) { DoubleArray(n) { rnd.nextDouble() - 0.5 } }
     var lam = DoubleArray(p) { Double.MAX_VALUE }
     val tmp = DoubleArray(n)
     var iterations = 0
@@ -601,7 +607,7 @@ internal fun solveDrumModes(mesh: DrumMesh, count: Int, mass: String, tol: Doubl
         if (big < 0) for (i in full.indices) full[i] = -full[i]
         full
     }
-    return DrumModes(mesh, lam.copyOf(count), shapes, iterations)
+    return DrumModes(mesh, lam.copyOf(count), shapes, iterations).also { it.subspace = x }
 }
 
 private fun dot(a: DoubleArray, b: DoubleArray): Double { var s = 0.0; for (i in a.indices) s += a[i] * b[i]; return s }

@@ -206,10 +206,13 @@ fun designShape(
     }
     val p0 = DoubleArray(ks.size * perK) { i -> val k = ks[i / perK]; if (i % perK == 0) start.cosine[k] else start.sine[k] }
     val bad = DoubleArray(target.size + if (stayNear > 0) p0.size else 0) { 1e4 }
+    var last: DrumModes? = null
     fun solve(p: DoubleArray): DrumModes? {
         val s = shapeOf(p)
         if (s.minRadius() < 0.25) return null
-        return try { disk.polarMorphed(s).modes(target.size, tolerance = 1e-11) } catch (e: IllegalArgumentException) { null }
+        return try {
+            disk.polarMorphed(s).modes(target.size, tolerance = 1e-11, warm = last).also { last = it }
+        } catch (e: IllegalArgumentException) { null }
     }
     val startModes = solve(p0) ?: error("starting shape is not a valid drum")
     val res = leastSquares(p0, LeastSquaresOptions(maxIterations = maxIterations, finiteDifferenceStep = 1e-5)) { p ->
@@ -332,11 +335,12 @@ fun designSyahi(
         }
     }
     val cache = LinkedHashMap<List<Double>, DrumModes>()
+    var last: DrumModes? = null
     fun solve(p: DoubleArray): DrumModes? {
         if (radii(p).any { it < 0.03 || it > 0.97 }) return null
         return cache.getOrPut(p.toList()) {
             if (cache.size > 6) cache.remove(cache.keys.first())
-            mesh.withTriangleDensity(rhoOf(p)).modes(n, tolerance = 1e-11)
+            mesh.withTriangleDensity(rhoOf(p)).modes(n, tolerance = 1e-8, warm = last).also { last = it }
         }
     }
     val bad = DoubleArray(n) { 1e4 }
