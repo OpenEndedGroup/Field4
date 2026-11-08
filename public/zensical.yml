@@ -267,6 +267,9 @@ nav:
       - Voronoi, Contours & Clusters: spatial_geometry_examples.md
       - Penrose and Other Quasiperiodic Tilings: debruijn_tilings.md
       - Penrose Tilings in 3D: debruijn_tilings_3d.md
+      # Combinatorial drawing: the longest knight paths whose moves never cross, on flat and
+      # wrapped boards. Beside the tilings because both are about what a rule lets a drawing do.
+      - Uncrossed Knight Paths: uncrossed_leapers.md
       - Linear Programs as Curves: lp_curves.md
     # sound.md is the Tour's sound stop, so this group starts at the pattern language that feeds
     # it and continues into the paths that page only introduces. Deliberately not an ordinal —

@@ -103,6 +103,18 @@ The glued view reports join lengths; its nearest-neighbour/2-opt route is not a 
 [Walkthrough and parameters](knight_tour_workshop.md) ·
 [Saved chat](assets/knight_tour_workshop/chat.txt)
 
+### uncrossed_leapers
+
+**Knight paths that never cross.** The starting point of [Uncrossed knight paths](uncrossed_leapers.md):
+the longest uncrossed knight paths and closed paths, checked against OEIS A003192 and A157416; the
+best found on 8×8 and 9×9; five leapers on a rectangle, a cylinder and a torus, as a gallery and as a
+sweep over board sizes; the longest 7×7 paths drawn by the knight-tour workshop's line and arc views;
+a pen-plotter SVG sheet; and a box that checks a path you draw on the drawing layer. Pure CPU.
+
+![Fifteen 7×7 boards, five leapers by three surfaces, each crossed by its longest uncrossed path in gold](assets/uncrossed_leapers/gallery.png)
+
+[Open →](offline.html?file=assets/agent_transcripts/uncrossed_leapers/metadata.edn)
+
 ### staged_project
 
 **A level built in stages.** The starting place of [Start a staged project](staged_projects.md): a
