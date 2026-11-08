@@ -33,6 +33,7 @@ layout(push_constant) uniform pcs {
     uint parity;
     uint seed;
     vec4 brush;
+    float angle;
 } pc;
 
 float cellAlpha(int x, int y) {
@@ -69,13 +70,15 @@ void main() {
     for (int dy = -1; dy <= 1; ++dy) for (int dx = -1; dx <= 1; ++dx) pre = pre || cellAlpha(x + dx, y + dy) > 0.1;
 
     if (pre && hash(uvec3(x, y, pc.seed)) <= 0.5) {
+        float ca = cos(pc.angle), sa = sin(pc.angle);
         float p[48];
         for (int c = 0; c < 48; ++c) p[c] = 0.0;
         for (int dy = -1; dy <= 1; ++dy) for (int dx = -1; dx <= 1; ++dx) {
             int xx = x + dx, yy = y + dy;
             if (xx < 0 || yy < 0 || xx >= n || yy >= n) continue;
-            float sx = float(dx) * (dy == 0 ? 2.0 : 1.0) / 8.0;
-            float sy = float(dy) * (dx == 0 ? 2.0 : 1.0) / 8.0;
+            float sobelX = float(dx) * (dy == 0 ? 2.0 : 1.0) / 8.0;
+            float sobelY = float(dy) * (dx == 0 ? 2.0 : 1.0) / 8.0;
+            float sx = ca * sobelX - sa * sobelY, sy = sa * sobelX + ca * sobelY;
             int nb = (yy * n + xx) * 4;
             for (int k = 0; k < 4; ++k) {
                 vec4 q = pc.cells.v[src + nb + k];
