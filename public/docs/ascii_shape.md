@@ -255,7 +255,8 @@ knot.time = {
 knot.aspect = { ascii.sceneWidth.toFloat() / ascii.sceneHeight }
 
 // A (2, 3) torus knot: a tube of radius 0.16 around a centre line, 240 steps along it and 16 around.
-fun centre(a: Double) = vec(0.42 * (2 + cos(3 * a)) * cos(2 * a), 0.42 * (2 + cos(3 * a)) * sin(2 * a), -0.42 * sin(3 * a))
+fun centre(a: Double) =
+    vec(0.42 * (2 + cos(3 * a)) * cos(2 * a), 0.42 * (2 + cos(3 * a)) * sin(2 * a), -0.42 * sin(3 * a))
 knot.set(240 * 16, 240 * 16 * 2) {
     for (i in 0 until 240) for (j in 0 until 16) {
         val a = 2 * PI * i / 240
@@ -276,7 +277,9 @@ knot.set(240 * 16, 240 * 16 * 2) {
 // Run the scene and the matching pass every frame and draw the characters over the window,
 // with the scene itself, as the matcher sees it, in the lower right corner.
 ascii.installInto()
-ascii.drawSceneInto(viewport = Rect(window.width * 0.76, window.height * 0.76, window.width * 0.22, window.height * 0.22))
+ascii.drawSceneInto(
+    viewport = Rect(window.width * 0.76, window.height * 0.76, window.width * 0.22, window.height * 0.22),
+)
 ```
 
 Its vertex shader turns the knot by `time` and projects it, and its fragment shader lights it from
@@ -302,7 +305,7 @@ void main() {
     vec3 p = rx * ry * pos;
     fnormal = rx * ry * normal;
     // a camera 4 units back looking along +z; +y is up, since Field flips its viewports;
-  // depth runs 0..1 from z = 1 to z = 8
+    // depth runs 0..1 from z = 1 to z = 8
     float z = p.z + 4.0;
     gl_Position = vec4(p.x * 2.6 / pc.aspect, p.y * 2.6, (z - 1.0) / 7.0 * z, z);
 }

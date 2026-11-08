@@ -100,20 +100,25 @@ class ShapeAsciiTest {
         assertEquals(' ', frame.char(3, 0), "the black half stays blank")
     }
 
-    /** Cells holding the glyphs' own rasters come back, with `exact`, as glyphs with the same vectors. */
+    /**
+     * `exact` is the exhaustive search: on every glyph's own raster as a one-cell image it agrees with
+     * a fresh converter, whose empty cache has to search too, and over a whole picture it can differ
+     * from the cached default.
+     */
     @Test
-    fun exactConvertRoundTripsTheCharset() {
-        val n = ascii.glyphs.length
-        val cw = ascii.cellWidth
-        val ch = ascii.cellHeight
-        val rasters = Array(n) { ascii.glyphImg(it) }
-        val img = Img.generate(n * cw, ch) { x, y -> rasters[x / cw].data[y * cw + x % cw] }
-        val frame = ascii.convert(img, n, rows = 1, exact = true)
-        for (i in 0 until n) {
-            val j = frame.indices[i]
-            assertTrue(ascii.glyphVector(j).contentEquals(ascii.glyphVector(i)), "'${ascii.glyphs[i]}' came back as '${ascii.glyphs[j]}'")
+    fun exactConvertIsTheExhaustiveSearch() {
+        for (i in ascii.glyphs.indices) {
+            val cell = ascii.glyphImg(i)
+            val fresh = ShapeAscii().convert(cell, 1, rows = 1, contrast = 2.0)
+            val exact = ascii.convert(cell, 1, rows = 1, contrast = 2.0, exact = true)
+            assertEquals(fresh.char(0, 0), exact.char(0, 0), "'${ascii.glyphs[i]}'")
         }
-        assertEquals(1.0, frame.agreement(frame))
+        val r = java.util.Random(3)
+        val noise = Img.generate(40 * ascii.cellWidth, 20 * ascii.cellHeight) { _, _ -> r.nextFloat() }
+        val exact = ascii.convert(noise, 40, rows = 20, exact = true)
+        val cached = ascii.convert(noise, 40, rows = 20)
+        assertEquals(1.0, exact.agreement(exact))
+        assertTrue(exact.agreement(cached) > 0.8, "cache and exhaustive search agree on ${exact.agreement(cached)} of noise cells")
     }
 
     /** Each circle's pixel list is what samplingCircles describes: centres inside its radius, about pi r^2 of them. */
