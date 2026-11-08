@@ -659,7 +659,7 @@ Explore Field's JVM codebase by package. Follow a branch to its declarations and
 
 ## Reference pages
 
-**36990 public symbols across 1672 source files**, 21620 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
+**37001 public symbols across 1672 source files**, 21627 of them (58%) carrying a KDoc summary. Pages are grouped by the source's `@file:CompletionCategory` where present, with package-based categories for unannotated files. Public visibility describes Kotlin access; it does not necessarily mean an API intended for box code.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -684,7 +684,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Visualization](visualization.md) | 62 | 1731 | 1238 (71%) | Turning a value into something you can look at, without leaving the box. |
 | [Synthesis](synthesis.md) | 43 | 1534 | 763 (49%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
 | [Patterns](patterns.md) | 40 | 1317 | 721 (54%) | Musical time, as a value. |
-| [Audio](audio.md) | 85 | 2212 | 1105 (49%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
+| [Audio](audio.md) | 85 | 2223 | 1112 (50%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 22 | 586 | 586 (100%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 123 | 3103 | 1527 (49%) | Field's small languages, from the host side. |
 | [Workspace](workspace.md) | 239 | 3212 | 1294 (40%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
@@ -803,8 +803,8 @@ Every Kotlin file under `src/jvmMain/kotlin` is listed, including files without 
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>ui/<wbr>slides/<wbr></small> [AudienceBuilder.kt](visualization.md#audiencebuilder-kt) | Visualization | 10 | 10 | The HTML an audience slide is written in: kotlinx.html's builders, with scoped Markdown, stylesheets and two picture layouts added. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>ai/<wbr></small> [AudioAssetVisualization.kt](audio-ai.md#audioassetvisualization-kt) | Audio AI | 1 | 1 | The one-line bridge from a Field Audio `AssetRepresentation` to Field's general-purpose waveform player. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>spatial/<wbr>steamaudio/<wbr></small> [AudioBuffer.kt](audio.md#audiobuffer-kt) | Audio | 34 | 32 | Audio buffers and the settings every Steam Audio effect is created against. |  |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>analysis/<wbr></small> [AudioCurveFile.kt](audio.md#audiocurvefile-kt) | Audio | 13 | 5 |  | [Audio curves: a sound as a few slow controls](../audio_curves.md) |
-| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>analysis/<wbr></small> [AudioCurves.kt](audio.md#audiocurves-kt) | Audio | 23 | 16 |  | [Audio curves: a sound as a few slow controls](../audio_curves.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>analysis/<wbr></small> [AudioCurveFile.kt](audio.md#audiocurvefile-kt) | Audio | 21 | 9 |  | [Audio curves: a sound as a few slow controls](../audio_curves.md) |
+| <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>analysis/<wbr></small> [AudioCurves.kt](audio.md#audiocurves-kt) | Audio | 26 | 19 |  | [Audio curves: a sound as a few slow controls](../audio_curves.md) |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>texture/<wbr>video/<wbr></small> [AudioDecoder.kt](graphics.md#audiodecoder-kt) | Graphics | 15 | 15 | Decodes an audio stream with FFmpeg into signed 16-bit PCM `AudioFrame`s for `AudioPlayer`. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>audio/<wbr>spatial/<wbr>steamaudio/<wbr></small> [AudioEffect.kt](audio.md#audioeffect-kt) | Audio | 5 | 5 | The base class every Steam Audio effect extends: `AudioEffect` resets state, reports and flushes the reverb tail, and `AudioEffect.drainTail` runs that flush loop for a source that has stopped. |  |
 | <small class="reference-file-path">src/<wbr>jvmMain/<wbr>kotlin/<wbr>afield/<wbr>graphics/<wbr>texture/<wbr>video/<wbr></small> [AudioPlayer.kt](graphics.md#audioplayer-kt) | Graphics | 15 | 15 | Streams PCM audio through OpenAL by queuing a fixed ring of buffers, and reports the playback position that `AudioClock` uses to keep video in sync. |  |
