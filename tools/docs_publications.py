@@ -27,6 +27,12 @@ CATALOG = PUBLICATIONS / "catalog.json"
 FIELDML_DEMOS = ("fieldml_suspend_demo", "fieldml_frames_sequence_demo", "fieldml_frames_demo",
                  "fieldml_mesh_demo", "fieldml_macro_module_demo")
 PILOTS = ("fline_examples", "three_output_gallery", "canonical_graphics") + FIELDML_DEMOS
+# Transcripts whose boxes run a synchronous search longer than the interactive 30 s runloop
+# watchdog, so they capture under a 120 s budget. The execution harness records ~67 s for Morpho's.
+# The evolution and fitting searches joined on 2026-11-08: a full refresh (any change to the
+# capture digest) stalled them on four landing attempts in a row, one of them on an idle host.
+LONG_COMPUTE = frozenset({"petri_tala_layout", "morpho_circuit_search", "alife_evolution",
+                          "braitenberg_brain_search", "braitenberg_where_next", "stacksl_fit_demo"})
 
 
 def publication_node() -> str | None:
@@ -344,9 +350,7 @@ def recipes(group: str) -> list[dict]:
     names = re.findall(r'"([a-z0-9_-]+)"', block)
     result = [{"name": name, "source": f"assets/agent_transcripts/{name}/metadata.edn",
              "transcript": f"dev_docs/agents/transcripts/{name}.yaml",
-             # The execution harness records ~67s for Morpho's synchronous search; both
-             # benchmarks need a dedicated budget rather than the interactive watchdog.
-             "longCompute": name in {'petri_tala_layout', 'morpho_circuit_search'}} for name in names
+             "longCompute": name in LONG_COMPUTE} for name in names
             if (DOCS / f"assets/agent_transcripts/{name}/metadata.edn").is_file()]
     # Reuse genuine native captures owned by docs. Their hardware profiles and refresh timing
     # stay with the existing runner; publishing never executes arbitrary compile-only recipes.
