@@ -2679,6 +2679,214 @@ body.field-pane-resizing-h * {
     box-shadow: 0 0 0 1px var(--field-accent-border-medium);
 }
 
+/* Control tooltips (`tooltip = "..."` on any control; controlTooltips.js). The dotted label says
+   "hover me"; the tip itself is one fixed element on the body, so no output area clips it. */
+[data-tooltip] .field-label {
+    text-decoration: underline dotted rgba(var(--field-accent-rgb), 0.55);
+    text-underline-offset: 3px;
+    cursor: help;
+}
+
+/* A long slider label is split into clipped halves (sliders.js prepareControlLabel); the underline
+   does not reach into them, so they carry their own. */
+[data-tooltip] .field-label-middle > .field-label-start,
+[data-tooltip] .field-label-end > span {
+    text-decoration: underline dotted rgba(var(--field-accent-rgb), 0.55);
+    text-underline-offset: 2px;
+}
+
+.field-tooltip {
+    position: fixed;
+    z-index: 10050;
+    max-width: min(360px, calc(100vw - 16px));
+    padding: 7px 9px;
+    background: var(--field-overlay);
+    border: 1px solid var(--field-accent-border-medium);
+    border-radius: 6px;
+    box-shadow: 0 6px 18px rgba(var(--field-black-rgb), 0.55);
+    color: var(--field-fg-body);
+    font-family: var(--field-font);
+    font-size: 12px;
+    line-height: 1.4;
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 90ms ease;
+}
+
+.field-tooltip.visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+.field-tooltip-label {
+    color: var(--field-accent);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    margin-bottom: 3px;
+    white-space: normal;
+}
+
+/* File chooser (`fileChooser(...)`; fileChooser.js). */
+.field-file-field {
+    display: flex;
+    flex: 1 1 auto;
+    min-width: 0;
+    position: relative;
+}
+
+.field-file-field .field-file-input {
+    min-width: 0;
+    padding-right: 26px;
+}
+
+.field-file-field > .field-file-browse {
+    position: absolute;
+    right: 3px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--field-accent);
+    font-size: 11px;
+    cursor: pointer;
+    opacity: 0.7;
+}
+
+.field-file-field > .field-file-browse:hover {
+    opacity: 1;
+    background: rgba(var(--field-accent-rgb), 0.12);
+}
+
+.field-file-invalid .field-file-input {
+    border-color: rgba(var(--field-danger-rgb), 0.8);
+    color: rgba(var(--field-danger-rgb), 0.95);
+}
+
+.field-file-menu {
+    position: fixed;
+    z-index: 10040;
+    max-width: min(560px, calc(100vw - 8px));
+    max-height: 280px;
+    overflow-y: auto;
+    padding: 3px 0;
+    background: var(--field-overlay);
+    border: 1px solid var(--field-accent-border-medium);
+    border-radius: 6px;
+    box-shadow: 0 8px 22px rgba(var(--field-black-rgb), 0.6);
+    font-family: var(--field-font);
+    font-size: 12px;
+    color: var(--field-fg-body);
+    display: none;
+}
+
+.field-file-menu.visible {
+    display: block;
+}
+
+.field-file-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 3px 9px 4px;
+    font-size: 10px;
+    color: var(--field-fg-soft);
+    border-bottom: 1px solid var(--field-accent-border-faint);
+    margin-bottom: 2px;
+}
+
+.field-file-where {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    direction: rtl;
+    text-align: left;
+}
+
+.field-file-where > bdi {
+    direction: ltr;
+    unicode-bidi: isolate;
+}
+
+.field-file-mask {
+    color: var(--field-accent);
+    flex: 0 0 auto;
+}
+
+.field-file-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 2px 9px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.field-file-item:hover {
+    background: rgba(var(--field-accent-rgb), 0.08);
+}
+
+.field-file-item.selected {
+    background: rgba(var(--field-accent-rgb), 0.2);
+}
+
+.field-file-item.directory .field-file-name {
+    color: var(--field-accent);
+}
+
+.field-file-item.mapped .field-file-name {
+    color: var(--field-accent);
+    font-style: italic;
+    flex: 0 0 auto;
+}
+
+.field-file-item.mapped .field-file-meta {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    direction: rtl;
+}
+
+.field-file-item.mapped .field-file-meta > bdi {
+    direction: ltr;
+    unicode-bidi: isolate;
+}
+
+.field-file-menu {
+    width: max-content;
+}
+
+.field-file-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.field-file-meta {
+    flex: 0 0 auto;
+    color: var(--field-fg-soft);
+    font-size: 10px;
+    white-space: pre;
+}
+
+.field-file-empty {
+    padding: 3px 9px;
+    color: var(--field-fg-soft);
+    font-style: italic;
+}
+
+.field-file-error {
+    color: rgba(var(--field-danger-rgb), 0.9);
+}
+
 /* Color picker */
 .field-color {
     display: flex;

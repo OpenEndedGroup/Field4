@@ -105,7 +105,7 @@ The glued view reports join lengths; its nearest-neighbour/2-opt route is not a 
 
 ### uncrossed_leapers
 
-**Knight paths that never cross.** The starting point of [Uncrossed knight paths](uncrossed_leapers.md):
+**Knight paths that never cross.** The starting point for [uncrossed paths](knight_tour_workshop.md#uncrossed-paths):
 the longest uncrossed knight paths and closed paths, checked against OEIS A003192 and A157416; the
 best found on 8×8 and 9×9; five leapers on a rectangle, a cylinder and a torus, as a gallery and as a
 sweep over board sizes; the longest 7×7 paths drawn by the knight-tour workshop's line and arc views;
@@ -706,7 +706,7 @@ renderer, including glyph outlines. No parser service, model download or GPU is 
 
 ### dependency_length
 
-[Dependency length in real texts](dependency_length.md): the Gettysburg Address, the first chapters
+[Dependency length in real texts](sentence_diagrams.md#dependency-length-in-real-texts): the Gettysburg Address, the first chapters
 of Pride and Prejudice and Moby-Dick, Shakespeare's first ten sonnets and Genesis 1, measured the way
 Futrell, Mahowald and Gibson measured 37 languages. One sentence is drawn beside random reorderings of
 its tree, the speech as small multiples with each sentence's ratio to chance, and every sentence's
@@ -4274,6 +4274,22 @@ CPU integrator per particle.
 ![The word FIELD assembled from warm gold particles on black](assets/neural_particles/word.png)
 
 [Open →](offline.html?file=assets/agent_transcripts/neural_particles/metadata.edn)
+
+### growing_nca
+
+**A flower that grows from one cell and grows back when you cut it.** A growing neural cellular
+automaton (Mordvintsev et al., Distill 2020): every cell holds 16 numbers and runs the same trained
+48 → 128 → 16 network. One box grows, damages and regrows it on the CPU and shows seven snapshots;
+one runs it live on the CPU (launch it); and beneath a renderer, one runs the same rule as a compute
+shader at 96 × 96, erasing cells under the left mouse button. See [Growing Neural Cellular
+Automata](growing_nca.md).
+
+```diffstatic {data-lang=text}
+macro write growing_nca --file dev_docs/agents/transcripts/growing_nca.yaml
+macro run growing_nca
+```
+
+[Open →](offline.html?file=assets/agent_transcripts/growing_nca/metadata.edn)
 
 ### learned_boids
 

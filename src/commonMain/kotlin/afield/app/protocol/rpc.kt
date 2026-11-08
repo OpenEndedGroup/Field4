@@ -1903,7 +1903,56 @@ data class ControllerControl(
     val columns: Int = 0,
     val states: Int = 0,
     val polar: Boolean = false,
-    val options: List<String> = emptyList()
+    val options: List<String> = emptyList(),
+    /**
+     * What this control is for, in a sentence or two — the `tooltip` argument every control takes.
+     *
+     * Usually written by whoever made the control (often an agent) for whoever will move it. The
+     * desktop shows it on hover over the control, the tablet under the label. Not cached with the
+     * value: each run's code supplies it again.
+     */
+    val tooltip: String? = null
+)
+
+/**
+ * A file chooser asking what [text] could complete to (`afield/ui/output/FileChooser.kt`).
+ * [seq] is echoed so the page can drop a reply that a later keystroke has overtaken.
+ */
+@Serializable
+data class FileCompletionRequest(val controlId: String, val text: String, val seq: Int = 0)
+
+/**
+ * One candidate in a [FileCompletionReply]: [insert] is the whole new input text, which keeps the
+ * person's own spelling of the path so far (relative, `~/`, `%name/`, or absolute).
+ */
+@Serializable
+data class FileCompletionEntry(
+    val name: String,
+    val insert: String,
+    val directory: Boolean,
+    val size: Long = 0,
+    val modified: Long = 0,
+    /** A note shown beside the name instead of size and date: where a `%name` directory points. */
+    val detail: String = ""
+)
+
+/**
+ * What a file chooser's [FileCompletionRequest] can complete to, and whether [text] already names
+ * something the chooser accepts ([choosable]). [directory] is the folder being listed, spelled for
+ * display; [error] says why there is nothing to list.
+ */
+@Serializable
+data class FileCompletionReply(
+    val controlId: String,
+    val seq: Int = 0,
+    val text: String = "",
+    val directory: String = "",
+    val entries: List<FileCompletionEntry> = emptyList(),
+    val truncated: Boolean = false,
+    val exists: Boolean = false,
+    val choosable: Boolean = false,
+    val mask: String = "",
+    val error: String? = null
 )
 
 /** A momentary button going down or coming back up. See `ControlGroupBuilder.button`. */

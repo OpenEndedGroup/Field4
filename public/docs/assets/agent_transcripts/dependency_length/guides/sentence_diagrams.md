@@ -1,6 +1,6 @@
 ---
-docs: dependency_length/
+docs: sentence_diagrams/
 ---
-# Dependency length in real texts
+# Sentence diagrams
 
 The measurement, its baselines (Futrell, Mahowald and Gibson 2015) and how to add a text.

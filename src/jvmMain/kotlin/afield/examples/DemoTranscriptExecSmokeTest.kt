@@ -97,7 +97,7 @@ object DemoTranscriptExecSmokeTest {
     /** Pure-compute demos that are safe to run to completion headless. */
     internal val EXECUTE = setOf(
         "sentence_diagrams",
-        // dependency_length.md: measures five retained parsed texts against random reorderings; no parser.
+        // sentence_diagrams.md, Dependency length: measures five retained parsed texts against random reorderings; no parser.
         "dependency_length",
         // visualizers.md's presets demo: a preset bar, record button and MIDI learn; the MIDI box feeds stand-in CCs.
         "controls_presets_morph_midi",
@@ -219,7 +219,7 @@ object DemoTranscriptExecSmokeTest {
         "keyframe_code_blend",
         "linalg_thumbnails_demo",
         "knight_tour_workshop", // CPU FLine drawings; source shares results with four derived views.
-        // uncrossed_leapers.md's starting point: uncrossed leaper paths (afield.geometry.leaper) drawn as
+        // The uncrossed half of knight_tour_workshop.md: uncrossed leaper paths (afield.geometry.leaper) drawn as
         // FLines, two knight-tour workshop views fed by them, a plotter SVG, and a box that reads the
         // drawing layer through `notation` (it draws its own demonstration stroke). CPU only.
         "uncrossed_leapers",
@@ -913,6 +913,9 @@ object DemoTranscriptExecSmokeTest {
         // brute force. What is left here is the window.
         "neural_particles",
         "learned_boids",
+        // Opens a Vulkan window for the GPU compute-shader NCA; the CPU rule it shares is graded
+        // by GrowingNcaTest (grows from a seed, regrows after damage).
+        "growing_nca",
         // The same deal again, one tier up: both open a native Vulkan renderer to draw a trained
         // field, and both are graded far more sharply than a replay could manage — the
         // interpolation they demonstrate is measured in `WeightInterpolationTest`, endpoint

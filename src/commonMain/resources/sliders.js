@@ -3070,10 +3070,12 @@ window.applyFieldControlUpdate = function(control) {
         return;
     }
 
-    if (type === 'string') {
+    // A file chooser's value is its path text (fileChooser.js); `committed` is what it last sent.
+    if (type === 'string' || type === 'file') {
         const input = document.getElementById(id);
         if (input && input.matches?.('.field-text-input') && document.activeElement !== input) {
             input.value = control.text == null ? '' : String(control.text);
+            input.dataset.committed = input.value;
         }
         return;
     }

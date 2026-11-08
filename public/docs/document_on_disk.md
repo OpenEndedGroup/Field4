@@ -260,7 +260,7 @@ it while Field runs. Each small language adds its own root markers when it insta
 and the other language roots the same way. `Box.syncToProperty`, the helper that wires an
 output-panel control to a box property, marks that property persistable in each of its five type
 branches
-(`src/jvmMain/kotlin/afield/ui/output/outputs.kt:2465#fun Box.syncToProperty(propertyName: String, initialValue: Any`).
+(`src/jvmMain/kotlin/afield/ui/output/outputs.kt:2960#initialValue: Any,`).
 A document's own header counts too, but only for that document. Loading one records its
 `:persistentProperties` list against the document's folder
 (`src/jvmMain/kotlin/afield/document/persistence/saving.kt:1329#Box.recordDocumentPersistentProperties(directory, propsList)`),

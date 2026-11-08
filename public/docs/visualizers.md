@@ -1986,6 +1986,68 @@ It prints the cutoff at 20, 114, 650, 3705 and 20000 as the stand-in knob goes f
 
 To hear hardware, open an input with `MidiDevices` and attach it: `midi.attach(MidiDevices.openInput(MidiDevices.inputs().first()))`, or pass the input to `midiLearnButton(input)`.
 
+### Saying what a control is for: tooltips
+
+Every control takes a `tooltip`: a sentence or two about what the control does, what range is sensible, or what breaks if you push it. Hover over the control (or reach it with Tab) and the text appears under it, headed by the control's full label. A control that has one shows its label with a dotted underline.
+
+```diffstatic {data-lang=kotlin}
+var speed = 1.0
+var align = 0.5
+var cohere = 0.3
+var wrap = true
+controlGroup("flock") {
+    slider(
+        "speed",
+        0.0,
+        5.0,
+        initialValue = speed,
+        tooltip = "Top speed. Below about 0.3 the flock stalls and stops turning.",
+    ) {
+        speed = it
+    }
+    tooltip("Steering weights. They are relative, so doubling all of them changes nothing.") {
+        slider("align", 0.0, 2.0, initialValue = align) { align = it }
+        slider("cohere", 0.0, 2.0, initialValue = cohere) { cohere = it }
+    }
+    checkbox("wrap", wrap, tooltip = "Off: birds bounce off the edges instead of reappearing opposite") { wrap = it }
+}
+```
+
+`tooltip("…") { … }` gives one text to every control declared inside it; a control's own `tooltip` argument wins over the block. The text is plain, and line breaks are kept. The standalone controls, `syncToProperty`, the sequencer controls, the keyframed `keys.slider(...)` family and the Python `slider(...)` / `checkbox(...)` take the same argument.
+
+The tooltip travels with the control's record, so the touch controller shows it as a line under the label (tap for the rest), and an agent reading a box's controls sees it as `tooltip`. Write one whenever the label alone would leave you guessing which control to move.
+
+### Choosing a file
+
+`fileChooser(...)` is a text field that completes file paths as you type, instead of opening the system's file dialog. Give it a directory to start from and a mask:
+
+```diffstatic {data-lang=kotlin}
+var image: File? = null
+controlGroup("input") {
+    fileChooser(
+        "image",
+        directory = "~/Pictures",
+        mask = "*.{png,jpg}",
+        tooltip = "The picture to trace; anything Field can load as an image",
+    ) {
+        image = it
+        println("tracing ${it.name}")
+    }
+}
+```
+
+Type a name and a list of matches drops down under the field: directories first, then files that match the mask, with sizes and dates. Names that start with what you typed come first, then names containing it, then names that hold its letters in order. Use the arrow keys to move through the list. Tab or Enter takes the highlighted entry; a directory opens and a file is chosen. Escape closes the list, and the ▾ button (or ++alt+down++) lists the folder you are in. You can also type a path relative to `directory`, a `~/…` path, or an absolute one, and press Enter. The field turns red when you commit something the chooser would not accept.
+
+A path can also start with any of the `%` names FileManager knows: `%document/…` for this document's `files/` folder, `%project/…` for its project's, and `%textures/…` for a folder registered with `FileManager["textures"] = "~/Pictures"`. Type `%` to list them, each with the folder it points to; a blank field lists them too, under `..`. The field keeps the spelling you chose, so `initialValue = "%textures/wall.png"` still finds the file after the folder is registered somewhere else.
+
+The callback receives an absolute `File`, and only for a path that matches the mask and exists. It runs on every run in which the control holds such a path, so `image` is set on the first run from `initialValue`. On later runs it holds the file chosen last, which the group remembers like any other control's value.
+
+- `directory` is read the way file names are everywhere else in Field: blank for this document's `files/` folder, `"%document/…"`, `"%name/…"` for a folder registered with `FileManager`, `"~/…"`, or an absolute path.
+- `mask` takes one glob or several: `"*.wav, *.aif"`, `"*.{csv,tsv}"`, or just `"csv"`. Matching ignores case.
+- `chooseDirectory = true` picks a folder instead of a file. `mustExist = false` accepts a name that does not exist yet, for something you are about to write. `showHidden = true` lists dot-files without having to type the dot.
+
+`fileUpload(...)` is the other way round: it copies a file *into* Field through the browser, which is what you want on the touch controller or when Field runs on another machine.
+
 ### Choosing the right control
 
 - Use `slider(...)` for one bounded numeric value.
@@ -1997,6 +2059,7 @@ To hear hardware, open an input with `MidiDevices` and attach it: `midi.attach(M
 - Use `matrix(...)` for patterns: on/off steps, or several states per cell with `states = n`.
 - Use `rangeSlider(...)` for an interval, such as a band, a window or a velocity range. Use `polar = true` when the value wraps around, like a phase or a hue.
 - Use `menu(...)` for choosing one of a few named options.
+- Use `fileChooser(...)` for a file or folder on this machine, chosen by path with completion.
 - Use `gesture(...)` for a two-axis movement you want to perform once and loop.
 - Use `recordToggle(...)` to perform one control's movement into a keyframe curve, and `presetBar(keys)` to store and morph between whole settings of a panel.
 - For a curve over time you shape by hand, an envelope, use the keyframe editor, `keyframes(...)`: see [Keyframes and timelines](funFeatures.md#keyframes-and-timelines).

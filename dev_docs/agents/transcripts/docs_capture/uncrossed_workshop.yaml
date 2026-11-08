@@ -1,6 +1,6 @@
 name: uncrossed_workshop_capture
 description: |-
-  Docs capture for uncrossed_leapers.md: box 6 of the uncrossed_leapers starting point and the two knight-tour workshop views it feeds.
+  Docs capture for knight_tour_workshop.md (uncrossed paths): box 6 of the uncrossed_leapers starting point and the two knight-tour workshop views it feeds.
 operations:
 - create:
     box: ul_tours

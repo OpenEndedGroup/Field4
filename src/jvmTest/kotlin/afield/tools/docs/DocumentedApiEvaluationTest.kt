@@ -187,6 +187,10 @@ class DocumentedApiEvaluationTest {
      * and "no cheap evaluator exists" are different sentences.
      */
     private val COMPILE_ONLY_REMAINDER: Map<String, String> = mapOf(
+        // growing_nca.md (2026-11-08): stepMesh is not a library API but a helper the page's GPU box
+        // defines for itself, building one fixed-parity ComputeMesh; growing_nca is COMPILE_ONLY because
+        // that box needs a renderer. GrowingNcaTest runs the same rule on the CPU.
+        "stepMesh" to "growing_nca.md; a helper the page's renderer-only GPU box defines for itself; GrowingNcaTest runs the rule on the CPU",
         // webrtc.md (2026-10-21): the sink publishes from an ElectronRTTView in the Field Electron
         // app's output area, and the source is a hidden Electron page sampled as a Vulkan texture;
         // CI has neither. WebRTCSignalingTest runs the relay, the aaaframe bridge and webrtcPublishers

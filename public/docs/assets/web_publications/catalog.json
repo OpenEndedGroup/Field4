@@ -1051,17 +1051,17 @@
     },
     "assets/agent_transcripts/dependency_length/metadata.edn": {
       "captureDigest": "d410aadb0a5f2a23699b553908efd7a3d7e4d3380c6fcba7c5d48a12462b5ea5",
-      "capturedAt": "2026-11-08T18:03:21.331Z",
+      "capturedAt": "2026-11-08T20:15:28.175Z",
       "channels": 5,
       "file": "assets/web_publications/dependency_length/document/metadata.edn",
       "files": {
         "assets/web_publications/dependency_length/document/metadata.edn": "d0af5d8809a09ccca8385e3f5789dca618f043631da450d99f5523037699edc5",
-        "assets/web_publications/dependency_length/document/outputs.json": "bb26a9f74f2f215c515442eb1064e72edffa965c7d349c7aeeb37ac02cc95c3c",
-        "assets/web_publications/dependency_length/outputs/0.html": "d26310f4207c99bb6b739c3853078056333d025fe47c4c009554bab3ac9ce7c3",
-        "assets/web_publications/dependency_length/outputs/1.html": "9c2d627f621b5414938c032166ff171106ba72bd2be000860fa520cf1889ac3e",
-        "assets/web_publications/dependency_length/outputs/2.html": "edc05303c25465bb752a40c5864690ec36a8030a09f46031d51094bee416965c",
-        "assets/web_publications/dependency_length/outputs/3.html": "7cd266da3e00b35242f17fbb76b407b0ee0cee010da8e12656409529cbb6c6ed",
-        "assets/web_publications/dependency_length/outputs/4.html": "b5d4722c8491bb36a24cfa98977a612f1093328e3edf9998c3d43542d9bc42a4"
+        "assets/web_publications/dependency_length/document/outputs.json": "58a6236218dd915f95966d90388a96ee1cfd5e35c55613c580b8a52c16839425",
+        "assets/web_publications/dependency_length/outputs/0.html": "75b8d5d1208be9520c2438ad1fcef67a7726245020fa040d491c4c6e594ae202",
+        "assets/web_publications/dependency_length/outputs/1.html": "31e7f6fca25865c36fd1043a6f6398433f172e172a4aa53dbb10189a7f93ca9e",
+        "assets/web_publications/dependency_length/outputs/2.html": "4908446b19b61e435dcdbfd72ced3c505f23f7ca14f56de61d8ad1035f84ee46",
+        "assets/web_publications/dependency_length/outputs/3.html": "6f30a9fd356b7c055f3d14cbb39a87cbad1f0e1d4ba6136d1c481a078e316622",
+        "assets/web_publications/dependency_length/outputs/4.html": "f957eef2ec8d4ad07ca74c489d75477c7b8287ce4368ac691abfee0d57dfdd79"
       },
       "kinds": [
         "plotly",
@@ -1069,13 +1069,13 @@
       ],
       "outputs": "assets/web_publications/dependency_length/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/dependency_length.yaml": "2ada12baf97b4ebc09e326be8bcdea02d74a81319296c224587773f2d3f79c95",
+        "dev_docs/agents/transcripts/dependency_length.yaml": "b555e4bed0472cd42f82a48090f8007dd5ae5e47dd3ed2a0b2849845c21ddd4e",
         "public/docs/assets/agent_transcripts/dependency_length/dl_gettysburg_code_.kt": "88ea5ef8d0a26061c6036bd5b35dcc7eb301543ffeecd186ef3608d37fe004a7",
         "public/docs/assets/agent_transcripts/dependency_length/dl_growth_code_.kt": "d4a1bfe616b83176d40365b74217ba13c65094cc1ccfc774c3875b4de3bc1735",
         "public/docs/assets/agent_transcripts/dependency_length/dl_ratios_code_.kt": "d80fbe16956a0da64cb7c62bed68ac757749aa0f6dafbf6f9737f0f1245b2148",
         "public/docs/assets/agent_transcripts/dependency_length/dl_reorderings_code_.kt": "3b90d87cf09f0f43a2a7364385083e61150d5cf52d91c5ddc81014f92bc67e71",
         "public/docs/assets/agent_transcripts/dependency_length/dl_table_code_.kt": "4ef7df13adf14a26ee921c8026ff22fa556e64ccbf76bd2f165ddf04530c9282",
-        "public/docs/assets/agent_transcripts/dependency_length/guides/dependency_length.md": "35847a12b9d69fb10aae48fda087381d9b0697e40c5cdd007f1e3bed7c8c50ad",
+        "public/docs/assets/agent_transcripts/dependency_length/guides/sentence_diagrams.md": "a2be49324399fa491cedff1fd13fda539aa7863c945613ec11ca92bdfec78fce",
         "public/docs/assets/agent_transcripts/dependency_length/metadata.edn": "d66a6ee210ad3ad5af945d7e1accdf08844ed62e6f98fca1ac43090d8bce0ffd"
       }
     },
@@ -1790,6 +1790,39 @@
         "public/docs/gpu_state.md#capture-box=gs_renderer"
       ]
     },
+    "assets/agent_transcripts/growing_nca/metadata.edn": {
+      "captureDigest": "d410aadb0a5f2a23699b553908efd7a3d7e4d3380c6fcba7c5d48a12462b5ea5",
+      "capturedAt": "2026-11-08T20:16:47.926Z",
+      "channels": 1,
+      "file": "assets/web_publications/growing_nca/document/metadata.edn",
+      "files": {
+        "assets/web_publications/growing_nca/document/metadata.edn": "180c2d574d8bfb50a93ac43ba019242c653a32d29ed9c65c7c7555443fad7e35",
+        "assets/web_publications/growing_nca/document/outputs.json": "d58981a5d16e3351cede067935199b235eb1a8580620ab63f12d87052e993c46",
+        "assets/web_publications/growing_nca/outputs/0.html": "ee86232e3f7913b307ebc03c1145883f8acd977592545c53d2bf550b6fa505cc"
+      },
+      "kinds": [
+        "native-image"
+      ],
+      "outputs": "assets/web_publications/growing_nca/document/outputs.json",
+      "sources": {
+        "dev_docs/agents/transcripts/growing_nca.yaml": "1164aac7b875beda3b5ea4e30b656b1fe821d429e44335a4745418c8d7a2e1ca",
+        "public/docs/assets/agent_transcripts/growing_nca/guides/growing_nca.md": "8e833cf6081e51e91e02487facf568a48ec290e058ac4e59add89119a5436ff8",
+        "public/docs/assets/agent_transcripts/growing_nca/metadata.edn": "85780330d027b8864a6344afea6d34246cb649704860c410486ef4d476d54b5e",
+        "public/docs/assets/agent_transcripts/growing_nca/nca_gpu_code_.kt": "cc87eb231b39216109269488b95d32024e8d28cc05cfc975c378811a3f8aec9b",
+        "public/docs/assets/agent_transcripts/growing_nca/nca_gpu_compute_.glsl": "5e8428af895ad9de00e79e08a0925f9fe62f66e932a569d4159c164cc9023992",
+        "public/docs/assets/agent_transcripts/growing_nca/nca_gpu_fragment_.glsl": "d30ac0135056781a0bd0945a066ceb50998316ee79395725ac8cbc3c397a78f2",
+        "public/docs/assets/agent_transcripts/growing_nca/nca_gpu_vertex_.glsl": "c55d55eab8d8b7e6dd2cf26f915903dfb3364de1defda77b9dc14489a101cf01",
+        "public/docs/assets/agent_transcripts/growing_nca/nca_live_code_.kt": "6206b17dbbed8aa2b80029ba69597230636edfa5f0a957aede6a4f60a9596929",
+        "public/docs/assets/agent_transcripts/growing_nca/nca_renderer_code_.kt": "c3f4dfacb4a318c3cbc01337c0a4b3817a2cb5b980459192209dd36da8d1f0de",
+        "public/docs/assets/agent_transcripts/growing_nca/nca_strip_code_.kt": "2f7638380c2e4ef983ecbd66079c01da235f194ecb23fce8174db6ddd4deb1da",
+        "public/docs/assets/growing_nca/gpu_window.png": "aa5df6953053642079105dd39022bfee04509e70467ab15446d8233cf1713d47",
+        "public/docs/growing_nca.md#capture-box=nca_renderer": "70cdf67239cfc7edd67a640e5620cbc2e73cd00b3a7c40f53cd987eeef8034c8"
+      },
+      "supplementalSources": [
+        "public/docs/assets/growing_nca/gpu_window.png",
+        "public/docs/growing_nca.md#capture-box=nca_renderer"
+      ]
+    },
     "assets/agent_transcripts/harmonic_drum/metadata.edn": {
       "captureDigest": "d410aadb0a5f2a23699b553908efd7a3d7e4d3380c6fcba7c5d48a12462b5ea5",
       "capturedAt": "2026-11-08T18:23:05.333Z",
@@ -2083,17 +2116,17 @@
     },
     "assets/agent_transcripts/knight_tour_workshop/metadata.edn": {
       "captureDigest": "d410aadb0a5f2a23699b553908efd7a3d7e4d3380c6fcba7c5d48a12462b5ea5",
-      "capturedAt": "2026-11-08T10:16:01.033Z",
+      "capturedAt": "2026-11-08T20:15:59.692Z",
       "channels": 5,
       "file": "assets/web_publications/knight_tour_workshop/document/metadata.edn",
       "files": {
         "assets/web_publications/knight_tour_workshop/document/metadata.edn": "57ca9fef5a5def89a02e6f74c22651a2af5fe129b21d721d4aef642dd98811af",
-        "assets/web_publications/knight_tour_workshop/document/outputs.json": "0e3aa344cd528bccedd777fc558f47e2eb3eb61073e4e4b6b52d5775f1abeb4a",
-        "assets/web_publications/knight_tour_workshop/outputs/0.html": "782ad3cfe7299c515ad134ec3b32a6caa97d0da88a3df20951ae636d23e0a24d",
-        "assets/web_publications/knight_tour_workshop/outputs/1.html": "14587a7e04b5005c7ac59cd5b708a4d8405ad101ea03b06095857b514c5d18fb",
-        "assets/web_publications/knight_tour_workshop/outputs/2.html": "4d37ebb426475745fa78bedaec4cdbf6783c1d6142d2acc344c73d5d7fdcf8ff",
-        "assets/web_publications/knight_tour_workshop/outputs/3.html": "feedf86e97d53d1ae54ea2dc87818b13aa02063e3d7eb3ef13c67facdfb70dc6",
-        "assets/web_publications/knight_tour_workshop/outputs/4.html": "dff3dae229bbd179ad6aa58fb790ed74d7a52da9774e638173cb6caa6d2c1eaa"
+        "assets/web_publications/knight_tour_workshop/document/outputs.json": "02bbac03098a0a12e3291e7ab080df24283abe92c092c180f6916835f844105e",
+        "assets/web_publications/knight_tour_workshop/outputs/0.html": "1155ece9cc1c25b4928489355f428690cdc1b2815b8693ede7e4ba29deff8073",
+        "assets/web_publications/knight_tour_workshop/outputs/1.html": "353631b49852b7f2db4346e6327a70058055c6f9d6e126e7f7da614d9a40880f",
+        "assets/web_publications/knight_tour_workshop/outputs/2.html": "c147ef81509ee0040863277f1309dc99d0aa9e41ccf2948ced2ddbe9b92b2642",
+        "assets/web_publications/knight_tour_workshop/outputs/3.html": "ba504394a9781ace83b7d45b927dc9a0fbadca1600f6c692cf3a809beaed3986",
+        "assets/web_publications/knight_tour_workshop/outputs/4.html": "da9082ae7769db35289b63d28759bca7a38571209e1bee5479682ad824c62176"
       },
       "kinds": [
         "svg"
@@ -2106,7 +2139,7 @@
         "public/docs/assets/agent_transcripts/knight_tour_workshop/73b2ad1a-50a9-40ed-bef3-9456d8cf0d91_code_.kt": "bd5f64c6a732a532ac06fc351bd26ed6cd48f6bb548b79c4c8dabcaa3159d034",
         "public/docs/assets/agent_transcripts/knight_tour_workshop/756af284-5020-45dd-baf4-7b3bc777e681_code_.kt": "06b47968ce2c0067a35b8eb1cc8b589db602996370148bef38fd43b56d734485",
         "public/docs/assets/agent_transcripts/knight_tour_workshop/cc20e577-5142-4a8b-8083-3c737fc5b084_code_.kt": "7855c47bb6c6db94a168e060dbfe4cb94fce87c416fb0a0f0dd5d18d19463fae",
-        "public/docs/assets/agent_transcripts/knight_tour_workshop/guides/knight_tour_workshop.md": "c71a2d08f4d674ab8c75a57dfe66db3bcac5f1d545060a79f9b80e545b03b125",
+        "public/docs/assets/agent_transcripts/knight_tour_workshop/guides/knight_tour_workshop.md": "53247b64f73adafb3c9cbfd74a492e52d94daba829fbcbb6e2b3c2376f358f37",
         "public/docs/assets/agent_transcripts/knight_tour_workshop/metadata.edn": "4d8a2e44a7e5b19869d05e582a7b2a04a77372c3553e03a96a6ef1a83b21b78f"
       }
     },
@@ -4835,35 +4868,34 @@
     },
     "assets/agent_transcripts/uncrossed_leapers/metadata.edn": {
       "captureDigest": "d410aadb0a5f2a23699b553908efd7a3d7e4d3380c6fcba7c5d48a12462b5ea5",
-      "capturedAt": "2026-11-08T15:17:15.216Z",
+      "capturedAt": "2026-11-08T20:16:45.907Z",
       "channels": 14,
       "file": "assets/web_publications/uncrossed_leapers/document/metadata.edn",
       "files": {
-        "assets/web_publications/uncrossed_leapers/document/metadata.edn": "a1504f2994291b41a00576fd3ffe45508df1806a1d6b5d2ccae3e0c5b4145ac3",
-        "assets/web_publications/uncrossed_leapers/document/outputs.json": "4fa977a7cdf83610e3c89621daa6132b0d0038f13bc32a54db03058a5eabb9cd",
-        "assets/web_publications/uncrossed_leapers/outputs/0.html": "acfbd578b9a95eff5618586fc53e0e4b677543bf643400d941cca03ffc480678",
-        "assets/web_publications/uncrossed_leapers/outputs/1.html": "94f52a9237b9d860ba3e3d39687308b694b6020e963bf203aca5dfd96155d615",
-        "assets/web_publications/uncrossed_leapers/outputs/10.html": "bad8e587d73504198a718017aae427d8bf9c94017d261d312030b342fe7ed3bb",
-        "assets/web_publications/uncrossed_leapers/outputs/11.html": "e1dd64e7fd0763d2e451e8eb7a759604210dda08689ced69950751a89ff53c43",
-        "assets/web_publications/uncrossed_leapers/outputs/12.html": "38e71be1412c1990c40c6773a7f87c5666e68f4cb7261e0dbb633a0ccc867c6c",
-        "assets/web_publications/uncrossed_leapers/outputs/13.html": "2d632e805a22f7545216eae6e7c0f67d098cf77abdbcfa8ab3cbc301746b946b",
-        "assets/web_publications/uncrossed_leapers/outputs/2.html": "f20447d3bc3e624370500d87fd334bc3e237240d68770204bb3bcad6a0c1b4e4",
-        "assets/web_publications/uncrossed_leapers/outputs/3.html": "38946d2c3765fbb1e42d79bc3572796588ce92ebb0f4ae740a7736c8facd21df",
-        "assets/web_publications/uncrossed_leapers/outputs/4.html": "3005dbb6c784e23873f96834d4d332bf18a35005edbe2d448cabe9d20964f074",
-        "assets/web_publications/uncrossed_leapers/outputs/5.html": "bfdbe2edf980c19679ad4ede76c2a325381747ccf5a90312a10e2ecb73b71037",
-        "assets/web_publications/uncrossed_leapers/outputs/6.html": "05d7775290a9cbe74d8a56a3e1278612d48dddbb8ce1e00c3c4b176d3881dc6f",
-        "assets/web_publications/uncrossed_leapers/outputs/7.html": "25daeb6911196d9f53734ef8b6a9efc80bffe3ace3ff8838ce7dfa8f1842c9d8",
-        "assets/web_publications/uncrossed_leapers/outputs/8.html": "43e9b05b346554bcd7c1048495940fc7c1a7ae6817c4e3fca55ad7f55692cb3d",
-        "assets/web_publications/uncrossed_leapers/outputs/9.html": "f665648f1323fb3359ff0725b89c5cf03a0289dadb776f6d4cb9583fb10a9eda"
+        "assets/web_publications/uncrossed_leapers/document/metadata.edn": "edac77b9a9242be9050e1ad2114b7c65166597e0fc7bb0a67a29dace8f585914",
+        "assets/web_publications/uncrossed_leapers/document/outputs.json": "95a80bd7f327094919f7c816f56f77655d3e989191676df907a9e986bfdd9e42",
+        "assets/web_publications/uncrossed_leapers/outputs/0.html": "ee92c9d146fc484b0b6ffc932cb7b6905b0f55b6bb15a6825f57ede68328017a",
+        "assets/web_publications/uncrossed_leapers/outputs/1.html": "9f5c947ebd66ff4c8702f1a0bcccf8e5cc234d93e3ba3ced0dcddf77357a3c95",
+        "assets/web_publications/uncrossed_leapers/outputs/10.html": "03bcc88cd66b3ecec49b192f3d73d529bd98137cb011693a8f188889ef016e6d",
+        "assets/web_publications/uncrossed_leapers/outputs/11.html": "b5dce1de0b1bcc46e9a3ffc1169f64a89676e8bb2503af870cddf04cd3b4092e",
+        "assets/web_publications/uncrossed_leapers/outputs/12.html": "776fcd932fa64f65f867c43c196206f97f77ee1dab8d5a700ea2f7176fa3fff5",
+        "assets/web_publications/uncrossed_leapers/outputs/13.html": "9e30d95d84b7ce0471388942741f4cea50edb2e3db8bc5a2ed375d31d5bb2bd4",
+        "assets/web_publications/uncrossed_leapers/outputs/2.html": "0ae59ca0091b50e28d6fc4ff2a5a450bff40ba88d9408132a62dc2182614278a",
+        "assets/web_publications/uncrossed_leapers/outputs/3.html": "234491ade1391af9bf273de8cdb39be17ea58242ab22264ba543f70dcfc88b92",
+        "assets/web_publications/uncrossed_leapers/outputs/4.html": "63a2a009d2fc3344a8ec20636532e94aa465f33f2c4585a772194e3e7097805c",
+        "assets/web_publications/uncrossed_leapers/outputs/5.html": "e19ce5b217bb741b5bc38261ded5824f5f5ffc11184e73300df58776391b9421",
+        "assets/web_publications/uncrossed_leapers/outputs/6.html": "040c325955d8d891b00a3f631e901f42a36b9ea0437aa041562fc5cf12e0aeaf",
+        "assets/web_publications/uncrossed_leapers/outputs/7.html": "ae6a765da2f787fa129e303c5d0b9815358c9e77ffc9e2dd2bab9c6417729433",
+        "assets/web_publications/uncrossed_leapers/outputs/8.html": "d40f9c1f575a5218ebebe38a214dd96e8bd013ed7a74cef41807b2d9a3377f93",
+        "assets/web_publications/uncrossed_leapers/outputs/9.html": "5b8b54dbb050fffc14095a7344e13592e1c2a2df02e50e16ed3cb919dca23226"
       },
       "kinds": [
         "svg"
       ],
       "outputs": "assets/web_publications/uncrossed_leapers/document/outputs.json",
       "sources": {
-        "dev_docs/agents/transcripts/uncrossed_leapers.yaml": "70ef6b6f99848bd08c1f3443555d4426e1d44e2569f377d762a6b257bf3253e6",
-        "public/docs/assets/agent_transcripts/uncrossed_leapers/guides/knight_tour_workshop.md": "9e88fcd5db09a3ae7c859f06195b1efa5b5ca5561d9dd1a2631fcbf66da7297e",
-        "public/docs/assets/agent_transcripts/uncrossed_leapers/guides/uncrossed_leapers.md": "4e8449bd1151c70313af33b68f49ebafcc589fefd55aa3b2f2e7ce49fe9f50d5",
+        "dev_docs/agents/transcripts/uncrossed_leapers.yaml": "0968ebc42351959e5b5518917115316b89ec5ae0a830c1b859bc516261c7c8dd",
+        "public/docs/assets/agent_transcripts/uncrossed_leapers/guides/knight_tour_workshop.md": "ca65752592099d69fcb9b57fb91330ee42fd3d46fb25ba98e6adbd784f6f4dd1",
         "public/docs/assets/agent_transcripts/uncrossed_leapers/metadata.edn": "8717127244a2ac22a05df622f52717c4ec777c03a31771cd39aa110c2d6075e2",
         "public/docs/assets/agent_transcripts/uncrossed_leapers/ul_arcs_code_.kt": "06b47968ce2c0067a35b8eb1cc8b589db602996370148bef38fd43b56d734485",
         "public/docs/assets/agent_transcripts/uncrossed_leapers/ul_big_code_.kt": "d2eb1d77bf2237ad0cf8d02eb18d03ba9eb3ad73282a6edac0af645c9cb088b2",
