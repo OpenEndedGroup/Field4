@@ -1,9 +1,9 @@
 # Stereo RTT composite
 
-A small scene you can change while wearing a headset: three wireframe cubes, a floor and a
-resolution chart, rendered once per eye into textures. An editable FXAA pass composites the packed
-stereo image before it reaches the headset and desktop mirror. The same graph runs without a
-headset as a desktop stereo preview.
+Put on a headset and change a scene while you're inside it. This starting point renders three
+wireframe cubes, a floor and a resolution chart into a texture for each eye, then puts the images
+together through an editable FXAA pass. You can also run the same graph on the desktop to preview
+both eyes without a headset.
 
 [Open the starting point ↗](offline.html?file=assets/agent_transcripts/stereo_rtt_composite/metadata.edn)
 
@@ -49,7 +49,7 @@ slider has changed the running texture.
 
 ## Change the composite
 
-The graph is:
+The image takes this route from the scene to the two displays:
 
 ```diffstatic {data-lang=text}
 scene geometry → left/right eye RTTs → packed stereo RTT

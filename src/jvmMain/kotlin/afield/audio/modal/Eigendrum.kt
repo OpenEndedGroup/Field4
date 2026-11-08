@@ -110,12 +110,12 @@ class DrumModes(
     /** The mesh the modes live on. */
     val mesh: DrumMesh,
     /** Eigenvalues λ of −∇²u = λu, ascending. */
-    val lambda: DoubleArray,
+    override val lambda: DoubleArray,
     /** Mode shapes, `shapes[i][node]`, normalised so φᵀMφ = 1. */
     val shapes: Array<DoubleArray>,
     /** Subspace iterations the solve took. */
     val iterations: Int,
-) {
+) : ModeSet {
     /** The solver's whole subspace (free nodes only, in its own order), kept to warm-start a nearby solve. */
     internal var subspace: Array<DoubleArray>? = null
 
@@ -128,7 +128,14 @@ class DrumModes(
         DoubleArray(count) { fundamental * sqrt(lambda[it] / lambda[0]) }
 
     /** Each mode's frequency as a ratio to the fundamental. */
-    fun ratios(): DoubleArray = DoubleArray(count) { sqrt(lambda[it] / lambda[0]) }
+    override fun ratios(): DoubleArray = DoubleArray(count) { sqrt(lambda[it] / lambda[0]) }
+
+    /** [strike] divided by the mallet's own mass (∫g = 2πr²), so aᵢ ≈ φᵢ(px, py) whatever the radius. */
+    override fun strikeShape(px: Double, py: Double, radius: Double): DoubleArray {
+        val a = strike(px, py, radius)
+        for (i in a.indices) a[i] /= 2 * PI * radius * radius
+        return a
+    }
 
     /** Interpolated value of mode [mode] at (px, py), 0 outside the mesh. */
     fun valueAt(mode: Int, px: Double, py: Double): Double {

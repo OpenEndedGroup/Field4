@@ -97,6 +97,8 @@ object DemoTranscriptExecSmokeTest {
     /** Pure-compute demos that are safe to run to completion headless. */
     internal val EXECUTE = setOf(
         "sentence_diagrams",
+        // dependency_length.md: measures five retained parsed texts against random reorderings; no parser.
+        "dependency_length",
         // visualizers.md's presets demo: a preset bar, record button and MIDI learn; the MIDI box feeds stand-in CCs.
         "controls_presets_morph_midi",
         // Loads a committed glTF fixture through Assimp and opens column()/tree() on it; no renderer.
@@ -341,6 +343,8 @@ object DemoTranscriptExecSmokeTest {
         // Ten independent pure-CPU spatial-ALife boxes; nothing opens a Window or a Renderer.
         "alife_evolution",
         "alife_worked_example",
+        // Three pure-CPU Particle Lenia boxes; the two animated ones are animateEvolution clips and are launched.
+        "particle_lenia",
         // Five pure-CPU Braitenberg-vehicle boxes (braitenberg_vehicles.md sections 5-9); the
         // moving-lights box is an animateEvolution clip and is launched. No Window, no Renderer.
         "braitenberg_where_next",
@@ -359,6 +363,9 @@ object DemoTranscriptExecSmokeTest {
         // De Bruijn tilings: lines / showPlaneGrid / showPlane through drawToSVG, sliders, and a
         // Manifold relief drawn by showMesh's CPU rasteriser. No Window, no Renderer.
         "debruijn_tilings_demo",
+        // The 3D multigrid: rhombohedra as showMesh / showMeshGrid meshes, slices through
+        // showPlaneGrid, and Manifold unions (toSolid, hullOfPointsD) on the CPU. No Window, no Renderer.
+        "debruijn_tilings_3d_demo",
         // lp_curves.md's companion: LP methods as curve generators over LpPolygon, drawn through
         // showPlaneGrid / showPlane. The second box ends in `animate { }` and is launched; the third
         // draws the fan map in an editable threeLines viewer. CPU only.
@@ -507,6 +514,9 @@ object DemoTranscriptExecSmokeTest {
         // eigendrum.md's Raman and design sections: loaded drums, the harmonicity sweep, syahi and
         // outline fits with leastSquares, and a live ModalDrum morph. CPU only.
         "harmonic_drum",
+        // penrose_spectra.md's companion: exact zero-state counts, dense EJML spectra and WAV
+        // players for a Penrose tiling's vertex graph; the live ModalDrum box is not executed. CPU only.
+        "penrose_spectra",
         "fline_hit_records",
         // fline_examples.md's measuring sections: locationAt, trim/splitAt, crossings, fill rules. CPU only.
         "fline_measure",
@@ -636,6 +646,9 @@ object DemoTranscriptExecSmokeTest {
         // through the audio device. CharGridTest checks the cells, the panel's diffs and the sound
         // grouping headless.
         "madp_chargrid",
+        // Shape-aware ASCII: the cube box is a charGrid that runs until stopped. ShapeAsciiTest pins
+        // the matcher headless.
+        "ascii_shape",
         // A sender and a receiver that loop until stopped over loopback sACN on a fixed UDP port, and a
         // measuring box whose numbers SceneOnARigTest already pins.
         "chain_scene_to_light",
@@ -732,6 +745,8 @@ object DemoTranscriptExecSmokeTest {
         "afield_four_traditional_triangle",
         // Two ShaderBoids flocks on their own native Window + Renderer; captured by neural_particles.md.
         "shader_boids_separation",
+        // ShaderParticleLenia on its own native Window + Renderer; captured by particle_lenia.md.
+        "particle_lenia_gpu",
         // Needs a live Vulkan renderer; the column it opens is captured by visualizers.md (graphics context).
         "renderer_browsing",
         // Streams a splat sequence into a native window, and wants a directory of .compressed.ply
@@ -825,6 +840,10 @@ object DemoTranscriptExecSmokeTest {
         // Window + Renderer; alife.physarum-gpu.smoke measures its territories and followers, and
         // its pixels are the `alife-stigmergy-species` docs capture.
         "gpu_stigmergy",
+        // ShaderPhysarumSystem fed at food sources read from the drawing layer, on a native Window +
+        // Renderer; alife.physarum-networks-gpu.smoke measures the networks it grows and
+        // PhysarumNetworkTest the extraction, and its pixels are the `alife-physarum-network-gpu` capture.
+        "gpu_physarum_networks",
         // The madp Fern port: compute-shader iterated systems plotted into a PointAccumulation on
         // a native Window + Renderer, so compile-only here. IteratedSystemShaderTest compiles every
         // system's compute tab against the points/system harness without a GPU.

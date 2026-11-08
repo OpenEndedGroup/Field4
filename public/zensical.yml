@@ -165,6 +165,7 @@ nav:
     - Field's 3D Output: three_output.md
     - Point to geometry and leave notes: geometry_review.md
     - Charts as FLines: chart.md
+    - Shape-aware ASCII: ascii_shape.md
     - DataFrames in a Box: dataframe.md
     # Beside DataFrames: the other table a box can hold, this one typed into and computed by Kotlin
     # formulas. Expands the funFeatures "Spreadsheets!" blurb.
@@ -261,9 +262,11 @@ nav:
       - Polytopes & the Conway Algebra: polytope_examples.md
       - Typography as Geometry: typography_examples.md
       - Sentence diagrams: sentence_diagrams.md
+      - Dependency Length in Real Texts: dependency_length.md
       - Euclid's Elements: euclid_elements.md
       - Voronoi, Contours & Clusters: spatial_geometry_examples.md
       - Penrose and Other Quasiperiodic Tilings: debruijn_tilings.md
+      - Penrose Tilings in 3D: debruijn_tilings_3d.md
       - Linear Programs as Curves: lp_curves.md
     # sound.md is the Tour's sound stop, so this group starts at the pattern language that feeds
     # it and continues into the paths that page only introduces. Deliberately not an ordinal —
@@ -277,6 +280,8 @@ nav:
       - Subharmonic Synthesis: subharmonic_sound.md
       # Modal synthesis from geometry: the modes of a drawn drum head.
       - "Eigendrum: Hear the Shape of a Drum": eigendrum.md
+      # The same modal synthesis on a Penrose tiling's vertex graph: its confined states, struck.
+      - Hearing a Penrose Tiling: penrose_spectra.md
       - Loris Partial Tracks and Resynthesis: loris.md
       - "Audio Curves: Sound as a Few Controls": audio_curves.md
       - Sonic Pi: sonic_pi.md
@@ -317,6 +322,7 @@ nav:
     - Boolean Network Music Examples: boolean_network_music_examples.md
     - Wave Function Collapse Examples: wfc_examples.md
     - Spatial Artificial Life: alife_examples.md
+    - Particle Lenia: particle_lenia.md
     - Braitenberg Vehicles with Memory: braitenberg_vehicles.md
     - Evolving Creatures: evolving_creatures.md
     - Neighbors & Graphs Examples: graph_connectivity_examples.md

@@ -1,0 +1,109 @@
+name: gpu_physarum_networks_video
+description: >
+  The video in alife_examples.md section 7's "Designing a network": the map and slime boxes of
+  gpu_physarum_networks, the square field drawn in the middle of a 600 x 400 window (a
+  wide frame keeps the recording inside the docs video budget). Twelve food sources are dots in a frame named
+  "network" on the drawing layer; 4000 agents scattered at random find them and contract into a
+  network between them. Four seconds in, a "late" box draws a thirteenth dot through `notation` and
+  reads the frame's dots back into `settings.food` (a dot drawn by hand reaches the agents through
+  the slime box's `notation.onChange`, which fires for edits made in the page, not for marks code
+  writes), and the network grows a road to it.
+docs:
+  - page: alife_examples.md
+    why: "Builds the food-source network video in section 7."
+operations:
+  - create:
+      box: net_video_renderer
+      name: renderer
+      frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.graphics.vulkan.util.Options
+
+          prop<Window>(window)
+          prop<Renderer>(renderer)
+          Options.enableHDR = false
+          Options.profiling = false
+          once.renderer {
+              window = Window("Physarum networks", initialDimensions = Rect(80.0, 80.0, 600.0, 400.0))
+              Renderer(window)
+          }
+          start(renderer::run)
+  - create:
+      box: net_video_map
+      name: map
+      frame: { x: 40.0, y: 200.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          // a frame named "network" on the drawing layer, with twelve food sources drawn in it
+          val left = 400.0
+          val top = 200.0
+          val side = 400.0
+          val dots = listOf(
+              0.22 to 0.30,
+              0.38 to 0.18,
+              0.62 to 0.22,
+              0.80 to 0.35,
+              0.30 to 0.52,
+              0.52 to 0.45,
+              0.72 to 0.58,
+              0.20 to 0.75,
+              0.45 to 0.70,
+              0.62 to 0.82,
+              0.84 to 0.78,
+              0.50 to 0.30,
+          )
+          notation {
+              frame("network", left, top, side, side) {
+                  for ((u, v) in dots) ellipse(left + u * side - 6, top + v * side - 6, 12, 12, fill = "#ffd8a8")
+              }
+          }
+          println("${dots.size} food sources drawn")
+  - create:
+      box: net_video_slime
+      name: slime
+      frame: { x: 400.0, y: 40.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          val side = 512
+          // the frame, read as trail pixels: x across, and y up, as the window draws the field
+          val map = notation.space("network", x = 0.0..side.toDouble(), y = side.toDouble()..0.0)
+
+          fun dots() = map.marks.filter { it.kind == MarkType.ELLIPSE }.map { map.toSpace(it.center) }
+
+          prop<ShaderPhysarumSystem>(physarum) = ShaderPhysarumSystem() {
+              width = side
+              height = side
+              agentCount = 4000
+              exclusive = true
+              recycle = true
+              food = dots()
+              exposure = 0.25f
+          }
+          // the square field in the middle of the window
+          physarum.installInto(previewViewport = Rect((window.width - window.height) / 2.0, 0.0, window.height.toDouble(), window.height.toDouble()))
+
+          // every edit to the drawing moves the food
+          notation.onChange { physarum.settings.food = dots() }
+  - create:
+      box: net_video_late
+      name: late
+      frame: { x: 760.0, y: 40.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          // four seconds in, draw one more food source into the frame and read the frame's dots again
+          val map = notation.space("network", x = 0.0..512.0, y = 512.0..0.0)
+          frames {
+              val start = System.nanoTime()
+              while (frame() && System.nanoTime() - start < 4_000_000_000L) {}
+              notation("late") { ellipse(400.0 + 0.86 * 400 - 6, 200.0 + 0.13 * 400 - 6, 12, 12, fill = "#ffd8a8") }
+              physarum.settings.food = map.marks.filter { it.kind == MarkType.ELLIPSE }.map { map.toSpace(it.center) }
+          }
+  - connect: { parent: net_video_renderer, child: net_video_slime }
+  - connect: { parent: net_video_slime, child: net_video_late }
+  - execute: { box: net_video_map, property: code }
+  - launch: { box: net_video_renderer, property: code, strand: renderer }
+  - await: {}
+  - launch: { box: net_video_slime, property: code }
+  - await: {}
+  - launch: { box: net_video_late, property: code }

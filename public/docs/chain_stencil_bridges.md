@@ -1,8 +1,8 @@
 # A Word Cut as a Stencil
 
 Cut a word out of a sheet and some of the letters fall apart: the middle of an O drops out, and so
-do both middles of a B. A stencil needs a bridge across each of those holes. This page finds them
-with three parts of Field that know nothing about each other. [Typography](typography_examples.md)
+do both middles of a B. A stencil needs a bridge across each of those holes. Let's find where to
+put them. [Typography](typography_examples.md)
 supplies the letter outlines, [Manifold](manifold.md) cuts them out of a plate and splits the
 result into pieces, and a [Datalog](datalog.md) program decides which letters lost a piece. The
 bridges then go into exactly those letters.
@@ -11,8 +11,7 @@ bridges then go into exactly those letters.
 // Built and run from dev_docs/agents/transcripts/stencil_bridges.yaml.
 ```
 
-The example has three boxes, each a child of the one before: the first cuts the word, the second
-judges it, and the third adds the bridges and counts again.
+Three connected boxes cut the word, find its loose pieces, then add the bridges and count again.
 
 ## Cutting the word
 

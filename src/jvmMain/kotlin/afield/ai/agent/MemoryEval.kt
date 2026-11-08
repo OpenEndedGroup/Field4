@@ -45,6 +45,8 @@ import java.time.format.DateTimeFormatter
  */
 object MemoryEval {
 
+    private val reportJson = Json { prettyPrint = true }
+
     /**
      * One session: what the person asks, what they add afterwards in the same conversation, and the checks.
      * [memory] false runs it without memory tools in every arm, as a chat where memory was unavailable; it is
@@ -244,7 +246,7 @@ object MemoryEval {
                 scored.filter { it.arm == arm && it.scenario == sc.id }.count { it.verdict == "pass" } } },
             sessions = sessions, dreams = dreams, elapsedMs = clock() - started,
         )
-        File(root, "report.json").writeText(Json { prettyPrint = true }.encodeToString(report))
+        File(root, "report.json").writeText(reportJson.encodeToString(report))
         return report
     }
 }

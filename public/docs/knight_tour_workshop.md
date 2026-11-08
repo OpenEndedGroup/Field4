@@ -1,5 +1,8 @@
 # Knight tours: a drawing laboratory
 
+A knight can visit every square of a chessboard once and leave behind a surprisingly intricate
+line. This starting point finds tours, then gives you four ways to bend, layer and join their moves.
+
 [Open the editable starting point](offline.html?file=assets/agent_transcripts/knight_tour_workshop/metadata.edn)
 
 Run **knight tours** first. It finds eighteen 8×8 tours in three rows: exhaustive search,
@@ -10,14 +13,15 @@ Everything draws with FLines; no renderer, GPU or external service is needed.
 
 ## Four views to change
 
-- **Arc growth:** one tour accumulates its 62 stride-one triples. Gold is the new arc,
-  muted strokes are earlier arcs; white marks A/C and cyan marks B. Every arc goes through B,
-  even when that requires a long, nearly complete sweep.
+- **Arc growth:** take each successive triple of squares, A, B and C, and draw an arc through
+  them. One tour accumulates 62 arcs. Gold is the new one, muted strokes are earlier ones; white
+  marks A and C, and cyan marks B. Every arc passes through B, even when that takes a long, nearly
+  complete sweep.
 - **Perpendicular arcs:** scale each arc about its exact B; retain the perpendicular A–C
   shift as a separate parameter (zero by default). Try scales 0.5 and 0.25.
 - **Glued arcs:** shrink, reorder and reverse arcs, then connect their endpoints into one
-  open path. Multi-start nearest-neighbour plus 2-opt reduces connector length, not a proof
-  of the globally shortest route. The saved scale preserves the current session value.
+  open path. Multi-start nearest-neighbour plus 2-opt shortens the connectors; it does not prove
+  the route is globally shortest. The saved scale preserves the current session value.
 - **Line experiments:** draw each move as an independently transformed quadratic segment.
 
 ## Layered parameters

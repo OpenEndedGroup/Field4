@@ -271,7 +271,7 @@ ModalDrum(bare, fundamental = 220.0, every = 0.7, autoX = 0.62, autoY = 0.15, mo
 <!-- field-box id="hd_map" index="6" -->
 
 ```edn [field-box id="hd_map" role="properties"]
-{"id" "hd_map" "index" 6 "name" "3 - harmonicity over radius and mass" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - harmonicity over radius and mass" "_tombstone" false "frame" #afield/rect [1420.0 60.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "hd_map_code_.kt" "lines" 10 "characters" 643 "sha256" "ad4ef28b651854b5fc812431547b909befdd053cff26f0f7f5f096b521e241a1"}]}
+{"id" "hd_map" "index" 6 "name" "3 - harmonicity over radius and mass" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - harmonicity over radius and mass" "_tombstone" false "frame" #afield/rect [1420.0 60.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "hd_map_code_.kt" "lines" 10 "characters" 637 "sha256" "130d3352744de604743bd0aa26c5734c60ea8fd94aca55075e60db30768f65de"}]}
 ```
 
 ```kotlin [field-property box="hd_map" name="code" path="hd_map_code_.kt"]
@@ -280,7 +280,7 @@ import afield.audio.modal.*
 // Loading radius across (0.15–0.7 of the rim), density ratio up (1–30, log spaced); each
 // cell is one loaded drum's rms distance from 1:2:3:4:5, bright where it is close.
 val map = harmonicityMap(linSpace(0.15, 0.7, 12), logSpace(1.0, 30.0, 12), h = 0.07)
-val tabla = listOf(Raman.compositeRadius to Raman.compositeMassRatio)
+val tabla = [Raman.compositeRadius to Raman.compositeMassRatio]
 lines(map.cells(w = 12.0, h = 12.0, marks = tabla), w = 400.0, h = 400.0, fitToSize = true)
 val (i, j) = map.best
 println("most harmonic cell: radius ${map.radii[j].f2}, density × ${map.massRatios[i].f2}, ${map.cents[i][j].f1} cents")
