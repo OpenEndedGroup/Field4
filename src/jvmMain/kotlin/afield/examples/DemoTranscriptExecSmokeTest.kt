@@ -883,6 +883,9 @@ object DemoTranscriptExecSmokeTest {
         // brute force. What is left here is the window.
         "neural_particles",
         "learned_boids",
+        // Opens a Vulkan window for the GPU compute-shader NCA; the CPU rule it shares is graded
+        // by GrowingNcaTest (grows from a seed, regrows after damage).
+        "growing_nca",
         // The same deal again, one tier up: both open a native Vulkan renderer to draw a trained
         // field, and both are graded far more sharply than a replay could manage — the
         // interpolation they demonstrate is measured in `WeightInterpolationTest`, endpoint
