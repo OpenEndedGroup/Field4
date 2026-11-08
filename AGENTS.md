@@ -137,7 +137,8 @@ artifacts, runs the full guard once and fast-forwards `main`, one branch at a ti
 back as a bounce with its reason; fix the branch and enqueue again. When you need the outcome, run
 the `tools/land.py wait <id>` that `enqueue` prints as a background command (exit 0 landed, 1
 bounced) instead of polling; when you come back to a branch, `tools/land.py mine` lists what
-happened to every attempt to land it. To push, `enqueue --push` (pushes `main` once that item lands);
+happened to every attempt to land it. `tools/land.py retract [branch|id]` takes a queued item back out
+before the lander starts it. To push, `enqueue --push` (pushes `main` once that item lands);
 to bring in work from `origin`, `tools/land.py sync [--push]` lands `origin/main` through the queue.
 `uv run python tools/land.py doc` adds a documentation build at that point in the queue: earlier
 landings finish first, then the lander refreshes `public/field4/` in the checkout holding `main`

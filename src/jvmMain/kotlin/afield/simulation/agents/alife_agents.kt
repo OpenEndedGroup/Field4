@@ -536,9 +536,14 @@ class PhysarumSwarm(
  * same objects, mutated in place — the population is a simulation, not a value, and copying it per step
  * would be most of the cost of a long run.
  *
+ * With [food] the step also deposits at every food source after the agents have, and the field gets
+ * an edge: an agent whose move would leave the field (or come within a cell of its edge) re-enters at a
+ * random food source instead. See [PhysarumFood].
+ *
  * @param rng the source of randomness for tie-breaks and for the sensing-off control arm
+ * @param food food sources that feed the trail every step, or `null` for the toroidal field with none
  */
-fun PhysarumSwarm.step(p: PhysarumParams, rng: kotlin.random.Random): PhysarumSwarm {
+fun PhysarumSwarm.step(p: PhysarumParams, rng: kotlin.random.Random, food: PhysarumFood? = null): PhysarumSwarm {
     val w = width
     val h = height
     val t = trail
@@ -580,6 +585,23 @@ fun PhysarumSwarm.step(p: PhysarumParams, rng: kotlin.random.Random): PhysarumSw
             heading[i] = (a + (rng.nextDouble() - 0.5) * 2.0 * p.turnAngle).toFloat()
         }
         val na = heading[i].toDouble()
+        if (food != null && food.recycle && food.points.isNotEmpty()) {
+            val ox = x[i] + cos(na) * p.stepSize
+            val oy = y[i] + sin(na) * p.stepSize
+            if (ox < 1.0 || oy < 1.0 || ox >= w - 2.0 || oy >= h - 2.0) {
+                // off the edge: re-enter at a random food source, facing anywhere
+                val fromCell = Math.floorMod(y[i].roundToInt(), h) * w + Math.floorMod(x[i].roundToInt(), w)
+                val src = food.points[rng.nextInt(food.points.size)]
+                x[i] = (src.x + rng.nextDouble() * 2.0 - 1.0).toFloat()
+                y[i] = (src.y + rng.nextDouble() * 2.0 - 1.0).toFloat()
+                heading[i] = (rng.nextDouble() * 2.0 * PI).toFloat()
+                if (occupied != null) {
+                    occupied[fromCell] = false
+                    occupied[Math.floorMod(y[i].roundToInt(), h) * w + Math.floorMod(x[i].roundToInt(), w)] = true
+                }
+                continue
+            }
+        }
         val tx = wrapTo(x[i] + cos(na) * p.stepSize, w.toDouble())
         val ty = wrapTo(y[i] + sin(na) * p.stepSize, h.toDouble())
         if (occupied == null) {
@@ -605,17 +627,18 @@ fun PhysarumSwarm.step(p: PhysarumParams, rng: kotlin.random.Random): PhysarumSw
         val iy = Math.floorMod(y[i].roundToInt(), h)
         t.data[iy * w + ix] += dep
     }
+    if (food != null) food.depositInto(t)
     val diffused = if (p.blurRadius == 0) t else t.boxBlur(p.blurRadius, Border.WRAP)
     val decayed = diffused.map { it * p.decay.toFloat() }
     return PhysarumSwarm(decayed, x, y, heading)
 }
 
-/** [step] applied [steps] times with one [kotlin.random.Random] seeded from [seed]. */
-fun PhysarumSwarm.stepTimes(p: PhysarumParams, steps: Int, seed: Long = 1L): PhysarumSwarm {
+/** [step] applied [steps] times with one [kotlin.random.Random] seeded from [seed], fed by [food] if given. */
+fun PhysarumSwarm.stepTimes(p: PhysarumParams, steps: Int, seed: Long = 1L, food: PhysarumFood? = null): PhysarumSwarm {
     require(steps >= 0) { "steps must be >= 0, got $steps" }
     val rng = kotlin.random.Random(seed)
     var s = this
-    repeat(steps) { s = s.step(p, rng) }
+    repeat(steps) { s = s.step(p, rng, food) }
     return s
 }
 

@@ -1,0 +1,184 @@
+name: debruijn_tilings_3d_demo
+description: >
+  Three-dimensional quasiperiodic tilings from de Bruijn multigrids of planes (deBruijnTiling3D, in
+  afield.geometry.path; Socolar and Steinhardt's generalized dual method). Six pure-compute boxes,
+  no Renderer: the twenty Ammann rhombohedra of a rhombic triacontahedron welded by Manifold beside
+  their convex hull, a patch of the 3D Penrose tiling with the prolate/oblate ratio against radius,
+  plane slices across 5-, 3- and 2-fold axes drawn as FLines, a family-0 offset sweep counting the
+  cells that survive, the five DeBruijnStar direction sets cut along one plane, and a printable slab
+  welded and trimmed through Manifold. Replay with field_run_transcript and run each box; the
+  operations omit inline code, so each runs its stored code property.
+docs:
+  - page: debruijn_tilings_3d.md
+    why: "The page these boxes illustrate."
+operations:
+  - create:
+      box: debruijn3d_triacontahedron
+      name: twenty rhombohedra make a triacontahedron
+      frame: { x: 80.0, y: 80.0, w: 400.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.geometry.solid.manifold.*
+
+          // One plane per family: six planes, twenty triple crossings, twenty rhombohedra.
+          val t = deBruijnTiling3D(planes = 0..0, scale = 10.0)
+          val counts = t.shapeCounts()
+
+          val (union, hull) = Solid.scope {
+              // The control: the convex hull of every corner, which is the triacontahedron.
+              val corners = Solid.hullOfPointsD(t.cells.flatMap { it.cornerArray().toList() }.toDoubleArray())
+              t.toSolid().toTriMesh() to corners.volume
+          }
+
+          showMeshGrid(
+              "${counts[1]} prolate + ${counts[2]} oblate, pulled apart" to t.toTriMesh(shrink = 0.8),
+              "their Manifold union · cells %.1f · hull %.1f".format(t.volume(), hull) to union.withColor(0.75, 0.78, 0.84),
+              columns = 2,
+              cellWidth = 370,
+          )
+  - create:
+      box: debruijn3d_patch
+      name: a patch of the 3D Penrose tiling
+      frame: { x: 700.0, y: 80.0, w: 400.0, h: 100.0 }
+      properties:
+        code: |
+          // prolate / oblate against the radius of the patch, beside the golden ratio.
+          val phi = (1 + sqrt(5.0)) / 2
+          val ratios =
+              [2, 4, 8, 12].joinToString(" · ") { r ->
+                  val counts = deBruijnTiling3D(radius = r.toDouble()).shapeCounts()
+                  "radius $r: %.4f".format(counts.getValue(1).toDouble() / counts.getValue(2))
+              }
+
+          val penrose3 = deBruijnTiling3D(radius = 2.0, scale = 10.0)
+          // The cells whose crossing is nearest the middle of the grid.
+          val middle = penrose3.cells.filter { it.crossing.length() < 1.3 }
+          showMesh(
+              penrose3.toTriMesh(only = middle, shrink = 0.88),
+              title = "${middle.size} cells of the 3D Penrose tiling, each shrunk to 88%",
+              caption = "yellow prolate, blue oblate · prolate/oblate $ratios · φ = %.4f".format(phi),
+              view = MeshView(yawDegrees = 25.0, pitchDegrees = 22.0, width = 720, height = 520),
+          )
+  - create:
+      box: debruijn3d_slices
+      name: slices across 5-, 3- and 2-fold axes
+      frame: { x: 80.0, y: 760.0, w: 400.0, h: 100.0 }
+      properties:
+        code: |
+          val t = deBruijnTiling3D(radius = 5.0, scale = 10.0)
+          val phi = (1 + sqrt(5.0)) / 2
+          val window = Rect(-70.0, -70.0, 140.0, 140.0)
+
+          val panel = { title: String, normal: Vector3d ->
+              val s = t.slice(normal, offset = 0.5)
+              val sides = s.sideCounts().entries.joinToString(" ") { (n, count) -> "$n-gons $count" }
+              "$title\n$sides" to s.lines()
+          }
+
+          showPlaneGrid(
+              panel("across a 5-fold axis", Vector3d(0.0, 1.0, phi)),
+              panel("across a 3-fold axis", Vector3d(1.0, 1.0, 1.0)),
+              panel("across a 2-fold axis", Vector3d(0.0, 0.0, 1.0)),
+              columns = 3,
+              cellWidth = 250,
+              cellHeight = 250,
+              window = window,
+          )
+  - create:
+      box: debruijn3d_offset_sweep
+      name: slide family 0 and count unchanged cells
+      frame: { x: 700.0, y: 760.0, w: 400.0, h: 100.0 }
+      properties:
+        code: |
+          val base = defaultDeBruijnOffsets(6)
+          val build = { shift: Double ->
+              val offsets = base.toMutableList().also { it[0] += shift }
+              deBruijnTiling3D(offsets = offsets, radius = 4.0, scale = 10.0, recenter = false)
+          }
+          // A cell is the same cell if it has the same corner lift and the same three families.
+          val identity = { c: DeBruijnCell -> c.lift(0).toList() + c.families }
+          val central = { t: DeBruijnTiling3D -> t.cells.filter { it.center.length() < 35.0 } }
+          val before = central(build(0.0)).map(identity).toSet()
+
+          val panels =
+              [0.0, 0.1, 0.3, 0.6].map { shift ->
+                  val t = build(shift)
+                  val kept = central(t).count { identity(it) in before }
+                  val title = "family 0 offset +%.1f".format(shift)
+                  "$title\n$kept of ${central(t).size} central cells unchanged" to t.slice(t.directions[0], offset = 0.5).lines()
+              }
+
+          showPlaneGrid(
+              *panels.toTypedArray(),
+              columns = 2,
+              cellWidth = 360,
+              cellHeight = 360,
+              window = Rect(-60.0, -60.0, 120.0, 120.0),
+          )
+  - create:
+      box: debruijn3d_stars
+      name: cubic against icosahedral directions
+      frame: { x: 80.0, y: 1440.0, w: 400.0, h: 100.0 }
+      properties:
+        code: |
+          val cut = Vector3d(0.31, 0.52, 0.80)
+
+          val panels =
+              DeBruijnStar.entries.map { star ->
+                  val t = deBruijnTiling3D(star, radius = if (star.directions.size > 6) 3.0 else 4.0, scale = 10.0)
+                  val shapes = t.shapeCounts().values.joinToString(" : ")
+                  val name = star.name.lowercase().replace('_', ' ')
+                  "$name, ${t.directions.size} families\ncell shapes ${t.shapeVolumes.size}, counts $shapes" to
+                      t.slice(cut, offset = 0.5).lines()
+              }
+
+          showPlaneGrid(
+              *panels.toTypedArray(),
+              columns = 3,
+              cellWidth = 240,
+              cellHeight = 240,
+              window = Rect(-55.0, -55.0, 110.0, 110.0),
+          )
+  - create:
+      box: debruijn3d_slab
+      name: two layers welded into a printable slab
+      frame: { x: 700.0, y: 1440.0, w: 400.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.geometry.solid.manifold.*
+
+          // Stand a 5-fold axis upright and keep two layers: the cells between planes 0 and 2 of family 0.
+          val t = deBruijnTiling3D(radius = 4.0, scale = 10.0).oriented(DeBruijnStar.ICOSAHEDRAL.directions[0])
+          val slab = t.between(family = 0, from = 0, to = 2).filter { hypot(it.center.x, it.center.y) < 60.0 }
+          val floor = slab.sumOf { it.center.z } / slab.size
+
+          val (welded, relief) = Solid.scope {
+              val union = t.toSolid(slab)
+              // A disk 90 across, trimmed flat at the slab's middle height.
+              val disk = Solid.cylinder(400.0, 45.0, segments = 96, center = true)
+              union.volume to (union and disk).trimByPlane(0.0, 0.0, 1.0, floor)
+          }
+
+          showMesh(
+              relief.toTriMesh().withColor(0.85, 0.80, 0.68),
+              title = "two layers of the 3D Penrose tiling, 5-fold axis up · genus ${relief.genus}",
+              caption =
+                  "${slab.size} cells · sum of cell volumes %.1f · welded by Manifold %.1f"
+                      .format(
+                          slab.sumOf { it.volume },
+                          welded,
+                      ),
+              view = MeshView(yawDegrees = 20.0, pitchDegrees = 50.0, width = 760, height = 520),
+          )
+  - execute:
+      box: debruijn3d_triacontahedron
+  - execute:
+      box: debruijn3d_patch
+  - execute:
+      box: debruijn3d_slices
+  - execute:
+      box: debruijn3d_offset_sweep
+  - execute:
+      box: debruijn3d_stars
+  - execute:
+      box: debruijn3d_slab

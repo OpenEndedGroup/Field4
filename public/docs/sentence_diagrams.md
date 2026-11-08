@@ -339,3 +339,6 @@ The current typography layout is left-to-right and requires glyphs in the chosen
 Text outlines remain planar; the surrounding graph and its anchors can move in three dimensions.
 Models, inference and headset support are optional; the four retained-parse drawing demos
 remain available without them.
+
+See also [Dependency length in real texts](dependency_length.md), which measures whole parsed
+texts against random reorderings of their trees.

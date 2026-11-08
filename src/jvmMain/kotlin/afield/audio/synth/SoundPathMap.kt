@@ -592,6 +592,7 @@ object SoundPathMap {
                 "src/jvmMain/kotlin/afield/audio/synth/PatSpatialHeadTrackedDocs.kt" to "pat-spatial",
                 "src/jvmMain/kotlin/afield/audio/synth/PatSpatialPlacementDocs.kt" to "pat-spatial",
                 "src/jvmMain/kotlin/afield/audio/modal/EigendrumDocs.kt" to "modal-drum",
+                "src/jvmMain/kotlin/afield/audio/modal/PenroseSpectraDocs.kt" to "modal-drum",
             ),
         ),
         Marker(

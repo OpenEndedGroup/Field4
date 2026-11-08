@@ -155,6 +155,40 @@ class LandQueueTest(unittest.TestCase):
         self.assertIn("built", self.land(self.primary, "status", doc_id).stdout)
         self.assertEqual(self.land(self.primary, "wait", doc_id).returncode, 0)
 
+    def test_back_to_back_doc_requests_join_one_build(self) -> None:
+        first = self.land(self.primary, "doc")
+        doc_id = first.stdout.split("queued docs build ", 1)[1].split(" ", 1)[0]
+        second = self.land(self.primary, "doc")
+        self.assertEqual(second.returncode, 0, second.stdout + second.stderr)
+        self.assertIn(f"docs build {doc_id} ", second.stdout)
+        self.assertIn(f"wait {doc_id}", second.stdout)
+        self.assertEqual(len(list((self.queue() / "pending").glob("*.json"))), 1)
+        # A branch after it ends the run: a later request is a new build.
+        self.land(self.branch_with("alpha", "alpha.txt"), "enqueue")
+        third = self.land(self.primary, "doc")
+        self.assertIn("queued docs build ", third.stdout)
+        self.assertEqual(self.run_lander().returncode, 0)
+        self.assertEqual((Path(self._tmp.name) / "DOC_RUNS").read_text(), "seed:False:False\nseed:True:False\n")
+
+    def test_consecutive_doc_items_in_the_queue_run_one_build(self) -> None:
+        # Docs items next to each other, as a branch between them bouncing leaves them (or as they were
+        # queued before `doc` joined a waiting build).
+        self.land(self.primary, "doc")
+        pending = self.queue() / "pending"
+        ids = ["20000101-000000-doc", "20000101-000001-doc"]
+        for n, doc_id in enumerate(ids):
+            (pending / f"{doc_id}.json").write_text(json.dumps(
+                {"id": doc_id, "kind": "doc", "checkout": str(self.primary.resolve()), "by": "t", "seq": n}))
+        for path in pending.glob("*.json"):
+            if path.stem not in ids:
+                path.unlink()
+        self.assertEqual(self.run_lander().returncode, 0)
+        self.assertEqual((Path(self._tmp.name) / "DOC_RUNS").read_text(), "seed:False:False\n")
+        for doc_id in ids:
+            self.assertEqual(self.land(self.primary, "wait", doc_id).returncode, 0, doc_id)
+        joined = json.loads((self.queue() / "landed" / f"{ids[1]}.json").read_text())
+        self.assertEqual(joined["coalesced_into"], ids[0])
+
     def test_failed_doc_item_reports_failure_and_does_not_bounce_later_branch(self) -> None:
         (self.primary / "DOCS_BREAKS").write_text("yes\n")
         request = self.land(self.primary, "doc")
@@ -328,6 +362,39 @@ class LandQueueTest(unittest.TestCase):
         self.git(wt, "commit", "-qam", "third")
         self.assertNotIn("replacing", self.land(wt, "enqueue").stdout)
         self.assertEqual(len(list(queue.glob("*.json"))), 2)
+
+    def test_retract_takes_a_waiting_branch_out_and_it_does_not_land(self) -> None:
+        alpha = self.branch_with("alpha", "alpha.txt")
+        enqueued = self.land(alpha, "enqueue")
+        alpha_id = enqueued.stdout.split("queued ", 1)[1].split(" ", 1)[0]
+        self.land(self.branch_with("beta", "beta.txt"), "enqueue")
+        retract = self.land(alpha, "retract")  # default: the current branch
+        self.assertEqual(retract.returncode, 0, retract.stdout + retract.stderr)
+        self.assertIn(f"retracted {alpha_id}", retract.stdout)
+        self.assertEqual(self.land(alpha, "retract").returncode, 2, "a second retract has nothing to take out")
+        self.assertEqual(self.run_lander().returncode, 0)
+        self.assertEqual(self.states(), {"alpha": "bounced", "beta": "landed"})
+        self.assertFalse((self.primary / "alpha.txt").exists())
+        self.assertEqual(self.land(self.primary, "wait", alpha_id).returncode, 1)
+        status = self.land(self.primary, "status", alpha_id).stdout
+        self.assertIn("resolved", status)
+        self.assertIn("retracted by test-agent", status)
+        self.assertIn("was retracted", self.land(alpha, "mine").stdout)
+        # Enqueued again, it lands.
+        self.land(alpha, "enqueue")
+        self.assertEqual(self.run_lander().returncode, 0)
+        self.assertTrue((self.primary / "alpha.txt").exists())
+
+    def test_retract_by_id_takes_out_a_doc_item_but_not_a_started_one(self) -> None:
+        doc_id = self.land(self.primary, "doc").stdout.split("queued docs build ", 1)[1].split(" ", 1)[0]
+        wt = self.branch_with("alpha", "alpha.txt")
+        alpha_id = self.land(wt, "enqueue").stdout.split("queued ", 1)[1].split(" ", 1)[0]
+        path = self.queue() / "pending" / f"{alpha_id}.json"
+        path.write_text(path.read_text().replace('"enqueued"', '"started": "2026-10-03T00:00:00+00:00", "enqueued"'))
+        self.assertEqual(self.land(wt, "retract", alpha_id).returncode, 1)
+        self.assertTrue(path.exists(), "a started item must stay queued")
+        self.assertEqual(self.land(self.primary, "retract", doc_id).returncode, 0)
+        self.assertTrue((self.queue() / "bounced" / f"{doc_id}.json").exists())
 
     # ------------------------------------------------------------------ batching
 
