@@ -162,15 +162,20 @@ data class NetworkScore(
     val nodes: Int,
     val links: Int
 ) {
-    /** One row of [table]. */
-    fun row(): String = "%-22s cost %6.0f (%.2f x MST)  stretch %.3f  fault tolerance %.2f  loops %3d  connected %.2f"
-        .format(label, length, relativeCost, stretch, faultTolerance, loops, connectedPairs)
+    /** One row of [table]: label, cost as a multiple of the MST, stretch, fault tolerance, loops, joined pairs. */
+    fun row(): String = "%-18s %5.2f  %7.3f  %10.2f  %5d  %6.2f"
+        .format(label.take(18), relativeCost, stretch, faultTolerance, loops, connectedPairs)
 
-    override fun toString(): String = row()
+    override fun toString(): String =
+        "$label: length %.0f (%.2f x MST), stretch %.3f, fault tolerance %.2f, %d loops, %.2f of source pairs joined"
+            .format(length, relativeCost, stretch, faultTolerance, loops, connectedPairs)
 
     companion object {
-        /** [row] for each score, one per line. */
-        fun table(scores: List<NetworkScore>): String = scores.joinToString("\n") { it.row() }
+        /** The column heads of [table]. */
+        const val HEADER: String = "                    cost  stretch  fault tol.  loops  joined"
+
+        /** [HEADER], then [row] for each score, one per line. Cost is in multiples of the minimum spanning tree. */
+        fun table(scores: List<NetworkScore>): String = (listOf(HEADER) + scores.map { it.row() }).joinToString("\n")
     }
 }
 
@@ -709,6 +714,7 @@ fun costTolerancePlot(scores: List<NetworkScore>, width: Int = 420, height: Int 
     val controls = setOf("MST", "Delaunay", "complete")
     val grey = floatArrayOf(0.62f, 0.64f, 0.7f)
     val agents = scores.filter { s -> controls.none { s.label.startsWith(it) } }
+    val placed = ArrayList<Triple<Int, Int, Int>>()
     scores.forEachIndexed { i, s ->
         if (!s.relativeCost.isFinite()) return@forEachIndexed
         val c = colors?.getOrNull(i) ?: if (controls.any { s.label.startsWith(it) }) grey else {
@@ -718,7 +724,16 @@ fun costTolerancePlot(scores: List<NetworkScore>, width: Int = 420, height: Int 
         val x = px(min(s.relativeCost, hi))
         val y = py(s.faultTolerance)
         for (dy in -2..2) for (dx in -2..2) if (dx * dx + dy * dy <= 5) put(x + dx, y + dy, c)
-        if (labels) text += Triple(s.label, min(x + 5, width - 6 * s.label.length), y - 9)
+        if (labels) {
+            // the first of a few places beside the dot that no earlier label covers
+            val w = 6 * s.label.length
+            val lx = min(x + 5, width - w)
+            val ly = listOf(-9, 4, -20, 15, -31, 26).map { y + it }.firstOrNull { cy ->
+                cy >= 0 && cy <= height - 9 && placed.none { (px0, py0, pw) -> lx < px0 + pw && px0 < lx + w && cy < py0 + 10 && py0 < cy + 10 }
+            } ?: (y - 9)
+            placed += Triple(lx, ly, w)
+            text += Triple(s.label, lx, ly)
+        }
     }
     for (l in text) out = out.withLabel(l.first, l.second, l.third, scale = 1, color = Color4(0.7, 0.72, 0.78))
     return out

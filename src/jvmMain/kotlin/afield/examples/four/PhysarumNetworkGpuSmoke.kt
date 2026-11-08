@@ -180,10 +180,10 @@ object PhysarumNetworkGpuSmoke {
             scores += score
             csv.append("${arms[i].group},${arms[i].label},${arms[i].value},${score.length},${score.relativeCost},${score.stretch}," +
                 "${score.faultTolerance},${score.linkFaultTolerance},${score.connectedPairs},${score.loops}\n")
-            println(" -- ${score.row()}")
+            println(" -- $score")
             writePng(net.drawOver(toneMapped(trail, 3.0 / saturation(half))), File(outputDir, "net-$i.png"))
         }
-        controls.forEach { println(" -- ${it.row()}") }
+        controls.forEach { println(" -- $it") }
         File(outputDir, "sweep.csv").writeText(csv.toString())
         writePng(costTolerancePlot(controls + scores.filter { it.connectedPairs > 0.99 }, 560, 380, labels = true), File(outputDir, "plane.png"))
 
