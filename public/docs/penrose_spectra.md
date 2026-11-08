@@ -1,10 +1,10 @@
 # Hearing a Penrose Tiling
 
-*A [Penrose tiling](debruijn_tilings.md)'s corners and edges make a graph. Let a particle hop
-along the edges and about one state in ten has energy exactly zero and stays trapped on a few
-dozen vertices. This page counts those states exactly, draws them on the tiles, and then treats
-the tiling as a network of masses and springs, so you can strike it like the
-[eigendrum](eigendrum.md) and hear them.*
+A [Penrose tiling](debruijn_tilings.md)'s corners and edges make a graph. Let a particle hop
+along the edges and about one state in ten has energy exactly zero, trapped on a few dozen
+vertices. Here we'll count those states exactly and draw them on the tiles. Then we'll treat the
+tiling as a network of masses and springs, strike it like the [eigendrum](eigendrum.md), and
+listen to them.
 
 The quickest way in is the starting point. Open **Starting points** on the welcome screen and search
 for **penrose_spectra**.
