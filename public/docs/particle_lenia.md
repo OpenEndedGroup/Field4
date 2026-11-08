@@ -146,11 +146,6 @@ rotator rule, 6400 particles in all, and runs 20 steps per frame in the native w
 drift into each other merge into larger creatures. The picture is the native window about forty
 seconds after launch.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/particle_lenia/gpu.png" capture="native-window" wait="40" native-wait-frames="30" embed=true hidden=true timeout="900" duration="0" name="particle-lenia-gpu" alt="Dozens of Particle Lenia creatures on black, each a ring of dotted petals or a pinwheel of loops drawn in gold points, some merged into larger elongated colonies" macro-file="../../dev_docs/agents/transcripts/particle_lenia_gpu.yaml" capture-box="plg_renderer"}
-// Built and launched from dev_docs/agents/transcripts/particle_lenia_gpu.yaml
-// (a renderer box and the box below beneath it).
-```
-
 ```diffstatic {data-lang=kotlin}
 import afield.simulation.physics.ShaderParticleLenia
 
@@ -178,6 +173,11 @@ lenia.substeps = 20
 lenia.pointSize = 3f
 lenia.viewScale = 110f
 println("particles: " + lenia.count + ", cutoff " + lenia.cutoff + ", cell " + lenia.grid.cellSize)
+```
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/particle_lenia/gpu.png" capture="native-window" wait="40" native-wait-frames="30" embed=true hidden=true timeout="900" duration="0" name="particle-lenia-gpu" alt="Dozens of Particle Lenia creatures on black, each a ring of dotted petals or a pinwheel of loops drawn in gold points, some merged into larger elongated colonies" macro-file="../../dev_docs/agents/transcripts/particle_lenia_gpu.yaml" capture-box="plg_renderer"}
+// Built and launched from dev_docs/agents/transcripts/particle_lenia_gpu.yaml
+// (a renderer box and the box below beneath it).
 ```
 
 ## Where to take it
