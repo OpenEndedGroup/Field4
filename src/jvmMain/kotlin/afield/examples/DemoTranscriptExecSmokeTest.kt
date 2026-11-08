@@ -515,6 +515,9 @@ object DemoTranscriptExecSmokeTest {
         // eigendrum.md's starting point: FEM drum modes (afield.audio.modal) drawn through lines()
         // and played through WAV players; the drawing box falls back to a polar curve. CPU only.
         "eigendrum",
+        // eigendrum.md's Raman and design sections: loaded drums, the harmonicity sweep, syahi and
+        // outline fits with leastSquares, and a live ModalDrum morph. CPU only.
+        "harmonic_drum",
         // penrose_spectra.md's companion: exact zero-state counts, dense EJML spectra and WAV
         // players for a Penrose tiling's vertex graph; the live ModalDrum box is not executed. CPU only.
         "penrose_spectra",

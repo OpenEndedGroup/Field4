@@ -161,6 +161,19 @@ from your last stroke on the drawing layer. Pure CPU.
 
 [Open →](offline.html?file=assets/agent_transcripts/eigendrum/metadata.edn)
 
+### harmonic_drum
+
+**Design the drum that plays what you want.** The starting point of the second half of
+[Eigendrum](eigendrum.md#ramans-harmonic-drum): a drum loaded like a tabla, whose nine lowest modes
+fall into Raman's five harmonic tones; the sand figures of two modes at one pitch; a sweep of loading
+radius and mass that finds the tabla; uniform shapes that cannot reach the octave; a layered syahi
+fitted to 1:2:3:4:5; your drawn stroke bent into a drum that plays a major triad; and a live voice
+morphing from the bare drum to the harmonic one. Pure CPU.
+
+![Nine discs in five columns, each coloured orange and blue by one mode of a loaded drum, with white nodal lines](assets/eigendrum/raman.png)
+
+[Open →](offline.html?file=assets/agent_transcripts/harmonic_drum/metadata.edn)
+
 ### penrose_spectra
 
 **Strike a Penrose tiling.** The starting point of [Hearing a Penrose Tiling](penrose_spectra.md):
