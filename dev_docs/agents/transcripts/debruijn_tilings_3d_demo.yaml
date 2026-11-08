@@ -24,12 +24,11 @@ operations:
           val t = deBruijnTiling3D(planes = 0..0, scale = 10.0)
           val counts = t.shapeCounts()
 
-          val (union, hull) =
-              Solid.scope {
-                  // The control: the convex hull of every corner, which is the triacontahedron.
-                  val corners = Solid.hullOfPointsD(t.cells.flatMap { it.cornerArray().toList() }.toDoubleArray())
-                  t.toSolid().toTriMesh() to corners.volume
-              }
+          val (union, hull) = Solid.scope {
+              // The control: the convex hull of every corner, which is the triacontahedron.
+              val corners = Solid.hullOfPointsD(t.cells.flatMap { it.cornerArray().toList() }.toDoubleArray())
+              t.toSolid().toTriMesh() to corners.volume
+          }
 
           showMeshGrid(
               "${counts[1]} prolate + ${counts[2]} oblate, pulled apart" to t.toTriMesh(shrink = 0.8),
@@ -109,7 +108,13 @@ operations:
                   "$title\n$kept of ${central(t).size} central cells unchanged" to t.slice(t.directions[0], offset = 0.5).lines()
               }
 
-          showPlaneGrid(*panels.toTypedArray(), columns = 2, cellWidth = 360, cellHeight = 360, window = Rect(-60.0, -60.0, 120.0, 120.0))
+          showPlaneGrid(
+              *panels.toTypedArray(),
+              columns = 2,
+              cellWidth = 360,
+              cellHeight = 360,
+              window = Rect(-60.0, -60.0, 120.0, 120.0),
+          )
   - create:
       box: debruijn3d_stars
       name: cubic against icosahedral directions
@@ -123,10 +128,17 @@ operations:
                   val t = deBruijnTiling3D(star, radius = if (star.directions.size > 6) 3.0 else 4.0, scale = 10.0)
                   val shapes = t.shapeCounts().values.joinToString(" : ")
                   val name = star.name.lowercase().replace('_', ' ')
-                  "$name, ${t.directions.size} families\ncell shapes ${t.shapeVolumes.size}, counts $shapes" to t.slice(cut, offset = 0.5).lines()
+                  "$name, ${t.directions.size} families\ncell shapes ${t.shapeVolumes.size}, counts $shapes" to
+                      t.slice(cut, offset = 0.5).lines()
               }
 
-          showPlaneGrid(*panels.toTypedArray(), columns = 3, cellWidth = 240, cellHeight = 240, window = Rect(-55.0, -55.0, 110.0, 110.0))
+          showPlaneGrid(
+              *panels.toTypedArray(),
+              columns = 3,
+              cellWidth = 240,
+              cellHeight = 240,
+              window = Rect(-55.0, -55.0, 110.0, 110.0),
+          )
   - create:
       box: debruijn3d_slab
       name: two layers welded into a printable slab
@@ -140,22 +152,22 @@ operations:
           val slab = t.between(family = 0, from = 0, to = 2).filter { hypot(it.center.x, it.center.y) < 60.0 }
           val floor = slab.sumOf { it.center.z } / slab.size
 
-          val (welded, relief) =
-              Solid.scope {
-                  val union = t.toSolid(slab)
-                  // A disk 90 across, trimmed flat at the slab's middle height.
-                  val disk = Solid.cylinder(400.0, 45.0, segments = 96, center = true)
-                  union.volume to (union and disk).trimByPlane(0.0, 0.0, 1.0, floor)
-              }
+          val (welded, relief) = Solid.scope {
+              val union = t.toSolid(slab)
+              // A disk 90 across, trimmed flat at the slab's middle height.
+              val disk = Solid.cylinder(400.0, 45.0, segments = 96, center = true)
+              union.volume to (union and disk).trimByPlane(0.0, 0.0, 1.0, floor)
+          }
 
           showMesh(
               relief.toTriMesh().withColor(0.85, 0.80, 0.68),
               title = "two layers of the 3D Penrose tiling, 5-fold axis up · genus ${relief.genus}",
               caption =
-                  "${slab.size} cells · sum of cell volumes %.1f · welded by Manifold %.1f".format(
-                      slab.sumOf { it.volume },
-                      welded,
-                  ),
+                  "${slab.size} cells · sum of cell volumes %.1f · welded by Manifold %.1f"
+                      .format(
+                          slab.sumOf { it.volume },
+                          welded,
+                      ),
               view = MeshView(yawDegrees = 20.0, pitchDegrees = 50.0, width = 760, height = 520),
           )
   - execute:
