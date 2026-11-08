@@ -24,8 +24,9 @@ rectangles and cubic gestures. Use `advance` for pen spacing, `ink` for visible 
 
 ## Safe edit/reload routine
 
-For shader edits, use **Reload drawing, blur and compositor shaders**. The source boxes remain
-editable. The active vertex shader must keep the reveal-segment rejection that removes stray dots.
+For shader edits, use **Reload Shader** (Alt+R) in the edited shader box. Each pass owns
+its `moduleHere` module and generated accessors. Medium and broad blur each have separate
+horizontal/vertical boxes, so an ordinary reload reaches exactly that pass. The active vertex shader must keep the reveal-segment rejection that removes stray dots.
 
 For score edits, re-run Scores. That changes phrasing without preparing fonts or replacing physics.
 Use the current example and score controls afterward; re-scoring may seek the players to the

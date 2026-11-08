@@ -231,6 +231,9 @@ data class Parameters(
     /** Inside `moduleHere { }`: this module draws into the target this object owns, e.g. `+view` for an `ElectronRTTView`. */
     operator fun HasRenderToTexture.unaryPlus() = +rtt
 
+    /** Apply a source's target, resources and pipeline settings: for example `moduleHere { +movie }`. */
+    operator fun ConfiguresModule.unaryPlus() = configure(this@Parameters)
+
     /** Inside `moduleHere { }`: this module draws into this ping-pong target, as `+target` does for a [RenderToTexture]. */
     operator fun MultiPingPongRenderToTexture.unaryPlus() {
         val resolvedColorFormat = if (this.parameters.colorFormats.isNotEmpty()) this.parameters.colorFormats.first() else this.parameters.format

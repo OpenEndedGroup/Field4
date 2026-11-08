@@ -4316,6 +4316,21 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot=shell_join(["screenshot-box", "@feature_fixture", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
         ),
         UiRegression(
+            id="delete-box-editor-scope",
+            description="Ctrl+Backspace deletes a Monaco word without deleting the box; the canvas shortcut still works.",
+            commands=[
+                "new-box --name DeleteScopeRegression",
+                'set @last code "alpha beta"',
+                "editor-open @last --property code",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/delete-box-editor-setup.js")]),
+                "input-key press Control+Backspace",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/delete-box-editor-check.js")]),
+                "input-key press Control+Backspace",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/delete-box-canvas-check.js")]),
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}"]),
+        ),
+        UiRegression(
             id="keybinding-two-key-chords",
             description="Two-key chords on the canvas and in the editor: hint while waiting, a bound first key fires only after the 1 s timeout, Escape cancels.",
             commands=[

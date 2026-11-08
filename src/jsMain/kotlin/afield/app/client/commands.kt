@@ -2819,6 +2819,14 @@ fun registerBuiltinCommands() {
             id:'delete-box',
             label:"Delete Box(es)",
             keys: ['cmd+backspace', 'cmd+delete'],
+            // Word deletion belongs to text editors; box deletion is a canvas shortcut.
+            keyScope: 'canvas',
+            canvasGuard: (event) => {
+                if (window.globalEditor && window.globalEditor.hasTextFocus && window.globalEditor.hasTextFocus()) return false
+                if (window.embeddedEditors && window.embeddedEditors.getFocused && window.embeddedEditors.getFocused()) return false
+                const target = event.target
+                return !(target && target.closest && target.closest('input,textarea,[contenteditable="true"],.monaco-editor,.cm-editor'))
+            },
             detail:"Delete the selected boxes",
             run: () => {
                 deleteSelectedBoxes()

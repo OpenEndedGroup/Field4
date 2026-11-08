@@ -2,12 +2,12 @@
 #extension GL_EXT_buffer_reference : require
 #extension GL_EXT_multiview : require
 struct Marker {
-    vec4 position;
-    vec4 color;
-    vec4 shape;
+    vec4 position; // diagram-local XYZ and radius in metres
+    vec4 color; // linear RGBA before score-driven opacity
+    vec4 shape; // SDF kind, ring width, rotation and aspect
 };
 layout(std430,buffer_reference) readonly buffer DiagramMarkers {
-    Marker item[];
+    Marker item[]; // CPU-uploaded 48-byte records, shared by both eyes
 };
 layout(push_constant) uniform DiagramPush {
     mat4 model; // diagram-local to world, shared by both eyes

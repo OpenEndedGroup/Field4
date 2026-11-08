@@ -710,11 +710,12 @@ operations:
             }
             example.player.playback.seek(6.0)
         }
-        // Re-scoring preserves the gallery object while Drawing is active.
-        val previousGallery = thisBox.getPropertyRaw("poem") as? ReadingGallery
-        prop<ReadingGallery>(poem) = previousGallery?.takeIf {
-            it.examples.map { e -> e.player } == allExamples.map { e -> e.player }
-        } ?: ReadingGallery(allExamples)
+        // Keep the gallery through a re-score, replacing it only when graph construction
+        // produced different players. once/prop are the normal persistent property path.
+        prop<ReadingGallery>(poem)
+        once.poem { ReadingGallery(allExamples) }
+        if (poem.examples.map { it.player } != allExamples.map { it.player }) poem = ReadingGallery(allExamples)
+
         fun describe() {
             val e = poem.examples[poem.selected]
             display("selected example", "<div style='padding:12px;width:440px'><b>${e.title}</b><p>${e.description}</p></div>")
@@ -782,23 +783,26 @@ operations:
       h: 100
     properties:
       code: |
-        prop<Box>(strokeSource) = thisBox
+        // Drawing supplies the target and textures; this box owns its shader and Alt+R.
+        prop<afield.graphics.scene.reading.DiagramModuleFactory>(strokeModuleFactory) = { configuration ->
+            moduleHere(configuration)
+        }
       vertex: |
         #version 450
         #extension GL_EXT_buffer_reference : require
         #extension GL_EXT_multiview : require
         struct Segment {
-            vec4 previous;
-            vec4 a;
-            vec4 b;
-            vec4 next;
-            vec4 colorA;
-            vec4 colorB;
-            vec4 ink;
-            vec4 trim;
+            vec4 previous; // previous centreline XYZ, half-width at A in metres
+            vec4 a; // segment start XYZ, cumulative path distance
+            vec4 b; // segment end XYZ, cumulative path distance
+            vec4 next; // next centreline XYZ, half-width at B in metres
+            vec4 colorA; // linear RGBA at segment start
+            vec4 colorB; // linear RGBA at segment end
+            vec4 ink; // dash period, duty, phase and first/last flags
+            vec4 trim; // visible path-distance interval, two reserved values
         };
         layout(std430,buffer_reference) readonly buffer DiagramSegments {
-            Segment item[];
+            Segment item[]; // CPU-uploaded 128-byte records, shared by both eyes
         };
         layout(push_constant) uniform DiagramPush {
             mat4 model; // diagram-local to world, shared by both eyes
@@ -956,18 +960,21 @@ operations:
       h: 100
     properties:
       code: |
-        prop<Box>(pointSource) = thisBox
+        // Drawing supplies the target and textures; this box owns its shader and Alt+R.
+        prop<afield.graphics.scene.reading.DiagramModuleFactory>(pointModuleFactory) = { configuration ->
+            moduleHere(configuration)
+        }
       vertex: |
         #version 450
         #extension GL_EXT_buffer_reference : require
         #extension GL_EXT_multiview : require
         struct Marker {
-            vec4 position;
-            vec4 color;
-            vec4 shape;
+            vec4 position; // diagram-local XYZ and radius in metres
+            vec4 color; // linear RGBA before score-driven opacity
+            vec4 shape; // SDF kind, ring width, rotation and aspect
         };
         layout(std430,buffer_reference) readonly buffer DiagramMarkers {
-            Marker item[];
+            Marker item[]; // CPU-uploaded 48-byte records, shared by both eyes
         };
         layout(push_constant) uniform DiagramPush {
             mat4 model; // diagram-local to world, shared by both eyes
@@ -1050,7 +1057,10 @@ operations:
       h: 100
     properties:
       code: |
-        prop<Box>(textSource) = thisBox
+        // Drawing supplies the target and textures; this box owns its shader and Alt+R.
+        prop<afield.graphics.scene.reading.DiagramModuleFactory>(textModuleFactory) = { configuration ->
+            moduleHere(configuration)
+        }
       vertex: |
         #version 450
         #extension GL_EXT_buffer_reference : require
@@ -1081,7 +1091,7 @@ operations:
         }
         // Adapted Slug core: Copyright (c) 2026 AlphaPixel LLC. See LICENSE-slughorn.
         layout(std430, buffer_reference, buffer_reference_align = 4) readonly buffer SlugData {
-            uint words[];
+            uint words[]; // immutable Slug header, curve and band atlas in 32-bit words
         };
         layout(push_constant) uniform SlugPC {
             mat4 model; // local glyph plane to world; eye VP is applied in this vertex shader
@@ -1135,7 +1145,7 @@ operations:
         #extension GL_EXT_buffer_reference : require
         // Adapted Slug core: Copyright (c) 2026 AlphaPixel LLC. See LICENSE-slughorn.
         layout(std430, buffer_reference, buffer_reference_align = 4) readonly buffer SlugData {
-            uint words[];
+            uint words[]; // immutable Slug header, curve and band atlas in 32-bit words
         };
         layout(push_constant) uniform SlugPC {
             mat4 model; // word plane to world (the vertex stage applies the current eye VP)
@@ -1320,7 +1330,7 @@ operations:
         }
 - create:
     box: text1_blur
-    name: 10 · Blur cascade
+    name: 10 · Medium blur / horizontal
     frame:
       x: 1800
       y: 330
@@ -1328,7 +1338,148 @@ operations:
       h: 100
     properties:
       code: |
-        prop<Box>(blurSource) = thisBox
+        // Drawing supplies the target and textures; this box owns its shader and Alt+R.
+        prop<afield.graphics.scene.reading.DiagramModuleFactory>(mediumHorizontalFactory) = { configuration ->
+            moduleHere(configuration)
+        }
+      vertex: |
+        #version 450
+        #extension GL_EXT_multiview : require
+        layout(location = 0) out vec2 uv;
+        layout(location = 1) flat out int eye;
+        void main() {
+            vec2 p = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+            uv = vec2(p.x, 1.0 - p.y);
+            eye = gl_ViewIndex;
+            gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);
+        }
+      fragment: |
+        #version 450
+        layout(location = 0) in vec2 uv;
+        layout(location = 1) flat in int eye;
+        layout(location = 0) out vec4 outColor;
+        layout(set = 0, binding = 0) uniform sampler2DArray source;
+        layout(push_constant) uniform BlurPush {
+            vec4 tapStep; // XY step in output pixels, kernel radius and gain
+        } pc;
+
+        // Nine-tap Gaussian approximation, using bilinear pairing for five texture fetches.
+        // The output texel size makes H/V isotropic even while the first pass downsamples.
+        vec4 sampleOffset(float offset) {
+            return texture(source, vec3(uv + pc.tapStep.xy * pc.tapStep.z * offset, float(eye)));
+        }
+        void main() {
+            vec4 c = sampleOffset(0.0) * 0.2270270270;
+            c += (sampleOffset(1.3846153846) + sampleOffset(-1.3846153846)) * 0.3162162162;
+            c += (sampleOffset(3.2307692308) + sampleOffset(-3.2307692308)) * 0.0702702703;
+            outColor = c * pc.tapStep.w;
+        }
+- create:
+    box: text1_blur_medium_v
+    name: 15 · Medium blur / vertical
+    frame:
+      x: 1800
+      y: 440
+      w: 480
+      h: 100
+    properties:
+      code: |
+        // Drawing supplies the target and textures; this box owns its shader and Alt+R.
+        prop<afield.graphics.scene.reading.DiagramModuleFactory>(mediumVerticalFactory) = { configuration ->
+            moduleHere(configuration)
+        }
+      vertex: |
+        #version 450
+        #extension GL_EXT_multiview : require
+        layout(location = 0) out vec2 uv;
+        layout(location = 1) flat out int eye;
+        void main() {
+            vec2 p = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+            uv = vec2(p.x, 1.0 - p.y);
+            eye = gl_ViewIndex;
+            gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);
+        }
+      fragment: |
+        #version 450
+        layout(location = 0) in vec2 uv;
+        layout(location = 1) flat in int eye;
+        layout(location = 0) out vec4 outColor;
+        layout(set = 0, binding = 0) uniform sampler2DArray source;
+        layout(push_constant) uniform BlurPush {
+            vec4 tapStep; // XY step in output pixels, kernel radius and gain
+        } pc;
+
+        // Nine-tap Gaussian approximation, using bilinear pairing for five texture fetches.
+        // The output texel size makes H/V isotropic even while the first pass downsamples.
+        vec4 sampleOffset(float offset) {
+            return texture(source, vec3(uv + pc.tapStep.xy * pc.tapStep.z * offset, float(eye)));
+        }
+        void main() {
+            vec4 c = sampleOffset(0.0) * 0.2270270270;
+            c += (sampleOffset(1.3846153846) + sampleOffset(-1.3846153846)) * 0.3162162162;
+            c += (sampleOffset(3.2307692308) + sampleOffset(-3.2307692308)) * 0.0702702703;
+            outColor = c * pc.tapStep.w;
+        }
+- create:
+    box: text1_blur_broad_h
+    name: 16 · Broad blur / horizontal
+    frame:
+      x: 1800
+      y: 550
+      w: 480
+      h: 100
+    properties:
+      code: |
+        // Drawing supplies the target and textures; this box owns its shader and Alt+R.
+        prop<afield.graphics.scene.reading.DiagramModuleFactory>(broadHorizontalFactory) = { configuration ->
+            moduleHere(configuration)
+        }
+      vertex: |
+        #version 450
+        #extension GL_EXT_multiview : require
+        layout(location = 0) out vec2 uv;
+        layout(location = 1) flat out int eye;
+        void main() {
+            vec2 p = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+            uv = vec2(p.x, 1.0 - p.y);
+            eye = gl_ViewIndex;
+            gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);
+        }
+      fragment: |
+        #version 450
+        layout(location = 0) in vec2 uv;
+        layout(location = 1) flat in int eye;
+        layout(location = 0) out vec4 outColor;
+        layout(set = 0, binding = 0) uniform sampler2DArray source;
+        layout(push_constant) uniform BlurPush {
+            vec4 tapStep; // XY step in output pixels, kernel radius and gain
+        } pc;
+
+        // Nine-tap Gaussian approximation, using bilinear pairing for five texture fetches.
+        // The output texel size makes H/V isotropic even while the first pass downsamples.
+        vec4 sampleOffset(float offset) {
+            return texture(source, vec3(uv + pc.tapStep.xy * pc.tapStep.z * offset, float(eye)));
+        }
+        void main() {
+            vec4 c = sampleOffset(0.0) * 0.2270270270;
+            c += (sampleOffset(1.3846153846) + sampleOffset(-1.3846153846)) * 0.3162162162;
+            c += (sampleOffset(3.2307692308) + sampleOffset(-3.2307692308)) * 0.0702702703;
+            outColor = c * pc.tapStep.w;
+        }
+- create:
+    box: text1_blur_broad_v
+    name: 17 · Broad blur / vertical
+    frame:
+      x: 1800
+      y: 660
+      w: 480
+      h: 100
+    properties:
+      code: |
+        // Drawing supplies the target and textures; this box owns its shader and Alt+R.
+        prop<afield.graphics.scene.reading.DiagramModuleFactory>(broadVerticalFactory) = { configuration ->
+            moduleHere(configuration)
+        }
       vertex: |
         #version 450
         #extension GL_EXT_multiview : require
@@ -1366,12 +1517,15 @@ operations:
     name: 11 · Green / paint compositor
     frame:
       x: 1800
-      y: 440
+      y: 770
       w: 480
       h: 100
     properties:
       code: |
-        prop<Box>(compositeSource) = thisBox
+        // Drawing supplies the target and textures; this box owns its shader and Alt+R.
+        prop<afield.graphics.scene.reading.DiagramModuleFactory>(compositeModuleFactory) = { configuration ->
+            moduleHere(configuration)
+        }
       vertex: |
         #version 450
         #extension GL_EXT_multiview : require
@@ -1412,7 +1566,7 @@ operations:
             vec4 background; // linear background RGB, strength
             vec4 fxaa; // overall mix, relative edge threshold, absolute threshold, span pixels
             vec4 subpixel; // subpixel smoothing, output-eye width/height, linear-light FXAA flag
-            vec4 supersampling; // per-pixel rotation mix, footprint radius, stable integer seed, reserved
+            vec4 supersampling; // per-pixel rotation mix, footprint radius, stable integer seed, display dither in 8-bit code steps
         } grade;
 
         // Editable effective LUT. Outside 0..1 these sum-to-one weights deliberately go
@@ -1589,6 +1743,20 @@ operations:
                 vec3 filtered=mix(center,spatialAA(uv,center),clamp(grade.fxaa.x,0.0,1.0));
                 color=linearAA()?filtered:srgbToLinear(filtered);
             }
+            // Dither after grading and AA, in perceptual code space, then return linear RGB.
+            // One shared RGB offset avoids coloured speckles. Static per-eye-pixel noise avoids flicker.
+            // A triangular distribution spans +/- one code step at strength 1; zero disables it.
+            float strength=max(grade.supersampling.w,0.0);
+            if(strength>0.0) {
+                uvec2 pixel=uvec2(gl_FragCoord.xy);
+                float a=float(sampleMaskHash(pixel,19391u)>>8u)/16777216.0;
+                float b=float(sampleMaskHash(pixel,73471u)>>8u)/16777216.0;
+                vec3 encoded=linearToSrgb(clamp(color,vec3(0),vec3(1)));
+                // Keep an exactly black background black; fully apply noise above two code steps.
+                float gate=smoothstep(0.0,2.0/255.0,max(encoded.r,max(encoded.g,encoded.b)));
+                encoded=clamp(encoded+vec3((a-b)*strength*gate/255.0),vec3(0),vec3(1));
+                color=srgbToLinear(encoded);
+            }
             outColor=vec4(max(color,vec3(0)),1.0);
         }
 - create:
@@ -1603,20 +1771,20 @@ operations:
       code: |
         import afield.graphics.scene.reading.*
 
-        fun source(box: Box, property: String) = checkNotNull(box.getPropertyRaw(property) as? String)
-        fun shaders() = DiagramShaderSet(
-            source(strokeSource, "vertex"),
-            source(strokeSource, "fragment"),
-            source(pointSource, "vertex"),
-            source(pointSource, "fragment"),
-            source(textSource, "vertex"),
-            source(textSource, "fragment"),
-            source(blurSource, "vertex"),
-            source(blurSource, "fragment"),
-            source(compositeSource, "vertex"),
-            source(compositeSource, "fragment"),
+        // Each shader box owns its moduleHere pipeline and its standard Alt+R action.
+        // The renderer supplies pass-specific targets/resources without copying shader properties.
+        val passes = mapOf(
+            "reading-strokes" to strokeModuleFactory,
+            "reading-markers" to pointModuleFactory,
+            "reading-slug" to textModuleFactory,
+            "reading-blur-1" to mediumHorizontalFactory,
+            "reading-blur-2" to mediumVerticalFactory,
+            "reading-blur-3" to broadHorizontalFactory,
+            "reading-blur-4" to broadVerticalFactory,
+            "reading-composite" to compositeModuleFactory,
         )
-        prop<StereoDiagramRenderer>(drawing) = StereoDiagramRenderer(renderer, stereo, poem, shaders())
+
+        prop<StereoDiagramRenderer>(drawing) = StereoDiagramRenderer(renderer, stereo, poem, moduleFactories = passes)
         val ownedDrawing = drawing
         controlGroup("drawing") {
             button("Recenter poem") { down -> if (down) drawing.recenter() }
@@ -1631,7 +1799,6 @@ operations:
                 poem.examples.forEach { e -> e.player.dotRadiusScale = it.toFloat() }
             }
             checkbox("Show diagram dots", initialValue = true) { poem.examples.forEach { e -> e.player.showDots = it } }
-            button("Reload drawing, blur and compositor shaders") { down -> if (down) drawing.reload(shaders()) }
         }
         val grade = drawing.compositor.settings
         controlGroup("blur cascade") {
@@ -1690,6 +1857,12 @@ operations:
             colorPicker("Shadow tone (alpha = strength)", initialValue = grade.shadowTone) { grade.shadowTone.set(it) }
             colorPicker("Highlight tone (alpha = strength)", initialValue = grade.highlightTone) { grade.highlightTone.set(it) }
         }
+        // Optional perceptual dither for downstream display quantization; zero keeps it disabled.
+        controlGroup("display dither") {
+            slider("Dither (8-bit code steps)", initialValue = grade.supersampling.w.toDouble(), min = 0.0, max = 2.0) {
+                grade.supersampling.w = it.toFloat()
+            }
+        }
         var lastStats = 0L
         loop {
             renderer.windows.forEach { it.pollEvents() }
@@ -1737,6 +1910,15 @@ operations:
     child: text1_blur
 - connect:
     parent: text1_context
+    child: text1_blur_medium_v
+- connect:
+    parent: text1_context
+    child: text1_blur_broad_h
+- connect:
+    parent: text1_context
+    child: text1_blur_broad_v
+- connect:
+    parent: text1_context
     child: text1_composite
 - connect:
     parent: text1_poem
@@ -1775,6 +1957,15 @@ operations:
     parent: text1_blur
     child: text1_drawing
 - connect:
+    parent: text1_blur_medium_v
+    child: text1_drawing
+- connect:
+    parent: text1_blur_broad_h
+    child: text1_drawing
+- connect:
+    parent: text1_blur_broad_v
+    child: text1_drawing
+- connect:
     parent: text1_composite
     child: text1_drawing
 - launch:
@@ -1801,6 +1992,12 @@ operations:
     box: text1_text
 - launch:
     box: text1_blur
+- launch:
+    box: text1_blur_medium_v
+- launch:
+    box: text1_blur_broad_h
+- launch:
+    box: text1_blur_broad_v
 - launch:
     box: text1_composite
 - launch:

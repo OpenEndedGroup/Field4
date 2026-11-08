@@ -45,9 +45,12 @@ class StereoDiagramRenderer(
     val maxPoints: Int = 1024,
     sceneScale: Float = 1f,
     textBlurConfig: ReadingTextBlurConfig = ReadingTextBlurConfig(),
+    private val moduleFactories: Map<String, DiagramModuleFactory> = emptyMap(),
 ) : AutoCloseable {
     private val ownedTarget = stereo.layered
-    val compositor = DiagramCompositor(renderer, stereo, shaders, sceneScale)
+    val compositor = DiagramCompositor(renderer, stereo, shaders, sceneScale, moduleFactories)
+    // Eight vec4 records (128 bytes) per CPU centreline segment, read by stroke_vertex.
+    // One addressable upload per frame serves both eyes; geometry writes own this buffer.
     private val segments =
         defaultBuffer(name = "reading-segments") {
                 size = maxSegments.toLong() * 128
@@ -56,6 +59,7 @@ class StereoDiagramRenderer(
                 addressable()
             }
             .toBuffer(renderer)
+    // Three vec4 records (48 bytes) per marker, expanded into an SDF quad on the GPU.
     private val points =
         defaultBuffer(name = "reading-points") {
                 size = maxPoints.toLong() * 48
@@ -65,25 +69,21 @@ class StereoDiagramRenderer(
             }
             .toBuffer(renderer)
 
-    private fun module(name: String, vertex: String, fragment: String): ModulePointer =
-        Module(
-                parameters(renderer) {
-                    this.name = name
-                    stereo.configure(this)
-                    +compositor.sharp
-                    this.vertex = vertex
-                    this.fragment = fragment
-                    primitiveType = triangles
-                    depthTest = false
-                    depthWrite = false
-                    blend = true
-                    srcColor = VK_BLEND_FACTOR_SRC_ALPHA
-                    dstColor = VK_BLEND_FACTOR_ONE
-                    srcAlpha = VK_BLEND_FACTOR_ONE
-                    dstAlpha = VK_BLEND_FACTOR_ONE
-                },
-            )
-            .pointer()
+    private fun module(name: String, vertex: String, fragment: String): ModulePointer = readingModule(
+        parameters(renderer) {
+            this.name = name
+            stereo.configure(this)
+            +compositor.sharp
+            primitiveType = triangles
+            depthTest = false
+            depthWrite = false
+            blend = true
+            srcColor = VK_BLEND_FACTOR_SRC_ALPHA
+            dstColor = VK_BLEND_FACTOR_ONE
+            srcAlpha = VK_BLEND_FACTOR_ONE
+            dstAlpha = VK_BLEND_FACTOR_ONE
+        }, vertex, fragment, moduleFactories,
+    )
 
     val strokeModule = module("reading-strokes", shaders.strokeVertex, shaders.strokeFragment)
     val pointModule = module("reading-markers", shaders.pointVertex, shaders.pointFragment)
