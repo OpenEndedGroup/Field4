@@ -255,8 +255,8 @@ cleanly:
 | Chungasto | 181 | rotating | 0.0007 | 0.09 | 0.0038 |
 | Bellusauropel | 24 | static | 0.0000 | 0.15 | 0.0000 |
 
-The gliders hold their shape: their spread does not change in the window, their heading turns by less than 0.01 rad, and their
-rotation is zero to four places. A rigid shape moving in a straight line is a fixed point of the
+The gliders hold their shape: their spread does not change in the window, their heading turns by
+less than 0.01 rad, and their rotation is zero to four places. A rigid shape moving in a straight line is a fixed point of the
 motion in a frame that travels with it. The demo integrates with half of each step carried into the
 next, `p += 0.5 (p − p_prev) + 0.5 dt · v` (set `inertia = 0.5` to get it). That integrator settles to
 the same velocity `dt · v` as the article's Euler step, and the second block of output confirms
@@ -264,7 +264,7 @@ it: every glider has the same speed under both to four places. Nedocernosa is th
 Its rim turns at 0.0051 per unit time, just over the line, while its centre moves along a wide arc
 whose heading changes by 1.6 rad in the window.
 
-The fastest gliders are tiny: five particles, sliding at more than a quarter of a unit per unit time. The two
+The fastest gliders are tiny: five particles, sliding at 0.18 and 0.28 units per unit time. The two
 sweeps above never tried rules like theirs, whose growth curve wants a much lower `U`
 (`muG` 0.17 to 0.28, against the article's 0.6).
 
