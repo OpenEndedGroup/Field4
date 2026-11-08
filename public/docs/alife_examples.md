@@ -1382,7 +1382,7 @@ random over twelve dots. Four seconds in, a thirteenth dot is drawn at the top r
 grows a road to it:
 
 ```diffstatic_runner {data-lang=kotlin capture="native-window" capture-box="net_video_renderer" transcript="dev_docs/agents/transcripts/docs_capture/gpu_physarum_networks_video.yaml" video="assets/alife_examples/physarum-network-gpu.mp4" duration="20" fps="12" wait="0.2" timeout="300" embed=true hidden=true name="alife-physarum-network-gpu" alt="a square trail field with twelve bright food sources. Faint noise from 4000 scattered agents gathers into roads that join the sources, thins to a network of a few loops, and after a few seconds grows a new road to a thirteenth source that appears at the top right"}
-// The transcript draws the frame and its dots, builds a renderer and the slime box above (drawing the field in the middle of a wider window), and launches both.
+// The transcript draws the dots, builds the renderer and the slime box above, and launches both.
 ```
 
 On the GPU, with fourteen food sources on a 512 x 512 field, the same sweep lands the same way:
