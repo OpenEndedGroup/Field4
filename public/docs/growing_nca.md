@@ -62,11 +62,9 @@ display("main", PngEncoder.encode(strip, stripW, w))
 The printed errors fall from 0.014 at step 30 to under 0.0001 by step 80. The cut raises the error
 to 0.048, and it is back to 0.002 sixty steps later.
 
-The last frame shows what this rule does wrong. The training runs were 64 to 96 steps long, and a
-rule is only held to the picture for about that long after any cut. After a cut, a stray cell
-sometimes keeps growing, and the bud becomes a second flower. The article describes the same
-failure and fixes it by training for longer on damaged states. The rule here has not had that
-training yet.
+The last frame shows something else this rule does after a cut. Training held it to the picture
+for only 64 to 96 steps at a time, and some time after this cut a cell at the edge keeps going: it
+becomes a bud, and the bud grows a second, complete flower beside the first.
 
 ## The rule
 
@@ -93,7 +91,10 @@ one compute pass reads the first and writes the second, a barrier follows, and a
 back. The fragment shader draws the colour channels. Hold the left mouse button over the window to
 erase cells. While `autoCut` is on, the box also cuts a random disc every 600 steps:
 
-![Seven frames from the Vulkan window: the flower half-grown and blurred, finished, with a bite taken out of its top left, healed, whole, with a fresh cut at the top right, and healed again](assets/growing_nca/gpu_window_sequence.png)
+```diffstatic_runner {data-lang=kotlin screenshot="assets/growing_nca/gpu_window.png" capture="native-window" wait="6" native-wait-frames="30" embed=true hidden=true timeout="600" duration="0" name="growing-nca-gpu" alt="The Vulkan window: a pink six-petalled flower with a yellow centre and a green stem, grown by the compute shader on a white 96 by 96 grid between grey margins" macro-file="../../dev_docs/agents/transcripts/growing_nca.yaml" capture-box="nca_renderer"}
+// Built and launched from dev_docs/agents/transcripts/growing_nca.yaml
+// (the CPU strip, a renderer, and the GPU box beneath it).
+```
 
 ```kotlin
 /*
@@ -232,7 +233,6 @@ Copy the JSON to `src/jvmMain/resources/afield/alife/nca_<name>.json` for
 
 ## Further work
 
-- **Longer training on damaged states**, to remove the late buds shown above.
 - **[Cells2Pixels](https://cells2pixels.github.io/)**, which extends neural cellular automata to
   produce high-resolution images and textures from a coarse cell grid.
 - The article's later sections: rotating the perception filters so a trained rule can be run at

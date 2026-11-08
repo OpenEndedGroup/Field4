@@ -23,9 +23,9 @@ User page: `public/docs/growing_nca.md`. Source: Mordvintsev et al., Distill 202
 - CPU: 64x64 step ~ a few ms in the JVM; fine for live display at 2 steps/frame.
 
 ## Traps
-- **Long-horizon buds.** After a cut, at ~300 steps past it, a stray cell can grow a second flower
-  (visible in the docs strip, step 600). Training horizon is 64–96 steps; article fix = longer/more
-  damage training. Not done.
+- **Behaviour after a cut.** ~300 steps after the strip's cut, an edge cell grows into a bud and then a
+  second complete flower (docs strip, step 600). Training horizon is 64–96 steps, so nothing held the
+  rule beyond that. Marc (2026-11-08): this is fine; describe it neutrally, don't train it away.
 - **GPU ping-pong via push constants did not work.** One `ComputeMesh` with
   `src/dst = { if (step%2==0) A else B }` (buffer-reference push constants), and later one buffer +
   `parity = { step % 2 }` uint push constant: lambdas were invoked every dispatch (counters
@@ -43,3 +43,9 @@ User page: `public/docs/growing_nca.md`. Source: Mordvintsev et al., Distill 202
 - sRGB swapchain: the fragment shader `pow(c, 2.2)` so window colours match the CPU PNG.
 - GPU alive-masking is one step late: the post-update check is applied as the next step's pre-check
   (a single pass cannot see neighbours' updated alpha). Visually indistinguishable.
+- **`macro run growing_nca` timeout (2026-11-08).** The first night's run returned `TimeoutError`
+  under the backdoor's default `--timeout 20` (it bounds the whole macro). The next day, with no
+  change to the transcript's operations, three fresh documents in fresh managed servers each finished
+  (applied=11, errors=0, about 10 s of macro time), one of them at the default timeout. The failing
+  run was the first after a rebuild, so the cold first compile of the boxes and shaders is the likely
+  cause. If it recurs, pass `macro run growing_nca --timeout 120`.
