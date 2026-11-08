@@ -51,6 +51,7 @@ strikes.forEachIndexed { row, (name, modes, v) ->
     )
 }
 lines(out, w = 600.0, h = 300.0, fitToSize = true)
-strikes.joinToString("\n") { (name, modes, v) ->
-    "$name: %.1f%% of the strike at 220 Hz".format(100 * modes.zeroShare(v))
-}
+markdown(
+    "measure",
+    strikes.joinToString(" · ") { (name, modes, v) -> "$name: %.1f%% at 220 Hz".format(100 * modes.zeroShare(v)) },
+)

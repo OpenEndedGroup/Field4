@@ -175,6 +175,59 @@ class CurveTest(unittest.TestCase):
             self.assertEqual(struct.unpack_from('<Id', data, 40), (KIND_EMA, 4.0))
             self.assertEqual(len(data), 64 + frames * (16 + 4 * c.history * c.dimensions))
 
+    def test_the_map_remembers_both_of_two_alternating_sounds(self):
+        from fieldaudio_curve.som import KIND_SOM, SomCurveAnalyzer, write_som_curves
+        c = CurveConfig(8000, fft_size=256, hop_size=64, mel_bands=16, history=12, dimensions=2)
+        t = np.arange(4000) / 8000
+        low, high = np.sin(2 * np.pi * 300 * t), np.sin(2 * np.pi * 2500 * t)
+        audio = np.concatenate([low, high] * 4)
+        analyzer = SomCurveAnalyzer(c, learn_seconds=0.05)
+        curves = analyzer.push(audio)
+        self.assertEqual(curves[-1][1].shape, (13, 2), "12 prototypes and the present")
+        def mass(signal):
+            probe = SomCurveAnalyzer(c)
+            probe.push(signal[:256])
+            return probe.prototypes[0]
+        for sound in (low, high):
+            # Some prototype still holds each sound, though only the high one is playing at the end.
+            self.assertLess(analyzer._distances(mass(sound)).min(), 0.02)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'som.f4curve'
+            write_som_curves(path, audio, c, learn_seconds=0.05)
+            data = path.read_bytes()
+            frames = struct.unpack_from('<Q', data, 32)[0]
+            self.assertEqual(frames, len(curves))
+            self.assertEqual(struct.unpack_from('<I', data, 24)[0], 13)
+            self.assertEqual(struct.unpack_from('<Id', data, 40), (KIND_SOM, 0.05))
+            record = 16 + 4 * 13 * 2
+            self.assertEqual(len(data), 64 + frames * record)
+            _, count, match = struct.unpack_from('<dII', data, 64 + (frames - 1) * record)
+            self.assertEqual((count, match), (13, analyzer.last_match))
+
+    def test_a_sheet_keeps_similar_sounds_next_to_each_other(self):
+        from fieldaudio_curve.som import SomCurveAnalyzer, write_som_curves
+        c = CurveConfig(8000, fft_size=256, hop_size=64, mel_bands=16, history=16, dimensions=3)
+        t = np.arange(48000) / 8000
+        # A tone gliding up and down: a one-parameter family of sounds for the sheet to lay out.
+        audio = np.sin(2 * np.pi * np.cumsum(400 + 1500 * (0.5 + 0.5 * np.sin(2 * np.pi * 0.25 * t))) / 8000)
+        analyzer = SomCurveAnalyzer(c, learn_seconds=0.2, sigma=1.0, shape=(4, 4))
+        analyzer.push(audio)
+        p = analyzer.prototypes
+        w1 = lambda a, b: np.abs(np.cumsum(a - b, -1)[..., :-1]).sum(-1) / (c.mel_bands - 1)
+        grid = np.indices((4, 4)).reshape(2, -1).T
+        d2 = ((grid[:, None] - grid[None]) ** 2).sum(2)
+        near = np.median(w1(p[:, None], p[None])[d2 == 1])
+        far = np.median(w1(p[:, None], p[None])[d2 >= 4])
+        self.assertLess(near, far / 2, "grid neighbours hold more similar sounds than distant prototypes")
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'sheet.f4curve'
+            write_som_curves(path, audio[:4000], c, learn_seconds=0.2, shape=(4, 4))
+            data = path.read_bytes()
+            self.assertEqual(struct.unpack_from('<III', data, 52), (4, 4, 1))
+            self.assertEqual(struct.unpack_from('<I', data, 24)[0], 17)
+        with self.assertRaises(ValueError):
+            SomCurveAnalyzer(c, shape=(3, 4))
+
     def test_silence_is_finite(self):
         c = CurveConfig(8000, fft_size=128, hop_size=64, mel_bands=12, history=4)
         for _, points in CurveAnalyzer(c).push(np.zeros(512)):

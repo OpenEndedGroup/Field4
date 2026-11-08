@@ -1,9 +1,9 @@
 # Eigendrum: hear the shape of a drum
 
-*Draw a closed shape and Field tells you how it sounds as a drum: it finds the shape's vibration
-modes, the pitches they ring at, where each one is still, and plays a strike as the sum of them.
-The idea comes from [eigendrum.com](https://eigendrum.com), which does this in the browser; this
-page builds the same thing in Field from the textbook method, in `afield.audio.modal`.*
+Draw a closed shape and hear it as a drum. Field finds the ways the shape can vibrate, the pitches
+they ring at and the places that stay still; strike the drum and those modes sound together. The
+idea comes from [eigendrum.com](https://eigendrum.com), which does this in the browser. Here we'll
+build it in Field, with `afield.audio.modal`, and play with the result.
 
 The quickest way in is the starting point. Open **Starting points** on the welcome screen and search
 for **eigendrum**. Its fifth box makes a drum from whatever you last drew on the drawing layer.
@@ -51,7 +51,7 @@ look rotated against the textbook ones.
 
 ## A drum from a polar equation
 
-Any curve can be a drum. Here r(θ) = 1 + 0.3 cos 5θ, a five-lobed flower: on the left the mesh,
+A closed curve can define a drum. Here r(θ) = 1 + 0.3 cos 5θ, a five-lobed flower: on the left the mesh,
 on the right the sixth mode, coloured by displacement, with its nodal line (where the head stays
 still) in white.
 
@@ -197,8 +197,8 @@ lines(out, w = 520.0, h = 300.0, fitToSize = true)
 
 Press ++alt+d++, draw a closed shape with the freedraw tool, and run the fifth box of the starting
 point: `notation.strokes.lastOrNull()?.toFLine()` is your stroke, and `drumMeshFitted` scales it to
-fit before meshing. With nothing drawn it uses a polar curve, which is what was captured here: the
-first four modes and their nodal lines.
+fit before meshing. With nothing drawn it uses a polar curve. Here are its first four modes and
+their nodal lines:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/eigendrum/draw.png" embed=true alt="Four copies of a rounded three-lobed shape: the first all orange, then split in two by one white nodal line, then by a curved line, then by two lines into three bands"}
 import afield.audio.engine.WavFloatArrayWriter

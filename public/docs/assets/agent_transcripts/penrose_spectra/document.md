@@ -51,7 +51,7 @@ markdown(
 <!-- field-box id="ps_strike" index="1" -->
 
 ```edn [field-box id="ps_strike" role="properties"]
-{"id" "ps_strike" "index" 1 "name" "5 - strike three vertices" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 - strike three vertices" "_tombstone" false "frame" #afield/rect [60.0 1460.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ps_strike_code_.kt" "lines" 56 "characters" 2145 "sha256" "b12898ae4503fd41592e5703a4666ff577e46a61d7d59183ea9bd5d340f0b930"}]}
+{"id" "ps_strike" "index" 1 "name" "5 - strike three vertices" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 - strike three vertices" "_tombstone" false "frame" #afield/rect [60.0 1460.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ps_strike_code_.kt" "lines" 57 "characters" 2160 "sha256" "a61e78141d898c0d98f92191eb5bff2b47bb25d5e993925c6f4e1460161ffa8a"}]}
 ```
 
 ```kotlin [field-property box="ps_strike" name="code" path="ps_strike_code_.kt"]
@@ -108,9 +108,10 @@ strikes.forEachIndexed { row, (name, modes, v) ->
     )
 }
 lines(out, w = 600.0, h = 300.0, fitToSize = true)
-strikes.joinToString("\n") { (name, modes, v) ->
-    "$name: %.1f%% of the strike at 220 Hz".format(100 * modes.zeroShare(v))
-}
+markdown(
+    "measure",
+    strikes.joinToString(" · ") { (name, modes, v) -> "$name: %.1f%% at 220 Hz".format(100 * modes.zeroShare(v)) },
+)
 ```
 
 ## 3. 6 - drag symmetry and disorder
@@ -176,7 +177,7 @@ N(E) for a radius-8 Penrose patch: every state (grey), and states weighted by th
 the patch's inner 60% (orange). Left, the whole spectrum; right, E from -0.5 to 0.5.
 
 ```edn [field-box id="ps_idos" role="properties"]
-{"id" "ps_idos" "index" 3 "name" "3 - integrated density of states" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - integrated density of states" "_tombstone" false "frame" #afield/rect [60.0 760.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ps_idos_code_.kt" "lines" 44 "characters" 1858 "sha256" "e1d823ef3e6a14fc782214942a2f6cbda8cff611ef890aedfc8882241258371f"}]}
+{"id" "ps_idos" "index" 3 "name" "3 - integrated density of states" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 - integrated density of states" "_tombstone" false "frame" #afield/rect [60.0 760.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ps_idos_code_.kt" "lines" 47 "characters" 1922 "sha256" "0073ed6f1d0bfc9826634886f3d163be726adce39f8c8673947f5b25b9cba023"}]}
 ```
 
 ```kotlin [field-property box="ps_idos" name="code" path="ps_idos_code_.kt"]
@@ -215,15 +216,18 @@ lines(
     fitToSize = true,
 )
 val gap = spectrum.gaps(2, weights = bulk, minWeight = 0.3 * inner.size / graph.vertexCount)
-"E from %.3f to %.3f; jump at 0 of %.4f; nearest bulk states at %.3f and %.3f; nearest of all at ±%.3f"
-    .format(
-        spectrum.energies.first(),
-        spectrum.energies.last(),
-        spectrum.zeroCount().toDouble() / graph.vertexCount,
-        gap.minOf { it.first },
-        gap.maxOf { it.second },
-        spectrum.energies.filter { abs(it) > 1e-8 }.minOf { abs(it) },
-    )
+markdown(
+    "measure",
+    "E from %.3f to %.3f; jump at 0 of %.4f; nearest bulk states at %.3f and %.3f; nearest of all at ±%.3f"
+        .format(
+            spectrum.energies.first(),
+            spectrum.energies.last(),
+            spectrum.zeroCount().toDouble() / graph.vertexCount,
+            gap.minOf { it.first },
+            gap.maxOf { it.second },
+            spectrum.energies.filter { abs(it) > 1e-8 }.minOf { abs(it) },
+        ),
+)
 ```
 
 ## 5. 4 - symmetry, disorder, offset sum
@@ -296,7 +300,7 @@ Left: how much of the E = 0 level sits on each vertex. Right, enlarged: the smal
 localised state found near the middle of the patch.
 
 ```edn [field-box id="ps_states" role="properties"]
-{"id" "ps_states" "index" 5 "name" "2 - where the confined states live" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - where the confined states live" "_tombstone" false "frame" #afield/rect [700.0 60.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ps_states_code_.kt" "lines" 38 "characters" 2156 "sha256" "16129473944ff25df5ab78afbb4e55afa915c950c78b5edb64dc481775a997e4"}]}
+{"id" "ps_states" "index" 5 "name" "2 - where the confined states live" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 - where the confined states live" "_tombstone" false "frame" #afield/rect [700.0 60.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ps_states_code_.kt" "lines" 41 "characters" 2197 "sha256" "543551416b8f93ead36f6136147fc58dcb549d2f8a386072c3b81ef5584fc780"}]}
 ```
 
 ```kotlin [field-property box="ps_states" name="code" path="ps_states_code_.kt"]
@@ -336,8 +340,11 @@ val byDegree =
         .toSortedMap()
         .entries
         .joinToString(", ") { (d, vs) -> "%d-edge %.3f".format(d, vs.sumOf { weight[it] } / vs.size) }
-"${spectrum.zeroCount()} zero states on ${graph.vertexCount} vertices; mean weight by vertex: $byDegree\nthe state on the right: ${support.size} vertices, max |A·ψ| = %.1e"
-    .format(residual)
+markdown(
+    "measure",
+    "${spectrum.zeroCount()} zero states on ${graph.vertexCount} vertices. Mean weight by vertex: $byDegree. " +
+        "The state on the right: ${support.size} vertices, max |A·ψ| = %.1e.".format(residual),
+)
 ```
 
 ## 7. 7 - a live tiling (launch it)

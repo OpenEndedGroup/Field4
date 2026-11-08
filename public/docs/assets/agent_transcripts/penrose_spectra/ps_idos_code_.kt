@@ -33,12 +33,15 @@ lines(
     fitToSize = true,
 )
 val gap = spectrum.gaps(2, weights = bulk, minWeight = 0.3 * inner.size / graph.vertexCount)
-"E from %.3f to %.3f; jump at 0 of %.4f; nearest bulk states at %.3f and %.3f; nearest of all at ±%.3f"
-    .format(
-        spectrum.energies.first(),
-        spectrum.energies.last(),
-        spectrum.zeroCount().toDouble() / graph.vertexCount,
-        gap.minOf { it.first },
-        gap.maxOf { it.second },
-        spectrum.energies.filter { abs(it) > 1e-8 }.minOf { abs(it) },
-    )
+markdown(
+    "measure",
+    "E from %.3f to %.3f; jump at 0 of %.4f; nearest bulk states at %.3f and %.3f; nearest of all at ±%.3f"
+        .format(
+            spectrum.energies.first(),
+            spectrum.energies.last(),
+            spectrum.zeroCount().toDouble() / graph.vertexCount,
+            gap.minOf { it.first },
+            gap.maxOf { it.second },
+            spectrum.energies.filter { abs(it) > 1e-8 }.minOf { abs(it) },
+        ),
+)

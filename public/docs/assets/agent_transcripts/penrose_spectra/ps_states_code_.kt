@@ -34,5 +34,8 @@ val byDegree =
         .toSortedMap()
         .entries
         .joinToString(", ") { (d, vs) -> "%d-edge %.3f".format(d, vs.sumOf { weight[it] } / vs.size) }
-"${spectrum.zeroCount()} zero states on ${graph.vertexCount} vertices; mean weight by vertex: $byDegree\nthe state on the right: ${support.size} vertices, max |A·ψ| = %.1e"
-    .format(residual)
+markdown(
+    "measure",
+    "${spectrum.zeroCount()} zero states on ${graph.vertexCount} vertices. Mean weight by vertex: $byDegree. " +
+        "The state on the right: ${support.size} vertices, max |A·ψ| = %.1e.".format(residual),
+)
