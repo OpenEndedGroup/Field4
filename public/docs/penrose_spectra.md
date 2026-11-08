@@ -54,11 +54,15 @@ val counts = table(
     "square lattice" to square.map { it.zeroModeFraction() },
     "jittered 0.1" to jittered.map { it.zeroModeFraction() },
 ).apply { title = "fraction of states at E = 0" }
-["Penrose", "square lattice", "jittered 0.1"].forEach { col -> counts.format(col) { "%.4f".format(it as Double) } }
+["Penrose", "square lattice", "jittered 0.1"].forEach { col -> counts.format(col) { (it as Double).f4 } }
 display("counts", counts)
 val fit = ZeroModeFit.of(penrose.takeLast(3))
 val tau = (1 + sqrt(5.0)) / 2
-markdown("fit", "bulk fit over the three largest: **%.4f** · square lattice: **%.4f** · 81 − 50τ = **%.4f**".format(fit.bulk, ZeroModeFit.of(square.takeLast(3)).bulk, 81 - 50 * tau))
+markdown(
+    "fit",
+    "bulk fit over the three largest: **%.4f** · square lattice: **%.4f** · 81 − 50τ = **%.4f**"
+        .format(fit.bulk, ZeroModeFit.of(square.takeLast(3)).bulk, 81 - 50 * tau),
+)
 ```
 
 The Penrose fraction holds near 0.098 at every size, and the fit over the largest patches lands
@@ -86,7 +90,12 @@ val weight = spectrum.zeroWeights()
 val grey = [vec(0.30, 0.31, 0.36, 1.0), vec(0.22, 0.23, 0.28, 1.0)]
 val (cx, cy) = graph.centre
 // Grow a confined state at each of the twelve confined vertices nearest the centre; keep the smallest.
-val tried = graph.interior(0.4 * graph.extent).filter { weight[it] > 1e-6 }.sortedBy { hypot(graph.x[it] - cx, graph.y[it] - cy) }.take(12)
+val tried =
+    graph
+        .interior(0.4 * graph.extent)
+        .filter { weight[it] > 1e-6 }
+        .sortedBy { hypot(graph.x[it] - cx, graph.y[it] - cy) }
+        .take(12)
 val psi = tried.mapNotNull { graph.confinedState(it) }.minBy { s -> s.count { abs(it) > 1e-9 } }
 val support = (0 until graph.vertexCount).filter { abs(psi[it]) > 1e-9 }
 val residual = (0 until graph.vertexCount).maxOf { v -> abs(graph.neighbours[v].sumOf { psi[it] }) }
@@ -95,13 +104,21 @@ val sx = support.map { graph.x[it] }.average()
 val sy = support.map { graph.y[it] }.average()
 val zoom = 2.5
 val dx = 1.1 * graph.extent + 3.6 * zoom
-val enlarge = { f: FLine -> f.transform { v -> Vec3(((v.x - sx) * zoom + dx).toFloat(), ((v.y - sy) * zoom).toFloat(), 0f) } }
+val enlarge = { f: FLine ->
+    f.transform { v -> Vec3(((v.x - sx) * zoom + dx).toFloat(), ((v.y - sy) * zoom).toFloat(), 0f) }
+}
 val near = tiling.tiles.filter { hypot(it.center.x - sx, it.center.y - sy) < 3.5 }
 val nearTiles = DeBruijnTiling(tiling.symmetry, tiling.offsets, tiling.directions, near).lines(palette = grey)
 val right = (nearTiles + graph.vertexDots(psi, maxRadius = 0.32)).map(enlarge)
 lines(tiling.lines(palette = grey) + graph.vertexDots(weight) + right, w = 700.0, h = 330.0, fitToSize = true)
-val byDegree = (0 until graph.vertexCount).groupBy { graph.degree(it) }.toSortedMap().entries.joinToString(", ") { (d, vs) -> "%d-edge %.3f".format(d, vs.sumOf { weight[it] } / vs.size) }
-"${spectrum.zeroCount()} zero states on ${graph.vertexCount} vertices; mean weight by vertex: $byDegree\nthe state on the right: ${support.size} vertices, max |A·ψ| = %.1e".format(residual)
+val byDegree =
+    (0 until graph.vertexCount)
+        .groupBy { graph.degree(it) }
+        .toSortedMap()
+        .entries
+        .joinToString(", ") { (d, vs) -> "%d-edge %.3f".format(d, vs.sumOf { weight[it] } / vs.size) }
+"${spectrum.zeroCount()} zero states on ${graph.vertexCount} vertices; mean weight by vertex: $byDegree\nthe state on the right: ${support.size} vertices, max |A·ψ| = %.1e"
+    .format(residual)
 ```
 
 The weight is concentrated on vertices with three edges. Four- and five-edged vertices carry
@@ -141,16 +158,26 @@ fun panel(from: Double, to: Double, dx: Double): List<FLine> {
         lineTo(300.0, 0.0)
         moveTo(zeroX, 0.0)
         lineTo(zeroX, 10.0)
-    }.apply { color = vec(1.0, 1.0, 1.0, 0.7) }
+    }
+        .apply { color = vec(1.0, 1.0, 1.0, 0.7) }
     return [all, weighted, axis].map { it.transform { v -> Vec3(v.x + dx.toFloat(), v.y, 0f) } }
 }
-lines(panel(spectrum.energies.first(), spectrum.energies.last(), 0.0) + panel(-0.5, 0.5, 360.0), w = 660.0, h = 330.0, fitToSize = true)
-val gap = spectrum.gaps(2, weights = bulk, minWeight = 0.3 * inner.size / graph.vertexCount)
-"E from %.3f to %.3f; jump at 0 of %.4f; nearest bulk states at %.3f and %.3f; nearest of all at ±%.3f".format(
-    spectrum.energies.first(), spectrum.energies.last(), spectrum.zeroCount().toDouble() / graph.vertexCount,
-    gap.minOf { it.first }, gap.maxOf { it.second },
-    spectrum.energies.filter { abs(it) > 1e-8 }.minOf { abs(it) },
+lines(
+    panel(spectrum.energies.first(), spectrum.energies.last(), 0.0) + panel(-0.5, 0.5, 360.0),
+    w = 660.0,
+    h = 330.0,
+    fitToSize = true,
 )
+val gap = spectrum.gaps(2, weights = bulk, minWeight = 0.3 * inner.size / graph.vertexCount)
+"E from %.3f to %.3f; jump at 0 of %.4f; nearest bulk states at %.3f and %.3f; nearest of all at ±%.3f"
+    .format(
+        spectrum.energies.first(),
+        spectrum.energies.last(),
+        spectrum.zeroCount().toDouble() / graph.vertexCount,
+        gap.minOf { it.first },
+        gap.maxOf { it.second },
+        spectrum.energies.filter { abs(it) > 1e-8 }.minOf { abs(it) },
+    )
 ```
 
 The jump at E = 0 holds 9.3% of this patch's states. On either side, the nearest states that
@@ -179,21 +206,36 @@ val bySymmetry = symmetries.map { n ->
 }
 val sizes = [10.0, 16.0, 24.0]
 val disorders = [0.0, 0.02, 0.05, 0.1, 0.2, 0.4, 0.8]
-val byDisorder = disorders.map { d -> fit(sizes.map { deBruijnTiling(symmetry = 5, radius = it, scale = 1.0, disorder = d).vertexGraph() }) }
+val byDisorder = disorders.map { d ->
+    fit(sizes.map { deBruijnTiling(symmetry = 5, radius = it, scale = 1.0, disorder = d).vertexGraph() })
+}
 val sums = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5]
 val bySum = sums.map { s ->
     val offsets = defaultDeBruijnOffsets(5).map { it + s / 5 }
     fit(sizes.map { deBruijnTiling(symmetry = 5, offsets = offsets, radius = it, scale = 1.0).vertexGraph() })
 }
-fun fmt(t: Table, vararg cols: String) = t.apply { cols.forEach { c -> format(c) { "%.4f".format(it as Double) } } }
-display("by symmetry", fmt(table(
-    "symmetry" to symmetries,
-    "largest patch" to bySymmetry.map { it.counts.last().first },
-    "raw fraction" to bySymmetry.map { it.counts.last().second.toDouble() / it.counts.last().first },
-    "bulk fit" to bySymmetry.map { it.bulk },
-), "raw fraction", "bulk fit").heat("bulk fit"))
-display("by disorder", fmt(table("disorder" to disorders, "bulk fit" to byDisorder.map { it.bulk }), "bulk fit").heat("bulk fit"))
-display("by offset sum", fmt(table("offset sum" to sums, "bulk fit" to bySum.map { it.bulk }), "bulk fit").heat("bulk fit"))
+fun fmt(t: Table, vararg cols: String) = t.apply { cols.forEach { c -> format(c) { (it as Double).f4 } } }
+display(
+    "by symmetry",
+    fmt(
+        table(
+            "symmetry" to symmetries,
+            "largest patch" to bySymmetry.map { it.counts.last().first },
+            "raw fraction" to bySymmetry.map { it.counts.last().second.toDouble() / it.counts.last().first },
+            "bulk fit" to bySymmetry.map { it.bulk },
+        ),
+        "raw fraction",
+        "bulk fit",
+    ).heat("bulk fit"),
+)
+display(
+    "by disorder",
+    fmt(table("disorder" to disorders, "bulk fit" to byDisorder.map { it.bulk }), "bulk fit").heat("bulk fit"),
+)
+display(
+    "by offset sum",
+    fmt(table("offset sum" to sums, "bulk fit" to bySum.map { it.bulk }), "bulk fit").heat("bulk fit"),
+)
 ```
 
 Read the numbers with their fits in mind. Each is a two-parameter fit to four or fewer patch
@@ -226,8 +268,17 @@ val draw = {
     val weight = graph.spectrum().zeroWeights()
     val grey = [vec(0.30, 0.31, 0.36, 1.0), vec(0.22, 0.23, 0.28, 1.0)]
     lines(tiling.lines(palette = grey) + graph.vertexDots(weight), w = 480.0, h = 480.0, fitToSize = true)
-    markdown("measure", "%d-fold, disorder %.2f: **%d** E = 0 states of %d vertices, fraction **%.4f** (Penrose: 81 − 50τ = 0.0983)".format(
-        symmetry.toInt(), disorder, graph.zeroModeCount(), graph.vertexCount, graph.zeroModeFraction()))
+    markdown(
+        "measure",
+        "%d-fold, disorder %.2f: **%d** E = 0 states of %d vertices, fraction **%.4f** (Penrose: 81 − 50τ = 0.0983)"
+            .format(
+                symmetry.toInt(),
+                disorder,
+                graph.zeroModeCount(),
+                graph.vertexCount,
+                graph.zeroModeFraction(),
+            ),
+    )
 }
 
 slider("symmetry", min = 3.0, max = 12.0, step = 1.0, initialValue = 5.0, channel = "symmetry") {
@@ -283,25 +334,38 @@ strikes.forEachIndexed { row, (name, modes, v) ->
     for (k in a.indices) bins[((f[k] - lo) / (hi - lo) * bins.size).toInt().coerceIn(0, bins.size - 1)] += a[k]
     val y0 = row * 1.3
     bins.forEachIndexed { b, e ->
-        if (e > 0) out += fline {
-            moveTo(b * 0.05, y0)
-            lineTo(b * 0.05, y0 - sqrt(e))
-        }.apply {
-            color = vec(1.0, 0.55, 0.15, 1.0)
-            thickness = 3.0
+        if (e > 0)
+            out +=
+                fline {
+                    moveTo(b * 0.05, y0)
+                    lineTo(b * 0.05, y0 - sqrt(e))
+                }
+                    .apply {
+                        color = vec(1.0, 0.55, 0.15, 1.0)
+                        thickness = 3.0
+                    }
+    }
+    out +=
+        fline {
+            moveTo((220.0 - lo) / (hi - lo) * 5.5, y0 + 0.05)
+            lineTo((220.0 - lo) / (hi - lo) * 5.5, y0 + 0.2)
         }
-    }
-    out += fline {
-        moveTo((220.0 - lo) / (hi - lo) * 5.5, y0 + 0.05)
-        lineTo((220.0 - lo) / (hi - lo) * 5.5, y0 + 0.2)
-    }.apply {
-        color = vec(1.0, 1.0, 1.0, 1.0)
-        thickness = 2.0
-    }
-    display(name, WavFloatArrayWriter.encodeMono16(modes.render(a, zeroHz = 220.0, seconds = 3.0, alpha = 1.0, beta = 0.2), 44100))
+            .apply {
+                color = vec(1.0, 1.0, 1.0, 1.0)
+                thickness = 2.0
+            }
+    display(
+        name,
+        WavFloatArrayWriter.encodeMono16(
+            modes.render(a, zeroHz = 220.0, seconds = 3.0, alpha = 1.0, beta = 0.2),
+            44100,
+        ),
+    )
 }
 lines(out, w = 600.0, h = 300.0, fitToSize = true)
-strikes.joinToString("\n") { (name, modes, v) -> "$name: %.1f%% of the strike at 220 Hz".format(100 * modes.zeroShare(v)) }
+strikes.joinToString("\n") { (name, modes, v) ->
+    "$name: %.1f%% of the strike at 220 Hz".format(100 * modes.zeroShare(v))
+}
 ```
 
 The confined vertex puts almost a third of its strike energy into a single pitch, a steady
@@ -338,7 +402,15 @@ val graph = deBruijnTiling(symmetry = 5, radius = 6.0, scale = 1.0).vertexGraph(
 val modes = graph.springModes(8.0)
 val weight = modes.spectrum.zeroWeights()
 val v = graph.interior(0.5 * graph.extent).maxBy { weight[it] }
-val drum = ModalDrum(modes, fundamental = modes.fundamentalFor(220.0), alpha = 1.0, beta = 0.2, every = 1.5, autoX = graph.x[v], autoY = graph.y[v])
+val drum = ModalDrum(
+    modes,
+    fundamental = modes.fundamentalFor(220.0),
+    alpha = 1.0,
+    beta = 0.2,
+    every = 1.5,
+    autoX = graph.x[v],
+    autoY = graph.y[v],
+)
 drum
 ```
 
