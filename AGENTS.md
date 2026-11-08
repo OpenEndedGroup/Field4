@@ -542,8 +542,9 @@ code, and a landing runs it on what it changed.
   distilled from the human's notes on the published site. In short: write for the user (how a
   page was made and internal mechanism go in an aside or `dev_docs/`). No lab-notebook voice or
   invented vocabulary. Lead with the common case. Introduce code before showing it, and write it
-  the way a box is written. Look at every capture at column width. Use one page per topic, and
-  link whatever a reader can open. These are prose until checks enforce them; the file lists the
+  the way a box is written. Look at every capture at column width. Use one page per topic: work
+  that extends an existing page goes onto that page as new sections, never onto a sibling page.
+  Link whatever a reader can open. These are prose until checks enforce them; the file lists the
   first five checks that would retire them.
 - `exportToDocumentation(...)` (`afield/docs/doc.kt`) turns boxes with metadata into docs-ready
   Markdown plus captured assets.

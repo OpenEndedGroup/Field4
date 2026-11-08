@@ -52,7 +52,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [LorisTransforms.kt](../src/jvmMain/kotlin/afield/audio/analysis/loris/LorisTransforms.kt) | Audio | loris, audio_ai_corpus_microscope, audio_ai_gesture_board | 7 | 0 | 55% |
 | [Model.kt](../src/jvmMain/kotlin/afield/simulation/physics/pressure/Model.kt) | Simulation | pressure_membranes | 6 | 26 | 17% |
 | [Phased.kt](../src/jvmMain/kotlin/afield/runtime/lifecycle/Phased.kt) | Workspace | animation_time_model | 6 | 12 | 47% |
-| [SolidExpr.kt](../src/jvmMain/kotlin/afield/lang/solidsl/SolidExpr.kt) | Graphics | solid_notation, manifold, debruijn_tilings | 6 | 11 | 77% |
+| [SolidExpr.kt](../src/jvmMain/kotlin/afield/lang/solidsl/SolidExpr.kt) | Graphics | solid_notation, debruijn_tilings, manifold | 6 | 11 | 77% |
 | [ComputeMesh.kt](../src/jvmMain/kotlin/afield/graphics/render/ComputeMesh.kt) | Graphics | growing_nca | 6 | 10 | 36% |
 | [Structure.kt](../src/jvmMain/kotlin/afield/graphics/vulkan/buffers/Structure.kt) | Graphics | gpu_schema, running_code | 5 | 30 | 35% |
 | [MemoryTools.kt](../src/jvmMain/kotlin/afield/ai/tools/MemoryTools.kt) | AI4 | ai4_tools | 5 | 26 | 29% |
@@ -181,7 +181,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [SolidPointCloudFit.kt](../src/jvmMain/kotlin/afield/lang/solidsl/SolidPointCloudFit.kt) | Graphics | solid_notation | 0 | 10 | 50% |
 | [DrawnMorphDocs.kt](../src/jvmMain/kotlin/afield/audio/synth/DrawnMorphDocs.kt) | Patterns | chain_drawn_morph | 0 | 9 | 59% |
 | [PatSoundDocs.kt](../src/jvmMain/kotlin/afield/audio/synth/PatSoundDocs.kt) | Patterns | chain_drawn_score, sound, chain_drawn_morph | 0 | 9 | 70% |
-| [DeBruijnTiling.kt](../src/jvmMain/kotlin/afield/geometry/path/DeBruijnTiling.kt) | Graphics | debruijn_tilings, penrose_spectra | 0 | 9 | 68% |
+| [DeBruijnTiling.kt](../src/jvmMain/kotlin/afield/geometry/path/DeBruijnTiling.kt) | Graphics | debruijn_tilings | 0 | 9 | 68% |
 | [FieldAdapters.kt](../src/jvmMain/kotlin/afield/geometry/polytope/FieldAdapters.kt) | Polytopes | polytope_examples, chain_polytope_render, agent_transcripts | 0 | 9 | 70% |
 | [SolidExact.kt](../src/jvmMain/kotlin/afield/lang/solidsl/SolidExact.kt) | Graphics | solid_notation | 0 | 9 | 68% |
 | [SimulationClock.kt](../src/jvmMain/kotlin/afield/runtime/lifecycle/SimulationClock.kt) | Workspace | profiling_timeline | 0 | 9 | 43% |
@@ -193,7 +193,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [OpticalFlowOperation.kt](../src/jvmMain/kotlin/afield/media/vision/OpticalFlowOperation.kt) | Imaging | optical_flow | 0 | 8 | 55% |
 | [AudioCurves.kt](../src/jvmMain/kotlin/afield/audio/analysis/AudioCurves.kt) | Audio | audio_curves | 0 | 7 | 73% |
 | [HeadTrackedSpatial.kt](../src/jvmMain/kotlin/afield/audio/synth/HeadTrackedSpatial.kt) | Patterns | pat_spatial | 0 | 7 | 66% |
-| [TilingSpectrum.kt](../src/jvmMain/kotlin/afield/geometry/path/TilingSpectrum.kt) | Graphics | penrose_spectra | 0 | 7 | 77% |
+| [TilingSpectrum.kt](../src/jvmMain/kotlin/afield/geometry/path/TilingSpectrum.kt) | Graphics | debruijn_tilings | 0 | 7 | 77% |
 | [Parameters.kt](../src/jvmMain/kotlin/afield/geometry/polytope/Parameters.kt) | Polytopes | polytope_examples | 0 | 7 | 75% |
 | [Polytope4.kt](../src/jvmMain/kotlin/afield/geometry/polytope/Polytope4.kt) | Polytopes | polytope_examples | 0 | 7 | 83% |
 | [RealizationSolver.kt](../src/jvmMain/kotlin/afield/geometry/polytope/RealizationSolver.kt) | Polytopes | polytope_examples | 0 | 7 | 79% |
@@ -220,7 +220,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Dough.kt](../src/jvmMain/kotlin/afield/audio/synth/Dough.kt) | Synthesis | sound_paths | 0 | 5 | 78% |
 | [mesh.kt](../src/jvmMain/kotlin/afield/geometry/mesh/mesh.kt) | Graphics | mesh_examples | 0 | 5 | 89% |
 | [Tetgen.kt](../src/jvmMain/kotlin/afield/geometry/mesh/tetgen/Tetgen.kt) | Simulation | tetgen | 0 | 5 | 68% |
-| [DeBruijnTiling3D.kt](../src/jvmMain/kotlin/afield/geometry/path/DeBruijnTiling3D.kt) | Graphics | debruijn_tilings_3d | 0 | 5 | 88% |
+| [DeBruijnTiling3D.kt](../src/jvmMain/kotlin/afield/geometry/path/DeBruijnTiling3D.kt) | Graphics | debruijn_tilings | 0 | 5 | 88% |
 | [CeresRealization.kt](../src/jvmMain/kotlin/afield/geometry/polytope/CeresRealization.kt) | Polytopes | polytope_examples, chain_ceres_manifold_contours | 0 | 5 | 75% |
 | [Conway.kt](../src/jvmMain/kotlin/afield/geometry/polytope/Conway.kt) | Polytopes | polytope_examples | 0 | 5 | 64% |
 | [OpaqueRayScene.kt](../src/jvmMain/kotlin/afield/graphics/render/lighting/OpaqueRayScene.kt) | Graphics | direct_lighting | 0 | 5 | 44% |

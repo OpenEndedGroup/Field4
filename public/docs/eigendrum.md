@@ -657,9 +657,10 @@ second.
 `render` gives mode i the frequency f₀√(λᵢ/λ₁) and decay rate α + β(fᵢ/f₀)², so the high modes die
 first, as on a real membrane. Change `alpha` and `beta` for a drier or more ringing head.
 
-The same synthesis runs on any network of masses and springs. [Hearing a Penrose Tiling](penrose_spectra.md)
-builds one from a Penrose tiling's vertices and edges, where a tenth of the modes share a single
-pitch, and plays it through `ModalDrum`.
+The same synthesis runs on any network of masses and springs.
+[Striking the tiling](debruijn_tilings.md#striking-the-tiling) builds one from a Penrose tiling's
+vertices and edges, where a tenth of the modes share a single pitch, and plays it through
+`ModalDrum`.
 
 For a membrane under steady load rather than vibrating, see
 [Pressure membranes](pressure_membranes.md). For playing sound in boxes and the pattern-to-audio

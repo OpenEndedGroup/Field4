@@ -176,10 +176,10 @@ morphing from the bare drum to the harmonic one. Pure CPU.
 
 ### penrose_spectra
 
-**Strike a Penrose tiling.** The starting point of [Hearing a Penrose Tiling](penrose_spectra.md):
+**Strike a Penrose tiling.** The starting point of [The tiling as a graph](debruijn_tilings.md#the-tiling-as-a-graph):
 exact counts of the tiling's zero-energy states against 81 − 50τ, beside a square lattice and a
 jittered tiling; the confined states drawn on the tiles; the density of states and its gap; a sweep
-over symmetry, disorder and offset sum; three strikes with players; two sliders that recount as you
+over symmetry, disorder and offset sum; three strikes drawn as energy against pitch; two sliders that recount as you
 drag; and a live `ModalDrum` voice (launch it). Pure CPU.
 
 ![Two grey Penrose tilings, one with orange discs on its three-edged vertices, one with a single ring of orange and blue discs](assets/penrose_spectra/states.png)
@@ -1353,7 +1353,7 @@ and counts shared edges; *slider* moves one family of lines; *offset sweep* anim
 ### debruijn_tilings_3d_demo
 
 The same multigrid with planes, the companion to
-[Penrose tilings in three dimensions](debruijn_tilings_3d.md). *Triacontahedron* welds the twenty
+[Penrose tilings in three dimensions](debruijn_tilings.md#penrose-tilings-in-three-dimensions). *Triacontahedron* welds the twenty
 Ammann rhombohedra of one plane per family through Manifold beside their convex hull; *patch* draws
 the cells nearest the centre of a 3D Penrose tiling and prints the prolate/oblate ratio against
 radius; *slices* cuts the tiling across 5-, 3- and 2-fold axes into FLine polygons; *offset sweep*

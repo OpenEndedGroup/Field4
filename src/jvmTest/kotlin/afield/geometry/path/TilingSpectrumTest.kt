@@ -15,7 +15,7 @@ import kotlin.test.assertTrue
  * Pins the tight-binding spectrum of de Bruijn tilings' vertex graphs: the Penrose confined-state
  * fraction 81 − 50τ (Arai, Tokihiro, Fujiwara & Kohmoto, Phys. Rev. B 38, 1621, 1988), its
  * controls, the confined states themselves, and the spring-network voice built on them. The
- * numbers are the ones `public/docs/penrose_spectra.md` prints.
+ * numbers are the ones `public/docs/debruijn_tilings.md` prints in The tiling as a graph.
  */
 class TilingSpectrumTest {
     private val tau = (1 + sqrt(5.0)) / 2
