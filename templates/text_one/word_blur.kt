@@ -21,8 +21,8 @@ val player = try {
         progress.update(n.toDouble() / total, "$n / $total: $text")
     }
 } finally {
-    progress.close()
-}
+        progress.close()
+    }
 prop<ReadingExample>(exampleSix) = ReadingExample(
     "6 · Words becoming weather",
     "Slow word-local Gaussian blur: emerge from a soft cloud, hold in focus, then dissolve again. Structural lines and other words stay sharp.",

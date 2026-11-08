@@ -14,7 +14,10 @@ val graph = readingDiagram {
         scale = .7f
         word("quiet").style { italic = true }
         word("water").style { bold = true }
-        word("light").style { font = sans; weight = 300.0 }
+        word("light").style {
+            font = sans
+            weight = 300.0
+        }
     }
     // Each selection stays in the full shaped run, including kerning, inline fonts and tracking.
     rectangle("whole-ink", sentence.inkBounds, padding = .012f) {
@@ -37,9 +40,13 @@ val graph = readingDiagram {
         color = vec(1f, 1f, 1f, .55f)
     }
     // Author arbitrary curves in font units. The frame supplies the glyphs' exact live transform.
-    textPath("cap-ruler", sentence, shape = {
-        FLine().moveTo(advance.left, capHeight + 12f).lineTo(advance.right, capHeight + 12f)
-    }) {
+    textPath(
+        "cap-ruler",
+        sentence,
+        shape = {
+            FLine().moveTo(advance.left, capHeight + 12f).lineTo(advance.right, capHeight + 12f)
+        },
+    ) {
         dashed(.015f, .35f)
         width = .0007f
         color = vec(1f, 1f, 1f, .30f)
@@ -80,8 +87,8 @@ val player = try {
         progress.update(n.toDouble() / total, "$n / $total: $text")
     }
 } finally {
-    progress.close()
-}
+        progress.close()
+    }
 prop<ReadingExample>(exampleFive) = ReadingExample(
     "5 · A room for words",
     "Inline italic, bold and alternate faces; repeated words in different fonts; numeric weights; live ink and body boxes, baseline attachments and a cap-height ruler.",

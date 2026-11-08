@@ -2,6 +2,8 @@
 """Emit real Field operation transcripts; create documents through Field, never by editing EDN."""
 import argparse
 import json
+import os
+import subprocess
 import re
 import textwrap
 from pathlib import Path
@@ -68,6 +70,13 @@ def main():
             'docs': [{'page': 'sentence_diagrams.md', 'why': 'Parser setup, four diagrams, mixed-font typography and the reading-space DSL.'}],
             'operations': create + launch,
         }, Dumper=SourceDumper, allow_unicode=True, sort_keys=False, width=100))
+        # Use the same Kotlin and GLSL formatter as the landing guard. This includes
+        # the injected StereoViews ABI, rather than just the handwritten templates.
+        wrapper = repo / ('gradlew.bat' if os.name == 'nt' else 'gradlew')
+        subprocess.run([
+            str(wrapper), 'formatBoxCode',
+            f'--args="{args.transcript.resolve().as_posix()}"',
+        ], cwd=repo, check=True)
         print(args.transcript)
     args.output.mkdir(parents=True, exist_ok=True)
     for name, operations in [('create', create), ('launch', launch), ('stop', stop)]:
