@@ -1,0 +1,166 @@
+name: gpu_physarum_networks
+description: >
+  Physarum as a transport-network designer (Tero et al., Science 2010). Food sources are the dots
+  inside a frame named "network" on the drawing layer: the slime box reads them through
+  `notation.space`, hands them to a GPU ShaderPhysarumSystem as `settings.food`, and follows every
+  edit with `notation.onChange`, so drawing, dragging or erasing a dot moves the food while the
+  network grows. Agents that reach the edge re-enter at a random food source (`recycle`), so the
+  agent count is a budget of road. A measure box reads the trail back every few seconds, extracts
+  the network (`TransportNetwork.extract`) and prints Tero's three numbers (cost against the
+  minimum spanning tree, stretch, fault tolerance) beside the MST and Delaunay controls, with a
+  slider for the trail's half-life. Five boxes: renderer, map (draws the frame and a first set of
+  dots), slime, measure, reset. Requires a GPU/Vulkan window; capture with
+  `native-screenshot <path> --uid net_renderer`. Design: dev_docs/GPU_STIGMERGY_FIELD.md.
+docs:
+  - page: alife_examples.md
+    why: "Section 7's 'Designing a network' subsection: the map, slime and measure boxes of this document."
+operations:
+  - create:
+      box: net_renderer
+      name: renderer
+      frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.graphics.vulkan.util.Options
+
+          prop<Window>(window)
+          prop<Renderer>(renderer)
+          Options.enableHDR = false
+          Options.profiling = false
+          // once: re-running this box keeps the existing window and renderer
+          once.renderer {
+              window = Window("Physarum networks", initialDimensions = Rect(80.0, 80.0, 640.0, 640.0))
+              Renderer(window)
+          }
+          println("renderer ready")
+          // the frame loop runs as this box's coroutine; stopping the box stops rendering
+          start(renderer::run)
+  - create:
+      box: net_map
+      name: map
+      frame: { x: 40.0, y: 200.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          /*
+          The map: a frame named "network" on the drawing layer (Alt+D) and a first set of food
+          sources as dots inside it. The frame is the whole trail field, so a dot's place in the
+          frame is its place in the field. Draw more dots (any ellipse) inside the frame, drag
+          them, delete them: the slime box follows. Re-running this box puts back the dots it
+          drew and leaves yours alone.
+          */
+          val left = 400.0
+          val top = 200.0
+          val side = 400.0
+          val dots = listOf(
+              0.22 to 0.30,
+              0.38 to 0.18,
+              0.62 to 0.22,
+              0.80 to 0.35,
+              0.30 to 0.52,
+              0.52 to 0.45,
+              0.72 to 0.58,
+              0.20 to 0.75,
+              0.45 to 0.70,
+              0.62 to 0.82,
+              0.84 to 0.78,
+              0.50 to 0.30,
+          )
+          notation {
+              frame("network", left, top, side, side) {
+                  for ((u, v) in dots) ellipse(left + u * side - 6, top + v * side - 6, 12, 12, fill = "#ffd8a8")
+              }
+          }
+          println("${dots.size} food sources drawn in the frame \"network\"")
+  - create:
+      box: net_slime
+      name: slime
+      frame: { x: 400.0, y: 40.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          /*
+          Jones' Physarum on a 512 x 512 trail, fed at the dots in the frame "network". `exclusive`
+          is Jones' one-agent-per-pixel rule; `recycle` gives the field an edge, and an agent that
+          reaches it re-enters at a random food source, so the 4000 agents are a budget of road:
+          fewer give a tree between the dots, more give loops.
+          */
+          val side = 512
+          // the frame, read as trail pixels: x across, and y up, as the window draws the field
+          val map = notation.space("network", x = 0.0..side.toDouble(), y = side.toDouble()..0.0)
+
+          fun dots() = map.marks.filter { it.kind == MarkType.ELLIPSE }.map { map.toSpace(it.center) }
+
+          prop<ShaderPhysarumSystem>(physarum) = ShaderPhysarumSystem() {
+              width = side
+              height = side
+              agentCount = 4000
+              exclusive = true
+              recycle = true
+              food = dots()
+              exposure = 0.25f
+          }
+          // steps once a frame and draws the trail
+          physarum.installInto()
+
+          // every edit to the drawing moves the food
+          notation.onChange { physarum.settings.food = dots() }
+          println("${physarum.settings.food.size} food sources, ${physarum.settings.agentCount} agents")
+  - create:
+      box: net_measure
+      name: measure
+      frame: { x: 760.0, y: 40.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          /*
+          Every 120 frames: read the trail back, extract the network between the food sources and
+          score it as Tero did, beside the minimum spanning tree and the Delaunay triangulation of
+          the same dots. A road is a pixel at a quarter of the level an agent standing on it every
+          frame would reach. The slider sets the trail's half-life: shorter thins the network
+          towards a tree, longer lets it hold loops.
+          */
+          slider("half-life (frames)", min = 2.0, max = 40.0, step = 0.5, initialValue = 8.3) { h ->
+              physarum.trail.settings.halfLifeFrames = vec(h, h, h, h)
+          }
+
+          frames {
+              while (frame()) {
+                  val pending = physarum.trail.read()
+                  while (!pending.isDone && frame()) {}
+                  if (!pending.isDone) break
+                  val trail = pending.get().channel(0)
+                  val food = physarum.settings.food
+                  val decay = physarum.trail.decayFactors().x
+                  val network = TransportNetwork.extract(trail, food, threshold = 0.25 / (1.0 - decay))
+                  val scores = listOf(
+                      network.score("physarum"),
+                      TransportNetwork.mst(food).score("MST"),
+                      TransportNetwork.delaunay(food).score("Delaunay"),
+                  )
+                  display("scores", "<pre>" + NetworkScore.table(scores) + "</pre>")
+                  // flipped, so it reads the same way up as the drawing and the window
+                  showImg(
+                      network.drawOver(trail.colormap("magma", 0f, (1.0 / (1.0 - decay)).toFloat())).flipY(),
+                      channel = "network",
+                      maxSide = 512,
+                  )
+                  repeat(120) { frame() }
+              }
+          }
+  - create:
+      box: net_reset
+      name: reset
+      frame: { x: 400.0, y: 200.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          // empty the trail and scatter the agents again; the food stays where it is drawn
+          physarum.trail.clear()
+          physarum.resetAgents(System.nanoTime())
+          println("reset")
+  - connect: { parent: net_renderer, child: net_slime }
+  - connect: { parent: net_slime, child: net_measure }
+  - connect: { parent: net_slime, child: net_reset }
+  - execute: { box: net_map, property: code }
+  - await: {}
+  - launch: { box: net_renderer, property: code, strand: renderer }  # renderer first — it owns the loop
+  - await: {}
+  - launch: { box: net_slime, property: code }
+  - await: {}
