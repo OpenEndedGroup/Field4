@@ -9,12 +9,16 @@ three-dimensional Penrose tiling.
 
 The three-dimensional grid method is J. E. S. Socolar and P. J. Steinhardt's "generalized dual
 method" (["Quasicrystals with arbitrary orientational symmetry"](https://doi.org/10.1103/PhysRevB.32.5547),
-*Phys. Rev. B* 32, 5547, 1985). P. Kramer and R. Neri reached the same tiling a year earlier by
-projecting a six-dimensional cubic lattice
+*Phys. Rev. B* 32, 5547, 1985;
+[free PDF from Steinhardt's site](https://paulsteinhardt.org/wp-content/uploads/2020/10/ArbSymQC.pdf)).
+P. Kramer and R. Neri reached the same tiling a year earlier by projecting a six-dimensional cubic
+lattice
 (["On periodic and non-periodic space fillings of E^m obtained by projection"](https://doi.org/10.1107/S0108767384001203),
 *Acta Cryst.* A40, 580, 1984). Socolar and Steinhardt's follow-up,
 ["Quasicrystals. II. Unit-cell configurations"](https://doi.org/10.1103/PhysRevB.34.617)
-(*Phys. Rev. B* 34, 617, 1986), works through the arrangements of cells these methods produce.
+(*Phys. Rev. B* 34, 617, 1986;
+[free PDF](https://paulsteinhardt.org/wp-content/uploads/2020/10/QuasiPartII.pdf)), works through the arrangements of cells these methods
+produce.
 
 ## Twenty rhombohedra make a triacontahedron
 
