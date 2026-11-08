@@ -171,6 +171,12 @@ private fun List<Vec3>.anchor(a: ListAnchor): Vec3 = when (a) {
 private fun List<Vec2>.anchor(a: FractionAlongAnchor): Vec2 = Anchors2.fractionAlong(a.t)(this)
 private fun List<Vec3>.anchor(a: FractionAlongAnchor): Vec3 = Anchors3.fractionAlong(a.t)(this)
 
+// A list of points broadcasts arithmetic against a number and against the other vector type:
+// `pts * 2` scales every point and `pts + vec(1, 2, 3)` lifts a List<Vec2> into 3D. There is
+// deliberately no `+` or `-` between a List<Vec2> and a Vec2 or List<Vec2> (or a List<Vec3> and
+// a Vec3 or List<Vec3>): those are stdlib's, `pts + p` appends and `a + b` concatenates, as any
+// Kotlin reader expects. Shadowing them made `samples + samples.last()` move every point and
+// `controlPoints + wrap` throw. To move a list, `pts.map { it + v }`.
 @JvmName("plusVec2ListScalar")
 operator fun List<Vec2>.plus(s: Number): List<Vec2> = map { it.plusScalar(s.toFloat()) }
 @JvmName("minusVec2ListScalar")
@@ -179,10 +185,6 @@ operator fun List<Vec2>.minus(s: Number): List<Vec2> = map { it.minusScalar(s.to
 operator fun List<Vec2>.times(s: Number): List<Vec2> = map { Vec2(it).mul(s.toFloat()) }
 @JvmName("divVec2ListScalar")
 operator fun List<Vec2>.div(s: Number): List<Vec2> = map { Vec2(it).div(s.toFloat()) }
-@JvmName("plusVec2ListVec2")
-operator fun List<Vec2>.plus(v: Vec2): List<Vec2> = map { Vec2(it).add(v) }
-@JvmName("minusVec2ListVec2")
-operator fun List<Vec2>.minus(v: Vec2): List<Vec2> = map { Vec2(it).sub(v) }
 @JvmName("timesVec2ListVec2")
 operator fun List<Vec2>.times(v: Vec2): List<Vec2> = map { it.mulEach(v) }
 @JvmName("divVec2ListVec2")
@@ -195,10 +197,6 @@ operator fun List<Vec2>.minus(v: Vec3): List<Vec3> = map { it.minus(v) }
 operator fun List<Vec2>.times(v: Vec3): List<Vec3> = map { it.mul(v) }
 @JvmName("divVec2ListVec3")
 operator fun List<Vec2>.div(v: Vec3): List<Vec3> = map { it.div(v) }
-@JvmName("plusVec2ListVec2List")
-operator fun List<Vec2>.plus(v: List<Vec2>): List<Vec2> = zipSame(this, v) { a, b -> Vec2(a).add(b) }
-@JvmName("minusVec2ListVec2List")
-operator fun List<Vec2>.minus(v: List<Vec2>): List<Vec2> = zipSame(this, v) { a, b -> Vec2(a).sub(b) }
 @JvmName("timesVec2ListVec2List")
 operator fun List<Vec2>.times(v: List<Vec2>): List<Vec2> = zipSame(this, v) { a, b -> a.mulEach(b) }
 @JvmName("divVec2ListVec2List")
@@ -236,10 +234,6 @@ operator fun List<Vec3>.minus(s: Number): List<Vec3> = map { it.minusScalar(s.to
 operator fun List<Vec3>.times(s: Number): List<Vec3> = map { Vec3(it).mul(s.toFloat()) }
 @JvmName("divVec3ListScalar")
 operator fun List<Vec3>.div(s: Number): List<Vec3> = map { Vec3(it).div(s.toFloat()) }
-@JvmName("plusVec3ListVec3")
-operator fun List<Vec3>.plus(v: Vec3): List<Vec3> = map { Vec3(it).add(v) }
-@JvmName("minusVec3ListVec3")
-operator fun List<Vec3>.minus(v: Vec3): List<Vec3> = map { Vec3(it).sub(v) }
 @JvmName("timesVec3ListVec3")
 operator fun List<Vec3>.times(v: Vec3): List<Vec3> = map { it.mulEach(v) }
 @JvmName("divVec3ListVec3")
@@ -252,10 +246,6 @@ operator fun List<Vec3>.minus(v: Vec2): List<Vec3> = map { it.minus(v) }
 operator fun List<Vec3>.times(v: Vec2): List<Vec3> = map { it.mul(v) }
 @JvmName("divVec3ListVec2")
 operator fun List<Vec3>.div(v: Vec2): List<Vec3> = map { it.div(v) }
-@JvmName("plusVec3ListVec3List")
-operator fun List<Vec3>.plus(v: List<Vec3>): List<Vec3> = zipSame(this, v) { a, b -> Vec3(a).add(b) }
-@JvmName("minusVec3ListVec3List")
-operator fun List<Vec3>.minus(v: List<Vec3>): List<Vec3> = zipSame(this, v) { a, b -> Vec3(a).sub(b) }
 @JvmName("timesVec3ListVec3List")
 operator fun List<Vec3>.times(v: List<Vec3>): List<Vec3> = zipSame(this, v) { a, b -> a.mulEach(b) }
 @JvmName("divVec3ListVec3List")
