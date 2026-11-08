@@ -679,6 +679,16 @@ renderer, including glyph outlines. No parser service, model download or GPU is 
 
 [Open →](offline.html?file=assets/agent_transcripts/sentence_diagrams/metadata.edn)
 
+### dependency_length
+
+[Dependency length in real texts](dependency_length.md): the Gettysburg Address, the first chapters
+of Pride and Prejudice and Moby-Dick, Shakespeare's first ten sonnets and Genesis 1, measured the way
+Futrell, Mahowald and Gibson measured 37 languages. One sentence is drawn beside random reorderings of
+its tree, the speech as small multiples with each sentence's ratio to chance, and every sentence's
+total against its length. The parses are retained, so no parser is needed.
+
+[Open →](offline.html?file=assets/agent_transcripts/dependency_length/metadata.edn)
+
 ### kolakoski_euclid
 
 **Kolakoski counts, Euclid places.** A Euclidean rhythm spreads a density you chose in advance as
