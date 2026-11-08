@@ -175,7 +175,31 @@ class DrumModes(
         alpha: Double = 1.5,
         beta: Double = 0.25,
         only: Int = -1,
-    ): FloatArray = renderModalStrike(frequencies(fundamental), amplitudes, fundamental, seconds, sampleRate, alpha, beta, only)
+    ): FloatArray {
+        val n = (seconds * sampleRate).toInt()
+        val out = FloatArray(n)
+        val f = frequencies(fundamental)
+        for (k in 0 until count) {
+            if (only >= 0 && k != only) continue
+            val a = if (only >= 0) 1.0 else amplitudes[k]
+            if (f[k] >= sampleRate * 0.45 || a == 0.0) continue
+            val sigma = alpha + beta * (f[k] / fundamental).let { it * it }
+            val w = 2 * PI * f[k] / sampleRate
+            val decay = exp(-sigma / sampleRate)
+            // recursive oscillator: y[t] = 2 r cos(w) y[t-1] - r² y[t-2]
+            val c = 2 * decay * cos(w); val r2 = decay * decay
+            var y1 = 0.0; var y2 = -a * decay * sin(w)
+            for (t in 0 until n) {
+                val y = c * y1 - r2 * y2
+                y2 = y1; y1 = y
+                out[t] += y.toFloat()
+            }
+        }
+        var peak = 0f
+        for (v in out) peak = max(peak, abs(v))
+        if (peak > 0f) for (i in out.indices) out[i] *= 0.9f / peak
+        return out
+    }
 
     /**
      * The modes as a [Table], one row each: index, λ, ratio to the fundamental, frequency, and an
@@ -263,46 +287,6 @@ class DrumModes(
         }
         return bins.values.toList()
     }
-}
-
-/**
- * Modal synthesis shared by [DrumModes.render] and [GraphModes.render]: mode k sounds at [f]`[k]`
- * Hz with amplitude [amplitudes]`[k]` and decay rate [alpha] + [beta]·(fₖ/[fundamental])², summed
- * by a recursive oscillator per mode and peak-normalised to 0.9. With [only] ≥ 0, that mode alone
- * at unit amplitude.
- */
-internal fun renderModalStrike(
-    f: DoubleArray,
-    amplitudes: DoubleArray,
-    fundamental: Double,
-    seconds: Double,
-    sampleRate: Int,
-    alpha: Double,
-    beta: Double,
-    only: Int,
-): FloatArray {
-    val n = (seconds * sampleRate).toInt()
-    val out = FloatArray(n)
-    for (k in f.indices) {
-        if (only >= 0 && k != only) continue
-        val a = if (only >= 0) 1.0 else amplitudes[k]
-        if (f[k] >= sampleRate * 0.45 || a == 0.0) continue
-        val sigma = alpha + beta * (f[k] / fundamental).let { it * it }
-        val w = 2 * PI * f[k] / sampleRate
-        val decay = exp(-sigma / sampleRate)
-        // recursive oscillator: y[t] = 2 r cos(w) y[t-1] - r² y[t-2]
-        val c = 2 * decay * cos(w); val r2 = decay * decay
-        var y1 = 0.0; var y2 = -a * decay * sin(w)
-        for (t in 0 until n) {
-            val y = c * y1 - r2 * y2
-            y2 = y1; y1 = y
-            out[t] += y.toFloat()
-        }
-    }
-    var peak = 0f
-    for (v in out) peak = max(peak, abs(v))
-    if (peak > 0f) for (i in out.indices) out[i] *= 0.9f / peak
-    return out
 }
 
 /**

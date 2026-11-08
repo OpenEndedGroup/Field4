@@ -7,8 +7,13 @@ package afield.audio.modal
 
 import afield.geometry.path.GraphSpectrum
 import afield.geometry.path.TilingGraph
+import kotlin.math.PI
+import kotlin.math.abs
+import kotlin.math.cos
 import kotlin.math.exp
 import kotlin.math.hypot
+import kotlin.math.max
+import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
@@ -69,9 +74,17 @@ class GraphModes(
     /** The ratio of the E = 0 pitch to the lowest mode: √(stiffness / λ₀). */
     val zeroRatio: Double get() = sqrt(stiffness / lambda[0])
 
-    /** Frequencies in Hz when the lowest mode sounds at [fundamental]. */
+    /**
+     * Frequencies in Hz with the E = 0 pitch at [zeroHz]: mode i sounds at `zeroHz·√(λᵢ/stiffness)`.
+     * Pinning the pitch to an energy rather than to the lowest mode means two graphs built with the
+     * same [stiffness] put the same energy at the same pitch.
+     */
     @JvmOverloads
-    fun frequencies(fundamental: Double = 110.0): DoubleArray = DoubleArray(count) { fundamental * sqrt(lambda[it] / lambda[0]) }
+    fun frequencies(zeroHz: Double = 220.0): DoubleArray = DoubleArray(count) { zeroHz * sqrt(lambda[it] / stiffness) }
+
+    /** The lowest mode's frequency when the E = 0 pitch is [zeroHz]: the `fundamental` to give [ModalDrum]. */
+    @JvmOverloads
+    fun fundamentalFor(zeroHz: Double = 220.0): Double = zeroHz / zeroRatio
 
     /** Mode amplitudes for a strike on vertex [v], heard at [v]: ψᵢ(v)². */
     fun strikeVertex(v: Int): DoubleArray = DoubleArray(count) { val a = vecs[order[it]][v]; a * a }
@@ -98,23 +111,23 @@ class GraphModes(
     fun zeroShare(v: Int, tolerance: Double = 1e-8): Double {
         val a = strikeVertex(v)
         var zero = 0.0
-        for (k in 0 until count) if (kotlin.math.abs(energies[k]) < tolerance) zero += a[k]
+        for (k in 0 until count) if (abs(energies[k]) < tolerance) zero += a[k]
         return zero / a.sum()
     }
 
     /**
      * One strike rendered offline, the same synthesis as [DrumModes.render]: mode i at
-     * `fundamental·√(λᵢ/λ₀)` Hz, decaying at [alpha] + [beta]·ratio², peak-normalised to 0.9.
+     * [frequencies]`(zeroHz)`, decaying at [alpha] + [beta]·(fᵢ/zeroHz)², peak-normalised to 0.9.
      */
     @JvmOverloads
     fun render(
         amplitudes: DoubleArray,
-        fundamental: Double = 110.0,
+        zeroHz: Double = 220.0,
         seconds: Double = 2.5,
         sampleRate: Int = 44100,
         alpha: Double = 1.5,
         beta: Double = 0.25,
-    ): FloatArray = renderModalStrike(frequencies(fundamental), amplitudes, fundamental, seconds, sampleRate, alpha, beta, -1)
+    ): FloatArray = renderModalStrike(frequencies(zeroHz), amplitudes, zeroHz, seconds, sampleRate, alpha, beta, -1)
 }
 
 /**
@@ -130,3 +143,43 @@ fun TilingGraph.springModes(stiffness: Double = (0 until vertexCount).maxOf { de
 @JvmOverloads
 fun GraphSpectrum.springModes(stiffness: Double = (0 until graph.vertexCount).maxOf { graph.degree(it) } + 1.0): GraphModes =
     GraphModes(this, stiffness)
+
+/**
+ * Modal synthesis for [GraphModes.render], the same recursive oscillators as [DrumModes.render]: mode k sounds at [f]`[k]`
+ * Hz with amplitude [amplitudes]`[k]` and decay rate [alpha] + [beta]·(fₖ/[fundamental])², summed
+ * by a recursive oscillator per mode and peak-normalised to 0.9. With [only] ≥ 0, that mode alone
+ * at unit amplitude.
+ */
+internal fun renderModalStrike(
+    f: DoubleArray,
+    amplitudes: DoubleArray,
+    fundamental: Double,
+    seconds: Double,
+    sampleRate: Int,
+    alpha: Double,
+    beta: Double,
+    only: Int,
+): FloatArray {
+    val n = (seconds * sampleRate).toInt()
+    val out = FloatArray(n)
+    for (k in f.indices) {
+        if (only >= 0 && k != only) continue
+        val a = if (only >= 0) 1.0 else amplitudes[k]
+        if (f[k] >= sampleRate * 0.45 || a == 0.0) continue
+        val sigma = alpha + beta * (f[k] / fundamental).let { it * it }
+        val w = 2 * PI * f[k] / sampleRate
+        val decay = exp(-sigma / sampleRate)
+        // recursive oscillator: y[t] = 2 r cos(w) y[t-1] - r² y[t-2]
+        val c = 2 * decay * cos(w); val r2 = decay * decay
+        var y1 = 0.0; var y2 = -a * decay * sin(w)
+        for (t in 0 until n) {
+            val y = c * y1 - r2 * y2
+            y2 = y1; y1 = y
+            out[t] += y.toFloat()
+        }
+    }
+    var peak = 0f
+    for (v in out) peak = max(peak, abs(v))
+    if (peak > 0f) for (i in out.indices) out[i] *= 0.9f / peak
+    return out
+}

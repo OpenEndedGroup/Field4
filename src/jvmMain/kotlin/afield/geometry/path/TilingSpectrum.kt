@@ -180,22 +180,23 @@ class TilingGraph(
         }
         for (h in 1..maxHops) {
             val s = order.filter { dist[it] <= h }
-            val index = HashMap<Int, Int>()
-            s.forEachIndexed { i, v -> index[v] = i }
+            val slot = HashMap<Int, Int>()
+            s.forEachIndexed { i, v -> slot[v] = i }
             // M = A restricted to rows S ∪ ∂S, columns S; then (M^T M) psi = 0 is the condition.
             val rows = order.filter { dist[it] <= h + 1 }
             val m = s.size
             val mtm = DMatrixRMaj(m, m)
             for (u in rows) {
-                val cols = neighbours[u].mapNotNull { index[it] }
-                for (i in cols) for (j in cols) mtm[i, j] = mtm[i, j] + 1.0
+                val cols = ArrayList<Int>()
+                for (w in neighbours[u]) slot[w]?.let { cols.add(it) }
+                for (i in cols) for (j in cols) mtm.set(i, j, mtm.get(i, j) + 1.0)
             }
             val (values, vecs) = symmetricEigen(mtm, true)
             val nullBasis = values.indices.filter { values[it] < tolerance }.map { vecs!![it] }
             if (nullBasis.isEmpty()) continue
             // The state in the null space with the most weight on `center`: project e_center onto it.
             val psi = DoubleArray(m)
-            val c = index.getValue(center)
+            val c = slot.getValue(center)
             for (q in nullBasis) for (i in 0 until m) psi[i] += q[c] * q[i]
             if (abs(psi[c]) < 1e-6) continue
             val peak = psi.maxOf { abs(it) }
@@ -311,6 +312,40 @@ class TilingGraph(
                 Array(px.size) { adj[it].distinct().sorted().toIntArray() },
                 edge,
             )
+        }
+    }
+}
+
+/**
+ * A finite-size fit of E = 0 state counts: `zeros ≈ bulk·N + rim·√N` over patches of N vertices.
+ * A patch's rim holds about √N vertices and can host zero states of its own, so the raw fraction
+ * of a finite patch mixes the two; [bulk] is the fraction an infinite tiling would have.
+ *
+ * @param bulk the zero states per vertex in the bulk.
+ * @param rim the zero states per √N, from the patch's edge.
+ * @param counts the (vertices, zero states) pairs the fit was made from.
+ */
+class ZeroModeFit(val bulk: Double, val rim: Double, val counts: List<Pair<Int, Int>>) {
+    /** The largest difference between a count and the fit, in states. */
+    val worstResidual: Double get() = counts.maxOf { (n, z) -> abs(z - bulk * n - rim * sqrt(n.toDouble())) }
+
+    override fun toString() = "bulk %.4f, rim %.3f·√N".format(bulk, rim)
+
+    companion object {
+        /** Least-squares fit of [TilingGraph.zeroModeCount] over [graphs] (at least two sizes). */
+        fun of(graphs: List<TilingGraph>): ZeroModeFit = ofCounts(graphs.map { it.vertexCount to it.zeroModeCount() })
+
+        /** The same fit from (vertices, zero states) pairs already counted. */
+        fun ofCounts(counts: List<Pair<Int, Int>>): ZeroModeFit {
+            require(counts.size >= 2) { "need at least two patch sizes" }
+            // Normal equations for z = a n + b sqrt(n).
+            var nn = 0.0; var ns = 0.0; var ss = 0.0; var zn = 0.0; var zs = 0.0
+            for ((n, z) in counts) {
+                val sq = sqrt(n.toDouble())
+                nn += n.toDouble() * n; ns += n * sq; ss += n.toDouble(); zn += z.toDouble() * n; zs += z * sq
+            }
+            val det = nn * ss - ns * ns
+            return ZeroModeFit((zn * ss - zs * ns) / det, (nn * zs - ns * zn) / det, counts)
         }
     }
 }
