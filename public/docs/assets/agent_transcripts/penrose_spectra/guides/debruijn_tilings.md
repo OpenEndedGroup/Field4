@@ -3,4 +3,4 @@ docs: debruijn_tilings/
 ---
 # Penrose and Other Quasiperiodic Tilings
 
-Where deBruijnTiling and its parameters are explained.
+The page these boxes illustrate (The tiling as a graph), and where deBruijnTiling and its parameters are explained.

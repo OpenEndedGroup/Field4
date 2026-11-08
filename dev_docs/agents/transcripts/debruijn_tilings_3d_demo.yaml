@@ -9,8 +9,8 @@ description: >
   welded and trimmed through Manifold. Replay with field_run_transcript and run each box; the
   operations omit inline code, so each runs its stored code property.
 docs:
-  - page: debruijn_tilings_3d.md
-    why: "The page these boxes illustrate."
+  - page: debruijn_tilings.md
+    why: "The page these boxes illustrate (Penrose tilings in three dimensions)."
 operations:
   - create:
       box: debruijn3d_triacontahedron
