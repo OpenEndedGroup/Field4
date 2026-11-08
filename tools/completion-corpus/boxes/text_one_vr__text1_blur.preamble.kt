@@ -1,9 +1,21 @@
+import afield.graphics.vulkan.buffers.*
+import afield.document.context.*
+import afield.graphics.render.*
+import afield.graphics.scene.*
+import afield.graphics.shader.*
+import arrow.core.left
+import arrow.core.right
+import java.nio.*
 import afield.graphics.vulkan.util.Window
 import afield.graphics.vulkan.Renderer
 import afield.graphics.vulkan.targets.MultiviewStereoTarget
-var Box.blurSource by Inheritance<Box>() /**/
-val Once.blurSource by Onceing<Box>() /**/
-val Why.blurSource by Whying() /**/
+var Box.mediumHorizontalFactory by Inheritance<afield.graphics.scene.reading.DiagramModuleFactory>() /**/
+val Once.mediumHorizontalFactory by Onceing<afield.graphics.scene.reading.DiagramModuleFactory>() /**/
+val Why.mediumHorizontalFactory by Whying() /**/
+/*supermap*/ class MappedStructure {;     lateinit var tri : IntBuffer; ; }; fun Mesh.set(numVert : Int, numTriangle : Int = 0, builder : MappedStructure.() -> Unit = {}) {;     this.resize(numVert, numTriangle);     val mesh = this;     MappedStructure().apply {;          mesh.t?.mapAndWrite_ints { tri = this ; builder() } ;    }; }
+/*graphics-pc-structure:tapStep*/ var Structure.tapStep by Structure.FromStructure<Any>() // XY step in output pixels, kernel radius and gain
+/*graphics-pc-binding:tapStep*/ var Mesh.tapStep by Mesh.BoundFromStructure<afield.math.linalg.Vector4f>() // XY step in output pixels, kernel radius and gain
+/*graphics-pc-binding-group:tapStep*/ var MeshGroup.tapStep by MeshGroup.BoundFromStructure<afield.math.linalg.Vector4f>() // XY step in output pixels, kernel radius and gain
 var Box.window by Inheritance<Window>() /*from:text1_context*/ /**/
 val Once.window by Onceing<Window>() /*from:text1_context*/ /**/
 val Why.window by Whying() /*from:text1_context*/ /**/
