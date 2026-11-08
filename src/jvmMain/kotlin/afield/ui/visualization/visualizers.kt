@@ -208,6 +208,7 @@ private fun <T> ControlGroupBuilder.arrayControl(
     fromValue: (T) -> List<Double>,
     html: (id: String, values: List<Double>) -> String,
     onUpdate: (T) -> Unit,
+    tooltip: String? = null,
     shape: (ControllerControl) -> ControllerControl = { it }
 ): ControlValueHandle<T> = addControl(
     type,
@@ -220,7 +221,8 @@ private fun <T> ControlGroupBuilder.arrayControl(
         html(id, values) to shape(ControllerControl(id = id, type = type, label = label, text = encodeValues(values)))
     },
     read = { control -> decodeValues(control.text, size)?.let(toValue) },
-    write = { old, next -> old.copy(text = encodeValues(sanitize(fromValue(next)))) }
+    write = { old, next -> old.copy(text = encodeValues(sanitize(fromValue(next)))) },
+    tooltip = tooltip
 )
 
 /** The square drawing surface a polar control draws into; `arrayControls.js` fills it in. */
@@ -259,6 +261,7 @@ private fun controlShell(kind: String, id: String, label: String, attributes: St
  * @param polar draw the bars as wedges around a circle — angle picks the bar, distance from the
  *   centre sets its value — for a step sequence that reads as a loop
  * @param size width and height of the polar dial in pixels
+ * @param tooltip what the bars control, shown on hover
  * @param onUpdate called with every bar's value, left to right, as the bars change
  */
 fun ControlGroupBuilder.multiSlider(
@@ -271,6 +274,7 @@ fun ControlGroupBuilder.multiSlider(
     height: Int = 96,
     polar: Boolean = false,
     size: Int = 240,
+    tooltip: String? = null,
     onUpdate: (List<Double>) -> Unit
 ): ArrayControlHandle<List<Double>> {
     require(count in 1..512) { "multiSlider count must be between 1 and 512" }
@@ -284,7 +288,7 @@ fun ControlGroupBuilder.multiSlider(
             if (polar) polarSurface("multislider-visual", size)
             else """<svg class="array-visual multislider-visual" viewBox="0 0 $count 1" preserveAspectRatio="none" style="height:${height}px"></svg>"""
         )
-    }, onUpdate) { it.copy(min = min, max = max, step = step, columns = count, polar = polar) })
+    }, onUpdate, tooltip) { it.copy(min = min, max = max, step = step, columns = count, polar = polar) })
 }
 
 /**
@@ -307,6 +311,7 @@ fun ControlGroupBuilder.multiSlider(
  * @param initialValue cells used when no cached value exists; missing cells are off
  * @param polar draw rows as rings (row 0 outermost) and columns as sectors, clockwise from the top
  * @param size width and height of the polar dial in pixels
+ * @param tooltip what the grid controls, shown on hover
  * @param onUpdate called with the whole grid whenever a cell changes
  */
 fun ControlGroupBuilder.matrix(
@@ -316,11 +321,12 @@ fun ControlGroupBuilder.matrix(
     initialValue: List<List<Boolean>> = emptyList(),
     polar: Boolean = false,
     size: Int = 240,
+    tooltip: String? = null,
     onUpdate: (List<List<Boolean>>) -> Unit
 ): ArrayControlHandle<List<List<Boolean>>> = matrixControl(
     label, rows, columns, 2,
     toCell = { it != 0 }, fromCell = { if (it == true) 1 else 0 },
-    initialValue, polar, size, onUpdate
+    initialValue, polar, size, tooltip, onUpdate
 )
 
 /**
@@ -344,6 +350,7 @@ fun ControlGroupBuilder.matrix(
  * @param initialValue cells used when no cached value exists; missing cells are 0, others are clamped
  * @param polar draw rows as rings (row 0 outermost) and columns as sectors, clockwise from the top
  * @param size width and height of the polar dial in pixels
+ * @param tooltip what the grid controls, shown on hover
  * @param onUpdate called with the whole grid whenever a cell changes
  */
 fun ControlGroupBuilder.matrix(
@@ -354,11 +361,12 @@ fun ControlGroupBuilder.matrix(
     initialValue: List<List<Int>> = emptyList(),
     polar: Boolean = false,
     size: Int = 240,
+    tooltip: String? = null,
     onUpdate: (List<List<Int>>) -> Unit
 ): ArrayControlHandle<List<List<Int>>> = matrixControl(
     label, rows, columns, states,
     toCell = { it }, fromCell = { it ?: 0 },
-    initialValue, polar, size, onUpdate
+    initialValue, polar, size, tooltip, onUpdate
 )
 
 private fun <C> ControlGroupBuilder.matrixControl(
@@ -371,6 +379,7 @@ private fun <C> ControlGroupBuilder.matrixControl(
     initialValue: List<List<C>>,
     polar: Boolean,
     size: Int,
+    tooltip: String?,
     onUpdate: (List<List<C>>) -> Unit
 ): ArrayControlHandle<List<List<C>>> {
     require(rows in 1..64 && columns in 1..64) { "matrix rows and columns must be between 1 and 64" }
@@ -390,7 +399,7 @@ private fun <C> ControlGroupBuilder.matrixControl(
             if (polar) polarSurface("matrix-visual matrix-polar", size)
             else """<div class="array-visual matrix-visual" style="grid-template-columns:repeat($columns,1fr)"></div>"""
         )
-    }, onUpdate) { it.copy(rows = rows, columns = columns, states = states, polar = polar) })
+    }, onUpdate, tooltip) { it.copy(rows = rows, columns = columns, states = states, polar = polar) })
 }
 
 /**
@@ -418,6 +427,7 @@ private fun <C> ControlGroupBuilder.matrixControl(
  * @param initialValue interval used when no cached value exists
  * @param polar draw the track as a full circle on which the interval may wrap through `max` to `min`
  * @param size width and height of the polar dial in pixels
+ * @param tooltip what the interval selects, shown on hover
  * @param onUpdate called with the interval as either end moves
  */
 fun ControlGroupBuilder.rangeSlider(
@@ -428,6 +438,7 @@ fun ControlGroupBuilder.rangeSlider(
     initialValue: ClosedFloatingPointRange<Double> = min..max,
     polar: Boolean = false,
     size: Int = 240,
+    tooltip: String? = null,
     onUpdate: (ClosedFloatingPointRange<Double>) -> Unit
 ): ArrayControlHandle<ClosedFloatingPointRange<Double>> {
     val sanitize = { values: List<Double> ->
@@ -445,7 +456,7 @@ fun ControlGroupBuilder.rangeSlider(
                 if (polar) polarSurface("range-visual range-polar", size)
                 else """<div class="array-visual range-visual"><div class="range-track"></div><div class="range-fill"></div><div class="range-thumb" data-end="0"></div><div class="range-thumb" data-end="1"></div><div class="range-playhead"></div></div>"""
             )
-        }, onUpdate
+        }, onUpdate, tooltip
     ) { it.copy(min = min, max = max, step = step, polar = polar) })
 }
 
@@ -461,12 +472,14 @@ fun ControlGroupBuilder.rangeSlider(
  * @param label text shown beside the menu
  * @param options the choices, in order
  * @param initialIndex choice used when no cached value exists
+ * @param tooltip what the choice selects, shown on hover
  * @param onUpdate called with the chosen index and its text
  */
 fun ControlGroupBuilder.menu(
     label: String,
     options: List<String>,
     initialIndex: Int = 0,
+    tooltip: String? = null,
     onUpdate: (index: Int, option: String) -> Unit
 ): ControlValueHandle<Int> {
     require(options.isNotEmpty()) { "menu needs at least one option" }
@@ -484,7 +497,7 @@ fun ControlGroupBuilder.menu(
                 <select class="field-menu-select" id="$id">$items</select>
             </div>
         """.trimIndent()
-    }, { onUpdate(it, options[it]) }) { it.copy(options = options) }
+    }, { onUpdate(it, options[it]) }, tooltip) { it.copy(options = options) }
 }
 
 /**
@@ -711,6 +724,7 @@ data class PenSample(
  * @param size width and height of the pad in pixels
  * @param pen record what the pointer reports besides its position — pressure, tilt and twist, as a
  *   pen or stylus gives them ([GestureHandle.penSamples]) — with each sample of a take
+ * @param tooltip what the pad drives, shown on hover
  * @param onUpdate called with the position as you drag
  */
 fun ControlGroupBuilder.gesture(
@@ -721,6 +735,7 @@ fun ControlGroupBuilder.gesture(
     initialTake: List<Pair<Double, Vector2f>> = emptyList(),
     size: Int = 240,
     pen: Boolean = false,
+    tooltip: String? = null,
     onUpdate: (Vector2f) -> Unit
 ): GestureHandle {
     val (x0, x1) = xRange
@@ -774,7 +789,8 @@ fun ControlGroupBuilder.gesture(
             )
         },
         read = { c -> c.text?.split(',')?.mapNotNull { it.trim().toDoubleOrNull() } },
-        write = { old, next -> old.copy(text = encodeValues(sanitize(next))) }
+        write = { old, next -> old.copy(text = encodeValues(sanitize(next))) },
+        tooltip = tooltip
     )
     handle = GestureHandle(withPlayhead(value), restoredTake, sanitize, pen, xRange, yRange)
     return handle

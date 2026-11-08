@@ -44,7 +44,9 @@ class KeyframeControl<T> internal constructor(
     private val controlType: String,
     private val restore: (ControllerControl) -> T?,
     private val register: KeyframeScope.(name: String, get: () -> T, set: (T) -> Unit) -> Unit,
-    private val build: ControlGroupBuilder.(control: KeyframeControl<T>) -> ((T) -> Unit)
+    private val build: ControlGroupBuilder.(control: KeyframeControl<T>) -> ((T) -> Unit),
+    /** Shown on hover over the control; see `ControlGroupBuilder.tooltip`. */
+    val tooltip: String? = null
 ) : ReadWriteProperty<Any?, T> {
     /** The key name — the delegated property's name, once declared. */
     var name: String = ""
@@ -94,7 +96,7 @@ class KeyframeControl<T> internal constructor(
     }
 
     internal fun buildInto(builder: ControlGroupBuilder) {
-        mirror = builder.build(this)
+        mirror = builder.withTooltip(tooltip) { builder.build(this) }
         // The keyframe* helper re-registered the key with the control's own callback; a key applying
         // is not a gesture, so point the key back at this delegate.
         scope.register(name, { value }) { fromKeyOrGesture(it) }
@@ -104,6 +106,7 @@ class KeyframeControl<T> internal constructor(
 /**
  * A keyframed `Double` slider as a delegated local: `var size by keys.slider(0.4, 0.1..1.0)`. The
  * range, [step] and [law] are the ones [keyframeSlider] takes; [label] defaults to the property name.
+ * Every `keys.*` control takes a `tooltip`, shown on hover, as the `controlGroup` controls do.
  */
 fun KeyframeScope.slider(
     initial: Double,
@@ -114,6 +117,7 @@ fun KeyframeScope.slider(
     lawExponent: Double = 2.0,
     lawCenter: Double = (range.start + range.endInclusive) / 2,
     significantDigits: Int = defaultSignificantDigits(law),
+    tooltip: String? = null,
 ): KeyframeControl<Double> = KeyframeControl(
     this, initial, label, { it }, "slider", { stored -> stored.value?.coerceIn(range.start, range.endInclusive) },
     register = { n, get, set -> doubleTarget(n, get, set) },
@@ -124,7 +128,8 @@ fun KeyframeScope.slider(
         )
         val mirror: (Double) -> Unit = { handle.set(it) }
         mirror
-    }
+    },
+    tooltip = tooltip
 )
 
 /** [slider] for a `Float` local, through [keyframeFloatSlider]: `var gain by keys.slider(0.35f, 0.0..4.0)`. */
@@ -137,6 +142,7 @@ fun KeyframeScope.slider(
     lawExponent: Double = 2.0,
     lawCenter: Double = (range.start + range.endInclusive) / 2,
     significantDigits: Int = defaultSignificantDigits(law),
+    tooltip: String? = null,
 ): KeyframeControl<Float> = KeyframeControl(
     this, initial, label, { it }, "slider", { stored -> stored.value?.coerceIn(range.start, range.endInclusive)?.toFloat() },
     register = { n, get, set -> floatTarget(n, get, set) },
@@ -147,18 +153,20 @@ fun KeyframeScope.slider(
         )
         val mirror: (Float) -> Unit = { handle.set(it.toDouble()) }
         mirror
-    }
+    },
+    tooltip = tooltip
 )
 
 /** A keyframed checkbox as a delegated `Boolean` local, through [keyframeCheckbox]. */
-fun KeyframeScope.checkbox(initial: Boolean, label: String? = null): KeyframeControl<Boolean> = KeyframeControl(
+fun KeyframeScope.checkbox(initial: Boolean, label: String? = null, tooltip: String? = null): KeyframeControl<Boolean> = KeyframeControl(
     this, initial, label, { it }, "checkbox", { stored -> stored.checked },
     register = { n, get, set -> booleanTarget(n, get, set) },
     build = { c ->
         val handle = keyframeCheckbox(this@checkbox, c.name, c.label, get = { c.value }, set = { c.fromControl(it) })
         val mirror: (Boolean) -> Unit = { handle.set(it) }
         mirror
-    }
+    },
+    tooltip = tooltip
 )
 
 /** A keyframed XY pad as a delegated `Vector2f` local, through [keyframeVec2Control]. */
@@ -168,6 +176,7 @@ fun KeyframeScope.vec2(
     yRange: ClosedFloatingPointRange<Double> = -1.0..1.0,
     label: String? = null,
     step: Double = 0.01,
+    tooltip: String? = null,
 ): KeyframeControl<Vector2f> = KeyframeControl(
     this, initial, label, { Vector2f(it) }, "vec2",
     { stored -> if (stored.x == null && stored.y == null) null else Vector2f((stored.x ?: initial.x.toDouble()).toFloat(), (stored.y ?: initial.y.toDouble()).toFloat()) },
@@ -179,11 +188,12 @@ fun KeyframeScope.vec2(
         )
         val mirror: (Vector2f) -> Unit = { handle.set(it) }
         mirror
-    }
+    },
+    tooltip = tooltip
 )
 
 /** A keyframed RGBA colour picker as a delegated `Vector4f` local, through [keyframeColorPicker]. */
-fun KeyframeScope.color(initial: Vector4f, label: String? = null): KeyframeControl<Vector4f> = KeyframeControl(
+fun KeyframeScope.color(initial: Vector4f, label: String? = null, tooltip: String? = null): KeyframeControl<Vector4f> = KeyframeControl(
     this, initial, label, { Vector4f(it) }, "color",
     { stored ->
         if (stored.r == null && stored.g == null && stored.b == null && stored.a == null) null
@@ -197,18 +207,20 @@ fun KeyframeScope.color(initial: Vector4f, label: String? = null): KeyframeContr
         val handle = keyframeColorPicker(this@color, c.name, c.label, get = { c.value }, set = { c.fromControl(it) })
         val mirror: (Vector4f) -> Unit = { handle.set(it) }
         mirror
-    }
+    },
+    tooltip = tooltip
 )
 
 /** A keyframed text field as a delegated `String` local, through [keyframeText]. Keys step between strings. */
-fun KeyframeScope.text(initial: String, label: String? = null): KeyframeControl<String> = KeyframeControl(
+fun KeyframeScope.text(initial: String, label: String? = null, tooltip: String? = null): KeyframeControl<String> = KeyframeControl(
     this, initial, label, { it }, "string", { stored -> stored.text },
     register = { n, get, set -> stringTarget(n, get, set) },
     build = { c ->
         val handle = keyframeText(this@text, c.name, c.label, get = { c.value }, set = { c.fromControl(it) })
         val mirror: (String) -> Unit = { handle.set(it) }
         mirror
-    }
+    },
+    tooltip = tooltip
 )
 
 /** What `keys.controls()` inside a `controlGroup { }` does: build every declared control, in order. */
