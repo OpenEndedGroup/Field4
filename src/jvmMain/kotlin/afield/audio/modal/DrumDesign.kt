@@ -83,6 +83,18 @@ class PolarShape(val cosine: DoubleArray, val sine: DoubleArray) {
             return s
         }
 
+        /** Fit a closed FLine (a drawing-layer stroke, say), taking its node end points as the polygon; see [fromPolygon]. */
+        @JvmStatic
+        @JvmOverloads
+        fun fromLine(line: FLine, harmonics: Int = 3): PolarShape {
+            val pts = ArrayList<Double>()
+            for (nd in line.nodes) {
+                val p = nd.storage.lastOrNull() ?: continue
+                pts += p.x.toDouble(); pts += p.y.toDouble()
+            }
+            return fromPolygon(pts.toDoubleArray(), harmonics)
+        }
+
         /**
          * Fit a closed polygon (alternating x, y) with [harmonics] harmonics about its area
          * centroid, scaled to mean radius 1: rays from the centroid at [samples] angles take the
@@ -111,7 +123,7 @@ class PolarShape(val cosine: DoubleArray, val sine: DoubleArray) {
                     if (kotlin.math.abs(den) < 1e-14) continue
                     val t = (ax * ey - ay * ex) / den
                     val u = (ax * dy - ay * dx) / den
-                    if (t > 0 && u >= 0 && u <= 1) best = max(best, t)
+                    if (t > 0 && u >= -1e-9 && u <= 1 + 1e-9) best = max(best, t)
                 }
                 best
             }
@@ -168,7 +180,9 @@ class ShapeDesign(
  * Bend a uniform drum's outline so its lowest `target.size` modes sound [target] (ratios, any
  * scale, lowest first). Free parameters are the cos (and, unless [symmetric], sin) coefficients of
  * harmonics 2..`start.harmonics`; the mean radius and the k = 1 terms (a shift, to first order)
- * stay as in [start]. Outlines whose radius dips below 0.25 of the mean are rejected.
+ * stay as in [start]. Outlines whose radius dips below 0.25 of the mean are rejected. [stayNear]
+ * (cents per unit change of a coefficient) pulls the fit toward [start], for the nearest drum to a
+ * drawn outline rather than any drum that plays the chord.
  */
 @JvmOverloads
 fun designShape(
@@ -177,6 +191,7 @@ fun designShape(
     h: Double = 0.07,
     symmetric: Boolean = false,
     maxIterations: Int = 30,
+    stayNear: Double = 0.0,
 ): ShapeDesign {
     val disk = polarDrumMesh(h) { 1.0 }
     val ks = (2..start.harmonics).toList()
@@ -190,7 +205,7 @@ fun designShape(
         return s
     }
     val p0 = DoubleArray(ks.size * perK) { i -> val k = ks[i / perK]; if (i % perK == 0) start.cosine[k] else start.sine[k] }
-    val bad = DoubleArray(target.size) { 1e4 }
+    val bad = DoubleArray(target.size + if (stayNear > 0) p0.size else 0) { 1e4 }
     fun solve(p: DoubleArray): DrumModes? {
         val s = shapeOf(p)
         if (s.minRadius() < 0.25) return null
@@ -199,7 +214,8 @@ fun designShape(
     val startModes = solve(p0) ?: error("starting shape is not a valid drum")
     val res = leastSquares(p0, LeastSquaresOptions(maxIterations = maxIterations, finiteDifferenceStep = 1e-5)) { p ->
         val m = solve(p) ?: return@leastSquares bad
-        harmonicFit(m.ratios(), target).cents
+        val c = harmonicFit(m.ratios(), target).cents
+        if (stayNear > 0) c + DoubleArray(p.size) { stayNear * (p[it] - p0[it]) } else c
     }
     val shape = shapeOf(res.x)
     val modes = disk.polarMorphed(shape).modes(target.size)
@@ -320,7 +336,7 @@ fun designSyahi(
         if (radii(p).any { it < 0.03 || it > 0.97 }) return null
         return cache.getOrPut(p.toList()) {
             if (cache.size > 6) cache.remove(cache.keys.first())
-            mesh.withDensity(rhoOf(p)).modes(n, tolerance = 1e-11)
+            mesh.withTriangleDensity(rhoOf(p)).modes(n, tolerance = 1e-11)
         }
     }
     val bad = DoubleArray(n) { 1e4 }
@@ -354,7 +370,7 @@ fun designSyahi(
     val startFit = harmonicFit((solve(p0) ?: error("starting syahi is invalid")).ratios(), target)
     val res = leastSquares(p0, LeastSquaresOptions(maxIterations = maxIterations, initialDamping = 0.1), jacobian = ::jacobian, residuals = ::residuals)
     val modes = solve(res.x)!!
-    return SyahiDesign(target, radii(res.x), loads(res.x), edge, mesh.withDensity(rhoOf(res.x)), modes, bareFit, startFit, harmonicFit(modes.ratios(), target), res.iterations, res.reason)
+    return SyahiDesign(target, radii(res.x), loads(res.x), edge, mesh.withTriangleDensity(rhoOf(res.x)), modes, bareFit, startFit, harmonicFit(modes.ratios(), target), res.iterations, res.reason)
 }
 
 /** φᵀ M̂ₜ φ on triangle [t] at unit density, with the solver's blended (½ consistent + ½ lumped) mass. */
@@ -364,4 +380,17 @@ internal fun elementEnergy(mesh: DrumMesh, t: Int, s: DoubleArray): Double {
     val consistent = ar / 12.0 * (2 * (a * a + b * b + c * c) + 2 * (a * b + b * c + c * a))
     val lumped = ar / 3.0 * (a * a + b * b + c * c)
     return 0.5 * (consistent + lumped)
+}
+
+/**
+ * The share of mode [mode]'s kinetic energy carried by the triangles [inside] picks (by index):
+ * Σ ρₜ φᵀM̂ₜφ over them, with the solver's default blended mass, so all triangles give 1. It is
+ * also the gradient designs use: making those triangles 1% heavier lowers λ by about this share
+ * of 1%.
+ */
+fun DrumModes.energyShare(mode: Int, inside: (Int) -> Boolean): Double {
+    var s = 0.0
+    val d = mesh.density
+    for (t in 0 until mesh.triangleCount) if (inside(t)) s += (d?.get(t) ?: 1.0) * elementEnergy(mesh, t, shapes[mode])
+    return s
 }

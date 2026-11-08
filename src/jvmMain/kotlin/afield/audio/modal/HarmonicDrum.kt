@@ -87,11 +87,13 @@ data class CircularLabel(val diameters: Int, val circles: Int) {
 }
 
 /**
- * This mesh with a density for every triangle: [rho] averaged over a grid of [samples]² / 2 points
- * inside each triangle, so a load whose edge cuts a triangle gives it the area-weighted mix.
+ * This mesh with a density for every triangle: [rho] at (x, y), averaged over 21 points inside
+ * each triangle, so a load whose edge cuts a triangle gives it the area-weighted mix.
  */
-@JvmOverloads
-fun DrumMesh.withDensity(samples: Int = 6, rho: (Double, Double) -> Double): DrumMesh {
+fun DrumMesh.withDensity(rho: (Double, Double) -> Double): DrumMesh = withDensity(6, rho)
+
+/** [withDensity] averaging [rho] over a grid of about [samples]² / 2 points per triangle. */
+fun DrumMesh.withDensity(samples: Int, rho: (Double, Double) -> Double): DrumMesh {
     require(samples >= 1)
     val d = DoubleArray(triangleCount) { t ->
         val a = tris[3 * t]; val b = tris[3 * t + 1]; val c = tris[3 * t + 2]
@@ -108,7 +110,7 @@ fun DrumMesh.withDensity(samples: Int = 6, rho: (Double, Double) -> Double): Dru
 }
 
 /** This mesh with an explicit density per triangle. */
-fun DrumMesh.withDensity(perTriangle: DoubleArray): DrumMesh = DrumMesh(x, y, tris, boundary, perTriangle)
+fun DrumMesh.withTriangleDensity(perTriangle: DoubleArray): DrumMesh = DrumMesh(x, y, tris, boundary, perTriangle)
 
 /**
  * A syahi: density [massRatio] inside [radius] of ([cx], [cy]) and 1 outside. With [edge] = 0 the
@@ -126,7 +128,7 @@ fun syahi(radius: Double, massRatio: Double, edge: Double = 0.0, cx: Double = 0.
 /** A unit-radius circular drum loaded with a [syahi] of [radius] and [massRatio], meshed at spacing [h]. */
 @JvmOverloads
 fun loadedDisk(radius: Double, massRatio: Double, edge: Double = 0.0, h: Double = 0.05): DrumMesh =
-    polarDrumMesh(h) { 1.0 }.withDensity(rho = syahi(radius, massRatio, edge))
+    polarDrumMesh(h) { 1.0 }.withDensity(syahi(radius, massRatio, edge))
 
 /**
  * Name mode [mode] of a drum centred on ([cx], [cy]) as (nodal diameters, nodal circles): the
@@ -330,7 +332,7 @@ fun harmonicityMap(radii: DoubleArray, massRatios: DoubleArray, h: Double = 0.07
     val cents = Array(massRatios.size) { DoubleArray(radii.size) }
     val jobs = massRatios.indices.flatMap { i -> radii.indices.map { j -> i to j } }
     jobs.parallelStream().forEach { (i, j) ->
-        val modes = disk.withDensity(rho = syahi(radii[j], massRatios[i], edge)).modes(count, tolerance = 1e-8)
+        val modes = disk.withDensity(syahi(radii[j], massRatios[i], edge)).modes(count, tolerance = 1e-8)
         cents[i][j] = harmonicFit(modes.ratios(), Raman.target).rms
     }
     return HarmonicityMap(radii, massRatios, cents)

@@ -504,6 +504,9 @@ object DemoTranscriptExecSmokeTest {
         // eigendrum.md's starting point: FEM drum modes (afield.audio.modal) drawn through lines()
         // and played through WAV players; the drawing box falls back to a polar curve. CPU only.
         "eigendrum",
+        // eigendrum.md's Raman and design sections: loaded drums, the harmonicity sweep, syahi and
+        // outline fits with leastSquares, and a live ModalDrum morph. CPU only.
+        "harmonic_drum",
         "fline_hit_records",
         // fline_examples.md's measuring sections: locationAt, trim/splitAt, crossings, fill rules. CPU only.
         "fline_measure",

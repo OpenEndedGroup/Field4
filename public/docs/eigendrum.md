@@ -21,6 +21,12 @@ the drum's spectrum. Three calls do the work:
 - `modes.strike(x, y)` says how strongly a mallet at (x, y) excites every mode, and
   `modes.render(amplitudes)` turns that into a sound, one decaying sine per mode.
 
+The second half of the page turns the question around. [Raman's harmonic drum](#ramans-harmonic-drum)
+loads the head the way a tabla is loaded, which makes its overtones harmonic, and
+[Designing a drum](#designing-a-drum) fits the load or the outline to the pitches you want. Its
+starting point is **harmonic drum**.
+[Browse it ↗](offline.html?file=assets/agent_transcripts/harmonic_drum/metadata.edn)
+
 ## Sixteen modes of a square
 
 A unit square is the drum whose answer we know: λ = π²(m² + n²), so 19.74, then 49.35 twice, then
@@ -283,6 +289,313 @@ ModalDrum(shapes[0], fundamental = 110.0, every = 0.6, autoX = 0.3, autoY = 0.1,
 The interpolation follows modes by their rank, so where two modes cross in pitch partway through
 the morph, they swap roles rather than crossing.
 
+## Raman's harmonic drum
+
+A plain circular drum has no clear pitch: its overtones ring at 1.59, 2.14 and 2.30 times the
+fundamental, not at 2, 3 and 4. The tabla and the mridangam fix this by loading the middle of the
+head with a heavy black paste, the syahi. C. V. Raman worked out how in 1919 (reported in *Nature*
+in 1920 and in full in 1935): the load pulls the nine lowest modes into five tones a harmonic series
+apart, and the third, fourth and fifth tones are each two or three different modes tuned to one
+pitch.
+
+| tone | modes (nodal diameters, nodal circles counting the rim) |
+| --- | --- |
+| 1 | (0,1) |
+| 2 | (1,1) |
+| 3 | (2,1) and (0,2) |
+| 4 | (3,1) and (1,2) |
+| 5 | (4,1), (2,2) and (0,3) |
+
+A load is a density on the drum head. `mesh.withDensity { x, y -> ... }` gives every triangle the
+density there (the bare skin is 1), and `syahi(radius, massRatio)` is a disc of paste centred on the
+origin. Ramakrishna and Sondhi modelled the tabla in 1954 as exactly this: a disc of radius 0.4 at
+3.125² ≈ 9.77 times the skin's density. Below, that drum's nine mode families, one column per tone.
+The table puts each family's frequency, with (1,1) set to 2, beside the bare drum's, the exact value
+for this model and the frequencies measured on a real drum. `ramanHarmonicity()` measures how far the
+fifteen lowest eigenvalues are from 1 : 2 2 : 3 3 3 : 4 4 4 4 : 5 5 5 5 5, in cents (hundredths of a
+semitone) after the best overall tuning.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/eigendrum/raman.png" embed=true alt="A table of nine mode families with their frequencies on a bare drum, on the loaded drum, in the exact composite-membrane model and as measured, the loaded column close to 1, 2, 3, 3, 4, 4, 5, 5, 5; below it nine discs in five columns, each coloured orange and blue by one mode, with white nodal lines and a dark ring marking the edge of the paste"}
+import afield.audio.modal.*
+
+// A unit drum loaded like Ramakrishna & Sondhi's tabla: density ×9.77 inside radius 0.4.
+// Its nine lowest mode families, drawn in Raman's five columns, one per harmonic.
+val bare = polarDrumMesh(0.05) { 1.0 }
+val bareModes = bare.modes(15)
+val modes = bare.withDensity(syahi(0.4, 3.125 * 3.125)).modes(15)
+val labels = modes.circularLabels()
+val pictures = ArrayList<FLine>()
+val perTone = IntArray(6)
+Raman.families.forEach { (n, m, tone) ->
+    val k = labels.indexOfFirst { it.diameters == n && it.circles == m }
+    val dx = (tone - 1) * 2.3f
+    val dy = perTone[tone]++ * 2.3f
+    pictures += modes.modeMesh(k).map { it.copy().apply { transform { v -> v.add(dx, dy, 0f) } } }
+    pictures +=
+        modes.nodalLines(k).copy().apply {
+            transform { v -> v.add(dx, dy, 0f) }
+            color = vec(1.0, 1.0, 1.0, 1.0)
+            thickness = 1.5
+        }
+    pictures +=
+        fline { circle(dx.toDouble(), dy.toDouble(), 0.4) }
+            .apply {
+                color = vec(0.1, 0.1, 0.1, 1.0)
+                thickness = 1.0
+            }
+}
+val families = table(
+    "mode" to Raman.families.map { (n, m, _) -> "($n,$m)" },
+    "tone" to Raman.families.map { it.third },
+    "bare" to bareModes.ramanFamilies().toList(),
+    "loaded" to modes.ramanFamilies().toList(),
+    "exact" to Raman.compositeExact.toList(),
+    "measured" to Raman.measured.toList(),
+)
+listOf("bare", "loaded", "exact", "measured").forEach { c -> families.format(c) { (it as Double).f3 } }
+display("families", families)
+lines(pictures, w = 520.0, h = 330.0, fitToSize = true)
+println("bare drum: ${bareModes.ramanHarmonicity()}")
+println("loaded drum: ${modes.ramanHarmonicity()}")
+```
+
+The loaded drum is about 36 cents from a harmonic series; the bare one is 190 cents away. Most of what
+is left is the fundamental, a few percent sharp, which the measured drum shares. The finite-element
+values agree with the exact ones to within 1%, which `HarmonicDrumTest` checks, along with the
+claim that the fifteen lowest modes fall into Raman's five groups exactly as the table above lists
+them.
+
+Each tone sounds like a string's harmonics, and the strikes show it. The bare drum, struck between
+the paste and the rim:
+
+```diffstatic_runner {data-lang=kotlin audio="assets/eigendrum/disk-bare.wav" audio-spec="disk-bare" audio-renderer="afield.audio.modal.EigendrumDocs" embed=true hidden=true name="eigendrum-disk-bare"}
+// offline-rendered by EigendrumDocs.renderWav("disk-bare", ...): a bare disk struck at (0.62, 0.15)
+```
+
+and the same drum with the syahi:
+
+```diffstatic_runner {data-lang=kotlin audio="assets/eigendrum/disk-raman.wav" audio-spec="disk-raman" audio-renderer="afield.audio.modal.EigendrumDocs" embed=true hidden=true name="eigendrum-disk-raman"}
+// offline-rendered by EigendrumDocs.renderWav("disk-raman", ...): Ramakrishna & Sondhi's loaded disk struck at (0.62, 0.15)
+```
+
+### Two modes at one pitch
+
+Because (2,1) and (0,2) ring at the same pitch, any mix of them is also a way the drum can vibrate.
+Raman damped the head with his fingers to pick a mix and scattered sand on it to see the nodal lines:
+a circle, then ellipses, then two parallel lines across the drum, so the head divides into three like
+a string sounding its third harmonic, then hyperbolas, and at the far end two diameters. The same
+mixes of the loaded drum's two modes, from all (0,2) on the left to all (2,1) on the right:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/eigendrum/sand.png" embed=true alt="Five discs with white nodal lines: a circle, an ellipse, two nearly parallel lines across the disc, two hyperbolas, and two crossing diameters"}
+import afield.audio.modal.*
+
+// Mixes of the loaded drum's (0,2) and (2,1) modes, which share one pitch: the nodal lines
+// Raman saw in sand, from a circle to two parallel lines to two diameters.
+val modes = polarDrumMesh(0.04) { 1.0 }.withDensity(syahi(0.4, 3.125 * 3.125)).modes(10)
+val labels = modes.circularLabels()
+val ring = labels.indexOf(CircularLabel(0, 2))
+val cross = labels.indexOf(CircularLabel(2, 1))
+val mixes = [0.0, 0.4, 0.75, 1.3, 1000.0]
+val out = ArrayList<FLine>()
+mixes.forEachIndexed { i, w ->
+    val dx = i * 2.3f
+    out +=
+        fline { circle(dx.toDouble(), 0.0, 1.0) }
+            .apply {
+                color = vec(0.5, 0.5, 0.5, 1.0)
+                thickness = 1.0
+            }
+    out +=
+        modes.mesh.zeroLines(modes.superpose(ring, cross, w)).apply {
+            transform { v -> v.add(dx, 0f, 0f) }
+            color = vec(1.0, 1.0, 1.0, 1.0)
+            thickness = 2.0
+        }
+}
+lines(out, w = 520.0, h = 110.0, fitToSize = true)
+```
+
+### The whole range of loadings
+
+How heavy, and how wide? `harmonicityMap(radii, massRatios)` solves a loaded drum for every pair
+and scores each one. Radius runs across from 0.15 to 0.7 of the rim and density ratio up from 1 (no
+paste) to 30, spaced evenly in log; bright cells are close to a harmonic series. The white ring is
+Ramakrishna and Sondhi's tabla.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/eigendrum/map.png" embed=true alt="A twelve by twelve grid of coloured cells, dark along the bottom row and on the right, with a bright diagonal valley running from small heavy loads at the top left to wide light ones lower right; a white ring sits in the brightest part of the valley"}
+import afield.audio.modal.*
+
+// Loading radius across (0.15–0.7 of the rim), density ratio up (1–30, log spaced); each
+// cell is one loaded drum's rms distance from 1:2:3:4:5, bright where it is close.
+val map = harmonicityMap(linSpace(0.15, 0.7, 12), logSpace(1.0, 30.0, 12), h = 0.07)
+val tabla = listOf(Raman.compositeRadius to Raman.compositeMassRatio)
+lines(map.cells(w = 12.0, h = 12.0, marks = tabla), w = 400.0, h = 400.0, fitToSize = true)
+val (i, j) = map.best
+println("most harmonic cell: radius ${map.radii[j].f2}, density × ${map.massRatios[i].f2}, ${map.cents[i][j].f1} cents")
+println("bare skin: ${map.cents[0][0].f1} cents")
+```
+
+The most harmonic cell is radius 0.4 at about ten times the skin's density, Ramakrishna and Sondhi's
+own choice. Around it runs a valley: a smaller patch has to be heavier, a wider one lighter. Makers'
+drums sit along it; Sathej and Adhikari give densities of 6 to 16 times the skin over 45–55% of the
+radius. Past about twenty times the skin the scores stop improving. The paste then does all the
+moving and the bare skin only acts as a spring.
+
+## Designing a drum
+
+The map answers one question: given a load, how harmonic is it? Turned around, the question
+becomes: given the pitches you want, which drum plays them? Field's least-squares solver,
+`leastSquares`, can answer it with either of two knobs: the paste, or the outline.
+
+### Shape alone cannot reach the octave
+
+For a uniform drum of any shape, the second mode is at most 1.593 times the first. Ashbaugh and
+Benguria proved this in 1992, and the circle is the shape that reaches it. So no outline can put
+the first overtone an octave up, and every uniform drum stays far from Raman's series. Forty random
+outlines show it. Across is each drum's f₂/f₁, with the white line at 1.593; up is its distance from
+1:2:3:4:5. The uniform drums are blue, and Ramakrishna and Sondhi's loaded drum is the yellow dot.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/eigendrum/shapes.png" embed=true alt="A scatter of forty blue dots, all left of a vertical white line and high up, beside a single yellow dot far to the right and low down"}
+import afield.audio.modal.*
+
+// Forty random uniform drums: f₂/f₁ across (1.0–2.1), distance from 1:2:3:4:5 up (0–400 cents).
+// The white line is f₂/f₁ = 1.593, the most any uniform drum can reach; yellow is the syahi.
+val disk = polarDrumMesh(0.08) { 1.0 }
+val rnd = java.util.Random(3)
+val shapes = (0 until 40).map {
+    PolarShape.circle(5).apply {
+        for (k in 2..5) {
+            cosine[k] = 0.4 * (rnd.nextDouble() - 0.5) / k
+            sine[k] = 0.4 * (rnd.nextDouble() - 0.5) / k
+        }
+    }
+}
+val scores = shapes.parallelStream().map { s ->
+    val m = disk.polarMorphed(s).modes(15)
+    m.ratios()[1] to m.ramanHarmonicity().rms
+}.toList()
+val syahi = loadedDisk(Raman.compositeRadius, Raman.compositeMassRatio, h = 0.07).modes(15)
+fun dot(f: Double, cents: Double) = fline { circle((f - 1.0) * 400, cents, 6.0) }.apply { filled = true }
+val out = ArrayList<FLine>()
+out += fline { moveTo(0.0, 0.0); lineTo(440.0, 0.0); lineTo(440.0, 400.0); lineTo(0.0, 400.0); lineTo(0.0, 0.0) }.apply { color = vec(0.4, 0.4, 0.4, 1.0) }
+out += fline { moveTo(0.593 * 400, 0.0); lineTo(0.593 * 400, 400.0) }.apply { color = vec(1.0, 1.0, 1.0, 1.0); thickness = 1.5 }
+scores.forEach { (f, c) -> out += dot(f, c).apply { color = vec(0.35, 0.6, 1.0, 1.0) } }
+out += dot(syahi.ratios()[1], syahi.ramanHarmonicity().rms).apply { color = vec(1.0, 0.85, 0.3, 1.0) }
+lines(out, w = 440.0, h = 400.0, fitToSize = true)
+println("highest f₂/f₁ of 40 shapes: ${scores.maxOf { it.first }.f3}; closest to 1:2:3:4:5: ${scores.minOf { it.second }.f1} cents")
+println("loaded disk: f₂/f₁ ${syahi.ratios()[1].f3}, ${syahi.ramanHarmonicity().rms.f1} cents")
+```
+
+Fitting the outline with the solver does no better: from four different starting shapes it walks
+back towards the circle and stops about 188 cents from the series, against 191 for the circle.
+
+### Fitting the paste
+
+`designSyahi(layers)` keeps the circle and fits the paste instead. The paste is a stack of discs,
+each with its own radius and added density, like the layers a maker presses on one at a time. Raman
+noted that the paste "is stepped down by three, five or seven stages towards the margin". The fit
+starts from Ramakrishna and Sondhi's single disc and keeps the centre at no more than 16 times the
+skin, the top of the range makers use. Each step needs only one solve, because the gradient is
+exact: making a patch 1% heavier lowers each mode's λ by that mode's share of energy on the patch,
+times 1%.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/eigendrum/syahi.png" embed=true alt="A table of syahi designs with one, two and three layers, their radii, added densities and distances from a harmonic series falling from about 28 to 18 cents; below it four density profiles stepping down from the centre to the rim"}
+import afield.audio.modal.*
+
+// Fit a syahi of one, two and three stacked layers to 1:2:3:4:5, each starting from
+// Ramakrishna & Sondhi's disc. Below, each design's density from the centre (left) to the rim.
+val designs = (1..3).toList().parallelStream().map { designSyahi(it, h = 0.08) }.toList()
+display(
+    "designs",
+    table(
+        "layers" to designs.map { it.layers },
+        "radii" to designs.map { d -> d.radii.sorted().joinToString(" ") { it.f2 } },
+        "centre density" to designs.map { it.peak.f1 },
+        "start (cents)" to designs.map { it.startFit.rms.f1 },
+        "fitted (cents)" to designs.map { it.fit.rms.f1 },
+        "worst (cents)" to designs.map { it.fit.worst.f1 },
+    ),
+)
+val colours = [vec(0.35, 0.6, 1.0, 1.0), vec(1.0, 0.85, 0.3, 1.0), vec(1.0, 0.45, 0.3, 1.0)]
+val profiles = designs.mapIndexed { i, d -> d.profile(w = 3.0, h = 1.0, top = 16.0).apply { color = colours[i] } }
+val composite = fline { moveTo(0.0, 9.77 / 16); lineTo(1.2, 9.77 / 16); lineTo(1.2, 1.0 / 16); lineTo(3.0, 1.0 / 16) }.apply { color = vec(0.6, 0.6, 0.6, 1.0) }
+lines(profiles + composite, w = 520.0, h = 180.0, fitToSize = true)
+```
+
+The grey line is the single disc the fits start from; blue, yellow and red are one, two and three
+layers. Two layers take the drum from about 28 cents to about 21, and a third adds little. The fits
+keep Raman's grouping, (0,2) with (2,1), (1,2) with (3,1), and so on, without being told it: the
+target is just the fifteen numbers. The two-layer drum:
+
+```diffstatic_runner {data-lang=kotlin audio="assets/eigendrum/disk-syahi.wav" audio-spec="disk-syahi" audio-renderer="afield.audio.modal.EigendrumDocs" embed=true hidden=true name="eigendrum-disk-syahi"}
+// offline-rendered by EigendrumDocs.renderWav("disk-syahi", ...): the fitted two-layer syahi struck at (0.62, 0.15)
+```
+
+### A drum that plays a chord
+
+Without paste, an outline can still be fitted to any target it can reach. `designShape(target)`
+bends r(θ) as a short Fourier series (`PolarShape`) until the lowest modes sound the target. Here
+the target is a major triad, 4:5:6. The starting guess is your last drawn stroke, as in
+[Your own drum](#your-own-drum), fitted with three harmonics by `PolarShape.fromLine`; with nothing
+drawn it is the heart from that section. Grey is the start, yellow the fitted drum, followed by its
+three lowest modes.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/eigendrum/triad.png" embed=true alt="A grey heart outline with a yellow, more lopsided outline over it, then three copies of the yellow shape coloured by its first three modes: all orange, then split by one nodal line, then by a curved line"}
+import afield.audio.engine.WavFloatArrayWriter
+import afield.audio.modal.*
+
+// Bend your last drawn stroke (or the heart) into a uniform drum whose three lowest
+// modes sound a major triad, 4:5:6.
+val stroke = notation.strokes.lastOrNull()?.toFLine()
+val start = if (stroke != null) PolarShape.fromLine(stroke, 3) else PolarShape.fromPolygon(EigendrumDocs.heart, 3)
+val design = designShape([4.0, 5.0, 6.0], start = start, h = 0.08)
+val modes = polarDrumMesh(0.05) { 1.0 }.polarMorphed(design.shape).modes(12)
+val out = ArrayList<FLine>()
+out += design.start.outline().apply { color = vec(0.6, 0.6, 0.6, 1.0); thickness = 2.0 }
+out += design.shape.outline().apply { color = vec(1.0, 0.85, 0.3, 1.0); thickness = 2.0 }
+for (k in 0 until 3) {
+    val dx = (k + 1) * 2.8f
+    out += modes.modeMesh(k).map { it.copy().apply { transform { v -> v.add(dx, 0f, 0f) } } }
+    out += modes.nodalLines(k).copy().apply { transform { v -> v.add(dx, 0f, 0f) }; color = vec(1.0, 1.0, 1.0, 1.0) }
+}
+lines(out, w = 520.0, h = 140.0, fitToSize = true)
+println("start ${design.startFit}, fitted ${design.fit}; ratios ${modes.ratios().take(3).map { (4 * it).f3 }}")
+display("strike", WavFloatArrayWriter.encodeMono16(modes.render(modes.strike(0.3, 0.25, 0.04), fundamental = 220.0), 44100))
+```
+
+```diffstatic_runner {data-lang=kotlin audio="assets/eigendrum/triad.wav" audio-spec="triad" audio-renderer="afield.audio.modal.EigendrumDocs" embed=true hidden=true name="eigendrum-triad"}
+// offline-rendered by EigendrumDocs.renderWav("triad", ...): the heart bent into a 4:5:6 drum, struck at (0.3, 0.25)
+```
+
+A fourth note is harder: aiming at 4:5:6:8 from the same heart, the fit gets to within about 60
+cents. The higher a target reaches, the more harmonics the outline needs.
+
+### Morphing between them
+
+The live voice glides between any drums with the same number of modes. This one runs from the bare
+drum through Ramakrishna and Sondhi's syahi to the fitted two-layer one and back, every four
+seconds, striking itself between the paste and the rim. The table lists the overtones it passes
+through.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/eigendrum/raman-morph.png" embed=true alt="A table with three rows, bare, composite and two-layer, of frequency ratios for modes two to eight, the bare row starting 1.593 and the loaded rows close to 2, 3 and 4"}
+import afield.audio.modal.*
+
+// From the bare drum to Raman's harmonic drum and back, every 4 s, as a live voice.
+val bare = polarDrumMesh(0.07) { 1.0 }.modes(15)
+val composite = loadedDisk(Raman.compositeRadius, Raman.compositeMassRatio, h = 0.07).modes(15)
+val fitted = designSyahi(2, h = 0.08).modes
+val drums = [bare, composite, fitted]
+val names = ["f₂", "f₄", "f₆", "f₇", "f₉", "f₁₁", "f₁₅"]
+val picks = [1, 3, 5, 6, 8, 10, 14]
+val spectra = table(
+    "drum" to ["bare", "composite", "two layers"],
+    *names.mapIndexed { c, name -> name to drums.map { it.ratios()[picks[c]] } }.toTypedArray(),
+)
+names.forEach { n -> spectra.format(n) { (it as Double).f3 } }
+display("spectra", spectra)
+ModalDrum(bare, fundamental = 220.0, every = 0.7, autoX = 0.62, autoY = 0.15, morph = drums, morphPeriod = 4.0)
+```
+
 ## How it is computed
 
 `drumMesh` puts points along the rim every `h`, fills the inside with a triangular lattice of
@@ -306,3 +619,12 @@ The method and the Gordon–Webb–Wolpert coordinates follow Toby Driscoll, "Ei
 drums", *SIAM Review* 39 (1997), and Cleve Moler's
 [blog post](https://blogs.mathworks.com/cleve/2012/08/06/can-one-hear-the-shape-of-a-drum-part-1-eigenvalues/);
 the idea of a drum you draw is [eigendrum.com](https://eigendrum.com)'s.
+
+The loaded drum follows C. V. Raman, "The Indian musical drums", *Proc. Indian Acad. Sci.* A 1,
+179–188 (1935), and C. V. Raman and S. Kumar, "Musical drums with harmonic overtones", *Nature* 104,
+500 (1920); the composite membrane is B. S. Ramakrishna and M. M. Sondhi, *J. Acoust. Soc. Am.* 26,
+523 (1954). The measured and exact frequencies in the table are from G. Sathej and R. Adhikari, "The
+eigenspectra of Indian musical drums", *J. Acoust. Soc. Am.* 125, 831 (2009),
+[arXiv:0809.1320](https://arxiv.org/abs/0809.1320), Table I. The bound on f₂/f₁ is M. S. Ashbaugh and
+R. D. Benguria, "A sharp bound for the ratio of the first two eigenvalues of Dirichlet Laplacians and
+extensions", *Annals of Mathematics* 135, 601–628 (1992).

@@ -6,7 +6,7 @@
  * A strike projects a small Gaussian mallet onto the modes ([DrumModes.strike]) and [DrumModes.render]
  * sums one damped sinusoid per mode (modal synthesis). [DrumModes.nodalLines] and
  * [DrumModes.modeMesh] draw a mode back as FLines. A mesh may carry a per-triangle density
- * ([DrumMesh.withDensity]), which enters M only: `HarmonicDrum.kt` uses it for Raman's loaded drums
+ * (`withDensity` in `HarmonicDrum.kt`), which enters M only: `HarmonicDrum.kt` uses it for Raman's loaded drums
  * and `DrumDesign.kt` fits shapes and loadings to a target chord.
  *
  * The idea follows eigendrum.com; this is an independent textbook implementation (no code taken).
@@ -51,7 +51,7 @@ class DrumMesh(
     val boundary: BooleanArray,
     /**
      * Areal density of each triangle, relative to a bare membrane of density 1; null means uniform.
-     * A heavier patch lowers the modes that move it. See [withDensity].
+     * A heavier patch lowers the modes that move it. See `withDensity`.
      */
     val density: DoubleArray? = null,
 ) {
