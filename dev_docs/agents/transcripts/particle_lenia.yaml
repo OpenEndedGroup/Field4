@@ -40,7 +40,7 @@ operations:
           showImg(
               energyPlotImg(pl.energyHistory, 720, 160),
               channel = "energy",
-              caption = "mean particle energy, steps 0 to 3000: %.3f down to %.3f".format(pl.energyHistory.first(), pl.energyHistory.last()),
+              caption = "mean particle energy, steps 0 to 3000: %.3f down to %.3f".format(pl.energyHistory.first(), pl.currentEnergy()),
           )
   - create:
       box: particle_lenia_movie
@@ -59,7 +59,7 @@ operations:
               seconds = 7.0,
               cellSide = 400,
               step = { it.step() },
-              panels = { pl, n -> ["step %d   mean E %.3f".format(n, pl.energyHistory.last()) to pl.render(extent = 24.0, size = 300, cx = 0.0, cy = 0.0)] },
+              panels = { pl, n -> ["step %d   mean E %.3f".format(n, pl.currentEnergy()) to pl.render(extent = 24.0, size = 300, cx = 0.0, cy = 0.0)] },
           )
   - execute:
       box: particle_lenia_still

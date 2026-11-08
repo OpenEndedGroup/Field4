@@ -92,13 +92,15 @@ class ParticleLenia(
     var steps: Int = 0
         private set
 
-    /** Mean particle energy recorded after every step (index 0 is the seed). */
+    /**
+     * Mean particle energy, one entry per state: index `k` is the energy of the arrangement after `k`
+     * steps. [step] records the energy of the state it starts from (it has those samples anyway), so the
+     * latest state's entry is appended by the next step; [currentEnergy] measures it now.
+     */
     val energyHistory: MutableList<Double> = mutableListOf()
 
     /** The last step's velocities, interleaved like [positions]. */
     val velocities: DoubleArray = DoubleArray(positions.size)
-
-    init { energyHistory += meanEnergy() }
 
     /** The fields at `(x, y)`, summed over every particle. */
     fun sample(x: Double, y: Double): ParticleLeniaSample {
@@ -137,16 +139,21 @@ class ParticleLenia(
 
     /** One Euler step of `dp/dt = −∇E`, all particles from the same old positions. */
     fun step(): ParticleLenia {
+        var e = 0.0
         for (i in 0 until count) {
             val s = sample(positions[2 * i], positions[2 * i + 1])
+            e += s.e
             velocities[2 * i] = -s.gx
             velocities[2 * i + 1] = -s.gy
         }
         for (k in positions.indices) positions[k] += params.dt * velocities[k]
         steps++
-        energyHistory += meanEnergy()
+        energyHistory += e / count
         return this
     }
+
+    /** Mean energy of the current arrangement, measured now (the entry the next [step] will record). */
+    fun currentEnergy(): Double = meanEnergy()
 
     /** [step] [n] times. */
     fun stepTimes(n: Int): ParticleLenia { repeat(n) { step() }; return this }
@@ -268,7 +275,7 @@ class ParticleLenia(
 
     override fun toString(): String =
         "ParticleLenia(%d particles, step %d, mean E %.4f, spread %.2f, rotation %.4f rad/t, drift %.4f/t)".format(
-            count, steps, energyHistory.last(), spread(), angularVelocity(), centroidSpeed()
+            count, steps, meanEnergy(), spread(), angularVelocity(), centroidSpeed()
         )
 
     companion object {
