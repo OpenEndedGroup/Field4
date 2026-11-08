@@ -11,6 +11,9 @@ non-periodic tilings of the plane", 1981). This implementation follows Aatish Bh
 ([source](https://github.com/aatishb/patterncollider), MIT licence), an interactive explorer of
 these tilings that is worth playing with.
 
+The same construction with planes instead of lines fills space with rhombohedra; see
+[Penrose Tilings in Three Dimensions](debruijn_tilings_3d.md).
+
 ## A Penrose tiling
 
 Ask for 5-fold symmetry and you get a Penrose rhomb tiling. `typeCounts()` counts each kind of
