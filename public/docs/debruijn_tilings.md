@@ -205,10 +205,22 @@ animate {
 
 ## The tiling as a graph
 
-The tiles' corners and edges make a graph, and `vertexGraph()` returns it. A particle hopping along
-those edges has about one state in ten at exactly zero energy, each trapped on a small cluster of
-vertices. [Hearing a Penrose Tiling](penrose_spectra.md) counts those states, draws them on the
-tiles, and strikes the tiling as a network of springs.
+The tiles' corners and edges make a graph, and `vertexGraph()` returns it. Its spectrum is the
+subject of [Hearing a Penrose Tiling](penrose_spectra.md). A particle hopping along a Penrose
+tiling's edges has about one state in ten at exactly zero energy. Exact counts on patches of up to
+31,662 vertices put the fraction at 0.0983, which is 81 − 50τ (τ the golden ratio), the value Arai,
+Tokihiro, Fujiwara and Kohmoto conjectured in 1988. Each of those states is trapped on a cluster of
+10 to 59 vertices and is exactly zero everywhere else.
+
+![On the left a grey Penrose tiling with orange discs of different sizes on many of its vertices; on the right an enlarged patch of the same tiling with one small ring of alternating orange and blue discs and nothing outside it](assets/penrose_spectra/states.png)
+
+On the left, each vertex's share of the zero-energy states; on the right, enlarged, the smallest
+one found near the middle. That page
+[counts the zero states](penrose_spectra.md#counting-the-zero-states) against a square lattice and
+a jittered tiling, sweeps the other symmetries, draws the gap around zero in the density of
+states, and [strikes the tiling](penrose_spectra.md#striking-the-tiling) as a network of masses
+and springs. Every zero-energy state rings at one pitch, so where you strike it decides how much
+of that pitch you hear.
 
 ## A relief, through Manifold
 
@@ -248,8 +260,18 @@ showMesh(
 )
 ```
 
-Open the [tiling starting point](agent_transcripts.md#debruijn_tilings_demo) to try these boxes in
-your own document.
+## Where to go next
+
+- [Hearing a Penrose Tiling](penrose_spectra.md) takes the spectrum of the tiling's graph: the
+  81 − 50τ zero-state fraction, the confined states drawn on the tiles, and the tiling struck as a
+  drum.
+- [Penrose Tilings in Three Dimensions](debruijn_tilings_3d.md) builds the same construction with
+  planes, filling space with rhombohedra, and welds a slab of them into a printable solid.
+- [Solids that cannot fail: Manifold in Field](manifold.md) covers the `Section`, `extruded` and
+  `Solid.union` calls behind the [relief](#a-relief-through-manifold) above, and `saveStl` for
+  printing it.
+- Open the [tiling starting point](agent_transcripts.md#debruijn_tilings_demo) to try these boxes in
+  your own document.
 
 ??? aside "What the tests check"
     `DeBruijnTilingTest` builds tilings at 3, 4, 5, 6 (with disorder), 7, 8, 9 and 12-fold and
