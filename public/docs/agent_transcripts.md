@@ -4171,10 +4171,12 @@ one runs it live on the CPU (launch it); and beneath a renderer, one runs the sa
 shader at 96 × 96, erasing cells under the left mouse button. See [Growing Neural Cellular
 Automata](growing_nca.md).
 
-```text
+```diffstatic {data-lang=text}
 macro write growing_nca --file dev_docs/agents/transcripts/growing_nca.yaml
 macro run growing_nca
 ```
+
+[Open →](offline.html?file=assets/agent_transcripts/growing_nca/metadata.edn)
 
 ### learned_boids
 

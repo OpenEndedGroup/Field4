@@ -195,7 +195,7 @@ WindowBrush.install(window, "growing-nca") { fx, fy ->
 }
 ```
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/growing_nca/gpu_window.png" capture="native-window" wait="6" native-wait-frames="30" embed=true hidden=true timeout="600" duration="0" name="growing-nca-gpu" alt="The Vulkan window: a pink six-petalled flower with a yellow centre and a green stem, grown by the compute shader on a white 96 by 96 grid between grey margins" macro-file="../../dev_docs/agents/transcripts/growing_nca.yaml" capture-box="nca_renderer"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/growing_nca/gpu_window.png" capture="native-window" max-width=1600 wait="6" native-wait-frames="30" embed=true hidden=true timeout="600" duration="0" name="growing-nca-gpu" alt="The Vulkan window: a pink six-petalled flower with a yellow centre and a green stem, grown by the compute shader on a white 96 by 96 grid between grey margins" macro-file="../../dev_docs/agents/transcripts/growing_nca.yaml" capture-box="nca_renderer"}
 // Built and launched from dev_docs/agents/transcripts/growing_nca.yaml
 // (the CPU strip, a renderer, and the GPU box beneath it).
 ```
