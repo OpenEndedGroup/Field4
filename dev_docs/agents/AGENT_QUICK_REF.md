@@ -140,7 +140,7 @@ Ask the running JVM "what is this variable right now?" via the MCP tool
 `field_debug_probe` — a JDWP probe that suspends only the hitting event thread
 while reading the value, then immediately resumes it. Source mode targets loaded
 `src/` code; box mode targets a running box. Backdoor-launched Field enables the
-required JDWP port (5005) automatically.
+required JDWP port automatically (an ephemeral one, `AFIELD_JDWP_PORT=auto`).
 
 ```jsonc
 // source mode — a symbol at a src/ file + real line (line numbers illustrative):
