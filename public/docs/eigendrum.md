@@ -387,7 +387,7 @@ a circle, then ellipses, then two parallel lines across the drum, so the head di
 a string sounding its third harmonic, then hyperbolas, and at the far end two diameters. The same
 mixes of the loaded drum's two modes, from all (0,2) on the left to all (2,1) on the right:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/eigendrum/sand.png" embed=true alt="Five discs with white nodal lines: a circle, an ellipse, two nearly parallel lines across the disc, two hyperbolas, and two crossing diameters"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/eigendrum/sand.png" embed=true alt="Six discs with white nodal lines: a small circle, an ellipse, a longer ellipse, a long narrow loop nearly spanning the disc as two parallel lines, two hyperbolas, and two crossing diameters"}
 import afield.audio.modal.*
 
 // Mixes of the loaded drum's (0,2) and (2,1) modes, which share one pitch: the nodal lines
@@ -423,7 +423,7 @@ and scores each one. Radius runs across from 0.15 to 0.7 of the rim and density 
 paste) to 30, spaced evenly in log; bright cells are close to a harmonic series. The white ring is
 Ramakrishna and Sondhi's tabla.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/eigendrum/map.png" embed=true alt="A twelve by twelve grid of coloured cells, dark along the bottom row and on the right, with a bright diagonal valley running from small heavy loads at the top left to wide light ones lower right; a white ring sits in the brightest part of the valley"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/eigendrum/map.png" embed=true alt="A twelve by twelve grid of coloured cells, dark along the bottom row and at the left and right edges, with a bright band running from small heavy loads at the top down to wider, lighter ones in the middle; a white ring sits in the brightest part of the band"}
 import afield.audio.modal.*
 
 // Loading radius across (0.15–0.7 of the rim), density ratio up (1–30, log spaced); each
@@ -519,7 +519,7 @@ skin, the top of the range makers use. Each step needs only one solve, because t
 exact: making a patch 1% heavier lowers each mode's λ by that mode's share of energy on the patch,
 times 1%.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/eigendrum/syahi.png" embed=true timeout="300" alt="A table of syahi designs with one, two and three layers, their radii, added densities and distances from a harmonic series falling from about 28 to 18 cents; below it four density profiles stepping down from the centre to the rim"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/eigendrum/syahi.png" embed=true timeout="300" alt="A table of syahi designs with one, two and three layers, their radii, added densities and distances from a harmonic series falling from about 27 to 19 cents; below it four density profiles stepping down from the centre to the rim"}
 import afield.audio.modal.*
 
 // Fit a syahi of one, two and three stacked layers to 1:2:3:4:5, each starting from
@@ -549,7 +549,7 @@ lines(profiles + composite, w = 520.0, h = 180.0, fitToSize = true)
 ```
 
 The grey line is the single disc the fits start from; blue, yellow and red are one, two and three
-layers. Two layers take the drum from about 28 cents to about 21, and a third adds little. The fits
+layers. Two layers take the drum from about 27 cents to about 21, and a third adds little. The fits
 keep Raman's grouping, (0,2) with (2,1), (1,2) with (3,1), and so on, without being told it: the
 target is just the fifteen numbers. The two-layer drum:
 
