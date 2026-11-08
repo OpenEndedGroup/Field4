@@ -50,12 +50,15 @@ class SomCurveAnalyzer:
     ``shape`` is the grid, e.g. ``(48,)``, ``(12, 12)`` or ``(6, 6, 6)``; its product must equal
     ``config.history``, the number of prototypes (a chain of ``config.history`` if omitted).
     ``learn_seconds`` sets how fast the best match moves toward a new sound, ``sigma`` the final
-    neighbourhood width in grid steps, ``conscience`` how strongly frequent winners are handicapped
+    neighbourhood width in grid steps (by default 2 on a chain and 1 on a sheet or lattice: a wide
+    neighbourhood on a short side drags every prototype toward the middle), ``conscience`` how strongly frequent winners are handicapped
     (0 turns it off) and ``settle_seconds`` how long the neighbourhood takes to narrow.
     """
 
-    def __init__(self, config, learn_seconds=0.5, sigma=2.0, conscience=1.0, shape=None, settle_seconds=2.0):
+    def __init__(self, config, learn_seconds=0.5, sigma=None, conscience=1.0, shape=None, settle_seconds=2.0):
         shape = tuple(shape) if shape else (config.history,)
+        if sigma is None:
+            sigma = 2.0 if len(shape) == 1 else 1.0
         if not 1 <= len(shape) <= 3 or min(shape) < 1 or int(np.prod(shape)) != config.history:
             raise ValueError(f"grid {shape} must have 1 to 3 axes whose product is history {config.history}")
         if not learn_seconds > 0 or not sigma > 0 or conscience < 0 or settle_seconds < 0:
@@ -141,7 +144,7 @@ class SomCurveAnalyzer:
         return (coords - xm) @ (u @ vt) + ym
 
 
-def write_som_curves(path, samples, config, learn_seconds=0.5, sigma=2.0, conscience=1.0, progress=None, shape=None):
+def write_som_curves(path, samples, config, learn_seconds=0.5, sigma=None, conscience=1.0, progress=None, shape=None):
     """Write a .f4curve file of map curves: ``config.history`` prototypes plus the present per record.
 
     The grid's shape goes in the header as three uint32 at byte 52 (unused axes are 1).
@@ -174,7 +177,7 @@ def main():
     parser.add_argument('--nodes', type=int, default=48, help='prototypes on a chain (points per curve, plus the present)')
     parser.add_argument('--grid', help='a sheet or lattice of prototypes instead, e.g. 12x12 or 6x6x6')
     parser.add_argument('--learn', type=float, default=0.5, help='learning time constant of the best match, seconds')
-    parser.add_argument('--sigma', type=float, default=2.0, help='neighbourhood width, in prototypes')
+    parser.add_argument('--sigma', type=float, default=None, help='final neighbourhood width in grid steps (default 2 on a chain, 1 on a grid)')
     parser.add_argument('--conscience', type=float, default=1.0, help='handicap on frequent winners (0 = off)')
     parser.add_argument('--fft-size', type=int, default=2048)
     parser.add_argument('--hop-size', type=int, default=512)

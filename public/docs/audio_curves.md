@@ -603,6 +603,11 @@ loop {
     }
 ```
 
+The tether is usually short. A single hop's spectrum is noisy next to the prototypes, which each
+average many hops, yet the present usually lies nearer its best match than to the average of its
+own surrounding half second. It reaches out at onsets, when a sound arrives that the map has not
+learned yet, and `stretch` lengthens it along the axes it scales up.
+
 Here it is from the first sound to the last. Both maps start as a single point, every prototype at
 the first spectrum, and unfold as the voice gives them more to remember:
 
